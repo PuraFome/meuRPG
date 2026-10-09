@@ -26,6 +26,7 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import type { OtherSkill } from '../../core/traps/trap-search';
+import { hitDiceWords } from '../../core/resources/hit-dice-text';
 import { metersText } from '../../core/units';
 import {
   CampaignInfoVm,
@@ -78,11 +79,21 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     hitPointsMax: v.hitPointsMax,
     hitPointsTemporary: v.hitPointsTemporary,
     hitPointsMaxBonus: v.hitPointsMaxBonus,
-    spellSlots: v.spellSlots.map((s) => ({ level: s.level, total: s.total, used: s.used })),
+    spellSlots: v.spellSlots.map((s) => ({
+      level: s.level,
+      total: s.total,
+      used: s.used,
+      created: s.created,
+    })),
     pactSlots: v.pactSlots
       ? { slotLevel: v.pactSlots.slotLevel, total: v.pactSlots.total, used: v.pactSlots.used }
       : null,
-    hitDice: v.hitDice.map((hd) => `${hd.count}d${hd.faces}`).join(' + '),
+    hitDice: hitDiceWords(v.hitDice),
+    hitDiceSizes: v.hitDice.map((hd) => ({
+      faces: hd.faces,
+      total: hd.count,
+      used: v.hitDiceUsedByDie[hd.faces] ?? 0,
+    })),
     hitDiceTotal: v.hitDiceTotal,
     hitDiceUsed: v.hitDiceUsed,
     revision: v.revision,
@@ -328,7 +339,7 @@ export class LiveSessionSourceLive implements LiveSessionSource {
       hitPointsTemporary: change.hitPointsTemporary,
       spellSlotsUsed: (change.spellSlotsUsed ?? []).map((s) => ({ level: s.level, used: s.used })),
       pactSlotsUsed: change.pactSlotsUsed,
-      hitDiceUsed: change.hitDiceUsed,
+      hitDiceUsedByDie: change.hitDiceUsedByDie ?? {},
       resourcesUsed: (change.resourcesUsed ?? []).map((r) => ({ key: r.key, used: r.used })),
       wildShapeHitPointsCurrent: change.wildShapeHitPointsCurrent,
     });

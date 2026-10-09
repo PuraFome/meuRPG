@@ -28,29 +28,27 @@ class Call {
 
 describe('XpWatcher (E7-10)', () => {
   let calls: Call[];
+  let snapshot: unknown[];
+  let snapshotFails: boolean;
   const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
   beforeEach(() => {
     calls = [];
+    snapshot = [];
+    snapshotFails = false;
     const source = {
+      getLiveSession: () =>
+        snapshotFails ? Promise.reject(new Error('down')) : Promise.resolve({ vitals: snapshot }),
       watch: (campaignId: string, signal: AbortSignal) => {
         const call = new Call(campaignId, signal);
         calls.push(call);
         return call.events();
       },
       classifyError: () => 'transient',
-      getLiveSession: () =>
-        Promise.resolve({ vitals: [{ characterId: 'char-1', hitPointsMaxBonus: 5 }] }),
     };
     TestBed.configureTestingModule({
       providers: [XpWatcher, { provide: LiveSessionSourceLive, useValue: source }],
     });
-  });
-
-  it("reads one character's vitals from the open session, or null when it is not listed", async () => {
-    const watcher = TestBed.inject(XpWatcher);
-    expect((await watcher.readVitals('camp-1', 'char-1'))?.hitPointsMaxBonus).toBe(5);
-    expect(await watcher.readVitals('camp-1', 'char-9')).toBeNull();
   });
 
   it("opens the session's stream and says so when the XP changes", async () => {
@@ -128,7 +126,7 @@ describe('XpWatcher (E7-10)', () => {
     });
     calls[0].push({ kind: 'encounterChanged', encounterId: 'enc-1', revision: 3 });
     await flush();
-    expect(onForm.mock.calls).toEqual([['char-1', { characterId: 'char-1' }], [null]]);
+    expect(onForm.mock.calls).toEqual([['char-1'], [null]]);
     calls[0].push({ kind: 'ready' });
     await flush();
     expect(onForm).toHaveBeenLastCalledWith(null);
@@ -186,6 +184,50 @@ describe('XpWatcher (E7-10)', () => {
     watcher.follow('camp-1', vi.fn());
     await flush();
     expect(calls).toHaveLength(2);
+    watcher.follow(null, vi.fn());
+  });
+  it('hands over the live numbers: the snapshot on every `ready`, then each vitals event', async () => {
+    const onVitals = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    snapshot = [{ characterId: 'char-1', revision: 1 }];
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
+    await flush();
+    calls[0].push({ kind: 'ready' });
+    await flush();
+    expect(onVitals.mock.calls).toEqual([[{ characterId: 'char-1', revision: 1 }]]);
+    calls[0].push({ kind: 'vitals', vitals: { characterId: 'char-1', revision: 2 } as never });
+    await flush();
+    expect(onVitals).toHaveBeenLastCalledWith({ characterId: 'char-1', revision: 2 });
+    snapshot = [{ characterId: 'char-1', revision: 3 }];
+    calls[0].push({ kind: 'ready' });
+    await flush();
+    expect(onVitals).toHaveBeenLastCalledWith({ characterId: 'char-1', revision: 3 });
+    watcher.follow(null, vi.fn());
+  });
+
+  it('keeps going when the snapshot cannot be read: the events still arrive', async () => {
+    const onVitals = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    snapshotFails = true;
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
+    await flush();
+    calls[0].push({ kind: 'ready' });
+    calls[0].push({ kind: 'vitals', vitals: { characterId: 'char-1', revision: 2 } as never });
+    await flush();
+    expect(onVitals).toHaveBeenCalledTimes(1);
+    watcher.follow(null, vi.fn());
+  });
+  it('reads the live numbers again when the same session is followed again, without a second stream', async () => {
+    const onVitals = vi.fn();
+    const watcher = TestBed.inject(XpWatcher);
+    snapshot = [{ characterId: 'char-1', revision: 1 }];
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
+    await flush();
+    snapshot = [{ characterId: 'char-2', revision: 4 }];
+    watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(onVitals).toHaveBeenCalledWith({ characterId: 'char-2', revision: 4 });
     watcher.follow(null, vi.fn());
   });
 });

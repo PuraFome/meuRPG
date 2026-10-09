@@ -1,0 +1,474 @@
+package characters
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"slices"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+)
+
+// Rests and the class resources that move points between the vitals (SRD 5.1,
+// "Resting", Flexible Casting). Package play decides who may ask and when, and writes
+// the history; this file changes the numbers. Every method runs inside the
+// caller's transaction and reads only through it.
+
+// restKindOf maps the API's rest kind to the rules'.
+func restKindOf(kind playv1.RestKind) (string, bool) {
+	switch kind {
+	case playv1.RestKind_REST_KIND_SHORT:
+		return rules.RestShort, true
+	case playv1.RestKind_REST_KIND_LONG:
+		return rules.RestLong, true
+	}
+	return "", false
+}
+
+// restPlan is what a rest does to one character: its vitals after, and what the
+// master reads of it before.
+type restPlan struct {
+	after   *playv1.CharacterVitals
+	preview *playv1.RestPreview
+}
+
+// planRest works out what a rest of the kind gives back to a character. choice is
+// which hit dice a long rest gives back (nil: the largest first). It changes
+// nothing: the plan carries the vitals after.
+func planRest(kind string, v *playv1.CharacterVitals, m vitalsMax, choice rules.HitDiceUsed) (restPlan, error) {
+	after := proto.CloneOf(v)
+	preview := &playv1.RestPreview{
+		CharacterId: v.GetCharacterId(), Name: v.GetName(),
+		HitPointsCurrent: v.GetHitPointsCurrent(), HitPointsMax: v.GetHitPointsMax(),
+		HitDiceBackLimit: i32(rules.LongRestHitDiceLimit(m.hitDice)),
+	}
+	spent := hitDiceFromProto(v.GetHitDiceUsedByDie())
+	preview.HitDiceSpent = hitDiceProto(spent, m.hitDice)
+	long := kind == rules.RestLong
+	if long && !rules.LongRestNeedsHitPoints(int(v.GetHitPointsCurrent())) {
+		// "A character must have at least 1 hit point at the start of the rest to gain
+		// its benefits": nothing comes back.
+		preview.NoBenefit = true
+		return restPlan{after: after, preview: preview}, nil
+	}
+	rechargeOf := map[string]string{}
+	for _, r := range m.resources {
+		rechargeOf[r.Key] = r.Recharge
+	}
+	for _, r := range after.GetResources() {
+		if r.GetUsed() > 0 && rules.RechargesOnRest(rechargeOf[r.GetKey()], kind) {
+			preview.Resources = append(preview.Resources, &playv1.RestResourceBack{Key: r.GetKey(), NamePt: r.GetNamePt(), Spent: r.GetUsed(), Total: r.GetTotal()})
+			r.Used = 0
+		}
+	}
+	if p := after.GetPactSlots(); p != nil && p.GetUsed() > 0 && rules.PactSlotsReturnOn(kind) {
+		preview.PactSlotsBack = p.GetUsed()
+		p.Used = 0
+	}
+	if rules.SpellSlotsReturnOn(kind) {
+		var slots []*playv1.SpellSlotUsage
+		for _, slot := range after.GetSpellSlots() {
+			sheetTotal := slot.GetTotal() - slot.GetCreated()
+			if back := min(slot.GetUsed(), sheetTotal); back > 0 {
+				preview.SpellSlotsBack = append(preview.SpellSlotsBack, &playv1.SpellSlotBack{Level: slot.GetLevel(), Count: back})
+			}
+			preview.CreatedSlotsLost += slot.GetCreated()
+			slot.Used, slot.Created, slot.Total = 0, 0, sheetTotal // the slots Flexible Casting made vanish
+			if slot.GetTotal() > 0 {
+				slots = append(slots, slot)
+			}
+		}
+		after.SpellSlots = slots
+	}
+	if long {
+		after.HitPointsCurrent = v.GetHitPointsMax()
+	}
+	if rules.TemporaryHitPointsEndOn(kind) {
+		preview.TemporaryHitPointsLost = v.GetHitPointsTemporary()
+		after.HitPointsTemporary = 0
+	}
+	if long {
+		back, left, err := rules.HitDiceReturned(m.hitDice, spent, choice)
+		if err != nil {
+			return restPlan{}, link.ErrBadHitDiceChoice
+		}
+		preview.HitDiceBack = hitDiceProto(back, m.hitDice)
+		setHitDiceUsed(after, left)
+	}
+	return restPlan{after: after, preview: preview}, nil
+}
+
+// restRows reads the campaign's living, active player characters inside tx, each
+// with its vitals and maximums.
+type restRow struct {
+	row  vitalsRow
+	m    vitalsMax
+	view *playv1.CharacterVitals
+}
+
+func (s *Service) restRows(ctx context.Context, tx pgx.Tx, campaignID string) ([]restRow, error) {
+	q := s.queries.WithTx(tx)
+	rows, err := q.ListVitals(ctx, campaignID)
+	if err != nil {
+		return nil, wrap("list vitals", err)
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, wrap("read rules content", err)
+	}
+	out := make([]restRow, 0, len(rows))
+	for _, row := range rows {
+		m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.liveFamiliar(ctx, q, campaignID, &row); err != nil {
+			return nil, wrap("read the familiar", err)
+		}
+		out = append(out, restRow{row: row, m: m, view: vitalsToProto(row, m)})
+	}
+	return out, nil
+}
+
+// PreviewRest says what a rest of the kind would give back to each character of the
+// campaign, writing nothing. It implements play.RestKeeper.
+func (s *Service) PreviewRest(ctx context.Context, tx pgx.Tx, campaignID string, kind playv1.RestKind) ([]*playv1.RestPreview, error) {
+	k, ok := restKindOf(kind)
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("kind must be a short or a long rest"))
+	}
+	rows, err := s.restRows(ctx, tx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*playv1.RestPreview, 0, len(rows))
+	for _, r := range rows {
+		plan, err := planRest(k, r.view, r.m, nil)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, plan.preview)
+	}
+	return out, nil
+}
+
+// TakeRest gives each character of the campaign what the rest of the kind gives
+// back and returns the vitals before and after, for the characters it changed
+// (a character the rest changes nothing for is left alone: its revision stays). It
+// implements play.RestKeeper. Errors are Connect errors, except link's, which package
+// play words.
+func (s *Service) TakeRest(ctx context.Context, tx pgx.Tx, campaignID string, req *playv1.TakeRestRequest) (before, after []*playv1.CharacterVitals, err error) {
+	k, ok := restKindOf(req.GetKind())
+	if !ok {
+		return nil, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("kind must be a short or a long rest"))
+	}
+	rows, err := s.restRows(ctx, tx, campaignID)
+	if err != nil {
+		return nil, nil, err
+	}
+	choices := map[string]rules.HitDiceUsed{}
+	for _, c := range req.GetHitDiceChoices() {
+		if _, dup := choices[c.GetCharacterId()]; dup || !slices.ContainsFunc(rows, func(r restRow) bool { return r.row.ID == c.GetCharacterId() }) {
+			return nil, nil, link.ErrBadHitDiceChoice
+		}
+		pick := rules.HitDiceUsed{}
+		for _, d := range c.GetDice() {
+			if _, dup := pick[int(d.GetFaces())]; dup {
+				return nil, nil, link.ErrBadHitDiceChoice
+			}
+			pick[int(d.GetFaces())] = int(d.GetCount())
+		}
+		choices[c.GetCharacterId()] = pick
+	}
+	q := s.queries.WithTx(tx)
+	for _, r := range rows {
+		plan, err := planRest(k, r.view, r.m, choices[r.row.ID])
+		if err != nil {
+			return nil, nil, err
+		}
+		if proto.Equal(plan.after, r.view) {
+			continue
+		}
+		saved, err := s.writeVitals(ctx, q, r.row, plan.after, k == rules.RestLong)
+		if err != nil {
+			return nil, nil, err
+		}
+		plan.after.Revision = saved.Revision
+		plan.after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
+		before, after = append(before, r.view), append(after, plan.after)
+	}
+	return before, after, nil
+}
+
+// writeVitals stores the vitals a plan produced for a row: the hit points
+// (current ones only when a long rest or a heal set them), the temporary ones, the
+// slots used and created, the pact slots, the hit dice by size and the resources.
+// What the view cannot show (the usage of a slot level or a resource the sheet lost)
+// is kept as it was, except that a long rest clears every slot level.
+func (s *Service) writeVitals(ctx context.Context, q *charactersdb.Queries, row vitalsRow, after *playv1.CharacterVitals, clearSlots bool) (charactersdb.UpsertVitalsRow, error) {
+	used := make([]int32, maxSpellLevel)
+	copy(used, row.SpellSlotsUsed)
+	created := make([]int32, maxSpellLevel)
+	if clearSlots {
+		clear(used)
+	}
+	for _, slot := range after.GetSpellSlots() {
+		if l := int(slot.GetLevel()); l >= 1 && l <= maxSpellLevel {
+			used[l-1], created[l-1] = slot.GetUsed(), slot.GetCreated()
+		}
+	}
+	pactUsed := derefInt(row.PactSlotsUsed)
+	if p := after.GetPactSlots(); p != nil {
+		pactUsed = p.GetUsed()
+	}
+	usedResources := map[string]int32{}
+	_ = json.Unmarshal(row.ResourcesUsed, &usedResources)
+	if usedResources == nil {
+		usedResources = map[string]int32{}
+	}
+	for _, r := range after.GetResources() {
+		if r.GetUsed() > 0 {
+			usedResources[r.GetKey()] = r.GetUsed()
+		} else {
+			delete(usedResources, r.GetKey())
+		}
+	}
+	resourcesJSON, err := json.Marshal(usedResources)
+	if err != nil {
+		return charactersdb.UpsertVitalsRow{}, wrap("encode the resources", err)
+	}
+	hitDiceJSON, hitDiceUsed, err := encodeHitDiceUsed(hitDiceFromProto(after.GetHitDiceUsedByDie()))
+	if err != nil {
+		return charactersdb.UpsertVitalsRow{}, err
+	}
+	hitPoints := &after.HitPointsCurrent
+	if row.HitPointsCurrent == nil && after.GetHitPointsCurrent() == after.GetHitPointsMax() {
+		hitPoints = nil // never set and still full: stays "full, whatever the maximum becomes"
+	}
+	saved, err := q.UpsertVitals(ctx, charactersdb.UpsertVitalsParams{
+		CharacterID: row.ID, HitPointsCurrent: hitPoints, HitPointsTemporary: after.GetHitPointsTemporary(),
+		SpellSlotsUsed: used, PactSlotsUsed: pactUsed, HitDiceUsed: hitDiceUsed, HitDiceUsedByDie: hitDiceJSON,
+		SpellSlotsCreated: created, ResourcesUsed: resourcesJSON, Now: s.now(),
+	})
+	if err != nil {
+		return charactersdb.UpsertVitalsRow{}, wrap("save vitals", err)
+	}
+	return saved, nil
+}
+
+// vitalsOfRow reads one character's vitals and maximums inside tx, or `not_found`.
+func (s *Service) vitalsOfRow(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (restRow, *rules.Content, error) {
+	id, ok := parseUUID(characterID)
+	if !ok {
+		return restRow{}, nil, errCharacterNotFound()
+	}
+	q := s.queries.WithTx(tx)
+	got, err := q.GetVitals(ctx, charactersdb.GetVitalsParams{CampaignID: campaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return restRow{}, nil, errCharacterNotFound()
+	}
+	if err != nil {
+		return restRow{}, nil, wrap("get vitals", err)
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return restRow{}, nil, wrap("read rules content", err)
+	}
+	m, err := maxima(content, got.ID, got.Sheet, got.WildShapeBeast)
+	if err != nil {
+		return restRow{}, nil, err
+	}
+	row := vitalsRow(got)
+	if err := s.liveFamiliar(ctx, q, campaignID, &row); err != nil {
+		return restRow{}, nil, wrap("read the familiar", err)
+	}
+	return restRow{row: row, m: m, view: vitalsToProto(row, m)}, content, nil
+}
+
+// saveView writes a character's new vitals and returns them with the revision.
+func (s *Service) saveView(ctx context.Context, tx pgx.Tx, r restRow, after *playv1.CharacterVitals) (*playv1.CharacterVitals, error) {
+	saved, err := s.writeVitals(ctx, s.queries.WithTx(tx), r.row, after, false)
+	if err != nil {
+		return nil, err
+	}
+	after.Revision = saved.Revision
+	after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
+	return after, nil
+}
+
+// SpendHitDie spends one hit die of the size on a short rest: face is the die
+// rolled, and the character regains that plus its Constitution modifier (at least 0),
+// cut to its maximum. It returns the vitals before and after, the Constitution
+// modifier and the hit points regained. link.ErrNoHitDiceLeft when none of the size
+// is left, link.ErrBadHitDiceChoice for a size the character has not. It implements
+// play.RestKeeper.
+func (s *Service) SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, characterID string, faces, face int) (before, after *playv1.CharacterVitals, conMod, healed int, err error) {
+	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return nil, nil, 0, 0, err
+	}
+	used := hitDiceFromProto(r.view.GetHitDiceUsedByDie())
+	if !slices.ContainsFunc(r.m.hitDice, func(hd rules.HitDice) bool { return hd.Die == faces }) {
+		return nil, nil, 0, 0, link.ErrBadHitDiceChoice
+	}
+	spent, err := rules.SpendHitDice(r.m.hitDice, used, rules.HitDiceUsed{faces: 1})
+	if err != nil {
+		return nil, nil, 0, 0, link.ErrNoHitDiceLeft
+	}
+	after = proto.CloneOf(r.view)
+	setHitDiceUsed(after, spent)
+	gain := rules.HitDieHeal(face, r.m.conMod)
+	after.HitPointsCurrent = min(r.view.GetHitPointsCurrent()+i32(gain), r.view.GetHitPointsMax())
+	healed = int(after.GetHitPointsCurrent() - r.view.GetHitPointsCurrent())
+	if after, err = s.saveView(ctx, tx, r, after); err != nil {
+		return nil, nil, 0, 0, err
+	}
+	return r.view, after, r.m.conMod, healed, nil
+}
+
+// resourceLeft finds a resource in the vitals and the uses it has left.
+func resourceLeft(v *playv1.CharacterVitals, key string) (*playv1.ResourceUsage, int32) {
+	for _, r := range v.GetResources() {
+		if r.GetKey() == key {
+			return r, r.GetTotal() - r.GetUsed()
+		}
+	}
+	return nil, 0
+}
+
+// slotOf finds the spell slots of a level in the vitals, nil when there are none.
+func slotOf(v *playv1.CharacterVitals, level int32) *playv1.SpellSlotUsage {
+	for _, slot := range v.GetSpellSlots() {
+		if slot.GetLevel() == level {
+			return slot
+		}
+	}
+	return nil
+}
+
+// CreateSpellSlot turns sorcery points into a spell slot of the level (Flexible
+// Casting): the points are spent from the resource and the slot is added, free, until
+// the next long rest. It returns the vitals before and after and the cost. The refusals
+// are link's: ErrNoResource (not a sorcerer with Font of Magic), ErrSlotLevelTooHigh,
+// ErrNotEnoughPoints (a PointsError). It implements play.RestKeeper.
+func (s *Service) CreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (before, after *playv1.CharacterVitals, cost int, err error) {
+	r, content, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	points, left := resourceLeft(r.view, rules.SorceryPointsKey)
+	if points == nil {
+		return nil, nil, 0, link.ErrNoResource
+	}
+	cost, err = content.CreateSlotCheck(level, int(left))
+	if err != nil {
+		if need, ok := content.SlotCreationCost(level); ok {
+			return nil, nil, 0, &link.PointsError{Err: link.ErrNotEnoughPoints, Needed: need, Available: int(left)}
+		}
+		return nil, nil, 0, link.ErrSlotLevelTooHigh
+	}
+	after = proto.CloneOf(r.view)
+	p, _ := resourceLeft(after, rules.SorceryPointsKey)
+	p.Used += i32(cost)
+	if slot := slotOf(after, i32(level)); slot != nil {
+		slot.Total++
+		slot.Created++
+	} else {
+		after.SpellSlots = append(after.SpellSlots, &playv1.SpellSlotUsage{Level: i32(level), Total: 1, Created: 1})
+		slices.SortFunc(after.SpellSlots, func(a, b *playv1.SpellSlotUsage) int { return int(a.GetLevel() - b.GetLevel()) })
+	}
+	if after, err = s.saveView(ctx, tx, r, after); err != nil {
+		return nil, nil, 0, err
+	}
+	return r.view, after, cost, nil
+}
+
+// ConvertSpellSlot expends a free spell slot of the level for as many sorcery points
+// as its level (Flexible Casting), when the points do not pass the maximum. It returns
+// the vitals before and after and the points gained. The refusals are link's:
+// ErrNoResource, ErrNoFreeSlot, ErrPointsFull and ErrPointsOver (PointsErrors with the
+// points there are and the maximum). It implements play.RestKeeper.
+func (s *Service) ConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (before, after *playv1.CharacterVitals, gain int, err error) {
+	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	points, left := resourceLeft(r.view, rules.SorceryPointsKey)
+	if points == nil {
+		return nil, nil, 0, link.ErrNoResource
+	}
+	slot := slotOf(r.view, i32(level))
+	if slot == nil || slot.GetUsed() >= slot.GetTotal() {
+		return nil, nil, 0, link.ErrNoFreeSlot
+	}
+	gain, err = rules.ConvertSlotCheck(level, int(left), int(points.GetTotal()))
+	if err != nil {
+		pe := &link.PointsError{Needed: int(points.GetTotal()), Available: int(left)} // the maximum, and the points now
+		switch {
+		case errors.Is(err, rules.ErrSorceryPointsFull):
+			pe.Err = link.ErrPointsFull
+		case errors.Is(err, rules.ErrSorceryPointsOver):
+			pe.Err = link.ErrPointsOver
+		default:
+			return nil, nil, 0, link.ErrNoFreeSlot
+		}
+		return nil, nil, 0, pe
+	}
+	after = proto.CloneOf(r.view)
+	p, _ := resourceLeft(after, rules.SorceryPointsKey)
+	p.Used -= i32(gain)
+	slotOf(after, i32(level)).Used++
+	if after, err = s.saveView(ctx, tx, r, after); err != nil {
+		return nil, nil, 0, err
+	}
+	return r.view, after, gain, nil
+}
+
+// UndoCreateSpellSlot takes back a slot Flexible Casting created: the slot goes away
+// (a used one counts as used no more) and the points it cost come back. It returns the
+// vitals after. It implements play.RestKeeper.
+func (s *Service) UndoCreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, cost int) (*playv1.CharacterVitals, error) {
+	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return nil, err
+	}
+	after := proto.CloneOf(r.view)
+	if slot := slotOf(after, i32(level)); slot != nil && slot.GetCreated() > 0 {
+		slot.Total--
+		slot.Created--
+		slot.Used = min(slot.GetUsed(), slot.GetTotal())
+		if slot.GetTotal() == 0 {
+			after.SpellSlots = slices.DeleteFunc(after.SpellSlots, func(x *playv1.SpellSlotUsage) bool { return x.GetLevel() == i32(level) })
+		}
+	}
+	if points, _ := resourceLeft(after, rules.SorceryPointsKey); points != nil {
+		points.Used = max(points.GetUsed()-i32(cost), 0)
+	}
+	return s.saveView(ctx, tx, r, after)
+}
+
+// UndoConvertSpellSlot takes back a conversion of a slot into sorcery points: the slot
+// is free again and the points go. It returns the vitals after. It implements
+// play.RestKeeper.
+func (s *Service) UndoConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, gain int) (*playv1.CharacterVitals, error) {
+	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return nil, err
+	}
+	after := proto.CloneOf(r.view)
+	if slot := slotOf(after, i32(level)); slot != nil {
+		slot.Used = max(slot.GetUsed()-1, 0)
+	}
+	if points, _ := resourceLeft(after, rules.SorceryPointsKey); points != nil {
+		points.Used = min(points.GetUsed()+i32(gain), points.GetTotal())
+	}
+	return s.saveView(ctx, tx, r, after)
+}

@@ -230,4 +230,45 @@ describe('AdjustVitals (RN-02, E5-05)', () => {
     expect(el.textContent).not.toContain('PV da fera');
     expect(el.querySelector('input[aria-label="Pontos de vida da fera"]')).toBeNull();
   });
+  describe('hit dice of several sizes', () => {
+    const multi = () =>
+      brisaVitals({
+        hitDice: '5d10 e 1d6',
+        hitDiceSizes: [
+          { faces: 10, total: 5, used: 2 },
+          { faces: 6, total: 1, used: 0 },
+        ],
+        hitDiceTotal: 6,
+        hitDiceUsed: 2,
+      });
+
+    it('shows one stepper for each size, with what is spent of it', () => {
+      const { el } = setup(multi());
+      expect(el.textContent).toContain('Dados de vida d10');
+      expect(el.textContent).toContain('5d10, 2 de 5 usados');
+      expect(el.textContent).toContain('Dados de vida d6');
+      expect(el.textContent).toContain('1d6, 0 de 1 usados');
+      expect(field(el, 'Dados de vida d10 usados').value).toBe('2');
+      expect(field(el, 'Dados de vida d6 usados').value).toBe('0');
+    });
+
+    it('sends the sizes that changed, by die', async () => {
+      adjustVitals.mockResolvedValue(brisaVitals());
+      const { el, fixture } = setup(multi());
+      byLabel(el, 'Usar 1 dado de vida d6').click();
+      byLabel(el, 'Devolver 1 dado de vida d10').click();
+      await settle(fixture);
+      button(el, 'Salvar ajuste').click();
+      await settle(fixture);
+      expect(adjustVitals.mock.calls[0][3]).toEqual({ hitDiceUsedByDie: { 10: 1, 6: 1 } });
+    });
+
+    it('stops each size at its own dice', async () => {
+      const { el, fixture } = setup(multi());
+      byLabel(el, 'Usar 1 dado de vida d6').click();
+      await settle(fixture);
+      expect(byLabel(el, 'Usar 1 dado de vida d6').disabled).toBe(true);
+      expect(byLabel(el, 'Usar 1 dado de vida d10').disabled).toBe(false);
+    });
+  });
 });

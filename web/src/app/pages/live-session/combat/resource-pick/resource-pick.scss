@@ -1,0 +1,99 @@
+:host {
+  display: block;
+}
+
+.pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pick__legend {
+  margin: 0 0 var(--mr-space-2);
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.pick__empty {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+// A radio card: the chosen one has a thicker accent border and a soft fill, and the dot is filled too.
+.opt {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 8px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &--on {
+    padding: 7px 13px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  // Cannot be chosen: dashed and quiet, with the reason written in the card.
+  &--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.opt__radio {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+
+  .opt--on & {
+    border: 6px solid var(--mr-accent);
+  }
+}
+
+.opt__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.opt__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.opt__why {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    font-size: 16px;
+  }
+}

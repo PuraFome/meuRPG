@@ -1,4 +1,14 @@
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { create } from '@bufbuild/protobuf';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -6,7 +16,9 @@ import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1
 import {
   AttackOutcome,
   type AttackRoll,
+  AttackRollSchema,
   CombatantSide,
+  type InspirationOffer,
   type PendingDamage,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -28,6 +40,8 @@ import {
   CombatClient,
 } from '../../../../core/combat/combat-client';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { type InspirationRoll, ResourceClient } from '../../../../core/resources/resources-client';
+import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import {
   damageFormula,
   diceName,
@@ -66,6 +80,7 @@ import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { AttackResult } from './attack-result';
 import { AttackSteps } from './attack-steps';
+import { InspirationPrompt } from '../inspiration-prompt/inspiration-prompt';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { injectSheet } from '../sheet-host';
 
@@ -109,6 +124,11 @@ export interface AttackSheetData {
   /** A hit whose damage was never rolled (the sheet was closed): the sheet
    * opens at "Dano" with it. */
   readonly resume?: { readonly pending: PendingDamage; readonly targetLabel: string };
+  /** A roll held for the Bardic Inspiration question (the player left the sheet, or read the screen again): the sheet
+   * opens at the question, with the d20 that was rolled. */
+  readonly inspiration?: { readonly offer: InspirationOffer; readonly targetLabel: string };
+  /** A roll of this sheet was held for the Bardic Inspiration question: the page learns the hold, so it does not open the question a second time. */
+  readonly onHeld?: (holdId: string) => void;
   /** The monk's throw back after Defletir Projéteis: the reaction window that caught the missile
    * (`RollAttack.catch_window_id`). It is part of the same reaction, so it asks nothing more. */
   readonly catchWindowId?: string;
@@ -127,25 +147,53 @@ export interface AttackSheetData {
  */
 @Component({
   selector: 'app-attack-sheet',
-  imports: [AttackResult, AttackSteps, CombatantToken, MatButtonModule, MatIconModule, RollPicker],
+  imports: [
+    AttackResult,
+    AttackSteps,
+    CombatantToken,
+    InspirationPrompt,
+    MatButtonModule,
+    MatIconModule,
+    RollPicker,
+  ],
   templateUrl: './attack-sheet.html',
   styleUrl: './attack-sheet.scss',
 })
 export class AttackSheet {
   private readonly api = inject(CombatClient);
+  private readonly resources = inject(ResourceClient);
   private readonly sheet = injectSheet<AttackSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly attack = this.data.attack;
 
   protected readonly stage = signal<AttackStage>(
-    this.data.resume ? 'damage' : this.data.opportunity ? 'roll' : 'target',
+    this.data.inspiration
+      ? 'inspire'
+      : this.data.resume
+        ? 'damage'
+        : this.data.opportunity
+          ? 'roll'
+          : 'target',
   );
-  protected readonly targetId = signal<string | null>(this.data.opportunity?.targetId ?? null);
+  protected readonly targetId = signal<string | null>(
+    this.data.opportunity?.targetId ?? this.data.inspiration?.offer.targetId ?? null,
+  );
   protected readonly typing = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly roll = signal<AttackRoll | null>(null);
+  protected readonly roll = signal<AttackRoll | null>(
+    this.data.inspiration
+      ? create(AttackRollSchema, {
+          attackerId: this.data.attackerId,
+          targetId: this.data.inspiration.offer.targetId,
+          attackKey: this.data.inspiration.offer.attackKey,
+          d20: this.data.inspiration.offer.d20,
+        })
+      : null,
+  );
+  /** The Bardic Inspiration question of a held roll: the d20 is rolled, the result waits for the answer. */
+  protected readonly offer = signal<InspirationOffer | null>(this.data.inspiration?.offer ?? null);
   protected readonly pending = signal<PendingDamage | null>(this.data.resume?.pending ?? null);
   /** The damage rolled, once it is. */
   protected readonly damage = signal<PendingDamage | null>(null);
@@ -154,6 +202,8 @@ export class AttackSheet {
   private readonly attackKeys = new ActionKey();
   /** One key per damage roll: the same die again is a retry, another die (typed after an app roll was lost) is a new request. */
   private readonly damageKeys = new ActionKey();
+  /** One key per answer about the die (use it with this die, or keep it): the same answer again is a retry. */
+  private readonly answerKeys = new ActionKey();
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 
@@ -209,7 +259,11 @@ export class AttackSheet {
     return row ?? null;
   });
   protected readonly targetLabel = computed(
-    () => this.target()?.label ?? this.data.resume?.targetLabel ?? '',
+    () =>
+      this.target()?.label ??
+      this.data.resume?.targetLabel ??
+      this.data.inspiration?.targetLabel ??
+      '',
   );
   protected readonly doneLabel = this.data.opportunity ? 'Fechar' : 'Voltar à sua vez';
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
@@ -219,8 +273,8 @@ export class AttackSheet {
 
   protected readonly outcome = computed(() => {
     const r = this.roll();
-    // A roll a reaction holds (Palavras de Interrupção) has no result yet: the wait line says so instead.
-    return r && !r.heldForReaction
+    // A held roll has no result yet: neither a word nor a pill (the master has not said, or a reaction holds it).
+    return r && !r.heldForReaction && this.stage() !== 'inspire'
       ? {
           word: outcomeWord(r.outcome),
           hit: isHit(r.outcome),
@@ -409,6 +463,21 @@ export class AttackSheet {
         this.body()?.nativeElement.scrollTo({ top: 0 });
       }
     });
+    // A roll a reaction window held (Palavras de Interrupção) and a Bardic Inspiration die the attacker holds: once the window
+    // is answered the d20 is kept for the question, and the sheet that waited for the window shows it.
+    effect(() => {
+      const waiting = this.roll()?.heldForReaction === true;
+      const offer = this.data.state
+        .encounter()
+        ?.combatants.find((c) => c.id === this.data.attackerId)?.inspirationOffer;
+      if (waiting && offer && this.stage() === 'done') {
+        untracked(() => {
+          this.offer.set(offer);
+          this.data.onHeld?.(offer.holdId);
+          this.stage.set('inspire');
+        });
+      }
+    });
   }
 
   private signedBonus(): string {
@@ -468,14 +537,59 @@ export class AttackSheet {
         this.data.catchWindowId ?? '',
       );
       this.data.state.apply(res.encounter);
-      this.roll.set(res.roll);
-      this.pending.set(res.pending ?? null);
-      this.typing.set(false);
-      this.stage.set(
-        res.roll.heldForReaction ? 'done' : stageAfterRoll(res.roll.outcome, res.pending),
-      );
+      this.settle(res);
     } catch (err) {
       this.fail(err);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** What a roll answered: the result and, for a hit, the damage; or, for a roll held for the Bardic Inspiration die,
+   * the d20 and the question (no result is told before the answer). */
+  private settle(res: {
+    readonly roll: AttackRoll;
+    readonly pending: PendingDamage | undefined;
+    readonly offer?: InspirationOffer;
+  }): void {
+    this.roll.set(res.roll);
+    this.pending.set(res.pending ?? null);
+    this.offer.set(res.offer ?? null);
+    if (res.offer) {
+      this.data.onHeld?.(res.offer.holdId);
+    }
+    this.typing.set(false);
+    this.stage.set(
+      res.offer
+        ? 'inspire'
+        : res.roll.heldForReaction
+          ? 'done'
+          : stageAfterRoll(res.roll.outcome, res.pending),
+    );
+  }
+
+  /** "Somar o d8" (rolled in the app, or the typed face) or "Guardar o dado": the answer finishes the held attack. */
+  protected async answerInspiration(use: boolean, die: InspirationRoll | null): Promise<void> {
+    const offer = this.offer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerBardicInspiration(
+        this.data.campaignId,
+        this.data.encounterId,
+        offer.holdId,
+        use,
+        die,
+        this.answerKeys.keyFor({ holdId: offer.holdId, use, die }),
+      );
+      this.answerKeys.renew();
+      this.data.state.apply(res.encounter);
+      this.settle(res);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder à Inspiração de Bardo'));
     } finally {
       this.busy.set(false);
     }

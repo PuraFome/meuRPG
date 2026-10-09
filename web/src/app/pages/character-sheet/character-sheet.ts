@@ -4,6 +4,7 @@ import {
   ElementRef,
   Injector,
   afterNextRender,
+  computed,
   effect,
   inject,
   signal,
@@ -16,7 +17,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import type { VitalsVm } from '../live-session/live-session.types';
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
@@ -47,6 +47,8 @@ import { ChangedContentNotice } from './changed-content/changed-content';
 import { issueTitle } from './sheet-format';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from './xp-watcher';
+import { ResourceCounters } from './resource-counters/resource-counters';
+import type { VitalsVm } from '../live-session/live-session.types';
 
 type PageState =
   | { status: 'loading' }
@@ -104,6 +106,7 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
     MatIconModule,
     MatProgressSpinnerModule,
     ProficiencyColumn,
+    ResourceCounters,
     RouterLink,
     SheetHeader,
     StoryPanel,
@@ -143,10 +146,13 @@ export class CharacterSheetPage {
   /** Bumped when this character's vitals or the combat changed: a Wild Shape form may have ended. */
   protected readonly formTick = signal(0);
 
-  /** This character's vitals from the open session, for Ajuda on the sheet; `null` outside a session or while they are not read. */
+  /** The character's live numbers while the campaign has an open session: the resource counters and the spell slots. `null` outside a session, where the sheet has only the maximums. */
   protected readonly vitals = signal<VitalsVm | null>(null);
-  /** The campaign whose session the vitals were read from (read once, then kept fresh by the stream). */
-  private vitalsFor = '';
+  /** Whether there are slots to count live: the sheet's own circles give way to them. */
+  protected readonly hasLiveSlots = computed(() => {
+    const v = this.vitals();
+    return v !== null && (v.spellSlots.length > 0 || v.pactSlots !== null);
+  });
 
   /** How the campaign levels: decides whether the header has an XP block or only the tag. */
   protected readonly xpMode = signal<CampaignXpMode | null>(null);
@@ -185,21 +191,21 @@ export class CharacterSheetPage {
       const live =
         player && id !== '' && this.openSessions.sessions().some((o) => o.campaignId === id);
       untracked(() => {
-        this.followVitals(live ? id : null);
+        if (!live) {
+          this.vitals.set(null);
+        }
         this.xpWatcher.follow(
           live ? id : null,
           () => void this.reloadQuietly(),
           () => this.creaturesTick.update((n) => n + 1),
           // The table's content changed (RN-23, "A classe mudou"): the same stream, one more kind of hint, the sheet read again.
           () => void this.reloadQuietly(),
-          (who, v) => {
+          (who) => {
             if (who === null || who === this.characterId) {
               this.formTick.update((n) => n + 1);
             }
-            if (v && who === this.characterId) {
-              this.vitals.set(v);
-            }
           },
+          (v) => this.takeVitals(v),
         );
       });
     });
@@ -207,27 +213,6 @@ export class CharacterSheetPage {
       this.destroyed = true;
       this.xpWatcher.follow(null, () => undefined);
     });
-  }
-
-  /** Reads the vitals once when the campaign's session is live; forgets them when it is not. */
-  private followVitals(campaignId: string | null): void {
-    if (campaignId === null) {
-      this.vitalsFor = '';
-      this.vitals.set(null);
-      return;
-    }
-    if (campaignId === this.vitalsFor) {
-      return;
-    }
-    this.vitalsFor = campaignId;
-    this.xpWatcher.readVitals(campaignId, this.characterId).then(
-      (v) => {
-        if (!this.destroyed && this.vitalsFor === campaignId && v && !this.vitals()) {
-          this.vitals.set(v);
-        }
-      },
-      () => undefined,
-    );
   }
 
   private characterId = '';
@@ -243,6 +228,14 @@ export class CharacterSheetPage {
     this.sheetSeq++;
     this.state.set({ status: 'ready', vm });
     return true;
+  }
+
+  /** The live numbers of this character (the session's snapshot or a `vitals_changed`): the newer copy wins; another character's are not kept. */
+  private takeVitals(v: VitalsVm): void {
+    if (v.characterId !== this.characterId) {
+      return;
+    }
+    this.vitals.update((current) => (current && current.revision > v.revision ? current : v));
   }
 
   /** Reads the character again without the loading state, so the page does not blink. */
@@ -266,7 +259,6 @@ export class CharacterSheetPage {
     const seq = ++this.sheetSeq;
     this.state.set({ status: 'loading' });
     this.vitals.set(null);
-    this.vitalsFor = '';
     this.confirmingDeath.set(false);
     this.confirmingReject.set(false);
     this.markDeadState.set({ status: 'idle' });

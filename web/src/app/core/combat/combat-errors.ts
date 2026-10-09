@@ -9,6 +9,10 @@ import {
   type EncounterBlocked,
   EncounterBlockedSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  ResourceBlockedReason,
+  ResourceBlockedSchema,
+} from '../../../gen/meurpg/play/v1/resources_pb';
 import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { circleLabel } from './combat-grid';
@@ -28,6 +32,19 @@ export function encounterBlocked(err: unknown): EncounterBlocked | null {
     return null;
   }
   return connectErr.findDetails(EncounterBlockedSchema)[0] ?? null;
+}
+
+/** What any action says while a roll of the character waits for the answer about a Bardic Inspiration die: the
+ * combatant does nothing else until it is answered (`ResourceBlocked` INSPIRATION_PENDING, from any call). */
+export const INSPIRATION_PENDING_TEXT = 'Responda primeiro à pergunta da Inspiração de Bardo.';
+
+function inspirationPending(err: unknown): boolean {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  return (
+    connectErr.code === Code.FailedPrecondition &&
+    connectErr.findDetails(ResourceBlockedSchema)[0]?.reason ===
+      ResourceBlockedReason.INSPIRATION_PENDING
+  );
 }
 
 /** Whether the campaign has no open session (`GameSessionBlocked`). */
@@ -207,6 +224,9 @@ export function combatErrorMessage(err: unknown, what = 'fazer isso'): string {
   const blocked = encounterBlocked(err);
   if (blocked) {
     return blockedMessage(blocked);
+  }
+  if (inspirationPending(err)) {
+    return INSPIRATION_PENDING_TEXT;
   }
   if (sessionClosed(err)) {
     return 'A sessão acabou: o combate só muda durante a sessão.';

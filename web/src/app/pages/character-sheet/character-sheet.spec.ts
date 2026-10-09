@@ -11,9 +11,9 @@ import { CharacterSheetPage } from './character-sheet';
 import { NotesClient } from '../../core/notes/notes-client';
 import { CreaturesClient } from '../../core/creatures/creatures-client';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
+import { XpWatcher } from './xp-watcher';
 import type { VitalsVm } from '../live-session/live-session.types';
 import { pensantusVitals } from '../live-session/testing';
-import { XpWatcher } from './xp-watcher';
 import {
   BasicSheetVm,
   CampaignXpMode,
@@ -223,12 +223,10 @@ const xpWatcher = {
         onChange: () => void,
         onCreatures?: () => void,
         onContent?: () => void,
-        onForm?: (characterId: string | null, vitals?: VitalsVm) => void,
+        onForm?: (characterId: string | null) => void,
+        onVitals?: (vitals: VitalsVm) => void,
       ) => void
     >(),
-  readVitals: vi.fn<(campaignId: string, characterId: string) => Promise<VitalsVm | null>>(() =>
-    Promise.resolve(null),
-  ),
 };
 /** The player's notes panel reads this; nothing here talks to a server. */
 const notesApi = {
@@ -1449,7 +1447,6 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
   beforeEach(() => {
     openSessions.set([]);
     xpWatcher.follow.mockClear();
-    xpWatcher.readVitals.mockClear();
     TestBed.configureTestingModule({
       imports: [CharacterSheetPage],
       providers: [
@@ -1617,6 +1614,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
 
     openSessions.set([
@@ -1637,6 +1635,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
 
     fixture.destroy();
@@ -1646,14 +1645,6 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
   it('shows Ajuda on the sheet while the session is live: "43 de 43", "máximo 38 da ficha", the tag and the banner', async () => {
     fake.getCharacterSheetFn = () =>
       Promise.resolve(vm({ sheet: fullSheet({ hitPointsMax: 38 }) }));
-    xpWatcher.readVitals.mockResolvedValue(
-      pensantusVitals({
-        characterId: 'char-1',
-        hitPointsCurrent: 43,
-        hitPointsMax: 43,
-        hitPointsMaxBonus: 5,
-      }),
-    );
     openSessions.set([
       {
         sessionId: 's1',
@@ -1667,7 +1658,18 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     const fixture = await render();
     const el = fixture.nativeElement as HTMLElement;
     const flat = (n: Element | null) => n?.textContent?.replace(/\s+/g, ' ').trim();
-    expect(xpWatcher.readVitals).toHaveBeenCalledWith('camp-1', 'char-1');
+    // The session's snapshot brings the live numbers, with Ajuda in the maximum.
+    const onVitals = xpWatcher.follow.mock.calls.at(-1)![5]!;
+    onVitals(
+      pensantusVitals({
+        characterId: 'char-1',
+        hitPointsCurrent: 43,
+        hitPointsMax: 43,
+        hitPointsMaxBonus: 5,
+        revision: 2,
+      }),
+    );
+    fixture.detectChanges();
     expect(flat(el.querySelector('app-combat-stats .hp__value'))).toBe('43 de 43');
     expect(flat(el.querySelector('app-combat-stats .hp__note'))).toBe('máximo 38 da ficha');
     expect(flat(el.querySelector('app-combat-stats .aid-banner'))).toContain(
@@ -1675,17 +1677,17 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     );
 
     // The master ends Ajuda: the stream's vitals bring the old maximum back and the old text returns.
-    const onForm = xpWatcher.follow.mock.calls.at(-1)![4]!;
-    onForm(
-      'char-1',
-      pensantusVitals({ characterId: 'char-1', hitPointsCurrent: 38, hitPointsMax: 38 }),
+    onVitals(
+      pensantusVitals({
+        characterId: 'char-1',
+        hitPointsCurrent: 38,
+        hitPointsMax: 38,
+        revision: 3,
+      }),
     );
     fixture.detectChanges();
-    expect(flat(el.querySelector('app-combat-stats .hp__note'))).toBe(
-      'Os atuais aparecem na sessão',
-    );
+    expect(flat(el.querySelector('app-combat-stats .hp__note'))).not.toBe('máximo 38 da ficha');
     expect(el.querySelector('app-combat-stats .aid-banner')).toBeNull();
-    xpWatcher.readVitals.mockResolvedValue(null);
   });
 
   it('keeps the old text outside a session', async () => {
@@ -1695,7 +1697,6 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     expect(el.querySelector('app-combat-stats .hp__note')?.textContent?.trim()).toBe(
       'Os atuais aparecem na sessão',
     );
-    expect(xpWatcher.readVitals).not.toHaveBeenCalled();
   });
 
   it("does not listen for an NPC's sheet: it has no XP to keep fresh", async () => {
@@ -1778,6 +1779,125 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     expect(ticks()).toBe(1);
     await bump(null);
     expect(ticks()).toBe(2);
+  });
+
+  describe('the live counters (PM-07b 7)', () => {
+    const open = () =>
+      openSessions.set([
+        {
+          sessionId: 's1',
+          campaignId: 'camp-1',
+          campaignName: 'Mirathel',
+          sessionNumber: 5,
+          startedAt: new Date(),
+          isMaster: false,
+        },
+      ]);
+    const rage = (used: number): VitalsVm =>
+      pensantusVitals({
+        characterId: 'char-1',
+        spellSlots: [],
+        resources: [{ key: 'rage', namePt: 'Fúria', total: 3, used, recharge: 'long_rest' }],
+      });
+    const onVitals = () => xpWatcher.follow.mock.calls.at(-1)![5]!;
+    const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+    const push = async (fixture: Awaited<ReturnType<typeof render>>, v: VitalsVm) => {
+      onVitals()(v);
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+
+    it('shows "Recursos" once the session says the numbers, and keeps them current', async () => {
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+      open();
+      const fixture = await render();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('app-resource-counters')).toBeNull();
+
+      await push(fixture, rage(1));
+      expect(sectionTitled(el, 'Recursos').querySelector('.box__name')?.textContent).toBe('Fúria');
+      expect(flat(el.querySelector('.box__count'))).toBe('2 de 3');
+      expect(flat(el.querySelector('.box__again'))).toBe('Volta num descanso longo');
+      // A spent use arrives by the stream: the box changes at once.
+      await push(fixture, { ...rage(2), revision: 5 });
+      expect(flat(el.querySelector('.box__count'))).toBe('1 de 3');
+      // An older copy does not undo it.
+      await push(fixture, { ...rage(0), revision: 2 });
+      expect(flat(el.querySelector('.box__count'))).toBe('1 de 3');
+    });
+
+    it("never shows another character's numbers on this sheet", async () => {
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+      open();
+      const fixture = await render();
+      await push(fixture, { ...rage(1), characterId: 'char-2' });
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('app-resource-counters'),
+      ).toBeNull();
+    });
+
+    it('shows no counters outside a session: the sheet has only the maximums', async () => {
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+      const fixture = await render();
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Recursos');
+      expect(xpWatcher.follow.mock.calls.at(-1)![0]).toBeNull();
+    });
+
+    it('takes the numbers away when the session closes', async () => {
+      fake.getCharacterSheetFn = () => Promise.resolve(vm());
+      open();
+      const fixture = await render();
+      await push(fixture, rage(1));
+      openSessions.set([]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('app-resource-counters'),
+      ).toBeNull();
+    });
+
+    it("puts the live slot rows in place of the sheet's own circles, so no slot is drawn twice", async () => {
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(
+          vm({
+            sheet: fullSheet({
+              spellSlots: [4, 2],
+              spellcasting: [
+                {
+                  className: 'Mago',
+                  ability: 'int',
+                  saveDc: 14,
+                  attackBonus: 6,
+                  cantripsKnown: 3,
+                  spellsPreparedMax: 7,
+                  spellsKnownMax: 0,
+                },
+              ],
+            }),
+          }),
+        );
+      open();
+      const fixture = await render();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelectorAll('.slots__row')).toHaveLength(2);
+
+      await push(
+        fixture,
+        pensantusVitals({
+          characterId: 'char-1',
+          spellSlots: [
+            { level: 1, total: 4, used: 1 },
+            { level: 2, total: 2, used: 0 },
+          ],
+        }),
+      );
+      expect(el.querySelectorAll('.slots__row')).toHaveLength(0);
+      expect(Array.from(el.querySelectorAll('app-resource-counters .row'), flat)).toEqual([
+        '1º nível 3 de 4',
+        '2º nível 2 de 2',
+      ]);
+    });
   });
 
   it('reads the character again when the table\'s content changes (content_changed, "A classe mudou"), on the same stream', async () => {

@@ -267,6 +267,7 @@ export class MasterAreaCast {
         this.key.keyFor([this.data.slot, area, revealHidden]),
         undefined,
         '',
+        [],
         { area, revealHidden },
       );
       this.data.state.apply(res.encounter);

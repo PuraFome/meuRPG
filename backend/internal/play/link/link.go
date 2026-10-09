@@ -139,6 +139,12 @@ type Sheet struct {
 	// weapon attack rolls on top of the doubled ones (the barbarian's Brutal
 	// Critical: 1, 2 or 3 by level); 0 without it.
 	BrutalCriticalDice int
+	// Metamagic are the Metamagic options the sorcerer knows (feature keys), ChaMod
+	// is its Charisma modifier, and BardicDie the size of the die its Bardic
+	// Inspiration gives, 0 for a character with none.
+	Metamagic []string
+	ChaMod    int
+	BardicDie int
 	// TwoWeaponFighting says the character has the fighting style.
 	TwoWeaponFighting bool
 	// FeatureActions are the actions the sheet's class and race features grant

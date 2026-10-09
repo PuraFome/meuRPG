@@ -40,6 +40,9 @@ export class CombatColumn {
     return v && (v.hitPointsMaxBonus ?? 0) > 0 && !v.wildShape ? v : null;
   });
 
+  /** The live slot rows (with what is spent) are on screen in the counters: the sheet's own circles, which only count the slots there are, are left out so no slot is drawn twice. */
+  readonly liveSlots = input(false);
+
   protected readonly abilityLabel = abilityLabel;
   protected readonly formatModifier = formatModifier;
   protected readonly spellLimitsText = spellLimitsText;

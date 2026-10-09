@@ -1,16 +1,23 @@
 import {
   Component,
+  DOCUMENT,
   DestroyRef,
   computed,
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
+import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { article } from '../../../core/combat/combat-log';
 import { countsSentence } from '../../../core/combat/death-saves';
 import {
@@ -26,10 +33,13 @@ import {
   vitalsSpeech,
 } from '../../../core/combat/combat-effects';
 import { EffectPill } from '../../../shared/effect-pill/effect-pill';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
+import { hitDiceLeftWords, totalDiceLeft } from '../../../core/resources/hit-dice-text';
+import { openHitDice } from '../hit-dice-sheet/hit-dice-sheet';
 import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../live-session.types';
 import { SlotDots } from '../slot-dots/slot-dots';
-import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel, usedWords } from '../vitals';
+import { freeWords, hitPointsPercent, slotLevelLabel, slotRowLabel } from '../vitals';
 
 /** How long "Acordado · testes contra a morte zerados" stays under the cards. */
 const WOKE_NOTICE_MS = 30000;
@@ -51,7 +61,7 @@ interface SlotRowVm {
  */
 @Component({
   selector: 'app-player-vitals',
-  imports: [EffectPill, MatIconModule, RouterLink, SlotDots, WildPools],
+  imports: [EffectPill, MatButtonModule, MatIconModule, RouterLink, SlotDots, WildPools],
   templateUrl: './player-vitals.html',
   styleUrl: './player-vitals.scss',
 })
@@ -70,6 +80,17 @@ export class PlayerVitals {
   readonly armorClassBonus = input<number | null>(null);
   /** The death saves of the player's own combatant while a combat runs; `null` without one (the pill then says only "Inconsciente"). */
   readonly ownDeathSaves = input<{ successes: number; failures: number } | null>(null);
+
+  /** How the campaign has the players roll their dice and the player's own choice: the hit die sheet follows them (RN-18). */
+  readonly diceMode = input<DiceMode>(DiceMode.PLAYERS_CHOOSE);
+  readonly dicePreference = input<DicePreference>(DicePreference.APP);
+  /** The vitals the server answered after a hit die was spent: the page takes them in like any other change. */
+  readonly vitalsChange = output<VitalsVm>();
+
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   /** The two reserves of a druid in a beast form, the beast's first: they take the place of the hit points box. */
   protected readonly pools = computed(() => {
@@ -143,8 +164,29 @@ export class PlayerVitals {
       : 'Classe de Armadura';
   });
 
-  protected readonly usedWords = usedWords;
+  /** "3 de 5d10 e 1 de 1d6": the dice left by size. */
+  protected readonly diceLeft = computed(() => hitDiceLeftWords(this.vitals().hitDiceSizes));
   protected readonly freeWords = freeWords;
+  /** "Gastar dados de vida" has nothing to spend when every die is used. */
+  protected readonly noDiceLeft = computed(() => totalDiceLeft(this.vitals().hitDiceSizes) === 0);
+
+  /** "Gastar dados de vida": the sheet where a short rest's dice are spent one by one. */
+  protected spendHitDice(): void {
+    if (this.noDiceLeft()) {
+      return;
+    }
+    const opener = this.document.activeElement as HTMLElement | null;
+    openHitDice(this.dialog, this.bottomSheet, {
+      campaignId: this.campaignId(),
+      vitals: this.vitals,
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
+      apply: (v) => this.vitalsChange.emit(v),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => focusWithRing(opener));
+  }
+
   protected readonly percent = computed(() => hitPointsPercent(this.vitals()));
 
   protected readonly slotRows = computed<SlotRowVm[]>(() => {

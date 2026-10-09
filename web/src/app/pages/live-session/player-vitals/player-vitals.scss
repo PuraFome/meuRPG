@@ -379,3 +379,27 @@
     font-size: 20px;
   }
 }
+
+// "Gastar dados de vida", under the numbers: the button, and the reason when it cannot act.
+.dice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.dice__reason {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

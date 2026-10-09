@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -450,7 +451,13 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	switch kind {
 	case eventAttackRolled:
 		// The action (or the reaction) comes back and the damage the hit opened goes
-		// away.
+		// away. A Bardic Inspiration die the roll used is held again.
+		if who, ok := find(ev.Actor); ok && ev.Res != nil && ev.Res.Kind == resBardicUse {
+			sides, expires, from := ev.Res.Sides, ev.Res.ExpiresRound, ev.Res.FromID
+			if err := c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: &from, ExpiresRound: &expires}); err != nil {
+				return nil, fmt.Errorf("hold the die again: %w", err)
+			}
+		}
 		if who, ok := find(ev.Actor); ok {
 			if ev.AsReaction {
 				err = setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)
@@ -606,6 +613,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := setRun(who, ev.RunBefore); err != nil {
 			return nil, err
 		}
+		if ev.Res != nil {
+			if err := s.takeBackResource(ctx, c, ev, who, find, setHP, setDeath, putVitals, keep); err != nil {
+				return nil, err
+			}
+		}
 		if ev.Resource != "" && who.Kind == kindPlayer {
 			v, err := s.spendResource(ctx, c, who.CharacterID, ev.Resource, -1)
 			if err != nil {
@@ -645,6 +657,13 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: who.ID, SpellCast: ev.SpellCastBefore, BonusSpellCast: ev.BonusSpellBefore}); err != nil {
 			return nil, fmt.Errorf("put back the spells cast: %w", err)
+		}
+		if ev.Res != nil && ev.Res.Kind == resMetamagic && who.Kind == kindPlayer {
+			v, err := s.spendResource(ctx, c, who.CharacterID, rules.SorceryPointsKey, -ev.Res.Spent)
+			if err != nil {
+				return nil, err
+			}
+			keep(v)
 		}
 		if ev.Slot != nil && who.Kind == kindPlayer {
 			v, err := s.spendSlot(ctx, c, who.CharacterID, *ev.Slot, -1)

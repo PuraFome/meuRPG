@@ -8,6 +8,7 @@ import {
   type CombatLogSpellTarget,
   DeathSaveOutcome,
   JumpKind,
+  LayOnHandsCureKind,
   PendingDamageStatus,
   type SaveResult,
   SaveOutcome,
@@ -20,6 +21,8 @@ import { extraDiceOf, physicalSplitFormula, rollText, splitFormula } from './com
 import { conditionName, listNames } from './conditions';
 import { metersFixed, metersText } from '../units';
 import { circleLabel } from './combat-options';
+import { metamagicName } from '../resources/metamagic';
+import { pointsText } from '../resources/pools';
 import { countsSentence } from './death-saves';
 import { degreeWord, sourceWord } from './cover';
 import { effectWords, gainWords, poolRollText, reasonWords } from './hp-effects';
@@ -190,6 +193,81 @@ function coverNote(
   return ` (CA ${e.targetArmorClass}: ${e.targetArmorClass - e.coverBonus} + ${e.coverBonus} de ${degree}${from ? `, ${from.replace('marcada pelo mestre', 'marcada por você')}` : ''})`;
 }
 
+/** ", com Magia Duplicada (1 ponto de feitiçaria)": the Metamagic a casting used is no secret (the caster's choice). */
+function metamagicNote(
+  spell:
+    { readonly metamagicKeys: readonly string[]; readonly sorceryPointsSpent: number } | undefined,
+): string {
+  if (!spell || spell.metamagicKeys.length === 0) {
+    return '';
+  }
+  return `, com ${spell.metamagicKeys.map(metamagicName).join(' e ')} (${pointsText(spell.sorceryPointsSpent)} de feitiçaria)`;
+}
+
+/** The die added after the d20 (the master's and the attacker's alone, like the d20): ", com o d8 da Inspiração de Bardo (+6)". */
+function bonusDiceNote(e: CombatLogEntry): string {
+  return e.bonusDice
+    .filter((b) => b.used)
+    .map((b) => `, com o d${b.sides} da Inspiração de Bardo (+${b.face})`)
+    .join('');
+}
+
+/** What a class resource did (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo). The hit points a touch gave back
+ * are only in the entry for the master and the target's player; why a touch did nothing is the master's alone. */
+function resourceText(e: CombatLogEntry): { icon: string; text: string } {
+  const r = e.resource;
+  const target = e.targetLabel || 'alguém';
+  switch (r?.key) {
+    case 'feature:lay-on-hands':
+      if (r.nothingHappened) {
+        const why = r.nothingReason ? `; o toque não agiu: ${r.nothingReason}` : '';
+        return {
+          icon: 'favorite',
+          text: ` tocou ${the(target)} com a Cura pelas Mãos (${pointsText(r.spent)}): sem efeito${why}`,
+        };
+      }
+      if (r.cure === LayOnHandsCureKind.POISON) {
+        return {
+          icon: 'favorite',
+          text: ` neutralizou o veneno de ${target} com a Cura pelas Mãos (${pointsText(r.spent)})`,
+        };
+      }
+      if (r.cure === LayOnHandsCureKind.DISEASE) {
+        return {
+          icon: 'favorite',
+          text: ` curou a doença de ${target} com a Cura pelas Mãos (${pointsText(r.spent)})`,
+        };
+      }
+      return {
+        icon: 'favorite',
+        text:
+          r.healed === undefined
+            ? ` usou a Cura pelas Mãos em ${target} (${pointsText(r.spent)})`
+            : ` curou ${r.healed} PV de ${target} com a Cura pelas Mãos (${pointsText(r.spent)})`,
+      };
+    case 'feature:flexible-casting-creating-spell-slots':
+      return {
+        icon: 'auto_awesome',
+        text: ` criou um espaço de ${circleLabel(r.slotLevel)} com a Conjuração Flexível (${pointsText(r.spent)} de feitiçaria)`,
+      };
+    case 'feature:flexible-casting-converting-spell-slot':
+      return {
+        icon: 'auto_awesome',
+        text: ` converteu um espaço de ${circleLabel(r.slotLevel)} em ${pointsText(r.gained)} de feitiçaria`,
+      };
+    case 'feature:bardic-inspiration':
+      return {
+        icon: 'music_note',
+        text:
+          r.dieSides > 0
+            ? ` deu um d${r.dieSides} da Inspiração de Bardo a ${target}`
+            : ` deu a Inspiração de Bardo a ${target}`,
+      };
+    default:
+      return { icon: 'bolt', text: ' usou um recurso da classe' };
+  }
+}
+
 function attackText(e: CombatLogEntry): string {
   const target = e.targetLabel || 'alguém';
   const weapon = e.keyNamePt ? ` com ${the(e.keyNamePt)}` : '';
@@ -197,6 +275,7 @@ function attackText(e: CombatLogEntry): string {
   const opportunity = e.asReaction ? ' (ataque de oportunidade)' : '';
   let out = ` ${verb}${weapon}${opportunity}: ${e.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : e.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}`;
   out += coverNote(e);
+  out += bonusDiceNote(e);
   if (e.stoppedByReaction) {
     return `${out}, o Escudo Arcano segurou`; // the outcome is already "errou"
   }
@@ -270,6 +349,7 @@ function castText(e: CombatLogEntry, ctx: LogContext): { text: string; card?: Po
       ? ` ${listNames(targets.map((t) => castTargetText(t, ctx)))}`
       : `: ${targets.map((t) => castTargetText(t, ctx)).join('; ')}`;
   }
+  out += metamagicNote(e.spell);
   if (e.spell?.concentrationEndedKey) {
     out += '. A concentração anterior acabou';
   }
@@ -639,6 +719,10 @@ export function logLine(
         actor: '',
         text: effectEndedText(e, ctx),
       };
+    case CombatLogKind.RESOURCE: {
+      const r = resourceText(e);
+      return { ...base, icon: r.icon, text: r.text };
+    }
     case CombatLogKind.REACTION_WINDOW:
       // A reaction was answered or closed (PM-04): one line, written on the server for who reads it (the master's has the
       // numbers of the NPCs, the players' never names a reactor they do not see).

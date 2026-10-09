@@ -79,6 +79,7 @@ import { CombatView } from './combat/combat-view';
 import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
+import { RestCard } from './rest-card/rest-card';
 import { PlayerVitals } from './player-vitals/player-vitals';
 import { MasterLive } from './puzzles/master-live/master-live';
 import { MasterPuzzles } from './puzzles/master-puzzles/master-puzzles';
@@ -144,6 +145,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     RouterLink,
     MasterPuzzles,
     PartyPanel,
+    RestCard,
     PuzzleNotice,
     PuzzlePlayPage,
     PlayerVitals,
@@ -1099,6 +1101,11 @@ export class LiveSession {
         const bars = Array.from(this.document.querySelectorAll<HTMLElement>('.notes-bar'));
         bars.find((b) => b.offsetParent !== null)?.focus();
       });
+  }
+
+  /** A rest or a spent hit die changed these characters: their new numbers, as the server answered (the stream says the same to the other screens). */
+  protected takeVitals(taken: readonly VitalsVm[]): void {
+    this.vitals.update((list) => taken.reduce((all, v) => applyVitals(all, v), list));
   }
 
   /** "Ajustar": a bottom sheet on a phone, a dialog from a tablet up, with

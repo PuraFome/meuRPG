@@ -344,6 +344,14 @@ UPDATE combatants
 SET conditions = $2
 WHERE id = $1;
 
+-- name: SetCombatantInspirationDie :exec
+-- The Bardic Inspiration die a combatant holds: its size, the bard's combatant and
+-- the round it runs out in; all NULL for no die (the die was used, ran out or the
+-- giving was undone).
+UPDATE combatants
+SET inspiration_sides = sqlc.narg(sides), inspiration_from = sqlc.narg(from_id), inspiration_expires_round = sqlc.narg(expires_round)
+WHERE id = sqlc.arg(id);
+
 -- name: SetCombatantDeathSaves :exec
 -- The death save counts, whether the turn's save was rolled, and whether the
 -- combatant is out of the fight (a death the master confirmed), or their undo.
@@ -1013,6 +1021,41 @@ SELECT e.* FROM battle_encounters AS e
 JOIN map_points AS p ON p.id = e.map_point_id
 WHERE e.campaign_id = $1 AND e.map_id = $2 AND p.kind = 'battle'
 ORDER BY e.created_at, e.map_point_id;
+
+-- name: HasLongRestInSession :one
+-- Whether the master already took a long rest in the session: the SRD allows one
+-- in 24 hours and the app does not count hours, so the master is warned.
+SELECT EXISTS (
+    SELECT 1 FROM session_events
+    WHERE game_session_id = $1 AND kind = 'rest_taken' AND payload ->> 'kind' = 'long'
+) AS taken;
+
+-- name: InsertRollHold :one
+-- An attack roll that waits for the answer about a Bardic Inspiration die.
+INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: GetRollHold :one
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND id = $2;
+
+-- name: GetRollHoldByKey :one
+-- The hold the request with this key made, if any.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND idempotency_key = $2;
+
+-- name: GetOpenRollHoldOf :one
+-- The hold of the combatant that was not answered yet, if any.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answer_key IS NULL;
+
+-- name: AnswerRollHold :exec
+UPDATE roll_holds SET answer_key = $2 WHERE id = $1;
+
+-- name: DeleteRollHold :exec
+DELETE FROM roll_holds WHERE id = $1;
+
+-- name: ListOpenRollHolds :many
+-- The rolls of the combat that wait for an answer, for the combatants' views.
+SELECT * FROM roll_holds WHERE encounter_id = $1 AND answer_key IS NULL;
 
 -- The campaign package (MR-050).
 
