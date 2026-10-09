@@ -79,6 +79,8 @@ type content struct {
 	// (effects/traps.json), and lights the light presets (effects/lights.json).
 	traps  traps
 	lights []LightPreset
+	// combatEffects are the effects that last in a combat (effects/combat_effects.json).
+	combatEffects *combatEffects
 	// encounterBudget is the XP per character of each level, band by band, index 0
 	// being level 1 (effects/encounter_budget.json, SRD 5.2.1).
 	encounterBudget []encounter.Budget
@@ -236,7 +238,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "attunement:") && !c.isAttackName(k) {
+		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "effect:") && !strings.HasPrefix(k, "attunement:") && !c.isAttackName(k) {
 			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -267,6 +269,9 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	if err := c.loadLights(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadCombatEffects(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.loadEncounterBudget(fsys); err != nil {
@@ -424,7 +429,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "traps.json", "lights.json", "combat_effects.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json":
 			continue
 		}
 		var f struct {
