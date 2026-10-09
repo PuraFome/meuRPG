@@ -543,6 +543,12 @@ func TestMapRequests(t *testing.T) {
 			t.Errorf("%s: BodySize() = %d does not count the drawing", layout, r.BodySize())
 		}
 	}
+	// The texture's text says what each kind of square may hold.
+	for _, want := range []string{"1,5 m", "LIGHT squares are the only walkable floor", "nothing raised", "DARK squares are solid rock", "never spill onto a light square"} {
+		if text := mapRequest(LayoutTexture).Text(); !strings.Contains(text, want) {
+			t.Errorf("the texture's text lacks %q: %q", want, text)
+		}
+	}
 	// The rooms: only with the texture, one line each.
 	r := mapRequest(LayoutTexture)
 	r.Rooms = []string{"Sala 1: 5 x 4 squares", "Sala 2: 3 x 3 squares"}
