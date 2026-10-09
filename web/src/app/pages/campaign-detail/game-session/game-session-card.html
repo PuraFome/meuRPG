@@ -22,7 +22,7 @@
           @if (s.session; as session) {
             <p class="session__text">
               <strong>Sessão {{ session.sessionNumber }} em andamento</strong>, desde
-              {{ formatDayAt(session.startedAt) }}.
+              {{ formatSessionStart(session.startedAt) }}.
             </p>
             @if (lastLockedSheetCount() !== null) {
               <p class="session__locked" role="status">
