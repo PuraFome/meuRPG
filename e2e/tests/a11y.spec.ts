@@ -5716,6 +5716,7 @@ test('as sessões anteriores e o resumo passam no axe e nas conferências de lay
 test('as sessões anteriores e o resumo passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-032'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanPastSessions(browser, 'light', 320);
+});
 
 /** Rolls with a mode (PM-06): the attack sheet with the server's mode and its reasons, the
  * two d20, the damage extras and the parts, the master's queue of requests and his card
