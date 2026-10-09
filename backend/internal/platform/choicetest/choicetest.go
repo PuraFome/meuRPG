@@ -39,10 +39,10 @@ func Interceptor(raw charactersv1connect.CharacterServiceClient) connect.UnaryIn
 			switch m := req.Any().(type) {
 			case *charactersv1.CreateCharacterRequest:
 				if m.GetKind() == charactersv1.CharacterKind_CHARACTER_KIND_PLAYER {
-					fill(ctx, raw, m.GetCampaignId(), "", m.GetKind(), m.GetSheet(), req)
+					fill(ctx, raw, m.GetCampaignId(), "", m.GetKind(), m.GetSheet())
 				}
 			case *charactersv1.UpdateCharacterRequest:
-				fill(ctx, raw, m.GetCampaignId(), m.GetCharacterId(), charactersv1.CharacterKind_CHARACTER_KIND_UNSPECIFIED, m.GetSheet(), req)
+				fill(ctx, raw, m.GetCampaignId(), m.GetCharacterId(), charactersv1.CharacterKind_CHARACTER_KIND_UNSPECIFIED, m.GetSheet())
 			}
 			return next(ctx, req)
 		}
@@ -51,7 +51,7 @@ func Interceptor(raw charactersv1connect.CharacterServiceClient) connect.UnaryIn
 
 // fill appends to the sheet's picks the ones that complete its choices. An error from the
 // preview leaves the sheet alone: the call that follows answers it.
-func fill(ctx context.Context, raw charactersv1connect.CharacterServiceClient, campaignID, characterID string, kind charactersv1.CharacterKind, sheet *charactersv1.CharacterSheet, req connect.AnyRequest) {
+func fill(ctx context.Context, raw charactersv1connect.CharacterServiceClient, campaignID, characterID string, kind charactersv1.CharacterKind, sheet *charactersv1.CharacterSheet) {
 	full := sheet.GetFull()
 	if full == nil {
 		return

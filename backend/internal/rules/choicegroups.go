@@ -106,7 +106,7 @@ type Choice struct {
 	FeatureKey string
 	Kind       ChoiceKind
 	// TitlePT names the choice; PartPT the part of a feature that asks for several
-	// ("Tipo de inimigo", "Idioma que eles falem"); LabelPT is how a sentence about
+	// ("Tipo de inimigo", "Idioma que falam"); LabelPT is how a sentence about
 	// what is missing calls it ("Estilo de Luta (Guerreiro, nível 1)").
 	TitlePT, PartPT, LabelPT string
 	// HintPT is a line of help under the title.
@@ -244,6 +244,12 @@ func (s ChoiceSet) PendingCount() int {
 // answers: what it cannot place is in NotOffered.
 func (c *Content) Choices(b Build) ChoiceSet { return c.c.choiceSet(b) }
 
+// choiceKeysField is the sheet field the picks live in.
+const choiceKeysField = "full.feature_choice_keys"
+
+// classWarlock is the Warlock, whose pact, invocations and patron the choices know by key.
+const classWarlock = "class:warlock"
+
 // ChoiceProblem is a pick the rules refuse.
 type ChoiceProblem struct {
 	// Code is ChoiceProblemMissing, ChoiceProblemPrerequisite or ChoiceProblemNotOffered.
@@ -271,17 +277,17 @@ func (s ChoiceSet) ChoiceProblems(missing bool) []ChoiceProblem {
 	for _, g := range s.Groups {
 		for _, ch := range g.Choices {
 			for _, k := range ch.Unmet {
-				out = append(out, ChoiceProblem{Code: ChoiceProblemPrerequisite, ChoiceKey: ch.Key, Field: "full.feature_choice_keys", LabelPT: ch.LabelPT, Picked: len(ch.Picked), Required: ch.Picks, OptionKey: k})
+				out = append(out, ChoiceProblem{Code: ChoiceProblemPrerequisite, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: len(ch.Picked), Required: ch.Picks, OptionKey: k})
 			}
 		}
 	}
 	for _, k := range s.NotOffered {
-		out = append(out, ChoiceProblem{Code: ChoiceProblemNotOffered, Field: "full.feature_choice_keys", OptionKey: k})
+		out = append(out, ChoiceProblem{Code: ChoiceProblemNotOffered, Field: choiceKeysField, OptionKey: k})
 	}
 	for _, g := range s.Groups {
 		for _, ch := range g.Choices {
 			for _, k := range ch.Overflow {
-				out = append(out, ChoiceProblem{Code: ChoiceProblemNotOffered, ChoiceKey: ch.Key, Field: "full.feature_choice_keys", LabelPT: ch.LabelPT, Picked: len(ch.Picked), Required: ch.Picks, OptionKey: k})
+				out = append(out, ChoiceProblem{Code: ChoiceProblemNotOffered, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: len(ch.Picked), Required: ch.Picks, OptionKey: k})
 			}
 		}
 	}
@@ -289,7 +295,7 @@ func (s ChoiceSet) ChoiceProblems(missing bool) []ChoiceProblem {
 		for _, g := range s.Groups {
 			for _, ch := range g.Choices {
 				if ch.Missing() > 0 {
-					out = append(out, ChoiceProblem{Code: ChoiceProblemMissing, ChoiceKey: ch.Key, Field: "full.feature_choice_keys", LabelPT: ch.LabelPT, Picked: ch.Done(), Required: ch.Picks})
+					out = append(out, ChoiceProblem{Code: ChoiceProblemMissing, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: ch.Done(), Required: ch.Picks})
 				}
 			}
 		}

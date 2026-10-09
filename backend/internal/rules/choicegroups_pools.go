@@ -16,6 +16,8 @@ type pool struct {
 
 // assignPools deals the picks of feature and trait options to the choices that
 // offer them, and fills those choices' options.
+//
+//nolint:gocognit,gocyclo // one pass over the entries with a case per pool shape; the cases share the loop state
 func (cb *choiceBuilder) assignPools() {
 	var pools []*pool
 	for _, e := range cb.entries {
@@ -251,13 +253,13 @@ func (cb *choiceBuilder) invocationPrerequisites(key string) []OptionPrerequisit
 	if p.Level > 0 {
 		have := 0
 		for _, oc := range cb.x.classes {
-			if oc.key == "class:warlock" {
+			if oc.key == classWarlock {
 				have = oc.level
 			}
 		}
 		pre := OptionPrerequisite{Kind: PrerequisiteLevel, Level: p.Level, Met: have >= p.Level}
 		if !pre.Met {
-			pre.ReasonPT = fmt.Sprintf("Exige o nível %d de %s. Você está no %d.", p.Level, c.namePT("class:warlock"), have)
+			pre.ReasonPT = fmt.Sprintf("Exige o nível %d de %s. Você está no %d.", p.Level, c.namePT(classWarlock), have)
 		}
 		out = append(out, pre)
 	}

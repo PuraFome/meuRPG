@@ -12,6 +12,13 @@ import (
 // race adds the choices of the race and the subrace: a trait that offers options
 // (the dragonborn's ancestry), a bonus cantrip (the high elf's) and the abilities
 // a race lets the player raise (the half-elf's).
+// The numbers the SRD gives: the Half-Elf's two +1s, the Book of Shadows' three cantrips, a Wizard's two signature spells.
+const (
+	halfElfBonusCount = 2
+	tomeCantrips      = 3
+	signatureSpells   = 2
+)
+
 func (cb *choiceBuilder) race() {
 	x, c := cb.x, cb.c
 	if x.race == nil {
@@ -58,7 +65,7 @@ func (cb *choiceBuilder) abilityChoice(r *srd51.Race) {
 	g := cb.group(ChoiceOriginRace, r.Key, 0, 0)
 	key := AbilityChoiceKey(r.Key)
 	ch := cb.addChoice(g, &Choice{Key: key, FeatureKey: r.Key, Kind: ChoiceKindAbilities, TitlePT: "+1 em duas habilidades", Picks: r.AbilityBonusChoices.Choose})
-	if r.AbilityBonusChoices.Choose != 2 {
+	if r.AbilityBonusChoices.Choose != halfElfBonusCount {
 		ch.TitlePT = fmt.Sprintf("+1 em %d habilidades", r.AbilityBonusChoices.Choose)
 	}
 	for _, k := range r.AbilityBonusChoices.From {
@@ -92,7 +99,7 @@ func (cb *choiceBuilder) class(oc ownedClass) {
 }
 
 // features adds the choices of the features a class or subclass gains at one level.
-func (cb *choiceBuilder) features(oc ownedClass, idx int, origin ChoiceOrigin, source string, level int, keys []string, subclass string) {
+func (cb *choiceBuilder) features(_ ownedClass, idx int, origin ChoiceOrigin, source string, level int, keys []string, subclass string) {
 	c := cb.c
 	if len(keys) == 0 {
 		return
@@ -174,7 +181,7 @@ func (cb *choiceBuilder) favoredEnemy(g *groupBuild, fk string) {
 	title := enemyTitles[n-1]
 	typeChoice := cb.addChoice(g, &Choice{
 		Key: fk, FeatureKey: fk, Kind: ChoiceKindEnemy, TitlePT: title, PartPT: "Tipo de inimigo", Picks: 1, family: "enemy",
-		HintPT: "Vantagem em testes de Sabedoria (Sobrevivência) para rastrear e de Inteligência para lembrar informações sobre eles. O idioma é um que eles falem, se falarem algum.",
+		HintPT: "Vantagem em testes de Sabedoria (Sobrevivência) para rastrear e de Inteligência para lembrar informações sobre essas criaturas. O idioma é um dos que esses inimigos falam, se falarem algum.",
 	})
 	types := slices.Clone(c.choices.enemyTypes)
 	slices.SortFunc(types, func(a, b string) int { return strings.Compare(foldPT(c.namePT(a)), foldPT(c.namePT(b))) })
@@ -195,7 +202,7 @@ func (cb *choiceBuilder) favoredEnemy(g *groupBuild, fk string) {
 	}
 
 	langKey := fk + textSeparator + "language"
-	lang := cb.addChoice(g, &Choice{Key: langKey, FeatureKey: fk, Kind: ChoiceKindLanguage, TitlePT: title, PartPT: "Idioma que eles falem", Picks: 1})
+	lang := cb.addChoice(g, &Choice{Key: langKey, FeatureKey: fk, Kind: ChoiceKindLanguage, TitlePT: title, PartPT: "Idioma que falam", Picks: 1})
 	langs := make([]string, 0, len(c.languages))
 	for k := range c.languages {
 		langs = append(langs, k)
@@ -319,7 +326,7 @@ func (cb *choiceBuilder) tomeCantrips(g *groupBuild) {
 	c := cb.c
 	key := "feature:pact-of-the-tome" + textSeparator + "cantrips"
 	ch := cb.addChoice(g, &Choice{
-		Key: key, FeatureKey: "feature:pact-of-the-tome", Kind: ChoiceKindSpells, TitlePT: "Truques do Tomo", Picks: 3,
+		Key: key, FeatureKey: "feature:pact-of-the-tome", Kind: ChoiceKindSpells, TitlePT: "Truques do Tomo", Picks: tomeCantrips,
 		HintPT: "Livro das Sombras: 3 truques de qualquer classe, conjurados à vontade e fora da contagem de truques conhecidos.",
 	})
 	var keys []string
@@ -358,11 +365,11 @@ func (cb *choiceBuilder) arcanum(g *groupBuild, fk string) {
 // onWarlockList says whether a spell is on the warlock's list for this character:
 // the class's own or the patron's expanded list.
 func (cb *choiceBuilder) onWarlockList(e SpellEntry) bool {
-	if slices.Contains(e.Classes, "class:warlock") {
+	if slices.Contains(e.Classes, classWarlock) {
 		return true
 	}
 	for _, oc := range cb.x.classes {
-		if oc.key != "class:warlock" || oc.subclass == nil || !oc.subclass.ExpandedList {
+		if oc.key != classWarlock || oc.subclass == nil || !oc.subclass.ExpandedList {
 			continue
 		}
 		if s := cb.c.spells[e.Key]; s != nil && slices.Contains(s.Subclasses, oc.subclass.Key) {
@@ -390,7 +397,7 @@ func (cb *choiceBuilder) spellMastery(g *groupBuild) {
 // spells of the spellbook.
 func (cb *choiceBuilder) signatureSpells(g *groupBuild) {
 	ch := cb.addChoice(g, &Choice{
-		Key: "feature:signature-spell", FeatureKey: "feature:signature-spell", Kind: ChoiceKindSpells, TitlePT: "Assinatura Mágica", Picks: 2,
+		Key: "feature:signature-spell", FeatureKey: "feature:signature-spell", Kind: ChoiceKindSpells, TitlePT: "Assinatura Mágica", Picks: signatureSpells,
 		HintPT: "Duas magias de 3º nível do grimório, cada uma conjurada uma vez por descanso curto ou longo, sem gastar espaço de magia.",
 	})
 	cb.spellOptions(ch, cb.spellbookSpells(3))

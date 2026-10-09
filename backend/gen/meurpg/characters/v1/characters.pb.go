@@ -8939,7 +8939,7 @@ type Choice struct {
 	FeatureKey string     `protobuf:"bytes,2,opt,name=feature_key,json=featureKey,proto3" json:"feature_key,omitempty"`
 	Kind       ChoiceKind `protobuf:"varint,3,opt,name=kind,proto3,enum=meurpg.characters.v1.ChoiceKind" json:"kind,omitempty"`
 	// The title ("Estilo de Luta"), the part of a feature that asks for several things
-	// ("Tipo de inimigo", "Idioma que eles falem"), and how a sentence about what is
+	// ("Tipo de inimigo", "Idioma que falam"), and how a sentence about what is
 	// missing calls it ("Estilo de Luta (Guerreiro, nível 1)").
 	TitlePt string `protobuf:"bytes,4,opt,name=title_pt,json=titlePt,proto3" json:"title_pt,omitempty"`
 	PartPt  string `protobuf:"bytes,5,opt,name=part_pt,json=partPt,proto3" json:"part_pt,omitempty"`

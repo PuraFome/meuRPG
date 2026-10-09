@@ -4393,7 +4393,7 @@ export type Choice = Message<"meurpg.characters.v1.Choice"> & {
 
   /**
    * The title ("Estilo de Luta"), the part of a feature that asks for several things
-   * ("Tipo de inimigo", "Idioma que eles falem"), and how a sentence about what is
+   * ("Tipo de inimigo", "Idioma que falam"), and how a sentence about what is
    * missing calls it ("Estilo de Luta (Guerreiro, nível 1)").
    *
    * @generated from field: string title_pt = 4;

@@ -588,7 +588,7 @@ func (s *Service) GetCampaignOpenChoices(
 // (RN-10).
 func pendingChoiceCount(content *rules.Content, m authz.Membership, kind, status string, playerUserID *string, sheet *charactersv1.CharacterSheet) *int32 {
 	owner := playerUserID != nil && *playerUserID == m.UserID
-	if kind != kindPlayer || status == statusDead || sheet.GetFull() == nil || !(isMaster(m) || owner) {
+	if kind != kindPlayer || status == statusDead || sheet.GetFull() == nil || (!isMaster(m) && !owner) {
 		return nil
 	}
 	n := i32(content.Choices(buildOf(sheet.GetFull())).PendingCount())

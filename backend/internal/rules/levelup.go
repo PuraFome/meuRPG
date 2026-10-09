@@ -463,7 +463,7 @@ func levelUpOptionsWith(b Build, idx int, c *content, sub *srd51.Subclass) (Leve
 	for i := range o.FeatureChoices {
 		o.FeatureChoices[i] = blockOptions(o.FeatureChoices[i], atNewLevel)
 	}
-	o.CanSwapInvocation = classKey == "class:warlock" && slices.ContainsFunc(b.FeatureChoices, c.isInvocation)
+	o.CanSwapInvocation = classKey == classWarlock && slices.ContainsFunc(b.FeatureChoices, c.isInvocation)
 	return o, nil
 }
 
@@ -927,7 +927,7 @@ func checkLevelUpChoices(before, after Build, classKey string, c *content) *Leve
 			gone = append(gone, k)
 		}
 	}
-	if len(gone) > 1 || (len(gone) == 1 && !(classKey == "class:warlock" && c.isInvocation(gone[0]))) {
+	if len(gone) > 1 || (len(gone) == 1 && (classKey != classWarlock || !c.isInvocation(gone[0]))) {
 		return refuse(field, LevelUpReasonFeatureChoice, "an option was removed")
 	}
 	for k, v := range before.FeatureChoiceText {
@@ -1138,7 +1138,7 @@ func checkSpells(before, after Build, offer LevelUpOffer, list string, c *conten
 		if !slices.Contains(newKnown, key) {
 			continue
 		}
-		if s := c.spells[key]; s != nil && !c.onList(s, list) && !(patron != "" && slices.Contains(s.Subclasses, patron)) {
+		if s := c.spells[key]; s != nil && !c.onList(s, list) && (patron == "" || !slices.Contains(s.Subclasses, patron)) {
 			offList[fmt.Sprintf("full.known_spell_keys[%d]", i)] = true
 		}
 	}

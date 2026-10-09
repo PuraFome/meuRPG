@@ -151,7 +151,7 @@ func issueKeys(r *charactersv1.ChoiceRefusal) []string {
 }
 
 // TestCreateCharacterRefusesAPlayersSheetWithAChoiceOpen: the server is the second line of
-// defence behind the editor's "Criar personagem": a player's character without its Fighting
+// guard behind the editor's "Criar personagem": a player's character without its Fighting
 // Style is CHOICES_MISSING, with the choice's label; an NPC and the master's edit are not
 // refused.
 func TestCreateCharacterRefusesAPlayersSheetWithAChoiceOpen(t *testing.T) {

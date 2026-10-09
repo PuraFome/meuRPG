@@ -106,6 +106,8 @@ type choiceDataFile struct {
 
 // loadChoiceData reads effects/choices.json and checks every key against the
 // content. It must run after the effects (the invocations' keys are features).
+//
+//nolint:gocognit,gocyclo // one flat list of closed checks, one block per table of the file; splitting it would only scatter them
 func (c *content) loadChoiceData(fsys fs.FS) error {
 	const name = "effects/choices.json"
 	var f choiceDataFile

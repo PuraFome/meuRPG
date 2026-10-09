@@ -81,87 +81,168 @@ func TestChoicesAskForEveryChoiceOfTheClassesAndRaces(t *testing.T) {
 		// options are the option keys the choice lists (compared as sets); nil to skip.
 		options []string
 	}{
-		{"the fighter's Fighting Style: the six styles of the Fighter", choiceBuild("race:human", "", ClassLevel{Class: "class:fighter", Level: 1}),
+		{
+			"the fighter's Fighting Style: the six styles of the Fighter", choiceBuild("race:human", "", ClassLevel{Class: "class:fighter", Level: 1}),
 			"feature:fighter-fighting-style", 1,
-			styles("feature:fighter-fighting-style-", "archery", "defense", "dueling", "great-weapon-fighting", "protection", "two-weapon-fighting")},
-		{"the paladin's Fighting Style: four, without Archery or Two-Weapon Fighting", choiceBuild("race:human", "", ClassLevel{Class: "class:paladin", Level: 2}),
+			styles("feature:fighter-fighting-style-", "archery", "defense", "dueling", "great-weapon-fighting", "protection", "two-weapon-fighting"),
+		},
+		{
+			"the paladin's Fighting Style: four, without Archery or Two-Weapon Fighting", choiceBuild("race:human", "", ClassLevel{Class: "class:paladin", Level: 2}),
 			"feature:paladin-fighting-style", 1,
-			styles("feature:fighting-style-", "defense", "dueling", "great-weapon-fighting", "protection")},
-		{"the ranger's Fighting Style: four, without Great Weapon Fighting or Protection", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 2}),
+			styles("feature:fighting-style-", "defense", "dueling", "great-weapon-fighting", "protection"),
+		},
+		{
+			"the ranger's Fighting Style: four, without Great Weapon Fighting or Protection", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 2}),
 			"feature:ranger-fighting-style", 1,
-			styles("feature:ranger-fighting-style-", "archery", "defense", "dueling", "two-weapon-fighting")},
-		{"the champion's second Fighting Style", choiceBuild("race:human", "", ClassLevel{Class: "class:fighter", Subclass: "subclass:champion", Level: 10}),
-			"feature:additional-fighting-style", 1, nil},
-		{"the dragonborn's Draconic Ancestry: ten dragons", choiceBuild("race:dragonborn", "", ClassLevel{Class: "class:fighter", Level: 1}),
-			"trait:draconic-ancestry", 1, styles("trait:draconic-ancestry-", "black", "blue", "brass", "bronze", "copper", "gold", "green", "red", "silver", "white")},
-		{"the Draconic sorcerer's Dragon Ancestor", choiceBuild("race:human", "", ClassLevel{Class: "class:sorcerer", Subclass: "subclass:draconic", Level: 1}),
-			"feature:dragon-ancestor", 1, nil},
-		{"the warlock's Pact Boon at 3", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 3}),
-			"feature:pact-boon", 1, []string{"feature:pact-of-the-chain", "feature:pact-of-the-blade", "feature:pact-of-the-tome"}},
-		{"two invocations at warlock 2", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 2}),
-			"feature:eldritch-invocations", 2, nil},
-		{"three invocations at warlock 5", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 5}),
-			"feature:eldritch-invocations", 3, nil},
-		{"four invocations at warlock 7", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 7}),
-			"feature:eldritch-invocations", 4, nil},
-		{"five invocations at warlock 9", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 9}),
-			"feature:eldritch-invocations", 5, nil},
-		{"six invocations at warlock 12", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 12}),
-			"feature:eldritch-invocations", 6, nil},
-		{"seven invocations at warlock 15", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 15}),
-			"feature:eldritch-invocations", 7, nil},
-		{"eight invocations at warlock 18", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 18}),
-			"feature:eldritch-invocations", 8, nil},
-		{"two metamagic options at sorcerer 3", choiceBuild("race:human", "", ClassLevel{Class: "class:sorcerer", Level: 3}),
-			"feature:metamagic-1", 2, styles("feature:metamagic-", "careful-spell", "distant-spell", "empowered-spell", "extended-spell", "heightened-spell", "quickened-spell", "subtle-spell", "twinned-spell")},
-		{"a third metamagic option at sorcerer 10", choiceBuild("race:human", "", ClassLevel{Class: "class:sorcerer", Level: 10}),
-			"feature:metamagic-2", 1, nil},
-		{"a fourth metamagic option at sorcerer 17", choiceBuild("race:human", "", ClassLevel{Class: "class:sorcerer", Level: 17}),
-			"feature:metamagic-3", 1, nil},
-		{"the Hunter's Prey at 3", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 3}),
-			"feature:hunters-prey", 1, styles("feature:hunters-prey-", "colossus-slayer", "giant-killer", "horde-breaker")},
-		{"the Hunter's Defensive Tactics at 7", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 7}),
-			"feature:defensive-tactics", 1, styles("feature:defensive-tactics-", "escape-the-horde", "multiattack-defense", "steel-will")},
-		{"the Hunter's Multiattack at 11: two options", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 11}),
-			"feature:multiattack", 1, styles("feature:multiattack-", "volley", "whirlwind-attack")},
-		{"the Hunter's Superior Defense at 15", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 15}),
-			"feature:superior-hunters-defense", 1, styles("feature:superior-hunters-defense-", "evasion", "stand-against-the-tide", "uncanny-dodge")},
-		{"the Land druid's terrain: seven", choiceBuild("race:human", "", ClassLevel{Class: "class:druid", Subclass: "subclass:land", Level: 2}),
-			"feature:circle-of-the-land", 1, styles("feature:circle-of-the-land-", "arctic", "coast", "desert", "forest", "grassland", "mountain", "swamp")},
-		{"the Land druid's extra cantrip", choiceBuild("race:human", "", ClassLevel{Class: "class:druid", Subclass: "subclass:land", Level: 2}),
-			"feature:bonus-cantrip", 1, nil},
-		{"the high elf's wizard cantrip", choiceBuild("race:elf", "subrace:high-elf", ClassLevel{Class: "class:wizard", Level: 1}),
-			"trait:high-elf-cantrip", 1, nil},
-		{"the half-elf's two abilities", choiceBuild("race:half-elf", "", ClassLevel{Class: "class:fighter", Level: 1}),
-			AbilityChoiceKey("race:half-elf"), 2, []string{"ability:str", "ability:dex", "ability:con", "ability:int", "ability:wis"}},
-		{"the first favored enemy", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 1}),
-			"feature:favored-enemy-1-type", 1, nil},
-		{"the first favored enemy's language", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 1}),
-			"feature:favored-enemy-1-type#language", 1, nil},
-		{"the first favored terrain", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 1}),
-			"feature:natural-explorer-1-terrain-type", 1, []string{"terrain:arctic", "terrain:coast", "terrain:desert", "terrain:forest", "terrain:grassland", "terrain:mountain", "terrain:swamp"}},
-		{"the second favored enemy at 6", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 6}),
-			"feature:favored-enemy-2-types", 1, nil},
-		{"the second terrain at 6", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 6}),
-			"feature:natural-explorer-2-terrain-types", 1, nil},
-		{"the third terrain at 10", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 10}),
-			"feature:natural-explorer-3-terrain-types", 1, nil},
-		{"the third favored enemy at 14", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 14}),
-			"feature:favored-enemy-3-enemies", 1, nil},
-		{"the Mystic Arcanum of the 6th circle at 11", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 11}),
-			"feature:mystic-arcanum-6th-level", 1, nil},
-		{"the Mystic Arcanum of the 7th circle at 13", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 13}),
-			"feature:mystic-arcanum-7th-level", 1, nil},
-		{"the Mystic Arcanum of the 8th circle at 15", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 15}),
-			"feature:mystic-arcanum-8th-level", 1, nil},
-		{"the Mystic Arcanum of the 9th circle at 17", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 17}),
-			"feature:mystic-arcanum-9th-level", 1, nil},
-		{"the Spell Mastery of a 1st-level spell at wizard 18", choiceBuild("race:human", "", ClassLevel{Class: "class:wizard", Level: 18}),
-			"feature:spell-mastery#1", 1, nil},
-		{"the Spell Mastery of a 2nd-level spell at wizard 18", choiceBuild("race:human", "", ClassLevel{Class: "class:wizard", Level: 18}),
-			"feature:spell-mastery#2", 1, nil},
-		{"two Signature Spells at wizard 20", choiceBuild("race:human", "", ClassLevel{Class: "class:wizard", Level: 20}),
-			"feature:signature-spell", 2, nil},
+			styles("feature:ranger-fighting-style-", "archery", "defense", "dueling", "two-weapon-fighting"),
+		},
+		{
+			"the champion's second Fighting Style", choiceBuild("race:human", "", ClassLevel{Class: "class:fighter", Subclass: "subclass:champion", Level: 10}),
+			"feature:additional-fighting-style", 1, nil,
+		},
+		{
+			"the dragonborn's Draconic Ancestry: ten dragons", choiceBuild("race:dragonborn", "", ClassLevel{Class: "class:fighter", Level: 1}),
+			"trait:draconic-ancestry", 1, styles("trait:draconic-ancestry-", "black", "blue", "brass", "bronze", "copper", "gold", "green", "red", "silver", "white"),
+		},
+		{
+			"the Draconic sorcerer's Dragon Ancestor", choiceBuild("race:human", "", ClassLevel{Class: "class:sorcerer", Subclass: "subclass:draconic", Level: 1}),
+			"feature:dragon-ancestor", 1, nil,
+		},
+		{
+			"the warlock's Pact Boon at 3", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 3}),
+			"feature:pact-boon", 1,
+			[]string{"feature:pact-of-the-chain", "feature:pact-of-the-blade", "feature:pact-of-the-tome"},
+		},
+		{
+			"two invocations at warlock 2", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 2}),
+			"feature:eldritch-invocations", 2, nil,
+		},
+		{
+			"three invocations at warlock 5", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 5}),
+			"feature:eldritch-invocations", 3, nil,
+		},
+		{
+			"four invocations at warlock 7", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 7}),
+			"feature:eldritch-invocations", 4, nil,
+		},
+		{
+			"five invocations at warlock 9", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 9}),
+			"feature:eldritch-invocations", 5, nil,
+		},
+		{
+			"six invocations at warlock 12", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 12}),
+			"feature:eldritch-invocations", 6, nil,
+		},
+		{
+			"seven invocations at warlock 15", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 15}),
+			"feature:eldritch-invocations", 7, nil,
+		},
+		{
+			"eight invocations at warlock 18", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 18}),
+			"feature:eldritch-invocations", 8, nil,
+		},
+		{
+			"two metamagic options at sorcerer 3", choiceBuild("race:human", "", ClassLevel{Class: "class:sorcerer", Level: 3}),
+			"feature:metamagic-1", 2, styles("feature:metamagic-", "careful-spell", "distant-spell", "empowered-spell", "extended-spell", "heightened-spell", "quickened-spell", "subtle-spell", "twinned-spell"),
+		},
+		{
+			"a third metamagic option at sorcerer 10", choiceBuild("race:human", "", ClassLevel{Class: "class:sorcerer", Level: 10}),
+			"feature:metamagic-2", 1, nil,
+		},
+		{
+			"a fourth metamagic option at sorcerer 17", choiceBuild("race:human", "", ClassLevel{Class: "class:sorcerer", Level: 17}),
+			"feature:metamagic-3", 1, nil,
+		},
+		{
+			"the Hunter's Prey at 3", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 3}),
+			"feature:hunters-prey", 1, styles("feature:hunters-prey-", "colossus-slayer", "giant-killer", "horde-breaker"),
+		},
+		{
+			"the Hunter's Defensive Tactics at 7", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 7}),
+			"feature:defensive-tactics", 1, styles("feature:defensive-tactics-", "escape-the-horde", "multiattack-defense", "steel-will"),
+		},
+		{
+			"the Hunter's Multiattack at 11: two options", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 11}),
+			"feature:multiattack", 1, styles("feature:multiattack-", "volley", "whirlwind-attack"),
+		},
+		{
+			"the Hunter's Superior Defense at 15", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 15}),
+			"feature:superior-hunters-defense", 1, styles("feature:superior-hunters-defense-", "evasion", "stand-against-the-tide", "uncanny-dodge"),
+		},
+		{
+			"the Land druid's terrain: seven", choiceBuild("race:human", "", ClassLevel{Class: "class:druid", Subclass: "subclass:land", Level: 2}),
+			"feature:circle-of-the-land", 1, styles("feature:circle-of-the-land-", "arctic", "coast", "desert", "forest", "grassland", "mountain", "swamp"),
+		},
+		{
+			"the Land druid's extra cantrip", choiceBuild("race:human", "", ClassLevel{Class: "class:druid", Subclass: "subclass:land", Level: 2}),
+			"feature:bonus-cantrip", 1, nil,
+		},
+		{
+			"the high elf's wizard cantrip", choiceBuild("race:elf", "subrace:high-elf", ClassLevel{Class: "class:wizard", Level: 1}),
+			"trait:high-elf-cantrip", 1, nil,
+		},
+		{
+			"the half-elf's two abilities", choiceBuild("race:half-elf", "", ClassLevel{Class: "class:fighter", Level: 1}),
+			AbilityChoiceKey("race:half-elf"), 2,
+			[]string{"ability:str", "ability:dex", "ability:con", "ability:int", "ability:wis"},
+		},
+		{
+			"the first favored enemy", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 1}),
+			"feature:favored-enemy-1-type", 1, nil,
+		},
+		{
+			"the first favored enemy's language", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 1}),
+			"feature:favored-enemy-1-type#language", 1, nil,
+		},
+		{
+			"the first favored terrain", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 1}),
+			"feature:natural-explorer-1-terrain-type", 1,
+			[]string{"terrain:arctic", "terrain:coast", "terrain:desert", "terrain:forest", "terrain:grassland", "terrain:mountain", "terrain:swamp"},
+		},
+		{
+			"the second favored enemy at 6", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 6}),
+			"feature:favored-enemy-2-types", 1, nil,
+		},
+		{
+			"the second terrain at 6", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 6}),
+			"feature:natural-explorer-2-terrain-types", 1, nil,
+		},
+		{
+			"the third terrain at 10", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 10}),
+			"feature:natural-explorer-3-terrain-types", 1, nil,
+		},
+		{
+			"the third favored enemy at 14", choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 14}),
+			"feature:favored-enemy-3-enemies", 1, nil,
+		},
+		{
+			"the Mystic Arcanum of the 6th circle at 11", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 11}),
+			"feature:mystic-arcanum-6th-level", 1, nil,
+		},
+		{
+			"the Mystic Arcanum of the 7th circle at 13", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 13}),
+			"feature:mystic-arcanum-7th-level", 1, nil,
+		},
+		{
+			"the Mystic Arcanum of the 8th circle at 15", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 15}),
+			"feature:mystic-arcanum-8th-level", 1, nil,
+		},
+		{
+			"the Mystic Arcanum of the 9th circle at 17", choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 17}),
+			"feature:mystic-arcanum-9th-level", 1, nil,
+		},
+		{
+			"the Spell Mastery of a 1st-level spell at wizard 18", choiceBuild("race:human", "", ClassLevel{Class: "class:wizard", Level: 18}),
+			"feature:spell-mastery#1", 1, nil,
+		},
+		{
+			"the Spell Mastery of a 2nd-level spell at wizard 18", choiceBuild("race:human", "", ClassLevel{Class: "class:wizard", Level: 18}),
+			"feature:spell-mastery#2", 1, nil,
+		},
+		{
+			"two Signature Spells at wizard 20", choiceBuild("race:human", "", ClassLevel{Class: "class:wizard", Level: 20}),
+			"feature:signature-spell", 2, nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -233,7 +314,7 @@ func TestChoiceGroupsAreOrderedByRaceThenClassLevelThenSubclass(t *testing.T) {
 		AbilityChoiceKey("race:half-elf"):         "+1 em duas habilidades (Meio-elfo)",
 		"feature:ranger-fighting-style":           "Estilo de Luta (Patrulheiro, nível 2)",
 		"feature:hunters-prey":                    "Presa do Caçador (Caçador, nível 3)",
-		"feature:favored-enemy-1-type#language":   "Inimigo Favorito: idioma que eles falem (Patrulheiro, nível 1)",
+		"feature:favored-enemy-1-type#language":   "Inimigo Favorito: idioma que falam (Patrulheiro, nível 1)",
 		"feature:natural-explorer-1-terrain-type": "Explorador Natural (Patrulheiro, nível 1)",
 	}
 	for key, label := range labels {
@@ -284,7 +365,7 @@ func TestAnOptionTheSheetCannotTakeStaysInTheListWithItsReason(t *testing.T) {
 	if len(inv.Options) != 32 {
 		t.Fatalf("%d invocations listed, want all 32 of the SRD", len(inv.Options))
 	}
-	for key, want := range map[string]string{
+	for key, want := range map[string]string{ //nolint:gosec // G101: invocation keys, not credentials
 		"feature:eldritch-invocation-agonizing-blast":           "Exige o truque Rajada Mística, que você ainda não escolheu.",
 		"feature:eldritch-invocation-bewitching-whispers":       "Exige o nível 7 de Bruxo. Você está no 5.",
 		"feature:eldritch-invocation-thirsting-blade":           "Exige o Pacto da Lâmina. Você tem o Pacto da Corrente.",
@@ -322,17 +403,38 @@ var invocationRows = []struct {
 	cantrip bool
 	pact    string
 }{
-	{"agonizing-blast", 0, true, ""}, {"armor-of-shadows", 0, false, ""}, {"ascendant-step", 9, false, ""},
-	{"beast-speech", 0, false, ""}, {"beguiling-influence", 0, false, ""}, {"bewitching-whispers", 7, false, ""},
-	{"book-of-ancient-secrets", 0, false, "tome"}, {"chains-of-carceri", 15, false, "chain"}, {"devils-sight", 0, false, ""},
-	{"dreadful-word", 7, false, ""}, {"eldritch-sight", 0, false, ""}, {"eldritch-spear", 0, true, ""},
-	{"eyes-of-the-rune-keeper", 0, false, ""}, {"fiendish-vigor", 0, false, ""}, {"gaze-of-two-minds", 0, false, ""},
-	{"lifedrinker", 12, false, "blade"}, {"mask-of-many-faces", 0, false, ""}, {"master-of-myriad-forms", 15, false, ""},
-	{"minions-of-chaos", 9, false, ""}, {"mire-the-mind", 5, false, ""}, {"misty-visions", 0, false, ""},
-	{"one-with-shadows", 5, false, ""}, {"otherworldly-leap", 9, false, ""}, {"repelling-blast", 0, true, ""},
-	{"sculptor-of-flesh", 7, false, ""}, {"sign-of-ill-omen", 5, false, ""}, {"thief-of-five-fates", 0, false, ""},
-	{"thirsting-blade", 5, false, "blade"}, {"visions-of-distant-realms", 15, false, ""},
-	{"voice-of-the-chain-master", 0, false, "chain"}, {"whispers-of-the-grave", 9, false, ""}, {"witch-sight", 15, false, ""},
+	{"agonizing-blast", 0, true, ""},
+	{"armor-of-shadows", 0, false, ""},
+	{"ascendant-step", 9, false, ""},
+	{"beast-speech", 0, false, ""},
+	{"beguiling-influence", 0, false, ""},
+	{"bewitching-whispers", 7, false, ""},
+	{"book-of-ancient-secrets", 0, false, "tome"},
+	{"chains-of-carceri", 15, false, "chain"},
+	{"devils-sight", 0, false, ""},
+	{"dreadful-word", 7, false, ""},
+	{"eldritch-sight", 0, false, ""},
+	{"eldritch-spear", 0, true, ""},
+	{"eyes-of-the-rune-keeper", 0, false, ""},
+	{"fiendish-vigor", 0, false, ""},
+	{"gaze-of-two-minds", 0, false, ""},
+	{"lifedrinker", 12, false, "blade"},
+	{"mask-of-many-faces", 0, false, ""},
+	{"master-of-myriad-forms", 15, false, ""},
+	{"minions-of-chaos", 9, false, ""},
+	{"mire-the-mind", 5, false, ""},
+	{"misty-visions", 0, false, ""},
+	{"one-with-shadows", 5, false, ""},
+	{"otherworldly-leap", 9, false, ""},
+	{"repelling-blast", 0, true, ""},
+	{"sculptor-of-flesh", 7, false, ""},
+	{"sign-of-ill-omen", 5, false, ""},
+	{"thief-of-five-fates", 0, false, ""},
+	{"thirsting-blade", 5, false, "blade"},
+	{"visions-of-distant-realms", 15, false, ""},
+	{"voice-of-the-chain-master", 0, false, "chain"},
+	{"whispers-of-the-grave", 9, false, ""},
+	{"witch-sight", 15, false, ""},
 }
 
 // TestEveryInvocationAsksForExactlyWhatTheSRDSays: one case for each of the 32
@@ -574,7 +676,7 @@ func TestTheCreatureTypesUseTheNamesOfTheBestiary(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
 	want := map[string]string{
-		"aberration": "Aberração", "beast": "Fera", "celestial": "Celestial", "construct": "Constructo", "dragon": "Dragão",
+		"aberration": "Aberração", "beast": "Fera", "celestial": "Celestial", "construct": "Constructo", "dragon": "Dragão", //nolint:misspell // "Constructo" is the Portuguese term
 		"elemental": "Elemental", "fey": "Fada", "fiend": "Ínfero", "giant": "Gigante", "humanoid": "Humanoide",
 		"monstrosity": "Monstruosidade", "ooze": "Limo", "plant": "Planta", "undead": "Morto-vivo",
 	}
@@ -642,9 +744,15 @@ func TestTheDragonAncestryTableIsTheSRDs(t *testing.T) {
 		size, width          int
 		save                 Ability
 	}{
-		{"black", "acid", BreathLine, 30, 5, DEX}, {"blue", "lightning", BreathLine, 30, 5, DEX}, {"brass", "fire", BreathLine, 30, 5, DEX},
-		{"bronze", "lightning", BreathLine, 30, 5, DEX}, {"copper", "acid", BreathLine, 30, 5, DEX}, {"gold", "fire", BreathCone, 15, 0, DEX},
-		{"green", "poison", BreathCone, 15, 0, CON}, {"red", "fire", BreathCone, 15, 0, DEX}, {"silver", "cold", BreathCone, 15, 0, CON},
+		{"black", "acid", BreathLine, 30, 5, DEX},
+		{"blue", "lightning", BreathLine, 30, 5, DEX},
+		{"brass", "fire", BreathLine, 30, 5, DEX},
+		{"bronze", "lightning", BreathLine, 30, 5, DEX},
+		{"copper", "acid", BreathLine, 30, 5, DEX},
+		{"gold", "fire", BreathCone, 15, 0, DEX},
+		{"green", "poison", BreathCone, 15, 0, CON},
+		{"red", "fire", BreathCone, 15, 0, DEX},
+		{"silver", "cold", BreathCone, 15, 0, CON},
 		{"white", "cold", BreathCone, 15, 0, CON},
 	}
 	if len(c.c.choices.ancestryByTrait) != len(want) {
