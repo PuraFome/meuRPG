@@ -1,0 +1,92 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+.block__title {
+  margin: 0 0 var(--mr-space-2);
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.block__note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// A column on a 320 px screen, two from about 360 px: the box never gets narrower than its name and its line.
+.boxes,
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--mr-space-3);
+}
+
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  min-height: 92px;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}
+
+.box__name {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+.box__count {
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  line-height: 28px;
+  font-weight: 800;
+}
+
+.box__again {
+  margin-top: auto;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--mr-ink-muted);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 36px;
+  font-size: 16px;
+}
+
+.row__level {
+  flex: none;
+  min-width: 96px;
+  font-weight: 700;
+}
+
+.row__count {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}

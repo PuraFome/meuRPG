@@ -17,6 +17,8 @@ export interface SlotUsageVm {
   readonly level: number;
   readonly total: number;
   readonly used: number;
+  /** How many of `total` Flexible Casting created (they vanish on a long rest); absent or 0 for none. */
+  readonly created?: number;
 }
 
 /** A warlock's pact magic slots (`PactSlotUsage`): all of one level. */

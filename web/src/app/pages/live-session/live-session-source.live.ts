@@ -49,7 +49,12 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     hitPointsCurrent: v.hitPointsCurrent,
     hitPointsMax: v.hitPointsMax,
     hitPointsTemporary: v.hitPointsTemporary,
-    spellSlots: v.spellSlots.map((s) => ({ level: s.level, total: s.total, used: s.used })),
+    spellSlots: v.spellSlots.map((s) => ({
+      level: s.level,
+      total: s.total,
+      used: s.used,
+      created: s.created,
+    })),
     pactSlots: v.pactSlots
       ? { slotLevel: v.pactSlots.slotLevel, total: v.pactSlots.total, used: v.pactSlots.used }
       : null,

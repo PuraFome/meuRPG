@@ -7,6 +7,7 @@ import {
   GameSessionBlockedReason,
   GameSessionBlockedSchema,
 } from '../../../gen/meurpg/play/v1/play_pb';
+import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { TestBed } from '@angular/core/testing';
 import type { Transport } from '@connectrpc/connect';
 
@@ -73,9 +74,31 @@ describe('toVitalsVm', () => {
     ]);
     expect(vm.hitDiceTotal).toBe(3);
     expect(vm.hitDiceUsed).toBe(1);
-    expect(vm.spellSlots).toEqual([{ level: 1, total: 2, used: 1 }]);
+    expect(vm.spellSlots).toEqual([{ level: 1, total: 2, used: 1, created: 0 }]);
     expect(vm.pactSlots).toEqual({ slotLevel: 2, total: 2, used: 0 });
     expect(vm.revision).toBe(7);
+  });
+});
+
+describe('toVitalsVm and the resources', () => {
+  it('maps the slots Flexible Casting created and when each resource comes back', () => {
+    const vm = toVitalsVm(
+      create(CharacterVitalsSchema, {
+        characterId: 'c1',
+        spellSlots: [{ level: 2, total: 3, used: 0, created: 1 }],
+        resources: [
+          { key: 'ki', namePt: 'Chi', total: 5, used: 2, recharge: Recharge.SHORT_REST },
+          { key: 'rage', namePt: 'Fúria', total: 3, used: 0, recharge: Recharge.LONG_REST },
+          { key: 'odd', namePt: 'Outro', total: 1, used: 0, recharge: Recharge.UNSPECIFIED },
+        ],
+      }),
+    );
+    expect(vm.spellSlots[0].created).toBe(1);
+    expect(vm.resources?.map((r) => [r.key, r.recharge])).toEqual([
+      ['ki', 'short_rest'],
+      ['rage', 'long_rest'],
+      ['odd', 'none'],
+    ]);
   });
 });
 
