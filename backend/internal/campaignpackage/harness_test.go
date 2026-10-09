@@ -454,3 +454,61 @@ func (u *user) importPackage(name string, data []byte) *pkgv1.CreateCampaignFrom
 	}
 	return res.Msg
 }
+
+// advance moves the clock forward (the package keeps things for hours).
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
+// smallPackage is the package of a small campaign of the user's own.
+func (h *harness) smallPackage(u *user) []byte {
+	h.t.Helper()
+	return u.export(h.smallCampaign(u))
+}
+
+// invite lets the players in through an invite from the master.
+func (h *harness) invite(master *user, campaignID string, players ...*user) {
+	h.t.Helper()
+	ctx := h.t.Context()
+	inv := must(master.campaigns.CreateInvite(ctx, connect.NewRequest(&campaignsv1.CreateInviteRequest{CampaignId: campaignID, MaxUses: campaigns.MaxInviteUses})))
+	for _, p := range players {
+		_ = must(p.campaigns.AcceptInvite(ctx, connect.NewRequest(&campaignsv1.AcceptInviteRequest{Token: inv.GetToken()})))
+	}
+}
+
+// creationGate is the campaigns service as the package sees it, with the early checks
+// (the cap and the creators list, made before a byte is sent) switched off while skip
+// is true: a test of the check that the transaction makes at the end needs to get past them.
+type creationGate struct {
+	campaignpackage.Creation
+	skip *bool
+}
+
+func (g creationGate) CheckCreation(ctx context.Context, userID string) error {
+	if *g.skip {
+		return nil
+	}
+	return g.Creation.CheckCreation(ctx, userID)
+}
+
+// pngNoise is a PNG of random pixels: it does not compress, so a few of them fill several parts.
+func pngNoise(t *testing.T, w, h int, seed byte) []byte {
+	t.Helper()
+	img := image.NewNRGBA(image.Rect(0, 0, w, h))
+	buf := make([]byte, len(img.Pix))
+	if _, err := rand.Read(buf); err != nil {
+		t.Fatal(err)
+	}
+	copy(img.Pix, buf)
+	for i := 3; i < len(img.Pix); i += 4 {
+		img.Pix[i] = 255
+	}
+	img.Pix[0] = seed
+	var out bytes.Buffer
+	if err := png.Encode(&out, img); err != nil {
+		t.Fatal(err)
+	}
+	return out.Bytes()
+}

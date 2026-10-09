@@ -88,6 +88,12 @@ func Open(ra io.ReaderAt, size int64) (*Package, []*pkgv1.PackageProblem) {
 		}
 		total += f.UncompressedSize64
 	}
+	if pr.Any() {
+		// An entry that is too big or squeezes too much is told as it is, by the
+		// image's name when it is an image, and the rest of the package is not read.
+		p.nameImages(zr, &pr)
+		return nil, pr.List
+	}
 	if total > MaxTotalBytes {
 		return fail(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_PACKAGE_TOO_BIG, "", int64(total)) //nolint:gosec // G115: at most 2,000 entries of MaxEntryBytes
 	}
@@ -122,14 +128,51 @@ func (p *Package) checkFile(f *zip.File, pr *Problems) bool {
 	if _, dup := p.files[f.Name]; dup {
 		return reason(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY, 0)
 	}
-	if f.UncompressedSize64 > MaxEntryBytes {
-		return reason(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_ENTRY_TOO_BIG, int64(min(f.UncompressedSize64, 1<<62))) //nolint:gosec // G115: capped here
-	}
-	if f.UncompressedSize64 > ratioFloor && f.UncompressedSize64 > MaxRatio*max(f.CompressedSize64, 1) {
-		return reason(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_COMPRESSION_RATIO, MaxRatio)
+	// Too big and too squeezed are recorded and the scan goes on, so a package
+	// with two oversize images lists both.
+	switch {
+	case f.UncompressedSize64 > MaxEntryBytes:
+		reason(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_ENTRY_TOO_BIG, int64(min(f.UncompressedSize64, 1<<62))) //nolint:gosec // G115: capped here
+	case f.UncompressedSize64 > ratioFloor && f.UncompressedSize64 > MaxRatio*max(f.CompressedSize64, 1):
+		reason(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_COMPRESSION_RATIO, MaxRatio)
 	}
 	p.files[f.Name] = f
 	return true
+}
+
+// nameImages gives the problems about image files the image's name (from
+// images.json, read as it is: this is only a label on a refusal): the master
+// knows "Mapa antigo.png", not "images/7".
+func (p *Package) nameImages(zr *zip.Reader, pr *Problems) {
+	var index *zip.File
+	for _, f := range zr.File {
+		if f.Name == ImagesEntry && f.UncompressedSize64 <= MaxEntryBytes {
+			index = f
+		}
+	}
+	if index == nil {
+		return
+	}
+	rc, err := index.Open()
+	if err != nil {
+		return
+	}
+	defer func() { _ = rc.Close() }()
+	data, err := io.ReadAll(io.LimitReader(rc, MaxEntryBytes+1))
+	if err != nil || len(data) > MaxEntryBytes {
+		return
+	}
+	var list pkgv1.PackageImages
+	if (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, &list) != nil {
+		return
+	}
+	for _, img := range list.GetImages() {
+		for _, prob := range pr.List {
+			if prob.GetKind() == pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PACKAGE && prob.GetName() == img.GetFile() {
+				prob.Kind, prob.Name = pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE, printable(img.GetName())
+			}
+		}
+	}
 }
 
 // printable makes an entry's name safe to put in a problem: it is the file's
