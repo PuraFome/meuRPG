@@ -120,6 +120,12 @@ const (
 	CombatServiceUndoLastActionProcedure = "/meurpg.play.v1.CombatService/UndoLastAction"
 	// CombatServiceCastSpellProcedure is the fully-qualified name of the CombatService's CastSpell RPC.
 	CombatServiceCastSpellProcedure = "/meurpg.play.v1.CombatService/CastSpell"
+	// CombatServicePreviewSpellAreaProcedure is the fully-qualified name of the CombatService's
+	// PreviewSpellArea RPC.
+	CombatServicePreviewSpellAreaProcedure = "/meurpg.play.v1.CombatService/PreviewSpellArea"
+	// CombatServiceResolveHiddenRevealProcedure is the fully-qualified name of the CombatService's
+	// ResolveHiddenReveal RPC.
+	CombatServiceResolveHiddenRevealProcedure = "/meurpg.play.v1.CombatService/ResolveHiddenReveal"
 	// CombatServiceUseReactionProcedure is the fully-qualified name of the CombatService's UseReaction
 	// RPC.
 	CombatServiceUseReactionProcedure = "/meurpg.play.v1.CombatService/UseReaction"
@@ -862,6 +868,26 @@ type CombatServiceClient interface {
 	// and a spell that does nothing the table cannot see is still spent. A
 	// reaction spell (Escudo) is not cast here: UseReaction.
 	//
+	// An area spell placed on the map (a spell whose area comes out of the caster
+	// or is centered on a point, in a combat with a grid: SpellTargets.placement is
+	// not UNSPECIFIED, see PreviewSpellArea) is cast with `area`, the point or the
+	// direction the caster chose. The server decides who is inside, and each one's
+	// cover from the point of origin: `targets` is ignored. Everyone inside is
+	// affected, allies and the caster included, hidden creatures too (the table
+	// rule TableRules.hidden_area_hits only decides whether a hit reveals them), and
+	// an area with nobody in it is still cast and spends the slot and the action.
+	// A cast with `area` for a spell that has none, or without it for one that
+	// needs it, is `invalid_argument`. Without a grid (THEATRE) the caster lists
+	// `targets` as before, and the master judges what is inside and the cover.
+	//
+	// reveal_hidden (the master only) says whether the hidden creatures the area
+	// hits appear to the players; without it the table rule decides. A player who
+	// sends it is `permission_denied`, before anything else is checked. When a
+	// player casts and the rule is ASK, the cast holds the turn until the master
+	// answers (ResolveHiddenReveal): while a question is open the server refuses
+	// MoveCombatant, RollAttack, TakeAction, CastSpell, EndTurn and the master's
+	// turn passing with EncounterBlocked HIDDEN_REVEAL_PENDING.
+	//
 	// targets are who it touches, as the caller sees them, in range (the spell's
 	// range from the caster, a king's move at 5 ft a square; Self is the caster
 	// alone, Touch is 5 ft; the master is never held to the range, and the caster
@@ -936,6 +962,71 @@ type CombatServiceClient interface {
 	//     NO_SLOT (with min_level), NOT_PLACED and TARGET_OUT_OF_REACH (with
 	//     missing_ft; a player), TARGET_DEFEATED and WRONG_DICE_MODE.
 	CastSpell(context.Context, *connect.Request[v1.CastSpellRequest]) (*connect.Response[v1.CastSpellResponse], error)
+	// PreviewSpellArea says who an area spell reaches when it is placed at a point
+	// or in a direction, and the cover each one has, without spending anything: the
+	// second step of "Conjurar" on a map ("Quem está na área"). CastSpell works it
+	// all out again and trusts nothing of this answer.
+	//
+	// The point of origin (SRD 5.1, "Areas of Effect"): a sphere or a cylinder is
+	// centered on a point within the spell's range (`origin`); a cone, a line and a
+	// cube come out of the caster, who points a direction (`direction`), and the
+	// caster's own square is not inside; a sphere or a cylinder that is itself Self
+	// ("a 15-foot radius around you") is centered on the caster and needs neither.
+	// A location is outside the area when no unblocked straight line runs from the
+	// origin to it, and only total cover (a wall, a closed door) blocks; a spell
+	// that "spreads around corners" (Fireball) reaches the part of its shape
+	// connected to the origin instead. A point the caster does not see because a wall
+	// is in the way comes into being on the near side of the wall (SRD, "Targets"):
+	// `origin` of the answer is the effective one (the master is not held to this,
+	// and nor to the range).
+	//
+	// The cover of each target is measured from the point of origin, not from the
+	// caster, and counts only when the spell's saving throw is a Dexterity one
+	// (`cover_counts`; SRD, "Cover": +2 or +5 to Dexterity saving throws): a spell
+	// with another save (Onda Trovejante, Constitution) gives no bonus. A creature
+	// reached only around a corner gets no cover bonus of its own: the master marks
+	// it (SetCombatantCover).
+	//
+	// The answer lists only what the caller sees (RN-10, RN-20): a hidden creature
+	// is not in `targets` for a player, nor counted anywhere, and an area drawn by
+	// the map the player knows leaves the walls they do not know out. The master
+	// gets everyone, the hidden ones marked.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the caster is not in this campaign's open
+	//     session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the caster is not their
+	//     character.
+	//   - `invalid_argument`: the spell is not one of the caster's, is no placed area,
+	//     the slot does not fit, both or neither of origin and direction for a spell
+	//     that needs one, a point off the map, or a direction with both numbers 0.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_PLACED (the
+	//     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
+	//     missing_ft) for an origin beyond the spell's range.
+	PreviewSpellArea(context.Context, *connect.Request[v1.PreviewSpellAreaRequest]) (*connect.Response[v1.PreviewSpellAreaResponse], error)
+	// ResolveHiddenReveal answers the question a player's area spell opened when it
+	// hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
+	// pending_hidden_reveals): `reveal` true makes them appear to the players, as
+	// SetCombatantHidden does; false keeps them hidden. It lets the turn go on when
+	// the last question is answered. Questions are answered in the order they were
+	// opened, the oldest first.
+	//
+	// Only the master may answer. A player gets `permission_denied` for any
+	// pending_reveal_id, existing or not, checked before the id is looked up: a
+	// different answer would tell the player whether a question is open, and so
+	// whether the spell hit a hidden creature (RN-10). Answering the same way twice
+	// is not an error (the answer is the same); the other way, after the first
+	// answer, is `failed_precondition`, and answering a question while an older one
+	// waits is `failed_precondition` too. Ending the combat drops the questions.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is not the master.
+	//   - `invalid_argument`: a malformed id.
+	//   - `not_found`: the combat is not in this campaign, or the question does not
+	//     exist.
+	//   - `failed_precondition`: answered the other way already, or an older question
+	//     is open.
+	ResolveHiddenReveal(context.Context, *connect.Request[v1.ResolveHiddenRevealRequest]) (*connect.Response[v1.ResolveHiddenRevealResponse], error)
 	// UseReaction casts Escudo (the spell) when a hit lands on a player's
 	// character: the hit's pending damage waits in AWAITING_REACTION, and the
 	// target's player and the master see a prompt (Encounter.reaction_prompts).
@@ -1342,6 +1433,18 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("CastSpell")),
 			connect.WithClientOptions(opts...),
 		),
+		previewSpellArea: connect.NewClient[v1.PreviewSpellAreaRequest, v1.PreviewSpellAreaResponse](
+			httpClient,
+			baseURL+CombatServicePreviewSpellAreaProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("PreviewSpellArea")),
+			connect.WithClientOptions(opts...),
+		),
+		resolveHiddenReveal: connect.NewClient[v1.ResolveHiddenRevealRequest, v1.ResolveHiddenRevealResponse](
+			httpClient,
+			baseURL+CombatServiceResolveHiddenRevealProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("ResolveHiddenReveal")),
+			connect.WithClientOptions(opts...),
+		),
 		useReaction: connect.NewClient[v1.UseReactionRequest, v1.UseReactionResponse](
 			httpClient,
 			baseURL+CombatServiceUseReactionProcedure,
@@ -1448,6 +1551,8 @@ type combatServiceClient struct {
 	adjustCombatantHitPoints *connect.Client[v1.AdjustCombatantHitPointsRequest, v1.AdjustCombatantHitPointsResponse]
 	undoLastAction           *connect.Client[v1.UndoLastActionRequest, v1.UndoLastActionResponse]
 	castSpell                *connect.Client[v1.CastSpellRequest, v1.CastSpellResponse]
+	previewSpellArea         *connect.Client[v1.PreviewSpellAreaRequest, v1.PreviewSpellAreaResponse]
+	resolveHiddenReveal      *connect.Client[v1.ResolveHiddenRevealRequest, v1.ResolveHiddenRevealResponse]
 	useReaction              *connect.Client[v1.UseReactionRequest, v1.UseReactionResponse]
 	declineReaction          *connect.Client[v1.DeclineReactionRequest, v1.DeclineReactionResponse]
 	declineOpportunity       *connect.Client[v1.DeclineOpportunityRequest, v1.DeclineOpportunityResponse]
@@ -1595,6 +1700,16 @@ func (c *combatServiceClient) UndoLastAction(ctx context.Context, req *connect.R
 // CastSpell calls meurpg.play.v1.CombatService.CastSpell.
 func (c *combatServiceClient) CastSpell(ctx context.Context, req *connect.Request[v1.CastSpellRequest]) (*connect.Response[v1.CastSpellResponse], error) {
 	return c.castSpell.CallUnary(ctx, req)
+}
+
+// PreviewSpellArea calls meurpg.play.v1.CombatService.PreviewSpellArea.
+func (c *combatServiceClient) PreviewSpellArea(ctx context.Context, req *connect.Request[v1.PreviewSpellAreaRequest]) (*connect.Response[v1.PreviewSpellAreaResponse], error) {
+	return c.previewSpellArea.CallUnary(ctx, req)
+}
+
+// ResolveHiddenReveal calls meurpg.play.v1.CombatService.ResolveHiddenReveal.
+func (c *combatServiceClient) ResolveHiddenReveal(ctx context.Context, req *connect.Request[v1.ResolveHiddenRevealRequest]) (*connect.Response[v1.ResolveHiddenRevealResponse], error) {
+	return c.resolveHiddenReveal.CallUnary(ctx, req)
 }
 
 // UseReaction calls meurpg.play.v1.CombatService.UseReaction.
@@ -2361,6 +2476,26 @@ type CombatServiceHandler interface {
 	// and a spell that does nothing the table cannot see is still spent. A
 	// reaction spell (Escudo) is not cast here: UseReaction.
 	//
+	// An area spell placed on the map (a spell whose area comes out of the caster
+	// or is centered on a point, in a combat with a grid: SpellTargets.placement is
+	// not UNSPECIFIED, see PreviewSpellArea) is cast with `area`, the point or the
+	// direction the caster chose. The server decides who is inside, and each one's
+	// cover from the point of origin: `targets` is ignored. Everyone inside is
+	// affected, allies and the caster included, hidden creatures too (the table
+	// rule TableRules.hidden_area_hits only decides whether a hit reveals them), and
+	// an area with nobody in it is still cast and spends the slot and the action.
+	// A cast with `area` for a spell that has none, or without it for one that
+	// needs it, is `invalid_argument`. Without a grid (THEATRE) the caster lists
+	// `targets` as before, and the master judges what is inside and the cover.
+	//
+	// reveal_hidden (the master only) says whether the hidden creatures the area
+	// hits appear to the players; without it the table rule decides. A player who
+	// sends it is `permission_denied`, before anything else is checked. When a
+	// player casts and the rule is ASK, the cast holds the turn until the master
+	// answers (ResolveHiddenReveal): while a question is open the server refuses
+	// MoveCombatant, RollAttack, TakeAction, CastSpell, EndTurn and the master's
+	// turn passing with EncounterBlocked HIDDEN_REVEAL_PENDING.
+	//
 	// targets are who it touches, as the caller sees them, in range (the spell's
 	// range from the caster, a king's move at 5 ft a square; Self is the caster
 	// alone, Touch is 5 ft; the master is never held to the range, and the caster
@@ -2435,6 +2570,71 @@ type CombatServiceHandler interface {
 	//     NO_SLOT (with min_level), NOT_PLACED and TARGET_OUT_OF_REACH (with
 	//     missing_ft; a player), TARGET_DEFEATED and WRONG_DICE_MODE.
 	CastSpell(context.Context, *connect.Request[v1.CastSpellRequest]) (*connect.Response[v1.CastSpellResponse], error)
+	// PreviewSpellArea says who an area spell reaches when it is placed at a point
+	// or in a direction, and the cover each one has, without spending anything: the
+	// second step of "Conjurar" on a map ("Quem está na área"). CastSpell works it
+	// all out again and trusts nothing of this answer.
+	//
+	// The point of origin (SRD 5.1, "Areas of Effect"): a sphere or a cylinder is
+	// centered on a point within the spell's range (`origin`); a cone, a line and a
+	// cube come out of the caster, who points a direction (`direction`), and the
+	// caster's own square is not inside; a sphere or a cylinder that is itself Self
+	// ("a 15-foot radius around you") is centered on the caster and needs neither.
+	// A location is outside the area when no unblocked straight line runs from the
+	// origin to it, and only total cover (a wall, a closed door) blocks; a spell
+	// that "spreads around corners" (Fireball) reaches the part of its shape
+	// connected to the origin instead. A point the caster does not see because a wall
+	// is in the way comes into being on the near side of the wall (SRD, "Targets"):
+	// `origin` of the answer is the effective one (the master is not held to this,
+	// and nor to the range).
+	//
+	// The cover of each target is measured from the point of origin, not from the
+	// caster, and counts only when the spell's saving throw is a Dexterity one
+	// (`cover_counts`; SRD, "Cover": +2 or +5 to Dexterity saving throws): a spell
+	// with another save (Onda Trovejante, Constitution) gives no bonus. A creature
+	// reached only around a corner gets no cover bonus of its own: the master marks
+	// it (SetCombatantCover).
+	//
+	// The answer lists only what the caller sees (RN-10, RN-20): a hidden creature
+	// is not in `targets` for a player, nor counted anywhere, and an area drawn by
+	// the map the player knows leaves the walls they do not know out. The master
+	// gets everyone, the hidden ones marked.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the caster is not in this campaign's open
+	//     session, or the caller is a player and may not see it.
+	//   - `permission_denied`: the caller is a player and the caster is not their
+	//     character.
+	//   - `invalid_argument`: the spell is not one of the caster's, is no placed area,
+	//     the slot does not fit, both or neither of origin and direction for a spell
+	//     that needs one, a point off the map, or a direction with both numbers 0.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_PLACED (the
+	//     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
+	//     missing_ft) for an origin beyond the spell's range.
+	PreviewSpellArea(context.Context, *connect.Request[v1.PreviewSpellAreaRequest]) (*connect.Response[v1.PreviewSpellAreaResponse], error)
+	// ResolveHiddenReveal answers the question a player's area spell opened when it
+	// hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
+	// pending_hidden_reveals): `reveal` true makes them appear to the players, as
+	// SetCombatantHidden does; false keeps them hidden. It lets the turn go on when
+	// the last question is answered. Questions are answered in the order they were
+	// opened, the oldest first.
+	//
+	// Only the master may answer. A player gets `permission_denied` for any
+	// pending_reveal_id, existing or not, checked before the id is looked up: a
+	// different answer would tell the player whether a question is open, and so
+	// whether the spell hit a hidden creature (RN-10). Answering the same way twice
+	// is not an error (the answer is the same); the other way, after the first
+	// answer, is `failed_precondition`, and answering a question while an older one
+	// waits is `failed_precondition` too. Ending the combat drops the questions.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is not the master.
+	//   - `invalid_argument`: a malformed id.
+	//   - `not_found`: the combat is not in this campaign, or the question does not
+	//     exist.
+	//   - `failed_precondition`: answered the other way already, or an older question
+	//     is open.
+	ResolveHiddenReveal(context.Context, *connect.Request[v1.ResolveHiddenRevealRequest]) (*connect.Response[v1.ResolveHiddenRevealResponse], error)
 	// UseReaction casts Escudo (the spell) when a hit lands on a player's
 	// character: the hit's pending damage waits in AWAITING_REACTION, and the
 	// target's player and the master see a prompt (Encounter.reaction_prompts).
@@ -2837,6 +3037,18 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("CastSpell")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServicePreviewSpellAreaHandler := connect.NewUnaryHandler(
+		CombatServicePreviewSpellAreaProcedure,
+		svc.PreviewSpellArea,
+		connect.WithSchema(combatServiceMethods.ByName("PreviewSpellArea")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceResolveHiddenRevealHandler := connect.NewUnaryHandler(
+		CombatServiceResolveHiddenRevealProcedure,
+		svc.ResolveHiddenReveal,
+		connect.WithSchema(combatServiceMethods.ByName("ResolveHiddenReveal")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceUseReactionHandler := connect.NewUnaryHandler(
 		CombatServiceUseReactionProcedure,
 		svc.UseReaction,
@@ -2967,6 +3179,10 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceUndoLastActionHandler.ServeHTTP(w, r)
 		case CombatServiceCastSpellProcedure:
 			combatServiceCastSpellHandler.ServeHTTP(w, r)
+		case CombatServicePreviewSpellAreaProcedure:
+			combatServicePreviewSpellAreaHandler.ServeHTTP(w, r)
+		case CombatServiceResolveHiddenRevealProcedure:
+			combatServiceResolveHiddenRevealHandler.ServeHTTP(w, r)
 		case CombatServiceUseReactionProcedure:
 			combatServiceUseReactionHandler.ServeHTTP(w, r)
 		case CombatServiceDeclineReactionProcedure:
@@ -3106,6 +3322,14 @@ func (UnimplementedCombatServiceHandler) UndoLastAction(context.Context, *connec
 
 func (UnimplementedCombatServiceHandler) CastSpell(context.Context, *connect.Request[v1.CastSpellRequest]) (*connect.Response[v1.CastSpellResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.CastSpell is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) PreviewSpellArea(context.Context, *connect.Request[v1.PreviewSpellAreaRequest]) (*connect.Response[v1.PreviewSpellAreaResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.PreviewSpellArea is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) ResolveHiddenReveal(context.Context, *connect.Request[v1.ResolveHiddenRevealRequest]) (*connect.Response[v1.ResolveHiddenRevealResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.ResolveHiddenReveal is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) UseReaction(context.Context, *connect.Request[v1.UseReactionRequest]) (*connect.Response[v1.UseReactionResponse], error) {

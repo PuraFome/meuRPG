@@ -9,6 +9,7 @@ import {
   DeathSaveVisibility,
   DiceMode,
   EnemyReactionsRule,
+  HiddenAreaHitRule,
   HitPointsRule,
   Role,
   TableStyle,
@@ -56,6 +57,7 @@ const saved: RulesDraft = {
   typed: true,
   critical: CriticalRule.DOUBLED_DICE,
   deathSaves: DeathSaveVisibility.VISIBLE_TO_ALL,
+  hiddenAreaHits: HiddenAreaHitRule.REVEAL,
   featsAllowed: false,
   enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   houseRules: ['Beber uma poção é uma ação bônus'],
@@ -173,6 +175,7 @@ describe('TableRulesPage', () => {
         'Testes contra a morte',
         'Dados',
         'Combate e névoa',
+        'Criaturas escondidas atingidas por uma área',
         'Experiência',
         'Lembretes da mesa',
         'Grade dos mapas',
@@ -265,39 +268,51 @@ describe('TableRulesPage', () => {
     expect(button(el, 'Salvar regras').classList).toContain('mr-button--off');
   });
 
-  it('draws "Reações dos inimigos" with the default chosen and the attention sentence', async () => {
-    const { el } = await setup();
-    const title = Array.from(el.querySelectorAll('h2')).find(
-      (h) => h.textContent?.trim() === 'Reações dos inimigos',
-    );
-    expect(title).toBeDefined();
-    expect(radio(el, 'Só quando um inimigo pode reagir').checked).toBe(true);
-    expect(radio(el, 'Sempre').checked).toBe(false);
-    expect(text(el)).toContain(
-      'Atenção: uma pausa pode sugerir aos jogadores que alguém pode reagir.',
-    );
-    expect(text(el)).toContain('Vale a partir da próxima ação.');
-    expect(radio(el, 'Sempre').type).toBe('radio');
-    expect(radio(el, 'Sempre').name).toBe(radio(el, 'Só quando um inimigo pode reagir').name);
-  });
-
-  it('saves the chosen enemy reactions rule with "Salvar regras"', async () => {
+  it('offers the three choices for hidden creatures an area hits, and saves the one picked with the rest', async () => {
     const { fixture, el } = await setup();
-    radio(el, 'Sempre').click();
+    const group = el.querySelector(
+      '[role="radiogroup"][aria-label="Criaturas escondidas atingidas por uma área"]',
+    );
+    expect(group).not.toBeNull();
+    const titles = Array.from(group!.querySelectorAll('label')).map((l) =>
+      (l.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    );
+    expect(titles[0]).toContain('Revelar');
+    expect(titles[0]).toContain('É o padrão.');
+    expect(titles[1]).toContain('Manter escondidas');
+    expect(titles[2]).toContain('Perguntar a cada vez');
+    expect(radio(el, 'Revelar').checked).toBe(true);
+    expect(text(el)).toContain('Vale a partir da próxima magia.');
+
+    radio(el, 'Perguntar a cada vez').click();
     await settle(fixture);
     expect(text(el)).toContain('1 mudança não salva');
     button(el, 'Salvar regras').click();
     await settle(fixture);
-    expect((set.mock.calls[0][1] as RulesDraft).enemyReactions).toBe(EnemyReactionsRule.ALWAYS);
+    const [, sent] = set.mock.calls[0] as [string, RulesDraft];
+    expect(sent.hiddenAreaHits).toBe(HiddenAreaHitRule.ASK);
   });
 
-  it('lets a player read the rule and nothing more', async () => {
-    const { el } = await setup(Role.PLAYER, { enemyReactions: EnemyReactionsRule.ALWAYS });
+  it('always sends the rule on hidden creatures, also when another choice is what changed', async () => {
+    const { fixture, el } = await setup(Role.MASTER, {
+      hiddenAreaHits: HiddenAreaHitRule.KEEP_HIDDEN,
+    });
+    expect(radio(el, 'Manter escondidas').checked).toBe(true);
+    radio(el, 'A média').click();
+    await settle(fixture);
+    button(el, 'Salvar regras').click();
+    await settle(fixture);
+    const [, sent] = set.mock.calls[0] as [string, RulesDraft];
+    expect(sent.hiddenAreaHits).toBe(HiddenAreaHitRule.KEEP_HIDDEN);
+  });
+
+  it('tells a player the rule on hidden creatures as text, with no card to pick', async () => {
+    const { el } = await setup(Role.PLAYER, { hiddenAreaHits: HiddenAreaHitRule.ASK });
     const rows = Array.from(el.querySelectorAll('.read__row')).map(
       (r) => `${r.querySelector('dt')?.textContent} ${r.querySelector('dd')?.textContent}`,
     );
-    expect(rows).toContain('Reações dos inimigos Sempre');
-    expect(el.querySelector('input')).toBeNull();
+    expect(rows).toContain('Criaturas escondidas atingidas por uma área Perguntar a cada vez');
+    expect(el.querySelector('[role="radiogroup"]')).toBeNull();
   });
 
   it('keeps at least one way of making scores: with none the save is off and says why', async () => {
@@ -510,5 +525,36 @@ describe('TableRulesPage', () => {
       (r) => `${r.querySelector('dt')?.textContent} ${r.querySelector('dd')?.textContent}`,
     );
     expect(rows).toContain('Talentos Não usados');
+  });
+
+  it('draws "Reações dos inimigos" with the default chosen and the attention sentence', async () => {
+    const { el } = await setup();
+    const title = Array.from(el.querySelectorAll('h2')).find(
+      (h) => h.textContent?.trim() === 'Reações dos inimigos',
+    );
+    expect(title).toBeDefined();
+    expect(radio(el, 'Só quando um inimigo pode reagir').checked).toBe(true);
+    expect(radio(el, 'Sempre').checked).toBe(false);
+    expect(text(el)).toContain(
+      'Atenção: uma pausa pode sugerir aos jogadores que alguém pode reagir.',
+    );
+    expect(text(el)).toContain('Vale a partir da próxima ação.');
+  });
+
+  it('saves the chosen enemy reactions rule with "Salvar regras"', async () => {
+    const { fixture, el } = await setup();
+    radio(el, 'Sempre').click();
+    await settle(fixture);
+    button(el, 'Salvar regras').click();
+    await settle(fixture);
+    expect((set.mock.calls[0][1] as RulesDraft).enemyReactions).toBe(EnemyReactionsRule.ALWAYS);
+  });
+
+  it('lets a player read the enemy reactions rule and nothing more', async () => {
+    const { el } = await setup(Role.PLAYER, { enemyReactions: EnemyReactionsRule.ALWAYS });
+    const rows = Array.from(el.querySelectorAll('.read__row')).map(
+      (r) => `${r.querySelector('dt')?.textContent} ${r.querySelector('dd')?.textContent}`,
+    );
+    expect(rows).toContain('Reações dos inimigos Sempre');
   });
 });

@@ -4,6 +4,7 @@ import {
   type HellishRebukeOption,
   type Encounter,
   type ReactionResult,
+  ReactionKind,
   ReactionRollKind,
   type ReactionWindow,
   ReactionWindowStatus,
@@ -43,7 +44,8 @@ export function isOpen(w: ReactionWindow): boolean {
 
 /** The windows that are open, in the order the server answers them. */
 export function openWindows(e: Encounter): readonly ReactionWindow[] {
-  return e.reactionWindows.filter(isOpen);
+  // The master's question about a hidden creature an area hit is a window of the server's, drawn by its own card.
+  return e.reactionWindows.filter((w) => isOpen(w) && w.kind !== ReactionKind.HIDDEN_REVEAL);
 }
 
 /** The window a player answers now: the first one that is theirs to answer. */

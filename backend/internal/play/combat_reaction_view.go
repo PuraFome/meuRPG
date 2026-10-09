@@ -55,7 +55,11 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "list the opportunity offers", err)
 	}
-	if len(open) == 0 && len(offers) == 0 {
+	reveals, err := s.queries.ListPendingHiddenReveals(ctx, d.enc.ID)
+	if err != nil {
+		return nil, nil, s.dbError(ctx, "list the hidden reveals", err)
+	}
+	if len(open) == 0 && len(offers) == 0 && len(reveals) == 0 {
 		return nil, nil, nil
 	}
 	wv := &windowView{s: s, ctx: ctx, m: m, v: v, d: d, names: names, byID: make(map[string]playdb.Combatant, len(d.cs))}
@@ -110,6 +114,25 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 		}
 		wv.waitOf(playdb.ReactionWindow{Kind: "opportunity"}, &reactor, answers, &wait)
 		if !holdsSet && !answers {
+			holds, holdsSet = reaction.HoldsTurn, true
+		}
+	}
+	// The master's question about a hidden creature an area hit (PM-02c) is a window too: the
+	// master answers it with ResolveHiddenReveal, and every player reads the same wait.
+	for _, q := range reveals {
+		if v.master {
+			windows = append(windows, &playv1.ReactionWindow{
+				Id: q.ID, Kind: playv1.ReactionKind_REACTION_KIND_HIDDEN_REVEAL, Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN,
+				GroupId: q.ID, ForYou: true, AnswerNow: true,
+				Trigger: &playv1.ReactionTrigger{ActorId: q.CasterID},
+			})
+		}
+		if v.master {
+			wait.Self = true
+		} else {
+			wait.Master = true
+		}
+		if !holdsSet {
 			holds, holdsSet = reaction.HoldsTurn, true
 		}
 	}

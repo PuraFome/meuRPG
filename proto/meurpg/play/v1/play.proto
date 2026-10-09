@@ -1183,14 +1183,27 @@ message WatchGameSessionResponse {
     // queue is not queued twice; at most one goes out per campaign every 250 ms, and
     // the last change is never left unannounced.
     ContentChanged content_changed = 23;
+    // A player's area spell hit hidden creatures and the table asks the master
+    // whether they appear (CombatService.ResolveHiddenReveal). Only the master
+    // gets it; no player's stream ever carries it (RN-10).
+    HiddenHitPending hidden_hit_pending = 24;
     // A reaction window opened for the one who answers it, and for the master (PM-04):
     // a hint with the window's id; the app reads the combat again for the prompt.
     // No other player gets it (RN-10): they read the change of `reaction_wait`.
-    ReactionWindowOpened reaction_window_opened = 24;
+    ReactionWindowOpened reaction_window_opened = 25;
     // A window was answered or closed by itself, for the reactor and the master:
     // the id and the sentence the app shows ("Queda Suave fechou. Você já usou a
     // sua reação."), written for each of the two.
-    ReactionWindowClosed reaction_window_closed = 25;
+    ReactionWindowClosed reaction_window_closed = 26;
+  }
+
+  // HiddenHitPending says a question waits for the master in a combat. It names
+  // no creature: the master reads Encounter.pending_hidden_reveals.
+  message HiddenHitPending {
+    // The combat (a UUID).
+    string encounter_id = 1;
+    // The question (a UUID).
+    string pending_reveal_id = 2;
   }
 
   // ReactionWindowOpened is the hint that a reaction window waits for its reactor.

@@ -56,6 +56,7 @@ func rulesFromRow(r campaignsdb.CampaignTableRule) tablerules.Rules {
 		DeathSavesHidden:    r.DeathSaves == deathSavesOwnerAndMaster,
 		CombatWithoutMap:    !r.CombatStartsWithMap,
 		FogOnNewMaps:        r.FogOnNewMaps,
+		HiddenAreaHits:      hiddenAreaHitsFromDB(r.HiddenAreaHits),
 		FeatsAllowed:        r.FeatsAllowed,
 		Reminders:           r.HouseRules,
 
@@ -63,17 +64,27 @@ func rulesFromRow(r campaignsdb.CampaignTableRule) tablerules.Rules {
 	}
 }
 
+// hiddenAreaHitsFromDB is the shared rule of a stored text: the default (reveal)
+// is the zero value.
+func hiddenAreaHitsFromDB(v string) tablerules.HiddenAreaHitRule {
+	if v == hiddenAreaHitsReveal {
+		return tablerules.HiddenAreaHitsReveal
+	}
+	return tablerules.HiddenAreaHitRule(v)
+}
+
 // The database's text values of the rules (the CHECK constraints of
 // campaign_table_rules). The hit points rule is stored as "player_chooses" where
 // tablerules has its empty zero value.
 const (
-	hitPointsPlayerChooses     = "player_chooses"
-	criticalDoubledDice        = "doubled_dice"
-	criticalMaxPlusRoll        = "max_plus_roll"
+	hitPointsPlayerChooses   = "player_chooses"
+	criticalDoubledDice      = "doubled_dice"
+	criticalMaxPlusRoll      = "max_plus_roll"
+	deathSavesVisibleToAll   = "visible_to_all"
+	deathSavesOwnerAndMaster = "owner_and_master"
+	hiddenAreaHitsReveal     = "reveal"
 	enemyReactionsWhenPossible = "only_when_possible"
 	enemyReactionsAlways       = "always"
-	deathSavesVisibleToAll     = "visible_to_all"
-	deathSavesOwnerAndMaster   = "owner_and_master"
 )
 
 // StoredTableRules returns the table's stored rules of a campaign: the
@@ -174,6 +185,16 @@ var (
 		enemyReactionsWhenPossible: campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ONLY_WHEN_POSSIBLE,
 		enemyReactionsAlways:       campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ALWAYS,
 	}
+	hiddenAreaHitsToDB = map[campaignsv1.HiddenAreaHitRule]string{
+		campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_REVEAL:      hiddenAreaHitsReveal,
+		campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_KEEP_HIDDEN: string(tablerules.HiddenAreaHitsKeepHidden),
+		campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK:         string(tablerules.HiddenAreaHitsAsk),
+	}
+	hiddenAreaHitsFromDBEnum = map[string]campaignsv1.HiddenAreaHitRule{
+		hiddenAreaHitsReveal:                        campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_REVEAL,
+		string(tablerules.HiddenAreaHitsKeepHidden): campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_KEEP_HIDDEN,
+		string(tablerules.HiddenAreaHitsAsk):        campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK,
+	}
 	deathSavesFromDB = map[string]campaignsv1.DeathSaveVisibility{
 		deathSavesVisibleToAll:   campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL,
 		deathSavesOwnerAndMaster: campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER,
@@ -187,7 +208,7 @@ func defaultRow(campaignID string) campaignsdb.CampaignTableRule {
 		CampaignID: campaignID, HitPointsRule: hitPointsPlayerChooses,
 		AbilityStandardArray: true, AbilityPointBuy: true, AbilityRoll4d6: true, AbilityTyped: true,
 		CriticalRule: criticalDoubledDice, DeathSaves: deathSavesVisibleToAll,
-		CombatStartsWithMap: true, FogOnNewMaps: false, EnemyReactions: enemyReactionsWhenPossible,
+		CombatStartsWithMap: true, FogOnNewMaps: false, HiddenAreaHits: hiddenAreaHitsReveal, EnemyReactions: enemyReactionsWhenPossible,
 	}
 }
 
@@ -217,6 +238,7 @@ func tableRulesToProto(r campaignsdb.CampaignTableRule, dice string) *campaignsv
 		Critical:       criticalFromDB[r.CriticalRule],
 		DeathSaves:     deathSavesFromDB[r.DeathSaves],
 		HouseRules:     append([]string{}, r.HouseRules...),
+		HiddenAreaHits: hiddenAreaHitsFromDBEnum[r.HiddenAreaHits],
 		FeatsAllowed:   r.FeatsAllowed,
 		EnemyReactions: enemyReactionsFromDB[r.EnemyReactions],
 	}
@@ -305,6 +327,10 @@ func tableRulesParams(msg *campaignsv1.TableRules) (campaignsdb.UpsertTableRules
 	if !ok {
 		return none, "", invalidArgument("rules.death_saves", errors.New("must be visible_to_all or owner_and_master"))
 	}
+	hidden, ok := hiddenAreaHitsToDB[msg.GetHiddenAreaHits()]
+	if !ok {
+		return none, "", invalidArgument("rules.hidden_area_hits", errors.New("must be reveal, keep_hidden or ask"))
+	}
 	enemy, ok := enemyReactionsToDB[msg.GetEnemyReactions()]
 	if !ok {
 		return none, "", invalidArgument("rules.enemy_reactions", errors.New("must be only_when_possible or always"))
@@ -330,7 +356,7 @@ func tableRulesParams(msg *campaignsv1.TableRules) (campaignsdb.UpsertTableRules
 		AbilityRoll4d6: am.GetRolled_4D6(), AbilityTyped: am.GetTyped(),
 		CriticalRule: crit, DeathSaves: deaths,
 		CombatStartsWithMap: msg.GetCombatStartsWithMap(), FogOnNewMaps: msg.GetFogOnNewMaps(),
-		HouseRules: houseRules, FeatsAllowed: msg.GetFeatsAllowed(), EnemyReactions: enemy,
+		HouseRules: houseRules, HiddenAreaHits: hidden, FeatsAllowed: msg.GetFeatsAllowed(), EnemyReactions: enemy,
 	}, dice, nil
 }
 

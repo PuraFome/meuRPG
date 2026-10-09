@@ -832,6 +832,11 @@ func (s *Service) EndTurn(
 		if err := v.mayAct(current); err != nil {
 			return nil, err
 		}
+		// The turn waits for the master's answer to a question of an area spell, and
+		// his own turn passing waits too.
+		if err := s.mustNotHold(ctx, c); err != nil {
+			return nil, err
+		}
 		// The turn waits for an opportunity attack's answer; the master may end it
 		// anyway, which passes the offers over.
 		if err := s.mustNotWaitForOffers(ctx, c, current); err != nil {
@@ -856,6 +861,12 @@ func (s *Service) EndTurn(
 		// word).
 		if dropped, err = c.pendingOf(ctx, current.ID); err != nil {
 			return nil, err
+		}
+		if !v.master {
+			// A damage on a creature the player does not see is the master's to roll (an
+			// area spell hit a hidden creature): it does not hold their turn, and no
+			// refusal says it exists (RN-10).
+			dropped = slices.DeleteFunc(dropped, func(p playdb.PendingDamage) bool { return !pendingVisible(p, cs, v) })
 		}
 		if len(dropped) > 0 {
 			if !v.master || !req.Msg.GetDiscardPendingDamage() {
@@ -1224,6 +1235,11 @@ func (s *Service) EndEncounter(
 func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Combatant) error {
 	if err := s.keepTrapDamage(ctx, c, cs); err != nil {
 		return err
+	}
+	// What was still to answer about the hidden creatures an area hit goes with the
+	// combat: nothing moves on it any more, so there is nothing to decide.
+	if err := c.q.DeleteHiddenRevealsOfEncounter(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("drop the hidden reveals: %w", err)
 	}
 	ended := c.now
 	enc, err := c.q.SetEncounterState(ctx, playdb.SetEncounterStateParams{

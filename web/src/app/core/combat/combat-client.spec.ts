@@ -54,6 +54,87 @@ describe('CombatClient keys', () => {
   });
 });
 
+describe('CombatClient area spells', () => {
+  function withRequests(): { client: CombatClient; requests: Record<string, unknown>[] } {
+    TestBed.configureTestingModule({
+      providers: [CombatClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const client = TestBed.inject(CombatClient);
+    const requests: Record<string, unknown>[] = [];
+    (client as unknown as { client: unknown }).client = {
+      castSpell: (req: Record<string, unknown>) => {
+        requests.push(req);
+        return Promise.resolve({
+          encounter: { id: 'enc' },
+          cast: { targets: [] },
+          summonedCombatantIds: [],
+          area: { origin: { col: 3, row: 2 }, squares: [{ col: 3, row: 2 }] },
+          hiddenHits: ['g3'],
+          pendingRevealId: '',
+        });
+      },
+      previewSpellArea: (req: Record<string, unknown>) => {
+        requests.push(req);
+        return Promise.resolve({ targets: [] });
+      },
+      resolveHiddenReveal: (req: Record<string, unknown>) => {
+        requests.push(req);
+        return Promise.resolve({ encounter: { id: 'enc' } });
+      },
+    };
+    return { client, requests };
+  }
+
+  it("casts at a point with the master's reveal choice, and reads where it landed", async () => {
+    const { client, requests } = withRequests();
+    const res = await client.castSpell(
+      'c',
+      'e',
+      'zuk',
+      'spell:fireball',
+      { level: 3, pact: false },
+      [],
+      null,
+      'k',
+      undefined,
+      '',
+      { area: { origin: { col: 3, row: 2 } }, revealHidden: false },
+    );
+    expect(requests[0]['area']).toEqual({ case: 'origin', value: { col: 3, row: 2 } });
+    expect(requests[0]['revealHidden']).toBe(false);
+    expect(res.area?.origin).toEqual({ col: 3, row: 2 });
+    expect(res.hiddenHits).toEqual(['g3']);
+  });
+
+  it('leaves the reveal out unless the master chose, and sends a direction for a cone', async () => {
+    const { client, requests } = withRequests();
+    await client.castSpell(
+      'c',
+      'e',
+      'p',
+      'spell:burning-hands',
+      { level: 1, pact: false },
+      [],
+      null,
+      'k',
+      undefined,
+      '',
+      { area: { direction: { dx: 1, dy: -1 } } },
+    );
+    expect('revealHidden' in requests[0]).toBe(false);
+    expect(requests[0]['area']).toEqual({ case: 'direction', value: { dx: 1, dy: -1 } });
+  });
+
+  it('previews a sphere around the caster with no point, and answers a question with a key', async () => {
+    const { client, requests } = withRequests();
+    await client.previewSpellArea('c', 'e', 'p', 'spell:x', null, null);
+    expect(requests[0]['area']).toEqual({ case: undefined });
+    await client.resolveHiddenReveal('c', 'e', 'q1', true);
+    expect(requests[1]).toMatchObject({ pendingRevealId: 'q1', reveal: true });
+    expect(requests[1]['idempotencyKey']).toEqual(expect.any(String));
+  });
+});
+
 describe('CombatClient, the reaction windows (PM-04)', () => {
   function fake() {
     const calls = {

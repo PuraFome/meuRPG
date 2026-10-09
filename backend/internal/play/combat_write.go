@@ -99,11 +99,15 @@ const (
 	eventCoverSet           = "cover_set"
 	eventSideSet            = "side_set"
 	eventOpportunityOffered = "opportunity_offered"
-	eventCreatureSummoned   = "creature_summoned"
-	eventCreatureDismissed  = "creature_dismissed"
-	eventWildShapeStarted   = "wild_shape_started"
-	eventWildShapeEnded     = "wild_shape_ended"
-	eventFamiliarSight      = "familiar_sight"
+	// eventHiddenRevealAnswered is the master's answer to the question an area spell
+	// of a player left (hidden_reveals): reveal the hidden creatures it hit, or keep
+	// them hidden.
+	eventHiddenRevealAnswered = "hidden_reveal_answered"
+	eventCreatureSummoned     = "creature_summoned"
+	eventCreatureDismissed    = "creature_dismissed"
+	eventWildShapeStarted     = "wild_shape_started"
+	eventWildShapeEnded       = "wild_shape_ended"
+	eventFamiliarSight        = "familiar_sight"
 )
 
 // The kind of Etapa 10 (migration 00121): a move opened a closed door (MR-010,

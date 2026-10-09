@@ -70,4 +70,21 @@ describe('NextTurn', () => {
       expect(el.querySelector('[role="alertdialog"]')).toBeNull();
     });
   });
+
+  it('is off with the reason written under it and linked to it while a question holds the turn', () => {
+    const fixture = TestBed.createComponent(NextTurn);
+    fixture.componentRef.setInput('waiting', true);
+    fixture.componentRef.setInput('why', 'Responda ao pedido abaixo para seguir.');
+    const sent: boolean[] = [];
+    fixture.componentInstance.next.subscribe((d) => sent.push(d));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const button = el.querySelector<HTMLButtonElement>('.next')!;
+    const why = el.querySelector('.why')!;
+    expect(why.textContent).toContain('Responda ao pedido abaixo para seguir.');
+    expect(button.getAttribute('aria-describedby')).toBe(why.id);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    button.click();
+    expect(sent).toEqual([]);
+  });
 });

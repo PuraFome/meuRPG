@@ -70,6 +70,7 @@ func validRules() *campaignsv1.TableRules {
 		AbilityMethods:      &campaignsv1.AbilityMethods{StandardArray: true, PointBuy: true, Rolled_4D6: true, Typed: true},
 		Critical:            campaignsv1.CriticalRule_CRITICAL_RULE_DOUBLED_DICE,
 		DeathSaves:          campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_VISIBLE_TO_ALL,
+		HiddenAreaHits:      campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_REVEAL,
 		EnemyReactions:      campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ONLY_WHEN_POSSIBLE,
 	}
 }
@@ -102,6 +103,14 @@ func TestTableRulesParamsRefuseWhatBreaksTheLimits(t *testing.T) {
 		{"no hit points rule", func(r *campaignsv1.TableRules) { r.HitPoints = 0 }, false},
 		{"no critical rule", func(r *campaignsv1.TableRules) { r.Critical = 0 }, false},
 		{"no death saves rule", func(r *campaignsv1.TableRules) { r.DeathSaves = 0 }, false},
+		{"no hidden area hits rule", func(r *campaignsv1.TableRules) { r.HiddenAreaHits = 0 }, false},
+		{"hidden creatures a spell hits stay hidden", func(r *campaignsv1.TableRules) {
+			r.HiddenAreaHits = campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_KEEP_HIDDEN
+		}, true},
+		{"the master is asked each time", func(r *campaignsv1.TableRules) {
+			r.HiddenAreaHits = campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK
+		}, true},
+		{"a hidden area hits rule that does not exist", func(r *campaignsv1.TableRules) { r.HiddenAreaHits = 9 }, false},
 		{"no enemy reactions rule", func(r *campaignsv1.TableRules) { r.EnemyReactions = 0 }, false},
 		{"the enemy reactions rule Sempre", func(r *campaignsv1.TableRules) {
 			r.EnemyReactions = campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ALWAYS
@@ -170,7 +179,7 @@ func TestRN24_TableRulesRoundTrip(t *testing.T) {
 		t.Errorf("Tudo no app preset = %v", p)
 	}
 	if rules, err := h.service.StoredTableRules(t.Context(), nil, id); err != nil || rules.HitPoints != "" || rules.CriticalMaxPlusRoll || rules.DeathSavesHidden ||
-		rules.CombatWithoutMap || rules.FogOnNewMaps || rules.EnemyReactionsAlways || rules.AbilityMethodsOff != (tablerules.AbilityMethods{}) || rules.Reminders != nil {
+		rules.CombatWithoutMap || rules.FogOnNewMaps || rules.HiddenAreaHits != tablerules.HiddenAreaHitsReveal || rules.EnemyReactionsAlways || rules.AbilityMethodsOff != (tablerules.AbilityMethods{}) || rules.Reminders != nil {
 		t.Errorf("StoredTableRules() of a campaign with no row = %+v, %v; want the zero value", rules, err)
 	}
 
@@ -183,6 +192,7 @@ func TestRN24_TableRulesRoundTrip(t *testing.T) {
 		AbilityMethods:      &campaignsv1.AbilityMethods{StandardArray: false, PointBuy: true, Rolled_4D6: false, Typed: true},
 		Critical:            campaignsv1.CriticalRule_CRITICAL_RULE_MAX_PLUS_ROLL,
 		DeathSaves:          campaignsv1.DeathSaveVisibility_DEATH_SAVE_VISIBILITY_OWNER_AND_MASTER,
+		HiddenAreaHits:      campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK,
 		HouseRules:          []string{"Beber uma poção é uma ação bônus", "Sem ressurreição no primeiro ato"},
 		EnemyReactions:      campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ALWAYS,
 	}
@@ -204,7 +214,7 @@ func TestRN24_TableRulesRoundTrip(t *testing.T) {
 		t.Errorf("campaign dice mode = %v, %v; want physical (the rules write it)", camp.Msg.GetCampaign().GetDiceMode(), err)
 	}
 	stored, err := h.service.StoredTableRules(t.Context(), nil, id)
-	if err != nil || stored.HitPoints != "roll" || !stored.CriticalMaxPlusRoll || !stored.DeathSavesHidden || !stored.CombatWithoutMap || !stored.FogOnNewMaps ||
+	if err != nil || stored.HitPoints != "roll" || !stored.CriticalMaxPlusRoll || !stored.DeathSavesHidden || !stored.CombatWithoutMap || !stored.FogOnNewMaps || stored.HiddenAreaHits != tablerules.HiddenAreaHitsAsk ||
 		!stored.AbilityMethodsOff.StandardArray || stored.AbilityMethodsOff.PointBuy || !stored.AbilityMethodsOff.Roll || stored.AbilityMethodsOff.Typed || len(stored.Reminders) != 2 || !stored.EnemyReactionsAlways {
 		t.Errorf("StoredTableRules() = %+v, %v", stored, err)
 	}

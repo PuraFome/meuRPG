@@ -65,5 +65,6 @@ type CampaignTableRule struct {
 	HouseRules           []string
 	UpdatedAt            time.Time
 	FeatsAllowed         bool
+	HiddenAreaHits       string
 	EnemyReactions       string
 }

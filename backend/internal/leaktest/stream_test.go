@@ -91,6 +91,7 @@ func eventCase(ev *playv1.WatchGameSessionResponse) string {
 // triggered nor here fails TestLeakMatrix/stream: a new kind of event must be exercised or
 // explained.
 var notTriggered = map[string]string{
+	"hidden_hit_pending": "needs a player's area spell that hits a hidden creature, which has a world of its own: TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal (the master hears it, no player does)",
 	"reaction_window_opened": "TestAnNPCsReactionWindowIsHeardByTheMasterAlone needs its own combat state and checks the events of both kinds",
 	"reaction_window_closed": "same test",
 }

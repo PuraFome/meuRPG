@@ -24,6 +24,7 @@ import {
   DeathSaveVisibility,
   DiceMode,
   EnemyReactionsRule,
+  HiddenAreaHitRule,
   HitPointsRule,
   Role,
   TableStyle,
@@ -158,6 +159,27 @@ const ENEMY_REACTION_OPTIONS: readonly DiceOption<EnemyReactionsRule>[] = [
   },
 ];
 
+/** What an area spell does to the hiding of a hidden creature it hits (PM-02c state 8), from "asks least" to "asks most". */
+const HIDDEN_AREA_OPTIONS: readonly DiceOption<HiddenAreaHitRule>[] = [
+  {
+    value: HiddenAreaHitRule.REVEAL,
+    title: 'Revelar',
+    description: 'A criatura aparece para os jogadores, como num “Revelar” seu. É o padrão.',
+  },
+  {
+    value: HiddenAreaHitRule.KEEP_HIDDEN,
+    title: 'Manter escondidas',
+    description:
+      'A criatura sofre o efeito e continua escondida. Os jogadores não ficam sabendo dela.',
+  },
+  {
+    value: HiddenAreaHitRule.ASK,
+    title: 'Perguntar a cada vez',
+    description:
+      'Toda magia de área de um jogador faz o turno esperar, atinja ou não uma criatura escondida (a espera não conta nada a ele); você responde na hora.',
+  },
+];
+
 /** "Talentos": 1 is allowed, 0 is not used (the radio cards take numbers). */
 const FEAT_OPTIONS: readonly DiceOption<number>[] = [
   {
@@ -234,6 +256,10 @@ function ruleRows(d: RulesDraft, xpMode: XpMode): { label: string; value: string
     { label: 'Habilidades de uma ficha nova', value: methodWords(d) },
     { label: 'Acertos críticos', value: titleOf(CRITICAL_OPTIONS, d.critical) },
     { label: 'Testes contra a morte', value: titleOf(DEATH_SAVE_OPTIONS, d.deathSaves) },
+    {
+      label: 'Criaturas escondidas atingidas por uma área',
+      value: titleOf(HIDDEN_AREA_OPTIONS, d.hiddenAreaHits),
+    },
     { label: 'Talentos', value: d.featsAllowed ? 'Permitidos' : 'Não usados' },
     { label: 'Reações dos inimigos', value: titleOf(ENEMY_REACTION_OPTIONS, d.enemyReactions) },
     { label: 'Experiência', value: XP_OPTION_TITLES[xpMode] ?? '' },
@@ -288,6 +314,7 @@ export class TableRulesPage {
   protected readonly criticalOptions = CRITICAL_OPTIONS;
   protected readonly deathSaveOptions = DEATH_SAVE_OPTIONS;
   protected readonly enemyReactionOptions = ENEMY_REACTION_OPTIONS;
+  protected readonly hiddenAreaOptions = HIDDEN_AREA_OPTIONS;
   protected readonly diceOptions = DICE_OPTIONS;
   protected readonly featOptions = FEAT_OPTIONS;
   protected readonly combatOptions = COMBAT_OPTIONS;
