@@ -477,11 +477,11 @@ func (s *Service) deflectThrow(ctx context.Context, c *combatTx, raw string, thr
 	if j < 0 {
 		return none, w, errNotYourTurnToAnswer()
 	}
-	k, err := s.reactorKit(ctx, c, thrower)
+	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, thrower)
 	if err != nil {
 		return none, w, err
 	}
-	if k.resourceLeft(resKi) < 1 {
+	if !ok || k.resourceLeft(resKi) < 1 {
 		return none, w, connect.NewError(connect.CodeFailedPrecondition, errors.New("no ki left to throw the missile back"))
 	}
 	a := sheet.Attacks[j]

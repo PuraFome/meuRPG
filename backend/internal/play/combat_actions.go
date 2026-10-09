@@ -681,7 +681,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		}
 		// An opportunity attack is a melee attack (SRD): a melee weapon, thrown or
 		// not (a dagger counts), not a bow or a spell. It reaches 5 ft.
-		if asReaction && !attack.Melee {
+		if asReaction && catchID == "" && !attack.Melee {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is a melee attack"))
 		}
 		// RN-18, then the economy: a player has one action a turn (the Attack
@@ -707,7 +707,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 				// An opportunity attack comes right before the mover leaves the reach, so
 				// it asks no reach check (the mover has moved already).
 				dist, _ := distanceFt(attacker, target)
-				if reach := attackReach(attack, asReaction); offerID == "" && dist > reach {
+				if reach := attackReach(attack, asReaction && catchID == ""); offerID == "" && dist > reach {
 					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the attack's range",
 						func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
 				}

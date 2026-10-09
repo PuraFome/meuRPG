@@ -202,4 +202,3 @@ func (wv *windowView) fallPrompt(w playdb.ReactionWindow, reactor *playdb.Combat
 	}
 	out.Prompt = &playv1.ReactionWindow_FeatherFall{FeatherFall: p}
 }
-
