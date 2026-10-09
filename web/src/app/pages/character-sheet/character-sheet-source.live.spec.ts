@@ -136,6 +136,7 @@ function minimalDerivedSheet(): DerivedSheet {
     changedContent: [],
     backgroundEquipmentPt: '',
     hitPointsFromEffects: 0,
+    resistances: [],
   };
 }
 
@@ -170,6 +171,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     contentRevision: 0,
     knownIssues: [],
     contentBaselines: {},
+    featureChoiceText: {},
     xpValue: 0,
     ...overrides,
   };
@@ -331,6 +333,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
           namePt: 'Recuperação Arcana',
           sourcePt: 'Mago 1',
           description: 'You have learned to regain some of your magical energy.',
+          summaryPt: '',
         },
       ],
       hints: [
@@ -360,6 +363,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
         name: 'Recuperação Arcana',
         sourcePt: 'Mago 1',
         description: 'You have learned to regain some of your magical energy.',
+        summaryPt: '',
       },
     ]);
     expect(sheet.hints).toEqual([

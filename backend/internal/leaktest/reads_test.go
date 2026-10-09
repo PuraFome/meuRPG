@@ -103,6 +103,24 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: charactersv1connect.CharacterServiceGetCampaignOpenChoicesProcedure, allow: masterOnlyRead, why: "how many choices a character lacks is not another player's information (RN-10)",
+		req: func(w *world) proto.Message {
+			return &charactersv1.GetCampaignOpenChoicesRequest{CampaignId: w.campaign}
+		},
+	},
+	{
+		procedure: charactersv1connect.CharacterServicePreviewChoicesProcedure, label: "Ana's character", allow: onlyAna,
+		req: func(w *world) proto.Message {
+			return &charactersv1.PreviewChoicesRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
+		},
+	},
+	{
+		procedure: charactersv1connect.CharacterServicePreviewChoicesProcedure, label: "Caio's character", allow: onlyCaio,
+		req: func(w *world) proto.Message {
+			return &charactersv1.PreviewChoicesRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}
+		},
+	},
+	{
 		procedure: charactersv1connect.CharacterServiceGetMasterNotesProcedure, label: "Ana's character", allow: masterOnlyRead,
 		req: func(w *world) proto.Message {
 			return &charactersv1.GetMasterNotesRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}

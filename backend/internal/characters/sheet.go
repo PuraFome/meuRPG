@@ -265,6 +265,27 @@ func cleanFullSheet(f *charactersv1.FullSheet) error {
 	if f.CustomFeaturesText, err = names.CleanText(f.GetCustomFeaturesText(), maxCustomFeaturesLength); err != nil {
 		return &fieldError{field: "sheet.full.custom_features_text", err: err}
 	}
+	return cleanChoiceTexts(f)
+}
+
+// cleanChoiceTexts trims the free texts of the choices (the humanoid races of a
+// favored enemy): at most rules.MaxChoiceTexts, each one line of 1 to
+// rules.MaxChoiceTextLength characters. The rules never read them.
+func cleanChoiceTexts(f *charactersv1.FullSheet) error {
+	if len(f.GetFeatureChoiceText()) > rules.MaxChoiceTexts {
+		return fieldErr("sheet.full.feature_choice_text", "must have at most %d entries", rules.MaxChoiceTexts)
+	}
+	for key, text := range f.GetFeatureChoiceText() {
+		if strings.TrimSpace(text) == "" {
+			delete(f.FeatureChoiceText, key) // not written yet
+			continue
+		}
+		clean, err := names.Clean(text, rules.MaxChoiceTextLength)
+		if err != nil {
+			return &fieldError{field: "sheet.full.feature_choice_text", err: err}
+		}
+		f.FeatureChoiceText[key] = clean
+	}
 	return nil
 }
 
@@ -427,6 +448,7 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		SpellsKnown:         f.GetKnownSpellKeys(),
 		SpellsPrepared:      f.GetPreparedSpellKeys(),
 		FeatureChoices:      f.GetFeatureChoiceKeys(),
+		FeatureChoiceText:   f.GetFeatureChoiceText(),
 	}
 	for _, c := range f.GetClasses() {
 		b.Classes = append(b.Classes, rules.ClassLevel{

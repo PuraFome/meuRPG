@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"log/slog"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -120,6 +122,7 @@ var (
 		rules.LevelUpReasonSkills:         charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SKILLS,
 		rules.LevelUpReasonExpertise:      charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_EXPERTISE,
 		rules.LevelUpReasonSheetIssue:     charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SHEET_ISSUE,
+		rules.LevelUpReasonLateChoice:     charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING,
 	}
 )
 
@@ -654,6 +657,7 @@ func checkLevelUpChoices(c *charactersv1.LevelUpChoices) error {
 		{"choices.known_spell_keys", c.GetKnownSpellKeys(), rules.MaxKnownSpells},
 		{"choices.prepared_spell_keys", c.GetPreparedSpellKeys(), rules.MaxPreparedSpells},
 		{"choices.feature_choice_keys", c.GetFeatureChoiceKeys(), rules.MaxListLength},
+		{"choices.late_choice_keys", c.GetLateChoiceKeys(), rules.MaxListLength},
 		{"choices.skill_proficiency_keys", c.GetSkillProficiencyKeys(), rules.MaxSkillKeys},
 		{"choices.expertise_skill_keys", c.GetExpertiseSkillKeys(), rules.MaxSkillKeys},
 	} {
@@ -669,12 +673,30 @@ func checkLevelUpChoices(c *charactersv1.LevelUpChoices) error {
 		{"choices.known_spell_keys", c.GetKnownSpellKeys()},
 		{"choices.prepared_spell_keys", c.GetPreparedSpellKeys()},
 		{"choices.feature_choice_keys", c.GetFeatureChoiceKeys()},
+		{"choices.late_choice_keys", c.GetLateChoiceKeys()},
 		{"choices.skill_proficiency_keys", c.GetSkillProficiencyKeys()},
 		{"choices.expertise_skill_keys", c.GetExpertiseSkillKeys()},
 	} {
 		if len(slices.Compact(slices.Sorted(slices.Values(l.keys)))) != len(l.keys) {
 			return fieldErr(l.field, "repeats an entry")
 		}
+	}
+	if len(c.GetFeatureChoiceText()) > rules.MaxChoiceTexts {
+		return fieldErr("choices.feature_choice_text", "must have at most %d entries", rules.MaxChoiceTexts)
+	}
+	for key, text := range c.GetFeatureChoiceText() {
+		if strings.TrimSpace(text) == "" {
+			delete(c.FeatureChoiceText, key)
+			continue
+		}
+		clean, err := names.Clean(text, rules.MaxChoiceTextLength)
+		if err != nil {
+			return &fieldError{field: "choices.feature_choice_text", err: err}
+		}
+		c.FeatureChoiceText[key] = clean
+	}
+	if len(c.GetSwapInvocationKey()) > maxChoiceKeyLength {
+		return fieldErr("choices.swap_invocation_key", "must be at most %d characters", maxChoiceKeyLength)
 	}
 	if m := c.GetHitPoints().GetMethod(); charactersv1.LevelUpHitPointsMethod_name[int32(m)] == "" {
 		return fieldErr("choices.hit_points.method", "is not a known method")
@@ -826,6 +848,7 @@ func levelUpChoicesFromProto(classKey string, c *charactersv1.LevelUpChoices, hp
 		Class: classKey, Subclass: c.GetSubclassKey(),
 		Cantrips: c.GetCantripKeys(), Spells: c.GetKnownSpellKeys(), Prepared: c.GetPreparedSpellKeys(),
 		FeatureChoices: c.GetFeatureChoiceKeys(), SkillProficiencies: c.GetSkillProficiencyKeys(), Expertise: c.GetExpertiseSkillKeys(),
+		LateChoices: c.GetLateChoiceKeys(), FeatureChoiceText: c.GetFeatureChoiceText(), SwapInvocation: c.GetSwapInvocationKey(),
 		HitPoints: hp,
 	}
 	for a, v := range abilityMap(c.GetAbilityIncrease()) {
@@ -871,6 +894,7 @@ func applyLevelUp(full *charactersv1.FullSheet, after rules.Build, idx int) *cha
 	out.KnownSpellKeys = slices.Clone(after.SpellsKnown)
 	out.PreparedSpellKeys = slices.Clone(after.SpellsPrepared)
 	out.FeatureChoiceKeys = slices.Clone(after.FeatureChoices)
+	out.FeatureChoiceText = maps.Clone(after.FeatureChoiceText)
 	out.SkillProficiencyKeys = slices.Clone(after.SkillProficiencies)
 	out.ExpertiseSkillKeys = slices.Clone(after.Expertise)
 	return out
@@ -899,10 +923,16 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 	choices := func(in []rules.LevelUpFeatureChoice) []*charactersv1.LevelUpFeatureChoice {
 		var out []*charactersv1.LevelUpFeatureChoice
 		for _, c := range in {
-			out = append(out, &charactersv1.LevelUpFeatureChoice{
+			fc := &charactersv1.LevelUpFeatureChoice{
 				Feature:     &charactersv1.LevelUpNamedKey{Key: c.Feature.Key, NamePt: c.Feature.NamePT},
 				SubclassKey: c.Subclass, Choose: i32(c.Choose), Options: named(c.Options),
-			})
+			}
+			for _, b := range c.Blocked {
+				fc.Blocked = append(fc.Blocked, &charactersv1.LevelUpBlockedOption{
+					Option: &charactersv1.LevelUpNamedKey{Key: b.Key, NamePt: b.NamePT}, ReasonPt: b.ReasonPT,
+				})
+			}
+			out = append(out, fc)
 		}
 		return out
 	}
@@ -932,6 +962,8 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		SpellSlotsBefore: slots(o.SlotsBefore), SpellSlotsAfter: slots(o.SlotsAfter),
 		PactMagicBefore: pact(o.PactBefore), PactMagicAfter: pact(o.PactAfter),
 		NewFeatures: named(o.NewFeatures), MasterAdds: named(o.MasterAdds), AnyClassSpells: i32(o.AnyClassSpells),
+		LateChoices: choiceGroupsToProto(o.LateChoices), NewChoices: choiceGroupsToProto(o.NewChoices),
+		CanSwapInvocation: o.CanSwapInvocation,
 	}
 	out.SpellsKind = spellsKindOf(o.SpellsKind)
 	for _, sub := range o.Subclasses {

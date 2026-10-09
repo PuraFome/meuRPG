@@ -487,6 +487,8 @@ func hillDwarfSheet(level int32) *charactersv1.CharacterSheet {
 		RaceKey:    "race:dwarf",
 		SubraceKey: "subrace:hill-dwarf",
 		Classes:    []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: level}},
+		// The Fighting Style the fighter picks at level 1; a champion's second style is not asked below level 10.
+		FeatureChoiceKeys: []string{"feature:fighter-fighting-style-defense"},
 	}}}
 }
 

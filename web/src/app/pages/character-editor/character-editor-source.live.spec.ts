@@ -112,6 +112,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     contentRevision: 0,
     knownIssues: [],
     contentBaselines: {},
+    featureChoiceText: {},
   };
 }
 

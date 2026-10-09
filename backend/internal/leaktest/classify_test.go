@@ -67,6 +67,7 @@ var notReads = map[string]classified{
 	charactersv1connect.CharacterServiceGiveCreatureProcedure:                 {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceLevelUpCharacterProcedure:             {playerAction, "a player levels their own character"},
 	charactersv1connect.CharacterServiceMarkCharacterDeadProcedure:            {masterWrite, masterOnlyWhy},
+	charactersv1connect.CharacterServiceCompleteCharacterChoicesProcedure:     {playerAction, "a player completes the choices their own locked sheet left open; the answer is their character"},
 	charactersv1connect.CharacterServicePreviewCharacterProcedure:             {playerAction, "a player previews the sheet they are making or editing; the checks are the save's"},
 	charactersv1connect.CharacterServicePreviewLevelUpProcedure:               {playerAction, "a player previews their own level-up"},
 	charactersv1connect.CharacterServiceRejectCharacterProcedure:              {masterWrite, masterOnlyWhy},

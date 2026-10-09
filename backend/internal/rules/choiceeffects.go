@@ -28,6 +28,8 @@ type BreathWeapon struct {
 	// 8 + the Constitution modifier + the proficiency bonus.
 	SaveAbility Ability
 	DC          int
+	// Text is the whole rule in one paragraph, in Portuguese, with these numbers.
+	Text string
 }
 
 // Resistance is a damage type the character resists, and what gives it.
@@ -86,6 +88,7 @@ func (x *deriver) choiceEffects() {
 		}
 		if owned[c.choices.breathTrait] {
 			x.d.BreathWeapon = x.breathWeapon(a)
+			x.d.BreathWeapon.Text = c.breathWeaponText(*x.d)
 		}
 		addResistance(a.DamageType, a.Trait)
 	}

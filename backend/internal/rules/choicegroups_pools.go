@@ -262,7 +262,7 @@ func (cb *choiceBuilder) invocationPrerequisites(key string) []OptionPrerequisit
 		out = append(out, pre)
 	}
 	if p.Spell != "" {
-		pre := OptionPrerequisite{Kind: PrerequisiteSpell, Key: p.Spell, Met: cb.knowsCantrip(p.Spell)}
+		pre := OptionPrerequisite{Kind: PrerequisiteSpell, Key: p.Spell, NamePT: c.namePT(p.Spell), Met: cb.knowsCantrip(p.Spell)}
 		if !pre.Met {
 			pre.ReasonPT = fmt.Sprintf("Exige o truque %s, que você ainda não escolheu.", c.namePT(p.Spell))
 		}
@@ -270,7 +270,7 @@ func (cb *choiceBuilder) invocationPrerequisites(key string) []OptionPrerequisit
 	}
 	if p.Feature != "" {
 		boon := cb.pactBoon()
-		pre := OptionPrerequisite{Kind: PrerequisiteFeature, Key: p.Feature, Met: boon == p.Feature}
+		pre := OptionPrerequisite{Kind: PrerequisiteFeature, Key: p.Feature, NamePT: c.namePT(p.Feature), Met: boon == p.Feature}
 		if !pre.Met {
 			status := "Você ainda não escolheu a Dádiva do Pacto."
 			if boon != "" {

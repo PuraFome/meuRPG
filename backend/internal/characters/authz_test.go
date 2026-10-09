@@ -165,6 +165,26 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := u.api.PreviewCharacter(ctx, connect.NewRequest(&charactersv1.PreviewCharacterRequest{CampaignId: campaign, CharacterId: pendingPC.GetId(), Sheet: pensantusSheet()}))
 			return err
 		}, [6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+		// PreviewChoices follows PreviewCharacter: the same callers and the same sheets,
+		// and, for a character, whoever sees it.
+		{"PreviewChoices", "new player sheet", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewChoices(ctx, connect.NewRequest(&charactersv1.PreviewChoicesRequest{CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: pensantusSheet()}))
+			return err
+		}, [6]connect.Code{connect.CodePermissionDenied, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+		{"PreviewChoices", "character", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewChoices(ctx, connect.NewRequest(&charactersv1.PreviewChoicesRequest{CampaignId: campaign, CharacterId: pc.GetId(), Sheet: pensantusSheet()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"PreviewChoices", "pending character", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.PreviewChoices(ctx, connect.NewRequest(&charactersv1.PreviewChoicesRequest{CampaignId: campaign, CharacterId: pendingPC.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, allowed}},
+		// Only the master reads who has choices open; a player and a stranger are told
+		// the campaign does not exist.
+		{"GetCampaignOpenChoices", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.GetCampaignOpenChoices(ctx, connect.NewRequest(&charactersv1.GetCampaignOpenChoicesRequest{CampaignId: campaign}))
+			return err
+		}, [6]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{
 			"UpdateCharacter", "draft", nil, update(pc.GetId()),
 			[6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound},
@@ -429,6 +449,16 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := u.api.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: pendingPC.GetId()}))
 			return err
 		}, [6]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
+		// The wizard of the table has nothing open: the callers that may complete choices
+		// reach the rule that says so, the others are told the character is not theirs.
+		{"CompleteCharacterChoices", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.CompleteCharacterChoices(ctx, connect.NewRequest(&charactersv1.CompleteCharacterChoicesRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), ExpectedRevision: 1,
+				Picks: []*charactersv1.ChoicePick{{ChoiceKey: "feature:fighter-fighting-style", OptionKeys: []string{"feature:fighter-fighting-style-defense"}}},
+			}))
+			return err
+		}, [6]connect.Code{connect.CodeAborted, connect.CodeAborted, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
 		// Last, because it changes the owner's character for good.
 		{"MarkCharacterDead", "", nil, func(ctx context.Context, u *user) error {

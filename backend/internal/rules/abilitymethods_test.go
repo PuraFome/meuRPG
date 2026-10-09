@@ -133,10 +133,10 @@ func TestFreeAbilityPoints(t *testing.T) {
 		want  int
 	}{
 		{"a gnome has none", "race:gnome", "class:wizard", 1, 0},
-		{"the half-elf places two points", "race:half-elf", "class:wizard", 1, 2},
+		{"the half-elf's two points are picks, not manual points", "race:half-elf", "class:wizard", 1, 0},
 		{"a fighter's first ASI is level 4", "race:human", "class:fighter", 3, 0},
 		{"a level 4 wizard has one ASI", "race:gnome", "class:wizard", 4, 2},
-		{"a half-elf fighter of level 6 has two ASIs more", "race:half-elf", "class:fighter", 6, 2 + 4},
+		{"a half-elf fighter of level 6 has the ASIs of the class only", "race:half-elf", "class:fighter", 6, 4},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

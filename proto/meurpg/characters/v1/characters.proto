@@ -481,6 +481,63 @@ service CharacterService {
     option idempotency_level = IDEMPOTENT;
   }
 
+  // PreviewChoices answers which choices a sheet asks the player to make (a Fighting
+  // Style, a Draconic Ancestry, the warlock's Pact Boon and invocations, a favored
+  // enemy, a terrain, the half-elf's two +1, a bonus cantrip...), how many picks each
+  // takes, which are made, and what each option asks for and gives. It writes nothing.
+  //
+  // The browser never decides a rule: this is where the "Escolhas" step of the
+  // character editor, the locked sheet's "Completar escolhas pendentes" and the
+  // level-up's catch-up read the options, the prerequisites (a warlock level, a
+  // cantrip, a Pact Boon), the numbers a pick gives (the breath weapon's DC) and which
+  // choice is still open. It also says where the spell pickers get the spells that
+  // are not on the class list (the patron's, the Magical Secrets).
+  //
+  // Who may call it, the sheet it takes and the errors are those of PreviewCharacter;
+  // with a character_id and no sheet, the character's stored sheet is the one read.
+  // A basic sheet has no choices (`invalid_argument`).
+  rpc PreviewChoices(PreviewChoicesRequest) returns (PreviewChoicesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
+  // locked for the player (RN-01) as well as on a draft: it writes only the picks of
+  // the choices that are open, and nothing else changes. What is chosen never becomes
+  // a field again: a choice already made is `CHOICE_ALREADY_MADE`, and the Pact Boon
+  // is never swapped. A pick that changes numbers (a half-elf's +1 in Constitution
+  // raises the hit points) is recomputed by the sheet, and the master gets the line
+  // "<name> completou <choice>" in the log.
+  //
+  // For the owning player and for the master. The master may complete the choices of
+  // any character; a player only their own. Not for a dead character (the master edits
+  // its sheet with UpdateCharacter).
+  //
+  // Errors:
+  //   - `not_found`: the character is not in this campaign or the caller may not see it
+  //     (the same for a player who does not own it and for a stranger).
+  //   - `aborted`: the revision is not the character's now.
+  //   - `invalid_argument`: more than 50 picks, an empty choice key, an option key
+  //     that is not a content key, or a text over 40 characters.
+  //   - `failed_precondition`: with a ChoiceRefusal detail: CHOICE_NOT_OPEN for a
+  //     pick that names a choice the sheet does not have, CHOICE_ALREADY_MADE for one
+  //     with nothing left to pick, CHOICE_NOT_OFFERED for an option the choice does not
+  //     list or more picks than it has left, PREREQUISITE_UNMET for an option that
+  //     asks for what the sheet lacks, CHOICES_MISSING for a text a pick needs and
+  //     lacks (the humanoid favored enemy's two races); or with a CharacterBlocked
+  //     detail: CHARACTER_DEAD.
+  rpc CompleteCharacterChoices(CompleteCharacterChoicesRequest) returns (CompleteCharacterChoicesResponse);
+
+  // GetCampaignOpenChoices lists the player characters of the campaign that have
+  // choices still open, with a label for each, for the master's warning before a
+  // session starts (the sheets lock then). Only the master's.
+  //
+  // Errors:
+  //   - `not_found`: the caller is not the campaign's master, whether the campaign
+  //     exists or not: a player and a stranger learn nothing.
+  rpc GetCampaignOpenChoices(GetCampaignOpenChoicesRequest) returns (GetCampaignOpenChoicesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
   // RollLevelUpHitPoints rolls the hit die of the class's next level, on the
   // server, and keeps the result for this character, class and level:
   // calling it again returns the same roll (it is not a reroll), so the
@@ -838,6 +895,11 @@ message CharacterSummary {
   // it (MR-031): the app draws "Pôr em cena" with it, with no read of each
   // sheet.
   string portrait_url = 10;
+  // How many selections of the character's choices are still open (a Fighting Style,
+  // an invocation...). Set only for the master and the owning player, never 0 for
+  // anyone else: for another player it is unset, because how many choices a
+  // character lacks is not their information (RN-10).
+  optional int32 pending_choice_count = 11;
 }
 
 // CharacterBlockedReason says why a character cannot be changed now.
@@ -1024,6 +1086,13 @@ message FullSheet {
   // invocation, a metamagic. An option applies only while the character
   // has the feature or trait it belongs to; otherwise it shows as an issue.
   // At most 100.
+  //
+  // A pick that is not a feature or a trait is written "<choice key>=<value key>":
+  // the favored enemy's type and language ("feature:favored-enemy-1-type=creature-type:giant"),
+  // a terrain ("...=terrain:forest"), the half-elf's abilities
+  // ("race:half-elf#abilities=ability:dex") and the spells a feature grants
+  // ("feature:pact-of-the-tome#cantrips=spell:guidance"). Which choice asks for it,
+  // and the exact string to store, come from PreviewChoices (ChoiceOption.stored_key).
   repeated string feature_choice_keys = 24;
   // The challenge rating ("ND") of an enemy or a boss: "0", "1/8", "1/4",
   // "1/2" or "1" to "30" (the SRD's list, in ContentService.ListContent), or
@@ -1068,6 +1137,10 @@ message FullSheet {
   // fit it at. Set by the server and ignored from the client; an entry not here
   // uses `content_revision`.
   map<string, int32> content_baselines = 31;
+  // The free text some choices take: the two humanoid races of a favored enemy, by
+  // "<choice key>#<n>" ("feature:favored-enemy-1-type#1"). At most 12 entries, each 1
+  // to 40 characters, one line. The rules never read the text.
+  map<string, string> feature_choice_text = 32;
 }
 
 // AbilityOrigin is the way a player made a sheet's base scores, as the server
@@ -1820,6 +1893,18 @@ message LevelUpOptions {
   // HIT_POINTS_AVERAGE_ONLY, and ROLLED_IN_APP and ROLLED_PHYSICAL answer
   // HIT_POINTS_RULE). Independent of dice_rule, which says where a roll happens.
   LevelUpHitPointsRule hit_points_rule = 35;
+  // The choices an earlier level left open (a Fighting Style the sheet never picked):
+  // the guided level-up asks for them first, and LevelUpCharacter refuses the level
+  // without them (LATE_CHOICE_MISSING). Their picks go in
+  // LevelUpChoices.late_choice_keys. Only the choices with selections left are here.
+  repeated ChoiceGroup late_choices = 36;
+  // The new level's choices that are not options of a feature: a favored enemy and its
+  // language, a terrain, a Mystic Arcanum, a Spell Mastery, a Signature Spell. Their
+  // picks go in LevelUpChoices.feature_choice_keys (and feature_choice_text).
+  repeated ChoiceGroup new_choices = 37;
+  // True for a warlock that knows an invocation: at each level of the class one may be
+  // replaced by another (LevelUpChoices.swap_invocation_key).
+  bool can_swap_invocation = 38;
 }
 
 // LevelUpHitPointsRule is which methods of deciding a level's hit points the
@@ -1886,8 +1971,18 @@ message LevelUpFeatureChoice {
   string subclass_key = 2;
   // How many options to choose.
   int32 choose = 3;
-  // The options the character does not have yet, as content keys.
+  // The options the character does not have yet and can take now, as content keys.
   repeated LevelUpNamedKey options = 4;
+  // The options it cannot take now (an invocation whose prerequisite is unmet), with
+  // why. They stay on the screen, blocked.
+  repeated LevelUpBlockedOption blocked = 5;
+}
+
+// LevelUpBlockedOption is an option of a feature that the character cannot take now.
+message LevelUpBlockedOption {
+  LevelUpNamedKey option = 1;
+  // What is missing, in Portuguese, such as "Exige o nível 9 de Bruxo. Você está no 5.".
+  string reason_pt = 2;
 }
 
 // LevelUpHitPointsMethod is how the hit points of the new level are decided.
@@ -1935,6 +2030,15 @@ message LevelUpChoices {
   repeated string expertise_skill_keys = 9;
   // The hit points of the level. Required.
   LevelUpHitPoints hit_points = 10;
+  // The picks of the choices an earlier level left open (LevelUpOptions.late_choices),
+  // written like feature_choice_keys. At most 100.
+  repeated string late_choice_keys = 11;
+  // The free text of the picks (the humanoid races of a favored enemy), as
+  // FullSheet.feature_choice_text. At most 12 entries.
+  map<string, string> feature_choice_text = 12;
+  // An Eldritch Invocation the warlock gives up for another one in feature_choice_keys:
+  // at most one at each level (SRD 5.1, Warlock). Never the Pact Boon.
+  string swap_invocation_key = 13;
 }
 
 // LevelUpRefusalReason says why the rules refuse a set of choices, so the app
@@ -2002,6 +2106,9 @@ enum LevelUpRefusalReason {
   // sheet field. The master is not refused. PreviewLevelUp answers this and
   // ARCHIVED_CHOICE with no `after`.
   LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE = 21;
+  // A choice an earlier level left open is still open (LevelUpOptions.late_choices).
+  // `field` is "full.feature_choice_keys".
+  LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING = 22;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a
@@ -2384,4 +2491,282 @@ message ReplacedCreature {
   // The SRD creature kind, "monster:dire-wolf", and its Portuguese name.
   string monster_key = 3;
   string monster_name_pt = 4;
+}
+
+// ChoiceOrigin says where a group of choices comes from.
+enum ChoiceOrigin {
+  CHOICE_ORIGIN_UNSPECIFIED = 0;
+  // The race, or the subrace.
+  CHOICE_ORIGIN_RACE = 1;
+  // A class.
+  CHOICE_ORIGIN_CLASS = 2;
+  // A class's subclass.
+  CHOICE_ORIGIN_SUBCLASS = 3;
+}
+
+// ChoiceKind says how a choice is made, so the app draws the right control.
+enum ChoiceKind {
+  CHOICE_KIND_UNSPECIFIED = 0;
+  // Options of a feature or trait, or a fixed list (a terrain): a group of radio
+  // buttons for one pick, of check boxes for several.
+  CHOICE_KIND_OPTIONS = 1;
+  // Abilities (the half-elf's +1 to two).
+  CHOICE_KIND_ABILITIES = 2;
+  // The type of a favored enemy; the option with needs_text takes the two humanoid
+  // races as text.
+  CHOICE_KIND_ENEMY = 3;
+  // A language, or none.
+  CHOICE_KIND_LANGUAGE = 4;
+  // Spells (a bonus cantrip, the Pact of the Tome's cantrips, an arcanum).
+  CHOICE_KIND_SPELLS = 5;
+}
+
+// ChoicePrerequisiteKind is what an option asks for.
+enum ChoicePrerequisiteKind {
+  CHOICE_PREREQUISITE_KIND_UNSPECIFIED = 0;
+  // A level of the class.
+  CHOICE_PREREQUISITE_KIND_LEVEL = 1;
+  // A cantrip the sheet knows.
+  CHOICE_PREREQUISITE_KIND_SPELL = 2;
+  // A Pact Boon.
+  CHOICE_PREREQUISITE_KIND_FEATURE = 3;
+  // Not a prerequisite of the option: another choice of the sheet already took it
+  // (a style, a terrain or an enemy is taken once).
+  CHOICE_PREREQUISITE_KIND_TAKEN = 4;
+}
+
+// ChoicePrerequisite is one thing an option asks for.
+message ChoicePrerequisite {
+  ChoicePrerequisiteKind kind = 1;
+  // The spell or feature key required; empty for a level.
+  string key = 2;
+  // The class level required; 0 for the others.
+  int32 level = 3;
+  bool met = 4;
+  // What is missing, in Portuguese; empty when met.
+  string reason_pt = 5;
+  // The Portuguese name of the spell or the feature required ("Rajada Mística");
+  // empty for a level.
+  string name_pt = 6;
+}
+
+// ChoiceCircleSpell is a spell a Land druid's terrain gives, at a druid level.
+message ChoiceCircleSpell {
+  int32 level = 1;
+  string spell_key = 2;
+  string name_pt = 3;
+  // True when the druid's level is at least `level`.
+  bool reached = 4;
+}
+
+// ChoiceOption is one option of a choice.
+message ChoiceOption {
+  // The option's own key ("feature:fighter-fighting-style-defense", "terrain:forest",
+  // "ability:dex", "spell:guidance", "language:none").
+  string key = 1;
+  // What the sheet stores for it in feature_choice_keys: the key itself for an option
+  // of a feature or trait, "<choice key>=<key>" for the others.
+  string stored_key = 2;
+  string name_pt = 3;
+  // The rule in one line, in Portuguese; empty when the name says it all.
+  string summary_pt = 4;
+  repeated ChoicePrerequisite prerequisites = 5;
+  // Why the option cannot be taken now, in one sentence; empty when it can. The option
+  // stays in the list, blocked, with this reason.
+  string reason_pt = 6;
+  // The spells a Land druid's terrain gives.
+  repeated ChoiceCircleSpell circle_spells = 7;
+  // For a spell: its circle (0 for a cantrip), school and the classes whose list has
+  // it, in Portuguese.
+  int32 spell_level = 8;
+  string school_pt = 9;
+  repeated string classes_pt = 10;
+  // True for the option that takes free text (the two humanoid races).
+  bool needs_text = 11;
+}
+
+// Choice is one thing the sheet asks the player to pick.
+message Choice {
+  // Identifies the choice on the sheet: the feature or trait it answers, with "#<part>"
+  // when a feature asks for several things. CompleteCharacterChoices names it.
+  string key = 1;
+  // The feature, trait or race it belongs to.
+  string feature_key = 2;
+  ChoiceKind kind = 3;
+  // The title ("Estilo de Luta"), the part of a feature that asks for several things
+  // ("Tipo de inimigo", "Idioma que eles falem"), and how a sentence about what is
+  // missing calls it ("Estilo de Luta (Guerreiro, nível 1)").
+  string title_pt = 4;
+  string part_pt = 5;
+  string label_pt = 6;
+  // A line of help under the title.
+  string hint_pt = 7;
+  // The class level the choice came at; 0 for a race's.
+  int32 level = 8;
+  // How many selections it takes.
+  int32 picks = 9;
+  // The selections made, as option keys, in the order of the options.
+  repeated string picked = 10;
+  // The free texts of the humanoid favored enemy; empty for every other choice.
+  repeated string texts = 11;
+  repeated ChoiceOption options = 12;
+  // What the picks give, with the numbers of this sheet (the breath weapon with its
+  // DC, the abilities' new scores); empty while nothing is picked.
+  string result_pt = 13;
+  // The picked options whose prerequisites are not met, and the picks past what the
+  // choice takes or that it does not offer.
+  repeated string unmet = 14;
+  repeated string overflow = 15;
+  // How many selections are still to make.
+  int32 missing = 16;
+}
+
+// ChoiceGroup is the choices one source asks at one level.
+message ChoiceGroup {
+  ChoiceOrigin origin = 1;
+  // The race, subrace, class or subclass key and its Portuguese name.
+  string source_key = 2;
+  string source_name_pt = 3;
+  // The class level of the group; 0 for a race.
+  int32 level = 4;
+  repeated Choice choices = 5;
+  // The class's Portuguese name for a class or a subclass group ("Patrulheiro" for
+  // the Hunter); empty for a race.
+  string class_name_pt = 6;
+}
+
+// ChoiceSpellSource is where a casting class's spell picker finds the spells that are
+// not on the class list.
+message ChoiceSpellSource {
+  string class_key = 1;
+  // The spells the patron adds to the class list (The Fiend's Expanded Spell List),
+  // with the class level they come at; the picker marks them "Do patrono".
+  repeated ChoicePatronSpell patron_spells = 2;
+  // How many known spells may come from any class's list (the Bard's Magical
+  // Secrets, 2 each at levels 10, 14 and 18; the College of Lore's Additional Magical
+  // Secrets, 2 at level 6, which are beyond the number of spells known).
+  int32 secrets = 3;
+  // Of those, how many are beyond the number of spells known.
+  int32 secrets_beyond_known = 4;
+  // The highest circle of a secret: the highest the class casts.
+  int32 secrets_max_spell_level = 5;
+}
+
+// ChoicePatronSpell is a spell the patron adds to the class list.
+message ChoicePatronSpell {
+  string spell_key = 1;
+  int32 class_level = 2;
+}
+
+// PreviewChoicesRequest is the sheet whose choices to read.
+message PreviewChoicesRequest {
+  string campaign_id = 1;
+  // The character being edited or completed. Empty when creating.
+  string character_id = 2;
+  // Required when creating; ignored with a character_id.
+  CharacterKind kind = 3;
+  // The draft the editor builds. With a character_id it may be left out: the stored
+  // sheet is read.
+  CharacterSheet sheet = 4;
+}
+
+// PreviewChoicesResponse is the choices the sheet asks.
+message PreviewChoicesResponse {
+  // The groups, the race first, then each class from its lowest level, a class before its
+  // subclass at the same level. Empty when the sheet asks nothing (a human rogue 1): the
+  // editor has no step for it.
+  repeated ChoiceGroup groups = 1;
+  // "Escolhas feitas: done de total": every selection counts (a favored enemy's type
+  // and language are two, each invocation one).
+  int32 done = 2;
+  int32 total = 3;
+  // The picks the sheet stores that no choice of it offers.
+  repeated string not_offered = 4;
+  // For each casting class, the spells outside its list.
+  repeated ChoiceSpellSource spell_sources = 5;
+}
+
+// ChoicePick is the player's answer to one choice.
+message ChoicePick {
+  // Choice.key.
+  string choice_key = 1;
+  // The option keys picked (ChoiceOption.key).
+  repeated string option_keys = 2;
+  // The free texts, in order, for the option that takes them.
+  repeated string texts = 3;
+}
+
+// CompleteCharacterChoicesRequest answers the open choices of a character.
+message CompleteCharacterChoicesRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The character's revision as the app read it. A different one is `aborted`.
+  int32 expected_revision = 3;
+  // The picks, one for each open choice the player answers. At most 50.
+  repeated ChoicePick picks = 4;
+}
+
+// CompleteCharacterChoicesResponse returns the character with the choices made.
+message CompleteCharacterChoicesResponse {
+  // The character with its new revision and derived numbers.
+  Character character = 1;
+}
+
+// ChoiceRefusalReason says why the rules refuse a pick, so the app shows its own copy.
+enum ChoiceRefusalReason {
+  CHOICE_REFUSAL_REASON_UNSPECIFIED = 0;
+  // CreateCharacter or UpdateCharacter of a player's character with a choice still
+  // open. The master's NPCs and the master's edits of a locked sheet are not refused.
+  CHOICE_REFUSAL_REASON_CHOICES_MISSING = 1;
+  // An option whose prerequisite is not met (a level, a cantrip, a Pact Boon).
+  CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET = 2;
+  // A pick that no choice of the sheet offers, or past the number a choice takes.
+  CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED = 3;
+  // CompleteCharacterChoices on a choice that is already made.
+  CHOICE_REFUSAL_REASON_CHOICE_ALREADY_MADE = 4;
+  // CompleteCharacterChoices on a choice the sheet does not have open.
+  CHOICE_REFUSAL_REASON_CHOICE_NOT_OPEN = 5;
+}
+
+// ChoiceIssue is one pick the rules refuse.
+message ChoiceIssue {
+  // The sheet field ("sheet.full.feature_choice_keys").
+  string field = 1;
+  // Choice.key, when the issue is about a choice.
+  string choice_key = 2;
+  // The option key it is about, when it is about one.
+  string option_key = 3;
+  // How many selections were made and how many the choice takes.
+  int32 picked = 4;
+  int32 required = 5;
+  // How the choice is called in a sentence ("Estilo de Luta (Guerreiro, nível 1)").
+  string label_pt = 6;
+}
+
+// ChoiceRefusal is the error detail of `failed_precondition` for a pick the rules
+// refuse: CreateCharacter, UpdateCharacter and CompleteCharacterChoices.
+message ChoiceRefusal {
+  ChoiceRefusalReason reason = 1;
+  repeated ChoiceIssue issues = 2;
+}
+
+// GetCampaignOpenChoicesRequest names the campaign.
+message GetCampaignOpenChoicesRequest {
+  string campaign_id = 1;
+}
+
+// GetCampaignOpenChoicesResponse lists the characters with choices still open.
+message GetCampaignOpenChoicesResponse {
+  repeated OpenChoicesCharacter characters = 1;
+}
+
+// OpenChoicesCharacter is a living player character with choices still open.
+message OpenChoicesCharacter {
+  string character_id = 1;
+  string name = 2;
+  // How many selections are open.
+  int32 pending_count = 3;
+  // What is open, in Portuguese, one label for each choice ("Estilo de Luta
+  // (Patrulheiro, nível 2)").
+  repeated string labels_pt = 4;
 }

@@ -145,15 +145,13 @@ func CheckRolled(scores []int, sets [][]int) error {
 
 // FreeAbilityPoints is how many positive manual ability points (the
 // Build.ExtraAbilityBonuses that are above 0) a build may place without the
-// table's ways of making scores being worked around (RN-24): the points the race
-// lets the player choose (the half-elf's +1 to two abilities, or a table race's
-// choice) plus 2 for each Ability Score Improvement the classes reached, which
-// the guided level-up and the editor also write there. Any other race gives 0.
+// table's ways of making scores being worked around (RN-24): 2 for each Ability
+// Score Improvement the classes reached, which the guided level-up and the editor
+// also write there. The points a race lets the player choose (the half-elf's +1 to
+// two abilities) are not manual: they are picks of the choice engine
+// (choicegroups.go) and add to the race's bonus.
 func (c *Content) FreeAbilityPoints(b Build) int {
 	n := 0
-	if r := c.c.races[b.Race]; r != nil && r.AbilityBonusChoices != nil {
-		n += r.AbilityBonusChoices.Choose
-	}
 	for _, cl := range b.Classes {
 		rows := c.c.classLevels[cl.Class]
 		for level := 1; level <= cl.Level && level <= len(rows); level++ {

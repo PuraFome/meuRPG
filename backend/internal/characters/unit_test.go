@@ -137,6 +137,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["DismissCreature"] = c.DismissCreature(ctx, connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: id, CreatureId: id}))
 	_, calls["AdjustCreatureHitPoints"] = c.AdjustCreatureHitPoints(ctx, connect.NewRequest(&charactersv1.AdjustCreatureHitPointsRequest{CampaignId: id, CreatureId: id}))
 	_, calls["GetSummonOptions"] = c.GetSummonOptions(ctx, connect.NewRequest(&charactersv1.GetSummonOptionsRequest{CampaignId: id, CharacterId: id}))
+	_, calls["PreviewChoices"] = c.PreviewChoices(ctx, connect.NewRequest(&charactersv1.PreviewChoicesRequest{CampaignId: id}))
+	_, calls["CompleteCharacterChoices"] = c.CompleteCharacterChoices(ctx, connect.NewRequest(&charactersv1.CompleteCharacterChoicesRequest{CampaignId: id, CharacterId: id}))
+	_, calls["GetCampaignOpenChoices"] = c.GetCampaignOpenChoices(ctx, connect.NewRequest(&charactersv1.GetCampaignOpenChoicesRequest{CampaignId: id}))
 	_, calls["ListWildShapeForms"] = c.ListWildShapeForms(ctx, connect.NewRequest(&charactersv1.ListWildShapeFormsRequest{CampaignId: id, CharacterId: id}))
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
 	_, calls["GetSpellDetails"] = content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: id, SpellKey: "spell:fire-bolt"}))
@@ -193,8 +196,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 22 {
-		t.Errorf("found %d reads, want 22 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
+	if len(reads) != 24 {
+		t.Errorf("found %d reads, want 24 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewChoices, GetCampaignOpenChoices, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

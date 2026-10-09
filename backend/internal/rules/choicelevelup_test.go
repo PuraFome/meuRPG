@@ -246,3 +246,27 @@ func TestTheLoreBardLearnsTwoMoreSecrets(t *testing.T) {
 	ch.Spells = pickSpells(c, "class:bard", 1, 3, b.SpellsKnown, 3, true)[len(b.SpellsKnown):]
 	wantRefusal(t, CheckLevelUp(b, mustApply(t, c, b, ch), c), LevelUpReasonSpells, "full.known_spell_keys")
 }
+
+// TestTheFiendLearnsItsPatronSpellsAtLevelUp: the patron's expanded list (SRD 5.1, The
+// Fiend) is part of the warlock's list, so a new known spell from it is not "off the
+// list" and uses none of the spells of another class.
+func TestTheFiendLearnsItsPatronSpellsAtLevelUp(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := sweepBase(t, c, "class:warlock", "subclass:fiend")
+	ch := satisfy(t, c, b, "class:warlock", "subclass:fiend")
+	if len(ch.Spells) != 1 {
+		t.Fatalf("level 2 gives %v, want one new spell", ch.Spells)
+	}
+	ch.Spells = []string{"spell:burning-hands"}
+	after := mustApply(t, c, b, ch)
+	if err := CheckLevelUp(b, after, c); err != nil {
+		t.Fatalf("a patron spell at level up: %v", err)
+	}
+	if d := Derive(after, c); len(d.Issues) != 0 {
+		t.Errorf("issues: %v", d.Issues)
+	}
+	// A spell of another class's list, with no patron behind it, is still refused.
+	ch.Spells = []string{"spell:cure-wounds"}
+	wantRefusal(t, CheckLevelUp(b, mustApply(t, c, b, ch), c), LevelUpReasonSpells, "full.known_spell_keys")
+}

@@ -55,6 +55,8 @@ type OptionPrerequisite struct {
 	Key   string
 	Level int
 	Met   bool
+	// NamePT names the spell or the feature required, empty for a level.
+	NamePT string
 	// ReasonPT says what is missing, in Portuguese; empty when Met.
 	ReasonPT string
 }
@@ -179,7 +181,9 @@ const humanoidRaceSlots = 2
 type ChoiceGroup struct {
 	Origin ChoiceOrigin
 	// SourceKey is the race, subrace, class or subclass key; SourceNamePT its name.
-	SourceKey, SourceNamePT string
+	// ClassNamePT is the class's name for a class or a subclass ("Patrulheiro" for
+	// the Hunter), empty for a race.
+	SourceKey, SourceNamePT, ClassNamePT string
 	// Level is the class level of the group (0 for a race).
 	Level   int
 	Choices []Choice
@@ -371,6 +375,9 @@ func (cb *choiceBuilder) group(origin ChoiceOrigin, source string, level, classI
 		return g
 	}
 	g := &groupBuild{ChoiceGroup: ChoiceGroup{Origin: origin, SourceKey: source, SourceNamePT: cb.c.namePT(source), Level: level}}
+	if classIndex > 0 && classIndex <= len(cb.x.classes) {
+		g.ClassNamePT = cb.c.namePT(cb.x.classes[classIndex-1].key)
+	}
 	g.sort = [3]int{classIndex, level, int(origin)}
 	cb.groups[key] = g
 	return g

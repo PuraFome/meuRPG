@@ -1126,12 +1126,19 @@ func checkSpells(before, after Build, offer LevelUpOffer, list string, c *conten
 	if removed || (len(newPrepared) > 0 && !offer.Prepares) {
 		return nil, refuse("full.prepared_spell_keys", LevelUpReasonPrepared, "prepared spells are only added by a class that prepares, none removed")
 	}
+	// The patron's expanded list (The Fiend) is part of the warlock's list for the sheet.
+	patron := ""
+	for _, cl := range after.Classes {
+		if sub := c.subclasses[cl.Subclass]; cl.Class == offer.Class && sub != nil && sub.ExpandedList {
+			patron = sub.Key
+		}
+	}
 	offList := map[string]bool{}
 	for i, key := range after.SpellsKnown {
 		if !slices.Contains(newKnown, key) {
 			continue
 		}
-		if s := c.spells[key]; s != nil && !c.onList(s, list) {
+		if s := c.spells[key]; s != nil && !c.onList(s, list) && !(patron != "" && slices.Contains(s.Subclasses, patron)) {
 			offList[fmt.Sprintf("full.known_spell_keys[%d]", i)] = true
 		}
 	}

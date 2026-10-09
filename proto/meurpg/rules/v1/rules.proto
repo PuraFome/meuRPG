@@ -586,6 +586,57 @@ message DerivedSheet {
   // beast form (Wild Shape). The character editor adds it to the per-level
   // rows it shows, so the box never copies effect maths.
   int32 hit_points_from_effects = 43;
+  // The dragonborn's Breath Weapon once the Draconic Ancestry is picked, with the
+  // numbers of this sheet. Unset for every other character, and for a dragonborn
+  // that has not picked the ancestry.
+  BreathWeapon breath_weapon = 44;
+  // The damage types the character resists because of its race (the dragonborn's
+  // ancestry, the tiefling's fire, the dwarf's poison). Applying the resistance to
+  // damage is the combat's; the sheet only shows it.
+  repeated Resistance resistances = 45;
+}
+
+// BreathWeapon is the dragonborn's Breath Weapon (SRD 5.1, Dragonborn): the dragon
+// ancestry decides the damage type, the area and the saving throw.
+message BreathWeapon {
+  // The Draconic Ancestry option picked ("trait:draconic-ancestry-red").
+  string ancestry_key = 1;
+  // The damage type key ("damage-type:fire") and its Portuguese name ("fogo").
+  string damage_type = 2;
+  string damage_type_name_pt = 3;
+  // The damage at the character's level: "2d6", "3d6" from level 6, "4d6" from 11
+  // and "5d6" from 16.
+  string dice = 4;
+  BreathShape shape = 5;
+  // The length of the line, or the size of the cone, in feet; and the width of a line
+  // (0 for a cone).
+  int32 size_ft = 6;
+  int32 width_ft = 7;
+  // The ability of the saving throw each creature in the area makes, and its
+  // difficulty: 8 + the Constitution modifier + the proficiency bonus. A creature
+  // takes half the damage on a success. One use per short or long rest.
+  Ability save_ability = 8;
+  int32 dc = 9;
+  // The whole rule in one paragraph, in Portuguese, with these numbers.
+  string text_pt = 10;
+}
+
+// BreathShape is the area of a breath weapon.
+enum BreathShape {
+  BREATH_SHAPE_UNSPECIFIED = 0;
+  // A line: size_ft long and width_ft wide.
+  BREATH_SHAPE_LINE = 1;
+  // A cone: size_ft long.
+  BREATH_SHAPE_CONE = 2;
+}
+
+// Resistance is a damage type the character resists, and what gives it.
+message Resistance {
+  // The damage type key ("damage-type:poison") and its Portuguese name.
+  string damage_type = 1;
+  string damage_type_name_pt = 2;
+  // The trait that gives it ("trait:dwarven-resilience").
+  string source_key = 3;
 }
 
 // ChangedContent is a table entry a sheet uses that changed after the sheet was
@@ -913,6 +964,10 @@ message Feature {
   string source_pt = 4;
   // The SRD's English text.
   string description = 5;
+  // The rule in one line, in Portuguese and in our own words, for an option the
+  // player picked (a fighting style, an invocation, a pact boon); empty for the
+  // other features.
+  string summary_pt = 6;
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese
