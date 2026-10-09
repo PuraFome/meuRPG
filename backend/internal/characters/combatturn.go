@@ -108,6 +108,8 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 	// Its saving throws are the stat block's (the ability modifier plus the
 	// proficiency the creature lists); a basic sheet with no creature has none.
 	d.SavingThrows = creature.SavingThrows
+	// The traits of the stat block (Pack Tactics) are the NPC's too, and so is its type.
+	d.Features = withCreatureType(content, b.GetMonsterKey(), creature.Features)
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))
 		dice := rules.DiceFormula{Count: int(a.GetDamageDiceCount()), Sides: int(a.GetDamageDiceSides()), Bonus: int(a.GetDamageBonus())}
@@ -160,7 +162,7 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if err != nil {
 		return link.Sheet{}, err
 	}
-	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses), Metamagic: rules.MetamagicKnown(d.Features)}
+	out := link.Sheet{ArmorClass: d.ArmorClass, Senses: senseRanges(d.Senses), Metamagic: rules.MetamagicKnown(d.Features), Traits: traitsOf(content, d)}
 	for _, a := range d.Abilities {
 		if a.Ability == rules.CHA {
 			out.ChaMod = a.Modifier
@@ -181,6 +183,7 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
 			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
 			Beams: a.Beams, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts, AbilityMod: a.AbilityMod,
+			Ability: string(a.Ability), Finesse: a.Finesse, TwoHanded: a.TwoHanded, Weapon: a.Kind == "weapon",
 		})
 	}
 	for _, a := range d.StandardActions {

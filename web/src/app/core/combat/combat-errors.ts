@@ -212,6 +212,24 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Um combate sem mapa não leva um mapa. Escolha "Com mapa" ou tire o mapa.';
     case EncounterBlockedReason.NO_OPPORTUNITY:
       return 'Esse ataque de oportunidade não pode ser oferecido agora: quem ia reagir não pode atacar, está do mesmo lado, ou a oferta já espera.';
+    case EncounterBlockedReason.RAGING_CANNOT_CAST:
+      return 'Você está em fúria: não pode lançar magias.';
+    case EncounterBlockedReason.RAGE_END_PENDING:
+      return 'A pergunta da fúria espera uma resposta antes de passar o turno.';
+    case EncounterBlockedReason.RAGE_END_NOT_PENDING:
+      return 'Essa pergunta da fúria já foi respondida. A tela foi atualizada.';
+    case EncounterBlockedReason.NOT_RAGING:
+      return 'Esse personagem não está em fúria. A tela foi atualizada.';
+    case EncounterBlockedReason.ROLL_MODE_NEEDS_APPROVAL:
+      return 'Esse modo é melhor do que o sugerido: peça ao mestre.';
+    case EncounterBlockedReason.ROLL_MODE_REQUEST_PENDING:
+      return 'O mestre ainda não respondeu ao seu pedido.';
+    case EncounterBlockedReason.ROLL_MODE_REQUEST_CLOSED:
+      return 'Esse pedido ao mestre já foi respondido, cancelado ou usado. A tela foi atualizada.';
+    case EncounterBlockedReason.EXTRA_NOT_AVAILABLE:
+      return 'Um dos extras marcados não vale mais. A tela foi atualizada.';
+    case EncounterBlockedReason.DAMAGE_PART_NOT_REMOVABLE:
+      return 'Só um extra pode ser tirado do dano, e uma vez só.';
     default:
       return 'O combate não está num estado que aceite isso. A tela foi atualizada.';
   }

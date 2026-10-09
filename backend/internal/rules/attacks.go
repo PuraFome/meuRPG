@@ -83,6 +83,8 @@ func (x *deriver) attacks() {
 			DamageType: w.DamageType, DamageTypeNamePT: c.namePT(w.DamageType),
 			Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[ab],
 			Light:        kind == "melee" && slices.Contains(w.Properties, "weapon-property:light"),
+			Finesse:      slices.Contains(w.Properties, "weapon-property:finesse"),
+			TwoHanded:    slices.Contains(w.Properties, "weapon-property:two-handed"),
 			DamageNotePT: note,
 		}
 		if dice != "" {

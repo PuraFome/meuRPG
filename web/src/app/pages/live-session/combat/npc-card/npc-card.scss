@@ -244,6 +244,11 @@
   color: var(--mr-ink-muted);
 }
 
+.card__states,
+.card__rage {
+  margin-top: 8px;
+}
+
 // An NPC's area spells: one outlined "Conjurar" each, 44 px (the screen's filled button stays "Próximo turno").
 .area-spells {
   display: flex;

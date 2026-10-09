@@ -84,10 +84,16 @@ export async function playedCombatRPC(m: Page, p: Page, table: CombatTable): Pro
   const captain = enc.combatants.find((c) => c.label === 'Capitão Goblin')!;
   const opts = await callRPC(p, 'meurpg.play.v1.CombatService/GetTurnOptions', { campaignId, encounterId: enc.id, combatantId: pens.id });
   expect(opts.ok(), await opts.text()).toBeTruthy();
-  const attacks = (await opts.json()).options.attacks as { attack: { key: string } }[];
+  const body = await opts.json();
+  const attacks = body.options.attacks as { attack: { key: string } }[];
   const attackKey = attacks.find((a) => a.attack.key.startsWith('equipment:'))!.attack.key;
+  // The server says how the d20 rolls (a bow with an enemy next to the archer has disadvantage): one die for a
+  // normal roll, two for advantage or disadvantage, and the one that counts is a 19 whatever the mode.
+  const reach = (body.attackTargets as { attackKey: string; targets: { combatantId: string; rollMode?: string }[] }[]).find((t) => t.attackKey === attackKey);
+  const mode = reach?.targets.find((t) => t.combatantId === captain.id)?.rollMode;
+  const dice = mode === 'ROLL_MODE_ADVANTAGE' ? { d20Faces: [19, 1] } : mode === 'ROLL_MODE_DISADVANTAGE' ? { d20Faces: [19, 20] } : { d20Face: 19 };
   const hit = await callRPC(p, 'meurpg.play.v1.CombatService/RollAttack', {
-    campaignId, encounterId: enc.id, attackerId: pens.id, attackKey, targetId: captain.id, d20Face: 19, idempotencyKey: crypto.randomUUID(),
+    campaignId, encounterId: enc.id, attackerId: pens.id, attackKey, targetId: captain.id, ...dice, idempotencyKey: crypto.randomUUID(),
   });
   expect(hit.ok(), await hit.text()).toBeTruthy();
   const pending = (await hit.json()).pendingDamage.id as string;

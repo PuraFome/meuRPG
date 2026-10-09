@@ -80,7 +80,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
             @if (c.wildShapeBeastKey) {
               <app-form-tag [beast]="c.wildShapeBeastNamePt" />
             }
-            <app-combatant-tags [names]="tags(c)" [label]="c.label" />
+            <app-combatant-tags [names]="tags(c)" [label]="c.label" [states]="c.states" [sources]="c.conditionSources" [people]="encounter().combatants" />
           </span>
         </li>
       </ng-template>

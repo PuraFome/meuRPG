@@ -4,6 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import type { AttackRoll, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../../../../core/combat/combat-log';
 import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/cover';
+import { DamageBreakdown } from '../damage-parts/damage-breakdown';
+import { D20Faces } from '../roll-mode/d20-faces';
 
 /**
  * What the attack sheet has shown so far, as a list of done steps (E6-07,
@@ -13,7 +15,7 @@ import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/
  */
 @Component({
   selector: 'app-attack-result',
-  imports: [MatIconModule],
+  imports: [D20Faces, DamageBreakdown, MatIconModule],
   template: `
     <div class="result" role="status" aria-live="polite">
       <div class="part">
@@ -37,6 +39,10 @@ import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/
                 </span>
               }
             </span>
+            <app-d20-faces [roll]="r.d20" [mode]="r.mode" [suggested]="r.suggestedMode" [reason]="r.modeReason" [sources]="r.sources" />
+            @if (r.criticalOnHit) {
+              <span class="part__line">Acerto crítico automático (a 1,5 m de alvo paralisado ou inconsciente)</span>
+            }
             @if (asking()) {
               <span class="part__line">O mestre ainda não disse se acertou.</span>
             }
@@ -62,6 +68,14 @@ import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/
                 <span class="part__num">{{ d.amount }}</span>
                 <span class="part__formula">{{ damageLine() }}{{ d.roll?.physical ? ' · dado físico' : '' }}</span>
               </span>
+              @if (breakdown()) {
+                <app-damage-breakdown
+                  [rolls]="d.partRolls"
+                  [steps]="d.steps"
+                  [amount]="d.amount"
+                  [amountAfterSteps]="d.amountAfterSteps"
+                />
+              }
             } @else if (waiting()) {
               <span class="part__line">Esperando o mestre.</span>
             } @else {
@@ -87,6 +101,11 @@ export class AttackResult {
   /** The hit's damage waits for the target's reaction (Escudo): it is not a miss. */
   readonly waiting = input(false);
   readonly damageLine = input('');
+  /** What each part of the damage rolled, and the steps resistance took, once there is any. */
+  protected readonly breakdown = computed(() => {
+    const d = this.damage();
+    return !!d && ((d.partRolls ?? []).length > 0 || (d.steps ?? []).length > 0);
+  });
   /** The roll is held for the Bardic Inspiration question: the d20 is shown, the result is not (and there is no armor class). */
   readonly asking = input(false);
   /** "+ 6 no d8 da Inspiração de Bardo": the die the player added after the d20; the total already has it. */

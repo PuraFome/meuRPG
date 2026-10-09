@@ -197,7 +197,7 @@ describe('CastSheet: an area spell placed on the map', () => {
     expect(castSpell).toHaveBeenCalledTimes(1);
     const call = castSpell.mock.calls[0] as unknown[];
     expect(call[5]).toEqual([]);
-    expect(call[11]).toEqual({ area: { origin: { col: 6, row: 4 } } });
+    expect(call[12]).toEqual({ area: { origin: { col: 6, row: 4 } } });
     expect(plain(el.querySelector('.frame__title')?.textContent)).toBe('Bola de Fogo conjurada');
     expect(button('Voltar à sua vez')).toBeDefined();
   });

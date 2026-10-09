@@ -7,6 +7,9 @@ import "slices"
 // "damage-type:fire".
 type TypeModifiers struct {
 	Vulnerable, Resistant, Immune []string
+	// Source is the key of the stat block they come from ("monster:skeleton"), "" when
+	// it is not known.
+	Source string
 }
 
 // AdjustForType is the damage that lands when amount of damageType hits a

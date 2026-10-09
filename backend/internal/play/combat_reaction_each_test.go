@@ -220,7 +220,8 @@ func monkThree(t *testing.T, a *armed) *charactersv1.Character {
 func TestDeflectMissilesCatchesTheArrowAndThrowsItBack(t *testing.T) {
 	t.Parallel()
 	a, e := reactorFight(t, monkThree)
-	hit := a.mustAttack(t, a.master, e, "Goblin", shortBow, "Reator", d20(15))
+	// (the goblin shoots with an enemy next to it: disadvantage, and the second die never counts)
+	hit := a.mustAttack(t, a.master, e, "Goblin", shortBow, "Reator", disadvantage(15))
 	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), typedDamage(6))
 	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES)
 	if w == nil || w.GetDeflectMissiles().GetDamage() != 8 || w.GetDeflectMissiles().GetFlatBonus() != 6 {
@@ -236,7 +237,7 @@ func TestDeflectMissilesCatchesTheArrowAndThrowsItBack(t *testing.T) {
 	if throw := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES); throw == nil || throw.GetDeflectThrow().GetKiLeft() != 3 || !throw.GetSecondStep() {
 		t.Fatalf("the monk's second window = %v, want the throw back with 3 ki", throw)
 	}
-	thrown, err := a.throwBack(t, a.ana, e, w.GetId(), "Reator", "Goblin", d20(15))
+	thrown, err := a.throwBack(t, a.ana, e, w.GetId(), "Reator", "Goblin", disadvantage(15))
 	if err != nil {
 		t.Fatalf("RollAttack(throw back) error = %v", err)
 	}

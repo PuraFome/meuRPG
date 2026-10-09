@@ -14,6 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { OpenSceneInfo, SceneRoll } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { checkFaces, hasModeInfo } from '../../../../core/play/check-roll';
 import { joinDots } from '../../../../core/format/text';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { sceneBlocked, sceneErrorMessage } from '../../../../core/play/scene-errors';
@@ -28,6 +29,7 @@ import {
   rollClock,
   sceneRollFormula,
 } from '../../../../core/play/scene-view';
+import { CheckMode } from '../check-mode/check-mode';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { formatClock } from '../../../../shared/session-time/session-time';
 
@@ -49,7 +51,7 @@ import { formatClock } from '../../../../shared/session-time/session-time';
  */
 @Component({
   selector: 'app-scene-roll-line',
-  imports: [CombatantToken, MatButtonModule, MatIconModule],
+  imports: [CheckMode, CombatantToken, MatButtonModule, MatIconModule],
   templateUrl: './scene-roll-line.html',
   styleUrl: './scene-roll-line.scss',
   host: { class: 'rl', '[class.rl--asking]': "step() === 'asking'" },
@@ -73,6 +75,10 @@ export class SceneRollLine {
   protected readonly actionTitle = computed(() => rollActionTitle(this.scene(), this.roll()));
   protected readonly action = computed(() =>
     this.roll().roll?.physical ? joinDots([this.actionTitle(), 'dado físico']) : this.actionTitle(),
+  );
+  protected readonly faces = computed(() => checkFaces(this.roll().roll));
+  protected readonly modeInfo = computed(() =>
+    hasModeInfo(this.roll().mode, this.roll().sources, this.faces()),
   );
   protected readonly formula = computed(() => sceneRollFormula(this.roll()));
   protected readonly pass = computed(() => passLabel(this.scene(), this.roll()));

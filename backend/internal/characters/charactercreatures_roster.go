@@ -445,6 +445,7 @@ func creatureDerived(content *rules.Content, key, attack string) (rules.Derived,
 	if attack == "none" {
 		d.Attacks = nil
 	}
+	d.Features = withCreatureType(content, key, d.Features)
 	return d, true
 }
 
@@ -460,7 +461,7 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, mons
 	if !ok {
 		return link.Sheet{}, false, nil
 	}
-	out := link.Sheet{ArmorClass: d.ArmorClass, AttacksPerAction: max(d.AttacksPerAction, 1), Senses: senseRanges(d.Senses)}
+	out := link.Sheet{ArmorClass: d.ArmorClass, AttacksPerAction: max(d.AttacksPerAction, 1), Senses: senseRanges(d.Senses), Traits: traitsOf(content, d)}
 	for _, a := range d.Attacks {
 		name := a.NamePT
 		if name == "" {
@@ -470,6 +471,7 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, mons
 			Key: a.Key, Name: name, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
 			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
 			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
+			Ability: string(a.Ability), Weapon: a.Kind == "weapon",
 		})
 	}
 	for _, a := range d.StandardActions {
@@ -562,7 +564,7 @@ func (s *Service) DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, ch
 	if !ok {
 		return combat.TypeModifiers{}, nil
 	}
-	return combat.TypeModifiers{Vulnerable: plainTypes(c.Vulnerabilities), Resistant: plainTypes(c.Resistances), Immune: plainTypes(c.Immunities)}, nil
+	return combat.TypeModifiers{Vulnerable: plainTypes(c.Vulnerabilities), Resistant: plainTypes(c.Resistances), Immune: plainTypes(c.Immunities), Source: monsterKey}, nil
 }
 
 // plainTypes lists the damage types of the entries that carry no condition.

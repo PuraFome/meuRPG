@@ -841,6 +841,13 @@ func (s *Service) EndTurn(
 		if err := s.mustNotHold(ctx, c); err != nil {
 			return nil, err
 		}
+		// A rage ends with the turn if the barbarian attacked no hostile creature and took
+		// no damage: the player is asked first (the master applies the rule himself).
+		if wait, err := s.endOfTurn(ctx, c, v, current); err != nil {
+			return nil, err
+		} else if wait {
+			return nil, nil
+		}
 		// The turn waits for an opportunity attack's answer; the master may end it
 		// anyway, which passes the offers over.
 		if err := s.mustNotWaitForOffers(ctx, c, current); err != nil {
@@ -903,6 +910,9 @@ func (s *Service) EndTurn(
 		c.characterID = &current.CharacterID
 		if err := c.q.EndCombatantTurnPart(ctx, current.ID); err != nil {
 			return nil, fmt.Errorf("end the part: %w", err)
+		}
+		if err := s.afterTurnPart(ctx, c, current); err != nil {
+			return nil, err
 		}
 		// Who still acts: the turn passes only when the last member ends.
 		if acting := othersActing(cs, current.ID); len(acting) > 0 {

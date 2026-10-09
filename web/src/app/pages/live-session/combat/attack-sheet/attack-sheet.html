@@ -87,20 +87,60 @@
           <button type="button" class="link" (click)="change()">Trocar</button>
         }
       </div>
-      <app-roll-picker
-        [canApp]="canApp"
-        [canType]="canType"
-        [preferApp]="preferApp"
-        [label]="rollLabel()"
-        hint="Role o seu dado e digite o número que saiu (1 a 20)."
-        totalNote="Total do ataque"
-        [modifier]="attack.attackBonus"
-        [busy]="busy()"
-        [sticky]="true"
-        [(typing)]="typing"
-        (app)="rollAttack({ inApp: true })"
-        (typed)="rollAttackTyped($event)"
-      />
+      @if (hasMode()) {
+        <app-roll-mode-picker
+          [suggested]="suggested()"
+          [sources]="sources()"
+          [approval]="approval"
+          [request]="request()"
+          [mode]="chosen()"
+          (modeChange)="setMode($event)"
+          [(reason)]="reason"
+          [busy]="busy()"
+          (ask)="askMaster()"
+          (cancelAsk)="cancelAsk()"
+        />
+        @if (criticalOnHit()) {
+          <p class="sheet__note">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            Acerto crítico automático (a 1,5 m de alvo paralisado ou inconsciente)
+          </p>
+        }
+      }
+      @if (modeReady()) {
+        @if (faceCount() === 1) {
+          <app-roll-picker
+            [canApp]="canApp"
+            [canType]="canType"
+            [preferApp]="preferApp"
+            [label]="rollLabel()"
+            hint="Role o seu dado e digite o número que saiu (1 a 20)."
+            totalNote="Total do ataque"
+            [modifier]="attack.attackBonus"
+            [busy]="busy()"
+            [sticky]="true"
+            [(typing)]="typing"
+            (app)="rollAttack({ inApp: true })"
+            (typed)="rollAttackTyped($event)"
+          />
+        } @else {
+          <app-multi-roll
+            [fields]="d20Fields()"
+            [canApp]="canApp"
+            [canType]="canType"
+            [preferApp]="preferApp"
+            [combine]="combine()"
+            [modifier]="attack.attackBonus"
+            totalNote="Total do ataque"
+            [appLabel]="'Rolar 2d20 no app'"
+            [hint]="'Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ' + (combine() === 'lower' ? 'menor' : 'maior') + '.'"
+            [busy]="busy()"
+            [(typing)]="typing"
+            (app)="rollAttack({ inApp: true })"
+            (typed)="rollAttackPair($event)"
+          />
+        }
+      }
     }
     @default {
       <app-attack-result
@@ -144,26 +184,44 @@
               {{ showCritical() ? damageIntro() : (pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
             </p>
           }
-          <app-roll-picker
-            [canApp]="canApp"
-            [canType]="canType"
-            [preferApp]="preferApp"
-            [label]="damageLabel()"
-            [hint]="damageHint()"
-            [totalNote]="totalNote()"
-            [typedFormula]="typedFormula()"
-            [min]="range().min"
-            [max]="range().max"
-            [modifier]="damageModifier()"
-            [confirmTotal]="true"
-            [fixedText]="fixedText()"
-            [busy]="busy()"
-            [appLabel]="damageAppLabel()"
-            [sticky]="true"
-            [(typing)]="typing"
-            (app)="rollDamage({ inApp: true })"
-            (typed)="rollDamageTyped($event)"
-          />
+          @if (parts().length) {
+            <app-damage-parts [parts]="parts()" [(picks)]="picks" [disabled]="busy()" />
+            <app-multi-roll
+              [fields]="damageFields()"
+              [canApp]="canApp"
+              [canType]="canType"
+              [preferApp]="preferApp"
+              [modifier]="damageFlat()"
+              totalNote="Dano total"
+              appLabel="Rolar o dano no app"
+              hint="Role os dados de cada linha e digite a soma de cada uma, sem os números fixos."
+              [busy]="busy()"
+              [(typing)]="typing"
+              (app)="rollDamage({ inApp: true })"
+              (typed)="rollDamageParts($event)"
+            />
+          } @else {
+            <app-roll-picker
+              [canApp]="canApp"
+              [canType]="canType"
+              [preferApp]="preferApp"
+              [label]="damageLabel()"
+              [hint]="damageHint()"
+              [totalNote]="totalNote()"
+              [typedFormula]="typedFormula()"
+              [min]="range().min"
+              [max]="range().max"
+              [modifier]="damageModifier()"
+              [confirmTotal]="true"
+              [fixedText]="fixedText()"
+              [busy]="busy()"
+              [appLabel]="damageAppLabel()"
+              [sticky]="true"
+              [(typing)]="typing"
+              (app)="rollDamage({ inApp: true })"
+              (typed)="rollDamageTyped($event)"
+            />
+          }
         </div>
       }
 

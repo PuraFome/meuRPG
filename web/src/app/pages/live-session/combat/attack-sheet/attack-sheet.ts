@@ -22,6 +22,11 @@ import {
   type PendingDamage,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type RollModeRequest,
+  RollMode,
+  RollModeRequestStatus,
+} from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import type { Attack, BonusAttackRule } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import {
@@ -37,6 +42,8 @@ import {
 import {
   type AttackDie,
   type DamageDie,
+  type ModeChoice,
+  type PairDie,
   CombatClient,
 } from '../../../../core/combat/combat-client';
 import { ActionKey } from '../../../../core/connect/idempotency';
@@ -46,7 +53,6 @@ import {
   damageFormula,
   diceName,
   extraDiceOf,
-  rollFormula,
   sumRange,
 } from '../../../../core/combat/combat-dice';
 import {
@@ -61,6 +67,19 @@ import {
   hasExtraDice,
   typedRange,
 } from '../../../../core/combat/critical';
+import {
+  type ExtraPick,
+  activeParts,
+  initialPicks,
+  typedFields,
+} from '../../../../core/combat/damage-parts';
+import {
+  d20Count,
+  d20Formula,
+  liveRequest,
+  modeStatus,
+  orNormal,
+} from '../../../../core/combat/roll-mode';
 import { reactionWait } from '../../../../core/combat/reactions';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { metersText } from '../../../../core/units';
@@ -80,6 +99,9 @@ import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { AttackResult } from './attack-result';
 import { AttackSteps } from './attack-steps';
+import { DamageParts } from '../damage-parts/damage-parts';
+import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
+import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { InspirationPrompt } from '../inspiration-prompt/inspiration-prompt';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { injectSheet } from '../sheet-host';
@@ -100,6 +122,8 @@ export interface AttackSheetData {
   /** An opportunity attack: a melee attack off turn that spends the reaction
    * instead of the action (`RollAttack.as_reaction`). */
   readonly asReaction?: boolean;
+  /** The master rolls it (for an NPC): any roll mode, with no need to ask. */
+  readonly master?: boolean;
   /** Extra Attack: how many attacks of the Attack action remain before this
    * one, and how many it makes. */
   readonly attacksLeft?: number;
@@ -151,6 +175,11 @@ export interface AttackSheetData {
     AttackResult,
     AttackSteps,
     CombatantToken,
+    DamageParts,
+    MatButtonModule,
+    MatIconModule,
+    MultiRoll,
+    RollModePicker,
     InspirationPrompt,
     MatButtonModule,
     MatIconModule,
@@ -197,11 +226,20 @@ export class AttackSheet {
   protected readonly pending = signal<PendingDamage | null>(this.data.resume?.pending ?? null);
   /** The damage rolled, once it is. */
   protected readonly damage = signal<PendingDamage | null>(null);
+  /** The mode the player picked; null follows the server's suggestion. */
+  protected readonly picked = signal<RollMode | null>(null);
+  protected readonly reason = signal('');
+  /** The request this sheet sent to the master (its state is read from the combat). */
+  private readonly asked = signal<RollModeRequest | null>(null);
+  /** The extras marked in the damage step. */
+  protected readonly picks = signal<readonly ExtraPick[]>([]);
 
   /** One key per attack roll (target and die): the same values again are a retry, others a new attack. */
   private readonly attackKeys = new ActionKey();
   /** One key per damage roll: the same die again is a retry, another die (typed after an app roll was lost) is a new request. */
   private readonly damageKeys = new ActionKey();
+  /** One key per request to the master: the same mode and reason again is a retry. */
+  private readonly requestKeys = new ActionKey();
   /** One key per answer about the die (use it with this die, or keep it): the same answer again is a retry. */
   private readonly answerKeys = new ActionKey();
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
@@ -252,6 +290,48 @@ export class AttackSheet {
           )
         : targetRows(this.data.targets, this.attack.rangeFt),
   );
+  /** The target's circumstances from the options: the suggested mode and why. An opportunity attack has none. */
+  private readonly reach = computed(() => {
+    const id = this.targetId();
+    return this.data.targets.find((t) => t.combatantId === id) ?? null;
+  });
+  protected readonly hasMode = computed(() => !this.data.opportunity && this.reach() !== null);
+  protected readonly suggested = computed(() =>
+    orNormal(this.reach()?.rollMode ?? RollMode.NORMAL),
+  );
+  protected readonly sources = computed(() => this.reach()?.sources ?? []);
+  protected readonly criticalOnHit = computed(() => this.reach()?.criticalOnHit ?? false);
+  protected readonly approval = this.data.master ? 'free' : 'request';
+  protected readonly chosen = computed(() => this.picked() ?? this.suggested());
+  /** The request of this attack as the combat shows it now (waiting, answered), or none. */
+  protected readonly request = computed(() => {
+    const sent = this.asked();
+    if (!sent) {
+      return null;
+    }
+    const all = this.data.state.encounter()?.rollModeRequests ?? [];
+    const live = liveRequest(all, sent.id);
+    return live ?? (all.some((r) => r.id === sent.id) ? null : sent);
+  });
+  private readonly answered = computed(() => {
+    const r = this.request();
+    return r?.status === RollModeRequestStatus.ANSWERED ? r : null;
+  });
+  /** The mode the d20 rolls with: the master's decision on a request, else the player's choice. */
+  protected readonly rollMode = computed(() => this.answered()?.decidedMode ?? this.chosen());
+  protected readonly modeState = computed(() =>
+    modeStatus(this.approval, this.suggested(), this.chosen(), this.reason(), this.request()),
+  );
+  /** The dice may be rolled: the mode is settled (or the server picks it, for an opportunity attack). */
+  protected readonly modeReady = computed(() => !this.hasMode() || this.modeState() === 'ready');
+  protected readonly faceCount = computed(() => (this.hasMode() ? d20Count(this.rollMode()) : 1));
+  protected readonly d20Fields = computed<readonly RollField[]>(() => [
+    { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },
+    { key: 'd20-2', label: 'Segundo d20', min: 1, max: 20 },
+  ]);
+  protected readonly combine = computed(() =>
+    this.rollMode() === RollMode.DISADVANTAGE ? 'lower' : 'higher',
+  );
   protected readonly stepList = computed(() => steps(this.stage()));
   protected readonly target = computed(() => {
     const id = this.targetId();
@@ -284,7 +364,7 @@ export class AttackSheet {
   });
   protected readonly d20Formula = computed(() => {
     const r = this.roll()?.d20;
-    return r ? rollFormula(r) : '';
+    return r ? d20Formula(r) : '';
   });
   /** The dice of the damage still to roll: "2d6" (doubled on a critical hit). */
   protected readonly dice = computed(() => {
@@ -316,6 +396,19 @@ export class AttackSheet {
     const d = this.dice();
     return d ? sumRange(d.count, d.sides) : { min: 1, max: 1 };
   });
+  protected readonly parts = computed(() => this.pending()?.parts ?? []);
+  /** One field for each group of dice of the damage that is marked, for physical dice. */
+  protected readonly damageFields = computed<readonly RollField[]>(() =>
+    typedFields(this.parts(), this.picks()).map((f) => ({
+      key: f.key,
+      label: f.label,
+      min: f.min,
+      max: f.max,
+    })),
+  );
+  protected readonly damageFlat = computed(() =>
+    activeParts(this.parts(), this.picks()).reduce((sum, p) => sum + p.flat, 0),
+  );
   protected readonly damageLine = computed(() => {
     const d = this.damage();
     return d?.roll ? damageFormula(d.roll, d.damageTypePt, extraDiceOf(d), d.criticalMax) : '';
@@ -455,6 +548,11 @@ export class AttackSheet {
   constructor() {
     // After a result the focus goes to the one next action, as soon as it is drawn.
     effect(() => this.back()?.nativeElement.focus());
+    // The extras that come marked are the starting choice of each damage.
+    effect(() => {
+      const parts = this.pending()?.parts ?? [];
+      untracked(() => this.picks.set(initialPicks(parts)));
+    });
     // The answer of a request in the air has to be shown: the sheet can't be dismissed meanwhile.
     effect(() => this.sheet.lock(this.busy()));
     // An error opens at the top of the scrolling body, where it is seen.
@@ -502,6 +600,7 @@ export class AttackSheet {
   protected pick(id: string): void {
     this.targetId.set(id);
     this.error.set('');
+    this.dropMode();
   }
 
   /** The target is chosen: on to the roll (a click, or Enter). */
@@ -514,9 +613,35 @@ export class AttackSheet {
   protected change(): void {
     this.typing.set(false);
     this.stage.set('target');
+    this.dropMode();
   }
 
-  protected async rollAttack(die: AttackDie): Promise<void> {
+  /** A new target starts from its own suggestion; a request for the old one is taken back. */
+  private dropMode(): void {
+    const sent = this.asked();
+    this.picked.set(null);
+    this.reason.set('');
+    this.asked.set(null);
+    if (sent && sent.status === RollModeRequestStatus.PENDING) {
+      void this.api
+        .cancelRollModeRequest(
+          this.data.campaignId,
+          this.data.encounterId,
+          sent.id,
+          this.requestKeys.keyFor({ cancel: sent.id }),
+        )
+        .then((e) => this.data.state.apply(e))
+        .catch(() => undefined);
+    }
+  }
+
+  protected setMode(mode: RollMode): void {
+    this.picked.set(mode);
+    this.error.set('');
+  }
+
+  /** "Pedir ao mestre": the mode asked for and why; the sheet waits for the answer. */
+  protected async askMaster(): Promise<void> {
     const id = this.targetId();
     if (id === null || this.busy()) {
       return;
@@ -524,6 +649,80 @@ export class AttackSheet {
     this.busy.set(true);
     this.error.set('');
     try {
+      const mode = this.chosen();
+      const reason = this.reason().trim();
+      const res = await this.api.requestRollMode(
+        this.data.campaignId,
+        this.data.encounterId,
+        this.data.attackerId,
+        this.attack.key,
+        id,
+        mode,
+        reason,
+        this.requestKeys.keyFor({ id, mode, reason }),
+      );
+      this.data.state.apply(res.encounter);
+      this.asked.set(res.request);
+    } catch (err) {
+      this.error.set(combatErrorMessage(err, 'pedir ao mestre'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** "Cancelar pedido": the player takes it back and picks again. */
+  protected async cancelAsk(): Promise<void> {
+    const sent = this.asked();
+    if (!sent || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const e = await this.api.cancelRollModeRequest(
+        this.data.campaignId,
+        this.data.encounterId,
+        sent.id,
+        this.requestKeys.keyFor({ cancel: sent.id }),
+      );
+      this.data.state.apply(e);
+      this.asked.set(null);
+      this.picked.set(null);
+      this.reason.set('');
+    } catch (err) {
+      this.error.set(combatErrorMessage(err, 'cancelar o pedido'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** What the roll sends about the mode: nothing when the suggestion stands, else the mode, why, and the answered request. */
+  private modeChoice(): ModeChoice | undefined {
+    if (!this.hasMode()) {
+      return undefined;
+    }
+    const r = this.answered();
+    if (r) {
+      return {
+        mode: r.decidedMode,
+        reason: r.decidedMode === r.suggestedMode ? '' : r.reason,
+        requestId: r.id,
+      };
+    }
+    return this.chosen() === this.suggested()
+      ? undefined
+      : { mode: this.chosen(), reason: this.reason().trim() };
+  }
+
+  protected async rollAttack(die: AttackDie | PairDie): Promise<void> {
+    const id = this.targetId();
+    if (id === null || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const mode = this.modeChoice();
       const res = await this.api.rollAttack(
         this.data.campaignId,
         this.data.encounterId,
@@ -531,9 +730,10 @@ export class AttackSheet {
         this.attack.key,
         id,
         die,
-        this.attackKeys.keyFor({ id, die }),
+        this.attackKeys.keyFor({ id, die, mode }),
         this.data.asReaction ?? false,
         this.data.opportunity?.offerId ?? '',
+        mode,
         this.data.catchWindowId ?? '',
       );
       this.data.state.apply(res.encounter);
@@ -599,7 +799,15 @@ export class AttackSheet {
     return this.rollAttack({ face });
   }
 
-  protected async rollDamage(die: DamageDie): Promise<void> {
+  /** Two physical d20, in the order they were rolled. */
+  protected rollAttackPair(faces: number[]): Promise<void> {
+    return this.rollAttack({ faces });
+  }
+
+  protected async rollDamage(
+    die: DamageDie | { readonly parts: true },
+    typedParts?: { partKey: string; sum: number }[],
+  ): Promise<void> {
     const p = this.pending();
     if (!p || this.busy()) {
       return;
@@ -607,12 +815,18 @@ export class AttackSheet {
     this.busy.set(true);
     this.error.set('');
     try {
+      // With parts the answer is the whole choice, the extras marked (even none) and the sums typed.
+      const choice =
+        this.parts().length > 0
+          ? { extras: this.picks(), ...(typedParts ? { typedParts } : {}) }
+          : undefined;
       const res = await this.api.rollDamage(
         this.data.campaignId,
         this.data.encounterId,
         p.id,
         die,
-        this.damageKeys.keyFor(die),
+        this.damageKeys.keyFor({ die, choice }),
+        choice,
       );
       this.data.state.apply(res.encounter);
       this.damage.set(res.pending);
@@ -627,6 +841,15 @@ export class AttackSheet {
 
   protected rollDamageTyped(sum: number): Promise<void> {
     return this.rollDamage({ sum });
+  }
+
+  /** The sums typed for each group of dice, in the order of the fields. */
+  protected rollDamageParts(sums: number[]): Promise<void> {
+    const fields = this.damageFields();
+    return this.rollDamage(
+      { parts: true },
+      fields.map((f, i) => ({ partKey: f.key, sum: sums[i] })),
+    );
   }
 
   private fail(err: unknown): void {

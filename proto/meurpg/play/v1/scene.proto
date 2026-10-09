@@ -10,6 +10,7 @@ package meurpg.play.v1;
 import "google/protobuf/timestamp.proto";
 import "meurpg/maps/v1/maps.proto";
 import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/combat_rolls.proto";
 
 // SceneBlockedReason says why PlayService refused a scene call with
 // `failed_precondition`.
@@ -214,6 +215,13 @@ message SceneRoll {
   // card of a character with none left. Only the master gets it: a player's
   // count is in their actions. Unset for an unlimited action.
   optional int32 attempts_left = 8;
+  // The mode the d20 rolled with (the character's conditions: Poisoned and Frightened
+  // are disadvantage on ability checks, a rage is advantage on Strength) and the
+  // circumstances, for the master and the character's own player; `roll.faces` holds
+  // both dice and `roll.counted_index` the one that counts. NORMAL when nothing
+  // applies.
+  RollMode mode = 9;
+  repeated AdvantageSource sources = 10;
 }
 
 // OpenSceneRequest names the campaign and the point.
@@ -267,6 +275,10 @@ message RollSceneCheckRequest {
   // A UUID the app makes for each roll. Repeating a roll with the same key
   // returns the first roll's answer and changes nothing.
   string idempotency_key = 5;
+  // Physical dice: the faces of the d20 pair (1 or 2 faces, 1 to 20 each, as many as
+  // the mode the server resolves needs), instead of `roll`. A wrong number is
+  // `invalid_argument`.
+  repeated int32 d20_faces = 6;
 }
 
 // RollSceneCheckResponse is the roll that was made.
