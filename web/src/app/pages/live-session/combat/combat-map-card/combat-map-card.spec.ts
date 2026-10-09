@@ -1,7 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
-import { CombatantKind, CombatantSide } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { create } from '@bufbuild/protobuf';
+
+import {
+  CombatantKind,
+  CombatantSide,
+  HiddenRevealQuestionSchema,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { decodeVision } from '../../../../core/maps/vision';
 import { visionResponse } from '../../../../core/maps/vision-testing';
@@ -167,5 +173,56 @@ describe('CombatMapCard, a player on a fog map', () => {
     });
     expect(master.el.querySelector('.card__crop--on')).toBeNull();
     expect(mount({ isMaster: false }).el.querySelector('.card__crop--on')).toBeNull();
+  });
+});
+
+describe('CombatMapCard: "Área da última magia"', () => {
+  const asking = () =>
+    encounter({
+      currentCombatantId: 'p',
+      gridColumns: 10,
+      gridRows: 8,
+      combatants: [
+        combatant({
+          id: 'p',
+          label: 'Pensantus',
+          kind: CombatantKind.PLAYER,
+          side: CombatantSide.PARTY,
+        }),
+      ],
+      pendingHiddenReveals: [
+        create(HiddenRevealQuestionSchema, {
+          id: 'q1',
+          casterId: 'p',
+          spellKey: 'spell:fireball',
+          combatantIds: ['g3'],
+          area: {
+            origin: { col: 4, row: 3 },
+            squares: [
+              { col: 4, row: 3 },
+              { col: 5, row: 3 },
+            ],
+          },
+        }),
+      ],
+    });
+
+  it("draws the master's pending area and origin, with their two legend entries", () => {
+    const { el } = mount({ encounter: asking() });
+    expect(el.querySelector('app-area-overlay')).not.toBeNull();
+    expect(el.querySelector('app-area-overlay .ao__fill')?.getAttribute('d')).toBe(
+      'M4 3h1v1h-1zM5 3h1v1h-1z',
+    );
+    expect(el.querySelectorAll('app-area-overlay .ao__diamond')).toHaveLength(1);
+    const legend = plain(el.querySelector('.legend')?.textContent);
+    expect(legend).toContain('Área da última magia');
+    expect(legend).toContain('Ponto de origem');
+  });
+
+  it('draws nothing for a player, and nothing without a question', () => {
+    const { el } = mount({ encounter: asking(), isMaster: false });
+    expect(el.querySelector('app-area-overlay')).toBeNull();
+    expect(plain(el.querySelector('.legend')?.textContent)).not.toContain('Área da última magia');
+    expect(mount().el.querySelector('app-area-overlay')).toBeNull();
   });
 });

@@ -616,6 +616,23 @@ enum CriticalRule {
   CRITICAL_RULE_MAX_PLUS_ROLL = 2;
 }
 
+// HiddenAreaHitRule is what an area spell does to the hiding of a hidden creature
+// it hits (RN-24). The effect is the SRD's and always applies ("each creature in
+// the area"); the SRD does not say that an area reveals a hidden creature, so the
+// table decides.
+enum HiddenAreaHitRule {
+  HIDDEN_AREA_HIT_RULE_UNSPECIFIED = 0;
+  // The creature appears to the players, as when the master reveals it. The
+  // default.
+  HIDDEN_AREA_HIT_RULE_REVEAL = 1;
+  // The creature takes the effect and stays hidden: the players are not told.
+  HIDDEN_AREA_HIT_RULE_KEEP_HIDDEN = 2;
+  // When a player's spell hits a hidden creature, the turn waits and the master
+  // chooses between the two (CombatService.ResolveHiddenReveal). A spell the
+  // master casts asks nothing: the master chooses in the cast itself.
+  HIDDEN_AREA_HIT_RULE_ASK = 3;
+}
+
 // DeathSaveVisibility is who sees a character's death saves (RN-24). Stored
 // here; the combat applies it (CombatService): with OWNER_AND_MASTER, nobody else
 // gets the counts, the rolls or the failures a hit at 0 adds, only the state word
@@ -677,6 +694,13 @@ message TableRules {
   // for; CharacterService.GetLevelUpOptions). Default false: feats are not used
   // and the level-up is as the SRD's. Read as sent by SetTableRules.
   bool feats_allowed = 9;
+  // What a spell of an area does to the hiding of a hidden creature it hits
+  // (RN-24, RN-10): the spell always affects the creature, and this decides only
+  // whether the players learn of it. Required in SetTableRules (UNSPECIFIED is
+  // `invalid_argument`); a campaign that never saved its rules has REVEAL. The
+  // combat reads it when each spell is cast, so a change applies from the next
+  // spell on.
+  HiddenAreaHitRule hidden_area_hits = 10;
 }
 
 // TableStylePreset is what one "Estilo da mesa" fills in. The app applies a
