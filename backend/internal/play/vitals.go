@@ -53,9 +53,12 @@ func (s *Service) AdjustCharacterVitals(
 	var after *playv1.CharacterVitals
 	var repeated bool
 	var touched *playdb.Encounter
+	var check concentrationCheck // what the damage asks of a spell the character concentrates on
+	var castsEnded bool
 	visionMap, shapeChanged := "", false // the map whose fog the change touches
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		after, repeated, touched, visionMap, shapeChanged = nil, false, nil, "", false // a retry starts over
+		check, castsEnded = concentrationCheck{}, false
 		q := s.queries.WithTx(tx)
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -146,6 +149,11 @@ func (s *Service) AdjustCharacterVitals(
 		if touched != nil {
 			visionMap = deref(touched.MapID)
 		}
+		// Damage outside a combat asks the Constitution save of a spell the character
+		// concentrates on (casting.go).
+		if check, castsEnded, err = s.concentrationAfter(ctx, tx, q, session, m, before, adjusted); err != nil {
+			return err
+		}
 		after = adjusted
 		return nil
 	})
@@ -175,7 +183,10 @@ func (s *Service) AdjustCharacterVitals(
 	if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
 		s.maps.VisionChanged(pctx, m.CampaignID, visionMap)
 	}
-	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after}), nil
+	if check.castID != "" && castsEnded {
+		s.publishCastsChanged(m.CampaignID, check.secret)
+	}
+	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after, ConcentrationDc: check.dc, ConcentrationCastId: check.castID}), nil
 }
 
 // touchCombatOf tells the session's open combat that a character's vitals changed:

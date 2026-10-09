@@ -63,11 +63,11 @@ func newCastingParty(t *testing.T) *armed {
 func (a *armed) castOut(t *testing.T, u *user, caster *charactersv1.Character, spell string, slot *playv1.SpellSlot, ritual bool, targets []*charactersv1.Character, edit ...func(*playv1.CastSpellOutsideCombatRequest)) (*playv1.CastSpellOutsideCombatResponse, error) {
 	t.Helper()
 	req := &playv1.CastSpellOutsideCombatRequest{
-		CampaignId: a.campaignID, CasterId: caster.GetId(), SpellKey: spell, Slot: slot, Ritual: ritual, IdempotencyKey: newKey(),
+		CampaignId: a.campaignID, CasterCharacterId: caster.GetId(), SpellKey: spell, Slot: slot, AsRitual: ritual, IdempotencyKey: newKey(),
 		Roll: &playv1.CastSpellOutsideCombatRequest_RollInApp{RollInApp: true},
 	}
 	for _, c := range targets {
-		req.TargetCharacterIds = append(req.TargetCharacterIds, c.GetId())
+		req.TargetIds = append(req.TargetIds, c.GetId())
 	}
 	for _, e := range edit {
 		e(req)
@@ -89,13 +89,13 @@ func (a *armed) mustCastOut(t *testing.T, u *user, caster *charactersv1.Characte
 }
 
 // finish calls FinishCast as u.
-func (a *armed) finish(t *testing.T, u *user, castID string, edit ...func(*playv1.FinishCastRequest)) (*playv1.FinishCastResponse, error) {
+func (a *armed) finish(t *testing.T, u *user, castID string, edit ...func(*playv1.ConfirmCastTimePassedRequest)) (*playv1.ConfirmCastTimePassedResponse, error) {
 	t.Helper()
-	req := &playv1.FinishCastRequest{CampaignId: a.campaignID, CastId: castID, IdempotencyKey: newKey(), Roll: &playv1.FinishCastRequest_RollInApp{RollInApp: true}}
+	req := &playv1.ConfirmCastTimePassedRequest{CampaignId: a.campaignID, CastId: castID, IdempotencyKey: newKey(), Roll: &playv1.ConfirmCastTimePassedRequest_RollInApp{RollInApp: true}}
 	for _, e := range edit {
 		e(req)
 	}
-	res, err := u.casting.FinishCast(t.Context(), connect.NewRequest(req))
+	res, err := u.casting.ConfirmCastTimePassed(t.Context(), connect.NewRequest(req))
 	if err != nil {
 		return nil, err
 	}

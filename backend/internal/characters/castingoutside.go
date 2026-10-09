@@ -54,11 +54,11 @@ func (s *Service) CastingOptions(ctx context.Context, tx pgx.Tx, campaignID, cha
 			continue
 		}
 		cs := &playv1.CastingSpell{
-			Spell: spellToProto(o.Spell), CanCast: o.CanCast, CanRitual: o.CanRitual, Reason: reasonProto(o.Reason),
+			Spell: spellToProto(o.Spell), CanCast: o.CanCast, RitualAllowed: o.CanRitual, Reason: reasonProto(o.Reason),
 			CastingMinutes: i32(o.Minutes), RitualMinutes: i32(o.RitualMinutes), CastingTimePt: castingTimePT(det.CastingTime),
 			Lasts: det.Duration.Lasts(), DurationSeconds: durationSeconds(det.Duration), RestEnds: restToProto[rules.EndedByRest(det.Duration)],
 			MaxTargets: i32(det.Target.MaxTargets(o.Spell.Level, o.Spell.Level)), TargetsPerLevel: i32(det.Target.PerSlotLevel),
-			CasterOnly: det.Target.CasterOnly(),
+			CasterOnly: det.Target.CasterOnly(), RangeKind: det.Range.Kind, RangeFt: i32(det.Range.DistanceFt),
 		}
 		for _, c := range o.Slots {
 			cs.Slots = append(cs.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free)})

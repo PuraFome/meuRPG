@@ -2885,10 +2885,18 @@ func (x *SpellSlotsUsed) GetUsed() int32 {
 // AdjustCharacterVitalsResponse returns the character's vitals after the
 // correction (or, for a repeated idempotency_key, as they are now).
 type AdjustCharacterVitalsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Vitals        *CharacterVitals       `protobuf:"bytes,1,opt,name=vitals,proto3" json:"vitals,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Vitals *CharacterVitals       `protobuf:"bytes,1,opt,name=vitals,proto3" json:"vitals,omitempty"`
+	// Set when the correction took hit points from a character that concentrates on a spell
+	// it cast outside a combat (CastingService): the Constitution saving throw DC to keep
+	// concentrating, 10 or half the damage, whichever is higher (SRD 5.1, "Duration"). The
+	// app only reminds; the table rolls, and the master ends the spell with
+	// CastingService.EndActiveSpell when it fails. Only the master calls the correction.
+	ConcentrationDc int32 `protobuf:"varint,2,opt,name=concentration_dc,json=concentrationDc,proto3" json:"concentration_dc,omitempty"`
+	// The cast being concentrated on, with `concentration_dc`.
+	ConcentrationCastId string `protobuf:"bytes,3,opt,name=concentration_cast_id,json=concentrationCastId,proto3" json:"concentration_cast_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AdjustCharacterVitalsResponse) Reset() {
@@ -2926,6 +2934,20 @@ func (x *AdjustCharacterVitalsResponse) GetVitals() *CharacterVitals {
 		return x.Vitals
 	}
 	return nil
+}
+
+func (x *AdjustCharacterVitalsResponse) GetConcentrationDc() int32 {
+	if x != nil {
+		return x.ConcentrationDc
+	}
+	return 0
+}
+
+func (x *AdjustCharacterVitalsResponse) GetConcentrationCastId() string {
+	if x != nil {
+		return x.ConcentrationCastId
+	}
+	return ""
 }
 
 // SetCurrentMapRequest names the map the session shows.
@@ -4794,9 +4816,11 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x04used\x18\x02 \x01(\x05R\x04used\":\n" +
 	"\x0eSpellSlotsUsed\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x12\n" +
-	"\x04used\x18\x02 \x01(\x05R\x04used\"X\n" +
+	"\x04used\x18\x02 \x01(\x05R\x04used\"\xb7\x01\n" +
 	"\x1dAdjustCharacterVitalsResponse\x127\n" +
-	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\"N\n" +
+	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x12)\n" +
+	"\x10concentration_dc\x18\x02 \x01(\x05R\x0fconcentrationDc\x122\n" +
+	"\x15concentration_cast_id\x18\x03 \x01(\tR\x13concentrationCastId\"N\n" +
 	"\x14SetCurrentMapRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +

@@ -26,7 +26,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/casting.proto.
  */
 export const file_meurpg_play_v1_casting: GenFile = /*@__PURE__*/
-  fileDesc("ChxtZXVycGcvcGxheS92MS9jYXN0aW5nLnByb3RvEg5tZXVycGcucGxheS52MSJZCg5DYXN0aW5nQmxvY2tlZBI0CgZyZWFzb24YASABKA4yJC5tZXVycGcucGxheS52MS5DYXN0aW5nQmxvY2tlZFJlYXNvbhIRCgltaW5fbGV2ZWwYAiABKAUijAQKDENhc3RpbmdTcGVsbBIlCgVzcGVsbBgBIAEoCzIWLm1ldXJwZy5ydWxlcy52MS5TcGVsbBIQCghjYW5fY2FzdBgCIAEoCBISCgpjYW5fcml0dWFsGAMgASgIEioKBXNsb3RzGAQgAygLMhsubWV1cnBnLnJ1bGVzLnYxLlNsb3RDaG9pY2USLwoGcmVhc29uGAUgASgLMh8ubWV1cnBnLnJ1bGVzLnYxLkRpc2FibGVkUmVhc29uEhcKD2Nhc3RpbmdfbWludXRlcxgGIAEoBRIWCg5yaXR1YWxfbWludXRlcxgHIAEoBRIXCg9jYXN0aW5nX3RpbWVfcHQYCCABKAkSDQoFbGFzdHMYCSABKAgSGAoQZHVyYXRpb25fc2Vjb25kcxgKIAEoBRIvCglyZXN0X2VuZHMYCyABKA4yHC5tZXVycGcucGxheS52MS5SZXN0VGhhdEVuZHMSMQoGZWZmZWN0GAwgASgOMiEubWV1cnBnLnBsYXkudjEuQ2FzdGluZ0VmZmVjdEtpbmQSEgoKcm9sbHNfZGljZRgNIAEoCBIRCglyb2xsX2RpY2UYDiABKAkSEwoLbWF4X3RhcmdldHMYDyABKAUSGQoRdGFyZ2V0c19wZXJfbGV2ZWwYECABKAUSEwoLY2FzdGVyX29ubHkYESABKAgSDwoHc3VtbW9ucxgSIAEoCCJACg1DYXN0aW5nVGFyZ2V0EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgsKA25wYxgDIAEoCCJFChhHZXRDYXN0aW5nT3B0aW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIoICChlHZXRDYXN0aW5nT3B0aW9uc1Jlc3BvbnNlEiwKBnNwZWxscxgBIAMoCzIcLm1ldXJwZy5wbGF5LnYxLkNhc3RpbmdTcGVsbBIuCgd0YXJnZXRzGAIgAygLMh0ubWV1cnBnLnBsYXkudjEuQ2FzdGluZ1RhcmdldBIRCglpbl9jb21iYXQYAyABKAgSEgoKd2lsZF9zaGFwZRgEIAEoCBIsCgdjYXN0aW5nGAUgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QSMgoNY29uY2VudHJhdGluZxgGIAEoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0IqsCCh1DYXN0U3BlbGxPdXRzaWRlQ29tYmF0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCgljYXN0ZXJfaWQYAiABKAkSEQoJc3BlbGxfa2V5GAMgASgJEg4KBnJpdHVhbBgEIAEoCBInCgRzbG90GAUgASgLMhkubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90EhwKFHRhcmdldF9jaGFyYWN0ZXJfaWRzGAYgAygJEhcKD2lkZW1wb3RlbmN5X2tleRgHIAEoCRIVCgtyb2xsX2luX2FwcBgIIAEoCEgAEhIKCHBvb2xfc3VtGAkgASgFSAASLAoGc3VtbW9uGAogASgLMhwubWV1cnBnLnBsYXkudjEuU3VtbW9uQ2hvaWNlQgYKBHJvbGwiswEKEUZpbmlzaENhc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg8KB2Nhc3RfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEhUKC3JvbGxfaW5fYXBwGAQgASgISAASEgoIcG9vbF9zdW0YBSABKAVIABIsCgZzdW1tb24YBiABKAsyHC5tZXVycGcucGxheS52MS5TdW1tb25DaG9pY2VCBgoEcm9sbCLKAQoeQ2FzdFNwZWxsT3V0c2lkZUNvbWJhdFJlc3BvbnNlEikKBGNhc3QYASABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIvCgZ2aXRhbHMYAiADKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSFAoMY3JlYXR1cmVfaWRzGAMgAygJEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYBCADKAkSFgoOZW5kZWRfY2FzdF9pZHMYBSADKAkivgEKEkZpbmlzaENhc3RSZXNwb25zZRIpCgRjYXN0GAEgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QSLwoGdml0YWxzGAIgAygLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEhQKDGNyZWF0dXJlX2lkcxgDIAMoCRIeChZkaXNtaXNzZWRfY3JlYXR1cmVfaWRzGAQgAygJEhYKDmVuZGVkX2Nhc3RfaWRzGAUgAygJIlUKFEludGVycnVwdENhc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg8KB2Nhc3RfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIkIKFUludGVycnVwdENhc3RSZXNwb25zZRIpCgRjYXN0GAEgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QiUAoPRW5kU3BlbGxSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg8KB2Nhc3RfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIo4BChBFbmRTcGVsbFJlc3BvbnNlEikKBGNhc3QYASABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIvCgZ2aXRhbHMYAiADKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSHgoWZGlzbWlzc2VkX2NyZWF0dXJlX2lkcxgDIAMoCSJCChVMaXN0U3BlbGxDYXN0c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIm8KFkxpc3RTcGVsbENhc3RzUmVzcG9uc2USKwoGYWN0aXZlGAEgAygLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QSKAoDbG9nGAIgAygLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3Qi7AUKC091dHNpZGVDYXN0EgoKAmlkGAEgASgJEhEKCXNwZWxsX2tleRgCIAEoCRIVCg1zcGVsbF9uYW1lX3B0GAMgASgJEhEKCWNhc3Rlcl9pZBgEIAEoCRITCgtjYXN0ZXJfbmFtZRgFIAEoCRIVCg1jYXN0ZXJfaXNfbnBjGAYgASgIEjEKBnN0YXR1cxgHIAEoDjIhLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0U3RhdHVzEg4KBnJpdHVhbBgIIAEoCBISCgpzbG90X2xldmVsGAkgASgFEhEKCXNsb3RfcGFjdBgKIAEoCBIXCg9jYXN0aW5nX21pbnV0ZXMYCyABKAUSFQoNY29uY2VudHJhdGluZxgMIAEoCBINCgVsYXN0cxgNIAEoCBIYChBkdXJhdGlvbl9zZWNvbmRzGA4gASgFEi8KCXJlc3RfZW5kcxgPIAEoDjIcLm1ldXJwZy5wbGF5LnYxLlJlc3RUaGF0RW5kcxIuCgpzdGFydGVkX2F0GBAgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIrCgdjYXN0X2F0GBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIsCghlbmRlZF9hdBgSIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMgoKZW5kX3JlYXNvbhgTIAEoDjIeLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0RW5kEjIKB3RhcmdldHMYFCADKAsyIS5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdFRhcmdldBISCgpkaWNlX2NvdW50GBUgASgFEhIKCmRpY2Vfc2lkZXMYFiABKAUSDQoFZmFjZXMYFyADKAUSEgoKcm9sbF90b3RhbBgYIAEoBRIQCghwaHlzaWNhbBgZIAEoCBIOCgZzZWNyZXQYGiABKAgSFAoMY3JlYXR1cmVfaWRzGBsgAygJIsoBChFPdXRzaWRlQ2FzdFRhcmdldBIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRILCgNucGMYAyABKAgSKgoGZWZmZWN0GAQgASgOMhoubWV1cnBnLnBsYXkudjEuQ2FzdEVmZmVjdBIOCgZhbW91bnQYBSABKAUSGQoRaGl0X3BvaW50c19iZWZvcmUYBiABKAUSGAoQaGl0X3BvaW50c19hZnRlchgHIAEoBRITCgthcm1vcl9jbGFzcxgIIAEoBSq4AQoRT3V0c2lkZUNhc3RTdGF0dXMSIwofT1VUU0lERV9DQVNUX1NUQVRVU19VTlNQRUNJRklFRBAAEh8KG09VVFNJREVfQ0FTVF9TVEFUVVNfQ0FTVElORxABEh4KGk9VVFNJREVfQ0FTVF9TVEFUVVNfQUNUSVZFEAISHQoZT1VUU0lERV9DQVNUX1NUQVRVU19FTkRFRBADEh4KGk9VVFNJREVfQ0FTVF9TVEFUVVNfRkFJTEVEEAQq8wEKDk91dHNpZGVDYXN0RW5kEiAKHE9VVFNJREVfQ0FTVF9FTkRfVU5TUEVDSUZJRUQQABIcChhPVVRTSURFX0NBU1RfRU5EX0lOU1RBTlQQARIeChpPVVRTSURFX0NBU1RfRU5EX0RJU01JU1NFRBACEiIKHk9VVFNJREVfQ0FTVF9FTkRfQ09OQ0VOVFJBVElPThADEhkKFU9VVFNJREVfQ0FTVF9FTkRfUkVTVBAEEiAKHE9VVFNJREVfQ0FTVF9FTkRfSU5URVJSVVBURUQQBRIgChxPVVRTSURFX0NBU1RfRU5EX0NBU1RFUl9HT05FEAYqYQoMUmVzdFRoYXRFbmRzEh4KGlJFU1RfVEhBVF9FTkRTX1VOU1BFQ0lGSUVEEAASGAoUUkVTVF9USEFUX0VORFNfU0hPUlQQARIXChNSRVNUX1RIQVRfRU5EU19MT05HEAIqvAEKCkNhc3RFZmZlY3QSGwoXQ0FTVF9FRkZFQ1RfVU5TUEVDSUZJRUQQABIYChRDQVNUX0VGRkVDVF9OQVJSQVRFRBABEhQKEENBU1RfRUZGRUNUX0hFQUwQAhIkCiBDQVNUX0VGRkVDVF9URU1QT1JBUllfSElUX1BPSU5UUxADEh4KGkNBU1RfRUZGRUNUX01BWF9ISVRfUE9JTlRTEAQSGwoXQ0FTVF9FRkZFQ1RfQVJNT1JfQ0xBU1MQBSq7AgoUQ2FzdGluZ0Jsb2NrZWRSZWFzb24SJgoiQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEiQKIENBU1RJTkdfQkxPQ0tFRF9SRUFTT05fSU5fQ09NQkFUEAESKwonQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9DQVNUX0lOX1BST0dSRVNTEAISIgoeQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9OT19TTE9UEAMSLQopQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9UQVJHRVRfV0VBUlNfQVJNT1IQBBIpCiVDQVNUSU5HX0JMT0NLRURfUkVBU09OX0NBU1RfTk9UX0dPSU5HEAUSKgomQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9DQVNUX05PVF9BQ1RJVkUQBiqTAgoRQ2FzdGluZ0VmZmVjdEtpbmQSIwofQ0FTVElOR19FRkZFQ1RfS0lORF9VTlNQRUNJRklFRBAAEiAKHENBU1RJTkdfRUZGRUNUX0tJTkRfTkFSUkFURUQQARIcChhDQVNUSU5HX0VGRkVDVF9LSU5EX0hFQUwQAhIsCihDQVNUSU5HX0VGRkVDVF9LSU5EX1RFTVBPUkFSWV9ISVRfUE9JTlRTEAMSJgoiQ0FTVElOR19FRkZFQ1RfS0lORF9NQVhfSElUX1BPSU5UUxAEEiMKH0NBU1RJTkdfRUZGRUNUX0tJTkRfQVJNT1JfQ0xBU1MQBRIeChpDQVNUSU5HX0VGRkVDVF9LSU5EX1NVTU1PThAGMuAECg5DYXN0aW5nU2VydmljZRJtChFHZXRDYXN0aW5nT3B0aW9ucxIoLm1ldXJwZy5wbGF5LnYxLkdldENhc3RpbmdPcHRpb25zUmVxdWVzdBopLm1ldXJwZy5wbGF5LnYxLkdldENhc3RpbmdPcHRpb25zUmVzcG9uc2UiA5ACAhJ3ChZDYXN0U3BlbGxPdXRzaWRlQ29tYmF0Ei0ubWV1cnBnLnBsYXkudjEuQ2FzdFNwZWxsT3V0c2lkZUNvbWJhdFJlcXVlc3QaLi5tZXVycGcucGxheS52MS5DYXN0U3BlbGxPdXRzaWRlQ29tYmF0UmVzcG9uc2USUwoKRmluaXNoQ2FzdBIhLm1ldXJwZy5wbGF5LnYxLkZpbmlzaENhc3RSZXF1ZXN0GiIubWV1cnBnLnBsYXkudjEuRmluaXNoQ2FzdFJlc3BvbnNlElwKDUludGVycnVwdENhc3QSJC5tZXVycGcucGxheS52MS5JbnRlcnJ1cHRDYXN0UmVxdWVzdBolLm1ldXJwZy5wbGF5LnYxLkludGVycnVwdENhc3RSZXNwb25zZRJNCghFbmRTcGVsbBIfLm1ldXJwZy5wbGF5LnYxLkVuZFNwZWxsUmVxdWVzdBogLm1ldXJwZy5wbGF5LnYxLkVuZFNwZWxsUmVzcG9uc2USZAoOTGlzdFNwZWxsQ2FzdHMSJS5tZXVycGcucGxheS52MS5MaXN0U3BlbGxDYXN0c1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5MaXN0U3BlbGxDYXN0c1Jlc3BvbnNlIgOQAgJCugEKEmNvbS5tZXVycGcucGxheS52MUIMQ2FzdGluZ1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_play_v1_combat, file_meurpg_play_v1_play, file_meurpg_rules_v1_rules]);
+  fileDesc("ChxtZXVycGcvcGxheS92MS9jYXN0aW5nLnByb3RvEg5tZXVycGcucGxheS52MSJtCg5DYXN0aW5nQmxvY2tlZBI0CgZyZWFzb24YASABKA4yJC5tZXVycGcucGxheS52MS5DYXN0aW5nQmxvY2tlZFJlYXNvbhIRCgltaW5fbGV2ZWwYAiABKAUSEgoKbWlzc2luZ19mdBgDIAEoBSLjBAoMQ2FzdGluZ1NwZWxsEiUKBXNwZWxsGAEgASgLMhYubWV1cnBnLnJ1bGVzLnYxLlNwZWxsEhAKCGNhbl9jYXN0GAIgASgIEhYKDnJpdHVhbF9hbGxvd2VkGAMgASgIEioKBXNsb3RzGAQgAygLMhsubWV1cnBnLnJ1bGVzLnYxLlNsb3RDaG9pY2USLwoGcmVhc29uGAUgASgLMh8ubWV1cnBnLnJ1bGVzLnYxLkRpc2FibGVkUmVhc29uEhcKD2Nhc3RpbmdfbWludXRlcxgGIAEoBRIWCg5yaXR1YWxfbWludXRlcxgHIAEoBRIXCg9jYXN0aW5nX3RpbWVfcHQYCCABKAkSDQoFbGFzdHMYCSABKAgSGAoQZHVyYXRpb25fc2Vjb25kcxgKIAEoBRIvCglyZXN0X2VuZHMYCyABKA4yHC5tZXVycGcucGxheS52MS5SZXN0VGhhdEVuZHMSMQoGZWZmZWN0GAwgASgOMiEubWV1cnBnLnBsYXkudjEuQ2FzdGluZ0VmZmVjdEtpbmQSEgoKcm9sbHNfZGljZRgNIAEoCBIRCglyb2xsX2RpY2UYDiABKAkSEwoLbWF4X3RhcmdldHMYDyABKAUSGQoRdGFyZ2V0c19wZXJfbGV2ZWwYECABKAUSEwoLY2FzdGVyX29ubHkYESABKAgSEgoKcmFuZ2Vfa2luZBgTIAEoCRIQCghyYW5nZV9mdBgUIAEoBRIrCgVyZWFjaBgVIAMoCzIcLm1ldXJwZy5wbGF5LnYxLkNhc3RpbmdSZWFjaBIPCgdzdW1tb25zGBIgASgIIkkKDENhc3RpbmdSZWFjaBIUCgxjaGFyYWN0ZXJfaWQYASABKAkSEAoIaW5fcmFuZ2UYAiABKAgSEQoJcmVhc29uX3B0GAMgASgJIm0KDUNhc3RpbmdUYXJnZXQSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDbnBjGAMgASgIEhMKC2Rpc3RhbmNlX2Z0GAQgASgFEhYKDmRpc3RhbmNlX2tub3duGAUgASgIIkIKFUdldENhc3RPcHRpb25zUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAki/wEKFkdldENhc3RPcHRpb25zUmVzcG9uc2USLAoGc3BlbGxzGAEgAygLMhwubWV1cnBnLnBsYXkudjEuQ2FzdGluZ1NwZWxsEi4KB3RhcmdldHMYAiADKAsyHS5tZXVycGcucGxheS52MS5DYXN0aW5nVGFyZ2V0EhEKCWluX2NvbWJhdBgDIAEoCBISCgp3aWxkX3NoYXBlGAQgASgIEiwKB2Nhc3RpbmcYBSABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIyCg1jb25jZW50cmF0aW5nGAYgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QirwIKHUNhc3RTcGVsbE91dHNpZGVDb21iYXRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhsKE2Nhc3Rlcl9jaGFyYWN0ZXJfaWQYAiABKAkSEQoJc3BlbGxfa2V5GAMgASgJEhEKCWFzX3JpdHVhbBgEIAEoCBInCgRzbG90GAUgASgLMhkubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90EhIKCnRhcmdldF9pZHMYBiADKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJEhUKC3JvbGxfaW5fYXBwGAggASgISAASEwoJdHlwZWRfc3VtGAkgASgFSAASLAoGc3VtbW9uGAogASgLMhwubWV1cnBnLnBsYXkudjEuU3VtbW9uQ2hvaWNlQgYKBHJvbGwivwEKHENvbmZpcm1DYXN0VGltZVBhc3NlZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDwoHY2FzdF9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSFQoLcm9sbF9pbl9hcHAYBCABKAhIABITCgl0eXBlZF9zdW0YBSABKAVIABIsCgZzdW1tb24YBiABKAsyHC5tZXVycGcucGxheS52MS5TdW1tb25DaG9pY2VCBgoEcm9sbCLKAQoeQ2FzdFNwZWxsT3V0c2lkZUNvbWJhdFJlc3BvbnNlEikKBGNhc3QYASABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIvCgZ2aXRhbHMYAiADKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSFAoMY3JlYXR1cmVfaWRzGAMgAygJEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYBCADKAkSFgoOZW5kZWRfY2FzdF9pZHMYBSADKAkiyQEKHUNvbmZpcm1DYXN0VGltZVBhc3NlZFJlc3BvbnNlEikKBGNhc3QYASABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIvCgZ2aXRhbHMYAiADKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSFAoMY3JlYXR1cmVfaWRzGAMgAygJEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYBCADKAkSFgoOZW5kZWRfY2FzdF9pZHMYBSADKAkiUwoSQWJhbmRvbkNhc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg8KB2Nhc3RfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIkAKE0FiYW5kb25DYXN0UmVzcG9uc2USKQoEY2FzdBgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0IlYKFUVuZEFjdGl2ZVNwZWxsUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgdjYXN0X2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSKUAQoWRW5kQWN0aXZlU3BlbGxSZXNwb25zZRIpCgRjYXN0GAEgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QSLwoGdml0YWxzGAIgAygLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYAyADKAkiQgoVTGlzdFNwZWxsQ2FzdHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSJvChZMaXN0U3BlbGxDYXN0c1Jlc3BvbnNlEisKBmFjdGl2ZRgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0EigKA2xvZxgCIAMoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0IuwFCgtPdXRzaWRlQ2FzdBIKCgJpZBgBIAEoCRIRCglzcGVsbF9rZXkYAiABKAkSFQoNc3BlbGxfbmFtZV9wdBgDIAEoCRIRCgljYXN0ZXJfaWQYBCABKAkSEwoLY2FzdGVyX25hbWUYBSABKAkSFQoNY2FzdGVyX2lzX25wYxgGIAEoCBIxCgZzdGF0dXMYByABKA4yIS5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdFN0YXR1cxIOCgZyaXR1YWwYCCABKAgSEgoKc2xvdF9sZXZlbBgJIAEoBRIRCglzbG90X3BhY3QYCiABKAgSFwoPY2FzdGluZ19taW51dGVzGAsgASgFEhUKDWNvbmNlbnRyYXRpbmcYDCABKAgSDQoFbGFzdHMYDSABKAgSGAoQZHVyYXRpb25fc2Vjb25kcxgOIAEoBRIvCglyZXN0X2VuZHMYDyABKA4yHC5tZXVycGcucGxheS52MS5SZXN0VGhhdEVuZHMSLgoKc3RhcnRlZF9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoHY2FzdF9hdBgRIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kZWRfYXQYEiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjIKCmVuZF9yZWFzb24YEyABKA4yHi5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdEVuZBIyCgd0YXJnZXRzGBQgAygLMiEubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3RUYXJnZXQSEgoKZGljZV9jb3VudBgVIAEoBRISCgpkaWNlX3NpZGVzGBYgASgFEg0KBWZhY2VzGBcgAygFEhIKCnJvbGxfdG90YWwYGCABKAUSEAoIcGh5c2ljYWwYGSABKAgSDgoGc2VjcmV0GBogASgIEhQKDGNyZWF0dXJlX2lkcxgbIAMoCSLKAQoRT3V0c2lkZUNhc3RUYXJnZXQSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDbnBjGAMgASgIEioKBmVmZmVjdBgEIAEoDjIaLm1ldXJwZy5wbGF5LnYxLkNhc3RFZmZlY3QSDgoGYW1vdW50GAUgASgFEhkKEWhpdF9wb2ludHNfYmVmb3JlGAYgASgFEhgKEGhpdF9wb2ludHNfYWZ0ZXIYByABKAUSEwoLYXJtb3JfY2xhc3MYCCABKAUquAEKEU91dHNpZGVDYXN0U3RhdHVzEiMKH09VVFNJREVfQ0FTVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIfChtPVVRTSURFX0NBU1RfU1RBVFVTX0NBU1RJTkcQARIeChpPVVRTSURFX0NBU1RfU1RBVFVTX0FDVElWRRACEh0KGU9VVFNJREVfQ0FTVF9TVEFUVVNfRU5ERUQQAxIeChpPVVRTSURFX0NBU1RfU1RBVFVTX0ZBSUxFRBAEKvMBCg5PdXRzaWRlQ2FzdEVuZBIgChxPVVRTSURFX0NBU1RfRU5EX1VOU1BFQ0lGSUVEEAASHAoYT1VUU0lERV9DQVNUX0VORF9JTlNUQU5UEAESHgoaT1VUU0lERV9DQVNUX0VORF9ESVNNSVNTRUQQAhIiCh5PVVRTSURFX0NBU1RfRU5EX0NPTkNFTlRSQVRJT04QAxIZChVPVVRTSURFX0NBU1RfRU5EX1JFU1QQBBIgChxPVVRTSURFX0NBU1RfRU5EX0lOVEVSUlVQVEVEEAUSIAocT1VUU0lERV9DQVNUX0VORF9DQVNURVJfR09ORRAGKmEKDFJlc3RUaGF0RW5kcxIeChpSRVNUX1RIQVRfRU5EU19VTlNQRUNJRklFRBAAEhgKFFJFU1RfVEhBVF9FTkRTX1NIT1JUEAESFwoTUkVTVF9USEFUX0VORFNfTE9ORxACKrwBCgpDYXN0RWZmZWN0EhsKF0NBU1RfRUZGRUNUX1VOU1BFQ0lGSUVEEAASGAoUQ0FTVF9FRkZFQ1RfTkFSUkFURUQQARIUChBDQVNUX0VGRkVDVF9IRUFMEAISJAogQ0FTVF9FRkZFQ1RfVEVNUE9SQVJZX0hJVF9QT0lOVFMQAxIeChpDQVNUX0VGRkVDVF9NQVhfSElUX1BPSU5UUxAEEhsKF0NBU1RfRUZGRUNUX0FSTU9SX0NMQVNTEAUqxAMKFENhc3RpbmdCbG9ja2VkUmVhc29uEiYKIkNBU1RJTkdfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIkCiBDQVNUSU5HX0JMT0NLRURfUkVBU09OX0lOX0NPTUJBVBABEisKJ0NBU1RJTkdfQkxPQ0tFRF9SRUFTT05fQ0FTVF9JTl9QUk9HUkVTUxACEiIKHkNBU1RJTkdfQkxPQ0tFRF9SRUFTT05fTk9fU0xPVBADEi0KKUNBU1RJTkdfQkxPQ0tFRF9SRUFTT05fVEFSR0VUX1dFQVJTX0FSTU9SEAQSKQolQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9DQVNUX05PVF9HT0lORxAFEioKJkNBU1RJTkdfQkxPQ0tFRF9SRUFTT05fQ0FTVF9OT1RfQUNUSVZFEAYSLgoqQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9UQVJHRVRfT1VUX09GX1JFQUNIEAcSLgoqQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9DTEFTU19DQU5OT1RfUklUVUFMEAgSJwojQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9OT1RfQV9SSVRVQUwQCSqTAgoRQ2FzdGluZ0VmZmVjdEtpbmQSIwofQ0FTVElOR19FRkZFQ1RfS0lORF9VTlNQRUNJRklFRBAAEiAKHENBU1RJTkdfRUZGRUNUX0tJTkRfTkFSUkFURUQQARIcChhDQVNUSU5HX0VGRkVDVF9LSU5EX0hFQUwQAhIsCihDQVNUSU5HX0VGRkVDVF9LSU5EX1RFTVBPUkFSWV9ISVRfUE9JTlRTEAMSJgoiQ0FTVElOR19FRkZFQ1RfS0lORF9NQVhfSElUX1BPSU5UUxAEEiMKH0NBU1RJTkdfRUZGRUNUX0tJTkRfQVJNT1JfQ0xBU1MQBRIeChpDQVNUSU5HX0VGRkVDVF9LSU5EX1NVTU1PThAGMoQFCg5DYXN0aW5nU2VydmljZRJkCg5HZXRDYXN0T3B0aW9ucxIlLm1ldXJwZy5wbGF5LnYxLkdldENhc3RPcHRpb25zUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkdldENhc3RPcHRpb25zUmVzcG9uc2UiA5ACAhJ3ChZDYXN0U3BlbGxPdXRzaWRlQ29tYmF0Ei0ubWV1cnBnLnBsYXkudjEuQ2FzdFNwZWxsT3V0c2lkZUNvbWJhdFJlcXVlc3QaLi5tZXVycGcucGxheS52MS5DYXN0U3BlbGxPdXRzaWRlQ29tYmF0UmVzcG9uc2USdAoVQ29uZmlybUNhc3RUaW1lUGFzc2VkEiwubWV1cnBnLnBsYXkudjEuQ29uZmlybUNhc3RUaW1lUGFzc2VkUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkNvbmZpcm1DYXN0VGltZVBhc3NlZFJlc3BvbnNlElYKC0FiYW5kb25DYXN0EiIubWV1cnBnLnBsYXkudjEuQWJhbmRvbkNhc3RSZXF1ZXN0GiMubWV1cnBnLnBsYXkudjEuQWJhbmRvbkNhc3RSZXNwb25zZRJfCg5FbmRBY3RpdmVTcGVsbBIlLm1ldXJwZy5wbGF5LnYxLkVuZEFjdGl2ZVNwZWxsUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkVuZEFjdGl2ZVNwZWxsUmVzcG9uc2USZAoOTGlzdFNwZWxsQ2FzdHMSJS5tZXVycGcucGxheS52MS5MaXN0U3BlbGxDYXN0c1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5MaXN0U3BlbGxDYXN0c1Jlc3BvbnNlIgOQAgJCugEKEmNvbS5tZXVycGcucGxheS52MUIMQ2FzdGluZ1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_play_v1_combat, file_meurpg_play_v1_play, file_meurpg_rules_v1_rules]);
 
 /**
  * CastingBlocked is the detail of CastingService's `failed_precondition`.
@@ -45,6 +45,13 @@ export type CastingBlocked = Message<"meurpg.play.v1.CastingBlocked"> & {
    * @generated from field: int32 min_level = 2;
    */
   minLevel: number;
+
+  /**
+   * For TARGET_OUT_OF_REACH: how many feet too far.
+   *
+   * @generated from field: int32 missing_ft = 3;
+   */
+  missingFt: number;
 };
 
 /**
@@ -74,11 +81,11 @@ export type CastingSpell = Message<"meurpg.play.v1.CastingSpell"> & {
   canCast: boolean;
 
   /**
-   * Whether it can be cast as a ritual: no slot, 10 minutes more.
+   * Whether it can be cast as a ritual (RitualAllowed: the spell has the tag and the caster's class casts it as one): no slot, 10 minutes more.
    *
-   * @generated from field: bool can_ritual = 3;
+   * @generated from field: bool ritual_allowed = 3;
    */
-  canRitual: boolean;
+  ritualAllowed: boolean;
 
   /**
    * The slots it can be cast with: at least the spell's level, with a free one.
@@ -142,7 +149,7 @@ export type CastingSpell = Message<"meurpg.play.v1.CastingSpell"> & {
 
   /**
    * Whether the cast rolls dice (a healing spell, False Life): it needs `roll_in_app` or
-   * `pool_sum`. `roll_dice` is the dice at the spell's own level, "2d8".
+   * `typed_sum`. `roll_dice` is the dice at the spell's own level, "2d8".
    *
    * @generated from field: bool rolls_dice = 13;
    */
@@ -173,6 +180,28 @@ export type CastingSpell = Message<"meurpg.play.v1.CastingSpell"> & {
   casterOnly: boolean;
 
   /**
+   * How far the spell reaches: its range kind ("self", "touch", "ranged", "sight",
+   * "unlimited" or "special") and, for "ranged", the distance in feet.
+   *
+   * @generated from field: string range_kind = 19;
+   */
+  rangeKind: string;
+
+  /**
+   * @generated from field: int32 range_ft = 20;
+   */
+  rangeFt: number;
+
+  /**
+   * For each target the caller may pick: whether it is within the spell's reach and
+   * why not. Without a map the master judges the distance and every target is in range;
+   * a target the spell refuses (Mage Armor on a creature in armor) is out with its reason.
+   *
+   * @generated from field: repeated meurpg.play.v1.CastingReach reach = 21;
+   */
+  reach: CastingReach[];
+
+  /**
    * Whether it brings creatures: cast it with `summon` (CharacterService.GetSummonOptions
    * has the choices).
    *
@@ -189,12 +218,46 @@ export const CastingSpellSchema: GenMessage<CastingSpell> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_casting, 1);
 
 /**
+ * CastingReach says whether a target can be picked for a spell.
+ *
+ * @generated from message meurpg.play.v1.CastingReach
+ */
+export type CastingReach = Message<"meurpg.play.v1.CastingReach"> & {
+  /**
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: bool in_range = 2;
+   */
+  inRange: boolean;
+
+  /**
+   * Why not, in Portuguese ("Fora do alcance do toque (1,5 m)."); empty when it is.
+   *
+   * @generated from field: string reason_pt = 3;
+   */
+  reasonPt: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.CastingReach.
+ * Use `create(CastingReachSchema)` to create a new message.
+ */
+export const CastingReachSchema: GenMessage<CastingReach> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 2);
+
+/**
  * CastingTarget is a character the caller may pick as a target.
  *
  * @generated from message meurpg.play.v1.CastingTarget
  */
 export type CastingTarget = Message<"meurpg.play.v1.CastingTarget"> & {
   /**
+   * The character's ID; for an NPC a player reads its place on the stage instead (the master
+   * gets the character ID).
+   *
    * @generated from field: string character_id = 1;
    */
   characterId: string;
@@ -210,6 +273,19 @@ export type CastingTarget = Message<"meurpg.play.v1.CastingTarget"> & {
    * @generated from field: bool npc = 3;
    */
   npc: boolean;
+
+  /**
+   * The distance from the caster in feet on the session's current map, when both stand on
+   * it (5 ft a square); distance_known is false without a map, a grid or a token.
+   *
+   * @generated from field: int32 distance_ft = 4;
+   */
+  distanceFt: number;
+
+  /**
+   * @generated from field: bool distance_known = 5;
+   */
+  distanceKnown: boolean;
 };
 
 /**
@@ -217,14 +293,14 @@ export type CastingTarget = Message<"meurpg.play.v1.CastingTarget"> & {
  * Use `create(CastingTargetSchema)` to create a new message.
  */
 export const CastingTargetSchema: GenMessage<CastingTarget> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 2);
+  messageDesc(file_meurpg_play_v1_casting, 3);
 
 /**
- * GetCastingOptionsRequest names the caster.
+ * GetCastOptionsRequest names the caster.
  *
- * @generated from message meurpg.play.v1.GetCastingOptionsRequest
+ * @generated from message meurpg.play.v1.GetCastOptionsRequest
  */
-export type GetCastingOptionsRequest = Message<"meurpg.play.v1.GetCastingOptionsRequest"> & {
+export type GetCastOptionsRequest = Message<"meurpg.play.v1.GetCastOptionsRequest"> & {
   /**
    * @generated from field: string campaign_id = 1;
    */
@@ -239,18 +315,18 @@ export type GetCastingOptionsRequest = Message<"meurpg.play.v1.GetCastingOptions
 };
 
 /**
- * Describes the message meurpg.play.v1.GetCastingOptionsRequest.
- * Use `create(GetCastingOptionsRequestSchema)` to create a new message.
+ * Describes the message meurpg.play.v1.GetCastOptionsRequest.
+ * Use `create(GetCastOptionsRequestSchema)` to create a new message.
  */
-export const GetCastingOptionsRequestSchema: GenMessage<GetCastingOptionsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 3);
+export const GetCastOptionsRequestSchema: GenMessage<GetCastOptionsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 4);
 
 /**
- * GetCastingOptionsResponse is what the character can cast, and on whom.
+ * GetCastOptionsResponse is what the character can cast, and on whom.
  *
- * @generated from message meurpg.play.v1.GetCastingOptionsResponse
+ * @generated from message meurpg.play.v1.GetCastOptionsResponse
  */
-export type GetCastingOptionsResponse = Message<"meurpg.play.v1.GetCastingOptionsResponse"> & {
+export type GetCastOptionsResponse = Message<"meurpg.play.v1.GetCastOptionsResponse"> & {
   /**
    * @generated from field: repeated meurpg.play.v1.CastingSpell spells = 1;
    */
@@ -295,11 +371,11 @@ export type GetCastingOptionsResponse = Message<"meurpg.play.v1.GetCastingOption
 };
 
 /**
- * Describes the message meurpg.play.v1.GetCastingOptionsResponse.
- * Use `create(GetCastingOptionsResponseSchema)` to create a new message.
+ * Describes the message meurpg.play.v1.GetCastOptionsResponse.
+ * Use `create(GetCastOptionsResponseSchema)` to create a new message.
  */
-export const GetCastingOptionsResponseSchema: GenMessage<GetCastingOptionsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 4);
+export const GetCastOptionsResponseSchema: GenMessage<GetCastOptionsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 5);
 
 /**
  * CastSpellOutsideCombatRequest casts a spell outside a combat.
@@ -315,12 +391,12 @@ export type CastSpellOutsideCombatRequest = Message<"meurpg.play.v1.CastSpellOut
   /**
    * The caster: a player's character, or an NPC with a full sheet for the master (a UUID).
    *
-   * @generated from field: string caster_id = 2;
+   * @generated from field: string caster_character_id = 2;
    */
-  casterId: string;
+  casterCharacterId: string;
 
   /**
-   * The spell, one of GetCastingOptions' keys.
+   * The spell, one of GetCastOptions' keys.
    *
    * @generated from field: string spell_key = 3;
    */
@@ -329,9 +405,9 @@ export type CastSpellOutsideCombatRequest = Message<"meurpg.play.v1.CastSpellOut
   /**
    * True: cast as a ritual, spending no slot, 10 minutes more. Refused with a slot.
    *
-   * @generated from field: bool ritual = 4;
+   * @generated from field: bool as_ritual = 4;
    */
-  ritual: boolean;
+  asRitual: boolean;
 
   /**
    * The slot. Unset for a cantrip and for a ritual. For an NPC caster it is only
@@ -342,13 +418,13 @@ export type CastSpellOutsideCombatRequest = Message<"meurpg.play.v1.CastSpellOut
   slot?: SpellSlot | undefined;
 
   /**
-   * The targets: characters (UUIDs), at most 10. Empty for a spell that reaches only the
+   * The targets: characters (UUIDs; for a player, an NPC is the ID of its place on the stage), at most 10. Empty for a spell that reaches only the
    * caster, and for one that meets nobody; a spell that reaches only the caster
    * takes the caster as its target by itself.
    *
-   * @generated from field: repeated string target_character_ids = 6;
+   * @generated from field: repeated string target_ids = 6;
    */
-  targetCharacterIds: string[];
+  targetIds: string[];
 
   /**
    * A UUID the app generates once for this casting and sends again on a retry.
@@ -360,7 +436,7 @@ export type CastSpellOutsideCombatRequest = Message<"meurpg.play.v1.CastSpellOut
   /**
    * How the dice of a spell that rolls them (a healing spell, False Life) come:
    * exactly one for such a spell, ignored by the others. A spell that takes minutes
-   * or hours is rolled by FinishCast, not here.
+   * or hours is rolled by ConfirmCastTimePassed, not here.
    *
    * @generated from oneof meurpg.play.v1.CastSpellOutsideCombatRequest.roll
    */
@@ -378,15 +454,15 @@ export type CastSpellOutsideCombatRequest = Message<"meurpg.play.v1.CastSpellOut
      * show, without a modifier. The campaign's dice setting binds a player here as on
      * every roll (RN-18).
      *
-     * @generated from field: int32 pool_sum = 9;
+     * @generated from field: int32 typed_sum = 9;
      */
     value: number;
-    case: "poolSum";
+    case: "typedSum";
   } | { case: undefined; value?: undefined };
 
   /**
    * What a summoning spell brings (as CastSummon). Required for such a spell and
-   * refused for any other. A spell that takes minutes or hours takes it in FinishCast.
+   * refused for any other. A spell that takes minutes or hours takes it in ConfirmCastTimePassed.
    *
    * @generated from field: meurpg.play.v1.SummonChoice summon = 10;
    */
@@ -398,14 +474,14 @@ export type CastSpellOutsideCombatRequest = Message<"meurpg.play.v1.CastSpellOut
  * Use `create(CastSpellOutsideCombatRequestSchema)` to create a new message.
  */
 export const CastSpellOutsideCombatRequestSchema: GenMessage<CastSpellOutsideCombatRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 5);
+  messageDesc(file_meurpg_play_v1_casting, 6);
 
 /**
- * FinishCastRequest ends the casting of a spell that takes time.
+ * ConfirmCastTimePassedRequest ends the casting of a spell that takes time.
  *
- * @generated from message meurpg.play.v1.FinishCastRequest
+ * @generated from message meurpg.play.v1.ConfirmCastTimePassedRequest
  */
-export type FinishCastRequest = Message<"meurpg.play.v1.FinishCastRequest"> & {
+export type ConfirmCastTimePassedRequest = Message<"meurpg.play.v1.ConfirmCastTimePassedRequest"> & {
   /**
    * @generated from field: string campaign_id = 1;
    */
@@ -424,7 +500,7 @@ export type FinishCastRequest = Message<"meurpg.play.v1.FinishCastRequest"> & {
   idempotencyKey: string;
 
   /**
-   * @generated from oneof meurpg.play.v1.FinishCastRequest.roll
+   * @generated from oneof meurpg.play.v1.ConfirmCastTimePassedRequest.roll
    */
   roll: {
     /**
@@ -434,10 +510,10 @@ export type FinishCastRequest = Message<"meurpg.play.v1.FinishCastRequest"> & {
     case: "rollInApp";
   } | {
     /**
-     * @generated from field: int32 pool_sum = 5;
+     * @generated from field: int32 typed_sum = 5;
      */
     value: number;
-    case: "poolSum";
+    case: "typedSum";
   } | { case: undefined; value?: undefined };
 
   /**
@@ -447,11 +523,11 @@ export type FinishCastRequest = Message<"meurpg.play.v1.FinishCastRequest"> & {
 };
 
 /**
- * Describes the message meurpg.play.v1.FinishCastRequest.
- * Use `create(FinishCastRequestSchema)` to create a new message.
+ * Describes the message meurpg.play.v1.ConfirmCastTimePassedRequest.
+ * Use `create(ConfirmCastTimePassedRequestSchema)` to create a new message.
  */
-export const FinishCastRequestSchema: GenMessage<FinishCastRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 6);
+export const ConfirmCastTimePassedRequestSchema: GenMessage<ConfirmCastTimePassedRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 7);
 
 /**
  * CastSpellOutsideCombatResponse returns the cast and what it changed.
@@ -503,14 +579,14 @@ export type CastSpellOutsideCombatResponse = Message<"meurpg.play.v1.CastSpellOu
  * Use `create(CastSpellOutsideCombatResponseSchema)` to create a new message.
  */
 export const CastSpellOutsideCombatResponseSchema: GenMessage<CastSpellOutsideCombatResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 7);
+  messageDesc(file_meurpg_play_v1_casting, 8);
 
 /**
- * FinishCastResponse returns the cast and what it changed, as CastSpellOutsideCombatResponse does.
+ * ConfirmCastTimePassedResponse returns the cast and what it changed, as CastSpellOutsideCombatResponse does.
  *
- * @generated from message meurpg.play.v1.FinishCastResponse
+ * @generated from message meurpg.play.v1.ConfirmCastTimePassedResponse
  */
-export type FinishCastResponse = Message<"meurpg.play.v1.FinishCastResponse"> & {
+export type ConfirmCastTimePassedResponse = Message<"meurpg.play.v1.ConfirmCastTimePassedResponse"> & {
   /**
    * The cast as the caller sees it: CASTING for a spell that takes time, otherwise ACTIVE
    * (it lasts) or ENDED (it was instantaneous).
@@ -551,18 +627,18 @@ export type FinishCastResponse = Message<"meurpg.play.v1.FinishCastResponse"> & 
 };
 
 /**
- * Describes the message meurpg.play.v1.FinishCastResponse.
- * Use `create(FinishCastResponseSchema)` to create a new message.
+ * Describes the message meurpg.play.v1.ConfirmCastTimePassedResponse.
+ * Use `create(ConfirmCastTimePassedResponseSchema)` to create a new message.
  */
-export const FinishCastResponseSchema: GenMessage<FinishCastResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 8);
+export const ConfirmCastTimePassedResponseSchema: GenMessage<ConfirmCastTimePassedResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 9);
 
 /**
- * InterruptCastRequest fails a cast that is being cast.
+ * AbandonCastRequest fails a cast that is being cast.
  *
- * @generated from message meurpg.play.v1.InterruptCastRequest
+ * @generated from message meurpg.play.v1.AbandonCastRequest
  */
-export type InterruptCastRequest = Message<"meurpg.play.v1.InterruptCastRequest"> & {
+export type AbandonCastRequest = Message<"meurpg.play.v1.AbandonCastRequest"> & {
   /**
    * @generated from field: string campaign_id = 1;
    */
@@ -580,18 +656,18 @@ export type InterruptCastRequest = Message<"meurpg.play.v1.InterruptCastRequest"
 };
 
 /**
- * Describes the message meurpg.play.v1.InterruptCastRequest.
- * Use `create(InterruptCastRequestSchema)` to create a new message.
+ * Describes the message meurpg.play.v1.AbandonCastRequest.
+ * Use `create(AbandonCastRequestSchema)` to create a new message.
  */
-export const InterruptCastRequestSchema: GenMessage<InterruptCastRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 9);
+export const AbandonCastRequestSchema: GenMessage<AbandonCastRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 10);
 
 /**
- * InterruptCastResponse returns the cast as it is.
+ * AbandonCastResponse returns the cast as it is.
  *
- * @generated from message meurpg.play.v1.InterruptCastResponse
+ * @generated from message meurpg.play.v1.AbandonCastResponse
  */
-export type InterruptCastResponse = Message<"meurpg.play.v1.InterruptCastResponse"> & {
+export type AbandonCastResponse = Message<"meurpg.play.v1.AbandonCastResponse"> & {
   /**
    * @generated from field: meurpg.play.v1.OutsideCast cast = 1;
    */
@@ -599,18 +675,18 @@ export type InterruptCastResponse = Message<"meurpg.play.v1.InterruptCastRespons
 };
 
 /**
- * Describes the message meurpg.play.v1.InterruptCastResponse.
- * Use `create(InterruptCastResponseSchema)` to create a new message.
+ * Describes the message meurpg.play.v1.AbandonCastResponse.
+ * Use `create(AbandonCastResponseSchema)` to create a new message.
  */
-export const InterruptCastResponseSchema: GenMessage<InterruptCastResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 10);
+export const AbandonCastResponseSchema: GenMessage<AbandonCastResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 11);
 
 /**
- * EndSpellRequest ends a spell that lasts.
+ * EndActiveSpellRequest ends a spell that lasts.
  *
- * @generated from message meurpg.play.v1.EndSpellRequest
+ * @generated from message meurpg.play.v1.EndActiveSpellRequest
  */
-export type EndSpellRequest = Message<"meurpg.play.v1.EndSpellRequest"> & {
+export type EndActiveSpellRequest = Message<"meurpg.play.v1.EndActiveSpellRequest"> & {
   /**
    * @generated from field: string campaign_id = 1;
    */
@@ -628,18 +704,18 @@ export type EndSpellRequest = Message<"meurpg.play.v1.EndSpellRequest"> & {
 };
 
 /**
- * Describes the message meurpg.play.v1.EndSpellRequest.
- * Use `create(EndSpellRequestSchema)` to create a new message.
+ * Describes the message meurpg.play.v1.EndActiveSpellRequest.
+ * Use `create(EndActiveSpellRequestSchema)` to create a new message.
  */
-export const EndSpellRequestSchema: GenMessage<EndSpellRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 11);
+export const EndActiveSpellRequestSchema: GenMessage<EndActiveSpellRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 12);
 
 /**
- * EndSpellResponse returns the cast as it is, and what ending it changed.
+ * EndActiveSpellResponse returns the cast as it is, and what ending it changed.
  *
- * @generated from message meurpg.play.v1.EndSpellResponse
+ * @generated from message meurpg.play.v1.EndActiveSpellResponse
  */
-export type EndSpellResponse = Message<"meurpg.play.v1.EndSpellResponse"> & {
+export type EndActiveSpellResponse = Message<"meurpg.play.v1.EndActiveSpellResponse"> & {
   /**
    * @generated from field: meurpg.play.v1.OutsideCast cast = 1;
    */
@@ -661,11 +737,11 @@ export type EndSpellResponse = Message<"meurpg.play.v1.EndSpellResponse"> & {
 };
 
 /**
- * Describes the message meurpg.play.v1.EndSpellResponse.
- * Use `create(EndSpellResponseSchema)` to create a new message.
+ * Describes the message meurpg.play.v1.EndActiveSpellResponse.
+ * Use `create(EndActiveSpellResponseSchema)` to create a new message.
  */
-export const EndSpellResponseSchema: GenMessage<EndSpellResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 12);
+export const EndActiveSpellResponseSchema: GenMessage<EndActiveSpellResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 13);
 
 /**
  * ListSpellCastsRequest asks for the casts of the open session.
@@ -691,7 +767,7 @@ export type ListSpellCastsRequest = Message<"meurpg.play.v1.ListSpellCastsReques
  * Use `create(ListSpellCastsRequestSchema)` to create a new message.
  */
 export const ListSpellCastsRequestSchema: GenMessage<ListSpellCastsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 13);
+  messageDesc(file_meurpg_play_v1_casting, 14);
 
 /**
  * ListSpellCastsResponse is the casts, as the caller sees them.
@@ -719,7 +795,7 @@ export type ListSpellCastsResponse = Message<"meurpg.play.v1.ListSpellCastsRespo
  * Use `create(ListSpellCastsResponseSchema)` to create a new message.
  */
 export const ListSpellCastsResponseSchema: GenMessage<ListSpellCastsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 14);
+  messageDesc(file_meurpg_play_v1_casting, 15);
 
 /**
  * OutsideCast is one casting outside a combat.
@@ -801,7 +877,7 @@ export type OutsideCast = Message<"meurpg.play.v1.OutsideCast"> & {
 
   /**
    * Whether the spell lasts after the cast, and for how long (0: no time to count). The
-   * app does not count the time: the spell ends by EndSpell, the caster's concentration,
+   * app does not count the time: the spell ends by EndActiveSpell, the caster's concentration,
    * or the rest in `rest_ends`.
    *
    * @generated from field: bool lasts = 13;
@@ -898,7 +974,7 @@ export type OutsideCast = Message<"meurpg.play.v1.OutsideCast"> & {
  * Use `create(OutsideCastSchema)` to create a new message.
  */
 export const OutsideCastSchema: GenMessage<OutsideCast> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 15);
+  messageDesc(file_meurpg_play_v1_casting, 16);
 
 /**
  * OutsideCastTarget is what a cast did to one target.
@@ -959,7 +1035,7 @@ export type OutsideCastTarget = Message<"meurpg.play.v1.OutsideCastTarget"> & {
  * Use `create(OutsideCastTargetSchema)` to create a new message.
  */
 export const OutsideCastTargetSchema: GenMessage<OutsideCastTarget> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 16);
+  messageDesc(file_meurpg_play_v1_casting, 17);
 
 /**
  * OutsideCastStatus is where a cast is.
@@ -973,8 +1049,8 @@ export enum OutsideCastStatus {
   UNSPECIFIED = 0,
 
   /**
-   * Being cast: the spell takes minutes or hours and the time has not passed (FinishCast
-   * ends it, InterruptCast fails it). Nothing is spent yet.
+   * Being cast: the spell takes minutes or hours and the time has not passed (ConfirmCastTimePassed
+   * ends it, AbandonCast fails it). Nothing is spent yet.
    *
    * @generated from enum value: OUTSIDE_CAST_STATUS_CASTING = 1;
    */
@@ -1027,7 +1103,7 @@ export enum OutsideCastEnd {
   INSTANT = 1,
 
   /**
-   * The caster or the master ended it (EndSpell).
+   * The caster or the master ended it (EndActiveSpell).
    *
    * @generated from enum value: OUTSIDE_CAST_END_DISMISSED = 2;
    */
@@ -1048,7 +1124,7 @@ export enum OutsideCastEnd {
   REST = 4,
 
   /**
-   * The casting was interrupted (InterruptCast).
+   * The casting was interrupted (AbandonCast).
    *
    * @generated from enum value: OUTSIDE_CAST_END_INTERRUPTED = 5;
    */
@@ -1193,18 +1269,39 @@ export enum CastingBlockedReason {
   TARGET_WEARS_ARMOR = 4,
 
   /**
-   * FinishCast on a cast that is not in the CASTING state.
+   * ConfirmCastTimePassed on a cast that is not in the CASTING state.
    *
    * @generated from enum value: CASTING_BLOCKED_REASON_CAST_NOT_GOING = 5;
    */
   CAST_NOT_GOING = 5,
 
   /**
-   * EndSpell on a cast that is still being cast.
+   * EndActiveSpell on a cast that is still being cast.
    *
    * @generated from enum value: CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE = 6;
    */
   CAST_NOT_ACTIVE = 6,
+
+  /**
+   * A target is beyond the spell's reach on the map (see missing_ft).
+   *
+   * @generated from enum value: CASTING_BLOCKED_REASON_TARGET_OUT_OF_REACH = 7;
+   */
+  TARGET_OUT_OF_REACH = 7,
+
+  /**
+   * as_ritual: the caster's class has no Ritual Casting that reaches the spell.
+   *
+   * @generated from enum value: CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL = 8;
+   */
+  CLASS_CANNOT_RITUAL = 8,
+
+  /**
+   * as_ritual: the spell does not carry the ritual tag.
+   *
+   * @generated from enum value: CASTING_BLOCKED_REASON_NOT_A_RITUAL = 9;
+   */
+  NOT_A_RITUAL = 9,
 }
 
 /**
@@ -1277,7 +1374,7 @@ export const CastingEffectKindSchema: GenEnum<CastingEffectKind> = /*@__PURE__*/
  *
  * A spell that takes minutes or hours (and a ritual, which takes 10 minutes more)
  * is cast in two steps: CastSpellOutsideCombat starts it (the caster is then concentrating on
- * the casting, and no slot is spent), and FinishCast ends it when the time has
+ * the casting, and no slot is spent), and ConfirmCastTimePassed ends it when the time has
  * passed, which is when the slot is spent and the spell takes effect. A cast that
  * is interrupted (its concentration broke) fails and spends nothing (SRD 5.1,
  * "Longer Casting Times"). A combat that starts meanwhile does not cancel it: the
@@ -1285,11 +1382,15 @@ export const CastingEffectKindSchema: GenEnum<CastingEffectKind> = /*@__PURE__*/
  * carries the concentration. The app keeps no clock: outside a combat the master says
  * when the time has passed and completes the cast.
  *
- * A spell that lasts is kept until the master ends it (EndSpell), the caster stops
+ * A spell that lasts is kept until the master ends it (EndActiveSpell), the caster stops
  * concentrating, another concentration spell replaces it, or a rest long enough
  * for its whole duration (an hour for a short rest, 8 hours for a long one) ends
  * it. Durations are game time, never the wall clock: the app does not count a spell's
  * hours.
+ *
+ * A player never gets an NPC's character ID (RN-20): they name an NPC on the stage by its place
+ * on it (meurpg.play.v1.StageNpc.id), in the targets they send and in everything they read.
+ * The master names every character by its character ID.
  *
  * Who sees what (RN-10, RN-20): the master sees every cast. A player sees the casts
  * of the characters they may see: the player characters, and the NPCs on the stage.
@@ -1318,7 +1419,7 @@ export const CastingEffectKindSchema: GenEnum<CastingEffectKind> = /*@__PURE__*/
  */
 export const CastingService: GenService<{
   /**
-   * GetCastingOptions lists what a character can cast outside a combat: the spells
+   * GetCastOptions lists what a character can cast outside a combat: the spells
    * it has prepared or knows (a wizard's spellbook counts for rituals), each with
    * the slots it can use, whether it can be cast as a ritual, how long it takes,
    * how long it lasts, and what the server does with it; and the characters the
@@ -1339,12 +1440,12 @@ export const CastingService: GenService<{
    *   - `failed_precondition`: no open session (GameSessionBlocked,
    *     NO_OPEN_SESSION).
    *
-   * @generated from rpc meurpg.play.v1.CastingService.GetCastingOptions
+   * @generated from rpc meurpg.play.v1.CastingService.GetCastOptions
    */
-  getCastingOptions: {
+  getCastOptions: {
     methodKind: "unary";
-    input: typeof GetCastingOptionsRequestSchema;
-    output: typeof GetCastingOptionsResponseSchema;
+    input: typeof GetCastOptionsRequestSchema;
+    output: typeof GetCastOptionsResponseSchema;
   },
   /**
    * CastSpellOutsideCombat casts a spell outside a combat. The spell must be one the character
@@ -1358,7 +1459,7 @@ export const CastingService: GenService<{
    * response carries the finished cast. A spell that takes minutes or hours, and
    * every ritual, starts a cast in the CASTING state instead: nothing is spent and
    * nothing happens yet, the caster is concentrating on the casting (it ends any
-   * concentration spell the caster had), and FinishCast ends it. A character has one
+   * concentration spell the caster had), and ConfirmCastTimePassed ends it. A character has one
    * cast going at a time. A spell that needs concentration puts the caster in
    * concentration when it takes effect; casting another ends the first (SRD 5.1,
    * "Duration"), with the creatures the first one summoned and its effects.
@@ -1366,7 +1467,7 @@ export const CastingService: GenService<{
    * What the cast does when it takes effect:
    *   - a healing spell heals each player character among the targets with one roll
    *     for the whole cast: the dice are rolled by the server with roll_in_app, or
-   *     typed with pool_sum (the sum of the physical dice, with no modifier), and
+   *     typed with typed_sum (the sum of the physical dice, with no modifier), and
    *     the campaign's dice setting binds a player as on every roll (RN-18). The
    *     healing is the spell's dice at the slot's level plus the caster's spellcasting
    *     modifier, up to the target's maximum; a cleric of the Life Domain adds
@@ -1400,7 +1501,7 @@ export const CastingService: GenService<{
    *   - `permission_denied`: the caller is a player and the caster is not their
    *     character.
    *   - `invalid_argument`: the spell is not one of the caster's, or a cantrip with
-   *     a slot, a slot that does not fit or is not free, `ritual` for a spell that is
+   *     a slot, a slot that does not fit or is not free, `as_ritual` for a spell that is
    *     not a ritual or a caster that cannot cast it as one, a ritual with a slot, no
    *     roll for a spell that rolls dice, more targets than the spell takes (the
    *     master is not held to the number) or a repeated one, more than 10 targets,
@@ -1419,7 +1520,7 @@ export const CastingService: GenService<{
     output: typeof CastSpellOutsideCombatResponseSchema;
   },
   /**
-   * FinishCast ends a cast that is in the CASTING state: the master confirms the game
+   * ConfirmCastTimePassed ends a cast that is in the CASTING state: the master confirms the game
    * time has passed ("Concluir conjuração"). Only the master may call it. The slot
    * is spent now (NO_SLOT, with nothing changed, when it is no longer free) and the
    * spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning
@@ -1435,15 +1536,15 @@ export const CastingService: GenService<{
    *     CAST_NOT_GOING); no free slot (NO_SLOT); the caster is in a combat
    *     (IN_COMBAT).
    *
-   * @generated from rpc meurpg.play.v1.CastingService.FinishCast
+   * @generated from rpc meurpg.play.v1.CastingService.ConfirmCastTimePassed
    */
-  finishCast: {
+  confirmCastTimePassed: {
     methodKind: "unary";
-    input: typeof FinishCastRequestSchema;
-    output: typeof FinishCastResponseSchema;
+    input: typeof ConfirmCastTimePassedRequestSchema;
+    output: typeof ConfirmCastTimePassedResponseSchema;
   },
   /**
-   * InterruptCast fails a cast that is in the CASTING state: the concentration broke,
+   * AbandonCast fails a cast that is in the CASTING state: the concentration broke,
    * or the caster gave up. The slot was never spent, so nothing is given back
    * (SRD 5.1: "If your concentration is broken, the spell fails, but you don't expend
    * a spell slot. If you want to try casting the spell again, you must start over").
@@ -1457,15 +1558,15 @@ export const CastingService: GenService<{
    *     character.
    *   - `failed_precondition`: no open session.
    *
-   * @generated from rpc meurpg.play.v1.CastingService.InterruptCast
+   * @generated from rpc meurpg.play.v1.CastingService.AbandonCast
    */
-  interruptCast: {
+  abandonCast: {
     methodKind: "unary";
-    input: typeof InterruptCastRequestSchema;
-    output: typeof InterruptCastResponseSchema;
+    input: typeof AbandonCastRequestSchema;
+    output: typeof AbandonCastResponseSchema;
   },
   /**
-   * EndSpell ends a spell that lasts (a cast in the ACTIVE state): the caster stops
+   * EndActiveSpell ends a spell that lasts (a cast in the ACTIVE state): the caster stops
    * concentrating, dismisses it, or the master ends it. What it did to the targets
    * is undone where it can be: Mage Armor's armor class goes back, Aid's hit point
    * maximum goes back (the current hit points lose only what is above the new
@@ -1481,14 +1582,14 @@ export const CastingService: GenService<{
    *   - `permission_denied`: the caller is a player and the caster is not their
    *     character.
    *   - `failed_precondition`: no open session; the cast is still being cast (use
-   *     InterruptCast: CastingBlocked, CAST_NOT_ACTIVE).
+   *     AbandonCast: CastingBlocked, CAST_NOT_ACTIVE).
    *
-   * @generated from rpc meurpg.play.v1.CastingService.EndSpell
+   * @generated from rpc meurpg.play.v1.CastingService.EndActiveSpell
    */
-  endSpell: {
+  endActiveSpell: {
     methodKind: "unary";
-    input: typeof EndSpellRequestSchema;
-    output: typeof EndSpellResponseSchema;
+    input: typeof EndActiveSpellRequestSchema;
+    output: typeof EndActiveSpellResponseSchema;
   },
   /**
    * ListSpellCasts reads the casts of the open session: the ones going or lasting

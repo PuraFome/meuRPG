@@ -147,15 +147,38 @@ type castGuard struct {
 	secret bool
 }
 
-// stageOf reads the NPCs on the stage of the session.
-func stageOf(ctx context.Context, q *playdb.Queries, sessionID string) (map[string]bool, error) {
+// stageMap is the NPCs on the stage of the session: a player never learns an NPC's
+// character ID (RN-20), so what a player names an NPC by is its place on the stage.
+type stageMap struct {
+	// byChar maps a character ID to its place's ID, and byEntry the other way.
+	byChar, byEntry map[string]string
+}
+
+// on says the NPC is on the stage.
+func (m stageMap) on(characterID string) bool { _, ok := m.byChar[characterID]; return ok }
+
+// stageMapOf reads the stage of the session.
+func stageMapOf(ctx context.Context, q *playdb.Queries, sessionID string) (stageMap, error) {
 	rows, err := q.ListStage(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("list the stage: %w", err)
+		return stageMap{}, fmt.Errorf("list the stage: %w", err)
 	}
-	out := make(map[string]bool, len(rows))
+	out := stageMap{byChar: make(map[string]string, len(rows)), byEntry: make(map[string]string, len(rows))}
 	for _, r := range rows {
-		out[r.CharacterID] = true
+		out.byChar[r.CharacterID], out.byEntry[r.ID] = r.ID, r.CharacterID
+	}
+	return out, nil
+}
+
+// stageOf reads the NPCs on the stage of the session.
+func stageOf(ctx context.Context, q *playdb.Queries, sessionID string) (map[string]bool, error) {
+	sm, err := stageMapOf(ctx, q, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(sm.byChar))
+	for id := range sm.byChar {
+		out[id] = true
 	}
 	return out, nil
 }
@@ -184,6 +207,21 @@ func (s *Service) inCombat(ctx context.Context, q *playdb.Queries, sessionID, ch
 func (s *Service) guardCast(ctx context.Context, c *combatTx, m authz.Membership, casterID string, targetIDs []string) (castGuard, error) {
 	g := castGuard{}
 	master := m.Role == authz.RoleMaster
+	sm, err := stageMapOf(ctx, c.q, c.session.ID)
+	if err != nil {
+		return g, err
+	}
+	// A player names an NPC by its place on the stage; the character ID of an NPC is the
+	// master's (RN-20), and a player who sends it gets what a made-up one gets.
+	viaStage := map[string]bool{}
+	if !master {
+		targetIDs = slices.Clone(targetIDs)
+		for i, id := range targetIDs {
+			if ch, ok := sm.byEntry[id]; ok {
+				targetIDs[i], viaStage[ch] = ch, true
+			}
+		}
+	}
 	ids := append([]string{casterID}, targetIDs...)
 	chars, err := s.roster.CombatCharacters(ctx, c.tx, m.CampaignID, ids)
 	if err != nil {
@@ -193,8 +231,9 @@ func (s *Service) guardCast(ctx context.Context, c *combatTx, m authz.Membership
 	for _, ch := range chars {
 		byID[ch.ID] = ch
 	}
-	if g.stage, err = stageOf(ctx, c.q, c.session.ID); err != nil {
-		return g, err
+	g.stage = make(map[string]bool, len(sm.byChar))
+	for id := range sm.byChar {
+		g.stage[id] = true
 	}
 	caster, ok := byID[casterID]
 	switch {
@@ -209,7 +248,7 @@ func (s *Service) guardCast(ctx context.Context, c *combatTx, m authz.Membership
 	g.secret = !caster.Player && !g.stage[caster.ID]
 	for _, id := range targetIDs {
 		t, ok := byID[id]
-		if !ok || t.CombatOnly || (!t.Player && !master && !g.stage[t.ID]) {
+		if !ok || t.CombatOnly || (!t.Player && !master && !viaStage[t.ID]) {
 			return g, errCharacterNotFound()
 		}
 		if !t.Player && !g.stage[t.ID] {
@@ -244,7 +283,7 @@ func (s *Service) CastSpellOutsideCombat(
 	if err != nil {
 		return nil, err
 	}
-	casterID, ok := parseID(req.Msg.GetCasterId())
+	casterID, ok := parseID(req.Msg.GetCasterCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -252,11 +291,11 @@ func (s *Service) CastSpellOutsideCombat(
 	if spellKey == "" || len(spellKey) > 100 {
 		return nil, badCast("spell_key must name one of the caster's spells")
 	}
-	if len(req.Msg.GetTargetCharacterIds()) > maxSpellTargets {
+	if len(req.Msg.GetTargetIds()) > maxSpellTargets {
 		return nil, badCast(fmt.Sprintf("target_character_ids must have at most %d entries", maxSpellTargets))
 	}
 	var targetIDs []string
-	for i, raw := range req.Msg.GetTargetCharacterIds() {
+	for i, raw := range req.Msg.GetTargetIds() {
 		id, ok := parseID(raw)
 		if !ok {
 			return nil, errCharacterNotFound()
@@ -271,14 +310,14 @@ func (s *Service) CastSpellOutsideCombat(
 	switch roll := req.Msg.GetRoll().(type) {
 	case *playv1.CastSpellOutsideCombatRequest_RollInApp:
 		inApp = &roll.RollInApp
-	case *playv1.CastSpellOutsideCombatRequest_PoolSum:
-		poolSum = &roll.PoolSum
+	case *playv1.CastSpellOutsideCombatRequest_TypedSum:
+		poolSum = &roll.TypedSum
 	}
 	in, rolled, err := castRoll(inApp, poolSum)
 	if err != nil {
 		return nil, err
 	}
-	ritual := req.Msg.GetRitual()
+	ritual := req.Msg.GetAsRitual()
 	if ritual && req.Msg.GetSlot() != nil {
 		return nil, badCast("a ritual is cast with no slot")
 	}
@@ -306,6 +345,9 @@ func (s *Service) CastSpellOutsideCombat(
 			return nil, badCast("summon goes in FinishCast for a spell that takes time")
 		}
 		if err := s.checkCastTargets(ctx, c, m, plan); err != nil {
+			return nil, err
+		}
+		if err := s.checkReach(ctx, c, plan, m.Role == authz.RoleMaster); err != nil {
 			return nil, err
 		}
 		if !long {
@@ -485,10 +527,10 @@ func (s *Service) planCast(ctx context.Context, c *combatTx, m authz.Membership,
 	case ritual:
 		// A ritual spends no slot and cannot be cast at a higher level.
 		if !osp.Ritual {
-			return plan, badCast("this spell does not have the ritual tag")
+			return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NOT_A_RITUAL, "this spell does not have the ritual tag")
 		}
 		if !osp.CanRitual {
-			return plan, badCast("the character cannot cast this spell as a ritual")
+			return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL, "the character cannot cast this spell as a ritual")
 		}
 		plan.minutes = osp.RitualMinutes
 	case !osp.Prepared:

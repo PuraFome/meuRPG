@@ -198,10 +198,10 @@ func (s *Service) castRowFor(ctx context.Context, c *combatTx, m authz.Membershi
 }
 
 // FinishCast implements playv1connect.CastingServiceHandler.
-func (s *Service) FinishCast(
+func (s *Service) ConfirmCastTimePassed(
 	ctx context.Context,
-	req *connect.Request[playv1.FinishCastRequest],
-) (*connect.Response[playv1.FinishCastResponse], error) {
+	req *connect.Request[playv1.ConfirmCastTimePassedRequest],
+) (*connect.Response[playv1.ConfirmCastTimePassedResponse], error) {
 	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
@@ -213,10 +213,10 @@ func (s *Service) FinishCast(
 	var inApp *bool
 	var poolSum *int32
 	switch roll := req.Msg.GetRoll().(type) {
-	case *playv1.FinishCastRequest_RollInApp:
+	case *playv1.ConfirmCastTimePassedRequest_RollInApp:
 		inApp = &roll.RollInApp
-	case *playv1.FinishCastRequest_PoolSum:
-		poolSum = &roll.PoolSum
+	case *playv1.ConfirmCastTimePassedRequest_TypedSum:
+		poolSum = &roll.TypedSum
 	}
 	in, rolled, err := castRoll(inApp, poolSum)
 	if err != nil {
@@ -348,10 +348,10 @@ func (s *Service) planFinish(ctx context.Context, c *combatTx, m authz.Membershi
 }
 
 // InterruptCast implements playv1connect.CastingServiceHandler.
-func (s *Service) InterruptCast(
+func (s *Service) AbandonCast(
 	ctx context.Context,
-	req *connect.Request[playv1.InterruptCastRequest],
-) (*connect.Response[playv1.InterruptCastResponse], error) {
+	req *connect.Request[playv1.AbandonCastRequest],
+) (*connect.Response[playv1.AbandonCastResponse], error) {
 	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
@@ -387,14 +387,14 @@ func (s *Service) InterruptCast(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.InterruptCastResponse{Cast: cast}), nil
+	return connect.NewResponse(&playv1.AbandonCastResponse{Cast: cast}), nil
 }
 
 // EndSpell implements playv1connect.CastingServiceHandler.
-func (s *Service) EndSpell(
+func (s *Service) EndActiveSpell(
 	ctx context.Context,
-	req *connect.Request[playv1.EndSpellRequest],
-) (*connect.Response[playv1.EndSpellResponse], error) {
+	req *connect.Request[playv1.EndActiveSpellRequest],
+) (*connect.Response[playv1.EndActiveSpellResponse], error) {
 	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
@@ -443,5 +443,5 @@ func (s *Service) EndSpell(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.EndSpellResponse{Cast: cast, Vitals: filterVitals(m, made.vitals), DismissedCreatureIds: made.dismissed}), nil
+	return connect.NewResponse(&playv1.EndActiveSpellResponse{Cast: cast, Vitals: filterVitals(m, made.vitals), DismissedCreatureIds: made.dismissed}), nil
 }

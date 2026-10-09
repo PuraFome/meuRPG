@@ -54,6 +54,8 @@ type world struct {
 	hiddenNPC   *charactersv1.Character // an NPC whose token the master hid
 	bandit      *charactersv1.Character // an NPC made from a bestiary creature
 	merchant    *charactersv1.Character // an NPC on the stage
+	casterNPC   *charactersv1.Character // an NPC with a full sheet, not on the stage, that cast a spell
+	hiddenCast  string                  // the id of that cast
 	offstage    *charactersv1.Character // an NPC with a portrait, not on the stage
 	seenNPC     *charactersv1.Character // an NPC the master left visible, in Ana's sight
 	stage2      *charactersv1.Character // an NPC the stream test puts on the stage

@@ -40,20 +40,21 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// CastingServiceGetCastingOptionsProcedure is the fully-qualified name of the CastingService's
-	// GetCastingOptions RPC.
-	CastingServiceGetCastingOptionsProcedure = "/meurpg.play.v1.CastingService/GetCastingOptions"
+	// CastingServiceGetCastOptionsProcedure is the fully-qualified name of the CastingService's
+	// GetCastOptions RPC.
+	CastingServiceGetCastOptionsProcedure = "/meurpg.play.v1.CastingService/GetCastOptions"
 	// CastingServiceCastSpellOutsideCombatProcedure is the fully-qualified name of the CastingService's
 	// CastSpellOutsideCombat RPC.
 	CastingServiceCastSpellOutsideCombatProcedure = "/meurpg.play.v1.CastingService/CastSpellOutsideCombat"
-	// CastingServiceFinishCastProcedure is the fully-qualified name of the CastingService's FinishCast
-	// RPC.
-	CastingServiceFinishCastProcedure = "/meurpg.play.v1.CastingService/FinishCast"
-	// CastingServiceInterruptCastProcedure is the fully-qualified name of the CastingService's
-	// InterruptCast RPC.
-	CastingServiceInterruptCastProcedure = "/meurpg.play.v1.CastingService/InterruptCast"
-	// CastingServiceEndSpellProcedure is the fully-qualified name of the CastingService's EndSpell RPC.
-	CastingServiceEndSpellProcedure = "/meurpg.play.v1.CastingService/EndSpell"
+	// CastingServiceConfirmCastTimePassedProcedure is the fully-qualified name of the CastingService's
+	// ConfirmCastTimePassed RPC.
+	CastingServiceConfirmCastTimePassedProcedure = "/meurpg.play.v1.CastingService/ConfirmCastTimePassed"
+	// CastingServiceAbandonCastProcedure is the fully-qualified name of the CastingService's
+	// AbandonCast RPC.
+	CastingServiceAbandonCastProcedure = "/meurpg.play.v1.CastingService/AbandonCast"
+	// CastingServiceEndActiveSpellProcedure is the fully-qualified name of the CastingService's
+	// EndActiveSpell RPC.
+	CastingServiceEndActiveSpellProcedure = "/meurpg.play.v1.CastingService/EndActiveSpell"
 	// CastingServiceListSpellCastsProcedure is the fully-qualified name of the CastingService's
 	// ListSpellCasts RPC.
 	CastingServiceListSpellCastsProcedure = "/meurpg.play.v1.CastingService/ListSpellCasts"
@@ -61,7 +62,7 @@ const (
 
 // CastingServiceClient is a client for the meurpg.play.v1.CastingService service.
 type CastingServiceClient interface {
-	// GetCastingOptions lists what a character can cast outside a combat: the spells
+	// GetCastOptions lists what a character can cast outside a combat: the spells
 	// it has prepared or knows (a wizard's spellbook counts for rituals), each with
 	// the slots it can use, whether it can be cast as a ritual, how long it takes,
 	// how long it lasts, and what the server does with it; and the characters the
@@ -81,7 +82,7 @@ type CastingServiceClient interface {
 	//   - `permission_denied`: the caller is a player and the character is not theirs.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
-	GetCastingOptions(context.Context, *connect.Request[v1.GetCastingOptionsRequest]) (*connect.Response[v1.GetCastingOptionsResponse], error)
+	GetCastOptions(context.Context, *connect.Request[v1.GetCastOptionsRequest]) (*connect.Response[v1.GetCastOptionsResponse], error)
 	// CastSpellOutsideCombat casts a spell outside a combat. The spell must be one the character
 	// has prepared or knows, or a ritual it can cast as one (the wizard from the
 	// spellbook, the cleric and the druid prepared, the bard known; a warlock of the
@@ -93,7 +94,7 @@ type CastingServiceClient interface {
 	// response carries the finished cast. A spell that takes minutes or hours, and
 	// every ritual, starts a cast in the CASTING state instead: nothing is spent and
 	// nothing happens yet, the caster is concentrating on the casting (it ends any
-	// concentration spell the caster had), and FinishCast ends it. A character has one
+	// concentration spell the caster had), and ConfirmCastTimePassed ends it. A character has one
 	// cast going at a time. A spell that needs concentration puts the caster in
 	// concentration when it takes effect; casting another ends the first (SRD 5.1,
 	// "Duration"), with the creatures the first one summoned and its effects.
@@ -101,7 +102,7 @@ type CastingServiceClient interface {
 	// What the cast does when it takes effect:
 	//   - a healing spell heals each player character among the targets with one roll
 	//     for the whole cast: the dice are rolled by the server with roll_in_app, or
-	//     typed with pool_sum (the sum of the physical dice, with no modifier), and
+	//     typed with typed_sum (the sum of the physical dice, with no modifier), and
 	//     the campaign's dice setting binds a player as on every roll (RN-18). The
 	//     healing is the spell's dice at the slot's level plus the caster's spellcasting
 	//     modifier, up to the target's maximum; a cleric of the Life Domain adds
@@ -135,7 +136,7 @@ type CastingServiceClient interface {
 	//   - `permission_denied`: the caller is a player and the caster is not their
 	//     character.
 	//   - `invalid_argument`: the spell is not one of the caster's, or a cantrip with
-	//     a slot, a slot that does not fit or is not free, `ritual` for a spell that is
+	//     a slot, a slot that does not fit or is not free, `as_ritual` for a spell that is
 	//     not a ritual or a caster that cannot cast it as one, a ritual with a slot, no
 	//     roll for a spell that rolls dice, more targets than the spell takes (the
 	//     master is not held to the number) or a repeated one, more than 10 targets,
@@ -146,7 +147,7 @@ type CastingServiceClient interface {
 	//     level (NO_SLOT), is in a beast form (EncounterBlocked, WILD_SHAPE_NO_SPELLS), or a Mage Armor
 	//     target wears armor (TARGET_WEARS_ARMOR).
 	CastSpellOutsideCombat(context.Context, *connect.Request[v1.CastSpellOutsideCombatRequest]) (*connect.Response[v1.CastSpellOutsideCombatResponse], error)
-	// FinishCast ends a cast that is in the CASTING state: the master confirms the game
+	// ConfirmCastTimePassed ends a cast that is in the CASTING state: the master confirms the game
 	// time has passed ("Concluir conjuração"). Only the master may call it. The slot
 	// is spent now (NO_SLOT, with nothing changed, when it is no longer free) and the
 	// spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning
@@ -161,8 +162,8 @@ type CastingServiceClient interface {
 	//   - `failed_precondition`: no open session; the cast is not going (CastingBlocked,
 	//     CAST_NOT_GOING); no free slot (NO_SLOT); the caster is in a combat
 	//     (IN_COMBAT).
-	FinishCast(context.Context, *connect.Request[v1.FinishCastRequest]) (*connect.Response[v1.FinishCastResponse], error)
-	// InterruptCast fails a cast that is in the CASTING state: the concentration broke,
+	ConfirmCastTimePassed(context.Context, *connect.Request[v1.ConfirmCastTimePassedRequest]) (*connect.Response[v1.ConfirmCastTimePassedResponse], error)
+	// AbandonCast fails a cast that is in the CASTING state: the concentration broke,
 	// or the caster gave up. The slot was never spent, so nothing is given back
 	// (SRD 5.1: "If your concentration is broken, the spell fails, but you don't expend
 	// a spell slot. If you want to try casting the spell again, you must start over").
@@ -175,8 +176,8 @@ type CastingServiceClient interface {
 	//   - `permission_denied`: the caller is a player and the caster is not their
 	//     character.
 	//   - `failed_precondition`: no open session.
-	InterruptCast(context.Context, *connect.Request[v1.InterruptCastRequest]) (*connect.Response[v1.InterruptCastResponse], error)
-	// EndSpell ends a spell that lasts (a cast in the ACTIVE state): the caster stops
+	AbandonCast(context.Context, *connect.Request[v1.AbandonCastRequest]) (*connect.Response[v1.AbandonCastResponse], error)
+	// EndActiveSpell ends a spell that lasts (a cast in the ACTIVE state): the caster stops
 	// concentrating, dismisses it, or the master ends it. What it did to the targets
 	// is undone where it can be: Mage Armor's armor class goes back, Aid's hit point
 	// maximum goes back (the current hit points lose only what is above the new
@@ -192,8 +193,8 @@ type CastingServiceClient interface {
 	//   - `permission_denied`: the caller is a player and the caster is not their
 	//     character.
 	//   - `failed_precondition`: no open session; the cast is still being cast (use
-	//     InterruptCast: CastingBlocked, CAST_NOT_ACTIVE).
-	EndSpell(context.Context, *connect.Request[v1.EndSpellRequest]) (*connect.Response[v1.EndSpellResponse], error)
+	//     AbandonCast: CastingBlocked, CAST_NOT_ACTIVE).
+	EndActiveSpell(context.Context, *connect.Request[v1.EndActiveSpellRequest]) (*connect.Response[v1.EndActiveSpellResponse], error)
 	// ListSpellCasts reads the casts of the open session: the ones going or lasting
 	// (`active`), with the spell each character concentrates on, and the log of the
 	// session's casts, newest first (`log`, at most 100). The master gets every cast. A
@@ -219,10 +220,10 @@ func NewCastingServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	castingServiceMethods := v1.File_meurpg_play_v1_casting_proto.Services().ByName("CastingService").Methods()
 	return &castingServiceClient{
-		getCastingOptions: connect.NewClient[v1.GetCastingOptionsRequest, v1.GetCastingOptionsResponse](
+		getCastOptions: connect.NewClient[v1.GetCastOptionsRequest, v1.GetCastOptionsResponse](
 			httpClient,
-			baseURL+CastingServiceGetCastingOptionsProcedure,
-			connect.WithSchema(castingServiceMethods.ByName("GetCastingOptions")),
+			baseURL+CastingServiceGetCastOptionsProcedure,
+			connect.WithSchema(castingServiceMethods.ByName("GetCastOptions")),
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
@@ -232,22 +233,22 @@ func NewCastingServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(castingServiceMethods.ByName("CastSpellOutsideCombat")),
 			connect.WithClientOptions(opts...),
 		),
-		finishCast: connect.NewClient[v1.FinishCastRequest, v1.FinishCastResponse](
+		confirmCastTimePassed: connect.NewClient[v1.ConfirmCastTimePassedRequest, v1.ConfirmCastTimePassedResponse](
 			httpClient,
-			baseURL+CastingServiceFinishCastProcedure,
-			connect.WithSchema(castingServiceMethods.ByName("FinishCast")),
+			baseURL+CastingServiceConfirmCastTimePassedProcedure,
+			connect.WithSchema(castingServiceMethods.ByName("ConfirmCastTimePassed")),
 			connect.WithClientOptions(opts...),
 		),
-		interruptCast: connect.NewClient[v1.InterruptCastRequest, v1.InterruptCastResponse](
+		abandonCast: connect.NewClient[v1.AbandonCastRequest, v1.AbandonCastResponse](
 			httpClient,
-			baseURL+CastingServiceInterruptCastProcedure,
-			connect.WithSchema(castingServiceMethods.ByName("InterruptCast")),
+			baseURL+CastingServiceAbandonCastProcedure,
+			connect.WithSchema(castingServiceMethods.ByName("AbandonCast")),
 			connect.WithClientOptions(opts...),
 		),
-		endSpell: connect.NewClient[v1.EndSpellRequest, v1.EndSpellResponse](
+		endActiveSpell: connect.NewClient[v1.EndActiveSpellRequest, v1.EndActiveSpellResponse](
 			httpClient,
-			baseURL+CastingServiceEndSpellProcedure,
-			connect.WithSchema(castingServiceMethods.ByName("EndSpell")),
+			baseURL+CastingServiceEndActiveSpellProcedure,
+			connect.WithSchema(castingServiceMethods.ByName("EndActiveSpell")),
 			connect.WithClientOptions(opts...),
 		),
 		listSpellCasts: connect.NewClient[v1.ListSpellCastsRequest, v1.ListSpellCastsResponse](
@@ -262,17 +263,17 @@ func NewCastingServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // castingServiceClient implements CastingServiceClient.
 type castingServiceClient struct {
-	getCastingOptions      *connect.Client[v1.GetCastingOptionsRequest, v1.GetCastingOptionsResponse]
+	getCastOptions         *connect.Client[v1.GetCastOptionsRequest, v1.GetCastOptionsResponse]
 	castSpellOutsideCombat *connect.Client[v1.CastSpellOutsideCombatRequest, v1.CastSpellOutsideCombatResponse]
-	finishCast             *connect.Client[v1.FinishCastRequest, v1.FinishCastResponse]
-	interruptCast          *connect.Client[v1.InterruptCastRequest, v1.InterruptCastResponse]
-	endSpell               *connect.Client[v1.EndSpellRequest, v1.EndSpellResponse]
+	confirmCastTimePassed  *connect.Client[v1.ConfirmCastTimePassedRequest, v1.ConfirmCastTimePassedResponse]
+	abandonCast            *connect.Client[v1.AbandonCastRequest, v1.AbandonCastResponse]
+	endActiveSpell         *connect.Client[v1.EndActiveSpellRequest, v1.EndActiveSpellResponse]
 	listSpellCasts         *connect.Client[v1.ListSpellCastsRequest, v1.ListSpellCastsResponse]
 }
 
-// GetCastingOptions calls meurpg.play.v1.CastingService.GetCastingOptions.
-func (c *castingServiceClient) GetCastingOptions(ctx context.Context, req *connect.Request[v1.GetCastingOptionsRequest]) (*connect.Response[v1.GetCastingOptionsResponse], error) {
-	return c.getCastingOptions.CallUnary(ctx, req)
+// GetCastOptions calls meurpg.play.v1.CastingService.GetCastOptions.
+func (c *castingServiceClient) GetCastOptions(ctx context.Context, req *connect.Request[v1.GetCastOptionsRequest]) (*connect.Response[v1.GetCastOptionsResponse], error) {
+	return c.getCastOptions.CallUnary(ctx, req)
 }
 
 // CastSpellOutsideCombat calls meurpg.play.v1.CastingService.CastSpellOutsideCombat.
@@ -280,19 +281,19 @@ func (c *castingServiceClient) CastSpellOutsideCombat(ctx context.Context, req *
 	return c.castSpellOutsideCombat.CallUnary(ctx, req)
 }
 
-// FinishCast calls meurpg.play.v1.CastingService.FinishCast.
-func (c *castingServiceClient) FinishCast(ctx context.Context, req *connect.Request[v1.FinishCastRequest]) (*connect.Response[v1.FinishCastResponse], error) {
-	return c.finishCast.CallUnary(ctx, req)
+// ConfirmCastTimePassed calls meurpg.play.v1.CastingService.ConfirmCastTimePassed.
+func (c *castingServiceClient) ConfirmCastTimePassed(ctx context.Context, req *connect.Request[v1.ConfirmCastTimePassedRequest]) (*connect.Response[v1.ConfirmCastTimePassedResponse], error) {
+	return c.confirmCastTimePassed.CallUnary(ctx, req)
 }
 
-// InterruptCast calls meurpg.play.v1.CastingService.InterruptCast.
-func (c *castingServiceClient) InterruptCast(ctx context.Context, req *connect.Request[v1.InterruptCastRequest]) (*connect.Response[v1.InterruptCastResponse], error) {
-	return c.interruptCast.CallUnary(ctx, req)
+// AbandonCast calls meurpg.play.v1.CastingService.AbandonCast.
+func (c *castingServiceClient) AbandonCast(ctx context.Context, req *connect.Request[v1.AbandonCastRequest]) (*connect.Response[v1.AbandonCastResponse], error) {
+	return c.abandonCast.CallUnary(ctx, req)
 }
 
-// EndSpell calls meurpg.play.v1.CastingService.EndSpell.
-func (c *castingServiceClient) EndSpell(ctx context.Context, req *connect.Request[v1.EndSpellRequest]) (*connect.Response[v1.EndSpellResponse], error) {
-	return c.endSpell.CallUnary(ctx, req)
+// EndActiveSpell calls meurpg.play.v1.CastingService.EndActiveSpell.
+func (c *castingServiceClient) EndActiveSpell(ctx context.Context, req *connect.Request[v1.EndActiveSpellRequest]) (*connect.Response[v1.EndActiveSpellResponse], error) {
+	return c.endActiveSpell.CallUnary(ctx, req)
 }
 
 // ListSpellCasts calls meurpg.play.v1.CastingService.ListSpellCasts.
@@ -302,7 +303,7 @@ func (c *castingServiceClient) ListSpellCasts(ctx context.Context, req *connect.
 
 // CastingServiceHandler is an implementation of the meurpg.play.v1.CastingService service.
 type CastingServiceHandler interface {
-	// GetCastingOptions lists what a character can cast outside a combat: the spells
+	// GetCastOptions lists what a character can cast outside a combat: the spells
 	// it has prepared or knows (a wizard's spellbook counts for rituals), each with
 	// the slots it can use, whether it can be cast as a ritual, how long it takes,
 	// how long it lasts, and what the server does with it; and the characters the
@@ -322,7 +323,7 @@ type CastingServiceHandler interface {
 	//   - `permission_denied`: the caller is a player and the character is not theirs.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
-	GetCastingOptions(context.Context, *connect.Request[v1.GetCastingOptionsRequest]) (*connect.Response[v1.GetCastingOptionsResponse], error)
+	GetCastOptions(context.Context, *connect.Request[v1.GetCastOptionsRequest]) (*connect.Response[v1.GetCastOptionsResponse], error)
 	// CastSpellOutsideCombat casts a spell outside a combat. The spell must be one the character
 	// has prepared or knows, or a ritual it can cast as one (the wizard from the
 	// spellbook, the cleric and the druid prepared, the bard known; a warlock of the
@@ -334,7 +335,7 @@ type CastingServiceHandler interface {
 	// response carries the finished cast. A spell that takes minutes or hours, and
 	// every ritual, starts a cast in the CASTING state instead: nothing is spent and
 	// nothing happens yet, the caster is concentrating on the casting (it ends any
-	// concentration spell the caster had), and FinishCast ends it. A character has one
+	// concentration spell the caster had), and ConfirmCastTimePassed ends it. A character has one
 	// cast going at a time. A spell that needs concentration puts the caster in
 	// concentration when it takes effect; casting another ends the first (SRD 5.1,
 	// "Duration"), with the creatures the first one summoned and its effects.
@@ -342,7 +343,7 @@ type CastingServiceHandler interface {
 	// What the cast does when it takes effect:
 	//   - a healing spell heals each player character among the targets with one roll
 	//     for the whole cast: the dice are rolled by the server with roll_in_app, or
-	//     typed with pool_sum (the sum of the physical dice, with no modifier), and
+	//     typed with typed_sum (the sum of the physical dice, with no modifier), and
 	//     the campaign's dice setting binds a player as on every roll (RN-18). The
 	//     healing is the spell's dice at the slot's level plus the caster's spellcasting
 	//     modifier, up to the target's maximum; a cleric of the Life Domain adds
@@ -376,7 +377,7 @@ type CastingServiceHandler interface {
 	//   - `permission_denied`: the caller is a player and the caster is not their
 	//     character.
 	//   - `invalid_argument`: the spell is not one of the caster's, or a cantrip with
-	//     a slot, a slot that does not fit or is not free, `ritual` for a spell that is
+	//     a slot, a slot that does not fit or is not free, `as_ritual` for a spell that is
 	//     not a ritual or a caster that cannot cast it as one, a ritual with a slot, no
 	//     roll for a spell that rolls dice, more targets than the spell takes (the
 	//     master is not held to the number) or a repeated one, more than 10 targets,
@@ -387,7 +388,7 @@ type CastingServiceHandler interface {
 	//     level (NO_SLOT), is in a beast form (EncounterBlocked, WILD_SHAPE_NO_SPELLS), or a Mage Armor
 	//     target wears armor (TARGET_WEARS_ARMOR).
 	CastSpellOutsideCombat(context.Context, *connect.Request[v1.CastSpellOutsideCombatRequest]) (*connect.Response[v1.CastSpellOutsideCombatResponse], error)
-	// FinishCast ends a cast that is in the CASTING state: the master confirms the game
+	// ConfirmCastTimePassed ends a cast that is in the CASTING state: the master confirms the game
 	// time has passed ("Concluir conjuração"). Only the master may call it. The slot
 	// is spent now (NO_SLOT, with nothing changed, when it is no longer free) and the
 	// spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning
@@ -402,8 +403,8 @@ type CastingServiceHandler interface {
 	//   - `failed_precondition`: no open session; the cast is not going (CastingBlocked,
 	//     CAST_NOT_GOING); no free slot (NO_SLOT); the caster is in a combat
 	//     (IN_COMBAT).
-	FinishCast(context.Context, *connect.Request[v1.FinishCastRequest]) (*connect.Response[v1.FinishCastResponse], error)
-	// InterruptCast fails a cast that is in the CASTING state: the concentration broke,
+	ConfirmCastTimePassed(context.Context, *connect.Request[v1.ConfirmCastTimePassedRequest]) (*connect.Response[v1.ConfirmCastTimePassedResponse], error)
+	// AbandonCast fails a cast that is in the CASTING state: the concentration broke,
 	// or the caster gave up. The slot was never spent, so nothing is given back
 	// (SRD 5.1: "If your concentration is broken, the spell fails, but you don't expend
 	// a spell slot. If you want to try casting the spell again, you must start over").
@@ -416,8 +417,8 @@ type CastingServiceHandler interface {
 	//   - `permission_denied`: the caller is a player and the caster is not their
 	//     character.
 	//   - `failed_precondition`: no open session.
-	InterruptCast(context.Context, *connect.Request[v1.InterruptCastRequest]) (*connect.Response[v1.InterruptCastResponse], error)
-	// EndSpell ends a spell that lasts (a cast in the ACTIVE state): the caster stops
+	AbandonCast(context.Context, *connect.Request[v1.AbandonCastRequest]) (*connect.Response[v1.AbandonCastResponse], error)
+	// EndActiveSpell ends a spell that lasts (a cast in the ACTIVE state): the caster stops
 	// concentrating, dismisses it, or the master ends it. What it did to the targets
 	// is undone where it can be: Mage Armor's armor class goes back, Aid's hit point
 	// maximum goes back (the current hit points lose only what is above the new
@@ -433,8 +434,8 @@ type CastingServiceHandler interface {
 	//   - `permission_denied`: the caller is a player and the caster is not their
 	//     character.
 	//   - `failed_precondition`: no open session; the cast is still being cast (use
-	//     InterruptCast: CastingBlocked, CAST_NOT_ACTIVE).
-	EndSpell(context.Context, *connect.Request[v1.EndSpellRequest]) (*connect.Response[v1.EndSpellResponse], error)
+	//     AbandonCast: CastingBlocked, CAST_NOT_ACTIVE).
+	EndActiveSpell(context.Context, *connect.Request[v1.EndActiveSpellRequest]) (*connect.Response[v1.EndActiveSpellResponse], error)
 	// ListSpellCasts reads the casts of the open session: the ones going or lasting
 	// (`active`), with the spell each character concentrates on, and the log of the
 	// session's casts, newest first (`log`, at most 100). The master gets every cast. A
@@ -456,10 +457,10 @@ type CastingServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewCastingServiceHandler(svc CastingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	castingServiceMethods := v1.File_meurpg_play_v1_casting_proto.Services().ByName("CastingService").Methods()
-	castingServiceGetCastingOptionsHandler := connect.NewUnaryHandler(
-		CastingServiceGetCastingOptionsProcedure,
-		svc.GetCastingOptions,
-		connect.WithSchema(castingServiceMethods.ByName("GetCastingOptions")),
+	castingServiceGetCastOptionsHandler := connect.NewUnaryHandler(
+		CastingServiceGetCastOptionsProcedure,
+		svc.GetCastOptions,
+		connect.WithSchema(castingServiceMethods.ByName("GetCastOptions")),
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -469,22 +470,22 @@ func NewCastingServiceHandler(svc CastingServiceHandler, opts ...connect.Handler
 		connect.WithSchema(castingServiceMethods.ByName("CastSpellOutsideCombat")),
 		connect.WithHandlerOptions(opts...),
 	)
-	castingServiceFinishCastHandler := connect.NewUnaryHandler(
-		CastingServiceFinishCastProcedure,
-		svc.FinishCast,
-		connect.WithSchema(castingServiceMethods.ByName("FinishCast")),
+	castingServiceConfirmCastTimePassedHandler := connect.NewUnaryHandler(
+		CastingServiceConfirmCastTimePassedProcedure,
+		svc.ConfirmCastTimePassed,
+		connect.WithSchema(castingServiceMethods.ByName("ConfirmCastTimePassed")),
 		connect.WithHandlerOptions(opts...),
 	)
-	castingServiceInterruptCastHandler := connect.NewUnaryHandler(
-		CastingServiceInterruptCastProcedure,
-		svc.InterruptCast,
-		connect.WithSchema(castingServiceMethods.ByName("InterruptCast")),
+	castingServiceAbandonCastHandler := connect.NewUnaryHandler(
+		CastingServiceAbandonCastProcedure,
+		svc.AbandonCast,
+		connect.WithSchema(castingServiceMethods.ByName("AbandonCast")),
 		connect.WithHandlerOptions(opts...),
 	)
-	castingServiceEndSpellHandler := connect.NewUnaryHandler(
-		CastingServiceEndSpellProcedure,
-		svc.EndSpell,
-		connect.WithSchema(castingServiceMethods.ByName("EndSpell")),
+	castingServiceEndActiveSpellHandler := connect.NewUnaryHandler(
+		CastingServiceEndActiveSpellProcedure,
+		svc.EndActiveSpell,
+		connect.WithSchema(castingServiceMethods.ByName("EndActiveSpell")),
 		connect.WithHandlerOptions(opts...),
 	)
 	castingServiceListSpellCastsHandler := connect.NewUnaryHandler(
@@ -496,16 +497,16 @@ func NewCastingServiceHandler(svc CastingServiceHandler, opts ...connect.Handler
 	)
 	return "/meurpg.play.v1.CastingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case CastingServiceGetCastingOptionsProcedure:
-			castingServiceGetCastingOptionsHandler.ServeHTTP(w, r)
+		case CastingServiceGetCastOptionsProcedure:
+			castingServiceGetCastOptionsHandler.ServeHTTP(w, r)
 		case CastingServiceCastSpellOutsideCombatProcedure:
 			castingServiceCastSpellOutsideCombatHandler.ServeHTTP(w, r)
-		case CastingServiceFinishCastProcedure:
-			castingServiceFinishCastHandler.ServeHTTP(w, r)
-		case CastingServiceInterruptCastProcedure:
-			castingServiceInterruptCastHandler.ServeHTTP(w, r)
-		case CastingServiceEndSpellProcedure:
-			castingServiceEndSpellHandler.ServeHTTP(w, r)
+		case CastingServiceConfirmCastTimePassedProcedure:
+			castingServiceConfirmCastTimePassedHandler.ServeHTTP(w, r)
+		case CastingServiceAbandonCastProcedure:
+			castingServiceAbandonCastHandler.ServeHTTP(w, r)
+		case CastingServiceEndActiveSpellProcedure:
+			castingServiceEndActiveSpellHandler.ServeHTTP(w, r)
 		case CastingServiceListSpellCastsProcedure:
 			castingServiceListSpellCastsHandler.ServeHTTP(w, r)
 		default:
@@ -517,24 +518,24 @@ func NewCastingServiceHandler(svc CastingServiceHandler, opts ...connect.Handler
 // UnimplementedCastingServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedCastingServiceHandler struct{}
 
-func (UnimplementedCastingServiceHandler) GetCastingOptions(context.Context, *connect.Request[v1.GetCastingOptionsRequest]) (*connect.Response[v1.GetCastingOptionsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.GetCastingOptions is not implemented"))
+func (UnimplementedCastingServiceHandler) GetCastOptions(context.Context, *connect.Request[v1.GetCastOptionsRequest]) (*connect.Response[v1.GetCastOptionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.GetCastOptions is not implemented"))
 }
 
 func (UnimplementedCastingServiceHandler) CastSpellOutsideCombat(context.Context, *connect.Request[v1.CastSpellOutsideCombatRequest]) (*connect.Response[v1.CastSpellOutsideCombatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.CastSpellOutsideCombat is not implemented"))
 }
 
-func (UnimplementedCastingServiceHandler) FinishCast(context.Context, *connect.Request[v1.FinishCastRequest]) (*connect.Response[v1.FinishCastResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.FinishCast is not implemented"))
+func (UnimplementedCastingServiceHandler) ConfirmCastTimePassed(context.Context, *connect.Request[v1.ConfirmCastTimePassedRequest]) (*connect.Response[v1.ConfirmCastTimePassedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.ConfirmCastTimePassed is not implemented"))
 }
 
-func (UnimplementedCastingServiceHandler) InterruptCast(context.Context, *connect.Request[v1.InterruptCastRequest]) (*connect.Response[v1.InterruptCastResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.InterruptCast is not implemented"))
+func (UnimplementedCastingServiceHandler) AbandonCast(context.Context, *connect.Request[v1.AbandonCastRequest]) (*connect.Response[v1.AbandonCastResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.AbandonCast is not implemented"))
 }
 
-func (UnimplementedCastingServiceHandler) EndSpell(context.Context, *connect.Request[v1.EndSpellRequest]) (*connect.Response[v1.EndSpellResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.EndSpell is not implemented"))
+func (UnimplementedCastingServiceHandler) EndActiveSpell(context.Context, *connect.Request[v1.EndActiveSpellRequest]) (*connect.Response[v1.EndActiveSpellResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CastingService.EndActiveSpell is not implemented"))
 }
 
 func (UnimplementedCastingServiceHandler) ListSpellCasts(context.Context, *connect.Request[v1.ListSpellCastsRequest]) (*connect.Response[v1.ListSpellCastsResponse], error) {

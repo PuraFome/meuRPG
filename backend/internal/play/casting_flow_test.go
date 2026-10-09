@@ -24,13 +24,13 @@ func (a *armed) castByID(t *testing.T, u *user, id string) *playv1.OutsideCast {
 
 func (a *armed) interrupt(t *testing.T, u *user, castID string) error {
 	t.Helper()
-	_, err := u.casting.InterruptCast(t.Context(), connect.NewRequest(&playv1.InterruptCastRequest{CampaignId: a.campaignID, CastId: castID, IdempotencyKey: newKey()}))
+	_, err := u.casting.AbandonCast(t.Context(), connect.NewRequest(&playv1.AbandonCastRequest{CampaignId: a.campaignID, CastId: castID, IdempotencyKey: newKey()}))
 	return err
 }
 
-func (a *armed) endSpell(t *testing.T, u *user, castID string) (*playv1.EndSpellResponse, error) {
+func (a *armed) endSpell(t *testing.T, u *user, castID string) (*playv1.EndActiveSpellResponse, error) {
 	t.Helper()
-	res, err := u.casting.EndSpell(t.Context(), connect.NewRequest(&playv1.EndSpellRequest{CampaignId: a.campaignID, CastId: castID, IdempotencyKey: newKey()}))
+	res, err := u.casting.EndActiveSpell(t.Context(), connect.NewRequest(&playv1.EndActiveSpellRequest{CampaignId: a.campaignID, CastId: castID, IdempotencyKey: newKey()}))
 	if err != nil {
 		return nil, err
 	}
@@ -85,14 +85,14 @@ func TestCastingOutside_ARitualTakesTenMinutesMoreAndSpendsNoSlot(t *testing.T) 
 
 	// Not every spell is a ritual, and not every class casts them.
 	_, err = a.castOut(t, a.ana, a.pens, magicMissileSpell, nil, true, nil)
-	wantCode(t, "a ritual of a spell without the tag", err, connect.CodeInvalidArgument)
+	wantCastingBlocked(t, "a ritual of a spell without the tag", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NOT_A_RITUAL)
 	_, err = a.castOut(t, a.ana, a.pens, alarmKey, slotOfLevel(1), true, nil)
 	wantCode(t, "a ritual with a slot", err, connect.CodeInvalidArgument)
 	_, err = a.castOut(t, a.caio, a.toren, alarmKey, nil, true, nil)
-	wantCode(t, "a fighter's ritual", err, connect.CodeInvalidArgument)
+	wantCastingBlocked(t, "a fighter's ritual", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL)
 	// The cleric has Detect Magic prepared; the wizard's Identify is only in her book.
 	_, err = a.castOut(t, a.bia, a.bri, identifyKey, nil, true, nil)
-	wantCode(t, "a ritual the cleric does not have", err, connect.CodeInvalidArgument)
+	wantCastingBlocked(t, "a ritual the cleric does not have", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL)
 	if r := a.mustCastOut(t, a.bia, a.bri, detectMagicKey, nil, true, nil).GetCast(); r.GetCastingMinutes() != 10 {
 		t.Errorf("Detect Magic as a ritual takes %d minutes, want 10 (an action + 10)", r.GetCastingMinutes())
 	}
@@ -174,9 +174,9 @@ func TestCastingOutside_ConcentrationIsOneSpellAtATimeAndGoesIntoACombat(t *test
 	if first.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_ACTIVE || !first.GetConcentrating() {
 		t.Fatalf("Bless = %v, want active and concentrating", first)
 	}
-	o, err := a.bia.casting.GetCastingOptions(t.Context(), connect.NewRequest(&playv1.GetCastingOptionsRequest{CampaignId: a.campaignID, CharacterId: a.bri.GetId()}))
+	o, err := a.bia.casting.GetCastOptions(t.Context(), connect.NewRequest(&playv1.GetCastOptionsRequest{CampaignId: a.campaignID, CharacterId: a.bri.GetId()}))
 	if err != nil || o.Msg.GetConcentrating().GetId() != first.GetId() {
-		t.Fatalf("GetCastingOptions() = %v, %v; want the concentration on the sheet", o, err)
+		t.Fatalf("GetCastOptions() = %v, %v; want the concentration on the sheet", o, err)
 	}
 	// The master sees the concentration too.
 	if got := len(a.casts(t, a.master).GetActive()); got != 1 {
@@ -363,7 +363,7 @@ func TestRN10_CastingOutsideHidesWhatThePlayersMaySee(t *testing.T) {
 				t.Errorf("player %s reads the hidden NPC's cast: %v", p.id, c)
 			}
 		}
-		_, err := p.casting.InterruptCast(t.Context(), connect.NewRequest(&playv1.InterruptCastRequest{CampaignId: a.campaignID, CastId: hidden.GetId(), IdempotencyKey: newKey()}))
+		_, err := p.casting.AbandonCast(t.Context(), connect.NewRequest(&playv1.AbandonCastRequest{CampaignId: a.campaignID, CastId: hidden.GetId(), IdempotencyKey: newKey()}))
 		wantCode(t, "InterruptCast of a hidden cast", err, connect.CodeNotFound)
 	}
 	if c := a.castByID(t, a.master, hidden.GetId()); c == nil || c.GetCasterName() != "LEAKCANARY-npc-1" {
@@ -379,8 +379,25 @@ func TestRN10_CastingOutsideHidesWhatThePlayersMaySee(t *testing.T) {
 	if c := a.castByID(t, a.ana, shown.GetId()); c == nil || c.GetCasterName() != "LEAKCANARY-npc-1" {
 		t.Errorf("a player reads %v of the cast by an NPC on the stage, want it", c)
 	}
-	if _, err := a.castOut(t, a.ana, a.pens, magicMissileSpell, slotOfLevel(1), false, []*charactersv1.Character{mage}); err != nil {
-		t.Errorf("aiming at an NPC on the stage error = %v", err)
+	// A player names an NPC by its place on the stage, never by its character ID (RN-20).
+	var place string
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT id FROM stage_npcs WHERE character_id = $1`, mage.GetId()).Scan(&place); err != nil {
+		t.Fatal(err)
+	}
+	_, err = a.castOut(t, a.ana, a.pens, magicMissileSpell, slotOfLevel(1), false, []*charactersv1.Character{mage})
+	wantCode(t, "aiming at an NPC by its character ID", err, connect.CodeNotFound)
+	res2, err := a.castOut(t, a.ana, a.pens, magicMissileSpell, slotOfLevel(1), false, nil, func(r *playv1.CastSpellOutsideCombatRequest) { r.TargetIds = []string{place} })
+	if err != nil {
+		t.Fatalf("aiming at an NPC on the stage error = %v", err)
+	}
+	if got := res2.GetCast().GetTargets()[0]; got.GetCharacterId() != place || got.GetName() != "LEAKCANARY-npc-1" {
+		t.Errorf("target = %v, want the NPC by its place on the stage", got)
+	}
+	if got := a.castByID(t, a.ana, shown.GetId()).GetCasterId(); got != place {
+		t.Errorf("a player reads the NPC caster as %q, want its place on the stage %q", got, place)
+	}
+	if got := a.castByID(t, a.master, shown.GetId()).GetCasterId(); got != mage.GetId() {
+		t.Errorf("the master reads the NPC caster as %q, want its character ID", got)
 	}
 	// What Toren regained is for Toren's player and the master only.
 	a.hurt(t, a.toren, 3)
@@ -393,9 +410,9 @@ func TestRN10_CastingOutsideHidesWhatThePlayersMaySee(t *testing.T) {
 	}
 }
 
-func (a *armed) casting(t *testing.T, u *user, c *charactersv1.Character) (*playv1.GetCastingOptionsResponse, error) {
+func (a *armed) casting(t *testing.T, u *user, c *charactersv1.Character) (*playv1.GetCastOptionsResponse, error) {
 	t.Helper()
-	res, err := u.casting.GetCastingOptions(t.Context(), connect.NewRequest(&playv1.GetCastingOptionsRequest{CampaignId: a.campaignID, CharacterId: c.GetId()}))
+	res, err := u.casting.GetCastOptions(t.Context(), connect.NewRequest(&playv1.GetCastOptionsRequest{CampaignId: a.campaignID, CharacterId: c.GetId()}))
 	if err != nil {
 		return nil, err
 	}
@@ -428,11 +445,11 @@ func TestCastingOutside_TheRequestIsIdempotentAndHonoursTheDiceMode(t *testing.T
 	_, err = a.castOut(t, a.bia, a.bri, cureWounds, slotOfLevel(1), false, tor)
 	wantBlockedBy(t, "roll_in_app under physical dice", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE)
 	_, err = a.castOut(t, a.bia, a.bri, cureWounds, slotOfLevel(1), false, tor, func(r *playv1.CastSpellOutsideCombatRequest) {
-		r.Roll = &playv1.CastSpellOutsideCombatRequest_PoolSum{PoolSum: 9}
+		r.Roll = &playv1.CastSpellOutsideCombatRequest_TypedSum{TypedSum: 9}
 	})
 	wantCode(t, "a sum above the dice", err, connect.CodeInvalidArgument)
 	res := a.mustCastOut(t, a.bia, a.bri, cureWounds, slotOfLevel(1), false, tor, func(r *playv1.CastSpellOutsideCombatRequest) {
-		r.Roll = &playv1.CastSpellOutsideCombatRequest_PoolSum{PoolSum: 5}
+		r.Roll = &playv1.CastSpellOutsideCombatRequest_TypedSum{TypedSum: 5}
 	})
 	if !res.GetCast().GetPhysical() || res.GetCast().GetRollTotal() != 8 {
 		t.Errorf("cast = %v, want the typed 5 on a physical die, 5 + WIS 3 = 8", res.GetCast())
@@ -466,21 +483,118 @@ func TestCastingOutside_TheSlotAndTheSpellAreTheSheets(t *testing.T) {
 
 	o, err := a.casting(t, a.ana, a.pens)
 	if err != nil {
-		t.Fatalf("GetCastingOptions() error = %v", err)
+		t.Fatalf("GetCastOptions() error = %v", err)
 	}
 	by := map[string]*playv1.CastingSpell{}
 	for _, s := range o.GetSpells() {
 		by[s.GetSpell().GetKey()] = s
 	}
-	if s := by[alarmKey]; s == nil || s.GetCanCast() || !s.GetCanRitual() || s.GetRitualMinutes() != 11 || s.GetCastingMinutes() != 1 {
+	if s := by[alarmKey]; s == nil || s.GetCanCast() || !s.GetRitualAllowed() || s.GetRitualMinutes() != 11 || s.GetCastingMinutes() != 1 {
 		t.Errorf("Alarm = %v, want a ritual of 11 minutes only (1 minute + 10, not prepared)", s)
 	}
 	if s := by[mageArmorKey]; s == nil || !s.GetCanCast() || s.GetEffect() != playv1.CastingEffectKind_CASTING_EFFECT_KIND_ARMOR_CLASS || s.GetDurationSeconds() != 8*3600 {
 		t.Errorf("Mage Armor = %v, want castable, armor class, 8 hours", s)
 	}
-	if s := by[detectMagicKey]; s == nil || s.GetCanCast() || !s.GetCanRitual() {
+	if s := by[detectMagicKey]; s == nil || s.GetCanCast() || !s.GetRitualAllowed() {
 		t.Errorf("Detect Magic = %v, want a ritual from the book", s)
 	}
 	_, err = a.casting(t, a.caio, a.pens)
 	wantCode(t, "options of another player's character", err, connect.CodePermissionDenied)
+}
+
+// TestCastingOutside_ReachIsMeasuredOnTheMapAndTheMasterJudgesWithoutOne: Cure Wounds is a
+// touch spell (5 ft); on the current map a player's target farther than that is refused and
+// the options say so, and without tokens nothing is refused (SRD 5.1, "Range").
+func TestCastingOutside_ReachIsMeasuredOnTheMapAndTheMasterJudgesWithoutOne(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	a.hurt(t, a.toren, 5)
+	tor := []*charactersv1.Character{a.toren}
+	// No tokens: the master judges, and the options give no distance.
+	o, err := a.casting(t, a.bia, a.bri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tg := range o.GetTargets() {
+		if tg.GetDistanceKnown() {
+			t.Errorf("target %v has a distance without tokens", tg)
+		}
+	}
+	a.mustCastOut(t, a.bia, a.bri, cureWounds, slotOfLevel(1), false, tor)
+
+	// Brisa stands on the first column, Toren on the next one (1,5 m) and Pensantus three away.
+	step := 10000 / gridColumns
+	at := func(col int) int { return col*step + step/2 }
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE game_sessions SET current_map_id = $2 WHERE campaign_id = $1 AND ended_at IS NULL`, a.campaignID, a.mapID); err != nil {
+		t.Fatal(err)
+	}
+	a.h.placeToken(a.mapID, a.bri.GetId(), at(2), 5000)
+	a.h.placeToken(a.mapID, a.toren.GetId(), at(3), 5000)
+	a.h.placeToken(a.mapID, a.pens.GetId(), at(5), 5000)
+	o, err = a.casting(t, a.bia, a.bri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dist := map[string]int32{}
+	for _, tg := range o.GetTargets() {
+		if tg.GetDistanceKnown() {
+			dist[tg.GetName()] = tg.GetDistanceFt()
+		}
+	}
+	if dist["Toren"] != 5 || dist["Pensantus"] != 15 {
+		t.Errorf("distances = %v, want Toren 5 ft and Pensantus 15 ft", dist)
+	}
+	for _, s := range o.GetSpells() {
+		if s.GetSpell().GetKey() != cureWounds {
+			continue
+		}
+		for _, r := range s.GetReach() {
+			want := r.GetCharacterId() != a.pens.GetId()
+			if r.GetInRange() != want || (!want && r.GetReasonPt() != "Fora do alcance do toque (1,5 m).") {
+				t.Errorf("reach of %s = %v, want in range %v with the touch reason", r.GetCharacterId(), r, want)
+			}
+		}
+	}
+	_, err = a.castOut(t, a.bia, a.bri, cureWounds, slotOfLevel(1), false, []*charactersv1.Character{a.pens})
+	b := wantCastingBlocked(t, "a touch spell three squares away", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_TARGET_OUT_OF_REACH)
+	if b.GetMissingFt() != 10 {
+		t.Errorf("missing = %d ft, want 10", b.GetMissingFt())
+	}
+	a.mustCastOut(t, a.bia, a.bri, cureWounds, slotOfLevel(1), false, tor)
+	// The master is never held to the reach.
+	a.mustCastOut(t, a.master, a.bri, cureWounds, slotOfLevel(1), false, []*charactersv1.Character{a.pens})
+}
+
+// TestCastingOutside_DamageAsksForTheConcentrationSaveAndZeroEndsIt: the master's correction of
+// the hit points of a character concentrating on a spell asks for a Constitution save, DC 10 or
+// half the damage; at 0 hit points the concentration is over (SRD 5.1, "Duration").
+func TestCastingOutside_DamageAsksForTheConcentrationSaveAndZeroEndsIt(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	bless := a.mustCastOut(t, a.bia, a.bri, blessKey, slotOfLevel(1), false, []*charactersv1.Character{a.toren}).GetCast()
+	full := a.vitals(t, a.bri).GetHitPointsMax()
+	adjust := func(hp int32) *playv1.AdjustCharacterVitalsResponse {
+		res, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
+			CampaignId: a.campaignID, CharacterId: a.bri.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: &hp,
+		}))
+		if err != nil {
+			t.Fatalf("AdjustCharacterVitals() error = %v", err)
+		}
+		return res.Msg
+	}
+	if r := adjust(full - 6); r.GetConcentrationDc() != 10 || r.GetConcentrationCastId() != bless.GetId() {
+		t.Errorf("6 damage = %v, want DC 10 on Bless", r)
+	}
+	if r := adjust(full); r.GetConcentrationDc() != 0 {
+		t.Errorf("healing asked for a save: %v", r)
+	}
+	if r := adjust(1); r.GetConcentrationDc() != 11 { // half of 23, above 10
+		t.Errorf("%d damage = DC %d, want 11", full-1, r.GetConcentrationDc())
+	}
+	if r := adjust(0); r.GetConcentrationDc() != 0 || r.GetConcentrationCastId() != bless.GetId() {
+		t.Errorf("0 hit points = %v, want the concentration over, no save", r)
+	}
+	if c := a.castByID(t, a.master, bless.GetId()); c.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_ENDED || c.GetEndReason() != playv1.OutsideCastEnd_OUTSIDE_CAST_END_CONCENTRATION {
+		t.Errorf("Bless after 0 hit points = %v, want ended by concentration", c)
+	}
 }

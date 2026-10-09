@@ -263,6 +263,7 @@ type person struct {
 	table      rulesv1connect.TableContentServiceClient
 	play       playv1connect.PlayServiceClient
 	combat     playv1connect.CombatServiceClient
+	casting    playv1connect.CastingServiceClient
 	puzzles    playv1connect.PuzzleServiceClient
 	encounters playv1connect.EncounterServiceClient
 	maps       mapsv1connect.MapServiceClient
@@ -299,6 +300,7 @@ func (s *stack) personWith(name, id string) *person {
 		table:      rulesv1connect.NewTableContentServiceClient(c, url),
 		play:       playv1connect.NewPlayServiceClient(c, url),
 		combat:     playv1connect.NewCombatServiceClient(c, url),
+		casting:    playv1connect.NewCastingServiceClient(c, url),
 		puzzles:    playv1connect.NewPuzzleServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),

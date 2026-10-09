@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
+	"github.com/jackc/pgx/v5"
+	"math"
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -169,4 +173,51 @@ func (s *Service) armorWithSpells(ctx context.Context, q *playdb.Queries, campai
 		}
 	}
 	return sheetAC, nil
+}
+
+// concentrationCheck is what hit points taken ask of a spell cast outside a combat that
+// the character concentrates on: the cast and the Constitution saving throw DC to keep it
+// (0: no save, the concentration is over).
+type concentrationCheck struct {
+	castID string
+	dc     int32
+	secret bool
+}
+
+// concentrationAfter looks at a correction of a character's hit points made outside the
+// combat's own rolls: damage asks for a Constitution saving throw, DC 10 or half the
+// damage, whichever is higher, and 0 hit points end the concentration (the character is
+// incapacitated, SRD 5.1, "Duration"). The app only reminds: the table rolls, and the master
+// ends the spell when the save fails (EndActiveSpell). A character in a combat has the
+// combat's own concentration, which the combat asks for.
+func (s *Service) concentrationAfter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, before, after *playv1.CharacterVitals) (concentrationCheck, bool, error) {
+	var out concentrationCheck
+	taken := before.GetHitPointsCurrent() - after.GetHitPointsCurrent()
+	if taken <= 0 {
+		return out, false, nil
+	}
+	live, err := q.ListLiveSpellCastsOfCaster(ctx, after.GetCharacterId())
+	if err != nil {
+		return out, false, fmt.Errorf("list the caster's casts: %w", err)
+	}
+	for _, r := range live {
+		if !r.Concentrating || r.CarriedEncounterID != nil {
+			continue
+		}
+		out.castID, out.secret = r.ID, r.Secret
+		if after.GetHitPointsCurrent() > 0 {
+			out.dc = clamp32(combat.ConcentrationDC(int(taken)), 0, math.MaxInt32)
+			return out, false, nil
+		}
+		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), actorUserID: m.UserID, svc: s, master: true}
+		status, reason := castEnded, endConcentration
+		if r.Status == castCasting {
+			status, reason = castFailed, endInterrupted
+		}
+		if _, _, _, err := s.closeCast(ctx, c, r, status, reason); err != nil {
+			return out, false, err
+		}
+		return out, true, nil
+	}
+	return out, false, nil
 }

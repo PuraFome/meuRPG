@@ -1454,6 +1454,14 @@ message SpellSlotsUsed {
 // correction (or, for a repeated idempotency_key, as they are now).
 message AdjustCharacterVitalsResponse {
   CharacterVitals vitals = 1;
+  // Set when the correction took hit points from a character that concentrates on a spell
+  // it cast outside a combat (CastingService): the Constitution saving throw DC to keep
+  // concentrating, 10 or half the damage, whichever is higher (SRD 5.1, "Duration"). The
+  // app only reminds; the table rolls, and the master ends the spell with
+  // CastingService.EndActiveSpell when it fails. Only the master calls the correction.
+  int32 concentration_dc = 2;
+  // The cast being concentrated on, with `concentration_dc`.
+  string concentration_cast_id = 3;
 }
 
 // SetCurrentMapRequest names the map the session shows.
