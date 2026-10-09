@@ -794,3 +794,34 @@ func TestPM06a_ARequestClosesWhenTheTurnEnds(t *testing.T) {
 		t.Errorf("the queue after the turn ended = %v, want it empty", got)
 	}
 }
+
+// A roll with advantage that waits for a Bardic Inspiration die keeps both d20 and the mode
+// it was rolled with: the answer settles that roll, with the die on the one that counts.
+func TestPM06a_ARollWithAdvantageHeldForInspirationKeepsItsTwoDice(t *testing.T) {
+	t.Parallel()
+	a := newResourceTable(t)
+	e := a.inspired(t)
+	a.setConditions(t, e, "Goblin", "condition:restrained")
+	a.h.roller.queue(5, 3) // two d20: the 5 counts, 5 + 6 = 11 misses AC 12 alone
+	held, err := a.attack(t, a.caio, e, "Tavo", battleaxe, "Goblin", inAppRoll)
+	if err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	offer := held.GetInspirationOffer()
+	if offer == nil {
+		t.Fatalf("the held roll has no question: %v", held)
+	}
+	if d := offer.GetD20(); len(d.GetFaces()) != 2 || d.GetFaces()[0] != 5 || d.GetFaces()[1] != 3 || d.GetCountedIndex() != 0 || d.GetTotal() != 11 {
+		t.Errorf("the question's d20 = %v, want the pair 5 and 3, the first counted, total 11", d)
+	}
+	a.h.roller.queue(7)
+	res, err := a.answer(t, a.caio, e, offer.GetHoldId(), useDieInApp)
+	if err != nil {
+		t.Fatalf("AnswerBardicInspiration() error = %v", err)
+	}
+	roll := res.GetAttack().GetRoll()
+	if roll.GetMode() != playv1.RollMode_ROLL_MODE_ADVANTAGE || len(roll.GetD20().GetFaces()) != 2 || roll.GetD20().GetCountedIndex() != 0 ||
+		roll.GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || roll.GetD20().GetTotal() != 18 {
+		t.Errorf("the settled attack = %v, want advantage, the pair 5 and 3, a hit with 18 (5 + 6 + 7)", roll)
+	}
+}
