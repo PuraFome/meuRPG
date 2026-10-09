@@ -346,6 +346,9 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 		ev.Fogged, ev.SeenBy = true, nil
 		return ev, nil
 	}
+	if kind == eventSpellCast && ev.Placed {
+		return c.stampPlacedCast(ev, cs), nil
+	}
 	if len(npcSquares) == 0 {
 		return ev, nil
 	}
@@ -364,6 +367,49 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 		}
 	}
 	return ev, nil
+}
+
+// stampPlacedCast is stamp for an area spell the server placed. Its line is the caster's
+// player's always, with the targets they cannot see left out of it (RN-10): each NPC target
+// keeps who saw it when it was hit (Fogged, SeenMask), and any other player has the line only
+// if they saw at least one of the NPCs it hit, listing the ones they saw. A cast that hit no
+// NPC is every player's, as any line with no NPC in it.
+func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) actionEvent {
+	users := c.sight.sight.Users()
+	anySeen := false
+	var seenSome []string
+	for i := range ev.Hits {
+		h := &ev.Hits[i]
+		j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == h.Target })
+		if h.HiddenAtCast || j < 0 || cs[j].Kind != kindNPC || !placed(cs[j]) {
+			continue
+		}
+		anySeen, h.Fogged, h.SeenMask = true, true, 0
+		for _, u := range users {
+			if !c.sight.sight.Sees(u, squareOfCombatant(cs[j])) {
+				continue
+			}
+			k := slices.Index(ev.CoverUsers, u)
+			if k < 0 && len(ev.CoverUsers) < maxCoverUsers {
+				ev.CoverUsers = append(ev.CoverUsers, u)
+				k = len(ev.CoverUsers) - 1
+			}
+			if k >= 0 {
+				h.SeenMask |= 1 << k
+			}
+			if !slices.Contains(seenSome, u) {
+				seenSome = append(seenSome, u)
+			}
+		}
+	}
+	if !anySeen {
+		return ev
+	}
+	ev.Fogged, ev.SeenBy = true, seenSome
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Actor }); i >= 0 && cs[i].UserID != nil && !slices.Contains(ev.SeenBy, *cs[i].UserID) {
+		ev.SeenBy = append(ev.SeenBy, *cs[i].UserID) // the caster's player always has the line of their own spell
+	}
+	return ev
 }
 
 // stampDoor writes into a door_opened event who may have the line, on a fog map,
@@ -427,7 +473,9 @@ func (ev actionEvent) combatantIDs() []string {
 	add(ev.Actor)
 	add(ev.Target)
 	for _, h := range ev.Hits {
-		add(h.Target)
+		if !h.HiddenAtCast { // the players' line never lists it: who sees it is no question of the line
+			add(h.Target)
+		}
 	}
 	for _, h := range ev.Settled {
 		add(h.Target)

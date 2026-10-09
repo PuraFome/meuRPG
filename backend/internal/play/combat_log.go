@@ -235,7 +235,9 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			}
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED, true
 		case eventCombatantHiddenSet:
-			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, true
+			// The master's own reveal is his alone; the one an area spell made is the
+			// players' line too ("foi revelado"): the creature appears on their map.
+			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED, !ev.ByArea
 		case eventActionTaken:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION
 		case eventHitPointsAdjusted:
@@ -445,6 +447,9 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	seen := e.ev.seenByViewer(v)
 	for _, h := range e.ev.Hits { // every target of a spell
 		hit, ok := byID[h.Target]
+		if e.ev.Placed { // an area the server placed: the hidden creatures it hit are left out of the line, not the line
+			continue
+		}
 		visible = visible && ok && !hit.Hidden
 	}
 	if !v.master && (!visible || !seen) {
@@ -581,6 +586,12 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
 	for _, h := range e.ev.Hits {
 		target := byID[h.Target]
+		// The players' line never lists a creature that was hidden when an area hit it
+		// (not even after the master reveals it: the line would say the spell hit it),
+		// nor one that is hidden now or that a combatant that left no longer names.
+		if !v.master && (h.HiddenAtCast || target.Hidden || target.ID == "" || h.unseenBy(e.ev.CoverUsers, v.userID)) {
+			continue
+		}
 		t := &playv1.CombatLogSpellTarget{
 			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
 			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
@@ -588,6 +599,7 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 		}
 		coverKey, coverSource := h.coverFor(v, e.ev.CoverUsers)
 		t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
+		t.Hidden = v.master && h.HiddenAtCast
 		if v.master && h.TargetAC > 0 {
 			t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
 		}

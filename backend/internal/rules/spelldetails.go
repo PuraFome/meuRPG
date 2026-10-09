@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -211,6 +212,41 @@ type SpellDetails struct {
 	HigherLevel []string
 	// Target is whom the spell reaches (see SpellTarget).
 	Target SpellTarget
+}
+
+// defaultLineWidthFt is the width of a line the SRD gives no other for: Lightning Bolt's 5 ft.
+const defaultLineWidthFt = 5
+
+var (
+	// cornersRE is the SRD's own words for a spell whose area goes around corners
+	// (Fireball: "The fire spreads around corners"). Message, which can "travel
+	// freely around corners", is no area and does not match.
+	cornersRE = regexp.MustCompile(`(?i)\bspreads around corners\b`)
+	// widthRE is the width of a line, "10 feet wide" or "5-foot-wide".
+	widthRE = regexp.MustCompile(`(?i)\b(\d+)[- ]f(?:oo|ee)t[- ]wide\b`)
+)
+
+// SpreadsAroundCorners says the spell's area reaches what a straight line from its
+// origin does not, around a corner (SRD 5.1, Fireball and the other spheres that
+// say it: its text says "spreads around corners"). Its area is then the part of the
+// shape connected to the origin, not what the origin sees.
+func (d *SpellDetails) SpreadsAroundCorners() bool {
+	return d.Target.Kind == TargetArea && cornersRE.MatchString(strings.Join(d.Description, " "))
+}
+
+// AreaWidthFt is the width of a line area in feet: the one the spell's text gives
+// ("10 feet wide" for Gust of Wind), and 5 ft, the SRD's width of Lightning Bolt and
+// the rest, when it gives none. 0 for any other shape.
+func (d *SpellDetails) AreaWidthFt() int {
+	if d.Target.Kind != TargetArea || d.Target.Shape != ShapeLine {
+		return 0
+	}
+	if m := widthRE.FindStringSubmatch(strings.Join(d.Description, " ")); m != nil {
+		if w, err := strconv.Atoi(m[1]); err == nil && w >= defaultLineWidthFt && w%5 == 0 {
+			return w
+		}
+	}
+	return defaultLineWidthFt
 }
 
 // SpellDetails returns the details of a spell key, and whether it exists.

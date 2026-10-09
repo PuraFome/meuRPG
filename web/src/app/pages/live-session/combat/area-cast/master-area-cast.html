@@ -1,0 +1,87 @@
+<app-sheet-frame [title]="data.caster.label + ' conjura ' + data.name" [subtitle]="subtitle()" [phone]="inSheet" (closed)="close()">
+  <div class="cols">
+    <div class="col">
+      <app-area-step [n]="1" [title]="stepOne" />
+      <app-area-map
+        [image]="data.map.image"
+        [mapName]="data.map.mapName"
+        [columns]="data.map.columns"
+        [rows]="data.map.rows"
+        [layers]="data.map.layers"
+        [combatants]="combatants()"
+        [master]="true"
+        [casterId]="data.caster.id"
+        [spell]="data.name"
+        [placement]="placement"
+        [area]="area"
+        [rangeFt]="data.targets.rangeFt"
+        [placed]="flow.placed()"
+        [preview]="flow.preview()"
+        [readOnly]="flow.step() === 'list' || placement === Placement.CASTER"
+        [seen]="seen()"
+        [autofocus]="placement !== Placement.CASTER"
+        (place)="flow.place($event)"
+        (confirm)="confirm()"
+        (dismiss)="close()"
+      />
+    </div>
+    <div class="col">
+      <app-area-step #listTitle [n]="2" title="Quem está na área (você vê todos)" />
+      @if (flow.step() === 'list') {
+        <app-area-list
+          [rows]="rows()"
+          [count]="count()"
+          heading="Na área"
+          [warning]="warning()"
+          [nobody]="nobody()"
+          [npcs]="npcs()"
+          [creatures]="creatures()"
+        />
+        @if (hidden().length > 0) {
+          <app-hidden-switch
+            class="switch"
+            label="Revelar as escondidas atingidas"
+            [hint]="switchHint()"
+            [checked]="reveal()"
+            [disabled]="busy()"
+            (toggle)="toggle($event)"
+          />
+        }
+      } @else {
+        <p class="wait">Coloque o ponto no mapa e confirme o local para ver quem está na área.</p>
+      }
+      @if (flow.error() || error()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ error() || flow.error() }}</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div foot class="foot">
+    <button mat-button type="button" class="quiet" [disabled]="busy()" (click)="close()">Cancelar</button>
+    @if (flow.step() === 'list') {
+      @if (placement !== Placement.CASTER) {
+        <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="back()">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>Mudar o local
+        </button>
+      }
+      <button mat-flat-button type="button" class="btn" [disabled]="busy()" (click)="cast()">
+        <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ nobody() ? 'Conjurar mesmo assim' : 'Conjurar ' + data.name }}
+      </button>
+    } @else {
+      <button
+        mat-flat-button
+        type="button"
+        class="btn"
+        [class.mr-button--off]="!flow.ready()"
+        [disabled]="flow.busy() || !flow.ready()"
+        disabledInteractive
+        (click)="confirm()"
+      >
+        {{ confirmText }}
+      </button>
+    }
+  </div>
+</app-sheet-frame>

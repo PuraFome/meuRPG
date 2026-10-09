@@ -7,7 +7,7 @@ import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -2163,7 +2163,8 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade magias ${Date.now()}`, true, true);
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    // The three around Goblin 1, so Sono placed on it catches them.
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { 'Capitão Goblin': [9, 10], 'Goblin 1': [9, 9], 'Goblin 2': [10, 9] });
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
@@ -2177,8 +2178,33 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
 
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
-    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
-    await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
+    // The area picker (PM-02a, PM-02b): the map before a point, then a point with nobody seen in it and its confirmation.
+    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Sono' });
+    await expect(map).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, o ponto no mapa ${where}`);
+    await map.press('Shift+ArrowUp');
+    // The hint under the title follows the keyboard: it names the distance of the point the arrows reached, before Enter places it.
+    const hint = sheet.locator('.hint');
+    await expect(hint).toContainText(/Ponto a\s+\d+,\d\s+m de você/);
+    const first = await hint.innerText();
+    await map.press('Shift+ArrowUp');
+    await expect(hint).not.toHaveText(first);
+    await map.press('Enter');
+    await expect(sheet.getByText(/Ponto a\s+.* de você/).first()).toBeVisible();
+    await expectScreenPasses(p, `Conjurar Sono, o ponto colocado ${where}`);
+    await map.press('c');
+    await expect(sheet.getByRole('listbox', { name: 'Centrar em…' })).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, "Centrar em…" ${where}`);
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).press('Escape');
+    await map.press('Enter');
+    await expect(sheet.getByText('Ninguém que você vê está na área.')).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Mudar o local' })).toBeFocused();
+    await expectScreenPasses(p, `Conjurar Sono, ninguém na área ${where}`);
+    await sheet.getByRole('button', { name: 'Mudar o local' }).click();
+    await sheet.getByRole('button', { name: 'Centrar em…' }).click();
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await sheet.getByRole('button', { name: 'Confirmar local' }).click();
+    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
     await expectScreenPasses(p, `Conjurar Sono, quem está na área ${where}`);
     await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
     await expect(p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true })).toBeVisible();
@@ -2215,6 +2241,89 @@ test('as magias na sessão passam no axe e nas conferências de layout no tema c
 test('as magias na sessão passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
   test.setTimeout(420_000);
   await scanCombatDetailsScreens(browser, 'dark', 390);
+});
+
+/**
+ * The area spell the table asks about (PM-02c 9 and 9c, PM-02b 5): the master's question with the area of the last spell
+ * over his map and its legend, the question when no hidden creature was in the area ("Sem escondidas"), the line "Combate
+ * atualizado agora." after a reload, and the picker's zoom on a map of 40 columns. The desktop scan hides a goblin in the
+ * area; the phone scan has none in it. The table asks (`Perguntar a cada vez`), so the cast holds the turn either way.
+ */
+async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, hiddenInArea: boolean): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade escondidas ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    await setTableRulesRPC(m, campaignId, { hiddenAreaHits: 'HIDDEN_AREA_HIT_RULE_ASK' });
+    if (!hiddenInArea) {
+      await setGridRPC(m, campaignId, table.mapId, 40);
+    }
+    // Sono's area is 4 squares around the point: Goblin 2 is in it, or far from it.
+    const at: Record<string, [number, number]> = { 'Capitão Goblin': [9, 10], 'Goblin 1': [9, 9], 'Goblin 2': hiddenInArea ? [10, 9] : [20, 3] };
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, at, ['Goblin 2']);
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    await p.getByRole('button', { name: 'Conjurar Sono' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
+    const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Sono' });
+    await expect(map).toBeFocused();
+    if (!hiddenInArea) {
+      await expect(sheet.getByRole('group', { name: 'Zoom do mapa' })).toBeVisible();
+      await sheet.getByRole('button', { name: 'Aproximar o mapa' }).click();
+      await expectScreenPasses(p, `Conjurar Sono, o mapa de 40 colunas aproximado ${where}`);
+      await sheet.getByRole('button', { name: 'Afastar o mapa' }).click();
+    }
+    await map.press('c');
+    await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+    await map.press('Enter');
+    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 5d8/).fill('20');
+    await p.getByRole('button', { name: 'Confirmar 20' }).click();
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await expect(p.getByText('Esperando o mestre').first()).toBeVisible();
+    await expectScreenPasses(p, `Esperando o mestre, a vez parada ${where}`);
+
+    if (width < 768) {
+      await m.getByRole('button', { name: 'Abrir o registro' }).click().catch(() => undefined);
+    }
+    const card = m.getByRole('group', { name: hiddenInArea ? /atingiu 1 criatura escondida/ : /nenhuma criatura escondida na área/ });
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    await expect(m.locator('app-area-overlay')).toBeVisible();
+    await expectScreenPasses(m, `A pergunta ao mestre, com a área da última magia ${where}`);
+    await m.reload();
+    await expect(m.getByRole('status').filter({ hasText: 'Combate atualizado agora.' })).toBeVisible();
+    await expect(card).toBeVisible();
+    await expectScreenPasses(m, `A pergunta depois de recarregar ${where}`);
+    await m.getByRole('button', { name: hiddenInArea ? 'Revelar' : 'Sem escondidas', exact: true }).click();
+    await expect(card).toHaveCount(0);
+    await expectScreenPasses(p, `A vez volta ao jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a pergunta das escondidas e a área da última magia passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanHiddenAreaScreens(browser, 'light', 1280, true);
+});
+
+test('a pergunta sem escondidas e o zoom do mapa grande passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(420_000);
+  await scanHiddenAreaScreens(browser, 'dark', 390, false);
 });
 
 /**
