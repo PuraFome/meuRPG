@@ -1,6 +1,6 @@
 {
   "after": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.25",
+    "ContentVersion": "srd51@a8abc93b235c+fx.26",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -928,10 +928,11 @@
         "TextPT": "Recuperação arcana: uma vez por dia, depois de um descanso curto, recupera espaços de magia que somem até 1 níveis (nenhum de 6º nível ou mais)."
       }
     ],
+    "OpenChoices": null,
     "Issues": null
   },
   "before": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.25",
+    "ContentVersion": "srd51@a8abc93b235c+fx.26",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -1546,6 +1547,7 @@
         "TextPT": "Crítico com 19 ou 20 nos ataques com arma."
       }
     ],
+    "OpenChoices": null,
     "Issues": null
   }
 }
