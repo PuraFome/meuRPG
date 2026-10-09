@@ -352,6 +352,9 @@ func TestTheWriterRefusesAnEntryTwiceAndTooManyEntries(t *testing.T) {
 	}
 }
 
+// The page shows the name before the export with a port of FileName
+// (suggestedFileName in web/src/app/core/campaign-package/package-copy.ts), whose
+// spec holds the same cases: change one, change the other.
 func TestFileNamesAreSafe(t *testing.T) {
 	t.Parallel()
 	for in, want := range map[string]string{
@@ -363,6 +366,8 @@ func TestFileNamesAreSafe(t *testing.T) {
 		".hidden":               "hidden.meurpg.zip",
 		"a/b\\c":                "a_b_c.meurpg.zip",
 		"日本語":                   "campanha.meurpg.zip",
+		"Mirathel verificação":  "Mirathel_verificacao.meurpg.zip",
+		"..Ação -- do Corvo!..": "Acao_--_do_Corvo.meurpg.zip",
 		strings.Repeat("a", 90): strings.Repeat("a", 60) + ".meurpg.zip",
 	} {
 		if got := FileName(in); got != want {
