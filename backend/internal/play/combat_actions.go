@@ -82,6 +82,14 @@ func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e play
 	if down {
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN, nil
 	}
+	// A surprised combatant does not move, act or react until its first turn ends.
+	surprised, err := s.surprisedNow(ctx, tx, e, c)
+	if err != nil {
+		return 0, err
+	}
+	if surprised {
+		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED, nil
+	}
 	return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED, nil
 }
 
@@ -119,6 +127,8 @@ func gateError(code rulesv1.DisabledReasonCode) error {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN, "the character is down")
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED:
+		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_SURPRISED, "the combatant is surprised")
 	}
 	// Not on turn, or out of the fight (a defeated combatant has no turn).
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not this combatant's turn")
@@ -282,6 +292,9 @@ func (s *Service) GetTurnOptions(
 		if deref(p.AttackerID) == who.ID && pendingVisible(p, d.cs, v) {
 			res.PendingDamages = append(res.PendingDamages, pendingProto(p, d.cs))
 		}
+	}
+	if res.ContestAttackOptions, res.ContestState, err = s.contestOptionsFor(ctx, m, d, v, who, opts, code); err != nil {
+		return nil, s.dbError(ctx, "work out the contests of the turn", err)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -472,6 +485,9 @@ type rollInput struct {
 	// pool says typed is the sum of the physical dice of a spell's pool (not a
 	// d20 face): CastSpell's pool_sum.
 	pool bool
+	// faces are the faces of the physical d20 pair (RollAttack's d20_faces): one for a
+	// normal roll, two for advantage or disadvantage.
+	faces []int
 }
 
 // mustRollThisWay checks a player's way of rolling against the campaign's dice
@@ -517,7 +533,7 @@ func (s *Service) mustReactNow(ctx context.Context, c *combatTx, who playdb.Comb
 	if down {
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
 	}
-	return nil
+	return s.mustNotBeSurprised(ctx, c, who)
 }
 
 // RollAttack implements playv1connect.CombatServiceHandler.
@@ -562,7 +578,21 @@ func (s *Service) RollAttack(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
 		}
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
+		if len(req.Msg.GetD20Faces()) == 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
+		}
+	}
+	if faces := req.Msg.GetD20Faces(); len(faces) > 0 {
+		// The physical d20 pair of a roll with advantage or disadvantage (one face for a normal one).
+		if req.Msg.GetRoll() != nil || len(faces) > 2 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_faces takes the place of roll: one or two faces"))
+		}
+		for _, f := range faces {
+			if f < 1 || f > 20 {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_faces must be 1 to 20"))
+			}
+			in.faces = append(in.faces, int(f))
+		}
 	}
 	offerID := ""
 	if raw := req.Msg.GetOpportunityOfferId(); raw != "" {
@@ -717,7 +747,14 @@ func (s *Service) RollAttack(
 
 		// The roll, and what it did against the target's armor class (with the
 		// +5 of an active Escudo and the cover). The class stays on the server (RN-20).
-		face, roll, err := s.d20(in, attack.ToHit)
+		// How the d20 is rolled: a hidden attacker has advantage on the creatures that have not
+		// noticed it, an ally's Help gives the first attack on its target advantage (combat_hide.go).
+		notes, err := s.attackNotes(ctx, c, attacker, target, cs)
+		if err != nil {
+			return nil, err
+		}
+		mode := notesMode(notes)
+		face, faces, err := s.d20Mode(in, mode, attack.ToHit)
 		if err != nil {
 			return nil, err
 		}
@@ -742,8 +779,9 @@ func (s *Service) RollAttack(
 		}
 		made = actionEvent{
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
+			RollMode: modeKey(mode), Notes: notes, D20B: otherFace(faces, face),
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
-			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
+			Physical: !in.inApp, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
 			ActionBefore: attacker.ActionUsed, BonusBefore: attacker.BonusActionUsed, ReactionBefore: attacker.ReactionUsed, AttacksBefore: attacker.AttacksMade,
 			AsBonus: bonusKind != combat.BonusNone, AttackKeyBefore: deref(attacker.ActionAttackKey), FlurryBefore: attacker.BonusAttacksLeft,
 			// The armor class the roll was compared with (an active Escudo's +5
@@ -798,6 +836,11 @@ func (s *Service) RollAttack(
 			}
 			made.Pending = p.ID
 		}
+		// The attack gives a hidden attacker's position away, hit or miss, and uses the Help aimed
+		// at its target (combat_hide.go).
+		if err := s.afterAttack(ctx, c, attacker, target, cs, &made); err != nil {
+			return nil, err
+		}
 		if offerID != "" {
 			var damage *string // the damage the attack opened: the 0 hit points rule finds the offer by it
 			if made.Pending != "" {
@@ -843,6 +886,9 @@ func (s *Service) RollAttack(
 		D20: diceRoll(1, 20, faceList(ev), ev.Modifier, ev.Total, ev.Physical), Outcome: outcomeToProto[ev.Outcome],
 		CriticalRule: criticalRuleProto(tablerules.Rules{CriticalMaxPlusRoll: ev.CriticalMaxRule}),
 	}
+	if ev.RollMode != "" || len(ev.Notes) > 0 { // the caller owns the attacker or is the master
+		roll.Mode, roll.Notes = checkModeProto(modeOfKey(ev.RollMode)), notesProto(ev.Notes)
+	}
 	coverKey, coverSource := ev.coverFor(v)
 	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 	if v.master {
@@ -854,7 +900,23 @@ func (s *Service) RollAttack(
 // faceList is the face of the d20 of an attack roll; none for a physical one,
 // whose d20 was typed (the typed face is still in D20: the master and the
 // player know it, so it is sent as the face too).
-func faceList(ev actionEvent) []int32 { return []int32{ev.D20} }
+func faceList(ev actionEvent) []int32 {
+	if ev.D20B != 0 {
+		return []int32{ev.D20, ev.D20B} // the pair of a roll with advantage or disadvantage: the one that counts first
+	}
+	return []int32{ev.D20}
+}
+
+// otherFace is the face of a d20 pair that did not count, 0 for a single die.
+func otherFace(faces []int, kept int) int32 {
+	if len(faces) < 2 {
+		return 0
+	}
+	if faces[0] == kept {
+		return clamp32(faces[1], 1, 20)
+	}
+	return clamp32(faces[0], 1, 20)
+}
 
 // resultEvent is the event a write made: the one the closure made, or, for a
 // retry the closure never ran for, the one stored the first time.
@@ -1691,6 +1753,9 @@ func (s *Service) TakeAction(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the standard or feature actions"))
 		}
 		action := list[i]
+		if actionKey == actionHide || actionKey == actionHelp {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("Hide and Help have their own calls: ContestService.Hide and ContestService.Help"))
+		}
 		economy := action.GetAction().GetEconomy()
 		// A reaction is taken off turn, when its trigger happens; everything else
 		// on the combatant's turn.
@@ -1766,6 +1831,9 @@ func (s *Service) TakeAction(
 			fa := sheet.FeatureActions[fi]
 			if fa.Standard != "" {
 				standard = fa.Standard
+			}
+			if standard == actionHide || standard == actionHelp {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("Hide and Help have their own calls: ContestService.Hide and ContestService.Help"))
 			}
 			// One use of its resource: only a player's character counts them, and a
 			// pool of points (Cura pelas mãos) is the master's.
@@ -1857,7 +1925,7 @@ func (s *Service) mustReactNowOrOnTurn(ctx context.Context, c *combatTx, who pla
 	if down {
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
 	}
-	return nil
+	return s.mustNotBeSurprised(ctx, c, who)
 }
 
 // secondWind is Retomar o fôlego: 1d10 plus the fighter's level of hit points,

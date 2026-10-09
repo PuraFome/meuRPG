@@ -462,6 +462,10 @@ func (s *Service) CastSpell(
 		}
 		packCoverSeen(&made)
 		made.Secret = hidden
+		// Casting gives a hidden caster's position away (combat_hide.go).
+		if made.HidBefore, err = s.endHiding(ctx, c, caster); err != nil {
+			return nil, err
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}

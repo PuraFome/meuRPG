@@ -1183,7 +1183,14 @@ message WatchGameSessionResponse {
     // queue is not queued twice; at most one goes out per campaign every 250 ms, and
     // the last change is never left unannounced.
     ContentChanged content_changed = 23;
+    // A group check was asked, answered or closed (ContestService): read it again
+    // (GetGroupCheck), each as your own role. A hint with no content (RN-10): the skill,
+    // the DC and the rolls never travel on the stream.
+    GroupCheckChanged group_check_changed = 40;
   }
+
+  // GroupCheckChanged is the content-free hint that the group check changed.
+  message GroupCheckChanged {}
 
   // ContentChanged is the content-free hint that the table's content changed.
   message ContentChanged {}

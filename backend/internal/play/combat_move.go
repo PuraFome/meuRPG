@@ -279,16 +279,19 @@ func (s *Service) MoveCombatant(
 
 	var moved playdb.Combatant
 	var made actionEvent
-	var stoppedEarly bool    // a creature the player does not see cut the move short
-	var logged bool          // the move is a line of the combat log
-	var offered []string     // the reactors the move offered an attack
-	var markCleared bool     // the move took the master's cover mark off
-	var th *trapHook         // the traps the move may fire (combat_traps.go, MR-035)
-	var moveID string        // the id of the opportunity offers the move made, if any
-	var opened []grid.Square // the closed doors the move opened (RN-26)
-	var lockedDoor bool      // a locked door stopped the move (a player only learns of one they know)
+	var stoppedEarly bool              // a creature the player does not see cut the move short
+	var logged bool                    // the move is a line of the combat log
+	var offered []string               // the reactors the move offered an attack
+	var markCleared bool               // the move took the master's cover mark off
+	var th *trapHook                   // the traps the move may fire (combat_traps.go, MR-035)
+	var moveID string                  // the id of the opportunity offers the move made, if any
+	var opened []grid.Square           // the closed doors the move opened (RN-26)
+	var lockedDoor bool                // a locked door stopped the move (a player only learns of one they know)
+	var draggedMoved *playdb.Combatant // the creature the mover dragged along, where it stands now
+	var draggedFrom *grid.Square       // and where it stood
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
 		logged, stoppedEarly, moveID, opened, lockedDoor = false, false, "", nil, false
+		draggedMoved, draggedFrom = nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -306,6 +309,15 @@ func (s *Service) MoveCombatant(
 		}
 		if err := v.mayAct(target); err != nil {
 			return nil, err
+		}
+		// A grappler drags the creature it holds, at half speed (combat_drag.go).
+		dragged, dragging, err := s.draggedBy(ctx, c.q, cs, target)
+		if err != nil {
+			return nil, err
+		}
+		factor := 1
+		if dragging && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && combat.DragHalvesSpeed(target.Size, dragged.Size) {
+			factor = 2
 		}
 		if jump != playv1.JumpKind_JUMP_KIND_HIGH && !inGrid(c.enc, col, row) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("col and row must be a square of the grid"))
@@ -363,7 +375,7 @@ func (s *Service) MoveCombatant(
 			}
 			plan := planOn(v, terrain, known) // the walls and rubble the player knows; the rest is floor to them
 			mover, origin := moverOf(target), squareOfCombatant(target)
-			left := movementLeftDFt(target)
+			left := movementLeftDFt(target) / factor // the path that fits: a drag costs twice its length
 			switch jump {
 			case playv1.JumpKind_JUMP_KIND_UNSPECIFIED:
 				mv := plan.Move(origin, to, occ, mover)
@@ -454,7 +466,7 @@ func (s *Service) MoveCombatant(
 		}
 		made.StoppedEarly, made.LockedDoor = stoppedEarly, lockedDoor
 
-		used := int(target.MovementUsedDft) + cost
+		used := int(target.MovementUsedDft) + cost*factor
 		if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
 			ID: target.ID, GridCol: &newCol, GridRow: &newRow,
 			MovementUsedFt: clamp32(used/10, 0, math.MaxInt32), MovementUsedDft: clamp32(used, 0, math.MaxInt32), LastMoveDft: clamp32(last, 0, math.MaxInt32), CoverMark: coverMark,
@@ -463,6 +475,15 @@ func (s *Service) MoveCombatant(
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
+		}
+		if dragging && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && squareChanged && placed(target) {
+			from := squareOfCombatant(dragged)
+			moved, err := s.dragTo(ctx, c, cs, target, dragged, dragSquare(terrain, squareOfCombatant(target), to, moverOf(target)))
+			if err != nil {
+				return nil, err
+			}
+			draggedMoved, draggedFrom = &moved, &from
+			made.Dragged, made.DraggedFrom = dragged.ID, moveStateOf(dragged)
 		}
 		// Opportunity attacks (D1b): a move on foot or a long jump (it spends
 		// movement), on the mover's turn, that leaves an enemy's reach lands, and the
@@ -507,6 +528,10 @@ func (s *Service) MoveCombatant(
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishCombatantMoved(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From))
+		if draggedMoved != nil { // the creature it dragged moved too
+			s.publishCombatantMoved(ctx, m.CampaignID, d.enc, *draggedMoved, draggedFrom)
+			s.positionChanged(ctx, m.CampaignID, d.enc, *draggedMoved, draggedFrom)
+		}
 		if made.MoveID != "" { // the offers are in the combat, not in the move's hint
 			s.publishOffersMade(m.CampaignID, d, moved, offered)
 		}
@@ -691,7 +716,11 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}
-	out := moveOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v))
+	plan := planOn(v, terrain, known)
+	out, err := s.moveOptionsWithDrag(ctx, plan, d.cs, who, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "work out the drag", err)
+	}
 	if err := s.markProvokes(ctx, m, enc, d.cs, who, v, sight, out); err != nil {
 		return nil, s.dbError(ctx, "work out the opportunity attacks", err)
 	}

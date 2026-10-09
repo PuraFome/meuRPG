@@ -122,6 +122,12 @@ func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID
 		if down {
 			continue
 		}
+		// A surprised creature takes no reaction until its first turn ends (SRD 5.1, "Surprise").
+		if surprised, err := s.surprisedReactor(ctx, tx, r); err != nil {
+			return nil, err
+		} else if surprised {
+			continue
+		}
 		sheet, err := s.sheetOf(ctx, tx, campaignID, r)
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			continue

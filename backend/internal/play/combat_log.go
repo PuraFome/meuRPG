@@ -313,6 +313,12 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			// his history; the table sees nothing of it (RN-10).
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, true
 			entry.ev.Key = "standard:search"
+		case eventContestStarted, eventContestResolved, eventContestClosed, eventShoveResolved, eventGrappleReleased,
+			eventHideAttempted, eventHideResolved, eventHelpGiven:
+			// Grapple, shove, escape, Hide and Help (combat_contests.go): a line when the event says one.
+			if !contestLogEntry(entry, ev) {
+				continue
+			}
 		case eventWildShapeStarted, eventWildShapeEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE
 			entry.shapeStarted = e.Kind == eventWildShapeStarted
@@ -492,6 +498,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.Jump, out.JumpHeightDft = playv1.JumpKind_JUMP_KIND_HIGH, e.ev.HeightDFt
 		}
 		out.LandingDifficult = v.master && e.ev.LandingDifficult // the Acrobatics reminder is the master's alone
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:
+		out.Contest = &playv1.CombatLogContest{Line: contestLineProto[e.ev.Contest.Line]} // never a total or a DC (RN-20)
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED:
 		out.Door = &playv1.CombatLogDoor{Col: e.ev.Col, Row: e.ev.Row}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:
@@ -513,7 +521,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.TargetArmorClass, out.CoverBonus = &e.ev.TargetAC, e.ev.CoverBonus
 		}
 		if dice {
-			out.AttackRoll = diceRoll(1, 20, []int32{e.ev.D20}, e.ev.Modifier, e.ev.Total, e.ev.Physical)
+			out.AttackRoll = diceRoll(1, 20, faceList(e.ev), e.ev.Modifier, e.ev.Total, e.ev.Physical)
 		}
 		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true

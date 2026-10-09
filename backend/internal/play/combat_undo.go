@@ -75,7 +75,7 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		// A door a move opened is written before the move's own event too. An undo of
 		// the move leaves the door open (a door opened stays opened), and the line
 		// stays: it never closes the chain either.
-		if e.Kind == eventDoorOpened {
+		if e.Kind == eventDoorOpened || e.Kind == eventHideEnded {
 			continue
 		}
 		// A puzzle shown, solved, reset or closed is no action of the combat (MR-038), and
@@ -307,6 +307,10 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		return cs[i], true
 	}
+	// The hiding an attack or a cast gave away, and the Help the attack used, come back.
+	if err := restoreContestState(ctx, c, ev); err != nil {
+		return nil, err
+	}
 	setStatus := func(id, status string) error {
 		_, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: id, Status: status})
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -517,6 +521,14 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			ID: who.ID, GridCol: col, GridRow: row, MovementUsedFt: ev.From.UsedDFt / 10, MovementUsedDft: ev.From.UsedDFt, LastMoveDft: ev.From.LastDFt, CoverMark: cover,
 		}); err != nil {
 			return nil, fmt.Errorf("put back the move: %w", err)
+		}
+		// The creature the mover dragged along goes back to where it stood (combat_drag.go).
+		if ev.Dragged != "" && ev.DraggedFrom != nil && ev.DraggedFrom.Placed {
+			if err := c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{
+				ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: "none",
+			}); err != nil {
+				return nil, fmt.Errorf("put back the dragged creature: %w", err)
+			}
 		}
 		// The offers the move made go with it. Only the move that is the last action
 		// is undone, so they are all still pending: an answer comes after it, and has

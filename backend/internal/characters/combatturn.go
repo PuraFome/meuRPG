@@ -80,6 +80,9 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 	// Its saving throws are the stat block's (the ability modifier plus the
 	// proficiency the creature lists); a basic sheet with no creature has none.
 	d.SavingThrows = creature.SavingThrows
+	// Its skills, ability scores and passive Perception are the stat block's too: the
+	// contests (Athletics, Acrobatics) and hiding (Stealth, passive Perception) read them.
+	d.Skills, d.Abilities, d.PassivePerception = creature.Skills, creature.Abilities, creature.PassivePerception
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))
 		dice := rules.DiceFormula{Count: int(a.GetDamageDiceCount()), Sides: int(a.GetDamageDiceSides()), Bonus: int(a.GetDamageBonus())}

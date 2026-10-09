@@ -305,6 +305,10 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		if err := s.pruneOffers(ctx, c); err != nil {
 			return err
 		}
+		// A grapple ends when its grappler is incapacitated or the grappled creature leaves its reach.
+		if err := s.pruneHolds(ctx, c); err != nil {
+			return err
+		}
 		res.encounterID = c.enc.ID
 		res.kind = c.kind
 		res.characterID = deref(c.characterID)

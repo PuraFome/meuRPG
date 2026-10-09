@@ -11,6 +11,7 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/contest_types.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // CombatService runs a combat (an "encounter") inside the campaign's open
@@ -1239,6 +1240,9 @@ enum MoveRefusal {
   // Nothing blocks the line, but it costs more than the movement left (difficult
   // terrain, creatures to pass).
   MOVE_REFUSAL_TOO_COSTLY = 4;
+  // The mover drags the creature it holds, and the square behind the path is taken or
+  // blocked: there is nowhere to leave it.
+  MOVE_REFUSAL_NO_ROOM_TO_DRAG = 20;
 }
 
 // CombatantState is how hurt a combatant is, as a word (RN-20): what a
@@ -2121,6 +2125,21 @@ message GetMoveOptionsResponse {
   repeated RefusedSquare refused = 3;
   // True when the mover moves as a flier: difficult terrain costs it nothing.
   bool flier = 4;
+  // The creature the mover drags along: it holds it grappled, and a creature that
+  // is not two or more sizes smaller than the mover halves its speed while it moves
+  // (SRD 5.1, "Moving a Grappled Creature"). `movement_left_dft` and the costs of
+  // `reachable` already count the halving: the movement left is the path that fits. Empty
+  // when the mover drags nobody.
+  string dragging_combatant_id = 20;
+  // True when the dragged creature halves the speed.
+  bool dragging_halved = 21;
+}
+
+// DraggedSquare is the square a dragged creature ends on: the one the grappler left
+// just before the last square of its path, worked out by the server.
+message DraggedSquare {
+  int32 col = 1;
+  int32 row = 2;
 }
 
 // ReachableSquare is a square a combatant can go to, and what the move costs.
@@ -2147,6 +2166,9 @@ message ReachableSquare {
   string known_trap_point_id = 7;
   // That trap's name ("Fosso escondido").
   string known_trap_name = 8;
+  // The square the dragged creature (GetMoveOptionsResponse.dragging_combatant_id)
+  // ends on if the mover goes here. Unset when it drags nobody.
+  DraggedSquare dragged_to = 20;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.
@@ -2450,6 +2472,12 @@ message GetTurnOptionsResponse {
   // combatant's attacks and spells will do to the damage dice, so the screen can
   // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
   CriticalDamageRule critical_rule = 6;
+  // The special attacks that replace one attack of the Attack action (SRD 5.1,
+  // "Grappling" and "Shoving a Creature"), with their targets: GRAPPLE and SHOVE.
+  // Empty when the combatant cannot grapple or shove now.
+  repeated ContestAttackOption contest_attack_options = 30;
+  // The contest facts of this combatant's turn: grappled, holding, hidden, surprised.
+  ContestTurnState contest_state = 31;
 }
 
 // SpellTargets lists the targets one spell can choose.
@@ -2558,6 +2586,11 @@ message RollAttackRequest {
   // is `failed_precondition` (REACTION_USED). The cover is measured with the
   // mover on the square it left the reach at, not where it stands now.
   string opportunity_offer_id = 10;
+  // Physical dice: the faces of the d20 pair (one face for a normal roll, two for
+  // advantage or disadvantage, 1 to 20 each), instead of `roll` (then `d20_face` is
+  // not set). The number must match the mode the server resolves, else
+  // `invalid_argument`.
+  repeated int32 d20_faces = 14;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -2579,6 +2612,12 @@ message AttackRoll {
   // CRITICAL_HIT ("role os dados duas vezes" or "o máximo mais uma rolagem"). Set
   // on every roll: the damage itself is PendingDamage (critical_rule).
   CriticalDamageRule critical_rule = 9;
+  // The mode the d20 was rolled with and the circumstances behind it that the caller may
+  // read (the hider's "Atacante não visto", an ally's "Ajuda de Orla"). With advantage
+  // or disadvantage `d20.faces` holds the pair. The master and the attacker's player
+  // only: a player never learns how an NPC rolled (RN-20).
+  RollModeKind mode = 30;
+  repeated RollNote notes = 31;
 }
 
 // RollAttackResponse returns the roll and the combat after it.
@@ -3236,6 +3275,9 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
+  // actor, the target and `contest`, which says what happened. Never a total (RN-20).
+  COMBAT_LOG_KIND_CONTEST = 50;
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -3345,6 +3387,8 @@ message CombatLogEntry {
   TrapFiring trap = 40;
   // WILD_SHAPE: the form change. The actor is the druid.
   CombatLogWildShape wild_shape = 41;
+  // CONTEST: what happened.
+  CombatLogContest contest = 60;
   // DOOR_OPENED: where the door is. The actor is who opened it.
   CombatLogDoor door = 42;
   // MONSTERS_ADDED: the new monsters, in the order of their names.

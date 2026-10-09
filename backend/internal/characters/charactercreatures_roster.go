@@ -527,6 +527,26 @@ func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monst
 	return link.Save{}, nil
 }
 
+// CreatureCheck implements play.CombatRoster: a creature's bonus in a skill or ability
+// check from its stat block, with the passive score of the skills that have one. Known is
+// false for a key that is not a skill or an ability the stat block gives.
+func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, key string) (link.SceneOption, error) {
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return link.SceneOption{}, wrap("read rules content", err)
+	}
+	d, ok := content.MonsterDerived(monsterKey)
+	if !ok {
+		return link.SceneOption{}, nil
+	}
+	opts, err := rules.SceneOptions(d, []rules.SceneAction{{Key: key}})
+	if err != nil {
+		return link.SceneOption{}, nil
+	}
+	o := opts[0]
+	return link.SceneOption{Known: true, CheckName: o.NamePT, Bonus: o.Bonus, Passive: o.Passive, HasPassive: o.HasPassive}, nil
+}
+
 // DamageModifiers implements play.CombatRoster: the damage types the target
 // takes double, half or none of, from its stat block. A creature's key is given;
 // an NPC made from a creature has it on its basic sheet; anyone else (a player's

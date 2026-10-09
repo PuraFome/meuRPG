@@ -650,6 +650,10 @@ func (noRoster) CreatureSave(context.Context, pgx.Tx, string, string, string) (l
 	return link.Save{}, nil
 }
 
+func (noRoster) CreatureCheck(context.Context, pgx.Tx, string, string, string) (link.SceneOption, error) {
+	return link.SceneOption{}, nil
+}
+
 func (noRoster) DamageModifiers(context.Context, pgx.Tx, string, string, string) (combat.TypeModifiers, error) {
 	return combat.TypeModifiers{}, nil
 }

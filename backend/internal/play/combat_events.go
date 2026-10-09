@@ -431,9 +431,24 @@ type actionEvent struct {
 	// Monsters is what AddMonsters did: the parameters (for a retry to be checked
 	// against) and the new combatants (the master's log line).
 	Monsters *monstersEvent `json:"monsters,omitempty"`
-	// D20B is the second d20 of a Perception search with disadvantage.
+	// D20B is the second d20 of a Perception search with disadvantage, or of an attack
+	// rolled with advantage or disadvantage (D20 is the one that counts).
 	D20B  int32    `json:"d20_b,omitempty"`
 	Found []string `json:"found,omitempty"`
+	// Mode and Notes are how an attack's d20 was rolled and why ("advantage", the hider's
+	// "Atacante não visto", an ally's Help); HidBefore is the hiding the attack ended, which
+	// its undo gives back (combat_hide.go).
+	RollMode  string     `json:"roll_mode,omitempty"`
+	Notes     []rollNote `json:"notes,omitempty"`
+	HidBefore []hideSnap `json:"hid_before,omitempty"`
+	HelpUsed  []string   `json:"help_used,omitempty"`
+	// Dragged is the creature a grappler dragged along in a move, and where it stood (the
+	// move's undo puts it back).
+	Dragged     string     `json:"dragged_id,omitempty"`
+	DraggedFrom *moveState `json:"dragged_from,omitempty"`
+	// Contest is what a contest or a special action says of the event: grapple, shove,
+	// escape, Hide, Help, surprise (combat_contests_core.go).
+	Contest *contestEvent `json:"contest,omitempty"`
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

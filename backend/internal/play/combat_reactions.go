@@ -38,6 +38,9 @@ func (s *Service) shieldFor(ctx context.Context, tx pgx.Tx, campaignID string, t
 	if target.Kind != kindPlayer || target.ReactionUsed || target.Defeated {
 		return nil, nil
 	}
+	if surprised, err := s.surprisedReactor(ctx, tx, target); err != nil || surprised {
+		return nil, err // a surprised character takes no reaction until its first turn ends
+	}
 	opts, err := s.roster.CombatTurnOptions(ctx, tx, campaignID, target.CharacterID, turnOf(target))
 	if err != nil {
 		return nil, err

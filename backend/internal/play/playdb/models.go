@@ -17,6 +17,76 @@ type BattleEncounter struct {
 	UpdatedAt  time.Time
 }
 
+type CombatContest struct {
+	ID            string
+	EncounterID   string
+	Kind          string
+	Purpose       string
+	InitiatorID   string
+	DefenderID    string
+	Status        string
+	EscapeDc      *int32
+	InitiatorRoll []byte
+	DefenderRoll  []byte
+	Winner        *string
+	ShoveOutcome  *string
+	Round         int32
+	CreatedAt     time.Time
+	ResolvedAt    *time.Time
+}
+
+type CombatHelp struct {
+	ID                string
+	GameSessionID     string
+	EncounterID       *string
+	Kind              string
+	HelperCharacterID string
+	AllyCharacterID   string
+	Task              *string
+	TargetID          *string
+	ExpiresRound      *int32
+	CreatedRound      *int32
+	CreatedAt         time.Time
+	ConsumedAt        *time.Time
+	ClearedAt         *time.Time
+}
+
+type CombatHideAttempt struct {
+	ID          string
+	EncounterID string
+	HiderID     string
+	Status      string
+	Roll        []byte
+	Refusal     *string
+	Round       int32
+	CreatedAt   time.Time
+	ResolvedAt  *time.Time
+}
+
+type CombatHiding struct {
+	HiderID     string
+	ObserverID  string
+	EncounterID string
+	Noticed     bool
+	Total       int32
+	Passive     int32
+	CreatedAt   time.Time
+}
+
+type CombatHold struct {
+	GrappledID  string
+	EncounterID string
+	GrapplerID  string
+	EscapeDc    *int32
+	CreatedAt   time.Time
+}
+
+type CombatSurprised struct {
+	CombatantID string
+	EncounterID string
+	CreatedAt   time.Time
+}
+
 type Combatant struct {
 	ID                 string
 	EncounterID        string
@@ -103,6 +173,26 @@ type GameSession struct {
 	OpenScenePointID *string
 	CreateKey        *string
 	CreateHash       *string
+}
+
+type GroupCheck struct {
+	ID            string
+	GameSessionID string
+	SkillKey      string
+	Dc            *int32
+	ShowDc        bool
+	Status        string
+	Passed        *bool
+	CreatedAt     time.Time
+	ClosedAt      *time.Time
+}
+
+type GroupCheckMember struct {
+	GroupCheckID   string
+	CharacterID    string
+	Roll           []byte
+	RolledByMaster bool
+	RolledAt       *time.Time
 }
 
 type OpportunityOffer struct {

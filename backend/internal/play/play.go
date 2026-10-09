@@ -292,6 +292,11 @@ type CombatRoster interface {
 	CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string) (link.Sheet, bool, error)
 	CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error)
 	CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, ability string) (link.Save, error)
+	// CreatureCheck is a creature's bonus (and passive score, for the senses' skills) in
+	// a skill or ability check ("skill:stealth", "ability:str"), from its stat block: the
+	// listed bonus, or the ability modifier. Known is false for a key the stat block does
+	// not give.
+	CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, key string) (link.SceneOption, error)
 	// DamageModifiers are the damage types the target takes double, half or none
 	// of (SRD 5.1), from the stat block of the creature it is: the monsterKey when
 	// it is a character's creature, otherwise the one on the basic sheet of an NPC
@@ -494,9 +499,10 @@ func (s *Service) namesFor(ctx context.Context, campaignID string) func(key stri
 
 // The compiler checks that Service implements the handler.
 var (
-	_ playv1connect.PlayServiceHandler   = (*Service)(nil)
-	_ playv1connect.CombatServiceHandler = (*Service)(nil)
-	_ playv1connect.PuzzleServiceHandler = (*Service)(nil)
+	_ playv1connect.PlayServiceHandler    = (*Service)(nil)
+	_ playv1connect.CombatServiceHandler  = (*Service)(nil)
+	_ playv1connect.ContestServiceHandler = (*Service)(nil)
+	_ playv1connect.PuzzleServiceHandler  = (*Service)(nil)
 )
 
 // New returns a Service.
@@ -578,7 +584,7 @@ type Sessions interface {
 	authz.SessionRechecker
 }
 
-// Mount registers PlayService, CombatService, PuzzleService and EncounterService on a mux. handle is usually
+// Mount registers PlayService, CombatService, ContestService, PuzzleService and EncounterService on a mux. handle is usually
 // httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production), and
@@ -595,6 +601,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
+	handle(playv1connect.NewContestServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 }
