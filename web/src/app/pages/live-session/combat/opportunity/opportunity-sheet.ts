@@ -72,7 +72,7 @@ export type OpportunityAnswer = {
   selector: 'app-opportunity-sheet',
   imports: [MatButtonModule, MatIconModule, SheetFrame],
   template: `
-    <app-sheet-frame title="Ataque de oportunidade" [subtitle]="subtitle()" icon="swords" [phone]="inSheet" [closable]="false">
+    <app-sheet-frame title="Ataque de oportunidade" [subtitle]="subtitle()" icon="swords" [phone]="inSheet" [closable]="false" [focusableBody]="true">
       @if (error()) {
         <div class="mr-notice mr-notice--danger" role="alert">
           <mat-icon aria-hidden="true">error</mat-icon>
