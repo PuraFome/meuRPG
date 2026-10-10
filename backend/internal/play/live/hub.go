@@ -41,7 +41,7 @@ const DefaultBuffer = 16
 //
 // A new stream past the cap replaces the user's oldest one (ErrReplaced) rather
 // than being refused. Behind the load balancer the server does not learn that a
-// page went away: the request is not cancelled and the heartbeats keep being
+// page went away: the request is not canceled and the heartbeats keep being
 // accepted, so the stream lives until its maximum life (measured on production
 // on 10/10/2026: of 85 streams, none ended between 1 and 30 minutes). Each
 // reload or return to the session page leaves one behind; the newest call is
