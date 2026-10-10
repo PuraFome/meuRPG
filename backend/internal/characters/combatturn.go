@@ -193,7 +193,7 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 		out.Actions = append(out.Actions, link.Action{Key: a.Key, Name: a.NamePT})
 	}
 	out.AttacksPerAction = max(d.AttacksPerAction, 1)
-	out.CriticalRange, out.TwoWeaponFighting, out.BrutalCriticalDice = d.CriticalRange, d.TwoWeaponFighting, d.BrutalCriticalDice
+	out.CriticalRange, out.TwoWeaponFighting, out.BrutalCriticalDice, out.SavageAttacks = d.CriticalRange, d.TwoWeaponFighting, d.BrutalCriticalDice, d.SavageAttacks
 	for _, a := range d.Actions {
 		out.FeatureActions = append(out.FeatureActions, link.FeatureAction{
 			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,
@@ -202,6 +202,9 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 	for _, cl := range d.Classes {
 		if cl.ClassKey == "class:fighter" {
 			out.FighterLevel = cl.Level
+		}
+		if cl.ClassKey == "class:monk" {
+			out.MonkLevel = cl.Level
 		}
 	}
 	return out, nil

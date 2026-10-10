@@ -183,7 +183,9 @@ function damageText(d: CombatLogDamage): string {
           ? `, ${d.deathFailuresAdded === 1 ? 'uma falha' : 'duas falhas'} no teste contra a morte`
           : '';
       const words = appliedWords(d);
-      return `${words}${half}${other}${failures}`;
+      // The half-orc's Relentless Endurance kept the target on its feet (SRD 5.1).
+      const relentless = d.relentlessEndurance ? '. Resistência Implacável: fica com 1 PV' : '';
+      return `${words}${half}${other}${failures}${relentless}`;
     }
   }
 }

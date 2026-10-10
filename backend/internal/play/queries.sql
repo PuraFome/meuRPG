@@ -429,12 +429,13 @@ WHERE character_id = sqlc.arg(character_id)
 -- new comparison). A spell's damages carry their cast_id, and may be a heal or
 -- a half damage. critical_max is what a critical hit adds without rolling (the
 -- table's rule "máximo mais uma rolagem", RN-24). extra_dice are the weapon
--- dice a feature adds to a critical hit (Brutal Critical), always rolled.
+-- dice a feature adds to a critical hit (Brutal Critical, Savage Attacks), always
+-- rolled; savage_dice says how many of them are the Savage Attacks'.
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule, extra_dice
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule, extra_dice, savage_dice
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 RETURNING *;
 
 -- name: GetPendingDamage :one
@@ -1204,6 +1205,13 @@ WHERE id = $1;
 -- points it had before.
 UPDATE pending_damages
 SET parts = $2, part_rolls = $3, steps = $4, after_steps = $5, landed_before = $6
+WHERE id = $1;
+
+-- name: SetPendingDamageLanding :exec
+-- The damage that lands, changed on its own: a monk's Slow Fall took points off a
+-- fall (and an undo of it puts them back).
+UPDATE pending_damages
+SET amount = $2
 WHERE id = $1;
 
 -- name: SetPendingDamageAmount :exec

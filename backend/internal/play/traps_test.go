@@ -37,7 +37,12 @@ type trapRig struct {
 
 func newTrapRig(t *testing.T) *trapRig {
 	t.Helper()
-	c := newCave(t)
+	return newTrapRigOn(t, newCave(t))
+}
+
+// newTrapRigOn is newTrapRig on a cave the test made.
+func newTrapRigOn(t *testing.T, c *cave) *trapRig {
+	t.Helper()
 	content, err := testRules()
 	if err != nil {
 		t.Fatalf("rules.LoadSRD() error = %v", err)

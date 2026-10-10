@@ -139,6 +139,9 @@ type Sheet struct {
 	// weapon attack rolls on top of the doubled ones (the barbarian's Brutal
 	// Critical: 1, 2 or 3 by level); 0 without it.
 	BrutalCriticalDice int
+	// SavageAttacks says the half-orc's Savage Attacks apply: a critical hit with a
+	// melee weapon attack rolls one more of the weapon's damage dice.
+	SavageAttacks bool
 	// Metamagic are the Metamagic options the sorcerer knows (feature keys), ChaMod
 	// is its Charisma modifier, and BardicDie the size of the die its Bardic
 	// Inspiration gives, 0 for a character with none.
@@ -153,6 +156,9 @@ type Sheet struct {
 	// FighterLevel is what Retomar o fôlego adds to its d10: the character's
 	// fighter level, 0 for anyone who is not a fighter.
 	FighterLevel int
+	// MonkLevel is the monk's level, 0 for a character with none: Slow Fall takes
+	// five times it off a fall.
+	MonkLevel int
 	// Senses are the special senses the sheet or stat block gives (darkvision...),
 	// which an NPC sees with on a map with the fog of war (MR-036). The zero value
 	// is plain sight.

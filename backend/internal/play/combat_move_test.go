@@ -147,11 +147,19 @@ func newCave(t *testing.T) *cave {
 // newCaveWith is newCave with Pensantus at the given wizard level and spells.
 func newCaveWith(t *testing.T, wizardLevel int32, spells []string) *cave {
 	t.Helper()
+	return newCaveOf(t, wizardLevel, spells, func(a *armed) *charactersv1.Character {
+		return a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, &rulesv1.AbilityScores{Strength: 15, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil) // Strength 16 with the human's +1
+	})
+}
+
+// newCaveOf is newCaveWith with the hero Toren made by toren (the first player's character).
+func newCaveOf(t *testing.T, wizardLevel int32, spells []string, toren func(a *armed) *charactersv1.Character) *cave {
+	t.Helper()
 	a := newArmedWith(t, func(a *armed) {
 		scores := func(str, dex, con, intl int32) *rulesv1.AbilityScores {
 			return &rulesv1.AbilityScores{Strength: str, Dexterity: dex, Constitution: con, Intelligence: intl, Wisdom: 10, Charisma: 8}
 		}
-		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores(15, 13, 14, 10), []string{battleaxe}, nil) // Strength 16 with the human's +1
+		a.toren = toren(a)
 		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", wizardLevel, scores(10, 14, 12, 16), nil, []string{fireBolt}, spells, spells)
 		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:halfling", 2,
 			&rulesv1.AbilityScores{Strength: 8, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil, []string{cureWounds})

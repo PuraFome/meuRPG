@@ -216,7 +216,7 @@ const clearPendingDamageApplied = `-- name: ClearPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'rolled', resolved_at = NULL, applied_amount = NULL, taken = NULL
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 // An undo of an applied damage: back to waiting for the master.
@@ -258,6 +258,7 @@ func (q *Queries) ClearPendingDamageApplied(ctx context.Context, id string) (Pen
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -267,7 +268,7 @@ UPDATE pending_damages
 SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL,
     part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 // An undo of the damage roll: it waits to be rolled again.
@@ -309,6 +310,7 @@ func (q *Queries) ClearPendingDamageRoll(ctx context.Context, id string) (Pendin
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -1839,7 +1841,7 @@ func (q *Queries) GetOpportunityOfferByAttack(ctx context.Context, arg GetOpport
 }
 
 const getPendingDamage = `-- name: GetPendingDamage :one
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND id = $2
 `
 
@@ -1887,6 +1889,7 @@ func (q *Queries) GetPendingDamage(ctx context.Context, arg GetPendingDamagePara
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -3104,7 +3107,7 @@ INSERT INTO pending_damages (
 ) VALUES (
     $1, NULL, $2, 'effect', $3, false, $4, $5, $6, $7, $8, $9, $10, false, $11, $13, $12
 )
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type InsertEffectPendingDamageParams struct {
@@ -3178,6 +3181,7 @@ func (q *Queries) InsertEffectPendingDamage(ctx context.Context, arg InsertEffec
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -3498,9 +3502,9 @@ const insertPendingDamage = `-- name: InsertPendingDamage :one
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule, extra_dice
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key
+    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule, extra_dice, savage_dice
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type InsertPendingDamageParams struct {
@@ -3523,6 +3527,7 @@ type InsertPendingDamageParams struct {
 	CriticalMax      int32
 	CriticalMaxRule  bool
 	ExtraDice        int32
+	SavageDice       int32
 }
 
 // Pending damage (MR-012, MR-014): the damage of an attack that hit. Every write
@@ -3532,7 +3537,8 @@ type InsertPendingDamageParams struct {
 // new comparison). A spell's damages carry their cast_id, and may be a heal or
 // a half damage. critical_max is what a critical hit adds without rolling (the
 // table's rule "máximo mais uma rolagem", RN-24). extra_dice are the weapon
-// dice a feature adds to a critical hit (Brutal Critical), always rolled.
+// dice a feature adds to a critical hit (Brutal Critical, Savage Attacks), always
+// rolled; savage_dice says how many of them are the Savage Attacks'.
 func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDamageParams) (PendingDamage, error) {
 	row := q.db.QueryRow(ctx, insertPendingDamage,
 		arg.EncounterID,
@@ -3554,6 +3560,7 @@ func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDama
 		arg.CriticalMax,
 		arg.CriticalMaxRule,
 		arg.ExtraDice,
+		arg.SavageDice,
 	)
 	var i PendingDamage
 	err := row.Scan(
@@ -3591,6 +3598,7 @@ func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDama
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -4269,7 +4277,7 @@ INSERT INTO pending_damages (
 ) VALUES (
     $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $17, $14, $15, $16
 )
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type InsertTrapPendingDamageParams struct {
@@ -4353,6 +4361,7 @@ func (q *Queries) InsertTrapPendingDamage(ctx context.Context, arg InsertTrapPen
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -4552,7 +4561,7 @@ func (q *Queries) ListCampaignTrapDamages(ctx context.Context, campaignID string
 }
 
 const listCastPendingDamages = `-- name: ListCastPendingDamages :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND cast_id = $2
 ORDER BY created_at, id
 `
@@ -4607,6 +4616,7 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 			&i.LandedBefore,
 			&i.AfterSteps,
 			&i.EffectSourceKey,
+			&i.SavageDice,
 		); err != nil {
 			return nil, err
 		}
@@ -5675,7 +5685,7 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 }
 
 const listOpenPendingDamages = `-- name: ListOpenPendingDamages :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')
 ORDER BY created_at, id
 `
@@ -5726,6 +5736,7 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 			&i.LandedBefore,
 			&i.AfterSteps,
 			&i.EffectSourceKey,
+			&i.SavageDice,
 		); err != nil {
 			return nil, err
 		}
@@ -5814,7 +5825,7 @@ func (q *Queries) ListOpenRollHolds(ctx context.Context, encounterID string) ([]
 }
 
 const listOpenTrapPendingDamages = `-- name: ListOpenTrapPendingDamages :many
-SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id, p.critical_max, p.critical_max_rule, p.taken, p.extra_dice, p.parts, p.part_rolls, p.steps, p.landed_before, p.after_steps, p.effect_source_key FROM pending_damages AS p
+SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id, p.critical_max, p.critical_max_rule, p.taken, p.extra_dice, p.parts, p.part_rolls, p.steps, p.landed_before, p.after_steps, p.effect_source_key, p.savage_dice FROM pending_damages AS p
 JOIN encounters AS e ON e.id = p.encounter_id
 WHERE e.game_session_id = $1 AND e.status <> 'ended' AND p.trap_point_id IS NOT NULL AND p.status = 'rolled'
 ORDER BY p.created_at, p.id
@@ -5867,6 +5878,7 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 			&i.LandedBefore,
 			&i.AfterSteps,
 			&i.EffectSourceKey,
+			&i.SavageDice,
 		); err != nil {
 			return nil, err
 		}
@@ -5879,7 +5891,7 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 }
 
 const listOpenTrapPendingDamagesOfEncounter = `-- name: ListOpenTrapPendingDamagesOfEncounter :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND trap_point_id IS NOT NULL AND status = 'rolled'
 ORDER BY created_at, id
 `
@@ -5930,6 +5942,7 @@ func (q *Queries) ListOpenTrapPendingDamagesOfEncounter(ctx context.Context, enc
 			&i.LandedBefore,
 			&i.AfterSteps,
 			&i.EffectSourceKey,
+			&i.SavageDice,
 		); err != nil {
 			return nil, err
 		}
@@ -8102,7 +8115,7 @@ const setPendingDamageApplied = `-- name: SetPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'applied', resolved_at = $2, applied_amount = $3
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type SetPendingDamageAppliedParams struct {
@@ -8150,6 +8163,7 @@ func (q *Queries) SetPendingDamageApplied(ctx context.Context, arg SetPendingDam
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -8184,6 +8198,24 @@ func (q *Queries) SetPendingDamageDetail(ctx context.Context, arg SetPendingDama
 	return err
 }
 
+const setPendingDamageLanding = `-- name: SetPendingDamageLanding :exec
+UPDATE pending_damages
+SET amount = $2
+WHERE id = $1
+`
+
+type SetPendingDamageLandingParams struct {
+	ID     string
+	Amount *int32
+}
+
+// The damage that lands, changed on its own: a monk's Slow Fall took points off a
+// fall (and an undo of it puts them back).
+func (q *Queries) SetPendingDamageLanding(ctx context.Context, arg SetPendingDamageLandingParams) error {
+	_, err := q.db.Exec(ctx, setPendingDamageLanding, arg.ID, arg.Amount)
+	return err
+}
+
 const setPendingDamageParts = `-- name: SetPendingDamageParts :exec
 UPDATE pending_damages
 SET parts = $2
@@ -8205,7 +8237,7 @@ const setPendingDamageRolled = `-- name: SetPendingDamageRolled :one
 UPDATE pending_damages
 SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type SetPendingDamageRolledParams struct {
@@ -8267,6 +8299,7 @@ func (q *Queries) SetPendingDamageRolled(ctx context.Context, arg SetPendingDama
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -8275,7 +8308,7 @@ const setPendingDamageStatus = `-- name: SetPendingDamageStatus :one
 UPDATE pending_damages
 SET status = $2, resolved_at = $3
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type SetPendingDamageStatusParams struct {
@@ -8324,6 +8357,7 @@ func (q *Queries) SetPendingDamageStatus(ctx context.Context, arg SetPendingDama
 		&i.LandedBefore,
 		&i.AfterSteps,
 		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }

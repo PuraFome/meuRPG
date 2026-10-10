@@ -4613,6 +4613,10 @@ message CombatLogDamage {
   // get, only the final damage.
   repeated DamagePartRoll parts = 17;
   repeated DamageStep steps = 18;
+  // APPLIED to a player's character that the half-orc's Relentless Endurance (SRD 5.1)
+  // kept on 1 hit point instead of 0: the line reads "Resistência Implacável: fica com
+  // 1 PV". Everyone who gets the line gets this.
+  bool relentless_endurance = 19;
 }
 
 // GetCombatHighlightsRequest names the combat.

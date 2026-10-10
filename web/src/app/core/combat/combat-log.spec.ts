@@ -39,6 +39,7 @@ type Over = Omit<MessageInitShape<typeof CombatLogEntrySchema>, 'damage' | '$typ
     rolledAmount?: number;
     concentrationDc?: number;
     deathFailuresAdded?: number;
+    relentlessEndurance?: boolean;
     healing?: boolean;
     down?: boolean;
   };
@@ -726,6 +727,19 @@ describe('the log of spells, reactions, the fallen and conditions (slice 6.5c)',
       damage: { status: PendingDamageStatus.APPLIED, amount: 0, deathFailuresAdded: 1 },
     } as never);
     expect(logLine(down)?.text).toContain(', uma falha no teste contra a morte');
+  });
+
+  it('says the half-orc stayed on its feet with Relentless Endurance', () => {
+    const saved = entry({
+      kind: CombatLogKind.ATTACK,
+      outcome: AttackOutcome.HIT,
+      actorLabel: 'Goblin 3',
+      targetLabel: 'Tomala',
+      key: 'equipment:shortbow',
+      keyNamePt: 'Arco curto',
+      damage: { status: PendingDamageStatus.APPLIED, amount: 9, relentlessEndurance: true },
+    } as never);
+    expect(logLine(saved)?.text).toContain('9 de dano. Resistência Implacável: fica com 1 PV');
   });
 
   it('writes a death save for the one who may see the dice, and for the others', () => {
