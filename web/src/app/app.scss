@@ -199,3 +199,18 @@
     padding: 0;
   }
 }
+
+// Shown only when a navigation takes longer than a blink (the guard asking who is signed in, a page's code on a slow phone), so a quick
+// one never flashes it: the animation holds it invisible for 400 ms.
+.app-loading {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  animation: app-loading-in 0s linear 400ms both;
+  opacity: 0;
+}
+
+@keyframes app-loading-in {
+  to {
+    opacity: 1;
+  }
+}

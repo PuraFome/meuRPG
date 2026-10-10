@@ -164,7 +164,7 @@ test(
       await expect(m.getByRole('button', { name: 'Cancelar' })).toBeFocused();
       await m.getByRole('button', { name: 'Encerrar combate' }).last().click();
       await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
-      await expect(p.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
+      await expect(p.getByRole('heading', { name: 'O combate acabou' })).toBeVisible(); // the player's one end-of-combat card
       await m.getByRole('button', { name: 'Voltar à sessão' }).click();
       await expect(m.getByRole('button', { name: 'Iniciar combate' })).toBeVisible();
     } finally {

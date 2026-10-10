@@ -71,9 +71,10 @@
   min-width: 0;
 }
 
-// The map never takes the whole dialog: it scrolls inside, so the help sentence stays in view.
+// A usual map is shown whole and the dialog's own body scrolls on a short screen (a box of 44dvh cut the map to its upper half at 657 px
+// high, and "fit" only fits the width); only a very tall map scrolls inside its own box.
 .pick {
-  max-height: min(44dvh, 480px);
+  max-height: max(44dvh, 640px);
   overflow: auto;
 }
 

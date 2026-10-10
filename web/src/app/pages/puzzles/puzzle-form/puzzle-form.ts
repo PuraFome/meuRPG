@@ -225,6 +225,7 @@ export class PuzzleForm {
     () => !['lights', 'pillars'].includes(this.draft().kind) || this.preview().status === 'ready',
   );
   protected readonly nameField = viewChild<ElementRef<HTMLInputElement>>('nameField');
+  private readonly riddleForm = viewChild(RiddleForm);
 
   /** What the preview depends on: a change of it asks the server for a new start. */
   private readonly previewKey = computed(() => {
@@ -394,6 +395,8 @@ export class PuzzleForm {
   }
 
   protected async save(): Promise<void> {
+    // An answer typed but not added yet goes into the list first: a save never drops it, whatever started it (a click, Enter in another field).
+    this.riddleForm()?.commit();
     this.submitted.set(true);
     this.notice.set('');
     if (!isValid(this.errors()) || !this.startReady()) {
