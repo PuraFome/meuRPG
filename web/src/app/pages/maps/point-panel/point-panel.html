@@ -51,19 +51,69 @@
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Leva para</mat-label>
       <select
+        #targetSelect
         matNativeControl
         [value]="draft().targetMapId"
-        (change)="patch({ targetMapId: $any($event.target).value })"
+        (change)="onTarget(targetSelect)"
       >
         <option value="">Nenhum mapa</option>
         @for (m of targets(); track m.id) {
           <option [value]="m.id" [selected]="m.id === draft().targetMapId">{{ m.name }}</option>
+        }
+        @if (campaignId()) {
+          <option [value]="newOption">Criar mapa novo…</option>
         }
       </select>
       <mat-hint>
         O ponto abre este mapa. Os jogadores só entram nele se ele também estiver revelado.
       </mat-hint>
     </mat-form-field>
+
+    @if (targetName(); as target) {
+      <a matButton="outlined" class="pp__open" [routerLink]="['/campaigns', campaignId(), 'maps', draft().targetMapId]">
+        <mat-icon aria-hidden="true">open_in_new</mat-icon>Abrir {{ target }}
+      </a>
+    }
+
+    @if (creating()) {
+      <div class="pp__new" role="group" aria-labelledby="pp-new-title">
+        <p class="pp__new-title" id="pp-new-title">Criar mapa novo</p>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Nome do mapa</mat-label>
+          <input #newNameField matInput autocomplete="off" [attr.maxlength]="mapNameMax" [formControl]="newNameControl" />
+          @if (newNameError(); as message) {
+            <mat-error>{{ message }}</mat-error>
+          } @else {
+            <mat-hint>Até 80 caracteres.</mat-hint>
+          }
+        </mat-form-field>
+        <div class="pp__new-image">
+          <p class="mr-label" id="pp-new-image">Imagem do mapa</p>
+          <app-gallery-picker
+            [campaignId]="campaignId()"
+            [(selectedId)]="newImageId"
+            label="Imagem do mapa novo"
+            [describedBy]="newImageError() ? 'pp-new-image-error' : null"
+          />
+          @if (newImageError(); as message) {
+            <p class="pp__new-error" id="pp-new-image-error" role="alert">{{ message }}</p>
+          }
+        </div>
+        <p class="pp__new-note">O mapa nasce escondido. Ele vira o destino deste ponto e o ponto é salvo.</p>
+        @if (newFailure(); as message) {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ message }}</p>
+          </div>
+        }
+        <div class="pp__actions">
+          <button matButton="outlined" type="button" [disabled]="newBusy()" (click)="createTarget()">
+            Criar mapa e usar
+          </button>
+          <button matButton type="button" [disabled]="newBusy()" (click)="creating.set(false)">Cancelar</button>
+        </div>
+      </div>
+    }
   }
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic">

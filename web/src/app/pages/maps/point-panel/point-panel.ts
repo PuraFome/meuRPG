@@ -19,12 +19,18 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
+import { Code } from '@connectrpc/connect';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { describeConnectError } from '../../../core/connect/connect-errors';
+import { ActionKey } from '../../../core/connect/idempotency';
+import { MapsClient } from '../../../core/maps/maps-client';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import type { CluePlayer } from '../../../core/maps/scene-clues';
+import { GalleryPicker } from '../../../shared/gallery-picker/gallery-picker';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
+import { mapNameError } from '../map-new/map-new';
 import { ClueList } from '../clue-list/clue-list';
 import { HooksField } from '../hooks-field/hooks-field';
 import { RevealSwitch } from '../reveal-switch/reveal-switch';
@@ -40,6 +46,10 @@ import {
   draftOf,
   isDirty,
 } from './point-draft';
+
+/** The select's "Criar mapa novo…" option (never a map id). */
+const NEW_MAP = '__new__';
+const MAP_NAME_MAX = 80;
 
 const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as const;
 
@@ -64,6 +74,7 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
     ReactiveFormsModule,
     RouterLink,
     ClueList,
+    GalleryPicker,
     HooksField,
     RevealSwitch,
     SceneActions,
@@ -74,6 +85,7 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
 })
 export class PointPanel {
   private readonly injector = inject(Injector);
+  private readonly api = inject(MapsClient);
 
   readonly point = input.required<MapPoint>();
   /** The campaign, for the scene actions the panel saves on its own. */
@@ -101,6 +113,8 @@ export class PointPanel {
   readonly cluesChange = output<readonly SceneClue[]>();
   /** "Mostrar a CD aos jogadores" saved on its own (at once, like the actions): the point carries it. */
   readonly showDcSaved = output<boolean>();
+  /** "Criar mapa novo…" made a map: the page reads the campaign's maps again. */
+  readonly mapCreated = output<{ id: string; name: string }>();
 
   protected readonly kinds = KINDS;
   protected readonly kindLabel = pointKindLabel;
@@ -128,9 +142,36 @@ export class PointPanel {
   protected readonly descriptionControl = new FormControl('', { nonNullable: true });
   protected readonly hooksControl = new FormControl('', { nonNullable: true });
   protected readonly hooksLength = computed(() => [...this.draft().hooks].length);
-  protected readonly targets = computed(() =>
-    this.maps().filter((m) => m.id !== this.point().mapId),
-  );
+  /** Maps made here, before the page reads the list again. */
+  private readonly madeHere = signal<readonly { id: string; name: string }[]>([]);
+  protected readonly targets = computed(() => {
+    const known = this.maps();
+    const extra = this.madeHere().filter((m) => !known.some((k) => k.id === m.id));
+    return [...known, ...extra].filter((m) => m.id !== this.point().mapId);
+  });
+  /** The name of the map the draft leads to, for "Abrir <mapa>". */
+  protected readonly targetName = computed(() => {
+    const id = this.draft().targetMapId;
+    if (!id || !this.campaignId()) {
+      return '';
+    }
+    return this.targets().find((m) => m.id === id)?.name ?? '';
+  });
+
+  // ---- "Criar mapa novo…" ----
+  protected readonly newOption = NEW_MAP;
+  protected readonly mapNameMax = MAP_NAME_MAX;
+  protected readonly creating = signal(false);
+  protected readonly newNameControl = new FormControl('', { nonNullable: true });
+  protected readonly newImageId = signal<string | null>(null);
+  protected readonly newNameError = signal<string | null>(null);
+  protected readonly newImageError = signal<string | null>(null);
+  protected readonly newFailure = signal<string | null>(null);
+  protected readonly newBusy = signal(false);
+  private readonly newKey = new ActionKey();
+  private readonly newNameField = viewChild('newNameField', {
+    read: ElementRef<HTMLInputElement>,
+  });
 
   private readonly nameField = viewChild('nameField', { read: ElementRef<HTMLInputElement> });
   private readonly confirmButton = viewChild('confirmButton', {
@@ -179,6 +220,68 @@ export class PointPanel {
     this.descriptionControl.setErrors(null);
     this.hooksControl.setErrors(null);
     this.errors.set({});
+  }
+
+  /** The select changed: a map, none, or "Criar mapa novo…" (which opens the form and keeps the old choice). */
+  protected onTarget(select: HTMLSelectElement): void {
+    if (select.value !== NEW_MAP) {
+      this.patch({ targetMapId: select.value });
+      return;
+    }
+    select.value = this.draft().targetMapId;
+    this.newNameControl.setValue(this.draft().name.trim());
+    this.newNameError.set(null);
+    this.newImageError.set(null);
+    this.newFailure.set(null);
+    this.creating.set(true);
+    afterNextRender(() => this.newNameField()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  /** Creates the map (hidden), makes it this point's destination and asks the page to save the point. */
+  protected async createTarget(): Promise<void> {
+    const nameError = mapNameError(this.newNameControl.value);
+    this.newNameError.set(nameError);
+    const imageId = this.newImageId();
+    this.newImageError.set(imageId === null ? 'Escolha uma imagem para o mapa.' : null);
+    if (nameError !== null) {
+      this.newNameControl.setErrors({ name: true });
+      this.newNameControl.markAsTouched();
+      this.newNameField()?.nativeElement.focus();
+      return;
+    }
+    if (imageId === null || this.newBusy()) {
+      return;
+    }
+    this.newBusy.set(true);
+    this.newFailure.set(null);
+    try {
+      const name = this.newNameControl.value.trim();
+      const map = await this.api.create(
+        this.campaignId(),
+        name,
+        imageId,
+        this.newKey.keyFor([name, imageId]),
+      );
+      this.newKey.renew();
+      const made = { id: map.id, name: map.name };
+      this.madeHere.update((list) => [...list, made]);
+      this.mapCreated.emit(made);
+      this.patch({ targetMapId: map.id });
+      this.creating.set(false);
+      this.newImageId.set(null);
+      this.saveRequested.emit();
+    } catch (err) {
+      this.newFailure.set(
+        describeConnectError(err, {
+          [Code.InvalidArgument]:
+            'Não deu para criar o mapa: o nome ou a imagem não valem mais. Confira os dois e tente de novo.',
+          [Code.PermissionDenied]: 'Só o mestre da campanha cria mapas.',
+          [Code.ResourceExhausted]: 'A campanha chegou ao limite de 200 mapas.',
+        }),
+      );
+    } finally {
+      this.newBusy.set(false);
+    }
   }
 
   protected patch(change: Partial<PointDraft>): void {

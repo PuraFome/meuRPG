@@ -116,3 +116,37 @@
     font-size: 20px;
   }
 }
+
+.pp__open {
+  align-self: flex-start;
+  max-width: 100%;
+  white-space: normal;
+}
+
+// "Criar mapa novo…": a framed sub-form inside the panel.
+.pp__new {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+}
+
+.pp__new-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.pp__new-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+}
+
+.pp__new-error {
+  margin: var(--mr-space-1) 0 0;
+  font-size: 13px;
+  color: var(--mr-danger-ink);
+}
