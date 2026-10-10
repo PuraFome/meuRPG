@@ -7532,6 +7532,8 @@ async function scanContestScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The goblin grapples her: she chooses the skill and rolls.
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    // The player's end of turn lands first: passing the turns before it would end Vex's turn twice.
+    await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toHaveCount(0);
     const enc = await passTurnsTo(m, campaignId, 'Goblin 2');
     await contestRPC(m, 'StartContest', {
       campaignId,
