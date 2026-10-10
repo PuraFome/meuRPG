@@ -138,7 +138,7 @@
         }
       }
 
-      @if (combat.shown()) {
+      @if (combatOnScreen()) {
         <app-combat-view
           class="combat"
           [campaignId]="campaignId()"
@@ -160,7 +160,7 @@
           (changeDice)="changeDice()"
         >
           @if (ownVitals(); as v) {
-            <app-player-vitals [vitals]="v" [sheet]="playerSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [armorClassBonus]="ownArmorBonus()" [ownDeathSaves]="ownDeathSaves()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
+            <app-player-vitals [vitals]="v" [sheet]="ownSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [armorClassBonus]="ownArmorBonus()" [ownDeathSaves]="ownDeathSaves()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
           }
         </app-combat-view>
         <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. A combat without a map has no fog (RN-25). -->
@@ -383,7 +383,7 @@
             @if (ownVitals(); as v) {
               <app-player-vitals
                 [vitals]="v"
-                [sheet]="playerSheet()"
+                [sheet]="ownSheet()"
                 [beastAc]="beastAc()"
                 [campaignId]="campaignId()"
                 [armorClassBonus]="ownArmorBonus()"

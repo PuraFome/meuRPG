@@ -121,4 +121,19 @@ describe('TrapPanel', () => {
     fixture.detectChanges();
     expect(el.querySelector('[role="alert"]')).toBeNull();
   });
+
+  it('says in plain sight when a trap fired and caught nobody (R4)', async () => {
+    const { fixture, el, answer } = setup([trap('b', 'Dardos envenenados', TrapState.ARMED)]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    answer.revealed = { caught: [] } as never;
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Disparar…'))!
+      .click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const notice = el.querySelector('.mr-notice[role="status"]');
+    expect(notice?.textContent).toContain('ninguém estava na área');
+    expect(notice?.textContent).toContain('Dardos envenenados');
+  });
 });

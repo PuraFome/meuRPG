@@ -428,6 +428,30 @@ describe('CharacterEditor', () => {
     expect(el.textContent).toContain('Magias preparadas');
   });
 
+  it("offers a wizard only the spellbook's spells to prepare (SRD 5.1)", async () => {
+    configure({ id: 'camp-1' });
+    const { fixture } = await render();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cmp = fixture.componentInstance as any;
+    cmp.fullForm.patchValue({ className: 'class:wizard', level: 5 });
+    fixture.detectChanges();
+    const offered = () =>
+      cmp
+        .sectionViews()[0]
+        .prepared.all.map((s: { key: string }) => s.key)
+        .sort();
+
+    expect(offered()).toEqual([]);
+    cmp.toggleSpellKnown('spell:shield');
+    cmp.toggleSpellKnown('spell:magic-missile');
+    expect(offered()).toEqual(['spell:magic-missile', 'spell:shield']);
+    cmp.toggleSpellPrepared('spell:shield');
+    // Taking a spell out of the book also unprepares it.
+    cmp.toggleSpellKnown('spell:shield');
+    expect(cmp.selectedSpellsPrepared().has('spell:shield')).toBe(false);
+    expect(offered()).toEqual(['spell:magic-missile']);
+  });
+
   it('never lets a person type a content key — no free-text input for spells, weapons or armor', async () => {
     configure({ id: 'camp-1' });
     const { fixture, el } = await render();
@@ -605,6 +629,11 @@ describe('CharacterEditor', () => {
       ]);
 
       cmp.fullForm.patchValue({ level: 5 });
+      // The wizard prepares from the spellbook: nothing to prepare until spells are in the book.
+      expect(keys(cmp.sectionViews()[0].prepared.shown)).toEqual([]);
+      cmp.selectedSpellsKnown.set(
+        new Set(['spell:shield', 'spell:magic-missile', 'spell:fireball']),
+      );
       expect(keys(cmp.sectionViews()[0].prepared.shown)).toEqual([
         'spell:shield',
         'spell:magic-missile',

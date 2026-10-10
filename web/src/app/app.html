@@ -58,6 +58,9 @@
 
 <main id="main" class="app-content" tabindex="-1" #main>
   <app-live-notice [url]="url()" />
+  @if (navigating()) {
+    <p class="app-loading" role="status">Abrindo a página...</p>
+  }
   <router-outlet />
 </main>
 

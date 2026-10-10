@@ -51,6 +51,7 @@ import {
   type MoveResult,
   newKey,
 } from '../../../core/combat/combat-client';
+import { CombatUndone } from '../../../core/combat/combat-undone';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import {
@@ -271,6 +272,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
 })
 export class CombatView {
   private readonly api = inject(CombatClient);
+  private readonly undone = inject(CombatUndone);
   private readonly roster = inject(RosterClient);
   private readonly maps = inject(MapsClient);
   private readonly catalog = inject(SpellCatalog);
@@ -2413,9 +2415,14 @@ export class CombatView {
   /** "Desfazer o movimento": the master takes back his last action when it is the move that made the offers. */
   protected undoMove(): Promise<boolean> {
     const entry = this.log.undoable();
-    return entry
-      ? this.run((e) => this.api.undo(this.campaignId(), e.id, entry.id))
-      : Promise.resolve(false);
+    if (!entry) {
+      return Promise.resolve(false);
+    }
+    return this.run(async (e) => {
+      const undone = await this.api.undo(this.campaignId(), e.id, entry.id);
+      this.undone.mark();
+      return undone;
+    });
   }
 
   /** "Seguir sem esperar": the master passes over an offer the player does not answer. */

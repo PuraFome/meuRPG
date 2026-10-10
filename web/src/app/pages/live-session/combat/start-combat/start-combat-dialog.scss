@@ -242,20 +242,37 @@
   color: var(--mr-ink-muted);
 }
 
-.bestiary-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  margin-top: var(--mr-space-2);
-  font-weight: 700;
-  color: var(--mr-accent-text);
+.pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-3);
+}
 
-  .mat-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 20px;
-  }
+.pick__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pick__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-2) 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.pick__name {
+  flex: 1 1 140px;
+  min-width: 0;
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 // "Como este combate é jogado" (RN-25): the two radio cards and, under "Sem mapa", the one line that says why.

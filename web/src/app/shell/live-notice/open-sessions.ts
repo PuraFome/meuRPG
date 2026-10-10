@@ -221,12 +221,18 @@ export function sessionsToAnnounce(
 
 /**
  * The session the app bar's "Ao vivo" link opens on `url`: the newest open
- * session of any of the person's campaigns, as master or player. None on a
- * session page: its own status line already carries the "Ao vivo" pill.
+ * session of any of the person's campaigns, as master or player, except on
+ * a campaign's pages, where that campaign's own open session comes first (a
+ * player in two campaigns is not sent to the other table from here). None on
+ * a session page: its own status line already carries the "Ao vivo" pill.
  */
 export function sessionForLiveLink(
   sessions: readonly OpenSessionVm[],
   url: string,
 ): OpenSessionVm | null {
-  return campaignPage(url)?.session ? null : (sessions[0] ?? null);
+  const here = campaignPage(url);
+  if (here?.session) {
+    return null;
+  }
+  return sessions.find((s) => s.campaignId === here?.campaignId) ?? sessions[0] ?? null;
 }

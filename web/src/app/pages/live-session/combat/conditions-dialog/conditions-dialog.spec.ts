@@ -32,8 +32,16 @@ describe('ConditionsDialog', () => {
       save(): Promise<void>;
       changed(): boolean;
     };
-    return { state, poisoned, setConditions, cmp };
+    return { state, poisoned, setConditions, cmp, fixture };
   }
+
+  it('says what the app applies and what stays with the master', () => {
+    const { fixture } = open();
+    const note = (fixture.nativeElement as HTMLElement).querySelector('.note')?.textContent ?? '';
+    expect(note).toContain('velocidade 0');
+    expect(note).toContain('vantagem ou desvantagem');
+    expect(note).not.toContain('Só rótulos');
+  });
 
   const sentKeys = (call: unknown[]) => (call[3] as { keys: string[] }).keys;
 

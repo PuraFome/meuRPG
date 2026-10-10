@@ -175,7 +175,7 @@ func replaced(content *rules.Content, c charactersdb.CharacterCreature) *charact
 }
 
 // castingTimePT says a summoning spell's casting time in Portuguese: "1 hora",
-// "10 minutos", "1 ação".
+// "10 minutos", "1 ação", "1 reação".
 func castingTimePT(t rules.CastingTime) string {
 	n := max(t.Amount, 1)
 	word := ""
@@ -188,6 +188,8 @@ func castingTimePT(t rules.CastingTime) string {
 		word = map[bool]string{true: "ação", false: "ações"}[n == 1]
 	case rules.CastBonusAction:
 		word = map[bool]string{true: "ação bônus", false: "ações bônus"}[n == 1]
+	case rules.CastReaction:
+		word = map[bool]string{true: "reação", false: "reações"}[n == 1]
 	default:
 		return t.Raw
 	}

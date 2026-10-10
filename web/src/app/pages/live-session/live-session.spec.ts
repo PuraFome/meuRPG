@@ -33,6 +33,12 @@ import {
 import { PuzzleRunStatus } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { create } from '@bufbuild/protobuf';
 import {
+  CastEffect,
+  OutsideCastSchema,
+  OutsideCastStatus,
+  OutsideCastTargetSchema,
+} from '../../../gen/meurpg/play/v1/casting_pb';
+import {
   CombatantKind,
   CombatantState,
   type Encounter,
@@ -207,6 +213,8 @@ describe('LiveSession', () => {
     dismiss: vi.fn(),
   };
 
+  let casting: FakeCastingClient;
+
   beforeEach(() => {
     xpExperience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
@@ -230,6 +238,7 @@ describe('LiveSession', () => {
     liveCampaignIds.set(new Set());
     summary.mockReset().mockRejectedValue(new Error('no summary'));
     scenes = new FakeSceneClient();
+    casting = new FakeCastingClient();
     puzzles = new FakePuzzlesClient();
     query.next(convertToParamMap({}));
     TestBed.configureTestingModule({
@@ -253,7 +262,7 @@ describe('LiveSession', () => {
         },
         { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
-        { provide: CastingClient, useValue: new FakeCastingClient() },
+        { provide: CastingClient, useValue: casting },
         { provide: SceneClient, useValue: scenes },
         { provide: RevivifyClient, useValue: { list: revivifyList, confirmTime: vi.fn() } },
         { provide: ResourceClient, useValue: resources },
@@ -605,6 +614,30 @@ describe('LiveSession', () => {
     source.push({ kind: 'contentChanged' });
     await settle(fixture);
     expect(page.playerSheet()?.armorClass).toBe(16);
+  });
+
+  it('shows the armor class the combat uses while an Armadura Arcana lasts on the character', async () => {
+    const mage = (status: OutsideCastStatus) =>
+      create(OutsideCastSchema, {
+        spellKey: 'spell:mage-armor',
+        status,
+        targets: [
+          create(OutsideCastTargetSchema, {
+            characterId: 'pensantus',
+            effect: CastEffect.ARMOR_CLASS,
+            armorClass: 16,
+          }),
+        ],
+      });
+    casting.active = [mage(OutsideCastStatus.ACTIVE)];
+    const fixture = TestBed.createComponent(LiveSession);
+    await settle(fixture);
+    const page = fixture.componentInstance as unknown as { ownSheet(): PlayerSheetVm | null };
+    expect(page.ownSheet()?.armorClass).toBe(16);
+    casting.active = [mage(OutsideCastStatus.ENDED)];
+    source.push({ kind: 'spellCastsChanged' });
+    await settle(fixture);
+    expect(page.ownSheet()?.armorClass).toBe(14);
   });
 
   it('says the same to a pending member (RN-15)', async () => {

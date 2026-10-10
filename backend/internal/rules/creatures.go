@@ -289,7 +289,7 @@ type Creature struct {
 	ConditionImmunities                      []NamedKey
 	Senses                                   []Sense
 	PassivePerception                        int
-	// Languages is the SRD's text, in English.
+	// Languages is the SRD's line in Portuguese (LanguagesPT).
 	Languages        string
 	ProficiencyBonus int
 	// Traits, Reactions and LegendaryActions are names and English text.
@@ -380,7 +380,7 @@ func (c *content) creature(m *srd51.Monster) Creature {
 		HitDice: m.HitDice, HitPointsRoll: m.HitPointsRoll,
 		SpeedWalkFt: m.Speed.Walk, SpeedFlyFt: m.Speed.Fly, SpeedSwimFt: m.Speed.Swim,
 		SpeedClimbFt: m.Speed.Climb, SpeedBurrowFt: m.Speed.Burrow, Hover: m.Speed.Hover,
-		PassivePerception: m.PassivePerception, Languages: m.Languages, ProficiencyBonus: m.ProficiencyBonus,
+		PassivePerception: m.PassivePerception, Languages: LanguagesPT(m.Languages), ProficiencyBonus: m.ProficiencyBonus,
 	}
 	scores := monsterScores(m)
 	for _, a := range AllAbilities() {

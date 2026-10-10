@@ -22,7 +22,11 @@ const FIRST_ROWS = 4;
   imports: [MatIconModule],
   templateUrl: './pick-list.html',
   styleUrl: './pick-list.scss',
-  host: { '[attr.data-missing]': 'missing() ? "" : null', '[id]': '"pick-" + pickId()' },
+  host: {
+    '[attr.data-missing]': 'missing() ? "" : null',
+    '[attr.data-all]': 'showAll() ? "" : null',
+    '[id]': '"pick-" + pickId()',
+  },
 })
 export class PickList {
   /** The picker's id, which the page uses to focus the first missing choice. */
@@ -37,6 +41,8 @@ export class PickList {
   readonly base = input(0);
   /** "magia", for the search's label and the empty state. */
   readonly noun = input('opção');
+  /** Every row is shown, with no "Ver as outras N": a list the person must see whole to choose from (the spells to prepare). */
+  readonly showAll = input(false);
   /** The noun is masculine ("truque"): the words around it agree ("Ver os outros 7 truques"). The default is feminine ("opção", "magia", "perícia"). */
   readonly masculine = input(false);
   /** "truques", "magias": what "Ver as outras 7 magias" counts. */
@@ -74,7 +80,7 @@ export class PickList {
     if (q !== '') {
       return all.filter((i) => i.name.toLocaleLowerCase('pt-BR').includes(q));
     }
-    if (this.expanded() || all.length <= FIRST_ROWS + 1) {
+    if (this.showAll() || this.expanded() || all.length <= FIRST_ROWS + 1) {
       return all;
     }
     const picked = this.picked();

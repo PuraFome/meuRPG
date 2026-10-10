@@ -983,7 +983,7 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(m, `Encerrar o combate, confirmação ${where}`);
     await m.getByRole('button', { name: 'Encerrar combate' }).last().click();
     await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
-    await expect(p.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
+    await expect(p.getByRole('heading', { name: 'O combate acabou' })).toBeVisible(); // the player's one end-of-combat card
     await expectScreenPasses(m, `Combate encerrado, mestre ${where}`);
     await expectScreenPasses(p, `Combate encerrado, jogador ${where}`);
   } finally {
@@ -7189,7 +7189,7 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     await pickTargetOf(castSheet(p), 'Pensantus');
     await expectScreenPasses(p, `Conjurar Armadura Arcana, espaço e alvo ${where}`);
     await castSheet(p).getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
-    await expect(castSheet(p).getByText(/CA 13 \+ Destreza/)).toBeVisible();
+    await expect(castSheet(p).getByText(/CA \d+ \(13 \+ Destreza\)/)).toBeVisible();
     await expectScreenPasses(p, `Conjurar Armadura Arcana, o resultado ${where}`);
     await castSheet(p).getByRole('button', { name: 'Fechar' }).last().click();
 
