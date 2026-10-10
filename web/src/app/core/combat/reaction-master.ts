@@ -92,7 +92,8 @@ export type ReactionCard =
       readonly id: string;
       readonly window: ReactionWindow;
       readonly player: boolean;
-    };
+    }
+  | { readonly type: 'effectSave'; readonly id: string; readonly window: ReactionWindow };
 
 function theName(label: string): string {
   return `${article(label)} ${label}`;
@@ -256,8 +257,16 @@ function inQueue(w: ReactionWindow): boolean {
     w.kind !== ReactionKind.HIDDEN_REVEAL &&
     w.kind !== ReactionKind.MASTER_CHECK &&
     w.kind !== ReactionKind.CONCENTRATION_SAVE &&
+    w.kind !== ReactionKind.EFFECT_SAVE &&
     !w.secondStep
   );
+}
+
+/** The master answers an NPC's effect save and a player's save the player left to the master; any other is the player's. */
+function effectSaveCard(e: Encounter, w: ReactionWindow): ReactionCard | null {
+  const handed = w.prompt.case === 'effectSave' && w.prompt.value.handedToMaster;
+  const player = w.reactorIsPlayer || combatantIsPlayer(e, w.reactorId);
+  return !player || handed ? { type: 'effectSave', id: w.id, window: w } : null;
 }
 
 /** The card of a window that is a card of its own, or `null` for one that belongs to a queue. */
@@ -279,6 +288,9 @@ function ownCard(e: Encounter, w: ReactionWindow): ReactionCard | null {
       window: w,
       player: w.reactorIsPlayer || combatantIsPlayer(e, w.reactorId),
     };
+  }
+  if (w.kind === ReactionKind.EFFECT_SAVE) {
+    return effectSaveCard(e, w);
   }
   return w.secondStep && w.prompt.case === 'hellishRebukeSave'
     ? { type: 'rebukeSave', id: w.id, window: w }

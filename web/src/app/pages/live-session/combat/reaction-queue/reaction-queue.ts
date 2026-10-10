@@ -21,6 +21,7 @@ import {
   type ConcentrationAnswer,
   type ReactionAnswer,
 } from '../../../../core/combat/combat-client';
+import { EffectPhase } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { ofThe } from '../../../../core/combat/move-plan';
@@ -33,6 +34,7 @@ import {
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { autoPassText } from '../../../../core/combat/reaction-autopass';
 import { rollText } from '../../../../core/combat/combat-dice';
+import { type EffectSaveAnswer, EffectsClient } from '../../../../core/effects/effects-client';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { RollPicker } from '../roll-picker/roll-picker';
@@ -219,6 +221,73 @@ let nextId = 0;
             }
           </section>
         }
+        @case ('effectSave') {
+          <section class="card card--single" [attr.aria-labelledby]="uid + card.id">
+            <h2 class="card__title" [id]="uid + card.id">{{ effectSaveTitle(card.window) }}</h2>
+            <p class="card__text">{{ effectSaveText(card.window) }}</p>
+            <p class="card__sub">{{ effectSaveRule(card.window) }}</p>
+            <div class="warn">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <p>
+                <strong>O teste é seu.</strong>
+                {{ effectSaveWho(card.window) }} Rolar no app usa o d20; você pode decidir o resultado à mão.
+              </p>
+            </div>
+            @if (extraWindow() === card.window.id && extra.fields().length > 0) {
+              <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
+            }
+            <app-roll-picker
+              [outlined]="true"
+              [min]="1"
+              [max]="20"
+              [modifier]="effectSaveBonus(card.window)"
+              [label]="'Role 1d20 para o teste de ' + effectSaveAbility(card.window) + ' ' + ofTheLabel(card.window.reactorLabel)"
+              hint="Role o seu dado e digite o número que saiu (1 a 20)."
+              [totalNote]="'Teste de ' + effectSaveAbility(card.window)"
+              [busy]="busy()"
+              (app)="effectSave(card.window, { kind: 'app' })"
+              (typed)="effectSave(card.window, { kind: 'typed', face: $event, extra: [] })"
+            />
+            @if (effectSaveSkippable(card.window)) {
+              @if (skipAsked() === card.window.id) {
+                <div class="warn">
+                  <mat-icon aria-hidden="true">warning</mat-icon>
+                  <p>Pular o teste dá o resultado sem rolar o dado. É uma opção da mesa. Confirmar?</p>
+                </div>
+                <div class="pair">
+                  <button
+                    mat-flat-button
+                    type="button"
+                    class="btn"
+                    [disabled]="busy()"
+                    (click)="effectSave(card.window, { kind: 'skip' })"
+                  >
+                    Sim, pular o teste
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="btn"
+                    [disabled]="busy()"
+                    (click)="skipAsked.set('')"
+                  >
+                    Não pular
+                  </button>
+                </div>
+              } @else {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="btn btn--one"
+                  [disabled]="busy()"
+                  (click)="skipAsked.set(card.window.id)"
+                >
+                  Pular o teste
+                </button>
+              }
+            }
+          </section>
+        }
       }
     }
     <span class="mr-visually-hidden" role="status" aria-live="polite">{{ said() }}</span>
@@ -299,6 +368,7 @@ let nextId = 0;
 })
 export class ReactionQueue {
   private readonly api = inject(CombatClient);
+  private readonly effects = inject(EffectsClient);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -314,6 +384,8 @@ export class ReactionQueue {
   protected readonly extra = new ExtraDiceState();
   protected readonly extraWindow = signal('');
   protected readonly error = signal('');
+  /** The window whose "Pular o teste" waits for the master's confirmation. */
+  protected readonly skipAsked = signal('');
   /** What the last answer did, for the live region. */
   protected readonly said = signal('');
   protected readonly ofTheLabel = (label: string): string => ofThe([label]);
@@ -456,6 +528,93 @@ export class ReactionQueue {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The master's answer to an effect's saving throw (RN-22): the d20 in the app, a typed one, or skipping the save. */
+  protected async effectSave(w: ReactionWindow, how: EffectSaveAnswer): Promise<void> {
+    if (this.busy()) {
+      return;
+    }
+    const extra = this.extraWindow() === w.id ? this.extra.take(how.kind === 'typed') : [];
+    if (extra === null) {
+      this.error.set(this.extra.missingText());
+      return;
+    }
+    const sent: EffectSaveAnswer = how.kind === 'typed' ? { ...how, extra } : how;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.effects.rollEffectSave(
+        this.campaignId(),
+        this.encounter().id,
+        w.id,
+        sent,
+        this.keys.keyFor({ window: w.id, how: sent }),
+      );
+      this.state().apply(res.encounter);
+      this.skipAsked.set('');
+      this.said.set(
+        how.kind === 'skip'
+          ? `Teste pulado ${ofThe([w.reactorLabel])}.`
+          : `Teste de resistência ${ofThe([w.reactorLabel])} resolvido.`,
+      );
+    } catch (err) {
+      const more = this.extra.fromRefusal(err);
+      if (more) {
+        this.extraWindow.set(w.id);
+      }
+      this.error.set(more || combatErrorMessage(err, 'resolver o teste de resistência'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private effectSavePrompt(w: ReactionWindow) {
+    return w.prompt.case === 'effectSave' ? w.prompt.value : null;
+  }
+
+  protected effectSaveAbility(w: ReactionWindow): string {
+    return this.effectSavePrompt(w)?.abilityNamePt ?? '';
+  }
+
+  /** "Teste de resistência de Sabedoria do Goblin 1 · Riso Histérico · CD 13". */
+  protected effectSaveTitle(w: ReactionWindow): string {
+    const p = this.effectSavePrompt(w);
+    const whose = w.reactorIsPlayer ? `de ${w.reactorLabel}` : ofThe([w.reactorLabel]);
+    const parts = [
+      `Teste de resistência de ${p?.abilityNamePt ?? ''} ${whose}`,
+      p?.sourceNamePt ?? '',
+      p?.dc !== undefined ? `CD ${p.dc}` : '',
+    ];
+    return parts.filter((x) => x !== '').join(' · ');
+  }
+
+  protected effectSaveText(w: ReactionWindow): string {
+    const p = this.effectSavePrompt(w);
+    const when = p?.phase === EffectPhase.START ? 'no começo' : 'no fim';
+    return `${p?.sourceNamePt ?? 'Um efeito'} pede este teste ${when} da vez ${ofThe([w.reactorLabel])}. ${p?.textPt ?? ''}`.trim();
+  }
+
+  protected effectSaveRule(w: ReactionWindow): string {
+    const p = this.effectSavePrompt(w);
+    if (!p) {
+      return '';
+    }
+    const bonus = p.bonusKnown ? `${p.abilityNamePt}: ${signed(p.modifier)}` : 'Bônus desconhecido';
+    return [bonus, p.mode].filter((x) => x !== '').join(' · ');
+  }
+
+  protected effectSaveWho(w: ReactionWindow): string {
+    return w.reactorIsPlayer ? `O jogador de ${w.reactorLabel} deixou a rolagem com você.` : '';
+  }
+
+  protected effectSaveBonus(w: ReactionWindow): number {
+    const p = this.effectSavePrompt(w);
+    return p?.bonusKnown ? p.modifier : 0;
+  }
+
+  protected effectSaveSkippable(w: ReactionWindow): boolean {
+    return this.effectSavePrompt(w)?.skippable ?? false;
   }
 
   private sayAnswer(

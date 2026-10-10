@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { CombatantKind, ReactionKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
+import { EffectsClient } from '../../../../core/effects/effects-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter, reactionWindow } from '../../../../core/combat/combat-testing';
 import { ReactionQueue } from './reaction-queue';
@@ -41,6 +42,7 @@ const counter = (id: string, reactor: string, label: string, over: object = {}) 
 
 describe("ReactionQueue, the master's side of the reaction windows", () => {
   const api = { answerReaction: vi.fn(), resolveConcentrationSave: vi.fn() };
+  const effectsApi = { rollEffectSave: vi.fn() };
 
   function setup(windows: ReturnType<typeof reactionWindow>[]) {
     api.answerReaction.mockReset().mockImplementation(async () => ({
@@ -51,8 +53,17 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
       encounter: encounter({ revision: 9 } as never),
       result: undefined,
     }));
+    effectsApi.rollEffectSave.mockReset().mockImplementation(async () => ({
+      encounter: encounter({ revision: 9 } as never),
+      result: undefined,
+    }));
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: CombatClient, useValue: api },
+        { provide: EffectsClient, useValue: effectsApi },
+      ],
+    });
     const fixture = TestBed.createComponent(ReactionQueue);
     const state = new CombatState();
     fixture.componentRef.setInput(
@@ -389,6 +400,76 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
       button(el, 'Manter a concentração por Sálvia').click();
       await flush(fixture);
       expect(api.resolveConcentrationSave.mock.calls[1][3]).toEqual({ kind: 'keep' });
+    });
+  });
+
+  describe("an effect's saving throw", () => {
+    const goblin = () =>
+      reactionWindow({
+        id: 'es',
+        kind: ReactionKind.EFFECT_SAVE,
+        reactorId: 'm1',
+        reactorLabel: 'Goblin 1',
+        prompt: {
+          case: 'effectSave',
+          value: {
+            sourceNamePt: 'Riso Histérico',
+            abilityNamePt: 'Sabedoria',
+            dc: 13,
+            modifier: -1,
+            bonusKnown: true,
+            mode: '',
+            textPt: '',
+            skippable: true,
+            handedToMaster: false,
+          },
+        } as never,
+      });
+
+    it('says what is asked and rolls it in the app once, with the window id', async () => {
+      const { fixture, el } = setup([goblin()]);
+      expect(plain(el.querySelector('.card__title')?.textContent)).toBe(
+        'Teste de resistência de Sabedoria do Goblin 1 · Riso Histérico · CD 13',
+      );
+      expect(el.textContent).not.toContain('Esperando a sua reação');
+      button(el, 'Rolar no app').click();
+      button(el, 'Rolar no app').click();
+      await flush(fixture);
+      expect(effectsApi.rollEffectSave).toHaveBeenCalledTimes(1);
+      expect(effectsApi.rollEffectSave.mock.calls[0].slice(0, 4)).toEqual([
+        'camp',
+        'enc',
+        'es',
+        { kind: 'app' },
+      ]);
+      expect(api.answerReaction).not.toHaveBeenCalled();
+    });
+
+    it('sends the typed d20', async () => {
+      const { fixture, el } = setup([goblin()]);
+      button(el, 'Digitar o resultado').click();
+      fixture.detectChanges();
+      const field = el.querySelector<HTMLInputElement>('input[type="text"]')!;
+      field.value = '14';
+      field.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      button(el, 'Confirmar').click();
+      await flush(fixture);
+      expect(effectsApi.rollEffectSave.mock.calls[0][3]).toEqual({
+        kind: 'typed',
+        face: 14,
+        extra: [],
+      });
+    });
+
+    it('skipping the save asks to confirm first', async () => {
+      const { fixture, el } = setup([goblin()]);
+      button(el, 'Pular o teste').click();
+      fixture.detectChanges();
+      expect(effectsApi.rollEffectSave).not.toHaveBeenCalled();
+      button(el, 'Sim, pular o teste').click();
+      await flush(fixture);
+      expect(effectsApi.rollEffectSave.mock.calls[0][3]).toEqual({ kind: 'skip' });
     });
   });
 

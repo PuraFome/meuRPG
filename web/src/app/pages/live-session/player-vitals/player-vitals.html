@@ -100,6 +100,10 @@
     }
   </div>
 
+  @if (deathSaveHint()) {
+    <p class="hint">Você rola o teste contra a morte no começo da sua vez.</p>
+  }
+
   <!-- "Seus efeitos" and the exhaustion card (RN-22): nothing is drawn without them. -->
   @if (effectCards().length > 0 || exhaustion() > 0) {
     <app-effect-cards class="vitals__effects" [cards]="effectCards()" [exhaustion]="exhaustion()" />

@@ -98,6 +98,13 @@ export class PlayerVitals {
   /** The death saves of the player's own combatant while a combat runs; `null` without one (the pill then says only "Inconsciente"). */
   readonly ownDeathSaves = input<{ successes: number; failures: number } | null>(null);
 
+  /** Whether it is the character's own turn in the combat: the death save is rolled then (SRD 5.1), so off turn the card says so. */
+  readonly onTurn = input(false);
+  /** The hint of a character at 0 hit points in a combat, off turn: when the death save is rolled. */
+  protected readonly deathSaveHint = computed(
+    () => this.down() && !this.pools() && this.ownDeathSaves() !== null && !this.onTurn(),
+  );
+
   /** "Seus efeitos": the cards of the effects the server lets this player read (on the combatant in a combat, on the
    * character outside one); none draws nothing. */
   readonly effectCards = input<readonly EffectCardView[]>([]);

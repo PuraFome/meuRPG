@@ -40,6 +40,7 @@ import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import { mineTabs } from '../../core/combat/mine';
 import { casterOfRevival, returnPlace } from '../../core/revivify/revivify-flow';
+import { acts } from '../../core/combat/joint-turn';
 import { isTheatre } from '../../core/combat/theatre';
 import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
@@ -424,6 +425,12 @@ export class LiveSession {
       return null;
     }
     return e.combatants.find((c) => c.mine)?.armorClassBonus ?? null;
+  });
+  /** Whether it is the turn of the player's own combatant (it acts now): the death saves are rolled then. */
+  protected readonly ownTurn = computed(() => {
+    const e = this.combat.encounter();
+    const own = e?.status === EncounterStatus.ACTIVE ? e.combatants.find((c) => c.mine) : undefined;
+    return !!e && !!own && acts(e, own);
   });
   /** The death saves of the player's own combatant while a combat is on; `null` outside one. */
   protected readonly ownDeathSaves = computed(() => {
