@@ -4914,7 +4914,12 @@ type Spellcasting struct {
 	SpellsKnown int32 `protobuf:"varint,7,opt,name=spells_known,json=spellsKnown,proto3" json:"spells_known,omitempty"`
 	// How many spells the character can prepare each day, for classes that
 	// prepare spells (Cleric, Druid, Paladin, Wizard). 0 for the others.
-	PreparedMax   int32 `protobuf:"varint,8,opt,name=prepared_max,json=preparedMax,proto3" json:"prepared_max,omitempty"`
+	PreparedMax int32 `protobuf:"varint,8,opt,name=prepared_max,json=preparedMax,proto3" json:"prepared_max,omitempty"`
+	// True when the class keeps its spells in a spellbook and prepares some of them
+	// (Wizard): the spells on the sheet that are not prepared are in the spellbook. False
+	// for a class that prepares from its whole list (Cleric, Druid, Paladin) or knows a
+	// fixed number of spells.
+	Spellbook     bool `protobuf:"varint,9,opt,name=spellbook,proto3" json:"spellbook,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5003,6 +5008,13 @@ func (x *Spellcasting) GetPreparedMax() int32 {
 		return x.PreparedMax
 	}
 	return 0
+}
+
+func (x *Spellcasting) GetSpellbook() bool {
+	if x != nil {
+		return x.Spellbook
+	}
+	return false
 }
 
 // SpellSlots is how many slots the character has of one spell level.
@@ -7161,7 +7173,10 @@ type Spell struct {
 	// The table retired it (see Race.archived).
 	Archived bool `protobuf:"varint,10,opt,name=archived,proto3" json:"archived,omitempty"`
 	// Switched off for the players (see Race.off).
-	Off           bool `protobuf:"varint,11,opt,name=off,proto3" json:"off,omitempty"`
+	Off bool `protobuf:"varint,11,opt,name=off,proto3" json:"off,omitempty"`
+	// Whether it is cast as a reaction (casting time "1 reaction", like Shield), so the
+	// sheet's spell list can tag it without reading the description.
+	Reaction      bool `protobuf:"varint,12,opt,name=reaction,proto3" json:"reaction,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7269,6 +7284,13 @@ func (x *Spell) GetArchived() bool {
 func (x *Spell) GetOff() bool {
 	if x != nil {
 		return x.Off
+	}
+	return false
+}
+
+func (x *Spell) GetReaction() bool {
+	if x != nil {
+		return x.Reaction
 	}
 	return false
 }
@@ -11211,7 +11233,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x19\n" +
 	"\brange_ft\x18\x03 \x01(\x05R\arangeFt\x12\x14\n" +
-	"\x05sense\x18\x04 \x01(\tR\x05sense\"\xac\x02\n" +
+	"\x05sense\x18\x04 \x01(\tR\x05sense\"\xca\x02\n" +
 	"\fSpellcasting\x12\x1b\n" +
 	"\tclass_key\x18\x01 \x01(\tR\bclassKey\x12\"\n" +
 	"\rclass_name_pt\x18\x02 \x01(\tR\vclassNamePt\x122\n" +
@@ -11220,7 +11242,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fattack_bonus\x18\x05 \x01(\x05R\vattackBonus\x12%\n" +
 	"\x0ecantrips_known\x18\x06 \x01(\x05R\rcantripsKnown\x12!\n" +
 	"\fspells_known\x18\a \x01(\x05R\vspellsKnown\x12!\n" +
-	"\fprepared_max\x18\b \x01(\x05R\vpreparedMax\"8\n" +
+	"\fprepared_max\x18\b \x01(\x05R\vpreparedMax\x12\x1c\n" +
+	"\tspellbook\x18\t \x01(\bR\tspellbook\"8\n" +
 	"\n" +
 	"SpellSlots\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x14\n" +
@@ -11398,7 +11421,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
 	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12;\n" +
 	"\bcategory\x18\x04 \x01(\x0e2\x1f.meurpg.rules.v1.WeaponCategoryR\bcategory\x12\x16\n" +
-	"\x06ranged\x18\x05 \x01(\bR\x06ranged\"\xac\x02\n" +
+	"\x06ranged\x18\x05 \x01(\bR\x06ranged\"\xc8\x02\n" +
 	"\x05Spell\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -11413,7 +11436,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\rconcentration\x18\t \x01(\bR\rconcentration\x12\x1a\n" +
 	"\barchived\x18\n" +
 	" \x01(\bR\barchived\x12\x10\n" +
-	"\x03off\x18\v \x01(\bR\x03off\"X\n" +
+	"\x03off\x18\v \x01(\bR\x03off\x12\x1a\n" +
+	"\breaction\x18\f \x01(\bR\breaction\"X\n" +
 	"\x12ListContentRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +

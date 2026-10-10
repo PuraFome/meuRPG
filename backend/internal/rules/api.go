@@ -796,6 +796,9 @@ type Spellcasting struct {
 	PreparesSpells bool
 	PreparedMax    int
 	SpellsKnownMax int
+	// Spellbook is true for a class that keeps a spellbook (Wizard): the sheet's spells
+	// that are not prepared are in the book.
+	Spellbook bool
 	// MaxSpellLevel is the highest spell level this class alone could cast
 	// (0 when it only knows cantrips).
 	MaxSpellLevel int

@@ -420,7 +420,7 @@ type actionEvent struct {
 	SpentDFt int32 `json:"spent_dft,omitempty"`
 	Dragging bool  `json:"dragging,omitempty"`
 	Crawling bool  `json:"crawling,omitempty"`
-	OnTurn      bool  `json:"on_turn,omitempty"`
+	OnTurn   bool  `json:"on_turn,omitempty"`
 	// A jump: its kind ("long", "high"), the height of a high one, and whether a
 	// long one landed in difficult terrain (the master's log reminds the
 	// Acrobatics check, D3). From is where the combatant stood and what it had
