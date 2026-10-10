@@ -155,12 +155,16 @@ jobs:
           if-no-files-found: error
 
   e2e:
-    # The suite is split across six runners, each with its own stack: on
+    # The suite is split across nine runners, each with its own stack: on
     # one runner the 171 tests took 13 minutes with 2 workers (04/10/2026).
     # Playwright splits a shard by test count, not time, and the axe scans
     # (@a11y) are the long ones: three plain shards took 522, 171 and 119
-    # seconds. So the @a11y tests get four runners and the rest two: with
-    # two, an @a11y shard took 19 minutes and set every PR's wait (07/10/2026).
+    # seconds. So the @a11y tests get their own runners and the rest theirs:
+    # with two @a11y runners, a shard took 19 minutes and set every PR's wait
+    # (07/10/2026). On 10/10/2026 four @a11y shards took 7 to 13 minutes and
+    # two plain shards 11 minutes each (2 to 3 of them setup), so now it is
+    # six @a11y shards and three plain ones, aiming at 6 to 7 minutes of
+    # tests in the slowest.
     name: playwright ${{ matrix.part }} (local stack with devidp)
     runs-on: ubuntu-26.04
     timeout-minutes: 30
@@ -169,18 +173,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - part: a11y 1/4
-            args: --grep @a11y --shard=1/4
-          - part: a11y 2/4
-            args: --grep @a11y --shard=2/4
-          - part: a11y 3/4
-            args: --grep @a11y --shard=3/4
-          - part: a11y 4/4
-            args: --grep @a11y --shard=4/4
-          - part: 1/2
-            args: --grep-invert @a11y --shard=1/2
-          - part: 2/2
-            args: --grep-invert @a11y --shard=2/2
+          - part: a11y 1/6
+            args: --grep @a11y --shard=1/6
+          - part: a11y 2/6
+            args: --grep @a11y --shard=2/6
+          - part: a11y 3/6
+            args: --grep @a11y --shard=3/6
+          - part: a11y 4/6
+            args: --grep @a11y --shard=4/6
+          - part: a11y 5/6
+            args: --grep @a11y --shard=5/6
+          - part: a11y 6/6
+            args: --grep @a11y --shard=6/6
+          - part: 1/3
+            args: --grep-invert @a11y --shard=1/3
+          - part: 2/3
+            args: --grep-invert @a11y --shard=2/3
+          - part: 3/3
+            args: --grep-invert @a11y --shard=3/3
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -233,7 +243,7 @@ jobs:
         # backend/Dockerfile, the production image. devidp signs anyone in
         # without a password and must only ever exist in its own image (deploy/local/devidp.Dockerfile).
         # One runner checks it: they all run the same image.
-        if: matrix.part == '1/2'
+        if: matrix.part == '1/3'
         run: |
           container=$(docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml ps --quiet api)
           files=$(docker cp "$container:/app" - | tar -t)

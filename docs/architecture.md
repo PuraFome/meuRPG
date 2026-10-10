@@ -3274,7 +3274,7 @@ Tests run in several layers, and none depends on an outside identity provider. H
 | Layer | Where | OIDC provider | In CI |
 | --- | --- | --- | --- |
 | Unit and flow in Go | `go test` in `backend/` | The provider in `internal/identity/oidctest`, inside the test itself (HTTPS with `httptest`), which signs the user in on the spot and lets the test break one thing at a time: claims, signing key, discovery | `go` job |
-| Integration in Go | `go test` with `MEURPG_TEST_DATABASE_URL` | The same, with a real CockroachDB behind | `go-db` job, in four package groups (CockroachDB via `docker run` in each) |
+| Integration in Go | `go test` with `MEURPG_TEST_DATABASE_URL` | The same, with a real CockroachDB behind | `go-db` job, in nine groups (the play package split by test across three, the rest by package; CockroachDB via `docker run` in each) |
 | End to end | Playwright in `e2e/`, against `docker compose` | **devidp** (`backend/cmd/devidp`): the same `oidctest`, served with a page that lists the test users | `e2e` workflow |
 
 devidp implements only what sign-in needs, rigorously: discovery, JWKS with an RSA key generated at startup, `/authorize` with mandatory PKCE S256, `state` and `nonce`, `/token` for a confidential client, an RS256 ID token with `email`, `email_verified` and `auth_time`, and `max_age` and `prompt` measured against its own session. It never goes to production: its image is separate, it only accepts an issuer on a loopback host and it does not start on Cloud Run (details and test users in [CONTRIBUTING.md](../CONTRIBUTING.md#local-sign-in-with-the-devidp)).
