@@ -316,6 +316,7 @@ func bonusAttackOption(d rules.Derived, turn TurnState, ao AttackOption) AttackO
 	last, _ := lastAttackOf(d, turn)
 	kind := BonusAttack(BonusAttackTurn{
 		AttackAction: attackActionTaken(d, turn), FlurryLeft: turn.FlurryLeft, Last: bonusTraits(last),
+		NoSecondLight: SecondLightWeaponMissing(countLight(d.Attacks, func(a rules.Attack) bool { return a.Melee && a.Light })),
 	}, bonusTraits(ao.Attack))
 	if kind == BonusNone {
 		return ao
@@ -534,4 +535,15 @@ func rechargeOf(d rules.Derived, key string) string {
 		}
 	}
 	return ""
+}
+
+// countLight counts the attacks that match.
+func countLight(attacks []rules.Attack, match func(rules.Attack) bool) int {
+	n := 0
+	for _, a := range attacks {
+		if match(a) {
+			n++
+		}
+	}
+	return n
 }

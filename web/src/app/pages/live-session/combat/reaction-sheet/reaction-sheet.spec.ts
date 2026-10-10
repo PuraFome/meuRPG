@@ -139,9 +139,8 @@ describe('ReactionSheet', () => {
       expect(pass.classList).toContain('pair__btn');
       expect(pass.hasAttribute('data-initial-focus')).toBe(true);
       expect(use.hasAttribute('data-initial-focus')).toBe(false);
-      expect(plain(el.textContent)).toContain(
-        'Se você não responder, o mestre pode decidir por você.',
-      );
+      // An optional reaction passes by itself after 30 s (the master's screen sends the pass).
+      expect(plain(el.textContent)).toMatch(/Se você não responder, passa sozinho em (29|30) s\./);
     });
 
     it('lists the slots as radios with the lowest free one chosen', () => {

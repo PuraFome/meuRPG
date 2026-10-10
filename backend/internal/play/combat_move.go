@@ -303,9 +303,10 @@ func (s *Service) MoveCombatant(
 	var lockedDoor bool                // a locked door stopped the move (a player only learns of one they know)
 	var draggedMoved *playdb.Combatant // the creature the mover dragged along, where it stands now
 	var draggedFrom *grid.Square       // and where it stood
+	var draggedID string               // the creature dragged along: it provokes nothing against its grappler
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
 		logged, stoppedEarly, moveID, opened, lockedDoor = false, false, "", nil, false
-		draggedMoved, draggedFrom = nil, nil
+		draggedMoved, draggedFrom, draggedID = nil, nil, ""
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -528,6 +529,7 @@ func (s *Service) MoveCombatant(
 				return nil, err
 			}
 			draggedMoved, draggedFrom = &moved, &from
+			draggedID = dragged.ID
 			made.Dragged, made.DraggedFrom = dragged.ID, moveStateOf(dragged)
 		}
 		// Opportunity attacks (D1b): a move on foot or a long jump (it spends
@@ -535,7 +537,7 @@ func (s *Service) MoveCombatant(
 		// enemy is offered an attack. A high jump moves nobody; a placement out of
 		// turn, a forced move and a move that stays put offer nothing.
 		if jump != playv1.JumpKind_JUMP_KIND_HIGH && !forced && onTurn && placed(target) && squareChanged {
-			if moveID, offered, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to, jump == playv1.JumpKind_JUMP_KIND_LONG); err != nil {
+			if moveID, offered, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to, jump == playv1.JumpKind_JUMP_KIND_LONG, draggedID); err != nil {
 				return nil, err
 			}
 			made.MoveID = moveID

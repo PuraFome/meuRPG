@@ -562,7 +562,7 @@
       </app-npc-card>
     }
     <!-- The reaction windows the master answers (PM-04): below the card, in the order the server answers them. -->
-    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
+    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" [autoLeft]="autoLeft()" />
     <!-- The contests that wait for the master (W7-X): CONTEST windows, Hide, grapples; never answered with AnswerReaction. -->
     <app-contest-master
       [encounter]="e"

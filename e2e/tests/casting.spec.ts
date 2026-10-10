@@ -73,7 +73,7 @@ test(
       await expect(sheet.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
       await expect(sheet.locator('app-slot-picker')).toHaveCount(0);
       await sheet.getByRole('button', { name: 'Começar o ritual' }).click();
-      await expect(sheet.getByText(/só é gasto quando o mestre conclui/)).toBeVisible();
+      await expect(sheet.getByText(/Um ritual não gasta espaço de magia/)).toBeVisible();
       await sheet.getByRole('button', { name: 'Fechar' }).last().click();
 
       const mine = player.locator('app-casting-panel');

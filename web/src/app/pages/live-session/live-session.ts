@@ -436,6 +436,7 @@ export class LiveSession {
   protected readonly ownEffects = new OwnEffects({
     campaignId: this.campaignId,
     isMaster: this.isMaster,
+    ownCharacterIds: computed(() => this.vitals().map((v) => v.characterId)),
     encounter: this.combat.encounter,
     tick: computed(() => this.castsTick() + (this.ownVitals()?.revision ?? 0)),
   });

@@ -728,6 +728,58 @@ func TestRN24_TheManualBonusesCannotGetAroundTheMethod(t *testing.T) {
 	}
 }
 
+// TestRN24_ATableRacesChoiceBonusesAreFreeManualPoints: a table race that says "+2 and
+// +1 to your choice" (ChoiceBonuses) is placed in the manual bonuses: exactly what the
+// race allows is accepted and clears the race_bonus issue; more is refused.
+func TestRN24_ATableRacesChoiceBonusesAreFreeManualPoints(t *testing.T) {
+	t.Parallel()
+	_, master, players, campaign, _ := newAbilityTable(t)
+	ana, bia := players[0], players[1]
+	const extra = charactersv1.AbilityScoresRefusalReason_ABILITY_SCORES_REFUSAL_REASON_EXTRA_BONUSES
+	race := master.addEntry(t, campaign, testRace("Goblin da Mesa")) // +2 and +1 to place
+	withBonus := func(bonus *rulesv1.AbilityScores) *charactersv1.CharacterSheet {
+		s := scoresSheet(15, 14, 13, 12, 10, 8)
+		s.GetFull().RaceKey, s.GetFull().SubraceKey, s.GetFull().ExtraAbilityBonuses = race.GetKey(), "", bonus
+		return s
+	}
+	hasRaceBonusIssue := func(c *charactersv1.Character) bool {
+		for _, is := range c.GetDerived().GetIssues() {
+			if is.GetField() == "full.extra_ability_bonuses" {
+				return true
+			}
+		}
+		return false
+	}
+	// Nothing placed: it saves, with the pendency.
+	pending, err := ana.createWith(campaign, mStd, withBonus(nil))
+	if err != nil {
+		t.Fatalf("a table race with nothing placed: %v", err)
+	}
+	if !hasRaceBonusIssue(pending) {
+		t.Error("nothing placed: want the race bonus pendency")
+	}
+	// +2 Dexterity and +1 Constitution: accepted, and the pendency is gone.
+	placed, err := bia.createWith(campaign, mStd, withBonus(&rulesv1.AbilityScores{Dexterity: 2, Constitution: 1}))
+	if err != nil {
+		t.Fatalf("+2 Dex and +1 Con on a +2/+1 race: %v", err)
+	}
+	if hasRaceBonusIssue(placed) {
+		t.Errorf("issues = %v, want the race bonus pendency cleared", placed.GetDerived().GetIssues())
+	}
+	// More than the race allows is refused.
+	_, err = players[2].createWith(campaign, mStd, withBonus(&rulesv1.AbilityScores{Dexterity: 2, Constitution: 1, Wisdom: 1}))
+	if r := abilityRefusal(t, "+4 on a +2/+1 race", err); r.GetReason() != extra {
+		t.Errorf("refusal = %v, want EXTRA_BONUSES", r)
+	}
+	// And so is an edit of the draft that goes over.
+	over := placed.GetSheet()
+	over.GetFull().ExtraAbilityBonuses = &rulesv1.AbilityScores{Dexterity: 2, Constitution: 1, Wisdom: 1}
+	_, err = bia.update(t, placed, placed.GetName(), over)
+	if r := abilityRefusal(t, "a draft edit over the race's points", err); r.GetReason() != extra {
+		t.Errorf("refusal = %v, want EXTRA_BONUSES", r)
+	}
+}
+
 // TestRN24_ACreationIsRefusedWhatItsInputsBreak: an unknown method is invalid_argument,
 // and the hit points a player stores per level follow the table's rule.
 func TestRN24_ACreationIsRefusedWhatItsInputsBreak(t *testing.T) {
