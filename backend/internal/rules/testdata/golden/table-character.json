@@ -284,6 +284,7 @@
         "PreparesSpells": true,
         "PreparedMax": 2,
         "SpellsKnownMax": 0,
+        "Spellbook": false,
         "MaxSpellLevel": 1,
         "Ritual": false,
         "SpellList": "class:gen-full-prepared@mesa"
@@ -987,6 +988,7 @@
         "PreparesSpells": true,
         "PreparedMax": 12,
         "SpellsKnownMax": 0,
+        "Spellbook": false,
         "MaxSpellLevel": 6,
         "Ritual": false,
         "SpellList": "class:gen-full-prepared@mesa"
@@ -2140,6 +2142,7 @@
         "PreparesSpells": true,
         "PreparedMax": 6,
         "SpellsKnownMax": 0,
+        "Spellbook": false,
         "MaxSpellLevel": 3,
         "Ritual": false,
         "SpellList": "class:gen-full-prepared@mesa"

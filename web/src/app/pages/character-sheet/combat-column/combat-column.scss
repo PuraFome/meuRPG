@@ -168,6 +168,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  // The name (and its tags) in the middle of the 44 px target, as the layout checks ask.
+  justify-content: center;
   gap: 4px;
   min-height: 44px;
   padding: 6px 0;
