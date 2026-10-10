@@ -489,3 +489,82 @@ test(
     }
   },
 );
+
+const SHOTS = '/Users/viniciusf/personal/rpg-computer-use/scratch-ms/verify/r4-ui';
+
+test(
+  'sem combate aberto, "Pôr no combate" pergunta Com mapa ou Sem mapa, e "Iniciar combate" põe um monstro do bestiário sem sair do diálogo',
+  { tag: ['@MR-042', '@MR-013', '@RN-25'] },
+  async ({ browser }) => {
+    test.setTimeout(300_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const master = await masterContext.newPage();
+      const player = await playerContext.newPage();
+      await master.goto('/');
+      await player.goto('/');
+      const table = await tableForCombat(master, player, `Mirathel ${Date.now()}`);
+      const campaignId = table.campaignId;
+
+      // From the bestiary: the map has a grid, so "Com mapa" is the default; the master picks the theatre of the mind.
+      const sheet = await openPutSheet(master, campaignId, 'bandit', 'Bandido');
+      await expect(sheet.getByRole('radio', { name: /Com mapa/ })).toBeChecked();
+      for (const scheme of ['light', 'dark'] as const) {
+        await master.emulateMedia({ colorScheme: scheme });
+        await sheet.screenshot({ path: `${SHOTS}/put-sheet-1280-${scheme}.png` });
+      }
+      await master.emulateMedia({ colorScheme: 'light' });
+      await master.setViewportSize({ width: 390, height: 844 });
+      await master.screenshot({ path: `${SHOTS}/put-sheet-390-light.png` });
+      await master.emulateMedia({ colorScheme: 'dark' });
+      await master.screenshot({ path: `${SHOTS}/put-sheet-390-dark.png` });
+      await master.emulateMedia({ colorScheme: 'light' });
+      await master.setViewportSize({ width: 1280, height: 800 });
+      await sheet.getByText('Sem mapa (teatro da mente)', { exact: true }).click();
+      await expect(sheet.getByTestId('theatre-why')).toBeVisible();
+      await sheet.getByRole('button', { name: 'Criar o combate e pôr' }).click();
+      await expect(sheet).toBeHidden();
+      const started = await getEncounterRPC(master, campaignId);
+      expect((started as unknown as { mode?: string }).mode).toBe('ENCOUNTER_MODE_THEATRE');
+      expect((started.combatants as MonsterRow[]).filter((c) => c.bestiaryCreatureKey).map(label)).toEqual(['Bandido']);
+      await combatRPC(master, 'EndEncounter', { campaignId, encounterId: started.id });
+
+      // From "Iniciar combate": the creature is searched and counted inside the dialog, which stays open.
+      await openSessionPage(master, campaignId);
+      await master.getByRole('button', { name: 'Voltar à sessão' }).click();
+      await master.getByRole('button', { name: 'Iniciar combate' }).click();
+      const dialog = master.getByRole('dialog', { name: 'Iniciar combate' });
+      await expect(dialog.getByRole('link', { name: /bestiário/i })).toHaveCount(0);
+      const pickBox = dialog.getByRole('combobox', { name: 'Adicionar criatura' });
+      await pickBox.click();
+      await pickBox.pressSequentially('bandit');
+      await dialog.getByRole('option', { name: /Bandido/ }).first().click();
+      await dialog.getByRole('button', { name: 'Mais um Bandido' }).click();
+      await expect(dialog.locator('.pick__row')).toContainText('Bandido');
+      await expect(dialog).toBeVisible();
+      await dialog.getByText('Sem mapa (teatro da mente)', { exact: true }).click();
+      for (const scheme of ['light', 'dark'] as const) {
+        await master.emulateMedia({ colorScheme: scheme });
+        await dialog.locator('.dlg__body').evaluate((el) => el.scrollTo(0, el.scrollHeight));
+        await dialog.screenshot({ path: `${SHOTS}/start-dialog-pick-1280-${scheme}.png` });
+      }
+      await master.emulateMedia({ colorScheme: 'light' });
+      await master.setViewportSize({ width: 390, height: 844 });
+      await dialog.locator('.dlg__body').evaluate((el) => el.scrollTo(0, el.scrollHeight));
+      await master.screenshot({ path: `${SHOTS}/start-dialog-pick-390-light.png` });
+      await master.emulateMedia({ colorScheme: 'dark' });
+      await master.screenshot({ path: `${SHOTS}/start-dialog-pick-390-dark.png` });
+      await master.emulateMedia({ colorScheme: 'light' });
+      await master.setViewportSize({ width: 1280, height: 800 });
+      await dialog.getByRole('button', { name: 'Iniciar combate' }).click();
+      await expect(dialog).toBeHidden();
+      const enc = await getEncounterRPC(master, campaignId);
+      expect((enc as unknown as { mode?: string }).mode).toBe('ENCOUNTER_MODE_THEATRE');
+      expect((enc.combatants as MonsterRow[]).filter((c) => c.bestiaryCreatureKey).map(label).sort()).toEqual(['Bandido 1', 'Bandido 2']);
+    } finally {
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);

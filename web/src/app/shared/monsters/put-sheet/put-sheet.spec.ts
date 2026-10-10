@@ -13,6 +13,10 @@ import {
   GameSessionBlockedReason,
   GameSessionBlockedSchema,
 } from '../../../../gen/meurpg/play/v1/play_pb';
+import { EncounterMode } from '../../../../gen/meurpg/play/v1/combat_pb';
+import { TableRulesClient } from '../../../core/campaigns/table-rules';
+import { MapsClient } from '../../../core/maps/maps-client';
+import { OpenSessionLookup } from '../../../core/play/open-session';
 import { CombatClient } from '../../../core/combat/combat-client';
 import { combatant, encounter } from '../../../core/combat/combat-testing';
 import { flat, isOff } from '../../../core/creatures/creatures-testing';
@@ -91,6 +95,7 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
       status: EncounterStatus.SETUP,
       combatants: [],
     }),
+    world: { map: 'grid' | 'nogrid' | 'none'; rule?: boolean } = { map: 'grid' },
   ) {
     api = new FakeCombat();
     if (open === 'closed') {
@@ -110,13 +115,32 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     TestBed.configureTestingModule({
       providers: [
         { provide: CombatClient, useValue: api },
+        {
+          provide: OpenSessionLookup,
+          useValue: {
+            currentMap: async () => ({
+              sessionNumber: 1,
+              mapId: world.map === 'none' ? '' : 'map-1',
+            }),
+          },
+        },
+        {
+          provide: MapsClient,
+          useValue: {
+            get: async () => ({ map: { id: 'map-1', gridColumns: world.map === 'grid' ? 20 : 0 } }),
+          },
+        },
+        {
+          provide: TableRulesClient,
+          useValue: { get: async () => ({ saved: { combatStartsWithMap: world.rule ?? true } }) },
+        },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close } },
       ],
     });
     const fixture = TestBed.createComponent(PutMonstersSheet);
     const settle = async () => {
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 8; i++) {
         fixture.detectChanges();
         await fixture.whenStable();
       }
@@ -133,7 +157,11 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
       Array.from(el.querySelectorAll<HTMLLabelElement>('.seg__item'))
         .find((l) => flat(l)?.includes(label))!
         .querySelector('input')!;
-    return { el, button, more, radio, settle, fixture };
+    const mode = (title: string) =>
+      Array.from(el.querySelectorAll<HTMLLabelElement>('app-dice-choice label.dice-choice__card'))
+        .find((l) => flat(l)?.includes(title))!
+        .querySelector('input')!;
+    return { el, button, more, radio, mode, settle, fixture };
   }
 
   it('opens on the combat in preparation with one Bandido, the average hit points and hidden on', async () => {
@@ -375,5 +403,45 @@ describe('PutMonstersSheet: "Pôr no combate" (MR-042, RN-29, E10-08 states 4 an
     await settle();
     expect(flat(el.querySelector('.field__err'))).toContain('de 1 a 30 letras');
     expect(api.adds).toHaveLength(0);
+  });
+
+  it('starting a combat offers the same choice as "Iniciar combate": with a gridded map, "Com mapa" by default', async () => {
+    const { button, mode, settle } = await setup(null);
+    expect(mode('Com mapa').checked).toBe(true);
+    button('Criar o combate e pôr').click();
+    await settle();
+    expect(api.starts[0].extras).toMatchObject({ mode: EncounterMode.GRID });
+  });
+
+  it('the master picks "Sem mapa (teatro da mente)" and the combat starts without a map', async () => {
+    const { button, mode, el, settle } = await setup(null);
+    mode('Sem mapa').click();
+    await settle();
+    expect(el.querySelector('[data-testid=theatre-why]')).not.toBeNull();
+    button('Criar o combate e pôr').click();
+    await settle();
+    expect(api.starts[0].extras).toMatchObject({ mode: EncounterMode.THEATRE });
+  });
+
+  it('a session map without a grid, or no map, defaults to the theatre of the mind with "Com mapa" off', async () => {
+    for (const map of ['nogrid', 'none'] as const) {
+      TestBed.resetTestingModule();
+      const { button, mode, settle } = await setup(null, { map });
+      expect(mode('Sem mapa').checked).toBe(true);
+      expect(mode('Com mapa').closest('label')?.className).toContain('dice-choice__card--off');
+      button('Criar o combate e pôr').click();
+      await settle();
+      expect(api.starts[0].extras).toMatchObject({ mode: EncounterMode.THEATRE });
+    }
+  });
+
+  it('the table\'s rule "combate com mapa" off makes the theatre the default on a gridded map', async () => {
+    const { mode } = await setup(null, { map: 'grid', rule: false });
+    expect(mode('Sem mapa').checked).toBe(true);
+  });
+
+  it('a combat already open shows no mode choice: it is fixed once it starts', async () => {
+    const { el } = await setup();
+    expect(el.querySelector('app-dice-choice')).toBeNull();
   });
 });

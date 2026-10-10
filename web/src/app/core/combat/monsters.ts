@@ -42,6 +42,8 @@ export interface MonsterAdd {
   readonly hidden: boolean;
   /** The combat it goes into, or `''` for the start of one. */
   readonly target: string;
+  /** How the combat that starts is played (the start of one only): another choice is another request. */
+  readonly mode?: number;
 }
 
 /**
@@ -54,7 +56,15 @@ export class AddKeys {
   private readonly key = new ActionKey();
 
   keyFor(add: MonsterAdd): string {
-    return this.key.keyFor([add.creatureKey, add.count, add.name, add.hp, add.hidden, add.target]);
+    return this.key.keyFor([
+      add.creatureKey,
+      add.count,
+      add.name,
+      add.hp,
+      add.hidden,
+      add.target,
+      add.mode ?? 0,
+    ]);
   }
 }
 

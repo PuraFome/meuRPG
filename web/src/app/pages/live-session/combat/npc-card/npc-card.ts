@@ -27,6 +27,7 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
+import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { coverText } from '../../../../core/combat/cover';
 import { rollFormula } from '../../../../core/combat/combat-dice';
@@ -93,6 +94,7 @@ import { PendingDamages } from './pending-damages';
 })
 export class NpcCard {
   private readonly api = inject(CombatClient);
+  private readonly undone = inject(CombatUndone);
 
   readonly campaignId = input.required<string>();
   readonly encounter = input.required<Encounter>();
@@ -275,6 +277,15 @@ export class NpcCard {
           this.last.set(null);
           this.error.set('');
         });
+      }
+    });
+    // "Desfazer última ação" took back an action: the result card of the last roll may be that action, so it goes.
+    let undoneSeen = this.undone.count();
+    effect(() => {
+      const n = this.undone.count();
+      if (n !== undoneSeen) {
+        undoneSeen = n;
+        untracked(() => this.last.set(null));
       }
     });
     effect(() => {
