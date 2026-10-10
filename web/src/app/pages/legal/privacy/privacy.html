@@ -10,7 +10,7 @@
   <ul>
     <li>Do Google, recebemos só o identificador da sua conta e o seu e-mail verificado. Não pedimos nome nem foto.</li>
     <li>Guardamos o que a mesa precisa para jogar: o nome que você digita no perfil, as campanhas, as fichas e as imagens.</li>
-    <li>Os dados ficam em São Paulo, no Google Cloud e no CockroachDB Cloud. A exceção é a imagem que o mestre gera por IA (seção 4).</li>
+    <li>Os dados ficam em São Paulo, no Google Cloud e no CockroachDB Cloud. As exceções são a imagem que o mestre gera por IA e o e-mail que você nos manda (seção 4).</li>
     <li>Sem anúncios, sem rastreamento e sem venda de dados. Os únicos cookies são os do login.</li>
     <li>Para pedir uma cópia, uma correção ou a exclusão dos seus dados, escreva para <strong>privacidade&#64;meurpg.app</strong>. Respondemos em até 15 dias.</li>
   </ul>
@@ -38,7 +38,7 @@
         <li><p><strong>Campanhas e fichas.</strong> O que a mesa escreve e joga: campanhas, convites, personagens e suas histórias, notas do mestre, anotações dos jogadores, mapas, cenas, combates, XP e o histórico das sessões. É ficção: o app avisa para não escrever dados reais de pessoas. Base legal: contrato.</p></li>
         <li><p><strong>Imagens.</strong> Mapas, retratos e ilustrações que o mestre envia. Antes de guardar, o app refaz a imagem a partir dos pixels e descarta os metadados: a posição de GPS, o modelo do celular e a data. Base legal: contrato.</p></li>
         <li><p><strong>Pedidos de imagem por IA.</strong> Quando o mestre gera uma imagem, guardamos com a campanha o texto do pedido, o estilo e as imagens de referência que ele escolheu. Base legal: contrato.</p></li>
-        <li><p><strong>Registros técnicos.</strong> O servidor anota cada pedido com o identificador da conta (um código, sem nome nem e-mail) e os identificadores do jogo, para achar a causa de um erro. A plataforma (Cloud Run) anota o IP, o navegador e o endereço de cada pedido. Base legal: legítimo interesse.</p></li>
+        <li><p><strong>Registros técnicos.</strong> O servidor anota cada pedido com o identificador da conta (um código, sem nome nem e-mail) e os identificadores do jogo, para achar a causa de um erro. A plataforma (o Cloud Run e o balanceador de carga do Google Cloud) anota o IP, o navegador e o endereço de cada pedido. Base legal: legítimo interesse.</p></li>
         <li><p><strong>IP nos limites de uso.</strong> Para frear abuso e tentativas repetidas de login, o servidor conta os pedidos de cada IP só na memória, por alguns minutos. O IP não vai para o banco de dados nem para os registros do app. Base legal: legítimo interesse.</p></li>
       </ul>
     </section>
@@ -57,12 +57,13 @@
       <h2 id="onde">4. Onde os dados ficam e quem nos ajuda</h2>
       <p>Os dados ficam em São Paulo, na região southamerica-east1 do Google Cloud. Estes fornecedores tratam os dados em nosso nome:</p>
       <ul class="legal-rows">
-        <li><p><strong>Google Cloud.</strong> Hospeda o app (Cloud Run), os registros técnicos (Cloud Logging) e as imagens (Cloud Storage, num espaço privado). Dados: todos, em São Paulo.</p></li>
+        <li><p><strong>Google Cloud.</strong> Hospeda o app (Cloud Run, com o balanceador de carga e o Cloud Armor na frente, que barram acessos abusivos), os registros técnicos (Cloud Logging) e as imagens (Cloud Storage, num espaço privado). Dados: todos, em São Paulo.</p></li>
         <li><p><strong>Cockroach Labs (CockroachDB Cloud).</strong> O banco de dados e os backups, no Google Cloud em São Paulo. Dados: o banco de dados.</p></li>
         <li><p><strong>Google (Gemini API).</strong> Gera as imagens por IA que o mestre pede, só quando ele usa essa função. Recebe o texto que o mestre escreve, o estilo, as imagens de referência que ele escolhe, num ajuste a imagem anterior e, numa imagem feita a partir de um mapa, um desenho do mapa feito pelo servidor. Nenhum dado de conta: nunca vai o nome, o e-mail ou a ficha de alguém. O uso segue os termos do Google para a Gemini API paga.</p></li>
+        <li><p><strong>ImprovMX.</strong> Encaminha o e-mail que você manda para privacidade&#64;meurpg.app (ou outro endereço do domínio) para quem responde. Recebe o seu endereço, o seu nome, o assunto e o texto da mensagem. O registro dele guarda o remetente, o destinatário e o assunto por 7 dias, nunca o texto.</p></li>
       </ul>
       <p>O login com o Google não entra nessa lista: a conta Google é do Google, que trata os dados dela sob a própria política de privacidade.</p>
-      <p><strong>Transferência internacional.</strong> Pedimos ao Google para não guardar o que vai para a Gemini API, mas os termos do serviço permitem que ele guarde esses dados por pouco tempo, ou em cache, em qualquer país. Por isso, quando o mestre gera uma imagem, há uma transferência internacional de dados (art. 33 da LGPD).</p>
+      <p><strong>Transferência internacional.</strong> Pedimos ao Google para não guardar o que vai para a Gemini API, mas os termos do serviço permitem que ele guarde esses dados por pouco tempo, ou em cache, em qualquer país. Por isso, quando o mestre gera uma imagem, há uma transferência internacional de dados (art. 33 da LGPD). O ImprovMX não diz em que país ficam os servidores dele, então o e-mail que você nos manda também conta como transferência internacional.</p>
     </section>
     <section>
       <h2 id="prazos">5. Por quanto tempo guardamos</h2>
@@ -77,6 +78,7 @@
       <tr><th scope="row">Campanhas, fichas, mapas e histórico</th><td>Enquanto a campanha existir. Os personagens seguem a seção 10.</td></tr>
       <tr><th scope="row">Imagens</th><td>Até o mestre apagar. O arquivo some de vez 7 dias depois.</td></tr>
       <tr><th scope="row">Registros técnicos</th><td>30 dias.</td></tr>
+      <tr><th scope="row">Registro do encaminhamento de um e-mail para nós</th><td>7 dias, no ImprovMX.</td></tr>
       <tr><th scope="row">IP nos limites de uso</th><td>Minutos, só na memória.</td></tr>
       <tr><th scope="row">Backups do banco</th><td>30 dias.</td></tr>
       </tbody>
