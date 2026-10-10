@@ -42,6 +42,25 @@
       }
     </div>
 
+    @if (starting()) {
+      <div class="field">
+        <span class="mr-label" id="put-mode-l">Como este combate é jogado</span>
+        <app-dice-choice
+          name="put-combat-mode"
+          label="Como este combate é jogado"
+          [options]="modeOptions"
+          [value]="playMode()"
+          (valueChange)="chooseMode($event)"
+          [inert]="modeInert()"
+          [notes]="modeNotes()"
+          [grid]="true"
+        />
+        @if (theatre()) {
+          <p class="field__hint" data-testid="theatre-why"><b>{{ why }}</b> {{ whyMore }}</p>
+        }
+      </div>
+    }
+
     @if (full()) {
       <div class="mr-notice mr-notice--warning" role="status">
         <mat-icon aria-hidden="true">warning</mat-icon>

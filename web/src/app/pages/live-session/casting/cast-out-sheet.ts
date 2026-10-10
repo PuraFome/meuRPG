@@ -47,6 +47,12 @@ import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 import { RollPicker } from '../combat/roll-picker/roll-picker';
 import { SlotPicker } from '../combat/cast-sheet/slot-picker';
+import {
+  SummonSheet,
+  type SummonSheetData,
+  type SummonSheetResult,
+} from '../../character-sheet/creatures-panel/summon-sheet';
+import { castNotice, creaturesText } from '../../../core/creatures/summon-labels';
 import { type ChoiceRow, ChoiceCards } from './choice-cards';
 import { openCastConfirm } from './confirm-sheet';
 
@@ -114,6 +120,8 @@ export class CastOutSheet {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly cast = signal<OutsideCast | null>(null);
+  /** What a summoning spell brought, once the creature sheet cast it ("Nanquim chegou. ..."). */
+  protected readonly summoned = signal('');
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   private readonly key = new ActionKey();
 
@@ -157,6 +165,8 @@ export class CastOutSheet {
       reason: s.canCast || s.ritualAllowed ? '' : 'Sem espaço de magia livre.',
     })),
   );
+  /** A summoning spell (Convocar Familiar) has no target: the creature sheet casts it, as the character's sheet does. */
+  protected readonly summons = computed(() => !!this.spell()?.summons && !this.data.npcCasters);
   protected readonly ways = computed<CastWay[]>(() => {
     const s = this.spell();
     return s ? waysOf(s) : [];
@@ -343,6 +353,39 @@ export class CastOutSheet {
   protected close(): void {
     const c = this.cast();
     this.sheet.close(c ?? undefined);
+  }
+
+  /** "Escolher a criatura": the creature sheet picks the form, the slot or ritual and casts (CastSummon). */
+  protected openSummon(): void {
+    const s = this.spell();
+    if (!s) {
+      return;
+    }
+    openSheet<SummonSheet, SummonSheetData, SummonSheetResult>(
+      this.dialog,
+      this.bottomSheet,
+      SummonSheet,
+      {
+        data: {
+          campaignId: this.data.campaignId,
+          characterId: this.casterId(),
+          spellKey: this.spellKey(),
+        },
+        ariaLabel: s.spell?.namePt ?? '',
+        labelledBy: 'summon-t',
+        width: '520px',
+      },
+    ).subscribe((r) => {
+      if (r) {
+        const arrived =
+          r.names.length === 1
+            ? `${r.names[0]} chegou.`
+            : r.count === 1
+              ? 'A criatura chegou.'
+              : `${creaturesText(r.count)} chegaram.`;
+        this.summoned.set(castNotice(arrived, r.spellName, r.ritual, r.castingTime, r.dismissed));
+      }
+    });
   }
 
   /** "Conjurar": asks first when it ends a concentration, then casts. */

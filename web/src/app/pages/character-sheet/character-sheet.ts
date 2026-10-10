@@ -237,6 +237,14 @@ export class CharacterSheetPage {
         if (!live) {
           this.vitals.set(null);
         }
+        // A session that opens while the sheet is on screen locks it (MR-006, RN-01): the sheet is read again, so
+        // "Rascunho" and "Editar ficha" give way to "Travada" without a reload. The notice poll (30 s) tells us.
+        if (player) {
+          if (this.wasLive === false && live) {
+            void this.reloadQuietly();
+          }
+          this.wasLive = live;
+        }
         this.xpWatcher.follow(
           live ? id : null,
           () => void this.reloadQuietly(),
@@ -277,6 +285,8 @@ export class CharacterSheetPage {
   }
 
   private characterId = '';
+  /** Whether the campaign had an open session the last time the sheet was a player's; `null` before the first one. */
+  private wasLive: boolean | null = null;
   private destroyed = false;
   private livingCheckedFor = '';
   /** Numbers every read and every answer that sets the sheet: an answer older than the latest one, or for a character the page left, is dropped. */
@@ -336,6 +346,7 @@ export class CharacterSheetPage {
 
   private load(campaignId: string, characterId: string): void {
     const seq = ++this.sheetSeq;
+    this.wasLive = null;
     this.state.set({ status: 'loading' });
     this.vitals.set(null);
     this.confirmingDeath.set(false);
