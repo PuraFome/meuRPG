@@ -22,20 +22,30 @@
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
     <mat-label>{{ kindLabel() }}</mat-label>
     <select
+      #checkField
       matNativeControl
       [disabled]="options().length === 0"
       [value]="checkKey()"
-      (change)="checkKey.set($any($event.target).value)"
+      [attr.aria-invalid]="checkError() ? 'true' : null"
+      (change)="pickCheck($any($event.target).value)"
     >
       @if (options().length === 0 && !skillsFailed()) {
         <option value="">Carregando…</option>
+      } @else if (!initial()) {
+        <option value="" [selected]="checkKey() === ''">Escolha…</option>
       }
       @for (o of options(); track o.key) {
         <option [value]="o.key" [selected]="o.key === checkKey()">{{ o.label }}</option>
       }
     </select>
-    <mat-hint>O bônus de cada jogador vem da ficha dele.</mat-hint>
+    <mat-hint>{{ initial() ? '' : 'Obrigatório. ' }}O bônus de cada jogador vem da ficha dele.</mat-hint>
   </mat-form-field>
+  @if (checkError()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ checkError() }}</p>
+    </div>
+  }
   @if (skillsFailed() && kind() === 'skill') {
     <div class="mr-notice mr-notice--danger" role="alert">
       <mat-icon aria-hidden="true">error</mat-icon>

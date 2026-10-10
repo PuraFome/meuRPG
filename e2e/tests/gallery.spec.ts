@@ -35,7 +35,7 @@ test(
 
     await uploadThroughPicker(page, [{ name: 'foto-da-mesa.jpg', mimeType: 'image/jpeg', buffer: photo }]);
 
-    const card = galleryCard(page, 'foto-da-mesa');
+    const card = galleryCard(page, 'Foto da mesa');
     await expect(card).toBeVisible();
     await expect(card.getByText('64 × 48 px')).toBeVisible();
     await expect(page.getByText(/1 imagem · \d+\sKB de 500\sMB/)).toBeVisible();
@@ -52,7 +52,7 @@ test(
 
     // It survives a reload: it's on the server, not just on the screen.
     await page.reload();
-    await expect(galleryCard(page, 'foto-da-mesa')).toBeVisible();
+    await expect(galleryCard(page, 'Foto da mesa')).toBeVisible();
   },
 );
 
