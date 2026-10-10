@@ -229,7 +229,7 @@ WHERE id = $1;
 -- combatant acts ('acting') in the turn that starts.
 UPDATE combatants
 SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
-    attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
+    attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
 -- name: ClearCombatTurns :exec
@@ -1219,7 +1219,7 @@ DELETE FROM combatant_states
 WHERE encounter_id = $1
   AND (
     (combatant_id = ANY($2::UUID[]) AND kind IN ('dodging', 'reckless'))
-    OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn')
+    OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn' AND kind <> 'effect')
     OR (kind = 'rage' AND ends_round IS NOT NULL AND ends_round <= $3)
   )
 RETURNING *;
@@ -1227,7 +1227,7 @@ RETURNING *;
 -- name: DeleteEndedCombatantStates :many
 -- The states that end at the end of this combatant's turn.
 DELETE FROM combatant_states
-WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn'
+WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn' AND kind <> 'effect'
 RETURNING *;
 
 -- name: DeleteStatesOfCombatant :many
@@ -1401,3 +1401,163 @@ WHERE id = $1;
 UPDATE reaction_windows
 SET status = 'closed', closed_reason = 'trigger_gone', answered_at = sqlc.arg(answered_at)::TIMESTAMPTZ
 WHERE encounter_id = $1 AND status = 'open' AND trigger->>'pending' = sqlc.arg(pending)::TEXT;
+
+-- Effects that last (RN-22): rows of combatant_states of the kind 'effect', one for each
+-- target; the clock and the effects themselves expire in the service, never by the
+-- generic deletes above.
+
+-- name: InsertLastingEffect :one
+INSERT INTO combatant_states (
+    id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at,
+    group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind,
+    end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key,
+    trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label
+) VALUES (
+    COALESCE(sqlc.narg(id)::UUID, gen_random_uuid()), $1, $2, 'effect', sqlc.narg(source_id), sqlc.narg(ends_combatant_id), sqlc.narg(ends_phase), sqlc.narg(ends_round), $3, 0, $4,
+    $5, $6, $7, $8, $9, $10, $11,
+    sqlc.narg(end_save_ability), sqlc.narg(start_save_ability), sqlc.narg(save_dc), sqlc.narg(on_fail_effect), sqlc.narg(follows_key),
+    sqlc.narg(trigger_dice), sqlc.narg(trigger_damage_type), sqlc.narg(trigger_max_triggers), $12, $13, sqlc.narg(player_label)
+)
+RETURNING *;
+
+-- name: ListLastingEffects :many
+SELECT * FROM combatant_states
+WHERE encounter_id = $1 AND kind = 'effect'
+ORDER BY created_at, id;
+
+-- name: GetLastingEffect :one
+SELECT * FROM combatant_states
+WHERE id = $1 AND encounter_id = $2 AND kind = 'effect';
+
+-- name: DeleteLastingEffect :exec
+DELETE FROM combatant_states WHERE id = $1 AND kind = 'effect';
+
+-- name: SetLastingEffectEnds :one
+UPDATE combatant_states
+SET duration_kind = $2, ends_round = sqlc.narg(ends_round), ends_combatant_id = sqlc.narg(ends_combatant_id), ends_phase = sqlc.narg(ends_phase)
+WHERE id = $1 AND kind = 'effect'
+RETURNING *;
+
+-- name: SetLastingEffectVisibility :one
+UPDATE combatant_states
+SET player_visible = $2, audience = $3, player_label = sqlc.narg(player_label)
+WHERE id = $1 AND kind = 'effect'
+RETURNING *;
+
+-- name: CountLastingEffectTrigger :exec
+-- One more time the effect's damage hit its target.
+UPDATE combatant_states SET triggers_fired = triggers_fired + 1 WHERE id = $1;
+
+-- name: SetCombatantEffectState :exec
+-- What the effects leave on a combatant, worked out again (combat_effects.go): the
+-- conditions (the ones set by hand and the effects'), the ones that came from effects,
+-- the armor class bonus, the speed in percent and the lethargy.
+UPDATE combatants
+SET conditions = $2, effect_conditions = $3, effect_ac_bonus = $4, effect_speed_pct = $5, effect_no_action = $6, effect_no_move = $7, effect_speed_add_ft = $8
+WHERE id = $1;
+
+-- name: SetCombatantExhaustion :exec
+-- An NPC's exhaustion: the level, the hit points under the maximum the level leaves
+-- (hp_max_base is the maximum before level 4 halved it) and the speed.
+UPDATE combatants
+SET exhaustion_level = $2, hp_max = sqlc.narg(hp_max), hp_current = sqlc.narg(hp_current), hp_max_base = sqlc.narg(hp_max_base),
+    effect_speed_pct = $3, defeated = $4
+WHERE id = $1;
+
+-- name: SetCombatantExhaustionLevel :exec
+-- A player's character's level, copied from its vitals so the advantage rules read it.
+UPDATE combatants SET exhaustion_level = $2 WHERE id = $1;
+
+-- name: SetCombatantExtraActionUsed :exec
+UPDATE combatants SET extra_action_used = $2 WHERE id = $1;
+
+-- name: InsertEffectPendingDamage :one
+-- The damage a turn that starts under an effect deals (the web that burns): no
+-- attacker, rolled already. 'rolled' for a player's character (waits for the master),
+-- 'applied' for an NPC or a creature (the caller put it on the combatant).
+INSERT INTO pending_damages (
+    encounter_id, attacker_id, target_id, attack_key, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, faces, amount, roll_total, half,
+    created_at, resolved_at, effect_source_key
+) VALUES (
+    $1, NULL, $2, 'effect', $3, false, $4, $5, $6, $7, $8, $9, $10, false, $11, sqlc.narg(resolved_at), $12
+)
+RETURNING *;
+
+-- name: InsertCharacterEffect :one
+-- An effect on a character out of a running combat, with the id it had in the combat when it
+-- comes from one (the record changes home, it is never copied).
+INSERT INTO character_effects (
+    id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration,
+    condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc,
+    on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired,
+    player_visible, audience, player_label, created_at
+) VALUES (
+    COALESCE(sqlc.narg(id)::UUID, gen_random_uuid()), $1, $2, sqlc.narg(source_character_id), $3, $4, $5, $6,
+    $7, $8, $9, sqlc.narg(seconds_left), sqlc.narg(end_save_ability), sqlc.narg(start_save_ability), sqlc.narg(save_dc),
+    sqlc.narg(on_fail_effect), sqlc.narg(follows_key), sqlc.narg(trigger_dice), sqlc.narg(trigger_damage_type), sqlc.narg(trigger_max_triggers), $10,
+    $11, $12, sqlc.narg(player_label), $13
+)
+RETURNING *;
+
+-- name: ListCharacterEffects :many
+SELECT * FROM character_effects WHERE character_id = ANY($1::UUID[]) ORDER BY created_at, id;
+
+-- name: ListCharacterEffectsOfCampaign :many
+SELECT * FROM character_effects WHERE campaign_id = $1 ORDER BY created_at, id;
+
+-- name: GetCharacterEffect :one
+SELECT * FROM character_effects WHERE id = $1 AND campaign_id = $2;
+
+-- name: DeleteCharacterEffect :exec
+DELETE FROM character_effects WHERE id = $1;
+
+-- name: DeleteCharacterEffectsOfGroup :many
+-- The effects of a casting end together.
+DELETE FROM character_effects WHERE campaign_id = $1 AND group_id = $2 RETURNING *;
+
+-- name: SetCharacterEffectSeconds :exec
+UPDATE character_effects SET seconds_left = $2 WHERE id = $1;
+
+-- name: AdvanceCharacterEffects :many
+-- The master moves game time on: what has a clock loses the seconds, and what has none left
+-- is returned to be ended.
+UPDATE character_effects SET seconds_left = GREATEST(seconds_left - $2::INT4, 0)
+WHERE campaign_id = $1 AND seconds_left IS NOT NULL
+RETURNING *;
+
+-- name: DeleteCharacterEffectsOfCharacter :exec
+-- A character that died keeps no old effect when it lives again.
+DELETE FROM character_effects WHERE character_id = $1;
+
+-- name: SetCharacterEffectModifiers :exec
+UPDATE character_effects SET modifiers = $2 WHERE id = $1;
+
+-- name: SetLastingEffectModifiers :exec
+UPDATE combatant_states SET modifiers = $2 WHERE id = $1 AND kind = 'effect';
+
+-- name: DeleteLongRestEffectsOfCampaign :many
+-- A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests.
+DELETE FROM character_effects WHERE campaign_id = $1 AND duration_kind = 'long_rest' RETURNING *;
+
+-- name: ListCombatEffectsOfCharacter :many
+-- The effects on a character's combatants in the combats that are not ended.
+SELECT cs.* FROM combatant_states cs
+JOIN combatants c ON c.id = cs.combatant_id
+JOIN encounters e ON e.id = c.encounter_id
+WHERE c.character_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
+ORDER BY cs.created_at, cs.id;
+
+-- name: ListCombatEffectsOfGroup :many
+-- The effects of one casting that a combat holds now (the cast ended while a fight ran), with
+-- the character each is on.
+SELECT cs.id, c.character_id FROM combatant_states cs
+JOIN combatants c ON c.id = cs.combatant_id
+JOIN encounters e ON e.id = cs.encounter_id
+WHERE cs.group_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
+ORDER BY cs.created_at, cs.id;
+
+-- name: DeleteCharacterEffectsOfSpell :many
+-- The same spell cast again on a character replaces the first (SRD 5.1, Combining Magical
+-- Effects): the effects of the other castings go.
+DELETE FROM character_effects WHERE character_id = $1 AND source_key = $2 AND group_id <> $3 RETURNING id;

@@ -87,6 +87,9 @@
           (choose)="toggle($event)"
         />
       }
+      @if (asksAbility()) {
+        <app-ability-picker [chosen]="ability()" (pick)="ability.set($event)" />
+      }
       @if (rollsDice()) {
         <app-roll-picker
           [compact]="true"

@@ -42,6 +42,9 @@
             @if ((v.hitPointsMaxBonus ?? 0) > 0) {
               <span class="mr-tag js-aid">{{ aidTag(v.hitPointsMaxBonus ?? 0) }}</span>
             }
+            @if ((v.armorClassBase ?? 0) > 0) {
+              <span class="mr-tag js-armor-base">CA {{ v.armorClassBase }} (efeito)</span>
+            }
             @if (v.wildShape; as beast) {
               <span class="mr-tag js-beast"
                 >{{ beast.beastNamePt }} {{ beast.hitPointsCurrent }} de {{ beast.hitPointsMax }} PV</span

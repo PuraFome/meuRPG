@@ -2,6 +2,7 @@ import { brisaVitals, pensantusVitals } from './testing';
 import {
   applySnapshot,
   applyVitals,
+  betterArmorClass,
   hitPointsPercent,
   hitPointsState,
   partyRowSub,
@@ -107,5 +108,19 @@ describe('party row words', () => {
       'Quem joga com Pensantus vê a mudança na hora.',
     );
     expect(whoSeesTheChange('Ana', 'Brisa')).toBe('Ana vê a mudança na hora.');
+  });
+});
+
+describe('betterArmorClass', () => {
+  it('shows the base armor class an effect gives (Armadura Arcana) when it is better than the sheet', () => {
+    expect(betterArmorClass(12, 15)).toBe(15);
+    expect(betterArmorClass(16, 15)).toBe(16);
+  });
+
+  it('keeps the sheet without an effect, and has a number only from the effect when there is no sheet', () => {
+    expect(betterArmorClass(12, undefined)).toBe(12);
+    expect(betterArmorClass(12, 0)).toBe(12);
+    expect(betterArmorClass(null, 15)).toBe(15);
+    expect(betterArmorClass(null, undefined)).toBeNull();
   });
 });

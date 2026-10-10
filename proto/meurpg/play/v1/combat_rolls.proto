@@ -70,6 +70,20 @@ enum AdvantageSourceKind {
   // SRD 5.1, "Help": an ally's Help aimed at the target gives the next attack roll
   // against it advantage.
   ADVANTAGE_SOURCE_KIND_HELP = 30;
+  // Effects that last (RN-22): exhaustion levels 3 (attack rolls and saving throws) and 1
+  // (ability checks), Faerie Fire's outline on the target, and the advantage on saving
+  // throws an effect gives (Velocidade). "Outra fonte" is the same kind with no name,
+  // for a player when the master hides the effect.
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK = 100;
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE = 101;
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK = 102;
+  ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET = 103;
+  ADVANTAGE_SOURCE_KIND_EFFECT_SAVE = 104;
+  ADVANTAGE_SOURCE_KIND_OTHER_SOURCE = 105;
+  // A die an effect added to the roll ("Bênção +1d4"), outside combat too.
+  ADVANTAGE_SOURCE_KIND_EFFECT_DIE = 106;
+  // The advantage an effect gives on ability checks (Aprimorar Habilidade).
+  ADVANTAGE_SOURCE_KIND_EFFECT_CHECK = 107;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A

@@ -62,6 +62,9 @@ message SearchForTrapsRequest {
   // they were rolled. The server says which counts. Required (two faces) then; it
   // replaces d20_face and d20_face_2.
   repeated int32 d20_faces = 8;
+  // Physical dice: the faces of the dice an effect adds to the roll (Bênção, Orientação), one
+  // for each, 1 to the die's faces. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 9;
 }
 
 // SearchForTrapsResponse is what the search found.

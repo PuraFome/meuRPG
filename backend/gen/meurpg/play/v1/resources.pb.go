@@ -671,8 +671,11 @@ type TakeRestRequest struct {
 	// Long rest: which hit dice come back, for the characters whose player chose;
 	// a character without a choice gets the default (the largest dice first).
 	HitDiceChoices []*HitDiceChoice `protobuf:"bytes,4,rep,name=hit_dice_choices,json=hitDiceChoices,proto3" json:"hit_dice_choices,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Long rest: a character with exhaustion loses one level when the rest had food and
+	// drink (SRD 5.1, Resting: "Finishing a Long Rest"). True when the table had none.
+	WithoutFoodOrDrink bool `protobuf:"varint,100,opt,name=without_food_or_drink,json=withoutFoodOrDrink,proto3" json:"without_food_or_drink,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *TakeRestRequest) Reset() {
@@ -731,6 +734,13 @@ func (x *TakeRestRequest) GetHitDiceChoices() []*HitDiceChoice {
 		return x.HitDiceChoices
 	}
 	return nil
+}
+
+func (x *TakeRestRequest) GetWithoutFoodOrDrink() bool {
+	if x != nil {
+		return x.WithoutFoodOrDrink
+	}
+	return false
 }
 
 type HitDiceChoice struct {
@@ -1849,13 +1859,14 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x05total\x18\x04 \x01(\x05R\x05total\";\n" +
 	"\rSpellSlotBack\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x14\n" +
-	"\x05count\x18\x02 \x01(\x05R\x05count\"\xd2\x01\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\"\x85\x02\n" +
 	"\x0fTakeRestRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12,\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x18.meurpg.play.v1.RestKindR\x04kind\x12'\n" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x12G\n" +
-	"\x10hit_dice_choices\x18\x04 \x03(\v2\x1d.meurpg.play.v1.HitDiceChoiceR\x0ehitDiceChoices\"`\n" +
+	"\x10hit_dice_choices\x18\x04 \x03(\v2\x1d.meurpg.play.v1.HitDiceChoiceR\x0ehitDiceChoices\x121\n" +
+	"\x15without_food_or_drink\x18d \x01(\bR\x12withoutFoodOrDrink\"`\n" +
 	"\rHitDiceChoice\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12,\n" +
 	"\x04dice\x18\x02 \x03(\v2\x18.meurpg.rules.v1.HitDiceR\x04dice\"K\n" +

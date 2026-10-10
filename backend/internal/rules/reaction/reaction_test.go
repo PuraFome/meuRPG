@@ -151,3 +151,15 @@ func TestWaitSentences(t *testing.T) {
 		})
 	}
 }
+
+func TestAnEffectSaveIsNotClosedByIncapacitationOrAReaction(t *testing.T) {
+	t.Parallel()
+	// The saving throw of an effect is asked of a creature that may well be incapacitated by that
+	// very effect (Hold Person), and costs no reaction: the window stays open until its trigger goes.
+	if reason, closed := Closure(EffectSave, Facts{Incapacitated: true, ReactionUsed: true}); closed {
+		t.Errorf("Closure() = %q, want the window open", reason)
+	}
+	if reason, closed := Closure(EffectSave, Facts{TriggerGone: true}); !closed || reason != ReasonTriggerGone {
+		t.Errorf("Closure(trigger gone) = %q, %v", reason, closed)
+	}
+}

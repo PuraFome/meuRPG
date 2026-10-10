@@ -124,7 +124,10 @@ type SearchForTrapsRequest struct {
 	// disadvantage (SRD 5.1, "Advantage and Disadvantage"): both faces, in the order
 	// they were rolled. The server says which counts. Required (two faces) then; it
 	// replaces d20_face and d20_face_2.
-	D20Faces      []int32 `protobuf:"varint,8,rep,packed,name=d20_faces,json=d20Faces,proto3" json:"d20_faces,omitempty"`
+	D20Faces []int32 `protobuf:"varint,8,rep,packed,name=d20_faces,json=d20Faces,proto3" json:"d20_faces,omitempty"`
+	// Physical dice: the faces of the dice an effect adds to the roll (Bênção, Orientação), one
+	// for each, 1 to the die's faces. With the app's dice the server rolls them.
+	ExtraDieFaces []int32 `protobuf:"varint,9,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -222,6 +225,13 @@ func (x *SearchForTrapsRequest) GetOtherSkillKey() string {
 func (x *SearchForTrapsRequest) GetD20Faces() []int32 {
 	if x != nil {
 		return x.D20Faces
+	}
+	return nil
+}
+
+func (x *SearchForTrapsRequest) GetExtraDieFaces() []int32 {
+	if x != nil {
+		return x.ExtraDieFaces
 	}
 	return nil
 }
@@ -1355,7 +1365,7 @@ var File_meurpg_play_v1_traps_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\n" +
-	"\x1ameurpg/play/v1/traps.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a!meurpg/play/v1/combat_rolls.proto\"\xd6\x02\n" +
+	"\x1ameurpg/play/v1/traps.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a!meurpg/play/v1/combat_rolls.proto\"\xfe\x02\n" +
 	"\x15SearchForTrapsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x125\n" +
@@ -1366,7 +1376,8 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\n" +
 	"d20_face_2\x18\x06 \x01(\x05H\x01R\bd20Face2\x88\x01\x01\x12&\n" +
 	"\x0fother_skill_key\x18\a \x01(\tR\rotherSkillKey\x12\x1b\n" +
-	"\td20_faces\x18\b \x03(\x05R\bd20FacesB\x06\n" +
+	"\td20_faces\x18\b \x03(\x05R\bd20Faces\x12&\n" +
+	"\x0fextra_die_faces\x18\t \x03(\x05R\rextraDieFacesB\x06\n" +
 	"\x04rollB\r\n" +
 	"\v_d20_face_2\"\xb5\x02\n" +
 	"\x16SearchForTrapsResponse\x12,\n" +

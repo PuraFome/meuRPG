@@ -1,0 +1,189 @@
+<section class="mr-panel fx" aria-labelledby="fx-title" data-testid="effects-panel">
+  <div class="fx__head">
+    <div class="fx__titles">
+      <h2 class="mr-panel__title fx__title" id="fx-title" tabindex="-1" data-effects-title>Efeitos em jogo</h2>
+      <p class="fx__count">{{ subtitle() }}</p>
+    </div>
+    <div class="fx__tools">
+      <button matButton="outlined" type="button" data-testid="add-effect" (click)="openAdd()">
+        <mat-icon aria-hidden="true">add</mat-icon>Adicionar efeito
+      </button>
+      <button matButton="outlined" type="button" data-testid="open-exhaustion" (click)="openExhaustion()">
+        <mat-icon aria-hidden="true">battery_alert</mat-icon>Exaustão
+      </button>
+    </div>
+  </div>
+
+  @if (loadError()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ loadError() }}</p>
+    </div>
+  }
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ done() }}</p>
+
+  @if (data() === null && !loadError()) {
+    <p class="mr-muted" role="status">Lendo os efeitos...</p>
+  } @else if (rows().length === 0) {
+    <p class="fx__empty">Nenhum efeito em jogo agora.</p>
+  } @else {
+    <div class="fx__cols" aria-hidden="true">
+      <span>Efeito</span>
+      <span>Em quem</span>
+      <span>Origem</span>
+      <span>Duração e fim</span>
+      <span>Jogadores veem</span>
+      <span></span>
+    </div>
+    <ul class="fx__rows" aria-label="Efeitos em jogo">
+      @for (row of rows(); track row.effect.id) {
+        <li class="fx__row" [attr.aria-labelledby]="'fx-n-' + row.effect.id" data-testid="effect-row">
+          <div class="fx__name">
+            <h3 class="fx__nametext" [id]="'fx-n-' + row.effect.id">{{ row.effect.sourceNamePt }}</h3>
+            @if (row.effect.concentration) {
+              <span class="fx__pill"><mat-icon aria-hidden="true">auto_awesome</mat-icon>Concentração</span>
+            }
+          </div>
+          <p class="fx__sub">{{ row.subtitle }}</p>
+          <p class="fx__who"><span class="mr-visually-hidden">Em quem: </span>{{ row.targets }}</p>
+          <p class="fx__origin"><span class="mr-visually-hidden">Origem: </span>{{ row.effect.originPt }}</p>
+          <div class="fx__end">
+            <p class="fx__line">
+              <mat-icon aria-hidden="true">schedule</mat-icon>
+              <span><span class="mr-visually-hidden">Duração e fim: </span>{{ row.end }}</span>
+            </p>
+            @if (row.save) {
+              <p class="fx__line fx__line--save">
+                <mat-icon aria-hidden="true">casino</mat-icon>
+                <span>{{ row.save }}</span>
+              </p>
+            }
+            @if (row.tags) {
+              <p class="fx__tags">{{ row.tags }}</p>
+            }
+          </div>
+          <div class="fx__see">
+            <button type="button" class="fx__seebtn" data-testid="open-visibility" (click)="openVisibility(row)">
+              <mat-icon class="fx__eye" aria-hidden="true">{{ row.effect.playerVisible ? 'visibility' : 'visibility_off' }}</mat-icon>
+              <span class="fx__seephone">Jogadores veem: {{ row.seeShort }}</span>
+              <span class="fx__seedesk"><span class="mr-visually-hidden">Jogadores veem: </span>{{ row.see }}</span>
+              <span class="mr-visually-hidden">. Mudar o que os jogadores veem de {{ row.effect.sourceNamePt }} em {{ row.targets }}</span>
+            </button>
+          </div>
+          <div class="fx__actions">
+            <button
+              matButton="outlined"
+              type="button"
+              class="fx__btn"
+              [attr.data-end]="row.effect.id"
+              [attr.aria-label]="'Encerrar ' + row.effect.sourceNamePt + ' em ' + row.targets"
+              [attr.aria-expanded]="row.effect.concentration ? asking() === row.effect.id : null"
+              [disabled]="busy()"
+              disabledInteractive
+              (click)="end(row)"
+            >
+              {{ row.several ? 'Encerrar ' + row.effect.sourceNamePt : 'Encerrar' }}
+            </button>
+            <button
+              matButton="outlined"
+              type="button"
+              class="fx__btn fx__btn--duration"
+              [attr.aria-label]="'Mudar a duração de ' + row.effect.sourceNamePt + ' em ' + row.targets"
+              [disabled]="busy()"
+              disabledInteractive
+              (click)="openDuration(row)"
+            >
+              Mudar a duração
+            </button>
+            @if (row.several) {
+              <button
+                type="button"
+                class="fx__link"
+                [attr.aria-expanded]="removing() === row.effect.id"
+                [attr.aria-label]="'Tirar de um alvo, ' + row.effect.sourceNamePt"
+                [disabled]="busy()"
+                (click)="toggleRemoving(row)"
+              >
+                Tirar de um alvo
+              </button>
+            }
+          </div>
+          @if (removing() === row.effect.id) {
+            <div class="fx__remove" role="group" [attr.aria-label]="'Tirar ' + row.effect.sourceNamePt + ' de um alvo'">
+              @for (label of row.effect.targetLabels; track $index) {
+                <button
+                  matButton="outlined"
+                  type="button"
+                  class="fx__btn"
+                  [disabled]="busy()"
+                  disabledInteractive
+                  (click)="removeTarget(row, $index)"
+                >
+                  Tirar {{ label }}
+                </button>
+              }
+            </div>
+          }
+          @if (asking() === row.effect.id) {
+            <div
+              class="fx__ask"
+              role="alertdialog"
+              [attr.data-ask]="row.effect.id"
+              [attr.aria-labelledby]="'fx-ask-t-' + row.effect.id"
+              [attr.aria-describedby]="'fx-ask-d-' + row.effect.id"
+              (keydown.escape)="cancelAsk(row)"
+            >
+              <mat-icon class="fx__askicon" aria-hidden="true">warning</mat-icon>
+              <div class="fx__asktext">
+                <h4 class="fx__asktitle" [id]="'fx-ask-t-' + row.effect.id">{{ row.questionTitle }}</h4>
+                <p class="fx__askbody" [id]="'fx-ask-d-' + row.effect.id">{{ row.question }}</p>
+                <div class="fx__askbtns">
+                  <button
+                    matButton="outlined"
+                    type="button"
+                    class="fx__btn fx__btn--danger"
+                    [disabled]="busy()"
+                    [attr.aria-busy]="busy()"
+                    (click)="confirmEnd(row)"
+                  >
+                    Encerrar {{ row.effect.sourceNamePt }}
+                  </button>
+                  <button matButton="outlined" type="button" class="fx__btn" data-initial-focus [disabled]="busy()" (click)="cancelAsk(row)">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <section class="fx__clock" aria-labelledby="fx-clock-title" data-testid="turn-clock">
+    <h3 class="fx__clocktitle" id="fx-clock-title">
+      O relógio dos turnos{{ turnLabel() ? ', a partir da vez de ' + turnLabel() : '' }}
+    </h3>
+    @if (clock().length === 0) {
+      <p class="fx__empty">Nada acaba nem pede um teste nos próximos turnos.</p>
+    } @else {
+      <ol class="fx__clocklist">
+        @for (c of clock(); track trackClock(c.entry)) {
+          <li class="fx__tick">
+            <mat-icon class="fx__tickicon" aria-hidden="true">{{ c.icon }}</mat-icon>
+            <div>
+              <p class="fx__ticktitle">{{ c.title }}</p>
+              <p class="fx__ticktext">{{ c.entry.textPt }}</p>
+            </div>
+          </li>
+        }
+      </ol>
+    }
+  </section>
+</section>

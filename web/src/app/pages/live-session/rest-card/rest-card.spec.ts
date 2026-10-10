@@ -242,6 +242,74 @@ describe('RestCard (PM-07b 9)', () => {
     expect(flat(el.querySelector('[role="status"]'))).toBe('Descanso curto feito.');
   });
 
+  describe('food and drink (a long rest lowers exhaustion by one level)', () => {
+    const toggle = (el: HTMLElement) =>
+      el.querySelector('.question__food button[role="switch"]') as HTMLButtonElement | null;
+
+    it('asks "Sem comida ou bebida" in a long rest, off, so food and drink is the default', async () => {
+      restPreviewFn.mockResolvedValue(boardParty());
+      const { el, settle, button } = render();
+      button('Descanso longo').click();
+      await settle();
+      const sw = toggle(el)!;
+      expect(sw.getAttribute('aria-checked')).toBe('false');
+      expect(flat(el.querySelector('.question__food'))).toContain('Sem comida ou bebida');
+      expect(flat(el.querySelector('.question__food'))).toContain(
+        'Com comida e bebida, o descanso longo baixa 1 nível de exaustão de cada personagem.',
+      );
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][4]).toBe(false);
+    });
+
+    it('sends without_food_or_drink when the table had none, and keeps its own key for it', async () => {
+      restPreviewFn.mockResolvedValue(boardParty());
+      takeRest.mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable));
+      const { el, settle, button } = render();
+      button('Descanso longo').click();
+      await settle();
+      toggle(el)!.click();
+      await settle();
+      expect(toggle(el)!.getAttribute('aria-checked')).toBe('true');
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][4]).toBe(true);
+      toggle(el)!.click();
+      await settle();
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[1][4]).toBe(false);
+      expect(takeRest.mock.calls[1][2]).not.toBe(takeRest.mock.calls[0][2]);
+    });
+
+    it('does not ask it in a short rest, which never takes a level off', async () => {
+      restPreviewFn.mockResolvedValue(
+        restPreviewResponse([restPreview({ characterId: 'a', name: 'Ana' })]),
+      );
+      const { el, settle, button } = render();
+      button('Descanso curto').click();
+      await settle();
+      expect(toggle(el)).toBeNull();
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][4]).toBe(false);
+    });
+
+    it('starts the next long rest with the switch off again', async () => {
+      restPreviewFn.mockResolvedValue(boardParty());
+      const { el, settle, button } = render();
+      button('Descanso longo').click();
+      await settle();
+      toggle(el)!.click();
+      await settle();
+      button('Cancelar').click();
+      await settle();
+      button('Descanso longo').click();
+      await settle();
+      expect(toggle(el)!.getAttribute('aria-checked')).toBe('false');
+    });
+  });
+
   it('sends the same key on a retry after a failure, and a new one for the next rest', async () => {
     restPreviewFn.mockResolvedValue(boardParty());
     takeRest.mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable));

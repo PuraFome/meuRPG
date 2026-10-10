@@ -1116,11 +1116,19 @@ func TestRN25_ConditionsThatLeaveNoSpeed(t *testing.T) {
 			t.Errorf("%s: GetMoveOptions = %v, %v; want 0 left", key, res.Msg, err)
 		}
 	}
+	// An incapacitated creature takes no action at all (SRD 5.1, Conditions); a grappled one
+	// has no speed and may still act.
+	if _, err := a.action(t, a.caio, e, "Toren", "standard:dash"); err == nil {
+		t.Errorf("an unconscious Toren dashed")
+	}
+	if _, err := a.conditions(t, a.master, e, "Toren", []string{"condition:grappled"}, true, false); err != nil {
+		t.Fatalf("SetCombatantConditions(grappled) error = %v", err)
+	}
 	if _, err := a.action(t, a.caio, e, "Toren", "standard:dash"); err != nil {
 		t.Fatalf("Dash error = %v", err)
 	}
 	if got := a.theatreCombatant(t, a.caio, "Toren").GetMovementLeftDft(); got != 0 {
-		t.Errorf("a stunned Toren that dashes has %d left, want 0 (twice nothing)", got)
+		t.Errorf("a grappled Toren that dashes has %d left, want 0 (twice nothing)", got)
 	}
 	if _, err := a.conditions(t, a.master, e, "Toren", nil, true, false); err != nil {
 		t.Fatalf("clearing the conditions error = %v", err)

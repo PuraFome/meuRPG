@@ -130,6 +130,11 @@
   font-weight: 700;
 }
 
+.question__food {
+  padding-top: var(--mr-space-2);
+  border-top: 1px solid var(--mr-rule);
+}
+
 .question__buttons {
   display: flex;
   flex-wrap: wrap;

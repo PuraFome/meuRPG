@@ -50,6 +50,8 @@ import {
 import { metersText } from '../../../../core/units';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { SlotPicker } from '../cast-sheet/slot-picker';
+import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
+import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { injectSheet } from '../sheet-host';
@@ -109,7 +111,15 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 @Component({
   selector: 'app-reaction-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, NgTemplateOutlet, RollPicker, SheetFrame, SlotPicker],
+  imports: [
+    ExtraDice,
+    MatButtonModule,
+    MatIconModule,
+    NgTemplateOutlet,
+    RollPicker,
+    SheetFrame,
+    SlotPicker,
+  ],
   host: { '(keydown)': 'onKey($event)' },
   template: `
     <app-sheet-frame
@@ -157,6 +167,9 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
               <p class="small">{{ v.note }}</p>
             }
             @if (typingSave()) {
+              @if (extra.fields().length > 0) {
+                <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
+              }
               <app-roll-picker
                 [canApp]="false"
                 [canType]="true"
@@ -371,6 +384,8 @@ export class ReactionSheet {
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly typingSave = signal(false);
+  /** The d4 an effect adds to the typed saving throw (Bênção, Perdição): asked when the server says the roll takes them. */
+  protected readonly extra = new ExtraDiceState();
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
   /** What the answer did, once the server told it. */
   private readonly answer = signal<
@@ -655,6 +670,13 @@ export class ReactionSheet {
       return;
     }
     const w = this.asked();
+    const extra = this.extra.take(how.kind === 'typed');
+    if (extra === null) {
+      this.error.set(this.extra.missingText());
+      return;
+    }
+    const sent: ConcentrationAnswer =
+      how.kind === 'typed' && extra.length > 0 ? { ...how, extra } : how;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -662,8 +684,8 @@ export class ReactionSheet {
         this.data.campaignId,
         this.data.encounterId,
         w.id,
-        how,
-        this.keys.keyFor({ window: w.id, how }),
+        sent,
+        this.keys.keyFor({ window: w.id, how: sent }),
       );
       this.data.state.apply(res.encounter);
       if (!res.result) {
@@ -675,6 +697,11 @@ export class ReactionSheet {
       this.step.set('result');
       this.typingSave.set(false);
     } catch (err) {
+      const more = this.extra.fromRefusal(err);
+      if (more) {
+        this.error.set(more);
+        return;
+      }
       await this.failed(err, null, 'resolver o teste de concentração');
     } finally {
       this.busy.set(false);

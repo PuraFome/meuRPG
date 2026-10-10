@@ -1621,9 +1621,18 @@ const (
 	DisabledReasonCode_DISABLED_REASON_CODE_ATTACK_ACTION_FIRST DisabledReasonCode = 16
 	// CombatService.GetTurnOptions: the combatant is surprised (SRD 5.1, "Surprise"): it
 	// does not move, act or react until its first turn ends.
-	DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED DisabledReasonCode = 100
+	DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED DisabledReasonCode = 110
 	// A grappled combatant's movement: its speed is 0 (SRD 5.1, Conditions, Grappled).
-	DisabledReasonCode_DISABLED_REASON_CODE_GRAPPLED DisabledReasonCode = 101
+	DisabledReasonCode_DISABLED_REASON_CODE_GRAPPLED DisabledReasonCode = 111
+	// The combatant is incapacitated (SRD, Conditions: Incapacitated, Paralyzed, Petrified,
+	// Stunned, Unconscious): no actions and no reactions. `text_pt` says it without naming
+	// the cause to a player.
+	DisabledReasonCode_DISABLED_REASON_CODE_INCAPACITATED DisabledReasonCode = 100
+	// The lethargy a Velocidade leaves when it ends: no movement and no action until after
+	// the creature's next turn.
+	DisabledReasonCode_DISABLED_REASON_CODE_EFFECT_LETHARGY DisabledReasonCode = 101
+	// The speed is 0 (Impedido, Agarrado, exhaustion 5, an effect): the movement line only.
+	DisabledReasonCode_DISABLED_REASON_CODE_SPEED_ZERO DisabledReasonCode = 102
 )
 
 // Enum value maps for DisabledReasonCode.
@@ -1646,8 +1655,11 @@ var (
 		14:  "DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN",
 		15:  "DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT",
 		16:  "DISABLED_REASON_CODE_ATTACK_ACTION_FIRST",
-		100: "DISABLED_REASON_CODE_SURPRISED",
-		101: "DISABLED_REASON_CODE_GRAPPLED",
+		110: "DISABLED_REASON_CODE_SURPRISED",
+		111: "DISABLED_REASON_CODE_GRAPPLED",
+		100: "DISABLED_REASON_CODE_INCAPACITATED",
+		101: "DISABLED_REASON_CODE_EFFECT_LETHARGY",
+		102: "DISABLED_REASON_CODE_SPEED_ZERO",
 	}
 	DisabledReasonCode_value = map[string]int32{
 		"DISABLED_REASON_CODE_UNSPECIFIED":              0,
@@ -1667,8 +1679,11 @@ var (
 		"DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN":   14,
 		"DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT": 15,
 		"DISABLED_REASON_CODE_ATTACK_ACTION_FIRST":      16,
-		"DISABLED_REASON_CODE_SURPRISED":                100,
-		"DISABLED_REASON_CODE_GRAPPLED":                 101,
+		"DISABLED_REASON_CODE_SURPRISED":                110,
+		"DISABLED_REASON_CODE_GRAPPLED":                 111,
+		"DISABLED_REASON_CODE_INCAPACITATED":            100,
+		"DISABLED_REASON_CODE_EFFECT_LETHARGY":          101,
+		"DISABLED_REASON_CODE_SPEED_ZERO":               102,
 	}
 )
 
@@ -8963,7 +8978,13 @@ type DisabledReason struct {
 	// For DISABLED_REASON_CODE_NO_SLOT: the lowest slot level that would do.
 	MinLevel int32 `protobuf:"varint,2,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
 	// For DISABLED_REASON_CODE_NO_USES: when the uses come back.
-	Recharge      Recharge `protobuf:"varint,3,opt,name=recharge,proto3,enum=meurpg.rules.v1.Recharge" json:"recharge,omitempty"`
+	Recharge Recharge `protobuf:"varint,3,opt,name=recharge,proto3,enum=meurpg.rules.v1.Recharge" json:"recharge,omitempty"`
+	// The reason as the caller may read it ("Você não pode agir.", "Indisponível: Impedido."),
+	// already without a cause a player may not read (RN-20). Only the reasons of effects and
+	// conditions carry it.
+	TextPt string `protobuf:"bytes,100,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
+	// Only the master: the same with the cause.
+	TextMasterPt  string `protobuf:"bytes,101,opt,name=text_master_pt,json=textMasterPt,proto3" json:"text_master_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9017,6 +9038,20 @@ func (x *DisabledReason) GetRecharge() Recharge {
 		return x.Recharge
 	}
 	return Recharge_RECHARGE_UNSPECIFIED
+}
+
+func (x *DisabledReason) GetTextPt() string {
+	if x != nil {
+		return x.TextPt
+	}
+	return ""
+}
+
+func (x *DisabledReason) GetTextMasterPt() string {
+	if x != nil {
+		return x.TextMasterPt
+	}
+	return ""
 }
 
 // AttackOption is an attack the character can make.
@@ -11526,11 +11561,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x11long_standing_dft\x18\x02 \x01(\x05R\x0flongStandingDft\x12(\n" +
 	"\x10high_running_dft\x18\x03 \x01(\x05R\x0ehighRunningDft\x12*\n" +
 	"\x11high_standing_dft\x18\x04 \x01(\x05R\x0fhighStandingDft\x12#\n" +
-	"\rrunning_start\x18\x05 \x01(\bR\frunningStart\"\x9d\x01\n" +
+	"\rrunning_start\x18\x05 \x01(\bR\frunningStart\"\xdc\x01\n" +
 	"\x0eDisabledReason\x127\n" +
 	"\x04code\x18\x01 \x01(\x0e2#.meurpg.rules.v1.DisabledReasonCodeR\x04code\x12\x1b\n" +
 	"\tmin_level\x18\x02 \x01(\x05R\bminLevel\x125\n" +
-	"\brecharge\x18\x03 \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\"\xd2\x02\n" +
+	"\brecharge\x18\x03 \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\x12\x17\n" +
+	"\atext_pt\x18d \x01(\tR\x06textPt\x12$\n" +
+	"\x0etext_master_pt\x18e \x01(\tR\ftextMasterPt\"\xd2\x02\n" +
 	"\fAttackOption\x12/\n" +
 	"\x06attack\x18\x01 \x01(\v2\x17.meurpg.rules.v1.AttackR\x06attack\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
@@ -11846,7 +11883,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x14CREATURE_SIZE_MEDIUM\x10\x03\x12\x17\n" +
 	"\x13CREATURE_SIZE_LARGE\x10\x04\x12\x16\n" +
 	"\x12CREATURE_SIZE_HUGE\x10\x05\x12\x1c\n" +
-	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\xab\x06\n" +
+	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\xa2\a\n" +
 	"\x12DisabledReasonCode\x12$\n" +
 	" DISABLED_REASON_CODE_UNSPECIFIED\x10\x00\x12$\n" +
 	" DISABLED_REASON_CODE_ACTION_USED\x10\x01\x12*\n" +
@@ -11866,8 +11903,11 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"+DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN\x10\x0e\x121\n" +
 	"-DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT\x10\x0f\x12,\n" +
 	"(DISABLED_REASON_CODE_ATTACK_ACTION_FIRST\x10\x10\x12\"\n" +
-	"\x1eDISABLED_REASON_CODE_SURPRISED\x10d\x12!\n" +
-	"\x1dDISABLED_REASON_CODE_GRAPPLED\x10e*\x9f\x01\n" +
+	"\x1eDISABLED_REASON_CODE_SURPRISED\x10n\x12!\n" +
+	"\x1dDISABLED_REASON_CODE_GRAPPLED\x10o\x12&\n" +
+	"\"DISABLED_REASON_CODE_INCAPACITATED\x10d\x12(\n" +
+	"$DISABLED_REASON_CODE_EFFECT_LETHARGY\x10e\x12#\n" +
+	"\x1fDISABLED_REASON_CODE_SPEED_ZERO\x10f*\x9f\x01\n" +
 	"\x0fBonusAttackRule\x12!\n" +
 	"\x1dBONUS_ATTACK_RULE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aBONUS_ATTACK_RULE_OFF_HAND\x10\x01\x12\"\n" +

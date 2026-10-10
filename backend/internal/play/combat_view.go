@@ -361,7 +361,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.InitiativeBonus = new(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
 		shareEconomy(out, c)
-		out.ArmorClassBonus = c.AcBonus
+		out.ArmorClassBonus = c.AcBonus + c.EffectAcBonus
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}
 	if w := vitals.GetWildShape(); w != nil && c.Kind == kindPlayer {
@@ -520,6 +520,10 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 	// The turn waits for the master's answer: everyone is told it waits, only the
 	// master why.
 	if out.PendingHiddenReveals, out.TurnHeld, err = s.hiddenRevealsView(ctx, d, v); err != nil {
+		return nil, err
+	}
+	// The effects that last: the cards, the labels and the conditions the viewer may read (RN-22).
+	if err := s.decorateEffects(ctx, m, d, v, names, out); err != nil {
 		return nil, err
 	}
 	return out, nil

@@ -417,7 +417,9 @@ func (s *Service) UpdateCharacter(
 	}
 
 	var row charactersdb.Character
+	var afterArmor func(ctx context.Context)
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		afterArmor = nil
 		q := s.queries.WithTx(tx)
 		current, err := visibleForUpdate(ctx, q, m, id)
 		if err != nil {
@@ -496,8 +498,24 @@ func (s *Service) UpdateCharacter(
 		if err != nil {
 			return wrap("update sheet", err)
 		}
-		return s.carryHitPoints(ctx, q, content, id, current.Sheet, sheetDoc)
+		if err := s.carryHitPoints(ctx, q, content, id, current.Sheet, sheetDoc); err != nil {
+			return err
+		}
+		// A character that dons armor loses Mage Armor.
+		if s.reviewHost != nil && sheet.GetFull().GetArmorKey() != "" && storedSheet.GetFull().GetArmorKey() != sheet.GetFull().GetArmorKey() {
+			afterArmor, err = s.reviewHost.ArmorWorn(ctx, tx, m.CampaignID, id)
+			return err
+		}
+		// A shield (or armor taken off) changes what Mage Armor gives.
+		if s.reviewHost != nil && (storedSheet.GetFull().GetArmorKey() != sheet.GetFull().GetArmorKey() || storedSheet.GetFull().GetShield() != sheet.GetFull().GetShield()) {
+			afterArmor, err = s.reviewHost.GearChanged(ctx, tx, m.CampaignID, id)
+			return err
+		}
+		return nil
 	})
+	if afterArmor != nil && err == nil {
+		afterArmor(ctx)
+	}
 	if portraitCopy != nil && (err != nil || !copyCreated) {
 		portraitCopy.Discard(ctx) // no gallery row: the copy's files go
 	}

@@ -297,6 +297,9 @@ type Spell struct {
 	SaveAbility   string
 	SaveOnSuccess string
 	SaveDC        int
+	// CasterDC is the caster's spell save DC, whether or not the spell asks for a saving
+	// throw: the DC of the saves an effect that lasts asks later (Web, Hold Person).
+	CasterDC int
 	// Damages are the spell's damage at the slot level, one part for each damage
 	// type it deals (Ice Storm has two), empty when it has none the engine can
 	// roll; Heal is its healing with the caster's spellcasting modifier already in

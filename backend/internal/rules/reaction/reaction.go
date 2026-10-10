@@ -116,6 +116,8 @@ const (
 	MasterCheck       Kind = "master_check"
 	// Contest is a grapple, a shove or an escape that waits for a roll or a choice.
 	Contest Kind = "contest"
+	// EffectSave is the saving throw an effect that lasts asks at a turn (RN-22).
+	EffectSave Kind = "effect_save"
 )
 
 // Reason is why a window closed by itself.
@@ -127,6 +129,10 @@ const (
 	ReasonReactionSpent        Reason = "reaction_spent"
 	ReasonReactorIncapacitated Reason = "reactor_incapacitated"
 	ReasonTriggerGone          Reason = "trigger_gone"
+	// ReasonEffectEnded and ReasonCasterLostConcentration close the saving throw of an
+	// effect that ended, or whose caster lost the concentration.
+	ReasonEffectEnded             Reason = "effect_ended"
+	ReasonCasterLostConcentration Reason = "caster_lost_concentration"
 )
 
 // Facts are what decides whether an open window still stands.
@@ -144,7 +150,7 @@ type Facts struct {
 // ignores ReactionUsed. Incapacitated wins over a spent reaction, and both over a
 // gone trigger: the reason a reactor reads is about itself first.
 func Closure(kind Kind, f Facts) (Reason, bool) {
-	usesReaction := kind != Concentration && kind != MasterCheck && kind != Contest
+	usesReaction := kind != Concentration && kind != MasterCheck && kind != Contest && kind != EffectSave
 	switch {
 	case f.Incapacitated && usesReaction:
 		return ReasonReactorIncapacitated, true
@@ -200,6 +206,8 @@ type Wait struct {
 	// Contesters are the labels of the player's characters the reader sees that a
 	// contest waits for: "Esperando Sálvia".
 	Contesters []string
+	// EffectSavers are the ones that owe the saving throw of an effect that lasts.
+	EffectSavers []string
 }
 
 // Title is the line "Esperando ...": "Esperando o mestre", "Esperando a reação de
@@ -221,6 +229,9 @@ func (w Wait) Title() string {
 	}
 	if len(w.Savers) > 0 {
 		parts = append(parts, "o teste de Constituição de "+join(sorted(w.Savers)))
+	}
+	if len(w.EffectSavers) > 0 {
+		parts = append(parts, "o teste de "+join(sorted(w.EffectSavers)))
 	}
 	if len(parts) == 0 {
 		return ""

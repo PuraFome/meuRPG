@@ -54,11 +54,13 @@ export class ResourceClient {
     kind: RestKind,
     idempotencyKey: string,
     hitDiceChoices: readonly HitDiceChoiceSpec[] = [],
+    withoutFoodOrDrink = false,
   ): Promise<CharacterVitals[]> {
     const res = await this.client.takeRest({
       campaignId,
       kind,
       idempotencyKey,
+      withoutFoodOrDrink,
       hitDiceChoices: hitDiceChoices.map((c) => ({
         characterId: c.characterId,
         dice: c.dice.map((d) => ({ faces: d.faces, count: d.count })),

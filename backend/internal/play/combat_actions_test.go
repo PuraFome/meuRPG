@@ -366,6 +366,30 @@ func (a *armed) mustOptions(t *testing.T, u *user, e *playv1.Encounter, label st
 // drops a pending damage.
 func (a *armed) endTurn(t *testing.T, u *user, e *playv1.Encounter, discard bool) (*playv1.Encounter, error) {
 	t.Helper()
+	out, err := a.endTurnRaw(t, u, e, discard)
+	if err != nil {
+		return nil, err
+	}
+	// The saving throws effects ask at the end of the turn are not what these tests look at:
+	// the master skips them, and the effects stay (lasting_effects_test.go answers them).
+	for range 8 {
+		w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+		if w == nil {
+			break
+		}
+		if _, err := a.rollEffectSave(t, a.master, e, w.GetId(), func(r *playv1.RollEffectSaveRequest) {
+			r.Roll = &playv1.RollEffectSaveRequest_Skip{Skip: true}
+		}); err != nil {
+			t.Fatalf("RollEffectSave(skip) error = %v", err)
+		}
+		out = a.get(t, u)
+	}
+	return out, nil
+}
+
+// endTurnRaw is endTurn that leaves the saving throws of the effects to the caller.
+func (a *armed) endTurnRaw(t *testing.T, u *user, e *playv1.Encounter, discard bool) (*playv1.Encounter, error) {
+	t.Helper()
 	cur := a.get(t, a.master).GetCurrentCombatantId()
 	res, err := u.combat.EndTurn(t.Context(), connect.NewRequest(&playv1.EndTurnRequest{
 		CampaignId: a.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur, DiscardPendingDamage: discard,

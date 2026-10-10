@@ -20,6 +20,9 @@
           </div>
         }
       }
+      @if (asksAbility) {
+        <app-ability-picker [chosen]="ability()" (pick)="pickAbility($event)" />
+      }
       @if (damageChoices().length) {
         <app-damage-type-picker
           [choices]="damageChoices()"

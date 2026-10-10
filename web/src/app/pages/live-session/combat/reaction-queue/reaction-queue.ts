@@ -32,6 +32,8 @@ import {
 } from '../../../../core/combat/reaction-master';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { rollText } from '../../../../core/combat/combat-dice';
+import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
+import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { RollPicker } from '../roll-picker/roll-picker';
 
 let nextId = 0;
@@ -49,7 +51,7 @@ let nextId = 0;
 @Component({
   selector: 'app-reaction-queue',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, NgTemplateOutlet, RollPicker],
+  imports: [ExtraDice, MatButtonModule, MatIconModule, NgTemplateOutlet, RollPicker],
   template: `
     @for (card of cards(); track card.id) {
       @switch (card.type) {
@@ -188,6 +190,9 @@ let nextId = 0;
                   <strong>O teste é seu.</strong> Rolar no app usa d20 {{ bonusWord(card.window) }}; você pode decidir o resultado à mão.
                 </p>
               </div>
+              @if (extraWindow() === card.window.id && extra.fields().length > 0) {
+                <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
+              }
               <app-roll-picker
                 [outlined]="true"
                 [min]="1"
@@ -299,6 +304,9 @@ export class ReactionQueue {
 
   protected readonly uid = `rq-${nextId++}-`;
   protected readonly busy = signal(false);
+  /** The d4 an effect adds to a typed concentration save, asked for the window whose roll the server refused. */
+  protected readonly extra = new ExtraDiceState();
+  protected readonly extraWindow = signal('');
   protected readonly error = signal('');
   /** What the last answer did, for the live region. */
   protected readonly said = signal('');
@@ -405,6 +413,13 @@ export class ReactionQueue {
     if (this.busy()) {
       return;
     }
+    const extra = this.extraWindow() === w.id ? this.extra.take(how.kind === 'typed') : [];
+    if (extra === null) {
+      this.error.set(this.extra.missingText());
+      return;
+    }
+    const sent: ConcentrationAnswer =
+      how.kind === 'typed' && extra.length > 0 ? { ...how, extra } : how;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -412,8 +427,8 @@ export class ReactionQueue {
         this.campaignId(),
         this.encounter().id,
         w.id,
-        how,
-        this.keys.keyFor({ window: w.id, how }),
+        sent,
+        this.keys.keyFor({ window: w.id, how: sent }),
       );
       this.state().apply(res.encounter);
       const r = res.result;
@@ -425,7 +440,11 @@ export class ReactionQueue {
             : 'Respondido.',
       );
     } catch (err) {
-      this.error.set(combatErrorMessage(err, 'resolver o teste de concentração'));
+      const more = this.extra.fromRefusal(err);
+      if (more) {
+        this.extraWindow.set(w.id);
+      }
+      this.error.set(more || combatErrorMessage(err, 'resolver o teste de concentração'));
     } finally {
       this.busy.set(false);
     }

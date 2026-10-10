@@ -77,12 +77,12 @@ func hiddenAreaHitsFromDB(v string) tablerules.HiddenAreaHitRule {
 // campaign_table_rules). The hit points rule is stored as "player_chooses" where
 // tablerules has its empty zero value.
 const (
-	hitPointsPlayerChooses   = "player_chooses"
-	criticalDoubledDice      = "doubled_dice"
-	criticalMaxPlusRoll      = "max_plus_roll"
-	deathSavesVisibleToAll   = "visible_to_all"
-	deathSavesOwnerAndMaster = "owner_and_master"
-	hiddenAreaHitsReveal     = "reveal"
+	hitPointsPlayerChooses     = "player_chooses"
+	criticalDoubledDice        = "doubled_dice"
+	criticalMaxPlusRoll        = "max_plus_roll"
+	deathSavesVisibleToAll     = "visible_to_all"
+	deathSavesOwnerAndMaster   = "owner_and_master"
+	hiddenAreaHitsReveal       = "reveal"
 	enemyReactionsWhenPossible = "only_when_possible"
 	enemyReactionsAlways       = "always"
 )

@@ -88,6 +88,15 @@ type VitalsKeeper interface {
 	// active player character of the campaign; `invalid_argument` for a
 	// value outside 0 to its maximum.
 	AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error)
+	// SetExhaustion sets the character's level of exhaustion, 0 to 6, inside tx and returns
+	// the vitals before and after: from level 4 the maximum is halved and the current hit
+	// points are cut to it; a lower level gives the maximum back and never heals.
+	// `not_found` for anything but a living, active player character of the campaign;
+	// `invalid_argument` for a level outside 0 to 6.
+	SetExhaustion(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int32) (before, after *playv1.CharacterVitals, err error)
+	// SetArmorBase puts the base armor class an effect that lasts gives the character (Mage
+	// Armor), 0 for none, inside tx and returns the vitals before and after.
+	SetArmorBase(ctx context.Context, tx pgx.Tx, campaignID, characterID string, armorClass int32) (before, after *playv1.CharacterVitals, err error)
 
 	// SetHitPointsMaxBonus puts Aid's bonus to the character's maximum hit points
 	// at bonus inside tx (0 ends it) and returns the vitals before and after: the
@@ -651,6 +660,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewCastingServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
+	handle(playv1connect.NewLastingEffectServiceHandler(s, opts...))
 	handle(playv1connect.NewRevivifyServiceHandler(s, opts...))
 }
 

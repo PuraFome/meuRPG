@@ -152,9 +152,16 @@ func speedDFt(c playdb.Combatant) int {
 	if slices.ContainsFunc(c.Conditions, func(k string) bool { return slices.Contains(noSpeed, k) }) {
 		return 0
 	}
-	speed := int(max(c.SpeedFt, c.SpeedFlyFt)) * 10
+	if c.EffectNoMove { // the lethargy of a Velocidade that ended (RN-22)
+		return 0
+	}
+	speed := (int(max(c.SpeedFt, c.SpeedFlyFt)) + int(c.EffectSpeedAddFt)) * 10
 	if c.Dashed {
 		speed *= 2
+	}
+	// The speed the effects leave: doubled by Velocidade, halved or 0 by exhaustion (SRD, Conditions).
+	if c.EffectSpeedPct > 0 {
+		speed = speed * int(c.EffectSpeedPct) / 100
 	}
 	return speed
 }

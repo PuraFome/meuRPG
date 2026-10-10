@@ -1,0 +1,40 @@
+<app-sheet-frame [title]="title" titleId="visibility-t" [phone]="inSheet" (closed)="close()">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger error" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  <app-hidden-switch
+    label="Os jogadores veem este efeito"
+    hint="Desligado, nada o revela: nem a espera, nem a fonte de vantagem, nem o registro."
+    [checked]="visible()"
+    (toggle)="visible.set($event)"
+  />
+  @if (visible()) {
+    <div class="fields">
+      <app-visibility-fields
+        [audience]="audience()"
+        [label]="label()"
+        (audienceChange)="audience.set($event)"
+        (labelChange)="label.set($event)"
+      />
+    </div>
+  }
+  <div foot>
+    <div class="pair">
+      <button
+        mat-flat-button
+        type="button"
+        class="pair__btn"
+        [disabled]="busy() || !changed()"
+        disabledInteractive
+        [attr.aria-busy]="busy()"
+        (click)="save()"
+      >
+        Salvar
+      </button>
+      <button mat-stroked-button type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
+    </div>
+  </div>
+</app-sheet-frame>

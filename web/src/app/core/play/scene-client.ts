@@ -61,6 +61,7 @@ export class SceneClient {
     actionId: string,
     die: SceneDie,
     idempotencyKey: string,
+    extraDieFaces: readonly number[] = [],
   ): Promise<SceneRoll> {
     const res = await this.client.rollSceneCheck({
       campaignId,
@@ -73,6 +74,7 @@ export class SceneClient {
             ? { case: 'd20Face', value: die.face }
             : { case: undefined },
       d20Faces: 'faces' in die ? [...die.faces] : [],
+      extraDieFaces: [...extraDieFaces],
     });
     return need(res.roll, 'RollSceneCheck');
   }

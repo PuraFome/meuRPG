@@ -152,6 +152,8 @@
           [dicePreference]="dicePreference()"
           [result]="play.hintTry()"
           [pair]="play.hintPair()"
+          [extraFields]="play.extraDice.fields()"
+          [(extraFaces)]="play.extraDice.faces"
           (rolled)="play.tryHint($event)"
           (typed)="play.tryHint($event)"
         />

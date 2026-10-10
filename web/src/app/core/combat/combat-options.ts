@@ -52,12 +52,21 @@ const REASON_TEXT: Partial<Record<DisabledReasonCode, string>> = {
   [DisabledReasonCode.SURPRISED]: 'Surpresa',
   // A grappled combatant's speed is 0 (SRD 5.1, Conditions); the turn's own line says it by the character's gender.
   [DisabledReasonCode.GRAPPLED]: 'Em um agarrão',
+  // An effect or a condition writes its own sentence (`text_pt`); these are the words if it came without.
+  [DisabledReasonCode.INCAPACITATED]: 'Você não pode agir.',
+  [DisabledReasonCode.EFFECT_LETHARGY]: 'Indisponível por um efeito',
+  [DisabledReasonCode.SPEED_ZERO]: 'Indisponível: deslocamento 0',
 };
 
 /** Why an option is disabled, in words, by code. `''` when there is none. */
-export function reasonText(reason: DisabledReason | undefined): string {
+export function reasonText(reason: DisabledReason | undefined, master = false): string {
   if (!reason) {
     return '';
+  }
+  // An effect or a condition writes its own sentence (RN-22), already without a cause the caller may not read.
+  const own = master ? reason.textMasterPt || reason.textPt : reason.textPt;
+  if (own) {
+    return own;
   }
   if (reason.code === DisabledReasonCode.NO_USES) {
     return `Sem usos: ${rechargeText(reason.recharge)}`;

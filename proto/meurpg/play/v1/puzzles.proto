@@ -1380,6 +1380,9 @@ message TryPuzzleHintRequest {
   // Physical dice: the faces of the d20 pair (1 or 2, as the mode needs), instead of
   // `roll`.
   repeated int32 d20_faces = 6;
+  // Physical dice: the faces of the dice an effect adds to the roll (Bênção, Orientação), one
+  // for each, 1 to the die's faces. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 7;
 }
 
 // TryPuzzleHintResponse is what the try gave.

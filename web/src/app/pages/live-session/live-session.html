@@ -150,7 +150,7 @@
           [partyInfo]="partyInfo()"
           [sessionNumber]="s.sessionNumber"
           [cardAbove]="!!highlightsFor()"
-          [armorClass]="ownSheet()?.armorClass ?? null"
+          [armorClass]="ownArmorClass()"
           [casterClasses]="playerSheet()?.classes ?? ''"
           [diceMode]="campaign()?.diceMode ?? 1"
           [dicePreference]="campaign()?.dicePreference ?? 1"
@@ -160,7 +160,7 @@
           (changeDice)="changeDice()"
         >
           @if (ownVitals(); as v) {
-            <app-player-vitals [vitals]="v" [sheet]="ownSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [armorClassBonus]="ownArmorBonus()" [ownDeathSaves]="ownDeathSaves()" [compact]="true" />
+            <app-player-vitals [vitals]="v" [sheet]="ownSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [armorClassBonus]="ownArmorBonus()" [ownDeathSaves]="ownDeathSaves()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
           }
         </app-combat-view>
         <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. A combat without a map has no fog (RN-25). -->
@@ -248,6 +248,13 @@
             [campaignId]="campaignId()"
             [party]="vitals()"
             (restTaken)="takeVitals($event)"
+          />
+          <!-- The effects on the characters outside a combat, the exhaustion and "Passar o tempo" (W7-E). -->
+          <app-character-effects-panel
+            class="board__effects"
+            [campaignId]="campaignId()"
+            [party]="vitals()"
+            [tick]="effectsTick()"
           />
           <app-casting-panel
             class="board__casting"
@@ -394,6 +401,8 @@
                 [campaignId]="campaignId()"
                 [armorClassBonus]="ownArmorBonus()"
                 [ownDeathSaves]="ownDeathSaves()"
+                [effectCards]="ownEffects.cards()"
+                [conditionNames]="ownEffects.conditions()"
                 [diceMode]="campaign()?.diceMode ?? 1"
                 [dicePreference]="campaign()?.dicePreference ?? 1"
                 (vitalsChange)="takeVitals([$event])"

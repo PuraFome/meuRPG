@@ -1,0 +1,443 @@
+:host {
+  display: block;
+}
+
+.fx {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    padding: var(--mr-space-5) var(--mr-space-5) var(--mr-space-4);
+  }
+}
+
+.fx__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.fx__titles {
+  min-width: 0;
+}
+
+.fx__title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 30px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.fx__count {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.fx__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}
+
+.fx__empty {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+// The header of the table: only from a tablet up, where the rows are a table.
+.fx__cols {
+  display: none;
+}
+
+.fx__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// On a phone a row is a card.
+.fx__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.fx__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.fx__nametext {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.fx__sub {
+  margin: 0;
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.fx__who,
+.fx__origin {
+  display: none;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fx__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-height: 24px;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-strong);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.fx__end {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+}
+
+.fx__line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: 18px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.fx__line--save .mat-icon {
+  color: var(--mr-accent-text);
+}
+
+.fx__tags {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// "Jogadores veem": a text button that opens the visibility card.
+.fx__seebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--mr-control-line);
+  text-underline-offset: 3px;
+  cursor: pointer;
+
+  &:focus-visible,
+  &[data-ring] {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.fx__seedesk {
+  display: none;
+}
+
+.fx__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+// 48 px at full width on a phone, 44 px from a tablet up.
+.fx__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  width: 100%;
+
+  &[data-ring] {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.fx__btn--danger {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+.fx__link {
+  align-self: flex-start;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.fx__remove {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding-top: var(--mr-space-2);
+  border-top: 1px solid var(--mr-rule);
+}
+
+// "Encerrar" on a concentration asks in place, in the danger ink, with the focus on "Cancelar".
+.fx__ask {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-4);
+  border: 2px solid var(--mr-danger-ink);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.fx__askicon {
+  flex: none;
+  color: var(--mr-danger-ink);
+}
+
+.fx__asktext {
+  min-width: 0;
+}
+
+.fx__asktitle {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.fx__askbody {
+  margin: var(--mr-space-1) 0 var(--mr-space-3);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.fx__askbtns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.fx__clock {
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.fx__clocktitle {
+  margin: 0 0 var(--mr-space-2);
+  font-family: var(--mr-font-display);
+  font-size: 19px;
+  line-height: 24px;
+  font-weight: 700;
+}
+
+.fx__clocklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fx__tick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  padding: 10px 0;
+  border-top: 1px solid var(--mr-rule);
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.fx__tickicon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  color: var(--mr-accent-text);
+}
+
+.fx__ticktitle {
+  margin: 0;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.fx__ticktext {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// From a tablet up the effects are a table: one grid row each, "Encerrar" at the end.
+@media (min-width: 768px) {
+  .fx__cols,
+  .fx__row {
+    display: grid;
+    grid-template-columns:
+      minmax(150px, 1.1fr) minmax(110px, 0.9fr) minmax(90px, 0.7fr) minmax(200px, 2fr)
+      minmax(110px, 0.9fr) minmax(130px, auto);
+    column-gap: var(--mr-space-4);
+    align-items: center;
+  }
+
+  .fx__cols {
+    padding: 0 var(--mr-space-1);
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+  }
+
+  .fx__rows {
+    gap: 0;
+  }
+
+  .fx__row {
+    padding: var(--mr-space-4) var(--mr-space-1);
+    border: 0;
+    border-top: 1px solid var(--mr-rule);
+    border-radius: 0;
+    background: none;
+  }
+
+  .fx__row:first-child {
+    border-top: 0;
+  }
+
+  .fx__name {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .fx__sub {
+    display: none;
+  }
+
+  .fx__who,
+  .fx__origin {
+    display: block;
+    font-size: 15px;
+  }
+
+  .fx__origin {
+    color: var(--mr-ink-muted);
+  }
+
+  .fx__seephone {
+    display: none;
+  }
+
+  .fx__seedesk {
+    display: inline;
+  }
+
+  .fx__eye {
+    display: none;
+  }
+
+  .fx__actions {
+    align-items: flex-start;
+  }
+
+  .fx__btn {
+    --mat-button-outlined-container-height: 44px;
+    width: auto;
+  }
+
+  // The second button of the row is a link here, as the board draws "Tirar de um alvo".
+  .fx__btn--duration {
+    --mat-button-outlined-container-height: 36px;
+    --mat-button-outlined-outline-color: transparent;
+    --mat-button-outlined-label-text-color: var(--mr-accent-text);
+    font-weight: 700;
+  }
+
+  .fx__remove,
+  .fx__ask {
+    grid-column: 1 / -1;
+  }
+
+  .fx__remove {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: var(--mr-space-3);
+  }
+
+  .fx__askbtns {
+    flex-direction: row;
+  }
+}

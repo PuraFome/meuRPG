@@ -43,6 +43,9 @@ func saveView(sr *saveRoll, v combatViewer, caster, target playdb.Combatant) *pl
 			}
 		}
 		out.Mode, out.AutoFailed = modeToProto[modeOfKey(sr.RollMode)], sr.Auto
+		if out.Roll != nil {
+			out.Roll.ExtraDice = extraDiceProto(sr.Extra, v.master, nil)
+		}
 	}
 	if v.master {
 		out.BonusKnown = !sr.Unknown
@@ -59,10 +62,13 @@ func attackRollView(h castHit, v combatViewer, caster playdb.Combatant) *playv1.
 		return nil
 	}
 	if h.D20B == 0 {
-		return diceRoll(1, 20, []int32{h.D20}, h.Modifier, h.Total, h.Physical)
+		roll := diceRoll(1, 20, []int32{h.D20}, h.Modifier, h.Total, h.Physical)
+		roll.ExtraDice = extraDiceProto(h.Extra, v.master, nil)
+		return roll
 	}
 	roll := diceRoll(2, 20, pairOf(h.D20, h.D20B, h.Counted), h.Modifier, h.Total, h.Physical)
 	roll.CountedIndex = h.Counted
+	roll.ExtraDice = extraDiceProto(h.Extra, v.master, nil)
 	return roll
 }
 
@@ -183,6 +189,15 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 			Effect: effectView(h, v, target),
 		}
 		r.AttackMode = modeToProto[modeOfKey(h.RollMode)]
+		switch h.Lasting {
+		case lastingApplied:
+			r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_APPLIED
+		case lastingNoEffect:
+			r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT
+			if v.master {
+				r.NoEffectReasonMaster = h.NoEffectWhy
+			}
+		}
 		coverKey, coverSource := h.coverFor(v, ev.CoverUsers)
 		r.Cover, r.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 		if h.Pending != "" && (v.master || v.owns(caster)) {

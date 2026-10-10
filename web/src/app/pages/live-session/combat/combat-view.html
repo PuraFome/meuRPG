@@ -185,6 +185,8 @@
             }
           </div>
           }
+          <!-- The effects that last and the clock of the turns (W7-E board 4): the master only. -->
+          <app-effects-panel class="effects" [campaignId]="campaignId()" [state]="state()" />
         </div>
         }
       }
@@ -298,6 +300,7 @@
                   [theatre]="theatre()"
                   [orderBelow]="orderBelow()"
                   [contest]="contestFacts()"
+                  [effectNotes]="options()?.effectNotes ?? []"
                   (endTurn)="nextTurn()"
                   (endRage)="endRageOf($event)"
                   (opportunity)="openAttack($event, true)"
@@ -310,6 +313,13 @@
                   <mat-icon aria-hidden="true">pan_tool</mat-icon>
                   <p>Uma disputa espera a sua resposta.</p>
                   <button mat-button type="button" class="notice__ok" (click)="contest.answerPending()">Responder</button>
+                </div>
+              }
+              @if (ownEffectSave(); as pending) {
+                <div class="mr-notice mr-notice--warning notice" data-testid="effect-save-pending">
+                  <mat-icon aria-hidden="true">casino</mat-icon>
+                  <p>O teste de resistência do fim do turno espera a sua rolagem.</p>
+                  <button mat-button type="button" class="notice__ok" (click)="openEffectSave(pending)">Rolar o teste</button>
                 </div>
               }
               @if (ownOffer(); as offer) {
@@ -383,6 +393,9 @@
                       [contest]="contestFacts()"
                       (contestAttack)="contest.openAttack($event)"
                       (escape)="contest.openEscape()"
+                      [extraAction]="opts.extraAction ?? null"
+                      (extraAttack)="openAttack($event, false, true)"
+                      (extraStandard)="takeExtra($event)"
                       (familiarEyes)="askFamiliarEyes()"
                       (attack)="openAttack($event)"
                       (cast)="openCast($event)"

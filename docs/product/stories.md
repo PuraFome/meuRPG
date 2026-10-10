@@ -1251,6 +1251,7 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 - **Given** a target that wears armor, **when** Mage Armor is cast on it, **then** the cast is refused with the reason.
 - **Given** an NPC on the stage as a target, **when** a player reads the cast, **then** they read the NPC by its place on the stage and never the character ID, and a cast by an NPC that is not on the stage never reaches them (RN-10, RN-20).
 - **Given** a combat running, **when** its caster tries to cast outside it, **then** the cast is refused and the spell is cast in the combat.
+- **Given** Bless cast on a character before a fight, **when** the combat starts, **then** the effect enters it with the time it has left in rounds (a round is 6 seconds, a partial round does not count), the character's saves take the d4, and when the combat ends the rounds left go back to game time (RN-22).
 
 #### In the app
 - **Server.** `CastingService` (`casting.proto`): `GetCastOptions`, `CastSpellOutsideCombat`, `ConfirmCastTimePassed` (master only), `AbandonCast`, `EndActiveSpell` and `ListSpellCasts`, with the typed refusals of `CastingBlocked`. One row of `spell_casts` per casting; the stream hint is `spell_casts_changed`. See [Architecture](../architecture.md#casting-outside-combat-mr-048-rn-31) and [Data model](../data.md#casting-outside-combat-mr-048-rn-31).

@@ -55,6 +55,9 @@
         acontece.
       </p>
     }
+    @if (extra.fields().length > 0 && (typing() || !canApp)) {
+      <app-extra-dice class="extra" [fields]="extra.fields()" [(faces)]="extra.faces" />
+    }
     @if (pair()) {
       <p class="note" role="status"><mat-icon aria-hidden="true">info</mat-icon>Esta rolagem leva 2 d20, com vantagem ou desvantagem. Digite os dois dados.</p>
       <app-multi-roll

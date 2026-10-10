@@ -28,6 +28,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.Concentration:     playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
 	reaction.MasterCheck:       playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
 	reaction.Contest:           playv1.ReactionKind_REACTION_KIND_CONTEST,
+	reaction.EffectSave:        playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
 }
 
 // windowView is what the builders of a caller's windows share.
@@ -192,6 +193,10 @@ func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		}
 		return
 	}
+	if reaction.Kind(w.Kind) == reaction.EffectSave {
+		wv.effectSaveWait(w, reactor, answers, wait)
+		return
+	}
 	if wv.v.master {
 		switch {
 		case reactor != nil && reactor.Kind == kindPlayer && save:
@@ -262,6 +267,8 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		out.Prompt = &playv1.ReactionWindow_Contest{Contest: &playv1.ContestPrompt{ContestId: windowTriggerOf(w).Contest}}
 	case reaction.Concentration:
 		err = wv.concentrationPrompt(w, reactor, out)
+	case reaction.EffectSave:
+		err = wv.effectSavePrompt(w, reactor, out)
 	default:
 		err = wv.morePrompt(kind, w, reactor, out)
 	}

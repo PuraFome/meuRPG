@@ -81,11 +81,19 @@ func (s *Service) SetCombatantConditions(
 		}
 		ev := actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID}
 		changed := false
+		condBefore := target.Conditions
+		if setConditions {
+			// A condition an effect leaves goes when the master takes it off: the effect
+			// ends. Exhaustion has its own levels (RN-22).
+			if conditions, target, err = s.reconcileConditions(ctx, c, target, conditions); err != nil {
+				return nil, err
+			}
+		}
 		if setConditions && !slices.Equal(conditions, target.Conditions) {
 			if err := c.q.SetCombatantConditions(ctx, playdb.SetCombatantConditionsParams{ID: target.ID, Conditions: conditions}); err != nil {
 				return nil, fmt.Errorf("set the conditions: %w", err)
 			}
-			ev.CondSet, ev.Conditions, ev.CondBefore = true, conditions, target.Conditions
+			ev.CondSet, ev.Conditions, ev.CondBefore = true, conditions, condBefore
 			changed = true
 			// A rage ends when the barbarian is knocked unconscious (SRD 5.1); a condition
 			// the master takes off by hand loses its source.

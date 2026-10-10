@@ -13,6 +13,7 @@ package meurpg.play.v1;
 import "google/protobuf/timestamp.proto";
 import "meurpg/play/v1/combat_rolls.proto";
 import "meurpg/play/v1/contest_types.proto";
+import "meurpg/play/v1/lasting_effects.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // CombatService runs a combat (an "encounter") inside the campaign's open
@@ -1747,6 +1748,12 @@ enum EncounterBlockedReason {
   // StartEncounter: a participant is a reserved character (imported, not claimed by a
   // player yet), which cannot fight until someone owns it.
   ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED = 84;
+  // The combatant cannot act now because of an effect or a condition (RN-22): it is
+  // incapacitated (Paralisado, Atordoado, Inconsciente, Petrificado, Incapacitado) or the
+  // lethargy of a Velocidade holds it. The message never names the cause to a player.
+  ENCOUNTER_BLOCKED_REASON_CANNOT_ACT = 100;
+  // The extra action an effect gives (Velocidade) is not there, or was spent.
+  ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE = 101;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2249,6 +2256,16 @@ message Combatant {
   // combatant's own player.
   bool attacked_hostile_since_last_turn = 69;
   bool took_damage_since_last_turn = 72;
+  // The effects the caller reads on this combatant, as cards: the master all of them; the
+  // player of the combatant the ones they may read, never the DC of an NPC's effect; the
+  // others none (see `effect_labels`).
+  repeated LastingEffect effects = 100;
+  // The labels the caller reads for the effects on this combatant, for the order and the
+  // map: "Paralisado", "Preso numa teia", or the master's free label. A player reads only
+  // the ones the master leaves visible; the master reads all.
+  repeated EffectLabel effect_labels = 101;
+  // The level of exhaustion, 0 to 6. The master and the owner read it; the others 0.
+  int32 exhaustion_level = 102;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2734,6 +2751,11 @@ message DiceRoll {
   // The dice a fighting style rerolled (Great Weapon Fighting): `faces` holds the
   // faces that count.
   repeated Reroll rerolled = 10;
+  // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção and
+  // Perdição's d4 on attack rolls and saving throws. `total` already has them. For a
+  // player, on an effect the master hides, `source_name_pt` is "Outra fonte" and the
+  // key is empty.
+  repeated ExtraDie extra_dice = 100;
 }
 
 // CriticalDamageRule is what a critical hit does to the damage dice: the table's
@@ -2882,6 +2904,9 @@ message PendingDamage {
   // The feature's Portuguese name for those dice ("Crítico Brutal"); empty when
   // `extra_dice_count` is 0.
   string extra_dice_name_pt = 26;
+  // The damage an effect dealt to who started the turn under it (the web that burns): the
+  // effect's Portuguese name ("Teia em chamas"). It has no attacker.
+  string effect_source_name_pt = 100;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -2922,6 +2947,11 @@ message GetTurnOptionsResponse {
   // For each feature action of options.feature_actions that picks a creature
   // (Cura pelas Mãos, Inspiração de Bardo), who it can pick.
   repeated ResourceTargets resource_targets = 30;
+  // What the effects on the combatant take away this turn, in words the caller may read
+  // ("Você está Paralisada. Não age nem se move neste turno."); empty when nothing does.
+  repeated EffectNote effect_notes = 100;
+  // The extra action an effect gives (Velocidade); unset when there is none.
+  ExtraActionOption extra_action = 101;
 }
 
 // ResourceTargets lists the creatures a feature action that picks one can choose.
@@ -3106,6 +3136,13 @@ message RollAttackRequest {
   // not set). The number must match the mode the server resolves, else
   // `invalid_argument`.
   repeated int32 d20_faces = 15;
+  // The faces of the dice an effect adds to the roll (Bênção, Perdição), in the order of
+  // the effects, when the player rolls physical dice (`d20_face`): one for each, 1 to the
+  // die's faces. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 100;
+  // True: the attack is the weapon attack of the extra action an effect gives
+  // (Velocidade): it spends that action, not the Attack action, and it is one weapon attack.
+  bool use_extra_action = 101;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -3295,6 +3332,9 @@ message TakeActionRequest {
     // of Retomar o fôlego.
     int32 typed_sum = 7;
   }
+  // True: the action is the extra action an effect gives (Velocidade): Disparada,
+  // Desengajar, Esconder or Usar um objeto spend that action instead of the Action.
+  bool use_extra_action = 100;
 }
 
 // TakeActionResponse returns the combat after the action.
@@ -3444,6 +3484,11 @@ message CastSpellRequest {
   // spell consumes). The app keeps no inventory, so this is a reminder, and the log says
   // it was spent. Required for Revivify and refused for any other spell.
   bool material_confirmed = 19;
+  // Enhance Ability only: the ability the target is enhanced in ("str", "dex", "con", "int",
+  // "wis" or "cha"; SRD 5.1: Bull's Strength, Cat's Grace, Bear's Endurance, Fox's Cunning,
+  // Owl's Wisdom, Eagle's Splendor). Required for that spell, `invalid_argument` otherwise
+  // missing or unknown; ignored by every other spell.
+  string ability_key = 20;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -3611,6 +3656,9 @@ message SaveResult {
   RollMode mode = 5;
   repeated AdvantageSource sources = 6;
   bool auto_failed = 7;
+  // The target failed by itself, with no d20: a Strength or Dexterity saving throw of a
+  // Paralisado, Atordoado, Inconsciente or Petrificado creature (SRD, Conditions).
+  bool auto_fail = 100;
 }
 
 // SpellTargetResult is what a cast did to one target.
@@ -3643,6 +3691,13 @@ message SpellTargetResult {
   // read them, and whether a hit was a critical hit by the target's condition.
   RollMode attack_mode = 11;
   repeated AdvantageSource attack_sources = 12;
+  // A spell that leaves an effect that lasts (Bênção, Perdição, Imobilizar Pessoa,
+  // Velocidade, Teia, Fogo das Fadas): whether it took hold on this target.
+  // Unspecified for the other spells.
+  LastingEffectOutcome lasting_effect = 100;
+  // Only the master: why a spell had no effect ("alvo não é humanoide"). A player
+  // reads only "A magia não teve efeito." (RN-20).
+  string no_effect_reason_master = 101;
 }
 
 // SpellEffectKind is how a spell that reads hit points works. The same four kinds
@@ -4080,6 +4135,12 @@ enum CombatLogKind {
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
+  // An effect that lasts began, changed or ended, a saving throw of an effect was rolled,
+  // or an effect dealt damage (RN-22): `effect`. An effect the master hides from the
+  // players is a line for the master alone, and no count of them reaches a player.
+  COMBAT_LOG_KIND_EFFECT = 100;
+  // The level of exhaustion of a combatant changed (`effect.exhaustion_level`).
+  COMBAT_LOG_KIND_EXHAUSTION = 101;
   // A reaction window was answered or closed (PM-04): `reaction_text_pt` is the
   // line, written on the server for who reads it (the master's has the NPC
   // numbers, the players' has none and never names a reactor they do not see).
@@ -4260,6 +4321,8 @@ message CombatLogEntry {
   string reason = 47;
   // EFFECT_ENDED: which effect, on the actor.
   CombatLogEffectEnd effect_end = 46;
+  // EFFECT and EXHAUSTION: what happened.
+  CombatLogEffect effect = 100;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -4312,6 +4375,45 @@ enum LayOnHandsCureKind {
   LAY_ON_HANDS_CURE_KIND_UNSPECIFIED = 0;
   LAY_ON_HANDS_CURE_KIND_DISEASE = 1;
   LAY_ON_HANDS_CURE_KIND_POISON = 2;
+}
+
+// CombatLogEffect is what an EFFECT or EXHAUSTION line says.
+message CombatLogEffect {
+  // The effect's key and Portuguese name ("spell:hold-person", "Imobilizar Pessoa").
+  string source_key = 1;
+  string source_name_pt = 2;
+  CombatLogEffectChange change = 3;
+  // The combatants it concerns, by label ("Brisa", "Goblin 2").
+  repeated string target_labels = 4;
+  // SAVED and SAVE_FAILED: the ability, and for the master the roll and the DC; a player
+  // reads only whether it passed.
+  string ability = 5;
+  string ability_name_pt = 6;
+  optional int32 d20 = 7;
+  optional int32 total = 8;
+  optional int32 dc = 9;
+  // DAMAGE: the damage type's Portuguese name and the amount rolled.
+  string damage_type_pt = 10;
+  int32 amount = 11;
+  // EXHAUSTION: the level now, and the level before.
+  int32 exhaustion_level = 12;
+  int32 exhaustion_before = 13;
+  // ENDED: why ("duration", "ended_by_master", "concentration", "saved", "caster_left").
+  string reason = 14;
+}
+
+// CombatLogEffectChange is what an effect did.
+enum CombatLogEffectChange {
+  COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED = 0;
+  COMBAT_LOG_EFFECT_CHANGE_ADDED = 1;
+  COMBAT_LOG_EFFECT_CHANGE_ENDED = 2;
+  COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED = 3;
+  COMBAT_LOG_EFFECT_CHANGE_SAVED = 4;
+  COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED = 5;
+  COMBAT_LOG_EFFECT_CHANGE_DAMAGE = 6;
+  COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED = 7;
+  // The effect gave the target temporary hit points (Heroísmo, at the start of its turn); `amount`.
+  COMBAT_LOG_EFFECT_CHANGE_TEMP_HP = 8;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -4675,7 +4777,10 @@ enum ReactionKind {
   // A contest (grapple, shove, escape) that waits for its defender's roll or its
   // winner's choice; it is answered with RespondContest / ResolveShove, not with
   // AnswerReaction.
-  REACTION_KIND_CONTEST = 12;
+  REACTION_KIND_CONTEST = 13;
+  // The saving throw an effect that lasts asks at the end or the start of its target's
+  // turn (Imobilizar Pessoa, Teia): answered with CombatEffectService.RollEffectSave.
+  REACTION_KIND_EFFECT_SAVE = 12;
 }
 
 enum ReactionWindowStatus {
@@ -4696,6 +4801,11 @@ enum ReactionClosedReason {
   // What triggered it is gone (the spell was countered, the attacker died, the
   // creature left the 60 ft, the concentration ended).
   REACTION_CLOSED_REASON_TRIGGER_GONE = 3;
+  // An effect's saving throw whose effect ended meanwhile (the master ended it, or its
+  // time ran out).
+  REACTION_CLOSED_REASON_EFFECT_ENDED = 4;
+  // An effect's saving throw whose caster lost the concentration meanwhile.
+  REACTION_CLOSED_REASON_CASTER_LOST_CONCENTRATION = 5;
 }
 
 enum ReactionChoice {
@@ -4763,6 +4873,8 @@ message ReactionWindow {
     HellishRebukeSavePrompt hellish_rebuke_save = 29;
     DeflectMissilesThrowPrompt deflect_throw = 30;
     ContestPrompt contest = 31;
+    // The saving throw an effect asks at a turn (RN-22).
+    EffectSavePrompt effect_save = 40;
   }
 }
 
@@ -5082,6 +5194,10 @@ message ResolveConcentrationSaveRequest {
     bool keep = 7;
   }
   string idempotency_key = 8;
+  // The faces of the dice an effect adds to the saving throw (Bênção, Perdição), in the order
+  // of the effects, when the roll is a physical d20 (`d20_face`): one for each, 1 to the die's
+  // faces. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 100;
 }
 
 message ResolveConcentrationSaveResponse {

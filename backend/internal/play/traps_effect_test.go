@@ -51,7 +51,7 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 		t.Parallel()
 		// Attack 1 at a: 20 (critical, 1d6 doubled: 2 + 3), attack 2 at b: 1 (misses).
 		s := &scripted{faces: []int{20, 2, 3, 1}}
-		out, err := resolveTrap(&rulesv1.TrapEffect{Attack: saveEffect(0, 0).Attack}, targets, combat.CriticalDoubledDice, s.d20, s.dice)
+		out, err := resolveTrap(&rulesv1.TrapEffect{Attack: saveEffect(0, 0).Attack}, targets, combat.CriticalDoubledDice, s.d20, s.dice, nil)
 		if err != nil {
 			t.Fatalf("resolveTrap() error = %v", err)
 		}
@@ -71,7 +71,7 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 		t.Parallel()
 		// Attack 1 at a: 20 (critical, 1d6: roll 2, plus the maximum 6), attack 2 at b: 1 (misses).
 		s := &scripted{faces: []int{20, 2, 1}}
-		out, err := resolveTrap(&rulesv1.TrapEffect{Attack: saveEffect(0, 0).Attack}, targets, combat.CriticalMaxPlusRoll, s.d20, s.dice)
+		out, err := resolveTrap(&rulesv1.TrapEffect{Attack: saveEffect(0, 0).Attack}, targets, combat.CriticalMaxPlusRoll, s.d20, s.dice, nil)
 		if err != nil {
 			t.Fatalf("resolveTrap() error = %v", err)
 		}
@@ -86,7 +86,7 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 		// Attacks: a 1 (miss), b 1 (miss). Saves: a 10 + 2 = 12 < 13 fails (2d4: 3 + 4 = 7);
 		// b 13 + 0 = 13 passes (2d4: 1 + 4 = 5, half is 2).
 		s := &scripted{faces: []int{1, 1, 10, 3, 4, 13, 1, 4}}
-		out, err := resolveTrap(saveEffect(rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_CAUGHT, rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF), targets, combat.CriticalDoubledDice, s.d20, s.dice)
+		out, err := resolveTrap(saveEffect(rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_CAUGHT, rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF), targets, combat.CriticalDoubledDice, s.d20, s.dice, nil)
 		if err != nil {
 			t.Fatalf("resolveTrap() error = %v", err)
 		}
@@ -104,7 +104,7 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 		// a is hit (10 + 5 = 15 >= 12; 1d6: 4), b is missed (2 + 5 = 7 < 18): only a saves, and
 		// passes (15 + 2): nothing.
 		s := &scripted{faces: []int{10, 4, 2, 15}}
-		out, err := resolveTrap(saveEffect(rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT, rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_NONE), targets, combat.CriticalDoubledDice, s.d20, s.dice)
+		out, err := resolveTrap(saveEffect(rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT, rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_NONE), targets, combat.CriticalDoubledDice, s.d20, s.dice, nil)
 		if err != nil {
 			t.Fatalf("resolveTrap() error = %v", err)
 		}
@@ -124,7 +124,7 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 			Conditions: []*rulesv1.TrapCondition{{ConditionKey: "condition:prone"}, {ConditionKey: "condition:prone"}},
 		}
 		s := &scripted{faces: []int{6, 6, 1, 2}}
-		out, err := resolveTrap(effect, targets, combat.CriticalDoubledDice, s.d20, s.dice)
+		out, err := resolveTrap(effect, targets, combat.CriticalDoubledDice, s.d20, s.dice, nil)
 		if err != nil {
 			t.Fatalf("resolveTrap() error = %v", err)
 		}
@@ -145,7 +145,7 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 		e := saveEffect(rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT, rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_NONE)
 		e.Attack.Count = 3
 		s := &scripted{faces: []int{15, 2, 12, 5, 1, 10, 1, 1, 18}}
-		out, err := resolveTrap(e, targets[:1], combat.CriticalDoubledDice, s.d20, s.dice)
+		out, err := resolveTrap(e, targets[:1], combat.CriticalDoubledDice, s.d20, s.dice, nil)
 		if err != nil {
 			t.Fatalf("resolveTrap() error = %v", err)
 		}
@@ -164,7 +164,7 @@ func TestMR035_TheEffectsArithmetic(t *testing.T) {
 
 	t.Run("an empty effect does nothing", func(t *testing.T) {
 		t.Parallel()
-		out, err := resolveTrap(&rulesv1.TrapEffect{}, targets, combat.CriticalDoubledDice, (&scripted{}).d20, (&scripted{}).dice)
+		out, err := resolveTrap(&rulesv1.TrapEffect{}, targets, combat.CriticalDoubledDice, (&scripted{}).d20, (&scripted{}).dice, nil)
 		if err != nil || len(out) != 2 || len(out[0].damages) != 0 || len(out[0].saves) != 0 || len(out[0].attacks) != 0 {
 			t.Errorf("resolveTrap() = %+v, %v; want nothing done", out, err)
 		}

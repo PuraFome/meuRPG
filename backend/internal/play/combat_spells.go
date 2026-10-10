@@ -359,6 +359,10 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		if err != nil {
 			return nil, err
 		}
+		abilityKey, err := s.abilityChoiceOf(ctx, c, spellKey, req.Msg.GetAbilityKey())
+		if err != nil {
+			return nil, err
+		}
 		if pick := req.Msg.GetDamageTypeKey(); pick != "" && !slices.Contains(sp.DamageTypes, pick) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
 		}
@@ -551,6 +555,9 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 			if made.Dismissed, err = s.endSummons(ctx, c, caster); err != nil {
 				return nil, err
 			}
+			if err := s.endConcentrationEffects(ctx, c, caster, endConcentration); err != nil { // its effects end with it (RN-22)
+				return nil, err
+			}
 			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: caster.ID, ConcentrationSpell: &spellKey}); err != nil {
 				return nil, fmt.Errorf("set the concentration: %w", err)
 			}
@@ -599,6 +606,10 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				}
 				made.Hits = append(made.Hits, hit)
 				hidden = hidden || t.Hidden
+			}
+			// What a spell that lasts leaves on the targets it took hold of (RN-22).
+			if err := s.applyLastingSpell(ctx, c, cs, sp, caster, targs, abilityKey, &made); err != nil {
+				return nil, err
 			}
 		}
 		packCoverSeen(&made)
@@ -797,8 +808,14 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return err
 	}
-	targetAC := sheet.ArmorClass + int(target.AcBonus) + cover.bonus()
-	result := combat.ResolveAttack(sp.ToHit, targetAC, face)
+	targetAC := sheet.ArmorClass + int(target.AcBonus) + int(target.EffectAcBonus) + cover.bonus()
+	// Bênção and Perdição (SRD 5.1): the d4 the app rolls for the caster's spell attack.
+	extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, caster.ID, rules.RollAppliesAttack), nil)
+	if err != nil {
+		return err
+	}
+	hit.Extra = extra
+	result := combat.ResolveAttack(sp.ToHit+extraTotal, targetAC, face)
 	if result.Hit && truth.CriticalOnHit { // a paralyzed or unconscious target within 5 ft (SRD 5.1)
 		result.Critical = true
 	}
@@ -861,9 +878,18 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		if err != nil {
 			return err
 		}
-		saved = combat.SaveSucceeded(d20.Total, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
+		// Bênção and Perdição: a d4 on the target's saving throw.
+		extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, target.ID, rules.RollAppliesSave), nil)
+		if err != nil {
+			return err
+		}
+		if err := s.spendOnceEffects(ctx, c, extra); err != nil {
+			return err
+		}
+		saved = combat.SaveSucceeded(d20.Total+extraTotal, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
 		hit.Save = &saveRoll{
-			D20: clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
+			Extra: extra,
+			D20:   clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total+extraTotal, math.MinInt32, math.MaxInt32),
 			DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
 			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode),
 		}
