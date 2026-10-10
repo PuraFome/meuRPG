@@ -41,10 +41,12 @@ export interface DieShape {
   /** The number it lands on ("00" to "90" for the tens die of a d100). */
   readonly text: string;
   readonly counts: boolean;
-  /** The highest number it shows while it tumbles. */
+  /** How many numbers it cycles through while it tumbles. */
   readonly spin: number;
   /** The index of the die in the roll, to tell the critical d20. */
   readonly source: number;
+  /** Which of the two percentile d10 of a d100 this is: the tens ("00" to "90") or the units ("0" to "9"). */
+  readonly part?: 'tens' | 'units';
 }
 
 /** Timings (milliseconds): the tumble, the pause between one die landing and the next, and the longest the overlay stays open. */
@@ -187,8 +189,8 @@ function validDice(dice: readonly ShownDie[]): boolean {
 }
 
 /**
- * The silhouettes of the dice. A d100 is two d10 side by side, as at the table: the tens die shows "00" to "90" and the
- * units die "0" to "9", and the face 100 shows "00" and "0".
+ * The silhouettes of the dice. A d100 is the two percentile d10 side by side, as at the table (SRD): the tens die shows
+ * "00" to "90" and the units die "0" to "9", and the face 100 shows "00" and "0".
  */
 export function shapesOf(dice: readonly ShownDie[]): DieShape[] {
   return dice.flatMap((d, source): DieShape[] => {
@@ -196,8 +198,15 @@ export function shapesOf(dice: readonly ShownDie[]): DieShape[] {
     if (d.sides === D100) {
       const tens = Math.floor((d.face % D100) / TENS) * TENS;
       return [
-        { shape: 10, text: String(tens).padStart(2, '0'), counts, spin: 9, source },
-        { shape: 10, text: String(d.face % TENS), counts, spin: 9, source },
+        {
+          shape: 10,
+          text: String(tens).padStart(2, '0'),
+          counts,
+          spin: TENS,
+          source,
+          part: 'tens',
+        },
+        { shape: 10, text: String(d.face % TENS), counts, spin: TENS, source, part: 'units' },
       ];
     }
     return [

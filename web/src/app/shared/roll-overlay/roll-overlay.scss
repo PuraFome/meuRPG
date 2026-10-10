@@ -1,4 +1,4 @@
-// The d20 roll animation (docs/design.md#roll-animation). Colours are the theme's tokens; the veil is the page ground
+// The dice roll animation (docs/design.md#roll-animation). Colours are the theme's tokens; the veil is the page ground
 // with some alpha, so it follows the light and dark themes.
 :host {
   display: contents;
@@ -72,10 +72,22 @@
 }
 
 .die {
+  position: relative;
   width: var(--die);
   height: var(--die);
   perspective: 600px;
   filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--mr-ink) 28%, transparent));
+  // The tones of the faces around the number's face, lit from the upper left: in both themes the upper faces are the
+  // brightest and the lower ones the darkest.
+  --die-lit: light-dark(
+    var(--mr-surface),
+    color-mix(in srgb, var(--mr-ink) 17%, var(--mr-surface))
+  );
+  --die-mid: color-mix(in srgb, var(--mr-ink) 8%, var(--mr-surface));
+  --die-shade: light-dark(
+    color-mix(in srgb, var(--mr-ink) 20%, var(--mr-surface)),
+    var(--mr-ground)
+  );
 }
 
 .die svg {
@@ -85,41 +97,63 @@
   transform-style: preserve-3d;
 }
 
-.body {
-  fill: var(--mr-surface);
+.face {
+  fill: var(--mr-accent-soft);
+}
+
+.lit {
+  fill: var(--die-lit);
+}
+
+.mid {
+  fill: var(--die-mid);
+}
+
+.shade {
+  fill: var(--die-shade);
+}
+
+.edge {
+  fill: none;
+  stroke: var(--mr-ink);
+  stroke-opacity: 0.6;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.rim {
+  fill: none;
   stroke: var(--mr-ink);
   stroke-width: 3;
   stroke-linejoin: round;
 }
 
-.face {
-  fill: var(--mr-accent-soft);
-  stroke: var(--mr-ink);
-  stroke-width: 2;
-  stroke-linejoin: round;
-}
-
-.edge {
-  fill: none;
-  stroke: var(--mr-ink-muted);
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-}
-
+// The size comes from the drawing of each die (one digit or two), so the number fits its face.
 .num {
   fill: var(--mr-ink);
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 26px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
-.num--low {
-  font-size: 22px;
+// The two percentile d10 of a d100 say which is which under them, on a chip like "+N" so the page behind never mixes in.
+.die--part {
+  margin-bottom: var(--mr-space-6);
 }
 
-.num--long {
-  font-size: 22px;
+.part {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  translate: -50% 0;
+  padding: 0 var(--mr-space-2);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 0.875rem;
+  color: var(--mr-ink);
+  white-space: nowrap;
 }
 
 .result__note {
@@ -143,18 +177,24 @@
   filter: drop-shadow(0 0 14px var(--mr-accent)) drop-shadow(0 0 4px var(--mr-warning-ink));
 }
 
-.die--crit .body {
-  stroke: var(--mr-accent);
+.die--crit .face {
   fill: var(--mr-warning-surface);
+}
+
+.die--crit .rim {
+  stroke: var(--mr-accent);
 }
 
 .die--crit .num {
   fill: var(--mr-accent-text);
 }
 
-.die--fumble .body {
-  stroke: var(--mr-danger-ink);
+.die--fumble .face {
   fill: var(--mr-danger-surface);
+}
+
+.die--fumble .rim {
+  stroke: var(--mr-danger-ink);
 }
 
 .die--fumble .num {

@@ -102,7 +102,7 @@ describe('RollOverlay', () => {
     });
     step(700);
     expect(el.querySelectorAll('.die').length).toBe(2);
-    expect(el.querySelectorAll('rect.body').length).toBe(2);
+    expect(el.querySelectorAll('svg[data-die="d6"]').length).toBe(2);
     expect(el.querySelector('.result')).toBeNull();
     step(80);
     expect(el.querySelector('.result')?.textContent).toContain('2 + 5 + 3 = 10');
@@ -122,6 +122,10 @@ describe('RollOverlay', () => {
     expect(Array.from(el.querySelectorAll('.num')).map((n) => n.textContent?.trim())).toEqual([
       '40',
       '7',
+    ]);
+    expect(Array.from(el.querySelectorAll('.part')).map((n) => n.textContent?.trim())).toEqual([
+      'dezenas',
+      'unidades',
     ]);
   });
 
