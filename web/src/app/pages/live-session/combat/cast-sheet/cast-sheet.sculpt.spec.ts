@@ -135,7 +135,7 @@ async function open(sculptSpells: boolean) {
     const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
     map.place.emit({ kind: 'direction', direction: { dx: 1, dy: 0 } });
     await settle();
-    button('Confirmar local')!.click();
+    button('Confirmar direção')!.click();
     await settle();
   };
   const boxes = () =>
