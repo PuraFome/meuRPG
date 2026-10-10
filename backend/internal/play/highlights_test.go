@@ -461,6 +461,23 @@ func TestMR032_DamageTakenIsWhatTheMasterApplied(t *testing.T) {
 	}
 }
 
+// MR-032: a druid in a beast form takes the damage on the beast's pool, and that
+// counts as damage taken: a 30-hit-point bear takes 25 (the druid's own numbers do
+// not move), then 10 (the bear drops with 5 and 5 carry over): 35 in all.
+func TestMR032_DamageTakenInABeastFormCountsTheBeastsPool(t *testing.T) {
+	t.Parallel()
+	f := &fabric{}
+	bear := func(hp int32) *hpState {
+		return &hpState{HP: 20, Shape: &shapeState{Beast: "monster:brown-bear", HP: hp}}
+	}
+	f.add(eventDamageApplied, actionEvent{Actor: "c-gob", Target: "c-toren", Amount: 25, Before: bear(30), After: bear(5)})
+	f.add(eventDamageApplied, actionEvent{Actor: "c-gob", Target: "c-toren", Amount: 10, Before: bear(5), After: &hpState{HP: 15}})
+	got := tallyOf(f)
+	if got["Toren"].taken != 35 {
+		t.Errorf("taken = %d, want 35 (25 on the bear, then 5 on the bear and 5 on the druid)", got["Toren"].taken)
+	}
+}
+
 // MR-032: a heal counts what it gave back, from a spell or from Retomar o
 // fôlego.
 func TestMR032_HealingIsWhatWasGivenBack(t *testing.T) {

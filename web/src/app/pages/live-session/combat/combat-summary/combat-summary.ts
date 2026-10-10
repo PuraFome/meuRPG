@@ -70,7 +70,10 @@ export class CombatSummary {
   private readonly title = viewChild.required<ElementRef<HTMLElement>>('title');
 
   protected readonly players = computed(() => this.encounter().combatants.filter(isPlayer));
-  protected readonly npcs = computed(() => this.encounter().combatants.filter((c) => !isPlayer(c)));
+  /** The enemies: a character's creature (a familiar, a summon) is the party's, not an enemy. */
+  protected readonly npcs = computed(() =>
+    this.encounter().combatants.filter((c) => !isPlayer(c) && !isCreature(c)),
+  );
   protected readonly defeated = computed(() => this.npcs().filter((c) => c.defeated));
   /** The player characters that died: a dead combatant has no hit points to read, so the state says it. */
   protected readonly dead = computed(() =>

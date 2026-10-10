@@ -129,6 +129,21 @@ describe('CombatXp (E7-06)', () => {
   const notNow = (el: HTMLElement) =>
     el.querySelector<HTMLButtonElement>('app-xp-actions .secondary')!;
 
+  it("does not count a player's defeated creature among the enemies", async () => {
+    const creature = combatant({
+      id: 'cr',
+      label: 'Urso Pardo',
+      kind: CombatantKind.CREATURE,
+      defeated: true,
+      state: CombatantState.DEFEATED,
+      xpValue: 0,
+    });
+    const { fixture, el } = setup([...goblins, creature, ...party]);
+    await ready(fixture);
+    expect(text(el)).toContain('Total dos 4 derrotados');
+    expect(text(el)).not.toContain('Urso Pardo');
+  });
+
   it('waits for the XP to load, then shows the block, and says where it stands', async () => {
     const { fixture, el } = setup();
     expect(text(el)).toContain('Carregando a experiência...');

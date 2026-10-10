@@ -80,11 +80,11 @@ describe('CombatSummary and the XP (E7-06)', () => {
     });
   });
 
-  function setup(master: boolean) {
+  function setup(master: boolean, list = combatants) {
     const fixture = TestBed.createComponent(CombatSummary);
     fixture.componentRef.setInput(
       'encounter',
-      encounter({ id: 'enc', status: EncounterStatus.ENDED, combatants }),
+      encounter({ id: 'enc', status: EncounterStatus.ENDED, combatants: list }),
     );
     fixture.componentRef.setInput('isMaster', master);
     fixture.componentRef.setInput('campaignId', 'camp-1');
@@ -136,6 +136,26 @@ describe('CombatSummary and the XP (E7-06)', () => {
     expect(el.querySelector('.cols--xp')).toBeNull();
     // What the defeated were worth is not shown where it counts for nothing.
     expect(el.querySelector('.line__xp')).toBeNull();
+  });
+
+  it("keeps a player's defeated creature out of the enemies: not counted, not listed", async () => {
+    const withFamiliar = [
+      ...combatants,
+      combatant({
+        id: 'fam',
+        label: 'Urso Pardo',
+        kind: CombatantKind.CREATURE,
+        defeated: true,
+        state: CombatantState.DEFEATED,
+        xpValue: 0,
+      }),
+    ];
+    const master = setup(true, withFamiliar);
+    await ready(master.fixture);
+    const text = master.el.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('2 de 2');
+    expect(text).not.toContain('Urso Pardo');
+    expect(master.el.querySelectorAll('.line__xp').length).toBe(2);
   });
 
   it('shows the master what each defeated NPC is worth, and not a player', async () => {
