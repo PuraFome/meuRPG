@@ -2151,7 +2151,16 @@ export class CombatView {
 
   /** "Voltar e atacar" (`endRage` false) or "Deixar a fúria acabar": the answer to the rage question. */
   protected async answerRage(id: string, endRage: boolean): Promise<void> {
-    await this.run((e) => this.api.answerRageEnd(this.campaignId(), e.id, id, endRage));
+    // "Deixar a fúria acabar" ends the rage and then passes the turn, in one tap, as the
+    // question says: the server only ends the rage, so the turn goes in the same call.
+    await this.run(async (e) => {
+      const answered = await this.api.answerRageEnd(this.campaignId(), e.id, id, endRage);
+      if (!endRage) {
+        return answered;
+      }
+      this.state().apply(answered);
+      return this.api.endTurn(this.campaignId(), e.id, id, false, answered.round);
+    });
   }
 
   /** "Encerrar fúria": the bonus action. */

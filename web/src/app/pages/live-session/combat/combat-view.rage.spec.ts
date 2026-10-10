@@ -73,6 +73,7 @@ async function open(isMaster: boolean, pending: string) {
     removeListener: () => undefined,
   }));
   const answered: unknown[][] = [];
+  const ended: unknown[][] = [];
   const api = new Proxy(
     {},
     {
@@ -86,12 +87,17 @@ async function open(isMaster: boolean, pending: string) {
             })
           : name === 'log'
             ? async () => ({ rounds: [], undoableEventId: '' })
-            : name === 'answerRageEnd'
+            : name === 'endTurn'
               ? async (...args: unknown[]) => {
-                  answered.push(args);
+                  ended.push(args);
                   return enc('');
                 }
-              : async () => ({}),
+              : name === 'answerRageEnd'
+                ? async (...args: unknown[]) => {
+                    answered.push(args);
+                    return enc('');
+                  }
+                : async () => ({}),
     },
   );
   const state = new CombatState();
@@ -136,7 +142,7 @@ async function open(isMaster: boolean, pending: string) {
   fixture.componentRef.setInput('dicePreference', DicePreference.APP);
   fixture.detectChanges();
   await settle(fixture);
-  return { fixture, el: fixture.nativeElement as HTMLElement, answered, state };
+  return { fixture, el: fixture.nativeElement as HTMLElement, answered, ended, state };
 }
 
 const button = (el: HTMLElement, text: string) =>
@@ -146,24 +152,28 @@ const button = (el: HTMLElement, text: string) =>
 
 describe('CombatView: the rage question', () => {
   it('asks the owner and sends "Voltar e atacar" as end_rage false', async () => {
-    const { fixture, el, answered } = await open(false, 't');
+    const { fixture, el, answered, ended } = await open(false, 't');
     expect(
       plain(el.querySelector('app-rage-question [role="alertdialog"]')?.textContent),
     ).toContain('A sua fúria vai acabar?');
     button(el, 'Voltar e atacar').click();
     await settle(fixture);
     expect(answered).toEqual([['c', 'enc', 't', false]]);
+    expect(ended).toEqual([]);
     expect(el.querySelector('app-rage-question [role="alertdialog"]')).toBeNull();
   });
 
   it('asks the master about the character and sends "Deixar a fúria acabar" as end_rage true', async () => {
-    const { fixture, el, answered } = await open(true, 't');
+    const { fixture, el, answered, ended } = await open(true, 't');
     expect(
       plain(el.querySelector('app-rage-question [role="alertdialog"]')?.textContent),
     ).toContain('A fúria de Toren vai acabar?');
     button(el, 'Deixar a fúria acabar').click();
     await settle(fixture);
     expect(answered).toEqual([['c', 'enc', 't', true]]);
+    // One tap: the rage ends and the turn passes (a single end-turn call, for the raging barbarian).
+    expect(ended).toHaveLength(1);
+    expect(ended[0].slice(0, 4)).toEqual(['c', 'enc', 't', false]);
   });
 
   it('asks nobody when no rage waits', async () => {
