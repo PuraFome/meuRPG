@@ -111,19 +111,35 @@
             }
           </mat-select>
         </mat-form-field>
-        <app-roll-picker
-          class="aim__roll"
-          [outlined]="true"
-          [canType]="true"
-          [label]="rollLabel()"
-          hint="Digite o número do d20 (1 a 20)."
-          totalNote="Total do ataque"
-          [modifier]="attack()?.attackBonus ?? 0"
-          appLabel="Rolar ataque"
-          [busy]="busy() || !targetId() || !!rollWhy()"
-          (app)="rollApp()"
-          (typed)="rollTyped($event)"
-        />
+        @if (faceCount() === 1) {
+          <app-roll-picker
+            class="aim__roll"
+            [outlined]="true"
+            [canType]="true"
+            [label]="rollLabel()"
+            hint="Digite o número do d20 (1 a 20)."
+            totalNote="Total do ataque"
+            [modifier]="attack()?.attackBonus ?? 0"
+            appLabel="Rolar ataque"
+            [busy]="busy() || !targetId() || !!rollWhy()"
+            (app)="rollApp()"
+            (typed)="rollTyped($event)"
+          />
+        } @else {
+          <app-multi-roll
+            class="aim__roll"
+            [fields]="d20Fields"
+            [canType]="true"
+            [combine]="combine()"
+            [modifier]="attack()?.attackBonus ?? 0"
+            totalNote="Total do ataque"
+            appLabel="Rolar 2d20 no app"
+            [hint]="pairHint()"
+            [busy]="busy() || !targetId() || !!rollWhy()"
+            (app)="rollApp()"
+            (typed)="rollTypedPair($event)"
+          />
+        }
       </div>
       @if (rollWhy()) {
         <p class="offer__why" id="roll-why">{{ rollWhy() }}</p>

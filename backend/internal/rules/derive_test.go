@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -671,6 +672,21 @@ func TestDeriveRules(t *testing.T) {
 			if !slices.Contains(codes, want) {
 				t.Errorf("missing issue %q in %v", want, codes)
 			}
+		}
+	})
+	t.Run("a wizard prepares only from the spellbook", func(t *testing.T) {
+		t.Parallel()
+		b := pensantus()
+		// SRD 5.1, Wizard, "Preparing and Casting Spells": the wizard prepares from the spellbook.
+		out := b.SpellsKnown[0]
+		b.SpellsKnown = slices.Clone(b.SpellsKnown[1:])
+		if !slices.Contains(b.SpellsPrepared, out) {
+			t.Skipf("%s is not prepared in the fixture", out)
+		}
+		idx := slices.Index(b.SpellsPrepared, out)
+		want := IssueSpellNotOnList + " " + fmt.Sprintf("full.prepared_spell_keys[%d]", idx)
+		if codes := issueCodes(Derive(b, c)); !slices.Contains(codes, want) {
+			t.Errorf("a prepared spell outside the book: issues = %v, want %q", codes, want)
 		}
 	})
 	t.Run("unknown keys become issues, never panics", func(t *testing.T) {

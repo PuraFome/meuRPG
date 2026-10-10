@@ -646,7 +646,12 @@ export async function startGameSession(page: Page, campaignId?: string): Promise
 export async function showAllPicks(panel: import('@playwright/test').Locator, hidden?: number): Promise<void> {
   const more = panel.getByRole('button', { name: new RegExp(`^Ver (os outros|as outras) ${hidden ?? '\\d+'}\\b`) });
   if (hidden !== undefined) {
-    await more.click();
+    // A list drawn whole (the level-up's prepared spells, `showAll`) has no such button: then every row is there.
+    const whole = panel.locator('xpath=descendant-or-self::app-pick-list[@data-all]');
+    await more.or(whole).first().waitFor();
+    if ((await more.count()) > 0) {
+      await more.click();
+    }
     return;
   }
   await panel.locator('input.row__input').first().waitFor();

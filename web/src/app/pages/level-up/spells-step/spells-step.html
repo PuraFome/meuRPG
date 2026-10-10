@@ -36,6 +36,7 @@
 @if (prepared().n > 0) {
   <app-pick-list
     pickId="prepared"
+    [showAll]="true"
     title="Magias preparadas"
     [leadStrong]="prepared().strong"
     [note]="prepared().note"

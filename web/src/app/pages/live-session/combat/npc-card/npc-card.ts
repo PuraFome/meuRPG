@@ -25,11 +25,13 @@ import {
   type PendingDamage,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { coverText } from '../../../../core/combat/cover';
+import { d20Count, orNormal } from '../../../../core/combat/roll-mode';
 import { rollFormula } from '../../../../core/combat/combat-dice';
 import { article } from '../../../../core/combat/combat-log';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -52,6 +54,7 @@ import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
 import { NextTurn } from '../combat-bar/next-turn';
+import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { MasterSpend } from '../theatre/master-spend';
 import { TheatrePill } from '../theatre/theatre-pill';
@@ -86,6 +89,7 @@ import { PendingDamages } from './pending-damages';
     PendingDamages,
     Portrait,
     RageStatus,
+    MultiRoll,
     RollPicker,
     RouterLink,
   ],
@@ -142,6 +146,7 @@ export class NpcCard {
   /** The master is typing the d20: the roll takes the whole row. */
   protected readonly typing = signal(false);
   private readonly picker = viewChild(RollPicker);
+  private readonly multi = viewChild(MultiRoll);
   /** The d20 just rolled: shown with the armor class, until the turn changes. */
   protected readonly last = signal<{
     roll: AttackRoll;
@@ -259,6 +264,25 @@ export class NpcCard {
           : '',
     };
   });
+  /** The mode the server works out for this attack on this target (advantage, disadvantage, normal): the d20 the master
+   * types follow it, one face or two, as the player's own sheet does (SRD 5.1, "Advantage and Disadvantage"). */
+  protected readonly rollMode = computed(() =>
+    orNormal(
+      this.targets().find((t) => t.combatantId === this.targetId())?.rollMode ?? RollMode.NORMAL,
+    ),
+  );
+  protected readonly faceCount = computed(() => d20Count(this.rollMode()));
+  protected readonly d20Fields: readonly RollField[] = [
+    { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },
+    { key: 'd20-2', label: 'Segundo d20', min: 1, max: 20 },
+  ];
+  protected readonly combine = computed(() =>
+    this.rollMode() === RollMode.DISADVANTAGE ? 'lower' : 'higher',
+  );
+  protected readonly pairHint = computed(
+    () =>
+      `Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ${this.combine() === 'lower' ? 'menor' : 'maior'}.`,
+  );
   protected readonly rollLabel = computed(() => {
     const a = this.attack();
     return a
@@ -339,7 +363,14 @@ export class NpcCard {
     return this.rollAttack({ face });
   }
 
-  private async rollAttack(die: { inApp: true } | { face: number }): Promise<void> {
+  /** The two d20 of an advantage or a disadvantage, in the order they were rolled. */
+  protected rollTypedPair(faces: number[]): Promise<void> {
+    return this.rollAttack({ faces });
+  }
+
+  private async rollAttack(
+    die: { inApp: true } | { face: number } | { faces: number[] },
+  ): Promise<void> {
     const a = this.attack();
     const target = this.targetId();
     if (!a || !target || this.busy() || this.rollWhy()) {
@@ -361,6 +392,7 @@ export class NpcCard {
       this.state().apply(res.encounter);
       this.last.set({ roll: res.roll, pending: res.pending ?? null, subject: this.subject().id });
       this.picker()?.reset();
+      this.multi()?.reset();
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'rolar o ataque'));
     } finally {
