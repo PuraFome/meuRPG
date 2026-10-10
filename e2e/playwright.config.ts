@@ -29,6 +29,9 @@ export default defineConfig({
     baseURL,
     // A control that never shows up fails in seconds with its locator, not at the test's own timeout.
     actionTimeout: 20_000,
+    // The d20 roll animation (web/src/app/shared/roll-overlay) never plays: with reduced motion it does nothing, so no overlay
+    // covers a control during a test and the layout and axe checks measure a still screen.
+    reducedMotion: 'reduce',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

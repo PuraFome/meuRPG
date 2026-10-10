@@ -27,6 +27,7 @@ import {
 } from '../../../../core/play/scene-view';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { joinDots } from '../../../../core/format/text';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
@@ -94,6 +95,7 @@ export function openSceneRollSheet(
 export class SceneRollSheet {
   private readonly api = inject(SceneClient);
   private readonly resources = inject(ResourceClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<SceneRollSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -216,6 +218,17 @@ export class SceneRollSheet {
       }
       this.roll.set(made);
       this.typing.set(false);
+      // The d20 the app rolled; "Passou"/"Falhou" only when the sheet shows it (the master shows the DC).
+      const show = showOfDice(this.name, made.roll, {
+        withTotal: true,
+        outcome:
+          made.passed === undefined
+            ? undefined
+            : { word: made.passed ? 'Passou' : 'Falhou', good: made.passed },
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       // The row under the sheet turns into "Rolada" as soon as the read comes back.
       void this.data.state.refresh();
     } catch (err) {

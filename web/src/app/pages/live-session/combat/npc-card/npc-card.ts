@@ -18,6 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import {
   AreaPlacement,
+  AttackOutcome,
   type AttackRoll,
   type Combatant,
   type Encounter,
@@ -45,6 +46,7 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { RageStatus } from '../rage-end/rage-status';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { attackName } from '../../../../core/combat/combat-options';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import {
   combatantInitial,
   isDown,
@@ -99,6 +101,7 @@ import { PendingDamages } from './pending-damages';
 })
 export class NpcCard {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
   private readonly undone = inject(CombatUndone);
 
   readonly campaignId = input.required<string>();
@@ -412,6 +415,18 @@ export class NpcCard {
       this.key = newKey();
       this.state().apply(res.encounter);
       this.last.set({ roll: res.roll, pending: res.pending ?? null, subject: this.subject().id });
+      // The master's own screen shows this total and the word; a roll a reaction holds shows the face alone.
+      const held = res.roll.heldForReaction;
+      const hit = isHit(res.roll.outcome);
+      const show = showOfDice(`Ataque com ${attackName(a)}`, res.roll.d20, {
+        withTotal: true,
+        outcome: held ? undefined : { word: outcomeWord(res.roll.outcome), good: hit },
+        critical: !held && res.roll.outcome === AttackOutcome.CRITICAL_HIT,
+        fumble: !held && !hit,
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       this.picker()?.reset();
       this.multi()?.reset();
     } catch (err) {

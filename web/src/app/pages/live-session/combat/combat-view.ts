@@ -109,7 +109,8 @@ import { CombatLogState } from '../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../core/combat/combat-state';
 import { SpellCatalog } from '../../../core/combat/spell-catalog';
 import { TurnOptionsState } from '../../../core/combat/turn-options-state';
-import { saveAnnouncement } from '../../../core/combat/death-saves';
+import { outcomeText, saveAnnouncement } from '../../../core/combat/death-saves';
+import { RollAnimator, showOfDice } from '../../../shared/roll-overlay/roll-animator';
 import {
   currentCombatant,
   isDead,
@@ -291,6 +292,7 @@ const RETRYABLE: ReadonlySet<Code> = new Set([
 })
 export class CombatView {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
   private readonly undone = inject(CombatUndone);
   private readonly roster = inject(RosterClient);
   private readonly maps = inject(MapsClient);
@@ -2174,6 +2176,21 @@ export class CombatView {
       const res = await this.api.rollDeathSave(this.campaignId(), e.id, own.id, die, key);
       this.deathKey.renew();
       const text = saveAnnouncement(res.save, own.label);
+      // The player's own death save, as the line under the sheet tells it (hidden saves arrive without a roll: nothing plays).
+      const show = showOfDice('Teste contra a morte', res.save.roll, {
+        withTotal: true,
+        outcome: {
+          word: outcomeText(res.save.outcome),
+          good:
+            res.save.outcome === DeathSaveOutcome.SUCCESS ||
+            res.save.outcome === DeathSaveOutcome.REVIVED,
+        },
+        critical: res.save.outcome === DeathSaveOutcome.REVIVED,
+        fumble: res.save.outcome === DeathSaveOutcome.CRITICAL_FAILURE,
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       this.deathResult.set(text);
       if (res.save.outcome === DeathSaveOutcome.REVIVED) {
         this.actionNote.set(text);

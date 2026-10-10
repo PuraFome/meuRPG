@@ -713,6 +713,16 @@ The UI text is Portuguese (pt-BR) until i18n lands after the MVP; these rules ar
 
 Only in response to an action (opening a feature, changing step, confirming), and nothing animates under `prefers-reduced-motion`.
 
+### Roll animation
+
+The dice animation plays when this screen rolls in the app, in a live session: attacks, damage (a player's, a spell's, the master's for an NPC), checks, saving throws, death saves, effect saves, the Bardic Inspiration die and the hit dice of a rest. It never plays for a physical die the player typed, for another person's roll arriving by stream, or outside play (the character editor, level-up, the campaign pages).
+
+- The overlay (`shared/roll-overlay`, mounted once in the shell) shows a veil of the page ground and one silhouette per die: the d4 a triangle, the d6 a square with a bevel, the d8 a diamond, the d10 a kite, the d12 a pentagon and the d20 a hexagon with facets, in the ink and accent tokens. A d100 is two d10, the tens die showing "00" to "90" and the units die "0" to "9" (100 is "00" and "0").
+- The dice tumble together for 700 ms, then land one after another (80 ms apart; at most 8 are drawn, the rest is a "+N" chip) on the real faces. Advantage or disadvantage shows both d20, the counting one highlighted. A natural 20 the screen marks as critical glows in the accent ("Crítico!"); a natural 1 on a missed attack says "Falha crítica".
+- The result stays on screen so the table can read it: the label ("Ataque com Machado grande"), the sum ("2 + 5 + 3 = 10"), the damage type and the outcome word. It closes by itself 10 s after it opened at the latest; a tap anywhere or Esc closes it at once (the tap does not reach what is underneath), and a new roll replaces it. After it closes nothing is left over the page.
+- It shows only what the sheet already shows (RN-20): the d20 and "Acertou" or "Errou" for a player, never the armor class; a roll held for a reaction or for the Inspiração de Bardo question shows the faces alone.
+- It is not a dialog: focus does not move, the picture is `aria-hidden` and a polite live region announces one sentence when the dice land. With `prefers-reduced-motion: reduce` (or no `matchMedia`) it does nothing at all, and the Playwright config sets `reducedMotion: 'reduce'`, so the e2e and axe runs never see it.
+
 ## Icons
 
 Material Symbols Outlined, served by the app (`@material-symbols/font-400`), 16 to 24px, in the color of the text beside them. An icon-only button has `aria-label`.

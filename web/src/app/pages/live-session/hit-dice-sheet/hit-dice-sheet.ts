@@ -23,6 +23,7 @@ import {
   dieName,
   hitDieRollLine,
 } from '../../../core/resources/hit-dice-text';
+import { RollAnimator, showOfDie } from '../../../shared/roll-overlay/roll-animator';
 import { type HitDieRoll, ResourceClient } from '../../../core/resources/resources-client';
 import {
   arcaneRecoveryErrorMessage,
@@ -81,6 +82,7 @@ export function openHitDice(
 })
 export class HitDiceSheet {
   private readonly api = inject(ResourceClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<HitDiceSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -174,6 +176,17 @@ export class HitDiceSheet {
         const vitals = toVitalsVm(res.vitals);
         this.answered.set(vitals);
         this.data.apply(vitals);
+      }
+      if ('inApp' in roll) {
+        const show = showOfDie(
+          'Dado de vida',
+          faces,
+          res.face,
+          hitDieRollLine(res.face, res.constitutionModifier, res.healed),
+        );
+        if (show) {
+          this.animator.play(show);
+        }
       }
       this.rolls.update((all) => [
         hitDieRollLine(res.face, res.constitutionModifier, res.healed),
