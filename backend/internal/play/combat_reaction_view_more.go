@@ -41,6 +41,7 @@ func (wv *windowView) morePrompt(kind reaction.Kind, w playdb.ReactionWindow, re
 		if w.Step == stepSecond {
 			out.Prompt = &playv1.ReactionWindow_DeflectThrow{DeflectThrow: &playv1.DeflectMissilesThrowPrompt{
 				KiLeft: k.resourceLeft(resKi), NormalRangeFt: reaction.DeflectNormalRangeFt, LongRangeFt: reaction.DeflectLongRangeFt,
+				MissileNamePt: attack, AttackBonus: clamp32(k.st.Proficiency+k.st.DexMod, math.MinInt32, math.MaxInt32),
 			}}
 			break
 		}

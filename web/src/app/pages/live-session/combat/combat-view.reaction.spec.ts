@@ -76,6 +76,7 @@ function setup(opts: {
   TestBed.resetTestingModule();
   const opened: Opened[] = [];
   const closes: Subject<unknown>[] = [];
+  const calls: unknown[][] = [];
   const api = new Proxy(
     {},
     {
@@ -107,7 +108,10 @@ function setup(opts: {
               pendingDamages: [],
             });
           default:
-            return async () => ({});
+            return async (...args: unknown[]) => {
+              calls.push([name, ...args]);
+              return {};
+            };
         }
       },
     },
@@ -164,7 +168,7 @@ function setup(opts: {
   fixture.componentRef.setInput('diceMode', DiceMode.PLAYERS_CHOOSE);
   fixture.componentRef.setInput('dicePreference', DicePreference.APP);
   fixture.detectChanges();
-  return { fixture, el: fixture.nativeElement as HTMLElement, state, opened, closes };
+  return { fixture, el: fixture.nativeElement as HTMLElement, state, opened, closes, calls };
 }
 
 async function settle(fixture: {
@@ -268,8 +272,29 @@ describe('CombatView, the reaction windows', () => {
     expect(el.querySelector('[data-testid="reaction-closed"]')).toBeNull();
   });
 
-  it('"Devolver (1 de chi)" opens the attack of the same reaction, naming the window that caught the missile', async () => {
-    const { fixture, opened, closes } = setup({ windows: [shield()], current: 'g' });
+  // The second step of Defletir Projéteis: the monk caught the arrow and may throw it back for 1 ki.
+  const throwWindow = () =>
+    reactionWindow({
+      id: 'w2',
+      kind: ReactionKind.DEFLECT_MISSILES,
+      reactorId: 't',
+      reactorLabel: 'Toren',
+      reactorIsPlayer: true,
+      secondStep: true,
+      prompt: {
+        case: 'deflectThrow',
+        value: {
+          kiLeft: 3,
+          normalRangeFt: 20,
+          longRangeFt: 60,
+          missileNamePt: 'Arco curto',
+          attackBonus: 7,
+        },
+      } as never,
+    } as never);
+
+  it('"Devolver (1 de chi)" opens the ranged throw of the same reaction, naming the window, with the missile and not the monk\'s own attacks', async () => {
+    const { fixture, opened, closes } = setup({ windows: [throwWindow()], current: 'g' });
     await settle(fixture);
     // The sheet closes asking to throw the missile back.
     closes[0].next({ throwWindowId: 'w2' });
@@ -279,6 +304,35 @@ describe('CombatView, the reaction windows', () => {
     expect(attack).toBeDefined();
     expect(attack?.config.data['catchWindowId']).toBe('w2');
     expect(attack?.config.data['asReaction']).toBe(true);
+    const thrown = attack?.config.data['attack'] as {
+      namePt: string;
+      attackBonus: number;
+      rangeFt: number;
+      longRangeFt: number;
+    };
+    expect(thrown).toMatchObject({
+      namePt: 'Arco curto',
+      attackBonus: 7,
+      rangeFt: 20,
+      longRangeFt: 60,
+    });
+    expect(
+      (attack?.config.data['targets'] as { combatantId: string }[]).map((t) => t.combatantId),
+    ).toEqual(['g']);
+  });
+
+  it('closing the throw-back sheet without a roll keeps the missile: the window is passed, so the combat does not wait', async () => {
+    const { fixture, opened, closes, calls } = setup({ windows: [throwWindow()], current: 'g' });
+    await settle(fixture);
+    closes[0].next({ throwWindowId: 'w2' });
+    closes[0].complete();
+    await settle(fixture);
+    const at = opened.findIndex((o) => o.component === AttackSheet);
+    closes[at].complete(); // "Fechar" with no roll
+    await settle(fixture);
+    const pass = calls.find((c) => c[0] === 'answerReaction');
+    expect(pass?.[3]).toBe('w2');
+    expect(pass?.[4]).toEqual({ use: false });
   });
 
   it("opens the next window's sheet once the first closed", async () => {
