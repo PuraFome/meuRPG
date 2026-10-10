@@ -244,11 +244,11 @@ Fog of war (MR-036) computes, per player, what the character sees. `go test -run
 | The cave (24 × 16, one torch, 6 players) | 3.5 µs, 1 KB | 9.4 µs, 1.5 KB |
 | 60 × 40, 6 players and 3 lights | 34 µs, 5.8 KB | 166 µs, 8.5 KB |
 
-Memory (`TestSceneMemory -v`): a compiled 200 × 400 scene takes about 430 kB and each vision, 85 kB. The cache holds 8 scenes with up to 24 visions each: at most 19 MB, inside the 512 MiB budget.
+Memory (`TestSceneMemory -v`): a compiled 200 × 400 scene takes about 430 kB and each vision, 85 kB. The cache holds 8 scenes with up to 24 visions each: at most 19 MB, inside the 400 MiB `GOMEMLIMIT`.
 
 ### Fog tile measurements
 
-The player of a fog map receives the image in pieces assembled on the server (MR-036, RN-10; [Architecture](docs/architecture.md#per-player-image-tiles)). The numbers below are from an Apple M1 Pro, with test images (a gradient with texture; a real photo compresses worse, and the pieces get bigger); the production server has 1 vCPU, so count on about 2 to 3 times that in time.
+The player of a fog map receives the image in pieces assembled on the server (MR-036, RN-10; [Architecture](docs/architecture.md#per-player-image-tiles)). The numbers below are from an Apple M1 Pro, with test images (a gradient with texture; a real photo compresses worse, and the pieces get bigger); the production server has 2 vCPU, slower each than the M1's, so count on about 2 to 3 times that in time.
 
 | What | Measurement |
 | --- | --- |
@@ -261,7 +261,7 @@ The player of a fog map receives the image in pieces assembled on the server (MR
 | A request for a tile already in the cache, through the whole route (`TestTileRequestTiming`, with the test's own HTTP and the in-memory database) | 6.7 ms |
 | A `304` (`If-None-Match`), through the whole route | 4.8 ms: renders and decodes nothing; it is the cost of the three database reads that check the session, the participation and whether the player sees the map |
 
-**The memory worst case**, against the 400 MiB `GOMEMLIMIT` (and the instance's 512 MiB), with a 40-megapixel upload in 8-bit PNG (the biggest the server stores):
+**The memory worst case**, against the 400 MiB `GOMEMLIMIT` (the instance has 1 GiB), with a 40-megapixel upload in 8-bit PNG (the biggest the server stores):
 
 | Part | Memory |
 | --- | --- |
@@ -270,7 +270,7 @@ The player of a fog map receives the image in pieces assembled on the server (MR
 | The ready-tile cache | 32 MiB (33.5 MB), counted in bytes |
 | The fog scenes and per-player visions (`TestSceneMemory`) | up to 19 MB |
 | The image generation answers (MR-039): **1 call to the model at a time** (`maxGenerating`), an answer of up to 8 MiB, read straight into a structure (measured: about 2.5 times the answer, about 20 MiB at the ceiling; a 1K image is about 2 MB, and in practice about 5 MiB), and the shrunken images of the request, up to about 6 MiB | up to about 26 MB |
-| Sum | 200 + 34 + 33.5 + 19 + 26 = **about 313 MB**, plus about 50 MB for the rest of the server (**about 363 MB**): inside the 400 MiB `GOMEMLIMIT` and the instance's 512 MiB. With 2 calls at a time it would be about 389 MB, which is why it is 1 |
+| Sum | 200 + 34 + 33.5 + 19 + 26 = **about 313 MB**, plus about 50 MB for the rest of the server (**about 363 MB**): inside the 400 MiB `GOMEMLIMIT` and the instance's 1 GiB. With 2 calls at a time it would be about 389 MB, which is why it is 1 |
 
 An image whose decoding would exceed 192 MiB (a 16-bit PNG of more than 24 megapixels, from before the upload stored only 8 bits per channel) is refused at the first tile, with `503`; a 40-megapixel JPEG decodes in about 60 MB.
 
