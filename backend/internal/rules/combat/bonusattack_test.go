@@ -22,6 +22,7 @@ func TestBonusAttack(t *testing.T) {
 		want BonusKind
 	}{
 		{"light weapon after a light weapon", after(shortsword), shortsword, BonusTwoWeapon},
+		{"a single light weapon has no off hand", BonusAttackTurn{AttackAction: true, Last: shortsword, NoSecondLight: true}, shortsword, BonusNone},
 		{"a heavier weapon off hand", after(shortsword), longsword, BonusNone},
 		{"light weapon after a heavier one", after(longsword), shortsword, BonusNone},
 		{"no Attack action yet", BonusAttackTurn{Last: shortsword}, shortsword, BonusNone},
@@ -68,11 +69,15 @@ func bonusSheet(perAction int, style bool) rules.Derived {
 	}
 	dagger, daggerText := dice(3)
 	strike, strikeText := dice(3)
+	shortsword := rules.DiceFormula{Count: 1, Sides: 6, Bonus: 3}
+	shortswordText := diceText(shortsword)
 	return rules.Derived{
 		AttacksPerAction: perAction, TwoWeaponFighting: style,
 		Attacks: []rules.Attack{
 			{Key: "equipment:dagger", Kind: "weapon", Melee: true, Light: true, AbilityMod: 3, DamageDice: dagger, Damage: daggerText},
 			{Key: "equipment:longsword", Kind: "weapon", Melee: true},
+			// A second light melee weapon: two-weapon fighting needs one in each hand (SRD 5.1).
+			{Key: "equipment:shortsword", Kind: "weapon", Melee: true, Light: true, AbilityMod: 3, DamageDice: shortsword, Damage: shortswordText},
 			{Key: rules.UnarmedStrikeKey, Kind: "weapon", Melee: true, MartialArts: true, AbilityMod: 3, DamageDice: strike, Damage: strikeText},
 			{Key: "spell:fire-bolt", Kind: "spell", Beams: 1},
 			{Key: "spell:eldritch-blast", Kind: "spell", Beams: 2},

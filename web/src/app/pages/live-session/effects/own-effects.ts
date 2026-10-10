@@ -15,6 +15,8 @@ import {
 export interface OwnEffectsSources {
   readonly campaignId: Signal<string>;
   readonly isMaster: Signal<boolean>;
+  /** The characters the player plays: the server also sends the effects "for everyone" on the others', which are not theirs. */
+  readonly ownCharacterIds: Signal<readonly string[]>;
   /** The combat on the page (the one a player is in), or `null`. */
   readonly encounter: Signal<Encounter | null>;
   /** Moves when something that may change the effects happened (the stream's hints, the vitals' revision). */
@@ -38,15 +40,21 @@ export class OwnEffects {
       : null;
   });
 
+  /** The effects outside a combat that are on the player's own characters only (never another player's Armadura Arcana). */
+  private readonly outsideMine = computed(() => {
+    const ids = this.src.ownCharacterIds();
+    return this.outside().filter((e) => ids.includes(e.characterId));
+  });
+
   /** The cards of "Seus efeitos". */
   readonly cards = computed<EffectCardView[]>(() => {
     const own = this.own();
-    return own ? combatCards(own.effects) : characterCards(this.outside());
+    return own ? combatCards(own.effects) : characterCards(this.outsideMine());
   });
   /** The names of the conditions the cards hold, for the label under the numbers. */
   readonly conditions = computed<string[]>(() => {
     const own = this.own();
-    return own ? conditionTags(own) : characterConditions(this.outside());
+    return own ? conditionTags(own) : characterConditions(this.outsideMine());
   });
 
   constructor(private readonly src: OwnEffectsSources) {

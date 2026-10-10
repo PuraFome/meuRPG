@@ -395,3 +395,62 @@ func TestTheCatalogComesWithoutACombatAndHoldsTheNewSpells(t *testing.T) {
 		t.Errorf("effects with no combat = %v, want none", res.Msg.GetEffects())
 	}
 }
+
+// TestRN10_AnotherPlayersEffectsOutsideACombat: a player reads the effects "for everyone" on the other
+// characters, each with the character it is on (the sheet's "Seus efeitos" keeps only its own), and never reads an effect the
+// master left for the owner alone.
+func TestRN10_AnotherPlayersEffectsOutsideACombat(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	a.mustGiveEffect(t, blessKey, []*charactersv1.Character{a.pens}, func(r *playv1.AddCharacterEffectRequest) {
+		r.Audience = playv1.EffectAudience_EFFECT_AUDIENCE_ALL
+	})
+	a.mustGiveEffect(t, "condition:poisoned", []*charactersv1.Character{a.pens}, func(r *playv1.AddCharacterEffectRequest) {
+		r.Audience = playv1.EffectAudience_EFFECT_AUDIENCE_OWNER
+	})
+	read := func(u *user) map[string]*playv1.CharacterEffect {
+		t.Helper()
+		res, err := u.lasting.ListCharacterEffects(t.Context(), connect.NewRequest(&playv1.ListCharacterEffectsRequest{CampaignId: a.campaignID}))
+		if err != nil {
+			t.Fatalf("ListCharacterEffects() error = %v", err)
+		}
+		out := map[string]*playv1.CharacterEffect{}
+		for _, e := range res.Msg.GetEffects() {
+			out[e.GetSourceKey()] = e
+		}
+		return out
+	}
+	other := read(a.caio)
+	if e := other[blessKey]; e == nil || e.GetCharacterId() != a.pens.GetId() {
+		t.Errorf("Caio reads Bless on Pensantus as %v; want it there, on Pensantus", e)
+	}
+	if other["condition:poisoned"] != nil {
+		t.Error("Caio read an effect left for Pensantus's owner alone (RN-10)")
+	}
+	own := read(a.ana)
+	if own[blessKey] == nil || own["condition:poisoned"] == nil {
+		t.Errorf("Ana reads %v; want both effects on her character", own)
+	}
+}
+
+// TestAConcentrationEffectWithNoCasterInTheCombatMakesNoOneConcentrate: the master adds Bless for a caster who is not in
+// the fight; the target keeps the effect and does not concentrate on it (SRD 5.1: the caster concentrates).
+func TestAConcentrationEffectWithNoCasterInTheCombatMakesNoOneConcentrate(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	e := a.closeFight(t)
+	a.mustAddEffect(t, e, blessKey, []string{"Toren"}, a.rounds(t, 10, "Toren"))
+	e = a.get(t, a.master)
+	toren := byLabel(t, e, "Toren")
+	if cardOf(t, toren, blessKey) == nil {
+		t.Fatalf("Toren has no Bless: %v", toren.GetEffects())
+	}
+	for _, c := range e.GetCombatants() {
+		if c.GetConcentrationSpell() != "" {
+			t.Errorf("%s concentrates on %q, but the caster is outside the combat", c.GetLabel(), c.GetConcentrationSpell())
+		}
+	}
+	if got := byLabel(t, a.get(t, a.caio), "Toren").GetConcentrationSpell(); got != "" {
+		t.Errorf("the player reads Toren concentrating on %q, want none", got)
+	}
+}

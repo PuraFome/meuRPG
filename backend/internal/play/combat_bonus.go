@@ -67,6 +67,7 @@ func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Atta
 	kind := combat.BonusAttack(combat.BonusAttackTurn{
 		AttackAction: attacker.ActionUsed && attacker.AttacksMade > 0 && hasLast,
 		FlurryLeft:   int(attacker.BonusAttacksLeft), Last: traitsOf(last),
+		NoSecondLight: combat.SecondLightWeaponMissing(lightMelee(sheet)),
 	}, traitsOf(attack))
 	switch {
 	case kind == combat.BonusFlurry:
@@ -79,4 +80,15 @@ func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Atta
 		return combat.BonusNone, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED, "the Attack action made all its attacks")
 	}
 	return combat.BonusNone, actionUsed
+}
+
+// lightMelee counts the light melee weapons the sheet carries, one per weapon.
+func lightMelee(sheet link.Sheet) int {
+	n := 0
+	for _, a := range sheet.Attacks {
+		if a.Melee && a.Light && !a.Spell {
+			n++
+		}
+	}
+	return n
 }

@@ -149,9 +149,14 @@ func CheckRolled(scores []int, sets [][]int) error {
 // Score Improvement the classes reached, which the guided level-up and the editor
 // also write there. The points a race lets the player choose (the half-elf's +1 to
 // two abilities) are not manual: they are picks of the choice engine
-// (choicegroups.go) and add to the race's bonus.
+// (choicegroups.go) and add to the race's bonus. A table race's own "+2 and +1 to
+// your choice" (raceChoice) has no choice engine behind it: the player places it
+// in the manual bonuses, so its points are free too.
 func (c *Content) FreeAbilityPoints(b Build) int {
 	n := 0
+	for _, v := range c.c.raceChoice[b.Race] {
+		n += v
+	}
 	for _, cl := range b.Classes {
 		rows := c.c.classLevels[cl.Class]
 		for level := 1; level <= cl.Level && level <= len(rows); level++ {
