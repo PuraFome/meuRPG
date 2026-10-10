@@ -12,6 +12,7 @@ import {
   type RestKind,
   ResourceService,
   type SpendHitDiceResponse,
+  type UseArcaneRecoveryResponse,
 } from '../../../gen/meurpg/play/v1/resources_pb';
 import { type AttackResult, attackResult } from '../combat/combat-client';
 import { CONNECT_TRANSPORT } from '../connect/transport';
@@ -86,6 +87,21 @@ export class ResourceClient {
         'inApp' in roll
           ? { case: 'rollInApp', value: true }
           : { case: 'typedFace', value: roll.face },
+    });
+  }
+
+  /** Recuperação Arcana: the expended slots to recover, as spell level and count. */
+  useArcaneRecovery(
+    campaignId: string,
+    characterId: string,
+    slots: readonly { readonly level: number; readonly count: number }[],
+    idempotencyKey: string,
+  ): Promise<UseArcaneRecoveryResponse> {
+    return this.client.useArcaneRecovery({
+      campaignId,
+      characterId,
+      idempotencyKey,
+      slots: slots.map((s) => ({ level: s.level, count: s.count })),
     });
   }
 
