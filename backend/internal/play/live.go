@@ -36,9 +36,10 @@ func errWatchSlow() error {
 }
 
 // errWatchReplaced ends a stream that a newer stream of the same user replaced
-// (live.ErrReplaced, past live.DefaultMaxPerUser). It is almost always a page
-// that already went away; if the tab is still open, the app reconnects with its
-// backoff, like after any transient end.
+// (live.ErrReplaced, past live.DefaultMaxPerUser). It is almost always the
+// stream of a page that already went away (the server is not told when one
+// does); if the tab is still open, the app reconnects with its backoff, like
+// after any transient end.
 func errWatchReplaced() error {
 	return connect.NewError(connect.CodeUnavailable, errors.New("replaced by a newer stream of this user; reconnect"))
 }

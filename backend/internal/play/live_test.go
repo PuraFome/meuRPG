@@ -947,8 +947,8 @@ func TestLiveStreamIsNotBuffered(t *testing.T) {
 // TestWatchGameSessionReplacesTheOldestStreamPastTheCap: one user may hold only
 // so many live streams on a campaign; the next one is served, and the user's
 // oldest stream ends with unavailable (the app reconnects if it is still there).
-// Behind the load balancer a reloaded page's stream stays open until a
-// heartbeat fails, so refusing the new one locked a player out of the session
+// Behind the load balancer a reloaded page's stream stays open until its
+// maximum life, so refusing the new one locked a player out of the session
 // after a few reloads (rehearsal 4). Other members are not affected.
 func TestWatchGameSessionReplacesTheOldestStreamPastTheCap(t *testing.T) {
 	t.Parallel()

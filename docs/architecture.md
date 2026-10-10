@@ -1592,11 +1592,11 @@ sequenceDiagram
 | When | How it ends | What the app does |
 | --- | --- | --- |
 | The master ends the session | `session_ended`, then an end without error | Shows "Sessão encerrada" |
-| 30 minutes of stream | End without error | Reconnects and reads the snapshot again |
+| 10 minutes of stream | End without error | Reconnects and reads the snapshot again |
 | The server is about to restart (graceful shutdown) | End without error, at once: `httpserver` calls `play.Service.Close` when shutdown begins | Reconnects |
 | The app stopped reading and fell 16 events behind | `unavailable` | Reconnects and reads the snapshot again |
 | The app stopped reading and a message went 30 s without arriving | `Send` fails and the stream ends (`close_reason` `client_gone`) | Reconnects |
-| The person already has 8 streams open in the campaign | The new stream is served; the person's **oldest** stream ends with `unavailable` (`live.ErrReplaced`) | That old page, if still open, reconnects with the backoff. Behind the load balancer a reloaded page's stream is only noticed gone when a heartbeat fails, so the old ones are usually dead and the newest is the page in use |
+| The person already has 4 streams open in the campaign | The new stream is served; the person's **oldest** stream ends with `unavailable` (`live.ErrReplaced`) | That old page, if still open, reconnects with the backoff. Behind the load balancer the server is not told when a page goes away (its stream lives until the 10-minute cap), so the old ones are usually dead and the newest is the page in use |
 | The login session ended (sign-out, revoked, 14 days idle, 30 days) | `unauthenticated`, at the next check | Sends to sign-in |
 | The person left the campaign | `not_found`, at the next check | "Peça um convite ao mestre" |
 

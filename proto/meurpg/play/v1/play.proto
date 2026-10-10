@@ -243,7 +243,7 @@ service PlayService {
   // About every 60 seconds the server checks again, in the database, that
   // the caller is still signed in and still a member: if not, the stream
   // ends with the same error a call would get (`unauthenticated` or
-  // `not_found`). A stream lasts at most 30 minutes and then ends without
+  // `not_found`). A stream lasts at most 10 minutes and then ends without
   // an error; it also ends without an error when the server restarts. A
   // stream that cannot keep up (the app stopped reading) ends with
   // `unavailable`.
@@ -257,7 +257,7 @@ service PlayService {
   //     member of it (a pending member neither).
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION).
-  //   - `unavailable` on an open stream: the caller opened a 9th stream on
+  //   - `unavailable` on an open stream: the caller opened a 5th stream on
   //     this campaign (more than a few tabs and devices), and this one, their
   //     oldest, made room for it. It is usually the stream of a page that went
   //     away and was not noticed yet; if the page is still open, the app

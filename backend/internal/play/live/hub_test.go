@@ -271,9 +271,9 @@ func TestCoalescedHintsQueueOnce(t *testing.T) {
 	}
 }
 
-// Past the cap, a user's new stream replaces their oldest one: the server
-// learns that a page went away only when a heartbeat fails, so after a few
-// reloads the old streams are usually dead, and the newest is the page in use.
+// Past the cap, a user's new stream replaces their oldest one: behind the load
+// balancer the server is not told that a page went away, so after a few reloads
+// the old streams are usually dead, and the newest is the page in use.
 func TestSubscribePastTheCapReplacesTheUsersOldestStream(t *testing.T) {
 	t.Parallel()
 	h := New(0)

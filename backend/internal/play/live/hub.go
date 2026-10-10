@@ -35,14 +35,18 @@ import (
 const DefaultBuffer = 16
 
 // DefaultMaxPerUser is how many streams one user may hold open for one
-// campaign: a few tabs and devices. Each stream is a goroutine, a buffer and a
-// connection, and any member may open them, so without a cap one account could
-// take the instance's memory. A new stream past the cap replaces the user's
-// oldest one (ErrReplaced) rather than being refused: behind the load balancer
-// the server learns that a page went away only when a heartbeat fails, up to
-// a heartbeat later, so the old streams of a few reloads are usually dead ones,
-// and the newest call is the page the person is looking at.
-const DefaultMaxPerUser = 8
+// campaign: a phone, a laptop and a spare tab or two. Each stream is a
+// goroutine, a buffer and one of the instance's 50 concurrent requests, and any
+// member may open them, so without a cap one account could take the instance.
+//
+// A new stream past the cap replaces the user's oldest one (ErrReplaced) rather
+// than being refused. Behind the load balancer the server does not learn that a
+// page went away: the request is not cancelled and the heartbeats keep being
+// accepted, so the stream lives until its maximum life (measured on production
+// on 10/10/2026: of 85 streams, none ended between 1 and 30 minutes). Each
+// reload or return to the session page leaves one behind; the newest call is
+// the page the person is looking at, and the oldest is the likeliest dead.
+const DefaultMaxPerUser = 4
 
 // Why a subscription ended. Err returns one of these once Events is closed.
 var (
