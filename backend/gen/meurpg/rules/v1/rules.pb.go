@@ -1734,6 +1734,10 @@ const (
 	// One of the two unarmed strikes of Flurry of Blows, whose bonus action is
 	// already spent (see AttackOption.bonus_attacks_left).
 	BonusAttackRule_BONUS_ATTACK_RULE_FLURRY_OF_BLOWS BonusAttackRule = 3
+	// The Berserker's Frenzy: one melee weapon attack as a bonus action on each turn after
+	// the one the frenzied rage began in (SRD 5.1, Barbarian, Path of the Berserker). It needs
+	// no Attack action before it, and keeps the ability modifier in its damage.
+	BonusAttackRule_BONUS_ATTACK_RULE_FRENZY BonusAttackRule = 4
 )
 
 // Enum value maps for BonusAttackRule.
@@ -1743,12 +1747,14 @@ var (
 		1: "BONUS_ATTACK_RULE_OFF_HAND",
 		2: "BONUS_ATTACK_RULE_MARTIAL_ARTS",
 		3: "BONUS_ATTACK_RULE_FLURRY_OF_BLOWS",
+		4: "BONUS_ATTACK_RULE_FRENZY",
 	}
 	BonusAttackRule_value = map[string]int32{
 		"BONUS_ATTACK_RULE_UNSPECIFIED":     0,
 		"BONUS_ATTACK_RULE_OFF_HAND":        1,
 		"BONUS_ATTACK_RULE_MARTIAL_ARTS":    2,
 		"BONUS_ATTACK_RULE_FLURRY_OF_BLOWS": 3,
+		"BONUS_ATTACK_RULE_FRENZY":          4,
 	}
 )
 
@@ -9419,7 +9425,10 @@ type ActionOption struct {
 	// Set when `enabled` is false.
 	Reason *DisabledReason `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
 	// Uses left of the action's resource. 0 when it has none.
-	UsesLeft      int32 `protobuf:"varint,4,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	UsesLeft int32 `protobuf:"varint,4,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	// True on the Rage ("feature:rage") of a character with the Berserker's Frenzy: the player
+	// may ask for a frenzy when it rages (TakeActionRequest.frenzy). False everywhere else.
+	OffersFrenzy  bool `protobuf:"varint,5,opt,name=offers_frenzy,json=offersFrenzy,proto3" json:"offers_frenzy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9480,6 +9489,13 @@ func (x *ActionOption) GetUsesLeft() int32 {
 		return x.UsesLeft
 	}
 	return 0
+}
+
+func (x *ActionOption) GetOffersFrenzy() bool {
+	if x != nil {
+		return x.OffersFrenzy
+	}
+	return false
 }
 
 // ListCreaturesRequest names a campaign (for access) and the filters. Every
@@ -11597,12 +11613,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"SlotChoice\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x12\n" +
 	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x12\n" +
-	"\x04free\x18\x03 \x01(\x05R\x04free\"\xaf\x01\n" +
+	"\x04free\x18\x03 \x01(\x05R\x04free\"\xd4\x01\n" +
 	"\fActionOption\x12/\n" +
 	"\x06action\x18\x01 \x01(\v2\x17.meurpg.rules.v1.ActionR\x06action\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
 	"\x06reason\x18\x03 \x01(\v2\x1f.meurpg.rules.v1.DisabledReasonR\x06reason\x12\x1b\n" +
-	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\"\xae\x02\n" +
+	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\x12#\n" +
+	"\roffers_frenzy\x18\x05 \x01(\bR\foffersFrenzy\"\xae\x02\n" +
 	"\x14ListCreaturesRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x14\n" +
@@ -11907,12 +11924,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x1dDISABLED_REASON_CODE_GRAPPLED\x10o\x12&\n" +
 	"\"DISABLED_REASON_CODE_INCAPACITATED\x10d\x12(\n" +
 	"$DISABLED_REASON_CODE_EFFECT_LETHARGY\x10e\x12#\n" +
-	"\x1fDISABLED_REASON_CODE_SPEED_ZERO\x10f*\x9f\x01\n" +
+	"\x1fDISABLED_REASON_CODE_SPEED_ZERO\x10f*\xbd\x01\n" +
 	"\x0fBonusAttackRule\x12!\n" +
 	"\x1dBONUS_ATTACK_RULE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aBONUS_ATTACK_RULE_OFF_HAND\x10\x01\x12\"\n" +
 	"\x1eBONUS_ATTACK_RULE_MARTIAL_ARTS\x10\x02\x12%\n" +
-	"!BONUS_ATTACK_RULE_FLURRY_OF_BLOWS\x10\x032\xd3\x05\n" +
+	"!BONUS_ATTACK_RULE_FLURRY_OF_BLOWS\x10\x03\x12\x1c\n" +
+	"\x18BONUS_ATTACK_RULE_FRENZY\x10\x042\xd3\x05\n" +
 	"\x0eContentService\x12]\n" +
 	"\vListContent\x12#.meurpg.rules.v1.ListContentRequest\x1a$.meurpg.rules.v1.ListContentResponse\"\x03\x90\x02\x02\x12i\n" +
 	"\x0fGetSpellDetails\x12'.meurpg.rules.v1.GetSpellDetailsRequest\x1a(.meurpg.rules.v1.GetSpellDetailsResponse\"\x03\x90\x02\x02\x12Z\n" +

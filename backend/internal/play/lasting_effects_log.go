@@ -71,7 +71,7 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 	}
 	names := s.namesFor(ctx, campaignID)
 	if out.Kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION {
-		out.Effect = &playv1.CombatLogEffect{SourceKey: l.Key, SourceNamePt: names(l.Key), ExhaustionLevel: l.Level, ExhaustionBefore: l.Before}
+		out.Effect = &playv1.CombatLogEffect{SourceKey: l.Key, SourceNamePt: names(l.Key), ExhaustionLevel: l.Level, ExhaustionBefore: l.Before, Reason: l.Reason}
 		for _, id := range l.Targets {
 			out.Effect.TargetLabels = append(out.Effect.TargetLabels, byID[id].Label)
 		}

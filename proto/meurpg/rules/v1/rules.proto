@@ -1983,6 +1983,10 @@ enum BonusAttackRule {
   // One of the two unarmed strikes of Flurry of Blows, whose bonus action is
   // already spent (see AttackOption.bonus_attacks_left).
   BONUS_ATTACK_RULE_FLURRY_OF_BLOWS = 3;
+  // The Berserker's Frenzy: one melee weapon attack as a bonus action on each turn after
+  // the one the frenzied rage began in (SRD 5.1, Barbarian, Path of the Berserker). It needs
+  // no Attack action before it, and keeps the ability modifier in its damage.
+  BONUS_ATTACK_RULE_FRENZY = 4;
 }
 
 // AttackOption is an attack the character can make.
@@ -2064,6 +2068,9 @@ message ActionOption {
   DisabledReason reason = 3;
   // Uses left of the action's resource. 0 when it has none.
   int32 uses_left = 4;
+  // True on the Rage ("feature:rage") of a character with the Berserker's Frenzy: the player
+  // may ask for a frenzy when it rages (TakeActionRequest.frenzy). False everywhere else.
+  bool offers_frenzy = 5;
 }
 
 // ListCreaturesRequest names a campaign (for access) and the filters. Every

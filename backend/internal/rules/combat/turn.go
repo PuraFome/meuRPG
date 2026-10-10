@@ -32,6 +32,9 @@ type TurnState struct {
 	// left: what the bonus action attack rules read.
 	LastAttackKey string
 	FlurryLeft    int
+	// FrenzyReady says the character is in a frenzied rage that began in an earlier
+	// turn (the Berserker's Frenzy, SRD 5.1): a melee weapon attack is its bonus action.
+	FrenzyReady bool
 }
 
 // actionSurgeResource is the resource of Action Surge.
@@ -315,7 +318,7 @@ func attackActionTaken(d rules.Derived, turn TurnState) bool {
 func bonusAttackOption(d rules.Derived, turn TurnState, ao AttackOption) AttackOption {
 	last, _ := lastAttackOf(d, turn)
 	kind := BonusAttack(BonusAttackTurn{
-		AttackAction: attackActionTaken(d, turn), FlurryLeft: turn.FlurryLeft, Last: bonusTraits(last),
+		AttackAction: attackActionTaken(d, turn), FlurryLeft: turn.FlurryLeft, Last: bonusTraits(last), FrenzyReady: turn.FrenzyReady,
 		NoSecondLight: SecondLightWeaponMissing(countLight(d.Attacks, func(a rules.Attack) bool { return a.Melee && a.Light })),
 	}, bonusTraits(ao.Attack))
 	if kind == BonusNone {

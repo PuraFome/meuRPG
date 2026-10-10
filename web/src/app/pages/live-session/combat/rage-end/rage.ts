@@ -5,3 +5,8 @@ import { CombatantStateKind } from '../../../../../gen/meurpg/play/v1/combat_rol
 export function isRaging(c: Pick<Combatant, 'states'> | null | undefined): boolean {
   return !!c?.states.some((s) => s.kind === CombatantStateKind.RAGE);
 }
+
+/** Whether the combatant's rage is a frenzy (the Berserker's Frenzy): its banner says "Em frenesi". */
+export function isFrenzied(c: Pick<Combatant, 'states'> | null | undefined): boolean {
+  return !!c?.states.some((s) => s.kind === CombatantStateKind.RAGE && s.frenzy);
+}

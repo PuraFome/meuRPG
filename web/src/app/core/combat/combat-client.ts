@@ -1079,9 +1079,10 @@ export class CombatClient {
     die?: DamageDie,
     key?: string,
     useExtraAction = false,
+    frenzy = false,
   ): Promise<ActionResult> {
     const res = await this.keyed(
-      ['takeAction', campaignId, encounterId, combatantId, actionKey, die, useExtraAction],
+      ['takeAction', campaignId, encounterId, combatantId, actionKey, die, useExtraAction, frenzy],
       (sent) =>
         this.client.takeAction({
           campaignId,
@@ -1091,6 +1092,8 @@ export class CombatClient {
           idempotencyKey: sent,
           // The extra action an effect gives (Velocidade) pays for it instead of the action (RN-22).
           useExtraAction,
+          // The Berserker's Fúria in a frenzy (SRD 5.1, Frenzy); ignored by every other action.
+          frenzy,
           roll: !die
             ? { case: undefined }
             : 'inApp' in die

@@ -99,7 +99,7 @@ export function damageText(attack: Attack): string {
   return /[+−]/.test(dice) || adjective ? `${dice} ${type}` : `${dice} de ${type}`;
 }
 
-/** Whether an attack is made with the bonus action now (off hand, Artes Marciais, Rajada de Golpes). */
+/** Whether an attack is made with the bonus action now (off hand, Artes Marciais, Rajada de Golpes, Frenesi). */
 export function isBonusAttack(o: AttackOption): boolean {
   return o.bonusRule !== BonusAttackRule.UNSPECIFIED;
 }
@@ -120,6 +120,8 @@ export function bonusAttackLine(o: AttackOption): string {
       return 'Golpe desarmado das Artes Marciais';
     case BonusAttackRule.FLURRY_OF_BLOWS:
       return `Rajada de Golpes: ${flurryLeftText(o.bonusAttacksLeft)}`;
+    case BonusAttackRule.FRENZY:
+      return 'Frenesi: ataque corpo a corpo como ação bônus';
     default:
       return '';
   }
@@ -136,6 +138,7 @@ export function bonusSpentText(rule: BonusAttackRule | undefined, left = 1): str
         : 'Rajada de Golpes: acabaram os golpes.';
     case BonusAttackRule.OFF_HAND:
     case BonusAttackRule.MARTIAL_ARTS:
+    case BonusAttackRule.FRENZY:
       return 'Sua ação bônus foi usada.';
     default:
       return '';

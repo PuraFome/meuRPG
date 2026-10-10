@@ -1787,6 +1787,10 @@ enum EncounterBlockedReason {
   // StandUp: the combatant's speed is 0 (SRD 5.1, "Being Prone"), so it cannot stand up
   // whatever the cost: Grappled, Restrained, the lethargy of a Velocidade, and the like.
   ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP = 103;
+  // TakeAction (Fúria, with `frenzy`): the combatant has no Frenzy, which is the level 3
+  // feature of the Path of the Berserker (SRD 5.1, Barbarian). Any other barbarian, and
+  // anyone else, rages without it.
+  ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE = 104;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -3387,6 +3391,13 @@ message TakeActionRequest {
   // True: the action is the extra action an effect gives (Velocidade): Disparada,
   // Desengajar, Esconder or Usar um objeto spend that action instead of the Action.
   bool use_extra_action = 100;
+  // True: the action is "feature:rage" and the barbarian goes into a frenzy for this rage
+  // (SRD 5.1, Barbarian, Path of the Berserker, Frenzy). Each of its later turns offers one
+  // melee weapon attack as a bonus action, and when the rage ends it gains one level of
+  // exhaustion. Only a barbarian with the Frenzy feature may ask; any other combatant is
+  // refused with `failed_precondition` (EncounterBlocked FRENZY_UNAVAILABLE). Ignored by an
+  // action that is not "feature:rage"; false is a plain rage.
+  bool frenzy = 101;
 }
 
 // TakeActionResponse returns the combat after the action.
@@ -4451,6 +4462,7 @@ message CombatLogEffect {
   int32 exhaustion_level = 12;
   int32 exhaustion_before = 13;
   // ENDED: why ("duration", "ended_by_master", "concentration", "saved", "caster_left").
+  // EXHAUSTION: "frenzy" when the level came from the end of a Berserker's frenzied rage.
   string reason = 14;
 }
 

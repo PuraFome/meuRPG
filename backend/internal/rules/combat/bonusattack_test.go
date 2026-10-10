@@ -275,3 +275,30 @@ func TestOptionsEldritchBlastKeepsItsBeamsAfterTheFirst(t *testing.T) {
 		t.Error("Eldritch Blast is enabled after Fire Bolt spent the action")
 	}
 }
+
+// The Berserker's Frenzy (SRD 5.1) lets one melee weapon attack be the bonus action with no Attack action
+// before it, once the frenzied rage began in an earlier turn.
+func TestBonusAttackFrenzy(t *testing.T) {
+	t.Parallel()
+	axe := AttackTraits{Melee: true}
+	bow := AttackTraits{}
+	cantrip := AttackTraits{Spell: true}
+	cases := []struct {
+		name string
+		turn BonusAttackTurn
+		next AttackTraits
+		want BonusKind
+	}{
+		{"a frenzied rage, no Attack action before", BonusAttackTurn{FrenzyReady: true}, axe, BonusFrenzy},
+		{"after the Attack action too", BonusAttackTurn{FrenzyReady: true, AttackAction: true, Last: axe}, axe, BonusFrenzy},
+		{"not the turn the rage began in", BonusAttackTurn{AttackAction: true, Last: axe}, axe, BonusNone},
+		{"a ranged weapon is no melee attack", BonusAttackTurn{FrenzyReady: true}, bow, BonusNone},
+		{"a cantrip is no weapon attack", BonusAttackTurn{FrenzyReady: true}, cantrip, BonusNone},
+		{"Flurry of Blows strikes first", BonusAttackTurn{FrenzyReady: true, FlurryLeft: 1, AttackAction: true}, AttackTraits{Melee: true, Unarmed: true}, BonusFlurry},
+	}
+	for _, c := range cases {
+		if got := BonusAttack(c.turn, c.next); got != c.want {
+			t.Errorf("%s: BonusAttack() = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

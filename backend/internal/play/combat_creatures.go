@@ -69,8 +69,12 @@ func (s *Service) sheetOf(ctx context.Context, tx pgx.Tx, campaignID string, c p
 func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (*rulesv1.TurnOptions, error) {
 	var opts *rulesv1.TurnOptions
 	if !isCreature(c) {
+		turn := turnOf(c)
 		var err error
-		if opts, err = s.roster.CombatTurnOptions(ctx, tx, campaignID, c.CharacterID, turnOf(c)); err != nil {
+		if turn.FrenzyReady, err = s.frenzyReadyIn(ctx, tx, c); err != nil {
+			return nil, err
+		}
+		if opts, err = s.roster.CombatTurnOptions(ctx, tx, campaignID, c.CharacterID, turn); err != nil {
 			return nil, err
 		}
 	} else {

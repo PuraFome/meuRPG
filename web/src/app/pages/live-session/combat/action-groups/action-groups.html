@@ -321,8 +321,31 @@
           [off]="featureOff(f) || !!locked()"
           [reason]="locked() || reasonText(f.reason)"
           [busy]="busy()"
-          (press)="feature.emit(f.action?.key ?? '')"
+          (press)="pressFeature(f)"
         />
+        @if (f.offersFrenzy && frenzyAsk() === f.action?.key) {
+          <div class="frenzy" role="group" aria-label="Entrar em frenesi?">
+            <p class="frenzy__text">{{ frenzyText }}</p>
+            <div class="frenzy__buttons">
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="busy()"
+                (click)="answerFrenzy(f.action?.key ?? '', true)"
+              >
+                Fúria com frenesi
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="busy()"
+                (click)="answerFrenzy(f.action?.key ?? '', false)"
+              >
+                Só fúria
+              </button>
+            </div>
+          </div>
+        }
       }
     </section>
   }

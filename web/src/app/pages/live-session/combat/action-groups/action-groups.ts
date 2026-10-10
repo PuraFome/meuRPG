@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -82,6 +82,10 @@ const EXTRA_NAMES: Readonly<Record<string, string>> = {
  * attacks stay enabled. Disabled options keep their place with the reason, by
  * code (`reasonText`).
  */
+/** The question Fúria asks a Berserker (SRD 5.1, Path of the Berserker, Frenzy). */
+const FRENZY_QUESTION =
+  'Entrar em frenesi? Um ataque corpo a corpo como ação bônus em cada turno seguinte; quando a fúria acabar, você ganha 1 nível de exaustão.';
+
 @Component({
   selector: 'app-action-groups',
   imports: [ActionRow, EconomyTiles, GroupState, MatButtonModule, MatIconModule, SlotDots],
@@ -155,6 +159,11 @@ export class ActionGroups {
   readonly cast = output<string>();
   /** "Usar": the key of a feature action ("feature:second-wind"). */
   readonly feature = output<string>();
+  /** The Berserker's answer to "Entrar em frenesi?": the key of Fúria and whether the rage is a frenzy. */
+  readonly rage = output<{ readonly key: string; readonly frenzy: boolean }>();
+  /** The Fúria whose question "Entrar em frenesi?" is open, in place of the next tap. */
+  protected readonly frenzyAsk = signal<string | null>(null);
+  protected readonly frenzyText = FRENZY_QUESTION;
   readonly move = output<void>();
   /** "Levantar-se" of a prone combatant (half the speed). */
   readonly standUp = output<void>();
@@ -336,6 +345,22 @@ export class ActionGroups {
   /** A reaction (Escudo) keeps a dashed, disabled "Conjurar": it asks when its trigger happens. */
   protected spellButton(): string {
     return 'Conjurar';
+  }
+
+  /** "Usar" on a bonus action feature: Fúria of a Berserker asks about the frenzy first (in place); the others act. */
+  protected pressFeature(f: ActionOption): void {
+    const key = f.action?.key ?? '';
+    if (f.offersFrenzy) {
+      this.frenzyAsk.set(key);
+      return;
+    }
+    this.feature.emit(key);
+  }
+
+  /** One of the two buttons of the frenzy question. */
+  protected answerFrenzy(key: string, frenzy: boolean): void {
+    this.frenzyAsk.set(null);
+    this.rage.emit({ key, frenzy });
   }
 
   protected featureOff(a: ActionOption): boolean {
