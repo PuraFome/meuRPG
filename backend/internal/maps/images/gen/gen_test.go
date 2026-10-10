@@ -558,6 +558,13 @@ func TestMapRequests(t *testing.T) {
 	if text := r.Text(); !strings.Contains(text, "- Sala 1: 5 x 4 squares") || !strings.Contains(text, "- Sala 2: 3 x 3 squares") {
 		t.Errorf("the texture's text lacks the rooms: %q", text)
 	}
+	// The scene art and the isometric view draw a creature only on a disc (or
+	// where the master's words ask for one); the textured map has no creature.
+	for layout, wants := range map[string]bool{LayoutScene: true, LayoutIsometric: true, LayoutTexture: false} {
+		if got := strings.Contains(mapRequest(layout).Text(), "Draw no other creature"); got != wants {
+			t.Errorf("%s: the creatures rule in the text is %v, want %v", layout, got, wants)
+		}
+	}
 	for _, layout := range []string{LayoutScene, LayoutIsometric} {
 		r := mapRequest(layout)
 		r.Rooms = []string{"Sala 1: 5 x 4 squares"}
