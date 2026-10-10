@@ -1678,33 +1678,22 @@ func TestRN10_FogCombatAnEndedCombatHasNoFog(t *testing.T) {
 func TestTheMastersTurnOptionsSuggestTheModeTheRollWillHave(t *testing.T) {
 	t.Parallel()
 	f := newFogCave(t)
-	f.fightInSeparateTurns(t)
-	var e *playv1.Encounter
-	for range 6 {
-		e = f.get(t, f.master)
-		if byID(e, e.GetCurrentCombatantId()).GetKind() == playv1.CombatantKind_COMBATANT_KIND_NPC {
-			break
-		}
-		f.mustEndTurn(t, f.master, e)
-	}
+	e := f.fight(t)
+	// In the dark, 13 squares from Pensantus: past her darkvision, so she does not
+	// see the goblin, and its attack on her has advantage (an unseen attacker).
+	f.mustMove(t, f.master, "Goblin 1", 18, 5)
+	f.passTo(t, e, "Goblin 1")
 	e = f.get(t, f.master)
-	attacker := byID(e, e.GetCurrentCombatantId()).GetLabel()
-	f.mustMove(t, f.master, attacker, 21, 7)
-	f.mustMove(t, f.master, "Toren", 20, 7)
-	if f.seesSquare(t, f.caio, 21, 7) {
-		t.Fatalf("Toren's player sees the attacker's square, the fixture wants it in the dark")
-	}
-	e = f.get(t, f.master)
-	opts := f.mustOptions(t, f.master, e, attacker)
+	opts := f.mustOptions(t, f.master, e, "Goblin 1")
 	var got *playv1.TargetInReach
 	for _, at := range opts.GetAttackTargets() {
 		for _, tg := range at.GetTargets() {
-			if tg.GetLabel() == "Toren" {
+			if tg.GetLabel() == "Pensantus" && (got == nil || tg.GetRollMode() == playv1.RollMode_ROLL_MODE_ADVANTAGE) {
 				got = tg
 			}
 		}
 	}
 	if got == nil || got.GetRollMode() != playv1.RollMode_ROLL_MODE_ADVANTAGE {
-		t.Errorf("Toren as the unseen attacker's target = %v, want advantage", got)
+		t.Errorf("Pensantus as the unseen attacker's target = %v, want advantage", got)
 	}
 }

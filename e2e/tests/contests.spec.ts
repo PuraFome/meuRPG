@@ -86,7 +86,8 @@ test('o jogador derruba o goblin com um empurrão e escapa de um agarrão de CD 
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
     await p.getByRole('button', { name: /Empurrar: escolher o alvo/ }).click();
     const sheet = p.getByRole('dialog');
-    await sheet.getByText('Tenho uma mão livre').click();
+    // A shove needs no free hand (SRD 5.1): the sheet does not ask for one.
+    await expect(sheet.getByText('Tenho uma mão livre')).toHaveCount(0);
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
     await sheet.getByRole('button', { name: 'Rolar a disputa' }).click();
     await typeD20(sheet, 20);
