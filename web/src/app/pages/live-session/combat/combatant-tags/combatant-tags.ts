@@ -62,6 +62,7 @@ let nextId = 0;
   `,
   styles: `
     :host {
+      position: relative;
       display: block;
     }
 

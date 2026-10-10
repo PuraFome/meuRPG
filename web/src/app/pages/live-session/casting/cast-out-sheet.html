@@ -26,7 +26,11 @@
           <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
           <p>
             <strong>Conjurando ({{ c.castingMinutes }} min).</strong>
-            O espaço de magia só é gasto quando o mestre conclui a conjuração. Se a concentração se perder, a magia falha e o espaço fica com você.
+            @if (c.ritual) {
+              Um ritual não gasta espaço de magia. Se a concentração se perder, a magia falha.
+            } @else {
+              O espaço de magia só é gasto quando o mestre conclui a conjuração. Se a concentração se perder, a magia falha e o espaço fica com você.
+            }
           </p>
         </div>
       }
@@ -74,7 +78,12 @@
         <div class="mr-notice mr-notice--neutral" role="status">
           <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
           <p>
-            Leva {{ minutes() }} minutos. Você concentra enquanto conjura; o espaço de magia só é gasto quando o mestre conclui a conjuração.
+            Leva {{ minutes() }} minutos. Você concentra enquanto conjura;
+            @if (way() === 'ritual') {
+              um ritual não gasta espaço de magia.
+            } @else {
+              o espaço de magia só é gasto quando o mestre conclui a conjuração.
+            }
           </p>
         </div>
       }

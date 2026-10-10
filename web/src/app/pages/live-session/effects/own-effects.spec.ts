@@ -15,13 +15,14 @@ describe('OwnEffects', () => {
   const api = { listCharacterEffects: vi.fn() };
   const outside = create(CharacterEffectSchema, {
     id: 'c1',
+    characterId: 'me-char',
     sourceNamePt: 'Bênção',
     durationTextPt: 'dura 1 minuto',
     tagsPt: ['+1d4'],
     conditionNamesPt: [],
   });
 
-  function setup(over: { master?: boolean; enc?: Encounter | null } = {}) {
+  function setup(over: { master?: boolean; enc?: Encounter | null; ids?: string[] } = {}) {
     TestBed.configureTestingModule({ providers: [{ provide: EffectsClient, useValue: api }] });
     const isMaster = signal(over.master ?? false);
     const enc = signal<Encounter | null>(over.enc ?? null);
@@ -31,6 +32,7 @@ describe('OwnEffects', () => {
         new OwnEffects({
           campaignId: signal('camp'),
           isMaster,
+          ownCharacterIds: signal(over.ids ?? ['me-char']),
           encounter: enc,
           tick,
         }),
@@ -80,6 +82,21 @@ describe('OwnEffects', () => {
     expect(api.listCharacterEffects).not.toHaveBeenCalled();
     expect(own.cards().map((c) => c.name)).toEqual(['Imobilizar Pessoa']);
     expect(own.conditions()).toEqual(['Paralisado']);
+  });
+
+  it("lists only the effects on the player's own characters, not another player's (Armadura Arcana on Pensantus)", async () => {
+    const others = create(CharacterEffectSchema, {
+      id: 'c2',
+      characterId: 'pensantus',
+      sourceNamePt: 'Armadura Arcana',
+      durationTextPt: 'dura 8 horas',
+      conditionNamesPt: ['Enfeitiçado'],
+    });
+    api.listCharacterEffects.mockResolvedValue([others, outside]);
+    const { own } = setup();
+    await settle();
+    expect(own.cards().map((c) => c.name)).toEqual(['Bênção']);
+    expect(own.conditions()).toEqual([]);
   });
 
   it('reads nothing for the master, who has the panel of the combat', async () => {

@@ -2,6 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   computed,
   effect,
@@ -47,6 +48,11 @@ import {
   slotChoices,
   throwText,
 } from '../../../../core/combat/reactions';
+import {
+  isOptionalReaction,
+  playerAutoPassText,
+  playerSecondsLeft,
+} from '../../../../core/combat/reaction-autopass';
 import { metersText } from '../../../../core/units';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { SlotPicker } from '../cast-sheet/slot-picker';
@@ -86,6 +92,9 @@ export interface ReactionSheetResult {
 }
 
 type Step = 'ask' | 'roll' | 'result';
+
+/** How often the prompt's countdown is redrawn. */
+const AUTO_PASS_TICK_MS = 1000;
 
 /** The pseudo level of the Infernal Legacy's row, which has no slot. */
 const RACIAL_LEVEL = 0;
@@ -292,7 +301,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
                 </button>
               </div>
               <p class="fine">
-                <mat-icon aria-hidden="true">info</mat-icon>Se você não responder, o mestre pode decidir por você.
+                <mat-icon aria-hidden="true">info</mat-icon>{{ fineText() }}
               </p>
               @if (refreshed) {
                 <p class="fine fine--now" role="status">
@@ -470,6 +479,17 @@ export class ReactionSheet {
     return p.case === 'concentrationSave' && p.value.bonusKnown ? p.value.saveBonus : 0;
   });
 
+  /** When the prompt opened: the seconds before it passes by itself count from here (the master's screen sends the pass). */
+  private readonly openedAt = Date.now();
+  private readonly clock = signal(this.openedAt);
+  private readonly clockTimer = setInterval(() => this.clock.set(Date.now()), AUTO_PASS_TICK_MS);
+  /** The small print under the buttons: the countdown of an optional reaction, or what the master may do. */
+  protected readonly fineText = computed(() =>
+    isOptionalReaction(this.asked())
+      ? playerAutoPassText(playerSecondsLeft(this.openedAt, this.clock()))
+      : 'Se você não responder, o mestre pode decidir por você.',
+  );
+
   /** "Usar ..." needs what the question asks for: a slot, a creature to save. */
   protected readonly canUse = computed(() => {
     if (this.rows().length > 0 && !this.chosen()?.enabled) {
@@ -560,6 +580,8 @@ export class ReactionSheet {
   private readonly keepButton = viewChild('keep', { read: ElementRef<HTMLButtonElement> });
 
   constructor() {
+    // The countdown stops with the sheet.
+    inject(DestroyRef).onDestroy(() => clearInterval(this.clockTimer));
     effect(() => (this.keepButton() ?? this.focus())?.nativeElement.focus());
     // Closed by itself (the reactor can no longer react): the page says why in its status line, and this goes away.
     effect(() => {

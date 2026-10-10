@@ -76,6 +76,30 @@ describe('CombatState', () => {
     expect(state.encounter()?.round).toBe(3);
   });
 
+  it('says to read again after it drops a read for an answer that came while it was out (rehearsal 5: a reveal missed)', () => {
+    const state = new CombatState();
+    state.apply(encounter({ round: 2 }));
+    // The master reveals a monster: the stream asks for a read.
+    const ticket = state.beginRead();
+    // Meanwhile the player's own move is answered, with a copy from before the reveal.
+    state.apply(encounter({ round: 2, name: 'before the reveal' }));
+    expect(state.applyRead(ticket, encounter({ round: 2, name: 'after the reveal' }))).toBe(false);
+    expect(state.changedSince(ticket)).toBe(true);
+    // The next read begins after both and is applied.
+    const again = state.beginRead();
+    expect(state.applyRead(again, encounter({ round: 2, name: 'after the reveal' }))).toBe(true);
+    expect(state.encounter()?.name).toBe('after the reveal');
+  });
+
+  it('needs no new read when a read is dropped only because a later read was applied', () => {
+    const state = new CombatState();
+    const first = state.beginRead();
+    const second = state.beginRead();
+    expect(state.applyRead(second, encounter({ round: 4 }))).toBe(true);
+    expect(state.applyRead(first, encounter({ round: 3 }))).toBe(false);
+    expect(state.changedSince(first)).toBe(false);
+  });
+
   it('takes another combat whatever its revision', () => {
     const state = new CombatState();
     state.apply(encounter({ id: 'old', revision: 9 }));
