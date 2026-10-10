@@ -1286,7 +1286,13 @@ func TestMR037_RenamingACreatureRenamesItsCombatantAndFriendlyFireIsNotAHighligh
 	if byLabel(t, a.get(t, a.ana), "Sombra").GetMonsterKey() != direWolf {
 		t.Error("the combatant must take the creature's new name")
 	}
-	// Toren hits Sálvia's wolf with a critical: friendly fire, nobody's highlight.
+	// Toren hits Sálvia's wolf with a critical: friendly fire, nobody's highlight. The master brings the wolf
+	// within the axe's reach first (a melee attack reaches 5 ft, for the master's hand too).
+	if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Sombra"), IdempotencyKey: newKey(), Col: 3, Row: 4,
+	})); err != nil {
+		t.Fatalf("MoveCombatant(Sombra) error = %v", err)
+	}
 	hit, err := a.attackAs(t, a.master, e, "Toren", "equipment:battleaxe", "Sombra", d20(20), true)
 	if err != nil {
 		t.Fatalf("RollAttack() error = %v", err)

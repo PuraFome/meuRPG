@@ -3356,9 +3356,10 @@ export type TargetInReach = Message<"meurpg.play.v1.TargetInReach"> & {
   distanceFt?: number | undefined;
 
   /**
-   * True when the attack cannot reach it: the distance is beyond its range,
-   * or unknown for a player (RollAttack refuses it). Never true for the
-   * master when the distance is unknown: the master is not held to the reach.
+   * True when the attack cannot reach it: the distance is beyond its range
+   * (RollAttack refuses it for the master's NPCs too), or unknown for a player
+   * (RollAttack refuses it). Never true for the master when the distance is
+   * unknown: the master may attack from or at a combatant with no square.
    * Always false in THEATRE mode, where the server never checks the reach: the
    * master judges, and the list holds every target the rules allow.
    *

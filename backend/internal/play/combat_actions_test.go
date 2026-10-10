@@ -762,6 +762,7 @@ func TestRN02_DamageToAPlayerWaitsForTheMaster(t *testing.T) {
 	// rolled, nor rolled twice; "Não aplicar" drops it and the hit points stay.
 	pens := a.vitals(t, a.pens)
 	a.h.roller.queue(15, 6)
+	a.closeTo(t, "Pensantus", "Capitão Goblin")
 	hit = a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", inAppRoll)
 	id := hit.GetPendingDamage().GetId()
 	_, err = a.settle(t, a.master, e, id, true)
@@ -778,6 +779,7 @@ func TestRN02_DamageToAPlayerWaitsForTheMaster(t *testing.T) {
 	}
 
 	// A third one is left open: the master passes the turn anyway, which drops it.
+	a.closeTo(t, "Brisa", "Capitão Goblin")
 	hit = a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Brisa", inAppRoll)
 	left := hit.GetPendingDamage().GetId()
 	if _, err := a.endTurn(t, a.master, e, true); err != nil {
@@ -883,6 +885,7 @@ func TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries(t *testing.T) {
 
 	// The Capitão hits Pensantus: 1d20 (16) + 4 = 20; 1d6 (5) + 2 = 7, applied by the master.
 	a.h.roller.queue(16, 5)
+	a.closeTo(t, "Pensantus", "Capitão Goblin")
 	capHit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", inAppRoll)
 	capID := capHit.GetPendingDamage().GetId()
 	a.mustDamage(t, a.master, e, capID, inAppDamage)
@@ -947,7 +950,7 @@ func TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries(t *testing.T) {
 			if en.GetActorLabel() == "Toren" && en.GetAttackRoll().GetTotal() != 20 {
 				t.Errorf("Toren's own entry = %v, want his dice (1d20 (15) + 5 = 20)", en)
 			}
-			if en.GetActorLabel() == "Capitão Goblin" && (en.GetAttackRoll() != nil || en.GetDamage().GetRoll() != nil || en.HitPointsAfter != nil || en.GetDamage().GetAmount() != 7) {
+			if en.GetActorLabel() == "Capitão Goblin" && en.GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED && (en.GetAttackRoll() != nil || en.GetDamage().GetRoll() != nil || en.HitPointsAfter != nil || en.GetDamage().GetAmount() != 7) {
 				t.Errorf("a player's entry of the Capitão's attack = %v, want the outcome and the 7 damage, never his dice or hit points", en)
 			}
 		}
@@ -1358,7 +1361,8 @@ func TestTimelineRound1And2Log(t *testing.T) {
 		t.Fatalf("TakeAction(hide) error = %v", err)
 	}
 	end(a.bia)
-	attackAndApply(a.master, "Capitão Goblin", sword, "Toren", 15, 3) // 2. Capitão acerta o Toren: 5 de dano
+	a.h.roller.queue(15)                                                 // the Capitão shoots with an enemy next to him: two d20
+	attackAndApply(a.master, "Capitão Goblin", shortBow, "Toren", 15, 3) // 2. Capitão acerta o Toren: 5 de dano (um arco: o Toren está fora do alcance da espada)
 	end(a.master)
 	end(a.ana)                                                     // 3. Pensantus (Sono: a próxima fatia)
 	end(a.master)                                                  // 4. Goblin 1 dorme; Goblin 2 tem o mesmo 12 e joga no mesmo turno conjunto
@@ -1425,7 +1429,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 		"R2 Brisa -> Capitão Goblin (Rapieira): acertou, 8 perfurante, aplicado",
 		"R1 Toren -> Goblin 1 (Machado de batalha): acertou, 9 cortante, aplicado, derrotado",
 		"R1 Goblin 2 -> Brisa (Arco curto): acertou, 5 perfurante, aplicado",
-		"R1 Capitão Goblin -> Toren (Cimitarra): acertou, 5 cortante, aplicado",
+		"R1 Capitão Goblin -> Toren (Arco curto): acertou, 5 perfurante, aplicado",
 		"R1 Brisa: Esconder",
 		"R1 o combate começa",
 	})
@@ -1442,7 +1446,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 		t.Fatalf("SetCombatantHidden() error = %v", err)
 	}
 	a.h.roller.queue(20, 5, 4)
-	crit := a.mustAttack(t, a.master, e, "Goblin 3", sword, "Brisa", inAppRoll)
+	crit := a.mustAttack(t, a.master, e, "Goblin 3", shortBow, "Brisa", inAppRoll)
 	if crit.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_CRITICAL_HIT || crit.GetPendingDamage().GetDiceCount() != 2 {
 		t.Fatalf("Goblin 3's attack = %v, want a critical hit with 2 dice", crit)
 	}
@@ -1480,7 +1484,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 	wantLines(t, "the master", lines(a.log(t, a.master, e)), []string{
 		"R2 Toren -> Capitão Goblin (Machado de batalha): acertou, 9 cortante, aplicado",
 		"R2 Toren anda 20 ft",
-		"R2 Goblin 3 -> Brisa (Cimitarra): crítico, 11 cortante, aplicado",
+		"R2 Goblin 3 -> Brisa (Arco curto): crítico, 11 perfurante, aplicado",
 		"R2 o mestre mostra Goblin 3 (escondido: false) [só o mestre vê]",
 		"R2 Pensantus -> Goblin 2 (Raio de Fogo): acertou, 7 fogo, aplicado, derrotado",
 		"R2 Pensantus anda 10 ft",
@@ -1490,7 +1494,7 @@ func TestTimelineRound1And2Log(t *testing.T) {
 		"R1 Goblin 3: Esconder [só o mestre vê]",
 		"R1 Goblin 2 -> Brisa (Arco curto): acertou, 5 perfurante, aplicado",
 		"R1 Goblin 1 encerrou a parte [só o mestre vê]", // the goblins tie at 12: a group of NPCs alone, the master's
-		"R1 Capitão Goblin -> Toren (Cimitarra): acertou, 5 cortante, aplicado",
+		"R1 Capitão Goblin -> Toren (Arco curto): acertou, 5 perfurante, aplicado",
 		"R1 Brisa: Esconder",
 		"R1 o combate começa",
 	})
@@ -1498,14 +1502,14 @@ func TestTimelineRound1And2Log(t *testing.T) {
 	wantLines(t, "Toren's player", lines(a.log(t, a.caio, e)), []string{
 		"R2 Toren -> Capitão Goblin (Machado de batalha): acertou, 9 cortante, aplicado",
 		"R2 Toren anda 20 ft",
-		"R2 Goblin 3 -> Brisa (Cimitarra): crítico, 11 cortante, aplicado",
+		"R2 Goblin 3 -> Brisa (Arco curto): crítico, 11 perfurante, aplicado",
 		"R2 Pensantus -> Goblin 2 (Raio de Fogo): acertou, 7 fogo, aplicado, derrotado",
 		"R2 Pensantus anda 10 ft",
 		"R2 Capitão Goblin -> Toren (Arco curto): acertou, 5 perfurante, aplicado",
 		"R2 Brisa -> Capitão Goblin (Rapieira): acertou, 8 perfurante, aplicado",
 		"R1 Toren -> Goblin 1 (Machado de batalha): acertou, 9 cortante, aplicado, derrotado",
 		"R1 Goblin 2 -> Brisa (Arco curto): acertou, 5 perfurante, aplicado",
-		"R1 Capitão Goblin -> Toren (Cimitarra): acertou, 5 cortante, aplicado",
+		"R1 Capitão Goblin -> Toren (Arco curto): acertou, 5 perfurante, aplicado",
 		"R1 Brisa: Esconder",
 		"R1 o combate começa",
 	})

@@ -791,7 +791,7 @@ func TestRN10_FogCombatCoverIsToldOnWhatThePlayerKnows(t *testing.T) {
 	f.mustMove(t, f.master, "Ogro", 9, 7)
 	f.mustMove(t, f.master, "Goblin 1", 13, 7) // in the candle's light
 	f.passTo(t, e, "Goblin 1")
-	if _, err := f.attack(t, f.master, e, "Goblin 1", "basic:0", "Toren", d20(15)); err != nil {
+	if _, err := f.attack(t, f.master, e, "Goblin 1", "basic:1", "Toren", d20(15)); err != nil {
 		t.Fatalf("RollAttack(Goblin 1 on Toren) error = %v", err)
 	}
 	coverOf := func(u *user) (playv1.CoverDegree, bool) {
@@ -1105,7 +1105,7 @@ func TestRN10_FogCombatAShieldPromptNeverNamesAnUnseenAttacker(t *testing.T) {
 	e := f.fight(t)
 	f.mustMove(t, f.master, "Goblin 1", 18, 5) // dark, 13 squares away
 	f.passTo(t, e, "Goblin 1")
-	if _, err := f.attack(t, f.master, e, "Goblin 1", "basic:0", "Pensantus", advantage(15)); err != nil {
+	if _, err := f.attack(t, f.master, e, "Goblin 1", "basic:1", "Pensantus", advantage(15)); err != nil {
 		t.Fatalf("RollAttack(Goblin 1 on Pensantus) error = %v", err)
 	}
 	got := f.get(t, f.ana)

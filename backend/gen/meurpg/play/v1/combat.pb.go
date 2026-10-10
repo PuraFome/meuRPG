@@ -8088,9 +8088,10 @@ type TargetInReach struct {
 	// 5 ft (RN-21), so a diagonal neighbour is 5 ft away. Unset when either of them
 	// has no square on the grid, and always unset in THEATRE mode.
 	DistanceFt *int32 `protobuf:"varint,4,opt,name=distance_ft,json=distanceFt,proto3,oneof" json:"distance_ft,omitempty"`
-	// True when the attack cannot reach it: the distance is beyond its range,
-	// or unknown for a player (RollAttack refuses it). Never true for the
-	// master when the distance is unknown: the master is not held to the reach.
+	// True when the attack cannot reach it: the distance is beyond its range
+	// (RollAttack refuses it for the master's NPCs too), or unknown for a player
+	// (RollAttack refuses it). Never true for the master when the distance is
+	// unknown: the master may attack from or at a combatant with no square.
 	// Always false in THEATRE mode, where the server never checks the reach: the
 	// master judges, and the list holds every target the rules allow.
 	TooFar bool `protobuf:"varint,5,opt,name=too_far,json=tooFar,proto3" json:"too_far,omitempty"`

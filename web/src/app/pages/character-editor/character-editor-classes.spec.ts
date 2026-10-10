@@ -528,9 +528,7 @@ describe('the spell step per class (E10-11 state 4)', () => {
       'Detectar Magia (1º nível)',
       'Escudo Arcano (1º nível)',
       'Lâmina de Nanquim (1º nível)',
-      'Detectar Magia (1º nível)',
-      'Escudo Arcano (1º nível)',
-      'Lâmina de Nanquim (1º nível)',
+      // The wizard's "Magias preparadas" lists only the spellbook's spells (none picked yet).
     ]);
     expect(names(sections[1])).toEqual(['Bênção (1º nível)', 'Detectar Magia (1º nível)']);
   });

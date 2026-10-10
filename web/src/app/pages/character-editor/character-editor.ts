@@ -823,6 +823,15 @@ export class CharacterEditor {
         this.selectedSpellsPrepared(),
         this.master(),
       ).filter((sp) => !alwaysKeys.has(sp.key));
+      // A wizard prepares only from the spellbook (SRD 5.1): its list is the book's spells (and what is already prepared,
+      // so a wrong pick can still be unchecked).
+      const preparable =
+        section.preparation === 'spellbook'
+          ? prepared.filter(
+              (sp) =>
+                this.selectedSpellsKnown().has(sp.key) || this.selectedSpellsPrepared().has(sp.key),
+            )
+          : prepared;
       // The subclass's always-prepared spells, shown in this class's section, checked and locked, never in the count.
       const byKey = new Map(s.catalog.spells.map((sp) => [sp.key, sp]));
       const always = section.alwaysPrepared.flatMap((k) => (byKey.has(k) ? [byKey.get(k)!] : []));
@@ -865,8 +874,8 @@ export class CharacterEditor {
           outside: outsideTheLists(s.catalog, this.sections(), query(section, 'known'), false),
         },
         prepared: {
-          all: prepared,
-          shown: filterByName(prepared, query(section, 'prepared')),
+          all: preparable,
+          shown: filterByName(preparable, query(section, 'prepared')),
           filter: query(section, 'prepared'),
           show: !noLeveledYet && (preparation === 'prepared' || preparation === 'spellbook'),
           outside: outsideTheLists(s.catalog, this.sections(), query(section, 'prepared'), false),
@@ -1651,7 +1660,18 @@ export class CharacterEditor {
   }
 
   protected toggleSpellKnown(key: string): void {
-    this.selectedSpellsKnown.set(this.toggleInSet(this.selectedSpellsKnown(), key));
+    const next = this.toggleInSet(this.selectedSpellsKnown(), key);
+    this.selectedSpellsKnown.set(next);
+    // A spell leaving the spellbook is no longer prepared (a wizard prepares from the book only).
+    const sections = this.sections();
+    if (
+      !next.has(key) &&
+      sections.length > 0 &&
+      sections.every((c) => c.preparation === 'spellbook') &&
+      this.selectedSpellsPrepared().has(key)
+    ) {
+      this.selectedSpellsPrepared.set(this.toggleInSet(this.selectedSpellsPrepared(), key));
+    }
   }
 
   protected toggleSpellPrepared(key: string): void {

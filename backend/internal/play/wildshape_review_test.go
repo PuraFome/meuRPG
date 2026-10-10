@@ -250,6 +250,7 @@ func TestMR036_EveryChangeOfAFormOrASightTellsTheFog(t *testing.T) {
 	told("the beast falling on a damage", func() {
 		s.mustAssume(t, s.master, s.bri, wolfKey)
 		s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(1)) })
+		a.closeTo(t, "Sálvia", "Capitão Goblin")
 		hit := a.mustAttack(t, a.master, a.get(t, a.master), "Capitão Goblin", sword, "Sálvia", func(r *playv1.RollAttackRequest) {
 			r.Roll = &playv1.RollAttackRequest_D20Face{D20Face: 15}
 			r.AsReaction = true

@@ -117,6 +117,9 @@ func (u *user) sizedNPC(t *testing.T, campaignID, name string, hp, ac int32, siz
 		HitPointsMax: hp, ArmorClass: ac, SpeedFt: 30, Size: size,
 		Attacks: []*charactersv1.BasicAttack{{
 			Name: "Cimitarra", AttackBonus: 4, DamageDiceCount: 1, DamageDiceSides: 6, DamageBonus: 2, DamageType: charactersv1.DamageType_DAMAGE_TYPE_SLASHING,
+		}, {
+			// basic:1, for the tests about cover and range: a melee attack reaches 5 ft, so from afar the goblin shoots.
+			Name: "Arco curto", AttackBonus: 4, DamageDiceCount: 1, DamageDiceSides: 6, DamageBonus: 2, DamageType: charactersv1.DamageType_DAMAGE_TYPE_PIERCING, RangeFt: 80,
 		}},
 	}}}
 	res, err := u.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
@@ -1128,7 +1131,7 @@ func TestMR014_EscudoJudgesTheHitByTheArmorClassCoverRaised(t *testing.T) {
 	e := c.fight(t)
 	c.aim(t, map[string][2]int32{"Pensantus": {17, 7}, "Goblin 1": {20, 7}})
 	e = c.passTo(t, e, "Goblin 1")
-	hit := c.mustAttack(t, c.master, e, "Goblin 1", sword, "Pensantus", d20(14)) // 14 + 4 = 18 against 14
+	hit := c.mustAttack(t, c.master, e, "Goblin 1", shortBow, "Pensantus", d20(14)) // 14 + 4 = 18 against 14
 	pending := hit.GetPendingDamage()
 	if hit.GetRoll().GetTargetArmorClass() != 14 || pending.GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION {
 		t.Fatalf("the hit = AC %d, %v; want 14 and a hit that waits for the reaction", hit.GetRoll().GetTargetArmorClass(), pending)
