@@ -243,6 +243,12 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		case eventEncounterEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_COMBAT_ENDED
 		case eventCombatantMoved:
+			if ev.Contest != nil && ev.Contest.Line == contestLineStoodUp { // "se levantou" (combat_standup.go)
+				if !contestLogEntry(entry, ev) {
+					continue
+				}
+				break
+			}
 			if !ev.OnTurn || (ev.DistanceFt == 0 && ev.DistanceDFt == 0 && ev.Jump != jumpHigh) {
 				continue // placing a token is not a move of the fight
 			}
@@ -518,6 +524,10 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	// happened, even if they have walked into the dark since; one they did not see
 	// never appears later (MR-036). The master's copy says it is hidden from them.
 	seen := e.ev.seenByViewer(v)
+	// The master's reveal of a hider is the hider's player's line too (RN-10: no other player is told).
+	if e.ev.Contest != nil && e.ev.Contest.Line == contestLineHideRevealed && v.owns(actor) {
+		visible, seen = true, true
+	}
 	for _, h := range e.ev.Hits { // every target of a spell
 		hit, ok := byID[h.Target]
 		if e.ev.Placed { // an area the server placed: the hidden creatures it hit are left out of the line, not the line

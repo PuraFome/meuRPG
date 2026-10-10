@@ -754,6 +754,11 @@ function surprisedWord(label: string): string {
   return article(label) === 'a' ? 'surpresa' : 'surpreso';
 }
 
+/** "escondido" or "escondida", by the name. */
+function hiddenWordOf(label: string): string {
+  return article(label) === 'a' ? 'escondida' : 'escondido';
+}
+
 /** What each line of a contest or special action says (W7-X) and its icon: the sentence follows the actor, who is in bold. */
 const CONTEST_LINES: Partial<
   Record<ContestLogLine, { icon: string; say: (w: ContestWords) => string }>
@@ -798,6 +803,11 @@ const CONTEST_LINES: Partial<
     icon: 'bolt',
     say: (w) => ` não está mais ${w.surprised}`,
   },
+  [ContestLogLine.STOOD_UP]: { icon: 'accessibility_new', say: () => ' se levantou' },
+  [ContestLogLine.HIDE_REVEALED]: {
+    icon: 'visibility',
+    say: (w) => ` não está mais ${w.hidden}`,
+  },
 };
 
 /** The names a contest line is written with: the target ("o Hobgoblin", "Brisa"), "do Hobgoblin", and "surpresa". */
@@ -805,6 +815,7 @@ interface ContestWords {
   readonly target: string;
   readonly from: string;
   readonly surprised: string;
+  readonly hidden: string;
 }
 
 /** A contest or a special action (W7-X): the sentence from the line the server named, never a total or a DC (RN-20). `null` for a line this app does not know. */
@@ -820,6 +831,7 @@ function contestText(e: CombatLogEntry, ctx: LogContext): { icon: string; text: 
       target: subject(label, ctx),
       from: ofSubject(label, ctx),
       surprised: surprisedWord(e.actorLabel),
+      hidden: hiddenWordOf(e.actorLabel),
     }),
   };
 }

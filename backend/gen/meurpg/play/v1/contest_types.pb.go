@@ -570,6 +570,8 @@ const (
 	ContestBlockedReason_CONTEST_BLOCKED_REASON_ALREADY_ANSWERED ContestBlockedReason = 15
 	// SetSurprised: the combatant's first turn has ended, so surprise no longer applies.
 	ContestBlockedReason_CONTEST_BLOCKED_REASON_COMBAT_BEGUN ContestBlockedReason = 16
+	// RevealHider: the combatant is not hidden from anyone.
+	ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_HIDDEN ContestBlockedReason = 17
 )
 
 // Enum value maps for ContestBlockedReason.
@@ -592,6 +594,7 @@ var (
 		14: "CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK",
 		15: "CONTEST_BLOCKED_REASON_ALREADY_ANSWERED",
 		16: "CONTEST_BLOCKED_REASON_COMBAT_BEGUN",
+		17: "CONTEST_BLOCKED_REASON_NOT_HIDDEN",
 	}
 	ContestBlockedReason_value = map[string]int32{
 		"CONTEST_BLOCKED_REASON_UNSPECIFIED":        0,
@@ -611,6 +614,7 @@ var (
 		"CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK": 14,
 		"CONTEST_BLOCKED_REASON_ALREADY_ANSWERED":   15,
 		"CONTEST_BLOCKED_REASON_COMBAT_BEGUN":       16,
+		"CONTEST_BLOCKED_REASON_NOT_HIDDEN":         17,
 	}
 )
 
@@ -948,6 +952,11 @@ const (
 	// The master marked a creature surprised or took the mark off. Only the master.
 	ContestLogLine_CONTEST_LOG_LINE_SURPRISED        ContestLogLine = 15
 	ContestLogLine_CONTEST_LOG_LINE_SURPRISE_CLEARED ContestLogLine = 16
+	// The actor stood up from Prone ("Brisa se levantou"). Everyone who sees the actor.
+	ContestLogLine_CONTEST_LOG_LINE_STOOD_UP ContestLogLine = 17
+	// The master ended the actor's hiding ("Brisa não está mais escondida"). The master and
+	// the actor's player only; never who noticed (RN-10).
+	ContestLogLine_CONTEST_LOG_LINE_HIDE_REVEALED ContestLogLine = 18
 )
 
 // Enum value maps for ContestLogLine.
@@ -970,6 +979,8 @@ var (
 		14: "CONTEST_LOG_LINE_HELPED",
 		15: "CONTEST_LOG_LINE_SURPRISED",
 		16: "CONTEST_LOG_LINE_SURPRISE_CLEARED",
+		17: "CONTEST_LOG_LINE_STOOD_UP",
+		18: "CONTEST_LOG_LINE_HIDE_REVEALED",
 	}
 	ContestLogLine_value = map[string]int32{
 		"CONTEST_LOG_LINE_UNSPECIFIED":      0,
@@ -989,6 +1000,8 @@ var (
 		"CONTEST_LOG_LINE_HELPED":           14,
 		"CONTEST_LOG_LINE_SURPRISED":        15,
 		"CONTEST_LOG_LINE_SURPRISE_CLEARED": 16,
+		"CONTEST_LOG_LINE_STOOD_UP":         17,
+		"CONTEST_LOG_LINE_HIDE_REVEALED":    18,
 	}
 )
 
@@ -3173,7 +3186,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\x12ShoveBlockedReason\x12$\n" +
 	" SHOVE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19SHOVE_BLOCKED_REASON_WALL\x10\x01\x12!\n" +
-	"\x1dSHOVE_BLOCKED_REASON_CREATURE\x10\x02*\xee\x05\n" +
+	"\x1dSHOVE_BLOCKED_REASON_CREATURE\x10\x02*\x95\x06\n" +
 	"\x14ContestBlockedReason\x12&\n" +
 	"\"CONTEST_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12)\n" +
 	"%CONTEST_BLOCKED_REASON_TARGET_TOO_BIG\x10\x01\x12'\n" +
@@ -3192,7 +3205,8 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	")CONTEST_BLOCKED_REASON_GROUP_CHECK_CLOSED\x10\r\x12-\n" +
 	")CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK\x10\x0e\x12+\n" +
 	"'CONTEST_BLOCKED_REASON_ALREADY_ANSWERED\x10\x0f\x12'\n" +
-	"#CONTEST_BLOCKED_REASON_COMBAT_BEGUN\x10\x10*\xad\x01\n" +
+	"#CONTEST_BLOCKED_REASON_COMBAT_BEGUN\x10\x10\x12%\n" +
+	"!CONTEST_BLOCKED_REASON_NOT_HIDDEN\x10\x11*\xad\x01\n" +
 	"\x13ContestTargetReason\x12%\n" +
 	"!CONTEST_TARGET_REASON_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dCONTEST_TARGET_REASON_TOO_BIG\x10\x01\x12&\n" +
@@ -3216,7 +3230,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"&SURPRISE_SUGGESTION_REASON_UNSPECIFIED\x10\x00\x12*\n" +
 	"&SURPRISE_SUGGESTION_REASON_HIDERS_BEAT\x10\x01\x12&\n" +
 	"\"SURPRISE_SUGGESTION_REASON_NOTICES\x10\x02\x12(\n" +
-	"$SURPRISE_SUGGESTION_REASON_NO_HIDERS\x10\x03*\xc9\x04\n" +
+	"$SURPRISE_SUGGESTION_REASON_NO_HIDERS\x10\x03*\x8c\x05\n" +
 	"\x0eContestLogLine\x12 \n" +
 	"\x1cCONTEST_LOG_LINE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19CONTEST_LOG_LINE_GRAPPLED\x10\x01\x12#\n" +
@@ -3235,7 +3249,9 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\x1dCONTEST_LOG_LINE_HIDE_REFUSED\x10\r\x12\x1b\n" +
 	"\x17CONTEST_LOG_LINE_HELPED\x10\x0e\x12\x1e\n" +
 	"\x1aCONTEST_LOG_LINE_SURPRISED\x10\x0f\x12%\n" +
-	"!CONTEST_LOG_LINE_SURPRISE_CLEARED\x10\x10B\xbf\x01\n" +
+	"!CONTEST_LOG_LINE_SURPRISE_CLEARED\x10\x10\x12\x1d\n" +
+	"\x19CONTEST_LOG_LINE_STOOD_UP\x10\x11\x12\"\n" +
+	"\x1eCONTEST_LOG_LINE_HIDE_REVEALED\x10\x12B\xbf\x01\n" +
 	"\x12com.meurpg.play.v1B\x11ContestTypesProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 
 var (

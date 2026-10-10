@@ -32,6 +32,7 @@ var undoableKinds = []string{
 	eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded, eventActionTaken, eventHitPointsAdjusted,
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
 	eventCombatantMoved, eventTrapTriggered, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
+	eventHideResolved, // only the master's reveal of a hider (undoableHideResolved)
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -128,6 +129,10 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 			if ev, err := readEvent(e.Payload); err == nil && ev.FxKind == rules.SpellKindRevive {
 				return playdb.ListRecentSessionEventsRow{}, false
 			}
+		}
+		// The master's decision on a hide attempt is not undone, his reveal of a hider is.
+		if e.Kind == eventHideResolved && !undoableHideResolved(e.Payload) {
+			return playdb.ListRecentSessionEventsRow{}, false
 		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
@@ -588,6 +593,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			prev = pendingRolled // never: only these can be discarded
 		}
 		return nil, setStatus(ev.Pending, prev)
+	case eventHideResolved:
+		// The master's reveal: the hiding comes back as it was.
+		if err := restoreHiding(ctx, c, ev.Actor, ev.HidBefore); err != nil {
+			return nil, err
+		}
 	case eventCombatantMoved:
 		// The square, the movement walked, the running start and the master's cover
 		// mark are as they were: a move, a jump (the movement a jump spent comes
@@ -612,6 +622,12 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			ID: who.ID, GridCol: col, GridRow: row, MovementUsedFt: ev.From.UsedDFt / 10, MovementUsedDft: ev.From.UsedDFt, LastMoveDft: ev.From.LastDFt, CoverMark: cover,
 		}); err != nil {
 			return nil, fmt.Errorf("put back the move: %w", err)
+		}
+		// Standing up from Prone also took the condition off (combat_standup.go).
+		if ev.CondSet {
+			if err := c.q.SetCombatantConditions(ctx, playdb.SetCombatantConditionsParams{ID: who.ID, Conditions: nonNil(ev.CondBefore)}); err != nil {
+				return nil, fmt.Errorf("put back the conditions: %w", err)
+			}
 		}
 		// The creature the mover dragged along goes back to where it stood (combat_drag.go).
 		if ev.Dragged != "" && ev.DraggedFrom != nil && ev.DraggedFrom.Placed {

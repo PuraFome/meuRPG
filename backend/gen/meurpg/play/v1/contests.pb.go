@@ -1296,6 +1296,121 @@ func (x *ResolveHideResponse) GetAttempt() *HideAttemptView {
 	return nil
 }
 
+// RevealHiderRequest ends a combatant's hiding.
+type RevealHiderRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId     string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	EncounterId    string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	// The hidden combatant (a UUID).
+	CombatantId   string `protobuf:"bytes,4,opt,name=combatant_id,json=combatantId,proto3" json:"combatant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevealHiderRequest) Reset() {
+	*x = RevealHiderRequest{}
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevealHiderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevealHiderRequest) ProtoMessage() {}
+
+func (x *RevealHiderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevealHiderRequest.ProtoReflect.Descriptor instead.
+func (*RevealHiderRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RevealHiderRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *RevealHiderRequest) GetEncounterId() string {
+	if x != nil {
+		return x.EncounterId
+	}
+	return ""
+}
+
+func (x *RevealHiderRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *RevealHiderRequest) GetCombatantId() string {
+	if x != nil {
+		return x.CombatantId
+	}
+	return ""
+}
+
+// RevealHiderResponse returns the combat after it.
+type RevealHiderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Encounter     *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevealHiderResponse) Reset() {
+	*x = RevealHiderResponse{}
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevealHiderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevealHiderResponse) ProtoMessage() {}
+
+func (x *RevealHiderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevealHiderResponse.ProtoReflect.Descriptor instead.
+func (*RevealHiderResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *RevealHiderResponse) GetEncounter() *Encounter {
+	if x != nil {
+		return x.Encounter
+	}
+	return nil
+}
+
 // HelpRequest is the Help action.
 type HelpRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -1318,7 +1433,7 @@ type HelpRequest struct {
 
 func (x *HelpRequest) Reset() {
 	*x = HelpRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1330,7 +1445,7 @@ func (x *HelpRequest) String() string {
 func (*HelpRequest) ProtoMessage() {}
 
 func (x *HelpRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1343,7 +1458,7 @@ func (x *HelpRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HelpRequest.ProtoReflect.Descriptor instead.
 func (*HelpRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *HelpRequest) GetCampaignId() string {
@@ -1413,7 +1528,7 @@ type HelpResponse struct {
 
 func (x *HelpResponse) Reset() {
 	*x = HelpResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1425,7 +1540,7 @@ func (x *HelpResponse) String() string {
 func (*HelpResponse) ProtoMessage() {}
 
 func (x *HelpResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1438,7 +1553,7 @@ func (x *HelpResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HelpResponse.ProtoReflect.Descriptor instead.
 func (*HelpResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *HelpResponse) GetEncounter() *Encounter {
@@ -1468,7 +1583,7 @@ type ClearHelpRequest struct {
 
 func (x *ClearHelpRequest) Reset() {
 	*x = ClearHelpRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1480,7 +1595,7 @@ func (x *ClearHelpRequest) String() string {
 func (*ClearHelpRequest) ProtoMessage() {}
 
 func (x *ClearHelpRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1493,7 +1608,7 @@ func (x *ClearHelpRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearHelpRequest.ProtoReflect.Descriptor instead.
 func (*ClearHelpRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ClearHelpRequest) GetCampaignId() string {
@@ -1534,7 +1649,7 @@ type ClearHelpResponse struct {
 
 func (x *ClearHelpResponse) Reset() {
 	*x = ClearHelpResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[21]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1546,7 +1661,7 @@ func (x *ClearHelpResponse) String() string {
 func (*ClearHelpResponse) ProtoMessage() {}
 
 func (x *ClearHelpResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[21]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1559,7 +1674,7 @@ func (x *ClearHelpResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearHelpResponse.ProtoReflect.Descriptor instead.
 func (*ClearHelpResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{21}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ClearHelpResponse) GetEncounter() *Encounter {
@@ -1583,7 +1698,7 @@ type SetSurprisedRequest struct {
 
 func (x *SetSurprisedRequest) Reset() {
 	*x = SetSurprisedRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[22]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1595,7 +1710,7 @@ func (x *SetSurprisedRequest) String() string {
 func (*SetSurprisedRequest) ProtoMessage() {}
 
 func (x *SetSurprisedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[22]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1608,7 +1723,7 @@ func (x *SetSurprisedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSurprisedRequest.ProtoReflect.Descriptor instead.
 func (*SetSurprisedRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{22}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SetSurprisedRequest) GetCampaignId() string {
@@ -1657,7 +1772,7 @@ type SetSurprisedResponse struct {
 
 func (x *SetSurprisedResponse) Reset() {
 	*x = SetSurprisedResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[23]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1669,7 +1784,7 @@ func (x *SetSurprisedResponse) String() string {
 func (*SetSurprisedResponse) ProtoMessage() {}
 
 func (x *SetSurprisedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[23]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1682,7 +1797,7 @@ func (x *SetSurprisedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSurprisedResponse.ProtoReflect.Descriptor instead.
 func (*SetSurprisedResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{23}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SetSurprisedResponse) GetEncounter() *Encounter {
@@ -1710,7 +1825,7 @@ type GetSurpriseSuggestionRequest struct {
 
 func (x *GetSurpriseSuggestionRequest) Reset() {
 	*x = GetSurpriseSuggestionRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[24]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1722,7 +1837,7 @@ func (x *GetSurpriseSuggestionRequest) String() string {
 func (*GetSurpriseSuggestionRequest) ProtoMessage() {}
 
 func (x *GetSurpriseSuggestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[24]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1735,7 +1850,7 @@ func (x *GetSurpriseSuggestionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSurpriseSuggestionRequest.ProtoReflect.Descriptor instead.
 func (*GetSurpriseSuggestionRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{24}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetSurpriseSuggestionRequest) GetCampaignId() string {
@@ -1763,7 +1878,7 @@ type GetSurpriseSuggestionResponse struct {
 
 func (x *GetSurpriseSuggestionResponse) Reset() {
 	*x = GetSurpriseSuggestionResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[25]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1775,7 +1890,7 @@ func (x *GetSurpriseSuggestionResponse) String() string {
 func (*GetSurpriseSuggestionResponse) ProtoMessage() {}
 
 func (x *GetSurpriseSuggestionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[25]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1788,7 +1903,7 @@ func (x *GetSurpriseSuggestionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSurpriseSuggestionResponse.ProtoReflect.Descriptor instead.
 func (*GetSurpriseSuggestionResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{25}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetSurpriseSuggestionResponse) GetSuggestions() []*SurpriseSuggestion {
@@ -1808,7 +1923,7 @@ type GetGroupCheckRequest struct {
 
 func (x *GetGroupCheckRequest) Reset() {
 	*x = GetGroupCheckRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[26]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1820,7 +1935,7 @@ func (x *GetGroupCheckRequest) String() string {
 func (*GetGroupCheckRequest) ProtoMessage() {}
 
 func (x *GetGroupCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[26]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1833,7 +1948,7 @@ func (x *GetGroupCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupCheckRequest.ProtoReflect.Descriptor instead.
 func (*GetGroupCheckRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{26}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetGroupCheckRequest) GetCampaignId() string {
@@ -1853,7 +1968,7 @@ type GetGroupCheckResponse struct {
 
 func (x *GetGroupCheckResponse) Reset() {
 	*x = GetGroupCheckResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[27]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1865,7 +1980,7 @@ func (x *GetGroupCheckResponse) String() string {
 func (*GetGroupCheckResponse) ProtoMessage() {}
 
 func (x *GetGroupCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[27]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1878,7 +1993,7 @@ func (x *GetGroupCheckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupCheckResponse.ProtoReflect.Descriptor instead.
 func (*GetGroupCheckResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{27}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetGroupCheckResponse) GetGroupCheck() *GroupCheckView {
@@ -1906,7 +2021,7 @@ type RequestGroupCheckRequest struct {
 
 func (x *RequestGroupCheckRequest) Reset() {
 	*x = RequestGroupCheckRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[28]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1918,7 +2033,7 @@ func (x *RequestGroupCheckRequest) String() string {
 func (*RequestGroupCheckRequest) ProtoMessage() {}
 
 func (x *RequestGroupCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[28]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1931,7 +2046,7 @@ func (x *RequestGroupCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestGroupCheckRequest.ProtoReflect.Descriptor instead.
 func (*RequestGroupCheckRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{28}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *RequestGroupCheckRequest) GetCampaignId() string {
@@ -1979,7 +2094,7 @@ type RequestGroupCheckResponse struct {
 
 func (x *RequestGroupCheckResponse) Reset() {
 	*x = RequestGroupCheckResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[29]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1991,7 +2106,7 @@ func (x *RequestGroupCheckResponse) String() string {
 func (*RequestGroupCheckResponse) ProtoMessage() {}
 
 func (x *RequestGroupCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[29]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2004,7 +2119,7 @@ func (x *RequestGroupCheckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestGroupCheckResponse.ProtoReflect.Descriptor instead.
 func (*RequestGroupCheckResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{29}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *RequestGroupCheckResponse) GetGroupCheck() *GroupCheckView {
@@ -2027,7 +2142,7 @@ type RollGroupCheckRequest struct {
 
 func (x *RollGroupCheckRequest) Reset() {
 	*x = RollGroupCheckRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[30]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2039,7 +2154,7 @@ func (x *RollGroupCheckRequest) String() string {
 func (*RollGroupCheckRequest) ProtoMessage() {}
 
 func (x *RollGroupCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[30]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2052,7 +2167,7 @@ func (x *RollGroupCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollGroupCheckRequest.ProtoReflect.Descriptor instead.
 func (*RollGroupCheckRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{30}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *RollGroupCheckRequest) GetCampaignId() string {
@@ -2093,7 +2208,7 @@ type RollGroupCheckResponse struct {
 
 func (x *RollGroupCheckResponse) Reset() {
 	*x = RollGroupCheckResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[31]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2105,7 +2220,7 @@ func (x *RollGroupCheckResponse) String() string {
 func (*RollGroupCheckResponse) ProtoMessage() {}
 
 func (x *RollGroupCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[31]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2118,7 +2233,7 @@ func (x *RollGroupCheckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollGroupCheckResponse.ProtoReflect.Descriptor instead.
 func (*RollGroupCheckResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{31}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *RollGroupCheckResponse) GetGroupCheck() *GroupCheckView {
@@ -2142,7 +2257,7 @@ type RollForPlayerRequest struct {
 
 func (x *RollForPlayerRequest) Reset() {
 	*x = RollForPlayerRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[32]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2154,7 +2269,7 @@ func (x *RollForPlayerRequest) String() string {
 func (*RollForPlayerRequest) ProtoMessage() {}
 
 func (x *RollForPlayerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[32]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2167,7 +2282,7 @@ func (x *RollForPlayerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollForPlayerRequest.ProtoReflect.Descriptor instead.
 func (*RollForPlayerRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{32}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *RollForPlayerRequest) GetCampaignId() string {
@@ -2215,7 +2330,7 @@ type RollForPlayerResponse struct {
 
 func (x *RollForPlayerResponse) Reset() {
 	*x = RollForPlayerResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[33]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2227,7 +2342,7 @@ func (x *RollForPlayerResponse) String() string {
 func (*RollForPlayerResponse) ProtoMessage() {}
 
 func (x *RollForPlayerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[33]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2240,7 +2355,7 @@ func (x *RollForPlayerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollForPlayerResponse.ProtoReflect.Descriptor instead.
 func (*RollForPlayerResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{33}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RollForPlayerResponse) GetGroupCheck() *GroupCheckView {
@@ -2262,7 +2377,7 @@ type CloseGroupCheckRequest struct {
 
 func (x *CloseGroupCheckRequest) Reset() {
 	*x = CloseGroupCheckRequest{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[34]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2274,7 +2389,7 @@ func (x *CloseGroupCheckRequest) String() string {
 func (*CloseGroupCheckRequest) ProtoMessage() {}
 
 func (x *CloseGroupCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[34]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2287,7 +2402,7 @@ func (x *CloseGroupCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseGroupCheckRequest.ProtoReflect.Descriptor instead.
 func (*CloseGroupCheckRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{34}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *CloseGroupCheckRequest) GetCampaignId() string {
@@ -2321,7 +2436,7 @@ type CloseGroupCheckResponse struct {
 
 func (x *CloseGroupCheckResponse) Reset() {
 	*x = CloseGroupCheckResponse{}
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[35]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2333,7 +2448,7 @@ func (x *CloseGroupCheckResponse) String() string {
 func (*CloseGroupCheckResponse) ProtoMessage() {}
 
 func (x *CloseGroupCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contests_proto_msgTypes[35]
+	mi := &file_meurpg_play_v1_contests_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2346,7 +2461,7 @@ func (x *CloseGroupCheckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseGroupCheckResponse.ProtoReflect.Descriptor instead.
 func (*CloseGroupCheckResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{35}
+	return file_meurpg_play_v1_contests_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *CloseGroupCheckResponse) GetGroupCheck() *GroupCheckView {
@@ -2461,7 +2576,15 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x10sees_clearly_ids\x18\a \x03(\tR\x0eseesClearlyIds\"\x89\x01\n" +
 	"\x13ResolveHideResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x129\n" +
-	"\aattempt\x18\x02 \x01(\v2\x1f.meurpg.play.v1.HideAttemptViewR\aattempt\"\x9c\x02\n" +
+	"\aattempt\x18\x02 \x01(\v2\x1f.meurpg.play.v1.HideAttemptViewR\aattempt\"\xa4\x01\n" +
+	"\x12RevealHiderRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fencounter_id\x18\x02 \x01(\tR\vencounterId\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x12!\n" +
+	"\fcombatant_id\x18\x04 \x01(\tR\vcombatantId\"N\n" +
+	"\x13RevealHiderResponse\x127\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x9c\x02\n" +
 	"\vHelpRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2541,7 +2664,7 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x0egroup_check_id\x18\x03 \x01(\tR\fgroupCheckId\"Z\n" +
 	"\x17CloseGroupCheckResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
-	"groupCheck2\xc2\f\n" +
+	"groupCheck2\x9a\r\n" +
 	"\x0eContestService\x12g\n" +
 	"\x0fGetContestState\x12&.meurpg.play.v1.GetContestStateRequest\x1a'.meurpg.play.v1.GetContestStateResponse\"\x03\x90\x02\x02\x12Y\n" +
 	"\fStartContest\x12#.meurpg.play.v1.StartContestRequest\x1a$.meurpg.play.v1.StartContestResponse\x12_\n" +
@@ -2550,7 +2673,8 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\fCloseContest\x12#.meurpg.play.v1.CloseContestRequest\x1a$.meurpg.play.v1.CloseContestResponse\x12_\n" +
 	"\x0eReleaseGrapple\x12%.meurpg.play.v1.ReleaseGrappleRequest\x1a&.meurpg.play.v1.ReleaseGrappleResponse\x12A\n" +
 	"\x04Hide\x12\x1b.meurpg.play.v1.HideRequest\x1a\x1c.meurpg.play.v1.HideResponse\x12V\n" +
-	"\vResolveHide\x12\".meurpg.play.v1.ResolveHideRequest\x1a#.meurpg.play.v1.ResolveHideResponse\x12A\n" +
+	"\vResolveHide\x12\".meurpg.play.v1.ResolveHideRequest\x1a#.meurpg.play.v1.ResolveHideResponse\x12V\n" +
+	"\vRevealHider\x12\".meurpg.play.v1.RevealHiderRequest\x1a#.meurpg.play.v1.RevealHiderResponse\x12A\n" +
 	"\x04Help\x12\x1b.meurpg.play.v1.HelpRequest\x1a\x1c.meurpg.play.v1.HelpResponse\x12P\n" +
 	"\tClearHelp\x12 .meurpg.play.v1.ClearHelpRequest\x1a!.meurpg.play.v1.ClearHelpResponse\x12Y\n" +
 	"\fSetSurprised\x12#.meurpg.play.v1.SetSurprisedRequest\x1a$.meurpg.play.v1.SetSurprisedResponse\x12y\n" +
@@ -2574,7 +2698,7 @@ func file_meurpg_play_v1_contests_proto_rawDescGZIP() []byte {
 	return file_meurpg_play_v1_contests_proto_rawDescData
 }
 
-var file_meurpg_play_v1_contests_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_meurpg_play_v1_contests_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_meurpg_play_v1_contests_proto_goTypes = []any{
 	(*D20Faces)(nil),                      // 0: meurpg.play.v1.D20Faces
 	(*GetContestStateRequest)(nil),        // 1: meurpg.play.v1.GetContestStateRequest
@@ -2594,118 +2718,123 @@ var file_meurpg_play_v1_contests_proto_goTypes = []any{
 	(*HideResponse)(nil),                  // 15: meurpg.play.v1.HideResponse
 	(*ResolveHideRequest)(nil),            // 16: meurpg.play.v1.ResolveHideRequest
 	(*ResolveHideResponse)(nil),           // 17: meurpg.play.v1.ResolveHideResponse
-	(*HelpRequest)(nil),                   // 18: meurpg.play.v1.HelpRequest
-	(*HelpResponse)(nil),                  // 19: meurpg.play.v1.HelpResponse
-	(*ClearHelpRequest)(nil),              // 20: meurpg.play.v1.ClearHelpRequest
-	(*ClearHelpResponse)(nil),             // 21: meurpg.play.v1.ClearHelpResponse
-	(*SetSurprisedRequest)(nil),           // 22: meurpg.play.v1.SetSurprisedRequest
-	(*SetSurprisedResponse)(nil),          // 23: meurpg.play.v1.SetSurprisedResponse
-	(*GetSurpriseSuggestionRequest)(nil),  // 24: meurpg.play.v1.GetSurpriseSuggestionRequest
-	(*GetSurpriseSuggestionResponse)(nil), // 25: meurpg.play.v1.GetSurpriseSuggestionResponse
-	(*GetGroupCheckRequest)(nil),          // 26: meurpg.play.v1.GetGroupCheckRequest
-	(*GetGroupCheckResponse)(nil),         // 27: meurpg.play.v1.GetGroupCheckResponse
-	(*RequestGroupCheckRequest)(nil),      // 28: meurpg.play.v1.RequestGroupCheckRequest
-	(*RequestGroupCheckResponse)(nil),     // 29: meurpg.play.v1.RequestGroupCheckResponse
-	(*RollGroupCheckRequest)(nil),         // 30: meurpg.play.v1.RollGroupCheckRequest
-	(*RollGroupCheckResponse)(nil),        // 31: meurpg.play.v1.RollGroupCheckResponse
-	(*RollForPlayerRequest)(nil),          // 32: meurpg.play.v1.RollForPlayerRequest
-	(*RollForPlayerResponse)(nil),         // 33: meurpg.play.v1.RollForPlayerResponse
-	(*CloseGroupCheckRequest)(nil),        // 34: meurpg.play.v1.CloseGroupCheckRequest
-	(*CloseGroupCheckResponse)(nil),       // 35: meurpg.play.v1.CloseGroupCheckResponse
-	(*ContestView)(nil),                   // 36: meurpg.play.v1.ContestView
-	(*HideAttemptView)(nil),               // 37: meurpg.play.v1.HideAttemptView
-	(*HelpView)(nil),                      // 38: meurpg.play.v1.HelpView
-	(*GrappleView)(nil),                   // 39: meurpg.play.v1.GrappleView
-	(*SurpriseView)(nil),                  // 40: meurpg.play.v1.SurpriseView
-	(ContestPurpose)(0),                   // 41: meurpg.play.v1.ContestPurpose
-	(ContestKind)(0),                      // 42: meurpg.play.v1.ContestKind
-	(ContestSkill)(0),                     // 43: meurpg.play.v1.ContestSkill
-	(*Encounter)(nil),                     // 44: meurpg.play.v1.Encounter
-	(ShoveOutcome)(0),                     // 45: meurpg.play.v1.ShoveOutcome
-	(HelpKind)(0),                         // 46: meurpg.play.v1.HelpKind
-	(*SurpriseSuggestion)(nil),            // 47: meurpg.play.v1.SurpriseSuggestion
-	(*GroupCheckView)(nil),                // 48: meurpg.play.v1.GroupCheckView
+	(*RevealHiderRequest)(nil),            // 18: meurpg.play.v1.RevealHiderRequest
+	(*RevealHiderResponse)(nil),           // 19: meurpg.play.v1.RevealHiderResponse
+	(*HelpRequest)(nil),                   // 20: meurpg.play.v1.HelpRequest
+	(*HelpResponse)(nil),                  // 21: meurpg.play.v1.HelpResponse
+	(*ClearHelpRequest)(nil),              // 22: meurpg.play.v1.ClearHelpRequest
+	(*ClearHelpResponse)(nil),             // 23: meurpg.play.v1.ClearHelpResponse
+	(*SetSurprisedRequest)(nil),           // 24: meurpg.play.v1.SetSurprisedRequest
+	(*SetSurprisedResponse)(nil),          // 25: meurpg.play.v1.SetSurprisedResponse
+	(*GetSurpriseSuggestionRequest)(nil),  // 26: meurpg.play.v1.GetSurpriseSuggestionRequest
+	(*GetSurpriseSuggestionResponse)(nil), // 27: meurpg.play.v1.GetSurpriseSuggestionResponse
+	(*GetGroupCheckRequest)(nil),          // 28: meurpg.play.v1.GetGroupCheckRequest
+	(*GetGroupCheckResponse)(nil),         // 29: meurpg.play.v1.GetGroupCheckResponse
+	(*RequestGroupCheckRequest)(nil),      // 30: meurpg.play.v1.RequestGroupCheckRequest
+	(*RequestGroupCheckResponse)(nil),     // 31: meurpg.play.v1.RequestGroupCheckResponse
+	(*RollGroupCheckRequest)(nil),         // 32: meurpg.play.v1.RollGroupCheckRequest
+	(*RollGroupCheckResponse)(nil),        // 33: meurpg.play.v1.RollGroupCheckResponse
+	(*RollForPlayerRequest)(nil),          // 34: meurpg.play.v1.RollForPlayerRequest
+	(*RollForPlayerResponse)(nil),         // 35: meurpg.play.v1.RollForPlayerResponse
+	(*CloseGroupCheckRequest)(nil),        // 36: meurpg.play.v1.CloseGroupCheckRequest
+	(*CloseGroupCheckResponse)(nil),       // 37: meurpg.play.v1.CloseGroupCheckResponse
+	(*ContestView)(nil),                   // 38: meurpg.play.v1.ContestView
+	(*HideAttemptView)(nil),               // 39: meurpg.play.v1.HideAttemptView
+	(*HelpView)(nil),                      // 40: meurpg.play.v1.HelpView
+	(*GrappleView)(nil),                   // 41: meurpg.play.v1.GrappleView
+	(*SurpriseView)(nil),                  // 42: meurpg.play.v1.SurpriseView
+	(ContestPurpose)(0),                   // 43: meurpg.play.v1.ContestPurpose
+	(ContestKind)(0),                      // 44: meurpg.play.v1.ContestKind
+	(ContestSkill)(0),                     // 45: meurpg.play.v1.ContestSkill
+	(*Encounter)(nil),                     // 46: meurpg.play.v1.Encounter
+	(ShoveOutcome)(0),                     // 47: meurpg.play.v1.ShoveOutcome
+	(HelpKind)(0),                         // 48: meurpg.play.v1.HelpKind
+	(*SurpriseSuggestion)(nil),            // 49: meurpg.play.v1.SurpriseSuggestion
+	(*GroupCheckView)(nil),                // 50: meurpg.play.v1.GroupCheckView
 }
 var file_meurpg_play_v1_contests_proto_depIdxs = []int32{
-	36, // 0: meurpg.play.v1.GetContestStateResponse.contests:type_name -> meurpg.play.v1.ContestView
-	37, // 1: meurpg.play.v1.GetContestStateResponse.hide_attempts:type_name -> meurpg.play.v1.HideAttemptView
-	38, // 2: meurpg.play.v1.GetContestStateResponse.helps:type_name -> meurpg.play.v1.HelpView
-	39, // 3: meurpg.play.v1.GetContestStateResponse.grapples:type_name -> meurpg.play.v1.GrappleView
-	40, // 4: meurpg.play.v1.GetContestStateResponse.surprise:type_name -> meurpg.play.v1.SurpriseView
+	38, // 0: meurpg.play.v1.GetContestStateResponse.contests:type_name -> meurpg.play.v1.ContestView
+	39, // 1: meurpg.play.v1.GetContestStateResponse.hide_attempts:type_name -> meurpg.play.v1.HideAttemptView
+	40, // 2: meurpg.play.v1.GetContestStateResponse.helps:type_name -> meurpg.play.v1.HelpView
+	41, // 3: meurpg.play.v1.GetContestStateResponse.grapples:type_name -> meurpg.play.v1.GrappleView
+	42, // 4: meurpg.play.v1.GetContestStateResponse.surprise:type_name -> meurpg.play.v1.SurpriseView
 	0,  // 5: meurpg.play.v1.CheckRollInput.d20_faces:type_name -> meurpg.play.v1.D20Faces
-	41, // 6: meurpg.play.v1.StartContestRequest.purpose:type_name -> meurpg.play.v1.ContestPurpose
-	42, // 7: meurpg.play.v1.StartContestRequest.kind:type_name -> meurpg.play.v1.ContestKind
-	43, // 8: meurpg.play.v1.StartContestRequest.skill:type_name -> meurpg.play.v1.ContestSkill
+	43, // 6: meurpg.play.v1.StartContestRequest.purpose:type_name -> meurpg.play.v1.ContestPurpose
+	44, // 7: meurpg.play.v1.StartContestRequest.kind:type_name -> meurpg.play.v1.ContestKind
+	45, // 8: meurpg.play.v1.StartContestRequest.skill:type_name -> meurpg.play.v1.ContestSkill
 	3,  // 9: meurpg.play.v1.StartContestRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	44, // 10: meurpg.play.v1.StartContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	36, // 11: meurpg.play.v1.StartContestResponse.contest:type_name -> meurpg.play.v1.ContestView
-	43, // 12: meurpg.play.v1.RespondContestRequest.skill:type_name -> meurpg.play.v1.ContestSkill
+	46, // 10: meurpg.play.v1.StartContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	38, // 11: meurpg.play.v1.StartContestResponse.contest:type_name -> meurpg.play.v1.ContestView
+	45, // 12: meurpg.play.v1.RespondContestRequest.skill:type_name -> meurpg.play.v1.ContestSkill
 	3,  // 13: meurpg.play.v1.RespondContestRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	44, // 14: meurpg.play.v1.RespondContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	36, // 15: meurpg.play.v1.RespondContestResponse.contest:type_name -> meurpg.play.v1.ContestView
-	45, // 16: meurpg.play.v1.ResolveShoveRequest.outcome:type_name -> meurpg.play.v1.ShoveOutcome
-	44, // 17: meurpg.play.v1.ResolveShoveResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	36, // 18: meurpg.play.v1.ResolveShoveResponse.contest:type_name -> meurpg.play.v1.ContestView
-	44, // 19: meurpg.play.v1.CloseContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	44, // 20: meurpg.play.v1.ReleaseGrappleResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	46, // 14: meurpg.play.v1.RespondContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	38, // 15: meurpg.play.v1.RespondContestResponse.contest:type_name -> meurpg.play.v1.ContestView
+	47, // 16: meurpg.play.v1.ResolveShoveRequest.outcome:type_name -> meurpg.play.v1.ShoveOutcome
+	46, // 17: meurpg.play.v1.ResolveShoveResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	38, // 18: meurpg.play.v1.ResolveShoveResponse.contest:type_name -> meurpg.play.v1.ContestView
+	46, // 19: meurpg.play.v1.CloseContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	46, // 20: meurpg.play.v1.ReleaseGrappleResponse.encounter:type_name -> meurpg.play.v1.Encounter
 	3,  // 21: meurpg.play.v1.HideRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	44, // 22: meurpg.play.v1.HideResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	37, // 23: meurpg.play.v1.HideResponse.attempt:type_name -> meurpg.play.v1.HideAttemptView
-	44, // 24: meurpg.play.v1.ResolveHideResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	37, // 25: meurpg.play.v1.ResolveHideResponse.attempt:type_name -> meurpg.play.v1.HideAttemptView
-	46, // 26: meurpg.play.v1.HelpRequest.kind:type_name -> meurpg.play.v1.HelpKind
-	44, // 27: meurpg.play.v1.HelpResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	38, // 28: meurpg.play.v1.HelpResponse.help:type_name -> meurpg.play.v1.HelpView
-	44, // 29: meurpg.play.v1.ClearHelpResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	44, // 30: meurpg.play.v1.SetSurprisedResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	40, // 31: meurpg.play.v1.SetSurprisedResponse.surprise:type_name -> meurpg.play.v1.SurpriseView
-	47, // 32: meurpg.play.v1.GetSurpriseSuggestionResponse.suggestions:type_name -> meurpg.play.v1.SurpriseSuggestion
-	48, // 33: meurpg.play.v1.GetGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	48, // 34: meurpg.play.v1.RequestGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	3,  // 35: meurpg.play.v1.RollGroupCheckRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	48, // 36: meurpg.play.v1.RollGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	3,  // 37: meurpg.play.v1.RollForPlayerRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	48, // 38: meurpg.play.v1.RollForPlayerResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	48, // 39: meurpg.play.v1.CloseGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	1,  // 40: meurpg.play.v1.ContestService.GetContestState:input_type -> meurpg.play.v1.GetContestStateRequest
-	4,  // 41: meurpg.play.v1.ContestService.StartContest:input_type -> meurpg.play.v1.StartContestRequest
-	6,  // 42: meurpg.play.v1.ContestService.RespondContest:input_type -> meurpg.play.v1.RespondContestRequest
-	8,  // 43: meurpg.play.v1.ContestService.ResolveShove:input_type -> meurpg.play.v1.ResolveShoveRequest
-	10, // 44: meurpg.play.v1.ContestService.CloseContest:input_type -> meurpg.play.v1.CloseContestRequest
-	12, // 45: meurpg.play.v1.ContestService.ReleaseGrapple:input_type -> meurpg.play.v1.ReleaseGrappleRequest
-	14, // 46: meurpg.play.v1.ContestService.Hide:input_type -> meurpg.play.v1.HideRequest
-	16, // 47: meurpg.play.v1.ContestService.ResolveHide:input_type -> meurpg.play.v1.ResolveHideRequest
-	18, // 48: meurpg.play.v1.ContestService.Help:input_type -> meurpg.play.v1.HelpRequest
-	20, // 49: meurpg.play.v1.ContestService.ClearHelp:input_type -> meurpg.play.v1.ClearHelpRequest
-	22, // 50: meurpg.play.v1.ContestService.SetSurprised:input_type -> meurpg.play.v1.SetSurprisedRequest
-	24, // 51: meurpg.play.v1.ContestService.GetSurpriseSuggestion:input_type -> meurpg.play.v1.GetSurpriseSuggestionRequest
-	26, // 52: meurpg.play.v1.ContestService.GetGroupCheck:input_type -> meurpg.play.v1.GetGroupCheckRequest
-	28, // 53: meurpg.play.v1.ContestService.RequestGroupCheck:input_type -> meurpg.play.v1.RequestGroupCheckRequest
-	30, // 54: meurpg.play.v1.ContestService.RollGroupCheck:input_type -> meurpg.play.v1.RollGroupCheckRequest
-	32, // 55: meurpg.play.v1.ContestService.RollForPlayer:input_type -> meurpg.play.v1.RollForPlayerRequest
-	34, // 56: meurpg.play.v1.ContestService.CloseGroupCheck:input_type -> meurpg.play.v1.CloseGroupCheckRequest
-	2,  // 57: meurpg.play.v1.ContestService.GetContestState:output_type -> meurpg.play.v1.GetContestStateResponse
-	5,  // 58: meurpg.play.v1.ContestService.StartContest:output_type -> meurpg.play.v1.StartContestResponse
-	7,  // 59: meurpg.play.v1.ContestService.RespondContest:output_type -> meurpg.play.v1.RespondContestResponse
-	9,  // 60: meurpg.play.v1.ContestService.ResolveShove:output_type -> meurpg.play.v1.ResolveShoveResponse
-	11, // 61: meurpg.play.v1.ContestService.CloseContest:output_type -> meurpg.play.v1.CloseContestResponse
-	13, // 62: meurpg.play.v1.ContestService.ReleaseGrapple:output_type -> meurpg.play.v1.ReleaseGrappleResponse
-	15, // 63: meurpg.play.v1.ContestService.Hide:output_type -> meurpg.play.v1.HideResponse
-	17, // 64: meurpg.play.v1.ContestService.ResolveHide:output_type -> meurpg.play.v1.ResolveHideResponse
-	19, // 65: meurpg.play.v1.ContestService.Help:output_type -> meurpg.play.v1.HelpResponse
-	21, // 66: meurpg.play.v1.ContestService.ClearHelp:output_type -> meurpg.play.v1.ClearHelpResponse
-	23, // 67: meurpg.play.v1.ContestService.SetSurprised:output_type -> meurpg.play.v1.SetSurprisedResponse
-	25, // 68: meurpg.play.v1.ContestService.GetSurpriseSuggestion:output_type -> meurpg.play.v1.GetSurpriseSuggestionResponse
-	27, // 69: meurpg.play.v1.ContestService.GetGroupCheck:output_type -> meurpg.play.v1.GetGroupCheckResponse
-	29, // 70: meurpg.play.v1.ContestService.RequestGroupCheck:output_type -> meurpg.play.v1.RequestGroupCheckResponse
-	31, // 71: meurpg.play.v1.ContestService.RollGroupCheck:output_type -> meurpg.play.v1.RollGroupCheckResponse
-	33, // 72: meurpg.play.v1.ContestService.RollForPlayer:output_type -> meurpg.play.v1.RollForPlayerResponse
-	35, // 73: meurpg.play.v1.ContestService.CloseGroupCheck:output_type -> meurpg.play.v1.CloseGroupCheckResponse
-	57, // [57:74] is the sub-list for method output_type
-	40, // [40:57] is the sub-list for method input_type
-	40, // [40:40] is the sub-list for extension type_name
-	40, // [40:40] is the sub-list for extension extendee
-	0,  // [0:40] is the sub-list for field type_name
+	46, // 22: meurpg.play.v1.HideResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	39, // 23: meurpg.play.v1.HideResponse.attempt:type_name -> meurpg.play.v1.HideAttemptView
+	46, // 24: meurpg.play.v1.ResolveHideResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	39, // 25: meurpg.play.v1.ResolveHideResponse.attempt:type_name -> meurpg.play.v1.HideAttemptView
+	46, // 26: meurpg.play.v1.RevealHiderResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	48, // 27: meurpg.play.v1.HelpRequest.kind:type_name -> meurpg.play.v1.HelpKind
+	46, // 28: meurpg.play.v1.HelpResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	40, // 29: meurpg.play.v1.HelpResponse.help:type_name -> meurpg.play.v1.HelpView
+	46, // 30: meurpg.play.v1.ClearHelpResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	46, // 31: meurpg.play.v1.SetSurprisedResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	42, // 32: meurpg.play.v1.SetSurprisedResponse.surprise:type_name -> meurpg.play.v1.SurpriseView
+	49, // 33: meurpg.play.v1.GetSurpriseSuggestionResponse.suggestions:type_name -> meurpg.play.v1.SurpriseSuggestion
+	50, // 34: meurpg.play.v1.GetGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	50, // 35: meurpg.play.v1.RequestGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	3,  // 36: meurpg.play.v1.RollGroupCheckRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
+	50, // 37: meurpg.play.v1.RollGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	3,  // 38: meurpg.play.v1.RollForPlayerRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
+	50, // 39: meurpg.play.v1.RollForPlayerResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	50, // 40: meurpg.play.v1.CloseGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	1,  // 41: meurpg.play.v1.ContestService.GetContestState:input_type -> meurpg.play.v1.GetContestStateRequest
+	4,  // 42: meurpg.play.v1.ContestService.StartContest:input_type -> meurpg.play.v1.StartContestRequest
+	6,  // 43: meurpg.play.v1.ContestService.RespondContest:input_type -> meurpg.play.v1.RespondContestRequest
+	8,  // 44: meurpg.play.v1.ContestService.ResolveShove:input_type -> meurpg.play.v1.ResolveShoveRequest
+	10, // 45: meurpg.play.v1.ContestService.CloseContest:input_type -> meurpg.play.v1.CloseContestRequest
+	12, // 46: meurpg.play.v1.ContestService.ReleaseGrapple:input_type -> meurpg.play.v1.ReleaseGrappleRequest
+	14, // 47: meurpg.play.v1.ContestService.Hide:input_type -> meurpg.play.v1.HideRequest
+	16, // 48: meurpg.play.v1.ContestService.ResolveHide:input_type -> meurpg.play.v1.ResolveHideRequest
+	18, // 49: meurpg.play.v1.ContestService.RevealHider:input_type -> meurpg.play.v1.RevealHiderRequest
+	20, // 50: meurpg.play.v1.ContestService.Help:input_type -> meurpg.play.v1.HelpRequest
+	22, // 51: meurpg.play.v1.ContestService.ClearHelp:input_type -> meurpg.play.v1.ClearHelpRequest
+	24, // 52: meurpg.play.v1.ContestService.SetSurprised:input_type -> meurpg.play.v1.SetSurprisedRequest
+	26, // 53: meurpg.play.v1.ContestService.GetSurpriseSuggestion:input_type -> meurpg.play.v1.GetSurpriseSuggestionRequest
+	28, // 54: meurpg.play.v1.ContestService.GetGroupCheck:input_type -> meurpg.play.v1.GetGroupCheckRequest
+	30, // 55: meurpg.play.v1.ContestService.RequestGroupCheck:input_type -> meurpg.play.v1.RequestGroupCheckRequest
+	32, // 56: meurpg.play.v1.ContestService.RollGroupCheck:input_type -> meurpg.play.v1.RollGroupCheckRequest
+	34, // 57: meurpg.play.v1.ContestService.RollForPlayer:input_type -> meurpg.play.v1.RollForPlayerRequest
+	36, // 58: meurpg.play.v1.ContestService.CloseGroupCheck:input_type -> meurpg.play.v1.CloseGroupCheckRequest
+	2,  // 59: meurpg.play.v1.ContestService.GetContestState:output_type -> meurpg.play.v1.GetContestStateResponse
+	5,  // 60: meurpg.play.v1.ContestService.StartContest:output_type -> meurpg.play.v1.StartContestResponse
+	7,  // 61: meurpg.play.v1.ContestService.RespondContest:output_type -> meurpg.play.v1.RespondContestResponse
+	9,  // 62: meurpg.play.v1.ContestService.ResolveShove:output_type -> meurpg.play.v1.ResolveShoveResponse
+	11, // 63: meurpg.play.v1.ContestService.CloseContest:output_type -> meurpg.play.v1.CloseContestResponse
+	13, // 64: meurpg.play.v1.ContestService.ReleaseGrapple:output_type -> meurpg.play.v1.ReleaseGrappleResponse
+	15, // 65: meurpg.play.v1.ContestService.Hide:output_type -> meurpg.play.v1.HideResponse
+	17, // 66: meurpg.play.v1.ContestService.ResolveHide:output_type -> meurpg.play.v1.ResolveHideResponse
+	19, // 67: meurpg.play.v1.ContestService.RevealHider:output_type -> meurpg.play.v1.RevealHiderResponse
+	21, // 68: meurpg.play.v1.ContestService.Help:output_type -> meurpg.play.v1.HelpResponse
+	23, // 69: meurpg.play.v1.ContestService.ClearHelp:output_type -> meurpg.play.v1.ClearHelpResponse
+	25, // 70: meurpg.play.v1.ContestService.SetSurprised:output_type -> meurpg.play.v1.SetSurprisedResponse
+	27, // 71: meurpg.play.v1.ContestService.GetSurpriseSuggestion:output_type -> meurpg.play.v1.GetSurpriseSuggestionResponse
+	29, // 72: meurpg.play.v1.ContestService.GetGroupCheck:output_type -> meurpg.play.v1.GetGroupCheckResponse
+	31, // 73: meurpg.play.v1.ContestService.RequestGroupCheck:output_type -> meurpg.play.v1.RequestGroupCheckResponse
+	33, // 74: meurpg.play.v1.ContestService.RollGroupCheck:output_type -> meurpg.play.v1.RollGroupCheckResponse
+	35, // 75: meurpg.play.v1.ContestService.RollForPlayer:output_type -> meurpg.play.v1.RollForPlayerResponse
+	37, // 76: meurpg.play.v1.ContestService.CloseGroupCheck:output_type -> meurpg.play.v1.CloseGroupCheckResponse
+	59, // [59:77] is the sub-list for method output_type
+	41, // [41:59] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_contests_proto_init() }
@@ -2725,7 +2854,7 @@ func file_meurpg_play_v1_contests_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_contests_proto_rawDesc), len(file_meurpg_play_v1_contests_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   36,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

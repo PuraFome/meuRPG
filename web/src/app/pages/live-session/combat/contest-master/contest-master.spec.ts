@@ -146,6 +146,24 @@ describe('ContestMaster, the master side of the contests of a combat', () => {
     expect(textOf(el)).toContain('Agarrão solto.');
   });
 
+  it('lists the hidden with "Revelar", which ends the hiding once', async () => {
+    const { api, el, settle, button } = setup({}, contestState({ hiddenIds: ['b'] }));
+    await settle();
+    const text = textOf(el);
+    expect(text).toContain('Escondidos');
+    expect(text).toContain('Brisa');
+    button('Revelar')!.click();
+    await settle();
+    expect(api.revealed).toEqual([{ combatantId: 'b', key: expect.any(String) }]);
+    expect(textOf(el)).toContain('Esconderijo encerrado.');
+  });
+
+  it('draws no list of the hidden when nobody is hidden', async () => {
+    const { el, settle } = setup();
+    await settle();
+    expect(el.querySelector('[data-testid="hiders"]')).toBeNull();
+  });
+
   it('offers "Agarrar ou empurrar por um NPC" on an NPC turn only, and opens the sheet', async () => {
     const npc = setup();
     await npc.settle();

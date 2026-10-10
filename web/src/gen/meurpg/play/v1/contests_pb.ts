@@ -27,7 +27,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/contests.proto.
  */
 export const file_meurpg_play_v1_contests: GenFile = /*@__PURE__*/
-  fileDesc("Ch1tZXVycGcvcGxheS92MS9jb250ZXN0cy5wcm90bxIObWV1cnBnLnBsYXkudjEiGQoIRDIwRmFjZXMSDQoFZmFjZXMYASADKAUiQwoWR2V0Q29udGVzdFN0YXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkinAIKF0dldENvbnRlc3RTdGF0ZVJlc3BvbnNlEi0KCGNvbnRlc3RzGAEgAygLMhsubWV1cnBnLnBsYXkudjEuQ29udGVzdFZpZXcSNgoNaGlkZV9hdHRlbXB0cxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkhpZGVBdHRlbXB0VmlldxISCgpoaWRkZW5faWRzGAMgAygJEicKBWhlbHBzGAQgAygLMhgubWV1cnBnLnBsYXkudjEuSGVscFZpZXcSLQoIZ3JhcHBsZXMYBSADKAsyGy5tZXVycGcucGxheS52MS5HcmFwcGxlVmlldxIuCghzdXJwcmlzZRgGIAEoCzIcLm1ldXJwZy5wbGF5LnYxLlN1cnByaXNlVmlldyJeCg5DaGVja1JvbGxJbnB1dBIVCgtyb2xsX2luX2FwcBgBIAEoCEgAEi0KCWQyMF9mYWNlcxgCIAEoCzIYLm1ldXJwZy5wbGF5LnYxLkQyMEZhY2VzSABCBgoEcm9sbCLMAgoTU3RhcnRDb250ZXN0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEhQKDGluaXRpYXRvcl9pZBgEIAEoCRIRCgl0YXJnZXRfaWQYBSABKAkSLwoHcHVycG9zZRgGIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkNvbnRlc3RQdXJwb3NlEikKBGtpbmQYByABKA4yGy5tZXVycGcucGxheS52MS5Db250ZXN0S2luZBIrCgVza2lsbBgIIAEoDjIcLm1ldXJwZy5wbGF5LnYxLkNvbnRlc3RTa2lsbBIsCgRyb2xsGAkgASgLMh4ubWV1cnBnLnBsYXkudjEuQ2hlY2tSb2xsSW5wdXQSEQoJZXNjYXBlX2RjGAogASgFInIKFFN0YXJ0Q29udGVzdFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIsCgdjb250ZXN0GAIgASgLMhsubWV1cnBnLnBsYXkudjEuQ29udGVzdFZpZXci4wEKFVJlc3BvbmRDb250ZXN0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEhIKCmNvbnRlc3RfaWQYBCABKAkSKwoFc2tpbGwYBSABKA4yHC5tZXVycGcucGxheS52MS5Db250ZXN0U2tpbGwSLAoEcm9sbBgGIAEoCzIeLm1ldXJwZy5wbGF5LnYxLkNoZWNrUm9sbElucHV0EhcKD2RlZmVyX3RvX21hc3RlchgHIAEoCCJ0ChZSZXNwb25kQ29udGVzdFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIsCgdjb250ZXN0GAIgASgLMhsubWV1cnBnLnBsYXkudjEuQ29udGVzdFZpZXcinAEKE1Jlc29sdmVTaG92ZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRISCgpjb250ZXN0X2lkGAQgASgJEi0KB291dGNvbWUYBSABKA4yHC5tZXVycGcucGxheS52MS5TaG92ZU91dGNvbWUicgoUUmVzb2x2ZVNob3ZlUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEiwKB2NvbnRlc3QYAiABKAsyGy5tZXVycGcucGxheS52MS5Db250ZXN0VmlldyJtChNDbG9zZUNvbnRlc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSEgoKY29udGVzdF9pZBgEIAEoCSJEChRDbG9zZUNvbnRlc3RSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIicAoVUmVsZWFzZUdyYXBwbGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSEwoLZ3JhcHBsZWRfaWQYBCABKAkiRgoWUmVsZWFzZUdyYXBwbGVSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIiqQEKC0hpZGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSFAoMY29tYmF0YW50X2lkGAQgASgJEhIKCmFjdGlvbl9rZXkYBSABKAkSLAoEcm9sbBgGIAEoCzIeLm1ldXJwZy5wbGF5LnYxLkNoZWNrUm9sbElucHV0Im4KDEhpZGVSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISMAoHYXR0ZW1wdBgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkhpZGVBdHRlbXB0VmlldyKnAQoSUmVzb2x2ZUhpZGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSEgoKYXR0ZW1wdF9pZBgEIAEoCRIOCgZyZWZ1c2UYBSABKAgSDwoHcmVmdXNhbBgGIAEoCRIYChBzZWVzX2NsZWFybHlfaWRzGAcgAygJInUKE1Jlc29sdmVIaWRlUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEjAKB2F0dGVtcHQYAiABKAsyHy5tZXVycGcucGxheS52MS5IaWRlQXR0ZW1wdFZpZXcixQEKC0hlbHBSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSFAoMY29tYmF0YW50X2lkGAQgASgJEiYKBGtpbmQYBSABKA4yGC5tZXVycGcucGxheS52MS5IZWxwS2luZBIPCgdhbGx5X2lkGAYgASgJEhAKCHRhc2tfa2V5GAcgASgJEhEKCXRhcmdldF9pZBgIIAEoCSJkCgxIZWxwUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEiYKBGhlbHAYAiABKAsyGC5tZXVycGcucGxheS52MS5IZWxwVmlldyJnChBDbGVhckhlbHBSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSDwoHaGVscF9pZBgEIAEoCSJBChFDbGVhckhlbHBSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIiggEKE1NldFN1cnByaXNlZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRIUCgxjb21iYXRhbnRfaWQYBCABKAkSEQoJc3VycHJpc2VkGAUgASgIInQKFFNldFN1cnByaXNlZFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIuCghzdXJwcmlzZRgCIAEoCzIcLm1ldXJwZy5wbGF5LnYxLlN1cnByaXNlVmlldyJJChxHZXRTdXJwcmlzZVN1Z2dlc3Rpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCSJYCh1HZXRTdXJwcmlzZVN1Z2dlc3Rpb25SZXNwb25zZRI3CgtzdWdnZXN0aW9ucxgBIAMoCzIiLm1ldXJwZy5wbGF5LnYxLlN1cnByaXNlU3VnZ2VzdGlvbiIrChRHZXRHcm91cENoZWNrUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJMChVHZXRHcm91cENoZWNrUmVzcG9uc2USMwoLZ3JvdXBfY2hlY2sYASABKAsyHi5tZXVycGcucGxheS52MS5Hcm91cENoZWNrVmlldyJ4ChhSZXF1ZXN0R3JvdXBDaGVja1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAIgASgJEhEKCXNraWxsX2tleRgDIAEoCRIKCgJkYxgEIAEoBRIPCgdzaG93X2RjGAUgASgIIlAKGVJlcXVlc3RHcm91cENoZWNrUmVzcG9uc2USMwoLZ3JvdXBfY2hlY2sYASABKAsyHi5tZXVycGcucGxheS52MS5Hcm91cENoZWNrVmlldyKLAQoVUm9sbEdyb3VwQ2hlY2tSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCRIWCg5ncm91cF9jaGVja19pZBgDIAEoCRIsCgRyb2xsGAQgASgLMh4ubWV1cnBnLnBsYXkudjEuQ2hlY2tSb2xsSW5wdXQiTQoWUm9sbEdyb3VwQ2hlY2tSZXNwb25zZRIzCgtncm91cF9jaGVjaxgBIAEoCzIeLm1ldXJwZy5wbGF5LnYxLkdyb3VwQ2hlY2tWaWV3IqABChRSb2xsRm9yUGxheWVyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAiABKAkSFgoOZ3JvdXBfY2hlY2tfaWQYAyABKAkSFAoMY2hhcmFjdGVyX2lkGAQgASgJEiwKBHJvbGwYBSABKAsyHi5tZXVycGcucGxheS52MS5DaGVja1JvbGxJbnB1dCJMChVSb2xsRm9yUGxheWVyUmVzcG9uc2USMwoLZ3JvdXBfY2hlY2sYASABKAsyHi5tZXVycGcucGxheS52MS5Hcm91cENoZWNrVmlldyJeChZDbG9zZUdyb3VwQ2hlY2tSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCRIWCg5ncm91cF9jaGVja19pZBgDIAEoCSJOChdDbG9zZUdyb3VwQ2hlY2tSZXNwb25zZRIzCgtncm91cF9jaGVjaxgBIAEoCzIeLm1ldXJwZy5wbGF5LnYxLkdyb3VwQ2hlY2tWaWV3MsIMCg5Db250ZXN0U2VydmljZRJnCg9HZXRDb250ZXN0U3RhdGUSJi5tZXVycGcucGxheS52MS5HZXRDb250ZXN0U3RhdGVSZXF1ZXN0GicubWV1cnBnLnBsYXkudjEuR2V0Q29udGVzdFN0YXRlUmVzcG9uc2UiA5ACAhJZCgxTdGFydENvbnRlc3QSIy5tZXVycGcucGxheS52MS5TdGFydENvbnRlc3RSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuU3RhcnRDb250ZXN0UmVzcG9uc2USXwoOUmVzcG9uZENvbnRlc3QSJS5tZXVycGcucGxheS52MS5SZXNwb25kQ29udGVzdFJlcXVlc3QaJi5tZXVycGcucGxheS52MS5SZXNwb25kQ29udGVzdFJlc3BvbnNlElkKDFJlc29sdmVTaG92ZRIjLm1ldXJwZy5wbGF5LnYxLlJlc29sdmVTaG92ZVJlcXVlc3QaJC5tZXVycGcucGxheS52MS5SZXNvbHZlU2hvdmVSZXNwb25zZRJZCgxDbG9zZUNvbnRlc3QSIy5tZXVycGcucGxheS52MS5DbG9zZUNvbnRlc3RSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuQ2xvc2VDb250ZXN0UmVzcG9uc2USXwoOUmVsZWFzZUdyYXBwbGUSJS5tZXVycGcucGxheS52MS5SZWxlYXNlR3JhcHBsZVJlcXVlc3QaJi5tZXVycGcucGxheS52MS5SZWxlYXNlR3JhcHBsZVJlc3BvbnNlEkEKBEhpZGUSGy5tZXVycGcucGxheS52MS5IaWRlUmVxdWVzdBocLm1ldXJwZy5wbGF5LnYxLkhpZGVSZXNwb25zZRJWCgtSZXNvbHZlSGlkZRIiLm1ldXJwZy5wbGF5LnYxLlJlc29sdmVIaWRlUmVxdWVzdBojLm1ldXJwZy5wbGF5LnYxLlJlc29sdmVIaWRlUmVzcG9uc2USQQoESGVscBIbLm1ldXJwZy5wbGF5LnYxLkhlbHBSZXF1ZXN0GhwubWV1cnBnLnBsYXkudjEuSGVscFJlc3BvbnNlElAKCUNsZWFySGVscBIgLm1ldXJwZy5wbGF5LnYxLkNsZWFySGVscFJlcXVlc3QaIS5tZXVycGcucGxheS52MS5DbGVhckhlbHBSZXNwb25zZRJZCgxTZXRTdXJwcmlzZWQSIy5tZXVycGcucGxheS52MS5TZXRTdXJwcmlzZWRSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuU2V0U3VycHJpc2VkUmVzcG9uc2USeQoVR2V0U3VycHJpc2VTdWdnZXN0aW9uEiwubWV1cnBnLnBsYXkudjEuR2V0U3VycHJpc2VTdWdnZXN0aW9uUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkdldFN1cnByaXNlU3VnZ2VzdGlvblJlc3BvbnNlIgOQAgISYQoNR2V0R3JvdXBDaGVjaxIkLm1ldXJwZy5wbGF5LnYxLkdldEdyb3VwQ2hlY2tSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuR2V0R3JvdXBDaGVja1Jlc3BvbnNlIgOQAgISaAoRUmVxdWVzdEdyb3VwQ2hlY2sSKC5tZXVycGcucGxheS52MS5SZXF1ZXN0R3JvdXBDaGVja1JlcXVlc3QaKS5tZXVycGcucGxheS52MS5SZXF1ZXN0R3JvdXBDaGVja1Jlc3BvbnNlEl8KDlJvbGxHcm91cENoZWNrEiUubWV1cnBnLnBsYXkudjEuUm9sbEdyb3VwQ2hlY2tSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuUm9sbEdyb3VwQ2hlY2tSZXNwb25zZRJcCg1Sb2xsRm9yUGxheWVyEiQubWV1cnBnLnBsYXkudjEuUm9sbEZvclBsYXllclJlcXVlc3QaJS5tZXVycGcucGxheS52MS5Sb2xsRm9yUGxheWVyUmVzcG9uc2USYgoPQ2xvc2VHcm91cENoZWNrEiYubWV1cnBnLnBsYXkudjEuQ2xvc2VHcm91cENoZWNrUmVxdWVzdBonLm1ldXJwZy5wbGF5LnYxLkNsb3NlR3JvdXBDaGVja1Jlc3BvbnNlQrsBChJjb20ubWV1cnBnLnBsYXkudjFCDUNvbnRlc3RzUHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_meurpg_play_v1_combat, file_meurpg_play_v1_contest_types]);
+  fileDesc("Ch1tZXVycGcvcGxheS92MS9jb250ZXN0cy5wcm90bxIObWV1cnBnLnBsYXkudjEiGQoIRDIwRmFjZXMSDQoFZmFjZXMYASADKAUiQwoWR2V0Q29udGVzdFN0YXRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkinAIKF0dldENvbnRlc3RTdGF0ZVJlc3BvbnNlEi0KCGNvbnRlc3RzGAEgAygLMhsubWV1cnBnLnBsYXkudjEuQ29udGVzdFZpZXcSNgoNaGlkZV9hdHRlbXB0cxgCIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkhpZGVBdHRlbXB0VmlldxISCgpoaWRkZW5faWRzGAMgAygJEicKBWhlbHBzGAQgAygLMhgubWV1cnBnLnBsYXkudjEuSGVscFZpZXcSLQoIZ3JhcHBsZXMYBSADKAsyGy5tZXVycGcucGxheS52MS5HcmFwcGxlVmlldxIuCghzdXJwcmlzZRgGIAEoCzIcLm1ldXJwZy5wbGF5LnYxLlN1cnByaXNlVmlldyJeCg5DaGVja1JvbGxJbnB1dBIVCgtyb2xsX2luX2FwcBgBIAEoCEgAEi0KCWQyMF9mYWNlcxgCIAEoCzIYLm1ldXJwZy5wbGF5LnYxLkQyMEZhY2VzSABCBgoEcm9sbCLMAgoTU3RhcnRDb250ZXN0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEhQKDGluaXRpYXRvcl9pZBgEIAEoCRIRCgl0YXJnZXRfaWQYBSABKAkSLwoHcHVycG9zZRgGIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkNvbnRlc3RQdXJwb3NlEikKBGtpbmQYByABKA4yGy5tZXVycGcucGxheS52MS5Db250ZXN0S2luZBIrCgVza2lsbBgIIAEoDjIcLm1ldXJwZy5wbGF5LnYxLkNvbnRlc3RTa2lsbBIsCgRyb2xsGAkgASgLMh4ubWV1cnBnLnBsYXkudjEuQ2hlY2tSb2xsSW5wdXQSEQoJZXNjYXBlX2RjGAogASgFInIKFFN0YXJ0Q29udGVzdFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIsCgdjb250ZXN0GAIgASgLMhsubWV1cnBnLnBsYXkudjEuQ29udGVzdFZpZXci4wEKFVJlc3BvbmRDb250ZXN0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEhIKCmNvbnRlc3RfaWQYBCABKAkSKwoFc2tpbGwYBSABKA4yHC5tZXVycGcucGxheS52MS5Db250ZXN0U2tpbGwSLAoEcm9sbBgGIAEoCzIeLm1ldXJwZy5wbGF5LnYxLkNoZWNrUm9sbElucHV0EhcKD2RlZmVyX3RvX21hc3RlchgHIAEoCCJ0ChZSZXNwb25kQ29udGVzdFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIsCgdjb250ZXN0GAIgASgLMhsubWV1cnBnLnBsYXkudjEuQ29udGVzdFZpZXcinAEKE1Jlc29sdmVTaG92ZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCRISCgpjb250ZXN0X2lkGAQgASgJEi0KB291dGNvbWUYBSABKA4yHC5tZXVycGcucGxheS52MS5TaG92ZU91dGNvbWUicgoUUmVzb2x2ZVNob3ZlUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEiwKB2NvbnRlc3QYAiABKAsyGy5tZXVycGcucGxheS52MS5Db250ZXN0VmlldyJtChNDbG9zZUNvbnRlc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSEgoKY29udGVzdF9pZBgEIAEoCSJEChRDbG9zZUNvbnRlc3RSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIicAoVUmVsZWFzZUdyYXBwbGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSEwoLZ3JhcHBsZWRfaWQYBCABKAkiRgoWUmVsZWFzZUdyYXBwbGVSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXIiqQEKC0hpZGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSFAoMY29tYmF0YW50X2lkGAQgASgJEhIKCmFjdGlvbl9rZXkYBSABKAkSLAoEcm9sbBgGIAEoCzIeLm1ldXJwZy5wbGF5LnYxLkNoZWNrUm9sbElucHV0Im4KDEhpZGVSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISMAoHYXR0ZW1wdBgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkhpZGVBdHRlbXB0VmlldyKnAQoSUmVzb2x2ZUhpZGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSEgoKYXR0ZW1wdF9pZBgEIAEoCRIOCgZyZWZ1c2UYBSABKAgSDwoHcmVmdXNhbBgGIAEoCRIYChBzZWVzX2NsZWFybHlfaWRzGAcgAygJInUKE1Jlc29sdmVIaWRlUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEjAKB2F0dGVtcHQYAiABKAsyHy5tZXVycGcucGxheS52MS5IaWRlQXR0ZW1wdFZpZXcibgoSUmV2ZWFsSGlkZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSFAoMY29tYmF0YW50X2lkGAQgASgJIkMKE1JldmVhbEhpZGVyUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIsUBCgtIZWxwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEhQKDGNvbWJhdGFudF9pZBgEIAEoCRImCgRraW5kGAUgASgOMhgubWV1cnBnLnBsYXkudjEuSGVscEtpbmQSDwoHYWxseV9pZBgGIAEoCRIQCgh0YXNrX2tleRgHIAEoCRIRCgl0YXJnZXRfaWQYCCABKAkiZAoMSGVscFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchImCgRoZWxwGAIgASgLMhgubWV1cnBnLnBsYXkudjEuSGVscFZpZXciZwoQQ2xlYXJIZWxwUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJEg8KB2hlbHBfaWQYBCABKAkiQQoRQ2xlYXJIZWxwUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIoIBChNTZXRTdXJwcmlzZWRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSFAoMY29tYmF0YW50X2lkGAQgASgJEhEKCXN1cnByaXNlZBgFIAEoCCJ0ChRTZXRTdXJwcmlzZWRSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISLgoIc3VycHJpc2UYAiABKAsyHC5tZXVycGcucGxheS52MS5TdXJwcmlzZVZpZXciSQocR2V0U3VycHJpc2VTdWdnZXN0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkiWAodR2V0U3VycHJpc2VTdWdnZXN0aW9uUmVzcG9uc2USNwoLc3VnZ2VzdGlvbnMYASADKAsyIi5tZXVycGcucGxheS52MS5TdXJwcmlzZVN1Z2dlc3Rpb24iKwoUR2V0R3JvdXBDaGVja1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiTAoVR2V0R3JvdXBDaGVja1Jlc3BvbnNlEjMKC2dyb3VwX2NoZWNrGAEgASgLMh4ubWV1cnBnLnBsYXkudjEuR3JvdXBDaGVja1ZpZXcieAoYUmVxdWVzdEdyb3VwQ2hlY2tSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCRIRCglza2lsbF9rZXkYAyABKAkSCgoCZGMYBCABKAUSDwoHc2hvd19kYxgFIAEoCCJQChlSZXF1ZXN0R3JvdXBDaGVja1Jlc3BvbnNlEjMKC2dyb3VwX2NoZWNrGAEgASgLMh4ubWV1cnBnLnBsYXkudjEuR3JvdXBDaGVja1ZpZXciiwEKFVJvbGxHcm91cENoZWNrUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAiABKAkSFgoOZ3JvdXBfY2hlY2tfaWQYAyABKAkSLAoEcm9sbBgEIAEoCzIeLm1ldXJwZy5wbGF5LnYxLkNoZWNrUm9sbElucHV0Ik0KFlJvbGxHcm91cENoZWNrUmVzcG9uc2USMwoLZ3JvdXBfY2hlY2sYASABKAsyHi5tZXVycGcucGxheS52MS5Hcm91cENoZWNrVmlldyKgAQoUUm9sbEZvclBsYXllclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAIgASgJEhYKDmdyb3VwX2NoZWNrX2lkGAMgASgJEhQKDGNoYXJhY3Rlcl9pZBgEIAEoCRIsCgRyb2xsGAUgASgLMh4ubWV1cnBnLnBsYXkudjEuQ2hlY2tSb2xsSW5wdXQiTAoVUm9sbEZvclBsYXllclJlc3BvbnNlEjMKC2dyb3VwX2NoZWNrGAEgASgLMh4ubWV1cnBnLnBsYXkudjEuR3JvdXBDaGVja1ZpZXciXgoWQ2xvc2VHcm91cENoZWNrUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAiABKAkSFgoOZ3JvdXBfY2hlY2tfaWQYAyABKAkiTgoXQ2xvc2VHcm91cENoZWNrUmVzcG9uc2USMwoLZ3JvdXBfY2hlY2sYASABKAsyHi5tZXVycGcucGxheS52MS5Hcm91cENoZWNrVmlldzKaDQoOQ29udGVzdFNlcnZpY2USZwoPR2V0Q29udGVzdFN0YXRlEiYubWV1cnBnLnBsYXkudjEuR2V0Q29udGVzdFN0YXRlUmVxdWVzdBonLm1ldXJwZy5wbGF5LnYxLkdldENvbnRlc3RTdGF0ZVJlc3BvbnNlIgOQAgISWQoMU3RhcnRDb250ZXN0EiMubWV1cnBnLnBsYXkudjEuU3RhcnRDb250ZXN0UmVxdWVzdBokLm1ldXJwZy5wbGF5LnYxLlN0YXJ0Q29udGVzdFJlc3BvbnNlEl8KDlJlc3BvbmRDb250ZXN0EiUubWV1cnBnLnBsYXkudjEuUmVzcG9uZENvbnRlc3RSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuUmVzcG9uZENvbnRlc3RSZXNwb25zZRJZCgxSZXNvbHZlU2hvdmUSIy5tZXVycGcucGxheS52MS5SZXNvbHZlU2hvdmVSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuUmVzb2x2ZVNob3ZlUmVzcG9uc2USWQoMQ2xvc2VDb250ZXN0EiMubWV1cnBnLnBsYXkudjEuQ2xvc2VDb250ZXN0UmVxdWVzdBokLm1ldXJwZy5wbGF5LnYxLkNsb3NlQ29udGVzdFJlc3BvbnNlEl8KDlJlbGVhc2VHcmFwcGxlEiUubWV1cnBnLnBsYXkudjEuUmVsZWFzZUdyYXBwbGVSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuUmVsZWFzZUdyYXBwbGVSZXNwb25zZRJBCgRIaWRlEhsubWV1cnBnLnBsYXkudjEuSGlkZVJlcXVlc3QaHC5tZXVycGcucGxheS52MS5IaWRlUmVzcG9uc2USVgoLUmVzb2x2ZUhpZGUSIi5tZXVycGcucGxheS52MS5SZXNvbHZlSGlkZVJlcXVlc3QaIy5tZXVycGcucGxheS52MS5SZXNvbHZlSGlkZVJlc3BvbnNlElYKC1JldmVhbEhpZGVyEiIubWV1cnBnLnBsYXkudjEuUmV2ZWFsSGlkZXJSZXF1ZXN0GiMubWV1cnBnLnBsYXkudjEuUmV2ZWFsSGlkZXJSZXNwb25zZRJBCgRIZWxwEhsubWV1cnBnLnBsYXkudjEuSGVscFJlcXVlc3QaHC5tZXVycGcucGxheS52MS5IZWxwUmVzcG9uc2USUAoJQ2xlYXJIZWxwEiAubWV1cnBnLnBsYXkudjEuQ2xlYXJIZWxwUmVxdWVzdBohLm1ldXJwZy5wbGF5LnYxLkNsZWFySGVscFJlc3BvbnNlElkKDFNldFN1cnByaXNlZBIjLm1ldXJwZy5wbGF5LnYxLlNldFN1cnByaXNlZFJlcXVlc3QaJC5tZXVycGcucGxheS52MS5TZXRTdXJwcmlzZWRSZXNwb25zZRJ5ChVHZXRTdXJwcmlzZVN1Z2dlc3Rpb24SLC5tZXVycGcucGxheS52MS5HZXRTdXJwcmlzZVN1Z2dlc3Rpb25SZXF1ZXN0Gi0ubWV1cnBnLnBsYXkudjEuR2V0U3VycHJpc2VTdWdnZXN0aW9uUmVzcG9uc2UiA5ACAhJhCg1HZXRHcm91cENoZWNrEiQubWV1cnBnLnBsYXkudjEuR2V0R3JvdXBDaGVja1JlcXVlc3QaJS5tZXVycGcucGxheS52MS5HZXRHcm91cENoZWNrUmVzcG9uc2UiA5ACAhJoChFSZXF1ZXN0R3JvdXBDaGVjaxIoLm1ldXJwZy5wbGF5LnYxLlJlcXVlc3RHcm91cENoZWNrUmVxdWVzdBopLm1ldXJwZy5wbGF5LnYxLlJlcXVlc3RHcm91cENoZWNrUmVzcG9uc2USXwoOUm9sbEdyb3VwQ2hlY2sSJS5tZXVycGcucGxheS52MS5Sb2xsR3JvdXBDaGVja1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5Sb2xsR3JvdXBDaGVja1Jlc3BvbnNlElwKDVJvbGxGb3JQbGF5ZXISJC5tZXVycGcucGxheS52MS5Sb2xsRm9yUGxheWVyUmVxdWVzdBolLm1ldXJwZy5wbGF5LnYxLlJvbGxGb3JQbGF5ZXJSZXNwb25zZRJiCg9DbG9zZUdyb3VwQ2hlY2sSJi5tZXVycGcucGxheS52MS5DbG9zZUdyb3VwQ2hlY2tSZXF1ZXN0GicubWV1cnBnLnBsYXkudjEuQ2xvc2VHcm91cENoZWNrUmVzcG9uc2VCuwEKEmNvbS5tZXVycGcucGxheS52MUINQ29udGVzdHNQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_play_v1_combat, file_meurpg_play_v1_contest_types]);
 
 /**
  * D20Faces is the faces of physical d20 dice, typed: one face for a normal roll, two
@@ -681,6 +681,61 @@ export const ResolveHideResponseSchema: GenMessage<ResolveHideResponse> = /*@__P
   messageDesc(file_meurpg_play_v1_contests, 17);
 
 /**
+ * RevealHiderRequest ends a combatant's hiding.
+ *
+ * @generated from message meurpg.play.v1.RevealHiderRequest
+ */
+export type RevealHiderRequest = Message<"meurpg.play.v1.RevealHiderRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 3;
+   */
+  idempotencyKey: string;
+
+  /**
+   * The hidden combatant (a UUID).
+   *
+   * @generated from field: string combatant_id = 4;
+   */
+  combatantId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.RevealHiderRequest.
+ * Use `create(RevealHiderRequestSchema)` to create a new message.
+ */
+export const RevealHiderRequestSchema: GenMessage<RevealHiderRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_contests, 18);
+
+/**
+ * RevealHiderResponse returns the combat after it.
+ *
+ * @generated from message meurpg.play.v1.RevealHiderResponse
+ */
+export type RevealHiderResponse = Message<"meurpg.play.v1.RevealHiderResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.RevealHiderResponse.
+ * Use `create(RevealHiderResponseSchema)` to create a new message.
+ */
+export const RevealHiderResponseSchema: GenMessage<RevealHiderResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_contests, 19);
+
+/**
  * HelpRequest is the Help action.
  *
  * @generated from message meurpg.play.v1.HelpRequest
@@ -741,7 +796,7 @@ export type HelpRequest = Message<"meurpg.play.v1.HelpRequest"> & {
  * Use `create(HelpRequestSchema)` to create a new message.
  */
 export const HelpRequestSchema: GenMessage<HelpRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 18);
+  messageDesc(file_meurpg_play_v1_contests, 20);
 
 /**
  * HelpResponse returns the combat and the help.
@@ -765,7 +820,7 @@ export type HelpResponse = Message<"meurpg.play.v1.HelpResponse"> & {
  * Use `create(HelpResponseSchema)` to create a new message.
  */
 export const HelpResponseSchema: GenMessage<HelpResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 19);
+  messageDesc(file_meurpg_play_v1_contests, 21);
 
 /**
  * ClearHelpRequest takes a help back.
@@ -799,7 +854,7 @@ export type ClearHelpRequest = Message<"meurpg.play.v1.ClearHelpRequest"> & {
  * Use `create(ClearHelpRequestSchema)` to create a new message.
  */
 export const ClearHelpRequestSchema: GenMessage<ClearHelpRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 20);
+  messageDesc(file_meurpg_play_v1_contests, 22);
 
 /**
  * ClearHelpResponse returns the combat after it.
@@ -818,7 +873,7 @@ export type ClearHelpResponse = Message<"meurpg.play.v1.ClearHelpResponse"> & {
  * Use `create(ClearHelpResponseSchema)` to create a new message.
  */
 export const ClearHelpResponseSchema: GenMessage<ClearHelpResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 21);
+  messageDesc(file_meurpg_play_v1_contests, 23);
 
 /**
  * SetSurprisedRequest marks one creature.
@@ -857,7 +912,7 @@ export type SetSurprisedRequest = Message<"meurpg.play.v1.SetSurprisedRequest"> 
  * Use `create(SetSurprisedRequestSchema)` to create a new message.
  */
 export const SetSurprisedRequestSchema: GenMessage<SetSurprisedRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 22);
+  messageDesc(file_meurpg_play_v1_contests, 24);
 
 /**
  * SetSurprisedResponse returns the combat after it.
@@ -881,7 +936,7 @@ export type SetSurprisedResponse = Message<"meurpg.play.v1.SetSurprisedResponse"
  * Use `create(SetSurprisedResponseSchema)` to create a new message.
  */
 export const SetSurprisedResponseSchema: GenMessage<SetSurprisedResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 23);
+  messageDesc(file_meurpg_play_v1_contests, 25);
 
 /**
  * GetSurpriseSuggestionRequest names the combat.
@@ -905,7 +960,7 @@ export type GetSurpriseSuggestionRequest = Message<"meurpg.play.v1.GetSurpriseSu
  * Use `create(GetSurpriseSuggestionRequestSchema)` to create a new message.
  */
 export const GetSurpriseSuggestionRequestSchema: GenMessage<GetSurpriseSuggestionRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 24);
+  messageDesc(file_meurpg_play_v1_contests, 26);
 
 /**
  * GetSurpriseSuggestionResponse is the suggestion, one entry for each combatant that is
@@ -925,7 +980,7 @@ export type GetSurpriseSuggestionResponse = Message<"meurpg.play.v1.GetSurpriseS
  * Use `create(GetSurpriseSuggestionResponseSchema)` to create a new message.
  */
 export const GetSurpriseSuggestionResponseSchema: GenMessage<GetSurpriseSuggestionResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 25);
+  messageDesc(file_meurpg_play_v1_contests, 27);
 
 /**
  * GetGroupCheckRequest names the campaign.
@@ -944,7 +999,7 @@ export type GetGroupCheckRequest = Message<"meurpg.play.v1.GetGroupCheckRequest"
  * Use `create(GetGroupCheckRequestSchema)` to create a new message.
  */
 export const GetGroupCheckRequestSchema: GenMessage<GetGroupCheckRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 26);
+  messageDesc(file_meurpg_play_v1_contests, 28);
 
 /**
  * GetGroupCheckResponse is the group check, if there is one.
@@ -963,7 +1018,7 @@ export type GetGroupCheckResponse = Message<"meurpg.play.v1.GetGroupCheckRespons
  * Use `create(GetGroupCheckResponseSchema)` to create a new message.
  */
 export const GetGroupCheckResponseSchema: GenMessage<GetGroupCheckResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 27);
+  messageDesc(file_meurpg_play_v1_contests, 29);
 
 /**
  * RequestGroupCheckRequest asks the party for a check.
@@ -1009,7 +1064,7 @@ export type RequestGroupCheckRequest = Message<"meurpg.play.v1.RequestGroupCheck
  * Use `create(RequestGroupCheckRequestSchema)` to create a new message.
  */
 export const RequestGroupCheckRequestSchema: GenMessage<RequestGroupCheckRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 28);
+  messageDesc(file_meurpg_play_v1_contests, 30);
 
 /**
  * RequestGroupCheckResponse returns the group check.
@@ -1028,7 +1083,7 @@ export type RequestGroupCheckResponse = Message<"meurpg.play.v1.RequestGroupChec
  * Use `create(RequestGroupCheckResponseSchema)` to create a new message.
  */
 export const RequestGroupCheckResponseSchema: GenMessage<RequestGroupCheckResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 29);
+  messageDesc(file_meurpg_play_v1_contests, 31);
 
 /**
  * RollGroupCheckRequest is a player's roll.
@@ -1062,7 +1117,7 @@ export type RollGroupCheckRequest = Message<"meurpg.play.v1.RollGroupCheckReques
  * Use `create(RollGroupCheckRequestSchema)` to create a new message.
  */
 export const RollGroupCheckRequestSchema: GenMessage<RollGroupCheckRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 30);
+  messageDesc(file_meurpg_play_v1_contests, 32);
 
 /**
  * RollGroupCheckResponse returns the group check and the caller's roll.
@@ -1081,7 +1136,7 @@ export type RollGroupCheckResponse = Message<"meurpg.play.v1.RollGroupCheckRespo
  * Use `create(RollGroupCheckResponseSchema)` to create a new message.
  */
 export const RollGroupCheckResponseSchema: GenMessage<RollGroupCheckResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 31);
+  messageDesc(file_meurpg_play_v1_contests, 33);
 
 /**
  * RollForPlayerRequest is the master's roll for a character.
@@ -1120,7 +1175,7 @@ export type RollForPlayerRequest = Message<"meurpg.play.v1.RollForPlayerRequest"
  * Use `create(RollForPlayerRequestSchema)` to create a new message.
  */
 export const RollForPlayerRequestSchema: GenMessage<RollForPlayerRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 32);
+  messageDesc(file_meurpg_play_v1_contests, 34);
 
 /**
  * RollForPlayerResponse returns the group check.
@@ -1139,7 +1194,7 @@ export type RollForPlayerResponse = Message<"meurpg.play.v1.RollForPlayerRespons
  * Use `create(RollForPlayerResponseSchema)` to create a new message.
  */
 export const RollForPlayerResponseSchema: GenMessage<RollForPlayerResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 33);
+  messageDesc(file_meurpg_play_v1_contests, 35);
 
 /**
  * CloseGroupCheckRequest ends the check.
@@ -1168,7 +1223,7 @@ export type CloseGroupCheckRequest = Message<"meurpg.play.v1.CloseGroupCheckRequ
  * Use `create(CloseGroupCheckRequestSchema)` to create a new message.
  */
 export const CloseGroupCheckRequestSchema: GenMessage<CloseGroupCheckRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 34);
+  messageDesc(file_meurpg_play_v1_contests, 36);
 
 /**
  * CloseGroupCheckResponse returns the closed group check.
@@ -1187,7 +1242,7 @@ export type CloseGroupCheckResponse = Message<"meurpg.play.v1.CloseGroupCheckRes
  * Use `create(CloseGroupCheckResponseSchema)` to create a new message.
  */
 export const CloseGroupCheckResponseSchema: GenMessage<CloseGroupCheckResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_contests, 35);
+  messageDesc(file_meurpg_play_v1_contests, 37);
 
 /**
  * @generated from service meurpg.play.v1.ContestService
@@ -1337,6 +1392,26 @@ export const ContestService: GenService<{
     methodKind: "unary";
     input: typeof ResolveHideRequestSchema;
     output: typeof ResolveHideResponseSchema;
+  },
+  /**
+   * RevealHider ends a combatant's hiding for every creature (SRD 5.1, "Hiding": the
+   * DM decides when circumstances reveal a hidden creature: it makes noise, steps into
+   * the open, is searched for). Only the master. Every state of the hider goes, so every
+   * creature sees it again and its attacks lose the unseen-attacker advantage. The log
+   * line is the master's and the hider's player's alone ("Brisa não está mais
+   * escondida"); no other player is told, and nobody is told who noticed (RN-10). The
+   * master can undo it (UndoLastAction): the hiding comes back as it was.
+   *
+   * Errors:
+   *   - `not_found`: the combat or the combatant is not in the open session.
+   *   - `failed_precondition`: ContestBlocked NOT_HIDDEN, or the combat is ended.
+   *
+   * @generated from rpc meurpg.play.v1.ContestService.RevealHider
+   */
+  revealHider: {
+    methodKind: "unary";
+    input: typeof RevealHiderRequestSchema;
+    output: typeof RevealHiderResponseSchema;
   },
   /**
    * Help is the Help action in its two forms (SRD 5.1, "Help"): advantage on an ally's

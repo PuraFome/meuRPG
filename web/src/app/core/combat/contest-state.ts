@@ -34,6 +34,8 @@ export class ContestState {
   );
   /** Who holds whom, as the caller reads it (the master: all). */
   readonly grapples = computed<readonly GrappleView[]>(() => this.data()?.grapples ?? []);
+  /** The combatants that are hidden now (the master: every hider; a player: their own characters). */
+  readonly hidden = computed<readonly string[]>(() => this.data()?.hiddenIds ?? []);
   /** The combatants marked surprised. */
   readonly surprised = computed<readonly string[]>(() => this.data()?.surprise?.combatantIds ?? []);
   private asked = 0;

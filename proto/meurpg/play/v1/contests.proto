@@ -109,6 +109,19 @@ service ContestService {
   // Errors: `failed_precondition` (ContestBlocked): HIDE_NOT_PENDING.
   rpc ResolveHide(ResolveHideRequest) returns (ResolveHideResponse);
 
+  // RevealHider ends a combatant's hiding for every creature (SRD 5.1, "Hiding": the
+  // DM decides when circumstances reveal a hidden creature: it makes noise, steps into
+  // the open, is searched for). Only the master. Every state of the hider goes, so every
+  // creature sees it again and its attacks lose the unseen-attacker advantage. The log
+  // line is the master's and the hider's player's alone ("Brisa não está mais
+  // escondida"); no other player is told, and nobody is told who noticed (RN-10). The
+  // master can undo it (UndoLastAction): the hiding comes back as it was.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the combatant is not in the open session.
+  //   - `failed_precondition`: ContestBlocked NOT_HIDDEN, or the combat is ended.
+  rpc RevealHider(RevealHiderRequest) returns (RevealHiderResponse);
+
   // Help is the Help action in its two forms (SRD 5.1, "Help"): advantage on an ally's
   // next check of a task, or on the ally's first attack on a creature within 5 feet of
   // the helper. It spends the action. The player helps with their own combatant on its
@@ -344,6 +357,20 @@ message ResolveHideRequest {
 message ResolveHideResponse {
   Encounter encounter = 1;
   HideAttemptView attempt = 2;
+}
+
+// RevealHiderRequest ends a combatant's hiding.
+message RevealHiderRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // The hidden combatant (a UUID).
+  string combatant_id = 4;
+}
+
+// RevealHiderResponse returns the combat after it.
+message RevealHiderResponse {
+  Encounter encounter = 1;
 }
 
 // HelpRequest is the Help action.

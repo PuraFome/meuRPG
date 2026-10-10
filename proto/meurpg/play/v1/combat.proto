@@ -417,6 +417,34 @@ service CombatService {
   //     movement left (TOO_FAR, with missing_ft and missing_dft).
   rpc SpendMovement(SpendMovementRequest) returns (SpendMovementResponse);
 
+  // StandUp is "Levantar-se": the combatant stands up from Prone (SRD 5.1, "Being
+  // Prone": standing up takes an amount of movement equal to half your speed, and you
+  // cannot stand up if you do not have enough movement left, or if your speed is 0).
+  // The cost is half the speed the combatant has this turn without the Dash (the
+  // Dash gives more movement, not a faster speed), rounded down to a tenth of a foot,
+  // and it is added to the movement used (`movement_used_dft`, as a move does). It takes
+  // the Prone condition off. It works on a map and in THEATRE mode (RN-25) alike: no
+  // square is involved. The caller's own combatant on its turn, for a player (and for
+  // the creatures of their character); any combatant on its turn for the master. It is a
+  // line of the combat log for everyone who sees the combatant ("Brisa se levantou"),
+  // and the master can undo it (UndoLastAction): the condition and the movement come
+  // back. The cost the screen shows is `Combatant.stand_up_cost_dft`.
+  //
+  // The answer tells what is left (`movement_left_dft`). Every stream gets
+  // `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the combatant is not in the open session (a hidden
+  //     NPC is not found for a player).
+  //   - `permission_denied`: the caller is a player and the combatant is not theirs.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+  //     (NOT_ACTIVE); it is not the combatant's turn (NOT_YOUR_TURN); an opportunity
+  //     attack waits for an answer (OPPORTUNITY_PENDING); the combatant is not Prone
+  //     (NOT_PRONE); its speed is 0 (CANNOT_STAND_UP: grappled, restrained, a Velocidade
+  //     that ended, and the like; the message never names the cause to a player); it has
+  //     less movement left than the cost (TOO_FAR, with missing_ft and missing_dft).
+  rpc StandUp(StandUpRequest) returns (StandUpResponse);
+
   // OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
   // combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
   // left the reach of another, the reactor, which the master chooses. In THEATRE
@@ -1754,6 +1782,11 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_CANNOT_ACT = 100;
   // The extra action an effect gives (Velocidade) is not there, or was spent.
   ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE = 101;
+  // StandUp: the combatant is not Prone.
+  ENCOUNTER_BLOCKED_REASON_NOT_PRONE = 102;
+  // StandUp: the combatant's speed is 0 (SRD 5.1, "Being Prone"), so it cannot stand up
+  // whatever the cost: Grappled, Restrained, the lethargy of a Velocidade, and the like.
+  ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP = 103;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2266,6 +2299,10 @@ message Combatant {
   repeated EffectLabel effect_labels = 101;
   // The level of exhaustion, 0 to 6. The master and the owner read it; the others 0.
   int32 exhaustion_level = 102;
+  // What standing up costs, in tenths of a foot, while the combatant is Prone: half its
+  // speed of the turn without the Dash (SRD 5.1, "Being Prone"), rounded down. 0 when it
+  // is not Prone or its speed is 0 (it cannot stand up then). Same audience as `speed_dft`.
+  int32 stand_up_cost_dft = 103;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2464,6 +2501,21 @@ message SpendMovementRequest {
   // How far, in whole feet: 1 to 600 (the app steps by 5 ft, 1.5 m). Never more
   // than the movement the combatant has left this turn.
   int32 distance_ft = 5;
+}
+
+// StandUpRequest stands a Prone combatant up, on its turn.
+message StandUpRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+}
+
+// StandUpResponse returns the combat and what the combatant has left.
+message StandUpResponse {
+  Encounter encounter = 1;
+  // The movement left this turn, in tenths of a foot, after the cost.
+  int32 movement_left_dft = 2;
 }
 
 // SpendMovementResponse returns the combat and what the combatant has left.

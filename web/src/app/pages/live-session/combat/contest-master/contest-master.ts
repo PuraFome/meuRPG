@@ -38,7 +38,7 @@ let nextId = 0;
  * The master's side of the contests of a combat (W7-X, boards W7-Xa 3, W7-Xb 4 to 7 and W7-Xc 8): under the reaction queue, in the
  * order the server gives. A contest that waits for him is the entry of its CONTEST window (`forYou`): the answer card, or the
  * shove's choice. A Hide waits in its own card. The grapples he can read ("O Hobgoblin segura Brisa", with the escape DC that is
- * his alone) each have "Soltar". On an NPC's turn, "Agarrar ou empurrar por um NPC" opens the sheet where he rolls for the
+ * his alone) each have "Soltar". The hidden ones are listed with "Revelar", which ends the hiding for every creature. On an NPC's turn, "Agarrar ou empurrar por um NPC" opens the sheet where he rolls for the
  * creature or sets its fixed escape DC. It reads the contest facts again whenever the combat changes (every contest change reaches
  * the table as `encounter_changed`). Nothing is kept in the browser; a CONTEST window is never answered with `AnswerReaction`.
  */
@@ -116,6 +116,31 @@ let nextId = 0;
         }
       </section>
     }
+    @if (hiders().length > 0) {
+      <section class="card" [attr.aria-labelledby]="uid + 'h'" data-testid="hiders">
+        <h2 class="card__title" [id]="uid + 'h'">Escondidos</h2>
+        <ul class="rows">
+          @for (h of hiders(); track h.id) {
+            <li class="row">
+              <span class="row__main">
+                <span class="row__name">{{ h.label }}</span>
+                <span class="row__sub">{{ h.sub }}</span>
+              </span>
+              <button
+                mat-stroked-button
+                type="button"
+                class="btn btn--small"
+                [attr.aria-label]="'Revelar ' + h.label"
+                [disabled]="busy()"
+                (click)="reveal(h.id)"
+              >
+                Revelar
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
     @if (error()) {
       <div class="mr-notice mr-notice--danger" role="alert">
         <mat-icon aria-hidden="true">error</mat-icon>
@@ -178,6 +203,14 @@ export class ContestMaster {
       };
     });
   });
+  /** The hiders: "Revelar" ends the hiding for every creature, when the circumstances reveal it (the master decides, SRD 5.1, Hiding). */
+  protected readonly hiders = computed(() => {
+    const e = this.encounter();
+    return this.contests.hidden().flatMap((id) => {
+      const c = e?.combatants.find((x) => x.id === id);
+      return c ? [{ id, label: c.label, sub: 'Só você sabe quem notou.' }] : [];
+    });
+  });
   /** An NPC's turn: the master can make its creature grapple or shove. */
   protected readonly npcTurn = computed(() => {
     const e = this.encounter();
@@ -214,6 +247,31 @@ export class ContestMaster {
       initiatorId: turn.id,
       attacks: this.options()?.contestAttackOptions ?? [],
     }).subscribe();
+  }
+
+  protected async reveal(combatantId: string): Promise<void> {
+    const e = this.encounter();
+    if (!e || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const next = await this.api.revealHider(
+        this.campaignId(),
+        e.id,
+        combatantId,
+        this.keys.keyFor({ reveal: combatantId }),
+      );
+      this.state().apply(next);
+      this.keys.renew();
+      this.said.set('Esconderijo encerrado.');
+      void this.contests.load(this.api, this.campaignId(), e.id);
+    } catch (err) {
+      this.error.set(combatErrorMessage(err, 'revelar'));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected async release(grappledId: string): Promise<void> {

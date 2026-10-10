@@ -204,6 +204,15 @@ export class FakeContestClient {
     return Promise.resolve(this.encounterAnswer);
   }
 
+  readonly revealed: { combatantId: string; key: string }[] = [];
+
+  revealHider(_c: string, _e: string, combatantId: string, key: string) {
+    this.calls.push('revealHider');
+    this.revealed.push({ combatantId, key });
+    this.fail();
+    return Promise.resolve(this.encounterAnswer);
+  }
+
   resolveHide(_c: string, _e: string, decision: HideDecision, key: string) {
     this.calls.push('resolveHide');
     this.hideDecisions.push({ decision, key });

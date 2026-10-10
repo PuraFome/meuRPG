@@ -73,6 +73,18 @@
         (press)="move.emit()"
       />
     }
+    @if (standRow(); as su) {
+      <app-action-row
+        name="Levantar-se"
+        [detail]="su.detail"
+        button="Levantar-se"
+        buttonLabel="Levantar-se"
+        [off]="su.off || !!locked()"
+        [reason]="locked() || su.reason"
+        [busy]="busy()"
+        (press)="standUp.emit()"
+      />
+    }
   </section>
   }
 
@@ -366,6 +378,18 @@
         [reason]="locked()"
         [busy]="busy()"
         (press)="move.emit()"
+      />
+    }
+    @if (standRow(); as su) {
+      <app-action-row
+        name="Levantar-se"
+        [detail]="su.detail"
+        button="Levantar-se"
+        buttonLabel="Levantar-se"
+        [off]="su.off || !!locked()"
+        [reason]="locked() || su.reason"
+        [busy]="busy()"
+        (press)="standUp.emit()"
       />
     }
   </section>

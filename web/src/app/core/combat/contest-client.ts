@@ -289,6 +289,22 @@ export class ContestClient {
     };
   }
 
+  /** The master ends a combatant's hiding for every creature ("Revelar"): the circumstances revealed it. */
+  async revealHider(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    key: string,
+  ): Promise<Encounter> {
+    const res = await this.client.revealHider({
+      campaignId,
+      encounterId,
+      idempotencyKey: key,
+      combatantId,
+    });
+    return need(res.encounter, 'RevealHider');
+  }
+
   /** Takes a Help back (the master, when it should not hold any more). */
   async clearHelp(
     campaignId: string,

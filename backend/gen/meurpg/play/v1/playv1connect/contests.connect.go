@@ -69,6 +69,9 @@ const (
 	// ContestServiceResolveHideProcedure is the fully-qualified name of the ContestService's
 	// ResolveHide RPC.
 	ContestServiceResolveHideProcedure = "/meurpg.play.v1.ContestService/ResolveHide"
+	// ContestServiceRevealHiderProcedure is the fully-qualified name of the ContestService's
+	// RevealHider RPC.
+	ContestServiceRevealHiderProcedure = "/meurpg.play.v1.ContestService/RevealHider"
 	// ContestServiceHelpProcedure is the fully-qualified name of the ContestService's Help RPC.
 	ContestServiceHelpProcedure = "/meurpg.play.v1.ContestService/Help"
 	// ContestServiceClearHelpProcedure is the fully-qualified name of the ContestService's ClearHelp
@@ -180,6 +183,18 @@ type ContestServiceClient interface {
 	//
 	// Errors: `failed_precondition` (ContestBlocked): HIDE_NOT_PENDING.
 	ResolveHide(context.Context, *connect.Request[v1.ResolveHideRequest]) (*connect.Response[v1.ResolveHideResponse], error)
+	// RevealHider ends a combatant's hiding for every creature (SRD 5.1, "Hiding": the
+	// DM decides when circumstances reveal a hidden creature: it makes noise, steps into
+	// the open, is searched for). Only the master. Every state of the hider goes, so every
+	// creature sees it again and its attacks lose the unseen-attacker advantage. The log
+	// line is the master's and the hider's player's alone ("Brisa não está mais
+	// escondida"); no other player is told, and nobody is told who noticed (RN-10). The
+	// master can undo it (UndoLastAction): the hiding comes back as it was.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in the open session.
+	//   - `failed_precondition`: ContestBlocked NOT_HIDDEN, or the combat is ended.
+	RevealHider(context.Context, *connect.Request[v1.RevealHiderRequest]) (*connect.Response[v1.RevealHiderResponse], error)
 	// Help is the Help action in its two forms (SRD 5.1, "Help"): advantage on an ally's
 	// next check of a task, or on the ally's first attack on a creature within 5 feet of
 	// the helper. It spends the action. The player helps with their own combatant on its
@@ -287,6 +302,12 @@ func NewContestServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(contestServiceMethods.ByName("ResolveHide")),
 			connect.WithClientOptions(opts...),
 		),
+		revealHider: connect.NewClient[v1.RevealHiderRequest, v1.RevealHiderResponse](
+			httpClient,
+			baseURL+ContestServiceRevealHiderProcedure,
+			connect.WithSchema(contestServiceMethods.ByName("RevealHider")),
+			connect.WithClientOptions(opts...),
+		),
 		help: connect.NewClient[v1.HelpRequest, v1.HelpResponse](
 			httpClient,
 			baseURL+ContestServiceHelpProcedure,
@@ -356,6 +377,7 @@ type contestServiceClient struct {
 	releaseGrapple        *connect.Client[v1.ReleaseGrappleRequest, v1.ReleaseGrappleResponse]
 	hide                  *connect.Client[v1.HideRequest, v1.HideResponse]
 	resolveHide           *connect.Client[v1.ResolveHideRequest, v1.ResolveHideResponse]
+	revealHider           *connect.Client[v1.RevealHiderRequest, v1.RevealHiderResponse]
 	help                  *connect.Client[v1.HelpRequest, v1.HelpResponse]
 	clearHelp             *connect.Client[v1.ClearHelpRequest, v1.ClearHelpResponse]
 	setSurprised          *connect.Client[v1.SetSurprisedRequest, v1.SetSurprisedResponse]
@@ -405,6 +427,11 @@ func (c *contestServiceClient) Hide(ctx context.Context, req *connect.Request[v1
 // ResolveHide calls meurpg.play.v1.ContestService.ResolveHide.
 func (c *contestServiceClient) ResolveHide(ctx context.Context, req *connect.Request[v1.ResolveHideRequest]) (*connect.Response[v1.ResolveHideResponse], error) {
 	return c.resolveHide.CallUnary(ctx, req)
+}
+
+// RevealHider calls meurpg.play.v1.ContestService.RevealHider.
+func (c *contestServiceClient) RevealHider(ctx context.Context, req *connect.Request[v1.RevealHiderRequest]) (*connect.Response[v1.RevealHiderResponse], error) {
+	return c.revealHider.CallUnary(ctx, req)
 }
 
 // Help calls meurpg.play.v1.ContestService.Help.
@@ -535,6 +562,18 @@ type ContestServiceHandler interface {
 	//
 	// Errors: `failed_precondition` (ContestBlocked): HIDE_NOT_PENDING.
 	ResolveHide(context.Context, *connect.Request[v1.ResolveHideRequest]) (*connect.Response[v1.ResolveHideResponse], error)
+	// RevealHider ends a combatant's hiding for every creature (SRD 5.1, "Hiding": the
+	// DM decides when circumstances reveal a hidden creature: it makes noise, steps into
+	// the open, is searched for). Only the master. Every state of the hider goes, so every
+	// creature sees it again and its attacks lose the unseen-attacker advantage. The log
+	// line is the master's and the hider's player's alone ("Brisa não está mais
+	// escondida"); no other player is told, and nobody is told who noticed (RN-10). The
+	// master can undo it (UndoLastAction): the hiding comes back as it was.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in the open session.
+	//   - `failed_precondition`: ContestBlocked NOT_HIDDEN, or the combat is ended.
+	RevealHider(context.Context, *connect.Request[v1.RevealHiderRequest]) (*connect.Response[v1.RevealHiderResponse], error)
 	// Help is the Help action in its two forms (SRD 5.1, "Help"): advantage on an ally's
 	// next check of a task, or on the ally's first attack on a creature within 5 feet of
 	// the helper. It spends the action. The player helps with their own combatant on its
@@ -638,6 +677,12 @@ func NewContestServiceHandler(svc ContestServiceHandler, opts ...connect.Handler
 		connect.WithSchema(contestServiceMethods.ByName("ResolveHide")),
 		connect.WithHandlerOptions(opts...),
 	)
+	contestServiceRevealHiderHandler := connect.NewUnaryHandler(
+		ContestServiceRevealHiderProcedure,
+		svc.RevealHider,
+		connect.WithSchema(contestServiceMethods.ByName("RevealHider")),
+		connect.WithHandlerOptions(opts...),
+	)
 	contestServiceHelpHandler := connect.NewUnaryHandler(
 		ContestServiceHelpProcedure,
 		svc.Help,
@@ -712,6 +757,8 @@ func NewContestServiceHandler(svc ContestServiceHandler, opts ...connect.Handler
 			contestServiceHideHandler.ServeHTTP(w, r)
 		case ContestServiceResolveHideProcedure:
 			contestServiceResolveHideHandler.ServeHTTP(w, r)
+		case ContestServiceRevealHiderProcedure:
+			contestServiceRevealHiderHandler.ServeHTTP(w, r)
 		case ContestServiceHelpProcedure:
 			contestServiceHelpHandler.ServeHTTP(w, r)
 		case ContestServiceClearHelpProcedure:
@@ -769,6 +816,10 @@ func (UnimplementedContestServiceHandler) Hide(context.Context, *connect.Request
 
 func (UnimplementedContestServiceHandler) ResolveHide(context.Context, *connect.Request[v1.ResolveHideRequest]) (*connect.Response[v1.ResolveHideResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ContestService.ResolveHide is not implemented"))
+}
+
+func (UnimplementedContestServiceHandler) RevealHider(context.Context, *connect.Request[v1.RevealHiderRequest]) (*connect.Response[v1.RevealHiderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ContestService.RevealHider is not implemented"))
 }
 
 func (UnimplementedContestServiceHandler) Help(context.Context, *connect.Request[v1.HelpRequest]) (*connect.Response[v1.HelpResponse], error) {

@@ -268,6 +268,8 @@ enum ContestBlockedReason {
   CONTEST_BLOCKED_REASON_ALREADY_ANSWERED = 15;
   // SetSurprised: the combatant's first turn has ended, so surprise no longer applies.
   CONTEST_BLOCKED_REASON_COMBAT_BEGUN = 16;
+  // RevealHider: the combatant is not hidden from anyone.
+  CONTEST_BLOCKED_REASON_NOT_HIDDEN = 17;
 }
 
 // ContestBlocked is the detail of the failed_precondition of the contest calls.
@@ -556,6 +558,11 @@ enum ContestLogLine {
   // The master marked a creature surprised or took the mark off. Only the master.
   CONTEST_LOG_LINE_SURPRISED = 15;
   CONTEST_LOG_LINE_SURPRISE_CLEARED = 16;
+  // The actor stood up from Prone ("Brisa se levantou"). Everyone who sees the actor.
+  CONTEST_LOG_LINE_STOOD_UP = 17;
+  // The master ended the actor's hiding ("Brisa não está mais escondida"). The master and
+  // the actor's player only; never who noticed (RN-10).
+  CONTEST_LOG_LINE_HIDE_REVEALED = 18;
 }
 
 // CombatLogContest is a CONTEST line of the combat log: the actor and the target are in

@@ -354,6 +354,7 @@
                     (reactionAttack)="openCreatureAttack(m.id, $event, true)"
                     (action)="creatureAction(m.id, $event)"
                     (move)="openCreatureMove(m.id)"
+                    (standUp)="standUp(m.id)"
                   />
                 }
               </div>
@@ -403,6 +404,7 @@
                       (feature)="useFeature($event)"
                       (action)="standardAction($event)"
                       (move)="openMove()"
+                      (standUp)="standUp()"
                       (rollDamage)="rollPendingDamage()"
                       (transform)="openTransform()"
                       (leaveForm)="leaveForm()"

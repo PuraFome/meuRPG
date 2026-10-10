@@ -139,8 +139,8 @@ func moverOf(c playdb.Combatant) grid.Mover {
 
 // noSpeed are the conditions that leave a creature with no speed (SRD 5.1):
 // grappled and restrained set it to 0, and a paralyzed, petrified, stunned or
-// unconscious creature cannot move at all. (Prone, which makes standing up cost
-// half the speed, is not modeled: the app has no action for standing up.)
+// unconscious creature cannot move at all. (Prone does not set the speed to 0: standing
+// up costs half of it, see combat_standup.go.)
 var noSpeed = []string{
 	"condition:grappled", "condition:restrained", "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious",
 }
@@ -332,6 +332,11 @@ func (s *Service) MoveCombatant(
 		factor := 1
 		if dragging && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && combat.DragHalvesSpeed(target.Size, dragged.Size) {
 			factor = 2
+		}
+		// Crawling (SRD 5.1, "Being Prone"): every foot of movement costs 1 extra foot, so a
+		// prone creature pays twice (a drag halves the speed on top of it). See combat_standup.go.
+		if crawls(target) && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED {
+			factor *= 2
 		}
 		col, row := col, row // the closure runs again on a retry: a placement picks its square afresh
 		switch {

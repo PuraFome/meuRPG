@@ -48,6 +48,7 @@ import {
   hiddenWord,
 } from '../../../../core/combat/contest-view';
 import { freeText } from '../../../../core/combat/cast-flow';
+import { standUpRow } from '../../../../core/combat/stand-up';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import type { PactSlotsVm, SlotUsageVm } from '../../live-session.types';
 import { SlotDots } from '../../slot-dots/slot-dots';
@@ -155,6 +156,8 @@ export class ActionGroups {
   /** "Usar": the key of a feature action ("feature:second-wind"). */
   readonly feature = output<string>();
   readonly move = output<void>();
+  /** "Levantar-se" of a prone combatant (half the speed). */
+  readonly standUp = output<void>();
   /** "Rolar o dano" of a hit that waits for its roll. */
   readonly rollDamage = output<void>();
   /** "Ver pelos olhos do ...": the page asks the question. */
@@ -198,6 +201,7 @@ export class ActionGroups {
       ? { name: 'Empurrar', detail: SHOVE_DETAIL }
       : { name: 'Agarrar', detail: GRAPPLE_DETAIL };
   }
+  protected readonly standRow = computed(() => standUpRow(this.own()));
   protected readonly action_ = computed(() => optionsFor(this.options(), 'action'));
   /** Every spell, whatever its economy, as the server ordered them. */
   protected readonly spells = computed(() => this.options().spells);

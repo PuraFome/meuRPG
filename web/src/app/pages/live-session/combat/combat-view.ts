@@ -2769,6 +2769,14 @@ export class CombatView {
     this.state().moving.set(true);
   }
 
+  /** "Levantar-se": the combatant (the player's own, a creature of theirs, or the one on the master's card) stands up from Prone. */
+  protected standUp(id?: string): Promise<boolean> {
+    const who = id ?? this.own()?.id;
+    return who
+      ? this.run((e) => this.api.standUp(this.campaignId(), e.id, who))
+      : Promise.resolve(false);
+  }
+
   /** "Mover o Lobo atroz 1": the same page, for the creature. */
   protected openCreatureMove(id: string): void {
     if (this.theatre()) {

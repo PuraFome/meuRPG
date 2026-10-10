@@ -38,6 +38,9 @@ function setup(inputs: {
   contest?: ReturnType<typeof create<typeof ContestTurnStateSchema>>;
   label?: string;
   movementLeftFt?: number;
+  conditions?: string[];
+  standUpCostDft?: number;
+  theatre?: boolean;
 }) {
   const fixture = TestBed.createComponent(ActionGroups);
   const ref = fixture.componentRef;
@@ -49,12 +52,17 @@ function setup(inputs: {
       movementLeftFt: inputs.movementLeftFt ?? 30,
       movementLeftDft: (inputs.movementLeftFt ?? 30) * 10,
       speedFt: 30,
+      conditions: inputs.conditions ?? [],
+      standUpCostDft: inputs.standUpCostDft ?? 0,
     }),
   );
+  ref.setInput('theatre', inputs.theatre ?? false);
   ref.setInput('contestAttacks', inputs.contestAttacks ?? []);
   ref.setInput('contest', inputs.contest);
   const kinds: ContestAttackOptionKind[] = [];
   let escapes = 0;
+  let stands = 0;
+  fixture.componentInstance.standUp.subscribe(() => stands++);
   fixture.componentInstance.contestAttack.subscribe((k) => kinds.push(k));
   fixture.componentInstance.escape.subscribe(() => escapes++);
   fixture.detectChanges();
@@ -63,7 +71,7 @@ function setup(inputs: {
     Array.from(el.querySelectorAll<HTMLElement>('app-action-row')).find(
       (r) => r.querySelector('.row__name')?.textContent?.trim() === name,
     );
-  return { fixture, el, kinds, escapes: () => escapes, row };
+  return { fixture, el, kinds, escapes: () => escapes, stands: () => stands, row };
 }
 
 describe('ActionGroups: the special attacks, escape and the states of the turn (W7-X)', () => {
@@ -193,5 +201,40 @@ describe('ActionGroups: the special attacks, escape and the states of the turn (
       expect(textOf(el)).not.toContain('Surpresa.');
       expect(textOf(el)).toContain('Espada longa');
     });
+  });
+});
+
+describe('ActionGroups: Levantar-se in the Movimento group (SRD 5.1, Being Prone)', () => {
+  it.each([false, true])('offers it to a prone combatant with its cost (theatre %s)', (theatre) => {
+    const { row, stands } = setup({
+      conditions: ['condition:prone'],
+      standUpCostDft: 150,
+      theatre,
+    });
+    const r = row('Levantar-se')!;
+    expect(textOf(r)).toContain('Levantar-se gasta 4,5 m de movimento');
+    r.querySelector<HTMLButtonElement>('button')!.click();
+    expect(stands()).toBe(1);
+  });
+
+  it('is not there for a combatant that stands', () => {
+    expect(setup({}).row('Levantar-se')).toBeUndefined();
+  });
+
+  it('is off, with the missing movement as the reason, when the movement left is short', () => {
+    const { row, stands } = setup({
+      conditions: ['condition:prone'],
+      standUpCostDft: 150,
+      movementLeftFt: 10,
+    });
+    const r = row('Levantar-se')!;
+    expect(textOf(r)).toContain('Faltam 1,5 m de movimento.');
+    r.querySelector<HTMLButtonElement>('button')!.click();
+    expect(stands()).toBe(0);
+  });
+
+  it('is off with no speed (a cost of 0)', () => {
+    const { row } = setup({ conditions: ['condition:prone'], standUpCostDft: 0 });
+    expect(textOf(row('Levantar-se')!)).toContain('Sem velocidade, não dá para se levantar.');
   });
 });

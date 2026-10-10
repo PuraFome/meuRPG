@@ -83,15 +83,21 @@ func (s *Service) dragTo(ctx context.Context, c *combatTx, cs []playdb.Combatant
 func (s *Service) moveOptionsWithDrag(ctx context.Context, plan grid.Terrain, cs []playdb.Combatant, who playdb.Combatant, v combatViewer) (*playv1.GetMoveOptionsResponse, error) {
 	occ := occupantsFor(cs, who, v)
 	dragged, dragging, err := s.draggedBy(ctx, s.queries, cs, who)
+	// moveOptions reads the movement left: the path that fits is what is left divided by
+	// what the move multiplies the cost by. Crawling doubles it (combat_standup.go), and so
+	// does a drag at half speed.
+	div := 1
+	if crawls(who) {
+		div *= 2
+	}
 	if err != nil || !dragging {
-		return moveOptions(plan, who, occ), err
+		return moveOptions(plan, probeWithLeftOver(who, div), occ), err
 	}
 	halves := combat.DragHalvesSpeed(who.Size, dragged.Size)
-	probe := who
 	if halves {
-		// moveOptions reads the movement left: half of it is the path that fits.
-		probe.MovementUsedDft = clamp32(max(speedDFt(who)-movementLeftDFt(who)/2, 0), 0, math.MaxInt32)
+		div *= 2
 	}
+	probe := probeWithLeftOver(who, div)
 	out := moveOptions(plan, probe, occ)
 	if !v.master && !v.sees(dragged) {
 		return out, nil // the halving holds, but what it drags is not theirs to know
@@ -111,4 +117,13 @@ func (s *Service) moveOptionsWithDrag(ctx context.Context, plan grid.Terrain, cs
 	}
 	out.Reachable = reachable
 	return out, nil
+}
+
+// probeWithLeftOver is the combatant with only the 1/div of its movement left that a move
+// that costs div times as much can pay for, for moveOptions to read.
+func probeWithLeftOver(who playdb.Combatant, div int) playdb.Combatant {
+	if div > 1 {
+		who.MovementUsedDft = clamp32(max(speedDFt(who)-movementLeftDFt(who)/div, 0), 0, math.MaxInt32)
+	}
+	return who
 }

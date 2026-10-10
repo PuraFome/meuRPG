@@ -71,6 +71,7 @@ const CONTEST_BLOCKED_TEXT: Partial<Record<ContestBlockedReason, string>> = {
   [ContestBlockedReason.NOT_IN_GROUP_CHECK]: 'O mestre não pediu esse teste ao seu personagem.',
   [ContestBlockedReason.ALREADY_ANSWERED]: 'Você já rolou esse teste.',
   [ContestBlockedReason.COMBAT_BEGUN]: 'O combate já começou.',
+  [ContestBlockedReason.NOT_HIDDEN]: 'Ninguém está escondido aqui. A tela foi atualizada.',
 };
 
 export function contestBlockedMessage(blocked: ContestBlocked): string {
@@ -147,6 +148,10 @@ export function blockedMessage(blocked: EncounterBlocked): string {
         ? `Longe demais para o seu salto: ele vai até ${metersFixed(blocked.jumpLimitDft / 10)}${blocked.jumpRunningStart ? ' com corrida' : ' parado'}. Faltam ${missing}.`
         : `Esse caminho custa mais do que o movimento que sobra: faltam ${missing}.`;
     }
+    case EncounterBlockedReason.NOT_PRONE:
+      return 'Você já está de pé. A tela foi atualizada.';
+    case EncounterBlockedReason.CANNOT_STAND_UP:
+      return 'Sem velocidade, não dá para se levantar.';
     case EncounterBlockedReason.MOVE_BLOCKED:
       return 'Não dá para passar por aí: há uma parede ou outra criatura no caminho.';
     case EncounterBlockedReason.WALL_ON_SQUARE:
