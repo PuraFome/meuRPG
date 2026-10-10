@@ -153,6 +153,8 @@ export class StartCombatDialog {
   private readonly tableRules = inject(TableRulesClient);
   /** The key of "Adicionar": a tap after a lost answer is the same addition, other NPCs another. */
   private readonly addKey = new ActionKey();
+  /** One key per picked creature in add mode (`AddMonsters`): a retry after a failure resends the same keys, so nothing enters twice. */
+  private readonly monsterKeys = new Map<string, ActionKey>();
 
   protected readonly adding = this.data.mode === 'add';
   /** How the combat is played (RN-25), fixed once it starts: with the table's "combate com mapa" rule as the default, and "Sem mapa" when the session has no map. */
@@ -272,7 +274,7 @@ export class StartCombatDialog {
     if (!this.adding && this.included().size === 0 && this.monsterTotal() === 0) {
       return 'Escolha quem do grupo entra.';
     }
-    if (this.adding && this.npcTotal() === 0) {
+    if (this.adding && this.npcTotal() === 0 && this.picked().length === 0) {
       return 'Escolha quantos NPCs entram.';
     }
     if (this.total() > MAX_COMBATANTS) {
@@ -441,6 +443,42 @@ export class StartCombatDialog {
     );
   }
 
+  /** Add mode: the NPCs (if any) through `AddCombatants`, then each picked creature through `AddMonsters`; returns the last encounter. */
+  private async addToCombat(specs: readonly JoinSpec[]): Promise<Encounter | undefined> {
+    const encounterId = this.data.encounterId ?? '';
+    let last: Encounter | undefined;
+    if (specs.length > 0) {
+      last = await this.combat.add(
+        this.data.campaignId,
+        encounterId,
+        specs,
+        this.addKey.keyFor([this.data.encounterId, specs]),
+      );
+    }
+    for (const m of this.picked()) {
+      const add = {
+        creatureKey: m.key,
+        count: m.count,
+        name: '',
+        hp: this.monsterHp(),
+        hidden: this.monstersHidden(),
+      };
+      let key = this.monsterKeys.get(m.key);
+      if (!key) {
+        key = new ActionKey();
+        this.monsterKeys.set(m.key, key);
+      }
+      const made = await this.combat.addMonsters(
+        this.data.campaignId,
+        encounterId,
+        add,
+        key.keyFor([encounterId, add]),
+      );
+      last = made.encounter;
+    }
+    return last;
+  }
+
   protected async submit(): Promise<void> {
     if (this.blocked() || this.busy()) {
       return;
@@ -462,14 +500,7 @@ export class StartCombatDialog {
         })),
     ];
     try {
-      const encounter = this.adding
-        ? await this.combat.add(
-            this.data.campaignId,
-            this.data.encounterId ?? '',
-            specs,
-            this.addKey.keyFor([this.data.encounterId, specs]),
-          )
-        : await this.start(specs);
+      const encounter = this.adding ? await this.addToCombat(specs) : await this.start(specs);
       this.ref.close(encounter);
     } catch (err) {
       this.busy.set(false);
