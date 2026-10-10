@@ -27,6 +27,7 @@ import {
   offersToAnswer,
   reactorIsMasters,
 } from '../../../../core/combat/opportunity';
+import { autoPassText } from '../../../../core/combat/reaction-autopass';
 import { tieNumbers } from '../../../../core/format/text';
 import { article } from '../../../../core/combat/combat-log';
 import { ofThe } from '../../../../core/combat/move-plan';
@@ -117,7 +118,7 @@ export interface MasterAnswer {
             Nos dois, {{ theReactor(o) }} não ataca e continua com a reação.
           </p>
         } @else {
-          <p class="op__ask"><b>Esperando a reação {{ waitingFor(o) }}</b></p>
+          <p class="op__ask"><b>Esperando a reação {{ waitingFor(o) }}</b>@if (autoText(o); as t) { · {{ t }}}</p>
           <div class="op__pair">
             <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="skip.emit(o)">
               Seguir sem esperar
@@ -146,6 +147,8 @@ export class OpportunityCard {
   readonly attacksByOffer = input<ReadonlyMap<string, readonly ReactorAttack[]>>(new Map());
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
   readonly busy = input(false);
+  /** The seconds left before the master's screen passes each offer by itself, by offer id. */
+  readonly autoLeft = input<Readonly<Record<string, number>>>({});
   /** The offers whose reactor's attacks could not be read (the card offers to try again). */
   readonly failed = input<ReadonlySet<string>>(new Set());
   /** The master's last action is the move that made the offers: "Desfazer o movimento" is possible. */
@@ -247,6 +250,12 @@ export class OpportunityCard {
   }
 
   /** "do Caio (Toren)": the player's name when the roster has it. */
+  /** "Passa sozinho em 24 s", for the offer a player's character answers; empty when this screen has no clock for it. */
+  protected autoText(o: OpportunityOffer): string {
+    const left = this.autoLeft()[o.id];
+    return left === undefined ? '' : autoPassText(left);
+  }
+
   protected waitingFor(o: OpportunityOffer): string {
     const reactor = this.encounter().combatants.find((c) => c.id === o.reactorId);
     const name = reactor ? (this.info().get(reactor.characterId)?.playerName ?? '') : '';

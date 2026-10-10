@@ -663,14 +663,18 @@ export class CombatClient {
     campaignId: string,
     encounterId: string,
     offerId: string,
+    key?: string,
   ): Promise<Encounter> {
-    const res = await this.keyed(['skipOpportunity', campaignId, encounterId, offerId], (sent) =>
-      this.client.skipOpportunity({
-        campaignId,
-        encounterId,
-        opportunityOfferId: offerId,
-        idempotencyKey: sent,
-      }),
+    const res = await this.keyed(
+      ['skipOpportunity', campaignId, encounterId, offerId],
+      (sent) =>
+        this.client.skipOpportunity({
+          campaignId,
+          encounterId,
+          opportunityOfferId: offerId,
+          idempotencyKey: sent,
+        }),
+      key,
     );
     return need(res.encounter, 'SkipOpportunity');
   }
