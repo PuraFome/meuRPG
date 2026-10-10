@@ -49,6 +49,8 @@ type CombatHelp struct {
 	CreatedAt         time.Time
 	ConsumedAt        *time.Time
 	ClearedAt         *time.Time
+	HelperCombatantID *string
+	AllyCombatantID   *string
 }
 
 type CombatHideAttempt struct {

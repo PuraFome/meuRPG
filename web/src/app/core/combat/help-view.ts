@@ -1,4 +1,5 @@
 import {
+  type Combatant,
   type Encounter,
   type GetTurnOptionsResponse,
   CombatantState,
@@ -89,6 +90,15 @@ export function helpTargets(
   for (const t of options.spellTargets.flatMap((s) => s.targets)) {
     distances.set(t.combatantId, distances.get(t.combatantId) ?? t.distanceFt);
   }
+  if (distances.size === 0) {
+    // A helper with no attack and no spell (a familiar: it can't attack, but it can help, SRD 5.1 Find Familiar) gets no
+    // targets from its options: the creatures of the other side, at the server's range on the grid (no map, no distance).
+    for (const c of e.combatants) {
+      if (c.side !== helper.side) {
+        distances.set(c.id, rangeFt(helper, c));
+      }
+    }
+  }
   return e.combatants
     .filter((c) => c.side !== helper.side && !c.defeated && distances.has(c.id))
     .map((c) => {
@@ -102,6 +112,19 @@ export function helpTargets(
       };
     })
     .sort((a, b) => Number(b.reachable) - Number(a.reachable));
+}
+
+/** A square of the grid is 5 ft (1,5 m) across. */
+const FEET_PER_SQUARE = 5;
+
+/** The distance the server measures for a reach (`grid.RangeFt`): the straight line between the squares, in whole squares
+ * rounded down, 1,5 m each, so a diagonal neighbour is 1,5 m away. `undefined` when either is off the map. */
+export function rangeFt(a: Combatant, b: Combatant): number | undefined {
+  if (!a.placed || !b.placed) {
+    return undefined;
+  }
+  const squares = Math.floor(Math.sqrt((a.col - b.col) ** 2 + (a.row - b.row) ** 2));
+  return squares * FEET_PER_SQUARE;
 }
 
 /** "Tavo · Percepção". */

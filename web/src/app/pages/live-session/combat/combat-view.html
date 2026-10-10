@@ -342,7 +342,7 @@
                     (rollDamage)="rollCreatureDamage(m.id)"
                     (attack)="openCreatureAttack(m.id, $event)"
                     (reactionAttack)="openCreatureAttack(m.id, $event, true)"
-                    (action)="takeActionFor(m.id, $event)"
+                    (action)="creatureAction(m.id, $event)"
                     (move)="openCreatureMove(m.id)"
                   />
                 }

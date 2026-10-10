@@ -990,12 +990,10 @@ func TestMR037_TheKindAudit(t *testing.T) {
 	wantBlockedBy(t, "RollAttack by the familiar", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK)
 	_, err = a.attack(t, a.master, e, "Nanquim", "monster:owl#talons", "Goblin", inAppRoll)
 	wantBlockedBy(t, "RollAttack by the familiar as the master", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK)
-	// Help, the familiar's own trick, is a plain action for a creature (ContestService.Help keeps
-	// characters and NPCs): it spends the familiar's action and the master rules on it.
-	if out, err := a.action(t, a.ana, e, "Nanquim", "standard:help"); err != nil {
-		t.Errorf("TakeAction(Ajudar) by the familiar error = %v", err)
+	if out, err := a.action(t, a.ana, e, "Nanquim", "standard:dodge"); err != nil {
+		t.Errorf("TakeAction(Esquivar) by the familiar error = %v", err)
 	} else if !byLabel(t, out, "Nanquim").GetActionUsed() {
-		t.Error("the familiar's Help must spend its action")
+		t.Error("the familiar's Dodge must spend its action")
 	}
 	// A creature makes no death save, and it is never confirmed dead.
 	_, err = a.deathSave(t, a.ana, e, "Nanquim", func(r *playv1.RollDeathSaveRequest) {
@@ -1058,6 +1056,63 @@ func TestMR037_TheKindAudit(t *testing.T) {
 		if c.GetName() == "Esqueleto" && c.GetHitPointsCurrent() != 9 {
 			t.Errorf("the skeleton has %d hit points on its owner's list, want 9", c.GetHitPointsCurrent())
 		}
+	}
+}
+
+// TestMR037_TheFamiliarHelps (SRD 5.1, Find Familiar and Help): a familiar can't attack, but
+// it can take other actions as normal, Help among them. Nanquim helps Toren against the goblin
+// next to it: Toren's attack has advantage, "Ajuda de Nanquim". A Help for Pensantus is his
+// alone: his skeleton, which carries his character, attacks the same goblin without it.
+func TestMR037_TheFamiliarHelps(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	a.mustCastSummon(t, a.ana, a.pens, findFamiliar, nil, 0, []string{"monster:owl"}, "Nanquim")
+	a.mustCastSummon(t, a.ana, a.pens, animateDead, slotOfLevel(3), 0, []string{"monster:skeleton"})
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
+		npcRolls: []int{2},
+		players:  map[string]int32{"Nanquim": 20, "Sálvia": 18, "Pensantus": 15, "Toren": 12, "Esqueleto": 8},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Nanquim": {5, 3}, "Sálvia": {5, 4}, "Pensantus": {10, 3}, "Esqueleto": {4, 4}},
+	})
+	help := func(u *user, helper, ally string) (*playv1.HelpResponse, error) {
+		res, err := u.contests.Help(t.Context(), connect.NewRequest(&playv1.HelpRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey(), CombatantId: a.id(t, helper),
+			Kind: playv1.HelpKind_HELP_KIND_ATTACK, AllyId: a.id(t, ally), TargetId: a.id(t, "Goblin"),
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+
+	e = a.passTo(t, e, "Nanquim")
+	given, err := help(a.ana, "Nanquim", "Toren")
+	if err != nil {
+		t.Fatalf("Help by the familiar error = %v", err)
+	}
+	if h := given.GetHelp(); h.GetHelperId() != a.id(t, "Nanquim") || h.GetAllyId() != a.id(t, "Toren") {
+		t.Fatalf("help = %v, want Nanquim's Help to Toren", h)
+	}
+	if !byLabel(t, given.GetEncounter(), "Nanquim").GetActionUsed() || byLabel(t, given.GetEncounter(), "Pensantus").GetActionUsed() {
+		t.Error("the familiar's Help must spend its own action, not Pensantus's")
+	}
+
+	e = a.passTo(t, e, "Sálvia")
+	if _, err := help(a.bia, "Sálvia", "Pensantus"); err != nil {
+		t.Fatalf("Help by Sálvia error = %v", err)
+	}
+
+	e = a.passTo(t, e, "Toren")
+	tg := targetOf(a.mustOptions(t, a.caio, e, "Toren"), battleaxe, "Goblin")
+	if tg == nil || tg.GetRollMode() != playv1.RollMode_ROLL_MODE_ADVANTAGE || len(tg.GetSources()) != 1 ||
+		tg.GetSources()[0].GetKind() != playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP || !strings.Contains(tg.GetSources()[0].GetTextPt(), "Nanquim") {
+		t.Fatalf("the goblin as Toren's target = %v, want advantage from \"Ajuda de Nanquim\"", tg)
+	}
+
+	e = a.passTo(t, e, "Esqueleto")
+	if tg := targetOf(a.mustOptions(t, a.ana, e, "Esqueleto"), "monster:skeleton#shortsword", "Goblin"); tg == nil || tg.GetRollMode() != playv1.RollMode_ROLL_MODE_NORMAL {
+		t.Errorf("the goblin as the skeleton's target = %v, want a normal roll: Sálvia helped Pensantus, not his skeleton", tg)
 	}
 }
 

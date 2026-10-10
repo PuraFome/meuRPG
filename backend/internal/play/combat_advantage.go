@@ -288,10 +288,10 @@ func (f modeFacts) unseen(observer, subject playdb.Combatant) bool {
 // Help of an ally aimed at that target, not used and not past its helper's next turn.
 func (f modeFacts) helperOf(attacker, target playdb.Combatant) *playdb.Combatant {
 	for _, h := range f.helps {
-		if h.Kind != helpAttack || h.AllyCharacterID != attacker.CharacterID || deref(h.TargetID) != target.ID {
+		if h.Kind != helpAttack || !helpsAlly(h, attacker) || deref(h.TargetID) != target.ID {
 			continue
 		}
-		if helper, ok := combatantOfCharacter(f.cs, h.HelperCharacterID); ok {
+		if helper, ok := helpHelper(f.cs, h); ok {
 			return &helper
 		}
 	}

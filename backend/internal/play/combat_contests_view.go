@@ -321,8 +321,8 @@ func (r *contestReader) observers(ctx context.Context, a playdb.CombatHideAttemp
 func (r *contestReader) helpViews() []*playv1.HelpView {
 	var out []*playv1.HelpView
 	for _, h := range r.d.helps {
-		helper, okH := combatantOfCharacter(r.d.cs, h.HelperCharacterID)
-		ally, okA := combatantOfCharacter(r.d.cs, h.AllyCharacterID)
+		helper, okH := helpHelper(r.d.cs, h)
+		ally, okA := helpAlly(r.d.cs, h)
 		if !okH || !okA {
 			continue
 		}
@@ -349,9 +349,12 @@ func (r *contestReader) helpViews() []*playv1.HelpView {
 	return out
 }
 
-// combatantOfCharacter is the combatant of a character in the combat.
+// combatantOfCharacter is the combatant of a character in the combat: its own, never one of
+// its creatures (a creature carries its owner's character_id).
 func combatantOfCharacter(cs []playdb.Combatant, characterID string) (playdb.Combatant, bool) {
-	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.CharacterID == characterID && !c.Dismissed })
+	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool {
+		return c.CharacterID == characterID && !c.Dismissed && !isCreature(c)
+	})
 	if i < 0 {
 		return playdb.Combatant{}, false
 	}

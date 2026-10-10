@@ -1420,6 +1420,21 @@ export class CombatView {
     );
   }
 
+  /** A standard action of one of the player's creatures: "Ajudar" and "Esconder" open the same sheets as the character's,
+   * for the creature (a familiar's Help is the classic one, SRD 5.1 Find Familiar); the others spend its action. */
+  protected creatureAction(id: string, key: string): void {
+    const options = this.creatureOptions.data().get(id) ?? null;
+    if (key === 'standard:help') {
+      this.contest.openHelpFor(id, options);
+      return;
+    }
+    if (key === 'standard:hide') {
+      this.contest.openHideFor(id, key, options);
+      return;
+    }
+    void this.takeActionFor(id, key);
+  }
+
   /** A standard action from the list: "Procurar" opens the search for traps (E9-08, it spends the action
    * through `SearchForTraps`); the others spend the action (`takeAction`). */
   protected standardAction(key: string): void {

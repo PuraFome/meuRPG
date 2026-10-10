@@ -375,8 +375,8 @@ func (s *Service) checkSources(ctx context.Context, q *playdb.Queries, enc playd
 		return nil, err
 	}
 	for _, h := range helps {
-		if h.Kind == helpCheck && h.AllyCharacterID == who.CharacterID && deref(h.Task) == skill {
-			out = append(out, rollNote{Kind: noteHelp, Label: "Ajuda de " + labelOfCharacter(cs, h.HelperCharacterID), Adv: true})
+		if h.Kind == helpCheck && helpsAlly(h, who) && deref(h.Task) == skill {
+			out = append(out, rollNote{Kind: noteHelp, Label: "Ajuda de " + helperLabel(cs, h), Adv: true})
 		}
 	}
 	return out, nil
@@ -395,12 +395,10 @@ func notesMode(notes []rollNote) combat.CheckMode {
 	return combat.ResolveCheckMode(sources)
 }
 
-// labelOfCharacter is the label of the combatant of a character (the helper's name).
-func labelOfCharacter(cs []playdb.Combatant, characterID string) string {
-	for _, c := range cs {
-		if c.CharacterID == characterID && !c.Dismissed {
-			return c.Label
-		}
+// helperLabel is the name of the combatant that gave a Help.
+func helperLabel(cs []playdb.Combatant, h playdb.CombatHelp) string {
+	if c, ok := helpHelper(cs, h); ok {
+		return c.Label
 	}
 	return ""
 }
@@ -413,7 +411,7 @@ func (s *Service) consumeCheckHelp(ctx context.Context, c *combatTx, who playdb.
 		return err
 	}
 	for _, h := range helps {
-		if h.Kind == helpCheck && h.AllyCharacterID == who.CharacterID && deref(h.Task) == skill {
+		if h.Kind == helpCheck && helpsAlly(h, who) && deref(h.Task) == skill {
 			if err := c.q.SetHelpConsumed(ctx, playdb.SetHelpConsumedParams{ID: h.ID, ConsumedAt: &c.now}); err != nil {
 				return fmt.Errorf("use the help: %w", err)
 			}

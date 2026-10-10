@@ -31,8 +31,10 @@ import (
 // the start of your next turn"). Outside a combat a Help would last until the master
 // clears it; the combat is the only place that makes one today. A Help is a source of
 // advantage every player reads ("Ajuda de Orla"); the one aimed at a creature a player does
-// not see is not theirs to read. A creature's Help (a familiar) is the master's word: the
-// app keeps Helps between characters and NPCs.
+// not see is not theirs to read. A player's creature helps and is helped like anyone: a
+// familiar can't attack, but it can take other actions as normal (SRD 5.1, Find Familiar),
+// and its Help is the classic one. A Help names the helper's and the ally's combatants
+// (00241), because a creature carries its owner's character_id.
 
 // liveHelps are the Helps that hold now in a combat: not used, not cleared, and not past the
 // end of the helper's next turn.
@@ -59,7 +61,7 @@ func (s *Service) liveHelps(ctx context.Context, q *playdb.Queries, enc playdb.E
 		if *h.EncounterID != enc.ID {
 			continue
 		}
-		helper, ok := combatantOfCharacter(cs, h.HelperCharacterID)
+		helper, ok := helpHelper(cs, h)
 		if !ok {
 			continue
 		}
@@ -68,6 +70,34 @@ func (s *Service) liveHelps(ctx context.Context, q *playdb.Queries, enc playdb.E
 		}
 	}
 	return out, nil
+}
+
+// helpHelper is the combatant that gave a Help: the one the row names, or, for a Help kept
+// before the rows named combatants, the character's own combatant.
+func helpHelper(cs []playdb.Combatant, h playdb.CombatHelp) (playdb.Combatant, bool) {
+	if h.HelperCombatantID == nil {
+		return combatantOfCharacter(cs, h.HelperCharacterID)
+	}
+	c, ok := combatantByID(cs, *h.HelperCombatantID)
+	return c, ok && !c.Dismissed
+}
+
+// helpAlly is the combatant a Help is for, read the same way.
+func helpAlly(cs []playdb.Combatant, h playdb.CombatHelp) (playdb.Combatant, bool) {
+	if h.AllyCombatantID == nil {
+		return combatantOfCharacter(cs, h.AllyCharacterID)
+	}
+	c, ok := combatantByID(cs, *h.AllyCombatantID)
+	return c, ok && !c.Dismissed
+}
+
+// helpsAlly says whether a Help is for this combatant: a Help for Pensantus is never one for
+// his familiar or his wolves, who carry his character_id.
+func helpsAlly(h playdb.CombatHelp, c playdb.Combatant) bool {
+	if h.AllyCombatantID == nil {
+		return h.AllyCharacterID == c.CharacterID && !isCreature(c)
+	}
+	return *h.AllyCombatantID == c.ID
 }
 
 // Help implements playv1connect.ContestServiceHandler.
@@ -136,7 +166,7 @@ func (s *Service) Help(
 		if err != nil {
 			return nil, err
 		}
-		if ally.ID == helper.ID || ally.Defeated || ally.Side != helper.Side || isCreature(ally) || isCreature(helper) {
+		if ally.ID == helper.ID || ally.Defeated || ally.Side != helper.Side {
 			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AN_ALLY, "that is not an ally the combatant can help")
 		}
 		// Help is an action of the sheet: it is there, and the action is free.
@@ -155,6 +185,7 @@ func (s *Service) Help(
 		row := playdb.InsertHelpParams{
 			GameSessionID: c.session.ID, EncounterID: &c.enc.ID, HelperCharacterID: helper.CharacterID, AllyCharacterID: ally.CharacterID,
 			ExpiresRound: new(c.enc.Round + 1), CreatedRound: &c.enc.Round, CreatedAt: c.now,
+			HelperCombatantID: &helper.ID, AllyCombatantID: &ally.ID,
 		}
 		switch kind {
 		case playv1.HelpKind_HELP_KIND_CHECK:

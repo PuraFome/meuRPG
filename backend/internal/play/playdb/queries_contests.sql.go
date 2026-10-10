@@ -151,7 +151,7 @@ func (q *Queries) GetGroupCheck(ctx context.Context, arg GetGroupCheckParams) (G
 }
 
 const getHelp = `-- name: GetHelp :one
-SELECT id, game_session_id, encounter_id, kind, helper_character_id, ally_character_id, task, target_id, expires_round, created_round, created_at, consumed_at, cleared_at FROM combat_helps
+SELECT id, game_session_id, encounter_id, kind, helper_character_id, ally_character_id, task, target_id, expires_round, created_round, created_at, consumed_at, cleared_at, helper_combatant_id, ally_combatant_id FROM combat_helps
 WHERE game_session_id = $1 AND id = $2
 `
 
@@ -177,6 +177,8 @@ func (q *Queries) GetHelp(ctx context.Context, arg GetHelpParams) (CombatHelp, e
 		&i.CreatedAt,
 		&i.ConsumedAt,
 		&i.ClearedAt,
+		&i.HelperCombatantID,
+		&i.AllyCombatantID,
 	)
 	return i, err
 }
@@ -399,12 +401,12 @@ func (q *Queries) InsertGroupCheckMember(ctx context.Context, arg InsertGroupChe
 const insertHelp = `-- name: InsertHelp :one
 INSERT INTO combat_helps (
     game_session_id, encounter_id, kind, helper_character_id, ally_character_id, task, target_id,
-    expires_round, created_round, created_at
+    expires_round, created_round, created_at, helper_combatant_id, ally_combatant_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10
+    $8, $9, $10, $11, $12
 )
-RETURNING id, game_session_id, encounter_id, kind, helper_character_id, ally_character_id, task, target_id, expires_round, created_round, created_at, consumed_at, cleared_at
+RETURNING id, game_session_id, encounter_id, kind, helper_character_id, ally_character_id, task, target_id, expires_round, created_round, created_at, consumed_at, cleared_at, helper_combatant_id, ally_combatant_id
 `
 
 type InsertHelpParams struct {
@@ -418,6 +420,8 @@ type InsertHelpParams struct {
 	ExpiresRound      *int32
 	CreatedRound      *int32
 	CreatedAt         time.Time
+	HelperCombatantID *string
+	AllyCombatantID   *string
 }
 
 func (q *Queries) InsertHelp(ctx context.Context, arg InsertHelpParams) (CombatHelp, error) {
@@ -432,6 +436,8 @@ func (q *Queries) InsertHelp(ctx context.Context, arg InsertHelpParams) (CombatH
 		arg.ExpiresRound,
 		arg.CreatedRound,
 		arg.CreatedAt,
+		arg.HelperCombatantID,
+		arg.AllyCombatantID,
 	)
 	var i CombatHelp
 	err := row.Scan(
@@ -448,6 +454,8 @@ func (q *Queries) InsertHelp(ctx context.Context, arg InsertHelpParams) (CombatH
 		&i.CreatedAt,
 		&i.ConsumedAt,
 		&i.ClearedAt,
+		&i.HelperCombatantID,
+		&i.AllyCombatantID,
 	)
 	return i, err
 }
@@ -734,7 +742,7 @@ func (q *Queries) ListHolds(ctx context.Context, encounterID string) ([]CombatHo
 }
 
 const listLiveHelps = `-- name: ListLiveHelps :many
-SELECT id, game_session_id, encounter_id, kind, helper_character_id, ally_character_id, task, target_id, expires_round, created_round, created_at, consumed_at, cleared_at FROM combat_helps
+SELECT id, game_session_id, encounter_id, kind, helper_character_id, ally_character_id, task, target_id, expires_round, created_round, created_at, consumed_at, cleared_at, helper_combatant_id, ally_combatant_id FROM combat_helps
 WHERE game_session_id = $1 AND consumed_at IS NULL AND cleared_at IS NULL
 ORDER BY created_at, id
 `
@@ -764,6 +772,8 @@ func (q *Queries) ListLiveHelps(ctx context.Context, gameSessionID string) ([]Co
 			&i.CreatedAt,
 			&i.ConsumedAt,
 			&i.ClearedAt,
+			&i.HelperCombatantID,
+			&i.AllyCombatantID,
 		); err != nil {
 			return nil, err
 		}

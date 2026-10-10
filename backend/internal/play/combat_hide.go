@@ -461,7 +461,7 @@ func (s *Service) consumeHelps(ctx context.Context, c *combatTx, attacker, targe
 	}
 	var used []string
 	for _, h := range helps {
-		if h.Kind == helpAttack && h.AllyCharacterID == attacker.CharacterID && deref(h.TargetID) == target.ID {
+		if h.Kind == helpAttack && helpsAlly(h, attacker) && deref(h.TargetID) == target.ID {
 			if err := c.q.SetHelpConsumed(ctx, playdb.SetHelpConsumedParams{ID: h.ID, ConsumedAt: &c.now}); err != nil {
 				return nil, fmt.Errorf("use the help: %w", err)
 			}

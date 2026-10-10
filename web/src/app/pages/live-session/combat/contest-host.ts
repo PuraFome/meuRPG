@@ -263,9 +263,23 @@ export class ContestHost {
     }
   }
 
-  private openHideAt(combatantId: string, attemptId: string, actionKey = ''): void {
+  /** "Esconder" of one of the player's creatures, with the creature's own turn options. */
+  openHideFor(
+    combatantId: string,
+    actionKey: string,
+    options: GetTurnOptionsResponse | null,
+  ): void {
+    this.openHideAt(combatantId, '', actionKey, options);
+  }
+
+  private openHideAt(
+    combatantId: string,
+    attemptId: string,
+    actionKey = '',
+    options: GetTurnOptionsResponse | null = this.deps.options(),
+  ): void {
     const e = this.deps.encounter();
-    const facts = this.deps.options()?.contestState;
+    const facts = options?.contestState;
     if (!e) {
       return;
     }
@@ -296,17 +310,25 @@ export class ContestHost {
   /** "Ajudar": an ally's next check of a task, or their first attack on a creature within 1,5 m. */
   openHelp(): void {
     const own = this.deps.own();
+    if (own) {
+      this.openHelpFor(own.id, this.deps.options());
+    }
+  }
+
+  /** "Ajudar" of a combatant of the player's: the character, or a creature with its own turn options (a familiar can't
+   * attack, but it can take the Help action: SRD 5.1, Find Familiar). */
+  openHelpFor(helperId: string, options: GetTurnOptionsResponse | null): void {
     const e = this.deps.encounter();
-    if (!own || !e) {
+    if (!e) {
       return;
     }
     this.track(
       openHelpSheet(this.deps.dialog, this.deps.bottomSheet, {
         campaignId: this.deps.campaignId(),
         encounterId: e.id,
-        helperId: own.id,
-        allies: helpAllies(e, own.id),
-        targets: helpTargets(this.deps.options(), e, own.id),
+        helperId,
+        allies: helpAllies(e, helperId),
+        targets: helpTargets(options, e, helperId),
         state: this.deps.state(),
       }),
       () => undefined,

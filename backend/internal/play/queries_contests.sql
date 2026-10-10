@@ -101,10 +101,10 @@ WHERE hider_id = $1;
 -- name: InsertHelp :one
 INSERT INTO combat_helps (
     game_session_id, encounter_id, kind, helper_character_id, ally_character_id, task, target_id,
-    expires_round, created_round, created_at
+    expires_round, created_round, created_at, helper_combatant_id, ally_combatant_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10
+    $8, $9, $10, $11, $12
 )
 RETURNING *;
 

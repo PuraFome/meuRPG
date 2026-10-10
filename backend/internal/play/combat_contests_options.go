@@ -102,7 +102,7 @@ func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *
 	}
 	state.Surprised = surprised
 	for _, h := range cd.helps {
-		if h.Kind == helpAttack && h.AllyCharacterID == who.CharacterID {
+		if h.Kind == helpAttack && helpsAlly(h, who) {
 			if t, ok := combatantByID(d.cs, deref(h.TargetID)); ok && (v.master || v.sees(t)) {
 				state.HelpTargetId = t.ID
 			}

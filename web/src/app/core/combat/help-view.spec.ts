@@ -75,6 +75,52 @@ describe('what the Help sheet lists', () => {
     expect(helpTargets(null, table(), 'o')).toEqual([]);
   });
 
+  it('measures the reach on the grid for a helper with no attack (a familiar), as the server does', () => {
+    const e = encounter({
+      combatants: [
+        combatant({
+          id: 'f',
+          label: 'Nanquim',
+          kind: CombatantKind.CREATURE,
+          side: party,
+          placed: true,
+          col: 5,
+          row: 3,
+        }),
+        combatant({
+          id: 't',
+          label: 'Toren',
+          kind: CombatantKind.PLAYER,
+          side: party,
+          placed: true,
+          col: 3,
+          row: 3,
+        }),
+        combatant({
+          id: 'g',
+          label: 'Goblin',
+          side: CombatantSide.ENEMY,
+          placed: true,
+          col: 4,
+          row: 4,
+        }),
+        combatant({
+          id: 'h',
+          label: 'Hobgoblin',
+          side: CombatantSide.ENEMY,
+          placed: true,
+          col: 8,
+          row: 7,
+        }),
+      ],
+    });
+    const rows = helpTargets(create(GetTurnOptionsResponseSchema, {}), e, 'f');
+    expect(rows.map((r) => [r.label, r.distanceFt, r.reachable])).toEqual([
+      ['Goblin', 5, true], // the diagonal neighbour
+      ['Hobgoblin', 25, false], // 3 across and 4 down: 5 squares
+    ]);
+  });
+
   it('names the official tasks, with Percepção and Arcanismo among them', () => {
     const names = HELP_TASKS.map((t) => t.name);
     expect(names).toContain('Percepção');
