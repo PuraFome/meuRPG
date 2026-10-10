@@ -77,6 +77,9 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 			return err
 		}
 		payload, characterID, err := do(q, tx, session)
+		if errors.Is(err, errRollHeld) {
+			return nil // the roll waits for the player's answer about a die: nothing is written yet
+		}
 		if err != nil {
 			return err
 		}
@@ -88,6 +91,25 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 		return err
 	})
 	return ev, repeated, err
+}
+
+// errRollHeld is what a write's closure returns when its roll was kept for the player's answer
+// about a Bardic Inspiration die: the change commits with what it kept, and writes no event.
+var errRollHeld = errors.New("the roll is held")
+
+// groupHold carries what a group check roll needs to be held for the answer about a die.
+type groupHold struct {
+	m     authz.Membership
+	key   string
+	raw   *playv1.RollGroupCheckRequest
+	offer *playv1.OutsideInspirationOffer
+}
+
+type groupHoldKey struct{}
+
+func groupHoldOf(ctx context.Context) *groupHold {
+	g, _ := ctx.Value(groupHoldKey{}).(*groupHold)
+	return g
 }
 
 // publishGroupCheckChanged tells the table that the group check changed: a hint with no
@@ -191,7 +213,10 @@ func (s *Service) RollGroupCheck(
 	if err != nil {
 		return nil, err
 	}
+	hold := &groupHold{m: m, key: key, raw: req.Msg}
+	ctx = context.WithValue(ctx, groupHoldKey{}, hold)
 	_, repeated, err := s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckRolled, func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
+		hold.offer = nil
 		who, has, err := s.myCharacter(ctx, tx, m)
 		if err != nil {
 			return groupCheckEvent{}, "", err
@@ -209,10 +234,16 @@ func (s *Service) RollGroupCheck(
 		if err := s.rollMember(ctx, q, tx, m.CampaignID, session, checkID, who.ID, in, false); err != nil {
 			return groupCheckEvent{}, "", err
 		}
+		if hold.offer != nil {
+			return groupCheckEvent{}, "", errRollHeld
+		}
 		return groupCheckEvent{GroupCheckID: checkID, CharacterID: who.ID}, who.ID, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "roll a group check", err)
+	}
+	if hold.offer != nil {
+		return connect.NewResponse(&playv1.RollGroupCheckResponse{InspirationOffer: hold.offer}), nil
 	}
 	if !repeated {
 		s.hub.Publish(m.CampaignID, live.Event{
@@ -273,9 +304,34 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 	if err != nil {
 		return err
 	}
-	roll, err := s.rollCheck(in, checkModeOfRoll(cm.Mode), bonus, check.SkillKey, nil, !known)
-	if err != nil {
-		return err
+	// A character that holds a Bardic Inspiration die has the d20 kept until the player
+	// answers whether to use it (a roll the master makes for the player waits for no one).
+	var roll contestRoll
+	gh := groupHoldOf(ctx)
+	if gh != nil && !byMaster {
+		step, err := s.outsideRoll(ctx, tx, q, gh.m, holdGroupCheck, characterID, gh.key, gh.raw, rollInput{inApp: in.inApp, typedFaces: in.faces}, bonus, cm.Mode, false)
+		if err != nil {
+			return err
+		}
+		if step.Held {
+			gh.offer = step.Offer
+			return nil
+		}
+		if step.Settled {
+			roll = contestRoll{
+				Skill: check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32),
+				Total: clamp32(step.Roll.Total, math.MinInt32, math.MaxInt32), Physical: step.Roll.Physical,
+				Mode: checkModeKey(checkModeOfRoll(cm.Mode)), Unknown: !known,
+			}
+			if step.Bonus != nil {
+				roll.BonusSides, roll.BonusFace = step.Bonus.Sides, step.Bonus.Face
+			}
+		}
+	}
+	if roll.Skill == "" {
+		if roll, err = s.rollCheck(in, checkModeOfRoll(cm.Mode), bonus, check.SkillKey, nil, !known); err != nil {
+			return err
+		}
 	}
 	roll.Notes = notesOfSources(cm.Sources, cm.hide)
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &characterID})

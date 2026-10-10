@@ -306,3 +306,38 @@ func (a *armed) countSceneRolls(t *testing.T) int {
 	}
 	return n
 }
+
+// A group check the master asked: a character that holds a die has the d20 kept until the player
+// answers, and the die it uses is in the roll the group reads and in the pass or fail.
+func TestBardicInspirationOutsideUsedOnAGroupCheck(t *testing.T) {
+	t.Parallel()
+	a := newResourceTable(t)
+	if _, err := a.giveOutside(t, a.bia, a.toren.GetId()); err != nil {
+		t.Fatalf("give error = %v", err)
+	}
+	view := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.Dc = 20 })
+	held, err := a.rollGroup(t, a.caio, view.GetId(), 10)
+	if err != nil {
+		t.Fatalf("RollGroupCheck() error = %v", err)
+	}
+	offer := held.GetInspirationOffer()
+	if held.GetGroupCheck() != nil || offer == nil || offer.GetSides() != 8 {
+		t.Fatalf("held = %v, want an offer of a d8 and no group check", held)
+	}
+	if m := memberOf(a.groupView(t, a.master), a.toren.GetId()); m.GetAnswered() {
+		t.Error("the master reads Tavo's roll as answered while it waits")
+	}
+	a.h.roller.queue(8)
+	done, err := a.answerOutside(t, a.caio, offer.GetHoldId(), true, true, 0)
+	if err != nil {
+		t.Fatalf("AnswerOutsideInspiration() error = %v", err)
+	}
+	m := memberOf(done.GetGroupCheck().GetGroupCheck(), a.toren.GetId())
+	roll := m.GetRoll()
+	if !m.GetAnswered() || roll.GetBonusDieSides() != 8 || roll.GetBonusDieFace() != 8 || roll.GetTotal() != 10+roll.GetModifier()+8 {
+		t.Errorf("member = %v, want the 10, the modifier and the d8 (8) in the total", m)
+	}
+	if n := a.dieRows(t, a.toren.GetId()); n != 0 {
+		t.Errorf("%d dice after using it, want 0", n)
+	}
+}
