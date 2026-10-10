@@ -617,6 +617,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["MoveSceneClue"] = mc.MoveSceneClue(ctx, connect.NewRequest(&mapsv1.MoveSceneClueRequest{CampaignId: id, MapId: id, PointId: id, ClueId: id, Direction: mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP}))
 	_, mapCalls["RemoveSceneClue"] = mc.RemoveSceneClue(ctx, connect.NewRequest(&mapsv1.RemoveSceneClueRequest{CampaignId: id, MapId: id, PointId: id, ClueId: id}))
 	_, mapCalls["RevealSceneClue"] = mc.RevealSceneClue(ctx, connect.NewRequest(&mapsv1.RevealSceneClueRequest{CampaignId: id, ClueId: id, CharacterIds: []string{id}}))
+	_, mapCalls["SetSceneImages"] = mc.SetSceneImages(ctx, connect.NewRequest(&mapsv1.SetSceneImagesRequest{CampaignId: id, MapId: id, PointId: id}))
 	_, mapCalls["PlaceMapToken"] = mc.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
 	_, mapCalls["SetMapTokenHidden"] = mc.SetMapTokenHidden(ctx, connect.NewRequest(&mapsv1.SetMapTokenHiddenRequest{CampaignId: id, MapId: id, CharacterId: id, Hidden: true}))
 	_, mapCalls["RemoveMapToken"] = mc.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))

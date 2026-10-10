@@ -280,6 +280,10 @@
                 [state]="scene"
                 [mapState]="mapState"
                 [players]="cluePlayers()"
+                [shown]="shownImage()"
+                [keep]="shownKeep()"
+                (shownChange)="shownImage.set($event); shownKeep.set(false)"
+                (leftChanged)="reloadLeftImages()"
               />
             }
             <!-- The master's open puzzle (MR-038, E10-06): the board needs the main column; the list stays in the rail. -->

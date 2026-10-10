@@ -18,6 +18,8 @@ import {
   type SceneAction,
   SceneActionSchema,
   type SceneClue,
+  type SceneImage,
+  SceneImageSchema,
   SceneClueSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import type { PointChanges } from './maps-client';
@@ -476,6 +478,21 @@ export class FakeMapsClient {
     this.record('removeSceneClue', pointId, clueId);
     this.sceneClues = this.sceneClues.filter((c) => c.id !== clueId);
     return this.sceneClues;
+  }
+
+  /** The images `SetSceneImages` answers with (names by id come from `imageNames`). */
+  imageNames = new Map<string, string>();
+
+  async setSceneImages(
+    _c: string,
+    _m: string,
+    pointId: string,
+    imageIds: readonly string[],
+  ): Promise<readonly SceneImage[]> {
+    this.record('setSceneImages', pointId, imageIds.join(','));
+    return imageIds.map((id) =>
+      create(SceneImageSchema, { id, name: this.imageNames.get(id) ?? `Imagem ${id}` }),
+    );
   }
 
   async revealSceneClue(

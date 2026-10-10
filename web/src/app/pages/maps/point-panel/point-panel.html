@@ -149,7 +149,15 @@
       (cluesChange)="cluesChange.emit($event)"
     />
     <app-hooks-field [control]="hooksControl" [length]="hooksLength()" [error]="errors().hooks" />
-    <app-scene-image [campaignId]="campaignId()" [name]="point().name" [revealed]="point().revealed" />
+    <app-scene-images
+      [campaignId]="campaignId()"
+      [mapId]="point().mapId"
+      [pointId]="point().id"
+      [images]="point().images"
+      [name]="point().name"
+      [revealed]="point().revealed"
+      (imagesChange)="imagesChange.emit($event)"
+    />
   }
 
   <app-reveal-switch

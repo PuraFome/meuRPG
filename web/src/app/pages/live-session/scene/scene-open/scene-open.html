@@ -32,6 +32,16 @@
 
     <app-stage-master class="so__stage" [campaignId]="campaignId()" [state]="state()" />
 
+    <app-scene-images-show
+      class="so__images"
+      [campaignId]="campaignId()"
+      [images]="s.images"
+      [shown]="shown()"
+      [keep]="keep()"
+      (changed)="shownChange.emit($event)"
+      (leftChanged)="leftChanged.emit()"
+    />
+
     <div class="so__cols">
       @if (!phone()) {
         <div class="so__notes">

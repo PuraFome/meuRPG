@@ -22,7 +22,12 @@ import { RouterLink } from '@angular/router';
 import { Code } from '@connectrpc/connect';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import type { MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type {
+  MapPoint,
+  SceneAction,
+  SceneClue,
+  SceneImage,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -34,7 +39,7 @@ import { mapNameError } from '../map-new/map-new';
 import { ClueList } from '../clue-list/clue-list';
 import { HooksField } from '../hooks-field/hooks-field';
 import { RevealSwitch } from '../reveal-switch/reveal-switch';
-import { SceneImage } from '../scene-image/scene-image';
+import { SceneImages } from '../scene-images/scene-images';
 import { SceneActions } from '../scene-actions/scene-actions';
 import {
   POINT_DESCRIPTION_MAX,
@@ -78,7 +83,7 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
     HooksField,
     RevealSwitch,
     SceneActions,
-    SceneImage,
+    SceneImages,
   ],
   templateUrl: './point-panel.html',
   styleUrl: './point-panel.scss',
@@ -111,6 +116,8 @@ export class PointPanel {
   readonly sceneActionsChange = output<readonly SceneAction[]>();
   /** A SCENE point's clues changed (saved at once too). */
   readonly cluesChange = output<readonly SceneClue[]>();
+  /** A SCENE point's images changed (saved at once too). */
+  readonly imagesChange = output<readonly SceneImage[]>();
   /** "Mostrar a CD aos jogadores" saved on its own (at once, like the actions): the point carries it. */
   readonly showDcSaved = output<boolean>();
   /** "Criar mapa novo…" made a map: the page reads the campaign's maps again. */
