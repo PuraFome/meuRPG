@@ -15,10 +15,10 @@ The backend runs on Cloud Run in `southamerica-east1` (São Paulo).
 | Memory | 512 MiB |
 | `min-instances` | 0 (scales to zero when idle) |
 | `max-instances` | **1**, while the live-session stream fan-out is in memory (see [Live session stream](#live-session-stream)) |
-| Concurrency | **50** (`--concurrency=50`): each live stream counts against it, a table has about 14 at once (at most 56, 8 per person), and the database pool of 10 is what limits real work; at the Cloud Run default of 80, the worst case of stalled 4 MiB request bodies goes past the 512 MiB limit |
+| Concurrency | **50** (`--concurrency=50`): each live stream counts against it, a table has about 14 at once (at most 4 per person per campaign, so 24 for six people, including the streams of pages that went away), and the database pool of 10 is what limits real work; at the Cloud Run default of 80, the worst case of stalled 4 MiB request bodies goes past the 512 MiB limit |
 | In front | A global external Application Load Balancer with a serverless NEG, because Cloud Run domain mappings are not offered in this region ([step 10](#10-the-domain)); `TRUSTED_PROXY_HOPS=2` |
 | At the edge | A Cloud Armor policy on the load balancer: Brazil only, a per-IP flood limit and the OWASP rules in preview ([The edge policy](#the-edge-policy-cloud-armor)) |
-| Request timeout | At least 35 minutes (`--timeout=2100`, the maximum is 60 minutes): the stream lives up to 30. The Cloud Run default, 5 minutes, would cut the stream short |
+| Request timeout | At least 35 minutes (`--timeout=2100`, the maximum is 60 minutes): the stream lives up to 10 minutes, and the campaign package download up to 30. The Cloud Run default, 5 minutes, would cut the download short |
 
 CockroachDB runs on Google Cloud, in the same region, on the project owner's current plan: the legacy Unlimited plan, bought before the 2024 licensing change. Changing plan loses Unlimited. Backups stay in São Paulo and are kept for 30 days at most, to meet the deletion deadline (see [Privacy](privacy.md)). This configuration still has to be checked in the console before the first deploy.
 
@@ -47,9 +47,9 @@ The stream (`PlayService.WatchGameSession`) is open only while someone has the s
 | Server heartbeat | Every 25 seconds | `play.DefaultHeartbeat` |
 | Dead stream, on the app side | Nothing arrived in about 60 seconds: the app reconnects | App |
 | Re-check of the login session and of the participation | Every 60 seconds, in the database | `play.DefaultRecheck` |
-| Maximum life of a stream | 30 minutes; then the server ends it without an error and the app opens another | `play.DefaultMaxLifetime` |
+| Maximum life of a stream | 10 minutes; then the server ends it without an error and the app opens another. Behind the load balancer it is also how long the stream of a page that went away stays open: the server is not told (on production, 10/10/2026, none of 85 streams ended between 1 and 30 minutes, when the life was 30), so the life is kept short | `play.DefaultMaxLifetime` |
 | Deadline of each message sent | 30 seconds to reach the client; after that `Send` fails and the stream ends (`client_gone`). The deadline does not count the silence between two messages | `streamSendTimeout`, in `cmd/api/main.go` (`platform/slowclient`) |
-| Streams per person | At most 8 per campaign (tabs and devices); the next one is refused with `resource_exhausted` and the app retries with a backoff | `live.DefaultMaxPerUser` |
+| Streams per person | At most 4 per campaign (a phone, a laptop and a spare tab or two); a 5th replaces the person's oldest stream, which ends with `unavailable` (the app reconnects it with a backoff if its page is still open). Each reload of the session page leaves its old stream open until its maximum life (above), so refusing the new one locked a player out after a few reloads; replacing the oldest keeps the newest page live and the count, and the instance's concurrent requests, bounded | `live.DefaultMaxPerUser`, `live.ErrReplaced` |
 | Reconnection | Growing wait: 1 s, 2 s, 4 s, up to 30 s, with jitter; only with the tab visible | App |
 | Hidden tab | After 2 minutes hidden, the app closes the stream; when the tab returns, it reconnects and reads the snapshot again | App |
 | Session notice | Light query (`ListOpenGameSessions`) every 30 seconds with the tab visible, without a stream | App |
@@ -578,7 +578,7 @@ On the next deploys: `gcloud run jobs update meurpg-migrate --image=$IMAGE`, the
 Every value is from [Hosting](#hosting), [Environment variables and secrets](#environment-variables-and-secrets) and [Abuse limits](#abuse-limits). Notes on the flags:
 
 - `--max-instances=1`: the live stream's fan-out is in memory ([Live session stream](#live-session-stream)). `--min-instances=0`: no cost when idle.
-- `--timeout=2100`: the stream lives up to 30 minutes; the default of 5 would cut it. `--concurrency=50`.
+- `--timeout=2100`: the campaign package download takes up to 30 minutes and the stream up to 10; the default of 5 would cut the download. `--concurrency=50`.
 - `--cpu=1 --memory=512Mi`, with CPU only during a request (the default, `--cpu-throttling`): the app keeps a request open while an AI image is generated for that reason ([Generated images](#generated-images-the-gemini-api)). `GOMEMLIMIT=400MiB` ([Images](#images)).
 - `--allow-unauthenticated`: Cloud Run's own login is off because the app does its own sign-in. If an organization policy forbids it, the policy has to allow this one service.
 - `CAMPAIGN_CREATORS` holds the e-mails that may create campaigns: with the table's master only, nobody else can open a campaign. It may hold several e-mails separated by commas, which is why `--set-env-vars` starts with `^#^`: gcloud's escape that changes the separator between variables from the comma to `#`, so commas (and the `@` of an e-mail) stay inside a value. **A value must not contain `#`**, the new separator; and, because the argument is in double quotes, no `"`, backtick or backslash either. The values here are ids, e-mails, `:` and `/` URLs, so none does; if you add a variable of your own, keep that in mind. Leave `CAMPAIGN_CREATORS` empty to let any account create.
@@ -678,7 +678,7 @@ gcloud run services update $SERVICE \
 
 Test the sign-in on `https://$DOMAIN`, and do the check of [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip).
 
-- **The stream fits.** A serverless NEG backend has a fixed timeout of 60 minutes (the backend service's `--timeout` does not apply to it), which covers the 30-minute stream.
+- **The stream fits.** A serverless NEG backend has a fixed timeout of 60 minutes (the backend service's `--timeout` does not apply to it), which covers the 10-minute stream and the 30-minute download.
 - **No HTTP to HTTPS redirect rule is needed** for a TLD on the HSTS preload list such as `.app`: browsers only use HTTPS for it. For any other domain, add a second forwarding rule on port 80 with a URL map that redirects to HTTPS.
 - **The `run.app` URL stops answering** once the ingress is closed (the `run.app` host is no longer reachable from the internet). To go back to it, run `gcloud run services update $SERVICE --ingress=all --update-env-vars=TRUSTED_PROXY_HOPS=1,OIDC_REDIRECT_URL=https://<run.app host>/auth/callback`, with that redirect registered on the OAuth client. Both variables must change together: with `--ingress=all` and `TRUSTED_PROXY_HOPS=2`, a client that reaches `run.app` directly would fall into the wrong `X-Forwarded-For` item.
 - **The load balancer costs money all month** ([Estimated costs](#estimated-costs-são-paulo)).
