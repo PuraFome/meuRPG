@@ -13,6 +13,7 @@ import { decodeVision } from '../../../../core/maps/vision';
 import { visionResponse } from '../../../../core/maps/vision-testing';
 import { CombatMap } from '../../../../shared/combat-map/combat-map';
 import { CombatMapCard } from './combat-map-card';
+import { stubFullscreen } from '../../../../core/ui/fullscreen-testing';
 
 const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
 
@@ -224,5 +225,35 @@ describe('CombatMapCard: "Área da última magia"', () => {
     expect(el.querySelector('app-area-overlay')).toBeNull();
     expect(plain(el.querySelector('.legend')?.textContent)).not.toContain('Área da última magia');
     expect(mount().el.querySelector('app-area-overlay')).toBeNull();
+  });
+});
+
+describe('CombatMapCard: "Tela cheia"', () => {
+  let fs: ReturnType<typeof stubFullscreen> | undefined;
+  afterEach(() => fs?.restore());
+
+  const button = (el: HTMLElement) =>
+    [...el.querySelectorAll<HTMLButtonElement>('.card__full')].at(0) ?? null;
+
+  it('is offered only where the browser has full screen', () => {
+    fs = stubFullscreen(false);
+    expect(button(mount().el)).toBeNull();
+    fs.restore();
+    fs = stubFullscreen(true);
+    expect(plain(button(mount().el)?.textContent)).toContain('Tela cheia');
+  });
+
+  it('puts the card on full screen, says how to leave, and leaves on a second tap', () => {
+    fs = stubFullscreen(true);
+    const { fixture, el } = mount();
+    fs.track(el);
+    button(el)!.click();
+    expect(fs.request).toHaveBeenCalledTimes(1);
+    fs.enter(el);
+    fixture.detectChanges();
+    expect(plain(button(el)!.textContent)).toContain('Sair da tela cheia');
+    expect(button(el)!.getAttribute('aria-pressed')).toBe('true');
+    button(el)!.click();
+    expect(fs.exit).toHaveBeenCalledTimes(1);
   });
 });

@@ -2,6 +2,21 @@
   display: block;
 }
 
+// Browser full screen ("Tela cheia"): the card fills the screen on the page ground, and the map is as wide as the
+// screen's height lets it be (the head and a line of hint stay above the fold; the switches scroll below).
+:host(:fullscreen) {
+  box-sizing: border-box;
+  overflow: auto;
+  padding: var(--mr-space-3);
+  background: var(--mr-ground);
+
+  .card__crop {
+    width: 100%;
+    max-width: calc((100vh - 140px) * var(--cm-ar, 1.5));
+    margin-inline: auto;
+  }
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -24,6 +39,11 @@
 .card__size {
   font-size: 14px;
   color: var(--mr-ink-muted);
+}
+
+// "Tela cheia" sits at the end of the head; the size stays next to the title.
+.card__full {
+  margin-inline-start: auto;
 }
 
 .card__hint {

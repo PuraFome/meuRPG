@@ -2,6 +2,19 @@
   <div class="card__head">
     <h2 class="mr-panel__title" id="map-title">{{ title() }}</h2>
     <span class="card__size">{{ isMaster() ? mapName() + ' · ' + size() : 'Quadrados de 1,5 m' }}</span>
+    @if (fullscreen.available && !preview()) {
+      <button
+        mat-stroked-button
+        type="button"
+        class="card__full"
+        [attr.aria-pressed]="fullscreen.active()"
+        (click)="fullscreen.toggle()"
+      >
+        <mat-icon aria-hidden="true">{{ fullscreen.active() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>{{
+          fullscreen.active() ? 'Sair da tela cheia' : 'Tela cheia'
+        }}
+      </button>
+    }
   </div>
 
   @if (preview()) {
@@ -37,7 +50,7 @@
       </p>
     </div>
   }
-  <div class="card__crop" [class.card__crop--on]="!!crop()" [style.aspect-ratio]="crop()?.ratio ?? null">
+  <div class="card__crop" [class.card__crop--on]="!!crop()" [style.aspect-ratio]="crop()?.ratio ?? null" [style.--cm-ar]="mapAspect()">
     <div class="card__shift" [style.width.%]="crop()?.width ?? 100" [style.transform]="crop()?.shift ?? null">
       <app-combat-map
         [fog]="fog()"
