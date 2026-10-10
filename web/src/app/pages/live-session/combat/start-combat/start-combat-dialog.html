@@ -128,7 +128,7 @@
           </div>
         }
 
-        @if (saved) {
+        @if (hasMonsters()) {
           <div class="mon">
             <span class="mr-label" aria-hidden="true">Pontos de vida dos monstros</span>
             <app-segmented label="Pontos de vida dos monstros" [segments]="hpSegments" [value]="monsterHp()" (choose)="monsterHp.set($event)" />
@@ -168,7 +168,7 @@
         <section aria-labelledby="mon-title">
           <div class="sec__head">
             <h3 class="sec__title" id="mon-title">Monstros do encontro</h3>
-            <span class="sec__count">{{ monsterTotal }} {{ monsterTotal === 1 ? 'NPC' : 'NPCs' }}</span>
+            <span class="sec__count">{{ monsterTotal() }} {{ monsterTotal() === 1 ? 'NPC' : 'NPCs' }}</span>
           </div>
           <app-saved-monsters [rows]="monsterRows" />
           <app-hidden-switch
@@ -208,10 +208,35 @@
           Quem está escondido só você vê, até você revelar durante o combate. Cada NPC rola a própria
           iniciativa.
         </p>
-        <!-- A monster of the bestiary goes in through "Pôr no combate" there (MR-042). -->
-        <a class="bestiary-link" [routerLink]="['/campaigns', data.campaignId, 'bestiary']" (click)="close()">
-          <mat-icon aria-hidden="true">pets</mat-icon>Pôr um monstro do bestiário
-        </a>
+        <!-- A monster of the bestiary is picked here, in place: the dialog is never left. -->
+        <div class="pick">
+          <app-creature-pick [campaignId]="data.campaignId" (picked)="pickMonster($event)" />
+          @if (picked().length > 0) {
+            <ul class="pick__rows">
+              @for (m of picked(); track m.key) {
+                <li class="pick__row">
+                  <span class="pick__name">{{ m.namePt }}</span>
+                  <app-count-stepper
+                    [value]="m.count"
+                    [min]="1"
+                    [max]="PICK_MAX"
+                    [noun]="m.namePt"
+                    (valueChange)="setPickedCount(m.key, $event)"
+                  />
+                  <button type="button" mat-stroked-button (click)="removePicked(m.key)" [attr.aria-label]="'Tirar ' + m.namePt">
+                    <mat-icon aria-hidden="true">close</mat-icon>Tirar
+                  </button>
+                </li>
+              }
+            </ul>
+            <app-hidden-switch
+              label="Monstros escondidos no início"
+              hint="Cada um rola a própria iniciativa. Você revela quando quiser."
+              [checked]="monstersHidden()"
+              (toggle)="monstersHidden.set($event)"
+            />
+          }
+        </div>
       </section>
       }
     }
