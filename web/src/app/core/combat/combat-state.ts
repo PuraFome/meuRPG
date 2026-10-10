@@ -123,6 +123,14 @@ export class CombatState {
     return ticket.patched !== this.patched;
   }
 
+  /** Whether anything replaced the combat on screen while the read was out: an event applied in place, or an answer to
+   * a call. The read was dropped for it, but that answer may be older than a change the read was asked for (the
+   * master revealed a monster while the player's own move was answered), so the page reads again: the next read
+   * begins after both and shows the newest. A read dropped only because a later read was applied needs none. */
+  changedSince(ticket: ReadTicket): boolean {
+    return ticket.patched !== this.patched || ticket.applied !== this.applied;
+  }
+
   /** `combat_log_changed`, or a `ready`: read the log again. */
   touchLog(): void {
     this.logTick.update((n) => n + 1);

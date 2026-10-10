@@ -210,6 +210,15 @@ describe('TurnPanel, the wait line (PM-04)', () => {
     expect(el.querySelector('h2')?.textContent).toBe('Vez do Capitão Goblin');
   });
 
+  it('says it once in the turn of someone else', () => {
+    const waits = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('.mr-notice')).filter((n) =>
+        n.textContent?.includes('Esperando o mestre.'),
+      ).length;
+    expect(waits(panel({ currentCombatantId: 'cap' }))).toBe(1);
+    expect(waits(panel({ currentCombatantId: 'brisa' }))).toBe(1);
+  });
+
   it('says it in the player\'s own turn, and "Encerrar turno" stays reachable with the reason', () => {
     const el = panel({ currentCombatantId: 'pen' });
     const status = Array.from(el.querySelectorAll('[role="status"]')).find((s) =>
