@@ -156,6 +156,8 @@ func TestFrenzyAttackFollowsNoAttackAction(t *testing.T) {
 	if _, err := a.rage(t, e, true); err != nil {
 		t.Fatalf("TakeAction(Rage, frenzy) error = %v", err)
 	}
+	// An attack keeps the rage past the end of this turn (SRD 5.1, Rage).
+	a.mustAttack(t, a.bia, e, "Brisa", battleaxe, "Goblin", d20(15))
 	e = a.passTo(t, a.mustEndTurnDiscarding(t, e), "Brisa")
 	if e, err := a.action(t, a.bia, e, "Brisa", "standard:dash"); err != nil {
 		t.Fatalf("TakeAction(Dash) error = %v", err)

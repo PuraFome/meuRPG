@@ -6802,7 +6802,11 @@ async function scanRageScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   try {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
+    // Grog is a Berserker: Fúria asks about the frenzy first, in place (SRD 5.1, Frenzy).
     await p.getByRole('button', { name: /Fúria/ }).click();
+    await expect(p.getByRole('group', { name: 'Entrar em frenesi?' })).toBeVisible();
+    await expectScreenPasses(p, `Entrar em frenesi? ${where}`);
+    await p.getByRole('button', { name: 'Só fúria' }).click();
     await expect(p.getByText('Em fúria').first()).toBeVisible();
     await expectScreenPasses(p, `Sua vez, em fúria ${where}`);
 
