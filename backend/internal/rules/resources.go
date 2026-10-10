@@ -196,8 +196,11 @@ func ArcaneRecoveryAllowance(wizardLevel int) int {
 	if wizardLevel < 1 {
 		return 0
 	}
-	return (wizardLevel + 1) / 2
+	return (wizardLevel + 1) / arcaneRecoveryDivisor
 }
+
+// arcaneRecoveryDivisor halves the wizard level for the allowance.
+const arcaneRecoveryDivisor = 2
 
 // ArcaneRecoveryCheck checks the slots a wizard recovers, by spell level and count:
 // every level from 1 to 5 and the combined level (level times count, summed) within
