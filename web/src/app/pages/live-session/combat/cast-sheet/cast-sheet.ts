@@ -111,6 +111,7 @@ import {
   metamagicSpentLine,
   toggledOption,
 } from '../../../../core/resources/metamagic';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import type { Pool } from '../../../../core/resources/pools';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
@@ -236,6 +237,7 @@ export interface CastSheetData {
 })
 export class CastSheet {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
   private readonly catalog = inject(SpellCatalog);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
@@ -1093,6 +1095,13 @@ export class CastSheet {
         next.set(settled.id, settled);
       }
       this.pendings.set(next);
+      const show = showOfDice('Dano', res.pending.roll, {
+        withTotal: true,
+        note: res.pending.damageTypePt || undefined,
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       return true;
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'rolar o dano'));

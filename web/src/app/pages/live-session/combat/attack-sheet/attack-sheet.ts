@@ -21,6 +21,7 @@ import {
   CombatantSide,
   type InspirationOffer,
   type PendingDamage,
+  PendingDamageStatus,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -115,6 +116,7 @@ import { InspirationPrompt } from '../inspiration-prompt/inspiration-prompt';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { injectSheet } from '../sheet-host';
+import { RollAnimator, showOfDice, showOfDie } from '../../../../shared/roll-overlay/roll-animator';
 
 /** The d4 of Bênção and Perdição. */
 const EFFECT_DIE_FACES = 4;
@@ -207,6 +209,7 @@ export interface AttackSheetData {
 export class AttackSheet {
   private readonly api = inject(CombatClient);
   private readonly resources = inject(ResourceClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<AttackSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -831,10 +834,41 @@ export class AttackSheet {
       );
       this.data.state.apply(res.encounter);
       this.settle(res);
+      this.animate(res);
     } catch (err) {
       this.fail(err);
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /**
+   * The d20 the app just rolled, tumbling (RN-20): the face, and the total and the word only where this sheet shows them
+   * (a roll held for a reaction or for the Inspiração de Bardo question shows the face alone). Never an armor class.
+   */
+  private animate(res: { readonly roll: AttackRoll; readonly offer?: InspirationOffer }): void {
+    const r = res.roll;
+    const told = !res.offer && !r.heldForReaction && r.outcome !== AttackOutcome.UNSPECIFIED;
+    const hit = isHit(r.outcome);
+    const show = showOfDice(`Ataque com ${this.name}`, r.d20, {
+      withTotal: !r.heldForReaction,
+      outcome: told ? { word: outcomeWord(r.outcome), good: hit } : undefined,
+      critical: told && r.outcome === AttackOutcome.CRITICAL_HIT,
+      fumble: told && !hit,
+    });
+    if (show) {
+      this.animator.play(show);
+    }
+  }
+
+  /** The damage dice the app just rolled, as the result step shows them: the faces, the roll's total and the damage type. */
+  private animateDamage(p: PendingDamage | undefined): void {
+    if (!p || p.status === PendingDamageStatus.AWAITING_REACTION) {
+      return;
+    }
+    const show = showOfDice('Dano', p.roll, { withTotal: true, note: p.damageTypePt || undefined });
+    if (show) {
+      this.animator.play(show);
     }
   }
 
@@ -881,6 +915,15 @@ export class AttackSheet {
       this.answerKeys.renew();
       this.data.state.apply(res.encounter);
       this.settle(res);
+      // The die the player added after the d20, rolled in the app (the sheet's "Com o d8 da Inspiração de Bardo (+5)" line).
+      const bonus =
+        use && die && 'inApp' in die ? res.roll.bonusDice.find((b) => b.used) : undefined;
+      const show = bonus
+        ? showOfDie('Inspiração de Bardo', bonus.sides, bonus.face, `+${bonus.face}`)
+        : null;
+      if (show) {
+        this.animator.play(show);
+      }
     } catch (err) {
       this.error.set(classResourceErrorMessage(err, 'responder à Inspiração de Bardo'));
     } finally {
@@ -923,6 +966,7 @@ export class AttackSheet {
       );
       this.data.state.apply(res.encounter);
       this.damage.set(res.pending);
+      this.animateDamage(res.pending);
       this.typing.set(false);
       this.stage.set('done');
     } catch (err) {

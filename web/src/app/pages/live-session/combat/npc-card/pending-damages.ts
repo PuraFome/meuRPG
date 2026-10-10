@@ -30,6 +30,7 @@ import {
   extraDiceOf,
   sumRange,
 } from '../../../../core/combat/combat-dice';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -65,6 +66,7 @@ import { RollPicker } from '../roll-picker/roll-picker';
 })
 export class PendingDamages {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
   private readonly injector = inject(Injector);
 
   readonly pendings = input.required<readonly PendingDamage[]>();
@@ -233,6 +235,17 @@ export class PendingDamages {
       );
       this.renewKey(name);
       this.state().apply(res.encounter);
+      // The master's own dice roll for the NPC, as the damage line on this card shows it (never for a typed sum).
+      const show =
+        'inApp' in die
+          ? showOfDice('Dano', res.pending.roll, {
+              withTotal: true,
+              note: res.pending.damageTypePt || undefined,
+            })
+          : null;
+      if (show) {
+        this.animator.play(show);
+      }
     });
   }
 
