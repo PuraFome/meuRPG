@@ -279,6 +279,12 @@ func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.Reactio
 			return false, err
 		}
 		return !slices.ContainsFunc(pend, func(p playdb.PendingDamage) bool { return slices.Contains(t.Falling, p.TargetID) }), nil
+	case reaction.EffectSave:
+		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
+		r, ok := byID[deref(w.ReactorID)]
+		if ok && r.Defeated && r.Kind != kindPlayer {
+			return true, nil
+		}
 	case reaction.Contest:
 		waits, err := contestStillWaits(ctx, c, w)
 		return !waits, err
