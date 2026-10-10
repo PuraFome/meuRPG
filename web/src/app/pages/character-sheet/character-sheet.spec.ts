@@ -1155,6 +1155,9 @@ describe('CharacterSheetPage', () => {
                   name: 'Estilo de Luta: Defesa',
                   sourcePt: 'Guerreiro 1',
                   description: 'While you are wearing armor, you gain a +1 bonus to AC.',
+                  descriptionPt: '',
+                  descriptionPtMissing: true,
+                  descriptionPtOnly: false,
                   summaryPt: '+1 na CA enquanto usar armadura.',
                 },
               ],
@@ -1187,7 +1190,7 @@ describe('CharacterSheetPage', () => {
     });
   });
 
-  it('shows each feature as a compact row, its English description collapsed by default; issues in the notice under the header, hints as reminders', async () => {
+  it('shows each feature as a compact row, its description collapsed by default (English while it has no translation); issues in the notice under the header, hints as reminders', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -1198,6 +1201,9 @@ describe('CharacterSheetPage', () => {
                 name: 'Recuperação Arcana',
                 sourcePt: 'Mago 1',
                 description: 'You have learned to regain some of your magical energy.',
+                descriptionPt: '',
+                descriptionPtMissing: true,
+                descriptionPtOnly: false,
                 summaryPt: '',
               },
             ],
@@ -1225,12 +1231,12 @@ describe('CharacterSheetPage', () => {
     expect(summary.querySelector('.feature__name')?.textContent?.trim()).toBe('Recuperação Arcana');
     expect(summary.querySelector('.feature__source')?.textContent?.trim()).toBe('Mago 1');
     expect(details!.open).toBe(false);
-    const description = details!.querySelector('p')!;
+    const description = details!.querySelector('.feature__text [lang="en"] p, .feature__text p')!;
     expect(description.textContent).toContain(
       'You have learned to regain some of your magical energy.',
     );
     // The SRD text is English: marked so, for screen readers and translators.
-    expect(description.getAttribute('lang')).toBe('en');
+    expect(description.closest('[lang="en"]')).toBeTruthy();
 
     // The issue: in the warning notice under the header, its title in bold.
     const notice = el.querySelector('.mr-notice--warning')!;
@@ -1248,6 +1254,60 @@ describe('CharacterSheetPage', () => {
     );
   });
 
+  it('shows the Portuguese text of a feature first, with "Ver em inglês" for the SRD English and "(em inglês)" only on the English view', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            features: [
+              {
+                name: 'Visão no Escuro',
+                sourcePt: 'Gnomo',
+                description: 'You can see in dim light.',
+                descriptionPt: 'Você enxerga na penumbra.',
+                descriptionPtMissing: false,
+                descriptionPtOnly: false,
+                summaryPt: '',
+              },
+              {
+                name: 'Fúria',
+                sourcePt: 'Bárbaro 1',
+                description: 'In battle, you fight with primal ferocity.',
+                descriptionPt: '',
+                descriptionPtMissing: true,
+                descriptionPtOnly: false,
+                summaryPt: '',
+              },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    const rows = Array.from(el.querySelectorAll('details.feature'));
+    const text = (i: number) => rows[i].querySelector('.feature__text')!;
+
+    expect(text(0).textContent).toContain('Você enxerga na penumbra.');
+    expect(text(0).textContent).not.toContain('(em inglês)');
+    expect(text(0).querySelector('[lang="en"]')).toBeNull();
+    // No translation yet: the English, flagged.
+    expect(text(1).textContent).toContain('In battle, you fight with primal ferocity.');
+    expect(text(1).querySelector('[data-testid="lang-note"]')?.textContent).toContain('em inglês');
+
+    const button = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Ver em inglês',
+    ) as HTMLButtonElement;
+    expect(button).toBeTruthy();
+    button.click();
+    TestBed.tick();
+
+    expect(text(0).textContent).toContain('You can see in dim light.');
+    expect(text(0).querySelector('[data-testid="lang-note"]')?.textContent).toContain('em inglês');
+    expect(text(0).querySelector('[lang="en"]')).toBeTruthy();
+    expect(el.textContent).toContain('Ver em português');
+  });
+
   it('shows a feat taken at a level-up with its source, "Talento · Mago 4", and no replaced Incremento', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
@@ -1260,6 +1320,9 @@ describe('CharacterSheetPage', () => {
                 sourcePt: 'Talento · Mago 4',
                 summaryPt: '',
                 description: 'Você corre e escala melhor.',
+                descriptionPt: '',
+                descriptionPtMissing: true,
+                descriptionPtOnly: false,
               },
             ],
           }),

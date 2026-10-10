@@ -85,9 +85,13 @@ export interface FeatureVm {
    * (`Feature.source_pt`) — shown next to the name in the compact row. */
   readonly sourcePt: string;
   /** The SRD's English text (`Feature.description`), collapsed by default
-   * behind a native `<details>` — the sheet has no Portuguese text for
-   * this yet (plan §5, "open questions"). */
+   * behind a native `<details>`, after the Portuguese one. */
   readonly description: string;
+  /** Our Portuguese translation of it (`Feature.description_pt`), shown first; empty while
+   * `descriptionPtMissing`. `descriptionPtOnly`: a table feature, whose text is Portuguese already. */
+  readonly descriptionPt: string;
+  readonly descriptionPtMissing: boolean;
+  readonly descriptionPtOnly: boolean;
   /** The rule in one line, in Portuguese (`Feature.summary_pt`), for an option the player picked (a fighting
    * style, an invocation, a pact boon); empty for the other features. */
   readonly summaryPt: string;

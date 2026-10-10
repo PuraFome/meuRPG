@@ -2,6 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 import { MatIconModule } from '@angular/material/icon';
 
 import { plain } from '../../core/content/content-kinds';
+import { type DescribedText, chooseText } from '../../core/text/description-language';
+import { DescriptionLangButton } from '../srd-text/description-lang-button';
+import { RuleText } from '../rule-text/rule-text';
 import { TextField } from '../form-fields/text-field';
 import { Ability, type FeatOption } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
@@ -36,7 +39,7 @@ interface FeatCard {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-feat-picker',
-  imports: [MatIconModule, TextField],
+  imports: [MatIconModule, TextField, RuleText, DescriptionLangButton],
   template: `
     <app-text-field label="Procurar talento" [value]="query()" (valueChange)="query.set($event)" />
     <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announce() }}</p>
@@ -80,11 +83,9 @@ interface FeatCard {
                 @if (c.feat.desc.length > 0) {
                   <details class="card__text">
                     <summary>Ler o talento</summary>
-                    @for (p of c.feat.desc; track $index) {
-                      <p>{{ p }}</p>
-                    }
-                    @if (!c.feat.table) {
-                      <p class="card__src">Texto do SRD, em inglês.</p>
+                    <app-rule-text [text]="textOf(c.feat)" />
+                    @if (canToggle(c.feat)) {
+                      <app-description-lang-button />
                     }
                   </details>
                 }
@@ -116,6 +117,16 @@ interface FeatCard {
 })
 export class FeatPicker {
   readonly feats = input.required<readonly FeatOption[]>();
+
+  /** The feat's text in the languages the server sent. */
+  protected textOf(f: FeatOption): DescribedText {
+    return { pt: f.descPt, en: f.desc, ptMissing: f.descPtMissing, ptOnly: f.descPtOnly };
+  }
+
+  /** Both languages exist, so "Ver em inglês" makes sense. */
+  protected canToggle(f: FeatOption): boolean {
+    return chooseText(this.textOf(f), false).canToggle;
+  }
   /** The key of the picked feat, empty for none. */
   readonly selected = input('');
   /** The abilities ticked for the picked feat. */
