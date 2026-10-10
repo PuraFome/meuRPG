@@ -134,7 +134,7 @@ func TestADefeatedCreaturesSavingThrowWindowClosesByItself(t *testing.T) {
 	}
 	a.execSQL(t, `UPDATE combatants SET defeated = true WHERE id = $1`, a.id(t, "Goblin"))
 	// Any change of the combat settles the windows.
-	if _, err := a.conditions(t, a.master, e, "Goblin", []string{"prone"}, true, false); err != nil {
+	if _, err := a.conditions(t, a.master, e, "Goblin", []string{"condition:prone"}, true, false); err != nil {
 		t.Fatalf("conditions() error = %v", err)
 	}
 	if a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE) != nil {
