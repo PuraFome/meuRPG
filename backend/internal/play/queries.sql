@@ -1569,3 +1569,11 @@ ORDER BY cs.created_at, cs.id;
 -- The same spell cast again on a character replaces the first (SRD 5.1, Combining Magical
 -- Effects): the effects of the other castings go.
 DELETE FROM character_effects WHERE character_id = $1 AND source_key = $2 AND group_id <> $3 RETURNING id;
+
+-- name: GetLatestRestKindInSession :one
+-- The kind ('short' or 'long') of the latest rest the master took in the session. No row:
+-- no rest yet. Arcane Recovery is allowed only when it is a short rest.
+SELECT (payload ->> 'kind')::TEXT AS kind FROM session_events
+WHERE game_session_id = $1 AND kind = 'rest_taken'
+ORDER BY seq DESC
+LIMIT 1;

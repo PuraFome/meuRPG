@@ -22,7 +22,7 @@
     </ol>
   }
 
-  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ latest() }}</p>
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ latest() }}{{ arcaneDone() }}</p>
 
   @if (anyLeft()) {
     <fieldset class="which">
@@ -69,6 +69,76 @@
       <mat-icon aria-hidden="true">info</mat-icon>
       <p><strong>Não há dados de vida para gastar.</strong> Eles voltam num descanso longo.</p>
     </div>
+  }
+
+  @if (arcane(); as arcane) {
+    <section class="arcane" aria-labelledby="arcane-t">
+      <h3 class="arcane__title" id="arcane-t">Recuperação Arcana</h3>
+      @if (arcane.spent) {
+        @if (arcaneDone()) {
+          <p class="arcane__done" role="status">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>{{ arcaneDone() }}
+          </p>
+        }
+        <p class="note">
+          <mat-icon aria-hidden="true">info</mat-icon>Recuperação Arcana: usada; volta no descanso longo.
+        </p>
+      } @else {
+        <p class="note">
+          <mat-icon aria-hidden="true">info</mat-icon>{{ arcaneHelp() }}
+        </p>
+        @if (arcaneSlots().length > 0) {
+          @for (slot of arcaneSlots(); track slot.level) {
+            <div class="step" role="group" [attr.aria-label]="'Espaços de ' + slot.level + 'º nível'">
+              <span class="step__text">
+                <b>{{ slot.level }}º nível</b>
+                <span class="opt__sub">{{ slot.expended === 1 ? '1 gasto' : slot.expended + ' gastos' }}</span>
+              </span>
+              <button
+                matIconButton
+                type="button"
+                class="js-arcane-less"
+                [attr.aria-label]="'Recuperar menos um espaço de ' + slot.level + 'º nível'"
+                [disabled]="arcaneCount(slot.level) === 0 || busy()"
+                (click)="stepArcane(slot.level, -1)"
+              >
+                <mat-icon aria-hidden="true">remove</mat-icon>
+              </button>
+              <output class="step__count" [attr.aria-label]="arcaneCount(slot.level) + ' a recuperar'">{{
+                arcaneCount(slot.level)
+              }}</output>
+              <button
+                matIconButton
+                type="button"
+                class="js-arcane-more"
+                [attr.aria-label]="'Recuperar mais um espaço de ' + slot.level + 'º nível'"
+                [disabled]="!canAddArcane(slot) || busy()"
+                (click)="stepArcane(slot.level, 1)"
+              >
+                <mat-icon aria-hidden="true">add</mat-icon>
+              </button>
+            </div>
+          }
+          <p class="arcane__sum">
+            Total: {{ arcaneTotal() }} de {{ arcane.allowance }}
+            {{ arcane.allowance === 1 ? 'nível' : 'níveis' }}
+          </p>
+          <button
+            matButton="filled"
+            type="button"
+            class="js-arcane-recover"
+            [attr.aria-disabled]="arcaneTotal() === 0 || busy()"
+            (click)="recoverArcane()"
+          >
+            Recuperar
+          </button>
+        } @else {
+          <p class="note">
+            <mat-icon aria-hidden="true">block</mat-icon>Você não gastou espaços de magia de 1º a 5º nível.
+          </p>
+        }
+      }
+    </section>
   }
 
   <div foot>

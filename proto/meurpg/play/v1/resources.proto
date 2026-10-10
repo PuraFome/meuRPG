@@ -55,6 +55,25 @@ service ResourceService {
   // for a die size the character does not have, or a typed face outside the die.
   rpc SpendHitDice(SpendHitDiceRequest) returns (SpendHitDiceResponse);
 
+  // UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
+  // expended spell slots, after a short rest (SRD 5.1, Wizard, Arcane Recovery):
+  // the slots may have a combined level of half the WIZARD level (rounded up) at
+  // most, and none of them can be of the 6th level or higher. Only the character's
+  // spellcasting slots count, never the pact slots. "Once per day" is once per
+  // long rest: the use is the `arcane_recovery` resource, which a long rest gives
+  // back. It is allowed only while the latest rest of the open session is a short
+  // rest. The character's player or the master.
+  //
+  // Errors: `permission_denied` for another player's character;
+  // `invalid_argument` for no slots, a repeated level or a count below 1;
+  // `failed_precondition` with ResourceBlocked NOT_AVAILABLE (not a wizard),
+  // NO_USES_LEFT (used since the last long rest), NO_SHORT_REST (the latest rest is
+  // not a short rest), SLOT_LEVEL_TOO_HIGH (a slot of the 6th level or higher),
+  // SLOT_NOT_EXPENDED (fewer expended slots of that level than asked) and
+  // OVER_ALLOWANCE (the combined level is above the allowance; needed is the
+  // combined level asked and available the allowance).
+  rpc UseArcaneRecovery(UseArcaneRecoveryRequest) returns (UseArcaneRecoveryResponse);
+
   // UseLayOnHands touches a creature and draws from the pool: heals up to the
   // amount, or spends 5 points to cure a disease or neutralize a poison (SRD
   // 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
@@ -136,6 +155,12 @@ enum ResourceBlockedReason {
   // A roll is held, waiting for the player's answer about a Bardic Inspiration
   // die: the combatant does nothing else until it is answered.
   RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING = 11;
+  // UseArcaneRecovery: the latest rest of the open session is not a short rest.
+  RESOURCE_BLOCKED_REASON_NO_SHORT_REST = 12;
+  // UseArcaneRecovery: fewer expended slots of a level than the call asks to recover.
+  RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED = 13;
+  // UseArcaneRecovery: the combined level of the slots is above the allowance.
+  RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE = 14;
 }
 
 // RestKind is the kind of a rest.
@@ -246,6 +271,20 @@ message SpendHitDiceResponse {
   int32 face = 2;
   int32 constitution_modifier = 3;
   int32 healed = 4;
+}
+
+message UseArcaneRecoveryRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The slots to recover: how many of each spell level, one entry per level.
+  repeated SpellSlotBack slots = 3;
+  string idempotency_key = 4;
+}
+
+message UseArcaneRecoveryResponse {
+  CharacterVitals vitals = 1;
+  // The combined level recovered.
+  int32 recovered_levels = 2;
 }
 
 enum LayOnHandsCure {

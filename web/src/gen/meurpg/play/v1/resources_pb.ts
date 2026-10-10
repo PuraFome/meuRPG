@@ -22,7 +22,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/resources.proto.
  */
 export const file_meurpg_play_v1_resources: GenFile = /*@__PURE__*/
-  fileDesc("Ch5tZXVycGcvcGxheS92MS9yZXNvdXJjZXMucHJvdG8SDm1ldXJwZy5wbGF5LnYxImsKD1Jlc291cmNlQmxvY2tlZBI1CgZyZWFzb24YASABKA4yJS5tZXVycGcucGxheS52MS5SZXNvdXJjZUJsb2NrZWRSZWFzb24SDgoGbmVlZGVkGAIgASgFEhEKCWF2YWlsYWJsZRgDIAEoBSJUChVHZXRSZXN0UHJldmlld1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSJgoEa2luZBgCIAEoDjIYLm1ldXJwZy5wbGF5LnYxLlJlc3RLaW5kImoKFkdldFJlc3RQcmV2aWV3UmVzcG9uc2USLwoKY2hhcmFjdGVycxgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlJlc3RQcmV2aWV3Eh8KF2xvbmdfcmVzdF9hbHJlYWR5X3Rha2VuGAIgASgIIr8DCgtSZXN0UHJldmlldxIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIzCglyZXNvdXJjZXMYAyADKAsyIC5tZXVycGcucGxheS52MS5SZXN0UmVzb3VyY2VCYWNrEhIKCm5vX2JlbmVmaXQYBCABKAgSGgoSaGl0X3BvaW50c19jdXJyZW50GAUgASgFEhYKDmhpdF9wb2ludHNfbWF4GAYgASgFEiEKGXRlbXBvcmFyeV9oaXRfcG9pbnRzX2xvc3QYByABKAUSMAoOaGl0X2RpY2Vfc3BlbnQYCCADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIvCg1oaXRfZGljZV9iYWNrGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USGwoTaGl0X2RpY2VfYmFja19saW1pdBgKIAEoBRI3ChBzcGVsbF9zbG90c19iYWNrGAsgAygLMh0ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90QmFjaxIXCg9wYWN0X3Nsb3RzX2JhY2sYDCABKAUSGgoSY3JlYXRlZF9zbG90c19sb3N0GA0gASgFIk4KEFJlc3RSZXNvdXJjZUJhY2sSCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDQoFc3BlbnQYAyABKAUSDQoFdG90YWwYBCABKAUiLQoNU3BlbGxTbG90QmFjaxINCgVsZXZlbBgBIAEoBRINCgVjb3VudBgCIAEoBSK/AQoPVGFrZVJlc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEiYKBGtpbmQYAiABKA4yGC5tZXVycGcucGxheS52MS5SZXN0S2luZBIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSNwoQaGl0X2RpY2VfY2hvaWNlcxgEIAMoCzIdLm1ldXJwZy5wbGF5LnYxLkhpdERpY2VDaG9pY2USHQoVd2l0aG91dF9mb29kX29yX2RyaW5rGGQgASgIIk0KDUhpdERpY2VDaG9pY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEiYKBGRpY2UYAiADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZSJDChBUYWtlUmVzdFJlc3BvbnNlEi8KBnZpdGFscxgBIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyKdAQoTU3BlbmRIaXREaWNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDQoFZmFjZXMYAyABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASFAoKdHlwZWRfZmFjZRgGIAEoBUgAQgYKBHJvbGwihAEKFFNwZW5kSGl0RGljZVJlc3BvbnNlEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRmYWNlGAIgASgFEh0KFWNvbnN0aXR1dGlvbl9tb2RpZmllchgDIAEoBRIOCgZoZWFsZWQYBCABKAUiywEKFFVzZUxheU9uSGFuZHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRIRCgl0YXJnZXRfaWQYBCABKAkSEAoGYW1vdW50GAUgASgFSAASLgoEY3VyZRgGIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkxheU9uSGFuZHNDdXJlSAASFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJQggKBmVmZmVjdCKhAQoVVXNlTGF5T25IYW5kc1Jlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchINCgVzcGVudBgCIAEoBRIRCglwb29sX2xlZnQYAyABKAUSEwoGaGVhbGVkGAQgASgFSACIAQESGAoQbm90aGluZ19oYXBwZW5lZBgFIAEoCEIJCgdfaGVhbGVkIoIBChZDcmVhdGVTcGVsbFNsb3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRISCgpzbG90X2xldmVsGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKGAQoXQ3JlYXRlU3BlbGxTbG90UmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRjb3N0GAMgASgFIoMBChdDb252ZXJ0U3BlbGxTbG90UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEAoIYWN0b3JfaWQYAyABKAkSEgoKc2xvdF9sZXZlbBgEIAEoBRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkihwEKGENvbnZlcnRTcGVsbFNsb3RSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISLwoGdml0YWxzGAIgASgLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEgwKBGdhaW4YAyABKAUihwEKHEdpdmVCYXJkaWNJbnNwaXJhdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhAKCGFjdG9yX2lkGAMgASgJEhEKCXRhcmdldF9pZBgEIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkifgodR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyK3AQoeQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIPCgdob2xkX2lkGAMgASgJEgsKA3VzZRgEIAEoCBIVCgtyb2xsX2luX2FwcBgFIAEoCEgAEhQKCnR5cGVkX2ZhY2UYBiABKAVIABIXCg9pZGVtcG90ZW5jeV9rZXkYByABKAlCBgoEcm9sbCJVCh9BbnN3ZXJCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEjIKBmF0dGFjaxgBIAEoCzIiLm1ldXJwZy5wbGF5LnYxLlJvbGxBdHRhY2tSZXNwb25zZSq1BAoVUmVzb3VyY2VCbG9ja2VkUmVhc29uEicKI1JFU09VUkNFX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASJwojUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fQ09NQkFUX09QRU4QARIsCihSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT19ISVRfRElDRV9MRUZUEAISLQopUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9UX0VOT1VHSF9QT0lOVFMQAxIvCitSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9TTE9UX0xFVkVMX1RPT19ISUdIEAQSKAokUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9fRlJFRV9TTE9UEAUSLworUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU09SQ0VSWV9QT0lOVFNfRlVMTBAGEi8KK1JFU09VUkNFX0JMT0NLRURfUkVBU09OX1NPUkNFUllfUE9JTlRTX09WRVIQBxIoCiRSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT19VU0VTX0xFRlQQCBIqCiZSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9UQVJHRVRfUkVGVVNFRBAJEikKJVJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PVF9BVkFJTEFCTEUQChIvCitSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9JTlNQSVJBVElPTl9QRU5ESU5HEAsqTgoIUmVzdEtpbmQSGQoVUkVTVF9LSU5EX1VOU1BFQ0lGSUVEEAASEwoPUkVTVF9LSU5EX1NIT1JUEAESEgoOUkVTVF9LSU5EX0xPTkcQAipwCg5MYXlPbkhhbmRzQ3VyZRIhCh1MQVlfT05fSEFORFNfQ1VSRV9VTlNQRUNJRklFRBAAEh0KGUxBWV9PTl9IQU5EU19DVVJFX0RJU0VBU0UQARIcChhMQVlfT05fSEFORFNfQ1VSRV9QT0lTT04QAjK8BgoPUmVzb3VyY2VTZXJ2aWNlEmQKDkdldFJlc3RQcmV2aWV3EiUubWV1cnBnLnBsYXkudjEuR2V0UmVzdFByZXZpZXdSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0UmVzdFByZXZpZXdSZXNwb25zZSIDkAICEk0KCFRha2VSZXN0Eh8ubWV1cnBnLnBsYXkudjEuVGFrZVJlc3RSZXF1ZXN0GiAubWV1cnBnLnBsYXkudjEuVGFrZVJlc3RSZXNwb25zZRJZCgxTcGVuZEhpdERpY2USIy5tZXVycGcucGxheS52MS5TcGVuZEhpdERpY2VSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuU3BlbmRIaXREaWNlUmVzcG9uc2USXAoNVXNlTGF5T25IYW5kcxIkLm1ldXJwZy5wbGF5LnYxLlVzZUxheU9uSGFuZHNSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuVXNlTGF5T25IYW5kc1Jlc3BvbnNlEmIKD0NyZWF0ZVNwZWxsU2xvdBImLm1ldXJwZy5wbGF5LnYxLkNyZWF0ZVNwZWxsU2xvdFJlcXVlc3QaJy5tZXVycGcucGxheS52MS5DcmVhdGVTcGVsbFNsb3RSZXNwb25zZRJlChBDb252ZXJ0U3BlbGxTbG90EicubWV1cnBnLnBsYXkudjEuQ29udmVydFNwZWxsU2xvdFJlcXVlc3QaKC5tZXVycGcucGxheS52MS5Db252ZXJ0U3BlbGxTbG90UmVzcG9uc2USdAoVR2l2ZUJhcmRpY0luc3BpcmF0aW9uEiwubWV1cnBnLnBsYXkudjEuR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkdpdmVCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEnoKF0Fuc3dlckJhcmRpY0luc3BpcmF0aW9uEi4ubWV1cnBnLnBsYXkudjEuQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0Gi8ubWV1cnBnLnBsYXkudjEuQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXNwb25zZUK8AQoSY29tLm1ldXJwZy5wbGF5LnYxQg5SZXNvdXJjZXNQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_play_v1_combat, file_meurpg_play_v1_play, file_meurpg_rules_v1_rules]);
+  fileDesc("Ch5tZXVycGcvcGxheS92MS9yZXNvdXJjZXMucHJvdG8SDm1ldXJwZy5wbGF5LnYxImsKD1Jlc291cmNlQmxvY2tlZBI1CgZyZWFzb24YASABKA4yJS5tZXVycGcucGxheS52MS5SZXNvdXJjZUJsb2NrZWRSZWFzb24SDgoGbmVlZGVkGAIgASgFEhEKCWF2YWlsYWJsZRgDIAEoBSJUChVHZXRSZXN0UHJldmlld1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSJgoEa2luZBgCIAEoDjIYLm1ldXJwZy5wbGF5LnYxLlJlc3RLaW5kImoKFkdldFJlc3RQcmV2aWV3UmVzcG9uc2USLwoKY2hhcmFjdGVycxgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlJlc3RQcmV2aWV3Eh8KF2xvbmdfcmVzdF9hbHJlYWR5X3Rha2VuGAIgASgIIr8DCgtSZXN0UHJldmlldxIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIzCglyZXNvdXJjZXMYAyADKAsyIC5tZXVycGcucGxheS52MS5SZXN0UmVzb3VyY2VCYWNrEhIKCm5vX2JlbmVmaXQYBCABKAgSGgoSaGl0X3BvaW50c19jdXJyZW50GAUgASgFEhYKDmhpdF9wb2ludHNfbWF4GAYgASgFEiEKGXRlbXBvcmFyeV9oaXRfcG9pbnRzX2xvc3QYByABKAUSMAoOaGl0X2RpY2Vfc3BlbnQYCCADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIvCg1oaXRfZGljZV9iYWNrGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USGwoTaGl0X2RpY2VfYmFja19saW1pdBgKIAEoBRI3ChBzcGVsbF9zbG90c19iYWNrGAsgAygLMh0ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90QmFjaxIXCg9wYWN0X3Nsb3RzX2JhY2sYDCABKAUSGgoSY3JlYXRlZF9zbG90c19sb3N0GA0gASgFIk4KEFJlc3RSZXNvdXJjZUJhY2sSCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDQoFc3BlbnQYAyABKAUSDQoFdG90YWwYBCABKAUiLQoNU3BlbGxTbG90QmFjaxINCgVsZXZlbBgBIAEoBRINCgVjb3VudBgCIAEoBSK/AQoPVGFrZVJlc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEiYKBGtpbmQYAiABKA4yGC5tZXVycGcucGxheS52MS5SZXN0S2luZBIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSNwoQaGl0X2RpY2VfY2hvaWNlcxgEIAMoCzIdLm1ldXJwZy5wbGF5LnYxLkhpdERpY2VDaG9pY2USHQoVd2l0aG91dF9mb29kX29yX2RyaW5rGGQgASgIIk0KDUhpdERpY2VDaG9pY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEiYKBGRpY2UYAiADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZSJDChBUYWtlUmVzdFJlc3BvbnNlEi8KBnZpdGFscxgBIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyKdAQoTU3BlbmRIaXREaWNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDQoFZmFjZXMYAyABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASFAoKdHlwZWRfZmFjZRgGIAEoBUgAQgYKBHJvbGwihAEKFFNwZW5kSGl0RGljZVJlc3BvbnNlEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRmYWNlGAIgASgFEh0KFWNvbnN0aXR1dGlvbl9tb2RpZmllchgDIAEoBRIOCgZoZWFsZWQYBCABKAUijAEKGFVzZUFyY2FuZVJlY292ZXJ5UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSLAoFc2xvdHMYAyADKAsyHS5tZXVycGcucGxheS52MS5TcGVsbFNsb3RCYWNrEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJmChlVc2VBcmNhbmVSZWNvdmVyeVJlc3BvbnNlEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIYChByZWNvdmVyZWRfbGV2ZWxzGAIgASgFIssBChRVc2VMYXlPbkhhbmRzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEAoIYWN0b3JfaWQYAyABKAkSEQoJdGFyZ2V0X2lkGAQgASgJEhAKBmFtb3VudBgFIAEoBUgAEi4KBGN1cmUYBiABKA4yHi5tZXVycGcucGxheS52MS5MYXlPbkhhbmRzQ3VyZUgAEhcKD2lkZW1wb3RlbmN5X2tleRgHIAEoCUIICgZlZmZlY3QioQEKFVVzZUxheU9uSGFuZHNSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISDQoFc3BlbnQYAiABKAUSEQoJcG9vbF9sZWZ0GAMgASgFEhMKBmhlYWxlZBgEIAEoBUgAiAEBEhgKEG5vdGhpbmdfaGFwcGVuZWQYBSABKAhCCQoHX2hlYWxlZCKCAQoWQ3JlYXRlU3BlbGxTbG90UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEAoIYWN0b3JfaWQYAyABKAkSEgoKc2xvdF9sZXZlbBgEIAEoBRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkihgEKF0NyZWF0ZVNwZWxsU2xvdFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIvCgZ2aXRhbHMYAiABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSDAoEY29zdBgDIAEoBSKDAQoXQ29udmVydFNwZWxsU2xvdFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhAKCGFjdG9yX2lkGAMgASgJEhIKCnNsb3RfbGV2ZWwYBCABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIocBChhDb252ZXJ0U3BlbGxTbG90UmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRnYWluGAMgASgFIocBChxHaXZlQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRIRCgl0YXJnZXRfaWQYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIn4KHUdpdmVCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIvCgZ2aXRhbHMYAiABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMitwEKHkFuc3dlckJhcmRpY0luc3BpcmF0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSDwoHaG9sZF9pZBgDIAEoCRILCgN1c2UYBCABKAgSFQoLcm9sbF9pbl9hcHAYBSABKAhIABIUCgp0eXBlZF9mYWNlGAYgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJQgYKBHJvbGwiVQofQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXNwb25zZRIyCgZhdHRhY2sYASABKAsyIi5tZXVycGcucGxheS52MS5Sb2xsQXR0YWNrUmVzcG9uc2UquwUKFVJlc291cmNlQmxvY2tlZFJlYXNvbhInCiNSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEicKI1JFU09VUkNFX0JMT0NLRURfUkVBU09OX0NPTUJBVF9PUEVOEAESLAooUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9fSElUX0RJQ0VfTEVGVBACEi0KKVJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PVF9FTk9VR0hfUE9JTlRTEAMSLworUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU0xPVF9MRVZFTF9UT09fSElHSBAEEigKJFJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PX0ZSRUVfU0xPVBAFEi8KK1JFU09VUkNFX0JMT0NLRURfUkVBU09OX1NPUkNFUllfUE9JTlRTX0ZVTEwQBhIvCitSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9TT1JDRVJZX1BPSU5UU19PVkVSEAcSKAokUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9fVVNFU19MRUZUEAgSKgomUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fVEFSR0VUX1JFRlVTRUQQCRIpCiVSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT1RfQVZBSUxBQkxFEAoSLworUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fSU5TUElSQVRJT05fUEVORElORxALEikKJVJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PX1NIT1JUX1JFU1QQDBItCilSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9TTE9UX05PVF9FWFBFTkRFRBANEioKJlJFU09VUkNFX0JMT0NLRURfUkVBU09OX09WRVJfQUxMT1dBTkNFEA4qTgoIUmVzdEtpbmQSGQoVUkVTVF9LSU5EX1VOU1BFQ0lGSUVEEAASEwoPUkVTVF9LSU5EX1NIT1JUEAESEgoOUkVTVF9LSU5EX0xPTkcQAipwCg5MYXlPbkhhbmRzQ3VyZRIhCh1MQVlfT05fSEFORFNfQ1VSRV9VTlNQRUNJRklFRBAAEh0KGUxBWV9PTl9IQU5EU19DVVJFX0RJU0VBU0UQARIcChhMQVlfT05fSEFORFNfQ1VSRV9QT0lTT04QAjKmBwoPUmVzb3VyY2VTZXJ2aWNlEmQKDkdldFJlc3RQcmV2aWV3EiUubWV1cnBnLnBsYXkudjEuR2V0UmVzdFByZXZpZXdSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0UmVzdFByZXZpZXdSZXNwb25zZSIDkAICEk0KCFRha2VSZXN0Eh8ubWV1cnBnLnBsYXkudjEuVGFrZVJlc3RSZXF1ZXN0GiAubWV1cnBnLnBsYXkudjEuVGFrZVJlc3RSZXNwb25zZRJZCgxTcGVuZEhpdERpY2USIy5tZXVycGcucGxheS52MS5TcGVuZEhpdERpY2VSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuU3BlbmRIaXREaWNlUmVzcG9uc2USaAoRVXNlQXJjYW5lUmVjb3ZlcnkSKC5tZXVycGcucGxheS52MS5Vc2VBcmNhbmVSZWNvdmVyeVJlcXVlc3QaKS5tZXVycGcucGxheS52MS5Vc2VBcmNhbmVSZWNvdmVyeVJlc3BvbnNlElwKDVVzZUxheU9uSGFuZHMSJC5tZXVycGcucGxheS52MS5Vc2VMYXlPbkhhbmRzUmVxdWVzdBolLm1ldXJwZy5wbGF5LnYxLlVzZUxheU9uSGFuZHNSZXNwb25zZRJiCg9DcmVhdGVTcGVsbFNsb3QSJi5tZXVycGcucGxheS52MS5DcmVhdGVTcGVsbFNsb3RSZXF1ZXN0GicubWV1cnBnLnBsYXkudjEuQ3JlYXRlU3BlbGxTbG90UmVzcG9uc2USZQoQQ29udmVydFNwZWxsU2xvdBInLm1ldXJwZy5wbGF5LnYxLkNvbnZlcnRTcGVsbFNsb3RSZXF1ZXN0GigubWV1cnBnLnBsYXkudjEuQ29udmVydFNwZWxsU2xvdFJlc3BvbnNlEnQKFUdpdmVCYXJkaWNJbnNwaXJhdGlvbhIsLm1ldXJwZy5wbGF5LnYxLkdpdmVCYXJkaWNJbnNwaXJhdGlvblJlcXVlc3QaLS5tZXVycGcucGxheS52MS5HaXZlQmFyZGljSW5zcGlyYXRpb25SZXNwb25zZRJ6ChdBbnN3ZXJCYXJkaWNJbnNwaXJhdGlvbhIuLm1ldXJwZy5wbGF5LnYxLkFuc3dlckJhcmRpY0luc3BpcmF0aW9uUmVxdWVzdBovLm1ldXJwZy5wbGF5LnYxLkFuc3dlckJhcmRpY0luc3BpcmF0aW9uUmVzcG9uc2VCvAEKEmNvbS5tZXVycGcucGxheS52MUIOUmVzb3VyY2VzUHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_meurpg_play_v1_combat, file_meurpg_play_v1_play, file_meurpg_rules_v1_rules]);
 
 /**
  * ResourceBlocked is the detail of a refusal that comes from a rule.
@@ -434,6 +434,64 @@ export const SpendHitDiceResponseSchema: GenMessage<SpendHitDiceResponse> = /*@_
   messageDesc(file_meurpg_play_v1_resources, 10);
 
 /**
+ * @generated from message meurpg.play.v1.UseArcaneRecoveryRequest
+ */
+export type UseArcaneRecoveryRequest = Message<"meurpg.play.v1.UseArcaneRecoveryRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string character_id = 2;
+   */
+  characterId: string;
+
+  /**
+   * The slots to recover: how many of each spell level, one entry per level.
+   *
+   * @generated from field: repeated meurpg.play.v1.SpellSlotBack slots = 3;
+   */
+  slots: SpellSlotBack[];
+
+  /**
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.UseArcaneRecoveryRequest.
+ * Use `create(UseArcaneRecoveryRequestSchema)` to create a new message.
+ */
+export const UseArcaneRecoveryRequestSchema: GenMessage<UseArcaneRecoveryRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 11);
+
+/**
+ * @generated from message meurpg.play.v1.UseArcaneRecoveryResponse
+ */
+export type UseArcaneRecoveryResponse = Message<"meurpg.play.v1.UseArcaneRecoveryResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.CharacterVitals vitals = 1;
+   */
+  vitals?: CharacterVitals | undefined;
+
+  /**
+   * The combined level recovered.
+   *
+   * @generated from field: int32 recovered_levels = 2;
+   */
+  recoveredLevels: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.UseArcaneRecoveryResponse.
+ * Use `create(UseArcaneRecoveryResponseSchema)` to create a new message.
+ */
+export const UseArcaneRecoveryResponseSchema: GenMessage<UseArcaneRecoveryResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 12);
+
+/**
  * @generated from message meurpg.play.v1.UseLayOnHandsRequest
  */
 export type UseLayOnHandsRequest = Message<"meurpg.play.v1.UseLayOnHandsRequest"> & {
@@ -493,7 +551,7 @@ export type UseLayOnHandsRequest = Message<"meurpg.play.v1.UseLayOnHandsRequest"
  * Use `create(UseLayOnHandsRequestSchema)` to create a new message.
  */
 export const UseLayOnHandsRequestSchema: GenMessage<UseLayOnHandsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 11);
+  messageDesc(file_meurpg_play_v1_resources, 13);
 
 /**
  * @generated from message meurpg.play.v1.UseLayOnHandsResponse
@@ -539,7 +597,7 @@ export type UseLayOnHandsResponse = Message<"meurpg.play.v1.UseLayOnHandsRespons
  * Use `create(UseLayOnHandsResponseSchema)` to create a new message.
  */
 export const UseLayOnHandsResponseSchema: GenMessage<UseLayOnHandsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 12);
+  messageDesc(file_meurpg_play_v1_resources, 14);
 
 /**
  * @generated from message meurpg.play.v1.CreateSpellSlotRequest
@@ -578,7 +636,7 @@ export type CreateSpellSlotRequest = Message<"meurpg.play.v1.CreateSpellSlotRequ
  * Use `create(CreateSpellSlotRequestSchema)` to create a new message.
  */
 export const CreateSpellSlotRequestSchema: GenMessage<CreateSpellSlotRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 13);
+  messageDesc(file_meurpg_play_v1_resources, 15);
 
 /**
  * @generated from message meurpg.play.v1.CreateSpellSlotResponse
@@ -607,7 +665,7 @@ export type CreateSpellSlotResponse = Message<"meurpg.play.v1.CreateSpellSlotRes
  * Use `create(CreateSpellSlotResponseSchema)` to create a new message.
  */
 export const CreateSpellSlotResponseSchema: GenMessage<CreateSpellSlotResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 14);
+  messageDesc(file_meurpg_play_v1_resources, 16);
 
 /**
  * @generated from message meurpg.play.v1.ConvertSpellSlotRequest
@@ -646,7 +704,7 @@ export type ConvertSpellSlotRequest = Message<"meurpg.play.v1.ConvertSpellSlotRe
  * Use `create(ConvertSpellSlotRequestSchema)` to create a new message.
  */
 export const ConvertSpellSlotRequestSchema: GenMessage<ConvertSpellSlotRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 15);
+  messageDesc(file_meurpg_play_v1_resources, 17);
 
 /**
  * @generated from message meurpg.play.v1.ConvertSpellSlotResponse
@@ -675,7 +733,7 @@ export type ConvertSpellSlotResponse = Message<"meurpg.play.v1.ConvertSpellSlotR
  * Use `create(ConvertSpellSlotResponseSchema)` to create a new message.
  */
 export const ConvertSpellSlotResponseSchema: GenMessage<ConvertSpellSlotResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 16);
+  messageDesc(file_meurpg_play_v1_resources, 18);
 
 /**
  * @generated from message meurpg.play.v1.GiveBardicInspirationRequest
@@ -716,7 +774,7 @@ export type GiveBardicInspirationRequest = Message<"meurpg.play.v1.GiveBardicIns
  * Use `create(GiveBardicInspirationRequestSchema)` to create a new message.
  */
 export const GiveBardicInspirationRequestSchema: GenMessage<GiveBardicInspirationRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 17);
+  messageDesc(file_meurpg_play_v1_resources, 19);
 
 /**
  * @generated from message meurpg.play.v1.GiveBardicInspirationResponse
@@ -738,7 +796,7 @@ export type GiveBardicInspirationResponse = Message<"meurpg.play.v1.GiveBardicIn
  * Use `create(GiveBardicInspirationResponseSchema)` to create a new message.
  */
 export const GiveBardicInspirationResponseSchema: GenMessage<GiveBardicInspirationResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 18);
+  messageDesc(file_meurpg_play_v1_resources, 20);
 
 /**
  * @generated from message meurpg.play.v1.AnswerBardicInspirationRequest
@@ -800,7 +858,7 @@ export type AnswerBardicInspirationRequest = Message<"meurpg.play.v1.AnswerBardi
  * Use `create(AnswerBardicInspirationRequestSchema)` to create a new message.
  */
 export const AnswerBardicInspirationRequestSchema: GenMessage<AnswerBardicInspirationRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 19);
+  messageDesc(file_meurpg_play_v1_resources, 21);
 
 /**
  * @generated from message meurpg.play.v1.AnswerBardicInspirationResponse
@@ -819,7 +877,7 @@ export type AnswerBardicInspirationResponse = Message<"meurpg.play.v1.AnswerBard
  * Use `create(AnswerBardicInspirationResponseSchema)` to create a new message.
  */
 export const AnswerBardicInspirationResponseSchema: GenMessage<AnswerBardicInspirationResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 20);
+  messageDesc(file_meurpg_play_v1_resources, 22);
 
 /**
  * ResourceBlockedReason is why a resource call was refused.
@@ -910,6 +968,27 @@ export enum ResourceBlockedReason {
    * @generated from enum value: RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING = 11;
    */
   INSPIRATION_PENDING = 11,
+
+  /**
+   * UseArcaneRecovery: the latest rest of the open session is not a short rest.
+   *
+   * @generated from enum value: RESOURCE_BLOCKED_REASON_NO_SHORT_REST = 12;
+   */
+  NO_SHORT_REST = 12,
+
+  /**
+   * UseArcaneRecovery: fewer expended slots of a level than the call asks to recover.
+   *
+   * @generated from enum value: RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED = 13;
+   */
+  SLOT_NOT_EXPENDED = 13,
+
+  /**
+   * UseArcaneRecovery: the combined level of the slots is above the allowance.
+   *
+   * @generated from enum value: RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE = 14;
+   */
+  OVER_ALLOWANCE = 14,
 }
 
 /**
@@ -1042,6 +1121,32 @@ export const ResourceService: GenService<{
     methodKind: "unary";
     input: typeof SpendHitDiceRequestSchema;
     output: typeof SpendHitDiceResponseSchema;
+  },
+  /**
+   * UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
+   * expended spell slots, after a short rest (SRD 5.1, Wizard, Arcane Recovery):
+   * the slots may have a combined level of half the WIZARD level (rounded up) at
+   * most, and none of them can be of the 6th level or higher. Only the character's
+   * spellcasting slots count, never the pact slots. "Once per day" is once per
+   * long rest: the use is the `arcane_recovery` resource, which a long rest gives
+   * back. It is allowed only while the latest rest of the open session is a short
+   * rest. The character's player or the master.
+   *
+   * Errors: `permission_denied` for another player's character;
+   * `invalid_argument` for no slots, a repeated level or a count below 1;
+   * `failed_precondition` with ResourceBlocked NOT_AVAILABLE (not a wizard),
+   * NO_USES_LEFT (used since the last long rest), NO_SHORT_REST (the latest rest is
+   * not a short rest), SLOT_LEVEL_TOO_HIGH (a slot of the 6th level or higher),
+   * SLOT_NOT_EXPENDED (fewer expended slots of that level than asked) and
+   * OVER_ALLOWANCE (the combined level is above the allowance; needed is the
+   * combined level asked and available the allowance).
+   *
+   * @generated from rpc meurpg.play.v1.ResourceService.UseArcaneRecovery
+   */
+  useArcaneRecovery: {
+    methodKind: "unary";
+    input: typeof UseArcaneRecoveryRequestSchema;
+    output: typeof UseArcaneRecoveryResponseSchema;
   },
   /**
    * UseLayOnHands touches a creature and draws from the pool: heals up to the
