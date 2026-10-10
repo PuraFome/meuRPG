@@ -237,64 +237,7 @@ func (s *Service) GiveBardicInspirationOutside(
 			}
 			return nil
 		}
-		if enc, err := q.GetOpenEncounter(ctx, session.ID); err == nil && enc.Status == statusActive {
-			return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_COMBAT_OPEN, "a combat is running: give the die in it")
-		} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("find the open encounter: %w", err)
-		}
-		who, has, err := s.myCharacter(ctx, tx, m)
-		if err != nil {
-			return err
-		}
-		if !has {
-			return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
-		}
-		bard = who
-		sheet, err := s.roster.CombatSheet(ctx, tx, m.CampaignID, who.ID)
-		if err != nil {
-			return err
-		}
-		if sheet.BardicDie == 0 {
-			return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
-		}
-		party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
-		if err != nil {
-			return err
-		}
-		i := slices.IndexFunc(party, func(c link.Character) bool { return c.ID == target && c.Player && !c.Reserved })
-		if i < 0 {
-			return connect.NewError(connect.CodeNotFound, errors.New("character not found"))
-		}
-		refused := resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_TARGET_REFUSED, "the creature cannot get a die")
-		if target == who.ID {
-			return refused
-		}
-		if _, err := q.GetCharacterInspiration(ctx, playdb.GetCharacterInspirationParams{CharacterID: target, CampaignID: m.CampaignID}); err == nil {
-			return refused
-		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("find the die of the target: %w", err)
-		}
-		now, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, who.ID)
-		if err != nil {
-			return err
-		}
-		if r := resourceOf(now, rules.BardicInspirationKey); r == nil || r.GetUsed() >= r.GetTotal() {
-			return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_USES_LEFT, "no use of Bardic Inspiration is left")
-		}
-		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID, hash: hash})
-		if err != nil {
-			return err
-		}
-		if after, err = s.spendResource(ctx, c, who.ID, rules.BardicInspirationKey, 1); err != nil {
-			return err
-		}
-		if err := q.InsertCharacterInspiration(ctx, playdb.InsertCharacterInspirationParams{
-			CharacterID: target, CampaignID: m.CampaignID, SourceCharacterID: &who.ID,
-			Sides: clamp32(sheet.BardicDie, 6, 12), SecondsLeft: outsideDieSeconds, CreatedAt: c.now,
-		}); err != nil {
-			return fmt.Errorf("give the die: %w", err)
-		}
-		if _, err := insertSceneEvent(ctx, c, eventInspirationGiven, &m.UserID, &key, inspirationGivenEvent{Target: target, Sides: clamp32(sheet.BardicDie, 6, 12)}); err != nil {
+		if bard, after, err = s.giveDie(ctx, tx, q, m, session, key, hash, target); err != nil {
 			return err
 		}
 		told = true
@@ -320,6 +263,74 @@ func (s *Service) GiveBardicInspirationOutside(
 		out.Die = s.dieViewOf(ctx, nil, row, "")
 	}
 	return connect.NewResponse(out), nil
+}
+
+// giveDie is the write of GiveBardicInspirationOutside, in its transaction: the checks, the use spent, the die stored
+// and the event under the key. It answers the bard and its vitals after the use.
+func (s *Service) giveDie(
+	ctx context.Context, tx pgx.Tx, q *playdb.Queries, m authz.Membership, session playdb.GameSession, key string, hash *string, target string,
+) (bard link.Character, after *playv1.CharacterVitals, err error) {
+	if enc, err := q.GetOpenEncounter(ctx, session.ID); err == nil && enc.Status == statusActive {
+		return bard, nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_COMBAT_OPEN, "a combat is running: give the die in it")
+	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return bard, nil, fmt.Errorf("find the open encounter: %w", err)
+	}
+	who, has, err := s.myCharacter(ctx, tx, m)
+	if err != nil {
+		return bard, nil, err
+	}
+	if !has {
+		return bard, nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
+	}
+	bard = who
+	sheet, err := s.roster.CombatSheet(ctx, tx, m.CampaignID, who.ID)
+	if err != nil {
+		return bard, nil, err
+	}
+	if sheet.BardicDie == 0 {
+		return bard, nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
+	}
+	party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
+	if err != nil {
+		return bard, nil, err
+	}
+	i := slices.IndexFunc(party, func(c link.Character) bool { return c.ID == target && c.Player && !c.Reserved })
+	if i < 0 {
+		return bard, nil, connect.NewError(connect.CodeNotFound, errors.New("character not found"))
+	}
+	refused := resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_TARGET_REFUSED, "the creature cannot get a die")
+	if target == who.ID {
+		return bard, nil, refused
+	}
+	if _, err := q.GetCharacterInspiration(ctx, playdb.GetCharacterInspirationParams{CharacterID: target, CampaignID: m.CampaignID}); err == nil {
+		return bard, nil, refused
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return bard, nil, fmt.Errorf("find the die of the target: %w", err)
+	}
+	now, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, who.ID)
+	if err != nil {
+		return bard, nil, err
+	}
+	if r := resourceOf(now, rules.BardicInspirationKey); r == nil || r.GetUsed() >= r.GetTotal() {
+		return bard, nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_USES_LEFT, "no use of Bardic Inspiration is left")
+	}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &who.ID, hash: hash})
+	if err != nil {
+		return bard, nil, err
+	}
+	if after, err = s.spendResource(ctx, c, who.ID, rules.BardicInspirationKey, 1); err != nil {
+		return bard, nil, err
+	}
+	if err := q.InsertCharacterInspiration(ctx, playdb.InsertCharacterInspirationParams{
+		CharacterID: target, CampaignID: m.CampaignID, SourceCharacterID: &who.ID,
+		Sides: clamp32(sheet.BardicDie, 6, 12), SecondsLeft: outsideDieSeconds, CreatedAt: c.now,
+	}); err != nil {
+		return bard, nil, fmt.Errorf("give the die: %w", err)
+	}
+	if _, err := insertSceneEvent(ctx, c, eventInspirationGiven, &m.UserID, &key, inspirationGivenEvent{Target: target, Sides: clamp32(sheet.BardicDie, 6, 12)}); err != nil {
+		return bard, nil, err
+	}
+	return bard, after, nil
 }
 
 // resourceOf is a resource of the character's vitals, nil when it has none.
@@ -393,7 +404,7 @@ func (s *Service) GetOutsideInspiration(
 	}
 	sheet, err := s.roster.CombatSheet(ctx, nil, m.CampaignID, me.ID)
 	if err != nil || sheet.BardicDie == 0 {
-		return connect.NewResponse(out), nil
+		return connect.NewResponse(out), nil //nolint:nilerr // a sheet that cannot be read has no feature to show
 	}
 	out.IsBard, out.Sides = true, clamp32(sheet.BardicDie, 0, 12)
 	if v, err := s.vitals.GetVitals(ctx, m.CampaignID, me.ID); err == nil {
