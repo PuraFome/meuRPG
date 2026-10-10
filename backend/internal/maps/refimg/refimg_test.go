@@ -262,6 +262,10 @@ func TestRenderPaddedDrawsRockAroundTheMap(t *testing.T) {
 	if px := img.Pix[mid]; px != dungeonimg.IndexFloor {
 		t.Errorf("the middle of the map is index %d, want floor", px)
 	}
+	// The texture's drawing is flat: no ink on the floor, and the rock nearly black.
+	if img.Palette[dungeonimg.IndexInk] != img.Palette[dungeonimg.IndexFloor] || img.Palette[dungeonimg.IndexWall] != textureRock || img.Palette[dungeonimg.IndexHatch] != textureRock {
+		t.Errorf("the palette is not flat: %v", img.Palette[:4])
+	}
 	// The result's crop is the drawing's map region.
 	if got, want := pad.Crop(b.Dx(), b.Dy()), image.Rect(pad.OffX, pad.OffY, pad.OffX+pad.W, pad.OffY+pad.H); got != want {
 		t.Errorf("Crop on the drawing = %v, want %v", got, want)

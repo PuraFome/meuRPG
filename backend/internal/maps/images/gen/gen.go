@@ -80,6 +80,18 @@ func ValidLayout(layout string) bool {
 	return false
 }
 
+// textureIntro is what the model is told about the plan of a textured map. The
+// plan has only two kinds of squares, and the text says what each may hold: asked
+// only to "keep every wall and floor where the plan has them", the model painted
+// raised wall ridges and dark channels on the floor squares (a one-square corridor
+// looked like a wall). Checked against the real model on a 31 x 21 dungeon.
+const textureIntro = `Paint the plan in the first attached image as a textured top-down battle map, in the same proportions and at the same scale: each square of the plan is 1,5 m (5 ft), so a corridor one square wide is a narrow walkable passage.
+The plan has two kinds of squares and the picture must keep them exactly where they are:
+- The LIGHT squares are the only walkable floor. Paint flagstones, packed earth or worn tiles there, flat and level, with nothing raised on them: no ridges, no wall edges, no rubble heaps, no channels. Every light area keeps exactly its shape and width, so a one-square corridor stays one square wide.
+- The DARK squares are solid rock. Paint them as the solid top of thick stone walls or bedrock seen from above, never as floor, pits, trenches or channels. Wall faces, edges and shadows belong on the dark side of each boundary and never spill onto a light square.
+Light comes straight from above, with no perspective and no tilt, so nothing leans over the floor. Do not draw a grid, text, numbers, doors or characters.
+`
+
 // MaxRooms is the most rooms a textured map's request lists.
 const MaxRooms = 60
 
@@ -209,11 +221,11 @@ func (r Request) Text() string {
 	} else {
 		switch r.Layout {
 		case LayoutScene:
-			b.WriteString("Paint a scene of the place that the first attached image shows. The first image is a plan seen from above: light squares are floor, dark hatched squares are walls and rock, and solid black is not visible and must not appear in the picture. Colored discs mark where creatures stand: draw a creature there, never the disc.\n")
+			b.WriteString("Paint a scene of the place that the first attached image shows. The first image is a plan seen from above: light squares are floor, dark squares are walls and rock, and solid black is not visible and must not appear in the picture. Colored discs mark where creatures stand: draw a creature there, never the disc.\n")
 		case LayoutIsometric:
-			b.WriteString("Paint an isometric view of the place that the first attached image shows, seen from above at an angle, like a game board. The first image is a plan seen from above: light squares are floor, dark hatched squares are walls and rock, and solid black is not visible and must not appear in the picture. Colored discs mark where creatures stand: draw a creature there, never the disc.\n")
+			b.WriteString("Paint an isometric view of the place that the first attached image shows, seen from above at an angle, like a game board. The first image is a plan seen from above: light squares are floor, dark squares are walls and rock, and solid black is not visible and must not appear in the picture. Colored discs mark where creatures stand: draw a creature there, never the disc.\n")
 		case LayoutTexture:
-			b.WriteString("Paint the plan in the first attached image as a textured top-down battle map, in the same proportions. Keep every wall, floor and passage exactly where the plan has them: light areas are floor, dark hatched areas are solid rock and walls. Do not draw a grid, text, numbers, doors or characters.\n")
+			b.WriteString(textureIntro)
 			if len(r.Rooms) > 0 {
 				b.WriteString("The rooms of the plan:\n")
 				for _, room := range r.Rooms {
