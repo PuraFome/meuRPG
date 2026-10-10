@@ -1161,7 +1161,7 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 
 #### Critérios de aceite
 - **Dado** o grupo de "Mirathel" (os personagens de jogador vivos da campanha, mais os NPCs que eu puser no grupo, com o nível que eu disser), **quando** monto um encontro com criaturas do bestiário e as quantidades, **então** vejo o XP total e a dificuldade (baixa, moderada ou alta) contra o orçamento do grupo, com o rótulo "Guia de dificuldade do SRD 5.2.1 (regras de 2024)" e o aviso de que, com os monstros de 2014, o encontro tende a ficar um pouco mais fácil.
-- **Dado** um encontro montado, **quando** o guardo num ponto de batalha do mapa, **então** "Começar este combate" põe os monstros dele no combate, como na [MR-042](#mr-042-bestiário).
+- **Dado** um encontro montado, **quando** o guardo num ponto de batalha do mapa, **então** "Começar este combate" põe os monstros dele no combate, como na [MR-042](#mr-042-bestiário), e eu posso acrescentar os NPCs da própria campanha (um chefe, um vilão com nome) no mesmo diálogo, em "NPCs da campanha".
 - **Dado** uma dificuldade e, se eu quiser, um tipo de criatura, **quando** peço "Gerar encontro", **então** o app monta um com criaturas do SRD, um líder e um grupo, que nunca passa do orçamento nem traz criatura de ND acima do menor nível do grupo mais 3 (os NPCs do grupo contam, com o nível que o mestre deu); "Gerar outro" faz um novo, e posso trocar uma criatura.
 - **Dado** a mesma dificuldade, as mesmas opções e a mesma semente, **quando** gero duas vezes, **então** o resultado é o mesmo.
 

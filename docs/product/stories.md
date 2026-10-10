@@ -1161,7 +1161,7 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 
 #### Acceptance criteria
 - **Given** the group of "Mirathel" (the campaign's living player characters, plus the NPCs I put in the group, at the level I say), **when** I build an encounter with bestiary creatures and quantities, **then** I see the total XP and the difficulty (low, moderate or high) against the group's budget, with the label "Guia de dificuldade do SRD 5.2.1 (regras de 2024)" and the warning that, with the 2014 monsters, the encounter tends to be a little easier.
-- **Given** a built encounter, **when** I store it in a battle point on the map, **then** "Começar este combate" puts its monsters in the combat, as in [MR-042](#mr-042-bestiary).
+- **Given** a built encounter, **when** I store it in a battle point on the map, **then** "Começar este combate" puts its monsters in the combat, as in [MR-042](#mr-042-bestiary), and I can add the campaign's own NPCs (a boss, a named villain) to it in the same dialog, under "NPCs da campanha".
 - **Given** a difficulty and, if I want, a creature type, **when** I ask "Gerar encontro", **then** the app builds one with SRD creatures, a leader and a group, that never exceeds the budget nor brings a creature with CR above the group's lowest level plus 3 (the group's NPCs count, at the level the GM gave); "Gerar outro" makes a new one, and I can swap a creature.
 - **Given** the same difficulty, the same options and the same seed, **when** I generate twice, **then** the result is the same.
 
