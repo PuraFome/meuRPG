@@ -1,6 +1,6 @@
 # Code quality report: the old Angular app (archived)
 
-> Archived note. It audits the old Angular app in `src/`, which is discontinued (see [Legacy app](../legacy-app.md)). Nothing here describes the current MeuRPG (`backend/` and `web/`). The findings were never acted on, because the old app gets no more changes.
+> Archived note. It audits the old Angular app in `src/`, which is discontinued and was removed from the repository. Nothing here describes the current MeuRPG (`backend/` and `web/`). The findings were never acted on, because the old app gets no more changes.
 
 > Generated: 2026-07-29
 > Scope: `src/app/*` — Full manual audit

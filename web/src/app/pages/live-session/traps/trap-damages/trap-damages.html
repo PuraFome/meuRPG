@@ -10,7 +10,7 @@
     </header>
 
     @if (discarding() === w.d.id) {
-      <div class="td__ask" role="alertdialog" [attr.aria-label]="'Descartar o dano de ' + w.d.amount">
+      <div class="td__ask" role="alertdialog" data-confirm [attr.aria-label]="'Descartar o dano de ' + w.d.amount">
         <p class="td__askt">Descartar o dano de {{ w.d.amount }}?</p>
         <div class="td__pair">
           <button #safe matButton="outlined" type="button" (click)="discarding.set(null)">Voltar</button>

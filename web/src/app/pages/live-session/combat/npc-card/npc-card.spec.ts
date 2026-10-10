@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 
 import { AreaPlacement } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
@@ -107,6 +109,46 @@ describe('NpcCard: the idempotency key follows the target', () => {
     expect(rollAttack).toHaveBeenCalledTimes(1);
     expect((fixture.nativeElement as HTMLElement).querySelector('#roll-why')).toBeNull();
   });
+
+  it('clears the result card of the last roll when the master undoes an action (R4)', async () => {
+    TestBed.resetTestingModule();
+    const rollAttack = vi.fn(async () => ({
+      roll: {
+        attackerId: 'npc',
+        targetId: 't1',
+        d20: { total: 12, rolls: [8, 19], modifier: 4, count: 2, sides: 20, keep: 'highest' },
+        outcome: 2,
+        heldForReaction: false,
+      },
+      pending: undefined,
+      encounter: encounter({ combatants: [combatant({ id: 'npc', label: 'Goblin' })] }),
+    }));
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: { rollAttack } }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [combatant({ id: 'npc', label: 'Goblin' })] }),
+    );
+    fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Goblin' }));
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    fixture.componentRef.setInput('options', opts(['t1']));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const card = fixture.componentInstance as unknown as {
+      rollApp(): Promise<void>;
+      last(): unknown;
+    };
+    await card.rollApp();
+    expect(card.last()).not.toBeNull();
+
+    TestBed.inject(CombatUndone).mark();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(card.last()).toBeNull();
+  });
 });
 
 describe("NpcCard: an NPC's area spell", () => {
@@ -160,5 +202,76 @@ describe("NpcCard: an NPC's area spell", () => {
 
   it('offers none without a map', () => {
     expect(setup(true).el.querySelector('.area-spell')).toBeNull();
+  });
+});
+
+describe('NpcCard: the typed d20 follows the roll mode of the target', () => {
+  const opts = (rollMode: RollMode) =>
+    ({
+      options: {
+        attacks: [
+          {
+            attack: {
+              key: 'a1',
+              saveDc: 0,
+              attackBonus: 4,
+              namePt: 'Garras',
+              damage: '2d4',
+              damageTypePt: 'cortante',
+              rangeFt: 5,
+              longRangeFt: 0,
+            },
+          },
+        ],
+      },
+      attackTargets: [
+        { attackKey: 'a1', targets: [{ combatantId: 't1', label: 'Iolanda', rollMode }] },
+      ],
+      pendingDamages: [],
+    }) as never;
+
+  async function render(rollMode: RollMode) {
+    TestBed.resetTestingModule();
+    const rollAttack = vi.fn().mockRejectedValue(new Error('stop'));
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: { rollAttack } }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [combatant({ id: 'npc', label: 'Carniçal' })] }),
+    );
+    fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Carniçal' }));
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    fixture.componentRef.setInput('options', opts(rollMode));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, rollAttack, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('asks for two d20 against a target that gives advantage (a restrained one) and sends the pair', async () => {
+    const { fixture, rollAttack, el } = await render(RollMode.ADVANTAGE);
+    expect(el.querySelector('app-roll-picker')).toBeNull();
+    expect(el.querySelector('app-multi-roll')).not.toBeNull();
+    const card = fixture.componentInstance as unknown as {
+      rollTypedPair(faces: number[]): Promise<void>;
+    };
+    await card.rollTypedPair([18, 4]);
+    expect(rollAttack.mock.calls[0][5]).toEqual({ faces: [18, 4] });
+  });
+
+  it('asks for two d20 against a disadvantage too, counting the lower', async () => {
+    const { fixture, el } = await render(RollMode.DISADVANTAGE);
+    expect(el.querySelector('app-multi-roll')).not.toBeNull();
+    const card = fixture.componentInstance as unknown as { pairHint(): string };
+    expect(card.pairHint()).toContain('Conta o menor');
+  });
+
+  it('keeps one d20 when the roll is normal', async () => {
+    const { el } = await render(RollMode.NORMAL);
+    expect(el.querySelector('app-roll-picker')).not.toBeNull();
+    expect(el.querySelector('app-multi-roll')).toBeNull();
   });
 });

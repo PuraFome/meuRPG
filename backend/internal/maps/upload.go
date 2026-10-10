@@ -338,7 +338,8 @@ func errStorage() error {
 
 // imageName makes an image's first name from the uploaded file's name: the
 // name without folders or extension, without control or invisible
-// direction characters, cut to 80 characters. When nothing usable is
+// direction characters, hyphens and underscores as spaces, the first letter
+// a capital, cut to 80 characters. When nothing usable is
 // left, the image is called "Imagem"; the master can rename it.
 func imageName(fileName string) string {
 	// Browsers send only the file's own name; a few old ones sent the path.
@@ -352,7 +353,11 @@ func imageName(fileName string) string {
 		}
 		return r
 	}, strings.ToValidUTF8(fileName, ""))
-	fileName = strings.TrimSpace(fileName)
+	// "cena-vila_ao-entardecer" reads "Cena vila ao entardecer" under the picture.
+	fileName = strings.Join(strings.Fields(strings.NewReplacer("-", " ", "_", " ").Replace(fileName)), " ")
+	if r, size := utf8.DecodeRuneInString(fileName); size > 0 {
+		fileName = string(unicode.ToUpper(r)) + fileName[size:]
+	}
 	if utf8.RuneCountInString(fileName) > maxNameLength {
 		fileName = strings.TrimSpace(string([]rune(fileName)[:maxNameLength]))
 	}

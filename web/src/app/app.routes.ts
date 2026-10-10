@@ -325,6 +325,17 @@ export const routes: Routes = [
       import('./pages/server-unavailable/server-unavailable').then((m) => m.ServerUnavailable),
   },
   {
+    // Public (no sign-in): the Google consent screen links to both pages.
+    path: 'terms',
+    title: 'Termos de uso',
+    loadComponent: () => import('./pages/legal/terms/terms').then((m) => m.Terms),
+  },
+  {
+    path: 'privacy',
+    title: 'Política de privacidade',
+    loadComponent: () => import('./pages/legal/privacy/privacy').then((m) => m.Privacy),
+  },
+  {
     // Public: the SRD 5.1 CC-BY-4.0 attribution (see credits.ts), linked
     // from the app footer on every page.
     path: 'credits',

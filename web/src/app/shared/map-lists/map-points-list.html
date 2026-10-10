@@ -69,6 +69,21 @@
             <app-pair-foot cancelLabel="Voltar" confirmLabel="Marcar como encontrado" confirmIcon="check" [cancelFirstWhenStacked]="true" [ready]="picked().size > 0" [busy]="markBusy()" (cancel)="cancelMarking(p.id)" (confirm)="confirmMarking(p)" />
           </div>
         }
+        @if (p.kind === Submap && canGoToMap() && p.targetMap; as target) {
+          <div class="row__scene">
+            <button
+              matButton="outlined"
+              type="button"
+              class="row__go"
+              [disabled]="pendingMapId() !== null"
+              disabledInteractive
+              [attr.aria-label]="'Levar a sessão para ' + target.name"
+              (click)="goToMap.emit(p)"
+            >
+              <mat-icon aria-hidden="true">login</mat-icon>Ir para {{ target.name }}
+            </button>
+          </div>
+        }
         @if (p.kind === Scene && openScenePointId() !== undefined) {
           <div class="row__scene">
             @if (openScenePointId() === p.id) {

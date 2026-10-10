@@ -5,6 +5,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { flat } from '../../../core/creatures/creatures-testing';
 import { MagicItemRarity } from '../../../../gen/meurpg/maps/v1/treasure_pb';
+import { DescriptionLanguage } from '../../../core/text/description-language';
 import { TreasureClient } from '../../../core/treasure/treasure-client';
 import { FakeTreasureClient, magicItemResponse } from '../../../core/treasure/treasure-testing';
 import { ItemSheet } from './item-sheet';
@@ -72,15 +73,60 @@ describe('ItemSheet: "Ver descrição" (MR-044, E10-10 state 3)', () => {
     );
   });
 
-  it('puts the SRD text in English with lang="en", one paragraph per entry, and says it is in English', async () => {
+  it('an item with no translation yet shows the English with lang="en", one paragraph per entry, "(em inglês)" and no toggle', async () => {
     const { el } = await setup();
-    expect(flat(el.querySelector('.text__src'))).toBe('Texto do SRD 5.1, em inglês');
-    const body = el.querySelector('.text__body')!;
+    expect(flat(el.querySelector('.text__src'))).toBe('Texto do SRD 5.1 (em inglês)');
+    const body = el.querySelector('.text__body .srd')!;
     expect(body.getAttribute('lang')).toBe('en');
     expect(Array.from(body.querySelectorAll('p')).map((p) => p.textContent)).toEqual([
       'Ring, rare (requires attunement)',
       'You gain a +1 bonus to AC and saving throws while wearing this ring.',
     ]);
+    expect(el.querySelector('app-description-lang-button')).toBeNull();
+  });
+
+  it('shows the Portuguese text first, with a table, and "Ver em inglês" flips it for the whole app', async () => {
+    api = new FakeTreasureClient();
+    api.items.set(
+      'item:ring-of-protection',
+      magicItemResponse({
+        description: ['Ring, rare', 'A | B', '| Type | Roll |', '|---|---|', '| Silver | 1 |'],
+        descriptionPt: ['Anel, raro', 'A | B', '| Tipo | Rolagem |', '|---|---|', '| Prata | 1 |'],
+      }),
+    );
+    close = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: TreasureClient, useValue: api },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: { campaignId: 'camp-1', key: 'item:ring-of-protection', namePt: 'Anel' },
+        },
+        { provide: MatDialogRef, useValue: { close } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ItemSheet);
+    const settle = async () => {
+      for (let i = 0; i < 3; i++) {
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+    };
+    await settle();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(flat(el.querySelector('.text__src'))).toBe('Texto do SRD 5.1 (tradução nossa)');
+    expect(el.querySelector('.text__body .srd')?.getAttribute('lang')).toBeNull();
+    expect(flat(el.querySelector('th'))).toBe('Tipo');
+    const button = el.querySelector<HTMLButtonElement>('app-description-lang-button button')!;
+    expect(flat(button)).toBe('Ver em inglês');
+    button.click();
+    await settle();
+    expect(el.querySelector('.text__body .srd')?.getAttribute('lang')).toBe('en');
+    expect(flat(el.querySelector('th'))).toBe('Type');
+    expect(flat(el.querySelector('app-description-lang-button button'))).toBe('Ver em português');
+    expect(TestBed.inject(DescriptionLanguage).english()).toBe(true);
+    TestBed.inject(DescriptionLanguage).toggle();
   });
 
   it('a potion says the halving: "Comum vale 100 PO; um item que se gasta vale a metade."', async () => {

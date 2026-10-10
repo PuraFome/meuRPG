@@ -110,3 +110,21 @@
   padding: 0;
   border: 0;
 }
+
+// "Texto do SRD 5.1" on the left, "Ver em inglês" on the right; the page's card has only the button.
+.spell__label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+  margin-bottom: var(--mr-space-2);
+
+  .spell__label {
+    margin: 0;
+  }
+}
+
+.spell__label-row--end {
+  justify-content: flex-end;
+}

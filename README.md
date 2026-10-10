@@ -41,7 +41,7 @@
 
 MeuRPG is a companion for one table's D&D 5e campaigns. The Game Master (*mestre*) prepares the world and runs the live session; players join by invite, follow their character sheet and act in roleplay (RP) and in combat within what the rules allow. The rules engine does the math, and the server is the authority: what is hidden never leaves it for a player. More in the [product vision](docs/product/vision.md).
 
-It is a Go server that serves the Angular app and the API from the same origin, backed by CockroachDB and built to run on Cloud Run in São Paulo. The screens are in Portuguese for now; the English UI comes after the MVP. The old app is discontinued and documented in [Legacy app](docs/legacy-app.md).
+It is a Go server that serves the Angular app and the API from the same origin, backed by CockroachDB and built to run on Cloud Run in São Paulo. The screens are in Portuguese for now; the English UI comes after the MVP.
 
 ## Current stage
 
@@ -122,7 +122,6 @@ All commands are in `make help` and in [CONTRIBUTING](CONTRIBUTING.md).
 | `deploy/local/` | The Docker Compose of the local environment |
 | `docs/` | The documentation, with Mermaid diagrams ([index](docs/README.md)) |
 | `.github/` | CI workflows, Dependabot and the PR template |
-| `src/`, `server/` | The [legacy app](docs/legacy-app.md), discontinued |
 
 ## Quality
 
@@ -159,14 +158,10 @@ The rules come from the System Reference Document 5.1 (SRD 5.1), under the Creat
 
 - The content is embedded in the binary, in `backend/internal/rules/srd51`, generated from the 5e-database (MIT) at a pinned commit. Nothing is fetched at runtime.
 - Three tables come from the SRD 5.2.1 (the 2024 rules, also CC BY 4.0): the ability score methods, the encounter XP budget and the magic item values. The app labels each one "SRD 5.2.1 (regras de 2024)", and the NOTICE carries their attribution.
-- The Portuguese names and the structured effects are ours. SRD descriptions stay in English for now.
+- The Portuguese names and the structured effects are ours. The Portuguese texts of the spells and magic items are our own translation of the SRD 5.1 English, which stays one button away ("Ver em inglês").
 - No text from books outside the SRD enters the repository: what a table uses from other books, it registers in its own words.
 - How the engine works: [Architecture → rules module](docs/architecture.md#rules-module-rules-as-data). How to update the SRD: [CONTRIBUTING.md](CONTRIBUTING.md#rules-content-srd).
 
 The fonts (Alegreya and Alegreya Sans, OFL 1.1) and icons (Material Symbols, Apache 2.0) are also in the [NOTICE](NOTICE), with licenses in [`third_party/licenses/`](third_party/licenses/).
 
 MeuRPG is distributed under the [Apache License 2.0](LICENSE). Third-party content listed in the [NOTICE](NOTICE) keeps its own license: the SRD 5.1 and the SRD 5.2.1 (CC BY 4.0), the 5e-database data (MIT), the fonts (OFL 1.1) and the icons (Apache 2.0). Anyone who redistributes MeuRPG, with or without changes, includes the `LICENSE` and `NOTICE` files.
-
-## Legacy app (discontinued)
-
-The Angular app in `src/` and the NestJS server in `server/` are the old app. They receive no changes and both leave the repository after the MVP. What they did and how they ran is in [Legacy app](docs/legacy-app.md).

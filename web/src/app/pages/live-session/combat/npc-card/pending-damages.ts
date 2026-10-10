@@ -174,6 +174,13 @@ export class PendingDamages {
     return key;
   }
 
+  /** The answer came: the next request for the same damage is a new one (after "Desfazer" the same pending damage is
+   * rolled or applied again), so it gets a new key. A key kept would make the server replay the old answer, whose combat
+   * is older than the one on screen and is dropped: the panel would stay as it was. */
+  private renewKey(name: string): void {
+    this.keys.delete(name);
+  }
+
   private async run(work: () => Promise<void>): Promise<void> {
     if (this.busy()) {
       return;
@@ -199,13 +206,15 @@ export class PendingDamages {
 
   private rolled(p: PendingDamage, die: { inApp: true } | { sum: number }): Promise<void> {
     return this.run(async () => {
+      const name = `roll:${p.id}:${JSON.stringify(die)}`;
       const res = await this.api.rollDamage(
         this.campaignId(),
         this.encounter().id,
         p.id,
         die,
-        this.keyFor(`roll:${p.id}:${JSON.stringify(die)}`),
+        this.keyFor(name),
       );
+      this.renewKey(name);
       this.state().apply(res.encounter);
     });
   }
@@ -255,15 +264,16 @@ export class PendingDamages {
   protected apply(p: PendingDamage, amount?: number): Promise<void> {
     return this.run(async () => {
       const ignore = this.ignored()[p.id] ?? [];
-      const key = this.keyFor(`apply:${p.id}:${amount ?? 'rolled'}:${ignore.join(',')}`);
+      const name = `apply:${p.id}:${amount ?? 'rolled'}:${ignore.join(',')}`;
       const res = await this.api.applyDamage(
         this.campaignId(),
         this.encounter().id,
         p.id,
         amount,
-        key,
+        this.keyFor(name),
         ignore,
       );
+      this.renewKey(name);
       this.state().apply(res.encounter);
       const total = p.amountAfterSteps ?? p.amount;
       const done = amount ?? total;

@@ -1,0 +1,32 @@
+<footer class="footer">
+  <div class="footer__inner">
+    <p class="footer__year">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+        <polygon
+          points="8,1.07 14,4.54 14,11.46 8,14.93 2,11.46 2,4.54"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+        />
+        <path d="M8 2.07L8 6" fill="none" stroke="currentColor" stroke-width="2" />
+        <polygon points="8,5.5 12,11 4,11" fill="currentColor" />
+      </svg>
+      © {{ year }} MeuRPG
+    </p>
+    <nav aria-label="Rodapé">
+      <ul>
+        @for (link of links; track link.path) {
+          <li>
+            <a
+              [routerLink]="link.path"
+              routerLinkActive="footer__link--current"
+              ariaCurrentWhenActive="page"
+              >{{ link.label }}</a
+            >
+          </li>
+        }
+      </ul>
+    </nav>
+  </div>
+</footer>

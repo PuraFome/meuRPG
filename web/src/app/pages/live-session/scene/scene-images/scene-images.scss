@@ -1,0 +1,125 @@
+:host {
+  display: block;
+}
+
+.sm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.sm__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+}
+
+.sm__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.sm__count,
+.sm__lead {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sm__count {
+  white-space: nowrap;
+}
+
+.sm__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--mr-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sm__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-2);
+  border: 1px solid var(--mr-rule);
+  border-radius: var(--mr-radius-md);
+
+  // On the players' screens now: the accent frame, with the words below it.
+  &--shown {
+    border-color: var(--mr-accent);
+  }
+}
+
+.sm__thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-ground);
+  object-fit: cover;
+}
+
+.sm__name {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.sm__tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--mr-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.sm__btn {
+  width: 100%;
+  white-space: nowrap;
+
+  @media (max-width: 767.98px) {
+    --mat-button-outlined-container-height: 48px;
+    --mat-button-filled-container-height: 48px;
+  }
+}
+
+.sm__ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.sm__ask-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}

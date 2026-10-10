@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
+import { DescriptionLanguage } from '../../core/text/description-language';
 import { SpellDetailsVm } from './spell-details.types';
 import { SpellDetails, SpellDetailsData } from './spell-details';
 
@@ -56,8 +57,8 @@ describe('SpellDetails (E6-22, E6-23)', () => {
     expect(el.querySelector('[role=status]')?.textContent).toContain('Carregando');
   });
 
-  it('shows the four fields in Portuguese and the SRD text in English', async () => {
-    const { fixture, el } = setup(() => Promise.resolve(KNOCK));
+  it('shows the four fields in Portuguese and, with no translation yet, the SRD text in English with a note', async () => {
+    const { fixture, el } = setup(() => Promise.resolve({ ...KNOCK, textPtMissing: true }));
     await settle(fixture);
     expect(text(el)).toContain('Nome no SRD: Knock');
     expect(text(el)).toContain('2º nível · Transmutação');
@@ -69,10 +70,79 @@ describe('SpellDetails (E6-22, E6-23)', () => {
       'Duração Instantânea',
     ]);
     expect(text(el)).toContain('Texto do SRD 5.1 (em inglês)');
-    const prose = el.querySelector('.spell__prose')!;
+    const prose = el.querySelector('.spell__prose .srd')!;
     expect(prose.getAttribute('lang')).toBe('en');
     expect(prose.querySelectorAll('p').length).toBe(2);
     expect(text(el)).not.toContain('Em níveis superiores');
+    expect(el.querySelector('app-description-lang-button')).toBeNull();
+  });
+
+  describe('the Portuguese text and the language toggle', () => {
+    const TRANSLATED: SpellDetailsVm = {
+      ...KNOCK,
+      components: {
+        verbal: true,
+        somatic: true,
+        material: true,
+        materialText: 'A pinch of salt.',
+        materialTextPt: 'Uma pitada de sal.',
+      },
+      descriptionPt: ['Escolha um objeto que você veja.', 'Um segundo parágrafo.'],
+      higherLevel: ['The spell grows.'],
+      higherLevelPt: ['A magia cresce.'],
+    };
+
+    afterEach(() => {
+      if (TestBed.inject(DescriptionLanguage).english()) {
+        TestBed.inject(DescriptionLanguage).toggle();
+      }
+    });
+
+    it('reads Portuguese first, material and higher levels included, with no lang="en"', async () => {
+      const { fixture, el } = setup(() => Promise.resolve(TRANSLATED));
+      await settle(fixture);
+      const paragraphs = Array.from(el.querySelectorAll('.spell__prose .srd')).map((p) => text(p));
+      expect(paragraphs).toEqual([
+        'Escolha um objeto que você veja.Um segundo parágrafo.',
+        'A magia cresce.',
+      ]);
+      expect(el.querySelector('.spell__prose .srd[lang]')).toBeNull();
+      expect(text(el)).toContain('Componentes V, S, M (Uma pitada de sal.)');
+      expect(el.querySelector('[data-testid=lang-note]')).toBeNull();
+      expect(text(el.querySelector('app-description-lang-button')!)).toBe('Ver em inglês');
+    });
+
+    it('"Ver em inglês" flips description, higher levels and material, and back', async () => {
+      const { fixture, el } = setup(() => Promise.resolve(TRANSLATED));
+      await settle(fixture);
+      el.querySelector<HTMLButtonElement>('app-description-lang-button button')!.click();
+      await settle(fixture);
+      const prose = Array.from(el.querySelectorAll('.spell__prose .srd'));
+      expect(prose.map((p) => p.getAttribute('lang'))).toEqual(['en', 'en']);
+      expect(text(el)).toContain('Choose an object that you can see within range.');
+      expect(text(el)).toContain('The spell grows.');
+      expect(text(el)).toContain('(A pinch of salt.)');
+      expect(text(el)).toContain('(em inglês)');
+      const back = el.querySelector<HTMLButtonElement>('app-description-lang-button button')!;
+      expect(text(back)).toBe('Ver em português');
+      back.click();
+      await settle(fixture);
+      expect(text(el)).toContain('Escolha um objeto que você veja.');
+    });
+
+    it('a table spell is Portuguese only: no label, no button', async () => {
+      const { fixture, el } = setup(() =>
+        Promise.resolve({
+          ...KNOCK,
+          table: true,
+          textPtOnly: true,
+          descriptionPt: KNOCK.description,
+        }),
+      );
+      await settle(fixture);
+      expect(el.querySelector('app-description-lang-button')).toBeNull();
+      expect(el.querySelector('#spell-srd-label')).toBeNull();
+    });
   });
 
   it('tags a ritual and a concentration spell, and shows the higher-level text', async () => {

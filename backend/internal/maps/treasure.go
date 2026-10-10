@@ -203,7 +203,7 @@ func (s *Service) GetMagicItem(
 		Rarity: rarityFromRules[item.Rarity], Attunement: item.Attunement,
 		AttunementBy: item.AttunementBy, AttunementByPt: item.AttunementByPT,
 		Consumable: item.Consumable, SpellScroll: item.SpellScroll, ValueLabel: valueLabel,
-		Description: item.Desc, Variants: item.Variants, VariantOf: item.VariantOf,
+		Description: item.Desc, DescriptionPt: item.DescPT, DescriptionPtMissing: item.DescPTMissing(), Variants: item.Variants, VariantOf: item.VariantOf,
 	}
 	if v, ok := s.rules.MagicItemValue(item.Key); ok {
 		out.Priceless, out.Halved = v.Priceless, v.Halved

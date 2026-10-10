@@ -1,0 +1,100 @@
+<section class="si" aria-labelledby="si-title">
+  <div class="si__head">
+    <h3 class="si__title" id="si-title">Imagens da cena</h3>
+    <span class="si__count">{{ count() }}</span>
+  </div>
+  <p class="si__privacy">
+    <mat-icon aria-hidden="true">visibility</mat-icon>
+    <span>Os jogadores só veem uma imagem quando <b>você a mostra</b>, na sessão. A lista é só sua.</span>
+  </p>
+
+  @if (images().length === 0) {
+    <p class="si__empty">Nenhuma imagem ainda. Escolha da galeria ou gere uma para esta cena.</p>
+  } @else {
+    <ul class="si__list">
+      @for (img of images(); track img.id; let i = $index; let first = $first; let last = $last) {
+        <li class="si__row" [attr.data-row]="img.id">
+          <img class="si__thumb" [src]="thumb(img)" alt="" width="56" height="56" appRetryImage />
+          <span class="si__name"><span class="mr-visually-hidden">Imagem {{ i + 1 }}: </span>{{ img.name }}</span>
+          <span class="si__controls">
+            <button
+              type="button"
+              class="si__ib"
+              [class.si__ib--off]="first"
+              [attr.aria-label]="'Subir a imagem ' + (i + 1) + ', ' + img.name"
+              [attr.aria-disabled]="first || busy()"
+              [attr.data-image]="img.id"
+              data-control="up"
+              (click)="move(img, 'up')"
+            >
+              <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="si__ib"
+              [class.si__ib--off]="last"
+              [attr.aria-label]="'Descer a imagem ' + (i + 1) + ', ' + img.name"
+              [attr.aria-disabled]="last || busy()"
+              [attr.data-image]="img.id"
+              data-control="down"
+              (click)="move(img, 'down')"
+            >
+              <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="si__ib si__ib--danger"
+              [attr.aria-label]="'Tirar a imagem ' + (i + 1) + ' da cena, ' + img.name"
+              [attr.aria-disabled]="busy()"
+              [attr.data-image]="img.id"
+              data-control="remove"
+              (click)="remove(img)"
+            >
+              <mat-icon aria-hidden="true">close</mat-icon>
+            </button>
+          </span>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+
+  @if (full()) {
+    <p class="si__limit" id="si-limit">Limite de {{ limit }} imagens. Tire uma para pôr outra.</p>
+    <button
+      matButton="outlined"
+      type="button"
+      class="si__add si__add--off"
+      disabled
+      disabledInteractive
+      aria-describedby="si-limit"
+      data-control="pick"
+    >
+      <mat-icon aria-hidden="true">block</mat-icon>Escolher da galeria
+    </button>
+  } @else {
+    <button
+      matButton="outlined"
+      type="button"
+      class="si__add"
+      data-control="pick"
+      [attr.aria-disabled]="busy()"
+      (click)="open()"
+    >
+      <mat-icon aria-hidden="true">photo_library</mat-icon>Escolher da galeria
+    </button>
+    <app-generate-image-button
+      [campaignId]="campaignId()"
+      [origin]="origin()"
+      (done)="generated($event)"
+    />
+  }
+
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+</section>

@@ -1,0 +1,162 @@
+<!-- Generated from the approved page text (Claude Design, "MeuRPG — marca e páginas legais"); edit the text here, keep it equal to docs/privacy.md. -->
+<header class="legal__head">
+  <h1 class="mr-page-title legal__title">Política de privacidade</h1>
+  <p class="legal__updated">Última atualização: 09/10/2026</p>
+  <p class="legal__review">Este texto descreve como o MeuRPG trata os dados hoje. Ainda não foi revisado por um advogado.</p>
+</header>
+
+<section class="legal__summary" aria-labelledby="legal-summary-title">
+  <h2 id="legal-summary-title">Em resumo</h2>
+  <ul>
+    <li>Do Google, recebemos só o identificador da sua conta e o seu e-mail verificado. Não pedimos nome nem foto.</li>
+    <li>Guardamos o que a mesa precisa para jogar: o nome que você digita no perfil, as campanhas, as fichas e as imagens.</li>
+    <li>Os dados ficam em São Paulo, no Google Cloud e no CockroachDB Cloud. As exceções são a imagem que o mestre gera por IA e o e-mail que você nos manda (seção 4).</li>
+    <li>Sem anúncios, sem rastreamento e sem venda de dados. Os únicos cookies são os do login.</li>
+    <li>Para pedir uma cópia, uma correção ou a exclusão dos seus dados, escreva para <strong>privacidade&#64;meurpg.app</strong>. Respondemos em até 15 dias.</li>
+  </ul>
+</section>
+
+<div class="legal__body">
+  <app-legal-toc [sections]="sections" />
+
+  <article class="legal__article">
+    <section>
+      <h2 id="quem">1. Quem cuida dos seus dados</h2>
+      <p>O MeuRPG é um app privado de uma mesa de RPG: o mestre e os jogadores que ele convida. Não está aberto ao público e não cobra nada. A lei que vale é a Lei Geral de Proteção de Dados (LGPD, Lei 13.709/2018).</p>
+      <ul>
+        <li><strong>Controlador</strong>, quem decide como os dados são tratados: o MeuRPG.</li>
+        <li><strong>Encarregado</strong>, o canal para falar de proteção de dados: privacidade&#64;meurpg.app.</li>
+      </ul>
+    </section>
+    <section>
+      <h2 id="dados">2. Que dados usamos e por quê</h2>
+      <p>Usamos só o necessário para a mesa jogar. A base legal da maior parte é a execução do contrato (art. 7º, V, da LGPD): sem esses dados, o app não funciona. A segurança e os registros técnicos usam o legítimo interesse (art. 7º, IX). Nada depende do seu consentimento.</p>
+      <ul class="legal-rows">
+        <li><p><strong>Identificador da conta Google e e-mail verificado.</strong> Para reconhecer você quando entra. O e-mail também serve de contato de segurança (um incidente, um pedido seu sobre dados) e para conferir quem pode criar campanhas. Nunca aparece para outras pessoas. Base legal: contrato e legítimo interesse.</p></li>
+        <li><p><strong>Nome de exibição.</strong> O nome que você digita no Perfil, de 1 a 40 caracteres, para as pessoas das suas campanhas saberem quem é você. Não vem do Google. Base legal: contrato.</p></li>
+        <li><p><strong>Sessão de login.</strong> Um código guardado só como hash, as datas e a última vez que a sessão foi usada, para manter você conectado. Sem IP e sem dados do aparelho. Base legal: contrato.</p></li>
+        <li><p><strong>Campanhas e fichas.</strong> O que a mesa escreve e joga: campanhas, convites, personagens e suas histórias, notas do mestre, anotações dos jogadores, mapas, cenas, combates, XP e o histórico das sessões. É ficção: o app avisa para não escrever dados reais de pessoas. Base legal: contrato.</p></li>
+        <li><p><strong>Imagens.</strong> Mapas, retratos e ilustrações que o mestre envia. Antes de guardar, o app refaz a imagem a partir dos pixels e descarta os metadados: a posição de GPS, o modelo do celular e a data. Base legal: contrato.</p></li>
+        <li><p><strong>Pedidos de imagem por IA.</strong> Quando o mestre gera uma imagem, guardamos com a campanha o texto do pedido, o estilo e as imagens de referência que ele escolheu. Base legal: contrato.</p></li>
+        <li><p><strong>Registros técnicos.</strong> O servidor anota cada pedido com o identificador da conta (um código, sem nome nem e-mail) e os identificadores do jogo, para achar a causa de um erro. A plataforma (o Cloud Run e o balanceador de carga do Google Cloud) anota o IP, o navegador e o endereço de cada pedido. Base legal: legítimo interesse.</p></li>
+        <li><p><strong>IP nos limites de uso.</strong> Para frear abuso e tentativas repetidas de login, o servidor conta os pedidos de cada IP só na memória, por alguns minutos. O IP não vai para o banco de dados nem para os registros do app. Base legal: legítimo interesse.</p></li>
+      </ul>
+    </section>
+    <section>
+      <h2 id="google">3. Os dados da sua conta Google</h2>
+      <p>Você entra com o Google. Pedimos ao Google só o mínimo: os escopos openid e email.</p>
+      <ul>
+        <li>Recebemos o identificador da sua conta e o seu e-mail. Guardamos o e-mail só se o Google disser que ele foi verificado.</li>
+        <li>Não pedimos nem guardamos seu nome, sua foto, seus contatos ou qualquer outro dado da conta Google.</li>
+        <li>Usamos o identificador para reconhecer você ao entrar, e o e-mail como contato de segurança e para conferir quem pode criar campanhas.</li>
+        <li>Não mostramos o e-mail a ninguém, não o usamos para anúncios ou marketing e não o vendemos nem repassamos.</li>
+        <li>A cada login, atualizamos o e-mail, ou o apagamos se o Google deixar de dizer que ele é verificado.</li>
+      </ul>
+    </section>
+    <section>
+      <h2 id="onde">4. Onde os dados ficam e quem nos ajuda</h2>
+      <p>Os dados ficam em São Paulo, na região southamerica-east1 do Google Cloud. Estes fornecedores tratam os dados em nosso nome:</p>
+      <ul class="legal-rows">
+        <li><p><strong>Google Cloud.</strong> Hospeda o app (Cloud Run, com o balanceador de carga e o Cloud Armor na frente, que barram acessos abusivos), os registros técnicos (Cloud Logging) e as imagens (Cloud Storage, num espaço privado). Dados: todos, em São Paulo.</p></li>
+        <li><p><strong>Cockroach Labs (CockroachDB Cloud).</strong> O banco de dados e os backups, no Google Cloud em São Paulo. Dados: o banco de dados.</p></li>
+        <li><p><strong>Google (Gemini API).</strong> Gera as imagens por IA que o mestre pede, só quando ele usa essa função. Recebe o texto que o mestre escreve, o estilo, as imagens de referência que ele escolhe, num ajuste a imagem anterior e, numa imagem feita a partir de um mapa, um desenho do mapa feito pelo servidor. Nenhum dado de conta: nunca vai o nome, o e-mail ou a ficha de alguém. O uso segue os termos do Google para a Gemini API paga.</p></li>
+        <li><p><strong>ImprovMX.</strong> Encaminha o e-mail que você manda para privacidade&#64;meurpg.app (ou outro endereço do domínio) para quem responde. Recebe o seu endereço, o seu nome, o assunto e o texto da mensagem. O registro dele guarda o remetente, o destinatário e o assunto por 7 dias, nunca o texto.</p></li>
+      </ul>
+      <p>O login com o Google não entra nessa lista: a conta Google é do Google, que trata os dados dela sob a própria política de privacidade.</p>
+      <p><strong>Transferência internacional.</strong> Pedimos ao Google para não guardar o que vai para a Gemini API, mas os termos do serviço permitem que ele guarde esses dados por pouco tempo, ou em cache, em qualquer país. Por isso, quando o mestre gera uma imagem, há uma transferência internacional de dados (art. 33 da LGPD). O ImprovMX não diz em que país ficam os servidores dele, então o e-mail que você nos manda também conta como transferência internacional.</p>
+    </section>
+    <section>
+      <h2 id="prazos">5. Por quanto tempo guardamos</h2>
+      <table class="legal-table">
+      <caption class="mr-visually-hidden">Por quanto tempo guardamos cada dado</caption>
+      <thead><tr><th scope="col">O quê</th><th scope="col">Por quanto tempo</th></tr></thead>
+      <tbody>
+      <tr><th scope="row">Conta, nome de exibição e e-mail</th><td>Até você excluir a conta.</td></tr>
+      <tr><th scope="row">Sessão de login</th><td>Até você sair. Termina depois de 14 dias sem uso ou, no máximo, em 30 dias.</td></tr>
+      <tr><th scope="row">Dados de um login em andamento</th><td>10 minutos.</td></tr>
+      <tr><th scope="row">Convites</th><td>Valem até 30 dias. O registro some 30 dias depois de vencer.</td></tr>
+      <tr><th scope="row">Campanhas, fichas, mapas e histórico</th><td>Enquanto a campanha existir. Os personagens seguem a seção 10.</td></tr>
+      <tr><th scope="row">Imagens</th><td>Até o mestre apagar. O arquivo some de vez 7 dias depois.</td></tr>
+      <tr><th scope="row">Registros técnicos</th><td>30 dias.</td></tr>
+      <tr><th scope="row">Registro do encaminhamento de um e-mail para nós</th><td>7 dias, no ImprovMX.</td></tr>
+      <tr><th scope="row">IP nos limites de uso</th><td>Minutos, só na memória.</td></tr>
+      <tr><th scope="row">Backups do banco</th><td>30 dias.</td></tr>
+      </tbody>
+      </table>
+      <p>Depois que algo é apagado, ainda pode ficar nos backups e nos registros por até 30 dias.</p>
+    </section>
+    <section>
+      <h2 id="cookies">6. Cookies</h2>
+      <p>O MeuRPG usa só dois cookies, os dois necessários para o login:</p>
+      <ul>
+        <li><strong><code>__Host-meurpg_session</code></strong> mantém você conectado. Dura até você sair, até 14 dias sem uso ou até 30 dias, o que vier primeiro.</li>
+        <li><strong><code>__Host-meurpg_login</code></strong> liga o login ao navegador que o começou, contra fraude. Dura 10 minutos.</li>
+      </ul>
+      <p>Os dois são HttpOnly: o código da página não consegue lê-los. O app não guarda mais nada no seu navegador. Como os cookies são essenciais, não há aviso de cookies.</p>
+    </section>
+    <section>
+      <h2 id="nao-fazemos">7. O que não fazemos</h2>
+      <ul>
+        <li>Não mostramos anúncios.</li>
+        <li>Não usamos análise de audiência, pixels nem rastreadores, e não carregamos scripts ou fontes de outros sites: as fontes e os ícones vêm do nosso servidor.</li>
+        <li>Não vendemos nem alugamos dados.</li>
+      </ul>
+    </section>
+    <section>
+      <h2 id="quem-ve">8. Quem vê o quê no app</h2>
+      <ul>
+        <li>As pessoas das suas campanhas veem seu nome de exibição. Ninguém vê seu e-mail.</li>
+        <li>O mestre vê as fichas dos jogadores da campanha dele. Um jogador vê só as próprias fichas.</li>
+        <li>As notas do mestre nunca chegam aos jogadores. As anotações de um jogador são só dele: nem o mestre lê.</li>
+        <li>O que o mestre esconde no mapa, como um ponto, uma armadilha ou uma área no escuro, não chega ao jogador até ser revelado.</li>
+      </ul>
+    </section>
+    <section>
+      <h2 id="direitos">9. Seus direitos</h2>
+      <p>A LGPD (art. 18) garante que você pode:</p>
+      <ul>
+        <li>confirmar se tratamos seus dados e ter acesso a eles;</li>
+        <li>corrigir dados incompletos ou errados;</li>
+        <li>pedir a anonimização, o bloqueio ou a eliminação do que for desnecessário;</li>
+        <li>receber seus dados para levar a outro serviço (portabilidade);</li>
+        <li>pedir a exclusão dos seus dados;</li>
+        <li>saber com quem compartilhamos seus dados;</li>
+        <li>se opor a um tratamento;</li>
+        <li>reclamar na Autoridade Nacional de Proteção de Dados (ANPD).</li>
+      </ul>
+      <p><strong>No app</strong>, no Perfil, você muda ou apaga seu nome de exibição e encerra as sessões dos outros aparelhos, em "Sair dos outros dispositivos".</p>
+      <p><strong>Por e-mail</strong>, para todo o resto: escreva para privacidade&#64;meurpg.app. Respondemos em até 15 dias.</p>
+    </section>
+    <section>
+      <h2 id="excluir">10. Excluir a conta</h2>
+      <p>Para excluir sua conta, escreva para privacidade&#64;meurpg.app. Respondemos em até 15 dias. O que acontece:</p>
+      <ul>
+        <li>A conta, o e-mail, as sessões de login e a participação nas campanhas são apagados.</li>
+        <li>Seus personagens ficam na campanha, com o mestre, sem ligação com você. Se preferir, peça para apagá-los também.</li>
+        <li>Se você é mestre, as campanhas que criou são apagadas, com tudo o que têm.</li>
+        <li>O que sobrar nos backups e nos registros some em até 30 dias.</li>
+      </ul>
+    </section>
+    <section>
+      <h2 id="seguranca">11. Segurança e incidentes</h2>
+      <ul>
+        <li>O app usa HTTPS, e o cookie de login só viaja por ele.</li>
+        <li>As chaves e senhas do servidor ficam num cofre (Secret Manager), nunca no código.</li>
+        <li>Os registros técnicos não guardam e-mail, nome nem o que você escreve.</li>
+        <li>Se um incidente puder trazer risco a você, avaliamos em até 24 horas e avisamos a ANPD e as pessoas afetadas em até 72 horas, por mensagem no app e por e-mail.</li>
+      </ul>
+    </section>
+    <section>
+      <h2 id="idade">12. Idade mínima</h2>
+      <p>O MeuRPG é para maiores de 18 anos. Quem tem menos de 18 não cria conta: se joga na mesa, o mestre cuida da ficha, sem dados pessoais do menor.</p>
+    </section>
+    <section>
+      <h2 id="mudancas">13. Mudanças nesta política</h2>
+      <p>Quando mudarmos algo importante, avisamos no app. A data no topo diz qual é a versão.</p>
+    </section>
+    <section>
+      <h2 id="contato">14. Contato</h2>
+      <p>Escreva para <strong>privacidade&#64;meurpg.app</strong>, o canal do encarregado do MeuRPG. Você também pode reclamar na ANPD, em gov.br/anpd.</p>
+    </section>
+  </article>
+</div>

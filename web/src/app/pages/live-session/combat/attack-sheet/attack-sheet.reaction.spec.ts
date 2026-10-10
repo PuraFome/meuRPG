@@ -200,3 +200,127 @@ describe("AttackSheet: a roll a reaction holds, and the monk's throw back (PM-04
     expect(args[10]).toBe('w2');
   });
 });
+
+describe('AttackSheet: the hit that waited for Escudo follows the server (R2-07)', () => {
+  async function mountWaiting(options: () => object) {
+    const enc = encounter({
+      mode: EncounterMode.THEATRE,
+      currentCombatantId: 't',
+      combatants: [
+        combatant({
+          id: 't',
+          label: 'Bruna',
+          kind: CombatantKind.PLAYER,
+          side: CombatantSide.PARTY,
+          mine: true,
+        }),
+        combatant({ id: 'g', label: 'Orc de teste' }),
+      ],
+    });
+    const state = new CombatState();
+    state.apply(enc);
+    const pending = {
+      id: 'p1',
+      attackerId: 't',
+      targetId: 'g',
+      attackKey: sword.key,
+      status: PendingDamageStatus.AWAITING_REACTION,
+    };
+    const api = {
+      rollAttack: async () => ({
+        encounter: enc,
+        roll: {
+          outcome: AttackOutcome.HIT,
+          d20: {
+            total: 17,
+            modifier: 6,
+            diceCount: 1,
+            diceSides: 20,
+            faces: [11],
+            physical: false,
+          },
+        },
+        pending,
+      }),
+      turnOptions: async () => options(),
+    };
+    const data: AttackSheetData = {
+      campaignId: 'c',
+      encounterId: 'enc',
+      attackerId: 't',
+      round: 1,
+      attack: sword,
+      targets: [{ combatantId: 'g', label: 'Orc de teste', tooFar: false }] as never,
+      diceMode: DiceMode.APP,
+      preference: DicePreference.APP,
+      state,
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close: () => undefined } },
+        { provide: CombatClient, useValue: api },
+      ],
+    });
+    const fixture = TestBed.createComponent(AttackSheet);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    (el.querySelector('input[type=radio]') as HTMLInputElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter' }),
+    );
+    fixture.detectChanges();
+    [...el.querySelectorAll('button')]
+      .find((b) => plain(b.textContent).includes('Rolar no app'))!
+      .click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, el, state, enc };
+  }
+
+  it('turns into the miss when the target used Escudo (the pending damage is gone)', async () => {
+    let answered = false;
+    const { fixture, el, state, enc } = await mountWaiting(() => ({
+      pendingDamages: answered ? [] : [{ id: 'p1', status: PendingDamageStatus.AWAITING_REACTION }],
+    }));
+    expect(plain(el.textContent)).toContain('Acertou');
+    expect(plain(el.textContent)).toContain('Esperando o mestre.');
+    answered = true;
+    state.apply(encounter({ ...enc, revision: 2 } as never));
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+    const text = plain(el.textContent);
+    expect(text).toContain('Errou');
+    expect(text).not.toContain('Acertou');
+    expect(text).toContain('Sem dano: o ataque errou.');
+  });
+
+  it('goes on to the damage when the reaction let the hit through', async () => {
+    let answered = false;
+    const { fixture, el, state, enc } = await mountWaiting(() => ({
+      pendingDamages: [
+        {
+          id: 'p1',
+          attackerId: 't',
+          targetId: 'g',
+          attackKey: sword.key,
+          status: answered
+            ? PendingDamageStatus.AWAITING_ROLL
+            : PendingDamageStatus.AWAITING_REACTION,
+          diceCount: 1,
+          diceSides: 8,
+          bonus: 3,
+        },
+      ],
+    }));
+    answered = true;
+    state.apply(encounter({ ...enc, revision: 2 } as never));
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+    const text = plain(el.textContent);
+    expect(text).toContain('Acertou');
+    expect(text.toLowerCase()).not.toContain('esperando o mestre');
+    expect(el.querySelector('app-roll-picker, app-multi-roll')).not.toBeNull();
+  });
+});

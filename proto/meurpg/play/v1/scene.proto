@@ -87,6 +87,11 @@ message OpenSceneInfo {
   // neither, and the master alone reads both (RN-20). The master always gets
   // the DCs and every `passed`.
   bool show_dc = 11;
+  // The gallery images attached to the scene point, in the master's order
+  // ("Imagens da cena", MR-015). Only the master gets them: a player always
+  // gets none (RN-10); a player sees an image only when the master shows it
+  // (PlayService.SetShownImage).
+  repeated meurpg.maps.v1.SceneImage images = 12;
 }
 
 // StageNpc is an NPC on the stage of the open scene, as the caller sees it

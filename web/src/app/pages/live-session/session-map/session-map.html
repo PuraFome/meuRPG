@@ -196,7 +196,10 @@
             [openScenePointId]="scene() ? (scene()!.scene()?.pointId ?? null) : undefined"
             [pendingSceneId]="pendingScene()"
             (toggle)="reveals.togglePoint($event.point, $event.revealed)"
+            [canGoToMap]="true"
+            [pendingMapId]="pendingMap()"
             (openScene)="openScene($event)"
+            (goToMap)="goToMap($event)"
           />
           @if (sceneError(); as message) {
             <div class="mr-notice mr-notice--danger" role="alert">

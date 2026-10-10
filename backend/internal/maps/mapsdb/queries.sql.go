@@ -189,6 +189,25 @@ func (q *Queries) ClearTreasureFound(ctx context.Context, arg ClearTreasureFound
 	return i, err
 }
 
+const countCampaignImagesIn = `-- name: CountCampaignImagesIn :one
+SELECT count(*)::INT4 AS image_count FROM gallery_images
+WHERE campaign_id = $1 AND id = ANY($2::UUID[])
+`
+
+type CountCampaignImagesInParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+// How many of these images are the campaign's: a list with an image of another
+// campaign (or none at all) is refused as a whole.
+func (q *Queries) CountCampaignImagesIn(ctx context.Context, arg CountCampaignImagesInParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countCampaignImagesIn, arg.CampaignID, arg.Ids)
+	var image_count int32
+	err := row.Scan(&image_count)
+	return image_count, err
+}
+
 const countImageRequestsSince = `-- name: CountImageRequestsSince :one
 SELECT count(*)::INT4 FROM image_requests
 WHERE created_at >= $1 AND NOT refunded
@@ -468,6 +487,18 @@ func (q *Queries) DeleteMapVisionMemory(ctx context.Context, mapID string) (int6
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const deletePointImages = `-- name: DeletePointImages :exec
+DELETE FROM map_point_images
+WHERE point_id = $1
+`
+
+// Clears a point's list: the first half of replacing it, and what a point that
+// stops being a scene does.
+func (q *Queries) DeletePointImages(ctx context.Context, pointID string) error {
+	_, err := q.db.Exec(ctx, deletePointImages, pointID)
+	return err
 }
 
 const deletePointReveals = `-- name: DeletePointReveals :exec
@@ -2363,6 +2394,28 @@ func (q *Queries) InsertMapToken(ctx context.Context, arg InsertMapTokenParams) 
 	return i, err
 }
 
+const insertPointImage = `-- name: InsertPointImage :exec
+INSERT INTO map_point_images (point_id, image_id, position, created_at)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertPointImageParams struct {
+	PointID   string
+	ImageID   string
+	Position  int32
+	CreatedAt time.Time
+}
+
+func (q *Queries) InsertPointImage(ctx context.Context, arg InsertPointImageParams) error {
+	_, err := q.db.Exec(ctx, insertPointImage,
+		arg.PointID,
+		arg.ImageID,
+		arg.Position,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const insertPointReveal = `-- name: InsertPointReveal :execrows
 INSERT INTO map_point_reveals (point_id, character_id, how, at)
 VALUES ($1, $2, $3, $4)
@@ -3232,6 +3285,94 @@ func (q *Queries) ListMapsUsingImage(ctx context.Context, arg ListMapsUsingImage
 	for rows.Next() {
 		var i ListMapsUsingImageRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPointImages = `-- name: ListPointImages :many
+
+SELECT i.image_id, g.name, g.generated_kind, i.position
+FROM map_point_images AS i
+JOIN gallery_images AS g ON g.id = i.image_id
+WHERE i.point_id = $1
+ORDER BY i.position, i.created_at, i.image_id
+`
+
+type ListPointImagesRow struct {
+	ImageID       string
+	Name          string
+	GeneratedKind string
+	Position      int32
+}
+
+// Images of an RP scene (MR-015): the gallery images the master attached to a
+// SCENE point, in order. The list is replaced whole, inside one transaction.
+// One point's images, in order, with the gallery's name.
+func (q *Queries) ListPointImages(ctx context.Context, pointID string) ([]ListPointImagesRow, error) {
+	rows, err := q.db.Query(ctx, listPointImages, pointID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPointImagesRow
+	for rows.Next() {
+		var i ListPointImagesRow
+		if err := rows.Scan(
+			&i.ImageID,
+			&i.Name,
+			&i.GeneratedKind,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPointImagesOfMap = `-- name: ListPointImagesOfMap :many
+SELECT i.point_id, i.image_id, g.name, g.generated_kind, i.position
+FROM map_point_images AS i
+JOIN gallery_images AS g ON g.id = i.image_id
+JOIN map_points AS p ON p.id = i.point_id
+WHERE p.map_id = $1
+ORDER BY i.point_id, i.position, i.created_at, i.image_id
+`
+
+type ListPointImagesOfMapRow struct {
+	PointID       string
+	ImageID       string
+	Name          string
+	GeneratedKind string
+	Position      int32
+}
+
+// Every scene image of a map's points, for the master's map read.
+func (q *Queries) ListPointImagesOfMap(ctx context.Context, mapID string) ([]ListPointImagesOfMapRow, error) {
+	rows, err := q.db.Query(ctx, listPointImagesOfMap, mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPointImagesOfMapRow
+	for rows.Next() {
+		var i ListPointImagesOfMapRow
+		if err := rows.Scan(
+			&i.PointID,
+			&i.ImageID,
+			&i.Name,
+			&i.GeneratedKind,
+			&i.Position,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

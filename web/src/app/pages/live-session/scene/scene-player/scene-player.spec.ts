@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { SceneState } from '../../../../core/play/scene-state';
+import { SceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
 import { playerScene, sceneAction, sceneRoll } from '../../../../core/play/scene-testing';
 import { ScenePlayer } from './scene-player';
 
@@ -145,6 +146,36 @@ describe('ScenePlayer', () => {
     };
     expect(config.data.action.id).toBe('a2');
     expect(config.data.diceMode).toBe(DiceMode.PLAYERS_CHOOSE);
+  });
+
+  it('closes the roll sheet it opened when the block leaves the page (a combat starts) (R2-09)', () => {
+    // The roll sheet and another dialog of the page: only the roll sheet is this block's to close.
+    const rollSheet = {
+      componentInstance: Object.create(SceneRollSheet.prototype) as SceneRollSheet,
+      close: vi.fn(),
+    };
+    const other = { componentInstance: {}, close: vi.fn() };
+    const open = vi.fn(() => ({ afterClosed: () => new Subject<boolean>() }));
+    TestBed.overrideProvider(MatDialog, { useValue: { open, openDialogs: [rollSheet, other] } });
+    const { fixture, el } = setup();
+    rows(el)[1].querySelector('button')!.click();
+    expect(rollSheet.close).not.toHaveBeenCalled();
+    fixture.destroy();
+    expect(rollSheet.close).toHaveBeenCalledTimes(1);
+    expect(other.close).not.toHaveBeenCalled();
+  });
+
+  it('closes nothing on leaving when its roll sheet is already closed', () => {
+    const rollSheet = {
+      componentInstance: Object.create(SceneRollSheet.prototype) as SceneRollSheet,
+      close: vi.fn(),
+    };
+    const open = vi.fn(() => ({ afterClosed: () => of(true) }));
+    TestBed.overrideProvider(MatDialog, { useValue: { open, openDialogs: [rollSheet] } });
+    const { fixture, el } = setup();
+    rows(el)[1].querySelector('button')!.click();
+    fixture.destroy();
+    expect(rollSheet.close).not.toHaveBeenCalled();
   });
 
   describe('the DC and the attempts (E8-13)', () => {

@@ -4,6 +4,12 @@ import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { blockedMessage, combatErrorMessage } from './combat-errors';
 
 describe('combat errors', () => {
+  it('says a reserved character cannot fight, not that the combat is gone (R2-06)', () => {
+    expect(
+      blockedMessage({ reason: EncounterBlockedReason.CHARACTER_RESERVED } as never),
+    ).toContain('reservado');
+  });
+
   it('says how far a refused move was, in meters', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.TOO_FAR, missingFt: 5 } as never)).toBe(
       'Esse caminho custa mais do que o movimento que sobra: faltam 1,5\u00a0m.',

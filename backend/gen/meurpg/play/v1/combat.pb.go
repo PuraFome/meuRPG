@@ -899,6 +899,9 @@ const (
 	// TakeAction (Reckless Attack): it is declared with the first attack of the turn,
 	// and an attack was made.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE EncounterBlockedReason = 83
+	// StartEncounter: a participant is a reserved character (imported, not claimed by a
+	// player yet), which cannot fight until someone owns it.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED EncounterBlockedReason = 84
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -983,6 +986,7 @@ var (
 		81: "ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE",
 		82: "ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE",
 		83: "ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE",
+		84: "ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
@@ -1064,6 +1068,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE":          81,
 		"ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE":    82,
 		"ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE":            83,
+		"ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED":           84,
 	}
 )
 
@@ -21056,7 +21061,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xd1\x1d\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\x82\x1e\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -21137,7 +21142,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"#ENCOUNTER_BLOCKED_REASON_NOT_RAGING\x10P\x120\n" +
 	",ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE\x10Q\x126\n" +
 	"2ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE\x10R\x12.\n" +
-	"*ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE\x10S*\x91\x03\n" +
+	"*ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE\x10S\x12/\n" +
+	"+ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED\x10T*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

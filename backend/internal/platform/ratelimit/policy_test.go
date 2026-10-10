@@ -42,7 +42,7 @@ func TestMiddlewareLimitsTheAPIRoutesByIP(t *testing.T) {
 	})
 	var logs bytes.Buffer
 	n := NewNotifier(slog.New(slog.NewTextHandler(&logs, nil)), "ip")
-	handler := Middleware(l, false, n)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handler := Middleware(l, 0, n)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	do := func(path, remote string) *httptest.ResponseRecorder {
@@ -93,7 +93,7 @@ func TestMiddlewareReadsTheForwardedIPOnCloudRun(t *testing.T) {
 	t.Parallel()
 	clock := &fakeClock{now: time.Unix(1_000_000, 0)}
 	l := New(Config{PerClient: Rate{Burst: 1, Every: time.Minute}, Global: Rate{Burst: 100, Every: time.Second}, MaxClients: 10, Now: clock.Now})
-	handler := Middleware(l, true, NewNotifier(nil, "ip"))(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	handler := Middleware(l, 1, NewNotifier(nil, "ip"))(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	do := func(xff string) int {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/images/x", nil)
 		req.RemoteAddr = "169.254.8.129:80" // Google's front end: the same for everybody

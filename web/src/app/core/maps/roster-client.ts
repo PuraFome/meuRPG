@@ -19,6 +19,8 @@ export interface RosterEntry {
   readonly playerName: string | null;
   /** An NPC's portrait: the gallery image's ID, or empty. */
   readonly portraitImageId: string;
+  /** A character nobody owns yet (imported, waiting for a claim): it cannot fight. */
+  readonly reserved?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ export class RosterClient {
         raceName: c.raceNamePt,
         playerName: c.playerDisplayName.trim() || null,
         portraitImageId: c.portraitUrl.replace(/^\/images\//, '').replace(/\/thumb$/, ''),
+        reserved: c.reserved,
       }));
   }
 }

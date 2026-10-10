@@ -41,7 +41,7 @@
 
 O MeuRPG é o companheiro de uma mesa de D&D 5e. O mestre prepara o mundo e conduz a sessão ao vivo; o jogador entra por convite, acompanha a ficha e age no RP e no combate com o que as regras permitem. O motor de regras faz as contas, e o servidor é a autoridade: o que está escondido nunca sai dele para o jogador. Mais contexto em [Visão do produto](docs/pt-BR/produto/visao.md).
 
-É um servidor em Go que serve o app Angular e a API na mesma origem, com o CockroachDB, feito para rodar no Cloud Run, em São Paulo. As telas estão em português por enquanto; a interface em inglês vem depois do MVP. O app antigo está descontinuado e documentado em [App antigo](docs/legacy-app.md) (em inglês).
+É um servidor em Go que serve o app Angular e a API na mesma origem, com o CockroachDB, feito para rodar no Cloud Run, em São Paulo. As telas estão em português por enquanto; a interface em inglês vem depois do MVP.
 
 > A documentação técnica (arquitetura, dados, design, operação, CONTRIBUTING) é em inglês. Os documentos de produto e a privacidade têm versão em português em [`docs/pt-BR/`](docs/pt-BR/README.md).
 
@@ -124,7 +124,6 @@ Todos os comandos estão em `make help` e no [CONTRIBUTING](CONTRIBUTING.md).
 | `deploy/local/` | O Docker Compose do ambiente local |
 | `docs/` | A documentação, com os diagramas em Mermaid ([índice](docs/README.md)) |
 | `.github/` | Os workflows do CI, o Dependabot e o modelo de PR |
-| `src/`, `server/` | O [app antigo](docs/legacy-app.md), descontinuado |
 
 ## Qualidade
 
@@ -158,14 +157,10 @@ As regras vêm do System Reference Document 5.1 (SRD 5.1), sob a licença Creati
 
 - O conteúdo fica embutido no binário, em `backend/internal/rules/srd51`, gerado a partir do 5e-database (MIT) num commit fixado. Nada é buscado em runtime.
 - Três tabelas vêm do SRD 5.2.1 (as regras de 2024, também CC BY 4.0): os jeitos de fazer habilidades, o orçamento de XP dos encontros e os valores dos itens mágicos. O app rotula cada uma "SRD 5.2.1 (regras de 2024)", e o NOTICE traz a atribuição delas.
-- Os nomes em português e os efeitos estruturados são nossos. As descrições do SRD ficam em inglês por enquanto.
+- Os nomes em português e os efeitos estruturados são nossos. Os textos em português das magias e dos itens mágicos são tradução nossa do inglês do SRD 5.1, que continua a um botão de distância (“Ver em inglês”).
 - Nenhum texto de livro fora do SRD entra no repositório: o que a mesa usar de outros livros ela cadastra com as próprias palavras.
 - Como o motor funciona: [Architecture → rules module](docs/architecture.md#rules-module-rules-as-data). Como atualizar o SRD: [CONTRIBUTING.md](CONTRIBUTING.md#rules-content-srd).
 
 As fontes (Alegreya e Alegreya Sans, OFL 1.1) e os ícones (Material Symbols, Apache 2.0) também estão no [NOTICE](NOTICE), com as licenças em [`third_party/licenses/`](third_party/licenses/).
 
 O MeuRPG é distribuído sob a [Apache License 2.0](LICENSE). O conteúdo de terceiros listado no [NOTICE](NOTICE) mantém a própria licença: o SRD 5.1 e o SRD 5.2.1 (CC BY 4.0), os dados do 5e-database (MIT), as fontes (OFL 1.1) e os ícones (Apache 2.0). Quem redistribui o MeuRPG, com ou sem mudanças, leva junto o `LICENSE` e o `NOTICE`.
-
-## App antigo (descontinuado)
-
-O Angular em `src/` e o NestJS em `server/` são o app antigo. Não recebem mudanças, e os dois saem do repositório depois do MVP. O que eles faziam e como rodavam está em [App antigo](docs/legacy-app.md) (em inglês).

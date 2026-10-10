@@ -12,7 +12,6 @@
 /node_modules
 npm-debug.log
 yarn-error.log
-server/node_modules
 
 # IDEs and editors
 .idea/
@@ -27,8 +26,6 @@ server/node_modules
 /.vscode
 .vscode/*
 !.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/mcp.json
 .history/*
@@ -49,12 +46,6 @@ Thumbs.db
 
 .angular/
 .codegraph/
-
-# Backend server (NestJS)
-server/.env
-server/.env.production
-server/dist/
-server/.nuxt
 
 # Architecture Decision Records live in a separate private repository
 /docs/adr/

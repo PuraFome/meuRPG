@@ -408,6 +408,10 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			_, err := u.revealClue(campaign, c.GetId(), pc.GetId())
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"SetSceneImages", func(ctx context.Context, u *user) error {
+			_, err := u.maps.SetSceneImages(ctx, connect.NewRequest(&mapsv1.SetSceneImagesRequest{CampaignId: campaign, MapId: shown.GetId(), PointId: point.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"PlaceMapToken", func(ctx context.Context, u *user) error {
 			_, err := u.maps.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: campaign, MapId: shown.GetId(), CharacterId: pc.GetId(), XBp: 5100, YBp: 5100}))
 			return err

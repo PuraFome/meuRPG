@@ -478,9 +478,19 @@ type Scene struct {
 	// the clues the master prepared. They never go to a player (RN-20).
 	Hooks string
 	Clues []SceneClue
+	// Images are the gallery images attached to the scene (MR-015), in the
+	// master's order. They never go to a player (RN-10).
+	Images []SceneImage
 	// ShowDC is the master's "Mostrar a CD aos jogadores" switch: when it is
 	// on, a player gets each DC and the pass or fail of their own rolls.
 	ShowDC bool
+}
+
+// SceneImage is a gallery image attached to a scene.
+type SceneImage struct {
+	ID, Name string
+	// ShowsWholeMap is GalleryImage.shows_whole_map.
+	ShowsWholeMap bool
 }
 
 // SceneClue is a clue of a scene, with who has it.

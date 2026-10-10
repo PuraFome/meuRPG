@@ -6,6 +6,7 @@ import {
   PendingDamageStatus,
   ReactionKind,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CONFIRM_GUARD_MS, ConfirmGuard } from '../../../../core/confirm-guard/confirm-guard';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter, reactionWindow } from '../../../../core/combat/combat-testing';
@@ -203,5 +204,151 @@ describe("PendingDamages: the damage of a player's critical with Crítico Brutal
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('.dmg__formula')?.textContent?.trim(),
     ).toBe('2d12 (7, 11) + 1d12 Crítico Brutal (4) + 3 = 25 de dano cortante');
+  });
+});
+
+describe('PendingDamages: rolling again after "Desfazer" (R2-11)', () => {
+  it('sends a new idempotency key for the same damage, so the server rolls it instead of replaying the old answer', async () => {
+    const keys: string[] = [];
+    const enc = encounter({
+      combatants: [
+        combatant({ id: 'cap', label: 'Capitão Goblin' }),
+        combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER }),
+      ],
+    } as never);
+    const api = {
+      rollDamage: async (_c: string, _e: string, _p: string, _d: unknown, key: string) => {
+        keys.push(key);
+        return { encounter: enc, pending: {}, cast: [] };
+      },
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: api }] });
+    const fixture = TestBed.createComponent(PendingDamages);
+    const p = {
+      id: 'p1',
+      attackerId: 'cap',
+      targetId: 'pen',
+      status: PendingDamageStatus.AWAITING_ROLL,
+      diceCount: 1,
+      diceSides: 6,
+      bonus: 2,
+    };
+    fixture.componentRef.setInput('pendings', [p]);
+    fixture.componentRef.setInput('encounter', enc);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    const sheet = fixture.componentInstance as unknown as {
+      rollInApp(p: unknown): Promise<void>;
+    };
+    await sheet.rollInApp(p);
+    await sheet.rollInApp(p);
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  it('keeps the key when the answer was lost, so a retry never rolls twice', async () => {
+    const keys: string[] = [];
+    const enc = encounter({ combatants: [] } as never);
+    let fail = true;
+    const api = {
+      rollDamage: async (_c: string, _e: string, _p: string, _d: unknown, key: string) => {
+        keys.push(key);
+        if (fail) {
+          fail = false;
+          throw new Error('lost');
+        }
+        return { encounter: enc, pending: {}, cast: [] };
+      },
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: api }] });
+    const fixture = TestBed.createComponent(PendingDamages);
+    const p = {
+      id: 'p1',
+      attackerId: 'cap',
+      targetId: 'pen',
+      status: PendingDamageStatus.AWAITING_ROLL,
+      diceCount: 1,
+      diceSides: 6,
+    };
+    fixture.componentRef.setInput('pendings', [p]);
+    fixture.componentRef.setInput('encounter', enc);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    const sheet = fixture.componentInstance as unknown as {
+      rollInApp(p: unknown): Promise<void>;
+    };
+    await sheet.rollInApp(p);
+    await sheet.rollInApp(p);
+    expect(keys[0]).toBe(keys[1]);
+  });
+});
+
+describe('PendingDamages: "Não aplicar" is not confirmed by a double-click (R4)', () => {
+  async function setup() {
+    vi.useFakeTimers();
+    const discardDamage = vi.fn(async () => ({
+      encounter: encounter({ combatants: [] } as never),
+    }));
+    const rolled = {
+      id: 'p1',
+      attackerId: 'cap',
+      targetId: 'pen',
+      status: PendingDamageStatus.ROLLED,
+      diceCount: 1,
+      diceSides: 6,
+      bonus: 2,
+      amount: 11,
+      critical: true,
+      roll: { diceCount: 1, diceSides: 6, faces: [5], modifier: 2, total: 11, physical: false },
+    } as never;
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: { discardDamage } }],
+    });
+    TestBed.inject(ConfirmGuard).start();
+    const fixture = TestBed.createComponent(PendingDamages);
+    fixture.componentRef.setInput('pendings', [rolled]);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [
+          combatant({ id: 'cap', label: 'Capitão Goblin' }),
+          combatant({ id: 'pen', label: 'Garrick', kind: CombatantKind.PLAYER }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const byText = (text: string) =>
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === text)!;
+    byText('Não aplicar').click();
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    return { fixture, byText, discardDamage };
+  }
+
+  it('ignores the second click of a double-click on "Descartar", and works after the guard', async () => {
+    const { byText, discardDamage } = await setup();
+    byText('Descartar').click();
+    await vi.advanceTimersByTimeAsync(300);
+    byText('Descartar').click();
+    expect(discardDamage).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(CONFIRM_GUARD_MS);
+    byText('Descartar').click();
+    expect(discardDamage).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts the focus on the safe choice, which sits where "Não aplicar" was', async () => {
+    const { byText } = await setup();
+    expect(document.activeElement).toBe(byText('Voltar'));
+    const row = byText('Voltar').parentElement!;
+    expect(Array.from(row.querySelectorAll('button')).map((b) => b.textContent?.trim())).toEqual([
+      'Descartar',
+      'Voltar',
+    ]);
   });
 });

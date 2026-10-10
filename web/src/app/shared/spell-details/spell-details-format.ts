@@ -21,6 +21,8 @@ export interface SpellFieldValue {
   readonly english?: string;
   /** The value did not map: `english` is the SRD's raw text. */
   readonly fallback?: boolean;
+  /** `english` is really Portuguese (the translated material component): no `lang="en"`. */
+  readonly inPortuguese?: boolean;
 }
 
 export interface SpellFields {
@@ -89,16 +91,26 @@ export function formatRange(r: SpellDetailsVm['range']): SpellFieldValue {
   }
 }
 
-/** "V, S, M" with the material in English after it: "(a pinch of salt)". */
-export function formatComponents(c: SpellDetailsVm['components']): SpellFieldValue {
+/**
+ * "V, S, M" with the material after it: "(uma pitada de sal)" in Portuguese, or, when the reader
+ * asked for English (or the spell has no translation yet), the SRD's "(a pinch of salt)".
+ */
+export function formatComponents(
+  c: SpellDetailsVm['components'],
+  english = false,
+): SpellFieldValue {
   const letters = [c.verbal && 'V', c.somatic && 'S', c.material && 'M'].filter(Boolean);
   if (letters.length === 0) {
     return { text: 'Nenhum' };
   }
-  const material = c.material && c.materialText.trim();
-  return material
-    ? { text: letters.join(', '), english: `(${material})` }
-    : { text: letters.join(', ') };
+  const pt = english ? '' : (c.materialTextPt ?? '').trim();
+  const material = c.material && (pt || c.materialText.trim());
+  if (!material) {
+    return { text: letters.join(', ') };
+  }
+  return pt
+    ? { text: letters.join(', '), english: `(${material})`, inPortuguese: true }
+    : { text: letters.join(', '), english: `(${material})` };
 }
 
 export function formatDuration(d: SpellDetailsVm['duration']): SpellFieldValue {
@@ -141,11 +153,11 @@ function durationLength(amount: number, unit: SpellDetailsVm['duration']['unit']
   }
 }
 
-export function spellFields(d: SpellDetailsVm): SpellFields {
+export function spellFields(d: SpellDetailsVm, english = false): SpellFields {
   return {
     castingTime: formatCastingTime(d.castingTime),
     range: formatRange(d.range),
-    components: formatComponents(d.components),
+    components: formatComponents(d.components, english),
     duration: formatDuration(d.duration),
   };
 }
@@ -160,8 +172,8 @@ export interface SpellRow {
  * server says whom it reaches), components, duration, and, for a spell of the table, "Ataque" and "Dano"
  * (an SRD spell's text says them). Only the structured values; nothing is worked out here.
  */
-export function spellRows(d: SpellDetailsVm): SpellRow[] {
-  const f = spellFields(d);
+export function spellRows(d: SpellDetailsVm, english = false): SpellRow[] {
+  const f = spellFields(d, english);
   const rows: SpellRow[] = [
     { label: 'Tempo de conjuração', value: f.castingTime },
     { label: 'Alcance', value: f.range },

@@ -19,6 +19,7 @@ import {
   type SceneAction,
   SceneActionDirection,
   type SceneClue,
+  type SceneImage,
   type TrapSpecSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
@@ -442,6 +443,22 @@ export class MapsClient {
       direction: direction === 'up' ? SceneActionDirection.UP : SceneActionDirection.DOWN,
     });
     return res.clues;
+  }
+
+  /** `SetSceneImages` (MR-015): replaces the gallery images of a SCENE point with this list, in this order. Answers with the list as saved. */
+  async setSceneImages(
+    campaignId: string,
+    mapId: string,
+    pointId: string,
+    imageIds: readonly string[],
+  ): Promise<readonly SceneImage[]> {
+    const res = await this.client.setSceneImages({
+      campaignId,
+      mapId,
+      pointId,
+      imageIds: [...imageIds],
+    });
+    return res.images;
   }
 
   /** `RemoveSceneClue`: the page asks first; players who got the clue keep it. */

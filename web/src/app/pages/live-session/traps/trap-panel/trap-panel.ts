@@ -75,6 +75,8 @@ export class TrapPanel {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly announcement = signal('');
+  /** A firing that caught nobody, in plain sight: the master must see it, the screen reader's line alone is not enough. */
+  protected readonly empty = signal('');
   /** A combat runs on this map: who can be caught are its combatants. */
   private readonly encounter = computed(() => {
     const e = this.combat()?.encounter();
@@ -209,6 +211,11 @@ export class TrapPanel {
 
   private fired(p: MapPoint, firing: TrapFiring, extend: boolean): void {
     this.error.set('');
+    this.empty.set(
+      firing.caught.length === 0
+        ? `${p.name} disparou, mas ninguém estava na área e ninguém foi atingido. Para atingir alguém, use "Disparar em mais alguém" no cartão da armadilha.`
+        : '',
+    );
     const names = firing.caught.map((c) => c.targetLabel).filter(Boolean);
     this.announcement.set(
       names.length > 0

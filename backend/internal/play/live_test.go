@@ -944,31 +944,41 @@ func TestLiveStreamIsNotBuffered(t *testing.T) {
 	}
 }
 
-// TestWatchGameSessionCapsStreamsPerUser: one user may hold only so many live
-// streams on a campaign; the next is refused with resource_exhausted, other
-// members are not affected, and a stream that closes frees its place.
-func TestWatchGameSessionCapsStreamsPerUser(t *testing.T) {
+// TestWatchGameSessionReplacesTheOldestStreamPastTheCap: one user may hold only
+// so many live streams on a campaign; the next one is served, and the user's
+// oldest stream ends with unavailable (the app reconnects if it is still there).
+// Behind the load balancer a reloaded page's stream stays open until its
+// maximum life, so refusing the new one locked a player out of the session
+// after a few reloads (rehearsal 4). Other members are not affected.
+func TestWatchGameSessionReplacesTheOldestStreamPastTheCap(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	h.svc.hub.SetMaxPerUser(2)
 	master, player := h.newUser("Mestre"), h.newUser("Jogadora")
 	campaign := h.newCampaign(master, "Mirathel", player)
-	master.start(t, campaign)
+	session := master.start(t, campaign).GetGameSession()
 
 	first, second := player.watch(t, campaign), player.watch(t, campaign)
 	first.ready(t)
 	second.ready(t)
+	masterStream := master.watch(t, campaign)
+	masterStream.ready(t)
 
-	wantCode(t, "a third stream of the same user", player.watch(t, campaign).end(t), connect.CodeResourceExhausted)
-	master.watch(t, campaign).ready(t) // another member has their own allowance
+	third := player.watch(t, campaign)
+	third.ready(t) // the newest page is served
+	wantCode(t, "the oldest stream, replaced by a third one", first.end(t), connect.CodeUnavailable)
 	if n := h.svc.hub.Count(campaign); n != 3 {
-		t.Errorf("hub subscriptions = %d, want 3 (the refused stream holds none)", n)
+		t.Errorf("hub subscriptions = %d, want 3: the player's two newest and the master's", n)
 	}
 
-	first.cancel() // a closed tab gives its place back
-	deadline := time.Now().Add(waitLimit)
-	for h.svc.hub.Count(campaign) != 2 && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
+	// The streams that were not replaced still get the session's events.
+	master.end(t, session)
+	for _, w := range []*watcher{second, third, masterStream} {
+		for {
+			msg := w.next(t)
+			if msg.GetSessionEnded() != nil {
+				break
+			}
+		}
 	}
-	player.watch(t, campaign).ready(t)
 }

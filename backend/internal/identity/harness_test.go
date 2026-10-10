@@ -90,9 +90,10 @@ func withIDP(setup func(idp *fakeIDP)) harnessOption {
 	return func(h *harness, _ *Config) { setup(h.idp) }
 }
 
-// withCloudRun makes the Service read the client IP from X-Forwarded-For.
+// withCloudRun makes the Service read the client IP from X-Forwarded-For
+// (Cloud Run alone: one trusted hop).
 func withCloudRun() harnessOption {
-	return func(_ *harness, cfg *Config) { cfg.BehindCloudRun = true }
+	return func(_ *harness, cfg *Config) { cfg.TrustedProxyHops = 1 }
 }
 
 // withIntents registers sign-in intent handlers.

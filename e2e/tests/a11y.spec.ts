@@ -9,7 +9,7 @@ import { expectLoaded } from './loaded';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
-import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
+import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
@@ -343,6 +343,30 @@ test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y
   }
 });
 
+// docs/design.md#legal-pages and #footer: the two legal pages and the footer under them, signed out, in both
+// themes at desktop and phone widths. The contents list is open beside the text on a desktop and closed on a phone.
+test('os termos, a privacidade e o rodapé passam no axe nos dois temas, no desktop e no celular', { tag: ['@a11y', '@legal'] }, async ({ browser }) => {
+  for (const [scheme, width] of [['light', 1280], ['dark', 1280], ['light', 390], ['dark', 390]] as const) {
+    const context = await browser.newContext({ colorScheme: scheme, viewport: { width, height: 900 } });
+    try {
+      const page = await context.newPage();
+      for (const [screen, route] of [
+        ['Termos de uso', '/terms'],
+        ['Política de privacidade', '/privacy'],
+        ['Início', '/'],
+      ]) {
+        await open(page, route);
+        const footer = page.getByRole('navigation', { name: 'Rodapé' });
+        await expect(footer.getByRole('link')).toHaveCount(3);
+        await footer.scrollIntoViewIfNeeded();
+        await expectScreenPasses(page, `${screen} com rodapé (${scheme}, ${width}px)`);
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 // docs/design.md#cor: every control that takes focus shows the same 2px
 // ring. Material's buttons remove their outline in their own styles, so
 // this checks them explicitly (axe does not check that a focus ring shows).
@@ -498,6 +522,14 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
       await masterPage.getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' }).click();
       await expect(masterPage.getByRole('heading', { name: 'Ruínas élficas' })).toBeVisible();
       await expectScreenPasses(masterPage, `Editor com um ponto escolhido ${suffix}`);
+      // A Submapa with a destination ("Abrir <mapa>"), then "Criar mapa novo…" open in the panel.
+      await masterPage.getByRole('button', { name: 'Torre de Mirathel, Submapa' }).first().click();
+      await expect(masterPage.getByRole('link', { name: /^Abrir / })).toBeVisible();
+      await expectScreenPasses(masterPage, `Editor, submapa com "Abrir" ${suffix}`);
+      await masterPage.getByLabel('Leva para').selectOption({ label: 'Criar mapa novo…' });
+      await expect(masterPage.getByRole('button', { name: 'Criar mapa e usar' })).toBeVisible();
+      await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+      await expectScreenPasses(masterPage, `Editor, "Criar mapa novo…" ${suffix}`);
     }
 
     await open(playerPage, `/campaigns/${campaignId}/maps/${world}`);
@@ -834,8 +866,12 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('tab', { name: 'Magias' }).click();
     await expectScreenPasses(page, `Magias ${where}`);
     await page.getByRole('group', { name: 'Magias conhecidas', exact: true }).getByRole('button', { name: 'Descrição de Mísseis Mágicos' }).click();
-    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    // Portuguese first, then the English the button flips to (the choice holds for the whole app until reload).
+    await expect(page.getByText('Texto do SRD 5.1', { exact: true })).toBeVisible();
     await expectScreenPasses(page, `Descrição da magia ${where}`);
+    await page.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(page, `Descrição da magia, em inglês ${where}`);
   } finally {
     await context.close();
   }
@@ -947,7 +983,7 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(m, `Encerrar o combate, confirmação ${where}`);
     await m.getByRole('button', { name: 'Encerrar combate' }).last().click();
     await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
-    await expect(p.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
+    await expect(p.getByRole('heading', { name: 'O combate acabou' })).toBeVisible(); // the player's one end-of-combat card
     await expectScreenPasses(m, `Combate encerrado, mestre ${where}`);
     await expectScreenPasses(p, `Combate encerrado, jogador ${where}`);
   } finally {
@@ -1753,6 +1789,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await p.goto('/');
     const table = await tableForScenes(m, p, `Acessibilidade cenas ${Date.now()}`);
     campaignId = table.campaignId;
+    await attachTwoImagesRPC(m, table, table.cartId);
 
     // The editor is for a computer: a phone has the lists of points instead.
     if (width >= 768) {
@@ -1760,6 +1797,9 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       await expect(m.getByRole('heading', { name: 'Ações da cena' })).toBeVisible();
       await expectScreenPasses(m, `Ações da cena no ponto ${where}`);
+      await expect(m.getByRole('heading', { name: 'Imagens da cena' })).toBeVisible();
+      await m.getByRole('heading', { name: 'Imagens da cena' }).scrollIntoViewIfNeeded();
+      await expectScreenPasses(m, `Imagens da cena no ponto, com duas imagens ${where}`);
       await m.getByRole('button', { name: 'Adicionar ação' }).click();
       await expect(m.getByRole('form', { name: 'Nova ação' })).toBeVisible();
       await expectScreenPasses(m, `Nova ação ${where}`);
@@ -1791,6 +1831,15 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await m.getByRole('dialog').getByText('A carroça tombada', { exact: true }).click();
     await m.getByRole('dialog').getByRole('button', { name: 'Abrir cena', exact: true }).click();
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+    // The scene's pictures, with "Mostrar aos jogadores", then one on show.
+    const sceneImages = m.getByRole('region', { name: 'Imagens da cena' });
+    await expect(sceneImages).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta com as imagens da cena ${where}`);
+    await sceneImages.getByRole('button', { name: 'Mostrar Vista da carroça aos jogadores' }).click();
+    await expect(sceneImages.getByText('À mostra agora')).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta com uma imagem à mostra ${where}`);
+    await sceneImages.getByRole('button', { name: 'Parar de mostrar Vista da carroça' }).click();
+    await expect(sceneImages.getByText('À mostra agora')).toHaveCount(0);
 
     // The player: the block, the roll sheet in each state, the rolled row.
     await openSessionPage(p, campaignId);
@@ -2457,8 +2506,11 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
     await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
     const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByRole('button', { name: 'Ver em inglês' })).toBeVisible();
     await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
+    await details.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expectScreenPasses(p, `Detalhes de Sono na sessão, em inglês ${where}`);
     await details.getByRole('button', { name: 'Fechar' }).last().click();
 
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
@@ -5736,8 +5788,11 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
 
     // An item's description.
     await m.locator('.item__desc').first().click();
-    await expect(m.getByText('Texto do SRD 5.1, em inglês')).toBeVisible();
+    await expect(m.getByText('Texto do SRD 5.1 (tradução nossa)')).toBeVisible();
     await expectScreenPasses(m, `Tesouro, a descrição de um item ${where}`);
+    await m.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(m.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, a descrição de um item, em inglês ${where}`);
     await m.keyboard.press('Escape');
 
     // "Pôr no mapa", on the dungeon (rooms), then on a map without a grid.
@@ -7134,7 +7189,7 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     await pickTargetOf(castSheet(p), 'Pensantus');
     await expectScreenPasses(p, `Conjurar Armadura Arcana, espaço e alvo ${where}`);
     await castSheet(p).getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
-    await expect(castSheet(p).getByText(/CA 13 \+ Destreza/)).toBeVisible();
+    await expect(castSheet(p).getByText(/CA \d+ \(13 \+ Destreza\)/)).toBeVisible();
     await expectScreenPasses(p, `Conjurar Armadura Arcana, o resultado ${where}`);
     await castSheet(p).getByRole('button', { name: 'Fechar' }).last().click();
 

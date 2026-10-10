@@ -45,16 +45,16 @@ var limitedPrefixes = []string{"/meurpg.", "/images/", "/uploads/"}
 // Middleware limits the API routes by client IP, before anything else
 // reads the session: the cheapest place to stop a script that sends
 // anonymous requests, or a made-up session cookie, each of which costs a
-// database read. It answers 429 with Retry-After. behindCloudRun says where
+// database read. It answers 429 with Retry-After. trustedHops says where
 // the client IP comes from (ClientKey).
-func Middleware(l *Limiter, behindCloudRun bool, n *Notifier) func(http.Handler) http.Handler {
+func Middleware(l *Limiter, trustedHops int, n *Notifier) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !isLimited(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
-			ok, wait := l.Allow(ClientKey(r, behindCloudRun))
+			ok, wait := l.Allow(ClientKey(r, trustedHops))
 			if ok {
 				next.ServeHTTP(w, r)
 				return

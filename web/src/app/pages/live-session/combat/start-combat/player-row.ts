@@ -12,15 +12,25 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
   imports: [CheckBox, CombatantToken, MatIconModule],
   template: `
     <div class="row">
-      <app-check-box [checked]="included()" [label]="'Incluir ' + name()" (toggle)="toggle.emit()" />
+      <app-check-box
+        [checked]="included()"
+        [disabled]="!!unavailable()"
+        [label]="'Incluir ' + name()"
+        (toggle)="toggle.emit()"
+      />
       <app-combatant-token [initial]="initial()" [size]="30" />
       <span class="text">
         <span class="name">{{ name() }}</span>
         <span class="sub">{{ sub() }}</span>
+        @if (unavailable(); as why) {
+          <span class="sub" data-testid="player-unavailable">{{ why }}</span>
+        }
       </span>
-      <span class="mr-tag">
-        <mat-icon aria-hidden="true">{{ inApp() ? 'casino' : 'person' }}</mat-icon>{{ roll() }}
-      </span>
+      @if (!unavailable()) {
+        <span class="mr-tag">
+          <mat-icon aria-hidden="true">{{ inApp() ? 'casino' : 'person' }}</mat-icon>{{ roll() }}
+        </span>
+      }
     </div>
   `,
   styles: `
@@ -63,6 +73,8 @@ export class PlayerRow {
   readonly roll = input('');
   readonly inApp = input(true);
   readonly included = input(false);
+  /** Why the character cannot fight ("Reservado: ainda sem jogador"), or empty. */
+  readonly unavailable = input('');
 
   readonly toggle = output<void>();
 

@@ -7,6 +7,7 @@ import {
   createPointRPC,
   placeTokenRPC,
   revealMapRPC,
+  setCurrentMapRPC,
   tableForMaps,
   uploadImageRPC,
 } from './maps-support';
@@ -159,6 +160,83 @@ test(
       await expect(player.getByRole('heading', { name: 'Mapa não encontrado' })).toBeVisible();
       const direct = await callRPC(player, 'meurpg.maps.v1.MapService/GetMap', { campaignId: table.campaignId, mapId: hiddenMap });
       expect(direct.status()).toBe(404);
+    } finally {
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
+  'o mestre cria o mapa de um submapa pelo painel do ponto, o ponto já leva a ele, e "Abrir" vai ao editor desse mapa',
+  { tag: '@MR-008' },
+  async ({ browser }) => {
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const master = await masterContext.newPage();
+      const player = await playerContext.newPage();
+      await master.goto('/');
+      const table = await tableForMaps(master, player, `Submapa novo ${Date.now()}`);
+      const image = await uploadImageRPC(master, table.campaignId, 'Mapa', await canvasPng(master, 1200, 800, 'Mapa'));
+      await uploadImageRPC(master, table.campaignId, 'Planta da torre', await canvasPng(master, 800, 800, 'Torre', '#5b4834'));
+      const mapId = await createMapRPC(master, table.campaignId, 'Mirathel e arredores', image);
+      await createPointRPC(master, table.campaignId, mapId, { kind: 'SUBMAP', name: 'Torre do mago', xBp: 6000, yBp: 4000 });
+
+      await master.goto(`/campaigns/${table.campaignId}/maps/${mapId}`);
+      await master.getByRole('button', { name: 'Torre do mago, Submapa, escondido' }).click();
+      await expect(master.getByRole('link', { name: /^Abrir / })).toHaveCount(0);
+
+      // "Criar mapa novo…" asks for a name (the point's) and an image, then makes, links and saves.
+      await master.getByLabel('Leva para').selectOption({ label: 'Criar mapa novo…' });
+      await expect(master.getByLabel('Nome do mapa')).toHaveValue('Torre do mago');
+      await master.getByRole('button', { name: 'Criar mapa e usar' }).click();
+      await expect(master.getByText('Escolha uma imagem para o mapa.')).toBeVisible();
+      await master.getByRole('radio', { name: /Planta da torre/ }).click();
+      await master.getByRole('button', { name: 'Criar mapa e usar' }).click();
+      await expect(master.getByText('Torre do mago salvo.')).toBeVisible();
+      await expect(master.getByLabel('Leva para')).toHaveValue(/.+/);
+
+      // The point leads to the new map (it survives a reload) and "Abrir" goes to its editor.
+      await master.reload();
+      await master.getByRole('button', { name: 'Torre do mago, Submapa, escondido' }).click();
+      await master.getByRole('link', { name: 'Abrir Torre do mago' }).click();
+      await expect(master).toHaveURL(/\/maps\/[^/]+$/);
+      await expect(master).not.toHaveURL(new RegExp(`/maps/${mapId}$`));
+      await expect(master.getByRole('heading', { name: 'Torre do mago', level: 1 })).toBeVisible();
+      await expect(master.getByText('Escondido dos jogadores')).toBeVisible();
+    } finally {
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
+  'na sessão, "Ir para" num submapa muda o mapa atual da sessão para o destino do ponto',
+  { tag: '@MR-008' },
+  async ({ browser }) => {
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const master = await masterContext.newPage();
+      const player = await playerContext.newPage();
+      await master.goto('/');
+      const table = await tableForMaps(master, player, `Ir para ${Date.now()}`);
+      const image = await uploadImageRPC(master, table.campaignId, 'Mapa', await canvasPng(master, 1200, 800, 'Mapa'));
+      const mapId = await createMapRPC(master, table.campaignId, 'Mirathel e arredores', image);
+      const towerId = await createMapRPC(master, table.campaignId, 'Interior da torre', image);
+      await createPointRPC(master, table.campaignId, mapId, { kind: 'SUBMAP', name: 'Torre do mago', xBp: 6000, yBp: 4000, targetMapId: towerId, revealed: true });
+      await startSessionRPC(master, table.campaignId);
+      await setCurrentMapRPC(master, table.campaignId, mapId);
+      try {
+        await openSessionPage(master, table.campaignId);
+        await expect(master.getByLabel('Mapa atual')).toHaveValue(mapId);
+        await master.getByRole('button', { name: 'Levar a sessão para Interior da torre' }).click();
+        await expect(master.getByLabel('Mapa atual')).toHaveValue(towerId);
+      } finally {
+        await endOpenSessionRPC(master, table.campaignId);
+      }
     } finally {
       await masterContext.close();
       await playerContext.close();

@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   input,
   signal,
@@ -8,6 +9,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import type { PuzzleSummary } from '../../../../../gen/meurpg/play/v1/puzzles_pb';
@@ -20,23 +22,43 @@ import { joinDots } from '../../../../core/format/text';
  * (the artboard fills the first one, the one the table is playing; the others are outlined, so there is never more than one filled button). It never takes the focus or scrolls the
  * page: a screen reader hears "O mestre mostrou …" once, in a polite live region, when a new one arrives (the first
  * read is the baseline, so a puzzle shown before the player came is not news). A solved or stopped puzzle stays in the list
- * with its state in a word, so the way back to what the table solved is still there.
+ * with its state in a word, so the way back to what the table solved is still there: the latest result keeps its card, the older ones
+ * fold into "Ver os N quebra-cabeças anteriores" (a row each, with its state and "Ver"), so they never pile up above the board.
  */
 @Component({
   selector: 'app-puzzle-notice',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, RouterLink],
+  imports: [MatButtonModule, MatIconModule, NgTemplateOutlet, RouterLink],
   template: `
-    @for (p of puzzles(); track p.puzzleId; let first = $first) {
+    @for (p of current(); track p.puzzleId; let first = $first) {
+      <ng-container *ngTemplateOutlet="card; context: { p: p, filled: first && !p.solved }" />
+    }
+    @if (older().length > 0) {
+      <details class="older">
+        <summary class="older__sum">
+          {{ older().length === 1 ? 'Ver o quebra-cabeça anterior' : 'Ver os ' + older().length + ' quebra-cabeças anteriores' }}
+        </summary>
+        <ul class="older__list">
+          @for (p of older(); track p.puzzleId) {
+            <li class="older__row">
+              <span class="older__name">{{ p.name }}</span>
+              <span class="older__state">{{ lead(p) }}</span>
+              <a class="older__open" [routerLink]="['/campaigns', campaignId(), 'session']" [queryParams]="{ 'puzzle': p.puzzleId }" [attr.aria-label]="'Ver o quebra-cabeça ' + p.name">Ver</a>
+            </li>
+          }
+        </ul>
+      </details>
+    }
+    <ng-template #card let-p="p" let-filled="filled">
       <section class="card" [attr.aria-labelledby]="'pn-' + p.puzzleId">
         <p class="card__lead"><mat-icon aria-hidden="true">extension</mat-icon>{{ lead(p) }}</p>
         <h2 class="card__name" [id]="'pn-' + p.puzzleId">{{ p.name }}</h2>
         <p class="card__sub">{{ sub(p) }}</p>
-        <a [matButton]="first && !p.solved ? 'filled' : 'outlined'" class="card__open" [routerLink]="['/campaigns', campaignId(), 'session']" [queryParams]="{ 'puzzle': p.puzzleId }">
+        <a [matButton]="filled ? 'filled' : 'outlined'" class="card__open" [routerLink]="['/campaigns', campaignId(), 'session']" [queryParams]="{ 'puzzle': p.puzzleId }">
           {{ p.solved ? 'Ver o quebra-cabeça' : 'Abrir o quebra-cabeça' }}
         </a>
       </section>
-    }
+    </ng-template>
     <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announce() }}</p>
   `,
   styleUrl: './puzzle-notice.scss',
@@ -46,6 +68,13 @@ export class PuzzleNotice {
   readonly puzzles = input.required<readonly PuzzleSummary[]>();
 
   protected readonly announce = signal('');
+  /** What the table can still play (in the order shown) and then the latest result; the older results are folded away. */
+  private readonly finished = computed(() => this.puzzles().filter((p) => p.solved || p.stopped));
+  protected readonly current = computed(() => {
+    const done = this.finished();
+    return [...this.puzzles().filter((p) => !p.solved && !p.stopped), ...done.slice(-1)];
+  });
+  protected readonly older = computed(() => this.finished().slice(0, -1));
   private known: ReadonlySet<string> | null = null;
 
   protected readonly lead = (p: PuzzleSummary): string =>

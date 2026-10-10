@@ -424,8 +424,12 @@ const (
 	DefaultRecheck = 60 * time.Second
 	// DefaultMaxLifetime: a stream ends after this long, and the app opens
 	// a new one. It bounds what a forgotten tab can hold, and keeps each
-	// stream well inside Cloud Run's request timeout.
-	DefaultMaxLifetime = 30 * time.Minute
+	// stream well inside Cloud Run's request timeout. Behind the load balancer
+	// it is also how long the stream of a page that went away stays open (the
+	// server is not told; see live.DefaultMaxPerUser), holding one of the
+	// instance's concurrent requests: 10 minutes keeps that short, at the cost
+	// of one reconnection and snapshot read per open page every 10 minutes.
+	DefaultMaxLifetime = 10 * time.Minute
 )
 
 // LiveConfig sets the live stream's timing. Zero values mean the defaults.

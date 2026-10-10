@@ -44,7 +44,7 @@ export interface ConditionsData {
           <p>{{ error() }}</p>
         </div>
       }
-      <p class="note">Só rótulos: o app não aplica os efeitos. Os jogadores veem as condições de quem eles veem.</p>
+      <p class="note">O app aplica a velocidade 0 e a vantagem ou desvantagem nas jogadas; os outros efeitos ficam com você. Os jogadores veem as condições de quem eles veem.</p>
       <fieldset class="conds">
         <legend class="cap">Condições</legend>
         <div class="grid">

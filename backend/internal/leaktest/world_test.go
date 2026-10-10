@@ -129,7 +129,10 @@ func (w *world) buildGallery() {
 	w.imgLeft = w.image("left-image", 100, 60, w.ana, w.caio)
 	w.imgStage = w.image("stage-portrait", 60, 60) // its gallery name is the master's; players fetch the picture only
 	w.imgPortrait = w.image("portrait-image", 60, 60)
-	for _, id := range []string{w.imgMap, w.imgUnshown, w.imgPortrait} {
+	// The pictures the master attached to the scenes (MR-015): nobody was shown them.
+	w.imgSceneA = w.image("scene-image-a", 70, 50)
+	w.imgSceneB = w.image("scene-image-b", 70, 50)
+	for _, id := range []string{w.imgMap, w.imgUnshown, w.imgPortrait, w.imgSceneA, w.imgSceneB} {
 		w.secrets.id("gallery-image", id)
 	}
 }
@@ -309,6 +312,13 @@ func (w *world) buildSession() {
 	w.secrets.id("scene-closed-point", s2.GetId())
 	w.addAction(s2, "skill:insight", w.secrets.marker("scene-closed-action"), sceneDC, 1)
 	w.addClue(s2, w.secrets.marker("clue-closed"))
+	// Both scenes hold pictures, the open one and the one never opened: the list is the master's.
+	w.setSceneImages(s1, w.imgSceneA, w.imgSceneB)
+	w.setSceneImages(s2, w.imgSceneB, w.imgSceneA)
+}
+
+func (w *world) setSceneImages(p *mapsv1.MapPoint, ids ...string) {
+	must(w.master.maps.SetSceneImages(w.t.Context(), rq(&mapsv1.SetSceneImagesRequest{CampaignId: w.campaign, MapId: p.GetMapId(), PointId: p.GetId(), ImageIds: ids})))
 }
 
 func (w *world) addAction(p *mapsv1.MapPoint, key, name string, dc, attempts int32) {
