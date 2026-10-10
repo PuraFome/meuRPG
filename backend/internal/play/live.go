@@ -29,6 +29,10 @@ import (
 //     living player character's vitals; a player, only their own
 //     character's (question 28 for Samuel; the default is "no").
 
+// orphanedAfter is how long this process may go without any unary request before
+// its streams end (live.Orphaned). Visible pages make one every 30 seconds.
+const orphanedAfter = 3 * time.Minute
+
 // errWatchSlow ends a stream that fell behind (live.ErrSlow): the app
 // reconnects and reads the snapshot again.
 func errWatchSlow() error {
@@ -271,6 +275,11 @@ func (s *Service) WatchGameSession(
 		case <-recheck.C:
 			if _, err := authz.RecheckCampaignMember(ctx, m.CampaignID); err != nil {
 				return err // unauthenticated or not_found, as a new call would get
+			}
+			// A replaced revision's process still holds streams but no longer gets the master's calls:
+			// end them, so the pages reconnect to the revision that has the table.
+			if live.Orphaned(orphanedAfter) {
+				return nil
 			}
 			// A session that ended without this stream hearing about it
 			// (it cannot happen with one server; it costs one read).

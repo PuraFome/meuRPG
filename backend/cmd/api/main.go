@@ -100,6 +100,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/system"
@@ -638,6 +639,13 @@ func connectOptions(logger *slog.Logger) []connect.HandlerOption {
 		// reader that stopped reading ends its stream (client_gone) instead of
 		// blocking the handler until Cloud Run closes the connection.
 		connect.WithInterceptors(slowclient.Interceptor(streamSendTimeout)),
+		// A unary request tells the live streams this process is still where the traffic goes (live.Orphaned).
+		connect.WithInterceptors(connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				live.NoteUnaryRequest()
+				return next(ctx, req)
+			}
+		})),
 		connect.WithReadMaxBytes(maxRequestBytes),
 		// Unary Connect requests must carry the Connect-Protocol-Version
 		// header (or connect=v1 in a GET's query). A browser cannot add that
