@@ -104,6 +104,8 @@ export class SceneActionForm implements OnInit {
   protected readonly skills = signal<readonly CheckOption[] | null>(null);
   protected readonly skillsFailed = signal(false);
   protected readonly dcError = signal('');
+  /** "Escolha ...": a new action submitted with no check picked (nothing is preselected). */
+  protected readonly checkError = signal('');
   protected readonly nameControl = new FormControl('', { nonNullable: true });
   protected readonly dcControl = new FormControl('', { nonNullable: true });
   protected readonly nameLength = signal(0);
@@ -151,6 +153,7 @@ export class SceneActionForm implements OnInit {
   );
 
   private readonly firstRadio = viewChild('firstRadio', { read: ElementRef<HTMLInputElement> });
+  private readonly checkField = viewChild('checkField', { read: ElementRef<HTMLSelectElement> });
   private readonly dcField = viewChild('dcField', { read: ElementRef<HTMLInputElement> });
 
   constructor() {
@@ -193,10 +196,8 @@ export class SceneActionForm implements OnInit {
     this.checks.skills(this.campaignId()).then(
       (skills) => {
         this.skills.set(skills);
-        // Editing: the list loads under the check the action already has.
-        if (!this.initial()) {
-          this.pickFirst();
-        }
+        // Editing: the list loads under the check the action already has. A new
+        // action picks nothing: the master chooses.
       },
       () => this.skillsFailed.set(true),
     );
@@ -204,7 +205,17 @@ export class SceneActionForm implements OnInit {
 
   protected pickKind(kind: CheckKind): void {
     this.kind.set(kind);
-    this.pickFirst();
+    this.checkError.set('');
+    if (this.initial()) {
+      this.pickFirst();
+    } else {
+      this.checkKey.set('');
+    }
+  }
+
+  protected pickCheck(key: string): void {
+    this.checkKey.set(key);
+    this.checkError.set('');
   }
 
   private pickFirst(): void {
@@ -224,6 +235,10 @@ export class SceneActionForm implements OnInit {
       return;
     }
     if (!this.checkKey()) {
+      this.checkError.set(
+        `Escolha ${this.kind() === 'skill' ? 'a perícia' : this.kind() === 'ability' ? 'a habilidade' : 'o teste de resistência'} a rolar.`,
+      );
+      this.checkField()?.nativeElement.focus();
       return;
     }
     if (this.initial()) {

@@ -343,7 +343,7 @@ O deslocamento do turno vem do motor de regras (MR-013), que o reduz em 10 pés 
 
 ## RN-22: Condições e concentração
 
-O app marca as condições (derrubado, envenenado...) e a concentração, e lembra: quando o personagem concentrado leva dano, lembra o teste de concentração. O app não aplica os efeitos sozinho; o mestre decide. Aplicar os efeitos sozinho fica para depois do MVP. Isso vale também para os testes de resistência que uma magia força depois, quando uma criatura entra na área ou termina o turno nela (Esfera Flamejante, Teia, Nevasca, Terremoto): a conjuração rola os testes e o dano que a magia pede na hora em que é conjurada, e o mestre pede os demais.
+O app marca as condições (derrubado, envenenado...) e a concentração, e lembra: quando o personagem concentrado leva dano, lembra o teste de concentração. O app aplica sozinho só a velocidade 0 das condições que a zeram (agarrado, impedido, paralisado, petrificado, atordoado, inconsciente) e a vantagem ou desvantagem que elas dão às jogadas de ataque e aos testes de resistência de Destreza do impedido; os demais efeitos são do mestre aplicar (o diálogo "Mudar condições" avisa). Aplicar o resto sozinho fica para depois do MVP. Isso vale também para os testes de resistência que uma magia força depois, quando uma criatura entra na área ou termina o turno nela (Esfera Flamejante, Teia, Nevasca, Terremoto): a conjuração rola os testes e o dano que a magia pede na hora em que é conjurada, e o mestre pede os demais.
 
 
 **Como o sistema cumpre**

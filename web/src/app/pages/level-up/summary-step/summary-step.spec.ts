@@ -20,6 +20,8 @@ describe('SummaryStep: the feat taken (MR-025)', () => {
     const text = render({ name: 'Atleta', increase: '+1 Força, +1 Destreza' });
     expect(text).toContain('Talento: Atleta');
     expect(text).toContain('+1 Força, +1 Destreza');
+    // Only once (a duplicated block once listed it twice).
+    expect(text.split('Talento: Atleta')).toHaveLength(2);
   });
 
   it('says nothing of a feat when the increase was taken', () => {

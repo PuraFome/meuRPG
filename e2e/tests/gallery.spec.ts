@@ -35,7 +35,7 @@ test(
 
     await uploadThroughPicker(page, [{ name: 'foto-da-mesa.jpg', mimeType: 'image/jpeg', buffer: photo }]);
 
-    const card = galleryCard(page, 'foto-da-mesa');
+    const card = galleryCard(page, 'Foto da mesa');
     await expect(card).toBeVisible();
     await expect(card.getByText('64 × 48 px')).toBeVisible();
     await expect(page.getByText(/1 imagem · \d+\sKB de 500\sMB/)).toBeVisible();
@@ -52,7 +52,7 @@ test(
 
     // It survives a reload: it's on the server, not just on the screen.
     await page.reload();
-    await expect(galleryCard(page, 'foto-da-mesa')).toBeVisible();
+    await expect(galleryCard(page, 'Foto da mesa')).toBeVisible();
   },
 );
 
@@ -140,10 +140,10 @@ test(
     const jpeg = await canvasJpeg(page);
     await page.goto(`/campaigns/${campaignId}/gallery`);
     await uploadThroughPicker(page, [{ name: 'IMG_2031.jpg', mimeType: 'image/jpeg', buffer: jpeg }]);
-    await expect(galleryCard(page, 'IMG_2031')).toBeVisible();
+    await expect(galleryCard(page, 'IMG 2031')).toBeVisible(); // the name reads like a name: "_" becomes a space
 
     // Rename in place.
-    await galleryCard(page, 'IMG_2031').getByRole('button', { name: 'Renomear IMG_2031' }).click();
+    await galleryCard(page, 'IMG 2031').getByRole('button', { name: 'Renomear IMG 2031' }).click();
     const field = page.getByRole('textbox', { name: 'Nome da imagem' });
     await expect(field).toBeFocused();
     await field.fill('Taverna do Javali');
