@@ -76,7 +76,7 @@ test(
       await playerPage.getByLabel('Itens de equipamento', { exact: true }).fill('Grimório\nAdaga');
       await playerPage.getByRole('button', { name: 'Salvar ficha' }).click();
       await expect(playerPage).toHaveURL(new RegExp(`/characters/${characterId}$`));
-      await expect(playerPage.getByText('Grimório')).toBeVisible();
+      await expect(playerPage.getByText('Grimório', { exact: true })).toBeVisible();
       await expect(playerPage.getByRole('button', { name: 'Enviar de novo' })).toBeVisible();
 
       // Sending again: the waiting strip returns with the confirmation, and the reason is gone from their screen.

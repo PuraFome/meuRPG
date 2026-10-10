@@ -142,7 +142,7 @@ test(
       await p.getByRole('button', { name: 'Salvar ficha' }).click();
       await expect(p).toHaveURL(new RegExp(`/characters/${characterId}$`));
       await expect(p.getByRole('heading', { level: 1, name: 'Pensantus' })).toBeVisible();
-      await expect(p.getByText('Grimório')).toBeVisible();
+      await expect(p.getByText('Grimório', { exact: true })).toBeVisible();
       // But a new choice of it is not offered.
       await p.goto(`/campaigns/${campaignId}/characters/new`);
       expect(await raceOptions(p)).not.toContain('Gnomo');
