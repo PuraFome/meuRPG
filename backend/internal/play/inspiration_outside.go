@@ -304,6 +304,7 @@ func (s *Service) GiveBardicInspirationOutside(
 		return nil, s.dbError(ctx, "give bardic inspiration", err)
 	}
 	if told {
+		s.publishCastsChanged(m.CampaignID, false) // the table's hint to read the dice held again
 		s.publishVitals(m.CampaignID, after)
 		if v, err := s.vitals.GetVitals(ctx, m.CampaignID, target); err == nil {
 			s.publishVitals(m.CampaignID, v)

@@ -1510,6 +1510,10 @@ export const ContestService: GenService<{
    * Errors: `failed_precondition`: ContestBlocked (GROUP_CHECK_CLOSED, NOT_IN_GROUP_CHECK,
    * ALREADY_ANSWERED) or EncounterBlocked WRONG_DICE_MODE.
    *
+   * A character that holds a Bardic Inspiration die (given outside a combat) gets
+   * `inspiration_offer` in place of the group check: the d20 is rolled and kept, the
+   * check is not written, and ResourceService.AnswerOutsideInspiration settles it.
+   *
    * @generated from rpc meurpg.play.v1.ContestService.RollGroupCheck
    */
   rollGroupCheck: {

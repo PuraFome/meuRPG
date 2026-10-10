@@ -3,8 +3,11 @@ import { createClient } from '@connectrpc/connect';
 
 import type { CharacterVitals } from '../../../gen/meurpg/play/v1/play_pb';
 import {
+  type AnswerOutsideInspirationResponse,
   type ConvertSpellSlotResponse,
   type CreateSpellSlotResponse,
+  type GetOutsideInspirationResponse,
+  type GiveBardicInspirationOutsideResponse,
   type GiveBardicInspirationResponse,
   LayOnHandsCure,
   type UseLayOnHandsResponse,
@@ -192,5 +195,47 @@ export class ResourceClient {
       throw new Error('AnswerBardicInspiration answered without its attack');
     }
     return attackResult(res.attack);
+  }
+
+  /** The Bardic Inspiration of the caller outside a combat: the die their character holds, the party a bard can give it
+   * to, and the rolls that wait for an answer about it. The master reads every die held. */
+  outsideInspiration(campaignId: string): Promise<GetOutsideInspirationResponse> {
+    return this.client.getOutsideInspiration({ campaignId });
+  }
+
+  /** The bard gives the die to another character of the party, outside a combat (10 minutes of game time). */
+  giveBardicInspirationOutside(
+    campaignId: string,
+    targetCharacterId: string,
+    idempotencyKey: string,
+  ): Promise<GiveBardicInspirationOutsideResponse> {
+    return this.client.giveBardicInspirationOutside({
+      campaignId,
+      targetCharacterId,
+      idempotencyKey,
+    });
+  }
+
+  /** The answer to a roll outside a combat that waits for the die: use it (rolled in the app, or its typed face) or keep
+   * it. The roll is then written as the scene check or the group check would have written it. */
+  answerOutsideInspiration(
+    campaignId: string,
+    holdId: string,
+    use: boolean,
+    roll: InspirationRoll | null,
+    idempotencyKey: string,
+  ): Promise<AnswerOutsideInspirationResponse> {
+    return this.client.answerOutsideInspiration({
+      campaignId,
+      holdId,
+      use,
+      idempotencyKey,
+      roll:
+        use && roll
+          ? 'inApp' in roll
+            ? { case: 'rollInApp', value: true }
+            : { case: 'typedFace', value: roll.face }
+          : { case: undefined },
+    });
   }
 }

@@ -264,6 +264,10 @@
             [diceMode]="campaign()?.diceMode ?? 1"
             [preference]="campaign()?.dicePreference ?? 1"
           />
+          <app-bardic-block
+            [campaignId]="campaignId()"
+            [tick]="castsTick()"
+          />
           <app-shown-image-panel
             class="board__image"
             [campaignId]="campaignId()"
@@ -419,6 +423,11 @@
                 [tick]="castsTick()"
                 [diceMode]="campaign()?.diceMode ?? 1"
                 [preference]="campaign()?.dicePreference ?? 1"
+              />
+              <app-bardic-block
+                [campaignId]="campaignId()"
+                [diceMode]="campaign()?.diceMode ?? 1"
+                [tick]="castsTick()"
               />
             } @else {
               <div class="mr-notice mr-notice--neutral">
