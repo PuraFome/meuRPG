@@ -760,7 +760,11 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			case useExtra:
 				// Spent below, with the extra action: the action and the attacks of the turn stay.
 			case !asReaction:
-				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack); err != nil {
+				frenzy, ferr := s.frenzyReadyNow(ctx, c, attacker)
+				if ferr != nil {
+					return nil, ferr
+				}
+				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack, frenzy); err != nil {
 					return nil, err
 				}
 			}
@@ -2166,7 +2170,7 @@ func (s *Service) TakeAction(
 					vitals = vit
 				}
 			}
-			if err := s.beginFeatureState(ctx, c, v, who, actionKey, sheet, &made); err != nil {
+			if err := s.beginFeatureState(ctx, c, v, who, actionKey, sheet, req.Msg.GetFrenzy(), &made); err != nil {
 				return nil, err
 			}
 		}

@@ -59,7 +59,11 @@ func stateEffectPT(st playdb.CombatantState) string {
 	switch st.Kind {
 	case stateRage:
 		bonus := max(st.Amount, 2)
-		return fmt.Sprintf("Resistência a concussão, perfurante e cortante · +%d no dano corpo a corpo com Força · vantagem em testes e testes de resistência de Força · não conjura nem se concentra. Acaba no fim da vez se não atacar uma criatura hostil nem sofrer dano.", bonus)
+		text := fmt.Sprintf("Resistência a concussão, perfurante e cortante · +%d no dano corpo a corpo com Força · vantagem em testes e testes de resistência de Força · não conjura nem se concentra. Acaba no fim da vez se não atacar uma criatura hostil nem sofrer dano.", bonus)
+		if frenzied(st) {
+			text += " Em frenesi: um ataque corpo a corpo como ação bônus em cada turno seguinte; quando a fúria acabar, ganha 1 nível de exaustão."
+		}
+		return text
 	case stateDodging:
 		return "Ataques contra a criatura têm desvantagem se quem ataca é visto, e ela tem vantagem em testes de resistência de Destreza. Acaba no começo da próxima vez dela."
 	case stateReckless:
@@ -101,13 +105,21 @@ func (s *Service) stateEvent(ctx context.Context, c *combatTx, who playdb.Combat
 	})
 }
 
-// beginRage starts a rage: it lasts 10 rounds and a raging character neither casts nor
+// beginRage starts a rage, in a frenzy when the Berserker asks for it (SRD 5.1, Barbarian,
+// Path of the Berserker): it lasts 10 rounds and a raging character neither casts nor
 // concentrates, so the concentration it had ends (SRD 5.1, Barbarian, Rage). It
 // returns the state for the action's event, to undo it.
-func (s *Service) beginRage(ctx context.Context, c *combatTx, who playdb.Combatant, sheet link.Sheet, ev *actionEvent) error {
+func (s *Service) beginRage(ctx context.Context, c *combatTx, who playdb.Combatant, sheet link.Sheet, frenzy bool, ev *actionEvent) error {
+	if frenzy && !sheet.Traits.Frenzy {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE, "only a Berserker has Frenzy")
+	}
 	ends := c.enc.Round + rageRounds
 	phase := (*string)(nil)
-	st, err := s.addState(ctx, c, who, stateRage, nil, nil, phase, &ends, clamp32(combat.RageBonus(sheet.Traits.BarbarianLevel), 0, 10))
+	var source *string // a frenzied rage is its own source (see frenzied)
+	if frenzy {
+		source = &who.ID
+	}
+	st, err := s.addState(ctx, c, who, stateRage, source, nil, phase, &ends, clamp32(combat.RageBonus(sheet.Traits.BarbarianLevel), 0, 10))
 	if err != nil {
 		return err
 	}
@@ -134,7 +146,10 @@ func (s *Service) endRage(ctx context.Context, c *combatTx, who playdb.Combatant
 	if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: who.ID}); err != nil {
 		return fmt.Errorf("clear the rage flags: %w", err)
 	}
-	return s.stateEvent(ctx, c, who, stateRage, false, reason)
+	if err := s.stateEvent(ctx, c, who, stateRage, false, reason); err != nil {
+		return err
+	}
+	return s.afterFrenzyEnded(ctx, c, who, rows)
 }
 
 // markHuntersMark puts the caster's Hunter's Mark on the target: one mark at a time (SRD
@@ -208,6 +223,9 @@ func (s *Service) afterStatesEnded(ctx context.Context, c *combatTx, rows []play
 			return fmt.Errorf("clear the rage flags: %w", err)
 		}
 		if err := s.stateEvent(ctx, c, cs[i], stateRage, false, reason); err != nil {
+			return err
+		}
+		if err := s.afterFrenzyEnded(ctx, c, cs[i], []playdb.CombatantState{st}); err != nil {
 			return err
 		}
 	}
@@ -436,6 +454,9 @@ func statesFor(states []playdb.CombatantState, cs []playdb.Combatant, v combatVi
 			Id: st.ID, Kind: stateKindProto(st.Kind), SourceId: deref(st.SourceID), LabelPt: stateLabelPT(st.Kind), EffectPt: stateEffectPT(st),
 			EndsCombatantId: deref(st.EndsCombatantID), EndsRound: derefInt32(st.EndsRound),
 		}
+		if frenzied(st) {
+			e.SourceId, e.LabelPt, e.Frenzy = "", "Em frenesi", true
+		}
 		switch deref(st.EndsPhase) {
 		case "start_of_turn":
 			e.EndsPhase = playv1.StatePhase_STATE_PHASE_START_OF_TURN
@@ -541,10 +562,10 @@ const (
 
 // beginFeatureState begins the state a feature action gives: a rage, or a reckless
 // attack, which is declared with the first attack of the turn (SRD 5.1, Barbarian).
-func (s *Service) beginFeatureState(ctx context.Context, c *combatTx, v combatViewer, who playdb.Combatant, actionKey string, sheet link.Sheet, ev *actionEvent) error {
+func (s *Service) beginFeatureState(ctx context.Context, c *combatTx, v combatViewer, who playdb.Combatant, actionKey string, sheet link.Sheet, frenzy bool, ev *actionEvent) error {
 	switch actionKey {
 	case rageAction:
-		return s.beginRage(ctx, c, who, sheet, ev)
+		return s.beginRage(ctx, c, who, sheet, frenzy, ev)
 	case recklessAttackAction:
 		if who.AttacksMade > 0 && !v.master {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE, "Reckless Attack is declared with the first attack of the turn")

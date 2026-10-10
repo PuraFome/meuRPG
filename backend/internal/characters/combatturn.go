@@ -235,9 +235,17 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 	d.SpeedWalkFt = turn.SpeedFt
 	opts := combat.Options(d, combat.TurnState{
 		ActionUsed: turn.ActionUsed, BonusActionUsed: turn.BonusActionUsed, ReactionUsed: turn.ReactionUsed,
-		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, LastAttackKey: turn.AttackKey, FlurryLeft: turn.FlurryLeft, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
+		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, LastAttackKey: turn.AttackKey, FlurryLeft: turn.FlurryLeft, FrenzyReady: turn.FrenzyReady, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
 	}, usage)
 	out := turnOptionsToProto(opts)
+	// The Berserker's Rage asks whether to frenzy (SRD 5.1, Path of the Berserker).
+	if rules.HasFeature(d, "feature:frenzy") {
+		for _, a := range out.GetFeatureActions() {
+			if a.GetAction().GetKey() == "feature:rage" {
+				a.OffersFrenzy = true
+			}
+		}
+	}
 	// The movement is kept in tenths of a foot (RN-21): the feet fields are those
 	// rounded down, so the two never disagree.
 	speed := turn.SpeedFt * 10
@@ -299,6 +307,7 @@ var bonusRuleToProto = map[combat.BonusKind]rulesv1.BonusAttackRule{
 	combat.BonusTwoWeapon:   rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_OFF_HAND,
 	combat.BonusMartialArts: rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_MARTIAL_ARTS,
 	combat.BonusFlurry:      rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_FLURRY_OF_BLOWS,
+	combat.BonusFrenzy:      rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_FRENZY,
 }
 
 // turnOptionsToProto copies package combat's TurnOptions into the API's.

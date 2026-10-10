@@ -913,6 +913,10 @@ const (
 	// StandUp: the combatant's speed is 0 (SRD 5.1, "Being Prone"), so it cannot stand up
 	// whatever the cost: Grappled, Restrained, the lethargy of a Velocidade, and the like.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP EncounterBlockedReason = 103
+	// TakeAction (Fúria, with `frenzy`): the combatant has no Frenzy, which is the level 3
+	// feature of the Path of the Berserker (SRD 5.1, Barbarian). Any other barbarian, and
+	// anyone else, rages without it.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE EncounterBlockedReason = 104
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1002,6 +1006,7 @@ var (
 		101: "ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE",
 		102: "ENCOUNTER_BLOCKED_REASON_NOT_PRONE",
 		103: "ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP",
+		104: "ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
@@ -1088,6 +1093,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE":     101,
 		"ENCOUNTER_BLOCKED_REASON_NOT_PRONE":                    102,
 		"ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP":              103,
+		"ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE":           104,
 	}
 )
 
@@ -9984,8 +9990,15 @@ type TakeActionRequest struct {
 	// True: the action is the extra action an effect gives (Velocidade): Disparada,
 	// Desengajar, Esconder or Usar um objeto spend that action instead of the Action.
 	UseExtraAction bool `protobuf:"varint,100,opt,name=use_extra_action,json=useExtraAction,proto3" json:"use_extra_action,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// True: the action is "feature:rage" and the barbarian goes into a frenzy for this rage
+	// (SRD 5.1, Barbarian, Path of the Berserker, Frenzy). Each of its later turns offers one
+	// melee weapon attack as a bonus action, and when the rage ends it gains one level of
+	// exhaustion. Only a barbarian with the Frenzy feature may ask; any other combatant is
+	// refused with `failed_precondition` (EncounterBlocked FRENZY_UNAVAILABLE). Ignored by an
+	// action that is not "feature:rage"; false is a plain rage.
+	Frenzy        bool `protobuf:"varint,101,opt,name=frenzy,proto3" json:"frenzy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TakeActionRequest) Reset() {
@@ -10081,6 +10094,13 @@ func (x *TakeActionRequest) GetTypedSum() int32 {
 func (x *TakeActionRequest) GetUseExtraAction() bool {
 	if x != nil {
 		return x.UseExtraAction
+	}
+	return false
+}
+
+func (x *TakeActionRequest) GetFrenzy() bool {
+	if x != nil {
+		return x.Frenzy
 	}
 	return false
 }
@@ -14777,6 +14797,7 @@ type CombatLogEffect struct {
 	ExhaustionLevel  int32 `protobuf:"varint,12,opt,name=exhaustion_level,json=exhaustionLevel,proto3" json:"exhaustion_level,omitempty"`
 	ExhaustionBefore int32 `protobuf:"varint,13,opt,name=exhaustion_before,json=exhaustionBefore,proto3" json:"exhaustion_before,omitempty"`
 	// ENDED: why ("duration", "ended_by_master", "concentration", "saved", "caster_left").
+	// EXHAUSTION: "frenzy" when the level came from the end of a Berserker's frenzied rage.
 	Reason        string `protobuf:"bytes,14,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -20841,7 +20862,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x9d\x01\n" +
 	"\x1cDiscardPendingDamageResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12D\n" +
-	"\x0epending_damage\x18\x02 \x01(\v2\x1d.meurpg.play.v1.PendingDamageR\rpendingDamage\"\xb5\x02\n" +
+	"\x0epending_damage\x18\x02 \x01(\v2\x1d.meurpg.play.v1.PendingDamageR\rpendingDamage\"\xcd\x02\n" +
 	"\x11TakeActionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -20852,7 +20873,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12 \n" +
 	"\vroll_in_app\x18\x06 \x01(\bH\x00R\trollInApp\x12\x1d\n" +
 	"\ttyped_sum\x18\a \x01(\x05H\x00R\btypedSum\x12(\n" +
-	"\x10use_extra_action\x18d \x01(\bR\x0euseExtraActionB\x06\n" +
+	"\x10use_extra_action\x18d \x01(\bR\x0euseExtraAction\x12\x16\n" +
+	"\x06frenzy\x18e \x01(\bR\x06frenzyB\x06\n" +
 	"\x04roll\"\xa3\x01\n" +
 	"\x12TakeActionResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12,\n" +
@@ -21803,7 +21825,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xb8\x1f\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xe9\x1f\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -21889,7 +21911,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"#ENCOUNTER_BLOCKED_REASON_CANNOT_ACT\x10d\x125\n" +
 	"1ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE\x10e\x12&\n" +
 	"\"ENCOUNTER_BLOCKED_REASON_NOT_PRONE\x10f\x12,\n" +
-	"(ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP\x10g*\x91\x03\n" +
+	"(ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP\x10g\x12/\n" +
+	"+ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE\x10h*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

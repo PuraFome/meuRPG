@@ -175,8 +175,9 @@ type Sheet struct {
 type Traits struct {
 	// BarbarianLevel and RogueLevel are the class levels, 0 without the class.
 	BarbarianLevel, RogueLevel int
-	// Rage, RecklessAttack and DangerSense are the barbarian's features.
-	Rage, RecklessAttack, DangerSense bool
+	// Rage, RecklessAttack and DangerSense are the barbarian's features, and Frenzy
+	// the Berserker's level 3 feature.
+	Rage, RecklessAttack, DangerSense, Frenzy bool
 	// SneakAttackDice is the dice of Sneak Attack, 0 without the feature.
 	SneakAttackDice int
 	// DivineSmite, ImprovedDivineSmite and ColossusSlayer are the features of those
@@ -454,6 +455,9 @@ type Turn struct {
 	// action attacks read.
 	AttackKey  string
 	FlurryLeft int
+	// FrenzyReady says the combatant is in a frenzied rage that began in an earlier
+	// turn (the Berserker's Frenzy): a melee weapon attack is its bonus action.
+	FrenzyReady bool
 	// Dashed says the Dash action doubled the speed.
 	Dashed bool
 	// ActionSurged says Action Surge was used this turn (once per turn, whatever

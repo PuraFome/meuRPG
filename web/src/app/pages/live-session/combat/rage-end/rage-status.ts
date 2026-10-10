@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { isRaging } from './rage';
+import { isFrenzied, isRaging } from './rage';
 
 /**
  * What a raging barbarian's card says about the rage: whether it attacked a hostile
@@ -22,6 +22,9 @@ import { isRaging } from './rage';
         <p class="rage__line" role="status" aria-live="polite">
           <mat-icon aria-hidden="true">local_fire_department</mat-icon>
           <span>
+            @if (frenzied()) {
+              <b class="rage__frenzy">Em frenesi</b> ·
+            }
             Atacou um hostil: <b>{{ subject().attackedHostileSinceLastTurn ? 'sim' : 'não' }}</b> ·
             Sofreu dano: <b>{{ subject().tookDamageSinceLastTurn ? 'sim' : 'não' }}</b>
           </span>
@@ -71,4 +74,5 @@ export class RageStatus {
   readonly endRage = output<void>();
 
   protected readonly raging = computed(() => isRaging(this.subject()));
+  protected readonly frenzied = computed(() => isFrenzied(this.subject()));
 }

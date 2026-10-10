@@ -1064,6 +1064,10 @@ function effectLogText(fx: CombatLogEffect, ctx: LogContext): string {
 /** "Brisa agora tem exaustão de nível 2". */
 function exhaustionLogText(fx: CombatLogEffect, ctx: LogContext): string {
   const who = upFirst(effectTargets(fx, ctx));
+  if (fx.reason === 'frenzy') {
+    // The end of a frenzied rage (SRD 5.1, Berserker): "Frenesi: +1 nível de exaustão · Ragna agora tem exaustão de nível 1".
+    return `Frenesi: +1 nível de exaustão · ${who} agora tem exaustão de nível ${fx.exhaustionLevel}`;
+  }
   return fx.exhaustionLevel > 0
     ? `${who} agora tem exaustão de nível ${fx.exhaustionLevel}`
     : `${who} ficou sem exaustão`;

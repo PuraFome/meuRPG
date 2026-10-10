@@ -20,6 +20,10 @@ const (
 	// BonusFlurry is one of the two unarmed strikes of Flurry of Blows, whose
 	// bonus action is already spent.
 	BonusFlurry
+	// BonusFrenzy is the Berserker's Frenzy: one melee weapon attack on each turn
+	// after the one the frenzied rage began in (SRD 5.1, Barbarian). It needs no
+	// Attack action before it, and its damage keeps the ability modifier.
+	BonusFrenzy
 )
 
 // AttackTraits is what the bonus action rules read of an attack.
@@ -50,6 +54,9 @@ type BonusAttackTurn struct {
 	// weapons: the off-hand attack needs a different weapon from the one in
 	// the main hand (two daggers count; the app does not track hands).
 	NoSecondLight bool
+	// FrenzyReady says the character is in a frenzied rage that began in an earlier
+	// turn: a melee weapon attack may be its bonus action.
+	FrenzyReady bool
 }
 
 // SecondLightWeaponMissing says fewer than two of the attacks are light melee
@@ -62,8 +69,12 @@ const twoWeaponsCount = 2
 
 // BonusAttack says whether next may be made now as a bonus action attack, and
 // by which rule. Flurry of Blows comes first (its bonus action is already
-// spent), then the Martial Arts strike, then Two-Weapon Fighting.
+// spent), then the Frenzy attack, then the Martial Arts strike, then Two-Weapon
+// Fighting. The Frenzy attack, unlike the others, follows no Attack action.
 func BonusAttack(turn BonusAttackTurn, next AttackTraits) BonusKind {
+	if turn.FrenzyReady && !turn.BonusUsed && next.Melee && !next.Spell && turn.FlurryLeft == 0 {
+		return BonusFrenzy
+	}
 	if !turn.AttackAction || turn.Last.Spell || next.Spell {
 		return BonusNone
 	}

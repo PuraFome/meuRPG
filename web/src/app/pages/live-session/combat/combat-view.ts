@@ -1606,7 +1606,7 @@ export class CombatView {
 
   /** "Usar" on a feature: Retomar o Fôlego rolls (its own sheet); the others
    * only spend the action and remind the table ("Você tem outra ação"). */
-  protected async useFeature(key: string): Promise<void> {
+  protected async useFeature(key: string, frenzy = false): Promise<void> {
     const own = this.own();
     const e = this.encounter();
     const option = this.options()?.options?.featureActions.find((a) => a.action?.key === key);
@@ -1657,10 +1657,21 @@ export class CombatView {
     if (
       await this.run(
         async (current) =>
-          (await this.api.takeAction(this.campaignId(), current.id, own.id, actionKey)).encounter,
+          (
+            await this.api.takeAction(
+              this.campaignId(),
+              current.id,
+              own.id,
+              actionKey,
+              undefined,
+              undefined,
+              false,
+              frenzy,
+            )
+          ).encounter,
       )
     ) {
-      this.actionNote.set(note);
+      this.actionNote.set(frenzy ? `${name}: você entrou em frenesi.` : note);
     }
   }
 
