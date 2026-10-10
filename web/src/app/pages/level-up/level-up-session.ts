@@ -143,13 +143,17 @@ export class LevelUpSession {
     () => this.after().abilities.find((a) => a.ability === Ability.CONSTITUTION)?.modifier ?? 0,
   );
 
-  /** "Média 4 + Constituição +3", or with the die that was rolled. */
+  /** "Média 4 + Constituição +3", or with the die that was rolled, and the per-level bonus of a trait when there is one. */
   private hpSub(): string {
     const d = this.draft;
     const rolled = d.hpCard() === 'roll' ? d.rolled() : null;
     const base = rolled ? rolled.value : this.options.hitPointAverage;
     const word = rolled ? 'Rolado' : 'Média';
-    return `${word} ${this.withCon(base)}`;
+    // A bonus the sheet gives at every level (the hill dwarf's Dwarven Toughness, +1 per level) is not in the
+    // die or the Constituição: the difference of what the effects add, before and after, says it.
+    const bonus = this.after().hitPointsFromEffects - this.before.hitPointsFromEffects;
+    const extra = bonus > 0 ? ` + ${bonus} de bônus por nível (traço ou característica)` : '';
+    return `${word} ${this.withCon(base)}${extra}`;
   }
 
   /** Every change of the level, before → after, from the server's derived sheets. */

@@ -1321,6 +1321,17 @@ describe('LevelUpPage', () => {
       return f;
     }
 
+    it('explains a bonus the sheet gives per level in the hit points line (the hill dwarf)', async () => {
+      // The sheet's effects add one more hit point after the level than before: the Dwarven Toughness.
+      const before = {
+        ...pensantus(),
+        hitPointsFromEffects: pensantus(true).hitPointsFromEffects - 1,
+      };
+      const f = await setup(fighterOptions(), character({}, before));
+      await click(f, button(f, 'Próximo'));
+      expect(text(f)).toContain('+ 1 de bônus por nível');
+    });
+
     it('sends the level-up once on a double click, while the first answer is on its way', async () => {
       const f = await atResumoOfToren();
       let answer: (c: unknown) => void = () => undefined;

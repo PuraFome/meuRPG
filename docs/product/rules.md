@@ -343,7 +343,7 @@ The turn's speed comes from the rules engine (MR-013), which cuts it by 10 ft wh
 
 ## RN-22: Conditions and concentration
 
-The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, the game asks its owner for the concentration save (RN-31). It does not apply the other effects by itself; the master decides. Applying effects automatically is left for after the MVP. That includes the saving throws a spell forces later, when a creature enters its area or ends its turn there (Flaming Sphere, Web, Sleet Storm, Earthquake): a casting rolls the saves and the damage the spell asks for when it is cast, and the master calls for the later ones.
+The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, the game asks its owner for the concentration save (RN-31). It applies by itself only the speed 0 of the conditions that set it (grappled, restrained, paralyzed, petrified, stunned, unconscious) and the advantage or disadvantage they give to attack rolls and to the Dexterity saves of the restrained; every other effect is the master's to apply (the dialog "Mudar condições" says so). Applying the rest automatically automatically is left for after the MVP. That includes the saving throws a spell forces later, when a creature enters its area or ends its turn there (Flaming Sphere, Web, Sleet Storm, Earthquake): a casting rolls the saves and the damage the spell asks for when it is cast, and the master calls for the later ones.
 
 
 **How the system meets it**

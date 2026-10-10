@@ -676,13 +676,17 @@ func TestTheCreatureTypesUseTheNamesOfTheBestiary(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
 	want := map[string]string{
-		"aberration": "Aberração", "beast": "Fera", "celestial": "Celestial", "construct": "Constructo", "dragon": "Dragão", //nolint:misspell // "Constructo" is the Portuguese term
+		"aberration": "Aberração", "beast": "Fera", "celestial": "Celestial", "construct": "Construto", "dragon": "Dragão",
 		"elemental": "Elemental", "fey": "Fada", "fiend": "Ínfero", "giant": "Gigante", "humanoid": "Humanoide",
-		"monstrosity": "Monstruosidade", "ooze": "Limo", "plant": "Planta", "undead": "Morto-vivo",
+		"monstrosity": "Monstruosidade", "ooze": "Gosma", "plant": "Planta", "undead": "Morto-vivo",
 	}
 	for key, name := range want {
 		if got := c.c.namePT("creature-type:" + key); got != name {
 			t.Errorf("creature-type:%s = %q, want %q", key, got, name)
+		}
+		// The stat block's cards say the same word (creatureTypeNamePT).
+		if card := creatureTypeNamePT[key]; !strings.EqualFold(card, name) {
+			t.Errorf("creature type %s: the card says %q, the filter and the names say %q", key, card, name)
 		}
 	}
 	enemy := choiceOf(t, c.Choices(choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 1})), "feature:favored-enemy-1-type")

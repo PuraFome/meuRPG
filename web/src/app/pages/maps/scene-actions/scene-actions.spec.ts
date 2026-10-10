@@ -89,6 +89,14 @@ describe('SceneActions', () => {
       ?.replace(/\u00a0/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+  /** Picks a check in the new-action form's select, as a person does. */
+  function choose(key: string): void {
+    const select = el.querySelector<HTMLSelectElement>('app-scene-action-form select')!;
+    select.value = key;
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  }
+
   function type(input: HTMLInputElement, value: string): void {
     input.value = value;
     input.dispatchEvent(new Event('input'));
@@ -228,12 +236,14 @@ describe('SceneActions', () => {
     await settle();
     const select = () => el.querySelector<HTMLSelectElement>('app-scene-action-form select')!;
     expect(Array.from(select().options, (o) => o.textContent?.trim())).toEqual([
+      'Escolha…',
       'Arcanismo',
       'Investigação',
     ]);
     el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click();
     fixture.detectChanges();
     expect(Array.from(select().options, (o) => o.textContent?.trim())).toEqual([
+      'Escolha…',
       'Força',
       'Destreza',
       'Constituição',
@@ -243,7 +253,7 @@ describe('SceneActions', () => {
     ]);
     el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[2].click();
     fixture.detectChanges();
-    expect(Array.from(select().options, (o) => o.value)[4]).toBe('save:wis');
+    expect(Array.from(select().options, (o) => o.value)[5]).toBe('save:wis');
   });
 
   it('adds an action with a name and a DC, saves at once and focuses "Adicionar ação"', async () => {
@@ -258,6 +268,7 @@ describe('SceneActions', () => {
       flat(el.querySelector('mat-form-field:nth-of-type(2) .mat-mdc-form-field-hint-wrapper')),
     ).toContain('20 de 60');
     type(dc, '14');
+    choose('skill:arcana');
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
       new Event('submit', { cancelable: true }),
     );
@@ -297,11 +308,32 @@ describe('SceneActions', () => {
     setup([...FIVE]);
     button('Adicionar ação').click();
     await settle();
+    choose('skill:arcana');
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
       new Event('submit', { cancelable: true }),
     );
     await settle();
     expect(api.calls[0]).toContain('"dc":0');
+  });
+
+  it('preselects no check: the master must choose, and submitting without one says so and sends nothing', async () => {
+    setup([...FIVE]);
+    button('Adicionar ação').click();
+    await settle();
+    const select = el.querySelector<HTMLSelectElement>('app-scene-action-form select')!;
+    expect(select.value).toBe('');
+    expect(flat(el.querySelector('mat-form-field .mat-mdc-form-field-hint-wrapper'))).toContain(
+      'Obrigatório.',
+    );
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
+      new Event('submit', { cancelable: true }),
+    );
+    await settle();
+    expect(flat(el.querySelector('form [role="alert"]'))).toContain('Escolha a perícia a rolar.');
+    expect(document.activeElement).toBe(select);
+    expect(api.calls).toEqual([]);
+    choose('skill:arcana');
+    expect(el.querySelector('form [role="alert"]')).toBeNull();
   });
 
   it('shows the free-text notice next to the name field', async () => {
@@ -337,6 +369,7 @@ describe('SceneActions', () => {
     button('Adicionar ação').click();
     await settle();
     api.sceneActions = Array.from({ length: 20 }, (_, i) => action(`x${i}`, 'Arcanismo'));
+    choose('skill:arcana');
     el.querySelector<HTMLFormElement>('form')!.dispatchEvent(
       new Event('submit', { cancelable: true }),
     );

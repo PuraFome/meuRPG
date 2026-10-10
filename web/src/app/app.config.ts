@@ -9,6 +9,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { TitleStrategy, provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
+import { ConfirmGuard } from './core/confirm-guard/confirm-guard';
 import { PageTitleStrategy } from './core/title/page-title';
 
 export const appConfig: ApplicationConfig = {
@@ -28,6 +29,9 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
     }),
+    // A double-click never confirms a destructive inline action: every inline
+    // confirmation ignores clicks for its first 500 ms (docs/design.md).
+    provideAppInitializer(() => inject(ConfirmGuard).start()),
     // No root fallback for CharacterSheetSource / CharacterEditorSource /
     // CampaignCharactersSource / GameSessionSource on purpose: each is
     // provided at the route level, scoped to the pages that need it (see

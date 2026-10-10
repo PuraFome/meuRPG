@@ -8,7 +8,7 @@ export const CREATURE_TYPES: readonly { value: string; label: string }[] = [
   { value: 'aberration', label: 'Aberração' },
   { value: 'beast', label: 'Fera' },
   { value: 'celestial', label: 'Celestial' },
-  { value: 'construct', label: 'Constructo' },
+  { value: 'construct', label: 'Construto' },
   { value: 'dragon', label: 'Dragão' },
   { value: 'elemental', label: 'Elemental' },
   { value: 'swarm of Tiny beasts', label: 'Enxame de feras miúdas' },
@@ -17,7 +17,7 @@ export const CREATURE_TYPES: readonly { value: string; label: string }[] = [
   { value: 'giant', label: 'Gigante' },
   { value: 'humanoid', label: 'Humanoide' },
   { value: 'monstrosity', label: 'Monstruosidade' },
-  { value: 'ooze', label: 'Limo' },
+  { value: 'ooze', label: 'Gosma' },
   { value: 'plant', label: 'Planta' },
   { value: 'undead', label: 'Morto-vivo' },
 ];

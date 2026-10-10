@@ -26,14 +26,6 @@ import { LevelUpSession } from '../level-up-session';
           }
         </p>
       }
-      @if (s().draft.featSummary(); as feat) {
-        <p class="feat">
-          <strong>Talento: {{ feat.name }}</strong>
-          @if (feat.increase) {
-            <span>{{ feat.increase }}</span>
-          }
-        </p>
-      }
       <app-change-rows [rows]="s().rows()" />
     </section>
     <p class="rest">
@@ -59,14 +51,6 @@ import { LevelUpSession } from '../level-up-session';
       font-size: 15px;
       line-height: 20px;
       color: var(--mr-ink-muted);
-    }
-
-    .feat {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--mr-space-1) var(--mr-space-3);
-      margin: 0 0 var(--mr-space-3);
-      font-size: 17px;
     }
 
     .feat {
