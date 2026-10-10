@@ -524,6 +524,15 @@ message FeatOption {
   // them; a feat that raises every ability it lists is still taken, and its increase stops
   // at 20. The feat is available either way.
   repeated Ability capped_abilities = 10;
+  // `desc` in Portuguese, one paragraph per entry: our translation of the SRD 5.1
+  // English (effects/feats_pt.json); for a table feat, its own text, the same as `desc`.
+  // Empty while `desc_pt_missing`; the app then shows `desc` in English with a note.
+  repeated string desc_pt = 11;
+  // True for an SRD feat with no Portuguese text yet.
+  bool desc_pt_missing = 12;
+  // True when the text exists only in Portuguese (a table feat): `desc` already is the
+  // Portuguese, and there is no English to offer.
+  bool desc_pt_only = 13;
 }
 
 // ProficiencyLevel is how much of the proficiency bonus a check adds.
@@ -1071,6 +1080,16 @@ message Feature {
   // player picked (a fighting style, an invocation, a pact boon); empty for the
   // other features.
   string summary_pt = 6;
+  // `description` in Portuguese, paragraphs joined by a blank line: our translation of the
+  // SRD 5.1 English (effects/features_pt.json, traits_pt.json, backgrounds_pt.json); for a
+  // table feature, its own text, the same as `description`. Empty while
+  // `description_pt_missing`; the app then shows `description` in English with a note.
+  string description_pt = 7;
+  // True for an SRD feature, trait or background feature with no Portuguese text yet.
+  bool description_pt_missing = 8;
+  // True when the text exists only in Portuguese (a table feature): `description` already
+  // is the Portuguese, and there is no English to offer.
+  bool description_pt_only = 9;
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese

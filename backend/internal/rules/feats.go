@@ -90,8 +90,13 @@ type FeatEntry struct {
 	// Name is the SRD's English name (the table's feats have only NamePT).
 	Name, NamePT string
 	// Desc is the text: the SRD's, in English, or the table's, in Portuguese.
-	Desc         []string
-	Prerequisite FeatPrerequisite
+	Desc []string
+	// DescPT is the Portuguese translation of an SRD feat's text, one paragraph per English
+	// one; the table's own text for a table feat. Empty while DescPTMissing; DescPTOnly says
+	// the text exists only in Portuguese (a table feat).
+	DescPT                    []string
+	DescPTMissing, DescPTOnly bool
+	Prerequisite              FeatPrerequisite
 	// Increase is the ability increase the feat gives, or nil.
 	Increase *FeatIncrease
 	// Table says the feat is the table's own; Archived that the table retired it
@@ -132,6 +137,7 @@ func (c *content) featEntry(f *srd51.Feat) FeatEntry {
 		},
 		Table: isTableKey(f.Key), Archived: c.archived[f.Key], Off: c.off[f.Key],
 	}
+	e.DescPT, e.DescPTMissing, e.DescPTOnly = c.textPT(f.Key, f.Desc)
 	for _, ef := range c.effects[f.Key] {
 		if ef.Type == "ability_increase" {
 			inc := &FeatIncrease{Count: ef.Count, Value: increaseValue(ef)}

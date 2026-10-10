@@ -3201,8 +3201,17 @@ type FeatOption struct {
 	// them; a feat that raises every ability it lists is still taken, and its increase stops
 	// at 20. The feat is available either way.
 	CappedAbilities []Ability `protobuf:"varint,10,rep,packed,name=capped_abilities,json=cappedAbilities,proto3,enum=meurpg.rules.v1.Ability" json:"capped_abilities,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// `desc` in Portuguese, one paragraph per entry: our translation of the SRD 5.1
+	// English (effects/feats_pt.json); for a table feat, its own text, the same as `desc`.
+	// Empty while `desc_pt_missing`; the app then shows `desc` in English with a note.
+	DescPt []string `protobuf:"bytes,11,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
+	// True for an SRD feat with no Portuguese text yet.
+	DescPtMissing bool `protobuf:"varint,12,opt,name=desc_pt_missing,json=descPtMissing,proto3" json:"desc_pt_missing,omitempty"`
+	// True when the text exists only in Portuguese (a table feat): `desc` already is the
+	// Portuguese, and there is no English to offer.
+	DescPtOnly    bool `protobuf:"varint,13,opt,name=desc_pt_only,json=descPtOnly,proto3" json:"desc_pt_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FeatOption) Reset() {
@@ -3303,6 +3312,27 @@ func (x *FeatOption) GetCappedAbilities() []Ability {
 		return x.CappedAbilities
 	}
 	return nil
+}
+
+func (x *FeatOption) GetDescPt() []string {
+	if x != nil {
+		return x.DescPt
+	}
+	return nil
+}
+
+func (x *FeatOption) GetDescPtMissing() bool {
+	if x != nil {
+		return x.DescPtMissing
+	}
+	return false
+}
+
+func (x *FeatOption) GetDescPtOnly() bool {
+	if x != nil {
+		return x.DescPtOnly
+	}
+	return false
 }
 
 // DerivedSheet is everything the server computes from a character's full
@@ -5428,9 +5458,19 @@ type Feature struct {
 	// The rule in one line, in Portuguese and in our own words, for an option the
 	// player picked (a fighting style, an invocation, a pact boon); empty for the
 	// other features.
-	SummaryPt     string `protobuf:"bytes,6,opt,name=summary_pt,json=summaryPt,proto3" json:"summary_pt,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SummaryPt string `protobuf:"bytes,6,opt,name=summary_pt,json=summaryPt,proto3" json:"summary_pt,omitempty"`
+	// `description` in Portuguese, paragraphs joined by a blank line: our translation of the
+	// SRD 5.1 English (effects/features_pt.json, traits_pt.json, backgrounds_pt.json); for a
+	// table feature, its own text, the same as `description`. Empty while
+	// `description_pt_missing`; the app then shows `description` in English with a note.
+	DescriptionPt string `protobuf:"bytes,7,opt,name=description_pt,json=descriptionPt,proto3" json:"description_pt,omitempty"`
+	// True for an SRD feature, trait or background feature with no Portuguese text yet.
+	DescriptionPtMissing bool `protobuf:"varint,8,opt,name=description_pt_missing,json=descriptionPtMissing,proto3" json:"description_pt_missing,omitempty"`
+	// True when the text exists only in Portuguese (a table feature): `description` already
+	// is the Portuguese, and there is no English to offer.
+	DescriptionPtOnly bool `protobuf:"varint,9,opt,name=description_pt_only,json=descriptionPtOnly,proto3" json:"description_pt_only,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Feature) Reset() {
@@ -5503,6 +5543,27 @@ func (x *Feature) GetSummaryPt() string {
 		return x.SummaryPt
 	}
 	return ""
+}
+
+func (x *Feature) GetDescriptionPt() string {
+	if x != nil {
+		return x.DescriptionPt
+	}
+	return ""
+}
+
+func (x *Feature) GetDescriptionPtMissing() bool {
+	if x != nil {
+		return x.DescriptionPtMissing
+	}
+	return false
+}
+
+func (x *Feature) GetDescriptionPtOnly() bool {
+	if x != nil {
+		return x.DescriptionPtOnly
+	}
+	return false
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese
@@ -11078,7 +11139,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1e.meurpg.rules.v1.FeatUnmetKindR\x04kind\x12=\n" +
 	"\tabilities\x18\x02 \x03(\v2\x1f.meurpg.rules.v1.AbilityMinimumR\tabilities\x12\x10\n" +
 	"\x03key\x18\x03 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x04 \x01(\x05R\x05value\"\x8c\x03\n" +
+	"\x05value\x18\x04 \x01(\x05R\x05value\"\xef\x03\n" +
 	"\n" +
 	"FeatOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
@@ -11091,7 +11152,11 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\tqualifies\x18\b \x01(\bR\tqualifies\x120\n" +
 	"\x05unmet\x18\t \x03(\v2\x1a.meurpg.rules.v1.FeatUnmetR\x05unmet\x12C\n" +
 	"\x10capped_abilities\x18\n" +
-	" \x03(\x0e2\x18.meurpg.rules.v1.AbilityR\x0fcappedAbilities\"\xbd\x11\n" +
+	" \x03(\x0e2\x18.meurpg.rules.v1.AbilityR\x0fcappedAbilities\x12\x17\n" +
+	"\adesc_pt\x18\v \x03(\tR\x06descPt\x12&\n" +
+	"\x0fdesc_pt_missing\x18\f \x01(\bR\rdescPtMissing\x12 \n" +
+	"\fdesc_pt_only\x18\r \x01(\bR\n" +
+	"descPtOnly\"\xbd\x11\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -11281,7 +11346,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05beams\x18\x12 \x01(\x05R\x05beams\x12\x1d\n" +
 	"\n" +
 	"spell_dice\x18\x13 \x01(\tR\tspellDice\x12$\n" +
-	"\x0edamage_note_pt\x18\x14 \x01(\tR\fdamageNotePt\"\xa6\x01\n" +
+	"\x0edamage_note_pt\x18\x14 \x01(\tR\fdamageNotePt\"\xb3\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -11289,7 +11354,10 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\tsource_pt\x18\x04 \x01(\tR\bsourcePt\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x1d\n" +
 	"\n" +
-	"summary_pt\x18\x06 \x01(\tR\tsummaryPt\"U\n" +
+	"summary_pt\x18\x06 \x01(\tR\tsummaryPt\x12%\n" +
+	"\x0edescription_pt\x18\a \x01(\tR\rdescriptionPt\x124\n" +
+	"\x16description_pt_missing\x18\b \x01(\bR\x14descriptionPtMissing\x12.\n" +
+	"\x13description_pt_only\x18\t \x01(\bR\x11descriptionPtOnly\"U\n" +
 	"\rProficiencies\x12\x14\n" +
 	"\x05armor\x18\x01 \x03(\tR\x05armor\x12\x18\n" +
 	"\aweapons\x18\x02 \x03(\tR\aweapons\x12\x14\n" +

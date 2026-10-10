@@ -912,8 +912,15 @@ type Feature struct {
 	Source   string
 	Level    int
 	SourcePT string
-	// Description is the SRD text, in English (ADR-0008).
+	// Description is the SRD text, in English (ADR-0008); for a table feature, the table's own
+	// Portuguese.
 	Description []string
+	// DescriptionPT is our Portuguese translation of Description (effects/features_pt.json and
+	// its siblings), one paragraph per English one; for a table feature it is the same text.
+	// Empty while DescriptionPTMissing. DescriptionPTOnly says the text exists only in
+	// Portuguese (a table feature): there is no English to offer.
+	DescriptionPT                           []string `json:"-"`
+	DescriptionPTMissing, DescriptionPTOnly bool     `json:"-"`
 	// SummaryPT is the rule in one line, in Portuguese, for an option the player
 	// picked (a fighting style, an invocation); empty for the others.
 	SummaryPT string `json:",omitempty"`

@@ -357,7 +357,7 @@ func (x *deriver) collectEffects() {
 		x.d.Features = append(x.d.Features, Feature{
 			Key: key, Name: name, NamePT: c.namePT(key), Source: source, Level: level,
 			SourcePT: x.sourcePT(source, level), Description: desc, SummaryPT: x.optionSummary(key),
-		})
+		}.withTextPT(c))
 	}
 
 	if x.race != nil {

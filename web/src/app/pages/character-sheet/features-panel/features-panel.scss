@@ -9,8 +9,17 @@
   list-style: none;
 }
 
-.features__caption {
+.features__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
   margin: 0 0 var(--mr-space-2);
+}
+
+.features__caption {
+  margin: 0;
   font-size: 14px;
   font-weight: 700;
   line-height: 18px;

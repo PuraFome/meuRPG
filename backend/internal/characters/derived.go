@@ -153,12 +153,15 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 	}
 	for _, f := range d.Features {
 		out.Features = append(out.Features, &rulesv1.Feature{
-			Key:         f.Key,
-			Name:        f.Name,
-			NamePt:      f.NamePT,
-			SourcePt:    f.SourcePT,
-			Description: strings.Join(f.Description, "\n\n"),
-			SummaryPt:   f.SummaryPT,
+			Key:                  f.Key,
+			Name:                 f.Name,
+			NamePt:               f.NamePT,
+			SourcePt:             f.SourcePT,
+			Description:          strings.Join(f.Description, "\n\n"),
+			SummaryPt:            f.SummaryPT,
+			DescriptionPt:        strings.Join(f.DescriptionPT, "\n\n"),
+			DescriptionPtMissing: f.DescriptionPTMissing,
+			DescriptionPtOnly:    f.DescriptionPTOnly,
 		})
 	}
 	if bw := d.BreathWeapon; bw != nil {
