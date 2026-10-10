@@ -123,6 +123,7 @@ import {
   patchBasicForm,
 } from './npc-short-form/basic-form';
 import { DefeatXp } from './defeat-xp/defeat-xp';
+import { FeatsField } from './feats-field/feats-field';
 import { PortraitField } from './portrait-field/portrait-field';
 import { NpcShortForm } from './npc-short-form/npc-short-form';
 import { SkillPicker } from './skill-picker/skill-picker';
@@ -310,6 +311,7 @@ function filterByName<T extends { readonly namePt: string }>(
     MatRadioModule,
     MatSelectModule,
     DefeatXp,
+    FeatsField,
     NpcShortForm,
     PortraitField,
     ReactiveFormsModule,
@@ -361,6 +363,8 @@ export class CharacterEditor {
   /** One roll per level after the first, index 0 = level 2. Only sent when
    * `hitPointsMethod` is "rolled" (integrator fix, phase 2b). */
   protected readonly hitPointsRolls = signal<readonly number[]>([]);
+  /** What the server said about the draft's feats (a prerequisite not met), by feat key. */
+  protected readonly featIssues = computed(() => this.serverHitPoints.answer()?.featIssues ?? {});
   /** The hit points the server derives for the draft while the "Pontos de vida" box is on screen. */
   private readonly serverHitPoints = new ServerHitPoints(() => {
     const s = this.state();
@@ -382,6 +386,9 @@ export class CharacterEditor {
 
   /** The picks of the class and race choices, in the order they were made, and their free texts (PM-05). */
   protected readonly featureChoiceKeys = signal<readonly string[]>([]);
+  /** The sheet's feats and the ones taken in place of an improvement (MR-025): the master's "Talentos" section edits them. */
+  protected readonly featKeys = signal<readonly string[]>([]);
+  protected readonly featSlots = signal<Readonly<Record<string, string>>>({});
   protected readonly featureChoiceText = signal<Readonly<Record<string, string>>>({});
   /** The choices the server reads in the draft while the "Escolhas" step may be on screen. */
   private readonly serverChoices = new ServerChoices(() => {
@@ -1236,7 +1243,8 @@ export class CharacterEditor {
       const s = this.state();
       const hitPointsBoxOn =
         this.selectedHitPointsMethod() === 'rolled' && this.rollsNeeded() > 0 && this.hitDie() > 0;
-      const boxOn = s.status === 'ready' && (hitPointsBoxOn || this.isCaster());
+      const featsOn = this.master() && this.featKeys().length > 0;
+      const boxOn = s.status === 'ready' && (hitPointsBoxOn || this.isCaster() || featsOn);
       if (!boxOn) {
         untracked(() => this.serverHitPoints.stop());
         return;
@@ -1333,6 +1341,8 @@ export class CharacterEditor {
     this.spellFilters.set({});
     this.featureChoiceKeys.set([]);
     this.featureChoiceText.set({});
+    this.featKeys.set([]);
+    this.featSlots.set({});
     this.serverChoices.stop();
     this.grantedSpells.set([]);
     this.hasCuttingWords.set(false);
@@ -1569,6 +1579,21 @@ export class CharacterEditor {
     this.selectedSpellsPrepared.set(new Set(full.spellsPrepared));
     this.featureChoiceKeys.set(full.featureChoiceKeys);
     this.featureChoiceText.set(full.featureChoiceText);
+    this.featKeys.set(full.featKeys ?? []);
+    this.featSlots.set(full.featSlots ?? {});
+  }
+
+  /** The master gives the sheet a feat (MR-025). */
+  protected addFeat(key: string): void {
+    this.featKeys.update((keys) => (keys.includes(key) ? keys : [...keys, key]));
+  }
+
+  /** The master takes a feat off; the slot of an improvement it replaced goes with it (the server drops it too). */
+  protected removeFeat(key: string): void {
+    this.featKeys.update((keys) => keys.filter((k) => k !== key));
+    this.featSlots.update((slots) =>
+      Object.fromEntries(Object.entries(slots).filter(([k]) => k !== key)),
+    );
   }
 
   /** A pick on the "Escolhas" step: the stored keys follow it, and the server reads the draft again. */
@@ -1804,6 +1829,10 @@ export class CharacterEditor {
       featureChoiceKeys: [...this.featureChoiceKeys()],
       featureChoiceText: { ...this.featureChoiceText() },
       cuttingWordsAsk: v.cuttingWordsAsk,
+      // Only the master's editor sends the feats; a player's save keeps the stored ones (the server refuses a change).
+      ...(this.master()
+        ? { featKeys: [...this.featKeys()], featSlots: { ...this.featSlots() } }
+        : {}),
     };
   }
 

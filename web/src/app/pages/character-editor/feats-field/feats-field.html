@@ -1,0 +1,60 @@
+<p class="group-hint feats__lead">
+  Os talentos desta ficha. Quem sobe de nível escolhe o seu na subida; aqui só você, mestre, acrescenta ou tira um.
+</p>
+@if (rulesOff()) {
+  <div class="mr-notice mr-notice--neutral feats__notice" role="note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <p>A regra da mesa “Talentos” está desligada. Você ainda pode dar um talento a esta ficha.</p>
+  </div>
+}
+@if (rows().length === 0) {
+  <p class="feats__empty">Esta ficha não tem talentos.</p>
+} @else {
+  <ul class="feats__list" aria-label="Talentos da ficha">
+    @for (row of rows(); track row.key) {
+      <li class="feat">
+        <div class="feat__text">
+          <span class="feat__name">{{ row.name }}</span>
+          @if (row.table) {
+            <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+          }
+          <span class="feat__source">{{ row.source }}</span>
+          @if (row.warning) {
+            <span class="mr-notice mr-notice--warning feat__warning" role="note">
+              <mat-icon aria-hidden="true">warning</mat-icon>
+              <span>{{ row.warning }} Você pode manter assim.</span>
+            </span>
+          }
+        </div>
+        <button matButton type="button" class="feat__remove" (click)="removed.emit(row.key)">
+          <mat-icon aria-hidden="true">close</mat-icon>Remover<span class="mr-visually-hidden"> o talento {{ row.name }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+  <p class="group-hint">
+    Tirar um talento que entrou no lugar de um aumento de habilidade traz o aumento de volta.
+  </p>
+}
+@if (unavailable()) {
+  <p class="group-hint">A lista de talentos da campanha não carregou. Recarregue a página para acrescentar um talento.</p>
+} @else {
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="feats__add">
+    <mat-label>Adicionar talento</mat-label>
+    <mat-select
+      #picker
+      aria-describedby="feats-add-hint"
+      (selectionChange)="add($event.value); picker.value = null"
+    >
+      @for (o of available(); track o.key) {
+        <mat-option [value]="o.key">
+          {{ o.namePt }}{{ o.fromTable ? ' (da mesa)' : '' }}{{ o.off ? ' (desligado para os jogadores)' : '' }}
+        </mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <p class="group-hint" id="feats-add-hint">
+    Se a ficha não cumprir o pré-requisito, o talento fica na lista, sem efeito, com um aviso. Um talento que aumenta
+    habilidades não pergunta quais: dê o aumento em “Bônus manuais”.
+  </p>
+}
