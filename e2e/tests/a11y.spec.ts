@@ -7208,7 +7208,7 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     await expect(ritual.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
     await expectScreenPasses(p, `Conjurar Alarme como ritual ${where}`);
     await ritual.getByRole('button', { name: 'Começar o ritual' }).click();
-    await expect(ritual.getByText(/só é gasto quando o mestre conclui/)).toBeVisible();
+    await expect(ritual.getByText(/Um ritual não gasta espaço de magia/)).toBeVisible();
     await expectScreenPasses(p, `Conjurando o ritual ${where}`);
     await ritual.getByRole('button', { name: 'Fechar' }).last().click();
     await expect(p.locator('app-casting-panel').getByText('Esperando o mestre concluir')).toBeVisible();

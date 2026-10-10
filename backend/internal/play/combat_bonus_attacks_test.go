@@ -231,6 +231,26 @@ func TestTwoWeaponFightingAttacksWithTheBonusAction(t *testing.T) {
 	}
 }
 
+// The off-hand attack needs a different light melee weapon (SRD 5.1, "Two-Weapon Fighting"):
+// a fighter with one light weapon and a longsword is not offered it as a bonus action.
+func TestTwoWeaponFightingNeedsASecondLightWeapon(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.heroWith(t, a.campaignID, "Toren", classLevel("class:fighter", 1, ""), abilities(16, 13, 14, 10, 8), []string{dagger, "equipment:longsword"}, nil,
+			[]string{"feature:fighter-fighting-style-defense"})
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, abilities(10, 14, 12, 16, 8), nil, []string{fireBolt})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 1, abilities(10, 16, 14, 10, 8), []string{shortsword}, nil)
+	})
+	e := a.closeFight(t)
+	a.mustAttack(t, a.caio, e, "Toren", dagger, "Goblin", d20(15))
+	off := attackOption(a.mustOptions(t, a.caio, e, "Toren"), dagger)
+	if off.GetEnabled() || off.GetBonusRule() == rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_OFF_HAND {
+		t.Errorf("the only dagger after attacking with it = enabled %v, rule %v, want no off-hand offer", off.GetEnabled(), off.GetBonusRule())
+	}
+	_, err := a.attack(t, a.caio, e, "Toren", dagger, "Goblin", d20(15))
+	wantBlockedBy(t, "the same single dagger in the other hand", err, blockedActionUsed)
+}
+
 // A monk follows the Attack action with an unarmed strike as a bonus action
 // (Martial Arts), and with Flurry of Blows (1 ki point) with two. Patient
 // Defense and Step of the Wind spend 1 ki point too, and the points run out.

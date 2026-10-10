@@ -52,7 +52,8 @@ describe('AddEffectDialog (W7-E board 4b)', () => {
       'Derrubado',
       'Velocidade',
     ]);
-    expect(select('caster').selectedOptions[0].textContent?.trim()).toBe('Nael');
+    // Nael is on turn and is the target: the caster is not defaulted to the target.
+    expect(select('caster').selectedOptions[0].textContent?.trim()).toBe('Alguém fora do combate');
     expect(select('duration').selectedOptions[0].textContent?.trim()).toBe(
       '10 rodadas, concentração',
     );
@@ -80,6 +81,26 @@ describe('AddEffectDialog (W7-E board 4b)', () => {
     expect(key).toEqual(expect.any(String));
     expect(close).toHaveBeenCalledWith(true);
     expect(data.state.encounter()?.revision).toBe(5);
+  });
+
+  it('defaults the caster to who is on turn when that is not the target, and sends no caster for the target itself', async () => {
+    const { el, button, settle, pick } = openDialog(AddEffectDialog, data, { add });
+    const caster = () =>
+      (
+        el.querySelector('select[data-field="caster"]') as HTMLSelectElement
+      ).selectedOptions[0].textContent?.trim();
+    expect(caster()).toBe('Alguém fora do combate');
+    await pick('target', 'Toren');
+    await pick('catalog', 'Derrubado');
+    await pick('catalog', 'Bênção');
+    expect(caster()).toBe('Nael');
+    await pick('target', 'Nael');
+    await pick('catalog', 'Velocidade');
+    await pick('catalog', 'Bênção');
+    expect(caster()).toBe('Alguém fora do combate');
+    button('Adicionar')!.click();
+    await settle();
+    expect(add.mock.calls[0][0].casterId).toBeUndefined();
   });
 
   it('starts an effect without a caster when the catalog says it has none', async () => {

@@ -2,6 +2,7 @@ package play
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -786,6 +787,59 @@ func TestDraggingAGrappledCreatureHalvesTheSpeedAndLeavesItBehind(t *testing.T) 
 	}
 	if used := c.combatant(t, a.caio, "Toren"); used.GetMovementLeftDft() != 0 {
 		t.Errorf("movement left = %d, want 0 after dragging three squares", used.GetMovementLeftDft())
+	}
+}
+
+// dragFight is the arena with Toren holding the Hobgoblin and the turn his, ready to drag it.
+func dragFight(t *testing.T, a *armed, p arenaPlan) *cx {
+	t.Helper()
+	c := a.arena(t, p)
+	c.grappleWon(t)
+	if _, err := a.master.combat.EndTurn(t.Context(), connect.NewRequest(&playv1.EndTurnRequest{CampaignId: a.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: c.id(t, "Toren"), ExpectedRound: 1})); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	c.advance(t, c.hob)
+	c.advance(t, "Toren")
+	return c
+}
+
+// TestTheDraggedCreatureTakesNoOpportunityAttackAgainstItsGrappler (SRD 5.1, "Moving a Grappled
+// Creature"): the creature moves with the grappler, so it never leaves the grappler's reach. The
+// warning, the move and the master's offers name no opportunity attack by it.
+func TestTheDraggedCreatureTakesNoOpportunityAttackAgainstItsGrappler(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := dragFight(t, a, arenaPlan{})
+	hobID := c.id(t, c.hob)
+	for _, r := range c.moveOptions(t, a.caio, "Toren").GetReachable() {
+		if slices.Contains(r.GetProvokesReactorIds(), hobID) {
+			t.Fatalf("the square (%d,%d) warns that the dragged Hobgoblin gets an opportunity attack", r.GetCol(), r.GetRow())
+		}
+	}
+	res, err := c.moveTo(t, a.caio, "Toren", 3, 0)
+	if err != nil {
+		t.Fatalf("a three-square drag: %v", err)
+	}
+	if res.GetProvoked() {
+		t.Error("the drag provoked: the dragged creature is not a reactor against its grappler")
+	}
+	if got := c.get(t, c.master).GetOpportunityOffers(); len(got) != 0 {
+		t.Errorf("the master's offers after a drag = %v, want none", got)
+	}
+}
+
+// TestADragStillProvokesTheOtherEnemiesLeftBehind: another enemy next to the grappler gets its
+// opportunity attack when the pair leaves its reach; the dragged creature does not.
+func TestADragStillProvokesTheOtherEnemiesLeftBehind(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := dragFight(t, a, arenaPlan{at: map[string][2]int32{"Goblin": {2, 4}}})
+	if _, err := c.moveTo(t, a.caio, "Toren", 3, 0); err != nil {
+		t.Fatalf("a three-square drag: %v", err)
+	}
+	offers := c.get(t, c.master).GetOpportunityOffers()
+	if len(offers) != 1 || offers[0].GetReactorId() != c.id(t, "Goblin") || offers[0].GetMoverId() != c.id(t, "Toren") {
+		t.Errorf("the master's offers after a drag = %v, want one, the Goblin on Toren", offers)
 	}
 }
 

@@ -22,6 +22,7 @@ func TestBonusAttack(t *testing.T) {
 		want BonusKind
 	}{
 		{"light weapon after a light weapon", after(shortsword), shortsword, BonusTwoWeapon},
+		{"a single light weapon has no off hand", BonusAttackTurn{AttackAction: true, Last: shortsword, NoSecondLight: true}, shortsword, BonusNone},
 		{"a heavier weapon off hand", after(shortsword), longsword, BonusNone},
 		{"light weapon after a heavier one", after(longsword), shortsword, BonusNone},
 		{"no Attack action yet", BonusAttackTurn{Last: shortsword}, shortsword, BonusNone},

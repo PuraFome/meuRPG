@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -118,7 +119,7 @@ export class AddEffectDialog {
     this.catalog.map((c) => ({ value: c.key, label: c.namePt })),
   );
   protected readonly casterOptions = computed<SelectOption[]>(() => [
-    { value: '', label: 'Ninguém' },
+    { value: '', label: 'Alguém fora do combate' },
     ...this.combatants().map((c) => ({ value: c.id, label: c.label })),
   ]);
   protected readonly durationOptions = computed<SelectOption[]>(() => {
@@ -158,10 +159,13 @@ export class AddEffectDialog {
   );
 
   constructor() {
-    // The caster starts as who is on turn when the effect has one; the form follows the effect picked.
+    // The caster starts as who is on turn when the effect has one and that is not the target (the caster concentrates on
+    // a spell, never the target it was put on: SRD 5.1, Concentration); otherwise "alguém fora do combate", which no
+    // combatant concentrates on. The form follows the effect picked.
     effect(() => {
       const c = this.chosen();
-      this.casterId.set(c?.hasCaster ? this.data.currentCombatantId : '');
+      const turn = this.data.currentCombatantId;
+      this.casterId.set(c?.hasCaster && turn !== untracked(() => this.target()) ? turn : '');
       if (c?.defaultDurationKind === EffectDurationKind.ROUNDS && c.defaultRounds > 0) {
         this.rounds.set(String(c.defaultRounds));
       }
