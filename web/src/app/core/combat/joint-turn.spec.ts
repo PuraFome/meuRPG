@@ -1,4 +1,4 @@
-import { CombatantKind } from '../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantKind, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from './combat-testing';
 import { turnBanner } from './combat-view';
 import { distanceText } from '../units';
@@ -8,6 +8,7 @@ import {
   afterTurn,
   jointTurn,
   leftSentence,
+  masterActor,
   missingLine,
   npcPlural,
   orderItems,
@@ -198,5 +199,29 @@ describe('joint turns (MR-013)', () => {
         combatant({ id: 'x', label: 'X', movementLeftFt: 30, speedFt: 30, reactionUsed: true }),
       ),
     ).toBe('Ação, Ação bônus e 9 m · 6 quadrados');
+  });
+
+  describe('masterActor, the NPC the master acts for in a mixed joint turn', () => {
+    const jabuti = combatant({ id: 'j', label: 'Jabuti', kind: P, initiative: 18 });
+    const gob = combatant({ id: 'g', label: 'Goblin 2', initiative: 18 });
+    const mixed = (over: object = {}) =>
+      encounter({
+        status: EncounterStatus.ACTIVE,
+        combatants: [jabuti, gob],
+        turnGroupIds: ['j', 'g'],
+        currentCombatantId: 'j',
+        ...over,
+      });
+
+    it('is the NPC although the player is the current combatant', () => {
+      expect(masterActor(mixed())?.id).toBe('g');
+    });
+
+    it('is nothing once the NPC part ended, or when only players act', () => {
+      expect(
+        masterActor(mixed({ combatants: [jabuti, { ...gob, turnPartEnded: true }] })),
+      ).toBeNull();
+      expect(masterActor(mixed({ turnGroupIds: ['j'] }))).toBeNull();
+    });
   });
 });

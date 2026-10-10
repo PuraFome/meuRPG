@@ -289,7 +289,16 @@ func (s *Service) GetTurnOptions(
 	}
 	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who), CriticalRule: criticalRuleProto(table)}
 	s.effectTurnInfo(d, who, v, res, s.namesFor(ctx, m.CampaignID))
-	modes, err := s.turnModes(ctx, m.CampaignID, d, sight, v, who)
+	// The master's turn options carry no sight (they plan on the real terrain), but the mode of an
+	// attack depends on who the players see (an NPC they cannot see attacks with advantage, SRD 5.1):
+	// RollAttack reads it for the master too, so the suggestion must, or the typed d20 count is wrong.
+	modeSight := sight
+	if modeSight == nil && v.master {
+		if modeSight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
+			return nil, s.dbError(ctx, "work out what the players see", err)
+		}
+	}
+	modes, err := s.turnModes(ctx, m.CampaignID, d, modeSight, v, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the roll modes", err)
 	}

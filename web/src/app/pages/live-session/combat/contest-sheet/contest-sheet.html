@@ -18,8 +18,14 @@
     @case ('target') {
       <div class="mr-notice mr-notice--neutral note">
         <mat-icon aria-hidden="true">info</mat-icon>
-        <p>Você precisa de <b>uma mão livre</b>. {{ limitText() }}</p>
+        <p>
+          @if (needsHand) {
+            Você precisa de <b>uma mão livre</b>.
+          }
+          {{ limitText() }}
+        </p>
       </div>
+      @if (needsHand) {
       <label class="card" [class.card--on]="free()">
         <input
           type="checkbox"
@@ -32,6 +38,7 @@
           <span class="card__sub">Confirme antes de rolar.</span>
         </span>
       </label>
+      }
       <div class="list" role="radiogroup" aria-label="Alvo">
         @for (t of rows(); track t.id) {
           <label class="card" [class.card--on]="targetId() === t.id" [class.card--off]="t.blocked">

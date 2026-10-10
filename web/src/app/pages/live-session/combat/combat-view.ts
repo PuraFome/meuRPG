@@ -119,7 +119,7 @@ import {
   ownCombatant,
   npcKindLabel,
 } from '../../../core/combat/combat-view';
-import { acts, jointTurn } from '../../../core/combat/joint-turn';
+import { acts, jointTurn, masterActor } from '../../../core/combat/joint-turn';
 import type { MapState } from '../../../core/maps/map-state';
 import { MoveSaves } from '../../../core/maps/move-saves';
 import { metersFixed } from '../../../core/units';
@@ -836,7 +836,7 @@ export class CombatView {
     this.isMaster() ? (this.subject()?.label ?? '') : '',
   );
   /** The one whose options the screen asks for: the player's own character
-   * on their turn, and for the master whoever is on turn. */
+   * on their turn, and for the master whoever is on turn (in a joint turn that holds a player, the NPC that still acts). */
   protected readonly subject = computed(() => {
     const e = this.encounter();
     if (!e || e.status !== EncounterStatus.ACTIVE) {
@@ -844,7 +844,7 @@ export class CombatView {
     }
     // A player's options are asked off turn too: the opportunity attack
     // (`attack_targets` is filled, `as_reaction`) needs them.
-    return this.isMaster() ? currentCombatant(e) : this.own();
+    return this.isMaster() ? (masterActor(e) ?? currentCombatant(e)) : this.own();
   });
   protected readonly options = computed(() => this.turn.data());
   /** The player's side of the contests (W7-X): grapple, shove, escape, Hide, Help, and the questions a contest asks. */

@@ -352,3 +352,58 @@ describe('PendingDamages: "Não aplicar" is not confirmed by a double-click (R4)
     ]);
   });
 });
+
+describe('PendingDamages, a target in Wild Shape', () => {
+  function line(amount: number, druid: Record<string, unknown> = {}) {
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }] });
+    const fixture = TestBed.createComponent(PendingDamages);
+    fixture.componentRef.setInput('pendings', [
+      {
+        id: 'p1',
+        attackerId: 'gob',
+        targetId: 'nina',
+        status: PendingDamageStatus.ROLLED,
+        diceCount: 1,
+        diceSides: 6,
+        bonus: 2,
+        amount,
+      } as never,
+    ]);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [
+          combatant({ id: 'gob', label: 'Goblin 1' }),
+          combatant({
+            id: 'nina',
+            label: 'Nina Folhaverde',
+            kind: CombatantKind.PLAYER,
+            hitPointsCurrent: 31,
+            hitPointsMax: 31,
+            wildShapeBeastKey: 'monster:wolf',
+            wildShapeBeastNamePt: 'Lobo',
+            wildShapeHitPointsCurrent: 11,
+            wildShapeHitPointsMax: 11,
+            ...druid,
+          } as never),
+        ],
+      } as never),
+    );
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    return (fixture.nativeElement as HTMLElement).textContent?.replace(/ /g, ' ') ?? '';
+  }
+
+  it("previews the beast's pool, not the druid's", () => {
+    const text = line(7);
+    expect(text).toContain('Lobo: 11 de 11 PV, depois 4');
+    expect(text).not.toContain('31 de 31');
+  });
+
+  it('says what passes to the druid when the beast drops', () => {
+    expect(line(14)).toContain(
+      'Lobo: 11 de 11 PV, depois 0; o resto (3) passa para Nina Folhaverde: 31 de 31 PV, depois 28',
+    );
+  });
+});

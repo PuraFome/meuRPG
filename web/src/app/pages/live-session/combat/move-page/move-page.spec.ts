@@ -404,6 +404,20 @@ describe('MovePage', () => {
     });
   });
 
+  it('does not keep the old movement after the move: the live combatant caps stale options', () => {
+    const { fixture, el } = setup();
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [{ ...toren, movementLeftDft: 0 } as never, goblin],
+        currentCombatantId: 'toren',
+        turnGroupIds: ['toren'],
+      }),
+    );
+    fixture.detectChanges();
+    expect(el.textContent).not.toContain('30,0 m');
+  });
+
   describe('Saltar never promises what the server refuses', () => {
     const jumps = create(JumpLimitsSchema, {
       longRunningDft: 160,

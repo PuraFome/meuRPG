@@ -1,5 +1,8 @@
 @for (it of items(); track it.p.id) {
   <div class="dmg" [class.dmg--flat]="flat()" [attr.aria-label]="'Dano de ' + it.attacker + ' em ' + it.target" role="group">
+    @if (it.trapLabel) {
+      <p class="dmg__trap" data-testid="trap-part">{{ it.trapLabel }}</p>
+    }
     @if (it.rolled) {
       <div class="dmg__line">
         <span class="dmg__formula">{{ it.line }}</span>
