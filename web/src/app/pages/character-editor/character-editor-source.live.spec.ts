@@ -212,6 +212,29 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     });
   });
 
+  it('sends the feats only when the form carries them (the master), and keeps the stored ones otherwise', () => {
+    const loaded = fullyPopulatedFullSheet();
+    const form = toFormFullSheet('Pensantus', loaded);
+    expect(form.featKeys).toEqual(['feat:grappler']);
+
+    // A player's editor leaves them out: the stored feats and slots go back as they were.
+    const { featKeys: _keys, featSlots: _slots, ...withoutFeats } = form;
+    expect(toFullSheetInit(withoutFeats)).not.toHaveProperty('featKeys');
+    expect(mergeFullSheetInit(loaded, withoutFeats)).toMatchObject({
+      featKeys: ['feat:grappler'],
+      featSlots: loaded.featSlots,
+    });
+
+    // The master's editor sends what it shows: a feat added, one taken off with its slot.
+    expect(
+      mergeFullSheetInit(loaded, { ...form, featKeys: ['feat:grappler', 'feat:sortudo@mesa'] }),
+    ).toMatchObject({ featKeys: ['feat:grappler', 'feat:sortudo@mesa'] });
+    expect(mergeFullSheetInit(loaded, { ...form, featKeys: [], featSlots: {} })).toMatchObject({
+      featKeys: [],
+      featSlots: {},
+    });
+  });
+
   it('asks PreviewChoices for the draft and hands back the groups, the counts and the spell sources', async () => {
     TestBed.configureTestingModule({
       providers: [CharacterEditorSourceLive, { provide: CONNECT_TRANSPORT, useValue: {} }],
@@ -533,6 +556,8 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
     const [ink, champion] = catalog.classes[1].subclasses;
     (source as unknown as { campaignClient: unknown }).campaignClient = {
       getCampaign: () => Promise.resolve({ campaign: { myRole: Role.MASTER } }),
+      // The master's catalog also reads the table rules (the feats section).
+      getTableRules: () => Promise.resolve({ rules: { featsAllowed: false } }),
     };
     expect((await source.loadCatalog('camp-1')).viewerIsMaster).toBe(true);
     expect(ink).toMatchObject({
@@ -581,7 +606,10 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
       (source as unknown as { contentClient: unknown }).contentClient = {
         listContent: () => Promise.resolve({ content: emptyContent }),
       };
-      (source as unknown as { campaignClient: unknown }).campaignClient = { getCampaign };
+      (source as unknown as { campaignClient: unknown }).campaignClient = {
+        getCampaign,
+        getTableRules: () => Promise.resolve({ rules: { featsAllowed: false } }),
+      };
       return source;
     }
 
