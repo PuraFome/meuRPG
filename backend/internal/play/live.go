@@ -35,12 +35,13 @@ func errWatchSlow() error {
 	return connect.NewError(connect.CodeUnavailable, errors.New("the stream fell behind; reconnect"))
 }
 
-// errTooManyStreams refuses a stream when the caller already has the most the
-// hub allows on the campaign (live.DefaultMaxPerUser). The app treats it as a
-// transient error and retries with backoff, which also covers a reconnection
-// that arrives before the server dropped the old stream.
-func errTooManyStreams() error {
-	return connect.NewError(connect.CodeResourceExhausted, errors.New("too many live streams open for this campaign; close another tab"))
+// errWatchReplaced ends a stream that a newer stream of the same user replaced
+// (live.ErrReplaced, past live.DefaultMaxPerUser). It is almost always the
+// stream of a page that already went away (the server is not told when one
+// does); if the tab is still open, the app reconnects with its backoff, like
+// after any transient end.
+func errWatchReplaced() error {
+	return connect.NewError(connect.CodeUnavailable, errors.New("replaced by a newer stream of this user; reconnect"))
 }
 
 // ListOpenGameSessions implements playv1connect.PlayServiceHandler.
@@ -214,9 +215,6 @@ func (s *Service) WatchGameSession(
 	// Subscribe before reading the session: an end that happens after the
 	// read below is then always delivered to this stream.
 	sub, err := s.hub.Subscribe(m.CampaignID, live.Subscriber{UserID: m.UserID, Master: m.Role == authz.RoleMaster})
-	if errors.Is(err, live.ErrTooMany) {
-		return errTooManyStreams()
-	}
 	if err != nil {
 		return nil // the server is shutting down: the app reconnects to the next one
 	}
@@ -246,8 +244,11 @@ func (s *Service) WatchGameSession(
 			return nil // the app opens a new one
 		case ev, ok := <-sub.Events():
 			if !ok {
-				if errors.Is(sub.Err(), live.ErrSlow) {
+				switch err := sub.Err(); {
+				case errors.Is(err, live.ErrSlow):
 					return errWatchSlow()
+				case errors.Is(err, live.ErrReplaced):
+					return errWatchReplaced()
 				}
 				return nil // the server is shutting down
 			}
