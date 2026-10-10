@@ -201,6 +201,13 @@ func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key 
 			if charID != "" && who == nil {
 				c.characterID = &charID
 			}
+			if who == nil && target == combat.MaxExhaustion && target != before {
+				// No combat to hold a confirmation: the master's confirm_death is the confirmation
+				// (RN-03), so the character dies as the master's "marcar como morto" leaves it.
+				if err := s.roster.MarkDead(ctx, c.tx, c.session.CampaignID, charID, c.now); err != nil {
+					return nil, err
+				}
+			}
 			if who != nil && target == combat.MaxExhaustion {
 				// Level 6 is death: the character goes to the confirmation as the third failed death
 				// save does; only the master's ConfirmDeath says it died (RN-03).

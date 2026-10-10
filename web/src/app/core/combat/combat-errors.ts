@@ -273,6 +273,12 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Um dos extras marcados não vale mais. A tela foi atualizada.';
     case EncounterBlockedReason.DAMAGE_PART_NOT_REMOVABLE:
       return 'Só um extra pode ser tirado do dano, e uma vez só.';
+    // Effects that last (RN-22): never the cause (a hidden effect, or a condition only the master reads); the words are the same
+    // for a player whether it is lethargy, a spell or a condition.
+    case EncounterBlockedReason.CANNOT_ACT:
+      return 'Não dá para agir agora.';
+    case EncounterBlockedReason.EXTRA_ACTION_UNAVAILABLE:
+      return 'A ação extra não está disponível para isso agora: ela já foi usada neste turno ou não vale para essa ação.';
     case EncounterBlockedReason.CHARACTER_RESERVED:
       return 'Um personagem reservado (ainda sem jogador) não entra no combate. Desmarque-o e tente de novo.';
     default:

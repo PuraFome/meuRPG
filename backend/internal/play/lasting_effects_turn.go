@@ -176,7 +176,20 @@ func (s *Service) endEffectsOfLeaver(ctx context.Context, c *combatTx, cs []play
 	rows = slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
 		return st.CombatantID != who.ID && (!st.Concentration || deref(st.SourceID) != who.ID)
 	})
-	return s.endEffectRows(ctx, c, cs, rows, endLeft)
+	return s.endRowsOfLeaver(ctx, c, cs, rows, who)
+}
+
+// endRowsOfLeaver ends the effects a combatant's leaving (or death) takes away. What was on the
+// leaver itself just goes; what it held by concentration on others ends like any spell that ends,
+// so its consequence follows (Haste's lethargy, SRD 5.1: "when the spell ends, the target can't
+// move or take actions until after its next turn"; Heroism's temporary hit points go).
+func (s *Service) endRowsOfLeaver(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, who playdb.Combatant) error {
+	own := slices.DeleteFunc(slices.Clone(rows), func(st playdb.CombatantState) bool { return st.CombatantID != who.ID })
+	held := slices.DeleteFunc(slices.Clone(rows), func(st playdb.CombatantState) bool { return st.CombatantID == who.ID })
+	if err := s.endEffectRows(ctx, c, cs, own, endLeft); err != nil {
+		return err
+	}
+	return s.endEffectRows(ctx, c, cs, held, endCasterLeft)
 }
 
 // mustHaveExtraAction refuses an extra action the combatant does not have, has used, or may not
@@ -296,7 +309,7 @@ func (s *Service) endEffectsOfTheDead(ctx context.Context, c *combatTx, cs []pla
 	rows = slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
 		return st.CombatantID != who.ID && (!st.Concentration || deref(st.SourceID) != who.ID)
 	})
-	if err := s.endEffectRows(ctx, c, cs, rows, endLeft); err != nil {
+	if err := s.endRowsOfLeaver(ctx, c, cs, rows, who); err != nil {
 		return err
 	}
 	if who.CharacterID == "" {

@@ -5198,6 +5198,9 @@ message ResolveConcentrationSaveRequest {
   // of the effects, when the roll is a physical d20 (`d20_face`): one for each, 1 to the die's
   // faces. With the app's dice the server rolls them.
   repeated int32 extra_die_faces = 100;
+  // With a physical d20 and disadvantage (exhaustion 3 or more, SRD 5.1) or advantage on the
+  // saving throw, the second d20; `d20_face` is the first.
+  optional int32 second_d20_face = 101;
 }
 
 message ResolveConcentrationSaveResponse {

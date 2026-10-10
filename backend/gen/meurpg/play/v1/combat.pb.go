@@ -18906,6 +18906,9 @@ type ResolveConcentrationSaveRequest struct {
 	// of the effects, when the roll is a physical d20 (`d20_face`): one for each, 1 to the die's
 	// faces. With the app's dice the server rolls them.
 	ExtraDieFaces []int32 `protobuf:"varint,100,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
+	// With a physical d20 and disadvantage (exhaustion 3 or more, SRD 5.1) or advantage on the
+	// saving throw, the second d20; `d20_face` is the first.
+	SecondD20Face *int32 `protobuf:"varint,101,opt,name=second_d20_face,json=secondD20Face,proto3,oneof" json:"second_d20_face,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19016,6 +19019,13 @@ func (x *ResolveConcentrationSaveRequest) GetExtraDieFaces() []int32 {
 		return x.ExtraDieFaces
 	}
 	return nil
+}
+
+func (x *ResolveConcentrationSaveRequest) GetSecondD20Face() int32 {
+	if x != nil && x.SecondD20Face != nil {
+		return *x.SecondD20Face
+	}
+	return 0
 }
 
 type isResolveConcentrationSaveRequest_Roll interface {
@@ -21407,7 +21417,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06caught\x18\x04 \x01(\bR\x06caught\x120\n" +
 	"\x14throw_back_available\x18\x05 \x01(\bR\x12throwBackAvailable\"0\n" +
 	"\x11FeatherFallResult\x12\x1b\n" +
-	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\xd8\x02\n" +
+	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\x99\x03\n" +
 	"\x1fResolveConcentrationSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -21418,8 +21428,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0ehand_to_master\x18\x06 \x01(\bH\x00R\fhandToMaster\x12\x14\n" +
 	"\x04keep\x18\a \x01(\bH\x00R\x04keep\x12'\n" +
 	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\x12&\n" +
-	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFacesB\x06\n" +
-	"\x04roll\"\x9c\x01\n" +
+	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12+\n" +
+	"\x0fsecond_d20_face\x18e \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01B\x06\n" +
+	"\x04rollB\x12\n" +
+	"\x10_second_d20_face\"\x9c\x01\n" +
 	" ResolveConcentrationSaveResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12?\n" +
 	"\x06result\x18\x02 \x01(\v2'.meurpg.play.v1.ConcentrationSaveResultR\x06result\"\xac\x01\n" +
