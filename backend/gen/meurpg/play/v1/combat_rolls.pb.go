@@ -133,6 +133,9 @@ const (
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK AdvantageSourceKind = 28
 	// A search for traps in dim light (Perception, MR-035).
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM AdvantageSourceKind = 29
+	// SRD 5.1, "Help": an ally's Help aimed at the target gives the next attack roll
+	// against it advantage.
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP AdvantageSourceKind = 30
 	// Effects that last (RN-22): exhaustion levels 3 (attack rolls and saving throws) and 1
 	// (ability checks), Faerie Fire's outline on the target, and the advantage on saving
 	// throws an effect gives (Velocidade). "Outra fonte" is the same kind with no name,
@@ -182,6 +185,7 @@ var (
 		27:  "ADVANTAGE_SOURCE_KIND_POISONED_CHECK",
 		28:  "ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK",
 		29:  "ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM",
+		30:  "ADVANTAGE_SOURCE_KIND_HELP",
 		100: "ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK",
 		101: "ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE",
 		102: "ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK",
@@ -222,6 +226,7 @@ var (
 		"ADVANTAGE_SOURCE_KIND_POISONED_CHECK":      27,
 		"ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK":    28,
 		"ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM":      29,
+		"ADVANTAGE_SOURCE_KIND_HELP":                30,
 		"ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK":   100,
 		"ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE":     101,
 		"ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK":    102,
@@ -1675,7 +1680,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x15ROLL_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ROLL_MODE_NORMAL\x10\x01\x12\x17\n" +
 	"\x13ROLL_MODE_ADVANTAGE\x10\x02\x12\x1a\n" +
-	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\xe4\f\n" +
+	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\x84\r\n" +
 	"\x13AdvantageSourceKind\x12%\n" +
 	"!ADVANTAGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_PRONE_TARGET\x10\x01\x12(\n" +
@@ -1707,7 +1712,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"%ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE\x10\x1a\x12(\n" +
 	"$ADVANTAGE_SOURCE_KIND_POISONED_CHECK\x10\x1b\x12*\n" +
 	"&ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK\x10\x1c\x12(\n" +
-	"$ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM\x10\x1d\x12+\n" +
+	"$ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM\x10\x1d\x12\x1e\n" +
+	"\x1aADVANTAGE_SOURCE_KIND_HELP\x10\x1e\x12+\n" +
 	"'ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK\x10d\x12)\n" +
 	"%ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE\x10e\x12*\n" +
 	"&ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK\x10f\x12)\n" +

@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf8"
+	"uuid"
 
 	"connectrpc.com/connect"
 
@@ -347,6 +348,7 @@ func (s *Service) AddLastingEffect( //nolint:gocognit,gocyclo // the steps of on
 			return nil, err
 		}
 		spec := effectSpec{key: catalogKey, caster: caster, targets: targets, dc: req.Msg.SaveDc, audience: ""}
+		var spellOpts castOpts
 		fallback := durationSpec{Kind: rules.EffectDurationUntilDismissed}
 		switch {
 		case strings.HasPrefix(catalogKey, "condition:"):
@@ -374,6 +376,7 @@ func (s *Service) AddLastingEffect( //nolint:gocognit,gocyclo // the steps of on
 			if err != nil {
 				return nil, err
 			}
+			spellOpts = opts
 			if spec.modifiers, _, err = s.modifiersFor(ctx, c, def, "", opts); err != nil {
 				return nil, err
 			}
@@ -421,9 +424,32 @@ func (s *Service) AddLastingEffect( //nolint:gocognit,gocyclo // the steps of on
 				return nil, fmt.Errorf("set the concentration: %w", err)
 			}
 		}
-		rows, err := s.addEffects(ctx, c, cs, spec)
-		if err != nil {
-			return nil, err
+		var rows []playdb.CombatantState
+		if hasBaseAC(spec.def) {
+			// The base armor class is the target's own (13 + its Dexterity): one record per target,
+			// and none for a target that wears armor.
+			spec.group = uuid.New().String()
+			for _, t := range targets {
+				mods, ok, err := s.modifiersForTarget(ctx, c, spec.def, t, spellOpts)
+				if err != nil {
+					return nil, err
+				}
+				if !ok {
+					continue
+				}
+				one := spec
+				one.targets, one.modifiers = []playdb.Combatant{t}, mods
+				made1, err := s.addEffects(ctx, c, cs, one)
+				if err != nil {
+					return nil, err
+				}
+				rows = append(rows, made1...)
+			}
+		} else {
+			var err error
+			if rows, err = s.addEffects(ctx, c, cs, spec); err != nil {
+				return nil, err
+			}
 		}
 		made = rows
 		ev := addedPayload(c, rows, catalogKey)

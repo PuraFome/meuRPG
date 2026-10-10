@@ -415,6 +415,12 @@ a.mr-list__row:hover .mr-list__name {
     background-color: color-mix(in srgb, var(--mr-map-token-surface) 45%, transparent);
   }
 
+  // Where the creature the mover drags ends up (W7-X): a dashed ring.
+  &--dragged {
+    border: 2px dashed var(--mr-map-token-ink);
+    border-radius: 50%;
+  }
+
   // The reach of whoever may make an opportunity attack: an outline, no fill.
   &--reactor {
     border: 2px dashed var(--mr-map-token-ink);

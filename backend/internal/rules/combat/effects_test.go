@@ -201,7 +201,7 @@ func TestCheckAdvantageImmunityAndTurnTempHPOfTheModifiers(t *testing.T) {
 		{Kind: rules.ModifierTurnTempHP, Value: 2},
 		{Kind: rules.ModifierRollDie, Die: 4, Sign: 1, AppliesTo: []string{rules.RollAppliesCheck}, Once: true},
 	}
-	if !CheckAdvantage(mods, "str") || CheckAdvantage(mods, "dex") {
+	if !HasCheckAdvantage(mods, "str") || HasCheckAdvantage(mods, "dex") {
 		t.Error("CheckAdvantage should hold for Strength only")
 	}
 	if !ImmuneTo(mods, "condition:frightened") || ImmuneTo(mods, "condition:charmed") {

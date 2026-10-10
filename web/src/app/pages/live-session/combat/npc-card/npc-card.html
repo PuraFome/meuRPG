@@ -70,6 +70,21 @@
       </li>
     </ul>
 
+    @if (standRow(); as su) {
+      <button
+        mat-stroked-button
+        type="button"
+        class="offer"
+        [class.mr-button--off]="su.off"
+        [attr.aria-describedby]="su.off ? 'stand-why' : null"
+        [disabled]="busy() || turnBusy()"
+        disabledInteractive
+        (click)="!su.off && standUp()"
+      >
+        <mat-icon aria-hidden="true">accessibility_new</mat-icon>Levantar-se
+      </button>
+      <p class="offer__why" id="stand-why">{{ su.off ? su.reason : su.detail }}</p>
+    }
     @if (theatre() && !down()) {
       <app-master-spend [campaignId]="campaignId()" [encounterId]="encounter().id" [subject]="subject()" [state]="state()" />
     }

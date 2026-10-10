@@ -920,7 +920,10 @@ func TestRN25_SpellsAndActionsWithoutReach(t *testing.T) {
 		t.Errorf("Mãos Flamejantes hit %d targets, want 3", len(area.GetCast().GetTargets()))
 	}
 	a.passTo(t, e, "Toren")
-	if _, err := a.action(t, a.caio, e, "Toren", "standard:help"); err != nil {
+	if _, err := a.caio.contests.Help(t.Context(), connect.NewRequest(&playv1.HelpRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Toren"), IdempotencyKey: newKey(),
+		Kind: playv1.HelpKind_HELP_KIND_CHECK, AllyId: a.id(t, "Brisa"), TaskKey: "skill:perception",
+	})); err != nil {
 		t.Fatalf("Help error = %v", err)
 	}
 	a.passTo(t, e, "Brisa")

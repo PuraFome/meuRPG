@@ -53,6 +53,7 @@ const (
 	endReplaced      = "replaced"        // the same spell was cast again (SRD, Combining Magical Effects)
 	endBurned        = "burned"          // the web burned away
 	endLeft          = "left"            // its target or its caster left the combat
+	endCasterLeft    = "caster_left"     // internal: the caster left or died; the log keeps it as endLeft
 	endIncapacitated = "incapacitated"   // the caster was incapacitated: no concentration
 	endUsed          = "used"            // a roll spent it (Guidance, Resistance)
 )
@@ -439,6 +440,10 @@ func (s *Service) endEffectRows(ctx context.Context, c *combatTx, cs []playdb.Co
 		}
 		castings[i].rows = append(castings[i].rows, st)
 	}
+	followUp := reason
+	if reason == endCasterLeft {
+		reason = endLeft // the log and the windows know one reason for a leaver
+	}
 	touched := map[string]bool{}
 	for _, k := range castings {
 		var targets, ids []string
@@ -453,7 +458,7 @@ func (s *Service) endEffectRows(ctx context.Context, c *combatTx, cs []playdb.Co
 			targets, ids = append(targets, st.CombatantID), append(ids, st.ID)
 			touched[st.CombatantID] = true
 		}
-		if err := s.afterEffectEnded(ctx, c, cs, content, k.rows, reason); err != nil {
+		if err := s.afterEffectEnded(ctx, c, cs, content, k.rows, followUp); err != nil {
 			return err
 		}
 		first := k.rows[0]

@@ -1,0 +1,572 @@
+// Contests and special actions of a combat: the types that CombatService and
+// ContestService share (SRD 5.1, "Contests", "Grappling", "Shoving a Creature",
+// "Hide", "Help", "Group Checks", "Surprise").
+//
+// Who reads what (RN-10, RN-20): a player never reads a number or a skill of
+// an NPC's check, nor a fixed escape DC, nor who noticed a hider. Each message
+// says who gets each field; the server leaves the rest out.
+syntax = "proto3";
+
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meurpg/rules/v1/rules.proto";
+
+// ContestKind is how a contest is decided.
+enum ContestKind {
+  CONTEST_KIND_UNSPECIFIED = 0;
+  // Both sides roll an ability check and the totals are compared (SRD 5.1,
+  // "Contests"): the higher total wins and a tie changes nothing.
+  CONTEST_KIND_CONTEST = 1;
+  // The check is against a fixed escape DC and nobody else rolls: a creature's
+  // grapple that comes from an attack ("escape DC 16"). Only the master reads
+  // the DC.
+  CONTEST_KIND_ESCAPE_DC = 2;
+}
+
+// ContestPurpose is what the contest is for.
+enum ContestPurpose {
+  CONTEST_PURPOSE_UNSPECIFIED = 0;
+  CONTEST_PURPOSE_GRAPPLE = 1;
+  CONTEST_PURPOSE_SHOVE = 2;
+  // A grappled creature uses its action to escape.
+  CONTEST_PURPOSE_ESCAPE = 3;
+}
+
+// ContestStatus is where a contest is.
+enum ContestStatus {
+  CONTEST_STATUS_UNSPECIFIED = 0;
+  // The defender has not rolled: the contest waits for them (or for the master,
+  // when the defender is an NPC or the player left the roll to the master).
+  CONTEST_STATUS_AWAITING_DEFENDER = 1;
+  // A won shove waits for its winner to choose between knocking prone and pushing.
+  CONTEST_STATUS_AWAITING_OUTCOME = 2;
+  CONTEST_STATUS_RESOLVED = 3;
+  // The master ended it with no answer.
+  CONTEST_STATUS_CLOSED = 4;
+}
+
+// ContestWinner is who won a resolved contest, as everybody who reads the
+// contest may read it: never a total.
+enum ContestWinner {
+  CONTEST_WINNER_UNSPECIFIED = 0;
+  CONTEST_WINNER_INITIATOR = 1;
+  CONTEST_WINNER_DEFENDER = 2;
+  // A tie changes nothing: the situation stays as it was before the contest.
+  CONTEST_WINNER_TIE = 3;
+}
+
+// ShoveOutcome is what a won shove did.
+enum ShoveOutcome {
+  SHOVE_OUTCOME_UNSPECIFIED = 0;
+  // The target is knocked prone.
+  SHOVE_OUTCOME_PRONE = 1;
+  // The target is pushed 5 feet straight away from the shover.
+  SHOVE_OUTCOME_PUSH = 2;
+  // The target was to be pushed, but the square behind it is blocked: it does not
+  // leave its place (the app's reading: the SRD says nothing of it).
+  SHOVE_OUTCOME_STAYS = 3;
+}
+
+// ContestSkill is the skill a contest roll uses: the two the SRD names for the
+// target of a grapple or a shove, and for a grappled creature that escapes.
+enum ContestSkill {
+  CONTEST_SKILL_UNSPECIFIED = 0;
+  // Strength (Athletics), "skill:athletics".
+  CONTEST_SKILL_ATHLETICS = 1;
+  // Dexterity (Acrobatics), "skill:acrobatics".
+  CONTEST_SKILL_ACROBATICS = 2;
+}
+
+// RollModeKind is how a check's d20 was rolled (SRD 5.1, "Advantage and
+// Disadvantage").
+enum RollModeKind {
+  ROLL_MODE_KIND_UNSPECIFIED = 0;
+  ROLL_MODE_KIND_NORMAL = 1;
+  ROLL_MODE_KIND_ADVANTAGE = 2;
+  ROLL_MODE_KIND_DISADVANTAGE = 3;
+}
+
+// RollNote is one circumstance behind a roll's mode: "Ajuda de Orla",
+// "Atacante não visto", "Envenenado". The server leaves out a note that rests on
+// something the caller may not read (RN-10).
+message RollNote {
+  // A stable key ("help", "unseen_attacker", "poisoned").
+  string kind = 1;
+  // The Portuguese sentence of the circumstance.
+  string label_pt = 2;
+  // True when the circumstance gives advantage, false when it gives
+  // disadvantage.
+  bool advantage = 3;
+}
+
+// CheckRoll is a d20 check and what it added.
+message CheckRoll {
+  // The skill of a contest roll; UNSPECIFIED for another check (see skill_key).
+  ContestSkill skill = 1;
+  // The check's key ("skill:stealth", "skill:athletics").
+  string skill_key = 2;
+  // The d20 faces: one for a normal roll, two (the pair) for advantage or
+  // disadvantage. `total` counts the one that applies.
+  repeated int32 faces = 3;
+  int32 modifier = 4;
+  int32 total = 5;
+  // True when the dice were physical and the player typed the faces.
+  bool physical = 6;
+  RollModeKind mode = 7;
+  repeated RollNote notes = 8;
+  // False when the roller has no known number for the check (a basic-sheet NPC
+  // with no creature): the d20 plus 0, as a saving throw does. Only the master.
+  bool bonus_known = 9;
+  // True when the master rolled in the place of the player (the player chose
+  // "Deixar o mestre rolar por mim", or the master rolled for a player who did
+  // not answer).
+  bool rolled_by_master = 10;
+}
+
+// CheckOption is what a d20 check would roll for the caller: the modifier and the
+// circumstances that change the roll's mode. The faces typed with physical dice must
+// match the mode (one face, or two for advantage or disadvantage).
+message CheckOption {
+  int32 modifier = 1;
+  // False when no number is known (a basic-sheet NPC). Only the master.
+  bool known = 2;
+  RollModeKind mode = 3;
+  repeated RollNote notes = 4;
+}
+
+// ContestSkillOption is what one of the two skills would roll for who answers a
+// contest: the modifier and the circumstances that change the roll's mode.
+message ContestSkillOption {
+  ContestSkill skill = 1;
+  int32 modifier = 2;
+  // False when no number is known (a basic-sheet NPC). Only the master.
+  bool known = 3;
+  RollModeKind mode = 4;
+  repeated RollNote notes = 5;
+  // True on the skill the app suggests to the master for an NPC: the one with the
+  // higher modifier.
+  bool suggested = 6;
+}
+
+// ContestWaitFor says who a contest waits for.
+enum ContestWaitFor {
+  CONTEST_WAIT_FOR_UNSPECIFIED = 0;
+  // Nobody: it is answered.
+  CONTEST_WAIT_FOR_NONE = 1;
+  // The master: "Esperando o mestre".
+  CONTEST_WAIT_FOR_MASTER = 2;
+  // A player's character: "Esperando Brisa" (`combatant_id`).
+  CONTEST_WAIT_FOR_PLAYER = 3;
+}
+
+// ContestView is a contest as the caller may read it. A contest is read by the
+// master and by the players whose characters are in it, nobody else.
+message ContestView {
+  string id = 1;
+  ContestKind kind = 2;
+  ContestPurpose purpose = 3;
+  ContestStatus status = 4;
+  // The one that grapples, shoves or tries to escape, and the one that answers
+  // (the target, or the one that holds).
+  string initiator_id = 5;
+  string defender_id = 6;
+  // The initiator's roll. Only the master and the initiator's player; never
+  // before the defender has answered, for the defender's player (the total comes
+  // out only after both rolled, and only to the master: players read who won).
+  CheckRoll initiator_roll = 7;
+  // The defender's roll. Only the master and the defender's player.
+  CheckRoll defender_roll = 8;
+  // The fixed escape DC of an ESCAPE_DC contest. Only the master; 0 otherwise.
+  int32 escape_dc = 9;
+  // Who won, once it is RESOLVED (UNSPECIFIED before).
+  ContestWinner winner = 10;
+  // What a won shove did, once chosen.
+  ShoveOutcome shove_outcome = 11;
+  // Who the contest waits for.
+  ContestWaitFor waiting_for = 12;
+  // The player's character it waits for, when waiting_for is PLAYER.
+  string waiting_combatant_id = 13;
+  // True when the caller may answer it now (RespondContest): the defender's
+  // player, or the master for any contest that waits for the defender.
+  bool you_answer = 14;
+  // The two skills the caller would roll, when `you_answer`.
+  repeated ContestSkillOption answer_options = 15;
+  // True when the defender's player chose to leave the roll to the master
+  // ("Deixar o mestre rolar por mim"); `deferred_skill` is the skill they chose.
+  bool deferred = 16;
+  ContestSkill deferred_skill = 17;
+  // The choice a won shove waits for, for its winner's controller and the master.
+  ShoveChoice shove_choice = 18;
+  // True when the caller may choose the shove's outcome now (ResolveShove).
+  bool you_choose = 19;
+  int32 round = 20;
+  google.protobuf.Timestamp created_at = 21;
+  // True when the initiator's check had no known number. Only the master.
+  bool initiator_bonus_known = 22;
+}
+
+// ShoveBlockedReason says why a shove cannot push.
+enum ShoveBlockedReason {
+  SHOVE_BLOCKED_REASON_UNSPECIFIED = 0;
+  // A wall, a column or the edge of the map is on the square behind the target.
+  SHOVE_BLOCKED_REASON_WALL = 1;
+  // A creature the caller sees holds the square behind the target.
+  SHOVE_BLOCKED_REASON_CREATURE = 2;
+}
+
+// ShoveChoice is what a won shove may do, as its winner reads it. A square blocked by
+// something the winner does not see is not told: the push is offered and resolves as
+// STAYS (RN-10).
+message ShoveChoice {
+  // Knocking prone is always possible.
+  bool prone_available = 1;
+  // Pushing 5 feet away is possible.
+  bool push_available = 2;
+  // Why not, when it is not.
+  ShoveBlockedReason push_blocked = 3;
+}
+
+// ContestBlockedReason says why a contest or a special action was refused: the reason of
+// the failed_precondition detail ContestBlocked. The reasons the combat already has
+// (NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED, ATTACKS_USED, BONUS_ACTION_USED,
+// TARGET_OUT_OF_REACH, TARGET_DEFEATED, NOT_PLACED, WRONG_DICE_MODE, COMBATANT_DOWN) come as
+// EncounterBlocked, as in every call of a turn.
+enum ContestBlockedReason {
+  CONTEST_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The target is more than one size larger than the combatant.
+  CONTEST_BLOCKED_REASON_TARGET_TOO_BIG = 1;
+  // The contest is not waiting for what the call does (answered, closed, or the caller
+  // is not the one it waits for).
+  CONTEST_BLOCKED_REASON_NOT_AWAITING = 2;
+  // A contest of this combatant waits already.
+  CONTEST_BLOCKED_REASON_CONTEST_OPEN = 3;
+  // The combatant is not grappled (Escape), or holds nobody (Release).
+  CONTEST_BLOCKED_REASON_NOT_GRAPPLED = 4;
+  // ResolveShove: the square behind the target is blocked.
+  CONTEST_BLOCKED_REASON_PUSH_BLOCKED = 5;
+  // MoveCombatant: the grappler drags the creature it holds, and the square behind its
+  // path is taken or blocked.
+  CONTEST_BLOCKED_REASON_NO_ROOM_TO_DRAG = 6;
+  // The combatant is surprised: it does not move, act or react until its first turn
+  // ends.
+  CONTEST_BLOCKED_REASON_SURPRISED = 7;
+  // The combatant has no action of this kind (no Hide or Help in the sheet's actions).
+  CONTEST_BLOCKED_REASON_NOT_AVAILABLE = 8;
+  // Help: the ally cannot be helped (the helper itself, defeated, the other side).
+  CONTEST_BLOCKED_REASON_NOT_AN_ALLY = 9;
+  // Help (check): the task is not a check the app names.
+  CONTEST_BLOCKED_REASON_TASK_NOT_AVAILABLE = 10;
+  // The hide attempt is answered already, or is not the caller's.
+  CONTEST_BLOCKED_REASON_HIDE_NOT_PENDING = 11;
+  // A group check is open already, or the one named is closed.
+  CONTEST_BLOCKED_REASON_GROUP_CHECK_OPEN = 12;
+  CONTEST_BLOCKED_REASON_GROUP_CHECK_CLOSED = 13;
+  // The character is not one the group check asked.
+  CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK = 14;
+  // The character answered the group check already.
+  CONTEST_BLOCKED_REASON_ALREADY_ANSWERED = 15;
+  // SetSurprised: the combatant's first turn has ended, so surprise no longer applies.
+  CONTEST_BLOCKED_REASON_COMBAT_BEGUN = 16;
+  // RevealHider: the combatant is not hidden from anyone.
+  CONTEST_BLOCKED_REASON_NOT_HIDDEN = 17;
+}
+
+// ContestBlocked is the detail of the failed_precondition of the contest calls.
+message ContestBlocked {
+  ContestBlockedReason reason = 1;
+}
+
+// ContestTargetReason says why a target cannot be grappled or shoved.
+enum ContestTargetReason {
+  CONTEST_TARGET_REASON_UNSPECIFIED = 0;
+  // More than one size larger than the combatant.
+  CONTEST_TARGET_REASON_TOO_BIG = 1;
+  // Beyond the combatant's reach.
+  CONTEST_TARGET_REASON_OUT_OF_REACH = 2;
+  CONTEST_TARGET_REASON_NOT_PLACED = 3;
+}
+
+// ContestTarget is a creature a grapple or a shove may aim at, as the caller sees it.
+message ContestTarget {
+  string combatant_id = 1;
+  // The size the caller sees (the sheet's size of a creature they see).
+  meurpg.rules.v1.CreatureSize size = 2;
+  // The distance in feet; 0 with no map.
+  int32 distance_ft = 3;
+  // False when the target is not allowed; then `reason` says why. Only the size
+  // and the reach count: the master has the last word.
+  bool eligible = 4;
+  ContestTargetReason reason = 5;
+}
+
+// ContestAttackOptionKind is what an attack option of the Attack action does.
+enum ContestAttackOptionKind {
+  CONTEST_ATTACK_OPTION_KIND_UNSPECIFIED = 0;
+  // A normal attack: the options of `options.attacks`, which this list does not
+  // repeat.
+  CONTEST_ATTACK_OPTION_KIND_ATTACK = 1;
+  CONTEST_ATTACK_OPTION_KIND_GRAPPLE = 2;
+  CONTEST_ATTACK_OPTION_KIND_SHOVE = 3;
+}
+
+// ContestAttackOption is a special attack that replaces one attack of the Attack
+// action (SRD 5.1, "Grappling" and "Shoving a Creature"): the line under "Atacar".
+message ContestAttackOption {
+  ContestAttackOptionKind kind = 1;
+  // Always true for GRAPPLE and SHOVE: it takes the place of one attack.
+  bool replaces_attack = 2;
+  bool enabled = 3;
+  // Set when `enabled` is false: the same reasons the attacks carry.
+  meurpg.rules.v1.DisabledReason reason = 4;
+  // How many attacks of the Attack action are left, counting this one; 0 when the
+  // action is not taken yet and has none counted.
+  int32 attacks_left = 5;
+  // The targets, with the size and the reach checked.
+  repeated ContestTarget targets = 6;
+  // What the combatant's Strength (Athletics) check would roll.
+  CheckOption roll_option = 7;
+}
+
+// ContestAction is the Hide or the Help action of a combatant: the key that
+// ContestService.Hide takes as `action_key` (Help is always "standard:help"), what it
+// costs and whether it can be taken now.
+message ContestAction {
+  string key = 1;
+  meurpg.rules.v1.ActionEconomy economy = 2;
+  bool enabled = 3;
+  // Set when `enabled` is false.
+  meurpg.rules.v1.DisabledReason reason = 4;
+}
+
+// ContestTurnState is the contest facts of a combatant's turn, for the combatant's
+// player and the master.
+message ContestTurnState {
+  // The combatant is grappled.
+  bool grappled = 1;
+  // Who holds it, when the caller sees that creature (never a hidden one).
+  string grappler_id = 2;
+  // True when the grappled combatant may use its action to escape now.
+  bool can_escape = 3;
+  // Why not (ACTION_USED, NOT_YOUR_TURN...), when it cannot.
+  meurpg.rules.v1.DisabledReason escape_reason = 4;
+  // The combatant holds another one and drags it when it moves.
+  string holding_id = 5;
+  // The combatant is hidden from at least one creature: "Você está escondida."
+  // Never says from whom.
+  bool hidden = 6;
+  // The combatant is surprised and the first turn has not ended.
+  bool surprised = 7;
+  // The actions that Hide: the standard Hide and the features that give it (the rogue's
+  // Cunning Action), each with its economy and whether it can be taken now.
+  repeated ContestAction hide_actions = 8;
+  // The Help action, when the combatant has it.
+  ContestAction help_action = 9;
+  // The combatant's attack carries a Help that gives it advantage on its first
+  // attack against `help_target_id` (the Help of an ally).
+  string help_target_id = 10;
+  // What an escape would roll with each skill, when the combatant is grappled.
+  repeated ContestSkillOption escape_options = 11;
+  // What a Hide would roll: the Dexterity (Stealth) check.
+  CheckOption hide_option = 12;
+}
+
+// GrappleView says who holds whom, for the ones that see both.
+message GrappleView {
+  string grappled_id = 1;
+  string grappler_id = 2;
+  // The escape DC of a grapple that came from an attack. Only the master.
+  int32 escape_dc = 3;
+}
+
+// HideObserver is a creature that could see a hider, and what the app compares.
+// Only the master reads it.
+message HideObserver {
+  string combatant_id = 1;
+  // 10 plus the Perception bonus, plus or minus 5 for advantage or disadvantage; 10
+  // with no known number.
+  int32 passive_perception = 2;
+  // True when the number is known (the sheet or the creature gives it).
+  bool known = 3;
+  // The creature notices the hider: the total does not beat the passive Perception
+  // (a tie keeps the hider noticed, the app's reading), or it already saw the hider
+  // clearly.
+  bool noticed = 4;
+}
+
+// HideAttemptStatus is where a Hide action is.
+enum HideAttemptStatus {
+  HIDE_ATTEMPT_STATUS_UNSPECIFIED = 0;
+  HIDE_ATTEMPT_STATUS_PENDING = 1;
+  HIDE_ATTEMPT_STATUS_APPLIED = 2;
+  HIDE_ATTEMPT_STATUS_REFUSED = 3;
+}
+
+// HideAttemptView is a Hide action as the caller reads it.
+message HideAttemptView {
+  string id = 1;
+  string hider_id = 2;
+  HideAttemptStatus status = 3;
+  // The Dexterity (Stealth) roll. Only the master and the hider's player.
+  CheckRoll roll = 4;
+  // The master's sentence when he refused ("Alguém vê você claramente: não dá para
+  // se esconder agora."). The master and the hider's player.
+  string refusal = 5;
+  // The creatures that could see the hider, with what the app compares. Only the
+  // master.
+  repeated HideObserver observers = 6;
+  int32 round = 7;
+}
+
+// HelpKind is the two forms of the Help action.
+enum HelpKind {
+  HELP_KIND_UNSPECIFIED = 0;
+  // The ally has advantage on the next ability check of a task.
+  HELP_KIND_CHECK = 1;
+  // The ally's first attack on a creature within 5 feet of the helper has advantage.
+  HELP_KIND_ATTACK = 2;
+}
+
+// HelpView is a Help that holds. Every player reads it (a source of advantage:
+// "Ajuda de Orla"), except one aimed at a creature the player does not see.
+message HelpView {
+  string id = 1;
+  HelpKind kind = 2;
+  string helper_id = 3;
+  string ally_id = 4;
+  // The task of a CHECK help: the check's key and its name.
+  string task_key = 5;
+  string task_name_pt = 6;
+  // The target of an ATTACK help.
+  string target_id = 7;
+  // The round the help ends in (the round of the helper's next turn: it ends as
+  // that turn starts); 0 outside a combat.
+  int32 expires_round = 8;
+}
+
+// SurpriseView is who is surprised. The master reads every combatant, a player their
+// own characters only.
+message SurpriseView {
+  repeated string combatant_ids = 1;
+}
+
+// SurpriseSuggestionReason is why the app suggests a creature surprised or not.
+enum SurpriseSuggestionReason {
+  SURPRISE_SUGGESTION_REASON_UNSPECIFIED = 0;
+  // Every hider's Stealth beats the creature's passive Perception: it notices no
+  // threat.
+  SURPRISE_SUGGESTION_REASON_HIDERS_BEAT = 1;
+  // A hider is noticed: the Stealth does not beat the passive Perception, or the
+  // master said the creature sees the hider clearly.
+  SURPRISE_SUGGESTION_REASON_NOTICES = 2;
+  // Nobody of the other side hides: the creature notices them.
+  SURPRISE_SUGGESTION_REASON_NO_HIDERS = 3;
+}
+
+// HiderTotal is one hider's Stealth total against a creature.
+message HiderTotal {
+  string combatant_id = 1;
+  int32 stealth_total = 2;
+  // True when that hider's Stealth beats the creature's passive Perception.
+  bool beats = 3;
+}
+
+// SurpriseSuggestion is the app's suggestion for one creature, for the master. The
+// master decides: SetSurprised.
+message SurpriseSuggestion {
+  string combatant_id = 1;
+  int32 passive_perception = 2;
+  bool suggested = 3;
+  SurpriseSuggestionReason reason = 4;
+  // Each hider of the other side against this creature.
+  repeated HiderTotal hiders = 5;
+  // True when the master has marked the creature surprised already.
+  bool surprised = 6;
+}
+
+// GroupCheckMemberView is one character a group check asked.
+message GroupCheckMemberView {
+  string character_id = 1;
+  string name = 2;
+  // True once the character rolled (or the master rolled for it).
+  bool answered = 3;
+  // The roll. Only the master and the character's own player.
+  CheckRoll roll = 4;
+  // Whether the roll passed the DC. Only the master, and the character's own player
+  // when the master shows the DC.
+  bool passed_known = 5;
+  bool passed = 6;
+}
+
+// GroupCheckView is a group check as the caller reads it.
+message GroupCheckView {
+  string id = 1;
+  string skill_key = 2;
+  string skill_name_pt = 3;
+  bool open = 4;
+  // The DC. Only the master.
+  int32 dc = 5;
+  // True when the master lets the players read passed and failed.
+  bool show_dc = 6;
+  repeated GroupCheckMemberView members = 7;
+  // How many characters passed and how many are needed ("pelo menos metade" of the
+  // characters asked, rounded up). Only the master, until the check is closed with
+  // the DC shown.
+  int32 passed_count = 8;
+  int32 needed = 9;
+  // The group's verdict, once closed. The master always; the players only when the
+  // master shows the DC.
+  bool verdict_known = 10;
+  bool group_passed = 11;
+  google.protobuf.Timestamp created_at = 12;
+  // What the caller's own character would roll, when the check is open and it has not
+  // answered. A player only.
+  CheckOption your_option = 13;
+  // The caller's character may roll now.
+  bool you_roll = 14;
+}
+
+// ContestLogLine says what a CONTEST line of the combat log is. The line never carries
+// a total or a DC (RN-20).
+enum ContestLogLine {
+  CONTEST_LOG_LINE_UNSPECIFIED = 0;
+  // The actor grappled the target ("Toren agarrou o Hobgoblin"), also a grapple that came
+  // from an attack.
+  CONTEST_LOG_LINE_GRAPPLED = 1;
+  // The grapple was lost or tied ("Toren não conseguiu agarrar o Hobgoblin").
+  CONTEST_LOG_LINE_GRAPPLE_FAILED = 2;
+  // The shove won: the target fell prone, was pushed, or did not leave its place.
+  CONTEST_LOG_LINE_SHOVE_PRONE = 3;
+  CONTEST_LOG_LINE_SHOVE_PUSHED = 4;
+  CONTEST_LOG_LINE_SHOVE_STAYS = 5;
+  // The shove was lost or tied ("Toren não conseguiu empurrar o Hobgoblin").
+  CONTEST_LOG_LINE_SHOVE_FAILED = 6;
+  // The actor got free of the target ("Brisa se soltou do Hobgoblin").
+  CONTEST_LOG_LINE_ESCAPED = 7;
+  // The escape failed ("Brisa não conseguiu se soltar do Hobgoblin").
+  CONTEST_LOG_LINE_ESCAPE_FAILED = 8;
+  // The master ended a contest with no result.
+  CONTEST_LOG_LINE_CLOSED = 9;
+  // The actor let the target go ("Toren soltou o Hobgoblin").
+  CONTEST_LOG_LINE_RELEASED = 10;
+  // The actor tried to hide, and what the master decided. Only the master.
+  CONTEST_LOG_LINE_HIDE_TRIED = 11;
+  CONTEST_LOG_LINE_HIDE_APPLIED = 12;
+  CONTEST_LOG_LINE_HIDE_REFUSED = 13;
+  // The actor helped the target ("Orla ajudou Toren").
+  CONTEST_LOG_LINE_HELPED = 14;
+  // The master marked a creature surprised or took the mark off. Only the master.
+  CONTEST_LOG_LINE_SURPRISED = 15;
+  CONTEST_LOG_LINE_SURPRISE_CLEARED = 16;
+  // The actor stood up from Prone ("Brisa se levantou"). Everyone who sees the actor.
+  CONTEST_LOG_LINE_STOOD_UP = 17;
+  // The master ended the actor's hiding ("Brisa não está mais escondida"). The master and
+  // the actor's player only; never who noticed (RN-10).
+  CONTEST_LOG_LINE_HIDE_REVEALED = 18;
+}
+
+// CombatLogContest is a CONTEST line of the combat log: the actor and the target are in
+// the entry's actor_id and target_id.
+message CombatLogContest {
+  ContestLogLine line = 1;
+}

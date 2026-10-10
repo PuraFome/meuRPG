@@ -1,0 +1,247 @@
+// The master's cards of W7-X (contest, shove choice, Hide, grapples, group check, surprise): one surface, one rhythm.
+:host {
+  display: block;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: 16px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  p {
+    margin: 0;
+  }
+}
+
+.card__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 27px;
+  overflow-wrap: anywhere;
+}
+
+.card__sub {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.card__text {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.small {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.total {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md, 10px);
+
+  &__head {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  &__sum {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 26px;
+  }
+
+  &--win {
+    border-color: var(--mr-success-ink);
+    background: var(--mr-success-surface);
+  }
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choices__cap {
+  width: 100%;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+// A choice: a radio or a check box as a 44 px row, never colour alone.
+.choice {
+  display: flex;
+  flex: 1 1 160px;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md, 10px);
+  background: var(--mr-surface);
+  font-size: 16px;
+  cursor: pointer;
+
+  &--on {
+    padding: 7px 11px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+
+  &:has(:focus-visible) {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__name {
+    font-weight: 700;
+  }
+
+  &__sub {
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--mr-line);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &__main {
+    display: flex;
+    flex: 1 1 200px;
+    flex-direction: column;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__name {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  &__sub {
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+
+  &--ok {
+    border-color: var(--mr-success-ink);
+    color: var(--mr-success-ink);
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  input,
+  select {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--mr-control-line);
+    border-radius: var(--mr-radius-md, 10px);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    font: inherit;
+
+    &:focus-visible {
+      outline: 3px solid var(--mr-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// Equal width and height; on a phone each button takes its own line, 48 px high.
+.btns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+  white-space: normal;
+  line-height: 18px;
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
+  }
+
+  &--small {
+    --mat-button-outlined-container-height: 44px;
+    width: auto;
+  }
+}

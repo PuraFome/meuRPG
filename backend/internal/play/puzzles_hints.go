@@ -204,6 +204,9 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if err := s.spendOnceEffects(ctx, spendTx, cm.Rolled); err != nil {
 		return nil, err
 	}
+	if err := s.spendCheckHelps(ctx, spendTx, cm.Helps); err != nil {
+		return nil, err
+	}
 	d20, err := s.d20With(in, bonus, cm.Mode)
 	if err != nil {
 		return nil, err

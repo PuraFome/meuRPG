@@ -85,7 +85,18 @@ func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e play
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN, nil
 	}
 	// An effect or a condition that takes the actions away (RN-22).
-	return cannotActCode(c), nil
+	if code := cannotActCode(c); code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
+		return code, nil
+	}
+	// A surprised combatant does not move, act or react until its first turn ends.
+	surprised, err := s.surprisedNow(ctx, tx, e, c)
+	if err != nil {
+		return 0, err
+	}
+	if surprised {
+		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED, nil
+	}
+	return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED, nil
 }
 
 // isDown says whether a player's character is at 0 hit points ("Caído"): its
@@ -122,6 +133,8 @@ func gateError(code rulesv1.DisabledReasonCode) error {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN, "the character is down")
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED:
+		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_SURPRISED, "the combatant is surprised")
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_INCAPACITATED, rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_EFFECT_LETHARGY:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CANNOT_ACT, "the combatant cannot act now")
 	}
@@ -300,6 +313,9 @@ func (s *Service) GetTurnOptions(
 		if deref(p.AttackerID) == who.ID && pendingVisible(p, d.cs, v) {
 			res.PendingDamages = append(res.PendingDamages, s.pendingView(ctx, m.CampaignID, p, d.cs, v))
 		}
+	}
+	if res.ContestAttackOptions, res.ContestState, err = s.contestOptionsFor(ctx, m, d, v, who, opts, code); err != nil {
+		return nil, s.dbError(ctx, "work out the contests of the turn", err)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -544,7 +560,7 @@ func (s *Service) mustReactNow(ctx context.Context, c *combatTx, who playdb.Comb
 	if down {
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
 	}
-	return nil
+	return s.mustNotBeSurprised(ctx, c, who)
 }
 
 // RollAttack implements playv1connect.CombatServiceHandler.
@@ -810,7 +826,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		// Advantage and disadvantage (SRD 5.1): the server works the mode out from the
 		// combat, never from what the screen showed, settles what the caller asked for
 		// and rolls one d20 or two.
-		modeIn, err := readModeInputs(ctx, c, cs)
+		modeIn, err := s.readModeInputs(ctx, c, cs)
 		if err != nil {
 			return nil, err
 		}
@@ -909,6 +925,11 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		}
 		if bonus != nil {
 			made.Res = &resourceEvent{Kind: resBardicUse, Sides: bonus.Sides, Face: bonus.Face, FromID: bonus.From, ExpiresRound: bonus.ExpiresRound}
+		}
+		// An attack gives the attacker's position away, hit or miss, and uses the Help aimed
+		// at its target (SRD 5.1, "Unseen Attackers and Targets", "Help").
+		if err := s.afterAttack(ctx, c, attacker, target, cs, &made); err != nil {
+			return nil, err
 		}
 		switch {
 		case asReaction:
@@ -2003,6 +2024,9 @@ func (s *Service) TakeAction(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the standard or feature actions"))
 		}
 		action := list[i]
+		if actionKey == actionHide || actionKey == actionHelp {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("Hide and Help have their own calls: ContestService.Hide and ContestService.Help"))
+		}
 		economy := action.GetAction().GetEconomy()
 		// A reaction is taken off turn, when its trigger happens; everything else
 		// on the combatant's turn.
@@ -2094,6 +2118,9 @@ func (s *Service) TakeAction(
 			fa := sheet.FeatureActions[fi]
 			if fa.Standard != "" {
 				standard = fa.Standard
+			}
+			if standard == actionHide || standard == actionHelp {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("Hide and Help have their own calls: ContestService.Hide and ContestService.Help"))
 			}
 			// One use of its resource: only a player's character counts them, and a
 			// pool of points (Cura pelas mãos) is the master's.
@@ -2198,7 +2225,7 @@ func (s *Service) mustReactNowOrOnTurn(ctx context.Context, c *combatTx, who pla
 	if down {
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
 	}
-	return nil
+	return s.mustNotBeSurprised(ctx, c, who)
 }
 
 // secondWind is Retomar o fôlego: 1d10 plus the fighter's level of hit points,

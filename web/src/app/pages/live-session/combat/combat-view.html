@@ -32,6 +32,7 @@
               (order)="setOrder($event)"
             />
             <div class="setup__side">
+              <app-surprise-card [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
               <app-initiative-side
                 [encounter]="e"
                 [info]="info()"
@@ -298,12 +299,21 @@
                   [concentration]="ownConcentration()"
                   [theatre]="theatre()"
                   [orderBelow]="orderBelow()"
+                  [contest]="contestFacts()"
                   [effectNotes]="options()?.effectNotes ?? []"
                   (endTurn)="nextTurn()"
                   (endRage)="endRageOf($event)"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="endOwnConcentration()"
                 />
+              }
+              @if (contest.pending().length > 0 && !contest.sheetOpen()) {
+                <!-- A contest asks something of this player (W7-X) and its sheet was closed: the way back to it. -->
+                <div class="mr-notice mr-notice--warning notice" data-testid="contest-pending">
+                  <mat-icon aria-hidden="true">pan_tool</mat-icon>
+                  <p>Uma disputa espera a sua resposta.</p>
+                  <button mat-button type="button" class="notice__ok" (click)="contest.answerPending()">Responder</button>
+                </div>
               }
               @if (ownEffectSave(); as pending) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="effect-save-pending">
@@ -342,8 +352,9 @@
                     (rollDamage)="rollCreatureDamage(m.id)"
                     (attack)="openCreatureAttack(m.id, $event)"
                     (reactionAttack)="openCreatureAttack(m.id, $event, true)"
-                    (action)="takeActionFor(m.id, $event)"
+                    (action)="creatureAction(m.id, $event)"
                     (move)="openCreatureMove(m.id)"
+                    (standUp)="standUp(m.id)"
                   />
                 }
               </div>
@@ -379,6 +390,10 @@
                       [wild]="wild()"
                       [beast]="me.wildShapeBeastNamePt"
                       [theatre]="theatre()"
+                      [contestAttacks]="contestAttacks()"
+                      [contest]="contestFacts()"
+                      (contestAttack)="contest.openAttack($event)"
+                      (escape)="contest.openEscape()"
                       [extraAction]="opts.extraAction ?? null"
                       (extraAttack)="openAttack($event, false, true)"
                       (extraStandard)="takeExtra($event)"
@@ -389,6 +404,7 @@
                       (feature)="useFeature($event)"
                       (action)="standardAction($event)"
                       (move)="openMove()"
+                      (standUp)="standUp()"
                       (rollDamage)="rollPendingDamage()"
                       (transform)="openTransform()"
                       (leaveForm)="leaveForm()"
@@ -447,6 +463,7 @@
                 [attacksLeft]="attacksLeft()"
                 [busy]="busy()"
                 [waiting]="waiting()?.title ?? ''"
+                [surprised]="contestFacts()?.surprised === true"
                 [theatre]="theatre()"
                 [joint]="jointOthers()"
                 (endTurn)="nextTurn()"
@@ -546,6 +563,15 @@
     }
     <!-- The reaction windows the master answers (PM-04): below the card, in the order the server answers them. -->
     <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
+    <!-- The contests that wait for the master (W7-X): CONTEST windows, Hide, grapples; never answered with AnswerReaction. -->
+    <app-contest-master
+      [encounter]="e"
+      [campaignId]="campaignId()"
+      [state]="state()"
+      [diceMode]="diceMode()"
+      [preference]="dicePreference()"
+      [options]="options()"
+    />
   }
 </ng-template>
 

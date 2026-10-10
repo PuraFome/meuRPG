@@ -49,6 +49,8 @@ const (
 	// Unseen Attackers and Targets.
 	SourceUnseenAttacker = "unseen_attacker"
 	SourceUnseenTarget   = "unseen_target"
+	// Help: an ally's Help aimed at the target (SRD 5.1, "Help").
+	SourceHelp = "help"
 	// Ranged Attacks: beyond the normal range, and a hostile creature within 5 ft.
 	SourceLongRange     = "long_range"
 	SourceHostileNearby = "hostile_nearby"
@@ -65,6 +67,7 @@ const (
 	SourceDangerSense     = "danger_sense"
 	SourceRageStrength    = "rage_strength"
 	SourceRestrainedSave  = "restrained_save"
+	SourceStealthArmor    = "stealth_armor"
 	SourcePoisonedCheck   = "poisoned_check"
 	SourceFrightenedCheck = "frightened_check"
 	SourcePerceptionDim   = "perception_dim"
@@ -255,6 +258,8 @@ type AttackScene struct {
 	// AttackerUnseen says the target cannot see the attacker (hidden, or out of
 	// sight in the dark); TargetUnseen says the attacker cannot see the target.
 	AttackerUnseen, TargetUnseen bool
+	// Helped says an ally's Help aimed at the target holds for this attacker.
+	Helped bool
 	// AllyNearTarget says an ally of the attacker that is not incapacitated is
 	// within 5 ft of the target (Pack Tactics).
 	AllyNearTarget bool
@@ -384,6 +389,11 @@ func AttackMode(s AttackScene) AttackModeResult {
 		add(SourceUnseenTarget, ModeDisadvantage, "")
 	}
 
+	// Help: the attack roll of the creature an ally helped (SRD 5.1, "Help").
+	if s.Helped {
+		add(SourceHelp, ModeAdvantage, "")
+	}
+
 	out.Sources = append(out.Sources, rangedSources(s)...)
 	return out
 }
@@ -414,6 +424,9 @@ type SaveScene struct {
 	// EffectVisible says the creature sees the effect it saves against (Danger
 	// Sense): a spell it sees, a trap it has found.
 	EffectVisible bool
+	// StealthArmor says the check is Dexterity (Stealth) in armor that gives disadvantage
+	// on it (SRD 5.1, "Armor").
+	StealthArmor bool
 }
 
 // SaveMode lists the circumstances of a saving throw or an ability check (SRD
@@ -450,6 +463,9 @@ func SaveMode(s SaveScene) []Source {
 	}
 	if s.Check && c.Exhaustion >= 1 {
 		add(SourceExhaustionCheck, ModeDisadvantage, "")
+	}
+	if s.Check && s.StealthArmor && s.Ability == dexterityAbility {
+		add(SourceStealthArmor, ModeDisadvantage, "")
 	}
 	if s.Check {
 		if c.Has(conditionPoisoned) {

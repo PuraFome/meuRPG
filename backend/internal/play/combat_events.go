@@ -568,6 +568,17 @@ type actionEvent struct {
 	StateReason  string `json:"state_reason,omitempty"`
 	StateID      string `json:"state_id,omitempty"`
 
+	// HidBefore is the hiding an attack or a cast ended, which its undo gives back
+	// (combat_hide.go).
+	HidBefore []hideSnap `json:"hid_before,omitempty"`
+	HelpUsed  []string   `json:"help_used,omitempty"`
+	// Dragged is the creature a grappler dragged along in a move, and where it stood (the
+	// move's undo puts it back).
+	Dragged     string     `json:"dragged_id,omitempty"`
+	DraggedFrom *moveState `json:"dragged_from,omitempty"`
+	// Contest is what a contest or a special action says of the event: grapple, shove,
+	// escape, Hide, Help, surprise (combat_contests_core.go).
+	Contest *contestEvent `json:"contest,omitempty"`
 	// Res is what a class resource flow did (Lay on Hands, Flexible Casting,
 	// Bardic Inspiration): see combat_resources.go.
 	Res *resourceEvent `json:"res,omitempty"`

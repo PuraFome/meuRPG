@@ -110,6 +110,8 @@ import { ShownImageBlock } from './shown-image-block/shown-image-block';
 import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
 import { applySnapshot, applyVitals, betterArmorClass, partyRowSub } from './vitals';
 import { FoundTreasures } from './treasure/found-treasures/found-treasures';
+import { GroupCheckCard } from './group-check/group-check-card';
+import { GroupCheckMaster } from './group-check/group-check-master';
 import { TreasurePanel } from './treasure/treasure-panel/treasure-panel';
 import { TrapActivityList } from './traps/trap-activity/trap-activity';
 import { TrapPanel } from './traps/trap-panel/trap-panel';
@@ -151,6 +153,8 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     CastingPanel,
     CombatView,
     FoundTreasures,
+    GroupCheckCard,
+    GroupCheckMaster,
     HighlightsCard,
     LiveToast,
     MasterLive,
@@ -281,6 +285,8 @@ export class LiveSession {
   );
   /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
   protected readonly castsTick = signal(0);
+  /** Counts the `group_check_changed` hints (and each `ready`): the group check's card reads again when it moves (W7-X). */
+  protected readonly groupCheckTick = signal(0);
   /** Goes up when a rest was taken: the effects on the characters are read again with the spell casts. */
   private readonly restsTick = signal(0);
   protected readonly effectsTick = computed(() => this.castsTick() + this.restsTick());
@@ -698,6 +704,7 @@ export class LiveSession {
           this.castsTick.update((n) => n + 1);
           this.loadMageArmor(campaignId, generation);
         },
+        onGroupCheckChanged: () => this.groupCheckTick.update((n) => n + 1),
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -836,6 +843,7 @@ export class LiveSession {
       this.creaturesTick.update((n) => n + 1);
       this.revivifyTick.update((n) => n + 1);
       this.castsTick.update((n) => n + 1);
+      this.groupCheckTick.update((n) => n + 1);
       if (this.isMaster()) {
         void this.reloadMaps();
       }

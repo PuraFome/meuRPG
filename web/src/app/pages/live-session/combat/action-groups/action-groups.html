@@ -23,6 +23,18 @@
     </div>
   }
 
+  @if (surprised()) {
+    <!-- W7-X board 11: a surprised character does not move, act or react until the turn ends; the four groups say so and nothing else. -->
+    @for (g of surpriseRows; track g.name) {
+      <section class="group" [attr.aria-label]="g.name">
+        <header class="group__head">
+          <h3 class="group__name">{{ g.name }}</h3>
+          <app-group-state word="Indisponível" [used]="true" />
+        </header>
+        <app-action-row name="" [off]="true" [reason]="g.why" />
+      </section>
+    }
+  } @else {
   @if (theatre()) {
     <!-- E10-04 state 7: Movimento first, right after the economy tiles. -->
   <section class="group" aria-labelledby="g-move">
@@ -61,6 +73,18 @@
         (press)="move.emit()"
       />
     }
+    @if (standRow(); as su) {
+      <app-action-row
+        name="Levantar-se"
+        [detail]="su.detail"
+        button="Levantar-se"
+        buttonLabel="Levantar-se"
+        [off]="su.off || !!locked()"
+        [reason]="locked() || su.reason"
+        [busy]="busy()"
+        (press)="standUp.emit()"
+      />
+    }
   </section>
   }
 
@@ -69,7 +93,20 @@
       <h3 class="group__name" id="g-action">Ação</h3>
       <app-group-state [word]="actionWord().word" [used]="actionWord().used" />
     </header>
-    @if (options().attacks.length) {
+    @if (grappled()) {
+      <!-- W7-X board 5: "Escapar" is the first line of the Ação of a grappled combatant. -->
+      <app-action-row
+        name="Escapar"
+        [detail]="escapeDetail"
+        button="Escapar"
+        buttonLabel="Escapar do agarrão"
+        [off]="!contest()?.canEscape || !!locked()"
+        [reason]="locked() || escapeWhy()"
+        [busy]="busy()"
+        (press)="escape.emit()"
+      />
+    }
+    @if (options().attacks.length || contestAttacks().length) {
       <p class="group__sub">Ataques</p>
       @for (a of options().attacks; track a.attack?.key) {
         @if (a.attack; as atk) {
@@ -90,6 +127,24 @@
           />
         }
       }
+    }
+    @if (contestAttacks().length) {
+      @for (o of contestAttacks(); track o.kind) {
+        <app-action-row
+          [name]="special(o).name"
+          [detail]="special(o).detail"
+          [button]="special(o).name"
+          [buttonLabel]="special(o).name + ': escolher o alvo'"
+          [off]="!o.enabled || !!locked()"
+          [reason]="locked() || reasonText(o.reason)"
+          [busy]="busy()"
+          (press)="contestAttack.emit(o.kind)"
+        />
+      }
+      <p class="group__why group__why--plain">{{ specialNote }}</p>
+    }
+    @if (hiddenNote()) {
+      <p class="group__why group__why--plain" data-testid="hidden-note">{{ hiddenNote() }}</p>
     }
     @for (f of action_().features; track f.action?.key) {
       @if (isWild(f)) {
@@ -325,6 +380,19 @@
         (press)="move.emit()"
       />
     }
+    @if (standRow(); as su) {
+      <app-action-row
+        name="Levantar-se"
+        [detail]="su.detail"
+        button="Levantar-se"
+        buttonLabel="Levantar-se"
+        [off]="su.off || !!locked()"
+        [reason]="locked() || su.reason"
+        [busy]="busy()"
+        (press)="standUp.emit()"
+      />
+    }
   </section>
+  }
   }
 </section>

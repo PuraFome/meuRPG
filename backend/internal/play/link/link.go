@@ -182,6 +182,8 @@ type Traits struct {
 	PackTactics bool
 	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.
 	HeavyArmor bool
+	// StealthDisadvantage says the armor worn gives disadvantage on Dexterity (Stealth).
+	StealthDisadvantage bool
 	// Resistances are the damage resistances the features and traits give.
 	Resistances []Resistance
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
@@ -284,6 +286,9 @@ type Spell struct {
 	// too long for a fight.
 	Economy       string
 	Concentration bool
+	// Verbal says the spell has a verbal component: the noise gives a hidden caster's
+	// position away.
+	Verbal bool
 	// RangeKind is "self", "touch", "ranged", "sight", "unlimited" or "special",
 	// and RangeFt the distance of a ranged spell.
 	RangeKind string

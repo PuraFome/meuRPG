@@ -125,6 +125,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onVisionChanged: vi.fn(),
       onStageChanged: vi.fn(),
       onSpellCastsChanged: vi.fn(),
+      onGroupCheckChanged: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
     };
@@ -273,6 +274,16 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     await flush();
     expect(handlers.onSpellCastsChanged).toHaveBeenCalledTimes(1);
     expect(handlers.onStageChanged).not.toHaveBeenCalled();
+  });
+
+  it('hands `group_check_changed` to the page on its own, so the group check is read again (W7-X)', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'groupCheckChanged' });
+    await flush();
+    expect(handlers.onGroupCheckChanged).toHaveBeenCalledTimes(1);
+    expect(handlers.onSpellCastsChanged).not.toHaveBeenCalled();
+    expect(stream.status()).toBe('live');
   });
 
   it('hands `stage_changed` to the page on its own, so the stage is read again (MR-031)', async () => {

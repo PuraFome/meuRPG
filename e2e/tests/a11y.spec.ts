@@ -25,6 +25,7 @@ import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createChar
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { grog, rollsTable, vex } from './combat-rolls-support';
+import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { movePensantus, pensantusFirst, sq20, thirdPlayer, trapRPC, treasureRPC, type TrapTable } from './trap-support';
@@ -7462,6 +7463,197 @@ test('o salto que sai do alcance de um inimigo passa no axe e nas conferências 
 test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanJumpWarningScreens(browser, 'dark', 390);
+});
+
+// W7-X: the contests and special actions. The player's sheets (Ajudar, Esconder-se, the grapple's target, wait and result, the
+// answer to an NPC's grapple) and the master's cards (the contest, Hide), on one table with a rogue and an ally.
+async function scanContestScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done } = await alliedTable(
+    browser,
+    `Acessibilidade Disputas ${Date.now()}`,
+    vex,
+    { weaponKeys: ['equipment:shortsword'] },
+    { Vex: 20, 'Goblin 1': 5, Tavo: 4, 'Goblin 2': 3 },
+    { colorScheme, masterWidth: width, playerWidth: width },
+  );
+  try {
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toBeVisible();
+
+    // Ajudar: the ally, then the task (it is closed without helping, so the action stays).
+    await p.getByRole('button', { name: 'Ajudar', exact: true }).click();
+    const help = p.getByRole('dialog');
+    await expect(help.getByText('Tavo').first()).toBeVisible();
+    await expectScreenPasses(p, `Ajudar, o aliado ${where}`);
+    await help.locator('label', { hasText: 'Tavo' }).click();
+    await help.getByRole('button', { name: 'Continuar' }).click();
+    await expect(help.getByText(/Vantagem no próximo teste de Percepção/)).toBeVisible();
+    await expectScreenPasses(p, `Ajudar, a tarefa ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(p.getByRole('dialog')).toHaveCount(0);
+
+    // Esconder-se (the bonus action of the Ação Ardilosa): the roll, the wait, the master's card and the result.
+    await p.getByRole('button', { name: 'Usar Ação Ardilosa: Esconder' }).click();
+    const hide = p.getByRole('dialog');
+    await expect(hide.getByText('Seu teste de Furtividade')).toBeVisible();
+    await expectScreenPasses(p, `Esconder-se, o teste ${where}`);
+    await typeD20(hide, 20);
+    await expect(hide.getByText(/Esperando o mestre/)).toBeVisible();
+    await expectScreenPasses(p, `Esconder-se, esperando o mestre ${where}`);
+    await expect(m.getByTestId('hide-card')).toBeVisible();
+    await expectScreenPasses(m, `O cartão de Esconder do mestre ${where}`);
+    await m.getByTestId('hide-card').getByRole('button', { name: /^Aplicar/ }).click();
+    await expect(hide.getByText(/Você está escondid/)).toBeVisible();
+    await expectScreenPasses(p, `Esconder-se, o resultado ${where}`);
+    await closeSheet(hide);
+
+    // Agarrar: the target, the wait for the master and his card, the result.
+    await p.getByRole('button', { name: /Agarrar: escolher o alvo/ }).click();
+    const grapple = p.getByRole('dialog');
+    await grapple.getByText('Tenho uma mão livre').click();
+    await grapple.locator('label', { hasText: 'Goblin 1' }).click();
+    await expectScreenPasses(p, `Agarrar, o alvo ${where}`);
+    await grapple.getByRole('button', { name: 'Rolar a disputa' }).click();
+    await expect(grapple.getByText(/Seu teste de/)).toBeVisible();
+    await expectScreenPasses(p, `Agarrar, a rolagem ${where}`);
+    await typeD20(grapple, 20);
+    await expect(grapple.getByText(/Esperando o mestre/)).toBeVisible();
+    await expectScreenPasses(p, `Agarrar, esperando o mestre ${where}`);
+    const card = m.getByTestId('contest-card');
+    await expect(card).toBeVisible();
+    await expectScreenPasses(m, `O cartão da disputa do mestre ${where}`);
+    await card.locator('label', { hasText: 'Atletismo' }).click();
+    await typeD20(card, 3);
+    await expect(grapple.getByText('Você venceu a disputa.')).toBeVisible();
+    await expectScreenPasses(p, `Agarrar, o resultado ${where}`);
+    await closeSheet(grapple);
+
+    // The goblin grapples her: she chooses the skill and rolls.
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    const enc = await passTurnsTo(m, campaignId, 'Goblin 2');
+    await contestRPC(m, 'StartContest', {
+      campaignId,
+      encounterId: enc.id,
+      initiatorId: idOf(enc, 'Goblin 2'),
+      targetId: idOf(enc, 'Vex'),
+      purpose: 'CONTEST_PURPOSE_GRAPPLE',
+      roll: { d20Faces: { faces: [18] } },
+    });
+    const answer = p.getByRole('dialog');
+    await expect(answer).toContainText('Goblin 2 tenta agarrar você');
+    await expectScreenPasses(p, `A disputa de quem é agarrado, a escolha ${where}`);
+    await answer.locator('label', { hasText: 'Acrobacia' }).click();
+    await typeD20(answer, 2);
+    await expect(answer.getByText(/Você perdeu a disputa/)).toBeVisible();
+    await expectScreenPasses(p, `A disputa de quem é agarrado, o resultado ${where}`);
+  } finally {
+    await done().catch(() => undefined);
+  }
+}
+
+test('as disputas e as ações especiais passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanContestScreens(browser, 'light', 1280);
+});
+
+test('as disputas e as ações especiais passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanContestScreens(browser, 'dark', 1280);
+});
+
+test('as disputas e as ações especiais passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanContestScreens(browser, 'light', 390);
+});
+
+test('as disputas e as ações especiais passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanContestScreens(browser, 'dark', 390);
+});
+
+// W7-X: the group check outside a combat (the master's request and open cards, the player's sheet) and the surprise card of the
+// combat's setup, with the state of the one who is surprised.
+async function scanGroupCheckScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Teste em grupo ${Date.now()}`, true, true, { build: vex, sheet: { weaponKeys: ['equipment:shortsword'] } });
+    campaignId = table.campaignId;
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    const ask = m.getByTestId('group-ask');
+    await expect(ask).toBeVisible();
+    await expectScreenPasses(m, `O pedido do teste em grupo ${where}`);
+    await ask.getByLabel('Teste', { exact: true }).selectOption({ label: 'Furtividade' });
+    await ask.getByLabel(/^CD \(/).fill('13');
+    await ask.getByRole('button', { name: 'Pedir o teste' }).click();
+    const sheet = p.getByRole('dialog');
+    await expect(sheet.getByText('O mestre pediu um teste de Furtividade de todo o grupo.')).toBeVisible();
+    await expectScreenPasses(p, `O teste em grupo, a rolagem ${where}`);
+    await typeD20(sheet, 15);
+    await expect(sheet.getByText(/Esperando o mestre/)).toBeVisible();
+    await expectScreenPasses(p, `O teste em grupo, esperando o mestre ${where}`);
+    const open = m.getByTestId('group-open');
+    await expect(open).toContainText('1 de 1 responderam');
+    await expectScreenPasses(m, `O teste em grupo aberto do mestre ${where}`);
+    await open.getByRole('button', { name: 'Encerrar o teste' }).click();
+    await expect(sheet.getByText('O mestre encerrou o teste.')).toBeVisible();
+    await expectScreenPasses(p, `O teste em grupo, o resultado ${where}`);
+    await closeSheet(sheet);
+
+    // The combat's setup: "Quem está surpreso?", then the player's own state.
+    let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 2, hidden: false }]);
+    const card = m.getByTestId('surprise-card');
+    await expect(card).toContainText('Quem está surpreso?');
+    await expectScreenPasses(m, `Quem está surpreso? ${where}`);
+    await card.locator('label:has(input[aria-label="Surpreso: Vex"])').click();
+    await expect(card.getByLabel('Surpreso: Vex')).toBeChecked();
+    for (const c of enc.combatants) {
+      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: c.id, d20Face: c.label === 'Vex' ? 20 : 3 });
+    }
+    for (const [label, [col, row]] of Object.entries({ Vex: [8, 9], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10] })) {
+      enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: idOf(enc, label), col, row });
+    }
+    await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
+    await expect(p.getByText(/Você está surpres[oa] neste turno/)).toBeVisible();
+    await expectScreenPasses(p, `A surpresa do jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o teste em grupo e a surpresa passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanGroupCheckScreens(browser, 'light', 1280);
+});
+
+test('o teste em grupo e a surpresa passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanGroupCheckScreens(browser, 'dark', 1280);
+});
+
+test('o teste em grupo e a surpresa passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanGroupCheckScreens(browser, 'light', 390);
+});
+
+test('o teste em grupo e a surpresa passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanGroupCheckScreens(browser, 'dark', 390);
 });
 
 /**

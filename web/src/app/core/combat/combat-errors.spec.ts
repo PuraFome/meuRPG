@@ -10,6 +10,15 @@ describe('combat errors', () => {
     ).toContain('reservado');
   });
 
+  it('gives the effects that last their own words, without naming the cause', () => {
+    expect(blockedMessage({ reason: EncounterBlockedReason.CANNOT_ACT } as never)).toBe(
+      'Não dá para agir agora.',
+    );
+    expect(
+      blockedMessage({ reason: EncounterBlockedReason.EXTRA_ACTION_UNAVAILABLE } as never),
+    ).toMatch(/ação extra/);
+  });
+
   it('says how far a refused move was, in meters', () => {
     expect(blockedMessage({ reason: EncounterBlockedReason.TOO_FAR, missingFt: 5 } as never)).toBe(
       'Esse caminho custa mais do que o movimento que sobra: faltam 1,5\u00a0m.',

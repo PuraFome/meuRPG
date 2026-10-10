@@ -1949,6 +1949,11 @@ enum DisabledReasonCode {
   // Flurry of Blows: it comes right after the Attack action, taken with a weapon
   // or an unarmed strike, and that action has not been taken yet this turn.
   DISABLED_REASON_CODE_ATTACK_ACTION_FIRST = 16;
+  // CombatService.GetTurnOptions: the combatant is surprised (SRD 5.1, "Surprise"): it
+  // does not move, act or react until its first turn ends.
+  DISABLED_REASON_CODE_SURPRISED = 110;
+  // A grappled combatant's movement: its speed is 0 (SRD 5.1, Conditions, Grappled).
+  DISABLED_REASON_CODE_GRAPPLED = 111;
   // The combatant is incapacitated (SRD, Conditions: Incapacitated, Paralyzed, Petrified,
   // Stunned, Unconscious): no actions and no reactions. `text_pt` says it without naming
   // the cause to a player.

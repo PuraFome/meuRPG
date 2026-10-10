@@ -67,6 +67,9 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK = 28;
   // A search for traps in dim light (Perception, MR-035).
   ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM = 29;
+  // SRD 5.1, "Help": an ally's Help aimed at the target gives the next attack roll
+  // against it advantage.
+  ADVANTAGE_SOURCE_KIND_HELP = 30;
   // Effects that last (RN-22): exhaustion levels 3 (attack rolls and saving throws) and 1
   // (ability checks), Faerie Fire's outline on the target, and the advantage on saving
   // throws an effect gives (Velocidade). "Outra fonte" is the same kind with no name,

@@ -39,6 +39,7 @@ import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
 import { restamText } from '../../../../core/combat/theatre';
 import { ofThe } from '../../../../core/combat/move-plan';
 import { joinDots } from '../../../../core/format/text';
+import { standUpRow } from '../../../../core/combat/stand-up';
 import { conditionTags } from '../../../../core/combat/conditions';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { RageStatus } from '../rage-end/rage-status';
@@ -366,6 +367,26 @@ export class NpcCard {
   /** The two d20 of an advantage or a disadvantage, in the order they were rolled. */
   protected rollTypedPair(faces: number[]): Promise<void> {
     return this.rollAttack({ faces });
+  }
+
+  /** "Levantar-se" of a prone card (half the speed; the master may for anyone on turn). */
+  protected readonly standRow = computed(() => standUpRow(this.subject()));
+
+  protected async standUp(): Promise<void> {
+    if (this.busy() || this.turnBusy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      this.state().apply(
+        await this.api.standUp(this.campaignId(), this.encounter().id, this.subject().id),
+      );
+    } catch (err) {
+      this.error.set(combatErrorMessage(err, 'levantar'));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   private async rollAttack(

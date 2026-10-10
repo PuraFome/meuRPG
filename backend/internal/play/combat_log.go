@@ -243,6 +243,12 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		case eventEncounterEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_COMBAT_ENDED
 		case eventCombatantMoved:
+			if ev.Contest != nil && ev.Contest.Line == contestLineStoodUp { // "se levantou" (combat_standup.go)
+				if !contestLogEntry(entry, ev) {
+					continue
+				}
+				break
+			}
 			if !ev.OnTurn || (ev.DistanceFt == 0 && ev.DistanceDFt == 0 && ev.Jump != jumpHigh) {
 				continue // placing a token is not a move of the fight
 			}
@@ -371,6 +377,12 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			// his history; the table sees nothing of it (RN-10).
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, true
 			entry.ev.Key = "standard:search"
+		case eventContestStarted, eventContestResolved, eventContestClosed, eventShoveResolved, eventGrappleReleased,
+			eventHideAttempted, eventHideResolved, eventHelpGiven:
+			// Grapple, shove, escape, Hide and Help (combat_contests.go): a line when the event says one.
+			if !contestLogEntry(entry, ev) {
+				continue
+			}
 		case eventWildShapeStarted, eventWildShapeEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE
 			entry.shapeStarted = e.Kind == eventWildShapeStarted
@@ -512,6 +524,10 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	// happened, even if they have walked into the dark since; one they did not see
 	// never appears later (MR-036). The master's copy says it is hidden from them.
 	seen := e.ev.seenByViewer(v)
+	// The master's reveal of a hider is the hider's player's line too (RN-10: no other player is told).
+	if e.ev.Contest != nil && e.ev.Contest.Line == contestLineHideRevealed && v.owns(actor) {
+		visible, seen = true, true
+	}
 	for _, h := range e.ev.Hits { // every target of a spell
 		hit, ok := byID[h.Target]
 		if e.ev.Placed { // an area the server placed: the hidden creatures it hit are left out of the line, not the line
@@ -581,6 +597,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.Jump, out.JumpHeightDft = playv1.JumpKind_JUMP_KIND_HIGH, e.ev.HeightDFt
 		}
 		out.LandingDifficult = v.master && e.ev.LandingDifficult // the Acrobatics reminder is the master's alone
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:
+		out.Contest = &playv1.CombatLogContest{Line: contestLineProto[e.ev.Contest.Line]} // never a total or a DC (RN-20)
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED:
 		out.Door = &playv1.CombatLogDoor{Col: e.ev.Col, Row: e.ev.Row}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:

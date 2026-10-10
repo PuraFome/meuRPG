@@ -284,6 +284,7 @@ erDiagram
 - **`campaign_documents`** (MR-018) holds the campaign document: at most one row per campaign, `campaign_id` as primary key. A campaign without a row has an empty document at revision 0; the first save writes the row at revision 1, and each later save raises the revision by 1, only if it is still the one the master read (see [Architecture](architecture.md#campaign-document)). `body` is the Markdown as written, up to 204,800 bytes (200 KiB; the `campaign_documents_body_size` `CHECK` uses `octet_length`, which counts bytes, the same unit as the API). `updated_by` is who saved last: deleting that account keeps the document with no editor (`SET NULL`); deleting the campaign deletes the document (`CASCADE`). The IDs in the text's links (`map:`, `character:`, `image:`) are not foreign keys: the server does not read them, and a link to something deleted just shows as unavailable.
 - **`campaign_table_rules`** (MR-025, RN-24) holds the table rules: one row per campaign (primary key `campaign_id`, `CASCADE`). **Without a row the defaults apply**, which are what the app did before (the code reads a missing row as the zero value of `tablerules.Rules`), so no campaign needs a backfill and a master who never opens "Regras da mesa" never gets a row.
 - **`reaction_windows` and `reaction_holds`** (PM-04) are the reaction window ([architecture](architecture.md)): a window is a question to one reactor (or the master's check) that holds the action that triggered it; a hold is the request of that action (a cast, an attack roll, a damage roll), kept until its windows are done and replayed then. Both `CASCADE` from the encounter, so ending the combat leaves none. `trigger` and `outcome` are JSON of ids and numbers only. `combatants.slots_used` counts what an NPC spent in the combat (slots, pact slots, resource uses); `campaign_table_rules.enemy_reactions` is the table rule "Reações dos inimigos" (`only_when_possible`, the default, or `always`); the two session event kinds `reaction_answered` and `concentration_save_rolled` are in `session_event_kinds`.
+- **The contest tables (W7-X, RN-34)** are `combat_contests` (a grapple, shove or escape: both rolls as JSON, the winner, the shove's choice and the master's fixed `escape_dc`), `combat_holds` (who holds whom; one row per grappled creature), `combat_hide_attempts` and `combat_hiding` (the Stealth roll and, per creature, whether it noticed the hider: the master's), `combat_helps` (a Help for a check or an attack, in the session so it can exist outside a combat; in a combat it also names the helper's and the ally's combatants, because a player's creature carries its owner's `character_id` and a familiar can help, 00241), `combat_surprised` and `group_checks` with `group_check_members` (a check of the whole party, with each character's roll). All of them `CASCADE` from the encounter, the session or the combatant. A waiting contest is also a `reaction_windows` row of kind `contest`, opened and closed by `syncContests` after every change. The 15 session event kinds (`contest_started` ... `surprise_set`) are in `session_event_kinds`. No player reads `escape_dc`, `noticed`, `passive` or another player's roll.
   - `hit_points_rule` is `roll`, `average` or `player_chooses` (the default).
   - Four booleans are the ways to make ability scores (`ability_standard_array`, `ability_point_buy`, `ability_roll_4d6`, `ability_typed`), all on by default, with a `CHECK` that at least one stays on.
   - `critical_rule` is `doubled_dice` (default) or `max_plus_roll`; `death_saves` is `visible_to_all` (default) or `owner_and_master`. Combat applies both.
@@ -682,7 +683,7 @@ erDiagram
         uuid encounter_id FK "encounters, CASCADE"
         int8 seq "the order they are answered in"
         uuid group_id "windows of one trigger share it"
-        text kind "shield, uncanny_dodge, hellish_rebuke, counterspell, cutting_words, deflect_missiles, feather_fall, concentration_save, master_check"
+        text kind "shield, uncanny_dodge, hellish_rebuke, counterspell, cutting_words, deflect_missiles, feather_fall, concentration_save, master_check, contest"
         text status "open, answered, closed"
         text closed_reason "reaction_spent, reactor_incapacitated, trigger_gone"
         uuid reactor_id FK "combatants, CASCADE, null for the master's check"
@@ -693,6 +694,66 @@ erDiagram
         jsonb outcome
         timestamptz created_at
         timestamptz answered_at
+    }
+    combat_contests {
+        uuid id PK
+        uuid encounter_id FK "encounters, CASCADE"
+        text kind "contest, escape_dc"
+        text purpose "grapple, shove, escape"
+        uuid initiator_id FK "combatants, CASCADE"
+        uuid defender_id FK "combatants, CASCADE"
+        text status "awaiting_defender, awaiting_outcome, resolved, closed"
+        int4 escape_dc "the master's, never a player's"
+        jsonb initiator_roll
+        jsonb defender_roll
+        text winner "initiator, defender, tie"
+        text shove_outcome "prone, push, stays"
+        int4 round
+    }
+    combat_holds {
+        uuid grappled_id PK "combatants, CASCADE"
+        uuid grappler_id FK "combatants, CASCADE"
+        int4 escape_dc "the master's, never a player's"
+    }
+    combat_hide_attempts {
+        uuid id PK
+        uuid hider_id FK "combatants, CASCADE"
+        text status "pending, applied, refused"
+        jsonb roll
+    }
+    combat_hiding {
+        uuid hider_id PK "combatants, CASCADE"
+        uuid observer_id PK "combatants, CASCADE"
+        bool noticed "the master's, never a player's"
+        int4 total "the Stealth total"
+        int4 passive "the observer's passive Perception"
+    }
+    combat_helps {
+        uuid id PK
+        text kind "check, attack"
+        uuid helper_character_id FK "characters, CASCADE"
+        uuid ally_character_id FK "characters, CASCADE"
+        uuid helper_combatant_id FK "combatants, CASCADE, in a combat"
+        uuid ally_combatant_id FK "combatants, CASCADE, in a combat"
+        text task "check form"
+        uuid target_id FK "combatants, CASCADE, attack form"
+        int4 expires_round
+    }
+    combat_surprised {
+        uuid combatant_id PK "combatants, CASCADE"
+    }
+    group_checks {
+        uuid id PK
+        uuid game_session_id FK "game_sessions, CASCADE"
+        text skill_key
+        int4 dc "the master's"
+        bool show_dc
+        text status "open, closed"
+    }
+    group_check_members {
+        uuid group_check_id PK
+        uuid character_id PK "characters, CASCADE"
+        jsonb roll
     }
     pending_damages {
         uuid id PK
@@ -933,6 +994,17 @@ erDiagram
     character_creatures |o--o{ combatants : "fights as"
     users |o--o{ combatants : "plays"
     encounters ||--o{ pending_damages : "has"
+    encounters ||--o{ combat_contests : "has"
+    combatants ||--o{ combat_contests : "starts or answers"
+    combatants |o--o| combat_holds : "is held by"
+    combatants ||--o{ combat_hide_attempts : "tries to hide"
+    combatants ||--o{ combat_hiding : "hides from or is seen by"
+    characters ||--o{ combat_helps : "helps or is helped"
+    combatants |o--o{ combat_helps : "is the target of"
+    combatants |o--o{ combat_helps : "helps or is helped (in a combat)"
+    combatants |o--o| combat_surprised : "is surprised"
+    game_sessions ||--o{ group_checks : "asks"
+    group_checks ||--o{ group_check_members : "is made by"
     encounters ||--o{ reaction_windows : "asks"
     encounters ||--o{ reaction_holds : "holds"
     combatants ||--o{ reaction_windows : "may react"

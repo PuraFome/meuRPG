@@ -91,6 +91,13 @@ export function refusalText(
             title: 'Ocupado',
             detail: 'Há alguém nesse quadrado. Escolha um quadrado destacado.',
           };
+        case MoveRefusal.NO_ROOM_TO_DRAG:
+          // The mover drags a creature (W7-X) and no free square is left behind the path to leave it on.
+          return {
+            title: 'Sem casa para arrastar',
+            detail:
+              'Não há casa livre atrás de você para quem você segura. Escolha outro quadrado, ou solte o agarrão.',
+          };
         default:
           return tooCostly(leftDft);
       }

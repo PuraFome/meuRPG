@@ -88,6 +88,8 @@ type windowTrigger struct {
 	// the first step took off the damage.
 	Caught  bool  `json:"caught,omitempty"`
 	Reduced int32 `json:"reduced,omitempty"`
+	// Contest is the contest a CONTEST window waits for.
+	Contest string `json:"contest,omitempty"`
 	// PendingKey is the pending damage the trigger is about (a hit's, or the damage
 	// that was rolled and waits).
 	Pending string `json:"pending,omitempty"`
@@ -277,6 +279,9 @@ func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.Reactio
 			return false, err
 		}
 		return !slices.ContainsFunc(pend, func(p playdb.PendingDamage) bool { return slices.Contains(t.Falling, p.TargetID) }), nil
+	case reaction.Contest:
+		waits, err := contestStillWaits(ctx, c, w)
+		return !waits, err
 	case reaction.Shield, reaction.MasterCheck:
 		if w.PendingDamageID != nil {
 			p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: *w.PendingDamageID})
@@ -314,6 +319,9 @@ func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.Reactio
 // next group), a few times at most.
 func (s *Service) settleReactions(ctx context.Context, c *combatTx) error {
 	const maxRounds = 8
+	if err := s.syncContests(ctx, c); err != nil {
+		return err
+	}
 	for range maxRounds {
 		changed, err := s.settleOnce(ctx, c)
 		if err != nil {

@@ -275,6 +275,14 @@ func (w *world) streamScript() {
 	w.secrets.release("puzzle-hint-2", w.ana, w.caio)
 	must(w.ana.puzzles.MakePuzzleMove(ctx, rq(&playv1.MakePuzzleMoveRequest{CampaignId: w.campaign, PuzzleId: shown.GetId(), IdempotencyKey: newKey(), Move: &playv1.PuzzleMove{Kind: &playv1.PuzzleMove_Lock{Lock: &playv1.LockMove{Wheel: 0, Delta: 1}}}})))
 
+	// -- the group check: the master rolls for Ana's character, closes it and asks another; Caio rolls his
+	// character's: every stream hears a hint with no content, and a player's own roll only the master and the player
+	open := must(m.contests.GetGroupCheck(ctx, rq(&playv1.GetGroupCheckRequest{CampaignId: w.campaign}))).GetGroupCheck()
+	must(m.contests.RollForPlayer(ctx, rq(&playv1.RollForPlayerRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), GroupCheckId: open.GetId(), CharacterId: w.pens.GetId(), Roll: appRoll()})))
+	must(m.contests.CloseGroupCheck(ctx, rq(&playv1.CloseGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), GroupCheckId: open.GetId()})))
+	next := must(m.contests.RequestGroupCheck(ctx, rq(&playv1.RequestGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), SkillKey: "skill:stealth", Dc: groupCheckDC, ShowDc: true}))).GetGroupCheck()
+	must(w.caio.contests.RollGroupCheck(ctx, rq(&playv1.RollGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), GroupCheckId: next.GetId(), Roll: appRoll()})))
+
 	// -- images: the master shows another image, and takes one back from the players
 	must(m.play.SetShownImage(ctx, rq(&playv1.SetShownImageRequest{CampaignId: w.campaign, ImageId: w.imgLeft})))
 	must(m.play.TakeBackLeftImage(ctx, rq(&playv1.TakeBackLeftImageRequest{CampaignId: w.campaign, ImageId: w.imgLeft})))

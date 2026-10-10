@@ -405,3 +405,19 @@
   width: fit-content;
   margin-top: var(--mr-space-2);
 }
+
+// "Escondida" and "Surpresa" (W7-X): the state's tag, and the sentence under it.
+.turn__state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-3);
+}
+
+.turn__state-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--mr-ink);
+}

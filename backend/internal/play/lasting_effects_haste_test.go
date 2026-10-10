@@ -97,3 +97,32 @@ func TestBaneTakesADieOffAnAttack(t *testing.T) {
 		t.Errorf("the total = %d, want %d", roll.GetTotal(), want)
 	}
 }
+
+// Haste (SRD 5.1): "when the spell ends, the target can't move or take actions until after its
+// next turn". The spell also ends when its caster, who concentrates, dies or leaves the combat, and the
+// lethargy follows then too.
+func TestHastesLethargyFollowsWhenTheCasterDies(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.closeFight(t)
+	a.mustAddEffect(t, e, "spell:haste", []string{"Toren"}, func(r *playv1.AddLastingEffectRequest) { r.CasterId = a.id(t, "Pensantus") })
+	if f := cardOf(t, byLabel(t, a.get(t, a.master), "Toren"), "spell:haste"); f == nil {
+		t.Fatal("Toren has no Haste")
+	}
+	// The caster dies (exhaustion 6, then the master's confirmation).
+	if _, err := a.setExhaustion(t, e, "Pensantus", 6, 0, true); err != nil {
+		t.Fatalf("SetExhaustion(6) error = %v", err)
+	}
+	if _, err := a.master.combat.ConfirmDeath(t.Context(), connect.NewRequest(&playv1.ConfirmDeathRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Pensantus"), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("ConfirmDeath() error = %v", err)
+	}
+	toren := byLabel(t, a.get(t, a.master), "Toren")
+	if cardOf(t, toren, "spell:haste") != nil {
+		t.Error("Haste is still on Toren after its caster left")
+	}
+	if cardOf(t, toren, "effect:lethargy") == nil {
+		t.Errorf("Toren's effects = %v, want the lethargy", toren.GetEffects())
+	}
+}

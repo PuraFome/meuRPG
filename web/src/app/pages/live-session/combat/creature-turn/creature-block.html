@@ -98,6 +98,19 @@
     <mat-icon aria-hidden="true">directions_run</mat-icon>{{ moveLabel() }}
   </button>
 
+  @if (standRow(); as su) {
+    <app-action-row
+      name="Levantar-se"
+      [detail]="su.detail"
+      button="Levantar-se"
+      [buttonLabel]="'Levantar-se: ' + c().label"
+      [off]="su.off || off()"
+      [reason]="why() || su.reason"
+      [busy]="busy()"
+      (press)="standUp.emit()"
+    />
+  }
+
   @if (cannotAttack()) {
     <p class="note"><mat-icon aria-hidden="true">block</mat-icon><span><b>O familiar não ataca.</b> Ele usa as outras ações:</span></p>
     <div class="std" role="group" aria-label="Ações padrão">

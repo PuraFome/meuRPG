@@ -23,6 +23,7 @@ import {
   WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantStateKind, DamageStepKind } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { ContestLogLine } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { extraDiceOf, physicalSplitFormula, rollText, splitFormula } from './combat-dice';
 import { modeWord } from './roll-mode';
 import { conditionName, listNames } from './conditions';
@@ -741,6 +742,100 @@ function modeAnsweredText(m: CombatLogModeChange): string {
   return ` ${asked}; o mestre ${m.approved ? 'aprovou' : 'recusou'}`;
 }
 
+/** "do Hobgoblin", "de Brisa". */
+function ofSubject(label: string, ctx: LogContext): string {
+  return ctx.players.has(label)
+    ? `de ${label}`
+    : `${article(label) === 'a' ? 'da' : 'do'} ${label}`;
+}
+
+/** "surpreso" or "surpresa", by the name. */
+function surprisedWord(label: string): string {
+  return article(label) === 'a' ? 'surpresa' : 'surpreso';
+}
+
+/** "escondido" or "escondida", by the name. */
+function hiddenWordOf(label: string): string {
+  return article(label) === 'a' ? 'escondida' : 'escondido';
+}
+
+/** What each line of a contest or special action says (W7-X) and its icon: the sentence follows the actor, who is in bold. */
+const CONTEST_LINES: Partial<
+  Record<ContestLogLine, { icon: string; say: (w: ContestWords) => string }>
+> = {
+  [ContestLogLine.GRAPPLED]: { icon: 'pan_tool', say: (w) => ` agarrou ${w.target}` },
+  [ContestLogLine.GRAPPLE_FAILED]: {
+    icon: 'pan_tool',
+    say: (w) => ` não conseguiu agarrar ${w.target}`,
+  },
+  [ContestLogLine.SHOVE_PRONE]: { icon: 'open_with', say: (w) => ` derrubou ${w.target}` },
+  [ContestLogLine.SHOVE_PUSHED]: {
+    icon: 'open_with',
+    say: (w) => ` empurrou ${w.target} 1,5\u00a0m`,
+  },
+  [ContestLogLine.SHOVE_STAYS]: {
+    icon: 'open_with',
+    say: (w) => ` empurrou ${w.target}, que não saiu do lugar`,
+  },
+  [ContestLogLine.SHOVE_FAILED]: {
+    icon: 'open_with',
+    say: (w) => ` não conseguiu empurrar ${w.target}`,
+  },
+  [ContestLogLine.ESCAPED]: { icon: 'pan_tool', say: (w) => ` se soltou ${w.from}` },
+  [ContestLogLine.ESCAPE_FAILED]: {
+    icon: 'pan_tool',
+    say: (w) => ` não conseguiu se soltar ${w.from}`,
+  },
+  [ContestLogLine.CLOSED]: {
+    icon: 'pan_tool',
+    say: (w) => ` teve a disputa com ${w.target} encerrada pelo mestre`,
+  },
+  [ContestLogLine.RELEASED]: { icon: 'pan_tool', say: (w) => ` soltou ${w.target}` },
+  [ContestLogLine.HIDE_TRIED]: { icon: 'visibility_off', say: () => ' tentou se esconder' },
+  [ContestLogLine.HIDE_APPLIED]: { icon: 'visibility_off', say: () => ' se escondeu' },
+  [ContestLogLine.HIDE_REFUSED]: {
+    icon: 'visibility_off',
+    say: () => ' não conseguiu se esconder',
+  },
+  [ContestLogLine.HELPED]: { icon: 'handshake', say: (w) => ` ajudou ${w.target}` },
+  [ContestLogLine.SURPRISED]: { icon: 'bolt', say: (w) => ` está ${w.surprised}` },
+  [ContestLogLine.SURPRISE_CLEARED]: {
+    icon: 'bolt',
+    say: (w) => ` não está mais ${w.surprised}`,
+  },
+  [ContestLogLine.STOOD_UP]: { icon: 'accessibility_new', say: () => ' se levantou' },
+  [ContestLogLine.HIDE_REVEALED]: {
+    icon: 'visibility',
+    say: (w) => ` não está mais ${w.hidden}`,
+  },
+};
+
+/** The names a contest line is written with: the target ("o Hobgoblin", "Brisa"), "do Hobgoblin", and "surpresa". */
+interface ContestWords {
+  readonly target: string;
+  readonly from: string;
+  readonly surprised: string;
+  readonly hidden: string;
+}
+
+/** A contest or a special action (W7-X): the sentence from the line the server named, never a total or a DC (RN-20). `null` for a line this app does not know. */
+function contestText(e: CombatLogEntry, ctx: LogContext): { icon: string; text: string } | null {
+  const line = e.contest ? CONTEST_LINES[e.contest.line] : undefined;
+  if (!line) {
+    return null;
+  }
+  const label = e.targetLabel || 'alguém';
+  return {
+    icon: line.icon,
+    text: line.say({
+      target: subject(label, ctx),
+      from: ofSubject(label, ctx),
+      surprised: surprisedWord(e.actorLabel),
+      hidden: hiddenWordOf(e.actorLabel),
+    }),
+  };
+}
+
 /** The line of one entry, or `null` for a kind this app doesn't know. */
 export function logLine(
   e: CombatLogEntry,
@@ -887,6 +982,10 @@ export function logLine(
       return e.state
         ? { ...base, icon: 'local_fire_department', actor: '', text: stateText(e, e.state) }
         : null;
+    case CombatLogKind.CONTEST: {
+      const line = contestText(e, ctx);
+      return line ? { ...base, icon: line.icon, text: line.text } : null;
+    }
     case CombatLogKind.ROLL_MODE_ANSWERED:
       return e.modeChange
         ? {

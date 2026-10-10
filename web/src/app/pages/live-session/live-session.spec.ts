@@ -63,6 +63,8 @@ import { ResourceClient } from '../../core/resources/resources-client';
 import { restPreview, restPreviewResponse } from '../../core/resources/resources-testing';
 import { CharacterVitalsSchema } from '../../../gen/meurpg/play/v1/play_pb';
 import { CombatClient } from '../../core/combat/combat-client';
+import { ContestClient } from '../../core/combat/contest-client';
+import { FakeContestClient, groupCheck } from '../../core/combat/contest-testing';
 import { CombatState } from '../../core/combat/combat-state';
 import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { SessionSummaryClient } from '../../core/play/session-summary';
@@ -199,6 +201,8 @@ describe('LiveSession', () => {
   const xpExperience = vi.fn();
   let scenes: FakeSceneClient;
   let puzzles: FakePuzzlesClient;
+  /** The group check of the player's page (W7-X). */
+  let contests: FakeContestClient;
   /** The query string of the page's address: `?puzzle=ID` opens a puzzle for a player. */
   const query = new BehaviorSubject(convertToParamMap({}));
   /** The summary of the ended session (MR-032); by default it cannot be read, so the page shows the plain notice. */
@@ -240,6 +244,8 @@ describe('LiveSession', () => {
     scenes = new FakeSceneClient();
     casting = new FakeCastingClient();
     puzzles = new FakePuzzlesClient();
+    contests = new FakeContestClient();
+    contests.group = null;
     query.next(convertToParamMap({}));
     TestBed.configureTestingModule({
       imports: [LiveSession],
@@ -264,6 +270,7 @@ describe('LiveSession', () => {
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: CastingClient, useValue: casting },
         { provide: SceneClient, useValue: scenes },
+        { provide: ContestClient, useValue: contests.as() },
         { provide: RevivifyClient, useValue: { list: revivifyList, confirmTime: vi.fn() } },
         { provide: ResourceClient, useValue: resources },
         { provide: PuzzlesClient, useValue: puzzles },
@@ -367,6 +374,27 @@ describe('LiveSession', () => {
       // The party panel's "Dar XP" reads the characters again.
       await new Promise((r) => setTimeout(r));
       expect(xpExperience).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the group check (W7-X)', () => {
+    const reads = () => contests.calls.filter((c) => c === 'groupCheck').length;
+
+    it('reads the group check again when the stream says it changed, and shows the player’s wait', async () => {
+      contests.group = groupCheck({ youRoll: false, members: [{ answered: true } as never] });
+      const el = await render();
+      const first = reads();
+      expect(first).toBeGreaterThanOrEqual(1);
+      expect(el.querySelector('app-group-check-card')?.textContent).toContain('Esperando o mestre');
+      source.push({ kind: 'groupCheckChanged' });
+      await new Promise((r) => setTimeout(r));
+      await new Promise((r) => setTimeout(r));
+      expect(reads()).toBe(first + 1);
+    });
+
+    it('shows nothing when the session has no group check', async () => {
+      const el = await render();
+      expect(el.querySelector('app-group-check-card')?.textContent?.trim()).toBe('');
     });
   });
 

@@ -108,6 +108,9 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 	// Its saving throws are the stat block's (the ability modifier plus the
 	// proficiency the creature lists); a basic sheet with no creature has none.
 	d.SavingThrows = creature.SavingThrows
+	// Its skills, ability scores and passive Perception are the stat block's too: the
+	// contests (Athletics, Acrobatics) and hiding (Stealth, passive Perception) read them.
+	d.Skills, d.Abilities, d.PassivePerception = creature.Skills, creature.Abilities, creature.PassivePerception
 	// The traits of the stat block (Pack Tactics) are the NPC's too, and so is its type.
 	d.Features = withCreatureType(content, b.GetMonsterKey(), creature.Features)
 	for i, a := range b.GetAttacks() {

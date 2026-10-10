@@ -243,8 +243,8 @@ func BaseAC(modifiers []rules.EffectModifier) int {
 	return n
 }
 
-// CheckAdvantage says the modifiers give advantage on an ability check of the ability (Enhance Ability).
-func CheckAdvantage(modifiers []rules.EffectModifier, ability string) bool {
+// HasCheckAdvantage says the modifiers give advantage on an ability check of the ability (Enhance Ability).
+func HasCheckAdvantage(modifiers []rules.EffectModifier, ability string) bool {
 	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
 		return m.Kind == rules.ModifierCheckAdvantage && slices.Contains(m.Abilities, ability)
 	})

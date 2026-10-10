@@ -212,6 +212,7 @@ type user struct {
 	characters charactersv1connect.CharacterServiceClient
 	play       playv1connect.PlayServiceClient
 	combat     playv1connect.CombatServiceClient
+	contests   playv1connect.ContestServiceClient
 	lasting    playv1connect.LastingEffectServiceClient
 	resource   playv1connect.ResourceServiceClient
 	casting    playv1connect.CastingServiceClient
@@ -246,6 +247,7 @@ func (h *harness) clients(userID string) *user {
 		characters: charactersv1connect.NewCharacterServiceClient(c, url, connect.WithInterceptors(choicetest.Interceptor(charactersv1connect.NewCharacterServiceClient(c, url)))),
 		play:       playv1connect.NewPlayServiceClient(c, url),
 		combat:     playv1connect.NewCombatServiceClient(c, url),
+		contests:   playv1connect.NewContestServiceClient(c, url),
 		lasting:    playv1connect.NewLastingEffectServiceClient(c, url),
 		resource:   playv1connect.NewResourceServiceClient(c, url),
 		casting:    playv1connect.NewCastingServiceClient(c, url),

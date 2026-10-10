@@ -118,6 +118,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourcePoisonedCheck:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_POISONED_CHECK,
 	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
 	combat.SourcePerceptionDim:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM,
+	combat.SourceHelp:               playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP,
 }
 
 // statesOf groups the states of a combat by the combatant that has them.
@@ -207,6 +208,11 @@ type modeFacts struct {
 	cs      []playdb.Combatant
 	states  map[string][]playdb.CombatantState
 	theatre bool
+	// hiding are the creatures hidden from others and the helps that hold (combat_hide.go,
+	// combat_help.go): a creature that has not noticed its hider cannot see it, and the
+	// attack of the creature an ally helped has advantage.
+	hiding []playdb.CombatHiding
+	helps  []playdb.CombatHelp
 	// sight is the fog of the combat's map, nil without one.
 	sight *fogSight
 }
@@ -235,6 +241,9 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 	// picked.
 	self := v.master || v.owns(attacker)
 	ctx := textContext{self: self, names: names, attacker: attacker.Label, target: target.Label, allyLabel: f.allyLabelNear(attacker, target)}
+	if h := f.helperOf(attacker, target); h != nil && (self || v.sees(*h)) {
+		ctx.helper = h.Label
+	}
 	// What an effect the master hides gives is "Outra fonte" to a player (RN-10).
 	hide := f.hiddenFrom(v, attacker, target)
 	for _, src := range shown.Sources {
@@ -259,6 +268,7 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 		Ranged: ranged, StrengthMelee: shape.Weapon && shape.Melee && !ranged && shape.UsesStrength, OwnTurn: ownTurn,
 		DistanceKnown: known, DistanceFt: int(dist), ReachFt: reach, LongRangeFt: long,
 	}
+	s.Helped = f.helperOf(attacker, target) != nil
 	s.AttackerUnseen = f.unseen(target, attacker)
 	s.TargetUnseen = f.unseen(attacker, target)
 	s.AllyNearTarget = known && traits.PackTactics && f.allyNear(attacker, target, view)
@@ -271,6 +281,11 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 // a combatant from the players' screens), so it changes no roll. A player's character
 // is never unseen, and an observer that is an NPC sees every player's character.
 func (f modeFacts) unseen(observer, subject playdb.Combatant) bool {
+	if slices.ContainsFunc(f.hiding, func(h playdb.CombatHiding) bool {
+		return h.HiderID == subject.ID && h.ObserverID == observer.ID && !h.Noticed
+	}) {
+		return true // a hider the observer has not noticed (SRD 5.1, "Hiding")
+	}
 	if subject.Kind != kindNPC || subject.Side == observer.Side {
 		return false
 	}
@@ -278,6 +293,20 @@ func (f modeFacts) unseen(observer, subject playdb.Combatant) bool {
 		return !f.sight.seesNPC(*observer.UserID, subject)
 	}
 	return false
+}
+
+// helperOf is the combatant whose Help holds for the attacker against the target: the
+// Help of an ally aimed at that target, not used and not past its helper's next turn.
+func (f modeFacts) helperOf(attacker, target playdb.Combatant) *playdb.Combatant {
+	for _, h := range f.helps {
+		if h.Kind != helpAttack || !helpsAlly(h, attacker) || deref(h.TargetID) != target.ID {
+			continue
+		}
+		if helper, ok := helpHelper(f.cs, h); ok {
+			return &helper
+		}
+	}
+	return nil
 }
 
 // distanceBetween is the distance in feet and whether both have a square.
@@ -339,6 +368,8 @@ type textContext struct {
 	// attacker, target and allyLabel are the labels a sentence may name; the master
 	// reads them, a player only the target they chose.
 	attacker, target, allyLabel string
+	// helper is the label of the creature whose Help holds.
+	helper string
 }
 
 // subject is "Você" or "O atacante".
@@ -388,6 +419,11 @@ func (c textContext) sentence(src combat.Source) string {
 			return fmt.Sprintf("Táticas de Matilha: um aliado (%s) está a 1,5 m de %s e não está incapacitado", c.allyLabel, c.target)
 		}
 		return "Táticas de Matilha: um aliado está a 1,5 m do alvo e não está incapacitado"
+	case combat.SourceHelp:
+		if c.helper != "" {
+			return fmt.Sprintf("Ajuda de %s: vantagem", c.helper)
+		}
+		return "Ajuda de um aliado: vantagem"
 	case combat.SourceUnseenAttacker:
 		return "Atacante que o alvo não vê: vantagem"
 	case combat.SourceUnseenTarget:
@@ -414,6 +450,8 @@ func (c textContext) sentence(src combat.Source) string {
 		return "Exaustão: desvantagem em testes de resistência"
 	case combat.SourceExhaustionCheck:
 		return "Exaustão: desvantagem em testes de habilidade"
+	case combat.SourceStealthArmor:
+		return "Armadura: desvantagem em Furtividade"
 	case combat.SourceOutlinedTarget:
 		return "Alvo delineado: vantagem se o atacante o vê"
 	case combat.SourceEffectSave:
@@ -543,9 +581,13 @@ func (s *Service) turnModes(ctx context.Context, campaignID string, d *encounter
 	if err != nil {
 		return turnModes{}, err
 	}
+	hiding, helps, err := s.contestFacts(ctx, s.queries, d.enc, d.cs)
+	if err != nil {
+		return turnModes{}, err
+	}
 	return turnModes{
 		who: who, sheet: sheet, viewer: v, names: s.namesFor(ctx, campaignID), ownTurn: actsNow(d.enc, who),
-		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight},
+		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight, hiding: hiding, helps: helps},
 	}, nil
 }
 
@@ -582,7 +624,7 @@ type spellModes struct {
 
 // spellModes reads the combat for the d20 rolls of a cast.
 func (s *Service) spellModes(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, cs []playdb.Combatant, caster playdb.Combatant, req *playv1.CastSpellRequest) (*spellModes, error) {
-	in, err := readModeInputs(ctx, c, cs)
+	in, err := s.readModeInputs(ctx, c, cs)
 	if err != nil {
 		return nil, err
 	}

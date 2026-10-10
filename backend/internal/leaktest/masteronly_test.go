@@ -107,4 +107,16 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.ReactionWindow", "trigger", "the numbers of what happened (total, armor class, damage) are the master's (RN-20)", nil},
 	{"meurpg.play.v1.ReactionWindow", "answer_now", "the order the master answers in is his", nil},
 	{"meurpg.play.v1.Combatant", "death_failures", "the table keeps the death saves to the owner and the master (RN-24)", func(w *world, p *person, m protoreflect.Message) bool { return own(w, p, m) }},
+
+	// --- play: the contests and the special actions (RN-10, RN-20)
+	{"meurpg.play.v1.ContestView", "escape_dc", "the fixed escape DC of a grapple that came from an attack is the master's", nil},
+	{"meurpg.play.v1.GrappleView", "escape_dc", "the fixed escape DC of a grapple that came from an attack is the master's", nil},
+	{"meurpg.play.v1.HideAttemptView", "observers", "who could see a hider, and what the app compares, is the master's", nil},
+	{"meurpg.play.v1.HideObserver", "combatant_id", "who noticed a hider is the master's", nil},
+	{"meurpg.play.v1.HideObserver", "passive_perception", "a creature's passive Perception is the master's", nil},
+	{"meurpg.play.v1.HideObserver", "known", "whether the app knows a creature's Perception is the master's", nil},
+	{"meurpg.play.v1.HideObserver", "noticed", "who noticed a hider is the master's", nil},
+	{"meurpg.play.v1.GroupCheckView", "dc", "the DC of a group check is never a player's, even when the master shows passed and failed", nil},
+	{"meurpg.play.v1.GroupCheckView", "passed_count", "how many passed is the master's", nil},
+	{"meurpg.play.v1.GroupCheckView", "needed", "how many are needed is the master's", nil},
 }

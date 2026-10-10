@@ -160,7 +160,7 @@ describe('ExhaustionDialog (W7-E board 9)', () => {
     expect(setExhaustion).not.toHaveBeenCalled();
     expect(flat(el.querySelector('h2'))).toBe('Exaustão nível 6: Toren morre?');
     expect(flat(el.querySelector('.ask__text'))).toBe(
-      'O nível 6 é a morte. Toren vai para a confirmação de morte, como o terceiro teste contra a morte falhado. Isto não se desfaz.',
+      'O nível 6 é a morte. Em combate, Toren vai para a confirmação de morte, como o terceiro teste contra a morte falhado; fora do combate, morre ao confirmar aqui. Isto não se desfaz.',
     );
     expect(button('Confirmar a morte')!.classList.contains('pair__btn--danger')).toBe(true);
     expect(document.activeElement).toBe(button('Cancelar'));

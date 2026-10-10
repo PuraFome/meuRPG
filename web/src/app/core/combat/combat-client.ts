@@ -684,6 +684,14 @@ export class CombatClient {
     };
   }
 
+  /** "Levantar-se": the combatant stands up from Prone for half its speed (SRD 5.1, "Being Prone"), on a map or without one. */
+  async standUp(campaignId: string, encounterId: string, combatantId: string): Promise<Encounter> {
+    const res = await this.keyed(['standUp', campaignId, encounterId, combatantId], (sent) =>
+      this.client.standUp({ campaignId, encounterId, combatantId, idempotencyKey: sent }),
+    );
+    return need(res.encounter, 'StandUp');
+  }
+
   /** The master's "Oferecer ataque de oportunidade" (a combat without a map): who left whose reach. */
   async offerOpportunity(
     campaignId: string,

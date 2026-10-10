@@ -965,6 +965,10 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.MoveCombatant(ctx, connect.NewRequest(&playv1.MoveCombatantRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, IdempotencyKey: newKey(), Col: 1, Row: 1}))
 			return err
 		},
+		"StandUp(Pensantus)": func(u *user, ctx context.Context) error {
+			_, err := u.combat.StandUp(ctx, connect.NewRequest(&playv1.StandUpRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, IdempotencyKey: newKey()}))
+			return err
+		},
 	}
 	methods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	covered := map[string]bool{}
@@ -1116,6 +1120,9 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventCreatureSummoned, eventCreatureDismissed, eventWildShapeStarted, eventWildShapeEnded,
 		eventFamiliarSight, eventDoorOpened, eventHiddenRevealAnswered, eventReactionAnswered, eventConcentrationSaveRolled,
 		eventPuzzleShown, eventPuzzleSolved, eventPuzzleReset, eventPuzzleClosed,
+		eventContestStarted, eventContestResolved, eventContestDeferred, eventContestClosed, eventShoveResolved, eventGrappleReleased,
+		eventHideAttempted, eventHideResolved, eventHideEnded, eventHelpGiven, eventHelpCleared,
+		eventGroupCheckRequested, eventGroupCheckRolled, eventGroupCheckClosed, eventSurpriseSet,
 		eventCharacterRevived,
 		eventCharacterChoicesCompleted,
 		eventRollModeRequested, eventRollModeAnswered, eventDamagePartRemoved, eventStateChanged,

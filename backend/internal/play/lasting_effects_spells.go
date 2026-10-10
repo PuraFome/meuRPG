@@ -118,10 +118,10 @@ func (s *Service) applyLastingSpell( //nolint:gocyclo // the steps of putting a 
 		return err
 	}
 	mods := [][]rules.EffectModifier{common}
-	if slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierBaseAC }) {
+	if hasBaseAC(def) {
 		groups, mods = nil, nil
 		for _, t := range taken {
-			m, ok, err := s.modifiersFor(ctx, c, def, t.CharacterID, opts)
+			m, ok, err := s.modifiersForTarget(ctx, c, def, t, opts)
 			if err != nil {
 				return err
 			}

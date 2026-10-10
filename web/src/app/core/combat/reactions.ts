@@ -44,8 +44,25 @@ export function isOpen(w: ReactionWindow): boolean {
 
 /** The windows that are open, in the order the server answers them. */
 export function openWindows(e: Encounter): readonly ReactionWindow[] {
-  // The master's question about a hidden creature an area hit is a window of the server's, drawn by its own card.
-  return e.reactionWindows.filter((w) => isOpen(w) && w.kind !== ReactionKind.HIDDEN_REVEAL);
+  // The master's question about a hidden creature an area hit is a window of the server's, drawn by its own card; a contest
+  // (W7-X) waits in a window of kind CONTEST that RespondContest and ResolveShove answer, never AnswerReaction: its sheets
+  // read it with `contestWindows`, and the reaction cards and queues never see it.
+  return e.reactionWindows.filter(
+    (w) => isOpen(w) && w.kind !== ReactionKind.HIDDEN_REVEAL && w.kind !== ReactionKind.CONTEST,
+  );
+}
+
+/** The contests that wait (windows of kind CONTEST that are open), as the caller may read them: the ones the caller answers
+ * have `forYou`, and `contest.contestId` names the contest (read with `GetContestState`). */
+export function contestWindows(e: Encounter): readonly ReactionWindow[] {
+  return e.reactionWindows.filter((w) => isOpen(w) && w.kind === ReactionKind.CONTEST);
+}
+
+/** The contest id of a window of kind CONTEST, or `''` for any other. */
+export function contestIdOf(w: ReactionWindow): string {
+  return w.kind === ReactionKind.CONTEST && w.prompt.case === 'contest'
+    ? w.prompt.value.contestId
+    : '';
 }
 
 /** The window a player answers now: the first one that is theirs to answer. */

@@ -78,6 +78,8 @@ func (s *Service) AnswerReaction(
 		}
 		use := choice == playv1.ReactionChoice_REACTION_CHOICE_USE
 		switch reaction.Kind(w.Kind) {
+		case reaction.Contest:
+			return nil, errContestWindow()
 		case reaction.Shield:
 			err = s.answerShield(ctx, c, w, reactor, use, req.Msg, &got)
 		case reaction.MasterCheck:

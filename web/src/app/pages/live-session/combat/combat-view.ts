@@ -131,6 +131,8 @@ import type { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { ActionGroups } from './action-groups/action-groups';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
+import { ContestHost } from './contest-host';
+import { ContestClient } from '../../../core/combat/contest-client';
 import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/cast-sheet';
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
@@ -150,11 +152,13 @@ import {
 } from './reaction-sheet/reaction-sheet';
 import { windowsBarText } from '../../../core/combat/reaction-master';
 import { openWindows, promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
+import { ContestMaster } from './contest-master/contest-master';
 import {
   EffectSaveSheet,
   type EffectSaveSheetData,
 } from '../effects/effect-save-sheet/effect-save-sheet';
 import { ReactionQueue } from './reaction-queue/reaction-queue';
+import { SurpriseCard } from './surprise-card/surprise-card';
 import { CombatLogPanel } from './combat-log/combat-log-panel';
 import type { CombatantInfo } from './combat-info';
 import { CombatBar } from './combat-bar/combat-bar';
@@ -263,6 +267,8 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     RollModeQueue,
     TheatreReaction,
     ReactionQueue,
+    ContestMaster,
+    SurpriseCard,
     TurnBar,
     TrapDamages,
     TurnPanel,
@@ -782,6 +788,23 @@ export class CombatView {
     return this.isMaster() ? currentCombatant(e) : this.own();
   });
   protected readonly options = computed(() => this.turn.data());
+  /** The player's side of the contests (W7-X): grapple, shove, escape, Hide, Help, and the questions a contest asks. */
+  protected readonly contest = new ContestHost({
+    dialog: this.dialog,
+    bottomSheet: this.bottomSheet,
+    api: inject(ContestClient),
+    campaignId: () => this.campaignId(),
+    isMaster: () => this.isMaster(),
+    encounter: this.encounter,
+    own: this.own,
+    options: this.options,
+    state: () => this.state(),
+    diceMode: () => this.diceMode(),
+    preference: () => this.dicePreference(),
+  });
+  /** The contest facts of the player's turn (hidden, surprised, grappled) and the special attacks, from `GetTurnOptions`. */
+  protected readonly contestFacts = computed(() => this.options()?.contestState);
+  protected readonly contestAttacks = computed(() => this.options()?.contestAttackOptions ?? []);
   protected readonly economy = computed(() => this.options()?.options?.economy);
   /** Extra Attack: the attacks of this Attack action that remain, and how many it makes. */
   protected readonly attacksLeft = computed(() => this.economy()?.attacksLeft ?? 0);
@@ -1403,9 +1426,33 @@ export class CombatView {
     );
   }
 
+  /** A standard action of one of the player's creatures: "Ajudar" and "Esconder" open the same sheets as the character's,
+   * for the creature (a familiar's Help is the classic one, SRD 5.1 Find Familiar); the others spend its action. */
+  protected creatureAction(id: string, key: string): void {
+    const options = this.creatureOptions.data().get(id) ?? null;
+    if (key === 'standard:help') {
+      this.contest.openHelpFor(id, options);
+      return;
+    }
+    if (key === 'standard:hide') {
+      this.contest.openHideFor(id, key, options);
+      return;
+    }
+    void this.takeActionFor(id, key);
+  }
+
   /** A standard action from the list: "Procurar" opens the search for traps (E9-08, it spends the action
    * through `SearchForTraps`); the others spend the action (`takeAction`). */
   protected standardAction(key: string): void {
+    // Hide and Help are the contest service's (W7-X): the check, and the master's answer, are not a plain action.
+    if (this.contest.hideKeys().includes(key)) {
+      this.contest.openHide(key);
+      return;
+    }
+    if (key === 'standard:help') {
+      this.contest.openHelp();
+      return;
+    }
     if (
       key === 'standard:search' &&
       searchRoute(this.mapState().map()?.gridColumns ?? 0, this.own()?.placed ?? false) === 'traps'
@@ -1475,6 +1522,11 @@ export class CombatView {
     const e = this.encounter();
     const option = this.options()?.options?.featureActions.find((a) => a.action?.key === key);
     if (!own || !e || !option?.action) {
+      return;
+    }
+    if (this.contest.hideKeys().includes(key)) {
+      // The rogue's Cunning Action: Hide as a bonus action.
+      this.contest.openHide(key);
       return;
     }
     const name = option.action.namePt;
@@ -2715,6 +2767,14 @@ export class CombatView {
     this.dropStart.set(null);
     this.moveError.set('');
     this.state().moving.set(true);
+  }
+
+  /** "Levantar-se": the combatant (the player's own, a creature of theirs, or the one on the master's card) stands up from Prone. */
+  protected standUp(id?: string): Promise<boolean> {
+    const who = id ?? this.own()?.id;
+    return who
+      ? this.run((e) => this.api.standUp(this.campaignId(), e.id, who))
+      : Promise.resolve(false);
   }
 
   /** "Mover o Lobo atroz 1": the same page, for the creature. */

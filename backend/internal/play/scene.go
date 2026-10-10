@@ -764,6 +764,9 @@ func (s *Service) RollSceneCheck(
 		if err := s.spendOnceEffects(ctx, c, cm.Rolled); err != nil {
 			return err
 		}
+		if err := s.spendCheckHelps(ctx, c, cm.Helps); err != nil {
+			return err
+		}
 		rollID, err = insertSceneEvent(ctx, c, eventSceneCheckRolled, &m.UserID, &key, ev)
 		return err
 	})

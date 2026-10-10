@@ -1619,6 +1619,11 @@ const (
 	// Flurry of Blows: it comes right after the Attack action, taken with a weapon
 	// or an unarmed strike, and that action has not been taken yet this turn.
 	DisabledReasonCode_DISABLED_REASON_CODE_ATTACK_ACTION_FIRST DisabledReasonCode = 16
+	// CombatService.GetTurnOptions: the combatant is surprised (SRD 5.1, "Surprise"): it
+	// does not move, act or react until its first turn ends.
+	DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED DisabledReasonCode = 110
+	// A grappled combatant's movement: its speed is 0 (SRD 5.1, Conditions, Grappled).
+	DisabledReasonCode_DISABLED_REASON_CODE_GRAPPLED DisabledReasonCode = 111
 	// The combatant is incapacitated (SRD, Conditions: Incapacitated, Paralyzed, Petrified,
 	// Stunned, Unconscious): no actions and no reactions. `text_pt` says it without naming
 	// the cause to a player.
@@ -1650,6 +1655,8 @@ var (
 		14:  "DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN",
 		15:  "DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT",
 		16:  "DISABLED_REASON_CODE_ATTACK_ACTION_FIRST",
+		110: "DISABLED_REASON_CODE_SURPRISED",
+		111: "DISABLED_REASON_CODE_GRAPPLED",
 		100: "DISABLED_REASON_CODE_INCAPACITATED",
 		101: "DISABLED_REASON_CODE_EFFECT_LETHARGY",
 		102: "DISABLED_REASON_CODE_SPEED_ZERO",
@@ -1672,6 +1679,8 @@ var (
 		"DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN":   14,
 		"DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT": 15,
 		"DISABLED_REASON_CODE_ATTACK_ACTION_FIRST":      16,
+		"DISABLED_REASON_CODE_SURPRISED":                110,
+		"DISABLED_REASON_CODE_GRAPPLED":                 111,
 		"DISABLED_REASON_CODE_INCAPACITATED":            100,
 		"DISABLED_REASON_CODE_EFFECT_LETHARGY":          101,
 		"DISABLED_REASON_CODE_SPEED_ZERO":               102,
@@ -11874,7 +11883,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x14CREATURE_SIZE_MEDIUM\x10\x03\x12\x17\n" +
 	"\x13CREATURE_SIZE_LARGE\x10\x04\x12\x16\n" +
 	"\x12CREATURE_SIZE_HUGE\x10\x05\x12\x1c\n" +
-	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\xdb\x06\n" +
+	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\xa2\a\n" +
 	"\x12DisabledReasonCode\x12$\n" +
 	" DISABLED_REASON_CODE_UNSPECIFIED\x10\x00\x12$\n" +
 	" DISABLED_REASON_CODE_ACTION_USED\x10\x01\x12*\n" +
@@ -11893,7 +11902,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"!DISABLED_REASON_CODE_ATTACKS_USED\x10\r\x12/\n" +
 	"+DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN\x10\x0e\x121\n" +
 	"-DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT\x10\x0f\x12,\n" +
-	"(DISABLED_REASON_CODE_ATTACK_ACTION_FIRST\x10\x10\x12&\n" +
+	"(DISABLED_REASON_CODE_ATTACK_ACTION_FIRST\x10\x10\x12\"\n" +
+	"\x1eDISABLED_REASON_CODE_SURPRISED\x10n\x12!\n" +
+	"\x1dDISABLED_REASON_CODE_GRAPPLED\x10o\x12&\n" +
 	"\"DISABLED_REASON_CODE_INCAPACITATED\x10d\x12(\n" +
 	"$DISABLED_REASON_CODE_EFFECT_LETHARGY\x10e\x12#\n" +
 	"\x1fDISABLED_REASON_CODE_SPEED_ZERO\x10f*\x9f\x01\n" +

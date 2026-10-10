@@ -362,6 +362,10 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		if err := s.pruneOffers(ctx, c); err != nil {
 			return err
 		}
+		// A grapple ends when its grappler is incapacitated or the grappled creature leaves its reach.
+		if err := s.pruneHolds(ctx, c); err != nil {
+			return err
+		}
 		// The reaction windows that stopped being valid close, and what the ones
 		// that are all answered held goes on.
 		if err := s.settleReactions(ctx, c); err != nil {

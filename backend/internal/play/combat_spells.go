@@ -628,6 +628,13 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				return nil, err
 			}
 		}
+		// A spell with a verbal component gives a hidden caster's position away by its noise;
+		// one with only somatic or material components does not (combat_hide.go).
+		if sp.Verbal {
+			if made.HidBefore, err = s.endHiding(ctx, c, caster); err != nil {
+				return nil, err
+			}
+		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
@@ -796,6 +803,9 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	face, roll := d20.Face(), d20
 	modes.attack[target.ID] = truth.Shown
+	if _, err := s.consumeHelps(ctx, c, caster, target, modes.in.cs); err != nil { // the Help aimed at the target is used (SRD 5.1, "Help")
+		return err
+	}
 	hit.D20B, hit.Counted, hit.RollMode, hit.SuggestedMode, hit.ReasonID = clamp32(d20.otherFace(), 0, 20), clamp32(d20.Index, 0, 1), modeKey(choice.Mode), modeKey(choice.Suggested), choice.ReasonID
 	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 	if err != nil {

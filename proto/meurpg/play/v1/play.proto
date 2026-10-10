@@ -1227,6 +1227,10 @@ message WatchGameSessionResponse {
     // player gets it only for a cast they may see, and a cast by an NPC that is not on
     // the stage reaches the master alone.
     SpellCastsChanged spell_casts_changed = 27;
+    // A group check was asked, answered or closed (ContestService): read it again
+    // (GetGroupCheck), each as your own role. A hint with no content (RN-10): the skill,
+    // the DC and the rolls never travel on the stream.
+    GroupCheckChanged group_check_changed = 40;
     // A Revivify cast outside a combat was asked, or the master answered it: read
     // RevivifyService.ListRevivifyRequests again. A hint with no content. Only the master
     // and the caster's player get it (RN-10).
@@ -1273,6 +1277,8 @@ message WatchGameSessionResponse {
   // SpellCastsChanged is the content-free hint that the casts outside a combat changed.
   message SpellCastsChanged {}
 
+  // GroupCheckChanged is the content-free hint that the group check changed.
+  message GroupCheckChanged {}
   // RevivifyChanged is the content-free hint that the casts of Revivify outside a combat
   // changed.
   message RevivifyChanged {}

@@ -252,10 +252,27 @@ func bonusTraits(a rules.Attack) AttackTraits {
 	return AttackTraits{Spell: a.Kind == "spell", Melee: a.Melee, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts}
 }
 
+// ContestAttackKey marks that the Attack action was taken with a grapple or a shove
+// (SRD 5.1, "Grappling": the special melee attack replaces one attack of the Attack
+// action) and no weapon attack has been made yet. It is no sheet attack: it counts as the
+// Attack action for Flurry of Blows ("immediately after you take the Attack action") but,
+// being neither an unarmed strike nor a monk weapon, never unlocks the Martial Arts bonus
+// strike or Two-Weapon Fighting.
+const ContestAttackKey = "special:contest"
+
+// ContestAttack is the stand-in attack the key stands for: a melee attack that is not
+// light, not unarmed and not a spell.
+func ContestAttack() rules.Attack {
+	return rules.Attack{Key: ContestAttackKey, Melee: true}
+}
+
 // lastAttackOf is the sheet attack the Attack action made last this turn.
 func lastAttackOf(d rules.Derived, turn TurnState) (rules.Attack, bool) {
 	if turn.LastAttackKey == "" {
 		return rules.Attack{}, false
+	}
+	if turn.LastAttackKey == ContestAttackKey {
+		return ContestAttack(), true
 	}
 	i := slices.IndexFunc(d.Attacks, func(a rules.Attack) bool { return a.Key == turn.LastAttackKey })
 	if i < 0 {

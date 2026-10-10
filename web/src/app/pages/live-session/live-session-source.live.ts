@@ -303,6 +303,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'spellCastsChanged':
           yield { kind: 'spellCastsChanged' };
           break;
+        case 'groupCheckChanged':
+          yield { kind: 'groupCheckChanged' };
+          break;
         case 'contentChanged':
           yield { kind: 'contentChanged' };
           break;

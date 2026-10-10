@@ -114,6 +114,8 @@ const (
 	FeatherFall       Kind = "feather_fall"
 	Concentration     Kind = "concentration_save"
 	MasterCheck       Kind = "master_check"
+	// Contest is a grapple, a shove or an escape that waits for a roll or a choice.
+	Contest Kind = "contest"
 	// EffectSave is the saving throw an effect that lasts asks at a turn (RN-22).
 	EffectSave Kind = "effect_save"
 )
@@ -148,7 +150,7 @@ type Facts struct {
 // ignores ReactionUsed. Incapacitated wins over a spent reaction, and both over a
 // gone trigger: the reason a reactor reads is about itself first.
 func Closure(kind Kind, f Facts) (Reason, bool) {
-	usesReaction := kind != Concentration && kind != MasterCheck && kind != EffectSave
+	usesReaction := kind != Concentration && kind != MasterCheck && kind != Contest && kind != EffectSave
 	switch {
 	case f.Incapacitated && usesReaction:
 		return ReasonReactorIncapacitated, true
@@ -201,6 +203,9 @@ type Wait struct {
 	// Savers are the labels of the player's characters the reader sees that owe a
 	// concentration save.
 	Savers []string
+	// Contesters are the labels of the player's characters the reader sees that a
+	// contest waits for: "Esperando Sálvia".
+	Contesters []string
 	// EffectSavers are the ones that owe the saving throw of an effect that lasts.
 	EffectSavers []string
 }
@@ -218,6 +223,9 @@ func (w Wait) Title() string {
 	}
 	if len(w.Reactors) > 0 {
 		parts = append(parts, "a reação de "+join(sorted(w.Reactors)))
+	}
+	if len(w.Contesters) > 0 {
+		parts = append(parts, join(sorted(w.Contesters)))
 	}
 	if len(w.Savers) > 0 {
 		parts = append(parts, "o teste de Constituição de "+join(sorted(w.Savers)))

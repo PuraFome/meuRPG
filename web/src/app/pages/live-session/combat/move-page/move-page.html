@@ -38,6 +38,7 @@
             [layers]="layers()"
             [reach]="reach()"
             [chosen]="readOnly() ? null : frame()"
+            [dragged]="dragMark()"
             [pickSquares]="!readOnly()"
             [showTurn]="readOnly()"
             [ownMoveId]="readOnly() ? null : (own()?.id ?? null)"
@@ -74,6 +75,9 @@
           @if (chosen()) {
             <li><span class="mr-swatch mr-swatch--chosen" aria-hidden="true"></span>Quadrado escolhido</li>
           }
+          @if (dragLegend()) {
+            <li><span class="mr-swatch mr-swatch--dragged" aria-hidden="true"></span>{{ dragLegend() }}</li>
+          }
         </app-map-layers-legend>
         @if (!jumping()) {
           <p class="move__rule">
@@ -104,6 +108,12 @@
             </div>
           }
         </div>
+        @if (dragLine()) {
+          <p class="move__drag" data-testid="drag-line">{{ dragLine() }}</p>
+        }
+        @if (dragText() && !visibleError()) {
+          <p class="move__drag-text" role="status" data-testid="drag-text">{{ dragText() }}</p>
+        }
         @if (visibleError()) {
           <div class="mr-notice mr-notice--danger" role="alert">
             <mat-icon aria-hidden="true">block</mat-icon>

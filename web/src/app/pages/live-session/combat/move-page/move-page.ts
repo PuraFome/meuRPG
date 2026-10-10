@@ -42,15 +42,23 @@ import {
   trapQuestion,
   verdictFor,
 } from '../../../../core/combat/move-plan';
-import { ownCombatant, roundLabel } from '../../../../core/combat/combat-view';
+import { combatantInitial, ownCombatant, roundLabel } from '../../../../core/combat/combat-view';
 import { type MapLayers, NO_LAYERS } from '../../../../core/maps/layers';
 import { metersFixed, reachSquares } from '../../../../core/units';
 import { tieNumbers } from '../../../../core/format/text';
 import {
   CombatMap,
   type CombatMapImage,
+  type DraggedMark,
   type Reach,
 } from '../../../../shared/combat-map/combat-map';
+import {
+  dragLegend,
+  dragMovementLine,
+  dragSentence,
+  dragged,
+  draggedTo,
+} from '../../../../core/combat/drag-plan';
 import { LivePill } from '../../../../shared/live-pill/live-pill';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
@@ -210,6 +218,38 @@ export class MovePage {
   protected readonly jumpCost = computed(() => {
     const to = this.chosen();
     return to ? lineLengthDft(this.origin(), to) : 0;
+  });
+
+  /** The creature the mover drags (W7-X: it holds it grappled), with the speed halved unless it is much smaller. */
+  protected readonly dragging = computed(() =>
+    dragged(this.options(), this.encounter().combatants),
+  );
+  protected readonly dragLegend = computed(() => {
+    const who = this.dragging();
+    return who ? dragLegend(who) : '';
+  });
+  /** "Deslocamento: 4,5 m (metade, arrastando o Hobgoblin)": the movement left is the server's, already halved. */
+  protected readonly dragLine = computed(() => {
+    const who = this.dragging();
+    return who && !this.jumping()
+      ? dragMovementLine(this.leftDft(), this.options()?.draggingHalved ?? false, who)
+      : '';
+  });
+  /** Where the dragged creature ends if the mover goes to the chosen square (the server's square, never the page's). */
+  private readonly dragEnd = computed<Square | null>(() => {
+    const to = this.chosen();
+    const v = this.verdict();
+    return to && v?.kind === 'ok' && !this.jumping() ? draggedTo(v.square) : null;
+  });
+  protected readonly dragMark = computed<DraggedMark | null>(() => {
+    const who = this.dragging();
+    const square = this.dragEnd();
+    return who && square ? { square, initial: combatantInitial(who.label) } : null;
+  });
+  protected readonly dragText = computed(() => {
+    const who = this.dragging();
+    const to = this.chosen();
+    return who && to && this.dragEnd() ? dragSentence(this.origin(), to, who, this.leftDft()) : '';
   });
 
   /** The reach the map draws: the walk's squares, or the circle of the jump. */

@@ -40,6 +40,9 @@ func (s *Service) modifiersFor(ctx context.Context, c *combatTx, def *rules.Effe
 		case m.Kind != rules.ModifierBaseAC:
 			continue
 		}
+		if characterID == "" {
+			continue // worked out per target (modifiersForTarget): there is no one to read yet
+		}
 		mage, err := s.roster.MageArmorAC(ctx, c.tx, c.session.CampaignID, characterID)
 		if err != nil {
 			return nil, false, err
@@ -48,6 +51,33 @@ func (s *Service) modifiersFor(ctx context.Context, c *combatTx, def *rules.Effe
 			return nil, false, nil
 		}
 		mods[i].Value = int(clamp32(mage.AC, 1, 60))
+	}
+	return mods, true, nil
+}
+
+// mageArmorBaseAC is the 13 in Mage Armor's "base AC becomes 13 + Dexterity modifier" (SRD 5.1).
+const mageArmorBaseAC = 13
+
+// hasBaseAC says whether the effect sets a base armor class (Mage Armor).
+func hasBaseAC(def *rules.EffectDef) bool {
+	return def != nil && slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierBaseAC })
+}
+
+// modifiersForTarget is modifiersFor for a combatant: a character (a player's or an NPC with a
+// sheet) is worked out from its sheet; a summoned creature has no sheet to wear armor on, so
+// its base is 13 + its own Dexterity modifier, which its initiative bonus is.
+func (s *Service) modifiersForTarget(ctx context.Context, c *combatTx, def *rules.EffectDef, t playdb.Combatant, opts castOpts) ([]rules.EffectModifier, bool, error) {
+	if t.CharacterID != "" {
+		return s.modifiersFor(ctx, c, def, t.CharacterID, opts)
+	}
+	mods, ok, err := s.modifiersFor(ctx, c, def, "", opts)
+	if err != nil || !ok {
+		return mods, ok, err
+	}
+	for i, m := range mods {
+		if m.Kind == rules.ModifierBaseAC {
+			mods[i].Value = int(clamp32(mageArmorBaseAC+int(t.InitiativeBonus), 1, 60))
+		}
 	}
 	return mods, true, nil
 }

@@ -199,6 +199,15 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'spellCastsChanged']);
   });
 
+  it('maps `group_check_changed` to its own event, with no content: the roll and the DC are read with GetGroupCheck (W7-X)', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, { event: { case: 'ready', value: {} } }),
+        create(WatchGameSessionResponseSchema, { event: { case: 'groupCheckChanged', value: {} } }),
+      ]),
+    ).toEqual(['ready', 'groupCheckChanged']);
+  });
+
   it("maps `puzzle_changed` to its own event, with the puzzle's ID and nothing else (MR-038)", async () => {
     const out = [];
     const responses = [

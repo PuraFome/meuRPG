@@ -12,6 +12,7 @@ package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
 import "meurpg/play/v1/combat_rolls.proto";
+import "meurpg/play/v1/contest_types.proto";
 import "meurpg/play/v1/lasting_effects.proto";
 import "meurpg/rules/v1/rules.proto";
 
@@ -415,6 +416,34 @@ service CombatService {
   //     for its answer (OPPORTUNITY_PENDING); the distance is more than the
   //     movement left (TOO_FAR, with missing_ft and missing_dft).
   rpc SpendMovement(SpendMovementRequest) returns (SpendMovementResponse);
+
+  // StandUp is "Levantar-se": the combatant stands up from Prone (SRD 5.1, "Being
+  // Prone": standing up takes an amount of movement equal to half your speed, and you
+  // cannot stand up if you do not have enough movement left, or if your speed is 0).
+  // The cost is half the speed the combatant has this turn without the Dash (the
+  // Dash gives more movement, not a faster speed), rounded down to a tenth of a foot,
+  // and it is added to the movement used (`movement_used_dft`, as a move does). It takes
+  // the Prone condition off. It works on a map and in THEATRE mode (RN-25) alike: no
+  // square is involved. The caller's own combatant on its turn, for a player (and for
+  // the creatures of their character); any combatant on its turn for the master. It is a
+  // line of the combat log for everyone who sees the combatant ("Brisa se levantou"),
+  // and the master can undo it (UndoLastAction): the condition and the movement come
+  // back. The cost the screen shows is `Combatant.stand_up_cost_dft`.
+  //
+  // The answer tells what is left (`movement_left_dft`). Every stream gets
+  // `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the combatant is not in the open session (a hidden
+  //     NPC is not found for a player).
+  //   - `permission_denied`: the caller is a player and the combatant is not theirs.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+  //     (NOT_ACTIVE); it is not the combatant's turn (NOT_YOUR_TURN); an opportunity
+  //     attack waits for an answer (OPPORTUNITY_PENDING); the combatant is not Prone
+  //     (NOT_PRONE); its speed is 0 (CANNOT_STAND_UP: grappled, restrained, a Velocidade
+  //     that ended, and the like; the message never names the cause to a player); it has
+  //     less movement left than the cost (TOO_FAR, with missing_ft and missing_dft).
+  rpc StandUp(StandUpRequest) returns (StandUpResponse);
 
   // OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
   // combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
@@ -1457,6 +1486,9 @@ enum MoveRefusal {
   // Nothing blocks the line, but it costs more than the movement left (difficult
   // terrain, creatures to pass).
   MOVE_REFUSAL_TOO_COSTLY = 4;
+  // The mover drags the creature it holds, and the square behind the path is taken or
+  // blocked: there is nowhere to leave it.
+  MOVE_REFUSAL_NO_ROOM_TO_DRAG = 20;
 }
 
 // CombatantState is how hurt a combatant is, as a word (RN-20): what a
@@ -1750,6 +1782,11 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_CANNOT_ACT = 100;
   // The extra action an effect gives (Velocidade) is not there, or was spent.
   ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE = 101;
+  // StandUp: the combatant is not Prone.
+  ENCOUNTER_BLOCKED_REASON_NOT_PRONE = 102;
+  // StandUp: the combatant's speed is 0 (SRD 5.1, "Being Prone"), so it cannot stand up
+  // whatever the cost: Grappled, Restrained, the lethargy of a Velocidade, and the like.
+  ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP = 103;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2262,6 +2299,10 @@ message Combatant {
   repeated EffectLabel effect_labels = 101;
   // The level of exhaustion, 0 to 6. The master and the owner read it; the others 0.
   int32 exhaustion_level = 102;
+  // What standing up costs, in tenths of a foot, while the combatant is Prone: half its
+  // speed of the turn without the Dash (SRD 5.1, "Being Prone"), rounded down. 0 when it
+  // is not Prone or its speed is 0 (it cannot stand up then). Same audience as `speed_dft`.
+  int32 stand_up_cost_dft = 103;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2462,6 +2503,21 @@ message SpendMovementRequest {
   int32 distance_ft = 5;
 }
 
+// StandUpRequest stands a Prone combatant up, on its turn.
+message StandUpRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+}
+
+// StandUpResponse returns the combat and what the combatant has left.
+message StandUpResponse {
+  Encounter encounter = 1;
+  // The movement left this turn, in tenths of a foot, after the cost.
+  int32 movement_left_dft = 2;
+}
+
 // SpendMovementResponse returns the combat and what the combatant has left.
 message SpendMovementResponse {
   Encounter encounter = 1;
@@ -2536,6 +2592,21 @@ message GetMoveOptionsResponse {
   repeated RefusedSquare refused = 3;
   // True when the mover moves as a flier: difficult terrain costs it nothing.
   bool flier = 4;
+  // The creature the mover drags along: it holds it grappled, and a creature that
+  // is not two or more sizes smaller than the mover halves its speed while it moves
+  // (SRD 5.1, "Moving a Grappled Creature"). `movement_left_dft` and the costs of
+  // `reachable` already count the halving: the movement left is the path that fits. Empty
+  // when the mover drags nobody.
+  string dragging_combatant_id = 20;
+  // True when the dragged creature halves the speed.
+  bool dragging_halved = 21;
+}
+
+// DraggedSquare is the square a dragged creature ends on: the one the grappler left
+// just before the last square of its path, worked out by the server.
+message DraggedSquare {
+  int32 col = 1;
+  int32 row = 2;
 }
 
 // ReachableSquare is a square a combatant can go to, and what the move costs.
@@ -2562,6 +2633,9 @@ message ReachableSquare {
   string known_trap_point_id = 7;
   // That trap's name ("Fosso escondido").
   string known_trap_name = 8;
+  // The square the dragged creature (GetMoveOptionsResponse.dragging_combatant_id)
+  // ends on if the mover goes here. Unset when it drags nobody.
+  DraggedSquare dragged_to = 20;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.
@@ -2916,6 +2990,12 @@ message GetTurnOptionsResponse {
   // combatant's attacks and spells will do to the damage dice, so the screen can
   // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
   CriticalDamageRule critical_rule = 6;
+  // The special attacks that replace one attack of the Attack action (SRD 5.1,
+  // "Grappling" and "Shoving a Creature"), with their targets: GRAPPLE and SHOVE.
+  // Empty when the combatant cannot grapple or shove now.
+  repeated ContestAttackOption contest_attack_options = 40;
+  // The contest facts of this combatant's turn: grappled, holding, hidden, surprised.
+  ContestTurnState contest_state = 41;
   // For each feature action of options.feature_actions that picks a creature
   // (Cura pelas Mãos, Inspiração de Bardo), who it can pick.
   repeated ResourceTargets resource_targets = 30;
@@ -4104,6 +4184,9 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
+  // actor, the target and `contest`, which says what happened. Never a total (RN-20).
+  COMBAT_LOG_KIND_CONTEST = 50;
   // An effect that lasts began, changed or ended, a saving throw of an effect was rolled,
   // or an effect dealt damage (RN-22): `effect`. An effect the master hides from the
   // players is a line for the master alone, and no count of them reaches a player.
@@ -4268,6 +4351,8 @@ message CombatLogEntry {
   TrapFiring trap = 40;
   // WILD_SHAPE: the form change. The actor is the druid.
   CombatLogWildShape wild_shape = 41;
+  // CONTEST: what happened.
+  CombatLogContest contest = 60;
   // DOOR_OPENED: where the door is. The actor is who opened it.
   CombatLogDoor door = 42;
   // MONSTERS_ADDED: the new monsters, in the order of their names.
@@ -4741,6 +4826,10 @@ enum ReactionKind {
   // an action of a player against an enemy waits for "Sem reação" so that the
   // pause says nothing to the players.
   REACTION_KIND_MASTER_CHECK = 11;
+  // A contest (grapple, shove, escape) that waits for its defender's roll or its
+  // winner's choice; it is answered with RespondContest / ResolveShove, not with
+  // AnswerReaction.
+  REACTION_KIND_CONTEST = 13;
   // The saving throw an effect that lasts asks at the end or the start of its target's
   // turn (Imobilizar Pessoa, Teia): answered with CombatEffectService.RollEffectSave.
   REACTION_KIND_EFFECT_SAVE = 12;
@@ -4835,6 +4924,7 @@ message ReactionWindow {
     MasterCheckPrompt master_check = 28;
     HellishRebukeSavePrompt hellish_rebuke_save = 29;
     DeflectMissilesThrowPrompt deflect_throw = 30;
+    ContestPrompt contest = 31;
     // The saving throw an effect asks at a turn (RN-22).
     EffectSavePrompt effect_save = 40;
   }
@@ -5020,6 +5110,12 @@ message ConcentrationSavePrompt {
   bool handed_to_master = 8;
 }
 
+// ContestPrompt names the contest a CONTEST window waits for: the sheet reads it
+// from Encounter.contest_state.
+message ContestPrompt {
+  string contest_id = 1;
+}
+
 message MasterCheckPrompt {
   // What the check is about, for the master's card: "Ataque de Toren contra o
   // Goblin 2 · acertou".
@@ -5154,6 +5250,9 @@ message ResolveConcentrationSaveRequest {
   // of the effects, when the roll is a physical d20 (`d20_face`): one for each, 1 to the die's
   // faces. With the app's dice the server rolls them.
   repeated int32 extra_die_faces = 100;
+  // With a physical d20 and disadvantage (exhaustion 3 or more, SRD 5.1) or advantage on the
+  // saving throw, the second d20; `d20_face` is the first.
+  optional int32 second_d20_face = 101;
 }
 
 message ResolveConcentrationSaveResponse {

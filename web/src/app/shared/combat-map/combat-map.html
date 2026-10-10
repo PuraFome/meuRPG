@@ -97,6 +97,16 @@
       ></span>
     }
 
+    @if (dragged(); as d) {
+      <span
+        class="cm__dragged"
+        aria-hidden="true"
+        [style.left.%]="(d.square.col / columns()) * 100"
+        [style.top.%]="(d.square.row / rows()) * 100"
+        >{{ d.initial }}</span
+      >
+    }
+
     @if (forcedTrace(); as t) {
       <svg class="cm__path" aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
         <line [attr.x1]="t.x1" [attr.y1]="t.y1" [attr.x2]="t.x2" [attr.y2]="t.y2" />

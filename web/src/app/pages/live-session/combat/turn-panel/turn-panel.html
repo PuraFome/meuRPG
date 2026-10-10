@@ -24,7 +24,7 @@
         <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
       </div>
     } @else {
-      <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" (endTurn)="endTurn.emit()" />
+      <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [label]="endLabel()" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
     }
   </section>
   <ng-container *ngTemplateOutlet="notes" />
@@ -121,7 +121,7 @@
         <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
       </div>
     } @else {
-      <app-end-turn class="turn__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" (endTurn)="endTurn.emit()" />
+      <app-end-turn class="turn__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [label]="endLabel()" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
     }
     @if (movement()?.none) {
       <p class="turn__why"><mat-icon aria-hidden="true">block</mat-icon>Sem movimento neste turno</p>
@@ -186,6 +186,15 @@
 </section>
 }
 <ng-template #notes>
+  @for (s of states(); track s.tag) {
+    <!-- W7-X: "Escondida" (the player reads only that, never from whom) and "Surpresa", a tag and the sentence under it. -->
+    <div class="turn__state" role="status">
+      <span class="mr-tag" [class.mr-tag--success]="s.tone === 'success'" [class.mr-tag--pending]="s.tone === 'pending'">
+        <mat-icon aria-hidden="true">{{ s.icon }}</mat-icon>{{ s.tag }}
+      </span>
+      <p class="turn__state-text">{{ s.text }}</p>
+    </div>
+  }
   @for (n of effectNotes(); track n.textPt) {
     <!-- What an effect or a condition takes from this turn (RN-22): the server's own sentence, never its cause for a player. -->
     <div class="mr-notice mr-notice--warning turn__notice" role="status" data-testid="effect-note">

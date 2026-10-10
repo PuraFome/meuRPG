@@ -123,20 +123,26 @@ func (s *Service) chooseMode(ctx context.Context, c *combatTx, v combatViewer, a
 type attackModeInputs struct {
 	cs     []playdb.Combatant
 	states map[string][]playdb.CombatantState
+	hiding []playdb.CombatHiding
+	helps  []playdb.CombatHelp
 }
 
 // readModeInputs reads the combat's states in the transaction.
-func readModeInputs(ctx context.Context, c *combatTx, cs []playdb.Combatant) (attackModeInputs, error) {
+func (s *Service) readModeInputs(ctx context.Context, c *combatTx, cs []playdb.Combatant) (attackModeInputs, error) {
 	rows, err := c.q.ListCombatantStates(ctx, c.enc.ID)
 	if err != nil {
 		return attackModeInputs{}, fmt.Errorf("list the states: %w", err)
 	}
-	return attackModeInputs{cs: cs, states: statesOf(rows)}, nil
+	hiding, helps, err := s.contestFacts(ctx, c.q, c.enc, cs)
+	if err != nil {
+		return attackModeInputs{}, err
+	}
+	return attackModeInputs{cs: cs, states: statesOf(rows), hiding: hiding, helps: helps}, nil
 }
 
 // facts is the combat as the advantage rules read it.
 func (in attackModeInputs) facts(enc playdb.Encounter, sight *fogSight) modeFacts {
-	return modeFacts{cs: in.cs, states: in.states, theatre: isTheatre(enc), sight: sight}
+	return modeFacts{cs: in.cs, states: in.states, theatre: isTheatre(enc), sight: sight, hiding: in.hiding, helps: in.helps}
 }
 
 // RequestRollMode implements playv1connect.CombatServiceHandler.
@@ -209,7 +215,7 @@ func (s *Service) RequestRollMode(
 		if i < 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key is not one of the attacker's attacks"))
 		}
-		in, err := readModeInputs(ctx, c, cs)
+		in, err := s.readModeInputs(ctx, c, cs)
 		if err != nil {
 			return nil, err
 		}
