@@ -26,6 +26,7 @@ import {
   missingDice,
   saveFormula,
 } from '../../../../core/effects/effects';
+import { RollAnimator, type RollShow } from '../../../../shared/roll-overlay/roll-animator';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
@@ -221,6 +222,7 @@ const EFFECT_DIE_FACES = 4;
 })
 export class EffectSaveSheet {
   private readonly api = inject(EffectsClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<EffectSaveSheetData, void>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -341,6 +343,7 @@ export class EffectSaveSheet {
         return;
       }
       this.result.set(res.result);
+      this.animate(res.result);
       this.done.set(true);
       this.typing.set(false);
     } catch (err) {
@@ -348,6 +351,27 @@ export class EffectSaveSheet {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The d20 the app just rolled, tumbling: the face(s), the total and "Passou" or "Falhou", all of them on this sheet's result. */
+  private animate(r: EffectSaveResult): void {
+    if (r.autoFail || r.skipped || r.physical) {
+      return;
+    }
+    const faces = r.d20Faces.length === 2 ? r.d20Faces : [r.d20];
+    const counted = Math.max(0, faces.indexOf(r.d20));
+    const mod = r.modifier === 0 ? '' : ` ${r.modifier < 0 ? '−' : '+'} ${Math.abs(r.modifier)}`;
+    const show: RollShow = {
+      label: `Teste de resistência de ${this.view().ability}`,
+      dice: faces.map((face, i) => ({
+        sides: 20,
+        face,
+        counts: faces.length === 1 || i === counted,
+      })),
+      line: r.extraDice.length > 0 ? `Total ${r.total}` : `${r.d20}${mod} = ${r.total}`,
+      outcome: { word: r.saved ? 'Passou' : 'Falhou', good: r.saved },
+    };
+    this.animator.play(show);
   }
 
   /** A refusal: physical dice and a d4 the sheet did not list are asked for; any other says what it is. */

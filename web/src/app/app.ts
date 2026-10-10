@@ -29,6 +29,7 @@ import { filter } from 'rxjs';
 
 import { AppFooter } from './shell/app-footer/app-footer';
 import { LivePill } from './shared/live-pill/live-pill';
+import { RollOverlay } from './shared/roll-overlay/roll-overlay';
 import { LiveNotice } from './shell/live-notice/live-notice';
 import { SessionNotes } from './shell/session-notes/session-notes';
 import { OpenSessionVm, OpenSessions, sessionForLiveLink } from './shell/live-notice/open-sessions';
@@ -65,6 +66,7 @@ import { UserMenu } from './shell/user-menu/user-menu';
     AppFooter,
     LivePill,
     LiveNotice,
+    RollOverlay,
     UserMenu,
   ],
   templateUrl: './app.html',
