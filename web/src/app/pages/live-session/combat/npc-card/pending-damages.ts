@@ -4,10 +4,12 @@ import {
   Injector,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
+  untracked,
   viewChild,
   viewChildren,
 } from '@angular/core';
@@ -89,6 +91,21 @@ export class PendingDamages {
   /** The sources of resistance the master told the app to leave out, by damage. */
   protected readonly ignored = signal<Readonly<Record<string, readonly string[] | undefined>>>({});
   private readonly keys = new Map<string, string>();
+
+  /** The note of a settled damage belongs to the turn it was settled on: once the turn passes, it goes. */
+  private readonly turnKey = computed(
+    () => `${this.encounter().round}:${this.encounter().currentCombatantId}`,
+  );
+
+  constructor() {
+    effect(() => {
+      this.turnKey();
+      untracked(() => {
+        this.settled.set('');
+        this.reminder.set('');
+      });
+    });
+  }
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
   private readonly otherInput = viewChild('otherInput', { read: ElementRef<HTMLInputElement> });
   private readonly otherLinks = viewChildren('otherLink', { read: ElementRef<HTMLButtonElement> });
