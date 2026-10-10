@@ -475,6 +475,9 @@ message RollGroupCheckRequest {
 // RollGroupCheckResponse returns the group check and the caller's roll.
 message RollGroupCheckResponse {
   GroupCheckView group_check = 1;
+  // Set when the character holds a Bardic Inspiration die: the d20 was rolled and the check
+  // was not written; AnswerOutsideInspiration settles it.
+  OutsideInspirationOffer inspiration_offer = 2;
 }
 
 // RollForPlayerRequest is the master's roll for a character.

@@ -364,6 +364,11 @@ var reads = []read{
 		},
 	},
 
+	{
+		procedure: playv1connect.ResourceServiceGetOutsideInspirationProcedure, allow: members, why: "a player reads the die of their own character and, as a bard, the party's names; the master reads every die held",
+		req: func(w *world) proto.Message { return &playv1.GetOutsideInspirationRequest{CampaignId: w.campaign} },
+	},
+
 	// ===== CombatService
 	{
 		procedure: playv1connect.CombatServiceGetEncounterProcedure, allow: members,

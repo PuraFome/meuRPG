@@ -3275,6 +3275,22 @@ message BonusDie {
   bool used = 4;
 }
 
+// OutsideInspirationOffer asks the player of a roll made out of a combat (a scene check, a
+// group check) whether to add the Bardic Inspiration die the character holds: the roll
+// answered it instead of the result. The result is only written by
+// AnswerOutsideInspiration (SRD 5.1: the creature can wait until after it rolls the d20 and
+// must decide before the GM says whether the roll succeeds).
+message OutsideInspirationOffer {
+  // The held roll (a UUID).
+  string hold_id = 1;
+  // The size of the die the character holds, and the name of the bard that gave it.
+  int32 sides = 2;
+  string from_name = 3;
+  // The d20 (or both, with advantage or disadvantage) with the bonus the check adds, before
+  // the die: what the player rolled, before the result is told.
+  DiceRoll d20 = 4;
+}
+
 // RollAttackResponse returns the roll and the combat after it.
 message RollAttackResponse {
   // The combat as the caller sees it: the action is spent.

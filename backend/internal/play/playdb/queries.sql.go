@@ -69,6 +69,20 @@ func (q *Queries) AdvanceCharacterEffects(ctx context.Context, arg AdvanceCharac
 	return items, nil
 }
 
+const advanceCharacterInspiration = `-- name: AdvanceCharacterInspiration :exec
+UPDATE character_inspiration SET seconds_left = seconds_left - $2::INT4 WHERE campaign_id = $1
+`
+
+type AdvanceCharacterInspirationParams struct {
+	CampaignID string
+	Column2    int32
+}
+
+func (q *Queries) AdvanceCharacterInspiration(ctx context.Context, arg AdvanceCharacterInspirationParams) error {
+	_, err := q.db.Exec(ctx, advanceCharacterInspiration, arg.CampaignID, arg.Column2)
+	return err
+}
+
 const answerHiddenReveal = `-- name: AnswerHiddenReveal :one
 UPDATE hidden_reveals SET state = $1, answered_at = $2
 WHERE encounter_id = $3 AND id = $4 AND state = 'pending'
@@ -106,6 +120,20 @@ func (q *Queries) AnswerHiddenReveal(ctx context.Context, arg AnswerHiddenReveal
 		&i.AnsweredAt,
 	)
 	return i, err
+}
+
+const answerInspirationHold = `-- name: AnswerInspirationHold :exec
+UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1
+`
+
+type AnswerInspirationHoldParams struct {
+	ID        string
+	AnswerKey *string
+}
+
+func (q *Queries) AnswerInspirationHold(ctx context.Context, arg AnswerInspirationHoldParams) error {
+	_, err := q.db.Exec(ctx, answerInspirationHold, arg.ID, arg.AnswerKey)
+	return err
 }
 
 const answerRevivifyRequest = `-- name: AnswerRevivifyRequest :one
@@ -679,6 +707,27 @@ func (q *Queries) DeleteCharacterEffectsOfSpell(ctx context.Context, arg DeleteC
 	return items, nil
 }
 
+const deleteCharacterInspiration = `-- name: DeleteCharacterInspiration :execrows
+DELETE FROM character_inspiration WHERE character_id = $1
+`
+
+func (q *Queries) DeleteCharacterInspiration(ctx context.Context, characterID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCharacterInspiration, characterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteCharacterInspirationOfCampaign = `-- name: DeleteCharacterInspirationOfCampaign :exec
+DELETE FROM character_inspiration WHERE campaign_id = $1
+`
+
+func (q *Queries) DeleteCharacterInspirationOfCampaign(ctx context.Context, campaignID string) error {
+	_, err := q.db.Exec(ctx, deleteCharacterInspirationOfCampaign, campaignID)
+	return err
+}
+
 const deleteCombatant = `-- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1
@@ -831,6 +880,20 @@ func (q *Queries) DeleteEndedCombatantStates(ctx context.Context, arg DeleteEnde
 	return items, nil
 }
 
+const deleteExpiredCharacterInspiration = `-- name: DeleteExpiredCharacterInspiration :exec
+DELETE FROM character_inspiration WHERE campaign_id = $1 AND seconds_left <= $2::INT4
+`
+
+type DeleteExpiredCharacterInspirationParams struct {
+	CampaignID string
+	Column2    int32
+}
+
+func (q *Queries) DeleteExpiredCharacterInspiration(ctx context.Context, arg DeleteExpiredCharacterInspirationParams) error {
+	_, err := q.db.Exec(ctx, deleteExpiredCharacterInspiration, arg.CampaignID, arg.Column2)
+	return err
+}
+
 const deleteExpiredCombatantStates = `-- name: DeleteExpiredCombatantStates :many
 DELETE FROM combatant_states
 WHERE encounter_id = $1
@@ -918,6 +981,24 @@ DELETE FROM hidden_reveals WHERE encounter_id = $1
 // Ending the combat drops what was still to answer.
 func (q *Queries) DeleteHiddenRevealsOfEncounter(ctx context.Context, encounterID string) error {
 	_, err := q.db.Exec(ctx, deleteHiddenRevealsOfEncounter, encounterID)
+	return err
+}
+
+const deleteInspirationHold = `-- name: DeleteInspirationHold :exec
+DELETE FROM inspiration_holds WHERE id = $1
+`
+
+func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteInspirationHold, id)
+	return err
+}
+
+const deleteInspirationHoldsOfCharacter = `-- name: DeleteInspirationHoldsOfCharacter :exec
+DELETE FROM inspiration_holds WHERE character_id = $1
+`
+
+func (q *Queries) DeleteInspirationHoldsOfCharacter(ctx context.Context, characterID string) error {
+	_, err := q.db.Exec(ctx, deleteInspirationHoldsOfCharacter, characterID)
 	return err
 }
 
@@ -1340,6 +1421,30 @@ func (q *Queries) GetCharacterEffect(ctx context.Context, arg GetCharacterEffect
 	return i, err
 }
 
+const getCharacterInspiration = `-- name: GetCharacterInspiration :one
+SELECT character_id, campaign_id, source_character_id, sides, seconds_left, created_at FROM character_inspiration WHERE character_id = $1 AND campaign_id = $2
+`
+
+type GetCharacterInspirationParams struct {
+	CharacterID string
+	CampaignID  string
+}
+
+// The Bardic Inspiration die a character holds out of a running combat.
+func (q *Queries) GetCharacterInspiration(ctx context.Context, arg GetCharacterInspirationParams) (CharacterInspiration, error) {
+	row := q.db.QueryRow(ctx, getCharacterInspiration, arg.CharacterID, arg.CampaignID)
+	var i CharacterInspiration
+	err := row.Scan(
+		&i.CharacterID,
+		&i.CampaignID,
+		&i.SourceCharacterID,
+		&i.Sides,
+		&i.SecondsLeft,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getEncounterByID = `-- name: GetEncounterByID :one
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters WHERE id = $1
 `
@@ -1518,6 +1623,68 @@ func (q *Queries) GetHiddenReveal(ctx context.Context, arg GetHiddenRevealParams
 		&i.State,
 		&i.CreatedAt,
 		&i.AnsweredAt,
+	)
+	return i, err
+}
+
+const getInspirationHold = `-- name: GetInspirationHold :one
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
+`
+
+type GetInspirationHoldParams struct {
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) GetInspirationHold(ctx context.Context, arg GetInspirationHoldParams) (InspirationHold, error) {
+	row := q.db.QueryRow(ctx, getInspirationHold, arg.CampaignID, arg.ID)
+	var i InspirationHold
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Kind,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Faces,
+		&i.Modifier,
+		&i.Total,
+		&i.Counted,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getInspirationHoldByKey = `-- name: GetInspirationHoldByKey :one
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
+`
+
+type GetInspirationHoldByKeyParams struct {
+	CampaignID     string
+	IdempotencyKey string
+}
+
+func (q *Queries) GetInspirationHoldByKey(ctx context.Context, arg GetInspirationHoldByKeyParams) (InspirationHold, error) {
+	row := q.db.QueryRow(ctx, getInspirationHoldByKey, arg.CampaignID, arg.IdempotencyKey)
+	var i InspirationHold
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Kind,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Faces,
+		&i.Modifier,
+		&i.Total,
+		&i.Counted,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -2694,6 +2861,33 @@ func (q *Queries) InsertCharacterEffect(ctx context.Context, arg InsertCharacter
 	return i, err
 }
 
+const insertCharacterInspiration = `-- name: InsertCharacterInspiration :exec
+INSERT INTO character_inspiration (character_id, campaign_id, source_character_id, sides, seconds_left, created_at)
+VALUES ($1, $2, $6, $3, $4, $5)
+ON CONFLICT (character_id) DO UPDATE SET source_character_id = EXCLUDED.source_character_id, sides = EXCLUDED.sides, seconds_left = EXCLUDED.seconds_left, created_at = EXCLUDED.created_at
+`
+
+type InsertCharacterInspirationParams struct {
+	CharacterID       string
+	CampaignID        string
+	Sides             int32
+	SecondsLeft       int32
+	CreatedAt         time.Time
+	SourceCharacterID *string
+}
+
+func (q *Queries) InsertCharacterInspiration(ctx context.Context, arg InsertCharacterInspirationParams) error {
+	_, err := q.db.Exec(ctx, insertCharacterInspiration,
+		arg.CharacterID,
+		arg.CampaignID,
+		arg.Sides,
+		arg.SecondsLeft,
+		arg.CreatedAt,
+		arg.SourceCharacterID,
+	)
+	return err
+}
+
 const insertCombatReason = `-- name: InsertCombatReason :one
 INSERT INTO combat_reasons (encounter_id, kind, reason, created_at)
 VALUES ($1, $2, $3, $4)
@@ -3325,6 +3519,62 @@ func (q *Queries) InsertHiddenReveal(ctx context.Context, arg InsertHiddenReveal
 		&i.State,
 		&i.CreatedAt,
 		&i.AnsweredAt,
+	)
+	return i, err
+}
+
+const insertInspirationHold = `-- name: InsertInspirationHold :one
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at
+`
+
+type InsertInspirationHoldParams struct {
+	CampaignID     string
+	CharacterID    string
+	UserID         string
+	Kind           string
+	IdempotencyKey string
+	Request        []byte
+	Faces          []int32
+	Modifier       int32
+	Total          int32
+	Counted        int32
+	Physical       bool
+	CreatedAt      time.Time
+}
+
+func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirationHoldParams) (InspirationHold, error) {
+	row := q.db.QueryRow(ctx, insertInspirationHold,
+		arg.CampaignID,
+		arg.CharacterID,
+		arg.UserID,
+		arg.Kind,
+		arg.IdempotencyKey,
+		arg.Request,
+		arg.Faces,
+		arg.Modifier,
+		arg.Total,
+		arg.Counted,
+		arg.Physical,
+		arg.CreatedAt,
+	)
+	var i InspirationHold
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Kind,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Faces,
+		&i.Modifier,
+		&i.Total,
+		&i.Counted,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -4718,6 +4968,37 @@ func (q *Queries) ListCharacterEffectsOfCampaign(ctx context.Context, campaignID
 	return items, nil
 }
 
+const listCharacterInspirationOfCampaign = `-- name: ListCharacterInspirationOfCampaign :many
+SELECT character_id, campaign_id, source_character_id, sides, seconds_left, created_at FROM character_inspiration WHERE campaign_id = $1
+`
+
+func (q *Queries) ListCharacterInspirationOfCampaign(ctx context.Context, campaignID string) ([]CharacterInspiration, error) {
+	rows, err := q.db.Query(ctx, listCharacterInspirationOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterInspiration
+	for rows.Next() {
+		var i CharacterInspiration
+		if err := rows.Scan(
+			&i.CharacterID,
+			&i.CampaignID,
+			&i.SourceCharacterID,
+			&i.Sides,
+			&i.SecondsLeft,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCombatEffectsOfCharacter = `-- name: ListCombatEffectsOfCharacter :many
 SELECT cs.id, cs.encounter_id, cs.combatant_id, cs.kind, cs.source_id, cs.ends_combatant_id, cs.ends_phase, cs.ends_round, cs.started_round, cs.amount, cs.created_at, cs.group_id, cs.source_key, cs.source_kind, cs.concentration, cs.condition_keys, cs.modifiers, cs.duration_kind, cs.end_save_ability, cs.start_save_ability, cs.save_dc, cs.on_fail_effect, cs.follows_key, cs.trigger_dice, cs.trigger_damage_type, cs.trigger_max_triggers, cs.triggers_fired, cs.player_visible, cs.audience, cs.player_label FROM combatant_states cs
 JOIN combatants c ON c.id = cs.combatant_id
@@ -5449,6 +5730,45 @@ func (q *Queries) ListHeldReactionHolds(ctx context.Context, encounterID string)
 			&i.Request,
 			&i.Data,
 			&i.State,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInspirationHoldsOfCharacter = `-- name: ListInspirationHoldsOfCharacter :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at
+`
+
+func (q *Queries) ListInspirationHoldsOfCharacter(ctx context.Context, characterID string) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listInspirationHoldsOfCharacter, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
