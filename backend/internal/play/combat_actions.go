@@ -1989,7 +1989,9 @@ func (s *Service) TakeAction(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the standard or feature actions"))
 		}
 		action := list[i]
-		if actionKey == actionHide || actionKey == actionHelp {
+		// A character's or an NPC's Hide and Help have their own calls. A creature's (a familiar's
+		// Help) stays a plain action: it spends the creature's action and the master rules on it.
+		if (actionKey == actionHide || actionKey == actionHelp) && !isCreature(who) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("Hide and Help have their own calls: ContestService.Hide and ContestService.Help"))
 		}
 		economy := action.GetAction().GetEconomy()

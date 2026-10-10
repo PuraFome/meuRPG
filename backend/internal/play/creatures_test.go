@@ -990,10 +990,12 @@ func TestMR037_TheKindAudit(t *testing.T) {
 	wantBlockedBy(t, "RollAttack by the familiar", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK)
 	_, err = a.attack(t, a.master, e, "Nanquim", "monster:owl#talons", "Goblin", inAppRoll)
 	wantBlockedBy(t, "RollAttack by the familiar as the master", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK)
-	if out, err := a.action(t, a.ana, e, "Nanquim", "standard:dodge"); err != nil {
-		t.Errorf("TakeAction(Esquivar) by the familiar error = %v", err)
+	// Help, the familiar's own trick, is a plain action for a creature (ContestService.Help keeps
+	// characters and NPCs): it spends the familiar's action and the master rules on it.
+	if out, err := a.action(t, a.ana, e, "Nanquim", "standard:help"); err != nil {
+		t.Errorf("TakeAction(Ajudar) by the familiar error = %v", err)
 	} else if !byLabel(t, out, "Nanquim").GetActionUsed() {
-		t.Error("the familiar's Dodge must spend its action")
+		t.Error("the familiar's Help must spend its action")
 	}
 	// A creature makes no death save, and it is never confirmed dead.
 	_, err = a.deathSave(t, a.ana, e, "Nanquim", func(r *playv1.RollDeathSaveRequest) {
