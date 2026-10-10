@@ -10,6 +10,10 @@ import {
   CharacterBlockedSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ABILITY_KEYS } from '../../core/characters/characters.types';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatDialog } from '@angular/material/dialog';
+import { SpellDetails } from '../../shared/spell-details/spell-details';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-sessions';
 import { CharacterSheetPage } from './character-sheet';
 import { NotesClient } from '../../core/notes/notes-client';
@@ -83,6 +87,12 @@ class FakeCharacterSheetSource {
 
   pendingChoices = 0;
   pendingChoiceCalls: string[] = [];
+
+  spellDetailsCalls: string[] = [];
+  loadSpellDetails(_campaignId: string, spellKey: string): Promise<SpellDetailsVm> {
+    this.spellDetailsCalls.push(spellKey);
+    return Promise.resolve({ key: spellKey } as SpellDetailsVm);
+  }
 
   getXpMode(): Promise<CampaignXpMode> {
     return Promise.resolve(this.xpMode);
@@ -174,8 +184,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     spellcasting: [],
     spellSlots: [],
     pactSlots: null,
-    cantripNames: [],
-    spellNames: [],
+    spells: [],
     features: [],
     breathWeapon: '',
     resistances: [],
@@ -481,6 +490,129 @@ describe('CharacterSheetPage', () => {
     expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('Golpe desarmado');
   });
 
+  describe('the spell list', () => {
+    const spell = (key: string, namePt: string, level: number, over: object = {}) => ({
+      key,
+      namePt,
+      level,
+      prepared: true,
+      ritual: false,
+      concentration: false,
+      reaction: false,
+      ...over,
+    });
+    const wizard = (spellbook: boolean, spells: ReturnType<typeof spell>[]) =>
+      vm({
+        sheet: fullSheet({
+          spells,
+          spellcasting: [
+            {
+              className: 'Mago',
+              ability: 'int',
+              saveDc: 14,
+              attackBonus: 6,
+              cantripsKnown: 3,
+              spellsPreparedMax: 7,
+              spellsKnownMax: 0,
+              spellbook,
+            },
+          ],
+        }),
+      });
+    const text = (e: Element | null | undefined) =>
+      (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
+
+    it('groups by level, splits prepared from the spellbook and tags ritual, concentration and reaction', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(
+          wizard(true, [
+            spell('spell:fire-bolt', 'Raio de Fogo', 0),
+            spell('spell:detect-magic', 'Detectar Magia', 1, {
+              prepared: false,
+              ritual: true,
+              concentration: true,
+            }),
+            spell('spell:shield', 'Escudo Arcano', 1, { reaction: true }),
+            spell('spell:web', 'Teia', 2, { concentration: true }),
+          ]),
+        );
+      const el = await render();
+      const groups = Array.from(el.querySelectorAll('.spells__group'));
+      expect(groups.map((g) => text(g.querySelector('.spells__label')))).toEqual([
+        'Truques',
+        '1º nível',
+        '2º nível',
+      ]);
+      const rows = (g: Element) =>
+        Array.from(g.querySelectorAll('.spell')).map((r) =>
+          [r.querySelector('.spell__name'), ...Array.from(r.querySelectorAll('.spell__tag'))]
+            .map((e) => text(e))
+            .join(' '),
+        );
+      // A cantrip says nothing of preparation; a spell not prepared is in the spellbook.
+      expect(rows(groups[0])).toEqual(['Raio de Fogo']);
+      expect(text(groups[0])).not.toContain('Preparada');
+      expect(rows(groups[1])[0]).toBe('Detectar Magia Ritual Concentração No grimório');
+      expect(rows(groups[1])[1]).toBe('Escudo Arcano Reação Preparada');
+      expect(rows(groups[2])[0]).toBe('Teia Concentração Preparada');
+      expect(text(el.querySelector('.spells'))).toContain('2 preparadas e 1 só no grimório.');
+    });
+
+    it('says nothing of preparation for a class that knows its spells', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(
+          vm({
+            sheet: fullSheet({
+              spells: [spell('spell:sleep', 'Sono', 1)],
+              spellcasting: [
+                {
+                  className: 'Feiticeiro',
+                  ability: 'cha',
+                  saveDc: 13,
+                  attackBonus: 5,
+                  cantripsKnown: 4,
+                  spellsPreparedMax: 0,
+                  spellsKnownMax: 5,
+                  spellbook: false,
+                },
+              ],
+            }),
+          }),
+        );
+      const el = await render();
+      expect(text(el.querySelector('.spells__label'))).toBe('1º nível');
+      expect(text(el.querySelector('.spell'))).toContain('Sono');
+      expect(el.textContent).not.toContain('Preparada');
+      expect(el.textContent).not.toContain('No grimório');
+    });
+
+    it('opens the description with a tap on the name or on the "?"', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(wizard(true, [spell('spell:shield', 'Escudo Arcano', 1)]));
+      const dialog = TestBed.inject(MatDialog);
+      const sheet = TestBed.inject(MatBottomSheet);
+      const openDialog = vi.spyOn(dialog, 'open').mockReturnValue(undefined as never);
+      const openSheet = vi.spyOn(sheet, 'open').mockReturnValue(undefined as never);
+      const el = await render();
+
+      (el.querySelector('.spell__open') as HTMLButtonElement).click();
+      (el.querySelector('app-spell-help button') as HTMLButtonElement).click();
+
+      const opened = [...openDialog.mock.calls, ...openSheet.mock.calls];
+      expect(opened).toHaveLength(2);
+      for (const call of opened) {
+        expect(call[0]).toBe(SpellDetails);
+        const data = (call[1] as { data: { namePt: string; load: () => Promise<unknown> } }).data;
+        expect(data.namePt).toBe('Escudo Arcano');
+        await data.load();
+      }
+      expect(fake.spellDetailsCalls).toEqual(['spell:shield']); // the second read is the kept one
+    });
+  });
+
   it('shows spell slots as a readable, separated list using "nível" (integrator fix)', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
@@ -497,6 +629,7 @@ describe('CharacterSheetPage', () => {
                 cantripsKnown: 3,
                 spellsPreparedMax: 7,
                 spellsKnownMax: 0,
+                spellbook: false,
               },
             ],
           }),
@@ -539,6 +672,7 @@ describe('CharacterSheetPage', () => {
                 cantripsKnown: 2,
                 spellsPreparedMax: 2,
                 spellsKnownMax: 0,
+                spellbook: false,
               },
             ],
           }),
@@ -568,6 +702,7 @@ describe('CharacterSheetPage', () => {
                 cantripsKnown: 3,
                 spellsPreparedMax: 7,
                 spellsKnownMax: 0,
+                spellbook: false,
               },
             ],
           }),
@@ -2434,6 +2569,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
                   cantripsKnown: 3,
                   spellsPreparedMax: 7,
                   spellsKnownMax: 0,
+                  spellbook: false,
                 },
               ],
             }),

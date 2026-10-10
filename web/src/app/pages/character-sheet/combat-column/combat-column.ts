@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 
 import {
   abilityLabel,
@@ -6,14 +6,17 @@ import {
   splitArmorDescription,
 } from '../../../core/characters/character-labels';
 import type { VitalsVm } from '../../live-session/live-session.types';
+import { SpellHelp } from '../../../shared/spell-details/spell-help';
 import { FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {
   coinEntries,
   keepUnitsTogether,
   pactSlotRow,
+  spellGroups,
   spellLimitsText,
   spellSlotRows,
+  spellStateSummary,
 } from '../sheet-format';
 
 /**
@@ -25,7 +28,7 @@ import {
  */
 @Component({
   selector: 'app-combat-column',
-  imports: [CombatStats],
+  imports: [CombatStats, SpellHelp],
   templateUrl: './combat-column.html',
   styleUrl: './combat-column.scss',
 })
@@ -46,6 +49,14 @@ export class CombatColumn {
   protected readonly abilityLabel = abilityLabel;
   protected readonly formatModifier = formatModifier;
   protected readonly spellLimitsText = spellLimitsText;
+
+  /** A tap on a spell (its name or its "?"): the key, so the sheet opens its description. */
+  readonly spellOpened = output<string>();
+  /** The spells by level, each with its tags and, for a class that prepares, whether it is prepared. */
+  protected readonly spellGroupList = computed(() =>
+    spellGroups(this.sheet().spells, this.sheet().spellcasting),
+  );
+  protected readonly stateSummary = computed(() => spellStateSummary(this.spellGroupList()));
 
   /** "Magias de mago" for a single caster class, as the paper sheet's
    * spellcasting page names its class; "Magias" for a multiclass. */

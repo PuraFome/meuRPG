@@ -4378,6 +4378,14 @@ message CombatLogEntry {
   // MOVED by a long jump: the combatant had walked 10 ft just before, so the jump
   // counted with a running start. Everyone who gets the line.
   bool jump_running_start = 45;
+  // MOVED on foot: the movement the walk spent, in tenths of a foot, when it is not the
+  // distance: the path's cost (a square of another creature or of difficult terrain
+  // costs double), doubled again by a drag (`move_dragging`) or a crawl
+  // (`move_crawling`). Zero when the move spent nothing (the master's free move) or
+  // the event is older; then the line says only the distance. Everyone who gets the line.
+  int32 spent_dft = 48;
+  bool move_dragging = 49;
+  bool move_crawling = 50;
   // MOVED by a long jump, only the master: it landed in difficult terrain, so the
   // line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
   bool landing_difficult = 33;

@@ -427,7 +427,13 @@ type actionEvent struct {
 	CostDFt     int32 `json:"cost_dft,omitempty"`
 	DistanceFt  int32 `json:"distance_ft,omitempty"`
 	DistanceDFt int32 `json:"distance_dft,omitempty"`
-	OnTurn      bool  `json:"on_turn,omitempty"`
+	// SpentDFt is the movement a walk really spent, in tenths of a foot: the path's
+	// cost times the factor of a drag or a crawl, which Dragging and Crawling name.
+	// Zero when the move spent nothing (the master's free move) or was written before.
+	SpentDFt int32 `json:"spent_dft,omitempty"`
+	Dragging bool  `json:"dragging,omitempty"`
+	Crawling bool  `json:"crawling,omitempty"`
+	OnTurn   bool  `json:"on_turn,omitempty"`
 	// A jump: its kind ("long", "high"), the height of a high one, and whether a
 	// long one landed in difficult terrain (the master's log reminds the
 	// Acrobatics check, D3). From is where the combatant stood and what it had

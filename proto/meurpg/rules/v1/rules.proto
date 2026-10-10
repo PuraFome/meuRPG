@@ -966,6 +966,11 @@ message Spellcasting {
   // How many spells the character can prepare each day, for classes that
   // prepare spells (Cleric, Druid, Paladin, Wizard). 0 for the others.
   int32 prepared_max = 8;
+  // True when the class keeps its spells in a spellbook and prepares some of them
+  // (Wizard): the spells on the sheet that are not prepared are in the spellbook. False
+  // for a class that prepares from its whole list (Cleric, Druid, Paladin) or knows a
+  // fixed number of spells.
+  bool spellbook = 9;
 }
 
 // SpellSlots is how many slots the character has of one spell level.
@@ -1451,6 +1456,9 @@ message Spell {
   bool archived = 10;
   // Switched off for the players (see Race.off).
   bool off = 11;
+  // Whether it is cast as a reaction (casting time "1 reaction", like Shield), so the
+  // sheet's spell list can tag it without reading the description.
+  bool reaction = 12;
 }
 
 // ListContentRequest names a campaign.

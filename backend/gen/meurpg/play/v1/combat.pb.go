@@ -14180,6 +14180,14 @@ type CombatLogEntry struct {
 	// MOVED by a long jump: the combatant had walked 10 ft just before, so the jump
 	// counted with a running start. Everyone who gets the line.
 	JumpRunningStart bool `protobuf:"varint,45,opt,name=jump_running_start,json=jumpRunningStart,proto3" json:"jump_running_start,omitempty"`
+	// MOVED on foot: the movement the walk spent, in tenths of a foot, when it is not the
+	// distance: the path's cost (a square of another creature or of difficult terrain
+	// costs double), doubled again by a drag (`move_dragging`) or a crawl
+	// (`move_crawling`). Zero when the move spent nothing (the master's free move) or
+	// the event is older; then the line says only the distance. Everyone who gets the line.
+	SpentDft     int32 `protobuf:"varint,48,opt,name=spent_dft,json=spentDft,proto3" json:"spent_dft,omitempty"`
+	MoveDragging bool  `protobuf:"varint,49,opt,name=move_dragging,json=moveDragging,proto3" json:"move_dragging,omitempty"`
+	MoveCrawling bool  `protobuf:"varint,50,opt,name=move_crawling,json=moveCrawling,proto3" json:"move_crawling,omitempty"`
 	// MOVED by a long jump, only the master: it landed in difficult terrain, so the
 	// line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
 	LandingDifficult bool `protobuf:"varint,33,opt,name=landing_difficult,json=landingDifficult,proto3" json:"landing_difficult,omitempty"`
@@ -14478,6 +14486,27 @@ func (x *CombatLogEntry) GetJumpHeightDft() int32 {
 func (x *CombatLogEntry) GetJumpRunningStart() bool {
 	if x != nil {
 		return x.JumpRunningStart
+	}
+	return false
+}
+
+func (x *CombatLogEntry) GetSpentDft() int32 {
+	if x != nil {
+		return x.SpentDft
+	}
+	return 0
+}
+
+func (x *CombatLogEntry) GetMoveDragging() bool {
+	if x != nil {
+		return x.MoveDragging
+	}
+	return false
+}
+
+func (x *CombatLogEntry) GetMoveCrawling() bool {
+	if x != nil {
+		return x.MoveCrawling
 	}
 	return false
 }
@@ -21224,7 +21253,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\astarted\x18\x03 \x01(\bR\astarted\x12A\n" +
 	"\n" +
 	"end_reason\x18\x04 \x01(\x0e2\".meurpg.play.v1.WildShapeEndReasonR\tendReason\x12%\n" +
-	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\xd1\x11\n" +
+	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\xb8\x12\n" +
 	"\x0eCombatLogEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1d.meurpg.play.v1.CombatLogKindR\x04kind\x12*\n" +
@@ -21268,7 +21297,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\fdistance_dft\x18\x1e \x01(\x05R\vdistanceDft\x12,\n" +
 	"\x04jump\x18\x1f \x01(\x0e2\x18.meurpg.play.v1.JumpKindR\x04jump\x12&\n" +
 	"\x0fjump_height_dft\x18  \x01(\x05R\rjumpHeightDft\x12,\n" +
-	"\x12jump_running_start\x18- \x01(\bR\x10jumpRunningStart\x12+\n" +
+	"\x12jump_running_start\x18- \x01(\bR\x10jumpRunningStart\x12\x1b\n" +
+	"\tspent_dft\x180 \x01(\x05R\bspentDft\x12#\n" +
+	"\rmove_dragging\x181 \x01(\bR\fmoveDragging\x12#\n" +
+	"\rmove_crawling\x182 \x01(\bR\fmoveCrawling\x12+\n" +
 	"\x11landing_difficult\x18! \x01(\bR\x10landingDifficult\x12*\n" +
 	"\x11returned_to_reach\x18\" \x01(\bR\x0freturnedToReach\x12%\n" +
 	"\x0ereturn_blocked\x18# \x01(\bR\rreturnBlocked\x12.\n" +

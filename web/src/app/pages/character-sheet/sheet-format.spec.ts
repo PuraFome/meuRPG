@@ -7,7 +7,9 @@ import {
   spellLimitsText,
   pactSlotRow,
   pendingTag,
+  spellGroups,
   spellSlotRows,
+  spellStateSummary,
   stateTagLabel,
 } from './sheet-format';
 
@@ -74,7 +76,7 @@ describe('sheet-format', () => {
 
   it('says the class spell limits in one sentence', () => {
     const sc = { className: 'Mago', ability: 'int' as const, saveDc: 14, attackBonus: 6 };
-    const limits = { cantripsKnown: 0, spellsPreparedMax: 0, spellsKnownMax: 0 };
+    const limits = { cantripsKnown: 0, spellsPreparedMax: 0, spellsKnownMax: 0, spellbook: false };
     expect(spellLimitsText({ ...sc, ...limits, cantripsKnown: 3, spellsPreparedMax: 7 })).toBe(
       'Até 3 truques e 7 magias preparadas.',
     );
@@ -94,6 +96,7 @@ describe('sheet-format', () => {
       cantripsKnown: 4,
       spellsPreparedMax: 0,
       spellsKnownMax: 5,
+      spellbook: false,
     };
     expect(spellLimitsText(sorcerer)).toBe('Até 4 truques e 5 magias conhecidas.');
     expect(spellLimitsText({ ...sorcerer, cantripsKnown: 0, spellsKnownMax: 1 })).toBe(
@@ -127,5 +130,56 @@ describe('sheet-format', () => {
       label: 'Pendente · reenviado',
       icon: 'task_alt',
     });
+  });
+});
+
+describe('spellGroups', () => {
+  const spell = (key: string, level: number, over: object = {}) => ({
+    key,
+    namePt: key,
+    level,
+    prepared: true,
+    ritual: false,
+    concentration: false,
+    reaction: false,
+    ...over,
+  });
+  const caster = (over: object) => ({
+    className: 'Mago',
+    ability: 'int' as const,
+    saveDc: 13,
+    attackBonus: 5,
+    cantripsKnown: 3,
+    spellsPreparedMax: 0,
+    spellsKnownMax: 0,
+    spellbook: false,
+    ...over,
+  });
+
+  it('groups by level with cantrips first and tags in a fixed order', () => {
+    const groups = spellGroups(
+      [
+        spell('b', 2),
+        spell('a', 0),
+        spell('c', 1, { reaction: true, concentration: true, ritual: true }),
+      ],
+      [caster({ spellsKnownMax: 5 })],
+    );
+    expect(groups.map((g) => g.label)).toEqual(['Truques', '1º nível', '2º nível']);
+    expect(groups[1].rows[0].tags).toEqual(['Ritual', 'Concentração', 'Reação']);
+    // A class that knows its spells has no preparation to say.
+    expect(groups.flatMap((g) => g.rows.map((r) => r.state))).toEqual(['', '', '']);
+    expect(spellStateSummary(groups)).toBe('');
+  });
+
+  it('tells prepared from the spellbook, and from known for a class without a book', () => {
+    const spells = [spell('a', 1), spell('b', 1, { prepared: false }), spell('c', 0)];
+    const book = spellGroups(spells, [caster({ spellsPreparedMax: 4, spellbook: true })]);
+    expect(book[1].rows.map((r) => r.state)).toEqual(['Preparada', 'No grimório']);
+    expect(book[0].rows[0].state).toBe('');
+    expect(spellStateSummary(book)).toBe('1 preparada e 1 só no grimório.');
+    const cleric = spellGroups(spells, [caster({ spellsPreparedMax: 4 })]);
+    expect(cleric[1].rows.map((r) => r.state)).toEqual(['Preparada', 'Conhecida']);
+    expect(spellStateSummary(cleric)).toBe('1 preparada e 1 só conhecida.');
   });
 });
