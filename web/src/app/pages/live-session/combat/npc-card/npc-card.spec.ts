@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { AreaPlacement } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { AdvantageSourceKind, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
@@ -206,7 +206,7 @@ describe("NpcCard: an NPC's area spell", () => {
 });
 
 describe('NpcCard: the typed d20 follows the roll mode of the target', () => {
-  const opts = (rollMode: RollMode) =>
+  const opts = (rollMode: RollMode, sources: unknown[] = []) =>
     ({
       options: {
         attacks: [
@@ -225,12 +225,12 @@ describe('NpcCard: the typed d20 follows the roll mode of the target', () => {
         ],
       },
       attackTargets: [
-        { attackKey: 'a1', targets: [{ combatantId: 't1', label: 'Iolanda', rollMode }] },
+        { attackKey: 'a1', targets: [{ combatantId: 't1', label: 'Iolanda', rollMode, sources }] },
       ],
       pendingDamages: [],
     }) as never;
 
-  async function render(rollMode: RollMode) {
+  async function render(rollMode: RollMode, sources: unknown[] = []) {
     TestBed.resetTestingModule();
     const rollAttack = vi.fn().mockRejectedValue(new Error('stop'));
     TestBed.configureTestingModule({
@@ -244,7 +244,7 @@ describe('NpcCard: the typed d20 follows the roll mode of the target', () => {
     );
     fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Carniçal' }));
     fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
-    fixture.componentRef.setInput('options', opts(rollMode));
+    fixture.componentRef.setInput('options', opts(rollMode, sources));
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -269,9 +269,57 @@ describe('NpcCard: the typed d20 follows the roll mode of the target', () => {
     expect(card.pairHint()).toContain('Conta o menor');
   });
 
+  it('says why the roll has advantage, so the master knows which die counts', async () => {
+    const { el } = await render(RollMode.ADVANTAGE, [
+      {
+        kind: AdvantageSourceKind.UNSEEN_ATTACKER,
+        effect: RollMode.ADVANTAGE,
+        textPt: 'atacante não visto',
+      },
+    ]);
+    expect(el.textContent).toContain('Vantagem: atacante não visto');
+  });
+
+  it('says nothing about the mode when the roll is normal', async () => {
+    const { el } = await render(RollMode.NORMAL);
+    expect(el.textContent).not.toContain('Vantagem');
+  });
+
   it('keeps one d20 when the roll is normal', async () => {
     const { el } = await render(RollMode.NORMAL);
     expect(el.querySelector('app-roll-picker')).not.toBeNull();
     expect(el.querySelector('app-multi-roll')).toBeNull();
+  });
+});
+
+describe('NpcCard: Levantar-se of a prone NPC', () => {
+  const card = (over: object) => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }] });
+    const fixture = TestBed.createComponent(NpcCard);
+    const goblin = combatant({
+      id: 'npc',
+      label: 'Goblin 2',
+      conditions: ['condition:prone'],
+      standUpCostDft: 150,
+      movementLeftDft: 300,
+      ...over,
+    });
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [goblin] }));
+    fixture.componentRef.setInput('subject', goblin);
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  };
+
+  it('offers it to a prone NPC with the movement', () => {
+    expect(card({}).textContent).toContain('Levantar-se');
+  });
+
+  it('does not offer it to an incapacitated one (Riso Histérico keeps it prone)', () => {
+    expect(
+      card({ conditions: ['condition:prone', 'condition:incapacitated'] }).textContent,
+    ).not.toContain('Levantar-se');
   });
 });

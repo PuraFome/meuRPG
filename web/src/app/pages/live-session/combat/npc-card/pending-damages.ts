@@ -123,6 +123,25 @@ export class PendingDamages {
       .map((p) => this.describe(p)),
   );
 
+  /**
+   * Which part of a trap's hit a card is: "Armadilha: perfurante (2 de 4)". A trap that fires several times (darts) opens
+   * one card per damage type per hit, all on the same target and trap point; the card carries no hit number, so the
+   * position among the cards of the same target, point and type, in the order they were opened, stands for it.
+   */
+  private trapLabel(p: PendingDamage): string {
+    if (!p.trapPointId) {
+      return '';
+    }
+    const same = this.pendings().filter(
+      (q) =>
+        q.trapPointId === p.trapPointId &&
+        q.targetId === p.targetId &&
+        q.damageTypeKey === p.damageTypeKey,
+    );
+    const word = `${p.trapName || 'Armadilha'}: ${p.damageTypePt || 'dano'}`;
+    return same.length > 1 ? `${word} (${same.indexOf(p) + 1} de ${same.length})` : word;
+  }
+
   private describe(p: PendingDamage) {
     const e = this.encounter();
     const attacker = e.combatants.find((c) => c.id === p.attackerId);
@@ -150,6 +169,7 @@ export class PendingDamages {
           : ''),
       // A player rolls the damage of their own attack; the master waits.
       waitsForPlayer: !rolled && !!attacker && isPlayer(attacker),
+      trapLabel: this.trapLabel(p),
       attacker: attacker?.label ?? '',
       target: target?.label ?? '',
       dice: diceName(p.diceCount, p.diceSides),
@@ -172,16 +192,38 @@ export class PendingDamages {
       ),
       modifier: p.bonus + p.criticalMax,
       fixedText: fixedParts(p.criticalMax, p.bonus),
-      effect:
-        rolled && target && target.hitPointsMax !== undefined
-          ? hitPointsLine(
-              target.label,
-              target.hitPointsCurrent ?? 0,
-              target.hitPointsMax,
-              hitPointsAfter(target.hitPointsCurrent ?? 0, target.hitPointsTemporary ?? 0, total),
-            )
-          : '',
+      effect: rolled && target ? this.effectLine(target, total) : '',
     };
+  }
+
+  /** The target's hit points before and after the damage. A druid in Wild Shape loses the beast's points first
+   * ("Lobo: 11 de 11 PV, depois 4"); what the beast cannot take passes to the druid (SRD 5.1, "Wild Shape"). */
+  private effectLine(target: Encounter['combatants'][number], total: number): string {
+    const beastCurrent = target.wildShapeHitPointsCurrent;
+    const beastMax = target.wildShapeHitPointsMax;
+    if (target.wildShapeBeastKey !== '' && beastCurrent !== undefined && beastMax !== undefined) {
+      const beast = target.wildShapeBeastNamePt || 'Forma animal';
+      const line = hitPointsLine(
+        beast,
+        beastCurrent,
+        beastMax,
+        hitPointsAfter(beastCurrent, 0, total),
+      );
+      const over = total - beastCurrent;
+      if (over > 0 && target.hitPointsMax !== undefined) {
+        const own = target.hitPointsCurrent ?? 0;
+        return `${line}; o resto (${over}) passa para ${hitPointsLine(target.label, own, target.hitPointsMax, hitPointsAfter(own, target.hitPointsTemporary ?? 0, over))}`;
+      }
+      return line;
+    }
+    return target.hitPointsMax === undefined
+      ? ''
+      : hitPointsLine(
+          target.label,
+          target.hitPointsCurrent ?? 0,
+          target.hitPointsMax,
+          hitPointsAfter(target.hitPointsCurrent ?? 0, target.hitPointsTemporary ?? 0, total),
+        );
   }
 
   private keyFor(id: string): string {
