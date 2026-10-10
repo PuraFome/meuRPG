@@ -165,6 +165,14 @@ export class TrapFireSheet {
         ? 'Ninguém marcado. Escolha quem entra no disparo que já aconteceu.'
         : '';
     }
+    if (
+      this.chosen().length === 0 &&
+      this.data.targets() !== null &&
+      this.rows().length === 0 &&
+      !this.data.targetsFailed?.()
+    ) {
+      return 'Ninguém com token no mapa e ninguém marcado: o gatilho dispara, mas a armadilha não pega ninguém.';
+    }
     return this.chosen().length === 0
       ? 'Ninguém marcado. Dispara para quem estiver na área da armadilha; quem está lá, o servidor sabe.'
       : 'Só quem você marcou é pego, esteja na área ou não.';

@@ -59,6 +59,11 @@ describe('TrapFireSheet', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, calls, close };
   }
 
+  it('warns that the trap catches nobody when no token is on the map and nobody is checked (R4)', () => {
+    const { el } = setup({ targets: signal([]) });
+    expect(el.textContent).toContain('a armadilha não pega ninguém');
+  });
+
   it('fires for the area with nobody checked, and says the server knows who is there', async () => {
     const { fixture, el, calls } = setup();
     expect(el.textContent).toContain('Ninguém marcado. Dispara para quem estiver na área');

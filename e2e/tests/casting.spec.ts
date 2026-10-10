@@ -27,7 +27,7 @@ test(
       await pickSlotRadio(sheet, '1º nível');
       await pickTargetOf(sheet, 'Pensantus');
       await sheet.getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
-      await expect(sheet.getByText(/CA 13 \+ Destreza/)).toBeVisible();
+      await expect(sheet.getByText(/CA \d+ \(13 \+ Destreza\)/)).toBeVisible();
       await sheet.getByRole('button', { name: 'Fechar' }).last().click();
 
       // The spell lasts: "dura 8 horas" is game time, and the note says what ends it.

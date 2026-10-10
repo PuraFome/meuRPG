@@ -28,6 +28,12 @@ import {
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
+import {
+  CastEffect,
+  type OutsideCast,
+  OutsideCastStatus,
+} from '../../../gen/meurpg/play/v1/casting_pb';
+import { CastingClient } from '../../core/casting/casting-client';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import { mineTabs } from '../../core/combat/mine';
@@ -184,6 +190,7 @@ export class LiveSession {
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly mapsApi = inject(MapsClient);
   private readonly combatApi = inject(CombatClient);
+  private readonly castingApi = inject(CastingClient);
   private readonly sceneApi = inject(SceneClient);
   private readonly notesApi = inject(NotesClient);
   private readonly trapsApi = inject(TrapsClient);
@@ -201,6 +208,16 @@ export class LiveSession {
   protected readonly session = signal<LiveSessionVm | null>(null);
   protected readonly vitals = signal<readonly VitalsVm[]>([]);
   protected readonly playerSheet = signal<PlayerSheetVm | null>(null);
+  /** The armor class of the Armadura Arcana that lasts on the player's character (0: none), which the sheet does not count. */
+  private readonly mageArmorAc = signal(0);
+  /** The player's sheet with the armor class the combat uses: the better of the sheet's and the Armadura Arcana's. */
+  protected readonly ownSheet = computed(() => {
+    const sheet = this.playerSheet();
+    const mage = this.mageArmorAc();
+    return sheet && sheet.armorClass !== null && mage > sheet.armorClass
+      ? { ...sheet, armorClass: mage }
+      : sheet;
+  });
   /** The armor class of the beast's book while the druid is a beast (the vitals show it in place of the druid's own). */
   protected readonly beastAc = signal<number | null>(null);
   protected readonly partyInfo = signal<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
@@ -556,6 +573,7 @@ export class LiveSession {
     this.session.set(null);
     this.vitals.set([]);
     this.playerSheet.set(null);
+    this.mageArmorAc.set(0);
     this.partyInfo.set(new Map());
     this.currentMapId.set(null);
     this.shownImage.set(null);
@@ -647,7 +665,10 @@ export class LiveSession {
           void this.readVitals(campaignId, generation);
           void this.characterRevived(campaignId, generation, characterId);
         },
-        onSpellCastsChanged: () => this.castsTick.update((n) => n + 1),
+        onSpellCastsChanged: () => {
+          this.castsTick.update((n) => n + 1);
+          this.loadMageArmor(campaignId, generation);
+        },
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -982,6 +1003,23 @@ export class LiveSession {
       (sheet) => generation === this.generation && this.playerSheet.set(sheet),
       () => undefined,
     );
+    this.loadMageArmor(campaignId, generation);
+  }
+
+  /** Reads the Armadura Arcana that lasts on the player's character: every place that shows the armor class must agree with the combat's. Best effort. */
+  private loadMageArmor(campaignId: string, generation: number): void {
+    const own = this.ownVitals();
+    if (this.isMaster() || !own) {
+      return;
+    }
+    this.castingApi.list(campaignId, own.characterId).then(
+      (res) => {
+        if (generation === this.generation) {
+          this.mageArmorAc.set(mageArmorClassOf(res.active, own.characterId));
+        }
+      },
+      () => undefined,
+    );
   }
 
   /** "Voltar aos seus olhos" worked: the band goes at once; the stream's newer vitals confirm it. */
@@ -1225,4 +1263,22 @@ export class LiveSession {
       }
     });
   }
+}
+
+const MAGE_ARMOR_KEY = 'spell:mage-armor';
+
+/** The armor class the character's lasting Armadura Arcana gives, the best one; 0 without it. */
+export function mageArmorClassOf(casts: readonly OutsideCast[], characterId: string): number {
+  let best = 0;
+  for (const cast of casts) {
+    if (cast.spellKey !== MAGE_ARMOR_KEY || cast.status !== OutsideCastStatus.ACTIVE) {
+      continue;
+    }
+    for (const t of cast.targets) {
+      if (t.characterId === characterId && t.effect === CastEffect.ARMOR_CLASS) {
+        best = Math.max(best, t.armorClass);
+      }
+    }
+  }
+  return best;
 }

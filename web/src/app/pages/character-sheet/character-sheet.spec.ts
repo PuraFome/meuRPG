@@ -2210,6 +2210,45 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
     expect(el.textContent).not.toContain('Carregando a ficha');
   });
 
+  it('reads the sheet again, without a reload, when a session opens for its campaign (the lock reaches the open page)', async () => {
+    let state: 'draft' | 'locked' = 'draft';
+    let reads = 0;
+    fake.getCharacterSheetFn = () => {
+      reads++;
+      return Promise.resolve(
+        state === 'draft'
+          ? vm({ state: 'draft' })
+          : vm({ state: 'locked', canEdit: false, canEditStory: false }),
+      );
+    };
+    openSessions.set([]);
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Rascunho');
+    expect(el.textContent).toContain('Editar ficha');
+    const before = reads;
+
+    // The master starts the session; the app's notice poll sees it.
+    state = 'locked';
+    openSessions.set([
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 1,
+        startedAt: new Date(),
+        isMaster: false,
+      },
+    ]);
+    await flush();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(reads).toBe(before + 1);
+    expect(el.textContent).not.toContain('Rascunho');
+    expect(el.textContent).not.toContain('Editar ficha');
+  });
+
   it("tells the creatures panel when this character's vitals or the combat change (a Wild Shape form ends that way), not another character's", async () => {
     fake.getCharacterSheetFn = () =>
       Promise.resolve(vm({ sheet: fullSheet({ hasWildShape: true }) }));
