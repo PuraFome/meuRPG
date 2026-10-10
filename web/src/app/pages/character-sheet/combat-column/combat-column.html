@@ -137,14 +137,17 @@
                 <li class="spell" [class.spell--off]="row.state === 'No grimório' || row.state === 'Conhecida'">
                   <button type="button" class="spell__open" (click)="spellOpened.emit(row.spell.key)">
                     <span class="spell__name">{{ row.spell.namePt }}</span>
-                    <span class="spell__tags">
-                      @for (tag of row.tags; track tag) {
-                        <span class="mr-tag spell__tag">{{ tag }}</span>
-                      }
-                      @if (row.state) {
-                        <span class="mr-tag spell__tag" [class.spell__tag--on]="row.state === 'Preparada'">{{ row.state }}</span>
-                      }
-                    </span>
+                    <!-- No empty row of tags: its gap would push the name above the middle of the button. -->
+                    @if (row.tags.length > 0 || row.state) {
+                      <span class="spell__tags">
+                        @for (tag of row.tags; track tag) {
+                          <span class="mr-tag spell__tag">{{ tag }}</span>
+                        }
+                        @if (row.state) {
+                          <span class="mr-tag spell__tag" [class.spell__tag--on]="row.state === 'Preparada'">{{ row.state }}</span>
+                        }
+                      </span>
+                    }
                   </button>
                   <app-spell-help [name]="row.spell.namePt" (press)="spellOpened.emit(row.spell.key)" />
                 </li>
