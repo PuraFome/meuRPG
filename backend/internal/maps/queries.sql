@@ -1023,3 +1023,39 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 -- name: SetImportedImageRefs :exec
 UPDATE gallery_images SET parent_image_id = sqlc.narg(parent_image_id), copy_of_image_id = sqlc.narg(copy_of_image_id)
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id);
+
+-- Images of an RP scene (MR-015): the gallery images the master attached to a
+-- SCENE point, in order. The list is replaced whole, inside one transaction.
+
+-- name: ListPointImages :many
+-- One point's images, in order, with the gallery's name.
+SELECT i.image_id, g.name, g.generated_kind, i.position
+FROM map_point_images AS i
+JOIN gallery_images AS g ON g.id = i.image_id
+WHERE i.point_id = $1
+ORDER BY i.position, i.created_at, i.image_id;
+
+-- name: ListPointImagesOfMap :many
+-- Every scene image of a map's points, for the master's map read.
+SELECT i.point_id, i.image_id, g.name, g.generated_kind, i.position
+FROM map_point_images AS i
+JOIN gallery_images AS g ON g.id = i.image_id
+JOIN map_points AS p ON p.id = i.point_id
+WHERE p.map_id = $1
+ORDER BY i.point_id, i.position, i.created_at, i.image_id;
+
+-- name: DeletePointImages :exec
+-- Clears a point's list: the first half of replacing it, and what a point that
+-- stops being a scene does.
+DELETE FROM map_point_images
+WHERE point_id = $1;
+
+-- name: InsertPointImage :exec
+INSERT INTO map_point_images (point_id, image_id, position, created_at)
+VALUES ($1, $2, $3, $4);
+
+-- name: CountCampaignImagesIn :one
+-- How many of these images are the campaign's: a list with an image of another
+-- campaign (or none at all) is refused as a whole.
+SELECT count(*)::INT4 AS image_count FROM gallery_images
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = ANY(sqlc.arg(ids)::UUID[]);

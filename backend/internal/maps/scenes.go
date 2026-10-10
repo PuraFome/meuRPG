@@ -526,6 +526,9 @@ func (sm *SessionMaps) ScenePoint(ctx context.Context, tx pgx.Tx, campaignID, po
 	if out.Clues, err = sm.sceneClues(ctx, q, p.ID); err != nil {
 		return link.Scene{}, err
 	}
+	if out.Images, err = sceneImages(ctx, q, p.ID); err != nil {
+		return link.Scene{}, err
+	}
 	for _, a := range rows {
 		act := link.SceneAction{ID: a.ID, Key: a.Key, Name: a.Name, MaxAttempts: int(a.MaxAttempts)}
 		if a.Dc != nil {

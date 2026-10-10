@@ -125,6 +125,7 @@ var notReads = map[string]classified{
 	mapsv1connect.MapServicePlaceMapTokenProcedure:                              {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceRemoveMapTokenProcedure:                             {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceRemoveSceneActionProcedure:                          {masterWrite, masterOnlyWhy},
+	mapsv1connect.MapServiceSetSceneImagesProcedure:                             {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceRemoveSceneClueProcedure:                            {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceRevealSceneClueProcedure:                            {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceRevealTrapProcedure:                                 {masterWrite, masterOnlyWhy},

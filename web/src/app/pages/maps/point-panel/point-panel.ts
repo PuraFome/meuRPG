@@ -21,14 +21,19 @@ import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 
 import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import type { MapPoint, SceneAction, SceneClue } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import type {
+  MapPoint,
+  SceneAction,
+  SceneClue,
+  SceneImage,
+} from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import type { CluePlayer } from '../../../core/maps/scene-clues';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
 import { ClueList } from '../clue-list/clue-list';
 import { HooksField } from '../hooks-field/hooks-field';
 import { RevealSwitch } from '../reveal-switch/reveal-switch';
-import { SceneImage } from '../scene-image/scene-image';
+import { SceneImages } from '../scene-images/scene-images';
 import { SceneActions } from '../scene-actions/scene-actions';
 import {
   POINT_DESCRIPTION_MAX,
@@ -67,7 +72,7 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
     HooksField,
     RevealSwitch,
     SceneActions,
-    SceneImage,
+    SceneImages,
   ],
   templateUrl: './point-panel.html',
   styleUrl: './point-panel.scss',
@@ -99,6 +104,8 @@ export class PointPanel {
   readonly sceneActionsChange = output<readonly SceneAction[]>();
   /** A SCENE point's clues changed (saved at once too). */
   readonly cluesChange = output<readonly SceneClue[]>();
+  /** A SCENE point's images changed (saved at once too). */
+  readonly imagesChange = output<readonly SceneImage[]>();
   /** "Mostrar a CD aos jogadores" saved on its own (at once, like the actions): the point carries it. */
   readonly showDcSaved = output<boolean>();
 

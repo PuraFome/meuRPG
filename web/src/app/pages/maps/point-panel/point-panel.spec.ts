@@ -117,7 +117,7 @@ describe('PointPanel', () => {
 
     it('has "Pistas" and "Ganchos e anotações" after the actions, with the lock and "Só você vê" first', () => {
       const titles = Array.from(cenaEl.querySelectorAll('h3'), (h) => h.textContent?.trim());
-      expect(titles).toEqual(['Ações da cena', 'Pistas', 'Ganchos e anotações', 'Imagem da cena']);
+      expect(titles).toEqual(['Ações da cena', 'Pistas', 'Ganchos e anotações', 'Imagens da cena']);
       expect(cenaEl.querySelector('.hf__lock')?.textContent).toContain(
         'Só você vê. Nunca aparece para os jogadores.',
       );

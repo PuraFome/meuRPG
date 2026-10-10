@@ -28,7 +28,7 @@ describe('GenerateImageButton (E10-07 8: generation off)', () => {
           useValue: {
             open: (...args: unknown[]) => (
               opened.push(args),
-              { afterClosed: () => of({ generated: 1, map: null }) }
+              { afterClosed: () => of({ generated: 1, lastImageId: 'img-1', map: null }) }
             ),
           },
         },
@@ -63,7 +63,7 @@ describe('GenerateImageButton (E10-07 8: generation off)', () => {
     // The dialog is loaded when it is asked for.
     await vi.waitFor(() => expect(opened).toHaveLength(1), { timeout: 15_000 });
     fixture.detectChanges();
-    expect(done).toEqual([{ generated: 1, map: null }]);
+    expect(done).toEqual([{ generated: 1, lastImageId: 'img-1', map: null }]);
   });
 
   it('with generation off the button stays, dashed, with the reason written under it, and no dialog opens', async () => {

@@ -1,0 +1,146 @@
+:host {
+  display: block;
+}
+
+.si {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.si__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.si__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.si__count {
+  flex: none;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+// What the section is for, in words and with an icon, on its first line.
+.si__privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.si__empty {
+  margin: 0;
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border: 1px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  color: var(--mr-ink-muted);
+}
+
+.si__list {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--mr-rule);
+  list-style: none;
+}
+
+// The thumbnail and the name on one line; ↑ ↓ and remove under the name.
+.si__row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-areas:
+    'thumb name'
+    'thumb controls';
+  column-gap: var(--mr-space-3);
+  align-items: center;
+  padding: var(--mr-space-2) 0;
+
+  & + & {
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+.si__thumb {
+  grid-area: thumb;
+  align-self: start;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--mr-rule);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-ground);
+  object-fit: cover;
+}
+
+.si__name {
+  grid-area: name;
+  font-size: 17px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.si__controls {
+  display: flex;
+  grid-area: controls;
+  margin-inline-start: -10px;
+}
+
+// ↑ ↓ and remove: 44px targets. The first ↑ and the last ↓ are quieter
+// (`aria-disabled`, still focusable).
+.si__ib {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &--off {
+    color: var(--mr-ink-muted);
+    opacity: 0.7;
+    cursor: default;
+  }
+
+  &--danger {
+    color: var(--mr-danger-ink);
+  }
+}
+
+.si__limit {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+}
+
+.si__add {
+  width: 100%;
+  margin-top: var(--mr-space-1);
+}
+
+.si__add--off {
+  border-style: dashed;
+}

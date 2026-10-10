@@ -163,3 +163,22 @@ export async function rollTyped(player: Page, scene: Locator, action: string, fa
   await sheet.getByRole('button', { name: 'Voltar à cena' }).click();
   await expect(sheet).toBeHidden();
 }
+
+/** Uploads two pictures to the gallery and attaches them, in this order, to a scene point (`SetSceneImages`, "Imagens da cena"). */
+export async function attachTwoImagesRPC(
+  page: Page,
+  table: { campaignId: string; mapId: string },
+  pointId: string,
+  names: [string, string] = ['Vista da carroça', 'Rastros na lama'],
+): Promise<[string, string]> {
+  const first = await uploadImageRPC(page, table.campaignId, names[0], await canvasPng(page, 640, 400, names[0], '#4b6b8a'));
+  const second = await uploadImageRPC(page, table.campaignId, names[1], await canvasPng(page, 640, 400, names[1], '#6b8a4b'));
+  await setSceneImagesRPC(page, table, pointId, [first, second]);
+  return [first, second];
+}
+
+/** Replaces the images of a scene point. */
+export async function setSceneImagesRPC(page: Page, table: { campaignId: string; mapId: string }, pointId: string, imageIds: string[]): Promise<void> {
+  const res = await callRPC(page, 'meurpg.maps.v1.MapService/SetSceneImages', { campaignId: table.campaignId, mapId: table.mapId, pointId, imageIds });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
