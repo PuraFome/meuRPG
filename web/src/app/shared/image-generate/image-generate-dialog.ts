@@ -77,6 +77,8 @@ export interface ImageGenerateData {
 /** What the dialog tells the opener when it closes: how many pictures it made, and the map it changed ("Usar como imagem do mapa"). */
 export interface GenerateOutcome {
   readonly generated: number;
+  /** The last picture made while the dialog was open (the one the master ended on), or `null` when none was. */
+  readonly lastImageId: string | null;
   readonly map: MapMessage | null;
 }
 
@@ -182,6 +184,7 @@ export class ImageGenerateDialog {
   protected readonly instruction = signal('');
   protected readonly editError = signal<string | null>(null);
   private generated = 0;
+  private lastImageId: string | null = null;
   private changedMap: MapMessage | null = null;
   private readonly lastForm = signal<ImageForm | null>(null);
   private lastGrid = '';
@@ -644,7 +647,11 @@ export class ImageGenerateDialog {
   }
 
   protected finish(): void {
-    this.sheet.close({ generated: this.generated, map: this.changedMap });
+    this.sheet.close({
+      generated: this.generated,
+      lastImageId: this.lastImageId,
+      map: this.changedMap,
+    });
   }
 
   private onPhase(run: ImageRun, phase: ReturnType<ImageRun['phase']>): void {
@@ -687,6 +694,7 @@ export class ImageGenerateDialog {
       return;
     }
     this.generated++;
+    this.lastImageId = image.id;
     const f = this.lastForm() ?? this.form();
     const edit = this.runFor() === 'edit';
     const kind: KindKey = f.kind;

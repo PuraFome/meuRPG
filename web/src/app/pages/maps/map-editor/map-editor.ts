@@ -24,6 +24,7 @@ import type {
   MapPoint,
   SceneAction,
   SceneClue,
+  SceneImage,
 } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapTargets, TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import type { MessageInitShape } from '@bufbuild/protobuf';
@@ -170,6 +171,8 @@ export class MapEditor {
   readonly erasesChange = output<boolean>();
   /** The page's flags may be out of date (a refusal said a combat runs, or does not): read them again. */
   readonly staleFlags = output<void>();
+  /** A map was made from a Submapa point: the page reads the campaign's maps again. */
+  readonly mapsChanged = output<void>();
 
   protected readonly map = computed(() => this.state().map());
   /** What a square of the drawing is worth, for the legend of a calibrated map: "3 m". */
@@ -690,6 +693,15 @@ export class MapEditor {
         .points()
         .find((p) => p.id === point.id) ?? point;
     this.state().upsertPoint({ ...now, clues: [...clues] });
+  }
+
+  /** The images saved on their own: the point carries the new list. */
+  protected setImages(point: MapPoint, images: readonly SceneImage[]): void {
+    const now =
+      this.state()
+        .points()
+        .find((p) => p.id === point.id) ?? point;
+    this.state().upsertPoint({ ...now, images: [...images] });
   }
 
   /** A treasure marked or unmarked found (saved at once): the map carries the point the server answered. */

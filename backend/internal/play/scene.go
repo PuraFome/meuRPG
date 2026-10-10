@@ -408,6 +408,10 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 		if info.Hooks, info.Clues, err = s.masterSceneNotes(ctx, m.CampaignID, scene); err != nil {
 			return nil, err
 		}
+		// And the scene's images, which the master shows one at a time (MR-015).
+		for _, img := range scene.Images {
+			info.Images = append(info.Images, &mapsv1.SceneImage{Id: img.ID, Name: img.Name, ShowsWholeMap: img.ShowsWholeMap})
+		}
 	}
 
 	rolls, err := s.sceneRolls(ctx, m, scene, session.ID, opened.Seq, tally, mine.ID, hasMine)

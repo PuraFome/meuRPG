@@ -440,6 +440,29 @@ service MapService {
   //   - `permission_denied`: the caller is a player.
   rpc RevealSceneClue(RevealSceneClueRequest) returns (RevealSceneClueResponse);
 
+  // SetSceneImages replaces the gallery images attached to a SCENE point
+  // ("Imagens da cena", MR-015) with the list in the request, in that order:
+  // adding, removing and reordering are all this one call, and an empty list
+  // clears it. It does not show anything to the players: the master shows an
+  // image with the gallery's "Mostrar aos jogadores" (PlayService.SetShownImage,
+  // MR-019), which keeps its own rules. Only the campaign's master may call it,
+  // with or without an open session. Setting the same list twice changes
+  // nothing, so a retry is safe without an idempotency key.
+  //
+  // Everyone watching the map hears `map_changed`, and, when the point is the
+  // open scene, `scene_changed` (both IDs only); a player's read of either
+  // never carries the list (RN-10).
+  //
+  // Errors:
+  //   - `invalid_argument`: the point is not a SCENE point; the list has more
+  //     than 8 images or the same image twice; an ID is not a UUID.
+  //   - `not_found`: an image is not in this campaign's gallery (the whole
+  //     call is refused), the point is not on this map, the map is not in this
+  //     campaign, the campaign does not exist, or the caller is not a member
+  //     of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc SetSceneImages(SetSceneImagesRequest) returns (SetSceneImagesResponse);
+
   // PlaceMapToken puts a character's token on a map, or moves it there if
   // it is already on the map (MR-012). Only the campaign's master may call
   // it. The character must be a living character of the campaign: a
@@ -1023,6 +1046,25 @@ message MapPoint {
   // It goes to whoever receives the point, so a player gets it only for a revealed point
   // on a square they see. UNSPECIFIED for every other point.
   StairDirection stairs = 24;
+  // The gallery images the master attached to a SCENE point ("Imagens da
+  // cena", MR-015), in the order the master put them, at most 8; empty for any
+  // other kind. Only the master gets them: a player always gets none, so a
+  // player never learns which images a scene holds, nor their IDs, until the
+  // master shows one (SetShownImage, MR-019) (RN-10).
+  repeated SceneImage images = 25;
+}
+
+// SceneImage is a gallery image attached to an RP scene, as the master sees it.
+// A player never receives this message.
+message SceneImage {
+  // The gallery image's ID (a UUID); the app builds /images/<id> and
+  // /images/<id>/thumb from it.
+  string id = 1;
+  // The gallery name of the image, as of now.
+  string name = 2;
+  // True for a generated image that shows the whole map (GalleryImage.shows_whole_map):
+  // the app asks before the master shows it to the players.
+  bool shows_whole_map = 3;
 }
 
 // StairDirection is which way a generated dungeon's stair goes.
@@ -1630,6 +1672,20 @@ message RemoveSceneClueRequest {
 // RemoveSceneClueResponse returns the point's remaining clues.
 message RemoveSceneClueResponse {
   repeated SceneClue clues = 1;
+}
+
+// SetSceneImagesRequest carries the scene's whole list of images.
+message SetSceneImagesRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  string point_id = 3;
+  // The gallery images (UUIDs) of the campaign, in order: 0 to 8, no repeats.
+  repeated string image_ids = 4;
+}
+
+// SetSceneImagesResponse returns the point's images as they are now.
+message SetSceneImagesResponse {
+  repeated SceneImage images = 1;
 }
 
 // RevealSceneClueRequest names the clue and who gets it.

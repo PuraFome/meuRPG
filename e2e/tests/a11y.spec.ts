@@ -9,7 +9,7 @@ import { expectLoaded } from './loaded';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
-import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
+import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
@@ -522,6 +522,14 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
       await masterPage.getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' }).click();
       await expect(masterPage.getByRole('heading', { name: 'Ruínas élficas' })).toBeVisible();
       await expectScreenPasses(masterPage, `Editor com um ponto escolhido ${suffix}`);
+      // A Submapa with a destination ("Abrir <mapa>"), then "Criar mapa novo…" open in the panel.
+      await masterPage.getByRole('button', { name: 'Torre de Mirathel, Submapa' }).first().click();
+      await expect(masterPage.getByRole('link', { name: /^Abrir / })).toBeVisible();
+      await expectScreenPasses(masterPage, `Editor, submapa com "Abrir" ${suffix}`);
+      await masterPage.getByLabel('Leva para').selectOption({ label: 'Criar mapa novo…' });
+      await expect(masterPage.getByRole('button', { name: 'Criar mapa e usar' })).toBeVisible();
+      await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+      await expectScreenPasses(masterPage, `Editor, "Criar mapa novo…" ${suffix}`);
     }
 
     await open(playerPage, `/campaigns/${campaignId}/maps/${world}`);
@@ -1781,6 +1789,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await p.goto('/');
     const table = await tableForScenes(m, p, `Acessibilidade cenas ${Date.now()}`);
     campaignId = table.campaignId;
+    await attachTwoImagesRPC(m, table, table.cartId);
 
     // The editor is for a computer: a phone has the lists of points instead.
     if (width >= 768) {
@@ -1788,6 +1797,9 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       await expect(m.getByRole('heading', { name: 'Ações da cena' })).toBeVisible();
       await expectScreenPasses(m, `Ações da cena no ponto ${where}`);
+      await expect(m.getByRole('heading', { name: 'Imagens da cena' })).toBeVisible();
+      await m.getByRole('heading', { name: 'Imagens da cena' }).scrollIntoViewIfNeeded();
+      await expectScreenPasses(m, `Imagens da cena no ponto, com duas imagens ${where}`);
       await m.getByRole('button', { name: 'Adicionar ação' }).click();
       await expect(m.getByRole('form', { name: 'Nova ação' })).toBeVisible();
       await expectScreenPasses(m, `Nova ação ${where}`);
@@ -1819,6 +1831,15 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await m.getByRole('dialog').getByText('A carroça tombada', { exact: true }).click();
     await m.getByRole('dialog').getByRole('button', { name: 'Abrir cena', exact: true }).click();
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+    // The scene's pictures, with "Mostrar aos jogadores", then one on show.
+    const sceneImages = m.getByRole('region', { name: 'Imagens da cena' });
+    await expect(sceneImages).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta com as imagens da cena ${where}`);
+    await sceneImages.getByRole('button', { name: 'Mostrar Vista da carroça aos jogadores' }).click();
+    await expect(sceneImages.getByText('À mostra agora')).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta com uma imagem à mostra ${where}`);
+    await sceneImages.getByRole('button', { name: 'Parar de mostrar Vista da carroça' }).click();
+    await expect(sceneImages.getByText('À mostra agora')).toHaveCount(0);
 
     // The player: the block, the roll sheet in each state, the rolled row.
     await openSessionPage(p, campaignId);

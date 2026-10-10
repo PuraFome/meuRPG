@@ -71,7 +71,7 @@ flowchart TD
         t_map_tokens["map_tokens, map_creature_tokens"]
         t_generated_dungeons["generated_dungeons"]
         t_map_point_reveals["map_point_reveals, map_treasure_finders"]
-        t_scene["scene_actions, scene_clues, scene_clue_reveals, scene_discoveries"]
+        t_scene["scene_actions, scene_clues, scene_clue_reveals, scene_discoveries, map_point_images"]
         t_gallery_images["gallery_images, image_requests"]
     end
 
@@ -1236,6 +1236,13 @@ erDiagram
         timestamptz updated_at
     }
 
+    map_point_images {
+        uuid point_id PK,FK "CASCADE, scene point"
+        uuid image_id PK,FK "CASCADE, gallery image"
+        int4 position "order in the list, from 0"
+        timestamptz created_at
+    }
+
     scene_clue_reveals {
         uuid id PK
         uuid campaign_id FK "CASCADE"
@@ -1272,6 +1279,8 @@ erDiagram
     maps |o--o{ map_points : "is the submap of"
     map_points ||--o{ scene_actions : "has the actions"
     map_points ||--o{ scene_clues : "has the clues"
+    map_points ||--o{ map_point_images : "has the images"
+    gallery_images ||--o{ map_point_images : "is attached to"
     scene_clues |o--o{ scene_clue_reveals : "was revealed in"
     map_points |o--o{ scene_clue_reveals : "is the scene of"
     users ||--o{ scene_clue_reveals : "received"
@@ -1333,6 +1342,7 @@ erDiagram
 
 - **`scene_actions`** (MR-015) are a RP scene's actions, one row per action: `point_id` is a `scene` point (`ON DELETE CASCADE`; the API only accepts an action on a point of that kind, and deletes the actions when the point changes kind), `position` orders the point's actions from 0 (not unique: moving renumbers the list in a transaction), `key` is `skill:<skill>`, `ability:<ability>` or `save:<ability>` (the `CHECK` only lets that format through, and the API checks the key in the rules catalog, `rules.Content.SceneCheckName`: attack, spell and combat ability never enter, MR-015), `name` is the name the master gave ("Convencer o guarda", up to 60 characters, empty for none) and `dc` goes from 1 to 30 or is `NULL`. At most 20 actions per point, checked in the `INSERT` transaction. The master always receives the DC; the player only when `map_points.show_dc` is on (RN-20). `max_attempts` is how many times each player may roll the action while the scene is open: 1 by default, 1 to 5, or 0 for unlimited; the rolls and the attempts given live in `session_events`, so lowering the limit deletes nothing. Index: `(point_id, position)`.
 - **`scene_clues`** are the clues: `position` orders the list from 0 (not unique: moving renumbers), `text` is 1 to 500 characters (`CHECK`). At most 30 per point, checked in the `INSERT` transaction with the point locked, like actions. Only the master reads them; deleting the point deletes the clues (`CASCADE`). Index: `(point_id, position)`.
+- **`map_point_images`** (MR-015, "Imagens da cena") are the gallery images the master attached to a scene point: primary key `(point_id, image_id)` (an image is on a point once), `position` orders the list from 0 (the API rewrites the whole list in one transaction with the point locked, so it is never read half changed), `created_at`. At most 8 per point, checked by the API. Both foreign keys are `ON DELETE CASCADE`: deleting the point or the gallery image deletes only the link (index `(image_id)`, `00235`). Only a scene point has any (a point that changes kind loses them). Only the master reads the list (RN-10); showing an image to the players does not read this table (`SetShownImage`, MR-019).
 - **`scene_clue_reveals`** records each reveal, one row per clue and player (unique index on `(clue_id, user_id)`: revealing again changes nothing). **The row keeps a copy of the text**, so what the player received stays as it was said at the table even if the master edits or deletes the clue, or deletes the scene (`clue_id` and `point_id` become `NULL` by `SET NULL`, and the note loses only the label). `user_id` is the player who owns the note (`CASCADE` on account deletion, like `player_notes`); `character_id` is the character the master chose, for "Só a Brisa". There is no "hide again". Indexes: a player's clues per campaign and a point's.
 - **`scene_discoveries`** has key `(campaign_id, point_id)`, and the first time counts. `maps` writes it when a scene point is revealed (`SetMapPointRevealed`, or `UpdateMapPoint` with `revealed`) and `play` writes it when the master opens the scene (`OpenScene`, even on a hidden point), in each one's transaction. It holds for the whole group and does not disappear when the point is hidden again. The list of scenes the player may label joins with `map_points` and only shows what is still a `scene`.
 - **`player_notes`** are the notes: `text` of 1 to 2,000 characters (`CHECK`), `scene_point_id` optional (the API only accepts a discovered scene; deleting the point removes the label, `SET NULL`). At most 300 per player per campaign, checked in the `INSERT` transaction; received clues do not count. Every query filters by the author, so another person's note is never found, not even by the master. Deleting the account or the campaign deletes the notes (`CASCADE`). There is no leaving a campaign or being removed as an active member yet; when there is, deleting the member's notes goes in the same transaction. Index: `(campaign_id, author_user_id, updated_at)`: a player's notes, newest first.

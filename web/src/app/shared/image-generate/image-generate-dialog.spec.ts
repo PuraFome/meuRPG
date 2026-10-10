@@ -492,7 +492,7 @@ describe('ImageGenerateDialog (MR-039, RN-28; E10-07)', () => {
       const { fixture } = await setup();
       escape.next(new KeyboardEvent('keydown', { key: 'Escape' }));
       await settle(fixture);
-      expect(closed).toEqual([{ generated: 0, map: null }]);
+      expect(closed).toEqual([{ generated: 0, lastImageId: null, map: null }]);
     });
   });
 

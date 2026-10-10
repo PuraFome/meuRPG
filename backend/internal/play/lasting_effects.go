@@ -34,7 +34,7 @@ const (
 	phaseEndKey   = "end_of_turn"
 )
 
-// The kinds of session event the effects write (session_event_kinds, migration 00230).
+// The kinds of session event the effects write (session_event_kinds, migration 00237).
 const (
 	eventLastingAdded      = "lasting_effect_added"
 	eventLastingChanged    = "lasting_effect_changed"

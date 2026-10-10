@@ -1,0 +1,29 @@
+# Builds the production image in Cloud Build. The steps and the variables are
+# in docs/operations.md ("Releasing a new version"). The source is a
+# `git archive` of the commit being released, so nothing local enters the image.
+#
+# The build runs as the dedicated `meurpg-build` service account
+# (`--service-account`), which can only push to the Artifact Registry
+# repository, write build logs and read the uploaded source. A build with a
+# service account of its own must send its logs to Cloud Logging only.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    env: ['DOCKER_BUILDKIT=1']
+    args:
+      - build
+      - -f
+      - backend/Dockerfile
+      - --build-arg
+      - VERSION=${_VERSION}
+      - --build-arg
+      - COMMIT=${_COMMIT}
+      - -t
+      - ${_IMAGE}
+      - .
+images: ['${_IMAGE}']
+substitutions:
+  _VERSION: v0.1.0
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s

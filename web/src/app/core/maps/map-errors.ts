@@ -37,6 +37,15 @@ export function sceneClueErrorMessage(err: unknown, what = 'salvar a pista'): st
   });
 }
 
+/** The Portuguese message for a failed `SetSceneImages` (maps.proto): `invalid_argument` is the 8-image limit. */
+export function sceneImagesErrorMessage(err: unknown, what = 'salvar as imagens da cena'): string {
+  return describeConnectError(err, {
+    [Code.InvalidArgument]: `Não deu para ${what}: uma cena guarda até 8 imagens, sem repetir.`,
+    [Code.NotFound]: 'Alguma dessas imagens, ou este ponto, não existe mais. Recarregue a página.',
+    [Code.PermissionDenied]: 'Só o mestre da campanha muda as imagens da cena.',
+  });
+}
+
 /** The Portuguese message for a failed `RevealSceneClue`. */
 export function revealErrorMessage(err: unknown): string {
   return describeConnectError(err, {

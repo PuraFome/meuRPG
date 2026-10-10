@@ -7,6 +7,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
   viewChild,
@@ -23,11 +24,13 @@ import type { MapState } from '../../../../core/maps/map-state';
 import { joinDots, tieShortWords } from '../../../../core/format/text';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../../core/play/scene-errors';
+import type { ShownImageVm } from '../../live-session.types';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { actionCount, masterAttempts, rollCount } from '../../../../core/play/scene-view';
 import { formatClock } from '../../../../shared/session-time/session-time';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { SceneClues } from '../scene-clues/scene-clues';
+import { SceneImagesShow } from '../scene-images/scene-images';
 import { SceneHooks } from '../scene-hooks/scene-hooks';
 import { SceneRollLine } from '../scene-roll-line/scene-roll-line';
 import { StageMaster } from '../stage-master/stage-master';
@@ -53,7 +56,15 @@ import { openScenePicker } from '../scene-picker/scene-picker';
  */
 @Component({
   selector: 'app-scene-open',
-  imports: [MatButtonModule, MatIconModule, SceneClues, SceneHooks, SceneRollLine, StageMaster],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    SceneClues,
+    SceneHooks,
+    SceneImagesShow,
+    SceneRollLine,
+    StageMaster,
+  ],
   templateUrl: './scene-open.html',
   styleUrl: './scene-open.scss',
 })
@@ -68,6 +79,11 @@ export class SceneOpen {
   readonly mapState = input.required<MapState>();
   /** The campaign's player characters, for who has each clue and for revealing. */
   readonly players = input<readonly CluePlayer[]>([]);
+  /** The image on the players' screens now, and the "Deixar com os jogadores" switch: the scene's images show through the gallery's own action. */
+  readonly shown = input<ShownImageVm | null>(null);
+  readonly keep = input(false);
+  readonly shownChange = output<ShownImageVm | null>();
+  readonly leftChanged = output<void>();
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly actionsOpen = signal(true);

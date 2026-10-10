@@ -5,6 +5,7 @@ import { mapMessage, mapPoint, mapResponse } from '../../../../core/maps/maps-te
 import { SceneClient } from '../../../../core/play/scene-client';
 import { SceneState } from '../../../../core/play/scene-state';
 import { FakeSceneClient, masterScene, sceneRoll } from '../../../../core/play/scene-testing';
+import { LiveSessionSource } from '../../live-session.types';
 import { SceneOpen } from './scene-open';
 
 const flat = (e: Element | null | undefined) =>
@@ -36,7 +37,12 @@ describe('SceneOpen', () => {
       ),
     );
     await mapState.open('m1');
-    TestBed.configureTestingModule({ providers: [{ provide: SceneClient, useValue: api }] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SceneClient, useValue: api },
+        { provide: LiveSessionSource, useValue: { setShownImage: async () => null } },
+      ],
+    });
     const fixture = TestBed.createComponent(SceneOpen);
     fixture.componentRef.setInput('campaignId', 'c1');
     fixture.componentRef.setInput('state', state);
@@ -46,6 +52,22 @@ describe('SceneOpen', () => {
   }
 
   const lines = (el: HTMLElement) => Array.from(el.querySelectorAll('app-scene-roll-line'));
+
+  it('shows the scene\'s images with "Mostrar aos jogadores", and nothing when it has none', async () => {
+    const none = await setup();
+    expect(none.el.querySelector('app-scene-images-show section')).toBeNull();
+    TestBed.resetTestingModule();
+    const { el } = await setup(
+      masterScene([], [], {
+        images: [
+          { id: 'i1', name: 'A carroça', showsWholeMap: false },
+          { id: 'i2', name: 'A estrada', showsWholeMap: false },
+        ],
+      }),
+    );
+    expect(flat(el.querySelector('app-scene-images-show h3'))).toBe('Imagens da cena');
+    expect(el.querySelectorAll('app-scene-images-show .sm__tile').length).toBe(2);
+  });
 
   it('shows the title, when it opened, where it is and how much has happened', async () => {
     const { el } = await setup();

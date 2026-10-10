@@ -197,6 +197,9 @@ func (s *Service) GetMap(
 	if err := s.attachActions(ctx, mapID, res.Points, v.master); err != nil {
 		return nil, s.dbError(ctx, "list a map's scene actions", err)
 	}
+	if err := s.attachImages(ctx, mapID, res.Points, v.master); err != nil {
+		return nil, s.dbError(ctx, "read the scene images", err)
+	}
 	if err := s.attachClues(ctx, m.CampaignID, mapID, res.Points, v.master); err != nil {
 		return nil, s.dbError(ctx, "list a map's scene clues", err)
 	}
@@ -1066,6 +1069,9 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 		if err := q.DeleteSceneCluesOfPoint(ctx, p.ID); err != nil {
 			return mapsdb.MapPoint{}, fmt.Errorf("delete the scene's clues: %w", err)
 		}
+		if err := q.DeletePointImages(ctx, p.ID); err != nil {
+			return mapsdb.MapPoint{}, fmt.Errorf("delete the scene's images: %w", err)
+		}
 		params.Hooks = ""
 		params.ShowDc = false
 	}
@@ -1569,6 +1575,9 @@ func (s *Service) masterPoint(ctx context.Context, m authz.Membership, p mapsdb.
 	}
 	if err := s.attachActions(ctx, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
 		return nil, s.dbError(ctx, "list a point's scene actions", err)
+	}
+	if err := s.attachImages(ctx, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
+		return nil, s.dbError(ctx, "list a point's scene images", err)
 	}
 	if err := s.attachClues(ctx, m.CampaignID, p.MapID, []*mapsv1.MapPoint{out}, true); err != nil {
 		return nil, s.dbError(ctx, "list a point's scene clues", err)
