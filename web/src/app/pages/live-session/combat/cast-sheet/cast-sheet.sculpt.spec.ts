@@ -22,8 +22,7 @@ import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
 import { CastSheet, type CastSheetData } from './cast-sheet';
 
-const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
 
 const pensantus = combatant({
   id: 'p',
