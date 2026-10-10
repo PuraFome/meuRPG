@@ -1608,3 +1608,9 @@ DELETE FROM inspiration_holds WHERE character_id = $1;
 
 -- name: AnswerInspirationHold :exec
 UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
+
+-- name: DeleteOrphanInspirationHolds :exec
+-- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
+DELETE FROM inspiration_holds h
+WHERE h.campaign_id = $1 AND h.answer_key IS NULL
+  AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);

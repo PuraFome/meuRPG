@@ -597,6 +597,9 @@ func (s *Service) dieAdvance(ctx context.Context, c *combatTx, seconds int32) er
 	if err := c.q.DeleteExpiredCharacterInspiration(ctx, playdb.DeleteExpiredCharacterInspirationParams{CampaignID: c.session.CampaignID, Column2: seconds}); err != nil {
 		return fmt.Errorf("end the dice whose time ran out: %w", err)
 	}
+	if err := c.q.DeleteOrphanInspirationHolds(ctx, c.session.CampaignID); err != nil {
+		return fmt.Errorf("forget the rolls that waited for a die that ran out: %w", err)
+	}
 	if err := c.q.AdvanceCharacterInspiration(ctx, playdb.AdvanceCharacterInspirationParams{CampaignID: c.session.CampaignID, Column2: seconds}); err != nil {
 		return fmt.Errorf("move the dice's time on: %w", err)
 	}

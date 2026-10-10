@@ -1073,6 +1073,18 @@ func (q *Queries) DeleteOpportunityOffersOfMove(ctx context.Context, moveID stri
 	return err
 }
 
+const deleteOrphanInspirationHolds = `-- name: DeleteOrphanInspirationHolds :exec
+DELETE FROM inspiration_holds h
+WHERE h.campaign_id = $1 AND h.answer_key IS NULL
+  AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
+`
+
+// The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
+func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) error {
+	_, err := q.db.Exec(ctx, deleteOrphanInspirationHolds, campaignID)
+	return err
+}
+
 const deletePendingDamage = `-- name: DeletePendingDamage :exec
 DELETE FROM pending_damages
 WHERE id = $1
