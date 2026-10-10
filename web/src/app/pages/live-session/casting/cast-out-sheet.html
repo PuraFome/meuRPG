@@ -7,7 +7,12 @@
       </div>
     }
 
-    @if (cast(); as c) {
+    @if (summoned()) {
+      <div class="mr-notice mr-notice--success" role="status">
+        <mat-icon aria-hidden="true">pets</mat-icon>
+        <p>{{ summoned() }}</p>
+      </div>
+    } @else if (cast(); as c) {
       <ul class="result">
         @for (line of resultLines(); track line) {
           <li>{{ line }}</li>
@@ -50,6 +55,14 @@
       } @else {
         <p class="loading">Nenhuma magia para conjurar fora do combate.</p>
       }
+    } @else if (summons()) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">pets</mat-icon>
+        <p>
+          {{ spell()!.spell!.namePt }} traz uma criatura: ela não tem alvo. Escolha a criatura (e o espaço de magia, ou o
+          ritual) na próxima tela; ela aparece na ficha em "Criaturas".
+        </p>
+      </div>
     } @else {
       @if (ways().includes('ritual')) {
         <app-choice-cards label="Como conjurar" [rows]="wayRows()" [chosen]="[way()]" (choose)="pickWay($event)" />
@@ -101,9 +114,16 @@
   </div>
 
   <div foot>
-    @if (cast()) {
+    @if (summoned() || cast()) {
       <div class="actions">
         <button mat-flat-button type="button" (click)="close()">Fechar</button>
+      </div>
+    } @else if (spell() && summons()) {
+      <div class="actions">
+        @if (!data.spellKey) {
+          <button mat-stroked-button type="button" (click)="back()">Outra magia</button>
+        }
+        <button mat-flat-button type="button" class="cast" (click)="openSummon()">Escolher a criatura</button>
       </div>
     } @else if (spell()) {
       @if (missing()) {

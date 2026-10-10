@@ -201,6 +201,13 @@ func (r Request) Validate() error {
 	return nil
 }
 
+// creaturesRule is the scene art's and the isometric view's line on
+// creatures. The drawing marks each creature the players see with a disc; on
+// its own, the model also filled empty rooms with monsters nobody had met, which
+// tells the players something that is not there. So: a creature only on a
+// disc, or where the master's own words ask for one.
+const creaturesRule = "Colored discs mark where creatures stand: draw a creature there, never the disc. Draw no other creature, person or monster unless the description below asks for one: where there is no disc, the place is empty.\n"
+
 // Text builds the text the model gets: the master's words as written, with
 // the style and the framing around them. It is the same for every Generator,
 // so the fake sees what Gemini would.
@@ -221,9 +228,11 @@ func (r Request) Text() string {
 	} else {
 		switch r.Layout {
 		case LayoutScene:
-			b.WriteString("Paint a scene of the place that the first attached image shows. The first image is a plan seen from above: light squares are floor, dark squares are walls and rock, and solid black is not visible and must not appear in the picture. Colored discs mark where creatures stand: draw a creature there, never the disc.\n")
+			b.WriteString("Paint a scene of the place that the first attached image shows. The first image is a plan seen from above: light squares are floor, dark squares are walls and rock, and solid black is not visible and must not appear in the picture.\n")
+			b.WriteString(creaturesRule)
 		case LayoutIsometric:
-			b.WriteString("Paint an isometric view of the place that the first attached image shows, seen from above at an angle, like a game board. The first image is a plan seen from above: light squares are floor, dark squares are walls and rock, and solid black is not visible and must not appear in the picture. Colored discs mark where creatures stand: draw a creature there, never the disc.\n")
+			b.WriteString("Paint an isometric view of the place that the first attached image shows, seen from above at an angle, like a game board. The first image is a plan seen from above: light squares are floor, dark squares are walls and rock, and solid black is not visible and must not appear in the picture.\n")
+			b.WriteString(creaturesRule)
 		case LayoutTexture:
 			b.WriteString(textureIntro)
 			if len(r.Rooms) > 0 {

@@ -3,6 +3,7 @@ package characters
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -153,6 +154,14 @@ func npcSheetFromCreature(content *rules.Content, key string) (*charactersv1.Bas
 	}
 	if len(extras) > 0 {
 		basic.Description += "\n" + strings.Join(extras, "\n")
+	}
+	// The multiattack count the turn already follows (through MonsterKey) and the
+	// creature's spellcasting, written for the master: the sheet has no spell engine.
+	if d.AttacksPerAction > 1 {
+		basic.Description += fmt.Sprintf("\nAtaques por ação: %d (ataque múltiplo).", d.AttacksPerAction)
+	}
+	if note := spellcastingNote(content, c); note != "" {
+		basic.Description += "\n" + note
 	}
 	// The same checks as any basic sheet: a creature that breaks one is a bug in
 	// the data, and the test over the 334 creatures says so.
