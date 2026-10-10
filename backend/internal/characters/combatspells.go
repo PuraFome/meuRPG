@@ -95,6 +95,8 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
 	out.IgnoresCover = content.IgnoresCover(spellKey)
+	out.Evocation = det.Spell.School == "school:evocation"
+	out.Sculpts = rules.HasFeature(d, "feature:sculpt-spells")
 	// Whom it reaches: the table spell's own target, or the SRD spell's (the
 	// structured area, then the text; see rules.SpellTarget).
 	out.Area = det.Target.AnyNumber()

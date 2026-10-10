@@ -2031,6 +2031,9 @@ message SpellOption {
   // (SRD 5.1, Sorcerer). Empty for a character with none. The cast checks them again
   // at the slot it is cast with.
   repeated MetamagicOption metamagic_options = 30;
+  // True when the character has Sculpt Spells (the evocation wizard) and this spell is of
+  // the school of evocation: the cast may name creatures to spare (CastSpellRequest.sculpted_ids).
+  bool sculpt_spells = 31;
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the

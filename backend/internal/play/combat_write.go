@@ -171,6 +171,9 @@ type combatTx struct {
 	castID string
 	// meta is the Metamagic of the casting in progress (nil without it).
 	meta *castMeta
+	// sculpted are the creatures the caster's Sculpt Spells spares in the casting in
+	// progress (nil without it).
+	sculpted map[string]bool
 	// actorUserID is who makes the change, for the events a change writes besides
 	// its own (the creatures it summons or dismisses).
 	actorUserID string

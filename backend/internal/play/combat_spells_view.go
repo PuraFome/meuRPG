@@ -34,8 +34,9 @@ func saveView(sr *saveRoll, v combatViewer, caster, target playdb.Combatant) *pl
 	if sr.Saved {
 		out.Outcome = playv1.SaveOutcome_SAVE_OUTCOME_SAVED
 	}
+	out.Sculpted = sr.Sculpted // the save lines are public: the log says who was spared
 	if v.master || v.owns(target) {
-		if !sr.Auto {
+		if !sr.Auto && !sr.Sculpted {
 			out.Roll = diceRoll(1, 20, []int32{sr.D20}, sr.Bonus, sr.Total, false)
 			if sr.D20B != 0 {
 				out.Roll = diceRoll(2, 20, pairOf(sr.D20, sr.D20B, sr.Counted), sr.Bonus, sr.Total, false)

@@ -178,6 +178,8 @@ type Traits struct {
 	// Rage, RecklessAttack and DangerSense are the barbarian's features, and Frenzy
 	// the Berserker's level 3 feature.
 	Rage, RecklessAttack, DangerSense, Frenzy bool
+	// SculptSpells says the sheet has the evocation wizard's Sculpt Spells.
+	SculptSpells bool
 	// SneakAttackDice is the dice of Sneak Attack, 0 without the feature.
 	SneakAttackDice int
 	// DivineSmite, ImprovedDivineSmite and ColossusSlayer are the features of those
@@ -330,6 +332,10 @@ type Spell struct {
 	// above its own.
 	Area                bool
 	ExtraTargetPerLevel bool
+	// Evocation says the spell is of the school of evocation, and Sculpts that the
+	// caster has Sculpt Spells (SRD 5.1, School of Evocation): together they let the
+	// cast spare 1 + the cast level creatures.
+	Evocation, Sculpts bool
 	// TargetCount is how many targets the spell takes at its own level (0 when the
 	// spell says only Area or nothing: the old rules apply), and TargetPerLevel
 	// how many more it takes for each slot level above its own. A table spell
