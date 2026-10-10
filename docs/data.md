@@ -642,7 +642,7 @@ erDiagram
         text action_attack_key "sheet attack made last with the action this turn"
         int4 bonus_attacks_left "Flurry of Blows strikes still to make"
         int4 ac_bonus "Shield: +5 until the next turn, 0 to 30"
-        jsonb slots_used "slots, pact slots and uses an NPC spent in the combat (\"1\" to \"9\", pact, res:key); a player's live in character_vitals"
+        jsonb slots_used "slots, pact slots and uses an NPC spent in the combat (1 to 9, pact, res:key); a player's live in character_vitals"
         bool death_save_rolled "this turn's death save"
         int4 hp_current "NPC and creature only"
         int4 hp_max "NPC and creature only; the effective maximum, Aid included"
