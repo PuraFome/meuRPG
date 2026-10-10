@@ -34,6 +34,7 @@ func (cb *choiceBuilder) race() {
 	}
 	for _, s := range sources {
 		g := cb.group(ChoiceOriginRace, s.key, 0, 0)
+		cb.featChoice(g, s.key)
 		for _, tk := range s.traits {
 			tr := c.traits[tk]
 			if tr == nil {
@@ -49,6 +50,7 @@ func (cb *choiceBuilder) race() {
 			for _, e := range c.effectChoices(tk, "cantrip") {
 				cb.cantripChoice(g, tk, e)
 			}
+			cb.featChoice(g, tk)
 		}
 	}
 	cb.abilityChoice(x.race)
@@ -115,6 +117,7 @@ func (cb *choiceBuilder) features(_ ownedClass, idx int, origin ChoiceOrigin, so
 		for _, e := range c.effectChoices(fk, "cantrip") {
 			cb.cantripChoice(g, fk, e)
 		}
+		cb.featChoice(g, fk)
 		switch {
 		case strings.HasPrefix(fk, "feature:favored-enemy-") && !isTableKey(fk):
 			cb.favoredEnemy(g, fk)

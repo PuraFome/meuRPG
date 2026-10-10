@@ -637,6 +637,11 @@ func buildKeys(b Build, want func(string) bool) []string {
 	add(b.SpellsKnown...)
 	add(b.SpellsPrepared...)
 	add(b.FeatureChoices...)
+	for _, k := range b.FeatureChoices {
+		if _, v, ok := SplitScopedChoice(k); ok && strings.HasPrefix(v, "feat:") {
+			add(v) // a feat picked through a choice is a feat of the sheet
+		}
+	}
 	add(b.Feats...)
 	return sortedKeys(seen)
 }
@@ -693,6 +698,9 @@ func BuildKeys(b Build) []KeyField {
 	}
 	for i, k := range b.FeatureChoices {
 		add(k, fmt.Sprintf("full.feature_choice_keys[%d]", i))
+		if _, v, ok := SplitScopedChoice(k); ok && strings.HasPrefix(v, "feat:") {
+			add(v, fmt.Sprintf("full.feature_choice_keys[%d]", i))
+		}
 	}
 	for i, k := range b.Feats {
 		add(k, fmt.Sprintf("full.feat_keys[%d]", i))

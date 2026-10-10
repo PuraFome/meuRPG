@@ -79,4 +79,68 @@ describe('ChoiceGroups', () => {
     cards()[0].click();
     expect(sent[0].optionKeys).toEqual(['b']);
   });
+
+  describe('a feat the player chooses', () => {
+    function featGroup(origin: ChoiceOrigin, sourceNamePt: string) {
+      return create(ChoiceGroupSchema, {
+        origin,
+        sourceKey: 'race:humano-variante@mesa',
+        sourceNamePt,
+        choices: [
+          create(ChoiceSchema, {
+            key: 'trait:talento@mesa#feat',
+            featureKey: 'trait:talento@mesa',
+            kind: ChoiceKind.OPTIONS,
+            titlePt: 'Talento',
+            labelPt: 'Talento (Humano Variante)',
+            picks: 1,
+            missing: 1,
+            options: [
+              create(ChoiceOptionSchema, {
+                key: 'feat:alerta@mesa',
+                storedKey: 'trait:talento@mesa#feat=feat:alerta@mesa',
+                namePt: 'Alerta',
+                summaryPt: '+5 na Iniciativa.',
+              }),
+              create(ChoiceOptionSchema, {
+                key: 'feat:lutador@mesa',
+                storedKey: 'trait:talento@mesa#feat=feat:lutador@mesa',
+                namePt: 'Lutador',
+                summaryPt: 'Pede: Força 13.',
+                reasonPt: 'Você ainda não cumpre o pré-requisito: Precisa de Força 13.',
+              }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    it('names the race that grants it and offers the feats with their text', () => {
+      const { el, cards } = setup(featGroup(ChoiceOrigin.RACE, 'Humano Variante'));
+      expect(el.querySelector('.choice__origin')?.textContent).toContain(
+        'Raça · Humano Variante · 1 escolha',
+      );
+      expect(el.querySelector('.choice__title')?.textContent).toContain('Talento');
+      expect(cards()[0].textContent).toContain('+5 na Iniciativa.');
+    });
+
+    it('shows the unmet prerequisite and does not let the feat be picked', () => {
+      const { cards, sent } = setup(featGroup(ChoiceOrigin.BACKGROUND, 'Artesão'));
+      expect(cards()[1].getAttribute('aria-disabled')).toBe('true');
+      expect(cards()[1].textContent).toContain('Precisa de Força 13.');
+      cards()[1].click();
+      expect(sent.length).toBe(0);
+    });
+
+    it('says where a feat granted by a background or another feat comes from', () => {
+      const bg = setup(featGroup(ChoiceOrigin.BACKGROUND, 'Artesão'));
+      expect(bg.el.querySelector('.choice__origin')?.textContent).toContain(
+        'Antecedente · Artesão',
+      );
+      const feat = setup(featGroup(ChoiceOrigin.FEAT, 'Mestre de Armas'));
+      expect(feat.el.querySelector('.choice__origin')?.textContent).toContain(
+        'Talento · Mestre de Armas',
+      );
+    });
+  });
 });

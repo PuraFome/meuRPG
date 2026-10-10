@@ -1271,6 +1271,10 @@ func checkFeat(before, after Build, c *content, asi bool) (*FeatEntry, *LevelUpE
 	if !ok {
 		return nil, refuse(field, LevelUpReasonFeat, "not a feat of the content")
 	}
+	// A feat the sheet already has, picked through a choice, is not taken twice.
+	if slices.ContainsFunc(derive(before, c).Features, func(ft Feature) bool { return ft.Key == fresh[0] }) {
+		return nil, refuse(field, LevelUpReasonFeat, "the character already has this feat")
+	}
 	entry := c.featEntry(f)
 	// The prerequisite is judged on the sheet with the level gained and without the
 	// feat and what it raises, as the guided level-up offered it.

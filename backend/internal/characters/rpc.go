@@ -79,6 +79,9 @@ func (s *Service) CreateCharacter(
 	if err := refuseChoices(content, m, kind, sheet.GetFull(), nil); err != nil {
 		return nil, err
 	}
+	if err := refuseFeatChange(m, nil, sheet.GetFull()); err != nil {
+		return nil, err
+	}
 	if err := s.checkPortrait(ctx, m.CampaignID, kind, sheet); err != nil {
 		return nil, invalidArgument(err)
 	}
@@ -464,6 +467,10 @@ func (s *Service) UpdateCharacter(
 			return err
 		}
 		if err := refuseMulticlassGap(content, m, storedSheet.GetFull(), sheet.GetFull()); err != nil {
+			return err
+		}
+		// Only the master adds or removes a feat in the editor (MR-025).
+		if err := refuseFeatChange(m, storedSheet.GetFull(), sheet.GetFull()); err != nil {
 			return err
 		}
 		// The ability origin is the server's: kept from the stored sheet, and a

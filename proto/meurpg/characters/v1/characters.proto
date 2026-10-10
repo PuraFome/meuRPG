@@ -1428,7 +1428,11 @@ message FullSheet {
   // the favored enemy's type and language ("feature:favored-enemy-1-type=creature-type:giant"),
   // a terrain ("...=terrain:forest"), the half-elf's abilities
   // ("race:half-elf#abilities=ability:dex") and the spells a feature grants
-  // ("feature:pact-of-the-tome#cantrips=spell:guidance"). Which choice asks for it,
+  // ("feature:pact-of-the-tome#cantrips=spell:guidance"). A feat of the player's choice
+  // (a `choice` effect with choice "feat" on a trait, feature, background or feat) is
+  // "<owner key>#feat=<feat key>" ("trait:talento@mesa#feat=feat:grappler"); it applies like
+  // a feat in feat_keys for as long as the owner is on the sheet, and is never also in
+  // feat_keys. Which choice asks for it,
   // and the exact string to store, come from PreviewChoices (ChoiceOption.stored_key).
   repeated string feature_choice_keys = 24;
   // The challenge rating ("ND") of an enemy or a boss: "0", "1/8", "1/4",
@@ -1480,7 +1484,8 @@ message FullSheet {
   // Improvement by the guided level-up, or by the master in the sheet editor. A feat
   // applies like a feature: its effects reach the derived sheet and the sheet lists
   // it with the features. The abilities a feat raises are in extra_ability_bonuses.
-  // At most 100.
+  // A feat a race, background or feature grants to choose is not here: it is in
+  // feature_choice_keys ("<owner key>#feat=<feat key>"). At most 100.
   repeated string feat_keys = 32;
   // For a feat taken in the guided level-up, the key of the Ability Score Improvement
   // feature it replaced (feat key to feature key). Set by the level-up; an entry for a feat
@@ -3207,6 +3212,10 @@ enum ChoiceOrigin {
   CHOICE_ORIGIN_CLASS = 2;
   // A class's subclass.
   CHOICE_ORIGIN_SUBCLASS = 3;
+  // The background (a background that grants a feat of the player's choice).
+  CHOICE_ORIGIN_BACKGROUND = 4;
+  // A feat the sheet has, when it grants another feat to choose.
+  CHOICE_ORIGIN_FEAT = 5;
 }
 
 // ChoiceKind says how a choice is made, so the app draws the right control.

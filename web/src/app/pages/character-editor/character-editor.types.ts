@@ -168,6 +168,10 @@ export interface CharacterFormValue {
   featureChoiceText: Record<string, string>;
   /** A College of Lore bard's "Perguntar" setting for Palavras de Interrupção: on which rolls of an enemy the combat asks. */
   cuttingWordsAsk: CuttingWordsAskKey;
+  /** The feats of the sheet (`FullSheet.feat_keys`, MR-025). Set by the master's editor only: absent, the save keeps the stored feats. */
+  featKeys?: string[];
+  /** A feat taken in place of an improvement (`FullSheet.feat_slots`), carried with `featKeys`; the server drops the slot of a removed feat. */
+  featSlots?: Record<string, string>;
 }
 
 /** `CuttingWordsAsk`: every roll of the enemy, attacks only (the default) or never. */
@@ -377,6 +381,23 @@ export interface RulesCatalogVm {
   readonly xpMode?: 'enemies' | 'gold' | 'milestones';
   /** The XP that reaches each level, from level 1 (0) to level 20 (`Content.level_xp`). */
   readonly levelXp?: readonly number[];
+  /** The campaign's feats, for the master's "Talentos" section; absent for a player, or when the list could not be read. */
+  readonly feats?: FeatCatalogVm;
+}
+
+/** One feat the master may give a sheet (`OptionSwitchEntry` of the kind feat). */
+export interface FeatOptionVm {
+  readonly key: string;
+  readonly namePt: string;
+  readonly fromTable: boolean;
+  /** Switched off for the players: the master may still give it. */
+  readonly off: boolean;
+}
+
+/** The feats of a campaign and whether its table uses them (the rule "Talentos"). */
+export interface FeatCatalogVm {
+  readonly options: readonly FeatOptionVm[];
+  readonly featsAllowed: boolean;
 }
 
 /** How a player made the base scores of a new sheet (`AbilityMethod`, RN-24), as a string key so this file stays gen-free. */
@@ -462,6 +483,8 @@ export interface CharacterPreviewVm {
   readonly hitPointsFromEffects: number;
   /** `DerivedSheet.spellcasting`: what each casting class of the draft knows and prepares at its level. */
   readonly spellcasting: readonly SpellLimitsVm[];
+  /** What the server said about a feat of the draft (its prerequisite not met), by feat key. */
+  readonly featIssues?: Readonly<Record<string, string>>;
 }
 
 /** How many cantrips and spells a casting class has at its level (`Spellcasting`); 0 where the class has no such number. */

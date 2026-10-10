@@ -34,6 +34,10 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { AbilityKey, CharacterKind } from '../../core/characters/characters.types';
 import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage-type-gen';
+import {
+  TableContentKind,
+  TableContentService,
+} from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { isTableKey } from '../../core/content/catalog';
 import { spellDetailsFromGen } from '../../shared/spell-details/spell-details-map';
@@ -52,6 +56,7 @@ import {
   ChoicesPreviewVm,
   CreateCharacterInput,
   CuttingWordsAskKey,
+  FeatCatalogVm,
   HitPointsMethod,
   PreviewCharacterInput,
   RulesCatalogVm,
@@ -294,6 +299,8 @@ export function toFullSheetInit(v: CharacterFormValue) {
     background,
     skillProficiencyKeys: v.skillProficiencies,
     expertiseSkillKeys: v.expertiseSkillKeys,
+    // The master's editor sends the feats; for anyone else they are left out and the save keeps the stored ones.
+    ...(v.featKeys ? { featKeys: v.featKeys, featSlots: v.featSlots ?? {} } : {}),
     extraAbilityBonuses: {
       strength: v.extraAbilityBonuses.str,
       dexterity: v.extraAbilityBonuses.dex,
@@ -442,6 +449,8 @@ export function toFormFullSheet(name: string, full: GenFullSheet): CharacterForm
       wis: full.baseScores?.wisdom ?? 10,
       cha: full.baseScores?.charisma ?? 10,
     },
+    featKeys: full.featKeys,
+    featSlots: { ...full.featSlots },
     extraAbilityBonuses: {
       str: full.extraAbilityBonuses?.strength ?? 0,
       dex: full.extraAbilityBonuses?.dexterity ?? 0,
@@ -504,6 +513,22 @@ export function toFormBasicSheet(name: string, basic: GenBasicSheet): BasicChara
   };
 }
 
+/** The feats' issues of a derived sheet (`full.feat_keys[i]`), by the key of the feat each one is about. */
+function featIssuesOf(
+  issues: readonly { field: string; message: string }[],
+  featKeys: readonly string[],
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const issue of issues) {
+    const m = /^full\.feat_keys\[(\d+)\]$/.exec(issue.field);
+    const key = m ? featKeys[Number(m[1])] : undefined;
+    if (key) {
+      out[key] = issue.message;
+    }
+  }
+  return out;
+}
+
 /**
  * `CharacterEditorSource` over the generated `ContentService`
  * (`meurpg.rules.v1`, for the catalog) and `CharacterService`
@@ -517,6 +542,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
   private readonly characterClient = createClient(CharacterService, inject(CONNECT_TRANSPORT));
   private readonly contentClient = createClient(ContentService, inject(CONNECT_TRANSPORT));
   private readonly campaignClient = createClient(CampaignService, inject(CONNECT_TRANSPORT));
+  private readonly tableClient = createClient(TableContentService, inject(CONNECT_TRANSPORT));
 
   /** The last `FullSheet` `loadCharacterForEdit` read for a character, kept
    * only so `updateCharacter` can start from it — see
@@ -548,6 +574,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
     ]);
     const content = res.content!;
     const viewerIsMaster = campaignRead.viewerIsMaster;
+    const feats = viewerIsMaster ? await this.loadFeats(campaignId) : undefined;
 
     const subracesByRace = new Map<string, SubraceOptionVm[]>();
     for (const sr of content.subraces) {
@@ -668,7 +695,26 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
               ? 'milestones'
               : undefined,
       levelXp: content.levelXp,
+      ...(feats ? { feats } : {}),
     };
+  }
+
+  /** The feats the master may give a sheet and whether the table uses them; `undefined` when either read fails (the section says so). */
+  private async loadFeats(campaignId: string): Promise<FeatCatalogVm | undefined> {
+    try {
+      const [switches, rules] = await Promise.all([
+        this.tableClient.listOptionSwitches({ campaignId }),
+        this.campaignClient.getTableRules({ campaignId }),
+      ]);
+      return {
+        options: switches.options
+          .filter((o) => o.kind === TableContentKind.FEAT && !o.archived)
+          .map((o) => ({ key: o.key, namePt: o.namePt, fromTable: o.table, off: o.off })),
+        featsAllowed: rules.rules?.featsAllowed ?? false,
+      };
+    } catch {
+      return undefined;
+    }
   }
 
   async loadSpellDetails(campaignId: string, spellKey: string): Promise<SpellDetailsVm> {
@@ -802,6 +848,7 @@ export class CharacterEditorSourceLive implements CharacterEditorSource {
         spellsKnown: sc.spellsKnown,
         preparedMax: sc.preparedMax,
       })),
+      featIssues: featIssuesOf(res.derived?.issues ?? [], input.full.featKeys ?? []),
     };
   }
 

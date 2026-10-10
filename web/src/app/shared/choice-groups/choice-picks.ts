@@ -67,6 +67,10 @@ export function originLine(group: ChoiceGroup, choice: Choice): string {
   switch (group.origin) {
     case ChoiceOrigin.RACE:
       return `Raça · ${group.sourceNamePt} · ${count}`;
+    case ChoiceOrigin.BACKGROUND:
+      return `Antecedente · ${group.sourceNamePt} · ${count}`;
+    case ChoiceOrigin.FEAT:
+      return `Talento · ${group.sourceNamePt} · ${count}`;
     case ChoiceOrigin.SUBCLASS:
       return `${group.classNamePt} · nível ${group.level} · ${group.sourceNamePt}`;
     default:
