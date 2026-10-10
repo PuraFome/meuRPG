@@ -462,6 +462,31 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
       });
     });
 
+    it('with advantage, types both d20 and sends the two faces', async () => {
+      const w = goblin();
+      (w.prompt.value as { mode: string }).mode = 'advantage';
+      const { fixture, el } = setup([w]);
+      button(el, 'Digitar o resultado').click();
+      fixture.detectChanges();
+      // The hint of the typed form says which die counts.
+      expect(el.textContent).toContain('Com vantagem conta o maior');
+      const fields = el.querySelectorAll<HTMLInputElement>('input[type="text"]');
+      expect(fields.length).toBe(2);
+      [15, 9].forEach((n, i) => {
+        fields[i].value = String(n);
+        fields[i].dispatchEvent(new Event('input'));
+      });
+      fixture.detectChanges();
+      button(el, 'Confirmar').click();
+      await flush(fixture);
+      expect(effectsApi.rollEffectSave.mock.calls[0][3]).toEqual({
+        kind: 'typed',
+        face: 15,
+        second: 9,
+        extra: [],
+      });
+    });
+
     it('skipping the save asks to confirm first', async () => {
       const { fixture, el } = setup([goblin()]);
       button(el, 'Pular o teste').click();

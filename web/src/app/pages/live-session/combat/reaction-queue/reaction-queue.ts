@@ -37,6 +37,7 @@ import { rollText } from '../../../../core/combat/combat-dice';
 import { type EffectSaveAnswer, EffectsClient } from '../../../../core/effects/effects-client';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
+import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollPicker } from '../roll-picker/roll-picker';
 
 let nextId = 0;
@@ -54,7 +55,7 @@ let nextId = 0;
 @Component({
   selector: 'app-reaction-queue',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ExtraDice, MatButtonModule, MatIconModule, NgTemplateOutlet, RollPicker],
+  imports: [ExtraDice, MatButtonModule, MatIconModule, MultiRoll, NgTemplateOutlet, RollPicker],
   template: `
     @for (card of cards(); track card.id) {
       @switch (card.type) {
@@ -236,18 +237,31 @@ let nextId = 0;
             @if (extraWindow() === card.window.id && extra.fields().length > 0) {
               <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
             }
-            <app-roll-picker
-              [outlined]="true"
-              [min]="1"
-              [max]="20"
-              [modifier]="effectSaveBonus(card.window)"
-              [label]="'Role 1d20 para o teste de ' + effectSaveAbility(card.window) + ' ' + ofTheLabel(card.window.reactorLabel)"
-              hint="Role o seu dado e digite o número que saiu (1 a 20)."
-              [totalNote]="'Teste de ' + effectSaveAbility(card.window)"
-              [busy]="busy()"
-              (app)="effectSave(card.window, { kind: 'app' })"
-              (typed)="effectSave(card.window, { kind: 'typed', face: $event, extra: [] })"
-            />
+            @if (effectSaveMode(card.window) === 'normal') {
+              <app-roll-picker
+                [outlined]="true"
+                [min]="1"
+                [max]="20"
+                [modifier]="effectSaveBonus(card.window)"
+                [label]="'Role 1d20 para o teste de ' + effectSaveAbility(card.window) + ' ' + ofTheLabel(card.window.reactorLabel)"
+                hint="Digite o número que saiu no dado (1 a 20), sem somar o bônus: o app soma."
+                [totalNote]="'Teste de ' + effectSaveAbility(card.window)"
+                [busy]="busy()"
+                (app)="effectSave(card.window, { kind: 'app' })"
+                (typed)="effectSave(card.window, { kind: 'typed', face: $event, extra: [] })"
+              />
+            } @else {
+              <app-multi-roll
+                [fields]="pair"
+                [combine]="effectSaveMode(card.window) === 'advantage' ? 'higher' : 'lower'"
+                [modifier]="effectSaveBonus(card.window)"
+                [totalNote]="'Teste de ' + effectSaveAbility(card.window)"
+                [hint]="effectSavePairHint(card.window)"
+                [busy]="busy()"
+                (app)="effectSave(card.window, { kind: 'app' })"
+                (typed)="effectSaveTyped(card.window, $event)"
+              />
+            }
             @if (effectSaveSkippable(card.window)) {
               @if (skipAsked() === card.window.id) {
                 <div class="warn">
@@ -567,6 +581,35 @@ export class ReactionQueue {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The two d20 of an effect save with advantage or disadvantage, in the order they are rolled. */
+  protected readonly pair: readonly RollField[] = [
+    { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },
+    { key: 'd20-2', label: 'Segundo d20', min: 1, max: 20 },
+  ];
+
+  protected effectSaveMode(w: ReactionWindow): 'normal' | 'advantage' | 'disadvantage' {
+    const mode = this.effectSavePrompt(w)?.mode;
+    return mode === 'advantage' || mode === 'disadvantage' ? mode : 'normal';
+  }
+
+  protected effectSavePairHint(w: ReactionWindow): string {
+    const counts =
+      this.effectSaveMode(w) === 'advantage'
+        ? 'Com vantagem conta o maior'
+        : 'Com desvantagem conta o menor';
+    return `${counts}. Role os dois d20 e digite os números que saíram nos dados (1 a 20 cada), sem somar o bônus.`;
+  }
+
+  /** "Confirmar" of the two typed d20 (advantage or disadvantage): the server takes both faces. */
+  protected effectSaveTyped(w: ReactionWindow, faces: readonly number[]): Promise<void> {
+    return this.effectSave(w, {
+      kind: 'typed',
+      face: faces[0],
+      ...(faces.length > 1 ? { second: faces[1] } : {}),
+      extra: [],
+    });
   }
 
   private effectSavePrompt(w: ReactionWindow) {
