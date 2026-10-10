@@ -817,7 +817,7 @@ sequenceDiagram
     S->>DB: BEGIN, every part's Apply, COMMIT
     alt a problem or an error
         S->>B: delete the files written
-        S-->>W: HAS_PROBLEMS, or an error; nothing exists
+        S-->>W: HAS_PROBLEMS, or an error, and nothing exists
     else it worked
         S->>B: delete the parts
         S-->>W: the campaign

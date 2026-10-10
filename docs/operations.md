@@ -117,6 +117,7 @@ The master's sign-in (`identity` module) needs one secret, the OIDC provider's c
 | `TRUSTED_PROXY_HOPS` | No | How many proxies of ours sit between the client and the server, which tells the rate limits where the client IP is (see [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip)). Unset on Cloud Run means **1** (Cloud Run alone, on its `run.app` URL); set it to **2** when the global external Application Load Balancer is in front. Only 1 and 2 are accepted on Cloud Run, and any value elsewhere stops the server from starting (the local server is never behind a proxy, and trusting `X-Forwarded-For` there would let a client choose its own key). The start-up log says `client ip source` with `trusted_proxy_hops` |
 | `GOOGLE_CLOUD_PROJECT` | No | The project id, set at deploy (`--set-env-vars`): **Cloud Run does not set it by itself**. Without it, log lines do not carry the Cloud Logging trace, and the lines of one request do not show up together (see [Architecture](architecture.md#logs)) |
 | `LISTEN_HOST` | No | Do not set it: empty, the server listens on all interfaces, which is what Cloud Run requires. Local environments use `127.0.0.1` |
+| `LOG_LEVEL` | No | `info` (one line per request) is the normal value. Production runs at `debug` while the first tables play, so a refused action logs its reason and the stream logs each connection; `gcloud run services update meurpg --region southamerica-east1 --update-env-vars LOG_LEVEL=info` sets it back (a new revision, the env and secrets kept). At `debug` the log is 5 to 10 times bigger (see [Production (plan)](#production-plan)) |
 
 The backend never writes the client secret to the log: the `config.Secret` type prints as `[REDACTED]`. `DATABASE_URL` and `GEMINI_API_KEY` are `config.Secret` too. `migrate` reads the URL with pgx and, if it is invalid, returns a fixed sentence instead of the driver error, which could repeat the password.
 
@@ -702,7 +703,7 @@ A Cloud Armor Standard policy on the load balancer's backend judges each request
 | Priority | Rule | Action | Why |
 | --- | --- | --- | --- |
 | 900 | The request does not come from Brazil (`origin.region_code != 'BR'`), unless its user agent is Google's uptime checker | `403` | The app serves one table in Brazil. Most scanners and bots come from abroad, and this cuts them before they cost a Cloud Run request. It is not a security boundary: a VPN in Brazil passes, and anyone can send the checker's user agent. A player travelling abroad gets `403` until the rule is relaxed |
-| 1000 | Every request, counted per client IP | Above 1,500 requests in 60 seconds, `429` | A coarse flood limit, far above what a whole table behind one home connection makes (map tiles come in bursts), so a flood never reaches the app's own finer limits ([Abuse limits](#abuse-limits)) or the database |
+| 1000 | Every request, counted per client IP | Above 3,000 requests in 60 seconds, `429` | A coarse flood limit. A whole table plays from one home connection, so its requests share one IP: a rehearsal with three people peaked at 330 requests in a minute, and a full table of eight makes about three times that, with map tiles in bursts. 3,000 leaves room for that and still cuts a flood. It is per IP and not per user because a key a client sends (a cookie, a header) can be forged; the app's own per-user limits are behind it, so a flood never reaches the app's own finer limits ([Abuse limits](#abuse-limits)) or the database |
 | 2000 | The preconfigured OWASP rules for SQL injection, XSS, local and remote file inclusion and remote code execution (`*-v33-stable`, sensitivity 1) | `403`, **in preview** | Preview only logs what the rule would have blocked. Free text the master writes (a scene, a note) can look like an attack to these rules, so they are enforced only after their matches in the request log have been read ([Open items](#open-items)) |
 | 2001 | The scanner, protocol attack and method enforcement rules (`*-v33-stable`, sensitivity 1) | `403`, **in preview** | The same |
 | default | Anything else | allow | |
@@ -719,7 +720,7 @@ gcloud compute security-policies rules create 900 --security-policy=meurpg-edge 
 
 gcloud compute security-policies rules create 1000 --security-policy=meurpg-edge \
   --expression="true" --action=throttle --enforce-on-key=IP \
-  --rate-limit-threshold-count=1500 --rate-limit-threshold-interval-sec=60 \
+  --rate-limit-threshold-count=3000 --rate-limit-threshold-interval-sec=60 \
   --conform-action=allow --exceed-action=deny-429 --description="per-IP flood throttle"
 
 gcloud compute security-policies rules create 2000 --security-policy=meurpg-edge --preview \
