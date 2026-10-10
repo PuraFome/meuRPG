@@ -328,6 +328,34 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
     ).toBe(' anda 3,0 m');
   });
 
+  it('says what a walk spent when it is not the distance', () => {
+    const plain = (t: string | undefined) => (t ?? '').replace(/\u00a0/g, ' ');
+    const walk = (over: Partial<CombatLogEntry>) =>
+      plain(
+        logLine(
+          entry({ kind: CombatLogKind.MOVED, actorLabel: 'Jabuti', distanceDft: 157, ...over }),
+        )?.text,
+      );
+    // Positive control: a plain walk and an old event say only the distance.
+    expect(walk({ spentDft: 157 })).toBe(' anda 4,7 m');
+    expect(walk({})).toBe(' anda 4,7 m');
+    // Through allies (difficult terrain, SRD 5.1): the panel's number is in the line.
+    expect(walk({ spentDft: 207 })).toBe(
+      ' anda 4,7 m, gasta 6,2 m de movimento (terreno difícil)',
+    );
+    expect(walk({ spentDft: 314, moveDragging: true })).toBe(
+      ' anda 4,7 m, gasta 9,4 m de movimento (arrastando)',
+    );
+    expect(walk({ spentDft: 314, moveCrawling: true })).toBe(
+      ' anda 4,7 m, gasta 9,4 m de movimento (rastejando)',
+    );
+    expect(walk({ spentDft: 728, moveDragging: true, moveCrawling: true })).toBe(
+      ' anda 4,7 m, gasta 21,8 m de movimento (terreno difícil, arrastando, rastejando)',
+    );
+    // A jump keeps its own line.
+    expect(walk({ spentDft: 207, jump: JumpKind.LONG })).toBe(' saltou 4,7 m');
+  });
+
   it('writes moves, standard actions, hit point changes, reveals, start and end', () => {
     expect(
       logLine(entry({ kind: CombatLogKind.MOVED, actorLabel: 'Pensantus', distanceFt: 10 }))?.text,

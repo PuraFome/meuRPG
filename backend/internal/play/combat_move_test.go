@@ -363,6 +363,42 @@ func TestRN21_WallsColumnsAndSqueezesBlockAMove(t *testing.T) {
 	wantEncounterBlocked(t, err, reasonMoveBlocked)
 }
 
+// TestTheMoveLogSaysTheMovementSpentNotOnlyTheLine: a walk through an ally on rubble
+// goes 14,1 ft and spends 24,1 ft; the log of the master and of the player both
+// carry the two numbers (the straight line alone was the bug), a plain walk spends
+// what it goes, and the master's free move spends nothing.
+func TestTheMoveLogSaysTheMovementSpentNotOnlyTheLine(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.mustMove(t, c.master, "Escudeiro", 1, 8)
+	c.mustMove(t, c.master, "Toren", 3, 8)
+	if got := lastMove(t, c.log(t, c.master, c.get(t, c.master))); got != nil && got.GetSpentDft() != 0 {
+		t.Errorf("the master's free move logged %d spent, want 0", got.GetSpentDft())
+	}
+
+	// Positive control: a plain walk spends its length.
+	c.mustMove(t, c.caio, "Toren", 3, 9)
+	for _, u := range []*user{c.master, c.caio} {
+		if got := lastMove(t, c.log(t, u, c.get(t, c.master))); got == nil || got.GetDistanceDft() != 50 || got.GetSpentDft() != 50 {
+			t.Errorf("plain walk log = %v, want distance 50 and spent 50", got)
+		}
+	}
+	c.undoLast(t)
+
+	c.mustMove(t, c.master, "Pensantus", 4, 9)
+	c.mustMove(t, c.caio, "Toren", 5, 10)
+	for _, u := range []*user{c.master, c.caio} {
+		got := lastMove(t, c.log(t, u, c.get(t, c.master)))
+		if got == nil || got.GetDistanceDft() != 141 || got.GetSpentDft() != 241 || got.GetMoveDragging() || got.GetMoveCrawling() {
+			t.Errorf("walk through an ally on rubble log = %v, want distance 141, spent 241, no drag, no crawl", got)
+		}
+	}
+	if used := c.who(t, c.caio, "Toren").GetMovementUsedDft(); used != 241 {
+		t.Errorf("the panel's movement used = %d, want 241 (the log's spent)", used)
+	}
+}
+
 // TestRN21_DifficultTerrainAndOtherCreaturesCostMore: rubble costs 5 ft more for
 // each square the line enters, once per square (an ally standing on rubble is
 // +5, not +10); a square holding an ally can be passed at the same price; an

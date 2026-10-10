@@ -649,7 +649,29 @@ function movedText(e: CombatLogEntry): string {
   if (e.jump === JumpKind.LONG) {
     return ` saltou ${length}${e.jumpRunningStart ? ', com corrida' : ''}${e.landingDifficult ? ' e caiu em terreno difícil. Acrobacia CD 10 ou cai Derrubado' : ''}`;
   }
-  return ` anda ${length}`;
+  return ` anda ${length}${spentNote(e)}`;
+}
+
+/** What a walk spent when it is not the distance: ", gasta 6,2 m de movimento (terreno difícil)". The
+ * reasons come from the SRD: another creature's space and rubble cost double, a drag halves the speed and a
+ * prone creature crawls at double the cost. Nothing when the walk spent what it went (or the event is old). */
+function spentNote(e: CombatLogEntry): string {
+  const distance = e.distanceDft > 0 ? e.distanceDft : e.distanceFt * 10;
+  if (e.spentDft <= 0 || e.spentDft === distance) {
+    return '';
+  }
+  const factor = (e.moveDragging ? 2 : 1) * (e.moveCrawling ? 2 : 1);
+  const reasons: string[] = [];
+  if (e.spentDft > distance * factor) {
+    reasons.push('terreno difícil');
+  }
+  if (e.moveDragging) {
+    reasons.push('arrastando');
+  }
+  if (e.moveCrawling) {
+    reasons.push('rastejando');
+  }
+  return `, gasta ${metersFixed(e.spentDft / 10)} de movimento${reasons.length > 0 ? ` (${reasons.join(', ')})` : ''}`;
 }
 
 /** The d20 pair of a roll, or nothing for a single die. */

@@ -587,6 +587,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:
 		out.DistanceFt, out.DistanceDft = e.ev.DistanceFt, e.ev.DistanceDFt
+		out.SpentDft, out.MoveDragging, out.MoveCrawling = e.ev.SpentDFt, e.ev.Dragging, e.ev.Crawling
 		if out.DistanceDft == 0 { // an event written before the tenths of a foot
 			out.DistanceDft = e.ev.DistanceFt * 10
 		}

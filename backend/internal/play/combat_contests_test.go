@@ -784,6 +784,12 @@ func TestDraggingAGrappledCreatureHalvesTheSpeedAndLeavesItBehind(t *testing.T) 
 	if !c.hasCondition(t, c.hob, condGrappled) {
 		t.Error("dragging ended the grapple")
 	}
+	for _, u := range []*user{a.master, a.caio} { // the log says the drag spent twice the line
+		got := lastMove(t, a.log(t, u, c.refresh(t)))
+		if got == nil || got.GetDistanceDft() != 150 || got.GetSpentDft() != 300 || !got.GetMoveDragging() || got.GetMoveCrawling() {
+			t.Errorf("drag log = %v, want distance 150, spent 300, dragging", got)
+		}
+	}
 	if used := c.combatant(t, a.caio, "Toren"); used.GetMovementLeftDft() != 0 {
 		t.Errorf("movement left = %d, want 0 after dragging three squares", used.GetMovementLeftDft())
 	}
