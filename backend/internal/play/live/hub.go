@@ -35,10 +35,13 @@ import (
 const DefaultBuffer = 16
 
 // DefaultMaxPerUser is how many streams one user may hold open for one
-// campaign: a few tabs and devices, with room for a reconnection that arrives
-// before the server noticed its old stream is gone. Each stream is a goroutine,
-// a buffer and a connection, and any member may open them, so without a cap one
-// account could take the instance's memory.
+// campaign: a few tabs and devices. Each stream is a goroutine, a buffer and a
+// connection, and any member may open them, so without a cap one account could
+// take the instance's memory. A new stream past the cap replaces the user's
+// oldest one (ErrReplaced) rather than being refused: behind the load balancer
+// the server learns that a page went away only when a heartbeat fails, up to
+// a heartbeat later, so the old streams of a few reloads are usually dead ones,
+// and the newest call is the page the person is looking at.
 const DefaultMaxPerUser = 8
 
 // Why a subscription ended. Err returns one of these once Events is closed.
@@ -47,9 +50,9 @@ var (
 	ErrSlow = errors.New("live: the subscriber fell behind and was dropped")
 	// ErrClosed: the hub closed, because the server is shutting down.
 	ErrClosed = errors.New("live: the hub is closed")
-	// ErrTooMany: Subscribe refused, because the user already has the most
-	// streams the hub allows for the campaign.
-	ErrTooMany = errors.New("live: too many streams open for this user in this campaign")
+	// ErrReplaced: the user opened one stream more than the cap on this
+	// campaign, and this one, their oldest, made room for it.
+	ErrReplaced = errors.New("live: replaced by a newer stream of the same user")
 )
 
 // Subscriber is who watches: their account, and whether they are the
@@ -101,6 +104,7 @@ type Hub struct {
 
 	mu     sync.Mutex
 	subs   map[string]map[*Subscription]struct{} // by campaign ID
+	seq    uint64                                // the order subscriptions were made in, under mu
 	closed bool
 }
 
@@ -120,6 +124,7 @@ type Subscription struct {
 	campaignID string
 	who        Subscriber
 	events     chan Event
+	seq        uint64              // when it was made, among the hub's subscriptions
 	pending    map[string]struct{} // the Coalesce keys queued in events, under hub.mu
 	err        error               // set, under hub.mu, before events closes
 }
@@ -133,8 +138,9 @@ func (h *Hub) SetMaxPerUser(n int) {
 }
 
 // Subscribe starts delivering the campaign's events for who. It fails with
-// ErrClosed once the hub is closed, and with ErrTooMany when who already has
-// the most streams allowed on this campaign.
+// ErrClosed once the hub is closed. When who already has the most streams
+// allowed on this campaign, their oldest one ends with ErrReplaced to make
+// room for this one.
 func (h *Hub) Subscribe(campaignID string, who Subscriber) (*Subscription, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -142,15 +148,20 @@ func (h *Hub) Subscribe(campaignID string, who Subscriber) (*Subscription, error
 		return nil, ErrClosed
 	}
 	held := 0
+	var oldest *Subscription
 	for other := range h.subs[campaignID] {
 		if other.who.UserID == who.UserID {
 			held++
+			if oldest == nil || other.seq < oldest.seq {
+				oldest = other
+			}
 		}
 	}
 	if held >= h.maxPerUser {
-		return nil, ErrTooMany
+		h.remove(oldest, ErrReplaced)
 	}
-	s := &Subscription{hub: h, campaignID: campaignID, who: who, events: make(chan Event, h.buffer)}
+	h.seq++
+	s := &Subscription{hub: h, campaignID: campaignID, who: who, events: make(chan Event, h.buffer), seq: h.seq}
 	if h.subs[campaignID] == nil {
 		h.subs[campaignID] = map[*Subscription]struct{}{}
 	}
@@ -230,7 +241,8 @@ func (h *Hub) remove(s *Subscription, err error) {
 }
 
 // Events delivers the subscription's events. It closes when the
-// subscription ends: Close, too slow, or the hub closed.
+// subscription ends: Close, too slow, replaced by a newer stream of the same
+// user, or the hub closed.
 func (s *Subscription) Events() <-chan Event { return s.events }
 
 // Taken tells the hub that the stream took ev off the queue, so another event
@@ -245,7 +257,7 @@ func (s *Subscription) Taken(ev Event) {
 	delete(s.pending, ev.Coalesce)
 }
 
-// Err says why Events closed: ErrSlow, ErrClosed, or nil after Close. Call
+// Err says why Events closed: ErrSlow, ErrReplaced, ErrClosed, or nil after Close. Call
 // it only after Events has closed.
 func (s *Subscription) Err() error {
 	s.hub.mu.Lock()

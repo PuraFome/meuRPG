@@ -271,34 +271,59 @@ func TestCoalescedHintsQueueOnce(t *testing.T) {
 	}
 }
 
-func TestSubscribeCapsStreamsPerUserAndCampaign(t *testing.T) {
+// Past the cap, a user's new stream replaces their oldest one: the server
+// learns that a page went away only when a heartbeat fails, so after a few
+// reloads the old streams are usually dead, and the newest is the page in use.
+func TestSubscribePastTheCapReplacesTheUsersOldestStream(t *testing.T) {
 	t.Parallel()
 	h := New(0)
 	h.SetMaxPerUser(2)
 	a1 := subscribe(t, h, campaignA, ana)
-	subscribe(t, h, campaignA, ana)
+	a2 := subscribe(t, h, campaignA, ana)
+	// The cap is per user and per campaign: these take nobody's place.
+	b1 := subscribe(t, h, campaignA, bruno)
+	other := subscribe(t, h, campaignB, ana)
 
-	if _, err := h.Subscribe(campaignA, ana); !errors.Is(err, ErrTooMany) {
-		t.Fatalf("third Subscribe() error = %v, want ErrTooMany", err)
+	a3 := subscribe(t, h, campaignA, ana)
+	if _, ok := <-a1.Events(); ok {
+		t.Fatal("the oldest stream is still open after a third one of the same user")
 	}
-	// The cap is per user and per campaign.
-	subscribe(t, h, campaignA, bruno)
-	subscribe(t, h, campaignB, ana)
+	if !errors.Is(a1.Err(), ErrReplaced) {
+		t.Errorf("oldest stream Err() = %v, want ErrReplaced", a1.Err())
+	}
 	if got := h.Count(campaignA); got != 3 {
-		t.Errorf("Count(a) = %d, want 3: the refused stream holds nothing", got)
+		t.Errorf("Count(a) = %d, want 3: ana's two newest and bruno's", got)
 	}
-	// Closing one frees its place.
-	a1.Close()
+	// The next one replaces the next oldest, never the newest.
 	subscribe(t, h, campaignA, ana)
+	if !errors.Is(a2.Err(), ErrReplaced) {
+		t.Errorf("second stream Err() = %v, want ErrReplaced", a2.Err())
+	}
+	if a3.Err() != nil || b1.Err() != nil || other.Err() != nil {
+		t.Errorf("a stream that was not the user's oldest here ended: a3 %v, bruno %v, other campaign %v", a3.Err(), b1.Err(), other.Err())
+	}
+	// The newest ones still receive events.
+	h.Publish(campaignA, heartbeat())
+	if got := len(a3.Events()); got != 1 {
+		t.Errorf("the newest stream has %d events queued, want 1", got)
+	}
 }
 
 func TestDefaultMaxPerUser(t *testing.T) {
 	t.Parallel()
 	h := New(0)
-	for range DefaultMaxPerUser {
+	first := subscribe(t, h, campaignA, ana)
+	for range DefaultMaxPerUser - 1 {
 		subscribe(t, h, campaignA, ana)
 	}
-	if _, err := h.Subscribe(campaignA, ana); !errors.Is(err, ErrTooMany) {
-		t.Errorf("Subscribe() after %d streams: error = %v, want ErrTooMany", DefaultMaxPerUser, err)
+	if first.Err() != nil {
+		t.Fatalf("a stream ended before the cap: %v", first.Err())
+	}
+	subscribe(t, h, campaignA, ana)
+	if !errors.Is(first.Err(), ErrReplaced) {
+		t.Errorf("after %d streams, the first one's Err() = %v, want ErrReplaced", DefaultMaxPerUser+1, first.Err())
+	}
+	if got := h.Count(campaignA); got != DefaultMaxPerUser {
+		t.Errorf("Count() = %d, want %d", got, DefaultMaxPerUser)
 	}
 }

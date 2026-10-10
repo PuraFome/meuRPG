@@ -49,7 +49,7 @@ The stream (`PlayService.WatchGameSession`) is open only while someone has the s
 | Re-check of the login session and of the participation | Every 60 seconds, in the database | `play.DefaultRecheck` |
 | Maximum life of a stream | 30 minutes; then the server ends it without an error and the app opens another | `play.DefaultMaxLifetime` |
 | Deadline of each message sent | 30 seconds to reach the client; after that `Send` fails and the stream ends (`client_gone`). The deadline does not count the silence between two messages | `streamSendTimeout`, in `cmd/api/main.go` (`platform/slowclient`) |
-| Streams per person | At most 8 per campaign (tabs and devices); the next one is refused with `resource_exhausted` and the app retries with a backoff | `live.DefaultMaxPerUser` |
+| Streams per person | At most 8 per campaign (tabs and devices); a 9th replaces the person's oldest stream, which ends with `unavailable` (the app reconnects it with a backoff if its page is still open). Behind the load balancer the server learns that a page went away only when a heartbeat (25 s) fails, so a reload's old stream stays counted for up to about a minute; refusing the new one locked a player out after a few reloads | `live.DefaultMaxPerUser`, `live.ErrReplaced` |
 | Reconnection | Growing wait: 1 s, 2 s, 4 s, up to 30 s, with jitter; only with the tab visible | App |
 | Hidden tab | After 2 minutes hidden, the app closes the stream; when the tab returns, it reconnects and reads the snapshot again | App |
 | Session notice | Light query (`ListOpenGameSessions`) every 30 seconds with the tab visible, without a stream | App |
