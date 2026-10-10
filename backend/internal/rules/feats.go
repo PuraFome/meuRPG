@@ -188,7 +188,8 @@ func featOptions(b Build, x *content) []FeatOption {
 	d := derive(b, x)
 	out := make([]FeatOption, 0, len(x.feats))
 	for _, e := range (&Content{c: x}).Feats() {
-		if slices.Contains(b.Feats, e.Key) {
+		// A feat the sheet already has, from the list or from a choice, is not offered again.
+		if slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == e.Key }) {
 			continue
 		}
 		unmet := x.unmetPrerequisite(e, b, d)
@@ -211,7 +212,11 @@ func CheckFeat(b Build, key string, c *Content) ([]FeatUnmet, error) {
 // longer meets (the ability increase of a feat already taken is not asked again).
 func (c *content) lostFeats(b Build, d Derived) map[string]bool {
 	var lost map[string]bool
-	for _, key := range b.Feats {
+	keys := slices.Clone(b.Feats)
+	for _, cf := range c.pickedChoiceFeats(b, ownedBy(b, d)) {
+		keys = append(keys, cf.Feat)
+	}
+	for _, key := range keys {
 		f, ok := c.feats[key]
 		if !ok || len(c.unmetPrerequisite(c.featEntry(f), b, d)) == 0 {
 			continue

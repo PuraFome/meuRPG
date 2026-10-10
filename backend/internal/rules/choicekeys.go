@@ -66,7 +66,9 @@ func (c *content) choiceValueOK(stored string) bool {
 	}
 	base, _, _ := strings.Cut(choiceKey, textSeparator)
 	switch {
-	case c.features[base] == nil && c.traits[base] == nil && c.races[base] == nil && c.subraces[base] == nil:
+	case c.features[base] == nil && c.traits[base] == nil && c.races[base] == nil && c.subraces[base] == nil &&
+		c.backgrounds[base] == nil && c.feats[base] == nil &&
+		!(strings.HasPrefix(value, "feat:") && len(c.effectChoices(strings.TrimSuffix(choiceKey, featChoiceSuffix), "feat")) > 0):
 		return false
 	case value == LanguageNone:
 		return true
@@ -79,6 +81,9 @@ func (c *content) choiceValueOK(stored string) bool {
 		return c.hasTerrain(value)
 	case strings.HasPrefix(value, "language:"):
 		_, ok := c.languages[value]
+		return ok
+	case strings.HasPrefix(value, "feat:"):
+		_, ok := c.feats[value]
 		return ok
 	case strings.HasPrefix(value, "spell:"):
 		_, ok := c.spells[value]

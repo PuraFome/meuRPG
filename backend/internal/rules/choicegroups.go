@@ -23,6 +23,11 @@ const (
 	ChoiceOriginRace ChoiceOrigin = iota + 1
 	ChoiceOriginClass
 	ChoiceOriginSubclass
+	// ChoiceOriginBackground is the background, and ChoiceOriginFeat a feat the
+	// sheet has: a choice that a background's or a feat's effect asks (a feat of
+	// the player's choice).
+	ChoiceOriginBackground
+	ChoiceOriginFeat
 )
 
 // ChoiceKind says how a choice is made.
@@ -356,6 +361,8 @@ func (c *content) choiceSet(b Build) ChoiceSet {
 		}
 	}
 	cb.race()
+	cb.background()
+	cb.featOwners()
 	for _, oc := range x.classes {
 		cb.class(oc)
 	}
@@ -404,7 +411,7 @@ func (cb *choiceBuilder) labelOf(g *groupBuild, ch *Choice) string {
 	if ch.PartPT != "" {
 		title += ": " + strings.ToLower(ch.PartPT[:1]) + ch.PartPT[1:]
 	}
-	if g.Origin == ChoiceOriginRace {
+	if g.Origin == ChoiceOriginRace || g.Origin == ChoiceOriginBackground || g.Origin == ChoiceOriginFeat {
 		return fmt.Sprintf("%s (%s)", title, g.SourceNamePT)
 	}
 	return fmt.Sprintf("%s (%s, nível %d)", title, g.SourceNamePT, g.Level)

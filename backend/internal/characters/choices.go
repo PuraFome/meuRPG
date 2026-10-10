@@ -142,9 +142,11 @@ func choicesToProto(content *rules.Content, b rules.Build) *charactersv1.Preview
 
 var (
 	choiceOriginToProto = map[rules.ChoiceOrigin]charactersv1.ChoiceOrigin{
-		rules.ChoiceOriginRace:     charactersv1.ChoiceOrigin_CHOICE_ORIGIN_RACE,
-		rules.ChoiceOriginClass:    charactersv1.ChoiceOrigin_CHOICE_ORIGIN_CLASS,
-		rules.ChoiceOriginSubclass: charactersv1.ChoiceOrigin_CHOICE_ORIGIN_SUBCLASS,
+		rules.ChoiceOriginRace:       charactersv1.ChoiceOrigin_CHOICE_ORIGIN_RACE,
+		rules.ChoiceOriginClass:      charactersv1.ChoiceOrigin_CHOICE_ORIGIN_CLASS,
+		rules.ChoiceOriginSubclass:   charactersv1.ChoiceOrigin_CHOICE_ORIGIN_SUBCLASS,
+		rules.ChoiceOriginBackground: charactersv1.ChoiceOrigin_CHOICE_ORIGIN_BACKGROUND,
+		rules.ChoiceOriginFeat:       charactersv1.ChoiceOrigin_CHOICE_ORIGIN_FEAT,
 	}
 	choiceKindToProto = map[rules.ChoiceKind]charactersv1.ChoiceKind{
 		rules.ChoiceKindOptions:   charactersv1.ChoiceKind_CHOICE_KIND_OPTIONS,
