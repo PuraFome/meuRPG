@@ -68,7 +68,7 @@ var languageUnderstoodPT = map[string]string{
 	"the languages of its creator":      "os idiomas de seu criador",
 	"all languages it knew in life":     "todos os idiomas que conhecia em vida",
 	"all languages it spoke in life":    "todos os idiomas que falava em vida",
-	"commands given in any language":    "comandos dados em qualquer idioma",
+	"commands given in any language":    "comandos dados em qualquer idioma", //nolint:misspell // Portuguese, not a misspelling
 	"the languages it knew in life":     "os idiomas que conhecia em vida",
 	"any languages it knew in life":     "quaisquer idiomas que conhecia em vida",
 	"one language known by its creator": "um idioma conhecido por seu criador",

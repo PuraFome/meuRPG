@@ -140,10 +140,10 @@ test(
     const jpeg = await canvasJpeg(page);
     await page.goto(`/campaigns/${campaignId}/gallery`);
     await uploadThroughPicker(page, [{ name: 'IMG_2031.jpg', mimeType: 'image/jpeg', buffer: jpeg }]);
-    await expect(galleryCard(page, 'IMG_2031')).toBeVisible();
+    await expect(galleryCard(page, 'IMG 2031')).toBeVisible(); // the name reads like a name: "_" becomes a space
 
     // Rename in place.
-    await galleryCard(page, 'IMG_2031').getByRole('button', { name: 'Renomear IMG_2031' }).click();
+    await galleryCard(page, 'IMG 2031').getByRole('button', { name: 'Renomear IMG 2031' }).click();
     const field = page.getByRole('textbox', { name: 'Nome da imagem' });
     await expect(field).toBeFocused();
     await field.fill('Taverna do Javali');
