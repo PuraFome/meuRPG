@@ -11,7 +11,12 @@ import {
   type StageNpc,
   StageNpcSchema,
 } from '../../../gen/meurpg/play/v1/scene_pb';
-import { DiceRollSchema } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  BonusDieSchema,
+  DiceRollSchema,
+  type OutsideInspirationOffer,
+  OutsideInspirationOfferSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import type { SceneDie } from './scene-client';
 
 /**
@@ -39,6 +44,7 @@ export function sceneRoll(
     attemptsLeft?: number;
     rolledAt?: Date;
     characterId?: string;
+    bonusDice?: MessageInitShape<typeof BonusDieSchema>[];
   } = {},
 ): SceneRoll {
   const init: MessageInitShape<typeof SceneRollSchema> = {
@@ -164,6 +170,8 @@ export class FakeSceneClient {
   scene: OpenSceneInfo | null = null;
   calls: string[] = [];
   failWith: unknown = null;
+  /** The question `roll` answers with instead, when the character holds a Bardic Inspiration die. */
+  offer: OutsideInspirationOffer | null = null;
   /** The roll `roll` answers with. */
   made: SceneRoll = sceneRoll('r1', 'a1', 'Pensantus', 17, {
     roll: { diceCount: 1, diceSides: 20, faces: [11], modifier: 6, total: 17 },
@@ -230,11 +238,11 @@ export class FakeSceneClient {
     actionId: string,
     die: SceneDie,
     key: string,
-  ): Promise<SceneRoll> {
+  ): Promise<SceneRoll | OutsideInspirationOffer> {
     this.record(
       `roll ${actionId} ${'inApp' in die ? 'app' : 'face' in die ? die.face : die.faces.join(',')} ${key}`,
     );
-    return this.made;
+    return this.offer ?? this.made;
   }
 
   /** The scene `grantAttempt` answers with. */
@@ -249,4 +257,14 @@ export class FakeSceneClient {
     this.record(`grant ${actionId} ${characterId} ${key}`);
     return this.granted ?? masterScene();
   }
+}
+
+/** The question a roll asks when its character holds a Bardic Inspiration die: the d20 rolled, the result not yet told. */
+export function inspirationOffer(face = 11, modifier = 6, sides = 8): OutsideInspirationOffer {
+  return create(OutsideInspirationOfferSchema, {
+    holdId: 'h1',
+    sides,
+    fromName: 'Orla',
+    d20: { diceCount: 1, diceSides: 20, faces: [face], modifier, total: face + modifier },
+  });
 }

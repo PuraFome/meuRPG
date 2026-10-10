@@ -127,6 +127,9 @@ func (s *Service) advanceGameTime(ctx context.Context, c *combatTx, seconds int3
 	if seconds <= 0 {
 		return nil
 	}
+	if err := s.dieAdvance(ctx, c, seconds); err != nil {
+		return err
+	}
 	rows, err := c.q.AdvanceCharacterEffects(ctx, playdb.AdvanceCharacterEffectsParams{CampaignID: c.session.CampaignID, Column2: seconds})
 	if err != nil {
 		return fmt.Errorf("move game time on: %w", err)
@@ -186,6 +189,9 @@ func (s *Service) endLongRestEffects(ctx context.Context, c *combatTx) error {
 // time they have left, in whole rounds (a partial round does not count: 59 seconds are 9
 // rounds), counted from the start of the first round. The record is the same: it only moves.
 func (s *Service) effectsToCombat(ctx context.Context, c *combatTx, all, added []playdb.Combatant) error {
+	if err := s.dieToCombat(ctx, c, all, added); err != nil {
+		return err
+	}
 	var ids []string
 	for _, a := range added {
 		if backedByCharacter(a) {
@@ -255,6 +261,9 @@ func (s *Service) effectsToCombat(ctx context.Context, c *combatTx, all, added [
 // running. One that was to end at a turn that never comes (until the end of a turn, until the
 // start of a turn) ends with the combat. only limits it to those combatants (a leaver).
 func (s *Service) effectsToCharacters(ctx context.Context, c *combatTx, cs, only []playdb.Combatant) error {
+	if err := s.dieToCharacters(ctx, c, cs, only); err != nil {
+		return err
+	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)

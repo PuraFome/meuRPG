@@ -1122,8 +1122,12 @@ type CheckRoll struct {
 	// "Deixar o mestre rolar por mim", or the master rolled for a player who did
 	// not answer).
 	RolledByMaster bool `protobuf:"varint,10,opt,name=rolled_by_master,json=rolledByMaster,proto3" json:"rolled_by_master,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The Bardic Inspiration die the player added after the d20 (already in `total`): its size and
+	// the face rolled. 0 when none was used.
+	BonusDieSides int32 `protobuf:"varint,11,opt,name=bonus_die_sides,json=bonusDieSides,proto3" json:"bonus_die_sides,omitempty"`
+	BonusDieFace  int32 `protobuf:"varint,12,opt,name=bonus_die_face,json=bonusDieFace,proto3" json:"bonus_die_face,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CheckRoll) Reset() {
@@ -1224,6 +1228,20 @@ func (x *CheckRoll) GetRolledByMaster() bool {
 		return x.RolledByMaster
 	}
 	return false
+}
+
+func (x *CheckRoll) GetBonusDieSides() int32 {
+	if x != nil {
+		return x.BonusDieSides
+	}
+	return 0
+}
+
+func (x *CheckRoll) GetBonusDieFace() int32 {
+	if x != nil {
+		return x.BonusDieFace
+	}
+	return 0
 }
 
 // CheckOption is what a d20 check would roll for the caller: the modifier and the
@@ -2973,7 +2991,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\bRollNote\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1c\n" +
-	"\tadvantage\x18\x03 \x01(\bR\tadvantage\"\xed\x02\n" +
+	"\tadvantage\x18\x03 \x01(\bR\tadvantage\"\xbb\x03\n" +
 	"\tCheckRoll\x122\n" +
 	"\x05skill\x18\x01 \x01(\x0e2\x1c.meurpg.play.v1.ContestSkillR\x05skill\x12\x1b\n" +
 	"\tskill_key\x18\x02 \x01(\tR\bskillKey\x12\x14\n" +
@@ -2986,7 +3004,9 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\vbonus_known\x18\t \x01(\bR\n" +
 	"bonusKnown\x12(\n" +
 	"\x10rolled_by_master\x18\n" +
-	" \x01(\bR\x0erolledByMaster\"\xa1\x01\n" +
+	" \x01(\bR\x0erolledByMaster\x12&\n" +
+	"\x0fbonus_die_sides\x18\v \x01(\x05R\rbonusDieSides\x12$\n" +
+	"\x0ebonus_die_face\x18\f \x01(\x05R\fbonusDieFace\"\xa1\x01\n" +
 	"\vCheckOption\x12\x1a\n" +
 	"\bmodifier\x18\x01 \x01(\x05R\bmodifier\x12\x14\n" +
 	"\x05known\x18\x02 \x01(\bR\x05known\x120\n" +

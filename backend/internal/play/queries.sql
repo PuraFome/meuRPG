@@ -1577,3 +1577,56 @@ SELECT (payload ->> 'kind')::TEXT AS kind FROM session_events
 WHERE game_session_id = $1 AND kind = 'rest_taken'
 ORDER BY seq DESC
 LIMIT 1;
+
+-- name: GetCharacterInspiration :one
+-- The Bardic Inspiration die a character holds out of a running combat.
+SELECT * FROM character_inspiration WHERE character_id = $1 AND campaign_id = $2;
+
+-- name: ListCharacterInspirationOfCampaign :many
+SELECT * FROM character_inspiration WHERE campaign_id = $1;
+
+-- name: InsertCharacterInspiration :exec
+INSERT INTO character_inspiration (character_id, campaign_id, source_character_id, sides, seconds_left, created_at)
+VALUES ($1, $2, sqlc.narg(source_character_id), $3, $4, $5)
+ON CONFLICT (character_id) DO UPDATE SET source_character_id = EXCLUDED.source_character_id, sides = EXCLUDED.sides, seconds_left = EXCLUDED.seconds_left, created_at = EXCLUDED.created_at;
+
+-- name: DeleteCharacterInspiration :execrows
+DELETE FROM character_inspiration WHERE character_id = $1;
+
+-- name: DeleteExpiredCharacterInspiration :exec
+DELETE FROM character_inspiration WHERE campaign_id = $1 AND seconds_left <= $2::INT4;
+
+-- name: AdvanceCharacterInspiration :exec
+UPDATE character_inspiration SET seconds_left = seconds_left - $2::INT4 WHERE campaign_id = $1;
+
+-- name: DeleteCharacterInspirationOfCampaign :exec
+DELETE FROM character_inspiration WHERE campaign_id = $1;
+
+-- name: InsertInspirationHold :one
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING *;
+
+-- name: GetInspirationHoldByKey :one
+SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2;
+
+-- name: GetInspirationHold :one
+SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND id = $2;
+
+-- name: ListInspirationHoldsOfCharacter :many
+SELECT * FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at;
+
+-- name: DeleteInspirationHold :exec
+DELETE FROM inspiration_holds WHERE id = $1;
+
+-- name: DeleteInspirationHoldsOfCharacter :exec
+DELETE FROM inspiration_holds WHERE character_id = $1;
+
+-- name: AnswerInspirationHold :exec
+UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
+
+-- name: DeleteOrphanInspirationHolds :exec
+-- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
+DELETE FROM inspiration_holds h
+WHERE h.campaign_id = $1 AND h.answer_key IS NULL
+  AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);

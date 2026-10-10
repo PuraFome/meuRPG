@@ -33,6 +33,18 @@ export function sceneRollFormula(roll: SceneRoll): string {
   if (!dice) {
     return '';
   }
+  // A Bardic Inspiration die the player added after the d20: the roll's total already holds it.
+  const used = roll.bonusDice.filter((b) => b.used);
+  if (used.length > 0) {
+    const sum = used.reduce((n, b) => n + b.face, 0);
+    const inner = sceneRollFormula({
+      ...roll,
+      bonusDice: [],
+      roll: { ...dice, total: dice.total - sum },
+    } as SceneRoll);
+    const head = inner.includes(' = ') ? inner.slice(0, inner.lastIndexOf(' = ')) : inner;
+    return `${head} + ${used.map((b) => `d${b.sides} (${b.face})`).join(' + ')} = ${dice.total}`;
+  }
   const treated = treatedFormula(dice);
   if (treated) {
     return treated;

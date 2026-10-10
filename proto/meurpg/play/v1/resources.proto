@@ -8,7 +8,9 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/contests.proto";
 import "meurpg/play/v1/play.proto";
+import "meurpg/play/v1/scene.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // ResourceService runs the rests and the class resources of a campaign's open
@@ -117,6 +119,29 @@ service ResourceService {
   // Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
   // face outside the die.
   rpc AnswerBardicInspiration(AnswerBardicInspirationRequest) returns (AnswerBardicInspirationResponse);
+
+  // GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
+  // die their character holds and, for a bard, the uses left and the party to give it to.
+  // Only the caller's own character is described (the master gets every die held).
+  rpc GetOutsideInspiration(GetOutsideInspirationRequest) returns (GetOutsideInspirationResponse);
+
+  // GiveBardicInspirationOutside gives a die to another character of the party outside
+  // a combat, spending one use: the die lasts 10 minutes of game time. The target
+  // is another character of the campaign who holds no die; the bard's player gives with
+  // their own character. While a combat runs, GiveBardicInspiration is the call.
+  //
+  // Errors: ResourceBlocked NO_USES_LEFT, TARGET_REFUSED, NOT_AVAILABLE,
+  // COMBAT_OPEN (a combat is open: give in it).
+  rpc GiveBardicInspirationOutside(GiveBardicInspirationOutsideRequest) returns (GiveBardicInspirationOutsideResponse);
+
+  // AnswerOutsideInspiration answers the question a roll out of a combat asks (RollSceneCheck,
+  // RollGroupCheck answer with an offer when the character holds a die): use the die on it
+  // or keep it. The roll is then written as if it had been made now, with the die added
+  // when it was used. The roll's owner only.
+  //
+  // Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
+  // the die; `failed_precondition` when the die ran out meanwhile.
+  rpc AnswerOutsideInspiration(AnswerOutsideInspirationRequest) returns (AnswerOutsideInspirationResponse);
 }
 
 // ResourceBlocked is the detail of a refusal that comes from a rule.
@@ -391,4 +416,80 @@ message AnswerBardicInspirationRequest {
 message AnswerBardicInspirationResponse {
   // The attack, resolved, as RollAttack answers it.
   RollAttackResponse attack = 1;
+}
+
+message GetOutsideInspirationRequest {
+  string campaign_id = 1;
+}
+
+// OutsideInspirationDie is a die a character holds out of a combat.
+message OutsideInspirationDie {
+  string character_id = 1;
+  string character_name = 2;
+  int32 sides = 3;
+  // The bard that gave it, by name.
+  string from_name = 4;
+  // The game time the die has left, in seconds (it only moves when the master moves game
+  // time).
+  int32 seconds_left = 5;
+}
+
+// BardicInspirationTarget is a character the bard may give the die to.
+message BardicInspirationTarget {
+  string character_id = 1;
+  string name = 2;
+  // Why the die cannot go to this character, in Portuguese; empty when it can.
+  string disabled_reason_pt = 3;
+}
+
+message GetOutsideInspirationResponse {
+  // The caller's own character's die, unset when it holds none. The master gets none here.
+  OutsideInspirationDie mine = 1;
+  // The caller is a bard: the die they give, the uses left and the most, and the party.
+  bool is_bard = 2;
+  int32 sides = 3;
+  int32 uses_left = 4;
+  int32 uses_max = 5;
+  repeated BardicInspirationTarget targets = 6;
+  // The master reads every die held.
+  repeated OutsideInspirationDie held = 7;
+  // The caller's rolls that wait for an answer about the die.
+  repeated OutsideInspirationOffer offers = 8;
+  // A combat is open: the bard gives in it.
+  bool combat_open = 9;
+}
+
+message GiveBardicInspirationOutsideRequest {
+  string campaign_id = 1;
+  // The character that gets the die (a UUID).
+  string target_character_id = 2;
+  string idempotency_key = 3;
+}
+
+message GiveBardicInspirationOutsideResponse {
+  CharacterVitals vitals = 1;
+  OutsideInspirationDie die = 2;
+}
+
+message AnswerOutsideInspirationRequest {
+  string campaign_id = 1;
+  // The held roll (a UUID), from the offer.
+  string hold_id = 2;
+  // True: roll the die and add it to the total. False: keep the die.
+  bool use = 3;
+  // How the die comes when `use` is true (RN-18): the app rolls it, or the player typed the
+  // face. Required then.
+  oneof roll {
+    bool roll_in_app = 4;
+    int32 typed_face = 5;
+  }
+  string idempotency_key = 6;
+}
+
+message AnswerOutsideInspirationResponse {
+  // The path of the held roll answers as it does: the scene check or the group check.
+  oneof result {
+    RollSceneCheckResponse scene_check = 1;
+    RollGroupCheckResponse group_check = 2;
+  }
 }
