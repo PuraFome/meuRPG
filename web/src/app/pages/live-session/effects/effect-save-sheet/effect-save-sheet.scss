@@ -1,0 +1,160 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+// The two steps, "Teste" and "Resultado": the number is never the only sign, the name is always beside it.
+.steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+
+  &--todo {
+    color: var(--mr-ink-muted);
+  }
+}
+
+.step__dot {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border: 2px solid var(--mr-accent);
+  border-radius: 50%;
+  font-size: 13px;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &--done {
+    border-color: var(--mr-success-ink);
+    color: var(--mr-success-ink);
+  }
+}
+
+.what {
+  margin: 12px 0 0;
+  font-size: 16px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+
+  &--small {
+    margin-top: 0;
+    font-size: 14px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.dice-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.res {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.res__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+
+.res__die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  box-sizing: border-box;
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-md);
+  font-family: var(--mr-font-display);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.res__total {
+  font-family: var(--mr-font-display);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 44px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--mr-success-ink);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &--bad {
+    border-color: var(--mr-danger-ink);
+    background: var(--mr-danger-surface);
+    color: var(--mr-danger-ink);
+  }
+}
+
+// The three answers are full width and stack on a phone (48, 48 and 44 px).
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-filled-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  width: 100%;
+  white-space: normal;
+
+  &--link {
+    --mat-button-text-container-height: 44px;
+    --mat-button-text-label-text-color: var(--mr-accent-text);
+    font-weight: 700;
+  }
+
+  @media (min-width: 768px) {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
+  }
+}

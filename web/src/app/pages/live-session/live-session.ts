@@ -1,4 +1,5 @@
 import { CastingPanel } from './casting/casting-panel';
+import { OwnEffects } from './effects/own-effects';
 import {
   Component,
   DOCUMENT,
@@ -87,6 +88,7 @@ import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { RestCard } from './rest-card/rest-card';
+import { CharacterEffectsPanel } from './effects/character-effects-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
 import { RevivifyAsk } from './revivify-ask/revivify-ask';
 import { RevivedNotice } from './revived-notice/revived-notice';
@@ -106,7 +108,7 @@ import { ScenePlayer } from './scene/scene-player/scene-player';
 import { LeftImagesBlock } from './left-images-block/left-images-block';
 import { ShownImageBlock } from './shown-image-block/shown-image-block';
 import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
-import { applySnapshot, applyVitals, partyRowSub } from './vitals';
+import { applySnapshot, applyVitals, betterArmorClass, partyRowSub } from './vitals';
 import { FoundTreasures } from './treasure/found-treasures/found-treasures';
 import { TreasurePanel } from './treasure/treasure-panel/treasure-panel';
 import { TrapActivityList } from './traps/trap-activity/trap-activity';
@@ -156,6 +158,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     MasterPuzzles,
     PartyPanel,
     RestCard,
+    CharacterEffectsPanel,
     PuzzleNotice,
     PuzzlePlayPage,
     PlayerVitals,
@@ -278,6 +281,9 @@ export class LiveSession {
   );
   /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
   protected readonly castsTick = signal(0);
+  /** Goes up when a rest was taken: the effects on the characters are read again with the spell casts. */
+  private readonly restsTick = signal(0);
+  protected readonly effectsTick = computed(() => this.castsTick() + this.restsTick());
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -398,6 +404,10 @@ export class LiveSession {
   protected readonly isMaster = computed(() => this.campaign()?.isMaster ?? false);
   /** The player's own character: the only one the server sends them. */
   protected readonly ownVitals = computed(() => this.vitals()[0] ?? null);
+  /** The armor class of the player's own character: the sheet's, or the base an effect gives (Armadura Arcana) when better. */
+  protected readonly ownArmorClass = computed(() =>
+    betterArmorClass(this.playerSheet()?.armorClass ?? null, this.ownVitals()?.armorClassBase),
+  );
   /** The Escudo Arcano's bonus on the player's own combatant while a combat is on; `null` outside one, so a combat that
    * ends is not read as the shield ending. */
   protected readonly ownArmorBonus = computed(() => {
@@ -415,6 +425,13 @@ export class LiveSession {
     }
     const own = e.combatants.find((c) => c.mine);
     return own ? { successes: own.deathSuccesses, failures: own.deathFailures } : null;
+  });
+  /** "Seus efeitos" and the labels of the conditions they hold, for the player's own sheet (RN-22). */
+  protected readonly ownEffects = new OwnEffects({
+    campaignId: this.campaignId,
+    isMaster: this.isMaster,
+    encounter: this.combat.encounter,
+    tick: computed(() => this.castsTick() + (this.ownVitals()?.revision ?? 0)),
   });
   /** The master's "Ver como" list: the living player characters, with their players. */
   protected readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
@@ -1232,6 +1249,7 @@ export class LiveSession {
   /** A rest or a spent hit die changed these characters: their new numbers, as the server answered (the stream says the same to the other screens). */
   protected takeVitals(taken: readonly VitalsVm[]): void {
     this.vitals.update((list) => taken.reduce((all, v) => applyVitals(all, v), list));
+    this.restsTick.update((n) => n + 1);
   }
 
   /** "Ajustar": a bottom sheet on a phone, a dialog from a tablet up, with

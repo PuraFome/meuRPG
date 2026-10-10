@@ -1250,6 +1250,7 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 - **Dado** um alvo que veste armadura, **quando** Armadura Arcana é conjurada nele, **então** a conjuração é recusada com o motivo.
 - **Dado** um NPC em cena como alvo, **quando** um jogador lê a conjuração, **então** ele lê o NPC pelo lugar dele em cena e nunca o ID do personagem, e uma conjuração de um NPC que não está em cena nunca chega a ele (RN-10, RN-20).
 - **Dado** um combate em andamento, **quando** o conjurador tenta conjurar fora dele, **então** a conjuração é recusada e a magia é conjurada no combate.
+- **Dado** Bênção conjurada num personagem antes de uma luta, **quando** o combate começa, **então** o efeito entra com o tempo que lhe resta em rodadas (uma rodada tem 6 segundos, rodada parcial não conta), os testes de resistência do personagem levam o d4, e quando o combate acaba as rodadas que restam voltam ao tempo de jogo (RN-22).
 
 #### No app
 - **Servidor.** `CastingService` (`casting.proto`): `GetCastOptions`, `CastSpellOutsideCombat`, `ConfirmCastTimePassed` (só o mestre), `AbandonCast`, `EndActiveSpell` e `ListSpellCasts`, com as recusas tipadas do `CastingBlocked`. Uma linha de `spell_casts` por conjuração; a dica de stream é `spell_casts_changed`. Veja a [Arquitetura](../../architecture.md#casting-outside-combat-mr-048-rn-31) e o [Modelo de dados](../../data.md#casting-outside-combat-mr-048-rn-31).

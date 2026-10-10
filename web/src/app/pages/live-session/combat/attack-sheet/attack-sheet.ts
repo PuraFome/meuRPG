@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
@@ -27,7 +28,15 @@ import {
   RollMode,
   RollModeRequestStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { EffectRollKind } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import type { Attack, BonusAttackRule } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  type ExtraDieField,
+  dieFields,
+  genericDieFields,
+  missingDice,
+  rollDiceOf,
+} from '../../../../core/effects/effects';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import {
   type AttackStage,
@@ -104,7 +113,11 @@ import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { InspirationPrompt } from '../inspiration-prompt/inspiration-prompt';
 import { RollPicker } from '../roll-picker/roll-picker';
+import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { injectSheet } from '../sheet-host';
+
+/** The d4 of Bênção and Perdição. */
+const EFFECT_DIE_FACES = 4;
 
 /** What the page hands the attack sheet. */
 export interface AttackSheetData {
@@ -115,6 +128,8 @@ export interface AttackSheetData {
   readonly attack: Attack;
   /** The attack's targets from `GetTurnOptions`, in turn order. */
   readonly targets: readonly TargetInReach[];
+  /** The weapon attack of the extra action an effect gives (Velocidade): it spends that action, not the Attack action. */
+  readonly useExtraAction?: boolean;
   readonly diceMode: DiceMode;
   readonly preference: DicePreference;
   /** Where each answer's combat goes (the page's copy of the combat). */
@@ -176,6 +191,7 @@ export interface AttackSheetData {
     AttackSteps,
     CombatantToken,
     DamageParts,
+    ExtraDice,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -234,6 +250,17 @@ export class AttackSheet {
   /** The extras marked in the damage step. */
   protected readonly picks = signal<readonly ExtraPick[]>([]);
 
+  /** The d4 the effects on the attacker add to the roll (Bênção, Perdição), typed when the roll is from physical dice. */
+  protected readonly extraFields = signal<readonly ExtraDieField[]>(
+    dieFields(
+      rollDiceOf(
+        this.data.state.encounter()?.combatants.find((c) => c.id === this.data.attackerId)?.effects,
+        EffectRollKind.ATTACK,
+      ),
+    ),
+  );
+  protected readonly extraFaces = signal<readonly (number | null)[]>([]);
+
   /** One key per attack roll (target and die): the same values again are a retry, others a new attack. */
   private readonly attackKeys = new ActionKey();
   /** One key per damage roll: the same die again is a retry, another die (typed after an app roll was lost) is a new request. */
@@ -250,7 +277,7 @@ export class AttackSheet {
   // corpo" here, not its thrown range.
   protected readonly detail = this.data.asReaction
     ? `Reação · ${attackDetail({ ...this.attack, rangeFt: 5, longRangeFt: 0 })}`
-    : `Ação · ${attackDetail(this.attack)}`;
+    : `${this.data.useExtraAction ? 'Ação extra' : 'Ação'} · ${attackDetail(this.attack)}`;
   protected readonly cantrip = isCantrip(this.attack);
   protected readonly rangeText = metersText(this.data.asReaction ? 5 : this.attack.rangeFt);
   /** An opportunity attack reaches 5 ft, whatever range the weapon has when thrown. */
@@ -761,6 +788,10 @@ export class AttackSheet {
     if (id === null || this.busy()) {
       return;
     }
+    const extra = this.typedExtra(die);
+    if (extra === null) {
+      return;
+    }
     this.busy.set(true);
     this.error.set('');
     try {
@@ -772,11 +803,12 @@ export class AttackSheet {
         this.attack.key,
         id,
         die,
-        this.attackKeys.keyFor({ id, die, mode }),
+        this.attackKeys.keyFor({ id, die, mode, extra, spend: this.data.useExtraAction }),
         this.data.asReaction ?? false,
         this.data.opportunity?.offerId ?? '',
         mode,
         this.data.catchWindowId ?? '',
+        { extraDieFaces: extra, useExtraAction: this.data.useExtraAction ?? false },
       );
       this.data.state.apply(res.encounter);
       this.settle(res);
@@ -895,7 +927,38 @@ export class AttackSheet {
   }
 
   private fail(err: unknown): void {
+    // Physical dice and an effect the app did not list (one the master keeps from the players): the server says how many
+    // more d4 the roll takes, and the sheet asks for them.
+    const connectErr = ConnectError.from(err, Code.Unavailable);
+    const more = connectErr.code === Code.InvalidArgument ? missingDice(connectErr.rawMessage) : 0;
+    if (more > 0) {
+      this.extraFields.set(genericDieFields(more, EFFECT_DIE_FACES));
+      this.error.set(
+        more === 1
+          ? 'Esta rolagem leva mais um d4: role-o e digite o resultado.'
+          : `Esta rolagem leva mais ${more} d4: role-os e digite os resultados.`,
+      );
+      return;
+    }
     this.error.set(combatErrorMessage(err, 'rolar o ataque'));
+  }
+
+  /** The faces of the d4 typed for a roll from physical dice; none for the app's dice, `null` while one is missing (the sheet says so). */
+  private typedExtra(die: AttackDie | PairDie): readonly number[] | null {
+    const fields = this.extraFields();
+    if ('inApp' in die || fields.length === 0) {
+      return [];
+    }
+    const faces = this.extraFaces();
+    if (faces.length !== fields.length || faces.some((f) => f === null)) {
+      this.error.set(
+        fields.length === 1
+          ? `Digite o resultado do d${fields[0].faces} antes de confirmar.`
+          : 'Digite o resultado de cada dado extra antes de confirmar.',
+      );
+      return null;
+    }
+    return faces as readonly number[];
   }
 
   protected close(): void {

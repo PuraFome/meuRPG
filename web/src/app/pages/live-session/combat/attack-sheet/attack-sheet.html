@@ -108,6 +108,10 @@
         }
       }
       @if (modeReady()) {
+        <!-- The d4 an effect adds (Bênção, Perdição) with physical dice: typed before the d20 is confirmed. -->
+        @if (extraFields().length > 0 && (typing() || !canApp)) {
+          <app-extra-dice class="sheet__extra" [fields]="extraFields()" [(faces)]="extraFaces" />
+        }
         @if (faceCount() === 1) {
           <app-roll-picker
             [canApp]="canApp"

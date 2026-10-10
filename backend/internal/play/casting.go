@@ -292,6 +292,9 @@ func (s *Service) CastSpellOutsideCombat(
 			return nil, err
 		}
 		plan.in, plan.rolled, plan.pick = roll, rolled, pick
+		if plan.ability, err = s.abilityChoiceOf(ctx, c, spellKey, req.Msg.GetAbilityKey()); err != nil {
+			return nil, err
+		}
 		long := plan.minutes > 0
 		if long && pick != nil {
 			return nil, badCast("summon goes in FinishCast for a spell that takes time")
@@ -457,6 +460,8 @@ type castPlan struct {
 	in      rollInput
 	rolled  bool
 	pick    *playv1.SummonChoice
+	// ability is the ability an Enhance Ability is cast for (ability_key).
+	ability string
 	row     playdb.SpellCast
 }
 

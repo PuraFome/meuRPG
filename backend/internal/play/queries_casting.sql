@@ -94,3 +94,8 @@ WHERE character_id = $1
 SELECT * FROM spell_casts
 WHERE campaign_id = $1 AND status = 'active' AND targets @> sqlc.arg(target)::JSONB
 ORDER BY started_at, id;
+
+-- name: SetSpellCastDuration :exec
+-- The game time a cast has left, when a combat gives back the rounds an effect had left
+-- (6 seconds each).
+UPDATE spell_casts SET duration_seconds = $2 WHERE id = $1;

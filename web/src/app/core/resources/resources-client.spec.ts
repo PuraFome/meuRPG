@@ -51,9 +51,15 @@ describe('ResourceClient', () => {
         kind: RestKind.LONG,
         idempotencyKey: 'key-1',
         hitDiceChoices: [{ characterId: 'c1', dice: [{ faces: 10, count: 2 }] }],
+        withoutFoodOrDrink: false,
       },
     ]);
     expect(vitals.map((v) => v.characterId)).toEqual(['c1']);
+  });
+
+  it('says a long rest had no food or drink, so no level of exhaustion comes off', async () => {
+    await clientWith(calls).takeRest('camp', RestKind.LONG, 'key-3', [], true);
+    expect(calls.rest[0]).toMatchObject({ kind: RestKind.LONG, withoutFoodOrDrink: true });
   });
 
   it('takes a short rest without choices', async () => {

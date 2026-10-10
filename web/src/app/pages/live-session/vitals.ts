@@ -108,3 +108,14 @@ export function whoSeesTheChange(playerName: string | null, characterName: strin
     ? `${playerName} vê a mudança na hora.`
     : `Quem joga com ${characterName} vê a mudança na hora.`;
 }
+
+/** The armor class a panel shows: the sheet's, or the base an effect that lasts gives (Armadura Arcana, 13 + Destreza) when it is better. */
+export function betterArmorClass(
+  sheet: number | null,
+  effectBase: number | undefined,
+): number | null {
+  if (!effectBase || effectBase <= 0) {
+    return sheet;
+  }
+  return sheet === null ? effectBase : Math.max(sheet, effectBase);
+}

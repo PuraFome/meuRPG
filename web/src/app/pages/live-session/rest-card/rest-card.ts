@@ -28,6 +28,7 @@ import {
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { restErrorMessage } from '../../../core/resources/resources-errors';
 import { CountStepper } from '../../../shared/count-stepper/count-stepper';
+import { HiddenSwitch } from '../../../shared/hidden-switch/hidden-switch';
 import { toVitalsVm } from '../live-session-source.live';
 import type { VitalsVm } from '../live-session.types';
 
@@ -48,7 +49,7 @@ type DiceCounts = Readonly<Record<string, Readonly<Record<number, number>>>>;
 @Component({
   selector: 'app-rest-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CountStepper, MatButtonModule, MatIconModule],
+  imports: [CountStepper, HiddenSwitch, MatButtonModule, MatIconModule],
   templateUrl: './rest-card.html',
   styleUrl: './rest-card.scss',
 })
@@ -77,6 +78,8 @@ export class RestCard {
   protected readonly error = signal('');
   protected readonly done = signal('');
   private readonly counts = signal<DiceCounts>({});
+  /** A long rest the table had no food or drink for: no level of exhaustion comes off (SRD 5.1, Resting). */
+  protected readonly withoutFood = signal(false);
 
   private readonly key = new ActionKey();
 
@@ -92,6 +95,7 @@ export class RestCard {
   );
 
   protected readonly dieName = dieName;
+  protected readonly long = RestKind.LONG;
 
   private readonly rechargeOf: RechargeOf = (characterId, key) => {
     const recharge = this.party()
@@ -138,6 +142,7 @@ export class RestCard {
       const preview = await this.api.restPreview(this.campaignId(), kind);
       this.preview.set(preview);
       this.counts.set({});
+      this.withoutFood.set(false);
       this.asking.set(kind);
       this.focusButton(kind);
     } catch (err) {
@@ -170,14 +175,17 @@ export class RestCard {
         count: this.countOf(c.characterId, s.faces, s.start),
       })),
     }));
+    // Only a long rest has the question; a short one never takes a level of exhaustion off.
+    const withoutFood = kind === RestKind.LONG && this.withoutFood();
     this.saving.set(true);
     this.error.set('');
     try {
       const vitals = await this.api.takeRest(
         this.campaignId(),
         kind,
-        this.key.keyFor({ kind, hitDiceChoicesSent }),
+        this.key.keyFor({ kind, hitDiceChoicesSent, withoutFood }),
         hitDiceChoicesSent,
+        withoutFood,
       );
       this.key.renew();
       this.restTaken.emit(vitals.map(toVitalsVm));
@@ -195,6 +203,7 @@ export class RestCard {
     this.asking.set(null);
     this.preview.set(null);
     this.counts.set({});
+    this.withoutFood.set(false);
     this.error.set('');
   }
 

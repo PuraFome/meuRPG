@@ -1,0 +1,186 @@
+{
+  "source": "SRD 5.1 (CC BY 4.0): \"Conditions\" (the 15 conditions and exhaustion), \"Duration\", \"Concentration\", \"Combat\" (the Dodge action), and the spells Bless, Bane, Haste, Hold Person, Web, Mage Armor, Pass without Trace, Longstrider, Guidance, Resistance, Enhance Ability and Heroism. The texts shown to the table are ours.",
+  "conditions": {
+    "condition:blinded": {
+      "visibility": "public",
+      "changes_pt": ["Você não enxerga e falha em testes de habilidade que dependem da visão.", "Ataques contra você têm vantagem, e os seus têm desvantagem."]
+    },
+    "condition:charmed": {
+      "visibility": "owner",
+      "changes_pt": ["Você não pode atacar quem o enfeitiçou, nem escolhê-lo para efeitos nocivos.", "Quem o enfeitiçou tem vantagem em testes sociais contra você."]
+    },
+    "condition:deafened": {
+      "visibility": "owner",
+      "changes_pt": ["Você não ouve e falha em testes de habilidade que dependem da audição."]
+    },
+    "condition:exhaustion": {
+      "visibility": "owner",
+      "changes_pt": ["Os efeitos dependem do nível de exaustão."]
+    },
+    "condition:frightened": {
+      "visibility": "owner",
+      "changes_pt": ["Você tem desvantagem em testes de habilidade e ataques enquanto vê a fonte do seu medo.", "Você não se aproxima dela por vontade própria."]
+    },
+    "condition:grappled": {
+      "visibility": "public",
+      "changes_pt": ["Seu deslocamento é 0.", "Acaba se quem o agarra ficar incapacitado ou se algo o tirar do alcance."]
+    },
+    "condition:incapacitated": {
+      "visibility": "public",
+      "changes_pt": ["Você não faz ações nem reações."]
+    },
+    "condition:invisible": {
+      "visibility": "owner",
+      "changes_pt": ["Ataques contra você têm desvantagem, e os seus têm vantagem."]
+    },
+    "condition:paralyzed": {
+      "visibility": "public",
+      "changes_pt": ["Você não age nem se move, e não fala.", "Falha em testes de resistência de Força e de Destreza.", "Ataques contra você têm vantagem, e um acerto a 1,5 m é crítico."]
+    },
+    "condition:petrified": {
+      "visibility": "public",
+      "changes_pt": ["Você virou pedra: não age, não se move, não fala e não percebe nada.", "Falha em testes de resistência de Força e de Destreza.", "Ataques contra você têm vantagem.", "Você tem resistência a todo dano e é imune a veneno e doença."]
+    },
+    "condition:poisoned": {
+      "visibility": "owner",
+      "changes_pt": ["Você tem desvantagem em ataques e em testes de habilidade."]
+    },
+    "condition:prone": {
+      "visibility": "public",
+      "changes_pt": ["Você só rasteja, até se levantar.", "Seus ataques têm desvantagem.", "Ataques contra você têm vantagem a 1,5 m e desvantagem de mais longe."]
+    },
+    "condition:restrained": {
+      "visibility": "public",
+      "changes_pt": ["Seu deslocamento é 0.", "Ataques contra você têm vantagem, e os seus têm desvantagem.", "Você tem desvantagem em testes de resistência de Destreza."]
+    },
+    "condition:stunned": {
+      "visibility": "public",
+      "changes_pt": ["Você não age nem se move, e fala só com hesitação.", "Falha em testes de resistência de Força e de Destreza.", "Ataques contra você têm vantagem."]
+    },
+    "condition:unconscious": {
+      "visibility": "public",
+      "changes_pt": ["Você não age, não se move, não fala e não percebe nada.", "Você larga o que segura e cai Derrubado.", "Falha em testes de resistência de Força e de Destreza.", "Ataques contra você têm vantagem, e um acerto a 1,5 m é crítico."]
+    }
+  },
+  "spells": {
+    "spell:bless": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "roll_die", "die": 4, "sign": 1, "applies_to": ["attack", "save"]}],
+      "tags_pt": ["+1d4 em ataques e resistências"]
+    },
+    "spell:bane": {
+      "applies": "failed_save",
+      "visibility": "owner",
+      "modifiers": [{"kind": "roll_die", "die": 4, "sign": -1, "applies_to": ["attack", "save"]}],
+      "tags_pt": ["−1d4 em ataques e resistências"]
+    },
+    "spell:haste": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [
+        {"kind": "ac_bonus", "value": 2},
+        {"kind": "speed_multiplier", "value": 200},
+        {"kind": "save_advantage", "abilities": ["dex"]},
+        {"kind": "extra_action", "allowed": ["attack", "dash", "disengage", "hide", "use-an-object"], "max_weapon_attacks": 1}
+      ],
+      "on_end": "effect:lethargy",
+      "tags_pt": ["CA +2", "Deslocamento dobrado", "Vantagem em resistências de Destreza"]
+    },
+    "spell:mage-armor": {
+      "applies": "all",
+      "visibility": "public",
+      "modifiers": [{"kind": "base_ac", "value": 13}],
+      "tags_pt": ["CA base 13 + Destreza, sem armadura"]
+    },
+    "spell:pass-without-trace": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "check_bonus", "skill": "skill:stealth", "value": 10}],
+      "tags_pt": ["+10 em Furtividade (Destreza)"]
+    },
+    "spell:longstrider": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "speed_add", "value": 10}],
+      "tags_pt": ["Deslocamento +3 m"]
+    },
+    "spell:guidance": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "roll_die", "die": 4, "sign": 1, "applies_to": ["check"], "once": true}],
+      "tags_pt": ["+1d4 em um teste de habilidade, uma vez"]
+    },
+    "spell:resistance": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "roll_die", "die": 4, "sign": 1, "applies_to": ["save"], "once": true}],
+      "tags_pt": ["+1d4 em um teste de resistência, uma vez"]
+    },
+    "spell:enhance-ability": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [{"kind": "check_advantage", "choose": true}]
+    },
+    "spell:heroism": {
+      "applies": "all",
+      "visibility": "owner",
+      "modifiers": [
+        {"kind": "condition_immunity", "conditions": ["condition:frightened"]},
+        {"kind": "turn_temp_hp", "from_caster": true}
+      ],
+      "tags_pt": ["Imune a Amedrontado", "PV temporários a cada turno seu"]
+    },
+    "spell:hold-person": {
+      "applies": "failed_save",
+      "target_type": "humanoid",
+      "visibility": "public",
+      "conditions": ["condition:paralyzed"],
+      "end_save": {"ability": "wis", "on_pass": "end"}
+    },
+    "spell:faerie-fire": {
+      "applies": "failed_save",
+      "visibility": "public",
+      "player_label_pt": "Delineado",
+      "tags_pt": ["Ataques contra você têm vantagem se quem ataca vê você", "Você não se beneficia de invisibilidade"]
+    },
+    "spell:hideous-laughter": {
+      "applies": "failed_save",
+      "visibility": "public",
+      "conditions": ["condition:prone", "condition:incapacitated"],
+      "end_save": {"ability": "wis", "on_pass": "end", "on_damage": true}
+    },
+    "spell:web": {
+      "applies": "all",
+      "visibility": "owner",
+      "start_save": {"ability": "dex", "on_fail": "effect:web-restrained"},
+      "tags_pt": ["Teste de Destreza ao começar o turno nas teias"]
+    }
+  },
+  "effects": {
+    "effect:lethargy": {
+      "kind": "feature",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "visibility": "public",
+      "modifiers": [{"kind": "no_move"}, {"kind": "no_action"}],
+      "tags_pt": ["Não se move nem age"]
+    },
+    "effect:web-restrained": {
+      "kind": "spell",
+      "duration": {"kind": "concentration"},
+      "visibility": "public",
+      "conditions": ["condition:restrained"],
+      "break_free": "str",
+      "player_label_pt": "Preso numa teia"
+    },
+    "effect:web-fire": {
+      "kind": "master",
+      "duration": {"kind": "rounds", "rounds": 1},
+      "visibility": "public",
+      "turn_trigger": {"dice": "2d4", "damage_type": "damage-type:fire", "max_triggers": 1},
+      "ends_effects_of": ["spell:web", "effect:web-restrained"],
+      "player_label_pt": "Teia em chamas",
+      "tags_pt": ["2d4 de fogo a quem começa o turno nela"]
+    }
+  }
+}

@@ -597,4 +597,9 @@ func TestCastingOutside_DamageAsksForTheConcentrationSaveAndZeroEndsIt(t *testin
 	if c := a.castByID(t, a.master, bless.GetId()); c.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_ENDED || c.GetEndReason() != playv1.OutsideCastEnd_OUTSIDE_CAST_END_CONCENTRATION {
 		t.Errorf("Bless after 0 hit points = %v, want ended by concentration", c)
 	}
+	// The effect Bless left on Toren went with it.
+	var n int
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM character_effects WHERE character_id = $1`, a.toren.GetId()).Scan(&n); err != nil || n != 0 {
+		t.Errorf("Toren still has %d effects after the caster lost her concentration (%v)", n, err)
+	}
 }

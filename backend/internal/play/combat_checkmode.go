@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -44,15 +45,21 @@ func checkKey(key string) (ability string, check bool) {
 type checkMode struct {
 	Mode    combat.RollMode
 	Sources []combat.Source
+	// Dice are the dice effects add to the roll (Bênção on a saving throw), Rolled the same
+	// with their faces once rolled; hide says which sources come from an effect the master hides.
+	Dice, Rolled []effectDie
+	// Bonuses are the fixed bonuses effects add to the check (Pass without Trace).
+	Bonuses []effectBonus
+	hide    func(combat.Source) bool
 }
 
 // checkModeOf works out the mode of a check or a saving throw of a player's character.
 // The character's combatant is read in the session's running combat, if there is one.
-func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessionID, characterID, ability string, check bool) (checkMode, error) {
+func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessionID, characterID, skillKey string, ability string, check bool) (checkMode, error) {
 	q := s.queriesIn(tx)
 	enc, err := q.GetLatestEncounter(ctx, sessionID)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && enc.Status == statusEnded) {
-		return checkMode{}, nil
+		return s.outsideModeOf(ctx, tx, campaignID, characterID, skillKey, ability, check)
 	}
 	if err != nil {
 		return checkMode{}, err
@@ -64,12 +71,12 @@ func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessio
 	var who playdb.Combatant
 	found := false
 	for _, c := range cs {
-		if c.CharacterID == characterID && c.Kind == kindPlayer && !c.Defeated {
+		if c.CharacterID == characterID && c.Kind == kindPlayer {
 			who, found = c, true
 		}
 	}
 	if !found {
-		return checkMode{}, nil
+		return s.outsideModeOf(ctx, tx, campaignID, characterID, skillKey, ability, check)
 	}
 	states, err := s.readStates(ctx, tx, enc.ID)
 	if err != nil {
@@ -80,5 +87,22 @@ func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessio
 		return checkMode{}, err
 	}
 	sources := combat.SaveMode(combat.SaveScene{Creature: creatureFacts(who, states, sheet.Traits), Ability: ability, Check: check, EffectVisible: true})
-	return checkMode{Mode: combat.Resolve(sources), Sources: sources}, nil
+	applies := rules.RollAppliesSave
+	if check {
+		applies = rules.RollAppliesCheck
+	}
+	var bonuses []effectBonus
+	for _, st := range effectsOn(states, who.ID) {
+		if n := combat.CheckBonus(effectModifiers(st), skillKey); n != 0 && check {
+			bonuses = append(bonuses, effectBonus{Key: deref(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
+		}
+	}
+	diceOf := effectDiceFor(states, who.ID, applies)
+	for i := range diceOf {
+		diceOf[i].CharacterID = characterID
+	}
+	return checkMode{
+		Mode: combat.Resolve(sources), Sources: sources, Dice: diceOf, Bonuses: bonuses,
+		hide: hideFor(hiddenConditionsOf(states, who), hasHiddenEffect(states, who.ID)),
+	}, nil
 }

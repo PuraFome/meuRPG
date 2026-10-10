@@ -13,8 +13,10 @@ const RitualExtraMinutes = 10
 
 // Minutes per casting time unit.
 const (
-	minutesPerHour   = 60
-	secondsPerRound  = 6
+	minutesPerHour = 60
+	// SecondsPerRound is the six seconds of a round, in combat and outside it (SRD 5.1,
+	// "The Order of Combat"): the one conversion between rounds and game time.
+	SecondsPerRound  = 6
 	secondsPerMinute = 60
 	secondsPerHour   = 3600
 	secondsPerDay    = 86400
@@ -78,7 +80,7 @@ func (d SpellDuration) Seconds() (int, bool) {
 	}
 	switch d.Unit {
 	case DurationRound:
-		return d.Amount * secondsPerRound, true
+		return d.Amount * SecondsPerRound, true
 	case DurationMinute:
 		return d.Amount * secondsPerMinute, true
 	case DurationHour:

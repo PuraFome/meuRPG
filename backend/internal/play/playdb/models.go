@@ -17,6 +17,34 @@ type BattleEncounter struct {
 	UpdatedAt  time.Time
 }
 
+type CharacterEffect struct {
+	ID                 string
+	CampaignID         string
+	CharacterID        string
+	SourceCharacterID  *string
+	GroupID            string
+	SourceKey          string
+	SourceKind         string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	SecondsLeft        *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	CreatedAt          time.Time
+}
+
 type CombatReason struct {
 	ID          string
 	EncounterID string
@@ -94,20 +122,48 @@ type Combatant struct {
 	DeathRound              *int32
 	DeathOrderIndex         *int32
 	RevivifyBlocked         bool
+	EffectConditions        []string
+	EffectAcBonus           int32
+	EffectSpeedPct          int32
+	EffectSpeedAddFt        int32
+	EffectNoAction          bool
+	EffectNoMove            bool
+	ExtraActionUsed         bool
+	ExhaustionLevel         int32
+	HpMaxBase               *int32
 }
 
 type CombatantState struct {
-	ID              string
-	EncounterID     string
-	CombatantID     string
-	Kind            string
-	SourceID        *string
-	EndsCombatantID *string
-	EndsPhase       *string
-	EndsRound       *int32
-	StartedRound    int32
-	Amount          int32
-	CreatedAt       time.Time
+	ID                 string
+	EncounterID        string
+	CombatantID        string
+	Kind               string
+	SourceID           *string
+	EndsCombatantID    *string
+	EndsPhase          *string
+	EndsRound          *int32
+	StartedRound       int32
+	Amount             int32
+	CreatedAt          time.Time
+	GroupID            *string
+	SourceKey          *string
+	SourceKind         *string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       *string
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
 }
 
 type Encounter struct {
@@ -206,6 +262,7 @@ type PendingDamage struct {
 	Steps            []byte
 	LandedBefore     []byte
 	AfterSteps       *int32
+	EffectSourceKey  *string
 }
 
 type Puzzle struct {

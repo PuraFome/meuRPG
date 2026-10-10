@@ -12,6 +12,7 @@ import {
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { newKey } from '../connect/idempotency';
 import { needsTwoD20, takesTwo } from '../play/check-roll';
+import { ExtraDiceState } from '../effects/extra-dice-state';
 import { isTransient, puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
 import type { HintDie, MoveAnswer } from './puzzles-client';
 
@@ -29,6 +30,7 @@ export interface PlayApi {
     puzzleId: string,
     die: HintDie,
     idempotencyKey: string,
+    extraDieFaces?: readonly number[],
   ): Promise<TryPuzzleHintResponse>;
 }
 
@@ -94,6 +96,8 @@ export class PuzzlePlay {
   readonly hintTry = signal<HintTry | null>(null);
   /** The next try with a real die takes two d20: the server said so, or the last result had advantage or disadvantage. */
   readonly hintPair = signal(false);
+  /** The d4 an effect adds to a try with a real die (Orientação): asked when the server says the roll takes them. */
+  readonly extraDice = new ExtraDiceState();
   /** What to say when the first read of the run failed and nothing is on screen, or `''`; "Tentar de novo" reads again. */
   readonly loadError = signal('');
   /** The server refused a try because the table rolls its dice the other way: the page reads the campaign's dice mode again. */
@@ -144,6 +148,7 @@ export class PuzzlePlay {
     this.message.set('');
     this.hintTry.set(null);
     this.hintPair.set(false);
+    this.extraDice.fields.set([]);
     this.pendingId = puzzleId;
     await this.refresh();
   }
@@ -317,28 +322,26 @@ export class PuzzlePlay {
     if (!run || !run.canTryHint || this.hintBusy() || this.gone()) {
       return;
     }
+    const extra = this.extraDice.take(!('inApp' in die));
+    if (extra === null) {
+      this.message.set(this.extraDice.missingText());
+      return;
+    }
     const seq = this.openSeq;
     const key = this.makeKey();
     this.hintBusy.set(true);
     this.message.set('');
     try {
-      const answer = await this.sendHintWithRetry(run.puzzleId, die, key);
+      const answer = await this.sendHintWithRetry(run.puzzleId, die, key, extra);
       if (seq !== this.openSeq) {
         return;
       }
-      this.apply(answer.run ?? run);
-      this.hintTry.set({
-        passed: answer.passed,
-        roll: answer.roll,
-        mode: answer.mode,
-        sources: answer.sources,
-      });
-      this.hintPair.set(takesTwo(answer.mode));
+      this.settleHint(answer, run);
     } catch (err) {
       if (seq !== this.openSeq) {
         return;
       }
-      if (this.askForPair(err, die)) {
+      if (this.askForMore(err, die)) {
         return;
       }
       this.message.set(puzzleErrorMessage(err, 'tentar a dica', 'player'));
@@ -356,6 +359,31 @@ export class PuzzlePlay {
     }
   }
 
+  /** What a try came to: the run as this player reads it, their roll and the form for the next one. */
+  private settleHint(answer: TryPuzzleHintResponse, run: PuzzleRun): void {
+    this.apply(answer.run ?? run);
+    this.hintTry.set({
+      passed: answer.passed,
+      roll: answer.roll,
+      mode: answer.mode,
+      sources: answer.sources,
+    });
+    this.hintPair.set(takesTwo(answer.mode));
+    this.extraDice.fields.set([]);
+  }
+
+  /** A real die refused because the roll takes more dice (the second d20, or the d4 of an effect): the form asks for them. */
+  private askForMore(err: unknown, die: HintDie): boolean {
+    if (this.askForPair(err, die)) {
+      return true;
+    }
+    const more = this.extraDice.fromRefusal(err);
+    if (more) {
+      this.message.set(more);
+    }
+    return more !== '';
+  }
+
   /** A real die refused because the roll takes two d20: the form now asks for both, and nothing is said as an error. */
   private askForPair(err: unknown, die: HintDie): boolean {
     if (needsTwoD20(err) && 'face' in die) {
@@ -369,10 +397,11 @@ export class PuzzlePlay {
     puzzleId: string,
     die: HintDie,
     key: string,
+    extra: readonly number[],
   ): Promise<TryPuzzleHintResponse> {
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.api.tryHint(this.campaignId(), puzzleId, die, key);
+        return await this.api.tryHint(this.campaignId(), puzzleId, die, key, extra);
       } catch (err) {
         const waitMs = RETRY_WAITS_MS[attempt];
         if (waitMs === undefined || !isTransient(err)) {

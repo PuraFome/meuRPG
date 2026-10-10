@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -60,6 +61,13 @@ func (s *Service) reviveCombatant(ctx context.Context, c *combatTx, who playdb.C
 // writes the line to the session.
 func (s *Service) ReviveInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, at time.Time) (string, error) {
 	q := s.queries.WithTx(tx)
+	// Dying ended what was on the character; living again brings back none of it (RN-22).
+	if err := q.DeleteCharacterEffectsOfCharacter(ctx, characterID); err != nil {
+		return "", fmt.Errorf("clear the old effects of the revived character: %w", err)
+	}
+	if _, _, err := s.vitals.SetArmorBase(ctx, tx, campaignID, characterID, 0); err != nil && connect.CodeOf(err) != connect.CodeNotFound {
+		return "", err
+	}
 	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil // no session: no combat

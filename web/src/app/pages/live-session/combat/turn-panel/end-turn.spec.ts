@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { EndTurn } from './end-turn';
 
 describe('EndTurn', () => {
-  function setup(own: { actionUsed: boolean; bonusActionUsed: boolean }) {
+  function setup(own: { actionUsed: boolean; bonusActionUsed: boolean; conditions?: string[] }) {
     const fixture = TestBed.createComponent(EndTurn);
     fixture.componentRef.setInput('own', own);
     const ended: number[] = [];
@@ -20,6 +20,34 @@ describe('EndTurn', () => {
     expect(setup({ actionUsed: true, bonusActionUsed: false }).end().classList).not.toContain(
       'end--filled',
     );
+  });
+
+  it('ends the turn at once, without asking, when a condition leaves no action to use', () => {
+    const { fixture, el, ended, end } = setup({
+      actionUsed: false,
+      bonusActionUsed: false,
+      conditions: ['condition:paralyzed'],
+    });
+    expect(end().classList).toContain('end--filled');
+    end().click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(ended).toEqual([1]);
+  });
+
+  it('ignores the attacks the server still counts when a condition leaves no action to use', () => {
+    const { fixture, el, ended, end } = setup({
+      actionUsed: false,
+      bonusActionUsed: false,
+      conditions: ['condition:paralyzed'],
+    });
+    fixture.componentRef.setInput('attacksLeft', 1);
+    fixture.detectChanges();
+    expect(end().classList).toContain('end--filled');
+    end().click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(ended).toEqual([1]);
   });
 
   it('is the filled button once both are used', () => {

@@ -209,6 +209,9 @@ message TakeRestRequest {
   // Long rest: which hit dice come back, for the characters whose player chose;
   // a character without a choice gets the default (the largest dice first).
   repeated HitDiceChoice hit_dice_choices = 4;
+  // Long rest: a character with exhaustion loses one level when the rest had food and
+  // drink (SRD 5.1, Resting: "Finishing a Long Rest"). True when the table had none.
+  bool without_food_or_drink = 100;
 }
 
 message HitDiceChoice {

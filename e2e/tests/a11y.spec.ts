@@ -63,6 +63,7 @@ import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
 import { setSwitchesRPC } from './content-options-support';
+import { effectRow, effectsTable, openPanel, setExhaustionRPC } from './effects-support';
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
@@ -7461,4 +7462,253 @@ test('o salto que sai do alcance de um inimigo passa no axe e nas conferências 
 test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanJumpWarningScreens(browser, 'dark', 390);
+});
+
+/**
+ * "Efeitos que duram" no lado do mestre (W7-E, RN-22): o painel "Efeitos em jogo" com o relógio dos turnos, a pergunta de
+ * encerrar uma concentração, "Adicionar um efeito", "Mudar a duração", o cartão do que os jogadores veem, a exaustão (e a
+ * pergunta do nível 6), e, fora do combate, o painel dos personagens com "Passar o tempo" e o descanso longo com "Sem comida
+ * ou bebida".
+ */
+async function scanEffectsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const t = await effectsTable(browser, 'Acessibilidade Efeitos', width, colorScheme);
+  const { m } = t;
+  const dialog = (name: string | RegExp) => m.getByRole('dialog', { name });
+  try {
+    const panel = await openPanel(t);
+    await expectScreenPasses(m, `Efeitos em jogo, o painel e o relógio ${where}`);
+
+    const bless = effectRow(panel, 'Bênção');
+    await bless.getByRole('button', { name: /^Encerrar Bênção/ }).click();
+    const ask = panel.getByRole('alertdialog', { name: /Encerrar Bênção de Pensantus\?/ });
+    await expect(ask.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectScreenPasses(m, `Efeitos em jogo, encerrar uma concentração ${where}`);
+    await ask.getByRole('button', { name: 'Cancelar' }).click();
+
+    await panel.getByRole('button', { name: 'Adicionar efeito' }).click();
+    await expect(dialog('Adicionar um efeito')).toBeVisible();
+    await expectScreenPasses(m, `Adicionar um efeito ${where}`);
+    await dialog('Adicionar um efeito').getByRole('button', { name: 'Cancelar' }).click();
+
+    await bless.getByRole('button', { name: /^Mudar a duração de Bênção/ }).click();
+    await expect(dialog(/^Mudar a duração de Bênção em (Pensantus, Goblin 1|Goblin 1, Pensantus)$/)).toBeVisible();
+    await expectScreenPasses(m, `Mudar a duração ${where}`);
+    await dialog(/^Mudar a duração de Bênção em (Pensantus, Goblin 1|Goblin 1, Pensantus)$/).getByRole('button', { name: 'Cancelar' }).click();
+
+    await effectRow(panel, 'Derrubado').getByRole('button', { name: /Jogadores veem/ }).click();
+    await expect(dialog('O que os jogadores veem de Derrubado em Goblin 2')).toBeVisible();
+    await expectScreenPasses(m, `O que os jogadores veem de um efeito ${where}`);
+    await dialog('O que os jogadores veem de Derrubado em Goblin 2').getByRole('switch', { name: 'Os jogadores veem este efeito' }).click();
+    await expectScreenPasses(m, `O que os jogadores veem de um efeito, desligado ${where}`);
+    await dialog('O que os jogadores veem de Derrubado em Goblin 2').getByRole('button', { name: 'Cancelar' }).click();
+
+    await panel.getByRole('button', { name: 'Exaustão' }).click();
+    const exhaustion = dialog(/^Exaustão/);
+    await expect(exhaustion.getByRole('radio')).toHaveCount(7);
+    await expectScreenPasses(m, `Exaustão, os níveis ${where}`);
+    await exhaustion.getByRole('radio', { name: /^Nível 6/ }).check();
+    await exhaustion.getByRole('button', { name: 'Salvar' }).click();
+    await expect(exhaustion.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectScreenPasses(m, `Exaustão, a pergunta do nível 6 ${where}`);
+    await exhaustion.getByRole('button', { name: 'Cancelar' }).click();
+    await exhaustion.getByRole('button', { name: 'Cancelar' }).click();
+  } finally {
+    await t.done();
+  }
+}
+
+async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(390) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableWithPensantus(m, p, `Acessibilidade Efeitos fora ${Date.now()}`);
+    campaignId = table.campaignId;
+    await startSessionRPC(m, campaignId);
+    await setExhaustionRPC(m, campaignId, table.characterId, 2, 0);
+    await openSessionPage(m, campaignId);
+    const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
+    await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
+    await expectScreenPasses(m, `Efeitos fora do combate, o painel e "Passar o tempo" ${where}`);
+    const time = m.getByRole('region', { name: 'Passar o tempo' });
+    // Each preset keeps its words on one line, inside its button and clear of the field under the row.
+    const fieldBox = await boxOf(time.locator('app-text-field'));
+    for (const preset of await time.getByRole('group', { name: 'Quanto tempo passa' }).getByRole('button').all()) {
+      const box = await boxOf(preset);
+      expect(box.y + box.height, `${await preset.innerText()} over the field`).toBeLessThanOrEqual(fieldBox.y);
+      const text = await preset.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el.querySelector('.mdc-button__label') ?? el);
+        const rects = [...range.getClientRects()].filter((r) => r.width > 0);
+        const frame = el.getBoundingClientRect();
+        return {
+          lines: new Set(rects.map((r) => Math.round(r.top))).size,
+          inside: rects.every((r) => r.top >= frame.top - 1 && r.bottom <= frame.bottom + 1 && r.left >= frame.left - 1 && r.right <= frame.right + 1),
+        };
+      });
+      expect(text, `${await preset.innerText()} on one line, inside its button`).toEqual({ lines: 1, inside: true });
+    }
+    await time.getByRole('button', { name: '10 minutos' }).click();
+    await time.getByRole('button', { name: 'Passar o tempo' }).click();
+    await expect(time).toContainText('Passou 10 minutos.');
+    await expectScreenPasses(m, `Passar o tempo, o resultado ${where}`);
+
+    const rest = m.getByRole('region', { name: 'Descanso' });
+    await rest.getByRole('button', { name: 'Descanso longo' }).click();
+    await expect(rest.getByRole('switch', { name: 'Sem comida ou bebida' })).toBeVisible();
+    await expectScreenPasses(m, `Descanso longo, "Sem comida ou bebida" ${where}`);
+    await rest.getByRole('switch', { name: 'Sem comida ou bebida' }).click();
+    await expectScreenPasses(m, `Descanso longo, sem comida ou bebida ligado ${where}`);
+    await rest.getByRole('button', { name: 'Cancelar' }).click();
+
+    await panel.getByRole('button', { name: 'Exaustão' }).click();
+    await expect(m.getByRole('dialog', { name: /^Exaustão/ })).toBeVisible();
+    await expectScreenPasses(m, `Exaustão fora do combate ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width, words] of [
+  ['light', 1280, 'no tema claro, no desktop'],
+  ['dark', 390, 'no tema escuro, no celular'],
+  ['light', 390, 'no tema claro, no celular'],
+  ['dark', 1280, 'no tema escuro, no desktop'],
+] as const) {
+  test(`os efeitos que duram do mestre, no combate, passam no axe e nas conferências de layout ${words}`, { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanEffectsScreens(browser, scheme, width);
+  });
+
+  test(`os efeitos do mestre fora do combate, "Passar o tempo" e o descanso longo passam no axe e nas conferências de layout ${words}`, { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanEffectsOutsideScreens(browser, scheme, width);
+  });
+}
+
+/** The effects that last on the player's screens (W7-E, RN-22): "Seus efeitos" and the exhaustion card on the live sheet,
+ * the attack sheet with the d4 of Bênção typed from a physical die, the turn of a paralysed character and the saving
+ * throw of the end of the turn with its three answers, its typed fields and its result. The table and the effects come
+ * through the API, so every run draws the same screens. */
+async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade efeitos ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const me = enc.combatants.find((c) => c.label === 'Pensantus')!.id;
+    const captain = enc.combatants.find((c) => c.label === 'Capitão Goblin')!.id;
+    const add = async (catalogKey: string, casterId?: string) => {
+      const res = await callRPC(m, 'meurpg.play.v1.LastingEffectService/AddLastingEffect', {
+        campaignId,
+        encounterId: enc.id,
+        idempotencyKey: crypto.randomUUID(),
+        targetIds: [me],
+        catalogKey,
+        ...(casterId ? { casterId } : {}),
+        duration: { kind: 'EFFECT_DURATION_KIND_ROUNDS', rounds: 10 },
+        playerVisible: true,
+        audience: 'EFFECT_AUDIENCE_ALL',
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+
+    // The live sheet: the card of an effect and the exhaustion card.
+    await add('spell:bless');
+    const exhaustion = await callRPC(m, 'meurpg.play.v1.LastingEffectService/SetExhaustion', {
+      campaignId,
+      idempotencyKey: crypto.randomUUID(),
+      characterId: table.characterId,
+      level: 4,
+      expectedLevel: 0,
+    });
+    expect(exhaustion.ok(), await exhaustion.text()).toBeTruthy();
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
+    await expect(p.getByRole('group', { name: 'Nível 4' })).toBeVisible();
+    await expectScreenPasses(p, `Seus efeitos e a exaustão na ficha ${where}`);
+
+    // The attack sheet with the d4 of Bênção beside the d20.
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    // The sheet's name changes while the result is typed, and the exhaustion of level 4 makes the attack take two d20.
+    const attack = p.getByRole('dialog');
+    await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await attack.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(attack.getByLabel('Resultado do d4 (Bênção)')).toBeVisible();
+    await expectScreenPasses(p, `Atacar com Bênção, o d4 dos dados físicos ${where}`);
+    await attack.getByLabel('Resultado do d4 (Bênção)').fill('3');
+    // Two low dice: the attack misses, so no damage waits and the turn can end below.
+    await attack.getByLabel('Primeiro d20').fill('2');
+    await attack.getByLabel('Segundo d20').fill('5');
+    await attack.getByRole('button', { name: /^Confirmar/ }).click();
+    await expect(attack).toContainText('+ 1d4 (3)');
+    await expectScreenPasses(p, `Atacar com Bênção, o resultado com o d4 ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(attack).toBeHidden();
+
+    // The turn of a paralysed character, and the saving throw of the end of the turn.
+    await add('spell:hold-person', captain);
+    await expect(p.getByTestId('effect-note')).toBeVisible();
+    await expectScreenPasses(p, `O turno de quem está paralisado ${where}`);
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    // The dialog of a desktop is named by its title, the bottom sheet of a phone by its label.
+    const save = p.getByRole('dialog', { name: /^(Teste de resistência do fim do turno|Fim do seu turno)$/ });
+    await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
+    await expectScreenPasses(p, `Fim do seu turno, as três respostas ${where}`);
+    await save.getByRole('button', { name: 'Digitar o resultado' }).click();
+    // The exhaustion of level 4 gives disadvantage on the save (two d20), and Bênção adds its d4.
+    await expect(save.getByLabel('Primeiro d20')).toBeVisible();
+    await expectScreenPasses(p, `Fim do seu turno, digitando o d20 ${where}`);
+    await save.getByLabel('Resultado do d4 (Bênção)').fill('2');
+    await save.getByLabel('Primeiro d20').fill('20');
+    await save.getByLabel('Segundo d20').fill('20');
+    await save.getByRole('button', { name: /Confirmar/ }).click();
+    await expect(save).toContainText('Passou');
+    await expectScreenPasses(p, `Fim do seu turno, o resultado ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'light', 1280);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'light', 390);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'dark', 1280);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'dark', 390);
 });

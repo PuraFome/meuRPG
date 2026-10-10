@@ -4,6 +4,7 @@ import {
   computed,
   effect,
   input,
+  model,
   output,
   signal,
 } from '@angular/core';
@@ -13,9 +14,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { treatedSentence } from '../../../../core/combat/combat-dice';
+import type { ExtraDieField } from '../../../../core/effects/effects';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
 import { checkFaces, hasModeInfo } from '../../../../core/play/check-roll';
+import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { CheckMode } from '../../scene/check-mode/check-mode';
@@ -31,7 +34,7 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
 @Component({
   selector: 'app-hint-try',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CheckMode, MatButtonModule, MatIconModule, MultiRoll, RollPicker],
+  imports: [CheckMode, ExtraDice, MatButtonModule, MatIconModule, MultiRoll, RollPicker],
   template: `
     @if (result(); as r) {
       @if (r.passed) {
@@ -52,6 +55,9 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
       }
     }
     @if (canTry()) {
+      @if (typing() && extraFields().length > 0) {
+        <app-extra-dice [fields]="extraFields()" [(faces)]="extraFaces" />
+      }
       @if (typing() && pair()) {
         <app-multi-roll
           [fields]="pairFields"
@@ -138,6 +144,9 @@ export class HintTryControl {
   readonly result = input<HintTry | null>(null);
   /** The try takes two d20 (advantage or disadvantage): the form for a real die has two fields. */
   readonly pair = input(false);
+  /** The d4 an effect adds to a try with a real die (the server said the roll takes them): typed with the d20. */
+  readonly extraFields = input<readonly ExtraDieField[]>([]);
+  readonly extraFaces = model<readonly (number | null)[]>([]);
 
   /** A try with the d20 rolled in the app. */
   readonly rolled = output<HintDie>();
@@ -175,6 +184,12 @@ export class HintTryControl {
         this.typing.set(true);
       }
     });
+    // The server asked for the d4 of an effect: the fields open with the d20's.
+    effect(() => {
+      if (this.extraFields().length > 0 && this.canTry() && this.canType()) {
+        this.typing.set(true);
+      }
+    });
   }
 
   protected go(): void {
@@ -186,12 +201,12 @@ export class HintTryControl {
   }
 
   protected onTyped(face: number): void {
-    this.typing.set(false);
+    this.typing.set(this.extraFields().length > 0);
     this.typed.emit({ face });
   }
 
   protected onPair(faces: number[]): void {
-    this.typing.set(false);
+    this.typing.set(this.extraFields().length > 0);
     this.typed.emit({ faces });
   }
 

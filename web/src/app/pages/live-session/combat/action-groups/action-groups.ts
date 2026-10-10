@@ -3,10 +3,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { ExtraActionOption } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import {
   type ActionOption,
   type Attack,
   type AttackOption,
+  AttackKind,
   type SpellDetails,
   type SpellOption,
   type TurnOptions,
@@ -29,6 +31,7 @@ import {
   spellLine,
   spellTags,
 } from '../../../../core/combat/combat-options';
+import { cannotAct } from '../../../../core/combat/conditions';
 import { spellSummary } from '../../../../core/combat/spell-summary';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
@@ -37,6 +40,14 @@ import { SlotDots } from '../../slot-dots/slot-dots';
 import { ActionRow } from './action-row';
 import { EconomyTiles } from './economy-tiles';
 import { GroupState } from './group-state';
+
+/** The standard actions an extra action may be, by the key the server sends. */
+const EXTRA_NAMES: Readonly<Record<string, string>> = {
+  dash: 'Disparada',
+  disengage: 'Desengajar',
+  hide: 'Esconder',
+  'use-an-object': 'Usar um objeto',
+};
 
 /**
  * "O que você pode fazer" (E6-06 on a phone, E6-14 on a laptop): the options
@@ -106,8 +117,15 @@ export class ActionGroups {
   /** The combat is played without a map (RN-25): Movimento says so and its button is "Gastar movimento". */
   readonly theatre = input(false);
 
+  /** The extra action an effect gives (Velocidade): its line, what it may be and why it is not there; `null` without one. */
+  readonly extraAction = input<ExtraActionOption | null>(null);
+
   /** "Atacar": the key of the attack, as in `Attack.key`. */
   readonly attack = output<string>();
+  /** The weapon attack of the extra action: the key of the attack. */
+  readonly extraAttack = output<string>();
+  /** A standard action paid with the extra action ("standard:dash"). */
+  readonly extraStandard = output<string>();
   /** A standard action, by key ("standard:dash"). */
   readonly action = output<string>();
   /** "Conjurar": the key of the spell, or of a cantrip that asks for a save. */
@@ -197,7 +215,11 @@ export class ActionGroups {
 
   /** The word on the Ação header: with Extra Attack, once the first attack
    * spent the action, "1 ataque restante" (an open circle: it is not over). */
+  protected readonly cannot = computed(() => cannotAct(this.own()));
   protected readonly actionWord = computed(() => {
+    if (cannotAct(this.own())) {
+      return { word: 'Indisponível', used: true };
+    }
     const used = this.own().actionUsed;
     const left = this.attacksLeft();
     if (used && left > 0 && this.attacksPerAction() > 1) {
@@ -210,6 +232,21 @@ export class ActionGroups {
   });
 
   protected readonly attackName = attackName;
+
+  /** The weapon attacks the extra action may make (one weapon attack, SRD 5.1, Velocidade): no cantrip and no save. */
+  protected readonly extraWeapons = computed(() =>
+    this.extraAction()?.allowedActions.includes('attack')
+      ? this.options().attacks.filter(
+          (a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0,
+        )
+      : [],
+  );
+  /** The standard actions the extra action may be, but the attack: "Disparada", "Desengajar", "Esconder", "Usar um objeto". */
+  protected readonly extraStandards = computed(() =>
+    (this.extraAction()?.allowedActions ?? [])
+      .filter((k) => k !== 'attack' && k in EXTRA_NAMES)
+      .map((k) => ({ key: `standard:${k}`, name: EXTRA_NAMES[k] })),
+  );
 
   /** The line of why under an attack: its bonus action rule, or the beams of a cast still to fire. */
   protected attackNote(o: AttackOption): string {
@@ -225,7 +262,8 @@ export class ActionGroups {
   }
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
-  protected readonly state = groupState;
+  protected readonly state = (used: boolean): string =>
+    cannotAct(this.own()) ? 'Indisponível' : groupState(used);
   protected readonly isCantrip = isCantrip;
 
   protected spellTags = spellTags;

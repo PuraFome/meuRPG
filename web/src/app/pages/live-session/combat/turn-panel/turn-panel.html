@@ -186,6 +186,13 @@
 </section>
 }
 <ng-template #notes>
+  @for (n of effectNotes(); track n.textPt) {
+    <!-- What an effect or a condition takes from this turn (RN-22): the server's own sentence, never its cause for a player. -->
+    <div class="mr-notice mr-notice--warning turn__notice" role="status" data-testid="effect-note">
+      <mat-icon aria-hidden="true">block</mat-icon>
+      <p><strong>{{ noteParts(n.textPt).lead }}</strong> {{ noteParts(n.textPt).rest }}</p>
+    </div>
+  }
   @if (waiting(); as w) {
     <div class="mr-notice mr-notice--warning turn__notice" role="status">
       <mat-icon aria-hidden="true">hourglass_top</mat-icon>

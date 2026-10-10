@@ -96,6 +96,8 @@ type saveRoll struct {
 	Counted  int32  `json:"counted,omitempty"`
 	RollMode string `json:"roll_mode,omitempty"`
 	Auto     bool   `json:"auto,omitempty"`
+	// Extra are the dice effects added to the roll (Bênção, Perdição).
+	Extra []effectDie `json:"extra,omitempty"`
 	// Unknown says the target is a basic-sheet NPC with no saving throw bonus:
 	// the roll is d20 + 0 and the master may overrule it.
 	Unknown bool `json:"bonus_unknown,omitempty"`
@@ -106,12 +108,13 @@ type castHit struct {
 	Target string `json:"target_id"`
 	Darts  int32  `json:"darts,omitempty"`
 	// A spell attack: the d20, the bonus, the total and the outcome.
-	Outcome  string    `json:"outcome,omitempty"`
-	D20      int32     `json:"d20,omitempty"`
-	Modifier int32     `json:"modifier,omitempty"`
-	Total    int32     `json:"total,omitempty"`
-	Physical bool      `json:"physical,omitempty"`
-	Save     *saveRoll `json:"save,omitempty"`
+	Outcome  string      `json:"outcome,omitempty"`
+	D20      int32       `json:"d20,omitempty"`
+	Modifier int32       `json:"modifier,omitempty"`
+	Total    int32       `json:"total,omitempty"`
+	Extra    []effectDie `json:"extra,omitempty"`
+	Physical bool        `json:"physical,omitempty"`
+	Save     *saveRoll   `json:"save,omitempty"`
 	// A spell attack made with advantage or disadvantage: the other d20, which die
 	// counts (D20 is the one that does), the mode and the suggestion.
 	D20B          int32  `json:"d20_b,omitempty"`
@@ -147,6 +150,12 @@ type castHit struct {
 	// when the spell hit: the players' line lists the target only to them.
 	Fogged   bool   `json:"fogged,omitempty"`
 	SeenMask uint64 `json:"seen_mask,omitempty"`
+
+	// A spell that lasts (RN-22): whether its effect took hold of the target
+	// (lastingApplied) or the spell did nothing to it (lastingNoEffect), and why, which
+	// only the master reads.
+	Lasting     string `json:"lasting,omitempty"`
+	NoEffectWhy string `json:"no_effect_why,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -371,6 +380,15 @@ type actionEvent struct {
 	CondSet    bool     `json:"cond_set,omitempty"`
 	Conditions []string `json:"conditions,omitempty"`
 	CondBefore []string `json:"cond_before,omitempty"`
+
+	// An effect that lasts began, changed, ended or asked a saving throw (RN-22).
+	Lasting *lastingEvent `json:"lasting,omitempty"`
+	// Extra are the dice effects added to the roll (Bênção, Perdição).
+	Extra []effectDie `json:"extra,omitempty"`
+	// Restore are the effects the action ended: its undo puts them back.
+	Restore []playdb.CombatantState `json:"restore,omitempty"`
+	// ExtraUsed says the action spent the extra action of an effect (Velocidade).
+	ExtraUsed bool `json:"extra_used,omitempty"`
 
 	// What the undo of an action puts back.
 	ActionBefore   bool `json:"action_before,omitempty"`

@@ -52,6 +52,14 @@ const (
 	// Ranged Attacks: beyond the normal range, and a hostile creature within 5 ft.
 	SourceLongRange     = "long_range"
 	SourceHostileNearby = "hostile_nearby"
+	// Effects that last (RN-22): exhaustion, Faerie Fire and the advantage on saving
+	// throws an effect gives (Haste).
+	SourceExhaustionAttack = "exhaustion_attack"
+	SourceExhaustionSave   = "exhaustion_save"
+	SourceExhaustionCheck  = "exhaustion_check"
+	SourceOutlinedTarget   = "outlined_target"
+	SourceEffectSave       = "effect_save"
+	SourceEffectCheck      = "effect_check"
 	// Saving throws and ability checks.
 	SourceDodgingSave     = "dodging_save"
 	SourceDangerSense     = "danger_sense"
@@ -180,6 +188,17 @@ type Creature struct {
 	DangerSense bool
 	// Raging says it is in a rage whose benefits hold (no heavy armor).
 	Raging bool
+	// Exhaustion is its level of exhaustion, 0 to 6 (SRD, Conditions).
+	Exhaustion int
+	// Outlined says Faerie Fire outlines it: attacks against it have advantage if the
+	// attacker sees it, and it gets nothing from being invisible.
+	Outlined bool
+	// SaveAdvantage are the abilities an effect that lasts gives it advantage on the
+	// saving throws of (Haste: Dexterity).
+	SaveAdvantage []string
+	// CheckAdvantage are the abilities an effect that lasts gives it advantage on the ability
+	// checks of (Enhance Ability).
+	CheckAdvantage []string
 }
 
 // Has says whether it carries a condition.
@@ -316,6 +335,17 @@ func AttackMode(s AttackScene) AttackModeResult {
 			add(r.kind, r.effect, r.condition)
 		}
 	}
+	if s.Attacker.Exhaustion >= exhaustionAttackLevel {
+		add(SourceExhaustionAttack, ModeDisadvantage, "")
+	}
+	if s.Target.Outlined {
+		// Faerie Fire: the target gets nothing from being invisible, and an attacker that
+		// sees it has advantage.
+		out.Sources = slices.DeleteFunc(out.Sources, func(src Source) bool { return src.Kind == SourceInvisibleTarget })
+		if !s.TargetUnseen {
+			add(SourceOutlinedTarget, ModeAdvantage, "")
+		}
+	}
 	if s.Target.Has(conditionProne) && known {
 		if within {
 			add(SourceProneTarget, ModeAdvantage, conditionProne)
@@ -409,6 +439,18 @@ func SaveMode(s SaveScene) []Source {
 	if s.Ability == strengthAbility && c.Raging {
 		add(SourceRageStrength, ModeAdvantage, "")
 	}
+	if !s.Check && slices.Contains(c.SaveAdvantage, s.Ability) {
+		add(SourceEffectSave, ModeAdvantage, "")
+	}
+	if !s.Check && c.Exhaustion >= exhaustionAttackLevel {
+		add(SourceExhaustionSave, ModeDisadvantage, "")
+	}
+	if s.Check && slices.Contains(c.CheckAdvantage, s.Ability) {
+		add(SourceEffectCheck, ModeAdvantage, "")
+	}
+	if s.Check && c.Exhaustion >= 1 {
+		add(SourceExhaustionCheck, ModeDisadvantage, "")
+	}
 	if s.Check {
 		if c.Has(conditionPoisoned) {
 			add(SourcePoisonedCheck, ModeDisadvantage, conditionPoisoned)
@@ -429,6 +471,10 @@ func AutoFailsSave(c Creature, ability string) bool {
 	}
 	return c.Has(conditionStunned) || c.Has(conditionParalyzed) || c.Has(conditionUnconscious) || c.Has(conditionPetrified)
 }
+
+// exhaustionAttackLevel is the level of exhaustion that gives disadvantage on attack rolls
+// and saving throws (SRD, Conditions: level 3); level 1 gives it on ability checks.
+const exhaustionAttackLevel = 3
 
 // pairOfDice is the d20 a roll with advantage or disadvantage takes.
 const pairOfDice = 2

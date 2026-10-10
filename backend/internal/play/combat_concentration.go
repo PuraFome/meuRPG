@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -46,6 +47,9 @@ func (s *Service) afterDamage(ctx context.Context, c *combatTx, target playdb.Co
 		return nil
 	}
 	if err := s.hellishWindow(ctx, c, target, d); err != nil {
+		return err
+	}
+	if err := s.effectDamageSaves(ctx, c, target, d); err != nil {
 		return err
 	}
 	if target.ConcentrationSpell == nil {
@@ -202,9 +206,22 @@ func (s *Service) ResolveConcentrationSave(
 			if err != nil {
 				return nil, err
 			}
-			kept = roll.Total >= int(dc)
-			re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(face, 1, 20), clamp32(save.Bonus, math.MinInt32, math.MaxInt32), kept, kept
-			ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, clamp32(roll.Total, math.MinInt32, math.MaxInt32), roll.Physical
+			// Bênção and Perdição add their die to the saving throw (SRD 5.1).
+			states, err := s.readStates(ctx, c.tx, c.enc.ID)
+			if err != nil {
+				return nil, err
+			}
+			extra, delta, err := s.rollEffectDice(in, effectDiceFor(states, reactor.ID, rules.RollAppliesSave), req.Msg.GetExtraDieFaces())
+			if err != nil {
+				return nil, err
+			}
+			if err := s.spendOnceEffects(ctx, c, extra); err != nil {
+				return nil, err
+			}
+			total := roll.Total + delta
+			kept = total >= int(dc)
+			re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(face, 1, 20), clamp32(save.Bonus+delta, math.MinInt32, math.MaxInt32), kept, kept
+			ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, clamp32(total, math.MinInt32, math.MaxInt32), roll.Physical
 			result = &playv1.ConcentrationSaveResult{
 				Save: diceRoll(1, 20, []int32{re.SaveD20}, re.SaveBonus, ev.Total, roll.Physical), Dc: dc, Kept: kept, SpellKey: t.Spell,
 			}

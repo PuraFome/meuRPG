@@ -677,6 +677,22 @@ func (q *Queries) SetSpellCastConcentration(ctx context.Context, arg SetSpellCas
 	return err
 }
 
+const setSpellCastDuration = `-- name: SetSpellCastDuration :exec
+UPDATE spell_casts SET duration_seconds = $2 WHERE id = $1
+`
+
+type SetSpellCastDurationParams struct {
+	ID              string
+	DurationSeconds *int32
+}
+
+// The game time a cast has left, when a combat gives back the rounds an effect had left
+// (6 seconds each).
+func (q *Queries) SetSpellCastDuration(ctx context.Context, arg SetSpellCastDurationParams) error {
+	_, err := q.db.Exec(ctx, setSpellCastDuration, arg.ID, arg.DurationSeconds)
+	return err
+}
+
 const setSpellCastTargets = `-- name: SetSpellCastTargets :exec
 UPDATE spell_casts SET targets = $2 WHERE id = $1
 `

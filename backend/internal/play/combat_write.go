@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 	"uuid"
@@ -191,6 +192,9 @@ type combatTx struct {
 	// for each attack, a door and the move), each seen by its own players.
 	stamped *actionEvent
 	lines   []actionEvent
+	// endedEffects are the effects the change ended, kept in its event so that the undo puts
+	// them back (RN-22).
+	endedEffects []playdb.CombatantState
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
@@ -372,6 +376,10 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		}
 		ended = c
 		c.stamped = nil
+		if ev, ok := payload.(actionEvent); ok && len(c.endedEffects) > 0 && slices.Contains(undoableKinds, c.kind) {
+			ev.Restore = c.endedEffects
+			payload = ev
+		}
 		if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload); err != nil {
 			return err
 		}

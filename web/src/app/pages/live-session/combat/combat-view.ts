@@ -135,6 +135,7 @@ import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/ca
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
+import { EffectsPanel } from '../effects/effects-panel';
 import { RageQuestion } from './rage-end/rage-question';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
@@ -148,7 +149,11 @@ import {
   type ReactionSheetResult,
 } from './reaction-sheet/reaction-sheet';
 import { windowsBarText } from '../../../core/combat/reaction-master';
-import { promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
+import { openWindows, promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
+import {
+  EffectSaveSheet,
+  type EffectSaveSheetData,
+} from '../effects/effect-save-sheet/effect-save-sheet';
 import { ReactionQueue } from './reaction-queue/reaction-queue';
 import { CombatLogPanel } from './combat-log/combat-log-panel';
 import type { CombatantInfo } from './combat-info';
@@ -229,6 +234,7 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     CreatureHero,
     DeathQuestion,
     DeathSaves,
+    EffectsPanel,
     RageQuestion,
     InspirationCard,
     CombatBar,
@@ -1570,8 +1576,38 @@ export class CombatView {
 
   /** "Atacar": the attack sheet (Alvo, Rolar, Dano). `asReaction` is the
    * opportunity attack, off turn. */
-  protected openAttack(key: string, asReaction = false): void {
-    this.attackSheet(key, undefined, asReaction);
+  protected openAttack(key: string, asReaction = false, useExtraAction = false): void {
+    this.attackSheet(
+      key,
+      undefined,
+      asReaction,
+      undefined,
+      undefined,
+      undefined,
+      '',
+      useExtraAction,
+    );
+  }
+
+  /** A standard action paid with the extra action an effect gives (Velocidade): Disparada, Desengajar, Esconder, Usar um objeto. */
+  protected takeExtra(key: string): void {
+    const own = this.own();
+    if (own) {
+      void this.run(
+        async (e) =>
+          (
+            await this.api.takeAction(
+              this.campaignId(),
+              e.id,
+              own.id,
+              key,
+              undefined,
+              undefined,
+              true,
+            )
+          ).encounter,
+      );
+    }
   }
 
   /** "Rolar o dano" of a hit whose sheet was closed before the damage. */
@@ -1641,6 +1677,7 @@ export class CombatView {
     creatureOpts?: GetTurnOptionsResponse | null,
     held?: InspirationOffer,
     catchWindowId = '',
+    useExtraAction = false,
   ): void {
     const e = this.encounter();
     const own = who ?? this.own();
@@ -1663,6 +1700,7 @@ export class CombatView {
       asReaction,
       master: this.isMaster(),
       ...(catchWindowId ? { catchWindowId } : {}),
+      ...(useExtraAction ? { useExtraAction } : {}),
       bonusRule: option?.bonusRule,
       bonusAttacksLeft: option?.bonusAttacksLeft,
       beamsLeft: option?.beamsLeft || attack.beams,
@@ -2098,6 +2136,10 @@ export class CombatView {
     if (!e) {
       return;
     }
+    if (window.prompt.case === 'effectSave') {
+      this.openEffectSave(window);
+      return;
+    }
     const data: ReactionSheetData = {
       campaignId: this.campaignId(),
       encounterId: e.id,
@@ -2130,6 +2172,43 @@ export class CombatView {
       complete: () => this.reactionOpen.set(false),
     });
   }
+
+  /** The saving throw an effect asks at the end or the start of this player's turn (RN-22): opens by itself, and again from "Rolar o teste". */
+  protected openEffectSave(window: ReactionWindow): void {
+    const e = this.encounter();
+    if (!e || this.reactionOpen()) {
+      return;
+    }
+    const data: EffectSaveSheetData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      window,
+      round: e.round,
+      state: this.state(),
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
+    };
+    this.reactionOpen.set(true);
+    openSheet<EffectSaveSheet, EffectSaveSheetData, void>(
+      this.dialog,
+      this.bottomSheet,
+      EffectSaveSheet,
+      { data, ariaLabel: 'Teste de resistência do fim do turno', labelledBy: 'sheet-t' },
+    ).subscribe({ complete: () => this.reactionOpen.set(false) });
+  }
+
+  /** The saving throw of an effect that waits for this player: it has to be answered, so it can be opened again after closing it. */
+  protected readonly ownEffectSave = computed(() => {
+    const e = this.encounter();
+    if (this.isMaster() || !e || e.status !== EncounterStatus.ACTIVE) {
+      return null;
+    }
+    return (
+      openWindows(e).find(
+        (w) => w.forYou && w.prompt.case === 'effectSave' && !this.reactionOpen(),
+      ) ?? null
+    );
+  });
 
   /** "Devolver (1 de chi)": the attack with the missile the monk caught, part of the same reaction. */
   private openThrowBack(windowId: string): void {

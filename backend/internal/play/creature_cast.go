@@ -405,6 +405,9 @@ func (s *Service) stopConcentrating(ctx context.Context, c *combatTx, target pla
 		}
 	}
 	var err error
-	ev.Dismissed, err = s.endSummons(ctx, c, target)
-	return err
+	if ev.Dismissed, err = s.endSummons(ctx, c, target); err != nil {
+		return err
+	}
+	// The effects the concentration held end with it (RN-22).
+	return s.endConcentrationEffects(ctx, c, target, endConcentration)
 }

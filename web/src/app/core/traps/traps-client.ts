@@ -43,6 +43,7 @@ export class TrapsClient {
     die: SearchDie,
     idempotencyKey: string,
     otherSkillKey = '',
+    extraDieFaces: readonly number[] = [],
   ): Promise<SearchForTrapsResponse> {
     return this.client.searchForTraps({
       campaignId,
@@ -57,6 +58,7 @@ export class TrapsClient {
             : { case: undefined }
           : { case: 'd20Face', value: die.face },
       d20Faces: 'inApp' in die || die.face2 === undefined ? [] : [die.face, die.face2],
+      extraDieFaces: [...extraDieFaces],
     });
   }
 

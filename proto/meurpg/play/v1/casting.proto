@@ -450,6 +450,9 @@ message CastSpellOutsideCombatRequest {
   // What a summoning spell brings (as CastSummon). Required for such a spell and
   // refused for any other. A spell that takes minutes or hours takes it in ConfirmCastTimePassed.
   SummonChoice summon = 10;
+  // Enhance Ability only: the ability the target is enhanced in ("str", "dex", "con", "int",
+  // "wis" or "cha"). Required for that spell, ignored by every other.
+  string ability_key = 11;
 }
 
 // ConfirmCastTimePassedRequest ends the casting of a spell that takes time.

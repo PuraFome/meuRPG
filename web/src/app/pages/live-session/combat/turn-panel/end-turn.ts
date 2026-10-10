@@ -15,6 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { endTurnIsPrimary } from '../../../../core/combat/combat-options';
+import { cannotAct } from '../../../../core/combat/conditions';
 
 let nextId = 0;
 
@@ -122,7 +123,9 @@ export class EndTurn {
   protected readonly id = `end-turn-${nextId++}`;
   private readonly injector = inject(Injector);
 
-  readonly own = input.required<Pick<Combatant, 'actionUsed' | 'bonusActionUsed'>>();
+  readonly own = input.required<
+    Pick<Combatant, 'actionUsed' | 'bonusActionUsed'> & Partial<Pick<Combatant, 'conditions'>>
+  >();
   /** Extra Attack: the attacks left once the first spent the action. */
   readonly attacksLeft = input(0);
   readonly busy = input(false);
@@ -137,7 +140,7 @@ export class EndTurn {
 
   protected readonly asking = signal(false);
   protected readonly primary = computed(
-    () => endTurnIsPrimary(this.own()) && this.attacksLeft() === 0,
+    () => cannotAct(this.own()) || (endTurnIsPrimary(this.own()) && this.attacksLeft() === 0),
   );
   protected readonly question = computed(() => {
     const left = this.attacksLeft();
@@ -151,7 +154,7 @@ export class EndTurn {
     if (this.waiting()) {
       return;
     }
-    if (this.own().actionUsed && this.attacksLeft() === 0) {
+    if (cannotAct(this.own()) || (this.own().actionUsed && this.attacksLeft() === 0)) {
       this.endTurn.emit();
       return;
     }

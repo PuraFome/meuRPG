@@ -27,6 +27,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.FeatherFall:       playv1.ReactionKind_REACTION_KIND_FEATHER_FALL,
 	reaction.Concentration:     playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
 	reaction.MasterCheck:       playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
+	reaction.EffectSave:        playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
 }
 
 // windowView is what the builders of a caller's windows share.
@@ -178,6 +179,10 @@ func (wv *windowView) opportunityWindow(o playdb.OpportunityOffer, mover, reacto
 // caller sees is named (never which NPC, never why).
 func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant, answers bool, wait *reaction.Wait) {
 	save := reaction.Kind(w.Kind) == reaction.Concentration
+	if reaction.Kind(w.Kind) == reaction.EffectSave {
+		wv.effectSaveWait(w, reactor, answers, wait)
+		return
+	}
 	if wv.v.master {
 		switch {
 		case reactor != nil && reactor.Kind == kindPlayer && save:
@@ -246,6 +251,8 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		err = wv.masterCheckPrompt(w, out)
 	case reaction.Concentration:
 		err = wv.concentrationPrompt(w, reactor, out)
+	case reaction.EffectSave:
+		err = wv.effectSavePrompt(w, reactor, out)
 	default:
 		err = wv.morePrompt(kind, w, reactor, out)
 	}

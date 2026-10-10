@@ -4,6 +4,7 @@ import { create } from '@bufbuild/protobuf';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { DiceRollSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { AdvantageSourceSchema, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { dieFields } from '../../../../core/effects/effects';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
 import { HintTryControl } from './hint-try';
@@ -43,6 +44,22 @@ describe('HintTryControl: the d20 pair', () => {
     fill(fixture, el, 0, '9');
     button(el, 'Confirmar').click();
     expect(sent).toEqual([{ face: 9 }]);
+  });
+
+  it('asks for the d4 of an effect the server said the try takes, with the d20 in the same form', () => {
+    const { fixture, el, sent } = setup({
+      extraFields: dieFields([{ name: 'Outra fonte', faces: 4, sign: 1 }]),
+    });
+    expect(Array.from(el.querySelectorAll('label'), (l) => l.textContent?.trim())).toContain(
+      'Resultado do d4 (Outra fonte)',
+    );
+    fill(fixture, el, 0, '3');
+    fill(fixture, el, 1, '9');
+    button(el, 'Confirmar').click();
+    expect(sent).toEqual([{ face: 9 }]);
+    expect(fixture.componentInstance.extraFaces()).toEqual([3]);
+    // The form stays open for the answer: the page may ask again.
+    expect(el.querySelectorAll('input')).toHaveLength(2);
   });
 
   it('shows two labelled fields once the pair is needed, and sends both faces', () => {

@@ -852,14 +852,15 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await dialog.getByRole('checkbox', { name: 'Derrubado' }).check();
     await dialog.getByRole('button', { name: 'Salvar condições' }).click();
     await expect(dialog).toHaveCount(0);
-    // In the master's order, as tags under the name; on the player's strip (first one and "+1"); in the map's text list.
+    // In the master's order, as tags under the name. Envenenado has no outward sign, so it is the master's (and its owner's) alone (RN-10):
+    // the player's strip, the map's text list and the log read Derrubado only, with no "+1" and no Envenenado anywhere.
     await expect(m.getByRole('list', { name: 'Condições de Goblin 1' })).toContainText('Envenenado');
     await expect(m.getByRole('list', { name: 'Condições de Goblin 1' })).toContainText('Derrubado');
-    await expect(p.getByRole('list', { name: 'Condições de Goblin 1' })).toContainText('Derrubado');
-    await expect(p.getByRole('list', { name: 'Condições de Goblin 1' })).toContainText('+1');
-    await expect(p.getByText('Goblin 1, coluna 10, linha 10, Derrubado, Envenenado')).toBeAttached();
+    await expect(p.getByRole('list', { name: 'Condições de Goblin 1' })).toHaveText(/^\s*Derrubado\s*$/);
+    await expect(p.getByText('Goblin 1, coluna 10, linha 10, Derrubado')).toBeAttached();
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
-    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1 ficou Derrubado e Envenenado');
+    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1 ficou Derrubado');
+    await expect(p.getByText('Envenenado')).toHaveCount(0);
     await p.keyboard.press('Escape');
 
     // Pensantus casts Teia, which asks for concentration; he sees it and may end it himself.

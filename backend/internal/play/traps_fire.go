@@ -517,6 +517,9 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 				return nil, err
 			}
 			targets[i].save, targets[i].saveKnown = save.Bonus, save.Known
+			if targets[i].saveDice, err = s.outsideSaveDice(ctx, c.tx, ch.ID); err != nil {
+				return nil, err
+			}
 		}
 	}
 	for j, cr := range creatures {
@@ -540,8 +543,11 @@ func (s *Service) fireOutside(ctx context.Context, c *combatTx, trap maplink.Tra
 			targets[i].save, targets[i].saveKnown = save.Bonus, save.Known
 		}
 	}
-	outcomes, err := resolveTrap(effect, targets, criticalRuleOf(c.rules), s.trapD20, s.trapDice)
+	outcomes, err := resolveTrap(effect, targets, criticalRuleOf(c.rules), s.trapD20, s.trapDice, s.trapExtraDice)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.spendTrapDice(ctx, c, outcomes); err != nil {
 		return nil, err
 	}
 	fireID := uuid.New().String()

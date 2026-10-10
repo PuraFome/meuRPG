@@ -246,4 +246,37 @@ describe('CastOutSheet (MR-048)', () => {
     expect(plain(el.querySelector('.cap')?.textContent)).toBe('Magia');
     expect(api.casts).toHaveLength(0);
   });
+
+  it('asks which ability Aprimorar Habilidade is for and casts with it', async () => {
+    const enhance = castingSpell('spell:enhance-ability', 'Aprimorar Habilidade', 2, {
+      lasts: true,
+      durationSeconds: 3600,
+      maxTargets: 1,
+      rangeKind: 'touch',
+    });
+    enhance.spell!.concentration = true;
+    const { el, api, click } = await setup(withSpells(enhance));
+    await click('label.row', 'Aprimorar Habilidade');
+    await click('label.row', '2º nível');
+    await click('label.row', 'Toren');
+    expect(plain(el.querySelector('.missing')?.textContent)).toContain('Escolha a habilidade.');
+    expect(plain(el.querySelector('app-ability-picker')?.textContent)).toContain('Águia');
+    expect(el.querySelector('button.cast')?.getAttribute('aria-disabled')).toBe('true');
+    await click('app-ability-picker label.row', 'Carisma');
+    expect(el.querySelector('.missing')).toBeNull();
+    await click('button.cast');
+    expect(api.casts[0].req).toMatchObject({
+      spellKey: 'spell:enhance-ability',
+      abilityKey: 'cha',
+    });
+  });
+
+  it('sends no ability for a spell that does not ask for one', async () => {
+    const { el, api, click } = await setup(withSpells(alarm));
+    await click('label.row', 'Alarme');
+    await click('label.row', '1º nível');
+    expect(el.querySelector('app-ability-picker')).toBeNull();
+    await click('button.cast');
+    expect(api.casts[0].req.abilityKey).toBeUndefined();
+  });
 });
