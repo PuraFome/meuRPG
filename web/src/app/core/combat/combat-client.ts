@@ -190,6 +190,18 @@ export interface CastExtras {
   readonly revealHidden?: boolean;
   /** Aprimorar Habilidade only: the ability it is cast for ("str" to "cha"). */
   readonly abilityKey?: string;
+  /** Sculpt Spells: the creatures of the area the caster spares. */
+  readonly sculptedIds?: readonly string[];
+}
+
+/** The optional fields of a cast request; each is left out unless it was set. */
+function castExtrasBody(extras: CastExtras) {
+  return {
+    // Left out unless the master chose: the table rule decides then.
+    ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
+    ...(extras.abilityKey ? { abilityKey: extras.abilityKey } : {}),
+    ...(extras.sculptedIds?.length ? { sculptedIds: [...extras.sculptedIds] } : {}),
+  };
 }
 
 /** The roll of a cast as the request's oneof: the app rolls, a typed pool sum, or a typed d20. */
@@ -651,14 +663,18 @@ export class CombatClient {
     campaignId: string,
     encounterId: string,
     offerId: string,
+    key?: string,
   ): Promise<Encounter> {
-    const res = await this.keyed(['skipOpportunity', campaignId, encounterId, offerId], (sent) =>
-      this.client.skipOpportunity({
-        campaignId,
-        encounterId,
-        opportunityOfferId: offerId,
-        idempotencyKey: sent,
-      }),
+    const res = await this.keyed(
+      ['skipOpportunity', campaignId, encounterId, offerId],
+      (sent) =>
+        this.client.skipOpportunity({
+          campaignId,
+          encounterId,
+          opportunityOfferId: offerId,
+          idempotencyKey: sent,
+        }),
+      key,
     );
     return need(res.encounter, 'SkipOpportunity');
   }
@@ -1079,9 +1095,10 @@ export class CombatClient {
     die?: DamageDie,
     key?: string,
     useExtraAction = false,
+    frenzy = false,
   ): Promise<ActionResult> {
     const res = await this.keyed(
-      ['takeAction', campaignId, encounterId, combatantId, actionKey, die, useExtraAction],
+      ['takeAction', campaignId, encounterId, combatantId, actionKey, die, useExtraAction, frenzy],
       (sent) =>
         this.client.takeAction({
           campaignId,
@@ -1091,6 +1108,8 @@ export class CombatClient {
           idempotencyKey: sent,
           // The extra action an effect gives (Velocidade) pays for it instead of the action (RN-22).
           useExtraAction,
+          // The Berserker's Fúria in a frenzy (SRD 5.1, Frenzy); ignored by every other action.
+          frenzy,
           roll: !die
             ? { case: undefined }
             : 'inApp' in die
@@ -1146,9 +1165,7 @@ export class CombatClient {
           }
         : undefined,
       area: areaOneof(extras.area),
-      // Left out unless the master chose: the table rule decides then.
-      ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
-      ...(extras.abilityKey ? { abilityKey: extras.abilityKey } : {}),
+      ...castExtrasBody(extras),
     });
     return {
       encounter: need(res.encounter, 'CastSpell'),

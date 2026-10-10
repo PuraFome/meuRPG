@@ -1619,8 +1619,12 @@ type CharacterVitals struct {
 	// 13 + Dexterity, SRD 5.1); 0 without one. The session's panels show the better of it and
 	// the sheet's armor class.
 	ArmorClassBase int32 `protobuf:"varint,101,opt,name=armor_class_base,json=armorClassBase,proto3" json:"armor_class_base,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The combined level of spell slots the wizard's Arcane Recovery gives back (half
+	// the WIZARD level, rounded up; SRD 5.1, Wizard). 0: the character has no wizard
+	// level. Whether the use is left is the `arcane_recovery` resource.
+	ArcaneRecoveryAllowance int32 `protobuf:"varint,102,opt,name=arcane_recovery_allowance,json=arcaneRecoveryAllowance,proto3" json:"arcane_recovery_allowance,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *CharacterVitals) Reset() {
@@ -1789,6 +1793,13 @@ func (x *CharacterVitals) GetExhaustionLevel() int32 {
 func (x *CharacterVitals) GetArmorClassBase() int32 {
 	if x != nil {
 		return x.ArmorClassBase
+	}
+	return 0
+}
+
+func (x *CharacterVitals) GetArcaneRecoveryAllowance() int32 {
+	if x != nil {
+		return x.ArcaneRecoveryAllowance
 	}
 	return 0
 }
@@ -5287,7 +5298,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x04 \x01(\x05R\x06height\x12\x10\n" +
 	"\x03url\x18\x05 \x01(\tR\x03url\x12#\n" +
-	"\rthumbnail_url\x18\x06 \x01(\tR\fthumbnailUrl\"\xc2\b\n" +
+	"\rthumbnail_url\x18\x06 \x01(\tR\fthumbnailUrl\"\xfe\b\n" +
 	"\x0fCharacterVitals\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12$\n" +
@@ -5313,7 +5324,8 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x14hit_points_max_bonus\x18\x11 \x01(\x05R\x11hitPointsMaxBonus\x12e\n" +
 	"\x14hit_dice_used_by_die\x18\x1e \x03(\v25.meurpg.play.v1.CharacterVitals.HitDiceUsedByDieEntryR\x10hitDiceUsedByDie\x12)\n" +
 	"\x10exhaustion_level\x18d \x01(\x05R\x0fexhaustionLevel\x12(\n" +
-	"\x10armor_class_base\x18e \x01(\x05R\x0earmorClassBase\x1aC\n" +
+	"\x10armor_class_base\x18e \x01(\x05R\x0earmorClassBase\x12:\n" +
+	"\x19arcane_recovery_allowance\x18f \x01(\x05R\x17arcaneRecoveryAllowance\x1aC\n" +
 	"\x15HitDiceUsedByDieEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\xa5\x01\n" +

@@ -727,6 +727,24 @@ export class CombatView {
     return left;
   });
   private readonly autoClock = new AutoPassClock();
+  /** The same clock for the opportunity attacks a player's character may take and has not answered. */
+  private readonly offerClock = new AutoPassClock();
+  /** The seconds left of each such offer the master's screen passes by itself, by offer id. */
+  protected readonly offerLeft = computed<Readonly<Record<string, number>>>(() => {
+    const now = this.autoNow();
+    const e = this.encounter();
+    if (!e || !this.isMaster()) {
+      return {};
+    }
+    const left: Record<string, number> = {};
+    for (const o of this.autoPassOffers(e)) {
+      const s = this.offerClock.secondsLeft(o.id, now);
+      if (s !== null) {
+        left[o.id] = s;
+      }
+    }
+    return left;
+  });
   private readonly autoNow = signal(Date.now());
   private autoTimer: ReturnType<typeof setInterval> | undefined;
   /** Why "Próximo turno" waits while questions about hidden creatures are open ("Responda ao pedido abaixo para seguir."). */
@@ -962,7 +980,12 @@ export class CombatView {
     effect(() => {
       const e = this.encounter();
       const master = this.isMaster();
-      untracked(() => this.watchAutoPass(master && e ? openWindows(e) : []));
+      untracked(() =>
+        this.watchAutoPass(
+          master && e ? openWindows(e) : [],
+          master && e ? this.autoPassOffers(e) : [],
+        ),
+      );
     });
     effect(() => {
       const e = this.encounter();
@@ -1358,12 +1381,19 @@ export class CombatView {
   });
 
   /** Starts (or stops) the second-by-second clock of the automatic pass for the windows the master's screen waits on. */
-  private watchAutoPass(windows: readonly ReactionWindow[]): void {
+  private watchAutoPass(
+    windows: readonly ReactionWindow[],
+    offers: readonly OpportunityOffer[],
+  ): void {
     const now = Date.now();
     this.autoClock.sync(windows, now);
+    this.offerClock.syncIds(
+      offers.map((o) => o.id),
+      now,
+    );
     this.autoNow.set(now);
     const running = this.autoTimer !== undefined;
-    if (this.autoClock.soonest(now) === null) {
+    if (this.autoClock.soonest(now) === null && this.offerClock.soonest(now) === null) {
       clearInterval(this.autoTimer);
       this.autoTimer = undefined;
     } else if (!running) {
@@ -1380,6 +1410,31 @@ export class CombatView {
     }
     for (const id of this.autoClock.due(now)) {
       void this.sendAutoPass(e.id, id);
+    }
+    for (const id of this.offerClock.due(now)) {
+      void this.sendOfferPass(e.id, id);
+    }
+  }
+
+  /** The offers of an opportunity attack that a player's character answers, which pass after 30 s like any optional reaction. */
+  private autoPassOffers(e: Encounter): OpportunityOffer[] {
+    return offersToAnswer(e).filter((o) => !reactorIsMasters(e, o));
+  }
+
+  /** The same "Seguir sem esperar" the master taps, with a key of its own; a refusal (answered meanwhile) is ignored quietly. */
+  private async sendOfferPass(encounterId: string, offerId: string): Promise<void> {
+    try {
+      const res = await this.api.skipOpportunity(
+        this.campaignId(),
+        encounterId,
+        offerId,
+        autoPassKey(offerId),
+      );
+      this.state().apply(res);
+    } catch (err) {
+      if (!(err instanceof ConnectError) || RETRYABLE.has(err.code)) {
+        this.offerClock.release(offerId);
+      }
     }
   }
 
@@ -1606,7 +1661,7 @@ export class CombatView {
 
   /** "Usar" on a feature: Retomar o Fôlego rolls (its own sheet); the others
    * only spend the action and remind the table ("Você tem outra ação"). */
-  protected async useFeature(key: string): Promise<void> {
+  protected async useFeature(key: string, frenzy = false): Promise<void> {
     const own = this.own();
     const e = this.encounter();
     const option = this.options()?.options?.featureActions.find((a) => a.action?.key === key);
@@ -1657,10 +1712,21 @@ export class CombatView {
     if (
       await this.run(
         async (current) =>
-          (await this.api.takeAction(this.campaignId(), current.id, own.id, actionKey)).encounter,
+          (
+            await this.api.takeAction(
+              this.campaignId(),
+              current.id,
+              own.id,
+              actionKey,
+              undefined,
+              undefined,
+              false,
+              frenzy,
+            )
+          ).encounter,
       )
     ) {
-      this.actionNote.set(note);
+      this.actionNote.set(frenzy ? `${name}: você entrou em frenesi.` : note);
     }
   }
 
@@ -1987,6 +2053,7 @@ export class CombatView {
       shieldFree: shield ? shield.slots.reduce((n, s) => n + s.free, 0) : null,
       shieldName: shield?.spell?.namePt || 'Escudo Arcano',
       metamagic: spell?.metamagicOptions ?? [],
+      sculptSpells: spell?.sculptSpells ?? false,
       sorceryPoints: poolOf(vitals?.resources, SORCERY_POINTS_RESOURCE),
       attackBonus,
       master: this.isMaster(),
@@ -2139,7 +2206,16 @@ export class CombatView {
 
   /** "Voltar e atacar" (`endRage` false) or "Deixar a fúria acabar": the answer to the rage question. */
   protected async answerRage(id: string, endRage: boolean): Promise<void> {
-    await this.run((e) => this.api.answerRageEnd(this.campaignId(), e.id, id, endRage));
+    // "Deixar a fúria acabar" ends the rage and then passes the turn, in one tap, as the
+    // question says: the server only ends the rage, so the turn goes in the same call.
+    await this.run(async (e) => {
+      const answered = await this.api.answerRageEnd(this.campaignId(), e.id, id, endRage);
+      if (!endRage) {
+        return answered;
+      }
+      this.state().apply(answered);
+      return this.api.endTurn(this.campaignId(), e.id, id, false, answered.round);
+    });
   }
 
   /** "Encerrar fúria": the bonus action. */

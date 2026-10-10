@@ -40,6 +40,15 @@
       </span>
     </div>
     <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado.</p>
+  } @else if (offer(); as o) {
+    <app-inspiration-offer
+      [offer]="o"
+      [canApp]="canApp"
+      [canType]="canType"
+      [busy]="busy()"
+      (use)="answer(true, $event)"
+      (keep)="answer(false, null)"
+    />
   } @else {
     @if (!typing()) {
       <div class="card">

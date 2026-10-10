@@ -330,9 +330,9 @@ func (s *Service) MoveCombatant(
 		if err != nil {
 			return nil, err
 		}
-		factor := 1
+		factor, dragHalves := 1, false
 		if dragging && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && combat.DragHalvesSpeed(target.Size, dragged.Size) {
-			factor = 2
+			factor, dragHalves = 2, true
 		}
 		// Crawling (SRD 5.1, "Being Prone"): every foot of movement costs 1 extra foot, so a
 		// prone creature pays twice (a drag halves the speed on top of it). See combat_standup.go.
@@ -555,6 +555,9 @@ func (s *Service) MoveCombatant(
 		made.Col, made.Row = newCol, newRow
 		made.CostDFt, made.CostFt = clamp32(cost, 0, math.MaxInt32), clamp32(cost/10, 0, math.MaxInt32)
 		made.DistanceDFt, made.DistanceFt = clamp32(length, 0, math.MaxInt32), clamp32(length/10, 0, math.MaxInt32)
+		if jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && cost > 0 { // what the walk spent: the path's cost, doubled by a drag and by a crawl
+			made.SpentDFt, made.Dragging, made.Crawling = clamp32(cost*factor, 0, math.MaxInt32), dragHalves, crawls(target) && !forced
+		}
 		switch jump {
 		case playv1.JumpKind_JUMP_KIND_LONG:
 			made.Jump, made.JumpRunning = jumpLong, combat.HasRunningStart(int(target.LastMoveDft))

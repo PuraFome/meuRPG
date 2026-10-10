@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/jackc/pgx/v5"
@@ -234,6 +235,9 @@ func (s *Service) attachMetamagic(ctx context.Context, tx pgx.Tx, campaignID str
 	if err != nil {
 		return err
 	}
+	for _, sp := range opts.GetSpells() {
+		sp.SculptSpells = sheet.Traits.SculptSpells && sp.GetSpell().GetSchoolKey() == "school:evocation"
+	}
 	if len(sheet.Metamagic) == 0 {
 		return nil
 	}
@@ -249,4 +253,43 @@ func (s *Service) attachMetamagic(ctx context.Context, tx pgx.Tx, campaignID str
 		}
 	}
 	return nil
+}
+
+// sculptedOf checks the creatures a cast spares with Sculpt Spells (SRD 5.1, School of
+// Evocation, level 2) and returns them; nil for a cast with none. The caster must have the
+// feature and the spell be of evocation; each creature must be one the spell reaches and
+// the caller sees, other than the caster, named once; and there are at most 1 + the level
+// the spell is cast at (a cantrip is 0, so 1).
+func sculptedOf(raw []string, sp link.Spell, slotLevel int, caster playdb.Combatant, targs []playdb.Combatant, v combatViewer) (map[string]bool, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if !sp.Sculpts {
+		return nil, metaRefusal("only a wizard with Sculpt Spells can spare creatures from a spell")
+	}
+	if !sp.Evocation {
+		return nil, metaRefusal("Sculpt Spells is for spells of the school of evocation")
+	}
+	if limit := 1 + slotLevel; len(raw) > limit {
+		return nil, metaRefusal(fmt.Sprintf("Sculpt Spells spares at most %d creatures with this spell", limit))
+	}
+	out := make(map[string]bool, len(raw))
+	for _, r := range raw {
+		id, err := parseCombatID(r, "combatant")
+		if err != nil {
+			return nil, err
+		}
+		if id == caster.ID {
+			return nil, metaRefusal("Sculpt Spells spares other creatures, not the caster")
+		}
+		i := slices.IndexFunc(targs, func(t playdb.Combatant) bool { return t.ID == id })
+		if i < 0 || !v.sees(targs[i]) {
+			return nil, metaRefusal("a creature to spare must be one the spell reaches and the caster sees")
+		}
+		if out[id] {
+			return nil, metaRefusal("a creature is spared twice")
+		}
+		out[id] = true
+	}
+	return out, nil
 }

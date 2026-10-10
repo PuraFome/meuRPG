@@ -122,6 +122,10 @@ message CheckRoll {
   // "Deixar o mestre rolar por mim", or the master rolled for a player who did
   // not answer).
   bool rolled_by_master = 10;
+  // The Bardic Inspiration die the player added after the d20 (already in `total`): its size and
+  // the face rolled. 0 when none was used.
+  int32 bonus_die_sides = 11;
+  int32 bonus_die_face = 12;
 }
 
 // CheckOption is what a d20 check would roll for the caller: the modifier and the

@@ -94,6 +94,12 @@ func TestStandUpIsRefusedWithoutTheMovement(t *testing.T) {
 	if got := c.combatant(t, a.caio, "Toren"); got.GetMovementUsedDft() != 200 || got.GetMovementLeftDft() != 100 {
 		t.Fatalf("after crawling 10 ft: used %d, left %d; want 200 and 100 (every foot costs 2)", got.GetMovementUsedDft(), got.GetMovementLeftDft())
 	}
+	for _, u := range []*user{a.master, a.caio} { // the log says what the crawl spent, not only the line
+		got := lastMove(t, a.log(t, u, c.refresh(t)))
+		if got == nil || got.GetDistanceDft() != 100 || got.GetSpentDft() != 200 || !got.GetMoveCrawling() || got.GetMoveDragging() {
+			t.Errorf("crawl log = %v, want distance 100, spent 200, crawling", got)
+		}
+	}
 	_, err := a.standUp(t, a.caio, c.e, "Toren")
 	b := wantBlockedBy(t, "StandUp with 10 ft left", err, blockedTooFar)
 	if b.GetMissingFt() != 5 || b.GetMissingDft() != 50 {

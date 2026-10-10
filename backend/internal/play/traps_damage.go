@@ -230,8 +230,13 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 				req, left, carried = beastDamageRequest(now, amount)
 			} else {
 				dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
+				req = &playv1.AdjustCharacterVitalsRequest{}
+				if relentlessEndurance(now, dmg) { // the half-orc stays on its feet with 1 hit point (SRD 5.1)
+					dmg.HP, ev.Relentless = 1, true
+					req.ResourcesUsed = []*playv1.ResourceUsed{{Key: resRelentlessEndurance, Used: usesSpentOf(now, resRelentlessEndurance) + 1}}
+				}
 				hp, temp := clamp32(dmg.HP, 0, maxHitPointChange), clamp32(dmg.TempHP, 0, maxHitPointChange)
-				req = &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp}
+				req.HitPointsCurrent, req.HitPointsTemporary = &hp, &temp
 			}
 			before, vit, err := s.changeVitals(ctx, q, tx, sessionID, m.CampaignID, row.CharacterID, req)
 			if err != nil {

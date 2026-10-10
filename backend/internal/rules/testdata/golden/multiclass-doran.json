@@ -1,6 +1,6 @@
 {
   "after": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.38",
+    "ContentVersion": "srd51@a8abc93b235c+fx.39",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -287,6 +287,7 @@
         "PreparesSpells": true,
         "PreparedMax": 2,
         "SpellsKnownMax": 0,
+        "Spellbook": true,
         "MaxSpellLevel": 1,
         "Ritual": true,
         "SpellList": "class:wizard"
@@ -768,6 +769,7 @@
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,
     "SaveActions": null,
@@ -945,7 +947,7 @@
     "Issues": null
   },
   "before": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.38",
+    "ContentVersion": "srd51@a8abc93b235c+fx.39",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -1424,6 +1426,7 @@
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,
     "SaveActions": null,

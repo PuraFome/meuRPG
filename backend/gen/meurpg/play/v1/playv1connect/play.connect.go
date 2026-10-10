@@ -526,7 +526,12 @@ type PlayServiceClient interface {
 	//   - `permission_denied`: the caller is the master.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
-	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
+	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER; or ResourceBlocked
+	//     INSPIRATION_PENDING (an earlier roll waits for its answer).
+	//
+	// A character that holds a Bardic Inspiration die (given outside a combat) gets
+	// `inspiration_offer` in place of `roll`: the d20 is rolled and kept, nothing is
+	// written, and ResourceService.AnswerOutsideInspiration settles it.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
 	// SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
 	// 71): the caller's living character rolls Wisdom (Perception) against each trap's
@@ -1577,7 +1582,12 @@ type PlayServiceHandler interface {
 	//   - `permission_denied`: the caller is the master.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
-	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
+	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER; or ResourceBlocked
+	//     INSPIRATION_PENDING (an earlier roll waits for its answer).
+	//
+	// A character that holds a Bardic Inspiration die (given outside a combat) gets
+	// `inspiration_offer` in place of `roll`: the d20 is rolled and kept, nothing is
+	// written, and ResourceService.AnswerOutsideInspiration settles it.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
 	// SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
 	// 71): the caller's living character rolls Wisdom (Perception) against each trap's

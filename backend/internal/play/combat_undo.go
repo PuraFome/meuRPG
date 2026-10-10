@@ -581,6 +581,13 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			return nil, err
 		}
 		keep(after)
+		if ev.Relentless { // the use of Relentless Endurance comes back with the hit points
+			back, err := s.spendResource(ctx, c, who.CharacterID, resRelentlessEndurance, -1)
+			if err != nil {
+				return nil, err
+			}
+			keep(back)
+		}
 		if err := setDeath(who, ev.DeathBefore); err != nil {
 			return nil, err
 		}
@@ -689,6 +696,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if ev.Res != nil {
 			if err := s.takeBackResource(ctx, c, ev, who, find, setHP, setDeath, putVitals, keep); err != nil {
 				return nil, err
+			}
+		}
+		for _, cut := range ev.FallCuts { // the points Slow Fall took off a fall come back
+			if err := c.q.SetPendingDamageLanding(ctx, playdb.SetPendingDamageLandingParams{ID: cut.Pending, Amount: &cut.Before}); err != nil {
+				return nil, fmt.Errorf("put back the fall damage: %w", err)
 			}
 		}
 		if ev.Resource != "" && who.Kind == kindPlayer {

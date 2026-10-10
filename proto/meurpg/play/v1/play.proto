@@ -466,7 +466,12 @@ service PlayService {
   //   - `permission_denied`: the caller is the master.
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
-  //     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
+  //     attempt left), WRONG_DICE_MODE, NO_CHARACTER; or ResourceBlocked
+  //     INSPIRATION_PENDING (an earlier roll waits for its answer).
+  //
+  // A character that holds a Bardic Inspiration die (given outside a combat) gets
+  // `inspiration_offer` in place of `roll`: the d20 is rolled and kept, nothing is
+  // written, and ResourceService.AnswerOutsideInspiration settles it.
   rpc RollSceneCheck(RollSceneCheckRequest) returns (RollSceneCheckResponse);
 
   // SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
@@ -1055,6 +1060,10 @@ message CharacterVitals {
   // 13 + Dexterity, SRD 5.1); 0 without one. The session's panels show the better of it and
   // the sheet's armor class.
   int32 armor_class_base = 101;
+  // The combined level of spell slots the wizard's Arcane Recovery gives back (half
+  // the WIZARD level, rounded up; SRD 5.1, Wizard). 0: the character has no wizard
+  // level. Whether the use is left is the `arcane_recovery` resource.
+  int32 arcane_recovery_allowance = 102;
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's

@@ -25,6 +25,13 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** How a check's d20 comes: the app rolls it, or the faces typed from the physical dice (one face, or the pair for a roll with
  * advantage or disadvantage). */
+/** A group check roll that waits for the player's answer about a Bardic Inspiration die. */
+export class InspirationAsked extends Error {
+  constructor() {
+    super('The roll waits for the answer about the Bardic Inspiration die');
+  }
+}
+
 export type CheckDie = { readonly inApp: true } | { readonly faces: readonly number[] };
 
 /** What a grapple, a shove or an escape asks (`StartContest`). */
@@ -217,7 +224,8 @@ export class ContestClient {
     return (await this.client.getGroupCheck({ campaignId })).groupCheck ?? null;
   }
 
-  /** The player's own roll for the open group check (once). */
+  /** The player's own roll for the open group check (once). Throws `InspirationAsked` when the character holds a Bardic
+   * Inspiration die: the d20 is rolled and kept, and the session panel asks whether to use it. */
   async rollGroupCheck(
     campaignId: string,
     groupCheckId: string,
@@ -230,6 +238,10 @@ export class ContestClient {
       groupCheckId,
       roll: rollInput(die),
     });
+    if (res.inspirationOffer) {
+      // The roll waits for the answer about a Bardic Inspiration die: the session panel asks it.
+      throw new InspirationAsked();
+    }
     return need(res.groupCheck, 'RollGroupCheck');
   }
 

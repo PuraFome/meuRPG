@@ -66,6 +66,8 @@ export interface VitalsVm {
   readonly exhaustionLevel?: number;
   /** The base armor class an effect that lasts gives (Armadura Arcana: 13 + Destreza); absent or 0 without one. */
   readonly armorClassBase?: number;
+  /** The combined level of slots Recuperação Arcana gives back (half the wizard level, rounded up); absent or 0 for no wizard level. */
+  readonly arcaneRecoveryAllowance?: number;
   /** Only the levels with slots, lowest first. */
   readonly spellSlots: readonly SlotUsageVm[];
   readonly pactSlots: PactSlotsVm | null;

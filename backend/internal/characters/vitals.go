@@ -57,6 +57,8 @@ type vitalsMax struct {
 	pactSlots    int
 	hitDice      []rules.HitDice
 	hitDiceTotal int
+	// wizardLevel is the WIZARD level alone (Arcane Recovery counts no other class).
+	wizardLevel int
 	// conMod is the Constitution modifier: what a spent hit die adds to its roll.
 	conMod int
 	// resources are the class and race resources the sheet has at its level.
@@ -95,6 +97,11 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 	for _, hd := range d.HitDice {
 		m.hitDiceTotal += hd.Count
 	}
+	for _, c := range full.GetClasses() {
+		if c.GetClassKey() == "class:wizard" {
+			m.wizardLevel += int(c.GetLevel())
+		}
+	}
 	for _, a := range d.Abilities {
 		if a.Ability == rules.CON {
 			m.conMod = a.Modifier
@@ -132,18 +139,19 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 	level := min(max(derefInt(row.ExhaustionLevel), 0), combat.MaxExhaustion)
 	maxHP := i32(combat.ExhaustedMaxHP(m.hitPoints+int(bonus), int(level)))
 	v := &playv1.CharacterVitals{
-		CharacterId:        row.ID,
-		Name:               row.Name,
-		PlayerUserId:       deref(row.PlayerUserID),
-		HitPointsCurrent:   maxHP, // fresh: full hit points
-		HitPointsMax:       maxHP,
-		ExhaustionLevel:    level,
-		ArmorClassBase:     derefInt(row.ArmorClassBase),
-		HitPointsMaxBonus:  bonus,
-		HitPointsTemporary: derefInt(row.HitPointsTemporary),
-		HitDiceTotal:       i32(m.hitDiceTotal),
-		Revision:           derefInt(row.Revision),
-		UpdatedAt:          timestamp(row.UpdatedAt),
+		CharacterId:             row.ID,
+		Name:                    row.Name,
+		PlayerUserId:            deref(row.PlayerUserID),
+		HitPointsCurrent:        maxHP, // fresh: full hit points
+		HitPointsMax:            maxHP,
+		ExhaustionLevel:         level,
+		ArmorClassBase:          derefInt(row.ArmorClassBase),
+		ArcaneRecoveryAllowance: i32(rules.ArcaneRecoveryAllowance(m.wizardLevel)),
+		HitPointsMaxBonus:       bonus,
+		HitPointsTemporary:      derefInt(row.HitPointsTemporary),
+		HitDiceTotal:            i32(m.hitDiceTotal),
+		Revision:                derefInt(row.Revision),
+		UpdatedAt:               timestamp(row.UpdatedAt),
 	}
 	if row.HitPointsCurrent != nil {
 		v.HitPointsCurrent = min(*row.HitPointsCurrent, v.HitPointsMax)

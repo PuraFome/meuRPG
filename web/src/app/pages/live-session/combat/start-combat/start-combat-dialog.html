@@ -178,7 +178,8 @@
             (toggle)="monstersHidden.set($event)"
           />
         </section>
-      } @else {
+      }
+      <!-- The campaign's NPCs (a boss, a named villain) join any combat, a saved encounter's too: its monsters are the bestiary's. -->
       <section aria-labelledby="npcs-title">
         <div class="sec__head">
           <h3 class="sec__title" id="npcs-title">NPCs da campanha</h3>
@@ -208,7 +209,8 @@
           Quem está escondido só você vê, até você revelar durante o combate. Cada NPC rola a própria
           iniciativa.
         </p>
-        <!-- A monster of the bestiary is picked here, in place: the dialog is never left. -->
+        <!-- A monster of the bestiary is picked here, in place: the dialog is never left. A saved encounter brings its own. -->
+        @if (!saved) {
         <div class="pick">
           <app-creature-pick [campaignId]="data.campaignId" (picked)="pickMonster($event)" />
           @if (picked().length > 0) {
@@ -237,8 +239,8 @@
             />
           }
         </div>
+        }
       </section>
-      }
     }
   </div>
 

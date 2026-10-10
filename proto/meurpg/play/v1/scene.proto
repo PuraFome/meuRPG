@@ -227,6 +227,8 @@ message SceneRoll {
   // applies.
   RollMode mode = 9;
   repeated AdvantageSource sources = 10;
+  // The Bardic Inspiration die the player added after the d20 (already in `roll`'s total).
+  repeated BonusDie bonus_dice = 11;
 }
 
 // OpenSceneRequest names the campaign and the point.
@@ -295,6 +297,9 @@ message RollSceneCheckResponse {
   // The caller's roll, with its total. `passed` is set only when the scene
   // shows its DC (`show_dc`) and the action had one.
   SceneRoll roll = 1;
+  // Set instead of `roll` when the character holds a Bardic Inspiration die: the d20 was
+  // rolled and nothing was written; AnswerOutsideInspiration settles the roll.
+  OutsideInspirationOffer inspiration_offer = 2;
 }
 
 // GrantSceneAttemptRequest gives one character one more attempt at one action.

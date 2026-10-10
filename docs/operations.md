@@ -830,7 +830,7 @@ The log never holds a password, a token or an e-mail ([Privacy](privacy.md#logs-
 
 A release ships what is merged on `main`: build the image in Cloud Build, migrate, then deploy. It takes a few minutes, and the switch itself about 20 seconds.
 
-1. **Tell the table first.** There is one instance (`max-instances=1`): a new revision replaces it, and an open live session's stream drops and reconnects by itself within seconds. Release between sessions when you can, and warn the master when you cannot.
+1. **Tell the table first, and have it reload after.** There is one instance (`max-instances=1`), but a new revision does not cut the open streams: Cloud Run keeps the old revision's instance until its requests end, while every new call, the master's included, reaches the new revision, whose in-memory hub those streams are not in. So a page that was open before the release hears nothing new until its stream reaches its 10-minute life or the page is reloaded (on 10/10/2026 a player saw no new combat for minutes after a release). Release between sessions; when you cannot, ask everyone at the table to reload the session page once the new revision serves.
 2. **Build.** The source is a `git archive` of the commit, with only what `backend/Dockerfile` reads, so nothing local (an `.env`, `node_modules`) enters the image. The variables are those of [step 1](#1-project-region-and-apis) and `BUILD_SA` from [step 2](#2-build-and-push-the-image). Pass `--service-account` every time: without it, Cloud Build uses the default account, which has no role, and the build fails.
 
    ```bash

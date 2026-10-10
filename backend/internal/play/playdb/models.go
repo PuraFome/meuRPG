@@ -45,6 +45,15 @@ type CharacterEffect struct {
 	CreatedAt          time.Time
 }
 
+type CharacterInspiration struct {
+	CharacterID       string
+	CampaignID        string
+	SourceCharacterID *string
+	Sides             int32
+	SecondsLeft       int32
+	CreatedAt         time.Time
+}
+
 type CombatContest struct {
 	ID            string
 	EncounterID   string
@@ -305,6 +314,23 @@ type HiddenReveal struct {
 	AnsweredAt   *time.Time
 }
 
+type InspirationHold struct {
+	ID             string
+	CampaignID     string
+	CharacterID    string
+	UserID         string
+	Kind           string
+	IdempotencyKey string
+	Request        []byte
+	Faces          []int32
+	Modifier       int32
+	Total          int32
+	Counted        int32
+	Physical       bool
+	AnswerKey      *string
+	CreatedAt      time.Time
+}
+
 type OpportunityOffer struct {
 	ID              string
 	EncounterID     string
@@ -355,6 +381,7 @@ type PendingDamage struct {
 	LandedBefore     []byte
 	AfterSteps       *int32
 	EffectSourceKey  *string
+	SavageDice       int32
 }
 
 type Puzzle struct {

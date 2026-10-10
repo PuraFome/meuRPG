@@ -1787,6 +1787,10 @@ enum EncounterBlockedReason {
   // StandUp: the combatant's speed is 0 (SRD 5.1, "Being Prone"), so it cannot stand up
   // whatever the cost: Grappled, Restrained, the lethargy of a Velocidade, and the like.
   ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP = 103;
+  // TakeAction (Fúria, with `frenzy`): the combatant has no Frenzy, which is the level 3
+  // feature of the Path of the Berserker (SRD 5.1, Barbarian). Any other barbarian, and
+  // anyone else, rages without it.
+  ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE = 104;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -3275,6 +3279,22 @@ message BonusDie {
   bool used = 4;
 }
 
+// OutsideInspirationOffer asks the player of a roll made out of a combat (a scene check, a
+// group check) whether to add the Bardic Inspiration die the character holds: the roll
+// answered it instead of the result. The result is only written by
+// AnswerOutsideInspiration (SRD 5.1: the creature can wait until after it rolls the d20 and
+// must decide before the GM says whether the roll succeeds).
+message OutsideInspirationOffer {
+  // The held roll (a UUID).
+  string hold_id = 1;
+  // The size of the die the character holds, and the name of the bard that gave it.
+  int32 sides = 2;
+  string from_name = 3;
+  // The d20 (or both, with advantage or disadvantage) with the bonus the check adds, before
+  // the die: what the player rolled, before the result is told.
+  DiceRoll d20 = 4;
+}
+
 // RollAttackResponse returns the roll and the combat after it.
 message RollAttackResponse {
   // The combat as the caller sees it: the action is spent.
@@ -3387,6 +3407,13 @@ message TakeActionRequest {
   // True: the action is the extra action an effect gives (Velocidade): Disparada,
   // Desengajar, Esconder or Usar um objeto spend that action instead of the Action.
   bool use_extra_action = 100;
+  // True: the action is "feature:rage" and the barbarian goes into a frenzy for this rage
+  // (SRD 5.1, Barbarian, Path of the Berserker, Frenzy). Each of its later turns offers one
+  // melee weapon attack as a bonus action, and when the rage ends it gains one level of
+  // exhaustion. Only a barbarian with the Frenzy feature may ask; any other combatant is
+  // refused with `failed_precondition` (EncounterBlocked FRENZY_UNAVAILABLE). Ignored by an
+  // action that is not "feature:rage"; false is a plain rage.
+  bool frenzy = 101;
 }
 
 // TakeActionResponse returns the combat after the action.
@@ -3541,6 +3568,16 @@ message CastSpellRequest {
   // Owl's Wisdom, Eagle's Splendor). Required for that spell, `invalid_argument` otherwise
   // missing or unknown; ignored by every other spell.
   string ability_key = 20;
+  // Sculpt Spells (SRD 5.1, School of Evocation wizard, level 2): the creatures of the
+  // area the caster spares, an evocation spell that affects other creatures the caster
+  // can see. Each one succeeds on its saving throw by itself (no roll; its save result
+  // has `sculpted`) and takes no damage when the spell would deal half on a success.
+  // At most 1 + the level the spell is cast at (0 for a cantrip, so 1); each must be a
+  // creature the spell reaches and the caller sees, never the caster. Refused with
+  // `invalid_argument` for a caster without the feature (SpellOption.sculpt_spells is
+  // false), a spell that is not of evocation, a creature that is not among the targets
+  // or is the caster, a repeated one and too many. Empty is a cast without it.
+  repeated string sculpted_ids = 31;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -3711,6 +3748,9 @@ message SaveResult {
   // The target failed by itself, with no d20: a Strength or Dexterity saving throw of a
   // Paralisado, Atordoado, Inconsciente or Petrificado creature (SRD, Conditions).
   bool auto_fail = 100;
+  // The target was spared by the caster's Sculpt Spells: it succeeded without a roll
+  // (`outcome` is SAVED, `roll` is unset) and took no damage if the spell halves.
+  bool sculpted = 101;
 }
 
 // SpellTargetResult is what a cast did to one target.
@@ -4338,6 +4378,14 @@ message CombatLogEntry {
   // MOVED by a long jump: the combatant had walked 10 ft just before, so the jump
   // counted with a running start. Everyone who gets the line.
   bool jump_running_start = 45;
+  // MOVED on foot: the movement the walk spent, in tenths of a foot, when it is not the
+  // distance: the path's cost (a square of another creature or of difficult terrain
+  // costs double), doubled again by a drag (`move_dragging`) or a crawl
+  // (`move_crawling`). Zero when the move spent nothing (the master's free move) or
+  // the event is older; then the line says only the distance. Everyone who gets the line.
+  int32 spent_dft = 48;
+  bool move_dragging = 49;
+  bool move_crawling = 50;
   // MOVED by a long jump, only the master: it landed in difficult terrain, so the
   // line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
   bool landing_difficult = 33;
@@ -4451,6 +4499,7 @@ message CombatLogEffect {
   int32 exhaustion_level = 12;
   int32 exhaustion_before = 13;
   // ENDED: why ("duration", "ended_by_master", "concentration", "saved", "caster_left").
+  // EXHAUSTION: "frenzy" when the level came from the end of a Berserker's frenzied rage.
   string reason = 14;
 }
 
@@ -4613,6 +4662,10 @@ message CombatLogDamage {
   // get, only the final damage.
   repeated DamagePartRoll parts = 17;
   repeated DamageStep steps = 18;
+  // APPLIED to a player's character that the half-orc's Relentless Endurance (SRD 5.1)
+  // kept on 1 hit point instead of 0: the line reads "Resistência Implacável: fica com
+  // 1 PV". Everyone who gets the line gets this.
+  bool relentless_endurance = 19;
 }
 
 // GetCombatHighlightsRequest names the combat.

@@ -182,7 +182,7 @@ func (x *deriver) resourcesAndActions() {
 				continue // the resource is not there: no ki, no ki action
 			}
 		}
-		for _, route := range x.routes(act) {
+		for _, route := range x.routes(act, a.effect.TextPT) {
 			if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == route.Key && o.Economy == route.Economy }) {
 				x.d.Actions = append(x.d.Actions, route)
 			}
@@ -192,8 +192,11 @@ func (x *deriver) resourcesAndActions() {
 
 // routes is the action as the character takes it: the action itself, or one
 // action for each standard action the feature performs (featureStandards).
-func (x *deriver) routes(act Action) []Action {
+func (x *deriver) routes(act Action, text string) []Action {
 	standards := featureStandards[act.Key]
+	if len(standards) == 0 && act.Economy == EconomyBonusAction && strings.HasSuffix(act.Key, tableContentSuffix) {
+		standards = standardsNamedIn(text)
+	}
 	if len(standards) == 0 {
 		return []Action{act}
 	}
@@ -212,6 +215,27 @@ func (x *deriver) routes(act Action) []Action {
 	return out
 }
 
+// tableContentSuffix ends the key of everything the master's table content defines.
+const tableContentSuffix = "@mesa"
+
+// standardsNamedIn lists the standard actions the Portuguese text of a table
+// content's bonus action says it performs ("Desengajar ou Esconder como ação
+// bônus", the goblin's Fuga Ágil), in a fixed order: the
+// content has no field for it, as the SRD's Cunning Action has in featureStandards.
+// Without one of the three words the action stays a plain bonus action.
+func standardsNamedIn(text string) []string {
+	t := strings.ToLower(text)
+	var out []string
+	for _, w := range []struct{ word, key string }{
+		{"dispar", "standard:dash"}, {"desengaj", "standard:disengage"}, {"esconde", "standard:hide"},
+	} {
+		if strings.Contains(t, w.word) {
+			out = append(out, w.key)
+		}
+	}
+	return out
+}
+
 // Features that change the critical range or the bonus action attack.
 const (
 	improvedCriticalFeature = "feature:improved-critical"
@@ -219,6 +243,8 @@ const (
 	// reliableTalentFeature is the rogue's Reliable Talent (SRD 5.1, Rogue,
 	// level 11).
 	reliableTalentFeature = "feature:reliable-talent"
+	// savageAttacksTrait is the half-orc's Savage Attacks (SRD 5.1, Half-Orc).
+	savageAttacksTrait = "trait:savage-attacks"
 )
 
 // brutalCriticalDice is how many extra weapon damage dice each Brutal Critical
@@ -240,7 +266,7 @@ var twoWeaponFightingStyles = []string{
 
 // criticalAndStyles fills Derived.CriticalRange (20, 19 with Improved
 // Critical, 18 with Superior Critical), Derived.TwoWeaponFighting,
-// Derived.BrutalCriticalDice and Derived.ReliableTalent from the features the
+// Derived.BrutalCriticalDice, Derived.SavageAttacks and Derived.ReliableTalent from the features the
 // character has.
 func (x *deriver) criticalAndStyles() {
 	x.d.CriticalRange = 20
@@ -255,6 +281,8 @@ func (x *deriver) criticalAndStyles() {
 			x.d.CriticalRange = min(x.d.CriticalRange, 19)
 		case a.owner == reliableTalentFeature:
 			x.d.ReliableTalent = true
+		case a.owner == savageAttacksTrait:
+			x.d.SavageAttacks = true
 		case brutalCriticalDice[a.owner] > 0:
 			x.d.BrutalCriticalDice = max(x.d.BrutalCriticalDice, brutalCriticalDice[a.owner])
 		case slices.Contains(twoWeaponFightingStyles, a.owner):

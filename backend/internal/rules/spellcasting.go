@@ -53,7 +53,7 @@ func (x *deriver) spellcasting() {
 		sc := Spellcasting{
 			Class: oc.key, ClassNamePT: c.namePT(oc.key), Ability: a,
 			SaveDC: 8 + x.prof + x.mods[a], AttackBonus: x.prof + x.mods[a],
-			PreparesSpells: e.Prepares, Ritual: e.Ritual, SpellList: cast.list,
+			PreparesSpells: e.Prepares, Spellbook: e.Spellbook, Ritual: e.Ritual, SpellList: cast.list,
 		}
 		if s := row.Spellcasting; s != nil {
 			sc.CantripsKnown = s.CantripsKnown

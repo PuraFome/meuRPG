@@ -14,6 +14,7 @@ import {
   ResourceBlockedReason,
   ResourceBlockedSchema,
   SpendHitDiceResponseSchema,
+  UseArcaneRecoveryResponseSchema,
 } from '../../../../gen/meurpg/play/v1/resources_pb';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import type { VitalsVm } from '../live-session.types';
@@ -76,12 +77,14 @@ function blocked(reason: ResourceBlockedReason): ConnectError {
 
 describe('HitDiceSheet (decisions batch 2 B 6)', () => {
   const spendHitDice = vi.fn();
+  const useArcaneRecovery = vi.fn();
   const close = vi.fn();
   const apply = vi.fn();
   const live = signal<VitalsVm>(fighterWizard());
 
   beforeEach(() => {
     spendHitDice.mockReset();
+    useArcaneRecovery.mockReset();
     close.mockReset();
     apply.mockReset();
     live.set(fighterWizard());
@@ -103,7 +106,7 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
     };
     TestBed.configureTestingModule({
       providers: [
-        { provide: ResourceClient, useValue: { spendHitDice } },
+        { provide: ResourceClient, useValue: { spendHitDice, useArcaneRecovery } },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close, disableClose: false } },
       ],
@@ -340,5 +343,137 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
     expect(close).not.toHaveBeenCalled();
     release();
     await settle();
+  });
+  describe('Recuperação Arcana (SRD 5.1, Wizard)', () => {
+    /** A level 3 wizard: allowance 2, four 1st-level and two 2nd-level slots spent, one 6th-level slot spent. */
+    const wizard = (over: Partial<VitalsVm> = {}): Partial<VitalsVm> => ({
+      arcaneRecoveryAllowance: 2,
+      resources: [
+        {
+          key: 'arcane_recovery',
+          namePt: 'Recuperação Arcana',
+          total: 1,
+          used: 0,
+          recharge: 'long_rest',
+        },
+      ],
+      spellSlots: [
+        { level: 1, total: 4, used: 3 },
+        { level: 2, total: 2, used: 1 },
+        { level: 3, total: 2, used: 0 },
+        { level: 6, total: 1, used: 1 },
+      ],
+      ...over,
+    });
+
+    function recovered(used: [number, number, number]) {
+      return create(UseArcaneRecoveryResponseSchema, {
+        recoveredLevels: 2,
+        vitals: create(CharacterVitalsSchema, {
+          characterId: 'pensantus',
+          name: 'Mirta',
+          arcaneRecoveryAllowance: 2,
+          resources: [{ key: 'arcane_recovery', total: 1, used: 1 }],
+          spellSlots: [
+            { level: 1, total: 4, used: used[0] },
+            { level: 2, total: 2, used: used[1] },
+            { level: 6, total: 1, used: used[2] },
+          ],
+          revision: 5,
+        }),
+      });
+    }
+
+    it('shows the allowance and a picker only for the expended slots of the 1st to the 5th level', () => {
+      const { el } = render({}, wizard());
+      expect(flat(el.querySelector('.arcane__title'))).toBe('Recuperação Arcana');
+      expect(flat(el.querySelector('.arcane .note'))).toContain(
+        'Recupere espaços de magia que somem até 2 níveis; nenhum de 6º nível ou mais.',
+      );
+      expect(Array.from(el.querySelectorAll('.step__text'), lines)).toEqual([
+        '1º nível 3 gastos',
+        '2º nível 1 gasto',
+      ]);
+    });
+
+    it('stops at the allowance and at what is expended', () => {
+      const { el, fixture } = render({}, wizard());
+      const more = () => Array.from(el.querySelectorAll<HTMLButtonElement>('.js-arcane-more'));
+      more()[0].click(); // a 1st-level slot
+      fixture.detectChanges();
+      expect(flat(el.querySelector('.arcane__sum'))).toBe('Total: 1 de 2 níveis');
+      more()[1].click(); // a 2nd-level slot would make 3
+      fixture.detectChanges();
+      expect(more().map((b) => b.disabled)).toEqual([false, true]);
+      more()[0].click();
+      fixture.detectChanges();
+      expect(flat(el.querySelector('.arcane__sum'))).toBe('Total: 2 de 2 níveis');
+      expect(more().map((b) => b.disabled)).toEqual([true, true]);
+    });
+
+    it('recovers the picked slots with one key and then says it was used today', async () => {
+      useArcaneRecovery.mockResolvedValue(recovered([1, 1, 1]));
+      const { el, fixture, settle, button } = render({}, wizard());
+      const more = () => Array.from(el.querySelectorAll<HTMLButtonElement>('.js-arcane-more'));
+      more()[0].click();
+      more()[0].click();
+      fixture.detectChanges();
+      button('Recuperar').click();
+      await settle();
+
+      expect(useArcaneRecovery).toHaveBeenCalledTimes(1);
+      const [campaignId, characterId, slots, key] = useArcaneRecovery.mock.calls[0];
+      expect([campaignId, characterId, slots]).toEqual([
+        'camp',
+        'pensantus',
+        [{ level: 1, count: 2 }],
+      ]);
+      expect(key).toMatch(/^[0-9a-f-]{36}$/);
+      expect(apply.mock.calls[0][0].spellSlots[0]).toEqual({
+        level: 1,
+        total: 4,
+        used: 1,
+        created: 0,
+      });
+      expect(flat(el.querySelector('.arcane'))).toContain(
+        'Recuperação Arcana: usada; volta no descanso longo.',
+      );
+      expect(el.querySelector('.js-arcane-recover')).toBeNull();
+    });
+
+    it('does not call the server with nothing picked', async () => {
+      const { settle, button } = render({}, wizard());
+      button('Recuperar').click();
+      await settle();
+      expect(useArcaneRecovery).not.toHaveBeenCalled();
+    });
+
+    it('says why the server refused', async () => {
+      useArcaneRecovery.mockRejectedValue(blocked(ResourceBlockedReason.NO_SHORT_REST));
+      const { el, fixture, settle, button } = render({}, wizard());
+      el.querySelector<HTMLButtonElement>('.js-arcane-more')!.click();
+      fixture.detectChanges();
+      button('Recuperar').click();
+      await settle();
+      expect(flat(el.querySelector('[role="alert"] p'))).toBe(
+        'Recuperação Arcana só vale depois de um descanso curto.',
+      );
+    });
+
+    it('says the use is spent when it is, and offers nothing', () => {
+      const spent = wizard({
+        resources: [{ key: 'arcane_recovery', total: 1, used: 1, recharge: 'long_rest' }],
+      });
+      const { el } = render({}, spent);
+      expect(flat(el.querySelector('.arcane'))).toContain(
+        'Recuperação Arcana: usada; volta no descanso longo.',
+      );
+      expect(el.querySelector('.step')).toBeNull();
+    });
+
+    it('is not there for a character without the feature', () => {
+      const { el } = render();
+      expect(el.querySelector('.arcane')).toBeNull();
+    });
   });
 });

@@ -38,7 +38,7 @@ func featOptionsToProto(in []rules.FeatOption, allowed, master bool) []*rulesv1.
 func featOptionOf(o rules.FeatOption) *rulesv1.FeatOption {
 	p := o.Prerequisite
 	out := &rulesv1.FeatOption{
-		Key: o.Key, NamePt: o.NamePT, Name: o.Name, Desc: o.Desc, Table: o.Table, Qualifies: o.Qualifies,
+		Key: o.Key, NamePt: o.NamePT, Name: o.Name, Desc: o.Desc, DescPt: o.DescPT, DescPtMissing: o.DescPTMissing, DescPtOnly: o.DescPTOnly, Table: o.Table, Qualifies: o.Qualifies,
 		Prerequisite: &rulesv1.FeatPrerequisite{
 			ProficiencyKey: p.Proficiency, Spellcasting: p.Spellcasting, RaceKey: p.Race, Level: i32(p.Level),
 		},

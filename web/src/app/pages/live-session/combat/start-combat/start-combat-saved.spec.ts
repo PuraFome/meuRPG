@@ -167,8 +167,30 @@ describe('StartCombatDialog with a saved encounter', () => {
     expect(flat(el.querySelector('#mon-title')?.parentElement?.querySelector('.sec__count')!)).toBe(
       '13 NPCs',
     );
-    // The campaign's NPC list is not the way in for these monsters.
-    expect(el.querySelector('#npcs-title')).toBeNull();
+    // The campaign's NPCs can join too (a boss next to the bestiary's monsters), but no second bestiary picker.
+    expect(flat(el.querySelector('#npcs-title'))).toBe('NPCs da campanha');
+    expect(el.querySelector('app-creature-pick')).toBeNull();
+  });
+
+  it("a campaign NPC (a boss) joins the saved encounter: it goes with the party, the monsters stay the encounter's", async () => {
+    const { el, settle } = await setup();
+    const orin = el.querySelector('app-npc-row');
+    expect(flat(orin)).toContain('Orin');
+    Array.from(orin!.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => (b.getAttribute('aria-label') ?? '').startsWith('Mais'))!
+      .click();
+    await settle();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => flat(b) === 'Iniciar combate')!
+      .click();
+    await settle();
+    expect(starts[0].participants).toEqual([
+      expect.objectContaining({ characterId: 'pc-1' }),
+      expect.objectContaining({ characterId: 'pc-2' }),
+      expect.objectContaining({ characterId: 'npc-1', count: 1, hidden: true }),
+    ]);
+    expect(starts[0].extras['monsters']).toHaveLength(4);
+    expect(starts[0].extras['mapPointId']).toBe('pt-1');
   });
 
   it('starts with the monsters, the average, hidden, the point and one key, and the party that is checked', async () => {

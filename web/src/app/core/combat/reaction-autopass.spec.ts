@@ -49,7 +49,13 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(clock.due(Date.now())).toEqual(['w1']);
     // Once: a second look does not send it again.
     expect(clock.due(Date.now())).toEqual([]);
-    expect(autoPassKey('w1')).toBe('auto-pass:w1');
+    // The server takes only a UUID as a key: the window's id with its digits flipped, the same on every screen.
+    const id = '0f1e2d3c-4b5a-4987-a6b5-c4d3e2f1a0b9';
+    expect(autoPassKey(id)).toBe('f0e1d2c3-b4a5-4678-a94a-3b2c1d0e5f46');
+    expect(autoPassKey(id)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(autoPassKey(id.toUpperCase())).toBe(autoPassKey(id));
   });
 
   it('may send a pass again after a failure that was not a refusal', () => {
@@ -101,6 +107,22 @@ describe("the automatic pass of a player's optional reaction", () => {
     vi.advanceTimersByTime(20 * MS);
     clock.sync([win('w1', ReactionKind.COUNTERSPELL)], Date.now());
     expect(clock.secondsLeft('w1', Date.now())).toBe(AUTO_PASS_SECONDS);
+  });
+
+  it('passes an opportunity attack offer once at 30 s, with a UUID key, and forgets a gone one', () => {
+    const clock = new AutoPassClock();
+    const offer = '3f2a9c1e-5b7d-4e68-9a10-c2d4e6f80b13';
+    clock.syncIds([offer], Date.now());
+    vi.advanceTimersByTime(29 * MS);
+    expect(clock.due(Date.now())).toEqual([]);
+    vi.advanceTimersByTime(MS);
+    expect(clock.due(Date.now())).toEqual([offer]);
+    expect(clock.due(Date.now())).toEqual([]);
+    expect(autoPassKey(offer)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    clock.syncIds([], Date.now());
+    expect(clock.soonest(Date.now())).toBeNull();
   });
 
   it('counts the seconds down, and writes them for the master and for the player', () => {
