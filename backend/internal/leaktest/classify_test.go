@@ -256,6 +256,7 @@ var notReads = map[string]classified{
 	playv1connect.ResourceServiceCreateSpellSlotProcedure:                       {playerAction, "a sorcerer's player makes a slot with their own combatant"},
 	playv1connect.ResourceServiceGiveBardicInspirationProcedure:                 {playerAction, "a bard's player gives a die with their own combatant"},
 	playv1connect.ResourceServiceSpendHitDiceProcedure:                          {playerAction, "a player spends a hit die of their own character"},
+	playv1connect.ResourceServiceUseArcaneRecoveryProcedure:                     {playerAction, "a wizard's player recovers slots of their own character"},
 	playv1connect.ResourceServiceTakeRestProcedure:                              {masterWrite, masterOnlyWhy},
 	playv1connect.ResourceServiceUseLayOnHandsProcedure:                         {playerAction, "a paladin's player touches a creature with their own combatant"},
 	playv1connect.RevivifyServiceConfirmRevivifyTimeProcedure:                   {masterWrite, masterOnlyWhy},

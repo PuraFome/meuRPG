@@ -57,6 +57,12 @@ const (
 	// A roll is held, waiting for the player's answer about a Bardic Inspiration
 	// die: the combatant does nothing else until it is answered.
 	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING ResourceBlockedReason = 11
+	// UseArcaneRecovery: the latest rest of the open session is not a short rest.
+	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_SHORT_REST ResourceBlockedReason = 12
+	// UseArcaneRecovery: fewer expended slots of a level than the call asks to recover.
+	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED ResourceBlockedReason = 13
+	// UseArcaneRecovery: the combined level of the slots is above the allowance.
+	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE ResourceBlockedReason = 14
 )
 
 // Enum value maps for ResourceBlockedReason.
@@ -74,6 +80,9 @@ var (
 		9:  "RESOURCE_BLOCKED_REASON_TARGET_REFUSED",
 		10: "RESOURCE_BLOCKED_REASON_NOT_AVAILABLE",
 		11: "RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING",
+		12: "RESOURCE_BLOCKED_REASON_NO_SHORT_REST",
+		13: "RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED",
+		14: "RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE",
 	}
 	ResourceBlockedReason_value = map[string]int32{
 		"RESOURCE_BLOCKED_REASON_UNSPECIFIED":         0,
@@ -88,6 +97,9 @@ var (
 		"RESOURCE_BLOCKED_REASON_TARGET_REFUSED":      9,
 		"RESOURCE_BLOCKED_REASON_NOT_AVAILABLE":       10,
 		"RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING": 11,
+		"RESOURCE_BLOCKED_REASON_NO_SHORT_REST":       12,
+		"RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED":   13,
+		"RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE":      14,
 	}
 )
 
@@ -1029,6 +1041,128 @@ func (x *SpendHitDiceResponse) GetHealed() int32 {
 	return 0
 }
 
+type UseArcaneRecoveryRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CharacterId string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// The slots to recover: how many of each spell level, one entry per level.
+	Slots          []*SpellSlotBack `protobuf:"bytes,3,rep,name=slots,proto3" json:"slots,omitempty"`
+	IdempotencyKey string           `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UseArcaneRecoveryRequest) Reset() {
+	*x = UseArcaneRecoveryRequest{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UseArcaneRecoveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UseArcaneRecoveryRequest) ProtoMessage() {}
+
+func (x *UseArcaneRecoveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UseArcaneRecoveryRequest.ProtoReflect.Descriptor instead.
+func (*UseArcaneRecoveryRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UseArcaneRecoveryRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *UseArcaneRecoveryRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *UseArcaneRecoveryRequest) GetSlots() []*SpellSlotBack {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+func (x *UseArcaneRecoveryRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type UseArcaneRecoveryResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Vitals *CharacterVitals       `protobuf:"bytes,1,opt,name=vitals,proto3" json:"vitals,omitempty"`
+	// The combined level recovered.
+	RecoveredLevels int32 `protobuf:"varint,2,opt,name=recovered_levels,json=recoveredLevels,proto3" json:"recovered_levels,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UseArcaneRecoveryResponse) Reset() {
+	*x = UseArcaneRecoveryResponse{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UseArcaneRecoveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UseArcaneRecoveryResponse) ProtoMessage() {}
+
+func (x *UseArcaneRecoveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UseArcaneRecoveryResponse.ProtoReflect.Descriptor instead.
+func (*UseArcaneRecoveryResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UseArcaneRecoveryResponse) GetVitals() *CharacterVitals {
+	if x != nil {
+		return x.Vitals
+	}
+	return nil
+}
+
+func (x *UseArcaneRecoveryResponse) GetRecoveredLevels() int32 {
+	if x != nil {
+		return x.RecoveredLevels
+	}
+	return 0
+}
+
 type UseLayOnHandsRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
@@ -1053,7 +1187,7 @@ type UseLayOnHandsRequest struct {
 
 func (x *UseLayOnHandsRequest) Reset() {
 	*x = UseLayOnHandsRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1065,7 +1199,7 @@ func (x *UseLayOnHandsRequest) String() string {
 func (*UseLayOnHandsRequest) ProtoMessage() {}
 
 func (x *UseLayOnHandsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1212,7 @@ func (x *UseLayOnHandsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseLayOnHandsRequest.ProtoReflect.Descriptor instead.
 func (*UseLayOnHandsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UseLayOnHandsRequest) GetCampaignId() string {
@@ -1176,7 +1310,7 @@ type UseLayOnHandsResponse struct {
 
 func (x *UseLayOnHandsResponse) Reset() {
 	*x = UseLayOnHandsResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1188,7 +1322,7 @@ func (x *UseLayOnHandsResponse) String() string {
 func (*UseLayOnHandsResponse) ProtoMessage() {}
 
 func (x *UseLayOnHandsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1201,7 +1335,7 @@ func (x *UseLayOnHandsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseLayOnHandsResponse.ProtoReflect.Descriptor instead.
 func (*UseLayOnHandsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UseLayOnHandsResponse) GetEncounter() *Encounter {
@@ -1253,7 +1387,7 @@ type CreateSpellSlotRequest struct {
 
 func (x *CreateSpellSlotRequest) Reset() {
 	*x = CreateSpellSlotRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1265,7 +1399,7 @@ func (x *CreateSpellSlotRequest) String() string {
 func (*CreateSpellSlotRequest) ProtoMessage() {}
 
 func (x *CreateSpellSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1278,7 +1412,7 @@ func (x *CreateSpellSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSpellSlotRequest.ProtoReflect.Descriptor instead.
 func (*CreateSpellSlotRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CreateSpellSlotRequest) GetCampaignId() string {
@@ -1328,7 +1462,7 @@ type CreateSpellSlotResponse struct {
 
 func (x *CreateSpellSlotResponse) Reset() {
 	*x = CreateSpellSlotResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1340,7 +1474,7 @@ func (x *CreateSpellSlotResponse) String() string {
 func (*CreateSpellSlotResponse) ProtoMessage() {}
 
 func (x *CreateSpellSlotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1353,7 +1487,7 @@ func (x *CreateSpellSlotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSpellSlotResponse.ProtoReflect.Descriptor instead.
 func (*CreateSpellSlotResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *CreateSpellSlotResponse) GetEncounter() *Encounter {
@@ -1391,7 +1525,7 @@ type ConvertSpellSlotRequest struct {
 
 func (x *ConvertSpellSlotRequest) Reset() {
 	*x = ConvertSpellSlotRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1403,7 +1537,7 @@ func (x *ConvertSpellSlotRequest) String() string {
 func (*ConvertSpellSlotRequest) ProtoMessage() {}
 
 func (x *ConvertSpellSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1416,7 +1550,7 @@ func (x *ConvertSpellSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertSpellSlotRequest.ProtoReflect.Descriptor instead.
 func (*ConvertSpellSlotRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ConvertSpellSlotRequest) GetCampaignId() string {
@@ -1466,7 +1600,7 @@ type ConvertSpellSlotResponse struct {
 
 func (x *ConvertSpellSlotResponse) Reset() {
 	*x = ConvertSpellSlotResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1478,7 +1612,7 @@ func (x *ConvertSpellSlotResponse) String() string {
 func (*ConvertSpellSlotResponse) ProtoMessage() {}
 
 func (x *ConvertSpellSlotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1491,7 +1625,7 @@ func (x *ConvertSpellSlotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertSpellSlotResponse.ProtoReflect.Descriptor instead.
 func (*ConvertSpellSlotResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ConvertSpellSlotResponse) GetEncounter() *Encounter {
@@ -1530,7 +1664,7 @@ type GiveBardicInspirationRequest struct {
 
 func (x *GiveBardicInspirationRequest) Reset() {
 	*x = GiveBardicInspirationRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1542,7 +1676,7 @@ func (x *GiveBardicInspirationRequest) String() string {
 func (*GiveBardicInspirationRequest) ProtoMessage() {}
 
 func (x *GiveBardicInspirationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1555,7 +1689,7 @@ func (x *GiveBardicInspirationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GiveBardicInspirationRequest.ProtoReflect.Descriptor instead.
 func (*GiveBardicInspirationRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GiveBardicInspirationRequest) GetCampaignId() string {
@@ -1603,7 +1737,7 @@ type GiveBardicInspirationResponse struct {
 
 func (x *GiveBardicInspirationResponse) Reset() {
 	*x = GiveBardicInspirationResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1615,7 +1749,7 @@ func (x *GiveBardicInspirationResponse) String() string {
 func (*GiveBardicInspirationResponse) ProtoMessage() {}
 
 func (x *GiveBardicInspirationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1628,7 +1762,7 @@ func (x *GiveBardicInspirationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GiveBardicInspirationResponse.ProtoReflect.Descriptor instead.
 func (*GiveBardicInspirationResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GiveBardicInspirationResponse) GetEncounter() *Encounter {
@@ -1669,7 +1803,7 @@ type AnswerBardicInspirationRequest struct {
 
 func (x *AnswerBardicInspirationRequest) Reset() {
 	*x = AnswerBardicInspirationRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1681,7 +1815,7 @@ func (x *AnswerBardicInspirationRequest) String() string {
 func (*AnswerBardicInspirationRequest) ProtoMessage() {}
 
 func (x *AnswerBardicInspirationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1694,7 +1828,7 @@ func (x *AnswerBardicInspirationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerBardicInspirationRequest.ProtoReflect.Descriptor instead.
 func (*AnswerBardicInspirationRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AnswerBardicInspirationRequest) GetCampaignId() string {
@@ -1783,7 +1917,7 @@ type AnswerBardicInspirationResponse struct {
 
 func (x *AnswerBardicInspirationResponse) Reset() {
 	*x = AnswerBardicInspirationResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1795,7 +1929,7 @@ func (x *AnswerBardicInspirationResponse) String() string {
 func (*AnswerBardicInspirationResponse) ProtoMessage() {}
 
 func (x *AnswerBardicInspirationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1808,7 +1942,7 @@ func (x *AnswerBardicInspirationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerBardicInspirationResponse.ProtoReflect.Descriptor instead.
 func (*AnswerBardicInspirationResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AnswerBardicInspirationResponse) GetAttack() *RollAttackResponse {
@@ -1886,7 +2020,16 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x12\x12\n" +
 	"\x04face\x18\x02 \x01(\x05R\x04face\x123\n" +
 	"\x15constitution_modifier\x18\x03 \x01(\x05R\x14constitutionModifier\x12\x16\n" +
-	"\x06healed\x18\x04 \x01(\x05R\x06healed\"\x95\x02\n" +
+	"\x06healed\x18\x04 \x01(\x05R\x06healed\"\xbc\x01\n" +
+	"\x18UseArcaneRecoveryRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x123\n" +
+	"\x05slots\x18\x03 \x03(\v2\x1d.meurpg.play.v1.SpellSlotBackR\x05slots\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x7f\n" +
+	"\x19UseArcaneRecoveryResponse\x127\n" +
+	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x12)\n" +
+	"\x10recovered_levels\x18\x02 \x01(\x05R\x0frecoveredLevels\"\x95\x02\n" +
 	"\x14UseLayOnHandsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -1950,7 +2093,7 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKeyB\x06\n" +
 	"\x04roll\"]\n" +
 	"\x1fAnswerBardicInspirationResponse\x12:\n" +
-	"\x06attack\x18\x01 \x01(\v2\".meurpg.play.v1.RollAttackResponseR\x06attack*\xb5\x04\n" +
+	"\x06attack\x18\x01 \x01(\v2\".meurpg.play.v1.RollAttackResponseR\x06attack*\xbb\x05\n" +
 	"\x15ResourceBlockedReason\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_COMBAT_OPEN\x10\x01\x12,\n" +
@@ -1964,7 +2107,10 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"&RESOURCE_BLOCKED_REASON_TARGET_REFUSED\x10\t\x12)\n" +
 	"%RESOURCE_BLOCKED_REASON_NOT_AVAILABLE\x10\n" +
 	"\x12/\n" +
-	"+RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING\x10\v*N\n" +
+	"+RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING\x10\v\x12)\n" +
+	"%RESOURCE_BLOCKED_REASON_NO_SHORT_REST\x10\f\x12-\n" +
+	")RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED\x10\r\x12*\n" +
+	"&RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE\x10\x0e*N\n" +
 	"\bRestKind\x12\x19\n" +
 	"\x15REST_KIND_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fREST_KIND_SHORT\x10\x01\x12\x12\n" +
@@ -1972,11 +2118,12 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x0eLayOnHandsCure\x12!\n" +
 	"\x1dLAY_ON_HANDS_CURE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19LAY_ON_HANDS_CURE_DISEASE\x10\x01\x12\x1c\n" +
-	"\x18LAY_ON_HANDS_CURE_POISON\x10\x022\xbc\x06\n" +
+	"\x18LAY_ON_HANDS_CURE_POISON\x10\x022\xa6\a\n" +
 	"\x0fResourceService\x12d\n" +
 	"\x0eGetRestPreview\x12%.meurpg.play.v1.GetRestPreviewRequest\x1a&.meurpg.play.v1.GetRestPreviewResponse\"\x03\x90\x02\x02\x12M\n" +
 	"\bTakeRest\x12\x1f.meurpg.play.v1.TakeRestRequest\x1a .meurpg.play.v1.TakeRestResponse\x12Y\n" +
-	"\fSpendHitDice\x12#.meurpg.play.v1.SpendHitDiceRequest\x1a$.meurpg.play.v1.SpendHitDiceResponse\x12\\\n" +
+	"\fSpendHitDice\x12#.meurpg.play.v1.SpendHitDiceRequest\x1a$.meurpg.play.v1.SpendHitDiceResponse\x12h\n" +
+	"\x11UseArcaneRecovery\x12(.meurpg.play.v1.UseArcaneRecoveryRequest\x1a).meurpg.play.v1.UseArcaneRecoveryResponse\x12\\\n" +
 	"\rUseLayOnHands\x12$.meurpg.play.v1.UseLayOnHandsRequest\x1a%.meurpg.play.v1.UseLayOnHandsResponse\x12b\n" +
 	"\x0fCreateSpellSlot\x12&.meurpg.play.v1.CreateSpellSlotRequest\x1a'.meurpg.play.v1.CreateSpellSlotResponse\x12e\n" +
 	"\x10ConvertSpellSlot\x12'.meurpg.play.v1.ConvertSpellSlotRequest\x1a(.meurpg.play.v1.ConvertSpellSlotResponse\x12t\n" +
@@ -1997,7 +2144,7 @@ func file_meurpg_play_v1_resources_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_meurpg_play_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_meurpg_play_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_meurpg_play_v1_resources_proto_goTypes = []any{
 	(ResourceBlockedReason)(0),              // 0: meurpg.play.v1.ResourceBlockedReason
 	(RestKind)(0),                           // 1: meurpg.play.v1.RestKind
@@ -2013,64 +2160,70 @@ var file_meurpg_play_v1_resources_proto_goTypes = []any{
 	(*TakeRestResponse)(nil),                // 11: meurpg.play.v1.TakeRestResponse
 	(*SpendHitDiceRequest)(nil),             // 12: meurpg.play.v1.SpendHitDiceRequest
 	(*SpendHitDiceResponse)(nil),            // 13: meurpg.play.v1.SpendHitDiceResponse
-	(*UseLayOnHandsRequest)(nil),            // 14: meurpg.play.v1.UseLayOnHandsRequest
-	(*UseLayOnHandsResponse)(nil),           // 15: meurpg.play.v1.UseLayOnHandsResponse
-	(*CreateSpellSlotRequest)(nil),          // 16: meurpg.play.v1.CreateSpellSlotRequest
-	(*CreateSpellSlotResponse)(nil),         // 17: meurpg.play.v1.CreateSpellSlotResponse
-	(*ConvertSpellSlotRequest)(nil),         // 18: meurpg.play.v1.ConvertSpellSlotRequest
-	(*ConvertSpellSlotResponse)(nil),        // 19: meurpg.play.v1.ConvertSpellSlotResponse
-	(*GiveBardicInspirationRequest)(nil),    // 20: meurpg.play.v1.GiveBardicInspirationRequest
-	(*GiveBardicInspirationResponse)(nil),   // 21: meurpg.play.v1.GiveBardicInspirationResponse
-	(*AnswerBardicInspirationRequest)(nil),  // 22: meurpg.play.v1.AnswerBardicInspirationRequest
-	(*AnswerBardicInspirationResponse)(nil), // 23: meurpg.play.v1.AnswerBardicInspirationResponse
-	(*v1.HitDice)(nil),                      // 24: meurpg.rules.v1.HitDice
-	(*CharacterVitals)(nil),                 // 25: meurpg.play.v1.CharacterVitals
-	(*Encounter)(nil),                       // 26: meurpg.play.v1.Encounter
-	(*RollAttackResponse)(nil),              // 27: meurpg.play.v1.RollAttackResponse
+	(*UseArcaneRecoveryRequest)(nil),        // 14: meurpg.play.v1.UseArcaneRecoveryRequest
+	(*UseArcaneRecoveryResponse)(nil),       // 15: meurpg.play.v1.UseArcaneRecoveryResponse
+	(*UseLayOnHandsRequest)(nil),            // 16: meurpg.play.v1.UseLayOnHandsRequest
+	(*UseLayOnHandsResponse)(nil),           // 17: meurpg.play.v1.UseLayOnHandsResponse
+	(*CreateSpellSlotRequest)(nil),          // 18: meurpg.play.v1.CreateSpellSlotRequest
+	(*CreateSpellSlotResponse)(nil),         // 19: meurpg.play.v1.CreateSpellSlotResponse
+	(*ConvertSpellSlotRequest)(nil),         // 20: meurpg.play.v1.ConvertSpellSlotRequest
+	(*ConvertSpellSlotResponse)(nil),        // 21: meurpg.play.v1.ConvertSpellSlotResponse
+	(*GiveBardicInspirationRequest)(nil),    // 22: meurpg.play.v1.GiveBardicInspirationRequest
+	(*GiveBardicInspirationResponse)(nil),   // 23: meurpg.play.v1.GiveBardicInspirationResponse
+	(*AnswerBardicInspirationRequest)(nil),  // 24: meurpg.play.v1.AnswerBardicInspirationRequest
+	(*AnswerBardicInspirationResponse)(nil), // 25: meurpg.play.v1.AnswerBardicInspirationResponse
+	(*v1.HitDice)(nil),                      // 26: meurpg.rules.v1.HitDice
+	(*CharacterVitals)(nil),                 // 27: meurpg.play.v1.CharacterVitals
+	(*Encounter)(nil),                       // 28: meurpg.play.v1.Encounter
+	(*RollAttackResponse)(nil),              // 29: meurpg.play.v1.RollAttackResponse
 }
 var file_meurpg_play_v1_resources_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.ResourceBlocked.reason:type_name -> meurpg.play.v1.ResourceBlockedReason
 	1,  // 1: meurpg.play.v1.GetRestPreviewRequest.kind:type_name -> meurpg.play.v1.RestKind
 	6,  // 2: meurpg.play.v1.GetRestPreviewResponse.characters:type_name -> meurpg.play.v1.RestPreview
 	7,  // 3: meurpg.play.v1.RestPreview.resources:type_name -> meurpg.play.v1.RestResourceBack
-	24, // 4: meurpg.play.v1.RestPreview.hit_dice_spent:type_name -> meurpg.rules.v1.HitDice
-	24, // 5: meurpg.play.v1.RestPreview.hit_dice_back:type_name -> meurpg.rules.v1.HitDice
+	26, // 4: meurpg.play.v1.RestPreview.hit_dice_spent:type_name -> meurpg.rules.v1.HitDice
+	26, // 5: meurpg.play.v1.RestPreview.hit_dice_back:type_name -> meurpg.rules.v1.HitDice
 	8,  // 6: meurpg.play.v1.RestPreview.spell_slots_back:type_name -> meurpg.play.v1.SpellSlotBack
 	1,  // 7: meurpg.play.v1.TakeRestRequest.kind:type_name -> meurpg.play.v1.RestKind
 	10, // 8: meurpg.play.v1.TakeRestRequest.hit_dice_choices:type_name -> meurpg.play.v1.HitDiceChoice
-	24, // 9: meurpg.play.v1.HitDiceChoice.dice:type_name -> meurpg.rules.v1.HitDice
-	25, // 10: meurpg.play.v1.TakeRestResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	25, // 11: meurpg.play.v1.SpendHitDiceResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	2,  // 12: meurpg.play.v1.UseLayOnHandsRequest.cure:type_name -> meurpg.play.v1.LayOnHandsCure
-	26, // 13: meurpg.play.v1.UseLayOnHandsResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	26, // 14: meurpg.play.v1.CreateSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	25, // 15: meurpg.play.v1.CreateSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	26, // 16: meurpg.play.v1.ConvertSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	25, // 17: meurpg.play.v1.ConvertSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	26, // 18: meurpg.play.v1.GiveBardicInspirationResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	25, // 19: meurpg.play.v1.GiveBardicInspirationResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	27, // 20: meurpg.play.v1.AnswerBardicInspirationResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
-	4,  // 21: meurpg.play.v1.ResourceService.GetRestPreview:input_type -> meurpg.play.v1.GetRestPreviewRequest
-	9,  // 22: meurpg.play.v1.ResourceService.TakeRest:input_type -> meurpg.play.v1.TakeRestRequest
-	12, // 23: meurpg.play.v1.ResourceService.SpendHitDice:input_type -> meurpg.play.v1.SpendHitDiceRequest
-	14, // 24: meurpg.play.v1.ResourceService.UseLayOnHands:input_type -> meurpg.play.v1.UseLayOnHandsRequest
-	16, // 25: meurpg.play.v1.ResourceService.CreateSpellSlot:input_type -> meurpg.play.v1.CreateSpellSlotRequest
-	18, // 26: meurpg.play.v1.ResourceService.ConvertSpellSlot:input_type -> meurpg.play.v1.ConvertSpellSlotRequest
-	20, // 27: meurpg.play.v1.ResourceService.GiveBardicInspiration:input_type -> meurpg.play.v1.GiveBardicInspirationRequest
-	22, // 28: meurpg.play.v1.ResourceService.AnswerBardicInspiration:input_type -> meurpg.play.v1.AnswerBardicInspirationRequest
-	5,  // 29: meurpg.play.v1.ResourceService.GetRestPreview:output_type -> meurpg.play.v1.GetRestPreviewResponse
-	11, // 30: meurpg.play.v1.ResourceService.TakeRest:output_type -> meurpg.play.v1.TakeRestResponse
-	13, // 31: meurpg.play.v1.ResourceService.SpendHitDice:output_type -> meurpg.play.v1.SpendHitDiceResponse
-	15, // 32: meurpg.play.v1.ResourceService.UseLayOnHands:output_type -> meurpg.play.v1.UseLayOnHandsResponse
-	17, // 33: meurpg.play.v1.ResourceService.CreateSpellSlot:output_type -> meurpg.play.v1.CreateSpellSlotResponse
-	19, // 34: meurpg.play.v1.ResourceService.ConvertSpellSlot:output_type -> meurpg.play.v1.ConvertSpellSlotResponse
-	21, // 35: meurpg.play.v1.ResourceService.GiveBardicInspiration:output_type -> meurpg.play.v1.GiveBardicInspirationResponse
-	23, // 36: meurpg.play.v1.ResourceService.AnswerBardicInspiration:output_type -> meurpg.play.v1.AnswerBardicInspirationResponse
-	29, // [29:37] is the sub-list for method output_type
-	21, // [21:29] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	26, // 9: meurpg.play.v1.HitDiceChoice.dice:type_name -> meurpg.rules.v1.HitDice
+	27, // 10: meurpg.play.v1.TakeRestResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	27, // 11: meurpg.play.v1.SpendHitDiceResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	8,  // 12: meurpg.play.v1.UseArcaneRecoveryRequest.slots:type_name -> meurpg.play.v1.SpellSlotBack
+	27, // 13: meurpg.play.v1.UseArcaneRecoveryResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	2,  // 14: meurpg.play.v1.UseLayOnHandsRequest.cure:type_name -> meurpg.play.v1.LayOnHandsCure
+	28, // 15: meurpg.play.v1.UseLayOnHandsResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	28, // 16: meurpg.play.v1.CreateSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	27, // 17: meurpg.play.v1.CreateSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	28, // 18: meurpg.play.v1.ConvertSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	27, // 19: meurpg.play.v1.ConvertSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	28, // 20: meurpg.play.v1.GiveBardicInspirationResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	27, // 21: meurpg.play.v1.GiveBardicInspirationResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	29, // 22: meurpg.play.v1.AnswerBardicInspirationResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
+	4,  // 23: meurpg.play.v1.ResourceService.GetRestPreview:input_type -> meurpg.play.v1.GetRestPreviewRequest
+	9,  // 24: meurpg.play.v1.ResourceService.TakeRest:input_type -> meurpg.play.v1.TakeRestRequest
+	12, // 25: meurpg.play.v1.ResourceService.SpendHitDice:input_type -> meurpg.play.v1.SpendHitDiceRequest
+	14, // 26: meurpg.play.v1.ResourceService.UseArcaneRecovery:input_type -> meurpg.play.v1.UseArcaneRecoveryRequest
+	16, // 27: meurpg.play.v1.ResourceService.UseLayOnHands:input_type -> meurpg.play.v1.UseLayOnHandsRequest
+	18, // 28: meurpg.play.v1.ResourceService.CreateSpellSlot:input_type -> meurpg.play.v1.CreateSpellSlotRequest
+	20, // 29: meurpg.play.v1.ResourceService.ConvertSpellSlot:input_type -> meurpg.play.v1.ConvertSpellSlotRequest
+	22, // 30: meurpg.play.v1.ResourceService.GiveBardicInspiration:input_type -> meurpg.play.v1.GiveBardicInspirationRequest
+	24, // 31: meurpg.play.v1.ResourceService.AnswerBardicInspiration:input_type -> meurpg.play.v1.AnswerBardicInspirationRequest
+	5,  // 32: meurpg.play.v1.ResourceService.GetRestPreview:output_type -> meurpg.play.v1.GetRestPreviewResponse
+	11, // 33: meurpg.play.v1.ResourceService.TakeRest:output_type -> meurpg.play.v1.TakeRestResponse
+	13, // 34: meurpg.play.v1.ResourceService.SpendHitDice:output_type -> meurpg.play.v1.SpendHitDiceResponse
+	15, // 35: meurpg.play.v1.ResourceService.UseArcaneRecovery:output_type -> meurpg.play.v1.UseArcaneRecoveryResponse
+	17, // 36: meurpg.play.v1.ResourceService.UseLayOnHands:output_type -> meurpg.play.v1.UseLayOnHandsResponse
+	19, // 37: meurpg.play.v1.ResourceService.CreateSpellSlot:output_type -> meurpg.play.v1.CreateSpellSlotResponse
+	21, // 38: meurpg.play.v1.ResourceService.ConvertSpellSlot:output_type -> meurpg.play.v1.ConvertSpellSlotResponse
+	23, // 39: meurpg.play.v1.ResourceService.GiveBardicInspiration:output_type -> meurpg.play.v1.GiveBardicInspirationResponse
+	25, // 40: meurpg.play.v1.ResourceService.AnswerBardicInspiration:output_type -> meurpg.play.v1.AnswerBardicInspirationResponse
+	32, // [32:41] is the sub-list for method output_type
+	23, // [23:32] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_resources_proto_init() }
@@ -2084,12 +2237,12 @@ func file_meurpg_play_v1_resources_proto_init() {
 		(*SpendHitDiceRequest_RollInApp)(nil),
 		(*SpendHitDiceRequest_TypedFace)(nil),
 	}
-	file_meurpg_play_v1_resources_proto_msgTypes[11].OneofWrappers = []any{
+	file_meurpg_play_v1_resources_proto_msgTypes[13].OneofWrappers = []any{
 		(*UseLayOnHandsRequest_Amount)(nil),
 		(*UseLayOnHandsRequest_Cure)(nil),
 	}
-	file_meurpg_play_v1_resources_proto_msgTypes[12].OneofWrappers = []any{}
-	file_meurpg_play_v1_resources_proto_msgTypes[19].OneofWrappers = []any{
+	file_meurpg_play_v1_resources_proto_msgTypes[14].OneofWrappers = []any{}
+	file_meurpg_play_v1_resources_proto_msgTypes[21].OneofWrappers = []any{
 		(*AnswerBardicInspirationRequest_RollInApp)(nil),
 		(*AnswerBardicInspirationRequest_TypedFace)(nil),
 	}
@@ -2099,7 +2252,7 @@ func file_meurpg_play_v1_resources_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_resources_proto_rawDesc), len(file_meurpg_play_v1_resources_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   21,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

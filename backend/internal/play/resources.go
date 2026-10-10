@@ -32,6 +32,8 @@ import (
 const (
 	eventRestTaken    = "rest_taken"
 	eventHitDiceSpent = "hit_dice_spent"
+	// eventArcaneRecovery is the wizard's Arcane Recovery (session_event_kinds).
+	eventArcaneRecovery = "arcane_recovery_used"
 )
 
 // RestKeeper is what the characters module does for the rests and the resources
@@ -48,6 +50,10 @@ type RestKeeper interface {
 	// SpendHitDie spends one hit die of the size and heals the face plus the
 	// Constitution modifier (at least 0, up to the maximum).
 	SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, characterID string, faces, face int) (before, after *playv1.CharacterVitals, conMod, healed int, err error)
+	// UseArcaneRecovery spends the wizard's use and gives back the expended slots (a map
+	// of spell level to count), and returns the vitals before and after and the combined
+	// level recovered.
+	UseArcaneRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID string, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error)
 	// CreateSpellSlot is Flexible Casting's creation of a slot; ConvertSpellSlot its
 	// conversion into sorcery points.
 	CreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (before, after *playv1.CharacterVitals, cost int, err error)
@@ -88,13 +94,19 @@ func resourceError(err error) error {
 	case errors.Is(err, link.ErrNotEnoughPoints):
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_ENOUGH_POINTS, "there are not enough points", points)
 	case errors.Is(err, link.ErrSlotLevelTooHigh):
-		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SLOT_LEVEL_TOO_HIGH, "Flexible Casting makes slots of the 1st to the 5th level")
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SLOT_LEVEL_TOO_HIGH, "the slot level is too high for the feature")
 	case errors.Is(err, link.ErrNoFreeSlot):
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_FREE_SLOT, "there is no free spell slot of that level")
 	case errors.Is(err, link.ErrPointsFull):
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SORCERY_POINTS_FULL, "the sorcerer has the most sorcery points already", points)
 	case errors.Is(err, link.ErrPointsOver):
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SORCERY_POINTS_OVER, "the slot would take the sorcery points past the maximum", points)
+	case errors.Is(err, link.ErrNoUsesLeft):
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_USES_LEFT, "the feature was used since the last long rest")
+	case errors.Is(err, link.ErrSlotNotExpended):
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED, "there are not that many expended spell slots of that level")
+	case errors.Is(err, link.ErrArcaneOver):
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE, "the slots add up to more than the feature allows", points)
 	case errors.Is(err, link.ErrNoResource):
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
 	case errors.Is(err, link.ErrBadHitDiceChoice):

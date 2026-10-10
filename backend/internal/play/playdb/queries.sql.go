@@ -1608,6 +1608,22 @@ func (q *Queries) GetLatestEncounter(ctx context.Context, gameSessionID string) 
 	return i, err
 }
 
+const getLatestRestKindInSession = `-- name: GetLatestRestKindInSession :one
+SELECT (payload ->> 'kind')::TEXT AS kind FROM session_events
+WHERE game_session_id = $1 AND kind = 'rest_taken'
+ORDER BY seq DESC
+LIMIT 1
+`
+
+// The kind ('short' or 'long') of the latest rest the master took in the session. No row:
+// no rest yet. Arcane Recovery is allowed only when it is a short rest.
+func (q *Queries) GetLatestRestKindInSession(ctx context.Context, gameSessionID string) (string, error) {
+	row := q.db.QueryRow(ctx, getLatestRestKindInSession, gameSessionID)
+	var kind string
+	err := row.Scan(&kind)
+	return kind, err
+}
+
 const getOnScreen = `-- name: GetOnScreen :one
 SELECT current_map_id, shown_image_id FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL

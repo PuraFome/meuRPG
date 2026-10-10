@@ -1055,6 +1055,10 @@ message CharacterVitals {
   // 13 + Dexterity, SRD 5.1); 0 without one. The session's panels show the better of it and
   // the sheet's armor class.
   int32 armor_class_base = 101;
+  // The combined level of spell slots the wizard's Arcane Recovery gives back (half
+  // the WIZARD level, rounded up; SRD 5.1, Wizard). 0: the character has no wizard
+  // level. Whether the use is left is the `arcane_recovery` resource.
+  int32 arcane_recovery_allowance = 102;
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's
