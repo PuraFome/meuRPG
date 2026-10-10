@@ -23,6 +23,9 @@ import (
 // slowFallAction is the monk's feature action.
 const slowFallAction = "feature:slow-fall"
 
+// fallDamageType is the damage key a fall deals: bludgeoning (SRD 5.1, Falling).
+const fallDamageType = "damage-type:bludgeoning"
+
 // slowFallPerLevel is the points of falling damage Slow Fall reduces for each monk
 // level (SRD 5.1).
 const slowFallPerLevel = 5
@@ -58,7 +61,7 @@ func (s *Service) slowFall(ctx context.Context, c *combatTx, who playdb.Combatan
 	}
 	var fall []playdb.PendingDamage // the damages of the monk's last fall
 	for _, p := range open {
-		if p.TargetID != who.ID || p.TrapPointID == nil || !pits[*p.TrapPointID] || p.Amount == nil || *p.Amount < 1 || p.DamageType != "bludgeoning" {
+		if p.TargetID != who.ID || p.TrapPointID == nil || !pits[*p.TrapPointID] || p.Amount == nil || *p.Amount < 1 || p.DamageType != fallDamageType {
 			continue
 		}
 		if p.Status != pendingRolled && p.Status != pendingAwaitingReaction {

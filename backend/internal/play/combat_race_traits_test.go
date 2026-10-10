@@ -199,8 +199,12 @@ func TestRelentlessEnduranceDoesNotSaveFromInstantDeath(t *testing.T) {
 // TestALongRestGivesBackRelentlessEndurance: the use is back after a long rest.
 func TestALongRestGivesBackRelentlessEndurance(t *testing.T) {
 	t.Parallel()
-	r := newRestTable(t)
+	// Every player of newRestTable already has a character: a table of its own, with one half-orc.
+	h := newHarness(t)
+	r := &restTable{h: h, master: h.newUser("Mestre"), ana: h.newUser("Ana")}
+	r.campaign = h.newCampaign(r.master, "Mirathel", r.ana)
 	orc := r.ana.hero(t, r.campaign, "Gruk", "class:fighter", "race:half-orc", 1, abilities(16, 13, 14, 10, 10), []string{battleaxe}, nil)
+	r.session = r.master.start(t, r.campaign).GetGameSession()
 	r.use(t, orc, func(q *playv1.AdjustCharacterVitalsRequest) {
 		q.ResourcesUsed = []*playv1.ResourceUsed{{Key: relentless, Used: 1}}
 	})
