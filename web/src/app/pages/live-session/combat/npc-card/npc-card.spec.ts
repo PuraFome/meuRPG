@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { AreaPlacement } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
@@ -107,6 +108,46 @@ describe('NpcCard: the idempotency key follows the target', () => {
     await card.rollApp();
     expect(rollAttack).toHaveBeenCalledTimes(1);
     expect((fixture.nativeElement as HTMLElement).querySelector('#roll-why')).toBeNull();
+  });
+
+  it('clears the result card of the last roll when the master undoes an action (R4)', async () => {
+    TestBed.resetTestingModule();
+    const rollAttack = vi.fn(async () => ({
+      roll: {
+        attackerId: 'npc',
+        targetId: 't1',
+        d20: { total: 12, rolls: [8, 19], modifier: 4, count: 2, sides: 20, keep: 'highest' },
+        outcome: 2,
+        heldForReaction: false,
+      },
+      pending: undefined,
+      encounter: encounter({ combatants: [combatant({ id: 'npc', label: 'Goblin' })] }),
+    }));
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: { rollAttack } }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [combatant({ id: 'npc', label: 'Goblin' })] }),
+    );
+    fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Goblin' }));
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    fixture.componentRef.setInput('options', opts(['t1']));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const card = fixture.componentInstance as unknown as {
+      rollApp(): Promise<void>;
+      last(): unknown;
+    };
+    await card.rollApp();
+    expect(card.last()).not.toBeNull();
+
+    TestBed.inject(CombatUndone).mark();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(card.last()).toBeNull();
   });
 });
 

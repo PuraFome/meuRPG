@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatLogState } from '../../../../core/combat/combat-log-state';
@@ -53,6 +54,7 @@ import { LogSheet, type LogSheetData } from './log-sheet';
 })
 export class CombatLogPanel {
   private readonly api = inject(CombatClient);
+  private readonly undone = inject(CombatUndone);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);
@@ -138,6 +140,7 @@ export class CombatLogPanel {
     this.busy.set(true);
     try {
       this.state().apply(await this.api.undo(this.campaignId(), this.encounter().id, id));
+      this.undone.mark();
       this.confirming.set(false);
     } catch (err) {
       this.confirming.set(false);

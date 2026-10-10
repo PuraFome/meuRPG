@@ -143,6 +143,28 @@ describe('CastOutSheet (MR-048)', () => {
     expect(plain(el.textContent)).toContain('Toren recuperou 9 PV.');
   });
 
+  it('a summoning spell (Convocar Familiar) asks for no target and hands over to the creature sheet', async () => {
+    const familiar = castingSpell('spell:find-familiar', 'Convocar Familiar', 1, {
+      summons: true,
+      effect: CastingEffectKind.SUMMON,
+      ritualAllowed: true,
+      ritualMinutes: 70,
+      castingMinutes: 60,
+      castingTimePt: '1 hora',
+      maxTargets: 1,
+      rangeKind: 'ranged',
+      rangeFt: 10,
+    });
+    const { el, api, click } = await setup(withSpells(familiar));
+    await click('label.row', 'Convocar Familiar');
+    const text = plain(el.textContent);
+    expect(text).toContain('não tem alvo');
+    expect(text).not.toContain('Quem recebe');
+    expect(el.querySelector('input[type="radio"][name]')).toBeNull();
+    expect(plain(el.querySelector('button.cast')?.textContent)).toBe('Escolher a criatura');
+    expect(api.casts).toHaveLength(0);
+  });
+
   it('casts a ritual with no slot, 10 minutes more', async () => {
     const { el, api, click } = await setup(withSpells(alarm));
     await click('label.row', 'Alarme');

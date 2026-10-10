@@ -214,6 +214,13 @@ describe('sessionForLiveLink', () => {
     expect(sessionForLiveLink(sessions, '/profile')?.sessionId).toBe('s3');
   });
 
+  it("puts the campaign's own session first on that campaign's pages", () => {
+    const sessions = [open('s2', 'c2'), open('s1', 'c1')];
+    expect(sessionForLiveLink(sessions, '/campaigns/c1')?.sessionId).toBe('s1');
+    expect(sessionForLiveLink(sessions, '/campaigns/c1/maps/m1')?.sessionId).toBe('s1');
+    expect(sessionForLiveLink(sessions, '/campaigns/c9')?.sessionId).toBe('s2');
+  });
+
   it('shows nothing on a session page, whose status line has its own pill', () => {
     expect(sessionForLiveLink([open('s1', 'c1')], '/campaigns/c1/session')).toBeNull();
   });

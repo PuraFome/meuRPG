@@ -343,7 +343,7 @@ function targetSentence(t: OutsideCastTarget): string {
       return `${t.name}: o máximo de PV e os PV atuais sobem ${t.amount}.`;
     case CastEffect.ARMOR_CLASS:
       return t.armorClass > 0
-        ? `${t.name} fica com CA 13 + Destreza (${t.armorClass}).`
+        ? `${t.name} fica com CA ${t.armorClass} (13 + Destreza).`
         : `${t.name} fica com CA 13 + Destreza.`;
     default:
       return `${t.name}: conjuração registrada.`;

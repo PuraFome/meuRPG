@@ -57,3 +57,53 @@
     min-height: 48px;
   }
 }
+
+// The results older than the latest one, folded away: a row each, so they never pile up above the board.
+.older {
+  max-width: 640px;
+  color: var(--mr-ink-muted);
+}
+
+.older__sum {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--mr-accent-text);
+  font-weight: 700;
+}
+
+.older__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.older__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-3);
+  min-height: 44px;
+  border-top: 1px solid var(--mr-line);
+}
+
+.older__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.older__open {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  color: var(--mr-accent-text);
+  font-weight: 700;
+}
