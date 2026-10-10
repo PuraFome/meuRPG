@@ -54,3 +54,27 @@ func TestAnEffectTheMasterHidesReachesNoPlayer(t *testing.T) {
 		t.Error("the master's panel does not hold the label: the needle is unreachable")
 	}
 }
+
+// A condition with no outward sign (Envenenado) is the owner's and the master's: no other player
+// reads its key or its Portuguese name, in any read or any label.
+func TestAnOwnerOnlyConditionReachesNoOtherPlayer(t *testing.T) {
+	w := newWorld(t)
+	w.reactionFight()
+	toren := w.combatant(w.toren)
+	for _, needle := range []string{"condition:poisoned", "Envenenado"} {
+		w.secrets.add(&canary{needle: needle, kind: "owner-only-condition", readers: names([]*person{w.caio})})
+	}
+	must(w.master.combat.SetCombatantConditions(w.t.Context(), rq(&playv1.SetCombatantConditionsRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: toren.GetId(), IdempotencyKey: newKey(),
+		Conditions: &playv1.ConditionList{Keys: []string{"condition:poisoned", "condition:prone"}},
+	})))
+	for _, r := range w.reads(w.ana) {
+		for _, f := range w.inspect(w.ana, r, nil) {
+			t.Errorf("%s: %s", w.ana.name, f)
+		}
+	}
+	// The positive control: Caio, the owner, reads it.
+	if own := w.caio.call(playv1connect.CombatServiceGetEncounterProcedure, &playv1.GetEncounterRequest{CampaignId: w.campaign}); !bytes.Contains(own.body, []byte("Envenenado")) {
+		t.Error("the owner's read does not hold the condition: the needle is unreachable")
+	}
+}

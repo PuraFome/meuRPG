@@ -211,4 +211,17 @@ describe('the words around the turn', () => {
     ).toEqual(['Paralisado', 'Preso numa teia']);
     expect(labelTags([], undefined)).toEqual([]);
   });
+
+  it('drops the label that only joins the names of conditions the combatant already has', () => {
+    expect(
+      labelTags(
+        ['Envenenado', 'Derrubado'],
+        [{ textPt: 'Envenenado, Derrubado' }, { textPt: 'Bênção' }],
+      ),
+    ).toEqual(['Envenenado', 'Derrubado', 'Bênção']);
+    expect(labelTags(['Envenenado'], [{ textPt: 'Envenenado, Cego' }])).toEqual([
+      'Envenenado',
+      'Envenenado, Cego',
+    ]);
+  });
 });

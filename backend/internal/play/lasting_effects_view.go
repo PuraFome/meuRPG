@@ -146,7 +146,7 @@ func (ev *effectViewer) decorate(p *playv1.Combatant, c playdb.Combatant) {
 		if !ev.readsEffect(own) {
 			continue
 		}
-		if label := ev.labelOf(own); label != "" {
+		if label := ev.labelFor(own); label != "" {
 			p.EffectLabels = append(p.EffectLabels, &playv1.EffectLabel{EffectId: own.ID, TextPt: label})
 		}
 		if ev.v.master || ev.v.owns(c) {
@@ -172,11 +172,46 @@ func (ev *effectViewer) labelOf(st playdb.CombatantState) string {
 	if def, ok := ev.s.effectDef(ev.content, deref(st.SourceKey)); ok && def.PlayerLabelPT != "" {
 		return def.PlayerLabelPT
 	}
+	return ev.conditionsLabel(st, func(string) bool { return false })
+}
+
+// conditionsLabel is the names of the conditions an effect gives, leaving out the ones hidden reports the reader may not read.
+func (ev *effectViewer) conditionsLabel(st playdb.CombatantState, hidden func(string) bool) string {
 	var names []string
 	for _, k := range st.ConditionKeys {
-		names = append(names, ev.names(k))
+		if !hidden(k) {
+			names = append(names, ev.names(k))
+		}
 	}
 	return strings.Join(names, ", ")
+}
+
+// labelFor is the label of an effect as this viewer reads it. A label that is the names of the
+// conditions an effect gives leaves out the ones the viewer may not read (RN-10): "Envenenado" is
+// the owner's and the master's, so another player reads "Derrubado" alone, or no label at all.
+func (ev *effectViewer) labelFor(st playdb.CombatantState) string {
+	if st.PlayerLabel != nil || ev.v.master {
+		return ev.labelOf(st)
+	}
+	if def, ok := ev.s.effectDef(ev.content, deref(st.SourceKey)); ok && def.PlayerLabelPT != "" {
+		return def.PlayerLabelPT
+	}
+	target, ok := ev.byID[st.CombatantID]
+	if !ok {
+		return ""
+	}
+	return ev.conditionsLabel(st, func(k string) bool { return ev.conditionHidden(target, k) })
+}
+
+// labelForOthers is what the players who do not own the target read, for the master's "Os jogadores veem".
+func (ev *effectViewer) labelForOthers(st playdb.CombatantState) string {
+	if st.PlayerLabel != nil {
+		return *st.PlayerLabel
+	}
+	if def, ok := ev.s.effectDef(ev.content, deref(st.SourceKey)); ok && def.PlayerLabelPT != "" {
+		return def.PlayerLabelPT
+	}
+	return ev.conditionsLabel(st, func(k string) bool { return slices.Contains(ownerOnlyConditions, k) })
 }
 
 // card builds an effect as the viewer reads it. onTarget is the combatant whose card it is (a
@@ -267,7 +302,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), deref(f.PlayerLabel)
 		out.EndTextPt = ev.endText(f, caster)
 		if f.PlayerVisible {
-			out.PlayersSeePt = ev.labelOf(f)
+			out.PlayersSeePt = ev.labelForOthers(f)
 		}
 	}
 	return out

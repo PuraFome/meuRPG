@@ -677,6 +677,12 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:
 		out.Conditions = e.ev.Conditions
+		if !v.master && !v.owns(actor) { // a condition with no outward sign is the owner's and the master's (RN-10)
+			out.Conditions = withoutOwnerOnly(e.ev.Conditions)
+			if e.ev.ConcEnded == "" && slices.Equal(out.Conditions, withoutOwnerOnly(e.ev.CondBefore)) {
+				return nil, false // nothing a player may read changed
+			}
+		}
 		out.ConcentrationEndedKey = e.ev.ConcEnded
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:
 		if end := e.ev.EffectEnd; end != nil {
@@ -958,4 +964,15 @@ var wildShapeEndReasonProto = map[string]playv1.WildShapeEndReason{
 	endedByMaster:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
 	endedAtZero:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
 	endedAsleep:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+}
+
+// withoutOwnerOnly is the conditions a player who does not own the creature may read.
+func withoutOwnerOnly(keys []string) []string {
+	var out []string
+	for _, k := range keys {
+		if !slices.Contains(ownerOnlyConditions, k) {
+			out = append(out, k)
+		}
+	}
+	return out
 }

@@ -240,5 +240,10 @@ export function labelTags(
   conditions: readonly string[],
   labels: readonly { readonly textPt: string }[] | undefined,
 ): string[] {
-  return [...new Set([...conditions, ...(labels ?? []).map((l) => l.textPt).filter(Boolean)])];
+  const known = new Set(conditions);
+  // A condition the master marked is also an effect whose label is the names of its conditions joined by ", ":
+  // that label says nothing the conditions do not, so it is not a tag of its own.
+  const repeats = (text: string): boolean => text.split(', ').every((part) => known.has(part));
+  const extra = (labels ?? []).map((l) => l.textPt).filter((text) => text !== '' && !repeats(text));
+  return [...new Set([...conditions, ...extra])];
 }
