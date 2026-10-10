@@ -132,7 +132,8 @@
     }
   } @else {
     @if (waiting(); as w) {
-      <!-- Off turn, the wait is the same sentence the player on turn reads (a reaction, a concentration save). -->
+      <!-- Off turn, the wait is the same sentence the player on turn reads (a reaction, a concentration save, a wait for
+           the master, never why: RN-10), once, above whose turn comes next. -->
       <div class="mr-notice mr-notice--warning turn__notice" role="status" data-testid="reaction-wait">
         <mat-icon aria-hidden="true">hourglass_top</mat-icon>
         <p><strong>{{ w.title }}.</strong> {{ w.detail }}</p>
@@ -148,13 +149,6 @@
       <app-joint-others mode="outside" [encounter]="encounter()" />
     } @else if (nextLine(); as next) {
       <p class="turn__next">{{ next.prefix }}<b>{{ next.name }}</b>.</p>
-    }
-    @if (waiting(); as w) {
-      <!-- Someone else's turn waits for the master: the same words as any wait, never why (RN-10). -->
-      <div class="mr-notice mr-notice--warning turn__notice" role="status">
-        <mat-icon aria-hidden="true">hourglass_top</mat-icon>
-        <p><strong>{{ w.title }}.</strong> {{ w.detail }}</p>
-      </div>
     }
     @if (own(); as me) {
       @if (dead()) {

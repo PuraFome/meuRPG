@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  DestroyRef,
   ElementRef,
   Injector,
   afterNextRender,
@@ -150,6 +151,7 @@ import {
   type ReactionSheetData,
   type ReactionSheetResult,
 } from './reaction-sheet/reaction-sheet';
+import { AutoPassClock, autoPassKey, autoPassText } from '../../../core/combat/reaction-autopass';
 import { windowsBarText } from '../../../core/combat/reaction-master';
 import { openWindows, promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
 import { ContestMaster } from './contest-master/contest-master';
@@ -212,6 +214,17 @@ import { CoverPanel } from './theatre/cover-panel';
 import { NoMapPanel, TheatreReaction } from './theatre/no-map-panel';
 import { OfferPanel } from './theatre/offer-panel';
 import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
+
+/** How often the master's screen looks at the clock of the automatic pass of a player's optional reaction. */
+const AUTO_PASS_TICK_MS = 1000;
+/** The failures of the pass that are the network's, not a refusal: the pass may be sent again. */
+const RETRYABLE: ReadonlySet<Code> = new Set([
+  Code.Unavailable,
+  Code.DeadlineExceeded,
+  Code.Unknown,
+  Code.Internal,
+  Code.Aborted,
+]);
 
 /**
  * The combat on the session page (MR-013, E6-01 to E6-16): it picks the
@@ -684,12 +697,38 @@ export class CombatView {
     if (!e || !this.isMaster()) {
       return '';
     }
-    return (
+    const other =
       revealBarText(e) ||
-      barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '') ||
-      windowsBarText(e)
-    );
+      barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '');
+    if (other) {
+      return other;
+    }
+    const left = this.autoLeft();
+    const soonest = Math.min(...Object.values(left));
+    const text = windowsBarText(e);
+    return text && Number.isFinite(soonest)
+      ? `${text} · ${autoPassText(soonest).toLowerCase()}`
+      : text;
   });
+  /** The seconds left of each player's optional reaction the master's screen passes by itself, by window id. */
+  protected readonly autoLeft = computed<Readonly<Record<string, number>>>(() => {
+    const now = this.autoNow();
+    const e = this.encounter();
+    if (!e || !this.isMaster()) {
+      return {};
+    }
+    const left: Record<string, number> = {};
+    for (const w of openWindows(e)) {
+      const s = this.autoClock.secondsLeft(w.id, now);
+      if (s !== null) {
+        left[w.id] = s;
+      }
+    }
+    return left;
+  });
+  private readonly autoClock = new AutoPassClock();
+  private readonly autoNow = signal(Date.now());
+  private autoTimer: ReturnType<typeof setInterval> | undefined;
   /** Why "Próximo turno" waits while questions about hidden creatures are open ("Responda ao pedido abaixo para seguir."). */
   protected readonly waitWhy = computed(() => {
     const e = this.encounter();
@@ -919,6 +958,12 @@ export class CombatView {
   }
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => clearInterval(this.autoTimer));
+    effect(() => {
+      const e = this.encounter();
+      const master = this.isMaster();
+      untracked(() => this.watchAutoPass(master && e ? openWindows(e) : []));
+    });
     effect(() => {
       const e = this.encounter();
       untracked(() => {
@@ -1311,6 +1356,50 @@ export class CombatView {
     const who = this.mover();
     return this.state().moving() && this.moverActs() && who?.placed ? who.id : null;
   });
+
+  /** Starts (or stops) the second-by-second clock of the automatic pass for the windows the master's screen waits on. */
+  private watchAutoPass(windows: readonly ReactionWindow[]): void {
+    const now = Date.now();
+    this.autoClock.sync(windows, now);
+    this.autoNow.set(now);
+    const running = this.autoTimer !== undefined;
+    if (this.autoClock.soonest(now) === null) {
+      clearInterval(this.autoTimer);
+      this.autoTimer = undefined;
+    } else if (!running) {
+      this.autoTimer = setInterval(() => this.tickAutoPass(), AUTO_PASS_TICK_MS);
+    }
+  }
+
+  private tickAutoPass(): void {
+    const now = Date.now();
+    this.autoNow.set(now);
+    const e = this.encounter();
+    if (!e) {
+      return;
+    }
+    for (const id of this.autoClock.due(now)) {
+      void this.sendAutoPass(e.id, id);
+    }
+  }
+
+  /** The same "Deixar passar" the master taps, with a key of its own; a refusal (answered meanwhile) is ignored quietly. */
+  private async sendAutoPass(encounterId: string, windowId: string): Promise<void> {
+    try {
+      const res = await this.api.answerReaction(
+        this.campaignId(),
+        encounterId,
+        windowId,
+        { use: false },
+        autoPassKey(windowId),
+      );
+      this.state().apply(res.encounter);
+    } catch (err) {
+      if (!(err instanceof ConnectError) || RETRYABLE.has(err.code)) {
+        this.autoClock.release(windowId);
+      }
+    }
+  }
 
   private async loadRoster(campaignId: string): Promise<void> {
     try {

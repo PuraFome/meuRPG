@@ -79,6 +79,9 @@ import { FormTag } from '../combatant-tags/form-tag';
 }
 
 .strip {
+  // The containing block of the chips' absolutely placed screen-reader text (combatant-tags' .sr): without it that text
+  // anchors to the page and, at the end of a long order, widens the whole page past the window (rehearsal 5, 1024 px).
+  position: relative;
   display: flex;
   gap: 8px;
   margin: 0;

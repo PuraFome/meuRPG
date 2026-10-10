@@ -31,6 +31,7 @@ import {
   reactionCards,
 } from '../../../../core/combat/reaction-master';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { autoPassText } from '../../../../core/combat/reaction-autopass';
 import { rollText } from '../../../../core/combat/combat-dice';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
@@ -239,6 +240,9 @@ let nextId = 0;
         @if (row.status) {
           <p class="row__status" [id]="uid + row.window.id + '-why'">{{ row.status }}</p>
         }
+        @if (autoLeft()[row.window.id] !== undefined) {
+          <p class="row__status">{{ autoText(autoLeft()[row.window.id]) }}</p>
+        }
         <ng-container *ngTemplateOutlet="slotsTpl; context: { row: row }" />
         <div class="btns">
           <button
@@ -301,6 +305,8 @@ export class ReactionQueue {
   readonly encounter = input.required<Encounter>();
   readonly campaignId = input.required<string>();
   readonly state = input.required<CombatState>();
+  /** The seconds left before a player's optional reaction passes by itself, by window id (the master's screen sends the pass). */
+  readonly autoLeft = input<Readonly<Record<string, number>>>({});
 
   protected readonly uid = `rq-${nextId++}-`;
   protected readonly busy = signal(false);
@@ -340,6 +346,8 @@ export class ReactionQueue {
       }
     });
   }
+
+  protected readonly autoText = autoPassText;
 
   protected singleUseLabel(row: QueueRow): string {
     const slot = this.slotOf(row);

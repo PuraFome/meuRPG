@@ -46,7 +46,19 @@ type BonusAttackTurn struct {
 	FlurryLeft int
 	// Last is the last attack the Attack action made.
 	Last AttackTraits
+	// NoSecondLight says the character carries fewer than two light melee
+	// weapons: the off-hand attack needs a different weapon from the one in
+	// the main hand (two daggers count; the app does not track hands).
+	NoSecondLight bool
 }
+
+// SecondLightWeaponMissing says fewer than two of the attacks are light melee
+// weapons, counting one per carried weapon (two daggers are two).
+func SecondLightWeaponMissing(light int) bool { return light < twoWeaponsCount }
+
+// twoWeaponsCount: two-weapon fighting needs a light melee weapon in each hand (SRD 5.1,
+// "Two-Weapon Fighting"), so two of them carried.
+const twoWeaponsCount = 2
 
 // BonusAttack says whether next may be made now as a bonus action attack, and
 // by which rule. Flurry of Blows comes first (its bonus action is already
@@ -64,7 +76,7 @@ func BonusAttack(turn BonusAttackTurn, next AttackTraits) BonusKind {
 	switch {
 	case turn.Last.MartialArts && next.Unarmed:
 		return BonusMartialArts
-	case turn.Last.Melee && turn.Last.Light && next.Melee && next.Light:
+	case turn.Last.Melee && turn.Last.Light && next.Melee && next.Light && !turn.NoSecondLight:
 		return BonusTwoWeapon
 	}
 	return BonusNone

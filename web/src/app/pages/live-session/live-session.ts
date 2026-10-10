@@ -438,6 +438,7 @@ export class LiveSession {
   protected readonly ownEffects = new OwnEffects({
     campaignId: this.campaignId,
     isMaster: this.isMaster,
+    ownCharacterIds: computed(() => this.vitals().map((v) => v.characterId)),
     encounter: this.combat.encounter,
     tick: computed(() => this.castsTick() + (this.ownVitals()?.revision ?? 0)),
   });
@@ -944,18 +945,29 @@ export class LiveSession {
 
   /** The session's combat, as this person may see it (best effort: the
    * screen keeps the copy it has until the next event or `ready`). */
-  private async loadCombat(generation: number): Promise<void> {
+  private async loadCombat(generation: number, attempt = 0): Promise<void> {
     const ticket = this.combat.beginRead();
     try {
       const encounter = await this.combatApi.get(this.campaignId());
-      if (generation === this.generation && !this.combat.applyRead(ticket, encounter)) {
-        // Dropped for a turn or a move that came while it was out: that read may be older than the event.
-        if (this.combat.patchedSince(ticket)) {
-          void this.loadCombat(generation);
-        }
+      // Dropped for something that replaced the combat while it was out (an event, an answer to a call): that may be
+      // older than what this read was asked for, so read again. Bounded: a busy table never loops.
+      if (
+        generation === this.generation &&
+        !this.combat.applyRead(ticket, encounter) &&
+        this.combat.changedSince(ticket) &&
+        attempt < COMBAT_REREADS
+      ) {
+        void this.loadCombat(generation, attempt + 1);
       }
     } catch {
-      // The stream's next event, or reconnection, reads it again.
+      // One more try a moment later; after that the stream's next event, or reconnection, reads it again.
+      if (generation === this.generation && attempt === 0) {
+        setTimeout(() => {
+          if (generation === this.generation) {
+            void this.loadCombat(generation, COMBAT_REREADS);
+          }
+        }, COMBAT_RETRY_MS);
+      }
     }
   }
 
@@ -1306,6 +1318,12 @@ export class LiveSession {
 }
 
 const MAGE_ARMOR_KEY = 'spell:mage-armor';
+
+/** How many times the combat is read again when a read was dropped for a change that came while it was out. */
+const COMBAT_REREADS = 3;
+
+/** How long the page waits before trying a failed combat read once more, in milliseconds. */
+const COMBAT_RETRY_MS = 1500;
 
 /** The armor class the character's lasting Armadura Arcana gives, the best one; 0 without it. */
 export function mageArmorClassOf(casts: readonly OutsideCast[], characterId: string): number {
