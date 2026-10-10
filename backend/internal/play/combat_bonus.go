@@ -42,9 +42,10 @@ func lastAttack(sheet link.Sheet, c playdb.Combatant) (link.Attack, bool) {
 // action when the action is free; the next attack of the Attack action when
 // Extra Attack leaves one; the next beam of the cantrip the action cast; and
 // otherwise the bonus action, when a bonus action attack rule lets it (Flurry
-// of Blows, Martial Arts, Two-Weapon Fighting). It returns the rule that made
+// of Blows, the Berserker's Frenzy, Martial Arts, Two-Weapon Fighting). frenzy says a
+// frenzied rage that began in an earlier turn is on. It returns the rule that made
 // it a bonus action attack, or the error that says why it cannot be made.
-func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Attack) (combat.BonusKind, error) {
+func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Attack, frenzy bool) (combat.BonusKind, error) {
 	actionUsed := errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
 	last, hasLast := lastAttack(sheet, attacker)
 	if attack.Spell {
@@ -67,7 +68,7 @@ func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Atta
 	kind := combat.BonusAttack(combat.BonusAttackTurn{
 		AttackAction: attacker.ActionUsed && attacker.AttacksMade > 0 && hasLast,
 		FlurryLeft:   int(attacker.BonusAttacksLeft), Last: traitsOf(last),
-		NoSecondLight: combat.SecondLightWeaponMissing(lightMelee(sheet)),
+		NoSecondLight: combat.SecondLightWeaponMissing(lightMelee(sheet)), FrenzyReady: frenzy,
 	}, traitsOf(attack))
 	switch {
 	case kind == combat.BonusFlurry:

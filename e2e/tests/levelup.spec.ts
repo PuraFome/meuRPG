@@ -11,7 +11,9 @@ import { classCard, markMilestoneRPC, passClassStep, tableForLevelUp, toren } fr
 const sheetOf = (campaignId: string, characterId: string) => `/campaigns/${campaignId}/characters/${characterId}`;
 
 /** Clicks the row of a pick list by the name on it. */
-const row = (page: Page, name: string) => page.locator('.row__main, .row').filter({ hasText: name }).first();
+// `label.row`, not `.row`: the "O que muda até aqui" panel has `li.row` rows too (a saving throw that changes), and
+// once the server's preview is in, `.first()` would pick one of them.
+const row = (page: Page, name: string) => page.locator('.row__main, label.row').filter({ hasText: name }).first();
 
 test(
   'Pensantus sobe do Mago 3 para o 4: habilidade, vida média, um truque, duas magias e duas para preparar; o mestre vê "O que mudou"',

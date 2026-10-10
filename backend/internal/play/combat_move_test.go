@@ -147,12 +147,36 @@ func newCave(t *testing.T) *cave {
 // newCaveWith is newCave with Pensantus at the given wizard level and spells.
 func newCaveWith(t *testing.T, wizardLevel int32, spells []string) *cave {
 	t.Helper()
+	return newCaveSubclass(t, wizardLevel, "", spells)
+}
+
+// newCaveOf is newCaveWith with the hero Toren made by toren (the first player's character).
+func newCaveOf(t *testing.T, wizardLevel int32, spells []string, toren func(a *armed) *charactersv1.Character) *cave {
+	t.Helper()
+	return newCaveSubclassOf(t, wizardLevel, "", spells, toren)
+}
+
+// newCaveSubclass is newCaveWith with Pensantus in a wizard subclass ("" for none).
+func newCaveSubclass(t *testing.T, wizardLevel int32, subclass string, spells []string) *cave {
+	t.Helper()
+	return newCaveSubclassOf(t, wizardLevel, subclass, spells, func(a *armed) *charactersv1.Character {
+		return a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, &rulesv1.AbilityScores{Strength: 15, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil) // Strength 16 with the human's +1
+	})
+}
+
+// newCaveSubclassOf is newCaveSubclass with the hero Toren made by toren.
+func newCaveSubclassOf(t *testing.T, wizardLevel int32, subclass string, spells []string, toren func(a *armed) *charactersv1.Character) *cave {
+	t.Helper()
 	a := newArmedWith(t, func(a *armed) {
 		scores := func(str, dex, con, intl int32) *rulesv1.AbilityScores {
 			return &rulesv1.AbilityScores{Strength: str, Dexterity: dex, Constitution: con, Intelligence: intl, Wisdom: 10, Charisma: 8}
 		}
-		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores(15, 13, 14, 10), []string{battleaxe}, nil) // Strength 16 with the human's +1
-		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", wizardLevel, scores(10, 14, 12, 16), nil, []string{fireBolt}, spells, spells)
+		a.toren = toren(a)
+		if subclass == "" {
+			a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", wizardLevel, scores(10, 14, 12, 16), nil, []string{fireBolt}, spells, spells)
+		} else {
+			a.pens = a.ana.castingHero(t, a.campaignID, "Pensantus", classLevel("class:wizard", wizardLevel, subclass), scores(10, 14, 12, 16), []string{fireBolt}, spells, spells, "")
+		}
 		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:halfling", 2,
 			&rulesv1.AbilityScores{Strength: 8, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil, []string{cureWounds})
 	})
@@ -361,6 +385,42 @@ func TestRN21_WallsColumnsAndSqueezesBlockAMove(t *testing.T) {
 	c.mustMove(t, c.master, "Toren", 10, 7)
 	_, err = c.move(t, c.caio, "Toren", 11, 8)
 	wantEncounterBlocked(t, err, reasonMoveBlocked)
+}
+
+// TestTheMoveLogSaysTheMovementSpentNotOnlyTheLine: a walk through an ally on rubble
+// goes 14,1 ft and spends 24,1 ft; the log of the master and of the player both
+// carry the two numbers (the straight line alone was the bug), a plain walk spends
+// what it goes, and the master's free move spends nothing.
+func TestTheMoveLogSaysTheMovementSpentNotOnlyTheLine(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.mustMove(t, c.master, "Escudeiro", 1, 8)
+	c.mustMove(t, c.master, "Toren", 3, 8)
+	if got := lastMove(t, c.log(t, c.master, c.get(t, c.master))); got != nil && got.GetSpentDft() != 0 {
+		t.Errorf("the master's free move logged %d spent, want 0", got.GetSpentDft())
+	}
+
+	// Positive control: a plain walk spends its length.
+	c.mustMove(t, c.caio, "Toren", 3, 9)
+	for _, u := range []*user{c.master, c.caio} {
+		if got := lastMove(t, c.log(t, u, c.get(t, c.master))); got == nil || got.GetDistanceDft() != 50 || got.GetSpentDft() != 50 {
+			t.Errorf("plain walk log = %v, want distance 50 and spent 50", got)
+		}
+	}
+	c.undoLast(t)
+
+	c.mustMove(t, c.master, "Pensantus", 4, 9)
+	c.mustMove(t, c.caio, "Toren", 5, 10)
+	for _, u := range []*user{c.master, c.caio} {
+		got := lastMove(t, c.log(t, u, c.get(t, c.master)))
+		if got == nil || got.GetDistanceDft() != 141 || got.GetSpentDft() != 241 || got.GetMoveDragging() || got.GetMoveCrawling() {
+			t.Errorf("walk through an ally on rubble log = %v, want distance 141, spent 241, no drag, no crawl", got)
+		}
+	}
+	if used := c.who(t, c.caio, "Toren").GetMovementUsedDft(); used != 241 {
+		t.Errorf("the panel's movement used = %d, want 241 (the log's spent)", used)
+	}
 }
 
 // TestRN21_DifficultTerrainAndOtherCreaturesCostMore: rubble costs 5 ft more for

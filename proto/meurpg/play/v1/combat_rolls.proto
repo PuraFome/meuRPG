@@ -287,6 +287,10 @@ message CombatantEffect {
   // The label of the chip and what the state does, in Portuguese.
   string label_pt = 8;
   string effect_pt = 9;
+  // For a rage: the barbarian is in a frenzy (Path of the Berserker, Frenzy), so its chip says
+  // "Em frenesi", a melee weapon attack is a bonus action on each of its later turns, and one
+  // level of exhaustion comes when the rage ends.
+  bool frenzy = 10;
 }
 
 // ConditionSource says where a condition of a combatant comes from and when it

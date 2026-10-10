@@ -1289,6 +1289,10 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	if err := s.keepTrapDamage(ctx, c, cs); err != nil {
 		return err
 	}
+	// A frenzied rage ends with the combat, and leaves its level of exhaustion (SRD 5.1, Berserker).
+	if err := s.endFrenziedRages(ctx, c, cs); err != nil {
+		return err
+	}
 	// What was still to answer about the hidden creatures an area hit goes with the
 	// combat: nothing moves on it any more, so there is nothing to decide.
 	if err := c.q.DeleteHiddenRevealsOfEncounter(ctx, c.enc.ID); err != nil {
@@ -1361,7 +1365,7 @@ func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Que
 	if err != nil {
 		return nil, nil, fmt.Errorf("list the combatants: %w", err)
 	}
-	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), svc: s})
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), svc: s, actorUserID: actorUserID})
 	if err != nil {
 		return nil, nil, err
 	}

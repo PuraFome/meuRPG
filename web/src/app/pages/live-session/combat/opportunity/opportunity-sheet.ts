@@ -2,6 +2,7 @@ import {
   afterNextRender,
   Component,
   computed,
+  DestroyRef,
   effect,
   ElementRef,
   inject,
@@ -25,9 +26,13 @@ import {
   playerQuestion,
   spendText,
 } from '../../../../core/combat/opportunity';
+import { playerAutoPassText, playerSecondsLeft } from '../../../../core/combat/reaction-autopass';
 import { tieNumbers } from '../../../../core/format/text';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { injectSheet } from '../sheet-host';
+
+/** How often the prompt's countdown redraws, in ms. */
+const CLOCK_TICK_MS = 1000;
 
 /** What the page hands the opportunity prompt. */
 export interface OpportunitySheetData {
@@ -67,7 +72,7 @@ export type OpportunityAnswer = {
   selector: 'app-opportunity-sheet',
   imports: [MatButtonModule, MatIconModule, SheetFrame],
   template: `
-    <app-sheet-frame title="Ataque de oportunidade" [subtitle]="subtitle()" icon="swords" [phone]="inSheet" [closable]="false">
+    <app-sheet-frame title="Ataque de oportunidade" [subtitle]="subtitle()" icon="swords" [phone]="inSheet" [closable]="false" [focusableBody]="true">
       @if (error()) {
         <div class="mr-notice mr-notice--danger" role="alert">
           <mat-icon aria-hidden="true">error</mat-icon>
@@ -79,6 +84,7 @@ export type OpportunityAnswer = {
       } @else {
         <p class="what">{{ question() }}</p>
         <p class="small">{{ spend() }}</p>
+        <p class="small" role="status">{{ autoPass() }}</p>
         @if (attacks(); as list) {
           <ul class="weapons" aria-label="Seus ataques corpo a corpo">
             @for (a of list; track a.key) {
@@ -136,6 +142,13 @@ export class OpportunitySheet {
   );
   protected readonly readFailed = signal(false);
   private options: GetTurnOptionsResponse | null = null;
+  /** The master's screen passes the offer after 30 s without an answer, like any optional reaction. */
+  private readonly openedAt = Date.now();
+  private readonly clock = signal(this.openedAt);
+  private readonly clockTimer = setInterval(() => this.clock.set(Date.now()), CLOCK_TICK_MS);
+  protected readonly autoPass = computed(() =>
+    playerAutoPassText(playerSecondsLeft(this.openedAt, this.clock())),
+  );
 
   protected readonly subtitle = computed(() =>
     tieNumbers(`${this.data.offer.moverLabel} · Rodada ${this.data.round}`),
@@ -158,6 +171,7 @@ export class OpportunitySheet {
   );
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => clearInterval(this.clockTimer));
     void this.read();
     // The safe answer has the focus, and its ring: the sheet opens for a keyboard-style answer.
     afterNextRender(

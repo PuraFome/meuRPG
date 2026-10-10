@@ -10,10 +10,14 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Encounter, RollAttackResponse } from "./combat_pb";
+import type { Encounter, OutsideInspirationOffer, RollAttackResponse } from "./combat_pb";
 import { file_meurpg_play_v1_combat } from "./combat_pb";
+import type { RollGroupCheckResponse } from "./contests_pb";
+import { file_meurpg_play_v1_contests } from "./contests_pb";
 import type { CharacterVitals } from "./play_pb";
 import { file_meurpg_play_v1_play } from "./play_pb";
+import type { RollSceneCheckResponse } from "./scene_pb";
+import { file_meurpg_play_v1_scene } from "./scene_pb";
 import type { HitDice } from "../../rules/v1/rules_pb";
 import { file_meurpg_rules_v1_rules } from "../../rules/v1/rules_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -22,7 +26,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/resources.proto.
  */
 export const file_meurpg_play_v1_resources: GenFile = /*@__PURE__*/
-  fileDesc("Ch5tZXVycGcvcGxheS92MS9yZXNvdXJjZXMucHJvdG8SDm1ldXJwZy5wbGF5LnYxImsKD1Jlc291cmNlQmxvY2tlZBI1CgZyZWFzb24YASABKA4yJS5tZXVycGcucGxheS52MS5SZXNvdXJjZUJsb2NrZWRSZWFzb24SDgoGbmVlZGVkGAIgASgFEhEKCWF2YWlsYWJsZRgDIAEoBSJUChVHZXRSZXN0UHJldmlld1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSJgoEa2luZBgCIAEoDjIYLm1ldXJwZy5wbGF5LnYxLlJlc3RLaW5kImoKFkdldFJlc3RQcmV2aWV3UmVzcG9uc2USLwoKY2hhcmFjdGVycxgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlJlc3RQcmV2aWV3Eh8KF2xvbmdfcmVzdF9hbHJlYWR5X3Rha2VuGAIgASgIIr8DCgtSZXN0UHJldmlldxIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIzCglyZXNvdXJjZXMYAyADKAsyIC5tZXVycGcucGxheS52MS5SZXN0UmVzb3VyY2VCYWNrEhIKCm5vX2JlbmVmaXQYBCABKAgSGgoSaGl0X3BvaW50c19jdXJyZW50GAUgASgFEhYKDmhpdF9wb2ludHNfbWF4GAYgASgFEiEKGXRlbXBvcmFyeV9oaXRfcG9pbnRzX2xvc3QYByABKAUSMAoOaGl0X2RpY2Vfc3BlbnQYCCADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIvCg1oaXRfZGljZV9iYWNrGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USGwoTaGl0X2RpY2VfYmFja19saW1pdBgKIAEoBRI3ChBzcGVsbF9zbG90c19iYWNrGAsgAygLMh0ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90QmFjaxIXCg9wYWN0X3Nsb3RzX2JhY2sYDCABKAUSGgoSY3JlYXRlZF9zbG90c19sb3N0GA0gASgFIk4KEFJlc3RSZXNvdXJjZUJhY2sSCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDQoFc3BlbnQYAyABKAUSDQoFdG90YWwYBCABKAUiLQoNU3BlbGxTbG90QmFjaxINCgVsZXZlbBgBIAEoBRINCgVjb3VudBgCIAEoBSK/AQoPVGFrZVJlc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEiYKBGtpbmQYAiABKA4yGC5tZXVycGcucGxheS52MS5SZXN0S2luZBIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSNwoQaGl0X2RpY2VfY2hvaWNlcxgEIAMoCzIdLm1ldXJwZy5wbGF5LnYxLkhpdERpY2VDaG9pY2USHQoVd2l0aG91dF9mb29kX29yX2RyaW5rGGQgASgIIk0KDUhpdERpY2VDaG9pY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEiYKBGRpY2UYAiADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZSJDChBUYWtlUmVzdFJlc3BvbnNlEi8KBnZpdGFscxgBIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyKdAQoTU3BlbmRIaXREaWNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDQoFZmFjZXMYAyABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASFAoKdHlwZWRfZmFjZRgGIAEoBUgAQgYKBHJvbGwihAEKFFNwZW5kSGl0RGljZVJlc3BvbnNlEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRmYWNlGAIgASgFEh0KFWNvbnN0aXR1dGlvbl9tb2RpZmllchgDIAEoBRIOCgZoZWFsZWQYBCABKAUiywEKFFVzZUxheU9uSGFuZHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRIRCgl0YXJnZXRfaWQYBCABKAkSEAoGYW1vdW50GAUgASgFSAASLgoEY3VyZRgGIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkxheU9uSGFuZHNDdXJlSAASFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJQggKBmVmZmVjdCKhAQoVVXNlTGF5T25IYW5kc1Jlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchINCgVzcGVudBgCIAEoBRIRCglwb29sX2xlZnQYAyABKAUSEwoGaGVhbGVkGAQgASgFSACIAQESGAoQbm90aGluZ19oYXBwZW5lZBgFIAEoCEIJCgdfaGVhbGVkIoIBChZDcmVhdGVTcGVsbFNsb3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRISCgpzbG90X2xldmVsGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKGAQoXQ3JlYXRlU3BlbGxTbG90UmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRjb3N0GAMgASgFIoMBChdDb252ZXJ0U3BlbGxTbG90UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEAoIYWN0b3JfaWQYAyABKAkSEgoKc2xvdF9sZXZlbBgEIAEoBRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkihwEKGENvbnZlcnRTcGVsbFNsb3RSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISLwoGdml0YWxzGAIgASgLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEgwKBGdhaW4YAyABKAUihwEKHEdpdmVCYXJkaWNJbnNwaXJhdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhAKCGFjdG9yX2lkGAMgASgJEhEKCXRhcmdldF9pZBgEIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkifgodR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyK3AQoeQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIPCgdob2xkX2lkGAMgASgJEgsKA3VzZRgEIAEoCBIVCgtyb2xsX2luX2FwcBgFIAEoCEgAEhQKCnR5cGVkX2ZhY2UYBiABKAVIABIXCg9pZGVtcG90ZW5jeV9rZXkYByABKAlCBgoEcm9sbCJVCh9BbnN3ZXJCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEjIKBmF0dGFjaxgBIAEoCzIiLm1ldXJwZy5wbGF5LnYxLlJvbGxBdHRhY2tSZXNwb25zZSq1BAoVUmVzb3VyY2VCbG9ja2VkUmVhc29uEicKI1JFU09VUkNFX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASJwojUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fQ09NQkFUX09QRU4QARIsCihSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT19ISVRfRElDRV9MRUZUEAISLQopUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9UX0VOT1VHSF9QT0lOVFMQAxIvCitSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9TTE9UX0xFVkVMX1RPT19ISUdIEAQSKAokUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9fRlJFRV9TTE9UEAUSLworUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU09SQ0VSWV9QT0lOVFNfRlVMTBAGEi8KK1JFU09VUkNFX0JMT0NLRURfUkVBU09OX1NPUkNFUllfUE9JTlRTX09WRVIQBxIoCiRSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT19VU0VTX0xFRlQQCBIqCiZSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9UQVJHRVRfUkVGVVNFRBAJEikKJVJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PVF9BVkFJTEFCTEUQChIvCitSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9JTlNQSVJBVElPTl9QRU5ESU5HEAsqTgoIUmVzdEtpbmQSGQoVUkVTVF9LSU5EX1VOU1BFQ0lGSUVEEAASEwoPUkVTVF9LSU5EX1NIT1JUEAESEgoOUkVTVF9LSU5EX0xPTkcQAipwCg5MYXlPbkhhbmRzQ3VyZRIhCh1MQVlfT05fSEFORFNfQ1VSRV9VTlNQRUNJRklFRBAAEh0KGUxBWV9PTl9IQU5EU19DVVJFX0RJU0VBU0UQARIcChhMQVlfT05fSEFORFNfQ1VSRV9QT0lTT04QAjK8BgoPUmVzb3VyY2VTZXJ2aWNlEmQKDkdldFJlc3RQcmV2aWV3EiUubWV1cnBnLnBsYXkudjEuR2V0UmVzdFByZXZpZXdSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0UmVzdFByZXZpZXdSZXNwb25zZSIDkAICEk0KCFRha2VSZXN0Eh8ubWV1cnBnLnBsYXkudjEuVGFrZVJlc3RSZXF1ZXN0GiAubWV1cnBnLnBsYXkudjEuVGFrZVJlc3RSZXNwb25zZRJZCgxTcGVuZEhpdERpY2USIy5tZXVycGcucGxheS52MS5TcGVuZEhpdERpY2VSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuU3BlbmRIaXREaWNlUmVzcG9uc2USXAoNVXNlTGF5T25IYW5kcxIkLm1ldXJwZy5wbGF5LnYxLlVzZUxheU9uSGFuZHNSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuVXNlTGF5T25IYW5kc1Jlc3BvbnNlEmIKD0NyZWF0ZVNwZWxsU2xvdBImLm1ldXJwZy5wbGF5LnYxLkNyZWF0ZVNwZWxsU2xvdFJlcXVlc3QaJy5tZXVycGcucGxheS52MS5DcmVhdGVTcGVsbFNsb3RSZXNwb25zZRJlChBDb252ZXJ0U3BlbGxTbG90EicubWV1cnBnLnBsYXkudjEuQ29udmVydFNwZWxsU2xvdFJlcXVlc3QaKC5tZXVycGcucGxheS52MS5Db252ZXJ0U3BlbGxTbG90UmVzcG9uc2USdAoVR2l2ZUJhcmRpY0luc3BpcmF0aW9uEiwubWV1cnBnLnBsYXkudjEuR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkdpdmVCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEnoKF0Fuc3dlckJhcmRpY0luc3BpcmF0aW9uEi4ubWV1cnBnLnBsYXkudjEuQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0Gi8ubWV1cnBnLnBsYXkudjEuQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXNwb25zZUK8AQoSY29tLm1ldXJwZy5wbGF5LnYxQg5SZXNvdXJjZXNQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_play_v1_combat, file_meurpg_play_v1_play, file_meurpg_rules_v1_rules]);
+  fileDesc("Ch5tZXVycGcvcGxheS92MS9yZXNvdXJjZXMucHJvdG8SDm1ldXJwZy5wbGF5LnYxImsKD1Jlc291cmNlQmxvY2tlZBI1CgZyZWFzb24YASABKA4yJS5tZXVycGcucGxheS52MS5SZXNvdXJjZUJsb2NrZWRSZWFzb24SDgoGbmVlZGVkGAIgASgFEhEKCWF2YWlsYWJsZRgDIAEoBSJUChVHZXRSZXN0UHJldmlld1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSJgoEa2luZBgCIAEoDjIYLm1ldXJwZy5wbGF5LnYxLlJlc3RLaW5kImoKFkdldFJlc3RQcmV2aWV3UmVzcG9uc2USLwoKY2hhcmFjdGVycxgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlJlc3RQcmV2aWV3Eh8KF2xvbmdfcmVzdF9hbHJlYWR5X3Rha2VuGAIgASgIIr8DCgtSZXN0UHJldmlldxIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIzCglyZXNvdXJjZXMYAyADKAsyIC5tZXVycGcucGxheS52MS5SZXN0UmVzb3VyY2VCYWNrEhIKCm5vX2JlbmVmaXQYBCABKAgSGgoSaGl0X3BvaW50c19jdXJyZW50GAUgASgFEhYKDmhpdF9wb2ludHNfbWF4GAYgASgFEiEKGXRlbXBvcmFyeV9oaXRfcG9pbnRzX2xvc3QYByABKAUSMAoOaGl0X2RpY2Vfc3BlbnQYCCADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIvCg1oaXRfZGljZV9iYWNrGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USGwoTaGl0X2RpY2VfYmFja19saW1pdBgKIAEoBRI3ChBzcGVsbF9zbG90c19iYWNrGAsgAygLMh0ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90QmFjaxIXCg9wYWN0X3Nsb3RzX2JhY2sYDCABKAUSGgoSY3JlYXRlZF9zbG90c19sb3N0GA0gASgFIk4KEFJlc3RSZXNvdXJjZUJhY2sSCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDQoFc3BlbnQYAyABKAUSDQoFdG90YWwYBCABKAUiLQoNU3BlbGxTbG90QmFjaxINCgVsZXZlbBgBIAEoBRINCgVjb3VudBgCIAEoBSK/AQoPVGFrZVJlc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEiYKBGtpbmQYAiABKA4yGC5tZXVycGcucGxheS52MS5SZXN0S2luZBIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSNwoQaGl0X2RpY2VfY2hvaWNlcxgEIAMoCzIdLm1ldXJwZy5wbGF5LnYxLkhpdERpY2VDaG9pY2USHQoVd2l0aG91dF9mb29kX29yX2RyaW5rGGQgASgIIk0KDUhpdERpY2VDaG9pY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEiYKBGRpY2UYAiADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZSJDChBUYWtlUmVzdFJlc3BvbnNlEi8KBnZpdGFscxgBIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyKdAQoTU3BlbmRIaXREaWNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDQoFZmFjZXMYAyABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASFAoKdHlwZWRfZmFjZRgGIAEoBUgAQgYKBHJvbGwihAEKFFNwZW5kSGl0RGljZVJlc3BvbnNlEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRmYWNlGAIgASgFEh0KFWNvbnN0aXR1dGlvbl9tb2RpZmllchgDIAEoBRIOCgZoZWFsZWQYBCABKAUijAEKGFVzZUFyY2FuZVJlY292ZXJ5UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSLAoFc2xvdHMYAyADKAsyHS5tZXVycGcucGxheS52MS5TcGVsbFNsb3RCYWNrEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJmChlVc2VBcmNhbmVSZWNvdmVyeVJlc3BvbnNlEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIYChByZWNvdmVyZWRfbGV2ZWxzGAIgASgFIssBChRVc2VMYXlPbkhhbmRzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEAoIYWN0b3JfaWQYAyABKAkSEQoJdGFyZ2V0X2lkGAQgASgJEhAKBmFtb3VudBgFIAEoBUgAEi4KBGN1cmUYBiABKA4yHi5tZXVycGcucGxheS52MS5MYXlPbkhhbmRzQ3VyZUgAEhcKD2lkZW1wb3RlbmN5X2tleRgHIAEoCUIICgZlZmZlY3QioQEKFVVzZUxheU9uSGFuZHNSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISDQoFc3BlbnQYAiABKAUSEQoJcG9vbF9sZWZ0GAMgASgFEhMKBmhlYWxlZBgEIAEoBUgAiAEBEhgKEG5vdGhpbmdfaGFwcGVuZWQYBSABKAhCCQoHX2hlYWxlZCKCAQoWQ3JlYXRlU3BlbGxTbG90UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEAoIYWN0b3JfaWQYAyABKAkSEgoKc2xvdF9sZXZlbBgEIAEoBRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkihgEKF0NyZWF0ZVNwZWxsU2xvdFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIvCgZ2aXRhbHMYAiABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSDAoEY29zdBgDIAEoBSKDAQoXQ29udmVydFNwZWxsU2xvdFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhAKCGFjdG9yX2lkGAMgASgJEhIKCnNsb3RfbGV2ZWwYBCABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIocBChhDb252ZXJ0U3BlbGxTbG90UmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRnYWluGAMgASgFIocBChxHaXZlQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRIRCgl0YXJnZXRfaWQYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJIn4KHUdpdmVCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchIvCgZ2aXRhbHMYAiABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMitwEKHkFuc3dlckJhcmRpY0luc3BpcmF0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSDwoHaG9sZF9pZBgDIAEoCRILCgN1c2UYBCABKAgSFQoLcm9sbF9pbl9hcHAYBSABKAhIABIUCgp0eXBlZF9mYWNlGAYgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJQgYKBHJvbGwiVQofQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXNwb25zZRIyCgZhdHRhY2sYASABKAsyIi5tZXVycGcucGxheS52MS5Sb2xsQXR0YWNrUmVzcG9uc2UiMwocR2V0T3V0c2lkZUluc3BpcmF0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJ9ChVPdXRzaWRlSW5zcGlyYXRpb25EaWUSFAoMY2hhcmFjdGVyX2lkGAEgASgJEhYKDmNoYXJhY3Rlcl9uYW1lGAIgASgJEg0KBXNpZGVzGAMgASgFEhEKCWZyb21fbmFtZRgEIAEoCRIUCgxzZWNvbmRzX2xlZnQYBSABKAUiWQoXQmFyZGljSW5zcGlyYXRpb25UYXJnZXQSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSGgoSZGlzYWJsZWRfcmVhc29uX3B0GAMgASgJItYCCh1HZXRPdXRzaWRlSW5zcGlyYXRpb25SZXNwb25zZRIzCgRtaW5lGAEgASgLMiUubWV1cnBnLnBsYXkudjEuT3V0c2lkZUluc3BpcmF0aW9uRGllEg8KB2lzX2JhcmQYAiABKAgSDQoFc2lkZXMYAyABKAUSEQoJdXNlc19sZWZ0GAQgASgFEhAKCHVzZXNfbWF4GAUgASgFEjgKB3RhcmdldHMYBiADKAsyJy5tZXVycGcucGxheS52MS5CYXJkaWNJbnNwaXJhdGlvblRhcmdldBIzCgRoZWxkGAcgAygLMiUubWV1cnBnLnBsYXkudjEuT3V0c2lkZUluc3BpcmF0aW9uRGllEjcKBm9mZmVycxgIIAMoCzInLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVJbnNwaXJhdGlvbk9mZmVyEhMKC2NvbWJhdF9vcGVuGAkgASgIInAKI0dpdmVCYXJkaWNJbnNwaXJhdGlvbk91dHNpZGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhsKE3RhcmdldF9jaGFyYWN0ZXJfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIosBCiRHaXZlQmFyZGljSW5zcGlyYXRpb25PdXRzaWRlUmVzcG9uc2USLwoGdml0YWxzGAEgASgLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEjIKA2RpZRgCIAEoCzIlLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVJbnNwaXJhdGlvbkRpZSKiAQofQW5zd2VyT3V0c2lkZUluc3BpcmF0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgdob2xkX2lkGAIgASgJEgsKA3VzZRgDIAEoCBIVCgtyb2xsX2luX2FwcBgEIAEoCEgAEhQKCnR5cGVkX2ZhY2UYBSABKAVIABIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAlCBgoEcm9sbCKqAQogQW5zd2VyT3V0c2lkZUluc3BpcmF0aW9uUmVzcG9uc2USPQoLc2NlbmVfY2hlY2sYASABKAsyJi5tZXVycGcucGxheS52MS5Sb2xsU2NlbmVDaGVja1Jlc3BvbnNlSAASPQoLZ3JvdXBfY2hlY2sYAiABKAsyJi5tZXVycGcucGxheS52MS5Sb2xsR3JvdXBDaGVja1Jlc3BvbnNlSABCCAoGcmVzdWx0KrsFChVSZXNvdXJjZUJsb2NrZWRSZWFzb24SJwojUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABInCiNSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9DT01CQVRfT1BFThABEiwKKFJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PX0hJVF9ESUNFX0xFRlQQAhItCilSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT1RfRU5PVUdIX1BPSU5UUxADEi8KK1JFU09VUkNFX0JMT0NLRURfUkVBU09OX1NMT1RfTEVWRUxfVE9PX0hJR0gQBBIoCiRSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT19GUkVFX1NMT1QQBRIvCitSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9TT1JDRVJZX1BPSU5UU19GVUxMEAYSLworUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU09SQ0VSWV9QT0lOVFNfT1ZFUhAHEigKJFJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PX1VTRVNfTEVGVBAIEioKJlJFU09VUkNFX0JMT0NLRURfUkVBU09OX1RBUkdFVF9SRUZVU0VEEAkSKQolUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9UX0FWQUlMQUJMRRAKEi8KK1JFU09VUkNFX0JMT0NLRURfUkVBU09OX0lOU1BJUkFUSU9OX1BFTkRJTkcQCxIpCiVSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT19TSE9SVF9SRVNUEAwSLQopUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU0xPVF9OT1RfRVhQRU5ERUQQDRIqCiZSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9PVkVSX0FMTE9XQU5DRRAOKk4KCFJlc3RLaW5kEhkKFVJFU1RfS0lORF9VTlNQRUNJRklFRBAAEhMKD1JFU1RfS0lORF9TSE9SVBABEhIKDlJFU1RfS0lORF9MT05HEAIqcAoOTGF5T25IYW5kc0N1cmUSIQodTEFZX09OX0hBTkRTX0NVUkVfVU5TUEVDSUZJRUQQABIdChlMQVlfT05fSEFORFNfQ1VSRV9ESVNFQVNFEAESHAoYTEFZX09OX0hBTkRTX0NVUkVfUE9JU09OEAIypwoKD1Jlc291cmNlU2VydmljZRJkCg5HZXRSZXN0UHJldmlldxIlLm1ldXJwZy5wbGF5LnYxLkdldFJlc3RQcmV2aWV3UmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkdldFJlc3RQcmV2aWV3UmVzcG9uc2UiA5ACAhJNCghUYWtlUmVzdBIfLm1ldXJwZy5wbGF5LnYxLlRha2VSZXN0UmVxdWVzdBogLm1ldXJwZy5wbGF5LnYxLlRha2VSZXN0UmVzcG9uc2USWQoMU3BlbmRIaXREaWNlEiMubWV1cnBnLnBsYXkudjEuU3BlbmRIaXREaWNlUmVxdWVzdBokLm1ldXJwZy5wbGF5LnYxLlNwZW5kSGl0RGljZVJlc3BvbnNlEmgKEVVzZUFyY2FuZVJlY292ZXJ5EigubWV1cnBnLnBsYXkudjEuVXNlQXJjYW5lUmVjb3ZlcnlSZXF1ZXN0GikubWV1cnBnLnBsYXkudjEuVXNlQXJjYW5lUmVjb3ZlcnlSZXNwb25zZRJcCg1Vc2VMYXlPbkhhbmRzEiQubWV1cnBnLnBsYXkudjEuVXNlTGF5T25IYW5kc1JlcXVlc3QaJS5tZXVycGcucGxheS52MS5Vc2VMYXlPbkhhbmRzUmVzcG9uc2USYgoPQ3JlYXRlU3BlbGxTbG90EiYubWV1cnBnLnBsYXkudjEuQ3JlYXRlU3BlbGxTbG90UmVxdWVzdBonLm1ldXJwZy5wbGF5LnYxLkNyZWF0ZVNwZWxsU2xvdFJlc3BvbnNlEmUKEENvbnZlcnRTcGVsbFNsb3QSJy5tZXVycGcucGxheS52MS5Db252ZXJ0U3BlbGxTbG90UmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLkNvbnZlcnRTcGVsbFNsb3RSZXNwb25zZRJ0ChVHaXZlQmFyZGljSW5zcGlyYXRpb24SLC5tZXVycGcucGxheS52MS5HaXZlQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0Gi0ubWV1cnBnLnBsYXkudjEuR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVzcG9uc2USegoXQW5zd2VyQmFyZGljSW5zcGlyYXRpb24SLi5tZXVycGcucGxheS52MS5BbnN3ZXJCYXJkaWNJbnNwaXJhdGlvblJlcXVlc3QaLy5tZXVycGcucGxheS52MS5BbnN3ZXJCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEnQKFUdldE91dHNpZGVJbnNwaXJhdGlvbhIsLm1ldXJwZy5wbGF5LnYxLkdldE91dHNpZGVJbnNwaXJhdGlvblJlcXVlc3QaLS5tZXVycGcucGxheS52MS5HZXRPdXRzaWRlSW5zcGlyYXRpb25SZXNwb25zZRKJAQocR2l2ZUJhcmRpY0luc3BpcmF0aW9uT3V0c2lkZRIzLm1ldXJwZy5wbGF5LnYxLkdpdmVCYXJkaWNJbnNwaXJhdGlvbk91dHNpZGVSZXF1ZXN0GjQubWV1cnBnLnBsYXkudjEuR2l2ZUJhcmRpY0luc3BpcmF0aW9uT3V0c2lkZVJlc3BvbnNlEn0KGEFuc3dlck91dHNpZGVJbnNwaXJhdGlvbhIvLm1ldXJwZy5wbGF5LnYxLkFuc3dlck91dHNpZGVJbnNwaXJhdGlvblJlcXVlc3QaMC5tZXVycGcucGxheS52MS5BbnN3ZXJPdXRzaWRlSW5zcGlyYXRpb25SZXNwb25zZUK8AQoSY29tLm1ldXJwZy5wbGF5LnYxQg5SZXNvdXJjZXNQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_play_v1_combat, file_meurpg_play_v1_contests, file_meurpg_play_v1_play, file_meurpg_play_v1_scene, file_meurpg_rules_v1_rules]);
 
 /**
  * ResourceBlocked is the detail of a refusal that comes from a rule.
@@ -434,6 +438,64 @@ export const SpendHitDiceResponseSchema: GenMessage<SpendHitDiceResponse> = /*@_
   messageDesc(file_meurpg_play_v1_resources, 10);
 
 /**
+ * @generated from message meurpg.play.v1.UseArcaneRecoveryRequest
+ */
+export type UseArcaneRecoveryRequest = Message<"meurpg.play.v1.UseArcaneRecoveryRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string character_id = 2;
+   */
+  characterId: string;
+
+  /**
+   * The slots to recover: how many of each spell level, one entry per level.
+   *
+   * @generated from field: repeated meurpg.play.v1.SpellSlotBack slots = 3;
+   */
+  slots: SpellSlotBack[];
+
+  /**
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.UseArcaneRecoveryRequest.
+ * Use `create(UseArcaneRecoveryRequestSchema)` to create a new message.
+ */
+export const UseArcaneRecoveryRequestSchema: GenMessage<UseArcaneRecoveryRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 11);
+
+/**
+ * @generated from message meurpg.play.v1.UseArcaneRecoveryResponse
+ */
+export type UseArcaneRecoveryResponse = Message<"meurpg.play.v1.UseArcaneRecoveryResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.CharacterVitals vitals = 1;
+   */
+  vitals?: CharacterVitals | undefined;
+
+  /**
+   * The combined level recovered.
+   *
+   * @generated from field: int32 recovered_levels = 2;
+   */
+  recoveredLevels: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.UseArcaneRecoveryResponse.
+ * Use `create(UseArcaneRecoveryResponseSchema)` to create a new message.
+ */
+export const UseArcaneRecoveryResponseSchema: GenMessage<UseArcaneRecoveryResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 12);
+
+/**
  * @generated from message meurpg.play.v1.UseLayOnHandsRequest
  */
 export type UseLayOnHandsRequest = Message<"meurpg.play.v1.UseLayOnHandsRequest"> & {
@@ -493,7 +555,7 @@ export type UseLayOnHandsRequest = Message<"meurpg.play.v1.UseLayOnHandsRequest"
  * Use `create(UseLayOnHandsRequestSchema)` to create a new message.
  */
 export const UseLayOnHandsRequestSchema: GenMessage<UseLayOnHandsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 11);
+  messageDesc(file_meurpg_play_v1_resources, 13);
 
 /**
  * @generated from message meurpg.play.v1.UseLayOnHandsResponse
@@ -539,7 +601,7 @@ export type UseLayOnHandsResponse = Message<"meurpg.play.v1.UseLayOnHandsRespons
  * Use `create(UseLayOnHandsResponseSchema)` to create a new message.
  */
 export const UseLayOnHandsResponseSchema: GenMessage<UseLayOnHandsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 12);
+  messageDesc(file_meurpg_play_v1_resources, 14);
 
 /**
  * @generated from message meurpg.play.v1.CreateSpellSlotRequest
@@ -578,7 +640,7 @@ export type CreateSpellSlotRequest = Message<"meurpg.play.v1.CreateSpellSlotRequ
  * Use `create(CreateSpellSlotRequestSchema)` to create a new message.
  */
 export const CreateSpellSlotRequestSchema: GenMessage<CreateSpellSlotRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 13);
+  messageDesc(file_meurpg_play_v1_resources, 15);
 
 /**
  * @generated from message meurpg.play.v1.CreateSpellSlotResponse
@@ -607,7 +669,7 @@ export type CreateSpellSlotResponse = Message<"meurpg.play.v1.CreateSpellSlotRes
  * Use `create(CreateSpellSlotResponseSchema)` to create a new message.
  */
 export const CreateSpellSlotResponseSchema: GenMessage<CreateSpellSlotResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 14);
+  messageDesc(file_meurpg_play_v1_resources, 16);
 
 /**
  * @generated from message meurpg.play.v1.ConvertSpellSlotRequest
@@ -646,7 +708,7 @@ export type ConvertSpellSlotRequest = Message<"meurpg.play.v1.ConvertSpellSlotRe
  * Use `create(ConvertSpellSlotRequestSchema)` to create a new message.
  */
 export const ConvertSpellSlotRequestSchema: GenMessage<ConvertSpellSlotRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 15);
+  messageDesc(file_meurpg_play_v1_resources, 17);
 
 /**
  * @generated from message meurpg.play.v1.ConvertSpellSlotResponse
@@ -675,7 +737,7 @@ export type ConvertSpellSlotResponse = Message<"meurpg.play.v1.ConvertSpellSlotR
  * Use `create(ConvertSpellSlotResponseSchema)` to create a new message.
  */
 export const ConvertSpellSlotResponseSchema: GenMessage<ConvertSpellSlotResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 16);
+  messageDesc(file_meurpg_play_v1_resources, 18);
 
 /**
  * @generated from message meurpg.play.v1.GiveBardicInspirationRequest
@@ -716,7 +778,7 @@ export type GiveBardicInspirationRequest = Message<"meurpg.play.v1.GiveBardicIns
  * Use `create(GiveBardicInspirationRequestSchema)` to create a new message.
  */
 export const GiveBardicInspirationRequestSchema: GenMessage<GiveBardicInspirationRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 17);
+  messageDesc(file_meurpg_play_v1_resources, 19);
 
 /**
  * @generated from message meurpg.play.v1.GiveBardicInspirationResponse
@@ -738,7 +800,7 @@ export type GiveBardicInspirationResponse = Message<"meurpg.play.v1.GiveBardicIn
  * Use `create(GiveBardicInspirationResponseSchema)` to create a new message.
  */
 export const GiveBardicInspirationResponseSchema: GenMessage<GiveBardicInspirationResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 18);
+  messageDesc(file_meurpg_play_v1_resources, 20);
 
 /**
  * @generated from message meurpg.play.v1.AnswerBardicInspirationRequest
@@ -800,7 +862,7 @@ export type AnswerBardicInspirationRequest = Message<"meurpg.play.v1.AnswerBardi
  * Use `create(AnswerBardicInspirationRequestSchema)` to create a new message.
  */
 export const AnswerBardicInspirationRequestSchema: GenMessage<AnswerBardicInspirationRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 19);
+  messageDesc(file_meurpg_play_v1_resources, 21);
 
 /**
  * @generated from message meurpg.play.v1.AnswerBardicInspirationResponse
@@ -819,7 +881,304 @@ export type AnswerBardicInspirationResponse = Message<"meurpg.play.v1.AnswerBard
  * Use `create(AnswerBardicInspirationResponseSchema)` to create a new message.
  */
 export const AnswerBardicInspirationResponseSchema: GenMessage<AnswerBardicInspirationResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_resources, 20);
+  messageDesc(file_meurpg_play_v1_resources, 22);
+
+/**
+ * @generated from message meurpg.play.v1.GetOutsideInspirationRequest
+ */
+export type GetOutsideInspirationRequest = Message<"meurpg.play.v1.GetOutsideInspirationRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GetOutsideInspirationRequest.
+ * Use `create(GetOutsideInspirationRequestSchema)` to create a new message.
+ */
+export const GetOutsideInspirationRequestSchema: GenMessage<GetOutsideInspirationRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 23);
+
+/**
+ * OutsideInspirationDie is a die a character holds out of a combat.
+ *
+ * @generated from message meurpg.play.v1.OutsideInspirationDie
+ */
+export type OutsideInspirationDie = Message<"meurpg.play.v1.OutsideInspirationDie"> & {
+  /**
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: string character_name = 2;
+   */
+  characterName: string;
+
+  /**
+   * @generated from field: int32 sides = 3;
+   */
+  sides: number;
+
+  /**
+   * The bard that gave it, by name.
+   *
+   * @generated from field: string from_name = 4;
+   */
+  fromName: string;
+
+  /**
+   * The game time the die has left, in seconds (it only moves when the master moves game
+   * time).
+   *
+   * @generated from field: int32 seconds_left = 5;
+   */
+  secondsLeft: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.OutsideInspirationDie.
+ * Use `create(OutsideInspirationDieSchema)` to create a new message.
+ */
+export const OutsideInspirationDieSchema: GenMessage<OutsideInspirationDie> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 24);
+
+/**
+ * BardicInspirationTarget is a character the bard may give the die to.
+ *
+ * @generated from message meurpg.play.v1.BardicInspirationTarget
+ */
+export type BardicInspirationTarget = Message<"meurpg.play.v1.BardicInspirationTarget"> & {
+  /**
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * Why the die cannot go to this character, in Portuguese; empty when it can.
+   *
+   * @generated from field: string disabled_reason_pt = 3;
+   */
+  disabledReasonPt: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.BardicInspirationTarget.
+ * Use `create(BardicInspirationTargetSchema)` to create a new message.
+ */
+export const BardicInspirationTargetSchema: GenMessage<BardicInspirationTarget> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 25);
+
+/**
+ * @generated from message meurpg.play.v1.GetOutsideInspirationResponse
+ */
+export type GetOutsideInspirationResponse = Message<"meurpg.play.v1.GetOutsideInspirationResponse"> & {
+  /**
+   * The caller's own character's die, unset when it holds none. The master gets none here.
+   *
+   * @generated from field: meurpg.play.v1.OutsideInspirationDie mine = 1;
+   */
+  mine?: OutsideInspirationDie | undefined;
+
+  /**
+   * The caller is a bard: the die they give, the uses left and the most, and the party.
+   *
+   * @generated from field: bool is_bard = 2;
+   */
+  isBard: boolean;
+
+  /**
+   * @generated from field: int32 sides = 3;
+   */
+  sides: number;
+
+  /**
+   * @generated from field: int32 uses_left = 4;
+   */
+  usesLeft: number;
+
+  /**
+   * @generated from field: int32 uses_max = 5;
+   */
+  usesMax: number;
+
+  /**
+   * @generated from field: repeated meurpg.play.v1.BardicInspirationTarget targets = 6;
+   */
+  targets: BardicInspirationTarget[];
+
+  /**
+   * The master reads every die held.
+   *
+   * @generated from field: repeated meurpg.play.v1.OutsideInspirationDie held = 7;
+   */
+  held: OutsideInspirationDie[];
+
+  /**
+   * The caller's rolls that wait for an answer about the die.
+   *
+   * @generated from field: repeated meurpg.play.v1.OutsideInspirationOffer offers = 8;
+   */
+  offers: OutsideInspirationOffer[];
+
+  /**
+   * A combat is open: the bard gives in it.
+   *
+   * @generated from field: bool combat_open = 9;
+   */
+  combatOpen: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GetOutsideInspirationResponse.
+ * Use `create(GetOutsideInspirationResponseSchema)` to create a new message.
+ */
+export const GetOutsideInspirationResponseSchema: GenMessage<GetOutsideInspirationResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 26);
+
+/**
+ * @generated from message meurpg.play.v1.GiveBardicInspirationOutsideRequest
+ */
+export type GiveBardicInspirationOutsideRequest = Message<"meurpg.play.v1.GiveBardicInspirationOutsideRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The character that gets the die (a UUID).
+   *
+   * @generated from field: string target_character_id = 2;
+   */
+  targetCharacterId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 3;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GiveBardicInspirationOutsideRequest.
+ * Use `create(GiveBardicInspirationOutsideRequestSchema)` to create a new message.
+ */
+export const GiveBardicInspirationOutsideRequestSchema: GenMessage<GiveBardicInspirationOutsideRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 27);
+
+/**
+ * @generated from message meurpg.play.v1.GiveBardicInspirationOutsideResponse
+ */
+export type GiveBardicInspirationOutsideResponse = Message<"meurpg.play.v1.GiveBardicInspirationOutsideResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.CharacterVitals vitals = 1;
+   */
+  vitals?: CharacterVitals | undefined;
+
+  /**
+   * @generated from field: meurpg.play.v1.OutsideInspirationDie die = 2;
+   */
+  die?: OutsideInspirationDie | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GiveBardicInspirationOutsideResponse.
+ * Use `create(GiveBardicInspirationOutsideResponseSchema)` to create a new message.
+ */
+export const GiveBardicInspirationOutsideResponseSchema: GenMessage<GiveBardicInspirationOutsideResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 28);
+
+/**
+ * @generated from message meurpg.play.v1.AnswerOutsideInspirationRequest
+ */
+export type AnswerOutsideInspirationRequest = Message<"meurpg.play.v1.AnswerOutsideInspirationRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The held roll (a UUID), from the offer.
+   *
+   * @generated from field: string hold_id = 2;
+   */
+  holdId: string;
+
+  /**
+   * True: roll the die and add it to the total. False: keep the die.
+   *
+   * @generated from field: bool use = 3;
+   */
+  use: boolean;
+
+  /**
+   * How the die comes when `use` is true (RN-18): the app rolls it, or the player typed the
+   * face. Required then.
+   *
+   * @generated from oneof meurpg.play.v1.AnswerOutsideInspirationRequest.roll
+   */
+  roll: {
+    /**
+     * @generated from field: bool roll_in_app = 4;
+     */
+    value: boolean;
+    case: "rollInApp";
+  } | {
+    /**
+     * @generated from field: int32 typed_face = 5;
+     */
+    value: number;
+    case: "typedFace";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * @generated from field: string idempotency_key = 6;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.AnswerOutsideInspirationRequest.
+ * Use `create(AnswerOutsideInspirationRequestSchema)` to create a new message.
+ */
+export const AnswerOutsideInspirationRequestSchema: GenMessage<AnswerOutsideInspirationRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 29);
+
+/**
+ * @generated from message meurpg.play.v1.AnswerOutsideInspirationResponse
+ */
+export type AnswerOutsideInspirationResponse = Message<"meurpg.play.v1.AnswerOutsideInspirationResponse"> & {
+  /**
+   * The path of the held roll answers as it does: the scene check or the group check.
+   *
+   * @generated from oneof meurpg.play.v1.AnswerOutsideInspirationResponse.result
+   */
+  result: {
+    /**
+     * @generated from field: meurpg.play.v1.RollSceneCheckResponse scene_check = 1;
+     */
+    value: RollSceneCheckResponse;
+    case: "sceneCheck";
+  } | {
+    /**
+     * @generated from field: meurpg.play.v1.RollGroupCheckResponse group_check = 2;
+     */
+    value: RollGroupCheckResponse;
+    case: "groupCheck";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message meurpg.play.v1.AnswerOutsideInspirationResponse.
+ * Use `create(AnswerOutsideInspirationResponseSchema)` to create a new message.
+ */
+export const AnswerOutsideInspirationResponseSchema: GenMessage<AnswerOutsideInspirationResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 30);
 
 /**
  * ResourceBlockedReason is why a resource call was refused.
@@ -910,6 +1269,27 @@ export enum ResourceBlockedReason {
    * @generated from enum value: RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING = 11;
    */
   INSPIRATION_PENDING = 11,
+
+  /**
+   * UseArcaneRecovery: the latest rest of the open session is not a short rest.
+   *
+   * @generated from enum value: RESOURCE_BLOCKED_REASON_NO_SHORT_REST = 12;
+   */
+  NO_SHORT_REST = 12,
+
+  /**
+   * UseArcaneRecovery: fewer expended slots of a level than the call asks to recover.
+   *
+   * @generated from enum value: RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED = 13;
+   */
+  SLOT_NOT_EXPENDED = 13,
+
+  /**
+   * UseArcaneRecovery: the combined level of the slots is above the allowance.
+   *
+   * @generated from enum value: RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE = 14;
+   */
+  OVER_ALLOWANCE = 14,
 }
 
 /**
@@ -1044,6 +1424,32 @@ export const ResourceService: GenService<{
     output: typeof SpendHitDiceResponseSchema;
   },
   /**
+   * UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
+   * expended spell slots, after a short rest (SRD 5.1, Wizard, Arcane Recovery):
+   * the slots may have a combined level of half the WIZARD level (rounded up) at
+   * most, and none of them can be of the 6th level or higher. Only the character's
+   * spellcasting slots count, never the pact slots. "Once per day" is once per
+   * long rest: the use is the `arcane_recovery` resource, which a long rest gives
+   * back. It is allowed only while the latest rest of the open session is a short
+   * rest. The character's player or the master.
+   *
+   * Errors: `permission_denied` for another player's character;
+   * `invalid_argument` for no slots, a repeated level or a count below 1;
+   * `failed_precondition` with ResourceBlocked NOT_AVAILABLE (not a wizard),
+   * NO_USES_LEFT (used since the last long rest), NO_SHORT_REST (the latest rest is
+   * not a short rest), SLOT_LEVEL_TOO_HIGH (a slot of the 6th level or higher),
+   * SLOT_NOT_EXPENDED (fewer expended slots of that level than asked) and
+   * OVER_ALLOWANCE (the combined level is above the allowance; needed is the
+   * combined level asked and available the allowance).
+   *
+   * @generated from rpc meurpg.play.v1.ResourceService.UseArcaneRecovery
+   */
+  useArcaneRecovery: {
+    methodKind: "unary";
+    input: typeof UseArcaneRecoveryRequestSchema;
+    output: typeof UseArcaneRecoveryResponseSchema;
+  },
+  /**
    * UseLayOnHands touches a creature and draws from the pool: heals up to the
    * amount, or spends 5 points to cure a disease or neutralize a poison (SRD
    * 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
@@ -1121,6 +1527,50 @@ export const ResourceService: GenService<{
     methodKind: "unary";
     input: typeof AnswerBardicInspirationRequestSchema;
     output: typeof AnswerBardicInspirationResponseSchema;
+  },
+  /**
+   * GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
+   * die their character holds and, for a bard, the uses left and the party to give it to.
+   * Only the caller's own character is described (the master gets every die held).
+   *
+   * @generated from rpc meurpg.play.v1.ResourceService.GetOutsideInspiration
+   */
+  getOutsideInspiration: {
+    methodKind: "unary";
+    input: typeof GetOutsideInspirationRequestSchema;
+    output: typeof GetOutsideInspirationResponseSchema;
+  },
+  /**
+   * GiveBardicInspirationOutside gives a die to another character of the party outside
+   * a combat, spending one use: the die lasts 10 minutes of game time. The target
+   * is another character of the campaign who holds no die; the bard's player gives with
+   * their own character. While a combat runs, GiveBardicInspiration is the call.
+   *
+   * Errors: ResourceBlocked NO_USES_LEFT, TARGET_REFUSED, NOT_AVAILABLE,
+   * COMBAT_OPEN (a combat is open: give in it).
+   *
+   * @generated from rpc meurpg.play.v1.ResourceService.GiveBardicInspirationOutside
+   */
+  giveBardicInspirationOutside: {
+    methodKind: "unary";
+    input: typeof GiveBardicInspirationOutsideRequestSchema;
+    output: typeof GiveBardicInspirationOutsideResponseSchema;
+  },
+  /**
+   * AnswerOutsideInspiration answers the question a roll out of a combat asks (RollSceneCheck,
+   * RollGroupCheck answer with an offer when the character holds a die): use the die on it
+   * or keep it. The roll is then written as if it had been made now, with the die added
+   * when it was used. The roll's owner only.
+   *
+   * Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
+   * the die; `failed_precondition` when the die ran out meanwhile.
+   *
+   * @generated from rpc meurpg.play.v1.ResourceService.AnswerOutsideInspiration
+   */
+  answerOutsideInspiration: {
+    methodKind: "unary";
+    input: typeof AnswerOutsideInspirationRequestSchema;
+    output: typeof AnswerOutsideInspirationResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_resources, 0);

@@ -6,8 +6,8 @@ import (
 	"fmt"
 )
 
-// The class resources that have a flow of their own: Lay on Hands, Flexible Casting
-// and Bardic Inspiration. Metamagic is in metamagic.go.
+// The class resources that have a flow of their own: Lay on Hands, Flexible Casting,
+// Arcane Recovery and Bardic Inspiration. Metamagic is in metamagic.go.
 
 // LayOnHandsKey is the resource of the paladin's pool of healing.
 const LayOnHandsKey = "lay_on_hands"
@@ -177,3 +177,47 @@ func BardicInspirationRefusal(t BardicInspirationTarget) string {
 // BardicInspirationExpiry is the round the die given in round has run out: it
 // lasts 10 minutes.
 func BardicInspirationExpiry(round int) int { return round + BardicInspirationRounds }
+
+// ArcaneRecoveryKey is the resource of the wizard's once-a-day Arcane Recovery.
+const ArcaneRecoveryKey = "arcane_recovery"
+
+// ArcaneRecoveryMaxSlotLevel is the highest level of a slot Arcane Recovery gives
+// back: "none of the slots can be 6th level or higher" (SRD 5.1, Wizard).
+const ArcaneRecoveryMaxSlotLevel = 5
+
+// ErrArcaneRecovery is the base of the Arcane Recovery refusals.
+var ErrArcaneRecovery = errors.New("arcane recovery")
+
+// ArcaneRecoveryAllowance is the combined level of the slots a wizard of the level
+// recovers: "a combined level that is equal to or less than half your wizard level
+// (rounded up)" (SRD 5.1, Wizard). Only the WIZARD level counts in a multiclass
+// character. 0 for no wizard level.
+func ArcaneRecoveryAllowance(wizardLevel int) int {
+	if wizardLevel < 1 {
+		return 0
+	}
+	return (wizardLevel + 1) / arcaneRecoveryDivisor
+}
+
+// arcaneRecoveryDivisor halves the wizard level for the allowance.
+const arcaneRecoveryDivisor = 2
+
+// ArcaneRecoveryCheck checks the slots a wizard recovers, by spell level and count:
+// every level from 1 to 5 and the combined level (level times count, summed) within
+// the allowance. It returns the combined level.
+func ArcaneRecoveryCheck(slots map[int]int, wizardLevel int) (int, error) {
+	total := 0
+	for level, count := range slots {
+		if level < 1 || level > ArcaneRecoveryMaxSlotLevel {
+			return 0, fmt.Errorf("%w: a slot of level %d cannot be recovered", ErrArcaneRecovery, level)
+		}
+		if count < 1 {
+			return 0, fmt.Errorf("%w: the count of the level %d slots must be at least 1", ErrArcaneRecovery, level)
+		}
+		total += level * count
+	}
+	if allowance := ArcaneRecoveryAllowance(wizardLevel); total > allowance {
+		return total, fmt.Errorf("%w: the slots add up to level %d and the most is %d", ErrArcaneRecovery, total, allowance)
+	}
+	return total, nil
+}

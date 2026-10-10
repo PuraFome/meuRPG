@@ -524,6 +524,15 @@ message FeatOption {
   // them; a feat that raises every ability it lists is still taken, and its increase stops
   // at 20. The feat is available either way.
   repeated Ability capped_abilities = 10;
+  // `desc` in Portuguese, one paragraph per entry: our translation of the SRD 5.1
+  // English (effects/feats_pt.json); for a table feat, its own text, the same as `desc`.
+  // Empty while `desc_pt_missing`; the app then shows `desc` in English with a note.
+  repeated string desc_pt = 11;
+  // True for an SRD feat with no Portuguese text yet.
+  bool desc_pt_missing = 12;
+  // True when the text exists only in Portuguese (a table feat): `desc` already is the
+  // Portuguese, and there is no English to offer.
+  bool desc_pt_only = 13;
 }
 
 // ProficiencyLevel is how much of the proficiency bonus a check adds.
@@ -957,6 +966,11 @@ message Spellcasting {
   // How many spells the character can prepare each day, for classes that
   // prepare spells (Cleric, Druid, Paladin, Wizard). 0 for the others.
   int32 prepared_max = 8;
+  // True when the class keeps its spells in a spellbook and prepares some of them
+  // (Wizard): the spells on the sheet that are not prepared are in the spellbook. False
+  // for a class that prepares from its whole list (Cleric, Druid, Paladin) or knows a
+  // fixed number of spells.
+  bool spellbook = 9;
 }
 
 // SpellSlots is how many slots the character has of one spell level.
@@ -1071,6 +1085,16 @@ message Feature {
   // player picked (a fighting style, an invocation, a pact boon); empty for the
   // other features.
   string summary_pt = 6;
+  // `description` in Portuguese, paragraphs joined by a blank line: our translation of the
+  // SRD 5.1 English (effects/features_pt.json, traits_pt.json, backgrounds_pt.json); for a
+  // table feature, its own text, the same as `description`. Empty while
+  // `description_pt_missing`; the app then shows `description` in English with a note.
+  string description_pt = 7;
+  // True for an SRD feature, trait or background feature with no Portuguese text yet.
+  bool description_pt_missing = 8;
+  // True when the text exists only in Portuguese (a table feature): `description` already
+  // is the Portuguese, and there is no English to offer.
+  bool description_pt_only = 9;
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese
@@ -1432,6 +1456,9 @@ message Spell {
   bool archived = 10;
   // Switched off for the players (see Race.off).
   bool off = 11;
+  // Whether it is cast as a reaction (casting time "1 reaction", like Shield), so the
+  // sheet's spell list can tag it without reading the description.
+  bool reaction = 12;
 }
 
 // ListContentRequest names a campaign.
@@ -1983,6 +2010,10 @@ enum BonusAttackRule {
   // One of the two unarmed strikes of Flurry of Blows, whose bonus action is
   // already spent (see AttackOption.bonus_attacks_left).
   BONUS_ATTACK_RULE_FLURRY_OF_BLOWS = 3;
+  // The Berserker's Frenzy: one melee weapon attack as a bonus action on each turn after
+  // the one the frenzied rage began in (SRD 5.1, Barbarian, Path of the Berserker). It needs
+  // no Attack action before it, and keeps the ability modifier in its damage.
+  BONUS_ATTACK_RULE_FRENZY = 4;
 }
 
 // AttackOption is an attack the character can make.
@@ -2027,6 +2058,9 @@ message SpellOption {
   // (SRD 5.1, Sorcerer). Empty for a character with none. The cast checks them again
   // at the slot it is cast with.
   repeated MetamagicOption metamagic_options = 30;
+  // True when the character has Sculpt Spells (the evocation wizard) and this spell is of
+  // the school of evocation: the cast may name creatures to spare (CastSpellRequest.sculpted_ids).
+  bool sculpt_spells = 31;
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the
@@ -2064,6 +2098,9 @@ message ActionOption {
   DisabledReason reason = 3;
   // Uses left of the action's resource. 0 when it has none.
   int32 uses_left = 4;
+  // True on the Rage ("feature:rage") of a character with the Berserker's Frenzy: the player
+  // may ask for a frenzy when it rages (TakeActionRequest.frenzy). False everywhere else.
+  bool offers_frenzy = 5;
 }
 
 // ListCreaturesRequest names a campaign (for access) and the filters. Every

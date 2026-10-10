@@ -619,6 +619,8 @@ function castRow(
         mode: t.save.mode,
         sources: t.save.sources,
       });
+    } else if (t.save.sculpted) {
+      lines.push('Resistência: passa sem rolar (Esculpir Magias)');
     } else if (t.save.autoFailed) {
       lines.push(`Resistência: Falha automática${t.save.dc > 0 ? `, CD ${t.save.dc}` : ''}`);
     } else if (t.save.dc > 0) {

@@ -183,7 +183,9 @@ function damageText(d: CombatLogDamage): string {
           ? `, ${d.deathFailuresAdded === 1 ? 'uma falha' : 'duas falhas'} no teste contra a morte`
           : '';
       const words = appliedWords(d);
-      return `${words}${half}${other}${failures}`;
+      // The half-orc's Relentless Endurance kept the target on its feet (SRD 5.1).
+      const relentless = d.relentlessEndurance ? '. Resistência Implacável: fica com 1 PV' : '';
+      return `${words}${half}${other}${failures}${relentless}`;
     }
   }
 }
@@ -334,7 +336,13 @@ function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
     out = `${t.darts} ${t.darts === 1 ? 'dardo' : 'dardos'} ${inThe(who)}${damage}`;
   } else if (t.save) {
     const dc = saveNotes(t.save, ctx);
-    out = `${the(who)} ${t.save.outcome === SaveOutcome.SAVED ? 'resistiu' : 'falhou'}${dc}${damage}`;
+    // Esculpir Magias: spared by the caster, no roll.
+    const verb = t.save.sculpted
+      ? 'resistiu sem rolar (Esculpir Magias)'
+      : t.save.outcome === SaveOutcome.SAVED
+        ? 'resistiu'
+        : 'falhou';
+    out = `${the(who)} ${verb}${dc}${damage}`;
   } else if (t.outcome !== AttackOutcome.UNSPECIFIED) {
     out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${coverNote(t)}${t.outcome === AttackOutcome.MISS ? '' : damage}`;
   } else if (t.damage?.healing) {
@@ -649,7 +657,29 @@ function movedText(e: CombatLogEntry): string {
   if (e.jump === JumpKind.LONG) {
     return ` saltou ${length}${e.jumpRunningStart ? ', com corrida' : ''}${e.landingDifficult ? ' e caiu em terreno difícil. Acrobacia CD 10 ou cai Derrubado' : ''}`;
   }
-  return ` anda ${length}`;
+  return ` anda ${length}${spentNote(e)}`;
+}
+
+/** What a walk spent when it is not the distance: ", gasta 6,2 m de movimento (terreno difícil)". The
+ * reasons come from the SRD: another creature's space and rubble cost double, a drag halves the speed and a
+ * prone creature crawls at double the cost. Nothing when the walk spent what it went (or the event is old). */
+function spentNote(e: CombatLogEntry): string {
+  const distance = e.distanceDft > 0 ? e.distanceDft : e.distanceFt * 10;
+  if (e.spentDft <= 0 || e.spentDft === distance) {
+    return '';
+  }
+  const factor = (e.moveDragging ? 2 : 1) * (e.moveCrawling ? 2 : 1);
+  const reasons: string[] = [];
+  if (e.spentDft > distance * factor) {
+    reasons.push('terreno difícil');
+  }
+  if (e.moveDragging) {
+    reasons.push('arrastando');
+  }
+  if (e.moveCrawling) {
+    reasons.push('rastejando');
+  }
+  return `, gasta ${metersFixed(e.spentDft / 10)} de movimento${reasons.length > 0 ? ` (${reasons.join(', ')})` : ''}`;
 }
 
 /** The d20 pair of a roll, or nothing for a single die. */
@@ -1062,6 +1092,10 @@ function effectLogText(fx: CombatLogEffect, ctx: LogContext): string {
 /** "Brisa agora tem exaustão de nível 2". */
 function exhaustionLogText(fx: CombatLogEffect, ctx: LogContext): string {
   const who = upFirst(effectTargets(fx, ctx));
+  if (fx.reason === 'frenzy') {
+    // The end of a frenzied rage (SRD 5.1, Berserker): "Frenesi: +1 nível de exaustão · Ragna agora tem exaustão de nível 1".
+    return `Frenesi: +1 nível de exaustão · ${who} agora tem exaustão de nível ${fx.exhaustionLevel}`;
+  }
   return fx.exhaustionLevel > 0
     ? `${who} agora tem exaustão de nível ${fx.exhaustionLevel}`
     : `${who} ficou sem exaustão`;

@@ -205,3 +205,13 @@ describe('scene view', () => {
     });
   });
 });
+
+describe('a scene roll with a Bardic Inspiration die', () => {
+  it('writes the d20, the bonus and the die in the formula, and the total holds the die', () => {
+    const roll = sceneRoll('r9', 'a1', 'Tavo', 18, {
+      roll: { diceCount: 1, diceSides: 20, faces: [7], modifier: 6, total: 18 },
+      bonusDice: [{ sourceKey: 'feature:bardic-inspiration-d6', sides: 8, face: 5, used: true }],
+    });
+    expect(sceneRollFormula(roll)).toBe('1d20 (7) + 6 + d8 (5) = 18');
+  });
+});

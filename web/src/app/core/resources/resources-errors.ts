@@ -103,3 +103,30 @@ export function hitDiceErrorMessage(err: unknown): string {
   }
   return combatErrorMessage(err, 'gastar o dado de vida');
 }
+
+/** Recuperação Arcana refused: the rule's reasons (with the allowance), the combat in the way, no open session. */
+export function arcaneRecoveryErrorMessage(err: unknown): string {
+  const blocked = resourceBlocked(err);
+  if (blocked) {
+    switch (blocked.reason) {
+      case ResourceBlockedReason.NO_USES_LEFT:
+        return 'Recuperação Arcana já usada: ela volta no descanso longo.';
+      case ResourceBlockedReason.NO_SHORT_REST:
+        return 'Recuperação Arcana só vale depois de um descanso curto.';
+      case ResourceBlockedReason.SLOT_NOT_EXPENDED:
+        return 'Você não gastou tantos espaços de magia desse nível.';
+      case ResourceBlockedReason.SLOT_LEVEL_TOO_HIGH:
+        return 'Nenhum espaço recuperado pode ser de 6º nível ou mais.';
+      case ResourceBlockedReason.OVER_ALLOWANCE:
+        return `Os espaços somam ${blocked.needed} níveis e você recupera até ${blocked.available}.`;
+      case ResourceBlockedReason.COMBAT_OPEN:
+        return 'Há um combate em andamento.';
+      default:
+        return resourceBlockedMessage(blocked.reason);
+    }
+  }
+  if (sessionClosed(err)) {
+    return 'A sessão acabou: a Recuperação Arcana só vale durante a sessão.';
+  }
+  return combatErrorMessage(err, 'recuperar os espaços de magia');
+}

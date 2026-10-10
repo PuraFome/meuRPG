@@ -460,10 +460,26 @@ func TestDerivedToProto(t *testing.T) {
 	if len(d.GetSpells()) != 13 {
 		t.Errorf("spells = %d, want 13 (3 cantrips and 10 in the spellbook)", len(d.GetSpells()))
 	}
+	// The sheet's spell list tags from the spell itself: Shield is the reaction, Detect Magic the ritual that is
+	// in the spellbook without being prepared, Fire Bolt a cantrip with neither.
+	tags := map[string]struct{ prepared, ritual, reaction, concentration bool }{}
 	for _, sp := range d.GetSpells() {
 		if sp.GetSpell().GetKey() == "spell:find-familiar" && sp.GetPrepared() {
 			t.Errorf("Find Familiar is prepared, but it is only in the spellbook")
 		}
+		tags[sp.GetSpell().GetKey()] = struct{ prepared, ritual, reaction, concentration bool }{sp.GetPrepared(), sp.GetSpell().GetRitual(), sp.GetSpell().GetReaction(), sp.GetSpell().GetConcentration()}
+	}
+	if sc := d.GetSpellcasting(); len(sc) != 1 || !sc[0].GetSpellbook() {
+		t.Errorf("spellcasting = %v, want the wizard's spellbook", sc)
+	}
+	if got := tags["spell:shield"]; !got.prepared || !got.reaction || got.ritual {
+		t.Errorf("Shield = %+v, want prepared, a reaction, not a ritual", got)
+	}
+	if got := tags["spell:detect-magic"]; got.prepared || !got.ritual || !got.concentration || got.reaction {
+		t.Errorf("Detect Magic = %+v, want in the spellbook only, a ritual with concentration, not a reaction", got)
+	}
+	if got := tags["spell:fire-bolt"]; !got.prepared || got.reaction || got.ritual || got.concentration {
+		t.Errorf("Fire Bolt = %+v, want a plain cantrip", got)
 	}
 	if len(d.GetFeatures()) == 0 || len(d.GetHints()) == 0 || len(d.GetLanguages()) == 0 || len(d.GetProficiencies().GetWeapons()) == 0 {
 		t.Errorf("features %d, hints %d, languages %d, weapon proficiencies %d; want some of each",

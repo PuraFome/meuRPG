@@ -47,6 +47,9 @@ const (
 	// ResourceServiceSpendHitDiceProcedure is the fully-qualified name of the ResourceService's
 	// SpendHitDice RPC.
 	ResourceServiceSpendHitDiceProcedure = "/meurpg.play.v1.ResourceService/SpendHitDice"
+	// ResourceServiceUseArcaneRecoveryProcedure is the fully-qualified name of the ResourceService's
+	// UseArcaneRecovery RPC.
+	ResourceServiceUseArcaneRecoveryProcedure = "/meurpg.play.v1.ResourceService/UseArcaneRecovery"
 	// ResourceServiceUseLayOnHandsProcedure is the fully-qualified name of the ResourceService's
 	// UseLayOnHands RPC.
 	ResourceServiceUseLayOnHandsProcedure = "/meurpg.play.v1.ResourceService/UseLayOnHands"
@@ -62,6 +65,15 @@ const (
 	// ResourceServiceAnswerBardicInspirationProcedure is the fully-qualified name of the
 	// ResourceService's AnswerBardicInspiration RPC.
 	ResourceServiceAnswerBardicInspirationProcedure = "/meurpg.play.v1.ResourceService/AnswerBardicInspiration"
+	// ResourceServiceGetOutsideInspirationProcedure is the fully-qualified name of the
+	// ResourceService's GetOutsideInspiration RPC.
+	ResourceServiceGetOutsideInspirationProcedure = "/meurpg.play.v1.ResourceService/GetOutsideInspiration"
+	// ResourceServiceGiveBardicInspirationOutsideProcedure is the fully-qualified name of the
+	// ResourceService's GiveBardicInspirationOutside RPC.
+	ResourceServiceGiveBardicInspirationOutsideProcedure = "/meurpg.play.v1.ResourceService/GiveBardicInspirationOutside"
+	// ResourceServiceAnswerOutsideInspirationProcedure is the fully-qualified name of the
+	// ResourceService's AnswerOutsideInspiration RPC.
+	ResourceServiceAnswerOutsideInspirationProcedure = "/meurpg.play.v1.ResourceService/AnswerOutsideInspiration"
 )
 
 // ResourceServiceClient is a client for the meurpg.play.v1.ResourceService service.
@@ -94,6 +106,24 @@ type ResourceServiceClient interface {
 	// `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT; `invalid_argument`
 	// for a die size the character does not have, or a typed face outside the die.
 	SpendHitDice(context.Context, *connect.Request[v1.SpendHitDiceRequest]) (*connect.Response[v1.SpendHitDiceResponse], error)
+	// UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
+	// expended spell slots, after a short rest (SRD 5.1, Wizard, Arcane Recovery):
+	// the slots may have a combined level of half the WIZARD level (rounded up) at
+	// most, and none of them can be of the 6th level or higher. Only the character's
+	// spellcasting slots count, never the pact slots. "Once per day" is once per
+	// long rest: the use is the `arcane_recovery` resource, which a long rest gives
+	// back. It is allowed only while the latest rest of the open session is a short
+	// rest. The character's player or the master.
+	//
+	// Errors: `permission_denied` for another player's character;
+	// `invalid_argument` for no slots, a repeated level or a count below 1;
+	// `failed_precondition` with ResourceBlocked NOT_AVAILABLE (not a wizard),
+	// NO_USES_LEFT (used since the last long rest), NO_SHORT_REST (the latest rest is
+	// not a short rest), SLOT_LEVEL_TOO_HIGH (a slot of the 6th level or higher),
+	// SLOT_NOT_EXPENDED (fewer expended slots of that level than asked) and
+	// OVER_ALLOWANCE (the combined level is above the allowance; needed is the
+	// combined level asked and available the allowance).
+	UseArcaneRecovery(context.Context, *connect.Request[v1.UseArcaneRecoveryRequest]) (*connect.Response[v1.UseArcaneRecoveryResponse], error)
 	// UseLayOnHands touches a creature and draws from the pool: heals up to the
 	// amount, or spends 5 points to cure a disease or neutralize a poison (SRD
 	// 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
@@ -133,6 +163,26 @@ type ResourceServiceClient interface {
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
 	// face outside the die.
 	AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error)
+	// GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
+	// die their character holds and, for a bard, the uses left and the party to give it to.
+	// Only the caller's own character is described (the master gets every die held).
+	GetOutsideInspiration(context.Context, *connect.Request[v1.GetOutsideInspirationRequest]) (*connect.Response[v1.GetOutsideInspirationResponse], error)
+	// GiveBardicInspirationOutside gives a die to another character of the party outside
+	// a combat, spending one use: the die lasts 10 minutes of game time. The target
+	// is another character of the campaign who holds no die; the bard's player gives with
+	// their own character. While a combat runs, GiveBardicInspiration is the call.
+	//
+	// Errors: ResourceBlocked NO_USES_LEFT, TARGET_REFUSED, NOT_AVAILABLE,
+	// COMBAT_OPEN (a combat is open: give in it).
+	GiveBardicInspirationOutside(context.Context, *connect.Request[v1.GiveBardicInspirationOutsideRequest]) (*connect.Response[v1.GiveBardicInspirationOutsideResponse], error)
+	// AnswerOutsideInspiration answers the question a roll out of a combat asks (RollSceneCheck,
+	// RollGroupCheck answer with an offer when the character holds a die): use the die on it
+	// or keep it. The roll is then written as if it had been made now, with the die added
+	// when it was used. The roll's owner only.
+	//
+	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
+	// the die; `failed_precondition` when the die ran out meanwhile.
+	AnswerOutsideInspiration(context.Context, *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error)
 }
 
 // NewResourceServiceClient constructs a client for the meurpg.play.v1.ResourceService service. By
@@ -165,6 +215,12 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(resourceServiceMethods.ByName("SpendHitDice")),
 			connect.WithClientOptions(opts...),
 		),
+		useArcaneRecovery: connect.NewClient[v1.UseArcaneRecoveryRequest, v1.UseArcaneRecoveryResponse](
+			httpClient,
+			baseURL+ResourceServiceUseArcaneRecoveryProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("UseArcaneRecovery")),
+			connect.WithClientOptions(opts...),
+		),
 		useLayOnHands: connect.NewClient[v1.UseLayOnHandsRequest, v1.UseLayOnHandsResponse](
 			httpClient,
 			baseURL+ResourceServiceUseLayOnHandsProcedure,
@@ -195,19 +251,41 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(resourceServiceMethods.ByName("AnswerBardicInspiration")),
 			connect.WithClientOptions(opts...),
 		),
+		getOutsideInspiration: connect.NewClient[v1.GetOutsideInspirationRequest, v1.GetOutsideInspirationResponse](
+			httpClient,
+			baseURL+ResourceServiceGetOutsideInspirationProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("GetOutsideInspiration")),
+			connect.WithClientOptions(opts...),
+		),
+		giveBardicInspirationOutside: connect.NewClient[v1.GiveBardicInspirationOutsideRequest, v1.GiveBardicInspirationOutsideResponse](
+			httpClient,
+			baseURL+ResourceServiceGiveBardicInspirationOutsideProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("GiveBardicInspirationOutside")),
+			connect.WithClientOptions(opts...),
+		),
+		answerOutsideInspiration: connect.NewClient[v1.AnswerOutsideInspirationRequest, v1.AnswerOutsideInspirationResponse](
+			httpClient,
+			baseURL+ResourceServiceAnswerOutsideInspirationProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("AnswerOutsideInspiration")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // resourceServiceClient implements ResourceServiceClient.
 type resourceServiceClient struct {
-	getRestPreview          *connect.Client[v1.GetRestPreviewRequest, v1.GetRestPreviewResponse]
-	takeRest                *connect.Client[v1.TakeRestRequest, v1.TakeRestResponse]
-	spendHitDice            *connect.Client[v1.SpendHitDiceRequest, v1.SpendHitDiceResponse]
-	useLayOnHands           *connect.Client[v1.UseLayOnHandsRequest, v1.UseLayOnHandsResponse]
-	createSpellSlot         *connect.Client[v1.CreateSpellSlotRequest, v1.CreateSpellSlotResponse]
-	convertSpellSlot        *connect.Client[v1.ConvertSpellSlotRequest, v1.ConvertSpellSlotResponse]
-	giveBardicInspiration   *connect.Client[v1.GiveBardicInspirationRequest, v1.GiveBardicInspirationResponse]
-	answerBardicInspiration *connect.Client[v1.AnswerBardicInspirationRequest, v1.AnswerBardicInspirationResponse]
+	getRestPreview               *connect.Client[v1.GetRestPreviewRequest, v1.GetRestPreviewResponse]
+	takeRest                     *connect.Client[v1.TakeRestRequest, v1.TakeRestResponse]
+	spendHitDice                 *connect.Client[v1.SpendHitDiceRequest, v1.SpendHitDiceResponse]
+	useArcaneRecovery            *connect.Client[v1.UseArcaneRecoveryRequest, v1.UseArcaneRecoveryResponse]
+	useLayOnHands                *connect.Client[v1.UseLayOnHandsRequest, v1.UseLayOnHandsResponse]
+	createSpellSlot              *connect.Client[v1.CreateSpellSlotRequest, v1.CreateSpellSlotResponse]
+	convertSpellSlot             *connect.Client[v1.ConvertSpellSlotRequest, v1.ConvertSpellSlotResponse]
+	giveBardicInspiration        *connect.Client[v1.GiveBardicInspirationRequest, v1.GiveBardicInspirationResponse]
+	answerBardicInspiration      *connect.Client[v1.AnswerBardicInspirationRequest, v1.AnswerBardicInspirationResponse]
+	getOutsideInspiration        *connect.Client[v1.GetOutsideInspirationRequest, v1.GetOutsideInspirationResponse]
+	giveBardicInspirationOutside *connect.Client[v1.GiveBardicInspirationOutsideRequest, v1.GiveBardicInspirationOutsideResponse]
+	answerOutsideInspiration     *connect.Client[v1.AnswerOutsideInspirationRequest, v1.AnswerOutsideInspirationResponse]
 }
 
 // GetRestPreview calls meurpg.play.v1.ResourceService.GetRestPreview.
@@ -223,6 +301,11 @@ func (c *resourceServiceClient) TakeRest(ctx context.Context, req *connect.Reque
 // SpendHitDice calls meurpg.play.v1.ResourceService.SpendHitDice.
 func (c *resourceServiceClient) SpendHitDice(ctx context.Context, req *connect.Request[v1.SpendHitDiceRequest]) (*connect.Response[v1.SpendHitDiceResponse], error) {
 	return c.spendHitDice.CallUnary(ctx, req)
+}
+
+// UseArcaneRecovery calls meurpg.play.v1.ResourceService.UseArcaneRecovery.
+func (c *resourceServiceClient) UseArcaneRecovery(ctx context.Context, req *connect.Request[v1.UseArcaneRecoveryRequest]) (*connect.Response[v1.UseArcaneRecoveryResponse], error) {
+	return c.useArcaneRecovery.CallUnary(ctx, req)
 }
 
 // UseLayOnHands calls meurpg.play.v1.ResourceService.UseLayOnHands.
@@ -248,6 +331,21 @@ func (c *resourceServiceClient) GiveBardicInspiration(ctx context.Context, req *
 // AnswerBardicInspiration calls meurpg.play.v1.ResourceService.AnswerBardicInspiration.
 func (c *resourceServiceClient) AnswerBardicInspiration(ctx context.Context, req *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error) {
 	return c.answerBardicInspiration.CallUnary(ctx, req)
+}
+
+// GetOutsideInspiration calls meurpg.play.v1.ResourceService.GetOutsideInspiration.
+func (c *resourceServiceClient) GetOutsideInspiration(ctx context.Context, req *connect.Request[v1.GetOutsideInspirationRequest]) (*connect.Response[v1.GetOutsideInspirationResponse], error) {
+	return c.getOutsideInspiration.CallUnary(ctx, req)
+}
+
+// GiveBardicInspirationOutside calls meurpg.play.v1.ResourceService.GiveBardicInspirationOutside.
+func (c *resourceServiceClient) GiveBardicInspirationOutside(ctx context.Context, req *connect.Request[v1.GiveBardicInspirationOutsideRequest]) (*connect.Response[v1.GiveBardicInspirationOutsideResponse], error) {
+	return c.giveBardicInspirationOutside.CallUnary(ctx, req)
+}
+
+// AnswerOutsideInspiration calls meurpg.play.v1.ResourceService.AnswerOutsideInspiration.
+func (c *resourceServiceClient) AnswerOutsideInspiration(ctx context.Context, req *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error) {
+	return c.answerOutsideInspiration.CallUnary(ctx, req)
 }
 
 // ResourceServiceHandler is an implementation of the meurpg.play.v1.ResourceService service.
@@ -280,6 +378,24 @@ type ResourceServiceHandler interface {
 	// `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT; `invalid_argument`
 	// for a die size the character does not have, or a typed face outside the die.
 	SpendHitDice(context.Context, *connect.Request[v1.SpendHitDiceRequest]) (*connect.Response[v1.SpendHitDiceResponse], error)
+	// UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
+	// expended spell slots, after a short rest (SRD 5.1, Wizard, Arcane Recovery):
+	// the slots may have a combined level of half the WIZARD level (rounded up) at
+	// most, and none of them can be of the 6th level or higher. Only the character's
+	// spellcasting slots count, never the pact slots. "Once per day" is once per
+	// long rest: the use is the `arcane_recovery` resource, which a long rest gives
+	// back. It is allowed only while the latest rest of the open session is a short
+	// rest. The character's player or the master.
+	//
+	// Errors: `permission_denied` for another player's character;
+	// `invalid_argument` for no slots, a repeated level or a count below 1;
+	// `failed_precondition` with ResourceBlocked NOT_AVAILABLE (not a wizard),
+	// NO_USES_LEFT (used since the last long rest), NO_SHORT_REST (the latest rest is
+	// not a short rest), SLOT_LEVEL_TOO_HIGH (a slot of the 6th level or higher),
+	// SLOT_NOT_EXPENDED (fewer expended slots of that level than asked) and
+	// OVER_ALLOWANCE (the combined level is above the allowance; needed is the
+	// combined level asked and available the allowance).
+	UseArcaneRecovery(context.Context, *connect.Request[v1.UseArcaneRecoveryRequest]) (*connect.Response[v1.UseArcaneRecoveryResponse], error)
 	// UseLayOnHands touches a creature and draws from the pool: heals up to the
 	// amount, or spends 5 points to cure a disease or neutralize a poison (SRD
 	// 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
@@ -319,6 +435,26 @@ type ResourceServiceHandler interface {
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
 	// face outside the die.
 	AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error)
+	// GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
+	// die their character holds and, for a bard, the uses left and the party to give it to.
+	// Only the caller's own character is described (the master gets every die held).
+	GetOutsideInspiration(context.Context, *connect.Request[v1.GetOutsideInspirationRequest]) (*connect.Response[v1.GetOutsideInspirationResponse], error)
+	// GiveBardicInspirationOutside gives a die to another character of the party outside
+	// a combat, spending one use: the die lasts 10 minutes of game time. The target
+	// is another character of the campaign who holds no die; the bard's player gives with
+	// their own character. While a combat runs, GiveBardicInspiration is the call.
+	//
+	// Errors: ResourceBlocked NO_USES_LEFT, TARGET_REFUSED, NOT_AVAILABLE,
+	// COMBAT_OPEN (a combat is open: give in it).
+	GiveBardicInspirationOutside(context.Context, *connect.Request[v1.GiveBardicInspirationOutsideRequest]) (*connect.Response[v1.GiveBardicInspirationOutsideResponse], error)
+	// AnswerOutsideInspiration answers the question a roll out of a combat asks (RollSceneCheck,
+	// RollGroupCheck answer with an offer when the character holds a die): use the die on it
+	// or keep it. The roll is then written as if it had been made now, with the die added
+	// when it was used. The roll's owner only.
+	//
+	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
+	// the die; `failed_precondition` when the die ran out meanwhile.
+	AnswerOutsideInspiration(context.Context, *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error)
 }
 
 // NewResourceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -345,6 +481,12 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 		ResourceServiceSpendHitDiceProcedure,
 		svc.SpendHitDice,
 		connect.WithSchema(resourceServiceMethods.ByName("SpendHitDice")),
+		connect.WithHandlerOptions(opts...),
+	)
+	resourceServiceUseArcaneRecoveryHandler := connect.NewUnaryHandler(
+		ResourceServiceUseArcaneRecoveryProcedure,
+		svc.UseArcaneRecovery,
+		connect.WithSchema(resourceServiceMethods.ByName("UseArcaneRecovery")),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceServiceUseLayOnHandsHandler := connect.NewUnaryHandler(
@@ -377,6 +519,24 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(resourceServiceMethods.ByName("AnswerBardicInspiration")),
 		connect.WithHandlerOptions(opts...),
 	)
+	resourceServiceGetOutsideInspirationHandler := connect.NewUnaryHandler(
+		ResourceServiceGetOutsideInspirationProcedure,
+		svc.GetOutsideInspiration,
+		connect.WithSchema(resourceServiceMethods.ByName("GetOutsideInspiration")),
+		connect.WithHandlerOptions(opts...),
+	)
+	resourceServiceGiveBardicInspirationOutsideHandler := connect.NewUnaryHandler(
+		ResourceServiceGiveBardicInspirationOutsideProcedure,
+		svc.GiveBardicInspirationOutside,
+		connect.WithSchema(resourceServiceMethods.ByName("GiveBardicInspirationOutside")),
+		connect.WithHandlerOptions(opts...),
+	)
+	resourceServiceAnswerOutsideInspirationHandler := connect.NewUnaryHandler(
+		ResourceServiceAnswerOutsideInspirationProcedure,
+		svc.AnswerOutsideInspiration,
+		connect.WithSchema(resourceServiceMethods.ByName("AnswerOutsideInspiration")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.ResourceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ResourceServiceGetRestPreviewProcedure:
@@ -385,6 +545,8 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 			resourceServiceTakeRestHandler.ServeHTTP(w, r)
 		case ResourceServiceSpendHitDiceProcedure:
 			resourceServiceSpendHitDiceHandler.ServeHTTP(w, r)
+		case ResourceServiceUseArcaneRecoveryProcedure:
+			resourceServiceUseArcaneRecoveryHandler.ServeHTTP(w, r)
 		case ResourceServiceUseLayOnHandsProcedure:
 			resourceServiceUseLayOnHandsHandler.ServeHTTP(w, r)
 		case ResourceServiceCreateSpellSlotProcedure:
@@ -395,6 +557,12 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 			resourceServiceGiveBardicInspirationHandler.ServeHTTP(w, r)
 		case ResourceServiceAnswerBardicInspirationProcedure:
 			resourceServiceAnswerBardicInspirationHandler.ServeHTTP(w, r)
+		case ResourceServiceGetOutsideInspirationProcedure:
+			resourceServiceGetOutsideInspirationHandler.ServeHTTP(w, r)
+		case ResourceServiceGiveBardicInspirationOutsideProcedure:
+			resourceServiceGiveBardicInspirationOutsideHandler.ServeHTTP(w, r)
+		case ResourceServiceAnswerOutsideInspirationProcedure:
+			resourceServiceAnswerOutsideInspirationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -416,6 +584,10 @@ func (UnimplementedResourceServiceHandler) SpendHitDice(context.Context, *connec
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.SpendHitDice is not implemented"))
 }
 
+func (UnimplementedResourceServiceHandler) UseArcaneRecovery(context.Context, *connect.Request[v1.UseArcaneRecoveryRequest]) (*connect.Response[v1.UseArcaneRecoveryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.UseArcaneRecovery is not implemented"))
+}
+
 func (UnimplementedResourceServiceHandler) UseLayOnHands(context.Context, *connect.Request[v1.UseLayOnHandsRequest]) (*connect.Response[v1.UseLayOnHandsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.UseLayOnHands is not implemented"))
 }
@@ -434,4 +606,16 @@ func (UnimplementedResourceServiceHandler) GiveBardicInspiration(context.Context
 
 func (UnimplementedResourceServiceHandler) AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.AnswerBardicInspiration is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) GetOutsideInspiration(context.Context, *connect.Request[v1.GetOutsideInspirationRequest]) (*connect.Response[v1.GetOutsideInspirationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.GetOutsideInspiration is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) GiveBardicInspirationOutside(context.Context, *connect.Request[v1.GiveBardicInspirationOutsideRequest]) (*connect.Response[v1.GiveBardicInspirationOutsideResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.GiveBardicInspirationOutside is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) AnswerOutsideInspiration(context.Context, *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.AnswerOutsideInspiration is not implemented"))
 }

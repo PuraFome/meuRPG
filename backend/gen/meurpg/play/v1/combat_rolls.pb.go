@@ -1376,8 +1376,12 @@ type CombatantEffect struct {
 	EndsPhase       StatePhase `protobuf:"varint,6,opt,name=ends_phase,json=endsPhase,proto3,enum=meurpg.play.v1.StatePhase" json:"ends_phase,omitempty"`
 	EndsRound       int32      `protobuf:"varint,7,opt,name=ends_round,json=endsRound,proto3" json:"ends_round,omitempty"`
 	// The label of the chip and what the state does, in Portuguese.
-	LabelPt       string `protobuf:"bytes,8,opt,name=label_pt,json=labelPt,proto3" json:"label_pt,omitempty"`
-	EffectPt      string `protobuf:"bytes,9,opt,name=effect_pt,json=effectPt,proto3" json:"effect_pt,omitempty"`
+	LabelPt  string `protobuf:"bytes,8,opt,name=label_pt,json=labelPt,proto3" json:"label_pt,omitempty"`
+	EffectPt string `protobuf:"bytes,9,opt,name=effect_pt,json=effectPt,proto3" json:"effect_pt,omitempty"`
+	// For a rage: the barbarian is in a frenzy (Path of the Berserker, Frenzy), so its chip says
+	// "Em frenesi", a melee weapon attack is a bonus action on each of its later turns, and one
+	// level of exhaustion comes when the rage ends.
+	Frenzy        bool `protobuf:"varint,10,opt,name=frenzy,proto3" json:"frenzy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1473,6 +1477,13 @@ func (x *CombatantEffect) GetEffectPt() string {
 		return x.EffectPt
 	}
 	return ""
+}
+
+func (x *CombatantEffect) GetFrenzy() bool {
+	if x != nil {
+		return x.Frenzy
+	}
+	return false
 }
 
 // ConditionSource says where a condition of a combatant comes from and when it
@@ -1655,7 +1666,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x04pact\x18\x03 \x01(\bR\x04pact\"8\n" +
 	"\tTypedPart\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x10\n" +
-	"\x03sum\x18\x02 \x01(\x05R\x03sum\"\xd7\x02\n" +
+	"\x03sum\x18\x02 \x01(\x05R\x03sum\"\xef\x02\n" +
 	"\x0fCombatantEffect\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x126\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\".meurpg.play.v1.CombatantStateKindR\x04kind\x12\x1b\n" +
@@ -1667,7 +1678,9 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\n" +
 	"ends_round\x18\a \x01(\x05R\tendsRound\x12\x19\n" +
 	"\blabel_pt\x18\b \x01(\tR\alabelPt\x12\x1b\n" +
-	"\teffect_pt\x18\t \x01(\tR\beffectPt\"\xf6\x01\n" +
+	"\teffect_pt\x18\t \x01(\tR\beffectPt\x12\x16\n" +
+	"\x06frenzy\x18\n" +
+	" \x01(\bR\x06frenzy\"\xf6\x01\n" +
 	"\x0fConditionSource\x12#\n" +
 	"\rcondition_key\x18\x01 \x01(\tR\fconditionKey\x12\x1b\n" +
 	"\tsource_id\x18\x02 \x01(\tR\bsourceId\x12!\n" +

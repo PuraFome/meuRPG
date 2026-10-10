@@ -111,6 +111,7 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 			SaveDc:        i32(sc.SaveDC),
 			AttackBonus:   i32(sc.AttackBonus),
 			CantripsKnown: i32(sc.CantripsKnown),
+			Spellbook:     sc.Spellbook,
 		}
 		// Only one of the two limits applies, and the other stays 0.
 		if sc.PreparesSpells {
@@ -153,12 +154,15 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 	}
 	for _, f := range d.Features {
 		out.Features = append(out.Features, &rulesv1.Feature{
-			Key:         f.Key,
-			Name:        f.Name,
-			NamePt:      f.NamePT,
-			SourcePt:    f.SourcePT,
-			Description: strings.Join(f.Description, "\n\n"),
-			SummaryPt:   f.SummaryPT,
+			Key:                  f.Key,
+			Name:                 f.Name,
+			NamePt:               f.NamePT,
+			SourcePt:             f.SourcePT,
+			Description:          strings.Join(f.Description, "\n\n"),
+			SummaryPt:            f.SummaryPT,
+			DescriptionPt:        strings.Join(f.DescriptionPT, "\n\n"),
+			DescriptionPtMissing: f.DescriptionPTMissing,
+			DescriptionPtOnly:    f.DescriptionPTOnly,
 		})
 	}
 	if bw := d.BreathWeapon; bw != nil {
@@ -266,6 +270,7 @@ func spellToProto(s rules.SpellEntry) *rulesv1.Spell {
 		Concentration: s.Concentration,
 		Archived:      s.Archived,
 		Off:           s.Off,
+		Reaction:      s.CastingTime.Unit == rules.CastReaction,
 	}
 }
 

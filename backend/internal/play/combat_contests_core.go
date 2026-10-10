@@ -136,6 +136,9 @@ type contestRoll struct {
 	// Deferred says the player left the roll to the master: Skill is their choice and
 	// there are no faces.
 	Deferred bool `json:"deferred,omitempty"`
+	// The Bardic Inspiration die the player added after the d20 (already in Total).
+	BonusSides int32 `json:"bonus_sides,omitempty"`
+	BonusFace  int32 `json:"bonus_face,omitempty"`
 }
 
 func checkModeKey(m combat.CheckMode) string {
@@ -175,6 +178,7 @@ func (r contestRoll) proto() *playv1.CheckRoll {
 	out := &playv1.CheckRoll{
 		Skill: skillEnum(r.Skill), SkillKey: r.Skill, Faces: slices.Clone(r.Faces), Modifier: r.Modifier, Total: r.Total, Physical: r.Physical,
 		Mode: checkModeProto(checkModeOfKey(r.Mode)), Notes: notesProto(r.Notes), BonusKnown: !r.Unknown, RolledByMaster: r.ByMaster,
+		BonusDieSides: r.BonusSides, BonusDieFace: r.BonusFace,
 	}
 	return out
 }

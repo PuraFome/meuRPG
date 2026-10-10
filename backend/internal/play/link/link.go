@@ -139,6 +139,9 @@ type Sheet struct {
 	// weapon attack rolls on top of the doubled ones (the barbarian's Brutal
 	// Critical: 1, 2 or 3 by level); 0 without it.
 	BrutalCriticalDice int
+	// SavageAttacks says the half-orc's Savage Attacks apply: a critical hit with a
+	// melee weapon attack rolls one more of the weapon's damage dice.
+	SavageAttacks bool
 	// Metamagic are the Metamagic options the sorcerer knows (feature keys), ChaMod
 	// is its Charisma modifier, and BardicDie the size of the die its Bardic
 	// Inspiration gives, 0 for a character with none.
@@ -153,6 +156,9 @@ type Sheet struct {
 	// FighterLevel is what Retomar o fôlego adds to its d10: the character's
 	// fighter level, 0 for anyone who is not a fighter.
 	FighterLevel int
+	// MonkLevel is the monk's level, 0 for a character with none: Slow Fall takes
+	// five times it off a fall.
+	MonkLevel int
 	// Senses are the special senses the sheet or stat block gives (darkvision...),
 	// which an NPC sees with on a map with the fog of war (MR-036). The zero value
 	// is plain sight.
@@ -169,8 +175,11 @@ type Sheet struct {
 type Traits struct {
 	// BarbarianLevel and RogueLevel are the class levels, 0 without the class.
 	BarbarianLevel, RogueLevel int
-	// Rage, RecklessAttack and DangerSense are the barbarian's features.
-	Rage, RecklessAttack, DangerSense bool
+	// Rage, RecklessAttack and DangerSense are the barbarian's features, and Frenzy
+	// the Berserker's level 3 feature.
+	Rage, RecklessAttack, DangerSense, Frenzy bool
+	// SculptSpells says the sheet has the evocation wizard's Sculpt Spells.
+	SculptSpells bool
 	// SneakAttackDice is the dice of Sneak Attack, 0 without the feature.
 	SneakAttackDice int
 	// DivineSmite, ImprovedDivineSmite and ColossusSlayer are the features of those
@@ -323,6 +332,10 @@ type Spell struct {
 	// above its own.
 	Area                bool
 	ExtraTargetPerLevel bool
+	// Evocation says the spell is of the school of evocation, and Sculpts that the
+	// caster has Sculpt Spells (SRD 5.1, School of Evocation): together they let the
+	// cast spare 1 + the cast level creatures.
+	Evocation, Sculpts bool
 	// TargetCount is how many targets the spell takes at its own level (0 when the
 	// spell says only Area or nothing: the old rules apply), and TargetPerLevel
 	// how many more it takes for each slot level above its own. A table spell
@@ -448,6 +461,9 @@ type Turn struct {
 	// action attacks read.
 	AttackKey  string
 	FlurryLeft int
+	// FrenzyReady says the combatant is in a frenzied rage that began in an earlier
+	// turn (the Berserker's Frenzy): a melee weapon attack is its bonus action.
+	FrenzyReady bool
 	// Dashed says the Dash action doubled the speed.
 	Dashed bool
 	// ActionSurged says Action Surge was used this turn (once per turn, whatever

@@ -1,4 +1,5 @@
 import { CastingPanel } from './casting/casting-panel';
+import { BardicBlock } from './inspiration/bardic-block';
 import { OwnEffects } from './effects/own-effects';
 import {
   Component,
@@ -151,6 +152,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     BattleEncounters,
     CombatLaunch,
     CastingPanel,
+    BardicBlock,
     CombatView,
     FoundTreasures,
     GroupCheckCard,

@@ -234,6 +234,10 @@ type ContestServiceClient interface {
 	//
 	// Errors: `failed_precondition`: ContestBlocked (GROUP_CHECK_CLOSED, NOT_IN_GROUP_CHECK,
 	// ALREADY_ANSWERED) or EncounterBlocked WRONG_DICE_MODE.
+	//
+	// A character that holds a Bardic Inspiration die (given outside a combat) gets
+	// `inspiration_offer` in place of the group check: the d20 is rolled and kept, the
+	// check is not written, and ResourceService.AnswerOutsideInspiration settles it.
 	RollGroupCheck(context.Context, *connect.Request[v1.RollGroupCheckRequest]) (*connect.Response[v1.RollGroupCheckResponse], error)
 	// RollForPlayer is the master's roll for a character that has not answered.
 	RollForPlayer(context.Context, *connect.Request[v1.RollForPlayerRequest]) (*connect.Response[v1.RollForPlayerResponse], error)
@@ -613,6 +617,10 @@ type ContestServiceHandler interface {
 	//
 	// Errors: `failed_precondition`: ContestBlocked (GROUP_CHECK_CLOSED, NOT_IN_GROUP_CHECK,
 	// ALREADY_ANSWERED) or EncounterBlocked WRONG_DICE_MODE.
+	//
+	// A character that holds a Bardic Inspiration die (given outside a combat) gets
+	// `inspiration_offer` in place of the group check: the d20 is rolled and kept, the
+	// check is not written, and ResourceService.AnswerOutsideInspiration settles it.
 	RollGroupCheck(context.Context, *connect.Request[v1.RollGroupCheckRequest]) (*connect.Response[v1.RollGroupCheckResponse], error)
 	// RollForPlayer is the master's roll for a character that has not answered.
 	RollForPlayer(context.Context, *connect.Request[v1.RollForPlayerRequest]) (*connect.Response[v1.RollForPlayerResponse], error)

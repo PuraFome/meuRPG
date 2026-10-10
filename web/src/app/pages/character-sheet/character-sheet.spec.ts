@@ -10,6 +10,10 @@ import {
   CharacterBlockedSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ABILITY_KEYS } from '../../core/characters/characters.types';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatDialog } from '@angular/material/dialog';
+import { SpellDetails } from '../../shared/spell-details/spell-details';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { OpenSessions, type OpenSessionVm } from '../../shell/live-notice/open-sessions';
 import { CharacterSheetPage } from './character-sheet';
 import { NotesClient } from '../../core/notes/notes-client';
@@ -83,6 +87,12 @@ class FakeCharacterSheetSource {
 
   pendingChoices = 0;
   pendingChoiceCalls: string[] = [];
+
+  spellDetailsCalls: string[] = [];
+  loadSpellDetails(_campaignId: string, spellKey: string): Promise<SpellDetailsVm> {
+    this.spellDetailsCalls.push(spellKey);
+    return Promise.resolve({ key: spellKey } as SpellDetailsVm);
+  }
 
   getXpMode(): Promise<CampaignXpMode> {
     return Promise.resolve(this.xpMode);
@@ -174,8 +184,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     spellcasting: [],
     spellSlots: [],
     pactSlots: null,
-    cantripNames: [],
-    spellNames: [],
+    spells: [],
     features: [],
     breathWeapon: '',
     resistances: [],
@@ -481,6 +490,129 @@ describe('CharacterSheetPage', () => {
     expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('Golpe desarmado');
   });
 
+  describe('the spell list', () => {
+    const spell = (key: string, namePt: string, level: number, over: object = {}) => ({
+      key,
+      namePt,
+      level,
+      prepared: true,
+      ritual: false,
+      concentration: false,
+      reaction: false,
+      ...over,
+    });
+    const wizard = (spellbook: boolean, spells: ReturnType<typeof spell>[]) =>
+      vm({
+        sheet: fullSheet({
+          spells,
+          spellcasting: [
+            {
+              className: 'Mago',
+              ability: 'int',
+              saveDc: 14,
+              attackBonus: 6,
+              cantripsKnown: 3,
+              spellsPreparedMax: 7,
+              spellsKnownMax: 0,
+              spellbook,
+            },
+          ],
+        }),
+      });
+    const text = (e: Element | null | undefined) =>
+      (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
+
+    it('groups by level, splits prepared from the spellbook and tags ritual, concentration and reaction', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(
+          wizard(true, [
+            spell('spell:fire-bolt', 'Raio de Fogo', 0),
+            spell('spell:detect-magic', 'Detectar Magia', 1, {
+              prepared: false,
+              ritual: true,
+              concentration: true,
+            }),
+            spell('spell:shield', 'Escudo Arcano', 1, { reaction: true }),
+            spell('spell:web', 'Teia', 2, { concentration: true }),
+          ]),
+        );
+      const el = await render();
+      const groups = Array.from(el.querySelectorAll('.spells__group'));
+      expect(groups.map((g) => text(g.querySelector('.spells__label')))).toEqual([
+        'Truques',
+        '1º nível',
+        '2º nível',
+      ]);
+      const rows = (g: Element) =>
+        Array.from(g.querySelectorAll('.spell')).map((r) =>
+          [r.querySelector('.spell__name'), ...Array.from(r.querySelectorAll('.spell__tag'))]
+            .map((e) => text(e))
+            .join(' '),
+        );
+      // A cantrip says nothing of preparation; a spell not prepared is in the spellbook.
+      expect(rows(groups[0])).toEqual(['Raio de Fogo']);
+      expect(text(groups[0])).not.toContain('Preparada');
+      expect(rows(groups[1])[0]).toBe('Detectar Magia Ritual Concentração No grimório');
+      expect(rows(groups[1])[1]).toBe('Escudo Arcano Reação Preparada');
+      expect(rows(groups[2])[0]).toBe('Teia Concentração Preparada');
+      expect(text(el.querySelector('.spells'))).toContain('2 preparadas e 1 só no grimório.');
+    });
+
+    it('says nothing of preparation for a class that knows its spells', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(
+          vm({
+            sheet: fullSheet({
+              spells: [spell('spell:sleep', 'Sono', 1)],
+              spellcasting: [
+                {
+                  className: 'Feiticeiro',
+                  ability: 'cha',
+                  saveDc: 13,
+                  attackBonus: 5,
+                  cantripsKnown: 4,
+                  spellsPreparedMax: 0,
+                  spellsKnownMax: 5,
+                  spellbook: false,
+                },
+              ],
+            }),
+          }),
+        );
+      const el = await render();
+      expect(text(el.querySelector('.spells__label'))).toBe('1º nível');
+      expect(text(el.querySelector('.spell'))).toContain('Sono');
+      expect(el.textContent).not.toContain('Preparada');
+      expect(el.textContent).not.toContain('No grimório');
+    });
+
+    it('opens the description with a tap on the name or on the "?"', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve(wizard(true, [spell('spell:shield', 'Escudo Arcano', 1)]));
+      const dialog = TestBed.inject(MatDialog);
+      const sheet = TestBed.inject(MatBottomSheet);
+      const openDialog = vi.spyOn(dialog, 'open').mockReturnValue(undefined as never);
+      const openSheet = vi.spyOn(sheet, 'open').mockReturnValue(undefined as never);
+      const el = await render();
+
+      (el.querySelector('.spell__open') as HTMLButtonElement).click();
+      (el.querySelector('app-spell-help button') as HTMLButtonElement).click();
+
+      const opened = [...openDialog.mock.calls, ...openSheet.mock.calls];
+      expect(opened).toHaveLength(2);
+      for (const call of opened) {
+        expect(call[0]).toBe(SpellDetails);
+        const data = (call[1] as { data: { namePt: string; load: () => Promise<unknown> } }).data;
+        expect(data.namePt).toBe('Escudo Arcano');
+        await data.load();
+      }
+      expect(fake.spellDetailsCalls).toEqual(['spell:shield']); // the second read is the kept one
+    });
+  });
+
   it('shows spell slots as a readable, separated list using "nível" (integrator fix)', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
@@ -497,6 +629,7 @@ describe('CharacterSheetPage', () => {
                 cantripsKnown: 3,
                 spellsPreparedMax: 7,
                 spellsKnownMax: 0,
+                spellbook: false,
               },
             ],
           }),
@@ -539,6 +672,7 @@ describe('CharacterSheetPage', () => {
                 cantripsKnown: 2,
                 spellsPreparedMax: 2,
                 spellsKnownMax: 0,
+                spellbook: false,
               },
             ],
           }),
@@ -568,6 +702,7 @@ describe('CharacterSheetPage', () => {
                 cantripsKnown: 3,
                 spellsPreparedMax: 7,
                 spellsKnownMax: 0,
+                spellbook: false,
               },
             ],
           }),
@@ -1155,6 +1290,9 @@ describe('CharacterSheetPage', () => {
                   name: 'Estilo de Luta: Defesa',
                   sourcePt: 'Guerreiro 1',
                   description: 'While you are wearing armor, you gain a +1 bonus to AC.',
+                  descriptionPt: '',
+                  descriptionPtMissing: true,
+                  descriptionPtOnly: false,
                   summaryPt: '+1 na CA enquanto usar armadura.',
                 },
               ],
@@ -1187,7 +1325,7 @@ describe('CharacterSheetPage', () => {
     });
   });
 
-  it('shows each feature as a compact row, its English description collapsed by default; issues in the notice under the header, hints as reminders', async () => {
+  it('shows each feature as a compact row, its description collapsed by default (English while it has no translation); issues in the notice under the header, hints as reminders', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -1198,6 +1336,9 @@ describe('CharacterSheetPage', () => {
                 name: 'Recuperação Arcana',
                 sourcePt: 'Mago 1',
                 description: 'You have learned to regain some of your magical energy.',
+                descriptionPt: '',
+                descriptionPtMissing: true,
+                descriptionPtOnly: false,
                 summaryPt: '',
               },
             ],
@@ -1225,12 +1366,12 @@ describe('CharacterSheetPage', () => {
     expect(summary.querySelector('.feature__name')?.textContent?.trim()).toBe('Recuperação Arcana');
     expect(summary.querySelector('.feature__source')?.textContent?.trim()).toBe('Mago 1');
     expect(details!.open).toBe(false);
-    const description = details!.querySelector('p')!;
+    const description = details!.querySelector('.feature__text [lang="en"] p, .feature__text p')!;
     expect(description.textContent).toContain(
       'You have learned to regain some of your magical energy.',
     );
     // The SRD text is English: marked so, for screen readers and translators.
-    expect(description.getAttribute('lang')).toBe('en');
+    expect(description.closest('[lang="en"]')).toBeTruthy();
 
     // The issue: in the warning notice under the header, its title in bold.
     const notice = el.querySelector('.mr-notice--warning')!;
@@ -1248,6 +1389,60 @@ describe('CharacterSheetPage', () => {
     );
   });
 
+  it('shows the Portuguese text of a feature first, with "Ver em inglês" for the SRD English and "(em inglês)" only on the English view', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            features: [
+              {
+                name: 'Visão no Escuro',
+                sourcePt: 'Gnomo',
+                description: 'You can see in dim light.',
+                descriptionPt: 'Você enxerga na penumbra.',
+                descriptionPtMissing: false,
+                descriptionPtOnly: false,
+                summaryPt: '',
+              },
+              {
+                name: 'Fúria',
+                sourcePt: 'Bárbaro 1',
+                description: 'In battle, you fight with primal ferocity.',
+                descriptionPt: '',
+                descriptionPtMissing: true,
+                descriptionPtOnly: false,
+                summaryPt: '',
+              },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    const rows = Array.from(el.querySelectorAll('details.feature'));
+    const text = (i: number) => rows[i].querySelector('.feature__text')!;
+
+    expect(text(0).textContent).toContain('Você enxerga na penumbra.');
+    expect(text(0).textContent).not.toContain('(em inglês)');
+    expect(text(0).querySelector('[lang="en"]')).toBeNull();
+    // No translation yet: the English, flagged.
+    expect(text(1).textContent).toContain('In battle, you fight with primal ferocity.');
+    expect(text(1).querySelector('[data-testid="lang-note"]')?.textContent).toContain('em inglês');
+
+    const button = Array.from(el.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Ver em inglês',
+    ) as HTMLButtonElement;
+    expect(button).toBeTruthy();
+    button.click();
+    TestBed.tick();
+
+    expect(text(0).textContent).toContain('You can see in dim light.');
+    expect(text(0).querySelector('[data-testid="lang-note"]')?.textContent).toContain('em inglês');
+    expect(text(0).querySelector('[lang="en"]')).toBeTruthy();
+    expect(el.textContent).toContain('Ver em português');
+  });
+
   it('shows a feat taken at a level-up with its source, "Talento · Mago 4", and no replaced Incremento', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
@@ -1260,6 +1455,9 @@ describe('CharacterSheetPage', () => {
                 sourcePt: 'Talento · Mago 4',
                 summaryPt: '',
                 description: 'Você corre e escala melhor.',
+                descriptionPt: '',
+                descriptionPtMissing: true,
+                descriptionPtOnly: false,
               },
             ],
           }),
@@ -2371,6 +2569,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
                   cantripsKnown: 3,
                   spellsPreparedMax: 7,
                   spellsKnownMax: 0,
+                  spellbook: false,
                 },
               ],
             }),

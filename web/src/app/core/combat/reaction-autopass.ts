@@ -22,8 +22,8 @@ const OPTIONAL_KINDS: ReadonlySet<ReactionKind> = new Set([
 
 /**
  * Whether the window is an optional reaction: never a saving throw (concentration, an effect's, the Repreensão Infernal
- * second step), a contest, the master's check or an opportunity attack, which are answered with other calls or have
- * to be rolled.
+ * second step), a contest or the master's check, which are answered with other calls or have to be rolled. (An
+ * opportunity attack is optional too, but it is not a window: it has its own clock, over the offers.)
  */
 export function isOptionalReaction(w: ReactionWindow): boolean {
   return OPTIONAL_KINDS.has(w.kind) && !w.secondStep && isOpen(w);
@@ -34,9 +34,25 @@ export function autoPasses(w: ReactionWindow): boolean {
   return isOptionalReaction(w) && w.reactorIsPlayer && w.answerNow;
 }
 
-/** The idempotency key of the automatic pass of a window: two tabs, or a retry, never answer twice. */
+/** Where a UUID keeps its version and variant digits ("xxxxxxxx-xxxx-Vxxx-Nxxx-xxxxxxxxxxxx"). */
+const UUID_VERSION_AT = 14;
+const UUID_VARIANT_AT = 19;
+const HEX_MAX = 15;
+const HEX = 16;
+
+/**
+ * The idempotency key of the automatic pass of a window: two tabs, or a retry, never answer twice. The server takes
+ * only a UUID as a key, so it is the window's own id with every hex digit flipped, but the version and variant ones:
+ * another UUID, the same on every screen.
+ */
 export function autoPassKey(windowId: string): string {
-  return `auto-pass:${windowId}`;
+  return windowId
+    .toLowerCase()
+    .replace(/[0-9a-f]/g, (d, at: number) =>
+      at === UUID_VERSION_AT || at === UUID_VARIANT_AT
+        ? d
+        : (HEX_MAX - parseInt(d, HEX)).toString(HEX),
+    );
 }
 
 /**
@@ -49,7 +65,15 @@ export class AutoPassClock {
 
   /** Looks at the open windows at `now` (ms): forgets the gone ones, starts the clock of the new ones. */
   sync(windows: readonly ReactionWindow[], now: number): void {
-    const waiting = new Set(windows.filter(autoPasses).map((w) => w.id));
+    this.syncIds(
+      windows.filter(autoPasses).map((w) => w.id),
+      now,
+    );
+  }
+
+  /** The same for any list of ids waiting for a player (an opportunity attack's offer): the ones gone are forgotten. */
+  syncIds(ids: Iterable<string>, now: number): void {
+    const waiting = new Set(ids);
     for (const id of [...this.seen.keys()]) {
       if (!waiting.has(id)) {
         this.seen.delete(id);

@@ -18,7 +18,11 @@ import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/ca
 import { RollModeKind } from '../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
-import { type CheckDie, ContestClient } from '../../../core/combat/contest-client';
+import {
+  type CheckDie,
+  ContestClient,
+  InspirationAsked,
+} from '../../../core/combat/contest-client';
 import type { GroupCheckState } from '../../../core/combat/group-check-state';
 import { contestSteps, signed } from '../../../core/combat/contest-view';
 import { AttackSteps } from '../combat/attack-sheet/attack-steps';
@@ -130,6 +134,12 @@ export class GroupCheckSheet {
       );
       this.data.state.apply(view);
     } catch (err) {
+      if (err instanceof InspirationAsked) {
+        // Not an error: the d20 is rolled and kept, and the session panel asks about the die.
+        this.error.set('');
+        this.sheet.close(true);
+        return;
+      }
       this.error.set(combatErrorMessage(err, 'rolar o teste em grupo'));
       // The check changed under the sheet (the master closed it): read it again.
       void this.data.state.load(this.api, this.data.campaignId);

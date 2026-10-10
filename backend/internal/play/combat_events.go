@@ -96,6 +96,8 @@ type saveRoll struct {
 	Counted  int32  `json:"counted,omitempty"`
 	RollMode string `json:"roll_mode,omitempty"`
 	Auto     bool   `json:"auto,omitempty"`
+	// Sculpted says the caster's Sculpt Spells spared the target: it succeeded with no roll.
+	Sculpted bool `json:"sculpted,omitempty"`
 	// Extra are the dice effects added to the roll (Bênção, Perdição).
 	Extra []effectDie `json:"extra,omitempty"`
 	// Unknown says the target is a basic-sheet NPC with no saving throw bonus:
@@ -281,8 +283,11 @@ type actionEvent struct {
 	// says an NPC took it at once.
 	// DiceCount counts every die rolled, ExtraDice among them: the last ExtraDice
 	// faces are the ones a feature added to a critical hit (Brutal Critical).
-	DiceCount  int32   `json:"dice_count,omitempty"`
-	ExtraDice  int32   `json:"extra_dice,omitempty"`
+	DiceCount int32 `json:"dice_count,omitempty"`
+	ExtraDice int32 `json:"extra_dice,omitempty"`
+	// SavageDice is how many of the ExtraDice are the half-orc's Savage Attacks (0 or
+	// 1); the rest are Brutal Critical's.
+	SavageDice int32   `json:"savage_dice,omitempty"`
 	DiceSides  int32   `json:"dice_sides,omitempty"`
 	Faces      []int32 `json:"faces,omitempty"`
 	Amount     int32   `json:"amount,omitempty"`
@@ -293,6 +298,14 @@ type actionEvent struct {
 	// dice's maximum, under the table's rule "máximo mais uma rolagem"): part of
 	// Modifier, kept apart so the log can say where it came from.
 	CriticalMax int32 `json:"critical_max,omitempty"`
+
+	// FallCuts are the fall damages a monk's Slow Fall took points off, with their
+	// amounts before: an undo puts them back. Amount is how many points it took off.
+	FallCuts []fallCut `json:"fall_cuts,omitempty"`
+	// Relentless says the half-orc's Relentless Endurance turned the damage that would
+	// have dropped the target to 0 into 1 hit point, and spent the use: an undo gives
+	// it back.
+	Relentless bool `json:"relentless,omitempty"`
 
 	// Before and After are the target's hit points around a damage or the
 	// master's hand.
@@ -414,7 +427,13 @@ type actionEvent struct {
 	CostDFt     int32 `json:"cost_dft,omitempty"`
 	DistanceFt  int32 `json:"distance_ft,omitempty"`
 	DistanceDFt int32 `json:"distance_dft,omitempty"`
-	OnTurn      bool  `json:"on_turn,omitempty"`
+	// SpentDFt is the movement a walk really spent, in tenths of a foot: the path's
+	// cost times the factor of a drag or a crawl, which Dragging and Crawling name.
+	// Zero when the move spent nothing (the master's free move) or was written before.
+	SpentDFt int32 `json:"spent_dft,omitempty"`
+	Dragging bool  `json:"dragging,omitempty"`
+	Crawling bool  `json:"crawling,omitempty"`
+	OnTurn   bool  `json:"on_turn,omitempty"`
 	// A jump: its kind ("long", "high"), the height of a high one, and whether a
 	// long one landed in difficult terrain (the master's log reminds the
 	// Acrobatics check, D3). From is where the combatant stood and what it had

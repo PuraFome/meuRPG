@@ -551,3 +551,83 @@ describe('ActionGroups: the bonus action attacks', () => {
     expect(button(flurry).getAttribute('aria-disabled')).toBe('true');
   });
 });
+
+describe('ActionGroups: Fúria of a Berserker asks about the frenzy', () => {
+  function setup(offersFrenzy: boolean) {
+    const fixture = TestBed.createComponent(ActionGroups);
+    fixture.componentRef.setInput(
+      'options',
+      create(TurnOptionsSchema, {
+        featureActions: [
+          create(ActionOptionSchema, {
+            action: { key: 'feature:rage', namePt: 'Fúria', economy: ActionEconomy.BONUS_ACTION },
+            enabled: true,
+            offersFrenzy,
+          }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput(
+      'own',
+      create(CombatantSchema, { movementLeftFt: 25, speedFt: 25 }),
+    );
+    const plain: string[] = [];
+    const rages: { key: string; frenzy: boolean }[] = [];
+    fixture.componentInstance.feature.subscribe((k) => plain.push(k));
+    fixture.componentInstance.rage.subscribe((r) => rages.push(r));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const tap = () => {
+      el.querySelector<HTMLButtonElement>('button[aria-label="Usar Fúria"]')!.click();
+      fixture.detectChanges();
+    };
+    const question = () => el.querySelector('.frenzy');
+    const answer = (label: string) => {
+      const b = [...el.querySelectorAll<HTMLButtonElement>('.frenzy button')].find(
+        (x) => x.textContent?.trim() === label,
+      )!;
+      b.click();
+      fixture.detectChanges();
+    };
+    return { el, plain, rages, tap, question, answer };
+  }
+
+  it('asks in place, with the two answers, before the rage starts', () => {
+    const { plain, rages, tap, question } = setup(true);
+    expect(question()).toBeNull();
+    tap();
+    expect(question()?.textContent).toContain('Entrar em frenesi?');
+    expect(question()?.textContent).toContain('1 nível de exaustão');
+    expect([...question()!.querySelectorAll('button')].map((b) => b.textContent?.trim())).toEqual([
+      'Fúria com frenesi',
+      'Só fúria',
+    ]);
+    expect(plain).toEqual([]);
+    expect(rages).toEqual([]);
+  });
+
+  it('"Fúria com frenesi" rages in a frenzy and closes the question', () => {
+    const { plain, rages, tap, question, answer } = setup(true);
+    tap();
+    answer('Fúria com frenesi');
+    expect(rages).toEqual([{ key: 'feature:rage', frenzy: true }]);
+    expect(plain).toEqual([]);
+    expect(question()).toBeNull();
+  });
+
+  it('"Só fúria" rages as before, without the frenzy', () => {
+    const { rages, tap, question, answer } = setup(true);
+    tap();
+    answer('Só fúria');
+    expect(rages).toEqual([{ key: 'feature:rage', frenzy: false }]);
+    expect(question()).toBeNull();
+  });
+
+  it('asks nothing of a barbarian without the frenzy: the tap rages at once', () => {
+    const { plain, rages, tap, question } = setup(false);
+    tap();
+    expect(question()).toBeNull();
+    expect(plain).toEqual(['feature:rage']);
+    expect(rages).toEqual([]);
+  });
+});

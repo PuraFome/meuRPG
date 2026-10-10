@@ -587,6 +587,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:
 		out.DistanceFt, out.DistanceDft = e.ev.DistanceFt, e.ev.DistanceDFt
+		out.SpentDft, out.MoveDragging, out.MoveCrawling = e.ev.SpentDFt, e.ev.Dragging, e.ev.Crawling
 		if out.DistanceDft == 0 { // an event written before the tenths of a foot
 			out.DistanceDft = e.ev.DistanceFt * 10
 		}
@@ -793,6 +794,7 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	}
 	if d.applied != nil { // the master's apply of a character's damage
 		out.Amount = d.applied.Amount
+		out.RelentlessEndurance = d.applied.Relentless
 		if !v.hiddenFrom(d.applied.DeathHidden, target) { // a hit at 0 is a death save failure (RN-24)
 			out.DeathFailuresAdded = d.applied.FailuresAdded
 		}
@@ -829,11 +831,12 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 	d.Amount, d.DamageTypeKey, d.DamageTypePt = e.dmg.Amount, e.dmg.DamageType, damageTypePT[e.dmg.DamageType]
 	d.CriticalRule, d.CriticalMax = pendingCriticalRule(e.dmg.Critical, e.dmg.CriticalMaxRule), e.dmg.CriticalMax
 	if dice {
-		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice)
+		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice, e.dmg.SavageDice)
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
 	if ap := e.applied; ap != nil { // the master's apply of a character's damage
 		d.Amount = ap.Amount
+		d.RelentlessEndurance = ap.Relentless
 		if !ap.DeathHidden || targetsOwn { // a hit at 0 is a death save failure, which the table may keep to the owner and the master (RN-24)
 			d.DeathFailuresAdded = ap.FailuresAdded
 		}

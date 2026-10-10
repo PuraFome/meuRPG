@@ -21,6 +21,12 @@ var (
 	ErrNoResource = errors.New("the character does not have the resource")
 	// ErrBadHitDiceChoice: a choice of hit dice that is not the character's.
 	ErrBadHitDiceChoice = errors.New("the hit dice choice is not the character's")
+	// ErrNoUsesLeft: the character has spent the resource's use (Arcane Recovery) since the last long rest.
+	ErrNoUsesLeft = errors.New("no use of the resource is left")
+	// ErrSlotNotExpended: fewer expended slots of a level than the call recovers.
+	ErrSlotNotExpended = errors.New("not enough expended slots of that level")
+	// ErrArcaneOver: the slots add up to more than the Arcane Recovery allowance (a PointsError).
+	ErrArcaneOver = errors.New("the slots are above the Arcane Recovery allowance")
 )
 
 // PointsError is a refusal that names the points it needed and the ones there were.
