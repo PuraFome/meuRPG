@@ -49,7 +49,13 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(clock.due(Date.now())).toEqual(['w1']);
     // Once: a second look does not send it again.
     expect(clock.due(Date.now())).toEqual([]);
-    expect(autoPassKey('w1')).toBe('auto-pass:w1');
+    // The server takes only a UUID as a key: the window's id with its digits flipped, the same on every screen.
+    const id = '0f1e2d3c-4b5a-4987-a6b5-c4d3e2f1a0b9';
+    expect(autoPassKey(id)).toBe('f0e1d2c3-b4a5-4678-a94a-3b2c1d0e5f46');
+    expect(autoPassKey(id)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(autoPassKey(id.toUpperCase())).toBe(autoPassKey(id));
   });
 
   it('may send a pass again after a failure that was not a refusal', () => {

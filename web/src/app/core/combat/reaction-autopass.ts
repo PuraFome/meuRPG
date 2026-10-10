@@ -34,9 +34,25 @@ export function autoPasses(w: ReactionWindow): boolean {
   return isOptionalReaction(w) && w.reactorIsPlayer && w.answerNow;
 }
 
-/** The idempotency key of the automatic pass of a window: two tabs, or a retry, never answer twice. */
+/** Where a UUID keeps its version and variant digits ("xxxxxxxx-xxxx-Vxxx-Nxxx-xxxxxxxxxxxx"). */
+const UUID_VERSION_AT = 14;
+const UUID_VARIANT_AT = 19;
+const HEX_MAX = 15;
+const HEX = 16;
+
+/**
+ * The idempotency key of the automatic pass of a window: two tabs, or a retry, never answer twice. The server takes
+ * only a UUID as a key, so it is the window's own id with every hex digit flipped, but the version and variant ones:
+ * another UUID, the same on every screen.
+ */
 export function autoPassKey(windowId: string): string {
-  return `auto-pass:${windowId}`;
+  return windowId
+    .toLowerCase()
+    .replace(/[0-9a-f]/g, (d, at: number) =>
+      at === UUID_VERSION_AT || at === UUID_VARIANT_AT
+        ? d
+        : (HEX_MAX - parseInt(d, HEX)).toString(HEX),
+    );
 }
 
 /**
