@@ -222,13 +222,14 @@ export async function adjustVitalsRPC(page: Page, campaignId: string, characterI
 /** Waits until the server has passed the turn on from the combatant called `label`. A click on "Encerrar turno"
  * returns before the server answers, so an `EndTurn` sent right after it races the click's own (`aborted`). */
 export async function waitTurnLeaves(master: Page, campaignId: string, label: string): Promise<void> {
-  await expect
-    .poll(async () => {
-      const e = await getEncounterRPC(master, campaignId);
-      const group = e.turnGroupIds?.length ? e.turnGroupIds : [e.currentCombatantId ?? ''];
-      return group.some((id) => e.combatants.find((c) => c.id === id)?.label === label);
-    })
-    .toBe(false);
+  await expect.poll(() => turnIsWith(master, campaignId, label)).toBe(false);
+}
+
+/** Whether the combatant called `label` is (one of) the one(s) on turn now. */
+async function turnIsWith(master: Page, campaignId: string, label: string): Promise<boolean> {
+  const e = await getEncounterRPC(master, campaignId);
+  const group = e.turnGroupIds?.length ? e.turnGroupIds : [e.currentCombatantId ?? ''];
+  return group.some((id) => e.combatants.find((c) => c.id === id)?.label === label);
 }
 
 /**
@@ -238,7 +239,18 @@ export async function waitTurnLeaves(master: Page, campaignId: string, label: st
  */
 export async function endTurnOf(player: Page, master: Page, campaignId: string, label: string): Promise<void> {
   await player.getByRole('button', { name: 'Encerrar turno' }).click();
-  await waitTurnLeaves(master, campaignId, label);
+  // Right after an action, the screen may still hold the turn options read before it (they are read again a moment
+  // after the action's answer) and ask "Ainda tem 1 ataque desta ação. Encerrar mesmo?": this helper ends the turn
+  // anyway. A spec about that question taps the button itself.
+  await expect
+    .poll(async () => {
+      const go = player.locator('.ask__go');
+      if (await go.isVisible()) {
+        await go.click();
+      }
+      return turnIsWith(master, campaignId, label);
+    })
+    .toBe(false);
 }
 
 export async function passTurnsTo(master: Page, campaignId: string, label: string): Promise<Encounter> {

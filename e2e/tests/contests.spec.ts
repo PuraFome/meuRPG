@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { combatRPC, passTurnsTo, startEncounterRPC, tableForCombat } from './combat-support';
+import { combatRPC, endTurnOf, passTurnsTo, startEncounterRPC, tableForCombat } from './combat-support';
 import { grog, rollsTable, vex } from './combat-rolls-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
@@ -38,7 +38,8 @@ test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escap
     // The master lets the Goblin go; later the Goblin grapples Grog, who chooses the skill and rolls.
     await holds.getByRole('button', { name: 'Soltar Goblin 1' }).click();
     await expect(holds).toBeHidden();
-    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    // The player's end of turn lands first: passing the turns before it would end Grog's turn twice.
+    await endTurnOf(p, m, campaignId, 'Grog');
     const enc = await passTurnsTo(m, campaignId, 'Goblin 1');
     await contestRPC(m, 'StartContest', {
       campaignId,
@@ -103,7 +104,8 @@ test('o jogador derruba o goblin com um empurrão e escapa de um agarrão de CD 
     await closeSheet(sheet);
 
     // A grapple with a fixed escape DC (an attack of the creature): the player reads her own total and the result, never the DC.
-    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    // The player's end of turn lands first: passing the turns before it would end Grog's turn twice.
+    await endTurnOf(p, m, campaignId, 'Grog');
     const enc = await passTurnsTo(m, campaignId, 'Goblin 1');
     await contestRPC(m, 'StartContest', {
       campaignId,
