@@ -26,7 +26,7 @@ import {
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
-import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { DisabledReasonCode, type Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
@@ -44,7 +44,7 @@ import { conditionTags } from '../../../../core/combat/conditions';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { RageStatus } from '../rage-end/rage-status';
 import type { CombatState } from '../../../../core/combat/combat-state';
-import { attackName } from '../../../../core/combat/combat-options';
+import { attackName, reasonText } from '../../../../core/combat/combat-options';
 import {
   combatantInitial,
   isDown,
@@ -207,11 +207,19 @@ export class NpcCard {
     });
   });
   /** A hit whose damage is still to roll or to apply holds the attacker's next attack: the server refuses it too. */
-  protected readonly rollWhy = computed(() =>
-    this.pendings().length > 0
-      ? 'Role ou aplique o dano do ataque anterior antes de rolar outro.'
-      : '',
-  );
+  protected readonly rollWhy = computed(() => {
+    if (this.pendings().length > 0) {
+      return 'Role ou aplique o dano do ataque anterior antes de rolar outro.';
+    }
+    // The server turns every option off for a combatant that cannot act (incapacitated, lethargy): say so here too.
+    const off = (this.options()?.options?.attacks ?? []).find(
+      (a) =>
+        !a.enabled &&
+        (a.reason?.code === DisabledReasonCode.INCAPACITATED ||
+          a.reason?.code === DisabledReasonCode.EFFECT_LETHARGY),
+    );
+    return off ? reasonText(off.reason, true) : '';
+  });
   /** The damage of the attack just rolled shows inside its result box. */
   protected readonly inBox = computed(() => {
     const id = this.last()?.pending?.id;

@@ -118,6 +118,30 @@ func TestEndingAnEffectClosesItsSavingThrowWindow(t *testing.T) {
 	}
 }
 
+// A creature that is defeated owes no saving throw: the window it had open closes by itself, so
+// the master does not have to skip it (RN-22).
+func TestADefeatedCreaturesSavingThrowWindowClosesByItself(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.closeFight(t)
+	a.mustAddEffect(t, e, "spell:hideous-laughter", []string{"Goblin"}, a.rounds(t, 10, "Pensantus"))
+	a.passTo(t, e, "Goblin")
+	if _, err := a.endTurnRaw(t, a.master, e, true); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	if a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE) == nil {
+		t.Fatal("the save did not open")
+	}
+	a.execSQL(t, `UPDATE combatants SET defeated = true WHERE id = $1`, a.id(t, "Goblin"))
+	// Any change of the combat settles the windows.
+	if _, err := a.conditions(t, a.master, e, "Goblin", []string{"prone"}, true, false); err != nil {
+		t.Fatalf("conditions() error = %v", err)
+	}
+	if a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE) != nil {
+		t.Error("the save window of a defeated creature stayed open")
+	}
+}
+
 // A concentration spell's effects go with the caster's concentration, and a window that waited
 // for one of them closes.
 func TestTheCastersConcentrationEndingEndsTheEffectsAndTheirWindows(t *testing.T) {

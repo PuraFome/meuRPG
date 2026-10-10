@@ -36,6 +36,9 @@ const defaultEffectDC = 10
 // once for the turn: a repeat finds the window open and opens none. damage says the
 // window opened because the target took damage (advantage on the roll).
 func (s *Service) openEffectSave(ctx context.Context, c *combatTx, group string, st playdb.CombatantState, target playdb.Combatant, phase string, damage bool) (bool, error) {
+	if target.Defeated && target.Kind != kindPlayer {
+		return false, nil // a defeated creature owes no saving throw
+	}
 	open, err := openWindowsOf(ctx, c)
 	if err != nil {
 		return false, err
