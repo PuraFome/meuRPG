@@ -46,6 +46,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 		Rage:           rules.HasFeature(d, "feature:rage"),
 		RecklessAttack: rules.HasFeature(d, "feature:reckless-attack"),
 		DangerSense:    rules.HasFeature(d, "feature:danger-sense"),
+		SculptSpells:   rules.HasFeature(d, "feature:sculpt-spells"),
 		DivineSmite:    rules.HasFeature(d, "feature:divine-smite"),
 		ColossusSlayer: rules.HasFeature(d, "feature:hunters-prey-colossus-slayer"),
 		HeavyArmor:     d.ArmorCategory == "heavy",

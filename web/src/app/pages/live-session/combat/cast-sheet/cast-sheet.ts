@@ -123,6 +123,7 @@ import { injectSheet } from '../sheet-host';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { CastResult, CastSlots, type SlotAfter } from './cast-result';
 import { CastTargets } from './cast-targets';
+import { SculptPicker, type SculptRow } from './sculpt-picker';
 import { MetamagicPicker } from './metamagic-picker';
 import { DamageTypePicker } from './damage-type-picker';
 import { SlotPicker } from './slot-picker';
@@ -186,6 +187,8 @@ export interface CastSheetData {
   readonly metamagic?: readonly MetamagicOption[];
   /** The sorcery points left and their maximum, for "Pontos de Feitiçaria: 5 de 5". */
   readonly sorceryPoints?: Pool | null;
+  /** The caster has Sculpt Spells and the spell is of evocation (`SpellOption.sculpt_spells`). */
+  readonly sculptSpells?: boolean;
   /** The battle map, in a combat with a grid: an area spell is placed on it. Absent without a map (theatre of the mind),
    * where every area spell keeps the list of who it hits. */
   readonly map?: CastMapData | null;
@@ -223,6 +226,7 @@ export interface CastSheetData {
     MultiRoll,
     RollModePicker,
     RollPicker,
+    SculptPicker,
     SheetFrame,
     SlotPicker,
     SpellHelp,
@@ -421,6 +425,49 @@ export class CastSheet {
     return '';
   }
   protected readonly ready = computed(() => this.missing() === '');
+
+  // ---- Sculpt Spells (SRD 5.1, School of Evocation wizard) ----
+
+  /** The caster has Sculpt Spells and the spell is of evocation: the creatures it spares are asked for. */
+  protected readonly sculptOffered = this.data.sculptSpells ?? false;
+  protected readonly sculpted = signal<string[]>([]);
+  /** 1 + the level the spell is cast at (a cantrip is level 0). */
+  protected readonly sculptLimit = computed(() => 1 + (this.data.level > 0 ? this.slotLevel() : 0));
+  /** The creatures the caster can spare: the others in the placed area, or the ones ticked in the list; allies first. */
+  protected readonly sculptRows = computed<SculptRow[]>(() => {
+    if (!this.sculptOffered) {
+      return [];
+    }
+    const preview = this.flow?.preview();
+    const rows: SculptRow[] = this.flow
+      ? (preview?.targets ?? [])
+          .filter((t) => !t.self)
+          .map((t) => ({ id: t.combatantId, label: t.label, ally: t.ally }))
+      : this.targetRows()
+          .filter((t) => !t.blocked && this.chosen().includes(t.id))
+          .map((t) => ({ id: t.id, label: t.label, ally: false }));
+    return [...rows.filter((r) => r.ally), ...rows.filter((r) => !r.ally)];
+  });
+  /** What the cast sends: the ones marked that are still listed, no more than the limit. */
+  private sculptedIds(): string[] {
+    const listed = new Set(this.sculptRows().map((r) => r.id));
+    return this.sculpted()
+      .filter((id) => listed.has(id))
+      .slice(0, this.sculptLimit());
+  }
+
+  protected toggleSculpt(id: string): void {
+    const now = this.sculpted();
+    this.sculpted.set(
+      now.includes(id)
+        ? now.filter((x) => x !== id)
+        : now.length < this.sculptLimit()
+          ? [...now, id]
+          : now,
+    );
+    this.choiceChanged();
+    this.error.set('');
+  }
 
   // ---- an area placed on the map (PM-02a, PM-02b) ----
 
@@ -956,7 +1003,7 @@ export class CastSheet {
       const roll = die ?? (this.kind() === 'pool' ? { inApp: true as const } : null);
       // A placed area's key follows its request: the same slot, place and roll again is a retry of it.
       const key = this.flow
-        ? this.areaKey.keyFor([slot, area, roll, this.damageType()])
+        ? this.areaKey.keyFor([slot, area, roll, this.damageType(), this.sculptedIds()])
         : this.castKey;
       const res = await this.api.castSpell(
         this.data.campaignId,
@@ -977,6 +1024,7 @@ export class CastSheet {
         {
           ...(this.flow ? { area } : {}),
           ...(this.asksAbility ? { abilityKey: this.ability() } : {}),
+          ...(this.sculptedIds().length ? { sculptedIds: this.sculptedIds() } : {}),
         },
       );
       this.data.state.apply(res.encounter);

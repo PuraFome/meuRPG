@@ -1987,6 +1987,7 @@ export class CombatView {
       shieldFree: shield ? shield.slots.reduce((n, s) => n + s.free, 0) : null,
       shieldName: shield?.spell?.namePt || 'Escudo Arcano',
       metamagic: spell?.metamagicOptions ?? [],
+      sculptSpells: spell?.sculptSpells ?? false,
       sorceryPoints: poolOf(vitals?.resources, SORCERY_POINTS_RESOURCE),
       attackBonus,
       master: this.isMaster(),

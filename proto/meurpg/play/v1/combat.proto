@@ -3541,6 +3541,16 @@ message CastSpellRequest {
   // Owl's Wisdom, Eagle's Splendor). Required for that spell, `invalid_argument` otherwise
   // missing or unknown; ignored by every other spell.
   string ability_key = 20;
+  // Sculpt Spells (SRD 5.1, School of Evocation wizard, level 2): the creatures of the
+  // area the caster spares, an evocation spell that affects other creatures the caster
+  // can see. Each one succeeds on its saving throw by itself (no roll; its save result
+  // has `sculpted`) and takes no damage when the spell would deal half on a success.
+  // At most 1 + the level the spell is cast at (0 for a cantrip, so 1); each must be a
+  // creature the spell reaches and the caller sees, never the caster. Refused with
+  // `invalid_argument` for a caster without the feature (SpellOption.sculpt_spells is
+  // false), a spell that is not of evocation, a creature that is not among the targets
+  // or is the caster, a repeated one and too many. Empty is a cast without it.
+  repeated string sculpted_ids = 31;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -3711,6 +3721,9 @@ message SaveResult {
   // The target failed by itself, with no d20: a Strength or Dexterity saving throw of a
   // Paralisado, Atordoado, Inconsciente or Petrificado creature (SRD, Conditions).
   bool auto_fail = 100;
+  // The target was spared by the caster's Sculpt Spells: it succeeded without a roll
+  // (`outcome` is SAVED, `roll` is unset) and took no damage if the spell halves.
+  bool sculpted = 101;
 }
 
 // SpellTargetResult is what a cast did to one target.

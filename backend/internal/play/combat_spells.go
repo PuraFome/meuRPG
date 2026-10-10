@@ -428,6 +428,9 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		if err := meta.membersIn(targs); err != nil {
 			return nil, err
 		}
+		if c.sculpted, err = sculptedOf(req.Msg.GetSculptedIds(), sp, slotLevel, caster, targs, v); err != nil {
+			return nil, err
+		}
 		darts := dartsOf(sp, slotLevel)
 		dartList := make([]int, len(targets))
 		for i, t := range targets {
@@ -850,6 +853,20 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 // (rounded down) for one that saved when the spell halves, none when it avoids.
 // The d20 is always rolled by the app (RN-18 is for the table's own dice).
 func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit, modes *spellModes) error {
+	if c.sculpted[target.ID] {
+		// Sculpt Spells (SRD 5.1): the creature succeeds on its own, with no roll, and takes
+		// no damage when the spell would deal half on a success.
+		hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: true, Sculpted: true}
+		if len(sp.Damages) == 0 || sp.SaveOnSuccess != "other" {
+			return nil
+		}
+		for _, part := range sp.Damages {
+			if err := s.openSpellPending(ctx, c, sp, part, caster, target, false, false, hit); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	save, err := s.saveOf(ctx, c.tx, m.CampaignID, target, sp.SaveAbility)
 	if err != nil {
 		return err

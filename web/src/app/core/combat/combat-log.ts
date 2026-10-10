@@ -334,7 +334,13 @@ function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
     out = `${t.darts} ${t.darts === 1 ? 'dardo' : 'dardos'} ${inThe(who)}${damage}`;
   } else if (t.save) {
     const dc = saveNotes(t.save, ctx);
-    out = `${the(who)} ${t.save.outcome === SaveOutcome.SAVED ? 'resistiu' : 'falhou'}${dc}${damage}`;
+    // Esculpir Magias: spared by the caster, no roll.
+    const verb = t.save.sculpted
+      ? 'resistiu sem rolar (Esculpir Magias)'
+      : t.save.outcome === SaveOutcome.SAVED
+        ? 'resistiu'
+        : 'falhou';
+    out = `${the(who)} ${verb}${dc}${damage}`;
   } else if (t.outcome !== AttackOutcome.UNSPECIFIED) {
     out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${coverNote(t)}${t.outcome === AttackOutcome.MISS ? '' : damage}`;
   } else if (t.damage?.healing) {

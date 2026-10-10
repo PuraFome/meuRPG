@@ -190,6 +190,18 @@ export interface CastExtras {
   readonly revealHidden?: boolean;
   /** Aprimorar Habilidade only: the ability it is cast for ("str" to "cha"). */
   readonly abilityKey?: string;
+  /** Sculpt Spells: the creatures of the area the caster spares. */
+  readonly sculptedIds?: readonly string[];
+}
+
+/** The optional fields of a cast request; each is left out unless it was set. */
+function castExtrasBody(extras: CastExtras) {
+  return {
+    // Left out unless the master chose: the table rule decides then.
+    ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
+    ...(extras.abilityKey ? { abilityKey: extras.abilityKey } : {}),
+    ...(extras.sculptedIds?.length ? { sculptedIds: [...extras.sculptedIds] } : {}),
+  };
 }
 
 /** The roll of a cast as the request's oneof: the app rolls, a typed pool sum, or a typed d20. */
@@ -1146,9 +1158,7 @@ export class CombatClient {
           }
         : undefined,
       area: areaOneof(extras.area),
-      // Left out unless the master chose: the table rule decides then.
-      ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
-      ...(extras.abilityKey ? { abilityKey: extras.abilityKey } : {}),
+      ...castExtrasBody(extras),
     });
     return {
       encounter: need(res.encounter, 'CastSpell'),

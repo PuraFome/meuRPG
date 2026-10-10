@@ -96,6 +96,8 @@ type saveRoll struct {
 	Counted  int32  `json:"counted,omitempty"`
 	RollMode string `json:"roll_mode,omitempty"`
 	Auto     bool   `json:"auto,omitempty"`
+	// Sculpted says the caster's Sculpt Spells spared the target: it succeeded with no roll.
+	Sculpted bool `json:"sculpted,omitempty"`
 	// Extra are the dice effects added to the roll (Bênção, Perdição).
 	Extra []effectDie `json:"extra,omitempty"`
 	// Unknown says the target is a basic-sheet NPC with no saving throw bonus:

@@ -10597,7 +10597,17 @@ type CastSpellRequest struct {
 	// "wis" or "cha"; SRD 5.1: Bull's Strength, Cat's Grace, Bear's Endurance, Fox's Cunning,
 	// Owl's Wisdom, Eagle's Splendor). Required for that spell, `invalid_argument` otherwise
 	// missing or unknown; ignored by every other spell.
-	AbilityKey    string `protobuf:"bytes,20,opt,name=ability_key,json=abilityKey,proto3" json:"ability_key,omitempty"`
+	AbilityKey string `protobuf:"bytes,20,opt,name=ability_key,json=abilityKey,proto3" json:"ability_key,omitempty"`
+	// Sculpt Spells (SRD 5.1, School of Evocation wizard, level 2): the creatures of the
+	// area the caster spares, an evocation spell that affects other creatures the caster
+	// can see. Each one succeeds on its saving throw by itself (no roll; its save result
+	// has `sculpted`) and takes no damage when the spell would deal half on a success.
+	// At most 1 + the level the spell is cast at (0 for a cantrip, so 1); each must be a
+	// creature the spell reaches and the caller sees, never the caster. Refused with
+	// `invalid_argument` for a caster without the feature (SpellOption.sculpt_spells is
+	// false), a spell that is not of evocation, a creature that is not among the targets
+	// or is the caster, a repeated one and too many. Empty is a cast without it.
+	SculptedIds   []string `protobuf:"bytes,31,rep,name=sculpted_ids,json=sculptedIds,proto3" json:"sculpted_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -10801,6 +10811,13 @@ func (x *CastSpellRequest) GetAbilityKey() string {
 		return x.AbilityKey
 	}
 	return ""
+}
+
+func (x *CastSpellRequest) GetSculptedIds() []string {
+	if x != nil {
+		return x.SculptedIds
+	}
+	return nil
 }
 
 type isCastSpellRequest_Roll interface {
@@ -11654,7 +11671,10 @@ type SaveResult struct {
 	AutoFailed bool               `protobuf:"varint,7,opt,name=auto_failed,json=autoFailed,proto3" json:"auto_failed,omitempty"`
 	// The target failed by itself, with no d20: a Strength or Dexterity saving throw of a
 	// Paralisado, Atordoado, Inconsciente or Petrificado creature (SRD, Conditions).
-	AutoFail      bool `protobuf:"varint,100,opt,name=auto_fail,json=autoFail,proto3" json:"auto_fail,omitempty"`
+	AutoFail bool `protobuf:"varint,100,opt,name=auto_fail,json=autoFail,proto3" json:"auto_fail,omitempty"`
+	// The target was spared by the caster's Sculpt Spells: it succeeded without a roll
+	// (`outcome` is SAVED, `roll` is unset) and took no damage if the spell halves.
+	Sculpted      bool `protobuf:"varint,101,opt,name=sculpted,proto3" json:"sculpted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11741,6 +11761,13 @@ func (x *SaveResult) GetAutoFailed() bool {
 func (x *SaveResult) GetAutoFail() bool {
 	if x != nil {
 		return x.AutoFail
+	}
+	return false
+}
+
+func (x *SaveResult) GetSculpted() bool {
+	if x != nil {
+		return x.Sculpted
 	}
 	return false
 }
@@ -20795,7 +20822,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vSpellTarget\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05darts\x18\x02 \x01(\x05R\x05darts\x12$\n" +
-	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xa0\a\n" +
+	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xc3\a\n" +
 	"\x10CastSpellRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -20821,7 +20848,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\td20_faces\x18\x12 \x03(\x05R\bd20Faces\x12-\n" +
 	"\x12material_confirmed\x18\x13 \x01(\bR\x11materialConfirmed\x12\x1f\n" +
 	"\vability_key\x18\x14 \x01(\tR\n" +
-	"abilityKeyB\x06\n" +
+	"abilityKey\x12!\n" +
+	"\fsculpted_ids\x18\x1f \x03(\tR\vsculptedIdsB\x06\n" +
 	"\x04rollB\x06\n" +
 	"\x04areaB\x10\n" +
 	"\x0e_reveal_hidden\"\x88\x01\n" +
@@ -20882,7 +20910,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\fSummonChoice\x12\x16\n" +
 	"\x06option\x18\x01 \x01(\x05R\x06option\x12#\n" +
 	"\rcreature_keys\x18\x02 \x03(\tR\fcreatureKeys\x12\x14\n" +
-	"\x05names\x18\x03 \x03(\tR\x05names\"\xc9\x02\n" +
+	"\x05names\x18\x03 \x03(\tR\x05names\"\xe5\x02\n" +
 	"\n" +
 	"SaveResult\x125\n" +
 	"\aoutcome\x18\x01 \x01(\x0e2\x1b.meurpg.play.v1.SaveOutcomeR\aoutcome\x12,\n" +
@@ -20894,7 +20922,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\asources\x18\x06 \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12\x1f\n" +
 	"\vauto_failed\x18\a \x01(\bR\n" +
 	"autoFailed\x12\x1b\n" +
-	"\tauto_fail\x18d \x01(\bR\bautoFail\"\x88\x06\n" +
+	"\tauto_fail\x18d \x01(\bR\bautoFail\x12\x1a\n" +
+	"\bsculpted\x18e \x01(\bR\bsculpted\"\x88\x06\n" +
 	"\x11SpellTargetResult\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05darts\x18\x02 \x01(\x05R\x05darts\x127\n" +

@@ -9179,8 +9179,11 @@ type SpellOption struct {
 	// (SRD 5.1, Sorcerer). Empty for a character with none. The cast checks them again
 	// at the slot it is cast with.
 	MetamagicOptions []*MetamagicOption `protobuf:"bytes,30,rep,name=metamagic_options,json=metamagicOptions,proto3" json:"metamagic_options,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// True when the character has Sculpt Spells (the evocation wizard) and this spell is of
+	// the school of evocation: the cast may name creatures to spare (CastSpellRequest.sculpted_ids).
+	SculptSpells  bool `protobuf:"varint,31,opt,name=sculpt_spells,json=sculptSpells,proto3" json:"sculpt_spells,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SpellOption) Reset() {
@@ -9253,6 +9256,13 @@ func (x *SpellOption) GetMetamagicOptions() []*MetamagicOption {
 		return x.MetamagicOptions
 	}
 	return nil
+}
+
+func (x *SpellOption) GetSculptSpells() bool {
+	if x != nil {
+		return x.SculptSpells
+	}
+	return false
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the
@@ -11577,14 +11587,15 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x12bonus_attacks_left\x18\x05 \x01(\x05R\x10bonusAttacksLeft\x120\n" +
 	"\x14bonus_drops_modifier\x18\x06 \x01(\bR\x12bonusDropsModifier\x12\x1d\n" +
 	"\n" +
-	"beams_left\x18\a \x01(\x05R\tbeamsLeft\"\xca\x02\n" +
+	"beams_left\x18\a \x01(\x05R\tbeamsLeft\"\xef\x02\n" +
 	"\vSpellOption\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x128\n" +
 	"\aeconomy\x18\x02 \x01(\x0e2\x1e.meurpg.rules.v1.ActionEconomyR\aeconomy\x12\x18\n" +
 	"\aenabled\x18\x03 \x01(\bR\aenabled\x127\n" +
 	"\x06reason\x18\x04 \x01(\v2\x1f.meurpg.rules.v1.DisabledReasonR\x06reason\x121\n" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12M\n" +
-	"\x11metamagic_options\x18\x1e \x03(\v2 .meurpg.rules.v1.MetamagicOptionR\x10metamagicOptions\"\xb7\x01\n" +
+	"\x11metamagic_options\x18\x1e \x03(\v2 .meurpg.rules.v1.MetamagicOptionR\x10metamagicOptions\x12#\n" +
+	"\rsculpt_spells\x18\x1f \x01(\bR\fsculptSpells\"\xb7\x01\n" +
 	"\x0fMetamagicOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x12\n" +
