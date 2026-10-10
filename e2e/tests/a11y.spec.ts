@@ -982,7 +982,7 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(m, `Encerrar o combate, confirmação ${where}`);
     await m.getByRole('button', { name: 'Encerrar combate' }).last().click();
     await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
-    await expect(p.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
+    await expect(p.getByRole('heading', { name: 'O combate acabou' })).toBeVisible(); // the player's one end-of-combat card
     await expectScreenPasses(m, `Combate encerrado, mestre ${where}`);
     await expectScreenPasses(p, `Combate encerrado, jogador ${where}`);
   } finally {
