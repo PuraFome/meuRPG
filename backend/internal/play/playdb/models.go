@@ -355,6 +355,7 @@ type PendingDamage struct {
 	LandedBefore     []byte
 	AfterSteps       *int32
 	EffectSourceKey  *string
+	SavageDice       int32
 }
 
 type Puzzle struct {

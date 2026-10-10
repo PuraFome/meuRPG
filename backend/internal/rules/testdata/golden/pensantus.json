@@ -863,6 +863,7 @@
   "AttacksPerAction": 1,
   "CriticalRange": 20,
   "BrutalCriticalDice": 0,
+  "SavageAttacks": false,
   "ReliableTalent": false,
   "TwoWeaponFighting": false,
   "SaveActions": null,

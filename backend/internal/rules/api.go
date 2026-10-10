@@ -673,6 +673,9 @@ type Derived struct {
 	// BrutalCriticalDice is how many extra weapon damage dice a melee critical
 	// hit rolls (the barbarian's Brutal Critical: 1, 2 or 3), 0 without it.
 	BrutalCriticalDice int
+	// SavageAttacks says the character has the half-orc's Savage Attacks: a critical
+	// hit with a melee weapon attack rolls one more of the weapon's damage dice.
+	SavageAttacks bool
 	// ReliableTalent says the character has the rogue's Reliable Talent: on an
 	// ability check that adds the proficiency bonus, a d20 of 9 or lower counts
 	// as 10.

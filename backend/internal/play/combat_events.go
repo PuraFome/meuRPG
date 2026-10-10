@@ -281,8 +281,11 @@ type actionEvent struct {
 	// says an NPC took it at once.
 	// DiceCount counts every die rolled, ExtraDice among them: the last ExtraDice
 	// faces are the ones a feature added to a critical hit (Brutal Critical).
-	DiceCount  int32   `json:"dice_count,omitempty"`
-	ExtraDice  int32   `json:"extra_dice,omitempty"`
+	DiceCount int32 `json:"dice_count,omitempty"`
+	ExtraDice int32 `json:"extra_dice,omitempty"`
+	// SavageDice is how many of the ExtraDice are the half-orc's Savage Attacks (0 or
+	// 1); the rest are Brutal Critical's.
+	SavageDice int32   `json:"savage_dice,omitempty"`
 	DiceSides  int32   `json:"dice_sides,omitempty"`
 	Faces      []int32 `json:"faces,omitempty"`
 	Amount     int32   `json:"amount,omitempty"`
@@ -293,6 +296,14 @@ type actionEvent struct {
 	// dice's maximum, under the table's rule "máximo mais uma rolagem"): part of
 	// Modifier, kept apart so the log can say where it came from.
 	CriticalMax int32 `json:"critical_max,omitempty"`
+
+	// FallCuts are the fall damages a monk's Slow Fall took points off, with their
+	// amounts before: an undo puts them back. Amount is how many points it took off.
+	FallCuts []fallCut `json:"fall_cuts,omitempty"`
+	// Relentless says the half-orc's Relentless Endurance turned the damage that would
+	// have dropped the target to 0 into 1 hit point, and spent the use: an undo gives
+	// it back.
+	Relentless bool `json:"relentless,omitempty"`
 
 	// Before and After are the target's hit points around a damage or the
 	// master's hand.

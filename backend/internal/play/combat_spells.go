@@ -837,7 +837,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	// A spell attack deals its first damage type: no spell of the SRD that rolls an
 	// attack lists a second one.
-	p, err := s.openHit(ctx, c, caster, target, sp.Key, sp.Damages[0], result.Critical, 0, result.Total, targetAC)
+	p, err := s.openHit(ctx, c, caster, target, sp.Key, sp.Damages[0], result.Critical, 0, 0, result.Total, targetAC)
 	if err != nil {
 		return err
 	}

@@ -15429,10 +15429,14 @@ type CombatLogDamage struct {
 	// master and the target's own player, the steps resistance took. The log of the
 	// players never prints an NPC's resistances: "caiu pela metade" is not a line they
 	// get, only the final damage.
-	Parts         []*DamagePartRoll `protobuf:"bytes,17,rep,name=parts,proto3" json:"parts,omitempty"`
-	Steps         []*DamageStep     `protobuf:"bytes,18,rep,name=steps,proto3" json:"steps,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Parts []*DamagePartRoll `protobuf:"bytes,17,rep,name=parts,proto3" json:"parts,omitempty"`
+	Steps []*DamageStep     `protobuf:"bytes,18,rep,name=steps,proto3" json:"steps,omitempty"`
+	// APPLIED to a player's character that the half-orc's Relentless Endurance (SRD 5.1)
+	// kept on 1 hit point instead of 0: the line reads "Resistência Implacável: fica com
+	// 1 PV". Everyone who gets the line gets this.
+	RelentlessEndurance bool `protobuf:"varint,19,opt,name=relentless_endurance,json=relentlessEndurance,proto3" json:"relentless_endurance,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *CombatLogDamage) Reset() {
@@ -15589,6 +15593,13 @@ func (x *CombatLogDamage) GetSteps() []*DamageStep {
 		return x.Steps
 	}
 	return nil
+}
+
+func (x *CombatLogDamage) GetRelentlessEndurance() bool {
+	if x != nil {
+		return x.RelentlessEndurance
+	}
+	return false
 }
 
 // GetCombatHighlightsRequest names the combat.
@@ -21242,7 +21253,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\tsuccesses\x18\x03 \x01(\x05R\tsuccesses\x12\x1a\n" +
 	"\bfailures\x18\x04 \x01(\x05R\bfailures\x12\x16\n" +
 	"\x06stable\x18\x05 \x01(\bR\x06stable\x12\x14\n" +
-	"\x05dying\x18\x06 \x01(\bR\x05dying\"\xb8\x06\n" +
+	"\x05dying\x18\x06 \x01(\bR\x05dying\"\xeb\x06\n" +
 	"\x0fCombatLogDamage\x12;\n" +
 	"\x06status\x18\x01 \x01(\x0e2#.meurpg.play.v1.PendingDamageStatusR\x06status\x12,\n" +
 	"\x04roll\x18\x02 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12\x16\n" +
@@ -21263,7 +21274,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10extra_dice_count\x18\x0f \x01(\x05R\x0eextraDiceCount\x12+\n" +
 	"\x12extra_dice_name_pt\x18\x10 \x01(\tR\x0fextraDiceNamePt\x124\n" +
 	"\x05parts\x18\x11 \x03(\v2\x1e.meurpg.play.v1.DamagePartRollR\x05parts\x120\n" +
-	"\x05steps\x18\x12 \x03(\v2\x1a.meurpg.play.v1.DamageStepR\x05stepsB\x10\n" +
+	"\x05steps\x18\x12 \x03(\v2\x1a.meurpg.play.v1.DamageStepR\x05steps\x121\n" +
+	"\x14relentless_endurance\x18\x13 \x01(\bR\x13relentlessEnduranceB\x10\n" +
 	"\x0e_rolled_amountB\x13\n" +
 	"\x11_concentration_dc\"`\n" +
 	"\x1aGetCombatHighlightsRequest\x12\x1f\n" +

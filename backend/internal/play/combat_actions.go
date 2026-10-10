@@ -468,7 +468,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
 		CriticalRule: pendingCriticalRule(p.Critical, p.CriticalMaxRule), CriticalMax: p.CriticalMax,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
-		ExtraDiceCount: p.ExtraDice, ExtraDiceNamePt: extraDiceName(p.ExtraDice),
+		ExtraDiceCount: p.ExtraDice, ExtraDiceNamePt: extraDiceName(p.ExtraDice, p.SavageDice),
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
 		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
 		TrapPointId: deref(p.TrapPointID), // a trap's damage has no attacker (MR-035)
@@ -983,9 +983,10 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 				// it is negative, or the character fights with two weapons).
 				bonus = combat.OffHandBonus(bonus, attack.AbilityMod, attackerSheet.TwoWeaponFighting)
 			}
+			savage := savageAttacksDice(attacker, attack, attackerSheet, result.Critical)
 			p, err := s.openHit(ctx, c, attacker, target, attackKey,
 				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: bonus, DamageType: attack.DamageType}, result.Critical,
-				brutalCriticalDice(attacker, attack, attackerSheet, result.Critical), result.Total, targetAC)
+				brutalCriticalDice(attacker, attack, attackerSheet, result.Critical)+savage, savage, result.Total, targetAC)
 			if err != nil {
 				return nil, err
 			}
@@ -1276,7 +1277,7 @@ func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *conne
 
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
+			DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, SavageDice: p.SavageDice, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
 			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical, Heal: p.Healing, Total: rolledTotal,
 		}
 		if pr != nil {
@@ -1723,6 +1724,12 @@ func (s *Service) ApplyPendingDamage(
 			// points first, never below 0. At 0 it is down ("Caído") and makes death
 			// saves.
 			dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
+			if relentlessEndurance(now, dmg) { // the half-orc stays on its feet with 1 hit point (SRD 5.1)
+				if _, err := s.spendResource(ctx, c, target.CharacterID, resRelentlessEndurance, 1); err != nil {
+					return nil, err
+				}
+				dmg.HP, dmg.FellToZero, made.Relentless = 1, false, true
+			}
 			hp, temp := clamp32(dmg.HP, 0, math.MaxInt32), clamp32(dmg.TempHP, 0, math.MaxInt32)
 			before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp})
 			if err != nil {
@@ -2014,7 +2021,9 @@ func (s *Service) TakeAction(
 			// ConvertSpellSlot and GiveBardicInspiration take them.
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this action is taken with the resource service"))
 		}
-		feature := strings.HasPrefix(actionKey, "feature:")
+		// A feature action is a class or subclass feature's or a race trait's (the goblin's
+		// Fuga Ágil, from the table's content).
+		feature := strings.HasPrefix(actionKey, "feature:") || strings.HasPrefix(actionKey, "trait:")
 		list := opts.GetStandardActions()
 		if feature {
 			list = opts.GetFeatureActions()
@@ -2129,6 +2138,13 @@ func (s *Service) TakeAction(
 					return nil, err
 				}
 				made.Resource = fa.Resource
+			}
+			if actionKey == slowFallAction {
+				cuts, taken, err := s.slowFall(ctx, c, who, sheet.MonkLevel)
+				if err != nil {
+					return nil, err
+				}
+				made.FallCuts, made.Amount = cuts, taken
 			}
 			if actionKey == flurryOfBlows {
 				// Flurry of Blows comes right after the Attack action; its two unarmed
