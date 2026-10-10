@@ -103,7 +103,7 @@ export class RiddleForm {
   }
 
   /** The typed answer goes into the list (also when the field is left, so a save never loses it). */
-  protected commit(): void {
+  commit(): void {
     const text = this.pending().trim();
     if (text === '' || this.full()) {
       return;

@@ -377,7 +377,19 @@ export class LiveSession {
   protected readonly highlightsSub = computed(() => {
     const e = this.highlightsFor();
     const rounds = Math.max(1, e?.round ?? 1);
-    return e ? `${e.name} · ${rounds} ${rounds === 1 ? 'rodada' : 'rodadas'}` : '';
+    if (!e) {
+      return '';
+    }
+    const npcs = e.combatants.filter((c) => c.kind !== CombatantKind.PLAYER);
+    const defeated = npcs.filter((c) => c.defeated).length;
+    const beaten = npcs.length > 0 ? ` · ${defeated} de ${npcs.length} derrotados` : '';
+    return `${e.name} · ${rounds} ${rounds === 1 ? 'rodada' : 'rodadas'}${beaten}`;
+  });
+  /** The combat view (the order, the log, the summary) is on screen: always for the master; for a player, not once the combat ended and
+   * the "O combate acabou" card carries what it came to, so the scene, the map and the rest of the page stay under that one card. */
+  protected readonly combatOnScreen = computed(() => {
+    const e = this.combat.shown();
+    return e !== null && (this.isMaster() || e.status !== EncounterStatus.ENDED);
   });
 
   protected readonly stream = signal<LiveStream | null>(null);
