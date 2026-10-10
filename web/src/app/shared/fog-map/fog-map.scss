@@ -2,6 +2,21 @@
   display: block;
 }
 
+// Browser full screen (the "Tela cheia" button): the whole component, map and controls, on the page ground.
+:host(:fullscreen) {
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--mr-space-3);
+  overflow: auto;
+  background: var(--mr-ground);
+
+  // Room is left for the chips, the zoom row and the legend under the map.
+  .fm__stage,
+  .fm__stage ::ng-deep .mv-wrap {
+    max-width: calc((100vh - 200px) * var(--fm-ar, 1.5));
+  }
+}
+
 .fm {
   display: flex;
   flex-direction: column;
