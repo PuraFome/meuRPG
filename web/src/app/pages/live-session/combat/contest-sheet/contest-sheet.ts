@@ -157,6 +157,8 @@ export class ContestSheet {
   protected readonly error = signal('');
   /** The reminder of the board: the server trusts it, so it has to be marked before the roll. */
   protected readonly free = signal(false);
+  /** SRD 5.1: only a grapple needs a free hand; a shove is an Athletics contest with no such requirement. */
+  protected readonly needsHand = this.data.purpose !== ContestPurpose.SHOVE;
   protected readonly targetId = signal<string | null>(null);
   /** The skill of an escape (Atletismo or Acrobacia). */
   protected readonly skill = signal<ContestSkill>(ContestSkill.ATHLETICS);
@@ -227,10 +229,12 @@ export class ContestSheet {
     const size = this.ownSize();
     return `Alvo: no máximo um tamanho acima do seu${size ? ` (${size})` : ''}, ao alcance.`;
   });
-  protected readonly canRoll = computed(() => this.free() && this.target() !== null);
+  protected readonly canRoll = computed(
+    () => (!this.needsHand || this.free()) && this.target() !== null,
+  );
   /** Why "Rolar a disputa" is off, in words: the missing reminder first. */
   protected readonly why = computed(() => {
-    if (!this.free()) {
+    if (this.needsHand && !this.free()) {
       return 'Confirme que tem uma mão livre';
     }
     return this.target() ? '' : 'Escolha o alvo';

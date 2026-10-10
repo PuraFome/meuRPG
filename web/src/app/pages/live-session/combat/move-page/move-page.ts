@@ -183,9 +183,16 @@ export class MovePage {
     const own = this.own();
     return own ? { col: own.col, row: own.row } : { col: 0, row: 0 };
   });
-  protected readonly leftDft = computed(
-    () => this.options()?.movementLeftDft ?? this.own()?.movementLeftDft ?? 0,
-  );
+  /** The server's answer for this origin, but never more than the combatant's live movement: after a move the options
+   * are the old ones until they are fetched again, and the sheet would keep saying the distance from before. */
+  protected readonly leftDft = computed(() => {
+    const fetched = this.options()?.movementLeftDft;
+    const live = this.own()?.movementLeftDft;
+    if (fetched === undefined) {
+      return live ?? 0;
+    }
+    return live === undefined ? fetched : Math.min(fetched, live);
+  });
   protected readonly totalDft = computed(() => this.own()?.speedDft ?? 0);
   protected readonly usedDft = computed(() => this.own()?.movementUsedDft ?? 0);
   protected readonly jumping = computed(() => this.mode() === 'jump' && !!this.jumps());

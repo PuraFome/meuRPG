@@ -1669,3 +1669,31 @@ func TestRN10_FogCombatAnEndedCombatHasNoFog(t *testing.T) {
 		wantNPCs(t, name+", after the end", f.get(t, u), "Capitão Goblin", "Escudeiro", "Goblin 1", "Goblin 2", "Goblin 3")
 	}
 }
+
+// TestTheMastersTurnOptionsSuggestTheModeTheRollWillHave: an NPC in the dark attacks a
+// player's character that cannot see it, which is advantage (SRD 5.1, "Unseen Attackers
+// and Targets"). RollAttack works the mode out with the players' sight for the master too,
+// so the master's turn options must suggest the same, or the screen asks for one typed d20
+// where the roll takes two.
+func TestTheMastersTurnOptionsSuggestTheModeTheRollWillHave(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	e := f.fight(t)
+	// In the dark, 13 squares from Pensantus: past her darkvision, so she does not
+	// see the goblin, and its attack on her has advantage (an unseen attacker).
+	f.mustMove(t, f.master, "Goblin 1", 18, 5)
+	f.passTo(t, e, "Goblin 1")
+	e = f.get(t, f.master)
+	opts := f.mustOptions(t, f.master, e, "Goblin 1")
+	var got *playv1.TargetInReach
+	for _, at := range opts.GetAttackTargets() {
+		for _, tg := range at.GetTargets() {
+			if tg.GetLabel() == "Pensantus" && (got == nil || tg.GetRollMode() == playv1.RollMode_ROLL_MODE_ADVANTAGE) {
+				got = tg
+			}
+		}
+	}
+	if got == nil || got.GetRollMode() != playv1.RollMode_ROLL_MODE_ADVANTAGE {
+		t.Errorf("Pensantus as the unseen attacker's target = %v, want advantage", got)
+	}
+}

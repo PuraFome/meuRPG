@@ -32,7 +32,7 @@ import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
 import { coverText } from '../../../../core/combat/cover';
-import { d20Count, orNormal } from '../../../../core/combat/roll-mode';
+import { d20Count, modeWord, orNormal, sourceLine } from '../../../../core/combat/roll-mode';
 import { rollFormula } from '../../../../core/combat/combat-dice';
 import { article } from '../../../../core/combat/combat-log';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -41,7 +41,7 @@ import { restamText } from '../../../../core/combat/theatre';
 import { ofThe } from '../../../../core/combat/move-plan';
 import { joinDots } from '../../../../core/format/text';
 import { standUpRow } from '../../../../core/combat/stand-up';
-import { conditionTags } from '../../../../core/combat/conditions';
+import { cannotAct, conditionTags } from '../../../../core/combat/conditions';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { RageStatus } from '../rage-end/rage-status';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -283,6 +283,17 @@ export class NpcCard {
       this.targets().find((t) => t.combatantId === this.targetId())?.rollMode ?? RollMode.NORMAL,
     ),
   );
+  /** Why the roll has advantage or disadvantage ("Vantagem: atacante não visto"), so the master knows which die counts and why. */
+  protected readonly modeLines = computed(() => {
+    const mode = this.rollMode();
+    if (mode === RollMode.NORMAL) {
+      return [];
+    }
+    const sources = this.targets().find((t) => t.combatantId === this.targetId())?.sources ?? [];
+    return sources.length
+      ? sources.map((src) => sourceLine(src))
+      : [`${modeWord(mode)} neste ataque.`];
+  });
   protected readonly faceCount = computed(() => d20Count(this.rollMode()));
   protected readonly d20Fields: readonly RollField[] = [
     { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },
@@ -380,8 +391,10 @@ export class NpcCard {
     return this.rollAttack({ faces });
   }
 
-  /** "Levantar-se" of a prone card (half the speed; the master may for anyone on turn). */
-  protected readonly standRow = computed(() => standUpRow(this.subject()));
+  /** "Levantar-se" of a prone card (half the speed; the master may for anyone on turn). An incapacitated one is not offered it: Riso Histérico keeps it prone. */
+  protected readonly standRow = computed(() =>
+    cannotAct(this.subject()) ? null : standUpRow(this.subject()),
+  );
 
   protected async standUp(): Promise<void> {
     if (this.busy() || this.turnBusy()) {

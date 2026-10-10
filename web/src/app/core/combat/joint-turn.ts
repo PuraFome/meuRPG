@@ -57,6 +57,18 @@ export function acts(e: Encounter, c: Combatant): boolean {
   return actingIds(e).includes(c.id);
 }
 
+/**
+ * Whom the master's action card is for: the first NPC of the turn that still
+ * acts, so a joint turn that also holds a player (who is `current_combatant_id`,
+ * the first of the group) still gives the master the NPC's attacks. `null`
+ * when every member still acting is a player (or nobody is): the caller then
+ * uses the current combatant.
+ */
+export function masterActor(e: Encounter): Combatant | null {
+  const npcs = turnMembers(e).filter((c) => c.kind !== CombatantKind.PLAYER);
+  return npcs.find((c) => !c.turnPartEnded && !c.defeated) ?? null;
+}
+
 /** The joint turn, or `null` for a turn of one (everything works as it
  * always did). A group the viewer sees one member of, whose part ended while
  * the master's part is missing, is still a joint turn: it says who waits. */

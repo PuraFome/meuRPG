@@ -203,6 +203,14 @@ describe('ContestSheet', () => {
       expect(el.querySelector('#contest-why')).toBeNull();
     });
 
+    it('asks for no free hand on a shove (SRD 5.1: only a grapple needs one)', () => {
+      const { el, text, button } = setup({ purpose: ContestPurpose.SHOVE });
+      expect(text()).not.toContain('Tenho uma mão livre');
+      expect(text()).not.toContain('mão livre');
+      expect(el.querySelector('#contest-why')?.textContent ?? '').not.toContain('mão livre');
+      expect(button('Rolar a disputa')).not.toBeNull();
+    });
+
     it('closes with "Voltar" and starts nothing', () => {
       const { button } = setup();
       button('Voltar')!.click();
