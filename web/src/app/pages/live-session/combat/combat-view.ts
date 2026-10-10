@@ -17,6 +17,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -38,12 +39,14 @@ import {
   type PendingDamage,
   PendingDamageStatus,
   type ReactionWindow,
+  type TargetInReach,
   type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
   type Attack,
   AttackKind,
+  AttackSchema,
   type SpellDetails,
 } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
@@ -218,6 +221,9 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
 
 /** How often the master's screen looks at the clock of the automatic pass of a player's optional reaction. */
 const AUTO_PASS_TICK_MS = 1000;
+
+/** The key the throw-back sheet gives its made-up attack: the server builds the real one from the window and ignores it. */
+const THROW_BACK_KEY = 'deflect-missiles:throw';
 /** The failures of the pass that are the network's, not a refusal: the pass may be sent again. */
 const RETRYABLE: ReadonlySet<Code> = new Set([
   Code.Unavailable,
@@ -1887,12 +1893,13 @@ export class CombatView {
     held?: InspirationOffer,
     catchWindowId = '',
     useExtraAction = false,
+    thrown?: { attack: Attack; targets: TargetInReach[] },
   ): void {
     const e = this.encounter();
     const own = who ?? this.own();
     const opts = who ? creatureOpts : this.options();
     const option = opts?.options?.attacks.find((a) => a.attack?.key === key);
-    const attack = option?.attack;
+    const attack = thrown?.attack ?? option?.attack;
     if (!e || !own || !attack) {
       return;
     }
@@ -1902,7 +1909,8 @@ export class CombatView {
       attackerId: own.id,
       round: e.round,
       attack,
-      targets: opts?.attackTargets.find((t) => t.attackKey === key)?.targets ?? [],
+      targets:
+        thrown?.targets ?? opts?.attackTargets.find((t) => t.attackKey === key)?.targets ?? [],
       diceMode: this.diceMode(),
       preference: this.dicePreference(),
       state: this.state(),
@@ -1939,7 +1947,12 @@ export class CombatView {
         : `Atacar com ${attack.namePt || attack.name}${who ? `: ${who.label}` : ''}`,
       labelledBy: 'sheet-t',
     }).subscribe({
-      complete: () => this.attackSheetOpen.set(false),
+      complete: () => {
+        this.attackSheetOpen.set(false);
+        if (catchWindowId) {
+          this.keepMissile(catchWindowId);
+        }
+      },
       error: () => this.attackSheetOpen.set(false),
     });
   }
@@ -2444,16 +2457,61 @@ export class CombatView {
     );
   });
 
-  /** "Devolver (1 de chi)": the attack with the missile the monk caught, part of the same reaction. */
+  /**
+   * "Devolver (1 de chi)": the ranged attack with the missile the monk caught, part of the same
+   * reaction. The server builds the attack from the missile (its dice, Dex, proficiency, 20/60 ft)
+   * and ignores the key; the sheet shows what the prompt says. The targets are the ones any of
+   * the monk's attacks lists, with the reach re-measured at the long range. Closing the sheet
+   * without the roll keeps the missile (the window is passed), so the combat never waits on it.
+   */
   private openThrowBack(windowId: string): void {
-    const attacks = this.options()?.options?.attacks ?? [];
-    const pick =
-      attacks.find(
-        (a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0 && !a.attack.melee,
-      ) ?? attacks.find((a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0);
-    if (pick?.attack) {
-      this.attackSheet(pick.attack.key, undefined, true, undefined, undefined, undefined, windowId);
+    const e = this.encounter();
+    const w = e?.reactionWindows.find((x) => x.id === windowId);
+    const prompt = w?.prompt.case === 'deflectThrow' ? w.prompt.value : null;
+    if (!prompt) {
+      return;
     }
+    const seen = new Map<string, TargetInReach>();
+    for (const list of this.options()?.attackTargets ?? []) {
+      for (const t of list.targets) {
+        if (!seen.has(t.combatantId)) {
+          seen.set(t.combatantId, t);
+        }
+      }
+    }
+    const attack = create(AttackSchema, {
+      key: THROW_BACK_KEY,
+      name: prompt.missileNamePt || 'Projétil',
+      namePt: prompt.missileNamePt || 'Projétil',
+      attackBonus: prompt.attackBonus,
+      kind: AttackKind.WEAPON,
+      rangeFt: prompt.normalRangeFt,
+      longRangeFt: prompt.longRangeFt,
+    });
+    this.attackSheet(
+      THROW_BACK_KEY,
+      undefined,
+      true,
+      undefined,
+      undefined,
+      undefined,
+      windowId,
+      false,
+      { attack, targets: [...seen.values()] },
+    );
+  }
+
+  /** The throw-back sheet closed without a roll: the missile is kept, so the window does not hang. */
+  private keepMissile(windowId: string): void {
+    const e = this.encounter();
+    if (!e || !openWindows(e).some((w) => w.id === windowId)) {
+      return;
+    }
+    const answer = { use: false };
+    void this.api
+      .answerReaction(this.campaignId(), e.id, windowId, answer, `keep-${windowId}`)
+      .then((r) => this.state().apply(r.encounter))
+      .catch(() => undefined);
   }
 
   /** A damage was settled: the master's card stays for its note. */

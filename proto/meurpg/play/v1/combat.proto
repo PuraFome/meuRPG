@@ -5130,6 +5130,13 @@ message DeflectMissilesThrowPrompt {
   int32 ki_left = 1;
   int32 normal_range_ft = 2;
   int32 long_range_ft = 3;
+  // The missile's name ("Arco curto"), as the screen names the throw; empty when
+  // the caller does not see the attacker.
+  string missile_name_pt = 4;
+  // What the thrown attack adds to the d20: proficiency (whatever the monk's
+  // weapon proficiencies) plus the Dexterity modifier. The damage is the
+  // missile's own dice plus the Dexterity modifier, worked out by RollAttack.
+  int32 attack_bonus = 5;
 }
 
 message FallingCreature {
