@@ -402,7 +402,9 @@ func TestTheCatalogComesWithoutACombatAndHoldsTheNewSpells(t *testing.T) {
 func TestRN10_AnotherPlayersEffectsOutsideACombat(t *testing.T) {
 	t.Parallel()
 	a := newCastingParty(t)
-	a.mustGiveEffect(t, blessKey, []*charactersv1.Character{a.pens})
+	a.mustGiveEffect(t, blessKey, []*charactersv1.Character{a.pens}, func(r *playv1.AddCharacterEffectRequest) {
+		r.Audience = playv1.EffectAudience_EFFECT_AUDIENCE_ALL
+	})
 	a.mustGiveEffect(t, "condition:poisoned", []*charactersv1.Character{a.pens}, func(r *playv1.AddCharacterEffectRequest) {
 		r.Audience = playv1.EffectAudience_EFFECT_AUDIENCE_OWNER
 	})
