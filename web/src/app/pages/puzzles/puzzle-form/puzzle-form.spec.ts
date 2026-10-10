@@ -446,6 +446,19 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
       expect(created().solution.kind.value.answers).toEqual(['sombra']);
     });
 
+    it('keeps an answer typed but not added when the form is saved with no blur at all', async () => {
+      const { el, settle } = await open(
+        undefined,
+        (a) => (a.createResult = riddlePuzzle('new', 'x')),
+      );
+      await pick(el, 'riddle', settle);
+      type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'x');
+      type(el.querySelector<HTMLTextAreaElement>('textarea[name="riddle"]')!, 'O que sou?');
+      type(el.querySelector<HTMLInputElement>('input[name="answer"]')!, 'sombra');
+      await submit(el, settle);
+      expect(created().solution.kind.value.answers).toEqual(['sombra']);
+    });
+
     it('refuses a riddle with no answer on the field, and an answer that repeats another', async () => {
       const { el, settle } = await open();
       await pick(el, 'riddle', settle);

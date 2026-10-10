@@ -27,6 +27,18 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
+  it('says "Abrindo a página..." while the first navigation is on its way, then stops', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('main [role="status"].app-loading')?.textContent).toContain(
+      'Abrindo a página',
+    );
+    await TestBed.inject(Router).navigateByUrl('/');
+    fixture.detectChanges();
+    expect(el.querySelector('.app-loading')).toBeNull();
+  });
+
   it('renders the app name and the main nav links', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
