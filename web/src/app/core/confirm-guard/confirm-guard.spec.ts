@@ -21,6 +21,7 @@ describe('ConfirmGuard, a double-click never confirms a destructive inline actio
     const ask = document.createElement('div');
     ask.className = 'ask';
     ask.setAttribute('role', 'alertdialog');
+    ask.setAttribute('data-confirm', '');
     ask.innerHTML = '<button class="danger">Descartar</button><button class="safe">Voltar</button>';
     host.append(ask);
     await vi.advanceTimersByTimeAsync(0);

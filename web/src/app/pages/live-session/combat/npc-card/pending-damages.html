@@ -20,7 +20,7 @@
         (remove)="takeOut(it.p, $event)"
       />
       @if (discarding() === it.p.id) {
-        <div class="ask" role="alertdialog" [attr.aria-label]="'Descartar o dano de ' + it.total">
+        <div class="ask" role="alertdialog" data-confirm [attr.aria-label]="'Descartar o dano de ' + it.total">
           <p class="ask__text">Descartar o dano de {{ it.total }}?</p>
           <!-- "Voltar" sits where "Não aplicar" was (the right column), so a second click of a double-click lands on the safe choice. -->
           <button mat-stroked-button type="button" class="ask__danger" [disabled]="busy()" (click)="discard(it.p)">

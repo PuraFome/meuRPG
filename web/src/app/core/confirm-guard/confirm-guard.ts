@@ -9,23 +9,28 @@ import { DestroyRef, Injectable, inject } from '@angular/core';
 export const CONFIRM_GUARD_MS = 500;
 
 /**
- * The inline confirmations of the app: the container that replaces a button with
- * "Descartar o dano de 2? Voltar / Descartar" and its kin. A new one that does
- * not use one of these classes or roles marks its container `data-confirm`.
+ * The confirmations the guard watches: an inline confirmation that replaces a
+ * button with a destructive choice in the same spot ("Descartar o dano de 2?
+ * Voltar / Descartar") marks its container `data-confirm`. Opt-in on purpose: a
+ * guard on every form-like container swallowed ordinary clicks (a puzzle's
+ * "Responder", the grid change's second step).
  */
-export const CONFIRM_SELECTOR = '[role="alertdialog"], [data-confirm], .ask, .confirm, .question';
+export const CONFIRM_SELECTOR = '[data-confirm]';
 
 /**
- * The double-click guard of every inline confirmation (docs/design.md, "Confirm in
- * place"). While a confirmation container is younger than {@link CONFIRM_GUARD_MS},
- * every click on a button or link inside it is swallowed and its buttons carry `aria-disabled="true"`
- * (so Playwright's actionability check waits for them). Keyboard use is the same:
- * Enter on the focused button is a click. Started once, at app start.
+ * The double-click guard of the inline confirmations (docs/design.md, "Confirm in
+ * place"). For {@link CONFIRM_GUARD_MS} after a `data-confirm` container appears,
+ * its buttons carry `aria-disabled="true"` (their own value comes back after) and
+ * a click on one of them is swallowed. Only a button the guard marked is guarded,
+ * so what the screen says (disabled) and what a click does always agree, for a
+ * person and for Playwright's actionability check. Started once, at app start.
  */
 @Injectable({ providedIn: 'root' })
 export class ConfirmGuard {
   private readonly doc = inject(DOCUMENT);
-  private readonly openedAt = new WeakMap<Element, number>();
+  private readonly armed = new WeakSet<Element>();
+  /** Until when (performance.now()) a marked button ignores clicks. */
+  private readonly guardedUntil = new WeakMap<Element, number>();
   private readonly destroyRef = inject(DestroyRef);
   private started = false;
 
@@ -63,21 +68,30 @@ export class ConfirmGuard {
   }
 
   private arm(container: Element): void {
-    if (this.openedAt.has(container)) {
+    if (this.armed.has(container)) {
       return;
     }
-    this.openedAt.set(container, performance.now());
-    const marked: Element[] = [];
+    this.armed.add(container);
+    const until = performance.now() + CONFIRM_GUARD_MS;
+    const marked: [Element, string | null][] = [];
     container.querySelectorAll('button').forEach((button) => {
-      if (!button.hasAttribute('aria-disabled')) {
-        button.setAttribute('aria-disabled', 'true');
-        marked.push(button);
-      }
+      marked.push([button, button.getAttribute('aria-disabled')]);
+      button.setAttribute('aria-disabled', 'true');
+      this.guardedUntil.set(button, until);
     });
-    setTimeout(
-      () => marked.forEach((button) => button.removeAttribute('aria-disabled')),
-      CONFIRM_GUARD_MS,
-    );
+    setTimeout(() => {
+      for (const [button, own] of marked) {
+        this.guardedUntil.delete(button);
+        // Give the button its own value back, unless the app changed it meanwhile.
+        if (button.getAttribute('aria-disabled') === 'true') {
+          if (own === null) {
+            button.removeAttribute('aria-disabled');
+          } else {
+            button.setAttribute('aria-disabled', own);
+          }
+        }
+      }
+    }, CONFIRM_GUARD_MS);
   }
 
   private onClick(event: Event): void {
@@ -85,20 +99,11 @@ export class ConfirmGuard {
     if (!(target instanceof Element)) {
       return;
     }
-    // Only what acts: a field or a radio inside the container stays usable.
-    if (!target.closest('button, a, [role="button"]')) {
-      return;
-    }
-    const now = performance.now();
-    let el = target.closest(CONFIRM_SELECTOR);
-    while (el) {
-      const opened = this.openedAt.get(el);
-      if (opened !== undefined && now - opened < CONFIRM_GUARD_MS) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-      }
-      el = el.parentElement?.closest(CONFIRM_SELECTOR) ?? null;
+    const button = target.closest('button');
+    const until = button ? this.guardedUntil.get(button) : undefined;
+    if (until !== undefined && performance.now() < until) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
     }
   }
 }
