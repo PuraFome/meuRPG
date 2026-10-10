@@ -290,7 +290,7 @@ export class LiveStream {
       if (controller !== this.controller) {
         return;
       }
-      // Ended without an error (the 30-minute cap, a server restart).
+      // Ended without an error (the 10-minute cap, a server restart).
       this.controller = null;
       this.scheduleReconnect();
     } catch (err) {
