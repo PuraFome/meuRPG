@@ -20,10 +20,13 @@ import {
   Ability as GenAbility,
   Attack as GenAttack,
   AttackKind as GenAttackKind,
+  ContentService,
   DerivedSheet as GenDerivedSheet,
   ProficiencyLevel as GenProficiencyLevel,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { SkillProficiency } from '../../core/characters/character-labels';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
+import { spellDetailsFromGen } from '../../shared/spell-details/spell-details-map';
 import { metersWithFeet } from '../../core/units';
 import {
   AbilityKey,
@@ -202,17 +205,21 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
       // SpellPreparation. The sheet says which one in its words.
       spellsPreparedMax: sc.preparedMax,
       spellsKnownMax: sc.spellsKnown,
+      spellbook: sc.spellbook,
     })),
     spellSlots: toSpellSlotsVm(derived.spellSlots),
     pactSlots: derived.pactMagic
       ? { level: derived.pactMagic.slotLevel, count: derived.pactMagic.count }
       : null,
-    cantripNames: derived.spells
-      .filter((cs) => (cs.spell?.level ?? 0) === 0)
-      .map((cs) => cs.spell?.namePt ?? ''),
-    spellNames: derived.spells
-      .filter((cs) => (cs.spell?.level ?? 0) > 0)
-      .map((cs) => cs.spell?.namePt ?? ''),
+    spells: derived.spells.map((cs) => ({
+      key: cs.spell?.key ?? '',
+      namePt: cs.spell?.namePt ?? '',
+      level: cs.spell?.level ?? 0,
+      prepared: cs.prepared,
+      ritual: cs.spell?.ritual ?? false,
+      concentration: cs.spell?.concentration ?? false,
+      reaction: cs.spell?.reaction ?? false,
+    })),
     features: derived.features.map((f) => ({
       name: f.namePt,
       sourcePt: f.sourcePt,
@@ -417,6 +424,12 @@ export function toCharacterSheetVm(character: Character): CharacterSheetVm {
 export class CharacterSheetSourceLive implements CharacterSheetSource {
   private readonly client = createClient(CharacterService, inject(CONNECT_TRANSPORT));
   private readonly campaigns = createClient(CampaignService, inject(CONNECT_TRANSPORT));
+  private readonly content = createClient(ContentService, inject(CONNECT_TRANSPORT));
+
+  async loadSpellDetails(campaignId: string, spellKey: string): Promise<SpellDetailsVm> {
+    const res = await this.content.getSpellDetails({ campaignId, spellKey });
+    return spellDetailsFromGen(res.spell!);
+  }
 
   async getXpMode(campaignId: string): Promise<CampaignXpMode> {
     const res = await this.campaigns.getCampaign({ campaignId });

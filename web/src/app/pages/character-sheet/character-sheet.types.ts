@@ -5,6 +5,7 @@ import {
   ReviewStatus,
 } from '../../core/characters/characters.types';
 import { DamageTypeKey, SkillProficiency } from '../../core/characters/character-labels';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 
 /**
  * The view-model `CharacterSheetPage` renders. Phase 2 maps `GetCharacter`'s
@@ -76,6 +77,22 @@ export interface SpellcastingVm {
   readonly spellsPreparedMax: number;
   /** The most spells a class that knows them (Bard, Ranger, Sorcerer, Warlock) can know; 0 for a class that prepares. */
   readonly spellsKnownMax: number;
+  /** A class with a spellbook (Wizard): its spells that are not prepared are in the book. */
+  readonly spellbook: boolean;
+}
+
+/** A spell on the sheet, as the list shows it (`CharacterSpell`). */
+export interface SheetSpellVm {
+  readonly key: string;
+  readonly namePt: string;
+  /** 0 is a cantrip. */
+  readonly level: number;
+  /** Can be cast today: every cantrip, every spell of a class that knows its spells, and the prepared ones. */
+  readonly prepared: boolean;
+  readonly ritual: boolean;
+  readonly concentration: boolean;
+  /** Casting time of a reaction (Shield). */
+  readonly reaction: boolean;
 }
 
 export interface FeatureVm {
@@ -174,8 +191,8 @@ export interface FullSheetVm {
   readonly spellSlots: readonly number[];
   /** A Warlock's Pact Magic: the slots are all of one level, and are kept apart from `spellSlots` (null without the feature). */
   readonly pactSlots: PactSlotsVm | null;
-  readonly cantripNames: readonly string[];
-  readonly spellNames: readonly string[];
+  /** The cantrips and spells of the sheet, by level then name, as the server sorts them. */
+  readonly spells: readonly SheetSpellVm[];
   readonly features: readonly FeatureVm[];
   /** The dragonborn's Breath Weapon with the numbers of this sheet, the whole rule in one paragraph
    * (`DerivedSheet.breath_weapon.text_pt`); empty for every other character. */
@@ -381,6 +398,8 @@ export type CampaignXpMode = 'enemies' | 'gold' | 'milestones';
 export abstract class CharacterSheetSource {
   /** How the campaign levels, to know whether the sheet has an XP block (a
    * milestones campaign has none) or only the "Pode subir de nível" tag. */
+  abstract loadSpellDetails(campaignId: string, spellKey: string): Promise<SpellDetailsVm>;
+
   abstract getXpMode(campaignId: string): Promise<CampaignXpMode>;
   abstract getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm>;
   /** Called only when `isMaster` — never for a player (RN-11). */

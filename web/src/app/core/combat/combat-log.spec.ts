@@ -340,9 +340,7 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
     expect(walk({ spentDft: 157 })).toBe(' anda 4,7 m');
     expect(walk({})).toBe(' anda 4,7 m');
     // Through allies (difficult terrain, SRD 5.1): the panel's number is in the line.
-    expect(walk({ spentDft: 207 })).toBe(
-      ' anda 4,7 m, gasta 6,2 m de movimento (terreno difícil)',
-    );
+    expect(walk({ spentDft: 207 })).toBe(' anda 4,7 m, gasta 6,2 m de movimento (terreno difícil)');
     expect(walk({ spentDft: 314, moveDragging: true })).toBe(
       ' anda 4,7 m, gasta 9,4 m de movimento (arrastando)',
     );

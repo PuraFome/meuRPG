@@ -1,6 +1,13 @@
 import { spellLevelLabel } from '../../core/characters/character-labels';
 import { AbilityKey, CharacterState } from '../../core/characters/characters.types';
-import { CoinsVm, IssueVm, PactSlotsVm, ReviewVm, SpellcastingVm } from './character-sheet.types';
+import {
+  CoinsVm,
+  IssueVm,
+  PactSlotsVm,
+  ReviewVm,
+  SheetSpellVm,
+  SpellcastingVm,
+} from './character-sheet.types';
 
 /**
  * Display helpers of the sheet page only (the "Ficha de papel" layout,
@@ -199,4 +206,91 @@ export function pendingTag(review: ReviewVm | null): { label: string; icon: stri
     default:
       return { label: 'Pendente', icon: 'schedule' };
   }
+}
+
+/** One spell of the sheet's list, with what its row says besides the name. */
+export interface SpellRow {
+  readonly spell: SheetSpellVm;
+  /** "Ritual", "Concentração", "Reação", from the spell's own data, in that order. */
+  readonly tags: readonly string[];
+  /**
+   * Where the spell stands for a class that prepares: "Preparada" (can be cast today), "No grimório"
+   * (a Wizard's spellbook spell not prepared) or "Conhecida" (any other not prepared). `''` for a
+   * cantrip and for a class that knows its spells: they are all castable, so the row says nothing.
+   */
+  readonly state: '' | 'Preparada' | 'No grimório' | 'Conhecida';
+}
+
+/** The spells of one level: "Truques", "1º nível"... */
+export interface SpellGroup {
+  readonly level: number;
+  readonly label: string;
+  readonly rows: readonly SpellRow[];
+}
+
+function spellTags(s: SheetSpellVm): string[] {
+  const tags: string[] = [];
+  if (s.ritual) {
+    tags.push('Ritual');
+  }
+  if (s.concentration) {
+    tags.push('Concentração');
+  }
+  if (s.reaction) {
+    tags.push('Reação');
+  }
+  return tags;
+}
+
+/**
+ * The sheet's spells grouped by level, cantrips first. With a class that prepares (`spellsPreparedMax`),
+ * every spell above a cantrip says whether it is prepared; a class that knows its spells says nothing
+ * (all are castable). The order inside a level is the server's.
+ */
+export function spellGroups(
+  spells: readonly SheetSpellVm[],
+  casters: readonly SpellcastingVm[],
+): SpellGroup[] {
+  const prepares = casters.some((c) => c.spellsPreparedMax > 0);
+  const book = casters.some((c) => c.spellbook);
+  const byLevel = new Map<number, SpellRow[]>();
+  for (const spell of spells) {
+    const state =
+      !prepares || spell.level === 0
+        ? ''
+        : spell.prepared
+          ? 'Preparada'
+          : book
+            ? 'No grimório'
+            : 'Conhecida';
+    const rows = byLevel.get(spell.level) ?? [];
+    rows.push({ spell, tags: spellTags(spell), state });
+    byLevel.set(spell.level, rows);
+  }
+  return [...byLevel.keys()]
+    .sort((a, b) => a - b)
+    .map((level) => ({
+      level,
+      label: level === 0 ? 'Truques' : spellLevelLabel(level),
+      rows: byLevel.get(level) ?? [],
+    }));
+}
+
+/** "7 preparadas e 3 no grimório." for a class that prepares; `''` for one that knows its spells. */
+export function spellStateSummary(groups: readonly SpellGroup[]): string {
+  const rows = groups.flatMap((g) => g.rows);
+  const prepared = rows.filter((r) => r.state === 'Preparada').length;
+  const book = rows.filter((r) => r.state === 'No grimório').length;
+  const known = rows.filter((r) => r.state === 'Conhecida').length;
+  const parts: string[] = [];
+  if (prepared + book + known > 0) {
+    parts.push(prepared === 1 ? '1 preparada' : `${prepared} preparadas`);
+  }
+  if (book > 0) {
+    parts.push(book === 1 ? '1 só no grimório' : `${book} só no grimório`);
+  }
+  if (known > 0) {
+    parts.push(known === 1 ? '1 só conhecida' : `${known} só conhecidas`);
+  }
+  return parts.length === 0 ? '' : `${parts.join(' e ')}.`;
 }
