@@ -138,7 +138,7 @@ export class HelpSheet {
     return ally ? helpedText(ally, this.chosenTask()?.name ?? null, this.chosenTarget()) : null;
   });
   protected readonly durationText =
-    'Vale até o próximo teste de {ally} para essa tarefa, ou até o fim do seu próximo turno. Fora do combate, até o mestre encerrar.';
+    'Vale até o próximo teste de {ally} para essa tarefa, ou até o início do seu próximo turno.';
   protected readonly duration = computed(() =>
     this.durationText.replace('{ally}', this.ally()?.label ?? ''),
   );

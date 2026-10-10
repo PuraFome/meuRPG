@@ -108,9 +108,9 @@ func TestHelpWithACheckGivesTheAllyAdvantageOnItsNextCheckOfTheTaskOnly(t *testi
 	}
 }
 
-// TestHelpForAnotherTaskIsNotUsedAndEndsWithTheHelpersNextTurn (SRD 5.1, "Help"; the app's reading:
-// until the end of the helper's next turn): a Stealth check does not use a Help for Athletics, and
-// the Help is gone once Brisa's turn of the next round ends.
+// TestHelpForAnotherTaskIsNotUsedAndEndsWithTheHelpersNextTurn (SRD 5.1, "Help": "before the start of
+// your next turn"): a Stealth check does not use a Help for Athletics, and the Help is gone when
+// Brisa's turn of the next round starts.
 func TestHelpForAnotherTaskIsNotUsedAndEndsWithTheHelpersNextTurn(t *testing.T) {
 	t.Parallel()
 	a := newSneaks(t)
@@ -129,13 +129,9 @@ func TestHelpForAnotherTaskIsNotUsedAndEndsWithTheHelpersNextTurn(t *testing.T) 
 		t.Fatalf("helps in Toren's turn of round 2 = %v, want the Help still holding", hs)
 	}
 	c.advance(t, "Brisa")
-	if hs := c.state(t, a.caio).GetHelps(); len(hs) != 1 {
-		t.Fatalf("helps in Brisa's turn of round 2 = %v, want the Help still holding until her turn ends", hs)
-	}
-	c.advance(t, "Pensantus")
 	for who, u := range map[string]*user{"the master": a.master, "Toren's player": a.caio} {
 		if hs := c.state(t, u).GetHelps(); len(hs) != 0 {
-			t.Errorf("%s reads helps %v after Brisa's next turn ended, want none", who, hs)
+			t.Errorf("%s reads helps %v once Brisa's next turn started, want none", who, hs)
 		}
 	}
 }

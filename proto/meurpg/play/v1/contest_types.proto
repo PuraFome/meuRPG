@@ -439,8 +439,8 @@ message HelpView {
   string task_name_pt = 6;
   // The target of an ATTACK help.
   string target_id = 7;
-  // The round the help ends in (the round of the helper's next turn); 0 outside a
-  // combat.
+  // The round the help ends in (the round of the helper's next turn: it ends as
+  // that turn starts); 0 outside a combat.
   int32 expires_round = 8;
 }
 

@@ -1,13 +1,12 @@
 package play
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"slices"
 
 	"connectrpc.com/connect"
-
-	"context"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -46,8 +45,11 @@ func standUpCostDFt(c playdb.Combatant) int {
 		return 0
 	}
 	c.Dashed = false
-	return speedDFt(c) / 2
+	return speedDFt(c) / standUpSpeedDivisor
 }
+
+// standUpSpeedDivisor: standing up costs half the speed (SRD 5.1, "Being Prone").
+const standUpSpeedDivisor = 2
 
 // StandUp implements playv1connect.CombatServiceHandler.
 func (s *Service) StandUp(

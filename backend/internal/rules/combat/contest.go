@@ -169,8 +169,9 @@ func PassivePerceptionOf(perceptionBonus int, mode CheckMode) int {
 
 // NoticesHider says whether a creature notices a hider: the hider's Dexterity (Stealth)
 // total has to beat the creature's passive Perception (SRD 5.1, "Hiding", "Passive
-// Perception"). The SRD does not say what a tie does; the app keeps the status quo of
-// the contests: a tie keeps the hider noticed.
+// Perception"). The SRD does not say what a tie does; the app reads the comparison as a
+// contest (SRD 5.1, "Contests": a tie leaves the situation as it was), so a tie keeps the
+// hider noticed.
 func NoticesHider(stealthTotal, passivePerception int) bool {
 	return stealthTotal <= passivePerception
 }
@@ -213,16 +214,17 @@ func NoticesNoThreat(passivePerception int, hiders []HideTotals) bool {
 
 // HelpLastsThrough says whether a Help made in round `made` still holds when the combat
 // is in round `round` and the turn that is running belongs to the combatant at `current`
-// in the order, the helper being at `helper`. It lasts through the end of the helper's
-// next turn: the turn of the round after the one it was made in (the app's reading of
-// "until the end of the helper's next turn").
+// in the order, the helper being at `helper`. It lasts until the start of the helper's
+// next turn begins: the turn of the round after the one it was made in (SRD 5.1, "Help":
+// the check form lasts "before the start of your next turn", the attack form "before your
+// next turn").
 func HelpLastsThrough(made, round, current, helper int) bool {
 	expires := made + 1
 	switch {
 	case round < expires:
 		return true
 	case round == expires:
-		return current <= helper
+		return current < helper
 	}
 	return false
 }

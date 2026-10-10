@@ -53,6 +53,10 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 			return s.Spell.Key == "spell:hunters-mark"
 		}),
 	}
+	// The armor's "Stealth: Disadvantage" is a hint on the sheet; the Hide roll reads it here.
+	t.StealthDisadvantage = slices.ContainsFunc(d.Hints, func(h rules.Hint) bool {
+		return h.Target == "skill:stealth" && h.Mode == "disadvantage"
+	})
 	t.ImprovedDivineSmite = rules.HasFeature(d, "feature:improved-divine-smite")
 	if rules.HasFeature(d, "feature:sneak-attack") {
 		t.SneakAttackDice = combat.SneakAttackDice(t.RogueLevel)

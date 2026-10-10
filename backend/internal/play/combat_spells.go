@@ -628,9 +628,12 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				return nil, err
 			}
 		}
-		// Casting gives a hidden caster's position away (combat_hide.go).
-		if made.HidBefore, err = s.endHiding(ctx, c, caster); err != nil {
-			return nil, err
+		// A spell with a verbal component gives a hidden caster's position away by its noise;
+		// one with only somatic or material components does not (combat_hide.go).
+		if sp.Verbal {
+			if made.HidBefore, err = s.endHiding(ctx, c, caster); err != nil {
+				return nil, err
+			}
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)

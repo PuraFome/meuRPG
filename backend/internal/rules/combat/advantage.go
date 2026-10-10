@@ -67,6 +67,7 @@ const (
 	SourceDangerSense     = "danger_sense"
 	SourceRageStrength    = "rage_strength"
 	SourceRestrainedSave  = "restrained_save"
+	SourceStealthArmor    = "stealth_armor"
 	SourcePoisonedCheck   = "poisoned_check"
 	SourceFrightenedCheck = "frightened_check"
 	SourcePerceptionDim   = "perception_dim"
@@ -423,6 +424,9 @@ type SaveScene struct {
 	// EffectVisible says the creature sees the effect it saves against (Danger
 	// Sense): a spell it sees, a trap it has found.
 	EffectVisible bool
+	// StealthArmor says the check is Dexterity (Stealth) in armor that gives disadvantage
+	// on it (SRD 5.1, "Armor").
+	StealthArmor bool
 }
 
 // SaveMode lists the circumstances of a saving throw or an ability check (SRD
@@ -459,6 +463,9 @@ func SaveMode(s SaveScene) []Source {
 	}
 	if s.Check && c.Exhaustion >= 1 {
 		add(SourceExhaustionCheck, ModeDisadvantage, "")
+	}
+	if s.Check && s.StealthArmor && s.Ability == dexterityAbility {
+		add(SourceStealthArmor, ModeDisadvantage, "")
 	}
 	if s.Check {
 		if c.Has(conditionPoisoned) {

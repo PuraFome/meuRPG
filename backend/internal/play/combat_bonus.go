@@ -27,6 +27,10 @@ func lastAttack(sheet link.Sheet, c playdb.Combatant) (link.Attack, bool) {
 	if c.ActionAttackKey == nil {
 		return link.Attack{}, false
 	}
+	if *c.ActionAttackKey == combat.ContestAttackKey {
+		// A grapple or a shove made the Attack action: see combat.ContestAttackKey.
+		return link.Attack{Key: combat.ContestAttackKey, Melee: true}, true
+	}
 	i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == *c.ActionAttackKey })
 	if i < 0 {
 		return link.Attack{}, false

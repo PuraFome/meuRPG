@@ -114,7 +114,7 @@ describe('HelpSheet (board W7-Xc 9)', () => {
     expect(text()).toContain('Tavo · Percepção Vantagem no próximo teste de Percepção dele.');
     expect(text()).toContain('Tavo · Arcanismo');
     expect(text()).toContain(
-      'Vale até o próximo teste de Tavo para essa tarefa, ou até o fim do seu próximo turno. Fora do combate, até o mestre encerrar.',
+      'Vale até o próximo teste de Tavo para essa tarefa, ou até o início do seu próximo turno.',
     );
     expect(button('Ajudar Tavo')!.getAttribute('aria-disabled')).toBe('true');
     button('Ajudar Tavo')!.click();

@@ -88,6 +88,14 @@ func spendAttack(ctx context.Context, c *combatTx, who playdb.Combatant, sheet l
 	if err := c.q.SetCombatantAttacksMade(ctx, playdb.SetCombatantAttacksMadeParams{ID: who.ID, AttacksMade: who.AttacksMade + 1}); err != nil {
 		return fmt.Errorf("count the attack: %w", err)
 	}
+	if who.ActionAttackKey == nil {
+		// The Attack action was taken (Flurry of Blows may follow); a later weapon attack
+		// replaces this mark with its own.
+		contestKey := combat.ContestAttackKey
+		if err := c.q.SetCombatantAttackState(ctx, playdb.SetCombatantAttackStateParams{ID: who.ID, ActionAttackKey: &contestKey, BonusAttacksLeft: who.BonusAttacksLeft}); err != nil {
+			return fmt.Errorf("mark the Attack action: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -311,6 +319,23 @@ func (s *Service) StartContest(
 				return nil, err
 			}
 			if err := spendAttack(ctx, c, initiator, sheet, v.master); err != nil {
+				return nil, err
+			}
+			// A grapple or a shove is an attack on the target: it keeps a rage going (SRD 5.1,
+			// Rage: the rage ends if the turn ends without having "attacked a hostile creature")
+			// and gives a hider's position away ("Unseen Attackers and Targets").
+			if oppositeSide(initiator, defender) {
+				states, err := s.readStates(ctx, c.tx, c.enc.ID)
+				if err != nil {
+					return nil, err
+				}
+				if hasState(states, initiator.ID, stateRage) && (!initiator.AttackedHostile || initiator.RageEndPending) {
+					if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: initiator.ID, AttackedHostile: true, TookDamage: initiator.TookDamage}); err != nil {
+						return nil, fmt.Errorf("note the attack on a hostile creature: %w", err)
+					}
+				}
+			}
+			if _, err := s.endHiding(ctx, c, initiator); err != nil {
 				return nil, err
 			}
 		}

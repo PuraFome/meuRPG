@@ -26,9 +26,8 @@ import (
 // to be able to attempt the task alone (the sheet has a number for the check); the master
 // decides when a task admits help.
 //
-// A Help lasts until it is used, or until the end of the helper's next turn (the app's
-// reading of "until the end of the helper's next turn"; the SRD's own words are "before
-// the start of your next turn"). Outside a combat a Help would last until the master
+// A Help lasts until it is used, or until the start of the helper's next turn (the SRD's
+// words are "before the start of your next turn"). Outside a combat a Help would last until the master
 // clears it; the combat is the only place that makes one today. A Help is a source of
 // advantage every player reads ("Ajuda de Orla"); the one aimed at a creature a player does
 // not see is not theirs to read. A player's creature helps and is helped like anyone: a
@@ -37,7 +36,7 @@ import (
 // (00241), because a creature carries its owner's character_id.
 
 // liveHelps are the Helps that hold now in a combat: not used, not cleared, and not past the
-// end of the helper's next turn.
+// start of the helper's next turn.
 func (s *Service) liveHelps(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, cs []playdb.Combatant) ([]playdb.CombatHelp, error) {
 	rows, err := q.ListLiveHelps(ctx, enc.GameSessionID)
 	if err != nil {

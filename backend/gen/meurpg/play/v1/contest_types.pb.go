@@ -2382,8 +2382,8 @@ type HelpView struct {
 	TaskNamePt string `protobuf:"bytes,6,opt,name=task_name_pt,json=taskNamePt,proto3" json:"task_name_pt,omitempty"`
 	// The target of an ATTACK help.
 	TargetId string `protobuf:"bytes,7,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
-	// The round the help ends in (the round of the helper's next turn); 0 outside a
-	// combat.
+	// The round the help ends in (the round of the helper's next turn: it ends as
+	// that turn starts); 0 outside a combat.
 	ExpiresRound  int32 `protobuf:"varint,8,opt,name=expires_round,json=expiresRound,proto3" json:"expires_round,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

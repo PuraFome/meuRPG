@@ -450,6 +450,8 @@ func (c textContext) sentence(src combat.Source) string {
 		return "Exaustão: desvantagem em testes de resistência"
 	case combat.SourceExhaustionCheck:
 		return "Exaustão: desvantagem em testes de habilidade"
+	case combat.SourceStealthArmor:
+		return "Armadura: desvantagem em Furtividade"
 	case combat.SourceOutlinedTarget:
 		return "Alvo delineado: vantagem se o atacante o vê"
 	case combat.SourceEffectSave:

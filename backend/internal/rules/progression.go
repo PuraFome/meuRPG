@@ -244,6 +244,11 @@ func SceneOptions(d Derived, actions []SceneAction) ([]SceneOption, error) {
 			for _, s := range d.Abilities {
 				if string(s.Ability) == key {
 					o.NamePT, o.Bonus, ok = "Teste de "+s.NamePT, s.Modifier, true
+					// A raw ability check includes no proficiency: Jack of All Trades adds half
+					// the bonus, rounded down (SRD 5.1, Bard).
+					if HasFeature(d, "feature:jack-of-all-trades") {
+						o.Bonus += d.ProficiencyBonus / 2
+					}
 				}
 			}
 		case SceneSave:

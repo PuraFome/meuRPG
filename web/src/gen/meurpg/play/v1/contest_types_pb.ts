@@ -870,8 +870,8 @@ export type HelpView = Message<"meurpg.play.v1.HelpView"> & {
   targetId: string;
 
   /**
-   * The round the help ends in (the round of the helper's next turn); 0 outside a
-   * combat.
+   * The round the help ends in (the round of the helper's next turn: it ends as
+   * that turn starts); 0 outside a combat.
    *
    * @generated from field: int32 expires_round = 8;
    */

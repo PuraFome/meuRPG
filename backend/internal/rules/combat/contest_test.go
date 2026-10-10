@@ -208,7 +208,7 @@ func TestNoticesNoThreatComparesEveryHiderWithTheCreature(t *testing.T) {
 	}
 }
 
-func TestHelpLastsThroughTheEndOfTheHelpersNextTurn(t *testing.T) {
+func TestHelpLastsUntilTheStartOfTheHelpersNextTurn(t *testing.T) {
 	t.Parallel()
 	// The helper is third in the order (index 2) and helped in round 2.
 	tests := []struct {
@@ -218,8 +218,9 @@ func TestHelpLastsThroughTheEndOfTheHelpersNextTurn(t *testing.T) {
 	}{
 		{"later in the same round", 2, 3, true},
 		{"next round before the helper's turn", 3, 0, true},
-		{"next round on the helper's turn", 3, 2, true},
+		{"next round on the helper's turn", 3, 2, false},
 		{"next round after the helper's turn", 3, 3, false},
+		{"next round just before the helper's turn", 3, 1, true},
 		{"two rounds later", 4, 0, false},
 	}
 	for _, tt := range tests {

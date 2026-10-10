@@ -347,8 +347,14 @@ func modeShift(m combat.CheckMode) int {
 // disadvantage now: the rules of advantage's SaveMode for an ability check (Poisoned and
 // Frightened, SRD 5.1 Conditions; a raging barbarian's Strength) and the Helps that hold for
 // the task (SRD 5.1, "Help").
-func (s *Service) checkSources(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
+func (s *Service) checkSources(ctx context.Context, tx pgx.Tx, campaignID string, q *playdb.Queries, enc playdb.Encounter, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
 	var out []rollNote
+	// The sheet's traits: heavy armor takes the Rage's benefits away, and some armor gives
+	// disadvantage on Dexterity (Stealth) (SRD 5.1, "Armor").
+	sheet, err := s.sheetOf(ctx, tx, campaignID, who)
+	if err != nil {
+		return nil, err
+	}
 	states, err := q.ListCombatantStates(ctx, enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the states: %w", err)
@@ -360,7 +366,7 @@ func (s *Service) checkSources(ctx context.Context, q *playdb.Queries, enc playd
 	case skillPercept:
 		ability = "wis"
 	}
-	for _, src := range combat.SaveMode(combat.SaveScene{Creature: creatureFacts(who, statesOf(states), link.Traits{}), Ability: ability, Check: true}) {
+	for _, src := range combat.SaveMode(combat.SaveScene{Creature: creatureFacts(who, statesOf(states), sheet.Traits), Ability: ability, Check: true, StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage}) {
 		switch src.Kind {
 		case combat.SourcePoisonedCheck:
 			out = append(out, rollNote{Kind: notePoisoned, Label: labelPoisoned})
@@ -368,6 +374,12 @@ func (s *Service) checkSources(ctx context.Context, q *playdb.Queries, enc playd
 			out = append(out, rollNote{Kind: "frightened", Label: "Amedrontado"})
 		case combat.SourceRageStrength:
 			out = append(out, rollNote{Kind: "rage", Label: "Fúria", Adv: true})
+		case combat.SourceStealthArmor:
+			out = append(out, rollNote{Kind: "armor_stealth", Label: "Armadura que atrapalha a furtividade"})
+		case combat.SourceExhaustionCheck:
+			out = append(out, rollNote{Kind: "exhaustion", Label: "Exaustão"})
+		case combat.SourceEffectCheck:
+			out = append(out, rollNote{Kind: "effect", Label: "Efeito ativo", Adv: true})
 		}
 	}
 	helps, err := s.liveHelps(ctx, q, enc, cs)
@@ -383,8 +395,8 @@ func (s *Service) checkSources(ctx context.Context, q *playdb.Queries, enc playd
 }
 
 // checkSourcesRead is checkSources for a read that holds no transaction.
-func (s *Service) checkSourcesRead(ctx context.Context, enc playdb.Encounter, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
-	return s.checkSources(ctx, s.queries, enc, who, skill, cs)
+func (s *Service) checkSourcesRead(ctx context.Context, campaignID string, enc playdb.Encounter, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
+	return s.checkSources(ctx, nil, campaignID, s.queries, enc, who, skill, cs)
 }
 
 func notesMode(notes []rollNote) combat.CheckMode {
@@ -427,7 +439,7 @@ func (s *Service) rollFor(ctx context.Context, c *combatTx, who playdb.Combatant
 	if err != nil {
 		return contestRoll{}, err
 	}
-	notes, err := s.checkSources(ctx, c.q, c.enc, who, skill, cs)
+	notes, err := s.checkSources(ctx, c.tx, c.session.CampaignID, c.q, c.enc, who, skill, cs)
 	if err != nil {
 		return contestRoll{}, err
 	}

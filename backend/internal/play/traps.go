@@ -274,6 +274,9 @@ func (s *Service) SearchForTraps(
 		if err := s.spendOnceEffects(ctx, c, cm.Rolled); err != nil {
 			return err
 		}
+		if err := s.spendCheckHelps(ctx, c, cm.Helps); err != nil {
+			return err
+		}
 		shown = cm.shownCheck(names)
 		if cm.Mode != combat.ModeNormal {
 			// The conditions change the roll: two dice, the better or the worse counts. Where

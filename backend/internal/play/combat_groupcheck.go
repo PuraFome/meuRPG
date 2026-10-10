@@ -266,8 +266,23 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 	if len(options) == 1 && options[0].Known {
 		bonus, known = options[0].Bonus, true
 	}
-	roll, err := s.rollCheck(in, combat.CheckNormal, bonus, check.SkillKey, nil, !known)
+	// The same circumstances as any ability check: Poisoned, Frightened, exhaustion, the
+	// Rage on Strength, armor on Stealth and a Help (SRD 5.1, "Group Checks" are ability checks).
+	ability, isCheck := checkKey(check.SkillKey)
+	cm, err := s.checkModeOf(ctx, tx, campaignID, session.ID, characterID, check.SkillKey, ability, isCheck)
 	if err != nil {
+		return err
+	}
+	roll, err := s.rollCheck(in, checkModeOfRoll(cm.Mode), bonus, check.SkillKey, nil, !known)
+	if err != nil {
+		return err
+	}
+	roll.Notes = notesOfSources(cm.Sources, cm.hide)
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &characterID})
+	if err != nil {
+		return err
+	}
+	if err := s.spendCheckHelps(ctx, c, cm.Helps); err != nil {
 		return err
 	}
 	roll.ByMaster = byMaster
@@ -531,8 +546,15 @@ func (s *Service) buildGroupCheckView(ctx context.Context, m authz.Membership, c
 		if isMine && !answered && check.Status == "open" {
 			out.YouRoll = true
 			if options, err := s.roster.SceneOptions(ctx, nil, m.CampaignID, mine.ID, []string{check.SkillKey}); err == nil && len(options) == 1 {
+				// The mode the roll will have, so a player with physical dice types the right
+				// number of faces.
+				mode := playv1.RollModeKind_ROLL_MODE_KIND_NORMAL
+				ability, isCheck := checkKey(check.SkillKey)
+				if cm, err := s.checkModeOf(ctx, nil, m.CampaignID, check.GameSessionID, mine.ID, check.SkillKey, ability, isCheck); err == nil {
+					mode = checkModeProto(checkModeOfRoll(cm.Mode))
+				}
 				out.YourOption = &playv1.CheckOption{
-					Modifier: clamp32(options[0].Bonus, math.MinInt32, math.MaxInt32), Known: options[0].Known, Mode: playv1.RollModeKind_ROLL_MODE_KIND_NORMAL,
+					Modifier: clamp32(options[0].Bonus, math.MinInt32, math.MaxInt32), Known: options[0].Known, Mode: mode,
 				}
 			}
 		}

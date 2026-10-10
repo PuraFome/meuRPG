@@ -130,7 +130,7 @@ func (r *contestReader) optionOf(ctx context.Context, who playdb.Combatant, skil
 	if err != nil {
 		return n, nil, err
 	}
-	notes, err := r.s.checkSourcesRead(ctx, r.d.enc, who, skill, r.d.cs)
+	notes, err := r.s.checkSourcesRead(ctx, r.m.CampaignID, r.d.enc, who, skill, r.d.cs)
 	return n, notes, err
 }
 

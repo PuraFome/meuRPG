@@ -250,7 +250,7 @@ func (s *Service) GetSurpriseSuggestion(
 		if err != nil {
 			return nil, s.dbError(ctx, "read the Perception of a combatant", err)
 		}
-		notes, err := s.checkSourcesRead(ctx, d.enc, c, skillPercept, d.cs)
+		notes, err := s.checkSourcesRead(ctx, m.CampaignID, d.enc, c, skillPercept, d.cs)
 		if err != nil {
 			return nil, s.dbError(ctx, "read the Perception of a combatant", err)
 		}

@@ -37,7 +37,7 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 		return link.Spell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
 	out := link.Spell{
-		Key: det.Spell.Key, Name: det.Spell.NamePT, Level: det.Spell.Level, Concentration: det.Duration.Concentration,
+		Key: det.Spell.Key, Name: det.Spell.NamePT, Level: det.Spell.Level, Concentration: det.Duration.Concentration, Verbal: det.Components.Verbal,
 		RangeKind: det.Range.Kind, RangeFt: det.Range.DistanceFt, AttackType: det.AttackType,
 	}
 	if out.Name == "" {
