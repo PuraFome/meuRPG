@@ -86,6 +86,8 @@ func (s *Service) AnswerReaction(
 			err = s.answerMasterCheck(ctx, c, m, w, use, &got)
 		case reaction.Concentration:
 			err = s.answerConcentration(ctx, c, m, w, reactor, use, &got)
+		case reaction.EffectSave:
+			err = errEffectSaveWindow()
 		default:
 			err = s.answerMore(ctx, c, m, w, reactor, use, req.Msg, &got)
 		}
@@ -182,6 +184,12 @@ func (s *Service) answerMasterCheck(ctx context.Context, c *combatTx, m authz.Me
 // AnswerReaction; the saves themselves go through ResolveConcentrationSave.
 func (s *Service) answerConcentration(_ context.Context, _ *combatTx, _ authz.Membership, _ playdb.ReactionWindow, _ playdb.Combatant, _ bool, _ *answered) error {
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("a concentration save is answered with ResolveConcentrationSave"))
+}
+
+// errEffectSaveWindow is AnswerReaction on the saving throw an effect asks (RN-22): it
+// is answered with RollEffectSave, never here.
+func errEffectSaveWindow() error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("an effect's saving throw is answered with RollEffectSave"))
 }
 
 // answerMore answers the reactions that are not Shield, the master's check or the

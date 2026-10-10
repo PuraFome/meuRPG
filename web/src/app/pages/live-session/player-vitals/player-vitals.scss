@@ -131,6 +131,12 @@
 }
 
 // The labels under the two cards: Escudo Arcano in the accent, Ajuda in the warning colours; two lines on a narrow phone.
+.hint {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 0.875rem;
+}
+
 .effects {
   display: flex;
   flex-wrap: wrap;

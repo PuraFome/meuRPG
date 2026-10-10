@@ -31,7 +31,9 @@ export type EffectSaveAnswer =
       readonly second?: number;
       readonly extra: readonly number[];
     }
-  | { readonly kind: 'hand' };
+  | { readonly kind: 'hand' }
+  /** The master skips the save (a table option). */
+  | { readonly kind: 'skip' };
 
 /** What `RollEffectSave` answers: the combat and the result (unset when the roll was left to the master). */
 export interface EffectSaveOutcome {
@@ -108,7 +110,9 @@ export class EffectsClient {
           ? { case: 'rollInApp', value: true }
           : how.kind === 'typed'
             ? { case: 'd20Face', value: how.face }
-            : { case: 'delegateToMaster', value: true },
+            : how.kind === 'skip'
+              ? { case: 'skip', value: true }
+              : { case: 'delegateToMaster', value: true },
       extraDieFaces: typed ? [...typed.extra] : [],
       ...(typed?.second !== undefined ? { secondD20Face: typed.second } : {}),
     });

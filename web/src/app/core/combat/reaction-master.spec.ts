@@ -300,3 +300,37 @@ describe("what the master's held actions say", () => {
     );
   });
 });
+
+describe("the master's card for an effect's saving throw (RN-22)", () => {
+  const save = (over: object) =>
+    reactionWindow({
+      id: 'es',
+      kind: ReactionKind.EFFECT_SAVE,
+      reactorId: 'gob',
+      reactorLabel: 'Goblin 1',
+      prompt: { case: 'effectSave', value: { handedToMaster: false } } as never,
+      ...over,
+    } as never);
+  const e = (w: ReturnType<typeof save>) =>
+    encounter({
+      combatants: [
+        combatant({ id: 'gob', label: 'Goblin 1' }),
+        combatant({ id: 'p', label: 'Pensantus', kind: CombatantKind.PLAYER }),
+      ],
+      reactionWindows: [w],
+    } as never);
+
+  it("an NPC's save is a card of its own, never a single", () => {
+    expect(reactionCards(e(save({}))).map((c) => c.type)).toEqual(['effectSave']);
+  });
+
+  it("a player's save is the master's only when the player left it to the master", () => {
+    const mine = { reactorId: 'p', reactorLabel: 'Pensantus', reactorIsPlayer: true };
+    expect(reactionCards(e(save(mine)))).toEqual([]);
+    const handed = save({
+      ...mine,
+      prompt: { case: 'effectSave', value: { handedToMaster: true } } as never,
+    });
+    expect(reactionCards(e(handed)).map((c) => c.type)).toEqual(['effectSave']);
+  });
+});

@@ -206,6 +206,18 @@ describe('PlayerVitals at 0 hit points and the Ajuda that wakes (PM-03a)', () =>
     expect(pills(mount({ hitPointsCurrent: 12 }, { successes: 0, failures: 0 }))).toEqual([]);
   });
 
+  it('tells a character at 0 in a combat, off turn, when the death save is rolled, and not on turn', () => {
+    const hint = (f: ReturnType<typeof mount>) =>
+      flat((f.nativeElement as HTMLElement).querySelector('.hint'));
+    const f = mount({ hitPointsCurrent: 0 }, { successes: 0, failures: 0 });
+    expect(hint(f)).toBe('Você rola o teste contra a morte no começo da sua vez.');
+    f.componentRef.setInput('onTurn', true);
+    f.detectChanges();
+    expect(hint(f)).toBeUndefined();
+    expect(hint(mount({ hitPointsCurrent: 12 }, { successes: 0, failures: 0 }))).toBeUndefined();
+    expect(hint(mount({ hitPointsCurrent: 0 }, null))).toBeUndefined();
+  });
+
   it('says the character woke when Ajuda takes the hit points from 0 to above 0, then lets it go', () => {
     vi.useFakeTimers();
     try {
