@@ -17930,6 +17930,13 @@ type DeflectMissilesThrowPrompt struct {
 	KiLeft        int32                  `protobuf:"varint,1,opt,name=ki_left,json=kiLeft,proto3" json:"ki_left,omitempty"`
 	NormalRangeFt int32                  `protobuf:"varint,2,opt,name=normal_range_ft,json=normalRangeFt,proto3" json:"normal_range_ft,omitempty"`
 	LongRangeFt   int32                  `protobuf:"varint,3,opt,name=long_range_ft,json=longRangeFt,proto3" json:"long_range_ft,omitempty"`
+	// The missile's name ("Arco curto"), as the screen names the throw; empty when
+	// the caller does not see the attacker.
+	MissileNamePt string `protobuf:"bytes,4,opt,name=missile_name_pt,json=missileNamePt,proto3" json:"missile_name_pt,omitempty"`
+	// What the thrown attack adds to the d20: proficiency (whatever the monk's
+	// weapon proficiencies) plus the Dexterity modifier. The damage is the
+	// missile's own dice plus the Dexterity modifier, worked out by RollAttack.
+	AttackBonus   int32 `protobuf:"varint,5,opt,name=attack_bonus,json=attackBonus,proto3" json:"attack_bonus,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -17981,6 +17988,20 @@ func (x *DeflectMissilesThrowPrompt) GetNormalRangeFt() int32 {
 func (x *DeflectMissilesThrowPrompt) GetLongRangeFt() int32 {
 	if x != nil {
 		return x.LongRangeFt
+	}
+	return 0
+}
+
+func (x *DeflectMissilesThrowPrompt) GetMissileNamePt() string {
+	if x != nil {
+		return x.MissileNamePt
+	}
+	return ""
+}
+
+func (x *DeflectMissilesThrowPrompt) GetAttackBonus() int32 {
+	if x != nil {
+		return x.AttackBonus
 	}
 	return 0
 }
@@ -21648,11 +21669,13 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"flat_bonus\x18\x05 \x01(\x05R\tflatBonus\x12\x17\n" +
 	"\adex_mod\x18\x06 \x01(\x05R\x06dexMod\x12\x1d\n" +
 	"\n" +
-	"monk_level\x18\a \x01(\x05R\tmonkLevel\"\x81\x01\n" +
+	"monk_level\x18\a \x01(\x05R\tmonkLevel\"\xcc\x01\n" +
 	"\x1aDeflectMissilesThrowPrompt\x12\x17\n" +
 	"\aki_left\x18\x01 \x01(\x05R\x06kiLeft\x12&\n" +
 	"\x0fnormal_range_ft\x18\x02 \x01(\x05R\rnormalRangeFt\x12\"\n" +
-	"\rlong_range_ft\x18\x03 \x01(\x05R\vlongRangeFt\"\x94\x01\n" +
+	"\rlong_range_ft\x18\x03 \x01(\x05R\vlongRangeFt\x12&\n" +
+	"\x0fmissile_name_pt\x18\x04 \x01(\tR\rmissileNamePt\x12!\n" +
+	"\fattack_bonus\x18\x05 \x01(\x05R\vattackBonus\"\x94\x01\n" +
 	"\x0fFallingCreature\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x12\n" +

@@ -278,11 +278,17 @@ export class AttackSheet {
   protected readonly name = attackName(this.attack);
   // An opportunity attack is a melee attack: a thrown dagger reads "corpo a
   // corpo" here, not its thrown range.
-  protected readonly detail = this.data.asReaction
-    ? `Reação · ${attackDetail({ ...this.attack, rangeFt: 5, longRangeFt: 0 })}`
-    : `${this.data.useExtraAction ? 'Ação extra' : 'Ação'} · ${attackDetail(this.attack)}`;
+  // The Deflect Missiles throw back is a ranged attack of its own (20 ft, long range 60 ft).
+  private readonly thrown = !!this.data.catchWindowId;
+  protected readonly detail = this.thrown
+    ? `Reação · ${attackDetail(this.attack)}`
+    : this.data.asReaction
+      ? `Reação · ${attackDetail({ ...this.attack, rangeFt: 5, longRangeFt: 0 })}`
+      : `${this.data.useExtraAction ? 'Ação extra' : 'Ação'} · ${attackDetail(this.attack)}`;
   protected readonly cantrip = isCantrip(this.attack);
-  protected readonly rangeText = metersText(this.data.asReaction ? 5 : this.attack.rangeFt);
+  protected readonly rangeText = metersText(
+    this.thrown ? this.attack.longRangeFt : this.data.asReaction ? 5 : this.attack.rangeFt,
+  );
   /** An opportunity attack reaches 5 ft, whatever range the weapon has when thrown. */
   protected readonly rows = computed(() => this.withAllies(this.baseRows()));
   /** An ally is tagged ("Aliada"), so a table of friends does not misread the list. */
@@ -311,14 +317,27 @@ export class AttackSheet {
             coverMark: null,
           },
         ]
-      : this.data.asReaction
+      : this.thrown
         ? targetRows(
             this.data.targets.map(
-              (t) => ({ ...t, tooFar: t.distanceFt === undefined || t.distanceFt > 5 }) as typeof t,
+              (t) =>
+                ({
+                  ...t,
+                  tooFar:
+                    t.distanceFt === undefined ? t.tooFar : t.distanceFt > this.attack.longRangeFt,
+                }) as typeof t,
             ),
-            5,
+            this.attack.longRangeFt,
           )
-        : targetRows(this.data.targets, this.attack.rangeFt),
+        : this.data.asReaction
+          ? targetRows(
+              this.data.targets.map(
+                (t) =>
+                  ({ ...t, tooFar: t.distanceFt === undefined || t.distanceFt > 5 }) as typeof t,
+              ),
+              5,
+            )
+          : targetRows(this.data.targets, this.attack.rangeFt),
   );
   /** The target's circumstances from the options: the suggested mode and why. An opportunity attack has none. */
   private readonly reach = computed(() => {

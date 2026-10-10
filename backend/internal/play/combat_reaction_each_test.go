@@ -237,6 +237,10 @@ func TestDeflectMissilesCatchesTheArrowAndThrowsItBack(t *testing.T) {
 	if throw := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES); throw == nil || throw.GetDeflectThrow().GetKiLeft() != 3 || !throw.GetSecondStep() {
 		t.Fatalf("the monk's second window = %v, want the throw back with 3 ki", throw)
 	}
+	// The screen names the missile and shows the bonus of the throw (proficiency plus Dex): it makes up no attack of its own.
+	if p := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES).GetDeflectThrow(); p.GetMissileNamePt() == "" || p.GetAttackBonus() < 1 || p.GetNormalRangeFt() != 20 || p.GetLongRangeFt() != 60 {
+		t.Errorf("the throw prompt = %v, want the missile's name, a bonus of at least +1 and the 20/60 ft range", p)
+	}
 	thrown, err := a.throwBack(t, a.ana, e, w.GetId(), "Reator", "Goblin", disadvantage(15))
 	if err != nil {
 		t.Fatalf("RollAttack(throw back) error = %v", err)
