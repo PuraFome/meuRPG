@@ -2993,10 +2993,9 @@ message TargetInReach {
   // 5 ft (RN-21), so a diagonal neighbour is 5 ft away. Unset when either of them
   // has no square on the grid, and always unset in THEATRE mode.
   optional int32 distance_ft = 4;
-  // True when the attack cannot reach it: the distance is beyond its range
-  // (RollAttack refuses it for the master's NPCs too), or unknown for a player
-  // (RollAttack refuses it). Never true for the master when the distance is
-  // unknown: the master may attack from or at a combatant with no square.
+  // True when the attack cannot reach it: the distance is beyond its range,
+  // or unknown for a player (RollAttack refuses it). Never true for the
+  // master when the distance is unknown: the master is not held to the reach.
   // Always false in THEATRE mode, where the server never checks the reach: the
   // master judges, and the list holds every target the rules allow.
   bool too_far = 5;

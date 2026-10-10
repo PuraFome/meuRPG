@@ -22,7 +22,11 @@ const FIRST_ROWS = 4;
   imports: [MatIconModule],
   templateUrl: './pick-list.html',
   styleUrl: './pick-list.scss',
-  host: { '[attr.data-missing]': 'missing() ? "" : null', '[id]': '"pick-" + pickId()' },
+  host: {
+    '[attr.data-missing]': 'missing() ? "" : null',
+    '[attr.data-all]': 'showAll() ? "" : null',
+    '[id]': '"pick-" + pickId()',
+  },
 })
 export class PickList {
   /** The picker's id, which the page uses to focus the first missing choice. */

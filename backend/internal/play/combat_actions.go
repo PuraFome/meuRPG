@@ -727,19 +727,15 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 					return nil, err
 				}
 			}
-		}
-		// RN-21: the reach limits every attacker on a map, the master's NPCs too (SRD 5.1, "Making an
-		// Attack": a melee attack reaches 5 ft unless the creature says more). Refused before anything
-		// is rolled or spent. Without a map (RN-25) nobody has a square and the master judges the
-		// reach, so nothing is checked; a master's attacker or target with no square is not checked
-		// either (a player's must be on the map).
-		if !isTheatre(c.enc) {
-			if !v.master && (!placed(attacker) || !placed(target)) {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the attacker and the target must be on the map")
-			}
-			// An opportunity attack comes right before the mover leaves the reach, so
-			// it asks no reach check (the mover has moved already).
-			if dist, ok := distanceFt(attacker, target); ok {
+			// RN-21: the reach is a player's limit on a map. Without one (RN-25) nobody
+			// has a square and the master judges the reach, so nothing is checked.
+			if !isTheatre(c.enc) {
+				if !placed(attacker) || !placed(target) {
+					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the attacker and the target must be on the map")
+				}
+				// An opportunity attack comes right before the mover leaves the reach, so
+				// it asks no reach check (the mover has moved already).
+				dist, _ := distanceFt(attacker, target)
 				if reach := attackReach(attack, asReaction && catchID == ""); offerID == "" && dist > reach {
 					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the attack's range",
 						func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })

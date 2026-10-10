@@ -1099,7 +1099,6 @@ func TestRN03_DeathSavesAndTheMasterConfirms(t *testing.T) {
 	// A critical hit is two failures: three in all, and he is dying for the master;
 	// for the players the word is still "Caído" (never "morrendo").
 	a.h.roller.queue(2, 2)
-	a.closeTo(t, "Toren", "Capitão Goblin")
 	crit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Toren", d20(20))
 	a.mustDamage(t, a.master, e, crit.GetPendingDamage().GetId(), inAppDamage)
 	applied, err = a.settle(t, a.master, e, crit.GetPendingDamage().GetId(), true)
@@ -1578,7 +1577,6 @@ func TestMasterAppliesADifferentAmount(t *testing.T) {
 	a := newCasters(t)
 	e := a.castersFightNPCFirst(t) // the Capitão first
 	a.h.roller.queue(4)            // 1d6 (4) + 2 = 6
-	a.closeTo(t, "Toren", "Capitão Goblin")
 	hit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Toren", d20(15))
 	pid := hit.GetPendingDamage().GetId()
 	a.mustDamage(t, a.master, e, pid, inAppDamage)
@@ -1763,7 +1761,6 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 			t.Fatalf("TakeAction(surge) error = %v", err)
 		}
 	})
-	a.stand(t, map[string][2]int32{"Goblin": {6, 6}}) // next to Brisa: the opportunity attack is a melee one (5 ft)
 	a.undoes(t, "an opportunity attack", func() {
 		if _, err := a.attackAs(t, a.master, e, "Brisa", maceKey, "Brisa", d20(15), true); err == nil {
 			t.Fatal("an attack on itself worked")
@@ -1775,7 +1772,6 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 			t.Fatalf("RollAttack(as_reaction) error = %v", err)
 		}
 	})
-	a.stand(t, map[string][2]int32{"Goblin": {7, 5}})
 
 	// Toren falls (on his own turn the save waits for the next one): a death save
 	// and a natural 20 are undone.
@@ -1829,7 +1825,6 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 	// And a damage at 0 hit points: a failure that the undo takes away.
 	b.correct(t, b.toren, hpIs(0))
 	b.h.roller.queue(3)
-	b.closeTo(t, "Toren", "Capitão Goblin")
 	crit := b.mustAttack(t, b.master, eb, "Capitão Goblin", sword, "Toren", d20(20))
 	b.mustDamage(t, b.master, eb, crit.GetPendingDamage().GetId(), inAppDamage)
 	b.undoes(t, "a damage at 0 hit points", func() {

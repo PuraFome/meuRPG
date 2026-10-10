@@ -152,8 +152,7 @@ func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
 		t.Fatalf("TakeAction(hide) error = %v", err)
 	}
 	end(a.bia)
-	a.h.roller.queue(15)                                                 // the Capitão shoots with an enemy next to him: two d20
-	attackAndApply(a.master, "Capitão Goblin", shortBow, "Toren", 15, 3) // 5 to Toren (a bow: Toren is out of the sword's 5 ft reach)
+	attackAndApply(a.master, "Capitão Goblin", sword, "Toren", 15, 3) // 5 to Toren
 	end(a.master)
 	end(a.ana)
 	end(a.master)
@@ -180,7 +179,7 @@ func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
 		t.Fatalf("SetCombatantHidden() error = %v", err)
 	}
 	a.h.roller.queue(20, 5, 4)
-	crit := a.mustAttack(t, a.master, e, "Goblin 3", shortBow, "Brisa", inAppRoll) // an NPC's critical: 11 to Brisa
+	crit := a.mustAttack(t, a.master, e, "Goblin 3", sword, "Brisa", inAppRoll) // an NPC's critical: 11 to Brisa
 	dmg := a.mustDamage(t, a.master, e, crit.GetPendingDamage().GetId(), inAppDamage).GetPendingDamage()
 	if _, err := a.settle(t, a.master, e, dmg.GetId(), true); err != nil {
 		t.Fatalf("ApplyPendingDamage() error = %v", err)
@@ -284,8 +283,7 @@ func TestMR032_HighlightsSkipTheUndoneAndCountWhatHappened(t *testing.T) {
 		},
 		npcRolls: []int{1, 2},
 		players:  map[string]int32{"Toren": 20, "Pensantus": 15, "Brisa": 10},
-		// In a row, so every melee attack of the test is within the 5 ft reach the master's NPCs keep too.
-		at: map[string][2]int32{"Toren": {7, 3}, "Goblin": {6, 3}, "Pensantus": {10, 3}, "Capitão Goblin": {8, 3}, "Brisa": {9, 3}},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Capitão Goblin": {12, 3}, "Brisa": {11, 3}},
 	})
 	master := a.master
 	// hit is an attack that hits, and its damage rolled; a player's character's
