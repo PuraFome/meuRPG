@@ -287,7 +287,7 @@ describe('what a cast did', () => {
       ],
     });
     expect(resultTitle(armor)).toBe('Armadura Arcana em Pensantus');
-    expect(resultSentences(armor)).toEqual(['Pensantus fica com CA 13 + Destreza (15).']);
+    expect(resultSentences(armor)).toEqual(['Pensantus fica com CA 15 (13 + Destreza).']);
   });
 });
 

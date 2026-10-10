@@ -7188,7 +7188,7 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     await pickTargetOf(castSheet(p), 'Pensantus');
     await expectScreenPasses(p, `Conjurar Armadura Arcana, espaço e alvo ${where}`);
     await castSheet(p).getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
-    await expect(castSheet(p).getByText(/CA 13 \+ Destreza/)).toBeVisible();
+    await expect(castSheet(p).getByText(/CA \d+ \(13 \+ Destreza\)/)).toBeVisible();
     await expectScreenPasses(p, `Conjurar Armadura Arcana, o resultado ${where}`);
     await castSheet(p).getByRole('button', { name: 'Fechar' }).last().click();
 
