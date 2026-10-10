@@ -22,8 +22,8 @@ const OPTIONAL_KINDS: ReadonlySet<ReactionKind> = new Set([
 
 /**
  * Whether the window is an optional reaction: never a saving throw (concentration, an effect's, the Repreensão Infernal
- * second step), a contest, the master's check or an opportunity attack, which are answered with other calls or have
- * to be rolled.
+ * second step), a contest or the master's check, which are answered with other calls or have to be rolled. (An
+ * opportunity attack is optional too, but it is not a window: it has its own clock, over the offers.)
  */
 export function isOptionalReaction(w: ReactionWindow): boolean {
   return OPTIONAL_KINDS.has(w.kind) && !w.secondStep && isOpen(w);
@@ -65,7 +65,15 @@ export class AutoPassClock {
 
   /** Looks at the open windows at `now` (ms): forgets the gone ones, starts the clock of the new ones. */
   sync(windows: readonly ReactionWindow[], now: number): void {
-    const waiting = new Set(windows.filter(autoPasses).map((w) => w.id));
+    this.syncIds(
+      windows.filter(autoPasses).map((w) => w.id),
+      now,
+    );
+  }
+
+  /** The same for any list of ids waiting for a player (an opportunity attack's offer): the ones gone are forgotten. */
+  syncIds(ids: Iterable<string>, now: number): void {
+    const waiting = new Set(ids);
     for (const id of [...this.seen.keys()]) {
       if (!waiting.has(id)) {
         this.seen.delete(id);

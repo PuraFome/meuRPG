@@ -109,6 +109,22 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(clock.secondsLeft('w1', Date.now())).toBe(AUTO_PASS_SECONDS);
   });
 
+  it('passes an opportunity attack offer once at 30 s, with a UUID key, and forgets a gone one', () => {
+    const clock = new AutoPassClock();
+    const offer = '3f2a9c1e-5b7d-4e68-9a10-c2d4e6f80b13';
+    clock.syncIds([offer], Date.now());
+    vi.advanceTimersByTime(29 * MS);
+    expect(clock.due(Date.now())).toEqual([]);
+    vi.advanceTimersByTime(MS);
+    expect(clock.due(Date.now())).toEqual([offer]);
+    expect(clock.due(Date.now())).toEqual([]);
+    expect(autoPassKey(offer)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    clock.syncIds([], Date.now());
+    expect(clock.soonest(Date.now())).toBeNull();
+  });
+
   it('counts the seconds down, and writes them for the master and for the player', () => {
     const clock = new AutoPassClock();
     clock.sync([win('w1', ReactionKind.CUTTING_WORDS)], Date.now());
