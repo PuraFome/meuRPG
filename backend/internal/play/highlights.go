@@ -70,12 +70,25 @@ var highlightKinds = []highlightKind{
 	{playv1.HighlightKind_HIGHLIGHT_KIND_CRITICAL_HITS, func(t *characterTally) int32 { return t.crits }},
 }
 
-// hpLost is the hit points, temporary ones included, a change took off.
+// hpLost is the hit points, temporary ones included, a change took off. A druid
+// in a beast form takes the hit on the beast's pool (the character's own numbers
+// wait), so that pool counts too: the beast's loss, and what carried over to the
+// druid when the form dropped (MR-032).
 func hpLost(before, after *hpState) int32 {
 	if before == nil || after == nil {
 		return 0
 	}
-	return max(before.HP+before.Temp-after.HP-after.Temp, 0)
+	return max(hitPool(before)-hitPool(after), 0)
+}
+
+// hitPool is everything a hit can take off a combatant: its own hit points, the
+// temporary ones and, in a beast form, the beast's.
+func hitPool(s *hpState) int32 {
+	n := s.HP + s.Temp
+	if s.Shape != nil {
+		n += s.Shape.HP
+	}
+	return n
 }
 
 // tallyHighlights folds a combat's events, oldest first, into the numbers of
