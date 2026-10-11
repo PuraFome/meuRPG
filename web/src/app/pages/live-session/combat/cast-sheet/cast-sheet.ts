@@ -111,7 +111,12 @@ import {
   metamagicSpentLine,
   toggledOption,
 } from '../../../../core/resources/metamagic';
-import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
+import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
+import {
+  RollAnimator,
+  type RollShow,
+  showOfDice,
+} from '../../../../shared/roll-overlay/roll-animator';
 import type { Pool } from '../../../../core/resources/pools';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
@@ -1031,12 +1036,43 @@ export class CastSheet {
       );
       this.data.state.apply(res.encounter);
       this.cast.set(res.cast);
+      this.animateCast(res.cast);
       this.pendings.set(new Map(res.cast.pendingDamages.map((p) => [p.id, p])));
       this.typing.set(false);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'conjurar a magia'));
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /**
+   * The dice the cast just rolled in the app, as the result step shows them: the pool of a spell that reads hit points, or the
+   * spell attack d20 (one die per target in the same overlay; with a single target, the total and the word too). The targets'
+   * saving throws are not animated: they are not the caster's roll.
+   */
+  private animateCast(cast: SpellCast): void {
+    const name = this.data.name;
+    let show: RollShow | null = showOfDice(name, cast.poolRoll, { withTotal: true });
+    if (!show) {
+      const attacks = cast.targets.filter((t) => t.attackRoll);
+      const told = (t: (typeof attacks)[number]) => t.outcome !== AttackOutcome.UNSPECIFIED;
+      if (attacks.length === 1) {
+        const t = attacks[0];
+        const hit = isHit(t.outcome);
+        show = showOfDice(`Ataque com ${name}`, t.attackRoll, {
+          withTotal: true,
+          outcome: told(t) ? { word: outcomeWord(t.outcome), good: hit } : undefined,
+          critical: t.outcome === AttackOutcome.CRITICAL_HIT,
+          fumble: told(t) && !hit,
+        });
+      } else if (attacks.length > 1) {
+        const dice = attacks.flatMap((t) => showOfDice(name, t.attackRoll)?.dice ?? []);
+        show = dice.length > 0 ? { label: `Ataque com ${name}`, dice } : null;
+      }
+    }
+    if (show) {
+      this.animator.play(show);
     }
   }
 

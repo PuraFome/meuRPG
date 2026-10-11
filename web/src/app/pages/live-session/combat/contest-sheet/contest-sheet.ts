@@ -31,6 +31,7 @@ import {
   ShoveOutcome,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { reasonText } from '../../../../core/combat/combat-options';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -147,6 +148,7 @@ export function openContestSheet(
 })
 export class ContestSheet {
   private readonly api = inject(ContestClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<ContestSheetData, ContestSheetResult>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -463,6 +465,17 @@ export class ContestSheet {
       );
       this.data.state.apply(res.encounter);
       this.data.contests.applyContest(res.contest);
+      // The initiator's own d20, as the sheet shows it; who wins is told when the other side has answered.
+      const show = showOfCheck(
+        `${sheetTitle(this.data.purpose)}: teste de ${skillName(skill)}`,
+        res.contest.initiatorRoll,
+        {
+          withTotal: true,
+        },
+      );
+      if (show) {
+        this.animator.play(show);
+      }
       this.started.set(res.contest.id);
       this.startKeys.renew();
     } catch (err) {

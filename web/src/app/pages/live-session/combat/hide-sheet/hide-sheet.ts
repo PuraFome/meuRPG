@@ -22,6 +22,7 @@ import {
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { article } from '../../../../core/combat/combat-log';
+import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { type CheckDie, ContestClient } from '../../../../core/combat/contest-client';
@@ -94,6 +95,7 @@ export function openHideSheet(
 })
 export class HideSheet {
   private readonly api = inject(ContestClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<HideSheetData, HideSheetResult>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -153,6 +155,11 @@ export class HideSheet {
       );
       this.data.state.apply(res.encounter);
       this.data.contests.applyAttempt(res.attempt);
+      // The Dexterity (Stealth) d20; whether it worked waits for the master, so no word is told.
+      const show = showOfCheck('Teste de Furtividade', res.attempt.roll, { withTotal: true });
+      if (show) {
+        this.animator.play(show);
+      }
       this.started.set(res.attempt.id);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'se esconder'));

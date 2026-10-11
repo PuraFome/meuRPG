@@ -57,6 +57,12 @@ import { metersText } from '../../../../core/units';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { SlotPicker } from '../cast-sheet/slot-picker';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
+import {
+  RollAnimator,
+  type RollShow,
+  showOfConcentration,
+  showOfReaction,
+} from '../../../../shared/roll-overlay/roll-animator';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
@@ -399,6 +405,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 })
 export class ReactionSheet {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<ReactionSheetData, ReactionSheetResult>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -709,6 +716,8 @@ export class ReactionSheet {
         this.afterSlot.set(this.slotAfter(answer));
         this.nextWindowId.set(res.result.nextWindowId);
         this.answer.set({ kind: 'reaction', result: res.result });
+        // The dice its result sheet shows, tumbling (a physical die is never animated).
+        this.play(() => showOfReaction(res.result));
       }
       this.step.set('result');
       this.typingSave.set(false);
@@ -748,6 +757,7 @@ export class ReactionSheet {
         return;
       }
       this.answer.set({ kind: 'concentration', result: res.result });
+      this.play(() => showOfConcentration(res.result));
       this.step.set('result');
       this.typingSave.set(false);
     } catch (err) {
@@ -759,6 +769,18 @@ export class ReactionSheet {
       await this.failed(err, null, 'resolver o teste de concentração');
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** The dice tumble; whatever happens here never turns an answered reaction into an error. */
+  private play(make: () => RollShow | null): void {
+    try {
+      const show = make();
+      if (show) {
+        this.animator.play(show);
+      }
+    } catch {
+      // The animation is a nicety: the result is already on the sheet.
     }
   }
 

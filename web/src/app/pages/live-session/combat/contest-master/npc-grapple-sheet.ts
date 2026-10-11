@@ -21,6 +21,7 @@ import {
   ContestPurpose,
   ContestSkill,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
+import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { type CheckDie, ContestClient } from '../../../../core/combat/contest-client';
@@ -210,6 +211,7 @@ export function openNpcGrappleSheet(
 })
 export class NpcGrappleSheet {
   private readonly api = inject(ContestClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<NpcGrappleData, NpcGrappleResult>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -310,6 +312,13 @@ export class NpcGrappleSheet {
       const res = await this.api.start(request, this.keys.keyFor(request));
       this.data.state.apply(res.encounter);
       this.data.contests.applyContest(res.contest);
+      // The master's d20 for the creature, when the app rolled it (a fixed escape DC rolls nothing).
+      const show = showOfCheck('Teste de Atletismo', res.contest.initiatorRoll, {
+        withTotal: true,
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       this.sheet.close({ contestId: res.contest.id });
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'começar a disputa'));

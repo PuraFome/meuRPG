@@ -26,6 +26,7 @@ import {
   treatedPreview,
   typedTotal,
 } from '../../../../core/combat/combat-dice';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import type { MapState } from '../../../../core/maps/map-state';
 import { hasModeInfo, needsTwoD20, searchFaces } from '../../../../core/play/check-roll';
@@ -97,6 +98,7 @@ export function openTrapSearch(
 })
 export class TrapSearchSheet {
   private readonly api = inject(TrapsClient);
+  private readonly animator = inject(RollAnimator);
   private readonly injector = inject(Injector);
   private readonly sheet = injectSheet<TrapSearchData, boolean>();
   protected readonly data = this.sheet.data;
@@ -359,6 +361,7 @@ export class TrapSearchSheet {
         skillLabel: skillName(this.skill(), this.otherPicked()?.name),
       });
       this.typing.set(false);
+      this.animate(res);
     } catch (err) {
       if ((needsTwoDice(err) || needsTwoD20(err)) && 'face' in die && this.firstFace() === null) {
         this.firstFace.set(die.face);
@@ -369,6 +372,18 @@ export class TrapSearchSheet {
       }
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** The d20 of the search, with "Achou" or "Nada": exactly what the result card tells (the DC never comes). */
+  private animate(res: SearchForTrapsResponse): void {
+    const found = res.foundPointIds.length > 0;
+    const show = showOfDice('Procurar armadilhas', res.roll, {
+      withTotal: true,
+      outcome: { word: found ? 'Achou' : 'Nada', good: found },
+    });
+    if (show) {
+      this.animator.play(show);
     }
   }
 

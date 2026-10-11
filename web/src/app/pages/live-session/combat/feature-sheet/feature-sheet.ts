@@ -8,6 +8,7 @@ import { ActionKey } from '../../../../core/connect/idempotency';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { type DamageDie, CombatClient } from '../../../../core/combat/combat-client';
 import { rollFormula } from '../../../../core/combat/combat-dice';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { RollPicker } from '../roll-picker/roll-picker';
@@ -106,6 +107,7 @@ export interface FeatureSheetData {
 })
 export class FeatureSheet {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<FeatureSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -157,6 +159,11 @@ export class FeatureSheet {
       this.key.renew();
       this.data.state.apply(res.encounter);
       this.roll.set(res.roll ?? null);
+      // The die the action rolled (Retomar o Fôlego), with the total the sheet shows.
+      const show = showOfDice(this.data.name, res.roll, { withTotal: true });
+      if (show) {
+        this.animator.play(show);
+      }
       this.used.set(true);
       this.healed.set(res.healed ?? res.roll?.total ?? 0);
       this.typing.set(false);

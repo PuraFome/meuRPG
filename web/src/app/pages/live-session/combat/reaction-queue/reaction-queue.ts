@@ -34,6 +34,13 @@ import {
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { autoPassText } from '../../../../core/combat/reaction-autopass';
 import { rollText } from '../../../../core/combat/combat-dice';
+import {
+  RollAnimator,
+  type RollShow,
+  showOfConcentration,
+  showOfEffectSave,
+  showOfReaction,
+} from '../../../../shared/roll-overlay/roll-animator';
 import { type EffectSaveAnswer, EffectsClient } from '../../../../core/effects/effects-client';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
@@ -383,6 +390,7 @@ let nextId = 0;
 export class ReactionQueue {
   private readonly api = inject(CombatClient);
   private readonly effects = inject(EffectsClient);
+  private readonly animator = inject(RollAnimator);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -496,6 +504,7 @@ export class ReactionQueue {
       );
       this.state().apply(res.encounter);
       this.said.set(this.sayAnswer(w, answer, res.result?.result));
+      this.play(() => showOfReaction(res.result));
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'responder a reação'));
     } finally {
@@ -526,6 +535,7 @@ export class ReactionQueue {
       );
       this.state().apply(res.encounter);
       const r = res.result;
+      this.play(() => showOfConcentration(r));
       this.said.set(
         r
           ? `${r.save ? `${rollText(r.save)} ` : ''}contra CD ${r.dc}: ${w.reactorLabel} ${r.kept ? 'manteve' : 'perdeu'} a concentração${r.spellNamePt ? ` em ${r.spellNamePt}` : ''}.`
@@ -566,6 +576,9 @@ export class ReactionQueue {
         this.keys.keyFor({ window: w.id, how: sent }),
       );
       this.state().apply(res.encounter);
+      this.play(() =>
+        showOfEffectSave(`Teste de resistência de ${this.effectSaveAbility(w)}`, res.result),
+      );
       this.skipAsked.set('');
       this.said.set(
         how.kind === 'skip'
@@ -580,6 +593,18 @@ export class ReactionQueue {
       this.error.set(more || combatErrorMessage(err, 'resolver o teste de resistência'));
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** The dice tumble; whatever happens here never turns an answered window into an error. */
+  private play(make: () => RollShow | null): void {
+    try {
+      const show = make();
+      if (show) {
+        this.animator.play(show);
+      }
+    } catch {
+      // The animation is a nicety: the result is already on the screen.
     }
   }
 
