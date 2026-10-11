@@ -202,6 +202,9 @@ func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membersh
 	v := c.viewer(m, cs)
 	row, err := c.q.GetHitRider(ctx, playdb.GetHitRiderParams{EncounterID: c.enc.ID, ID: riderID})
 	if err != nil {
+		if !v.master { // a player is not told whether the offer exists (RN-10)
+			return actionEvent{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the monk's player or the master may answer"))
+		}
 		return actionEvent{}, connect.NewError(connect.CodeNotFound, errors.New("offer not found"))
 	}
 	attacker, okA := combatantByID(cs, row.AttackerID)
