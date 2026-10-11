@@ -14,6 +14,8 @@ import {
 import { CombatState } from '../../../../core/combat/combat-state';
 import { encounter, reactionWindow } from '../../../../core/combat/combat-testing';
 import { EffectsClient } from '../../../../core/effects/effects-client';
+import { inspirationOffer } from '../../../../core/play/scene-testing';
+import { ResourceClient } from '../../../../core/resources/resources-client';
 import { EffectSaveSheet, type EffectSaveSheetData } from './effect-save-sheet';
 
 const plain = (text: string | null | undefined) =>
@@ -61,6 +63,7 @@ const passed = create(EffectSaveResultSchema, {
 
 describe('EffectSaveSheet', () => {
   const api = { rollEffectSave: vi.fn() };
+  const resources = { answerOutsideInspiration: vi.fn() };
   const closed: unknown[] = [];
 
   function setup(window = save(), over: Partial<EffectSaveSheetData> & { phone?: boolean } = {}) {
@@ -81,6 +84,7 @@ describe('EffectSaveSheet', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: EffectsClient, useValue: api },
+        { provide: ResourceClient, useValue: resources },
         ...(over.phone
           ? [
               { provide: MAT_BOTTOM_SHEET_DATA, useValue: data },
@@ -118,6 +122,7 @@ describe('EffectSaveSheet', () => {
 
   beforeEach(() => {
     api.rollEffectSave.mockReset();
+    resources.answerOutsideInspiration.mockReset();
   });
 
   describe('the sheet of the end of the turn', () => {
@@ -169,6 +174,68 @@ describe('EffectSaveSheet', () => {
         ),
       ).toBe(false);
       expect(field(el, 'Resultado do d20')).toBeTruthy();
+    });
+  });
+
+  describe('a character that holds a Bardic Inspiration die', () => {
+    it('is asked about the die before the result, and the answer settles the save with the die added', async () => {
+      api.rollEffectSave.mockResolvedValue({
+        encounter: encounter({ reactionWindows: [save()] } as never),
+        result: undefined,
+        offer: inspirationOffer(4, 1),
+      });
+      const { fixture, el } = setup();
+      button(el, 'Rolar no app').click();
+      await flush(fixture);
+      expect(plain(el.textContent)).toContain('Usar a Inspiração de Bardo (d8)?');
+      expect(plain(el.textContent)).not.toContain('Passou');
+      resources.answerOutsideInspiration.mockResolvedValue({
+        result: {
+          case: 'effectSave',
+          value: {
+            encounter: encounter({ reactionWindows: [] } as never),
+            result: create(EffectSaveResultSchema, {
+              d20: 4,
+              modifier: 1,
+              total: 13,
+              saved: true,
+              inspirationSides: 8,
+              inspirationFace: 8,
+            }),
+          },
+        },
+      });
+      button(el, 'Usar e rolar o d8').click();
+      await flush(fixture);
+      const [campaign, hold, use] = resources.answerOutsideInspiration.mock.calls[0];
+      expect([campaign, hold, use]).toEqual(['camp', 'h1', true]);
+      const text = plain(el.textContent);
+      expect(text).toContain('Passou');
+      expect(text).toContain('1d20 (4) + 1 + 1d8 de Inspiração (8)');
+    });
+
+    it('keeps the die when the player answers "Guardar o dado"', async () => {
+      api.rollEffectSave.mockResolvedValue({
+        encounter: encounter({ reactionWindows: [save()] } as never),
+        result: undefined,
+        offer: inspirationOffer(4, 1),
+      });
+      const { fixture, el } = setup();
+      button(el, 'Rolar no app').click();
+      await flush(fixture);
+      resources.answerOutsideInspiration.mockResolvedValue({
+        result: {
+          case: 'effectSave',
+          value: {
+            encounter: encounter({ reactionWindows: [] } as never),
+            result: create(EffectSaveResultSchema, { d20: 4, modifier: 1, total: 5, saved: false }),
+          },
+        },
+      });
+      button(el, 'Guardar o dado').click();
+      await flush(fixture);
+      expect(resources.answerOutsideInspiration.mock.calls[0][2]).toBe(false);
+      expect(plain(el.textContent)).toContain('Falhou');
     });
   });
 

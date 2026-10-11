@@ -18,8 +18,14 @@ import type { Observable } from 'rxjs';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { MapPointKind } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import type { SearchForTrapsResponse } from '../../../../../gen/meurpg/play/v1/traps_pb';
+import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
+import { InspirationOffer } from '../../inspiration/inspiration-offer';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
-import type { DiceRoll } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type {
+  DiceRoll,
+  OutsideInspirationOffer,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   parseFace,
   treatedFormula,
@@ -92,12 +98,17 @@ export function openTrapSearch(
  */
 @Component({
   selector: 'app-trap-search-sheet',
-  imports: [CheckMode, ExtraDice, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [CheckMode, ExtraDice, InspirationOffer, MatButtonModule, MatIconModule, SheetFrame],
   templateUrl: './trap-search-sheet.html',
   styleUrl: './trap-search-sheet.scss',
 })
 export class TrapSearchSheet {
   private readonly api = inject(TrapsClient);
+  /** Read when the player answers about the die: a sheet that never asks does not build the client. */
+  private readonly lazyInjector = inject(Injector);
+  private get resources(): ResourceClient {
+    return this.lazyInjector.get(ResourceClient);
+  }
   private readonly animator = inject(RollAnimator);
   private readonly injector = inject(Injector);
   private readonly sheet = injectSheet<TrapSearchData, boolean>();
@@ -142,6 +153,9 @@ export class TrapSearchSheet {
   protected readonly error = signal('');
   /** The d4 an effect adds (Orientação, Bênção) with physical dice: asked when the server says the roll takes them. */
   protected readonly extra = new ExtraDiceState();
+  /** The d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
+  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
+  private readonly dieKey = new ActionKey();
   protected readonly result = signal<{
     res: SearchForTrapsResponse;
     names: readonly string[];
@@ -348,20 +362,11 @@ export class TrapSearchSheet {
         other,
         extra,
       );
-      // Read the map again: what was found now shows on it, and its name is the map's to give.
-      await this.data.state.refresh();
-      const names = this.data.state
-        .points()
-        .filter((p) => p.kind === MapPointKind.TRAP && res.foundPointIds.includes(p.id))
-        .map((p) => p.name);
-      this.result.set({
-        res,
-        names,
-        skill: this.skill(),
-        skillLabel: skillName(this.skill(), this.otherPicked()?.name),
-      });
-      this.typing.set(false);
-      this.animate(res);
+      if (res.inspirationOffer) {
+        this.holdForDie(res.inspirationOffer);
+        return;
+      }
+      await this.showResult(res);
     } catch (err) {
       if ((needsTwoDice(err) || needsTwoD20(err)) && 'face' in die && this.firstFace() === null) {
         this.firstFace.set(die.face);
@@ -370,6 +375,62 @@ export class TrapSearchSheet {
       } else {
         this.error.set(this.extra.fromRefusal(err) || trapErrorMessage(err, 'procurar armadilhas'));
       }
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The d20 is rolled and kept: the d20 alone tumbles, and the result is told after the answer. */
+  private holdForDie(offer: OutsideInspirationOffer): void {
+    this.offer.set(offer);
+    this.typing.set(false);
+    const held = showOfDice('Procurar armadilhas', offer.d20);
+    if (held) {
+      this.animator.play(held);
+    }
+  }
+
+  /** The search as the result card tells it. */
+  private async showResult(res: SearchForTrapsResponse): Promise<void> {
+    // Read the map again: what was found now shows on it, and its name is the map's to give.
+    await this.data.state.refresh();
+    const names = this.data.state
+      .points()
+      .filter((p) => p.kind === MapPointKind.TRAP && res.foundPointIds.includes(p.id))
+      .map((p) => p.name);
+    this.result.set({
+      res,
+      names,
+      skill: this.skill(),
+      skillLabel: skillName(this.skill(), this.otherPicked()?.name),
+    });
+    this.typing.set(false);
+    this.animate(res);
+  }
+
+  /** The answer about the die: the search is made now, with the d20 it rolled and the die when it was used. */
+  protected async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
+    const offer = this.offer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideInspiration(
+        this.data.campaignId,
+        offer.holdId,
+        use,
+        die,
+        this.dieKey.keyFor({ hold: offer.holdId, use, die }),
+      );
+      if (res.result.case !== 'trapSearch') {
+        throw new Error('AnswerOutsideInspiration answered without its trap search');
+      }
+      this.offer.set(null);
+      await this.showResult(res.result.value);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
     } finally {
       this.busy.set(false);
     }

@@ -185,10 +185,16 @@ type ResourceServiceClient interface {
 	// Errors: ResourceBlocked NO_USES_LEFT, TARGET_REFUSED, NOT_AVAILABLE,
 	// COMBAT_OPEN (a combat is open: give in it).
 	GiveBardicInspirationOutside(context.Context, *connect.Request[v1.GiveBardicInspirationOutsideRequest]) (*connect.Response[v1.GiveBardicInspirationOutsideResponse], error)
-	// AnswerOutsideInspiration answers the question a roll out of a combat asks (RollSceneCheck,
-	// RollGroupCheck answer with an offer when the character holds a die): use the die on it
-	// or keep it. The roll is then written as if it had been made now, with the die added
-	// when it was used. The roll's owner only.
+	// AnswerOutsideInspiration answers the question a d20 roll asks when its character holds a
+	// die and the roll is not a weapon attack (RollAttack has AnswerBardicInspiration): use the
+	// die on it or keep it. The rolls that ask are RollSceneCheck, RollGroupCheck,
+	// SearchForTraps (out of a combat) and TryPuzzleHint, and, for a player's character in a
+	// combat, CastSpell (a spell attack against one target), RollEffectSave and
+	// ResolveConcentrationSave; the die is the character's out of a combat and its combatant's
+	// in one. The roll is then written as if it had been made now, with the d20 it rolled and
+	// the die added when it was used, by the very path that held it (the held request is run
+	// again with the d20 already rolled). The roll's owner only. A roll of the master, and the
+	// saves the app rolls for a target (a spell's saving throw, a hit rider's), never ask.
 	//
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
 	// the die; `failed_precondition` when the die ran out meanwhile.
@@ -467,10 +473,16 @@ type ResourceServiceHandler interface {
 	// Errors: ResourceBlocked NO_USES_LEFT, TARGET_REFUSED, NOT_AVAILABLE,
 	// COMBAT_OPEN (a combat is open: give in it).
 	GiveBardicInspirationOutside(context.Context, *connect.Request[v1.GiveBardicInspirationOutsideRequest]) (*connect.Response[v1.GiveBardicInspirationOutsideResponse], error)
-	// AnswerOutsideInspiration answers the question a roll out of a combat asks (RollSceneCheck,
-	// RollGroupCheck answer with an offer when the character holds a die): use the die on it
-	// or keep it. The roll is then written as if it had been made now, with the die added
-	// when it was used. The roll's owner only.
+	// AnswerOutsideInspiration answers the question a d20 roll asks when its character holds a
+	// die and the roll is not a weapon attack (RollAttack has AnswerBardicInspiration): use the
+	// die on it or keep it. The rolls that ask are RollSceneCheck, RollGroupCheck,
+	// SearchForTraps (out of a combat) and TryPuzzleHint, and, for a player's character in a
+	// combat, CastSpell (a spell attack against one target), RollEffectSave and
+	// ResolveConcentrationSave; the die is the character's out of a combat and its combatant's
+	// in one. The roll is then written as if it had been made now, with the d20 it rolled and
+	// the die added when it was used, by the very path that held it (the held request is run
+	// again with the d20 already rolled). The roll's owner only. A roll of the master, and the
+	// saves the app rolls for a target (a spell's saving throw, a hit rider's), never ask.
 	//
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
 	// the die; `failed_precondition` when the die ran out meanwhile.

@@ -25,8 +25,11 @@ import (
 // and keeps it with the request in a roll_holds row, writes nothing else, and answers with
 // the offer. AnswerBardicInspiration then asks RollAttack again for the same request with the
 // d20 already rolled, and with the die rolled and added when the player chose to use it.
-// Only attack rolls of a combatant are held: the saving throws the app rolls for a spell
-// and the ability checks of a scene do not wait for the die.
+// A weapon attack (and the attack cantrips) is held here, in roll_holds. The other d20 rolls of
+// the character wait in inspiration_holds, the table of the scene check (inspiration_held.go): the
+// spell attack against one target, the saving throw of an effect, the concentration save, the trap
+// search and the puzzle hint try. The saving throws the app rolls for a target in a caster's call
+// (a spell's save, a hit rider's) do not wait for the die: the target's player is not rolling.
 
 // forcedRoll is the d20 of a held roll, carried from the answer to the RollAttack it calls.
 type forcedRoll struct {
@@ -162,11 +165,22 @@ func (s *Service) refuseWhileAsking(ctx context.Context, c *combatTx, attacker p
 	}
 	open, err := c.q.GetOpenRollHoldOf(ctx, playdb.GetOpenRollHoldOfParams{EncounterID: c.enc.ID, CombatantID: attacker.ID})
 	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-		return nil
-	case err != nil:
+	case err != nil && !errors.Is(err, pgx.ErrNoRows):
 		return fmt.Errorf("find the open held roll: %w", err)
-	case open.Round == c.enc.Round && open.IdempotencyKey != key:
+	case err == nil && open.Round == c.enc.Round && open.IdempotencyKey != key:
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING, "answer the Bardic Inspiration question of the roll first")
+	}
+	// A spell attack or a saving throw of the character waiting for the same die is a question too
+	// (inspiration_held.go); one of an earlier round is forgotten when the next such roll is made.
+	if !backedByCharacter(attacker) {
+		return nil
+	}
+	asking, err := c.q.ListInspirationHoldsOfCharacter(ctx, attacker.CharacterID)
+	if err != nil {
+		return fmt.Errorf("list the held rolls: %w", err)
+	}
+	die := heldDie{Combatant: &attacker, Round: c.enc.Round}
+	if slices.ContainsFunc(asking, func(h playdb.InspirationHold) bool { return !staleHold(h, die, true) }) {
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING, "answer the Bardic Inspiration question of the roll first")
 	}
 	return nil

@@ -9,6 +9,7 @@ import {
   inject,
   signal,
   viewChild,
+  Injector,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   type ConcentrationSaveResult,
+  type OutsideInspirationOffer,
   type ReactionResult,
   EncounterBlockedReason,
   type ReactionWindow,
@@ -60,6 +62,9 @@ import {
 } from '../../../../core/combat/reaction-autopass';
 import { metersText } from '../../../../core/units';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
+import { InspirationOffer } from '../../inspiration/inspiration-offer';
 import { SlotPicker } from '../cast-sheet/slot-picker';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import {
@@ -134,6 +139,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ExtraDice,
+    InspirationOffer,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -159,7 +165,16 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
       }
       @switch (stage()) {
         @case ('ask') {
-          @if (view(); as v) {
+          @if (offer(); as o) {
+            <app-inspiration-offer
+              [offer]="o"
+              [canApp]="canApp"
+              [canType]="canType"
+              [busy]="busy()"
+              (use)="answerDie(true, $event)"
+              (keep)="answerDie(false, null)"
+            />
+          } @else if (view(); as v) {
             <p class="what">{{ v.question }}</p>
             @if (isFeatherFall()) {
               <ng-container *ngTemplateOutlet="falling" />
@@ -296,7 +311,9 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
       <div foot>
         @switch (stage()) {
           @case ('ask') {
-            @if (isConcentration()) {
+            @if (offer()) {
+              <!-- The question about the die is the whole step: its own buttons answer it. -->
+            } @else if (isConcentration()) {
               <div class="stack">
                 <button
                   mat-flat-button
@@ -434,6 +451,11 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 })
 export class ReactionSheet {
   private readonly api = inject(CombatClient);
+  /** Read when the player answers about the die: a sheet that never asks does not build the client. */
+  private readonly lazyInjector = inject(Injector);
+  private get resources(): ResourceClient {
+    return this.lazyInjector.get(ResourceClient);
+  }
   private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<ReactionSheetData, ReactionSheetResult>();
   protected readonly data = this.sheet.data;
@@ -449,6 +471,10 @@ export class ReactionSheet {
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly typingSave = signal(false);
+  /** The concentration save's d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player
+   * decides before the result is told. The window stays open. */
+  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
+  private readonly dieKey = new ActionKey();
   /** The d4 an effect adds to the typed saving throw (Bênção, Perdição): asked when the server says the roll takes them. */
   protected readonly extra = new ExtraDiceState();
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
@@ -833,15 +859,17 @@ export class ReactionSheet {
         this.keys.keyFor({ window: w.id, how: sent }),
       );
       this.data.state.apply(res.encounter);
+      if (res.offer) {
+        this.offer.set(res.offer);
+        this.typingSave.set(false);
+        return;
+      }
       if (!res.result) {
         // Left to the master: nothing more to read here.
         this.sheet.close();
         return;
       }
-      this.answer.set({ kind: 'concentration', result: res.result });
-      this.play(() => showOfConcentration(res.result));
-      this.step.set('result');
-      this.typingSave.set(false);
+      this.showSave(res.result);
     } catch (err) {
       const more = this.extra.fromRefusal(err);
       if (more) {
@@ -849,6 +877,43 @@ export class ReactionSheet {
         return;
       }
       await this.failed(err, null, 'resolver o teste de concentração');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private showSave(result: ConcentrationSaveResult): void {
+    this.answer.set({ kind: 'concentration', result });
+    this.play(() => showOfConcentration(result));
+    this.step.set('result');
+    this.typingSave.set(false);
+  }
+
+  /** The answer about the die: the save is settled now, with the d20 it rolled and the die when it was used. */
+  protected async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
+    const offer = this.offer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideInspiration(
+        this.data.campaignId,
+        offer.holdId,
+        use,
+        die,
+        this.dieKey.keyFor({ hold: offer.holdId, use, die }),
+      );
+      const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
+      if (!settled?.encounter || !settled.result) {
+        throw new Error('AnswerOutsideInspiration answered without its concentration save');
+      }
+      this.data.state.apply(settled.encounter);
+      this.offer.set(null);
+      this.showSave(settled.result);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
     } finally {
       this.busy.set(false);
     }

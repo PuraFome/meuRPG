@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
-import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { Encounter, OutsideInspirationOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import type {
   CatalogEffect,
   CharacterEffect,
@@ -39,6 +39,8 @@ export type EffectSaveAnswer =
 export interface EffectSaveOutcome {
   readonly encounter: Encounter;
   readonly result: EffectSaveResult | undefined;
+  /** The d20 was rolled and kept: the player holds a Bardic Inspiration die and decides before the result is told. */
+  readonly offer?: OutsideInspirationOffer;
 }
 
 /** The duration the master picks, as the form holds it (the server's `EffectDurationChoice`). */
@@ -119,7 +121,11 @@ export class EffectsClient {
     if (!res.encounter) {
       throw new Error('RollEffectSave answered without the combat');
     }
-    return { encounter: res.encounter, result: res.result };
+    return {
+      encounter: res.encounter,
+      result: res.result,
+      ...(res.inspirationOffer ? { offer: res.inspirationOffer } : {}),
+    };
   }
 
   list(campaignId: string, encounterId: string): Promise<ListLastingEffectsResponse> {

@@ -346,6 +346,7 @@ type InspirationHold struct {
 	Physical       bool
 	AnswerKey      *string
 	CreatedAt      time.Time
+	Round          *int32
 }
 
 type OpportunityOffer struct {

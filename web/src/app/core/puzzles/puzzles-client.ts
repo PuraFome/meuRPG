@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
@@ -15,6 +15,7 @@ import {
   type TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import { type InspirationRoll, ResourceClient } from '../resources/resources-client';
 
 /** What the master writes about a puzzle, as `CreatePuzzle` takes it (`UpdatePuzzle` takes the same, with the ID). */
 export type PuzzleInit = Omit<
@@ -46,6 +47,11 @@ export interface MoveAnswer {
 @Injectable({ providedIn: 'root' })
 export class PuzzlesClient {
   private readonly client = createClient(PuzzleService, inject(CONNECT_TRANSPORT));
+  /** Read when the player answers about the die: a sheet that never asks does not build the client. */
+  private readonly lazyInjector = inject(Injector);
+  private get resources(): ResourceClient {
+    return this.lazyInjector.get(ResourceClient);
+  }
 
   async list(campaignId: string, includeArchived = false): Promise<Puzzle[]> {
     return (await this.client.listPuzzles({ campaignId, includeArchived })).puzzles;
@@ -216,6 +222,28 @@ export class PuzzlesClient {
       d20Faces: 'faces' in die ? [...die.faces] : [],
       extraDieFaces: [...extraDieFaces],
     });
+  }
+
+  /** The answer about the Bardic Inspiration die a try waits on: the try is made now, with the d20 it rolled and the die
+   * when it was used. */
+  async answerHintDie(
+    campaignId: string,
+    holdId: string,
+    use: boolean,
+    die: InspirationRoll | null,
+    idempotencyKey: string,
+  ): Promise<TryPuzzleHintResponse> {
+    const res = await this.resources.answerOutsideInspiration(
+      campaignId,
+      holdId,
+      use,
+      die,
+      idempotencyKey,
+    );
+    if (res.result.case !== 'hintTry') {
+      throw new Error('AnswerOutsideInspiration answered without its hint try');
+    }
+    return res.result.value;
   }
 }
 

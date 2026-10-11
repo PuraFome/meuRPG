@@ -11,6 +11,8 @@ import {
 import { MapPointKind, MapPointSchema } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import { AdvantageSourceSchema, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { SearchForTrapsResponseSchema } from '../../../../../gen/meurpg/play/v1/traps_pb';
+import { inspirationOffer } from '../../../../core/play/scene-testing';
+import { ResourceClient } from '../../../../core/resources/resources-client';
 import { TrapsClient } from '../../../../core/traps/traps-client';
 import { TrapSearchSheet, type TrapSearchData } from './trap-search-sheet';
 
@@ -29,6 +31,7 @@ function blockedBy(reason: EncounterBlockedReason): ConnectError {
 const twoDiceError = () => blockedBy(EncounterBlockedReason.SEARCH_NEEDS_TWO_DICE);
 
 describe('TrapSearchSheet', () => {
+  const resources = { answerOutsideInspiration: vi.fn() };
   function setup(
     responses: (unknown | Error)[],
     listed?: ReturnType<typeof create<typeof MapPointSchema>>[],
@@ -83,6 +86,7 @@ describe('TrapSearchSheet', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: TrapsClient, useValue: api },
+        { provide: ResourceClient, useValue: resources },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close: vi.fn() } },
       ],
@@ -394,5 +398,32 @@ describe('TrapSearchSheet', () => {
     await roller.rollWith({ inApp: true });
     fixture.detectChanges();
     expect(el.querySelector('app-check-mode')).toBeNull();
+  });
+
+  describe('a character that holds a Bardic Inspiration die', () => {
+    it('is asked about the die before the result, and the answer tells what the search found', async () => {
+      const { fixture, el, roller } = setup([
+        create(SearchForTrapsResponseSchema, { inspirationOffer: inspirationOffer(5, 4) }),
+      ]);
+      await roller.rollWith({ inApp: true });
+      fixture.detectChanges();
+      const text = el.textContent!.replace(/\s+/g, ' ');
+      expect(text).toContain('Usar a Inspiração de Bardo (d8)?');
+      expect(text).not.toContain('Achou');
+      expect(text).not.toContain('Nada');
+      resources.answerOutsideInspiration.mockResolvedValue({
+        result: {
+          case: 'trapSearch',
+          value: create(SearchForTrapsResponseSchema, { roll: roll(5, 17), foundPointIds: ['x'] }),
+        },
+      });
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Guardar o dado'))!
+        .click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(resources.answerOutsideInspiration.mock.calls[0].slice(1, 3)).toEqual(['h1', false]);
+      expect(el.textContent).toContain('Achou');
+    });
   });
 });

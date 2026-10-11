@@ -25,6 +25,8 @@ import {
   type SpellTargetResult,
   type SpellTargets,
   AttackOutcome,
+  type Encounter,
+  type OutsideInspirationOffer,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
@@ -117,7 +119,11 @@ import {
   type RollShow,
   showOfDice,
 } from '../../../../shared/roll-overlay/roll-animator';
+import { InspirationQuestion } from '../../../../core/resources/bardic-inspiration';
 import type { Pool } from '../../../../core/resources/pools';
+import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
+import { InspirationOffer } from '../../inspiration/inspiration-offer';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
@@ -226,6 +232,7 @@ export interface CastSheetData {
     CastTargets,
     AbilityPicker,
     DamageTypePicker,
+    InspirationOffer,
     MatButtonModule,
     MetamagicPicker,
     MatIconModule,
@@ -242,6 +249,11 @@ export interface CastSheetData {
 })
 export class CastSheet {
   private readonly api = inject(CombatClient);
+  /** Read when the player answers about the die: a sheet that never asks does not build the client. */
+  private readonly lazyInjector = inject(Injector);
+  private get resources(): ResourceClient {
+    return this.lazyInjector.get(ResourceClient);
+  }
   private readonly animator = inject(RollAnimator);
   private readonly catalog = inject(SpellCatalog);
   private readonly dialog = inject(MatDialog);
@@ -263,6 +275,10 @@ export class CastSheet {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly cast = signal<SpellCast | null>(null);
+  /** The spell attack's d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides
+   * before the result is told. Nothing was spent yet. */
+  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
+  private readonly answerKey = new ActionKey();
   /** Every damage and heal of the cast as it is now, by ID. */
   protected readonly pendings = signal<ReadonlyMap<string, PendingDamage>>(
     new Map((this.data.resume ?? []).map((p) => [p.id, p])),
@@ -1034,13 +1050,61 @@ export class CastSheet {
           ...(this.sculptedIds().length ? { sculptedIds: this.sculptedIds() } : {}),
         },
       );
-      this.data.state.apply(res.encounter);
-      this.cast.set(res.cast);
-      this.animateCast(res.cast);
-      this.pendings.set(new Map(res.cast.pendingDamages.map((p) => [p.id, p])));
-      this.typing.set(false);
+      this.showCast(res.encounter, res.cast);
     } catch (err) {
+      if (err instanceof InspirationQuestion) {
+        this.data.state.apply(err.encounter);
+        this.offer.set(err.offer);
+        this.typing.set(false);
+        // The d20 alone, no total and no word: the result is told after the answer.
+        const held = showOfDice(this.data.name, err.offer.d20);
+        if (held) {
+          this.animator.play(held);
+        }
+        return;
+      }
       this.error.set(combatErrorMessage(err, 'conjurar a magia'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The cast as the result step shows it. */
+  private showCast(encounter: Encounter, cast: SpellCast): void {
+    this.data.state.apply(encounter);
+    this.cast.set(cast);
+    this.animateCast(cast);
+    this.pendings.set(new Map(cast.pendingDamages.map((p) => [p.id, p])));
+    this.typing.set(false);
+  }
+
+  /** The answer about the die: the spell is cast now, with the d20 it rolled and the die when it was used. */
+  protected async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
+    const offer = this.offer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideInspiration(
+        this.data.campaignId,
+        offer.holdId,
+        use,
+        die,
+        this.answerKey.keyFor({ hold: offer.holdId, use, die }),
+      );
+      if (
+        res.result.case !== 'spellCast' ||
+        !res.result.value.encounter ||
+        !res.result.value.cast
+      ) {
+        throw new Error('AnswerOutsideInspiration answered without its cast');
+      }
+      this.offer.set(null);
+      this.showCast(res.result.value.encounter, res.result.value.cast);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
     } finally {
       this.busy.set(false);
     }

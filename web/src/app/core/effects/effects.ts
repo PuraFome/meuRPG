@@ -167,6 +167,9 @@ export function saveFormula(result: {
   readonly d20: number;
   readonly modifier: number;
   readonly extraDice: readonly ExtraDie[];
+  /** The Bardic Inspiration die the player added after the d20 (0 when none). */
+  readonly inspirationSides?: number;
+  readonly inspirationFace?: number;
 }): string {
   const mod =
     result.modifier === 0 ? '' : ` ${result.modifier < 0 ? '−' : '+'} ${Math.abs(result.modifier)}`;
@@ -174,7 +177,10 @@ export function saveFormula(result: {
     .filter((d) => d.face > 0)
     .map((d) => ` ${d.sign < 0 ? '−' : '+'} 1d${d.faces} (${d.face})`)
     .join('');
-  return `1d20 (${result.d20})${mod}${dice}`;
+  const inspiration = result.inspirationFace
+    ? ` + 1d${result.inspirationSides ?? 0} de Inspiração (${result.inspirationFace})`
+    : '';
+  return `1d20 (${result.d20})${mod}${dice}${inspiration}`;
 }
 
 /** What the sheet of an effect's saving throw shows before the roll. */

@@ -6788,8 +6788,14 @@ type TryPuzzleHintResponse struct {
 	Replayed bool `protobuf:"varint,4,opt,name=replayed,proto3" json:"replayed,omitempty"`
 	// The mode the d20 rolled with and the circumstances behind it (the character's
 	// conditions); `roll.faces` holds both dice when it is not NORMAL.
-	Mode          RollMode           `protobuf:"varint,5,opt,name=mode,proto3,enum=meurpg.play.v1.RollMode" json:"mode,omitempty"`
-	Sources       []*AdvantageSource `protobuf:"bytes,6,rep,name=sources,proto3" json:"sources,omitempty"`
+	Mode    RollMode           `protobuf:"varint,5,opt,name=mode,proto3,enum=meurpg.play.v1.RollMode" json:"mode,omitempty"`
+	Sources []*AdvantageSource `protobuf:"bytes,6,rep,name=sources,proto3" json:"sources,omitempty"`
+	// Set instead of the rest (`run` unset, nothing written) when the character holds a Bardic
+	// Inspiration die: the d20 is rolled and kept, and ResourceService.AnswerOutsideInspiration
+	// settles the try (SRD 5.1). The offer shows the d20 and the bonus, never the DC.
+	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,7,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
+	// The Bardic Inspiration die the player added after the d20, already in `roll`'s total.
+	BonusDice     []*BonusDie `protobuf:"bytes,8,rep,name=bonus_dice,json=bonusDice,proto3" json:"bonus_dice,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6862,6 +6868,20 @@ func (x *TryPuzzleHintResponse) GetMode() RollMode {
 func (x *TryPuzzleHintResponse) GetSources() []*AdvantageSource {
 	if x != nil {
 		return x.Sources
+	}
+	return nil
+}
+
+func (x *TryPuzzleHintResponse) GetInspirationOffer() *OutsideInspirationOffer {
+	if x != nil {
+		return x.InspirationOffer
+	}
+	return nil
+}
+
+func (x *TryPuzzleHintResponse) GetBonusDice() []*BonusDie {
+	if x != nil {
+		return x.BonusDice
 	}
 	return nil
 }
@@ -7290,14 +7310,17 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
 	"\td20_faces\x18\x06 \x03(\x05R\bd20Faces\x12&\n" +
 	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFacesB\x06\n" +
-	"\x04roll\"\x8f\x02\n" +
+	"\x04roll\"\x9e\x03\n" +
 	"\x15TryPuzzleHintResponse\x12+\n" +
 	"\x03run\x18\x01 \x01(\v2\x19.meurpg.play.v1.PuzzleRunR\x03run\x12,\n" +
 	"\x04roll\x18\x02 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12\x16\n" +
 	"\x06passed\x18\x03 \x01(\bR\x06passed\x12\x1a\n" +
 	"\breplayed\x18\x04 \x01(\bR\breplayed\x12,\n" +
 	"\x04mode\x18\x05 \x01(\x0e2\x18.meurpg.play.v1.RollModeR\x04mode\x129\n" +
-	"\asources\x18\x06 \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources*\xba\x01\n" +
+	"\asources\x18\x06 \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12T\n" +
+	"\x11inspiration_offer\x18\a \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x127\n" +
+	"\n" +
+	"bonus_dice\x18\b \x03(\v2\x18.meurpg.play.v1.BonusDieR\tbonusDice*\xba\x01\n" +
 	"\n" +
 	"PuzzleKind\x12\x1b\n" +
 	"\x17PUZZLE_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
@@ -7517,6 +7540,8 @@ var file_meurpg_play_v1_puzzles_proto_goTypes = []any{
 	(*DiceRoll)(nil),                      // 98: meurpg.play.v1.DiceRoll
 	(RollMode)(0),                         // 99: meurpg.play.v1.RollMode
 	(*AdvantageSource)(nil),               // 100: meurpg.play.v1.AdvantageSource
+	(*OutsideInspirationOffer)(nil),       // 101: meurpg.play.v1.OutsideInspirationOffer
+	(*BonusDie)(nil),                      // 102: meurpg.play.v1.BonusDie
 }
 var file_meurpg_play_v1_puzzles_proto_depIdxs = []int32{
 	10,  // 0: meurpg.play.v1.PuzzleConfig.lights:type_name -> meurpg.play.v1.LightsConfig
@@ -7631,51 +7656,53 @@ var file_meurpg_play_v1_puzzles_proto_depIdxs = []int32{
 	98,  // 109: meurpg.play.v1.TryPuzzleHintResponse.roll:type_name -> meurpg.play.v1.DiceRoll
 	99,  // 110: meurpg.play.v1.TryPuzzleHintResponse.mode:type_name -> meurpg.play.v1.RollMode
 	100, // 111: meurpg.play.v1.TryPuzzleHintResponse.sources:type_name -> meurpg.play.v1.AdvantageSource
-	57,  // 112: meurpg.play.v1.PuzzleService.CreatePuzzle:input_type -> meurpg.play.v1.CreatePuzzleRequest
-	59,  // 113: meurpg.play.v1.PuzzleService.UpdatePuzzle:input_type -> meurpg.play.v1.UpdatePuzzleRequest
-	61,  // 114: meurpg.play.v1.PuzzleService.PreviewPuzzleStart:input_type -> meurpg.play.v1.PreviewPuzzleStartRequest
-	63,  // 115: meurpg.play.v1.PuzzleService.ListPuzzles:input_type -> meurpg.play.v1.ListPuzzlesRequest
-	65,  // 116: meurpg.play.v1.PuzzleService.GetPuzzle:input_type -> meurpg.play.v1.GetPuzzleRequest
-	67,  // 117: meurpg.play.v1.PuzzleService.ArchivePuzzle:input_type -> meurpg.play.v1.ArchivePuzzleRequest
-	69,  // 118: meurpg.play.v1.PuzzleService.UnarchivePuzzle:input_type -> meurpg.play.v1.UnarchivePuzzleRequest
-	71,  // 119: meurpg.play.v1.PuzzleService.ListSessionPuzzles:input_type -> meurpg.play.v1.ListSessionPuzzlesRequest
-	73,  // 120: meurpg.play.v1.PuzzleService.ShowPuzzle:input_type -> meurpg.play.v1.ShowPuzzleRequest
-	75,  // 121: meurpg.play.v1.PuzzleService.ResetPuzzle:input_type -> meurpg.play.v1.ResetPuzzleRequest
-	77,  // 122: meurpg.play.v1.PuzzleService.ReseedPuzzle:input_type -> meurpg.play.v1.ReseedPuzzleRequest
-	79,  // 123: meurpg.play.v1.PuzzleService.ClosePuzzle:input_type -> meurpg.play.v1.ClosePuzzleRequest
-	81,  // 124: meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint:input_type -> meurpg.play.v1.ReleaseNextPuzzleHintRequest
-	91,  // 125: meurpg.play.v1.PuzzleService.PreviewPuzzleCipher:input_type -> meurpg.play.v1.PreviewPuzzleCipherRequest
-	93,  // 126: meurpg.play.v1.PuzzleService.PlayPuzzleSequence:input_type -> meurpg.play.v1.PlayPuzzleSequenceRequest
-	83,  // 127: meurpg.play.v1.PuzzleService.GetMasterPuzzleRun:input_type -> meurpg.play.v1.GetMasterPuzzleRunRequest
-	85,  // 128: meurpg.play.v1.PuzzleService.ListShownPuzzles:input_type -> meurpg.play.v1.ListShownPuzzlesRequest
-	87,  // 129: meurpg.play.v1.PuzzleService.GetPuzzleRun:input_type -> meurpg.play.v1.GetPuzzleRunRequest
-	95,  // 130: meurpg.play.v1.PuzzleService.TryPuzzleHint:input_type -> meurpg.play.v1.TryPuzzleHintRequest
-	89,  // 131: meurpg.play.v1.PuzzleService.MakePuzzleMove:input_type -> meurpg.play.v1.MakePuzzleMoveRequest
-	58,  // 132: meurpg.play.v1.PuzzleService.CreatePuzzle:output_type -> meurpg.play.v1.CreatePuzzleResponse
-	60,  // 133: meurpg.play.v1.PuzzleService.UpdatePuzzle:output_type -> meurpg.play.v1.UpdatePuzzleResponse
-	62,  // 134: meurpg.play.v1.PuzzleService.PreviewPuzzleStart:output_type -> meurpg.play.v1.PreviewPuzzleStartResponse
-	64,  // 135: meurpg.play.v1.PuzzleService.ListPuzzles:output_type -> meurpg.play.v1.ListPuzzlesResponse
-	66,  // 136: meurpg.play.v1.PuzzleService.GetPuzzle:output_type -> meurpg.play.v1.GetPuzzleResponse
-	68,  // 137: meurpg.play.v1.PuzzleService.ArchivePuzzle:output_type -> meurpg.play.v1.ArchivePuzzleResponse
-	70,  // 138: meurpg.play.v1.PuzzleService.UnarchivePuzzle:output_type -> meurpg.play.v1.UnarchivePuzzleResponse
-	72,  // 139: meurpg.play.v1.PuzzleService.ListSessionPuzzles:output_type -> meurpg.play.v1.ListSessionPuzzlesResponse
-	74,  // 140: meurpg.play.v1.PuzzleService.ShowPuzzle:output_type -> meurpg.play.v1.ShowPuzzleResponse
-	76,  // 141: meurpg.play.v1.PuzzleService.ResetPuzzle:output_type -> meurpg.play.v1.ResetPuzzleResponse
-	78,  // 142: meurpg.play.v1.PuzzleService.ReseedPuzzle:output_type -> meurpg.play.v1.ReseedPuzzleResponse
-	80,  // 143: meurpg.play.v1.PuzzleService.ClosePuzzle:output_type -> meurpg.play.v1.ClosePuzzleResponse
-	82,  // 144: meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint:output_type -> meurpg.play.v1.ReleaseNextPuzzleHintResponse
-	92,  // 145: meurpg.play.v1.PuzzleService.PreviewPuzzleCipher:output_type -> meurpg.play.v1.PreviewPuzzleCipherResponse
-	94,  // 146: meurpg.play.v1.PuzzleService.PlayPuzzleSequence:output_type -> meurpg.play.v1.PlayPuzzleSequenceResponse
-	84,  // 147: meurpg.play.v1.PuzzleService.GetMasterPuzzleRun:output_type -> meurpg.play.v1.GetMasterPuzzleRunResponse
-	86,  // 148: meurpg.play.v1.PuzzleService.ListShownPuzzles:output_type -> meurpg.play.v1.ListShownPuzzlesResponse
-	88,  // 149: meurpg.play.v1.PuzzleService.GetPuzzleRun:output_type -> meurpg.play.v1.GetPuzzleRunResponse
-	96,  // 150: meurpg.play.v1.PuzzleService.TryPuzzleHint:output_type -> meurpg.play.v1.TryPuzzleHintResponse
-	90,  // 151: meurpg.play.v1.PuzzleService.MakePuzzleMove:output_type -> meurpg.play.v1.MakePuzzleMoveResponse
-	132, // [132:152] is the sub-list for method output_type
-	112, // [112:132] is the sub-list for method input_type
-	112, // [112:112] is the sub-list for extension type_name
-	112, // [112:112] is the sub-list for extension extendee
-	0,   // [0:112] is the sub-list for field type_name
+	101, // 112: meurpg.play.v1.TryPuzzleHintResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	102, // 113: meurpg.play.v1.TryPuzzleHintResponse.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	57,  // 114: meurpg.play.v1.PuzzleService.CreatePuzzle:input_type -> meurpg.play.v1.CreatePuzzleRequest
+	59,  // 115: meurpg.play.v1.PuzzleService.UpdatePuzzle:input_type -> meurpg.play.v1.UpdatePuzzleRequest
+	61,  // 116: meurpg.play.v1.PuzzleService.PreviewPuzzleStart:input_type -> meurpg.play.v1.PreviewPuzzleStartRequest
+	63,  // 117: meurpg.play.v1.PuzzleService.ListPuzzles:input_type -> meurpg.play.v1.ListPuzzlesRequest
+	65,  // 118: meurpg.play.v1.PuzzleService.GetPuzzle:input_type -> meurpg.play.v1.GetPuzzleRequest
+	67,  // 119: meurpg.play.v1.PuzzleService.ArchivePuzzle:input_type -> meurpg.play.v1.ArchivePuzzleRequest
+	69,  // 120: meurpg.play.v1.PuzzleService.UnarchivePuzzle:input_type -> meurpg.play.v1.UnarchivePuzzleRequest
+	71,  // 121: meurpg.play.v1.PuzzleService.ListSessionPuzzles:input_type -> meurpg.play.v1.ListSessionPuzzlesRequest
+	73,  // 122: meurpg.play.v1.PuzzleService.ShowPuzzle:input_type -> meurpg.play.v1.ShowPuzzleRequest
+	75,  // 123: meurpg.play.v1.PuzzleService.ResetPuzzle:input_type -> meurpg.play.v1.ResetPuzzleRequest
+	77,  // 124: meurpg.play.v1.PuzzleService.ReseedPuzzle:input_type -> meurpg.play.v1.ReseedPuzzleRequest
+	79,  // 125: meurpg.play.v1.PuzzleService.ClosePuzzle:input_type -> meurpg.play.v1.ClosePuzzleRequest
+	81,  // 126: meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint:input_type -> meurpg.play.v1.ReleaseNextPuzzleHintRequest
+	91,  // 127: meurpg.play.v1.PuzzleService.PreviewPuzzleCipher:input_type -> meurpg.play.v1.PreviewPuzzleCipherRequest
+	93,  // 128: meurpg.play.v1.PuzzleService.PlayPuzzleSequence:input_type -> meurpg.play.v1.PlayPuzzleSequenceRequest
+	83,  // 129: meurpg.play.v1.PuzzleService.GetMasterPuzzleRun:input_type -> meurpg.play.v1.GetMasterPuzzleRunRequest
+	85,  // 130: meurpg.play.v1.PuzzleService.ListShownPuzzles:input_type -> meurpg.play.v1.ListShownPuzzlesRequest
+	87,  // 131: meurpg.play.v1.PuzzleService.GetPuzzleRun:input_type -> meurpg.play.v1.GetPuzzleRunRequest
+	95,  // 132: meurpg.play.v1.PuzzleService.TryPuzzleHint:input_type -> meurpg.play.v1.TryPuzzleHintRequest
+	89,  // 133: meurpg.play.v1.PuzzleService.MakePuzzleMove:input_type -> meurpg.play.v1.MakePuzzleMoveRequest
+	58,  // 134: meurpg.play.v1.PuzzleService.CreatePuzzle:output_type -> meurpg.play.v1.CreatePuzzleResponse
+	60,  // 135: meurpg.play.v1.PuzzleService.UpdatePuzzle:output_type -> meurpg.play.v1.UpdatePuzzleResponse
+	62,  // 136: meurpg.play.v1.PuzzleService.PreviewPuzzleStart:output_type -> meurpg.play.v1.PreviewPuzzleStartResponse
+	64,  // 137: meurpg.play.v1.PuzzleService.ListPuzzles:output_type -> meurpg.play.v1.ListPuzzlesResponse
+	66,  // 138: meurpg.play.v1.PuzzleService.GetPuzzle:output_type -> meurpg.play.v1.GetPuzzleResponse
+	68,  // 139: meurpg.play.v1.PuzzleService.ArchivePuzzle:output_type -> meurpg.play.v1.ArchivePuzzleResponse
+	70,  // 140: meurpg.play.v1.PuzzleService.UnarchivePuzzle:output_type -> meurpg.play.v1.UnarchivePuzzleResponse
+	72,  // 141: meurpg.play.v1.PuzzleService.ListSessionPuzzles:output_type -> meurpg.play.v1.ListSessionPuzzlesResponse
+	74,  // 142: meurpg.play.v1.PuzzleService.ShowPuzzle:output_type -> meurpg.play.v1.ShowPuzzleResponse
+	76,  // 143: meurpg.play.v1.PuzzleService.ResetPuzzle:output_type -> meurpg.play.v1.ResetPuzzleResponse
+	78,  // 144: meurpg.play.v1.PuzzleService.ReseedPuzzle:output_type -> meurpg.play.v1.ReseedPuzzleResponse
+	80,  // 145: meurpg.play.v1.PuzzleService.ClosePuzzle:output_type -> meurpg.play.v1.ClosePuzzleResponse
+	82,  // 146: meurpg.play.v1.PuzzleService.ReleaseNextPuzzleHint:output_type -> meurpg.play.v1.ReleaseNextPuzzleHintResponse
+	92,  // 147: meurpg.play.v1.PuzzleService.PreviewPuzzleCipher:output_type -> meurpg.play.v1.PreviewPuzzleCipherResponse
+	94,  // 148: meurpg.play.v1.PuzzleService.PlayPuzzleSequence:output_type -> meurpg.play.v1.PlayPuzzleSequenceResponse
+	84,  // 149: meurpg.play.v1.PuzzleService.GetMasterPuzzleRun:output_type -> meurpg.play.v1.GetMasterPuzzleRunResponse
+	86,  // 150: meurpg.play.v1.PuzzleService.ListShownPuzzles:output_type -> meurpg.play.v1.ListShownPuzzlesResponse
+	88,  // 151: meurpg.play.v1.PuzzleService.GetPuzzleRun:output_type -> meurpg.play.v1.GetPuzzleRunResponse
+	96,  // 152: meurpg.play.v1.PuzzleService.TryPuzzleHint:output_type -> meurpg.play.v1.TryPuzzleHintResponse
+	90,  // 153: meurpg.play.v1.PuzzleService.MakePuzzleMove:output_type -> meurpg.play.v1.MakePuzzleMoveResponse
+	134, // [134:154] is the sub-list for method output_type
+	114, // [114:134] is the sub-list for method input_type
+	114, // [114:114] is the sub-list for extension type_name
+	114, // [114:114] is the sub-list for extension extendee
+	0,   // [0:114] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_puzzles_proto_init() }

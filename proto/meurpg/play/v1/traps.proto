@@ -91,6 +91,13 @@ message SearchForTrapsResponse {
   // the traps there. The circumstances are for the character's own player.
   RollMode mode = 5;
   repeated AdvantageSource sources = 6;
+  // Set instead of the rest when the character holds a Bardic Inspiration die out of a
+  // combat: the d20 is rolled and kept, nothing is written, and
+  // ResourceService.AnswerOutsideInspiration settles the search (SRD 5.1). The Search action
+  // of a combat does not ask. The offer shows the d20 and the bonus, never a DC.
+  OutsideInspirationOffer inspiration_offer = 7;
+  // The Bardic Inspiration die the player added after the d20, already in `roll`'s total.
+  repeated BonusDie bonus_dice = 8;
 }
 
 // FireTrapRequest is the master firing a trap by hand.

@@ -10,7 +10,17 @@
       </div>
     }
 
-    @if (!done()) {
+    @if (offer(); as o) {
+      <!-- The d20 of the spell attack is rolled and kept; nothing is spent until the player answers (SRD 5.1, Bardic Inspiration). -->
+      <app-inspiration-offer
+        [offer]="o"
+        [canApp]="canApp"
+        [canType]="canTypeDamage"
+        [busy]="busy()"
+        (use)="answerDie(true, $event)"
+        (keep)="answerDie(false, null)"
+      />
+    } @else if (!done()) {
       @if (rows().length) {
         <app-slot-picker [rows]="rows()" [chosen]="slot()" (pick)="pickSlot($event)" />
         @if (warning()) {

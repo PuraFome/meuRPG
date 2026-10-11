@@ -277,10 +277,11 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 	v := viewerOf(m)
 
 	var made actionEvent
-	var modes *spellModes                // the d20 rolls of the cast: their modes and circumstances
-	var vitals []*playv1.CharacterVitals // the slot spent, if it was a player's, and the characters a hit point spell changed
+	var modes *spellModes                     // the d20 rolls of the cast: their modes and circumstances
+	var vitals []*playv1.CharacterVitals      // the slot spent, if it was a player's, and the characters a hit point spell changed
+	var offer *playv1.OutsideInspirationOffer // the d20 of a spell attack was rolled and kept for the Bardic Inspiration question
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals = nil
+		vitals, offer = nil, nil
 		targets := slices.Clone(targets) // an area replaces the list, and a retry starts from the request's
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
@@ -493,6 +494,21 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 			return made, nil
 		}
 
+		// A player's spell attack against one target, when the character holds a Bardic Inspiration
+		// die: the d20 is rolled now and kept, before anything is spent, and the player decides about
+		// the die before the result is told (inspiration_held.go). The answer runs the cast again
+		// with the d20 already rolled. A cast that waited for a reaction window is not asked.
+		if sp.AttackType != "" && len(targs) == 1 && c.replay == nil {
+			asked, err := s.holdSpellAttack(ctx, c, m, req.Msg, key, caster, targs[0], sp, in, modes)
+			if err != nil {
+				return nil, err
+			}
+			if asked != nil {
+				offer = asked
+				return nil, nil
+			}
+		}
+
 		// The cast spends the slot and the economy at once (MR-014).
 		run, err := breakRun(ctx, c, caster)
 		if err != nil {
@@ -616,6 +632,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 			}
 		}
 		packCoverSeen(&made)
+		made.Die = modes.dieUsed()
 		made.Secret = hidden
 		if placedArea {
 			// The line is the players', without the hidden creatures the area hit; only a
@@ -646,6 +663,13 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "cast a spell", err)
+	}
+	if offer != nil { // nothing was spent or written: the question is the whole answer
+		out, err := s.finish(ctx, m, res, nil)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, InspirationOffer: offer}), nil
 	}
 	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
 		return nil, s.dbError(ctx, "work out what the player sees", err)
@@ -794,15 +818,30 @@ func (s *Service) d20(in rollInput, modifier int) (face int, roll dice.Result, e
 // spellAttack rolls a spell attack against a target, as RollAttack does, and
 // opens its pending damage on a hit.
 func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, in rollInput, cover coverView, hit *castHit, modes *spellModes) error {
-	// Advantage and disadvantage (SRD 5.1): the mode of the roll, as RollAttack settles it.
-	truth := modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.v, modes.names)
-	choice, err := s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, modes.ask)
-	if err != nil {
-		return err
+	// Advantage and disadvantage (SRD 5.1): the mode of the roll, as RollAttack settles it. The
+	// answer to a Bardic Inspiration question brings the mode and the d20 it was held with.
+	var (
+		truth  modeResult
+		choice modeChoice
+		d20    d20Roll
+		bonus  *playv1.BonusDie
+		err    error
+	)
+	if pre := modes.pre; pre != nil && pre.target == target.ID {
+		truth, choice, d20, bonus = pre.truth, pre.choice, pre.step.Roll, pre.step.Bonus
+	} else {
+		truth = modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.v, modes.names)
+		if choice, err = s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, modes.ask); err != nil {
+			return err
+		}
+		if d20, err = s.d20With(in, sp.ToHit, choice.Mode); err != nil {
+			return err
+		}
 	}
-	d20, err := s.d20With(in, sp.ToHit, choice.Mode)
-	if err != nil {
-		return err
+	bonusFace := 0
+	if bonus != nil {
+		bonusFace = int(bonus.Face) // the die the player added after rolling
+		hit.BonusSides, hit.BonusFace = bonus.Sides, bonus.Face
 	}
 	face, roll := d20.Face(), d20
 	modes.attack[target.ID] = truth.Shown
@@ -821,12 +860,12 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 		return err
 	}
 	hit.Extra = extra
-	result := combat.ResolveAttack(sp.ToHit+extraTotal, targetAC, face)
+	result := combat.ResolveAttack(sp.ToHit+bonusFace+extraTotal, targetAC, face)
 	if result.Hit && truth.CriticalOnHit { // a paralyzed or unconscious target within 5 ft (SRD 5.1)
 		result.Critical = true
 	}
 	hit.TargetAC = clamp32(targetAC, 0, math.MaxInt32)
-	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), clamp32(sp.ToHit, math.MinInt32, math.MaxInt32), clamp32(result.Total, math.MinInt32, math.MaxInt32), roll.Physical
+	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), clamp32(sp.ToHit+bonusFace, math.MinInt32, math.MaxInt32), clamp32(result.Total, math.MinInt32, math.MaxInt32), roll.Physical
 	hit.Outcome = outcomeMiss
 	if !result.Hit {
 		return nil

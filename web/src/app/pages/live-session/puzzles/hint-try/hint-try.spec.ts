@@ -7,6 +7,7 @@ import { AdvantageSourceSchema, RollMode } from '../../../../../gen/meurpg/play/
 import { dieFields } from '../../../../core/effects/effects';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
+import { inspirationOffer } from '../../../../core/play/scene-testing';
 import { HintTryControl } from './hint-try';
 
 describe('HintTryControl: the d20 pair', () => {
@@ -105,5 +106,25 @@ describe('HintTryControl: the d20 pair', () => {
       Array.from(el.querySelectorAll('.die'), (d) => d.textContent?.replace(/\s+/g, ' ').trim()),
     ).toEqual(['6 não conta', '16 conta']);
     expect(el.querySelector('.mode__sources')?.textContent).toContain('Fúria');
+  });
+});
+
+describe('HintTryControl: the Bardic Inspiration question', () => {
+  it('shows the question in place of the roll form and emits the answer, never a DC', () => {
+    const fixture = TestBed.createComponent(HintTryControl);
+    fixture.componentRef.setInput('skill', 'Investigação');
+    fixture.componentRef.setInput('canTry', true);
+    fixture.componentRef.setInput('offer', inspirationOffer(9, 3));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const answers: unknown[] = [];
+    fixture.componentInstance.answered.subscribe((a) => answers.push(a));
+    expect(el.textContent).toContain('Usar a Inspiração de Bardo (d8)?');
+    expect(el.textContent).not.toContain('Tentar uma dica');
+    expect(el.textContent).not.toMatch(/\bCD\b/);
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Usar e rolar o d8'))!
+      .click();
+    expect(answers).toEqual([{ use: true, die: { inApp: true } }]);
   });
 });

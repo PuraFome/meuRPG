@@ -51,7 +51,7 @@ export function minutesText(seconds: number): string {
           @if (s.mine; as die) {
             <p class="mine" role="status">
               Você tem uma Inspiração de Bardo (d{{ die.sides }}){{ die.fromName ? ' de ' + die.fromName : '' }}, por mais
-              {{ minutes(die.secondsLeft) }} de jogo. Você pode somá-la a uma prova de habilidade, jogada de ataque ou salvaguarda; ao rolar, o app pergunta.
+              {{ minutes(die.secondsLeft) }} de jogo. Você pode somá-la a uma prova de habilidade, a uma jogada de ataque ou a um teste de resistência que você mesmo rola; ao rolar, o app pergunta. Os testes que o app rola por você, como o de uma magia que mira o seu personagem, não perguntam.
             </p>
           }
           @for (offer of s.offers; track offer.holdId) {
@@ -198,11 +198,7 @@ export class BardicBlock {
       );
       this.keys.renew();
       const total =
-        res.result.case === 'sceneCheck'
-          ? res.result.value.roll?.roll?.total
-          : res.result.case === 'groupCheck'
-            ? undefined
-            : undefined;
+        res.result.case === 'sceneCheck' ? res.result.value.roll?.roll?.total : undefined;
       this.answered.set(
         total === undefined
           ? use

@@ -273,6 +273,11 @@ message RollEffectSaveRequest {
 message RollEffectSaveResponse {
   Encounter encounter = 1;
   EffectSaveResult result = 2;
+  // Set instead of `result` when the roller's player holds a Bardic Inspiration die: the
+  // d20 is rolled and kept, the window stays open and nothing is written, and
+  // ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
+  // never asks.
+  OutsideInspirationOffer inspiration_offer = 3;
 }
 
 message SetExhaustionRequest {
