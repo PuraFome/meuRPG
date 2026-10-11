@@ -159,6 +159,21 @@ describe('the prompt of each reaction', () => {
     expect(v.costs).toEqual(['Reação', 'Sem espaço de magia']);
   });
 
+  it('says on every prompt that the reaction is spent until the next turn', () => {
+    const spent = 'só volta no começo do seu próximo turno';
+    const prompts = [
+      win('hellishRebuke', { aggressorLabel: 'Hobgoblin', saveDc: 13, options: [] }),
+      win('counterspell', { casterLabel: 'Mago 1', slotOptions: [] }),
+      win('cuttingWords', { rollerLabel: 'Hobgoblin', dieSides: 8, usesLeft: 1 }),
+      win('deflectMissiles', { attackerLabel: 'Arqueiro', dieSides: 10, dexMod: 3, monkLevel: 5 }),
+      win('maneuverReduce', { attackerLabel: 'Ogro', options: [] }),
+      win('featherFall', { falling: [], fallFt: 30 }),
+    ];
+    for (const w of prompts) {
+      expect(promptView(w, 2)!.question).toContain(spent);
+    }
+  });
+
   it('Contramágica: the caster and the reach, never the spell or its level', () => {
     const v = promptView(
       win('counterspell', { casterLabel: 'Mago 1', distanceFt: 30, slotOptions: [] }),

@@ -6,6 +6,7 @@ import type {
   SceneRoll,
 } from '../../../gen/meurpg/play/v1/scene_pb';
 import { rollFormula, treatedFormula, treatedSentence, treatedSpeech } from '../combat/combat-dice';
+import { diceNaturalMark, type NaturalMark } from '../combat/natural-mark';
 import { joinDots, tight } from '../format/text';
 import { formatClock } from '../../shared/session-time/session-time';
 import { actionTitle } from '../maps/scene-actions';
@@ -58,6 +59,12 @@ export function sceneRollFormula(roll: SceneRoll): string {
     });
   }
   return dice.physical && dice.modifier === 0 ? `${dice.total}` : rollFormula(dice);
+}
+
+/** "20 natural" or "1 natural" for a scene roll's d20 that counts (with advantage the higher, with disadvantage the lower);
+ * information only, a check has no automatic success or failure (SRD 5.1). */
+export function sceneRollMark(roll: SceneRoll): NaturalMark {
+  return diceNaturalMark(roll.roll);
 }
 
 /** "O d20 de 6 contou como 10: perícia com proficiência.", only when a feature changed the roll. */

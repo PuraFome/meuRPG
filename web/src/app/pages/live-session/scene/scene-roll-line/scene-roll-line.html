@@ -5,7 +5,12 @@
     <time class="rl__time">{{ clock() }}</time>
   </div>
   <p class="rl__action">{{ action() }}</p>
-  <p class="rl__formula">{{ formula() }}</p>
+  <p class="rl__formula">
+    {{ formula() }}
+    @if (natural()) {
+      <span class="mr-tag rl__natural" data-testid="natural-mark">{{ natural() }}</span>
+    }
+  </p>
   @if (modeInfo()) {
     <app-check-mode [mode]="roll().mode" [sources]="roll().sources" [faces]="faces()" />
   }

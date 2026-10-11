@@ -190,7 +190,7 @@
           [button]="spellButton()"
           [buttonLabel]="'Conjurar ' + spellName(s)"
           [off]="!s.enabled || !!locked()"
-          [reason]="locked() || reasonText(s.reason)"
+          [reason]="locked() || spellReasonText(s)"
           [busy]="busy()"
           (press)="cast.emit(s.spell?.key ?? '')"
           (help)="describe.emit({ key: s.spell?.key ?? '', name: spellName(s) })"

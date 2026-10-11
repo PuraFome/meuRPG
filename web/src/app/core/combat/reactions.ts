@@ -139,6 +139,9 @@ function capitalized(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** What a reaction costs, for the prompts that do not already say it (SRD 5.1, Reactions: one per round, back at the start of the creature's next turn). */
+const REACTION_SPENT = 'Gasta a sua reação, que só volta no começo do seu próximo turno.';
+
 type PromptCase = NonNullable<ReactionWindow['prompt']['case']>;
 type PromptOf<K extends PromptCase> = Extract<ReactionWindow['prompt'], { case: K }>['value'];
 
@@ -189,7 +192,7 @@ function hellishRebukePrompt(h: PromptOf<'hellishRebuke'>, rodada: string): Prom
     ]),
     icon: 'local_fire_department',
     name,
-    question: `Usar ${name} contra ${theName(h.aggressorLabel)}? A criatura faz um teste de resistência de Destreza (CD ${h.saveDc}) e sofre ${dice}d10 de fogo, ou metade se passar.`,
+    question: `Usar ${name} contra ${theName(h.aggressorLabel)}? A criatura faz um teste de resistência de Destreza (CD ${h.saveDc}) e sofre ${dice}d10 de fogo, ou metade se passar. ${REACTION_SPENT}`,
     costs: ['Reação', reachChip(h.distanceFt)],
     note: '',
     useLabel: `Usar ${name}`,
@@ -208,7 +211,7 @@ function counterspellPrompt(c: PromptOf<'counterspell'>, rodada: string): Prompt
     ]),
     icon: 'block',
     name,
-    question: `Usar ${name}? Se a magia for de nível igual ou menor que o espaço que você gastar, ela falha e não tem efeito. Se for maior, você faz um teste de habilidade de conjuração (CD 10 + o nível da magia).`,
+    question: `Usar ${name}? Se a magia for de nível igual ou menor que o espaço que você gastar, ela falha e não tem efeito. Se for maior, você faz um teste de habilidade de conjuração (CD 10 + o nível da magia). ${REACTION_SPENT}`,
     costs: ['Reação', reachChip(c.distanceFt)],
     note: 'Você vê que há uma conjuração, mas não sabe qual magia é nem o nível dela.',
     useLabel: `Usar ${name}`,
@@ -228,7 +231,7 @@ function cuttingWordsPrompt(c: PromptOf<'cuttingWords'>, rodada: string): Prompt
     ]),
     icon: 'record_voice_over',
     name,
-    question: `Usar ${name}? Você subtrai o dado de Inspiração de Bardo (d${c.dieSides}) da rolagem ${what.noun}. O resultado ainda não foi dito.`,
+    question: `Usar ${name}? Você subtrai o dado de Inspiração de Bardo (d${c.dieSides}) da rolagem ${what.noun}. O resultado ainda não foi dito. ${REACTION_SPENT}`,
     costs: [
       'Reação',
       `Inspiração de Bardo: ${c.usesLeft} ${c.usesLeft === 1 ? 'uso' : 'usos'}`,
@@ -247,7 +250,7 @@ function deflectMissilesPrompt(d: PromptOf<'deflectMissiles'>, rodada: string): 
     subtitle: joinDots([d.attackerLabel, ...(d.attackNamePt ? [d.attackNamePt] : []), rodada]),
     icon: 'swap_calls',
     name,
-    question: `Usar ${name}? O dano cai 1d${d.dieSides} + ${d.dexMod} (Destreza) + ${d.monkLevel} (nível de monge). Se ele chegar a 0, você pode apanhar o projétil.`,
+    question: `Usar ${name}? O dano cai 1d${d.dieSides} + ${d.dexMod} (Destreza) + ${d.monkLevel} (nível de monge). Se ele chegar a 0, você pode apanhar o projétil. ${REACTION_SPENT}`,
     costs: ['Reação', 'Defletir não gasta chi'],
     note: `O ataque já acertou e causaria ${d.damage} de dano; ele ainda não foi aplicado.`,
     useLabel: `Usar ${name}`,
@@ -268,7 +271,7 @@ function maneuverReducePrompt(d: PromptOf<'maneuverReduce'>, rodada: string): Pr
     subtitle: joinDots([d.attackerLabel, ...(d.attackNamePt ? [d.attackNamePt] : []), rodada]),
     icon: 'shield',
     name: 'Manobra',
-    question: `Usar uma manobra? O dano cai ${sides}.`,
+    question: `Usar uma manobra? O dano cai ${sides}. ${REACTION_SPENT}`,
     costs: ['Reação', 'Gasta um uso da manobra'],
     note: `O ataque já acertou e causaria ${d.damage} de dano; ele ainda não foi aplicado.`,
     useLabel: 'Usar a manobra',
@@ -288,7 +291,7 @@ function featherFallPrompt(f: PromptOf<'featherFall'>, rodada: string): PromptVi
     ]),
     icon: 'arrow_upward',
     name,
-    question: `Usar ${name}? As criaturas que você escolher descem 18 m por rodada e não sofrem dano de queda.`,
+    question: `Usar ${name}? As criaturas que você escolher descem 18 m por rodada e não sofrem dano de queda. ${REACTION_SPENT}`,
     costs: ['Reação', 'Dura 1 minuto'],
     note: '',
     useLabel: `Usar ${name}`,

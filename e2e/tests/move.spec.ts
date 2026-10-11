@@ -184,7 +184,7 @@ test(
       // The player's `alertdialog`, like Escudo's: the safe answer has the focus, and no armor class.
       const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
       await expect(prompt.getByText('O Goblin 1 está saindo do seu alcance. Ataque de oportunidade?')).toBeVisible();
-      await expect(prompt.getByText('Gasta a sua reação.')).toBeVisible();
+      await expect(prompt.getByText('Gasta a sua reação: ela só volta no começo do seu próximo turno.')).toBeVisible();
       await expect(prompt.getByRole('button', { name: 'Não atacar' })).toBeFocused();
       await expect(prompt).not.toContainText(/CA \d/);
       // The answers are stacked at one width and one height, with the weapon's numbers above them.

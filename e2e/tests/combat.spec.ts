@@ -1012,7 +1012,7 @@ test('fora da vez: o ataque de oportunidade gasta a reação, só com ataques co
     await expect(sheet.getByText('Sua reação foi usada.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
     // The reaction is spent: the line says so, and the action is gone.
-    await expect(p.getByText('Sua reação: Usada.')).toBeVisible();
+    await expect(p.getByText('Sua reação: Usada até o começo do seu próximo turno.')).toBeVisible();
     await expect(p.getByRole('button', { name: /Ataque de oportunidade/ })).toHaveCount(0);
     await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus ataca o Goblin 1 com a Adaga (ataque de oportunidade): errou');
   } finally {

@@ -46,6 +46,7 @@ import {
   skillName,
   upFirst,
   whoIs,
+  checkNaturalMark,
 } from '../../../../core/combat/contest-view';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { CheckRollForm } from '../check-roll-form/check-roll-form';
@@ -75,6 +76,9 @@ let nextId = 0;
         <div class="total">
           <span class="total__head">{{ line.head }}</span>
           <span class="total__sum">{{ line.sum }}</span>
+          @if (line.natural) {
+            <span class="mr-tag" data-testid="natural-mark">{{ line.natural }}</span>
+          }
         </div>
       }
 
@@ -253,7 +257,11 @@ export class ContestCard {
   protected readonly initiatorLine = computed(() => {
     const roll = this.c().initiatorRoll;
     return roll
-      ? { head: rollHead(this.initiatorLabel(), roll.skill), sum: totalLine(roll) }
+      ? {
+          head: rollHead(this.initiatorLabel(), roll.skill),
+          sum: totalLine(roll),
+          natural: checkNaturalMark(roll),
+        }
       : null;
   });
   protected readonly options = computed(() => this.c().answerOptions);
@@ -318,7 +326,10 @@ export class ContestCard {
       if (show) {
         this.animator.play(show);
       }
-      const mine = roll ? `${rollHead(this.defenderLabel(), roll.skill)} ${totalLine(roll)}. ` : '';
+      const natural = checkNaturalMark(roll);
+      const mine = roll
+        ? `${rollHead(this.defenderLabel(), roll.skill)} ${totalLine(roll)}.${natural ? ` ${natural}.` : ''} `
+        : '';
       const verdict = winnerLine(this.encounter(), res.contest);
       this.said.emit(`${mine}${upFirst(verdict)}.`.trim());
     });

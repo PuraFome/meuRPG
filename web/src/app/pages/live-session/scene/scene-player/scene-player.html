@@ -39,7 +39,12 @@
           <div class="sc__last">
             @if (r.own; as own) {
               <span class="sc__total">{{ own.roll?.total }}</span>
-              <span class="sc__formula">{{ formula(own) }}</span>
+              <span class="sc__formula"
+                >{{ formula(own) }}
+                @if (mark(own)) {
+                  <span class="mr-tag sc__natural" data-testid="natural-mark">{{ mark(own) }}</span>
+                }
+              </span>
             } @else if (r.action.bonus !== undefined) {
               <span class="sc__bonus">{{ bonusText(r.action.bonus) }}</span>
             }

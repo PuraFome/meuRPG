@@ -80,8 +80,12 @@ describe('opportunity attacks in words', () => {
     expect(playerQuestion(toWolf, false)).toBe(
       'O Goblin 2 está saindo do alcance do Lobo atroz 1. Ataque de oportunidade?',
     );
-    expect(spendText(toWolf, false)).toBe('Gasta a reação do Lobo atroz 1.');
-    expect(spendText(toToren)).toBe('Gasta a sua reação.');
+    expect(spendText(toWolf, false)).toBe(
+      'Gasta a reação do Lobo atroz 1: ela só volta no começo do próximo turno do Lobo atroz 1.',
+    );
+    expect(spendText(toToren)).toBe(
+      'Gasta a sua reação: ela só volta no começo do seu próximo turno.',
+    );
   });
 
   it('holds a mover for the offers on the whole turn of the caller, creatures they control included', () => {
@@ -129,12 +133,14 @@ describe('opportunity attacks in words', () => {
   it('adds what the master said only when the mover was moved by hand, in the gender of the mover', () => {
     const byHand = (moverLabel: string) =>
       create(OpportunityOfferSchema, { ...toToren, moverLabel, byHand: true });
-    expect(spendText(toToren)).toBe('Gasta a sua reação.');
+    expect(spendText(toToren)).toBe(
+      'Gasta a sua reação: ela só volta no começo do seu próximo turno.',
+    );
     expect(spendText(byHand('Goblin 2'))).toBe(
-      'Gasta a sua reação. O mestre disse que ele saiu do seu alcance.',
+      'Gasta a sua reação: ela só volta no começo do seu próximo turno. O mestre disse que ele saiu do seu alcance.',
     );
     expect(spendText(byHand('Brisa'))).toBe(
-      'Gasta a sua reação. O mestre disse que ela saiu do seu alcance.',
+      'Gasta a sua reação: ela só volta no começo do seu próximo turno. O mestre disse que ela saiu do seu alcance.',
     );
   });
 

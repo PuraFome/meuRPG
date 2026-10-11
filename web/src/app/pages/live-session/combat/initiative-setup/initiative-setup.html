@@ -76,6 +76,9 @@
           } @else {
             <span class="row__formula" [class.row__formula--wait]="c.initiative === undefined">
               {{ formula(c) }}
+              @if (mark(c); as natural) {
+                <span class="mr-tag row__natural" data-testid="natural-mark">{{ natural }}</span>
+              }
             </span>
             <span class="row__actions">
               @if (item.tie; as group) {
