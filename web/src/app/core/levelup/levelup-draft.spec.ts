@@ -190,6 +190,25 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
     expect(d.missing().map((m) => m.id)).toEqual(['feature-0', 'skills', 'expertise']);
   });
 
+  it('a pick made on a draft that was handed over lands on the new one (a re-read swapped it)', () => {
+    const old = new LevelUpDraft(options(), WIZARD_KEYS, catalog);
+    const fresh = new LevelUpDraft(options(), WIZARD_KEYS, catalog);
+    fresh.adopt(old);
+    old.handOver(fresh);
+    // The old screen, before it re-renders, still calls the old draft.
+    old.setSubclass('sub:lore');
+    old.toggleSkill('skill:stealth');
+    expect(fresh.subclassKey()).toBe('sub:lore');
+    expect([...fresh.skills()]).toEqual(['skill:stealth']);
+    expect(old.subclassKey()).toBe('');
+    // Along a chain of hand-overs it reaches the newest draft.
+    const newest = new LevelUpDraft(options(), WIZARD_KEYS, catalog);
+    newest.adopt(fresh);
+    fresh.handOver(newest);
+    old.setSubclass('sub:champion');
+    expect(newest.subclassKey()).toBe('sub:champion');
+  });
+
   it('forgets what the previous subclass offered', () => {
     const d = new LevelUpDraft(options(), WIZARD_KEYS, catalog);
     d.setSubclass('sub:lore');
