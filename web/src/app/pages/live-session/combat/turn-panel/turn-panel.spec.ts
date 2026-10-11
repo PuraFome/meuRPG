@@ -30,6 +30,12 @@ describe('TurnPanel', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  it('says a spent reaction stays spent until the start of the next turn', () => {
+    const spent = order.map((c) => (c.id === 'pen' ? { ...c, reactionUsed: true } : c));
+    const el = text({ currentCombatantId: 'cap', combatants: spent });
+    expect(el.textContent).toContain('Sua reação: Usada até o começo do seu próximo turno.');
+  });
+
   it('shows the reaction of a living player, and none for a dead one', () => {
     const living = text({ currentCombatantId: 'cap' });
     expect(living.textContent).toContain('Sua reação: Disponível.');

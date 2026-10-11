@@ -162,7 +162,7 @@
         @if (!banner().ownEnded) {
           <p class="turn__react">
             <mat-icon aria-hidden="true">{{ me.reactionUsed ? 'cancel' : 'radio_button_unchecked' }}</mat-icon>
-            Sua reação: {{ me.reactionUsed ? 'Usada' : 'Disponível' }}.
+            Sua reação: {{ me.reactionUsed ? 'Usada até o começo do seu próximo turno' : 'Disponível' }}.
           </p>
         }
         <app-turn-reaction [opportunities]="opportunities()" (opportunity)="opportunity.emit($event)" />

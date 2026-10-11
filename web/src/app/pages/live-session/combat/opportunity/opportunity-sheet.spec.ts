@@ -92,7 +92,7 @@ describe('OpportunitySheet', () => {
     expect(text).toContain('Ataque de oportunidade');
     expect(text).toContain('Goblin 2 · Rodada 2');
     expect(text).toContain('O Goblin 2 está saindo do seu alcance. Ataque de oportunidade?');
-    expect(text).toContain('Gasta a sua reação.');
+    expect(text).toContain('Gasta a sua reação: ela só volta no começo do seu próximo turno.');
     expect(plain(el.querySelector('.weapons li')?.textContent)).toBe(
       'Espada longa +5 · 1d8 + 3 cortante',
     );

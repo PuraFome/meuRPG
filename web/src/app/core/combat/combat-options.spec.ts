@@ -3,7 +3,9 @@ import { create } from '@bufbuild/protobuf';
 import {
   AttackKind,
   AttackOptionSchema,
+  ActionEconomy,
   AttackSchema,
+  SpellOptionSchema,
   BonusAttackRule,
   DisabledReasonCode,
   DisabledReasonSchema,
@@ -19,6 +21,7 @@ import {
   isBonusAttack,
   isReactionHint,
   reasonText,
+  spellReasonText,
 } from './combat-options';
 
 function reason(code: DisabledReasonCode, extra: { minLevel?: number; recharge?: Recharge } = {}) {
@@ -60,9 +63,23 @@ describe('the reasons an option is disabled', () => {
     );
   });
 
+  it('names the case of the bonus action spell limit by the economy of the blocked spell', () => {
+    const blocked = (economy: ActionEconomy) =>
+      create(SpellOptionSchema, {
+        economy,
+        reason: reason(DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT),
+      });
+    expect(spellReasonText(blocked(ActionEconomy.BONUS_ACTION))).toBe(
+      'Você já conjurou neste turno uma magia que não é truque: junto com uma magia de ação bônus, só cabe um truque de 1 ação.',
+    );
+    expect(spellReasonText(blocked(ActionEconomy.ACTION))).toBe(
+      'Você já conjurou uma magia de ação bônus neste turno: a outra magia só pode ser um truque de 1 ação.',
+    );
+  });
+
   it('says a bonus action spell limits the turn’s other spells', () => {
     expect(reasonText(reason(DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT))).toBe(
-      'Magia de ação bônus no turno',
+      'Só um truque junto com uma magia de ação bônus',
     );
   });
 
