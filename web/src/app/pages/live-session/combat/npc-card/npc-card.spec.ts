@@ -76,6 +76,37 @@ describe('NpcCard: the idempotency key follows the target', () => {
     expect(second[6]).not.toBe(first[6]);
   });
 
+  it('never drops a roll silently: with no target left it says the options changed, and the buttons are off', async () => {
+    TestBed.resetTestingModule();
+    const rollAttack = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: { rollAttack } }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [combatant({ id: 'npc', label: 'Goblin' })] }),
+    );
+    fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Goblin' }));
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    fixture.componentRef.setInput('options', opts([]));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const card = fixture.componentInstance as unknown as {
+      rollApp(): Promise<void>;
+      canRoll(): boolean;
+    };
+    expect(card.canRoll()).toBe(false);
+    await card.rollApp();
+    fixture.detectChanges();
+    expect(rollAttack).not.toHaveBeenCalled();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'O ataque ou o alvo mudou enquanto você confirmava.',
+    );
+  });
+
   it('does not roll a second attack while a hit of this attacker still has its damage open, and says why', async () => {
     TestBed.resetTestingModule();
     const rollAttack = vi.fn();
