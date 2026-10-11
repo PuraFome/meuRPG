@@ -24,7 +24,7 @@
         <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
       </div>
     } @else {
-      <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [label]="endLabel()" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
+      <app-end-turn class="banner__end" [own]="me" [attacksLeft]="attacksLeft()" [settling]="optionsSettling()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [label]="endLabel()" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
     }
   </section>
   <ng-container *ngTemplateOutlet="notes" />
@@ -121,7 +121,7 @@
         <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
       </div>
     } @else {
-      <app-end-turn class="turn__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [label]="endLabel()" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
+      <app-end-turn class="turn__end" [own]="me" [attacksLeft]="attacksLeft()" [settling]="optionsSettling()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [label]="endLabel()" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
     }
     @if (movement()?.none) {
       <p class="turn__why"><mat-icon aria-hidden="true">block</mat-icon>Sem movimento neste turno</p>
