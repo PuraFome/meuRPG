@@ -35,7 +35,7 @@ import { D20Faces } from '../roll-mode/d20-faces';
               <span class="part__formula">{{ d20Formula() }}{{ r.d20?.physical ? ' · dado físico' : '' }}</span>
               @if (outcome(); as o) {
                 <span class="pill" [class.pill--miss]="!o.hit">
-                  <mat-icon aria-hidden="true">{{ o.hit ? 'check' : 'close' }}</mat-icon>{{ o.word }}
+                  <mat-icon aria-hidden="true">{{ o.hit ? 'check' : 'close' }}</mat-icon>{{ o.word }}{{ o.natural ? ' · ' + o.natural : '' }}
                 </span>
               }
             </span>
@@ -92,7 +92,8 @@ export class AttackResult {
   readonly targetLabel = input.required<string>();
   readonly roll = input<AttackRoll | null>(null);
   readonly d20Formula = input('');
-  readonly outcome = input<{ word: string; hit: boolean } | null>(null);
+  /** `natural`: "1 natural" beside "Errou" (a natural 1 always misses, SRD 5.1), empty otherwise. */
+  readonly outcome = input<{ word: string; hit: boolean; natural?: string } | null>(null);
   /** A reaction holds the roll: what the combat waits for, instead of an outcome. */
   readonly held = input<{ title: string; detail: string } | null>(null);
   /** The Dano step is finished: show it (a miss says there is none). */

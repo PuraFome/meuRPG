@@ -74,6 +74,9 @@ type partRecord struct {
 	// rolled; Rider is the line the master reads for it.
 	Resource string `json:"resource,omitempty"`
 	Rider    string `json:"rider,omitempty"`
+	// ResourceLeft is how many uses of Resource the attacker had left when the hit was
+	// rolled (the superiority dice left), so the damage step can say what one costs.
+	ResourceLeft int32 `json:"resource_left,omitempty"`
 }
 
 // partRoll is what a part rolled, in the pending damage's part_rolls column and in the
@@ -290,7 +293,7 @@ func (h hitFacts) maneuverParts() []partRecord {
 		left := h.usesLeft[m.Resource]
 		sp := partRecord{
 			Key: m.Key, Label: m.NamePT, Kind: partExtra, Count: 1, Sides: clamp32(m.Sides, 0, 100), DamageType: h.attack.DamageType,
-			Source: m.Key, Choosable: true, Available: left > 0, Resource: m.Resource, Rider: m.TextPT,
+			Source: m.Key, Choosable: true, Available: left > 0, Resource: m.Resource, Rider: m.TextPT, ResourceLeft: max(left, 0),
 		}
 		if left <= 0 {
 			sp.Reason = "Sem usos do recurso"
@@ -366,7 +369,7 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 			Key: sp.Key, LabelPt: sp.Label, DiceCount: clamp32(count, 0, 200), DiceSides: sp.Sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
 			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: sp.Source,
 			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
-			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "",
+			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "", ResourceLeft: sp.ResourceLeft,
 		})
 	}
 	return out

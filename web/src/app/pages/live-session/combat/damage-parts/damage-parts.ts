@@ -45,6 +45,13 @@ export class DamageParts {
     );
   }
 
+  /** What marking a maneuver spends: one superiority die, and how many the character had when the hit was rolled. */
+  protected maneuverCost(p: DamagePart): string {
+    return p.resourceLeft > 0
+      ? `Gasta 1 dado de superioridade (restam ${p.resourceLeft}).`
+      : 'Gasta 1 dado de superioridade (não restam).';
+  }
+
   protected pickOf(p: DamagePart): ExtraPick | undefined {
     return this.picks().find((x) => x.key === p.key);
   }

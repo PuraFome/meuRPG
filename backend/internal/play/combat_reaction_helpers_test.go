@@ -103,4 +103,4 @@ func (a *armed) keepAllConcentrations(t *testing.T, e *playv1.Encounter) {
 
 // reactionRPCs are the methods of the reaction window: its authorization matrix is
 // TestReactionWindowAnswersAreTheReactorsAndTheMasters (combat_reaction_window_test.go).
-var reactionRPCs = []string{"AnswerReaction", "ResolveConcentrationSave"}
+var reactionRPCs = []string{"AnswerReaction", "ResolveConcentrationSave", "MarkReactionRolling"}

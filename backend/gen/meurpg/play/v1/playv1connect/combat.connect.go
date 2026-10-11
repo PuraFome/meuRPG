@@ -158,6 +158,9 @@ const (
 	// CombatServiceAnswerReactionProcedure is the fully-qualified name of the CombatService's
 	// AnswerReaction RPC.
 	CombatServiceAnswerReactionProcedure = "/meurpg.play.v1.CombatService/AnswerReaction"
+	// CombatServiceMarkReactionRollingProcedure is the fully-qualified name of the CombatService's
+	// MarkReactionRolling RPC.
+	CombatServiceMarkReactionRollingProcedure = "/meurpg.play.v1.CombatService/MarkReactionRolling"
 	// CombatServiceResolveConcentrationSaveProcedure is the fully-qualified name of the CombatService's
 	// ResolveConcentrationSave RPC.
 	CombatServiceResolveConcentrationSaveProcedure = "/meurpg.play.v1.CombatService/ResolveConcentrationSave"
@@ -1270,6 +1273,25 @@ type CombatServiceClient interface {
 	//     NO_SLOT (with min_level), REACTION_USED, REACTION_NEEDS_ROLL,
 	//     WRONG_DICE_MODE.
 	AnswerReaction(context.Context, *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error)
+	// MarkReactionRolling says the reactor's player is using an optional reaction and
+	// is rolling its die now (a physical die takes a while to type). It sets
+	// `ReactionWindow.rolling`, which the master's screen reads: the 30 s automatic
+	// pass then waits a longer, still bounded time (the screen's clock; the master can
+	// always pass it by hand). It changes nothing else, writes no log line, and is
+	// idempotent: marking a window twice is the same as once.
+	//
+	// Only the reactor's player may call it: the master is refused (`permission_denied`),
+	// and so is a player for a window that is not theirs, the same answer for a real
+	// and an invented window_id (RN-10).
+	//
+	// The reactor and the master get `encounter_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session.
+	//   - `permission_denied`: as above.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED, NOT_YOUR_TURN_TO_ANSWER
+	//     (out of order, or already answered or closed).
+	MarkReactionRolling(context.Context, *connect.Request[v1.MarkReactionRollingRequest]) (*connect.Response[v1.MarkReactionRollingResponse], error)
 	// ResolveConcentrationSave settles a concentration window (SRD, Duration): the
 	// owner's Constitution saving throw against the DC the window carries, rolled in
 	// the app or typed from a physical d20, or handed to the master ("Deixar o
@@ -1661,6 +1683,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("AnswerReaction")),
 			connect.WithClientOptions(opts...),
 		),
+		markReactionRolling: connect.NewClient[v1.MarkReactionRollingRequest, v1.MarkReactionRollingResponse](
+			httpClient,
+			baseURL+CombatServiceMarkReactionRollingProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("MarkReactionRolling")),
+			connect.WithClientOptions(opts...),
+		),
 		resolveConcentrationSave: connect.NewClient[v1.ResolveConcentrationSaveRequest, v1.ResolveConcentrationSaveResponse](
 			httpClient,
 			baseURL+CombatServiceResolveConcentrationSaveProcedure,
@@ -1768,6 +1796,7 @@ type combatServiceClient struct {
 	endConcentration         *connect.Client[v1.EndConcentrationRequest, v1.EndConcentrationResponse]
 	endCombatEffect          *connect.Client[v1.EndCombatEffectRequest, v1.EndCombatEffectResponse]
 	answerReaction           *connect.Client[v1.AnswerReactionRequest, v1.AnswerReactionResponse]
+	markReactionRolling      *connect.Client[v1.MarkReactionRollingRequest, v1.MarkReactionRollingResponse]
 	resolveConcentrationSave *connect.Client[v1.ResolveConcentrationSaveRequest, v1.ResolveConcentrationSaveResponse]
 	listCombatLog            *connect.Client[v1.ListCombatLogRequest, v1.ListCombatLogResponse]
 	getCombatHighlights      *connect.Client[v1.GetCombatHighlightsRequest, v1.GetCombatHighlightsResponse]
@@ -1978,6 +2007,11 @@ func (c *combatServiceClient) EndCombatEffect(ctx context.Context, req *connect.
 // AnswerReaction calls meurpg.play.v1.CombatService.AnswerReaction.
 func (c *combatServiceClient) AnswerReaction(ctx context.Context, req *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error) {
 	return c.answerReaction.CallUnary(ctx, req)
+}
+
+// MarkReactionRolling calls meurpg.play.v1.CombatService.MarkReactionRolling.
+func (c *combatServiceClient) MarkReactionRolling(ctx context.Context, req *connect.Request[v1.MarkReactionRollingRequest]) (*connect.Response[v1.MarkReactionRollingResponse], error) {
+	return c.markReactionRolling.CallUnary(ctx, req)
 }
 
 // ResolveConcentrationSave calls meurpg.play.v1.CombatService.ResolveConcentrationSave.
@@ -3111,6 +3145,25 @@ type CombatServiceHandler interface {
 	//     NO_SLOT (with min_level), REACTION_USED, REACTION_NEEDS_ROLL,
 	//     WRONG_DICE_MODE.
 	AnswerReaction(context.Context, *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error)
+	// MarkReactionRolling says the reactor's player is using an optional reaction and
+	// is rolling its die now (a physical die takes a while to type). It sets
+	// `ReactionWindow.rolling`, which the master's screen reads: the 30 s automatic
+	// pass then waits a longer, still bounded time (the screen's clock; the master can
+	// always pass it by hand). It changes nothing else, writes no log line, and is
+	// idempotent: marking a window twice is the same as once.
+	//
+	// Only the reactor's player may call it: the master is refused (`permission_denied`),
+	// and so is a player for a window that is not theirs, the same answer for a real
+	// and an invented window_id (RN-10).
+	//
+	// The reactor and the master get `encounter_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session.
+	//   - `permission_denied`: as above.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED, NOT_YOUR_TURN_TO_ANSWER
+	//     (out of order, or already answered or closed).
+	MarkReactionRolling(context.Context, *connect.Request[v1.MarkReactionRollingRequest]) (*connect.Response[v1.MarkReactionRollingResponse], error)
 	// ResolveConcentrationSave settles a concentration window (SRD, Duration): the
 	// owner's Constitution saving throw against the DC the window carries, rolled in
 	// the app or typed from a physical d20, or handed to the master ("Deixar o
@@ -3498,6 +3551,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("AnswerReaction")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceMarkReactionRollingHandler := connect.NewUnaryHandler(
+		CombatServiceMarkReactionRollingProcedure,
+		svc.MarkReactionRolling,
+		connect.WithSchema(combatServiceMethods.ByName("MarkReactionRolling")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceResolveConcentrationSaveHandler := connect.NewUnaryHandler(
 		CombatServiceResolveConcentrationSaveProcedure,
 		svc.ResolveConcentrationSave,
@@ -3642,6 +3701,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceEndCombatEffectHandler.ServeHTTP(w, r)
 		case CombatServiceAnswerReactionProcedure:
 			combatServiceAnswerReactionHandler.ServeHTTP(w, r)
+		case CombatServiceMarkReactionRollingProcedure:
+			combatServiceMarkReactionRollingHandler.ServeHTTP(w, r)
 		case CombatServiceResolveConcentrationSaveProcedure:
 			combatServiceResolveConcentrationSaveHandler.ServeHTTP(w, r)
 		case CombatServiceListCombatLogProcedure:
@@ -3829,6 +3890,10 @@ func (UnimplementedCombatServiceHandler) EndCombatEffect(context.Context, *conne
 
 func (UnimplementedCombatServiceHandler) AnswerReaction(context.Context, *connect.Request[v1.AnswerReactionRequest]) (*connect.Response[v1.AnswerReactionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.AnswerReaction is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) MarkReactionRolling(context.Context, *connect.Request[v1.MarkReactionRollingRequest]) (*connect.Response[v1.MarkReactionRollingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.MarkReactionRolling is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) ResolveConcentrationSave(context.Context, *connect.Request[v1.ResolveConcentrationSaveRequest]) (*connect.Response[v1.ResolveConcentrationSaveResponse], error) {

@@ -294,6 +294,7 @@ describe('the result of a cast', () => {
       state: 'Muito ferido',
     });
     expect(rows[2]).toMatchObject({ word: 'Errou', tone: 'bad', summary: '' });
+    expect(rows[2].natural).toBeUndefined();
     const owed = castRows(
       cast,
       new Map([['p1', { id: 'p1', status: PendingDamageStatus.AWAITING_ROLL } as PendingDamage]]),
@@ -459,5 +460,33 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     const missile = create(SpellCastSchema, { targets: [{ combatantId: 'g1', darts: 2 }] });
     expect(effectSentence(missile, labels, isNpc)).toBe('');
     expect(castRows(missile, new Map(), labels)[0].icon).toBeUndefined();
+  });
+});
+
+describe('a spell attack that missed on a natural 1', () => {
+  it('says "1 natural" beside "Errou", and nothing on another miss', () => {
+    const attack = (face: number) =>
+      create(SpellCastSchema, {
+        targets: [
+          {
+            combatantId: 'g1',
+            outcome: AttackOutcome.MISS,
+            attackRoll: {
+              diceCount: 1,
+              diceSides: 20,
+              faces: [face],
+              countedIndex: 0,
+              modifier: 5,
+              total: face + 5,
+            },
+          },
+        ],
+      });
+    const labels = new Map([['g1', { label: 'Goblin 1', state: CombatantState.UNHURT }]]);
+    expect(castRows(attack(1), new Map(), labels)[0]).toMatchObject({
+      word: 'Errou',
+      natural: '1 natural',
+    });
+    expect(castRows(attack(4), new Map(), labels)[0].natural).toBeUndefined();
   });
 });

@@ -54,6 +54,8 @@ import {
 import {
   isOptionalReaction,
   playerAutoPassText,
+  playerRollingSecondsLeft,
+  playerRollingText,
   playerSecondsLeft,
 } from '../../../../core/combat/reaction-autopass';
 import { metersText } from '../../../../core/units';
@@ -362,6 +364,11 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
             <button mat-stroked-button type="button" class="pair__btn pair__btn--one" data-initial-focus (click)="back()">
               Voltar
             </button>
+            @if (rollingAt() !== null) {
+              <p class="fine">
+                <mat-icon aria-hidden="true">info</mat-icon>{{ fineText() }}
+              </p>
+            }
           }
           @default {
             @if (stage() === 'result' && shown()?.throwBack) {
@@ -561,11 +568,18 @@ export class ReactionSheet {
   private readonly clock = signal(this.openedAt);
   private readonly clockTimer = setInterval(() => this.clock.set(Date.now()), AUTO_PASS_TICK_MS);
   /** The small print under the buttons: the countdown of an optional reaction, or what the master may do. */
-  protected readonly fineText = computed(() =>
-    isOptionalReaction(this.asked())
+  protected readonly fineText = computed(() => {
+    if (!isOptionalReaction(this.asked())) {
+      return 'Se você não responder, o mestre pode decidir por você.';
+    }
+    // Once the player is rolling, the master's clock waits the longer time, and so does this one.
+    const rolling = this.rollingAt();
+    return rolling === null
       ? playerAutoPassText(playerSecondsLeft(this.openedAt, this.clock()))
-      : 'Se você não responder, o mestre pode decidir por você.',
-  );
+      : playerRollingText(playerRollingSecondsLeft(rolling, this.clock()));
+  });
+  /** When the player moved to the die (ms), after the server was told; `null` before. */
+  protected readonly rollingAt = signal<number | null>(null);
 
   /** "Usar ..." needs what the question asks for: a slot, a creature to save. */
   protected readonly canUse = computed(() => {
@@ -720,11 +734,40 @@ export class ReactionSheet {
       if (this.canApp && this.preferApp) {
         rolled = { inApp: true };
       } else {
-        this.step.set('roll');
+        this.goRoll();
         return;
       }
     }
     await this.send(this.build(true, rolled));
+  }
+
+  /**
+   * The player moves to the die: the server is told (the master's clock would pass this reaction at 30 s, in the
+   * middle of the roll) and the longer wait counts from now. Telling is best effort: if it fails, the roll goes on
+   * with the 30 s clock, as before.
+   */
+  private goRoll(): void {
+    this.step.set('roll');
+    const w = this.asked();
+    if (this.rollingAt() !== null || !isOptionalReaction(w)) {
+      return;
+    }
+    this.rollingAt.set(Date.now());
+    void this.tellRolling(w.id);
+  }
+
+  private async tellRolling(windowId: string): Promise<void> {
+    try {
+      const e = await this.api.markReactionRolling(
+        this.data.campaignId,
+        this.data.encounterId,
+        windowId,
+      );
+      this.data.state.apply(e);
+    } catch {
+      // The window may have been answered meanwhile; the stream shows the truth.
+      this.rollingAt.set(null);
+    }
   }
 
   protected async pass(): Promise<void> {
@@ -827,7 +870,7 @@ export class ReactionSheet {
   private async failed(err: unknown, answer: ReactionAnswer | null, what: string): Promise<void> {
     const blocked = encounterBlocked(err);
     if (blocked?.reason === EncounterBlockedReason.REACTION_NEEDS_ROLL && answer && !answer.die) {
-      this.step.set('roll');
+      this.goRoll();
       return;
     }
     this.error.set(combatErrorMessage(err, what));

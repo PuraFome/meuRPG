@@ -1229,6 +1229,26 @@ service CombatService {
   //     WRONG_DICE_MODE.
   rpc AnswerReaction(AnswerReactionRequest) returns (AnswerReactionResponse);
 
+  // MarkReactionRolling says the reactor's player is using an optional reaction and
+  // is rolling its die now (a physical die takes a while to type). It sets
+  // `ReactionWindow.rolling`, which the master's screen reads: the 30 s automatic
+  // pass then waits a longer, still bounded time (the screen's clock; the master can
+  // always pass it by hand). It changes nothing else, writes no log line, and is
+  // idempotent: marking a window twice is the same as once.
+  //
+  // Only the reactor's player may call it: the master is refused (`permission_denied`),
+  // and so is a player for a window that is not theirs, the same answer for a real
+  // and an invented window_id (RN-10).
+  //
+  // The reactor and the master get `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not in the open session.
+  //   - `permission_denied`: as above.
+  //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED, NOT_YOUR_TURN_TO_ANSWER
+  //     (out of order, or already answered or closed).
+  rpc MarkReactionRolling(MarkReactionRollingRequest) returns (MarkReactionRollingResponse);
+
   // ResolveConcentrationSave settles a concentration window (SRD, Duration): the
   // owner's Constitution saving throw against the DC the window carries, rolled in
   // the app or typed from a physical d20, or handed to the master ("Deixar o
@@ -5064,6 +5084,11 @@ message ReactionWindow {
   // an answer that asks one more thing (Hellish Rebuke's saving throw, the
   // monk's throw back). A second step is answered like the first.
   bool second_step = 12;
+  // The reactor's player said they are using the reaction and rolling now
+  // (MarkReactionRolling). The master reads "Rolando…" and the automatic pass waits
+  // longer; the player reads their own mark back. Never sent for a window nobody
+  // marked.
+  bool rolling = 13;
   // Only whoever answers: the question, by kind.
   oneof prompt {
     ShieldPrompt shield = 20;
@@ -5335,6 +5360,17 @@ message AnswerReactionRequest {
   // A maneuver reduction (ManeuverReducePrompt.options[].key): the one the player uses. Needed
   // to answer USE a REACTION_KIND_MANEUVER_REDUCE window; the roll is the maneuver's die.
   string maneuver_key = 11;
+}
+
+// MarkReactionRollingRequest marks a window as being rolled.
+message MarkReactionRollingRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string window_id = 3;
+}
+
+message MarkReactionRollingResponse {
+  Encounter encounter = 1;
 }
 
 message AnswerReactionResponse {

@@ -852,6 +852,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["UseReaction"] = cc.UseReaction(ctx, connect.NewRequest(&playv1.UseReactionRequest{CampaignId: id}))
 	_, combat["DeclineReaction"] = cc.DeclineReaction(ctx, connect.NewRequest(&playv1.DeclineReactionRequest{CampaignId: id}))
 	_, combat["AnswerReaction"] = cc.AnswerReaction(ctx, connect.NewRequest(&playv1.AnswerReactionRequest{CampaignId: id}))
+	_, combat["MarkReactionRolling"] = cc.MarkReactionRolling(ctx, connect.NewRequest(&playv1.MarkReactionRollingRequest{CampaignId: id}))
 	_, combat["ResolveConcentrationSave"] = cc.ResolveConcentrationSave(ctx, connect.NewRequest(&playv1.ResolveConcentrationSaveRequest{CampaignId: id}))
 	_, combat["DeclineOpportunity"] = cc.DeclineOpportunity(ctx, connect.NewRequest(&playv1.DeclineOpportunityRequest{CampaignId: id}))
 	_, combat["SpendMovement"] = cc.SpendMovement(ctx, connect.NewRequest(&playv1.SpendMovementRequest{CampaignId: id}))

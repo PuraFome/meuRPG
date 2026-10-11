@@ -1,5 +1,6 @@
 import {
   AttackOutcome,
+  type AttackRoll,
   type PendingDamage,
   PendingDamageStatus,
   type TargetInReach,
@@ -7,6 +8,7 @@ import {
 import { metersFixed, metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { listing } from './cover';
+import { diceNaturalMark, type NaturalMark } from './natural-mark';
 import { stateWord } from './combat-view';
 
 /**
@@ -62,6 +64,15 @@ export function outcomeWord(outcome: AttackOutcome): string {
     default:
       return 'Errou';
   }
+}
+
+/**
+ * "1 natural" beside "Errou": a natural 1 on an attack roll always misses, whatever the modifiers (SRD 5.1,
+ * "Rolling 1 or 20"), and the table should see that it was the die, not the armor class. `''` for any other roll.
+ */
+export function missMark(roll: Pick<AttackRoll, 'outcome' | 'd20'>): NaturalMark {
+  const mark = roll.outcome === AttackOutcome.MISS ? diceNaturalMark(roll.d20) : '';
+  return mark === '1 natural' ? mark : '';
 }
 
 export function isHit(outcome: AttackOutcome): boolean {

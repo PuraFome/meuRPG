@@ -37,7 +37,7 @@ import {
   reactionCards,
 } from '../../../../core/combat/reaction-master';
 import { ActionKey } from '../../../../core/connect/idempotency';
-import { autoPassText } from '../../../../core/combat/reaction-autopass';
+import { autoPassText, rollingText } from '../../../../core/combat/reaction-autopass';
 import { rollText } from '../../../../core/combat/combat-dice';
 import {
   RollAnimator,
@@ -353,7 +353,9 @@ let nextId = 0;
           <p class="row__status" [id]="uid + row.window.id + '-why'">{{ row.status }}</p>
         }
         @if (autoLeft()[row.window.id] !== undefined) {
-          <p class="row__status">{{ autoText(autoLeft()[row.window.id]) }}</p>
+          <p class="row__status">
+            {{ row.window.rolling ? rollingText(autoLeft()[row.window.id]) : autoText(autoLeft()[row.window.id]) }}
+          </p>
         }
         <ng-container *ngTemplateOutlet="slotsTpl; context: { row: row }" />
         <div class="btns">
@@ -464,6 +466,7 @@ export class ReactionQueue {
   }
 
   protected readonly autoText = autoPassText;
+  protected readonly rollingText = rollingText;
 
   protected singleUseLabel(row: QueueRow): string {
     const slot = this.slotOf(row);

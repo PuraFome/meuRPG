@@ -53,6 +53,9 @@
               <mat-icon aria-hidden="true">block</mat-icon>Indisponível: só uma manobra por ataque.
             }
             {{ p.reasonPt }}{{ p.reasonPt && p.notePt ? ' ' : '' }}{{ p.notePt }}
+            @if (p.maneuver) {
+              {{ maneuverCost(p) }}
+            }
           </span>
           @if (p.needsSlot && pickOf(p)) {
             <div class="slots" role="radiogroup" [attr.aria-label]="'Espaço de magia para ' + p.labelPt">
