@@ -63,10 +63,21 @@ async function addEffectRPC(t: EffectsTable, catalogKey: string, caster?: string
   expect(res.ok(), await res.text()).toBeTruthy();
 }
 
-/** The page does not scroll sideways: nothing is wider than the screen. */
+/** The page does not scroll sideways: nothing is wider than the screen. Polled, like any layout read after a change. */
 async function expectNoSideScroll(page: Page): Promise<void> {
-  const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(wide).toBeLessThanOrEqual(0);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(0);
+}
+
+/**
+ * Resizes the page and waits until the page itself has the new width. `setViewportSize` returns before the renderer has
+ * laid the page out at the new size: in CI (run 38160388327) the first frame after a 390 → 320 resize was still painted
+ * with the 390 px layout, and a bounding box read 12 to 42 ms later came from it.
+ */
+async function resizeTo(page: Page, width: number, height: number): Promise<void> {
+  await page.setViewportSize({ width, height });
+  await expect.poll(() => page.evaluate(() => document.documentElement.clientWidth)).toBe(width);
 }
 
 test(
@@ -104,7 +115,7 @@ test(
       await expectNoSideScroll(t.p);
 
       // At 320 px the cards stack and nothing scrolls sideways.
-      await t.p.setViewportSize({ width: 320, height: 568 });
+      await resizeTo(t.p, 320, 568);
       await expect(card).toBeVisible();
       await expectNoSideScroll(t.p);
     } finally {
@@ -150,7 +161,7 @@ test(
       await expect(sheet.getByRole('heading', { name: 'Fim do seu turno' })).toBeFocused();
 
       // At 320 px the three answers stack, full width, and nothing scrolls sideways.
-      await t.p.setViewportSize({ width: 320, height: 568 });
+      await resizeTo(t.p, 320, 568);
       const boxes = [await app.boundingBox(), await typed.boundingBox(), await hand.boundingBox()];
       expect(boxes.every((b) => b !== null && b.x >= 0 && b.x + b.width <= 320)).toBeTruthy();
       expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y);
