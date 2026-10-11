@@ -153,7 +153,7 @@ func TestLoadCombatEffectsRefuses(t *testing.T) {
 	// The rider of an instantaneous spell has its own clock on its target's turn.
 	for _, kind := range []string{EffectDurationUntilEndOfTurnOf, EffectDurationUntilStartOfTurnOf} {
 		rider := `"spell:vicious-mockery":{"applies":"failed_save","duration":{"kind":"` + kind + `"},"modifiers":[{"kind":"attack_disadvantage","once":true}]}`
-		if err := combatEffectsFixture().loadCombatEffects(fixtureFile(conds, rider, ``)); err != nil {
+		if err := combatEffectsFixture().loadCombatEffects(fixtureFile(conds, rider, `"effect:x":{"visibility":"public"}`)); err != nil {
 			t.Errorf("the rider of an instantaneous spell, %s: %v", kind, err)
 		}
 	}
