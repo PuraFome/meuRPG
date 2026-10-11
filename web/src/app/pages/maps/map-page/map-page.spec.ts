@@ -14,6 +14,7 @@ import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { CombatOnMap } from '../../../core/maps/combat-on-map';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { OpenSessionLookup } from '../../../core/play/open-session';
+import { MapLiveClient } from './map-live';
 import { MapPage } from './map-page';
 
 describe('MapPage, "Apagar mapa"', () => {
@@ -32,6 +33,7 @@ describe('MapPage, "Apagar mapa"', () => {
         { provide: CampaignsService, useValue: {} },
         { provide: CombatOnMap, useValue: {} },
         { provide: OpenSessionLookup, useValue: {} },
+        { provide: MapLiveClient, useValue: {} },
         { provide: Router, useValue: { navigate: vi.fn() } },
         {
           provide: ActivatedRoute,
