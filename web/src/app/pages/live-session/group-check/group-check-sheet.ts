@@ -25,6 +25,7 @@ import {
 } from '../../../core/combat/contest-client';
 import type { GroupCheckState } from '../../../core/combat/group-check-state';
 import { contestSteps, signed } from '../../../core/combat/contest-view';
+import { askedTest } from '../../../core/combat/contest-master';
 import { AttackSteps } from '../combat/attack-sheet/attack-steps';
 import { CheckRollForm } from '../combat/check-roll-form/check-roll-form';
 import { ContestRoll } from '../combat/contest-roll/contest-roll';
@@ -81,6 +82,20 @@ export class GroupCheckSheet {
   protected readonly check = computed(() => this.data.state.view());
   protected readonly own = this.data.state.own;
   protected readonly skill = computed(() => this.check()?.skillNamePt ?? '');
+  protected readonly heading = computed(() => {
+    const c = this.check();
+    if (c?.group) {
+      return 'Teste em grupo';
+    }
+    return c?.save ? 'Teste de resistência' : 'Teste';
+  });
+  /** "O mestre pediu um teste de Percepção de todo o grupo." or "O mestre pede um teste de resistência de Constituição.". */
+  protected readonly askLine = computed(() => {
+    const what = askedTest(this.skill());
+    return this.check()?.group
+      ? `O mestre pediu ${what} de todo o grupo.`
+      : `O mestre pede ${what}.`;
+  });
   protected readonly roll = computed(() => this.own()?.roll);
   protected readonly stage = computed<'roll' | 'result'>(() =>
     this.check()?.youRoll && !this.own()?.answered ? 'roll' : 'result',

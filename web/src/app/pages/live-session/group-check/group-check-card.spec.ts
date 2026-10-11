@@ -60,6 +60,32 @@ describe('GroupCheckCard', () => {
     expect(api.calls.filter((c) => c === 'groupCheck')).toHaveLength(2);
   });
 
+  it('words a saving throw asked of this player alone, with no group', async () => {
+    const { el, settle } = setup(
+      groupCheck({
+        group: false,
+        save: true,
+        skillKey: 'save:con',
+        skillNamePt: 'Teste de resistência de Constituição',
+        youRoll: true,
+        members: [member()],
+      }),
+    );
+    await settle();
+    expect(textOf(el)).toContain(
+      'Teste de resistência. O mestre pede um teste de resistência de Constituição.',
+    );
+    expect(textOf(el)).not.toContain('todo o grupo');
+  });
+
+  it('words a skill asked of this player alone', async () => {
+    const { el, settle } = setup(
+      groupCheck({ group: false, skillNamePt: 'Percepção', youRoll: true, members: [member()] }),
+    );
+    await settle();
+    expect(textOf(el)).toContain('Teste. O mestre pede um teste de Percepção.');
+  });
+
   it('brings the sheet back with "Rolar o teste"', async () => {
     const { el, settle } = setup();
     await settle();

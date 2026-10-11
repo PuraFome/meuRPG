@@ -38,6 +38,12 @@ const openCheck = () =>
     ],
   });
 
+const PEOPLE = [
+  { id: 'b', name: 'Brisa', sub: 'de Bia' },
+  { id: 't', name: 'Toren', sub: 'de Caio' },
+  { id: 'r', name: 'Ragna', sub: 'de Rui' },
+];
+
 function setup(view: ReturnType<typeof groupCheck> | null = null) {
   const api = new FakeContestClient();
   api.group = view;
@@ -48,6 +54,7 @@ function setup(view: ReturnType<typeof groupCheck> | null = null) {
   ref.setInput('tick', 0);
   ref.setInput('diceMode', DiceMode.PLAYERS_CHOOSE);
   ref.setInput('preference', DicePreference.APP);
+  ref.setInput('people', PEOPLE);
   fixture.detectChanges();
   const el = fixture.nativeElement as HTMLElement;
   const settle = async () => {
@@ -75,15 +82,77 @@ describe('GroupCheckMaster, the master asks the party for a check', () => {
       const { el, settle } = setup();
       await settle();
       const text = textOf(el);
-      expect(text).toContain('Teste em grupo');
-      expect(text).toContain(
-        'Todos os personagens rolam o mesmo teste; o grupo passa se ao menos metade passar.',
-      );
+      expect(text).toContain('Pedir um teste');
+      expect(text).toContain('Quem rola');
       expect(text).toContain('CD (1 a 40; vazio: sem CD)');
       expect(text).toContain('Mostrar a CD aos jogadores');
       expect(Array.from(el.querySelectorAll('option')).map((o) => o.textContent?.trim())).toContain(
         'Furtividade',
       );
+    });
+
+    it('groups the tests: Perícias, Habilidades and Testes de resistência', async () => {
+      const { el, settle } = setup();
+      await settle();
+      const groups = Array.from(el.querySelectorAll('optgroup'));
+      expect(groups.map((g) => g.label)).toEqual([
+        'Perícias',
+        'Habilidades',
+        'Testes de resistência',
+      ]);
+      const saves = Array.from(groups[2].querySelectorAll('option')).map((o) =>
+        o.textContent?.trim(),
+      );
+      expect(saves).toContain('Teste de resistência de Constituição');
+      expect(saves).toHaveLength(6);
+    });
+
+    it('asks everyone as a group check by default', async () => {
+      const { api, settle, button } = setup();
+      await settle();
+      button('Pedir o teste')!.click();
+      await settle();
+      expect(api.groupRequests[0].request).toMatchObject({
+        skillKey: 'skill:acrobatics',
+        characterIds: [],
+        group: true,
+      });
+    });
+
+    it('asks one ticked character for a saving throw, with no group verdict, and hides the group box', async () => {
+      const { api, el, fixture, settle, button } = setup();
+      await settle();
+      expect(textOf(el)).toContain('Teste em grupo (passa se ao menos metade passar)');
+      const boxes = Array.from(
+        el.querySelectorAll<HTMLInputElement>('fieldset input[type="checkbox"]'),
+      );
+      boxes[2].click(); // Toren
+      fixture.detectChanges();
+      expect(textOf(el)).not.toContain('Teste em grupo (passa se ao menos metade passar)');
+      const select = el.querySelector<HTMLSelectElement>('select')!;
+      select.value = 'save:con';
+      select.dispatchEvent(new Event('change'));
+      button('Pedir o teste')!.click();
+      await settle();
+      expect(api.groupRequests[0].request).toMatchObject({
+        skillKey: 'save:con',
+        characterIds: ['t'],
+        group: false,
+      });
+    });
+
+    it('keeps the group box for a ticked subset of two or more, and "Todos" clears the ticks', async () => {
+      const { api, el, fixture, settle, button } = setup();
+      await settle();
+      const boxes = () =>
+        Array.from(el.querySelectorAll<HTMLInputElement>('fieldset input[type="checkbox"]'));
+      boxes()[1].click();
+      boxes()[3].click();
+      fixture.detectChanges();
+      expect(textOf(el)).toContain('Teste em grupo (passa se ao menos metade passar)');
+      button('Pedir o teste')!.click();
+      await settle();
+      expect(api.groupRequests[0].request).toMatchObject({ characterIds: ['b', 'r'], group: true });
     });
 
     it('asks with the skill, the DC and show_dc, once', async () => {
@@ -93,7 +162,11 @@ describe('GroupCheckMaster, the master asks the party for a check', () => {
       select.value = 'skill:stealth';
       select.dispatchEvent(new Event('change'));
       type('input[type="text"]', '13');
-      el.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+      // "Mostrar a CD" by its words: the first boxes are now "Quem rola".
+      [...el.querySelectorAll('label')]
+        .find((l) => l.textContent?.includes('Mostrar a CD aos jogadores'))!
+        .querySelector('input')!
+        .click();
       fixture.detectChanges();
       api.group = openCheck();
       button('Pedir o teste')!.click();
@@ -103,6 +176,8 @@ describe('GroupCheckMaster, the master asks the party for a check', () => {
         skillKey: 'skill:stealth',
         dc: 13,
         showDc: true,
+        characterIds: [],
+        group: true,
       });
       expect(api.groupRequests[0].key).toEqual(expect.any(String));
       expect(textOf(el)).toContain('Teste em grupo pedido: Furtividade.');

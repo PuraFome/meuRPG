@@ -190,14 +190,15 @@ test('o teste em grupo é encerrado pelo mestre sem mostrar a CD, e a surpresa m
     await ask.getByRole('button', { name: 'Pedir o teste' }).click();
     // The sheet opens by itself on the player's screen.
     const sheet = p.getByRole('dialog');
-    await expect(sheet).toContainText('O mestre pediu um teste de Furtividade de todo o grupo.');
+    // A party of one: "Todos" is one character, so it is a check of its own (a group needs two or more).
+    await expect(sheet).toContainText('O mestre pede um teste de Furtividade.');
     await typeD20(sheet, 15);
     await expect(sheet.getByText(/Esperando o mestre/)).toBeVisible();
     await expect(sheet).not.toContainText(/CD/);
 
     const open = m.getByTestId('group-open');
     await expect(open).toContainText('1 de 1');
-    await expect(open).toContainText('Veredito do grupo (só o mestre)');
+    await expect(open).not.toContainText('Veredito do grupo');
     await open.getByRole('button', { name: 'Encerrar o teste' }).click();
     await expect(sheet.getByText('O mestre encerrou o teste.')).toBeVisible();
     await expect(p.locator('body')).not.toContainText(/CD 13|CD: 13/);

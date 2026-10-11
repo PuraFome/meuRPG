@@ -289,6 +289,7 @@ type GroupCheck struct {
 	Passed        *bool
 	CreatedAt     time.Time
 	ClosedAt      *time.Time
+	IsGroup       bool
 }
 
 type GroupCheckMember struct {

@@ -157,12 +157,19 @@ service ContestService {
     option idempotency_level = IDEMPOTENT;
   }
 
-  // RequestGroupCheck asks every living player character for a check (SRD 5.1,
-  // "Working Together": the group passes when at least half of them pass). Only the
-  // master; one group check is open at a time.
+  // RequestGroupCheck asks living player characters for a check or a saving throw, at
+  // any moment out of combat (SRD 5.1, "Ability Checks", "Saving Throws"). With no
+  // `character_ids` it asks every living player character, and with `group` (the
+  // default for that case) the group passes when at least half of them pass (SRD 5.1,
+  // "Working Together", Group Checks). With `character_ids` it asks only those
+  // characters, and each roll stands alone. Only the master; one request is open at a
+  // time; only the characters asked read it or may roll it (RN-10, RN-20).
   //
   // Errors:
-  //   - `invalid_argument`: skill_key is not a skill or an ability check.
+  //   - `invalid_argument`: skill_key is not a skill, an ability check or a saving throw;
+  //     a character_id is not a living player character of the campaign (an NPC, a dead
+  //     or an unknown one); a repeated character_id; `group` true with only one
+  //     character asked.
   //   - `failed_precondition` (ContestBlocked): GROUP_CHECK_OPEN.
   rpc RequestGroupCheck(RequestGroupCheckRequest) returns (RequestGroupCheckResponse);
 
@@ -454,13 +461,22 @@ message GetGroupCheckResponse {
 message RequestGroupCheckRequest {
   string campaign_id = 1;
   string idempotency_key = 2;
-  // "skill:stealth", "skill:perception"... or an ability check, "ability:str".
+  // "skill:stealth", "skill:perception"... an ability check, "ability:str", or a saving
+  // throw, "save:con" (str, dex, con, int, wis, cha).
   string skill_key = 3;
   // The master's DC, 1 to 40; 0 for none.
   int32 dc = 4;
   // True lets the players read passed and failed (their own roll and, once the check
   // closes, the group's verdict); the DC itself stays the master's.
   bool show_dc = 5;
+  // The characters asked. Empty asks every living player character (the request as it
+  // was before this field).
+  repeated string character_ids = 6;
+  // True makes it a group check: the group's verdict is "pelo menos metade passou"
+  // (SRD 5.1, "Working Together") and needs a DC to be known. False judges each roll alone,
+  // with no group verdict. Unset: true when no character_ids, false when some are named.
+  // True with only one character asked is `invalid_argument`.
+  optional bool group = 7;
 }
 
 // RequestGroupCheckResponse returns the group check.

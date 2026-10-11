@@ -185,12 +185,26 @@ export const REFUSAL_MAX = 120;
 /** The line under the group check's title: "4 de 5 responderam. O grupo passa se ao menos metade dos convocados passar.". */
 export function groupProgress(g: GroupCheckView): string {
   const answered = g.members.filter((m) => m.answered).length;
-  return `${answered} de ${g.members.length} responderam. O grupo passa se ao menos metade dos convocados passar.`;
+  const base = `${answered} de ${g.members.length} responderam.`;
+  return g.group ? `${base} O grupo passa se ao menos metade dos convocados passar.` : base;
 }
 
-/** The title of the card: "Teste em grupo: Furtividade, CD 13" (no DC: no ", CD"). */
+/**
+ * The title of the card: "Teste em grupo: Furtividade, CD 13" (no DC: no ", CD"). A request judged one by one is
+ * "Teste pedido: Furtividade, CD 13": it is not a group check.
+ */
 export function groupTitle(g: GroupCheckView): string {
-  return `Teste em grupo: ${g.skillNamePt}${g.dc > 0 ? `, CD ${g.dc}` : ''}`;
+  return `${g.group ? 'Teste em grupo' : 'Teste pedido'}: ${g.skillNamePt}${g.dc > 0 ? `, CD ${g.dc}` : ''}`;
+}
+
+/**
+ * What the master asked, as a noun phrase for a sentence: "um teste de Percepção", "um teste de Força", "um teste de
+ * resistência de Constituição" (the server names a check "Teste de Força" and a saving throw "Teste de resistência de ...").
+ */
+export function askedTest(skillNamePt: string): string {
+  return skillNamePt.startsWith('Teste de ')
+    ? `um t${skillNamePt.slice(1)}`
+    : `um teste de ${skillNamePt}`;
 }
 
 /** The verdict only the master reads: "2 de 5 passaram; precisa de 3. O grupo falhou.". */

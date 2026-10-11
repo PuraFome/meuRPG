@@ -303,6 +303,7 @@
               [tick]="groupCheckTick()"
               [diceMode]="campaign()?.diceMode ?? 1"
               [preference]="campaign()?.dicePreference ?? 1"
+              [people]="viewAsPeople()"
             />
             <!-- The master's open puzzle (MR-038, E10-06): the board needs the main column; the list stays in the rail. -->
             <app-master-live class="board__live" [campaignId]="campaignId()" [state]="puzzles" />
