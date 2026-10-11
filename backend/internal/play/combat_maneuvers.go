@@ -46,7 +46,7 @@ func markMeleeHit(ctx context.Context, c *combatTx, attacker playdb.Combatant, a
 
 // grappleManeuverRefusal says why a maneuver cannot start a grapple now, nil when it can:
 // no bonus action, no melee hit this turn, no use. The master is not held to the economy.
-func (s *Service) grappleManeuverRefusal(c *combatTx, who playdb.Combatant, m link.Maneuver, usesLeft int32, master bool) error {
+func (s *Service) grappleManeuverRefusal(c *combatTx, who playdb.Combatant, usesLeft int32, master bool) error {
 	switch {
 	case who.BonusActionUsed && !master:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
@@ -72,7 +72,7 @@ func (s *Service) useGrappleManeuver(ctx context.Context, c *combatTx, campaignI
 	if err != nil {
 		return link.Maneuver{}, err
 	}
-	if err := s.grappleManeuverRefusal(c, who, m, usesLeftOf(vit)[m.Resource], master); err != nil {
+	if err := s.grappleManeuverRefusal(c, who, usesLeftOf(vit)[m.Resource], master); err != nil {
 		return link.Maneuver{}, err
 	}
 	if _, err := s.spendResource(ctx, c, who.CharacterID, m.Resource, 1); err != nil {
