@@ -365,9 +365,9 @@ func TestMR010_ADungeonBecomesAMap(t *testing.T) {
 		t.Errorf("answer = seed %d, %d rooms; want %d and %d", res.GetSeed(), res.GetRoomCount(), seed, len(want.Rooms))
 	}
 
-	// The map: hidden, grid = the dungeon's width, rows to match, fog on, base light bright.
+	// The map: hidden, grid = the dungeon's width, rows to match, fog on, base light dim (Penumbra).
 	if created.GetName() != "Masmorra de Vesna" || created.GetRevealed() || created.GetGridColumns() != 41 || created.GetGridRows() != 31 ||
-		!created.GetFogEnabled() || created.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT || created.GetGroupVision() {
+		!created.GetFogEnabled() || created.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_DIM || created.GetGroupVision() {
 		t.Errorf("map = %v", created)
 	}
 	g := grid.Grid{Columns: 41, Rows: 31}
@@ -847,7 +847,7 @@ func TestMR010_RedrawShowsTheMastersEditsAndKeepsTheLayers(t *testing.T) {
 	if after.GetImage().GetId() == oldImage || after.GetImage().GetWidth() != 41*p || after.GetImage().GetHeight() != 31*p || after.GetRevision() != oldRevision+1 {
 		t.Errorf("redrawn map = image %s (was %s), %d x %d, revision %d (was %d)", after.GetImage().GetId(), oldImage, after.GetImage().GetWidth(), after.GetImage().GetHeight(), after.GetRevision(), oldRevision)
 	}
-	if !after.GetFogEnabled() || after.GetRevealed() != true || after.GetGridColumns() != 41 || after.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT {
+	if !after.GetFogEnabled() || after.GetRevealed() != true || after.GetGridColumns() != 41 || after.GetBaseLight() != mapsv1.LightLevel_LIGHT_LEVEL_DIM {
 		t.Errorf("the map's settings changed: %v", after)
 	}
 
