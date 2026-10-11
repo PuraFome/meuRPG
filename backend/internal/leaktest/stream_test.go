@@ -283,6 +283,9 @@ func (w *world) streamScript() {
 	next := must(m.contests.RequestGroupCheck(ctx, rq(&playv1.RequestGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), SkillKey: "skill:stealth", Dc: groupCheckDC, ShowDc: true}))).GetGroupCheck()
 	must(w.caio.contests.RollGroupCheck(ctx, rq(&playv1.RollGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), GroupCheckId: next.GetId(), Roll: appRoll()})))
 
+	// -- the nudge: the master calls Ana's character; only Ana's stream hears it, an event with no content
+	must(m.play.NudgePlayer(ctx, rq(&playv1.NudgePlayerRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()})))
+
 	// -- images: the master shows another image, and takes one back from the players
 	must(m.play.SetShownImage(ctx, rq(&playv1.SetShownImageRequest{CampaignId: w.campaign, ImageId: w.imgLeft})))
 	must(m.play.TakeBackLeftImage(ctx, rq(&playv1.TakeBackLeftImageRequest{CampaignId: w.campaign, ImageId: w.imgLeft})))

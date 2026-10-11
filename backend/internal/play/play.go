@@ -520,6 +520,8 @@ type Service struct {
 	// server instance only (docs/operations.md).
 	hub  *live.Hub
 	live LiveConfig
+	// nudges remembers when each character was last nudged (nudge.go), in memory.
+	nudges nudgeBook
 }
 
 // namerFor is the Portuguese name of a content key the combat shows, bound to one

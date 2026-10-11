@@ -34,6 +34,7 @@ import {
   shieldEndedForMaster,
   shieldLabelForMaster,
 } from '../../../../core/combat/combat-effects';
+import { NudgeButton } from '../../nudge-button/nudge-button';
 import { tieNumbers } from '../../../../core/format/text';
 import { joinDots } from '../../../../core/format/text';
 import { conditionTags } from '../../../../core/combat/conditions';
@@ -85,6 +86,7 @@ function concentrationOf(c: Combatant): string {
 @Component({
   selector: 'app-order-list',
   imports: [
+    NudgeButton,
     BeastPool,
     ConcPill,
     EndAidQuestion,
@@ -107,6 +109,8 @@ function concentrationOf(c: Combatant): string {
 })
 export class OrderList {
   readonly encounter = input.required<Encounter>();
+  /** The campaign, for "Chamar a atenção" on a player's row (the master's nudge). */
+  readonly campaignId = input('');
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
   /** Whether "Dano/Cura" can open for this character (a living player). */
   readonly adjustable = input<ReadonlySet<string>>(new Set());

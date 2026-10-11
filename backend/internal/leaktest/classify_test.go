@@ -220,6 +220,7 @@ var notReads = map[string]classified{
 	playv1connect.EncounterServiceClearBattleEncounterProcedure:                 {masterWrite, masterOnlyWhy},
 	playv1connect.EncounterServiceSaveBattleEncounterProcedure:                  {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceAdjustCharacterVitalsProcedure:                     {masterWrite, masterOnlyWhy},
+	playv1connect.PlayServiceNudgePlayerProcedure:                               {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceApplyTrapDamageProcedure:                           {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceAssumeWildShapeProcedure:                           {playerAction, "a player turns their own druid into a beast"},
 	playv1connect.PlayServiceCastSummonProcedure:                                {playerAction, "a player summons for their own character"},

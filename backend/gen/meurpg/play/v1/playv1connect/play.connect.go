@@ -67,6 +67,8 @@ const (
 	// PlayServiceAdjustCharacterVitalsProcedure is the fully-qualified name of the PlayService's
 	// AdjustCharacterVitals RPC.
 	PlayServiceAdjustCharacterVitalsProcedure = "/meurpg.play.v1.PlayService/AdjustCharacterVitals"
+	// PlayServiceNudgePlayerProcedure is the fully-qualified name of the PlayService's NudgePlayer RPC.
+	PlayServiceNudgePlayerProcedure = "/meurpg.play.v1.PlayService/NudgePlayer"
 	// PlayServiceSetCurrentMapProcedure is the fully-qualified name of the PlayService's SetCurrentMap
 	// RPC.
 	PlayServiceSetCurrentMapProcedure = "/meurpg.play.v1.PlayService/SetCurrentMap"
@@ -370,6 +372,28 @@ type PlayServiceClient interface {
 	//     outside 0 to its maximum. The message names the field, such as
 	//     `spell_slots_used[0].used`.
 	AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error)
+	// NudgePlayer is the master's "Chamar a atenção": it makes the player of one
+	// character feel an alert on their own screen (vibration, a chime, a shake
+	// and, in a hidden tab, "● Sua vez" in the title, as when the turn comes to
+	// them) and read "O mestre está chamando você.". Only the campaign's master
+	// may call it, and only while the campaign has an open session. The
+	// character must be a living player character of the campaign with a player.
+	//
+	// It is ephemeral: it writes nothing (no session event, no log line) and
+	// only the `calling_you` event goes, to that player's streams alone. A
+	// player that is not connected simply misses it. At most one nudge per
+	// character every 10 seconds, kept in the server's memory.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a member
+	//     of it, or the character is not a living player character of the
+	//     campaign with a player (an NPC, a dead character, one waiting for
+	//     approval, one whose player left).
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	//   - `resource_exhausted`: the character was nudged in the last 10 seconds.
+	NudgePlayer(context.Context, *connect.Request[v1.NudgePlayerRequest]) (*connect.Response[v1.NudgePlayerResponse], error)
 	// SetCurrentMap chooses the map the session shows at the table, or clears
 	// it. Only the campaign's master may call it, and only while the campaign
 	// has an open session. The map must be one of the campaign's
@@ -853,6 +877,12 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("AdjustCharacterVitals")),
 			connect.WithClientOptions(opts...),
 		),
+		nudgePlayer: connect.NewClient[v1.NudgePlayerRequest, v1.NudgePlayerResponse](
+			httpClient,
+			baseURL+PlayServiceNudgePlayerProcedure,
+			connect.WithSchema(playServiceMethods.ByName("NudgePlayer")),
+			connect.WithClientOptions(opts...),
+		),
 		setCurrentMap: connect.NewClient[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse](
 			httpClient,
 			baseURL+PlayServiceSetCurrentMapProcedure,
@@ -1008,6 +1038,7 @@ type playServiceClient struct {
 	getLiveSession        *connect.Client[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse]
 	watchGameSession      *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
 	adjustCharacterVitals *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
+	nudgePlayer           *connect.Client[v1.NudgePlayerRequest, v1.NudgePlayerResponse]
 	setCurrentMap         *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
 	setShownImage         *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
 	listLeftImages        *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
@@ -1071,6 +1102,11 @@ func (c *playServiceClient) WatchGameSession(ctx context.Context, req *connect.R
 // AdjustCharacterVitals calls meurpg.play.v1.PlayService.AdjustCharacterVitals.
 func (c *playServiceClient) AdjustCharacterVitals(ctx context.Context, req *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error) {
 	return c.adjustCharacterVitals.CallUnary(ctx, req)
+}
+
+// NudgePlayer calls meurpg.play.v1.PlayService.NudgePlayer.
+func (c *playServiceClient) NudgePlayer(ctx context.Context, req *connect.Request[v1.NudgePlayerRequest]) (*connect.Response[v1.NudgePlayerResponse], error) {
+	return c.nudgePlayer.CallUnary(ctx, req)
 }
 
 // SetCurrentMap calls meurpg.play.v1.PlayService.SetCurrentMap.
@@ -1426,6 +1462,28 @@ type PlayServiceHandler interface {
 	//     outside 0 to its maximum. The message names the field, such as
 	//     `spell_slots_used[0].used`.
 	AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error)
+	// NudgePlayer is the master's "Chamar a atenção": it makes the player of one
+	// character feel an alert on their own screen (vibration, a chime, a shake
+	// and, in a hidden tab, "● Sua vez" in the title, as when the turn comes to
+	// them) and read "O mestre está chamando você.". Only the campaign's master
+	// may call it, and only while the campaign has an open session. The
+	// character must be a living player character of the campaign with a player.
+	//
+	// It is ephemeral: it writes nothing (no session event, no log line) and
+	// only the `calling_you` event goes, to that player's streams alone. A
+	// player that is not connected simply misses it. At most one nudge per
+	// character every 10 seconds, kept in the server's memory.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a member
+	//     of it, or the character is not a living player character of the
+	//     campaign with a player (an NPC, a dead character, one waiting for
+	//     approval, one whose player left).
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	//   - `resource_exhausted`: the character was nudged in the last 10 seconds.
+	NudgePlayer(context.Context, *connect.Request[v1.NudgePlayerRequest]) (*connect.Response[v1.NudgePlayerResponse], error)
 	// SetCurrentMap chooses the map the session shows at the table, or clears
 	// it. Only the campaign's master may call it, and only while the campaign
 	// has an open session. The map must be one of the campaign's
@@ -1905,6 +1963,12 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("AdjustCharacterVitals")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceNudgePlayerHandler := connect.NewUnaryHandler(
+		PlayServiceNudgePlayerProcedure,
+		svc.NudgePlayer,
+		connect.WithSchema(playServiceMethods.ByName("NudgePlayer")),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceSetCurrentMapHandler := connect.NewUnaryHandler(
 		PlayServiceSetCurrentMapProcedure,
 		svc.SetCurrentMap,
@@ -2065,6 +2129,8 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceWatchGameSessionHandler.ServeHTTP(w, r)
 		case PlayServiceAdjustCharacterVitalsProcedure:
 			playServiceAdjustCharacterVitalsHandler.ServeHTTP(w, r)
+		case PlayServiceNudgePlayerProcedure:
+			playServiceNudgePlayerHandler.ServeHTTP(w, r)
 		case PlayServiceSetCurrentMapProcedure:
 			playServiceSetCurrentMapHandler.ServeHTTP(w, r)
 		case PlayServiceSetShownImageProcedure:
@@ -2150,6 +2216,10 @@ func (UnimplementedPlayServiceHandler) WatchGameSession(context.Context, *connec
 
 func (UnimplementedPlayServiceHandler) AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.AdjustCharacterVitals is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) NudgePlayer(context.Context, *connect.Request[v1.NudgePlayerRequest]) (*connect.Response[v1.NudgePlayerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.NudgePlayer is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) SetCurrentMap(context.Context, *connect.Request[v1.SetCurrentMapRequest]) (*connect.Response[v1.SetCurrentMapResponse], error) {

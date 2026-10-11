@@ -288,6 +288,15 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['characterChanged', 'characterChanged', 'characterRevived']);
   });
 
+  it('maps `calling_you` to its own event, with no content (RN-10)', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, { event: { case: 'ready', value: {} } }),
+        create(WatchGameSessionResponseSchema, { event: { case: 'callingYou', value: {} } }),
+      ]),
+    ).toEqual(['ready', 'callingYou']);
+  });
+
   it('maps `revivify_changed` to its own event, with no content (RN-10)', async () => {
     expect(
       await events([

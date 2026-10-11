@@ -1,6 +1,6 @@
 import { DOCUMENT, DestroyRef, Injectable, InjectionToken, inject, signal } from '@angular/core';
 
-import { PageTitle } from '../title/page-title';
+import { CALLING_ALERT_TITLE, PageTitle, TURN_ALERT_TITLE } from '../title/page-title';
 
 /**
  * The turn alert (the master's request after the first session, "something like the old MSN nudge"): when the turn
@@ -154,6 +154,17 @@ export class TurnAlert {
     this.pageTitle.setTurnAlert(false);
   }
 
+  /**
+   * The master's "Chamar a atenção" reached this player: the same alert as a turn that comes, whoever's turn it is (the
+   * player may be looking at another tab, or have the phone in a pocket). The caller shows the line that says who is
+   * calling; the stream event carries nothing else (RN-10). `by` is only the master for now.
+   */
+  nudge(by: 'master'): void {
+    void by;
+    // Not "Sua vez": it may not be the player's turn at all.
+    this.alert(CALLING_ALERT_TITLE);
+  }
+
   setEnabled(on: boolean): void {
     this.enabled.set(on);
     if (on) {
@@ -161,18 +172,18 @@ export class TurnAlert {
     }
   }
 
-  private alert(): void {
+  private alert(title = TURN_ALERT_TITLE): void {
     if (this.enabled()) {
       this.vibrate();
       this.chime();
     }
-    this.nudge();
+    this.shake();
     if (this.env.hidden()) {
-      this.pageTitle.setTurnAlert(true);
+      this.pageTitle.setTurnAlert(true, title);
     }
   }
 
-  private nudge(): void {
+  private shake(): void {
     clearTimeout(this.timer);
     const still = this.env.reducedMotion();
     this.shaking.set(!still);

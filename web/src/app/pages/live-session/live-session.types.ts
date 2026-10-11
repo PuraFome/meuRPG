@@ -203,7 +203,9 @@ export type LiveEventVm =
   /** `character_revived`: a dead character lives again; read it again, and the vitals. */
   | { readonly kind: 'characterRevived'; readonly characterId: string }
   /** `revivify_changed`: a Revivify cast outside a combat was asked or answered; the master reads the casts again. */
-  | { readonly kind: 'revivifyChanged' };
+  | { readonly kind: 'revivifyChanged' }
+  /** `calling_you`: the master nudged this player ("Chamar a atenção"). Carries nothing; the page alerts and shows the line. */
+  | { readonly kind: 'callingYou' };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

@@ -19,15 +19,18 @@
                 <span class="member__sub">{{ line }}</span>
               }
             </div>
-            <button
-              mat-stroked-button
-              type="button"
-              class="js-adjust"
-              [attr.aria-label]="'Ajustar ' + v.name"
-              (click)="adjust.emit(v)"
-            >
-              Ajustar
-            </button>
+            <div class="member__buttons">
+              <app-nudge-button [campaignId]="campaignId()" [characterId]="v.characterId" [name]="v.name" />
+              <button
+                mat-stroked-button
+                type="button"
+                class="js-adjust"
+                [attr.aria-label]="'Ajustar ' + v.name"
+                (click)="adjust.emit(v)"
+              >
+                Ajustar
+              </button>
+            </div>
           </div>
 
           <div class="member__hp">

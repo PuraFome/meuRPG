@@ -120,8 +120,15 @@ func searchWithEverySkill(t *testing.T, withTrap bool) searchRun {
 		t.Fatal("Caio's stream did not end with the session")
 	}
 	for _, ev := range watcher.events {
-		if eventCase(ev) == "heartbeat" {
+		switch eventCase(ev) {
+		case "heartbeat":
 			continue // a timer, not a hint about the searches
+		case "content_changed":
+			// The fixture's own table content writes: the hint is throttled (one every
+			// 250 ms, the rest merged and sent when the interval ends), so under load it
+			// can land after the stream opens in one run and before it in the other. A
+			// search never changes the table's content, so this hint says nothing about it.
+			continue
 		}
 		run.stream[eventCase(ev)]++
 	}

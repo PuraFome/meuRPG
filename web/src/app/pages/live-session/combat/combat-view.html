@@ -597,6 +597,7 @@
   @if (encounter(); as e) {
     <app-order-list
       [encounter]="e"
+      [campaignId]="campaignId()"
       [info]="info()"
       [adjustable]="adjustable()"
       [busy]="busy()"
