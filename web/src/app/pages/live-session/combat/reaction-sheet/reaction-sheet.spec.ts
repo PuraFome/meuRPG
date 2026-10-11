@@ -667,12 +667,14 @@ describe('ReactionSheet', () => {
     });
 
     it('asks about the Bardic Inspiration die before the result, and the answer settles the save', async () => {
+      // The server keeps the window open while the question waits, so the answer still carries it.
+      const held = save();
       api.resolveConcentrationSave.mockResolvedValue({
-        encounter: encounter(),
+        encounter: encounter({ reactionWindows: [held] } as never),
         result: undefined,
         offer: inspirationOffer(7, 2),
       });
-      const { fixture, el } = setup(save());
+      const { fixture, el } = setup(held);
       button(el, 'Rolar no app').click();
       await flush(fixture);
       expect(plain(el.textContent)).toContain('Usar a Inspiração de Bardo (d8)?');
