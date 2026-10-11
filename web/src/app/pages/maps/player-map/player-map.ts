@@ -75,6 +75,8 @@ export class PlayerMap {
   readonly maps = input<readonly MapMessage[]>([]);
   /** Opened from the session page: the back link says so. */
   readonly fromSession = input(false);
+  /** Goes up when the live stream says what the player sees may have changed: the fog is read again. */
+  readonly visionTick = input(0);
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly view = viewChild(MapView);
@@ -115,6 +117,13 @@ export class PlayerMap {
     effect(() => {
       const id = this.fogOn() ? (this.map()?.id ?? null) : null;
       untracked(() => void this.fog.open(id));
+    });
+    // The live stream's news (a token moved, a door opened): the vision of a fog map is read again, not on the first run.
+    effect(() => {
+      const tick = this.visionTick();
+      if (tick > 0 && untracked(() => this.fogOn())) {
+        untracked(() => void this.fog.refresh());
+      }
     });
   }
 
