@@ -570,9 +570,11 @@ type actionEvent struct {
 	// The damage by parts (combat_parts.go): what each part rolled, the once-per-turn
 	// marks of the attacker before the roll (an undo puts them back) and the steps
 	// that resistance took the damage through.
-	Parts      []partRoll  `json:"parts,omitempty"`
-	OnceBefore *onceMarks  `json:"once_before,omitempty"`
-	Steps      []stepGroup `json:"steps,omitempty"`
+	Parts []partRoll `json:"parts,omitempty"`
+	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
+	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
+	OnceBefore    *onceMarks  `json:"once_before,omitempty"`
+	Steps         []stepGroup `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`
@@ -586,6 +588,8 @@ type actionEvent struct {
 	StateStarted bool   `json:"state_started,omitempty"`
 	StateReason  string `json:"state_reason,omitempty"`
 	StateID      string `json:"state_id,omitempty"`
+	// Rider is an answered monk rider (hit_rider).
+	Rider *riderEvent `json:"rider,omitempty"`
 
 	// HidBefore is the hiding an attack or a cast ended, which its undo gives back
 	// (combat_hide.go).

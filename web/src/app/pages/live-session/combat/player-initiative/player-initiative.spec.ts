@@ -1,0 +1,89 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { CombatantKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { PlayerInitiative } from './player-initiative';
+
+const salvia = combatant({
+  id: 's',
+  label: 'Sálvia',
+  kind: CombatantKind.PLAYER,
+  mine: true,
+  controlledByMe: true,
+  initiative: 14,
+});
+const creature = (id: string, over = {}) =>
+  combatant({
+    id,
+    label: `Lobo atroz ${id}`,
+    kind: CombatantKind.CREATURE,
+    controlledByMe: true,
+    ownerCharacterId: 'char-s',
+    monsterNamePt: 'Lobo atroz',
+    initiativeBonus: 2,
+    ...over,
+  });
+
+describe('PlayerInitiative: the player creatures', () => {
+  let fixture: ComponentFixture<PlayerInitiative>;
+  const rolled: string[] = [];
+  const typed: { id: string; face: number }[] = [];
+
+  function setup(combatants: ReturnType<typeof combatant>[]): HTMLElement {
+    rolled.length = 0;
+    typed.length = 0;
+    fixture = TestBed.createComponent(PlayerInitiative);
+    fixture.componentRef.setInput('encounter', encounter({ combatants }));
+    fixture.componentRef.setInput('diceMode', DiceMode.PLAYERS_CHOOSE);
+    fixture.componentRef.setInput('dicePreference', DicePreference.APP);
+    fixture.componentInstance.rollCreatureInApp.subscribe((id) => rolled.push(id));
+    fixture.componentInstance.typeCreatureFace.subscribe((t) => typed.push(t));
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function button(el: HTMLElement, text: string): HTMLButtonElement {
+    return Array.from(el.querySelectorAll('.creatures button')).find((b) =>
+      b.textContent?.includes(text),
+    ) as HTMLButtonElement;
+  }
+
+  it('offers a roll for a creature without initiative, with the creature id', () => {
+    const el = setup([salvia, creature('w1')]);
+    expect(el.querySelector('.creatures')?.textContent).toContain('Iniciativa de Lobo atroz w1');
+    button(el, 'Rolar no app').click();
+    expect(rolled).toEqual(['w1']);
+  });
+
+  it('submits a typed face for the creature', () => {
+    const el = setup([salvia, creature('w1')]);
+    button(el, 'Digitar o resultado').click();
+    fixture.detectChanges();
+    const input = el.querySelector('.creatures input') as HTMLInputElement;
+    input.value = '12';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    button(el, 'Confirmar').click();
+    expect(typed).toEqual([{ id: 'w1', face: 12 }]);
+  });
+
+  it('shows the done state for a creature that has rolled', () => {
+    const el = setup([salvia, creature('w1', { initiative: 15 })]);
+    expect(el.querySelector('.creatures')?.textContent).toContain('Iniciativa de Lobo atroz w1');
+    expect(el.querySelector('.creatures__total')?.textContent).toContain('15');
+    expect(button(el, 'Rolar no app')).toBeUndefined();
+  });
+
+  it('shows one row for the creatures of one casting', () => {
+    const el = setup([
+      salvia,
+      creature('w1', { summonGroupId: 'cast-1' }),
+      creature('w2', { summonGroupId: 'cast-1' }),
+    ]);
+    expect(el.querySelectorAll('.creatures__row').length).toBe(1);
+    expect(el.querySelector('.creatures')?.textContent).toContain('(2)');
+    button(el, 'Rolar no app').click();
+    expect(rolled).toEqual(['w1']);
+  });
+});

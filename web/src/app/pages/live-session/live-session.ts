@@ -701,6 +701,11 @@ export class LiveSession {
           if (mapId === this.currentMapId()) {
             void this.mapState.refresh();
             this.scheduleVision();
+            // In a combat the NPCs come with the combat, not with the map: a player whose sight changed (their own move, an
+            // ally's, a light, a door) may now see one the last read left out. Only the combat read carries it (RN-10).
+            if (!this.isMaster() && this.combat.encounter() && !this.inTheatre()) {
+              void this.loadCombat(generation);
+            }
           }
         },
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),

@@ -251,7 +251,7 @@ func (s *Service) factsOf(ctx context.Context, c *combatTx, w playdb.ReactionWin
 			f.Incapacitated = true // gone from the combat
 		} else {
 			f.ReactionUsed = r.ReactionUsed && w.Step == 1 // a second step comes after the reaction was spent
-			f.Incapacitated = r.Defeated || slices.ContainsFunc(r.Conditions, func(k string) bool { return slices.Contains(incapacitating, k) })
+			f.Incapacitated = r.Defeated || r.EffectNoReaction || slices.ContainsFunc(r.Conditions, func(k string) bool { return slices.Contains(incapacitating, k) })
 			if !f.Incapacitated && r.Kind == kindPlayer {
 				down, err := s.isDown(ctx, c.tx, c.session.CampaignID, r)
 				if err != nil {

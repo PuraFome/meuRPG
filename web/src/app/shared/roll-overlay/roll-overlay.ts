@@ -1,5 +1,13 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterRenderEffect,
+  inject,
+  viewChild,
+} from '@angular/core';
 
 import { type DieShape, RollAnimator, outcomeLine } from './roll-animator';
 
@@ -140,7 +148,7 @@ const TENS = 10;
   template: `
     <p class="sr" role="status" aria-live="polite">{{ animator.announcement() }}</p>
     @if (animator.current(); as r) {
-      <div class="scrim" aria-hidden="true" (click)="animator.dismiss()">
+      <div #scrim class="scrim" popover="manual" aria-hidden="true" (click)="animator.dismiss()">
         <div class="stage">
           <div class="dice" [attr.data-count]="animator.shapes().length">
             @for (d of animator.shapes(); track $index) {
@@ -216,10 +224,26 @@ export class RollOverlay {
   /** Where the host sits in the app shell, to put it back when full screen ends. */
   private home: { parent: Node; next: Node | null } | null = null;
 
+  /** The veil while a roll plays (none between rolls). */
+  private readonly scrim = viewChild<ElementRef<HTMLElement>>('scrim');
+
   constructor() {
     const destroyRef = inject(DestroyRef);
     destroyRef.onDestroy(this.animator.attach());
     destroyRef.onDestroy(() => this.restore());
+    // The app's dialogs and sheets are native popovers (the CDK's default), in the browser's top layer, which no
+    // z-index reaches: the veil joins the top layer too, after them, so the dice show above an open sheet (the scene
+    // roll's result, the attack sheet). A browser without popovers keeps the z-index above the CDK container.
+    afterRenderEffect(() => {
+      const el = this.scrim()?.nativeElement;
+      if (el && typeof el.showPopover === 'function' && !popoverOpen(el)) {
+        try {
+          el.showPopover();
+        } catch {
+          // Not connected yet, or already shown: the z-index still applies.
+        }
+      }
+    });
   }
 
   /**
@@ -258,5 +282,14 @@ export class RollOverlay {
       return String((n % TENS) * TENS).padStart(2, '0');
     }
     return String(d.part === 'units' ? n % TENS : n);
+  }
+}
+
+/** Whether the element is a popover on screen (`:popover-open`; a browser that does not know the selector says no). */
+function popoverOpen(el: HTMLElement): boolean {
+  try {
+    return el.matches(':popover-open');
+  } catch {
+    return false;
   }
 }

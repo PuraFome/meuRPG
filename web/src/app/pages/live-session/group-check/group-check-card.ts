@@ -15,8 +15,9 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { ContestClient } from '../../../core/combat/contest-client';
+import { askedTest } from '../../../core/combat/contest-master';
 import { GroupCheckState } from '../../../core/combat/group-check-state';
-import { openGroupCheckSheet } from './group-check-sheet';
+import { groupCheckHeading, openGroupCheckSheet } from './group-check-sheet';
 
 /**
  * The group check on the player's page (W7-X, board W7-Xc 10): when the master asks the whole party for a check, the sheet opens by
@@ -61,6 +62,10 @@ export class GroupCheckCard {
     const shown = !!this.own()?.passedKnown || c.verdictKnown;
     return shown && this.dismissed() !== c.id ? ('result' as const) : ('none' as const);
   });
+  /** "Teste em grupo" for a group check; "Teste" (or "Teste de resistência") for a request judged one by one. */
+  protected readonly heading = computed(() => groupCheckHeading(this.check()));
+  /** "um teste de resistência de Constituição", "um teste de Percepção". */
+  protected readonly asked = computed(() => askedTest(this.check()?.skillNamePt ?? ''));
   protected readonly line = computed(() => {
     const c = this.check();
     if (!c) {

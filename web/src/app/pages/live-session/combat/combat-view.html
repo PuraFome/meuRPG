@@ -213,6 +213,8 @@
           [error]="error()"
           (rollInApp)="own() && rollInApp(own()!.id)"
           (typeFace)="own() && submitFace(own()!.id, $event)"
+          (rollCreatureInApp)="rollInApp($event)"
+          (typeCreatureFace)="submitFace($event.id, $event.face)"
           (changeDice)="changeDice.emit()"
         />
       }
@@ -269,6 +271,12 @@
               [busy]="busy()"
               (back)="answerRage($event, false)"
               (letEnd)="answerRage($event, true)"
+            />
+            <app-hit-rider-card
+              [offers]="encounter()?.hitRiders ?? []"
+              [combatants]="encounter()?.combatants ?? []"
+              [busy]="busy()"
+              (answer)="answerRider($event)"
             />
           <div class="player" [class.player--mine]="(myTurn() && !!options()) || !!creatureTab()">
             <div class="player__turn">
@@ -526,6 +534,12 @@
       [busy]="busy()"
       (back)="answerRage($event, false)"
       (letEnd)="answerRage($event, true)"
+    />
+    <app-hit-rider-card
+      [offers]="e.hitRiders"
+      [combatants]="e.combatants"
+      [busy]="busy()"
+      (answer)="answerRider($event)"
     />
     <app-joint-card [encounter]="e" [info]="info()" [busy]="busy()" (endPart)="endPart($event)" />
     @if ((!laptop() || cardVisible() || theatre()) && masterCard(); as who) {

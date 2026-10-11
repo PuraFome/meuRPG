@@ -77,6 +77,26 @@ describe('DamageBreakdown for the player', () => {
     expect(plain()).toContain('Dano depois dos ajustes: 5');
   });
 
+  it('shows the rider of a maneuver only when the server sent it (the master)', () => {
+    const golpe = {
+      partKey: 'feature:golpe-da-garca@mesa',
+      labelPt: 'Golpe da Garça',
+      diceCount: 1,
+      diceSides: 8,
+      faces: [4],
+      flat: 0,
+      sum: 4,
+      counted: true,
+      rerolled: [],
+      riderPt: 'O alvo faz um teste de Sabedoria.',
+    };
+    const withRider = setup({ amount: 8, rolls: [...rolls, golpe] });
+    expect(withRider.plain()).toContain('Golpe da Garça 1d8 (4) = 4');
+    expect(withRider.plain()).toContain('O alvo faz um teste de Sabedoria.');
+    const player = setup({ amount: 8, rolls: [...rolls, { ...golpe, riderPt: '' }] });
+    expect(player.plain()).not.toContain('teste de Sabedoria');
+  });
+
   it('has no controls for the player', () => {
     const { el } = setup({ amount: 10, steps: [fire] });
     expect(el.querySelector('button')).toBeNull();

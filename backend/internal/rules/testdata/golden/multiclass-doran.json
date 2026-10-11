@@ -1,6 +1,6 @@
 {
   "after": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.39",
+    "ContentVersion": "srd51@a8abc93b235c+fx.40",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -766,6 +766,7 @@
         "Standard": ""
       }
     ],
+    "Maneuvers": null,
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,
@@ -947,7 +948,7 @@
     "Issues": null
   },
   "before": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.39",
+    "ContentVersion": "srd51@a8abc93b235c+fx.40",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -1423,6 +1424,7 @@
         "Standard": ""
       }
     ],
+    "Maneuvers": null,
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,

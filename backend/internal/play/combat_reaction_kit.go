@@ -93,7 +93,7 @@ func (s *Service) kitOf(ctx context.Context, tx pgx.Tx, campaignID string, who p
 // canReact says the combatant has its reaction and is able to use it: not spent,
 // not out of the fight, not down and not incapacitated.
 func (k kit) canReact() bool {
-	return !k.who.ReactionUsed && !k.who.Defeated && !k.down && !k.surprised && !slices.ContainsFunc(k.who.Conditions, func(c string) bool { return slices.Contains(incapacitating, c) })
+	return !k.who.ReactionUsed && !k.who.EffectNoReaction && !k.who.Defeated && !k.down && !k.surprised && !slices.ContainsFunc(k.who.Conditions, func(c string) bool { return slices.Contains(incapacitating, c) })
 }
 
 // slotsUsedOf reads what an NPC's fight spent.

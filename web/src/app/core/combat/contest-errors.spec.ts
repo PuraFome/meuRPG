@@ -56,7 +56,7 @@ describe('the refusals of the contests (W7-X), by reason', () => {
     ],
     [ContestBlockedReason.NOT_AN_ALLY, 'Só dá para ajudar um aliado que ainda está de pé.'],
     [ContestBlockedReason.ALREADY_ANSWERED, 'Você já rolou esse teste.'],
-    [ContestBlockedReason.GROUP_CHECK_CLOSED, 'O mestre já encerrou esse teste em grupo.'],
+    [ContestBlockedReason.GROUP_CHECK_CLOSED, 'O mestre já encerrou esse teste.'],
   ])('%s', (reason, text) => {
     expect(combatErrorMessage(contest(reason))).toBe(text);
   });

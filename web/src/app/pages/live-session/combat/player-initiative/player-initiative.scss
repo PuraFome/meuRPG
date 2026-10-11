@@ -281,3 +281,33 @@
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
+
+.creatures__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.creatures__row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.creatures__label {
+  font-size: 14px;
+}
+
+.creatures__total {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: 32px;
+  line-height: 36px;
+}
+
+.creatures__field {
+  height: 48px;
+}

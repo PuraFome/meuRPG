@@ -117,7 +117,7 @@ func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID
 			out = append(out, candidate{who: r, reachFt: meleeReachFt})
 			continue
 		}
-		if r.ReactionUsed || mayAttack(r, true) != nil {
+		if r.ReactionUsed || r.EffectNoReaction || mayAttack(r, true) != nil { // no reactions: the Open Hand technique
 			continue
 		}
 		down, err := s.isDown(ctx, tx, campaignID, r)
@@ -294,7 +294,7 @@ func (s *Service) pruneOffers(ctx context.Context, c *combatTx) error {
 	for _, o := range pending {
 		mover, okM := byID[o.MoverID]
 		r, okR := byID[o.ReactorID]
-		dead := !okM || !okR || mover.Defeated || r.Defeated || r.ReactionUsed ||
+		dead := !okM || !okR || mover.Defeated || r.Defeated || r.ReactionUsed || r.EffectNoReaction ||
 			slices.ContainsFunc(r.Conditions, func(k string) bool { return slices.Contains(cantReact, k) })
 		if !dead {
 			down, err := s.isDown(ctx, c.tx, c.session.CampaignID, r)

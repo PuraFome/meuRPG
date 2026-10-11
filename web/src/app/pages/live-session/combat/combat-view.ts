@@ -143,6 +143,7 @@ import { ConditionsDialog, type ConditionsData } from './conditions-dialog/condi
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
 import { EffectsPanel } from '../effects/effects-panel';
+import { HitRiderCard, type RiderPick } from './hit-rider/hit-rider-card';
 import { RageQuestion } from './rage-end/rage-question';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
@@ -263,6 +264,7 @@ const INITIATIVE_DIE = 20;
     DeathSaves,
     EffectsPanel,
     RageQuestion,
+    HitRiderCard,
     InspirationCard,
     CombatBar,
     HiddenRevealCard,
@@ -2249,6 +2251,11 @@ export class CombatView {
       this.state().apply(answered);
       return this.api.endTurn(this.campaignId(), e.id, id, false, answered.round);
     });
+  }
+
+  /** "Técnica da Mão Aberta" and "Golpe Atordoante": the monk's answer to an offer after a hit. */
+  protected answerRider(pick: RiderPick): Promise<boolean> {
+    return this.run((e) => this.api.useHitRider(this.campaignId(), e.id, pick.id, pick.choice));
   }
 
   /** "Encerrar fúria": the bonus action. */

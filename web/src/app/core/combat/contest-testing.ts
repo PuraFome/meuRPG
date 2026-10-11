@@ -95,6 +95,7 @@ export function groupCheck(
     skillKey: 'skill:stealth',
     skillNamePt: 'Furtividade',
     open: true,
+    group: true,
     ...over,
   });
 }

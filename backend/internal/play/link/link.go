@@ -167,6 +167,13 @@ type Sheet struct {
 	Traits Traits
 }
 
+// Maneuver is a die a table option adds to a roll, spent from a resource (the
+// engine's superiority_die effect). Applies, Economy and Ability are the effect's.
+type Maneuver struct {
+	Key, NamePT, Resource, Applies, Economy, Ability, TextPT string
+	Sides                                                    int
+}
+
 // Traits are what a sheet has that changes how its owner rolls and what its
 // damage carries: the barbarian's Rage, Reckless Attack and Danger Sense, the
 // rogue's Sneak Attack, the paladin's Divine Smite, the ranger's Hunter's Mark and
@@ -187,6 +194,12 @@ type Traits struct {
 	DivineSmite, ImprovedDivineSmite, ColossusSlayer, HuntersMark bool
 	// GreatWeaponFighting is the fighting style.
 	GreatWeaponFighting bool
+	// OpenHand and StunningStrike are the monk's Open Hand Technique (a rider on a
+	// Flurry of Blows hit) and Stunning Strike (a rider on a melee hit, 1 ki point);
+	// KiSaveDC is the monk's ki save DC (8 + proficiency + Wisdom modifier), 0 for
+	// anyone who is not a monk.
+	OpenHand, StunningStrike bool
+	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
 	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.
@@ -195,6 +208,8 @@ type Traits struct {
 	StealthDisadvantage bool
 	// Resistances are the damage resistances the features and traits give.
 	Resistances []Resistance
+	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
+	Maneuvers []Maneuver
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string
@@ -426,6 +441,9 @@ type ReactionStats struct {
 	// Deflect says it has Deflect Missiles; MonkLevel and DexMod are its numbers.
 	Deflect           bool
 	MonkLevel, DexMod int
+	// Reduce are the table maneuvers that reduce the damage of a melee attack that hit
+	// (superiority_die, applies reduce_melee_damage), each with the ability modifier it adds.
+	Reduce []ReduceManeuver
 	// Proficiency is the proficiency bonus (the Deflect Missiles throw back adds it).
 	Proficiency int
 	// CuttingWords says it has the bard's feature, with its bard level (the die)
@@ -443,6 +461,13 @@ type ReactionStats struct {
 	// ("bardic_inspiration", "ki", "infernal_legacy"): the combat counts what an NPC
 	// spent; a player's character spends from its vitals.
 	ResourceMax map[string]int
+}
+
+// ReduceManeuver is a table maneuver that takes a die plus an ability modifier off the damage
+// of a melee hit, as a reaction.
+type ReduceManeuver struct {
+	Key, NamePT, Resource string
+	Sides, Mod            int
 }
 
 // Named is a content key with its Portuguese name.

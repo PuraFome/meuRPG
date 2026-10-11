@@ -1126,8 +1126,14 @@ type CheckRoll struct {
 	// the face rolled. 0 when none was used.
 	BonusDieSides int32 `protobuf:"varint,11,opt,name=bonus_die_sides,json=bonusDieSides,proto3" json:"bonus_die_sides,omitempty"`
 	BonusDieFace  int32 `protobuf:"varint,12,opt,name=bonus_die_face,json=bonusDieFace,proto3" json:"bonus_die_face,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// A table maneuver's superiority die the initiator added to the check (already in `total`):
+	// the option's key and Portuguese name, its sides and the face rolled. Empty/0 when none.
+	ManeuverKey      string `protobuf:"bytes,13,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	ManeuverNamePt   string `protobuf:"bytes,14,opt,name=maneuver_name_pt,json=maneuverNamePt,proto3" json:"maneuver_name_pt,omitempty"`
+	ManeuverDieSides int32  `protobuf:"varint,15,opt,name=maneuver_die_sides,json=maneuverDieSides,proto3" json:"maneuver_die_sides,omitempty"`
+	ManeuverDieFace  int32  `protobuf:"varint,16,opt,name=maneuver_die_face,json=maneuverDieFace,proto3" json:"maneuver_die_face,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CheckRoll) Reset() {
@@ -1240,6 +1246,34 @@ func (x *CheckRoll) GetBonusDieSides() int32 {
 func (x *CheckRoll) GetBonusDieFace() int32 {
 	if x != nil {
 		return x.BonusDieFace
+	}
+	return 0
+}
+
+func (x *CheckRoll) GetManeuverKey() string {
+	if x != nil {
+		return x.ManeuverKey
+	}
+	return ""
+}
+
+func (x *CheckRoll) GetManeuverNamePt() string {
+	if x != nil {
+		return x.ManeuverNamePt
+	}
+	return ""
+}
+
+func (x *CheckRoll) GetManeuverDieSides() int32 {
+	if x != nil {
+		return x.ManeuverDieSides
+	}
+	return 0
+}
+
+func (x *CheckRoll) GetManeuverDieFace() int32 {
+	if x != nil {
+		return x.ManeuverDieFace
 	}
 	return 0
 }
@@ -1846,7 +1880,10 @@ type ContestAttackOption struct {
 	// The targets, with the size and the reach checked.
 	Targets []*ContestTarget `protobuf:"bytes,6,rep,name=targets,proto3" json:"targets,omitempty"`
 	// What the combatant's Strength (Athletics) check would roll.
-	RollOption    *CheckOption `protobuf:"bytes,7,opt,name=roll_option,json=rollOption,proto3" json:"roll_option,omitempty"`
+	RollOption *CheckOption `protobuf:"bytes,7,opt,name=roll_option,json=rollOption,proto3" json:"roll_option,omitempty"`
+	// The table maneuvers that can start this grapple (applies "grapple"): a die added to the
+	// Athletics check, costing a bonus action and a use instead of an attack. Only for GRAPPLE.
+	Maneuvers     []*ManeuverGrappleOption `protobuf:"bytes,8,rep,name=maneuvers,proto3" json:"maneuvers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1930,6 +1967,111 @@ func (x *ContestAttackOption) GetRollOption() *CheckOption {
 	return nil
 }
 
+func (x *ContestAttackOption) GetManeuvers() []*ManeuverGrappleOption {
+	if x != nil {
+		return x.Maneuvers
+	}
+	return nil
+}
+
+// ManeuverGrappleOption is a table maneuver that starts a grapple after a melee hit.
+type ManeuverGrappleOption struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The option's key, sent back as StartContestRequest.maneuver_key.
+	Key    string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	// The die's sides.
+	Sides   int32 `protobuf:"varint,3,opt,name=sides,proto3" json:"sides,omitempty"`
+	Enabled bool  `protobuf:"varint,4,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Set when `enabled` is false: BONUS_ACTION_USED, NO_USES or NOT_YOUR_TURN.
+	Reason *v1.DisabledReason `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Set when `enabled` is false because the character made no melee hit this turn.
+	NoMeleeHit bool `protobuf:"varint,6,opt,name=no_melee_hit,json=noMeleeHit,proto3" json:"no_melee_hit,omitempty"`
+	// Uses left of the maneuver's resource.
+	UsesLeft      int32 `protobuf:"varint,7,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ManeuverGrappleOption) Reset() {
+	*x = ManeuverGrappleOption{}
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ManeuverGrappleOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ManeuverGrappleOption) ProtoMessage() {}
+
+func (x *ManeuverGrappleOption) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ManeuverGrappleOption.ProtoReflect.Descriptor instead.
+func (*ManeuverGrappleOption) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ManeuverGrappleOption) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *ManeuverGrappleOption) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
+}
+
+func (x *ManeuverGrappleOption) GetSides() int32 {
+	if x != nil {
+		return x.Sides
+	}
+	return 0
+}
+
+func (x *ManeuverGrappleOption) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *ManeuverGrappleOption) GetReason() *v1.DisabledReason {
+	if x != nil {
+		return x.Reason
+	}
+	return nil
+}
+
+func (x *ManeuverGrappleOption) GetNoMeleeHit() bool {
+	if x != nil {
+		return x.NoMeleeHit
+	}
+	return false
+}
+
+func (x *ManeuverGrappleOption) GetUsesLeft() int32 {
+	if x != nil {
+		return x.UsesLeft
+	}
+	return 0
+}
+
 // ContestAction is the Hide or the Help action of a combatant: the key that
 // ContestService.Hide takes as `action_key` (Help is always "standard:help"), what it
 // costs and whether it can be taken now.
@@ -1946,7 +2088,7 @@ type ContestAction struct {
 
 func (x *ContestAction) Reset() {
 	*x = ContestAction{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1958,7 +2100,7 @@ func (x *ContestAction) String() string {
 func (*ContestAction) ProtoMessage() {}
 
 func (x *ContestAction) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1971,7 +2113,7 @@ func (x *ContestAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContestAction.ProtoReflect.Descriptor instead.
 func (*ContestAction) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ContestAction) GetKey() string {
@@ -2039,7 +2181,7 @@ type ContestTurnState struct {
 
 func (x *ContestTurnState) Reset() {
 	*x = ContestTurnState{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2051,7 +2193,7 @@ func (x *ContestTurnState) String() string {
 func (*ContestTurnState) ProtoMessage() {}
 
 func (x *ContestTurnState) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2064,7 +2206,7 @@ func (x *ContestTurnState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContestTurnState.ProtoReflect.Descriptor instead.
 func (*ContestTurnState) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ContestTurnState) GetGrappled() bool {
@@ -2164,7 +2306,7 @@ type GrappleView struct {
 
 func (x *GrappleView) Reset() {
 	*x = GrappleView{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2176,7 +2318,7 @@ func (x *GrappleView) String() string {
 func (*GrappleView) ProtoMessage() {}
 
 func (x *GrappleView) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2189,7 +2331,7 @@ func (x *GrappleView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrappleView.ProtoReflect.Descriptor instead.
 func (*GrappleView) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GrappleView) GetGrappledId() string {
@@ -2233,7 +2375,7 @@ type HideObserver struct {
 
 func (x *HideObserver) Reset() {
 	*x = HideObserver{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2245,7 +2387,7 @@ func (x *HideObserver) String() string {
 func (*HideObserver) ProtoMessage() {}
 
 func (x *HideObserver) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2258,7 +2400,7 @@ func (x *HideObserver) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HideObserver.ProtoReflect.Descriptor instead.
 func (*HideObserver) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *HideObserver) GetCombatantId() string {
@@ -2310,7 +2452,7 @@ type HideAttemptView struct {
 
 func (x *HideAttemptView) Reset() {
 	*x = HideAttemptView{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2322,7 +2464,7 @@ func (x *HideAttemptView) String() string {
 func (*HideAttemptView) ProtoMessage() {}
 
 func (x *HideAttemptView) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2335,7 +2477,7 @@ func (x *HideAttemptView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HideAttemptView.ProtoReflect.Descriptor instead.
 func (*HideAttemptView) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *HideAttemptView) GetId() string {
@@ -2409,7 +2551,7 @@ type HelpView struct {
 
 func (x *HelpView) Reset() {
 	*x = HelpView{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2421,7 +2563,7 @@ func (x *HelpView) String() string {
 func (*HelpView) ProtoMessage() {}
 
 func (x *HelpView) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2434,7 +2576,7 @@ func (x *HelpView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HelpView.ProtoReflect.Descriptor instead.
 func (*HelpView) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *HelpView) GetId() string {
@@ -2504,7 +2646,7 @@ type SurpriseView struct {
 
 func (x *SurpriseView) Reset() {
 	*x = SurpriseView{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2516,7 +2658,7 @@ func (x *SurpriseView) String() string {
 func (*SurpriseView) ProtoMessage() {}
 
 func (x *SurpriseView) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2529,7 +2671,7 @@ func (x *SurpriseView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SurpriseView.ProtoReflect.Descriptor instead.
 func (*SurpriseView) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SurpriseView) GetCombatantIds() []string {
@@ -2552,7 +2694,7 @@ type HiderTotal struct {
 
 func (x *HiderTotal) Reset() {
 	*x = HiderTotal{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2564,7 +2706,7 @@ func (x *HiderTotal) String() string {
 func (*HiderTotal) ProtoMessage() {}
 
 func (x *HiderTotal) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2577,7 +2719,7 @@ func (x *HiderTotal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HiderTotal.ProtoReflect.Descriptor instead.
 func (*HiderTotal) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *HiderTotal) GetCombatantId() string {
@@ -2619,7 +2761,7 @@ type SurpriseSuggestion struct {
 
 func (x *SurpriseSuggestion) Reset() {
 	*x = SurpriseSuggestion{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2631,7 +2773,7 @@ func (x *SurpriseSuggestion) String() string {
 func (*SurpriseSuggestion) ProtoMessage() {}
 
 func (x *SurpriseSuggestion) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2644,7 +2786,7 @@ func (x *SurpriseSuggestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SurpriseSuggestion.ProtoReflect.Descriptor instead.
 func (*SurpriseSuggestion) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SurpriseSuggestion) GetCombatantId() string {
@@ -2708,7 +2850,7 @@ type GroupCheckMemberView struct {
 
 func (x *GroupCheckMemberView) Reset() {
 	*x = GroupCheckMemberView{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2720,7 +2862,7 @@ func (x *GroupCheckMemberView) String() string {
 func (*GroupCheckMemberView) ProtoMessage() {}
 
 func (x *GroupCheckMemberView) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2733,7 +2875,7 @@ func (x *GroupCheckMemberView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupCheckMemberView.ProtoReflect.Descriptor instead.
 func (*GroupCheckMemberView) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GroupCheckMemberView) GetCharacterId() string {
@@ -2804,14 +2946,25 @@ type GroupCheckView struct {
 	// answered. A player only.
 	YourOption *CheckOption `protobuf:"bytes,13,opt,name=your_option,json=yourOption,proto3" json:"your_option,omitempty"`
 	// The caller's character may roll now.
-	YouRoll       bool `protobuf:"varint,14,opt,name=you_roll,json=youRoll,proto3" json:"you_roll,omitempty"`
+	YouRoll bool `protobuf:"varint,14,opt,name=you_roll,json=youRoll,proto3" json:"you_roll,omitempty"`
+	// True when this is a group check, with a verdict for the group; false when each asked
+	// character is judged alone (passed_count, needed, verdict_known and group_passed
+	// are then never set).
+	Group bool `protobuf:"varint,15,opt,name=group,proto3" json:"group,omitempty"`
+	// True when the request is a saving throw ("save:con"), false for a skill or an
+	// ability check; skill_name_pt already says which. For wording the screens.
+	Save bool `protobuf:"varint,16,opt,name=save,proto3" json:"save,omitempty"`
+	// How many characters were asked. Only the master, who reads who in `members`; a
+	// player reads their own member only, and a player who was not asked reads no group
+	// check at all (GetGroupCheck answers none, RN-10).
+	AskedCount    int32 `protobuf:"varint,17,opt,name=asked_count,json=askedCount,proto3" json:"asked_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GroupCheckView) Reset() {
 	*x = GroupCheckView{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2823,7 +2976,7 @@ func (x *GroupCheckView) String() string {
 func (*GroupCheckView) ProtoMessage() {}
 
 func (x *GroupCheckView) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2836,7 +2989,7 @@ func (x *GroupCheckView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupCheckView.ProtoReflect.Descriptor instead.
 func (*GroupCheckView) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GroupCheckView) GetId() string {
@@ -2937,6 +3090,27 @@ func (x *GroupCheckView) GetYouRoll() bool {
 	return false
 }
 
+func (x *GroupCheckView) GetGroup() bool {
+	if x != nil {
+		return x.Group
+	}
+	return false
+}
+
+func (x *GroupCheckView) GetSave() bool {
+	if x != nil {
+		return x.Save
+	}
+	return false
+}
+
+func (x *GroupCheckView) GetAskedCount() int32 {
+	if x != nil {
+		return x.AskedCount
+	}
+	return 0
+}
+
 // CombatLogContest is a CONTEST line of the combat log: the actor and the target are in
 // the entry's actor_id and target_id.
 type CombatLogContest struct {
@@ -2948,7 +3122,7 @@ type CombatLogContest struct {
 
 func (x *CombatLogContest) Reset() {
 	*x = CombatLogContest{}
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2960,7 +3134,7 @@ func (x *CombatLogContest) String() string {
 func (*CombatLogContest) ProtoMessage() {}
 
 func (x *CombatLogContest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_contest_types_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2973,7 +3147,7 @@ func (x *CombatLogContest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogContest.ProtoReflect.Descriptor instead.
 func (*CombatLogContest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_play_v1_contest_types_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CombatLogContest) GetLine() ContestLogLine {
@@ -2991,7 +3165,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\bRollNote\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1c\n" +
-	"\tadvantage\x18\x03 \x01(\bR\tadvantage\"\xbb\x03\n" +
+	"\tadvantage\x18\x03 \x01(\bR\tadvantage\"\xe2\x04\n" +
 	"\tCheckRoll\x122\n" +
 	"\x05skill\x18\x01 \x01(\x0e2\x1c.meurpg.play.v1.ContestSkillR\x05skill\x12\x1b\n" +
 	"\tskill_key\x18\x02 \x01(\tR\bskillKey\x12\x14\n" +
@@ -3006,7 +3180,11 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\x10rolled_by_master\x18\n" +
 	" \x01(\bR\x0erolledByMaster\x12&\n" +
 	"\x0fbonus_die_sides\x18\v \x01(\x05R\rbonusDieSides\x12$\n" +
-	"\x0ebonus_die_face\x18\f \x01(\x05R\fbonusDieFace\"\xa1\x01\n" +
+	"\x0ebonus_die_face\x18\f \x01(\x05R\fbonusDieFace\x12!\n" +
+	"\fmaneuver_key\x18\r \x01(\tR\vmaneuverKey\x12(\n" +
+	"\x10maneuver_name_pt\x18\x0e \x01(\tR\x0emaneuverNamePt\x12,\n" +
+	"\x12maneuver_die_sides\x18\x0f \x01(\x05R\x10maneuverDieSides\x12*\n" +
+	"\x11maneuver_die_face\x18\x10 \x01(\x05R\x0fmaneuverDieFace\"\xa1\x01\n" +
 	"\vCheckOption\x12\x1a\n" +
 	"\bmodifier\x18\x01 \x01(\x05R\bmodifier\x12\x14\n" +
 	"\x05known\x18\x02 \x01(\bR\x05known\x120\n" +
@@ -3060,7 +3238,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\vdistance_ft\x18\x03 \x01(\x05R\n" +
 	"distanceFt\x12\x1a\n" +
 	"\beligible\x18\x04 \x01(\bR\beligible\x12;\n" +
-	"\x06reason\x18\x05 \x01(\x0e2#.meurpg.play.v1.ContestTargetReasonR\x06reason\"\xe8\x02\n" +
+	"\x06reason\x18\x05 \x01(\x0e2#.meurpg.play.v1.ContestTargetReasonR\x06reason\"\xad\x03\n" +
 	"\x13ContestAttackOption\x12;\n" +
 	"\x04kind\x18\x01 \x01(\x0e2'.meurpg.play.v1.ContestAttackOptionKindR\x04kind\x12'\n" +
 	"\x0freplaces_attack\x18\x02 \x01(\bR\x0ereplacesAttack\x12\x18\n" +
@@ -3069,7 +3247,17 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\fattacks_left\x18\x05 \x01(\x05R\vattacksLeft\x127\n" +
 	"\atargets\x18\x06 \x03(\v2\x1d.meurpg.play.v1.ContestTargetR\atargets\x12<\n" +
 	"\vroll_option\x18\a \x01(\v2\x1b.meurpg.play.v1.CheckOptionR\n" +
-	"rollOption\"\xae\x01\n" +
+	"rollOption\x12C\n" +
+	"\tmaneuvers\x18\b \x03(\v2%.meurpg.play.v1.ManeuverGrappleOptionR\tmaneuvers\"\xea\x01\n" +
+	"\x15ManeuverGrappleOption\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
+	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +
+	"\x05sides\x18\x03 \x01(\x05R\x05sides\x12\x18\n" +
+	"\aenabled\x18\x04 \x01(\bR\aenabled\x127\n" +
+	"\x06reason\x18\x05 \x01(\v2\x1f.meurpg.rules.v1.DisabledReasonR\x06reason\x12 \n" +
+	"\fno_melee_hit\x18\x06 \x01(\bR\n" +
+	"noMeleeHit\x12\x1b\n" +
+	"\tuses_left\x18\a \x01(\x05R\busesLeft\"\xae\x01\n" +
 	"\rContestAction\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x128\n" +
 	"\aeconomy\x18\x02 \x01(\x0e2\x1e.meurpg.rules.v1.ActionEconomyR\aeconomy\x12\x18\n" +
@@ -3143,7 +3331,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\banswered\x18\x03 \x01(\bR\banswered\x12-\n" +
 	"\x04roll\x18\x04 \x01(\v2\x19.meurpg.play.v1.CheckRollR\x04roll\x12!\n" +
 	"\fpassed_known\x18\x05 \x01(\bR\vpassedKnown\x12\x16\n" +
-	"\x06passed\x18\x06 \x01(\bR\x06passed\"\xf5\x03\n" +
+	"\x06passed\x18\x06 \x01(\bR\x06passed\"\xc0\x04\n" +
 	"\x0eGroupCheckView\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tskill_key\x18\x02 \x01(\tR\bskillKey\x12\"\n" +
@@ -3161,7 +3349,11 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12<\n" +
 	"\vyour_option\x18\r \x01(\v2\x1b.meurpg.play.v1.CheckOptionR\n" +
 	"yourOption\x12\x19\n" +
-	"\byou_roll\x18\x0e \x01(\bR\ayouRoll\"F\n" +
+	"\byou_roll\x18\x0e \x01(\bR\ayouRoll\x12\x14\n" +
+	"\x05group\x18\x0f \x01(\bR\x05group\x12\x12\n" +
+	"\x04save\x18\x10 \x01(\bR\x04save\x12\x1f\n" +
+	"\vasked_count\x18\x11 \x01(\x05R\n" +
+	"askedCount\"F\n" +
 	"\x10CombatLogContest\x122\n" +
 	"\x04line\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.ContestLogLineR\x04line*a\n" +
 	"\vContestKind\x12\x1c\n" +
@@ -3287,7 +3479,7 @@ func file_meurpg_play_v1_contest_types_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_contest_types_proto_enumTypes = make([]protoimpl.EnumInfo, 16)
-var file_meurpg_play_v1_contest_types_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_meurpg_play_v1_contest_types_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_meurpg_play_v1_contest_types_proto_goTypes = []any{
 	(ContestKind)(0),              // 0: meurpg.play.v1.ContestKind
 	(ContestPurpose)(0),           // 1: meurpg.play.v1.ContestPurpose
@@ -3314,22 +3506,23 @@ var file_meurpg_play_v1_contest_types_proto_goTypes = []any{
 	(*ContestBlocked)(nil),        // 22: meurpg.play.v1.ContestBlocked
 	(*ContestTarget)(nil),         // 23: meurpg.play.v1.ContestTarget
 	(*ContestAttackOption)(nil),   // 24: meurpg.play.v1.ContestAttackOption
-	(*ContestAction)(nil),         // 25: meurpg.play.v1.ContestAction
-	(*ContestTurnState)(nil),      // 26: meurpg.play.v1.ContestTurnState
-	(*GrappleView)(nil),           // 27: meurpg.play.v1.GrappleView
-	(*HideObserver)(nil),          // 28: meurpg.play.v1.HideObserver
-	(*HideAttemptView)(nil),       // 29: meurpg.play.v1.HideAttemptView
-	(*HelpView)(nil),              // 30: meurpg.play.v1.HelpView
-	(*SurpriseView)(nil),          // 31: meurpg.play.v1.SurpriseView
-	(*HiderTotal)(nil),            // 32: meurpg.play.v1.HiderTotal
-	(*SurpriseSuggestion)(nil),    // 33: meurpg.play.v1.SurpriseSuggestion
-	(*GroupCheckMemberView)(nil),  // 34: meurpg.play.v1.GroupCheckMemberView
-	(*GroupCheckView)(nil),        // 35: meurpg.play.v1.GroupCheckView
-	(*CombatLogContest)(nil),      // 36: meurpg.play.v1.CombatLogContest
-	(*timestamppb.Timestamp)(nil), // 37: google.protobuf.Timestamp
-	(v1.CreatureSize)(0),          // 38: meurpg.rules.v1.CreatureSize
-	(*v1.DisabledReason)(nil),     // 39: meurpg.rules.v1.DisabledReason
-	(v1.ActionEconomy)(0),         // 40: meurpg.rules.v1.ActionEconomy
+	(*ManeuverGrappleOption)(nil), // 25: meurpg.play.v1.ManeuverGrappleOption
+	(*ContestAction)(nil),         // 26: meurpg.play.v1.ContestAction
+	(*ContestTurnState)(nil),      // 27: meurpg.play.v1.ContestTurnState
+	(*GrappleView)(nil),           // 28: meurpg.play.v1.GrappleView
+	(*HideObserver)(nil),          // 29: meurpg.play.v1.HideObserver
+	(*HideAttemptView)(nil),       // 30: meurpg.play.v1.HideAttemptView
+	(*HelpView)(nil),              // 31: meurpg.play.v1.HelpView
+	(*SurpriseView)(nil),          // 32: meurpg.play.v1.SurpriseView
+	(*HiderTotal)(nil),            // 33: meurpg.play.v1.HiderTotal
+	(*SurpriseSuggestion)(nil),    // 34: meurpg.play.v1.SurpriseSuggestion
+	(*GroupCheckMemberView)(nil),  // 35: meurpg.play.v1.GroupCheckMemberView
+	(*GroupCheckView)(nil),        // 36: meurpg.play.v1.GroupCheckView
+	(*CombatLogContest)(nil),      // 37: meurpg.play.v1.CombatLogContest
+	(*timestamppb.Timestamp)(nil), // 38: google.protobuf.Timestamp
+	(v1.CreatureSize)(0),          // 39: meurpg.rules.v1.CreatureSize
+	(*v1.DisabledReason)(nil),     // 40: meurpg.rules.v1.DisabledReason
+	(v1.ActionEconomy)(0),         // 41: meurpg.rules.v1.ActionEconomy
 }
 var file_meurpg_play_v1_contest_types_proto_depIdxs = []int32{
 	5,  // 0: meurpg.play.v1.CheckRoll.skill:type_name -> meurpg.play.v1.ContestSkill
@@ -3351,38 +3544,40 @@ var file_meurpg_play_v1_contest_types_proto_depIdxs = []int32{
 	19, // 16: meurpg.play.v1.ContestView.answer_options:type_name -> meurpg.play.v1.ContestSkillOption
 	5,  // 17: meurpg.play.v1.ContestView.deferred_skill:type_name -> meurpg.play.v1.ContestSkill
 	21, // 18: meurpg.play.v1.ContestView.shove_choice:type_name -> meurpg.play.v1.ShoveChoice
-	37, // 19: meurpg.play.v1.ContestView.created_at:type_name -> google.protobuf.Timestamp
+	38, // 19: meurpg.play.v1.ContestView.created_at:type_name -> google.protobuf.Timestamp
 	8,  // 20: meurpg.play.v1.ShoveChoice.push_blocked:type_name -> meurpg.play.v1.ShoveBlockedReason
 	9,  // 21: meurpg.play.v1.ContestBlocked.reason:type_name -> meurpg.play.v1.ContestBlockedReason
-	38, // 22: meurpg.play.v1.ContestTarget.size:type_name -> meurpg.rules.v1.CreatureSize
+	39, // 22: meurpg.play.v1.ContestTarget.size:type_name -> meurpg.rules.v1.CreatureSize
 	10, // 23: meurpg.play.v1.ContestTarget.reason:type_name -> meurpg.play.v1.ContestTargetReason
 	11, // 24: meurpg.play.v1.ContestAttackOption.kind:type_name -> meurpg.play.v1.ContestAttackOptionKind
-	39, // 25: meurpg.play.v1.ContestAttackOption.reason:type_name -> meurpg.rules.v1.DisabledReason
+	40, // 25: meurpg.play.v1.ContestAttackOption.reason:type_name -> meurpg.rules.v1.DisabledReason
 	23, // 26: meurpg.play.v1.ContestAttackOption.targets:type_name -> meurpg.play.v1.ContestTarget
 	18, // 27: meurpg.play.v1.ContestAttackOption.roll_option:type_name -> meurpg.play.v1.CheckOption
-	40, // 28: meurpg.play.v1.ContestAction.economy:type_name -> meurpg.rules.v1.ActionEconomy
-	39, // 29: meurpg.play.v1.ContestAction.reason:type_name -> meurpg.rules.v1.DisabledReason
-	39, // 30: meurpg.play.v1.ContestTurnState.escape_reason:type_name -> meurpg.rules.v1.DisabledReason
-	25, // 31: meurpg.play.v1.ContestTurnState.hide_actions:type_name -> meurpg.play.v1.ContestAction
-	25, // 32: meurpg.play.v1.ContestTurnState.help_action:type_name -> meurpg.play.v1.ContestAction
-	19, // 33: meurpg.play.v1.ContestTurnState.escape_options:type_name -> meurpg.play.v1.ContestSkillOption
-	18, // 34: meurpg.play.v1.ContestTurnState.hide_option:type_name -> meurpg.play.v1.CheckOption
-	12, // 35: meurpg.play.v1.HideAttemptView.status:type_name -> meurpg.play.v1.HideAttemptStatus
-	17, // 36: meurpg.play.v1.HideAttemptView.roll:type_name -> meurpg.play.v1.CheckRoll
-	28, // 37: meurpg.play.v1.HideAttemptView.observers:type_name -> meurpg.play.v1.HideObserver
-	13, // 38: meurpg.play.v1.HelpView.kind:type_name -> meurpg.play.v1.HelpKind
-	14, // 39: meurpg.play.v1.SurpriseSuggestion.reason:type_name -> meurpg.play.v1.SurpriseSuggestionReason
-	32, // 40: meurpg.play.v1.SurpriseSuggestion.hiders:type_name -> meurpg.play.v1.HiderTotal
-	17, // 41: meurpg.play.v1.GroupCheckMemberView.roll:type_name -> meurpg.play.v1.CheckRoll
-	34, // 42: meurpg.play.v1.GroupCheckView.members:type_name -> meurpg.play.v1.GroupCheckMemberView
-	37, // 43: meurpg.play.v1.GroupCheckView.created_at:type_name -> google.protobuf.Timestamp
-	18, // 44: meurpg.play.v1.GroupCheckView.your_option:type_name -> meurpg.play.v1.CheckOption
-	15, // 45: meurpg.play.v1.CombatLogContest.line:type_name -> meurpg.play.v1.ContestLogLine
-	46, // [46:46] is the sub-list for method output_type
-	46, // [46:46] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	25, // 28: meurpg.play.v1.ContestAttackOption.maneuvers:type_name -> meurpg.play.v1.ManeuverGrappleOption
+	40, // 29: meurpg.play.v1.ManeuverGrappleOption.reason:type_name -> meurpg.rules.v1.DisabledReason
+	41, // 30: meurpg.play.v1.ContestAction.economy:type_name -> meurpg.rules.v1.ActionEconomy
+	40, // 31: meurpg.play.v1.ContestAction.reason:type_name -> meurpg.rules.v1.DisabledReason
+	40, // 32: meurpg.play.v1.ContestTurnState.escape_reason:type_name -> meurpg.rules.v1.DisabledReason
+	26, // 33: meurpg.play.v1.ContestTurnState.hide_actions:type_name -> meurpg.play.v1.ContestAction
+	26, // 34: meurpg.play.v1.ContestTurnState.help_action:type_name -> meurpg.play.v1.ContestAction
+	19, // 35: meurpg.play.v1.ContestTurnState.escape_options:type_name -> meurpg.play.v1.ContestSkillOption
+	18, // 36: meurpg.play.v1.ContestTurnState.hide_option:type_name -> meurpg.play.v1.CheckOption
+	12, // 37: meurpg.play.v1.HideAttemptView.status:type_name -> meurpg.play.v1.HideAttemptStatus
+	17, // 38: meurpg.play.v1.HideAttemptView.roll:type_name -> meurpg.play.v1.CheckRoll
+	29, // 39: meurpg.play.v1.HideAttemptView.observers:type_name -> meurpg.play.v1.HideObserver
+	13, // 40: meurpg.play.v1.HelpView.kind:type_name -> meurpg.play.v1.HelpKind
+	14, // 41: meurpg.play.v1.SurpriseSuggestion.reason:type_name -> meurpg.play.v1.SurpriseSuggestionReason
+	33, // 42: meurpg.play.v1.SurpriseSuggestion.hiders:type_name -> meurpg.play.v1.HiderTotal
+	17, // 43: meurpg.play.v1.GroupCheckMemberView.roll:type_name -> meurpg.play.v1.CheckRoll
+	35, // 44: meurpg.play.v1.GroupCheckView.members:type_name -> meurpg.play.v1.GroupCheckMemberView
+	38, // 45: meurpg.play.v1.GroupCheckView.created_at:type_name -> google.protobuf.Timestamp
+	18, // 46: meurpg.play.v1.GroupCheckView.your_option:type_name -> meurpg.play.v1.CheckOption
+	15, // 47: meurpg.play.v1.CombatLogContest.line:type_name -> meurpg.play.v1.ContestLogLine
+	48, // [48:48] is the sub-list for method output_type
+	48, // [48:48] is the sub-list for method input_type
+	48, // [48:48] is the sub-list for extension type_name
+	48, // [48:48] is the sub-list for extension extendee
+	0,  // [0:48] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_contest_types_proto_init() }
@@ -3396,7 +3591,7 @@ func file_meurpg_play_v1_contest_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_contest_types_proto_rawDesc), len(file_meurpg_play_v1_contest_types_proto_rawDesc)),
 			NumEnums:      16,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

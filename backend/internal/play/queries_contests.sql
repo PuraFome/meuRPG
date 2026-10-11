@@ -143,8 +143,8 @@ DELETE FROM combat_surprised
 WHERE combatant_id = $1;
 
 -- name: InsertGroupCheck :one
-INSERT INTO group_checks (game_session_id, skill_key, dc, show_dc, status, created_at)
-VALUES ($1, $2, $3, $4, 'open', $5)
+INSERT INTO group_checks (game_session_id, skill_key, dc, show_dc, is_group, status, created_at)
+VALUES ($1, $2, $3, $4, $5, 'open', $6)
 RETURNING *;
 
 -- name: GetGroupCheck :one

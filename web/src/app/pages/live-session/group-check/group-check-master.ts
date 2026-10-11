@@ -23,12 +23,20 @@ import {
   memberBonus,
   memberResult,
 } from '../../../core/combat/contest-master';
+import { askedWho, askTaskGroups } from '../../../core/combat/ask-roll';
 import { GroupCheckState } from '../../../core/combat/group-check-state';
 import { HELP_TASKS } from '../../../core/combat/help-view';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { CheckRollForm } from '../combat/check-roll-form/check-roll-form';
 
 let nextId = 0;
+
+/** A character the master can ask: the living player characters of the table, with the player under the name. */
+export interface AskPerson {
+  readonly id: string;
+  readonly name: string;
+  readonly sub?: string;
+}
 
 /** The lowest and the highest DC the server takes. */
 const DC_MIN = 1;
@@ -45,8 +53,10 @@ function dcOf(text: string): number | null {
 }
 
 /**
- * "Teste em grupo" on the master's page (W7-X, board W7-Xc 10, the master's side; SRD 5.1, Group Checks). Asking: the skill, the DC
- * (empty for none) and "Mostrar a CD aos jogadores" (`show_dc`: the players read passou or falhou, never the DC itself). Waiting: who
+ * "Pedir um teste" on the master's page (W7-X, board W7-Xc 10, the master's side; SRD 5.1, ability checks, saving throws and Group
+ * Checks). Asking: who rolls ("Todos" or the characters ticked), the test (a skill, an ability check or a saving throw), "Teste em
+ * grupo" (the group passes if at least half pass; only with two characters or more), the DC (empty for none) and "Mostrar a CD aos
+ * jogadores" (`show_dc`: the players read passou or falhou, never the DC itself). Waiting: who
  * answered ("4 de 5 responderam"), each character's bonus, total and "Passou" or "Falhou", "Não respondeu" for the one who has not,
  * "Rolar por Ragna" for that one (the master's roll, app or typed) and "Encerrar o teste" (whoever did not answer counts as failed).
  * The verdict ("2 de 5 passaram; precisa de 3. O grupo falhou.") is only his, until the DC is shown. It reads the check again on each
@@ -128,18 +138,67 @@ function dcOf(text: string): number | null {
         </section>
       }
       <section class="card" [attr.aria-labelledby]="uid + 'a'" data-testid="group-ask">
-        <h2 class="card__title" [id]="uid + 'a'">Teste em grupo</h2>
+        <h2 class="card__title" [id]="uid + 'a'">Pedir um teste</h2>
         <p class="card__sub">
-          Todos os personagens rolam o mesmo teste; o grupo passa se ao menos metade passar.
+          Peça a um, a alguns ou a todos os personagens um teste ou um teste de resistência, quando quiser, fora do combate.
         </p>
+        <fieldset class="choices" data-testid="ask-who">
+          <legend class="choices__cap">Quem rola</legend>
+          <label class="choice" [class.choice--on]="everyone()">
+            <input
+              type="checkbox"
+              class="mr-visually-hidden"
+              [checked]="everyone()"
+              (change)="pickEveryone()"
+            />
+            <span class="choice__text">
+              <span class="choice__name">Todos</span>
+              <span class="choice__sub">Todos os personagens dos jogadores.</span>
+            </span>
+          </label>
+          @for (p of people(); track p.id) {
+            <label class="choice" [class.choice--on]="picked().has(p.id)">
+              <input
+                type="checkbox"
+                class="mr-visually-hidden"
+                [checked]="picked().has(p.id)"
+                (change)="togglePerson(p.id)"
+              />
+              <span class="choice__text">
+                <span class="choice__name">{{ p.name }}</span>
+                @if (p.sub) {
+                  <span class="choice__sub">{{ p.sub }}</span>
+                }
+              </span>
+            </label>
+          }
+        </fieldset>
         <div class="field">
           <label [for]="uid + 's'">Teste</label>
           <select [id]="uid + 's'" (change)="pickSkill($event)">
-            @for (t of tasks; track t.key) {
-              <option [value]="t.key" [selected]="t.key === skillKey()">{{ t.name }}</option>
+            @for (g of taskGroups; track g.label) {
+              <optgroup [label]="g.label">
+                @for (t of g.tasks; track t.key) {
+                  <option [value]="t.key" [selected]="t.key === skillKey()">{{ t.name }}</option>
+                }
+              </optgroup>
             }
           </select>
         </div>
+        @if (canGroup()) {
+          <label class="choice" [class.choice--on]="wantGroup()">
+            <input
+              type="checkbox"
+              class="mr-visually-hidden"
+              [checked]="wantGroup()"
+              (change)="wantGroup.set(!wantGroup())"
+            />
+            <span class="choice__text">
+              <span class="choice__name">Teste em grupo (passa se ao menos metade passar)</span>
+              <span class="choice__sub">Sem isso, cada rolagem vale sozinha.</span>
+            </span>
+          </label>
+        }
         <div class="field">
           <label [for]="uid + 'd'">CD ({{ dcMin }} a {{ dcMax }}; vazio: sem CD)</label>
           <input
@@ -200,16 +259,27 @@ export class GroupCheckMaster {
   readonly tick = input(0);
   readonly diceMode = input.required<DiceMode>();
   readonly preference = input.required<DicePreference>();
+  /** The characters the master can pick ("Quem rola"). */
+  readonly people = input<readonly AskPerson[]>([]);
 
   protected readonly uid = `gm-${nextId++}-`;
-  protected readonly tasks = HELP_TASKS;
+  protected readonly taskGroups = askTaskGroups(HELP_TASKS);
   protected readonly dcMin = DC_MIN;
   protected readonly dcMax = DC_MAX;
   protected readonly checks = new GroupCheckState();
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly said = signal('');
-  protected readonly skillKey = signal(HELP_TASKS[0].key);
+  protected readonly skillKey = signal<string>(HELP_TASKS[0].key);
+  /** The characters ticked; none is "Todos". */
+  protected readonly picked = signal<ReadonlySet<string>>(new Set());
+  protected readonly everyone = computed(() => this.picked().size === 0);
+  protected readonly wantGroup = signal(true);
+  /** How many characters would roll; "Teste em grupo" needs two or more. */
+  protected readonly askedCount = computed(() =>
+    this.picked().size > 0 ? this.picked().size : this.people().length,
+  );
+  protected readonly canGroup = computed(() => this.askedCount() >= 2);
   protected readonly dcText = signal('');
   protected readonly showDc = signal(false);
   /** The character the master is rolling for. */
@@ -261,6 +331,18 @@ export class GroupCheckMaster {
     return g ? memberBonus(g, m) : '';
   }
 
+  protected pickEveryone(): void {
+    this.picked.set(new Set());
+  }
+
+  protected togglePerson(id: string): void {
+    const next = new Set(this.picked());
+    if (!next.delete(id)) {
+      next.add(id);
+    }
+    this.picked.set(next);
+  }
+
   protected pickSkill(event: Event): void {
     this.skillKey.set((event.target as HTMLSelectElement).value);
   }
@@ -275,8 +357,9 @@ export class GroupCheckMaster {
     if (dc === null) {
       return;
     }
-    const request = { skillKey: this.skillKey(), dc, showDc: dc > 0 && this.showDc() };
-    await this.run('pedir o teste em grupo', async () => {
+    const who = askedWho([...this.picked()], this.people().length, this.wantGroup());
+    const request = { skillKey: this.skillKey(), dc, showDc: dc > 0 && this.showDc(), ...who };
+    await this.run('pedir o teste', async () => {
       const view = await this.api.requestGroupCheck(
         this.campaignId(),
         request,
@@ -284,7 +367,7 @@ export class GroupCheckMaster {
       );
       this.checks.apply(view);
       this.keys.renew();
-      this.said.set(`Teste em grupo pedido: ${view.skillNamePt}.`);
+      this.said.set(`${view.group ? 'Teste em grupo' : 'Teste'} pedido: ${view.skillNamePt}.`);
     });
   }
 
@@ -324,7 +407,7 @@ export class GroupCheckMaster {
         this.keys.keyFor({ close: id }),
       );
       this.checks.apply(view);
-      this.said.set('Teste em grupo encerrado.');
+      this.said.set(`${view.group ? 'Teste em grupo' : 'Teste'} encerrado.`);
     });
   }
 

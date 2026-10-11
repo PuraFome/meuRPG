@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -26,6 +28,12 @@ import (
 // whole group succeeds. The count is over the characters asked (the living player
 // characters when the master asks), and a character that did not answer when the master
 // closes the check counts as failed.
+//
+// The same request also asks only some characters, and for a saving throw ("save:con") as
+// well as a skill or an ability check, at any moment out of combat. When it asks named
+// characters, each roll is judged alone (is_group false): there is no group verdict.
+// Only the characters asked read the request or may roll it (RN-10): a player who was not
+// asked reads no group check at all.
 //
 // What each side reads (RN-20): a player reads their own roll, and passed or failed only
 // when the master shows the DC (the scene checks' rule); the group's verdict, once the
@@ -138,7 +146,16 @@ func (s *Service) RequestGroupCheck(
 	}
 	skill := req.Msg.GetSkillKey()
 	if !isCheckKey(skill) || s.roster.SceneCheckName(skill) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("skill_key must be a skill or an ability check"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("skill_key must be a skill, an ability check or a saving throw"))
+	}
+	askedIDs := req.Msg.GetCharacterIds()
+	for i, id := range askedIDs {
+		if _, err := parseCombatID(id, "character"); err != nil {
+			return nil, err
+		}
+		if slices.Contains(askedIDs[:i], id) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("character_ids names a character twice"))
+		}
 	}
 	dc := req.Msg.GetDc()
 	if dc < 0 || dc > 40 {
@@ -158,16 +175,37 @@ func (s *Service) RequestGroupCheck(
 		if len(party) == 0 {
 			return groupCheckEvent{}, "", connect.NewError(connect.CodeInvalidArgument, errors.New("the campaign has no living player character to ask"))
 		}
+		// The characters asked: all of the party, or the ones named (each must be a living
+		// player character of this campaign: never an NPC, a dead or an unknown one).
+		asked := party
+		if len(askedIDs) > 0 {
+			asked = make([]link.Character, 0, len(askedIDs))
+			for _, id := range askedIDs {
+				i := slices.IndexFunc(party, func(c link.Character) bool { return c.ID == id })
+				if i < 0 {
+					return groupCheckEvent{}, "", connect.NewError(connect.CodeInvalidArgument, errors.New("character_ids must name living player characters of this campaign"))
+				}
+				asked = append(asked, party[i])
+			}
+		}
+		// A group check is the default of asking everyone; asking some is judged one by one.
+		isGroup := len(askedIDs) == 0
+		if req.Msg.Group != nil {
+			isGroup = req.Msg.GetGroup()
+		}
+		if isGroup && len(asked) < 2 && req.Msg.Group != nil {
+			return groupCheckEvent{}, "", connect.NewError(connect.CodeInvalidArgument, errors.New("a group check needs at least two characters; ask one without group"))
+		}
 		var dcValue *int32
 		if dc > 0 {
 			dcValue = &dc
 		}
 		if created, err = q.InsertGroupCheck(ctx, playdb.InsertGroupCheckParams{
-			GameSessionID: session.ID, SkillKey: skill, Dc: dcValue, ShowDc: req.Msg.GetShowDc(), CreatedAt: s.now(),
+			GameSessionID: session.ID, SkillKey: skill, Dc: dcValue, ShowDc: req.Msg.GetShowDc(), IsGroup: isGroup, CreatedAt: s.now(),
 		}); err != nil {
 			return groupCheckEvent{}, "", fmt.Errorf("ask the group check: %w", err)
 		}
-		for _, ch := range party {
+		for _, ch := range asked {
 			if err := q.InsertGroupCheckMember(ctx, playdb.InsertGroupCheckMemberParams{GroupCheckID: created.ID, CharacterID: ch.ID}); err != nil {
 				return groupCheckEvent{}, "", fmt.Errorf("ask a character: %w", err)
 			}
@@ -187,9 +225,10 @@ func (s *Service) RequestGroupCheck(
 	return connect.NewResponse(&playv1.RequestGroupCheckResponse{GroupCheck: view}), nil
 }
 
-// isCheckKey says whether a key is a skill or an ability check (never a saving throw).
+// isCheckKey says whether a key can be asked: a skill ("skill:stealth"), an ability check
+// ("ability:str") or a saving throw ("save:con"). The roster checks the rest of the key.
 func isCheckKey(key string) bool {
-	return len(key) > 6 && (key[:6] == "skill:" || (len(key) > 8 && key[:8] == "ability:"))
+	return strings.HasPrefix(key, "skill:") || strings.HasPrefix(key, "ability:") || strings.HasPrefix(key, "save:")
 }
 
 // RollGroupCheck implements playv1connect.ContestServiceHandler.
@@ -432,7 +471,7 @@ func (s *Service) CloseGroupCheck(
 			return groupCheckEvent{}, "", fmt.Errorf("list the members: %w", err)
 		}
 		var verdict *bool
-		if check.Dc != nil {
+		if check.Dc != nil && check.IsGroup {
 			passed := 0
 			for _, mb := range members {
 				if roll, err := decodeRoll(mb.Roll); err == nil && roll != nil && int(roll.Total) >= int(*check.Dc) {
@@ -550,6 +589,10 @@ func (s *Service) buildGroupCheckView(ctx context.Context, m authz.Membership, c
 	out := &playv1.GroupCheckView{
 		Id: check.ID, SkillKey: check.SkillKey, SkillNamePt: s.roster.SceneCheckName(check.SkillKey), Open: check.Status == "open",
 		ShowDc: check.ShowDc, CreatedAt: timestamppb.New(check.CreatedAt),
+		Group: check.IsGroup, Save: strings.HasPrefix(check.SkillKey, "save:"),
+	}
+	if master {
+		out.AskedCount = clamp32(len(members), 0, math.MaxInt32)
 	}
 	hasDC := check.Dc != nil
 	if master && hasDC {
@@ -561,6 +604,10 @@ func (s *Service) buildGroupCheckView(ctx context.Context, m authz.Membership, c
 		var err error
 		if mine, hasMine, err = s.myCharacter(ctx, nil, m); err != nil {
 			return nil, err
+		}
+		// A player who was not asked reads no group check at all (RN-10).
+		if !hasMine || !slices.ContainsFunc(members, func(mb playdb.GroupCheckMember) bool { return mb.CharacterID == mine.ID }) {
+			return nil, nil
 		}
 	}
 	names := map[string]string{}
@@ -615,13 +662,16 @@ func (s *Service) buildGroupCheckView(ctx context.Context, m authz.Membership, c
 			}
 		}
 	}
-	if master {
+	switch {
+	case !check.IsGroup:
+		// Each roll is judged alone: no count and no group verdict.
+	case master:
 		out.PassedCount = clamp32(passed, 0, math.MaxInt32)
 		out.Needed = clamp32(combat.GroupCheckNeeded(len(members)), 0, math.MaxInt32)
 		if hasDC {
 			out.VerdictKnown, out.GroupPassed = true, combat.GroupCheckPasses(passed, len(members))
 		}
-	} else if check.Status != "open" && check.ShowDc && check.Passed != nil {
+	case check.Status != "open" && check.ShowDc && check.Passed != nil:
 		out.VerdictKnown, out.GroupPassed = true, *check.Passed
 	}
 	return out, nil

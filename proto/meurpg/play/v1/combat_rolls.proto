@@ -207,6 +207,9 @@ message DamagePart {
   repeated SlotOption slot_options = 16;
   // A word under the line: "inclui Duelismo +2 (automático)".
   string note_pt = 17;
+  // A table maneuver's die: only one of these may be marked for each attack, so the screen
+  // turns the others off once one is marked.
+  bool maneuver = 18;
 }
 
 // Reroll is a die rerolled by Great Weapon Fighting.
@@ -233,6 +236,9 @@ message DamagePartRoll {
   bool physical = 9;
   string damage_type_key = 10;
   repeated Reroll rerolled = 11;
+  // A table maneuver's rider (what the target must do, in the table's words). Only the
+  // master gets it; empty for everyone else and for every other part.
+  string rider_pt = 12;
 }
 
 // SelectedExtra is an extra the player marks when they roll the damage.

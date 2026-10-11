@@ -163,6 +163,32 @@ export function menuResponse(): GetEffectMenuResponse {
         ],
       },
       {
+        type: 'grant_action',
+        namePt: 'Ação',
+        hintPt: 'Uma ação que o personagem passa a ter.',
+        fields: [
+          field('economy', 'choice', true, 'economies'),
+          field('resource', 'resource_ref'),
+          field('when', 'condition'),
+          field('tags', 'tags', false, 'tag_prefixes'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
+        type: 'superiority_die',
+        namePt: 'Dado de manobra',
+        hintPt: 'Um dado que uma opção soma a uma rolagem.',
+        fields: [
+          field('applies', 'choice', true, 'maneuver_applies'),
+          field('resource', 'resource_ref', true),
+          field('value', 'formula', true),
+          field('ability', 'choice', false, 'abilities'),
+          field('economy', 'choice', false, 'economies'),
+          field('when', 'condition'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
         type: 'choice',
         namePt: 'Escolha',
         hintPt: 'Algo que o jogador escolhe.',

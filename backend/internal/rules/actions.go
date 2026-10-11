@@ -158,9 +158,13 @@ func (x *deriver) resourcesAndActions() {
 		at[e.Resource] = len(x.d.Resources)
 		x.d.Resources = append(x.d.Resources, r)
 	}
+	x.maneuvers()
 	for _, a := range x.active {
 		if a.effect.Type != "grant_action" || !x.applies(a) {
 			continue
+		}
+		if x.hasManeuver(a.owner) {
+			continue // the option is a die on a roll; its action would spend the resource twice
 		}
 		act := Action{Key: a.owner, NamePT: x.c.namePT(a.owner), Economy: a.effect.Economy, Source: a.owner}
 		// The resource of the same feature, when it has one at this level. The

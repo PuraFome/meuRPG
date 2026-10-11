@@ -865,6 +865,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["RemoveDamagePart"] = cc.RemoveDamagePart(ctx, connect.NewRequest(&playv1.RemoveDamagePartRequest{CampaignId: id}))
 	_, combat["AnswerRageEnd"] = cc.AnswerRageEnd(ctx, connect.NewRequest(&playv1.AnswerRageEndRequest{CampaignId: id}))
 	_, combat["EndRage"] = cc.EndRage(ctx, connect.NewRequest(&playv1.EndRageRequest{CampaignId: id}))
+	_, combat["UseHitRider"] = cc.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())

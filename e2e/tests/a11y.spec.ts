@@ -7604,7 +7604,8 @@ async function scanGroupCheckScreens(browser: Browser, colorScheme: 'light' | 'd
     await ask.getByLabel(/^CD \(/).fill('13');
     await ask.getByRole('button', { name: 'Pedir o teste' }).click();
     const sheet = p.getByRole('dialog');
-    await expect(sheet.getByText('O mestre pediu um teste de Furtividade de todo o grupo.')).toBeVisible();
+    // A party of one: "Todos" is one character, so the request is a check of its own.
+    await expect(sheet.getByText('O mestre pede um teste de Furtividade.')).toBeVisible();
     await expectScreenPasses(p, `O teste em grupo, a rolagem ${where}`);
     await typeD20(sheet, 15);
     await expect(sheet.getByText(/Esperando o mestre/)).toBeVisible();

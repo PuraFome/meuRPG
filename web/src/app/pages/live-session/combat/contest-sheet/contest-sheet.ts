@@ -19,6 +19,7 @@ import {
   type CheckOption,
   type ContestAttackOption,
   type ContestSkillOption,
+  type ManeuverGrappleOption,
   ContestKind,
   ContestPurpose,
   ContestSkill,
@@ -32,6 +33,7 @@ import {
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
+import { reasonText } from '../../../../core/combat/combat-options';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { type CheckDie, ContestClient } from '../../../../core/combat/contest-client';
 import type { ContestState } from '../../../../core/combat/contest-state';
@@ -242,6 +244,35 @@ export class ContestSheet {
     return this.target() ? '' : 'Escolha o alvo';
   });
 
+  // ---- the table maneuver that starts a grapple ----
+
+  protected readonly maneuvers = computed(() =>
+    this.data.purpose === ContestPurpose.GRAPPLE ? (this.data.attack?.maneuvers ?? []) : [],
+  );
+  /** The maneuver picked ("" is a plain grapple, which replaces an attack). */
+  protected readonly maneuverKey = signal('');
+  /** The face of the maneuver's die, typed when the d20 is rolled with physical dice. */
+  protected readonly maneuverFace = signal(0);
+  protected readonly maneuver = computed(() =>
+    this.maneuvers().find((o) => o.key === this.maneuverKey()),
+  );
+
+  protected maneuverWhy(o: ManeuverGrappleOption): string {
+    if (o.enabled) {
+      return `d${o.sides} · ${o.usesLeft} ${o.usesLeft === 1 ? 'uso' : 'usos'} · ação bônus`;
+    }
+    return o.noMeleeHit ? 'Precisa de um acerto corpo a corpo neste turno.' : reasonText(o.reason);
+  }
+
+  protected pickManeuver(key: string): void {
+    this.maneuverKey.set(key);
+    this.error.set('');
+  }
+
+  protected typeManeuverFace(value: string): void {
+    this.maneuverFace.set(Number.parseInt(value, 10) || 0);
+  }
+
   // ---- the roll ----
 
   protected readonly options = computed<readonly ContestSkillOption[]>(() =>
@@ -418,6 +449,9 @@ export class ContestSheet {
           kind: ContestKind.CONTEST,
           skill,
           die,
+          ...(this.maneuverKey()
+            ? { maneuverKey: this.maneuverKey(), maneuverFace: this.maneuverFace() }
+            : {}),
         },
         this.startKeys.keyFor({
           initiator: this.data.initiatorId,
@@ -425,6 +459,8 @@ export class ContestSheet {
           purpose: this.data.purpose,
           skill,
           die,
+          maneuver: this.maneuverKey(),
+          face: this.maneuverFace(),
         }),
       );
       this.data.state.apply(res.encounter);

@@ -166,7 +166,7 @@ func (w *world) buildFogMap() {
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_COVER, 1, crates)
 	// The master's painted light is never a player's.
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_LIGHT, 3, [][2]int32{{17, 3}, {18, 3}, {17, 4}, {18, 4}})
-	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT.Enum()})))
+	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_DIM.Enum()})))
 
 	// What Ana's character sees (the west), the master made public.
 	w.pts["entrance"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, w.secrets.marker("entrance-name", w.ana), w.secrets.marker("entrance-description", w.ana), 2, 7, nil)

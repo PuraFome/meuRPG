@@ -118,5 +118,6 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.HideObserver", "noticed", "who noticed a hider is the master's", nil},
 	{"meurpg.play.v1.GroupCheckView", "dc", "the DC of a group check is never a player's, even when the master shows passed and failed", nil},
 	{"meurpg.play.v1.GroupCheckView", "passed_count", "how many passed is the master's", nil},
+	{"meurpg.play.v1.GroupCheckView", "asked_count", "how many characters the master asked is the master's", nil},
 	{"meurpg.play.v1.GroupCheckView", "needed", "how many are needed is the master's", nil},
 }

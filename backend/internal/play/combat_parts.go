@@ -70,6 +70,10 @@ type partRecord struct {
 	Pact      bool  `json:"pact,omitempty"`
 	// Removed: the master took it out.
 	Removed bool `json:"removed,omitempty"`
+	// Resource is the resource a table maneuver spends (one use) when this extra is
+	// rolled; Rider is the line the master reads for it.
+	Resource string `json:"resource,omitempty"`
+	Rider    string `json:"rider,omitempty"`
 }
 
 // partRoll is what a part rolled, in the pending damage's part_rolls column and in the
@@ -89,6 +93,10 @@ type partRoll struct {
 	// Conditional is the part's, kept for the audience of the roll.
 	Conditional bool       `json:"conditional,omitempty"`
 	Rerolled    []rerolled `json:"rerolled,omitempty"`
+	// Resource and Rider are a table maneuver's: the resource it spent and the line only
+	// the master reads.
+	Resource string `json:"resource,omitempty"`
+	Rider    string `json:"rider,omitempty"`
 }
 
 type rerolled struct {
@@ -179,6 +187,8 @@ type hitFacts struct {
 	disadvantaged    bool // some source gives the attack disadvantage, canceled or not
 	targetHurt       bool
 	names            func(string) string
+	// usesLeft are the uses left of the attacker's resources, for the table maneuvers.
+	usesLeft map[string]int32
 	// opportunity says an opportunity attack: a melee attack made from the square the mover left.
 	opportunity bool
 }
@@ -244,7 +254,8 @@ func (h hitFacts) buildParts() []partRecord {
 	extras := combat.Offered(scene)
 	autos := automaticLines(scene)
 	reroll := h.sheet.Traits.GreatWeaponFighting && h.attack.Weapon && h.attack.Melee && h.attack.TwoHanded
-	if len(extras) == 0 && len(autos) == 0 && !reroll {
+	maneuvers := h.maneuverParts()
+	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 {
 		return nil
 	}
 	weapon := partRecord{
@@ -260,6 +271,31 @@ func (h hitFacts) buildParts() []partRecord {
 	}
 	for _, e := range autos {
 		out = append(out, h.fromExtra(e, partAuto))
+	}
+	return append(out, maneuvers...)
+}
+
+// maneuverParts lists, for a player's character, the table maneuvers whose die goes on the
+// damage of a weapon attack that hit: one extra each, which the player may mark (only one
+// per attack, checked when the damage is rolled) while the resource has a use.
+func (h hitFacts) maneuverParts() []partRecord {
+	if h.attacker.Kind != kindPlayer || !h.attack.Weapon {
+		return nil
+	}
+	var out []partRecord
+	for _, m := range h.sheet.Traits.Maneuvers {
+		if m.Applies != rules.ManeuverDamage {
+			continue
+		}
+		left := h.usesLeft[m.Resource]
+		sp := partRecord{
+			Key: m.Key, Label: m.NamePT, Kind: partExtra, Count: 1, Sides: clamp32(m.Sides, 0, 100), DamageType: h.attack.DamageType,
+			Source: m.Key, Choosable: true, Available: left > 0, Resource: m.Resource, Rider: m.TextPT,
+		}
+		if left <= 0 {
+			sp.Reason = "Sem usos do recurso"
+		}
+		out = append(out, sp)
 	}
 	return out
 }
@@ -330,7 +366,7 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 			Key: sp.Key, LabelPt: sp.Label, DiceCount: clamp32(count, 0, 200), DiceSides: sp.Sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
 			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: sp.Source,
 			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
-			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0, NeedsSlot: sp.NeedsSlot, NotePt: note,
+			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "",
 		})
 	}
 	return out
@@ -345,7 +381,11 @@ func partRollsProto(p playdb.PendingDamage, master bool, damageTypePT func(strin
 		if r.Conditional && !master {
 			r.Counted = true // a player reads the same lines whatever the target is
 		}
-		out = append(out, partRollProto(r, damageTypePT))
+		pr := partRollProto(r, damageTypePT)
+		if master {
+			pr.RiderPt = r.Rider
+		}
+		out = append(out, pr)
 	}
 	return out
 }
@@ -514,6 +554,7 @@ type rollPartsInput struct {
 func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 	out := partsRoll{byType: map[string]int{}, physical: !r.in.inApp}
 	var final []partRecord
+	chosen := 0
 	for _, sp := range r.parts {
 		if sp.Kind == partExtra && sp.Choosable {
 			mark := r.choice.marks[sp.Key]
@@ -522,6 +563,12 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 				selected = mark != nil
 			}
 			if selected {
+				if sp.Resource != "" {
+					// One maneuver per attack.
+					if chosen++; chosen > 1 {
+						return partsRoll{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE, "only one maneuver for each attack")
+					}
+				}
 				if err := r.selectOK(sp, mark); err != nil {
 					return partsRoll{}, err
 				}
@@ -561,6 +608,7 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 		pr := partRoll{
 			Key: sp.Key, Label: sp.Label, Count: clamp32(count, 0, 200), Sides: sp.Sides, Flat: sp.Flat, Fixed: clamp32(fixed, 0, 10000),
 			DamageType: sp.DamageType, Conditional: sp.Conditional, Counted: true, Physical: !r.in.inApp,
+			Resource: sp.Resource, Rider: sp.Rider,
 		}
 		if count > 0 {
 			if err := s.rollPartDice(&pr, sp, r, diceParts); err != nil {
@@ -725,11 +773,27 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 		}
 		h.freeSlots = len(freeSmiteSlots(vit)) > 0
 	}
+	if attacker.Kind == kindPlayer && len(sheet.Traits.Maneuvers) > 0 {
+		vit, err := s.vitals.GetVitalsTx(ctx, c.tx, campaignID, attacker.CharacterID)
+		if err != nil {
+			return err
+		}
+		h.usesLeft = usesLeftOf(vit)
+	}
 	parts := h.buildParts()
 	if parts == nil {
 		return nil
 	}
 	return c.q.SetPendingDamageParts(ctx, playdb.SetPendingDamagePartsParams{ID: pendingID, Parts: mustJSON(parts)})
+}
+
+// usesLeftOf is the uses left of each resource of a character's vitals.
+func usesLeftOf(v *playv1.CharacterVitals) map[string]int32 {
+	out := map[string]int32{}
+	for _, r := range v.GetResources() {
+		out[r.GetKey()] = r.GetTotal() - r.GetUsed()
+	}
+	return out
 }
 
 // isHurt says the combatant is below its hit point maximum.
@@ -756,6 +820,20 @@ func (s *Service) selectionChecker(ctx context.Context, c *combatTx, campaignID 
 	return func(sp partRecord, mark *playv1.SelectedExtra) error {
 		if !sp.Available {
 			return notAvailable()
+		}
+		if sp.Resource != "" {
+			// A table maneuver: the attacker's own, with a use left now.
+			if attacker.Kind != kindPlayer {
+				return notAvailable()
+			}
+			vit, err := s.vitals.GetVitalsTx(ctx, c.tx, campaignID, attacker.CharacterID)
+			if err != nil {
+				return err
+			}
+			if usesLeftOf(vit)[sp.Resource] <= 0 {
+				return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left")
+			}
+			return nil
 		}
 		switch sp.Key {
 		case combat.ExtraSneakAttack:
@@ -990,6 +1068,15 @@ func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.
 			continue
 		}
 		part := pr.parts[i]
+		if part.Resource != "" && part.Kind == partExtra {
+			v, err := s.spendResource(ctx, c, attacker.CharacterID, part.Resource, 1)
+			if err != nil {
+				return nil, err
+			}
+			vit = v
+			ev.ManeuverSpent = append(ev.ManeuverSpent, part.Resource)
+			continue
+		}
 		switch r.Key {
 		case combat.ExtraDivineSmite:
 			ref := slotRef{Level: part.SlotLevel, Pact: part.Pact}

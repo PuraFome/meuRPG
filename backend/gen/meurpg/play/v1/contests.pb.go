@@ -335,7 +335,15 @@ type StartContestRequest struct {
 	// The initiator's roll. Required, except for an ESCAPE_DC grapple.
 	Roll *CheckRollInput `protobuf:"bytes,9,opt,name=roll,proto3" json:"roll,omitempty"`
 	// The fixed escape DC (1 to 40) of an ESCAPE_DC grapple. Only the master.
-	EscapeDc      int32 `protobuf:"varint,10,opt,name=escape_dc,json=escapeDc,proto3" json:"escape_dc,omitempty"`
+	EscapeDc int32 `protobuf:"varint,10,opt,name=escape_dc,json=escapeDc,proto3" json:"escape_dc,omitempty"`
+	// A table maneuver (ContestAttackOption.maneuvers[].key) that starts a GRAPPLE: the player
+	// made a melee hit this turn, so the grapple costs the bonus action and one use of the
+	// maneuver's resource instead of an attack, and the superiority die is added to the
+	// Athletics check. Not with ESCAPE_DC; players only.
+	ManeuverKey string `protobuf:"bytes,11,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	// The face of the die when the player rolls physical dice (the roll is typed d20 faces): 1
+	// to the die's sides. Empty (0) when the roll is in the app, where the server rolls the die.
+	ManeuverFace  int32 `protobuf:"varint,12,opt,name=maneuver_face,json=maneuverFace,proto3" json:"maneuver_face,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -436,6 +444,20 @@ func (x *StartContestRequest) GetRoll() *CheckRollInput {
 func (x *StartContestRequest) GetEscapeDc() int32 {
 	if x != nil {
 		return x.EscapeDc
+	}
+	return 0
+}
+
+func (x *StartContestRequest) GetManeuverKey() string {
+	if x != nil {
+		return x.ManeuverKey
+	}
+	return ""
+}
+
+func (x *StartContestRequest) GetManeuverFace() int32 {
+	if x != nil {
+		return x.ManeuverFace
 	}
 	return 0
 }
@@ -2008,13 +2030,22 @@ type RequestGroupCheckRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId     string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	IdempotencyKey string                 `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	// "skill:stealth", "skill:perception"... or an ability check, "ability:str".
+	// "skill:stealth", "skill:perception"... an ability check, "ability:str", or a saving
+	// throw, "save:con" (str, dex, con, int, wis, cha).
 	SkillKey string `protobuf:"bytes,3,opt,name=skill_key,json=skillKey,proto3" json:"skill_key,omitempty"`
 	// The master's DC, 1 to 40; 0 for none.
 	Dc int32 `protobuf:"varint,4,opt,name=dc,proto3" json:"dc,omitempty"`
 	// True lets the players read passed and failed (their own roll and, once the check
 	// closes, the group's verdict); the DC itself stays the master's.
-	ShowDc        bool `protobuf:"varint,5,opt,name=show_dc,json=showDc,proto3" json:"show_dc,omitempty"`
+	ShowDc bool `protobuf:"varint,5,opt,name=show_dc,json=showDc,proto3" json:"show_dc,omitempty"`
+	// The characters asked. Empty asks every living player character (the request as it
+	// was before this field).
+	CharacterIds []string `protobuf:"bytes,6,rep,name=character_ids,json=characterIds,proto3" json:"character_ids,omitempty"`
+	// True makes it a group check: the group's verdict is "pelo menos metade passou"
+	// (SRD 5.1, "Working Together") and needs a DC to be known. False judges each roll alone,
+	// with no group verdict. Unset: true when no character_ids, false when some are named.
+	// True with only one character asked is `invalid_argument`.
+	Group         *bool `protobuf:"varint,7,opt,name=group,proto3,oneof" json:"group,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2080,6 +2111,20 @@ func (x *RequestGroupCheckRequest) GetDc() int32 {
 func (x *RequestGroupCheckRequest) GetShowDc() bool {
 	if x != nil {
 		return x.ShowDc
+	}
+	return false
+}
+
+func (x *RequestGroupCheckRequest) GetCharacterIds() []string {
+	if x != nil {
+		return x.CharacterIds
+	}
+	return nil
+}
+
+func (x *RequestGroupCheckRequest) GetGroup() bool {
+	if x != nil && x.Group != nil {
+		return *x.Group
 	}
 	return false
 }
@@ -2503,7 +2548,7 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x0eCheckRollInput\x12 \n" +
 	"\vroll_in_app\x18\x01 \x01(\bH\x00R\trollInApp\x127\n" +
 	"\td20_faces\x18\x02 \x01(\v2\x18.meurpg.play.v1.D20FacesH\x00R\bd20FacesB\x06\n" +
-	"\x04roll\"\xb2\x03\n" +
+	"\x04roll\"\xfa\x03\n" +
 	"\x13StartContestRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2516,7 +2561,9 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x05skill\x18\b \x01(\x0e2\x1c.meurpg.play.v1.ContestSkillR\x05skill\x122\n" +
 	"\x04roll\x18\t \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\x12\x1b\n" +
 	"\tescape_dc\x18\n" +
-	" \x01(\x05R\bescapeDc\"\x86\x01\n" +
+	" \x01(\x05R\bescapeDc\x12!\n" +
+	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKey\x12#\n" +
+	"\rmaneuver_face\x18\f \x01(\x05R\fmaneuverFace\"\x86\x01\n" +
 	"\x14StartContestResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x125\n" +
 	"\acontest\x18\x02 \x01(\v2\x1b.meurpg.play.v1.ContestViewR\acontest\"\xb3\x02\n" +
@@ -2637,14 +2684,17 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"campaignId\"X\n" +
 	"\x15GetGroupCheckResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
-	"groupCheck\"\xaa\x01\n" +
+	"groupCheck\"\xf4\x01\n" +
 	"\x18RequestGroupCheckRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12'\n" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
 	"\tskill_key\x18\x03 \x01(\tR\bskillKey\x12\x0e\n" +
 	"\x02dc\x18\x04 \x01(\x05R\x02dc\x12\x17\n" +
-	"\ashow_dc\x18\x05 \x01(\bR\x06showDc\"\\\n" +
+	"\ashow_dc\x18\x05 \x01(\bR\x06showDc\x12#\n" +
+	"\rcharacter_ids\x18\x06 \x03(\tR\fcharacterIds\x12\x19\n" +
+	"\x05group\x18\a \x01(\bH\x00R\x05group\x88\x01\x01B\b\n" +
+	"\x06_group\"\\\n" +
 	"\x19RequestGroupCheckResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
 	"groupCheck\"\xbb\x01\n" +
@@ -2861,6 +2911,7 @@ func file_meurpg_play_v1_contests_proto_init() {
 		(*CheckRollInput_RollInApp)(nil),
 		(*CheckRollInput_D20Faces)(nil),
 	}
+	file_meurpg_play_v1_contests_proto_msgTypes[30].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

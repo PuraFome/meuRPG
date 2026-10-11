@@ -132,12 +132,13 @@ func (s *Service) fogViewOf(ctx context.Context, r mapsdb.ListMapDetailsRow, v v
 // the cover and the doors of the squares they see now or remember (a wall next to
 // a seen square is one of them). The doors are as a player knows them: a locked
 // door reads closed, and a secret one is a wall there and no door (RN-26). The
-// light is never theirs.
+// light is never theirs. With the base light "Claro" it is every square's (the
+// whole floor plan); creatures and points do not come from here.
 func filterLayers(set layerSet, pv *playerView) layerSet {
 	out := layerSet{terrain: grid.NewLayer(pv.g), walls: grid.NewLayer(pv.g), cover: grid.NewCoverLayer(pv.g), doors: grid.NewDoorLayer(pv.g)}
 	for row := range pv.g.Rows {
 		for col := range pv.g.Columns {
-			if !pv.known(grid.Square{Col: col, Row: row}) {
+			if !pv.terrainKnown(grid.Square{Col: col, Row: row}) {
 				continue
 			}
 			out.terrain.Set(col, row, set.terrain.Get(col, row))

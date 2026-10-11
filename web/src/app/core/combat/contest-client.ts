@@ -49,6 +49,9 @@ export interface StartContestInput {
   readonly die?: CheckDie;
   /** The creature's fixed escape DC (1 to 40) of an `ESCAPE_DC` grapple: the master's alone (RN-20). */
   readonly escapeDc?: number;
+  /** A table maneuver (ContestAttackOption.maneuvers) that starts the grapple, and the face of its die when rolled with a physical die. */
+  readonly maneuverKey?: string;
+  readonly maneuverFace?: number;
 }
 
 /** What the defender answers (`RespondContest`): the skill and the roll, or the roll left to the master. */
@@ -133,6 +136,8 @@ export class ContestClient {
       skill: input.skill,
       ...(input.die ? { roll: rollInput(input.die) } : {}),
       ...(input.escapeDc ? { escapeDc: input.escapeDc } : {}),
+      ...(input.maneuverKey ? { maneuverKey: input.maneuverKey } : {}),
+      ...(input.maneuverFace ? { maneuverFace: input.maneuverFace } : {}),
     });
     return {
       encounter: need(res.encounter, 'StartContest'),
@@ -359,10 +364,20 @@ export class ContestClient {
     return (await this.client.getSurpriseSuggestion({ campaignId, encounterId })).suggestions;
   }
 
-  /** Asks every living character for a check. `dc` 0 is none; `showDc` lets the players read passed and failed. */
+  /**
+   * Asks for a check or a saving throw (`skillKey`: "skill:x", "ability:x" or "save:x"). `characterIds` empty asks every
+   * living character; `group` is the "Working Together" verdict (unset: the server decides). `dc` 0 is none; `showDc`
+   * lets the players read passed and failed.
+   */
   async requestGroupCheck(
     campaignId: string,
-    request: { readonly skillKey: string; readonly dc: number; readonly showDc: boolean },
+    request: {
+      readonly skillKey: string;
+      readonly dc: number;
+      readonly showDc: boolean;
+      readonly characterIds?: readonly string[];
+      readonly group?: boolean;
+    },
     key: string,
   ): Promise<GroupCheckView> {
     const res = await this.client.requestGroupCheck({
@@ -371,6 +386,8 @@ export class ContestClient {
       skillKey: request.skillKey,
       dc: request.dc,
       showDc: request.showDc,
+      characterIds: [...(request.characterIds ?? [])],
+      group: request.group,
     });
     return need(res.groupCheck, 'RequestGroupCheck');
   }

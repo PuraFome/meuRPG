@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -385,7 +386,8 @@ func TestGroupCheckRequestRefusesWhatIsNotACheckOrADC(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
 	for name, edit := range map[string]func(*playv1.RequestGroupCheckRequest){
-		"a saving throw":       func(r *playv1.RequestGroupCheckRequest) { r.SkillKey = "save:dex" },
+		"a save of no ability": func(r *playv1.RequestGroupCheckRequest) { r.SkillKey = "save:luck" },
+		"a bare save prefix":   func(r *playv1.RequestGroupCheckRequest) { r.SkillKey = "save:" },
 		"no skill":             func(r *playv1.RequestGroupCheckRequest) { r.SkillKey = "" },
 		"a skill that is none": func(r *playv1.RequestGroupCheckRequest) { r.SkillKey = "skill:no-such-skill" },
 		"a bare prefix":        func(r *playv1.RequestGroupCheckRequest) { r.SkillKey = "skill:" },
@@ -563,4 +565,168 @@ func TestGroupCheckCallsRefuseWhoIsNotAllowed(t *testing.T) {
 		_, err := u.contests.CloseGroupCheck(t.Context(), connect.NewRequest(&playv1.CloseGroupCheckRequest{CampaignId: campaignID, IdempotencyKey: newKey(), GroupCheckId: asked.GetId()}))
 		return err
 	}, a.campaignID)
+}
+
+// askOnly asks the named characters (no group unless edit says so).
+func (a *armed) askOnly(t *testing.T, key string, edit func(*playv1.RequestGroupCheckRequest), ids ...*charactersv1.Character) (*playv1.RequestGroupCheckResponse, error) {
+	t.Helper()
+	return a.requestGroup(t, a.master, func(r *playv1.RequestGroupCheckRequest) {
+		r.SkillKey = key
+		for _, c := range ids {
+			r.CharacterIds = append(r.CharacterIds, c.GetId())
+		}
+		if edit != nil {
+			edit(r)
+		}
+	})
+}
+
+// TestAskARollReachesOnlyTheCharacterAsked (RN-10, RN-20): a request for one character is read
+// and rolled by that player only; the others read no check at all, cannot roll it and never read
+// the asked player's roll; the master reads the one roll, with no group verdict.
+func TestAskARollReachesOnlyTheCharacterAsked(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	res, err := a.askOnly(t, stealthKey, nil, a.toren)
+	if err != nil {
+		t.Fatalf("RequestGroupCheck(one character) error = %v", err)
+	}
+	asked := res.GetGroupCheck()
+	if asked.GetGroup() || len(asked.GetMembers()) != 1 || asked.GetMembers()[0].GetCharacterId() != a.toren.GetId() {
+		t.Fatalf("the master's request = %v, want only Toren, not a group check", asked)
+	}
+	if v := a.groupView(t, a.caio); v == nil || !v.GetYouRoll() {
+		t.Errorf("Toren's player reads %v, want a request to roll", v)
+	}
+	for who, u := range map[string]*user{"Pensantus's player": a.ana, "Brisa's player": a.bia} {
+		if v := a.groupView(t, u); v != nil {
+			t.Errorf("%s reads %v, want no check (they were not asked)", who, v)
+		}
+		if _, err := a.rollGroup(t, u, asked.GetId(), 10); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Errorf("%s rolling a check they were not asked = %v, want failed_precondition", who, err)
+		}
+	}
+	a.mustRollGroup(t, a.caio, asked.GetId(), 10) // 10 + 2 = 12 against DC 12
+	for who, u := range map[string]*user{"Pensantus's player": a.ana, "Brisa's player": a.bia} {
+		if v := a.groupView(t, u); v != nil {
+			t.Errorf("%s reads %v after Toren rolled, want nothing", who, v)
+		}
+	}
+	all := a.groupView(t, a.master)
+	m := memberOf(all, a.toren.GetId())
+	if m == nil || m.GetRoll().GetTotal() != 12 || !m.GetPassedKnown() || !m.GetPassed() {
+		t.Errorf("the master reads %v, want Toren's 12 passing", all)
+	}
+	if all.GetNeeded() != 0 || all.GetPassedCount() != 0 || all.GetVerdictKnown() {
+		t.Errorf("a request judged alone reads a group verdict: %v", all)
+	}
+	if closed := a.mustCloseGroup(t, asked.GetId()); closed.GetVerdictKnown() || closed.GetOpen() {
+		t.Errorf("the closed request = %v, want closed with no group verdict", closed)
+	}
+}
+
+// TestAskARollOfSomeCharactersAndTheOldRequestStillAsksEveryone: two named characters are asked
+// and the third is not; a request with no ids asks all three, as it always did.
+func TestAskARollOfSomeCharactersAndTheOldRequestStillAsksEveryone(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	some, err := a.askOnly(t, stealthKey, nil, a.toren, a.bri)
+	if err != nil {
+		t.Fatalf("RequestGroupCheck(two) error = %v", err)
+	}
+	if v := some.GetGroupCheck(); v.GetGroup() || len(v.GetMembers()) != 2 || memberOf(v, a.pens.GetId()) != nil {
+		t.Fatalf("two asked = %v, want Toren and Brisa alone", v)
+	}
+	if v := a.groupView(t, a.ana); v != nil {
+		t.Errorf("the player not asked reads %v", v)
+	}
+	a.mustCloseGroup(t, some.GetGroupCheck().GetId())
+	old := a.mustRequestGroup(t, nil)
+	if !old.GetGroup() || len(old.GetMembers()) != 3 || old.GetAskedCount() != 3 || old.GetNeeded() != 2 {
+		t.Errorf("the request with no ids = %v, want a group check of the three characters", old)
+	}
+	// A group check of the named characters is allowed: two of them, with the half rule.
+	a.mustCloseGroup(t, old.GetId())
+	grp, err := a.askOnly(t, stealthKey, func(r *playv1.RequestGroupCheckRequest) { r.Group = new(true) }, a.toren, a.bri)
+	if err != nil {
+		t.Fatalf("RequestGroupCheck(two, group) error = %v", err)
+	}
+	if v := grp.GetGroupCheck(); !v.GetGroup() || v.GetNeeded() != 1 {
+		t.Errorf("two asked as a group = %v, want the half rule (1 needed)", v)
+	}
+}
+
+// TestAskARollRefusesWhoCannotBeAsked: an unknown character, an NPC, a repeated one and a
+// group check of one character are invalid_argument, a malformed ID is not_found; nothing is left open.
+func TestAskARollRefusesWhoCannotBeAsked(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	cases := map[string]func(*playv1.RequestGroupCheckRequest){
+		"an unknown character": func(r *playv1.RequestGroupCheckRequest) {
+			r.CharacterIds = []string{"00000000-0000-4000-8000-000000000001"}
+		},
+		"an NPC": func(r *playv1.RequestGroupCheckRequest) {
+			r.CharacterIds = []string{a.toren.GetId(), a.capitao.GetId()}
+		},
+		"a repeated character": func(r *playv1.RequestGroupCheckRequest) { r.CharacterIds = []string{a.toren.GetId(), a.toren.GetId()} },
+		"a group of one": func(r *playv1.RequestGroupCheckRequest) {
+			r.CharacterIds, r.Group = []string{a.toren.GetId()}, new(true)
+		},
+	}
+	for name, edit := range cases {
+		if _, err := a.requestGroup(t, a.master, edit); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s = %v, want invalid_argument", name, err)
+		}
+	}
+	// A malformed ID reads as not found, as every combat ID does (parseCombatID).
+	if _, err := a.requestGroup(t, a.master, func(r *playv1.RequestGroupCheckRequest) { r.CharacterIds = []string{"toren"} }); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("not an ID = %v, want not_found", err)
+	}
+	if v := a.groupView(t, a.master); v != nil {
+		t.Errorf("refused requests left %v", v)
+	}
+	// Only one open at a time, also for a request to one character.
+	if _, err := a.askOnly(t, stealthKey, nil, a.toren); err != nil {
+		t.Fatalf("RequestGroupCheck() error = %v", err)
+	}
+	if _, err := a.askOnly(t, "skill:perception", nil, a.bri); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Errorf("a second request = %v, want failed_precondition (GROUP_CHECK_OPEN)", err)
+	}
+}
+
+// TestAskASavingThrowUsesTheSaveModifier (SRD 5.1, "Saving Throws"): the roll adds the saving
+// throw's bonus, with the proficiency when the character has it. Toren (Fighter 2, human) has
+// Constitution 15 (+2) and is proficient in that save (+2 bonus): +4; his Dexterity save is
+// +2 (14, not proficient). The master sees the wording of the save; the roll is for the asked
+// player only.
+func TestAskASavingThrowUsesTheSaveModifier(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	for _, c := range []struct {
+		key  string
+		want int32
+	}{{"save:con", 4}, {"save:dex", 2}} {
+		res, err := a.askOnly(t, c.key, func(r *playv1.RequestGroupCheckRequest) { r.Dc, r.ShowDc = 14, true }, a.toren)
+		if err != nil {
+			t.Fatalf("RequestGroupCheck(%s) error = %v", c.key, err)
+		}
+		v := res.GetGroupCheck()
+		if !v.GetSave() || v.GetSkillKey() != c.key || v.GetSkillNamePt() == "" {
+			t.Fatalf("the request for %s = %v, want a saving throw with its name", c.key, v)
+		}
+		mine := a.groupView(t, a.caio)
+		if mine.GetYourOption().GetModifier() != c.want || !mine.GetYourOption().GetKnown() || !mine.GetSave() {
+			t.Fatalf("Toren's player reads %v for %s, want +%d", mine, c.key, c.want)
+		}
+		done := a.mustRollGroup(t, a.caio, v.GetId(), 10)
+		if got := memberOf(done, a.toren.GetId()).GetRoll(); got.GetModifier() != c.want || got.GetTotal() != 10+c.want {
+			t.Errorf("Toren's %s roll = %v, want total %d", c.key, got, 10+c.want)
+		}
+		a.mustCloseGroup(t, v.GetId())
+	}
+	// A saving throw asked of the whole party is a group check with the half rule as any other.
+	all := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.SkillKey = "save:wis" })
+	if !all.GetGroup() || !all.GetSave() || len(all.GetMembers()) != 3 || all.GetNeeded() != 2 {
+		t.Errorf("a save asked of everyone = %v, want a group check of three", all)
+	}
 }

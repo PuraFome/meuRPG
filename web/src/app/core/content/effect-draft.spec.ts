@@ -16,6 +16,24 @@ import {
 describe("an effect from the server's menu (ADR-0018, section 4)", () => {
   const m = menu();
 
+  it('sends a maneuver die with where it goes and what it spends, and asks for both', () => {
+    const d = {
+      ...emptyEffect('superiority_die'),
+      applies: 'damage',
+      resource: 'dados_de_golpe',
+      value: '8',
+      textPt: 'O alvo faz um teste.',
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'superiority_die',
+      applies: 'damage',
+      resource: 'dados_de_golpe',
+      value: '8',
+      textPt: 'O alvo faz um teste.',
+    });
+    expect(missingRequired({ ...d, applies: '' }, m)).toContain('applies');
+  });
+
   it('knows the fields of each type from the menu, in its order, and the names of its lists', () => {
     expect(m.fieldsOf('proficiency').map((f) => f.name)).toEqual([
       'proficiency',

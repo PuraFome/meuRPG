@@ -10,10 +10,17 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
+// contentHintSettle is longer than the content hint gate's interval (250 ms, play.defaultHintEvery).
+const contentHintSettle = 400 * time.Millisecond
+
 // hiddenOnlyEvents opens Ana's and Caio's streams, runs act (master actions on hidden things
 // only), then a visible marker, and returns every event each person (the master included, as
 // the positive control) got before it: an event of any kind there is a hint.
 func (w *world) hiddenOnlyEvents(act func()) map[string][]string {
+	// The world's setup ends with a table-content write, whose "content_changed" hint goes out
+	// up to 250 ms later (the hint gate's trailing send). Let it go before the streams open, or
+	// it lands in the hidden part and passes for a hint of the master's edit.
+	time.Sleep(contentHintSettle)
 	watchers := map[*person]*streamWatcher{w.master: w.watchStream(w.master), w.ana: w.watchStream(w.ana), w.caio: w.watchStream(w.caio)}
 	act()
 	// a visible marker, so the end of the hidden part is known by the stream's own order

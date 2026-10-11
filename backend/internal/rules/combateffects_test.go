@@ -91,13 +91,13 @@ func TestEveryConditionSaysWhoReadsIt(t *testing.T) {
 func TestEffectNamesAreInPortuguese(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	for key, want := range map[string]string{"effect:lethargy": "Letargia", "effect:web-fire": "Teia em chamas", "effect:web-restrained": "Preso numa teia"} {
+	for key, want := range map[string]string{"effect:lethargy": "Letargia", "effect:web-fire": "Teia em chamas", "effect:web-restrained": "Preso numa teia", "effect:open-hand-no-reactions": "Mão Aberta: sem reações", "effect:stunning-strike": "Golpe Atordoante"} {
 		d, ok := c.CombatEffect(key)
 		if !ok || d.NamePT != want || c.NamePT(key) != want {
 			t.Errorf("%s = %+v, %v; want the name %q", key, d, ok, want)
 		}
 	}
-	if keys := c.CombatEffectKeys(); len(keys) != 3 {
+	if keys := c.CombatEffectKeys(); len(keys) != 5 {
 		t.Errorf("CombatEffectKeys = %v", keys)
 	}
 }

@@ -229,6 +229,10 @@ func (s *Service) StartContest(
 	if skill == playv1.ContestSkill_CONTEST_SKILL_ACROBATICS && purpose != playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a grapple or a shove is a Strength (Athletics) check"))
 	}
+	maneuverKey := req.Msg.GetManeuverKey()
+	if maneuverKey != "" && (purpose != playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE || byAttack) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a maneuver starts a GRAPPLE that is rolled"))
+	}
 	var in checkInput
 	if !byAttack {
 		if in, err = parseCheckInput(req.Msg.GetRoll()); err != nil {
@@ -275,6 +279,8 @@ func (s *Service) StartContest(
 			EncounterID: c.enc.ID, InitiatorID: initiator.ID, Round: c.enc.Round, CreatedAt: c.now, Purpose: purposeKey, Kind: contestKindContest,
 		}
 		var roll *contestRoll
+		var man link.Maneuver
+		usedManeuver := false
 		switch purpose {
 		case playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE:
 			hold, ok := holdOn(holdsOf(holds), initiator)
@@ -318,8 +324,16 @@ func (s *Service) StartContest(
 			if err := mayAttack(initiator, false); err != nil {
 				return nil, err
 			}
-			if err := spendAttack(ctx, c, initiator, sheet, v.master); err != nil {
-				return nil, err
+			if maneuverKey == "" {
+				if err := spendAttack(ctx, c, initiator, sheet, v.master); err != nil {
+					return nil, err
+				}
+			} else {
+				// A table maneuver after a melee hit: the bonus action and a use, not an attack.
+				if man, err = s.useGrappleManeuver(ctx, c, m.CampaignID, initiator, sheet, maneuverKey, v.master); err != nil {
+					return nil, err
+				}
+				usedManeuver = true
 			}
 			// A grapple or a shove is an attack on the target: it keeps a rage going (SRD 5.1,
 			// Rage: the rage ends if the turn ends without having "attacked a hostile creature")
@@ -352,6 +366,13 @@ func (s *Service) StartContest(
 				return nil, err
 			}
 			r.ByMaster = v.master && !initiatorIsNPC(initiator)
+			if usedManeuver {
+				face, err := s.rollManeuverDie(man, in.inApp, req.Msg.GetManeuverFace())
+				if err != nil {
+					return nil, err
+				}
+				addManeuverDie(&r, man, face)
+			}
 			roll = &r
 			if row.InitiatorRoll, err = encodeRoll(r); err != nil {
 				return nil, err
@@ -401,6 +422,9 @@ func (s *Service) StartContest(
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(initiator, defender), Actor: initiator.ID, Target: defender.ID,
 			Contest: &contestEvent{ContestID: inserted.ID, Purpose: purposeKey, Line: line, Waiting: winner == ""},
+		}
+		if usedManeuver {
+			made.ManeuverSpent = []string{man.Resource}
 		}
 		return made, nil
 	})

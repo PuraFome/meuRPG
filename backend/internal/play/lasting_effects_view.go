@@ -462,6 +462,8 @@ func modifierProto(m rules.EffectModifier) *playv1.EffectModifier {
 		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_MOVE
 	case rules.ModifierNoAction:
 		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_ACTION
+	case rules.ModifierNoReaction:
+		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_REACTION
 	}
 	for _, a := range m.AppliesTo {
 		switch a {
