@@ -441,14 +441,18 @@ func (s *Service) contestFacts(ctx context.Context, q *playdb.Queries, enc playd
 }
 
 // afterAttack is what an attack roll does to the contests' state: the Help aimed at the
-// target is used by the first attack roll against it, and the hiding ends for every
-// creature, hit or miss. It returns what the hiding was, for the attack's undo.
+// target is used by the first attack roll against it, the effect that gave the attacker's
+// next attack roll disadvantage is spent (Zombaria Viciosa), and the hiding ends for every
+// creature, hit or miss. It keeps in made what it took, for the attack's undo.
 func (s *Service) afterAttack(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, cs []playdb.Combatant, made *actionEvent) error {
 	used, err := s.consumeHelps(ctx, c, attacker, target, cs)
 	if err != nil {
 		return err
 	}
 	made.HelpUsed = append(made.HelpUsed, used...)
+	if err := s.spendAttackEffects(ctx, c, attacker, made); err != nil {
+		return err
+	}
 	made.HidBefore, err = s.endHiding(ctx, c, attacker)
 	return err
 }
@@ -472,7 +476,8 @@ func (s *Service) consumeHelps(ctx context.Context, c *combatTx, attacker, targe
 }
 
 // restoreContestState gives back what an attack or a cast took from the contests' state:
-// the hiding it ended and the Help it used (the master's undo).
+// the hiding it ended, the Help it used and the effect whose disadvantage it spent (the
+// master's undo). An effect whose clock has ended it since is gone, and nothing comes back.
 func restoreContestState(ctx context.Context, c *combatTx, ev actionEvent) error {
 	if err := restoreHiding(ctx, c, ev.Actor, ev.HidBefore); err != nil {
 		return err
@@ -480,6 +485,11 @@ func restoreContestState(ctx context.Context, c *combatTx, ev actionEvent) error
 	for _, id := range ev.HelpUsed {
 		if err := c.q.SetHelpConsumed(ctx, playdb.SetHelpConsumedParams{ID: id, ConsumedAt: nil}); err != nil {
 			return fmt.Errorf("give the help back: %w", err)
+		}
+	}
+	for _, id := range ev.EffectsSpent {
+		if err := c.q.SetLastingEffectSpent(ctx, playdb.SetLastingEffectSpentParams{ID: id, SpentAt: nil}); err != nil {
+			return fmt.Errorf("give the effect back: %w", err)
 		}
 	}
 	return nil

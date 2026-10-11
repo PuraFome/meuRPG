@@ -51,7 +51,7 @@ func (f modeFacts) hiddenFrom(v combatViewer, a, b playdb.Combatant) func(combat
 	}
 	return func(src combat.Source) bool {
 		switch src.Kind {
-		case combat.SourceOutlinedTarget, combat.SourceEffectSave, combat.SourceEffectCheck:
+		case combat.SourceOutlinedTarget, combat.SourceEffectSave, combat.SourceEffectCheck, combat.SourceEffectAttack:
 			return anyHidden
 		}
 		return src.Condition != "" && slices.Contains(conds, src.Condition)

@@ -620,7 +620,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				} else if cp, err = c.coverOf(ctx, v, terrain, known, caster, t, cs); err != nil {
 					return nil, err
 				}
-				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, cp, &hit, modes); err != nil {
+				if err := s.resolveOnTarget(ctx, c, m, sp, caster, t, slotLevel, in, cp, &hit, modes, &made); err != nil {
 					return nil, err
 				}
 				made.Hits = append(made.Hits, hit)
@@ -778,8 +778,9 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 
 // resolveOnTarget does what the spell does to one target and fills the hit: a
 // spell attack's roll, a saving throw's roll, and the pending damage or heal
-// the cast opens. Anything else leaves the hit empty.
-func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, cp coverPair, hit *castHit, modes *spellModes) error {
+// the cast opens. Anything else leaves the hit empty. made is the cast's event: a spell attack
+// keeps in it what the roll used up, for the cast's undo.
+func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, cp coverPair, hit *castHit, modes *spellModes, made *actionEvent) error {
 	cover := cp.real
 	// The cover counts for a spell attack and a Dexterity save (D4).
 	if sp.AttackType != "" || (sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover) {
@@ -788,7 +789,7 @@ func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Memb
 	}
 	switch {
 	case sp.AttackType != "":
-		return s.spellAttack(ctx, c, m, sp, caster, target, in, cover, hit, modes)
+		return s.spellAttack(ctx, c, m, sp, caster, target, in, cover, hit, modes, made)
 	case sp.SaveAbility != "":
 		return s.spellSave(ctx, c, m, sp, caster, target, cover, hit, modes)
 	case dartsOf(sp, slotLevel) > 0:
@@ -816,8 +817,10 @@ func (s *Service) d20(in rollInput, modifier int) (face int, roll dice.Result, e
 }
 
 // spellAttack rolls a spell attack against a target, as RollAttack does, and
-// opens its pending damage on a hit.
-func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, in rollInput, cover coverView, hit *castHit, modes *spellModes) error {
+// opens its pending damage on a hit. Like an attack (afterAttack), the roll uses the
+// Help aimed at the target and spends the effect that gave the caster's next attack
+// roll disadvantage; made keeps both, for the cast's undo.
+func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, in rollInput, cover coverView, hit *castHit, modes *spellModes, made *actionEvent) error {
 	// Advantage and disadvantage (SRD 5.1): the mode of the roll, as RollAttack settles it. The
 	// answer to a Bardic Inspiration question brings the mode and the d20 it was held with.
 	var (
@@ -845,9 +848,16 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	face, roll := d20.Face(), d20
 	modes.attack[target.ID] = truth.Shown
-	if _, err := s.consumeHelps(ctx, c, caster, target, modes.in.cs); err != nil { // the Help aimed at the target is used (SRD 5.1, "Help")
+	used, err := s.consumeHelps(ctx, c, caster, target, modes.in.cs) // the Help aimed at the target is used (SRD 5.1, "Help")
+	if err != nil {
 		return err
 	}
+	made.HelpUsed = append(made.HelpUsed, used...)
+	// Zombaria Viciosa's disadvantage was for this roll: a second attack of the cast reads it spent.
+	if err := s.spendAttackEffects(ctx, c, caster, made); err != nil {
+		return err
+	}
+	markSpent(modes.in.states, caster.ID, made.EffectsSpent, c.now)
 	hit.D20B, hit.Counted, hit.RollMode, hit.SuggestedMode, hit.ReasonID = clamp32(d20.otherFace(), 0, 20), clamp32(d20.Index, 0, 1), modeKey(choice.Mode), modeKey(choice.Suggested), choice.ReasonID
 	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 	if err != nil {

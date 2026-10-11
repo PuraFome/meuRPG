@@ -1,5 +1,5 @@
 {
-  "source": "SRD 5.1 (CC BY 4.0): \"Conditions\" (the 15 conditions and exhaustion), \"Duration\", \"Concentration\", \"Combat\" (the Dodge action), and the spells Bless, Bane, Haste, Hold Person, Web, Mage Armor, Pass without Trace, Longstrider, Guidance, Resistance, Enhance Ability and Heroism. The texts shown to the table are ours.",
+  "source": "SRD 5.1 (CC BY 4.0): \"Conditions\" (the 15 conditions and exhaustion), \"Duration\", \"Concentration\", \"Combat\" (the Dodge action), and the spells Bless, Bane, Haste, Hold Person, Web, Mage Armor, Pass without Trace, Longstrider, Guidance, Resistance, Enhance Ability, Heroism, Shield of Faith and Vicious Mockery. The texts shown to the table are ours.",
   "conditions": {
     "condition:blinded": {
       "visibility": "public",
@@ -161,6 +161,13 @@
       "visibility": "owner",
       "start_save": {"ability": "dex", "on_fail": "effect:web-restrained"},
       "tags_pt": ["Teste de Destreza ao começar o turno nas teias"]
+    },
+    "spell:vicious-mockery": {
+      "applies": "failed_save",
+      "visibility": "owner",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "modifiers": [{"kind": "attack_disadvantage", "once": true}],
+      "tags_pt": ["Desvantagem no próximo ataque"]
     }
   },
   "effects": {

@@ -84,6 +84,10 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_EFFECT_DIE = 106;
   // The advantage an effect gives on ability checks (Aprimorar Habilidade).
   ADVANTAGE_SOURCE_KIND_EFFECT_CHECK = 107;
+  // The disadvantage an effect gives the creature's own attack rolls (Zombaria Viciosa: its
+  // next attack roll before the end of its next turn, which spends it). The text names the
+  // effect; a player reads "Outra fonte" when the master hides it.
+  ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK = 108;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A

@@ -635,6 +635,18 @@ func effectSaveAdvantage(states map[string][]playdb.CombatantState, id string) [
 	return out
 }
 
+// effectAttackDisadvantage is the key of the effect on a combatant that gives its attack rolls
+// disadvantage (Zombaria Viciosa), "" for none. A spent one gives it no more: the attack roll it was
+// for was made (spendAttackEffects).
+func effectAttackDisadvantage(states map[string][]playdb.CombatantState, id string) string {
+	for _, st := range effectsOn(states, id) {
+		if st.SpentAt == nil && slices.ContainsFunc(effectModifiers(st), func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierAttackDisadvantage }) {
+			return deref(st.SourceKey)
+		}
+	}
+	return ""
+}
+
 // effectCheckAdvantage are the abilities the effects on a combatant give advantage on the ability
 // checks of (Aprimorar Habilidade).
 func effectCheckAdvantage(states map[string][]playdb.CombatantState, id string) []string {
