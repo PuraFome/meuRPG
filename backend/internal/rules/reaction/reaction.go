@@ -111,9 +111,12 @@ const (
 	CounterspellKind  Kind = "counterspell"
 	CuttingWords      Kind = "cutting_words"
 	DeflectKind       Kind = "deflect_missiles"
-	FeatherFall       Kind = "feather_fall"
-	Concentration     Kind = "concentration_save"
-	MasterCheck       Kind = "master_check"
+	// ManeuverReduceKind is a table maneuver that reduces the damage of a melee hit by a die
+	// and an ability modifier (the superiority_die effect, applies reduce_melee_damage).
+	ManeuverReduceKind Kind = "maneuver_reduce"
+	FeatherFall        Kind = "feather_fall"
+	Concentration      Kind = "concentration_save"
+	MasterCheck        Kind = "master_check"
 	// Contest is a grapple, a shove or an escape that waits for a roll or a choice.
 	Contest Kind = "contest"
 	// EffectSave is the saving throw an effect that lasts asks at a turn (RN-22).

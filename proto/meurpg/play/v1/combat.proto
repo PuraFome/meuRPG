@@ -1804,6 +1804,9 @@ enum EncounterBlockedReason {
   // feature of the Path of the Berserker (SRD 5.1, Barbarian). Any other barbarian, and
   // anyone else, rages without it.
   ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE = 104;
+  // A table maneuver that starts a grapple after a hit: the character made no melee
+  // weapon hit this turn.
+  ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT = 105;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -4978,6 +4981,9 @@ enum ReactionKind {
   // The saving throw an effect that lasts asks at the end or the start of its target's
   // turn (Imobilizar Pessoa, Teia): answered with CombatEffectService.RollEffectSave.
   REACTION_KIND_EFFECT_SAVE = 12;
+  // A table maneuver that reduces the damage of a melee hit by a die and an ability
+  // modifier (superiority_die, applies reduce_melee_damage).
+  REACTION_KIND_MANEUVER_REDUCE = 14;
 }
 
 enum ReactionWindowStatus {
@@ -5070,6 +5076,7 @@ message ReactionWindow {
     HellishRebukeSavePrompt hellish_rebuke_save = 29;
     DeflectMissilesThrowPrompt deflect_throw = 30;
     ContestPrompt contest = 31;
+    ManeuverReducePrompt maneuver_reduce = 41;
     // The saving throw an effect asks at a turn (RN-22).
     EffectSavePrompt effect_save = 40;
   }
@@ -5203,6 +5210,25 @@ message CuttingWordsPrompt {
   int32 uses_left = 6;
 }
 
+// ManeuverReducePrompt: a melee attack hit the reactor; each option is a table maneuver
+// that takes `die + flat_bonus` off the damage and spends the reaction and a use.
+message ManeuverReducePrompt {
+  string attacker_label = 1;
+  string attack_name_pt = 2;
+  // The damage the attack would do to the reactor.
+  int32 damage = 3;
+  repeated ManeuverReduceOption options = 4;
+}
+
+message ManeuverReduceOption {
+  string key = 1;
+  string name_pt = 2;
+  int32 die_sides = 3;
+  // The ability modifier added to the die.
+  int32 flat_bonus = 4;
+  int32 uses_left = 5;
+}
+
 message DeflectMissilesPrompt {
   string attacker_label = 1;
   string attack_name_pt = 2;
@@ -5297,6 +5323,9 @@ message AnswerReactionRequest {
     int32 typed = 9;
   }
   string idempotency_key = 10;
+  // A maneuver reduction (ManeuverReducePrompt.options[].key): the one the player uses. Needed
+  // to answer USE a REACTION_KIND_MANEUVER_REDUCE window; the roll is the maneuver's die.
+  string maneuver_key = 11;
 }
 
 message AnswerReactionResponse {
@@ -5321,6 +5350,7 @@ message ReactionResult {
     CuttingWordsResult cutting_words = 24;
     DeflectMissilesResult deflect_missiles = 25;
     FeatherFallResult feather_fall = 26;
+    ManeuverReduceResult maneuver_reduce = 27;
   }
   // The window the answer asked one more thing of (a second step), if any.
   string next_window_id = 30;
@@ -5367,6 +5397,14 @@ message CuttingWordsResult {
   // the master reads the numbers in the log.
   AttackOutcome outcome = 3;
   ReactionRollKind roll_kind = 4;
+}
+
+message ManeuverReduceResult {
+  string maneuver_key = 1;
+  string name_pt = 2;
+  DiceRoll reduction = 3;
+  int32 damage_before = 4;
+  int32 damage_after = 5;
 }
 
 message DeflectMissilesResult {

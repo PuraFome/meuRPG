@@ -1010,6 +1010,9 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			if err := s.offerRiders(ctx, c, attacker, target, attack, attackerSheet, bonusKind == combat.BonusFlurry); err != nil {
 				return nil, err
 			}
+			if err := markMeleeHit(ctx, c, attacker, attack); err != nil {
+				return nil, err
+			}
 		}
 		if offerID != "" {
 			var damage *string // the damage the attack opened: the 0 hit points rule finds the offer by it

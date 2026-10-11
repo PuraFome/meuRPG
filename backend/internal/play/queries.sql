@@ -1193,6 +1193,12 @@ UPDATE combatants
 SET sneak_attack_turn = $2, colossus_slayer_turn = $3
 WHERE id = $1;
 
+-- name: SetCombatantMeleeHitTurn :exec
+-- The turn ("<round>:<combatant on turn>") of the combatant's last melee weapon hit.
+UPDATE combatants
+SET melee_hit_turn = $2
+WHERE id = $1;
+
 -- name: SetPendingDamageParts :exec
 -- The lines the hit offers.
 UPDATE pending_damages

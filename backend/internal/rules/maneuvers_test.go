@@ -33,7 +33,8 @@ func maneuverOverlay(options ...TableFeature) Overlay {
 		Key: maneuverFeature, NamePT: "Golpes", DescPT: []string{"Escolha golpes."},
 		Effects: []Effect{
 			{Type: "resource", Resource: maneuverDice, Max: "4", Recharge: "short_rest"},
-			{Type: "choice", Choice: "feature", Count: 3},
+			// Up to three picks, never more than the options the test gives.
+			{Type: "choice", Choice: "feature", Count: min(3, len(options))},
 		},
 		Options: options,
 	}
@@ -151,5 +152,24 @@ func TestSuperiorityDieIsOnTheMenu(t *testing.T) {
 	j := slices.IndexFunc(menu.Lists, func(l MenuList) bool { return l.Name == ListManeuverApplies })
 	if j < 0 || len(menu.Lists[j].Values) != 4 {
 		t.Errorf("the applies list = %+v, want four values", menu.Lists)
+	}
+}
+
+// An option that is a die on a roll and also carries the action that only spends the resource
+// does not list the action: the resource would be spent twice.
+func TestAManeuverOptionWithAnActionDoesNotListTheAction(t *testing.T) {
+	both := postureOption(maneuverHeron, "Golpe da Garça",
+		Effect{Type: "superiority_die", Applies: ManeuverDamage, Resource: maneuverDice, Value: "8"},
+		Effect{Type: "grant_action", Economy: "bonus_action", Resource: maneuverDice})
+	c := withOverlay(t, maneuverOverlay(both, postureOption(maneuverPlain, "Golpe Simples", Effect{Type: "grant_action", Economy: "bonus_action", Resource: maneuverDice})))
+	d := Derive(maneuverBuild(3, maneuverHeron, maneuverPlain), c)
+	if slices.ContainsFunc(d.Actions, func(a Action) bool { return a.Key == maneuverHeron }) {
+		t.Errorf("actions = %+v, want no action for the option that is a die", d.Actions)
+	}
+	if !slices.ContainsFunc(d.Actions, func(a Action) bool { return a.Key == maneuverPlain }) {
+		t.Errorf("actions = %+v, want the plain option's action kept", d.Actions)
+	}
+	if len(d.Maneuvers) != 1 || d.Maneuvers[0].Key != maneuverHeron {
+		t.Errorf("maneuvers = %+v, want the die", d.Maneuvers)
 	}
 }

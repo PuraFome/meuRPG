@@ -63,6 +63,37 @@
           <p class="note-line">Não há ninguém ao alcance.</p>
         }
       </div>
+      @if (maneuvers().length) {
+        <div class="list" role="radiogroup" aria-label="Golpe">
+          <label class="card" [class.card--on]="maneuverKey() === ''">
+            <input type="radio" class="mr-check-input" name="contest-maneuver" [checked]="maneuverKey() === ''" (change)="pickManeuver('')" />
+            <span class="card__text">
+              <span class="card__name">Só agarrar</span>
+              <span class="card__sub">Substitui um ataque.</span>
+            </span>
+          </label>
+          @for (o of maneuvers(); track o.key) {
+            <label class="card" [class.card--on]="maneuverKey() === o.key" [class.card--off]="!o.enabled">
+              <input
+                type="radio"
+                class="mr-check-input"
+                name="contest-maneuver"
+                [disabled]="!o.enabled"
+                [checked]="maneuverKey() === o.key"
+                (change)="pickManeuver(o.key)"
+              />
+              <span class="card__text">
+                <span class="card__name">{{ o.namePt }}</span>
+                @if (o.enabled) {
+                  <span class="card__sub">{{ maneuverWhy(o) }}</span>
+                } @else {
+                  <span class="card__why"><mat-icon aria-hidden="true">lock</mat-icon>{{ maneuverWhy(o) }}</span>
+                }
+              </span>
+            </label>
+          }
+        </div>
+      }
     }
     @case ('roll') {
       @if (escape) {
@@ -89,6 +120,19 @@
         </div>
       } @else {
         <p class="line">Seu teste de <b>{{ checkLine() }}</b>: <b>{{ modifierText() }}</b>.</p>
+      }
+      @if (maneuver(); as m) {
+        <label class="line">
+          Dado do golpe (d{{ m.sides }}), só se você rolar dados físicos:
+          <input
+            type="number"
+            class="mr-input"
+            min="1"
+            [max]="m.sides"
+            [value]="maneuverFace() || ''"
+            (input)="typeManeuverFace($any($event.target).value)"
+          />
+        </label>
       }
       <app-check-roll-form
         [mode]="check().mode"

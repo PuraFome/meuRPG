@@ -62,3 +62,12 @@ func (x *deriver) maneuvers() {
 		})
 	}
 }
+
+// hasManeuver says the feature (an option) has a superiority_die effect that applies: the die
+// is spent where it is added to a roll, so a grant_action of the same feature must not
+// spend the same resource a second time.
+func (x *deriver) hasManeuver(owner string) bool {
+	return slices.ContainsFunc(x.active, func(a activeEffect) bool {
+		return a.owner == owner && a.effect.Type == "superiority_die" && x.applies(a)
+	})
+}

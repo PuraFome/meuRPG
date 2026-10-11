@@ -126,6 +126,12 @@ message CheckRoll {
   // the face rolled. 0 when none was used.
   int32 bonus_die_sides = 11;
   int32 bonus_die_face = 12;
+  // A table maneuver's superiority die the initiator added to the check (already in `total`):
+  // the option's key and Portuguese name, its sides and the face rolled. Empty/0 when none.
+  string maneuver_key = 13;
+  string maneuver_name_pt = 14;
+  int32 maneuver_die_sides = 15;
+  int32 maneuver_die_face = 16;
 }
 
 // CheckOption is what a d20 check would roll for the caller: the modifier and the
@@ -330,6 +336,25 @@ message ContestAttackOption {
   repeated ContestTarget targets = 6;
   // What the combatant's Strength (Athletics) check would roll.
   CheckOption roll_option = 7;
+  // The table maneuvers that can start this grapple (applies "grapple"): a die added to the
+  // Athletics check, costing a bonus action and a use instead of an attack. Only for GRAPPLE.
+  repeated ManeuverGrappleOption maneuvers = 8;
+}
+
+// ManeuverGrappleOption is a table maneuver that starts a grapple after a melee hit.
+message ManeuverGrappleOption {
+  // The option's key, sent back as StartContestRequest.maneuver_key.
+  string key = 1;
+  string name_pt = 2;
+  // The die's sides.
+  int32 sides = 3;
+  bool enabled = 4;
+  // Set when `enabled` is false: BONUS_ACTION_USED, NO_USES or NOT_YOUR_TURN.
+  meurpg.rules.v1.DisabledReason reason = 5;
+  // Set when `enabled` is false because the character made no melee hit this turn.
+  bool no_melee_hit = 6;
+  // Uses left of the maneuver's resource.
+  int32 uses_left = 7;
 }
 
 // ContestAction is the Hide or the Help action of a combatant: the key that

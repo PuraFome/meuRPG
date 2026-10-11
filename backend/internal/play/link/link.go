@@ -441,6 +441,9 @@ type ReactionStats struct {
 	// Deflect says it has Deflect Missiles; MonkLevel and DexMod are its numbers.
 	Deflect           bool
 	MonkLevel, DexMod int
+	// Reduce are the table maneuvers that reduce the damage of a melee attack that hit
+	// (superiority_die, applies reduce_melee_damage), each with the ability modifier it adds.
+	Reduce []ReduceManeuver
 	// Proficiency is the proficiency bonus (the Deflect Missiles throw back adds it).
 	Proficiency int
 	// CuttingWords says it has the bard's feature, with its bard level (the die)
@@ -458,6 +461,13 @@ type ReactionStats struct {
 	// ("bardic_inspiration", "ki", "infernal_legacy"): the combat counts what an NPC
 	// spent; a player's character spends from its vitals.
 	ResourceMax map[string]int
+}
+
+// ReduceManeuver is a table maneuver that takes a die plus an ability modifier off the damage
+// of a melee hit, as a reaction.
+type ReduceManeuver struct {
+	Key, NamePT, Resource string
+	Sides, Mod            int
 }
 
 // Named is a content key with its Portuguese name.
