@@ -35,8 +35,14 @@ func ridersOfKind(e *playv1.Encounter, kind playv1.HitRiderKind) []*playv1.HitRi
 
 func (a *armed) lastRiderLine(t *testing.T) *playv1.CombatLogHitRider {
 	t.Helper()
+	return a.lastRiderLineOf(t, a.master)
+}
+
+// lastRiderLineOf is the last rider line of the log as who reads it.
+func (a *armed) lastRiderLineOf(t *testing.T, who *user) *playv1.CombatLogHitRider {
+	t.Helper()
 	var line *playv1.CombatLogHitRider
-	for _, r := range a.log(t, a.master, a.get(t, a.master)).GetRounds() {
+	for _, r := range a.log(t, who, a.get(t, who)).GetRounds() {
 		for _, en := range r.GetEntries() {
 			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER {
 				line = en.GetHitRider()
@@ -109,6 +115,14 @@ func TestOpenHandRidersOnlyOnFlurryHits(t *testing.T) {
 	}
 	if !line.GetNumbers() || line.GetDc() < 10 {
 		t.Errorf("the master's line numbers = %v dc %d, want the ki save DC (8 + 2 + 2 = 12)", line.GetNumbers(), line.GetDc())
+	}
+	// The monk's player reads how the Goblin's save ended, never its roll (RN-20).
+	mine := a.lastRiderLineOf(t, a.caio)
+	if mine.GetResult() != line.GetResult() {
+		t.Errorf("the monk's player's result = %v, the master's %v; want the same", mine.GetResult(), line.GetResult())
+	}
+	if mine.GetNumbers() || mine.GetD20() != 0 || mine.GetSaveTotal() != 0 {
+		t.Errorf("the monk's player reads the Goblin's save: numbers %v d20 %d total %d; want none (RN-20)", mine.GetNumbers(), mine.GetD20(), mine.GetSaveTotal())
 	}
 	// One choice per hit.
 	_, err = a.useRider(t, a.caio, e, offers[0].GetId(), playv1.HitRiderChoice_HIT_RIDER_CHOICE_NO_REACTIONS)

@@ -604,7 +604,9 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.Contest = &playv1.CombatLogContest{Line: contestLineProto[e.ev.Contest.Line]} // never a total or a DC (RN-20)
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:
 		if r := e.ev.Rider; r != nil {
-			out.HitRider = riderLogProto(r, v.master || v.owns(byID[e.ev.Actor]))
+			// The target's roll is the master's (an NPC's roll never reaches a player, RN-20), or the
+			// target's own player's when a player's character made the save.
+			out.HitRider = riderLogProto(r, v.master || v.owns(byID[e.ev.Target]))
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED:
 		out.Door = &playv1.CombatLogDoor{Col: e.ev.Col, Row: e.ev.Row}
