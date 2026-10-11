@@ -47,7 +47,8 @@ func (s *Service) holdSpellAttack(
 	}
 	var before heldDie
 	if outsideOf(ctx) != nil {
-		before, _, _ = s.dieOf(ctx, c.q, m.CampaignID, caster.CharacterID) //nolint:errcheck // read again by outsideRoll, which reports it
+		// The error is read again by outsideRoll, which reports it.
+		before, _, _ = s.dieOf(ctx, c.q, m.CampaignID, caster.CharacterID)
 	} else if _, found, err := s.dieOf(ctx, c.q, m.CampaignID, caster.CharacterID); err != nil || !found {
 		return nil, err
 	}

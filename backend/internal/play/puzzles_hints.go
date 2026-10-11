@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -111,6 +112,63 @@ func (s *Service) TryPuzzleHint(
 	return connect.NewResponse(resp), nil
 }
 
+// hintTryByKey is the try a retry made before with the same key (found), or nothing. The key
+// stands for that try, of that player, rolled that way (in the app, or with that typed die);
+// a key spent on anything else, a move of the run included, is refused.
+func hintTryByKey(ctx context.Context, q *playdb.Queries, m authz.Membership, runID, key string, in rollInput) (playdb.PuzzleHintTry, bool, error) {
+	done, err := q.GetPuzzleHintTryByKey(ctx, playdb.GetPuzzleHintTryByKeyParams{RunID: runID, IdempotencyKey: key})
+	switch {
+	case err == nil:
+		sameRoll := done.Physical != in.inApp && (in.inApp || sameTypedFaces(done.D20, done.D20B, done.Counted, in))
+		if done.UserID == nil || *done.UserID != m.UserID || !sameRoll {
+			return playdb.PuzzleHintTry{}, false, errKeyReused()
+		}
+		return done, true, nil
+	case !errors.Is(err, pgx.ErrNoRows):
+		return playdb.PuzzleHintTry{}, false, fmt.Errorf("find the try of this idempotency key: %w", err)
+	}
+	if _, err := q.GetPuzzleMoveByKey(ctx, playdb.GetPuzzleMoveByKeyParams{RunID: runID, IdempotencyKey: key}); err == nil {
+		return playdb.PuzzleHintTry{}, false, errKeyReused()
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return playdb.PuzzleHintTry{}, false, fmt.Errorf("find the move of this idempotency key: %w", err)
+	}
+	return playdb.PuzzleHintTry{}, false, nil
+}
+
+// hintTryOpen refuses a try on a solved or stopped puzzle, or on one without a hint check.
+func hintTryOpen(d puzzleDef, run playdb.PuzzleRun, now time.Time) error {
+	switch {
+	case run.SolvedAt != nil:
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED, "the puzzle is solved")
+	case stopOf(d, run, now) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED:
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED, "a limit stopped the puzzle")
+	case d.hintCheck == nil:
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_HINT_CHECK, "this puzzle has no skill check for hints")
+	}
+	return nil
+}
+
+// nextHintToTry is the hint this player would read next, after the master's released ones
+// and the ones they won; refused when none is left or they tried for it already.
+func nextHintToTry(ctx context.Context, q *playdb.Queries, m authz.Membership, d puzzleDef, run playdb.PuzzleRun) (int, error) {
+	won, err := q.GetPuzzleHintCursor(ctx, playdb.GetPuzzleHintCursorParams{RunID: run.ID, UserID: &m.UserID})
+	if err != nil {
+		return 0, fmt.Errorf("read the hints the player won: %w", err)
+	}
+	next := max(int(run.ReleasedHints), int(won))
+	if next >= len(d.hints) {
+		return 0, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_MORE_HINTS, "there is no hint left for you")
+	}
+	tried, err := q.HasTriedPuzzleHint(ctx, playdb.HasTriedPuzzleHintParams{RunID: run.ID, UserID: &m.UserID, HintIndex: clamp32(next, 0, maxHints)})
+	if err != nil {
+		return 0, fmt.Errorf("read whether the player tried: %w", err)
+	}
+	if tried {
+		return 0, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_HINT_ALREADY_TRIED, "you tried for this hint already")
+	}
+	return next, nil
+}
+
 // applyHintTry is the try's transaction. The session's row is locked first and then
 // the run's, as every change to a run does, so a try, a move and the master's release
 // of the same hint take turns.
@@ -131,35 +189,18 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	res.d, res.run = d, run
 
 	// A retry of a try already made answers as the first call did, and rolls nothing.
-	done, err := q.GetPuzzleHintTryByKey(ctx, playdb.GetPuzzleHintTryByKeyParams{RunID: run.ID, IdempotencyKey: key})
-	switch {
-	case err == nil:
-		// The key stands for that try, of that player, rolled that way: in the app, or with
-		// that typed die.
-		sameRoll := done.Physical != in.inApp && (in.inApp || sameTypedFaces(done.D20, done.D20B, done.Counted, in))
-		if done.UserID == nil || *done.UserID != m.UserID || !sameRoll {
-			return nil, errKeyReused()
-		}
+	done, replayed, err := hintTryByKey(ctx, q, m, run.ID, key, in)
+	if err != nil {
+		return nil, err
+	}
+	if replayed {
 		res.try, res.replayed = done, true
 		return s.namesOfRuns(ctx, tx, m.CampaignID, run)
-	case !errors.Is(err, pgx.ErrNoRows):
-		return nil, fmt.Errorf("find the try of this idempotency key: %w", err)
-	}
-	// A key spent on a move of the run is spent: a try is another change.
-	if _, err := q.GetPuzzleMoveByKey(ctx, playdb.GetPuzzleMoveByKeyParams{RunID: run.ID, IdempotencyKey: key}); err == nil {
-		return nil, errKeyReused()
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("find the move of this idempotency key: %w", err)
 	}
 
 	now := s.now()
-	switch {
-	case run.SolvedAt != nil:
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED, "the puzzle is solved")
-	case stopOf(d, run, now) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED:
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED, "a limit stopped the puzzle")
-	case d.hintCheck == nil:
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_HINT_CHECK, "this puzzle has no skill check for hints")
+	if err := hintTryOpen(d, run, now); err != nil {
+		return nil, err
 	}
 	who, has, err := s.myCharacter(ctx, tx, m)
 	if err != nil {
@@ -168,22 +209,9 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if !has {
 		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_CHARACTER, "you have no living character to roll for")
 	}
-	won, err := q.GetPuzzleHintCursor(ctx, playdb.GetPuzzleHintCursorParams{RunID: run.ID, UserID: &m.UserID})
+	next, err := nextHintToTry(ctx, q, m, d, run)
 	if err != nil {
-		return nil, fmt.Errorf("read the hints the player won: %w", err)
-	}
-	// The hint this player would read next: after the master's released ones and the
-	// ones they won.
-	next := max(int(run.ReleasedHints), int(won))
-	if next >= len(d.hints) {
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_MORE_HINTS, "there is no hint left for you")
-	}
-	tried, err := q.HasTriedPuzzleHint(ctx, playdb.HasTriedPuzzleHintParams{RunID: run.ID, UserID: &m.UserID, HintIndex: clamp32(next, 0, maxHints)})
-	if err != nil {
-		return nil, fmt.Errorf("read whether the player tried: %w", err)
-	}
-	if tried {
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_HINT_ALREADY_TRIED, "you tried for this hint already")
+		return nil, err
 	}
 	force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
 	if err != nil {
