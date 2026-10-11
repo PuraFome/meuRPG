@@ -10,6 +10,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -403,6 +404,15 @@ func (wv *windowView) concentrationPrompt(w playdb.ReactionWindow, reactor *play
 			return wv.s.dbError(wv.ctx, "read a saving throw", err)
 		}
 		p.SaveBonus, p.BonusKnown = clamp32(save.Bonus, math.MinInt32, math.MaxInt32), save.Known
+		sheet, err := wv.s.sheetOf(wv.ctx, nil, wv.m.CampaignID, *reactor)
+		if err != nil {
+			return wv.s.dbError(wv.ctx, "read a sheet", err)
+		}
+		sources := concentrationSources(creatureFacts(*reactor, statesOf(wv.d.states), sheet.Traits))
+		p.Mode = modeKey(combat.Resolve(sources))
+		for _, src := range shownSources(sources, wv.names) {
+			p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
+		}
 	}
 	out.Prompt = &playv1.ReactionWindow_ConcentrationSave{ConcentrationSave: p}
 	return nil

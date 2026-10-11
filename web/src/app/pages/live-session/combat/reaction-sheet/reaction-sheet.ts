@@ -35,9 +35,12 @@ import {
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import {
+  type ConcentrationMode,
   type PromptView,
   type ResultView,
   type SlotAfter,
+  concentrationMode,
+  concentrationModeLine,
   concentrationResultView,
   dieSidesOf,
   REACTION_NAMES,
@@ -64,6 +67,7 @@ import {
   showOfReaction,
 } from '../../../../shared/roll-overlay/roll-animator';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
+import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { injectSheet } from '../sheet-host';
@@ -130,6 +134,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
     ExtraDice,
     MatButtonModule,
     MatIconModule,
+    MultiRoll,
     NgTemplateOutlet,
     RollPicker,
     SheetFrame,
@@ -201,22 +206,39 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
             @if (v.note) {
               <p class="small">{{ v.note }}</p>
             }
+            @if (concentrationModeText()) {
+              <p class="what" role="status">{{ concentrationModeText() }}</p>
+            }
             @if (typingSave()) {
               @if (extra.fields().length > 0) {
                 <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
               }
-              <app-roll-picker
-                [canApp]="false"
-                [canType]="true"
-                [min]="1"
-                [max]="20"
-                [modifier]="saveBonus()"
-                label="Role 1d20 para o teste de resistência de Constituição"
-                hint="Role o seu dado e digite o número que saiu (1 a 20)."
-                totalNote="Teste de Constituição"
-                [busy]="busy()"
-                (typed)="concentrate({ kind: 'typed', face: $event })"
-              />
+              @if (concentrationDice() === 1) {
+                <app-roll-picker
+                  [canApp]="false"
+                  [canType]="true"
+                  [min]="1"
+                  [max]="20"
+                  [modifier]="saveBonus()"
+                  label="Role 1d20 para o teste de resistência de Constituição"
+                  hint="Role o seu dado e digite o número que saiu (1 a 20)."
+                  totalNote="Teste de Constituição"
+                  [busy]="busy()"
+                  (typed)="concentrate({ kind: 'typed', face: $event })"
+                />
+              } @else {
+                <app-multi-roll
+                  [fields]="pair"
+                  [canApp]="false"
+                  [canType]="true"
+                  [modifier]="saveBonus()"
+                  [combine]="concentrationMode() === 'advantage' ? 'higher' : 'lower'"
+                  totalNote="Teste de Constituição"
+                  hint="Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada)."
+                  [busy]="busy()"
+                  (typed)="concentrate({ kind: 'typed', face: $event[0], second: $event[1] })"
+                />
+              }
             }
           }
         }
@@ -511,6 +533,23 @@ export class ReactionSheet {
     const p = this.asked().prompt;
     return p.case === 'featherFall' ? Math.max(1, p.value.maxTargets) : 1;
   });
+
+  /** The mode of the concentration save the server will roll with, and the d20 a typed answer takes. */
+  protected readonly concentrationMode = computed<ConcentrationMode>(() => {
+    const p = this.asked().prompt;
+    return p.case === 'concentrationSave' ? concentrationMode(p.value) : 'normal';
+  });
+  protected readonly concentrationDice = computed(() =>
+    this.concentrationMode() === 'normal' ? 1 : 2,
+  );
+  protected readonly concentrationModeText = computed(() => {
+    const p = this.asked().prompt;
+    return p.case === 'concentrationSave' ? concentrationModeLine(p.value) : '';
+  });
+  protected readonly pair: readonly RollField[] = [
+    { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },
+    { key: 'd20-2', label: 'Segundo d20', min: 1, max: 20 },
+  ];
 
   protected readonly saveBonus = computed(() => {
     const p = this.asked().prompt;

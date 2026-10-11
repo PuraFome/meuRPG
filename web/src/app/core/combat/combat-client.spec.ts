@@ -290,6 +290,21 @@ describe('CombatClient, the reaction windows (PM-04)', () => {
     ]);
   });
 
+  it('sends the second d20 of a typed concentration save with advantage or disadvantage', async () => {
+    const { client, calls } = fake();
+    await client.resolveConcentrationSave(
+      'c',
+      'e',
+      'w',
+      { kind: 'typed', face: 15, second: 3 },
+      'k',
+    );
+    expect(calls.concentration[0]).toMatchObject({
+      roll: { case: 'd20Face', value: 15 },
+      secondD20Face: 3,
+    });
+  });
+
   it("names the window that caught the missile on the monk's throw back", async () => {
     const { client, calls } = fake();
     await client.rollAttack(

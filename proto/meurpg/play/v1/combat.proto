@@ -5286,6 +5286,13 @@ message ConcentrationSavePrompt {
   bool bonus_known = 7;
   // True once the player left the roll to the master.
   bool handed_to_master = 8;
+  // The mode of the d20 ("normal", "advantage" or "disadvantage": exhaustion 3 or more is
+  // disadvantage on saving throws, SRD 5.1) and the sources in words ("Exaustão 3:
+  // desvantagem"), the same ones ResolveConcentrationSave rolls with. With a mode, a roll
+  // typed with physical dice takes both d20 (d20_face and second_d20_face). A source of an
+  // effect the master hides reads "Outra fonte" (RN-10).
+  string mode = 9;
+  repeated string mode_sources_pt = 10;
 }
 
 // ContestPrompt names the contest a CONTEST window waits for: the sheet reads it

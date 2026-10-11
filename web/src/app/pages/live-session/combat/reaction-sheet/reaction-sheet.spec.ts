@@ -569,7 +569,7 @@ describe('ReactionSheet', () => {
   });
 
   describe('the concentration save', () => {
-    const save = () =>
+    const save = (mode: Record<string, unknown> = {}) =>
       win(
         'concentrationSave',
         {
@@ -579,6 +579,7 @@ describe('ReactionSheet', () => {
           sourceLabel: 'Bola de Fogo do Mago 1',
           saveBonus: 2,
           bonusKnown: true,
+          ...mode,
         },
         { kind: ReactionKind.CONCENTRATION_SAVE },
       );
@@ -633,6 +634,40 @@ describe('ReactionSheet', () => {
       await flush(again.fixture);
       expect(api.resolveConcentrationSave.mock.calls[1][3]).toEqual({ kind: 'hand' });
       expect(closed).toEqual(['closed']);
+    });
+
+    it('says nothing of the mode and asks for one d20 when the roll is normal', () => {
+      const { fixture, el } = setup(save({ mode: 'normal' }));
+      button(el, 'Digitar o resultado').click();
+      fixture.detectChanges();
+      expect(plain(el.textContent)).not.toContain('desvantagem');
+      expect(plain(el.textContent)).not.toContain('vantagem');
+      expect(el.querySelectorAll('input[type="text"]')).toHaveLength(1);
+    });
+
+    it('says the mode and asks for both d20 with disadvantage, and sends both', async () => {
+      api.resolveConcentrationSave.mockResolvedValue({ encounter: encounter(), result: undefined });
+      const { fixture, el } = setup(
+        save({ mode: 'disadvantage', modeSourcesPt: ['Exaustão 3: desvantagem'] }),
+      );
+      expect(plain(el.textContent)).toContain('Você tem desvantagem neste teste');
+      expect(plain(el.textContent)).toContain('Exaustão 3: desvantagem');
+      button(el, 'Digitar o resultado').click();
+      fixture.detectChanges();
+      const fields = el.querySelectorAll<HTMLInputElement>('input[type="text"]');
+      expect(fields).toHaveLength(2);
+      [15, 3].forEach((n, i) => {
+        fields[i].value = String(n);
+        fields[i].dispatchEvent(new Event('input'));
+      });
+      fixture.detectChanges();
+      button(el, 'Confirmar').click();
+      await flush(fixture);
+      expect(api.resolveConcentrationSave.mock.calls[0][3]).toEqual({
+        kind: 'typed',
+        face: 15,
+        second: 3,
+      });
     });
 
     it('asks for the d4 of an effect the server says the save takes, and sends it with the d20', async () => {

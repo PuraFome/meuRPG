@@ -290,7 +290,13 @@ export interface AttackEffects {
  * master keeping the concentration. */
 export type ConcentrationAnswer =
   | { readonly kind: 'app' }
-  | { readonly kind: 'typed'; readonly face: number; readonly extra?: readonly number[] }
+  | {
+      readonly kind: 'typed';
+      readonly face: number;
+      /** The second d20, when the save has advantage or disadvantage. */
+      readonly second?: number;
+      readonly extra?: readonly number[];
+    }
   | { readonly kind: 'hand' }
   | { readonly kind: 'keep' };
 
@@ -1098,6 +1104,7 @@ export class CombatClient {
               ? { case: 'handToMaster', value: true }
               : { case: 'keep', value: true },
       extraDieFaces: how.kind === 'typed' ? [...(how.extra ?? [])] : [],
+      ...(how.kind === 'typed' && how.second !== undefined ? { secondD20Face: how.second } : {}),
       idempotencyKey: key,
     });
     return { encounter: need(res.encounter, 'ResolveConcentrationSave'), result: res.result };

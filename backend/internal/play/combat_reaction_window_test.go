@@ -450,6 +450,48 @@ func TestADamageOnAConcentratingCharacterAsksItsOwnerForTheSave(t *testing.T) {
 	}
 }
 
+// TestAConcentrationSaveWithExhaustionTakesTwoPhysicalDice: exhaustion 3 or more is
+// disadvantage on saving throws (SRD 5.1), so the prompt says so and a physical roll needs both
+// d20; one face is refused and two resolve with the lower.
+func TestAConcentrationSaveWithExhaustionTakesTwoPhysicalDice(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFightNPCFirst(t)
+	a.concentrate(t, "Pensantus", webSpell)
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET exhaustion_level = 3 WHERE id = $1`, a.id(t, "Pensantus")); err != nil {
+		t.Fatalf("exhaust Pensantus: %v", err)
+	}
+	hit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	if _, err := a.declineReaction(t, a.ana, e, hit.GetPendingDamage().GetId()); err != nil {
+		t.Fatalf("DeclineReaction() error = %v", err)
+	}
+	a.h.roller.queue(6)
+	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage)
+	if _, err := a.settle(t, a.master, e, hit.GetPendingDamage().GetId(), true); err != nil {
+		t.Fatalf("ApplyPendingDamage() error = %v", err)
+	}
+	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	if w == nil {
+		t.Fatalf("Pensantus's windows = %v, want a concentration save", a.windows(t, a.ana))
+	}
+	if p := w.GetConcentrationSave(); p.GetMode() != "disadvantage" || len(p.GetModeSourcesPt()) == 0 {
+		t.Errorf("the prompt mode = %q %v, want disadvantage with its source", p.GetMode(), p.GetModeSourcesPt())
+	}
+	_, err := a.resolveConcentration(t, a.ana, e, w.GetId(), concentrationFace(15))
+	wantCode(t, "one face with disadvantage", err, connect.CodeInvalidArgument)
+	res, err := a.resolveConcentration(t, a.ana, e, w.GetId(), func(r *playv1.ResolveConcentrationSaveRequest) {
+		r.Roll = &playv1.ResolveConcentrationSaveRequest_D20Face{D20Face: 15}
+		r.SecondD20Face = new(int32(3))
+	})
+	if err != nil {
+		t.Fatalf("ResolveConcentrationSave(15, 3) error = %v", err)
+	}
+	// The lower die counts: 3 plus the bonus is under the DC 10.
+	if r := res.GetResult(); r.GetKept() || r.GetSave().GetTotal() >= 10 {
+		t.Errorf("the result = %v, want the lower die (3) to count and the save to fail", r)
+	}
+}
+
 // TestAConcentrationSaveKeptKeepsTheSpell: a roll that reaches the DC keeps it.
 func TestAConcentrationSaveKeptKeepsTheSpell(t *testing.T) {
 	t.Parallel()

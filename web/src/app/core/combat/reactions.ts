@@ -1,5 +1,6 @@
 import {
   AttackOutcome,
+  type ConcentrationSavePrompt,
   type ConcentrationSaveResult,
   type HellishRebukeOption,
   type Encounter,
@@ -700,6 +701,24 @@ export function resultView(
 /** The question of the monk's second step: throw the caught missile back, for 1 ki, as part of the same reaction. */
 export function throwText(kiLeft: number, normalFt: number, longFt: number): string {
   return `Devolver o ataque? Gasta 1 de chi (${kiLeft} ${kiLeft === 1 ? 'restante' : 'restantes'}) e faz parte da mesma reação: um ataque à distância com o projétil, com proficiência, alcance ${metersText(normalFt)} e ${metersText(longFt)}.`;
+}
+
+/** How many d20 the concentration save takes: two with advantage or disadvantage (SRD 5.1), as the server rolls it. */
+export type ConcentrationMode = 'normal' | 'advantage' | 'disadvantage';
+
+/** The mode the server says the concentration save is rolled with. */
+export function concentrationMode(prompt: ConcentrationSavePrompt): ConcentrationMode {
+  return prompt.mode === 'advantage' || prompt.mode === 'disadvantage' ? prompt.mode : 'normal';
+}
+
+/** The mode in words, with its sources; empty when the roll is normal (nothing to say). `who` is the subject for the master ("Pensantus"); the owner reads "Você". */
+export function concentrationModeLine(prompt: ConcentrationSavePrompt, who = 'Você'): string {
+  const mode = concentrationMode(prompt);
+  if (mode === 'normal') {
+    return '';
+  }
+  const sources = prompt.modeSourcesPt.length > 0 ? ` (${prompt.modeSourcesPt.join('; ')})` : '';
+  return `${who} tem ${mode === 'advantage' ? 'vantagem' : 'desvantagem'} neste teste${sources}. Role dois d20; vale o ${mode === 'advantage' ? 'maior' : 'menor'}.`;
 }
 
 /** The result of the concentration save, for its owner. */
