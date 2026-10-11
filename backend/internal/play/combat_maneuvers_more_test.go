@@ -169,3 +169,45 @@ func TestManeuverReduceRefusesAnUnknownManeuver(t *testing.T) {
 		t.Errorf("dice left = %d, want 4", got)
 	}
 }
+
+// The e2e flow of "o dano em quem se concentra pede o teste ao dono": a concentrating character
+// with no maneuver takes a melee hit. Only the concentration window opens; no maneuver window
+// appears at any step, and the damage proceeds after the save as before.
+func TestManeuverReduceNeverOpensForACharacterWithoutManeuvers(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFightNPCFirst(t)
+	a.concentrate(t, "Pensantus", webSpell)
+	hit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))
+	if _, err := a.declineReaction(t, a.ana, e, hit.GetPendingDamage().GetId()); err != nil {
+		t.Fatalf("DeclineReaction() error = %v", err)
+	}
+	a.h.roller.queue(6)
+	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage)
+	noManeuver := func(step string) {
+		t.Helper()
+		for _, w := range a.windows(t, a.master) {
+			if w.GetKind() == playv1.ReactionKind_REACTION_KIND_MANEUVER_REDUCE {
+				t.Fatalf("%s: a maneuver window is open: %v", step, w)
+			}
+		}
+	}
+	noManeuver("after the damage roll")
+	if _, err := a.settle(t, a.master, e, hit.GetPendingDamage().GetId(), true); err != nil {
+		t.Fatalf("ApplyPendingDamage() error = %v", err)
+	}
+	noManeuver("after the damage landed")
+	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	if w == nil {
+		t.Fatalf("Pensantus's windows = %v, want only the concentration save", a.windows(t, a.ana))
+	}
+	if n := len(a.windows(t, a.master)); n != 1 {
+		t.Errorf("open windows = %d, want just the concentration save", n)
+	}
+	if _, err := a.resolveConcentration(t, a.ana, e, w.GetId(), concentrationFace(15)); err != nil {
+		t.Fatalf("ResolveConcentrationSave() error = %v", err)
+	}
+	if left := a.windows(t, a.master); len(left) != 0 {
+		t.Errorf("windows after the save = %v, want none", left)
+	}
+}
