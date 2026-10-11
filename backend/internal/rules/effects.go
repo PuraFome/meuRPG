@@ -115,6 +115,12 @@ type Effect struct {
 	NoFly  bool   `json:"no_fly,omitempty"`
 	NoSwim bool   `json:"no_swim,omitempty"`
 
+	// song_of_rest: the die of the bard's Song of Rest (6, 8, 10 or 12 sides),
+	// which the character's short rest adds to the hit points the party regains
+	// with hit dice (songofrest.go). Each tier of the feature carries one; the
+	// largest the character has counts.
+	Sides int `json:"sides,omitempty"`
+
 	// replaces: the feature this one takes over from, a lower tier of the same
 	// feature (Channel Divinity twice between rests replaces once). The
 	// sheet lists only the newest tier; the older one's effects still apply.
@@ -144,7 +150,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die",
+		"ability_increase", "superiority_die", "song_of_rest",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -208,6 +214,10 @@ func (c *content) compileEffect(key string, e *Effect) error {
 
 	if e.Type != "wild_shape" && (e.MaxCR != "" || e.NoFly || e.NoSwim) {
 		return fail("max_cr, no_fly and no_swim belong to wild_shape")
+	}
+
+	if e.Type != "song_of_rest" && e.Sides != 0 {
+		return fail("sides belongs to song_of_rest")
 	}
 
 	if e.Type != "replaces" && e.Replaces != "" {
@@ -354,6 +364,15 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		}
 		if _, ok := crEighths(e.MaxCR); !ok {
 			return fail("wild_shape needs a max_cr that is a challenge rating, such as \"1/4\"")
+		}
+	case "song_of_rest":
+		other := *e
+		other.Type, other.Sides = "", 0
+		if !reflect.DeepEqual(other, Effect{}) {
+			return fail("song_of_rest takes sides only")
+		}
+		if !slices.Contains(songOfRestDice, e.Sides) {
+			return fail("song_of_rest needs sides of 6, 8, 10 or 12")
 		}
 	case "beast_spells":
 		other := *e

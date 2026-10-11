@@ -49,14 +49,21 @@
       <mat-icon aria-hidden="true">info</mat-icon>Cada dado cura o número rolado mais o seu modificador de
       Constituição. Você decide, depois de cada dado, se gasta outro.
     </p>
+    @if (songAsk(); as ask) {
+      <p class="note js-song-ask" role="status">
+        <mat-icon aria-hidden="true">music_note</mat-icon>Um bardo toca a Canção de Descanso: você
+        recupera também um {{ dieName(ask.sides) }}. O seu {{ chosenName() }} deu {{ ask.face }}.
+        <button matButton type="button" class="js-song-cancel" (click)="cancelSong()">Voltar</button>
+      </p>
+    }
     <app-roll-picker
-      [canApp]="canApp"
+      [canApp]="canApp && !songAsk()"
       [canType]="canType"
       [preferApp]="preferApp"
-      [label]="'Role 1' + chosenName() + ' para o dado de vida'"
-      [hint]="'Role o seu ' + chosenName() + ' e digite o número que saiu (1 a ' + (faces() ?? 1) + ').'"
+      [label]="pickerLabel()"
+      [hint]="pickerHint()"
       [min]="1"
-      [max]="faces() ?? 1"
+      [max]="pickerMax()"
       [appLabel]="'Rolar ' + chosenName() + ' no app'"
       [hideTotal]="true"
       [busy]="busy()"

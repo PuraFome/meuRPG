@@ -64,6 +64,9 @@ type Character struct {
 	// in tenths of a foot (rules/combat.JumpLimits); 0 for a sheet with no
 	// Strength. Standing, each is half.
 	JumpLongDFt, JumpHighDFt int
+	// JumpLongBonusDFt is the extra distance of the running long jump that the
+	// Thief's Second-Story Work gives (rules/combat.Jumps.LongRunningBonus).
+	JumpLongBonusDFt int
 	// CombatOnly marks the NPC the app keeps for a creature's monsters (RN-29):
 	// never a participant, a stage NPC or a token.
 	CombatOnly bool
@@ -510,7 +513,11 @@ type Turn struct {
 	// when it joined, like its speed): the turn options show exactly what the
 	// server enforces. Standing, each is half.
 	JumpLongDFt, JumpHighDFt int
-	Disengaged               bool
+	// JumpLongBonusDFt is what a long jump with a running start adds (Second-Story
+	// Work), and JumpDoubled says Step of the Wind doubled the jump distance this turn.
+	JumpLongBonusDFt int
+	JumpDoubled      bool
+	Disengaged       bool
 }
 
 // Scene is an RP scene (MR-015): a SCENE point of a map as the session opens
