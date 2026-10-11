@@ -1466,6 +1466,11 @@ SET player_visible = $2, audience = $3, player_label = sqlc.narg(player_label)
 WHERE id = $1 AND kind = 'effect'
 RETURNING *;
 
+-- name: SetLastingEffectSpent :exec
+-- An effect a roll used up while its clock still runs (Zombaria Viciosa: the attack roll it gave
+-- disadvantage to); NULL gives it back (the master's undo of that roll).
+UPDATE combatant_states SET spent_at = sqlc.narg(spent_at) WHERE id = $1 AND kind = 'effect';
+
 -- name: CountLastingEffectTrigger :exec
 -- One more time the effect's damage hit its target.
 UPDATE combatant_states SET triggers_fired = triggers_fired + 1 WHERE id = $1;

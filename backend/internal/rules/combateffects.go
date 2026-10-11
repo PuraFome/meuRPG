@@ -1,17 +1,21 @@
 package rules
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"slices"
 	"strings"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
 // Effects that last in a combat (RN-22, SRD 5.1: "Conditions", "Duration",
-// "Concentration", the spells Bless, Bane, Haste, Hold Person and Web, and the
-// Dodge action). effects/combat_effects.json is handwritten and checked by the
-// loader: what each of those spells and actions puts on a creature, for how
-// long, how it ends, and what the card tells the player. The play module reads
+// "Concentration", the spells Bless, Bane, Haste, Hold Person and Web, the rider
+// of Vicious Mockery, and the Dodge action). effects/combat_effects.json is
+// handwritten and checked by the loader: what each of those spells and actions
+// puts on a creature, for how long, how it ends, and what the card tells the
+// player. The play module reads
 // it (Content.CombatSpellEffect, CombatEffect, ConditionInfo); the clock, the
 // exhaustion table and the conditions' arithmetic are pure and live in
 // rules/combat.
@@ -74,6 +78,9 @@ const (
 	// ModifierTurnTempHP gives temporary hit points at the start of each of the creature's turns
 	// (Heroism: the caster's spellcasting modifier, worked out when it is cast: FromCaster).
 	ModifierTurnTempHP = "turn_temp_hp"
+	// ModifierAttackDisadvantage gives the creature's attack rolls disadvantage. With Once, its
+	// next attack roll spends the effect, hit or miss (Vicious Mockery). It takes no other field.
+	ModifierAttackDisadvantage = "attack_disadvantage"
 )
 
 // The rolls a ModifierRollDie applies to.
@@ -110,7 +117,8 @@ type EffectModifier struct {
 	// Abilities are the ability keys of ModifierSaveAdvantage and ModifierCheckAdvantage.
 	Abilities []string `json:"abilities,omitempty"`
 	// Once says the die is spent on the first roll it is added to, and the effect ends with it
-	// (Guidance, Resistance).
+	// (Guidance, Resistance); on ModifierAttackDisadvantage, that the next attack roll spends it
+	// (Vicious Mockery: the effect stays, spent, until its clock ends it).
 	Once bool `json:"once,omitempty"`
 	// Choose says the caster picks the ability when casting (Enhance Ability).
 	Choose bool `json:"choose,omitempty"`
@@ -161,7 +169,9 @@ type EffectDef struct {
 	NamePT string `json:"-"`
 	// Kind is the source: "spell", "feature" or "master".
 	Kind string `json:"kind,omitempty"`
-	// Duration is the effect's own; a spell's comes from the spell (Content.SpellDetails).
+	// Duration is the effect's own. A spell's comes from the spell (Content.SpellDetails), except
+	// the rider of an instantaneous spell: it has a clock of its own on its target's turn (Vicious
+	// Mockery: until the end of the target's next turn), riderDurations.
 	Duration *EffectDuration `json:"duration,omitempty"`
 	// Concentration is read from the spell; it is not in the file.
 	Concentration bool `json:"-"`
@@ -230,11 +240,15 @@ var (
 		EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
 		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest,
 	}
-	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierNoReaction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP}
+	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierNoReaction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP, ModifierAttackDisadvantage}
 	saveAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 	// extraActions are the standard actions an extra action may be: the keys of
 	// effects/standard_actions.json.
 	extraActions = []string{"attack", "dash", "disengage", "hide", "use-an-object"}
+	// riderDurations are the durations a spell's entry may give itself: the clock of a rider that
+	// outlasts an instantaneous spell, on its target's next turn (Vicious Mockery: until the end of
+	// it). Any other spell's effect lasts as long as the spell does.
+	riderDurations = []string{EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf}
 )
 
 // loadCombatEffects reads and checks effects/combat_effects.json.
@@ -274,7 +288,9 @@ func (c *content) loadCombatEffects(fsys fs.FS) error {
 		def.Key, def.Kind, def.NamePT = key, "spell", c.namesPT[key]
 		def.Concentration = sp.Concentration
 		if def.Duration != nil {
-			return fmt.Errorf("%s: %s: a spell's duration comes from the spell, leave duration out", name, key)
+			if err := checkRiderDuration(sp, def.Duration); err != nil {
+				return fmt.Errorf("%s: %s: %w", name, key, err)
+			}
 		}
 		out.spells[key] = def
 	}
@@ -302,6 +318,18 @@ func (c *content) loadCombatEffects(fsys fs.FS) error {
 		}
 	}
 	c.combatEffects = out
+	return nil
+}
+
+// checkRiderDuration refuses a duration on a spell's entry, but for the rider of an instantaneous
+// spell, whose clock is its target's next turn (riderDurations).
+func checkRiderDuration(sp *srd51.Spell, d *EffectDuration) error {
+	if parseDuration(sp.Duration, sp.Concentration).Kind != DurationInstantaneous {
+		return errors.New("a spell's duration comes from the spell, leave duration out (only the rider of an instantaneous spell has its own)")
+	}
+	if !slices.Contains(riderDurations, d.Kind) {
+		return fmt.Errorf("the rider of an instantaneous spell lasts until_start_of_turn_of or until_end_of_turn_of, not %q", d.Kind)
+	}
 	return nil
 }
 
@@ -482,8 +510,11 @@ func checkModifier(m EffectModifier) error { //nolint:gocyclo,gocognit // one ca
 }
 
 // CombatSpellEffect returns what a spell puts on its targets in a combat
-// (Bênção, Perdição, Velocidade, Imobilizar Pessoa, Teia), and whether it has
-// such an effect. The result is shared and must not be modified.
+// (Bênção, Perdição, Velocidade, Imobilizar Pessoa, Teia, Zombaria Viciosa), and
+// whether it has such an effect. Its Duration is nil when the effect lasts as the
+// spell does (SpellEffectRounds, the concentration), and set for the rider of an
+// instantaneous spell, whose clock is its target's next turn (Zombaria Viciosa:
+// until the end of it). The result is shared and must not be modified.
 func (c *Content) CombatSpellEffect(spellKey string) (*EffectDef, bool) {
 	if c.c.combatEffects == nil {
 		return nil, false

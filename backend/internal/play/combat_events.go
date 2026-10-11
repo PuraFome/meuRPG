@@ -603,6 +603,9 @@ type actionEvent struct {
 	// (combat_hide.go).
 	HidBefore []hideSnap `json:"hid_before,omitempty"`
 	HelpUsed  []string   `json:"help_used,omitempty"`
+	// EffectsSpent are the effects whose disadvantage an attack roll used up (Zombaria Viciosa),
+	// which its undo gives back (lasting_effects_once.go).
+	EffectsSpent []string `json:"effects_spent,omitempty"`
 	// Dragged is the creature a grappler dragged along in a move, and where it stood (the
 	// move's undo puts it back).
 	Dragged     string     `json:"dragged_id,omitempty"`

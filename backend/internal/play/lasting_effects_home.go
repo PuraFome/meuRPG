@@ -30,6 +30,8 @@ func backedByCharacter(a playdb.Combatant) bool {
 // castCharacterEffects puts the effect of a spell that lasts on the characters it was cast
 // on, outside a combat. The duration is the spell's, in game time; the caster's concentration
 // holds it. A spell that asks a saving throw has none here: the master adds it where it took hold.
+// So the rider of an instantaneous spell never comes here either (Zombaria Viciosa asks a saving
+// throw, and its clock is a turn, which only a combat has): cast outside a combat, it leaves nothing.
 func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan castPlan) error {
 	content, err := s.contentOf(ctx, c)
 	if err != nil {

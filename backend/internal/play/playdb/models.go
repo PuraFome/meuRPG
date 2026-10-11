@@ -249,6 +249,7 @@ type CombatantState struct {
 	PlayerVisible      bool
 	Audience           string
 	PlayerLabel        *string
+	SpentAt            *time.Time
 }
 
 type Encounter struct {

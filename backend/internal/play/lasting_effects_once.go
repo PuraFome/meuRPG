@@ -5,16 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The effects a single roll spends (Guidance: "the spell then ends"; Resistance likewise, SRD
 // 5.1): the die is added to one roll, and the effect goes with it, with the casting that held it
 // and the caster's concentration. The roll that used the die is the caller's; this runs in its
-// transaction.
+// transaction. The disadvantage Zombaria Viciosa gives the next attack roll is spent too, but its
+// row stays until its clock ends it (spendAttackEffects).
 
 // spendOnceEffects ends the effects whose die a roll used.
 func (s *Service) spendOnceEffects(ctx context.Context, c *combatTx, dd []effectDie) error {
@@ -93,6 +96,45 @@ func (s *Service) spendOne(ctx context.Context, c *combatTx, d effectDie) error 
 	}
 	c.told = cc.told
 	return nil
+}
+
+// spendAttackEffects spends the effects on the attacker whose disadvantage its attack roll used
+// (SRD 5.1, Vicious Mockery: the next attack roll the creature makes), hit or miss and whatever
+// mode the roll had: it was that roll. The row stays, spent, until its clock ends it (the end of
+// the target's next turn), so the master's undo of the roll gives the disadvantage back
+// (made.EffectsSpent, restoreContestState); a spent row gives none (effectAttackDisadvantage).
+func (s *Service) spendAttackEffects(ctx context.Context, c *combatTx, attacker playdb.Combatant, made *actionEvent) error {
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	for _, st := range rows {
+		if st.CombatantID != attacker.ID || st.SpentAt != nil || !spentByAttack(st) {
+			continue
+		}
+		if err := c.q.SetLastingEffectSpent(ctx, playdb.SetLastingEffectSpentParams{ID: st.ID, SpentAt: &c.now}); err != nil {
+			return fmt.Errorf("spend the effect: %w", err)
+		}
+		made.EffectsSpent = append(made.EffectsSpent, st.ID)
+	}
+	return nil
+}
+
+// spentByAttack says the effect gives a disadvantage the next attack roll uses up.
+func spentByAttack(st playdb.CombatantState) bool {
+	return slices.ContainsFunc(effectModifiers(st), func(m rules.EffectModifier) bool {
+		return m.Kind == rules.ModifierAttackDisadvantage && m.Once
+	})
+}
+
+// markSpent marks the rows of ids spent in a read of the states, so a later attack roll of the
+// same change (a spell's second attack) reads them as the database now has them.
+func markSpent(states map[string][]playdb.CombatantState, id string, ids []string, at time.Time) {
+	for i, st := range states[id] {
+		if slices.Contains(ids, st.ID) {
+			states[id][i].SpentAt = &at
+		}
+	}
 }
 
 // spendCharacterEffect ends an effect on a character out of a combat: the whole casting goes

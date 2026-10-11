@@ -181,6 +181,29 @@ func TestExhaustionAndEffectsChangeTheModeOfARoll(t *testing.T) {
 	}
 }
 
+// Vicious Mockery (SRD 5.1): the creature that failed the save has disadvantage on its next attack
+// roll. The effect is the source, keyed by the effect, and only the attacker's counts.
+func TestAnEffectOnTheAttackerGivesItsAttackRollDisadvantage(t *testing.T) {
+	t.Parallel()
+	const key = "spell:vicious-mockery"
+	r := AttackMode(AttackScene{Attacker: Creature{AttackDisadvantage: key}, DistanceKnown: true, DistanceFt: 5, ReachFt: 5})
+	if len(r.Sources) != 1 || r.Sources[0] != (Source{Kind: SourceEffectAttack, Effect: ModeDisadvantage, Condition: key}) {
+		t.Fatalf("sources = %+v, want the effect's disadvantage keyed by %s", r.Sources, key)
+	}
+	if got := Resolve(r.Sources); got != ModeDisadvantage {
+		t.Errorf("mode = %v, want disadvantage", got)
+	}
+	// An advantage cancels it, as any other (SRD 5.1, "Advantage and Disadvantage").
+	helped := AttackMode(AttackScene{Attacker: Creature{AttackDisadvantage: key}, Helped: true})
+	if got := Resolve(helped.Sources); got != ModeNormal || !slices.ContainsFunc(helped.Sources, func(s Source) bool { return s.Kind == SourceEffectAttack }) {
+		t.Errorf("with Help: mode %v, sources %+v; want a normal roll that still lists the effect", got, helped.Sources)
+	}
+	// The same effect on the target changes nothing of the attacks against it.
+	if got := AttackMode(AttackScene{Target: Creature{AttackDisadvantage: key}}).Sources; len(got) != 0 {
+		t.Errorf("an effect on the target gave the attack against it %+v", got)
+	}
+}
+
 func TestSpeedAddAndCheckBonus(t *testing.T) {
 	t.Parallel()
 	mods := []rules.EffectModifier{{Kind: rules.ModifierSpeedAdd, Value: 10}, {Kind: rules.ModifierCheckBonus, Skill: "skill:stealth", Value: 10}}

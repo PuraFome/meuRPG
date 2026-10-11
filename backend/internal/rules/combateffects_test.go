@@ -55,13 +55,27 @@ func TestTheSpellsThatLastHaveTheirEffects(t *testing.T) {
 	if _, ok := c.CombatSpellEffect("spell:fireball"); ok {
 		t.Error("Fireball has no lasting effect")
 	}
+	// Vicious Mockery: an instantaneous spell whose rider lasts until the end of the target's next
+	// turn, and gives the next attack roll disadvantage.
+	mock, ok := c.CombatSpellEffect("spell:vicious-mockery")
+	if !ok || mock.Applies != "failed_save" || mock.Duration == nil || mock.Duration.Kind != EffectDurationUntilEndOfTurnOf || mock.Concentration {
+		t.Fatalf("Vicious Mockery = %+v, %v", mock, ok)
+	}
+	if len(mock.Modifiers) != 1 || mock.Modifiers[0].Kind != ModifierAttackDisadvantage || !mock.Modifiers[0].Once {
+		t.Errorf("Vicious Mockery's modifiers = %+v, want one attack_disadvantage, once", mock.Modifiers)
+	}
+	for _, key := range []string{"spell:bless", "spell:bane", "spell:faerie-fire", "spell:hold-person"} {
+		if d, _ := c.CombatSpellEffect(key); d.Duration != nil {
+			t.Errorf("%s has a duration of its own: %+v; a spell's comes from the spell", key, d.Duration)
+		}
+	}
 }
 
 func TestSpellDurationsAreInRounds(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
 	// SRD, "Duration": a round is 6 seconds, so a minute is 10 rounds and an hour 600.
-	for key, want := range map[string]int{"spell:bless": 10, "spell:bane": 10, "spell:haste": 10, "spell:hold-person": 10, "spell:faerie-fire": 10, "spell:hideous-laughter": 10, "spell:web": 600, "spell:longstrider": 600, "spell:pass-without-trace": 600, "spell:shield-of-faith": 100, "spell:fireball": 0} {
+	for key, want := range map[string]int{"spell:vicious-mockery": 0, "spell:bless": 10, "spell:bane": 10, "spell:haste": 10, "spell:hold-person": 10, "spell:faerie-fire": 10, "spell:hideous-laughter": 10, "spell:web": 600, "spell:longstrider": 600, "spell:pass-without-trace": 600, "spell:shield-of-faith": 100, "spell:fireball": 0} {
 		if got := c.SpellEffectRounds(key); got != want {
 			t.Errorf("SpellEffectRounds(%s) = %d, want %d", key, got, want)
 		}
@@ -110,7 +124,7 @@ func combatEffectsFixture() *content {
 	}
 	return &content{
 		named:   named,
-		spells:  map[string]*srd51.Spell{"spell:bless": {Concentration: true}},
+		spells:  map[string]*srd51.Spell{"spell:bless": {Concentration: true, Duration: "Up to 1 minute"}, "spell:vicious-mockery": {Duration: "Instantaneous"}},
 		namesPT: map[string]string{"spell:bless": "Bênção", "effect:x": "X"},
 	}
 }
@@ -136,11 +150,21 @@ func TestLoadCombatEffectsRefuses(t *testing.T) {
 	if err := combatEffectsFixture().loadCombatEffects(fixtureFile(conds, `"spell:bless":{"applies":"all","modifiers":[{"kind":"roll_die","die":4,"sign":1,"applies_to":["attack"]}]}`, `"effect:x":{"visibility":"public"}`)); err != nil {
 		t.Fatalf("a good file: %v", err)
 	}
+	// The rider of an instantaneous spell has its own clock on its target's turn.
+	for _, kind := range []string{EffectDurationUntilEndOfTurnOf, EffectDurationUntilStartOfTurnOf} {
+		rider := `"spell:vicious-mockery":{"applies":"failed_save","duration":{"kind":"` + kind + `"},"modifiers":[{"kind":"attack_disadvantage","once":true}]}`
+		if err := combatEffectsFixture().loadCombatEffects(fixtureFile(conds, rider, `"effect:x":{"visibility":"public"}`)); err != nil {
+			t.Errorf("the rider of an instantaneous spell, %s: %v", kind, err)
+		}
+	}
 	cases := map[string]fstest.MapFS{
 		"a missing condition":          fixtureFile(allConditionsJSON("prone"), ``, ``),
 		"a condition that is not SRD":  fixtureFile(conds+`,"condition:bored":{"visibility":"public","changes_pt":["x"]}`, ``, ``),
 		"a spell that is not SRD":      fixtureFile(conds, `"spell:made-up":{"applies":"all"}`, ``),
 		"a spell's own duration":       fixtureFile(conds, `"spell:bless":{"duration":{"kind":"until_dismissed"}}`, ``),
+		"a turn clock on Bless":        fixtureFile(conds, `"spell:bless":{"duration":{"kind":"until_end_of_turn_of"}}`, ``),
+		"a rider that counts rounds":   fixtureFile(conds, `"spell:vicious-mockery":{"duration":{"kind":"rounds","rounds":1}}`, ``),
+		"a rider until dismissed":      fixtureFile(conds, `"spell:vicious-mockery":{"duration":{"kind":"until_dismissed"}}`, ``),
 		"an unknown modifier":          fixtureFile(conds, `"spell:bless":{"modifiers":[{"kind":"fly"}]}`, ``),
 		"a die on an ability check":    fixtureFile(conds, `"spell:bless":{"modifiers":[{"kind":"roll_die","die":4,"sign":1,"applies_to":["check"]}]}`, ``),
 		"a die with no sign":           fixtureFile(conds, `"spell:bless":{"modifiers":[{"kind":"roll_die","die":4,"applies_to":["attack"]}]}`, ``),

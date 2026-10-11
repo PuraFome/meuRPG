@@ -287,7 +287,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		}
 	}
 	if def != nil {
-		out.TagsPt, out.BreakFreeAbility = append(append([]string{}, def.TagsPT...), modifierTagsPT(effectModifiers(f))...), def.BreakFree
+		out.TagsPt, out.BreakFreeAbility = append(append(append([]string{}, def.TagsPT...), modifierTagsPT(effectModifiers(f))...), spentTagsPT(f)...), def.BreakFree
 		if def.BreakFree != "" {
 			out.BreakFreeAbility = def.BreakFree
 		}
@@ -508,6 +508,18 @@ func modifierTagsPT(mods []rules.EffectModifier) []string {
 		}
 	}
 	return out
+}
+
+// spentTagPT is the tag of an effect a roll used up while its clock still runs (Zombaria Viciosa:
+// the attack roll it gave disadvantage to was made).
+const spentTagPT = "Já usada em um ataque"
+
+// spentTagsPT is the tag of a spent effect, none for one that is not.
+func spentTagsPT(st playdb.CombatantState) []string {
+	if st.SpentAt == nil {
+		return nil
+	}
+	return []string{spentTagPT}
 }
 
 // enhanceNotesPT are what an Aprimorar Habilidade gives besides the advantage, which the app does

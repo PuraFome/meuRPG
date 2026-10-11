@@ -54,14 +54,16 @@ const (
 	// Ranged Attacks: beyond the normal range, and a hostile creature within 5 ft.
 	SourceLongRange     = "long_range"
 	SourceHostileNearby = "hostile_nearby"
-	// Effects that last (RN-22): exhaustion, Faerie Fire and the advantage on saving
-	// throws an effect gives (Haste).
+	// Effects that last (RN-22): exhaustion, Faerie Fire, the advantage on saving
+	// throws an effect gives (Haste) and the disadvantage an effect gives the
+	// creature's own attack rolls (Vicious Mockery).
 	SourceExhaustionAttack = "exhaustion_attack"
 	SourceExhaustionSave   = "exhaustion_save"
 	SourceExhaustionCheck  = "exhaustion_check"
 	SourceOutlinedTarget   = "outlined_target"
 	SourceEffectSave       = "effect_save"
 	SourceEffectCheck      = "effect_check"
+	SourceEffectAttack     = "effect_attack"
 	// Saving throws and ability checks.
 	SourceDodgingSave     = "dodging_save"
 	SourceDangerSense     = "danger_sense"
@@ -104,7 +106,8 @@ type Source struct {
 	// Effect is ModeAdvantage or ModeDisadvantage.
 	Effect RollMode
 	// Condition is the condition key ("condition:prone") the source comes from, for
-	// the sources that are one; "" for the others.
+	// the sources that are one; for SourceEffectAttack, the key of the effect that
+	// gives it ("spell:vicious-mockery"); "" for the others.
 	Condition string
 }
 
@@ -202,6 +205,9 @@ type Creature struct {
 	// CheckAdvantage are the abilities an effect that lasts gives it advantage on the ability
 	// checks of (Enhance Ability).
 	CheckAdvantage []string
+	// AttackDisadvantage is the key of the effect that lasts that gives its own attack rolls
+	// disadvantage (Vicious Mockery: "spell:vicious-mockery"), "" for none.
+	AttackDisadvantage string
 }
 
 // Has says whether it carries a condition.
@@ -320,8 +326,9 @@ var targetConditionSources = []conditionSource{
 
 // AttackMode lists the circumstances of an attack roll (SRD 5.1, Conditions,
 // "Dodge", Barbarian "Reckless Attack", Monsters "Pack Tactics", "Unseen Attackers
-// and Targets", "Ranged Attacks"). The app does not keep who a Frightened creature
-// fears, so Frightened always counts as the source being in sight.
+// and Targets", "Ranged Attacks", the spell Vicious Mockery). The app does not keep
+// who a Frightened creature fears, so Frightened always counts as the source being in
+// sight.
 func AttackMode(s AttackScene) AttackModeResult {
 	var out AttackModeResult
 	add := func(kind string, effect RollMode, condition string) {
@@ -395,7 +402,18 @@ func AttackMode(s AttackScene) AttackModeResult {
 	}
 
 	out.Sources = append(out.Sources, rangedSources(s)...)
+	out.Sources = append(out.Sources, attackerEffectSources(s)...)
 	return out
+}
+
+// attackerEffectSources are the disadvantages an effect that lasts gives the attacker's own
+// attack rolls (SRD 5.1, Vicious Mockery: the next attack roll the creature makes before the end
+// of its next turn). The effect is the source, keyed by its own key.
+func attackerEffectSources(s AttackScene) []Source {
+	if s.Attacker.AttackDisadvantage == "" {
+		return nil
+	}
+	return []Source{{Kind: SourceEffectAttack, Effect: ModeDisadvantage, Condition: s.Attacker.AttackDisadvantage}}
 }
 
 // rangedSources are the disadvantages of a ranged attack: beyond the normal range, and

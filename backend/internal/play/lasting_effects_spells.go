@@ -17,7 +17,9 @@ import (
 // Imobilizar Pessoa, Riso Histérico, Fogo das Fadas and Teia (SRD 5.1). The cast rolls the
 // saving throw of the spell as it always did; this puts the effect on the targets it took
 // hold of, with the duration of the spell on the clock (one minute is 10 rounds, counted to
-// the start of the caster's turn) and the caster's concentration holding it.
+// the start of the caster's turn) and the caster's concentration holding it. The rider of an
+// instantaneous spell (Zombaria Viciosa's disadvantage) has a clock of its own, on its target's
+// next turn.
 
 // The outcomes of a spell's effect on a target, as a cast event keeps them.
 const (
@@ -96,6 +98,11 @@ func (s *Service) applyLastingSpell( //nolint:gocyclo // the steps of putting a 
 	}
 	dur := durationSpec{Kind: rules.EffectDurationUntilDismissed}
 	switch rounds := content.SpellEffectRounds(sp.Key); {
+	case def.Duration != nil:
+		// The rider of an instantaneous spell keeps its own clock (Zombaria Viciosa: until the end
+		// of the target's next turn). With no anchor, endsOf anchors it on each target, at the
+		// target's next turn: this round when it has not acted yet, the next when it has.
+		dur = durationSpec{Kind: def.Duration.Kind}
 	case rounds > 0:
 		dur = durationSpec{Kind: rules.EffectDurationRounds, Rounds: int32(rounds), Anchor: caster.ID} //nolint:gosec // 10 rounds a minute
 	case def.Concentration:

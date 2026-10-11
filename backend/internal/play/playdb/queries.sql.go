@@ -822,7 +822,7 @@ func (q *Queries) DeleteCombatantStatesOfKind(ctx context.Context, arg DeleteCom
 const deleteEndedCombatantStates = `-- name: DeleteEndedCombatantStates :many
 DELETE FROM combatant_states
 WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn' AND kind <> 'effect'
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
 `
 
 type DeleteEndedCombatantStatesParams struct {
@@ -871,6 +871,7 @@ func (q *Queries) DeleteEndedCombatantStates(ctx context.Context, arg DeleteEnde
 			&i.PlayerVisible,
 			&i.Audience,
 			&i.PlayerLabel,
+			&i.SpentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -904,7 +905,7 @@ WHERE encounter_id = $1
     OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn' AND kind <> 'effect')
     OR (kind = 'rage' AND ends_round IS NOT NULL AND ends_round <= $3)
   )
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
 `
 
 type DeleteExpiredCombatantStatesParams struct {
@@ -955,6 +956,7 @@ func (q *Queries) DeleteExpiredCombatantStates(ctx context.Context, arg DeleteEx
 			&i.PlayerVisible,
 			&i.Audience,
 			&i.PlayerLabel,
+			&i.SpentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1169,7 +1171,7 @@ func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) 
 const deleteStatesOfCombatant = `-- name: DeleteStatesOfCombatant :many
 DELETE FROM combatant_states
 WHERE combatant_id = $1 AND kind = $2
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
 `
 
 type DeleteStatesOfCombatantParams struct {
@@ -1217,6 +1219,7 @@ func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesO
 			&i.PlayerVisible,
 			&i.Audience,
 			&i.PlayerLabel,
+			&i.SpentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1744,7 +1747,7 @@ func (q *Queries) GetInspirationHoldByKey(ctx context.Context, arg GetInspiratio
 }
 
 const getLastingEffect = `-- name: GetLastingEffect :one
-SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label FROM combatant_states
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at FROM combatant_states
 WHERE id = $1 AND encounter_id = $2 AND kind = 'effect'
 `
 
@@ -1787,6 +1790,7 @@ func (q *Queries) GetLastingEffect(ctx context.Context, arg GetLastingEffectPara
 		&i.PlayerVisible,
 		&i.Audience,
 		&i.PlayerLabel,
+		&i.SpentAt,
 	)
 	return i, err
 }
@@ -3171,7 +3175,7 @@ const insertCombatantState = `-- name: InsertCombatantState :one
 INSERT INTO combatant_states (
     encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
 `
 
 type InsertCombatantStateParams struct {
@@ -3232,6 +3236,7 @@ func (q *Queries) InsertCombatantState(ctx context.Context, arg InsertCombatantS
 		&i.PlayerVisible,
 		&i.Audience,
 		&i.PlayerLabel,
+		&i.SpentAt,
 	)
 	return i, err
 }
@@ -3740,7 +3745,7 @@ INSERT INTO combatant_states (
     $19, $20, $21, $22, $23,
     $24, $25, $26, $12, $13, $27
 )
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
 `
 
 type InsertLastingEffectParams struct {
@@ -3838,6 +3843,7 @@ func (q *Queries) InsertLastingEffect(ctx context.Context, arg InsertLastingEffe
 		&i.PlayerVisible,
 		&i.Audience,
 		&i.PlayerLabel,
+		&i.SpentAt,
 	)
 	return i, err
 }
@@ -5154,7 +5160,7 @@ func (q *Queries) ListCharacterInspirationOfCampaign(ctx context.Context, campai
 }
 
 const listCombatEffectsOfCharacter = `-- name: ListCombatEffectsOfCharacter :many
-SELECT cs.id, cs.encounter_id, cs.combatant_id, cs.kind, cs.source_id, cs.ends_combatant_id, cs.ends_phase, cs.ends_round, cs.started_round, cs.amount, cs.created_at, cs.group_id, cs.source_key, cs.source_kind, cs.concentration, cs.condition_keys, cs.modifiers, cs.duration_kind, cs.end_save_ability, cs.start_save_ability, cs.save_dc, cs.on_fail_effect, cs.follows_key, cs.trigger_dice, cs.trigger_damage_type, cs.trigger_max_triggers, cs.triggers_fired, cs.player_visible, cs.audience, cs.player_label FROM combatant_states cs
+SELECT cs.id, cs.encounter_id, cs.combatant_id, cs.kind, cs.source_id, cs.ends_combatant_id, cs.ends_phase, cs.ends_round, cs.started_round, cs.amount, cs.created_at, cs.group_id, cs.source_key, cs.source_kind, cs.concentration, cs.condition_keys, cs.modifiers, cs.duration_kind, cs.end_save_ability, cs.start_save_ability, cs.save_dc, cs.on_fail_effect, cs.follows_key, cs.trigger_dice, cs.trigger_damage_type, cs.trigger_max_triggers, cs.triggers_fired, cs.player_visible, cs.audience, cs.player_label, cs.spent_at FROM combatant_states cs
 JOIN combatants c ON c.id = cs.combatant_id
 JOIN encounters e ON e.id = c.encounter_id
 WHERE c.character_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
@@ -5202,6 +5208,7 @@ func (q *Queries) ListCombatEffectsOfCharacter(ctx context.Context, characterID 
 			&i.PlayerVisible,
 			&i.Audience,
 			&i.PlayerLabel,
+			&i.SpentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -5286,7 +5293,7 @@ func (q *Queries) ListCombatReasons(ctx context.Context, arg ListCombatReasonsPa
 }
 
 const listCombatantStates = `-- name: ListCombatantStates :many
-SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label FROM combatant_states
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at FROM combatant_states
 WHERE encounter_id = $1
 ORDER BY created_at, id
 `
@@ -5331,6 +5338,7 @@ func (q *Queries) ListCombatantStates(ctx context.Context, encounterID string) (
 			&i.PlayerVisible,
 			&i.Audience,
 			&i.PlayerLabel,
+			&i.SpentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -5983,7 +5991,7 @@ func (q *Queries) ListInspirationHoldsOfCharacter(ctx context.Context, character
 }
 
 const listLastingEffects = `-- name: ListLastingEffects :many
-SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label FROM combatant_states
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at FROM combatant_states
 WHERE encounter_id = $1 AND kind = 'effect'
 ORDER BY created_at, id
 `
@@ -6028,6 +6036,7 @@ func (q *Queries) ListLastingEffects(ctx context.Context, encounterID string) ([
 			&i.PlayerVisible,
 			&i.Audience,
 			&i.PlayerLabel,
+			&i.SpentAt,
 		); err != nil {
 			return nil, err
 		}
@@ -8438,7 +8447,7 @@ const setLastingEffectEnds = `-- name: SetLastingEffectEnds :one
 UPDATE combatant_states
 SET duration_kind = $2, ends_round = $3, ends_combatant_id = $4, ends_phase = $5
 WHERE id = $1 AND kind = 'effect'
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
 `
 
 type SetLastingEffectEndsParams struct {
@@ -8489,6 +8498,7 @@ func (q *Queries) SetLastingEffectEnds(ctx context.Context, arg SetLastingEffect
 		&i.PlayerVisible,
 		&i.Audience,
 		&i.PlayerLabel,
+		&i.SpentAt,
 	)
 	return i, err
 }
@@ -8507,11 +8517,27 @@ func (q *Queries) SetLastingEffectModifiers(ctx context.Context, arg SetLastingE
 	return err
 }
 
+const setLastingEffectSpent = `-- name: SetLastingEffectSpent :exec
+UPDATE combatant_states SET spent_at = $2 WHERE id = $1 AND kind = 'effect'
+`
+
+type SetLastingEffectSpentParams struct {
+	ID      string
+	SpentAt *time.Time
+}
+
+// An effect a roll used up while its clock still runs (Zombaria Viciosa: the attack roll it gave
+// disadvantage to); NULL gives it back (the master's undo of that roll).
+func (q *Queries) SetLastingEffectSpent(ctx context.Context, arg SetLastingEffectSpentParams) error {
+	_, err := q.db.Exec(ctx, setLastingEffectSpent, arg.ID, arg.SpentAt)
+	return err
+}
+
 const setLastingEffectVisibility = `-- name: SetLastingEffectVisibility :one
 UPDATE combatant_states
 SET player_visible = $2, audience = $3, player_label = $4
 WHERE id = $1 AND kind = 'effect'
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
 `
 
 type SetLastingEffectVisibilityParams struct {
@@ -8560,6 +8586,7 @@ func (q *Queries) SetLastingEffectVisibility(ctx context.Context, arg SetLasting
 		&i.PlayerVisible,
 		&i.Audience,
 		&i.PlayerLabel,
+		&i.SpentAt,
 	)
 	return i, err
 }

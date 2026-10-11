@@ -114,6 +114,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceOutlinedTarget:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET,
 	combat.SourceEffectSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE,
 	combat.SourceEffectCheck:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_CHECK,
+	combat.SourceEffectAttack:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK,
 	combat.SourceRestrainedSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE,
 	combat.SourcePoisonedCheck:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_POISONED_CHECK,
 	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
@@ -146,9 +147,10 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		PackTactics: traits.PackTactics,
 		DangerSense: traits.DangerSense,
 		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
-		// The effects that last (RN-22): exhaustion, Faerie Fire's outline and the advantage on
-		// saving throws an effect gives.
+		// The effects that last (RN-22): exhaustion, Faerie Fire's outline, the advantage on saving
+		// throws an effect gives and the disadvantage one gives the creature's attack rolls.
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
+		AttackDisadvantage: effectAttackDisadvantage(states, c.ID),
 	}
 }
 
@@ -389,7 +391,7 @@ func (c textContext) conditionSentence(key, effect string) string {
 
 // ---- the sentences ----
 
-// sentence writes a source in Portuguese.
+// sentence writes a source in Portuguese: an attack roll's here, the others in otherSentence.
 func (c textContext) sentence(src combat.Source) string {
 	switch src.Kind {
 	case combat.SourceProneTarget:
@@ -432,6 +434,16 @@ func (c textContext) sentence(src combat.Source) string {
 		return "Além do alcance normal: desvantagem"
 	case combat.SourceHostileNearby:
 		return "Um inimigo a 1,5 m de quem ataca à distância: desvantagem"
+	case combat.SourceEffectAttack:
+		return fmt.Sprintf("%s: desvantagem neste ataque", c.names(src.Condition))
+	}
+	return c.otherSentence(src)
+}
+
+// otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an
+// effect that lasts gives.
+func (c textContext) otherSentence(src combat.Source) string {
+	switch src.Kind {
 	case combat.SourceDodgingSave:
 		return "Esquivando: vantagem em testes de resistência de Destreza"
 	case combat.SourceDangerSense:
