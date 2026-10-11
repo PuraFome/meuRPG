@@ -590,6 +590,7 @@
         "Standard": ""
       }
     ],
+    "Maneuvers": null,
     "AttacksPerAction": 1,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
@@ -1635,6 +1636,7 @@
         "Standard": ""
       }
     ],
+    "Maneuvers": null,
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
@@ -2613,6 +2615,7 @@
         "Standard": ""
       }
     ],
+    "Maneuvers": null,
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,

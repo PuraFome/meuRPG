@@ -167,6 +167,13 @@ type Sheet struct {
 	Traits Traits
 }
 
+// Maneuver is a die a table option adds to a roll, spent from a resource (the
+// engine's superiority_die effect). Applies, Economy and Ability are the effect's.
+type Maneuver struct {
+	Key, NamePT, Resource, Applies, Economy, Ability, TextPT string
+	Sides                                                    int
+}
+
 // Traits are what a sheet has that changes how its owner rolls and what its
 // damage carries: the barbarian's Rage, Reckless Attack and Danger Sense, the
 // rogue's Sneak Attack, the paladin's Divine Smite, the ranger's Hunter's Mark and
@@ -201,6 +208,8 @@ type Traits struct {
 	StealthDisadvantage bool
 	// Resistances are the damage resistances the features and traits give.
 	Resistances []Resistance
+	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
+	Maneuvers []Maneuver
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string

@@ -233,6 +233,9 @@ message DamagePartRoll {
   bool physical = 9;
   string damage_type_key = 10;
   repeated Reroll rerolled = 11;
+  // A table maneuver's rider (what the target must do, in the table's words). Only the
+  // master gets it; empty for everyone else and for every other part.
+  string rider_pt = 12;
 }
 
 // SelectedExtra is an extra the player marks when they roll the damage.

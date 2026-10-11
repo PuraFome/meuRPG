@@ -98,6 +98,14 @@ type Effect struct {
 	// effects/standard_actions.json.
 	Economy string `json:"economy,omitempty"`
 
+	// superiority_die: a die a table option adds to a roll, spent from a resource
+	// (a Battle Master style maneuver). Resource is the resource it spends, Value the
+	// sides of the die (an Int formula), Applies where the die goes (maneuverApplies),
+	// Economy what it costs when it costs one (bonus_action or reaction; empty is
+	// free) and Ability, for reduce_melee_damage, the modifier added to the die. The
+	// text_pt is the rider the master reads.
+	Applies string `json:"applies,omitempty"`
+
 	// wild_shape: the beasts a druid may turn into (wildshape.go). MaxCR is
 	// the highest challenge rating, such as "1/4", and NoFly and NoSwim leave
 	// out the beasts with a fly or a swim speed. The druid's features of
@@ -136,7 +144,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase",
+		"ability_increase", "superiority_die",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -154,6 +162,10 @@ var (
 		"language", "tool", "ability_score_improvement", "feat",
 	}
 	economies = []string{"action", "bonus_action", "reaction", "free", "movement"}
+	// maneuverApplies is where a superiority die goes: the damage of a weapon attack
+	// after a hit, an attack roll, the Athletics check of a grapple, or a reduction
+	// of the damage of a melee attack that hits the character (a reaction).
+	maneuverApplies = []string{ManeuverDamage, ManeuverAttack, ManeuverGrapple, ManeuverReduceMelee}
 	// handlers are the Go functions an effect may name. Content (and, later,
 	// the table's homebrew) can only point at these; it never brings code.
 	handlers = []string{
@@ -299,6 +311,36 @@ func (c *content) compileEffect(key string, e *Effect) error {
 	case "grant_action":
 		if !slices.Contains(economies, e.Economy) {
 			return fail("unknown economy %q", e.Economy)
+		}
+	case "superiority_die":
+		if e.Resource == "" {
+			return fail("a superiority die names the resource it spends")
+		}
+		if !slices.Contains(maneuverApplies, e.Applies) {
+			return fail("unknown applies %q", e.Applies)
+		}
+		if e.Value == "" {
+			return fail("value is required: the sides of the die")
+		}
+		if e.value, err = compile(e.Value, formula.Int); err != nil {
+			return err
+		}
+		switch e.Applies {
+		case ManeuverReduceMelee:
+			if _, ok := abilityIndex[Ability(e.Ability)]; !ok {
+				return fail("reduce_melee_damage needs the ability whose modifier is added")
+			}
+			if e.Economy != EconomyReaction {
+				return fail("reduce_melee_damage costs a reaction")
+			}
+		case ManeuverGrapple:
+			if e.Economy != "" && e.Economy != EconomyBonusAction {
+				return fail("a grapple maneuver costs a bonus action or nothing")
+			}
+		default:
+			if e.Ability != "" || e.Economy != "" {
+				return fail("%s takes no ability and no economy", e.Applies)
+			}
 		}
 	case "extra_attack":
 		if e.Count < 2 || e.Count > 4 {

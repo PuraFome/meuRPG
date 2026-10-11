@@ -559,6 +559,15 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				keep(v)
 			}
 		}
+		if who, ok := find(ev.Actor); ok && who.Kind == kindPlayer {
+			for _, key := range ev.ManeuverSpent {
+				v, err := s.spendResource(ctx, c, who.CharacterID, key, -1)
+				if err != nil {
+					return nil, err
+				}
+				keep(v)
+			}
+		}
 		if who, ok := find(ev.Actor); ok && ev.OnceBefore != nil {
 			if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{
 				ID: who.ID, SneakAttackTurn: nilIfEmpty(ev.OnceBefore.Sneak), ColossusSlayerTurn: nilIfEmpty(ev.OnceBefore.Colossus),

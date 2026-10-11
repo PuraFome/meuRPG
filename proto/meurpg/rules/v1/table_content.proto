@@ -91,8 +91,8 @@ message TableEntry {
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
-// "sense", "roll_mode", "grant_action", "extra_attack", "choice", "ability_increase"
-// or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// "sense", "roll_mode", "grant_action", "extra_attack", "choice", "ability_increase",
+// "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
 // prof(), floor, ceil, min and max, and must compile.
@@ -147,6 +147,16 @@ message TableEffect {
   // The text for the sheet, in Portuguese, when a note, a resource or an action
   // needs one. "{value}" is the value with its sign, "{n}" without it.
   string text_pt = 21;
+  // superiority_die: a die an option (a maneuver) adds to a roll, spent from the
+  // resource named in `resource` (one use each; the entry or its class defines it).
+  // `value` is the die's sides (a formula), `applies` where it goes: "damage" (a
+  // weapon attack that hit), "attack" (an attack roll), "grapple" (the Athletics
+  // check of a grapple; `economy` may be "bonus_action") or "reduce_melee_damage"
+  // (a reaction, `economy` "reaction", when a melee attack hits the character: the
+  // damage drops by the die plus the modifier of `ability`). `text_pt` is the rider the
+  // master reads. Added later: older clients leave both empty.
+  string applies = 22;
+  string ability = 23;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
