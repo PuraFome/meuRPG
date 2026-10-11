@@ -722,7 +722,16 @@ Only in response to an action (opening a feature, changing step, confirming), an
 
 ### Natural 20 and natural 1 tag
 
-A check, saving throw, contest, group check, scene roll or initiative whose d20 that counts came up 20 or 1 carries a small `mr-tag` with the words "20 natural" or "1 natural" next to its formula (the sentence a screen reader hears says it too). It is information only: those rolls have no automatic success or failure on a natural die (SRD 5.1), so the tag never says "crítico" or "sucesso automático" and never changes a total or a verdict. Attacks keep their "crítico" wording; death saves keep their own marks. The text comes from `naturalMark` (`core/combat/natural-mark.ts`). A player sees it only on a roll whose face they already read (their own); the master sees it on every roll he already reads.
+A check, saving throw, contest, group check, scene roll or initiative whose d20 that counts came up 20 or 1 carries a small `mr-tag` with the words "20 natural" or "1 natural" next to its formula (the sentence a screen reader hears says it too). It is information only: those rolls have no automatic success or failure on a natural die (SRD 5.1), so the tag never says "crítico" or "sucesso automático" and never changes a total or a verdict. Attacks keep their "crítico" wording; death saves keep their own marks. The one exception is an attack or spell attack that misses on a natural 1: the pill reads "Errou · 1 natural" (a natural 1 always misses, SRD 5.1), from `missMark` (`core/combat/attack-flow.ts`) and the cast row's `natural`. The text comes from `naturalMark` (`core/combat/natural-mark.ts`). A player sees it only on a roll whose face they already read (their own); the master sees it on every roll he already reads.
+
+### What a use costs
+
+A choice that spends something says what, in words, beside the button, with what is left. Never an armor class or an NPC's number (RN-20).
+
+- **The monk's hit rider card** (`hit-rider-card`): under each button a hint (`aria-describedby`): the save and its DC (the monk's own ki DC; left out when the server sends none), what a failure does (derrubado; empurrado até 4,5 m; atordoado até o fim do próximo turno; the no-reactions choice has no save), and for Golpe Atordoante "Gasta 1 ponto de ki (restam N, ficam N-1)" or, with no ki, the visible reason "Sem ki: você não tem pontos de ki para gastar.".
+- **Ki features on the action list** (Rajada de Golpes, Defesa Paciente, Passo do Vento): "Gasta 1 ki · restam N" (`featureUsesText`), not "N usos"; other resources keep "N usos".
+- **A maneuver on the damage step**: "Gasta 1 dado de superioridade (restam N)." from `DamagePart.resource_left` (the count when the hit was rolled). The maneuver's saving throw is not in the API, so the screen does not state it.
+- **A reaction being rolled**: both steps of the player's reaction sheet show the countdown (30 s before the die step; once there, "Você está rolando: a mesa espera 2 min", the longer wait the master's clock keeps), and the master's card reads "Rolando… passa sozinho em N s".
 
 ### Roll animation
 

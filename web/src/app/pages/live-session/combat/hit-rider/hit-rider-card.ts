@@ -35,19 +35,55 @@ export interface RiderPick {
           </p>
           <div class="rider__btns">
             @if (isOpenHand(o)) {
-              <button mat-stroked-button type="button" [disabled]="busy()" (click)="pick(o, choices.PRONE)">
-                Técnica da Mão Aberta: Derrubar (teste de Destreza)
-              </button>
-              <button mat-stroked-button type="button" [disabled]="busy()" (click)="pick(o, choices.PUSH)">
-                Empurrar até 4,5 m (teste de Força)
-              </button>
-              <button mat-stroked-button type="button" [disabled]="busy()" (click)="pick(o, choices.NO_REACTIONS)">
-                Sem reações até o fim do seu próximo turno
-              </button>
+              <div class="rider__opt">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="busy()"
+                  [attr.aria-describedby]="hintId(o, 'prone')"
+                  (click)="pick(o, choices.PRONE)"
+                >
+                  Técnica da Mão Aberta: Derrubar (teste de Destreza)
+                </button>
+                <p class="rider__hint" [id]="hintId(o, 'prone')">{{ proneHint(o) }}</p>
+              </div>
+              <div class="rider__opt">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="busy()"
+                  [attr.aria-describedby]="hintId(o, 'push')"
+                  (click)="pick(o, choices.PUSH)"
+                >
+                  Empurrar até 4,5 m (teste de Força)
+                </button>
+                <p class="rider__hint" [id]="hintId(o, 'push')">{{ pushHint(o) }}</p>
+              </div>
+              <div class="rider__opt">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="busy()"
+                  [attr.aria-describedby]="hintId(o, 'none')"
+                  (click)="pick(o, choices.NO_REACTIONS)"
+                >
+                  Sem reações até o fim do seu próximo turno
+                </button>
+                <p class="rider__hint" [id]="hintId(o, 'none')">{{ noReactionsHint }}</p>
+              </div>
             } @else {
-              <button mat-stroked-button type="button" [disabled]="busy() || o.kiLeft < 1" (click)="pick(o, choices.STUN)">
-                Golpe Atordoante (1 ki)
-              </button>
+              <div class="rider__opt">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="busy() || o.kiLeft < 1"
+                  [attr.aria-describedby]="hintId(o, 'stun')"
+                  (click)="pick(o, choices.STUN)"
+                >
+                  Golpe Atordoante (1 ki)
+                </button>
+                <p class="rider__hint" [id]="hintId(o, 'stun')">{{ stunHint(o) }}</p>
+              </div>
             }
             <button mat-button type="button" [disabled]="busy()" (click)="pick(o, choices.DECLINE)">Dispensar</button>
           </div>
@@ -76,6 +112,18 @@ export interface RiderPick {
       margin: 0;
     }
 
+    .rider__opt {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .rider__hint {
+      color: var(--mr-ink-muted);
+      font-size: 0.875rem;
+      margin: 0;
+    }
+
     .rider__btns {
       display: flex;
       flex-direction: column;
@@ -99,6 +147,36 @@ export class HitRiderCard {
 
   protected title(o: HitRiderOffer): string {
     return this.isOpenHand(o) ? 'Técnica da Mão Aberta' : 'Golpe Atordoante';
+  }
+
+  protected readonly noReactionsHint =
+    'Sem teste de resistência: o alvo não pode usar reações até o fim do seu próximo turno.';
+
+  /** A unique id for the hint a button is described by. */
+  protected hintId(o: HitRiderOffer, what: string): string {
+    return `rider-${o.id}-${what}`;
+  }
+
+  /** "Teste de Destreza CD 14." The DC is the monk's own ki save DC (never an NPC's number, RN-20); left out when the server sends none. */
+  private saveText(ability: string, o: HitRiderOffer): string {
+    return o.saveDc > 0 ? `Teste de ${ability} CD ${o.saveDc}.` : `Teste de ${ability}.`;
+  }
+
+  protected proneHint(o: HitRiderOffer): string {
+    return `${this.saveText('Destreza', o)} Se falhar, fica derrubado.`;
+  }
+
+  protected pushHint(o: HitRiderOffer): string {
+    return `${this.saveText('Força', o)} Se falhar, é empurrado até 4,5 m.`;
+  }
+
+  /** What Stunning Strike costs and does; with no ki left, the reason it is off. */
+  protected stunHint(o: HitRiderOffer): string {
+    const cost =
+      o.kiLeft < 1
+        ? 'Sem ki: você não tem pontos de ki para gastar.'
+        : `Gasta 1 ponto de ki (restam ${o.kiLeft}, ficam ${o.kiLeft - 1}).`;
+    return `${cost} ${this.saveText('Constituição', o)} Se falhar, fica atordoado até o fim do seu próximo turno.`;
   }
 
   protected label(id: string): string {

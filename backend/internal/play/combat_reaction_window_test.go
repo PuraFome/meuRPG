@@ -550,3 +550,63 @@ func TestADamageToZeroEndsTheConcentrationWithoutASave(t *testing.T) {
 		t.Errorf("EndTurn() error = %v: nothing waits", err)
 	}
 }
+
+// markRolling calls MarkReactionRolling as u.
+func (a *armed) markRolling(t *testing.T, u *user, e *playv1.Encounter, windowID string) error {
+	t.Helper()
+	_, err := u.combat.MarkReactionRolling(t.Context(), connect.NewRequest(&playv1.MarkReactionRollingRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), WindowId: windowID}))
+	return err
+}
+
+// TestMarkingAReactionAsRolledIsTheReactorsAloneAndShowsToTheMaster: the reactor's player marks
+// their window (twice is the same as once) and the master reads `rolling`; the master, another
+// player and an invented window are refused, the last two with the same answer (RN-10); the mark
+// writes no log line and the window is still answered as before.
+func TestMarkingAReactionAsRolledIsTheReactorsAloneAndShowsToTheMaster(t *testing.T) {
+	t.Parallel()
+	r, re := reactorFight(t, rogueFive)
+	hit := r.mustAttack(t, r.master, re, "Goblin", sword, "Reator", d20(15))
+	r.mustDamage(t, r.master, re, hit.GetPendingDamage().GetId(), typedDamage(6))
+	w := r.windowOf(t, r.ana, playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE)
+	if w == nil {
+		t.Fatal("the rogue has no Uncanny Dodge window")
+	}
+	if w.GetRolling() {
+		t.Error("the window is marked before anybody rolled")
+	}
+	fake := "00000000-0000-4000-8000-000000000001"
+	wantCode(t, "the master marking", r.markRolling(t, r.master, re, w.GetId()), connect.CodePermissionDenied)
+	wantCode(t, "another player marking", r.markRolling(t, r.caio, re, w.GetId()), connect.CodePermissionDenied)
+	wantCode(t, "another player marking an invented window", r.markRolling(t, r.caio, re, fake), connect.CodePermissionDenied)
+	if got := r.windowOf(t, r.master, playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE); got.GetRolling() {
+		t.Error("a refused mark showed on the master's window")
+	}
+
+	logBefore := logLines(r.log(t, r.master, re))
+	for range 2 {
+		if err := r.markRolling(t, r.ana, re, w.GetId()); err != nil {
+			t.Fatalf("the reactor marking the window error = %v", err)
+		}
+	}
+	for who, u := range map[string]*user{"the master": r.master, "the reactor": r.ana} {
+		if got := r.windowOf(t, u, playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE); !got.GetRolling() {
+			t.Errorf("%s does not read the window as being rolled", who)
+		}
+	}
+	if n := logLines(r.log(t, r.master, re)); n != logBefore {
+		t.Errorf("marking wrote %d log lines", n-logBefore)
+	}
+	if _, err := r.answerReaction(t, r.ana, re, w.GetId(), useAnswer(0)); err != nil {
+		t.Errorf("answering the marked window error = %v", err)
+	}
+	wantCode(t, "marking an answered window", r.markRolling(t, r.ana, re, w.GetId()), connect.CodeFailedPrecondition)
+}
+
+// logLines counts the entries of a combat log.
+func logLines(l *playv1.ListCombatLogResponse) int {
+	n := 0
+	for _, round := range l.GetRounds() {
+		n += len(round.GetEntries())
+	}
+	return n
+}

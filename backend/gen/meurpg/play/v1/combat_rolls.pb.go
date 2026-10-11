@@ -904,7 +904,11 @@ type DamagePart struct {
 	NotePt string `protobuf:"bytes,17,opt,name=note_pt,json=notePt,proto3" json:"note_pt,omitempty"`
 	// A table maneuver's die: only one of these may be marked for each attack, so the screen
 	// turns the others off once one is marked.
-	Maneuver      bool `protobuf:"varint,18,opt,name=maneuver,proto3" json:"maneuver,omitempty"`
+	Maneuver bool `protobuf:"varint,18,opt,name=maneuver,proto3" json:"maneuver,omitempty"`
+	// For a table maneuver: the superiority dice (uses of its resource) the attacker had left
+	// when the hit was rolled. Marking the maneuver spends one. 0 for every other part.
+	// The maneuver's saving throw is not sent: the server keeps it only in the master's rider.
+	ResourceLeft  int32 `protobuf:"varint,19,opt,name=resource_left,json=resourceLeft,proto3" json:"resource_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1063,6 +1067,13 @@ func (x *DamagePart) GetManeuver() bool {
 		return x.Maneuver
 	}
 	return false
+}
+
+func (x *DamagePart) GetResourceLeft() int32 {
+	if x != nil {
+		return x.ResourceLeft
+	}
+	return 0
 }
 
 // Reroll is a die rerolled by Great Weapon Fighting.
@@ -1635,7 +1646,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x04free\x18\x03 \x01(\x05R\x04free\x12\x10\n" +
 	"\x03max\x18\x04 \x01(\x05R\x03max\x12\x1d\n" +
 	"\n" +
-	"dice_count\x18\x05 \x01(\x05R\tdiceCount\"\xae\x04\n" +
+	"dice_count\x18\x05 \x01(\x05R\tdiceCount\"\xd3\x04\n" +
 	"\n" +
 	"DamagePart\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x19\n" +
@@ -1660,7 +1671,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"needs_slot\x18\x0f \x01(\bR\tneedsSlot\x12=\n" +
 	"\fslot_options\x18\x10 \x03(\v2\x1a.meurpg.play.v1.SlotOptionR\vslotOptions\x12\x17\n" +
 	"\anote_pt\x18\x11 \x01(\tR\x06notePt\x12\x1a\n" +
-	"\bmaneuver\x18\x12 \x01(\bR\bmaneuver\"B\n" +
+	"\bmaneuver\x18\x12 \x01(\bR\bmaneuver\x12#\n" +
+	"\rresource_left\x18\x13 \x01(\x05R\fresourceLeft\"B\n" +
 	"\x06Reroll\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\x05R\x04from\x12\x0e\n" +

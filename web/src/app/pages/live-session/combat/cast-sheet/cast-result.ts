@@ -43,7 +43,7 @@ export interface SlotAfter {
             <b class="tg__name">{{ r.label }}</b>
             @if (r.word) {
               <span class="pill" [class.pill--bad]="r.tone === 'bad'" [class.pill--neutral]="!!r.icon">
-                <mat-icon aria-hidden="true">{{ r.icon ?? (r.tone === 'bad' ? 'close' : 'check') }}</mat-icon>{{ r.word }}
+                <mat-icon aria-hidden="true">{{ r.icon ?? (r.tone === 'bad' ? 'close' : 'check') }}</mat-icon>{{ r.word }}{{ r.natural ? ' · ' + r.natural : '' }}
               </span>
             }
             @if (r.state && !r.icon) {

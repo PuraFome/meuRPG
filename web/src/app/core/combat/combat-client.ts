@@ -1083,6 +1083,19 @@ export class CombatClient {
     return { encounter: need(res.encounter, 'AnswerReaction'), result: res.result };
   }
 
+  /**
+   * `MarkReactionRolling`: the player says they are using an optional reaction and rolling now, so the master's
+   * clock waits longer before it passes the window. Idempotent, so it needs no key.
+   */
+  async markReactionRolling(
+    campaignId: string,
+    encounterId: string,
+    windowId: string,
+  ): Promise<Encounter> {
+    const res = await this.client.markReactionRolling({ campaignId, encounterId, windowId });
+    return need(res.encounter, 'MarkReactionRolling');
+  }
+
   /** `ResolveConcentrationSave`: the Constitution saving throw of a concentration window. */
   async resolveConcentrationSave(
     campaignId: string,

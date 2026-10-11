@@ -43,6 +43,7 @@ import {
   type AttackStage,
   awaitsReaction,
   isHit,
+  missMark,
   outcomeWord,
   stageAfterRoll,
   steps,
@@ -408,6 +409,7 @@ export class AttackSheet {
           word: outcomeWord(r.outcome),
           hit: isHit(r.outcome),
           crit: r.outcome === AttackOutcome.CRITICAL_HIT,
+          natural: missMark(r),
         }
       : null;
   });
