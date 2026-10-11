@@ -30,8 +30,7 @@ import { ReactionSheet } from './reaction-sheet/reaction-sheet';
 // The effects that last on the combat screen (RN-22): the saving throw of the end of the turn opens by itself and can be
 // opened again, the waits are the server's words, and what the effects take from the turn is said and spent.
 
-const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
 
 const brisa = combatant({
   id: 'b',

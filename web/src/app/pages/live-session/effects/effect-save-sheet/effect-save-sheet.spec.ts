@@ -18,8 +18,7 @@ import { inspirationOffer } from '../../../../core/play/scene-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { EffectSaveSheet, type EffectSaveSheetData } from './effect-save-sheet';
 
-const plain = (text: string | null | undefined) =>
-  (text ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
 
 function save(over: object = {}, window: object = {}) {
   return reactionWindow({

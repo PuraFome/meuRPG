@@ -3,8 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import type { EffectCardView } from '../../../../core/effects/effects';
 import { EffectCards } from './effect-cards';
 
-const plain = (text: string | null | undefined) =>
-  (text ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
 
 const hold: EffectCardView = {
   key: 'e1',
