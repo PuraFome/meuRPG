@@ -1,6 +1,12 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
+import type {
+  ConcentrationSaveResult,
+  DiceRoll,
+  ReactionResult,
+} from '../../../gen/meurpg/play/v1/combat_pb';
+import type { EffectSaveResult } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
+import { type CheckRoll, RollModeKind } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { extraDiceText } from '../../core/combat/combat-dice';
 
 /** The dice the game uses. A d100 is drawn as two d10 (see `shapesOf`). */
@@ -252,6 +258,12 @@ interface ShowMore extends Pick<RollShow, 'outcome' | 'critical' | 'fumble' | 'n
   readonly withTotal?: boolean;
 }
 
+/** A roll the app made with dice the overlay draws. A die with no faces (a partial message) shows nothing: the
+ * animation never stands in the way of the roll. */
+function animatable(dice: DiceRoll | undefined): dice is DiceRoll {
+  return !!dice && !dice.physical && !!dice.faces?.length && SIDES.includes(dice.diceSides);
+}
+
 /**
  * A `RollShow` from a roll the server answered (a d20, or the dice of a damage or hit die roll). A d20 pair shows both,
  * the one that counts highlighted. A physical roll is never animated: the player already has the dice in hand. A d20 a
@@ -262,7 +274,7 @@ export function showOfDice(
   dice: DiceRoll | undefined,
   more: ShowMore = {},
 ): RollShow | null {
-  if (!dice || dice.physical || dice.faces.length === 0 || !SIDES.includes(dice.diceSides)) {
+  if (!animatable(dice)) {
     return null;
   }
   const sides = dice.diceSides as DieSides;
@@ -308,4 +320,96 @@ function totalLine(dice: DiceRoll, kept: readonly number[]): string {
   const mod =
     dice.modifier === 0 ? '' : ` ${dice.modifier < 0 ? '−' : '+'} ${Math.abs(dice.modifier)}`;
   return `${kept.join(' + ')}${mod}${extra.text} = ${dice.total}`;
+}
+
+/**
+ * A `RollShow` from the d20 of a check the server answered as a `CheckRoll` (a contest, Hide, a group check): the pair of
+ * an advantage or disadvantage roll shows both dice with the one that counts highlighted. Physical rolls are never animated.
+ */
+export function showOfCheck(
+  label: string,
+  roll: CheckRoll | undefined,
+  more: ShowMore = {},
+): RollShow | null {
+  if (!roll || roll.physical || roll.faces.length === 0) {
+    return null;
+  }
+  const pair = roll.faces.length > 1;
+  const counted =
+    roll.mode === RollModeKind.ADVANTAGE
+      ? Math.max(...roll.faces)
+      : roll.mode === RollModeKind.DISADVANTAGE
+        ? Math.min(...roll.faces)
+        : roll.faces[0];
+  const countedAt = Math.max(0, roll.faces.indexOf(counted));
+  const mod =
+    roll.modifier === 0 ? '' : ` ${roll.modifier < 0 ? '−' : '+'} ${Math.abs(roll.modifier)}`;
+  const line =
+    counted + roll.modifier === roll.total
+      ? `${counted}${mod} = ${roll.total}`
+      : `Total ${roll.total}`;
+  return {
+    label,
+    dice: roll.faces.map((face, i) => ({
+      sides: D20 as DieSides,
+      face,
+      counts: pair ? i === countedAt : true,
+    })),
+    line: more.withTotal ? line : undefined,
+    note: more.note,
+    outcome: more.outcome,
+    critical: more.critical && counted === D20,
+    fumble: more.fumble && counted === 1,
+  };
+}
+
+/**
+ * The reaction a player (or the master, for an NPC) just answered, tumbling the dice its result sheet shows: the aggressor's
+ * save of Repreensão Infernal, the check of Contramágica (none when the slot was high enough), the die of Palavras Cortantes
+ * (only when it changed the roll; never the total or the armor class) and the reduction of Defletir Projéteis.
+ */
+export function showOfReaction(res: ReactionResult | undefined): RollShow | null {
+  const r = res?.result;
+  switch (r?.case) {
+    // Repreensão Infernal's saving throw is the attacker's roll, not the reactor's: never animated on the reactor's screen.
+    case 'counterspell':
+      return showOfDice('Contramágica', r.value.check, {
+        withTotal: true,
+        outcome: { word: r.value.countered ? 'Anulada' : 'Não anulada', good: r.value.countered },
+      });
+    case 'cuttingWords':
+      return r.value.effective ? showOfDice('Palavras Cortantes', r.value.die) : null;
+    case 'deflectMissiles':
+      return showOfDice('Defletir Projéteis', r.value.reduction, { withTotal: true });
+    default:
+      return null;
+  }
+}
+
+/** The concentration saving throw, with "Passou" or "Falhou" (the sheet says whether it was kept). */
+export function showOfConcentration(res: ConcentrationSaveResult | undefined): RollShow | null {
+  return showOfDice('Teste de concentração', res?.save, {
+    withTotal: true,
+    outcome: res ? { word: res.kept ? 'Passou' : 'Falhou', good: res.kept } : undefined,
+  });
+}
+
+/** An effect's saving throw the app rolled (`label` names the ability): the d20 pair, the total and "Passou" or "Falhou". */
+export function showOfEffectSave(label: string, r: EffectSaveResult | undefined): RollShow | null {
+  if (!r || r.autoFail || r.skipped || r.physical) {
+    return null;
+  }
+  const faces = r.d20Faces.length === 2 ? r.d20Faces : [r.d20];
+  const counted = Math.max(0, faces.indexOf(r.d20));
+  const mod = r.modifier === 0 ? '' : ` ${r.modifier < 0 ? '−' : '+'} ${Math.abs(r.modifier)}`;
+  return {
+    label,
+    dice: faces.map((face, i) => ({
+      sides: D20 as DieSides,
+      face,
+      counts: faces.length === 1 || i === counted,
+    })),
+    line: r.extraDice.length > 0 ? `Total ${r.total}` : `${r.d20}${mod} = ${r.total}`,
+    outcome: { word: r.saved ? 'Passou' : 'Falhou', good: r.saved },
+  };
 }

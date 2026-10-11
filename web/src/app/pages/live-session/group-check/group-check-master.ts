@@ -13,6 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { GroupCheckMemberView } from '../../../../gen/meurpg/play/v1/contest_types_pb';
+import { RollAnimator, showOfCheck } from '../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { type CheckDie, ContestClient } from '../../../core/combat/contest-client';
 import {
@@ -191,6 +192,7 @@ function dcOf(text: string): number | null {
 })
 export class GroupCheckMaster {
   private readonly api = inject(ContestClient);
+  private readonly animator = inject(RollAnimator);
   private readonly keys = new ActionKey();
 
   readonly campaignId = input.required<string>();
@@ -300,6 +302,15 @@ export class GroupCheckMaster {
         this.keys.keyFor({ g: g.id, c: m.characterId, die }),
       );
       this.checks.apply(view);
+      // The master's roll for a player who has not answered, as the panel lists it.
+      const show = showOfCheck(
+        `Teste de ${view.skillNamePt}: ${m.name}`,
+        view.members.find((x) => x.characterId === m.characterId)?.roll,
+        { withTotal: true },
+      );
+      if (show) {
+        this.animator.play(show);
+      }
       this.rolling.set('');
       this.said.set(`Rolado por ${m.name}.`);
     });

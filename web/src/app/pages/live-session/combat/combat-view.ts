@@ -113,7 +113,7 @@ import type { CombatState } from '../../../core/combat/combat-state';
 import { SpellCatalog } from '../../../core/combat/spell-catalog';
 import { TurnOptionsState } from '../../../core/combat/turn-options-state';
 import { outcomeText, saveAnnouncement } from '../../../core/combat/death-saves';
-import { RollAnimator, showOfDice } from '../../../shared/roll-overlay/roll-animator';
+import { RollAnimator, showOfDice, showOfDie } from '../../../shared/roll-overlay/roll-animator';
 import {
   currentCombatant,
   isDead,
@@ -248,6 +248,9 @@ const RETRYABLE: ReadonlySet<Code> = new Set([
  * `encounter_changed`. A call's answer is the combat as it is now, so it is
  * applied at once; a refusal that means "the screen is stale" reads it again.
  */
+/** The d20 the initiative is rolled with. */
+const INITIATIVE_DIE = 20;
+
 @Component({
   selector: 'app-combat-view',
   imports: [
@@ -2544,10 +2547,39 @@ export class CombatView {
     );
   }
 
-  protected rollInApp(combatantId: string): Promise<boolean> {
-    return this.run((e) =>
+  protected async rollInApp(combatantId: string): Promise<boolean> {
+    const done = await this.run((e) =>
       this.api.submitInitiative(this.campaignId(), e.id, combatantId, { inApp: true }),
     );
+    if (done) {
+      this.animateInitiative(combatantId);
+    }
+    return done;
+  }
+
+  /** The initiative d20 the app just rolled for the player's own combatant, as the initiative card tells it (d20 + bonus = total). */
+  private animateInitiative(combatantId: string): void {
+    const c = this.encounter()?.combatants.find((x) => x.id === combatantId);
+    if (
+      c?.initiativeFace === undefined ||
+      c.initiativeBonus === undefined ||
+      c.initiative === undefined
+    ) {
+      return;
+    }
+    const mod =
+      c.initiativeBonus === 0
+        ? ''
+        : ` ${c.initiativeBonus < 0 ? '−' : '+'} ${Math.abs(c.initiativeBonus)}`;
+    const show = showOfDie(
+      'Iniciativa',
+      INITIATIVE_DIE,
+      c.initiativeFace,
+      `${c.initiativeFace}${mod} = ${c.initiative}`,
+    );
+    if (show) {
+      this.animator.play(show);
+    }
   }
 
   protected setOrder(ids: string[]): Promise<boolean> {

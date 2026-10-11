@@ -17,6 +17,7 @@ import type { Observable } from 'rxjs';
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { RollModeKind } from '../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
+import { RollAnimator, showOfCheck } from '../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import {
   type CheckDie,
@@ -69,6 +70,7 @@ export function openGroupCheckSheet(
 })
 export class GroupCheckSheet {
   private readonly api = inject(ContestClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<GroupCheckSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -133,6 +135,11 @@ export class GroupCheckSheet {
         this.keys.keyFor({ check: check.id, die }),
       );
       this.data.state.apply(view);
+      // The player's own d20 of the check, as the result step shows it; "passou" only comes when the master closes it.
+      const show = showOfCheck(`Teste de ${this.skill()}`, this.own()?.roll, { withTotal: true });
+      if (show) {
+        this.animator.play(show);
+      }
     } catch (err) {
       if (err instanceof InspirationAsked) {
         // Not an error: the d20 is rolled and kept, and the session panel asks about the die.
