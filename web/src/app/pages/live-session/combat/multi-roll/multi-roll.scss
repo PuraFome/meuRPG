@@ -118,10 +118,14 @@
   background: var(--mr-ground);
 }
 
+// The wait style is the border and the colour only; the dash carries its own type (see roll-picker.scss).
 .type__sum--wait {
   border-style: dashed;
   border-color: var(--mr-control-line);
   color: var(--mr-ink-muted);
+}
+
+.type__dash {
   font-family: var(--mr-font-display);
   font-size: 32px;
 }

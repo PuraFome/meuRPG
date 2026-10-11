@@ -158,10 +158,17 @@
   font-size: 16px;
 }
 
+// The wait style is the border and the colour only: the big dash carries its own type, so the
+// total never inherits it. When it did, the frame that drew the typed total before the wait
+// class went away showed the formula at 32px on two lines, and the box shrank a line under a
+// finger already on "Confirmar" (the click landed below the button).
 .type__sum--wait {
   border-style: dashed;
   border-color: var(--mr-control-line);
   color: var(--mr-ink-muted);
+}
+
+.type__dash {
   font-family: var(--mr-font-display);
   font-size: 32px;
 }
