@@ -1641,9 +1641,14 @@ type EffectSaveResult struct {
 	// "Imobilizar Pessoa acabou." and similar.
 	TextPt string `protobuf:"bytes,11,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
 	// The DC, only for the master.
-	Dc            *int32 `protobuf:"varint,12,opt,name=dc,proto3,oneof" json:"dc,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Dc *int32 `protobuf:"varint,12,opt,name=dc,proto3,oneof" json:"dc,omitempty"`
+	// The Bardic Inspiration die the player added after the d20, already in `total`: its size
+	// and the face rolled (both 0 when no die was added). A scalar pair, not a BonusDie,
+	// because combat.proto imports this file.
+	InspirationSides int32 `protobuf:"varint,13,opt,name=inspiration_sides,json=inspirationSides,proto3" json:"inspiration_sides,omitempty"`
+	InspirationFace  int32 `protobuf:"varint,14,opt,name=inspiration_face,json=inspirationFace,proto3" json:"inspiration_face,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EffectSaveResult) Reset() {
@@ -1756,6 +1761,20 @@ func (x *EffectSaveResult) GetTextPt() string {
 func (x *EffectSaveResult) GetDc() int32 {
 	if x != nil && x.Dc != nil {
 		return *x.Dc
+	}
+	return 0
+}
+
+func (x *EffectSaveResult) GetInspirationSides() int32 {
+	if x != nil {
+		return x.InspirationSides
+	}
+	return 0
+}
+
+func (x *EffectSaveResult) GetInspirationFace() int32 {
+	if x != nil {
+		return x.InspirationFace
 	}
 	return 0
 }
@@ -2219,7 +2238,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x0esource_name_pt\x18\x02 \x01(\tR\fsourceNamePt\x12\x14\n" +
 	"\x05faces\x18\x03 \x01(\x05R\x05faces\x12\x12\n" +
 	"\x04sign\x18\x04 \x01(\x05R\x04sign\x12\x12\n" +
-	"\x04face\x18\x05 \x01(\x05R\x04face\"\xed\x02\n" +
+	"\x04face\x18\x05 \x01(\x05R\x04face\"\xc5\x03\n" +
 	"\x10EffectSaveResult\x12\x10\n" +
 	"\x03d20\x18\x01 \x01(\x05R\x03d20\x12\x1a\n" +
 	"\bmodifier\x18\x02 \x01(\x05R\bmodifier\x12\x14\n" +
@@ -2234,7 +2253,9 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\feffect_ended\x18\n" +
 	" \x01(\bR\veffectEnded\x12\x17\n" +
 	"\atext_pt\x18\v \x01(\tR\x06textPt\x12\x13\n" +
-	"\x02dc\x18\f \x01(\x05H\x00R\x02dc\x88\x01\x01B\x05\n" +
+	"\x02dc\x18\f \x01(\x05H\x00R\x02dc\x88\x01\x01\x12+\n" +
+	"\x11inspiration_sides\x18\r \x01(\x05R\x10inspirationSides\x12)\n" +
+	"\x10inspiration_face\x18\x0e \x01(\x05R\x0finspirationFaceB\x05\n" +
 	"\x03_dc\"K\n" +
 	"\n" +
 	"EffectNote\x12\x17\n" +

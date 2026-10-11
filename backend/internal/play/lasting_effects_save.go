@@ -211,8 +211,9 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 
 	var made actionEvent
 	var result *playv1.EffectSaveResult
+	var offer *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventLastingSaved, encounterID: encID}, func(c *combatTx) (any, error) {
-		result = nil
+		result, offer = nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -297,9 +298,24 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 			if combat.AutoFailsSave(creature, ability) {
 				result.AutoFail, le.Change = true, "failed"
 			} else {
-				d20, err := s.d20With(in, save.Bonus, mode)
+				// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
+				// answers (nothing has been written yet); the answer brings it back with the die added.
+				step, err := s.saveWithDie(ctx, c, m, holdEffectSave, reactor, key, req.Msg, in, save.Bonus, mode)
 				if err != nil {
 					return nil, err
+				}
+				if step.Held {
+					offer = step.Offer
+					return nil, nil
+				}
+				d20 := step.Roll
+				if !step.Settled {
+					if d20, err = s.d20With(in, save.Bonus, mode); err != nil {
+						return nil, err
+					}
+				}
+				if step.Bonus != nil {
+					result.InspirationSides, result.InspirationFace = step.Bonus.Sides, step.Bonus.Face
 				}
 				extra, delta, err := s.rollEffectDice(in, effectDiceFor(states, reactor.ID, rules.RollAppliesSave), typedExtra)
 				if err != nil {
@@ -350,6 +366,13 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "roll an effect's saving throw", err)
+	}
+	if offer != nil { // nothing was written: the question is the whole answer
+		out, err := s.finish(ctx, m, res, nil)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, InspirationOffer: offer}), nil
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)

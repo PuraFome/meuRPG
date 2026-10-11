@@ -752,6 +752,16 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: who.ID, SpellCast: ev.SpellCastBefore, BonusSpellCast: ev.BonusSpellBefore}); err != nil {
 			return nil, fmt.Errorf("put back the spells cast: %w", err)
 		}
+		if ev.Die != nil && ev.Die.Kind == resBardicUse { // the Bardic Inspiration die the spell attack used is held again
+			sides, expires := ev.Die.Sides, ev.Die.ExpiresRound
+			var from *string
+			if ev.Die.FromID != "" {
+				from = &ev.Die.FromID
+			}
+			if err := c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: from, ExpiresRound: &expires}); err != nil {
+				return nil, fmt.Errorf("hold the die again: %w", err)
+			}
+		}
 		if ev.Lasting != nil { // the effects the cast put on its targets
 			for _, id := range ev.Lasting.Effects {
 				if err := c.q.DeleteLastingEffect(ctx, id); err != nil {

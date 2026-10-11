@@ -5,13 +5,17 @@ import {
   effect,
   inject,
   signal,
+  Injector,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, type DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { type ReactionWindow } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type OutsideInspirationOffer,
+  type ReactionWindow,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { EffectSaveResult } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -26,6 +30,9 @@ import {
   missingDice,
   saveFormula,
 } from '../../../../core/effects/effects';
+import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
+import { InspirationOffer } from '../../inspiration/inspiration-offer';
 import { RollAnimator, type RollShow } from '../../../../shared/roll-overlay/roll-animator';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
@@ -62,7 +69,15 @@ const EFFECT_DIE_FACES = 4;
 @Component({
   selector: 'app-effect-save-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ExtraDice, MatButtonModule, MatIconModule, MultiRoll, RollPicker, SheetFrame],
+  imports: [
+    ExtraDice,
+    InspirationOffer,
+    MatButtonModule,
+    MatIconModule,
+    MultiRoll,
+    RollPicker,
+    SheetFrame,
+  ],
   host: { '(keydown.escape)': 'close()' },
   template: `
     <app-sheet-frame
@@ -101,6 +116,15 @@ const EFFECT_DIE_FACES = 4;
               <mat-icon aria-hidden="true">error_outline</mat-icon>
               <p><strong>Falha automática.</strong> Não há d20 a rolar neste teste de resistência de {{ view().ability }}.</p>
             </div>
+          } @else if (offer(); as o) {
+            <app-inspiration-offer
+              [offer]="o"
+              [canApp]="canApp"
+              [canType]="canType"
+              [busy]="busy()"
+              (use)="answerDie(true, $event)"
+              (keep)="answerDie(false, null)"
+            />
           } @else if (view().handed) {
             <div class="mr-notice mr-notice--neutral" role="status">
               <mat-icon aria-hidden="true">hourglass_top</mat-icon>
@@ -191,6 +215,8 @@ const EFFECT_DIE_FACES = 4;
               <button mat-flat-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
                 Continuar
               </button>
+            } @else if (offer()) {
+              <button mat-stroked-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="close()">Fechar</button>
             } @else if (!view().handed) {
               <div class="stack">
                 @if (canApp) {
@@ -222,6 +248,11 @@ const EFFECT_DIE_FACES = 4;
 })
 export class EffectSaveSheet {
   private readonly api = inject(EffectsClient);
+  /** Read when the player answers about the die: a sheet that never asks does not build the client. */
+  private readonly lazyInjector = inject(Injector);
+  private get resources(): ResourceClient {
+    return this.lazyInjector.get(ResourceClient);
+  }
   private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<EffectSaveSheetData, void>();
   protected readonly data = this.sheet.data;
@@ -232,6 +263,9 @@ export class EffectSaveSheet {
   protected readonly typing = signal(false);
   protected readonly result = signal<EffectSaveResult | null>(null);
   private readonly done = signal(false);
+  /** The d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
+  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
+  private readonly dieKey = new ActionKey();
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly extraFaces = signal<readonly (number | null)[]>([]);
   /** The d4 asked when the server refused a roll for lack of them (an effect this player does not read). */
@@ -336,6 +370,12 @@ export class EffectSaveSheet {
         this.keys.keyFor({ window: w.id, how }),
       );
       this.data.state.apply(res.encounter);
+      if (res.offer) {
+        // Nothing was written: the d20 alone, and the result after the answer.
+        this.offer.set(res.offer);
+        this.typing.set(false);
+        return;
+      }
       this.keys.renew();
       if (!res.result) {
         // Left to the master: nothing more to read here.
@@ -348,6 +388,42 @@ export class EffectSaveSheet {
       this.typing.set(false);
     } catch (err) {
       this.failed(err);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The answer about the die: the save is settled now, with the d20 it rolled and the die when it was used. */
+  protected async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
+    const offer = this.offer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideInspiration(
+        this.data.campaignId,
+        offer.holdId,
+        use,
+        die,
+        this.dieKey.keyFor({ hold: offer.holdId, use, die }),
+      );
+      if (
+        res.result.case !== 'effectSave' ||
+        !res.result.value.encounter ||
+        !res.result.value.result
+      ) {
+        throw new Error('AnswerOutsideInspiration answered without its saving throw');
+      }
+      this.data.state.apply(res.result.value.encounter);
+      this.offer.set(null);
+      this.keys.renew();
+      this.result.set(res.result.value.result);
+      this.animate(res.result.value.result);
+      this.done.set(true);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
     } finally {
       this.busy.set(false);
     }

@@ -1,10 +1,12 @@
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
+import { OutsideInspirationOfferSchema } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   PuzzleBlockedReason,
   PuzzleBlockedSchema,
   type PuzzleRun,
+  TryPuzzleHintResponseSchema,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { PuzzlePlay, RETRY_WAITS_MS } from './puzzle-play';
 import {
@@ -318,6 +320,30 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       canTryHint: true,
       hints: [],
       sharedHints: 0,
+    });
+
+    it('holds the try for the Bardic Inspiration question and settles it with the answer, keeping the run as it was meanwhile', async () => {
+      const { fake, play } = setup();
+      fake.playerRunResult = { ...base, revision: 1 };
+      await play.open('p1');
+      fake.hintResult = () =>
+        create(TryPuzzleHintResponseSchema, {
+          inspirationOffer: create(OutsideInspirationOfferSchema, { holdId: 'h1', sides: 8 }),
+        });
+      await play.tryHint({ inApp: true });
+      expect(play.hintOffer()?.holdId).toBe('h1');
+      expect(play.hintTry()).toBeNull();
+      expect(play.run()?.revision).toBe(1);
+      const answered: unknown[][] = [];
+      (fake as { answerHintDie?: unknown }).answerHintDie = async (...args: unknown[]) => {
+        answered.push(args);
+        return hintAnswer({ ...base, revision: 2, hints: ['Uma dica.'], sharedHints: 0 }, true, 17);
+      };
+      await play.answerHintDie(true, { inApp: true });
+      expect(answered[0].slice(0, 4)).toEqual(['camp-1', 'h1', true, { inApp: true }]);
+      expect(play.hintOffer()).toBeNull();
+      expect(play.hintTry()?.passed).toBe(true);
+      expect(play.run()?.hints).toEqual(['Uma dica.']);
     });
 
     it('tries with the d20 rolled in the app, with its own key, and keeps the hint the player won', async () => {

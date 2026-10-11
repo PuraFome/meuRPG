@@ -632,6 +632,9 @@ type spellModes struct {
 	traits link.Traits
 	// attack and save are the circumstances by target, as the caller may read them.
 	attack, save map[string][]*playv1.AdvantageSource
+	// pre is the d20 of a spell attack settled before the cast spent anything, when the caster's
+	// player held a Bardic Inspiration die (inspiration_held.go); nil otherwise.
+	pre *spellAttackPre
 }
 
 // spellModes reads the combat for the d20 rolls of a cast.

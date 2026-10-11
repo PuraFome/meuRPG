@@ -1399,4 +1399,10 @@ message TryPuzzleHintResponse {
   // conditions); `roll.faces` holds both dice when it is not NORMAL.
   RollMode mode = 5;
   repeated AdvantageSource sources = 6;
+  // Set instead of the rest (`run` unset, nothing written) when the character holds a Bardic
+  // Inspiration die: the d20 is rolled and kept, and ResourceService.AnswerOutsideInspiration
+  // settles the try (SRD 5.1). The offer shows the d20 and the bonus, never the DC.
+  OutsideInspirationOffer inspiration_offer = 7;
+  // The Bardic Inspiration die the player added after the d20, already in `roll`'s total.
+  repeated BonusDie bonus_dice = 8;
 }

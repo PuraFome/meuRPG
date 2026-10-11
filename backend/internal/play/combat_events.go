@@ -117,6 +117,10 @@ type castHit struct {
 	Extra    []effectDie `json:"extra,omitempty"`
 	Physical bool        `json:"physical,omitempty"`
 	Save     *saveRoll   `json:"save,omitempty"`
+	// BonusSides and BonusFace are the Bardic Inspiration die the player added to the spell
+	// attack after the d20 (the total already holds it).
+	BonusSides int32 `json:"bonus_sides,omitempty"`
+	BonusFace  int32 `json:"bonus_face,omitempty"`
 	// A spell attack made with advantage or disadvantage: the other d20, which die
 	// counts (D20 is the one that does), the mode and the suggestion.
 	D20B          int32  `json:"d20_b,omitempty"`
@@ -605,6 +609,10 @@ type actionEvent struct {
 	// Res is what a class resource flow did (Lay on Hands, Flexible Casting,
 	// Bardic Inspiration): see combat_resources.go.
 	Res *resourceEvent `json:"res,omitempty"`
+	// Die is the Bardic Inspiration die a spell attack of the cast used (resBardicUse), kept apart
+	// from Res because a Metamagic casting already uses that one: the undo of the cast holds the die
+	// again.
+	Die *resourceEvent `json:"die,omitempty"`
 	// Reaction is what a reaction window did (PM-04), or marks the event that
 	// stands for a held action (combat_reaction_hold.go).
 	Reaction *reactionEvent `json:"reaction,omitempty"`

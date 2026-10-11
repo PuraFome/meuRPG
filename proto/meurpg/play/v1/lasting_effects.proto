@@ -297,6 +297,11 @@ message EffectSaveResult {
   string text_pt = 11;
   // The DC, only for the master.
   optional int32 dc = 12;
+  // The Bardic Inspiration die the player added after the d20, already in `total`: its size
+  // and the face rolled (both 0 when no die was added). A scalar pair, not a BonusDie,
+  // because combat.proto imports this file.
+  int32 inspiration_sides = 13;
+  int32 inspiration_face = 14;
 }
 
 // What a lasting effect did to a target of a spell (CastSpell).

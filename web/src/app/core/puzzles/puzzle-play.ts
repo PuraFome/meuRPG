@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { DiceRoll, OutsideInspirationOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { AdvantageSource, RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import {
   PuzzleBlockedReason,
@@ -14,6 +14,7 @@ import { newKey } from '../connect/idempotency';
 import { needsTwoD20, takesTwo } from '../play/check-roll';
 import { ExtraDiceState } from '../effects/extra-dice-state';
 import { isTransient, puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
+import type { InspirationRoll } from '../resources/resources-client';
 import type { HintDie, MoveAnswer } from './puzzles-client';
 
 /** What the player's page needs from the client; `PuzzlesClient` is one. */
@@ -31,6 +32,14 @@ export interface PlayApi {
     die: HintDie,
     idempotencyKey: string,
     extraDieFaces?: readonly number[],
+  ): Promise<TryPuzzleHintResponse>;
+  /** The answer about the Bardic Inspiration die a try waits on; absent in a client that has no such question. */
+  answerHintDie?(
+    campaignId: string,
+    holdId: string,
+    use: boolean,
+    die: InspirationRoll | null,
+    idempotencyKey: string,
   ): Promise<TryPuzzleHintResponse>;
 }
 
@@ -94,6 +103,8 @@ export class PuzzlePlay {
   readonly hintBusy = signal(false);
   /** The last try for a hint, until the next one or the next change of the puzzle. */
   readonly hintTry = signal<HintTry | null>(null);
+  /** The try's d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
+  readonly hintOffer = signal<OutsideInspirationOffer | null>(null);
   /** The next try with a real die takes two d20: the server said so, or the last result had advantage or disadvantage. */
   readonly hintPair = signal(false);
   /** The d4 an effect adds to a try with a real die (Orientação): asked when the server says the roll takes them. */
@@ -361,6 +372,11 @@ export class PuzzlePlay {
 
   /** What a try came to: the run as this player reads it, their roll and the form for the next one. */
   private settleHint(answer: TryPuzzleHintResponse, run: PuzzleRun): void {
+    if (answer.inspirationOffer) {
+      this.hintOffer.set(answer.inspirationOffer); // nothing was written: the question is the whole answer
+      return;
+    }
+    this.hintOffer.set(null);
     this.apply(answer.run ?? run);
     this.hintTry.set({
       passed: answer.passed,
@@ -370,6 +386,40 @@ export class PuzzlePlay {
     });
     this.hintPair.set(takesTwo(answer.mode));
     this.extraDice.fields.set([]);
+  }
+
+  /** The answer about the die: the try is made now, with the d20 it rolled and the die when it was used. */
+  async answerHintDie(use: boolean, die: InspirationRoll | null): Promise<void> {
+    const offer = this.hintOffer();
+    const run = this.run();
+    if (!offer || !run || this.hintBusy() || !this.api.answerHintDie) {
+      return;
+    }
+    const seq = this.openSeq;
+    this.hintBusy.set(true);
+    this.message.set('');
+    try {
+      const answer = await this.api.answerHintDie(
+        this.campaignId(),
+        offer.holdId,
+        use,
+        die,
+        this.makeKey(),
+      );
+      if (seq === this.openSeq) {
+        this.settleHint(answer, run);
+      }
+    } catch (err) {
+      if (seq === this.openSeq) {
+        this.message.set(
+          puzzleErrorMessage(err, 'responder sobre a Inspiração de Bardo', 'player'),
+        );
+      }
+    } finally {
+      if (seq === this.openSeq) {
+        this.hintBusy.set(false);
+      }
+    }
   }
 
   /** A real die refused because the roll takes more dice (the second d20, or the d4 of an effect): the form asks for them. */

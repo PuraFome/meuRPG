@@ -1609,8 +1609,8 @@ UPDATE character_inspiration SET seconds_left = seconds_left - $2::INT4 WHERE ca
 DELETE FROM character_inspiration WHERE campaign_id = $1;
 
 -- name: InsertInspirationHold :one
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING *;
 
 -- name: GetInspirationHoldByKey :one
@@ -1633,8 +1633,10 @@ UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
 
 -- name: DeleteOrphanInspirationHolds :exec
 -- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
+-- A roll held in a combat (round set) has its die on the combatant and is forgotten by the
+-- round it was held in (outsideRoll) or when the combat ends (dieToCharacters).
 DELETE FROM inspiration_holds h
-WHERE h.campaign_id = $1 AND h.answer_key IS NULL
+WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);
 
 -- name: InsertHitRider :one

@@ -29,6 +29,10 @@ type hintTryResult struct {
 	try      playdb.PuzzleHintTry
 	replayed bool
 	sources  []*playv1.AdvantageSource
+	// offer is the question about a Bardic Inspiration die the try waits on: the d20 was rolled and
+	// kept, and nothing else of the result exists. bonus is the die the answer added.
+	offer *playv1.OutsideInspirationOffer
+	bonus *playv1.BonusDie
 }
 
 // TryPuzzleHint implements playv1connect.PuzzleServiceHandler.
@@ -73,11 +77,14 @@ func (s *Service) TryPuzzleHint(
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		*res = hintTryResult{}
 		var err error
-		names, err = s.applyHintTry(ctx, tx, m, id, key, in, res)
+		names, err = s.applyHintTry(ctx, tx, m, id, key, in, req.Msg, res)
 		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "try for a puzzle hint", err)
+	}
+	if res.offer != nil { // nothing was written: the question is the whole answer
+		return connect.NewResponse(&playv1.TryPuzzleHintResponse{InspirationOffer: res.offer}), nil
 	}
 	if !res.replayed {
 		s.publishPuzzleChanged(m.CampaignID, id) // the master reads the try; the revision moved
@@ -90,20 +97,24 @@ func (s *Service) TryPuzzleHint(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the puzzle after a try", err)
 	}
-	return connect.NewResponse(&playv1.TryPuzzleHintResponse{
+	resp := &playv1.TryPuzzleHintResponse{
 		Run:      out,
 		Roll:     hintRollProto(res.try),
 		Mode:     modeToProto[modeOfKey(res.try.RollMode)],
 		Sources:  res.sources,
 		Passed:   res.try.Passed,
 		Replayed: res.replayed,
-	}), nil
+	}
+	if res.bonus != nil {
+		resp.BonusDice = []*playv1.BonusDie{res.bonus}
+	}
+	return connect.NewResponse(resp), nil
 }
 
 // applyHintTry is the try's transaction. The session's row is locked first and then
 // the run's, as every change to a run does, so a try, a move and the master's release
 // of the same hint take turns.
-func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membership, puzzleID, key string, in rollInput, res *hintTryResult) (runNames, error) {
+func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membership, puzzleID, key string, in rollInput, raw *playv1.TryPuzzleHintRequest, res *hintTryResult) (runNames, error) {
 	q := s.queriesIn(tx)
 	session, err := lockOpenSession(ctx, q, m.CampaignID)
 	if err != nil {
@@ -197,6 +208,16 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if err != nil {
 		return nil, err
 	}
+	// A character that holds a Bardic Inspiration die has the d20 kept until the player answers,
+	// before anything is spent or written; the answer brings it back with the die added.
+	step, err := s.outsideRoll(ctx, tx, q, m, holdHintTry, who.ID, key, raw, in, bonus, cm.Mode, options[0].ReliableTalent)
+	if err != nil {
+		return nil, err
+	}
+	if step.Held {
+		res.offer = step.Offer
+		return nil, nil
+	}
 	spendTx, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
 	if err != nil {
 		return nil, err
@@ -207,11 +228,17 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if err := s.spendCheckHelps(ctx, spendTx, cm.Helps); err != nil {
 		return nil, err
 	}
-	d20, err := s.d20With(in, bonus, cm.Mode)
-	if err != nil {
-		return nil, err
+	d20 := step.Roll
+	if !step.Settled {
+		if d20, err = s.d20With(in, bonus, cm.Mode); err != nil {
+			return nil, err
+		}
+		d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
 	}
-	d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
+	dieFace := 0
+	if step.Bonus != nil {
+		dieFace, res.bonus = int(step.Bonus.Face), step.Bonus // the die the player added after rolling: the total holds it
+	}
 	roll := d20
 	face := d20.Face()
 	passed := roll.Total >= int(d.hintCheck.GetDc())
@@ -222,7 +249,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	}
 	try, err := q.InsertPuzzleHintTry(ctx, playdb.InsertPuzzleHintTryParams{
 		RunID: run.ID, UserID: &m.UserID, CharacterID: &who.ID, IdempotencyKey: key, HintIndex: clamp32(next, 0, maxHints),
-		Passed: passed, GrantedCount: granted, D20: clamp32(face, 1, 20), Modifier: clamp32(bonus, -1000, 1000),
+		Passed: passed, GrantedCount: granted, D20: clamp32(face, 1, 20), Modifier: clamp32(bonus+dieFace, -1000, 1000),
 		Total: clamp32(roll.Total, -1000, 1000), Physical: roll.Physical, CreatedAt: now,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
 	})

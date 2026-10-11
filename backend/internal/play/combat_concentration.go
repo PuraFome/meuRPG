@@ -173,8 +173,9 @@ func (s *Service) ResolveConcentrationSave(
 
 	var made actionEvent
 	var result *playv1.ConcentrationSaveResult
+	var offer *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventConcentrationSaveRolled, encounterID: encID}, func(c *combatTx) (any, error) {
-		result = nil
+		result, offer = nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -225,9 +226,25 @@ func (s *Service) ResolveConcentrationSave(
 				return nil, err
 			}
 			mode := combat.Resolve(concentrationSources(creatureFacts(reactor, states, sheet.Traits)))
-			d20, err := s.d20With(in, save.Bonus, mode)
+			// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
+			// answers (nothing has been written yet); the answer brings it back with the die added.
+			step, err := s.saveWithDie(ctx, c, m, holdConcentration, reactor, key, req.Msg, in, save.Bonus, mode)
 			if err != nil {
 				return nil, err
+			}
+			if step.Held {
+				offer = step.Offer
+				return nil, nil
+			}
+			d20 := step.Roll
+			if !step.Settled {
+				if d20, err = s.d20With(in, save.Bonus, mode); err != nil {
+					return nil, err
+				}
+			}
+			bonusFace := 0
+			if step.Bonus != nil {
+				bonusFace = int(step.Bonus.Face) // the die the player added after rolling
 			}
 			face, roll := d20.Face(), d20
 			// Bênção and Perdição add their die to the saving throw (SRD 5.1).
@@ -240,11 +257,14 @@ func (s *Service) ResolveConcentrationSave(
 			}
 			total := roll.Total + delta
 			kept = total >= int(dc)
-			re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(face, 1, 20), clamp32(save.Bonus+delta, math.MinInt32, math.MaxInt32), kept, kept
+			re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(face, 1, 20), clamp32(save.Bonus+delta+bonusFace, math.MinInt32, math.MaxInt32), kept, kept
 			ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, clamp32(total, math.MinInt32, math.MaxInt32), roll.Physical
 			ev.D20B, ev.Counted = clamp32(roll.otherFace(), 0, 20), clamp32(roll.Index, 0, 1)
 			result = &playv1.ConcentrationSaveResult{
 				Save: diceRoll(clamp32(len(roll.Faces), 1, 2), 20, faces32(roll.Faces), re.SaveBonus, ev.Total, roll.Physical), Dc: dc, Kept: kept, SpellKey: t.Spell,
+			}
+			if step.Bonus != nil {
+				result.BonusDice = []*playv1.BonusDie{step.Bonus}
 			}
 		} else {
 			re.Kept = true
@@ -274,6 +294,13 @@ func (s *Service) ResolveConcentrationSave(
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "resolve a concentration save", err)
+	}
+	if offer != nil { // nothing was written: the question is the whole answer
+		out, err := s.finish(ctx, m, res, nil)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.ResolveConcentrationSaveResponse{Encounter: out, InspirationOffer: offer}), nil
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)

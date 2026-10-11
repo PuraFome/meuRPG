@@ -29,9 +29,11 @@ import {
   type RollAttackResponse,
   AttackRollSchema,
   type SpellCast,
+  type OutsideInspirationOffer,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type RollMode, type RollModeRequest } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { newKey } from '../connect/idempotency';
+import { InspirationQuestion } from '../resources/bardic-inspiration';
 import type { Square } from './combat-grid';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -304,6 +306,8 @@ export type ConcentrationAnswer =
 export interface ConcentrationOutcome {
   readonly encounter: Encounter;
   readonly result: ConcentrationSaveResult | undefined;
+  /** The d20 was rolled and kept: the player holds a Bardic Inspiration die and decides before the result is told. */
+  readonly offer?: OutsideInspirationOffer;
 }
 
 /** One adjustment of an NPC's hit points ("Dano/Cura"): at most one of the
@@ -1107,7 +1111,11 @@ export class CombatClient {
       ...(how.kind === 'typed' && how.second !== undefined ? { secondD20Face: how.second } : {}),
       idempotencyKey: key,
     });
-    return { encounter: need(res.encounter, 'ResolveConcentrationSave'), result: res.result };
+    return {
+      encounter: need(res.encounter, 'ResolveConcentrationSave'),
+      result: res.result,
+      ...(res.inspirationOffer ? { offer: res.inspirationOffer } : {}),
+    };
   }
 
   /** A standard action ("standard:dash") or a feature's ("feature:second-wind").
@@ -1193,6 +1201,10 @@ export class CombatClient {
       area: areaOneof(extras.area),
       ...castExtrasBody(extras),
     });
+    if (res.inspirationOffer) {
+      // A spell attack of a character that holds a die: the d20 is kept, nothing was spent.
+      throw new InspirationQuestion(res.inspirationOffer, need(res.encounter, 'CastSpell'));
+    }
     return {
       encounter: need(res.encounter, 'CastSpell'),
       cast: need(res.cast, 'CastSpell'),

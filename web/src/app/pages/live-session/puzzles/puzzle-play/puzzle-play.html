@@ -154,6 +154,8 @@
           [pair]="play.hintPair()"
           [extraFields]="play.extraDice.fields()"
           [(extraFaces)]="play.extraDice.faces"
+          [offer]="play.hintOffer()"
+          (answered)="play.answerHintDie($event.use, $event.die)"
           (rolled)="play.tryHint($event)"
           (typed)="play.tryHint($event)"
         />

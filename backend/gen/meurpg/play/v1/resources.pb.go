@@ -2150,7 +2150,8 @@ type GetOutsideInspirationResponse struct {
 	Targets  []*BardicInspirationTarget `protobuf:"bytes,6,rep,name=targets,proto3" json:"targets,omitempty"`
 	// The master reads every die held.
 	Held []*OutsideInspirationDie `protobuf:"bytes,7,rep,name=held,proto3" json:"held,omitempty"`
-	// The caller's rolls that wait for an answer about the die.
+	// The caller's rolls that wait for an answer about the die, in a combat too (the die is
+	// then on the combatant and `mine` is unset).
 	Offers []*OutsideInspirationOffer `protobuf:"bytes,8,rep,name=offers,proto3" json:"offers,omitempty"`
 	// A combat is open: the bard gives in it.
 	CombatOpen    bool `protobuf:"varint,9,opt,name=combat_open,json=combatOpen,proto3" json:"combat_open,omitempty"`
@@ -2485,12 +2486,19 @@ func (*AnswerOutsideInspirationRequest_TypedFace) isAnswerOutsideInspirationRequ
 
 type AnswerOutsideInspirationResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The path of the held roll answers as it does: the scene check or the group check.
+	// The path of the held roll answers as it does: the scene check, the group check, the trap
+	// search, the puzzle hint try, the spell cast, the effect's saving throw or the concentration
+	// save.
 	//
 	// Types that are valid to be assigned to Result:
 	//
 	//	*AnswerOutsideInspirationResponse_SceneCheck
 	//	*AnswerOutsideInspirationResponse_GroupCheck
+	//	*AnswerOutsideInspirationResponse_TrapSearch
+	//	*AnswerOutsideInspirationResponse_HintTry
+	//	*AnswerOutsideInspirationResponse_SpellCast
+	//	*AnswerOutsideInspirationResponse_EffectSave
+	//	*AnswerOutsideInspirationResponse_ConcentrationSave
 	Result        isAnswerOutsideInspirationResponse_Result `protobuf_oneof:"result"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2551,6 +2559,51 @@ func (x *AnswerOutsideInspirationResponse) GetGroupCheck() *RollGroupCheckRespon
 	return nil
 }
 
+func (x *AnswerOutsideInspirationResponse) GetTrapSearch() *SearchForTrapsResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerOutsideInspirationResponse_TrapSearch); ok {
+			return x.TrapSearch
+		}
+	}
+	return nil
+}
+
+func (x *AnswerOutsideInspirationResponse) GetHintTry() *TryPuzzleHintResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerOutsideInspirationResponse_HintTry); ok {
+			return x.HintTry
+		}
+	}
+	return nil
+}
+
+func (x *AnswerOutsideInspirationResponse) GetSpellCast() *CastSpellResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerOutsideInspirationResponse_SpellCast); ok {
+			return x.SpellCast
+		}
+	}
+	return nil
+}
+
+func (x *AnswerOutsideInspirationResponse) GetEffectSave() *RollEffectSaveResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerOutsideInspirationResponse_EffectSave); ok {
+			return x.EffectSave
+		}
+	}
+	return nil
+}
+
+func (x *AnswerOutsideInspirationResponse) GetConcentrationSave() *ResolveConcentrationSaveResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerOutsideInspirationResponse_ConcentrationSave); ok {
+			return x.ConcentrationSave
+		}
+	}
+	return nil
+}
+
 type isAnswerOutsideInspirationResponse_Result interface {
 	isAnswerOutsideInspirationResponse_Result()
 }
@@ -2563,15 +2616,46 @@ type AnswerOutsideInspirationResponse_GroupCheck struct {
 	GroupCheck *RollGroupCheckResponse `protobuf:"bytes,2,opt,name=group_check,json=groupCheck,proto3,oneof"`
 }
 
+type AnswerOutsideInspirationResponse_TrapSearch struct {
+	TrapSearch *SearchForTrapsResponse `protobuf:"bytes,3,opt,name=trap_search,json=trapSearch,proto3,oneof"`
+}
+
+type AnswerOutsideInspirationResponse_HintTry struct {
+	HintTry *TryPuzzleHintResponse `protobuf:"bytes,4,opt,name=hint_try,json=hintTry,proto3,oneof"`
+}
+
+type AnswerOutsideInspirationResponse_SpellCast struct {
+	SpellCast *CastSpellResponse `protobuf:"bytes,5,opt,name=spell_cast,json=spellCast,proto3,oneof"`
+}
+
+type AnswerOutsideInspirationResponse_EffectSave struct {
+	EffectSave *RollEffectSaveResponse `protobuf:"bytes,6,opt,name=effect_save,json=effectSave,proto3,oneof"`
+}
+
+type AnswerOutsideInspirationResponse_ConcentrationSave struct {
+	ConcentrationSave *ResolveConcentrationSaveResponse `protobuf:"bytes,7,opt,name=concentration_save,json=concentrationSave,proto3,oneof"`
+}
+
 func (*AnswerOutsideInspirationResponse_SceneCheck) isAnswerOutsideInspirationResponse_Result() {}
 
 func (*AnswerOutsideInspirationResponse_GroupCheck) isAnswerOutsideInspirationResponse_Result() {}
+
+func (*AnswerOutsideInspirationResponse_TrapSearch) isAnswerOutsideInspirationResponse_Result() {}
+
+func (*AnswerOutsideInspirationResponse_HintTry) isAnswerOutsideInspirationResponse_Result() {}
+
+func (*AnswerOutsideInspirationResponse_SpellCast) isAnswerOutsideInspirationResponse_Result() {}
+
+func (*AnswerOutsideInspirationResponse_EffectSave) isAnswerOutsideInspirationResponse_Result() {}
+
+func (*AnswerOutsideInspirationResponse_ConcentrationSave) isAnswerOutsideInspirationResponse_Result() {
+}
 
 var File_meurpg_play_v1_resources_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\n" +
-	"\x1emeurpg/play/v1/resources.proto\x12\x0emeurpg.play.v1\x1a\x1bmeurpg/play/v1/combat.proto\x1a\x1dmeurpg/play/v1/contests.proto\x1a\x19meurpg/play/v1/play.proto\x1a\x1ameurpg/play/v1/scene.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\x86\x01\n" +
+	"\x1emeurpg/play/v1/resources.proto\x12\x0emeurpg.play.v1\x1a\x1bmeurpg/play/v1/combat.proto\x1a\x1dmeurpg/play/v1/contests.proto\x1a,meurpg/play/v1/lasting_effects_service.proto\x1a\x19meurpg/play/v1/play.proto\x1a\x1cmeurpg/play/v1/puzzles.proto\x1a\x1ameurpg/play/v1/scene.proto\x1a\x1ameurpg/play/v1/traps.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\x86\x01\n" +
 	"\x0fResourceBlocked\x12=\n" +
 	"\x06reason\x18\x01 \x01(\x0e2%.meurpg.play.v1.ResourceBlockedReasonR\x06reason\x12\x16\n" +
 	"\x06needed\x18\x02 \x01(\x05R\x06needed\x12\x1c\n" +
@@ -2750,12 +2834,20 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\n" +
 	"typed_face\x18\x05 \x01(\x05H\x00R\ttypedFace\x12'\n" +
 	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKeyB\x06\n" +
-	"\x04roll\"\xc2\x01\n" +
+	"\x04roll\"\xc3\x04\n" +
 	" AnswerOutsideInspirationResponse\x12I\n" +
 	"\vscene_check\x18\x01 \x01(\v2&.meurpg.play.v1.RollSceneCheckResponseH\x00R\n" +
 	"sceneCheck\x12I\n" +
 	"\vgroup_check\x18\x02 \x01(\v2&.meurpg.play.v1.RollGroupCheckResponseH\x00R\n" +
-	"groupCheckB\b\n" +
+	"groupCheck\x12I\n" +
+	"\vtrap_search\x18\x03 \x01(\v2&.meurpg.play.v1.SearchForTrapsResponseH\x00R\n" +
+	"trapSearch\x12B\n" +
+	"\bhint_try\x18\x04 \x01(\v2%.meurpg.play.v1.TryPuzzleHintResponseH\x00R\ahintTry\x12B\n" +
+	"\n" +
+	"spell_cast\x18\x05 \x01(\v2!.meurpg.play.v1.CastSpellResponseH\x00R\tspellCast\x12I\n" +
+	"\veffect_save\x18\x06 \x01(\v2&.meurpg.play.v1.RollEffectSaveResponseH\x00R\n" +
+	"effectSave\x12a\n" +
+	"\x12concentration_save\x18\a \x01(\v20.meurpg.play.v1.ResolveConcentrationSaveResponseH\x00R\x11concentrationSaveB\b\n" +
 	"\x06result*\xbb\x05\n" +
 	"\x15ResourceBlockedReason\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
@@ -2854,6 +2946,11 @@ var file_meurpg_play_v1_resources_proto_goTypes = []any{
 	(*OutsideInspirationOffer)(nil),              // 38: meurpg.play.v1.OutsideInspirationOffer
 	(*RollSceneCheckResponse)(nil),               // 39: meurpg.play.v1.RollSceneCheckResponse
 	(*RollGroupCheckResponse)(nil),               // 40: meurpg.play.v1.RollGroupCheckResponse
+	(*SearchForTrapsResponse)(nil),               // 41: meurpg.play.v1.SearchForTrapsResponse
+	(*TryPuzzleHintResponse)(nil),                // 42: meurpg.play.v1.TryPuzzleHintResponse
+	(*CastSpellResponse)(nil),                    // 43: meurpg.play.v1.CastSpellResponse
+	(*RollEffectSaveResponse)(nil),               // 44: meurpg.play.v1.RollEffectSaveResponse
+	(*ResolveConcentrationSaveResponse)(nil),     // 45: meurpg.play.v1.ResolveConcentrationSaveResponse
 }
 var file_meurpg_play_v1_resources_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.ResourceBlocked.reason:type_name -> meurpg.play.v1.ResourceBlockedReason
@@ -2887,35 +2984,40 @@ var file_meurpg_play_v1_resources_proto_depIdxs = []int32{
 	27, // 28: meurpg.play.v1.GiveBardicInspirationOutsideResponse.die:type_name -> meurpg.play.v1.OutsideInspirationDie
 	39, // 29: meurpg.play.v1.AnswerOutsideInspirationResponse.scene_check:type_name -> meurpg.play.v1.RollSceneCheckResponse
 	40, // 30: meurpg.play.v1.AnswerOutsideInspirationResponse.group_check:type_name -> meurpg.play.v1.RollGroupCheckResponse
-	4,  // 31: meurpg.play.v1.ResourceService.GetRestPreview:input_type -> meurpg.play.v1.GetRestPreviewRequest
-	9,  // 32: meurpg.play.v1.ResourceService.TakeRest:input_type -> meurpg.play.v1.TakeRestRequest
-	12, // 33: meurpg.play.v1.ResourceService.SpendHitDice:input_type -> meurpg.play.v1.SpendHitDiceRequest
-	14, // 34: meurpg.play.v1.ResourceService.UseArcaneRecovery:input_type -> meurpg.play.v1.UseArcaneRecoveryRequest
-	16, // 35: meurpg.play.v1.ResourceService.UseLayOnHands:input_type -> meurpg.play.v1.UseLayOnHandsRequest
-	18, // 36: meurpg.play.v1.ResourceService.CreateSpellSlot:input_type -> meurpg.play.v1.CreateSpellSlotRequest
-	20, // 37: meurpg.play.v1.ResourceService.ConvertSpellSlot:input_type -> meurpg.play.v1.ConvertSpellSlotRequest
-	22, // 38: meurpg.play.v1.ResourceService.GiveBardicInspiration:input_type -> meurpg.play.v1.GiveBardicInspirationRequest
-	24, // 39: meurpg.play.v1.ResourceService.AnswerBardicInspiration:input_type -> meurpg.play.v1.AnswerBardicInspirationRequest
-	26, // 40: meurpg.play.v1.ResourceService.GetOutsideInspiration:input_type -> meurpg.play.v1.GetOutsideInspirationRequest
-	30, // 41: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:input_type -> meurpg.play.v1.GiveBardicInspirationOutsideRequest
-	32, // 42: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:input_type -> meurpg.play.v1.AnswerOutsideInspirationRequest
-	5,  // 43: meurpg.play.v1.ResourceService.GetRestPreview:output_type -> meurpg.play.v1.GetRestPreviewResponse
-	11, // 44: meurpg.play.v1.ResourceService.TakeRest:output_type -> meurpg.play.v1.TakeRestResponse
-	13, // 45: meurpg.play.v1.ResourceService.SpendHitDice:output_type -> meurpg.play.v1.SpendHitDiceResponse
-	15, // 46: meurpg.play.v1.ResourceService.UseArcaneRecovery:output_type -> meurpg.play.v1.UseArcaneRecoveryResponse
-	17, // 47: meurpg.play.v1.ResourceService.UseLayOnHands:output_type -> meurpg.play.v1.UseLayOnHandsResponse
-	19, // 48: meurpg.play.v1.ResourceService.CreateSpellSlot:output_type -> meurpg.play.v1.CreateSpellSlotResponse
-	21, // 49: meurpg.play.v1.ResourceService.ConvertSpellSlot:output_type -> meurpg.play.v1.ConvertSpellSlotResponse
-	23, // 50: meurpg.play.v1.ResourceService.GiveBardicInspiration:output_type -> meurpg.play.v1.GiveBardicInspirationResponse
-	25, // 51: meurpg.play.v1.ResourceService.AnswerBardicInspiration:output_type -> meurpg.play.v1.AnswerBardicInspirationResponse
-	29, // 52: meurpg.play.v1.ResourceService.GetOutsideInspiration:output_type -> meurpg.play.v1.GetOutsideInspirationResponse
-	31, // 53: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:output_type -> meurpg.play.v1.GiveBardicInspirationOutsideResponse
-	33, // 54: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:output_type -> meurpg.play.v1.AnswerOutsideInspirationResponse
-	43, // [43:55] is the sub-list for method output_type
-	31, // [31:43] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	41, // 31: meurpg.play.v1.AnswerOutsideInspirationResponse.trap_search:type_name -> meurpg.play.v1.SearchForTrapsResponse
+	42, // 32: meurpg.play.v1.AnswerOutsideInspirationResponse.hint_try:type_name -> meurpg.play.v1.TryPuzzleHintResponse
+	43, // 33: meurpg.play.v1.AnswerOutsideInspirationResponse.spell_cast:type_name -> meurpg.play.v1.CastSpellResponse
+	44, // 34: meurpg.play.v1.AnswerOutsideInspirationResponse.effect_save:type_name -> meurpg.play.v1.RollEffectSaveResponse
+	45, // 35: meurpg.play.v1.AnswerOutsideInspirationResponse.concentration_save:type_name -> meurpg.play.v1.ResolveConcentrationSaveResponse
+	4,  // 36: meurpg.play.v1.ResourceService.GetRestPreview:input_type -> meurpg.play.v1.GetRestPreviewRequest
+	9,  // 37: meurpg.play.v1.ResourceService.TakeRest:input_type -> meurpg.play.v1.TakeRestRequest
+	12, // 38: meurpg.play.v1.ResourceService.SpendHitDice:input_type -> meurpg.play.v1.SpendHitDiceRequest
+	14, // 39: meurpg.play.v1.ResourceService.UseArcaneRecovery:input_type -> meurpg.play.v1.UseArcaneRecoveryRequest
+	16, // 40: meurpg.play.v1.ResourceService.UseLayOnHands:input_type -> meurpg.play.v1.UseLayOnHandsRequest
+	18, // 41: meurpg.play.v1.ResourceService.CreateSpellSlot:input_type -> meurpg.play.v1.CreateSpellSlotRequest
+	20, // 42: meurpg.play.v1.ResourceService.ConvertSpellSlot:input_type -> meurpg.play.v1.ConvertSpellSlotRequest
+	22, // 43: meurpg.play.v1.ResourceService.GiveBardicInspiration:input_type -> meurpg.play.v1.GiveBardicInspirationRequest
+	24, // 44: meurpg.play.v1.ResourceService.AnswerBardicInspiration:input_type -> meurpg.play.v1.AnswerBardicInspirationRequest
+	26, // 45: meurpg.play.v1.ResourceService.GetOutsideInspiration:input_type -> meurpg.play.v1.GetOutsideInspirationRequest
+	30, // 46: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:input_type -> meurpg.play.v1.GiveBardicInspirationOutsideRequest
+	32, // 47: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:input_type -> meurpg.play.v1.AnswerOutsideInspirationRequest
+	5,  // 48: meurpg.play.v1.ResourceService.GetRestPreview:output_type -> meurpg.play.v1.GetRestPreviewResponse
+	11, // 49: meurpg.play.v1.ResourceService.TakeRest:output_type -> meurpg.play.v1.TakeRestResponse
+	13, // 50: meurpg.play.v1.ResourceService.SpendHitDice:output_type -> meurpg.play.v1.SpendHitDiceResponse
+	15, // 51: meurpg.play.v1.ResourceService.UseArcaneRecovery:output_type -> meurpg.play.v1.UseArcaneRecoveryResponse
+	17, // 52: meurpg.play.v1.ResourceService.UseLayOnHands:output_type -> meurpg.play.v1.UseLayOnHandsResponse
+	19, // 53: meurpg.play.v1.ResourceService.CreateSpellSlot:output_type -> meurpg.play.v1.CreateSpellSlotResponse
+	21, // 54: meurpg.play.v1.ResourceService.ConvertSpellSlot:output_type -> meurpg.play.v1.ConvertSpellSlotResponse
+	23, // 55: meurpg.play.v1.ResourceService.GiveBardicInspiration:output_type -> meurpg.play.v1.GiveBardicInspirationResponse
+	25, // 56: meurpg.play.v1.ResourceService.AnswerBardicInspiration:output_type -> meurpg.play.v1.AnswerBardicInspirationResponse
+	29, // 57: meurpg.play.v1.ResourceService.GetOutsideInspiration:output_type -> meurpg.play.v1.GetOutsideInspirationResponse
+	31, // 58: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:output_type -> meurpg.play.v1.GiveBardicInspirationOutsideResponse
+	33, // 59: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:output_type -> meurpg.play.v1.AnswerOutsideInspirationResponse
+	48, // [48:60] is the sub-list for method output_type
+	36, // [36:48] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_resources_proto_init() }
@@ -2925,8 +3027,11 @@ func file_meurpg_play_v1_resources_proto_init() {
 	}
 	file_meurpg_play_v1_combat_proto_init()
 	file_meurpg_play_v1_contests_proto_init()
+	file_meurpg_play_v1_lasting_effects_service_proto_init()
 	file_meurpg_play_v1_play_proto_init()
+	file_meurpg_play_v1_puzzles_proto_init()
 	file_meurpg_play_v1_scene_proto_init()
+	file_meurpg_play_v1_traps_proto_init()
 	file_meurpg_play_v1_resources_proto_msgTypes[9].OneofWrappers = []any{
 		(*SpendHitDiceRequest_RollInApp)(nil),
 		(*SpendHitDiceRequest_TypedFace)(nil),
@@ -2947,6 +3052,11 @@ func file_meurpg_play_v1_resources_proto_init() {
 	file_meurpg_play_v1_resources_proto_msgTypes[30].OneofWrappers = []any{
 		(*AnswerOutsideInspirationResponse_SceneCheck)(nil),
 		(*AnswerOutsideInspirationResponse_GroupCheck)(nil),
+		(*AnswerOutsideInspirationResponse_TrapSearch)(nil),
+		(*AnswerOutsideInspirationResponse_HintTry)(nil),
+		(*AnswerOutsideInspirationResponse_SpellCast)(nil),
+		(*AnswerOutsideInspirationResponse_EffectSave)(nil),
+		(*AnswerOutsideInspirationResponse_ConcentrationSave)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

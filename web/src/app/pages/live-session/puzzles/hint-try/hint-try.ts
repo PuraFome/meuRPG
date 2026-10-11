@@ -12,13 +12,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import type { OutsideInspirationOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { treatedSentence } from '../../../../core/combat/combat-dice';
 import type { ExtraDieField } from '../../../../core/effects/effects';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
 import { checkFaces, hasModeInfo } from '../../../../core/play/check-roll';
+import type { InspirationRoll } from '../../../../core/resources/resources-client';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
+import { InspirationOffer } from '../../inspiration/inspiration-offer';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { CheckMode } from '../../scene/check-mode/check-mode';
@@ -34,7 +37,15 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
 @Component({
   selector: 'app-hint-try',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CheckMode, ExtraDice, MatButtonModule, MatIconModule, MultiRoll, RollPicker],
+  imports: [
+    CheckMode,
+    ExtraDice,
+    InspirationOffer,
+    MatButtonModule,
+    MatIconModule,
+    MultiRoll,
+    RollPicker,
+  ],
   template: `
     @if (result(); as r) {
       @if (r.passed) {
@@ -54,7 +65,17 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
         <app-check-mode [mode]="r.mode" [sources]="r.sources" [faces]="faces(r)" />
       }
     }
-    @if (canTry()) {
+    @if (offer(); as o) {
+      <!-- The d20 of the try is rolled and kept; nothing is written until the player answers (SRD 5.1, Bardic Inspiration). -->
+      <app-inspiration-offer
+        [offer]="o"
+        [canApp]="canApp()"
+        [canType]="canType()"
+        [busy]="busy()"
+        (use)="answered.emit({ use: true, die: $event })"
+        (keep)="answered.emit({ use: false, die: null })"
+      />
+    } @else if (canTry()) {
       @if (typing() && extraFields().length > 0) {
         <app-extra-dice [fields]="extraFields()" [(faces)]="extraFaces" />
       }
@@ -150,6 +171,10 @@ export class HintTryControl {
 
   /** A try with the d20 rolled in the app. */
   readonly rolled = output<HintDie>();
+  /** The question about the Bardic Inspiration die the try waits on, when the character holds one. */
+  readonly offer = input<OutsideInspirationOffer | null>(null);
+  /** The player's answer about the die: use it (rolled in the app, or its typed face) or keep it. */
+  readonly answered = output<{ readonly use: boolean; readonly die: InspirationRoll | null }>();
   /** A try with the face of a real die. */
   readonly typed = output<HintDie>();
 
@@ -159,7 +184,7 @@ export class HintTryControl {
     { key: 'second', label: 'Segundo d20', min: 1, max: 20 },
   ];
   protected readonly canApp = computed(() => this.diceMode() !== DiceMode.PHYSICAL);
-  private readonly canType = computed(() => this.diceMode() !== DiceMode.APP);
+  protected readonly canType = computed(() => this.diceMode() !== DiceMode.APP);
   private readonly prefersApp = computed(
     () => effectivePreference(this.diceMode(), this.dicePreference()) === DicePreference.APP,
   );

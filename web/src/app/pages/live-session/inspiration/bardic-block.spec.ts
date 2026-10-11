@@ -53,6 +53,39 @@ describe('BardicBlock', () => {
     expect(el.textContent).toContain('9 min de jogo');
   });
 
+  it('promises the die only for the rolls that ask for it', async () => {
+    const { el, settle } = setup({
+      mine: {
+        characterId: 'tavo',
+        characterName: 'Tavo',
+        sides: 6,
+        fromName: 'Orla',
+        secondsLeft: 540,
+      },
+    });
+    await settle();
+    const text = el.textContent ?? '';
+    expect(text).toContain('jogada de ataque');
+    expect(text).toContain('teste de resistência que você mesmo rola');
+    expect(text).toContain('Os testes que o app rola por você');
+    expect(text).not.toContain('salvaguarda');
+  });
+
+  it("shows a question that waits for the die in a combat, where the die is the combatant's", async () => {
+    const { el, settle } = setup({
+      offers: [
+        {
+          holdId: 'h1',
+          sides: 8,
+          fromName: 'Orla',
+          d20: { faces: [4], countedIndex: 0, modifier: 1, total: 5 },
+        },
+      ],
+    });
+    await settle();
+    expect(el.textContent).toContain('Usar a Inspiração de Bardo (d8)?');
+  });
+
   it('shows the bard the uses left and the party, greying who already holds a die', async () => {
     const { el, button, settle } = setup({
       isBard: true,

@@ -190,6 +190,9 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 			Effect: effectView(h, v, target),
 		}
 		r.AttackMode = modeToProto[modeOfKey(h.RollMode)]
+		if h.BonusFace != 0 && r.AttackRoll != nil { // only who reads the roll reads the die added to it
+			r.BonusDice = []*playv1.BonusDie{{SourceKey: bardicInspirationFt, Sides: h.BonusSides, Face: h.BonusFace, Used: true}}
+		}
 		switch h.Lasting {
 		case lastingApplied:
 			r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_APPLIED

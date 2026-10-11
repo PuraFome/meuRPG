@@ -198,9 +198,10 @@ func (s *Service) SearchForTraps(
 	var repeated bool
 	var told []string
 	var place searchPlace
+	var offer *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		repeated, told, place = false, nil, searchPlace{}
+		repeated, told, place, offer = false, nil, searchPlace{}, nil
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errNoOpenSession()
@@ -271,6 +272,27 @@ func (s *Service) SearchForTraps(
 		if err != nil {
 			return err
 		}
+		// A character out of a combat that holds a Bardic Inspiration die has the d20 kept until the
+		// player answers, before anything is spent or written (the Search action of a combat has
+		// spent the action by now, and rolls as always). The answer brings the d20 back.
+		var step outsideStep
+		if !place.spent {
+			held := in
+			if len(in.typedFaces) > 0 && cm.Mode == combat.ModeNormal { // the second die of a Perception search is not the held one
+				held.typed, held.typedFaces = in.typedFaces[0], nil
+			}
+			if step, err = s.outsideRoll(ctx, tx, q, m, holdTrapSearch, who.ID, key, req.Msg, held, bonus, cm.Mode, reliable); err != nil {
+				return err
+			}
+			if step.Held {
+				offer = step.Offer
+				return nil
+			}
+		}
+		dieFace := 0
+		if step.Bonus != nil {
+			dieFace = int(step.Bonus.Face) // the die the player added after rolling: it counts in every total of the search
+		}
 		if err := s.spendOnceEffects(ctx, c, cm.Rolled); err != nil {
 			return err
 		}
@@ -283,17 +305,19 @@ func (s *Service) SearchForTraps(
 			// the light is dim to a Perception searcher, that disadvantage cancels an
 			// advantage and doubles up with another disadvantage: the second total is the
 			// one for the dim squares (SRD 5.1, "Advantage and Disadvantage").
-			r, err := s.d20With(in, bonus, cm.Mode)
-			if err != nil {
-				return err
+			r := step.Roll
+			if !step.Settled {
+				if r, err = s.d20With(in, bonus, cm.Mode); err != nil {
+					return err
+				}
+				r = reliableD20(r, bonus, reliable)
 			}
-			r = reliableD20(r, bonus, reliable)
 			face, face2, counted = r.Faces[0], r.Faces[1], r.Index
 			roll = dice.Result{Total: r.Total, Physical: r.Physical}
 			totals = []int{r.Total}
 			if skill == searchPerception {
 				if cm.Mode == combat.ModeAdvantage {
-					totals = append(totals, countedFace(face, reliable)+bonus)
+					totals = append(totals, countedFace(face, reliable)+bonus+dieFace)
 				} else {
 					totals = append(totals, r.Total)
 				}
@@ -306,8 +330,9 @@ func (s *Service) SearchForTraps(
 				typed2 = in.typedFaces[1]
 			}
 		}
-		face, roll, err = s.checkD20(in, bonus, reliable)
-		if err != nil {
+		if step.Settled {
+			face, roll = step.Roll.Face(), dice.Result{Total: step.Roll.Total, Physical: step.Roll.Physical}
+		} else if face, roll, err = s.checkD20(in, bonus, reliable); err != nil {
 			return err
 		}
 		totals = []int{roll.Total}
@@ -320,10 +345,10 @@ func (s *Service) SearchForTraps(
 			if face2, roll2, err = s.checkD20(rollInput{inApp: true}, options[0].Bonus, reliable); err != nil {
 				return err
 			}
-			totals = append(totals, roll2.Total)
+			totals = append(totals, roll2.Total+dieFace)
 		case typed2 > 0:
 			face2 = typed2
-			totals = append(totals, countedFace(typed2, reliable)+options[0].Bonus)
+			totals = append(totals, countedFace(typed2, reliable)+options[0].Bonus+dieFace)
 		}
 	searched:
 		found, err := s.traps.SearchTraps(ctx, tx, m.CampaignID, place.mapID, maplink.Observer{CharacterID: who.ID, At: place.at}, skill, totals, c.now)
@@ -335,11 +360,14 @@ func (s *Service) SearchForTraps(
 		}
 		told = found.Users
 		ev = actionEvent{
-			Round: c.enc.Round, Actor: place.combatantID, Key: skill, D20: clampInt32(face), Modifier: clampInt32(options[0].Bonus), Total: clampInt32(roll.Total),
+			Round: c.enc.Round, Actor: place.combatantID, Key: skill, D20: clampInt32(face), Modifier: clampInt32(options[0].Bonus + dieFace), Total: clampInt32(roll.Total),
 			Physical: roll.Physical, Found: found.Found, OnTurn: place.spent, D20B: clampInt32(face2), ReliableTalent: reliable,
 		}
 		if cm.Mode != combat.ModeNormal {
 			ev.RollMode, ev.Counted = modeKey(cm.Mode), clampInt32(counted)
+		}
+		if step.Bonus != nil {
+			ev.Res = &resourceEvent{Kind: resBardicUse, Sides: step.Bonus.Sides, Face: step.Bonus.Face}
 		}
 		if place.spent {
 			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
@@ -353,6 +381,9 @@ func (s *Service) SearchForTraps(
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "search for traps", err)
+	}
+	if offer != nil { // nothing was written: the question is the whole answer
+		return connect.NewResponse(&playv1.SearchForTrapsResponse{InspirationOffer: offer}), nil
 	}
 	if !repeated {
 		pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the players unheard
@@ -375,6 +406,7 @@ func (s *Service) SearchForTraps(
 		SpentAction:   ev.OnTurn,
 		Mode:          modeToProto[modeOfKey(ev.RollMode)],
 		Sources:       shown,
+		BonusDice:     bonusDiceOf(ev),
 	}
 	if ev.RollMode != "" {
 		out.Roll = diceRoll(2, 20, []int32{ev.D20, ev.D20B}, ev.Modifier, ev.Total, ev.Physical)
