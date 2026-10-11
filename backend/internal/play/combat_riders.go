@@ -105,7 +105,9 @@ func (d *encounterData) hitRidersView(v combatViewer, vitals map[string]*playv1.
 		}
 		a, okA := combatantByID(d.cs, r.AttackerID)
 		t, okT := combatantByID(d.cs, r.TargetID)
-		if !okA || !okT || a.Defeated || !(v.master || v.owns(a)) || !v.sees(t) {
+		// Only the master and the attacker's own player see the offer, and only on a target they see.
+		mayRead := v.master || v.owns(a)
+		if !okA || !okT || a.Defeated || !mayRead || !v.sees(t) {
 			continue
 		}
 		offer := &playv1.HitRiderOffer{Id: r.ID, Kind: riderKindProto(r.Kind), AttackerId: r.AttackerID, TargetId: r.TargetID}
