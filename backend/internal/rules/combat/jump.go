@@ -79,11 +79,14 @@ func JumpLimits(d rules.Derived) Jumps {
 // is twice as long (the running bonus included).
 func (l Jumps) Doubled() Jumps {
 	return Jumps{
-		LongRunning: l.LongRunning * 2, LongStanding: l.LongStanding * 2,
-		HighRunning: l.HighRunning * 2, HighStanding: l.HighStanding * 2,
-		LongRunningBonus: l.LongRunningBonus * 2,
+		LongRunning: l.LongRunning * stepOfTheWindFactor, LongStanding: l.LongStanding * stepOfTheWindFactor,
+		HighRunning: l.HighRunning * stepOfTheWindFactor, HighStanding: l.HighStanding * stepOfTheWindFactor,
+		LongRunningBonus: l.LongRunningBonus * stepOfTheWindFactor,
 	}
 }
+
+// stepOfTheWindFactor: Step of the Wind doubles the monk's jump distance for the turn (SRD 5.1).
+const stepOfTheWindFactor = 2
 
 // standingJumpDivisor: a jump without a running start covers half the distance (SRD 5.1, Jumping).
 const standingJumpDivisor = 2
