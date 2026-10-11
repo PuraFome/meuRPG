@@ -18826,8 +18826,15 @@ type ConcentrationSavePrompt struct {
 	BonusKnown bool  `protobuf:"varint,7,opt,name=bonus_known,json=bonusKnown,proto3" json:"bonus_known,omitempty"`
 	// True once the player left the roll to the master.
 	HandedToMaster bool `protobuf:"varint,8,opt,name=handed_to_master,json=handedToMaster,proto3" json:"handed_to_master,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The mode of the d20 ("normal", "advantage" or "disadvantage": exhaustion 3 or more is
+	// disadvantage on saving throws, SRD 5.1) and the sources in words ("Exaustão 3:
+	// desvantagem"), the same ones ResolveConcentrationSave rolls with. With a mode, a roll
+	// typed with physical dice takes both d20 (d20_face and second_d20_face). A source of an
+	// effect the master hides reads "Outra fonte" (RN-10).
+	Mode          string   `protobuf:"bytes,9,opt,name=mode,proto3" json:"mode,omitempty"`
+	ModeSourcesPt []string `protobuf:"bytes,10,rep,name=mode_sources_pt,json=modeSourcesPt,proto3" json:"mode_sources_pt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ConcentrationSavePrompt) Reset() {
@@ -18914,6 +18921,20 @@ func (x *ConcentrationSavePrompt) GetHandedToMaster() bool {
 		return x.HandedToMaster
 	}
 	return false
+}
+
+func (x *ConcentrationSavePrompt) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *ConcentrationSavePrompt) GetModeSourcesPt() []string {
+	if x != nil {
+		return x.ModeSourcesPt
+	}
+	return nil
 }
 
 // ContestPrompt names the contest a CONTEST window waits for: the sheet reads it
@@ -22499,7 +22520,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vmax_targets\x18\x02 \x01(\x05R\n" +
 	"maxTargets\x12\x17\n" +
 	"\afall_ft\x18\x03 \x01(\x05R\x06fallFt\x12>\n" +
-	"\fslot_options\x18\x04 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\vslotOptions\"\x9a\x02\n" +
+	"\fslot_options\x18\x04 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\vslotOptions\"\xd6\x02\n" +
 	"\x17ConcentrationSavePrompt\x12\x1b\n" +
 	"\tspell_key\x18\x01 \x01(\tR\bspellKey\x12\"\n" +
 	"\rspell_name_pt\x18\x02 \x01(\tR\vspellNamePt\x12!\n" +
@@ -22510,7 +22531,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"save_bonus\x18\x06 \x01(\x05R\tsaveBonus\x12\x1f\n" +
 	"\vbonus_known\x18\a \x01(\bR\n" +
 	"bonusKnown\x12(\n" +
-	"\x10handed_to_master\x18\b \x01(\bR\x0ehandedToMaster\".\n" +
+	"\x10handed_to_master\x18\b \x01(\bR\x0ehandedToMaster\x12\x12\n" +
+	"\x04mode\x18\t \x01(\tR\x04mode\x12&\n" +
+	"\x0fmode_sources_pt\x18\n" +
+	" \x03(\tR\rmodeSourcesPt\".\n" +
 	"\rContestPrompt\x12\x1d\n" +
 	"\n" +
 	"contest_id\x18\x01 \x01(\tR\tcontestId\"Z\n" +

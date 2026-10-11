@@ -26,6 +26,11 @@ import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { ofThe } from '../../../../core/combat/move-plan';
 import {
+  type ConcentrationMode,
+  concentrationMode,
+  concentrationModeLine,
+} from '../../../../core/combat/reactions';
+import {
   type QueueRow,
   type ReactionCard,
   type SlotOption,
@@ -204,19 +209,36 @@ let nextId = 0;
               @if (extraWindow() === card.window.id && extra.fields().length > 0) {
                 <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
               }
-              <app-roll-picker
-                [outlined]="true"
-                [min]="1"
-                [max]="20"
-                [modifier]="concentrationBonus(card.window)"
-                [label]="'Role 1d20 para o teste de Constituição ' + ofTheLabel(card.window.reactorLabel)"
-                hint="Role o seu dado e digite o número que saiu (1 a 20)."
-                totalNote="Teste de Constituição"
-                [appLabel]="'Rolar o teste ' + ofTheLabel(card.window.reactorLabel)"
-                [busy]="busy()"
-                (app)="concentrate(card.window, { kind: 'app' })"
-                (typed)="concentrate(card.window, { kind: 'typed', face: $event })"
-              />
+              @if (concentrationModeLine(card.window)) {
+                <p class="card__sub" role="status">{{ concentrationModeLine(card.window) }}</p>
+              }
+              @if (concentrationDice(card.window) === 1) {
+                <app-roll-picker
+                  [outlined]="true"
+                  [min]="1"
+                  [max]="20"
+                  [modifier]="concentrationBonus(card.window)"
+                  [label]="'Role 1d20 para o teste de Constituição ' + ofTheLabel(card.window.reactorLabel)"
+                  hint="Role o seu dado e digite o número que saiu (1 a 20)."
+                  totalNote="Teste de Constituição"
+                  [appLabel]="'Rolar o teste ' + ofTheLabel(card.window.reactorLabel)"
+                  [busy]="busy()"
+                  (app)="concentrate(card.window, { kind: 'app' })"
+                  (typed)="concentrate(card.window, { kind: 'typed', face: $event })"
+                />
+              } @else {
+                <app-multi-roll
+                  [fields]="pair"
+                  [modifier]="concentrationBonus(card.window)"
+                  [combine]="concentrationMode(card.window) === 'advantage' ? 'higher' : 'lower'"
+                  totalNote="Teste de Constituição"
+                  [appLabel]="'Rolar o teste ' + ofTheLabel(card.window.reactorLabel)"
+                  hint="Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada)."
+                  [busy]="busy()"
+                  (app)="concentrate(card.window, { kind: 'app' })"
+                  (typed)="concentrate(card.window, { kind: 'typed', face: $event[0], second: $event[1] })"
+                />
+              }
               <button
                 mat-stroked-button
                 type="button"
@@ -757,6 +779,21 @@ export class ReactionQueue {
       ? ` · Constituição ${ofThe([w.reactorLabel])}: ${signed(p.saveBonus)}`
       : '';
     return `Teste de resistência de Constituição contra CD ${this.concentrationDc(w)} (metade de ${damage} seria ${Math.floor(damage / 2)}; o mínimo é 10)${bonus}`;
+  }
+
+  protected concentrationMode(w: ReactionWindow): ConcentrationMode {
+    return w.prompt.case === 'concentrationSave' ? concentrationMode(w.prompt.value) : 'normal';
+  }
+
+  /** How many d20 a typed save takes: two with advantage or disadvantage. */
+  protected concentrationDice(w: ReactionWindow): number {
+    return this.concentrationMode(w) === 'normal' ? 1 : 2;
+  }
+
+  protected concentrationModeLine(w: ReactionWindow): string {
+    return w.prompt.case === 'concentrationSave'
+      ? concentrationModeLine(w.prompt.value, w.reactorLabel)
+      : '';
   }
 
   protected concentrationBonus(w: ReactionWindow): number {

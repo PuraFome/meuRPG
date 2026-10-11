@@ -138,6 +138,13 @@ func concentrationRollOf(msg *playv1.ResolveConcentrationSaveRequest) (in rollIn
 	return in, handOver, keep, nil
 }
 
+// concentrationSources are the circumstances of a Constitution saving throw to keep a
+// concentration. The prompt the player reads and the roll ResolveConcentrationSave makes both
+// take them from here, so the number of d20 the sheet asks for is the number the roll needs.
+func concentrationSources(creature combat.Creature) []combat.Source {
+	return combat.SaveMode(combat.SaveScene{Creature: creature, Ability: "con", EffectVisible: true})
+}
+
 // ResolveConcentrationSave implements playv1connect.CombatServiceHandler.
 func (s *Service) ResolveConcentrationSave(
 	ctx context.Context,
@@ -217,7 +224,7 @@ func (s *Service) ResolveConcentrationSave(
 			if err != nil {
 				return nil, err
 			}
-			mode := combat.Resolve(combat.SaveMode(combat.SaveScene{Creature: creatureFacts(reactor, states, sheet.Traits), Ability: "con", EffectVisible: true}))
+			mode := combat.Resolve(concentrationSources(creatureFacts(reactor, states, sheet.Traits)))
 			d20, err := s.d20With(in, save.Bonus, mode)
 			if err != nil {
 				return nil, err
