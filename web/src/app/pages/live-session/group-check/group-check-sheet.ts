@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { RollModeKind } from '../../../../gen/meurpg/play/v1/contest_types_pb';
+import { type GroupCheckView, RollModeKind } from '../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import {
@@ -42,6 +42,14 @@ export interface GroupCheckSheetData {
 
 const STEPS = ['Rolar', 'Resultado'] as const;
 
+/** The sheet's title: "Teste em grupo" only for a group check; a request judged one by one is a "Teste" (or "Teste de resistência"). */
+export function groupCheckHeading(c: GroupCheckView | null | undefined): string {
+  if (c?.group) {
+    return 'Teste em grupo';
+  }
+  return c?.save ? 'Teste de resistência' : 'Teste';
+}
+
 export function openGroupCheckSheet(
   dialog: MatDialog,
   bottomSheet: MatBottomSheet,
@@ -51,7 +59,7 @@ export function openGroupCheckSheet(
     dialog,
     bottomSheet,
     GroupCheckSheet,
-    { data, ariaLabel: 'Teste em grupo', labelledBy: 'group-check-t' },
+    { data, ariaLabel: groupCheckHeading(data.state.view()), labelledBy: 'group-check-t' },
   );
 }
 
@@ -82,13 +90,7 @@ export class GroupCheckSheet {
   protected readonly check = computed(() => this.data.state.view());
   protected readonly own = this.data.state.own;
   protected readonly skill = computed(() => this.check()?.skillNamePt ?? '');
-  protected readonly heading = computed(() => {
-    const c = this.check();
-    if (c?.group) {
-      return 'Teste em grupo';
-    }
-    return c?.save ? 'Teste de resistência' : 'Teste';
-  });
+  protected readonly heading = computed(() => groupCheckHeading(this.check()));
   /** "O mestre pediu um teste de Percepção de todo o grupo." or "O mestre pede um teste de resistência de Constituição.". */
   protected readonly askLine = computed(() => {
     const what = askedTest(this.skill());
@@ -155,7 +157,7 @@ export class GroupCheckSheet {
         this.sheet.close(true);
         return;
       }
-      this.error.set(combatErrorMessage(err, 'rolar o teste em grupo'));
+      this.error.set(combatErrorMessage(err, 'rolar o teste'));
       // The check changed under the sheet (the master closed it): read it again.
       void this.data.state.load(this.api, this.data.campaignId);
     } finally {
