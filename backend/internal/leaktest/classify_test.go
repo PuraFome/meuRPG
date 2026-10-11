@@ -175,6 +175,7 @@ var notReads = map[string]classified{
 	playv1connect.CombatServiceEndConcentrationProcedure:                        {playerAction, "a player ends their own concentration"},
 	playv1connect.CombatServiceEndEncounterProcedure:                            {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceEndRageProcedure:                                 {playerAction, "a player ends the rage of their own combatant"},
+	playv1connect.CombatServiceUseHitRiderProcedure:                             {playerAction, "a monk's player answers the rider offer of their own combatant (Open Hand technique, Stunning Strike); the master may too"},
 	playv1connect.CombatServiceEndTurnProcedure:                                 {playerAction, "a player ends their own turn"},
 	playv1connect.CombatServiceMoveCombatantProcedure:                           {playerAction, "a player moves their own combatant"},
 	playv1connect.CombatServiceOfferOpportunityProcedure:                        {masterWrite, masterOnlyWhy},

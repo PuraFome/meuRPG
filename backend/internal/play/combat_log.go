@@ -353,6 +353,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ROLL_MODE_ANSWERED
 		case eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingSaved, eventLastingTriggered, eventLastingVisibility, eventExhaustion:
 			entry.kind = effectLogKinds[e.Kind]
+		case eventHitRider:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER
 		case eventStateChanged:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED
 		case eventDamagePartRemoved:
@@ -600,6 +602,10 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.LandingDifficult = v.master && e.ev.LandingDifficult // the Acrobatics reminder is the master's alone
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:
 		out.Contest = &playv1.CombatLogContest{Line: contestLineProto[e.ev.Contest.Line]} // never a total or a DC (RN-20)
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:
+		if r := e.ev.Rider; r != nil {
+			out.HitRider = riderLogProto(r, v.master || v.owns(byID[e.ev.Actor]))
+		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED:
 		out.Door = &playv1.CombatLogDoor{Col: e.ev.Col, Row: e.ev.Row}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:

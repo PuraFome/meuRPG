@@ -172,6 +172,8 @@ var (
 		"monk.martial_arts",      // attacks.go: monk weapons use STR or DEX
 		"wizard.arcane_recovery", // Etapa 6: recover slots on a short rest
 		"wizard.sculpt_spells",   // Etapa 6: protect allies from evocations
+		"monk.open_hand",         // play: the Open Hand technique rider on a Flurry of Blows hit
+		"monk.stunning_strike",   // play: the Stunning Strike rider on a melee hit
 	}
 )
 

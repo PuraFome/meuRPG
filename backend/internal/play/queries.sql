@@ -1467,7 +1467,7 @@ UPDATE combatant_states SET triggers_fired = triggers_fired + 1 WHERE id = $1;
 -- conditions (the ones set by hand and the effects'), the ones that came from effects,
 -- the armor class bonus, the speed in percent and the lethargy.
 UPDATE combatants
-SET conditions = $2, effect_conditions = $3, effect_ac_bonus = $4, effect_speed_pct = $5, effect_no_action = $6, effect_no_move = $7, effect_speed_add_ft = $8
+SET conditions = $2, effect_conditions = $3, effect_ac_bonus = $4, effect_speed_pct = $5, effect_no_action = $6, effect_no_move = $7, effect_speed_add_ft = $8, effect_no_reaction = $9
 WHERE id = $1;
 
 -- name: SetCombatantExhaustion :exec
@@ -1636,3 +1636,22 @@ UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);
+
+-- name: InsertHitRider :one
+-- A rider a monk's hit offers (combat_riders.go).
+INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;
+
+-- name: GetHitRider :one
+SELECT * FROM hit_riders WHERE encounter_id = $1 AND id = $2;
+
+-- name: ListHitRiders :many
+SELECT * FROM hit_riders WHERE encounter_id = $1 ORDER BY created_at, id;
+
+-- name: UseHitRider :exec
+UPDATE hit_riders SET used = true, choice = $3 WHERE encounter_id = $1 AND id = $2;
+
+-- name: DeleteOpenHitRidersOf :exec
+-- The offers of an attacker's earlier hits go when it attacks again.
+DELETE FROM hit_riders WHERE attacker_id = $1 AND NOT used;

@@ -194,6 +194,12 @@ type Traits struct {
 	DivineSmite, ImprovedDivineSmite, ColossusSlayer, HuntersMark bool
 	// GreatWeaponFighting is the fighting style.
 	GreatWeaponFighting bool
+	// OpenHand and StunningStrike are the monk's Open Hand Technique (a rider on a
+	// Flurry of Blows hit) and Stunning Strike (a rider on a melee hit, 1 ki point);
+	// KiSaveDC is the monk's ki save DC (8 + proficiency + Wisdom modifier), 0 for
+	// anyone who is not a monk.
+	OpenHand, StunningStrike bool
+	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
 	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.

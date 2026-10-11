@@ -184,6 +184,9 @@ const (
 	CombatServiceAnswerRageEndProcedure = "/meurpg.play.v1.CombatService/AnswerRageEnd"
 	// CombatServiceEndRageProcedure is the fully-qualified name of the CombatService's EndRage RPC.
 	CombatServiceEndRageProcedure = "/meurpg.play.v1.CombatService/EndRage"
+	// CombatServiceUseHitRiderProcedure is the fully-qualified name of the CombatService's UseHitRider
+	// RPC.
+	CombatServiceUseHitRiderProcedure = "/meurpg.play.v1.CombatService/UseHitRider"
 )
 
 // CombatServiceClient is a client for the meurpg.play.v1.CombatService service.
@@ -1390,6 +1393,18 @@ type CombatServiceClient interface {
 	//   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
 	//     NOT_RAGING.
 	EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error)
+	// UseHitRider answers a monk's offer after a hit (Encounter.hit_riders): the Open Hand
+	// technique on a Flurry of Blows hit (knock prone, push, or no reactions) or Stunning
+	// Strike (1 ki point) on a melee hit. The server rolls the target's saving throw against
+	// the ki save DC (for an NPC and a player's character alike, as a spell's save), applies
+	// what a failure does and writes the line. The monk's player or the master.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as TakeAction.
+	//   - `failed_precondition`: the offer was already answered, or its round is over; or,
+	//     for Stunning Strike, there is no ki point left.
+	//   - `invalid_argument`: the choice is not one the offer has.
+	UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error)
 }
 
 // NewCombatServiceClient constructs a client for the meurpg.play.v1.CombatService service. By
@@ -1702,6 +1717,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("EndRage")),
 			connect.WithClientOptions(opts...),
 		),
+		useHitRider: connect.NewClient[v1.UseHitRiderRequest, v1.UseHitRiderResponse](
+			httpClient,
+			baseURL+CombatServiceUseHitRiderProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("UseHitRider")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1756,6 +1777,7 @@ type combatServiceClient struct {
 	removeDamagePart         *connect.Client[v1.RemoveDamagePartRequest, v1.RemoveDamagePartResponse]
 	answerRageEnd            *connect.Client[v1.AnswerRageEndRequest, v1.AnswerRageEndResponse]
 	endRage                  *connect.Client[v1.EndRageRequest, v1.EndRageResponse]
+	useHitRider              *connect.Client[v1.UseHitRiderRequest, v1.UseHitRiderResponse]
 }
 
 // StartEncounter calls meurpg.play.v1.CombatService.StartEncounter.
@@ -2001,6 +2023,11 @@ func (c *combatServiceClient) AnswerRageEnd(ctx context.Context, req *connect.Re
 // EndRage calls meurpg.play.v1.CombatService.EndRage.
 func (c *combatServiceClient) EndRage(ctx context.Context, req *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error) {
 	return c.endRage.CallUnary(ctx, req)
+}
+
+// UseHitRider calls meurpg.play.v1.CombatService.UseHitRider.
+func (c *combatServiceClient) UseHitRider(ctx context.Context, req *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error) {
+	return c.useHitRider.CallUnary(ctx, req)
 }
 
 // CombatServiceHandler is an implementation of the meurpg.play.v1.CombatService service.
@@ -3207,6 +3234,18 @@ type CombatServiceHandler interface {
 	//   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
 	//     NOT_RAGING.
 	EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error)
+	// UseHitRider answers a monk's offer after a hit (Encounter.hit_riders): the Open Hand
+	// technique on a Flurry of Blows hit (knock prone, push, or no reactions) or Stunning
+	// Strike (1 ki point) on a melee hit. The server rolls the target's saving throw against
+	// the ki save DC (for an NPC and a player's character alike, as a spell's save), applies
+	// what a failure does and writes the line. The monk's player or the master.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as TakeAction.
+	//   - `failed_precondition`: the offer was already answered, or its round is over; or,
+	//     for Stunning Strike, there is no ki point left.
+	//   - `invalid_argument`: the choice is not one the offer has.
+	UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error)
 }
 
 // NewCombatServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -3515,6 +3554,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("EndRage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceUseHitRiderHandler := connect.NewUnaryHandler(
+		CombatServiceUseHitRiderProcedure,
+		svc.UseHitRider,
+		connect.WithSchema(combatServiceMethods.ByName("UseHitRider")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.CombatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CombatServiceStartEncounterProcedure:
@@ -3615,6 +3660,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceAnswerRageEndHandler.ServeHTTP(w, r)
 		case CombatServiceEndRageProcedure:
 			combatServiceEndRageHandler.ServeHTTP(w, r)
+		case CombatServiceUseHitRiderProcedure:
+			combatServiceUseHitRiderHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -3818,4 +3865,8 @@ func (UnimplementedCombatServiceHandler) AnswerRageEnd(context.Context, *connect
 
 func (UnimplementedCombatServiceHandler) EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndRage is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.UseHitRider is not implemented"))
 }

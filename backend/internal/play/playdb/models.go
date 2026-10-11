@@ -213,6 +213,7 @@ type Combatant struct {
 	ExhaustionLevel         int32
 	HpMaxBase               *int32
 	MeleeHitTurn            *string
+	EffectNoReaction        bool
 }
 
 type CombatantState struct {
@@ -314,6 +315,18 @@ type HiddenReveal struct {
 	State        string
 	CreatedAt    time.Time
 	AnsweredAt   *time.Time
+}
+
+type HitRider struct {
+	ID          string
+	EncounterID string
+	AttackerID  string
+	TargetID    string
+	Kind        string
+	Round       int32
+	Choice      *string
+	Used        bool
+	CreatedAt   time.Time
 }
 
 type InspirationHold struct {
