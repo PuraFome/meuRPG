@@ -366,7 +366,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Type: e.GetType(), Target: e.GetTarget(), Mode: e.GetMode(), Value: e.GetValue(), When: e.GetWhen(), Tags: e.GetTags(),
 			Proficiency: e.GetProficiency(), Level: e.GetLevel(), Roll: e.GetRoll(), Targets: e.GetTargets(),
 			Sense: e.GetSense(), RangeFt: int(e.GetRangeFt()), Resource: e.GetResource(), Max: e.GetMax(), Recharge: e.GetRecharge(),
-			Choice: e.GetChoice(), Count: int(e.GetCount()), From: e.GetFrom(), Economy: e.GetEconomy(),
+			Choice: e.GetChoice(), Count: int(e.GetCount()), From: e.GetFrom(), Economy: e.GetEconomy(), Applies: e.GetApplies(), Ability: e.GetAbility(),
 			Spells: e.GetSpells(), TextPT: e.GetTextPt(),
 		})
 	}

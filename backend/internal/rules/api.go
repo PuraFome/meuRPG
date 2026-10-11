@@ -662,6 +662,9 @@ type Derived struct {
 	Resources       []Resource
 	Actions         []Action
 	StandardActions []Action
+	// Maneuvers are the dice the character's table options add to a roll
+	// (superiority_die effects), with the die's sides worked out for the level.
+	Maneuvers []Maneuver
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.

@@ -235,15 +235,16 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 	srd := loadForTest(t)
 	m := srd.EffectMenu()
 	valid := map[string]Effect{
-		"modifier":     {Type: "modifier", Target: "ac", Mode: "add", Value: "1"},
-		"proficiency":  {Type: "proficiency", Proficiency: "skill:arcana"},
-		"resource":     {Type: "resource", Resource: "surto", Max: "1", Recharge: "long_rest"},
-		"sense":        {Type: "sense", Sense: "darkvision", RangeFt: 30},
-		"roll_mode":    {Type: "roll_mode", Roll: "advantage", Targets: []string{"attack"}},
-		"grant_action": {Type: "grant_action", Economy: "action"},
-		"extra_attack": {Type: "extra_attack", Count: 2},
-		"choice":       {Type: "choice", Choice: "skill", Count: 1},
-		"note":         {Type: "note"},
+		"modifier":        {Type: "modifier", Target: "ac", Mode: "add", Value: "1"},
+		"proficiency":     {Type: "proficiency", Proficiency: "skill:arcana"},
+		"resource":        {Type: "resource", Resource: "surto", Max: "1", Recharge: "long_rest"},
+		"sense":           {Type: "sense", Sense: "darkvision", RangeFt: 30},
+		"roll_mode":       {Type: "roll_mode", Roll: "advantage", Targets: []string{"attack"}},
+		"grant_action":    {Type: "grant_action", Economy: "action"},
+		"extra_attack":    {Type: "extra_attack", Count: 2},
+		"choice":          {Type: "choice", Choice: "skill", Count: 1},
+		"note":            {Type: "note"},
+		"superiority_die": {Type: "superiority_die", Applies: ManeuverDamage, Resource: "dados_de_teste", Value: "8"},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
@@ -273,6 +274,8 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.Targets = nil
 		case "economy":
 			e.Economy = ""
+		case "applies":
+			e.Applies = ""
 		case "count":
 			e.Count = 0
 		case "choice":
@@ -288,7 +291,12 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			_, err := srd.With(Overlay{Revision: 1, Feats: []TableFeat{{TableEntry: TableEntry{Key: "feat:cardapio" + tableSuffix, NamePT: "Cardápio"}, Effects: []Effect{e}}}})
 			return err
 		}
-		_, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{classWithEffects([]Effect{e})}})
+		effects := []Effect{e}
+		if e.Type == "superiority_die" && e.Resource != "" {
+			// The die spends a resource the same class defines.
+			effects = []Effect{{Type: "resource", Resource: "dados_de_teste", Max: "4", Recharge: "short_rest"}, e}
+		}
+		_, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{classWithEffects(effects)}})
 		return err
 	}
 	for _, mt := range m.Types {

@@ -570,9 +570,11 @@ type actionEvent struct {
 	// The damage by parts (combat_parts.go): what each part rolled, the once-per-turn
 	// marks of the attacker before the roll (an undo puts them back) and the steps
 	// that resistance took the damage through.
-	Parts      []partRoll  `json:"parts,omitempty"`
-	OnceBefore *onceMarks  `json:"once_before,omitempty"`
-	Steps      []stepGroup `json:"steps,omitempty"`
+	Parts []partRoll `json:"parts,omitempty"`
+	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
+	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
+	OnceBefore    *onceMarks  `json:"once_before,omitempty"`
+	Steps         []stepGroup `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`

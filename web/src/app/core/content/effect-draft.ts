@@ -41,6 +41,9 @@ export interface EffectDraft {
   count: number;
   from: string[];
   economy: string;
+  /** superiority_die: where the die goes, and the ability whose modifier a reduction adds. */
+  applies: string;
+  ability: string;
   spells: string[];
   textPt: string;
 }
@@ -74,6 +77,8 @@ export function emptyEffect(type = ''): EffectDraft {
     count: 0,
     from: [],
     economy: '',
+    applies: '',
+    ability: '',
     spells: [],
     textPt: '',
   };
@@ -102,6 +107,8 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     count: e.count,
     from: [...e.from],
     economy: e.economy,
+    applies: e.applies,
+    ability: e.ability,
     spells: [...e.spells],
     textPt: e.textPt,
   };
@@ -181,6 +188,12 @@ export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
       case 'economy':
         if (d.economy) out.economy = d.economy;
         break;
+      case 'applies':
+        if (d.applies) out.applies = d.applies;
+        break;
+      case 'ability':
+        if (d.ability) out.ability = d.ability;
+        break;
       case 'spells':
         if (d.spells.length > 0) out.spells = [...d.spells];
         break;
@@ -214,6 +227,8 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   count: 'Quantos',
   from: 'Entre',
   economy: 'Tipo de ação',
+  applies: 'Onde o dado entra',
+  ability: 'Habilidade somada',
   spells: 'Magias',
   text_pt: 'Texto na ficha',
 };
@@ -354,6 +369,11 @@ export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
 
+/** Whether a required closed-list field of the action and maneuver types is still empty. */
+function choiceEmpty(d: EffectDraft, name: string): boolean {
+  return (name === 'economy' && d.economy === '') || (name === 'applies' && d.applies === '');
+}
+
 /** A required field of the type that still has nothing: the editor says so before the server does. */
 export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
   const out: string[] = [];
@@ -389,10 +409,8 @@ export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
           return d.choice === '';
         case 'count':
           return d.count <= 0;
-        case 'economy':
-          return d.economy === '';
         default:
-          return false;
+          return choiceEmpty(d, f.name);
       }
     })();
     if (empty) {

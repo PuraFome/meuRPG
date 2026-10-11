@@ -1134,6 +1134,9 @@ type DamagePartRoll struct {
 	Physical      bool      `protobuf:"varint,9,opt,name=physical,proto3" json:"physical,omitempty"`
 	DamageTypeKey string    `protobuf:"bytes,10,opt,name=damage_type_key,json=damageTypeKey,proto3" json:"damage_type_key,omitempty"`
 	Rerolled      []*Reroll `protobuf:"bytes,11,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
+	// A table maneuver's rider (what the target must do, in the table's words). Only the
+	// master gets it; empty for everyone else and for every other part.
+	RiderPt       string `protobuf:"bytes,12,opt,name=rider_pt,json=riderPt,proto3" json:"rider_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1243,6 +1246,13 @@ func (x *DamagePartRoll) GetRerolled() []*Reroll {
 		return x.Rerolled
 	}
 	return nil
+}
+
+func (x *DamagePartRoll) GetRiderPt() string {
+	if x != nil {
+		return x.RiderPt
+	}
+	return ""
 }
 
 // SelectedExtra is an extra the player marks when they roll the damage.
@@ -1643,7 +1653,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x06Reroll\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\x05R\x04from\x12\x0e\n" +
-	"\x02to\x18\x03 \x01(\x05R\x02to\"\xd2\x02\n" +
+	"\x02to\x18\x03 \x01(\x05R\x02to\"\xed\x02\n" +
 	"\x0eDamagePartRoll\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1d\n" +
@@ -1658,7 +1668,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\bphysical\x18\t \x01(\bR\bphysical\x12&\n" +
 	"\x0fdamage_type_key\x18\n" +
 	" \x01(\tR\rdamageTypeKey\x122\n" +
-	"\brerolled\x18\v \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\"T\n" +
+	"\brerolled\x18\v \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\x12\x19\n" +
+	"\brider_pt\x18\f \x01(\tR\ariderPt\"T\n" +
 	"\rSelectedExtra\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1d\n" +
 	"\n" +

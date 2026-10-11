@@ -73,5 +73,11 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	for _, r := range content.Resistances(d) {
 		t.Resistances = append(t.Resistances, link.Resistance{Source: r.Source, NamePT: r.NamePT, DamageTypes: r.DamageTypes, While: r.While})
 	}
+	for _, m := range d.Maneuvers {
+		t.Maneuvers = append(t.Maneuvers, link.Maneuver{
+			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
+			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides,
+		})
+	}
 	return t
 }
