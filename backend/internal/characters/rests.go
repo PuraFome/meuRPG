@@ -333,13 +333,33 @@ func (s *Service) saveView(ctx context.Context, tx pgx.Tx, r restRow, after *pla
 	return after, nil
 }
 
+// SongOfRest is the die of the Song of Rest the party hears (SRD 5.1, Bard 2): the
+// largest among the bards of the campaign's living, active characters that have the
+// feature and at least 1 hit point (an unconscious bard sings nothing), 0 when
+// nobody sings. Everyone who rests with such a bard hears it, the bard included
+// (rules.SongOfRestFor). It implements play.RestKeeper.
+func (s *Service) SongOfRest(ctx context.Context, tx pgx.Tx, campaignID string) (int, error) {
+	rows, err := s.restRows(ctx, tx, campaignID)
+	if err != nil {
+		return 0, err
+	}
+	var singers []int
+	for _, r := range rows {
+		if r.view.GetHitPointsCurrent() >= 1 {
+			singers = append(singers, r.m.songSides)
+		}
+	}
+	return rules.SongOfRestFor(singers), nil
+}
+
 // SpendHitDie spends one hit die of the size on a short rest: face is the die
-// rolled, and the character regains that plus its Constitution modifier (at least 0),
-// cut to its maximum. It returns the vitals before and after, the Constitution
+// rolled, and the character regains that plus its Constitution modifier (at least 0)
+// plus extra (the face of a Song of Rest die, 0 when none applies), cut to its
+// maximum. It returns the vitals before and after, the Constitution
 // modifier and the hit points regained. link.ErrNoHitDiceLeft when none of the size
 // is left, link.ErrBadHitDiceChoice for a size the character has not. It implements
 // play.RestKeeper.
-func (s *Service) SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, characterID string, faces, face int) (before, after *playv1.CharacterVitals, conMod, healed int, err error) {
+func (s *Service) SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, characterID string, faces, face, extra int) (before, after *playv1.CharacterVitals, conMod, healed int, err error) {
 	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return nil, nil, 0, 0, err
@@ -354,7 +374,7 @@ func (s *Service) SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, charac
 	}
 	after = proto.CloneOf(r.view)
 	setHitDiceUsed(after, spent)
-	gain := rules.HitDieHeal(face, r.m.conMod)
+	gain := rules.HitDieHeal(face, r.m.conMod) + max(extra, 0)
 	after.HitPointsCurrent = min(r.view.GetHitPointsCurrent()+i32(gain), r.view.GetHitPointsMax())
 	healed = int(after.GetHitPointsCurrent() - r.view.GetHitPointsCurrent())
 	if after, err = s.saveView(ctx, tx, r, after); err != nil {

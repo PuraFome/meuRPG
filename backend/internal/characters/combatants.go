@@ -161,7 +161,7 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 		}
 		c.CastsInBeastForm = content.CastsInBeastForm(d)
 		jumps := combat.JumpLimits(d)
-		c.JumpLongDFt, c.JumpHighDFt = jumps.LongRunning, jumps.HighRunning
+		c.JumpLongDFt, c.JumpHighDFt, c.JumpLongBonusDFt = jumps.LongRunning, jumps.HighRunning, jumps.LongRunningBonus
 		if !c.Player {
 			c.XPValue = int(sheet.GetFull().GetXpValue())
 			c.PortraitImageID = sheet.GetFull().GetPortraitImageId()

@@ -214,6 +214,8 @@ type Combatant struct {
 	HpMaxBase               *int32
 	MeleeHitTurn            *string
 	EffectNoReaction        bool
+	JumpLongBonusDft        int32
+	JumpDoubled             bool
 }
 
 type CombatantState struct {

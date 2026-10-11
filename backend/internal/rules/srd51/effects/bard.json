@@ -12,7 +12,7 @@
       {"type": "proficiency", "proficiency": "initiative", "level": "half"}
     ],
     "feature:song-of-rest-d6": [
-      {"type": "note"}
+      {"type": "song_of_rest", "sides": 6}
     ],
     "feature:bard-college": [
       {"type": "choice", "choice": "subclass", "count": 1}
@@ -43,12 +43,15 @@
       {"type": "replaces", "replaces": "feature:bardic-inspiration-d10"}
     ],
     "feature:song-of-rest-d8": [
+      {"type": "song_of_rest", "sides": 8},
       {"type": "replaces", "replaces": "feature:song-of-rest-d6"}
     ],
     "feature:song-of-rest-d10": [
+      {"type": "song_of_rest", "sides": 10},
       {"type": "replaces", "replaces": "feature:song-of-rest-d8"}
     ],
     "feature:song-of-rest-d12": [
+      {"type": "song_of_rest", "sides": 12},
       {"type": "replaces", "replaces": "feature:song-of-rest-d10"}
     ]
   }

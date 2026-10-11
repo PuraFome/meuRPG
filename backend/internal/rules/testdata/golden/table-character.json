@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.40+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.41+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -594,6 +594,7 @@
     "AttacksPerAction": 1,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
+    "SongOfRestSides": 0,
     "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,
@@ -705,7 +706,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.40+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.41+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -1640,6 +1641,7 @@
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
+    "SongOfRestSides": 0,
     "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,
@@ -1860,7 +1862,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.40+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.41+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2619,6 +2621,7 @@
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
+    "SongOfRestSides": 0,
     "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,

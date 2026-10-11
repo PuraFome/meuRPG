@@ -690,6 +690,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: ev.DisengagedBefore}); err != nil {
 			return nil, fmt.Errorf("put back the disengage: %w", err)
 		}
+		if ev.JumpDoubled {
+			if err := c.q.SetCombatantJumpDoubled(ctx, playdb.SetCombatantJumpDoubledParams{ID: who.ID, JumpDoubled: ev.JumpDoubledBefore}); err != nil {
+				return nil, fmt.Errorf("put back the jump distance: %w", err)
+			}
+		}
 		if err := c.q.SetCombatantActionSurged(ctx, playdb.SetCombatantActionSurgedParams{ID: who.ID, ActionSurged: ev.SurgedBefore}); err != nil {
 			return nil, fmt.Errorf("put back the action surge: %w", err)
 		}

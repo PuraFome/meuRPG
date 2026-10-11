@@ -21,7 +21,8 @@ import { type AttackResult, attackResult } from '../combat/combat-client';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** How the die of a spent hit die comes (RN-18): the app rolls it, or the player typed the face of a real die. */
-export type HitDieRoll = { readonly inApp: true } | { readonly face: number };
+export type HitDieRoll =
+  { readonly inApp: true } | { readonly face: number; readonly songFace?: number };
 
 /** What a Lay on Hands touch does: restore `amount` hit points (1 to what the pool has left), or cure one disease or
  * neutralize one poison (5 points). */
@@ -90,6 +91,7 @@ export class ResourceClient {
         'inApp' in roll
           ? { case: 'rollInApp', value: true }
           : { case: 'typedFace', value: roll.face },
+      typedSongFace: 'inApp' in roll ? 0 : (roll.songFace ?? 0),
     });
   }
 

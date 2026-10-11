@@ -169,11 +169,11 @@ ORDER BY order_index, created_at, id;
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value,
-    side, size, speed_fly_ft, jump_long_dft, jump_high_dft
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft, jump_long_bonus_dft
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
     $10, $11, $12, $13, $14, $15, $16, $17, $18,
-    $19, $20, $21, $22, $23
+    $19, $20, $21, $22, $23, $24
 )
 RETURNING *;
 
@@ -228,7 +228,7 @@ WHERE id = $1;
 -- made come back, the Escudo bonus ends, a death save is due again, and the
 -- combatant acts ('acting') in the turn that starts.
 UPDATE combatants
-SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
+SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
     attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
@@ -257,6 +257,13 @@ UPDATE combatants
 SET disengaged = $2
 WHERE id = $1;
 
+-- name: SetCombatantJumpDoubled :exec
+-- Step of the Wind was used this turn (true), which doubles the jump distance for the
+-- rest of it, or its undo (false).
+UPDATE combatants
+SET jump_doubled = $2
+WHERE id = $1;
+
 -- name: SetCombatantActionSurged :exec
 -- Action Surge was used in this turn (true), or its undo (false).
 UPDATE combatants
@@ -272,7 +279,7 @@ WHERE id = $1;
 -- the beast's speed, fly speed, size and jumps while it lasts, the character's own
 -- again when it ends.
 UPDATE combatants
-SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6
+SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6, jump_long_bonus_dft = $7
 WHERE id = $1;
 
 -- name: SetCombatantBodyOfCharacter :exec
@@ -281,7 +288,8 @@ WHERE id = $1;
 -- druid fell to 0 hit points).
 UPDATE combatants
 SET speed_ft = sqlc.arg(speed_ft), speed_fly_ft = sqlc.arg(speed_fly_ft), size = sqlc.arg(size),
-    jump_long_dft = sqlc.arg(jump_long_dft), jump_high_dft = sqlc.arg(jump_high_dft)
+    jump_long_dft = sqlc.arg(jump_long_dft), jump_high_dft = sqlc.arg(jump_high_dft),
+    jump_long_bonus_dft = sqlc.arg(jump_long_bonus_dft)
 WHERE character_id = sqlc.arg(character_id) AND kind = 'player'
   AND encounter_id IN (SELECT e.id FROM encounters AS e WHERE e.game_session_id = sqlc.arg(game_session_id) AND e.status <> 'ended');
 
@@ -1583,6 +1591,16 @@ SELECT (payload ->> 'kind')::TEXT AS kind FROM session_events
 WHERE game_session_id = $1 AND kind = 'rest_taken'
 ORDER BY seq DESC
 LIMIT 1;
+
+-- name: HasSongOfRestSinceLatestRest :one
+-- Whether the character already regained the extra die of a bard's Song of Rest since
+-- the latest rest the master took in the session: once for each rest.
+SELECT EXISTS (
+    SELECT 1 FROM session_events AS e
+    WHERE e.game_session_id = $1 AND e.kind = 'hit_dice_spent' AND e.character_id = $2
+      AND (e.payload ->> 'song_sides') IS NOT NULL
+      AND e.seq > COALESCE((SELECT max(r.seq) FROM session_events AS r WHERE r.game_session_id = $1 AND r.kind = 'rest_taken'), 0)
+)::BOOL AS sung;
 
 -- name: GetCharacterInspiration :one
 -- The Bardic Inspiration die a character holds out of a running combat.

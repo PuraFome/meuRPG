@@ -139,7 +139,7 @@
             totalNote="Total do ataque"
             [modifier]="attack()?.attackBonus ?? 0"
             appLabel="Rolar ataque"
-            [busy]="busy() || !targetId() || !!rollWhy()"
+            [busy]="!canRoll()"
             (app)="rollApp()"
             (typed)="rollTyped($event)"
           />
@@ -153,7 +153,7 @@
             totalNote="Total do ataque"
             appLabel="Rolar 2d20 no app"
             [hint]="pairHint()"
-            [busy]="busy() || !targetId() || !!rollWhy()"
+            [busy]="!canRoll()"
             (app)="rollApp()"
             (typed)="rollTypedPair($event)"
           />

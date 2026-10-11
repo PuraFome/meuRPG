@@ -63,6 +63,10 @@ const (
 	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED ResourceBlockedReason = 13
 	// UseArcaneRecovery: the combined level of the slots is above the allowance.
 	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE ResourceBlockedReason = 14
+	// SpendHitDice with a typed face: the party hears a bard's Song of Rest and this
+	// character has not had its extra die in this rest, so the face of that die
+	// (`typed_song_face`) is needed too. `needed` is the die's size.
+	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED ResourceBlockedReason = 15
 )
 
 // Enum value maps for ResourceBlockedReason.
@@ -83,23 +87,25 @@ var (
 		12: "RESOURCE_BLOCKED_REASON_NO_SHORT_REST",
 		13: "RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED",
 		14: "RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE",
+		15: "RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED",
 	}
 	ResourceBlockedReason_value = map[string]int32{
-		"RESOURCE_BLOCKED_REASON_UNSPECIFIED":         0,
-		"RESOURCE_BLOCKED_REASON_COMBAT_OPEN":         1,
-		"RESOURCE_BLOCKED_REASON_NO_HIT_DICE_LEFT":    2,
-		"RESOURCE_BLOCKED_REASON_NOT_ENOUGH_POINTS":   3,
-		"RESOURCE_BLOCKED_REASON_SLOT_LEVEL_TOO_HIGH": 4,
-		"RESOURCE_BLOCKED_REASON_NO_FREE_SLOT":        5,
-		"RESOURCE_BLOCKED_REASON_SORCERY_POINTS_FULL": 6,
-		"RESOURCE_BLOCKED_REASON_SORCERY_POINTS_OVER": 7,
-		"RESOURCE_BLOCKED_REASON_NO_USES_LEFT":        8,
-		"RESOURCE_BLOCKED_REASON_TARGET_REFUSED":      9,
-		"RESOURCE_BLOCKED_REASON_NOT_AVAILABLE":       10,
-		"RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING": 11,
-		"RESOURCE_BLOCKED_REASON_NO_SHORT_REST":       12,
-		"RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED":   13,
-		"RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE":      14,
+		"RESOURCE_BLOCKED_REASON_UNSPECIFIED":              0,
+		"RESOURCE_BLOCKED_REASON_COMBAT_OPEN":              1,
+		"RESOURCE_BLOCKED_REASON_NO_HIT_DICE_LEFT":         2,
+		"RESOURCE_BLOCKED_REASON_NOT_ENOUGH_POINTS":        3,
+		"RESOURCE_BLOCKED_REASON_SLOT_LEVEL_TOO_HIGH":      4,
+		"RESOURCE_BLOCKED_REASON_NO_FREE_SLOT":             5,
+		"RESOURCE_BLOCKED_REASON_SORCERY_POINTS_FULL":      6,
+		"RESOURCE_BLOCKED_REASON_SORCERY_POINTS_OVER":      7,
+		"RESOURCE_BLOCKED_REASON_NO_USES_LEFT":             8,
+		"RESOURCE_BLOCKED_REASON_TARGET_REFUSED":           9,
+		"RESOURCE_BLOCKED_REASON_NOT_AVAILABLE":            10,
+		"RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING":      11,
+		"RESOURCE_BLOCKED_REASON_NO_SHORT_REST":            12,
+		"RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED":        13,
+		"RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE":           14,
+		"RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED": 15,
 	}
 )
 
@@ -867,7 +873,15 @@ type SpendHitDiceRequest struct {
 	//
 	//	*SpendHitDiceRequest_RollInApp
 	//	*SpendHitDiceRequest_TypedFace
-	Roll          isSpendHitDiceRequest_Roll `protobuf_oneof:"roll"`
+	Roll isSpendHitDiceRequest_Roll `protobuf_oneof:"roll"`
+	// The face of the Song of Rest die (SRD 5.1, Bard 2), for a typed roll only: when
+	// the party hears a bard's song during this short rest and this is the first die
+	// the character spends in it, the character regains an extra die of the song and a
+	// typed roll must carry its face. The call is refused with ResourceBlocked
+	// SONG_OF_REST_FACE_NEEDED (the die's size is in `needed`) when it is missing, and
+	// `invalid_argument` when it is outside the die. Ignored when no song applies.
+	// An app roll rolls the die on the server.
+	TypedSongFace int32 `protobuf:"varint,7,opt,name=typed_song_face,json=typedSongFace,proto3" json:"typed_song_face,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -955,6 +969,13 @@ func (x *SpendHitDiceRequest) GetTypedFace() int32 {
 	return 0
 }
 
+func (x *SpendHitDiceRequest) GetTypedSongFace() int32 {
+	if x != nil {
+		return x.TypedSongFace
+	}
+	return 0
+}
+
 type isSpendHitDiceRequest_Roll interface {
 	isSpendHitDiceRequest_Roll()
 }
@@ -978,9 +999,14 @@ type SpendHitDiceResponse struct {
 	// total, cut to the maximum. The total is at least 0.
 	Face                 int32 `protobuf:"varint,2,opt,name=face,proto3" json:"face,omitempty"`
 	ConstitutionModifier int32 `protobuf:"varint,3,opt,name=constitution_modifier,json=constitutionModifier,proto3" json:"constitution_modifier,omitempty"`
-	Healed               int32 `protobuf:"varint,4,opt,name=healed,proto3" json:"healed,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The hit points regained, the Song of Rest die included.
+	Healed int32 `protobuf:"varint,4,opt,name=healed,proto3" json:"healed,omitempty"`
+	// The extra die of a bard's Song of Rest (SRD 5.1) this die brought: its size and
+	// the face rolled, both 0 when no song applied. `healed` already counts it.
+	SongOfRestSides int32 `protobuf:"varint,5,opt,name=song_of_rest_sides,json=songOfRestSides,proto3" json:"song_of_rest_sides,omitempty"`
+	SongOfRestFace  int32 `protobuf:"varint,6,opt,name=song_of_rest_face,json=songOfRestFace,proto3" json:"song_of_rest_face,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SpendHitDiceResponse) Reset() {
@@ -1037,6 +1063,20 @@ func (x *SpendHitDiceResponse) GetConstitutionModifier() int32 {
 func (x *SpendHitDiceResponse) GetHealed() int32 {
 	if x != nil {
 		return x.Healed
+	}
+	return 0
+}
+
+func (x *SpendHitDiceResponse) GetSongOfRestSides() int32 {
+	if x != nil {
+		return x.SongOfRestSides
+	}
+	return 0
+}
+
+func (x *SpendHitDiceResponse) GetSongOfRestFace() int32 {
+	if x != nil {
+		return x.SongOfRestFace
 	}
 	return 0
 }
@@ -2704,7 +2744,7 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12,\n" +
 	"\x04dice\x18\x02 \x03(\v2\x18.meurpg.rules.v1.HitDiceR\x04dice\"K\n" +
 	"\x10TakeRestResponse\x127\n" +
-	"\x06vitals\x18\x01 \x03(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\"\xe3\x01\n" +
+	"\x06vitals\x18\x01 \x03(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\"\x8b\x02\n" +
 	"\x13SpendHitDiceRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2713,13 +2753,16 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12 \n" +
 	"\vroll_in_app\x18\x05 \x01(\bH\x00R\trollInApp\x12\x1f\n" +
 	"\n" +
-	"typed_face\x18\x06 \x01(\x05H\x00R\ttypedFaceB\x06\n" +
-	"\x04roll\"\xb0\x01\n" +
+	"typed_face\x18\x06 \x01(\x05H\x00R\ttypedFace\x12&\n" +
+	"\x0ftyped_song_face\x18\a \x01(\x05R\rtypedSongFaceB\x06\n" +
+	"\x04roll\"\x88\x02\n" +
 	"\x14SpendHitDiceResponse\x127\n" +
 	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x12\x12\n" +
 	"\x04face\x18\x02 \x01(\x05R\x04face\x123\n" +
 	"\x15constitution_modifier\x18\x03 \x01(\x05R\x14constitutionModifier\x12\x16\n" +
-	"\x06healed\x18\x04 \x01(\x05R\x06healed\"\xbc\x01\n" +
+	"\x06healed\x18\x04 \x01(\x05R\x06healed\x12+\n" +
+	"\x12song_of_rest_sides\x18\x05 \x01(\x05R\x0fsongOfRestSides\x12)\n" +
+	"\x11song_of_rest_face\x18\x06 \x01(\x05R\x0esongOfRestFace\"\xbc\x01\n" +
 	"\x18UseArcaneRecoveryRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2848,7 +2891,7 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\veffect_save\x18\x06 \x01(\v2&.meurpg.play.v1.RollEffectSaveResponseH\x00R\n" +
 	"effectSave\x12a\n" +
 	"\x12concentration_save\x18\a \x01(\v20.meurpg.play.v1.ResolveConcentrationSaveResponseH\x00R\x11concentrationSaveB\b\n" +
-	"\x06result*\xbb\x05\n" +
+	"\x06result*\xf1\x05\n" +
 	"\x15ResourceBlockedReason\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_COMBAT_OPEN\x10\x01\x12,\n" +
@@ -2865,7 +2908,8 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"+RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING\x10\v\x12)\n" +
 	"%RESOURCE_BLOCKED_REASON_NO_SHORT_REST\x10\f\x12-\n" +
 	")RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED\x10\r\x12*\n" +
-	"&RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE\x10\x0e*N\n" +
+	"&RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE\x10\x0e\x124\n" +
+	"0RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED\x10\x0f*N\n" +
 	"\bRestKind\x12\x19\n" +
 	"\x15REST_KIND_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fREST_KIND_SHORT\x10\x01\x12\x12\n" +
