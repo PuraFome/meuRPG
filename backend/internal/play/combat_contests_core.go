@@ -139,6 +139,11 @@ type contestRoll struct {
 	// The Bardic Inspiration die the player added after the d20 (already in Total).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
 	BonusFace  int32 `json:"bonus_face,omitempty"`
+	// The table maneuver's superiority die added after the d20 (already in Total).
+	ManeuverKey   string `json:"maneuver_key,omitempty"`
+	ManeuverName  string `json:"maneuver_name,omitempty"`
+	ManeuverSides int32  `json:"maneuver_sides,omitempty"`
+	ManeuverFace  int32  `json:"maneuver_face,omitempty"`
 }
 
 func checkModeKey(m combat.CheckMode) string {
@@ -179,6 +184,7 @@ func (r contestRoll) proto() *playv1.CheckRoll {
 		Skill: skillEnum(r.Skill), SkillKey: r.Skill, Faces: slices.Clone(r.Faces), Modifier: r.Modifier, Total: r.Total, Physical: r.Physical,
 		Mode: checkModeProto(checkModeOfKey(r.Mode)), Notes: notesProto(r.Notes), BonusKnown: !r.Unknown, RolledByMaster: r.ByMaster,
 		BonusDieSides: r.BonusSides, BonusDieFace: r.BonusFace,
+		ManeuverKey: r.ManeuverKey, ManeuverNamePt: r.ManeuverName, ManeuverDieSides: r.ManeuverSides, ManeuverDieFace: r.ManeuverFace,
 	}
 	return out
 }

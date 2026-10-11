@@ -47,6 +47,11 @@ import {
         }
       </ul>
     }
+    @if (roll().maneuverDieSides > 0) {
+      <p class="by" data-testid="maneuver-die">
+        {{ roll().maneuverNamePt }}: d{{ roll().maneuverDieSides }} ({{ roll().maneuverDieFace }}) já está no total.
+      </p>
+    }
     @if (roll().rolledByMaster) {
       <p class="by">O mestre rolou por você.</p>
     }

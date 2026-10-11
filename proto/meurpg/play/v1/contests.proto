@@ -256,6 +256,14 @@ message StartContestRequest {
   CheckRollInput roll = 9;
   // The fixed escape DC (1 to 40) of an ESCAPE_DC grapple. Only the master.
   int32 escape_dc = 10;
+  // A table maneuver (ContestAttackOption.maneuvers[].key) that starts a GRAPPLE: the player
+  // made a melee hit this turn, so the grapple costs the bonus action and one use of the
+  // maneuver's resource instead of an attack, and the superiority die is added to the
+  // Athletics check. Not with ESCAPE_DC; players only.
+  string maneuver_key = 11;
+  // The face of the die when the player rolls physical dice (the roll is typed d20 faces): 1
+  // to the die's sides. Empty (0) when the roll is in the app, where the server rolls the die.
+  int32 maneuver_face = 12;
 }
 
 // StartContestResponse returns the combat after it and the contest.

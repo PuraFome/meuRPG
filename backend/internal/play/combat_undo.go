@@ -882,6 +882,15 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				return nil, err
 			}
 		}
+		if who.Kind == kindPlayer {
+			for _, key := range ev.ManeuverSpent { // a table maneuver's use
+				v, err := s.spendResource(ctx, c, who.CharacterID, key, -1)
+				if err != nil {
+					return nil, err
+				}
+				keep(v)
+			}
+		}
 		if err := setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed); err != nil {
 			return nil, err
 		}

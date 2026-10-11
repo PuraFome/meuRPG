@@ -202,6 +202,8 @@ func (s *Service) answerMore(ctx context.Context, c *combatTx, m authz.Membershi
 		return s.answerUncannyDodge(ctx, c, w, reactor, use, got)
 	case reaction.DeflectKind:
 		return s.answerDeflect(ctx, c, w, reactor, use, req, got)
+	case reaction.ManeuverReduceKind:
+		return s.answerManeuverReduce(ctx, c, w, reactor, use, req, got)
 	case reaction.CuttingWords:
 		return s.answerCuttingWords(ctx, c, w, reactor, use, req, got)
 	case reaction.HellishRebukeKind:

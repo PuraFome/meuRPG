@@ -98,6 +98,11 @@ func fullReactionStats(d rules.Derived, full *charactersv1.FullSheet) link.React
 		}
 	}
 	out.DexMod = abilityMod(d, rules.DEX)
+	for _, m := range d.Maneuvers {
+		if m.Applies == rules.ManeuverReduceMelee {
+			out.Reduce = append(out.Reduce, link.ReduceManeuver{Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Sides: m.Sides, Mod: abilityMod(d, rules.Ability(m.Ability))})
+		}
+	}
 	out.Proficiency = d.ProficiencyBonus
 	// Charisma is the spellcasting ability of the Infernal Legacy.
 	out.LegacyDC = 8 + d.ProficiencyBonus + abilityMod(d, rules.CHA)

@@ -178,7 +178,7 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 			st.reduction += out.Reduction
 		case reaction.UncannyDodgeKind:
 			st.halve = true
-		case reaction.DeflectKind:
+		case reaction.DeflectKind, reaction.ManeuverReduceKind:
 			st.deflected += out.Reduction
 		}
 	}

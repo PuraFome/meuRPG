@@ -18,17 +18,18 @@ import (
 // own character sees; everyone else only the line "Esperando ...", written for them.
 
 var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
-	reaction.Shield:            playv1.ReactionKind_REACTION_KIND_SHIELD,
-	reaction.UncannyDodgeKind:  playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE,
-	reaction.HellishRebukeKind: playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE,
-	reaction.CounterspellKind:  playv1.ReactionKind_REACTION_KIND_COUNTERSPELL,
-	reaction.CuttingWords:      playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS,
-	reaction.DeflectKind:       playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES,
-	reaction.FeatherFall:       playv1.ReactionKind_REACTION_KIND_FEATHER_FALL,
-	reaction.Concentration:     playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
-	reaction.MasterCheck:       playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
-	reaction.Contest:           playv1.ReactionKind_REACTION_KIND_CONTEST,
-	reaction.EffectSave:        playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
+	reaction.Shield:             playv1.ReactionKind_REACTION_KIND_SHIELD,
+	reaction.UncannyDodgeKind:   playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE,
+	reaction.HellishRebukeKind:  playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE,
+	reaction.CounterspellKind:   playv1.ReactionKind_REACTION_KIND_COUNTERSPELL,
+	reaction.CuttingWords:       playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS,
+	reaction.DeflectKind:        playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES,
+	reaction.ManeuverReduceKind: playv1.ReactionKind_REACTION_KIND_MANEUVER_REDUCE,
+	reaction.FeatherFall:        playv1.ReactionKind_REACTION_KIND_FEATHER_FALL,
+	reaction.Concentration:      playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
+	reaction.MasterCheck:        playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
+	reaction.Contest:            playv1.ReactionKind_REACTION_KIND_CONTEST,
+	reaction.EffectSave:         playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
 }
 
 // windowView is what the builders of a caller's windows share.

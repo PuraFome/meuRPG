@@ -47,8 +47,11 @@ type reactionEvent struct {
 	AC       int32  `json:"ac,omitempty"`
 	Outcome  string `json:"outcome,omitempty"`
 	Caught   bool   `json:"caught,omitempty"`
-	Stopped  bool   `json:"stopped,omitempty"`
-	Magic    bool   `json:"magic,omitempty"`
+	// ManeuverName and Resource: the table maneuver a maneuver_reduce used and the resource it spent.
+	ManeuverName string `json:"maneuver_name,omitempty"`
+	Resource     string `json:"resource,omitempty"`
+	Stopped      bool   `json:"stopped,omitempty"`
+	Magic        bool   `json:"magic,omitempty"`
 	// Hellish Rebuke: the aggressor's save and the fire.
 	SaveD20   int32 `json:"save_d20,omitempty"`
 	SaveBonus int32 `json:"save_bonus,omitempty"`
@@ -72,15 +75,16 @@ const reactionHeldDropped = "held_dropped"
 // reactionNames are the Portuguese names of the reactions, as names_pt.json has them
 // (TestReactionNamesAreTheOfficialOnes keeps them equal).
 var reactionNames = map[reaction.Kind]string{
-	reaction.Shield:            "Escudo Arcano",
-	reaction.UncannyDodgeKind:  "Esquiva Sobrenatural",
-	reaction.HellishRebukeKind: "Repreensão Infernal",
-	reaction.CounterspellKind:  "Contramágica",
-	reaction.CuttingWords:      "Palavras de Interrupção",
-	reaction.DeflectKind:       "Defletir Projéteis",
-	reaction.FeatherFall:       "Queda Suave",
-	reaction.Concentration:     "Teste de concentração",
-	reaction.MasterCheck:       "Verificação do mestre",
+	reaction.Shield:             "Escudo Arcano",
+	reaction.UncannyDodgeKind:   "Esquiva Sobrenatural",
+	reaction.HellishRebukeKind:  "Repreensão Infernal",
+	reaction.CounterspellKind:   "Contramágica",
+	reaction.CuttingWords:       "Palavras de Interrupção",
+	reaction.DeflectKind:        "Defletir Projéteis",
+	reaction.ManeuverReduceKind: "Manobra",
+	reaction.FeatherFall:        "Queda Suave",
+	reaction.Concentration:      "Teste de concentração",
+	reaction.MasterCheck:        "Verificação do mestre",
 }
 
 // reactionNameKeys are the content keys of the reaction names.

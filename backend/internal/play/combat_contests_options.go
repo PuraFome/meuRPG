@@ -146,12 +146,20 @@ func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *
 		return nil, nil, err
 	}
 	targets := contestTargets(d.enc, d.cs, who, v)
+	maneuvers, err := s.grappleManeuverOptions(ctx, m.CampaignID, d.enc, who, sheet, gateReason(gate), v.master)
+	if err != nil {
+		return nil, nil, err
+	}
 	var out []*playv1.ContestAttackOption
 	for _, kind := range []playv1.ContestAttackOptionKind{playv1.ContestAttackOptionKind_CONTEST_ATTACK_OPTION_KIND_GRAPPLE, playv1.ContestAttackOptionKind_CONTEST_ATTACK_OPTION_KIND_SHOVE} {
-		out = append(out, &playv1.ContestAttackOption{
+		opt := &playv1.ContestAttackOption{
 			Kind: kind, ReplacesAttack: true, Enabled: reason == nil, Reason: reason, AttacksLeft: clamp32(left, 0, math.MaxInt32),
 			Targets: targets, RollOption: roll,
-		})
+		}
+		if kind == playv1.ContestAttackOptionKind_CONTEST_ATTACK_OPTION_KIND_GRAPPLE {
+			opt.Maneuvers = maneuvers
+		}
+		out = append(out, opt)
 	}
 	return out, state, nil
 }

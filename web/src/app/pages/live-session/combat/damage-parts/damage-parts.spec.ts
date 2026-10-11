@@ -125,3 +125,40 @@ describe('DamageParts', () => {
     );
   });
 });
+
+describe('DamageParts maneuvers', () => {
+  const maneuver = (key: string, name: string) => ({
+    key,
+    labelPt: name,
+    diceCount: 1,
+    diceSides: 8,
+    flat: 0,
+    choosable: true,
+    available: true,
+    maneuver: true,
+  });
+
+  it('turns the other maneuvers off, in words, once one is marked, and back on when it is unmarked', () => {
+    const fixture = TestBed.createComponent(DamageParts);
+    fixture.componentRef.setInput('parts', [
+      parts[0],
+      maneuver('feature:garca', 'Golpe da Garça'),
+      maneuver('feature:touro', 'Golpe do Touro'),
+    ]);
+    fixture.componentRef.setInput('picks', [{ key: 'feature:garca', slotLevel: 0, pact: false }]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const row = (label: string) =>
+      Array.from(el.querySelectorAll<HTMLElement>('.extra')).find((e) =>
+        e.textContent!.includes(label),
+      )!;
+    expect(row('Golpe do Touro').querySelector<HTMLInputElement>('input')!.disabled).toBe(true);
+    expect(row('Golpe do Touro').textContent!.replace(/\s+/g, ' ')).toContain(
+      'Indisponível: só uma manobra por ataque.',
+    );
+    expect(row('Golpe da Garça').querySelector<HTMLInputElement>('input')!.disabled).toBe(false);
+    fixture.componentRef.setInput('picks', []);
+    fixture.detectChanges();
+    expect(row('Golpe do Touro').querySelector<HTMLInputElement>('input')!.disabled).toBe(false);
+  });
+});

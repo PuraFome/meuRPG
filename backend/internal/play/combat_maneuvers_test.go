@@ -22,7 +22,7 @@ const (
 
 type maneuverTable struct {
 	*armed
-	heron, bull string
+	heron, bull, grip, guard string
 }
 
 // newManeuverTable makes the table's subclass (two damage golpes and one grapple golpe,
@@ -42,12 +42,13 @@ func newManeuverTable(t *testing.T, uses string) *maneuverTable {
 			NamePt: "Golpes", DescPt: []string{"Escolha golpes."},
 			Effects: []*rulesv1.TableEffect{
 				{Type: "resource", Resource: maneuverDiceKey, Max: uses, Recharge: "short_rest"},
-				{Type: "choice", Choice: "feature", Count: 2},
+				{Type: "choice", Choice: "feature", Count: 4},
 			},
 			Options: []*rulesv1.TableFeature{
 				{NamePt: "Golpe da Garça", DescPt: []string{"Um golpe."}, Effects: die("damage", nil)},
 				{NamePt: "Golpe do Touro", DescPt: []string{"Outro golpe."}, Effects: die("damage", nil)},
 				{NamePt: "Golpe de Pegada", DescPt: []string{"Uma agarrada."}, Effects: die("grapple", func(e *rulesv1.TableEffect) { e.Economy = "bonus_action" })},
+				{NamePt: "Golpe de Guarda", DescPt: []string{"Uma defesa."}, Effects: die("reduce_melee_damage", func(e *rulesv1.TableEffect) { e.Economy = "reaction"; e.Ability = "dex" })},
 			},
 		}
 		sub := &rulesv1.TableSubclass{
@@ -62,7 +63,7 @@ func newManeuverTable(t *testing.T, uses string) *maneuverTable {
 		}
 		entry := res.Msg.GetEntry()
 		opts := entry.GetTableSubclass().GetLevels()[0].GetFeatures()[0].GetOptions()
-		m.heron, m.bull = opts[0].GetKey(), opts[1].GetKey()
+		m.heron, m.bull, m.grip, m.guard = opts[0].GetKey(), opts[1].GetKey(), opts[2].GetKey(), opts[3].GetKey()
 		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 			BaseScores: &rulesv1.AbilityScores{Strength: 14, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, RaceKey: "race:human",
 			Background: &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
@@ -70,7 +71,7 @@ func newManeuverTable(t *testing.T, uses string) *maneuverTable {
 				ClassKey: "class:fighter", Level: 5, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: entry.GetKey()},
 			}},
 			SkillProficiencyKeys: []string{"skill:athletics", "skill:perception"},
-			FeatureChoiceKeys:    []string{"feature:fighter-fighting-style-defense", m.heron, m.bull},
+			FeatureChoiceKeys:    []string{"feature:fighter-fighting-style-defense", m.heron, m.bull, m.grip, m.guard},
 			WeaponKeys:           []string{longsword},
 			HitPoints:            &charactersv1.HitPoints{Method: charactersv1.HitPointsMethod_HIT_POINTS_METHOD_AVERAGE}, ExperiencePoints: 6500,
 		}}}

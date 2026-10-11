@@ -212,6 +212,7 @@ type Combatant struct {
 	ExtraActionUsed         bool
 	ExhaustionLevel         int32
 	HpMaxBase               *int32
+	MeleeHitTurn            *string
 }
 
 type CombatantState struct {
