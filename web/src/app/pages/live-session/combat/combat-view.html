@@ -279,7 +279,7 @@
               (answer)="answerRider($event)"
             />
           <div class="player" [class.player--mine]="(myTurn() && !!options()) || !!creatureTab()">
-            <div class="player__turn">
+            <div class="player__turn" [class.mr-nudge]="turnAlert.shaking()" [class.mr-nudge--still]="turnAlert.highlighted()">
               @if (laptop() && showTabs()) {
                 <app-mine-tabs [tabs]="tabs()" [selected]="tab()?.id ?? ''" [inert]="partAsking()" (select)="tabId.set($event)" />
               }
@@ -315,6 +315,8 @@
                   (endConcentration)="endOwnConcentration()"
                 />
               }
+              <!-- The per-device switch of the turn alert: sound and vibration only; the shake and the title stay. -->
+              <app-check-row class="turn-alert-switch" label="Avisar na minha vez (som e vibração)" [checked]="turnAlert.enabled()" (toggled)="turnAlert.setEnabled($event)" />
               @if (contest.pending().length > 0 && !contest.sheetOpen()) {
                 <!-- A contest asks something of this player (W7-X) and its sheet was closed: the way back to it. -->
                 <div class="mr-notice mr-notice--warning notice" data-testid="contest-pending">

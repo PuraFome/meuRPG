@@ -128,6 +128,8 @@ import { MoveSaves } from '../../../core/maps/move-saves';
 import { metersFixed } from '../../../core/units';
 import { RosterClient } from '../../../core/maps/roster-client';
 import type { TokenDrop } from '../../../shared/combat-map/combat-map';
+import { TurnAlert } from '../../../core/combat/turn-alert';
+import { CheckRow } from '../../../shared/form-fields/check-row';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import type { SpellDetailsData } from '../../../shared/spell-details/spell-details';
 import { openSpellDetails } from '../../../shared/spell-details/open-spell-details';
@@ -252,6 +254,7 @@ const RETRYABLE: ReadonlySet<Code> = new Set([
 @Component({
   selector: 'app-combat-view',
   imports: [
+    CheckRow,
     ActionGroups,
     BeastTraits,
     CreatureBar,
@@ -309,6 +312,7 @@ export class CombatView {
   private readonly creaturesApi = inject(CreaturesClient);
   private readonly tableRules = inject(TableRulesClient);
   private readonly bottomSheet = inject(MatBottomSheet);
+  protected readonly turnAlert = inject(TurnAlert);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   protected readonly phone = mediaQuery(PHONE_QUERY);
@@ -1228,6 +1232,13 @@ export class CombatView {
         }
       }
     });
+    // The turn alert: the turn passing to a group the player plays (vibration, chime, shake, title); the first look is only the baseline.
+    effect(() => {
+      const tab = this.tabs().find((t) => t.state === 'turn');
+      const turn = tab ? { key: tab.id, label: tab.label } : null;
+      untracked(() => this.turnAlert.observe(turn));
+    });
+    inject(DestroyRef).onDestroy(() => this.turnAlert.reset());
     // The tab follows the turn: when it comes to a group of the player's (the character or its creatures), the page shows it.
     let acting = '';
     effect(() => {

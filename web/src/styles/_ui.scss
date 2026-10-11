@@ -484,3 +484,37 @@ a.mr-list__row:hover .mr-list__name {
     opacity: 0.6;
   }
 }
+
+// The turn alert (MSN-style nudge): the turn panel shakes for half a second when the turn comes to the player. Under
+// reduced motion the shake is replaced by a static accent frame (a frame, not colour alone: it is a 2px outline).
+// The length matches `SHAKE_MS` in `core/combat/turn-alert.ts`.
+@keyframes mr-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15%,
+  55% {
+    transform: translateX(-6px);
+  }
+  35%,
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+.mr-nudge {
+  animation: mr-nudge 0.5s ease-in-out 1;
+}
+
+.mr-nudge--still {
+  outline: 2px solid var(--mr-accent);
+  outline-offset: 4px;
+  border-radius: var(--mr-radius-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mr-nudge {
+    animation: none;
+  }
+}
