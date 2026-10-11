@@ -310,7 +310,7 @@ func (s *Service) GetTurnOptions(
 		modes.annotate(a.GetAttack().GetKey(), targets)
 		res.AttackTargets = append(res.AttackTargets, &playv1.AttackTargets{AttackKey: a.GetAttack().GetKey(), Targets: targets})
 	}
-	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts, isTheatre(enc)); err != nil {
+	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts, isTheatre(enc), modes); err != nil {
 		return nil, s.dbError(ctx, "work out the spell targets", err)
 	}
 	res.ResourceTargets = resourceTargetsFor(terrain, d.cs, who, v, opts, enc)
@@ -334,7 +334,7 @@ func (s *Service) GetTurnOptions(
 // the spell cannot reach it, how many targets it takes and, for Magic Missile,
 // the darts of each slot level. Spells that cannot be cast now are left out:
 // they carry their reason and need no targets.
-func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrain grid.Terrain, who playdb.Combatant, cs []playdb.Combatant, v combatViewer, opts *rulesv1.TurnOptions, theatre bool) ([]*playv1.SpellTargets, error) {
+func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrain grid.Terrain, who playdb.Combatant, cs []playdb.Combatant, v combatViewer, opts *rulesv1.TurnOptions, theatre bool, modes turnModes) ([]*playv1.SpellTargets, error) {
 	type entry struct {
 		key   string
 		level int
@@ -363,6 +363,10 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 			AreaWidthFt: areaWidthFor(sp, theatre), RangeFt: placedRangeFor(sp, theatre),
 			MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
 			TargetsPerLevel: clamp32(sp.TargetPerLevel, 0, maxCombatants),
+		}
+		if sp.AttackType != "" { // a spell attack roll: the target's mode, as CastSpell settles it (SRD 5.1)
+			shape := shapeOfSpell(sp)
+			modes.annotateShape(&shape, st.Targets)
 		}
 		for _, slot := range e.slots {
 			if n := dartsOf(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(st.Darts, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {

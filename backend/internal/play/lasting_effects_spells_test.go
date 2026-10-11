@@ -231,3 +231,43 @@ func TestHideousLaughterAsksTheSaveAgainWhenTheTargetTakesDamage(t *testing.T) {
 		t.Errorf("the prompt's mode = %q, want advantage", p.GetMode())
 	}
 }
+
+// A spell attack's targets carry the roll mode of the attack, as the attack options do: the cast
+// sheet suggests it, and CastSpell rolls with it. Guiding Bolt at an outlined Goblin from a
+// distance has advantage (Faerie Fire, SRD 5.1), so one typed d20 is refused and two are taken.
+func TestASpellAttacksTargetsCarryTheOutlineAdvantage(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	// Brisa stands away from the Goblin: next to a hostile creature a ranged attack has disadvantage.
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {4, 9}},
+	})
+	a.mustAddEffect(t, e, "spell:faerie-fire", []string{"Goblin"}, a.rounds(t, 10, "Pensantus"))
+	a.passTo(t, e, "Brisa")
+	e = a.get(t, a.master)
+	opts := a.mustOptions(t, a.bia, e, "Brisa")
+	st := spellTargetsOf(opts, guidingBolt)
+	goblin := targetOf2(st, "Goblin")
+	if goblin == nil || goblin.GetRollMode() != playv1.RollMode_ROLL_MODE_ADVANTAGE {
+		t.Fatalf("the Goblin as Guiding Bolt's target = %v, want advantage", goblin)
+	}
+	found := false
+	for _, s := range goblin.GetSources() {
+		found = found || s.GetKind() == playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET
+	}
+	if !found {
+		t.Errorf("the Goblin's sources = %v, want the outline", goblin.GetSources())
+	}
+	if _, err := a.cast(t, a.bia, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Goblin"), func(r *playv1.CastSpellRequest) {
+		r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 12}
+	}); err == nil {
+		t.Error("a single typed d20 against an advantage target was accepted, want it refused")
+	}
+	a.mustCast(t, a.bia, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Goblin"), func(r *playv1.CastSpellRequest) {
+		r.D20Faces = []int32{12, 3}
+	})
+}
