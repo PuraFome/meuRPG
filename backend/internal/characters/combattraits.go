@@ -60,6 +60,15 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 		return h.Target == "skill:stealth" && h.Mode == "disadvantage"
 	})
 	t.ImprovedDivineSmite = rules.HasFeature(d, "feature:improved-divine-smite")
+	t.OpenHand = rules.HasFeature(d, "feature:open-hand-technique")
+	t.StunningStrike = rules.HasFeature(d, "feature:stunning-strike")
+	if rules.LevelIn(d, "class:monk") > 0 {
+		for _, a := range d.Abilities {
+			if a.Ability == rules.WIS {
+				t.KiSaveDC = 8 + d.ProficiencyBonus + a.Modifier // the ki save DC (SRD 5.1, Monk)
+			}
+		}
+	}
 	if rules.HasFeature(d, "feature:sneak-attack") {
 		t.SneakAttackDice = combat.SneakAttackDice(t.RogueLevel)
 	}

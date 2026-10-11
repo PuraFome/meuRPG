@@ -369,7 +369,7 @@ func (s *Service) checkReactor(ctx context.Context, c *combatTx, reactor, mover 
 		return errNoOpportunity("the reactor is defeated")
 	case reactor.Side == mover.Side:
 		return errNoOpportunity("the reactor is not hostile to the mover")
-	case slices.ContainsFunc(reactor.Conditions, func(k string) bool { return slices.Contains(cantReact, k) }):
+	case slices.ContainsFunc(reactor.Conditions, func(k string) bool { return slices.Contains(cantReact, k) }), reactor.EffectNoReaction:
 		return errNoOpportunity("the reactor cannot react now")
 	case reactor.ReactionUsed:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")

@@ -586,6 +586,8 @@ type actionEvent struct {
 	StateStarted bool   `json:"state_started,omitempty"`
 	StateReason  string `json:"state_reason,omitempty"`
 	StateID      string `json:"state_id,omitempty"`
+	// Rider is an answered monk rider (hit_rider).
+	Rider *riderEvent `json:"rider,omitempty"`
 
 	// HidBefore is the hiding an attack or a cast ended, which its undo gives back
 	// (combat_hide.go).

@@ -383,6 +383,7 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 			players = append(players, cb.CharacterID)
 		}
 		noAction := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoAction })
+		noReaction := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoReaction })
 		// Speed 0 (exhaustion 5, the lethargy) is no movement; a percentage of 0 is never stored.
 		noMove := ex0(level) || slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoMove })
 		if derived == nil {
@@ -391,11 +392,11 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 		if conds == nil {
 			conds = []string{}
 		}
-		if slices.Equal(conds, cb.Conditions) && slices.Equal(derived, cb.EffectConditions) && int(cb.EffectAcBonus) == ac && int(cb.EffectSpeedPct) == pct && cb.EffectNoAction == noAction && cb.EffectNoMove == noMove && int(cb.EffectSpeedAddFt) == combat.SpeedAddFt(mods) {
+		if slices.Equal(conds, cb.Conditions) && slices.Equal(derived, cb.EffectConditions) && int(cb.EffectAcBonus) == ac && int(cb.EffectSpeedPct) == pct && cb.EffectNoAction == noAction && cb.EffectNoReaction == noReaction && cb.EffectNoMove == noMove && int(cb.EffectSpeedAddFt) == combat.SpeedAddFt(mods) {
 			continue
 		}
 		if err := c.q.SetCombatantEffectState(ctx, playdb.SetCombatantEffectStateParams{
-			ID: cb.ID, Conditions: conds, EffectConditions: derived, EffectAcBonus: int32(ac), EffectSpeedPct: int32(pct), EffectNoAction: noAction, EffectNoMove: noMove, EffectSpeedAddFt: int32(combat.SpeedAddFt(mods)), //nolint:gosec // small numbers
+			ID: cb.ID, Conditions: conds, EffectConditions: derived, EffectAcBonus: int32(ac), EffectSpeedPct: int32(pct), EffectNoAction: noAction, EffectNoReaction: noReaction, EffectNoMove: noMove, EffectSpeedAddFt: int32(combat.SpeedAddFt(mods)), //nolint:gosec // small numbers
 		}); err != nil {
 			return fmt.Errorf("work out the effects' state: %w", err)
 		}

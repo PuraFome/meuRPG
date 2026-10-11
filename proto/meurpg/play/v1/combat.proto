@@ -1364,6 +1364,19 @@ service CombatService {
   //   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
   //     NOT_RAGING.
   rpc EndRage(EndRageRequest) returns (EndRageResponse);
+
+  // UseHitRider answers a monk's offer after a hit (Encounter.hit_riders): the Open Hand
+  // technique on a Flurry of Blows hit (knock prone, push, or no reactions) or Stunning
+  // Strike (1 ki point) on a melee hit. The server rolls the target's saving throw against
+  // the ki save DC (for an NPC and a player's character alike, as a spell's save), applies
+  // what a failure does and writes the line. The monk's player or the master.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as TakeAction.
+  //   - `failed_precondition`: the offer was already answered, or its round is over; or,
+  //     for Stunning Strike, there is no ki point left.
+  //   - `invalid_argument`: the choice is not one the offer has.
+  rpc UseHitRider(UseHitRiderRequest) returns (UseHitRiderResponse);
 }
 
 // EncounterMode is how a combat is played (RN-25, ADR-0017): chosen when it
@@ -1964,6 +1977,80 @@ message Encounter {
   // character, with the round and no more; for the others the list does not exist
   // (RN-10, RN-03).
   repeated CombatDeath deaths = 26;
+  // The offers of the monk's riders after a hit (UseHitRider): the master gets all of
+  // them, a player the ones of their own character. Open until answered or the round ends.
+  repeated HitRiderOffer hit_riders = 30;
+}
+
+// HitRiderKind is which rider a hit offers.
+enum HitRiderKind {
+  HIT_RIDER_KIND_UNSPECIFIED = 0;
+  // Open Hand technique (Monk 3, Way of the Open Hand): on a Flurry of Blows hit.
+  HIT_RIDER_KIND_OPEN_HAND = 1;
+  // Stunning Strike (Monk 5): on a melee hit, 1 ki point.
+  HIT_RIDER_KIND_STUNNING_STRIKE = 2;
+}
+
+// HitRiderChoice is what the monk picks.
+enum HitRiderChoice {
+  HIT_RIDER_CHOICE_UNSPECIFIED = 0;
+  // Open Hand: Dexterity save or knocked prone.
+  HIT_RIDER_CHOICE_PRONE = 1;
+  // Open Hand: Strength save or pushed up to 15 ft (4,5 m). The master places the token.
+  HIT_RIDER_CHOICE_PUSH = 2;
+  // Open Hand: no reactions until the end of the monk's next turn (no save).
+  HIT_RIDER_CHOICE_NO_REACTIONS = 3;
+  // Stunning Strike: Constitution save or stunned until the end of the monk's next turn.
+  HIT_RIDER_CHOICE_STUN = 4;
+  // Declines the offer.
+  HIT_RIDER_CHOICE_DECLINE = 5;
+}
+
+// HitRiderOffer is one open offer (Encounter.hit_riders).
+message HitRiderOffer {
+  string id = 1;
+  HitRiderKind kind = 2;
+  string attacker_id = 3;
+  string target_id = 4;
+  // The ki save DC. Only the master and the monk's player get it (RN-20).
+  int32 save_dc = 5;
+  // Ki points left, for Stunning Strike.
+  int32 ki_left = 6;
+}
+
+// UseHitRiderRequest answers an offer.
+message UseHitRiderRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string rider_id = 3;
+  HitRiderChoice choice = 4;
+  string idempotency_key = 5;
+}
+
+// UseHitRiderResponse returns the combat.
+message UseHitRiderResponse {
+  Encounter encounter = 1;
+}
+
+// HitRiderLogResult is how an answered rider ended.
+enum HitRiderLogResult {
+  HIT_RIDER_LOG_RESULT_UNSPECIFIED = 0;
+  HIT_RIDER_LOG_RESULT_SAVED = 1;
+  HIT_RIDER_LOG_RESULT_FAILED = 2;
+  // No save (no reactions) or declined.
+  HIT_RIDER_LOG_RESULT_APPLIED = 3;
+  HIT_RIDER_LOG_RESULT_DECLINED = 4;
+}
+
+// CombatLogHitRider is the line of an answered rider (CombatLogKind HIT_RIDER).
+message CombatLogHitRider {
+  HitRiderChoice choice = 1;
+  HitRiderLogResult result = 2;
+  // The target's roll and the DC: the master's and the monk's player's lines only (RN-20).
+  int32 d20 = 3;
+  int32 save_total = 4;
+  int32 dc = 5;
+  bool numbers = 6;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -4254,6 +4341,9 @@ enum CombatLogKind {
   // reviveu Toren". The revived combatant is `target_id`; no actor. Everyone sees it,
   // unless the combatant is hidden.
   COMBAT_LOG_KIND_CHARACTER_REVIVED = 34;
+  // A monk's rider answered (UseHitRider): the Open Hand technique or Stunning Strike,
+  // the actor the monk and the target the creature hit. `hit_rider` has the result.
+  COMBAT_LOG_KIND_HIT_RIDER = 40;
 }
 
 // CombatLogStateChange is a state that began or ended.
@@ -4423,6 +4513,8 @@ message CombatLogEntry {
   CombatLogEffectEnd effect_end = 46;
   // EFFECT and EXHAUSTION: what happened.
   CombatLogEffect effect = 100;
+  // HIT_RIDER: how the rider ended.
+  CombatLogHitRider hit_rider = 110;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.

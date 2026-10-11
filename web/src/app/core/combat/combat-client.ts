@@ -20,6 +20,7 @@ import {
   type GetTurnOptionsResponse,
   type InspirationOffer,
   type ListCombatLogResponse,
+  HitRiderChoice,
   JumpKind,
   MonsterHitPoints,
   type ParticipantSchema,
@@ -511,6 +512,21 @@ export class CombatClient {
         }),
     );
     return need(res.encounter, 'AnswerRageEnd');
+  }
+
+  /** `UseHitRider`: the monk's answer to an offer after a hit (Open Hand technique, Golpe Atordoante). */
+  async useHitRider(
+    campaignId: string,
+    encounterId: string,
+    riderId: string,
+    choice: HitRiderChoice,
+  ): Promise<Encounter> {
+    const res = await this.keyed(
+      ['useHitRider', campaignId, encounterId, riderId, choice],
+      (sent) =>
+        this.client.useHitRider({ campaignId, encounterId, riderId, choice, idempotencyKey: sent }),
+    );
+    return need(res.encounter, 'UseHitRider');
   }
 
   /** "Encerrar fúria": the bonus action that ends a rage. */

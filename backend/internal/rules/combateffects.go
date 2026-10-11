@@ -55,6 +55,9 @@ const (
 	ModifierNoMove = "no_move"
 	// ModifierNoAction stops the creature from taking actions.
 	ModifierNoAction = "no_action"
+	// ModifierNoReaction stops the creature from taking reactions (the Open Hand
+	// technique: no reactions until the end of the monk's next turn).
+	ModifierNoReaction = "no_reaction"
 	// ModifierCheckBonus adds a bonus to the checks of a skill (Pass without Trace: +10 to
 	// Dexterity (Stealth)).
 	ModifierCheckBonus = "check_bonus"
@@ -227,7 +230,7 @@ var (
 		EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
 		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest,
 	}
-	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP}
+	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierNoReaction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP}
 	saveAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 	// extraActions are the standard actions an extra action may be: the keys of
 	// effects/standard_actions.json.

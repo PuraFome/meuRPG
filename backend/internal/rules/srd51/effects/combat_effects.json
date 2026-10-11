@@ -158,6 +158,22 @@
     }
   },
   "effects": {
+    "effect:stunning-strike": {
+      "kind": "feature",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "visibility": "public",
+      "conditions": ["condition:stunned"],
+      "player_label_pt": "Golpe Atordoante",
+      "tags_pt": ["Atordoado até o fim do próximo turno do monge"]
+    },
+    "effect:open-hand-no-reactions": {
+      "kind": "feature",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "visibility": "public",
+      "modifiers": [{"kind": "no_reaction"}],
+      "player_label_pt": "Sem reações",
+      "tags_pt": ["Não pode usar reações até o fim do próximo turno do monge"]
+    },
     "effect:lethargy": {
       "kind": "feature",
       "duration": {"kind": "until_end_of_turn_of"},
