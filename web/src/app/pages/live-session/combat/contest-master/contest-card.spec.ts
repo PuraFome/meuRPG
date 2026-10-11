@@ -11,6 +11,7 @@ import {
   ContestStatus,
   ContestWaitFor,
   ContestWinner,
+  RollModeKind,
   ShoveBlockedReason,
   ShoveChoiceSchema,
   ShoveOutcome,
@@ -304,5 +305,29 @@ describe('ContestCard, the master answers a contest', () => {
     expect(textOf(el.querySelector('h2')!)).toBe('Brisa tenta escapar');
     expect(textOf(el)).toContain('O teste de quem agarra');
     expect(el.querySelectorAll('input[type="radio"]')).toHaveLength(1);
+  });
+
+  describe('the natural mark (information only)', () => {
+    const marks = (faces: number[], mode?: RollModeKind) => {
+      const { el } = setup(
+        contestView({
+          initiatorRoll: checkRoll({ faces, mode, modifier: 5, total: 25 }),
+          initiatorBonusKnown: true,
+          youAnswer: true,
+          answerOptions,
+        }),
+      );
+      return Array.from(el.querySelectorAll('[data-testid="natural-mark"]'), (m) => textOf(m));
+    };
+
+    it.each([
+      ['a natural 20', [20], undefined, ['20 natural']],
+      ['a natural 1', [1], undefined, ['1 natural']],
+      ['another face', [15], undefined, []],
+      ['advantage keeping the 20', [20, 4], RollModeKind.ADVANTAGE, ['20 natural']],
+      ['disadvantage dropping the 20', [20, 4], RollModeKind.DISADVANTAGE, []],
+    ])("beside Toren's total: %s", (_name, faces, mode, expected) => {
+      expect(marks(faces, mode)).toEqual(expected);
+    });
   });
 });

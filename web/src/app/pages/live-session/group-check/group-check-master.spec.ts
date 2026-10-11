@@ -3,7 +3,10 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { create } from '@bufbuild/protobuf';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { GroupCheckMemberViewSchema } from '../../../../gen/meurpg/play/v1/contest_types_pb';
+import {
+  GroupCheckMemberViewSchema,
+  RollModeKind,
+} from '../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ContestClient } from '../../../core/combat/contest-client';
 import {
   FakeContestClient,
@@ -289,5 +292,42 @@ describe('GroupCheckMaster, the master asks the party for a check', () => {
       await settle();
       expect(api.calls.filter((c) => c === 'groupCheck').length).toBe(before + 1);
     });
+  });
+});
+
+describe('GroupCheckMaster, the natural mark (information only)', () => {
+  const withFaces = (faces: number[], mode?: RollModeKind) =>
+    groupCheck({
+      dc: 13,
+      needed: 1,
+      members: [
+        member({
+          characterId: 'b',
+          name: 'Brisa',
+          answered: true,
+          roll: checkRoll({ faces, mode, modifier: 1, total: 14 }),
+          passedKnown: true,
+          passed: true,
+        }),
+      ],
+    });
+  const marks = async (view: ReturnType<typeof groupCheck>) => {
+    const { el, settle } = setup(view);
+    await settle();
+    return Array.from(el.querySelectorAll('[data-testid="natural-mark"]'), (m) => textOf(m));
+  };
+
+  it.each([
+    ['a natural 20', [20], undefined, ['20 natural']],
+    ['a natural 1', [1], undefined, ['1 natural']],
+    ['another face', [12], undefined, []],
+    ['advantage keeping the 20', [20, 4], RollModeKind.ADVANTAGE, ['20 natural']],
+    ['disadvantage dropping the 20', [20, 4], RollModeKind.DISADVANTAGE, []],
+  ])('%s', async (_name, faces, mode, expected) => {
+    expect(await marks(withFaces(faces, mode))).toEqual(expected);
+  });
+
+  it('has no tag for a member who has not answered', async () => {
+    expect(await marks(openCheck())).toEqual([]);
   });
 });

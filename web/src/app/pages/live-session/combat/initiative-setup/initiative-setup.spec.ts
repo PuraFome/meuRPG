@@ -165,4 +165,26 @@ describe('InitiativeSetup', () => {
       expect(el.querySelector('input')).not.toBeNull();
     });
   });
+
+  it('tags a natural 20 and a natural 1 beside the formula, and nothing for another face', () => {
+    const fixture = TestBed.createComponent(InitiativeSetup);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        status: EncounterStatus.SETUP,
+        round: 0,
+        combatants: [
+          rolled('a', 'Ana', 22, { initiativeFace: 20 }),
+          rolled('b', 'Beto', 3, { initiativeFace: 1 }),
+          rolled('c', 'Caio', 12, { initiativeFace: 10 }),
+          combatant({ id: 'd', label: 'Dani', initiativeBonus: 2 }),
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(
+      Array.from(el.querySelectorAll('[data-testid="natural-mark"]'), (m) => m.textContent?.trim()),
+    ).toEqual(['20 natural', '1 natural']);
+  });
 });

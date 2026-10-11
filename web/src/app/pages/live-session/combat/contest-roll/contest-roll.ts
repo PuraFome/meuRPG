@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import type { CheckRoll } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import {
+  checkNaturalMark,
   countedFace,
   modeLabel,
   noteLines,
@@ -25,8 +26,13 @@ import {
       <span class="roll__text">
         <span class="roll__total">{{ roll().total }}</span>
         <span class="roll__formula">{{ formula() }}</span>
+        @if (natural()) {
+          <span class="mr-tag roll__natural" data-testid="natural-mark">{{ natural() }}</span>
+        }
       </span>
-      <span class="mr-visually-hidden">Seu total: {{ roll().total }}. {{ formula() }}.</span>
+      <span class="mr-visually-hidden"
+        >Seu total: {{ roll().total }}. {{ formula() }}.{{ natural() ? ' ' + natural() + '.' : '' }}</span
+      >
     </div>
     @if (mode() || pair().length || notes().length) {
       <ul class="why" aria-label="Como foi rolado">
@@ -69,6 +75,8 @@ export class ContestRoll {
     const physical = this.roll().physical ? ' · dado físico' : '';
     return `${base}${this.skill() ? ` · ${this.skill()}` : ''}${physical}`;
   });
+  /** "20 natural" or "1 natural": information only, a check has no automatic success or failure (SRD 5.1). */
+  protected readonly natural = computed(() => checkNaturalMark(this.roll()));
   protected readonly mode = computed(() => modeLabel(this.roll().mode));
   protected readonly pair = computed(() => pairOf(this.roll()));
   protected readonly notes = computed(() => noteLines(this.roll()));

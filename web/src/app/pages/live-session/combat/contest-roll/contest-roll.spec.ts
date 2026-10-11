@@ -56,4 +56,35 @@ describe('ContestRoll', () => {
     const el = show(checkRoll({ rolledByMaster: true }));
     expect(textOf(el)).toContain('O mestre rolou por você.');
   });
+
+  describe('the natural mark (information only)', () => {
+    const mark = (el: HTMLElement) => el.querySelector('[data-testid="natural-mark"]');
+
+    it('tags a natural 20 and a natural 1, in the screen and in the sentence a screen reader hears', () => {
+      const twenty = show(checkRoll({ faces: [20], total: 25 }));
+      expect(textOf(mark(twenty)!)).toBe('20 natural');
+      expect(textOf(twenty.querySelector('.mr-visually-hidden')!)).toBe(
+        'Seu total: 25. 1d20 (20) + 5. 20 natural.',
+      );
+      const one = show(checkRoll({ faces: [1], total: 6 }));
+      expect(textOf(mark(one)!)).toBe('1 natural');
+      expect(textOf(one.querySelector('.mr-visually-hidden')!)).toContain('1 natural.');
+    });
+
+    it('has no tag for any other face', () => {
+      const el = show(checkRoll({ faces: [15] }));
+      expect(mark(el)).toBeNull();
+      expect(textOf(el.querySelector('.mr-visually-hidden')!)).not.toContain('natural');
+    });
+
+    it('follows the d20 that counts with advantage and disadvantage', () => {
+      expect(textOf(mark(show(checkRoll({ faces: [20, 4], mode: RollModeKind.ADVANTAGE })))!)).toBe(
+        '20 natural',
+      );
+      expect(mark(show(checkRoll({ faces: [20, 4], mode: RollModeKind.DISADVANTAGE })))).toBeNull();
+      expect(
+        textOf(mark(show(checkRoll({ faces: [9, 1], mode: RollModeKind.DISADVANTAGE })))!),
+      ).toBe('1 natural');
+    });
+  });
 });

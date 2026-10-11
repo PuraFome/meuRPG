@@ -23,6 +23,7 @@ import {
   tieGroups,
   tieSentence,
 } from '../../../../core/combat/combat-view';
+import { initiativeMark } from '../../../../core/combat/natural-mark';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
@@ -121,6 +122,11 @@ export class InitiativeSetup {
 
   protected formula(c: Combatant): string {
     return initiativeFormula(c) ?? pendingFormula(c);
+  }
+
+  /** "20 natural" / "1 natural" beside the formula: information only, initiative has no automatic result. */
+  protected mark(c: Combatant): string {
+    return initiativeMark(c);
   }
 
   protected bonus(c: Combatant): string {

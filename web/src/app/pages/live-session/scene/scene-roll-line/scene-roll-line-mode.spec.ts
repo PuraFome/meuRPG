@@ -68,4 +68,37 @@ describe('SceneRollLine: the mode of a roll', () => {
     );
     expect(el.querySelector('app-check-mode')).toBeNull();
   });
+
+  describe('the natural mark (information only)', () => {
+    const line = (faces: number[], mode: RollMode, countedIndex: number) =>
+      render(
+        create(SceneRollSchema, {
+          id: 'r',
+          actionId: 'a1',
+          characterName: 'Pensantus',
+          roll: {
+            diceCount: faces.length,
+            diceSides: 20,
+            faces,
+            modifier: 6,
+            total: faces[countedIndex] + 6,
+            countedIndex,
+          },
+          mode,
+        }),
+      );
+    const mark = (el: HTMLElement) =>
+      el.querySelector('[data-testid="natural-mark"]')?.textContent?.trim();
+
+    it.each([
+      ['a natural 20', [20], RollMode.NORMAL, 0, '20 natural'],
+      ['a natural 1', [1], RollMode.NORMAL, 0, '1 natural'],
+      ['another face', [13], RollMode.NORMAL, 0, undefined],
+      ['advantage keeping the 20', [20, 4], RollMode.ADVANTAGE, 0, '20 natural'],
+      ['disadvantage dropping the 20', [20, 4], RollMode.DISADVANTAGE, 1, undefined],
+      ['disadvantage keeping the 1', [14, 1], RollMode.DISADVANTAGE, 1, '1 natural'],
+    ])('%s', (_name, faces, mode, counted, expected) => {
+      expect(mark(line(faces, mode, counted))).toBe(expected);
+    });
+  });
 });
