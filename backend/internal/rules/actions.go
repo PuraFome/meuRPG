@@ -158,6 +158,7 @@ func (x *deriver) resourcesAndActions() {
 		at[e.Resource] = len(x.d.Resources)
 		x.d.Resources = append(x.d.Resources, r)
 	}
+	x.maneuvers()
 	for _, a := range x.active {
 		if a.effect.Type != "grant_action" || !x.applies(a) {
 			continue

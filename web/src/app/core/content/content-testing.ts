@@ -175,6 +175,20 @@ export function menuResponse(): GetEffectMenuResponse {
         ],
       },
       {
+        type: 'superiority_die',
+        namePt: 'Dado de manobra',
+        hintPt: 'Um dado que uma opção soma a uma rolagem.',
+        fields: [
+          field('applies', 'choice', true, 'maneuver_applies'),
+          field('resource', 'resource_ref', true),
+          field('value', 'formula', true),
+          field('ability', 'choice', false, 'abilities'),
+          field('economy', 'choice', false, 'economies'),
+          field('when', 'condition'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
         type: 'choice',
         namePt: 'Escolha',
         hintPt: 'Algo que o jogador escolhe.',

@@ -681,8 +681,8 @@ func (*TableEntry_TableFeat) isTableEntry_Body() {}
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
-// "sense", "roll_mode", "grant_action", "extra_attack", "choice", "ability_increase"
-// or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// "sense", "roll_mode", "grant_action", "extra_attack", "choice", "ability_increase",
+// "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
 // prof(), floor, ceil, min and max, and must compile.
@@ -737,7 +737,17 @@ type TableEffect struct {
 	Spells []string `protobuf:"bytes,20,rep,name=spells,proto3" json:"spells,omitempty"`
 	// The text for the sheet, in Portuguese, when a note, a resource or an action
 	// needs one. "{value}" is the value with its sign, "{n}" without it.
-	TextPt        string `protobuf:"bytes,21,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
+	TextPt string `protobuf:"bytes,21,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
+	// superiority_die: a die an option (a maneuver) adds to a roll, spent from the
+	// resource named in `resource` (one use each; the entry or its class defines it).
+	// `value` is the die's sides (a formula), `applies` where it goes: "damage" (a
+	// weapon attack that hit), "attack" (an attack roll), "grapple" (the Athletics
+	// check of a grapple; `economy` may be "bonus_action") or "reduce_melee_damage"
+	// (a reaction, `economy` "reaction", when a melee attack hits the character: the
+	// damage drops by the die plus the modifier of `ability`). `text_pt` is the rider the
+	// master reads. Added later: older clients leave both empty.
+	Applies       string `protobuf:"bytes,22,opt,name=applies,proto3" json:"applies,omitempty"`
+	Ability       string `protobuf:"bytes,23,opt,name=ability,proto3" json:"ability,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -915,6 +925,20 @@ func (x *TableEffect) GetSpells() []string {
 func (x *TableEffect) GetTextPt() string {
 	if x != nil {
 		return x.TextPt
+	}
+	return ""
+}
+
+func (x *TableEffect) GetApplies() string {
+	if x != nil {
+		return x.Applies
+	}
+	return ""
+}
+
+func (x *TableEffect) GetAbility() string {
+	if x != nil {
+		return x.Ability
 	}
 	return ""
 }
@@ -5457,7 +5481,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"tableSpell\x12;\n" +
 	"\n" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
-	"\x04body\"\xf9\x03\n" +
+	"\x04body\"\xad\x04\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -5480,7 +5504,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x04from\x18\x12 \x03(\tR\x04from\x12\x18\n" +
 	"\aeconomy\x18\x13 \x01(\tR\aeconomy\x12\x16\n" +
 	"\x06spells\x18\x14 \x03(\tR\x06spells\x12\x17\n" +
-	"\atext_pt\x18\x15 \x01(\tR\x06textPt\"\xc3\x01\n" +
+	"\atext_pt\x18\x15 \x01(\tR\x06textPt\x12\x18\n" +
+	"\aapplies\x18\x16 \x01(\tR\aapplies\x12\x18\n" +
+	"\aability\x18\x17 \x01(\tR\aability\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

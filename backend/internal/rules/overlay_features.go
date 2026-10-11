@@ -16,7 +16,7 @@ import (
 // from the class's casting) and no "wild_shape".
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"extra_attack", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -277,6 +277,30 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 				return fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
 			}
 		}
+	case "superiority_die":
+		entry := b.featureEntry[owner]
+		_, srd := b.base.namesPT["resource:"+e.Resource]
+		if !validResourceName(e.Resource) || (!srd && !b.resources[entry][e.Resource] && !b.resources[b.featureClass[owner]][e.Resource]) {
+			return fail(".resource", ReasonReference, "the die spends %q, which no resource effect of this entry or its class defines", e.Resource)
+		}
+		if !slices.Contains(maneuverApplies, e.Applies) {
+			return fail(".applies", ReasonValue, "applies %q is not on the table's menu", e.Applies)
+		}
+		if e.Applies == ManeuverReduceMelee && e.Ability == "" {
+			return fail(".ability", ReasonValue, "a reduction names the ability whose modifier is added")
+		}
+		if e.Applies == ManeuverReduceMelee && e.Economy != EconomyReaction {
+			return fail(".economy", ReasonValue, "a reduction of a melee attack's damage costs a reaction")
+		}
+		if e.Applies == ManeuverGrapple && e.Economy != "" && e.Economy != EconomyBonusAction {
+			return fail(".economy", ReasonValue, "a grapple maneuver costs a bonus action or nothing")
+		}
+		if e.Applies != ManeuverReduceMelee && e.Applies != ManeuverGrapple && e.Economy != "" {
+			return fail(".economy", ReasonValue, "a die added to an attack or to damage costs no action")
+		}
+		if e.Applies != ManeuverReduceMelee && e.Ability != "" {
+			return fail(".ability", ReasonValue, "only a reduction adds an ability modifier")
+		}
 	case "resource":
 		if !validResourceName(e.Resource) {
 			return fail(".resource", ReasonValue, "a resource name has 1 to 40 characters of a-z, 0-9 and _")
@@ -302,6 +326,8 @@ var ownFields = map[string][]string{
 	"extra_attack": {"count"},
 	"grant_action": {"economy", "resource"},
 	"note":         {"value", "spells"},
+	// A superiority die is a feature option's (or a feature's) die from a resource.
+	"superiority_die": {"value", "resource", "economy", "applies", "ability"},
 	// An ability_increase is a feat's alone (checkEffect).
 	"ability_increase": {"value", "count", "from"},
 }
@@ -324,8 +350,10 @@ func unusedField(e *Effect) string {
 		}
 	}
 	switch {
-	case e.Ability != "":
+	case e.Ability != "" && e.Type != "superiority_die":
 		return "ability"
+	case e.Applies != "" && e.Type != "superiority_die":
+		return "applies"
 	case e.Progression != "":
 		return "progression"
 	case e.Prepares:
@@ -392,6 +420,8 @@ func clearEffectField(e *Effect, name string) {
 		e.Economy = ""
 	case "ability":
 		e.Ability = ""
+	case "applies":
+		e.Applies = ""
 	case "progression":
 		e.Progression = ""
 	case "prepares":

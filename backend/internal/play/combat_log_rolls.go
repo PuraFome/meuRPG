@@ -92,7 +92,11 @@ func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, 
 			if r.Conditional && !v.master {
 				r.Counted = true // the same lines whatever the target is
 			}
-			d.Parts = append(d.Parts, partRollProto(r, dtPT))
+			pr := partRollProto(r, dtPT)
+			if v.master {
+				pr.RiderPt = r.Rider
+			}
+			d.Parts = append(d.Parts, pr)
 		}
 	}
 	if !v.master && !targetsOwn && holdsHitPoints {

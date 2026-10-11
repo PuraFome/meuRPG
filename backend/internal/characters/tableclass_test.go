@@ -194,7 +194,7 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 	// The menu: every type with its name, the lists they point at, the option sets,
 	// the helpers and the classes classLevel takes.
 	menu := master.effectMenu(t, campaign)
-	if len(menu.GetTypes()) != 10 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
+	if len(menu.GetTypes()) != 11 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
 		t.Fatalf("menu = %d types, limits %d/%d, extra attacks %d to %d", len(menu.GetTypes()), menu.GetMaxFeaturesPerClass(), menu.GetMaxEffectsPerFeature(), menu.GetExtraAttackMin(), menu.GetExtraAttackMax())
 	}
 	lists := map[string]*rulesv1.EffectMenuList{}
