@@ -523,6 +523,17 @@
       (retry)="loadReactor($event)"
       (undo)="undoMove()"
     />
+    <app-death-save-due
+      [due]="deathDue()"
+      [busy]="busy()"
+      [diceMode]="diceMode()"
+      [dicePreference]="dicePreference()"
+      [result]="masterDeathResult()"
+      [asking]="!!passAsking()"
+      (roll)="rollMasterDeathSave($event)"
+      (rollNow)="passAsking.set(null)"
+      (pass)="passUnrolled()"
+    />
     <app-death-question
       [dying]="dying()"
       [dismissed]="deathLater()"
