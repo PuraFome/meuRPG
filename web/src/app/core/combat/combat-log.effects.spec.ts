@@ -67,6 +67,23 @@ describe('the lasting effect lines of the log', () => {
     ).toBe('Brisa falhou no teste de Sabedoria contra Heroísmo');
   });
 
+  it('tags a natural 20 or 1 on a save, for the master only, and never as a result', () => {
+    const save = (d20: number) =>
+      effect({
+        change: CombatLogEffectChange.SAVE_FAILED,
+        abilityNamePt: 'Destreza',
+        d20,
+        total: d20 + 2,
+        dc: 14,
+      });
+    const master = (e: CombatLogEntry) =>
+      logLine(e, '', { master: true, players: new Set(['Brisa']) })?.text;
+    expect(master(save(20))).toContain('(d20 20, 20 natural, total 22 contra CD 14)');
+    expect(master(save(1))).toContain('(d20 1, 1 natural, total 3 contra CD 14)');
+    expect(master(save(12))).toContain('(d20 12, total 14 contra CD 14)');
+    expect(text(save(20))).not.toContain('natural');
+  });
+
   it('says the damage an effect dealt', () => {
     expect(
       text(effect({ change: CombatLogEffectChange.DAMAGE, amount: 7, damageTypePt: 'ígneo' })),

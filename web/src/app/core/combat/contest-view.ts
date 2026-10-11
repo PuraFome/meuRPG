@@ -19,6 +19,7 @@ import { CREATURE_SIZES } from '../creatures/creature-types';
 import { tight } from '../format/text';
 import { article } from './combat-log';
 import { isPlayer } from './combat-view';
+import { type NaturalMark, naturalMark } from './natural-mark';
 import { reactionWait } from './reactions';
 
 /**
@@ -159,6 +160,13 @@ export function countedFace(roll: CheckRoll): number {
     return Math.min(...faces);
   }
   return faces[0];
+}
+
+export { naturalMark, type NaturalMark } from './natural-mark';
+
+/** The mark of the d20 that counts in a check roll (the higher with advantage, the lower with disadvantage). */
+export function checkNaturalMark(roll: CheckRoll | undefined): NaturalMark {
+  return roll ? naturalMark(countedFace(roll)) : '';
 }
 
 /** "1d20 (15) + 5": the d20 that counts and the modifier; the two dice of a pair are said apart (`pairOf`). */

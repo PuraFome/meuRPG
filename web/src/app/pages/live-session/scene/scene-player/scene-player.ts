@@ -23,6 +23,7 @@ import {
   playerAttempts,
   rollClock,
   sceneRollFormula,
+  sceneRollMark,
   signedBonus,
 } from '../../../../core/play/scene-view';
 import { tieShortWords, tight } from '../../../../core/format/text';
@@ -92,6 +93,7 @@ export class ScenePlayer {
   protected readonly sceneName = computed(() => tieShortWords(this.scene()?.name ?? ''));
   protected readonly bonusText = signedBonus;
   protected readonly formula = sceneRollFormula;
+  protected readonly mark = sceneRollMark;
 
   /** The rows with what the screen needs of each. */
   protected readonly rows = computed(() => {
