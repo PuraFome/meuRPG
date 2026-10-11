@@ -112,7 +112,11 @@ import {
   toggledOption,
 } from '../../../../core/resources/metamagic';
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
-import { RollAnimator, type RollShow, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
+import {
+  RollAnimator,
+  type RollShow,
+  showOfDice,
+} from '../../../../shared/roll-overlay/roll-animator';
 import type { Pool } from '../../../../core/resources/pools';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
