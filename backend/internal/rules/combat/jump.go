@@ -85,6 +85,18 @@ func (l Jumps) Doubled() Jumps {
 	}
 }
 
+// standingJumpDivisor: a jump without a running start covers half the distance (SRD 5.1, Jumping).
+const standingJumpDivisor = 2
+
+// FromRunning is the jump limits a combatant carries from its sheet: the running long and high
+// jumps and the Thief's running bonus, with each standing jump half of its running one.
+func FromRunning(longRunning, longRunningBonus, highRunning int) Jumps {
+	return Jumps{
+		LongRunning: longRunning, LongStanding: longRunning / standingJumpDivisor, LongRunningBonus: longRunningBonus,
+		HighRunning: highRunning, HighStanding: highRunning / standingJumpDivisor,
+	}
+}
+
 // WithStepOfTheWind is Doubled when the monk used Step of the Wind this turn
 // (doubled), and the jumps as they are otherwise.
 func (l Jumps) WithStepOfTheWind(doubled bool) Jumps {

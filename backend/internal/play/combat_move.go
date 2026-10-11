@@ -658,13 +658,11 @@ const maxJumpDFt = 1000
 // when the combatant joined (the standing jump is half of the running one, without
 // the Thief's bonus), doubled for the turn the monk used Step of the Wind.
 func longJumpDFt(c playdb.Combatant, running bool) int {
-	return combat.Jumps{
-		LongRunning: int(c.JumpLongDft), LongStanding: int(c.JumpLongDft) / 2, LongRunningBonus: int(c.JumpLongBonusDft),
-	}.WithStepOfTheWind(c.JumpDoubled).Long(running)
+	return combat.FromRunning(int(c.JumpLongDft), int(c.JumpLongBonusDft), int(c.JumpHighDft)).WithStepOfTheWind(c.JumpDoubled).Long(running)
 }
 
 func highJumpDFt(c playdb.Combatant, running bool) int {
-	return combat.Jumps{HighRunning: int(c.JumpHighDft), HighStanding: int(c.JumpHighDft) / 2}.WithStepOfTheWind(c.JumpDoubled).High(running)
+	return combat.FromRunning(int(c.JumpLongDft), int(c.JumpLongBonusDft), int(c.JumpHighDft)).WithStepOfTheWind(c.JumpDoubled).High(running)
 }
 
 // jumpLimit fills the limit that applied in a TOO_FAR of a jump.
