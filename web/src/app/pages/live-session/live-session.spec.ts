@@ -1457,6 +1457,25 @@ describe('LiveSession', () => {
       expect(gets()).toBeLessThanOrEqual(before.gets + 2);
     });
 
+    it('reads the combat again on vision_changed during a combat, so an NPC that just came into sight arrives', async () => {
+      const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const page = fixture.componentInstance as unknown as { combat: CombatState };
+      get.mockClear();
+      // No combat on screen: a hint about the vision reads the map only.
+      source.push({ kind: 'visionChanged', mapId: 'map-1' });
+      await settle(fixture);
+      expect(get).not.toHaveBeenCalled();
+      page.combat.apply(encounter({ id: 'e1', combatants: [] }));
+      source.push({ kind: 'visionChanged', mapId: 'other-map' });
+      await settle(fixture);
+      expect(get).not.toHaveBeenCalled();
+      source.push({ kind: 'visionChanged', mapId: 'map-1' });
+      await settle(fixture);
+      expect(get).toHaveBeenCalledTimes(1);
+    });
+
     it('says in words that the character is not on the map', async () => {
       maps.visions.set(
         '',
