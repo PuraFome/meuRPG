@@ -505,7 +505,9 @@ export type CombatLogHitRider = Message<"meurpg.play.v1.CombatLogHitRider"> & {
   result: HitRiderLogResult;
 
   /**
-   * The target's roll and the DC: the master's and the monk's player's lines only (RN-20).
+   * The target's roll and the DC: the master's line, and the target's player's when the target
+   * is a player's character. The monk's player reads only the result: an NPC's roll never
+   * reaches a player (RN-20).
    *
    * @generated from field: int32 d20 = 3;
    */

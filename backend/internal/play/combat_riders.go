@@ -348,7 +348,8 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 }
 
 // riderLogProto is the line of an answered rider: the target's roll and the DC only for the
-// master and the monk's player (RN-20).
+// master and, when the target is a player's character, its player (RN-20: the monk's player
+// reads how the save ended, never an NPC's roll).
 func riderLogProto(r *riderEvent, numbers bool) *playv1.CombatLogHitRider {
 	out := &playv1.CombatLogHitRider{}
 	switch r.Choice {
