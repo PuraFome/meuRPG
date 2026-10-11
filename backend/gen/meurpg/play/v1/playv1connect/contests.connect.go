@@ -221,12 +221,19 @@ type ContestServiceClient interface {
 	// GetGroupCheck is the open group check of the open session, or the latest closed
 	// one, as the caller reads it; none when there is not any. IDEMPOTENT.
 	GetGroupCheck(context.Context, *connect.Request[v1.GetGroupCheckRequest]) (*connect.Response[v1.GetGroupCheckResponse], error)
-	// RequestGroupCheck asks every living player character for a check (SRD 5.1,
-	// "Working Together": the group passes when at least half of them pass). Only the
-	// master; one group check is open at a time.
+	// RequestGroupCheck asks living player characters for a check or a saving throw, at
+	// any moment out of combat (SRD 5.1, "Ability Checks", "Saving Throws"). With no
+	// `character_ids` it asks every living player character, and with `group` (the
+	// default for that case) the group passes when at least half of them pass (SRD 5.1,
+	// "Working Together", Group Checks). With `character_ids` it asks only those
+	// characters, and each roll stands alone. Only the master; one request is open at a
+	// time; only the characters asked read it or may roll it (RN-10, RN-20).
 	//
 	// Errors:
-	//   - `invalid_argument`: skill_key is not a skill or an ability check.
+	//   - `invalid_argument`: skill_key is not a skill, an ability check or a saving throw;
+	//     a character_id is not a living player character of the campaign (an NPC, a dead
+	//     or an unknown one); a repeated character_id; `group` true with only one
+	//     character asked.
 	//   - `failed_precondition` (ContestBlocked): GROUP_CHECK_OPEN.
 	RequestGroupCheck(context.Context, *connect.Request[v1.RequestGroupCheckRequest]) (*connect.Response[v1.RequestGroupCheckResponse], error)
 	// RollGroupCheck is a player's roll for the open group check, for their own
@@ -604,12 +611,19 @@ type ContestServiceHandler interface {
 	// GetGroupCheck is the open group check of the open session, or the latest closed
 	// one, as the caller reads it; none when there is not any. IDEMPOTENT.
 	GetGroupCheck(context.Context, *connect.Request[v1.GetGroupCheckRequest]) (*connect.Response[v1.GetGroupCheckResponse], error)
-	// RequestGroupCheck asks every living player character for a check (SRD 5.1,
-	// "Working Together": the group passes when at least half of them pass). Only the
-	// master; one group check is open at a time.
+	// RequestGroupCheck asks living player characters for a check or a saving throw, at
+	// any moment out of combat (SRD 5.1, "Ability Checks", "Saving Throws"). With no
+	// `character_ids` it asks every living player character, and with `group` (the
+	// default for that case) the group passes when at least half of them pass (SRD 5.1,
+	// "Working Together", Group Checks). With `character_ids` it asks only those
+	// characters, and each roll stands alone. Only the master; one request is open at a
+	// time; only the characters asked read it or may roll it (RN-10, RN-20).
 	//
 	// Errors:
-	//   - `invalid_argument`: skill_key is not a skill or an ability check.
+	//   - `invalid_argument`: skill_key is not a skill, an ability check or a saving throw;
+	//     a character_id is not a living player character of the campaign (an NPC, a dead
+	//     or an unknown one); a repeated character_id; `group` true with only one
+	//     character asked.
 	//   - `failed_precondition` (ContestBlocked): GROUP_CHECK_OPEN.
 	RequestGroupCheck(context.Context, *connect.Request[v1.RequestGroupCheckRequest]) (*connect.Response[v1.RequestGroupCheckResponse], error)
 	// RollGroupCheck is a player's roll for the open group check, for their own

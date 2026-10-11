@@ -2804,7 +2804,18 @@ type GroupCheckView struct {
 	// answered. A player only.
 	YourOption *CheckOption `protobuf:"bytes,13,opt,name=your_option,json=yourOption,proto3" json:"your_option,omitempty"`
 	// The caller's character may roll now.
-	YouRoll       bool `protobuf:"varint,14,opt,name=you_roll,json=youRoll,proto3" json:"you_roll,omitempty"`
+	YouRoll bool `protobuf:"varint,14,opt,name=you_roll,json=youRoll,proto3" json:"you_roll,omitempty"`
+	// True when this is a group check, with a verdict for the group; false when each asked
+	// character is judged alone (passed_count, needed, verdict_known and group_passed
+	// are then never set).
+	Group bool `protobuf:"varint,15,opt,name=group,proto3" json:"group,omitempty"`
+	// True when the request is a saving throw ("save:con"), false for a skill or an
+	// ability check; skill_name_pt already says which. For wording the screens.
+	Save bool `protobuf:"varint,16,opt,name=save,proto3" json:"save,omitempty"`
+	// How many characters were asked. Only the master, who reads who in `members`; a
+	// player reads their own member only, and a player who was not asked reads no group
+	// check at all (GetGroupCheck answers none, RN-10).
+	AskedCount    int32 `protobuf:"varint,17,opt,name=asked_count,json=askedCount,proto3" json:"asked_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2935,6 +2946,27 @@ func (x *GroupCheckView) GetYouRoll() bool {
 		return x.YouRoll
 	}
 	return false
+}
+
+func (x *GroupCheckView) GetGroup() bool {
+	if x != nil {
+		return x.Group
+	}
+	return false
+}
+
+func (x *GroupCheckView) GetSave() bool {
+	if x != nil {
+		return x.Save
+	}
+	return false
+}
+
+func (x *GroupCheckView) GetAskedCount() int32 {
+	if x != nil {
+		return x.AskedCount
+	}
+	return 0
 }
 
 // CombatLogContest is a CONTEST line of the combat log: the actor and the target are in
@@ -3143,7 +3175,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\banswered\x18\x03 \x01(\bR\banswered\x12-\n" +
 	"\x04roll\x18\x04 \x01(\v2\x19.meurpg.play.v1.CheckRollR\x04roll\x12!\n" +
 	"\fpassed_known\x18\x05 \x01(\bR\vpassedKnown\x12\x16\n" +
-	"\x06passed\x18\x06 \x01(\bR\x06passed\"\xf5\x03\n" +
+	"\x06passed\x18\x06 \x01(\bR\x06passed\"\xc0\x04\n" +
 	"\x0eGroupCheckView\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tskill_key\x18\x02 \x01(\tR\bskillKey\x12\"\n" +
@@ -3161,7 +3193,11 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12<\n" +
 	"\vyour_option\x18\r \x01(\v2\x1b.meurpg.play.v1.CheckOptionR\n" +
 	"yourOption\x12\x19\n" +
-	"\byou_roll\x18\x0e \x01(\bR\ayouRoll\"F\n" +
+	"\byou_roll\x18\x0e \x01(\bR\ayouRoll\x12\x14\n" +
+	"\x05group\x18\x0f \x01(\bR\x05group\x12\x12\n" +
+	"\x04save\x18\x10 \x01(\bR\x04save\x12\x1f\n" +
+	"\vasked_count\x18\x11 \x01(\x05R\n" +
+	"askedCount\"F\n" +
 	"\x10CombatLogContest\x122\n" +
 	"\x04line\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.ContestLogLineR\x04line*a\n" +
 	"\vContestKind\x12\x1c\n" +

@@ -359,10 +359,20 @@ export class ContestClient {
     return (await this.client.getSurpriseSuggestion({ campaignId, encounterId })).suggestions;
   }
 
-  /** Asks every living character for a check. `dc` 0 is none; `showDc` lets the players read passed and failed. */
+  /**
+   * Asks for a check or a saving throw (`skillKey`: "skill:x", "ability:x" or "save:x"). `characterIds` empty asks every
+   * living character; `group` is the "Working Together" verdict (unset: the server decides). `dc` 0 is none; `showDc`
+   * lets the players read passed and failed.
+   */
   async requestGroupCheck(
     campaignId: string,
-    request: { readonly skillKey: string; readonly dc: number; readonly showDc: boolean },
+    request: {
+      readonly skillKey: string;
+      readonly dc: number;
+      readonly showDc: boolean;
+      readonly characterIds?: readonly string[];
+      readonly group?: boolean;
+    },
     key: string,
   ): Promise<GroupCheckView> {
     const res = await this.client.requestGroupCheck({
@@ -371,6 +381,8 @@ export class ContestClient {
       skillKey: request.skillKey,
       dc: request.dc,
       showDc: request.showDc,
+      characterIds: [...(request.characterIds ?? [])],
+      group: request.group,
     });
     return need(res.groupCheck, 'RequestGroupCheck');
   }

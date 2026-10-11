@@ -528,6 +528,17 @@ message GroupCheckView {
   CheckOption your_option = 13;
   // The caller's character may roll now.
   bool you_roll = 14;
+  // True when this is a group check, with a verdict for the group; false when each asked
+  // character is judged alone (passed_count, needed, verdict_known and group_passed
+  // are then never set).
+  bool group = 15;
+  // True when the request is a saving throw ("save:con"), false for a skill or an
+  // ability check; skill_name_pt already says which. For wording the screens.
+  bool save = 16;
+  // How many characters were asked. Only the master, who reads who in `members`; a
+  // player reads their own member only, and a player who was not asked reads no group
+  // check at all (GetGroupCheck answers none, RN-10).
+  int32 asked_count = 17;
 }
 
 // ContestLogLine says what a CONTEST line of the combat log is. The line never carries

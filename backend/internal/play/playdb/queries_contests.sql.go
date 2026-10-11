@@ -14,7 +14,7 @@ const closeGroupCheck = `-- name: CloseGroupCheck :one
 UPDATE group_checks
 SET status = 'closed', passed = $3, closed_at = $4
 WHERE game_session_id = $1 AND id = $2
-RETURNING id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at
+RETURNING id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at, is_group
 `
 
 type CloseGroupCheckParams struct {
@@ -42,6 +42,7 @@ func (q *Queries) CloseGroupCheck(ctx context.Context, arg CloseGroupCheckParams
 		&i.Passed,
 		&i.CreatedAt,
 		&i.ClosedAt,
+		&i.IsGroup,
 	)
 	return i, err
 }
@@ -124,7 +125,7 @@ func (q *Queries) GetContest(ctx context.Context, arg GetContestParams) (CombatC
 }
 
 const getGroupCheck = `-- name: GetGroupCheck :one
-SELECT id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at FROM group_checks
+SELECT id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at, is_group FROM group_checks
 WHERE game_session_id = $1 AND id = $2
 `
 
@@ -146,6 +147,7 @@ func (q *Queries) GetGroupCheck(ctx context.Context, arg GetGroupCheckParams) (G
 		&i.Passed,
 		&i.CreatedAt,
 		&i.ClosedAt,
+		&i.IsGroup,
 	)
 	return i, err
 }
@@ -229,7 +231,7 @@ func (q *Queries) GetHold(ctx context.Context, grappledID string) (CombatHold, e
 }
 
 const getLatestGroupCheck = `-- name: GetLatestGroupCheck :one
-SELECT id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at FROM group_checks
+SELECT id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at, is_group FROM group_checks
 WHERE game_session_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT 1
@@ -248,12 +250,13 @@ func (q *Queries) GetLatestGroupCheck(ctx context.Context, gameSessionID string)
 		&i.Passed,
 		&i.CreatedAt,
 		&i.ClosedAt,
+		&i.IsGroup,
 	)
 	return i, err
 }
 
 const getOpenGroupCheck = `-- name: GetOpenGroupCheck :one
-SELECT id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at FROM group_checks
+SELECT id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at, is_group FROM group_checks
 WHERE game_session_id = $1 AND status = 'open'
 ORDER BY created_at DESC
 LIMIT 1
@@ -272,6 +275,7 @@ func (q *Queries) GetOpenGroupCheck(ctx context.Context, gameSessionID string) (
 		&i.Passed,
 		&i.CreatedAt,
 		&i.ClosedAt,
+		&i.IsGroup,
 	)
 	return i, err
 }
@@ -347,9 +351,9 @@ func (q *Queries) InsertContest(ctx context.Context, arg InsertContestParams) (C
 }
 
 const insertGroupCheck = `-- name: InsertGroupCheck :one
-INSERT INTO group_checks (game_session_id, skill_key, dc, show_dc, status, created_at)
-VALUES ($1, $2, $3, $4, 'open', $5)
-RETURNING id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at
+INSERT INTO group_checks (game_session_id, skill_key, dc, show_dc, is_group, status, created_at)
+VALUES ($1, $2, $3, $4, $5, 'open', $6)
+RETURNING id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at, is_group
 `
 
 type InsertGroupCheckParams struct {
@@ -357,6 +361,7 @@ type InsertGroupCheckParams struct {
 	SkillKey      string
 	Dc            *int32
 	ShowDc        bool
+	IsGroup       bool
 	CreatedAt     time.Time
 }
 
@@ -366,6 +371,7 @@ func (q *Queries) InsertGroupCheck(ctx context.Context, arg InsertGroupCheckPara
 		arg.SkillKey,
 		arg.Dc,
 		arg.ShowDc,
+		arg.IsGroup,
 		arg.CreatedAt,
 	)
 	var i GroupCheck
@@ -379,6 +385,7 @@ func (q *Queries) InsertGroupCheck(ctx context.Context, arg InsertGroupCheckPara
 		&i.Passed,
 		&i.CreatedAt,
 		&i.ClosedAt,
+		&i.IsGroup,
 	)
 	return i, err
 }
@@ -596,7 +603,7 @@ func (q *Queries) ListGroupCheckMembers(ctx context.Context, groupCheckID string
 }
 
 const listGroupChecksOfSkill = `-- name: ListGroupChecksOfSkill :many
-SELECT id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at FROM group_checks
+SELECT id, game_session_id, skill_key, dc, show_dc, status, passed, created_at, closed_at, is_group FROM group_checks
 WHERE game_session_id = $1 AND skill_key = $2
 ORDER BY created_at DESC, id DESC
 LIMIT $3
@@ -629,6 +636,7 @@ func (q *Queries) ListGroupChecksOfSkill(ctx context.Context, arg ListGroupCheck
 			&i.Passed,
 			&i.CreatedAt,
 			&i.ClosedAt,
+			&i.IsGroup,
 		); err != nil {
 			return nil, err
 		}

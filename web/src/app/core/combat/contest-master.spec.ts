@@ -18,6 +18,7 @@ import {
   byWho,
   escapeDcOf,
   groupProgress,
+  askedTest,
   groupTitle,
   groupVerdict,
   masterContestTitle,
@@ -177,6 +178,12 @@ describe('what the master reads of a group check', () => {
   it('titles with the DC when there is one, and counts who answered', () => {
     expect(groupTitle(g)).toBe('Teste em grupo: Furtividade, CD 13');
     expect(groupTitle(groupCheck())).toBe('Teste em grupo: Furtividade');
+    expect(groupTitle(groupCheck({ group: false }))).toBe('Teste pedido: Furtividade');
+    expect(askedTest('Percepção')).toBe('um teste de Percepção');
+    expect(askedTest('Teste de Força')).toBe('um teste de Força');
+    expect(askedTest('Teste de resistência de Constituição')).toBe(
+      'um teste de resistência de Constituição',
+    );
     expect(groupProgress(g)).toBe(
       '2 de 3 responderam. O grupo passa se ao menos metade dos convocados passar.',
     );
