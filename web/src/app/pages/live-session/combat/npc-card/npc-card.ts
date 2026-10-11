@@ -223,6 +223,14 @@ export class NpcCard {
     );
     return off ? reasonText(off.reason, true) : '';
   });
+  /**
+   * Every condition `rollAttack` checks, in one place: the picker's buttons are off exactly when a roll would be refused,
+   * so a "Confirmar" that looks enabled is never dropped (the attack, the target and the reason can change under the card
+   * when the turn's options are read again, e.g. right after the turn passes).
+   */
+  protected readonly canRoll = computed(
+    () => !!this.attack() && !!this.targetId() && !this.busy() && !this.rollWhy(),
+  );
   /** The damage of the attack just rolled shows inside its result box. */
   protected readonly inBox = computed(() => {
     const id = this.last()?.pending?.id;
@@ -418,7 +426,17 @@ export class NpcCard {
   ): Promise<void> {
     const a = this.attack();
     const target = this.targetId();
-    if (!a || !target || this.busy() || this.rollWhy()) {
+    if (this.busy()) {
+      return; // the roll already on its way answers
+    }
+    if (this.rollWhy()) {
+      return; // its reason is already written under the roll (#roll-why)
+    }
+    if (!a || !target) {
+      // Never silent: the options changed between the tap and now (the button state follows them a frame later).
+      this.error.set(
+        'O ataque ou o alvo mudou enquanto você confirmava. Confira e confirme de novo.',
+      );
       return;
     }
     this.busy.set(true);
