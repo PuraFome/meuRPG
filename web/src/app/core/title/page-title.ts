@@ -5,6 +5,9 @@ import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
 /** The app's name, last in every title ("Minhas campanhas · MeuRPG"). */
 export const APP_NAME = 'MeuRPG';
 
+/** What the tab says while it is hidden and the turn came to the player ("● Sua vez · MeuRPG"). The dot is not alone: the words say it too. */
+export const TURN_ALERT_TITLE = '● Sua vez';
+
 /** The words between the parts of a title. */
 const SEPARATOR = ' · ';
 
@@ -23,6 +26,8 @@ export class PageTitle {
   private readonly title = inject(Title);
   private page = '';
   private subject = '';
+  /** The turn alert is on: the title is the alert and the app's name, whatever the page. */
+  private turnAlert = false;
   /** Who set the subject, so a component that goes away never clears the next page's. */
   private owner: object | null = null;
 
@@ -58,7 +63,19 @@ export class PageTitle {
     }
   }
 
+  /** The turn alert (`TurnAlert`) puts "● Sua vez" in the title of a hidden tab, and takes it off. */
+  setTurnAlert(on: boolean): void {
+    if (this.turnAlert !== on) {
+      this.turnAlert = on;
+      this.render();
+    }
+  }
+
   private render(): void {
+    if (this.turnAlert) {
+      this.title.setTitle([TURN_ALERT_TITLE, APP_NAME].join(SEPARATOR));
+      return;
+    }
     this.title.setTitle([this.subject, this.page, APP_NAME].filter(Boolean).join(SEPARATOR));
   }
 }
