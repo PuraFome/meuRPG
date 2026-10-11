@@ -161,6 +161,7 @@ var notReads = map[string]classified{
 	playv1connect.CombatServiceAddMonstersProcedure:                             {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceAdjustCombatantHitPointsProcedure:                {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceAnswerReactionProcedure:                          {playerAction, "a player answers the reaction window of their own combatant; the master answers the NPCs' (PM-04)"},
+	playv1connect.CombatServiceMarkReactionRollingProcedure:                     {playerAction, "a player marks the reaction window of their own combatant as being rolled; the master is refused"},
 	playv1connect.CombatServiceApplyPendingDamageProcedure:                      {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceBeginCombatProcedure:                             {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceAnswerRageEndProcedure:                           {playerAction, "a player answers the rage-end question of their own combatant"},

@@ -210,6 +210,10 @@ message DamagePart {
   // A table maneuver's die: only one of these may be marked for each attack, so the screen
   // turns the others off once one is marked.
   bool maneuver = 18;
+  // For a table maneuver: the superiority dice (uses of its resource) the attacker had left
+  // when the hit was rolled. Marking the maneuver spends one. 0 for every other part.
+  // The maneuver's saving throw is not sent: the server keeps it only in the master's rider.
+  int32 resource_left = 19;
 }
 
 // Reroll is a die rerolled by Great Weapon Fighting.

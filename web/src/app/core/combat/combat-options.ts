@@ -179,6 +179,21 @@ export function beamSpentText(name: string, before: number): string {
   return `${name}: ${left === 1 ? '1 raio restante' : `${left} raios restantes`}.`;
 }
 
+/** The key of the monk's ki resource (`Action.resource_key`): its features spend 1 ki point each use. */
+const KI_RESOURCE = 'ki';
+
+/**
+ * What a feature row says about its resource. A ki feature (Rajada de Golpes, Defesa Paciente, Passo do Vento)
+ * says what one use costs and what is left, in ki points, not "N usos"; any other feature says its uses left.
+ * `''` when there is nothing to say.
+ */
+export function featureUsesText(resourceKey: string, usesLeft: number): string {
+  if (resourceKey === KI_RESOURCE) {
+    return usesLeft > 0 ? `Gasta 1 ki · restam ${usesLeft}` : 'Gasta 1 ki · sem ki';
+  }
+  return usesLeft > 0 ? `${usesLeft} ${usesLeft === 1 ? 'uso' : 'usos'}` : '';
+}
+
 /** "2 golpes restantes", "1 golpe restante": the unarmed strikes of Rajada de Golpes still to make. */
 export function flurryLeftText(left: number): string {
   return left === 1 ? '1 golpe restante' : `${left} golpes restantes`;

@@ -18,6 +18,7 @@ import {
   bonusAttackLine,
   bonusSpentText,
   endTurnIsPrimary,
+  featureUsesText,
   isBonusAttack,
   isReactionHint,
   reasonText,
@@ -214,5 +215,19 @@ describe('the beams of a cantrip cast', () => {
     expect(beamSpentText('Rajada Mística', 3)).toBe('Rajada Mística: 2 raios restantes.');
     expect(beamSpentText('Rajada Mística', 2)).toBe('Rajada Mística: 1 raio restante.');
     expect(beamSpentText('Rajada Mística', 1)).toBe('Sua ação foi usada.');
+  });
+});
+
+describe('what a feature row says about its resource', () => {
+  it('says 1 ki and the ki left for the monk\'s bonus actions, not "N usos"', () => {
+    expect(featureUsesText('ki', 3)).toBe('Gasta 1 ki · restam 3');
+    expect(featureUsesText('ki', 1)).toBe('Gasta 1 ki · restam 1');
+    expect(featureUsesText('ki', 0)).toBe('Gasta 1 ki · sem ki');
+  });
+
+  it('keeps the uses of any other resource', () => {
+    expect(featureUsesText('second_wind', 1)).toBe('1 uso');
+    expect(featureUsesText('rage', 2)).toBe('2 usos');
+    expect(featureUsesText('', 0)).toBe('');
   });
 });

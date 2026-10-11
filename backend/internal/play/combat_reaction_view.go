@@ -250,7 +250,7 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 	kind := reaction.Kind(w.Kind)
 	out := &playv1.ReactionWindow{
 		Id: w.ID, Kind: reactionKindProto[kind], Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN, GroupId: w.GroupID,
-		ForYou: true, SecondStep: w.Step == stepSecond,
+		ForYou: true, SecondStep: w.Step == stepSecond, Rolling: windowTriggerOf(w).Rolling,
 	}
 	if reactor != nil {
 		out.ReactorId, out.ReactorLabel, out.ReactorIsPlayer = reactor.ID, reactor.Label, reactor.Kind == kindPlayer

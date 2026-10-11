@@ -57,9 +57,11 @@ describe('ReactionSheet', () => {
   const api = {
     answerReaction: vi.fn(),
     resolveConcentrationSave: vi.fn(),
+    markReactionRolling: vi.fn(),
     get: vi.fn(),
   };
   const closed: unknown[] = [];
+  let opened = shield();
 
   function setup(
     window = shield(),
@@ -68,6 +70,7 @@ describe('ReactionSheet', () => {
       others?: ReturnType<typeof win>[];
     } = {},
   ) {
+    opened = window;
     const state = new CombatState();
     state.apply(encounter({ reactionWindows: [window, ...(over.others ?? [])] } as never));
     if (over.announced !== false) {
@@ -125,6 +128,10 @@ describe('ReactionSheet', () => {
     api.answerReaction.mockImplementation(async () => {
       throw new Error('not stubbed');
     });
+    // The server answers with the combat, the window still open (and now marked).
+    api.markReactionRolling.mockImplementation(async () =>
+      encounter({ reactionWindows: [{ ...opened, rolling: true }] } as never),
+    );
   });
 
   describe('the question', () => {
@@ -434,6 +441,58 @@ describe('ReactionSheet', () => {
       button(el, 'Confirmar').click();
       await flush(fixture);
       expect(sent()[3]).toEqual({ use: true, die: { typed: 4 } });
+    });
+  });
+
+  describe('the roll step tells the table it is rolling', () => {
+    const words = () =>
+      win(
+        'cuttingWords',
+        {
+          rollKind: ReactionRollKind.ATTACK,
+          rollerLabel: 'Hobgoblin',
+          targetLabel: 'Toren',
+          dieSides: 8,
+          usesLeft: 3,
+        },
+        { kind: ReactionKind.CUTTING_WORDS },
+      );
+
+    it('marks the window once on the way to a physical die and shows the longer wait', async () => {
+      const { fixture, el } = setup(words(), { diceMode: DiceMode.PHYSICAL });
+      expect(plain(el.textContent)).toContain('passa sozinho em 30 s');
+      button(el, 'Usar Palavras de Interrupção').click();
+      await flush(fixture);
+      expect(api.markReactionRolling).toHaveBeenCalledTimes(1);
+      expect(api.markReactionRolling).toHaveBeenCalledWith('camp', 'enc', 'w1');
+      // The roll step has a countdown too: the 2 minutes the table waits for the die.
+      expect(plain(el.textContent)).toContain('Você está rolando: a mesa espera 2 min.');
+      button(el, 'Voltar').click();
+      fixture.detectChanges();
+      // Back at the question, the same longer wait is the one the master's clock keeps.
+      expect(plain(el.textContent)).toContain('a mesa espera');
+      button(el, 'Usar Palavras de Interrupção').click();
+      await flush(fixture);
+      expect(api.markReactionRolling).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not mark the window when the app rolls the die, or when the player passes', async () => {
+      api.answerReaction.mockRejectedValue(new Error('stop'));
+      const { fixture, el } = setup(words());
+      button(el, 'Deixar passar').click();
+      await flush(fixture);
+      button(el, 'Usar Palavras de Interrupção')?.click();
+      await flush(fixture);
+      expect(api.markReactionRolling).not.toHaveBeenCalled();
+    });
+
+    it('goes on with the roll when telling the server fails', async () => {
+      api.markReactionRolling.mockRejectedValue(new Error('offline'));
+      const { fixture, el } = setup(words(), { diceMode: DiceMode.PHYSICAL });
+      button(el, 'Usar Palavras de Interrupção').click();
+      await flush(fixture);
+      expect(el.querySelector('input[type="text"]')).not.toBeNull();
+      expect(plain(el.textContent)).not.toContain('Você está rolando');
     });
   });
 

@@ -7,7 +7,14 @@ import {
   PendingDamageStatus,
   TargetInReachSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { outcomeWord, stageAfterRoll, steps, targetAfter, targetRows } from './attack-flow';
+import {
+  missMark,
+  outcomeWord,
+  stageAfterRoll,
+  steps,
+  targetAfter,
+  targetRows,
+} from './attack-flow';
 import { CoverDegree, CoverSource } from '../../../gen/meurpg/play/v1/combat_pb';
 
 const awaiting = create(PendingDamageSchema, { status: PendingDamageStatus.AWAITING_ROLL });
@@ -31,6 +38,33 @@ describe('the attack sheet steps', () => {
     expect(
       [AttackOutcome.HIT, AttackOutcome.CRITICAL_HIT, AttackOutcome.MISS].map(outcomeWord),
     ).toEqual(['Acertou', 'Crítico', 'Errou']);
+  });
+});
+
+describe('the natural 1 of a miss', () => {
+  const roll = (outcome: AttackOutcome, face: number) =>
+    ({ outcome, d20: { diceSides: 20, faces: [face], countedIndex: 0 } }) as never;
+
+  it('marks a miss on a natural 1 only', () => {
+    expect(missMark(roll(AttackOutcome.MISS, 1))).toBe('1 natural');
+    expect(missMark(roll(AttackOutcome.MISS, 7))).toBe('');
+    // A natural 20 is the critical hit's business, and a hit has no miss to explain.
+    expect(missMark(roll(AttackOutcome.CRITICAL_HIT, 20))).toBe('');
+    expect(missMark(roll(AttackOutcome.HIT, 1))).toBe('');
+    expect(missMark({ outcome: AttackOutcome.MISS, d20: undefined })).toBe('');
+  });
+
+  it('follows the counted die of advantage', () => {
+    const adv = {
+      outcome: AttackOutcome.MISS,
+      d20: { diceSides: 20, faces: [1, 1], countedIndex: 1 },
+    } as never;
+    expect(missMark(adv)).toBe('1 natural');
+    const higher = {
+      outcome: AttackOutcome.MISS,
+      d20: { diceSides: 20, faces: [1, 9], countedIndex: 1 },
+    } as never;
+    expect(missMark(higher)).toBe('');
   });
 });
 

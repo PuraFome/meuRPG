@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -124,6 +125,69 @@ func (s *Service) AnswerReaction(
 		got.fill()
 	}
 	return connect.NewResponse(&playv1.AnswerReactionResponse{Encounter: out, Result: got.result}), nil
+}
+
+// MarkReactionRolling implements playv1connect.CombatServiceHandler. It sets the
+// window's `rolling` mark for the master's clock and writes nothing else: no session
+// event, no log line (the closure returns no payload), so a retry or a second tab
+// only sets the same mark again.
+func (s *Service) MarkReactionRolling(
+	ctx context.Context,
+	req *connect.Request[playv1.MarkReactionRollingRequest],
+) (*connect.Response[playv1.MarkReactionRollingResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	if err != nil {
+		return nil, err
+	}
+	winID, err := parseCombatID(req.Msg.GetWindowId(), "window")
+	if err != nil {
+		return nil, err
+	}
+	// The window's own id is the key: no event is written, so it is never looked up as one.
+	res, err := s.write(ctx, combatWrite{m: m, key: winID, kind: eventReactionAnswered, encounterID: encID}, func(c *combatTx) (any, error) {
+		if err := notEnded(c.enc); err != nil {
+			return nil, err
+		}
+		// The mark is the reactor player's own: the master reads it, never sets it.
+		if m.Role == authz.RoleMaster {
+			return nil, errWindowDenied()
+		}
+		w, _, err := s.windowToAnswer(ctx, c, m, winID)
+		if err != nil {
+			return nil, err
+		}
+		t := windowTriggerOf(w)
+		if t.Rolling {
+			return nil, nil
+		}
+		t.Rolling = true
+		body, err := json.Marshal(t)
+		if err != nil {
+			return nil, fmt.Errorf("encode the window's trigger: %w", err)
+		}
+		if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
+			return nil, fmt.Errorf("mark the window as being rolled: %w", err)
+		}
+		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+			return nil, fmt.Errorf("touch the encounter: %w", err)
+		}
+		// An empty event: the change is kept and nothing is written to the log.
+		return nil, nil
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "mark a reaction as being rolled", err)
+	}
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.MarkReactionRollingResponse{Encounter: out}), nil
 }
 
 // answerShield answers a Shield window: "Usar Escudo Arcano" casts it, "Deixar

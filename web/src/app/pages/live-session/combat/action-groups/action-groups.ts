@@ -27,6 +27,7 @@ import {
   beamsLeftLine,
   bonusAttackLine,
   circleLabel,
+  featureUsesText,
   groupState,
   isBonusAttack,
   isCantrip,
@@ -387,9 +388,9 @@ export class ActionGroups {
     return a.key.includes('#') ? a.notes : '';
   }
 
-  /** "1 uso", "2 usos": what is left of the feature's resource. */
+  /** "1 uso", "2 usos", or "Gasta 1 ki · restam 3": what a use costs and what is left of the feature's resource. */
   protected featureDetail(a: ActionOption): string {
-    return a.usesLeft > 0 ? `${a.usesLeft} ${a.usesLeft === 1 ? 'uso' : 'usos'}` : '';
+    return featureUsesText(a.action?.resourceKey ?? '', a.usesLeft);
   }
 
   /** A save cantrip (Chama Sagrada) is in the attacks, but it is cast. */

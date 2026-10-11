@@ -33,6 +33,7 @@ import { article } from './combat-log';
 import { listing } from './cover';
 import { aidChange, effectWords, gainLine, hpSpellKind, poolDice } from './hp-effects';
 import { stateWord } from './combat-view';
+import { diceNaturalMark } from './natural-mark';
 
 /**
  * The steps of the cast sheet (E6-09): the slot, the targets (and Magic
@@ -469,6 +470,8 @@ export interface CastRow {
   /** "Acertou", "Errou", "Crítico", "Falhou", "Resistiu: metade". */
   readonly word: string;
   readonly tone: 'good' | 'bad' | 'plain';
+  /** "1 natural" beside "Errou": a natural 1 always misses an attack roll (SRD 5.1). Empty otherwise. */
+  readonly natural?: string;
   /** The pill's icon when it is not the check or the cross: the moon of "Adormeceu". */
   readonly icon?: string;
   /** The formulas: the d20, "Dardo 1: 1d4 (3) + 1 = 4", the damage. */
@@ -559,6 +562,7 @@ function castRow(
   let word = '';
   let icon: string | undefined;
   let tone: CastRow['tone'] = 'plain';
+  let natural = '';
   if (t.effect) {
     // A spell that reads hit points: the outcome in a word and an icon, never a number
     // of the target's (a player has none), and the heal's amount only when it is sent.
@@ -604,6 +608,8 @@ function castRow(
     const hit = t.outcome !== AttackOutcome.MISS;
     word = t.outcome === AttackOutcome.CRITICAL_HIT ? 'Crítico' : hit ? 'Acertou' : 'Errou';
     tone = hit ? 'good' : 'bad';
+    natural =
+      !hit && t.attackRoll && diceNaturalMark(t.attackRoll) === '1 natural' ? '1 natural' : '';
   }
   if (t.save) {
     const saved = t.save.outcome === SaveOutcome.SAVED;
@@ -650,6 +656,7 @@ function castRow(
     state: who ? stateWord(who.state, who.label) : '',
     word,
     tone,
+    ...(natural ? { natural } : {}),
     icon,
     lines,
     summary,

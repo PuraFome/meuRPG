@@ -9,7 +9,11 @@ import {
   autoPassText,
   autoPasses,
   playerAutoPassText,
+  playerRollingSecondsLeft,
+  playerRollingText,
   playerSecondsLeft,
+  ROLLING_WAIT_SECONDS,
+  rollingText,
 } from './reaction-autopass';
 import { windowsBarText } from './reaction-master';
 
@@ -142,5 +146,56 @@ describe("the automatic pass of a player's optional reaction", () => {
       reactionWindows: [win('w1', ReactionKind.CUTTING_WORDS)],
     } as never);
     expect(windowsBarText(e)).toBe('Esperando a reação de Pensantus');
+  });
+});
+
+describe('a reaction its player is rolling', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-10T12:00:00Z'));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('is not passed at 30 s but waits the longer, bounded time counted from the mark', () => {
+    const clock = new AutoPassClock();
+    clock.sync([win('w1', ReactionKind.CUTTING_WORDS)], Date.now());
+    // The mark arrives at 20 s: the longer wait starts then, not at 0.
+    vi.advanceTimersByTime(20 * MS);
+    const rolling = win('w1', ReactionKind.CUTTING_WORDS, { rolling: true });
+    clock.sync([rolling], Date.now());
+    expect(clock.isRolling('w1')).toBe(true);
+    expect(clock.secondsLeft('w1', Date.now())).toBe(ROLLING_WAIT_SECONDS);
+    vi.advanceTimersByTime(AUTO_PASS_SECONDS * MS);
+    clock.sync([rolling], Date.now());
+    expect(clock.due(Date.now())).toEqual([]);
+    vi.advanceTimersByTime((ROLLING_WAIT_SECONDS - AUTO_PASS_SECONDS) * MS);
+    clock.sync([rolling], Date.now());
+    // Bounded: a player who walked away does not hold the table forever.
+    expect(clock.secondsLeft('w1', Date.now())).toBe(0);
+    expect(clock.due(Date.now())).toEqual(['w1']);
+  });
+
+  it('forgets the mark when the window is gone', () => {
+    const clock = new AutoPassClock();
+    clock.sync([win('w1', ReactionKind.SHIELD, { rolling: true })], Date.now());
+    clock.sync([], Date.now());
+    expect(clock.isRolling('w1')).toBe(false);
+  });
+
+  it('says it to the master and to the player, with minutes', () => {
+    expect(rollingText(112)).toBe('Rolando… passa sozinho em 112 s');
+    expect(playerRollingText(112)).toContain('a mesa espera 1 min 52 s');
+    expect(playerRollingText(120)).toContain('a mesa espera 2 min.');
+    expect(playerRollingText(45)).toContain('a mesa espera 45 s.');
+  });
+
+  it("counts the player's own wait down from 2 minutes and never above it", () => {
+    const t = Date.now();
+    expect(playerRollingSecondsLeft(t, t)).toBe(ROLLING_WAIT_SECONDS);
+    expect(playerRollingSecondsLeft(t, t - MS)).toBe(ROLLING_WAIT_SECONDS);
+    expect(playerRollingSecondsLeft(t, t + 100 * MS)).toBe(20);
+    expect(playerRollingSecondsLeft(t, t + 500 * MS)).toBe(0);
   });
 });

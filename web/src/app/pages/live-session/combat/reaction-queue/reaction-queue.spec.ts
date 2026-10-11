@@ -507,6 +507,21 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
     expect(el.querySelector('.row')).not.toBeNull();
   });
 
+  it('reads "Rolando…" with the longer wait on the card of a window its player is rolling', () => {
+    const { fixture, el } = setup([counter('a', 'pen', 'Pensantus', { rolling: true })]);
+    fixture.componentRef.setInput('autoLeft', { a: 112 });
+    fixture.detectChanges();
+    expect(plain(el.textContent)).toContain('Rolando… passa sozinho em 112 s');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants, reactionWindows: [counter('a', 'pen', 'Pensantus')] } as never),
+    );
+    fixture.componentRef.setInput('autoLeft', { a: 12 });
+    fixture.detectChanges();
+    expect(plain(el.textContent)).toContain('Passa sozinho em 12 s');
+    expect(plain(el.textContent)).not.toContain('Rolando…');
+  });
+
   it('draws nothing when no window is open', () => {
     const { el } = setup([]);
     expect(el.querySelector('.card')).toBeNull();

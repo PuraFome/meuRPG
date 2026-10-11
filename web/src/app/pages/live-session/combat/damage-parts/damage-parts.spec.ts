@@ -161,4 +161,16 @@ describe('DamageParts maneuvers', () => {
     fixture.detectChanges();
     expect(row('Golpe do Touro').querySelector<HTMLInputElement>('input')!.disabled).toBe(false);
   });
+
+  it('says a maneuver spends one superiority die and how many are left', () => {
+    const fixture = TestBed.createComponent(DamageParts);
+    fixture.componentRef.setInput('parts', [
+      { ...maneuver('feature:garca', 'Golpe da Garça'), resourceLeft: 3 },
+      { ...maneuver('feature:touro', 'Golpe do Touro'), resourceLeft: 0, available: false },
+    ]);
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('Gasta 1 dado de superioridade (restam 3).');
+    expect(text).toContain('Gasta 1 dado de superioridade (não restam).');
+  });
 });
