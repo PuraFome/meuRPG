@@ -139,6 +139,9 @@ type Sheet struct {
 	// weapon attack rolls on top of the doubled ones (the barbarian's Brutal
 	// Critical: 1, 2 or 3 by level); 0 without it.
 	BrutalCriticalDice int
+	// SavageAttacks says the half-orc's Savage Attacks apply: a critical hit with a
+	// melee weapon attack rolls one more of the weapon's damage dice.
+	SavageAttacks bool
 	// Metamagic are the Metamagic options the sorcerer knows (feature keys), ChaMod
 	// is its Charisma modifier, and BardicDie the size of the die its Bardic
 	// Inspiration gives, 0 for a character with none.
@@ -153,12 +156,22 @@ type Sheet struct {
 	// FighterLevel is what Retomar o fôlego adds to its d10: the character's
 	// fighter level, 0 for anyone who is not a fighter.
 	FighterLevel int
+	// MonkLevel is the monk's level, 0 for a character with none: Slow Fall takes
+	// five times it off a fall.
+	MonkLevel int
 	// Senses are the special senses the sheet or stat block gives (darkvision...),
 	// which an NPC sees with on a map with the fog of war (MR-036). The zero value
 	// is plain sight.
 	Senses Senses
 	// Traits are the features the rolls and the damage of a combat read.
 	Traits Traits
+}
+
+// Maneuver is a die a table option adds to a roll, spent from a resource (the
+// engine's superiority_die effect). Applies, Economy and Ability are the effect's.
+type Maneuver struct {
+	Key, NamePT, Resource, Applies, Economy, Ability, TextPT string
+	Sides                                                    int
 }
 
 // Traits are what a sheet has that changes how its owner rolls and what its
@@ -169,8 +182,11 @@ type Sheet struct {
 type Traits struct {
 	// BarbarianLevel and RogueLevel are the class levels, 0 without the class.
 	BarbarianLevel, RogueLevel int
-	// Rage, RecklessAttack and DangerSense are the barbarian's features.
-	Rage, RecklessAttack, DangerSense bool
+	// Rage, RecklessAttack and DangerSense are the barbarian's features, and Frenzy
+	// the Berserker's level 3 feature.
+	Rage, RecklessAttack, DangerSense, Frenzy bool
+	// SculptSpells says the sheet has the evocation wizard's Sculpt Spells.
+	SculptSpells bool
 	// SneakAttackDice is the dice of Sneak Attack, 0 without the feature.
 	SneakAttackDice int
 	// DivineSmite, ImprovedDivineSmite and ColossusSlayer are the features of those
@@ -178,12 +194,22 @@ type Traits struct {
 	DivineSmite, ImprovedDivineSmite, ColossusSlayer, HuntersMark bool
 	// GreatWeaponFighting is the fighting style.
 	GreatWeaponFighting bool
+	// OpenHand and StunningStrike are the monk's Open Hand Technique (a rider on a
+	// Flurry of Blows hit) and Stunning Strike (a rider on a melee hit, 1 ki point);
+	// KiSaveDC is the monk's ki save DC (8 + proficiency + Wisdom modifier), 0 for
+	// anyone who is not a monk.
+	OpenHand, StunningStrike bool
+	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
 	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.
 	HeavyArmor bool
+	// StealthDisadvantage says the armor worn gives disadvantage on Dexterity (Stealth).
+	StealthDisadvantage bool
 	// Resistances are the damage resistances the features and traits give.
 	Resistances []Resistance
+	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
+	Maneuvers []Maneuver
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string
@@ -284,6 +310,9 @@ type Spell struct {
 	// too long for a fight.
 	Economy       string
 	Concentration bool
+	// Verbal says the spell has a verbal component: the noise gives a hidden caster's
+	// position away.
+	Verbal bool
 	// RangeKind is "self", "touch", "ranged", "sight", "unlimited" or "special",
 	// and RangeFt the distance of a ranged spell.
 	RangeKind string
@@ -297,6 +326,9 @@ type Spell struct {
 	SaveAbility   string
 	SaveOnSuccess string
 	SaveDC        int
+	// CasterDC is the caster's spell save DC, whether or not the spell asks for a saving
+	// throw: the DC of the saves an effect that lasts asks later (Web, Hold Person).
+	CasterDC int
 	// Damages are the spell's damage at the slot level, one part for each damage
 	// type it deals (Ice Storm has two), empty when it has none the engine can
 	// roll; Heal is its healing with the caster's spellcasting modifier already in
@@ -315,6 +347,10 @@ type Spell struct {
 	// above its own.
 	Area                bool
 	ExtraTargetPerLevel bool
+	// Evocation says the spell is of the school of evocation, and Sculpts that the
+	// caster has Sculpt Spells (SRD 5.1, School of Evocation): together they let the
+	// cast spare 1 + the cast level creatures.
+	Evocation, Sculpts bool
 	// TargetCount is how many targets the spell takes at its own level (0 when the
 	// spell says only Area or nothing: the old rules apply), and TargetPerLevel
 	// how many more it takes for each slot level above its own. A table spell
@@ -405,6 +441,9 @@ type ReactionStats struct {
 	// Deflect says it has Deflect Missiles; MonkLevel and DexMod are its numbers.
 	Deflect           bool
 	MonkLevel, DexMod int
+	// Reduce are the table maneuvers that reduce the damage of a melee attack that hit
+	// (superiority_die, applies reduce_melee_damage), each with the ability modifier it adds.
+	Reduce []ReduceManeuver
 	// Proficiency is the proficiency bonus (the Deflect Missiles throw back adds it).
 	Proficiency int
 	// CuttingWords says it has the bard's feature, with its bard level (the die)
@@ -424,6 +463,13 @@ type ReactionStats struct {
 	ResourceMax map[string]int
 }
 
+// ReduceManeuver is a table maneuver that takes a die plus an ability modifier off the damage
+// of a melee hit, as a reaction.
+type ReduceManeuver struct {
+	Key, NamePT, Resource string
+	Sides, Mod            int
+}
+
 // Named is a content key with its Portuguese name.
 type Named struct {
 	Key, NamePT string
@@ -440,6 +486,9 @@ type Turn struct {
 	// action attacks read.
 	AttackKey  string
 	FlurryLeft int
+	// FrenzyReady says the combatant is in a frenzied rage that began in an earlier
+	// turn (the Berserker's Frenzy): a melee weapon attack is its bonus action.
+	FrenzyReady bool
 	// Dashed says the Dash action doubled the speed.
 	Dashed bool
 	// ActionSurged says Action Surge was used this turn (once per turn, whatever
@@ -478,9 +527,19 @@ type Scene struct {
 	// the clues the master prepared. They never go to a player (RN-20).
 	Hooks string
 	Clues []SceneClue
+	// Images are the gallery images attached to the scene (MR-015), in the
+	// master's order. They never go to a player (RN-10).
+	Images []SceneImage
 	// ShowDC is the master's "Mostrar a CD aos jogadores" switch: when it is
 	// on, a player gets each DC and the pass or fail of their own rolls.
 	ShowDC bool
+}
+
+// SceneImage is a gallery image attached to a scene.
+type SceneImage struct {
+	ID, Name string
+	// ShowsWholeMap is GalleryImage.shows_whole_map.
+	ShowsWholeMap bool
 }
 
 // SceneClue is a clue of a scene, with who has it.

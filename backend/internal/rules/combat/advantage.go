@@ -49,14 +49,25 @@ const (
 	// Unseen Attackers and Targets.
 	SourceUnseenAttacker = "unseen_attacker"
 	SourceUnseenTarget   = "unseen_target"
+	// Help: an ally's Help aimed at the target (SRD 5.1, "Help").
+	SourceHelp = "help"
 	// Ranged Attacks: beyond the normal range, and a hostile creature within 5 ft.
 	SourceLongRange     = "long_range"
 	SourceHostileNearby = "hostile_nearby"
+	// Effects that last (RN-22): exhaustion, Faerie Fire and the advantage on saving
+	// throws an effect gives (Haste).
+	SourceExhaustionAttack = "exhaustion_attack"
+	SourceExhaustionSave   = "exhaustion_save"
+	SourceExhaustionCheck  = "exhaustion_check"
+	SourceOutlinedTarget   = "outlined_target"
+	SourceEffectSave       = "effect_save"
+	SourceEffectCheck      = "effect_check"
 	// Saving throws and ability checks.
 	SourceDodgingSave     = "dodging_save"
 	SourceDangerSense     = "danger_sense"
 	SourceRageStrength    = "rage_strength"
 	SourceRestrainedSave  = "restrained_save"
+	SourceStealthArmor    = "stealth_armor"
 	SourcePoisonedCheck   = "poisoned_check"
 	SourceFrightenedCheck = "frightened_check"
 	SourcePerceptionDim   = "perception_dim"
@@ -180,6 +191,17 @@ type Creature struct {
 	DangerSense bool
 	// Raging says it is in a rage whose benefits hold (no heavy armor).
 	Raging bool
+	// Exhaustion is its level of exhaustion, 0 to 6 (SRD, Conditions).
+	Exhaustion int
+	// Outlined says Faerie Fire outlines it: attacks against it have advantage if the
+	// attacker sees it, and it gets nothing from being invisible.
+	Outlined bool
+	// SaveAdvantage are the abilities an effect that lasts gives it advantage on the
+	// saving throws of (Haste: Dexterity).
+	SaveAdvantage []string
+	// CheckAdvantage are the abilities an effect that lasts gives it advantage on the ability
+	// checks of (Enhance Ability).
+	CheckAdvantage []string
 }
 
 // Has says whether it carries a condition.
@@ -236,6 +258,8 @@ type AttackScene struct {
 	// AttackerUnseen says the target cannot see the attacker (hidden, or out of
 	// sight in the dark); TargetUnseen says the attacker cannot see the target.
 	AttackerUnseen, TargetUnseen bool
+	// Helped says an ally's Help aimed at the target holds for this attacker.
+	Helped bool
 	// AllyNearTarget says an ally of the attacker that is not incapacitated is
 	// within 5 ft of the target (Pack Tactics).
 	AllyNearTarget bool
@@ -316,6 +340,17 @@ func AttackMode(s AttackScene) AttackModeResult {
 			add(r.kind, r.effect, r.condition)
 		}
 	}
+	if s.Attacker.Exhaustion >= exhaustionAttackLevel {
+		add(SourceExhaustionAttack, ModeDisadvantage, "")
+	}
+	if s.Target.Outlined {
+		// Faerie Fire: the target gets nothing from being invisible, and an attacker that
+		// sees it has advantage.
+		out.Sources = slices.DeleteFunc(out.Sources, func(src Source) bool { return src.Kind == SourceInvisibleTarget })
+		if !s.TargetUnseen {
+			add(SourceOutlinedTarget, ModeAdvantage, "")
+		}
+	}
 	if s.Target.Has(conditionProne) && known {
 		if within {
 			add(SourceProneTarget, ModeAdvantage, conditionProne)
@@ -354,6 +389,11 @@ func AttackMode(s AttackScene) AttackModeResult {
 		add(SourceUnseenTarget, ModeDisadvantage, "")
 	}
 
+	// Help: the attack roll of the creature an ally helped (SRD 5.1, "Help").
+	if s.Helped {
+		add(SourceHelp, ModeAdvantage, "")
+	}
+
 	out.Sources = append(out.Sources, rangedSources(s)...)
 	return out
 }
@@ -384,6 +424,9 @@ type SaveScene struct {
 	// EffectVisible says the creature sees the effect it saves against (Danger
 	// Sense): a spell it sees, a trap it has found.
 	EffectVisible bool
+	// StealthArmor says the check is Dexterity (Stealth) in armor that gives disadvantage
+	// on it (SRD 5.1, "Armor").
+	StealthArmor bool
 }
 
 // SaveMode lists the circumstances of a saving throw or an ability check (SRD
@@ -409,6 +452,21 @@ func SaveMode(s SaveScene) []Source {
 	if s.Ability == strengthAbility && c.Raging {
 		add(SourceRageStrength, ModeAdvantage, "")
 	}
+	if !s.Check && slices.Contains(c.SaveAdvantage, s.Ability) {
+		add(SourceEffectSave, ModeAdvantage, "")
+	}
+	if !s.Check && c.Exhaustion >= exhaustionAttackLevel {
+		add(SourceExhaustionSave, ModeDisadvantage, "")
+	}
+	if s.Check && slices.Contains(c.CheckAdvantage, s.Ability) {
+		add(SourceEffectCheck, ModeAdvantage, "")
+	}
+	if s.Check && c.Exhaustion >= 1 {
+		add(SourceExhaustionCheck, ModeDisadvantage, "")
+	}
+	if s.Check && s.StealthArmor && s.Ability == dexterityAbility {
+		add(SourceStealthArmor, ModeDisadvantage, "")
+	}
 	if s.Check {
 		if c.Has(conditionPoisoned) {
 			add(SourcePoisonedCheck, ModeDisadvantage, conditionPoisoned)
@@ -429,6 +487,10 @@ func AutoFailsSave(c Creature, ability string) bool {
 	}
 	return c.Has(conditionStunned) || c.Has(conditionParalyzed) || c.Has(conditionUnconscious) || c.Has(conditionPetrified)
 }
+
+// exhaustionAttackLevel is the level of exhaustion that gives disadvantage on attack rolls
+// and saving throws (SRD, Conditions: level 3); level 1 gives it on ability checks.
+const exhaustionAttackLevel = 3
 
 // pairOfDice is the d20 a roll with advantage or disadvantage takes.
 const pairOfDice = 2

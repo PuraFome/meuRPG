@@ -40,6 +40,15 @@
       </span>
     </div>
     <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado.</p>
+  } @else if (offer(); as o) {
+    <app-inspiration-offer
+      [offer]="o"
+      [canApp]="canApp"
+      [canType]="canType"
+      [busy]="busy()"
+      (use)="answer(true, $event)"
+      (keep)="answer(false, null)"
+    />
   } @else {
     @if (!typing()) {
       <div class="card">
@@ -54,6 +63,9 @@
         <mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado e diz o que
         acontece.
       </p>
+    }
+    @if (extra.fields().length > 0 && (typing() || !canApp)) {
+      <app-extra-dice class="extra" [fields]="extra.fields()" [(faces)]="extra.faces" />
     }
     @if (pair()) {
       <p class="note" role="status"><mat-icon aria-hidden="true">info</mat-icon>Esta rolagem leva 2 d20, com vantagem ou desvantagem. Digite os dois dados.</p>

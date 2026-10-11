@@ -1,0 +1,319 @@
+// The dice roll animation (docs/design.md#roll-animation). Colours are the theme's tokens; the veil is the page ground
+// with some alpha, so it follows the light and dark themes.
+:host {
+  display: contents;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  // Shown as a popover (the top layer, after any open dialog, which is a popover too); the z-index is for a browser
+  // without popovers, above the CDK container at 1000.
+  z-index: 2000;
+  // The browser's popover look undone: the veil covers the whole screen.
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  overflow: visible;
+  color: var(--mr-ink);
+  display: grid;
+  place-items: center;
+  padding: var(--mr-space-4);
+  background: color-mix(in srgb, var(--mr-ground) 72%, transparent);
+  animation: veil 160ms ease-out;
+  cursor: pointer;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mr-space-4);
+  max-width: 100%;
+}
+
+.dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-3);
+  align-items: center;
+  justify-content: center;
+  max-width: min(100%, 560px);
+  --die: clamp(120px, 42vw, 188px);
+}
+
+.dice[data-count='2'] {
+  --die: clamp(96px, 32vw, 150px);
+}
+
+.dice[data-count='3'],
+.dice[data-count='4'] {
+  --die: clamp(76px, 22vw, 112px);
+}
+
+.dice[data-count='5'],
+.dice[data-count='6'],
+.dice[data-count='7'],
+.dice[data-count='8'] {
+  --die: clamp(60px, 20vw, 88px);
+}
+
+.more {
+  padding: var(--mr-space-1) var(--mr-space-3);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.die {
+  position: relative;
+  width: var(--die);
+  height: var(--die);
+  perspective: 600px;
+  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--mr-ink) 28%, transparent));
+  // The tones of the faces around the number's face, lit from the upper left: in both themes the upper faces are the
+  // brightest and the lower ones the darkest.
+  --die-lit: light-dark(
+    var(--mr-surface),
+    color-mix(in srgb, var(--mr-ink) 17%, var(--mr-surface))
+  );
+  --die-mid: color-mix(in srgb, var(--mr-ink) 8%, var(--mr-surface));
+  --die-shade: light-dark(
+    color-mix(in srgb, var(--mr-ink) 20%, var(--mr-surface)),
+    var(--mr-ground)
+  );
+}
+
+.die svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-style: preserve-3d;
+}
+
+.face {
+  fill: var(--mr-accent-soft);
+}
+
+.lit {
+  fill: var(--die-lit);
+}
+
+.mid {
+  fill: var(--die-mid);
+}
+
+.shade {
+  fill: var(--die-shade);
+}
+
+.edge {
+  fill: none;
+  stroke: var(--mr-ink);
+  stroke-opacity: 0.6;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.rim {
+  fill: none;
+  stroke: var(--mr-ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+// The size comes from the drawing of each die (one digit or two), so the number fits its face.
+.num {
+  fill: var(--mr-ink);
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+// The two percentile d10 of a d100 say which is which under them, on a chip like "+N" so the page behind never mixes in.
+.die--part {
+  margin-bottom: var(--mr-space-6);
+}
+
+.part {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  translate: -50% 0;
+  padding: 0 var(--mr-space-2);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: 0.875rem;
+  color: var(--mr-ink);
+  white-space: nowrap;
+}
+
+.result__note {
+  color: var(--mr-ink-muted);
+}
+
+.die--tumble svg {
+  animation: tumble 700ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.die--landed svg {
+  animation: land 280ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+.die--dim {
+  opacity: 0.5;
+  transition: opacity 200ms ease-out;
+}
+
+.die--crit {
+  filter: drop-shadow(0 0 14px var(--mr-accent)) drop-shadow(0 0 4px var(--mr-warning-ink));
+}
+
+.die--crit .face {
+  fill: var(--mr-warning-surface);
+}
+
+.die--crit .rim {
+  stroke: var(--mr-accent);
+}
+
+.die--crit .num {
+  fill: var(--mr-accent-text);
+}
+
+.die--fumble .face {
+  fill: var(--mr-danger-surface);
+}
+
+.die--fumble .rim {
+  stroke: var(--mr-danger-ink);
+}
+
+.die--fumble .num {
+  fill: var(--mr-danger-ink);
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: min(100%, 420px);
+  padding: var(--mr-space-3) var(--mr-space-5);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  text-align: center;
+  color: var(--mr-ink);
+  animation: rise 180ms ease-out both;
+}
+
+.result--crit {
+  border-color: var(--mr-accent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--mr-accent) 45%, transparent);
+}
+
+.result__label {
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  overflow-wrap: anywhere;
+}
+
+.result__line {
+  font-family: var(--mr-font-sans);
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.result__word {
+  font-family: var(--mr-font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--mr-ink);
+}
+
+.result__word--good {
+  color: var(--mr-success-ink);
+}
+
+.result__word--bad {
+  color: var(--mr-danger-ink);
+}
+
+.result--crit .result__word {
+  color: var(--mr-accent-text);
+}
+
+@keyframes veil {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes tumble {
+  0% {
+    transform: translateY(-40px) rotate3d(1, 1, 0, -540deg) rotate(-200deg) scale(0.55);
+    opacity: 0.2;
+  }
+  35% {
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(0) rotate3d(1, 1, 0, -40deg) rotate(-20deg) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) rotate3d(1, 1, 0, 0deg) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes land {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: translateY(6px) scale(1.12, 0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .die svg,
+  .result {
+    animation: none;
+  }
+}
+
+.hint {
+  font-size: 0.875rem;
+  color: var(--mr-ink-muted);
+}

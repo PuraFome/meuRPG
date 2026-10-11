@@ -346,6 +346,9 @@ describe('the sheet maps armor_class_description, features and hints (integrator
           namePt: 'Recuperação Arcana',
           sourcePt: 'Mago 1',
           description: 'You have learned to regain some of your magical energy.',
+          descriptionPt: 'Você aprendeu a recuperar parte da sua energia mágica.',
+          descriptionPtMissing: false,
+          descriptionPtOnly: false,
           summaryPt: '',
         },
       ],
@@ -376,6 +379,9 @@ describe('the sheet maps armor_class_description, features and hints (integrator
         name: 'Recuperação Arcana',
         sourcePt: 'Mago 1',
         description: 'You have learned to regain some of your magical energy.',
+        descriptionPt: 'Você aprendeu a recuperar parte da sua energia mágica.',
+        descriptionPtMissing: false,
+        descriptionPtOnly: false,
         summaryPt: '',
       },
     ]);
@@ -448,8 +454,53 @@ describe("the sheet maps a Warlock's Pact Magic apart from the spell slots", () 
     expect(withDerived({}).pactSlots).toBeNull();
   });
 
+  it('carries what the spell list needs: level, prepared, and the ritual, concentration and reaction tags', () => {
+    const entry = (key: string, level: number, prepared: boolean, over: object = {}) => ({
+      $typeName: 'meurpg.rules.v1.CharacterSpell' as const,
+      prepared,
+      spell: {
+        $typeName: 'meurpg.rules.v1.Spell' as const,
+        key,
+        name: key,
+        namePt: key,
+        level,
+        schoolKey: '',
+        schoolNamePt: '',
+        classKeys: [],
+        ritual: false,
+        concentration: false,
+        archived: false,
+        off: false,
+        reaction: false,
+        ...over,
+      },
+    });
+    const sheet = withDerived({
+      spells: [
+        entry('spell:shield', 1, true, { reaction: true }),
+        entry('spell:detect-magic', 1, false, { ritual: true, concentration: true }),
+      ],
+    });
+    expect(sheet.spells).toEqual([
+      expect.objectContaining({
+        key: 'spell:shield',
+        level: 1,
+        prepared: true,
+        reaction: true,
+        ritual: false,
+      }),
+      expect.objectContaining({
+        key: 'spell:detect-magic',
+        prepared: false,
+        ritual: true,
+        concentration: true,
+        reaction: false,
+      }),
+    ]);
+  });
+
   it('keeps what a class prepares apart from what a class knows', () => {
-    const casting = (over: Record<string, number>) => ({
+    const casting = (over: Record<string, number | boolean>) => ({
       $typeName: 'meurpg.rules.v1.Spellcasting' as const,
       classKey: 'class:x',
       classNamePt: 'Classe',
@@ -459,12 +510,13 @@ describe("the sheet maps a Warlock's Pact Magic apart from the spell slots", () 
       cantripsKnown: 4,
       preparedMax: 0,
       spellsKnown: 0,
+      spellbook: false,
       ...over,
     });
     const [wizard, sorcerer] = withDerived({
-      spellcasting: [casting({ preparedMax: 7 }), casting({ spellsKnown: 5 })],
+      spellcasting: [casting({ preparedMax: 7, spellbook: true }), casting({ spellsKnown: 5 })],
     }).spellcasting;
-    expect(wizard).toMatchObject({ spellsPreparedMax: 7, spellsKnownMax: 0 });
+    expect(wizard).toMatchObject({ spellsPreparedMax: 7, spellsKnownMax: 0, spellbook: true });
     expect(sorcerer).toMatchObject({ spellsPreparedMax: 0, spellsKnownMax: 5 });
   });
 });
@@ -545,6 +597,9 @@ describe('the sheet maps the breath weapon, the resistances and the one-line rul
           namePt: 'Defesa',
           sourcePt: 'Guerreiro 1',
           description: '+1 AC.',
+          descriptionPt: '',
+          descriptionPtMissing: true,
+          descriptionPtOnly: false,
           summaryPt: '+1 na CA com armadura.',
         },
       ],
@@ -581,6 +636,9 @@ describe('the sheet lists the feats a character took with the features (MR-025)'
           namePt: 'Atleta',
           sourcePt: 'Talento',
           description: 'Você corre e escala melhor.',
+          descriptionPt: 'Você corre e escala melhor.',
+          descriptionPtMissing: false,
+          descriptionPtOnly: true,
           summaryPt: '',
         },
       ],
@@ -592,6 +650,9 @@ describe('the sheet lists the feats a character took with the features (MR-025)'
         name: 'Atleta',
         sourcePt: 'Talento',
         description: 'Você corre e escala melhor.',
+        descriptionPt: 'Você corre e escala melhor.',
+        descriptionPtMissing: false,
+        descriptionPtOnly: true,
         summaryPt: '',
       },
     ]);

@@ -75,6 +75,10 @@ export class MapPointsList {
   readonly lightNames = input<ReadonlyMap<string, string>>(new Map());
   /** The living player characters, when the screen can mark a treasure found ("Quem encontrou"): a treasure then offers "Marcar como encontrado" in place of "Revelar aos jogadores". `null`: it cannot (the session's list has the treasure card). */
   readonly people = input<readonly PickRow[] | null>(null);
+  /** In the live session, a Submapa point with a destination offers "Ir para <mapa>" (the session's current map changes). */
+  readonly canGoToMap = input(false);
+  /** The map the session is moving to: that button waits. */
+  readonly pendingMapId = input<string | null>(null);
   readonly markBusy = input(false);
   /** Why marking failed, in words. */
   readonly markError = input('');
@@ -83,8 +87,11 @@ export class MapPointsList {
   readonly markFound = output<TreasureMark>();
   /** "Abrir cena" / "Trocar para esta cena" on a scene point. */
   readonly openScene = output<MapPoint>();
+  /** "Ir para <mapa>" on a Submapa point: the screen changes the session's current map. */
+  readonly goToMap = output<MapPoint>();
 
   protected readonly Scene = MapPointKind.SCENE;
+  protected readonly Submap = MapPointKind.SUBMAP;
   protected readonly Treasure = MapPointKind.TREASURE;
   protected readonly Light = MapPointKind.LIGHT;
   private readonly injector = inject(Injector);

@@ -56,6 +56,8 @@ type kit struct {
 	vit  *playv1.CharacterVitals
 	// down says a player's character is at 0 hit points.
 	down bool
+	// surprised says the combatant is surprised and takes no reaction yet.
+	surprised bool
 }
 
 // kitOf reads a combatant's reactions, inside tx (nil for a read). ok is false for
@@ -81,13 +83,17 @@ func (s *Service) kitOf(ctx context.Context, tx pgx.Tx, campaignID string, who p
 		}
 		k.down = isDownIn(k.vit)
 	}
+	// A surprised combatant takes no reaction until its first turn ends (SRD 5.1, "Surprise").
+	if k.surprised, err = s.surprisedReactor(ctx, tx, who); err != nil {
+		return kit{}, false, err
+	}
 	return k, true, nil
 }
 
 // canReact says the combatant has its reaction and is able to use it: not spent,
 // not out of the fight, not down and not incapacitated.
 func (k kit) canReact() bool {
-	return !k.who.ReactionUsed && !k.who.Defeated && !k.down && !slices.ContainsFunc(k.who.Conditions, func(c string) bool { return slices.Contains(incapacitating, c) })
+	return !k.who.ReactionUsed && !k.who.EffectNoReaction && !k.who.Defeated && !k.down && !k.surprised && !slices.ContainsFunc(k.who.Conditions, func(c string) bool { return slices.Contains(incapacitating, c) })
 }
 
 // slotsUsedOf reads what an NPC's fight spent.

@@ -811,3 +811,18 @@ func TestEncodeMakesNoReferenceImage(t *testing.T) {
 		t.Errorf("Encode() made a reference image of %d bytes, want none", len(res.Reference))
 	}
 }
+
+// The model answers JPEG (the only type response_format accepts): the crop and
+// the plain upload path take it as they took the PNG.
+func TestCropFitAndProcessTakeAJPEGAnswer(t *testing.T) {
+	t.Parallel()
+	data := encodeJPEG(t, twoColors(160, 90))
+	res, err := CropFit(data, func(w, h int) image.Rectangle { return image.Rect(0, 0, w, h) }, 60, 45)
+	if err != nil || res.ContentType != JPEG || res.Width != 60 || res.Height != 45 {
+		t.Fatalf("CropFit() = %v, %v", res, err)
+	}
+	res, err = Process(data)
+	if err != nil || res.ContentType != JPEG || res.Width != 160 || len(res.Thumbnail) == 0 {
+		t.Fatalf("Process() = %v, %v", res, err)
+	}
+}

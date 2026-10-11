@@ -47,12 +47,35 @@ describe('FeatPicker', () => {
     expect(text(card)).toContain('Precisa do nível 8 ou mais.');
   });
 
-  it("tells which text is the SRD's, in English, and keeps the table's own in Portuguese", () => {
+  it('shows the Portuguese text first, with "Ver em inglês" for the SRD English, and the table\'s own text as it is', () => {
     const el = setup();
     const [grappler, athlete] = cards(el);
-    expect(text(grappler)).toContain('Texto do SRD, em inglês.');
-    expect(text(athlete)).not.toContain('Texto do SRD');
+    expect(text(grappler)).toContain('Você tem vantagem em jogadas de ataque');
+    expect(text(grappler)).not.toContain('(em inglês)');
+    expect(text(grappler)).toContain('Ver em inglês');
     expect(text(athlete)).toContain('Você corre e escala melhor.');
+    expect(text(athlete)).not.toContain('(em inglês)');
+    expect(text(athlete)).not.toContain('Ver em inglês');
+
+    Array.from(grappler.querySelectorAll('button'))
+      .find((b) => text(b).includes('Ver em inglês'))!
+      .click();
+    TestBed.tick();
+    expect(text(grappler)).toContain('You have advantage on attack rolls');
+    expect(text(grappler)).toContain('(em inglês)');
+    expect(grappler.querySelector('[lang="en"]')).toBeTruthy();
+    expect(text(athlete)).toContain('Você corre e escala melhor.');
+  });
+
+  it('shows the English, flagged, for an SRD feat with no translation yet', () => {
+    const feats = featOptions();
+    feats[0].descPt = [];
+    feats[0].descPtMissing = true;
+    const el = setup({ feats });
+    const grappler = cards(el)[0];
+    expect(text(grappler)).toContain('You have advantage on attack rolls');
+    expect(text(grappler)).toContain('(em inglês)');
+    expect(text(grappler)).not.toContain('Ver em inglês');
   });
 
   it('says which feat was picked', () => {

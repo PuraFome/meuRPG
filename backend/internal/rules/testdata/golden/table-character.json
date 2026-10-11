@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.35+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.40+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -284,6 +284,7 @@
         "PreparesSpells": true,
         "PreparedMax": 2,
         "SpellsKnownMax": 0,
+        "Spellbook": false,
         "MaxSpellLevel": 1,
         "Ritual": false,
         "SpellList": "class:gen-full-prepared@mesa"
@@ -589,9 +590,11 @@
         "Standard": ""
       }
     ],
+    "Maneuvers": null,
     "AttacksPerAction": 1,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,
     "SaveActions": null,
@@ -702,7 +705,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.35+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.40+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -986,6 +989,7 @@
         "PreparesSpells": true,
         "PreparedMax": 12,
         "SpellsKnownMax": 0,
+        "Spellbook": false,
         "MaxSpellLevel": 6,
         "Ritual": false,
         "SpellList": "class:gen-full-prepared@mesa"
@@ -1632,9 +1636,11 @@
         "Standard": ""
       }
     ],
+    "Maneuvers": null,
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,
     "SaveActions": null,
@@ -1854,7 +1860,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.35+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.40+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2138,6 +2144,7 @@
         "PreparesSpells": true,
         "PreparedMax": 6,
         "SpellsKnownMax": 0,
+        "Spellbook": false,
         "MaxSpellLevel": 3,
         "Ritual": false,
         "SpellList": "class:gen-full-prepared@mesa"
@@ -2608,9 +2615,11 @@
         "Standard": ""
       }
     ],
+    "Maneuvers": null,
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,
     "SaveActions": null,

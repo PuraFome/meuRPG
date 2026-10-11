@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { combatRPC, endTurnOf, getEncounterRPC, passTurnsTo, type Encounter } from './combat-support';
 import { beginCreatureCombat, hitAndApply, sessionRoute, tableForCreatureCombat, tapCaveSquare, trapAt } from './creatures-combat-support';
+import { closeSheet } from './contests-support';
 import { endOpenSessionRPC } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
@@ -290,8 +291,16 @@ test(
       await expect(block.getByRole('button', { name: 'Mover o Nanquim' })).toBeVisible();
       await expect(block.locator('.tile').nth(1)).toContainText('voo');
 
-      // A standard action spends its own action, not Pensantus's.
+      // A familiar can't attack, but it can take the Help action (SRD 5.1, Find Familiar): the same sheet as a
+      // character's, and it spends the raven's own action, not Pensantus's.
       await block.getByRole('button', { name: 'Ajudar: Nanquim' }).click();
+      const help = p.getByRole('dialog');
+      await help.locator('label', { hasText: 'Toren' }).click();
+      await help.getByRole('button', { name: 'Continuar' }).click();
+      await help.locator('label', { hasText: 'Percepção' }).click();
+      await help.getByRole('button', { name: /^Ajudar Toren/ }).click();
+      await expect(help).toContainText('Você ajudou Toren. Ele terá vantagem no próximo teste de Percepção.');
+      await closeSheet(help);
       await expect(block.locator('.tile').first()).toContainText('Usada');
       await p.getByRole('button', { name: 'Encerrar a vez do Nanquim' }).click();
       await expect.poll(async () => {

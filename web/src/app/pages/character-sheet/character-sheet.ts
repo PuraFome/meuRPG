@@ -15,6 +15,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { setPageSubject } from '../../core/title/page-title';
@@ -24,6 +26,8 @@ import {
   livingRefusal,
   type LivingRefusal,
 } from '../../core/characters/character-errors';
+import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
+import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
 import { ActionKey } from '../../core/connect/idempotency';
 import type { LevelUpDone } from '../../core/levelup/levelup-flow';
 import { takeLevelUpDone } from '../../core/levelup/levelup-done';
@@ -142,6 +146,10 @@ export class CharacterSheetPage {
   private readonly injector = inject(Injector);
   private readonly openSessions = inject(OpenSessions);
   private readonly xpWatcher = inject(XpWatcher);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
+  /** The descriptions already asked for, by spell: a second tap opens at once. */
+  private readonly spellDetails = new Map<string, Promise<SpellDetailsVm>>();
 
   /** Under 1200px the player's notes are a row that opens; the four-column sheet shows them. */
   protected readonly narrow = mediaQuery('(max-width: 1199.98px)');
@@ -207,6 +215,31 @@ export class CharacterSheetPage {
   protected readonly formatModifier = formatModifier;
   protected readonly issueTitle = issueTitle;
 
+  /** A tap on a spell of the list (or its "?"): its description, a bottom sheet on a phone and a dialog from a tablet up. */
+  protected describeSpell(key: string): void {
+    const campaignId = this.campaignId();
+    const s = this.state();
+    const spell =
+      s.status === 'ready' && s.vm.sheet.kind === 'full'
+        ? s.vm.sheet.spells.find((x) => x.key === key)
+        : undefined;
+    if (!spell) {
+      return;
+    }
+    openSpellDetails(this.dialog, this.bottomSheet, {
+      namePt: spell.namePt,
+      load: () => {
+        let pending = this.spellDetails.get(key);
+        if (!pending) {
+          pending = this.source.loadSpellDetails(campaignId, key);
+          this.spellDetails.set(key, pending);
+          pending.catch(() => this.spellDetails.delete(key));
+        }
+        return pending;
+      },
+    });
+  }
+
   constructor() {
     // The tab's title carries the character's name once the sheet is loaded.
     setPageSubject(() => {
@@ -236,6 +269,14 @@ export class CharacterSheetPage {
       untracked(() => {
         if (!live) {
           this.vitals.set(null);
+        }
+        // A session that opens while the sheet is on screen locks it (MR-006, RN-01): the sheet is read again, so
+        // "Rascunho" and "Editar ficha" give way to "Travada" without a reload. The notice poll (30 s) tells us.
+        if (player) {
+          if (this.wasLive === false && live) {
+            void this.reloadQuietly();
+          }
+          this.wasLive = live;
         }
         this.xpWatcher.follow(
           live ? id : null,
@@ -277,6 +318,8 @@ export class CharacterSheetPage {
   }
 
   private characterId = '';
+  /** Whether the campaign had an open session the last time the sheet was a player's; `null` before the first one. */
+  private wasLive: boolean | null = null;
   private destroyed = false;
   private livingCheckedFor = '';
   /** Numbers every read and every answer that sets the sheet: an answer older than the latest one, or for a character the page left, is dropped. */
@@ -336,6 +379,7 @@ export class CharacterSheetPage {
 
   private load(campaignId: string, characterId: string): void {
     const seq = ++this.sheetSeq;
+    this.wasLive = null;
     this.state.set({ status: 'loading' });
     this.vitals.set(null);
     this.confirmingDeath.set(false);

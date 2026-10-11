@@ -42,6 +42,8 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
       'Modificador',
       'Proficiência',
       'Sentido',
+      'Ação',
+      'Dado de manobra',
       'Escolha',
       'Nota e magia concedida',
     ]);

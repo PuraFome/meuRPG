@@ -31,6 +31,20 @@ export const CONDITIONS: readonly ConditionInfo[] = [
   { key: 'condition:deafened', name: 'Surdo' },
 ];
 
+/** The conditions that take every action and reaction from a combatant (SRD 5.1, Conditions: Incapacitated and what includes it). */
+const INCAPACITATING = [
+  'condition:incapacitated',
+  'condition:paralyzed',
+  'condition:petrified',
+  'condition:stunned',
+  'condition:unconscious',
+];
+
+/** The combatant is incapacitated: nothing of the turn's economy is available, only "Encerrar turno". */
+export function cannotAct(c: { readonly conditions?: readonly string[] }): boolean {
+  return (c.conditions ?? []).some((k) => INCAPACITATING.includes(k));
+}
+
 /** A condition's Portuguese name by key; empty for a key this app doesn't know. */
 export function conditionName(key: string): string {
   return CONDITIONS.find((c) => c.key === key)?.name ?? '';

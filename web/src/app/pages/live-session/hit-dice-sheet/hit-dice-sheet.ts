@@ -23,13 +23,18 @@ import {
   dieName,
   hitDieRollLine,
 } from '../../../core/resources/hit-dice-text';
+import { RollAnimator, showOfDie } from '../../../shared/roll-overlay/roll-animator';
 import { type HitDieRoll, ResourceClient } from '../../../core/resources/resources-client';
-import { hitDiceErrorMessage } from '../../../core/resources/resources-errors';
+import {
+  arcaneRecoveryErrorMessage,
+  hitDiceErrorMessage,
+} from '../../../core/resources/resources-errors';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 import { RollPicker } from '../combat/roll-picker/roll-picker';
 import { toVitalsVm } from '../live-session-source.live';
 import type { VitalsVm } from '../live-session.types';
+import { arcaneRecoveryState, expendedSlots, levelsWords } from './arcane-recovery';
 
 /** What the page hands "Gastar dados de vida". */
 export interface HitDiceSheetData {
@@ -77,6 +82,7 @@ export function openHitDice(
 })
 export class HitDiceSheet {
   private readonly api = inject(ResourceClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<HitDiceSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -171,6 +177,17 @@ export class HitDiceSheet {
         this.answered.set(vitals);
         this.data.apply(vitals);
       }
+      if ('inApp' in roll) {
+        const show = showOfDie(
+          'Dado de vida',
+          faces,
+          res.face,
+          hitDieRollLine(res.face, res.constitutionModifier, res.healed),
+        );
+        if (show) {
+          this.animator.play(show);
+        }
+      }
       this.rolls.update((all) => [
         hitDieRollLine(res.face, res.constitutionModifier, res.healed),
         ...all,
@@ -184,10 +201,80 @@ export class HitDiceSheet {
     }
   }
 
+  // --- Recuperação Arcana (SRD 5.1, Wizard): after a short rest, expended slots up to half the wizard level. ---
+
+  protected readonly arcane = computed(() => arcaneRecoveryState(this.vitals()));
+  protected readonly arcaneSlots = computed(() => expendedSlots(this.vitals()));
+  protected readonly arcaneHelp = computed(
+    () =>
+      `Recupere espaços de magia que somem até ${levelsWords(this.arcane()?.allowance ?? 0)}; nenhum de 6º nível ou mais.`,
+  );
+  /** How many slots of each spell level the player picked to recover. */
+  protected readonly arcanePicked = signal<Readonly<Record<number, number>>>({});
+  /** The combined level of the picked slots. */
+  protected readonly arcaneTotal = computed(() =>
+    Object.entries(this.arcanePicked()).reduce((sum, [level, n]) => sum + Number(level) * n, 0),
+  );
+  protected readonly arcaneBusy = signal(false);
+  protected readonly arcaneKey = new ActionKey();
+
+  protected arcaneCount(level: number): number {
+    return this.arcanePicked()[level] ?? 0;
+  }
+
+  protected canAddArcane(slot: { level: number; expended: number }): boolean {
+    return (
+      this.arcaneCount(slot.level) < slot.expended &&
+      this.arcaneTotal() + slot.level <= (this.arcane()?.allowance ?? 0)
+    );
+  }
+
+  protected stepArcane(level: number, by: 1 | -1): void {
+    const count = Math.max(this.arcaneCount(level) + by, 0);
+    this.arcanePicked.update((all) => ({ ...all, [level]: count }));
+    this.error.set('');
+  }
+
+  protected async recoverArcane(): Promise<void> {
+    const slots = Object.entries(this.arcanePicked())
+      .map(([level, count]) => ({ level: Number(level), count }))
+      .filter((s) => s.count > 0);
+    if (slots.length === 0 || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.api.useArcaneRecovery(
+        this.data.campaignId,
+        this.vitals().characterId,
+        slots,
+        this.arcaneKey.keyFor(slots),
+      );
+      this.arcaneKey.renew();
+      if (res.vitals) {
+        const vitals = toVitalsVm(res.vitals);
+        this.answered.set(vitals);
+        this.data.apply(vitals);
+      }
+      this.arcanePicked.set({});
+      this.arcaneDone.set(
+        `Recuperou espaços de magia que somam ${levelsWords(res.recoveredLevels)}.`,
+      );
+    } catch (err) {
+      this.error.set(arcaneRecoveryErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** What Recuperação Arcana just did, for the live region. */
+  protected readonly arcaneDone = signal('');
+
   protected close(): void {
     if (this.busy()) {
       return;
     }
-    this.sheet.close(this.rolls().length > 0);
+    this.sheet.close(this.rolls().length > 0 || this.arcaneDone() !== '');
   }
 }

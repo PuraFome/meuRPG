@@ -79,6 +79,7 @@ sql:
     schema: migrations
     queries:
       - internal/play/queries.sql
+      - internal/play/queries_contests.sql
       - internal/play/queries_casting.sql
       - internal/play/combat_reserve.sql
     gen:

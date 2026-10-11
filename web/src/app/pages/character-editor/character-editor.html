@@ -761,6 +761,19 @@
                       >
                     </mat-form-field>
                   </div>
+                  @if (master()) {
+                    <section class="subsection" aria-labelledby="feats-title">
+                      <h3 class="subsection__title" id="feats-title">Talentos</h3>
+                      <app-feats-field
+                        [featKeys]="featKeys()"
+                        [featSlots]="featSlots()"
+                        [catalog]="s.catalog.feats"
+                        [issues]="featIssues()"
+                        (added)="addFeat($event)"
+                        (removed)="removeFeat($event)"
+                      />
+                    </section>
+                  }
                 </section>
               </cdk-step>
             </app-editor-stepper>

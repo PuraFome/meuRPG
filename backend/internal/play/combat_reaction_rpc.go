@@ -78,12 +78,16 @@ func (s *Service) AnswerReaction(
 		}
 		use := choice == playv1.ReactionChoice_REACTION_CHOICE_USE
 		switch reaction.Kind(w.Kind) {
+		case reaction.Contest:
+			return nil, errContestWindow()
 		case reaction.Shield:
 			err = s.answerShield(ctx, c, w, reactor, use, req.Msg, &got)
 		case reaction.MasterCheck:
 			err = s.answerMasterCheck(ctx, c, m, w, use, &got)
 		case reaction.Concentration:
 			err = s.answerConcentration(ctx, c, m, w, reactor, use, &got)
+		case reaction.EffectSave:
+			err = errEffectSaveWindow()
 		default:
 			err = s.answerMore(ctx, c, m, w, reactor, use, req.Msg, &got)
 		}
@@ -182,6 +186,12 @@ func (s *Service) answerConcentration(_ context.Context, _ *combatTx, _ authz.Me
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("a concentration save is answered with ResolveConcentrationSave"))
 }
 
+// errEffectSaveWindow is AnswerReaction on the saving throw an effect asks (RN-22): it
+// is answered with RollEffectSave, never here.
+func errEffectSaveWindow() error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("an effect's saving throw is answered with RollEffectSave"))
+}
+
 // answerMore answers the reactions that are not Shield, the master's check or the
 // concentration save.
 func (s *Service) answerMore(ctx context.Context, c *combatTx, m authz.Membership, w playdb.ReactionWindow, reactor playdb.Combatant, use bool, req *playv1.AnswerReactionRequest, got *answered) error {
@@ -192,6 +202,8 @@ func (s *Service) answerMore(ctx context.Context, c *combatTx, m authz.Membershi
 		return s.answerUncannyDodge(ctx, c, w, reactor, use, got)
 	case reaction.DeflectKind:
 		return s.answerDeflect(ctx, c, w, reactor, use, req, got)
+	case reaction.ManeuverReduceKind:
+		return s.answerManeuverReduce(ctx, c, w, reactor, use, req, got)
 	case reaction.CuttingWords:
 		return s.answerCuttingWords(ctx, c, w, reactor, use, req, got)
 	case reaction.HellishRebukeKind:

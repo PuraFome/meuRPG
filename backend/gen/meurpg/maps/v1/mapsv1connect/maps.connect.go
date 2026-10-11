@@ -86,6 +86,9 @@ const (
 	// MapServiceRevealSceneClueProcedure is the fully-qualified name of the MapService's
 	// RevealSceneClue RPC.
 	MapServiceRevealSceneClueProcedure = "/meurpg.maps.v1.MapService/RevealSceneClue"
+	// MapServiceSetSceneImagesProcedure is the fully-qualified name of the MapService's SetSceneImages
+	// RPC.
+	MapServiceSetSceneImagesProcedure = "/meurpg.maps.v1.MapService/SetSceneImages"
 	// MapServicePlaceMapTokenProcedure is the fully-qualified name of the MapService's PlaceMapToken
 	// RPC.
 	MapServicePlaceMapTokenProcedure = "/meurpg.maps.v1.MapService/PlaceMapToken"
@@ -460,6 +463,28 @@ type MapServiceClient interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	RevealSceneClue(context.Context, *connect.Request[v1.RevealSceneClueRequest]) (*connect.Response[v1.RevealSceneClueResponse], error)
+	// SetSceneImages replaces the gallery images attached to a SCENE point
+	// ("Imagens da cena", MR-015) with the list in the request, in that order:
+	// adding, removing and reordering are all this one call, and an empty list
+	// clears it. It does not show anything to the players: the master shows an
+	// image with the gallery's "Mostrar aos jogadores" (PlayService.SetShownImage,
+	// MR-019), which keeps its own rules. Only the campaign's master may call it,
+	// with or without an open session. Setting the same list twice changes
+	// nothing, so a retry is safe without an idempotency key.
+	//
+	// Everyone watching the map hears `map_changed`, and, when the point is the
+	// open scene, `scene_changed` (both IDs only); a player's read of either
+	// never carries the list (RN-10).
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a SCENE point; the list has more
+	//     than 8 images or the same image twice; an ID is not a UUID.
+	//   - `not_found`: an image is not in this campaign's gallery (the whole
+	//     call is refused), the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a member
+	//     of it.
+	//   - `permission_denied`: the caller is a player.
+	SetSceneImages(context.Context, *connect.Request[v1.SetSceneImagesRequest]) (*connect.Response[v1.SetSceneImagesResponse], error)
 	// PlaceMapToken puts a character's token on a map, or moves it there if
 	// it is already on the map (MR-012). Only the campaign's master may call
 	// it. The character must be a living character of the campaign: a
@@ -829,6 +854,12 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("RevealSceneClue")),
 			connect.WithClientOptions(opts...),
 		),
+		setSceneImages: connect.NewClient[v1.SetSceneImagesRequest, v1.SetSceneImagesResponse](
+			httpClient,
+			baseURL+MapServiceSetSceneImagesProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("SetSceneImages")),
+			connect.WithClientOptions(opts...),
+		),
 		placeMapToken: connect.NewClient[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse](
 			httpClient,
 			baseURL+MapServicePlaceMapTokenProcedure,
@@ -941,6 +972,7 @@ type mapServiceClient struct {
 	moveSceneClue       *connect.Client[v1.MoveSceneClueRequest, v1.MoveSceneClueResponse]
 	removeSceneClue     *connect.Client[v1.RemoveSceneClueRequest, v1.RemoveSceneClueResponse]
 	revealSceneClue     *connect.Client[v1.RevealSceneClueRequest, v1.RevealSceneClueResponse]
+	setSceneImages      *connect.Client[v1.SetSceneImagesRequest, v1.SetSceneImagesResponse]
 	placeMapToken       *connect.Client[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse]
 	setMapTokenHidden   *connect.Client[v1.SetMapTokenHiddenRequest, v1.SetMapTokenHiddenResponse]
 	removeMapToken      *connect.Client[v1.RemoveMapTokenRequest, v1.RemoveMapTokenResponse]
@@ -1055,6 +1087,11 @@ func (c *mapServiceClient) RemoveSceneClue(ctx context.Context, req *connect.Req
 // RevealSceneClue calls meurpg.maps.v1.MapService.RevealSceneClue.
 func (c *mapServiceClient) RevealSceneClue(ctx context.Context, req *connect.Request[v1.RevealSceneClueRequest]) (*connect.Response[v1.RevealSceneClueResponse], error) {
 	return c.revealSceneClue.CallUnary(ctx, req)
+}
+
+// SetSceneImages calls meurpg.maps.v1.MapService.SetSceneImages.
+func (c *mapServiceClient) SetSceneImages(ctx context.Context, req *connect.Request[v1.SetSceneImagesRequest]) (*connect.Response[v1.SetSceneImagesResponse], error) {
+	return c.setSceneImages.CallUnary(ctx, req)
 }
 
 // PlaceMapToken calls meurpg.maps.v1.MapService.PlaceMapToken.
@@ -1462,6 +1499,28 @@ type MapServiceHandler interface {
 	//     member of it.
 	//   - `permission_denied`: the caller is a player.
 	RevealSceneClue(context.Context, *connect.Request[v1.RevealSceneClueRequest]) (*connect.Response[v1.RevealSceneClueResponse], error)
+	// SetSceneImages replaces the gallery images attached to a SCENE point
+	// ("Imagens da cena", MR-015) with the list in the request, in that order:
+	// adding, removing and reordering are all this one call, and an empty list
+	// clears it. It does not show anything to the players: the master shows an
+	// image with the gallery's "Mostrar aos jogadores" (PlayService.SetShownImage,
+	// MR-019), which keeps its own rules. Only the campaign's master may call it,
+	// with or without an open session. Setting the same list twice changes
+	// nothing, so a retry is safe without an idempotency key.
+	//
+	// Everyone watching the map hears `map_changed`, and, when the point is the
+	// open scene, `scene_changed` (both IDs only); a player's read of either
+	// never carries the list (RN-10).
+	//
+	// Errors:
+	//   - `invalid_argument`: the point is not a SCENE point; the list has more
+	//     than 8 images or the same image twice; an ID is not a UUID.
+	//   - `not_found`: an image is not in this campaign's gallery (the whole
+	//     call is refused), the point is not on this map, the map is not in this
+	//     campaign, the campaign does not exist, or the caller is not a member
+	//     of it.
+	//   - `permission_denied`: the caller is a player.
+	SetSceneImages(context.Context, *connect.Request[v1.SetSceneImagesRequest]) (*connect.Response[v1.SetSceneImagesResponse], error)
 	// PlaceMapToken puts a character's token on a map, or moves it there if
 	// it is already on the map (MR-012). Only the campaign's master may call
 	// it. The character must be a living character of the campaign: a
@@ -1827,6 +1886,12 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("RevealSceneClue")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceSetSceneImagesHandler := connect.NewUnaryHandler(
+		MapServiceSetSceneImagesProcedure,
+		svc.SetSceneImages,
+		connect.WithSchema(mapServiceMethods.ByName("SetSceneImages")),
+		connect.WithHandlerOptions(opts...),
+	)
 	mapServicePlaceMapTokenHandler := connect.NewUnaryHandler(
 		MapServicePlaceMapTokenProcedure,
 		svc.PlaceMapToken,
@@ -1956,6 +2021,8 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceRemoveSceneClueHandler.ServeHTTP(w, r)
 		case MapServiceRevealSceneClueProcedure:
 			mapServiceRevealSceneClueHandler.ServeHTTP(w, r)
+		case MapServiceSetSceneImagesProcedure:
+			mapServiceSetSceneImagesHandler.ServeHTTP(w, r)
 		case MapServicePlaceMapTokenProcedure:
 			mapServicePlaceMapTokenHandler.ServeHTTP(w, r)
 		case MapServiceSetMapTokenHiddenProcedure:
@@ -2071,6 +2138,10 @@ func (UnimplementedMapServiceHandler) RemoveSceneClue(context.Context, *connect.
 
 func (UnimplementedMapServiceHandler) RevealSceneClue(context.Context, *connect.Request[v1.RevealSceneClueRequest]) (*connect.Response[v1.RevealSceneClueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RevealSceneClue is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) SetSceneImages(context.Context, *connect.Request[v1.SetSceneImagesRequest]) (*connect.Response[v1.SetSceneImagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.SetSceneImages is not implemented"))
 }
 
 func (UnimplementedMapServiceHandler) PlaceMapToken(context.Context, *connect.Request[v1.PlaceMapTokenRequest]) (*connect.Response[v1.PlaceMapTokenResponse], error) {

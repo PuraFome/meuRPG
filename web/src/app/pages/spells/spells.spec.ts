@@ -216,7 +216,7 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     expect(flat(el.querySelector('.card__line'))).toContain(
       'Burning Hands · 1º nível · Evocação · Mago',
     );
-    expect(flat(el)).toContain('Texto do SRD 5.1, em inglês.');
+    expect(flat(el)).toContain('Texto do SRD 5.1; a tradução para o português é nossa.');
     expect(el.querySelector('a[href="/credits"]')).not.toBeNull();
     // "Voltar para Magias" takes back the step that opened the spell: the same list, no new ask, the focus on the row.
     document.body.appendChild(el);

@@ -920,7 +920,10 @@ func TestRN25_SpellsAndActionsWithoutReach(t *testing.T) {
 		t.Errorf("Mãos Flamejantes hit %d targets, want 3", len(area.GetCast().GetTargets()))
 	}
 	a.passTo(t, e, "Toren")
-	if _, err := a.action(t, a.caio, e, "Toren", "standard:help"); err != nil {
+	if _, err := a.caio.contests.Help(t.Context(), connect.NewRequest(&playv1.HelpRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Toren"), IdempotencyKey: newKey(),
+		Kind: playv1.HelpKind_HELP_KIND_CHECK, AllyId: a.id(t, "Brisa"), TaskKey: "skill:perception",
+	})); err != nil {
 		t.Fatalf("Help error = %v", err)
 	}
 	a.passTo(t, e, "Brisa")
@@ -1113,11 +1116,19 @@ func TestRN25_ConditionsThatLeaveNoSpeed(t *testing.T) {
 			t.Errorf("%s: GetMoveOptions = %v, %v; want 0 left", key, res.Msg, err)
 		}
 	}
+	// An incapacitated creature takes no action at all (SRD 5.1, Conditions); a grappled one
+	// has no speed and may still act.
+	if _, err := a.action(t, a.caio, e, "Toren", "standard:dash"); err == nil {
+		t.Errorf("an unconscious Toren dashed")
+	}
+	if _, err := a.conditions(t, a.master, e, "Toren", []string{"condition:grappled"}, true, false); err != nil {
+		t.Fatalf("SetCombatantConditions(grappled) error = %v", err)
+	}
 	if _, err := a.action(t, a.caio, e, "Toren", "standard:dash"); err != nil {
 		t.Fatalf("Dash error = %v", err)
 	}
 	if got := a.theatreCombatant(t, a.caio, "Toren").GetMovementLeftDft(); got != 0 {
-		t.Errorf("a stunned Toren that dashes has %d left, want 0 (twice nothing)", got)
+		t.Errorf("a grappled Toren that dashes has %d left, want 0 (twice nothing)", got)
 	}
 	if _, err := a.conditions(t, a.master, e, "Toren", nil, true, false); err != nil {
 		t.Fatalf("clearing the conditions error = %v", err)

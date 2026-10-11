@@ -96,6 +96,10 @@ type saveRoll struct {
 	Counted  int32  `json:"counted,omitempty"`
 	RollMode string `json:"roll_mode,omitempty"`
 	Auto     bool   `json:"auto,omitempty"`
+	// Sculpted says the caster's Sculpt Spells spared the target: it succeeded with no roll.
+	Sculpted bool `json:"sculpted,omitempty"`
+	// Extra are the dice effects added to the roll (Bênção, Perdição).
+	Extra []effectDie `json:"extra,omitempty"`
 	// Unknown says the target is a basic-sheet NPC with no saving throw bonus:
 	// the roll is d20 + 0 and the master may overrule it.
 	Unknown bool `json:"bonus_unknown,omitempty"`
@@ -106,12 +110,13 @@ type castHit struct {
 	Target string `json:"target_id"`
 	Darts  int32  `json:"darts,omitempty"`
 	// A spell attack: the d20, the bonus, the total and the outcome.
-	Outcome  string    `json:"outcome,omitempty"`
-	D20      int32     `json:"d20,omitempty"`
-	Modifier int32     `json:"modifier,omitempty"`
-	Total    int32     `json:"total,omitempty"`
-	Physical bool      `json:"physical,omitempty"`
-	Save     *saveRoll `json:"save,omitempty"`
+	Outcome  string      `json:"outcome,omitempty"`
+	D20      int32       `json:"d20,omitempty"`
+	Modifier int32       `json:"modifier,omitempty"`
+	Total    int32       `json:"total,omitempty"`
+	Extra    []effectDie `json:"extra,omitempty"`
+	Physical bool        `json:"physical,omitempty"`
+	Save     *saveRoll   `json:"save,omitempty"`
 	// A spell attack made with advantage or disadvantage: the other d20, which die
 	// counts (D20 is the one that does), the mode and the suggestion.
 	D20B          int32  `json:"d20_b,omitempty"`
@@ -147,6 +152,12 @@ type castHit struct {
 	// when the spell hit: the players' line lists the target only to them.
 	Fogged   bool   `json:"fogged,omitempty"`
 	SeenMask uint64 `json:"seen_mask,omitempty"`
+
+	// A spell that lasts (RN-22): whether its effect took hold of the target
+	// (lastingApplied) or the spell did nothing to it (lastingNoEffect), and why, which
+	// only the master reads.
+	Lasting     string `json:"lasting,omitempty"`
+	NoEffectWhy string `json:"no_effect_why,omitempty"`
 
 	// A spell that reads hit points (combat_spells_hp.go): whether it reached the
 	// target (the fx* values below), why not, the target's hit points when it did,
@@ -272,8 +283,11 @@ type actionEvent struct {
 	// says an NPC took it at once.
 	// DiceCount counts every die rolled, ExtraDice among them: the last ExtraDice
 	// faces are the ones a feature added to a critical hit (Brutal Critical).
-	DiceCount  int32   `json:"dice_count,omitempty"`
-	ExtraDice  int32   `json:"extra_dice,omitempty"`
+	DiceCount int32 `json:"dice_count,omitempty"`
+	ExtraDice int32 `json:"extra_dice,omitempty"`
+	// SavageDice is how many of the ExtraDice are the half-orc's Savage Attacks (0 or
+	// 1); the rest are Brutal Critical's.
+	SavageDice int32   `json:"savage_dice,omitempty"`
 	DiceSides  int32   `json:"dice_sides,omitempty"`
 	Faces      []int32 `json:"faces,omitempty"`
 	Amount     int32   `json:"amount,omitempty"`
@@ -284,6 +298,14 @@ type actionEvent struct {
 	// dice's maximum, under the table's rule "máximo mais uma rolagem"): part of
 	// Modifier, kept apart so the log can say where it came from.
 	CriticalMax int32 `json:"critical_max,omitempty"`
+
+	// FallCuts are the fall damages a monk's Slow Fall took points off, with their
+	// amounts before: an undo puts them back. Amount is how many points it took off.
+	FallCuts []fallCut `json:"fall_cuts,omitempty"`
+	// Relentless says the half-orc's Relentless Endurance turned the damage that would
+	// have dropped the target to 0 into 1 hit point, and spent the use: an undo gives
+	// it back.
+	Relentless bool `json:"relentless,omitempty"`
 
 	// Before and After are the target's hit points around a damage or the
 	// master's hand.
@@ -372,6 +394,15 @@ type actionEvent struct {
 	Conditions []string `json:"conditions,omitempty"`
 	CondBefore []string `json:"cond_before,omitempty"`
 
+	// An effect that lasts began, changed, ended or asked a saving throw (RN-22).
+	Lasting *lastingEvent `json:"lasting,omitempty"`
+	// Extra are the dice effects added to the roll (Bênção, Perdição).
+	Extra []effectDie `json:"extra,omitempty"`
+	// Restore are the effects the action ended: its undo puts them back.
+	Restore []playdb.CombatantState `json:"restore,omitempty"`
+	// ExtraUsed says the action spent the extra action of an effect (Velocidade).
+	ExtraUsed bool `json:"extra_used,omitempty"`
+
 	// What the undo of an action puts back.
 	ActionBefore   bool `json:"action_before,omitempty"`
 	BonusBefore    bool `json:"bonus_before,omitempty"`
@@ -396,7 +427,13 @@ type actionEvent struct {
 	CostDFt     int32 `json:"cost_dft,omitempty"`
 	DistanceFt  int32 `json:"distance_ft,omitempty"`
 	DistanceDFt int32 `json:"distance_dft,omitempty"`
-	OnTurn      bool  `json:"on_turn,omitempty"`
+	// SpentDFt is the movement a walk really spent, in tenths of a foot: the path's
+	// cost times the factor of a drag or a crawl, which Dragging and Crawling name.
+	// Zero when the move spent nothing (the master's free move) or was written before.
+	SpentDFt int32 `json:"spent_dft,omitempty"`
+	Dragging bool  `json:"dragging,omitempty"`
+	Crawling bool  `json:"crawling,omitempty"`
+	OnTurn   bool  `json:"on_turn,omitempty"`
 	// A jump: its kind ("long", "high"), the height of a high one, and whether a
 	// long one landed in difficult terrain (the master's log reminds the
 	// Acrobatics check, D3). From is where the combatant stood and what it had
@@ -533,9 +570,11 @@ type actionEvent struct {
 	// The damage by parts (combat_parts.go): what each part rolled, the once-per-turn
 	// marks of the attacker before the roll (an undo puts them back) and the steps
 	// that resistance took the damage through.
-	Parts      []partRoll  `json:"parts,omitempty"`
-	OnceBefore *onceMarks  `json:"once_before,omitempty"`
-	Steps      []stepGroup `json:"steps,omitempty"`
+	Parts []partRoll `json:"parts,omitempty"`
+	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
+	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
+	OnceBefore    *onceMarks  `json:"once_before,omitempty"`
+	Steps         []stepGroup `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`
@@ -549,7 +588,20 @@ type actionEvent struct {
 	StateStarted bool   `json:"state_started,omitempty"`
 	StateReason  string `json:"state_reason,omitempty"`
 	StateID      string `json:"state_id,omitempty"`
+	// Rider is an answered monk rider (hit_rider).
+	Rider *riderEvent `json:"rider,omitempty"`
 
+	// HidBefore is the hiding an attack or a cast ended, which its undo gives back
+	// (combat_hide.go).
+	HidBefore []hideSnap `json:"hid_before,omitempty"`
+	HelpUsed  []string   `json:"help_used,omitempty"`
+	// Dragged is the creature a grappler dragged along in a move, and where it stood (the
+	// move's undo puts it back).
+	Dragged     string     `json:"dragged_id,omitempty"`
+	DraggedFrom *moveState `json:"dragged_from,omitempty"`
+	// Contest is what a contest or a special action says of the event: grapple, shove,
+	// escape, Hide, Help, surprise (combat_contests_core.go).
+	Contest *contestEvent `json:"contest,omitempty"`
 	// Res is what a class resource flow did (Lay on Hands, Flexible Casting,
 	// Bardic Inspiration): see combat_resources.go.
 	Res *resourceEvent `json:"res,omitempty"`

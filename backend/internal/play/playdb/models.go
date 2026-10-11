@@ -17,11 +17,120 @@ type BattleEncounter struct {
 	UpdatedAt  time.Time
 }
 
+type CharacterEffect struct {
+	ID                 string
+	CampaignID         string
+	CharacterID        string
+	SourceCharacterID  *string
+	GroupID            string
+	SourceKey          string
+	SourceKind         string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	SecondsLeft        *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	CreatedAt          time.Time
+}
+
+type CharacterInspiration struct {
+	CharacterID       string
+	CampaignID        string
+	SourceCharacterID *string
+	Sides             int32
+	SecondsLeft       int32
+	CreatedAt         time.Time
+}
+
+type CombatContest struct {
+	ID            string
+	EncounterID   string
+	Kind          string
+	Purpose       string
+	InitiatorID   string
+	DefenderID    string
+	Status        string
+	EscapeDc      *int32
+	InitiatorRoll []byte
+	DefenderRoll  []byte
+	Winner        *string
+	ShoveOutcome  *string
+	Round         int32
+	CreatedAt     time.Time
+	ResolvedAt    *time.Time
+}
+
+type CombatHelp struct {
+	ID                string
+	GameSessionID     string
+	EncounterID       *string
+	Kind              string
+	HelperCharacterID string
+	AllyCharacterID   string
+	Task              *string
+	TargetID          *string
+	ExpiresRound      *int32
+	CreatedRound      *int32
+	CreatedAt         time.Time
+	ConsumedAt        *time.Time
+	ClearedAt         *time.Time
+	HelperCombatantID *string
+	AllyCombatantID   *string
+}
+
+type CombatHideAttempt struct {
+	ID          string
+	EncounterID string
+	HiderID     string
+	Status      string
+	Roll        []byte
+	Refusal     *string
+	Round       int32
+	CreatedAt   time.Time
+	ResolvedAt  *time.Time
+}
+
+type CombatHiding struct {
+	HiderID     string
+	ObserverID  string
+	EncounterID string
+	Noticed     bool
+	Total       int32
+	Passive     int32
+	CreatedAt   time.Time
+}
+
+type CombatHold struct {
+	GrappledID  string
+	EncounterID string
+	GrapplerID  string
+	EscapeDc    *int32
+	CreatedAt   time.Time
+}
+
 type CombatReason struct {
 	ID          string
 	EncounterID string
 	Kind        string
 	Reason      string
+	CreatedAt   time.Time
+}
+
+type CombatSurprised struct {
+	CombatantID string
+	EncounterID string
 	CreatedAt   time.Time
 }
 
@@ -94,20 +203,50 @@ type Combatant struct {
 	DeathRound              *int32
 	DeathOrderIndex         *int32
 	RevivifyBlocked         bool
+	EffectConditions        []string
+	EffectAcBonus           int32
+	EffectSpeedPct          int32
+	EffectSpeedAddFt        int32
+	EffectNoAction          bool
+	EffectNoMove            bool
+	ExtraActionUsed         bool
+	ExhaustionLevel         int32
+	HpMaxBase               *int32
+	MeleeHitTurn            *string
+	EffectNoReaction        bool
 }
 
 type CombatantState struct {
-	ID              string
-	EncounterID     string
-	CombatantID     string
-	Kind            string
-	SourceID        *string
-	EndsCombatantID *string
-	EndsPhase       *string
-	EndsRound       *int32
-	StartedRound    int32
-	Amount          int32
-	CreatedAt       time.Time
+	ID                 string
+	EncounterID        string
+	CombatantID        string
+	Kind               string
+	SourceID           *string
+	EndsCombatantID    *string
+	EndsPhase          *string
+	EndsRound          *int32
+	StartedRound       int32
+	Amount             int32
+	CreatedAt          time.Time
+	GroupID            *string
+	SourceKey          *string
+	SourceKind         *string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       *string
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
 }
 
 type Encounter struct {
@@ -142,6 +281,27 @@ type GameSession struct {
 	CreateHash       *string
 }
 
+type GroupCheck struct {
+	ID            string
+	GameSessionID string
+	SkillKey      string
+	Dc            *int32
+	ShowDc        bool
+	Status        string
+	Passed        *bool
+	CreatedAt     time.Time
+	ClosedAt      *time.Time
+	IsGroup       bool
+}
+
+type GroupCheckMember struct {
+	GroupCheckID   string
+	CharacterID    string
+	Roll           []byte
+	RolledByMaster bool
+	RolledAt       *time.Time
+}
+
 type HiddenReveal struct {
 	ID           string
 	EncounterID  string
@@ -155,6 +315,35 @@ type HiddenReveal struct {
 	State        string
 	CreatedAt    time.Time
 	AnsweredAt   *time.Time
+}
+
+type HitRider struct {
+	ID          string
+	EncounterID string
+	AttackerID  string
+	TargetID    string
+	Kind        string
+	Round       int32
+	Choice      *string
+	Used        bool
+	CreatedAt   time.Time
+}
+
+type InspirationHold struct {
+	ID             string
+	CampaignID     string
+	CharacterID    string
+	UserID         string
+	Kind           string
+	IdempotencyKey string
+	Request        []byte
+	Faces          []int32
+	Modifier       int32
+	Total          int32
+	Counted        int32
+	Physical       bool
+	AnswerKey      *string
+	CreatedAt      time.Time
 }
 
 type OpportunityOffer struct {
@@ -206,6 +395,8 @@ type PendingDamage struct {
 	Steps            []byte
 	LandedBefore     []byte
 	AfterSteps       *int32
+	EffectSourceKey  *string
+	SavageDice       int32
 }
 
 type Puzzle struct {

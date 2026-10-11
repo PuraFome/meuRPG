@@ -86,6 +86,9 @@ type sceneRollEvent struct {
 	D20B     int32  `json:"d20_b,omitempty"`
 	Counted  int32  `json:"counted,omitempty"`
 	RollMode string `json:"roll_mode,omitempty"`
+	// The Bardic Inspiration die the player added after the d20 (already in Total).
+	BonusSides int32 `json:"bonus_sides,omitempty"`
+	BonusFace  int32 `json:"bonus_face,omitempty"`
 }
 
 // sceneGrantEvent is the payload of scene_attempt_granted: the action; the
@@ -408,6 +411,10 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 		if info.Hooks, info.Clues, err = s.masterSceneNotes(ctx, m.CampaignID, scene); err != nil {
 			return nil, err
 		}
+		// And the scene's images, which the master shows one at a time (MR-015).
+		for _, img := range scene.Images {
+			info.Images = append(info.Images, &mapsv1.SceneImage{Id: img.ID, Name: img.Name, ShowsWholeMap: img.ShowsWholeMap})
+		}
 	}
 
 	rolls, err := s.sceneRolls(ctx, m, scene, session.ID, opened.Seq, tally, mine.ID, hasMine)
@@ -513,17 +520,21 @@ func (s *Service) sceneRolls(ctx context.Context, m authz.Membership, scene link
 func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sceneRollEvent, showPassed bool) *playv1.SceneRoll {
 	out := &playv1.SceneRoll{
 		Id: id, ActionId: ev.ActionID, CharacterId: characterID, CharacterName: characterName,
-		Roll:     treatedRoll(ev.D20, ev.Modifier, ev.Total, ev.Physical),
+		Roll:     treatedRoll(ev.D20, ev.Modifier, ev.Total-ev.BonusFace, ev.Physical),
 		RolledAt: timestamppb.New(at),
 		Mode:     modeToProto[modeOfKey(ev.RollMode)],
 	}
 	if ev.D20B != 0 {
 		out.Roll = diceRoll(2, 20, pairOf(ev.D20, ev.D20B, ev.Counted), ev.Modifier, ev.Total, ev.Physical)
 		out.Roll.CountedIndex = ev.Counted
-		markTreated(out.Roll, ev.Modifier, ev.Total)
+		markTreated(out.Roll, ev.Modifier, ev.Total-ev.BonusFace)
 	}
+	out.Roll.Total = ev.Total // with the Bardic Inspiration die, when the player used it
 	if showPassed {
 		out.Passed = ev.Passed
+	}
+	if ev.BonusSides != 0 {
+		out.BonusDice = []*playv1.BonusDie{{SourceKey: bardicInspirationFt, Sides: ev.BonusSides, Face: ev.BonusFace, Used: true}}
 	}
 	return out
 }
@@ -599,6 +610,7 @@ func (s *Service) RollSceneCheck(
 		return nil, errSceneActionNotFound()
 	}
 	var in rollInput
+	in.extraFaces = req.Msg.GetExtraDieFaces()
 	switch roll := req.Msg.GetRoll().(type) {
 	case *playv1.RollSceneCheckRequest_RollInApp:
 		if !roll.RollInApp {
@@ -624,10 +636,11 @@ func (s *Service) RollSceneCheck(
 		repeated bool
 		at       time.Time
 		doneRow  playdb.GetSessionEventByIdempotencyKeyRow
+		offer    *playv1.OutsideInspirationOffer // the roll waits for the answer about a Bardic Inspiration die
 	)
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		repeated = false
+		repeated, offer = false, nil
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errNoOpenSession()
@@ -725,7 +738,7 @@ func (s *Service) RollSceneCheck(
 		// Conditions and states of the character in a running combat: Poisoned and
 		// Frightened are disadvantage on ability checks, a rage advantage on Strength.
 		ability, isCheck := checkKey(action.Key)
-		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
+		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, action.Key, ability, isCheck)
 		if err != nil {
 			return err
 		}
@@ -733,16 +746,35 @@ func (s *Service) RollSceneCheck(
 		if err != nil {
 			return err
 		}
-		shown = shownSources(cm.Sources, names)
-		d20, err := s.d20With(in, bonus, cm.Mode)
+		// Bênção and Perdição add their die to a saving throw (SRD 5.1).
+		if bonus, err = s.withEffectDice(in, in.extraFaces, &cm, bonus); err != nil {
+			return err
+		}
+		shown = cm.shownCheck(names)
+		// A character that holds a Bardic Inspiration die has the d20 kept until the player
+		// answers whether to use it (SRD 5.1: before the GM says whether the roll succeeds).
+		step, err := s.outsideRoll(ctx, tx, q, m, holdSceneCheck, who.ID, key, req.Msg, in, bonus, cm.Mode, options[0].ReliableTalent)
 		if err != nil {
 			return err
 		}
-		d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
+		if step.Held {
+			offer = step.Offer
+			return nil
+		}
+		d20 := step.Roll
+		if !step.Settled {
+			if d20, err = s.d20With(in, bonus, cm.Mode); err != nil {
+				return err
+			}
+			d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
+		}
 		ev = sceneRollEvent{
 			PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 			D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
 			Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
+		}
+		if step.Bonus != nil {
+			ev.BonusSides, ev.BonusFace = step.Bonus.Sides, step.Bonus.Face
 		}
 		if action.DC > 0 {
 			ev.Passed = new(d20.Total >= action.DC)
@@ -752,6 +784,12 @@ func (s *Service) RollSceneCheck(
 			return err
 		}
 		at = c.now
+		if err := s.spendOnceEffects(ctx, c, cm.Rolled); err != nil {
+			return err
+		}
+		if err := s.spendCheckHelps(ctx, c, cm.Helps); err != nil {
+			return err
+		}
 		rollID, err = insertSceneEvent(ctx, c, eventSceneCheckRolled, &m.UserID, &key, ev)
 		return err
 	})
@@ -759,6 +797,9 @@ func (s *Service) RollSceneCheck(
 		return nil, s.dbError(ctx, "roll a scene check", err)
 	}
 
+	if offer != nil {
+		return connect.NewResponse(&playv1.RollSceneCheckResponse{InspirationOffer: offer}), nil
+	}
 	characterID, name := who.ID, who.Name
 	if repeated {
 		// Written the first time: the character and the time are the event's.

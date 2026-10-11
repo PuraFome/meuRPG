@@ -92,7 +92,7 @@ func meleeReachOf(sheet link.Sheet) int {
 // sees (RN-20), so hostile, not defeated, visible, its visible conditions, and a
 // 5 ft reach, never the reaction, the stat block or the vitals of an NPC. tx is the
 // open transaction, or nil for a read.
-func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, mover playdb.Combatant, v *combatViewer) ([]candidate, error) {
+func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, mover playdb.Combatant, v *combatViewer, draggedID string) ([]candidate, error) {
 	if mover.Hidden || mover.Disengaged || !placed(mover) {
 		return nil, nil
 	}
@@ -100,6 +100,11 @@ func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID
 	var out []candidate
 	for _, r := range cs {
 		if r.ID == mover.ID || r.Defeated || !placed(r) || r.Side == mover.Side {
+			continue
+		}
+		// The creature the mover drags moves with it (SRD 5.1, "Moving a Grappled
+		// Creature"): it never leaves the mover's reach and takes no opportunity attack.
+		if r.ID == draggedID {
 			continue
 		}
 		if v != nil && !v.sees(r) {
@@ -112,7 +117,7 @@ func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID
 			out = append(out, candidate{who: r, reachFt: meleeReachFt})
 			continue
 		}
-		if r.ReactionUsed || mayAttack(r, true) != nil {
+		if r.ReactionUsed || r.EffectNoReaction || mayAttack(r, true) != nil { // no reactions: the Open Hand technique
 			continue
 		}
 		down, err := s.isDown(ctx, tx, campaignID, r)
@@ -120,6 +125,12 @@ func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID
 			return nil, err
 		}
 		if down {
+			continue
+		}
+		// A surprised creature takes no reaction until its first turn ends (SRD 5.1, "Surprise").
+		if surprised, err := s.surprisedReactor(ctx, tx, r); err != nil {
+			return nil, err
+		} else if surprised {
 			continue
 		}
 		sheet, err := s.sheetOf(ctx, tx, campaignID, r)
@@ -157,8 +168,8 @@ func provokedBy(cands []candidate, from, to grid.Square) []provoker {
 // the square only). It returns the id the offers share, empty when there is none,
 // and the reactors offered an attack (combatant IDs), whom the stream must tell.
 // The event is written before the move's own, which is what the undo acts on.
-func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []playdb.Combatant, mover playdb.Combatant, from, to grid.Square, jumped bool) (string, []string, error) {
-	reactors, err := s.opportunityReactors(ctx, c.tx, c.session.CampaignID, cs, mover, nil)
+func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []playdb.Combatant, mover playdb.Combatant, from, to grid.Square, jumped bool, draggedID string) (string, []string, error) {
+	reactors, err := s.opportunityReactors(ctx, c.tx, c.session.CampaignID, cs, mover, nil, draggedID)
 	if err != nil {
 		return "", nil, err
 	}
@@ -283,7 +294,7 @@ func (s *Service) pruneOffers(ctx context.Context, c *combatTx) error {
 	for _, o := range pending {
 		mover, okM := byID[o.MoverID]
 		r, okR := byID[o.ReactorID]
-		dead := !okM || !okR || mover.Defeated || r.Defeated || r.ReactionUsed ||
+		dead := !okM || !okR || mover.Defeated || r.Defeated || r.ReactionUsed || r.EffectNoReaction ||
 			slices.ContainsFunc(r.Conditions, func(k string) bool { return slices.Contains(cantReact, k) })
 		if !dead {
 			down, err := s.isDown(ctx, c.tx, c.session.CampaignID, r)
@@ -490,7 +501,7 @@ func (s *Service) markProvokes(ctx context.Context, m authz.Membership, enc play
 	if !actsNow(enc, who) || len(out.Reachable) == 0 {
 		return nil
 	}
-	reactors, err := s.opportunityReactors(ctx, nil, m.CampaignID, cs, who, &v)
+	reactors, err := s.opportunityReactors(ctx, nil, m.CampaignID, cs, who, &v, out.DraggingCombatantId)
 	if err != nil || len(reactors) == 0 {
 		return err
 	}

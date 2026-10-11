@@ -124,24 +124,33 @@
       </ul>
     }
 
-    @if (s.cantripNames.length > 0 || s.spellNames.length > 0) {
+    @if (spellGroupList().length > 0) {
+      @if (stateSummary(); as summary) {
+        <p class="spells__limits">{{ summary }}</p>
+      }
       <div class="spells__lists">
-        @if (s.cantripNames.length > 0) {
-          <div>
-            <h3 class="spells__label">Truques</h3>
+        @for (group of spellGroupList(); track group.level) {
+          <div class="spells__group">
+            <h3 class="spells__label">{{ group.label }}</h3>
             <ul class="spells__names">
-              @for (name of s.cantripNames; track name) {
-                <li>{{ name }}</li>
-              }
-            </ul>
-          </div>
-        }
-        @if (s.spellNames.length > 0) {
-          <div>
-            <h3 class="spells__label">Magias</h3>
-            <ul class="spells__names">
-              @for (name of s.spellNames; track name) {
-                <li>{{ name }}</li>
+              @for (row of group.rows; track row.spell.key) {
+                <li class="spell" [class.spell--off]="row.state === 'No grimório' || row.state === 'Conhecida'">
+                  <button type="button" class="spell__open" (click)="spellOpened.emit(row.spell.key)">
+                    <span class="spell__name">{{ row.spell.namePt }}</span>
+                    <!-- No empty row of tags: its gap would push the name above the middle of the button. -->
+                    @if (row.tags.length > 0 || row.state) {
+                      <span class="spell__tags">
+                        @for (tag of row.tags; track tag) {
+                          <span class="mr-tag spell__tag">{{ tag }}</span>
+                        }
+                        @if (row.state) {
+                          <span class="mr-tag spell__tag" [class.spell__tag--on]="row.state === 'Preparada'">{{ row.state }}</span>
+                        }
+                      </span>
+                    }
+                  </button>
+                  <app-spell-help [name]="row.spell.namePt" (press)="spellOpened.emit(row.spell.key)" />
+                </li>
               }
             </ul>
           </div>

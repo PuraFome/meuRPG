@@ -420,17 +420,21 @@ func TestImageNamesComeFromTheFileName(t *testing.T) {
 	t.Parallel()
 	for in, want := range map[string]string{
 		"Taverna.png":                        "Taverna",
-		"mapa.final.v2.jpg":                  "mapa.final.v2",
+		"mapa.final.v2.jpg":                  "Mapa.final.v2",
+		"cena-vila-ao-entardecer.png":        "Cena vila ao entardecer",
+		"carta_do__sineiro - 2.jpg":          "Carta do sineiro 2",
+		"-_-.png":                            defaultImageName,
+		"ágora-central.png":                  "Ágora central",
 		`C:\Users\Samuel\Mapas\Mirathel.png`: "Mirathel",
-		"/home/samuel/mapa.webp":             "mapa",
-		"  espaços  .png":                    "espaços",
-		"sem extensão":                       "sem extensão",
+		"/home/samuel/mapa.webp":             "Mapa",
+		"  espaços  .png":                    "Espaços",
+		"sem extensão":                       "Sem extensão",
 		".png":                               defaultImageName,
 		"":                                   defaultImageName,
-		"\u202eevil\u202c.png":               "evil",
-		"linha\nquebrada.png":                "linhaquebrada",
+		"\u202eevil\u202c.png":               "Evil",
+		"linha\nquebrada.png":                "Linhaquebrada",
 		"\xff\xfe.png":                       defaultImageName,
-		strings.Repeat("á", 100) + ".png":    strings.Repeat("á", 80),
+		strings.Repeat("á", 100) + ".png":    "Á" + strings.Repeat("á", 79),
 	} {
 		if got := imageName(in); got != want {
 			t.Errorf("imageName(%q) = %q, want %q", in, got, want)
@@ -617,6 +621,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["MoveSceneClue"] = mc.MoveSceneClue(ctx, connect.NewRequest(&mapsv1.MoveSceneClueRequest{CampaignId: id, MapId: id, PointId: id, ClueId: id, Direction: mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP}))
 	_, mapCalls["RemoveSceneClue"] = mc.RemoveSceneClue(ctx, connect.NewRequest(&mapsv1.RemoveSceneClueRequest{CampaignId: id, MapId: id, PointId: id, ClueId: id}))
 	_, mapCalls["RevealSceneClue"] = mc.RevealSceneClue(ctx, connect.NewRequest(&mapsv1.RevealSceneClueRequest{CampaignId: id, ClueId: id, CharacterIds: []string{id}}))
+	_, mapCalls["SetSceneImages"] = mc.SetSceneImages(ctx, connect.NewRequest(&mapsv1.SetSceneImagesRequest{CampaignId: id, MapId: id, PointId: id}))
 	_, mapCalls["PlaceMapToken"] = mc.PlaceMapToken(ctx, connect.NewRequest(&mapsv1.PlaceMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))
 	_, mapCalls["SetMapTokenHidden"] = mc.SetMapTokenHidden(ctx, connect.NewRequest(&mapsv1.SetMapTokenHiddenRequest{CampaignId: id, MapId: id, CharacterId: id, Hidden: true}))
 	_, mapCalls["RemoveMapToken"] = mc.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: id, MapId: id, CharacterId: id}))

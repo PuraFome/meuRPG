@@ -65,6 +65,8 @@ export interface LiveStreamHandlers {
   onCreaturesChanged?(): void;
   /** `spell_casts_changed` (MR-048): a cast outside a combat changed; the casts panel reads them again. */
   onSpellCastsChanged?(): void;
+  /** `group_check_changed` (W7-X): a group check was asked, answered or closed; the page reads it again. */
+  onGroupCheckChanged?(): void;
   /** `content_changed` (10.1d): the table's content changed; a screen that shows the catalog reads it again. */
   onContentChanged?(): void;
   /** `character_changes_requested`, `character_resubmitted` or `character_revived`: that character changed; read it again. */
@@ -263,6 +265,9 @@ export class LiveStream {
           case 'spellCastsChanged':
             this.options.handlers.onSpellCastsChanged?.();
             break;
+          case 'groupCheckChanged':
+            this.options.handlers.onGroupCheckChanged?.();
+            break;
           case 'contentChanged':
             this.options.handlers.onContentChanged?.();
             break;
@@ -290,7 +295,7 @@ export class LiveStream {
       if (controller !== this.controller) {
         return;
       }
-      // Ended without an error (the 30-minute cap, a server restart).
+      // Ended without an error (the 10-minute cap, a server restart).
       this.controller = null;
       this.scheduleReconnect();
     } catch (err) {

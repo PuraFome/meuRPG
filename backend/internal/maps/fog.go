@@ -217,6 +217,9 @@ type sight struct {
 	// combat says a combat runs on the map: the NPC tokens are then left out of
 	// a player's reads (the combatants are slice 9.7's).
 	combat bool
+	// openPlan says the map's base light is "Claro": the players see the whole floor
+	// plan (see playerView.terrainAll). It never touches what is in sight.
+	openPlan bool
 }
 
 // partyMemo is the party's senses read once for a request that works out several
@@ -347,7 +350,7 @@ func (s *Service) newSight(ctx context.Context, tx pgx.Tx, in fogInput, points [
 	if err != nil {
 		return nil, err
 	}
-	sg := &sight{g: in.g, members: members, stands: map[string]grid.Square{}, group: in.group, combat: combat.Running}
+	sg := &sight{g: in.g, members: members, stands: map[string]grid.Square{}, group: in.group, combat: combat.Running, openPlan: in.base == grid.Bright}
 	for _, m := range members {
 		if sq, ok := where(m.CharacterID); ok && !m.Dead {
 			sg.stands[m.CharacterID] = sq
@@ -610,6 +613,7 @@ func (sg *sight) newView(userID string, memory *grid.Layer) *playerView {
 	now, onMap := sg.viewOf(userID)
 	pv := newPlayerView(sg.g, now, memory, onMap)
 	pv.layers, pv.combat = &sg.entry.set, sg.combat
+	pv.terrainAll = sg.openPlan
 	return pv
 }
 
@@ -618,9 +622,18 @@ func (sg *sight) newView(userID string, memory *grid.Layer) *playerView {
 // playerView is what one player knows of a map's squares: the state of each
 // one now, or "remembered", or unseen.
 type playerView struct {
-	g     grid.Grid
-	codes []byte // one state code a square, row-major
+	g grid.Grid
+	// codes are the SIGHT: the state of each square for what the player's characters
+	// see now or remember, row-major. Creatures, tokens and points follow these
+	// (known, seenNow, pointKnown, tokenSeen) and only these.
+	codes []byte
 	onMap bool
+	// terrainAll says the map's base light is "Claro": the player sees the whole
+	// floor plan, so every square's TERRAIN (the image, the walls, the terrain, the
+	// cover and the doors) is theirs, seen or not. It is read only through
+	// terrainKnown and states, never by creatures or points: what is in sight is
+	// still codes, and RN-10 depends on that.
+	terrainAll bool
 	// layers are the painted layers the view's revision also counts (nil: only the
 	// states), and combat says a combat runs on the map (NPC tokens stay out).
 	layers *layerSet
@@ -661,8 +674,16 @@ func (p *playerView) code(sq grid.Square) byte {
 }
 
 // known says whether the player sees the square now or remembers it: a point
-// there is theirs to receive, and so is a layer's square.
+// there is theirs to receive. It is SIGHT. The terrain (image, layers) uses
+// terrainKnown, and creatures and points must never use that one.
 func (p *playerView) known(sq grid.Square) bool { return p.code(sq) != stateUnseen }
+
+// terrainKnown says whether the square's terrain is the player's: the image, the
+// walls, the difficult terrain, the cover and the doors. With the base light
+// "Claro" every square of the grid is; otherwise it is known.
+func (p *playerView) terrainKnown(sq grid.Square) bool {
+	return p.g.Contains(sq) && (p.terrainAll || p.known(sq))
+}
 
 // seenNow says whether the player sees the square at this moment, as a place a
 // creature can stand on (a wall seen because it touches a seen square is not).
@@ -673,9 +694,16 @@ func (p *playerView) seenNow(sq grid.Square) bool {
 
 // pack is the states as GetMapVisionResponse says: four bits a square, the
 // low half of the byte first.
+//
+// They are the terrain's states, what the app draws as fog: with the base light
+// "Claro" a square not seen now (unseen or remembered) is packed as seen, so the app
+// shows the whole plan. The sight itself (codes) is untouched.
 func (p *playerView) pack() []byte {
 	out := make([]byte, (len(p.codes)+1)/2)
 	for i, c := range p.codes {
+		if p.terrainAll && (c == stateUnseen || c == stateRemembered) {
+			c = byte(vision.SeenBright)
+		}
 		out[i/2] |= c << (4 * (i % 2))
 	}
 	return out
@@ -685,11 +713,14 @@ func (p *playerView) pack() []byte {
 // view has the layers, the walls, terrain and cover they receive. It changes when
 // any of those does, so a wall painted on a remembered square is news too.
 func (p *playerView) revision() int32 {
+	// The sight (codes), not only the packed states: on a "Claro" map the states say
+	// "seen" everywhere, yet a change of what is in sight moves creatures and points
+	// and must still tell the player (vision_changed).
 	if p.layers == nil {
-		return hashOf(p.pack())
+		return hashOf(p.codes, p.pack())
 	}
 	f := filterLayers(*p.layers, p)
-	return hashOf(p.pack(), f.terrain.Encode(), f.walls.Encode(), f.cover.Encode(), f.doors.Encode())
+	return hashOf(p.codes, p.pack(), f.terrain.Encode(), f.walls.Encode(), f.cover.Encode(), f.doors.Encode())
 }
 
 // hashOf is a 31-bit hash of bytes, for the revisions the app compares.

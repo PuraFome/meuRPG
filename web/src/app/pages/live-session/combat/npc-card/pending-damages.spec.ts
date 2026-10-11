@@ -6,6 +6,7 @@ import {
   PendingDamageStatus,
   ReactionKind,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CONFIRM_GUARD_MS, ConfirmGuard } from '../../../../core/confirm-guard/confirm-guard';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter, reactionWindow } from '../../../../core/combat/combat-testing';
@@ -281,5 +282,128 @@ describe('PendingDamages: rolling again after "Desfazer" (R2-11)', () => {
     await sheet.rollInApp(p);
     await sheet.rollInApp(p);
     expect(keys[0]).toBe(keys[1]);
+  });
+});
+
+describe('PendingDamages: "Não aplicar" is not confirmed by a double-click (R4)', () => {
+  async function setup() {
+    vi.useFakeTimers();
+    const discardDamage = vi.fn(async () => ({
+      encounter: encounter({ combatants: [] } as never),
+    }));
+    const rolled = {
+      id: 'p1',
+      attackerId: 'cap',
+      targetId: 'pen',
+      status: PendingDamageStatus.ROLLED,
+      diceCount: 1,
+      diceSides: 6,
+      bonus: 2,
+      amount: 11,
+      critical: true,
+      roll: { diceCount: 1, diceSides: 6, faces: [5], modifier: 2, total: 11, physical: false },
+    } as never;
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: { discardDamage } }],
+    });
+    TestBed.inject(ConfirmGuard).start();
+    const fixture = TestBed.createComponent(PendingDamages);
+    fixture.componentRef.setInput('pendings', [rolled]);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [
+          combatant({ id: 'cap', label: 'Capitão Goblin' }),
+          combatant({ id: 'pen', label: 'Garrick', kind: CombatantKind.PLAYER }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const byText = (text: string) =>
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === text)!;
+    byText('Não aplicar').click();
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    return { fixture, byText, discardDamage };
+  }
+
+  it('ignores the second click of a double-click on "Descartar", and works after the guard', async () => {
+    const { byText, discardDamage } = await setup();
+    byText('Descartar').click();
+    await vi.advanceTimersByTimeAsync(300);
+    byText('Descartar').click();
+    expect(discardDamage).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(CONFIRM_GUARD_MS);
+    byText('Descartar').click();
+    expect(discardDamage).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts the focus on the safe choice, which sits where "Não aplicar" was', async () => {
+    const { byText } = await setup();
+    expect(document.activeElement).toBe(byText('Voltar'));
+    const row = byText('Voltar').parentElement!;
+    expect(Array.from(row.querySelectorAll('button')).map((b) => b.textContent?.trim())).toEqual([
+      'Descartar',
+      'Voltar',
+    ]);
+  });
+});
+
+describe('PendingDamages, a target in Wild Shape', () => {
+  function line(amount: number, druid: Record<string, unknown> = {}) {
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }] });
+    const fixture = TestBed.createComponent(PendingDamages);
+    fixture.componentRef.setInput('pendings', [
+      {
+        id: 'p1',
+        attackerId: 'gob',
+        targetId: 'nina',
+        status: PendingDamageStatus.ROLLED,
+        diceCount: 1,
+        diceSides: 6,
+        bonus: 2,
+        amount,
+      } as never,
+    ]);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [
+          combatant({ id: 'gob', label: 'Goblin 1' }),
+          combatant({
+            id: 'nina',
+            label: 'Nina Folhaverde',
+            kind: CombatantKind.PLAYER,
+            hitPointsCurrent: 31,
+            hitPointsMax: 31,
+            wildShapeBeastKey: 'monster:wolf',
+            wildShapeBeastNamePt: 'Lobo',
+            wildShapeHitPointsCurrent: 11,
+            wildShapeHitPointsMax: 11,
+            ...druid,
+          } as never),
+        ],
+      } as never),
+    );
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.detectChanges();
+    return (fixture.nativeElement as HTMLElement).textContent?.replace(/ /g, ' ') ?? '';
+  }
+
+  it("previews the beast's pool, not the druid's", () => {
+    const text = line(7);
+    expect(text).toContain('Lobo: 11 de 11 PV, depois 4');
+    expect(text).not.toContain('31 de 31');
+  });
+
+  it('says what passes to the druid when the beast drops', () => {
+    expect(line(14)).toContain(
+      'Lobo: 11 de 11 PV, depois 0; o resto (3) passa para Nina Folhaverde: 31 de 31 PV, depois 28',
+    );
   });
 });

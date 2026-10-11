@@ -457,6 +457,9 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 		}
 		added = append(added, joined...)
 	}
+	if err := s.effectsToCombat(ctx, c, all, added); err != nil {
+		return nil, nil, err
+	}
 	order, err = saveOrder(ctx, c.q, all, orderCombatants(all))
 	if err != nil {
 		return nil, nil, err
@@ -822,6 +825,13 @@ func (s *Service) EndTurn(
 		// deleted). The master starts the turns again from the top of the order,
 		// in the same round; without this the combat could never move.
 		if !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState == turnActing }) {
+			// The turn that ended waits for the saving throws of the effects on its members: it is
+			// held, not orphaned, and another tap changes nothing.
+			if held, err := s.endSaveOpen(ctx, c); err != nil {
+				return nil, err
+			} else if held {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "a reaction waits for its answer")
+			}
 			if !v.master {
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master can start the turns again"))
 			}
@@ -931,6 +941,10 @@ func (s *Service) EndTurn(
 		if err := s.afterTurnPart(ctx, c, current); err != nil {
 			return nil, err
 		}
+		// The saving throws the effects on the member ask at the end of its turn open now.
+		if err := s.openEndSaves(ctx, c, current); err != nil {
+			return nil, err
+		}
 		// Who still acts: the turn passes only when the last member ends.
 		if acting := othersActing(cs, current.ID); len(acting) > 0 {
 			// A part of a group of NPCs alone is the master's, like the group (RN-20),
@@ -941,6 +955,14 @@ func (s *Service) EndTurn(
 			if err := setCurrent(ctx, c, acting[0], c.enc.Round); err != nil {
 				return nil, err
 			}
+			return actionEvent{Round: c.enc.Round, Secret: secret, Actor: current.ID}, nil
+		}
+		// The turn waits for the saving throws of the effects: it passes when they are answered.
+		if held, err := s.endSaveOpen(ctx, c); err != nil {
+			return nil, err
+		} else if held {
+			secret = current.Hidden
+			c.kind = eventTurnPartEnded
 			return actionEvent{Round: c.enc.Round, Secret: secret, Actor: current.ID}, nil
 		}
 		next, newRound, ok := nextTurnGroup(cs, current.ID, "")
@@ -1267,6 +1289,10 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	if err := s.keepTrapDamage(ctx, c, cs); err != nil {
 		return err
 	}
+	// A frenzied rage ends with the combat, and leaves its level of exhaustion (SRD 5.1, Berserker).
+	if err := s.endFrenziedRages(ctx, c, cs); err != nil {
+		return err
+	}
 	// What was still to answer about the hidden creatures an area hit goes with the
 	// combat: nothing moves on it any more, so there is nothing to decide.
 	if err := c.q.DeleteHiddenRevealsOfEncounter(ctx, c.enc.ID); err != nil {
@@ -1291,6 +1317,10 @@ func (s *Service) endEncounter(ctx context.Context, c *combatTx, cs []playdb.Com
 	}
 	// A familiar's sight begun in the fight ends with it (MR-036).
 	if err := s.endCombatSights(ctx, c, cs); err != nil {
+		return err
+	}
+	// The effects on the characters go back to game time with the rounds they have left.
+	if err := s.effectsToCharacters(ctx, c, cs, nil); err != nil {
 		return err
 	}
 	// The concentration the combatants carried goes back to the casts (casting_combat.go).
@@ -1335,7 +1365,7 @@ func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Que
 	if err != nil {
 		return nil, nil, fmt.Errorf("list the combatants: %w", err)
 	}
-	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), svc: s})
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), svc: s, actorUserID: actorUserID})
 	if err != nil {
 		return nil, nil, err
 	}

@@ -32,6 +32,7 @@
               (order)="setOrder($event)"
             />
             <div class="setup__side">
+              <app-surprise-card [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
               <app-initiative-side
                 [encounter]="e"
                 [info]="info()"
@@ -184,6 +185,8 @@
             }
           </div>
           }
+          <!-- The effects that last and the clock of the turns (W7-E board 4): the master only. -->
+          <app-effects-panel class="effects" [campaignId]="campaignId()" [state]="state()" />
         </div>
         }
       }
@@ -210,6 +213,8 @@
           [error]="error()"
           (rollInApp)="own() && rollInApp(own()!.id)"
           (typeFace)="own() && submitFace(own()!.id, $event)"
+          (rollCreatureInApp)="rollInApp($event)"
+          (typeCreatureFace)="submitFace($event.id, $event.face)"
           (changeDice)="changeDice.emit()"
         />
       }
@@ -267,6 +272,12 @@
               (back)="answerRage($event, false)"
               (letEnd)="answerRage($event, true)"
             />
+            <app-hit-rider-card
+              [offers]="encounter()?.hitRiders ?? []"
+              [combatants]="encounter()?.combatants ?? []"
+              [busy]="busy()"
+              (answer)="answerRider($event)"
+            />
           <div class="player" [class.player--mine]="(myTurn() && !!options()) || !!creatureTab()">
             <div class="player__turn">
               @if (laptop() && showTabs()) {
@@ -296,11 +307,28 @@
                   [concentration]="ownConcentration()"
                   [theatre]="theatre()"
                   [orderBelow]="orderBelow()"
+                  [contest]="contestFacts()"
+                  [effectNotes]="options()?.effectNotes ?? []"
                   (endTurn)="nextTurn()"
                   (endRage)="endRageOf($event)"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="endOwnConcentration()"
                 />
+              }
+              @if (contest.pending().length > 0 && !contest.sheetOpen()) {
+                <!-- A contest asks something of this player (W7-X) and its sheet was closed: the way back to it. -->
+                <div class="mr-notice mr-notice--warning notice" data-testid="contest-pending">
+                  <mat-icon aria-hidden="true">pan_tool</mat-icon>
+                  <p>Uma disputa espera a sua resposta.</p>
+                  <button mat-button type="button" class="notice__ok" (click)="contest.answerPending()">Responder</button>
+                </div>
+              }
+              @if (ownEffectSave(); as pending) {
+                <div class="mr-notice mr-notice--warning notice" data-testid="effect-save-pending">
+                  <mat-icon aria-hidden="true">casino</mat-icon>
+                  <p>O teste de resistência do fim do turno espera a sua rolagem.</p>
+                  <button mat-button type="button" class="notice__ok" (click)="openEffectSave(pending)">Rolar o teste</button>
+                </div>
               }
               @if (ownOffer(); as offer) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
@@ -332,8 +360,9 @@
                     (rollDamage)="rollCreatureDamage(m.id)"
                     (attack)="openCreatureAttack(m.id, $event)"
                     (reactionAttack)="openCreatureAttack(m.id, $event, true)"
-                    (action)="takeActionFor(m.id, $event)"
+                    (action)="creatureAction(m.id, $event)"
                     (move)="openCreatureMove(m.id)"
+                    (standUp)="standUp(m.id)"
                   />
                 }
               </div>
@@ -369,13 +398,22 @@
                       [wild]="wild()"
                       [beast]="me.wildShapeBeastNamePt"
                       [theatre]="theatre()"
+                      [contestAttacks]="contestAttacks()"
+                      [contest]="contestFacts()"
+                      (contestAttack)="contest.openAttack($event)"
+                      (escape)="contest.openEscape()"
+                      [extraAction]="opts.extraAction ?? null"
+                      (extraAttack)="openAttack($event, false, true)"
+                      (extraStandard)="takeExtra($event)"
                       (familiarEyes)="askFamiliarEyes()"
                       (attack)="openAttack($event)"
                       (cast)="openCast($event)"
                       (describe)="describeSpell($event.key, $event.name)"
                       (feature)="useFeature($event)"
+                      (rage)="useFeature($event.key, $event.frenzy)"
                       (action)="standardAction($event)"
                       (move)="openMove()"
+                      (standUp)="standUp()"
                       (rollDamage)="rollPendingDamage()"
                       (transform)="openTransform()"
                       (leaveForm)="leaveForm()"
@@ -434,6 +472,7 @@
                 [attacksLeft]="attacksLeft()"
                 [busy]="busy()"
                 [waiting]="waiting()?.title ?? ''"
+                [surprised]="contestFacts()?.surprised === true"
                 [theatre]="theatre()"
                 [joint]="jointOthers()"
                 (endTurn)="nextTurn()"
@@ -473,6 +512,7 @@
       [attacksByOffer]="masterAttacks()"
       [info]="info()"
       [busy]="busy()"
+      [autoLeft]="offerLeft()"
       [failed]="reactorFailed()"
       [canUndo]="canUndoMove()"
       (answer)="answerOpportunity($event)"
@@ -494,6 +534,12 @@
       [busy]="busy()"
       (back)="answerRage($event, false)"
       (letEnd)="answerRage($event, true)"
+    />
+    <app-hit-rider-card
+      [offers]="e.hitRiders"
+      [combatants]="e.combatants"
+      [busy]="busy()"
+      (answer)="answerRider($event)"
     />
     <app-joint-card [encounter]="e" [info]="info()" [busy]="busy()" (endPart)="endPart($event)" />
     @if ((!laptop() || cardVisible() || theatre()) && masterCard(); as who) {
@@ -532,7 +578,16 @@
       </app-npc-card>
     }
     <!-- The reaction windows the master answers (PM-04): below the card, in the order the server answers them. -->
-    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
+    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" [autoLeft]="autoLeft()" />
+    <!-- The contests that wait for the master (W7-X): CONTEST windows, Hide, grapples; never answered with AnswerReaction. -->
+    <app-contest-master
+      [encounter]="e"
+      [campaignId]="campaignId()"
+      [state]="state()"
+      [diceMode]="diceMode()"
+      [preference]="dicePreference()"
+      [options]="options()"
+    />
   }
 </ng-template>
 

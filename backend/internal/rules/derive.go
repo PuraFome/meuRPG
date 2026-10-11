@@ -75,7 +75,7 @@ type activeEffect struct {
 
 func derive(b Build, c *content) Derived {
 	d := deriveWith(b, c, nil)
-	if len(b.Feats) == 0 {
+	if len(b.Feats) == 0 && len(b.FeatureChoices) == 0 {
 		return d
 	}
 	// A character that loses a feat's prerequisite cannot use the feat until it has the
@@ -357,7 +357,7 @@ func (x *deriver) collectEffects() {
 		x.d.Features = append(x.d.Features, Feature{
 			Key: key, Name: name, NamePT: c.namePT(key), Source: source, Level: level,
 			SourcePT: x.sourcePT(source, level), Description: desc, SummaryPT: x.optionSummary(key),
-		})
+		}.withTextPT(c))
 	}
 
 	if x.race != nil {
@@ -460,6 +460,8 @@ func (x *deriver) collectEffects() {
 			}
 		}
 	}
+
+	x.choiceFeats(owned, add, feature)
 
 	// Chosen options count only while their parent feature or trait is
 	// owned, so a fighting style disappears with the fighter levels.

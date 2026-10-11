@@ -73,6 +73,12 @@ type windowTrigger struct {
 	Trap    string   `json:"trap,omitempty"`
 	// Handed says a concentration's owner left the roll to the master.
 	Handed bool `json:"handed,omitempty"`
+	// Effect is the state (the effect that lasts) an EFFECT_SAVE window asks the saving throw
+	// of, Phase says at the end or the start of the turn, and Damage that the window opened
+	// because the target took damage (advantage on the roll).
+	Effect   string `json:"effect,omitempty"`
+	Phase    string `json:"phase,omitempty"`
+	OnDamage bool   `json:"on_damage,omitempty"`
 	// Hellish Rebuke's second step: the level it was cast at, whether through the
 	// Infernal Legacy, and the damage dice.
 	CastLevel int32 `json:"cast_level,omitempty"`
@@ -82,6 +88,8 @@ type windowTrigger struct {
 	// the first step took off the damage.
 	Caught  bool  `json:"caught,omitempty"`
 	Reduced int32 `json:"reduced,omitempty"`
+	// Contest is the contest a CONTEST window waits for.
+	Contest string `json:"contest,omitempty"`
 	// PendingKey is the pending damage the trigger is about (a hit's, or the damage
 	// that was rolled and waits).
 	Pending string `json:"pending,omitempty"`
@@ -243,7 +251,7 @@ func (s *Service) factsOf(ctx context.Context, c *combatTx, w playdb.ReactionWin
 			f.Incapacitated = true // gone from the combat
 		} else {
 			f.ReactionUsed = r.ReactionUsed && w.Step == 1 // a second step comes after the reaction was spent
-			f.Incapacitated = r.Defeated || slices.ContainsFunc(r.Conditions, func(k string) bool { return slices.Contains(incapacitating, k) })
+			f.Incapacitated = r.Defeated || r.EffectNoReaction || slices.ContainsFunc(r.Conditions, func(k string) bool { return slices.Contains(incapacitating, k) })
 			if !f.Incapacitated && r.Kind == kindPlayer {
 				down, err := s.isDown(ctx, c.tx, c.session.CampaignID, r)
 				if err != nil {
@@ -271,6 +279,15 @@ func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.Reactio
 			return false, err
 		}
 		return !slices.ContainsFunc(pend, func(p playdb.PendingDamage) bool { return slices.Contains(t.Falling, p.TargetID) }), nil
+	case reaction.EffectSave:
+		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
+		r, ok := byID[deref(w.ReactorID)]
+		if ok && r.Defeated && r.Kind != kindPlayer {
+			return true, nil
+		}
+	case reaction.Contest:
+		waits, err := contestStillWaits(ctx, c, w)
+		return !waits, err
 	case reaction.Shield, reaction.MasterCheck:
 		if w.PendingDamageID != nil {
 			p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: *w.PendingDamageID})
@@ -308,10 +325,17 @@ func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.Reactio
 // next group), a few times at most.
 func (s *Service) settleReactions(ctx context.Context, c *combatTx) error {
 	const maxRounds = 8
+	if err := s.syncContests(ctx, c); err != nil {
+		return err
+	}
 	for range maxRounds {
 		changed, err := s.settleOnce(ctx, c)
-		if err != nil || !changed {
+		if err != nil {
 			return err
+		}
+		if !changed {
+			// A turn that waited for the saving throw of an effect passes when none is open (RN-22).
+			return s.releaseHeldTurn(ctx, c)
 		}
 	}
 	return nil

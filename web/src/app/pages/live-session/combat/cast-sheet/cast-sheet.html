@@ -20,6 +20,9 @@
           </div>
         }
       }
+      @if (asksAbility) {
+        <app-ability-picker [chosen]="ability()" (pick)="pickAbility($event)" />
+      }
       @if (damageChoices().length) {
         <app-damage-type-picker
           [choices]="damageChoices()"
@@ -97,6 +100,14 @@
             [npcs]="npcs()"
             [creatures]="creatures()"
           />
+          @if (sculptRows().length) {
+            <app-sculpt-picker
+              [rows]="sculptRows()"
+              [chosen]="sculpted()"
+              [limit]="sculptLimit()"
+              (pick)="toggleSculpt($event)"
+            />
+          }
         }
         @if (f.error()) {
           <div class="mr-notice mr-notice--danger" role="alert">
@@ -117,6 +128,14 @@
           (toggle)="toggle($event)"
           (deal)="deal($event)"
         />
+        @if (sculptRows().length) {
+          <app-sculpt-picker
+            [rows]="sculptRows()"
+            [chosen]="sculpted()"
+            [limit]="sculptLimit()"
+            (pick)="toggleSculpt($event)"
+          />
+        }
         @if (listAsking()) {
           <!-- Nobody ticked on a list that may hit nobody (PM-02d state 13): asked in place, nothing spent yet. -->
           <div class="mr-notice mr-notice--warning" role="alert">

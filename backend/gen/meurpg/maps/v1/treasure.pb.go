@@ -1092,9 +1092,16 @@ type GetMagicItemResponse struct {
 	// The keys of a family's variants, in the SRD's order; empty for any other item.
 	Variants []string `protobuf:"bytes,16,rep,name=variants,proto3" json:"variants,omitempty"`
 	// The family a variant belongs to; "" for any other item.
-	VariantOf     string `protobuf:"bytes,17,opt,name=variant_of,json=variantOf,proto3" json:"variant_of,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	VariantOf string `protobuf:"bytes,17,opt,name=variant_of,json=variantOf,proto3" json:"variant_of,omitempty"`
+	// The same text in Portuguese, one paragraph per entry of `description`: our
+	// translation of the SRD 5.1 English (effects/magic_items_pt.json), markdown kept.
+	// Empty while `description_pt_missing`.
+	DescriptionPt []string `protobuf:"bytes,18,rep,name=description_pt,json=descriptionPt,proto3" json:"description_pt,omitempty"`
+	// True for an item with no Portuguese text yet: only the English `description`
+	// exists, and the app shows it with a note.
+	DescriptionPtMissing bool `protobuf:"varint,19,opt,name=description_pt_missing,json=descriptionPtMissing,proto3" json:"description_pt_missing,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *GetMagicItemResponse) Reset() {
@@ -1244,6 +1251,20 @@ func (x *GetMagicItemResponse) GetVariantOf() string {
 		return x.VariantOf
 	}
 	return ""
+}
+
+func (x *GetMagicItemResponse) GetDescriptionPt() []string {
+	if x != nil {
+		return x.DescriptionPt
+	}
+	return nil
+}
+
+func (x *GetMagicItemResponse) GetDescriptionPtMissing() bool {
+	if x != nil {
+		return x.DescriptionPtMissing
+	}
+	return false
 }
 
 type PlaceTreasureRequest struct {
@@ -1503,7 +1524,7 @@ const file_meurpg_maps_v1_treasure_proto_rawDesc = "" +
 	"\x13GetMagicItemRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\"\xbd\x04\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\"\x9a\x05\n" +
 	"\x14GetMagicItemResponse\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -1528,7 +1549,9 @@ const file_meurpg_maps_v1_treasure_proto_rawDesc = "" +
 	"\vdescription\x18\x0f \x03(\tR\vdescription\x12\x1a\n" +
 	"\bvariants\x18\x10 \x03(\tR\bvariants\x12\x1d\n" +
 	"\n" +
-	"variant_of\x18\x11 \x01(\tR\tvariantOfB\v\n" +
+	"variant_of\x18\x11 \x01(\tR\tvariantOf\x12%\n" +
+	"\x0edescription_pt\x18\x12 \x03(\tR\rdescriptionPt\x124\n" +
+	"\x16description_pt_missing\x18\x13 \x01(\bR\x14descriptionPtMissingB\v\n" +
 	"\t_value_po\"\xe1\x02\n" +
 	"\x14PlaceTreasureRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +

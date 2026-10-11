@@ -451,3 +451,36 @@ func TestScalingFeatureListsOnlyItsCurrentTier(t *testing.T) {
 		t.Errorf("attacks at fighter 11 = %d, want 3", got)
 	}
 }
+
+// TestSavageAttacksAndRelentlessEnduranceAreTheHalfOrcs: the half-orc has Savage Attacks
+// (Derived.SavageAttacks) and the Relentless Endurance resource; a human has neither.
+func TestSavageAttacksAndRelentlessEnduranceAreTheHalfOrcs(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	orc := standard("class:fighter", 1)
+	orc.Race = "race:half-orc"
+	d := Derive(orc, c)
+	if !d.SavageAttacks || resourceMax(d, "relentless_endurance") != 1 {
+		t.Errorf("half-orc: savage attacks %v, relentless endurance max %d; want true and 1", d.SavageAttacks, resourceMax(d, "relentless_endurance"))
+	}
+	if h := Derive(standard("class:fighter", 1), c); h.SavageAttacks || hasResource(h, "relentless_endurance") {
+		t.Error("a human has Savage Attacks or Relentless Endurance")
+	}
+}
+
+// TestStandardsNamedInReadsWhatATableBonusActionPerforms: the text of a table content's bonus
+// action says which standard actions it is (the goblin's Fuga Ágil), in a fixed order.
+func TestStandardsNamedInReadsWhatATableBonusActionPerforms(t *testing.T) {
+	t.Parallel()
+	for text, want := range map[string][]string{
+		"Fuga Ágil: Desengajar ou Esconder como ação bônus.": {"standard:disengage", "standard:hide"},
+		"Esconder-se como ação bônus":                        {"standard:hide"},
+		"Disparada ou Desengajar":                            {"standard:dash", "standard:disengage"},
+		"Ataca com a cauda como ação bônus":                  nil,
+		"":                                                   nil,
+	} {
+		if got := standardsNamedIn(text); !slices.Equal(got, want) {
+			t.Errorf("standardsNamedIn(%q) = %v, want %v", text, got, want)
+		}
+	}
+}

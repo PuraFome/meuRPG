@@ -103,6 +103,7 @@ const (
 	ListSenses            = "senses"
 	ListRecharges         = "recharges"
 	ListEconomies         = "economies"
+	ListManeuverApplies   = "maneuver_applies"
 	ListChoiceKinds       = "choice_kinds"
 	ListSkills            = "skills"
 	ListLanguages         = "languages"
@@ -149,10 +150,20 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "grant_action", NamePT: "Ação", HintPT: "Uma ação que o personagem passa a ter na vez dele: ação, ação bônus, reação, livre ou movimento.", Fields: []MenuField{
+	{Type: "grant_action", NamePT: "Ação", HintPT: "Uma ação que o personagem passa a ter na vez dele: ação, ação bônus, reação, livre ou movimento. Pode gastar um uso de um recurso que a entrada define (\"Gasta um uso de\").", Fields: []MenuField{
 		{Name: "economy", Required: true, Kind: "choice", List: ListEconomies},
+		{Name: "resource", Kind: "resource_ref"},
 		{Name: "when", Kind: "condition"},
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "superiority_die", NamePT: "Dado de manobra", HintPT: "Um dado que uma opção (uma manobra) soma a uma rolagem e que gasta um uso de um recurso que a entrada define: ao dano de um ataque com arma que acertou, a um ataque, ao teste de Atletismo de uma agarrada, ou como redução do dano de um ataque corpo a corpo (reação). O texto é o efeito que o mestre lê.", Fields: []MenuField{
+		{Name: "applies", Required: true, Kind: "choice", List: ListManeuverApplies},
+		{Name: "resource", Required: true, Kind: "resource_ref"},
+		{Name: "value", Required: true, Kind: "formula"},
+		{Name: "ability", Kind: "choice", List: ListAbilities},
+		{Name: "economy", Kind: "choice", List: ListEconomies},
+		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "extra_attack", NamePT: "Ataque extra", HintPT: "Quantos ataques a ação Atacar faz; vale o maior que o personagem tiver.", Fields: []MenuField{
@@ -160,7 +171,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista do SRD (como um estilo de luta).", Fields: []MenuField{
+	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
 		{Name: "from", Kind: "choices"},
@@ -195,6 +206,10 @@ var (
 	rollNames   = map[string]string{"advantage": "Vantagem", "disadvantage": "Desvantagem"}
 	senseNames  = map[string]string{"darkvision": "Visão no escuro", "blindsight": "Visão às cegas", "tremorsense": "Sentido sísmico", "truesight": "Visão verdadeira"}
 	rechargeNms = map[string]string{"short_rest": "Descanso curto", "long_rest": "Descanso longo", "dawn": "Ao amanhecer", "none": "Não volta sozinho"}
+	maneuverNms = map[string]string{
+		ManeuverDamage: "Dano de um ataque com arma que acertou", ManeuverAttack: "Rolagem de ataque", ManeuverGrapple: "Atletismo de uma agarrada (ação bônus)",
+		ManeuverReduceMelee: "Reduz o dano de um ataque corpo a corpo (reação)",
+	}
 	economyNms  = map[string]string{"action": "Ação", "bonus_action": "Ação bônus", "reaction": "Reação", "free": "Livre", "movement": "Movimento"}
 	choiceNames = map[string]string{
 		"skill": "Perícias", "expertise": "Especialização", "cantrip": "Truques", "spell": "Magias",
@@ -299,6 +314,7 @@ func (c *Content) EffectMenu() EffectMenu {
 		{Name: ListSenses, Values: named(senses, func(k string) string { return senseNames[k] })},
 		{Name: ListRecharges, Values: named(recharges, func(k string) string { return rechargeNms[k] })},
 		{Name: ListEconomies, Values: named(economies, func(k string) string { return economyNms[k] })},
+		{Name: ListManeuverApplies, Values: named(maneuverApplies, func(k string) string { return maneuverNms[k] })},
 		{Name: ListChoiceKinds, Values: named(overlayChoiceKinds, func(k string) string { return choiceNames[k] })},
 		{Name: ListSkills, Values: skills},
 		{Name: ListLanguages, Values: languages},

@@ -23,13 +23,11 @@ import { THEATRE_WHY, THEATRE_WHY_DIALOG } from '../../../../core/combat/theatre
 import { DiceChoice } from '../../../../shared/dice-choice/dice-choice';
 import { CampaignsService } from '../../../../core/campaigns/campaigns.service';
 import { effectivePreference, preferenceLabel } from '../../../../core/campaigns/dice-labels';
-import {
-  CombatClient,
-  type JoinSpec,
-  type MonsterHp,
-  newKey,
-} from '../../../../core/combat/combat-client';
+import { CombatClient, type JoinSpec, type MonsterHp } from '../../../../core/combat/combat-client';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import type { CreatureSummary } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { CountStepper } from '../../../../shared/count-stepper/count-stepper';
+import { CreaturePick } from '../../../encounters/creature-pick/creature-pick';
 import { becomesText } from '../../../../core/combat/monsters';
 import { HiddenSwitch } from '../../../../shared/hidden-switch/hidden-switch';
 import { type Segment, Segmented } from '../move-page/segmented';
@@ -84,6 +82,31 @@ export interface StartCombatData {
   readonly saved?: SavedStart;
 }
 
+/** One kind of creature picked from the bestiary inside the dialog. */
+export interface PickedMonster {
+  readonly key: string;
+  readonly namePt: string;
+  readonly count: number;
+}
+
+/** The most one add of a creature takes (the combat holds 40 in all). */
+const PICK_MAX = 10;
+
+/** "Como este combate é jogado" (RN-25): the two choices, here and in the bestiary's "Pôr no combate". */
+export const COMBAT_MODE_OPTIONS: readonly DiceOption<EncounterMode>[] = [
+  {
+    value: EncounterMode.GRID,
+    title: 'Com mapa',
+    description: 'Posições, alcance, névoa, armadilhas e portas valem. Pede um mapa com grade.',
+  },
+  {
+    value: EncounterMode.THEATRE,
+    title: 'Sem mapa (teatro da mente)',
+    description:
+      'Só a ordem, o movimento por número e a sua palavra: você decide quem está ao alcance. Não precisa de mapa.',
+  },
+];
+
 /** Why a reserved character (imported, not claimed by a player yet) has no checkbox: the server refuses it at the start. */
 export const RESERVED_WHY = 'Reservado: ainda sem jogador';
 
@@ -104,6 +127,8 @@ const MAX_COMBATANTS = 40;
   selector: 'app-start-combat-dialog',
   imports: [
     CombatMap,
+    CountStepper,
+    CreaturePick,
     DiceChoice,
     MatButtonModule,
     MatFormFieldModule,
@@ -126,10 +151,10 @@ export class StartCombatDialog {
   private readonly roster = inject(RosterClient);
   private readonly campaigns = inject(CampaignsService);
   private readonly tableRules = inject(TableRulesClient);
-  /** One key for this dialog: a second tap on the button can't start two. */
-  private readonly key = newKey();
   /** The key of "Adicionar": a tap after a lost answer is the same addition, other NPCs another. */
   private readonly addKey = new ActionKey();
+  /** One key per picked creature in add mode (`AddMonsters`): a retry after a failure resends the same keys, so nothing enters twice. */
+  private readonly monsterKeys = new Map<string, ActionKey>();
 
   protected readonly adding = this.data.mode === 'add';
   /** How the combat is played (RN-25), fixed once it starts: with the table's "combate com mapa" rule as the default, and "Sem mapa" when the session has no map. */
@@ -139,19 +164,7 @@ export class StartCombatDialog {
   /** The person chose: the table's rule, read a moment later, no longer moves the choice. */
   private modeTouched = false;
   protected readonly theatre = computed(() => this.playMode() === EncounterMode.THEATRE);
-  protected readonly modeOptions: readonly DiceOption<EncounterMode>[] = [
-    {
-      value: EncounterMode.GRID,
-      title: 'Com mapa',
-      description: 'Posições, alcance, névoa, armadilhas e portas valem. Pede um mapa com grade.',
-    },
-    {
-      value: EncounterMode.THEATRE,
-      title: 'Sem mapa (teatro da mente)',
-      description:
-        'Só a ordem, o movimento por número e a sua palavra: você decide quem está ao alcance. Não precisa de mapa.',
-    },
-  ];
+  protected readonly modeOptions = COMBAT_MODE_OPTIONS;
   /** "Com mapa" waits when the session has no map: dashed, with the reason where its line is. */
   protected readonly modeInert = computed<readonly EncounterMode[]>(() =>
     this.mapReady() ? [] : [EncounterMode.GRID],
@@ -186,7 +199,15 @@ export class StartCombatDialog {
     ...g,
     becomes: becomesText(g.name || g.namePt, g.count),
   }));
-  protected readonly monsterTotal = (this.saved?.groups ?? []).reduce((sum, g) => sum + g.count, 0);
+  private readonly savedTotal = (this.saved?.groups ?? []).reduce((sum, g) => sum + g.count, 0);
+  /** Monsters the master picked from the bestiary in this dialog ("Adicionar monstro do Bestiário"), kept here so the dialog is never left. */
+  protected readonly picked = signal<readonly PickedMonster[]>([]);
+  protected readonly monsterTotal = computed(
+    () => this.savedTotal + this.picked().reduce((sum, m) => sum + m.count, 0),
+  );
+  /** The monsters' HP and hiding show for a saved encounter and as soon as one monster is picked. */
+  protected readonly hasMonsters = computed(() => this.saved !== null || this.picked().length > 0);
+  private readonly startKey = new ActionKey();
   protected readonly busy = signal(false);
   /** The start is in the air: Esc and the backdrop do not close the dialog under it. */
   protected readonly lockWhileBusy = effect(() => (this.ref.disableClose = this.busy()));
@@ -219,7 +240,7 @@ export class StartCombatDialog {
     () =>
       (this.adding ? 0 : this.included().size) +
       this.npcTotal() +
-      this.monsterTotal +
+      this.monsterTotal() +
       (this.data.existing ?? 0),
   );
   protected readonly hasGrid = computed(() => this.adding || (this.data.map?.columns ?? 0) > 0);
@@ -250,10 +271,10 @@ export class StartCombatDialog {
     if (!this.adding && !this.nameOk()) {
       return 'Dê um nome ao combate.';
     }
-    if (!this.adding && this.included().size === 0 && this.monsterTotal === 0) {
+    if (!this.adding && this.included().size === 0 && this.monsterTotal() === 0) {
       return 'Escolha quem do grupo entra.';
     }
-    if (this.adding && this.npcTotal() === 0) {
+    if (this.adding && this.npcTotal() === 0 && this.picked().length === 0) {
       return 'Escolha quantos NPCs entram.';
     }
     if (this.total() > MAX_COMBATANTS) {
@@ -282,6 +303,25 @@ export class StartCombatDialog {
     } catch {
       // Without the rule the combat starts the way it always did: with a map.
     }
+  }
+
+  protected readonly PICK_MAX = PICK_MAX;
+
+  protected pickMonster(c: CreatureSummary): void {
+    this.picked.update((list) =>
+      list.some((m) => m.key === c.key)
+        ? list.map((m) => (m.key === c.key ? { ...m, count: Math.min(PICK_MAX, m.count + 1) } : m))
+        : [...list, { key: c.key, namePt: c.namePt, count: 1 }],
+    );
+    this.error.set('');
+  }
+
+  protected setPickedCount(key: string, count: number): void {
+    this.picked.update((list) => list.map((m) => (m.key === key ? { ...m, count } : m)));
+  }
+
+  protected removePicked(key: string): void {
+    this.picked.update((list) => list.filter((m) => m.key !== key));
   }
 
   protected chooseMode(mode: EncounterMode): void {
@@ -378,6 +418,67 @@ export class StartCombatDialog {
     this.ref.close();
   }
 
+  private start(specs: readonly JoinSpec[]): Promise<Encounter> {
+    const monsters = [
+      ...(this.saved?.groups ?? []).map((g) => ({
+        creatureKey: g.key,
+        count: g.count,
+        name: g.name,
+      })),
+      ...this.picked().map((m) => ({ creatureKey: m.key, count: m.count, name: '' })),
+    ];
+    const extras = {
+      mode: this.playMode(),
+      ...(monsters.length > 0
+        ? { monsters, monsterHp: this.monsterHp(), monstersHidden: this.monstersHidden() }
+        : {}),
+      ...(this.saved ? { mapPointId: this.saved.pointId } : {}),
+    };
+    return this.combat.start(
+      this.data.campaignId,
+      this.name().trim(),
+      specs,
+      this.startKey.keyFor([this.name().trim(), specs, extras]),
+      extras,
+    );
+  }
+
+  /** Add mode: the NPCs (if any) through `AddCombatants`, then each picked creature through `AddMonsters`; returns the last encounter. */
+  private async addToCombat(specs: readonly JoinSpec[]): Promise<Encounter | undefined> {
+    const encounterId = this.data.encounterId ?? '';
+    let last: Encounter | undefined;
+    if (specs.length > 0) {
+      last = await this.combat.add(
+        this.data.campaignId,
+        encounterId,
+        specs,
+        this.addKey.keyFor([this.data.encounterId, specs]),
+      );
+    }
+    for (const m of this.picked()) {
+      const add = {
+        creatureKey: m.key,
+        count: m.count,
+        name: '',
+        hp: this.monsterHp(),
+        hidden: this.monstersHidden(),
+      };
+      let key = this.monsterKeys.get(m.key);
+      if (!key) {
+        key = new ActionKey();
+        this.monsterKeys.set(m.key, key);
+      }
+      const made = await this.combat.addMonsters(
+        this.data.campaignId,
+        encounterId,
+        add,
+        key.keyFor([encounterId, add]),
+      );
+      last = made.encounter;
+    }
+    return last;
+  }
+
   protected async submit(): Promise<void> {
     if (this.blocked() || this.busy()) {
       return;
@@ -399,32 +500,7 @@ export class StartCombatDialog {
         })),
     ];
     try {
-      const encounter = this.adding
-        ? await this.combat.add(
-            this.data.campaignId,
-            this.data.encounterId ?? '',
-            specs,
-            this.addKey.keyFor([this.data.encounterId, specs]),
-          )
-        : await this.combat.start(
-            this.data.campaignId,
-            this.name().trim(),
-            specs,
-            this.key,
-            this.saved
-              ? {
-                  mode: this.playMode(),
-                  monsters: this.saved.groups.map((g) => ({
-                    creatureKey: g.key,
-                    count: g.count,
-                    name: g.name,
-                  })),
-                  monsterHp: this.monsterHp(),
-                  monstersHidden: this.monstersHidden(),
-                  mapPointId: this.saved.pointId,
-                }
-              : { mode: this.playMode() },
-          );
+      const encounter = this.adding ? await this.addToCombat(specs) : await this.start(specs);
       this.ref.close(encounter);
     } catch (err) {
       this.busy.set(false);

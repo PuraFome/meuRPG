@@ -98,6 +98,7 @@ import { circleLabel } from '../../../../core/combat/combat-grid';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { groupFeminine, groupName, isCreature } from '../../../../core/combat/creature-names';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
+import { abilityMissing, needsAbility } from '../../../../core/effects/ability-choice';
 import {
   type MetamagicPicks,
   NO_PICKS,
@@ -110,10 +111,12 @@ import {
   metamagicSpentLine,
   toggledOption,
 } from '../../../../core/resources/metamagic';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import type { Pool } from '../../../../core/resources/pools';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
+import { AbilityPicker } from '../../effects/ability-picker/ability-picker';
 import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { RollPicker } from '../roll-picker/roll-picker';
@@ -121,6 +124,7 @@ import { injectSheet } from '../sheet-host';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { CastResult, CastSlots, type SlotAfter } from './cast-result';
 import { CastTargets } from './cast-targets';
+import { SculptPicker, type SculptRow } from './sculpt-picker';
 import { MetamagicPicker } from './metamagic-picker';
 import { DamageTypePicker } from './damage-type-picker';
 import { SlotPicker } from './slot-picker';
@@ -184,6 +188,8 @@ export interface CastSheetData {
   readonly metamagic?: readonly MetamagicOption[];
   /** The sorcery points left and their maximum, for "Pontos de Feitiçaria: 5 de 5". */
   readonly sorceryPoints?: Pool | null;
+  /** The caster has Sculpt Spells and the spell is of evocation (`SpellOption.sculpt_spells`). */
+  readonly sculptSpells?: boolean;
   /** The battle map, in a combat with a grid: an area spell is placed on it. Absent without a map (theatre of the mind),
    * where every area spell keeps the list of who it hits. */
   readonly map?: CastMapData | null;
@@ -213,6 +219,7 @@ export interface CastSheetData {
     CastResult,
     CastSlots,
     CastTargets,
+    AbilityPicker,
     DamageTypePicker,
     MatButtonModule,
     MetamagicPicker,
@@ -220,6 +227,7 @@ export interface CastSheetData {
     MultiRoll,
     RollModePicker,
     RollPicker,
+    SculptPicker,
     SheetFrame,
     SlotPicker,
     SpellHelp,
@@ -229,6 +237,7 @@ export interface CastSheetData {
 })
 export class CastSheet {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
   private readonly catalog = inject(SpellCatalog);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
@@ -295,6 +304,9 @@ export class CastSheet {
     const picked = this.pickedType();
     return choices.find((c) => c.key === picked)?.key ?? choices[0]?.key ?? '';
   });
+  /** Aprimorar Habilidade names the ability it is cast for; empty until picked, and for every other spell. */
+  protected readonly asksAbility = needsAbility(this.data.spellKey);
+  protected readonly ability = signal('');
   protected readonly rows = computed(() =>
     slotRows(this.data.level, this.data.slots, this.data.usage, this.data.pact),
   );
@@ -386,6 +398,10 @@ export class CastSheet {
     if (this.data.level > 0 && !this.slot()) {
       return 'Escolha o espaço de magia.';
     }
+    const ability = abilityMissing(this.data.spellKey, this.ability());
+    if (ability) {
+      return ability;
+    }
     // A placed area takes no target: the server works out who is inside from the point.
     const target = this.flow ? '' : this.targetsMissing();
     return (
@@ -411,6 +427,49 @@ export class CastSheet {
     return '';
   }
   protected readonly ready = computed(() => this.missing() === '');
+
+  // ---- Sculpt Spells (SRD 5.1, School of Evocation wizard) ----
+
+  /** The caster has Sculpt Spells and the spell is of evocation: the creatures it spares are asked for. */
+  protected readonly sculptOffered = this.data.sculptSpells ?? false;
+  protected readonly sculpted = signal<string[]>([]);
+  /** 1 + the level the spell is cast at (a cantrip is level 0). */
+  protected readonly sculptLimit = computed(() => 1 + (this.data.level > 0 ? this.slotLevel() : 0));
+  /** The creatures the caster can spare: the others in the placed area, or the ones ticked in the list; allies first. */
+  protected readonly sculptRows = computed<SculptRow[]>(() => {
+    if (!this.sculptOffered) {
+      return [];
+    }
+    const preview = this.flow?.preview();
+    const rows: SculptRow[] = this.flow
+      ? (preview?.targets ?? [])
+          .filter((t) => !t.self)
+          .map((t) => ({ id: t.combatantId, label: t.label, ally: t.ally }))
+      : this.targetRows()
+          .filter((t) => !t.blocked && this.chosen().includes(t.id))
+          .map((t) => ({ id: t.id, label: t.label, ally: false }));
+    return [...rows.filter((r) => r.ally), ...rows.filter((r) => !r.ally)];
+  });
+  /** What the cast sends: the ones marked that are still listed, no more than the limit. */
+  private sculptedIds(): string[] {
+    const listed = new Set(this.sculptRows().map((r) => r.id));
+    return this.sculpted()
+      .filter((id) => listed.has(id))
+      .slice(0, this.sculptLimit());
+  }
+
+  protected toggleSculpt(id: string): void {
+    const now = this.sculpted();
+    this.sculpted.set(
+      now.includes(id)
+        ? now.filter((x) => x !== id)
+        : now.length < this.sculptLimit()
+          ? [...now, id]
+          : now,
+    );
+    this.choiceChanged();
+    this.error.set('');
+  }
 
   // ---- an area placed on the map (PM-02a, PM-02b) ----
 
@@ -826,6 +885,12 @@ export class CastSheet {
     }
   }
 
+  protected pickAbility(key: string): void {
+    this.ability.set(key);
+    this.choiceChanged();
+    this.error.set('');
+  }
+
   protected pickDamageType(key: string): void {
     this.pickedType.set(key);
     this.choiceChanged();
@@ -940,7 +1005,7 @@ export class CastSheet {
       const roll = die ?? (this.kind() === 'pool' ? { inApp: true as const } : null);
       // A placed area's key follows its request: the same slot, place and roll again is a retry of it.
       const key = this.flow
-        ? this.areaKey.keyFor([slot, area, roll, this.damageType()])
+        ? this.areaKey.keyFor([slot, area, roll, this.damageType(), this.sculptedIds()])
         : this.castKey;
       const res = await this.api.castSpell(
         this.data.campaignId,
@@ -958,7 +1023,11 @@ export class CastSheet {
           ? { mode: this.picked()!, reason: this.reason().trim() }
           : undefined,
         metamagicChoices(this.chosenMeta(), this.picks()),
-        this.flow ? { area } : {},
+        {
+          ...(this.flow ? { area } : {}),
+          ...(this.asksAbility ? { abilityKey: this.ability() } : {}),
+          ...(this.sculptedIds().length ? { sculptedIds: this.sculptedIds() } : {}),
+        },
       );
       this.data.state.apply(res.encounter);
       this.cast.set(res.cast);
@@ -1026,6 +1095,13 @@ export class CastSheet {
         next.set(settled.id, settled);
       }
       this.pendings.set(next);
+      const show = showOfDice('Dano', res.pending.roll, {
+        withTotal: true,
+        note: res.pending.damageTypePt || undefined,
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       return true;
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'rolar o dano'));

@@ -1,0 +1,535 @@
+// ContestService: the contests and the special actions of a combat — grapple,
+// shove, escape, Hide, Help, surprise — and the group check outside one (SRD 5.1,
+// "Contests", "Grappling", "Shoving a Creature", "Hide", "Help", "Group Checks",
+// "Surprise"). It is implemented by the same server as CombatService and mounted
+// with it, behind the same interceptors; a state change travels on the session
+// stream as `encounter_changed` (a combat) or `group_check_changed` (a group check).
+//
+// Every write carries an `idempotency_key` (a UUID, scoped to its caller): the same
+// key with the same request answers the same result and changes nothing; the same
+// key with another request is `invalid_argument`. Errors are `failed_precondition`
+// with the ContestBlocked detail and a reason, or `not_found`, `permission_denied`
+// and `invalid_argument` as in CombatService. A client error is never `internal`.
+syntax = "proto3";
+
+package meurpg.play.v1;
+
+import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/contest_types.proto";
+
+service ContestService {
+  // GetContestState is every contest fact of the combat the caller may read: the
+  // contests they are in (the master: all), the Hide actions, whether they are
+  // hidden, the Helps that hold, the grapples, and who is surprised. IDEMPOTENT.
+  //
+  // Errors: `not_found` (the combat is not in this campaign's session, or the caller
+  // is not a member).
+  rpc GetContestState(GetContestStateRequest) returns (GetContestStateResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // StartContest begins a grapple or a shove (the initiator rolls Strength (Athletics)
+  // against the target's Athletics or Acrobacia, SRD 5.1, "Grappling"), an escape from a
+  // grapple (the grappled creature uses its action) or, for the master, a grapple that
+  // came from a creature's attack with a fixed escape DC (kind ESCAPE_DC, purpose
+  // GRAPPLE: nobody rolls, the target is Grappled at once and the master's escape_dc
+  // is kept). A grapple or a shove spends one attack of the Attack action (the action
+  // when it is the first), an escape spends the action, in the same transaction that
+  // opens the contest. The player starts it for their own combatant on its turn; the
+  // master for any combatant (an NPC's turn too). An ESCAPE with a fixed DC resolves at
+  // once; any other contest waits for the defender (RespondContest).
+  //
+  // Errors:
+  //   - `not_found`: the combat, the combatant or the target is not found for the
+  //     caller (a hidden NPC is not found).
+  //   - `permission_denied`: the caller is a player and the initiator is not theirs.
+  //   - `invalid_argument`: the purpose, the kind, the skill or the roll is not valid.
+  //   - `failed_precondition`: EncounterBlocked (NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED,
+  //     ATTACKS_USED, TARGET_OUT_OF_REACH with `missing_ft`, TARGET_DEFEATED, NOT_PLACED,
+  //     COMBATANT_DOWN, WRONG_DICE_MODE) or ContestBlocked (TARGET_TOO_BIG, CONTEST_OPEN,
+  //     NOT_GRAPPLED, SURPRISED).
+  rpc StartContest(StartContestRequest) returns (StartContestResponse);
+
+  // RespondContest is the defender's roll: Strength (Athletics) or Dexterity
+  // (Acrobacia), at the defender's choice (SRD 5.1, "Grappling"). The defender's
+  // player answers for their own character, or leaves the roll to the master
+  // (defer_to_master, with the skill they choose); the master answers for an NPC (he
+  // picks the skill, which the app suggests by the higher modifier, and rolls in the
+  // app or types the d20), or for a player who has not answered. The totals are
+  // compared: the higher wins, a tie changes nothing. A won grapple makes the target
+  // Grappled; a lost one changes nothing; a won escape frees the creature. A won shove
+  // waits for its winner's choice (ResolveShove).
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`, `invalid_argument` as StartContest.
+  //   - `failed_precondition`: ContestBlocked NOT_AWAITING, or EncounterBlocked
+  //     WRONG_DICE_MODE.
+  rpc RespondContest(RespondContestRequest) returns (RespondContestResponse);
+
+  // ResolveShove is the choice of a won shove: knock the target prone or push it 5
+  // feet straight away from the shover (SRD 5.1, "Shoving a Creature"). Called by the
+  // one that won, the initiator's player (the master for an NPC and for any shove). The
+  // new square is the server's, never the client's. PUSH on a blocked square is
+  // `failed_precondition` PUSH_BLOCKED; STAYS says the target does not leave its place
+  // and is valid only when the push is blocked. A grappled target that leaves the
+  // grappler's reach is released.
+  //
+  // Errors:
+  //   - `failed_precondition` (ContestBlocked): NOT_AWAITING, PUSH_BLOCKED.
+  rpc ResolveShove(ResolveShoveRequest) returns (ResolveShoveResponse);
+
+  // CloseContest ends a contest that waits for an answer with no result: the master
+  // alone ("encerrar a disputa"). The action it spent stays spent.
+  //
+  // Errors: `failed_precondition` (ContestBlocked): NOT_AWAITING.
+  rpc CloseContest(CloseContestRequest) returns (CloseContestResponse);
+
+  // ReleaseGrapple lets the grappled creature go: the grappler whenever it likes (no
+  // action, SRD 5.1, "Grappling"), or the master. The Grappled condition ends.
+  //
+  // Errors: `failed_precondition` (ContestBlocked): NOT_GRAPPLED.
+  rpc ReleaseGrapple(ReleaseGrappleRequest) returns (ReleaseGrappleResponse);
+
+  // Hide is the Hide action: a Dexterity (Stealth) check (SRD 5.1, "Hide"), spent from
+  // the action (the Hide of the standard actions) or from the bonus action
+  // (a feature that gives Hide as a bonus action, the rogue's Cunning Action). It
+  // waits for the master (ResolveHide). The player rolls for their own combatant on
+  // its turn; the master for any.
+  //
+  // Errors: `failed_precondition`: EncounterBlocked (NOT_ACTIVE, NOT_YOUR_TURN,
+  // ACTION_USED, BONUS_ACTION_USED, WRONG_DICE_MODE) or ContestBlocked (NOT_AVAILABLE,
+  // SURPRISED).
+  rpc Hide(HideRequest) returns (HideResponse);
+
+  // ResolveHide is the master's decision on a Hide: he applies it (the hider is
+  // hidden from the creatures that do not notice it, one state per creature; the
+  // master may mark any creature as seeing the hider clearly) or refuses it (no place
+  // to hide). Only the master.
+  //
+  // Errors: `failed_precondition` (ContestBlocked): HIDE_NOT_PENDING.
+  rpc ResolveHide(ResolveHideRequest) returns (ResolveHideResponse);
+
+  // RevealHider ends a combatant's hiding for every creature (SRD 5.1, "Hiding": the
+  // DM decides when circumstances reveal a hidden creature: it makes noise, steps into
+  // the open, is searched for). Only the master. Every state of the hider goes, so every
+  // creature sees it again and its attacks lose the unseen-attacker advantage. The log
+  // line is the master's and the hider's player's alone ("Brisa não está mais
+  // escondida"); no other player is told, and nobody is told who noticed (RN-10). The
+  // master can undo it (UndoLastAction): the hiding comes back as it was.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the combatant is not in the open session.
+  //   - `failed_precondition`: ContestBlocked NOT_HIDDEN, or the combat is ended.
+  rpc RevealHider(RevealHiderRequest) returns (RevealHiderResponse);
+
+  // Help is the Help action in its two forms (SRD 5.1, "Help"): advantage on an ally's
+  // next check of a task, or on the ally's first attack on a creature within 5 feet of
+  // the helper. It spends the action. The player helps with their own combatant on its
+  // turn; the master with any.
+  //
+  // Errors: `failed_precondition`: EncounterBlocked (NOT_ACTIVE, NOT_YOUR_TURN,
+  // ACTION_USED, TARGET_OUT_OF_REACH with `missing_ft`) or ContestBlocked (NOT_AVAILABLE,
+  // NOT_AN_ALLY, TASK_NOT_AVAILABLE, SURPRISED).
+  rpc Help(HelpRequest) returns (HelpResponse);
+
+  // ClearHelp takes a Help back: the master, when the help should not hold any more.
+  rpc ClearHelp(ClearHelpRequest) returns (ClearHelpResponse);
+
+  // SetSurprised marks a creature surprised or not, before the combat begins (SRD
+  // 5.1, "Surprise"): the master, any creature, player characters included. A
+  // surprised creature does not move, act, take a bonus action or react until its
+  // first turn ends (the bonus action is the app's reading). The player reads only
+  // their own state.
+  //
+  // Errors: `failed_precondition` (ContestBlocked): COMBAT_BEGUN.
+  rpc SetSurprised(SetSurprisedRequest) returns (SetSurprisedResponse);
+
+  // GetSurpriseSuggestion is the app's suggestion of who is surprised: each hider's
+  // Stealth against each creature's passive Perception (SRD 5.1, "Surprise"). Only the
+  // master. IDEMPOTENT.
+  rpc GetSurpriseSuggestion(GetSurpriseSuggestionRequest) returns (GetSurpriseSuggestionResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // GetGroupCheck is the open group check of the open session, or the latest closed
+  // one, as the caller reads it; none when there is not any. IDEMPOTENT.
+  rpc GetGroupCheck(GetGroupCheckRequest) returns (GetGroupCheckResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // RequestGroupCheck asks living player characters for a check or a saving throw, at
+  // any moment out of combat (SRD 5.1, "Ability Checks", "Saving Throws"). With no
+  // `character_ids` it asks every living player character, and with `group` (the
+  // default for that case) the group passes when at least half of them pass (SRD 5.1,
+  // "Working Together", Group Checks). With `character_ids` it asks only those
+  // characters, and each roll stands alone. Only the master; one request is open at a
+  // time; only the characters asked read it or may roll it (RN-10, RN-20).
+  //
+  // Errors:
+  //   - `invalid_argument`: skill_key is not a skill, an ability check or a saving throw;
+  //     a character_id is not a living player character of the campaign (an NPC, a dead
+  //     or an unknown one); a repeated character_id; `group` true with only one
+  //     character asked.
+  //   - `failed_precondition` (ContestBlocked): GROUP_CHECK_OPEN.
+  rpc RequestGroupCheck(RequestGroupCheckRequest) returns (RequestGroupCheckResponse);
+
+  // RollGroupCheck is a player's roll for the open group check, for their own
+  // character, in the app or with the physical d20. Once.
+  //
+  // Errors: `failed_precondition`: ContestBlocked (GROUP_CHECK_CLOSED, NOT_IN_GROUP_CHECK,
+  // ALREADY_ANSWERED) or EncounterBlocked WRONG_DICE_MODE.
+  //
+  // A character that holds a Bardic Inspiration die (given outside a combat) gets
+  // `inspiration_offer` in place of the group check: the d20 is rolled and kept, the
+  // check is not written, and ResourceService.AnswerOutsideInspiration settles it.
+  rpc RollGroupCheck(RollGroupCheckRequest) returns (RollGroupCheckResponse);
+
+  // RollForPlayer is the master's roll for a character that has not answered.
+  rpc RollForPlayer(RollForPlayerRequest) returns (RollForPlayerResponse);
+
+  // CloseGroupCheck ends the group check: the characters that did not answer count as
+  // failed, and the verdict is worked out. Only the master.
+  rpc CloseGroupCheck(CloseGroupCheckRequest) returns (CloseGroupCheckResponse);
+}
+
+// D20Faces is the faces of physical d20 dice, typed: one face for a normal roll, two
+// (the pair) for a roll with advantage or disadvantage, each 1 to 20. The number must
+// match what the server works out for the roll, else `invalid_argument`.
+message D20Faces {
+  repeated int32 faces = 1;
+}
+
+// GetContestStateRequest names the combat.
+message GetContestStateRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+}
+
+// GetContestStateResponse is the contest facts the caller may read.
+message GetContestStateResponse {
+  // The latest contests of the combat the caller is in (the master: all), newest first,
+  // at most 20.
+  repeated ContestView contests = 1;
+  // The Hide actions: the master, the pending ones and the latest decided of each hider;
+  // a player, the latest of their own characters.
+  repeated HideAttemptView hide_attempts = 2;
+  // The hidden combatants: the master, every hider (a creature is hidden while one
+  // creature does not notice it); a player, their own characters that are hidden.
+  repeated string hidden_ids = 3;
+  // The Helps that hold, for every member; one aimed at a creature the caller does not
+  // see is left out.
+  repeated HelpView helps = 4;
+  // Who holds whom. The master: all; a player: the grapples whose two creatures they see.
+  repeated GrappleView grapples = 5;
+  SurpriseView surprise = 6;
+}
+
+// Roll is how a check's d20 is rolled: in the app or with the physical dice.
+message CheckRollInput {
+  oneof roll {
+    // The server rolls (true).
+    bool roll_in_app = 1;
+    // The player or the master typed the faces of the physical d20.
+    D20Faces d20_faces = 2;
+  }
+}
+
+// StartContestRequest begins a grapple, a shove or an escape.
+message StartContestRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // A UUID, scoped to the caller.
+  string idempotency_key = 3;
+  // The one that grapples, shoves or tries to escape.
+  string initiator_id = 4;
+  // The target of a grapple or shove; for an ESCAPE, empty (the one that holds is the
+  // defender).
+  string target_id = 5;
+  ContestPurpose purpose = 6;
+  // CONTEST or ESCAPE_DC; unset is CONTEST. ESCAPE_DC with GRAPPLE is the master's
+  // grapple that came from an attack: no roll, `escape_dc` is the number.
+  ContestKind kind = 7;
+  // The initiator's skill. A grapple or a shove is Athletics; an escape is Athletics or
+  // Acrobacia. Unset is Athletics. Not used by an ESCAPE_DC grapple.
+  ContestSkill skill = 8;
+  // The initiator's roll. Required, except for an ESCAPE_DC grapple.
+  CheckRollInput roll = 9;
+  // The fixed escape DC (1 to 40) of an ESCAPE_DC grapple. Only the master.
+  int32 escape_dc = 10;
+  // A table maneuver (ContestAttackOption.maneuvers[].key) that starts a GRAPPLE: the player
+  // made a melee hit this turn, so the grapple costs the bonus action and one use of the
+  // maneuver's resource instead of an attack, and the superiority die is added to the
+  // Athletics check. Not with ESCAPE_DC; players only.
+  string maneuver_key = 11;
+  // The face of the die when the player rolls physical dice (the roll is typed d20 faces): 1
+  // to the die's sides. Empty (0) when the roll is in the app, where the server rolls the die.
+  int32 maneuver_face = 12;
+}
+
+// StartContestResponse returns the combat after it and the contest.
+message StartContestResponse {
+  Encounter encounter = 1;
+  // The contest as the caller reads it.
+  ContestView contest = 2;
+}
+
+// RespondContestRequest is the defender's answer.
+message RespondContestRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string contest_id = 4;
+  // Athletics or Acrobacia.
+  ContestSkill skill = 5;
+  // The defender's roll; unset when the player leaves the roll to the master.
+  CheckRollInput roll = 6;
+  // The player leaves the roll to the master: "Deixar o mestre rolar por mim". The skill
+  // is the player's choice and the contest waits for the master.
+  bool defer_to_master = 7;
+}
+
+// RespondContestResponse returns the combat and the contest after the answer.
+message RespondContestResponse {
+  Encounter encounter = 1;
+  ContestView contest = 2;
+}
+
+// ResolveShoveRequest is the choice of a won shove.
+message ResolveShoveRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string contest_id = 4;
+  // PRONE, PUSH or STAYS.
+  ShoveOutcome outcome = 5;
+}
+
+// ResolveShoveResponse returns the combat and the contest after the choice.
+message ResolveShoveResponse {
+  Encounter encounter = 1;
+  ContestView contest = 2;
+}
+
+// CloseContestRequest ends a contest with no result.
+message CloseContestRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string contest_id = 4;
+}
+
+// CloseContestResponse returns the combat after it.
+message CloseContestResponse {
+  Encounter encounter = 1;
+}
+
+// ReleaseGrappleRequest lets a grappled creature go.
+message ReleaseGrappleRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // The grappled creature to let go.
+  string grappled_id = 4;
+}
+
+// ReleaseGrappleResponse returns the combat after it.
+message ReleaseGrappleResponse {
+  Encounter encounter = 1;
+}
+
+// HideRequest is the Hide action.
+message HideRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string combatant_id = 4;
+  // The action that gives Hide: "standard:hide" (the action) or the key of a feature
+  // action whose standard action is Hide (the rogue's Cunning Action, a bonus action).
+  // Unset is "standard:hide".
+  string action_key = 5;
+  CheckRollInput roll = 6;
+}
+
+// HideResponse returns the combat and the attempt, which waits for the master.
+message HideResponse {
+  Encounter encounter = 1;
+  HideAttemptView attempt = 2;
+}
+
+// ResolveHideRequest is the master's decision on a Hide.
+message ResolveHideRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string attempt_id = 4;
+  // True refuses it: there is nowhere to hide.
+  bool refuse = 5;
+  // The master's one sentence of the refusal, 1 to 120 characters on one line; empty
+  // takes the usual one.
+  string refusal = 6;
+  // The creatures the master says see the hider clearly: they are not deceived whatever
+  // the totals.
+  repeated string sees_clearly_ids = 7;
+}
+
+// ResolveHideResponse returns the combat and the attempt after the decision.
+message ResolveHideResponse {
+  Encounter encounter = 1;
+  HideAttemptView attempt = 2;
+}
+
+// RevealHiderRequest ends a combatant's hiding.
+message RevealHiderRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // The hidden combatant (a UUID).
+  string combatant_id = 4;
+}
+
+// RevealHiderResponse returns the combat after it.
+message RevealHiderResponse {
+  Encounter encounter = 1;
+}
+
+// HelpRequest is the Help action.
+message HelpRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // The one that helps.
+  string combatant_id = 4;
+  HelpKind kind = 5;
+  // The ally that gets the advantage.
+  string ally_id = 6;
+  // CHECK: the check's key of the task ("skill:perception"). Not for ATTACK.
+  string task_key = 7;
+  // ATTACK: the creature within 5 feet of the helper that the ally's first attack aims
+  // at. Not for CHECK.
+  string target_id = 8;
+}
+
+// HelpResponse returns the combat and the help.
+message HelpResponse {
+  Encounter encounter = 1;
+  HelpView help = 2;
+}
+
+// ClearHelpRequest takes a help back.
+message ClearHelpRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string help_id = 4;
+}
+
+// ClearHelpResponse returns the combat after it.
+message ClearHelpResponse {
+  Encounter encounter = 1;
+}
+
+// SetSurprisedRequest marks one creature.
+message SetSurprisedRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  string combatant_id = 4;
+  bool surprised = 5;
+}
+
+// SetSurprisedResponse returns the combat after it.
+message SetSurprisedResponse {
+  Encounter encounter = 1;
+  SurpriseView surprise = 2;
+}
+
+// GetSurpriseSuggestionRequest names the combat.
+message GetSurpriseSuggestionRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+}
+
+// GetSurpriseSuggestionResponse is the suggestion, one entry for each combatant that is
+// not defeated.
+message GetSurpriseSuggestionResponse {
+  repeated SurpriseSuggestion suggestions = 1;
+}
+
+// GetGroupCheckRequest names the campaign.
+message GetGroupCheckRequest {
+  string campaign_id = 1;
+}
+
+// GetGroupCheckResponse is the group check, if there is one.
+message GetGroupCheckResponse {
+  GroupCheckView group_check = 1;
+}
+
+// RequestGroupCheckRequest asks the party for a check.
+message RequestGroupCheckRequest {
+  string campaign_id = 1;
+  string idempotency_key = 2;
+  // "skill:stealth", "skill:perception"... an ability check, "ability:str", or a saving
+  // throw, "save:con" (str, dex, con, int, wis, cha).
+  string skill_key = 3;
+  // The master's DC, 1 to 40; 0 for none.
+  int32 dc = 4;
+  // True lets the players read passed and failed (their own roll and, once the check
+  // closes, the group's verdict); the DC itself stays the master's.
+  bool show_dc = 5;
+  // The characters asked. Empty asks every living player character (the request as it
+  // was before this field).
+  repeated string character_ids = 6;
+  // True makes it a group check: the group's verdict is "pelo menos metade passou"
+  // (SRD 5.1, "Working Together") and needs a DC to be known. False judges each roll alone,
+  // with no group verdict. Unset: true when no character_ids, false when some are named.
+  // True with only one character asked is `invalid_argument`.
+  optional bool group = 7;
+}
+
+// RequestGroupCheckResponse returns the group check.
+message RequestGroupCheckResponse {
+  GroupCheckView group_check = 1;
+}
+
+// RollGroupCheckRequest is a player's roll.
+message RollGroupCheckRequest {
+  string campaign_id = 1;
+  string idempotency_key = 2;
+  string group_check_id = 3;
+  CheckRollInput roll = 4;
+}
+
+// RollGroupCheckResponse returns the group check and the caller's roll.
+message RollGroupCheckResponse {
+  GroupCheckView group_check = 1;
+  // Set when the character holds a Bardic Inspiration die: the d20 was rolled and the check
+  // was not written; AnswerOutsideInspiration settles it.
+  OutsideInspirationOffer inspiration_offer = 2;
+}
+
+// RollForPlayerRequest is the master's roll for a character.
+message RollForPlayerRequest {
+  string campaign_id = 1;
+  string idempotency_key = 2;
+  string group_check_id = 3;
+  string character_id = 4;
+  CheckRollInput roll = 5;
+}
+
+// RollForPlayerResponse returns the group check.
+message RollForPlayerResponse {
+  GroupCheckView group_check = 1;
+}
+
+// CloseGroupCheckRequest ends the check.
+message CloseGroupCheckRequest {
+  string campaign_id = 1;
+  string idempotency_key = 2;
+  string group_check_id = 3;
+}
+
+// CloseGroupCheckResponse returns the closed group check.
+message CloseGroupCheckResponse {
+  GroupCheckView group_check = 1;
+}

@@ -62,6 +62,12 @@ export interface VitalsVm {
   readonly hitPointsTemporary: number;
   /** What Ajuda adds to the maximum above (0 or absent without it): `hitPointsMax` already counts it, the sheet's own is the difference. */
   readonly hitPointsMaxBonus?: number;
+  /** The level of exhaustion, 0 to 6 (the master sets it); from level 4 `hitPointsMax` is already half the sheet's. Absent as 0. */
+  readonly exhaustionLevel?: number;
+  /** The base armor class an effect that lasts gives (Armadura Arcana: 13 + Destreza); absent or 0 without one. */
+  readonly armorClassBase?: number;
+  /** The combined level of slots Recuperação Arcana gives back (half the wizard level, rounded up); absent or 0 for no wizard level. */
+  readonly arcaneRecoveryAllowance?: number;
   /** Only the levels with slots, lowest first. */
   readonly spellSlots: readonly SlotUsageVm[];
   readonly pactSlots: PactSlotsVm | null;
@@ -188,6 +194,8 @@ export type LiveEventVm =
   | { readonly kind: 'creaturesChanged' }
   /** `spell_casts_changed` (MR-048): the casts outside a combat changed; read them again. Carries no content. */
   | { readonly kind: 'spellCastsChanged' }
+  /** `group_check_changed` (W7-X): a group check was asked, answered or closed; read it again as this member (the hint carries no content). */
+  | { readonly kind: 'groupCheckChanged' }
   /** `content_changed` (10.1d): the table's content changed; read the catalog again with this member's role. */
   | { readonly kind: 'contentChanged' }
   /** `character_changes_requested` or `character_resubmitted`: that character changed; read it again. */

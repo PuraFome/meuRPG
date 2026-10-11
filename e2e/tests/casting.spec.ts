@@ -27,7 +27,7 @@ test(
       await pickSlotRadio(sheet, '1º nível');
       await pickTargetOf(sheet, 'Pensantus');
       await sheet.getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
-      await expect(sheet.getByText(/CA 13 \+ Destreza/)).toBeVisible();
+      await expect(sheet.getByText(/CA \d+ \(13 \+ Destreza\)/)).toBeVisible();
       await sheet.getByRole('button', { name: 'Fechar' }).last().click();
 
       // The spell lasts: "dura 8 horas" is game time, and the note says what ends it.
@@ -73,7 +73,7 @@ test(
       await expect(sheet.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
       await expect(sheet.locator('app-slot-picker')).toHaveCount(0);
       await sheet.getByRole('button', { name: 'Começar o ritual' }).click();
-      await expect(sheet.getByText(/só é gasto quando o mestre conclui/)).toBeVisible();
+      await expect(sheet.getByText(/Um ritual não gasta espaço de magia/)).toBeVisible();
       await sheet.getByRole('button', { name: 'Fechar' }).last().click();
 
       const mine = player.locator('app-casting-panel');

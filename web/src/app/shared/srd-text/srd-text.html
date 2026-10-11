@@ -1,0 +1,51 @@
+<ng-template #run let-nodes>
+  @for (node of nodes; track $index) {
+    @switch (node.type) {
+      @case ('bold') {<strong><ng-container *ngTemplateOutlet="run; context: { $implicit: node.children }" /></strong>}
+      @case ('italic') {<em><ng-container *ngTemplateOutlet="run; context: { $implicit: node.children }" /></em>}
+      @default {<ng-container>{{ node.text }}</ng-container>}
+    }
+  }
+</ng-template>
+
+<div class="srd" [attr.lang]="lang() === 'en' ? 'en' : null">
+  @for (block of blocks(); track $index) {
+    @switch (block.type) {
+      @case ('heading') {
+        <p class="srd__heading"><ng-container *ngTemplateOutlet="run; context: { $implicit: block.children }" /></p>
+      }
+      @case ('list') {
+        <ul>
+          @for (item of block.items; track $index) {
+            <li><ng-container *ngTemplateOutlet="run; context: { $implicit: item }" /></li>
+          }
+        </ul>
+      }
+      @case ('table') {
+        <div class="srd__scroll" role="region" tabindex="0" aria-label="Tabela">
+          <table>
+            <thead>
+              <tr>
+                @for (cell of block.head; track $index) {
+                  <th scope="col"><ng-container *ngTemplateOutlet="run; context: { $implicit: cell }" /></th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of block.rows; track $index) {
+                <tr>
+                  @for (cell of row; track $index) {
+                    <td><ng-container *ngTemplateOutlet="run; context: { $implicit: cell }" /></td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @default {
+        <p><ng-container *ngTemplateOutlet="run; context: { $implicit: block.children }" /></p>
+      }
+    }
+  }
+</div>

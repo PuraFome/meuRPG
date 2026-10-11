@@ -80,6 +80,30 @@
       <button type="button" class="link link--ink" (click)="removeEffect(e.index)">Remover o efeito {{ e.index + 1 }}</button>
     </div>
   }
+  @if (allowOptions()) {
+    <section class="options" [attr.aria-label]="'Opções para escolher de ' + (feature().name || 'esta característica')">
+      <h4 class="options__title">Opções para escolher</h4>
+      <p class="options__hint">
+        Uma lista que o jogador escolhe, uma opção por vez (como manobras). Ponha na característica um efeito "Escolha" de "Uma opção de uma lista do SRD" com a quantidade, sem lista: ele oferece estas opções.
+      </p>
+      @for (o of feature().options; track o.id; let k = $index) {
+        <app-feature-editor
+          [feature]="o"
+          [menu]="menu()"
+          [basePath]="path('options[' + k + ']')"
+          [issuesOf]="issuesOf()"
+          [spellOptions]="spellOptions()"
+          nameLabel="Nome da opção"
+          textLabel="Texto da opção"
+          removeLabel="Remover opção"
+          [heading]="'Opção ' + (k + 1)"
+          (featureChange)="setOption(k, $event)"
+          (removed)="removeOption(k)"
+        />
+      }
+      <button type="button" class="link" (click)="addOption()"><mat-icon aria-hidden="true">add</mat-icon>Adicionar uma opção</button>
+    </section>
+  }
   <div class="actions">
     @if (canAddEffect()) {
       <button type="button" class="link" (click)="addEffect()"><mat-icon aria-hidden="true">add</mat-icon>Adicionar um efeito</button>

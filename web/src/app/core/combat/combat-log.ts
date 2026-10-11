@@ -3,6 +3,8 @@ import {
   type CombatLogDamage,
   type DiceRoll,
   CombatEffect,
+  type CombatLogEffect,
+  CombatLogEffectChange,
   type CombatLogEntry,
   CombatLogKind,
   type CombatLogRound,
@@ -19,8 +21,11 @@ import {
   SpellEffectKind,
   SpellEffectOutcome,
   WildShapeEndReason,
+  HitRiderChoice,
+  HitRiderLogResult,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantStateKind, DamageStepKind } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { ContestLogLine } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { extraDiceOf, physicalSplitFormula, rollText, splitFormula } from './combat-dice';
 import { modeWord } from './roll-mode';
 import { conditionName, listNames } from './conditions';
@@ -180,7 +185,9 @@ function damageText(d: CombatLogDamage): string {
           ? `, ${d.deathFailuresAdded === 1 ? 'uma falha' : 'duas falhas'} no teste contra a morte`
           : '';
       const words = appliedWords(d);
-      return `${words}${half}${other}${failures}`;
+      // The half-orc's Relentless Endurance kept the target on its feet (SRD 5.1).
+      const relentless = d.relentlessEndurance ? '. Resistência Implacável: fica com 1 PV' : '';
+      return `${words}${half}${other}${failures}${relentless}`;
     }
   }
 }
@@ -331,7 +338,13 @@ function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
     out = `${t.darts} ${t.darts === 1 ? 'dardo' : 'dardos'} ${inThe(who)}${damage}`;
   } else if (t.save) {
     const dc = saveNotes(t.save, ctx);
-    out = `${the(who)} ${t.save.outcome === SaveOutcome.SAVED ? 'resistiu' : 'falhou'}${dc}${damage}`;
+    // Esculpir Magias: spared by the caster, no roll.
+    const verb = t.save.sculpted
+      ? 'resistiu sem rolar (Esculpir Magias)'
+      : t.save.outcome === SaveOutcome.SAVED
+        ? 'resistiu'
+        : 'falhou';
+    out = `${the(who)} ${verb}${dc}${damage}`;
   } else if (t.outcome !== AttackOutcome.UNSPECIFIED) {
     out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${coverNote(t)}${t.outcome === AttackOutcome.MISS ? '' : damage}`;
   } else if (t.damage?.healing) {
@@ -646,7 +659,29 @@ function movedText(e: CombatLogEntry): string {
   if (e.jump === JumpKind.LONG) {
     return ` saltou ${length}${e.jumpRunningStart ? ', com corrida' : ''}${e.landingDifficult ? ' e caiu em terreno difícil. Acrobacia CD 10 ou cai Derrubado' : ''}`;
   }
-  return ` anda ${length}`;
+  return ` anda ${length}${spentNote(e)}`;
+}
+
+/** What a walk spent when it is not the distance: ", gasta 6,2 m de movimento (terreno difícil)". The
+ * reasons come from the SRD: another creature's space and rubble cost double, a drag halves the speed and a
+ * prone creature crawls at double the cost. Nothing when the walk spent what it went (or the event is old). */
+function spentNote(e: CombatLogEntry): string {
+  const distance = e.distanceDft > 0 ? e.distanceDft : e.distanceFt * 10;
+  if (e.spentDft <= 0 || e.spentDft === distance) {
+    return '';
+  }
+  const factor = (e.moveDragging ? 2 : 1) * (e.moveCrawling ? 2 : 1);
+  const reasons: string[] = [];
+  if (e.spentDft > distance * factor) {
+    reasons.push('terreno difícil');
+  }
+  if (e.moveDragging) {
+    reasons.push('arrastando');
+  }
+  if (e.moveCrawling) {
+    reasons.push('rastejando');
+  }
+  return `, gasta ${metersFixed(e.spentDft / 10)} de movimento${reasons.length > 0 ? ` (${reasons.join(', ')})` : ''}`;
 }
 
 /** The d20 pair of a roll, or nothing for a single die. */
@@ -737,6 +772,100 @@ function stateReason(key: string): string {
 function modeAnsweredText(m: CombatLogModeChange): string {
   const asked = `pediu ${modeWord(m.mode)}`;
   return ` ${asked}; o mestre ${m.approved ? 'aprovou' : 'recusou'}`;
+}
+
+/** "do Hobgoblin", "de Brisa". */
+function ofSubject(label: string, ctx: LogContext): string {
+  return ctx.players.has(label)
+    ? `de ${label}`
+    : `${article(label) === 'a' ? 'da' : 'do'} ${label}`;
+}
+
+/** "surpreso" or "surpresa", by the name. */
+function surprisedWord(label: string): string {
+  return article(label) === 'a' ? 'surpresa' : 'surpreso';
+}
+
+/** "escondido" or "escondida", by the name. */
+function hiddenWordOf(label: string): string {
+  return article(label) === 'a' ? 'escondida' : 'escondido';
+}
+
+/** What each line of a contest or special action says (W7-X) and its icon: the sentence follows the actor, who is in bold. */
+const CONTEST_LINES: Partial<
+  Record<ContestLogLine, { icon: string; say: (w: ContestWords) => string }>
+> = {
+  [ContestLogLine.GRAPPLED]: { icon: 'pan_tool', say: (w) => ` agarrou ${w.target}` },
+  [ContestLogLine.GRAPPLE_FAILED]: {
+    icon: 'pan_tool',
+    say: (w) => ` não conseguiu agarrar ${w.target}`,
+  },
+  [ContestLogLine.SHOVE_PRONE]: { icon: 'open_with', say: (w) => ` derrubou ${w.target}` },
+  [ContestLogLine.SHOVE_PUSHED]: {
+    icon: 'open_with',
+    say: (w) => ` empurrou ${w.target} 1,5\u00a0m`,
+  },
+  [ContestLogLine.SHOVE_STAYS]: {
+    icon: 'open_with',
+    say: (w) => ` empurrou ${w.target}, que não saiu do lugar`,
+  },
+  [ContestLogLine.SHOVE_FAILED]: {
+    icon: 'open_with',
+    say: (w) => ` não conseguiu empurrar ${w.target}`,
+  },
+  [ContestLogLine.ESCAPED]: { icon: 'pan_tool', say: (w) => ` se soltou ${w.from}` },
+  [ContestLogLine.ESCAPE_FAILED]: {
+    icon: 'pan_tool',
+    say: (w) => ` não conseguiu se soltar ${w.from}`,
+  },
+  [ContestLogLine.CLOSED]: {
+    icon: 'pan_tool',
+    say: (w) => ` teve a disputa com ${w.target} encerrada pelo mestre`,
+  },
+  [ContestLogLine.RELEASED]: { icon: 'pan_tool', say: (w) => ` soltou ${w.target}` },
+  [ContestLogLine.HIDE_TRIED]: { icon: 'visibility_off', say: () => ' tentou se esconder' },
+  [ContestLogLine.HIDE_APPLIED]: { icon: 'visibility_off', say: () => ' se escondeu' },
+  [ContestLogLine.HIDE_REFUSED]: {
+    icon: 'visibility_off',
+    say: () => ' não conseguiu se esconder',
+  },
+  [ContestLogLine.HELPED]: { icon: 'handshake', say: (w) => ` ajudou ${w.target}` },
+  [ContestLogLine.SURPRISED]: { icon: 'bolt', say: (w) => ` está ${w.surprised}` },
+  [ContestLogLine.SURPRISE_CLEARED]: {
+    icon: 'bolt',
+    say: (w) => ` não está mais ${w.surprised}`,
+  },
+  [ContestLogLine.STOOD_UP]: { icon: 'accessibility_new', say: () => ' se levantou' },
+  [ContestLogLine.HIDE_REVEALED]: {
+    icon: 'visibility',
+    say: (w) => ` não está mais ${w.hidden}`,
+  },
+};
+
+/** The names a contest line is written with: the target ("o Hobgoblin", "Brisa"), "do Hobgoblin", and "surpresa". */
+interface ContestWords {
+  readonly target: string;
+  readonly from: string;
+  readonly surprised: string;
+  readonly hidden: string;
+}
+
+/** A contest or a special action (W7-X): the sentence from the line the server named, never a total or a DC (RN-20). `null` for a line this app does not know. */
+function contestText(e: CombatLogEntry, ctx: LogContext): { icon: string; text: string } | null {
+  const line = e.contest ? CONTEST_LINES[e.contest.line] : undefined;
+  if (!line) {
+    return null;
+  }
+  const label = e.targetLabel || 'alguém';
+  return {
+    icon: line.icon,
+    text: line.say({
+      target: subject(label, ctx),
+      from: ofSubject(label, ctx),
+      surprised: surprisedWord(e.actorLabel),
+      hidden: hiddenWordOf(e.actorLabel),
+    }),
+  };
 }
 
 /** The line of one entry, or `null` for a kind this app doesn't know. */
@@ -844,6 +973,8 @@ export function logLine(
     case CombatLogKind.OPPORTUNITY_OFFERED:
       // The master offered it, in a combat without a map: the mover is the actor and the reactor the target.
       return { ...base, icon: 'swords', text: ` saiu do alcance de ${e.targetLabel || 'alguém'}` };
+    case CombatLogKind.HIT_RIDER:
+      return { ...base, icon: 'sports_martial_arts', text: hitRiderText(e) };
     case CombatLogKind.DOOR_OPENED:
       // A move opened a closed door (RN-26): "Toren abriu a porta." The server sends the line only to who saw or remembers the door.
       return { ...base, icon: 'door_open', text: ' abriu a porta' };
@@ -854,6 +985,14 @@ export function logLine(
         actor: '',
         text: effectEndedText(e, ctx),
       };
+    case CombatLogKind.EFFECT:
+      return e.effect
+        ? { ...base, icon: 'auto_awesome', actor: '', text: effectLogText(e.effect, ctx) }
+        : null;
+    case CombatLogKind.EXHAUSTION:
+      return e.effect
+        ? { ...base, icon: 'battery_alert', actor: '', text: exhaustionLogText(e.effect, ctx) }
+        : null;
     case CombatLogKind.RESOURCE: {
       const r = resourceText(e);
       return { ...base, icon: r.icon, text: r.text };
@@ -877,6 +1016,10 @@ export function logLine(
       return e.state
         ? { ...base, icon: 'local_fire_department', actor: '', text: stateText(e, e.state) }
         : null;
+    case CombatLogKind.CONTEST: {
+      const line = contestText(e, ctx);
+      return line ? { ...base, icon: line.icon, text: line.text } : null;
+    }
     case CombatLogKind.ROLL_MODE_ANSWERED:
       return e.modeChange
         ? {
@@ -889,6 +1032,77 @@ export function logLine(
     default:
       return null;
   }
+}
+
+/** Who an effect line is about, after the preposition ("em"/"a") or alone: "em Brisa e no Goblin 2", "Brisa e o Goblin 2". */
+function effectTargets(fx: CombatLogEffect, ctx: LogContext, prep: '' | 'em' | 'a' = ''): string {
+  const names = fx.targetLabels.map((label) => {
+    if (prep === '') {
+      return subject(label, ctx);
+    }
+    if (ctx.players.has(label)) {
+      return `${prep} ${label}`;
+    }
+    const feminine = article(label) === 'a';
+    const joined = prep === 'em' ? (feminine ? 'na' : 'no') : feminine ? 'à' : 'ao';
+    return `${joined} ${label}`;
+  });
+  if (names.length === 0) {
+    return prep === '' ? 'alguém' : `${prep} alguém`;
+  }
+  return listNames(names);
+}
+
+type EffectLine = (fx: CombatLogEffect, ctx: LogContext) => string;
+
+/** "(d20 12, total 15 contra CD 14)": the numbers of a saving throw against an effect, only for the master. */
+function effectSaveNumbers(fx: CombatLogEffect, ctx: LogContext): string {
+  if (!ctx.master || fx.total === undefined || fx.dc === undefined) {
+    return '';
+  }
+  return ` (${fx.d20 !== undefined ? `d20 ${fx.d20}, ` : ''}total ${fx.total} contra CD ${fx.dc})`;
+}
+
+function effectSaveWords(fx: CombatLogEffect): string {
+  return fx.abilityNamePt ? ` de ${fx.abilityNamePt}` : '';
+}
+
+const EFFECT_LINES: Partial<Record<CombatLogEffectChange, EffectLine>> = {
+  [CombatLogEffectChange.ADDED]: (fx, ctx) =>
+    `${fx.sourceNamePt} foi aplicado ${effectTargets(fx, ctx, 'em')}`,
+  [CombatLogEffectChange.ENDED]: (fx, ctx) =>
+    `${fx.sourceNamePt} acabou ${effectTargets(fx, ctx, 'em')}`,
+  [CombatLogEffectChange.DURATION_CHANGED]: (fx, ctx) =>
+    `A duração de ${fx.sourceNamePt} ${effectTargets(fx, ctx, 'em')} mudou`,
+  [CombatLogEffectChange.SAVED]: (fx, ctx) =>
+    `${upFirst(effectTargets(fx, ctx))} passou no teste${effectSaveWords(fx)} contra ${fx.sourceNamePt}${effectSaveNumbers(fx, ctx)}`,
+  [CombatLogEffectChange.SAVE_FAILED]: (fx, ctx) =>
+    `${upFirst(effectTargets(fx, ctx))} falhou no teste${effectSaveWords(fx)} contra ${fx.sourceNamePt}${effectSaveNumbers(fx, ctx)}`,
+  [CombatLogEffectChange.SAVE_SKIPPED]: (fx, ctx) =>
+    `${upFirst(effectTargets(fx, ctx))} não fez o teste${effectSaveWords(fx)} contra ${fx.sourceNamePt}`,
+  [CombatLogEffectChange.DAMAGE]: (fx, ctx) =>
+    `${fx.sourceNamePt} causou ${fx.amount} de dano${fx.damageTypePt ? ` ${fx.damageTypePt}` : ''} ${effectTargets(fx, ctx, 'a')}`,
+  [CombatLogEffectChange.TEMP_HP]: (fx, ctx) =>
+    `${fx.sourceNamePt} deu ${fx.amount} PV temporários ${effectTargets(fx, ctx, 'a')}`,
+};
+
+/** The line of a lasting effect: "Heroísmo deu 5 PV temporários a Brisa", "Brisa passou no teste de Destreza contra Teia". */
+function effectLogText(fx: CombatLogEffect, ctx: LogContext): string {
+  const named = fx.sourceNamePt ? fx : { ...fx, sourceNamePt: 'Um efeito' };
+  const line = EFFECT_LINES[fx.change];
+  return line ? line(named, ctx) : `${named.sourceNamePt}: ${effectTargets(fx, ctx)}`;
+}
+
+/** "Brisa agora tem exaustão de nível 2". */
+function exhaustionLogText(fx: CombatLogEffect, ctx: LogContext): string {
+  const who = upFirst(effectTargets(fx, ctx));
+  if (fx.reason === 'frenzy') {
+    // The end of a frenzied rage (SRD 5.1, Berserker): "Frenesi: +1 nível de exaustão · Ragna agora tem exaustão de nível 1".
+    return `Frenesi: +1 nível de exaustão · ${who} agora tem exaustão de nível ${fx.exhaustionLevel}`;
+  }
+  return fx.exhaustionLevel > 0
+    ? `${who} agora tem exaustão de nível ${fx.exhaustionLevel}`
+    : `${who} ficou sem exaustão`;
 }
 
 /** "O Escudo Arcano de Pensantus acabou", "A Ajuda de Sálvia acabou" and, for the master, who has the numbers
@@ -1074,4 +1288,31 @@ export function truncateGroups(groups: readonly LogGroup[], max: number): LogGro
     out.push({ ...g, lines });
   }
   return out;
+}
+
+/** The line of an answered monk rider: "Toren usou a Técnica da Mão Aberta (Derrubar) em Goblin: ...". The roll and the DC only come for the master and the monk's player. */
+function hitRiderText(e: CombatLogEntry): string {
+  const r = e.hitRider;
+  const target = e.targetLabel || 'alguém';
+  if (!r || r.choice === HitRiderChoice.DECLINE) {
+    return ` dispensou a técnica em ${target}`;
+  }
+  const names: Partial<Record<HitRiderChoice, string>> = {
+    [HitRiderChoice.PRONE]: 'a Técnica da Mão Aberta (Derrubar)',
+    [HitRiderChoice.PUSH]: 'a Técnica da Mão Aberta (Empurrar até 4,5 m)',
+    [HitRiderChoice.NO_REACTIONS]:
+      'a Técnica da Mão Aberta (sem reações até o fim do próximo turno)',
+    [HitRiderChoice.STUN]: 'o Golpe Atordoante',
+  };
+  const roll = r.numbers ? ` (1d20 ${r.d20} = ${r.saveTotal} contra CD ${r.dc})` : '';
+  let result = '';
+  if (r.result === HitRiderLogResult.SAVED) {
+    result = `: ${target} passou no teste${roll}`;
+  } else if (r.result === HitRiderLogResult.FAILED) {
+    result = `: ${target} falhou no teste${roll}`;
+    if (r.choice === HitRiderChoice.PUSH) {
+      result += '; o mestre posiciona a criatura até 4,5 m mais longe';
+    }
+  }
+  return ` usou ${names[r.choice] ?? 'a técnica'} em ${target}${result}`;
 }

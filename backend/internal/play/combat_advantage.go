@@ -108,10 +108,17 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceDodgingSave:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_DODGING_SAVE,
 	combat.SourceDangerSense:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_DANGER_SENSE,
 	combat.SourceRageStrength:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RAGE_STRENGTH,
+	combat.SourceExhaustionAttack:   playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK,
+	combat.SourceExhaustionSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE,
+	combat.SourceExhaustionCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK,
+	combat.SourceOutlinedTarget:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET,
+	combat.SourceEffectSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE,
+	combat.SourceEffectCheck:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_CHECK,
 	combat.SourceRestrainedSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE,
 	combat.SourcePoisonedCheck:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_POISONED_CHECK,
 	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
 	combat.SourcePerceptionDim:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM,
+	combat.SourceHelp:               playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP,
 }
 
 // statesOf groups the states of a combat by the combatant that has them.
@@ -139,13 +146,16 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		PackTactics: traits.PackTactics,
 		DangerSense: traits.DangerSense,
 		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
+		// The effects that last (RN-22): exhaustion, Faerie Fire's outline and the advantage on
+		// saving throws an effect gives.
+		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
 	}
 }
 
 // incapacitatedKeys are the conditions that make a creature unable to act or to
 // see (SRD 5.1, Conditions): a hostile creature with one of them gives no
 // disadvantage to a ranged attacker, and an ally with one gives no Pack Tactics.
-var incapacitatedKeys = []string{"condition:incapacitated", "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious"}
+var incapacitatedKeys = []string{"condition:incapacitated", conditionParalyzed, "condition:petrified", "condition:stunned", "condition:unconscious"}
 
 // fighting says the combatant is in the fight (not defeated, not dismissed) and
 // can act: it is not incapacitated.
@@ -198,6 +208,11 @@ type modeFacts struct {
 	cs      []playdb.Combatant
 	states  map[string][]playdb.CombatantState
 	theatre bool
+	// hiding are the creatures hidden from others and the helps that hold (combat_hide.go,
+	// combat_help.go): a creature that has not noticed its hider cannot see it, and the
+	// attack of the creature an ally helped has advantage.
+	hiding []playdb.CombatHiding
+	helps  []playdb.CombatHelp
 	// sight is the fog of the combat's map, nil without one.
 	sight *fogSight
 }
@@ -226,8 +241,13 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 	// picked.
 	self := v.master || v.owns(attacker)
 	ctx := textContext{self: self, names: names, attacker: attacker.Label, target: target.Label, allyLabel: f.allyLabelNear(attacker, target)}
+	if h := f.helperOf(attacker, target); h != nil && (self || v.sees(*h)) {
+		ctx.helper = h.Label
+	}
+	// What an effect the master hides gives is "Outra fonte" to a player (RN-10).
+	hide := f.hiddenFrom(v, attacker, target)
 	for _, src := range shown.Sources {
-		out.Shown = append(out.Shown, &playv1.AdvantageSource{Kind: sourceKindToProto[src.Kind], Effect: modeToProto[src.Effect], TextPt: ctx.sentence(src)})
+		out.Shown = append(out.Shown, sourceProto(src, ctx, hide))
 	}
 	return out
 }
@@ -248,6 +268,7 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 		Ranged: ranged, StrengthMelee: shape.Weapon && shape.Melee && !ranged && shape.UsesStrength, OwnTurn: ownTurn,
 		DistanceKnown: known, DistanceFt: int(dist), ReachFt: reach, LongRangeFt: long,
 	}
+	s.Helped = f.helperOf(attacker, target) != nil
 	s.AttackerUnseen = f.unseen(target, attacker)
 	s.TargetUnseen = f.unseen(attacker, target)
 	s.AllyNearTarget = known && traits.PackTactics && f.allyNear(attacker, target, view)
@@ -260,6 +281,11 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 // a combatant from the players' screens), so it changes no roll. A player's character
 // is never unseen, and an observer that is an NPC sees every player's character.
 func (f modeFacts) unseen(observer, subject playdb.Combatant) bool {
+	if slices.ContainsFunc(f.hiding, func(h playdb.CombatHiding) bool {
+		return h.HiderID == subject.ID && h.ObserverID == observer.ID && !h.Noticed
+	}) {
+		return true // a hider the observer has not noticed (SRD 5.1, "Hiding")
+	}
 	if subject.Kind != kindNPC || subject.Side == observer.Side {
 		return false
 	}
@@ -267,6 +293,20 @@ func (f modeFacts) unseen(observer, subject playdb.Combatant) bool {
 		return !f.sight.seesNPC(*observer.UserID, subject)
 	}
 	return false
+}
+
+// helperOf is the combatant whose Help holds for the attacker against the target: the
+// Help of an ally aimed at that target, not used and not past its helper's next turn.
+func (f modeFacts) helperOf(attacker, target playdb.Combatant) *playdb.Combatant {
+	for _, h := range f.helps {
+		if h.Kind != helpAttack || !helpsAlly(h, attacker) || deref(h.TargetID) != target.ID {
+			continue
+		}
+		if helper, ok := helpHelper(f.cs, h); ok {
+			return &helper
+		}
+	}
+	return nil
 }
 
 // distanceBetween is the distance in feet and whether both have a square.
@@ -328,6 +368,8 @@ type textContext struct {
 	// attacker, target and allyLabel are the labels a sentence may name; the master
 	// reads them, a player only the target they chose.
 	attacker, target, allyLabel string
+	// helper is the label of the creature whose Help holds.
+	helper string
 }
 
 // subject is "Você" or "O atacante".
@@ -377,6 +419,11 @@ func (c textContext) sentence(src combat.Source) string {
 			return fmt.Sprintf("Táticas de Matilha: um aliado (%s) está a 1,5 m de %s e não está incapacitado", c.allyLabel, c.target)
 		}
 		return "Táticas de Matilha: um aliado está a 1,5 m do alvo e não está incapacitado"
+	case combat.SourceHelp:
+		if c.helper != "" {
+			return fmt.Sprintf("Ajuda de %s: vantagem", c.helper)
+		}
+		return "Ajuda de um aliado: vantagem"
 	case combat.SourceUnseenAttacker:
 		return "Atacante que o alvo não vê: vantagem"
 	case combat.SourceUnseenTarget:
@@ -397,6 +444,20 @@ func (c textContext) sentence(src combat.Source) string {
 		return fmt.Sprintf("%s: desvantagem em testes de habilidade", c.cond(src.Condition))
 	case combat.SourcePerceptionDim:
 		return "Você vê o chão em penumbra: desvantagem na Percepção"
+	case combat.SourceExhaustionAttack:
+		return "Exaustão: desvantagem em jogadas de ataque"
+	case combat.SourceExhaustionSave:
+		return "Exaustão: desvantagem em testes de resistência"
+	case combat.SourceExhaustionCheck:
+		return "Exaustão: desvantagem em testes de habilidade"
+	case combat.SourceStealthArmor:
+		return "Armadura: desvantagem em Furtividade"
+	case combat.SourceOutlinedTarget:
+		return "Alvo delineado: vantagem se o atacante o vê"
+	case combat.SourceEffectSave:
+		return "Efeito ativo: vantagem no teste de resistência"
+	case combat.SourceEffectCheck:
+		return "Efeito ativo: vantagem em testes de habilidade"
 	}
 	return ""
 }
@@ -520,9 +581,13 @@ func (s *Service) turnModes(ctx context.Context, campaignID string, d *encounter
 	if err != nil {
 		return turnModes{}, err
 	}
+	hiding, helps, err := s.contestFacts(ctx, s.queries, d.enc, d.cs)
+	if err != nil {
+		return turnModes{}, err
+	}
 	return turnModes{
 		who: who, sheet: sheet, viewer: v, names: s.namesFor(ctx, campaignID), ownTurn: actsNow(d.enc, who),
-		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight},
+		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight, hiding: hiding, helps: helps},
 	}, nil
 }
 
@@ -559,7 +624,7 @@ type spellModes struct {
 
 // spellModes reads the combat for the d20 rolls of a cast.
 func (s *Service) spellModes(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, cs []playdb.Combatant, caster playdb.Combatant, req *playv1.CastSpellRequest) (*spellModes, error) {
-	in, err := readModeInputs(ctx, c, cs)
+	in, err := s.readModeInputs(ctx, c, cs)
 	if err != nil {
 		return nil, err
 	}
@@ -579,12 +644,31 @@ func (s *Service) spellModes(ctx context.Context, c *combatTx, m authz.Membershi
 
 // shownSources writes the sources of a saving throw or an ability check.
 func shownSources(sources []combat.Source, names func(string) string) []*playv1.AdvantageSource {
+	return shownSourcesHiding(sources, names, nil)
+}
+
+// shownSourcesHiding is shownSources with the sources of an effect the master hides turned
+// into "Outra fonte" (RN-10): hide says which.
+func shownSourcesHiding(sources []combat.Source, names func(string) string, hide func(combat.Source) bool) []*playv1.AdvantageSource {
 	ctx := textContext{self: true, names: names}
 	var out []*playv1.AdvantageSource
 	for _, src := range sources {
-		out = append(out, &playv1.AdvantageSource{Kind: sourceKindToProto[src.Kind], Effect: modeToProto[src.Effect], TextPt: ctx.sentence(src)})
+		out = append(out, sourceProto(src, ctx, hide))
 	}
 	return out
+}
+
+// sourceProto writes one source; one the viewer may not know the origin of reads
+// "Outra fonte" with the effect and no key.
+func sourceProto(src combat.Source, ctx textContext, hide func(combat.Source) bool) *playv1.AdvantageSource {
+	if hide != nil && hide(src) {
+		text := "Outra fonte: vantagem"
+		if src.Effect == combat.ModeDisadvantage {
+			text = "Outra fonte: desvantagem"
+		}
+		return &playv1.AdvantageSource{Kind: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OTHER_SOURCE, Effect: modeToProto[src.Effect], TextPt: text}
+	}
+	return &playv1.AdvantageSource{Kind: sourceKindToProto[src.Kind], Effect: modeToProto[src.Effect], TextPt: ctx.sentence(src)}
 }
 
 // attach puts the circumstances of each roll in the answer to the cast. A retry of a

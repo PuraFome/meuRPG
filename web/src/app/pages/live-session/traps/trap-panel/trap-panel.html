@@ -24,6 +24,13 @@
       </div>
     }
 
+    @if (empty()) {
+      <div class="mr-notice" role="status">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>{{ empty() }}</p>
+      </div>
+    }
+
     @for (p of traps(); track p.id) {
       <app-trap-card
         [point]="p"

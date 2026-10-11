@@ -150,6 +150,8 @@ export class SessionMap {
   });
 
   protected readonly pendingScene = signal<string | null>(null);
+  /** The map "Ir para <mapa>" is moving the session to. */
+  protected readonly pendingMap = signal<string | null>(null);
 
   // ---- the fog of war (MR-036) ----
   protected readonly fogOn = computed(() => this.map()?.fogEnabled === true);
@@ -215,13 +217,34 @@ export class SessionMap {
 
   protected async choose(select: HTMLSelectElement): Promise<void> {
     const mapId = select.value === '' ? null : select.value;
+    if (!(await this.switchTo(mapId))) {
+      select.value = this.mapId() ?? '';
+    }
+  }
+
+  /** "Ir para <mapa>" on a Submapa point: the session's current map becomes its destination (a hidden one is revealed, as in the select). */
+  protected async goToMap(point: MapPoint): Promise<void> {
+    const target = point.targetMap?.id;
+    if (!target || this.busy()) {
+      return;
+    }
+    this.pendingMap.set(target);
+    try {
+      await this.switchTo(target);
+    } finally {
+      this.pendingMap.set(null);
+    }
+  }
+
+  /** `SetCurrentMap`; false when it failed (the error is on the screen). */
+  private async switchTo(mapId: string | null): Promise<boolean> {
     this.busy.set(true);
     this.error.set(null);
     try {
       const current = await this.source.setCurrentMap(this.campaignId(), mapId);
       this.currentChanged.emit(current);
+      return true;
     } catch (err) {
-      select.value = this.mapId() ?? '';
       this.error.set(
         ConnectError.from(err).code === Code.FailedPrecondition
           ? 'A sessão acabou: o mapa só muda durante a sessão.'
@@ -230,6 +253,7 @@ export class SessionMap {
               [Code.PermissionDenied]: 'Só o mestre da campanha escolhe o mapa.',
             }),
       );
+      return false;
     } finally {
       this.busy.set(false);
     }

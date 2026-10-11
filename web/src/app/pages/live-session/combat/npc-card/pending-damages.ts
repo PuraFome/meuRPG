@@ -4,10 +4,12 @@ import {
   Injector,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
+  untracked,
   viewChild,
   viewChildren,
 } from '@angular/core';
@@ -28,6 +30,7 @@ import {
   extraDiceOf,
   sumRange,
 } from '../../../../core/combat/combat-dice';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -63,6 +66,7 @@ import { RollPicker } from '../roll-picker/roll-picker';
 })
 export class PendingDamages {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
   private readonly injector = inject(Injector);
 
   readonly pendings = input.required<readonly PendingDamage[]>();
@@ -89,6 +93,21 @@ export class PendingDamages {
   /** The sources of resistance the master told the app to leave out, by damage. */
   protected readonly ignored = signal<Readonly<Record<string, readonly string[] | undefined>>>({});
   private readonly keys = new Map<string, string>();
+
+  /** The note of a settled damage belongs to the turn it was settled on: once the turn passes, it goes. */
+  private readonly turnKey = computed(
+    () => `${this.encounter().round}:${this.encounter().currentCombatantId}`,
+  );
+
+  constructor() {
+    effect(() => {
+      this.turnKey();
+      untracked(() => {
+        this.settled.set('');
+        this.reminder.set('');
+      });
+    });
+  }
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
   private readonly otherInput = viewChild('otherInput', { read: ElementRef<HTMLInputElement> });
   private readonly otherLinks = viewChildren('otherLink', { read: ElementRef<HTMLButtonElement> });
@@ -103,6 +122,25 @@ export class PendingDamages {
       )
       .map((p) => this.describe(p)),
   );
+
+  /**
+   * Which part of a trap's hit a card is: "Armadilha: perfurante (2 de 4)". A trap that fires several times (darts) opens
+   * one card per damage type per hit, all on the same target and trap point; the card carries no hit number, so the
+   * position among the cards of the same target, point and type, in the order they were opened, stands for it.
+   */
+  private trapLabel(p: PendingDamage): string {
+    if (!p.trapPointId) {
+      return '';
+    }
+    const same = this.pendings().filter(
+      (q) =>
+        q.trapPointId === p.trapPointId &&
+        q.targetId === p.targetId &&
+        q.damageTypeKey === p.damageTypeKey,
+    );
+    const word = `${p.trapName || 'Armadilha'}: ${p.damageTypePt || 'dano'}`;
+    return same.length > 1 ? `${word} (${same.indexOf(p) + 1} de ${same.length})` : word;
+  }
 
   private describe(p: PendingDamage) {
     const e = this.encounter();
@@ -131,6 +169,7 @@ export class PendingDamages {
           : ''),
       // A player rolls the damage of their own attack; the master waits.
       waitsForPlayer: !rolled && !!attacker && isPlayer(attacker),
+      trapLabel: this.trapLabel(p),
       attacker: attacker?.label ?? '',
       target: target?.label ?? '',
       dice: diceName(p.diceCount, p.diceSides),
@@ -153,16 +192,38 @@ export class PendingDamages {
       ),
       modifier: p.bonus + p.criticalMax,
       fixedText: fixedParts(p.criticalMax, p.bonus),
-      effect:
-        rolled && target && target.hitPointsMax !== undefined
-          ? hitPointsLine(
-              target.label,
-              target.hitPointsCurrent ?? 0,
-              target.hitPointsMax,
-              hitPointsAfter(target.hitPointsCurrent ?? 0, target.hitPointsTemporary ?? 0, total),
-            )
-          : '',
+      effect: rolled && target ? this.effectLine(target, total) : '',
     };
+  }
+
+  /** The target's hit points before and after the damage. A druid in Wild Shape loses the beast's points first
+   * ("Lobo: 11 de 11 PV, depois 4"); what the beast cannot take passes to the druid (SRD 5.1, "Wild Shape"). */
+  private effectLine(target: Encounter['combatants'][number], total: number): string {
+    const beastCurrent = target.wildShapeHitPointsCurrent;
+    const beastMax = target.wildShapeHitPointsMax;
+    if (target.wildShapeBeastKey !== '' && beastCurrent !== undefined && beastMax !== undefined) {
+      const beast = target.wildShapeBeastNamePt || 'Forma animal';
+      const line = hitPointsLine(
+        beast,
+        beastCurrent,
+        beastMax,
+        hitPointsAfter(beastCurrent, 0, total),
+      );
+      const over = total - beastCurrent;
+      if (over > 0 && target.hitPointsMax !== undefined) {
+        const own = target.hitPointsCurrent ?? 0;
+        return `${line}; o resto (${over}) passa para ${hitPointsLine(target.label, own, target.hitPointsMax, hitPointsAfter(own, target.hitPointsTemporary ?? 0, over))}`;
+      }
+      return line;
+    }
+    return target.hitPointsMax === undefined
+      ? ''
+      : hitPointsLine(
+          target.label,
+          target.hitPointsCurrent ?? 0,
+          target.hitPointsMax,
+          hitPointsAfter(target.hitPointsCurrent ?? 0, target.hitPointsTemporary ?? 0, total),
+        );
   }
 
   private keyFor(id: string): string {
@@ -216,6 +277,17 @@ export class PendingDamages {
       );
       this.renewKey(name);
       this.state().apply(res.encounter);
+      // The master's own dice roll for the NPC, as the damage line on this card shows it (never for a typed sum).
+      const show =
+        'inApp' in die
+          ? showOfDice('Dano', res.pending.roll, {
+              withTotal: true,
+              note: res.pending.damageTypePt || undefined,
+            })
+          : null;
+      if (show) {
+        this.animator.play(show);
+      }
     });
   }
 

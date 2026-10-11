@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 	"uuid"
@@ -134,6 +135,7 @@ const (
 	eventRollModeAnswered  = "roll_mode_answered"
 	eventDamagePartRemoved = "damage_part_removed"
 	eventStateChanged      = "state_changed"
+	eventHitRider          = "hit_rider"
 )
 
 // combatWrite describes one change to a combat: who makes it, the idempotency
@@ -170,6 +172,9 @@ type combatTx struct {
 	castID string
 	// meta is the Metamagic of the casting in progress (nil without it).
 	meta *castMeta
+	// sculpted are the creatures the caster's Sculpt Spells spares in the casting in
+	// progress (nil without it).
+	sculpted map[string]bool
 	// actorUserID is who makes the change, for the events a change writes besides
 	// its own (the creatures it summons or dismisses).
 	actorUserID string
@@ -191,6 +196,9 @@ type combatTx struct {
 	// for each attack, a door and the move), each seen by its own players.
 	stamped *actionEvent
 	lines   []actionEvent
+	// endedEffects are the effects the change ended, kept in its event so that the undo puts
+	// them back (RN-22).
+	endedEffects []playdb.CombatantState
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
@@ -358,6 +366,10 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		if err := s.pruneOffers(ctx, c); err != nil {
 			return err
 		}
+		// A grapple ends when its grappler is incapacitated or the grappled creature leaves its reach.
+		if err := s.pruneHolds(ctx, c); err != nil {
+			return err
+		}
 		// The reaction windows that stopped being valid close, and what the ones
 		// that are all answered held goes on.
 		if err := s.settleReactions(ctx, c); err != nil {
@@ -372,6 +384,10 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		}
 		ended = c
 		c.stamped = nil
+		if ev, ok := payload.(actionEvent); ok && len(c.endedEffects) > 0 && slices.Contains(undoableKinds, c.kind) {
+			ev.Restore = c.endedEffects
+			payload = ev
+		}
 		if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload); err != nil {
 			return err
 		}

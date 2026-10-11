@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -30,6 +31,7 @@ import { MapEditor } from '../map-editor/map-editor';
 import { MapHead } from '../map-head/map-head';
 import { MapManage } from '../map-manage/map-manage';
 import { PlayerMap } from '../player-map/player-map';
+import { MapLive, MapLiveClient } from './map-live';
 
 type Phase = 'loading' | 'ready' | 'gone' | 'error';
 
@@ -66,6 +68,8 @@ type Phase = 'loading' | 'ready' | 'gone' | 'error';
 export class MapPage {
   private readonly api = inject(MapsClient);
   private readonly campaigns = inject(CampaignsService);
+  private readonly liveClient = inject(MapLiveClient);
+  private readonly document = inject(DOCUMENT);
   private readonly combat = inject(CombatOnMap);
   private readonly dialog = inject(MatDialog);
   private readonly injector = inject(Injector);
@@ -103,10 +107,30 @@ export class MapPage {
   /** The player's list: revealed maps, and the one open. */
   protected readonly playerMaps = computed(() => this.maps());
 
+  /** Goes up when the live stream says what a player sees of the map may have changed (the fog is read again). */
+  protected readonly visionTick = signal(0);
   private generation = 0;
+  private mapId = '';
+  /** The campaign's live stream while it has an open session: the map, its tokens and the fog follow the table. */
+  private readonly live = new MapLive({
+    open: (campaignId, signal) => this.liveClient.watch(campaignId, signal),
+    classify: (err) => this.liveClient.classifyError(err),
+    document: this.document,
+    host: {
+      mapId: () => (this.phase() === 'ready' ? this.mapId : null),
+      isMaster: () => this.isMaster(),
+      refresh: () => void this.state.refresh(),
+      visionChanged: () => this.visionTick.update((n) => n + 1),
+      moveToken: (mapId, characterId, xBp, yBp) =>
+        this.state.moveToken(mapId, characterId, xBp, yBp),
+      flagsChanged: () => this.reloadFlags(),
+      mapsChanged: () => void this.reloadMaps(),
+    },
+  });
   private readonly editor = viewChild(MapEditor);
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.live.stop());
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
       const id = params.get('id');
       const mapId = params.get('mapId');
@@ -122,6 +146,7 @@ export class MapPage {
   private async load(campaignId: string, mapId: string): Promise<void> {
     const generation = ++this.generation;
     const campaignChanged = campaignId !== this.campaignId();
+    this.mapId = mapId;
     this.campaignId.set(campaignId);
     this.notice.set(null);
     if (campaignChanged || this.phase() !== 'ready') {
@@ -152,6 +177,13 @@ export class MapPage {
         return;
       }
       this.phase.set('ready');
+      // The players' view follows the table live; the master's page is the editor, whose own strokes echo back as
+      // map_changed: it keeps reading on its own actions and on focus (a live master page is a later step).
+      if (this.isMaster()) {
+        this.live.stop();
+      } else {
+        this.live.start(campaignId);
+      }
       void this.reloadMaps();
       if (this.isMaster()) {
         void this.loadSession(mapId, generation);
@@ -168,6 +200,10 @@ export class MapPage {
   @HostListener('window:focus')
   protected reloadFlags(): void {
     const mapId = this.route.snapshot.paramMap.get('mapId');
+    // A session that began while the window was away: the stream ended with "no session" before.
+    if (this.phase() === 'ready' && !this.isMaster()) {
+      this.live.ensure();
+    }
     if (this.isMaster() && mapId && this.phase() === 'ready') {
       void this.loadSession(mapId, this.generation);
     }
@@ -185,7 +221,7 @@ export class MapPage {
     }
   }
 
-  private async reloadMaps(): Promise<void> {
+  protected async reloadMaps(): Promise<void> {
     try {
       this.maps.set(await this.api.list(this.campaignId()));
     } catch {

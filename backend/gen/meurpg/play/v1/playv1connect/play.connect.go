@@ -316,7 +316,7 @@ type PlayServiceClient interface {
 	// About every 60 seconds the server checks again, in the database, that
 	// the caller is still signed in and still a member: if not, the stream
 	// ends with the same error a call would get (`unauthenticated` or
-	// `not_found`). A stream lasts at most 30 minutes and then ends without
+	// `not_found`). A stream lasts at most 10 minutes and then ends without
 	// an error; it also ends without an error when the server restarts. A
 	// stream that cannot keep up (the app stopped reading) ends with
 	// `unavailable`.
@@ -330,10 +330,12 @@ type PlayServiceClient interface {
 	//     member of it (a pending member neither).
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
-	//   - `resource_exhausted`: the caller already has 8 streams open on this
-	//     campaign (a few tabs and devices). No typed reason: the app treats
-	//     it as transient, retries with backoff, and a closed tab gives its
-	//     place back.
+	//   - `unavailable` on an open stream: the caller opened a 5th stream on
+	//     this campaign (more than a few tabs and devices), and this one, their
+	//     oldest, made room for it. It is usually the stream of a page that went
+	//     away and was not noticed yet; if the page is still open, the app
+	//     reconnects with its backoff, as after any transient end. Opening a
+	//     stream is never refused for the count.
 	WatchGameSession(context.Context, *connect.Request[v1.WatchGameSessionRequest]) (*connect.ServerStreamForClient[v1.WatchGameSessionResponse], error)
 	// AdjustCharacterVitals is the master's correction of a player
 	// character's vitals during the session (RN-02: the master has the final
@@ -524,7 +526,12 @@ type PlayServiceClient interface {
 	//   - `permission_denied`: the caller is the master.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
-	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
+	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER; or ResourceBlocked
+	//     INSPIRATION_PENDING (an earlier roll waits for its answer).
+	//
+	// A character that holds a Bardic Inspiration die (given outside a combat) gets
+	// `inspiration_offer` in place of `roll`: the d20 is rolled and kept, nothing is
+	// written, and ResourceService.AnswerOutsideInspiration settles it.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
 	// SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
 	// 71): the caller's living character rolls Wisdom (Perception) against each trap's
@@ -1365,7 +1372,7 @@ type PlayServiceHandler interface {
 	// About every 60 seconds the server checks again, in the database, that
 	// the caller is still signed in and still a member: if not, the stream
 	// ends with the same error a call would get (`unauthenticated` or
-	// `not_found`). A stream lasts at most 30 minutes and then ends without
+	// `not_found`). A stream lasts at most 10 minutes and then ends without
 	// an error; it also ends without an error when the server restarts. A
 	// stream that cannot keep up (the app stopped reading) ends with
 	// `unavailable`.
@@ -1379,10 +1386,12 @@ type PlayServiceHandler interface {
 	//     member of it (a pending member neither).
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
-	//   - `resource_exhausted`: the caller already has 8 streams open on this
-	//     campaign (a few tabs and devices). No typed reason: the app treats
-	//     it as transient, retries with backoff, and a closed tab gives its
-	//     place back.
+	//   - `unavailable` on an open stream: the caller opened a 5th stream on
+	//     this campaign (more than a few tabs and devices), and this one, their
+	//     oldest, made room for it. It is usually the stream of a page that went
+	//     away and was not noticed yet; if the page is still open, the app
+	//     reconnects with its backoff, as after any transient end. Opening a
+	//     stream is never refused for the count.
 	WatchGameSession(context.Context, *connect.Request[v1.WatchGameSessionRequest], *connect.ServerStream[v1.WatchGameSessionResponse]) error
 	// AdjustCharacterVitals is the master's correction of a player
 	// character's vitals during the session (RN-02: the master has the final
@@ -1573,7 +1582,12 @@ type PlayServiceHandler interface {
 	//   - `permission_denied`: the caller is the master.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
-	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
+	//     attempt left), WRONG_DICE_MODE, NO_CHARACTER; or ResourceBlocked
+	//     INSPIRATION_PENDING (an earlier roll waits for its answer).
+	//
+	// A character that holds a Bardic Inspiration die (given outside a combat) gets
+	// `inspiration_offer` in place of `roll`: the d20 is rolled and kept, nothing is
+	// written, and ResourceService.AnswerOutsideInspiration settles it.
 	RollSceneCheck(context.Context, *connect.Request[v1.RollSceneCheckRequest]) (*connect.Response[v1.RollSceneCheckResponse], error)
 	// SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
 	// 71): the caller's living character rolls Wisdom (Perception) against each trap's

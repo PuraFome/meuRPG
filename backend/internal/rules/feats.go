@@ -90,8 +90,13 @@ type FeatEntry struct {
 	// Name is the SRD's English name (the table's feats have only NamePT).
 	Name, NamePT string
 	// Desc is the text: the SRD's, in English, or the table's, in Portuguese.
-	Desc         []string
-	Prerequisite FeatPrerequisite
+	Desc []string
+	// DescPT is the Portuguese translation of an SRD feat's text, one paragraph per English
+	// one; the table's own text for a table feat. Empty while DescPTMissing; DescPTOnly says
+	// the text exists only in Portuguese (a table feat).
+	DescPT                    []string
+	DescPTMissing, DescPTOnly bool
+	Prerequisite              FeatPrerequisite
 	// Increase is the ability increase the feat gives, or nil.
 	Increase *FeatIncrease
 	// Table says the feat is the table's own; Archived that the table retired it
@@ -132,6 +137,7 @@ func (c *content) featEntry(f *srd51.Feat) FeatEntry {
 		},
 		Table: isTableKey(f.Key), Archived: c.archived[f.Key], Off: c.off[f.Key],
 	}
+	e.DescPT, e.DescPTMissing, e.DescPTOnly = c.textPT(f.Key, f.Desc)
 	for _, ef := range c.effects[f.Key] {
 		if ef.Type == "ability_increase" {
 			inc := &FeatIncrease{Count: ef.Count, Value: increaseValue(ef)}
@@ -182,7 +188,8 @@ func featOptions(b Build, x *content) []FeatOption {
 	d := derive(b, x)
 	out := make([]FeatOption, 0, len(x.feats))
 	for _, e := range (&Content{c: x}).Feats() {
-		if slices.Contains(b.Feats, e.Key) {
+		// A feat the sheet already has, from the list or from a choice, is not offered again.
+		if slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == e.Key }) {
 			continue
 		}
 		unmet := x.unmetPrerequisite(e, b, d)
@@ -205,7 +212,11 @@ func CheckFeat(b Build, key string, c *Content) ([]FeatUnmet, error) {
 // longer meets (the ability increase of a feat already taken is not asked again).
 func (c *content) lostFeats(b Build, d Derived) map[string]bool {
 	var lost map[string]bool
-	for _, key := range b.Feats {
+	keys := slices.Clone(b.Feats)
+	for _, cf := range c.pickedChoiceFeats(b, ownedBy(b, d)) {
+		keys = append(keys, cf.Feat)
+	}
+	for _, key := range keys {
 		f, ok := c.feats[key]
 		if !ok || len(c.unmetPrerequisite(c.featEntry(f), b, d)) == 0 {
 			continue

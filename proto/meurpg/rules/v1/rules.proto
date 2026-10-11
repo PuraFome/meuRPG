@@ -524,6 +524,15 @@ message FeatOption {
   // them; a feat that raises every ability it lists is still taken, and its increase stops
   // at 20. The feat is available either way.
   repeated Ability capped_abilities = 10;
+  // `desc` in Portuguese, one paragraph per entry: our translation of the SRD 5.1
+  // English (effects/feats_pt.json); for a table feat, its own text, the same as `desc`.
+  // Empty while `desc_pt_missing`; the app then shows `desc` in English with a note.
+  repeated string desc_pt = 11;
+  // True for an SRD feat with no Portuguese text yet.
+  bool desc_pt_missing = 12;
+  // True when the text exists only in Portuguese (a table feat): `desc` already is the
+  // Portuguese, and there is no English to offer.
+  bool desc_pt_only = 13;
 }
 
 // ProficiencyLevel is how much of the proficiency bonus a check adds.
@@ -957,6 +966,11 @@ message Spellcasting {
   // How many spells the character can prepare each day, for classes that
   // prepare spells (Cleric, Druid, Paladin, Wizard). 0 for the others.
   int32 prepared_max = 8;
+  // True when the class keeps its spells in a spellbook and prepares some of them
+  // (Wizard): the spells on the sheet that are not prepared are in the spellbook. False
+  // for a class that prepares from its whole list (Cleric, Druid, Paladin) or knows a
+  // fixed number of spells.
+  bool spellbook = 9;
 }
 
 // SpellSlots is how many slots the character has of one spell level.
@@ -1071,6 +1085,16 @@ message Feature {
   // player picked (a fighting style, an invocation, a pact boon); empty for the
   // other features.
   string summary_pt = 6;
+  // `description` in Portuguese, paragraphs joined by a blank line: our translation of the
+  // SRD 5.1 English (effects/features_pt.json, traits_pt.json, backgrounds_pt.json); for a
+  // table feature, its own text, the same as `description`. Empty while
+  // `description_pt_missing`; the app then shows `description` in English with a note.
+  string description_pt = 7;
+  // True for an SRD feature, trait or background feature with no Portuguese text yet.
+  bool description_pt_missing = 8;
+  // True when the text exists only in Portuguese (a table feature): `description` already
+  // is the Portuguese, and there is no English to offer.
+  bool description_pt_only = 9;
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese
@@ -1432,6 +1456,9 @@ message Spell {
   bool archived = 10;
   // Switched off for the players (see Race.off).
   bool off = 11;
+  // Whether it is cast as a reaction (casting time "1 reaction", like Shield), so the
+  // sheet's spell list can tag it without reading the description.
+  bool reaction = 12;
 }
 
 // ListContentRequest names a campaign.
@@ -1543,6 +1570,22 @@ message SpellDetails {
   SpellTarget target = 13;
   // What the caster picks among the `damage` types; unspecified when nothing.
   SpellDamageChoice damage_choice = 14;
+  // The description in Portuguese, one paragraph per entry of `description`: our
+  // translation of the SRD 5.1 English (effects/spells_pt.json), markdown kept. For
+  // a table spell it is the table's own text, the same as `description`. Empty while
+  // `text_pt_missing`; the app then shows `description` in English with a note.
+  repeated string description_pt = 15;
+  // The "At Higher Levels" paragraphs in Portuguese, one per entry of `higher_level`;
+  // empty when the spell has none, and while `text_pt_missing`.
+  repeated string higher_level_pt = 16;
+  // True for an SRD spell with no Portuguese text yet: `description_pt`,
+  // `higher_level_pt` and `components.material_text_pt` are empty and the English
+  // `description`, `higher_level` and `components.material_text` are all there is.
+  bool text_pt_missing = 17;
+  // True when the text exists only in Portuguese (a table spell): `description`,
+  // `higher_level` and `components.material_text` already are the Portuguese, and
+  // there is no English to offer.
+  bool text_pt_only = 18;
 }
 
 // SpellTargetKind says whom a spell reaches.
@@ -1693,6 +1736,10 @@ message SpellComponents {
   bool material = 3;
   // What the material component is, in English. Empty without one.
   string material_text = 4;
+  // The same in Portuguese: our translation of the SRD's text (for a table spell,
+  // the table's own, same as `material_text`). Empty without a material component
+  // and while `SpellDetails.text_pt_missing`; the app then shows `material_text`.
+  string material_text_pt = 5;
 }
 
 // SpellDuration is how long a spell lasts.
@@ -1879,6 +1926,12 @@ message DisabledReason {
   int32 min_level = 2;
   // For DISABLED_REASON_CODE_NO_USES: when the uses come back.
   Recharge recharge = 3;
+  // The reason as the caller may read it ("Você não pode agir.", "Indisponível: Impedido."),
+  // already without a cause a player may not read (RN-20). Only the reasons of effects and
+  // conditions carry it.
+  string text_pt = 100;
+  // Only the master: the same with the cause.
+  string text_master_pt = 101;
 }
 
 enum DisabledReasonCode {
@@ -1923,6 +1976,20 @@ enum DisabledReasonCode {
   // Flurry of Blows: it comes right after the Attack action, taken with a weapon
   // or an unarmed strike, and that action has not been taken yet this turn.
   DISABLED_REASON_CODE_ATTACK_ACTION_FIRST = 16;
+  // CombatService.GetTurnOptions: the combatant is surprised (SRD 5.1, "Surprise"): it
+  // does not move, act or react until its first turn ends.
+  DISABLED_REASON_CODE_SURPRISED = 110;
+  // A grappled combatant's movement: its speed is 0 (SRD 5.1, Conditions, Grappled).
+  DISABLED_REASON_CODE_GRAPPLED = 111;
+  // The combatant is incapacitated (SRD, Conditions: Incapacitated, Paralyzed, Petrified,
+  // Stunned, Unconscious): no actions and no reactions. `text_pt` says it without naming
+  // the cause to a player.
+  DISABLED_REASON_CODE_INCAPACITATED = 100;
+  // The lethargy a Velocidade leaves when it ends: no movement and no action until after
+  // the creature's next turn.
+  DISABLED_REASON_CODE_EFFECT_LETHARGY = 101;
+  // The speed is 0 (Impedido, Agarrado, exhaustion 5, an effect): the movement line only.
+  DISABLED_REASON_CODE_SPEED_ZERO = 102;
 }
 
 // BonusAttackRule is the rule that makes an attack a bonus action attack right
@@ -1943,6 +2010,10 @@ enum BonusAttackRule {
   // One of the two unarmed strikes of Flurry of Blows, whose bonus action is
   // already spent (see AttackOption.bonus_attacks_left).
   BONUS_ATTACK_RULE_FLURRY_OF_BLOWS = 3;
+  // The Berserker's Frenzy: one melee weapon attack as a bonus action on each turn after
+  // the one the frenzied rage began in (SRD 5.1, Barbarian, Path of the Berserker). It needs
+  // no Attack action before it, and keeps the ability modifier in its damage.
+  BONUS_ATTACK_RULE_FRENZY = 4;
 }
 
 // AttackOption is an attack the character can make.
@@ -1987,6 +2058,9 @@ message SpellOption {
   // (SRD 5.1, Sorcerer). Empty for a character with none. The cast checks them again
   // at the slot it is cast with.
   repeated MetamagicOption metamagic_options = 30;
+  // True when the character has Sculpt Spells (the evocation wizard) and this spell is of
+  // the school of evocation: the cast may name creatures to spare (CastSpellRequest.sculpted_ids).
+  bool sculpt_spells = 31;
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the
@@ -2024,6 +2098,9 @@ message ActionOption {
   DisabledReason reason = 3;
   // Uses left of the action's resource. 0 when it has none.
   int32 uses_left = 4;
+  // True on the Rage ("feature:rage") of a character with the Berserker's Frenzy: the player
+  // may ask for a frenzy when it rages (TakeActionRequest.frenzy). False everywhere else.
+  bool offers_frenzy = 5;
 }
 
 // ListCreaturesRequest names a campaign (for access) and the filters. Every

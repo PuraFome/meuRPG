@@ -1619,28 +1619,47 @@ const (
 	// Flurry of Blows: it comes right after the Attack action, taken with a weapon
 	// or an unarmed strike, and that action has not been taken yet this turn.
 	DisabledReasonCode_DISABLED_REASON_CODE_ATTACK_ACTION_FIRST DisabledReasonCode = 16
+	// CombatService.GetTurnOptions: the combatant is surprised (SRD 5.1, "Surprise"): it
+	// does not move, act or react until its first turn ends.
+	DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED DisabledReasonCode = 110
+	// A grappled combatant's movement: its speed is 0 (SRD 5.1, Conditions, Grappled).
+	DisabledReasonCode_DISABLED_REASON_CODE_GRAPPLED DisabledReasonCode = 111
+	// The combatant is incapacitated (SRD, Conditions: Incapacitated, Paralyzed, Petrified,
+	// Stunned, Unconscious): no actions and no reactions. `text_pt` says it without naming
+	// the cause to a player.
+	DisabledReasonCode_DISABLED_REASON_CODE_INCAPACITATED DisabledReasonCode = 100
+	// The lethargy a Velocidade leaves when it ends: no movement and no action until after
+	// the creature's next turn.
+	DisabledReasonCode_DISABLED_REASON_CODE_EFFECT_LETHARGY DisabledReasonCode = 101
+	// The speed is 0 (Impedido, Agarrado, exhaustion 5, an effect): the movement line only.
+	DisabledReasonCode_DISABLED_REASON_CODE_SPEED_ZERO DisabledReasonCode = 102
 )
 
 // Enum value maps for DisabledReasonCode.
 var (
 	DisabledReasonCode_name = map[int32]string{
-		0:  "DISABLED_REASON_CODE_UNSPECIFIED",
-		1:  "DISABLED_REASON_CODE_ACTION_USED",
-		2:  "DISABLED_REASON_CODE_BONUS_ACTION_USED",
-		3:  "DISABLED_REASON_CODE_REACTION_USED",
-		4:  "DISABLED_REASON_CODE_NO_SLOT",
-		5:  "DISABLED_REASON_CODE_NO_USES",
-		6:  "DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT",
-		7:  "DISABLED_REASON_CODE_REACTION_ONLY",
-		8:  "DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG",
-		9:  "DISABLED_REASON_CODE_NOT_YOUR_TURN",
-		10: "DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE",
-		11: "DISABLED_REASON_CODE_COMBATANT_DOWN",
-		12: "DISABLED_REASON_CODE_COMBATANT_DEFEATED",
-		13: "DISABLED_REASON_CODE_ATTACKS_USED",
-		14: "DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN",
-		15: "DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT",
-		16: "DISABLED_REASON_CODE_ATTACK_ACTION_FIRST",
+		0:   "DISABLED_REASON_CODE_UNSPECIFIED",
+		1:   "DISABLED_REASON_CODE_ACTION_USED",
+		2:   "DISABLED_REASON_CODE_BONUS_ACTION_USED",
+		3:   "DISABLED_REASON_CODE_REACTION_USED",
+		4:   "DISABLED_REASON_CODE_NO_SLOT",
+		5:   "DISABLED_REASON_CODE_NO_USES",
+		6:   "DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT",
+		7:   "DISABLED_REASON_CODE_REACTION_ONLY",
+		8:   "DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG",
+		9:   "DISABLED_REASON_CODE_NOT_YOUR_TURN",
+		10:  "DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE",
+		11:  "DISABLED_REASON_CODE_COMBATANT_DOWN",
+		12:  "DISABLED_REASON_CODE_COMBATANT_DEFEATED",
+		13:  "DISABLED_REASON_CODE_ATTACKS_USED",
+		14:  "DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN",
+		15:  "DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT",
+		16:  "DISABLED_REASON_CODE_ATTACK_ACTION_FIRST",
+		110: "DISABLED_REASON_CODE_SURPRISED",
+		111: "DISABLED_REASON_CODE_GRAPPLED",
+		100: "DISABLED_REASON_CODE_INCAPACITATED",
+		101: "DISABLED_REASON_CODE_EFFECT_LETHARGY",
+		102: "DISABLED_REASON_CODE_SPEED_ZERO",
 	}
 	DisabledReasonCode_value = map[string]int32{
 		"DISABLED_REASON_CODE_UNSPECIFIED":              0,
@@ -1660,6 +1679,11 @@ var (
 		"DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN":   14,
 		"DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT": 15,
 		"DISABLED_REASON_CODE_ATTACK_ACTION_FIRST":      16,
+		"DISABLED_REASON_CODE_SURPRISED":                110,
+		"DISABLED_REASON_CODE_GRAPPLED":                 111,
+		"DISABLED_REASON_CODE_INCAPACITATED":            100,
+		"DISABLED_REASON_CODE_EFFECT_LETHARGY":          101,
+		"DISABLED_REASON_CODE_SPEED_ZERO":               102,
 	}
 )
 
@@ -1710,6 +1734,10 @@ const (
 	// One of the two unarmed strikes of Flurry of Blows, whose bonus action is
 	// already spent (see AttackOption.bonus_attacks_left).
 	BonusAttackRule_BONUS_ATTACK_RULE_FLURRY_OF_BLOWS BonusAttackRule = 3
+	// The Berserker's Frenzy: one melee weapon attack as a bonus action on each turn after
+	// the one the frenzied rage began in (SRD 5.1, Barbarian, Path of the Berserker). It needs
+	// no Attack action before it, and keeps the ability modifier in its damage.
+	BonusAttackRule_BONUS_ATTACK_RULE_FRENZY BonusAttackRule = 4
 )
 
 // Enum value maps for BonusAttackRule.
@@ -1719,12 +1747,14 @@ var (
 		1: "BONUS_ATTACK_RULE_OFF_HAND",
 		2: "BONUS_ATTACK_RULE_MARTIAL_ARTS",
 		3: "BONUS_ATTACK_RULE_FLURRY_OF_BLOWS",
+		4: "BONUS_ATTACK_RULE_FRENZY",
 	}
 	BonusAttackRule_value = map[string]int32{
 		"BONUS_ATTACK_RULE_UNSPECIFIED":     0,
 		"BONUS_ATTACK_RULE_OFF_HAND":        1,
 		"BONUS_ATTACK_RULE_MARTIAL_ARTS":    2,
 		"BONUS_ATTACK_RULE_FLURRY_OF_BLOWS": 3,
+		"BONUS_ATTACK_RULE_FRENZY":          4,
 	}
 )
 
@@ -3171,8 +3201,17 @@ type FeatOption struct {
 	// them; a feat that raises every ability it lists is still taken, and its increase stops
 	// at 20. The feat is available either way.
 	CappedAbilities []Ability `protobuf:"varint,10,rep,packed,name=capped_abilities,json=cappedAbilities,proto3,enum=meurpg.rules.v1.Ability" json:"capped_abilities,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// `desc` in Portuguese, one paragraph per entry: our translation of the SRD 5.1
+	// English (effects/feats_pt.json); for a table feat, its own text, the same as `desc`.
+	// Empty while `desc_pt_missing`; the app then shows `desc` in English with a note.
+	DescPt []string `protobuf:"bytes,11,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
+	// True for an SRD feat with no Portuguese text yet.
+	DescPtMissing bool `protobuf:"varint,12,opt,name=desc_pt_missing,json=descPtMissing,proto3" json:"desc_pt_missing,omitempty"`
+	// True when the text exists only in Portuguese (a table feat): `desc` already is the
+	// Portuguese, and there is no English to offer.
+	DescPtOnly    bool `protobuf:"varint,13,opt,name=desc_pt_only,json=descPtOnly,proto3" json:"desc_pt_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FeatOption) Reset() {
@@ -3273,6 +3312,27 @@ func (x *FeatOption) GetCappedAbilities() []Ability {
 		return x.CappedAbilities
 	}
 	return nil
+}
+
+func (x *FeatOption) GetDescPt() []string {
+	if x != nil {
+		return x.DescPt
+	}
+	return nil
+}
+
+func (x *FeatOption) GetDescPtMissing() bool {
+	if x != nil {
+		return x.DescPtMissing
+	}
+	return false
+}
+
+func (x *FeatOption) GetDescPtOnly() bool {
+	if x != nil {
+		return x.DescPtOnly
+	}
+	return false
 }
 
 // DerivedSheet is everything the server computes from a character's full
@@ -4890,7 +4950,12 @@ type Spellcasting struct {
 	SpellsKnown int32 `protobuf:"varint,7,opt,name=spells_known,json=spellsKnown,proto3" json:"spells_known,omitempty"`
 	// How many spells the character can prepare each day, for classes that
 	// prepare spells (Cleric, Druid, Paladin, Wizard). 0 for the others.
-	PreparedMax   int32 `protobuf:"varint,8,opt,name=prepared_max,json=preparedMax,proto3" json:"prepared_max,omitempty"`
+	PreparedMax int32 `protobuf:"varint,8,opt,name=prepared_max,json=preparedMax,proto3" json:"prepared_max,omitempty"`
+	// True when the class keeps its spells in a spellbook and prepares some of them
+	// (Wizard): the spells on the sheet that are not prepared are in the spellbook. False
+	// for a class that prepares from its whole list (Cleric, Druid, Paladin) or knows a
+	// fixed number of spells.
+	Spellbook     bool `protobuf:"varint,9,opt,name=spellbook,proto3" json:"spellbook,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4979,6 +5044,13 @@ func (x *Spellcasting) GetPreparedMax() int32 {
 		return x.PreparedMax
 	}
 	return 0
+}
+
+func (x *Spellcasting) GetSpellbook() bool {
+	if x != nil {
+		return x.Spellbook
+	}
+	return false
 }
 
 // SpellSlots is how many slots the character has of one spell level.
@@ -5398,9 +5470,19 @@ type Feature struct {
 	// The rule in one line, in Portuguese and in our own words, for an option the
 	// player picked (a fighting style, an invocation, a pact boon); empty for the
 	// other features.
-	SummaryPt     string `protobuf:"bytes,6,opt,name=summary_pt,json=summaryPt,proto3" json:"summary_pt,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SummaryPt string `protobuf:"bytes,6,opt,name=summary_pt,json=summaryPt,proto3" json:"summary_pt,omitempty"`
+	// `description` in Portuguese, paragraphs joined by a blank line: our translation of the
+	// SRD 5.1 English (effects/features_pt.json, traits_pt.json, backgrounds_pt.json); for a
+	// table feature, its own text, the same as `description`. Empty while
+	// `description_pt_missing`; the app then shows `description` in English with a note.
+	DescriptionPt string `protobuf:"bytes,7,opt,name=description_pt,json=descriptionPt,proto3" json:"description_pt,omitempty"`
+	// True for an SRD feature, trait or background feature with no Portuguese text yet.
+	DescriptionPtMissing bool `protobuf:"varint,8,opt,name=description_pt_missing,json=descriptionPtMissing,proto3" json:"description_pt_missing,omitempty"`
+	// True when the text exists only in Portuguese (a table feature): `description` already
+	// is the Portuguese, and there is no English to offer.
+	DescriptionPtOnly bool `protobuf:"varint,9,opt,name=description_pt_only,json=descriptionPtOnly,proto3" json:"description_pt_only,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Feature) Reset() {
@@ -5473,6 +5555,27 @@ func (x *Feature) GetSummaryPt() string {
 		return x.SummaryPt
 	}
 	return ""
+}
+
+func (x *Feature) GetDescriptionPt() string {
+	if x != nil {
+		return x.DescriptionPt
+	}
+	return ""
+}
+
+func (x *Feature) GetDescriptionPtMissing() bool {
+	if x != nil {
+		return x.DescriptionPtMissing
+	}
+	return false
+}
+
+func (x *Feature) GetDescriptionPtOnly() bool {
+	if x != nil {
+		return x.DescriptionPtOnly
+	}
+	return false
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese
@@ -7137,7 +7240,10 @@ type Spell struct {
 	// The table retired it (see Race.archived).
 	Archived bool `protobuf:"varint,10,opt,name=archived,proto3" json:"archived,omitempty"`
 	// Switched off for the players (see Race.off).
-	Off           bool `protobuf:"varint,11,opt,name=off,proto3" json:"off,omitempty"`
+	Off bool `protobuf:"varint,11,opt,name=off,proto3" json:"off,omitempty"`
+	// Whether it is cast as a reaction (casting time "1 reaction", like Shield), so the
+	// sheet's spell list can tag it without reading the description.
+	Reaction      bool `protobuf:"varint,12,opt,name=reaction,proto3" json:"reaction,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7245,6 +7351,13 @@ func (x *Spell) GetArchived() bool {
 func (x *Spell) GetOff() bool {
 	if x != nil {
 		return x.Off
+	}
+	return false
+}
+
+func (x *Spell) GetReaction() bool {
+	if x != nil {
+		return x.Reaction
 	}
 	return false
 }
@@ -7689,7 +7802,23 @@ type SpellDetails struct {
 	// rest, from the text of the SRD.
 	Target *SpellTarget `protobuf:"bytes,13,opt,name=target,proto3" json:"target,omitempty"`
 	// What the caster picks among the `damage` types; unspecified when nothing.
-	DamageChoice  SpellDamageChoice `protobuf:"varint,14,opt,name=damage_choice,json=damageChoice,proto3,enum=meurpg.rules.v1.SpellDamageChoice" json:"damage_choice,omitempty"`
+	DamageChoice SpellDamageChoice `protobuf:"varint,14,opt,name=damage_choice,json=damageChoice,proto3,enum=meurpg.rules.v1.SpellDamageChoice" json:"damage_choice,omitempty"`
+	// The description in Portuguese, one paragraph per entry of `description`: our
+	// translation of the SRD 5.1 English (effects/spells_pt.json), markdown kept. For
+	// a table spell it is the table's own text, the same as `description`. Empty while
+	// `text_pt_missing`; the app then shows `description` in English with a note.
+	DescriptionPt []string `protobuf:"bytes,15,rep,name=description_pt,json=descriptionPt,proto3" json:"description_pt,omitempty"`
+	// The "At Higher Levels" paragraphs in Portuguese, one per entry of `higher_level`;
+	// empty when the spell has none, and while `text_pt_missing`.
+	HigherLevelPt []string `protobuf:"bytes,16,rep,name=higher_level_pt,json=higherLevelPt,proto3" json:"higher_level_pt,omitempty"`
+	// True for an SRD spell with no Portuguese text yet: `description_pt`,
+	// `higher_level_pt` and `components.material_text_pt` are empty and the English
+	// `description`, `higher_level` and `components.material_text` are all there is.
+	TextPtMissing bool `protobuf:"varint,17,opt,name=text_pt_missing,json=textPtMissing,proto3" json:"text_pt_missing,omitempty"`
+	// True when the text exists only in Portuguese (a table spell): `description`,
+	// `higher_level` and `components.material_text` already are the Portuguese, and
+	// there is no English to offer.
+	TextPtOnly    bool `protobuf:"varint,18,opt,name=text_pt_only,json=textPtOnly,proto3" json:"text_pt_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7820,6 +7949,34 @@ func (x *SpellDetails) GetDamageChoice() SpellDamageChoice {
 		return x.DamageChoice
 	}
 	return SpellDamageChoice_SPELL_DAMAGE_CHOICE_UNSPECIFIED
+}
+
+func (x *SpellDetails) GetDescriptionPt() []string {
+	if x != nil {
+		return x.DescriptionPt
+	}
+	return nil
+}
+
+func (x *SpellDetails) GetHigherLevelPt() []string {
+	if x != nil {
+		return x.HigherLevelPt
+	}
+	return nil
+}
+
+func (x *SpellDetails) GetTextPtMissing() bool {
+	if x != nil {
+		return x.TextPtMissing
+	}
+	return false
+}
+
+func (x *SpellDetails) GetTextPtOnly() bool {
+	if x != nil {
+		return x.TextPtOnly
+	}
+	return false
 }
 
 // SpellTarget is whom a spell reaches.
@@ -8193,9 +8350,13 @@ type SpellComponents struct {
 	Somatic  bool                   `protobuf:"varint,2,opt,name=somatic,proto3" json:"somatic,omitempty"`
 	Material bool                   `protobuf:"varint,3,opt,name=material,proto3" json:"material,omitempty"`
 	// What the material component is, in English. Empty without one.
-	MaterialText  string `protobuf:"bytes,4,opt,name=material_text,json=materialText,proto3" json:"material_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MaterialText string `protobuf:"bytes,4,opt,name=material_text,json=materialText,proto3" json:"material_text,omitempty"`
+	// The same in Portuguese: our translation of the SRD's text (for a table spell,
+	// the table's own, same as `material_text`). Empty without a material component
+	// and while `SpellDetails.text_pt_missing`; the app then shows `material_text`.
+	MaterialTextPt string `protobuf:"bytes,5,opt,name=material_text_pt,json=materialTextPt,proto3" json:"material_text_pt,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SpellComponents) Reset() {
@@ -8252,6 +8413,13 @@ func (x *SpellComponents) GetMaterial() bool {
 func (x *SpellComponents) GetMaterialText() string {
 	if x != nil {
 		return x.MaterialText
+	}
+	return ""
+}
+
+func (x *SpellComponents) GetMaterialTextPt() string {
+	if x != nil {
+		return x.MaterialTextPt
 	}
 	return ""
 }
@@ -8899,7 +9067,13 @@ type DisabledReason struct {
 	// For DISABLED_REASON_CODE_NO_SLOT: the lowest slot level that would do.
 	MinLevel int32 `protobuf:"varint,2,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
 	// For DISABLED_REASON_CODE_NO_USES: when the uses come back.
-	Recharge      Recharge `protobuf:"varint,3,opt,name=recharge,proto3,enum=meurpg.rules.v1.Recharge" json:"recharge,omitempty"`
+	Recharge Recharge `protobuf:"varint,3,opt,name=recharge,proto3,enum=meurpg.rules.v1.Recharge" json:"recharge,omitempty"`
+	// The reason as the caller may read it ("Você não pode agir.", "Indisponível: Impedido."),
+	// already without a cause a player may not read (RN-20). Only the reasons of effects and
+	// conditions carry it.
+	TextPt string `protobuf:"bytes,100,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
+	// Only the master: the same with the cause.
+	TextMasterPt  string `protobuf:"bytes,101,opt,name=text_master_pt,json=textMasterPt,proto3" json:"text_master_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8953,6 +9127,20 @@ func (x *DisabledReason) GetRecharge() Recharge {
 		return x.Recharge
 	}
 	return Recharge_RECHARGE_UNSPECIFIED
+}
+
+func (x *DisabledReason) GetTextPt() string {
+	if x != nil {
+		return x.TextPt
+	}
+	return ""
+}
+
+func (x *DisabledReason) GetTextMasterPt() string {
+	if x != nil {
+		return x.TextMasterPt
+	}
+	return ""
 }
 
 // AttackOption is an attack the character can make.
@@ -9080,8 +9268,11 @@ type SpellOption struct {
 	// (SRD 5.1, Sorcerer). Empty for a character with none. The cast checks them again
 	// at the slot it is cast with.
 	MetamagicOptions []*MetamagicOption `protobuf:"bytes,30,rep,name=metamagic_options,json=metamagicOptions,proto3" json:"metamagic_options,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// True when the character has Sculpt Spells (the evocation wizard) and this spell is of
+	// the school of evocation: the cast may name creatures to spare (CastSpellRequest.sculpted_ids).
+	SculptSpells  bool `protobuf:"varint,31,opt,name=sculpt_spells,json=sculptSpells,proto3" json:"sculpt_spells,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SpellOption) Reset() {
@@ -9154,6 +9345,13 @@ func (x *SpellOption) GetMetamagicOptions() []*MetamagicOption {
 		return x.MetamagicOptions
 	}
 	return nil
+}
+
+func (x *SpellOption) GetSculptSpells() bool {
+	if x != nil {
+		return x.SculptSpells
+	}
+	return false
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the
@@ -9320,7 +9518,10 @@ type ActionOption struct {
 	// Set when `enabled` is false.
 	Reason *DisabledReason `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
 	// Uses left of the action's resource. 0 when it has none.
-	UsesLeft      int32 `protobuf:"varint,4,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	UsesLeft int32 `protobuf:"varint,4,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	// True on the Rage ("feature:rage") of a character with the Berserker's Frenzy: the player
+	// may ask for a frenzy when it rages (TakeActionRequest.frenzy). False everywhere else.
+	OffersFrenzy  bool `protobuf:"varint,5,opt,name=offers_frenzy,json=offersFrenzy,proto3" json:"offers_frenzy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9381,6 +9582,13 @@ func (x *ActionOption) GetUsesLeft() int32 {
 		return x.UsesLeft
 	}
 	return 0
+}
+
+func (x *ActionOption) GetOffersFrenzy() bool {
+	if x != nil {
+		return x.OffersFrenzy
+	}
+	return false
 }
 
 // ListCreaturesRequest names a campaign (for access) and the filters. Every
@@ -10953,7 +11161,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1e.meurpg.rules.v1.FeatUnmetKindR\x04kind\x12=\n" +
 	"\tabilities\x18\x02 \x03(\v2\x1f.meurpg.rules.v1.AbilityMinimumR\tabilities\x12\x10\n" +
 	"\x03key\x18\x03 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x04 \x01(\x05R\x05value\"\x8c\x03\n" +
+	"\x05value\x18\x04 \x01(\x05R\x05value\"\xef\x03\n" +
 	"\n" +
 	"FeatOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
@@ -10966,7 +11174,11 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\tqualifies\x18\b \x01(\bR\tqualifies\x120\n" +
 	"\x05unmet\x18\t \x03(\v2\x1a.meurpg.rules.v1.FeatUnmetR\x05unmet\x12C\n" +
 	"\x10capped_abilities\x18\n" +
-	" \x03(\x0e2\x18.meurpg.rules.v1.AbilityR\x0fcappedAbilities\"\xbd\x11\n" +
+	" \x03(\x0e2\x18.meurpg.rules.v1.AbilityR\x0fcappedAbilities\x12\x17\n" +
+	"\adesc_pt\x18\v \x03(\tR\x06descPt\x12&\n" +
+	"\x0fdesc_pt_missing\x18\f \x01(\bR\rdescPtMissing\x12 \n" +
+	"\fdesc_pt_only\x18\r \x01(\bR\n" +
+	"descPtOnly\"\xbd\x11\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -11112,7 +11324,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x19\n" +
 	"\brange_ft\x18\x03 \x01(\x05R\arangeFt\x12\x14\n" +
-	"\x05sense\x18\x04 \x01(\tR\x05sense\"\xac\x02\n" +
+	"\x05sense\x18\x04 \x01(\tR\x05sense\"\xca\x02\n" +
 	"\fSpellcasting\x12\x1b\n" +
 	"\tclass_key\x18\x01 \x01(\tR\bclassKey\x12\"\n" +
 	"\rclass_name_pt\x18\x02 \x01(\tR\vclassNamePt\x122\n" +
@@ -11121,7 +11333,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fattack_bonus\x18\x05 \x01(\x05R\vattackBonus\x12%\n" +
 	"\x0ecantrips_known\x18\x06 \x01(\x05R\rcantripsKnown\x12!\n" +
 	"\fspells_known\x18\a \x01(\x05R\vspellsKnown\x12!\n" +
-	"\fprepared_max\x18\b \x01(\x05R\vpreparedMax\"8\n" +
+	"\fprepared_max\x18\b \x01(\x05R\vpreparedMax\x12\x1c\n" +
+	"\tspellbook\x18\t \x01(\bR\tspellbook\"8\n" +
 	"\n" +
 	"SpellSlots\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x14\n" +
@@ -11156,7 +11369,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05beams\x18\x12 \x01(\x05R\x05beams\x12\x1d\n" +
 	"\n" +
 	"spell_dice\x18\x13 \x01(\tR\tspellDice\x12$\n" +
-	"\x0edamage_note_pt\x18\x14 \x01(\tR\fdamageNotePt\"\xa6\x01\n" +
+	"\x0edamage_note_pt\x18\x14 \x01(\tR\fdamageNotePt\"\xb3\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -11164,7 +11377,10 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\tsource_pt\x18\x04 \x01(\tR\bsourcePt\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x1d\n" +
 	"\n" +
-	"summary_pt\x18\x06 \x01(\tR\tsummaryPt\"U\n" +
+	"summary_pt\x18\x06 \x01(\tR\tsummaryPt\x12%\n" +
+	"\x0edescription_pt\x18\a \x01(\tR\rdescriptionPt\x124\n" +
+	"\x16description_pt_missing\x18\b \x01(\bR\x14descriptionPtMissing\x12.\n" +
+	"\x13description_pt_only\x18\t \x01(\bR\x11descriptionPtOnly\"U\n" +
 	"\rProficiencies\x12\x14\n" +
 	"\x05armor\x18\x01 \x03(\tR\x05armor\x12\x18\n" +
 	"\aweapons\x18\x02 \x03(\tR\aweapons\x12\x14\n" +
@@ -11299,7 +11515,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
 	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12;\n" +
 	"\bcategory\x18\x04 \x01(\x0e2\x1f.meurpg.rules.v1.WeaponCategoryR\bcategory\x12\x16\n" +
-	"\x06ranged\x18\x05 \x01(\bR\x06ranged\"\xac\x02\n" +
+	"\x06ranged\x18\x05 \x01(\bR\x06ranged\"\xc8\x02\n" +
 	"\x05Spell\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -11314,7 +11530,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\rconcentration\x18\t \x01(\bR\rconcentration\x12\x1a\n" +
 	"\barchived\x18\n" +
 	" \x01(\bR\barchived\x12\x10\n" +
-	"\x03off\x18\v \x01(\bR\x03off\"X\n" +
+	"\x03off\x18\v \x01(\bR\x03off\x12\x1a\n" +
+	"\breaction\x18\f \x01(\bR\breaction\"X\n" +
 	"\x12ListContentRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -11344,7 +11561,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05total\x18\x03 \x01(\x05R\x05total\x12'\n" +
 	"\x0fcontent_version\x18\x04 \x01(\tR\x0econtentVersion\"N\n" +
 	"\x17GetSpellDetailsResponse\x123\n" +
-	"\x05spell\x18\x01 \x01(\v2\x1d.meurpg.rules.v1.SpellDetailsR\x05spell\"\x95\a\n" +
+	"\x05spell\x18\x01 \x01(\v2\x1d.meurpg.rules.v1.SpellDetailsR\x05spell\"\xae\b\n" +
 	"\fSpellDetails\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12D\n" +
 	"\fcasting_time\x18\x02 \x01(\v2!.meurpg.rules.v1.SpellCastingTimeR\vcastingTime\x121\n" +
@@ -11363,7 +11580,12 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fhigher_level\x18\v \x03(\tR\vhigherLevel\x12N\n" +
 	"\x10hit_point_effect\x18\f \x01(\v2$.meurpg.rules.v1.SpellHitPointEffectR\x0ehitPointEffect\x124\n" +
 	"\x06target\x18\r \x01(\v2\x1c.meurpg.rules.v1.SpellTargetR\x06target\x12G\n" +
-	"\rdamage_choice\x18\x0e \x01(\x0e2\".meurpg.rules.v1.SpellDamageChoiceR\fdamageChoice\x1aB\n" +
+	"\rdamage_choice\x18\x0e \x01(\x0e2\".meurpg.rules.v1.SpellDamageChoiceR\fdamageChoice\x12%\n" +
+	"\x0edescription_pt\x18\x0f \x03(\tR\rdescriptionPt\x12&\n" +
+	"\x0fhigher_level_pt\x18\x10 \x03(\tR\rhigherLevelPt\x12&\n" +
+	"\x0ftext_pt_missing\x18\x11 \x01(\bR\rtextPtMissing\x12 \n" +
+	"\ftext_pt_only\x18\x12 \x01(\bR\n" +
+	"textPtOnly\x1aB\n" +
 	"\x14HealBySlotLevelEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xea\x01\n" +
@@ -11398,12 +11620,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1f.meurpg.rules.v1.SpellRangeKindR\x04kind\x12\x1f\n" +
 	"\vdistance_ft\x18\x02 \x01(\x05R\n" +
 	"distanceFt\x12\x10\n" +
-	"\x03raw\x18\x03 \x01(\tR\x03raw\"\x84\x01\n" +
+	"\x03raw\x18\x03 \x01(\tR\x03raw\"\xae\x01\n" +
 	"\x0fSpellComponents\x12\x16\n" +
 	"\x06verbal\x18\x01 \x01(\bR\x06verbal\x12\x18\n" +
 	"\asomatic\x18\x02 \x01(\bR\asomatic\x12\x1a\n" +
 	"\bmaterial\x18\x03 \x01(\bR\bmaterial\x12#\n" +
-	"\rmaterial_text\x18\x04 \x01(\tR\fmaterialText\"\xe4\x01\n" +
+	"\rmaterial_text\x18\x04 \x01(\tR\fmaterialText\x12(\n" +
+	"\x10material_text_pt\x18\x05 \x01(\tR\x0ematerialTextPt\"\xe4\x01\n" +
 	"\rSpellDuration\x126\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\".meurpg.rules.v1.SpellDurationKindR\x04kind\x12\x16\n" +
 	"\x06amount\x18\x02 \x01(\x05R\x06amount\x126\n" +
@@ -11456,11 +11679,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x11long_standing_dft\x18\x02 \x01(\x05R\x0flongStandingDft\x12(\n" +
 	"\x10high_running_dft\x18\x03 \x01(\x05R\x0ehighRunningDft\x12*\n" +
 	"\x11high_standing_dft\x18\x04 \x01(\x05R\x0fhighStandingDft\x12#\n" +
-	"\rrunning_start\x18\x05 \x01(\bR\frunningStart\"\x9d\x01\n" +
+	"\rrunning_start\x18\x05 \x01(\bR\frunningStart\"\xdc\x01\n" +
 	"\x0eDisabledReason\x127\n" +
 	"\x04code\x18\x01 \x01(\x0e2#.meurpg.rules.v1.DisabledReasonCodeR\x04code\x12\x1b\n" +
 	"\tmin_level\x18\x02 \x01(\x05R\bminLevel\x125\n" +
-	"\brecharge\x18\x03 \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\"\xd2\x02\n" +
+	"\brecharge\x18\x03 \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\x12\x17\n" +
+	"\atext_pt\x18d \x01(\tR\x06textPt\x12$\n" +
+	"\x0etext_master_pt\x18e \x01(\tR\ftextMasterPt\"\xd2\x02\n" +
 	"\fAttackOption\x12/\n" +
 	"\x06attack\x18\x01 \x01(\v2\x17.meurpg.rules.v1.AttackR\x06attack\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
@@ -11470,14 +11695,15 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x12bonus_attacks_left\x18\x05 \x01(\x05R\x10bonusAttacksLeft\x120\n" +
 	"\x14bonus_drops_modifier\x18\x06 \x01(\bR\x12bonusDropsModifier\x12\x1d\n" +
 	"\n" +
-	"beams_left\x18\a \x01(\x05R\tbeamsLeft\"\xca\x02\n" +
+	"beams_left\x18\a \x01(\x05R\tbeamsLeft\"\xef\x02\n" +
 	"\vSpellOption\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x128\n" +
 	"\aeconomy\x18\x02 \x01(\x0e2\x1e.meurpg.rules.v1.ActionEconomyR\aeconomy\x12\x18\n" +
 	"\aenabled\x18\x03 \x01(\bR\aenabled\x127\n" +
 	"\x06reason\x18\x04 \x01(\v2\x1f.meurpg.rules.v1.DisabledReasonR\x06reason\x121\n" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12M\n" +
-	"\x11metamagic_options\x18\x1e \x03(\v2 .meurpg.rules.v1.MetamagicOptionR\x10metamagicOptions\"\xb7\x01\n" +
+	"\x11metamagic_options\x18\x1e \x03(\v2 .meurpg.rules.v1.MetamagicOptionR\x10metamagicOptions\x12#\n" +
+	"\rsculpt_spells\x18\x1f \x01(\bR\fsculptSpells\"\xb7\x01\n" +
 	"\x0fMetamagicOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x12\n" +
@@ -11490,12 +11716,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"SlotChoice\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x12\n" +
 	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x12\n" +
-	"\x04free\x18\x03 \x01(\x05R\x04free\"\xaf\x01\n" +
+	"\x04free\x18\x03 \x01(\x05R\x04free\"\xd4\x01\n" +
 	"\fActionOption\x12/\n" +
 	"\x06action\x18\x01 \x01(\v2\x17.meurpg.rules.v1.ActionR\x06action\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
 	"\x06reason\x18\x03 \x01(\v2\x1f.meurpg.rules.v1.DisabledReasonR\x06reason\x12\x1b\n" +
-	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\"\xae\x02\n" +
+	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\x12#\n" +
+	"\roffers_frenzy\x18\x05 \x01(\bR\foffersFrenzy\"\xae\x02\n" +
 	"\x14ListCreaturesRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x14\n" +
@@ -11776,7 +12003,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x14CREATURE_SIZE_MEDIUM\x10\x03\x12\x17\n" +
 	"\x13CREATURE_SIZE_LARGE\x10\x04\x12\x16\n" +
 	"\x12CREATURE_SIZE_HUGE\x10\x05\x12\x1c\n" +
-	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\xe4\x05\n" +
+	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\xa2\a\n" +
 	"\x12DisabledReasonCode\x12$\n" +
 	" DISABLED_REASON_CODE_UNSPECIFIED\x10\x00\x12$\n" +
 	" DISABLED_REASON_CODE_ACTION_USED\x10\x01\x12*\n" +
@@ -11795,12 +12022,18 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"!DISABLED_REASON_CODE_ATTACKS_USED\x10\r\x12/\n" +
 	"+DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN\x10\x0e\x121\n" +
 	"-DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT\x10\x0f\x12,\n" +
-	"(DISABLED_REASON_CODE_ATTACK_ACTION_FIRST\x10\x10*\x9f\x01\n" +
+	"(DISABLED_REASON_CODE_ATTACK_ACTION_FIRST\x10\x10\x12\"\n" +
+	"\x1eDISABLED_REASON_CODE_SURPRISED\x10n\x12!\n" +
+	"\x1dDISABLED_REASON_CODE_GRAPPLED\x10o\x12&\n" +
+	"\"DISABLED_REASON_CODE_INCAPACITATED\x10d\x12(\n" +
+	"$DISABLED_REASON_CODE_EFFECT_LETHARGY\x10e\x12#\n" +
+	"\x1fDISABLED_REASON_CODE_SPEED_ZERO\x10f*\xbd\x01\n" +
 	"\x0fBonusAttackRule\x12!\n" +
 	"\x1dBONUS_ATTACK_RULE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aBONUS_ATTACK_RULE_OFF_HAND\x10\x01\x12\"\n" +
 	"\x1eBONUS_ATTACK_RULE_MARTIAL_ARTS\x10\x02\x12%\n" +
-	"!BONUS_ATTACK_RULE_FLURRY_OF_BLOWS\x10\x032\xd3\x05\n" +
+	"!BONUS_ATTACK_RULE_FLURRY_OF_BLOWS\x10\x03\x12\x1c\n" +
+	"\x18BONUS_ATTACK_RULE_FRENZY\x10\x042\xd3\x05\n" +
 	"\x0eContentService\x12]\n" +
 	"\vListContent\x12#.meurpg.rules.v1.ListContentRequest\x1a$.meurpg.rules.v1.ListContentResponse\"\x03\x90\x02\x02\x12i\n" +
 	"\x0fGetSpellDetails\x12'.meurpg.rules.v1.GetSpellDetailsRequest\x1a(.meurpg.rules.v1.GetSpellDetailsResponse\"\x03\x90\x02\x02\x12Z\n" +

@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"image/png"
 	"io"
 	"log/slog"
@@ -60,7 +62,7 @@ func TestBuildBody(t *testing.T) {
 		t.Errorf("model/store = %v/%v; store must be explicitly false", got["model"], got["store"])
 	}
 	rf, _ := got["response_format"].(map[string]any)
-	if rf["type"] != "image" || rf["aspect_ratio"] != "16:9" || rf["mime_type"] != "image/png" || rf["image_size"] != "1K" {
+	if rf["type"] != "image" || rf["aspect_ratio"] != "16:9" || rf["mime_type"] != "image/jpeg" || rf["image_size"] != "1K" {
 		t.Errorf("response_format = %v", rf)
 	}
 	input, _ := got["input"].([]any)
@@ -119,7 +121,7 @@ func answer(status, steps string) string {
 }
 
 func imageBlock(b64 string) string {
-	return `{"type":"image","mime_type":"image/png","data":"` + b64 + `"}`
+	return `{"type":"image","mime_type":"image/jpeg","data":"` + b64 + `"}`
 }
 
 func step(kind string, blocks ...string) string {
@@ -156,6 +158,7 @@ func TestParseAnswer(t *testing.T) {
 		{name: "a safety stop in the errors", status: 200, body: `{"status":"failed","steps":[],"errors":[{"code":"SAFETY","message":"x"}]}`, refused: "safety"},
 		{name: "a 400 about safety", status: 400, body: `{"error":{"code":400,"message":"The prompt was blocked because of safety","status":"INVALID_ARGUMENT"}}`, refused: "safety"},
 		{name: "a 400 about something else", status: 400, body: `{"error":{"code":400,"message":"bad field","status":"INVALID_ARGUMENT"}}`, wantErr: ErrUnavailable},
+		{name: "a 400 with the Interactions API's string code", status: 400, body: `{"error":{"message":"The value 'image/png' is not supported","code":"invalid_request"}}`, wantErr: ErrUnavailable},
 		{name: "a blocked key", status: 403, body: `{"error":{"code":403,"message":"x","status":"PERMISSION_DENIED","details":[{"reason":"API_KEY_SERVICE_BLOCKED"}]}}`, denied: true},
 		{name: "an invalid key", status: 401, body: `{"error":{"code":401,"message":"x","status":"UNAUTHENTICATED"}}`, denied: true},
 		{name: "not JSON", status: 200, body: `<html>`, wantErr: ErrUnavailable},
@@ -183,7 +186,7 @@ func TestParseAnswer(t *testing.T) {
 					t.Errorf("error = %v, want %v", err, tc.wantErr)
 				}
 			default:
-				if err != nil || !bytes.Equal(img.Data, tc.want) || img.MimeType != "image/png" {
+				if err != nil || !bytes.Equal(img.Data, tc.want) || img.MimeType != "image/jpeg" {
 					t.Errorf("image = %v, %v", img, err)
 				}
 			}
@@ -540,6 +543,12 @@ func TestMapRequests(t *testing.T) {
 			t.Errorf("%s: BodySize() = %d does not count the drawing", layout, r.BodySize())
 		}
 	}
+	// The texture's text says what each kind of square may hold.
+	for _, want := range []string{"1,5 m", "LIGHT squares are the only walkable floor", "nothing raised", "DARK squares are solid rock", "never spill onto a light square"} {
+		if text := mapRequest(LayoutTexture).Text(); !strings.Contains(text, want) {
+			t.Errorf("the texture's text lacks %q: %q", want, text)
+		}
+	}
 	// The rooms: only with the texture, one line each.
 	r := mapRequest(LayoutTexture)
 	r.Rooms = []string{"Sala 1: 5 x 4 squares", "Sala 2: 3 x 3 squares"}
@@ -548,6 +557,13 @@ func TestMapRequests(t *testing.T) {
 	}
 	if text := r.Text(); !strings.Contains(text, "- Sala 1: 5 x 4 squares") || !strings.Contains(text, "- Sala 2: 3 x 3 squares") {
 		t.Errorf("the texture's text lacks the rooms: %q", text)
+	}
+	// The scene art and the isometric view draw a creature only on a disc (or
+	// where the master's words ask for one); the textured map has no creature.
+	for layout, wants := range map[string]bool{LayoutScene: true, LayoutIsometric: true, LayoutTexture: false} {
+		if got := strings.Contains(mapRequest(layout).Text(), "Draw no other creature"); got != wants {
+			t.Errorf("%s: the creatures rule in the text is %v, want %v", layout, got, wants)
+		}
 	}
 	for _, layout := range []string{LayoutScene, LayoutIsometric} {
 		r := mapRequest(layout)
@@ -574,5 +590,84 @@ func TestMapRequests(t *testing.T) {
 		if err := r.Validate(); err == nil {
 			t.Errorf("%s was accepted", name)
 		}
+	}
+}
+
+// The model only accepts image/jpeg in response_format (verified against the
+// real API, 09/10/2026): a PNG request is a 400.
+func TestGeminiAsksForAJPEG(t *testing.T) {
+	t.Parallel()
+	s := newServer(t, ok)
+	if _, err := geminiFor(s, io.Discard).Generate(t.Context(), sceneRequest()); err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		ResponseFormat map[string]any `json:"response_format"`
+		Store          *bool          `json:"store"`
+	}
+	if err := json.Unmarshal(s.bodies[0], &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.ResponseFormat["mime_type"] != "image/jpeg" || body.ResponseFormat["image_size"] != "1K" || body.Store == nil || *body.Store {
+		t.Errorf("response_format = %v, store = %v", body.ResponseFormat, body.Store)
+	}
+}
+
+// A real JPEG answer comes out as it went in, and the images package takes it.
+func TestGeminiAcceptsAJPEGAnswer(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 40, 30)), nil); err != nil {
+		t.Fatal(err)
+	}
+	b64 := base64.StdEncoding.EncodeToString(buf.Bytes())
+	s := newServer(t, func(w http.ResponseWriter) {
+		_, _ = fmt.Fprint(w, answer("completed", step("thought")+","+step("model_output", imageBlock(b64))))
+	})
+	img, err := geminiFor(s, io.Discard).Generate(t.Context(), sceneRequest())
+	if err != nil || img.MimeType != "image/jpeg" || !bytes.Equal(img.Data, buf.Bytes()) {
+		t.Fatalf("Generate() = %v, %v", img.MimeType, err)
+	}
+	if cfg, err := jpeg.DecodeConfig(bytes.NewReader(img.Data)); err != nil || cfg.Width != 40 {
+		t.Errorf("DecodeConfig = %v, %v", cfg, err)
+	}
+}
+
+// The error body of the Interactions API has a string code; the old Google
+// style has a number. Both are read, and Google's message reaches the error
+// (which only the log sees), cut short.
+func TestGeminiReadsBothErrorStyles(t *testing.T) {
+	t.Parallel()
+	long := strings.Repeat("x", 1000)
+	tests := []struct{ name, body, want string }{
+		{"string code", `{"error":{"message":"The value 'image/png' is not supported for 'response_format.mime_type'.","code":"invalid_request"}}`, "invalid_request: The value 'image/png' is not supported"},
+		{"number code", `{"error":{"code":400,"message":"bad field","status":"INVALID_ARGUMENT"}}`, "INVALID_ARGUMENT: bad field"},
+		{"long message", `{"error":{"message":"` + long + `","code":"invalid_request"}}`, "invalid_request: " + strings.Repeat("x", maxLoggedMessage) + "..."},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s := newServer(t, func(w http.ResponseWriter) {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = fmt.Fprint(w, tc.body)
+			})
+			_, err := geminiFor(s, io.Discard).Generate(t.Context(), sceneRequest())
+			if !errors.Is(err, ErrUnavailable) || !strings.Contains(err.Error(), "status 400: "+tc.want) {
+				t.Errorf("error = %v, want it to carry %q", err, tc.want)
+			}
+			if strings.Contains(err.Error(), long+"x") || s.calls.Load() != 1 {
+				t.Errorf("message not cut or retried: calls = %d", s.calls.Load())
+			}
+		})
+	}
+}
+
+// A key refusal in the Interactions style (string code) is still a key error.
+func TestGeminiKeyRefusalWithAStringCode(t *testing.T) {
+	t.Parallel()
+	_, err := parseAnswer(403, strings.NewReader(`{"error":{"message":"denied","code":"permission_denied"}}`))
+	na, ok := errors.AsType[*NotAuthorizedError](err)
+	if !ok || na.Reason != "permission_denied" {
+		t.Errorf("error = %v", err)
 	}
 }

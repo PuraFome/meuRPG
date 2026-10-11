@@ -89,7 +89,8 @@ export class EffectPicker {
   }
 
   protected labelOf(f: EffectMenuField): string {
-    return EFFECT_FIELD_LABELS[f.name] ?? f.name;
+    // The resource an action spends is the same proto field as a resource's own name.
+    return f.kind === 'resource_ref' ? 'Gasta um uso de' : (EFFECT_FIELD_LABELS[f.name] ?? f.name);
   }
 
   /** The hint of a field that is not showing a refusal: written beside it. */
@@ -107,6 +108,9 @@ export class EffectPicker {
     }
     if (f.kind === 'formula') {
       return this.menu().formulaHint();
+    }
+    if (f.kind === 'resource_ref') {
+      return 'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada uso gasta 1; sem usos, a ação fica desligada.';
     }
     if (f.kind === 'condition') {
       return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas.';
@@ -142,6 +146,9 @@ export class EffectPicker {
   }
 
   protected pickHint(f: EffectMenuField): string {
+    if (f.name === 'from' && this.effect().choice === 'feature' && this.list('from').length === 0) {
+      return 'Sem lista: oferece as opções da própria característica ("Opções para escolher").';
+    }
     if (f.name === 'from' && this.effect().choice !== '' && this.pickOptions(f).length === 0) {
       return 'Sem lista: o jogador escolhe entre todas as opções deste tipo.';
     }

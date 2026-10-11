@@ -36,6 +36,15 @@ export class DamageParts {
   protected readonly fixed = computed(() => this.parts().filter((p) => !p.choosable));
   protected readonly extras = computed(() => this.parts().filter((p) => p.choosable));
 
+  /** Another maneuver is marked: only one maneuver for each attack, so this one is off until it is unmarked. */
+  protected otherManeuver(p: DamagePart): boolean {
+    return (
+      p.maneuver &&
+      !this.pickOf(p) &&
+      this.parts().some((o) => o.maneuver && o.key !== p.key && !!this.pickOf(o))
+    );
+  }
+
   protected pickOf(p: DamagePart): ExtraPick | undefined {
     return this.picks().find((x) => x.key === p.key);
   }

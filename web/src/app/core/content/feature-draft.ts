@@ -42,10 +42,16 @@ export interface FeatureDraft {
   /** Paragraphs, blank line between them. */
   text: string;
   effects: EffectDraft[];
+  /**
+   * The feature's option list ("Opções para escolher"): options the player picks, each with a name, a text and effects. Only a
+   * class or subclass feature has them; an option has none of its own. Their keys are made by the server and sent back on
+   * every save, so a pick keeps its option.
+   */
+  options: FeatureDraft[];
 }
 
 export function emptyFeature(): FeatureDraft {
-  return { id: newRowId(), key: '', name: '', text: '', effects: [] };
+  return { id: newRowId(), key: '', name: '', text: '', effects: [], options: [] };
 }
 
 export function featureToDraft(f: TableFeature): FeatureDraft {
@@ -58,7 +64,14 @@ export function featureToDraft(f: TableFeature): FeatureDraft {
       ? { ...draft, textPt: '' }
       : draft;
   });
-  return { id: newRowId(), key: f.key, name: f.namePt, text: f.descPt.join('\n\n'), effects };
+  return {
+    id: newRowId(),
+    key: f.key,
+    name: f.namePt,
+    text: f.descPt.join('\n\n'),
+    effects,
+    options: f.options.map(featureToDraft),
+  };
 }
 
 /** A feature with a name, or nothing: an unnamed row is not sent (the editor marks it before). */
@@ -68,6 +81,8 @@ export function draftToFeature(f: FeatureDraft, menu: EffectMenuVm): FeatureInit
     key: f.key,
     namePt: f.name.trim(),
     descPt: text,
+    // An unnamed option is not sent, like an unnamed feature; a feature with no options sends none.
+    ...optionsOf(f, menu),
     effects: f.effects.map((e) => {
       const effect = draftToEffect(e, menu);
       // A note's own text is the reminder the sheet shows, and it says what the trait says: left empty (folded under
@@ -265,6 +280,7 @@ export function draftToBackground(d: BackgroundDraft, menu: EffectMenuVm): Backg
  * each effect, its type and the fields the menu says that type reads. */
 export function featureOwnPaths(base: string, f: FeatureDraft, menu: EffectMenuVm): string[] {
   const out: string[] = [base, `${base}.name_pt`, `${base}.desc_pt`];
+  f.options.forEach((o, k) => out.push(...featureOwnPaths(`${base}.options[${k}]`, o, menu)));
   f.effects.forEach((e, k) => {
     const at = `${base}.effects[${k}]`;
     out.push(at, `${at}.type`);
@@ -282,4 +298,10 @@ export function featurePaths(
   menu: EffectMenuVm,
 ): string[] {
   return features.flatMap((f, i) => featureOwnPaths(`${prefix}[${i}]`, f, menu));
+}
+
+/** The feature's options as the save sends them: only the named ones, and no field at all when there are none. */
+function optionsOf(f: FeatureDraft, menu: EffectMenuVm): { options?: FeatureInit[] } {
+  const options = f.options.filter((o) => o.name.trim() !== '').map((o) => draftToFeature(o, menu));
+  return options.length > 0 ? { options } : {};
 }

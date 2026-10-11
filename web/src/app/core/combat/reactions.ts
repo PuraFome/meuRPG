@@ -44,8 +44,25 @@ export function isOpen(w: ReactionWindow): boolean {
 
 /** The windows that are open, in the order the server answers them. */
 export function openWindows(e: Encounter): readonly ReactionWindow[] {
-  // The master's question about a hidden creature an area hit is a window of the server's, drawn by its own card.
-  return e.reactionWindows.filter((w) => isOpen(w) && w.kind !== ReactionKind.HIDDEN_REVEAL);
+  // The master's question about a hidden creature an area hit is a window of the server's, drawn by its own card; a contest
+  // (W7-X) waits in a window of kind CONTEST that RespondContest and ResolveShove answer, never AnswerReaction: its sheets
+  // read it with `contestWindows`, and the reaction cards and queues never see it.
+  return e.reactionWindows.filter(
+    (w) => isOpen(w) && w.kind !== ReactionKind.HIDDEN_REVEAL && w.kind !== ReactionKind.CONTEST,
+  );
+}
+
+/** The contests that wait (windows of kind CONTEST that are open), as the caller may read them: the ones the caller answers
+ * have `forYou`, and `contest.contestId` names the contest (read with `GetContestState`). */
+export function contestWindows(e: Encounter): readonly ReactionWindow[] {
+  return e.reactionWindows.filter((w) => isOpen(w) && w.kind === ReactionKind.CONTEST);
+}
+
+/** The contest id of a window of kind CONTEST, or `''` for any other. */
+export function contestIdOf(w: ReactionWindow): string {
+  return w.kind === ReactionKind.CONTEST && w.prompt.case === 'contest'
+    ? w.prompt.value.contestId
+    : '';
 }
 
 /** The window a player answers now: the first one that is theirs to answer. */
@@ -238,6 +255,27 @@ function deflectMissilesPrompt(d: PromptOf<'deflectMissiles'>, rodada: string): 
   };
 }
 
+function maneuverReducePrompt(d: PromptOf<'maneuverReduce'>, rodada: string): PromptView {
+  const first = d.options[0];
+  const plus =
+    first && first.flatBonus !== 0
+      ? ` ${first.flatBonus < 0 ? '−' : '+'} ${Math.abs(first.flatBonus)}`
+      : '';
+  const sides =
+    d.options.length === 1 && first ? `1d${first.dieSides}${plus}` : 'o dado da manobra';
+  return {
+    title: 'Você foi atingido corpo a corpo',
+    subtitle: joinDots([d.attackerLabel, ...(d.attackNamePt ? [d.attackNamePt] : []), rodada]),
+    icon: 'shield',
+    name: 'Manobra',
+    question: `Usar uma manobra? O dano cai ${sides}.`,
+    costs: ['Reação', 'Gasta um uso da manobra'],
+    note: `O ataque já acertou e causaria ${d.damage} de dano; ele ainda não foi aplicado.`,
+    useLabel: 'Usar a manobra',
+    ariaLabel: 'Você foi atingido corpo a corpo: usar uma manobra?',
+  };
+}
+
 function featherFallPrompt(f: PromptOf<'featherFall'>, rodada: string): PromptView {
   const name = REACTION_NAMES.featherFall;
   const one = f.falling.length === 1 ? f.falling[0] : undefined;
@@ -281,6 +319,7 @@ const PROMPTS: { [K in PromptCase]?: (value: PromptOf<K>, rodada: string) => Pro
   counterspell: counterspellPrompt,
   cuttingWords: cuttingWordsPrompt,
   deflectMissiles: deflectMissilesPrompt,
+  maneuverReduce: maneuverReducePrompt,
   featherFall: featherFallPrompt,
   concentrationSave: concentrationSavePrompt,
 };
@@ -317,6 +356,8 @@ export function dieSidesOf(w: ReactionWindow): number {
       return p.value.dieSides;
     case 'deflectMissiles':
       return p.value.dieSides;
+    case 'maneuverReduce':
+      return p.value.options[0]?.dieSides ?? 0;
     default:
       return 0;
   }
@@ -569,6 +610,26 @@ function deflectMissilesResult(
   };
 }
 
+function maneuverReduceResult(
+  v: ResultOf<'maneuverReduce'>,
+  _asked: ReactionWindow,
+  ctx: ResultContext,
+): ResultView {
+  const left = v.damageAfter === 0 ? 'a 0' : `para ${v.damageAfter}`;
+  return {
+    title: `${v.namePt} usada`,
+    subtitle: base(ctx).subtitle,
+    icon: 'shield',
+    pill: null,
+    text: [
+      `${v.reduction ? rollFormula(v.reduction) : ''}: o dano, de ${v.damageBefore}, caiu ${left}.`,
+    ],
+    chips: base(ctx).used,
+    note: '',
+    throwBack: false,
+  };
+}
+
 function featherFallResult(
   v: ResultOf<'featherFall'>,
   asked: ReactionWindow,
@@ -603,6 +664,7 @@ const RESULTS: {
   counterspell: counterspellResult,
   cuttingWords: cuttingWordsResult,
   deflectMissiles: deflectMissilesResult,
+  maneuverReduce: maneuverReduceResult,
   featherFall: featherFallResult,
 };
 

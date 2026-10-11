@@ -37,7 +37,7 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 		return link.Spell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
 	out := link.Spell{
-		Key: det.Spell.Key, Name: det.Spell.NamePT, Level: det.Spell.Level, Concentration: det.Duration.Concentration,
+		Key: det.Spell.Key, Name: det.Spell.NamePT, Level: det.Spell.Level, Concentration: det.Duration.Concentration, Verbal: det.Components.Verbal,
 		RangeKind: det.Range.Kind, RangeFt: det.Range.DistanceFt, AttackType: det.AttackType,
 	}
 	if out.Name == "" {
@@ -61,6 +61,7 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 			out.ToHit = sc.AttackBonus
 		}
 		out.SaveDC = sc.SaveDC
+		out.CasterDC = sc.SaveDC
 	}
 	if det.Save != nil {
 		out.SaveAbility, out.SaveOnSuccess = string(det.Save.Ability), det.Save.OnSuccess
@@ -94,6 +95,8 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
 	out.IgnoresCover = content.IgnoresCover(spellKey)
+	out.Evocation = det.Spell.School == "school:evocation"
+	out.Sculpts = rules.HasFeature(d, "feature:sculpt-spells")
 	// Whom it reaches: the table spell's own target, or the SRD spell's (the
 	// structured area, then the text; see rules.SpellTarget).
 	out.Area = det.Target.AnyNumber()

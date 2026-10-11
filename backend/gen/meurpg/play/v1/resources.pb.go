@@ -57,6 +57,12 @@ const (
 	// A roll is held, waiting for the player's answer about a Bardic Inspiration
 	// die: the combatant does nothing else until it is answered.
 	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING ResourceBlockedReason = 11
+	// UseArcaneRecovery: the latest rest of the open session is not a short rest.
+	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_SHORT_REST ResourceBlockedReason = 12
+	// UseArcaneRecovery: fewer expended slots of a level than the call asks to recover.
+	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED ResourceBlockedReason = 13
+	// UseArcaneRecovery: the combined level of the slots is above the allowance.
+	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE ResourceBlockedReason = 14
 )
 
 // Enum value maps for ResourceBlockedReason.
@@ -74,6 +80,9 @@ var (
 		9:  "RESOURCE_BLOCKED_REASON_TARGET_REFUSED",
 		10: "RESOURCE_BLOCKED_REASON_NOT_AVAILABLE",
 		11: "RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING",
+		12: "RESOURCE_BLOCKED_REASON_NO_SHORT_REST",
+		13: "RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED",
+		14: "RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE",
 	}
 	ResourceBlockedReason_value = map[string]int32{
 		"RESOURCE_BLOCKED_REASON_UNSPECIFIED":         0,
@@ -88,6 +97,9 @@ var (
 		"RESOURCE_BLOCKED_REASON_TARGET_REFUSED":      9,
 		"RESOURCE_BLOCKED_REASON_NOT_AVAILABLE":       10,
 		"RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING": 11,
+		"RESOURCE_BLOCKED_REASON_NO_SHORT_REST":       12,
+		"RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED":   13,
+		"RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE":      14,
 	}
 )
 
@@ -671,8 +683,11 @@ type TakeRestRequest struct {
 	// Long rest: which hit dice come back, for the characters whose player chose;
 	// a character without a choice gets the default (the largest dice first).
 	HitDiceChoices []*HitDiceChoice `protobuf:"bytes,4,rep,name=hit_dice_choices,json=hitDiceChoices,proto3" json:"hit_dice_choices,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Long rest: a character with exhaustion loses one level when the rest had food and
+	// drink (SRD 5.1, Resting: "Finishing a Long Rest"). True when the table had none.
+	WithoutFoodOrDrink bool `protobuf:"varint,100,opt,name=without_food_or_drink,json=withoutFoodOrDrink,proto3" json:"without_food_or_drink,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *TakeRestRequest) Reset() {
@@ -731,6 +746,13 @@ func (x *TakeRestRequest) GetHitDiceChoices() []*HitDiceChoice {
 		return x.HitDiceChoices
 	}
 	return nil
+}
+
+func (x *TakeRestRequest) GetWithoutFoodOrDrink() bool {
+	if x != nil {
+		return x.WithoutFoodOrDrink
+	}
+	return false
 }
 
 type HitDiceChoice struct {
@@ -1019,6 +1041,128 @@ func (x *SpendHitDiceResponse) GetHealed() int32 {
 	return 0
 }
 
+type UseArcaneRecoveryRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	CharacterId string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// The slots to recover: how many of each spell level, one entry per level.
+	Slots          []*SpellSlotBack `protobuf:"bytes,3,rep,name=slots,proto3" json:"slots,omitempty"`
+	IdempotencyKey string           `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UseArcaneRecoveryRequest) Reset() {
+	*x = UseArcaneRecoveryRequest{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UseArcaneRecoveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UseArcaneRecoveryRequest) ProtoMessage() {}
+
+func (x *UseArcaneRecoveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UseArcaneRecoveryRequest.ProtoReflect.Descriptor instead.
+func (*UseArcaneRecoveryRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UseArcaneRecoveryRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *UseArcaneRecoveryRequest) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *UseArcaneRecoveryRequest) GetSlots() []*SpellSlotBack {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+func (x *UseArcaneRecoveryRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type UseArcaneRecoveryResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Vitals *CharacterVitals       `protobuf:"bytes,1,opt,name=vitals,proto3" json:"vitals,omitempty"`
+	// The combined level recovered.
+	RecoveredLevels int32 `protobuf:"varint,2,opt,name=recovered_levels,json=recoveredLevels,proto3" json:"recovered_levels,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UseArcaneRecoveryResponse) Reset() {
+	*x = UseArcaneRecoveryResponse{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UseArcaneRecoveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UseArcaneRecoveryResponse) ProtoMessage() {}
+
+func (x *UseArcaneRecoveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UseArcaneRecoveryResponse.ProtoReflect.Descriptor instead.
+func (*UseArcaneRecoveryResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UseArcaneRecoveryResponse) GetVitals() *CharacterVitals {
+	if x != nil {
+		return x.Vitals
+	}
+	return nil
+}
+
+func (x *UseArcaneRecoveryResponse) GetRecoveredLevels() int32 {
+	if x != nil {
+		return x.RecoveredLevels
+	}
+	return 0
+}
+
 type UseLayOnHandsRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
@@ -1043,7 +1187,7 @@ type UseLayOnHandsRequest struct {
 
 func (x *UseLayOnHandsRequest) Reset() {
 	*x = UseLayOnHandsRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1055,7 +1199,7 @@ func (x *UseLayOnHandsRequest) String() string {
 func (*UseLayOnHandsRequest) ProtoMessage() {}
 
 func (x *UseLayOnHandsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1068,7 +1212,7 @@ func (x *UseLayOnHandsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseLayOnHandsRequest.ProtoReflect.Descriptor instead.
 func (*UseLayOnHandsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UseLayOnHandsRequest) GetCampaignId() string {
@@ -1166,7 +1310,7 @@ type UseLayOnHandsResponse struct {
 
 func (x *UseLayOnHandsResponse) Reset() {
 	*x = UseLayOnHandsResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1178,7 +1322,7 @@ func (x *UseLayOnHandsResponse) String() string {
 func (*UseLayOnHandsResponse) ProtoMessage() {}
 
 func (x *UseLayOnHandsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1191,7 +1335,7 @@ func (x *UseLayOnHandsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseLayOnHandsResponse.ProtoReflect.Descriptor instead.
 func (*UseLayOnHandsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UseLayOnHandsResponse) GetEncounter() *Encounter {
@@ -1243,7 +1387,7 @@ type CreateSpellSlotRequest struct {
 
 func (x *CreateSpellSlotRequest) Reset() {
 	*x = CreateSpellSlotRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1255,7 +1399,7 @@ func (x *CreateSpellSlotRequest) String() string {
 func (*CreateSpellSlotRequest) ProtoMessage() {}
 
 func (x *CreateSpellSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1268,7 +1412,7 @@ func (x *CreateSpellSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSpellSlotRequest.ProtoReflect.Descriptor instead.
 func (*CreateSpellSlotRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CreateSpellSlotRequest) GetCampaignId() string {
@@ -1318,7 +1462,7 @@ type CreateSpellSlotResponse struct {
 
 func (x *CreateSpellSlotResponse) Reset() {
 	*x = CreateSpellSlotResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1330,7 +1474,7 @@ func (x *CreateSpellSlotResponse) String() string {
 func (*CreateSpellSlotResponse) ProtoMessage() {}
 
 func (x *CreateSpellSlotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1343,7 +1487,7 @@ func (x *CreateSpellSlotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSpellSlotResponse.ProtoReflect.Descriptor instead.
 func (*CreateSpellSlotResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *CreateSpellSlotResponse) GetEncounter() *Encounter {
@@ -1381,7 +1525,7 @@ type ConvertSpellSlotRequest struct {
 
 func (x *ConvertSpellSlotRequest) Reset() {
 	*x = ConvertSpellSlotRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1393,7 +1537,7 @@ func (x *ConvertSpellSlotRequest) String() string {
 func (*ConvertSpellSlotRequest) ProtoMessage() {}
 
 func (x *ConvertSpellSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1406,7 +1550,7 @@ func (x *ConvertSpellSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertSpellSlotRequest.ProtoReflect.Descriptor instead.
 func (*ConvertSpellSlotRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ConvertSpellSlotRequest) GetCampaignId() string {
@@ -1456,7 +1600,7 @@ type ConvertSpellSlotResponse struct {
 
 func (x *ConvertSpellSlotResponse) Reset() {
 	*x = ConvertSpellSlotResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1468,7 +1612,7 @@ func (x *ConvertSpellSlotResponse) String() string {
 func (*ConvertSpellSlotResponse) ProtoMessage() {}
 
 func (x *ConvertSpellSlotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1481,7 +1625,7 @@ func (x *ConvertSpellSlotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertSpellSlotResponse.ProtoReflect.Descriptor instead.
 func (*ConvertSpellSlotResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ConvertSpellSlotResponse) GetEncounter() *Encounter {
@@ -1520,7 +1664,7 @@ type GiveBardicInspirationRequest struct {
 
 func (x *GiveBardicInspirationRequest) Reset() {
 	*x = GiveBardicInspirationRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1532,7 +1676,7 @@ func (x *GiveBardicInspirationRequest) String() string {
 func (*GiveBardicInspirationRequest) ProtoMessage() {}
 
 func (x *GiveBardicInspirationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1545,7 +1689,7 @@ func (x *GiveBardicInspirationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GiveBardicInspirationRequest.ProtoReflect.Descriptor instead.
 func (*GiveBardicInspirationRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GiveBardicInspirationRequest) GetCampaignId() string {
@@ -1593,7 +1737,7 @@ type GiveBardicInspirationResponse struct {
 
 func (x *GiveBardicInspirationResponse) Reset() {
 	*x = GiveBardicInspirationResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1605,7 +1749,7 @@ func (x *GiveBardicInspirationResponse) String() string {
 func (*GiveBardicInspirationResponse) ProtoMessage() {}
 
 func (x *GiveBardicInspirationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1618,7 +1762,7 @@ func (x *GiveBardicInspirationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GiveBardicInspirationResponse.ProtoReflect.Descriptor instead.
 func (*GiveBardicInspirationResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GiveBardicInspirationResponse) GetEncounter() *Encounter {
@@ -1659,7 +1803,7 @@ type AnswerBardicInspirationRequest struct {
 
 func (x *AnswerBardicInspirationRequest) Reset() {
 	*x = AnswerBardicInspirationRequest{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1671,7 +1815,7 @@ func (x *AnswerBardicInspirationRequest) String() string {
 func (*AnswerBardicInspirationRequest) ProtoMessage() {}
 
 func (x *AnswerBardicInspirationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1684,7 +1828,7 @@ func (x *AnswerBardicInspirationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerBardicInspirationRequest.ProtoReflect.Descriptor instead.
 func (*AnswerBardicInspirationRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AnswerBardicInspirationRequest) GetCampaignId() string {
@@ -1773,7 +1917,7 @@ type AnswerBardicInspirationResponse struct {
 
 func (x *AnswerBardicInspirationResponse) Reset() {
 	*x = AnswerBardicInspirationResponse{}
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1785,7 +1929,7 @@ func (x *AnswerBardicInspirationResponse) String() string {
 func (*AnswerBardicInspirationResponse) ProtoMessage() {}
 
 func (x *AnswerBardicInspirationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_resources_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1798,7 +1942,7 @@ func (x *AnswerBardicInspirationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerBardicInspirationResponse.ProtoReflect.Descriptor instead.
 func (*AnswerBardicInspirationResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AnswerBardicInspirationResponse) GetAttack() *RollAttackResponse {
@@ -1808,11 +1952,626 @@ func (x *AnswerBardicInspirationResponse) GetAttack() *RollAttackResponse {
 	return nil
 }
 
+type GetOutsideInspirationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOutsideInspirationRequest) Reset() {
+	*x = GetOutsideInspirationRequest{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOutsideInspirationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOutsideInspirationRequest) ProtoMessage() {}
+
+func (x *GetOutsideInspirationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOutsideInspirationRequest.ProtoReflect.Descriptor instead.
+func (*GetOutsideInspirationRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetOutsideInspirationRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+// OutsideInspirationDie is a die a character holds out of a combat.
+type OutsideInspirationDie struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CharacterId   string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	CharacterName string                 `protobuf:"bytes,2,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	Sides         int32                  `protobuf:"varint,3,opt,name=sides,proto3" json:"sides,omitempty"`
+	// The bard that gave it, by name.
+	FromName string `protobuf:"bytes,4,opt,name=from_name,json=fromName,proto3" json:"from_name,omitempty"`
+	// The game time the die has left, in seconds (it only moves when the master moves game
+	// time).
+	SecondsLeft   int32 `protobuf:"varint,5,opt,name=seconds_left,json=secondsLeft,proto3" json:"seconds_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OutsideInspirationDie) Reset() {
+	*x = OutsideInspirationDie{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OutsideInspirationDie) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OutsideInspirationDie) ProtoMessage() {}
+
+func (x *OutsideInspirationDie) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OutsideInspirationDie.ProtoReflect.Descriptor instead.
+func (*OutsideInspirationDie) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *OutsideInspirationDie) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *OutsideInspirationDie) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
+func (x *OutsideInspirationDie) GetSides() int32 {
+	if x != nil {
+		return x.Sides
+	}
+	return 0
+}
+
+func (x *OutsideInspirationDie) GetFromName() string {
+	if x != nil {
+		return x.FromName
+	}
+	return ""
+}
+
+func (x *OutsideInspirationDie) GetSecondsLeft() int32 {
+	if x != nil {
+		return x.SecondsLeft
+	}
+	return 0
+}
+
+// BardicInspirationTarget is a character the bard may give the die to.
+type BardicInspirationTarget struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	CharacterId string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Why the die cannot go to this character, in Portuguese; empty when it can.
+	DisabledReasonPt string `protobuf:"bytes,3,opt,name=disabled_reason_pt,json=disabledReasonPt,proto3" json:"disabled_reason_pt,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *BardicInspirationTarget) Reset() {
+	*x = BardicInspirationTarget{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BardicInspirationTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BardicInspirationTarget) ProtoMessage() {}
+
+func (x *BardicInspirationTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BardicInspirationTarget.ProtoReflect.Descriptor instead.
+func (*BardicInspirationTarget) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *BardicInspirationTarget) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *BardicInspirationTarget) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *BardicInspirationTarget) GetDisabledReasonPt() string {
+	if x != nil {
+		return x.DisabledReasonPt
+	}
+	return ""
+}
+
+type GetOutsideInspirationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The caller's own character's die, unset when it holds none. The master gets none here.
+	Mine *OutsideInspirationDie `protobuf:"bytes,1,opt,name=mine,proto3" json:"mine,omitempty"`
+	// The caller is a bard: the die they give, the uses left and the most, and the party.
+	IsBard   bool                       `protobuf:"varint,2,opt,name=is_bard,json=isBard,proto3" json:"is_bard,omitempty"`
+	Sides    int32                      `protobuf:"varint,3,opt,name=sides,proto3" json:"sides,omitempty"`
+	UsesLeft int32                      `protobuf:"varint,4,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	UsesMax  int32                      `protobuf:"varint,5,opt,name=uses_max,json=usesMax,proto3" json:"uses_max,omitempty"`
+	Targets  []*BardicInspirationTarget `protobuf:"bytes,6,rep,name=targets,proto3" json:"targets,omitempty"`
+	// The master reads every die held.
+	Held []*OutsideInspirationDie `protobuf:"bytes,7,rep,name=held,proto3" json:"held,omitempty"`
+	// The caller's rolls that wait for an answer about the die.
+	Offers []*OutsideInspirationOffer `protobuf:"bytes,8,rep,name=offers,proto3" json:"offers,omitempty"`
+	// A combat is open: the bard gives in it.
+	CombatOpen    bool `protobuf:"varint,9,opt,name=combat_open,json=combatOpen,proto3" json:"combat_open,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOutsideInspirationResponse) Reset() {
+	*x = GetOutsideInspirationResponse{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOutsideInspirationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOutsideInspirationResponse) ProtoMessage() {}
+
+func (x *GetOutsideInspirationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOutsideInspirationResponse.ProtoReflect.Descriptor instead.
+func (*GetOutsideInspirationResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetOutsideInspirationResponse) GetMine() *OutsideInspirationDie {
+	if x != nil {
+		return x.Mine
+	}
+	return nil
+}
+
+func (x *GetOutsideInspirationResponse) GetIsBard() bool {
+	if x != nil {
+		return x.IsBard
+	}
+	return false
+}
+
+func (x *GetOutsideInspirationResponse) GetSides() int32 {
+	if x != nil {
+		return x.Sides
+	}
+	return 0
+}
+
+func (x *GetOutsideInspirationResponse) GetUsesLeft() int32 {
+	if x != nil {
+		return x.UsesLeft
+	}
+	return 0
+}
+
+func (x *GetOutsideInspirationResponse) GetUsesMax() int32 {
+	if x != nil {
+		return x.UsesMax
+	}
+	return 0
+}
+
+func (x *GetOutsideInspirationResponse) GetTargets() []*BardicInspirationTarget {
+	if x != nil {
+		return x.Targets
+	}
+	return nil
+}
+
+func (x *GetOutsideInspirationResponse) GetHeld() []*OutsideInspirationDie {
+	if x != nil {
+		return x.Held
+	}
+	return nil
+}
+
+func (x *GetOutsideInspirationResponse) GetOffers() []*OutsideInspirationOffer {
+	if x != nil {
+		return x.Offers
+	}
+	return nil
+}
+
+func (x *GetOutsideInspirationResponse) GetCombatOpen() bool {
+	if x != nil {
+		return x.CombatOpen
+	}
+	return false
+}
+
+type GiveBardicInspirationOutsideRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The character that gets the die (a UUID).
+	TargetCharacterId string `protobuf:"bytes,2,opt,name=target_character_id,json=targetCharacterId,proto3" json:"target_character_id,omitempty"`
+	IdempotencyKey    string `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GiveBardicInspirationOutsideRequest) Reset() {
+	*x = GiveBardicInspirationOutsideRequest{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GiveBardicInspirationOutsideRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GiveBardicInspirationOutsideRequest) ProtoMessage() {}
+
+func (x *GiveBardicInspirationOutsideRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GiveBardicInspirationOutsideRequest.ProtoReflect.Descriptor instead.
+func (*GiveBardicInspirationOutsideRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *GiveBardicInspirationOutsideRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *GiveBardicInspirationOutsideRequest) GetTargetCharacterId() string {
+	if x != nil {
+		return x.TargetCharacterId
+	}
+	return ""
+}
+
+func (x *GiveBardicInspirationOutsideRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type GiveBardicInspirationOutsideResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Vitals        *CharacterVitals       `protobuf:"bytes,1,opt,name=vitals,proto3" json:"vitals,omitempty"`
+	Die           *OutsideInspirationDie `protobuf:"bytes,2,opt,name=die,proto3" json:"die,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GiveBardicInspirationOutsideResponse) Reset() {
+	*x = GiveBardicInspirationOutsideResponse{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GiveBardicInspirationOutsideResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GiveBardicInspirationOutsideResponse) ProtoMessage() {}
+
+func (x *GiveBardicInspirationOutsideResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GiveBardicInspirationOutsideResponse.ProtoReflect.Descriptor instead.
+func (*GiveBardicInspirationOutsideResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *GiveBardicInspirationOutsideResponse) GetVitals() *CharacterVitals {
+	if x != nil {
+		return x.Vitals
+	}
+	return nil
+}
+
+func (x *GiveBardicInspirationOutsideResponse) GetDie() *OutsideInspirationDie {
+	if x != nil {
+		return x.Die
+	}
+	return nil
+}
+
+type AnswerOutsideInspirationRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The held roll (a UUID), from the offer.
+	HoldId string `protobuf:"bytes,2,opt,name=hold_id,json=holdId,proto3" json:"hold_id,omitempty"`
+	// True: roll the die and add it to the total. False: keep the die.
+	Use bool `protobuf:"varint,3,opt,name=use,proto3" json:"use,omitempty"`
+	// How the die comes when `use` is true (RN-18): the app rolls it, or the player typed the
+	// face. Required then.
+	//
+	// Types that are valid to be assigned to Roll:
+	//
+	//	*AnswerOutsideInspirationRequest_RollInApp
+	//	*AnswerOutsideInspirationRequest_TypedFace
+	Roll           isAnswerOutsideInspirationRequest_Roll `protobuf_oneof:"roll"`
+	IdempotencyKey string                                 `protobuf:"bytes,6,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AnswerOutsideInspirationRequest) Reset() {
+	*x = AnswerOutsideInspirationRequest{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnswerOutsideInspirationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnswerOutsideInspirationRequest) ProtoMessage() {}
+
+func (x *AnswerOutsideInspirationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnswerOutsideInspirationRequest.ProtoReflect.Descriptor instead.
+func (*AnswerOutsideInspirationRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *AnswerOutsideInspirationRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *AnswerOutsideInspirationRequest) GetHoldId() string {
+	if x != nil {
+		return x.HoldId
+	}
+	return ""
+}
+
+func (x *AnswerOutsideInspirationRequest) GetUse() bool {
+	if x != nil {
+		return x.Use
+	}
+	return false
+}
+
+func (x *AnswerOutsideInspirationRequest) GetRoll() isAnswerOutsideInspirationRequest_Roll {
+	if x != nil {
+		return x.Roll
+	}
+	return nil
+}
+
+func (x *AnswerOutsideInspirationRequest) GetRollInApp() bool {
+	if x != nil {
+		if x, ok := x.Roll.(*AnswerOutsideInspirationRequest_RollInApp); ok {
+			return x.RollInApp
+		}
+	}
+	return false
+}
+
+func (x *AnswerOutsideInspirationRequest) GetTypedFace() int32 {
+	if x != nil {
+		if x, ok := x.Roll.(*AnswerOutsideInspirationRequest_TypedFace); ok {
+			return x.TypedFace
+		}
+	}
+	return 0
+}
+
+func (x *AnswerOutsideInspirationRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type isAnswerOutsideInspirationRequest_Roll interface {
+	isAnswerOutsideInspirationRequest_Roll()
+}
+
+type AnswerOutsideInspirationRequest_RollInApp struct {
+	RollInApp bool `protobuf:"varint,4,opt,name=roll_in_app,json=rollInApp,proto3,oneof"`
+}
+
+type AnswerOutsideInspirationRequest_TypedFace struct {
+	TypedFace int32 `protobuf:"varint,5,opt,name=typed_face,json=typedFace,proto3,oneof"`
+}
+
+func (*AnswerOutsideInspirationRequest_RollInApp) isAnswerOutsideInspirationRequest_Roll() {}
+
+func (*AnswerOutsideInspirationRequest_TypedFace) isAnswerOutsideInspirationRequest_Roll() {}
+
+type AnswerOutsideInspirationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The path of the held roll answers as it does: the scene check or the group check.
+	//
+	// Types that are valid to be assigned to Result:
+	//
+	//	*AnswerOutsideInspirationResponse_SceneCheck
+	//	*AnswerOutsideInspirationResponse_GroupCheck
+	Result        isAnswerOutsideInspirationResponse_Result `protobuf_oneof:"result"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnswerOutsideInspirationResponse) Reset() {
+	*x = AnswerOutsideInspirationResponse{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnswerOutsideInspirationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnswerOutsideInspirationResponse) ProtoMessage() {}
+
+func (x *AnswerOutsideInspirationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnswerOutsideInspirationResponse.ProtoReflect.Descriptor instead.
+func (*AnswerOutsideInspirationResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *AnswerOutsideInspirationResponse) GetResult() isAnswerOutsideInspirationResponse_Result {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *AnswerOutsideInspirationResponse) GetSceneCheck() *RollSceneCheckResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerOutsideInspirationResponse_SceneCheck); ok {
+			return x.SceneCheck
+		}
+	}
+	return nil
+}
+
+func (x *AnswerOutsideInspirationResponse) GetGroupCheck() *RollGroupCheckResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerOutsideInspirationResponse_GroupCheck); ok {
+			return x.GroupCheck
+		}
+	}
+	return nil
+}
+
+type isAnswerOutsideInspirationResponse_Result interface {
+	isAnswerOutsideInspirationResponse_Result()
+}
+
+type AnswerOutsideInspirationResponse_SceneCheck struct {
+	SceneCheck *RollSceneCheckResponse `protobuf:"bytes,1,opt,name=scene_check,json=sceneCheck,proto3,oneof"`
+}
+
+type AnswerOutsideInspirationResponse_GroupCheck struct {
+	GroupCheck *RollGroupCheckResponse `protobuf:"bytes,2,opt,name=group_check,json=groupCheck,proto3,oneof"`
+}
+
+func (*AnswerOutsideInspirationResponse_SceneCheck) isAnswerOutsideInspirationResponse_Result() {}
+
+func (*AnswerOutsideInspirationResponse_GroupCheck) isAnswerOutsideInspirationResponse_Result() {}
+
 var File_meurpg_play_v1_resources_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\n" +
-	"\x1emeurpg/play/v1/resources.proto\x12\x0emeurpg.play.v1\x1a\x1bmeurpg/play/v1/combat.proto\x1a\x19meurpg/play/v1/play.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\x86\x01\n" +
+	"\x1emeurpg/play/v1/resources.proto\x12\x0emeurpg.play.v1\x1a\x1bmeurpg/play/v1/combat.proto\x1a\x1dmeurpg/play/v1/contests.proto\x1a\x19meurpg/play/v1/play.proto\x1a\x1ameurpg/play/v1/scene.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\x86\x01\n" +
 	"\x0fResourceBlocked\x12=\n" +
 	"\x06reason\x18\x01 \x01(\x0e2%.meurpg.play.v1.ResourceBlockedReasonR\x06reason\x12\x16\n" +
 	"\x06needed\x18\x02 \x01(\x05R\x06needed\x12\x1c\n" +
@@ -1849,13 +2608,14 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x05total\x18\x04 \x01(\x05R\x05total\";\n" +
 	"\rSpellSlotBack\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x14\n" +
-	"\x05count\x18\x02 \x01(\x05R\x05count\"\xd2\x01\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\"\x85\x02\n" +
 	"\x0fTakeRestRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12,\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x18.meurpg.play.v1.RestKindR\x04kind\x12'\n" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x12G\n" +
-	"\x10hit_dice_choices\x18\x04 \x03(\v2\x1d.meurpg.play.v1.HitDiceChoiceR\x0ehitDiceChoices\"`\n" +
+	"\x10hit_dice_choices\x18\x04 \x03(\v2\x1d.meurpg.play.v1.HitDiceChoiceR\x0ehitDiceChoices\x121\n" +
+	"\x15without_food_or_drink\x18d \x01(\bR\x12withoutFoodOrDrink\"`\n" +
 	"\rHitDiceChoice\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12,\n" +
 	"\x04dice\x18\x02 \x03(\v2\x18.meurpg.rules.v1.HitDiceR\x04dice\"K\n" +
@@ -1875,7 +2635,16 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x12\x12\n" +
 	"\x04face\x18\x02 \x01(\x05R\x04face\x123\n" +
 	"\x15constitution_modifier\x18\x03 \x01(\x05R\x14constitutionModifier\x12\x16\n" +
-	"\x06healed\x18\x04 \x01(\x05R\x06healed\"\x95\x02\n" +
+	"\x06healed\x18\x04 \x01(\x05R\x06healed\"\xbc\x01\n" +
+	"\x18UseArcaneRecoveryRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x123\n" +
+	"\x05slots\x18\x03 \x03(\v2\x1d.meurpg.play.v1.SpellSlotBackR\x05slots\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x7f\n" +
+	"\x19UseArcaneRecoveryResponse\x127\n" +
+	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x12)\n" +
+	"\x10recovered_levels\x18\x02 \x01(\x05R\x0frecoveredLevels\"\x95\x02\n" +
 	"\x14UseLayOnHandsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -1939,7 +2708,55 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKeyB\x06\n" +
 	"\x04roll\"]\n" +
 	"\x1fAnswerBardicInspirationResponse\x12:\n" +
-	"\x06attack\x18\x01 \x01(\v2\".meurpg.play.v1.RollAttackResponseR\x06attack*\xb5\x04\n" +
+	"\x06attack\x18\x01 \x01(\v2\".meurpg.play.v1.RollAttackResponseR\x06attack\"?\n" +
+	"\x1cGetOutsideInspirationRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\"\xb7\x01\n" +
+	"\x15OutsideInspirationDie\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
+	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x12\x14\n" +
+	"\x05sides\x18\x03 \x01(\x05R\x05sides\x12\x1b\n" +
+	"\tfrom_name\x18\x04 \x01(\tR\bfromName\x12!\n" +
+	"\fseconds_left\x18\x05 \x01(\x05R\vsecondsLeft\"~\n" +
+	"\x17BardicInspirationTarget\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12,\n" +
+	"\x12disabled_reason_pt\x18\x03 \x01(\tR\x10disabledReasonPt\"\xa1\x03\n" +
+	"\x1dGetOutsideInspirationResponse\x129\n" +
+	"\x04mine\x18\x01 \x01(\v2%.meurpg.play.v1.OutsideInspirationDieR\x04mine\x12\x17\n" +
+	"\ais_bard\x18\x02 \x01(\bR\x06isBard\x12\x14\n" +
+	"\x05sides\x18\x03 \x01(\x05R\x05sides\x12\x1b\n" +
+	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\x12\x19\n" +
+	"\buses_max\x18\x05 \x01(\x05R\ausesMax\x12A\n" +
+	"\atargets\x18\x06 \x03(\v2'.meurpg.play.v1.BardicInspirationTargetR\atargets\x129\n" +
+	"\x04held\x18\a \x03(\v2%.meurpg.play.v1.OutsideInspirationDieR\x04held\x12?\n" +
+	"\x06offers\x18\b \x03(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x06offers\x12\x1f\n" +
+	"\vcombat_open\x18\t \x01(\bR\n" +
+	"combatOpen\"\x9f\x01\n" +
+	"#GiveBardicInspirationOutsideRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12.\n" +
+	"\x13target_character_id\x18\x02 \x01(\tR\x11targetCharacterId\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"\x98\x01\n" +
+	"$GiveBardicInspirationOutsideResponse\x127\n" +
+	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x127\n" +
+	"\x03die\x18\x02 \x01(\v2%.meurpg.play.v1.OutsideInspirationDieR\x03die\"\xe1\x01\n" +
+	"\x1fAnswerOutsideInspirationRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x17\n" +
+	"\ahold_id\x18\x02 \x01(\tR\x06holdId\x12\x10\n" +
+	"\x03use\x18\x03 \x01(\bR\x03use\x12 \n" +
+	"\vroll_in_app\x18\x04 \x01(\bH\x00R\trollInApp\x12\x1f\n" +
+	"\n" +
+	"typed_face\x18\x05 \x01(\x05H\x00R\ttypedFace\x12'\n" +
+	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKeyB\x06\n" +
+	"\x04roll\"\xc2\x01\n" +
+	" AnswerOutsideInspirationResponse\x12I\n" +
+	"\vscene_check\x18\x01 \x01(\v2&.meurpg.play.v1.RollSceneCheckResponseH\x00R\n" +
+	"sceneCheck\x12I\n" +
+	"\vgroup_check\x18\x02 \x01(\v2&.meurpg.play.v1.RollGroupCheckResponseH\x00R\n" +
+	"groupCheckB\b\n" +
+	"\x06result*\xbb\x05\n" +
 	"\x15ResourceBlockedReason\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_COMBAT_OPEN\x10\x01\x12,\n" +
@@ -1953,7 +2770,10 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"&RESOURCE_BLOCKED_REASON_TARGET_REFUSED\x10\t\x12)\n" +
 	"%RESOURCE_BLOCKED_REASON_NOT_AVAILABLE\x10\n" +
 	"\x12/\n" +
-	"+RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING\x10\v*N\n" +
+	"+RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING\x10\v\x12)\n" +
+	"%RESOURCE_BLOCKED_REASON_NO_SHORT_REST\x10\f\x12-\n" +
+	")RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED\x10\r\x12*\n" +
+	"&RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE\x10\x0e*N\n" +
 	"\bRestKind\x12\x19\n" +
 	"\x15REST_KIND_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fREST_KIND_SHORT\x10\x01\x12\x12\n" +
@@ -1961,16 +2781,21 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x0eLayOnHandsCure\x12!\n" +
 	"\x1dLAY_ON_HANDS_CURE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19LAY_ON_HANDS_CURE_DISEASE\x10\x01\x12\x1c\n" +
-	"\x18LAY_ON_HANDS_CURE_POISON\x10\x022\xbc\x06\n" +
+	"\x18LAY_ON_HANDS_CURE_POISON\x10\x022\xa7\n" +
+	"\n" +
 	"\x0fResourceService\x12d\n" +
 	"\x0eGetRestPreview\x12%.meurpg.play.v1.GetRestPreviewRequest\x1a&.meurpg.play.v1.GetRestPreviewResponse\"\x03\x90\x02\x02\x12M\n" +
 	"\bTakeRest\x12\x1f.meurpg.play.v1.TakeRestRequest\x1a .meurpg.play.v1.TakeRestResponse\x12Y\n" +
-	"\fSpendHitDice\x12#.meurpg.play.v1.SpendHitDiceRequest\x1a$.meurpg.play.v1.SpendHitDiceResponse\x12\\\n" +
+	"\fSpendHitDice\x12#.meurpg.play.v1.SpendHitDiceRequest\x1a$.meurpg.play.v1.SpendHitDiceResponse\x12h\n" +
+	"\x11UseArcaneRecovery\x12(.meurpg.play.v1.UseArcaneRecoveryRequest\x1a).meurpg.play.v1.UseArcaneRecoveryResponse\x12\\\n" +
 	"\rUseLayOnHands\x12$.meurpg.play.v1.UseLayOnHandsRequest\x1a%.meurpg.play.v1.UseLayOnHandsResponse\x12b\n" +
 	"\x0fCreateSpellSlot\x12&.meurpg.play.v1.CreateSpellSlotRequest\x1a'.meurpg.play.v1.CreateSpellSlotResponse\x12e\n" +
 	"\x10ConvertSpellSlot\x12'.meurpg.play.v1.ConvertSpellSlotRequest\x1a(.meurpg.play.v1.ConvertSpellSlotResponse\x12t\n" +
 	"\x15GiveBardicInspiration\x12,.meurpg.play.v1.GiveBardicInspirationRequest\x1a-.meurpg.play.v1.GiveBardicInspirationResponse\x12z\n" +
-	"\x17AnswerBardicInspiration\x12..meurpg.play.v1.AnswerBardicInspirationRequest\x1a/.meurpg.play.v1.AnswerBardicInspirationResponseB\xbc\x01\n" +
+	"\x17AnswerBardicInspiration\x12..meurpg.play.v1.AnswerBardicInspirationRequest\x1a/.meurpg.play.v1.AnswerBardicInspirationResponse\x12t\n" +
+	"\x15GetOutsideInspiration\x12,.meurpg.play.v1.GetOutsideInspirationRequest\x1a-.meurpg.play.v1.GetOutsideInspirationResponse\x12\x89\x01\n" +
+	"\x1cGiveBardicInspirationOutside\x123.meurpg.play.v1.GiveBardicInspirationOutsideRequest\x1a4.meurpg.play.v1.GiveBardicInspirationOutsideResponse\x12}\n" +
+	"\x18AnswerOutsideInspiration\x12/.meurpg.play.v1.AnswerOutsideInspirationRequest\x1a0.meurpg.play.v1.AnswerOutsideInspirationResponseB\xbc\x01\n" +
 	"\x12com.meurpg.play.v1B\x0eResourcesProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 
 var (
@@ -1986,80 +2811,111 @@ func file_meurpg_play_v1_resources_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_meurpg_play_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_meurpg_play_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_meurpg_play_v1_resources_proto_goTypes = []any{
-	(ResourceBlockedReason)(0),              // 0: meurpg.play.v1.ResourceBlockedReason
-	(RestKind)(0),                           // 1: meurpg.play.v1.RestKind
-	(LayOnHandsCure)(0),                     // 2: meurpg.play.v1.LayOnHandsCure
-	(*ResourceBlocked)(nil),                 // 3: meurpg.play.v1.ResourceBlocked
-	(*GetRestPreviewRequest)(nil),           // 4: meurpg.play.v1.GetRestPreviewRequest
-	(*GetRestPreviewResponse)(nil),          // 5: meurpg.play.v1.GetRestPreviewResponse
-	(*RestPreview)(nil),                     // 6: meurpg.play.v1.RestPreview
-	(*RestResourceBack)(nil),                // 7: meurpg.play.v1.RestResourceBack
-	(*SpellSlotBack)(nil),                   // 8: meurpg.play.v1.SpellSlotBack
-	(*TakeRestRequest)(nil),                 // 9: meurpg.play.v1.TakeRestRequest
-	(*HitDiceChoice)(nil),                   // 10: meurpg.play.v1.HitDiceChoice
-	(*TakeRestResponse)(nil),                // 11: meurpg.play.v1.TakeRestResponse
-	(*SpendHitDiceRequest)(nil),             // 12: meurpg.play.v1.SpendHitDiceRequest
-	(*SpendHitDiceResponse)(nil),            // 13: meurpg.play.v1.SpendHitDiceResponse
-	(*UseLayOnHandsRequest)(nil),            // 14: meurpg.play.v1.UseLayOnHandsRequest
-	(*UseLayOnHandsResponse)(nil),           // 15: meurpg.play.v1.UseLayOnHandsResponse
-	(*CreateSpellSlotRequest)(nil),          // 16: meurpg.play.v1.CreateSpellSlotRequest
-	(*CreateSpellSlotResponse)(nil),         // 17: meurpg.play.v1.CreateSpellSlotResponse
-	(*ConvertSpellSlotRequest)(nil),         // 18: meurpg.play.v1.ConvertSpellSlotRequest
-	(*ConvertSpellSlotResponse)(nil),        // 19: meurpg.play.v1.ConvertSpellSlotResponse
-	(*GiveBardicInspirationRequest)(nil),    // 20: meurpg.play.v1.GiveBardicInspirationRequest
-	(*GiveBardicInspirationResponse)(nil),   // 21: meurpg.play.v1.GiveBardicInspirationResponse
-	(*AnswerBardicInspirationRequest)(nil),  // 22: meurpg.play.v1.AnswerBardicInspirationRequest
-	(*AnswerBardicInspirationResponse)(nil), // 23: meurpg.play.v1.AnswerBardicInspirationResponse
-	(*v1.HitDice)(nil),                      // 24: meurpg.rules.v1.HitDice
-	(*CharacterVitals)(nil),                 // 25: meurpg.play.v1.CharacterVitals
-	(*Encounter)(nil),                       // 26: meurpg.play.v1.Encounter
-	(*RollAttackResponse)(nil),              // 27: meurpg.play.v1.RollAttackResponse
+	(ResourceBlockedReason)(0),                   // 0: meurpg.play.v1.ResourceBlockedReason
+	(RestKind)(0),                                // 1: meurpg.play.v1.RestKind
+	(LayOnHandsCure)(0),                          // 2: meurpg.play.v1.LayOnHandsCure
+	(*ResourceBlocked)(nil),                      // 3: meurpg.play.v1.ResourceBlocked
+	(*GetRestPreviewRequest)(nil),                // 4: meurpg.play.v1.GetRestPreviewRequest
+	(*GetRestPreviewResponse)(nil),               // 5: meurpg.play.v1.GetRestPreviewResponse
+	(*RestPreview)(nil),                          // 6: meurpg.play.v1.RestPreview
+	(*RestResourceBack)(nil),                     // 7: meurpg.play.v1.RestResourceBack
+	(*SpellSlotBack)(nil),                        // 8: meurpg.play.v1.SpellSlotBack
+	(*TakeRestRequest)(nil),                      // 9: meurpg.play.v1.TakeRestRequest
+	(*HitDiceChoice)(nil),                        // 10: meurpg.play.v1.HitDiceChoice
+	(*TakeRestResponse)(nil),                     // 11: meurpg.play.v1.TakeRestResponse
+	(*SpendHitDiceRequest)(nil),                  // 12: meurpg.play.v1.SpendHitDiceRequest
+	(*SpendHitDiceResponse)(nil),                 // 13: meurpg.play.v1.SpendHitDiceResponse
+	(*UseArcaneRecoveryRequest)(nil),             // 14: meurpg.play.v1.UseArcaneRecoveryRequest
+	(*UseArcaneRecoveryResponse)(nil),            // 15: meurpg.play.v1.UseArcaneRecoveryResponse
+	(*UseLayOnHandsRequest)(nil),                 // 16: meurpg.play.v1.UseLayOnHandsRequest
+	(*UseLayOnHandsResponse)(nil),                // 17: meurpg.play.v1.UseLayOnHandsResponse
+	(*CreateSpellSlotRequest)(nil),               // 18: meurpg.play.v1.CreateSpellSlotRequest
+	(*CreateSpellSlotResponse)(nil),              // 19: meurpg.play.v1.CreateSpellSlotResponse
+	(*ConvertSpellSlotRequest)(nil),              // 20: meurpg.play.v1.ConvertSpellSlotRequest
+	(*ConvertSpellSlotResponse)(nil),             // 21: meurpg.play.v1.ConvertSpellSlotResponse
+	(*GiveBardicInspirationRequest)(nil),         // 22: meurpg.play.v1.GiveBardicInspirationRequest
+	(*GiveBardicInspirationResponse)(nil),        // 23: meurpg.play.v1.GiveBardicInspirationResponse
+	(*AnswerBardicInspirationRequest)(nil),       // 24: meurpg.play.v1.AnswerBardicInspirationRequest
+	(*AnswerBardicInspirationResponse)(nil),      // 25: meurpg.play.v1.AnswerBardicInspirationResponse
+	(*GetOutsideInspirationRequest)(nil),         // 26: meurpg.play.v1.GetOutsideInspirationRequest
+	(*OutsideInspirationDie)(nil),                // 27: meurpg.play.v1.OutsideInspirationDie
+	(*BardicInspirationTarget)(nil),              // 28: meurpg.play.v1.BardicInspirationTarget
+	(*GetOutsideInspirationResponse)(nil),        // 29: meurpg.play.v1.GetOutsideInspirationResponse
+	(*GiveBardicInspirationOutsideRequest)(nil),  // 30: meurpg.play.v1.GiveBardicInspirationOutsideRequest
+	(*GiveBardicInspirationOutsideResponse)(nil), // 31: meurpg.play.v1.GiveBardicInspirationOutsideResponse
+	(*AnswerOutsideInspirationRequest)(nil),      // 32: meurpg.play.v1.AnswerOutsideInspirationRequest
+	(*AnswerOutsideInspirationResponse)(nil),     // 33: meurpg.play.v1.AnswerOutsideInspirationResponse
+	(*v1.HitDice)(nil),                           // 34: meurpg.rules.v1.HitDice
+	(*CharacterVitals)(nil),                      // 35: meurpg.play.v1.CharacterVitals
+	(*Encounter)(nil),                            // 36: meurpg.play.v1.Encounter
+	(*RollAttackResponse)(nil),                   // 37: meurpg.play.v1.RollAttackResponse
+	(*OutsideInspirationOffer)(nil),              // 38: meurpg.play.v1.OutsideInspirationOffer
+	(*RollSceneCheckResponse)(nil),               // 39: meurpg.play.v1.RollSceneCheckResponse
+	(*RollGroupCheckResponse)(nil),               // 40: meurpg.play.v1.RollGroupCheckResponse
 }
 var file_meurpg_play_v1_resources_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.ResourceBlocked.reason:type_name -> meurpg.play.v1.ResourceBlockedReason
 	1,  // 1: meurpg.play.v1.GetRestPreviewRequest.kind:type_name -> meurpg.play.v1.RestKind
 	6,  // 2: meurpg.play.v1.GetRestPreviewResponse.characters:type_name -> meurpg.play.v1.RestPreview
 	7,  // 3: meurpg.play.v1.RestPreview.resources:type_name -> meurpg.play.v1.RestResourceBack
-	24, // 4: meurpg.play.v1.RestPreview.hit_dice_spent:type_name -> meurpg.rules.v1.HitDice
-	24, // 5: meurpg.play.v1.RestPreview.hit_dice_back:type_name -> meurpg.rules.v1.HitDice
+	34, // 4: meurpg.play.v1.RestPreview.hit_dice_spent:type_name -> meurpg.rules.v1.HitDice
+	34, // 5: meurpg.play.v1.RestPreview.hit_dice_back:type_name -> meurpg.rules.v1.HitDice
 	8,  // 6: meurpg.play.v1.RestPreview.spell_slots_back:type_name -> meurpg.play.v1.SpellSlotBack
 	1,  // 7: meurpg.play.v1.TakeRestRequest.kind:type_name -> meurpg.play.v1.RestKind
 	10, // 8: meurpg.play.v1.TakeRestRequest.hit_dice_choices:type_name -> meurpg.play.v1.HitDiceChoice
-	24, // 9: meurpg.play.v1.HitDiceChoice.dice:type_name -> meurpg.rules.v1.HitDice
-	25, // 10: meurpg.play.v1.TakeRestResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	25, // 11: meurpg.play.v1.SpendHitDiceResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	2,  // 12: meurpg.play.v1.UseLayOnHandsRequest.cure:type_name -> meurpg.play.v1.LayOnHandsCure
-	26, // 13: meurpg.play.v1.UseLayOnHandsResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	26, // 14: meurpg.play.v1.CreateSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	25, // 15: meurpg.play.v1.CreateSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	26, // 16: meurpg.play.v1.ConvertSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	25, // 17: meurpg.play.v1.ConvertSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	26, // 18: meurpg.play.v1.GiveBardicInspirationResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	25, // 19: meurpg.play.v1.GiveBardicInspirationResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	27, // 20: meurpg.play.v1.AnswerBardicInspirationResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
-	4,  // 21: meurpg.play.v1.ResourceService.GetRestPreview:input_type -> meurpg.play.v1.GetRestPreviewRequest
-	9,  // 22: meurpg.play.v1.ResourceService.TakeRest:input_type -> meurpg.play.v1.TakeRestRequest
-	12, // 23: meurpg.play.v1.ResourceService.SpendHitDice:input_type -> meurpg.play.v1.SpendHitDiceRequest
-	14, // 24: meurpg.play.v1.ResourceService.UseLayOnHands:input_type -> meurpg.play.v1.UseLayOnHandsRequest
-	16, // 25: meurpg.play.v1.ResourceService.CreateSpellSlot:input_type -> meurpg.play.v1.CreateSpellSlotRequest
-	18, // 26: meurpg.play.v1.ResourceService.ConvertSpellSlot:input_type -> meurpg.play.v1.ConvertSpellSlotRequest
-	20, // 27: meurpg.play.v1.ResourceService.GiveBardicInspiration:input_type -> meurpg.play.v1.GiveBardicInspirationRequest
-	22, // 28: meurpg.play.v1.ResourceService.AnswerBardicInspiration:input_type -> meurpg.play.v1.AnswerBardicInspirationRequest
-	5,  // 29: meurpg.play.v1.ResourceService.GetRestPreview:output_type -> meurpg.play.v1.GetRestPreviewResponse
-	11, // 30: meurpg.play.v1.ResourceService.TakeRest:output_type -> meurpg.play.v1.TakeRestResponse
-	13, // 31: meurpg.play.v1.ResourceService.SpendHitDice:output_type -> meurpg.play.v1.SpendHitDiceResponse
-	15, // 32: meurpg.play.v1.ResourceService.UseLayOnHands:output_type -> meurpg.play.v1.UseLayOnHandsResponse
-	17, // 33: meurpg.play.v1.ResourceService.CreateSpellSlot:output_type -> meurpg.play.v1.CreateSpellSlotResponse
-	19, // 34: meurpg.play.v1.ResourceService.ConvertSpellSlot:output_type -> meurpg.play.v1.ConvertSpellSlotResponse
-	21, // 35: meurpg.play.v1.ResourceService.GiveBardicInspiration:output_type -> meurpg.play.v1.GiveBardicInspirationResponse
-	23, // 36: meurpg.play.v1.ResourceService.AnswerBardicInspiration:output_type -> meurpg.play.v1.AnswerBardicInspirationResponse
-	29, // [29:37] is the sub-list for method output_type
-	21, // [21:29] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	34, // 9: meurpg.play.v1.HitDiceChoice.dice:type_name -> meurpg.rules.v1.HitDice
+	35, // 10: meurpg.play.v1.TakeRestResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	35, // 11: meurpg.play.v1.SpendHitDiceResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	8,  // 12: meurpg.play.v1.UseArcaneRecoveryRequest.slots:type_name -> meurpg.play.v1.SpellSlotBack
+	35, // 13: meurpg.play.v1.UseArcaneRecoveryResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	2,  // 14: meurpg.play.v1.UseLayOnHandsRequest.cure:type_name -> meurpg.play.v1.LayOnHandsCure
+	36, // 15: meurpg.play.v1.UseLayOnHandsResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	36, // 16: meurpg.play.v1.CreateSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	35, // 17: meurpg.play.v1.CreateSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	36, // 18: meurpg.play.v1.ConvertSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	35, // 19: meurpg.play.v1.ConvertSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	36, // 20: meurpg.play.v1.GiveBardicInspirationResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	35, // 21: meurpg.play.v1.GiveBardicInspirationResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	37, // 22: meurpg.play.v1.AnswerBardicInspirationResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
+	27, // 23: meurpg.play.v1.GetOutsideInspirationResponse.mine:type_name -> meurpg.play.v1.OutsideInspirationDie
+	28, // 24: meurpg.play.v1.GetOutsideInspirationResponse.targets:type_name -> meurpg.play.v1.BardicInspirationTarget
+	27, // 25: meurpg.play.v1.GetOutsideInspirationResponse.held:type_name -> meurpg.play.v1.OutsideInspirationDie
+	38, // 26: meurpg.play.v1.GetOutsideInspirationResponse.offers:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	35, // 27: meurpg.play.v1.GiveBardicInspirationOutsideResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	27, // 28: meurpg.play.v1.GiveBardicInspirationOutsideResponse.die:type_name -> meurpg.play.v1.OutsideInspirationDie
+	39, // 29: meurpg.play.v1.AnswerOutsideInspirationResponse.scene_check:type_name -> meurpg.play.v1.RollSceneCheckResponse
+	40, // 30: meurpg.play.v1.AnswerOutsideInspirationResponse.group_check:type_name -> meurpg.play.v1.RollGroupCheckResponse
+	4,  // 31: meurpg.play.v1.ResourceService.GetRestPreview:input_type -> meurpg.play.v1.GetRestPreviewRequest
+	9,  // 32: meurpg.play.v1.ResourceService.TakeRest:input_type -> meurpg.play.v1.TakeRestRequest
+	12, // 33: meurpg.play.v1.ResourceService.SpendHitDice:input_type -> meurpg.play.v1.SpendHitDiceRequest
+	14, // 34: meurpg.play.v1.ResourceService.UseArcaneRecovery:input_type -> meurpg.play.v1.UseArcaneRecoveryRequest
+	16, // 35: meurpg.play.v1.ResourceService.UseLayOnHands:input_type -> meurpg.play.v1.UseLayOnHandsRequest
+	18, // 36: meurpg.play.v1.ResourceService.CreateSpellSlot:input_type -> meurpg.play.v1.CreateSpellSlotRequest
+	20, // 37: meurpg.play.v1.ResourceService.ConvertSpellSlot:input_type -> meurpg.play.v1.ConvertSpellSlotRequest
+	22, // 38: meurpg.play.v1.ResourceService.GiveBardicInspiration:input_type -> meurpg.play.v1.GiveBardicInspirationRequest
+	24, // 39: meurpg.play.v1.ResourceService.AnswerBardicInspiration:input_type -> meurpg.play.v1.AnswerBardicInspirationRequest
+	26, // 40: meurpg.play.v1.ResourceService.GetOutsideInspiration:input_type -> meurpg.play.v1.GetOutsideInspirationRequest
+	30, // 41: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:input_type -> meurpg.play.v1.GiveBardicInspirationOutsideRequest
+	32, // 42: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:input_type -> meurpg.play.v1.AnswerOutsideInspirationRequest
+	5,  // 43: meurpg.play.v1.ResourceService.GetRestPreview:output_type -> meurpg.play.v1.GetRestPreviewResponse
+	11, // 44: meurpg.play.v1.ResourceService.TakeRest:output_type -> meurpg.play.v1.TakeRestResponse
+	13, // 45: meurpg.play.v1.ResourceService.SpendHitDice:output_type -> meurpg.play.v1.SpendHitDiceResponse
+	15, // 46: meurpg.play.v1.ResourceService.UseArcaneRecovery:output_type -> meurpg.play.v1.UseArcaneRecoveryResponse
+	17, // 47: meurpg.play.v1.ResourceService.UseLayOnHands:output_type -> meurpg.play.v1.UseLayOnHandsResponse
+	19, // 48: meurpg.play.v1.ResourceService.CreateSpellSlot:output_type -> meurpg.play.v1.CreateSpellSlotResponse
+	21, // 49: meurpg.play.v1.ResourceService.ConvertSpellSlot:output_type -> meurpg.play.v1.ConvertSpellSlotResponse
+	23, // 50: meurpg.play.v1.ResourceService.GiveBardicInspiration:output_type -> meurpg.play.v1.GiveBardicInspirationResponse
+	25, // 51: meurpg.play.v1.ResourceService.AnswerBardicInspiration:output_type -> meurpg.play.v1.AnswerBardicInspirationResponse
+	29, // 52: meurpg.play.v1.ResourceService.GetOutsideInspiration:output_type -> meurpg.play.v1.GetOutsideInspirationResponse
+	31, // 53: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:output_type -> meurpg.play.v1.GiveBardicInspirationOutsideResponse
+	33, // 54: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:output_type -> meurpg.play.v1.AnswerOutsideInspirationResponse
+	43, // [43:55] is the sub-list for method output_type
+	31, // [31:43] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_resources_proto_init() }
@@ -2068,19 +2924,29 @@ func file_meurpg_play_v1_resources_proto_init() {
 		return
 	}
 	file_meurpg_play_v1_combat_proto_init()
+	file_meurpg_play_v1_contests_proto_init()
 	file_meurpg_play_v1_play_proto_init()
+	file_meurpg_play_v1_scene_proto_init()
 	file_meurpg_play_v1_resources_proto_msgTypes[9].OneofWrappers = []any{
 		(*SpendHitDiceRequest_RollInApp)(nil),
 		(*SpendHitDiceRequest_TypedFace)(nil),
 	}
-	file_meurpg_play_v1_resources_proto_msgTypes[11].OneofWrappers = []any{
+	file_meurpg_play_v1_resources_proto_msgTypes[13].OneofWrappers = []any{
 		(*UseLayOnHandsRequest_Amount)(nil),
 		(*UseLayOnHandsRequest_Cure)(nil),
 	}
-	file_meurpg_play_v1_resources_proto_msgTypes[12].OneofWrappers = []any{}
-	file_meurpg_play_v1_resources_proto_msgTypes[19].OneofWrappers = []any{
+	file_meurpg_play_v1_resources_proto_msgTypes[14].OneofWrappers = []any{}
+	file_meurpg_play_v1_resources_proto_msgTypes[21].OneofWrappers = []any{
 		(*AnswerBardicInspirationRequest_RollInApp)(nil),
 		(*AnswerBardicInspirationRequest_TypedFace)(nil),
+	}
+	file_meurpg_play_v1_resources_proto_msgTypes[29].OneofWrappers = []any{
+		(*AnswerOutsideInspirationRequest_RollInApp)(nil),
+		(*AnswerOutsideInspirationRequest_TypedFace)(nil),
+	}
+	file_meurpg_play_v1_resources_proto_msgTypes[30].OneofWrappers = []any{
+		(*AnswerOutsideInspirationResponse_SceneCheck)(nil),
+		(*AnswerOutsideInspirationResponse_GroupCheck)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -2088,7 +2954,7 @@ func file_meurpg_play_v1_resources_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_resources_proto_rawDesc), len(file_meurpg_play_v1_resources_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   21,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

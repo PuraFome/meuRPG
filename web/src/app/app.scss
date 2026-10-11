@@ -181,16 +181,6 @@
   }
 }
 
-.app-footer {
-  padding: var(--mr-space-4) var(--mr-gutter) var(--mr-space-6);
-  text-align: center;
-  font-size: 14px;
-
-  a {
-    color: var(--mr-ink-muted);
-  }
-}
-
 // On paper only the page's own print layout shows (the printed map, MR-033):
 // no bar, no footer, no gutter, and no theme background.
 @media print {
@@ -200,7 +190,6 @@
   }
 
   .app-bar,
-  .app-footer,
   app-live-notice {
     display: none;
   }
@@ -208,5 +197,20 @@
   .app-content {
     max-width: none;
     padding: 0;
+  }
+}
+
+// Shown only when a navigation takes longer than a blink (the guard asking who is signed in, a page's code on a slow phone), so a quick
+// one never flashes it: the animation holds it invisible for 400 ms.
+.app-loading {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  animation: app-loading-in 0s linear 400ms both;
+  opacity: 0;
+}
+
+@keyframes app-loading-in {
+  to {
+    opacity: 1;
   }
 }

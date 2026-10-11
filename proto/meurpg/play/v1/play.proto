@@ -243,7 +243,7 @@ service PlayService {
   // About every 60 seconds the server checks again, in the database, that
   // the caller is still signed in and still a member: if not, the stream
   // ends with the same error a call would get (`unauthenticated` or
-  // `not_found`). A stream lasts at most 30 minutes and then ends without
+  // `not_found`). A stream lasts at most 10 minutes and then ends without
   // an error; it also ends without an error when the server restarts. A
   // stream that cannot keep up (the app stopped reading) ends with
   // `unavailable`.
@@ -257,10 +257,12 @@ service PlayService {
   //     member of it (a pending member neither).
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION).
-  //   - `resource_exhausted`: the caller already has 8 streams open on this
-  //     campaign (a few tabs and devices). No typed reason: the app treats
-  //     it as transient, retries with backoff, and a closed tab gives its
-  //     place back.
+  //   - `unavailable` on an open stream: the caller opened a 5th stream on
+  //     this campaign (more than a few tabs and devices), and this one, their
+  //     oldest, made room for it. It is usually the stream of a page that went
+  //     away and was not noticed yet; if the page is still open, the app
+  //     reconnects with its backoff, as after any transient end. Opening a
+  //     stream is never refused for the count.
   rpc WatchGameSession(WatchGameSessionRequest) returns (stream WatchGameSessionResponse);
 
   // AdjustCharacterVitals is the master's correction of a player
@@ -464,7 +466,12 @@ service PlayService {
   //   - `permission_denied`: the caller is the master.
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
-  //     attempt left), WRONG_DICE_MODE, NO_CHARACTER.
+  //     attempt left), WRONG_DICE_MODE, NO_CHARACTER; or ResourceBlocked
+  //     INSPIRATION_PENDING (an earlier roll waits for its answer).
+  //
+  // A character that holds a Bardic Inspiration die (given outside a combat) gets
+  // `inspiration_offer` in place of `roll`: the d20 is rolled and kept, nothing is
+  // written, and ResourceService.AnswerOutsideInspiration settles it.
   rpc RollSceneCheck(RollSceneCheckRequest) returns (RollSceneCheckResponse);
 
   // SearchForTraps is the player's "Procurar armadilhas" (MR-035, D5, question
@@ -1045,6 +1052,18 @@ message CharacterVitals {
   // sizes are kept apart (SRD 5.1, "Multiclassing"): a short rest spends them by
   // size and a long rest gives them back by size.
   map<int32, int32> hit_dice_used_by_die = 30;
+  // The level of exhaustion, 0 to 6 (SRD 5.1, Conditions): the master sets it
+  // (CombatEffectService.SetExhaustion) and a long rest with food takes one off. From
+  // level 4 on, `hit_points_max` is already half of the sheet's.
+  int32 exhaustion_level = 100;
+  // The base armor class an effect that lasts gives the character while it lasts (Mage Armor:
+  // 13 + Dexterity, SRD 5.1); 0 without one. The session's panels show the better of it and
+  // the sheet's armor class.
+  int32 armor_class_base = 101;
+  // The combined level of spell slots the wizard's Arcane Recovery gives back (half
+  // the WIZARD level, rounded up; SRD 5.1, Wizard). 0: the character has no wizard
+  // level. Whether the use is left is the `arcane_recovery` resource.
+  int32 arcane_recovery_allowance = 102;
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's
@@ -1217,6 +1236,10 @@ message WatchGameSessionResponse {
     // player gets it only for a cast they may see, and a cast by an NPC that is not on
     // the stage reaches the master alone.
     SpellCastsChanged spell_casts_changed = 27;
+    // A group check was asked, answered or closed (ContestService): read it again
+    // (GetGroupCheck), each as your own role. A hint with no content (RN-10): the skill,
+    // the DC and the rolls never travel on the stream.
+    GroupCheckChanged group_check_changed = 40;
     // A Revivify cast outside a combat was asked, or the master answered it: read
     // RevivifyService.ListRevivifyRequests again. A hint with no content. Only the master
     // and the caster's player get it (RN-10).
@@ -1263,6 +1286,8 @@ message WatchGameSessionResponse {
   // SpellCastsChanged is the content-free hint that the casts outside a combat changed.
   message SpellCastsChanged {}
 
+  // GroupCheckChanged is the content-free hint that the group check changed.
+  message GroupCheckChanged {}
   // RevivifyChanged is the content-free hint that the casts of Revivify outside a combat
   // changed.
   message RevivifyChanged {}

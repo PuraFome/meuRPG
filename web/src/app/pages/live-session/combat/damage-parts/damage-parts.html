@@ -26,13 +26,13 @@
   @if (extras().length) {
     <ul class="extras" [attr.aria-label]="'Extras que você pode somar'">
       @for (p of extras(); track p.key) {
-        <li class="extra" [class.extra--off]="!p.available">
+        <li class="extra" [class.extra--off]="!p.available || otherManeuver(p)">
           <label class="extra__row">
             <input
               type="checkbox"
               class="extra__box"
               [checked]="!!pickOf(p)"
-              [disabled]="!p.available || disabled()"
+              [disabled]="!p.available || otherManeuver(p) || disabled()"
               [attr.aria-describedby]="id + '-' + p.key"
               (change)="toggle(p)"
             />
@@ -49,6 +49,8 @@
           <span class="extra__why" [id]="id + '-' + p.key">
             @if (!p.available) {
               <mat-icon aria-hidden="true">block</mat-icon>Indisponível:
+            } @else if (otherManeuver(p)) {
+              <mat-icon aria-hidden="true">block</mat-icon>Indisponível: só uma manobra por ataque.
             }
             {{ p.reasonPt }}{{ p.reasonPt && p.notePt ? ' ' : '' }}{{ p.notePt }}
           </span>

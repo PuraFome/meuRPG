@@ -29,6 +29,7 @@ import { newKey } from '../../../../core/connect/idempotency';
 import { article } from '../../../../core/combat/combat-log';
 import { groupLabel } from '../../../../core/combat/monsters';
 import { isDown, isPlayer, stateWord } from '../../../../core/combat/combat-view';
+import { isCreature } from '../../../../core/combat/creature-names';
 import { formatInt, tight } from '../../../../core/format/text';
 import { ExperienceStore } from '../../../../core/progression/experience-store';
 import { ProgressionClient } from '../../../../core/progression/progression-client';
@@ -112,7 +113,7 @@ export class CombatXp {
   private keyFor = '';
 
   protected readonly defeated = computed(() =>
-    this.encounter().combatants.filter((c) => !isPlayer(c) && c.defeated),
+    this.encounter().combatants.filter((c) => !isPlayer(c) && !isCreature(c) && c.defeated),
   );
   protected readonly total = computed(() => this.defeated().reduce((sum, c) => sum + c.xpValue, 0));
   /** "200 + 50 + 50 + 50". */

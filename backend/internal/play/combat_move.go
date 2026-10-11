@@ -139,8 +139,8 @@ func moverOf(c playdb.Combatant) grid.Mover {
 
 // noSpeed are the conditions that leave a creature with no speed (SRD 5.1):
 // grappled and restrained set it to 0, and a paralyzed, petrified, stunned or
-// unconscious creature cannot move at all. (Prone, which makes standing up cost
-// half the speed, is not modeled: the app has no action for standing up.)
+// unconscious creature cannot move at all. (Prone does not set the speed to 0: standing
+// up costs half of it, see combat_standup.go.)
 var noSpeed = []string{
 	"condition:grappled", "condition:restrained", "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious",
 }
@@ -152,9 +152,16 @@ func speedDFt(c playdb.Combatant) int {
 	if slices.ContainsFunc(c.Conditions, func(k string) bool { return slices.Contains(noSpeed, k) }) {
 		return 0
 	}
-	speed := int(max(c.SpeedFt, c.SpeedFlyFt)) * 10
+	if c.EffectNoMove { // the lethargy of a Velocidade that ended (RN-22)
+		return 0
+	}
+	speed := (int(max(c.SpeedFt, c.SpeedFlyFt)) + int(c.EffectSpeedAddFt)) * 10
 	if c.Dashed {
 		speed *= 2
+	}
+	// The speed the effects leave: doubled by Velocidade, halved or 0 by exhaustion (SRD, Conditions).
+	if c.EffectSpeedPct > 0 {
+		speed = speed * int(c.EffectSpeedPct) / 100
 	}
 	return speed
 }
@@ -286,16 +293,20 @@ func (s *Service) MoveCombatant(
 
 	var moved playdb.Combatant
 	var made actionEvent
-	var stoppedEarly bool    // a creature the player does not see cut the move short
-	var logged bool          // the move is a line of the combat log
-	var offered []string     // the reactors the move offered an attack
-	var markCleared bool     // the move took the master's cover mark off
-	var th *trapHook         // the traps the move may fire (combat_traps.go, MR-035)
-	var moveID string        // the id of the opportunity offers the move made, if any
-	var opened []grid.Square // the closed doors the move opened (RN-26)
-	var lockedDoor bool      // a locked door stopped the move (a player only learns of one they know)
+	var stoppedEarly bool              // a creature the player does not see cut the move short
+	var logged bool                    // the move is a line of the combat log
+	var offered []string               // the reactors the move offered an attack
+	var markCleared bool               // the move took the master's cover mark off
+	var th *trapHook                   // the traps the move may fire (combat_traps.go, MR-035)
+	var moveID string                  // the id of the opportunity offers the move made, if any
+	var opened []grid.Square           // the closed doors the move opened (RN-26)
+	var lockedDoor bool                // a locked door stopped the move (a player only learns of one they know)
+	var draggedMoved *playdb.Combatant // the creature the mover dragged along, where it stands now
+	var draggedFrom *grid.Square       // and where it stood
+	var draggedID string               // the creature dragged along: it provokes nothing against its grappler
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: encID}, func(c *combatTx) (any, error) {
 		logged, stoppedEarly, moveID, opened, lockedDoor = false, false, "", nil, false
+		draggedMoved, draggedFrom, draggedID = nil, nil, ""
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -313,6 +324,20 @@ func (s *Service) MoveCombatant(
 		}
 		if err := v.mayAct(target); err != nil {
 			return nil, err
+		}
+		// A grappler drags the creature it holds, at half speed (combat_drag.go).
+		dragged, dragging, err := s.draggedBy(ctx, c.q, cs, target)
+		if err != nil {
+			return nil, err
+		}
+		factor, dragHalves := 1, false
+		if dragging && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && combat.DragHalvesSpeed(target.Size, dragged.Size) {
+			factor, dragHalves = 2, true
+		}
+		// Crawling (SRD 5.1, "Being Prone"): every foot of movement costs 1 extra foot, so a
+		// prone creature pays twice (a drag halves the speed on top of it). See combat_standup.go.
+		if crawls(target) && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED {
+			factor *= 2
 		}
 		col, row := col, row // the closure runs again on a retry: a placement picks its square afresh
 		switch {
@@ -355,6 +380,10 @@ func (s *Service) MoveCombatant(
 			if err := s.mustNotBeDown(ctx, c.tx, m.CampaignID, target); err != nil {
 				return nil, err
 			}
+			// A surprised creature does not move on its first turn (SRD 5.1, "Surprise").
+			if err := s.mustNotBeSurprised(ctx, c, target); err != nil {
+				return nil, err
+			}
 		}
 
 		if th, err = s.newTrapHook(ctx, c.tx, m.CampaignID, c.enc, target); err != nil {
@@ -392,7 +421,7 @@ func (s *Service) MoveCombatant(
 			}
 			plan := planOn(v, terrain, known) // the walls and rubble the player knows; the rest is floor to them
 			mover, origin := moverOf(target), squareOfCombatant(target)
-			left := movementLeftDFt(target)
+			left := movementLeftDFt(target) / factor // the path that fits: a drag costs twice its length
 			switch jump {
 			case playv1.JumpKind_JUMP_KIND_UNSPECIFIED:
 				mv := plan.Move(origin, to, occ, mover)
@@ -483,7 +512,7 @@ func (s *Service) MoveCombatant(
 		}
 		made.StoppedEarly, made.LockedDoor = stoppedEarly, lockedDoor
 
-		used := int(target.MovementUsedDft) + cost
+		used := int(target.MovementUsedDft) + cost*factor
 		if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
 			ID: target.ID, GridCol: &newCol, GridRow: &newRow,
 			MovementUsedFt: clamp32(used/10, 0, math.MaxInt32), MovementUsedDft: clamp32(used, 0, math.MaxInt32), LastMoveDft: clamp32(last, 0, math.MaxInt32), CoverMark: coverMark,
@@ -493,12 +522,22 @@ func (s *Service) MoveCombatant(
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
+		if dragging && !forced && jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && squareChanged && placed(target) {
+			from := squareOfCombatant(dragged)
+			moved, err := s.dragTo(ctx, c, cs, target, dragged, dragSquare(terrain, squareOfCombatant(target), to, moverOf(target)))
+			if err != nil {
+				return nil, err
+			}
+			draggedMoved, draggedFrom = &moved, &from
+			draggedID = dragged.ID
+			made.Dragged, made.DraggedFrom = dragged.ID, moveStateOf(dragged)
+		}
 		// Opportunity attacks (D1b): a move on foot or a long jump (it spends
 		// movement), on the mover's turn, that leaves an enemy's reach lands, and the
 		// enemy is offered an attack. A high jump moves nobody; a placement out of
 		// turn, a forced move and a move that stays put offer nothing.
 		if jump != playv1.JumpKind_JUMP_KIND_HIGH && !forced && onTurn && placed(target) && squareChanged {
-			if moveID, offered, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to, jump == playv1.JumpKind_JUMP_KIND_LONG); err != nil {
+			if moveID, offered, err = s.offerOpportunities(ctx, c, cs, target, squareOfCombatant(target), to, jump == playv1.JumpKind_JUMP_KIND_LONG, draggedID); err != nil {
 				return nil, err
 			}
 			made.MoveID = moveID
@@ -516,6 +555,9 @@ func (s *Service) MoveCombatant(
 		made.Col, made.Row = newCol, newRow
 		made.CostDFt, made.CostFt = clamp32(cost, 0, math.MaxInt32), clamp32(cost/10, 0, math.MaxInt32)
 		made.DistanceDFt, made.DistanceFt = clamp32(length, 0, math.MaxInt32), clamp32(length/10, 0, math.MaxInt32)
+		if jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && cost > 0 { // what the walk spent: the path's cost, doubled by a drag and by a crawl
+			made.SpentDFt, made.Dragging, made.Crawling = clamp32(cost*factor, 0, math.MaxInt32), dragHalves, crawls(target) && !forced
+		}
 		switch jump {
 		case playv1.JumpKind_JUMP_KIND_LONG:
 			made.Jump, made.JumpRunning = jumpLong, combat.HasRunningStart(int(target.LastMoveDft))
@@ -536,6 +578,10 @@ func (s *Service) MoveCombatant(
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishCombatantMoved(ctx, m.CampaignID, d.enc, moved, squareOfState(made.From))
+		if draggedMoved != nil { // the creature it dragged moved too
+			s.publishCombatantMoved(ctx, m.CampaignID, d.enc, *draggedMoved, draggedFrom)
+			s.positionChanged(ctx, m.CampaignID, d.enc, *draggedMoved, draggedFrom)
+		}
 		if made.MoveID != "" { // the offers are in the combat, not in the move's hint
 			s.publishOffersMade(m.CampaignID, d, moved, offered)
 		}
@@ -730,7 +776,10 @@ func (s *Service) GetMoveOptions(
 	if jump == playv1.JumpKind_JUMP_KIND_LONG {
 		out = jumpOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v))
 	} else {
-		out = moveOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v))
+		var derr error
+		if out, derr = s.moveOptionsWithDrag(ctx, planOn(v, terrain, known), d.cs, who, v); derr != nil {
+			return nil, s.dbError(ctx, "work out the drag", derr)
+		}
 	}
 	if err := s.markProvokes(ctx, m, enc, d.cs, who, v, sight, out); err != nil {
 		return nil, s.dbError(ctx, "work out the opportunity attacks", err)

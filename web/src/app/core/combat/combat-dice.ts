@@ -16,6 +16,15 @@ function modifierText(modifier: number): string {
   return ` ${modifier < 0 ? '−' : '+'} ${Math.abs(modifier)}`;
 }
 
+/** The dice an effect added to a roll (Bênção, Perdição), written after the modifier: " + 1d4 (3)", and what they add up to. */
+export function extraDiceText(roll: Pick<DiceRoll, 'extraDice'>): { text: string; sum: number } {
+  const dice = (roll.extraDice ?? []).filter((d) => d.face > 0);
+  return {
+    text: dice.map((d) => ` ${d.sign < 0 ? '−' : '+'} 1d${d.faces} (${d.face})`).join(''),
+    sum: dice.reduce((sum, d) => sum + d.sign * d.face, 0),
+  };
+}
+
 /** A roll as the formula the table reads, the total included. */
 export function rollFormula(roll: DiceRoll): string {
   // A d20 a feature raised says so (Talento Confiável): what came up, what it counted as, and the feature.
@@ -27,11 +36,12 @@ export function rollFormula(roll: DiceRoll): string {
   if (roll.diceCount === 0) {
     return `${roll.total}`;
   }
+  const extra = extraDiceText(roll);
   if (roll.physical || roll.faces.length === 0) {
     // The player typed what the dice showed, not each die.
-    return `${roll.total - roll.modifier}${mod} = ${roll.total}`;
+    return `${roll.total - roll.modifier - extra.sum}${mod}${extra.text} = ${roll.total}`;
   }
-  return `${roll.diceCount}d${roll.diceSides} (${roll.faces.join(', ')})${mod} = ${roll.total}`;
+  return `${roll.diceCount}d${roll.diceSides} (${roll.faces.join(', ')})${mod}${extra.text} = ${roll.total}`;
 }
 
 // ---- a d20 that a feature made count as another number (Talento Confiável, PM-03b) ----

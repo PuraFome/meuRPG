@@ -195,7 +195,12 @@ type OpenSceneInfo struct {
 	// actions carry `dc` and their own rolls carry `passed`. Off: they carry
 	// neither, and the master alone reads both (RN-20). The master always gets
 	// the DCs and every `passed`.
-	ShowDc        bool `protobuf:"varint,11,opt,name=show_dc,json=showDc,proto3" json:"show_dc,omitempty"`
+	ShowDc bool `protobuf:"varint,11,opt,name=show_dc,json=showDc,proto3" json:"show_dc,omitempty"`
+	// The gallery images attached to the scene point, in the master's order
+	// ("Imagens da cena", MR-015). Only the master gets them: a player always
+	// gets none (RN-10); a player sees an image only when the master shows it
+	// (PlayService.SetShownImage).
+	Images        []*v1.SceneImage `protobuf:"bytes,12,rep,name=images,proto3" json:"images,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -298,6 +303,13 @@ func (x *OpenSceneInfo) GetShowDc() bool {
 		return x.ShowDc
 	}
 	return false
+}
+
+func (x *OpenSceneInfo) GetImages() []*v1.SceneImage {
+	if x != nil {
+		return x.Images
+	}
+	return nil
 }
 
 // StageNpc is an NPC on the stage of the open scene, as the caller sees it
@@ -857,8 +869,10 @@ type SceneRoll struct {
 	// circumstances, for the master and the character's own player; `roll.faces` holds
 	// both dice and `roll.counted_index` the one that counts. NORMAL when nothing
 	// applies.
-	Mode          RollMode           `protobuf:"varint,9,opt,name=mode,proto3,enum=meurpg.play.v1.RollMode" json:"mode,omitempty"`
-	Sources       []*AdvantageSource `protobuf:"bytes,10,rep,name=sources,proto3" json:"sources,omitempty"`
+	Mode    RollMode           `protobuf:"varint,9,opt,name=mode,proto3,enum=meurpg.play.v1.RollMode" json:"mode,omitempty"`
+	Sources []*AdvantageSource `protobuf:"bytes,10,rep,name=sources,proto3" json:"sources,omitempty"`
+	// The Bardic Inspiration die the player added after the d20 (already in `roll`'s total).
+	BonusDice     []*BonusDie `protobuf:"bytes,11,rep,name=bonus_dice,json=bonusDice,proto3" json:"bonus_dice,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -959,6 +973,13 @@ func (x *SceneRoll) GetMode() RollMode {
 func (x *SceneRoll) GetSources() []*AdvantageSource {
 	if x != nil {
 		return x.Sources
+	}
+	return nil
+}
+
+func (x *SceneRoll) GetBonusDice() []*BonusDie {
+	if x != nil {
+		return x.BonusDice
 	}
 	return nil
 }
@@ -1259,7 +1280,11 @@ type RollSceneCheckRequest struct {
 	// Physical dice: the faces of the d20 pair (1 or 2 faces, 1 to 20 each, as many as
 	// the mode the server resolves needs), instead of `roll`. A wrong number is
 	// `invalid_argument`.
-	D20Faces      []int32 `protobuf:"varint,6,rep,packed,name=d20_faces,json=d20Faces,proto3" json:"d20_faces,omitempty"`
+	D20Faces []int32 `protobuf:"varint,6,rep,packed,name=d20_faces,json=d20Faces,proto3" json:"d20_faces,omitempty"`
+	// Physical dice: the faces of the dice an effect adds to the roll (Bênção, Orientação), in
+	// the order the roll's sources list them, one for each, 1 to the die's faces. With the app's
+	// dice the server rolls them; a wrong number is `invalid_argument`.
+	ExtraDieFaces []int32 `protobuf:"varint,7,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1347,6 +1372,13 @@ func (x *RollSceneCheckRequest) GetD20Faces() []int32 {
 	return nil
 }
 
+func (x *RollSceneCheckRequest) GetExtraDieFaces() []int32 {
+	if x != nil {
+		return x.ExtraDieFaces
+	}
+	return nil
+}
+
 type isRollSceneCheckRequest_Roll interface {
 	isRollSceneCheckRequest_Roll()
 }
@@ -1370,9 +1402,12 @@ type RollSceneCheckResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The caller's roll, with its total. `passed` is set only when the scene
 	// shows its DC (`show_dc`) and the action had one.
-	Roll          *SceneRoll `protobuf:"bytes,1,opt,name=roll,proto3" json:"roll,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Roll *SceneRoll `protobuf:"bytes,1,opt,name=roll,proto3" json:"roll,omitempty"`
+	// Set instead of `roll` when the character holds a Bardic Inspiration die: the d20 was
+	// rolled and nothing was written; AnswerOutsideInspiration settles the roll.
+	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,2,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *RollSceneCheckResponse) Reset() {
@@ -1408,6 +1443,13 @@ func (*RollSceneCheckResponse) Descriptor() ([]byte, []int) {
 func (x *RollSceneCheckResponse) GetRoll() *SceneRoll {
 	if x != nil {
 		return x.Roll
+	}
+	return nil
+}
+
+func (x *RollSceneCheckResponse) GetInspirationOffer() *OutsideInspirationOffer {
+	if x != nil {
+		return x.InspirationOffer
 	}
 	return nil
 }
@@ -1537,7 +1579,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\n" +
 	"\x1ameurpg/play/v1/scene.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a!meurpg/play/v1/combat_rolls.proto\"J\n" +
 	"\fSceneBlocked\x12:\n" +
-	"\x06reason\x18\x01 \x01(\x0e2\".meurpg.play.v1.SceneBlockedReasonR\x06reason\"\x95\x03\n" +
+	"\x06reason\x18\x01 \x01(\x0e2\".meurpg.play.v1.SceneBlockedReasonR\x06reason\"\xc9\x03\n" +
 	"\rOpenSceneInfo\x12\x19\n" +
 	"\bpoint_id\x18\x01 \x01(\tR\apointId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -1549,7 +1591,8 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x05clues\x18\b \x03(\v2\x19.meurpg.maps.v1.SceneClueR\x05clues\x12.\n" +
 	"\x05stage\x18\n" +
 	" \x03(\v2\x18.meurpg.play.v1.StageNpcR\x05stage\x12\x17\n" +
-	"\ashow_dc\x18\v \x01(\bR\x06showDc\"\x90\x01\n" +
+	"\ashow_dc\x18\v \x01(\bR\x06showDc\x122\n" +
+	"\x06images\x18\f \x03(\v2\x1a.meurpg.maps.v1.SceneImageR\x06images\"\x90\x01\n" +
 	"\bStageNpc\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -1588,7 +1631,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x06_bonusB\n" +
 	"\n" +
 	"\b_passiveB\x10\n" +
-	"\x0e_attempts_left\"\xb6\x03\n" +
+	"\x0e_attempts_left\"\xef\x03\n" +
 	"\tSceneRoll\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\taction_id\x18\x02 \x01(\tR\bactionId\x12!\n" +
@@ -1600,7 +1643,9 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\rattempts_left\x18\b \x01(\x05H\x01R\fattemptsLeft\x88\x01\x01\x12,\n" +
 	"\x04mode\x18\t \x01(\x0e2\x18.meurpg.play.v1.RollModeR\x04mode\x129\n" +
 	"\asources\x18\n" +
-	" \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asourcesB\t\n" +
+	" \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x127\n" +
+	"\n" +
+	"bonus_dice\x18\v \x03(\v2\x18.meurpg.play.v1.BonusDieR\tbonusDiceB\t\n" +
 	"\a_passedB\x10\n" +
 	"\x0e_attempts_left\"N\n" +
 	"\x10OpenSceneRequest\x12\x1f\n" +
@@ -1617,7 +1662,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"K\n" +
 	"\x14GetOpenSceneResponse\x123\n" +
-	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene\"\xe2\x01\n" +
+	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene\"\x8a\x02\n" +
 	"\x15RollSceneCheckRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
@@ -1625,10 +1670,12 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\vroll_in_app\x18\x03 \x01(\bH\x00R\trollInApp\x12\x1b\n" +
 	"\bd20_face\x18\x04 \x01(\x05H\x00R\ad20Face\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
-	"\td20_faces\x18\x06 \x03(\x05R\bd20FacesB\x06\n" +
-	"\x04roll\"G\n" +
+	"\td20_faces\x18\x06 \x03(\x05R\bd20Faces\x12&\n" +
+	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFacesB\x06\n" +
+	"\x04roll\"\x9d\x01\n" +
 	"\x16RollSceneCheckResponse\x12-\n" +
-	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\"\xa4\x01\n" +
+	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\x12T\n" +
+	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\"\xa4\x01\n" +
 	"\x18GrantSceneAttemptRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
@@ -1687,9 +1734,12 @@ var file_meurpg_play_v1_scene_proto_goTypes = []any{
 	(*GrantSceneAttemptResponse)(nil), // 21: meurpg.play.v1.GrantSceneAttemptResponse
 	(*timestamppb.Timestamp)(nil),     // 22: google.protobuf.Timestamp
 	(*v1.SceneClue)(nil),              // 23: meurpg.maps.v1.SceneClue
-	(*DiceRoll)(nil),                  // 24: meurpg.play.v1.DiceRoll
-	(RollMode)(0),                     // 25: meurpg.play.v1.RollMode
-	(*AdvantageSource)(nil),           // 26: meurpg.play.v1.AdvantageSource
+	(*v1.SceneImage)(nil),             // 24: meurpg.maps.v1.SceneImage
+	(*DiceRoll)(nil),                  // 25: meurpg.play.v1.DiceRoll
+	(RollMode)(0),                     // 26: meurpg.play.v1.RollMode
+	(*AdvantageSource)(nil),           // 27: meurpg.play.v1.AdvantageSource
+	(*BonusDie)(nil),                  // 28: meurpg.play.v1.BonusDie
+	(*OutsideInspirationOffer)(nil),   // 29: meurpg.play.v1.OutsideInspirationOffer
 }
 var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SceneBlocked.reason:type_name -> meurpg.play.v1.SceneBlockedReason
@@ -1698,22 +1748,25 @@ var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	22, // 3: meurpg.play.v1.OpenSceneInfo.opened_at:type_name -> google.protobuf.Timestamp
 	23, // 4: meurpg.play.v1.OpenSceneInfo.clues:type_name -> meurpg.maps.v1.SceneClue
 	3,  // 5: meurpg.play.v1.OpenSceneInfo.stage:type_name -> meurpg.play.v1.StageNpc
-	3,  // 6: meurpg.play.v1.PutOnStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	3,  // 7: meurpg.play.v1.TakeOffStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	3,  // 8: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	24, // 9: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
-	22, // 10: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
-	25, // 11: meurpg.play.v1.SceneRoll.mode:type_name -> meurpg.play.v1.RollMode
-	26, // 12: meurpg.play.v1.SceneRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
-	2,  // 13: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	2,  // 14: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	11, // 15: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
-	2,  // 16: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	24, // 6: meurpg.play.v1.OpenSceneInfo.images:type_name -> meurpg.maps.v1.SceneImage
+	3,  // 7: meurpg.play.v1.PutOnStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	3,  // 8: meurpg.play.v1.TakeOffStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	3,  // 9: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	25, // 10: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
+	22, // 11: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
+	26, // 12: meurpg.play.v1.SceneRoll.mode:type_name -> meurpg.play.v1.RollMode
+	27, // 13: meurpg.play.v1.SceneRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
+	28, // 14: meurpg.play.v1.SceneRoll.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	2,  // 15: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	2,  // 16: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	11, // 17: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
+	29, // 18: meurpg.play.v1.RollSceneCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	2,  // 19: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_scene_proto_init() }

@@ -46,6 +46,8 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 		Rage:           rules.HasFeature(d, "feature:rage"),
 		RecklessAttack: rules.HasFeature(d, "feature:reckless-attack"),
 		DangerSense:    rules.HasFeature(d, "feature:danger-sense"),
+		Frenzy:         rules.HasFeature(d, "feature:frenzy"),
+		SculptSpells:   rules.HasFeature(d, "feature:sculpt-spells"),
 		DivineSmite:    rules.HasFeature(d, "feature:divine-smite"),
 		ColossusSlayer: rules.HasFeature(d, "feature:hunters-prey-colossus-slayer"),
 		HeavyArmor:     d.ArmorCategory == "heavy",
@@ -53,7 +55,20 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 			return s.Spell.Key == "spell:hunters-mark"
 		}),
 	}
+	// The armor's "Stealth: Disadvantage" is a hint on the sheet; the Hide roll reads it here.
+	t.StealthDisadvantage = slices.ContainsFunc(d.Hints, func(h rules.Hint) bool {
+		return h.Target == "skill:stealth" && h.Mode == "disadvantage"
+	})
 	t.ImprovedDivineSmite = rules.HasFeature(d, "feature:improved-divine-smite")
+	t.OpenHand = rules.HasFeature(d, "feature:open-hand-technique")
+	t.StunningStrike = rules.HasFeature(d, "feature:stunning-strike")
+	if rules.LevelIn(d, "class:monk") > 0 {
+		for _, a := range d.Abilities {
+			if a.Ability == rules.WIS {
+				t.KiSaveDC = 8 + d.ProficiencyBonus + a.Modifier // the ki save DC (SRD 5.1, Monk)
+			}
+		}
+	}
 	if rules.HasFeature(d, "feature:sneak-attack") {
 		t.SneakAttackDice = combat.SneakAttackDice(t.RogueLevel)
 	}
@@ -66,6 +81,12 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	}
 	for _, r := range content.Resistances(d) {
 		t.Resistances = append(t.Resistances, link.Resistance{Source: r.Source, NamePT: r.NamePT, DamageTypes: r.DamageTypes, While: r.While})
+	}
+	for _, m := range d.Maneuvers {
+		t.Maneuvers = append(t.Maneuvers, link.Maneuver{
+			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
+			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides,
+		})
 	}
 	return t
 }

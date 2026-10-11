@@ -10,6 +10,79 @@ import (
 	"time"
 )
 
+const advanceCharacterEffects = `-- name: AdvanceCharacterEffects :many
+UPDATE character_effects SET seconds_left = GREATEST(seconds_left - $2::INT4, 0)
+WHERE campaign_id = $1 AND seconds_left IS NOT NULL
+RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+`
+
+type AdvanceCharacterEffectsParams struct {
+	CampaignID string
+	Column2    int32
+}
+
+// The master moves game time on: what has a clock loses the seconds, and what has none left
+// is returned to be ended.
+func (q *Queries) AdvanceCharacterEffects(ctx context.Context, arg AdvanceCharacterEffectsParams) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, advanceCharacterEffects, arg.CampaignID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const advanceCharacterInspiration = `-- name: AdvanceCharacterInspiration :exec
+UPDATE character_inspiration SET seconds_left = seconds_left - $2::INT4 WHERE campaign_id = $1
+`
+
+type AdvanceCharacterInspirationParams struct {
+	CampaignID string
+	Column2    int32
+}
+
+func (q *Queries) AdvanceCharacterInspiration(ctx context.Context, arg AdvanceCharacterInspirationParams) error {
+	_, err := q.db.Exec(ctx, advanceCharacterInspiration, arg.CampaignID, arg.Column2)
+	return err
+}
+
 const answerHiddenReveal = `-- name: AnswerHiddenReveal :one
 UPDATE hidden_reveals SET state = $1, answered_at = $2
 WHERE encounter_id = $3 AND id = $4 AND state = 'pending'
@@ -47,6 +120,20 @@ func (q *Queries) AnswerHiddenReveal(ctx context.Context, arg AnswerHiddenReveal
 		&i.AnsweredAt,
 	)
 	return i, err
+}
+
+const answerInspirationHold = `-- name: AnswerInspirationHold :exec
+UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1
+`
+
+type AnswerInspirationHoldParams struct {
+	ID        string
+	AnswerKey *string
+}
+
+func (q *Queries) AnswerInspirationHold(ctx context.Context, arg AnswerInspirationHoldParams) error {
+	_, err := q.db.Exec(ctx, answerInspirationHold, arg.ID, arg.AnswerKey)
+	return err
 }
 
 const answerRevivifyRequest = `-- name: AnswerRevivifyRequest :one
@@ -157,7 +244,7 @@ const clearPendingDamageApplied = `-- name: ClearPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'rolled', resolved_at = NULL, applied_amount = NULL, taken = NULL
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 // An undo of an applied damage: back to waiting for the master.
@@ -198,6 +285,8 @@ func (q *Queries) ClearPendingDamageApplied(ctx context.Context, id string) (Pen
 		&i.Steps,
 		&i.LandedBefore,
 		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -207,7 +296,7 @@ UPDATE pending_damages
 SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL,
     part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 // An undo of the damage roll: it waits to be rolled again.
@@ -248,6 +337,8 @@ func (q *Queries) ClearPendingDamageRoll(ctx context.Context, id string) (Pendin
 		&i.Steps,
 		&i.LandedBefore,
 		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -391,6 +482,16 @@ func (q *Queries) CloseRollModeRequestsOf(ctx context.Context, arg CloseRollMode
 	return items, nil
 }
 
+const countLastingEffectTrigger = `-- name: CountLastingEffectTrigger :exec
+UPDATE combatant_states SET triggers_fired = triggers_fired + 1 WHERE id = $1
+`
+
+// One more time the effect's damage hit its target.
+func (q *Queries) CountLastingEffectTrigger(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, countLastingEffectTrigger, id)
+	return err
+}
+
 const countSceneRolls = `-- name: CountSceneRolls :many
 SELECT character_id, COALESCE(payload->>'action_id', '')::TEXT AS action_id, count(*)::INT8 AS rolls
 FROM session_events
@@ -501,6 +602,134 @@ func (q *Queries) DeleteBattleEncounter(ctx context.Context, arg DeleteBattleEnc
 	return result.RowsAffected(), nil
 }
 
+const deleteCharacterEffect = `-- name: DeleteCharacterEffect :exec
+DELETE FROM character_effects WHERE id = $1
+`
+
+func (q *Queries) DeleteCharacterEffect(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteCharacterEffect, id)
+	return err
+}
+
+const deleteCharacterEffectsOfCharacter = `-- name: DeleteCharacterEffectsOfCharacter :exec
+DELETE FROM character_effects WHERE character_id = $1
+`
+
+// A character that died keeps no old effect when it lives again.
+func (q *Queries) DeleteCharacterEffectsOfCharacter(ctx context.Context, characterID string) error {
+	_, err := q.db.Exec(ctx, deleteCharacterEffectsOfCharacter, characterID)
+	return err
+}
+
+const deleteCharacterEffectsOfGroup = `-- name: DeleteCharacterEffectsOfGroup :many
+DELETE FROM character_effects WHERE campaign_id = $1 AND group_id = $2 RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+`
+
+type DeleteCharacterEffectsOfGroupParams struct {
+	CampaignID string
+	GroupID    string
+}
+
+// The effects of a casting end together.
+func (q *Queries) DeleteCharacterEffectsOfGroup(ctx context.Context, arg DeleteCharacterEffectsOfGroupParams) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, deleteCharacterEffectsOfGroup, arg.CampaignID, arg.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteCharacterEffectsOfSpell = `-- name: DeleteCharacterEffectsOfSpell :many
+DELETE FROM character_effects WHERE character_id = $1 AND source_key = $2 AND group_id <> $3 RETURNING id
+`
+
+type DeleteCharacterEffectsOfSpellParams struct {
+	CharacterID string
+	SourceKey   string
+	GroupID     string
+}
+
+// The same spell cast again on a character replaces the first (SRD 5.1, Combining Magical
+// Effects): the effects of the other castings go.
+func (q *Queries) DeleteCharacterEffectsOfSpell(ctx context.Context, arg DeleteCharacterEffectsOfSpellParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, deleteCharacterEffectsOfSpell, arg.CharacterID, arg.SourceKey, arg.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteCharacterInspiration = `-- name: DeleteCharacterInspiration :execrows
+DELETE FROM character_inspiration WHERE character_id = $1
+`
+
+func (q *Queries) DeleteCharacterInspiration(ctx context.Context, characterID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCharacterInspiration, characterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteCharacterInspirationOfCampaign = `-- name: DeleteCharacterInspirationOfCampaign :exec
+DELETE FROM character_inspiration WHERE campaign_id = $1
+`
+
+func (q *Queries) DeleteCharacterInspirationOfCampaign(ctx context.Context, campaignID string) error {
+	_, err := q.db.Exec(ctx, deleteCharacterInspirationOfCampaign, campaignID)
+	return err
+}
+
 const deleteCombatant = `-- name: DeleteCombatant :exec
 DELETE FROM combatants
 WHERE id = $1
@@ -592,8 +821,8 @@ func (q *Queries) DeleteCombatantStatesOfKind(ctx context.Context, arg DeleteCom
 
 const deleteEndedCombatantStates = `-- name: DeleteEndedCombatantStates :many
 DELETE FROM combatant_states
-WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn'
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn' AND kind <> 'effect'
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
 `
 
 type DeleteEndedCombatantStatesParams struct {
@@ -623,6 +852,25 @@ func (q *Queries) DeleteEndedCombatantStates(ctx context.Context, arg DeleteEnde
 			&i.StartedRound,
 			&i.Amount,
 			&i.CreatedAt,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
 		); err != nil {
 			return nil, err
 		}
@@ -634,15 +882,29 @@ func (q *Queries) DeleteEndedCombatantStates(ctx context.Context, arg DeleteEnde
 	return items, nil
 }
 
+const deleteExpiredCharacterInspiration = `-- name: DeleteExpiredCharacterInspiration :exec
+DELETE FROM character_inspiration WHERE campaign_id = $1 AND seconds_left <= $2::INT4
+`
+
+type DeleteExpiredCharacterInspirationParams struct {
+	CampaignID string
+	Column2    int32
+}
+
+func (q *Queries) DeleteExpiredCharacterInspiration(ctx context.Context, arg DeleteExpiredCharacterInspirationParams) error {
+	_, err := q.db.Exec(ctx, deleteExpiredCharacterInspiration, arg.CampaignID, arg.Column2)
+	return err
+}
+
 const deleteExpiredCombatantStates = `-- name: DeleteExpiredCombatantStates :many
 DELETE FROM combatant_states
 WHERE encounter_id = $1
   AND (
     (combatant_id = ANY($2::UUID[]) AND kind IN ('dodging', 'reckless'))
-    OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn')
+    OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn' AND kind <> 'effect')
     OR (kind = 'rage' AND ends_round IS NOT NULL AND ends_round <= $3)
   )
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
 `
 
 type DeleteExpiredCombatantStatesParams struct {
@@ -674,6 +936,25 @@ func (q *Queries) DeleteExpiredCombatantStates(ctx context.Context, arg DeleteEx
 			&i.StartedRound,
 			&i.Amount,
 			&i.CreatedAt,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
 		); err != nil {
 			return nil, err
 		}
@@ -705,6 +986,94 @@ func (q *Queries) DeleteHiddenRevealsOfEncounter(ctx context.Context, encounterI
 	return err
 }
 
+const deleteInspirationHold = `-- name: DeleteInspirationHold :exec
+DELETE FROM inspiration_holds WHERE id = $1
+`
+
+func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteInspirationHold, id)
+	return err
+}
+
+const deleteInspirationHoldsOfCharacter = `-- name: DeleteInspirationHoldsOfCharacter :exec
+DELETE FROM inspiration_holds WHERE character_id = $1
+`
+
+func (q *Queries) DeleteInspirationHoldsOfCharacter(ctx context.Context, characterID string) error {
+	_, err := q.db.Exec(ctx, deleteInspirationHoldsOfCharacter, characterID)
+	return err
+}
+
+const deleteLastingEffect = `-- name: DeleteLastingEffect :exec
+DELETE FROM combatant_states WHERE id = $1 AND kind = 'effect'
+`
+
+func (q *Queries) DeleteLastingEffect(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteLastingEffect, id)
+	return err
+}
+
+const deleteLongRestEffectsOfCampaign = `-- name: DeleteLongRestEffectsOfCampaign :many
+DELETE FROM character_effects WHERE campaign_id = $1 AND duration_kind = 'long_rest' RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+`
+
+// A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests.
+func (q *Queries) DeleteLongRestEffectsOfCampaign(ctx context.Context, campaignID string) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, deleteLongRestEffectsOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteOpenHitRidersOf = `-- name: DeleteOpenHitRidersOf :exec
+DELETE FROM hit_riders WHERE attacker_id = $1 AND NOT used
+`
+
+// The offers of an attacker's earlier hits go when it attacks again.
+func (q *Queries) DeleteOpenHitRidersOf(ctx context.Context, attackerID string) error {
+	_, err := q.db.Exec(ctx, deleteOpenHitRidersOf, attackerID)
+	return err
+}
+
 const deleteOpportunityOffersOfMove = `-- name: DeleteOpportunityOffersOfMove :exec
 DELETE FROM opportunity_offers
 WHERE move_id = $1
@@ -713,6 +1082,18 @@ WHERE move_id = $1
 // The master's undo of the move that made them.
 func (q *Queries) DeleteOpportunityOffersOfMove(ctx context.Context, moveID string) error {
 	_, err := q.db.Exec(ctx, deleteOpportunityOffersOfMove, moveID)
+	return err
+}
+
+const deleteOrphanInspirationHolds = `-- name: DeleteOrphanInspirationHolds :exec
+DELETE FROM inspiration_holds h
+WHERE h.campaign_id = $1 AND h.answer_key IS NULL
+  AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
+`
+
+// The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
+func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) error {
+	_, err := q.db.Exec(ctx, deleteOrphanInspirationHolds, campaignID)
 	return err
 }
 
@@ -786,7 +1167,7 @@ func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) 
 const deleteStatesOfCombatant = `-- name: DeleteStatesOfCombatant :many
 DELETE FROM combatant_states
 WHERE combatant_id = $1 AND kind = $2
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
 `
 
 type DeleteStatesOfCombatantParams struct {
@@ -815,6 +1196,25 @@ func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesO
 			&i.StartedRound,
 			&i.Amount,
 			&i.CreatedAt,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
 		); err != nil {
 			return nil, err
 		}
@@ -1003,6 +1403,72 @@ func (q *Queries) GetCampaignTrapDamageForUpdate(ctx context.Context, arg GetCam
 	return i, err
 }
 
+const getCharacterEffect = `-- name: GetCharacterEffect :one
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM character_effects WHERE id = $1 AND campaign_id = $2
+`
+
+type GetCharacterEffectParams struct {
+	ID         string
+	CampaignID string
+}
+
+func (q *Queries) GetCharacterEffect(ctx context.Context, arg GetCharacterEffectParams) (CharacterEffect, error) {
+	row := q.db.QueryRow(ctx, getCharacterEffect, arg.ID, arg.CampaignID)
+	var i CharacterEffect
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.SourceCharacterID,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.SecondsLeft,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getCharacterInspiration = `-- name: GetCharacterInspiration :one
+SELECT character_id, campaign_id, source_character_id, sides, seconds_left, created_at FROM character_inspiration WHERE character_id = $1 AND campaign_id = $2
+`
+
+type GetCharacterInspirationParams struct {
+	CharacterID string
+	CampaignID  string
+}
+
+// The Bardic Inspiration die a character holds out of a running combat.
+func (q *Queries) GetCharacterInspiration(ctx context.Context, arg GetCharacterInspirationParams) (CharacterInspiration, error) {
+	row := q.db.QueryRow(ctx, getCharacterInspiration, arg.CharacterID, arg.CampaignID)
+	var i CharacterInspiration
+	err := row.Scan(
+		&i.CharacterID,
+		&i.CampaignID,
+		&i.SourceCharacterID,
+		&i.Sides,
+		&i.SecondsLeft,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getEncounterByID = `-- name: GetEncounterByID :one
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters WHERE id = $1
 `
@@ -1185,6 +1651,142 @@ func (q *Queries) GetHiddenReveal(ctx context.Context, arg GetHiddenRevealParams
 	return i, err
 }
 
+const getHitRider = `-- name: GetHitRider :one
+SELECT id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at FROM hit_riders WHERE encounter_id = $1 AND id = $2
+`
+
+type GetHitRiderParams struct {
+	EncounterID string
+	ID          string
+}
+
+func (q *Queries) GetHitRider(ctx context.Context, arg GetHitRiderParams) (HitRider, error) {
+	row := q.db.QueryRow(ctx, getHitRider, arg.EncounterID, arg.ID)
+	var i HitRider
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.AttackerID,
+		&i.TargetID,
+		&i.Kind,
+		&i.Round,
+		&i.Choice,
+		&i.Used,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getInspirationHold = `-- name: GetInspirationHold :one
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
+`
+
+type GetInspirationHoldParams struct {
+	CampaignID string
+	ID         string
+}
+
+func (q *Queries) GetInspirationHold(ctx context.Context, arg GetInspirationHoldParams) (InspirationHold, error) {
+	row := q.db.QueryRow(ctx, getInspirationHold, arg.CampaignID, arg.ID)
+	var i InspirationHold
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Kind,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Faces,
+		&i.Modifier,
+		&i.Total,
+		&i.Counted,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getInspirationHoldByKey = `-- name: GetInspirationHoldByKey :one
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
+`
+
+type GetInspirationHoldByKeyParams struct {
+	CampaignID     string
+	IdempotencyKey string
+}
+
+func (q *Queries) GetInspirationHoldByKey(ctx context.Context, arg GetInspirationHoldByKeyParams) (InspirationHold, error) {
+	row := q.db.QueryRow(ctx, getInspirationHoldByKey, arg.CampaignID, arg.IdempotencyKey)
+	var i InspirationHold
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Kind,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Faces,
+		&i.Modifier,
+		&i.Total,
+		&i.Counted,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getLastingEffect = `-- name: GetLastingEffect :one
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label FROM combatant_states
+WHERE id = $1 AND encounter_id = $2 AND kind = 'effect'
+`
+
+type GetLastingEffectParams struct {
+	ID          string
+	EncounterID string
+}
+
+func (q *Queries) GetLastingEffect(ctx context.Context, arg GetLastingEffectParams) (CombatantState, error) {
+	row := q.db.QueryRow(ctx, getLastingEffect, arg.ID, arg.EncounterID)
+	var i CombatantState
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.Kind,
+		&i.SourceID,
+		&i.EndsCombatantID,
+		&i.EndsPhase,
+		&i.EndsRound,
+		&i.StartedRound,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
+	)
+	return i, err
+}
+
 const getLatestEncounter = `-- name: GetLatestEncounter :one
 
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
@@ -1221,6 +1823,22 @@ func (q *Queries) GetLatestEncounter(ctx context.Context, gameSessionID string) 
 		&i.Mode,
 	)
 	return i, err
+}
+
+const getLatestRestKindInSession = `-- name: GetLatestRestKindInSession :one
+SELECT (payload ->> 'kind')::TEXT AS kind FROM session_events
+WHERE game_session_id = $1 AND kind = 'rest_taken'
+ORDER BY seq DESC
+LIMIT 1
+`
+
+// The kind ('short' or 'long') of the latest rest the master took in the session. No row:
+// no rest yet. Arcane Recovery is allowed only when it is a short rest.
+func (q *Queries) GetLatestRestKindInSession(ctx context.Context, gameSessionID string) (string, error) {
+	row := q.db.QueryRow(ctx, getLatestRestKindInSession, gameSessionID)
+	var kind string
+	err := row.Scan(&kind)
+	return kind, err
 }
 
 const getOnScreen = `-- name: GetOnScreen :one
@@ -1454,7 +2072,7 @@ func (q *Queries) GetOpportunityOfferByAttack(ctx context.Context, arg GetOpport
 }
 
 const getPendingDamage = `-- name: GetPendingDamage :one
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND id = $2
 `
 
@@ -1501,6 +2119,8 @@ func (q *Queries) GetPendingDamage(ctx context.Context, arg GetPendingDamagePara
 		&i.Steps,
 		&i.LandedBefore,
 		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -2204,6 +2824,137 @@ func (q *Queries) HasTriedPuzzleHint(ctx context.Context, arg HasTriedPuzzleHint
 	return tried, err
 }
 
+const insertCharacterEffect = `-- name: InsertCharacterEffect :one
+INSERT INTO character_effects (
+    id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration,
+    condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc,
+    on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired,
+    player_visible, audience, player_label, created_at
+) VALUES (
+    COALESCE($14::UUID, gen_random_uuid()), $1, $2, $15, $3, $4, $5, $6,
+    $7, $8, $9, $16, $17, $18, $19,
+    $20, $21, $22, $23, $24, $10,
+    $11, $12, $25, $13
+)
+RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+`
+
+type InsertCharacterEffectParams struct {
+	CampaignID         string
+	CharacterID        string
+	GroupID            string
+	SourceKey          string
+	SourceKind         string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	CreatedAt          time.Time
+	ID                 *string
+	SourceCharacterID  *string
+	SecondsLeft        *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	PlayerLabel        *string
+}
+
+// An effect on a character out of a running combat, with the id it had in the combat when it
+// comes from one (the record changes home, it is never copied).
+func (q *Queries) InsertCharacterEffect(ctx context.Context, arg InsertCharacterEffectParams) (CharacterEffect, error) {
+	row := q.db.QueryRow(ctx, insertCharacterEffect,
+		arg.CampaignID,
+		arg.CharacterID,
+		arg.GroupID,
+		arg.SourceKey,
+		arg.SourceKind,
+		arg.Concentration,
+		arg.ConditionKeys,
+		arg.Modifiers,
+		arg.DurationKind,
+		arg.TriggersFired,
+		arg.PlayerVisible,
+		arg.Audience,
+		arg.CreatedAt,
+		arg.ID,
+		arg.SourceCharacterID,
+		arg.SecondsLeft,
+		arg.EndSaveAbility,
+		arg.StartSaveAbility,
+		arg.SaveDc,
+		arg.OnFailEffect,
+		arg.FollowsKey,
+		arg.TriggerDice,
+		arg.TriggerDamageType,
+		arg.TriggerMaxTriggers,
+		arg.PlayerLabel,
+	)
+	var i CharacterEffect
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.SourceCharacterID,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.SecondsLeft,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertCharacterInspiration = `-- name: InsertCharacterInspiration :exec
+INSERT INTO character_inspiration (character_id, campaign_id, source_character_id, sides, seconds_left, created_at)
+VALUES ($1, $2, $6, $3, $4, $5)
+ON CONFLICT (character_id) DO UPDATE SET source_character_id = EXCLUDED.source_character_id, sides = EXCLUDED.sides, seconds_left = EXCLUDED.seconds_left, created_at = EXCLUDED.created_at
+`
+
+type InsertCharacterInspirationParams struct {
+	CharacterID       string
+	CampaignID        string
+	Sides             int32
+	SecondsLeft       int32
+	CreatedAt         time.Time
+	SourceCharacterID *string
+}
+
+func (q *Queries) InsertCharacterInspiration(ctx context.Context, arg InsertCharacterInspirationParams) error {
+	_, err := q.db.Exec(ctx, insertCharacterInspiration,
+		arg.CharacterID,
+		arg.CampaignID,
+		arg.Sides,
+		arg.SecondsLeft,
+		arg.CreatedAt,
+		arg.SourceCharacterID,
+	)
+	return err
+}
+
 const insertCombatReason = `-- name: InsertCombatReason :one
 INSERT INTO combat_reasons (encounter_id, kind, reason, created_at)
 VALUES ($1, $2, $3, $4)
@@ -2245,7 +2996,7 @@ INSERT INTO combatants (
     $10, $11, $12, $13, $14, $15, $16, $17, $18,
     $19, $20, $21, $22, $23
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction
 `
 
 type InsertCombatantParams struct {
@@ -2370,6 +3121,17 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.DeathRound,
 		&i.DeathOrderIndex,
 		&i.RevivifyBlocked,
+		&i.EffectConditions,
+		&i.EffectAcBonus,
+		&i.EffectSpeedPct,
+		&i.EffectSpeedAddFt,
+		&i.EffectNoAction,
+		&i.EffectNoMove,
+		&i.ExtraActionUsed,
+		&i.ExhaustionLevel,
+		&i.HpMaxBase,
+		&i.MeleeHitTurn,
+		&i.EffectNoReaction,
 	)
 	return i, err
 }
@@ -2378,7 +3140,7 @@ const insertCombatantState = `-- name: InsertCombatantState :one
 INSERT INTO combatant_states (
     encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
 `
 
 type InsertCombatantStateParams struct {
@@ -2420,6 +3182,25 @@ func (q *Queries) InsertCombatantState(ctx context.Context, arg InsertCombatantS
 		&i.StartedRound,
 		&i.Amount,
 		&i.CreatedAt,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
 	)
 	return i, err
 }
@@ -2437,7 +3218,7 @@ INSERT INTO combatants (
     $15, $16, $17, $18,
     'party', $19, $20, $21, $22
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction
 `
 
 type InsertCreatureCombatantParams struct {
@@ -2565,6 +3346,104 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		&i.DeathRound,
 		&i.DeathOrderIndex,
 		&i.RevivifyBlocked,
+		&i.EffectConditions,
+		&i.EffectAcBonus,
+		&i.EffectSpeedPct,
+		&i.EffectSpeedAddFt,
+		&i.EffectNoAction,
+		&i.EffectNoMove,
+		&i.ExtraActionUsed,
+		&i.ExhaustionLevel,
+		&i.HpMaxBase,
+		&i.MeleeHitTurn,
+		&i.EffectNoReaction,
+	)
+	return i, err
+}
+
+const insertEffectPendingDamage = `-- name: InsertEffectPendingDamage :one
+INSERT INTO pending_damages (
+    encounter_id, attacker_id, target_id, attack_key, status, critical,
+    dice_count, dice_sides, dice_bonus, damage_type, faces, amount, roll_total, half,
+    created_at, resolved_at, effect_source_key
+) VALUES (
+    $1, NULL, $2, 'effect', $3, false, $4, $5, $6, $7, $8, $9, $10, false, $11, $13, $12
+)
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
+`
+
+type InsertEffectPendingDamageParams struct {
+	EncounterID     string
+	TargetID        string
+	Status          string
+	DiceCount       int32
+	DiceSides       int32
+	DiceBonus       int32
+	DamageType      string
+	Faces           []int32
+	Amount          *int32
+	RollTotal       *int32
+	CreatedAt       time.Time
+	EffectSourceKey *string
+	ResolvedAt      *time.Time
+}
+
+// The damage a turn that starts under an effect deals (the web that burns): no
+// attacker, rolled already. 'rolled' for a player's character (waits for the master),
+// 'applied' for an NPC or a creature (the caller put it on the combatant).
+func (q *Queries) InsertEffectPendingDamage(ctx context.Context, arg InsertEffectPendingDamageParams) (PendingDamage, error) {
+	row := q.db.QueryRow(ctx, insertEffectPendingDamage,
+		arg.EncounterID,
+		arg.TargetID,
+		arg.Status,
+		arg.DiceCount,
+		arg.DiceSides,
+		arg.DiceBonus,
+		arg.DamageType,
+		arg.Faces,
+		arg.Amount,
+		arg.RollTotal,
+		arg.CreatedAt,
+		arg.EffectSourceKey,
+		arg.ResolvedAt,
+	)
+	var i PendingDamage
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.AttackerID,
+		&i.TargetID,
+		&i.AttackKey,
+		&i.Status,
+		&i.Critical,
+		&i.DiceCount,
+		&i.DiceSides,
+		&i.DiceBonus,
+		&i.DamageType,
+		&i.Faces,
+		&i.Physical,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.ResolvedAt,
+		&i.CastID,
+		&i.Healing,
+		&i.Half,
+		&i.AppliedAmount,
+		&i.AttackTotal,
+		&i.RollTotal,
+		&i.AttackArmorClass,
+		&i.TrapPointID,
+		&i.CriticalMax,
+		&i.CriticalMaxRule,
+		&i.Taken,
+		&i.ExtraDice,
+		&i.Parts,
+		&i.PartRolls,
+		&i.Steps,
+		&i.LandedBefore,
+		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -2716,6 +3595,217 @@ func (q *Queries) InsertHiddenReveal(ctx context.Context, arg InsertHiddenReveal
 	return i, err
 }
 
+const insertHitRider = `-- name: InsertHitRider :one
+INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at
+`
+
+type InsertHitRiderParams struct {
+	EncounterID string
+	AttackerID  string
+	TargetID    string
+	Kind        string
+	Round       int32
+	CreatedAt   time.Time
+}
+
+// A rider a monk's hit offers (combat_riders.go).
+func (q *Queries) InsertHitRider(ctx context.Context, arg InsertHitRiderParams) (HitRider, error) {
+	row := q.db.QueryRow(ctx, insertHitRider,
+		arg.EncounterID,
+		arg.AttackerID,
+		arg.TargetID,
+		arg.Kind,
+		arg.Round,
+		arg.CreatedAt,
+	)
+	var i HitRider
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.AttackerID,
+		&i.TargetID,
+		&i.Kind,
+		&i.Round,
+		&i.Choice,
+		&i.Used,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertInspirationHold = `-- name: InsertInspirationHold :one
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at
+`
+
+type InsertInspirationHoldParams struct {
+	CampaignID     string
+	CharacterID    string
+	UserID         string
+	Kind           string
+	IdempotencyKey string
+	Request        []byte
+	Faces          []int32
+	Modifier       int32
+	Total          int32
+	Counted        int32
+	Physical       bool
+	CreatedAt      time.Time
+}
+
+func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirationHoldParams) (InspirationHold, error) {
+	row := q.db.QueryRow(ctx, insertInspirationHold,
+		arg.CampaignID,
+		arg.CharacterID,
+		arg.UserID,
+		arg.Kind,
+		arg.IdempotencyKey,
+		arg.Request,
+		arg.Faces,
+		arg.Modifier,
+		arg.Total,
+		arg.Counted,
+		arg.Physical,
+		arg.CreatedAt,
+	)
+	var i InspirationHold
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Kind,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Faces,
+		&i.Modifier,
+		&i.Total,
+		&i.Counted,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const insertLastingEffect = `-- name: InsertLastingEffect :one
+
+INSERT INTO combatant_states (
+    id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at,
+    group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind,
+    end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key,
+    trigger_dice, trigger_damage_type, trigger_max_triggers, player_visible, audience, player_label
+) VALUES (
+    COALESCE($14::UUID, gen_random_uuid()), $1, $2, 'effect', $15, $16, $17, $18, $3, 0, $4,
+    $5, $6, $7, $8, $9, $10, $11,
+    $19, $20, $21, $22, $23,
+    $24, $25, $26, $12, $13, $27
+)
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+`
+
+type InsertLastingEffectParams struct {
+	EncounterID        string
+	CombatantID        string
+	StartedRound       int32
+	CreatedAt          time.Time
+	GroupID            *string
+	SourceKey          *string
+	SourceKind         *string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       *string
+	PlayerVisible      bool
+	Audience           string
+	ID                 *string
+	SourceID           *string
+	EndsCombatantID    *string
+	EndsPhase          *string
+	EndsRound          *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	PlayerLabel        *string
+}
+
+// Effects that last (RN-22): rows of combatant_states of the kind 'effect', one for each
+// target; the clock and the effects themselves expire in the service, never by the
+// generic deletes above.
+func (q *Queries) InsertLastingEffect(ctx context.Context, arg InsertLastingEffectParams) (CombatantState, error) {
+	row := q.db.QueryRow(ctx, insertLastingEffect,
+		arg.EncounterID,
+		arg.CombatantID,
+		arg.StartedRound,
+		arg.CreatedAt,
+		arg.GroupID,
+		arg.SourceKey,
+		arg.SourceKind,
+		arg.Concentration,
+		arg.ConditionKeys,
+		arg.Modifiers,
+		arg.DurationKind,
+		arg.PlayerVisible,
+		arg.Audience,
+		arg.ID,
+		arg.SourceID,
+		arg.EndsCombatantID,
+		arg.EndsPhase,
+		arg.EndsRound,
+		arg.EndSaveAbility,
+		arg.StartSaveAbility,
+		arg.SaveDc,
+		arg.OnFailEffect,
+		arg.FollowsKey,
+		arg.TriggerDice,
+		arg.TriggerDamageType,
+		arg.TriggerMaxTriggers,
+		arg.PlayerLabel,
+	)
+	var i CombatantState
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.Kind,
+		&i.SourceID,
+		&i.EndsCombatantID,
+		&i.EndsPhase,
+		&i.EndsRound,
+		&i.StartedRound,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
+	)
+	return i, err
+}
+
 const insertOpportunityOffer = `-- name: InsertOpportunityOffer :one
 
 INSERT INTO opportunity_offers (encounter_id, move_id, mover_id, reactor_id, left_col, left_row, created_at, jumped)
@@ -2770,9 +3860,9 @@ const insertPendingDamage = `-- name: InsertPendingDamage :one
 INSERT INTO pending_damages (
     encounter_id, attacker_id, target_id, attack_key, status, critical,
     dice_count, dice_sides, dice_bonus, damage_type, created_at,
-    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule, extra_dice
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps
+    cast_id, healing, half, attack_total, attack_armor_class, critical_max, critical_max_rule, extra_dice, savage_dice
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type InsertPendingDamageParams struct {
@@ -2795,6 +3885,7 @@ type InsertPendingDamageParams struct {
 	CriticalMax      int32
 	CriticalMaxRule  bool
 	ExtraDice        int32
+	SavageDice       int32
 }
 
 // Pending damage (MR-012, MR-014): the damage of an attack that hit. Every write
@@ -2804,7 +3895,8 @@ type InsertPendingDamageParams struct {
 // new comparison). A spell's damages carry their cast_id, and may be a heal or
 // a half damage. critical_max is what a critical hit adds without rolling (the
 // table's rule "máximo mais uma rolagem", RN-24). extra_dice are the weapon
-// dice a feature adds to a critical hit (Brutal Critical), always rolled.
+// dice a feature adds to a critical hit (Brutal Critical, Savage Attacks), always
+// rolled; savage_dice says how many of them are the Savage Attacks'.
 func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDamageParams) (PendingDamage, error) {
 	row := q.db.QueryRow(ctx, insertPendingDamage,
 		arg.EncounterID,
@@ -2826,6 +3918,7 @@ func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDama
 		arg.CriticalMax,
 		arg.CriticalMaxRule,
 		arg.ExtraDice,
+		arg.SavageDice,
 	)
 	var i PendingDamage
 	err := row.Scan(
@@ -2862,6 +3955,8 @@ func (q *Queries) InsertPendingDamage(ctx context.Context, arg InsertPendingDama
 		&i.Steps,
 		&i.LandedBefore,
 		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -3540,7 +4635,7 @@ INSERT INTO pending_damages (
 ) VALUES (
     $1, NULL, $2, 'trap', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $17, $14, $15, $16
 )
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type InsertTrapPendingDamageParams struct {
@@ -3623,6 +4718,8 @@ func (q *Queries) InsertTrapPendingDamage(ctx context.Context, arg InsertTrapPen
 		&i.Steps,
 		&i.LandedBefore,
 		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -3822,7 +4919,7 @@ func (q *Queries) ListCampaignTrapDamages(ctx context.Context, campaignID string
 }
 
 const listCastPendingDamages = `-- name: ListCastPendingDamages :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND cast_id = $2
 ORDER BY created_at, id
 `
@@ -3876,7 +4973,235 @@ func (q *Queries) ListCastPendingDamages(ctx context.Context, arg ListCastPendin
 			&i.Steps,
 			&i.LandedBefore,
 			&i.AfterSteps,
+			&i.EffectSourceKey,
+			&i.SavageDice,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCharacterEffects = `-- name: ListCharacterEffects :many
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM character_effects WHERE character_id = ANY($1::UUID[]) ORDER BY created_at, id
+`
+
+func (q *Queries) ListCharacterEffects(ctx context.Context, dollar_1 []string) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, listCharacterEffects, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCharacterEffectsOfCampaign = `-- name: ListCharacterEffectsOfCampaign :many
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM character_effects WHERE campaign_id = $1 ORDER BY created_at, id
+`
+
+func (q *Queries) ListCharacterEffectsOfCampaign(ctx context.Context, campaignID string) ([]CharacterEffect, error) {
+	rows, err := q.db.Query(ctx, listCharacterEffectsOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterEffect
+	for rows.Next() {
+		var i CharacterEffect
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.SourceCharacterID,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.SecondsLeft,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCharacterInspirationOfCampaign = `-- name: ListCharacterInspirationOfCampaign :many
+SELECT character_id, campaign_id, source_character_id, sides, seconds_left, created_at FROM character_inspiration WHERE campaign_id = $1
+`
+
+func (q *Queries) ListCharacterInspirationOfCampaign(ctx context.Context, campaignID string) ([]CharacterInspiration, error) {
+	rows, err := q.db.Query(ctx, listCharacterInspirationOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterInspiration
+	for rows.Next() {
+		var i CharacterInspiration
+		if err := rows.Scan(
+			&i.CharacterID,
+			&i.CampaignID,
+			&i.SourceCharacterID,
+			&i.Sides,
+			&i.SecondsLeft,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCombatEffectsOfCharacter = `-- name: ListCombatEffectsOfCharacter :many
+SELECT cs.id, cs.encounter_id, cs.combatant_id, cs.kind, cs.source_id, cs.ends_combatant_id, cs.ends_phase, cs.ends_round, cs.started_round, cs.amount, cs.created_at, cs.group_id, cs.source_key, cs.source_kind, cs.concentration, cs.condition_keys, cs.modifiers, cs.duration_kind, cs.end_save_ability, cs.start_save_ability, cs.save_dc, cs.on_fail_effect, cs.follows_key, cs.trigger_dice, cs.trigger_damage_type, cs.trigger_max_triggers, cs.triggers_fired, cs.player_visible, cs.audience, cs.player_label FROM combatant_states cs
+JOIN combatants c ON c.id = cs.combatant_id
+JOIN encounters e ON e.id = c.encounter_id
+WHERE c.character_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
+ORDER BY cs.created_at, cs.id
+`
+
+// The effects on a character's combatants in the combats that are not ended.
+func (q *Queries) ListCombatEffectsOfCharacter(ctx context.Context, characterID string) ([]CombatantState, error) {
+	rows, err := q.db.Query(ctx, listCombatEffectsOfCharacter, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatantState
+	for rows.Next() {
+		var i CombatantState
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.Kind,
+			&i.SourceID,
+			&i.EndsCombatantID,
+			&i.EndsPhase,
+			&i.EndsRound,
+			&i.StartedRound,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCombatEffectsOfGroup = `-- name: ListCombatEffectsOfGroup :many
+SELECT cs.id, c.character_id FROM combatant_states cs
+JOIN combatants c ON c.id = cs.combatant_id
+JOIN encounters e ON e.id = cs.encounter_id
+WHERE cs.group_id = $1 AND cs.kind = 'effect' AND e.status <> 'ended'
+ORDER BY cs.created_at, cs.id
+`
+
+type ListCombatEffectsOfGroupRow struct {
+	ID          string
+	CharacterID string
+}
+
+// The effects of one casting that a combat holds now (the cast ended while a fight ran), with
+// the character each is on.
+func (q *Queries) ListCombatEffectsOfGroup(ctx context.Context, groupID *string) ([]ListCombatEffectsOfGroupRow, error) {
+	rows, err := q.db.Query(ctx, listCombatEffectsOfGroup, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCombatEffectsOfGroupRow
+	for rows.Next() {
+		var i ListCombatEffectsOfGroupRow
+		if err := rows.Scan(&i.ID, &i.CharacterID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -3925,7 +5250,7 @@ func (q *Queries) ListCombatReasons(ctx context.Context, arg ListCombatReasonsPa
 }
 
 const listCombatantStates = `-- name: ListCombatantStates :many
-SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at FROM combatant_states
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label FROM combatant_states
 WHERE encounter_id = $1
 ORDER BY created_at, id
 `
@@ -3951,6 +5276,25 @@ func (q *Queries) ListCombatantStates(ctx context.Context, encounterID string) (
 			&i.StartedRound,
 			&i.Amount,
 			&i.CreatedAt,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
 		); err != nil {
 			return nil, err
 		}
@@ -3963,7 +5307,7 @@ func (q *Queries) ListCombatantStates(ctx context.Context, encounterID string) (
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction FROM combatants
 WHERE encounter_id = $1 AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -4048,6 +5392,17 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.DeathRound,
 			&i.DeathOrderIndex,
 			&i.RevivifyBlocked,
+			&i.EffectConditions,
+			&i.EffectAcBonus,
+			&i.EffectSpeedPct,
+			&i.EffectSpeedAddFt,
+			&i.EffectNoAction,
+			&i.EffectNoMove,
+			&i.ExtraActionUsed,
+			&i.ExhaustionLevel,
+			&i.HpMaxBase,
+			&i.MeleeHitTurn,
+			&i.EffectNoReaction,
 		); err != nil {
 			return nil, err
 		}
@@ -4060,7 +5415,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 }
 
 const listCombatantsWithDismissed = `-- name: ListCombatantsWithDismissed :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id
 `
@@ -4144,6 +5499,17 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 			&i.DeathRound,
 			&i.DeathOrderIndex,
 			&i.RevivifyBlocked,
+			&i.EffectConditions,
+			&i.EffectAcBonus,
+			&i.EffectSpeedPct,
+			&i.EffectSpeedAddFt,
+			&i.EffectNoAction,
+			&i.EffectNoMove,
+			&i.ExtraActionUsed,
+			&i.ExhaustionLevel,
+			&i.HpMaxBase,
+			&i.MeleeHitTurn,
+			&i.EffectNoReaction,
 		); err != nil {
 			return nil, err
 		}
@@ -4156,7 +5522,7 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 }
 
 const listCreatureCombatants = `-- name: ListCreatureCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction FROM combatants
 WHERE encounter_id = $1 AND kind = 'creature' AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -4241,6 +5607,17 @@ func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string
 			&i.DeathRound,
 			&i.DeathOrderIndex,
 			&i.RevivifyBlocked,
+			&i.EffectConditions,
+			&i.EffectAcBonus,
+			&i.EffectSpeedPct,
+			&i.EffectSpeedAddFt,
+			&i.EffectNoAction,
+			&i.EffectNoMove,
+			&i.ExtraActionUsed,
+			&i.ExhaustionLevel,
+			&i.HpMaxBase,
+			&i.MeleeHitTurn,
+			&i.EffectNoReaction,
 		); err != nil {
 			return nil, err
 		}
@@ -4489,8 +5866,138 @@ func (q *Queries) ListHeldReactionHolds(ctx context.Context, encounterID string)
 	return items, nil
 }
 
+const listHitRiders = `-- name: ListHitRiders :many
+SELECT id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at FROM hit_riders WHERE encounter_id = $1 ORDER BY created_at, id
+`
+
+func (q *Queries) ListHitRiders(ctx context.Context, encounterID string) ([]HitRider, error) {
+	rows, err := q.db.Query(ctx, listHitRiders, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HitRider
+	for rows.Next() {
+		var i HitRider
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.AttackerID,
+			&i.TargetID,
+			&i.Kind,
+			&i.Round,
+			&i.Choice,
+			&i.Used,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInspirationHoldsOfCharacter = `-- name: ListInspirationHoldsOfCharacter :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at
+`
+
+func (q *Queries) ListInspirationHoldsOfCharacter(ctx context.Context, characterID string) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listInspirationHoldsOfCharacter, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLastingEffects = `-- name: ListLastingEffects :many
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label FROM combatant_states
+WHERE encounter_id = $1 AND kind = 'effect'
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListLastingEffects(ctx context.Context, encounterID string) ([]CombatantState, error) {
+	rows, err := q.db.Query(ctx, listLastingEffects, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatantState
+	for rows.Next() {
+		var i CombatantState
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.Kind,
+			&i.SourceID,
+			&i.EndsCombatantID,
+			&i.EndsPhase,
+			&i.EndsRound,
+			&i.StartedRound,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenCombatantsOfCreatures = `-- name: ListOpenCombatantsOfCreatures :many
-SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left, cb.hp_max_bonus, cb.mage_armor_ac, cb.attacked_hostile, cb.took_damage, cb.rage_end_pending, cb.condition_sources, cb.sneak_attack_turn, cb.colossus_slayer_turn, cb.inspiration_sides, cb.inspiration_from, cb.inspiration_expires_round, cb.slots_used, cb.death_round, cb.death_order_index, cb.revivify_blocked FROM combatants AS cb
+SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left, cb.hp_max_bonus, cb.mage_armor_ac, cb.attacked_hostile, cb.took_damage, cb.rage_end_pending, cb.condition_sources, cb.sneak_attack_turn, cb.colossus_slayer_turn, cb.inspiration_sides, cb.inspiration_from, cb.inspiration_expires_round, cb.slots_used, cb.death_round, cb.death_order_index, cb.revivify_blocked, cb.effect_conditions, cb.effect_ac_bonus, cb.effect_speed_pct, cb.effect_speed_add_ft, cb.effect_no_action, cb.effect_no_move, cb.extra_action_used, cb.exhaustion_level, cb.hp_max_base, cb.melee_hit_turn, cb.effect_no_reaction FROM combatants AS cb
 JOIN encounters AS e ON e.id = cb.encounter_id
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = $1::UUID
@@ -4585,6 +6092,17 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 			&i.DeathRound,
 			&i.DeathOrderIndex,
 			&i.RevivifyBlocked,
+			&i.EffectConditions,
+			&i.EffectAcBonus,
+			&i.EffectSpeedPct,
+			&i.EffectSpeedAddFt,
+			&i.EffectNoAction,
+			&i.EffectNoMove,
+			&i.ExtraActionUsed,
+			&i.ExhaustionLevel,
+			&i.HpMaxBase,
+			&i.MeleeHitTurn,
+			&i.EffectNoReaction,
 		); err != nil {
 			return nil, err
 		}
@@ -4637,7 +6155,7 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 }
 
 const listOpenPendingDamages = `-- name: ListOpenPendingDamages :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')
 ORDER BY created_at, id
 `
@@ -4687,6 +6205,8 @@ func (q *Queries) ListOpenPendingDamages(ctx context.Context, encounterID string
 			&i.Steps,
 			&i.LandedBefore,
 			&i.AfterSteps,
+			&i.EffectSourceKey,
+			&i.SavageDice,
 		); err != nil {
 			return nil, err
 		}
@@ -4775,7 +6295,7 @@ func (q *Queries) ListOpenRollHolds(ctx context.Context, encounterID string) ([]
 }
 
 const listOpenTrapPendingDamages = `-- name: ListOpenTrapPendingDamages :many
-SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id, p.critical_max, p.critical_max_rule, p.taken, p.extra_dice, p.parts, p.part_rolls, p.steps, p.landed_before, p.after_steps FROM pending_damages AS p
+SELECT p.id, p.encounter_id, p.attacker_id, p.target_id, p.attack_key, p.status, p.critical, p.dice_count, p.dice_sides, p.dice_bonus, p.damage_type, p.faces, p.physical, p.amount, p.created_at, p.resolved_at, p.cast_id, p.healing, p.half, p.applied_amount, p.attack_total, p.roll_total, p.attack_armor_class, p.trap_point_id, p.critical_max, p.critical_max_rule, p.taken, p.extra_dice, p.parts, p.part_rolls, p.steps, p.landed_before, p.after_steps, p.effect_source_key, p.savage_dice FROM pending_damages AS p
 JOIN encounters AS e ON e.id = p.encounter_id
 WHERE e.game_session_id = $1 AND e.status <> 'ended' AND p.trap_point_id IS NOT NULL AND p.status = 'rolled'
 ORDER BY p.created_at, p.id
@@ -4827,6 +6347,8 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 			&i.Steps,
 			&i.LandedBefore,
 			&i.AfterSteps,
+			&i.EffectSourceKey,
+			&i.SavageDice,
 		); err != nil {
 			return nil, err
 		}
@@ -4839,7 +6361,7 @@ func (q *Queries) ListOpenTrapPendingDamages(ctx context.Context, gameSessionID 
 }
 
 const listOpenTrapPendingDamagesOfEncounter = `-- name: ListOpenTrapPendingDamagesOfEncounter :many
-SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps FROM pending_damages
+SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND trap_point_id IS NOT NULL AND status = 'rolled'
 ORDER BY created_at, id
 `
@@ -4889,6 +6411,8 @@ func (q *Queries) ListOpenTrapPendingDamagesOfEncounter(ctx context.Context, enc
 			&i.Steps,
 			&i.LandedBefore,
 			&i.AfterSteps,
+			&i.EffectSourceKey,
+			&i.SavageDice,
 		); err != nil {
 			return nil, err
 		}
@@ -5797,7 +7321,7 @@ func (q *Queries) ReopenReactionWindow(ctx context.Context, id string) error {
 const resetCombatantTurn = `-- name: ResetCombatantTurn :exec
 UPDATE combatants
 SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
-    attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, death_save_rolled = false, turn_state = 'acting'
+    attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1
 `
 
@@ -5935,6 +7459,34 @@ func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (P
 		&i.RoundStartedAt,
 	)
 	return i, err
+}
+
+const setCharacterEffectModifiers = `-- name: SetCharacterEffectModifiers :exec
+UPDATE character_effects SET modifiers = $2 WHERE id = $1
+`
+
+type SetCharacterEffectModifiersParams struct {
+	ID        string
+	Modifiers []byte
+}
+
+func (q *Queries) SetCharacterEffectModifiers(ctx context.Context, arg SetCharacterEffectModifiersParams) error {
+	_, err := q.db.Exec(ctx, setCharacterEffectModifiers, arg.ID, arg.Modifiers)
+	return err
+}
+
+const setCharacterEffectSeconds = `-- name: SetCharacterEffectSeconds :exec
+UPDATE character_effects SET seconds_left = $2 WHERE id = $1
+`
+
+type SetCharacterEffectSecondsParams struct {
+	ID          string
+	SecondsLeft *int32
+}
+
+func (q *Queries) SetCharacterEffectSeconds(ctx context.Context, arg SetCharacterEffectSecondsParams) error {
+	_, err := q.db.Exec(ctx, setCharacterEffectSeconds, arg.ID, arg.SecondsLeft)
+	return err
 }
 
 const setCombatantAcBonus = `-- name: SetCombatantAcBonus :exec
@@ -6219,6 +7771,103 @@ func (q *Queries) SetCombatantEconomy(ctx context.Context, arg SetCombatantEcono
 	return err
 }
 
+const setCombatantEffectState = `-- name: SetCombatantEffectState :exec
+UPDATE combatants
+SET conditions = $2, effect_conditions = $3, effect_ac_bonus = $4, effect_speed_pct = $5, effect_no_action = $6, effect_no_move = $7, effect_speed_add_ft = $8, effect_no_reaction = $9
+WHERE id = $1
+`
+
+type SetCombatantEffectStateParams struct {
+	ID               string
+	Conditions       []string
+	EffectConditions []string
+	EffectAcBonus    int32
+	EffectSpeedPct   int32
+	EffectNoAction   bool
+	EffectNoMove     bool
+	EffectSpeedAddFt int32
+	EffectNoReaction bool
+}
+
+// What the effects leave on a combatant, worked out again (combat_effects.go): the
+// conditions (the ones set by hand and the effects'), the ones that came from effects,
+// the armor class bonus, the speed in percent and the lethargy.
+func (q *Queries) SetCombatantEffectState(ctx context.Context, arg SetCombatantEffectStateParams) error {
+	_, err := q.db.Exec(ctx, setCombatantEffectState,
+		arg.ID,
+		arg.Conditions,
+		arg.EffectConditions,
+		arg.EffectAcBonus,
+		arg.EffectSpeedPct,
+		arg.EffectNoAction,
+		arg.EffectNoMove,
+		arg.EffectSpeedAddFt,
+		arg.EffectNoReaction,
+	)
+	return err
+}
+
+const setCombatantExhaustion = `-- name: SetCombatantExhaustion :exec
+UPDATE combatants
+SET exhaustion_level = $2, hp_max = $5, hp_current = $6, hp_max_base = $7,
+    effect_speed_pct = $3, defeated = $4
+WHERE id = $1
+`
+
+type SetCombatantExhaustionParams struct {
+	ID              string
+	ExhaustionLevel int32
+	EffectSpeedPct  int32
+	Defeated        bool
+	HpMax           *int32
+	HpCurrent       *int32
+	HpMaxBase       *int32
+}
+
+// An NPC's exhaustion: the level, the hit points under the maximum the level leaves
+// (hp_max_base is the maximum before level 4 halved it) and the speed.
+func (q *Queries) SetCombatantExhaustion(ctx context.Context, arg SetCombatantExhaustionParams) error {
+	_, err := q.db.Exec(ctx, setCombatantExhaustion,
+		arg.ID,
+		arg.ExhaustionLevel,
+		arg.EffectSpeedPct,
+		arg.Defeated,
+		arg.HpMax,
+		arg.HpCurrent,
+		arg.HpMaxBase,
+	)
+	return err
+}
+
+const setCombatantExhaustionLevel = `-- name: SetCombatantExhaustionLevel :exec
+UPDATE combatants SET exhaustion_level = $2 WHERE id = $1
+`
+
+type SetCombatantExhaustionLevelParams struct {
+	ID              string
+	ExhaustionLevel int32
+}
+
+// A player's character's level, copied from its vitals so the advantage rules read it.
+func (q *Queries) SetCombatantExhaustionLevel(ctx context.Context, arg SetCombatantExhaustionLevelParams) error {
+	_, err := q.db.Exec(ctx, setCombatantExhaustionLevel, arg.ID, arg.ExhaustionLevel)
+	return err
+}
+
+const setCombatantExtraActionUsed = `-- name: SetCombatantExtraActionUsed :exec
+UPDATE combatants SET extra_action_used = $2 WHERE id = $1
+`
+
+type SetCombatantExtraActionUsedParams struct {
+	ID              string
+	ExtraActionUsed bool
+}
+
+func (q *Queries) SetCombatantExtraActionUsed(ctx context.Context, arg SetCombatantExtraActionUsedParams) error {
+	_, err := q.db.Exec(ctx, setCombatantExtraActionUsed, arg.ID, arg.ExtraActionUsed)
+	return err
+}
+
 const setCombatantHidden = `-- name: SetCombatantHidden :exec
 UPDATE combatants
 SET hidden = $2
@@ -6332,6 +7981,23 @@ func (q *Queries) SetCombatantInspirationDie(ctx context.Context, arg SetCombata
 		arg.ExpiresRound,
 		arg.ID,
 	)
+	return err
+}
+
+const setCombatantMeleeHitTurn = `-- name: SetCombatantMeleeHitTurn :exec
+UPDATE combatants
+SET melee_hit_turn = $2
+WHERE id = $1
+`
+
+type SetCombatantMeleeHitTurnParams struct {
+	ID           string
+	MeleeHitTurn *string
+}
+
+// The turn ("<round>:<combatant on turn>") of the combatant's last melee weapon hit.
+func (q *Queries) SetCombatantMeleeHitTurn(ctx context.Context, arg SetCombatantMeleeHitTurnParams) error {
+	_, err := q.db.Exec(ctx, setCombatantMeleeHitTurn, arg.ID, arg.MeleeHitTurn)
 	return err
 }
 
@@ -6700,6 +8366,136 @@ func (q *Queries) SetGroupInitiative(ctx context.Context, arg SetGroupInitiative
 	return err
 }
 
+const setLastingEffectEnds = `-- name: SetLastingEffectEnds :one
+UPDATE combatant_states
+SET duration_kind = $2, ends_round = $3, ends_combatant_id = $4, ends_phase = $5
+WHERE id = $1 AND kind = 'effect'
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+`
+
+type SetLastingEffectEndsParams struct {
+	ID              string
+	DurationKind    *string
+	EndsRound       *int32
+	EndsCombatantID *string
+	EndsPhase       *string
+}
+
+func (q *Queries) SetLastingEffectEnds(ctx context.Context, arg SetLastingEffectEndsParams) (CombatantState, error) {
+	row := q.db.QueryRow(ctx, setLastingEffectEnds,
+		arg.ID,
+		arg.DurationKind,
+		arg.EndsRound,
+		arg.EndsCombatantID,
+		arg.EndsPhase,
+	)
+	var i CombatantState
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.Kind,
+		&i.SourceID,
+		&i.EndsCombatantID,
+		&i.EndsPhase,
+		&i.EndsRound,
+		&i.StartedRound,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
+	)
+	return i, err
+}
+
+const setLastingEffectModifiers = `-- name: SetLastingEffectModifiers :exec
+UPDATE combatant_states SET modifiers = $2 WHERE id = $1 AND kind = 'effect'
+`
+
+type SetLastingEffectModifiersParams struct {
+	ID        string
+	Modifiers []byte
+}
+
+func (q *Queries) SetLastingEffectModifiers(ctx context.Context, arg SetLastingEffectModifiersParams) error {
+	_, err := q.db.Exec(ctx, setLastingEffectModifiers, arg.ID, arg.Modifiers)
+	return err
+}
+
+const setLastingEffectVisibility = `-- name: SetLastingEffectVisibility :one
+UPDATE combatant_states
+SET player_visible = $2, audience = $3, player_label = $4
+WHERE id = $1 AND kind = 'effect'
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label
+`
+
+type SetLastingEffectVisibilityParams struct {
+	ID            string
+	PlayerVisible bool
+	Audience      string
+	PlayerLabel   *string
+}
+
+func (q *Queries) SetLastingEffectVisibility(ctx context.Context, arg SetLastingEffectVisibilityParams) (CombatantState, error) {
+	row := q.db.QueryRow(ctx, setLastingEffectVisibility,
+		arg.ID,
+		arg.PlayerVisible,
+		arg.Audience,
+		arg.PlayerLabel,
+	)
+	var i CombatantState
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.Kind,
+		&i.SourceID,
+		&i.EndsCombatantID,
+		&i.EndsPhase,
+		&i.EndsRound,
+		&i.StartedRound,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.GroupID,
+		&i.SourceKey,
+		&i.SourceKind,
+		&i.Concentration,
+		&i.ConditionKeys,
+		&i.Modifiers,
+		&i.DurationKind,
+		&i.EndSaveAbility,
+		&i.StartSaveAbility,
+		&i.SaveDc,
+		&i.OnFailEffect,
+		&i.FollowsKey,
+		&i.TriggerDice,
+		&i.TriggerDamageType,
+		&i.TriggerMaxTriggers,
+		&i.TriggersFired,
+		&i.PlayerVisible,
+		&i.Audience,
+		&i.PlayerLabel,
+	)
+	return i, err
+}
+
 const setOpenScene = `-- name: SetOpenScene :one
 
 UPDATE game_sessions
@@ -6808,7 +8604,7 @@ const setPendingDamageApplied = `-- name: SetPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'applied', resolved_at = $2, applied_amount = $3
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type SetPendingDamageAppliedParams struct {
@@ -6855,6 +8651,8 @@ func (q *Queries) SetPendingDamageApplied(ctx context.Context, arg SetPendingDam
 		&i.Steps,
 		&i.LandedBefore,
 		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -6889,6 +8687,24 @@ func (q *Queries) SetPendingDamageDetail(ctx context.Context, arg SetPendingDama
 	return err
 }
 
+const setPendingDamageLanding = `-- name: SetPendingDamageLanding :exec
+UPDATE pending_damages
+SET amount = $2
+WHERE id = $1
+`
+
+type SetPendingDamageLandingParams struct {
+	ID     string
+	Amount *int32
+}
+
+// The damage that lands, changed on its own: a monk's Slow Fall took points off a
+// fall (and an undo of it puts them back).
+func (q *Queries) SetPendingDamageLanding(ctx context.Context, arg SetPendingDamageLandingParams) error {
+	_, err := q.db.Exec(ctx, setPendingDamageLanding, arg.ID, arg.Amount)
+	return err
+}
+
 const setPendingDamageParts = `-- name: SetPendingDamageParts :exec
 UPDATE pending_damages
 SET parts = $2
@@ -6910,7 +8726,7 @@ const setPendingDamageRolled = `-- name: SetPendingDamageRolled :one
 UPDATE pending_damages
 SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type SetPendingDamageRolledParams struct {
@@ -6971,6 +8787,8 @@ func (q *Queries) SetPendingDamageRolled(ctx context.Context, arg SetPendingDama
 		&i.Steps,
 		&i.LandedBefore,
 		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -6979,7 +8797,7 @@ const setPendingDamageStatus = `-- name: SetPendingDamageStatus :one
 UPDATE pending_damages
 SET status = $2, resolved_at = $3
 WHERE id = $1
-RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps
+RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
 type SetPendingDamageStatusParams struct {
@@ -7027,6 +8845,8 @@ func (q *Queries) SetPendingDamageStatus(ctx context.Context, arg SetPendingDama
 		&i.Steps,
 		&i.LandedBefore,
 		&i.AfterSteps,
+		&i.EffectSourceKey,
+		&i.SavageDice,
 	)
 	return i, err
 }
@@ -7482,4 +9302,19 @@ func (q *Queries) UpsertBattleEncounter(ctx context.Context, arg UpsertBattleEnc
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const useHitRider = `-- name: UseHitRider :exec
+UPDATE hit_riders SET used = true, choice = $3 WHERE encounter_id = $1 AND id = $2
+`
+
+type UseHitRiderParams struct {
+	EncounterID string
+	ID          string
+	Choice      *string
+}
+
+func (q *Queries) UseHitRider(ctx context.Context, arg UseHitRiderParams) error {
+	_, err := q.db.Exec(ctx, useHitRider, arg.EncounterID, arg.ID, arg.Choice)
+	return err
 }

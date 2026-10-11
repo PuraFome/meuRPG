@@ -3,6 +3,12 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Step } from '../../../../core/combat/attack-flow';
 
+/** One step of a stepper: the attack's (`Step`) or the contests' (W7-X: Alvo, Disputa, Resultado). */
+export interface StepView {
+  readonly name: string;
+  readonly state: Step['state'];
+}
+
 /** The stepper of the attack sheet (E6-07): Alvo, Rolar, Dano. A done step
  * has a check, the current one `aria-current="step"`; the number is never
  * the only sign, the name is always beside it. */
@@ -10,7 +16,7 @@ import type { Step } from '../../../../core/combat/attack-flow';
   selector: 'app-attack-steps',
   imports: [MatIconModule],
   template: `
-    <ol class="steps" aria-label="Passos do ataque">
+    <ol class="steps" [attr.aria-label]="label()">
       @for (s of steps(); track s.name; let i = $index) {
         <li
           class="steps__item"
@@ -32,5 +38,7 @@ import type { Step } from '../../../../core/combat/attack-flow';
   styleUrl: './attack-steps.scss',
 })
 export class AttackSteps {
-  readonly steps = input.required<readonly Step[]>();
+  readonly steps = input.required<readonly StepView[]>();
+  /** What a screen reader hears the list is: the attack's steps unless the page says otherwise. */
+  readonly label = input('Passos do ataque');
 }

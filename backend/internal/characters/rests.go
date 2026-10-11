@@ -217,6 +217,23 @@ func (s *Service) TakeRest(ctx context.Context, tx pgx.Tx, campaignID string, re
 		plan.after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
 		before, after = append(before, r.view), append(after, plan.after)
 	}
+	if k == rules.RestLong && !req.GetWithoutFoodOrDrink() {
+		// A long rest with food and drink takes one level of exhaustion off (SRD 5.1).
+		for _, r := range rows {
+			if r.view.GetExhaustionLevel() < 1 {
+				continue
+			}
+			was, now, err := s.SetExhaustion(ctx, tx, campaignID, r.row.ID, r.view.GetExhaustionLevel()-1)
+			if err != nil {
+				return nil, nil, err
+			}
+			if i := slices.IndexFunc(after, func(v *playv1.CharacterVitals) bool { return v.GetCharacterId() == r.row.ID }); i >= 0 {
+				after[i] = now
+			} else {
+				before, after = append(before, was), append(after, now)
+			}
+		}
+	}
 	return before, after, nil
 }
 
@@ -442,6 +459,52 @@ func (s *Service) ConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, c
 		return nil, nil, 0, err
 	}
 	return r.view, after, gain, nil
+}
+
+// UseArcaneRecovery spends the wizard's use and gives back the expended spell slots
+// (SRD 5.1, Wizard, Arcane Recovery): slots maps a spell level to how many slots of it
+// come back. Only the spellcasting slots count, never the pact slots, and only the
+// WIZARD level sets the allowance. It returns the vitals before and after and the
+// combined level recovered. The refusals are link's: ErrNoResource (not a wizard),
+// ErrNoUsesLeft, ErrSlotLevelTooHigh (a slot of the 6th level or higher),
+// ErrSlotNotExpended and ErrArcaneOver (a PointsError: the combined level asked and the
+// allowance). It implements play.RestKeeper.
+func (s *Service) UseArcaneRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID string, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error) {
+	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	use, left := resourceLeft(r.view, rules.ArcaneRecoveryKey)
+	if use == nil || r.m.wizardLevel < 1 {
+		return nil, nil, 0, link.ErrNoResource
+	}
+	if left < 1 {
+		return nil, nil, 0, link.ErrNoUsesLeft
+	}
+	for level := range slots {
+		if level > rules.ArcaneRecoveryMaxSlotLevel {
+			return nil, nil, 0, link.ErrSlotLevelTooHigh
+		}
+	}
+	for level, count := range slots {
+		if slot := slotOf(r.view, i32(level)); slot == nil || int(slot.GetUsed()) < count {
+			return nil, nil, 0, link.ErrSlotNotExpended
+		}
+	}
+	levels, err = rules.ArcaneRecoveryCheck(slots, r.m.wizardLevel)
+	if err != nil {
+		return nil, nil, 0, &link.PointsError{Err: link.ErrArcaneOver, Needed: levels, Available: rules.ArcaneRecoveryAllowance(r.m.wizardLevel)}
+	}
+	after = proto.CloneOf(r.view)
+	u, _ := resourceLeft(after, rules.ArcaneRecoveryKey)
+	u.Used++
+	for level, count := range slots {
+		slotOf(after, i32(level)).Used -= i32(count)
+	}
+	if after, err = s.saveView(ctx, tx, r, after); err != nil {
+		return nil, nil, 0, err
+	}
+	return r.view, after, levels, nil
 }
 
 // UndoCreateSpellSlot takes back a slot Flexible Casting created: the slot goes away

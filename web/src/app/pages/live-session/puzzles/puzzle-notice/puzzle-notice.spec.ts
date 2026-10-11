@@ -53,14 +53,38 @@ describe('PuzzleNotice (MR-038, E10-06 state 6)', () => {
   });
 
   it('says a solved or stopped puzzle in words, and keeps the way back to it', async () => {
+    const { el } = await render([summary(lightsPuzzle('a', 'A'), { solved: true })]);
+    const card = textOf(el.querySelector('section'));
+    expect(card).toContain('Resolvido pelo grupo');
+    expect(card).toContain('Ver o quebra-cabeça');
+  });
+
+  it('says a stopped puzzle in words too', async () => {
+    const { el } = await render([summary(lockPuzzle('b', 'B'), { stopped: true })]);
+    expect(textOf(el.querySelector('section'))).toContain('O quebra-cabeça parou');
+  });
+
+  it('keeps the latest result as a card and folds the older ones away, the open puzzle first', async () => {
     const { el } = await render([
       summary(lightsPuzzle('a', 'A'), { solved: true }),
       summary(lockPuzzle('b', 'B'), { stopped: true }),
+      summary(lightsPuzzle('c', 'C')),
+      summary(lockPuzzle('d', 'D'), { solved: true }),
     ]);
     const cards = Array.from(el.querySelectorAll('section')).map((s) => textOf(s));
-    expect(cards[0]).toContain('Resolvido pelo grupo');
-    expect(cards[0]).toContain('Ver o quebra-cabeça');
-    expect(cards[1]).toContain('O quebra-cabeça parou');
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toContain('C');
+    expect(cards[0]).toContain('O mestre mostrou um quebra-cabeça');
+    expect(cards[1]).toContain('Resolvido pelo grupo');
+    expect(cards[1]).toContain('D');
+    const folded = el.querySelector('details')!;
+    expect(textOf(folded.querySelector('summary'))).toBe('Ver os 2 quebra-cabeças anteriores');
+    const rows = Array.from(folded.querySelectorAll('li')).map((r) => textOf(r));
+    expect(rows[0]).toContain('A');
+    expect(rows[1]).toContain('O quebra-cabeça parou');
+    expect(folded.querySelector('a')!.getAttribute('href')).toBe(
+      '/campaigns/camp-1/session?puzzle=a',
+    );
   });
 
   it('announces a puzzle that arrives later, once, and not the ones that were there when the page opened', async () => {

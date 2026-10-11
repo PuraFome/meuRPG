@@ -164,7 +164,7 @@ test(
       await expect(m.getByRole('button', { name: 'Cancelar' })).toBeFocused();
       await m.getByRole('button', { name: 'Encerrar combate' }).last().click();
       await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
-      await expect(p.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
+      await expect(p.getByRole('heading', { name: 'O combate acabou' })).toBeVisible(); // the player's one end-of-combat card
       await m.getByRole('button', { name: 'Voltar à sessão' }).click();
       await expect(m.getByRole('button', { name: 'Iniciar combate' })).toBeVisible();
     } finally {
@@ -852,14 +852,15 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await dialog.getByRole('checkbox', { name: 'Derrubado' }).check();
     await dialog.getByRole('button', { name: 'Salvar condições' }).click();
     await expect(dialog).toHaveCount(0);
-    // In the master's order, as tags under the name; on the player's strip (first one and "+1"); in the map's text list.
+    // In the master's order, as tags under the name. Envenenado has no outward sign, so it is the master's (and its owner's) alone (RN-10):
+    // the player's strip, the map's text list and the log read Derrubado only, with no "+1" and no Envenenado anywhere.
     await expect(m.getByRole('list', { name: 'Condições de Goblin 1' })).toContainText('Envenenado');
     await expect(m.getByRole('list', { name: 'Condições de Goblin 1' })).toContainText('Derrubado');
-    await expect(p.getByRole('list', { name: 'Condições de Goblin 1' })).toContainText('Derrubado');
-    await expect(p.getByRole('list', { name: 'Condições de Goblin 1' })).toContainText('+1');
-    await expect(p.getByText('Goblin 1, coluna 10, linha 10, Derrubado, Envenenado')).toBeAttached();
+    await expect(p.getByRole('list', { name: 'Condições de Goblin 1' })).toHaveText(/^\s*Derrubado\s*$/);
+    await expect(p.getByText('Goblin 1, coluna 10, linha 10, Derrubado')).toBeAttached();
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
-    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1 ficou Derrubado e Envenenado');
+    await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1 ficou Derrubado');
+    await expect(p.getByText('Envenenado')).toHaveCount(0);
     await p.keyboard.press('Escape');
 
     // Pensantus casts Teia, which asks for concentration; he sees it and may end it himself.
@@ -1127,7 +1128,7 @@ test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua
     const details = p.getByRole('dialog', { name: 'Descrição de Sono' });
     await expect(details.getByRole('heading', { name: 'Sono' })).toBeVisible();
     await expect(details.getByText('Tempo de conjuração')).toBeVisible();
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByText('Esta magia coloca criaturas em um sono mágico.')).toBeVisible();
     await expect(details.getByRole('button', { name: 'Fechar' }).last()).toBeInViewport({ ratio: 1 });
     await details.getByRole('button', { name: 'Fechar' }).last().click();
     await expect(details).toHaveCount(0);
@@ -1172,7 +1173,7 @@ test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogado
     // The "?" in the header opens the description over the sheet; "Fechar" comes back to the choices.
     await sheet.getByRole('button', { name: 'Detalhes de Sono' }).click();
     const details = p.getByRole('dialog', { name: 'Descrição de Sono' });
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByText('Esta magia coloca criaturas em um sono mágico.')).toBeVisible();
     await details.getByRole('button', { name: 'Fechar' }).last().click();
     await expect(details).toHaveCount(0);
     await expect(sheet.locator('app-area-list li')).toHaveCount(3);

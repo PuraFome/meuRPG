@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
+import type { OutsideInspirationOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import { PlayService } from '../../../gen/meurpg/play/v1/play_pb';
 import type { OpenSceneInfo, SceneRoll, StageNpc } from '../../../gen/meurpg/play/v1/scene_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
@@ -61,7 +62,8 @@ export class SceneClient {
     actionId: string,
     die: SceneDie,
     idempotencyKey: string,
-  ): Promise<SceneRoll> {
+    extraDieFaces: readonly number[] = [],
+  ): Promise<SceneRoll | OutsideInspirationOffer> {
     const res = await this.client.rollSceneCheck({
       campaignId,
       actionId,
@@ -73,8 +75,10 @@ export class SceneClient {
             ? { case: 'd20Face', value: die.face }
             : { case: undefined },
       d20Faces: 'faces' in die ? [...die.faces] : [],
+      extraDieFaces: [...extraDieFaces],
     });
-    return need(res.roll, 'RollSceneCheck');
+    // A character that holds a Bardic Inspiration die is asked about it before the result is written.
+    return res.inspirationOffer ?? need(res.roll, 'RollSceneCheck');
   }
 
   /** `GrantSceneAttempt` (MR-015): one more attempt for one character at one

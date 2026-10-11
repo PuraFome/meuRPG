@@ -67,7 +67,7 @@ type world struct {
 	stage2       *charactersv1.Character // an NPC the stream test puts on the stage
 
 	// The gallery.
-	imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgGenerated, generation string
+	imgSceneA, imgSceneB, imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgGenerated, generation string
 	// ids of things the probe aims at
 	imgHiddenMap, imgDungeon                     string
 	streamSeen                                   map[string]map[string]int // the kinds of event the stream test received
@@ -94,6 +94,8 @@ const (
 	trapSave     = 26
 	sceneDC      = 28
 	hintDC       = 25
+	escapeDC     = 27 // the fixed escape DC of a grapple by a hidden NPC's attack
+	groupCheckDC = 23
 	caveColumns  = 24
 	dungeonSeed  = 8675309
 	treasureSeed = 424242

@@ -1671,6 +1671,10 @@ const (
 	ChoiceOrigin_CHOICE_ORIGIN_CLASS ChoiceOrigin = 2
 	// A class's subclass.
 	ChoiceOrigin_CHOICE_ORIGIN_SUBCLASS ChoiceOrigin = 3
+	// The background (a background that grants a feat of the player's choice).
+	ChoiceOrigin_CHOICE_ORIGIN_BACKGROUND ChoiceOrigin = 4
+	// A feat the sheet has, when it grants another feat to choose.
+	ChoiceOrigin_CHOICE_ORIGIN_FEAT ChoiceOrigin = 5
 )
 
 // Enum value maps for ChoiceOrigin.
@@ -1680,12 +1684,16 @@ var (
 		1: "CHOICE_ORIGIN_RACE",
 		2: "CHOICE_ORIGIN_CLASS",
 		3: "CHOICE_ORIGIN_SUBCLASS",
+		4: "CHOICE_ORIGIN_BACKGROUND",
+		5: "CHOICE_ORIGIN_FEAT",
 	}
 	ChoiceOrigin_value = map[string]int32{
 		"CHOICE_ORIGIN_UNSPECIFIED": 0,
 		"CHOICE_ORIGIN_RACE":        1,
 		"CHOICE_ORIGIN_CLASS":       2,
 		"CHOICE_ORIGIN_SUBCLASS":    3,
+		"CHOICE_ORIGIN_BACKGROUND":  4,
+		"CHOICE_ORIGIN_FEAT":        5,
 	}
 )
 
@@ -2952,7 +2960,11 @@ type FullSheet struct {
 	// the favored enemy's type and language ("feature:favored-enemy-1-type=creature-type:giant"),
 	// a terrain ("...=terrain:forest"), the half-elf's abilities
 	// ("race:half-elf#abilities=ability:dex") and the spells a feature grants
-	// ("feature:pact-of-the-tome#cantrips=spell:guidance"). Which choice asks for it,
+	// ("feature:pact-of-the-tome#cantrips=spell:guidance"). A feat of the player's choice
+	// (a `choice` effect with choice "feat" on a trait, feature, background or feat) is
+	// "<owner key>#feat=<feat key>" ("trait:talento@mesa#feat=feat:grappler"); it applies like
+	// a feat in feat_keys for as long as the owner is on the sheet, and is never also in
+	// feat_keys. Which choice asks for it,
 	// and the exact string to store, come from PreviewChoices (ChoiceOption.stored_key).
 	FeatureChoiceKeys []string `protobuf:"bytes,24,rep,name=feature_choice_keys,json=featureChoiceKeys,proto3" json:"feature_choice_keys,omitempty"`
 	// The challenge rating ("ND") of an enemy or a boss: "0", "1/8", "1/4",
@@ -3004,7 +3016,8 @@ type FullSheet struct {
 	// Improvement by the guided level-up, or by the master in the sheet editor. A feat
 	// applies like a feature: its effects reach the derived sheet and the sheet lists
 	// it with the features. The abilities a feat raises are in extra_ability_bonuses.
-	// At most 100.
+	// A feat a race, background or feature grants to choose is not here: it is in
+	// feature_choice_keys ("<owner key>#feat=<feat key>"). At most 100.
 	FeatKeys []string `protobuf:"bytes,32,rep,name=feat_keys,json=featKeys,proto3" json:"feat_keys,omitempty"`
 	// For a feat taken in the guided level-up, the key of the Ability Score Improvement
 	// feature it replaced (feat key to feature key). Set by the level-up; an entry for a feat
@@ -13614,12 +13627,14 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x18CREATURE_SOURCE_FAMILIAR\x10\x01\x12 \n" +
 	"\x1cCREATURE_SOURCE_ANIMATE_DEAD\x10\x02\x12#\n" +
 	"\x1fCREATURE_SOURCE_CONJURE_ANIMALS\x10\x03\x12\x1a\n" +
-	"\x16CREATURE_SOURCE_MASTER\x10\x04*z\n" +
+	"\x16CREATURE_SOURCE_MASTER\x10\x04*\xb0\x01\n" +
 	"\fChoiceOrigin\x12\x1d\n" +
 	"\x19CHOICE_ORIGIN_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12CHOICE_ORIGIN_RACE\x10\x01\x12\x17\n" +
 	"\x13CHOICE_ORIGIN_CLASS\x10\x02\x12\x1a\n" +
-	"\x16CHOICE_ORIGIN_SUBCLASS\x10\x03*\xa6\x01\n" +
+	"\x16CHOICE_ORIGIN_SUBCLASS\x10\x03\x12\x1c\n" +
+	"\x18CHOICE_ORIGIN_BACKGROUND\x10\x04\x12\x16\n" +
+	"\x12CHOICE_ORIGIN_FEAT\x10\x05*\xa6\x01\n" +
 	"\n" +
 	"ChoiceKind\x12\x1b\n" +
 	"\x17CHOICE_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +

@@ -1,3 +1,4 @@
+import { stubFullscreen } from '../../core/ui/fullscreen-testing';
 import { TestBed } from '@angular/core/testing';
 import { textOf } from '../../core/format/text-testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -365,5 +366,37 @@ describe('FogMap', () => {
     expect(withPins.el.querySelectorAll('app-map-pins .pin--remembered')).toHaveLength(1);
     const none = create({ points: [], pins: true });
     expect(none.el.querySelectorAll('app-map-pins .area, app-map-pins .pin')).toHaveLength(0);
+  });
+
+  describe('full screen', () => {
+    let fs: ReturnType<typeof stubFullscreen>;
+    afterEach(() => fs.restore());
+
+    it('offers "Tela cheia" only where the browser has the API', () => {
+      fs = stubFullscreen(false);
+      expect(create().el.querySelector('[aria-label="Tela cheia"]')).toBeNull();
+      fs.restore();
+      fs = stubFullscreen(true);
+      expect(create().el.querySelector('[aria-label="Tela cheia"]')).toBeTruthy();
+    });
+
+    it("asks the host for full screen, follows the browser's state and leaves on a second click", () => {
+      fs = stubFullscreen(true);
+      const { fixture, el } = create();
+      fs.track(el);
+      const button = () => el.querySelector<HTMLButtonElement>('[aria-pressed]')!;
+      expect(button().getAttribute('aria-pressed')).toBe('false');
+      button().click();
+      expect(fs.request).toHaveBeenCalledTimes(1);
+      fs.enter(el);
+      fixture.detectChanges();
+      expect(button().getAttribute('aria-label')).toBe('Sair da tela cheia');
+      expect(button().getAttribute('aria-pressed')).toBe('true');
+      button().click();
+      expect(fs.exit).toHaveBeenCalledTimes(1);
+      fs.leave();
+      fixture.detectChanges();
+      expect(button().getAttribute('aria-label')).toBe('Tela cheia');
+    });
   });
 });

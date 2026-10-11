@@ -148,3 +148,28 @@
   min-height: 44px;
   --mat-button-outlined-label-text-color: var(--mr-ink);
 }
+
+// The option list of a class or subclass feature: its options are features of their own, nested one level.
+.options {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px dashed var(--mr-line);
+
+  &__title {
+    margin: 0;
+    font: inherit;
+    font-weight: 600;
+  }
+
+  &__hint {
+    margin: 0;
+    color: var(--mr-ink-soft, inherit);
+  }
+
+  app-feature-editor {
+    width: 100%;
+  }
+}

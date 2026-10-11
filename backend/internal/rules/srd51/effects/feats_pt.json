@@ -1,0 +1,9 @@
+{
+ "feat:grappler": {
+  "desc": [
+   "Você desenvolveu as perícias necessárias para se defender em lutas agarradas de curta distância. Você ganha os seguintes benefícios:",
+   "- Você tem vantagem em jogadas de ataque contra uma criatura que você esteja Agarrando.",
+   "- Você pode usar sua ação para tentar imobilizar uma criatura Agarrada por você. Para isso, faça outro teste de agarrar. Se for bem-sucedido, você e a criatura ficam Impedidos até que o agarrão termine."
+  ]
+ }
+}

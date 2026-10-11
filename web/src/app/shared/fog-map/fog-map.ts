@@ -27,6 +27,7 @@ import { PHONE_QUERY, mediaQuery } from '../map-view/media-query';
 import { MapPins } from '../map-pins/map-pins';
 import { MapPinsLegend } from '../map-pins/map-pins-legend';
 import { FogBase, type FogImage } from './fog-base';
+import { fullscreenOfHost } from '../../core/ui/fullscreen';
 
 /** How a viewer is addressed: "Seu personagem" (their own), or, for the master, the character's name. */
 export interface FogViewer {
@@ -72,6 +73,7 @@ export interface FogViewer {
   styleUrl: './fog-map.scss',
 })
 export class FogMap {
+  protected readonly fullscreen = fullscreenOfHost();
   readonly mapName = input('');
   /** The map's picture size, to reserve the frame (a player gets no image, only its size). */
   readonly imageWidth = input.required<number>();

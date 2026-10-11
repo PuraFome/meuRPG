@@ -41,6 +41,8 @@ const (
 	MaxTableFeatures = 60
 	// MaxSlugLength bounds the part of a key between the prefix and "@mesa".
 	MaxSlugLength = 60
+	// MaxFeatureOptions is the most options one feature's list has.
+	MaxFeatureOptions = 60
 
 	maxNameRunes      = 80
 	maxTextParagraphs = 50
@@ -119,6 +121,12 @@ type TableFeature struct {
 	NamePT  string
 	DescPT  []string
 	Effects []Effect
+	// Options is the feature's option list (a table's maneuvers), only on a class
+	// or subclass feature: options the player picks, each with a name, a text and
+	// effects that apply while it is picked and the feature is the character's.
+	// Their keys are "feature:...@mesa" like a feature's, made by the server. They
+	// do not nest.
+	Options []TableFeature
 }
 
 // TableCasting is how a class (or, for a third caster, a subclass) casts.
@@ -637,6 +645,11 @@ func buildKeys(b Build, want func(string) bool) []string {
 	add(b.SpellsKnown...)
 	add(b.SpellsPrepared...)
 	add(b.FeatureChoices...)
+	for _, k := range b.FeatureChoices {
+		if _, v, ok := SplitScopedChoice(k); ok && strings.HasPrefix(v, "feat:") {
+			add(v) // a feat picked through a choice is a feat of the sheet
+		}
+	}
 	add(b.Feats...)
 	return sortedKeys(seen)
 }
@@ -693,6 +706,9 @@ func BuildKeys(b Build) []KeyField {
 	}
 	for i, k := range b.FeatureChoices {
 		add(k, fmt.Sprintf("full.feature_choice_keys[%d]", i))
+		if _, v, ok := SplitScopedChoice(k); ok && strings.HasPrefix(v, "feat:") {
+			add(v, fmt.Sprintf("full.feature_choice_keys[%d]", i))
+		}
 	}
 	for i, k := range b.Feats {
 		add(k, fmt.Sprintf("full.feat_keys[%d]", i))
@@ -743,6 +759,12 @@ type overlayBuilder struct {
 	pending []pendingEffects
 	// strict is Overlay.Strict as a set.
 	strict map[string]bool
+	// optionEntry is the entry of every option of a feature list, by option key;
+	// featureEntry and featureClass are the entry (and, for a subclass, the class)
+	// of every feature and option; resources are the resource names the effects of
+	// each entry declare. They serve the checks made once every entry exists.
+	optionEntry, featureEntry, featureClass map[string]string
+	resources                               map[string]map[string]bool
 }
 
 type pendingEffects struct {

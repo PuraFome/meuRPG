@@ -662,6 +662,9 @@ type Derived struct {
 	Resources       []Resource
 	Actions         []Action
 	StandardActions []Action
+	// Maneuvers are the dice the character's table options add to a roll
+	// (superiority_die effects), with the die's sides worked out for the level.
+	Maneuvers []Maneuver
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.
@@ -673,6 +676,9 @@ type Derived struct {
 	// BrutalCriticalDice is how many extra weapon damage dice a melee critical
 	// hit rolls (the barbarian's Brutal Critical: 1, 2 or 3), 0 without it.
 	BrutalCriticalDice int
+	// SavageAttacks says the character has the half-orc's Savage Attacks: a critical
+	// hit with a melee weapon attack rolls one more of the weapon's damage dice.
+	SavageAttacks bool
 	// ReliableTalent says the character has the rogue's Reliable Talent: on an
 	// ability check that adds the proficiency bonus, a d20 of 9 or lower counts
 	// as 10.
@@ -796,6 +802,9 @@ type Spellcasting struct {
 	PreparesSpells bool
 	PreparedMax    int
 	SpellsKnownMax int
+	// Spellbook is true for a class that keeps a spellbook (Wizard): the sheet's spells
+	// that are not prepared are in the book.
+	Spellbook bool
 	// MaxSpellLevel is the highest spell level this class alone could cast
 	// (0 when it only knows cantrips).
 	MaxSpellLevel int
@@ -909,8 +918,15 @@ type Feature struct {
 	Source   string
 	Level    int
 	SourcePT string
-	// Description is the SRD text, in English (ADR-0008).
+	// Description is the SRD text, in English (ADR-0008); for a table feature, the table's own
+	// Portuguese.
 	Description []string
+	// DescriptionPT is our Portuguese translation of Description (effects/features_pt.json and
+	// its siblings), one paragraph per English one; for a table feature it is the same text.
+	// Empty while DescriptionPTMissing. DescriptionPTOnly says the text exists only in
+	// Portuguese (a table feature): there is no English to offer.
+	DescriptionPT                           []string `json:"-"`
+	DescriptionPTMissing, DescriptionPTOnly bool     `json:"-"`
 	// SummaryPT is the rule in one line, in Portuguese, for an option the player
 	// picked (a fighting style, an invocation); empty for the others.
 	SummaryPT string `json:",omitempty"`

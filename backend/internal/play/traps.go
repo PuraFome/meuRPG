@@ -155,6 +155,7 @@ func (s *Service) SearchForTraps(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("other_skill_key is only for a search with OTHER"))
 	}
 	var in rollInput
+	in.extraFaces = req.Msg.GetExtraDieFaces()
 	switch roll := req.Msg.GetRoll().(type) {
 	case *playv1.SearchForTrapsRequest_RollInApp:
 		if !roll.RollInApp {
@@ -247,7 +248,7 @@ func (s *Service) SearchForTraps(
 			return err
 		}
 		ability, isCheck := checkKey(searchCheckKey[skill])
-		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, ability, isCheck)
+		cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, searchCheckKey[skill], ability, isCheck)
 		// Reliable Talent: a d20 of 9 or lower counts as 10 for a skill the character is
 		// proficient in, each die of a search with disadvantage before the lower is
 		// chosen. Not for the light's penalty: that is the second die, as before.
@@ -266,7 +267,17 @@ func (s *Service) SearchForTraps(
 			roll        dice.Result
 			counted     int
 		)
-		bonus := options[0].Bonus
+		bonus, err := s.withEffectDice(in, in.extraFaces, &cm, options[0].Bonus)
+		if err != nil {
+			return err
+		}
+		if err := s.spendOnceEffects(ctx, c, cm.Rolled); err != nil {
+			return err
+		}
+		if err := s.spendCheckHelps(ctx, c, cm.Helps); err != nil {
+			return err
+		}
+		shown = cm.shownCheck(names)
 		if cm.Mode != combat.ModeNormal {
 			// The conditions change the roll: two dice, the better or the worse counts. Where
 			// the light is dim to a Perception searcher, that disadvantage cancels an

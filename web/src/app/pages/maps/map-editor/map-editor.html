@@ -251,7 +251,9 @@
                   (removeConfirmed)="remove()"
                   (sceneActionsChange)="setSceneActions(p, $event)"
                   (cluesChange)="setClues(p, $event)"
+                  (imagesChange)="setImages(p, $event)"
                   (showDcSaved)="setShowDc(p, $event)"
+                  (mapCreated)="mapsChanged.emit()"
                   (dirtyChange)="dirty.set($event)"
                 />
               }
@@ -287,6 +289,11 @@
               [groupVision]="map()?.groupVision ?? false"
               (choose)="setViewAs($event)"
             />
+          } @else if (map()?.fogEnabled && rosterLoaded()) {
+            <p class="mr-notice mr-notice--neutral" role="note">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <span>“Ver como” aparece quando um jogador tiver um personagem nesta campanha.</span>
+            </p>
           }
           <app-point-list [points]="state().points()" [selectedId]="null" [lightNames]="lightNames()" (pick)="requestSelect({ kind: 'point', id: $event })" />
           @if (viewGone()) {

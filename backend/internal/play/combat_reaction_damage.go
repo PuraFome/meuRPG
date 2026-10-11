@@ -128,6 +128,15 @@ func (s *Service) damageWindows(ctx context.Context, c *combatTx, cs []playdb.Co
 			if k.st.UncannyDodge && sees {
 				specs = append(specs, windowSpec{kind: reaction.UncannyDodgeKind, reactor: &target, trigger: t})
 			}
+			if opts := reduceOptionsOf(k); len(opts) > 0 {
+				melee, err := s.meleeWeaponAttack(ctx, c, attacker, p.AttackKey)
+				if err != nil {
+					return nil, err
+				}
+				if melee {
+					specs = append(specs, windowSpec{kind: reaction.ManeuverReduceKind, reactor: &target, trigger: t})
+				}
+			}
 			if k.st.Deflect {
 				ranged, err := s.rangedWeaponAttack(ctx, c, attacker, p.AttackKey)
 				if err != nil {
@@ -169,7 +178,7 @@ func rankOf(k reaction.Kind) int {
 		return 0
 	case reaction.UncannyDodgeKind:
 		return 1
-	case reaction.DeflectKind:
+	case reaction.DeflectKind, reaction.ManeuverReduceKind:
 		return rankDeflect
 	}
 	return rankMasterCheck

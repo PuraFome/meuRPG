@@ -1,0 +1,69 @@
+<app-sheet-frame
+  [title]="heading()"
+  [subtitle]="skill()"
+  titleId="group-check-t"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  <app-attack-steps [steps]="stepList()" label="Passos do teste" />
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (stage() === 'roll') {
+    <div class="mr-notice mr-notice--neutral note">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <p>{{ askLine() }}</p>
+    </div>
+    <p class="line">Seu teste: <b>{{ modifierText() }}</b>.</p>
+    <app-check-roll-form
+      [mode]="mode()"
+      [notes]="notes()"
+      [modifier]="modifier()"
+      [checkName]="skill()"
+      [diceMode]="data.diceMode"
+      [preference]="data.preference"
+      [busy]="busy()"
+      (roll)="rollWith($event)"
+    />
+  } @else {
+    @if (roll(); as r) {
+      <app-contest-roll [roll]="r" />
+    }
+    @if (open()) {
+      <div class="mr-notice mr-notice--neutral note" role="status" data-testid="group-wait">
+        <mat-icon aria-hidden="true">schedule</mat-icon>
+        <p>
+          <b>Esperando o mestre.</b>
+          {{ check()?.group ? 'O resultado do grupo aparece quando ele encerrar o teste.' : 'Ele encerra o teste quando quiser.' }}
+        </p>
+      </div>
+    } @else {
+      @if (ownPass()) {
+        <p class="line"><b>{{ ownPass() }}</b></p>
+      }
+      @if (verdict()) {
+        <div class="mr-notice mr-notice--neutral note" role="status">
+          <mat-icon aria-hidden="true">groups</mat-icon>
+          <p><b>{{ verdict() }}</b></p>
+        </div>
+      } @else {
+        <p class="line">O mestre encerrou o teste.</p>
+      }
+    }
+  }
+
+  <div foot class="foot">
+    @if (stage() === 'result') {
+      @if (open()) {
+        <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
+      } @else {
+        <button #done mat-flat-button type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
+      }
+    }
+  </div>
+</app-sheet-frame>

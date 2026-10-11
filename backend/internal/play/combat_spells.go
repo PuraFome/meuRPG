@@ -359,6 +359,10 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		if err != nil {
 			return nil, err
 		}
+		abilityKey, err := s.abilityChoiceOf(ctx, c, spellKey, req.Msg.GetAbilityKey())
+		if err != nil {
+			return nil, err
+		}
 		if pick := req.Msg.GetDamageTypeKey(); pick != "" && !slices.Contains(sp.DamageTypes, pick) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
 		}
@@ -422,6 +426,9 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this spell has no area to place on this map: list its targets"))
 		}
 		if err := meta.membersIn(targs); err != nil {
+			return nil, err
+		}
+		if c.sculpted, err = sculptedOf(req.Msg.GetSculptedIds(), sp, slotLevel, caster, targs, v); err != nil {
 			return nil, err
 		}
 		darts := dartsOf(sp, slotLevel)
@@ -551,6 +558,9 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 			if made.Dismissed, err = s.endSummons(ctx, c, caster); err != nil {
 				return nil, err
 			}
+			if err := s.endConcentrationEffects(ctx, c, caster, endConcentration); err != nil { // its effects end with it (RN-22)
+				return nil, err
+			}
 			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: caster.ID, ConcentrationSpell: &spellKey}); err != nil {
 				return nil, fmt.Errorf("set the concentration: %w", err)
 			}
@@ -600,6 +610,10 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				made.Hits = append(made.Hits, hit)
 				hidden = hidden || t.Hidden
 			}
+			// What a spell that lasts leaves on the targets it took hold of (RN-22).
+			if err := s.applyLastingSpell(ctx, c, cs, sp, caster, targs, abilityKey, &made); err != nil {
+				return nil, err
+			}
 		}
 		packCoverSeen(&made)
 		made.Secret = hidden
@@ -614,6 +628,13 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 				made.Dx, made.Dy = dir.GetDx(), dir.GetDy()
 			}
 			if err := s.settleHidden(ctx, c, m, v, plan, spellKey, req.Msg.RevealHidden, &made); err != nil {
+				return nil, err
+			}
+		}
+		// A spell with a verbal component gives a hidden caster's position away by its noise;
+		// one with only somatic or material components does not (combat_hide.go).
+		if sp.Verbal {
+			if made.HidBefore, err = s.endHiding(ctx, c, caster); err != nil {
 				return nil, err
 			}
 		}
@@ -785,13 +806,22 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	face, roll := d20.Face(), d20
 	modes.attack[target.ID] = truth.Shown
+	if _, err := s.consumeHelps(ctx, c, caster, target, modes.in.cs); err != nil { // the Help aimed at the target is used (SRD 5.1, "Help")
+		return err
+	}
 	hit.D20B, hit.Counted, hit.RollMode, hit.SuggestedMode, hit.ReasonID = clamp32(d20.otherFace(), 0, 20), clamp32(d20.Index, 0, 1), modeKey(choice.Mode), modeKey(choice.Suggested), choice.ReasonID
 	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 	if err != nil {
 		return err
 	}
-	targetAC := sheet.ArmorClass + int(target.AcBonus) + cover.bonus()
-	result := combat.ResolveAttack(sp.ToHit, targetAC, face)
+	targetAC := sheet.ArmorClass + int(target.AcBonus) + int(target.EffectAcBonus) + cover.bonus()
+	// Bênção and Perdição (SRD 5.1): the d4 the app rolls for the caster's spell attack.
+	extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, caster.ID, rules.RollAppliesAttack), nil)
+	if err != nil {
+		return err
+	}
+	hit.Extra = extra
+	result := combat.ResolveAttack(sp.ToHit+extraTotal, targetAC, face)
 	if result.Hit && truth.CriticalOnHit { // a paralyzed or unconscious target within 5 ft (SRD 5.1)
 		result.Critical = true
 	}
@@ -810,7 +840,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	// A spell attack deals its first damage type: no spell of the SRD that rolls an
 	// attack lists a second one.
-	p, err := s.openHit(ctx, c, caster, target, sp.Key, sp.Damages[0], result.Critical, 0, result.Total, targetAC)
+	p, err := s.openHit(ctx, c, caster, target, sp.Key, sp.Damages[0], result.Critical, 0, 0, result.Total, targetAC)
 	if err != nil {
 		return err
 	}
@@ -823,6 +853,20 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 // (rounded down) for one that saved when the spell halves, none when it avoids.
 // The d20 is always rolled by the app (RN-18 is for the table's own dice).
 func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit, modes *spellModes) error {
+	if c.sculpted[target.ID] {
+		// Sculpt Spells (SRD 5.1): the creature succeeds on its own, with no roll, and takes
+		// no damage when the spell would deal half on a success.
+		hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: true, Sculpted: true}
+		if len(sp.Damages) == 0 || sp.SaveOnSuccess != "other" {
+			return nil
+		}
+		for _, part := range sp.Damages {
+			if err := s.openSpellPending(ctx, c, sp, part, caster, target, false, false, hit); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	save, err := s.saveOf(ctx, c.tx, m.CampaignID, target, sp.SaveAbility)
 	if err != nil {
 		return err
@@ -854,9 +898,18 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		if err != nil {
 			return err
 		}
-		saved = combat.SaveSucceeded(d20.Total, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
+		// Bênção and Perdição: a d4 on the target's saving throw.
+		extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, target.ID, rules.RollAppliesSave), nil)
+		if err != nil {
+			return err
+		}
+		if err := s.spendOnceEffects(ctx, c, extra); err != nil {
+			return err
+		}
+		saved = combat.SaveSucceeded(d20.Total+extraTotal, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
 		hit.Save = &saveRoll{
-			D20: clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
+			Extra: extra,
+			D20:   clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total+extraTotal, math.MinInt32, math.MaxInt32),
 			DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
 			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode),
 		}

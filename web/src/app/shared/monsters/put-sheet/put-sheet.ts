@@ -2,7 +2,11 @@ import { Component, computed, effect, ElementRef, inject, signal, viewChild } fr
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Encounter, EncounterStatus } from '../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Encounter,
+  EncounterMode,
+  EncounterStatus,
+} from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient, type MonsterHp } from '../../../core/combat/combat-client';
 import { sessionClosed } from '../../../core/combat/combat-errors';
@@ -20,6 +24,12 @@ import { SheetFrame } from '../../../pages/live-session/combat/sheet-frame/sheet
 import { injectSheet } from '../../../pages/live-session/combat/sheet-host';
 import { type Segment, Segmented } from '../../../pages/live-session/combat/move-page/segmented';
 import { tieNumbers } from '../../../core/format/text';
+import { OpenSessionLookup } from '../../../core/play/open-session';
+import { MapsClient } from '../../../core/maps/maps-client';
+import { TableRulesClient } from '../../../core/campaigns/table-rules';
+import { THEATRE_WHY, THEATRE_WHY_DIALOG } from '../../../core/combat/theatre';
+import { DiceChoice } from '../../dice-choice/dice-choice';
+import { COMBAT_MODE_OPTIONS } from '../../../pages/live-session/combat/start-combat/start-combat-dialog';
 import { CountStepper } from '../../count-stepper/count-stepper';
 import { CreatureArt } from '../../creatures/creature-art';
 import { HiddenSwitch } from '../../hidden-switch/hidden-switch';
@@ -75,6 +85,7 @@ const HP_SEGMENTS = (average: number): readonly Segment<MonsterHp>[] => [
   imports: [
     CountStepper,
     CreatureArt,
+    DiceChoice,
     HiddenSwitch,
     MatButtonModule,
     MatIconModule,
@@ -88,6 +99,9 @@ export class PutMonstersSheet {
   private readonly combat = inject(CombatClient);
   private readonly sheet = injectSheet<PutMonstersData, PutMonstersResult>();
   private readonly frame = viewChild.required(SheetFrame);
+  private readonly lookup = inject(OpenSessionLookup);
+  private readonly maps = inject(MapsClient);
+  private readonly tableRules = inject(TableRulesClient);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -95,6 +109,23 @@ export class PutMonstersSheet {
   protected readonly nameCounter = nameCounter;
   protected readonly hpSegments = HP_SEGMENTS(this.data.creature.hitPoints);
 
+  /** How a combat made here is played (RN-25): the same choice and defaults as "Iniciar combate". */
+  protected readonly playMode = signal<EncounterMode>(EncounterMode.THEATRE);
+  protected readonly modeOptions = COMBAT_MODE_OPTIONS;
+  protected readonly why = THEATRE_WHY;
+  protected readonly whyMore = THEATRE_WHY_DIALOG;
+  /** The session's current map has a grid: only then "Com mapa" is possible. */
+  protected readonly mapReady = signal(false);
+  private modeTouched = false;
+  protected readonly theatre = computed(() => this.playMode() === EncounterMode.THEATRE);
+  protected readonly modeInert = computed<readonly EncounterMode[]>(() =>
+    this.mapReady() ? [] : [EncounterMode.GRID],
+  );
+  protected readonly modeNotes = computed<Partial<Record<number, string>>>(() =>
+    this.mapReady()
+      ? {}
+      : { [EncounterMode.GRID]: 'O mapa atual não tem grade, ou a sessão não tem um mapa atual.' },
+  );
   protected readonly loading = signal(true);
   protected readonly target = signal<Target | null>(null);
   /** Why there is nothing to add to or start: no open session, or a read that failed. */
@@ -160,6 +191,9 @@ export class PutMonstersSheet {
     try {
       const encounter = await this.combat.get(this.data.campaignId);
       this.target.set(encounter ? targetOf(encounter) : null);
+      if (!this.target()) {
+        await this.readMode();
+      }
     } catch (err) {
       if (sessionClosed(err)) {
         this.noSession.set(true);
@@ -173,6 +207,37 @@ export class PutMonstersSheet {
       this.loading.set(false);
       this.clampCount();
     }
+  }
+
+  /** The defaults of "Iniciar combate": "Com mapa" when the current map has a grid and the table's rule says so, else the theatre. */
+  private async readMode(): Promise<void> {
+    try {
+      const open = await this.lookup.currentMap(this.data.campaignId);
+      if (!open || open.mapId === '') {
+        return;
+      }
+      const map = (await this.maps.get(this.data.campaignId, open.mapId)).map;
+      if (!map || map.gridColumns <= 0) {
+        return;
+      }
+      this.mapReady.set(true);
+      let rule = true;
+      try {
+        rule = (await this.tableRules.get(this.data.campaignId)).saved.combatStartsWithMap;
+      } catch {
+        // Without the rule the combat starts the way it always did: with a map.
+      }
+      if (!this.modeTouched) {
+        this.playMode.set(rule ? EncounterMode.GRID : EncounterMode.THEATRE);
+      }
+    } catch {
+      // Unreadable: the theatre of the mind stays, and the master can still start it.
+    }
+  }
+
+  protected chooseMode(mode: EncounterMode): void {
+    this.modeTouched = true;
+    this.playMode.set(mode);
   }
 
   private clampCount(): void {
@@ -204,7 +269,11 @@ export class PutMonstersSheet {
       hp: this.hp(),
       hidden: this.hidden(),
     };
-    const key = this.keys.keyFor({ ...add, target: target?.id ?? '' });
+    const key = this.keys.keyFor({
+      ...add,
+      target: target?.id ?? '',
+      mode: target ? undefined : this.playMode(),
+    });
     this.busy.set(true);
     this.error.set('');
     try {
@@ -221,6 +290,7 @@ export class PutMonstersSheet {
           [],
           key,
           {
+            mode: this.playMode(),
             monsters: [{ creatureKey: add.creatureKey, count: add.count, name: add.name }],
             monsterHp: add.hp,
             monstersHidden: add.hidden,

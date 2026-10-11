@@ -3,6 +3,7 @@ import { Component, computed, input } from '@angular/core';
 
 import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { conditionTags } from '../../../../core/combat/conditions';
+import { labelTags } from '../../../../core/effects/effects';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import {
   combatantInitial,
@@ -78,6 +79,9 @@ import { FormTag } from '../combatant-tags/form-tag';
 }
 
 .strip {
+  // The containing block of the chips' absolutely placed screen-reader text (combatant-tags' .sr): without it that text
+  // anchors to the page and, at the end of a long order, widens the whole page past the window (rehearsal 5, 1024 px).
+  position: relative;
   display: flex;
   gap: 8px;
   margin: 0;
@@ -196,7 +200,7 @@ export class OrderStrip {
     // The chip is 104 px: the cover says its degree only ("Meia cobertura"); the full words ("marcada pelo mestre") are in the lists and the cast.
     return [
       ...(c.concentrationSpell ? ['Concentração'] : []),
-      ...conditionTags(c),
+      ...labelTags(conditionTags(c), c.effectLabels),
       ...coverMarkTags(c).map((t) => t.replace(' · marcada pelo mestre', '')),
     ];
   }

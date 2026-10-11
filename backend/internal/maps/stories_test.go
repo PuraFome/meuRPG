@@ -90,7 +90,7 @@ func TestMR019_PlayersCannotListTheGallery(t *testing.T) {
 	if res := player.upload(campaign, "outro.png", pngImage(t, 10, 10)); res.status != http.StatusForbidden || res.errorBody(t).Code != "permission_denied" {
 		t.Errorf("upload as a player: status %d, body %s; want 403 permission_denied", res.status, res.body)
 	}
-	if got := master.list(campaign).GetImages(); len(got) != 1 || got[0].GetName() != "mapa" {
+	if got := master.list(campaign).GetImages(); len(got) != 1 || got[0].GetName() != "Mapa" {
 		t.Errorf("after the player's attempts, gallery = %v; want only the master's image, unchanged", got)
 	}
 }

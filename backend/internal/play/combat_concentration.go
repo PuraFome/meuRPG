@@ -15,6 +15,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -46,6 +48,9 @@ func (s *Service) afterDamage(ctx context.Context, c *combatTx, target playdb.Co
 		return nil
 	}
 	if err := s.hellishWindow(ctx, c, target, d); err != nil {
+		return err
+	}
+	if err := s.effectDamageSaves(ctx, c, target, d); err != nil {
 		return err
 	}
 	if target.ConcentrationSpell == nil {
@@ -113,6 +118,9 @@ func concentrationRollOf(msg *playv1.ResolveConcentrationSaveRequest) (in rollIn
 		in.typed = int(roll.D20Face)
 		if in.typed < 1 || in.typed > 20 {
 			return in, false, false, bad("d20_face must be 1 to 20")
+		}
+		if msg.SecondD20Face != nil {
+			in.typedFaces = []int{in.typed, int(msg.GetSecondD20Face())}
 		}
 	case *playv1.ResolveConcentrationSaveRequest_HandToMaster:
 		if !roll.HandToMaster {
@@ -198,15 +206,38 @@ func (s *Service) ResolveConcentrationSave(
 			if err != nil {
 				return nil, err
 			}
-			face, roll, err := s.d20(in, save.Bonus)
+			// The saving throw has a mode like any other (SRD 5.1): exhaustion 3 or more is
+			// disadvantage on saving throws. Haste's advantage is on Dexterity saves only, so it
+			// does not reach this Constitution save.
+			states, err := s.readStates(ctx, c.tx, c.enc.ID)
 			if err != nil {
 				return nil, err
 			}
-			kept = roll.Total >= int(dc)
-			re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(face, 1, 20), clamp32(save.Bonus, math.MinInt32, math.MaxInt32), kept, kept
-			ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, clamp32(roll.Total, math.MinInt32, math.MaxInt32), roll.Physical
+			sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
+			if err != nil {
+				return nil, err
+			}
+			mode := combat.Resolve(combat.SaveMode(combat.SaveScene{Creature: creatureFacts(reactor, states, sheet.Traits), Ability: "con", EffectVisible: true}))
+			d20, err := s.d20With(in, save.Bonus, mode)
+			if err != nil {
+				return nil, err
+			}
+			face, roll := d20.Face(), d20
+			// Bênção and Perdição add their die to the saving throw (SRD 5.1).
+			extra, delta, err := s.rollEffectDice(in, effectDiceFor(states, reactor.ID, rules.RollAppliesSave), req.Msg.GetExtraDieFaces())
+			if err != nil {
+				return nil, err
+			}
+			if err := s.spendOnceEffects(ctx, c, extra); err != nil {
+				return nil, err
+			}
+			total := roll.Total + delta
+			kept = total >= int(dc)
+			re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(face, 1, 20), clamp32(save.Bonus+delta, math.MinInt32, math.MaxInt32), kept, kept
+			ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, clamp32(total, math.MinInt32, math.MaxInt32), roll.Physical
+			ev.D20B, ev.Counted = clamp32(roll.otherFace(), 0, 20), clamp32(roll.Index, 0, 1)
 			result = &playv1.ConcentrationSaveResult{
-				Save: diceRoll(1, 20, []int32{re.SaveD20}, re.SaveBonus, ev.Total, roll.Physical), Dc: dc, Kept: kept, SpellKey: t.Spell,
+				Save: diceRoll(clamp32(len(roll.Faces), 1, 2), 20, faces32(roll.Faces), re.SaveBonus, ev.Total, roll.Physical), Dc: dc, Kept: kept, SpellKey: t.Spell,
 			}
 		} else {
 			re.Kept = true

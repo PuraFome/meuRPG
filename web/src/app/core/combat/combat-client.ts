@@ -20,6 +20,7 @@ import {
   type GetTurnOptionsResponse,
   type InspirationOffer,
   type ListCombatLogResponse,
+  HitRiderChoice,
   JumpKind,
   MonsterHitPoints,
   type ParticipantSchema,
@@ -188,6 +189,20 @@ export interface CastExtras {
   readonly area?: AreaChoice | null;
   /** The master only: whether the hidden creatures the area hits appear to the players. */
   readonly revealHidden?: boolean;
+  /** Aprimorar Habilidade only: the ability it is cast for ("str" to "cha"). */
+  readonly abilityKey?: string;
+  /** Sculpt Spells: the creatures of the area the caster spares. */
+  readonly sculptedIds?: readonly string[];
+}
+
+/** The optional fields of a cast request; each is left out unless it was set. */
+function castExtrasBody(extras: CastExtras) {
+  return {
+    // Left out unless the master chose: the table rule decides then.
+    ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
+    ...(extras.abilityKey ? { abilityKey: extras.abilityKey } : {}),
+    ...(extras.sculptedIds?.length ? { sculptedIds: [...extras.sculptedIds] } : {}),
+  };
 }
 
 /** The roll of a cast as the request's oneof: the app rolls, a typed pool sum, or a typed d20. */
@@ -255,6 +270,8 @@ export interface ReactionAnswer {
   readonly creatureIds?: readonly string[];
   /** The die the answer needs, when it needs one: the app rolls it, or the face typed from a physical die. */
   readonly die?: { readonly inApp: true } | { readonly typed: number };
+  /** A maneuver reduction: the option of the prompt the player uses. */
+  readonly maneuverKey?: string;
 }
 
 /** What `AnswerReaction` answers: the combat and what the answer did. */
@@ -263,11 +280,17 @@ export interface AnswerResult {
   readonly result: GenReactionResult | undefined;
 }
 
+/** What an effect changes in an attack roll: the faces of the d4 it adds from physical dice, and the extra action it gives. */
+export interface AttackEffects {
+  readonly extraDieFaces?: readonly number[];
+  readonly useExtraAction?: boolean;
+}
+
 /** How a concentration window is settled: the d20 in the app, a typed face, "Deixar o mestre rolar por mim", or the
  * master keeping the concentration. */
 export type ConcentrationAnswer =
   | { readonly kind: 'app' }
-  | { readonly kind: 'typed'; readonly face: number }
+  | { readonly kind: 'typed'; readonly face: number; readonly extra?: readonly number[] }
   | { readonly kind: 'hand' }
   | { readonly kind: 'keep' };
 
@@ -493,6 +516,21 @@ export class CombatClient {
     return need(res.encounter, 'AnswerRageEnd');
   }
 
+  /** `UseHitRider`: the monk's answer to an offer after a hit (Open Hand technique, Golpe Atordoante). */
+  async useHitRider(
+    campaignId: string,
+    encounterId: string,
+    riderId: string,
+    choice: HitRiderChoice,
+  ): Promise<Encounter> {
+    const res = await this.keyed(
+      ['useHitRider', campaignId, encounterId, riderId, choice],
+      (sent) =>
+        this.client.useHitRider({ campaignId, encounterId, riderId, choice, idempotencyKey: sent }),
+    );
+    return need(res.encounter, 'UseHitRider');
+  }
+
   /** "Encerrar fúria": the bonus action that ends a rage. */
   async endRage(campaignId: string, encounterId: string, combatantId: string): Promise<Encounter> {
     const res = await this.keyed(['endRage', campaignId, encounterId, combatantId], (sent) =>
@@ -643,14 +681,18 @@ export class CombatClient {
     campaignId: string,
     encounterId: string,
     offerId: string,
+    key?: string,
   ): Promise<Encounter> {
-    const res = await this.keyed(['skipOpportunity', campaignId, encounterId, offerId], (sent) =>
-      this.client.skipOpportunity({
-        campaignId,
-        encounterId,
-        opportunityOfferId: offerId,
-        idempotencyKey: sent,
-      }),
+    const res = await this.keyed(
+      ['skipOpportunity', campaignId, encounterId, offerId],
+      (sent) =>
+        this.client.skipOpportunity({
+          campaignId,
+          encounterId,
+          opportunityOfferId: offerId,
+          idempotencyKey: sent,
+        }),
+      key,
     );
     return need(res.encounter, 'SkipOpportunity');
   }
@@ -674,6 +716,14 @@ export class CombatClient {
       encounter: need(res.encounter, 'SpendMovement'),
       movementLeftDft: res.movementLeftDft,
     };
+  }
+
+  /** "Levantar-se": the combatant stands up from Prone for half its speed (SRD 5.1, "Being Prone"), on a map or without one. */
+  async standUp(campaignId: string, encounterId: string, combatantId: string): Promise<Encounter> {
+    const res = await this.keyed(['standUp', campaignId, encounterId, combatantId], (sent) =>
+      this.client.standUp({ campaignId, encounterId, combatantId, idempotencyKey: sent }),
+    );
+    return need(res.encounter, 'StandUp');
   }
 
   /** The master's "Oferecer ataque de oportunidade" (a combat without a map): who left whose reach. */
@@ -791,6 +841,7 @@ export class CombatClient {
     opportunityOfferId = '',
     mode?: ModeChoice,
     catchWindowId = '',
+    effects: AttackEffects = {},
   ): Promise<AttackResult> {
     const res = await this.client.rollAttack({
       campaignId,
@@ -816,6 +867,10 @@ export class CombatClient {
           }
         : {}),
       catchWindowId,
+      // The dice effects add to the roll (Bênção, Perdição) typed from a physical die, and the weapon attack of
+      // the extra action an effect gives (Velocidade).
+      extraDieFaces: [...(effects.extraDieFaces ?? [])],
+      useExtraAction: effects.useExtraAction ?? false,
     });
     return attackResult(res);
   }
@@ -1011,6 +1066,7 @@ export class CombatClient {
       slot: answer.slot ? { level: answer.slot.level, pact: answer.slot.pact } : undefined,
       useRacial: answer.useRacial ?? false,
       creatureIds: [...(answer.creatureIds ?? [])],
+      maneuverKey: answer.maneuverKey ?? '',
       roll: !answer.die
         ? { case: undefined }
         : 'inApp' in answer.die
@@ -1041,6 +1097,7 @@ export class CombatClient {
             : how.kind === 'hand'
               ? { case: 'handToMaster', value: true }
               : { case: 'keep', value: true },
+      extraDieFaces: how.kind === 'typed' ? [...(how.extra ?? [])] : [],
       idempotencyKey: key,
     });
     return { encounter: need(res.encounter, 'ResolveConcentrationSave'), result: res.result };
@@ -1056,9 +1113,11 @@ export class CombatClient {
     actionKey: string,
     die?: DamageDie,
     key?: string,
+    useExtraAction = false,
+    frenzy = false,
   ): Promise<ActionResult> {
     const res = await this.keyed(
-      ['takeAction', campaignId, encounterId, combatantId, actionKey, die],
+      ['takeAction', campaignId, encounterId, combatantId, actionKey, die, useExtraAction, frenzy],
       (sent) =>
         this.client.takeAction({
           campaignId,
@@ -1066,6 +1125,10 @@ export class CombatClient {
           combatantId,
           actionKey,
           idempotencyKey: sent,
+          // The extra action an effect gives (Velocidade) pays for it instead of the action (RN-22).
+          useExtraAction,
+          // The Berserker's Fúria in a frenzy (SRD 5.1, Frenzy); ignored by every other action.
+          frenzy,
           roll: !die
             ? { case: undefined }
             : 'inApp' in die
@@ -1121,8 +1184,7 @@ export class CombatClient {
           }
         : undefined,
       area: areaOneof(extras.area),
-      // Left out unless the master chose: the table rule decides then.
-      ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
+      ...castExtrasBody(extras),
     });
     return {
       encounter: need(res.encounter, 'CastSpell'),

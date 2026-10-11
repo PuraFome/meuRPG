@@ -1,5 +1,8 @@
 @for (it of items(); track it.p.id) {
   <div class="dmg" [class.dmg--flat]="flat()" [attr.aria-label]="'Dano de ' + it.attacker + ' em ' + it.target" role="group">
+    @if (it.trapLabel) {
+      <p class="dmg__trap" data-testid="trap-part">{{ it.trapLabel }}</p>
+    }
     @if (it.rolled) {
       <div class="dmg__line">
         <span class="dmg__formula">{{ it.line }}</span>
@@ -20,12 +23,13 @@
         (remove)="takeOut(it.p, $event)"
       />
       @if (discarding() === it.p.id) {
-        <div class="ask" role="alertdialog" [attr.aria-label]="'Descartar o dano de ' + it.total">
+        <div class="ask" role="alertdialog" data-confirm [attr.aria-label]="'Descartar o dano de ' + it.total">
           <p class="ask__text">Descartar o dano de {{ it.total }}?</p>
-          <button #safe mat-stroked-button type="button" (click)="discarding.set(null)">Voltar</button>
+          <!-- "Voltar" sits where "Não aplicar" was (the right column), so a second click of a double-click lands on the safe choice. -->
           <button mat-stroked-button type="button" class="ask__danger" [disabled]="busy()" (click)="discard(it.p)">
             Descartar
           </button>
+          <button #safe mat-stroked-button type="button" (click)="discarding.set(null)">Voltar</button>
         </div>
       } @else if (other() === it.p.id) {
         <div class="other">

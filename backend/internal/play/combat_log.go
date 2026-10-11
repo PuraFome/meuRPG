@@ -243,6 +243,12 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		case eventEncounterEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_COMBAT_ENDED
 		case eventCombatantMoved:
+			if ev.Contest != nil && ev.Contest.Line == contestLineStoodUp { // "se levantou" (combat_standup.go)
+				if !contestLogEntry(entry, ev) {
+					continue
+				}
+				break
+			}
 			if !ev.OnTurn || (ev.DistanceFt == 0 && ev.DistanceDFt == 0 && ev.Jump != jumpHigh) {
 				continue // placing a token is not a move of the fight
 			}
@@ -345,6 +351,10 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 				continue // a request taken back is no line
 			}
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_ROLL_MODE_ANSWERED
+		case eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingSaved, eventLastingTriggered, eventLastingVisibility, eventExhaustion:
+			entry.kind = effectLogKinds[e.Kind]
+		case eventHitRider:
+			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER
 		case eventStateChanged:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED
 		case eventDamagePartRemoved:
@@ -369,6 +379,12 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 			// his history; the table sees nothing of it (RN-10).
 			entry.kind, entry.masterOnly = playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, true
 			entry.ev.Key = "standard:search"
+		case eventContestStarted, eventContestResolved, eventContestClosed, eventShoveResolved, eventGrappleReleased,
+			eventHideAttempted, eventHideResolved, eventHelpGiven:
+			// Grapple, shove, escape, Hide and Help (combat_contests.go): a line when the event says one.
+			if !contestLogEntry(entry, ev) {
+				continue
+			}
 		case eventWildShapeStarted, eventWildShapeEnded:
 			entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE
 			entry.shapeStarted = e.Kind == eventWildShapeStarted
@@ -510,6 +526,10 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	// happened, even if they have walked into the dark since; one they did not see
 	// never appears later (MR-036). The master's copy says it is hidden from them.
 	seen := e.ev.seenByViewer(v)
+	// The master's reveal of a hider is the hider's player's line too (RN-10: no other player is told).
+	if e.ev.Contest != nil && e.ev.Contest.Line == contestLineHideRevealed && v.owns(actor) {
+		visible, seen = true, true
+	}
 	for _, h := range e.ev.Hits { // every target of a spell
 		hit, ok := byID[h.Target]
 		if e.ev.Placed { // an area the server placed: the hidden creatures it hit are left out of the line, not the line
@@ -518,6 +538,9 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		visible = visible && ok && !hit.Hidden
 	}
 	if !v.master && (!visible || !seen) {
+		return nil, false
+	}
+	if _, isEffect := effectLogKinds[kindKeyOf(e.kind)]; isEffect && e.ev.Lasting != nil && !effectLineVisible(e.ev.Lasting, v, byID) {
 		return nil, false
 	}
 	// An Escudo that ended is a line for the master and the combatant's own player: the
@@ -551,6 +574,8 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		out.KeyNamePt = names.of(ctx, actor, e.ev.Key)
 	}
 	switch e.kind {
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT, playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION:
+		names.s.effectLogView(ctx, e, out, v, byID, names.campaignID)
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:
 		out.Resource = resourceLogView(e.ev, v, actor, target)
 		if e.ev.Res != nil && e.ev.Res.Kind == resBardicGive && !v.master && !v.owns(actor) && !v.owns(target) {
@@ -564,6 +589,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:
 		out.DistanceFt, out.DistanceDft = e.ev.DistanceFt, e.ev.DistanceDFt
+		out.SpentDft, out.MoveDragging, out.MoveCrawling = e.ev.SpentDFt, e.ev.Dragging, e.ev.Crawling
 		if out.DistanceDft == 0 { // an event written before the tenths of a foot
 			out.DistanceDft = e.ev.DistanceFt * 10
 		}
@@ -574,6 +600,12 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.Jump, out.JumpHeightDft = playv1.JumpKind_JUMP_KIND_HIGH, e.ev.HeightDFt
 		}
 		out.LandingDifficult = v.master && e.ev.LandingDifficult // the Acrobatics reminder is the master's alone
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:
+		out.Contest = &playv1.CombatLogContest{Line: contestLineProto[e.ev.Contest.Line]} // never a total or a DC (RN-20)
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:
+		if r := e.ev.Rider; r != nil {
+			out.HitRider = riderLogProto(r, v.master || v.owns(byID[e.ev.Actor]))
+		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED:
 		out.Door = &playv1.CombatLogDoor{Col: e.ev.Col, Row: e.ev.Row}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:
@@ -603,6 +635,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
 			out.Reason = e.rolls.reasonOf(e.ev)
 			out.BonusDice = bonusDiceOf(e.ev)
+			out.AttackRoll.ExtraDice = extraDiceProto(e.ev.Extra, v.master, nil)
 		}
 		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
@@ -669,6 +702,12 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 		}
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:
 		out.Conditions = e.ev.Conditions
+		if !v.master && !v.owns(actor) { // a condition with no outward sign is the owner's and the master's (RN-10)
+			out.Conditions = withoutOwnerOnly(e.ev.Conditions)
+			if e.ev.ConcEnded == "" && slices.Equal(out.Conditions, withoutOwnerOnly(e.ev.CondBefore)) {
+				return nil, false // nothing a player may read changed
+			}
+		}
 		out.ConcentrationEndedKey = e.ev.ConcEnded
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:
 		if end := e.ev.EffectEnd; end != nil {
@@ -761,6 +800,7 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	}
 	if d.applied != nil { // the master's apply of a character's damage
 		out.Amount = d.applied.Amount
+		out.RelentlessEndurance = d.applied.Relentless
 		if !v.hiddenFrom(d.applied.DeathHidden, target) { // a hit at 0 is a death save failure (RN-24)
 			out.DeathFailuresAdded = d.applied.FailuresAdded
 		}
@@ -797,11 +837,12 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 	d.Amount, d.DamageTypeKey, d.DamageTypePt = e.dmg.Amount, e.dmg.DamageType, damageTypePT[e.dmg.DamageType]
 	d.CriticalRule, d.CriticalMax = pendingCriticalRule(e.dmg.Critical, e.dmg.CriticalMaxRule), e.dmg.CriticalMax
 	if dice {
-		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice)
+		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice, e.dmg.SavageDice)
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
 	if ap := e.applied; ap != nil { // the master's apply of a character's damage
 		d.Amount = ap.Amount
+		d.RelentlessEndurance = ap.Relentless
 		if !ap.DeathHidden || targetsOwn { // a hit at 0 is a death save failure, which the table may keep to the owner and the master (RN-24)
 			d.DeathFailuresAdded = ap.FailuresAdded
 		}
@@ -950,4 +991,15 @@ var wildShapeEndReasonProto = map[string]playv1.WildShapeEndReason{
 	endedByMaster:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
 	endedAtZero:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
 	endedAsleep:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+}
+
+// withoutOwnerOnly is the conditions a player who does not own the creature may read.
+func withoutOwnerOnly(keys []string) []string {
+	var out []string
+	for _, k := range keys {
+		if !slices.Contains(ownerOnlyConditions, k) {
+			out = append(out, k)
+		}
+	}
+	return out
 }

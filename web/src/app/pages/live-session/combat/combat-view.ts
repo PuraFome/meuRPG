@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  DestroyRef,
   ElementRef,
   Injector,
   afterNextRender,
@@ -16,6 +17,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -37,12 +39,14 @@ import {
   type PendingDamage,
   PendingDamageStatus,
   type ReactionWindow,
+  type TargetInReach,
   type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
   type Attack,
   AttackKind,
+  AttackSchema,
   type SpellDetails,
 } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
@@ -51,6 +55,7 @@ import {
   type MoveResult,
   newKey,
 } from '../../../core/combat/combat-client';
+import { CombatUndone } from '../../../core/combat/combat-undone';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import {
@@ -107,7 +112,8 @@ import { CombatLogState } from '../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../core/combat/combat-state';
 import { SpellCatalog } from '../../../core/combat/spell-catalog';
 import { TurnOptionsState } from '../../../core/combat/turn-options-state';
-import { saveAnnouncement } from '../../../core/combat/death-saves';
+import { outcomeText, saveAnnouncement } from '../../../core/combat/death-saves';
+import { RollAnimator, showOfDice } from '../../../shared/roll-overlay/roll-animator';
 import {
   currentCombatant,
   isDead,
@@ -116,7 +122,7 @@ import {
   ownCombatant,
   npcKindLabel,
 } from '../../../core/combat/combat-view';
-import { acts, jointTurn } from '../../../core/combat/joint-turn';
+import { acts, jointTurn, masterActor } from '../../../core/combat/joint-turn';
 import type { MapState } from '../../../core/maps/map-state';
 import { MoveSaves } from '../../../core/maps/move-saves';
 import { metersFixed } from '../../../core/units';
@@ -130,10 +136,14 @@ import type { PartyMemberInfoVm, VitalsVm } from '../live-session.types';
 import { ActionGroups } from './action-groups/action-groups';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
+import { ContestHost } from './contest-host';
+import { ContestClient } from '../../../core/combat/contest-client';
 import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/cast-sheet';
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
+import { EffectsPanel } from '../effects/effects-panel';
+import { HitRiderCard, type RiderPick } from './hit-rider/hit-rider-card';
 import { RageQuestion } from './rage-end/rage-question';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
@@ -146,9 +156,16 @@ import {
   type ReactionSheetData,
   type ReactionSheetResult,
 } from './reaction-sheet/reaction-sheet';
+import { AutoPassClock, autoPassKey, autoPassText } from '../../../core/combat/reaction-autopass';
 import { windowsBarText } from '../../../core/combat/reaction-master';
-import { promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
+import { openWindows, promptView, reactionWait, sheetWindow } from '../../../core/combat/reactions';
+import { ContestMaster } from './contest-master/contest-master';
+import {
+  EffectSaveSheet,
+  type EffectSaveSheetData,
+} from '../effects/effect-save-sheet/effect-save-sheet';
 import { ReactionQueue } from './reaction-queue/reaction-queue';
+import { SurpriseCard } from './surprise-card/surprise-card';
 import { CombatLogPanel } from './combat-log/combat-log-panel';
 import type { CombatantInfo } from './combat-info';
 import { CombatBar } from './combat-bar/combat-bar';
@@ -203,6 +220,20 @@ import { NoMapPanel, TheatreReaction } from './theatre/no-map-panel';
 import { OfferPanel } from './theatre/offer-panel';
 import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
 
+/** How often the master's screen looks at the clock of the automatic pass of a player's optional reaction. */
+const AUTO_PASS_TICK_MS = 1000;
+
+/** The key the throw-back sheet gives its made-up attack: the server builds the real one from the window and ignores it. */
+const THROW_BACK_KEY = 'deflect-missiles:throw';
+/** The failures of the pass that are the network's, not a refusal: the pass may be sent again. */
+const RETRYABLE: ReadonlySet<Code> = new Set([
+  Code.Unavailable,
+  Code.DeadlineExceeded,
+  Code.Unknown,
+  Code.Internal,
+  Code.Aborted,
+]);
+
 /**
  * The combat on the session page (MR-013, E6-01 to E6-16): it picks the
  * screen by who is looking and where the combat is, and runs every call.
@@ -228,7 +259,9 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     CreatureHero,
     DeathQuestion,
     DeathSaves,
+    EffectsPanel,
     RageQuestion,
+    HitRiderCard,
     InspirationCard,
     CombatBar,
     HiddenRevealCard,
@@ -256,6 +289,8 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
     RollModeQueue,
     TheatreReaction,
     ReactionQueue,
+    ContestMaster,
+    SurpriseCard,
     TurnBar,
     TrapDamages,
     TurnPanel,
@@ -265,6 +300,8 @@ import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
 })
 export class CombatView {
   private readonly api = inject(CombatClient);
+  private readonly animator = inject(RollAnimator);
+  private readonly undone = inject(CombatUndone);
   private readonly roster = inject(RosterClient);
   private readonly maps = inject(MapsClient);
   private readonly catalog = inject(SpellCatalog);
@@ -670,12 +707,56 @@ export class CombatView {
     if (!e || !this.isMaster()) {
       return '';
     }
-    return (
+    const other =
       revealBarText(e) ||
-      barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '') ||
-      windowsBarText(e)
-    );
+      barText(e, (characterId) => this.info().get(characterId)?.playerName ?? '');
+    if (other) {
+      return other;
+    }
+    const left = this.autoLeft();
+    const soonest = Math.min(...Object.values(left));
+    const text = windowsBarText(e);
+    return text && Number.isFinite(soonest)
+      ? `${text} · ${autoPassText(soonest).toLowerCase()}`
+      : text;
   });
+  /** The seconds left of each player's optional reaction the master's screen passes by itself, by window id. */
+  protected readonly autoLeft = computed<Readonly<Record<string, number>>>(() => {
+    const now = this.autoNow();
+    const e = this.encounter();
+    if (!e || !this.isMaster()) {
+      return {};
+    }
+    const left: Record<string, number> = {};
+    for (const w of openWindows(e)) {
+      const s = this.autoClock.secondsLeft(w.id, now);
+      if (s !== null) {
+        left[w.id] = s;
+      }
+    }
+    return left;
+  });
+  private readonly autoClock = new AutoPassClock();
+  /** The same clock for the opportunity attacks a player's character may take and has not answered. */
+  private readonly offerClock = new AutoPassClock();
+  /** The seconds left of each such offer the master's screen passes by itself, by offer id. */
+  protected readonly offerLeft = computed<Readonly<Record<string, number>>>(() => {
+    const now = this.autoNow();
+    const e = this.encounter();
+    if (!e || !this.isMaster()) {
+      return {};
+    }
+    const left: Record<string, number> = {};
+    for (const o of this.autoPassOffers(e)) {
+      const s = this.offerClock.secondsLeft(o.id, now);
+      if (s !== null) {
+        left[o.id] = s;
+      }
+    }
+    return left;
+  });
+  private readonly autoNow = signal(Date.now());
+  private autoTimer: ReturnType<typeof setInterval> | undefined;
   /** Why "Próximo turno" waits while questions about hidden creatures are open ("Responda ao pedido abaixo para seguir."). */
   protected readonly waitWhy = computed(() => {
     const e = this.encounter();
@@ -763,7 +844,7 @@ export class CombatView {
     this.isMaster() ? (this.subject()?.label ?? '') : '',
   );
   /** The one whose options the screen asks for: the player's own character
-   * on their turn, and for the master whoever is on turn. */
+   * on their turn, and for the master whoever is on turn (in a joint turn that holds a player, the NPC that still acts). */
   protected readonly subject = computed(() => {
     const e = this.encounter();
     if (!e || e.status !== EncounterStatus.ACTIVE) {
@@ -771,9 +852,26 @@ export class CombatView {
     }
     // A player's options are asked off turn too: the opportunity attack
     // (`attack_targets` is filled, `as_reaction`) needs them.
-    return this.isMaster() ? currentCombatant(e) : this.own();
+    return this.isMaster() ? (masterActor(e) ?? currentCombatant(e)) : this.own();
   });
   protected readonly options = computed(() => this.turn.data());
+  /** The player's side of the contests (W7-X): grapple, shove, escape, Hide, Help, and the questions a contest asks. */
+  protected readonly contest = new ContestHost({
+    dialog: this.dialog,
+    bottomSheet: this.bottomSheet,
+    api: inject(ContestClient),
+    campaignId: () => this.campaignId(),
+    isMaster: () => this.isMaster(),
+    encounter: this.encounter,
+    own: this.own,
+    options: this.options,
+    state: () => this.state(),
+    diceMode: () => this.diceMode(),
+    preference: () => this.dicePreference(),
+  });
+  /** The contest facts of the player's turn (hidden, surprised, grappled) and the special attacks, from `GetTurnOptions`. */
+  protected readonly contestFacts = computed(() => this.options()?.contestState);
+  protected readonly contestAttacks = computed(() => this.options()?.contestAttackOptions ?? []);
   protected readonly economy = computed(() => this.options()?.options?.economy);
   /** Extra Attack: the attacks of this Attack action that remain, and how many it makes. */
   protected readonly attacksLeft = computed(() => this.economy()?.attacksLeft ?? 0);
@@ -888,6 +986,17 @@ export class CombatView {
   }
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => clearInterval(this.autoTimer));
+    effect(() => {
+      const e = this.encounter();
+      const master = this.isMaster();
+      untracked(() =>
+        this.watchAutoPass(
+          master && e ? openWindows(e) : [],
+          master && e ? this.autoPassOffers(e) : [],
+        ),
+      );
+    });
     effect(() => {
       const e = this.encounter();
       untracked(() => {
@@ -1281,6 +1390,82 @@ export class CombatView {
     return this.state().moving() && this.moverActs() && who?.placed ? who.id : null;
   });
 
+  /** Starts (or stops) the second-by-second clock of the automatic pass for the windows the master's screen waits on. */
+  private watchAutoPass(
+    windows: readonly ReactionWindow[],
+    offers: readonly OpportunityOffer[],
+  ): void {
+    const now = Date.now();
+    this.autoClock.sync(windows, now);
+    this.offerClock.syncIds(
+      offers.map((o) => o.id),
+      now,
+    );
+    this.autoNow.set(now);
+    const running = this.autoTimer !== undefined;
+    if (this.autoClock.soonest(now) === null && this.offerClock.soonest(now) === null) {
+      clearInterval(this.autoTimer);
+      this.autoTimer = undefined;
+    } else if (!running) {
+      this.autoTimer = setInterval(() => this.tickAutoPass(), AUTO_PASS_TICK_MS);
+    }
+  }
+
+  private tickAutoPass(): void {
+    const now = Date.now();
+    this.autoNow.set(now);
+    const e = this.encounter();
+    if (!e) {
+      return;
+    }
+    for (const id of this.autoClock.due(now)) {
+      void this.sendAutoPass(e.id, id);
+    }
+    for (const id of this.offerClock.due(now)) {
+      void this.sendOfferPass(e.id, id);
+    }
+  }
+
+  /** The offers of an opportunity attack that a player's character answers, which pass after 30 s like any optional reaction. */
+  private autoPassOffers(e: Encounter): OpportunityOffer[] {
+    return offersToAnswer(e).filter((o) => !reactorIsMasters(e, o));
+  }
+
+  /** The same "Seguir sem esperar" the master taps, with a key of its own; a refusal (answered meanwhile) is ignored quietly. */
+  private async sendOfferPass(encounterId: string, offerId: string): Promise<void> {
+    try {
+      const res = await this.api.skipOpportunity(
+        this.campaignId(),
+        encounterId,
+        offerId,
+        autoPassKey(offerId),
+      );
+      this.state().apply(res);
+    } catch (err) {
+      if (!(err instanceof ConnectError) || RETRYABLE.has(err.code)) {
+        this.offerClock.release(offerId);
+      }
+    }
+  }
+
+  /** The same "Deixar passar" the master taps, with a key of its own; a refusal (answered meanwhile) is ignored quietly. */
+  private async sendAutoPass(encounterId: string, windowId: string): Promise<void> {
+    try {
+      const res = await this.api.answerReaction(
+        this.campaignId(),
+        encounterId,
+        windowId,
+        { use: false },
+        autoPassKey(windowId),
+      );
+      this.state().apply(res.encounter);
+    } catch (err) {
+      if (!(err instanceof ConnectError) || RETRYABLE.has(err.code)) {
+        this.autoClock.release(windowId);
+      }
+    }
+  }
+
   private async loadRoster(campaignId: string): Promise<void> {
     try {
       const entries = await this.roster.list(campaignId);
@@ -1395,9 +1580,33 @@ export class CombatView {
     );
   }
 
+  /** A standard action of one of the player's creatures: "Ajudar" and "Esconder" open the same sheets as the character's,
+   * for the creature (a familiar's Help is the classic one, SRD 5.1 Find Familiar); the others spend its action. */
+  protected creatureAction(id: string, key: string): void {
+    const options = this.creatureOptions.data().get(id) ?? null;
+    if (key === 'standard:help') {
+      this.contest.openHelpFor(id, options);
+      return;
+    }
+    if (key === 'standard:hide') {
+      this.contest.openHideFor(id, key, options);
+      return;
+    }
+    void this.takeActionFor(id, key);
+  }
+
   /** A standard action from the list: "Procurar" opens the search for traps (E9-08, it spends the action
    * through `SearchForTraps`); the others spend the action (`takeAction`). */
   protected standardAction(key: string): void {
+    // Hide and Help are the contest service's (W7-X): the check, and the master's answer, are not a plain action.
+    if (this.contest.hideKeys().includes(key)) {
+      this.contest.openHide(key);
+      return;
+    }
+    if (key === 'standard:help') {
+      this.contest.openHelp();
+      return;
+    }
     if (
       key === 'standard:search' &&
       searchRoute(this.mapState().map()?.gridColumns ?? 0, this.own()?.placed ?? false) === 'traps'
@@ -1462,11 +1671,16 @@ export class CombatView {
 
   /** "Usar" on a feature: Retomar o Fôlego rolls (its own sheet); the others
    * only spend the action and remind the table ("Você tem outra ação"). */
-  protected async useFeature(key: string): Promise<void> {
+  protected async useFeature(key: string, frenzy = false): Promise<void> {
     const own = this.own();
     const e = this.encounter();
     const option = this.options()?.options?.featureActions.find((a) => a.action?.key === key);
     if (!own || !e || !option?.action) {
+      return;
+    }
+    if (this.contest.hideKeys().includes(key)) {
+      // The rogue's Cunning Action: Hide as a bonus action.
+      this.contest.openHide(key);
       return;
     }
     const name = option.action.namePt;
@@ -1508,10 +1722,21 @@ export class CombatView {
     if (
       await this.run(
         async (current) =>
-          (await this.api.takeAction(this.campaignId(), current.id, own.id, actionKey)).encounter,
+          (
+            await this.api.takeAction(
+              this.campaignId(),
+              current.id,
+              own.id,
+              actionKey,
+              undefined,
+              undefined,
+              false,
+              frenzy,
+            )
+          ).encounter,
       )
     ) {
-      this.actionNote.set(note);
+      this.actionNote.set(frenzy ? `${name}: você entrou em frenesi.` : note);
     }
   }
 
@@ -1568,8 +1793,38 @@ export class CombatView {
 
   /** "Atacar": the attack sheet (Alvo, Rolar, Dano). `asReaction` is the
    * opportunity attack, off turn. */
-  protected openAttack(key: string, asReaction = false): void {
-    this.attackSheet(key, undefined, asReaction);
+  protected openAttack(key: string, asReaction = false, useExtraAction = false): void {
+    this.attackSheet(
+      key,
+      undefined,
+      asReaction,
+      undefined,
+      undefined,
+      undefined,
+      '',
+      useExtraAction,
+    );
+  }
+
+  /** A standard action paid with the extra action an effect gives (Velocidade): Disparada, Desengajar, Esconder, Usar um objeto. */
+  protected takeExtra(key: string): void {
+    const own = this.own();
+    if (own) {
+      void this.run(
+        async (e) =>
+          (
+            await this.api.takeAction(
+              this.campaignId(),
+              e.id,
+              own.id,
+              key,
+              undefined,
+              undefined,
+              true,
+            )
+          ).encounter,
+      );
+    }
   }
 
   /** "Rolar o dano" of a hit whose sheet was closed before the damage. */
@@ -1639,12 +1894,14 @@ export class CombatView {
     creatureOpts?: GetTurnOptionsResponse | null,
     held?: InspirationOffer,
     catchWindowId = '',
+    useExtraAction = false,
+    thrown?: { attack: Attack; targets: TargetInReach[] },
   ): void {
     const e = this.encounter();
     const own = who ?? this.own();
     const opts = who ? creatureOpts : this.options();
     const option = opts?.options?.attacks.find((a) => a.attack?.key === key);
-    const attack = option?.attack;
+    const attack = thrown?.attack ?? option?.attack;
     if (!e || !own || !attack) {
       return;
     }
@@ -1654,13 +1911,15 @@ export class CombatView {
       attackerId: own.id,
       round: e.round,
       attack,
-      targets: opts?.attackTargets.find((t) => t.attackKey === key)?.targets ?? [],
+      targets:
+        thrown?.targets ?? opts?.attackTargets.find((t) => t.attackKey === key)?.targets ?? [],
       diceMode: this.diceMode(),
       preference: this.dicePreference(),
       state: this.state(),
       asReaction,
       master: this.isMaster(),
       ...(catchWindowId ? { catchWindowId } : {}),
+      ...(useExtraAction ? { useExtraAction } : {}),
       bonusRule: option?.bonusRule,
       bonusAttacksLeft: option?.bonusAttacksLeft,
       beamsLeft: option?.beamsLeft || attack.beams,
@@ -1690,7 +1949,12 @@ export class CombatView {
         : `Atacar com ${attack.namePt || attack.name}${who ? `: ${who.label}` : ''}`,
       labelledBy: 'sheet-t',
     }).subscribe({
-      complete: () => this.attackSheetOpen.set(false),
+      complete: () => {
+        this.attackSheetOpen.set(false);
+        if (catchWindowId) {
+          this.keepMissile(catchWindowId);
+        }
+      },
       error: () => this.attackSheetOpen.set(false),
     });
   }
@@ -1806,6 +2070,7 @@ export class CombatView {
       shieldFree: shield ? shield.slots.reduce((n, s) => n + s.free, 0) : null,
       shieldName: shield?.spell?.namePt || 'Escudo Arcano',
       metamagic: spell?.metamagicOptions ?? [],
+      sculptSpells: spell?.sculptSpells ?? false,
       sorceryPoints: poolOf(vitals?.resources, SORCERY_POINTS_RESOURCE),
       attackBonus,
       master: this.isMaster(),
@@ -1926,6 +2191,21 @@ export class CombatView {
       const res = await this.api.rollDeathSave(this.campaignId(), e.id, own.id, die, key);
       this.deathKey.renew();
       const text = saveAnnouncement(res.save, own.label);
+      // The player's own death save, as the line under the sheet tells it (hidden saves arrive without a roll: nothing plays).
+      const show = showOfDice('Teste contra a morte', res.save.roll, {
+        withTotal: true,
+        outcome: {
+          word: outcomeText(res.save.outcome),
+          good:
+            res.save.outcome === DeathSaveOutcome.SUCCESS ||
+            res.save.outcome === DeathSaveOutcome.REVIVED,
+        },
+        critical: res.save.outcome === DeathSaveOutcome.REVIVED,
+        fumble: res.save.outcome === DeathSaveOutcome.CRITICAL_FAILURE,
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       this.deathResult.set(text);
       if (res.save.outcome === DeathSaveOutcome.REVIVED) {
         this.actionNote.set(text);
@@ -1958,7 +2238,21 @@ export class CombatView {
 
   /** "Voltar e atacar" (`endRage` false) or "Deixar a fúria acabar": the answer to the rage question. */
   protected async answerRage(id: string, endRage: boolean): Promise<void> {
-    await this.run((e) => this.api.answerRageEnd(this.campaignId(), e.id, id, endRage));
+    // "Deixar a fúria acabar" ends the rage and then passes the turn, in one tap, as the
+    // question says: the server only ends the rage, so the turn goes in the same call.
+    await this.run(async (e) => {
+      const answered = await this.api.answerRageEnd(this.campaignId(), e.id, id, endRage);
+      if (!endRage) {
+        return answered;
+      }
+      this.state().apply(answered);
+      return this.api.endTurn(this.campaignId(), e.id, id, false, answered.round);
+    });
+  }
+
+  /** "Técnica da Mão Aberta" and "Golpe Atordoante": the monk's answer to an offer after a hit. */
+  protected answerRider(pick: RiderPick): Promise<boolean> {
+    return this.run((e) => this.api.useHitRider(this.campaignId(), e.id, pick.id, pick.choice));
   }
 
   /** "Encerrar fúria": the bonus action. */
@@ -2096,6 +2390,10 @@ export class CombatView {
     if (!e) {
       return;
     }
+    if (window.prompt.case === 'effectSave') {
+      this.openEffectSave(window);
+      return;
+    }
     const data: ReactionSheetData = {
       campaignId: this.campaignId(),
       encounterId: e.id,
@@ -2129,16 +2427,98 @@ export class CombatView {
     });
   }
 
-  /** "Devolver (1 de chi)": the attack with the missile the monk caught, part of the same reaction. */
-  private openThrowBack(windowId: string): void {
-    const attacks = this.options()?.options?.attacks ?? [];
-    const pick =
-      attacks.find(
-        (a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0 && !a.attack.melee,
-      ) ?? attacks.find((a) => a.attack?.kind === AttackKind.WEAPON && a.attack.saveDc === 0);
-    if (pick?.attack) {
-      this.attackSheet(pick.attack.key, undefined, true, undefined, undefined, undefined, windowId);
+  /** The saving throw an effect asks at the end or the start of this player's turn (RN-22): opens by itself, and again from "Rolar o teste". */
+  protected openEffectSave(window: ReactionWindow): void {
+    const e = this.encounter();
+    if (!e || this.reactionOpen()) {
+      return;
     }
+    const data: EffectSaveSheetData = {
+      campaignId: this.campaignId(),
+      encounterId: e.id,
+      window,
+      round: e.round,
+      state: this.state(),
+      diceMode: this.diceMode(),
+      preference: this.dicePreference(),
+    };
+    this.reactionOpen.set(true);
+    openSheet<EffectSaveSheet, EffectSaveSheetData, void>(
+      this.dialog,
+      this.bottomSheet,
+      EffectSaveSheet,
+      { data, ariaLabel: 'Teste de resistência do fim do turno', labelledBy: 'sheet-t' },
+    ).subscribe({ complete: () => this.reactionOpen.set(false) });
+  }
+
+  /** The saving throw of an effect that waits for this player: it has to be answered, so it can be opened again after closing it. */
+  protected readonly ownEffectSave = computed(() => {
+    const e = this.encounter();
+    if (this.isMaster() || !e || e.status !== EncounterStatus.ACTIVE) {
+      return null;
+    }
+    return (
+      openWindows(e).find(
+        (w) => w.forYou && w.prompt.case === 'effectSave' && !this.reactionOpen(),
+      ) ?? null
+    );
+  });
+
+  /**
+   * "Devolver (1 de chi)": the ranged attack with the missile the monk caught, part of the same
+   * reaction. The server builds the attack from the missile (its dice, Dex, proficiency, 20/60 ft)
+   * and ignores the key; the sheet shows what the prompt says. The targets are the ones any of
+   * the monk's attacks lists, with the reach re-measured at the long range. Closing the sheet
+   * without the roll keeps the missile (the window is passed), so the combat never waits on it.
+   */
+  private openThrowBack(windowId: string): void {
+    const e = this.encounter();
+    const w = e?.reactionWindows.find((x) => x.id === windowId);
+    const prompt = w?.prompt.case === 'deflectThrow' ? w.prompt.value : null;
+    if (!prompt) {
+      return;
+    }
+    const seen = new Map<string, TargetInReach>();
+    for (const list of this.options()?.attackTargets ?? []) {
+      for (const t of list.targets) {
+        if (!seen.has(t.combatantId)) {
+          seen.set(t.combatantId, t);
+        }
+      }
+    }
+    const attack = create(AttackSchema, {
+      key: THROW_BACK_KEY,
+      name: prompt.missileNamePt || 'Projétil',
+      namePt: prompt.missileNamePt || 'Projétil',
+      attackBonus: prompt.attackBonus,
+      kind: AttackKind.WEAPON,
+      rangeFt: prompt.normalRangeFt,
+      longRangeFt: prompt.longRangeFt,
+    });
+    this.attackSheet(
+      THROW_BACK_KEY,
+      undefined,
+      true,
+      undefined,
+      undefined,
+      undefined,
+      windowId,
+      false,
+      { attack, targets: [...seen.values()] },
+    );
+  }
+
+  /** The throw-back sheet closed without a roll: the missile is kept, so the window does not hang. */
+  private keepMissile(windowId: string): void {
+    const e = this.encounter();
+    if (!e || !openWindows(e).some((w) => w.id === windowId)) {
+      return;
+    }
+    const answer = { use: false };
+    void this.api
+      .answerReaction(this.campaignId(), e.id, windowId, answer, `keep-${windowId}`)
+      .then((r) => this.state().apply(r.encounter))
+      .catch(() => undefined);
   }
 
   /** A damage was settled: the master's card stays for its note. */
@@ -2334,9 +2714,14 @@ export class CombatView {
   /** "Desfazer o movimento": the master takes back his last action when it is the move that made the offers. */
   protected undoMove(): Promise<boolean> {
     const entry = this.log.undoable();
-    return entry
-      ? this.run((e) => this.api.undo(this.campaignId(), e.id, entry.id))
-      : Promise.resolve(false);
+    if (!entry) {
+      return Promise.resolve(false);
+    }
+    return this.run(async (e) => {
+      const undone = await this.api.undo(this.campaignId(), e.id, entry.id);
+      this.undone.mark();
+      return undone;
+    });
   }
 
   /** "Seguir sem esperar": the master passes over an offer the player does not answer. */
@@ -2629,6 +3014,14 @@ export class CombatView {
     this.dropStart.set(null);
     this.moveError.set('');
     this.state().moving.set(true);
+  }
+
+  /** "Levantar-se": the combatant (the player's own, a creature of theirs, or the one on the master's card) stands up from Prone. */
+  protected standUp(id?: string): Promise<boolean> {
+    const who = id ?? this.own()?.id;
+    return who
+      ? this.run((e) => this.api.standUp(this.campaignId(), e.id, who))
+      : Promise.resolve(false);
   }
 
   /** "Mover o Lobo atroz 1": the same page, for the creature. */

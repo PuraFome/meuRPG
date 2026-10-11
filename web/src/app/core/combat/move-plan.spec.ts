@@ -84,6 +84,12 @@ describe("the move page reads the server's options", () => {
     expect(say(MoveRefusal.ENEMY)?.title).toBe('Inimigo no caminho');
     expect(say(MoveRefusal.OCCUPIED)?.title).toBe('Ocupado');
     expect(say(MoveRefusal.TOO_COSTLY)?.title).toBe('Longe demais');
+    // Dragging a grappled creature (W7-X): no free square behind the path to leave it on.
+    expect(say(MoveRefusal.NO_ROOM_TO_DRAG)).toEqual({
+      title: 'Sem casa para arrastar',
+      detail:
+        'Não há casa livre atrás de você para quem você segura. Escolha outro quadrado, ou solte o agarrão.',
+    });
     expect(plain(refusalText({ kind: 'beyond' }, 300)!.detail)).toContain('9,0 m que você tem');
     expect(refusalText({ kind: 'ok', square: options.reachable[0] }, 300)).toBeNull();
   });

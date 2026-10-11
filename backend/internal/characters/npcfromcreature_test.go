@@ -626,3 +626,56 @@ func TestCreatureNpcSavesWithItsStatBlock(t *testing.T) {
 		t.Errorf("a typed NPC's saving throws = %v, want none", got)
 	}
 }
+
+// TestNpcSheetFromASpellcaster: the Cult Fanatic (rehearsal 4) keeps its multiattack and its
+// spellcasting in the description, in Portuguese, with the official spell names.
+func TestNpcSheetFromASpellcaster(t *testing.T) {
+	t.Parallel()
+	content := loadRules(t)
+	fanatic, err := npcSheetFromCreature(content, "monster:cult-fanatic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := fanatic.GetDescription()
+	for _, want := range []string{
+		"Baseado em ", "Ataques por ação: 2", "Conjuração de 4º nível, habilidade Sabedoria, CD 11, ataque de magia +3.",
+		"Truques (à vontade): ", "1º nível (4 espaços): ", "2º nível (3 espaços): ",
+	} {
+		if !strings.Contains(d, want) {
+			t.Errorf("description lacks %q:\n%s", want, d)
+		}
+	}
+	for _, english := range []string{"inflict wounds", "hold person", "spiritual weapon", "sacred flame"} {
+		if strings.Contains(strings.ToLower(d), english) {
+			t.Errorf("description keeps the English spell %q:\n%s", english, d)
+		}
+	}
+	if strings.Contains(d, "spell:") {
+		t.Errorf("a key leaked into the description:\n%s", d)
+	}
+	// An innate caster: a per-day list.
+	if drow, err := npcSheetFromCreature(content, "monster:drow"); err != nil || !strings.Contains(drow.GetDescription(), "Conjuração inata") ||
+		!strings.Contains(drow.GetDescription(), "CD 11") || !strings.Contains(drow.GetDescription(), "/dia cada: ") {
+		t.Errorf("drow = %v, %v", drow.GetDescription(), err)
+	}
+	// Every creature still makes a valid sheet, with its note inside the limit.
+	for _, e := range creatureEntries(t, content) {
+		sh, err := npcSheetFromCreature(content, e.Key)
+		if err != nil {
+			t.Errorf("%s: %v", e.Key, err)
+			continue
+		}
+		if len(sh.GetDescription()) > maxDescriptionLength {
+			t.Errorf("%s: description of %d bytes", e.Key, len(sh.GetDescription()))
+		}
+	}
+}
+
+func creatureEntries(t *testing.T, c *rules.Content) []rules.CreatureEntry {
+	t.Helper()
+	all, err := c.ListCreatures(rules.CreatureFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return all
+}

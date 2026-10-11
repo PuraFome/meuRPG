@@ -143,8 +143,68 @@
 
 .spells__lists {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--mr-space-3);
+}
+
+.spells__group {
+  min-width: 0;
+}
+
+// A spell's row: the name and its tags open the description (a 44px target); the "?" does the same.
+.spell {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+
+  + .spell {
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+.spell__open {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  // The name (and its tags) in the middle of the 44 px target, as the layout checks ask.
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--mr-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.spell__name {
+  overflow-wrap: anywhere;
+}
+
+// A spell that is not prepared reads quieter; the tag says why, in words.
+.spell--off .spell__name {
+  color: var(--mr-ink-muted);
+}
+
+.spell__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.spell__tag {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 13px;
+
+  &--on {
+    border-color: var(--mr-success-ink);
+    color: var(--mr-success-ink);
+  }
 }
 
 .spells__label {

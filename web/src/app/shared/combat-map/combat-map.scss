@@ -60,6 +60,7 @@
 .cm__reactor,
 .cm__left,
 .cm__origin,
+.cm__dragged,
 .cm__mark {
   z-index: 2;
 }
@@ -78,6 +79,7 @@
 .cm__left,
 .cm__frame,
 .cm__origin,
+.cm__dragged,
 .cm__mark {
   position: absolute;
   box-sizing: border-box;
@@ -104,6 +106,19 @@
 .cm__origin {
   border: 2px dashed var(--mr-map-accent);
   border-radius: 50%;
+}
+
+// Where the creature the mover drags ends up (W7-X): a dashed token, with its initial.
+.cm__dragged {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--mr-map-token-ink);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mr-map-token-surface) 55%, transparent);
+  color: var(--mr-map-token-ink);
+  font-size: 10px;
+  font-weight: 800;
 }
 
 // The circle of the movement left (or of a jump): a dashed garnet line over a pale

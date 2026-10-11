@@ -6,10 +6,14 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import type { OutsideInspirationOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { SceneActionView, SceneRoll } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { checkFaces, hasModeInfo, needsTwoD20 } from '../../../../core/play/check-roll';
+import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import { SceneClient, type SceneDie } from '../../../../core/play/scene-client';
 import { sceneBlocked, sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
@@ -23,12 +27,15 @@ import {
 } from '../../../../core/play/scene-view';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { joinDots } from '../../../../core/format/text';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
+import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../combat/sheet-host';
 import { CheckMode } from '../check-mode/check-mode';
+import { InspirationOffer } from '../../inspiration/inspiration-offer';
 
 /** What the player's block hands the roll sheet. */
 export interface SceneRollSheetData {
@@ -72,12 +79,23 @@ export function openSceneRollSheet(
  */
 @Component({
   selector: 'app-scene-roll-sheet',
-  imports: [CheckMode, MatButtonModule, MatIconModule, MultiRoll, RollPicker, SheetFrame],
+  imports: [
+    CheckMode,
+    ExtraDice,
+    InspirationOffer,
+    MatButtonModule,
+    MatIconModule,
+    MultiRoll,
+    RollPicker,
+    SheetFrame,
+  ],
   templateUrl: './scene-roll-sheet.html',
   styleUrl: './scene-roll-sheet.scss',
 })
 export class SceneRollSheet {
   private readonly api = inject(SceneClient);
+  private readonly resources = inject(ResourceClient);
+  private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<SceneRollSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -92,8 +110,12 @@ export class SceneRollSheet {
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly roll = signal<SceneRoll | null>(null);
+  /** The d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
+  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
   /** The server said the roll takes two d20 (advantage or disadvantage with a real die): the form shows two fields. */
   protected readonly pair = signal(false);
+  /** The d4 an effect adds (Orientação, Bênção) with physical dice: asked when the server says the roll takes them. */
+  protected readonly extra = new ExtraDiceState();
   protected readonly pairFields: readonly RollField[] = [
     { key: 'first', label: 'Primeiro d20', min: 1, max: 20 },
     { key: 'second', label: 'Segundo d20', min: 1, max: 20 },
@@ -105,6 +127,7 @@ export class SceneRollSheet {
   });
 
   private readonly key = new ActionKey();
+  private readonly answerKey = new ActionKey();
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
   private readonly frame = viewChild(SheetFrame);
 
@@ -173,6 +196,11 @@ export class SceneRollSheet {
     if (this.busy()) {
       return;
     }
+    const extra = this.extra.take(!('inApp' in die));
+    if (extra === null) {
+      this.error.set(this.extra.missingText());
+      return;
+    }
     this.busy.set(true);
     this.error.set('');
     try {
@@ -180,10 +208,27 @@ export class SceneRollSheet {
         this.data.campaignId,
         this.action.id,
         die,
-        this.key.keyFor({ action: this.action.id, die }),
+        this.key.keyFor({ action: this.action.id, die, extra }),
+        extra,
       );
+      if ('holdId' in made) {
+        this.offer.set(made);
+        this.typing.set(false);
+        return;
+      }
       this.roll.set(made);
       this.typing.set(false);
+      // The d20 the app rolled; "Passou"/"Falhou" only when the sheet shows it (the master shows the DC).
+      const show = showOfDice(this.name, made.roll, {
+        withTotal: true,
+        outcome:
+          made.passed === undefined
+            ? undefined
+            : { word: made.passed ? 'Passou' : 'Falhou', good: made.passed },
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       // The row under the sheet turns into "Rolada" as soon as the read comes back.
       void this.data.state.refresh();
     } catch (err) {
@@ -191,6 +236,11 @@ export class SceneRollSheet {
         // Not an error: this roll has advantage or disadvantage, and the form asks for both dice.
         this.pair.set(true);
         this.typing.set(true);
+        return;
+      }
+      const more = this.extra.fromRefusal(err);
+      if (more) {
+        this.error.set(more);
         return;
       }
       this.error.set(sceneErrorMessage(err, 'rolar a ação'));
@@ -203,7 +253,36 @@ export class SceneRollSheet {
     }
   }
 
+  /** The answer about the die: the roll is written now, with the die when it was used. */
+  protected async answer(use: boolean, die: InspirationRoll | null): Promise<void> {
+    const offer = this.offer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideInspiration(
+        this.data.campaignId,
+        offer.holdId,
+        use,
+        die,
+        this.answerKey.keyFor({ hold: offer.holdId, use, die }),
+      );
+      if (res.result.case !== 'sceneCheck' || !res.result.value.roll) {
+        throw new Error('AnswerOutsideInspiration answered without its scene check');
+      }
+      this.roll.set(res.result.value.roll);
+      this.offer.set(null);
+      void this.data.state.refresh();
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   protected close(): void {
-    this.sheet.close(this.roll() !== null);
+    this.sheet.close(this.roll() !== null || this.offer() !== null);
   }
 }

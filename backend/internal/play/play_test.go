@@ -502,6 +502,14 @@ func (noVitals) SetHitPointsMaxBonus(context.Context, pgx.Tx, string, string, in
 	return nil, nil, errors.New("not in this test")
 }
 
+func (noVitals) SetExhaustion(context.Context, pgx.Tx, string, string, int32) (before, after *playv1.CharacterVitals, err error) {
+	return nil, nil, errors.New("not in this test")
+}
+
+func (noVitals) SetArmorBase(context.Context, pgx.Tx, string, string, int32) (before, after *playv1.CharacterVitals, err error) {
+	return nil, nil, errors.New("not in this test")
+}
+
 func (noVitals) SetFamiliarSight(context.Context, pgx.Tx, string, string, string, bool, []string) (*playv1.CharacterVitals, error) {
 	return nil, errors.New("not in this test")
 }
@@ -674,6 +682,10 @@ func (noRoster) CreatureSave(context.Context, pgx.Tx, string, string, string) (l
 	return link.Save{}, nil
 }
 
+func (noRoster) CreatureCheck(context.Context, pgx.Tx, string, string, string) (link.SceneOption, error) {
+	return link.SceneOption{}, nil
+}
+
 func (noRoster) DamageModifiers(context.Context, pgx.Tx, string, string, string) (combat.TypeModifiers, error) {
 	return combat.TypeModifiers{}, nil
 }
@@ -811,6 +823,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["BeginCombat"] = cc.BeginCombat(ctx, connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: id}))
 	_, combat["EndTurn"] = cc.EndTurn(ctx, connect.NewRequest(&playv1.EndTurnRequest{CampaignId: id}))
 	_, combat["MoveCombatant"] = cc.MoveCombatant(ctx, connect.NewRequest(&playv1.MoveCombatantRequest{CampaignId: id}))
+	_, combat["StandUp"] = cc.StandUp(ctx, connect.NewRequest(&playv1.StandUpRequest{CampaignId: id}))
 	_, combat["GetMoveOptions"] = cc.GetMoveOptions(ctx, connect.NewRequest(&playv1.GetMoveOptionsRequest{CampaignId: id}))
 	_, combat["SetCombatantSide"] = cc.SetCombatantSide(ctx, connect.NewRequest(&playv1.SetCombatantSideRequest{CampaignId: id}))
 	_, combat["SetCombatantCover"] = cc.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: id}))
@@ -852,6 +865,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["RemoveDamagePart"] = cc.RemoveDamagePart(ctx, connect.NewRequest(&playv1.RemoveDamagePartRequest{CampaignId: id}))
 	_, combat["AnswerRageEnd"] = cc.AnswerRageEnd(ctx, connect.NewRequest(&playv1.AnswerRageEndRequest{CampaignId: id}))
 	_, combat["EndRage"] = cc.EndRage(ctx, connect.NewRequest(&playv1.EndRageRequest{CampaignId: id}))
+	_, combat["UseHitRider"] = cc.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())

@@ -22,6 +22,7 @@ import { attackDetail, attackName, reasonText } from '../../../../core/combat/co
 import { article } from '../../../../core/combat/combat-log';
 import { stateWord } from '../../../../core/combat/combat-view';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
+import { standUpRow } from '../../../../core/combat/stand-up';
 import { tight } from '../../../../core/format/text';
 import type { FallNote } from '../../../../core/traps/trap-log';
 import { metersFixed } from '../../../../core/units';
@@ -72,6 +73,8 @@ export class CreatureBlock {
   /** A standard action, by key ("standard:dash"). */
   readonly action = output<string>();
   readonly move = output<void>();
+  /** "Levantar-se" of a prone creature (half its speed). */
+  readonly standUp = output<void>();
   /** "Rolar o dano" of the pending hit. */
   readonly rollDamage = output<void>();
 
@@ -114,6 +117,7 @@ export class CreatureBlock {
   protected readonly moveTotal = computed(() =>
     tight(metersFixed(Math.max(1, this.creature().speedDft) / 10)),
   );
+  protected readonly standRow = computed(() => standUpRow(this.creature()));
   protected readonly moveLabel = computed(() => `Mover o ${this.creature().label}`);
 
   /** What it attacks with as an action; a familiar of the chain attacks with its reaction instead. */

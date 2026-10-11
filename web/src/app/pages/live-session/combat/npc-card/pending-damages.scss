@@ -108,6 +108,11 @@
   }
 }
 
+.dmg__trap {
+  margin: 0 0 var(--mr-space-2);
+  font-weight: 600;
+}
+
 .dmg__wait {
   display: flex;
   align-items: center;

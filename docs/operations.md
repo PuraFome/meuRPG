@@ -2,7 +2,7 @@
 
 The goal is a cost close to zero: with no active session, nothing is running or connected.
 
-**Status.** Production runs on Cloud Run at `https://meurpg.app`, behind the global external Application Load Balancer of [step 10](#10-the-domain), deployed by the steps in [First deploy, step by step](#first-deploy-step-by-step); a new release repeats steps 2, 7 and 8 with the new image. This page also lists the settings the code enforces. Items marked **planned** do not exist yet. The local environment (`make up`, the optional ELK) does exist; see [CONTRIBUTING](../CONTRIBUTING.md).
+**Status.** Production runs on Cloud Run at `https://meurpg.app`, behind the global external Application Load Balancer of [step 10](#10-the-domain), deployed by the steps in [First deploy, step by step](#first-deploy-step-by-step); a new release follows [Releasing a new version](#releasing-a-new-version). This page also lists the settings the code enforces. Items marked **planned** do not exist yet. The local environment (`make up`, the optional ELK) does exist; see [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Hosting
 
@@ -11,13 +11,14 @@ The backend runs on Cloud Run in `southamerica-east1` (São Paulo).
 | Item | Value |
 | --- | --- |
 | Region | `southamerica-east1` |
-| CPU | 1 vCPU |
-| Memory | 512 MiB |
+| CPU | 2 vCPU: one browser action makes every open screen ask for its turn options again at once (eight browsers at a table), which took about 1 s on 1 vCPU |
+| Memory | 1 GiB; `GOMEMLIMIT` stays 400 MiB, so the memory budgets below hold as they were measured |
 | `min-instances` | 0 (scales to zero when idle) |
 | `max-instances` | **1**, while the live-session stream fan-out is in memory (see [Live session stream](#live-session-stream)) |
-| Concurrency | **50** (`--concurrency=50`): each live stream counts against it, a table has about 14 at once (at most 56, 8 per person), and the database pool of 10 is what limits real work; at the Cloud Run default of 80, the worst case of stalled 4 MiB request bodies goes past the 512 MiB limit |
+| Concurrency | **50** (`--concurrency=50`): each live stream counts against it, a table has about 14 at once (at most 4 per person per campaign, so 24 for six people, including the streams of pages that went away), and the database pool of 10 is what limits real work; at the Cloud Run default of 80, the worst case of stalled 4 MiB request bodies goes past the 400 MiB `GOMEMLIMIT` |
 | In front | A global external Application Load Balancer with a serverless NEG, because Cloud Run domain mappings are not offered in this region ([step 10](#10-the-domain)); `TRUSTED_PROXY_HOPS=2` |
-| Request timeout | At least 35 minutes (`--timeout=2100`, the maximum is 60 minutes): the stream lives up to 30. The Cloud Run default, 5 minutes, would cut the stream short |
+| At the edge | A Cloud Armor policy on the load balancer: Brazil only, a per-IP flood limit and the OWASP rules in preview ([The edge policy](#the-edge-policy-cloud-armor)) |
+| Request timeout | At least 35 minutes (`--timeout=2100`, the maximum is 60 minutes): the stream lives up to 10 minutes, and the campaign package download up to 30. The Cloud Run default, 5 minutes, would cut the download short |
 
 CockroachDB runs on Google Cloud, in the same region, on the project owner's current plan: the legacy Unlimited plan, bought before the 2024 licensing change. Changing plan loses Unlimited. Backups stay in São Paulo and are kept for 30 days at most, to meet the deletion deadline (see [Privacy](privacy.md)). This configuration still has to be checked in the console before the first deploy.
 
@@ -27,12 +28,15 @@ These are estimates, not a bill. They are used to decide architecture, such as k
 
 | Scenario | Estimated cost | Note |
 | --- | --- | --- |
-| Base (normal table use) | ~US$ 0.15/month | Cloud Run scales to zero outside sessions. |
+| Base (normal table use) | ~US$ 0.15/month | Cloud Run scales to zero outside sessions. With 2 vCPU and 1 GiB, Cloud Run's monthly free tier (180,000 vCPU-seconds) covers about 25 hours of open session; past it, each session hour costs about US$ 0.13 more than with 1 vCPU and 512 MiB (an estimate). |
 | Heavy (more use, more tables) | ~US$ 1.60–6.40/month | Still a few dollars. |
 | Accident: stream/WebSocket open all month | ~US$ 55–88/month | This is why the Connect stream only opens during a session (see [Architecture](architecture.md)). |
 | Egress (data out of São Paulo) | US$ 0.19/GiB | No free tier. This is why map images go to Cloud Storage and leave through their own URL, not as base64 inside responses. The master's browser keeps each image for a year (`private, immutable`) and downloads it once. The player's browser asks again on every use (`no-cache`, so it stops showing what the master hid), but the answer is a bodiless `304` while the image does not change, so each device still downloads each image once (see [Architecture](architecture.md#serving-images)). |
 | Global external Application Load Balancer (in front of the service, see [step 10](#10-the-domain)) | About US$ 0.025 per hour for the forwarding rule, ~US$ 18/month, plus a small per-GB data processing charge. Check the current price: [VPC pricing](https://cloud.google.com/vpc/network-pricing) | Billed all month, even when Cloud Run is scaled to zero. It is the largest fixed cost of the setup. |
 | Gallery images in Cloud Storage (Standard, São Paulo) | US$ 0.035 per GiB per month ([Cloud Storage pricing](https://cloud.google.com/storage/pricing), checked 30/09/2026) | A campaign with a full gallery (500 MiB, the proposed limit) costs ~US$ 0.02/month. The 7-day soft delete charges the same price for deleted data during those days. The API reads the bucket in the same region, with no egress; each read is a class B operation, billed per thousand (same page). |
+| Cloud Armor Standard (the [edge policy](#the-edge-policy-cloud-armor)) | US$ 5 per policy per month, US$ 1 per rule per month and US$ 0.75 per million requests ([Cloud Armor pricing](https://cloud.google.com/armor/pricing), checked 09/10/2026): one policy with four rules besides the default is about US$ 9/month plus the requests | Billed all month, like the load balancer. |
+| Domain and DNS | The `.app` domain's yearly price, shown by `gcloud domains registrations get-register-parameters` before registering, and one Cloud DNS public zone ([Cloud DNS pricing](https://cloud.google.com/dns/pricing)) | The domain renews by itself every year (Cloud Domains, automatic renewal). |
+| Cloud Build (one build per release, see [Releasing a new version](#releasing-a-new-version)) | Per build-minute of the `E2_HIGHCPU_8` machine ([Cloud Build pricing](https://cloud.google.com/build/pricing)) | Only when a release is built. Artifact Registry keeps the 10 newest images and deletes the rest after 30 days, so storage stays small. |
 
 ## Live session stream
 
@@ -43,19 +47,19 @@ The stream (`PlayService.WatchGameSession`) is open only while someone has the s
 | Server heartbeat | Every 25 seconds | `play.DefaultHeartbeat` |
 | Dead stream, on the app side | Nothing arrived in about 60 seconds: the app reconnects | App |
 | Re-check of the login session and of the participation | Every 60 seconds, in the database | `play.DefaultRecheck` |
-| Maximum life of a stream | 30 minutes; then the server ends it without an error and the app opens another | `play.DefaultMaxLifetime` |
+| Maximum life of a stream | 10 minutes; then the server ends it without an error and the app opens another. Behind the load balancer it is also how long the stream of a page that went away stays open: the server is not told (on production, 10/10/2026, none of 85 streams ended between 1 and 30 minutes, when the life was 30), so the life is kept short | `play.DefaultMaxLifetime` |
 | Deadline of each message sent | 30 seconds to reach the client; after that `Send` fails and the stream ends (`client_gone`). The deadline does not count the silence between two messages | `streamSendTimeout`, in `cmd/api/main.go` (`platform/slowclient`) |
-| Streams per person | At most 8 per campaign (tabs and devices); the next one is refused with `resource_exhausted` and the app retries with a backoff | `live.DefaultMaxPerUser` |
+| Streams per person | At most 4 per campaign (a phone, a laptop and a spare tab or two); a 5th replaces the person's oldest stream, which ends with `unavailable` (the app reconnects it with a backoff if its page is still open). Each reload of the session page leaves its old stream open until its maximum life (above), so refusing the new one locked a player out after a few reloads; replacing the oldest keeps the newest page live and the count, and the instance's concurrent requests, bounded | `live.DefaultMaxPerUser`, `live.ErrReplaced` |
 | Reconnection | Growing wait: 1 s, 2 s, 4 s, up to 30 s, with jitter; only with the tab visible | App |
 | Hidden tab | After 2 minutes hidden, the app closes the stream; when the tab returns, it reconnects and reads the snapshot again | App |
 | Session notice | Light query (`ListOpenGameSessions`) every 30 seconds with the tab visible, without a stream | App |
 | Server shutdown | Streams end immediately when the graceful shutdown starts (`httpserver.Server.OnShutdown`), and the apps reconnect | `cmd/api` |
 
-**`max-instances = 1` while the fan-out is in memory.** A change made by the master is delivered to the streams by the `play/live` hub, in server memory. With two instances, the master on one and a player on the other, the change would not reach the player. One instance (1 vCPU, 512 MiB) serves a table comfortably. When it stops being enough, the hub gives way to a shared channel (a CockroachDB changefeed or Pub/Sub), and `max-instances` can go up.
+**`max-instances = 1` while the fan-out is in memory.** A change made by the master is delivered to the streams by the `play/live` hub, in server memory. With two instances, the master on one and a player on the other, the change would not reach the player. One instance (2 vCPU, 1 GiB) serves a table comfortably. When it stops being enough, the hub gives way to a shared channel (a CockroachDB changefeed or Pub/Sub), and `max-instances` can go up.
 
 ## Fog image tiles
 
-For each player, the server builds the tiles of the image of a map with fog (MR-036, RN-10; [Architecture](architecture.md#per-player-image-tiles)). This is CPU and memory work on a 1 vCPU, 512 MiB server, so it has a budget:
+For each player, the server builds the tiles of the image of a map with fog (MR-036, RN-10; [Architecture](architecture.md#per-player-image-tiles)). This is CPU and memory work on a 2 vCPU, 1 GiB server with a 400 MiB `GOMEMLIMIT`, so it has a budget:
 
 | Rule | Value | Where |
 | --- | --- | --- |
@@ -74,7 +78,7 @@ For each player, the server builds the tiles of the image of a map with fog (MR-
 
 ## Table content cache
 
-The content the master registers (MR-025, RN-23; [Architecture](architecture.md#live-table-content)) is assembled in server memory, per campaign and revision, and kept in a small cache. This is memory and CPU on a 1 vCPU, 512 MiB server, so it has a budget:
+The content the master registers (MR-025, RN-23; [Architecture](architecture.md#live-table-content)) is assembled in server memory, per campaign and revision, and kept in a small cache. This is memory and CPU on a 2 vCPU, 1 GiB server with a 400 MiB `GOMEMLIMIT`, so it has a budget:
 
 | Rule | Value | Where |
 | --- | --- | --- |
@@ -113,12 +117,13 @@ The master's sign-in (`identity` module) needs one secret, the OIDC provider's c
 | `TRUSTED_PROXY_HOPS` | No | How many proxies of ours sit between the client and the server, which tells the rate limits where the client IP is (see [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip)). Unset on Cloud Run means **1** (Cloud Run alone, on its `run.app` URL); set it to **2** when the global external Application Load Balancer is in front. Only 1 and 2 are accepted on Cloud Run, and any value elsewhere stops the server from starting (the local server is never behind a proxy, and trusting `X-Forwarded-For` there would let a client choose its own key). The start-up log says `client ip source` with `trusted_proxy_hops` |
 | `GOOGLE_CLOUD_PROJECT` | No | The project id, set at deploy (`--set-env-vars`): **Cloud Run does not set it by itself**. Without it, log lines do not carry the Cloud Logging trace, and the lines of one request do not show up together (see [Architecture](architecture.md#logs)) |
 | `LISTEN_HOST` | No | Do not set it: empty, the server listens on all interfaces, which is what Cloud Run requires. Local environments use `127.0.0.1` |
+| `LOG_LEVEL` | No | `info` (one line per request) is the normal value. Production runs at `debug` while the first tables play, so a refused action logs its reason and the stream logs each connection; `gcloud run services update meurpg --region southamerica-east1 --update-env-vars LOG_LEVEL=info` sets it back (a new revision, the env and secrets kept). At `debug` the log is 5 to 10 times bigger (see [Production (plan)](#production-plan)) |
 
 The backend never writes the client secret to the log: the `config.Secret` type prints as `[REDACTED]`. `DATABASE_URL` and `GEMINI_API_KEY` are `config.Secret` too. `migrate` reads the URL with pgx and, if it is invalid, returns a fixed sentence instead of the driver error, which could repeat the password.
 
 ### The connection pool
 
-The backend talks to CockroachDB through a pgx pool. Without `pool_max_conns` in `DATABASE_URL`, the pool opens at most **10** connections (pgx's default, `max(4, vCPUs)`, would give 4 on the 1 vCPU Cloud Run). To change the size, put `?pool_max_conns=N` in the Secret Manager connection string. A new secret version only takes effect in a new Cloud Run revision or when an instance starts again, so deploy a revision (or let the instance restart) after creating the version.
+The backend talks to CockroachDB through a pgx pool. Without `pool_max_conns` in `DATABASE_URL`, the pool opens at most **10** connections (pgx's default, `max(4, vCPUs)`, would give 4 on the 2 vCPU Cloud Run). To change the size, put `?pool_max_conns=N` in the Secret Manager connection string. A new secret version only takes effect in a new Cloud Run revision or when an instance starts again, so deploy a revision (or let the instance restart) after creating the version.
 
 - **Why 10.** There is one instance (`max-instances` 1), and a table is one master and up to six players; each request is a short transaction. 10 covers the streams' periodic reads and a burst of actions, and stays far below what CockroachDB recommends (about four connections per cluster vCPU, summed across instances). If `max-instances` ever goes up, the total (instances × `pool_max_conns`) is what counts.
 - **Waiting for a connection is normal; waiting forever is not.** With the pool full, a request waits its turn, and the wait ends when a holder lets go: no holder keeps a connection longer than one statement's 30 s (`statement_timeout`) or an idle transaction's 60 s (`TestAQueuedRequestWaitsAtMostAsLongAsTheConnectionIsHeld`). A request **never** asks for a second connection while its transaction holds the first (see [Architecture](architecture.md#transactions-and-the-connection-pool)): that mistake once stalled 5 requests for 176 s in CI. If `context canceled` or `context deadline exceeded` show up in simple reads ("look up session", "get membership") together with a slow request, that is the symptom: look for a read through the pool inside a `db.InTx`.
@@ -159,8 +164,8 @@ The app has rate limits and caps on what one account creates (see [Architecture]
 - **One instance only.** Rate counters live in process memory. The plan is `max-instances` 1, and with it the limits are exact. With a second instance each would have its own (the effect is up to double), and exact limits would need shared storage (Redis or the database). Changing `max-instances` requires rereading this. The same goes for the sign-in limit.
 - **The client IP** is the item of `X-Forwarded-For` that `TRUSTED_PROXY_HOPS` points at, as in the [sign-in limit](#sign-in-rate-limit-and-the-client-ip); the first-deploy check covers both. If that item belongs to a Google machine, all clients share the bucket of a single IP (100 per second in total): nobody bypasses it, but the limit stops telling one person from another, and `RATE_LIMIT_MULTIPLIER` has to go up until the check is done.
 - **A trickled upload.** An upload holds the one image-processing slot while its file arrives, with 45 s to send it (2 minutes for the rest of the request): a phone below about 2 Mbit/s sending a 10 MiB image is answered 400 ("the upload took too long") and tries again. If that happens to real users, raise `uploadSlotReadTimeout` in `maps/upload.go`; the slot is shared with the fog tiles, so the cost of raising it is that a slow upload blocks them longer.
-- **Cloud Run concurrency.** The app has no global `WriteTimeout`, so the streams are not cut: an image, a thumbnail, a tile or an app file is bounded by its own 2-minute write deadline instead (see [Slow clients](architecture.md#slow-clients)). Set `--concurrency` for the service (the number of requests one instance takes at once) to a value the instance's 512 MiB and 10 database connections carry, and keep the live streams (at most 8 per user) in mind when choosing it: a slow client that holds a request for its 2 minutes holds one of those slots.
-- **What the limits do not do.** They are not a defence against a volume attack (DDoS): for that, use Cloud Armor, or Cloud Run concurrency and `max-instances`, which the production plan must define. The app's global limit only stops the database (10 connections) from stalling because of a few sources.
+- **Cloud Run concurrency.** The app has no global `WriteTimeout`, so the streams are not cut: an image, a thumbnail, a tile or an app file is bounded by its own 2-minute write deadline instead (see [Slow clients](architecture.md#slow-clients)). Set `--concurrency` for the service (the number of requests one instance takes at once) to a value the 400 MiB `GOMEMLIMIT` and 10 database connections carry, and keep the live streams (at most 8 per user) in mind when choosing it: a slow client that holds a request for its 2 minutes holds one of those slots.
+- **What the limits do not do.** They are not a defence against a volume attack (DDoS): that is the job of the Cloud Armor [edge policy](#the-edge-policy-cloud-armor) (the per-IP flood limit and Adaptive Protection) and of the Cloud Run caps (`max-instances=1`, `--concurrency=50`, [Hosting](#hosting)). The app's global limit only stops the database (10 connections) from stalling because of a few sources.
 
 ### Images
 
@@ -178,7 +183,7 @@ Gallery images (MR-019) live in a blob store (see [Architecture](architecture.md
 
 **On the first deploy:** one bucket only for the images, in `southamerica-east1`, Standard class, with uniform bucket-level access and public-access prevention; a 7-day soft delete (the deadline in [Privacy](privacy.md)); and only the API's service account with access (`roles/storage.objectUser` on the bucket, which covers create, read, delete and list), with no public URL and no signed URL: the API is always the one that delivers the image, after checking who is asking. The commands are in [First deploy, step by step](#first-deploy-step-by-step).
 
-**Memory.** An upload reads and processes one image at a time on each instance (it waits for its turn before reading the file, so queued uploads hold no body), and refuses an image whose decoding would exceed 256 MiB (an estimate in the `maps/images` package). With 512 MiB per instance there is room for the rest, as long as Go's garbage collector knows the limit: set `GOMEMLIMIT` (for example `400MiB`) on the first deploy. The worst case of the fog tiles, summed, is about 330 MB (see [Fog image tiles](#fog-image-tiles)); PNG uploads are stored with 8 bits per channel, so that decoding them later costs 4 bytes per pixel. The image of a generated dungeon (MR-010) goes through the same one-image-at-a-time slot and is drawn with a palette (1 byte per pixel): the largest, 199 × 399 squares, is 3,980 × 7,980 px and uses about 32 MB while drawing and about 36 MB allocated in all (see [Architecture](architecture.md#generated-dungeon-maps)); the fog tiles decode the stored image, which is a palette PNG and costs less than a photo.
+**Memory.** An upload reads and processes one image at a time on each instance (it waits for its turn before reading the file, so queued uploads hold no body), and refuses an image whose decoding would exceed 256 MiB (an estimate in the `maps/images` package). With 1 GiB per instance there is room for the rest, as long as Go's garbage collector knows the limit: set `GOMEMLIMIT` (for example `400MiB`) on the first deploy. The worst case of the fog tiles, summed, is about 330 MB (see [Fog image tiles](#fog-image-tiles)); PNG uploads are stored with 8 bits per channel, so that decoding them later costs 4 bytes per pixel. The image of a generated dungeon (MR-010) goes through the same one-image-at-a-time slot and is drawn with a palette (1 byte per pixel): the largest, 199 × 399 squares, is 3,980 × 7,980 px and uses about 32 MB while drawing and about 36 MB allocated in all (see [Architecture](architecture.md#generated-dungeon-maps)); the fog tiles decode the stored image, which is a palette PNG and costs less than a photo.
 
 ### Generated images (the Gemini API)
 
@@ -212,11 +217,11 @@ Image generation (MR-039, RN-28) calls the Gemini API with a Google AI Studio ke
   | --- | --- |
   | The players' view and its drawing: the layers, the floor and walls, the sight of two characters (the union), the seen squares, cropping and drawing, and the PNG | about **39 ms** and **4.5 MB allocated** in all; about 0.7 MB live after the sight and the floor and walls (the compiled scene the fog already keeps in cache, 8 scenes, is not new). The drawing is 400 × 800 px (2 px per square: on big maps each square is small) and the PNG is about 12 kB |
   | The drawing of the textured map (the whole map, completed to the model's aspect ratio: 576 × 1024 px, 9:16) | about 7 ms and 2 MB allocated; PNG of about 4 kB. Smaller maps have squares of up to 24 px (the 24 × 16 cave is 576 × 384) |
-  | Cropping and fitting the model's result to the size of the map image (`CropFit`), **in the upload slot** (`processing`: one image at a time on the server) | the **worst case the server accepts**: `CropFit` refuses (`ErrDimensions`, the slot is returned) an answer wider than 4,096 px on a side, or whose decoding plus the output working copy (4 bytes per pixel) exceeds **178 MiB**, so a small PNG on disk that is huge decoded (8,000 × 5,000, 0.5 MiB) does not blow the slot (`TestCropFitRefusesAnAnswerThatBreaksTheMemoryBudget`). The largest that passes, a 4,096 × 4,096 px answer (the 1:1 4K; the server asks for 1K) for a 16-megapixel map image (4,000 × 4,000, the cap): a peak of about **151 MiB** live, 880 MiB allocated in total and about 3.5 s on a loaded machine. It is the decoded answer (4 bytes per pixel) plus the working copy the size of the map (64 MB); a map image over 16 megapixels (4,000 × 4,000 px) is refused before reserving the slot (`MAP_IMAGE_TOO_LARGE`, and `GetMapImageReference` warns beforehand). A 4,000 × 2,000 map and a 1K answer cost about 40 MiB. It does not add to an upload's slot (it is the same one) |
+  | Cropping and fitting the model's result to the size of the map image (`CropFit`), **in the upload slot** (`processing`: one image at a time on the server) | the **worst case the server accepts**: `CropFit` refuses (`ErrDimensions`, the slot is returned) an answer wider than 4,096 px on a side, or whose decoding plus the output working copy (4 bytes per pixel) exceeds **178 MiB**, so a small PNG on disk that is huge decoded (8,000 × 5,000, 0.5 MiB) does not blow the slot (`TestCropFitRefusesAnAnswerThatBreaksTheMemoryBudget`). The model now answers JPEG (it refuses PNG in `response_format`), which decodes in less memory than a PNG of the same size; the figures in this row were **measured with a PNG answer** and are kept as the conservative ceiling (not re-measured with JPEG). The largest that passes, a 4,096 × 4,096 px answer (the 1:1 4K; the server asks for 1K) for a 16-megapixel map image (4,000 × 4,000, the cap): a peak of about **151 MiB** live, 880 MiB allocated in total and about 3.5 s on a loaded machine. It is the decoded answer (4 bytes per pixel) plus the working copy the size of the map (64 MB); a map image over 16 megapixels (4,000 × 4,000 px) is refused before reserving the slot (`MAP_IMAGE_TOO_LARGE`, and `GetMapImageReference` warns beforehand). A 4,000 × 2,000 map and a 1K answer cost about 40 MiB. It does not add to an upload's slot (it is the same one) |
 
   Within the `GOMEMLIMIT` sum above, the crop enters the **decoded-image slot** (about 200 MB, transient in the worst upload): the 151 MiB crop fits in it and does not add to the others.
 
-  **The sum against the 400 MiB `GOMEMLIMIT`** (the full table is in [CONTRIBUTING](../CONTRIBUTING.md)): the decoded-image slot (about 200 MB, transient) + the working copies (34 MB) + the tile cache (33.5 MB) + the fog scenes (19 MB) + generation (a response of up to 8 MiB, about 20 MiB, and up to 6 MiB of shrunk images: about 26 MB) = about 313 MB, plus about 50 MB for the rest: **about 363 MB**, within the 400 MiB and the 512 MiB of the instance. The number of simultaneous calls is **1** (`maxGenerating`): with 2 it would be about 389 MB. A second generation waits its turn (the request stays `PENDING` and the long wait stays open).
+  **The sum against the 400 MiB `GOMEMLIMIT`** (the full table is in [CONTRIBUTING](../CONTRIBUTING.md)): the decoded-image slot (about 200 MB, transient) + the working copies (34 MB) + the tile cache (33.5 MB) + the fog scenes (19 MB) + generation (a response of up to 8 MiB, about 20 MiB, and up to 6 MiB of shrunk images: about 26 MB) = about 313 MB, plus about 50 MB for the rest: **about 363 MB**, within the 400 MiB and the 1 GiB of the instance. The number of simultaneous calls is **1** (`maxGenerating`): with 2 it would be about 389 MB. A second generation waits its turn (the request stays `PENDING` and the long wait stays open).
 
 ### Campaign package
 
@@ -232,9 +237,9 @@ The export and import of a campaign (MR-050, [Architecture](architecture.md#camp
 
 **The bucket needs a lifecycle rule** as a second net, in case the instance is down when something expires: delete the objects under `imports/` older than 1 day and the export zips (under `campaigns/`, ending in `.zip`) older than 2 days. Cloud Storage lifecycle rules match by prefix, suffix and age; [step 4](#4-the-images-bucket) of the first deploy creates them. The application deletes them first; the rule only covers a pause of the sweeper. Soft delete keeps a deleted object 7 more days (see [Privacy](privacy.md#what-the-campaign-package-does-mr-050)).
 
-**Memory.** The server has 512 MiB and processes one image at a time. An export keeps the campaign's JSON entries in memory (small: the sheets, maps and content, never the images) and streams every image file through a pipe into the store; an import reads the package where it lies in the parts, one entry at a time, and decodes one image at a time in the same slot as an upload. Neither holds the package or the images together.
+**Memory.** The server has 1 GiB (400 MiB of `GOMEMLIMIT`) and processes one image at a time. An export keeps the campaign's JSON entries in memory (small: the sheets, maps and content, never the images) and streams every image file through a pipe into the store; an import reads the package where it lies in the parts, one entry at a time, and decodes one image at a time in the same slot as an upload. Neither holds the package or the images together.
 
-**Measured** (`TestMeasureExportAndImportOfALargeCampaign`, with `MEURPG_MEASURE=1`, in-process on the 4 vCPU build machine against CockroachDB and a disk store; a campaign of 20 maps with a 3 MB image each and 50 NPCs): the export wrote a 60 MB package in 1.4 s and grew the Go heap by 9 MiB; the import (20 images decoded and stored one at a time, then 20 maps and 50 NPCs inserted) took 9.9 s and grew the heap by 67 MiB (the process's resident set is not a clean number in a test binary that already holds the database and the images of the setup, so the heap is what is reported; both stay far under the 512 MiB of Cloud Run). The preview of the same package costs about the import's reading time, without the writes. The heap figures are the growth of the Go heap over the start of the call, with the test's own copy of the package already counted in the baseline.
+**Measured** (`TestMeasureExportAndImportOfALargeCampaign`, with `MEURPG_MEASURE=1`, in-process on the 4 vCPU build machine against CockroachDB and a disk store; a campaign of 20 maps with a 3 MB image each and 50 NPCs): the export wrote a 60 MB package in 1.4 s and grew the Go heap by 9 MiB; the import (20 images decoded and stored one at a time, then 20 maps and 50 NPCs inserted) took 9.9 s and grew the heap by 67 MiB (the process's resident set is not a clean number in a test binary that already holds the database and the images of the setup, so the heap is what is reported; both stay far under the 400 MiB `GOMEMLIMIT`). The preview of the same package costs about the import's reading time, without the writes. The heap figures are the growth of the Go heap over the start of the call, with the test's own copy of the package already counted in the baseline.
 
 ## Logs in ELK
 
@@ -320,7 +325,37 @@ In production, Cloud Run's stdout already goes to Cloud Logging, and the path to
 
 ## Budget alerts
 
-A Google Cloud budget alert warns if the cost exceeds what is expected. The exact thresholds are **planned** (not defined yet).
+Two Cloud Billing budgets warn by e-mail when the cost goes past what is expected. They go to the billing account's administrators (the Cloud Billing default, no channel of its own).
+
+| Budget | Covers | Amount | Warns at |
+| --- | --- | --- | --- |
+| `R$100 Monthly budget alert` | The whole billing account | R$ 100 per month | 50, 90, 100 and 150 % of the actual spend |
+| `MeuRPG projeto R$250/mes` | This project only | R$ 250 per month | 80, 100 and 120 % of the actual spend, and 100 % of the forecast |
+
+A budget only warns: it never stops the service or a cost. What caps the largest variable cost, the AI images, is the app's own daily and monthly limits ([Generated images](#generated-images-the-gemini-api)); the fixed costs are the load balancer and Cloud Armor ([Estimated costs](#estimated-costs-são-paulo)). To create the project budget:
+
+```bash
+export BILLING_ACCOUNT=$(gcloud billing projects describe $PROJECT_ID --format='value(billingAccountName)' | sed 's#billingAccounts/##')
+gcloud billing budgets create --billing-account=$BILLING_ACCOUNT \
+  --display-name="MeuRPG projeto R\$250/mes" --budget-amount=250BRL \
+  --filter-projects=projects/$PROJECT_ID \
+  --threshold-rule=percent=0.8 --threshold-rule=percent=1.0 --threshold-rule=percent=1.2 \
+  --threshold-rule=percent=1.0,basis=forecasted-spend
+```
+
+## Uptime alert
+
+A Cloud Monitoring uptime check asks `https://meurpg.app/readyz` every 5 minutes, from Google's checker regions, with a 10-second timeout. The alert policy `MeuRPG is down (readyz)` fires when the check fails from 2 or more regions for 10 minutes, and e-mails the operator's notification channel; its text points to [Roll back](#12-roll-back) and [Read the logs](#13-read-the-logs). `/readyz` answers `200` only with the database up, so the alert also covers a database that stopped answering.
+
+The checkers are outside Brazil, which is why the geo rule of the [edge policy](#the-edge-policy-cloud-armor) lets their user agent through.
+
+```bash
+gcloud monitoring uptime create meurpg-readyz --resource-type=uptime-url \
+  --resource-labels=host=$DOMAIN,project_id=$PROJECT_ID \
+  --path=/readyz --protocol=https --period=5 --timeout=10
+```
+
+The alert policy goes in with `gcloud alpha monitoring policies create --policy-from-file=<file>`: a condition on the metric `monitoring.googleapis.com/uptime_check/check_passed` of that check, `REDUCE_COUNT_FALSE` grouped by region, above 1 for 600 s, and the e-mail channel (`gcloud beta monitoring channels create --type=email`). The operator's e-mail is personal data: it lives only in the channel, never in the repository.
 
 ## First deploy, step by step
 
@@ -364,6 +399,36 @@ docker push $IMAGE
 ```
 
 The first build takes a few minutes (npm and Go modules). `docker run --rm --entrypoint /app/migrate $IMAGE` prints the usage line if you want to see that the image is right.
+
+**Or build in Cloud Build**, which is what production does ([Releasing a new version](#releasing-a-new-version)): no Docker on the laptop, no `linux/amd64` emulation, and a build machine in the region. The build runs as its own service account, `meurpg-build`, which can only push to this repository, write its log and read the uploaded source; the Compute Engine default service account, which Cloud Build would otherwise use, keeps **no** role on the project (take `roles/editor` off it if the project gave it one).
+
+```bash
+gcloud services enable cloudbuild.googleapis.com
+gcloud iam service-accounts create meurpg-build --display-name="MeuRPG build"
+export BUILD_SA_EMAIL=meurpg-build@$PROJECT_ID.iam.gserviceaccount.com
+export BUILD_SA=projects/$PROJECT_ID/serviceAccounts/$BUILD_SA_EMAIL
+
+gcloud artifacts repositories add-iam-policy-binding $REPO --location=$REGION \
+  --member=serviceAccount:$BUILD_SA_EMAIL --role=roles/artifactregistry.writer
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member=serviceAccount:$BUILD_SA_EMAIL --role=roles/logging.logWriter --condition=None
+# The bucket where gcloud uploads the source; create it if it does not exist yet.
+gcloud storage buckets create gs://${PROJECT_ID}_cloudbuild --location=$REGION --uniform-bucket-level-access
+gcloud storage buckets add-iam-policy-binding gs://${PROJECT_ID}_cloudbuild \
+  --member=serviceAccount:$BUILD_SA_EMAIL --role=roles/storage.objectViewer
+
+# Keep the 10 newest images, and delete the others after 30 days.
+cat > /tmp/meurpg-ar-cleanup.json <<'EOF'
+[
+  {"name": "keep-recent", "action": {"type": "Keep"}, "mostRecentVersions": {"keepCount": 10}},
+  {"name": "delete-old", "action": {"type": "Delete"}, "condition": {"olderThan": "30d"}}
+]
+EOF
+gcloud artifacts repositories set-cleanup-policies $REPO --location=$REGION \
+  --policy=/tmp/meurpg-ar-cleanup.json --no-dry-run
+```
+
+The build itself is in [Releasing a new version](#releasing-a-new-version), step 2; the configuration is `deploy/gcp/cloudbuild.yaml`.
 
 ### 3. Service account and roles
 
@@ -514,8 +579,8 @@ On the next deploys: `gcloud run jobs update meurpg-migrate --image=$IMAGE`, the
 Every value is from [Hosting](#hosting), [Environment variables and secrets](#environment-variables-and-secrets) and [Abuse limits](#abuse-limits). Notes on the flags:
 
 - `--max-instances=1`: the live stream's fan-out is in memory ([Live session stream](#live-session-stream)). `--min-instances=0`: no cost when idle.
-- `--timeout=2100`: the stream lives up to 30 minutes; the default of 5 would cut it. `--concurrency=50`.
-- `--cpu=1 --memory=512Mi`, with CPU only during a request (the default, `--cpu-throttling`): the app keeps a request open while an AI image is generated for that reason ([Generated images](#generated-images-the-gemini-api)). `GOMEMLIMIT=400MiB` ([Images](#images)).
+- `--timeout=2100`: the campaign package download takes up to 30 minutes and the stream up to 10; the default of 5 would cut the download. `--concurrency=50`.
+- `--cpu=2 --memory=1Gi`, with CPU only during a request (the default, `--cpu-throttling`): the app keeps a request open while an AI image is generated for that reason ([Generated images](#generated-images-the-gemini-api)). `GOMEMLIMIT=400MiB` ([Images](#images)).
 - `--allow-unauthenticated`: Cloud Run's own login is off because the app does its own sign-in. If an organization policy forbids it, the policy has to allow this one service.
 - `CAMPAIGN_CREATORS` holds the e-mails that may create campaigns: with the table's master only, nobody else can open a campaign. It may hold several e-mails separated by commas, which is why `--set-env-vars` starts with `^#^`: gcloud's escape that changes the separator between variables from the comma to `#`, so commas (and the `@` of an e-mail) stay inside a value. **A value must not contain `#`**, the new separator; and, because the argument is in double quotes, no `"`, backtick or backslash either. The values here are ids, e-mails, `:` and `/` URLs, so none does; if you add a variable of your own, keep that in mind. Leave `CAMPAIGN_CREATORS` empty to let any account create.
 - `TRUSTED_PROXY_HOPS` is left unset at the first deploy on the `run.app` URL (1). Step 10 sets it to 2 when the load balancer is in front.
@@ -531,7 +596,7 @@ export SECRETS=OIDC_CLIENT_SECRET=oidc-client-secret:latest,DATABASE_URL=databas
 # With a database CA file, also: export SECRETS="$SECRETS,/etc/cockroach/ca.crt=cockroach-ca:latest"
 
 gcloud run deploy $SERVICE --image=$IMAGE --service-account=$SA \
-  --allow-unauthenticated --cpu=1 --memory=512Mi \
+  --allow-unauthenticated --cpu=2 --memory=1Gi \
   --min-instances=0 --max-instances=1 --concurrency=50 --timeout=2100 \
   --set-secrets="$SECRETS" \
   --set-env-vars="^#^GOMEMLIMIT=400MiB#GOOGLE_CLOUD_PROJECT=$PROJECT_ID#BLOB_BUCKET=$BUCKET#OIDC_ISSUER=https://accounts.google.com#OIDC_CLIENT_ID=$OIDC_CLIENT_ID#OIDC_REDIRECT_URL=$APP_URL/auth/callback#CAMPAIGN_CREATORS=$MASTER_EMAIL#MAX_CAMPAIGNS_PER_USER=10#IMAGE_DAILY_LIMIT=100#IMAGE_MONTHLY_LIMIT=20#RATE_LIMIT_MULTIPLIER=1"
@@ -614,7 +679,7 @@ gcloud run services update $SERVICE \
 
 Test the sign-in on `https://$DOMAIN`, and do the check of [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip).
 
-- **The stream fits.** A serverless NEG backend has a fixed timeout of 60 minutes (the backend service's `--timeout` does not apply to it), which covers the 30-minute stream.
+- **The stream fits.** A serverless NEG backend has a fixed timeout of 60 minutes (the backend service's `--timeout` does not apply to it), which covers the 10-minute stream and the 30-minute download.
 - **No HTTP to HTTPS redirect rule is needed** for a TLD on the HSTS preload list such as `.app`: browsers only use HTTPS for it. For any other domain, add a second forwarding rule on port 80 with a URL map that redirects to HTTPS.
 - **The `run.app` URL stops answering** once the ingress is closed (the `run.app` host is no longer reachable from the internet). To go back to it, run `gcloud run services update $SERVICE --ingress=all --update-env-vars=TRUSTED_PROXY_HOPS=1,OIDC_REDIRECT_URL=https://<run.app host>/auth/callback`, with that redirect registered on the OAuth client. Both variables must change together: with `--ingress=all` and `TRUSTED_PROXY_HOPS=2`, a client that reaches `run.app` directly would fall into the wrong `X-Forwarded-For` item.
 - **The load balancer costs money all month** ([Estimated costs](#estimated-costs-são-paulo)).
@@ -630,6 +695,91 @@ What changes with the domain:
 | `TRUSTED_PROXY_HOPS` | unset (**1**) | **2** |
 
 In both cases, do the check of [Sign-in rate limit and the client IP](#sign-in-rate-limit-and-the-client-ip) on the first deploy. If `TRUSTED_PROXY_HOPS` is too low, nobody bypasses the limit, but all clients share one bucket until it is fixed (`RATE_LIMIT_MULTIPLIER` can be raised meanwhile). If it is too high (2 with the ingress open to the `run.app` URL), a client can choose its own bucket: never leave 2 with `--ingress=all`.
+
+#### The edge policy (Cloud Armor)
+
+A Cloud Armor Standard policy on the load balancer's backend judges each request before it reaches Cloud Run. Its rules, in the order they are evaluated (lowest priority number first):
+
+| Priority | Rule | Action | Why |
+| --- | --- | --- | --- |
+| 900 | The request does not come from Brazil (`origin.region_code != 'BR'`), unless its user agent is Google's uptime checker | `403` | The app serves one table in Brazil. Most scanners and bots come from abroad, and this cuts them before they cost a Cloud Run request. It is not a security boundary: a VPN in Brazil passes, and anyone can send the checker's user agent. A player travelling abroad gets `403` until the rule is relaxed |
+| 1000 | Every request, counted per client IP | Above 3,000 requests in 60 seconds, `429` | A coarse flood limit. A whole table plays from one home connection, so its requests share one IP: a rehearsal with three people peaked at 330 requests in a minute, and a full table of eight makes about three times that, with map tiles in bursts. 3,000 leaves room for that and still cuts a flood. It is per IP and not per user because a key a client sends (a cookie, a header) can be forged; the app's own per-user limits are behind it, so a flood never reaches the app's own finer limits ([Abuse limits](#abuse-limits)) or the database |
+| 2000 | The preconfigured OWASP rules for SQL injection, XSS, local and remote file inclusion and remote code execution (`*-v33-stable`, sensitivity 1) | `403`, **in preview** | Preview only logs what the rule would have blocked. Free text the master writes (a scene, a note) can look like an attack to these rules, so they are enforced only after their matches in the request log have been read ([Open items](#open-items)) |
+| 2001 | The scanner, protocol attack and method enforcement rules (`*-v33-stable`, sensitivity 1) | `403`, **in preview** | The same |
+| default | Anything else | allow | |
+
+Adaptive Protection (the layer 7 DDoS defence) is on; on the Standard tier it raises alerts, and it does not block by itself.
+
+```bash
+gcloud compute security-policies create meurpg-edge --description="MeuRPG edge"
+gcloud compute security-policies update meurpg-edge --enable-layer7-ddos-defense
+
+gcloud compute security-policies rules create 900 --security-policy=meurpg-edge \
+  --expression="origin.region_code != 'BR' && !request.headers['user-agent'].contains('GoogleStackdriverMonitoring-UptimeChecks')" \
+  --action=deny-403 --description="Brazil only (uptime checks exempt)"
+
+gcloud compute security-policies rules create 1000 --security-policy=meurpg-edge \
+  --expression="true" --action=throttle --enforce-on-key=IP \
+  --rate-limit-threshold-count=3000 --rate-limit-threshold-interval-sec=60 \
+  --conform-action=allow --exceed-action=deny-429 --description="per-IP flood throttle"
+
+gcloud compute security-policies rules create 2000 --security-policy=meurpg-edge --preview \
+  --expression="evaluatePreconfiguredWaf('sqli-v33-stable', {'sensitivity': 1}) || evaluatePreconfiguredWaf('xss-v33-stable', {'sensitivity': 1}) || evaluatePreconfiguredWaf('lfi-v33-stable', {'sensitivity': 1}) || evaluatePreconfiguredWaf('rfi-v33-stable', {'sensitivity': 1}) || evaluatePreconfiguredWaf('rce-v33-stable', {'sensitivity': 1})" \
+  --action=deny-403 --description="OWASP injection rules (preview)"
+
+gcloud compute security-policies rules create 2001 --security-policy=meurpg-edge --preview \
+  --expression="evaluatePreconfiguredWaf('scannerdetection-v33-stable', {'sensitivity': 1}) || evaluatePreconfiguredWaf('protocolattack-v33-stable', {'sensitivity': 1}) || evaluatePreconfiguredWaf('methodenforcement-v33-stable', {'sensitivity': 1})" \
+  --action=deny-403 --description="scanners and protocol attacks (preview)"
+
+gcloud compute backend-services update $LB-backend --global --security-policy=meurpg-edge
+```
+
+To see what the preview rules would have blocked, and then enforce one:
+
+```bash
+gcloud logging read 'resource.type="http_load_balancer" AND jsonPayload.previewSecurityPolicy.outcome="DENY"' \
+  --freshness=7d --limit=50 \
+  --format='value(timestamp,httpRequest.requestMethod,httpRequest.requestUrl,jsonPayload.previewSecurityPolicy.priority,jsonPayload.previewSecurityPolicy.preconfiguredExprIds)'
+gcloud compute security-policies rules update 2000 --security-policy=meurpg-edge --no-preview
+```
+
+A match that is the app's own traffic (a request the table really made) is not a reason to keep the whole rule in preview: exclude that signature (`evaluatePreconfiguredWaf('<rule>', {'sensitivity': 1, 'opt_out_rule_ids': ['<id>']})`) and enforce the rest.
+
+#### No indexing, and the request log
+
+The app is not meant to be found: `robots.txt` disallows everything and the pages carry a `noindex` meta tag, and the load balancer adds an `X-Robots-Tag` header to every answer, the images and the API included. The backend also logs every request (sample rate 1.0), with the client IP, user agent, URL and Cloud Armor's decision, for 30 days in Cloud Logging's `_Default` bucket ([Privacy](privacy.md)).
+
+```bash
+gcloud compute backend-services update $LB-backend --global \
+  --custom-response-header='X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex' \
+  --enable-logging --logging-sample-rate=1.0
+```
+
+#### DNS: certificates and e-mail
+
+The zone has DNSSEC on (`--dnssec-state=on` above), and these records besides the A record:
+
+| Record | Value | Why |
+| --- | --- | --- |
+| `CAA` | `0 issue "pki.goog"`, `0 issue "letsencrypt.org"`, `0 issuewild ";"` | Only the two authorities a Google-managed certificate can come from may issue one for the domain, and nobody may issue a wildcard. There is no `iodef`: it would put an e-mail address in public DNS |
+| `MX` | `10 mx1.improvmx.com.`, `20 mx2.improvmx.com.` | Mail to `@meurpg.app` goes to ImprovMX, which forwards it (below) |
+| `TXT` (apex) | `v=spf1 include:spf.improvmx.com ~all` | The SPF record ImprovMX asks for |
+| `TXT` (apex) | `google-site-verification=<token>` | Proves the domain to Google: Cloud Identity Free (the `@meurpg.app` test accounts the rehearsals sign in with) and the brand verification of the OAuth consent screen. Keep it |
+| `TXT` on `_dmarc` | `v=DMARC1; p=reject; adkim=s; aspf=s` | The domain sends no e-mail, so any message that claims to come from `@meurpg.app` is rejected |
+
+```bash
+gcloud dns record-sets create $DOMAIN. --zone=$DNS_ZONE --type=CAA --ttl=3600 \
+  --rrdatas='0 issue "pki.goog"','0 issue "letsencrypt.org"','0 issuewild ";"'
+gcloud dns record-sets create $DOMAIN. --zone=$DNS_ZONE --type=MX --ttl=3600 \
+  --rrdatas='10 mx1.improvmx.com.','20 mx2.improvmx.com.'
+gcloud dns record-sets create _dmarc.$DOMAIN. --zone=$DNS_ZONE --type=TXT --ttl=3600 \
+  --rrdatas='"v=DMARC1; p=reject; adkim=s; aspf=s"'
+# The apex TXT holds both strings in one record set; add the verification token the Google console shows.
+gcloud dns record-sets create $DOMAIN. --zone=$DNS_ZONE --type=TXT --ttl=300 \
+  --rrdatas='"v=spf1 include:spf.improvmx.com ~all"','"google-site-verification=<token>"'
+```
+
+**The contact e-mail.** `privacidade@meurpg.app`, the contact on `/terms` and `/privacy`, is an ImprovMX alias (free plan) that forwards to the people who answer data requests, and a catch-all alias forwards everything else sent to the domain to the same people. Their addresses live only in the ImprovMX account, never in the repository. ImprovMX is a processor ([Privacy](privacy.md#processors-and-where-data-lives)). An answer goes out from the person's own address: with `p=reject` and no sending service, a message sent as `@meurpg.app` would be rejected.
 
 ### 11. Smoke test
 
@@ -676,11 +826,44 @@ gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name=
 
 The log never holds a password, a token or an e-mail ([Privacy](privacy.md#logs-in-elk)).
 
+## Releasing a new version
+
+A release ships what is merged on `main`: build the image in Cloud Build, migrate, then deploy. It takes a few minutes, and the switch itself about 20 seconds.
+
+1. **Tell the table first, and have it reload after.** There is one instance (`max-instances=1`), but a new revision does not cut the open streams: Cloud Run keeps the old revision's instance until its requests end, while every new call, the master's included, reaches the new revision, whose in-memory hub those streams are not in. So a page that was open before the release hears nothing new until its stream reaches its 10-minute life or the page is reloaded (on 10/10/2026 a player saw no new combat for minutes after a release). Release between sessions; when you cannot, ask everyone at the table to reload the session page once the new revision serves.
+2. **Build.** The source is a `git archive` of the commit, with only what `backend/Dockerfile` reads, so nothing local (an `.env`, `node_modules`) enters the image. The variables are those of [step 1](#1-project-region-and-apis) and `BUILD_SA` from [step 2](#2-build-and-push-the-image). Pass `--service-account` every time: without it, Cloud Build uses the default account, which has no role, and the build fails.
+
+   ```bash
+   git fetch origin
+   export C=$(git rev-parse origin/main) S=$(git rev-parse --short=8 origin/main)
+   export IMAGE=$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/api:$S
+   git archive --format=tar.gz -o /tmp/meurpg-src-$S.tgz $C -- .dockerignore LICENSE NOTICE third_party backend web
+   gcloud builds submit /tmp/meurpg-src-$S.tgz --config=deploy/gcp/cloudbuild.yaml --region=$REGION \
+     --service-account=$BUILD_SA --substitutions=_IMAGE=$IMAGE,_COMMIT=$C
+   ```
+
+3. **Migrate.** Point the job at the new image and run it; with no new migration, goose applies nothing. If it fails, stop here and read its log ([step 13](#13-read-the-logs)): the running revision is untouched.
+
+   ```bash
+   gcloud run jobs update meurpg-migrate --image=$IMAGE
+   gcloud run jobs execute meurpg-migrate --wait
+   ```
+
+4. **Deploy.** `gcloud run deploy` with only the image keeps every variable, secret and flag of the previous revision.
+
+   ```bash
+   gcloud run deploy $SERVICE --image=$IMAGE
+   ```
+
+5. **Check.** `curl -s https://$DOMAIN/readyz` answers `{"status":"ready","database":"up"}`, and the app's home shows the new commit.
+
+This works because a migration only adds (a new table, column or row; never a rename or a drop of something the running code reads; see [CONTRIBUTING](../CONTRIBUTING.md#queries-with-sqlc)): the old revision keeps working on the new schema while traffic switches, and after a [roll back](#12-roll-back).
+
 ## Open items
 
 - Check the region and the backup retention in the CockroachDB Cloud console (São Paulo, 30 days at most).
 - Evaluate whether migrating from CockroachDB to Cloud SQL or another product is worth it, since the legacy plan cannot change without losing Unlimited. It weighs on the account: the code uses CockroachDB's row TTL (sessions, sign-in states and invites) and retries transactions on error `40001`; on PostgreSQL, the cleanup would become a scheduled job.
-- Budget alert thresholds.
+- Enforce the OWASP rules of the [edge policy](#the-edge-policy-cloud-armor) (2000 and 2001, in preview), after reading their matches from a few real sessions, with exclusions for what the app's own traffic trips.
 - The production ELK (see [Logs in ELK](#logs-in-elk)): whether it is worth the cost, where Elasticsearch runs, the Cloud Logging sink to Pub/Sub and the pipeline step that reads `jsonPayload`.
 - The Gemini API key's daily quota and API restriction (the key is in Secret Manager; see [Generated images](#generated-images-the-gemini-api)); measure the real cost per image, and adjust `IMAGE_MONTHLY_LIMIT`.
 

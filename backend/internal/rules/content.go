@@ -82,6 +82,8 @@ type content struct {
 	// (effects/traps.json), and lights the light presets (effects/lights.json).
 	traps  traps
 	lights []LightPreset
+	// combatEffects are the effects that last in a combat (effects/combat_effects.json).
+	combatEffects *combatEffects
 	// encounterBudget is the XP per character of each level, band by band, index 0
 	// being level 1 (effects/encounter_budget.json, SRD 5.2.1).
 	encounterBudget []encounter.Budget
@@ -102,6 +104,14 @@ type content struct {
 
 	namesPT map[string]string
 	namesEN map[string]string
+
+	// spellTextsPT and itemTextsPT are the Portuguese texts of the SRD spells and
+	// magic items (texts_pt.go), by key; an entry the files lack falls back to the English.
+	spellTextsPT map[string]*SpellTextPT
+	itemTextsPT  map[string][]string
+	// ruleTextsPT are the Portuguese texts of the SRD's features, traits, background
+	// features and feats (rule_texts_pt.go), by key.
+	ruleTextsPT map[string][]string
 
 	// choices is effects/choices.json (choicedata.go), shared by a table layer.
 	choices *choiceData
@@ -223,6 +233,12 @@ func load(fsys fs.FS) (*content, error) {
 	if err := c.checkMagicItems(); err != nil {
 		return nil, err
 	}
+	if err := c.loadTextsPT(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadRuleTextsPT(fsys); err != nil {
+		return nil, err
+	}
 	if err := c.indexLevels(fsys); err != nil {
 		return nil, err
 	}
@@ -246,7 +262,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "attunement:") && !strings.HasPrefix(k, "creature-type:") && !strings.HasPrefix(k, "terrain:") && !c.isAttackName(k) {
+		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "effect:") && !strings.HasPrefix(k, "attunement:") && !strings.HasPrefix(k, "creature-type:") && !strings.HasPrefix(k, "terrain:") && !c.isAttackName(k) {
 			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -283,6 +299,9 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	if err := c.loadLights(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadCombatEffects(fsys); err != nil {
 		return nil, err
 	}
 	if err := c.loadEncounterBudget(fsys); err != nil {
@@ -443,7 +462,7 @@ func (c *content) indexLevels(fsys fs.FS) error {
 }
 
 // loadEffects reads every effects file except names_pt.json, revision.json,
-// standard_actions.json, advancement.json, spells.json, traps.json, lights.json, encounter_budget.json, consumables.json, magic_item_values.json and treasure.json (tables, not effects), checks
+// standard_actions.json, advancement.json, spells.json, traps.json, lights.json, encounter_budget.json, consumables.json, magic_item_values.json, treasure.json, spells_pt.json, magic_items_pt.json, features_pt.json, traits_pt.json, backgrounds_pt.json and feats_pt.json (tables and texts, not effects), checks
 // and compiles each effect.
 func (c *content) loadEffects(fsys fs.FS) error {
 	files, err := fs.Glob(fsys, "effects/*.json")
@@ -452,7 +471,7 @@ func (c *content) loadEffects(fsys fs.FS) error {
 	}
 	for _, name := range files {
 		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "damage_resistances.json", "traps.json", "lights.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json", "choices.json":
+		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "damage_resistances.json", "traps.json", "lights.json", "combat_effects.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json", "choices.json", "spells_pt.json", "magic_items_pt.json", "features_pt.json", "traits_pt.json", "backgrounds_pt.json", "feats_pt.json":
 			continue
 		}
 		var f struct {

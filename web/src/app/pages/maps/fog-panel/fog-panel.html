@@ -41,6 +41,9 @@
           }
         </div>
         <p class="fp__hint" id="fp-light-hint">A luz onde nada foi pintado e nenhuma fonte alcança. Escuro: só quem tem visão no escuro ou uma luz enxerga.</p>
+        @if (hasGrid() && base() === bright) {
+          <p class="fp__hint" id="fp-light-bright-hint">Claro: os jogadores veem o mapa todo; criaturas só onde os personagens enxergam. Para uma sala secreta, use Penumbra.</p>
+        }
       </div>
     </div>
 

@@ -7,6 +7,8 @@ import {
 import { encounter, reactionWindow } from './combat-testing';
 import {
   concentrationResultView,
+  contestIdOf,
+  contestWindows,
   dieSidesOf,
   openWindows,
   promptView,
@@ -28,6 +30,54 @@ function win(case_: string, value: object, over: object = {}) {
     ...over,
   } as never);
 }
+
+describe('a contest waits in a window of kind CONTEST (W7-X)', () => {
+  const contest = reactionWindow({
+    id: 'wc',
+    kind: ReactionKind.CONTEST,
+    prompt: { case: 'contest', value: { contestId: 'ct1' } } as never,
+  });
+
+  it('is never a reaction card, a queue or a sheet of the reactions: the contest sheets answer it', () => {
+    const e = encounter({ reactionWindows: [contest] } as never);
+    expect(openWindows(e)).toEqual([]);
+    expect(windowForPlayer(e)).toBeUndefined();
+    expect(sheetWindow(e)).toBeUndefined();
+  });
+
+  it('keeps the other windows in their order beside it', () => {
+    const shield = win('shield', { slots: [] }, { id: 'shield' });
+    const e = encounter({ reactionWindows: [contest, shield] } as never);
+    expect(openWindows(e).map((w) => w.id)).toEqual(['shield']);
+    expect(sheetWindow(e)?.id).toBe('shield');
+  });
+
+  it('is found by the contest sheets, with the contest it waits for', () => {
+    const closed = reactionWindow({
+      id: 'old',
+      kind: ReactionKind.CONTEST,
+      status: ReactionWindowStatus.ANSWERED,
+    });
+    const e = encounter({ reactionWindows: [contest, closed] } as never);
+    expect(contestWindows(e).map((w) => w.id)).toEqual(['wc']);
+    expect(contestIdOf(contest)).toBe('ct1');
+    expect(contestIdOf(reactionWindow({ id: 'x' }))).toBe('');
+  });
+
+  it('is told to everybody else with the combat’s own wait line', () => {
+    const e = encounter({
+      reactionWindows: [],
+      reactionWait: {
+        titlePt: 'Esperando Brisa',
+        detailPt: 'O turno continua quando ele responder.',
+      },
+    } as never);
+    expect(reactionWait(e)).toEqual({
+      title: 'Esperando Brisa',
+      detail: 'O turno continua quando ele responder.',
+    });
+  });
+});
 
 describe('the reaction windows a player answers', () => {
   it('lists the open windows and gives a player the first one that is theirs', () => {

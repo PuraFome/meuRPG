@@ -67,6 +67,23 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK = 28;
   // A search for traps in dim light (Perception, MR-035).
   ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM = 29;
+  // SRD 5.1, "Help": an ally's Help aimed at the target gives the next attack roll
+  // against it advantage.
+  ADVANTAGE_SOURCE_KIND_HELP = 30;
+  // Effects that last (RN-22): exhaustion levels 3 (attack rolls and saving throws) and 1
+  // (ability checks), Faerie Fire's outline on the target, and the advantage on saving
+  // throws an effect gives (Velocidade). "Outra fonte" is the same kind with no name,
+  // for a player when the master hides the effect.
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK = 100;
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE = 101;
+  ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK = 102;
+  ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET = 103;
+  ADVANTAGE_SOURCE_KIND_EFFECT_SAVE = 104;
+  ADVANTAGE_SOURCE_KIND_OTHER_SOURCE = 105;
+  // A die an effect added to the roll ("Bênção +1d4"), outside combat too.
+  ADVANTAGE_SOURCE_KIND_EFFECT_DIE = 106;
+  // The advantage an effect gives on ability checks (Aprimorar Habilidade).
+  ADVANTAGE_SOURCE_KIND_EFFECT_CHECK = 107;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A
@@ -190,6 +207,9 @@ message DamagePart {
   repeated SlotOption slot_options = 16;
   // A word under the line: "inclui Duelismo +2 (automático)".
   string note_pt = 17;
+  // A table maneuver's die: only one of these may be marked for each attack, so the screen
+  // turns the others off once one is marked.
+  bool maneuver = 18;
 }
 
 // Reroll is a die rerolled by Great Weapon Fighting.
@@ -216,6 +236,9 @@ message DamagePartRoll {
   bool physical = 9;
   string damage_type_key = 10;
   repeated Reroll rerolled = 11;
+  // A table maneuver's rider (what the target must do, in the table's words). Only the
+  // master gets it; empty for everyone else and for every other part.
+  string rider_pt = 12;
 }
 
 // SelectedExtra is an extra the player marks when they roll the damage.
@@ -270,6 +293,10 @@ message CombatantEffect {
   // The label of the chip and what the state does, in Portuguese.
   string label_pt = 8;
   string effect_pt = 9;
+  // For a rage: the barbarian is in a frenzy (Path of the Berserker, Frenzy), so its chip says
+  // "Em frenesi", a melee weapon attack is a bonus action on each of its later turns, and one
+  // level of exhaustion comes when the rage ends.
+  bool frenzy = 10;
 }
 
 // ConditionSource says where a condition of a combatant comes from and when it

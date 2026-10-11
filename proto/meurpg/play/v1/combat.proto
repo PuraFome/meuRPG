@@ -12,6 +12,8 @@ package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
 import "meurpg/play/v1/combat_rolls.proto";
+import "meurpg/play/v1/contest_types.proto";
+import "meurpg/play/v1/lasting_effects.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // CombatService runs a combat (an "encounter") inside the campaign's open
@@ -414,6 +416,34 @@ service CombatService {
   //     for its answer (OPPORTUNITY_PENDING); the distance is more than the
   //     movement left (TOO_FAR, with missing_ft and missing_dft).
   rpc SpendMovement(SpendMovementRequest) returns (SpendMovementResponse);
+
+  // StandUp is "Levantar-se": the combatant stands up from Prone (SRD 5.1, "Being
+  // Prone": standing up takes an amount of movement equal to half your speed, and you
+  // cannot stand up if you do not have enough movement left, or if your speed is 0).
+  // The cost is half the speed the combatant has this turn without the Dash (the
+  // Dash gives more movement, not a faster speed), rounded down to a tenth of a foot,
+  // and it is added to the movement used (`movement_used_dft`, as a move does). It takes
+  // the Prone condition off. It works on a map and in THEATRE mode (RN-25) alike: no
+  // square is involved. The caller's own combatant on its turn, for a player (and for
+  // the creatures of their character); any combatant on its turn for the master. It is a
+  // line of the combat log for everyone who sees the combatant ("Brisa se levantou"),
+  // and the master can undo it (UndoLastAction): the condition and the movement come
+  // back. The cost the screen shows is `Combatant.stand_up_cost_dft`.
+  //
+  // The answer tells what is left (`movement_left_dft`). Every stream gets
+  // `encounter_changed`.
+  //
+  // Errors:
+  //   - `not_found`: the combat or the combatant is not in the open session (a hidden
+  //     NPC is not found for a player).
+  //   - `permission_denied`: the caller is a player and the combatant is not theirs.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+  //     (NOT_ACTIVE); it is not the combatant's turn (NOT_YOUR_TURN); an opportunity
+  //     attack waits for an answer (OPPORTUNITY_PENDING); the combatant is not Prone
+  //     (NOT_PRONE); its speed is 0 (CANNOT_STAND_UP: grappled, restrained, a Velocidade
+  //     that ended, and the like; the message never names the cause to a player); it has
+  //     less movement left than the cost (TOO_FAR, with missing_ft and missing_dft).
+  rpc StandUp(StandUpRequest) returns (StandUpResponse);
 
   // OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
   // combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
@@ -1334,6 +1364,19 @@ service CombatService {
   //   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
   //     NOT_RAGING.
   rpc EndRage(EndRageRequest) returns (EndRageResponse);
+
+  // UseHitRider answers a monk's offer after a hit (Encounter.hit_riders): the Open Hand
+  // technique on a Flurry of Blows hit (knock prone, push, or no reactions) or Stunning
+  // Strike (1 ki point) on a melee hit. The server rolls the target's saving throw against
+  // the ki save DC (for an NPC and a player's character alike, as a spell's save), applies
+  // what a failure does and writes the line. The monk's player or the master.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as TakeAction.
+  //   - `failed_precondition`: the offer was already answered, or its round is over; or,
+  //     for Stunning Strike, there is no ki point left.
+  //   - `invalid_argument`: the choice is not one the offer has.
+  rpc UseHitRider(UseHitRiderRequest) returns (UseHitRiderResponse);
 }
 
 // EncounterMode is how a combat is played (RN-25, ADR-0017): chosen when it
@@ -1456,6 +1499,9 @@ enum MoveRefusal {
   // Nothing blocks the line, but it costs more than the movement left (difficult
   // terrain, creatures to pass).
   MOVE_REFUSAL_TOO_COSTLY = 4;
+  // The mover drags the creature it holds, and the square behind the path is taken or
+  // blocked: there is nowhere to leave it.
+  MOVE_REFUSAL_NO_ROOM_TO_DRAG = 20;
 }
 
 // CombatantState is how hurt a combatant is, as a word (RN-20): what a
@@ -1743,6 +1789,24 @@ enum EncounterBlockedReason {
   // StartEncounter: a participant is a reserved character (imported, not claimed by a
   // player yet), which cannot fight until someone owns it.
   ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED = 84;
+  // The combatant cannot act now because of an effect or a condition (RN-22): it is
+  // incapacitated (Paralisado, Atordoado, Inconsciente, Petrificado, Incapacitado) or the
+  // lethargy of a Velocidade holds it. The message never names the cause to a player.
+  ENCOUNTER_BLOCKED_REASON_CANNOT_ACT = 100;
+  // The extra action an effect gives (Velocidade) is not there, or was spent.
+  ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE = 101;
+  // StandUp: the combatant is not Prone.
+  ENCOUNTER_BLOCKED_REASON_NOT_PRONE = 102;
+  // StandUp: the combatant's speed is 0 (SRD 5.1, "Being Prone"), so it cannot stand up
+  // whatever the cost: Grappled, Restrained, the lethargy of a Velocidade, and the like.
+  ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP = 103;
+  // TakeAction (Fúria, with `frenzy`): the combatant has no Frenzy, which is the level 3
+  // feature of the Path of the Berserker (SRD 5.1, Barbarian). Any other barbarian, and
+  // anyone else, rages without it.
+  ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE = 104;
+  // A table maneuver that starts a grapple after a hit: the character made no melee
+  // weapon hit this turn.
+  ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT = 105;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -1916,6 +1980,80 @@ message Encounter {
   // character, with the round and no more; for the others the list does not exist
   // (RN-10, RN-03).
   repeated CombatDeath deaths = 26;
+  // The offers of the monk's riders after a hit (UseHitRider): the master gets all of
+  // them, a player the ones of their own character. Open until answered or the round ends.
+  repeated HitRiderOffer hit_riders = 30;
+}
+
+// HitRiderKind is which rider a hit offers.
+enum HitRiderKind {
+  HIT_RIDER_KIND_UNSPECIFIED = 0;
+  // Open Hand technique (Monk 3, Way of the Open Hand): on a Flurry of Blows hit.
+  HIT_RIDER_KIND_OPEN_HAND = 1;
+  // Stunning Strike (Monk 5): on a melee hit, 1 ki point.
+  HIT_RIDER_KIND_STUNNING_STRIKE = 2;
+}
+
+// HitRiderChoice is what the monk picks.
+enum HitRiderChoice {
+  HIT_RIDER_CHOICE_UNSPECIFIED = 0;
+  // Open Hand: Dexterity save or knocked prone.
+  HIT_RIDER_CHOICE_PRONE = 1;
+  // Open Hand: Strength save or pushed up to 15 ft (4,5 m). The master places the token.
+  HIT_RIDER_CHOICE_PUSH = 2;
+  // Open Hand: no reactions until the end of the monk's next turn (no save).
+  HIT_RIDER_CHOICE_NO_REACTIONS = 3;
+  // Stunning Strike: Constitution save or stunned until the end of the monk's next turn.
+  HIT_RIDER_CHOICE_STUN = 4;
+  // Declines the offer.
+  HIT_RIDER_CHOICE_DECLINE = 5;
+}
+
+// HitRiderOffer is one open offer (Encounter.hit_riders).
+message HitRiderOffer {
+  string id = 1;
+  HitRiderKind kind = 2;
+  string attacker_id = 3;
+  string target_id = 4;
+  // The ki save DC. Only the master and the monk's player get it (RN-20).
+  int32 save_dc = 5;
+  // Ki points left, for Stunning Strike.
+  int32 ki_left = 6;
+}
+
+// UseHitRiderRequest answers an offer.
+message UseHitRiderRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string rider_id = 3;
+  HitRiderChoice choice = 4;
+  string idempotency_key = 5;
+}
+
+// UseHitRiderResponse returns the combat.
+message UseHitRiderResponse {
+  Encounter encounter = 1;
+}
+
+// HitRiderLogResult is how an answered rider ended.
+enum HitRiderLogResult {
+  HIT_RIDER_LOG_RESULT_UNSPECIFIED = 0;
+  HIT_RIDER_LOG_RESULT_SAVED = 1;
+  HIT_RIDER_LOG_RESULT_FAILED = 2;
+  // No save (no reactions) or declined.
+  HIT_RIDER_LOG_RESULT_APPLIED = 3;
+  HIT_RIDER_LOG_RESULT_DECLINED = 4;
+}
+
+// CombatLogHitRider is the line of an answered rider (CombatLogKind HIT_RIDER).
+message CombatLogHitRider {
+  HitRiderChoice choice = 1;
+  HitRiderLogResult result = 2;
+  // The target's roll and the DC: the master's and the monk's player's lines only (RN-20).
+  int32 d20 = 3;
+  int32 save_total = 4;
+  int32 dc = 5;
+  bool numbers = 6;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -2245,6 +2383,20 @@ message Combatant {
   // combatant's own player.
   bool attacked_hostile_since_last_turn = 69;
   bool took_damage_since_last_turn = 72;
+  // The effects the caller reads on this combatant, as cards: the master all of them; the
+  // player of the combatant the ones they may read, never the DC of an NPC's effect; the
+  // others none (see `effect_labels`).
+  repeated LastingEffect effects = 100;
+  // The labels the caller reads for the effects on this combatant, for the order and the
+  // map: "Paralisado", "Preso numa teia", or the master's free label. A player reads only
+  // the ones the master leaves visible; the master reads all.
+  repeated EffectLabel effect_labels = 101;
+  // The level of exhaustion, 0 to 6. The master and the owner read it; the others 0.
+  int32 exhaustion_level = 102;
+  // What standing up costs, in tenths of a foot, while the combatant is Prone: half its
+  // speed of the turn without the Dash (SRD 5.1, "Being Prone"), rounded down. 0 when it
+  // is not Prone or its speed is 0 (it cannot stand up then). Same audience as `speed_dft`.
+  int32 stand_up_cost_dft = 103;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2445,6 +2597,21 @@ message SpendMovementRequest {
   int32 distance_ft = 5;
 }
 
+// StandUpRequest stands a Prone combatant up, on its turn.
+message StandUpRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+}
+
+// StandUpResponse returns the combat and what the combatant has left.
+message StandUpResponse {
+  Encounter encounter = 1;
+  // The movement left this turn, in tenths of a foot, after the cost.
+  int32 movement_left_dft = 2;
+}
+
 // SpendMovementResponse returns the combat and what the combatant has left.
 message SpendMovementResponse {
   Encounter encounter = 1;
@@ -2519,6 +2686,21 @@ message GetMoveOptionsResponse {
   repeated RefusedSquare refused = 3;
   // True when the mover moves as a flier: difficult terrain costs it nothing.
   bool flier = 4;
+  // The creature the mover drags along: it holds it grappled, and a creature that
+  // is not two or more sizes smaller than the mover halves its speed while it moves
+  // (SRD 5.1, "Moving a Grappled Creature"). `movement_left_dft` and the costs of
+  // `reachable` already count the halving: the movement left is the path that fits. Empty
+  // when the mover drags nobody.
+  string dragging_combatant_id = 20;
+  // True when the dragged creature halves the speed.
+  bool dragging_halved = 21;
+}
+
+// DraggedSquare is the square a dragged creature ends on: the one the grappler left
+// just before the last square of its path, worked out by the server.
+message DraggedSquare {
+  int32 col = 1;
+  int32 row = 2;
 }
 
 // ReachableSquare is a square a combatant can go to, and what the move costs.
@@ -2545,6 +2727,9 @@ message ReachableSquare {
   string known_trap_point_id = 7;
   // That trap's name ("Fosso escondido").
   string known_trap_name = 8;
+  // The square the dragged creature (GetMoveOptionsResponse.dragging_combatant_id)
+  // ends on if the mover goes here. Unset when it drags nobody.
+  DraggedSquare dragged_to = 20;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.
@@ -2712,6 +2897,11 @@ message DiceRoll {
   // The dice a fighting style rerolled (Great Weapon Fighting): `faces` holds the
   // faces that count.
   repeated Reroll rerolled = 10;
+  // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção and
+  // Perdição's d4 on attack rolls and saving throws. `total` already has them. For a
+  // player, on an effect the master hides, `source_name_pt` is "Outra fonte" and the
+  // key is empty.
+  repeated ExtraDie extra_dice = 100;
 }
 
 // CriticalDamageRule is what a critical hit does to the damage dice: the table's
@@ -2860,6 +3050,9 @@ message PendingDamage {
   // The feature's Portuguese name for those dice ("Crítico Brutal"); empty when
   // `extra_dice_count` is 0.
   string extra_dice_name_pt = 26;
+  // The damage an effect dealt to who started the turn under it (the web that burns): the
+  // effect's Portuguese name ("Teia em chamas"). It has no attacker.
+  string effect_source_name_pt = 100;
 }
 
 // GetTurnOptionsRequest names a combatant.
@@ -2891,9 +3084,20 @@ message GetTurnOptionsResponse {
   // combatant's attacks and spells will do to the damage dice, so the screen can
   // say it before the roll. DOUBLED_DICE or MAX_PLUS_ROLL, never UNSPECIFIED.
   CriticalDamageRule critical_rule = 6;
+  // The special attacks that replace one attack of the Attack action (SRD 5.1,
+  // "Grappling" and "Shoving a Creature"), with their targets: GRAPPLE and SHOVE.
+  // Empty when the combatant cannot grapple or shove now.
+  repeated ContestAttackOption contest_attack_options = 40;
+  // The contest facts of this combatant's turn: grappled, holding, hidden, surprised.
+  ContestTurnState contest_state = 41;
   // For each feature action of options.feature_actions that picks a creature
   // (Cura pelas Mãos, Inspiração de Bardo), who it can pick.
   repeated ResourceTargets resource_targets = 30;
+  // What the effects on the combatant take away this turn, in words the caller may read
+  // ("Você está Paralisada. Não age nem se move neste turno."); empty when nothing does.
+  repeated EffectNote effect_notes = 100;
+  // The extra action an effect gives (Velocidade); unset when there is none.
+  ExtraActionOption extra_action = 101;
 }
 
 // ResourceTargets lists the creatures a feature action that picks one can choose.
@@ -3078,6 +3282,13 @@ message RollAttackRequest {
   // not set). The number must match the mode the server resolves, else
   // `invalid_argument`.
   repeated int32 d20_faces = 15;
+  // The faces of the dice an effect adds to the roll (Bênção, Perdição), in the order of
+  // the effects, when the player rolls physical dice (`d20_face`): one for each, 1 to the
+  // die's faces. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 100;
+  // True: the attack is the weapon attack of the extra action an effect gives
+  // (Velocidade): it spends that action, not the Attack action, and it is one weapon attack.
+  bool use_extra_action = 101;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -3156,6 +3367,22 @@ message BonusDie {
   int32 face = 3;
   // Whether the die was added to the total.
   bool used = 4;
+}
+
+// OutsideInspirationOffer asks the player of a roll made out of a combat (a scene check, a
+// group check) whether to add the Bardic Inspiration die the character holds: the roll
+// answered it instead of the result. The result is only written by
+// AnswerOutsideInspiration (SRD 5.1: the creature can wait until after it rolls the d20 and
+// must decide before the GM says whether the roll succeeds).
+message OutsideInspirationOffer {
+  // The held roll (a UUID).
+  string hold_id = 1;
+  // The size of the die the character holds, and the name of the bard that gave it.
+  int32 sides = 2;
+  string from_name = 3;
+  // The d20 (or both, with advantage or disadvantage) with the bonus the check adds, before
+  // the die: what the player rolled, before the result is told.
+  DiceRoll d20 = 4;
 }
 
 // RollAttackResponse returns the roll and the combat after it.
@@ -3267,6 +3494,16 @@ message TakeActionRequest {
     // of Retomar o fôlego.
     int32 typed_sum = 7;
   }
+  // True: the action is the extra action an effect gives (Velocidade): Disparada,
+  // Desengajar, Esconder or Usar um objeto spend that action instead of the Action.
+  bool use_extra_action = 100;
+  // True: the action is "feature:rage" and the barbarian goes into a frenzy for this rage
+  // (SRD 5.1, Barbarian, Path of the Berserker, Frenzy). Each of its later turns offers one
+  // melee weapon attack as a bonus action, and when the rage ends it gains one level of
+  // exhaustion. Only a barbarian with the Frenzy feature may ask; any other combatant is
+  // refused with `failed_precondition` (EncounterBlocked FRENZY_UNAVAILABLE). Ignored by an
+  // action that is not "feature:rage"; false is a plain rage.
+  bool frenzy = 101;
 }
 
 // TakeActionResponse returns the combat after the action.
@@ -3416,6 +3653,21 @@ message CastSpellRequest {
   // spell consumes). The app keeps no inventory, so this is a reminder, and the log says
   // it was spent. Required for Revivify and refused for any other spell.
   bool material_confirmed = 19;
+  // Enhance Ability only: the ability the target is enhanced in ("str", "dex", "con", "int",
+  // "wis" or "cha"; SRD 5.1: Bull's Strength, Cat's Grace, Bear's Endurance, Fox's Cunning,
+  // Owl's Wisdom, Eagle's Splendor). Required for that spell, `invalid_argument` otherwise
+  // missing or unknown; ignored by every other spell.
+  string ability_key = 20;
+  // Sculpt Spells (SRD 5.1, School of Evocation wizard, level 2): the creatures of the
+  // area the caster spares, an evocation spell that affects other creatures the caster
+  // can see. Each one succeeds on its saving throw by itself (no roll; its save result
+  // has `sculpted`) and takes no damage when the spell would deal half on a success.
+  // At most 1 + the level the spell is cast at (0 for a cantrip, so 1); each must be a
+  // creature the spell reaches and the caller sees, never the caster. Refused with
+  // `invalid_argument` for a caster without the feature (SpellOption.sculpt_spells is
+  // false), a spell that is not of evocation, a creature that is not among the targets
+  // or is the caster, a repeated one and too many. Empty is a cast without it.
+  repeated string sculpted_ids = 31;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -3583,6 +3835,12 @@ message SaveResult {
   RollMode mode = 5;
   repeated AdvantageSource sources = 6;
   bool auto_failed = 7;
+  // The target failed by itself, with no d20: a Strength or Dexterity saving throw of a
+  // Paralisado, Atordoado, Inconsciente or Petrificado creature (SRD, Conditions).
+  bool auto_fail = 100;
+  // The target was spared by the caster's Sculpt Spells: it succeeded without a roll
+  // (`outcome` is SAVED, `roll` is unset) and took no damage if the spell halves.
+  bool sculpted = 101;
 }
 
 // SpellTargetResult is what a cast did to one target.
@@ -3615,6 +3873,13 @@ message SpellTargetResult {
   // read them, and whether a hit was a critical hit by the target's condition.
   RollMode attack_mode = 11;
   repeated AdvantageSource attack_sources = 12;
+  // A spell that leaves an effect that lasts (Bênção, Perdição, Imobilizar Pessoa,
+  // Velocidade, Teia, Fogo das Fadas): whether it took hold on this target.
+  // Unspecified for the other spells.
+  LastingEffectOutcome lasting_effect = 100;
+  // Only the master: why a spell had no effect ("alvo não é humanoide"). A player
+  // reads only "A magia não teve efeito." (RN-20).
+  string no_effect_reason_master = 101;
 }
 
 // SpellEffectKind is how a spell that reads hit points works. The same four kinds
@@ -4049,6 +4314,15 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
+  // actor, the target and `contest`, which says what happened. Never a total (RN-20).
+  COMBAT_LOG_KIND_CONTEST = 50;
+  // An effect that lasts began, changed or ended, a saving throw of an effect was rolled,
+  // or an effect dealt damage (RN-22): `effect`. An effect the master hides from the
+  // players is a line for the master alone, and no count of them reaches a player.
+  COMBAT_LOG_KIND_EFFECT = 100;
+  // The level of exhaustion of a combatant changed (`effect.exhaustion_level`).
+  COMBAT_LOG_KIND_EXHAUSTION = 101;
   // A reaction window was answered or closed (PM-04): `reaction_text_pt` is the
   // line, written on the server for who reads it (the master's has the NPC
   // numbers, the players' has none and never names a reactor they do not see).
@@ -4070,6 +4344,9 @@ enum CombatLogKind {
   // reviveu Toren". The revived combatant is `target_id`; no actor. Everyone sees it,
   // unless the combatant is hidden.
   COMBAT_LOG_KIND_CHARACTER_REVIVED = 34;
+  // A monk's rider answered (UseHitRider): the Open Hand technique or Stunning Strike,
+  // the actor the monk and the target the creature hit. `hit_rider` has the result.
+  COMBAT_LOG_KIND_HIT_RIDER = 40;
 }
 
 // CombatLogStateChange is a state that began or ended.
@@ -4194,6 +4471,14 @@ message CombatLogEntry {
   // MOVED by a long jump: the combatant had walked 10 ft just before, so the jump
   // counted with a running start. Everyone who gets the line.
   bool jump_running_start = 45;
+  // MOVED on foot: the movement the walk spent, in tenths of a foot, when it is not the
+  // distance: the path's cost (a square of another creature or of difficult terrain
+  // costs double), doubled again by a drag (`move_dragging`) or a crawl
+  // (`move_crawling`). Zero when the move spent nothing (the master's free move) or
+  // the event is older; then the line says only the distance. Everyone who gets the line.
+  int32 spent_dft = 48;
+  bool move_dragging = 49;
+  bool move_crawling = 50;
   // MOVED by a long jump, only the master: it landed in difficult terrain, so the
   // line says "Acrobacia CD 10 ou cai Derrubado" (the app rolls nothing).
   bool landing_difficult = 33;
@@ -4207,6 +4492,8 @@ message CombatLogEntry {
   TrapFiring trap = 40;
   // WILD_SHAPE: the form change. The actor is the druid.
   CombatLogWildShape wild_shape = 41;
+  // CONTEST: what happened.
+  CombatLogContest contest = 60;
   // DOOR_OPENED: where the door is. The actor is who opened it.
   CombatLogDoor door = 42;
   // MONSTERS_ADDED: the new monsters, in the order of their names.
@@ -4227,6 +4514,10 @@ message CombatLogEntry {
   string reason = 47;
   // EFFECT_ENDED: which effect, on the actor.
   CombatLogEffectEnd effect_end = 46;
+  // EFFECT and EXHAUSTION: what happened.
+  CombatLogEffect effect = 100;
+  // HIT_RIDER: how the rider ended.
+  CombatLogHitRider hit_rider = 110;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -4279,6 +4570,46 @@ enum LayOnHandsCureKind {
   LAY_ON_HANDS_CURE_KIND_UNSPECIFIED = 0;
   LAY_ON_HANDS_CURE_KIND_DISEASE = 1;
   LAY_ON_HANDS_CURE_KIND_POISON = 2;
+}
+
+// CombatLogEffect is what an EFFECT or EXHAUSTION line says.
+message CombatLogEffect {
+  // The effect's key and Portuguese name ("spell:hold-person", "Imobilizar Pessoa").
+  string source_key = 1;
+  string source_name_pt = 2;
+  CombatLogEffectChange change = 3;
+  // The combatants it concerns, by label ("Brisa", "Goblin 2").
+  repeated string target_labels = 4;
+  // SAVED and SAVE_FAILED: the ability, and for the master the roll and the DC; a player
+  // reads only whether it passed.
+  string ability = 5;
+  string ability_name_pt = 6;
+  optional int32 d20 = 7;
+  optional int32 total = 8;
+  optional int32 dc = 9;
+  // DAMAGE: the damage type's Portuguese name and the amount rolled.
+  string damage_type_pt = 10;
+  int32 amount = 11;
+  // EXHAUSTION: the level now, and the level before.
+  int32 exhaustion_level = 12;
+  int32 exhaustion_before = 13;
+  // ENDED: why ("duration", "ended_by_master", "concentration", "saved", "caster_left").
+  // EXHAUSTION: "frenzy" when the level came from the end of a Berserker's frenzied rage.
+  string reason = 14;
+}
+
+// CombatLogEffectChange is what an effect did.
+enum CombatLogEffectChange {
+  COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED = 0;
+  COMBAT_LOG_EFFECT_CHANGE_ADDED = 1;
+  COMBAT_LOG_EFFECT_CHANGE_ENDED = 2;
+  COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED = 3;
+  COMBAT_LOG_EFFECT_CHANGE_SAVED = 4;
+  COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED = 5;
+  COMBAT_LOG_EFFECT_CHANGE_DAMAGE = 6;
+  COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED = 7;
+  // The effect gave the target temporary hit points (Heroísmo, at the start of its turn); `amount`.
+  COMBAT_LOG_EFFECT_CHANGE_TEMP_HP = 8;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -4426,6 +4757,10 @@ message CombatLogDamage {
   // get, only the final damage.
   repeated DamagePartRoll parts = 17;
   repeated DamageStep steps = 18;
+  // APPLIED to a player's character that the half-orc's Relentless Endurance (SRD 5.1)
+  // kept on 1 hit point instead of 0: the line reads "Resistência Implacável: fica com
+  // 1 PV". Everyone who gets the line gets this.
+  bool relentless_endurance = 19;
 }
 
 // GetCombatHighlightsRequest names the combat.
@@ -4639,6 +4974,16 @@ enum ReactionKind {
   // an action of a player against an enemy waits for "Sem reação" so that the
   // pause says nothing to the players.
   REACTION_KIND_MASTER_CHECK = 11;
+  // A contest (grapple, shove, escape) that waits for its defender's roll or its
+  // winner's choice; it is answered with RespondContest / ResolveShove, not with
+  // AnswerReaction.
+  REACTION_KIND_CONTEST = 13;
+  // The saving throw an effect that lasts asks at the end or the start of its target's
+  // turn (Imobilizar Pessoa, Teia): answered with CombatEffectService.RollEffectSave.
+  REACTION_KIND_EFFECT_SAVE = 12;
+  // A table maneuver that reduces the damage of a melee hit by a die and an ability
+  // modifier (superiority_die, applies reduce_melee_damage).
+  REACTION_KIND_MANEUVER_REDUCE = 14;
 }
 
 enum ReactionWindowStatus {
@@ -4659,6 +5004,11 @@ enum ReactionClosedReason {
   // What triggered it is gone (the spell was countered, the attacker died, the
   // creature left the 60 ft, the concentration ended).
   REACTION_CLOSED_REASON_TRIGGER_GONE = 3;
+  // An effect's saving throw whose effect ended meanwhile (the master ended it, or its
+  // time ran out).
+  REACTION_CLOSED_REASON_EFFECT_ENDED = 4;
+  // An effect's saving throw whose caster lost the concentration meanwhile.
+  REACTION_CLOSED_REASON_CASTER_LOST_CONCENTRATION = 5;
 }
 
 enum ReactionChoice {
@@ -4725,6 +5075,10 @@ message ReactionWindow {
     MasterCheckPrompt master_check = 28;
     HellishRebukeSavePrompt hellish_rebuke_save = 29;
     DeflectMissilesThrowPrompt deflect_throw = 30;
+    ContestPrompt contest = 31;
+    ManeuverReducePrompt maneuver_reduce = 41;
+    // The saving throw an effect asks at a turn (RN-22).
+    EffectSavePrompt effect_save = 40;
   }
 }
 
@@ -4856,6 +5210,25 @@ message CuttingWordsPrompt {
   int32 uses_left = 6;
 }
 
+// ManeuverReducePrompt: a melee attack hit the reactor; each option is a table maneuver
+// that takes `die + flat_bonus` off the damage and spends the reaction and a use.
+message ManeuverReducePrompt {
+  string attacker_label = 1;
+  string attack_name_pt = 2;
+  // The damage the attack would do to the reactor.
+  int32 damage = 3;
+  repeated ManeuverReduceOption options = 4;
+}
+
+message ManeuverReduceOption {
+  string key = 1;
+  string name_pt = 2;
+  int32 die_sides = 3;
+  // The ability modifier added to the die.
+  int32 flat_bonus = 4;
+  int32 uses_left = 5;
+}
+
 message DeflectMissilesPrompt {
   string attacker_label = 1;
   string attack_name_pt = 2;
@@ -4875,6 +5248,13 @@ message DeflectMissilesThrowPrompt {
   int32 ki_left = 1;
   int32 normal_range_ft = 2;
   int32 long_range_ft = 3;
+  // The missile's name ("Arco curto"), as the screen names the throw; empty when
+  // the caller does not see the attacker.
+  string missile_name_pt = 4;
+  // What the thrown attack adds to the d20: proficiency (whatever the monk's
+  // weapon proficiencies) plus the Dexterity modifier. The damage is the
+  // missile's own dice plus the Dexterity modifier, worked out by RollAttack.
+  int32 attack_bonus = 5;
 }
 
 message FallingCreature {
@@ -4908,6 +5288,12 @@ message ConcentrationSavePrompt {
   bool handed_to_master = 8;
 }
 
+// ContestPrompt names the contest a CONTEST window waits for: the sheet reads it
+// from Encounter.contest_state.
+message ContestPrompt {
+  string contest_id = 1;
+}
+
 message MasterCheckPrompt {
   // What the check is about, for the master's card: "Ataque de Toren contra o
   // Goblin 2 · acertou".
@@ -4937,6 +5323,9 @@ message AnswerReactionRequest {
     int32 typed = 9;
   }
   string idempotency_key = 10;
+  // A maneuver reduction (ManeuverReducePrompt.options[].key): the one the player uses. Needed
+  // to answer USE a REACTION_KIND_MANEUVER_REDUCE window; the roll is the maneuver's die.
+  string maneuver_key = 11;
 }
 
 message AnswerReactionResponse {
@@ -4961,6 +5350,7 @@ message ReactionResult {
     CuttingWordsResult cutting_words = 24;
     DeflectMissilesResult deflect_missiles = 25;
     FeatherFallResult feather_fall = 26;
+    ManeuverReduceResult maneuver_reduce = 27;
   }
   // The window the answer asked one more thing of (a second step), if any.
   string next_window_id = 30;
@@ -5009,6 +5399,14 @@ message CuttingWordsResult {
   ReactionRollKind roll_kind = 4;
 }
 
+message ManeuverReduceResult {
+  string maneuver_key = 1;
+  string name_pt = 2;
+  DiceRoll reduction = 3;
+  int32 damage_before = 4;
+  int32 damage_after = 5;
+}
+
 message DeflectMissilesResult {
   DiceRoll reduction = 1;
   int32 damage_before = 2;
@@ -5038,6 +5436,13 @@ message ResolveConcentrationSaveRequest {
     bool keep = 7;
   }
   string idempotency_key = 8;
+  // The faces of the dice an effect adds to the saving throw (Bênção, Perdição), in the order
+  // of the effects, when the roll is a physical d20 (`d20_face`): one for each, 1 to the die's
+  // faces. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 100;
+  // With a physical d20 and disadvantage (exhaustion 3 or more, SRD 5.1) or advantage on the
+  // saving throw, the second d20; `d20_face` is the first.
+  optional int32 second_d20_face = 101;
 }
 
 message ResolveConcentrationSaveResponse {

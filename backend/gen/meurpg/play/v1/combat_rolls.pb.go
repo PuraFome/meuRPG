@@ -133,41 +133,67 @@ const (
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK AdvantageSourceKind = 28
 	// A search for traps in dim light (Perception, MR-035).
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM AdvantageSourceKind = 29
+	// SRD 5.1, "Help": an ally's Help aimed at the target gives the next attack roll
+	// against it advantage.
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP AdvantageSourceKind = 30
+	// Effects that last (RN-22): exhaustion levels 3 (attack rolls and saving throws) and 1
+	// (ability checks), Faerie Fire's outline on the target, and the advantage on saving
+	// throws an effect gives (Velocidade). "Outra fonte" is the same kind with no name,
+	// for a player when the master hides the effect.
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK AdvantageSourceKind = 100
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE   AdvantageSourceKind = 101
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK  AdvantageSourceKind = 102
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET   AdvantageSourceKind = 103
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE       AdvantageSourceKind = 104
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OTHER_SOURCE      AdvantageSourceKind = 105
+	// A die an effect added to the roll ("Bênção +1d4"), outside combat too.
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE AdvantageSourceKind = 106
+	// The advantage an effect gives on ability checks (Aprimorar Habilidade).
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_CHECK AdvantageSourceKind = 107
 )
 
 // Enum value maps for AdvantageSourceKind.
 var (
 	AdvantageSourceKind_name = map[int32]string{
-		0:  "ADVANTAGE_SOURCE_KIND_UNSPECIFIED",
-		1:  "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
-		2:  "ADVANTAGE_SOURCE_KIND_PRONE_ATTACKER",
-		3:  "ADVANTAGE_SOURCE_KIND_RESTRAINED_TARGET",
-		4:  "ADVANTAGE_SOURCE_KIND_RESTRAINED_ATTACKER",
-		5:  "ADVANTAGE_SOURCE_KIND_BLINDED_TARGET",
-		6:  "ADVANTAGE_SOURCE_KIND_BLINDED_ATTACKER",
-		7:  "ADVANTAGE_SOURCE_KIND_POISONED_ATTACKER",
-		8:  "ADVANTAGE_SOURCE_KIND_FRIGHTENED_ATTACKER",
-		9:  "ADVANTAGE_SOURCE_KIND_INVISIBLE_TARGET",
-		10: "ADVANTAGE_SOURCE_KIND_INVISIBLE_ATTACKER",
-		11: "ADVANTAGE_SOURCE_KIND_STUNNED_TARGET",
-		12: "ADVANTAGE_SOURCE_KIND_PARALYZED_TARGET",
-		13: "ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET",
-		14: "ADVANTAGE_SOURCE_KIND_PETRIFIED_TARGET",
-		15: "ADVANTAGE_SOURCE_KIND_RECKLESS_ATTACKER",
-		16: "ADVANTAGE_SOURCE_KIND_RECKLESS_TARGET",
-		17: "ADVANTAGE_SOURCE_KIND_DODGING_TARGET",
-		18: "ADVANTAGE_SOURCE_KIND_PACK_TACTICS",
-		19: "ADVANTAGE_SOURCE_KIND_UNSEEN_ATTACKER",
-		20: "ADVANTAGE_SOURCE_KIND_UNSEEN_TARGET",
-		21: "ADVANTAGE_SOURCE_KIND_LONG_RANGE",
-		22: "ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY",
-		23: "ADVANTAGE_SOURCE_KIND_DODGING_SAVE",
-		24: "ADVANTAGE_SOURCE_KIND_DANGER_SENSE",
-		25: "ADVANTAGE_SOURCE_KIND_RAGE_STRENGTH",
-		26: "ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE",
-		27: "ADVANTAGE_SOURCE_KIND_POISONED_CHECK",
-		28: "ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK",
-		29: "ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM",
+		0:   "ADVANTAGE_SOURCE_KIND_UNSPECIFIED",
+		1:   "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
+		2:   "ADVANTAGE_SOURCE_KIND_PRONE_ATTACKER",
+		3:   "ADVANTAGE_SOURCE_KIND_RESTRAINED_TARGET",
+		4:   "ADVANTAGE_SOURCE_KIND_RESTRAINED_ATTACKER",
+		5:   "ADVANTAGE_SOURCE_KIND_BLINDED_TARGET",
+		6:   "ADVANTAGE_SOURCE_KIND_BLINDED_ATTACKER",
+		7:   "ADVANTAGE_SOURCE_KIND_POISONED_ATTACKER",
+		8:   "ADVANTAGE_SOURCE_KIND_FRIGHTENED_ATTACKER",
+		9:   "ADVANTAGE_SOURCE_KIND_INVISIBLE_TARGET",
+		10:  "ADVANTAGE_SOURCE_KIND_INVISIBLE_ATTACKER",
+		11:  "ADVANTAGE_SOURCE_KIND_STUNNED_TARGET",
+		12:  "ADVANTAGE_SOURCE_KIND_PARALYZED_TARGET",
+		13:  "ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET",
+		14:  "ADVANTAGE_SOURCE_KIND_PETRIFIED_TARGET",
+		15:  "ADVANTAGE_SOURCE_KIND_RECKLESS_ATTACKER",
+		16:  "ADVANTAGE_SOURCE_KIND_RECKLESS_TARGET",
+		17:  "ADVANTAGE_SOURCE_KIND_DODGING_TARGET",
+		18:  "ADVANTAGE_SOURCE_KIND_PACK_TACTICS",
+		19:  "ADVANTAGE_SOURCE_KIND_UNSEEN_ATTACKER",
+		20:  "ADVANTAGE_SOURCE_KIND_UNSEEN_TARGET",
+		21:  "ADVANTAGE_SOURCE_KIND_LONG_RANGE",
+		22:  "ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY",
+		23:  "ADVANTAGE_SOURCE_KIND_DODGING_SAVE",
+		24:  "ADVANTAGE_SOURCE_KIND_DANGER_SENSE",
+		25:  "ADVANTAGE_SOURCE_KIND_RAGE_STRENGTH",
+		26:  "ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE",
+		27:  "ADVANTAGE_SOURCE_KIND_POISONED_CHECK",
+		28:  "ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK",
+		29:  "ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM",
+		30:  "ADVANTAGE_SOURCE_KIND_HELP",
+		100: "ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK",
+		101: "ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE",
+		102: "ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK",
+		103: "ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET",
+		104: "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
+		105: "ADVANTAGE_SOURCE_KIND_OTHER_SOURCE",
+		106: "ADVANTAGE_SOURCE_KIND_EFFECT_DIE",
+		107: "ADVANTAGE_SOURCE_KIND_EFFECT_CHECK",
 	}
 	AdvantageSourceKind_value = map[string]int32{
 		"ADVANTAGE_SOURCE_KIND_UNSPECIFIED":         0,
@@ -200,6 +226,15 @@ var (
 		"ADVANTAGE_SOURCE_KIND_POISONED_CHECK":      27,
 		"ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK":    28,
 		"ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM":      29,
+		"ADVANTAGE_SOURCE_KIND_HELP":                30,
+		"ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK":   100,
+		"ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE":     101,
+		"ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK":    102,
+		"ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET":     103,
+		"ADVANTAGE_SOURCE_KIND_EFFECT_SAVE":         104,
+		"ADVANTAGE_SOURCE_KIND_OTHER_SOURCE":        105,
+		"ADVANTAGE_SOURCE_KIND_EFFECT_DIE":          106,
+		"ADVANTAGE_SOURCE_KIND_EFFECT_CHECK":        107,
 	}
 )
 
@@ -866,7 +901,10 @@ type DamagePart struct {
 	NeedsSlot   bool          `protobuf:"varint,15,opt,name=needs_slot,json=needsSlot,proto3" json:"needs_slot,omitempty"`
 	SlotOptions []*SlotOption `protobuf:"bytes,16,rep,name=slot_options,json=slotOptions,proto3" json:"slot_options,omitempty"`
 	// A word under the line: "inclui Duelismo +2 (automático)".
-	NotePt        string `protobuf:"bytes,17,opt,name=note_pt,json=notePt,proto3" json:"note_pt,omitempty"`
+	NotePt string `protobuf:"bytes,17,opt,name=note_pt,json=notePt,proto3" json:"note_pt,omitempty"`
+	// A table maneuver's die: only one of these may be marked for each attack, so the screen
+	// turns the others off once one is marked.
+	Maneuver      bool `protobuf:"varint,18,opt,name=maneuver,proto3" json:"maneuver,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1020,6 +1058,13 @@ func (x *DamagePart) GetNotePt() string {
 	return ""
 }
 
+func (x *DamagePart) GetManeuver() bool {
+	if x != nil {
+		return x.Maneuver
+	}
+	return false
+}
+
 // Reroll is a die rerolled by Great Weapon Fighting.
 type Reroll struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1099,6 +1144,9 @@ type DamagePartRoll struct {
 	Physical      bool      `protobuf:"varint,9,opt,name=physical,proto3" json:"physical,omitempty"`
 	DamageTypeKey string    `protobuf:"bytes,10,opt,name=damage_type_key,json=damageTypeKey,proto3" json:"damage_type_key,omitempty"`
 	Rerolled      []*Reroll `protobuf:"bytes,11,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
+	// A table maneuver's rider (what the target must do, in the table's words). Only the
+	// master gets it; empty for everyone else and for every other part.
+	RiderPt       string `protobuf:"bytes,12,opt,name=rider_pt,json=riderPt,proto3" json:"rider_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1208,6 +1256,13 @@ func (x *DamagePartRoll) GetRerolled() []*Reroll {
 		return x.Rerolled
 	}
 	return nil
+}
+
+func (x *DamagePartRoll) GetRiderPt() string {
+	if x != nil {
+		return x.RiderPt
+	}
+	return ""
 }
 
 // SelectedExtra is an extra the player marks when they roll the damage.
@@ -1341,8 +1396,12 @@ type CombatantEffect struct {
 	EndsPhase       StatePhase `protobuf:"varint,6,opt,name=ends_phase,json=endsPhase,proto3,enum=meurpg.play.v1.StatePhase" json:"ends_phase,omitempty"`
 	EndsRound       int32      `protobuf:"varint,7,opt,name=ends_round,json=endsRound,proto3" json:"ends_round,omitempty"`
 	// The label of the chip and what the state does, in Portuguese.
-	LabelPt       string `protobuf:"bytes,8,opt,name=label_pt,json=labelPt,proto3" json:"label_pt,omitempty"`
-	EffectPt      string `protobuf:"bytes,9,opt,name=effect_pt,json=effectPt,proto3" json:"effect_pt,omitempty"`
+	LabelPt  string `protobuf:"bytes,8,opt,name=label_pt,json=labelPt,proto3" json:"label_pt,omitempty"`
+	EffectPt string `protobuf:"bytes,9,opt,name=effect_pt,json=effectPt,proto3" json:"effect_pt,omitempty"`
+	// For a rage: the barbarian is in a frenzy (Path of the Berserker, Frenzy), so its chip says
+	// "Em frenesi", a melee weapon attack is a bonus action on each of its later turns, and one
+	// level of exhaustion comes when the rage ends.
+	Frenzy        bool `protobuf:"varint,10,opt,name=frenzy,proto3" json:"frenzy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1438,6 +1497,13 @@ func (x *CombatantEffect) GetEffectPt() string {
 		return x.EffectPt
 	}
 	return ""
+}
+
+func (x *CombatantEffect) GetFrenzy() bool {
+	if x != nil {
+		return x.Frenzy
+	}
+	return false
 }
 
 // ConditionSource says where a condition of a combatant comes from and when it
@@ -1569,7 +1635,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x04free\x18\x03 \x01(\x05R\x04free\x12\x10\n" +
 	"\x03max\x18\x04 \x01(\x05R\x03max\x12\x1d\n" +
 	"\n" +
-	"dice_count\x18\x05 \x01(\x05R\tdiceCount\"\x92\x04\n" +
+	"dice_count\x18\x05 \x01(\x05R\tdiceCount\"\xae\x04\n" +
 	"\n" +
 	"DamagePart\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x19\n" +
@@ -1593,11 +1659,12 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\n" +
 	"needs_slot\x18\x0f \x01(\bR\tneedsSlot\x12=\n" +
 	"\fslot_options\x18\x10 \x03(\v2\x1a.meurpg.play.v1.SlotOptionR\vslotOptions\x12\x17\n" +
-	"\anote_pt\x18\x11 \x01(\tR\x06notePt\"B\n" +
+	"\anote_pt\x18\x11 \x01(\tR\x06notePt\x12\x1a\n" +
+	"\bmaneuver\x18\x12 \x01(\bR\bmaneuver\"B\n" +
 	"\x06Reroll\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\x05R\x04from\x12\x0e\n" +
-	"\x02to\x18\x03 \x01(\x05R\x02to\"\xd2\x02\n" +
+	"\x02to\x18\x03 \x01(\x05R\x02to\"\xed\x02\n" +
 	"\x0eDamagePartRoll\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1d\n" +
@@ -1612,7 +1679,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\bphysical\x18\t \x01(\bR\bphysical\x12&\n" +
 	"\x0fdamage_type_key\x18\n" +
 	" \x01(\tR\rdamageTypeKey\x122\n" +
-	"\brerolled\x18\v \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\"T\n" +
+	"\brerolled\x18\v \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\x12\x19\n" +
+	"\brider_pt\x18\f \x01(\tR\ariderPt\"T\n" +
 	"\rSelectedExtra\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1d\n" +
 	"\n" +
@@ -1620,7 +1688,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x04pact\x18\x03 \x01(\bR\x04pact\"8\n" +
 	"\tTypedPart\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x10\n" +
-	"\x03sum\x18\x02 \x01(\x05R\x03sum\"\xd7\x02\n" +
+	"\x03sum\x18\x02 \x01(\x05R\x03sum\"\xef\x02\n" +
 	"\x0fCombatantEffect\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x126\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\".meurpg.play.v1.CombatantStateKindR\x04kind\x12\x1b\n" +
@@ -1632,7 +1700,9 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\n" +
 	"ends_round\x18\a \x01(\x05R\tendsRound\x12\x19\n" +
 	"\blabel_pt\x18\b \x01(\tR\alabelPt\x12\x1b\n" +
-	"\teffect_pt\x18\t \x01(\tR\beffectPt\"\xf6\x01\n" +
+	"\teffect_pt\x18\t \x01(\tR\beffectPt\x12\x16\n" +
+	"\x06frenzy\x18\n" +
+	" \x01(\bR\x06frenzy\"\xf6\x01\n" +
 	"\x0fConditionSource\x12#\n" +
 	"\rcondition_key\x18\x01 \x01(\tR\fconditionKey\x12\x1b\n" +
 	"\tsource_id\x18\x02 \x01(\tR\bsourceId\x12!\n" +
@@ -1645,8 +1715,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x15ROLL_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ROLL_MODE_NORMAL\x10\x01\x12\x17\n" +
 	"\x13ROLL_MODE_ADVANTAGE\x10\x02\x12\x1a\n" +
-	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\x98\n" +
-	"\n" +
+	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\x84\r\n" +
 	"\x13AdvantageSourceKind\x12%\n" +
 	"!ADVANTAGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_PRONE_TARGET\x10\x01\x12(\n" +
@@ -1678,7 +1747,16 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"%ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE\x10\x1a\x12(\n" +
 	"$ADVANTAGE_SOURCE_KIND_POISONED_CHECK\x10\x1b\x12*\n" +
 	"&ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK\x10\x1c\x12(\n" +
-	"$ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM\x10\x1d*\xb3\x01\n" +
+	"$ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM\x10\x1d\x12\x1e\n" +
+	"\x1aADVANTAGE_SOURCE_KIND_HELP\x10\x1e\x12+\n" +
+	"'ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK\x10d\x12)\n" +
+	"%ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE\x10e\x12*\n" +
+	"&ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK\x10f\x12)\n" +
+	"%ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET\x10g\x12%\n" +
+	"!ADVANTAGE_SOURCE_KIND_EFFECT_SAVE\x10h\x12&\n" +
+	"\"ADVANTAGE_SOURCE_KIND_OTHER_SOURCE\x10i\x12$\n" +
+	" ADVANTAGE_SOURCE_KIND_EFFECT_DIE\x10j\x12&\n" +
+	"\"ADVANTAGE_SOURCE_KIND_EFFECT_CHECK\x10k*\xb3\x01\n" +
 	"\x15RollModeRequestStatus\x12(\n" +
 	"$ROLL_MODE_REQUEST_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
 	" ROLL_MODE_REQUEST_STATUS_PENDING\x10\x01\x12%\n" +

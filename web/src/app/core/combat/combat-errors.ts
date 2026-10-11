@@ -13,6 +13,11 @@ import {
   ResourceBlockedReason,
   ResourceBlockedSchema,
 } from '../../../gen/meurpg/play/v1/resources_pb';
+import {
+  type ContestBlocked,
+  ContestBlockedReason,
+  ContestBlockedSchema,
+} from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { circleLabel } from './combat-grid';
@@ -32,6 +37,45 @@ export function encounterBlocked(err: unknown): EncounterBlocked | null {
     return null;
   }
   return connectErr.findDetails(EncounterBlockedSchema)[0] ?? null;
+}
+
+/** The typed detail of a `failed_precondition` from `ContestService` (the grapple, the shove, Hide, Help, the group check), or
+ * `null`. The reasons the combat already had keep coming as `EncounterBlocked`. Never read from the message. */
+export function contestBlocked(err: unknown): ContestBlocked | null {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code !== Code.FailedPrecondition) {
+    return null;
+  }
+  return connectErr.findDetails(ContestBlockedSchema)[0] ?? null;
+}
+
+/** Why a contest or a special action was refused, in words (W7-X). Nothing here names a total, a DC or a creature the player does not see. */
+const CONTEST_BLOCKED_TEXT: Partial<Record<ContestBlockedReason, string>> = {
+  [ContestBlockedReason.TARGET_TOO_BIG]: 'Grande demais: no máximo um tamanho acima do seu.',
+  [ContestBlockedReason.NOT_AWAITING]:
+    'Essa disputa não espera mais por isso. A tela foi atualizada.',
+  [ContestBlockedReason.CONTEST_OPEN]: 'Uma disputa sua ainda espera a resposta.',
+  [ContestBlockedReason.NOT_GRAPPLED]: 'Não há agarrão para soltar. A tela foi atualizada.',
+  [ContestBlockedReason.PUSH_BLOCKED]: 'Há algo na casa de trás: o empurrão não sai do lugar.',
+  [ContestBlockedReason.NO_ROOM_TO_DRAG]:
+    'Não dá para arrastar por aí: não há casa livre atrás de você para quem você segura.',
+  [ContestBlockedReason.SURPRISED]:
+    'Surpresa: não se move, não age e não reage até o fim do turno.',
+  [ContestBlockedReason.NOT_AVAILABLE]: 'Essa ação não está na sua ficha.',
+  [ContestBlockedReason.NOT_AN_ALLY]: 'Só dá para ajudar um aliado que ainda está de pé.',
+  [ContestBlockedReason.TASK_NOT_AVAILABLE]: 'Não dá para ajudar nessa tarefa.',
+  [ContestBlockedReason.HIDE_NOT_PENDING]:
+    'Esse esconderijo já foi decidido. A tela foi atualizada.',
+  [ContestBlockedReason.GROUP_CHECK_OPEN]: 'Já há um teste em grupo aberto.',
+  [ContestBlockedReason.GROUP_CHECK_CLOSED]: 'O mestre já encerrou esse teste em grupo.',
+  [ContestBlockedReason.NOT_IN_GROUP_CHECK]: 'O mestre não pediu esse teste ao seu personagem.',
+  [ContestBlockedReason.ALREADY_ANSWERED]: 'Você já rolou esse teste.',
+  [ContestBlockedReason.COMBAT_BEGUN]: 'O combate já começou.',
+  [ContestBlockedReason.NOT_HIDDEN]: 'Ninguém está escondido aqui. A tela foi atualizada.',
+};
+
+export function contestBlockedMessage(blocked: ContestBlocked): string {
+  return CONTEST_BLOCKED_TEXT[blocked.reason] ?? 'Isso não vale agora. A tela foi atualizada.';
 }
 
 /** What any action says while a roll of the character waits for the answer about a Bardic Inspiration die: the
@@ -104,6 +148,10 @@ export function blockedMessage(blocked: EncounterBlocked): string {
         ? `Longe demais para o seu salto: ele vai até ${metersFixed(blocked.jumpLimitDft / 10)}${blocked.jumpRunningStart ? ' com corrida' : ' parado'}. Faltam ${missing}.`
         : `Esse caminho custa mais do que o movimento que sobra: faltam ${missing}.`;
     }
+    case EncounterBlockedReason.NOT_PRONE:
+      return 'Você já está de pé. A tela foi atualizada.';
+    case EncounterBlockedReason.CANNOT_STAND_UP:
+      return 'Sem velocidade, não dá para se levantar.';
     case EncounterBlockedReason.MOVE_BLOCKED:
       return 'Não dá para passar por aí: há uma parede ou outra criatura no caminho.';
     case EncounterBlockedReason.WALL_ON_SQUARE:
@@ -230,6 +278,12 @@ export function blockedMessage(blocked: EncounterBlocked): string {
       return 'Um dos extras marcados não vale mais. A tela foi atualizada.';
     case EncounterBlockedReason.DAMAGE_PART_NOT_REMOVABLE:
       return 'Só um extra pode ser tirado do dano, e uma vez só.';
+    // Effects that last (RN-22): never the cause (a hidden effect, or a condition only the master reads); the words are the same
+    // for a player whether it is lethargy, a spell or a condition.
+    case EncounterBlockedReason.CANNOT_ACT:
+      return 'Não dá para agir agora.';
+    case EncounterBlockedReason.EXTRA_ACTION_UNAVAILABLE:
+      return 'A ação extra não está disponível para isso agora: ela já foi usada neste turno ou não vale para essa ação.';
     case EncounterBlockedReason.CHARACTER_RESERVED:
       return 'Um personagem reservado (ainda sem jogador) não entra no combate. Desmarque-o e tente de novo.';
     default:
@@ -244,6 +298,10 @@ export function combatErrorMessage(err: unknown, what = 'fazer isso'): string {
   const blocked = encounterBlocked(err);
   if (blocked) {
     return blockedMessage(blocked);
+  }
+  const contest = contestBlocked(err);
+  if (contest) {
+    return contestBlockedMessage(contest);
   }
   if (inspirationPending(err)) {
     return INSPIRATION_PENDING_TEXT;

@@ -54,6 +54,12 @@ const MaxChoiceTexts = 12
 // abilityValue writes an ability as a pick value ("ability:dex").
 func abilityValue(a Ability) string { return abilityPrefix + string(a) }
 
+// featPick says the value is a feat picked through a `choice` effect of kind feat
+// that the choice key's owner has.
+func (c *content) featPick(choiceKey, value string) bool {
+	return strings.HasPrefix(value, "feat:") && len(c.effectChoices(strings.TrimSuffix(choiceKey, featChoiceSuffix), "feat")) > 0
+}
+
 // choiceValueOK says whether a stored pick has the shape of one: a scoped pick
 // whose choice key is a feature, trait, race or spell-granting feature (with an
 // optional "#part"), and whose value is a key the content has (or the "no
@@ -66,7 +72,9 @@ func (c *content) choiceValueOK(stored string) bool {
 	}
 	base, _, _ := strings.Cut(choiceKey, textSeparator)
 	switch {
-	case c.features[base] == nil && c.traits[base] == nil && c.races[base] == nil && c.subraces[base] == nil:
+	case c.features[base] == nil && c.traits[base] == nil && c.races[base] == nil && c.subraces[base] == nil &&
+		c.backgrounds[base] == nil && c.feats[base] == nil &&
+		!c.featPick(choiceKey, value):
 		return false
 	case value == LanguageNone:
 		return true
@@ -79,6 +87,9 @@ func (c *content) choiceValueOK(stored string) bool {
 		return c.hasTerrain(value)
 	case strings.HasPrefix(value, "language:"):
 		_, ok := c.languages[value]
+		return ok
+	case strings.HasPrefix(value, "feat:"):
+		_, ok := c.feats[value]
 		return ok
 	case strings.HasPrefix(value, "spell:"):
 		_, ok := c.spells[value]

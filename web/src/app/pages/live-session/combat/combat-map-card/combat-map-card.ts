@@ -6,6 +6,7 @@ import { CombatantKind, type Encounter } from '../../../../../gen/meurpg/play/v1
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { ownCombatant } from '../../../../core/combat/combat-view';
 import { metersFixed } from '../../../../core/units';
+import { fullscreenOfHost } from '../../../../core/ui/fullscreen';
 import { type DoorSquare, type MapLayers, NO_LAYERS } from '../../../../core/maps/layers';
 import {
   CombatMap,
@@ -117,6 +118,19 @@ export class CombatMapCard {
   protected onFogSettled(set: ReadonlySet<string>): void {
     this.settled.set(set);
   }
+  /** "Tela cheia": the browser's full screen for the card (the map with its switches), for a table that shows the
+   * combat on a big screen. */
+  protected readonly fullscreen = fullscreenOfHost();
+  /** The map's width over its height, so on full screen the map is as wide as the screen's height lets it be. */
+  protected readonly mapAspect = computed(() => {
+    const ratio = this.crop()?.ratio;
+    if (ratio) {
+      const [w, h] = ratio.split('/').map(Number);
+      return w / Math.max(h, 1);
+    }
+    const { width, height } = this.image();
+    return width / Math.max(1, height);
+  });
   /** With the fog on, the map card shows the part of the grid the player knows (two squares around it), so the tokens are
    * readable when the explored area is a small part of the grid; "Ver mapa" has the whole map. */
   protected readonly crop = computed(() => {

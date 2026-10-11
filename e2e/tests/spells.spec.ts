@@ -36,9 +36,14 @@ test(
       const facts = player.locator('.spell__facts');
       await expect(player.locator('#spell-card-title')).toHaveText('Mãos Flamejantes');
       await expect(facts.locator('.spell__fact', { hasText: 'Alvo' })).toContainText('Cone de 4,5 m');
-      await expect(player.getByText('Texto do SRD 5.1, em inglês.')).toBeVisible();
-      // An SRD spell's text is the SRD's own, in English, marked as such.
-      await expect(player.locator('.spell__prose[lang=en]').first()).toBeVisible();
+      await expect(player.getByText('Texto do SRD 5.1; a tradução para o português é nossa.')).toBeVisible();
+      // An SRD spell's text is our Portuguese translation; "Ver em inglês" flips to the SRD's own, marked lang=en.
+      await expect(player.locator('.spell__prose .srd[lang=en]')).toHaveCount(0);
+      await player.getByRole('button', { name: 'Ver em inglês' }).click();
+      await expect(player.locator('.spell__prose .srd[lang=en]').first()).toBeVisible();
+      await expect(player.getByText('(em inglês)')).toBeVisible();
+      await player.getByRole('button', { name: 'Ver em português' }).click();
+      await expect(player.locator('.spell__prose .srd[lang=en]')).toHaveCount(0);
 
       // Nothing matches: the word is in the sentence, and the way out is a button.
       await player.getByRole('searchbox', { name: 'Buscar pelo nome' }).fill('zzzz');
@@ -126,7 +131,8 @@ test(
       await expect(player.getByText('Um risco de tinta negra corta o ar e rasga o alvo.')).toBeVisible();
       await expect(player.locator('.spell__fact', { hasText: 'Alvo' })).toContainText('Uma criatura');
       await expect(player.locator('.spell__fact', { hasText: 'Dano' })).toContainText('2d8 necrótico');
-      await expect(player.getByText('Texto do SRD 5.1, em inglês.')).toHaveCount(0);
+      await expect(player.getByText('Texto do SRD 5.1; a tradução para o português é nossa.')).toHaveCount(0);
+      await expect(player.getByRole('button', { name: 'Ver em inglês' })).toHaveCount(0);
 
       await archiveEntryRPC(master, table.campaignId, key);
 

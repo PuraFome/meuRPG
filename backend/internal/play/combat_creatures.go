@@ -69,8 +69,12 @@ func (s *Service) sheetOf(ctx context.Context, tx pgx.Tx, campaignID string, c p
 func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c playdb.Combatant) (*rulesv1.TurnOptions, error) {
 	var opts *rulesv1.TurnOptions
 	if !isCreature(c) {
+		turn := turnOf(c)
 		var err error
-		if opts, err = s.roster.CombatTurnOptions(ctx, tx, campaignID, c.CharacterID, turnOf(c)); err != nil {
+		if turn.FrenzyReady, err = s.frenzyReadyIn(ctx, tx, c); err != nil {
+			return nil, err
+		}
+		if opts, err = s.roster.CombatTurnOptions(ctx, tx, campaignID, c.CharacterID, turn); err != nil {
 			return nil, err
 		}
 	} else {
@@ -292,6 +296,10 @@ func (s *Service) writeBackCreatures(ctx context.Context, c *combatTx, cs []play
 func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.Combatant, drop []playdb.Combatant, dismiss bool) (rest []playdb.Combatant, turnPassed bool, err error) {
 	rest = slices.Clone(cs)
 	for _, who := range drop {
+		// What it cast or carried ends with it (RN-22).
+		if err := s.endEffectsOfLeaver(ctx, c, rest, who); err != nil {
+			return nil, false, err
+		}
 		passed, err := leaveTurn(ctx, c, rest, who)
 		if err != nil {
 			return nil, false, err

@@ -37,10 +37,19 @@ func (wv *windowView) morePrompt(kind reaction.Kind, w playdb.ReactionWindow, re
 		out.Prompt = &playv1.ReactionWindow_UncannyDodge{UncannyDodge: &playv1.UncannyDodgePrompt{
 			AttackerLabel: attacker, AttackNamePt: attack, Damage: t.Damage, Halved: int32(reaction.UncannyDodge(int(t.Damage))), //nolint:gosec // a damage
 		}}
+	case reaction.ManeuverReduceKind:
+		p := &playv1.ManeuverReducePrompt{AttackerLabel: attacker, AttackNamePt: attack, Damage: t.Damage}
+		for _, o := range reduceOptionsOf(k) {
+			p.Options = append(p.Options, &playv1.ManeuverReduceOption{
+				Key: o.Key, NamePt: o.NamePT, DieSides: clamp32(o.Sides, 0, 100), FlatBonus: clamp32(o.Mod, math.MinInt32, math.MaxInt32), UsesLeft: k.resourceLeft(o.Resource),
+			})
+		}
+		out.Prompt = &playv1.ReactionWindow_ManeuverReduce{ManeuverReduce: p}
 	case reaction.DeflectKind:
 		if w.Step == stepSecond {
 			out.Prompt = &playv1.ReactionWindow_DeflectThrow{DeflectThrow: &playv1.DeflectMissilesThrowPrompt{
 				KiLeft: k.resourceLeft(resKi), NormalRangeFt: reaction.DeflectNormalRangeFt, LongRangeFt: reaction.DeflectLongRangeFt,
+				MissileNamePt: attack, AttackBonus: clamp32(k.st.Proficiency+k.st.DexMod, math.MinInt32, math.MaxInt32),
 			}}
 			break
 		}

@@ -15,10 +15,21 @@ import {
 import { DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationStart,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { filter } from 'rxjs';
 
+import { AppFooter } from './shell/app-footer/app-footer';
 import { LivePill } from './shared/live-pill/live-pill';
+import { RollOverlay } from './shared/roll-overlay/roll-overlay';
 import { LiveNotice } from './shell/live-notice/live-notice';
 import { SessionNotes } from './shell/session-notes/session-notes';
 import { OpenSessionVm, OpenSessions, sessionForLiveLink } from './shell/live-notice/open-sessions';
@@ -52,8 +63,10 @@ import { UserMenu } from './shell/user-menu/user-menu';
     RouterLink,
     RouterLinkActive,
     MatIconModule,
+    AppFooter,
     LivePill,
     LiveNotice,
+    RollOverlay,
     UserMenu,
   ],
   templateUrl: './app.html',
@@ -78,6 +91,9 @@ export class App {
   protected readonly menuOpen = signal(false);
   /** The current URL: the notice and the "Ao vivo" link hide on some pages. */
   protected readonly url = signal(this.router.url);
+  /** A navigation is on its way (the first load included): the guard asks who is signed in and the page's code is fetched, with
+   * nothing to draw meanwhile, so the shell says "Abrindo a página..." (it only shows after a short wait, in CSS). */
+  protected readonly navigating = signal(true);
   protected readonly liveSession = computed(() =>
     sessionForLiveLink(this.openSessions.sessions(), this.url()),
   );
@@ -93,6 +109,17 @@ export class App {
           slot.createEmbeddedView(template, { $implicit: i === 0 ? 'phone' : 'wide' });
         }
       });
+    });
+    this.router.events.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((e) => {
+      if (e instanceof NavigationStart) {
+        this.navigating.set(true);
+      } else if (
+        e instanceof NavigationEnd ||
+        e instanceof NavigationCancel ||
+        e instanceof NavigationError
+      ) {
+        this.navigating.set(false);
+      }
     });
     // Following a link from the open panel closes it.
     this.router.events

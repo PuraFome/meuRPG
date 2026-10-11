@@ -1,0 +1,94 @@
+<app-sheet-frame [title]="title()" titleId="exhaustion-t" [phone]="inSheet" [closable]="!confirming()" (closed)="close()">
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger error" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  @if (confirming()) {
+    <section class="ask" aria-labelledby="exhaustion-ask" role="group">
+      <div class="ask__head">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p class="ask__text" id="exhaustion-ask">
+          O nível 6 é a morte. Em combate, {{ who() }} vai para a confirmação de morte, como o terceiro teste contra
+          a morte falhado; fora do combate, morre ao confirmar aqui. Isto não se desfaz.
+        </p>
+      </div>
+      <div class="pair">
+        <button
+          mat-stroked-button
+          type="button"
+          class="pair__btn pair__btn--danger"
+          [disabled]="busy()"
+          [attr.aria-busy]="busy()"
+          (click)="confirmDeath()"
+        >
+          Confirmar a morte
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          class="pair__btn"
+          data-initial-focus
+          [disabled]="busy()"
+          (click)="cancelConfirm()"
+        >
+          Cancelar
+        </button>
+      </div>
+    </section>
+  } @else {
+    @if (whoOptions.length > 1) {
+      <div class="fields">
+        <app-select-field label="Quem" path="who" [options]="whoOptions" [value]="pickedKey()" (valueChange)="pick($any($event))" />
+      </div>
+    }
+    <fieldset class="choices">
+      <legend class="mr-visually-hidden">Nível de exaustão</legend>
+      @for (l of levels; track l.level) {
+        <label class="choice">
+          <input
+            type="radio"
+            name="exhaustion-level"
+            [value]="l.level"
+            [checked]="level() === l.level"
+            (change)="level.set(l.level)"
+          />
+          <span class="choice__title">{{ l.title }}</span>
+          @if (l.text) {
+            <span class="choice__text">{{ l.text }}</span>
+          }
+        </label>
+      }
+    </fieldset>
+    <p class="note fields">{{ hint }}</p>
+  }
+  @if (!confirming()) {
+    <div foot>
+      <div class="pair">
+        <button
+          mat-flat-button
+          type="button"
+          class="pair__btn"
+          [disabled]="busy() || !changed()"
+          disabledInteractive
+          [attr.aria-busy]="busy()"
+          (click)="save()"
+        >
+          Salvar
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          class="pair__btn"
+          [disabled]="busy() || current() === 0"
+          disabledInteractive
+          (click)="lower()"
+        >
+          Baixar 1 nível
+        </button>
+        <button mat-stroked-button type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
+      </div>
+    </div>
+  }
+</app-sheet-frame>

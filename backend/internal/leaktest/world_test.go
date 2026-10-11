@@ -129,7 +129,10 @@ func (w *world) buildGallery() {
 	w.imgLeft = w.image("left-image", 100, 60, w.ana, w.caio)
 	w.imgStage = w.image("stage-portrait", 60, 60) // its gallery name is the master's; players fetch the picture only
 	w.imgPortrait = w.image("portrait-image", 60, 60)
-	for _, id := range []string{w.imgMap, w.imgUnshown, w.imgPortrait} {
+	// The pictures the master attached to the scenes (MR-015): nobody was shown them.
+	w.imgSceneA = w.image("scene-image-a", 70, 50)
+	w.imgSceneB = w.image("scene-image-b", 70, 50)
+	for _, id := range []string{w.imgMap, w.imgUnshown, w.imgPortrait, w.imgSceneA, w.imgSceneB} {
 		w.secrets.id("gallery-image", id)
 	}
 }
@@ -163,7 +166,7 @@ func (w *world) buildFogMap() {
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_COVER, 1, crates)
 	// The master's painted light is never a player's.
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_LIGHT, 3, [][2]int32{{17, 3}, {18, 3}, {17, 4}, {18, 4}})
-	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT.Enum()})))
+	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_DIM.Enum()})))
 
 	// What Ana's character sees (the west), the master made public.
 	w.pts["entrance"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, w.secrets.marker("entrance-name", w.ana), w.secrets.marker("entrance-description", w.ana), 2, 7, nil)
@@ -309,6 +312,13 @@ func (w *world) buildSession() {
 	w.secrets.id("scene-closed-point", s2.GetId())
 	w.addAction(s2, "skill:insight", w.secrets.marker("scene-closed-action"), sceneDC, 1)
 	w.addClue(s2, w.secrets.marker("clue-closed"))
+	// Both scenes hold pictures, the open one and the one never opened: the list is the master's.
+	w.setSceneImages(s1, w.imgSceneA, w.imgSceneB)
+	w.setSceneImages(s2, w.imgSceneB, w.imgSceneA)
+}
+
+func (w *world) setSceneImages(p *mapsv1.MapPoint, ids ...string) {
+	must(w.master.maps.SetSceneImages(w.t.Context(), rq(&mapsv1.SetSceneImagesRequest{CampaignId: w.campaign, MapId: p.GetMapId(), PointId: p.GetId(), ImageIds: ids})))
 }
 
 func (w *world) addAction(p *mapsv1.MapPoint, key, name string, dc, attempts int32) {
@@ -378,6 +388,26 @@ func (w *world) buildCombat() {
 		w.secrets.id("combatant", c.GetId(), w.combatantReaders(c)...)
 	}
 
+	// A hidden NPC grapples Toren with an attack of its own, the escape DC the master says (ESCAPE_DC): the
+	// DC is the master's, and a player reads neither the DC nor the id of the creature that holds them.
+	w.secrets.number("escape-dc", escapeDC, "dc")
+	hiddenNPC := w.combatantOf(e, w.hiddenNPC.GetId())
+	for range 60 {
+		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		if cur.GetCurrentCombatantId() == hiddenNPC.GetId() {
+			break
+		}
+		must(m.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))
+	}
+	must(m.contests.StartContest(ctx, rq(&playv1.StartContestRequest{
+		CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey(), InitiatorId: hiddenNPC.GetId(), TargetId: w.combatantOf(e, w.toren.GetId()).GetId(),
+		Purpose: playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE, Kind: playv1.ContestKind_CONTEST_KIND_ESCAPE_DC, EscapeDc: escapeDC,
+	})))
+	// A group check of Stealth is open, with the master's DC; Caio has rolled his character's d20.
+	w.secrets.number("group-check-dc", groupCheckDC, "dc")
+	asked := must(m.contests.RequestGroupCheck(ctx, rq(&playv1.RequestGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), SkillKey: "skill:stealth", Dc: groupCheckDC}))).GetGroupCheck()
+	must(w.caio.contests.RollGroupCheck(ctx, rq(&playv1.RollGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), GroupCheckId: asked.GetId(), Roll: appRoll()})))
+
 	// Pensantus falls, and Ana rolls a death save on her turn: a failure.
 	pens := w.combatantOf(e, w.pens.GetId())
 	must(m.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{
@@ -395,6 +425,11 @@ func (w *world) buildCombat() {
 		Roll: &playv1.RollDeathSaveRequest_D20Face{D20Face: 5},
 	})))
 	w.encounter = must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+}
+
+// appRoll is a check rolled by the server.
+func appRoll() *playv1.CheckRollInput {
+	return &playv1.CheckRollInput{Roll: &playv1.CheckRollInput_RollInApp{RollInApp: true}}
 }
 
 // combatantOf finds the combatant of a character in the master's copy of a combat.

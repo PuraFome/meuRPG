@@ -32,6 +32,9 @@ type TurnState struct {
 	// left: what the bonus action attack rules read.
 	LastAttackKey string
 	FlurryLeft    int
+	// FrenzyReady says the character is in a frenzied rage that began in an earlier
+	// turn (the Berserker's Frenzy, SRD 5.1): a melee weapon attack is its bonus action.
+	FrenzyReady bool
 }
 
 // actionSurgeResource is the resource of Action Surge.
@@ -252,10 +255,27 @@ func bonusTraits(a rules.Attack) AttackTraits {
 	return AttackTraits{Spell: a.Kind == "spell", Melee: a.Melee, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts}
 }
 
+// ContestAttackKey marks that the Attack action was taken with a grapple or a shove
+// (SRD 5.1, "Grappling": the special melee attack replaces one attack of the Attack
+// action) and no weapon attack has been made yet. It is no sheet attack: it counts as the
+// Attack action for Flurry of Blows ("immediately after you take the Attack action") but,
+// being neither an unarmed strike nor a monk weapon, never unlocks the Martial Arts bonus
+// strike or Two-Weapon Fighting.
+const ContestAttackKey = "special:contest"
+
+// ContestAttack is the stand-in attack the key stands for: a melee attack that is not
+// light, not unarmed and not a spell.
+func ContestAttack() rules.Attack {
+	return rules.Attack{Key: ContestAttackKey, Melee: true}
+}
+
 // lastAttackOf is the sheet attack the Attack action made last this turn.
 func lastAttackOf(d rules.Derived, turn TurnState) (rules.Attack, bool) {
 	if turn.LastAttackKey == "" {
 		return rules.Attack{}, false
+	}
+	if turn.LastAttackKey == ContestAttackKey {
+		return ContestAttack(), true
 	}
 	i := slices.IndexFunc(d.Attacks, func(a rules.Attack) bool { return a.Key == turn.LastAttackKey })
 	if i < 0 {
@@ -298,7 +318,8 @@ func attackActionTaken(d rules.Derived, turn TurnState) bool {
 func bonusAttackOption(d rules.Derived, turn TurnState, ao AttackOption) AttackOption {
 	last, _ := lastAttackOf(d, turn)
 	kind := BonusAttack(BonusAttackTurn{
-		AttackAction: attackActionTaken(d, turn), FlurryLeft: turn.FlurryLeft, Last: bonusTraits(last),
+		AttackAction: attackActionTaken(d, turn), FlurryLeft: turn.FlurryLeft, Last: bonusTraits(last), FrenzyReady: turn.FrenzyReady,
+		NoSecondLight: SecondLightWeaponMissing(countLight(d.Attacks, func(a rules.Attack) bool { return a.Melee && a.Light })),
 	}, bonusTraits(ao.Attack))
 	if kind == BonusNone {
 		return ao
@@ -517,4 +538,15 @@ func rechargeOf(d rules.Derived, key string) string {
 		}
 	}
 	return ""
+}
+
+// countLight counts the attacks that match.
+func countLight(attacks []rules.Attack, match func(rules.Attack) bool) int {
+	n := 0
+	for _, a := range attacks {
+		if match(a) {
+			n++
+		}
+	}
+	return n
 }

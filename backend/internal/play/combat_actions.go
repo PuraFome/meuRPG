@@ -21,6 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -83,6 +84,18 @@ func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e play
 	if down {
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN, nil
 	}
+	// An effect or a condition that takes the actions away (RN-22).
+	if code := cannotActCode(c); code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
+		return code, nil
+	}
+	// A surprised combatant does not move, act or react until its first turn ends.
+	surprised, err := s.surprisedNow(ctx, tx, e, c)
+	if err != nil {
+		return 0, err
+	}
+	if surprised {
+		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED, nil
+	}
 	return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED, nil
 }
 
@@ -120,6 +133,10 @@ func gateError(code rulesv1.DisabledReasonCode) error {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN, "the character is down")
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED:
+		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_SURPRISED, "the combatant is surprised")
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_INCAPACITATED, rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_EFFECT_LETHARGY:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CANNOT_ACT, "the combatant cannot act now")
 	}
 	// Not on turn, or out of the fight (a defeated combatant has no turn).
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not this combatant's turn")
@@ -253,6 +270,7 @@ func (s *Service) GetTurnOptions(
 	}
 	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
 		disableAll(opts, code)
+		s.explainEffectReason(d, who, v, opts, code, s.namesFor(ctx, m.CampaignID))
 	}
 	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, enc)
 	if err != nil {
@@ -270,7 +288,17 @@ func (s *Service) GetTurnOptions(
 		return nil, s.dbError(ctx, "read the table's rules", err)
 	}
 	res := &playv1.GetTurnOptionsResponse{Options: opts, YourTurn: actsNow(enc, who), CriticalRule: criticalRuleProto(table)}
-	modes, err := s.turnModes(ctx, m.CampaignID, d, sight, v, who)
+	s.effectTurnInfo(d, who, v, res, s.namesFor(ctx, m.CampaignID))
+	// The master's turn options carry no sight (they plan on the real terrain), but the mode of an
+	// attack depends on who the players see (an NPC they cannot see attacks with advantage, SRD 5.1):
+	// RollAttack reads it for the master too, so the suggestion must, or the typed d20 count is wrong.
+	modeSight := sight
+	if modeSight == nil && v.master {
+		if modeSight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
+			return nil, s.dbError(ctx, "work out what the players see", err)
+		}
+	}
+	modes, err := s.turnModes(ctx, m.CampaignID, d, modeSight, v, who)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the roll modes", err)
 	}
@@ -294,6 +322,9 @@ func (s *Service) GetTurnOptions(
 		if deref(p.AttackerID) == who.ID && pendingVisible(p, d.cs, v) {
 			res.PendingDamages = append(res.PendingDamages, s.pendingView(ctx, m.CampaignID, p, d.cs, v))
 		}
+	}
+	if res.ContestAttackOptions, res.ContestState, err = s.contestOptionsFor(ctx, m, d, v, who, opts, code); err != nil {
+		return nil, s.dbError(ctx, "work out the contests of the turn", err)
 	}
 	return connect.NewResponse(res), nil
 }
@@ -446,7 +477,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
 		CriticalRule: pendingCriticalRule(p.Critical, p.CriticalMaxRule), CriticalMax: p.CriticalMax,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
-		ExtraDiceCount: p.ExtraDice, ExtraDiceNamePt: extraDiceName(p.ExtraDice),
+		ExtraDiceCount: p.ExtraDice, ExtraDiceNamePt: extraDiceName(p.ExtraDice, p.SavageDice),
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
 		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
 		TrapPointId: deref(p.TrapPointID), // a trap's damage has no attacker (MR-035)
@@ -490,6 +521,9 @@ type rollInput struct {
 	// pool says typed is the sum of the physical dice of a spell's pool (not a
 	// d20 face): CastSpell's pool_sum.
 	pool bool
+	// extraFaces are the faces of the physical dice an effect adds to the roll
+	// (extra_die_faces: Bênção, Orientação).
+	extraFaces []int32
 }
 
 // mustRollThisWay checks a player's way of rolling against the campaign's dice
@@ -535,7 +569,7 @@ func (s *Service) mustReactNow(ctx context.Context, c *combatTx, who playdb.Comb
 	if down {
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
 	}
-	return nil
+	return s.mustNotBeSurprised(ctx, c, who)
 }
 
 // RollAttack implements playv1connect.CombatServiceHandler.
@@ -718,12 +752,28 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		// attack. The master has the last word, and an NPC with several attacks is
 		// his to run.
 		bonusKind := combat.BonusNone
+		// The extra action Velocidade gives takes one weapon attack (SRD 5.1, Haste).
+		useExtra := req.Msg.GetUseExtraAction() && !asReaction
+		if useExtra {
+			if attack.Spell {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE, "the extra action takes one weapon attack, not a spell")
+			}
+			if err := s.mustHaveExtraAction(ctx, c, attacker, "attack"); err != nil {
+				return nil, err
+			}
+		}
 		if !v.master {
 			switch {
 			case asReaction && attacker.ReactionUsed && catchID == "": // the throw is the reaction already spent
 				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
+			case useExtra:
+				// Spent below, with the extra action: the action and the attacks of the turn stay.
 			case !asReaction:
-				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack); err != nil {
+				frenzy, ferr := s.frenzyReadyNow(ctx, c, attacker)
+				if ferr != nil {
+					return nil, ferr
+				}
+				if bonusKind, err = attackEconomy(attacker, attackerSheet, attack, frenzy); err != nil {
 					return nil, err
 				}
 			}
@@ -789,7 +839,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		// Advantage and disadvantage (SRD 5.1): the server works the mode out from the
 		// combat, never from what the screen showed, settles what the caller asked for
 		// and rolls one d20 or two.
-		modeIn, err := readModeInputs(ctx, c, cs)
+		modeIn, err := s.readModeInputs(ctx, c, cs)
 		if err != nil {
 			return nil, err
 		}
@@ -836,13 +886,18 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		if err != nil {
 			return nil, err
 		}
-		targetAC := targetSheet.ArmorClass + int(target.AcBonus) + cover.bonus()
+		targetAC := targetSheet.ArmorClass + int(target.AcBonus) + int(target.EffectAcBonus) + cover.bonus()
 		// Improved Critical and Superior Critical are for weapon attacks only.
 		criticalFrom := attackerSheet.CriticalRange
 		if attack.Spell {
 			criticalFrom = 0
 		}
-		result := combat.ResolveAttackFrom(attack.ToHit+bonusFace, targetAC, face, criticalFrom)
+		// Bênção and Perdição (SRD 5.1): a d4 added to or taken from the attack roll.
+		extra, extraTotal, err := s.rollEffectDice(in, effectDiceFor(modeIn.states, attacker.ID, rules.RollAppliesAttack), req.Msg.GetExtraDieFaces())
+		if err != nil {
+			return nil, err
+		}
+		result := combat.ResolveAttackFrom(attack.ToHit+bonusFace+extraTotal, targetAC, face, criticalFrom)
 		// A hit on a paralyzed or unconscious creature within 5 ft is a critical hit
 		// whatever the die says (SRD 5.1, Conditions).
 		if result.Hit && truth.CriticalOnHit {
@@ -867,6 +922,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		}
 		made = actionEvent{
 			RunBefore: run, Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
+			Extra: extra, ExtraUsed: useExtra,
 			D20: clamp32(face, 1, 20), Modifier: clamp32(attack.ToHit+bonusFace, math.MinInt32, math.MaxInt32), Total: clamp32(result.Total, math.MinInt32, math.MaxInt32),
 			Physical: roll.Physical, Outcome: outcomeMiss, AsReaction: asReaction, CriticalMaxRule: c.rules.CriticalMaxPlusRoll,
 			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(choice.Mode), SuggestedMode: modeKey(choice.Suggested),
@@ -883,9 +939,18 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		if bonus != nil {
 			made.Res = &resourceEvent{Kind: resBardicUse, Sides: bonus.Sides, Face: bonus.Face, FromID: bonus.From, ExpiresRound: bonus.ExpiresRound}
 		}
+		// An attack gives the attacker's position away, hit or miss, and uses the Help aimed
+		// at its target (SRD 5.1, "Unseen Attackers and Targets", "Help").
+		if err := s.afterAttack(ctx, c, attacker, target, cs, &made); err != nil {
+			return nil, err
+		}
 		switch {
 		case asReaction:
 			after.ReactionUsed = true
+		case useExtra:
+			if err := c.q.SetCombatantExtraActionUsed(ctx, playdb.SetCombatantExtraActionUsedParams{ID: attacker.ID, ExtraActionUsed: true}); err != nil {
+				return nil, fmt.Errorf("spend the extra action: %w", err)
+			}
 		case bonusKind == combat.BonusFlurry:
 			// The bonus action went to Flurry of Blows: one of its strikes.
 			if err := c.q.SetCombatantAttackState(ctx, playdb.SetCombatantAttackStateParams{ID: attacker.ID, ActionAttackKey: attacker.ActionAttackKey, BonusAttacksLeft: attacker.BonusAttacksLeft - 1}); err != nil {
@@ -931,9 +996,10 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 				// it is negative, or the character fights with two weapons).
 				bonus = combat.OffHandBonus(bonus, attack.AbilityMod, attackerSheet.TwoWeaponFighting)
 			}
+			savage := savageAttacksDice(attacker, attack, attackerSheet, result.Critical)
 			p, err := s.openHit(ctx, c, attacker, target, attackKey,
 				link.Dice{Count: attack.DiceCount, Sides: attack.DiceSides, Bonus: bonus, DamageType: attack.DamageType}, result.Critical,
-				brutalCriticalDice(attacker, attack, attackerSheet, result.Critical), result.Total, targetAC)
+				brutalCriticalDice(attacker, attack, attackerSheet, result.Critical)+savage, savage, result.Total, targetAC)
 			if err != nil {
 				return nil, err
 			}
@@ -941,6 +1007,12 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 				return nil, err
 			}
 			made.Pending = p.ID
+			if err := s.offerRiders(ctx, c, attacker, target, attack, attackerSheet, bonusKind == combat.BonusFlurry); err != nil {
+				return nil, err
+			}
+			if err := markMeleeHit(ctx, c, attacker, attack); err != nil {
+				return nil, err
+			}
 		}
 		if offerID != "" {
 			var damage *string // the damage the attack opened: the 0 hit points rule finds the offer by it
@@ -998,6 +1070,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		BonusDice: bonusDiceOf(ev),
 	}
 	roll.Sources, roll.ModeReason = shown, reason
+	roll.D20.ExtraDice = extraDiceProto(ev.Extra, v.master, s.namesFor(ctx, m.CampaignID))
 	coverKey, coverSource := ev.coverFor(v)
 	roll.Cover, roll.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 	if v.master {
@@ -1223,7 +1296,7 @@ func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *conne
 
 		made = actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
+			DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, SavageDice: p.SavageDice, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: faces,
 			DamageType: p.DamageType, Critical: p.Critical, Physical: roll.Physical, Heal: p.Healing, Total: rolledTotal,
 		}
 		if pr != nil {
@@ -1670,6 +1743,12 @@ func (s *Service) ApplyPendingDamage(
 			// points first, never below 0. At 0 it is down ("Caído") and makes death
 			// saves.
 			dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
+			if relentlessEndurance(now, dmg) { // the half-orc stays on its feet with 1 hit point (SRD 5.1)
+				if _, err := s.spendResource(ctx, c, target.CharacterID, resRelentlessEndurance, 1); err != nil {
+					return nil, err
+				}
+				dmg.HP, dmg.FellToZero, made.Relentless = 1, false, true
+			}
 			hp, temp := clamp32(dmg.HP, 0, math.MaxInt32), clamp32(dmg.TempHP, 0, math.MaxInt32)
 			before, after, err := s.vitalsOf(ctx, c, target.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp})
 			if err != nil {
@@ -1961,7 +2040,9 @@ func (s *Service) TakeAction(
 			// ConvertSpellSlot and GiveBardicInspiration take them.
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this action is taken with the resource service"))
 		}
-		feature := strings.HasPrefix(actionKey, "feature:")
+		// A feature action is a class or subclass feature's or a race trait's (the goblin's
+		// Fuga Ágil, from the table's content).
+		feature := strings.HasPrefix(actionKey, "feature:") || strings.HasPrefix(actionKey, "trait:")
 		list := opts.GetStandardActions()
 		if feature {
 			list = opts.GetFeatureActions()
@@ -1971,6 +2052,9 @@ func (s *Service) TakeAction(
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the standard or feature actions"))
 		}
 		action := list[i]
+		if actionKey == actionHide || actionKey == actionHelp {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("Hide and Help have their own calls: ContestService.Hide and ContestService.Help"))
+		}
 		economy := action.GetAction().GetEconomy()
 		// A reaction is taken off turn, when its trigger happens; everything else
 		// on the combatant's turn.
@@ -1982,7 +2066,16 @@ func (s *Service) TakeAction(
 			return nil, err
 		}
 		// The master has the last word: he may act again with the action used.
-		if !action.GetEnabled() {
+		useExtra := req.Msg.GetUseExtraAction()
+		if useExtra {
+			if feature {
+				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE, "the extra action takes a standard action")
+			}
+			if err := s.mustHaveExtraAction(ctx, c, who, actionKey); err != nil {
+				return nil, err
+			}
+		}
+		if !action.GetEnabled() && !useExtra {
 			if feature {
 				if err := featureError(action.GetReason(), v.master); err != nil {
 					return nil, err
@@ -1999,9 +2092,16 @@ func (s *Service) TakeAction(
 			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey, RunBefore: run,
 			ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
 			AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged, SurgedBefore: who.ActionSurged,
-			AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft,
+			AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft, ExtraUsed: useExtra,
 		}
 		after := who
+		if useExtra {
+			// The extra action pays for it: the action of the turn stays.
+			economy = rulesv1.ActionEconomy_ACTION_ECONOMY_FREE
+			if err := c.q.SetCombatantExtraActionUsed(ctx, playdb.SetCombatantExtraActionUsedParams{ID: who.ID, ExtraActionUsed: true}); err != nil {
+				return nil, fmt.Errorf("spend the extra action: %w", err)
+			}
+		}
 		switch economy {
 		case rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION:
 			after.BonusActionUsed = true
@@ -2047,6 +2147,9 @@ func (s *Service) TakeAction(
 			if fa.Standard != "" {
 				standard = fa.Standard
 			}
+			if standard == actionHide || standard == actionHelp {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("Hide and Help have their own calls: ContestService.Hide and ContestService.Help"))
+			}
 			// One use of its resource: only a player's character counts them, and a
 			// pool of points (Cura pelas mãos) is the master's.
 			if fa.Resource != "" && !fa.Pool && who.Kind == kindPlayer {
@@ -2054,6 +2157,13 @@ func (s *Service) TakeAction(
 					return nil, err
 				}
 				made.Resource = fa.Resource
+			}
+			if actionKey == slowFallAction {
+				cuts, taken, err := s.slowFall(ctx, c, who, sheet.MonkLevel)
+				if err != nil {
+					return nil, err
+				}
+				made.FallCuts, made.Amount = cuts, taken
 			}
 			if actionKey == flurryOfBlows {
 				// Flurry of Blows comes right after the Attack action; its two unarmed
@@ -2075,7 +2185,7 @@ func (s *Service) TakeAction(
 					vitals = vit
 				}
 			}
-			if err := s.beginFeatureState(ctx, c, v, who, actionKey, sheet, &made); err != nil {
+			if err := s.beginFeatureState(ctx, c, v, who, actionKey, sheet, req.Msg.GetFrenzy(), &made); err != nil {
 				return nil, err
 			}
 		}
@@ -2150,7 +2260,7 @@ func (s *Service) mustReactNowOrOnTurn(ctx context.Context, c *combatTx, who pla
 	if down {
 		return gateError(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN)
 	}
-	return nil
+	return s.mustNotBeSurprised(ctx, c, who)
 }
 
 // secondWind is Retomar o fôlego: 1d10 plus the fighter's level of hit points,

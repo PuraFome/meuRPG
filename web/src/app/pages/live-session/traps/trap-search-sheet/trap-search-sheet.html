@@ -105,6 +105,9 @@
         @if (invalid()) {
           <p class="type__err" role="alert"><mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a 20.</p>
         }
+        @if (extra.fields().length > 0) {
+          <app-extra-dice class="type__extra" [fields]="extra.fields()" [(faces)]="extra.faces" />
+        }
         <p class="type__sum" role="status">{{ typedLine() ? typedLine() + ' · dado físico' : 'O total aparece quando o número for de 1 a 20.' }}</p>
       </div>
     }

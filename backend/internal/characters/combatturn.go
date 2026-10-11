@@ -108,6 +108,9 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 	// Its saving throws are the stat block's (the ability modifier plus the
 	// proficiency the creature lists); a basic sheet with no creature has none.
 	d.SavingThrows = creature.SavingThrows
+	// Its skills, ability scores and passive Perception are the stat block's too: the
+	// contests (Athletics, Acrobatics) and hiding (Stealth, passive Perception) read them.
+	d.Skills, d.Abilities, d.PassivePerception = creature.Skills, creature.Abilities, creature.PassivePerception
 	// The traits of the stat block (Pack Tactics) are the NPC's too, and so is its type.
 	d.Features = withCreatureType(content, b.GetMonsterKey(), creature.Features)
 	for i, a := range b.GetAttacks() {
@@ -190,7 +193,7 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 		out.Actions = append(out.Actions, link.Action{Key: a.Key, Name: a.NamePT})
 	}
 	out.AttacksPerAction = max(d.AttacksPerAction, 1)
-	out.CriticalRange, out.TwoWeaponFighting, out.BrutalCriticalDice = d.CriticalRange, d.TwoWeaponFighting, d.BrutalCriticalDice
+	out.CriticalRange, out.TwoWeaponFighting, out.BrutalCriticalDice, out.SavageAttacks = d.CriticalRange, d.TwoWeaponFighting, d.BrutalCriticalDice, d.SavageAttacks
 	for _, a := range d.Actions {
 		out.FeatureActions = append(out.FeatureActions, link.FeatureAction{
 			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,
@@ -199,6 +202,9 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 	for _, cl := range d.Classes {
 		if cl.ClassKey == "class:fighter" {
 			out.FighterLevel = cl.Level
+		}
+		if cl.ClassKey == "class:monk" {
+			out.MonkLevel = cl.Level
 		}
 	}
 	return out, nil
@@ -229,9 +235,17 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 	d.SpeedWalkFt = turn.SpeedFt
 	opts := combat.Options(d, combat.TurnState{
 		ActionUsed: turn.ActionUsed, BonusActionUsed: turn.BonusActionUsed, ReactionUsed: turn.ReactionUsed,
-		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, LastAttackKey: turn.AttackKey, FlurryLeft: turn.FlurryLeft, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
+		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, LastAttackKey: turn.AttackKey, FlurryLeft: turn.FlurryLeft, FrenzyReady: turn.FrenzyReady, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
 	}, usage)
 	out := turnOptionsToProto(opts)
+	// The Berserker's Rage asks whether to frenzy (SRD 5.1, Path of the Berserker).
+	if rules.HasFeature(d, "feature:frenzy") {
+		for _, a := range out.GetFeatureActions() {
+			if a.GetAction().GetKey() == "feature:rage" {
+				a.OffersFrenzy = true
+			}
+		}
+	}
 	// The movement is kept in tenths of a foot (RN-21): the feet fields are those
 	// rounded down, so the two never disagree.
 	speed := turn.SpeedFt * 10
@@ -293,6 +307,7 @@ var bonusRuleToProto = map[combat.BonusKind]rulesv1.BonusAttackRule{
 	combat.BonusTwoWeapon:   rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_OFF_HAND,
 	combat.BonusMartialArts: rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_MARTIAL_ARTS,
 	combat.BonusFlurry:      rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_FLURRY_OF_BLOWS,
+	combat.BonusFrenzy:      rulesv1.BonusAttackRule_BONUS_ATTACK_RULE_FRENZY,
 }
 
 // turnOptionsToProto copies package combat's TurnOptions into the API's.

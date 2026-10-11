@@ -38,6 +38,7 @@ func checkImagesAndTiles(t *testing.T, w *world) {
 		{"the portrait of an NPC on the stage", w.imgStage, []*person{w.ana, w.caio}, true},
 		{"the portrait of an NPC out of the scene", w.imgPortrait, nil, true},
 		{"an image nobody was shown", w.imgUnshown, nil, true},
+		{"an image attached to a scene, never shown", w.imgSceneA, nil, true},
 		{"a generated image not shown", w.imgGenerated, nil, true},
 		{"the image of a hidden map", w.imgHiddenMap, nil, true},
 		{"the image of a hidden dungeon", w.imgDungeon, nil, true},

@@ -65,7 +65,7 @@ const SEED_PROBLEM = 'A semente é um número inteiro, só com dígitos.';
  *   rooms' sides) refuse before asking; a refusal of the server lands on the field it names.
  * - **"Criar o mapa"** (`CreateDungeonMap`) sends the name, the options and the previewed seed, shows the steps while the server draws and
  *   stores the image, and opens the new map in the editor. The server finishes the map even when the master stops waiting ("Cancelar").
- * - The map is born hidden from the players with the fog on and the base light "Clara": the line under the preview says so.
+ * - The map is born hidden from the players with the fog on and the base light "Penumbra": the line under the preview says so.
  *
  * On a phone the page only says that generating a dungeon is done on a computer (E10-05 1).
  */

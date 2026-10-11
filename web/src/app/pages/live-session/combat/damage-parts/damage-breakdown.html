@@ -25,6 +25,9 @@
               @if (rerolls(r)) {
                 <span class="re">{{ rerolls(r) }}</span>
               }
+              @if (r.riderPt) {
+                <span class="re rider">{{ r.riderPt }}</span>
+              }
             </td>
             <td class="num">{{ r.counted ? r.sum + r.flat : 0 }}</td>
             <td class="act">
@@ -80,6 +83,9 @@
           }
           @if (rerolls(r)) {
             <span class="re">{{ rerolls(r) }}</span>
+          }
+          @if (r.riderPt) {
+            <span class="re rider">{{ r.riderPt }}</span>
           }
         </li>
       }

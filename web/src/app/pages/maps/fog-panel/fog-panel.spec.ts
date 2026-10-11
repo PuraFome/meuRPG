@@ -87,6 +87,22 @@ describe('FogPanel', () => {
     expect(text()).toContain('Desligada: cada um vê o que o próprio personagem vê.');
   });
 
+  it('tells the master what Claro does only while Claro is the light of base', async () => {
+    await setup(on);
+    expect(text()).not.toContain('os jogadores veem o mapa todo');
+    await setup(
+      mapMessage('map-1', 'A caverna', {
+        gridColumns: 24,
+        gridRows: 16,
+        fogEnabled: true,
+        baseLight: LightLevel.BRIGHT,
+      }),
+    );
+    expect(text()).toContain(
+      'Claro: os jogadores veem o mapa todo; criaturas só onde os personagens enxergam. Para uma sala secreta, use Penumbra.',
+    );
+  });
+
   it('without a grid the fog cannot be turned on and says why', async () => {
     await setup(mapMessage('map-1', 'Sem grade', { gridColumns: 0, gridRows: 0 }));
     const fog = switchOf('Ligar a névoa');

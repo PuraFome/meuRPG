@@ -9,7 +9,7 @@ import { expectLoaded } from './loaded';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
-import { addActionRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
+import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
@@ -25,6 +25,7 @@ import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createChar
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { grog, rollsTable, vex } from './combat-rolls-support';
+import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { movePensantus, pensantusFirst, sq20, thirdPlayer, trapRPC, treasureRPC, type TrapTable } from './trap-support';
@@ -63,6 +64,7 @@ import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
 import { setSwitchesRPC } from './content-options-support';
+import { effectRow, effectsTable, openPanel, setExhaustionRPC } from './effects-support';
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
@@ -342,6 +344,30 @@ test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y
   }
 });
 
+// docs/design.md#legal-pages and #footer: the two legal pages and the footer under them, signed out, in both
+// themes at desktop and phone widths. The contents list is open beside the text on a desktop and closed on a phone.
+test('os termos, a privacidade e o rodapé passam no axe nos dois temas, no desktop e no celular', { tag: ['@a11y', '@legal'] }, async ({ browser }) => {
+  for (const [scheme, width] of [['light', 1280], ['dark', 1280], ['light', 390], ['dark', 390]] as const) {
+    const context = await browser.newContext({ colorScheme: scheme, viewport: { width, height: 900 } });
+    try {
+      const page = await context.newPage();
+      for (const [screen, route] of [
+        ['Termos de uso', '/terms'],
+        ['Política de privacidade', '/privacy'],
+        ['Início', '/'],
+      ]) {
+        await open(page, route);
+        const footer = page.getByRole('navigation', { name: 'Rodapé' });
+        await expect(footer.getByRole('link')).toHaveCount(3);
+        await footer.scrollIntoViewIfNeeded();
+        await expectScreenPasses(page, `${screen} com rodapé (${scheme}, ${width}px)`);
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 // docs/design.md#cor: every control that takes focus shows the same 2px
 // ring. Material's buttons remove their outline in their own styles, so
 // this checks them explicitly (axe does not check that a focus ring shows).
@@ -497,6 +523,14 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
       await masterPage.getByRole('button', { name: 'Ruínas élficas, Cena de RP, escondido' }).click();
       await expect(masterPage.getByRole('heading', { name: 'Ruínas élficas' })).toBeVisible();
       await expectScreenPasses(masterPage, `Editor com um ponto escolhido ${suffix}`);
+      // A Submapa with a destination ("Abrir <mapa>"), then "Criar mapa novo…" open in the panel.
+      await masterPage.getByRole('button', { name: 'Torre de Mirathel, Submapa' }).first().click();
+      await expect(masterPage.getByRole('link', { name: /^Abrir / })).toBeVisible();
+      await expectScreenPasses(masterPage, `Editor, submapa com "Abrir" ${suffix}`);
+      await masterPage.getByLabel('Leva para').selectOption({ label: 'Criar mapa novo…' });
+      await expect(masterPage.getByRole('button', { name: 'Criar mapa e usar' })).toBeVisible();
+      await masterPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+      await expectScreenPasses(masterPage, `Editor, "Criar mapa novo…" ${suffix}`);
     }
 
     await open(playerPage, `/campaigns/${campaignId}/maps/${world}`);
@@ -833,8 +867,12 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('tab', { name: 'Magias' }).click();
     await expectScreenPasses(page, `Magias ${where}`);
     await page.getByRole('group', { name: 'Magias conhecidas', exact: true }).getByRole('button', { name: 'Descrição de Mísseis Mágicos' }).click();
-    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    // Portuguese first, then the English the button flips to (the choice holds for the whole app until reload).
+    await expect(page.getByText('Texto do SRD 5.1', { exact: true })).toBeVisible();
     await expectScreenPasses(page, `Descrição da magia ${where}`);
+    await page.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(page.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(page, `Descrição da magia, em inglês ${where}`);
   } finally {
     await context.close();
   }
@@ -946,7 +984,7 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(m, `Encerrar o combate, confirmação ${where}`);
     await m.getByRole('button', { name: 'Encerrar combate' }).last().click();
     await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
-    await expect(p.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
+    await expect(p.getByRole('heading', { name: 'O combate acabou' })).toBeVisible(); // the player's one end-of-combat card
     await expectScreenPasses(m, `Combate encerrado, mestre ${where}`);
     await expectScreenPasses(p, `Combate encerrado, jogador ${where}`);
   } finally {
@@ -1752,6 +1790,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await p.goto('/');
     const table = await tableForScenes(m, p, `Acessibilidade cenas ${Date.now()}`);
     campaignId = table.campaignId;
+    await attachTwoImagesRPC(m, table, table.cartId);
 
     // The editor is for a computer: a phone has the lists of points instead.
     if (width >= 768) {
@@ -1759,6 +1798,9 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('button', { name: /^A carroça tombada, Cena de RP/ }).click();
       await expect(m.getByRole('heading', { name: 'Ações da cena' })).toBeVisible();
       await expectScreenPasses(m, `Ações da cena no ponto ${where}`);
+      await expect(m.getByRole('heading', { name: 'Imagens da cena' })).toBeVisible();
+      await m.getByRole('heading', { name: 'Imagens da cena' }).scrollIntoViewIfNeeded();
+      await expectScreenPasses(m, `Imagens da cena no ponto, com duas imagens ${where}`);
       await m.getByRole('button', { name: 'Adicionar ação' }).click();
       await expect(m.getByRole('form', { name: 'Nova ação' })).toBeVisible();
       await expectScreenPasses(m, `Nova ação ${where}`);
@@ -1790,6 +1832,15 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await m.getByRole('dialog').getByText('A carroça tombada', { exact: true }).click();
     await m.getByRole('dialog').getByRole('button', { name: 'Abrir cena', exact: true }).click();
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+    // The scene's pictures, with "Mostrar aos jogadores", then one on show.
+    const sceneImages = m.getByRole('region', { name: 'Imagens da cena' });
+    await expect(sceneImages).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta com as imagens da cena ${where}`);
+    await sceneImages.getByRole('button', { name: 'Mostrar Vista da carroça aos jogadores' }).click();
+    await expect(sceneImages.getByText('À mostra agora')).toBeVisible();
+    await expectScreenPasses(m, `Cena aberta com uma imagem à mostra ${where}`);
+    await sceneImages.getByRole('button', { name: 'Parar de mostrar Vista da carroça' }).click();
+    await expect(sceneImages.getByText('À mostra agora')).toHaveCount(0);
 
     // The player: the block, the roll sheet in each state, the rolled row.
     await openSessionPage(p, campaignId);
@@ -2456,8 +2507,11 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
     await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
     const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expect(details.getByRole('button', { name: 'Ver em inglês' })).toBeVisible();
     await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
+    await details.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
+    await expectScreenPasses(p, `Detalhes de Sono na sessão, em inglês ${where}`);
     await details.getByRole('button', { name: 'Fechar' }).last().click();
 
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
@@ -5735,8 +5789,11 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
 
     // An item's description.
     await m.locator('.item__desc').first().click();
-    await expect(m.getByText('Texto do SRD 5.1, em inglês')).toBeVisible();
+    await expect(m.getByText('Texto do SRD 5.1 (tradução nossa)')).toBeVisible();
     await expectScreenPasses(m, `Tesouro, a descrição de um item ${where}`);
+    await m.getByRole('button', { name: 'Ver em inglês' }).click();
+    await expect(m.getByText('Texto do SRD 5.1 (em inglês)')).toBeVisible();
+    await expectScreenPasses(m, `Tesouro, a descrição de um item, em inglês ${where}`);
     await m.keyboard.press('Escape');
 
     // "Pôr no mapa", on the dungeon (rooms), then on a map without a grid.
@@ -6745,7 +6802,11 @@ async function scanRageScreens(browser: Browser, colorScheme: 'light' | 'dark', 
   try {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
+    // Grog is a Berserker: Fúria asks about the frenzy first, in place (SRD 5.1, Frenzy).
     await p.getByRole('button', { name: /Fúria/ }).click();
+    await expect(p.getByRole('group', { name: 'Entrar em frenesi?' })).toBeVisible();
+    await expectScreenPasses(p, `Entrar em frenesi? ${where}`);
+    await p.getByRole('button', { name: 'Só fúria' }).click();
     await expect(p.getByText('Em fúria').first()).toBeVisible();
     await expectScreenPasses(p, `Sua vez, em fúria ${where}`);
 
@@ -7133,7 +7194,7 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     await pickTargetOf(castSheet(p), 'Pensantus');
     await expectScreenPasses(p, `Conjurar Armadura Arcana, espaço e alvo ${where}`);
     await castSheet(p).getByRole('button', { name: 'Conjurar Armadura Arcana em Pensantus' }).click();
-    await expect(castSheet(p).getByText(/CA 13 \+ Destreza/)).toBeVisible();
+    await expect(castSheet(p).getByText(/CA \d+ \(13 \+ Destreza\)/)).toBeVisible();
     await expectScreenPasses(p, `Conjurar Armadura Arcana, o resultado ${where}`);
     await castSheet(p).getByRole('button', { name: 'Fechar' }).last().click();
 
@@ -7151,7 +7212,7 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     await expect(ritual.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
     await expectScreenPasses(p, `Conjurar Alarme como ritual ${where}`);
     await ritual.getByRole('button', { name: 'Começar o ritual' }).click();
-    await expect(ritual.getByText(/só é gasto quando o mestre conclui/)).toBeVisible();
+    await expect(ritual.getByText(/Um ritual não gasta espaço de magia/)).toBeVisible();
     await expectScreenPasses(p, `Conjurando o ritual ${where}`);
     await ritual.getByRole('button', { name: 'Fechar' }).last().click();
     await expect(p.locator('app-casting-panel').getByText('Esperando o mestre concluir')).toBeVisible();
@@ -7406,4 +7467,447 @@ test('o salto que sai do alcance de um inimigo passa no axe e nas conferências 
 test('o salto que sai do alcance de um inimigo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanJumpWarningScreens(browser, 'dark', 390);
+});
+
+// W7-X: the contests and special actions. The player's sheets (Ajudar, Esconder-se, the grapple's target, wait and result, the
+// answer to an NPC's grapple) and the master's cards (the contest, Hide), on one table with a rogue and an ally.
+async function scanContestScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done } = await alliedTable(
+    browser,
+    `Acessibilidade Disputas ${Date.now()}`,
+    vex,
+    { weaponKeys: ['equipment:shortsword'] },
+    { Vex: 20, 'Goblin 1': 5, Tavo: 4, 'Goblin 2': 3 },
+    { colorScheme, masterWidth: width, playerWidth: width },
+  );
+  try {
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toBeVisible();
+
+    // Ajudar: the ally, then the task (it is closed without helping, so the action stays).
+    await p.getByRole('button', { name: 'Ajudar', exact: true }).click();
+    const help = p.getByRole('dialog');
+    await expect(help.getByText('Tavo').first()).toBeVisible();
+    await expectScreenPasses(p, `Ajudar, o aliado ${where}`);
+    await help.locator('label', { hasText: 'Tavo' }).click();
+    await help.getByRole('button', { name: 'Continuar' }).click();
+    await expect(help.getByText(/Vantagem no próximo teste de Percepção/)).toBeVisible();
+    await expectScreenPasses(p, `Ajudar, a tarefa ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(p.getByRole('dialog')).toHaveCount(0);
+
+    // Esconder-se (the bonus action of the Ação Ardilosa): the roll, the wait, the master's card and the result.
+    await p.getByRole('button', { name: 'Usar Ação Ardilosa: Esconder' }).click();
+    const hide = p.getByRole('dialog');
+    await expect(hide.getByText('Seu teste de Furtividade')).toBeVisible();
+    await expectScreenPasses(p, `Esconder-se, o teste ${where}`);
+    await typeD20(hide, 20);
+    await expect(hide.getByText(/Esperando o mestre/)).toBeVisible();
+    await expectScreenPasses(p, `Esconder-se, esperando o mestre ${where}`);
+    await expect(m.getByTestId('hide-card')).toBeVisible();
+    await expectScreenPasses(m, `O cartão de Esconder do mestre ${where}`);
+    await m.getByTestId('hide-card').getByRole('button', { name: /^Aplicar/ }).click();
+    await expect(hide.getByText(/Você está escondid/)).toBeVisible();
+    await expectScreenPasses(p, `Esconder-se, o resultado ${where}`);
+    await closeSheet(hide);
+
+    // Agarrar: the target, the wait for the master and his card, the result.
+    await p.getByRole('button', { name: /Agarrar: escolher o alvo/ }).click();
+    const grapple = p.getByRole('dialog');
+    await grapple.getByText('Tenho uma mão livre').click();
+    await grapple.locator('label', { hasText: 'Goblin 1' }).click();
+    await expectScreenPasses(p, `Agarrar, o alvo ${where}`);
+    await grapple.getByRole('button', { name: 'Rolar a disputa' }).click();
+    await expect(grapple.getByText(/Seu teste de/)).toBeVisible();
+    await expectScreenPasses(p, `Agarrar, a rolagem ${where}`);
+    await typeD20(grapple, 20);
+    await expect(grapple.getByText(/Esperando o mestre/)).toBeVisible();
+    await expectScreenPasses(p, `Agarrar, esperando o mestre ${where}`);
+    const card = m.getByTestId('contest-card');
+    await expect(card).toBeVisible();
+    await expectScreenPasses(m, `O cartão da disputa do mestre ${where}`);
+    await card.locator('label', { hasText: 'Atletismo' }).click();
+    await typeD20(card, 3);
+    await expect(grapple.getByText('Você venceu a disputa.')).toBeVisible();
+    await expectScreenPasses(p, `Agarrar, o resultado ${where}`);
+    await closeSheet(grapple);
+
+    // The goblin grapples her: she chooses the skill and rolls.
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    // The player's end of turn lands first: passing the turns before it would end Vex's turn twice.
+    await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toHaveCount(0);
+    const enc = await passTurnsTo(m, campaignId, 'Goblin 2');
+    await contestRPC(m, 'StartContest', {
+      campaignId,
+      encounterId: enc.id,
+      initiatorId: idOf(enc, 'Goblin 2'),
+      targetId: idOf(enc, 'Vex'),
+      purpose: 'CONTEST_PURPOSE_GRAPPLE',
+      roll: { d20Faces: { faces: [18] } },
+    });
+    const answer = p.getByRole('dialog');
+    await expect(answer).toContainText('Goblin 2 tenta agarrar você');
+    await expectScreenPasses(p, `A disputa de quem é agarrado, a escolha ${where}`);
+    await answer.locator('label', { hasText: 'Acrobacia' }).click();
+    await typeD20(answer, 2);
+    await expect(answer.getByText(/Você perdeu a disputa/)).toBeVisible();
+    await expectScreenPasses(p, `A disputa de quem é agarrado, o resultado ${where}`);
+  } finally {
+    await done().catch(() => undefined);
+  }
+}
+
+test('as disputas e as ações especiais passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanContestScreens(browser, 'light', 1280);
+});
+
+test('as disputas e as ações especiais passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanContestScreens(browser, 'dark', 1280);
+});
+
+test('as disputas e as ações especiais passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanContestScreens(browser, 'light', 390);
+});
+
+test('as disputas e as ações especiais passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanContestScreens(browser, 'dark', 390);
+});
+
+// W7-X: the group check outside a combat (the master's request and open cards, the player's sheet) and the surprise card of the
+// combat's setup, with the state of the one who is surprised.
+async function scanGroupCheckScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade Teste em grupo ${Date.now()}`, true, true, { build: vex, sheet: { weaponKeys: ['equipment:shortsword'] } });
+    campaignId = table.campaignId;
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    const ask = m.getByTestId('group-ask');
+    await expect(ask).toBeVisible();
+    await expectScreenPasses(m, `O pedido do teste em grupo ${where}`);
+    await ask.getByLabel('Teste', { exact: true }).selectOption({ label: 'Furtividade' });
+    await ask.getByLabel(/^CD \(/).fill('13');
+    await ask.getByRole('button', { name: 'Pedir o teste' }).click();
+    const sheet = p.getByRole('dialog');
+    // A party of one: "Todos" is one character, so the request is a check of its own.
+    await expect(sheet.getByText('O mestre pede um teste de Furtividade.')).toBeVisible();
+    await expectScreenPasses(p, `O teste em grupo, a rolagem ${where}`);
+    await typeD20(sheet, 15);
+    await expect(sheet.getByText(/Esperando o mestre/)).toBeVisible();
+    await expectScreenPasses(p, `O teste em grupo, esperando o mestre ${where}`);
+    const open = m.getByTestId('group-open');
+    await expect(open).toContainText('1 de 1 responderam');
+    await expectScreenPasses(m, `O teste em grupo aberto do mestre ${where}`);
+    await open.getByRole('button', { name: 'Encerrar o teste' }).click();
+    await expect(sheet.getByText('O mestre encerrou o teste.')).toBeVisible();
+    await expectScreenPasses(p, `O teste em grupo, o resultado ${where}`);
+    await closeSheet(sheet);
+
+    // The combat's setup: "Quem está surpreso?", then the player's own state.
+    let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 2, hidden: false }]);
+    const card = m.getByTestId('surprise-card');
+    await expect(card).toContainText('Quem está surpreso?');
+    await expectScreenPasses(m, `Quem está surpreso? ${where}`);
+    await card.locator('label:has(input[aria-label="Surpreso: Vex"])').click();
+    await expect(card.getByLabel('Surpreso: Vex')).toBeChecked();
+    for (const c of enc.combatants) {
+      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: c.id, d20Face: c.label === 'Vex' ? 20 : 3 });
+    }
+    for (const [label, [col, row]] of Object.entries({ Vex: [8, 9], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10] })) {
+      enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: idOf(enc, label), col, row });
+    }
+    await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
+    await expect(p.getByText(/Você está surpres[oa] neste turno/)).toBeVisible();
+    await expectScreenPasses(p, `A surpresa do jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o teste em grupo e a surpresa passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanGroupCheckScreens(browser, 'light', 1280);
+});
+
+test('o teste em grupo e a surpresa passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanGroupCheckScreens(browser, 'dark', 1280);
+});
+
+test('o teste em grupo e a surpresa passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanGroupCheckScreens(browser, 'light', 390);
+});
+
+test('o teste em grupo e a surpresa passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-34'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanGroupCheckScreens(browser, 'dark', 390);
+});
+
+/**
+ * "Efeitos que duram" no lado do mestre (W7-E, RN-22): o painel "Efeitos em jogo" com o relógio dos turnos, a pergunta de
+ * encerrar uma concentração, "Adicionar um efeito", "Mudar a duração", o cartão do que os jogadores veem, a exaustão (e a
+ * pergunta do nível 6), e, fora do combate, o painel dos personagens com "Passar o tempo" e o descanso longo com "Sem comida
+ * ou bebida".
+ */
+async function scanEffectsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const t = await effectsTable(browser, 'Acessibilidade Efeitos', width, colorScheme);
+  const { m } = t;
+  const dialog = (name: string | RegExp) => m.getByRole('dialog', { name });
+  try {
+    const panel = await openPanel(t);
+    await expectScreenPasses(m, `Efeitos em jogo, o painel e o relógio ${where}`);
+
+    const bless = effectRow(panel, 'Bênção');
+    await bless.getByRole('button', { name: /^Encerrar Bênção/ }).click();
+    const ask = panel.getByRole('alertdialog', { name: /Encerrar Bênção de Pensantus\?/ });
+    await expect(ask.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectScreenPasses(m, `Efeitos em jogo, encerrar uma concentração ${where}`);
+    await ask.getByRole('button', { name: 'Cancelar' }).click();
+
+    await panel.getByRole('button', { name: 'Adicionar efeito' }).click();
+    await expect(dialog('Adicionar um efeito')).toBeVisible();
+    await expectScreenPasses(m, `Adicionar um efeito ${where}`);
+    await dialog('Adicionar um efeito').getByRole('button', { name: 'Cancelar' }).click();
+
+    await bless.getByRole('button', { name: /^Mudar a duração de Bênção/ }).click();
+    await expect(dialog(/^Mudar a duração de Bênção em (Pensantus, Goblin 1|Goblin 1, Pensantus)$/)).toBeVisible();
+    await expectScreenPasses(m, `Mudar a duração ${where}`);
+    await dialog(/^Mudar a duração de Bênção em (Pensantus, Goblin 1|Goblin 1, Pensantus)$/).getByRole('button', { name: 'Cancelar' }).click();
+
+    await effectRow(panel, 'Derrubado').getByRole('button', { name: /Jogadores veem/ }).click();
+    await expect(dialog('O que os jogadores veem de Derrubado em Goblin 2')).toBeVisible();
+    await expectScreenPasses(m, `O que os jogadores veem de um efeito ${where}`);
+    await dialog('O que os jogadores veem de Derrubado em Goblin 2').getByRole('switch', { name: 'Os jogadores veem este efeito' }).click();
+    await expectScreenPasses(m, `O que os jogadores veem de um efeito, desligado ${where}`);
+    await dialog('O que os jogadores veem de Derrubado em Goblin 2').getByRole('button', { name: 'Cancelar' }).click();
+
+    await panel.getByRole('button', { name: 'Exaustão' }).click();
+    const exhaustion = dialog(/^Exaustão/);
+    await expect(exhaustion.getByRole('radio')).toHaveCount(7);
+    await expectScreenPasses(m, `Exaustão, os níveis ${where}`);
+    await exhaustion.getByRole('radio', { name: /^Nível 6/ }).check();
+    await exhaustion.getByRole('button', { name: 'Salvar' }).click();
+    await expect(exhaustion.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectScreenPasses(m, `Exaustão, a pergunta do nível 6 ${where}`);
+    await exhaustion.getByRole('button', { name: 'Cancelar' }).click();
+    await exhaustion.getByRole('button', { name: 'Cancelar' }).click();
+  } finally {
+    await t.done();
+  }
+}
+
+async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(390) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableWithPensantus(m, p, `Acessibilidade Efeitos fora ${Date.now()}`);
+    campaignId = table.campaignId;
+    await startSessionRPC(m, campaignId);
+    await setExhaustionRPC(m, campaignId, table.characterId, 2, 0);
+    await openSessionPage(m, campaignId);
+    const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
+    await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
+    await expectScreenPasses(m, `Efeitos fora do combate, o painel e "Passar o tempo" ${where}`);
+    const time = m.getByRole('region', { name: 'Passar o tempo' });
+    // Each preset keeps its words on one line, inside its button and clear of the field under the row.
+    const fieldBox = await boxOf(time.locator('app-text-field'));
+    for (const preset of await time.getByRole('group', { name: 'Quanto tempo passa' }).getByRole('button').all()) {
+      const box = await boxOf(preset);
+      expect(box.y + box.height, `${await preset.innerText()} over the field`).toBeLessThanOrEqual(fieldBox.y);
+      const text = await preset.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el.querySelector('.mdc-button__label') ?? el);
+        const rects = [...range.getClientRects()].filter((r) => r.width > 0);
+        const frame = el.getBoundingClientRect();
+        return {
+          lines: new Set(rects.map((r) => Math.round(r.top))).size,
+          inside: rects.every((r) => r.top >= frame.top - 1 && r.bottom <= frame.bottom + 1 && r.left >= frame.left - 1 && r.right <= frame.right + 1),
+        };
+      });
+      expect(text, `${await preset.innerText()} on one line, inside its button`).toEqual({ lines: 1, inside: true });
+    }
+    await time.getByRole('button', { name: '10 minutos' }).click();
+    await time.getByRole('button', { name: 'Passar o tempo' }).click();
+    await expect(time).toContainText('Passou 10 minutos.');
+    await expectScreenPasses(m, `Passar o tempo, o resultado ${where}`);
+
+    const rest = m.getByRole('region', { name: 'Descanso' });
+    await rest.getByRole('button', { name: 'Descanso longo' }).click();
+    await expect(rest.getByRole('switch', { name: 'Sem comida ou bebida' })).toBeVisible();
+    await expectScreenPasses(m, `Descanso longo, "Sem comida ou bebida" ${where}`);
+    await rest.getByRole('switch', { name: 'Sem comida ou bebida' }).click();
+    await expectScreenPasses(m, `Descanso longo, sem comida ou bebida ligado ${where}`);
+    await rest.getByRole('button', { name: 'Cancelar' }).click();
+
+    await panel.getByRole('button', { name: 'Exaustão' }).click();
+    await expect(m.getByRole('dialog', { name: /^Exaustão/ })).toBeVisible();
+    await expectScreenPasses(m, `Exaustão fora do combate ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width, words] of [
+  ['light', 1280, 'no tema claro, no desktop'],
+  ['dark', 390, 'no tema escuro, no celular'],
+  ['light', 390, 'no tema claro, no celular'],
+  ['dark', 1280, 'no tema escuro, no desktop'],
+] as const) {
+  test(`os efeitos que duram do mestre, no combate, passam no axe e nas conferências de layout ${words}`, { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanEffectsScreens(browser, scheme, width);
+  });
+
+  test(`os efeitos do mestre fora do combate, "Passar o tempo" e o descanso longo passam no axe e nas conferências de layout ${words}`, { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanEffectsOutsideScreens(browser, scheme, width);
+  });
+}
+
+/** The effects that last on the player's screens (W7-E, RN-22): "Seus efeitos" and the exhaustion card on the live sheet,
+ * the attack sheet with the d4 of Bênção typed from a physical die, the turn of a paralysed character and the saving
+ * throw of the end of the turn with its three answers, its typed fields and its result. The table and the effects come
+ * through the API, so every run draws the same screens. */
+async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade efeitos ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const me = enc.combatants.find((c) => c.label === 'Pensantus')!.id;
+    const captain = enc.combatants.find((c) => c.label === 'Capitão Goblin')!.id;
+    const add = async (catalogKey: string, casterId?: string) => {
+      const res = await callRPC(m, 'meurpg.play.v1.LastingEffectService/AddLastingEffect', {
+        campaignId,
+        encounterId: enc.id,
+        idempotencyKey: crypto.randomUUID(),
+        targetIds: [me],
+        catalogKey,
+        ...(casterId ? { casterId } : {}),
+        duration: { kind: 'EFFECT_DURATION_KIND_ROUNDS', rounds: 10 },
+        playerVisible: true,
+        audience: 'EFFECT_AUDIENCE_ALL',
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+
+    // The live sheet: the card of an effect and the exhaustion card.
+    await add('spell:bless');
+    const exhaustion = await callRPC(m, 'meurpg.play.v1.LastingEffectService/SetExhaustion', {
+      campaignId,
+      idempotencyKey: crypto.randomUUID(),
+      characterId: table.characterId,
+      level: 4,
+      expectedLevel: 0,
+    });
+    expect(exhaustion.ok(), await exhaustion.text()).toBeTruthy();
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
+    await expect(p.getByRole('group', { name: 'Nível 4' })).toBeVisible();
+    await expectScreenPasses(p, `Seus efeitos e a exaustão na ficha ${where}`);
+
+    // The attack sheet with the d4 of Bênção beside the d20.
+    await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    // The sheet's name changes while the result is typed, and the exhaustion of level 4 makes the attack take two d20.
+    const attack = p.getByRole('dialog');
+    await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await attack.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(attack.getByLabel('Resultado do d4 (Bênção)')).toBeVisible();
+    await expectScreenPasses(p, `Atacar com Bênção, o d4 dos dados físicos ${where}`);
+    await attack.getByLabel('Resultado do d4 (Bênção)').fill('3');
+    // Two low dice: the attack misses, so no damage waits and the turn can end below.
+    await attack.getByLabel('Primeiro d20').fill('2');
+    await attack.getByLabel('Segundo d20').fill('5');
+    await attack.getByRole('button', { name: /^Confirmar/ }).click();
+    await expect(attack).toContainText('+ 1d4 (3)');
+    await expectScreenPasses(p, `Atacar com Bênção, o resultado com o d4 ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(attack).toBeHidden();
+
+    // The turn of a paralysed character, and the saving throw of the end of the turn.
+    await add('spell:hold-person', captain);
+    await expect(p.getByTestId('effect-note')).toBeVisible();
+    await expectScreenPasses(p, `O turno de quem está paralisado ${where}`);
+    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    // The dialog of a desktop is named by its title, the bottom sheet of a phone by its label.
+    const save = p.getByRole('dialog', { name: /^(Teste de resistência do fim do turno|Fim do seu turno)$/ });
+    await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
+    await expectScreenPasses(p, `Fim do seu turno, as três respostas ${where}`);
+    await save.getByRole('button', { name: 'Digitar o resultado' }).click();
+    // The exhaustion of level 4 gives disadvantage on the save (two d20), and Bênção adds its d4.
+    await expect(save.getByLabel('Primeiro d20')).toBeVisible();
+    await expectScreenPasses(p, `Fim do seu turno, digitando o d20 ${where}`);
+    await save.getByLabel('Resultado do d4 (Bênção)').fill('2');
+    await save.getByLabel('Primeiro d20').fill('20');
+    await save.getByLabel('Segundo d20').fill('20');
+    await save.getByRole('button', { name: /Confirmar/ }).click();
+    await expect(save).toContainText('Passou');
+    await expectScreenPasses(p, `Fim do seu turno, o resultado ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'light', 1280);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'light', 390);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'dark', 1280);
+});
+
+test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectsPlayerScreens(browser, 'dark', 390);
 });

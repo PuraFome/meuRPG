@@ -1,0 +1,76 @@
+<app-sheet-frame
+  title="Esconder-se"
+  [subtitle]="subtitle"
+  titleId="hide-t"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  <app-attack-steps [steps]="steps()" label="Passos do teste" />
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (attempt(); as a) {
+    @if (a.roll; as r) {
+      <app-contest-roll [roll]="r" [skill]="checkName" />
+    }
+    @switch (a.status) {
+      @case (Pending) {
+        <div class="mr-notice mr-notice--neutral note" role="status" data-testid="hide-wait">
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+          <p><b>Esperando o mestre.</b> Ele confirma se há onde se esconder.</p>
+        </div>
+      }
+      @case (Applied) {
+        <div class="mr-notice mr-notice--success note" role="status">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>
+          <p><b>Você está {{ hidden() }}.</b></p>
+        </div>
+        <p class="line">
+          Você sai do esconderijo quando atacar, conjurar ou for vista. O mestre decide o que cada criatura percebe.
+        </p>
+      }
+      @default {
+        <div class="mr-notice mr-notice--danger note" role="status">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>
+            @if (refusal().lead) {
+              <b>{{ refusal().lead }}</b>
+            }
+            {{ refusal().rest }}
+          </p>
+        </div>
+      }
+    }
+  } @else {
+    <div class="mr-notice mr-notice--neutral note">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <p>O mestre confirma se há onde se esconder. Você não se esconde de quem {{ seen() }} vê claramente.</p>
+    </div>
+    <p class="line">Seu teste de <b>{{ checkName }}</b>: <b>{{ modifierText }}</b>.</p>
+    <app-check-roll-form
+      [mode]="mode"
+      [notes]="notes"
+      [modifier]="modifier"
+      [checkName]="checkName"
+      [diceMode]="data.diceMode"
+      [preference]="data.preference"
+      [busy]="busy()"
+      (roll)="roll($event)"
+    />
+  }
+
+  <div foot class="foot">
+    @if (attempt()) {
+      @if (status() === Pending) {
+        <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
+      } @else {
+        <button #done mat-flat-button type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
+      }
+    }
+  </div>
+</app-sheet-frame>

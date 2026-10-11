@@ -353,7 +353,10 @@ func tableFeaturesOf(in []*rulesv1.TableFeature) []rules.TableFeature {
 }
 
 func tableFeatureOf(f *rulesv1.TableFeature) rules.TableFeature {
-	return rules.TableFeature{Key: f.GetKey(), NamePT: f.GetNamePt(), DescPT: f.GetDescPt(), Effects: tableEffectsOf(f.GetEffects())}
+	return rules.TableFeature{
+		Key: f.GetKey(), NamePT: f.GetNamePt(), DescPT: f.GetDescPt(), Effects: tableEffectsOf(f.GetEffects()),
+		Options: tableFeaturesOf(f.GetOptions()),
+	}
 }
 
 func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
@@ -363,7 +366,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Type: e.GetType(), Target: e.GetTarget(), Mode: e.GetMode(), Value: e.GetValue(), When: e.GetWhen(), Tags: e.GetTags(),
 			Proficiency: e.GetProficiency(), Level: e.GetLevel(), Roll: e.GetRoll(), Targets: e.GetTargets(),
 			Sense: e.GetSense(), RangeFt: int(e.GetRangeFt()), Resource: e.GetResource(), Max: e.GetMax(), Recharge: e.GetRecharge(),
-			Choice: e.GetChoice(), Count: int(e.GetCount()), From: e.GetFrom(), Economy: e.GetEconomy(),
+			Choice: e.GetChoice(), Count: int(e.GetCount()), From: e.GetFrom(), Economy: e.GetEconomy(), Applies: e.GetApplies(), Ability: e.GetAbility(),
 			Spells: e.GetSpells(), TextPT: e.GetTextPt(),
 		})
 	}
@@ -800,6 +803,11 @@ func (a *keyAssigner) collectOld(old tableBody) {
 			a.owned[f.GetKey()] = true
 			a.slugs[slugOfStoredKey(f.GetKey())] = true
 			a.byName[strconv.Itoa(g.level)+"\x00"+f.GetNamePt()] = f.GetKey()
+			for _, o := range f.GetOptions() {
+				a.owned[o.GetKey()] = true
+				a.slugs[slugOfStoredKey(o.GetKey())] = true
+				a.byName[optionScope(f.GetKey())+"\x00"+o.GetNamePt()] = o.GetKey()
+			}
 		}
 	}
 }
@@ -813,6 +821,24 @@ func (a *keyAssigner) take(key string) {
 // assign sets the keys of one group of features. Keys already on the features
 // are claimed first, so a new one never takes a slug an existing one has.
 func (a *keyAssigner) assign(path, prefix, stem string, level int, features []*rulesv1.TableFeature) {
+	a.assignIn(path+".features", prefix, stem, strconv.Itoa(level), features)
+	// The options of a feature get their keys once the feature has its own, in
+	// their own scope (a name repeated in two features' lists is not the same option).
+	for i, f := range features {
+		if len(f.GetOptions()) > 0 {
+			a.assignOptions(fmt.Sprintf("%s.features[%d]", path, i), prefix, stem, f)
+		}
+	}
+}
+
+func optionScope(featureKey string) string { return "option\x00" + featureKey }
+
+// assignOptions is assign for the option list of one feature.
+func (a *keyAssigner) assignOptions(path, prefix, stem string, f *rulesv1.TableFeature) {
+	a.assignIn(path+".options", prefix, stem, optionScope(f.GetKey()), f.GetOptions())
+}
+
+func (a *keyAssigner) assignIn(path, prefix, stem, scope string, features []*rulesv1.TableFeature) {
 	for i, f := range features {
 		if f.GetKey() == "" {
 			continue
@@ -824,7 +850,7 @@ func (a *keyAssigner) assign(path, prefix, stem string, level int, features []*r
 		}
 		if !a.owned[f.GetKey()] {
 			*a.violations = append(*a.violations, &rulesv1.TableContentViolation{
-				Field: fmt.Sprintf("%s.features[%d].key", path, i), Reason: reasonImmutable,
+				Field: fmt.Sprintf("%s[%d].key", path, i), Reason: reasonImmutable,
 				Message: "a feature key is made by the server; send back only the ones the entry has",
 			})
 			continue
@@ -836,7 +862,7 @@ func (a *keyAssigner) assign(path, prefix, stem string, level int, features []*r
 			continue
 		}
 		if f.GetKey() == "" {
-			if k := a.byName[strconv.Itoa(level)+"\x00"+f.GetNamePt()]; k != "" && !a.taken[k] {
+			if k := a.byName[scope+"\x00"+f.GetNamePt()]; k != "" && !a.taken[k] {
 				f.Key = k
 				a.take(k)
 				continue
@@ -870,12 +896,14 @@ func forPlayer(e entryRow, hidden func(string) bool) entryRow {
 		return e // nothing is hidden: the entry goes as it is
 	}
 	body := proto.Clone(e.body).(tableBody)
-	dropEffects := func(fs []*rulesv1.TableFeature) {
+	var dropEffects func(fs []*rulesv1.TableFeature)
+	dropEffects = func(fs []*rulesv1.TableFeature) {
 		for _, f := range fs {
 			for _, ef := range f.GetEffects() {
 				ef.Spells = slices.DeleteFunc(ef.Spells, func(k string) bool { return hidden(k) })
 				ef.From = slices.DeleteFunc(ef.From, func(k string) bool { return hidden(k) })
 			}
+			dropEffects(f.GetOptions())
 		}
 	}
 	casting := func(c *rulesv1.TableCasting) {

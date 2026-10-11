@@ -8,7 +8,9 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/contests.proto";
 import "meurpg/play/v1/play.proto";
+import "meurpg/play/v1/scene.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // ResourceService runs the rests and the class resources of a campaign's open
@@ -55,6 +57,25 @@ service ResourceService {
   // for a die size the character does not have, or a typed face outside the die.
   rpc SpendHitDice(SpendHitDiceRequest) returns (SpendHitDiceResponse);
 
+  // UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
+  // expended spell slots, after a short rest (SRD 5.1, Wizard, Arcane Recovery):
+  // the slots may have a combined level of half the WIZARD level (rounded up) at
+  // most, and none of them can be of the 6th level or higher. Only the character's
+  // spellcasting slots count, never the pact slots. "Once per day" is once per
+  // long rest: the use is the `arcane_recovery` resource, which a long rest gives
+  // back. It is allowed only while the latest rest of the open session is a short
+  // rest. The character's player or the master.
+  //
+  // Errors: `permission_denied` for another player's character;
+  // `invalid_argument` for no slots, a repeated level or a count below 1;
+  // `failed_precondition` with ResourceBlocked NOT_AVAILABLE (not a wizard),
+  // NO_USES_LEFT (used since the last long rest), NO_SHORT_REST (the latest rest is
+  // not a short rest), SLOT_LEVEL_TOO_HIGH (a slot of the 6th level or higher),
+  // SLOT_NOT_EXPENDED (fewer expended slots of that level than asked) and
+  // OVER_ALLOWANCE (the combined level is above the allowance; needed is the
+  // combined level asked and available the allowance).
+  rpc UseArcaneRecovery(UseArcaneRecoveryRequest) returns (UseArcaneRecoveryResponse);
+
   // UseLayOnHands touches a creature and draws from the pool: heals up to the
   // amount, or spends 5 points to cure a disease or neutralize a poison (SRD
   // 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
@@ -98,6 +119,29 @@ service ResourceService {
   // Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
   // face outside the die.
   rpc AnswerBardicInspiration(AnswerBardicInspirationRequest) returns (AnswerBardicInspirationResponse);
+
+  // GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
+  // die their character holds and, for a bard, the uses left and the party to give it to.
+  // Only the caller's own character is described (the master gets every die held).
+  rpc GetOutsideInspiration(GetOutsideInspirationRequest) returns (GetOutsideInspirationResponse);
+
+  // GiveBardicInspirationOutside gives a die to another character of the party outside
+  // a combat, spending one use: the die lasts 10 minutes of game time. The target
+  // is another character of the campaign who holds no die; the bard's player gives with
+  // their own character. While a combat runs, GiveBardicInspiration is the call.
+  //
+  // Errors: ResourceBlocked NO_USES_LEFT, TARGET_REFUSED, NOT_AVAILABLE,
+  // COMBAT_OPEN (a combat is open: give in it).
+  rpc GiveBardicInspirationOutside(GiveBardicInspirationOutsideRequest) returns (GiveBardicInspirationOutsideResponse);
+
+  // AnswerOutsideInspiration answers the question a roll out of a combat asks (RollSceneCheck,
+  // RollGroupCheck answer with an offer when the character holds a die): use the die on it
+  // or keep it. The roll is then written as if it had been made now, with the die added
+  // when it was used. The roll's owner only.
+  //
+  // Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
+  // the die; `failed_precondition` when the die ran out meanwhile.
+  rpc AnswerOutsideInspiration(AnswerOutsideInspirationRequest) returns (AnswerOutsideInspirationResponse);
 }
 
 // ResourceBlocked is the detail of a refusal that comes from a rule.
@@ -136,6 +180,12 @@ enum ResourceBlockedReason {
   // A roll is held, waiting for the player's answer about a Bardic Inspiration
   // die: the combatant does nothing else until it is answered.
   RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING = 11;
+  // UseArcaneRecovery: the latest rest of the open session is not a short rest.
+  RESOURCE_BLOCKED_REASON_NO_SHORT_REST = 12;
+  // UseArcaneRecovery: fewer expended slots of a level than the call asks to recover.
+  RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED = 13;
+  // UseArcaneRecovery: the combined level of the slots is above the allowance.
+  RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE = 14;
 }
 
 // RestKind is the kind of a rest.
@@ -209,6 +259,9 @@ message TakeRestRequest {
   // Long rest: which hit dice come back, for the characters whose player chose;
   // a character without a choice gets the default (the largest dice first).
   repeated HitDiceChoice hit_dice_choices = 4;
+  // Long rest: a character with exhaustion loses one level when the rest had food and
+  // drink (SRD 5.1, Resting: "Finishing a Long Rest"). True when the table had none.
+  bool without_food_or_drink = 100;
 }
 
 message HitDiceChoice {
@@ -243,6 +296,20 @@ message SpendHitDiceResponse {
   int32 face = 2;
   int32 constitution_modifier = 3;
   int32 healed = 4;
+}
+
+message UseArcaneRecoveryRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The slots to recover: how many of each spell level, one entry per level.
+  repeated SpellSlotBack slots = 3;
+  string idempotency_key = 4;
+}
+
+message UseArcaneRecoveryResponse {
+  CharacterVitals vitals = 1;
+  // The combined level recovered.
+  int32 recovered_levels = 2;
 }
 
 enum LayOnHandsCure {
@@ -349,4 +416,80 @@ message AnswerBardicInspirationRequest {
 message AnswerBardicInspirationResponse {
   // The attack, resolved, as RollAttack answers it.
   RollAttackResponse attack = 1;
+}
+
+message GetOutsideInspirationRequest {
+  string campaign_id = 1;
+}
+
+// OutsideInspirationDie is a die a character holds out of a combat.
+message OutsideInspirationDie {
+  string character_id = 1;
+  string character_name = 2;
+  int32 sides = 3;
+  // The bard that gave it, by name.
+  string from_name = 4;
+  // The game time the die has left, in seconds (it only moves when the master moves game
+  // time).
+  int32 seconds_left = 5;
+}
+
+// BardicInspirationTarget is a character the bard may give the die to.
+message BardicInspirationTarget {
+  string character_id = 1;
+  string name = 2;
+  // Why the die cannot go to this character, in Portuguese; empty when it can.
+  string disabled_reason_pt = 3;
+}
+
+message GetOutsideInspirationResponse {
+  // The caller's own character's die, unset when it holds none. The master gets none here.
+  OutsideInspirationDie mine = 1;
+  // The caller is a bard: the die they give, the uses left and the most, and the party.
+  bool is_bard = 2;
+  int32 sides = 3;
+  int32 uses_left = 4;
+  int32 uses_max = 5;
+  repeated BardicInspirationTarget targets = 6;
+  // The master reads every die held.
+  repeated OutsideInspirationDie held = 7;
+  // The caller's rolls that wait for an answer about the die.
+  repeated OutsideInspirationOffer offers = 8;
+  // A combat is open: the bard gives in it.
+  bool combat_open = 9;
+}
+
+message GiveBardicInspirationOutsideRequest {
+  string campaign_id = 1;
+  // The character that gets the die (a UUID).
+  string target_character_id = 2;
+  string idempotency_key = 3;
+}
+
+message GiveBardicInspirationOutsideResponse {
+  CharacterVitals vitals = 1;
+  OutsideInspirationDie die = 2;
+}
+
+message AnswerOutsideInspirationRequest {
+  string campaign_id = 1;
+  // The held roll (a UUID), from the offer.
+  string hold_id = 2;
+  // True: roll the die and add it to the total. False: keep the die.
+  bool use = 3;
+  // How the die comes when `use` is true (RN-18): the app rolls it, or the player typed the
+  // face. Required then.
+  oneof roll {
+    bool roll_in_app = 4;
+    int32 typed_face = 5;
+  }
+  string idempotency_key = 6;
+}
+
+message AnswerOutsideInspirationResponse {
+  // The path of the held roll answers as it does: the scene check or the group check.
+  oneof result {
+    RollSceneCheckResponse scene_check = 1;
+    RollGroupCheckResponse group_check = 2;
+  }
 }

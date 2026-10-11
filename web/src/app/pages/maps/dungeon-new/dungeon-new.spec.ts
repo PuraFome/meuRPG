@@ -140,11 +140,11 @@ describe('DungeonNew ("Gerar masmorra", MR-010, E10-05 1 to 4)', () => {
       expect(button(el, 'Criar o mapa').getAttribute('aria-disabled')).not.toBe('true');
     });
 
-    it('says under the preview that the map is born hidden, with the fog on and the base light "Clara"', async () => {
+    it('says under the preview that the map is born hidden, with the fog on and the base light "Penumbra"', async () => {
       const { el, debounced } = await open();
       await debounced();
       expect(text(el)).toContain(
-        'O mapa nasce escondido dos jogadores, com a névoa ligada e a luz de base “Clara” (você muda no mapa).',
+        'O mapa nasce escondido dos jogadores, com a névoa ligada e a luz de base “Penumbra” (você muda no mapa).',
       );
     });
 

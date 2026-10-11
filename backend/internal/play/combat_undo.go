@@ -32,6 +32,7 @@ var undoableKinds = []string{
 	eventAttackRolled, eventDamageRolled, eventDamageApplied, eventDamageDiscarded, eventActionTaken, eventHitPointsAdjusted,
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
 	eventCombatantMoved, eventTrapTriggered, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
+	eventHideResolved, // only the master's reveal of a hider (undoableHideResolved)
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -81,7 +82,7 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 		// A door a move opened is written before the move's own event too. An undo of
 		// the move leaves the door open (a door opened stays opened), and the line
 		// stays: it never closes the chain either.
-		if e.Kind == eventDoorOpened {
+		if e.Kind == eventDoorOpened || e.Kind == eventHideEnded {
 			continue
 		}
 		// A puzzle shown, solved, reset or closed is no action of the combat (MR-038), and
@@ -128,6 +129,10 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 			if ev, err := readEvent(e.Payload); err == nil && ev.FxKind == rules.SpellKindRevive {
 				return playdb.ListRecentSessionEventsRow{}, false
 			}
+		}
+		// The master's decision on a hide attempt is not undone, his reveal of a hider is.
+		if e.Kind == eventHideResolved && !undoableHideResolved(e.Payload) {
+			return playdb.ListRecentSessionEventsRow{}, false
 		}
 		if slices.Contains(undoableKinds, e.Kind) && e.EncounterID != nil && *e.EncounterID == encounterID {
 			// A move written before the undo knew moves says where it came from
@@ -364,6 +369,10 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		return cs[i], true
 	}
+	// The hiding an attack or a cast gave away, and the Help the attack used, come back.
+	if err := restoreContestState(ctx, c, ev); err != nil {
+		return nil, err
+	}
 	setStatus := func(id, status string) error {
 		_, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: id, Status: status})
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -455,6 +464,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 	}
 
+	// What the action ended (an effect whose caster stopped concentrating, a spell it replaced)
+	// comes back with its id and its clock.
+	if err := s.restoreEffects(ctx, c, ev.Restore); err != nil {
+		return nil, err
+	}
 	switch kind {
 	case eventAttackRolled:
 		// The action (or the reaction) comes back and the damage the hit opened goes
@@ -466,6 +480,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			}
 		}
 		if who, ok := find(ev.Actor); ok {
+			if ev.ExtraUsed {
+				if err = c.q.SetCombatantExtraActionUsed(ctx, playdb.SetCombatantExtraActionUsedParams{ID: who.ID, ExtraActionUsed: false}); err != nil {
+					return nil, fmt.Errorf("give the extra action back: %w", err)
+				}
+			}
 			if ev.AsReaction {
 				err = setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)
 			} else {
@@ -540,6 +559,15 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				keep(v)
 			}
 		}
+		if who, ok := find(ev.Actor); ok && who.Kind == kindPlayer {
+			for _, key := range ev.ManeuverSpent {
+				v, err := s.spendResource(ctx, c, who.CharacterID, key, -1)
+				if err != nil {
+					return nil, err
+				}
+				keep(v)
+			}
+		}
 		if who, ok := find(ev.Actor); ok && ev.OnceBefore != nil {
 			if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{
 				ID: who.ID, SneakAttackTurn: nilIfEmpty(ev.OnceBefore.Sneak), ColossusSlayerTurn: nilIfEmpty(ev.OnceBefore.Colossus),
@@ -562,6 +590,13 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			return nil, err
 		}
 		keep(after)
+		if ev.Relentless { // the use of Relentless Endurance comes back with the hit points
+			back, err := s.spendResource(ctx, c, who.CharacterID, resRelentlessEndurance, -1)
+			if err != nil {
+				return nil, err
+			}
+			keep(back)
+		}
 		if err := setDeath(who, ev.DeathBefore); err != nil {
 			return nil, err
 		}
@@ -574,6 +609,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 			prev = pendingRolled // never: only these can be discarded
 		}
 		return nil, setStatus(ev.Pending, prev)
+	case eventHideResolved:
+		// The master's reveal: the hiding comes back as it was.
+		if err := restoreHiding(ctx, c, ev.Actor, ev.HidBefore); err != nil {
+			return nil, err
+		}
 	case eventCombatantMoved:
 		// The square, the movement walked, the running start and the master's cover
 		// mark are as they were: a move, a jump (the movement a jump spent comes
@@ -599,6 +639,20 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}); err != nil {
 			return nil, fmt.Errorf("put back the move: %w", err)
 		}
+		// Standing up from Prone also took the condition off (combat_standup.go).
+		if ev.CondSet {
+			if err := c.q.SetCombatantConditions(ctx, playdb.SetCombatantConditionsParams{ID: who.ID, Conditions: nonNil(ev.CondBefore)}); err != nil {
+				return nil, fmt.Errorf("put back the conditions: %w", err)
+			}
+		}
+		// The creature the mover dragged along goes back to where it stood (combat_drag.go).
+		if ev.Dragged != "" && ev.DraggedFrom != nil && ev.DraggedFrom.Placed {
+			if err := c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{
+				ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: "none",
+			}); err != nil {
+				return nil, fmt.Errorf("put back the dragged creature: %w", err)
+			}
+		}
 		// The offers the move made go with it. Only the move that is the last action
 		// is undone, so they are all still pending: an answer comes after it, and has
 		// to be undone first (which makes the offer wait again).
@@ -623,6 +677,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if err := setEconomy(who, ev.ActionBefore, ev.BonusBefore, ev.ReactionBefore, ev.DashedBefore); err != nil {
 			return nil, err
 		}
+		if ev.ExtraUsed {
+			if err := c.q.SetCombatantExtraActionUsed(ctx, playdb.SetCombatantExtraActionUsedParams{ID: who.ID, ExtraActionUsed: false}); err != nil {
+				return nil, fmt.Errorf("give the extra action back: %w", err)
+			}
+		}
 		if ev.StateID != "" { // the state the action began: a rage, a dodge, a reckless attack
 			if err := c.q.DeleteCombatantState(ctx, ev.StateID); err != nil {
 				return nil, fmt.Errorf("take the state off: %w", err)
@@ -646,6 +705,11 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		if ev.Res != nil {
 			if err := s.takeBackResource(ctx, c, ev, who, find, setHP, setDeath, putVitals, keep); err != nil {
 				return nil, err
+			}
+		}
+		for _, cut := range ev.FallCuts { // the points Slow Fall took off a fall come back
+			if err := c.q.SetPendingDamageLanding(ctx, playdb.SetPendingDamageLandingParams{ID: cut.Pending, Amount: &cut.Before}); err != nil {
+				return nil, fmt.Errorf("put back the fall damage: %w", err)
 			}
 		}
 		if ev.Resource != "" && who.Kind == kindPlayer {
@@ -687,6 +751,16 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		}
 		if err := c.q.SetCombatantSpellsCast(ctx, playdb.SetCombatantSpellsCastParams{ID: who.ID, SpellCast: ev.SpellCastBefore, BonusSpellCast: ev.BonusSpellBefore}); err != nil {
 			return nil, fmt.Errorf("put back the spells cast: %w", err)
+		}
+		if ev.Lasting != nil { // the effects the cast put on its targets
+			for _, id := range ev.Lasting.Effects {
+				if err := c.q.DeleteLastingEffect(ctx, id); err != nil {
+					return nil, fmt.Errorf("take the effects of the cast away: %w", err)
+				}
+			}
+			if err := s.refreshCombatants(ctx, c, ev.Lasting.Targets...); err != nil {
+				return nil, err
+			}
 		}
 		if ev.Key == huntersMark { // the mark the cast put on its target
 			if err := s.clearHuntersMark(ctx, c, who); err != nil {
@@ -806,6 +880,15 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 				keep(v)
 			} else if err := s.giveBackNPCSlot(ctx, c, who, *ev.Slot); err != nil { // an NPC's slot is counted on the combatant
 				return nil, err
+			}
+		}
+		if who.Kind == kindPlayer {
+			for _, key := range ev.ManeuverSpent { // a table maneuver's use
+				v, err := s.spendResource(ctx, c, who.CharacterID, key, -1)
+				if err != nil {
+					return nil, err
+				}
+				keep(v)
 			}
 		}
 		if err := setEconomy(who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed); err != nil {

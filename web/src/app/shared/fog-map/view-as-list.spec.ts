@@ -100,7 +100,7 @@ describe('ViewAsList', () => {
   it('says "Visão do grupo" in words, on or off, and a line about the chosen view', () => {
     const off = create();
     expect(plain(off.el.querySelector('.va__group'))).toBe(
-      'Visão do grupo: desligada neste mapa. Muda no editor do mapa.',
+      'Visão do grupo: desligada neste mapa. Muda no editor do mapa, em “Pintar”, no painel “Névoa de guerra”.',
     );
     const on = create({
       groupVision: true,

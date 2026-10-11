@@ -2,6 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   computed,
   effect,
@@ -47,9 +48,16 @@ import {
   slotChoices,
   throwText,
 } from '../../../../core/combat/reactions';
+import {
+  isOptionalReaction,
+  playerAutoPassText,
+  playerSecondsLeft,
+} from '../../../../core/combat/reaction-autopass';
 import { metersText } from '../../../../core/units';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { SlotPicker } from '../cast-sheet/slot-picker';
+import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
+import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { SheetFrame } from '../sheet-frame/sheet-frame';
 import { injectSheet } from '../sheet-host';
@@ -85,6 +93,9 @@ export interface ReactionSheetResult {
 
 type Step = 'ask' | 'roll' | 'result';
 
+/** How often the prompt's countdown is redrawn. */
+const AUTO_PASS_TICK_MS = 1000;
+
 /** The pseudo level of the Infernal Legacy's row, which has no slot. */
 const RACIAL_LEVEL = 0;
 
@@ -109,7 +120,15 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 @Component({
   selector: 'app-reaction-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, NgTemplateOutlet, RollPicker, SheetFrame, SlotPicker],
+  imports: [
+    ExtraDice,
+    MatButtonModule,
+    MatIconModule,
+    NgTemplateOutlet,
+    RollPicker,
+    SheetFrame,
+    SlotPicker,
+  ],
   host: { '(keydown)': 'onKey($event)' },
   template: `
     <app-sheet-frame
@@ -140,6 +159,26 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
                 (pick)="chosen.set($event); error.set('')"
               />
             }
+            @if (maneuverOptions().length > 1) {
+              <fieldset class="falling">
+                <legend class="falling__cap">Qual manobra</legend>
+                @for (o of maneuverOptions(); track o.key) {
+                  <label class="falling__row">
+                    <input
+                      type="radio"
+                      class="falling__input"
+                      name="reaction-maneuver"
+                      [checked]="maneuverKey() === o.key"
+                      (change)="maneuverKey.set(o.key)"
+                    />
+                    <span class="falling__text">
+                      <b>{{ o.namePt }}</b>
+                      <small>d{{ o.dieSides }} + {{ o.flatBonus }} · {{ o.usesLeft }} usos</small>
+                    </span>
+                  </label>
+                }
+              </fieldset>
+            }
             @if (warning()) {
               <div class="mr-notice mr-notice--warning" role="status">
                 <mat-icon aria-hidden="true">info</mat-icon>
@@ -157,6 +196,9 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
               <p class="small">{{ v.note }}</p>
             }
             @if (typingSave()) {
+              @if (extra.fields().length > 0) {
+                <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
+              }
               <app-roll-picker
                 [canApp]="false"
                 [canType]="true"
@@ -279,7 +321,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
                 </button>
               </div>
               <p class="fine">
-                <mat-icon aria-hidden="true">info</mat-icon>Se você não responder, o mestre pode decidir por você.
+                <mat-icon aria-hidden="true">info</mat-icon>{{ fineText() }}
               </p>
               @if (refreshed) {
                 <p class="fine fine--now" role="status">
@@ -371,6 +413,8 @@ export class ReactionSheet {
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly typingSave = signal(false);
+  /** The d4 an effect adds to the typed saving throw (Bênção, Perdição): asked when the server says the roll takes them. */
+  protected readonly extra = new ExtraDiceState();
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
   /** What the answer did, once the server told it. */
   private readonly answer = signal<
@@ -428,6 +472,17 @@ export class ReactionSheet {
     }
   });
   protected readonly chosen = signal<SlotRow | null>(defaultSlot(this.rows()));
+  /** The maneuvers a reduction offers (the first is picked), when the window is a maneuver reduction. */
+  protected readonly maneuverOptions = computed(() => {
+    const p = this.asked().prompt;
+    return p.case === 'maneuverReduce' ? p.value.options : [];
+  });
+  protected readonly maneuverKey = signal(
+    (() => {
+      const p = this.asked().prompt;
+      return p.case === 'maneuverReduce' ? (p.value.options[0]?.key ?? '') : '';
+    })(),
+  );
   protected readonly warning = computed(() =>
     this.asked().prompt.case === 'shield' ? lastSlotWarning(this.chosen(), null) : '',
   );
@@ -454,6 +509,17 @@ export class ReactionSheet {
     const p = this.asked().prompt;
     return p.case === 'concentrationSave' && p.value.bonusKnown ? p.value.saveBonus : 0;
   });
+
+  /** When the prompt opened: the seconds before it passes by itself count from here (the master's screen sends the pass). */
+  private readonly openedAt = Date.now();
+  private readonly clock = signal(this.openedAt);
+  private readonly clockTimer = setInterval(() => this.clock.set(Date.now()), AUTO_PASS_TICK_MS);
+  /** The small print under the buttons: the countdown of an optional reaction, or what the master may do. */
+  protected readonly fineText = computed(() =>
+    isOptionalReaction(this.asked())
+      ? playerAutoPassText(playerSecondsLeft(this.openedAt, this.clock()))
+      : 'Se você não responder, o mestre pode decidir por você.',
+  );
 
   /** "Usar ..." needs what the question asks for: a slot, a creature to save. */
   protected readonly canUse = computed(() => {
@@ -545,6 +611,8 @@ export class ReactionSheet {
   private readonly keepButton = viewChild('keep', { read: ElementRef<HTMLButtonElement> });
 
   constructor() {
+    // The countdown stops with the sheet.
+    inject(DestroyRef).onDestroy(() => clearInterval(this.clockTimer));
     effect(() => (this.keepButton() ?? this.focus())?.nativeElement.focus());
     // Closed by itself (the reactor can no longer react): the page says why in its status line, and this goes away.
     effect(() => {
@@ -590,6 +658,7 @@ export class ReactionSheet {
       ...(row && !racial ? { slot: { level: row.level, pact: row.pact } } : {}),
       ...(racial ? { useRacial: true } : {}),
       ...(this.isFeatherFall() ? { creatureIds: [...this.picked()] } : {}),
+      ...(this.maneuverKey() ? { maneuverKey: this.maneuverKey() } : {}),
       ...(die ? { die } : {}),
     };
   }
@@ -655,6 +724,13 @@ export class ReactionSheet {
       return;
     }
     const w = this.asked();
+    const extra = this.extra.take(how.kind === 'typed');
+    if (extra === null) {
+      this.error.set(this.extra.missingText());
+      return;
+    }
+    const sent: ConcentrationAnswer =
+      how.kind === 'typed' && extra.length > 0 ? { ...how, extra } : how;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -662,8 +738,8 @@ export class ReactionSheet {
         this.data.campaignId,
         this.data.encounterId,
         w.id,
-        how,
-        this.keys.keyFor({ window: w.id, how }),
+        sent,
+        this.keys.keyFor({ window: w.id, how: sent }),
       );
       this.data.state.apply(res.encounter);
       if (!res.result) {
@@ -675,6 +751,11 @@ export class ReactionSheet {
       this.step.set('result');
       this.typingSave.set(false);
     } catch (err) {
+      const more = this.extra.fromRefusal(err);
+      if (more) {
+        this.error.set(more);
+        return;
+      }
       await this.failed(err, null, 'resolver o teste de concentração');
     } finally {
       this.busy.set(false);

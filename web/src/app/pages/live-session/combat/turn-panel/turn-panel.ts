@@ -7,7 +7,11 @@ import {
   CombatantState,
   type Encounter,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { ContestTurnState } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
+import type { EffectNote } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { joinDots, tight } from '../../../../core/format/text';
+import { contestNotes } from '../../../../core/combat/contest-view';
+import { noteParts } from '../../../../core/effects/effects';
 import { metersFixed, squaresFree } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
 import {
@@ -22,7 +26,7 @@ import {
   turnBanner,
 } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
-import { conditionTags } from '../../../../core/combat/conditions';
+import { cannotAct, conditionTags } from '../../../../core/combat/conditions';
 import {
   leftSentence,
   listNames,
@@ -98,8 +102,13 @@ export class TurnPanel {
   readonly concentration = input('');
   /** The combat is played without a map (RN-25): the movement tile has no squares to count. */
   readonly theatre = input(false);
+  /** What the effects on the combatant take away this turn ("Você está Paralisada. Não age nem se move neste turno."), already worded for the caller (RN-20). */
+  readonly effectNotes = input<readonly EffectNote[]>([]);
+  protected readonly noteParts = noteParts;
   /** The page draws the order strip itself, under the actions, on the player's own turn on a phone. */
   readonly orderBelow = input(false);
+  /** The contest facts of the turn (`GetTurnOptions.contest_state`): hidden, surprised (W7-X). */
+  readonly contest = input<ContestTurnState | undefined>(undefined);
 
   readonly endTurn = output<void>();
   /** "Ataque de oportunidade": the key of the melee attack. */
@@ -116,6 +125,12 @@ export class TurnPanel {
   protected readonly wide = mediaQuery('(min-width: 1280px)');
   protected readonly compact = computed(() => this.desktop() && this.banner().mine && !this.down());
   protected readonly banner = computed(() => turnBanner(this.encounter()));
+  /** "Escondida" and "Surpresa": the state tags of the turn with the sentence under each (W7-X). */
+  protected readonly states = computed(() => contestNotes(this.contest(), this.own()?.label ?? ''));
+  protected readonly surprised = computed(() => this.contest()?.surprised === true);
+  protected readonly endLabel = computed(() =>
+    this.surprised() ? 'Passar o turno' : 'Encerrar turno',
+  );
   /** The members of a joint turn that is all creatures (the wolves): the header draws each one's token. */
   protected readonly groupTokens = computed<readonly Combatant[]>(() => {
     const members = this.banner().joint?.members ?? [];
@@ -192,6 +207,13 @@ export class TurnPanel {
     }
     const left = this.attacksLeft();
     const partial = c.actionUsed && left > 0 && this.attacksPerAction() > 1;
+    if (cannotAct(c)) {
+      return ['Ação', 'Ação bônus', 'Reação'].map((name) => ({
+        name,
+        used: true,
+        word: 'Indisponível',
+      }));
+    }
     return [
       {
         name: 'Ação',

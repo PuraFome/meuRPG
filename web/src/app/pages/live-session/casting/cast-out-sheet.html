@@ -7,7 +7,12 @@
       </div>
     }
 
-    @if (cast(); as c) {
+    @if (summoned()) {
+      <div class="mr-notice mr-notice--success" role="status">
+        <mat-icon aria-hidden="true">pets</mat-icon>
+        <p>{{ summoned() }}</p>
+      </div>
+    } @else if (cast(); as c) {
       <ul class="result">
         @for (line of resultLines(); track line) {
           <li>{{ line }}</li>
@@ -21,7 +26,11 @@
           <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
           <p>
             <strong>Conjurando ({{ c.castingMinutes }} min).</strong>
-            O espaço de magia só é gasto quando o mestre conclui a conjuração. Se a concentração se perder, a magia falha e o espaço fica com você.
+            @if (c.ritual) {
+              Um ritual não gasta espaço de magia. Se a concentração se perder, a magia falha.
+            } @else {
+              O espaço de magia só é gasto quando o mestre conclui a conjuração. Se a concentração se perder, a magia falha e o espaço fica com você.
+            }
           </p>
         </div>
       }
@@ -50,6 +59,14 @@
       } @else {
         <p class="loading">Nenhuma magia para conjurar fora do combate.</p>
       }
+    } @else if (summons()) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">pets</mat-icon>
+        <p>
+          {{ spell()!.spell!.namePt }} traz uma criatura: ela não tem alvo. Escolha a criatura (e o espaço de magia, ou o
+          ritual) na próxima tela; ela aparece na ficha em "Criaturas".
+        </p>
+      </div>
     } @else {
       @if (ways().includes('ritual')) {
         <app-choice-cards label="Como conjurar" [rows]="wayRows()" [chosen]="[way()]" (choose)="pickWay($event)" />
@@ -61,7 +78,12 @@
         <div class="mr-notice mr-notice--neutral" role="status">
           <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
           <p>
-            Leva {{ minutes() }} minutos. Você concentra enquanto conjura; o espaço de magia só é gasto quando o mestre conclui a conjuração.
+            Leva {{ minutes() }} minutos. Você concentra enquanto conjura;
+            @if (way() === 'ritual') {
+              um ritual não gasta espaço de magia.
+            } @else {
+              o espaço de magia só é gasto quando o mestre conclui a conjuração.
+            }
           </p>
         </div>
       }
@@ -73,6 +95,9 @@
           [mode]="rule().kind === 'one' ? 'radio' : 'check'"
           (choose)="toggle($event)"
         />
+      }
+      @if (asksAbility()) {
+        <app-ability-picker [chosen]="ability()" (pick)="ability.set($event)" />
       }
       @if (rollsDice()) {
         <app-roll-picker
@@ -98,9 +123,16 @@
   </div>
 
   <div foot>
-    @if (cast()) {
+    @if (summoned() || cast()) {
       <div class="actions">
         <button mat-flat-button type="button" (click)="close()">Fechar</button>
+      </div>
+    } @else if (spell() && summons()) {
+      <div class="actions">
+        @if (!data.spellKey) {
+          <button mat-stroked-button type="button" (click)="back()">Outra magia</button>
+        }
+        <button mat-flat-button type="button" class="cast" (click)="openSummon()">Escolher a criatura</button>
       </div>
     } @else if (spell()) {
       @if (missing()) {

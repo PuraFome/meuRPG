@@ -7,7 +7,7 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { combatant } from '../../../../core/combat/combat-testing';
 import { RageStatus } from './rage-status';
-import { isRaging } from './rage';
+import { isFrenzied, isRaging } from './rage';
 
 const raging = (attacked: boolean, damaged: boolean) =>
   combatant({
@@ -62,5 +62,25 @@ describe('RageStatus', () => {
     expect(el.textContent?.trim()).toBe('');
     expect(isRaging(calm)).toBe(false);
     expect(isRaging(raging(false, false))).toBe(true);
+  });
+
+  it('says "Em frenesi" when the rage is a frenzy, and only then', () => {
+    const plain = raging(false, false);
+    expect(setup(plain).el.textContent).not.toContain('Em frenesi');
+    expect(isFrenzied(plain)).toBe(false);
+    const frenzy = combatant({
+      id: 'b',
+      label: 'Brum',
+      states: [
+        create(CombatantEffectSchema, {
+          id: 's',
+          kind: CombatantStateKind.RAGE,
+          labelPt: 'Em frenesi',
+          frenzy: true,
+        }),
+      ],
+    });
+    expect(isFrenzied(frenzy)).toBe(true);
+    expect(setup(frenzy).el.textContent).toContain('Em frenesi');
   });
 });

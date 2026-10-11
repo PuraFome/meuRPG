@@ -70,6 +70,21 @@
       </li>
     </ul>
 
+    @if (standRow(); as su) {
+      <button
+        mat-stroked-button
+        type="button"
+        class="offer"
+        [class.mr-button--off]="su.off"
+        [attr.aria-describedby]="su.off ? 'stand-why' : null"
+        [disabled]="busy() || turnBusy()"
+        disabledInteractive
+        (click)="!su.off && standUp()"
+      >
+        <mat-icon aria-hidden="true">accessibility_new</mat-icon>Levantar-se
+      </button>
+      <p class="offer__why" id="stand-why">{{ su.off ? su.reason : su.detail }}</p>
+    }
     @if (theatre() && !down()) {
       <app-master-spend [campaignId]="campaignId()" [encounterId]="encounter().id" [subject]="subject()" [state]="state()" />
     }
@@ -111,19 +126,38 @@
             }
           </mat-select>
         </mat-form-field>
-        <app-roll-picker
-          class="aim__roll"
-          [outlined]="true"
-          [canType]="true"
-          [label]="rollLabel()"
-          hint="Digite o número do d20 (1 a 20)."
-          totalNote="Total do ataque"
-          [modifier]="attack()?.attackBonus ?? 0"
-          appLabel="Rolar ataque"
-          [busy]="busy() || !targetId() || !!rollWhy()"
-          (app)="rollApp()"
-          (typed)="rollTyped($event)"
-        />
+        @for (line of modeLines(); track line) {
+          <p class="offer__why aim__mode">{{ line }}</p>
+        }
+        @if (faceCount() === 1) {
+          <app-roll-picker
+            class="aim__roll"
+            [outlined]="true"
+            [canType]="true"
+            [label]="rollLabel()"
+            hint="Digite o número do d20 (1 a 20)."
+            totalNote="Total do ataque"
+            [modifier]="attack()?.attackBonus ?? 0"
+            appLabel="Rolar ataque"
+            [busy]="busy() || !targetId() || !!rollWhy()"
+            (app)="rollApp()"
+            (typed)="rollTyped($event)"
+          />
+        } @else {
+          <app-multi-roll
+            class="aim__roll"
+            [fields]="d20Fields"
+            [canType]="true"
+            [combine]="combine()"
+            [modifier]="attack()?.attackBonus ?? 0"
+            totalNote="Total do ataque"
+            appLabel="Rolar 2d20 no app"
+            [hint]="pairHint()"
+            [busy]="busy() || !targetId() || !!rollWhy()"
+            (app)="rollApp()"
+            (typed)="rollTypedPair($event)"
+          />
+        }
       </div>
       @if (rollWhy()) {
         <p class="offer__why" id="roll-why">{{ rollWhy() }}</p>

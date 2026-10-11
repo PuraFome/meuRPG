@@ -3,7 +3,12 @@
   <h2 id="caracteristicas-heading" class="mr-panel__title">Características e traços</h2>
 
   @if (s.features.length > 0) {
-    <p class="features__caption">Texto do SRD 5.1 (em inglês)</p>
+    <div class="features__head">
+      <p class="features__caption">Texto do SRD 5.1</p>
+      @if (canToggle()) {
+        <app-description-lang-button />
+      }
+    </div>
     <ul class="features">
       @for (f of s.features; track $index) {
         <li>
@@ -16,7 +21,7 @@
             @if (f.summaryPt) {
               <p class="feature__summary-pt">{{ f.summaryPt }}</p>
             }
-            <p class="feature__text" lang="en">{{ f.description }}</p>
+            <div class="feature__text"><app-rule-text [text]="textOf(f)" /></div>
           </details>
         </li>
       }

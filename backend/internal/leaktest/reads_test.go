@@ -1,9 +1,10 @@
 package leaktest
 
 import (
+	"google.golang.org/protobuf/proto"
+
 	campaignpackagev1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1/campaignpackagev1connect"
-	"google.golang.org/protobuf/proto"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
@@ -363,10 +364,25 @@ var reads = []read{
 		},
 	},
 
+	{
+		procedure: playv1connect.ResourceServiceGetOutsideInspirationProcedure, allow: members, why: "a player reads the die of their own character and, as a bard, the party's names; the master reads every die held",
+		req: func(w *world) proto.Message { return &playv1.GetOutsideInspirationRequest{CampaignId: w.campaign} },
+	},
+
 	// ===== CombatService
 	{
 		procedure: playv1connect.CombatServiceGetEncounterProcedure, allow: members,
 		req: func(w *world) proto.Message { return &playv1.GetEncounterRequest{CampaignId: w.campaign} },
+	},
+	{
+		procedure: playv1connect.LastingEffectServiceListCharacterEffectsProcedure, allow: members,
+		req: func(w *world) proto.Message { return &playv1.ListCharacterEffectsRequest{CampaignId: w.campaign} },
+	},
+	{
+		procedure: playv1connect.LastingEffectServiceListLastingEffectsProcedure, allow: masterOnlyRead, why: "the effects in play are the master's panel: what he hides from the players is in it",
+		req: func(w *world) proto.Message {
+			return &playv1.ListLastingEffectsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}
+		},
 	},
 	{
 		procedure: playv1connect.CombatServiceListCombatLogProcedure, allow: members,
@@ -396,6 +412,26 @@ var reads = []read{
 		procedure: playv1connect.CombatServiceGetTurnOptionsProcedure, label: "the boss", allow: masterOnlyRead,
 		req: func(w *world) proto.Message {
 			return &playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: w.combatant(w.boss).GetId()}
+		},
+	},
+
+	// ===== ContestService
+	{
+		procedure: playv1connect.ContestServiceGetContestStateProcedure, allow: members, why: "a player reads the contests they are in, their own Hide, the Helps and the grapples whose two creatures they see; never an NPC's roll, a fixed escape DC, or who noticed a hider (RN-10, RN-20)",
+		req: func(w *world) proto.Message {
+			return &playv1.GetContestStateRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}
+		},
+	},
+	{
+		procedure: playv1connect.ContestServiceGetSurpriseSuggestionProcedure, allow: masterOnlyRead, why: "the suggestion holds every creature's passive Perception and every hider's Stealth total",
+		req: func(w *world) proto.Message {
+			return &playv1.GetSurpriseSuggestionRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}
+		},
+	},
+	{
+		procedure: playv1connect.ContestServiceGetGroupCheckProcedure, allow: members, why: "a player reads their own roll only; the DC, the others' rolls and the count are the master's",
+		req: func(w *world) proto.Message {
+			return &playv1.GetGroupCheckRequest{CampaignId: w.campaign}
 		},
 	},
 

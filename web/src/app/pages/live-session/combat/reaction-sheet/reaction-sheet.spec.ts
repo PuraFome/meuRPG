@@ -139,9 +139,8 @@ describe('ReactionSheet', () => {
       expect(pass.classList).toContain('pair__btn');
       expect(pass.hasAttribute('data-initial-focus')).toBe(true);
       expect(use.hasAttribute('data-initial-focus')).toBe(false);
-      expect(plain(el.textContent)).toContain(
-        'Se você não responder, o mestre pode decidir por você.',
-      );
+      // An optional reaction passes by itself after 30 s (the master's screen sends the pass).
+      expect(plain(el.textContent)).toMatch(/Se você não responder, passa sozinho em (29|30) s\./);
     });
 
     it('lists the slots as radios with the lowest free one chosen', () => {
@@ -634,6 +633,37 @@ describe('ReactionSheet', () => {
       await flush(again.fixture);
       expect(api.resolveConcentrationSave.mock.calls[1][3]).toEqual({ kind: 'hand' });
       expect(closed).toEqual(['closed']);
+    });
+
+    it('asks for the d4 of an effect the server says the save takes, and sends it with the d20', async () => {
+      api.resolveConcentrationSave
+        .mockRejectedValueOnce(
+          new ConnectError('the roll takes 1 more die(s): type their faces', Code.InvalidArgument),
+        )
+        .mockResolvedValue({ encounter: encounter(), result: undefined });
+      const { fixture, el } = setup(save());
+      button(el, 'Digitar o resultado').click();
+      fixture.detectChanges();
+      const type = (i: number, text: string) => {
+        const field = el.querySelectorAll<HTMLInputElement>('input[type="text"]')[i];
+        field.value = text;
+        field.dispatchEvent(new Event('input'));
+        fixture.detectChanges();
+      };
+      type(0, '12');
+      button(el, 'Confirmar').click();
+      await flush(fixture);
+      expect(api.resolveConcentrationSave.mock.calls[0][3]).toEqual({ kind: 'typed', face: 12 });
+      expect(plain(el.textContent)).toContain('Esta rolagem leva mais um d4');
+      type(0, '3');
+      type(1, '12');
+      button(el, 'Confirmar').click();
+      await flush(fixture);
+      expect(api.resolveConcentrationSave.mock.calls[1][3]).toEqual({
+        kind: 'typed',
+        face: 12,
+        extra: [3],
+      });
     });
 
     it('Escape does not decide a concentration save', () => {

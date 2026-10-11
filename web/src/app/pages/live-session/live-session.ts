@@ -1,4 +1,6 @@
 import { CastingPanel } from './casting/casting-panel';
+import { BardicBlock } from './inspiration/bardic-block';
+import { OwnEffects } from './effects/own-effects';
 import {
   Component,
   DOCUMENT,
@@ -28,10 +30,17 @@ import {
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AuthService } from '../../core/auth/auth.service';
+import {
+  CastEffect,
+  type OutsideCast,
+  OutsideCastStatus,
+} from '../../../gen/meurpg/play/v1/casting_pb';
+import { CastingClient } from '../../core/casting/casting-client';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
 import { mineTabs } from '../../core/combat/mine';
 import { casterOfRevival, returnPlace } from '../../core/revivify/revivify-flow';
+import { acts } from '../../core/combat/joint-turn';
 import { isTheatre } from '../../core/combat/theatre';
 import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
@@ -81,6 +90,7 @@ import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveStream } from './live-stream';
 import { PartyPanel } from './party-panel/party-panel';
 import { RestCard } from './rest-card/rest-card';
+import { CharacterEffectsPanel } from './effects/character-effects-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
 import { RevivifyAsk } from './revivify-ask/revivify-ask';
 import { RevivedNotice } from './revived-notice/revived-notice';
@@ -100,8 +110,10 @@ import { ScenePlayer } from './scene/scene-player/scene-player';
 import { LeftImagesBlock } from './left-images-block/left-images-block';
 import { ShownImageBlock } from './shown-image-block/shown-image-block';
 import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
-import { applySnapshot, applyVitals, partyRowSub } from './vitals';
+import { applySnapshot, applyVitals, betterArmorClass, partyRowSub } from './vitals';
 import { FoundTreasures } from './treasure/found-treasures/found-treasures';
+import { GroupCheckCard } from './group-check/group-check-card';
+import { GroupCheckMaster } from './group-check/group-check-master';
 import { TreasurePanel } from './treasure/treasure-panel/treasure-panel';
 import { TrapActivityList } from './traps/trap-activity/trap-activity';
 import { TrapPanel } from './traps/trap-panel/trap-panel';
@@ -141,8 +153,11 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     BattleEncounters,
     CombatLaunch,
     CastingPanel,
+    BardicBlock,
     CombatView,
     FoundTreasures,
+    GroupCheckCard,
+    GroupCheckMaster,
     HighlightsCard,
     LiveToast,
     MasterLive,
@@ -150,6 +165,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     MasterPuzzles,
     PartyPanel,
     RestCard,
+    CharacterEffectsPanel,
     PuzzleNotice,
     PuzzlePlayPage,
     PlayerVitals,
@@ -184,6 +200,7 @@ export class LiveSession {
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly mapsApi = inject(MapsClient);
   private readonly combatApi = inject(CombatClient);
+  private readonly castingApi = inject(CastingClient);
   private readonly sceneApi = inject(SceneClient);
   private readonly notesApi = inject(NotesClient);
   private readonly trapsApi = inject(TrapsClient);
@@ -201,6 +218,16 @@ export class LiveSession {
   protected readonly session = signal<LiveSessionVm | null>(null);
   protected readonly vitals = signal<readonly VitalsVm[]>([]);
   protected readonly playerSheet = signal<PlayerSheetVm | null>(null);
+  /** The armor class of the Armadura Arcana that lasts on the player's character (0: none), which the sheet does not count. */
+  private readonly mageArmorAc = signal(0);
+  /** The player's sheet with the armor class the combat uses: the better of the sheet's and the Armadura Arcana's. */
+  protected readonly ownSheet = computed(() => {
+    const sheet = this.playerSheet();
+    const mage = this.mageArmorAc();
+    return sheet && sheet.armorClass !== null && mage > sheet.armorClass
+      ? { ...sheet, armorClass: mage }
+      : sheet;
+  });
   /** The armor class of the beast's book while the druid is a beast (the vitals show it in place of the druid's own). */
   protected readonly beastAc = signal<number | null>(null);
   protected readonly partyInfo = signal<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
@@ -261,6 +288,11 @@ export class LiveSession {
   );
   /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
   protected readonly castsTick = signal(0);
+  /** Counts the `group_check_changed` hints (and each `ready`): the group check's card reads again when it moves (W7-X). */
+  protected readonly groupCheckTick = signal(0);
+  /** Goes up when a rest was taken: the effects on the characters are read again with the spell casts. */
+  private readonly restsTick = signal(0);
+  protected readonly effectsTick = computed(() => this.castsTick() + this.restsTick());
   protected readonly familiarNameNow = signal<string | null>(null);
   protected readonly seeingFamiliar = computed(() => !!this.vitals().at(0)?.familiarSight);
   private readonly familiarEyes = inject(FamiliarEyesClient);
@@ -360,7 +392,19 @@ export class LiveSession {
   protected readonly highlightsSub = computed(() => {
     const e = this.highlightsFor();
     const rounds = Math.max(1, e?.round ?? 1);
-    return e ? `${e.name} · ${rounds} ${rounds === 1 ? 'rodada' : 'rodadas'}` : '';
+    if (!e) {
+      return '';
+    }
+    const npcs = e.combatants.filter((c) => c.kind !== CombatantKind.PLAYER);
+    const defeated = npcs.filter((c) => c.defeated).length;
+    const beaten = npcs.length > 0 ? ` · ${defeated} de ${npcs.length} derrotados` : '';
+    return `${e.name} · ${rounds} ${rounds === 1 ? 'rodada' : 'rodadas'}${beaten}`;
+  });
+  /** The combat view (the order, the log, the summary) is on screen: always for the master; for a player, not once the combat ended and
+   * the "O combate acabou" card carries what it came to, so the scene, the map and the rest of the page stay under that one card. */
+  protected readonly combatOnScreen = computed(() => {
+    const e = this.combat.shown();
+    return e !== null && (this.isMaster() || e.status !== EncounterStatus.ENDED);
   });
 
   protected readonly stream = signal<LiveStream | null>(null);
@@ -369,6 +413,10 @@ export class LiveSession {
   protected readonly isMaster = computed(() => this.campaign()?.isMaster ?? false);
   /** The player's own character: the only one the server sends them. */
   protected readonly ownVitals = computed(() => this.vitals()[0] ?? null);
+  /** The armor class of the player's own character: the sheet's, or the base an effect gives (Armadura Arcana) when better. */
+  protected readonly ownArmorClass = computed(() =>
+    betterArmorClass(this.playerSheet()?.armorClass ?? null, this.ownVitals()?.armorClassBase),
+  );
   /** The Escudo Arcano's bonus on the player's own combatant while a combat is on; `null` outside one, so a combat that
    * ends is not read as the shield ending. */
   protected readonly ownArmorBonus = computed(() => {
@@ -378,6 +426,12 @@ export class LiveSession {
     }
     return e.combatants.find((c) => c.mine)?.armorClassBonus ?? null;
   });
+  /** Whether it is the turn of the player's own combatant (it acts now): the death saves are rolled then. */
+  protected readonly ownTurn = computed(() => {
+    const e = this.combat.encounter();
+    const own = e?.status === EncounterStatus.ACTIVE ? e.combatants.find((c) => c.mine) : undefined;
+    return !!e && !!own && acts(e, own);
+  });
   /** The death saves of the player's own combatant while a combat is on; `null` outside one. */
   protected readonly ownDeathSaves = computed(() => {
     const e = this.combat.encounter();
@@ -386,6 +440,14 @@ export class LiveSession {
     }
     const own = e.combatants.find((c) => c.mine);
     return own ? { successes: own.deathSuccesses, failures: own.deathFailures } : null;
+  });
+  /** "Seus efeitos" and the labels of the conditions they hold, for the player's own sheet (RN-22). */
+  protected readonly ownEffects = new OwnEffects({
+    campaignId: this.campaignId,
+    isMaster: this.isMaster,
+    ownCharacterIds: computed(() => this.vitals().map((v) => v.characterId)),
+    encounter: this.combat.encounter,
+    tick: computed(() => this.castsTick() + (this.ownVitals()?.revision ?? 0)),
   });
   /** The master's "Ver como" list: the living player characters, with their players. */
   protected readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
@@ -556,6 +618,7 @@ export class LiveSession {
     this.session.set(null);
     this.vitals.set([]);
     this.playerSheet.set(null);
+    this.mageArmorAc.set(0);
     this.partyInfo.set(new Map());
     this.currentMapId.set(null);
     this.shownImage.set(null);
@@ -638,6 +701,11 @@ export class LiveSession {
           if (mapId === this.currentMapId()) {
             void this.mapState.refresh();
             this.scheduleVision();
+            // In a combat the NPCs come with the combat, not with the map: a player whose sight changed (their own move, an
+            // ally's, a light, a door) may now see one the last read left out. Only the combat read carries it (RN-10).
+            if (!this.isMaster() && this.combat.encounter() && !this.inTheatre()) {
+              void this.loadCombat(generation);
+            }
           }
         },
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
@@ -647,7 +715,11 @@ export class LiveSession {
           void this.readVitals(campaignId, generation);
           void this.characterRevived(campaignId, generation, characterId);
         },
-        onSpellCastsChanged: () => this.castsTick.update((n) => n + 1),
+        onSpellCastsChanged: () => {
+          this.castsTick.update((n) => n + 1);
+          this.loadMageArmor(campaignId, generation);
+        },
+        onGroupCheckChanged: () => this.groupCheckTick.update((n) => n + 1),
         onPuzzleChanged: (id) => void this.puzzles.changed(id),
         onTokenMoved: (move) => {
           this.scheduleVision();
@@ -786,6 +858,7 @@ export class LiveSession {
       this.creaturesTick.update((n) => n + 1);
       this.revivifyTick.update((n) => n + 1);
       this.castsTick.update((n) => n + 1);
+      this.groupCheckTick.update((n) => n + 1);
       if (this.isMaster()) {
         void this.reloadMaps();
       }
@@ -884,18 +957,29 @@ export class LiveSession {
 
   /** The session's combat, as this person may see it (best effort: the
    * screen keeps the copy it has until the next event or `ready`). */
-  private async loadCombat(generation: number): Promise<void> {
+  private async loadCombat(generation: number, attempt = 0): Promise<void> {
     const ticket = this.combat.beginRead();
     try {
       const encounter = await this.combatApi.get(this.campaignId());
-      if (generation === this.generation && !this.combat.applyRead(ticket, encounter)) {
-        // Dropped for a turn or a move that came while it was out: that read may be older than the event.
-        if (this.combat.patchedSince(ticket)) {
-          void this.loadCombat(generation);
-        }
+      // Dropped for something that replaced the combat while it was out (an event, an answer to a call): that may be
+      // older than what this read was asked for, so read again. Bounded: a busy table never loops.
+      if (
+        generation === this.generation &&
+        !this.combat.applyRead(ticket, encounter) &&
+        this.combat.changedSince(ticket) &&
+        attempt < COMBAT_REREADS
+      ) {
+        void this.loadCombat(generation, attempt + 1);
       }
     } catch {
-      // The stream's next event, or reconnection, reads it again.
+      // One more try a moment later; after that the stream's next event, or reconnection, reads it again.
+      if (generation === this.generation && attempt === 0) {
+        setTimeout(() => {
+          if (generation === this.generation) {
+            void this.loadCombat(generation, COMBAT_REREADS);
+          }
+        }, COMBAT_RETRY_MS);
+      }
     }
   }
 
@@ -980,6 +1064,23 @@ export class LiveSession {
     }
     this.source.getPlayerSheet(campaignId, own.characterId).then(
       (sheet) => generation === this.generation && this.playerSheet.set(sheet),
+      () => undefined,
+    );
+    this.loadMageArmor(campaignId, generation);
+  }
+
+  /** Reads the Armadura Arcana that lasts on the player's character: every place that shows the armor class must agree with the combat's. Best effort. */
+  private loadMageArmor(campaignId: string, generation: number): void {
+    const own = this.ownVitals();
+    if (this.isMaster() || !own) {
+      return;
+    }
+    this.castingApi.list(campaignId, own.characterId).then(
+      (res) => {
+        if (generation === this.generation) {
+          this.mageArmorAc.set(mageArmorClassOf(res.active, own.characterId));
+        }
+      },
       () => undefined,
     );
   }
@@ -1182,6 +1283,7 @@ export class LiveSession {
   /** A rest or a spent hit die changed these characters: their new numbers, as the server answered (the stream says the same to the other screens). */
   protected takeVitals(taken: readonly VitalsVm[]): void {
     this.vitals.update((list) => taken.reduce((all, v) => applyVitals(all, v), list));
+    this.restsTick.update((n) => n + 1);
   }
 
   /** "Ajustar": a bottom sheet on a phone, a dialog from a tablet up, with
@@ -1225,4 +1327,28 @@ export class LiveSession {
       }
     });
   }
+}
+
+const MAGE_ARMOR_KEY = 'spell:mage-armor';
+
+/** How many times the combat is read again when a read was dropped for a change that came while it was out. */
+const COMBAT_REREADS = 3;
+
+/** How long the page waits before trying a failed combat read once more, in milliseconds. */
+const COMBAT_RETRY_MS = 1500;
+
+/** The armor class the character's lasting Armadura Arcana gives, the best one; 0 without it. */
+export function mageArmorClassOf(casts: readonly OutsideCast[], characterId: string): number {
+  let best = 0;
+  for (const cast of casts) {
+    if (cast.spellKey !== MAGE_ARMOR_KEY || cast.status !== OutsideCastStatus.ACTIVE) {
+      continue;
+    }
+    for (const t of cast.targets) {
+      if (t.characterId === characterId && t.effect === CastEffect.ARMOR_CLASS) {
+        best = Math.max(best, t.armorClass);
+      }
+    }
+  }
+  return best;
 }

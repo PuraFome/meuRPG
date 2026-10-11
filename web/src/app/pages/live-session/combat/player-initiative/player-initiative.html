@@ -117,6 +117,90 @@
   </div>
 }
 
+@if (creatures().length > 0) {
+  <section class="mr-panel creatures" aria-labelledby="creatures-title">
+    <h2 class="mr-panel__title" id="creatures-title">Suas criaturas</h2>
+    <ul class="creatures__list">
+      @for (cr of creatures(); track cr.key) {
+        <li class="creatures__row">
+          @if (cr.total !== undefined) {
+            <span class="mr-label creatures__label">Iniciativa de {{ cr.label }}</span>
+            <span class="creatures__total" role="status">{{ cr.total }}</span>
+          } @else {
+            <span class="mr-label creatures__label">
+              Iniciativa de {{ cr.label }}: 1d20 {{ signed(cr.bonus) }}
+            </span>
+            @if (error() && typingCreature() === cr.key) {
+              <p class="roll__err" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>{{ error() }}
+              </p>
+            }
+            @if (typingCreature() === cr.key || !canApp()) {
+              <input
+                class="roll__field creatures__field"
+                type="text"
+                inputmode="numeric"
+                maxlength="2"
+                autocomplete="off"
+                [attr.aria-label]="'Resultado do d20 de ' + cr.label"
+                [attr.aria-invalid]="creatureInvalid()"
+                [value]="typedCreature()"
+                (input)="onTypeCreature($event)"
+                (keydown.enter)="confirmCreature(cr.id)"
+              />
+              @if (creatureInvalid()) {
+                <p class="roll__err" role="alert">
+                  <mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a 20
+                </p>
+              }
+              <button
+                mat-flat-button
+                type="button"
+                class="roll__main"
+                [disabled]="creatureFace() === null || busy()"
+                disabledInteractive
+                (click)="confirmCreature(cr.id)"
+              >
+                Confirmar{{ creatureFace() === null ? '' : ' ' + creatureFace() }}
+              </button>
+              @if (canApp()) {
+                <button mat-button type="button" class="roll__text" (click)="typingCreature.set(null)">
+                  Rolar no app
+                </button>
+              }
+            } @else {
+              <div class="roll__buttons">
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="roll__main"
+                  [class.roll__main--quiet]="!inApp() && canType()"
+                  [disabled]="busy()"
+                  disabledInteractive
+                  (click)="rollCreatureInApp.emit(cr.id)"
+                >
+                  <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
+                </button>
+                @if (canType()) {
+                  <button
+                    mat-flat-button
+                    type="button"
+                    class="roll__main"
+                    [class.roll__main--quiet]="inApp()"
+                    (click)="startTyping(cr.key)"
+                  >
+                    Digitar o resultado
+                  </button>
+                }
+              </div>
+            }
+          }
+        </li>
+      }
+    </ul>
+  </section>
+}
+
 <section class="mr-panel who" aria-labelledby="who-title">
   <h2 class="mr-panel__title" id="who-title">Quem já rolou</h2>
   <ul class="who__list">

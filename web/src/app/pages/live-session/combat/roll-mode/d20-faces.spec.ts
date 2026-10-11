@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { AdvantageSourceKind, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { D20Faces } from './d20-faces';
 
 function render(inputs: Record<string, unknown>) {
@@ -62,5 +62,20 @@ describe('D20Faces', () => {
     expect(text).toContain('O app sugeria Vantagem.');
     expect(text).toContain('Motivo: “ele se escondeu”');
     expect(text).toContain('Vantagem: Alvo Derrubado a 1,5 m: vantagem');
+  });
+
+  it('names the dice an effect added to the roll, once', () => {
+    const roll = {
+      diceCount: 1,
+      faces: [14],
+      extraDice: [{ sourceNamePt: 'Bênção', faces: 4, sign: 1, face: 3 }],
+    };
+    const el = render({ roll });
+    expect(el.textContent!.replace(/\s+/g, ' ')).toContain('Bênção +1d4: 3');
+    const said = render({
+      roll,
+      sources: [{ kind: AdvantageSourceKind.EFFECT_DIE, textPt: 'Bênção +1d4: 3' }],
+    });
+    expect(said.textContent!.match(/Bênção/g)).toHaveLength(1);
   });
 });

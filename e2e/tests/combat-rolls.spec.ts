@@ -65,7 +65,9 @@ test('a fúria do bárbaro corta o dano pela metade e o mestre vê o passo da re
   try {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
+    // Grog is a Berserker: Fúria asks about the frenzy first (SRD 5.1, Frenzy); this rage is a plain one.
     await p.getByRole('button', { name: /Fúria/ }).click();
+    await p.getByRole('button', { name: 'Só fúria' }).click();
     await expect(p.getByText('Em fúria').first()).toBeVisible();
 
     // He attacks a hostile creature, so the rage holds when the turn ends.

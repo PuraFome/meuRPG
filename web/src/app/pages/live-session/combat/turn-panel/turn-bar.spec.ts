@@ -40,4 +40,10 @@ describe('TurnBar', () => {
     );
     expect(el.querySelector<HTMLButtonElement>('.end')?.getAttribute('aria-disabled')).toBe('true');
   });
+
+  it('says "Passar o turno" for a surprised character (W7-X)', () => {
+    const el = setup({}, { surprised: true });
+    expect(text(el.querySelector('.row'))).toContain('Passar o turno');
+    expect(text(el.querySelector('.row'))).not.toContain('Encerrar turno');
+  });
 });

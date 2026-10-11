@@ -27,6 +27,10 @@ func lastAttack(sheet link.Sheet, c playdb.Combatant) (link.Attack, bool) {
 	if c.ActionAttackKey == nil {
 		return link.Attack{}, false
 	}
+	if *c.ActionAttackKey == combat.ContestAttackKey {
+		// A grapple or a shove made the Attack action: see combat.ContestAttackKey.
+		return link.Attack{Key: combat.ContestAttackKey, Melee: true}, true
+	}
 	i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == *c.ActionAttackKey })
 	if i < 0 {
 		return link.Attack{}, false
@@ -38,9 +42,10 @@ func lastAttack(sheet link.Sheet, c playdb.Combatant) (link.Attack, bool) {
 // action when the action is free; the next attack of the Attack action when
 // Extra Attack leaves one; the next beam of the cantrip the action cast; and
 // otherwise the bonus action, when a bonus action attack rule lets it (Flurry
-// of Blows, Martial Arts, Two-Weapon Fighting). It returns the rule that made
+// of Blows, the Berserker's Frenzy, Martial Arts, Two-Weapon Fighting). frenzy says a
+// frenzied rage that began in an earlier turn is on. It returns the rule that made
 // it a bonus action attack, or the error that says why it cannot be made.
-func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Attack) (combat.BonusKind, error) {
+func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Attack, frenzy bool) (combat.BonusKind, error) {
 	actionUsed := errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
 	last, hasLast := lastAttack(sheet, attacker)
 	if attack.Spell {
@@ -63,6 +68,7 @@ func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Atta
 	kind := combat.BonusAttack(combat.BonusAttackTurn{
 		AttackAction: attacker.ActionUsed && attacker.AttacksMade > 0 && hasLast,
 		FlurryLeft:   int(attacker.BonusAttacksLeft), Last: traitsOf(last),
+		NoSecondLight: combat.SecondLightWeaponMissing(lightMelee(sheet)), FrenzyReady: frenzy,
 	}, traitsOf(attack))
 	switch {
 	case kind == combat.BonusFlurry:
@@ -75,4 +81,15 @@ func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Atta
 		return combat.BonusNone, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED, "the Attack action made all its attacks")
 	}
 	return combat.BonusNone, actionUsed
+}
+
+// lightMelee counts the light melee weapons the sheet carries, one per weapon.
+func lightMelee(sheet link.Sheet) int {
+	n := 0
+	for _, a := range sheet.Attacks {
+		if a.Melee && a.Light && !a.Spell {
+			n++
+		}
+	}
+	return n
 }

@@ -67,6 +67,8 @@ const (
 	// CombatServiceSpendMovementProcedure is the fully-qualified name of the CombatService's
 	// SpendMovement RPC.
 	CombatServiceSpendMovementProcedure = "/meurpg.play.v1.CombatService/SpendMovement"
+	// CombatServiceStandUpProcedure is the fully-qualified name of the CombatService's StandUp RPC.
+	CombatServiceStandUpProcedure = "/meurpg.play.v1.CombatService/StandUp"
 	// CombatServiceOfferOpportunityProcedure is the fully-qualified name of the CombatService's
 	// OfferOpportunity RPC.
 	CombatServiceOfferOpportunityProcedure = "/meurpg.play.v1.CombatService/OfferOpportunity"
@@ -182,6 +184,9 @@ const (
 	CombatServiceAnswerRageEndProcedure = "/meurpg.play.v1.CombatService/AnswerRageEnd"
 	// CombatServiceEndRageProcedure is the fully-qualified name of the CombatService's EndRage RPC.
 	CombatServiceEndRageProcedure = "/meurpg.play.v1.CombatService/EndRage"
+	// CombatServiceUseHitRiderProcedure is the fully-qualified name of the CombatService's UseHitRider
+	// RPC.
+	CombatServiceUseHitRiderProcedure = "/meurpg.play.v1.CombatService/UseHitRider"
 )
 
 // CombatServiceClient is a client for the meurpg.play.v1.CombatService service.
@@ -486,6 +491,33 @@ type CombatServiceClient interface {
 	//     for its answer (OPPORTUNITY_PENDING); the distance is more than the
 	//     movement left (TOO_FAR, with missing_ft and missing_dft).
 	SpendMovement(context.Context, *connect.Request[v1.SpendMovementRequest]) (*connect.Response[v1.SpendMovementResponse], error)
+	// StandUp is "Levantar-se": the combatant stands up from Prone (SRD 5.1, "Being
+	// Prone": standing up takes an amount of movement equal to half your speed, and you
+	// cannot stand up if you do not have enough movement left, or if your speed is 0).
+	// The cost is half the speed the combatant has this turn without the Dash (the
+	// Dash gives more movement, not a faster speed), rounded down to a tenth of a foot,
+	// and it is added to the movement used (`movement_used_dft`, as a move does). It takes
+	// the Prone condition off. It works on a map and in THEATRE mode (RN-25) alike: no
+	// square is involved. The caller's own combatant on its turn, for a player (and for
+	// the creatures of their character); any combatant on its turn for the master. It is a
+	// line of the combat log for everyone who sees the combatant ("Brisa se levantou"),
+	// and the master can undo it (UndoLastAction): the condition and the movement come
+	// back. The cost the screen shows is `Combatant.stand_up_cost_dft`.
+	//
+	// The answer tells what is left (`movement_left_dft`). Every stream gets
+	// `encounter_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in the open session (a hidden
+	//     NPC is not found for a player).
+	//   - `permission_denied`: the caller is a player and the combatant is not theirs.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+	//     (NOT_ACTIVE); it is not the combatant's turn (NOT_YOUR_TURN); an opportunity
+	//     attack waits for an answer (OPPORTUNITY_PENDING); the combatant is not Prone
+	//     (NOT_PRONE); its speed is 0 (CANNOT_STAND_UP: grappled, restrained, a Velocidade
+	//     that ended, and the like; the message never names the cause to a player); it has
+	//     less movement left than the cost (TOO_FAR, with missing_ft and missing_dft).
+	StandUp(context.Context, *connect.Request[v1.StandUpRequest]) (*connect.Response[v1.StandUpResponse], error)
 	// OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
 	// combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
 	// left the reach of another, the reactor, which the master chooses. In THEATRE
@@ -1361,6 +1393,18 @@ type CombatServiceClient interface {
 	//   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
 	//     NOT_RAGING.
 	EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error)
+	// UseHitRider answers a monk's offer after a hit (Encounter.hit_riders): the Open Hand
+	// technique on a Flurry of Blows hit (knock prone, push, or no reactions) or Stunning
+	// Strike (1 ki point) on a melee hit. The server rolls the target's saving throw against
+	// the ki save DC (for an NPC and a player's character alike, as a spell's save), applies
+	// what a failure does and writes the line. The monk's player or the master.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as TakeAction.
+	//   - `failed_precondition`: the offer was already answered, or its round is over; or,
+	//     for Stunning Strike, there is no ki point left.
+	//   - `invalid_argument`: the choice is not one the offer has.
+	UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error)
 }
 
 // NewCombatServiceClient constructs a client for the meurpg.play.v1.CombatService service. By
@@ -1428,6 +1472,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			httpClient,
 			baseURL+CombatServiceSpendMovementProcedure,
 			connect.WithSchema(combatServiceMethods.ByName("SpendMovement")),
+			connect.WithClientOptions(opts...),
+		),
+		standUp: connect.NewClient[v1.StandUpRequest, v1.StandUpResponse](
+			httpClient,
+			baseURL+CombatServiceStandUpProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("StandUp")),
 			connect.WithClientOptions(opts...),
 		),
 		offerOpportunity: connect.NewClient[v1.OfferOpportunityRequest, v1.OfferOpportunityResponse](
@@ -1667,6 +1717,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("EndRage")),
 			connect.WithClientOptions(opts...),
 		),
+		useHitRider: connect.NewClient[v1.UseHitRiderRequest, v1.UseHitRiderResponse](
+			httpClient,
+			baseURL+CombatServiceUseHitRiderProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("UseHitRider")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1681,6 +1737,7 @@ type combatServiceClient struct {
 	moveCombatant            *connect.Client[v1.MoveCombatantRequest, v1.MoveCombatantResponse]
 	getMoveOptions           *connect.Client[v1.GetMoveOptionsRequest, v1.GetMoveOptionsResponse]
 	spendMovement            *connect.Client[v1.SpendMovementRequest, v1.SpendMovementResponse]
+	standUp                  *connect.Client[v1.StandUpRequest, v1.StandUpResponse]
 	offerOpportunity         *connect.Client[v1.OfferOpportunityRequest, v1.OfferOpportunityResponse]
 	withdrawOpportunity      *connect.Client[v1.WithdrawOpportunityRequest, v1.WithdrawOpportunityResponse]
 	setCombatantSide         *connect.Client[v1.SetCombatantSideRequest, v1.SetCombatantSideResponse]
@@ -1720,6 +1777,7 @@ type combatServiceClient struct {
 	removeDamagePart         *connect.Client[v1.RemoveDamagePartRequest, v1.RemoveDamagePartResponse]
 	answerRageEnd            *connect.Client[v1.AnswerRageEndRequest, v1.AnswerRageEndResponse]
 	endRage                  *connect.Client[v1.EndRageRequest, v1.EndRageResponse]
+	useHitRider              *connect.Client[v1.UseHitRiderRequest, v1.UseHitRiderResponse]
 }
 
 // StartEncounter calls meurpg.play.v1.CombatService.StartEncounter.
@@ -1765,6 +1823,11 @@ func (c *combatServiceClient) GetMoveOptions(ctx context.Context, req *connect.R
 // SpendMovement calls meurpg.play.v1.CombatService.SpendMovement.
 func (c *combatServiceClient) SpendMovement(ctx context.Context, req *connect.Request[v1.SpendMovementRequest]) (*connect.Response[v1.SpendMovementResponse], error) {
 	return c.spendMovement.CallUnary(ctx, req)
+}
+
+// StandUp calls meurpg.play.v1.CombatService.StandUp.
+func (c *combatServiceClient) StandUp(ctx context.Context, req *connect.Request[v1.StandUpRequest]) (*connect.Response[v1.StandUpResponse], error) {
+	return c.standUp.CallUnary(ctx, req)
 }
 
 // OfferOpportunity calls meurpg.play.v1.CombatService.OfferOpportunity.
@@ -1960,6 +2023,11 @@ func (c *combatServiceClient) AnswerRageEnd(ctx context.Context, req *connect.Re
 // EndRage calls meurpg.play.v1.CombatService.EndRage.
 func (c *combatServiceClient) EndRage(ctx context.Context, req *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error) {
 	return c.endRage.CallUnary(ctx, req)
+}
+
+// UseHitRider calls meurpg.play.v1.CombatService.UseHitRider.
+func (c *combatServiceClient) UseHitRider(ctx context.Context, req *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error) {
+	return c.useHitRider.CallUnary(ctx, req)
 }
 
 // CombatServiceHandler is an implementation of the meurpg.play.v1.CombatService service.
@@ -2264,6 +2332,33 @@ type CombatServiceHandler interface {
 	//     for its answer (OPPORTUNITY_PENDING); the distance is more than the
 	//     movement left (TOO_FAR, with missing_ft and missing_dft).
 	SpendMovement(context.Context, *connect.Request[v1.SpendMovementRequest]) (*connect.Response[v1.SpendMovementResponse], error)
+	// StandUp is "Levantar-se": the combatant stands up from Prone (SRD 5.1, "Being
+	// Prone": standing up takes an amount of movement equal to half your speed, and you
+	// cannot stand up if you do not have enough movement left, or if your speed is 0).
+	// The cost is half the speed the combatant has this turn without the Dash (the
+	// Dash gives more movement, not a faster speed), rounded down to a tenth of a foot,
+	// and it is added to the movement used (`movement_used_dft`, as a move does). It takes
+	// the Prone condition off. It works on a map and in THEATRE mode (RN-25) alike: no
+	// square is involved. The caller's own combatant on its turn, for a player (and for
+	// the creatures of their character); any combatant on its turn for the master. It is a
+	// line of the combat log for everyone who sees the combatant ("Brisa se levantou"),
+	// and the master can undo it (UndoLastAction): the condition and the movement come
+	// back. The cost the screen shows is `Combatant.stand_up_cost_dft`.
+	//
+	// The answer tells what is left (`movement_left_dft`). Every stream gets
+	// `encounter_changed`.
+	//
+	// Errors:
+	//   - `not_found`: the combat or the combatant is not in the open session (a hidden
+	//     NPC is not found for a player).
+	//   - `permission_denied`: the caller is a player and the combatant is not theirs.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+	//     (NOT_ACTIVE); it is not the combatant's turn (NOT_YOUR_TURN); an opportunity
+	//     attack waits for an answer (OPPORTUNITY_PENDING); the combatant is not Prone
+	//     (NOT_PRONE); its speed is 0 (CANNOT_STAND_UP: grappled, restrained, a Velocidade
+	//     that ended, and the like; the message never names the cause to a player); it has
+	//     less movement left than the cost (TOO_FAR, with missing_ft and missing_dft).
+	StandUp(context.Context, *connect.Request[v1.StandUpRequest]) (*connect.Response[v1.StandUpResponse], error)
 	// OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
 	// combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
 	// left the reach of another, the reactor, which the master chooses. In THEATRE
@@ -3139,6 +3234,18 @@ type CombatServiceHandler interface {
 	//   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, BONUS_ACTION_USED,
 	//     NOT_RAGING.
 	EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error)
+	// UseHitRider answers a monk's offer after a hit (Encounter.hit_riders): the Open Hand
+	// technique on a Flurry of Blows hit (knock prone, push, or no reactions) or Stunning
+	// Strike (1 ki point) on a melee hit. The server rolls the target's saving throw against
+	// the ki save DC (for an NPC and a player's character alike, as a spell's save), applies
+	// what a failure does and writes the line. The monk's player or the master.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as TakeAction.
+	//   - `failed_precondition`: the offer was already answered, or its round is over; or,
+	//     for Stunning Strike, there is no ki point left.
+	//   - `invalid_argument`: the choice is not one the offer has.
+	UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error)
 }
 
 // NewCombatServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -3202,6 +3309,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		CombatServiceSpendMovementProcedure,
 		svc.SpendMovement,
 		connect.WithSchema(combatServiceMethods.ByName("SpendMovement")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceStandUpHandler := connect.NewUnaryHandler(
+		CombatServiceStandUpProcedure,
+		svc.StandUp,
+		connect.WithSchema(combatServiceMethods.ByName("StandUp")),
 		connect.WithHandlerOptions(opts...),
 	)
 	combatServiceOfferOpportunityHandler := connect.NewUnaryHandler(
@@ -3441,6 +3554,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("EndRage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceUseHitRiderHandler := connect.NewUnaryHandler(
+		CombatServiceUseHitRiderProcedure,
+		svc.UseHitRider,
+		connect.WithSchema(combatServiceMethods.ByName("UseHitRider")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.CombatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CombatServiceStartEncounterProcedure:
@@ -3461,6 +3580,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceGetMoveOptionsHandler.ServeHTTP(w, r)
 		case CombatServiceSpendMovementProcedure:
 			combatServiceSpendMovementHandler.ServeHTTP(w, r)
+		case CombatServiceStandUpProcedure:
+			combatServiceStandUpHandler.ServeHTTP(w, r)
 		case CombatServiceOfferOpportunityProcedure:
 			combatServiceOfferOpportunityHandler.ServeHTTP(w, r)
 		case CombatServiceWithdrawOpportunityProcedure:
@@ -3539,6 +3660,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceAnswerRageEndHandler.ServeHTTP(w, r)
 		case CombatServiceEndRageProcedure:
 			combatServiceEndRageHandler.ServeHTTP(w, r)
+		case CombatServiceUseHitRiderProcedure:
+			combatServiceUseHitRiderHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -3582,6 +3705,10 @@ func (UnimplementedCombatServiceHandler) GetMoveOptions(context.Context, *connec
 
 func (UnimplementedCombatServiceHandler) SpendMovement(context.Context, *connect.Request[v1.SpendMovementRequest]) (*connect.Response[v1.SpendMovementResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SpendMovement is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) StandUp(context.Context, *connect.Request[v1.StandUpRequest]) (*connect.Response[v1.StandUpResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.StandUp is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) OfferOpportunity(context.Context, *connect.Request[v1.OfferOpportunityRequest]) (*connect.Response[v1.OfferOpportunityResponse], error) {
@@ -3738,4 +3865,8 @@ func (UnimplementedCombatServiceHandler) AnswerRageEnd(context.Context, *connect
 
 func (UnimplementedCombatServiceHandler) EndRage(context.Context, *connect.Request[v1.EndRageRequest]) (*connect.Response[v1.EndRageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndRage is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.UseHitRider is not implemented"))
 }

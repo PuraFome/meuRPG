@@ -87,6 +87,11 @@ message OpenSceneInfo {
   // neither, and the master alone reads both (RN-20). The master always gets
   // the DCs and every `passed`.
   bool show_dc = 11;
+  // The gallery images attached to the scene point, in the master's order
+  // ("Imagens da cena", MR-015). Only the master gets them: a player always
+  // gets none (RN-10); a player sees an image only when the master shows it
+  // (PlayService.SetShownImage).
+  repeated meurpg.maps.v1.SceneImage images = 12;
 }
 
 // StageNpc is an NPC on the stage of the open scene, as the caller sees it
@@ -222,6 +227,8 @@ message SceneRoll {
   // applies.
   RollMode mode = 9;
   repeated AdvantageSource sources = 10;
+  // The Bardic Inspiration die the player added after the d20 (already in `roll`'s total).
+  repeated BonusDie bonus_dice = 11;
 }
 
 // OpenSceneRequest names the campaign and the point.
@@ -279,6 +286,10 @@ message RollSceneCheckRequest {
   // the mode the server resolves needs), instead of `roll`. A wrong number is
   // `invalid_argument`.
   repeated int32 d20_faces = 6;
+  // Physical dice: the faces of the dice an effect adds to the roll (Bênção, Orientação), in
+  // the order the roll's sources list them, one for each, 1 to the die's faces. With the app's
+  // dice the server rolls them; a wrong number is `invalid_argument`.
+  repeated int32 extra_die_faces = 7;
 }
 
 // RollSceneCheckResponse is the roll that was made.
@@ -286,6 +297,9 @@ message RollSceneCheckResponse {
   // The caller's roll, with its total. `passed` is set only when the scene
   // shows its DC (`show_dc`) and the action had one.
   SceneRoll roll = 1;
+  // Set instead of `roll` when the character holds a Bardic Inspiration die: the d20 was
+  // rolled and nothing was written; AnswerOutsideInspiration settles the roll.
+  OutsideInspirationOffer inspiration_offer = 2;
 }
 
 // GrantSceneAttemptRequest gives one character one more attempt at one action.

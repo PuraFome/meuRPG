@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import type { PickItem } from '../../../core/levelup/levelup-flow';
@@ -158,5 +158,28 @@ describe('PickList: a spell the master wrote (E10-11 state 4)', () => {
     const names = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.row__name'));
     expect(names[0].querySelector('.mr-tag')).toBeNull();
     expect(names[1].querySelector('.mr-tag')?.textContent).toContain('Da mesa');
+  });
+});
+
+describe('PickList: showAll', () => {
+  @Component({
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [PickList],
+    template: `<app-pick-list pickId="prepared" title="Magias preparadas" noun="magia" nounMany="magias" [showAll]="true" [items]="items" [picked]="picked" [count]="2" />`,
+  })
+  class AllHost {
+    items = items;
+    picked = new Set<string>();
+  }
+
+  it('lists every row of the spells to prepare, with no "Ver as outras" (rehearsal 4: the 5th and later were hidden)', () => {
+    const fixture = TestBed.createComponent(AllHost);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(
+      el.querySelectorAll('input[type="checkbox"], mat-checkbox').length,
+    ).toBeGreaterThanOrEqual(items.length);
+    expect(el.textContent).toContain('Passo Nebuloso');
+    expect(el.textContent).not.toContain('Ver as outras');
   });
 });

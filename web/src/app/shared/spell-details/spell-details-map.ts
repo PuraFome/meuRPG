@@ -91,6 +91,7 @@ export function spellDetailsFromGen(d: GenSpellDetails): SpellDetailsVm {
       somatic: d.components?.somatic ?? false,
       material: d.components?.material ?? false,
       materialText: d.components?.materialText ?? '',
+      materialTextPt: d.components?.materialTextPt ?? '',
     },
     duration: {
       kind: DURATION_KIND_FROM_GEN[d.duration?.kind ?? GenSpellDurationKind.UNSPECIFIED],
@@ -102,6 +103,10 @@ export function spellDetailsFromGen(d: GenSpellDetails): SpellDetailsVm {
     },
     description: d.description,
     higherLevel: d.higherLevel,
+    descriptionPt: d.descriptionPt,
+    higherLevelPt: d.higherLevelPt,
+    textPtMissing: d.textPtMissing,
+    textPtOnly: d.textPtOnly,
     classKeys: spell?.classKeys ?? [],
     archived: spell?.archived ?? false,
     table: isTableSpellKey(spell?.key ?? ''),

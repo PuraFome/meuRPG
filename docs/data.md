@@ -71,7 +71,7 @@ flowchart TD
         t_map_tokens["map_tokens, map_creature_tokens"]
         t_generated_dungeons["generated_dungeons"]
         t_map_point_reveals["map_point_reveals, map_treasure_finders"]
-        t_scene["scene_actions, scene_clues, scene_clue_reveals, scene_discoveries"]
+        t_scene["scene_actions, scene_clues, scene_clue_reveals, scene_discoveries, map_point_images"]
         t_gallery_images["gallery_images, image_requests"]
     end
 
@@ -283,7 +283,8 @@ erDiagram
 - **`campaigns.xp_mode_changed_at`** is when the master last changed the XP mode after the campaign was created (RN-09).
 - **`campaign_documents`** (MR-018) holds the campaign document: at most one row per campaign, `campaign_id` as primary key. A campaign without a row has an empty document at revision 0; the first save writes the row at revision 1, and each later save raises the revision by 1, only if it is still the one the master read (see [Architecture](architecture.md#campaign-document)). `body` is the Markdown as written, up to 204,800 bytes (200 KiB; the `campaign_documents_body_size` `CHECK` uses `octet_length`, which counts bytes, the same unit as the API). `updated_by` is who saved last: deleting that account keeps the document with no editor (`SET NULL`); deleting the campaign deletes the document (`CASCADE`). The IDs in the text's links (`map:`, `character:`, `image:`) are not foreign keys: the server does not read them, and a link to something deleted just shows as unavailable.
 - **`campaign_table_rules`** (MR-025, RN-24) holds the table rules: one row per campaign (primary key `campaign_id`, `CASCADE`). **Without a row the defaults apply**, which are what the app did before (the code reads a missing row as the zero value of `tablerules.Rules`), so no campaign needs a backfill and a master who never opens "Regras da mesa" never gets a row.
-- **`reaction_windows` and `reaction_holds`** (PM-04) are the reaction window ([architecture](architecture.md)): a window is a question to one reactor (or the master's check) that holds the action that triggered it; a hold is the request of that action (a cast, an attack roll, a damage roll), kept until its windows are done and replayed then. Both `CASCADE` from the encounter, so ending the combat leaves none. `trigger` and `outcome` are JSON of ids and numbers only. `combatants.slots_used` counts what an NPC spent in the combat (slots, pact slots, resource uses); `campaign_table_rules.enemy_reactions` is the table rule "Reações dos inimigos" (`only_when_possible`, the default, or `always`); the two session event kinds `reaction_answered` and `concentration_save_rolled` are in `session_event_kinds`.
+- **`reaction_windows` and `reaction_holds`** (PM-04) are the reaction window ([architecture](architecture.md)): a window is a question to one reactor (or the master's check) that holds the action that triggered it; a hold is the request of that action (a cast, an attack roll, a damage roll), kept until its windows are done and replayed then. Both `CASCADE` from the encounter, so ending the combat leaves none. `trigger` and `outcome` are JSON of ids and numbers only. `combatants.slots_used` counts what an NPC spent in the combat (slots, pact slots, resource uses); `campaign_table_rules.enemy_reactions` is the table rule "Reações dos inimigos" (`only_when_possible`, the default, or `always`); the two session event kinds `reaction_answered` and `concentration_save_rolled` are in `session_event_kinds`. `reaction_windows.kind` also takes `maneuver_reduce` (00248): a table maneuver that reduces a melee hit's damage. `combatants.melee_hit_turn` (00247, `"<round>:<combatant on turn>"`, NULL when none) is the turn of the combatant's last melee weapon hit, which a table maneuver that starts a grapple reads.
+- **The contest tables (W7-X, RN-34)** are `combat_contests` (a grapple, shove or escape: both rolls as JSON, the winner, the shove's choice and the master's fixed `escape_dc`), `combat_holds` (who holds whom; one row per grappled creature), `combat_hide_attempts` and `combat_hiding` (the Stealth roll and, per creature, whether it noticed the hider: the master's), `combat_helps` (a Help for a check or an attack, in the session so it can exist outside a combat; in a combat it also names the helper's and the ally's combatants, because a player's creature carries its owner's `character_id` and a familiar can help, 00241), `combat_surprised` and `group_checks` with `group_check_members` (a check or saving throw asked of the whole party or of some characters, with each asked character's roll; `is_group`, added by 00246 with default true, says whether the half rule gives a group verdict). All of them `CASCADE` from the encounter, the session or the combatant. A waiting contest is also a `reaction_windows` row of kind `contest`, opened and closed by `syncContests` after every change. The 15 session event kinds (`contest_started` ... `surprise_set`) are in `session_event_kinds`. No player reads `escape_dc`, `noticed`, `passive` or another player's roll.
   - `hit_points_rule` is `roll`, `average` or `player_chooses` (the default).
   - Four booleans are the ways to make ability scores (`ability_standard_array`, `ability_point_buy`, `ability_roll_4d6`, `ability_typed`), all on by default, with a `CHECK` that at least one stays on.
   - `critical_rule` is `doubled_dice` (default) or `max_plus_roll`; `death_saves` is `visible_to_all` (default) or `owner_and_master`. Combat applies both.
@@ -641,7 +642,7 @@ erDiagram
         text action_attack_key "sheet attack made last with the action this turn"
         int4 bonus_attacks_left "Flurry of Blows strikes still to make"
         int4 ac_bonus "Shield: +5 until the next turn, 0 to 30"
-        jsonb slots_used "slots, pact slots and uses an NPC spent in the combat (\"1\" to \"9\", pact, res:key); a player's live in character_vitals"
+        jsonb slots_used "slots, pact slots and uses an NPC spent in the combat (1 to 9, pact, res:key); a player's live in character_vitals"
         bool death_save_rolled "this turn's death save"
         int4 hp_current "NPC and creature only"
         int4 hp_max "NPC and creature only; the effective maximum, Aid included"
@@ -682,7 +683,7 @@ erDiagram
         uuid encounter_id FK "encounters, CASCADE"
         int8 seq "the order they are answered in"
         uuid group_id "windows of one trigger share it"
-        text kind "shield, uncanny_dodge, hellish_rebuke, counterspell, cutting_words, deflect_missiles, feather_fall, concentration_save, master_check"
+        text kind "shield, uncanny_dodge, hellish_rebuke, counterspell, cutting_words, deflect_missiles, feather_fall, concentration_save, master_check, contest"
         text status "open, answered, closed"
         text closed_reason "reaction_spent, reactor_incapacitated, trigger_gone"
         uuid reactor_id FK "combatants, CASCADE, null for the master's check"
@@ -693,6 +694,67 @@ erDiagram
         jsonb outcome
         timestamptz created_at
         timestamptz answered_at
+    }
+    combat_contests {
+        uuid id PK
+        uuid encounter_id FK "encounters, CASCADE"
+        text kind "contest, escape_dc"
+        text purpose "grapple, shove, escape"
+        uuid initiator_id FK "combatants, CASCADE"
+        uuid defender_id FK "combatants, CASCADE"
+        text status "awaiting_defender, awaiting_outcome, resolved, closed"
+        int4 escape_dc "the master's, never a player's"
+        jsonb initiator_roll
+        jsonb defender_roll
+        text winner "initiator, defender, tie"
+        text shove_outcome "prone, push, stays"
+        int4 round
+    }
+    combat_holds {
+        uuid grappled_id PK "combatants, CASCADE"
+        uuid grappler_id FK "combatants, CASCADE"
+        int4 escape_dc "the master's, never a player's"
+    }
+    combat_hide_attempts {
+        uuid id PK
+        uuid hider_id FK "combatants, CASCADE"
+        text status "pending, applied, refused"
+        jsonb roll
+    }
+    combat_hiding {
+        uuid hider_id PK "combatants, CASCADE"
+        uuid observer_id PK "combatants, CASCADE"
+        bool noticed "the master's, never a player's"
+        int4 total "the Stealth total"
+        int4 passive "the observer's passive Perception"
+    }
+    combat_helps {
+        uuid id PK
+        text kind "check, attack"
+        uuid helper_character_id FK "characters, CASCADE"
+        uuid ally_character_id FK "characters, CASCADE"
+        uuid helper_combatant_id FK "combatants, CASCADE, in a combat"
+        uuid ally_combatant_id FK "combatants, CASCADE, in a combat"
+        text task "check form"
+        uuid target_id FK "combatants, CASCADE, attack form"
+        int4 expires_round
+    }
+    combat_surprised {
+        uuid combatant_id PK "combatants, CASCADE"
+    }
+    group_checks {
+        uuid id PK
+        uuid game_session_id FK "game_sessions, CASCADE"
+        text skill_key
+        int4 dc "the master's"
+        bool show_dc
+        bool is_group "group verdict; default true"
+        text status "open, closed"
+    }
+    group_check_members {
+        uuid group_check_id PK
+        uuid character_id PK "characters, CASCADE"
+        jsonb roll
     }
     pending_damages {
         uuid id PK
@@ -706,7 +768,8 @@ erDiagram
         int4 dice_count "dice to roll: doubled on a critical, or the usual ones under max plus roll"
         int4 critical_max "the dice maximum a critical adds without rolling, 0 otherwise"
         bool critical_max_rule "the table was on max plus roll"
-        int4 extra_dice "weapon dice a feature adds to a critical (Brutal Critical), 0 to 3"
+        int4 extra_dice "weapon dice a feature adds to a critical (Brutal Critical, Savage Attacks), 0 to 4"
+        int4 savage_dice "how many of extra_dice are the half-orc Savage Attacks, 0 or 1"
         int4 dice_sides
         int4 dice_bonus
         text damage_type "damage-type:fire"
@@ -933,6 +996,17 @@ erDiagram
     character_creatures |o--o{ combatants : "fights as"
     users |o--o{ combatants : "plays"
     encounters ||--o{ pending_damages : "has"
+    encounters ||--o{ combat_contests : "has"
+    combatants ||--o{ combat_contests : "starts or answers"
+    combatants |o--o| combat_holds : "is held by"
+    combatants ||--o{ combat_hide_attempts : "tries to hide"
+    combatants ||--o{ combat_hiding : "hides from or is seen by"
+    characters ||--o{ combat_helps : "helps or is helped"
+    combatants |o--o{ combat_helps : "is the target of"
+    combatants |o--o{ combat_helps : "helps or is helped (in a combat)"
+    combatants |o--o| combat_surprised : "is surprised"
+    game_sessions ||--o{ group_checks : "asks"
+    group_checks ||--o{ group_check_members : "is made by"
     encounters ||--o{ reaction_windows : "asks"
     encounters ||--o{ reaction_holds : "holds"
     combatants ||--o{ reaction_windows : "may react"
@@ -982,7 +1056,7 @@ erDiagram
 - `idempotency_key` is the UUID the app sends with the change; see [Idempotency columns](#idempotency-columns).
 - `payload` is a small JSON (an object, up to 16 KiB, by `CHECK`: an area spell that hits every creature of a combat, 40, keeps what each one did) with the numbers before and after: no free text, no names. `actor_user_id` is who made the change (`ON DELETE SET NULL`: a deleted account vanishes from the history) and `character_id` the character (`SET NULL` if it is deleted, which keeps the history). Account IDs inside payloads do not disappear with the account (see [Privacy](privacy.md)).
 - `encounter_id` (optional, `CASCADE`) says which combat the event belongs to, for the log and the undo; it is `NULL` on HP corrections and on events from before it existed. A partial index serves a combat's events in order. Two partial indexes, by `character_id` and by `actor_user_id` (where not `NULL`), serve the `SET NULL` when a character or an account is deleted, so that deletion does not scan the history.
-- **The event types** are the rows of `session_event_kinds`. They are: the master's HP correction (`character_vitals_adjusted`, RN-02); the combat (`encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `turn_part_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`); the actions (`attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted`, `action_undone`: the undo is a compensating row, the undone one stays); spells and the rest (`spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed`, `conditions_set`); XP and scenes (`xp_awarded`, `xp_award_undone`, `milestone_marked`, `scene_opened`, `scene_closed`, `scene_check_rolled`, `scene_attempt_granted`); the table (`clue_revealed`, `stage_changed`); traps, treasure, cover and sides (`trap_noticed`, `trap_searched`, `trap_triggered`, `trap_disarmed`, `trap_revealed`, `treasure_found`, `treasure_unfound`, `cover_set`, `side_set`); opportunity attacks (`opportunity_offered`); creatures (`creature_summoned`, `creature_dismissed`, `wild_shape_started`, `wild_shape_ended`, `familiar_sight`); doors (`door_opened`); puzzles (`puzzle_shown`, `puzzle_solved`, `puzzle_reset`, `puzzle_closed`); and casting outside combat (`spell_cast_outside`, `spell_cast_started`, `spell_cast_finished`, `spell_cast_interrupted`, `spell_cast_ended`); and the rests (`rest_taken`, `hit_dice_spent`); and the choices (`character_choices_completed`, RN-33).
+- **The event types** are the rows of `session_event_kinds`. They are: the master's HP correction (`character_vitals_adjusted`, RN-02); the combat (`encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `turn_part_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`); the actions (`attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted`, `action_undone`: the undo is a compensating row, the undone one stays); spells and the rest (`spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed`, `conditions_set`); XP and scenes (`xp_awarded`, `xp_award_undone`, `milestone_marked`, `scene_opened`, `scene_closed`, `scene_check_rolled`, `scene_attempt_granted`); the table (`clue_revealed`, `stage_changed`); traps, treasure, cover and sides (`trap_noticed`, `trap_searched`, `trap_triggered`, `trap_disarmed`, `trap_revealed`, `treasure_found`, `treasure_unfound`, `cover_set`, `side_set`); opportunity attacks (`opportunity_offered`); creatures (`creature_summoned`, `creature_dismissed`, `wild_shape_started`, `wild_shape_ended`, `familiar_sight`); doors (`door_opened`); puzzles (`puzzle_shown`, `puzzle_solved`, `puzzle_reset`, `puzzle_closed`); and casting outside combat (`spell_cast_outside`, `spell_cast_started`, `spell_cast_finished`, `spell_cast_interrupted`, `spell_cast_ended`); and the rests (`rest_taken`, `hit_dice_spent`, `arcane_recovery_used`); and the choices (`character_choices_completed`, RN-33).
 - **Payload rules.** Payloads hold only IDs, keys and numbers: a weapon's name never enters (the log reads it from the sheet); the reason of an XP award stays in `xp_awards`, never in the payload. Action events carry the round, `secret` (a hidden combatant was in it: the player never receives the row, even if the master shows the combatant later, RN-20) and the "before" of everything the undo restores (`combat_events.go`). Notable payloads:
   - `combatant_moved` carries cost and distance also in tenths of a foot (`cost_dft`, `distance_dft`), the jump (`jump`: `long` or `high`, and `height_dft`), whether a jump landed on difficult terrain (`landing_difficult`, shown only in the master's log) and where the combatant left from (`from`: the square, the movement already walked, the run-up and the cover mark), which the undo restores (`UndoLastAction` undoes this kind). Spending movement by number (`SpendMovement`, in a gridless combat) writes a `combatant_moved` with no square.
   - `side_set` carries the combatant and the new and previous side (`party` or `enemy`); `cover_set`, the combatant and the new and previous mark (`none`, `half`, `three_quarters`, `total`); `attack_rolled` and `spell_cast` carry the cover the target had (`cover`, `cover_source`, `cover_bonus`) and the AC already with it (`target_ac`, which only the master reads); `action_taken` carries `disengaged_before`.
@@ -1006,12 +1080,15 @@ erDiagram
   - `defeated` is set by damage and by the master's "Dano/Cura": an NPC at 0 HP is defeated, and healed above 0 returns to the order. A player character at 0 HP is **not** `defeated` (it stays in the turns, for death saves): the "Caído" that `GetEncounter` shows comes from `character_vitals`. Only the death the master confirms (`ConfirmDeath`) makes it `defeated`, and then it leaves the order and the character becomes `dead` in `characters`. `death_successes` and `death_failures` (0 to 3) keep the death saves (RN-03) and stay on the row after the combat, for the summary; `conditions` (SRD keys, up to 20) and `concentration_spell` (the spell's key) are the RN-22 labels, without effect.
   - `death_round` and `death_order_index` are set, in the same `UPDATE` that sets `defeated`, to the combat's round and to the place in the order of the combatant on turn; they say how long ago it died, which Revivify counts (a minute is 10 rounds; in the tenth, only up to that place). `revivify_blocked` is the master's switch for this death. All three go back to their defaults when it lives again (`ReviveCombatant`).
   - Indexes: `character_id` (deleting a character removes its combatants), `user_id` (partial, `user_id IS NOT NULL`: deleting an account clears it), the combatant of a creature (partial, `creature_id IS NOT NULL`: dismissing a creature takes it out of the combat) and combatants in turn order.
-- **`pending_damages`** (MR-012, MR-014) keeps the damage of a strike that hit, from the d20 to the end. `status` is `awaiting_reaction` (the strike hit a character who can cast Shield and waits for the answer), `awaiting_roll` (hit, damage still to roll), `rolled` (rolled, on a player character, waiting for the master), `applied` or `discarded`. `extra_dice` is how many weapon dice a feature adds to a melee critical on top of `dice_count` (the barbarian's Brutal Critical, 1 to 3); they are always rolled, whatever the table's critical rule is.
+- **`pending_damages`** (MR-012, MR-014) keeps the damage of a strike that hit, from the d20 to the end. `status` is `awaiting_reaction` (the strike hit a character who can cast Shield and waits for the answer), `awaiting_roll` (hit, damage still to roll), `rolled` (rolled, on a player character, waiting for the master), `applied` or `discarded`. `extra_dice` is how many weapon dice a feature adds to a melee critical on top of `dice_count` (the barbarian's Brutal Critical, 1 to 3, and the half-orc's Savage Attacks, 1); they are always rolled, whatever the table's critical rule is. `savage_dice` (0 or 1) says how many of them are the Savage Attacks', so the damage sheet names each source.
   - `dice_count` (already doubled on a critical, or the usual dice when the table uses "max plus roll"), `dice_sides` and `dice_bonus` are the damage to roll, and `critical_max` the amount a critical adds without rolling (the maximum of the dice, only under that rule; 0 otherwise), **copied from the sheet** when the strike hits, so changing the sheet later does not touch an open roll; zero dice is a fixed number. `critical_max_rule` records that the rule was that when the hit was opened, so a fixed-damage critical also states the rule. `faces`, `physical` and `amount` are what was rolled (or the typed sum with physical dice) and the damage, null until rolled. `damage_type` is the content key, such as `damage-type:fire`. `taken` is what a damage that landed cost its target once temporary hit points absorbed their share; the cast's rows for one target add up to the damage its concentration save is set from (RN-22), and an undo clears it.
   - A spell opens rows that share `cast_id` (a label, no foreign key: the `spell_cast` event says what the casting was, and an area rolls the damage once for all); `healing` marks a heal, `half` the target that passed the save (`amount` is half, rounded down, and `roll_total` the whole roll), `applied_amount` what the master applied when it was not `amount`, and `attack_total` the strike total while waiting for the Shield reaction (to compare it again with AC plus 5, without rolling anything). `attack_armor_class` is the AC the strike was compared with (sheet, `ac_bonus` and the target's cover, MR-034), so Shield compares the strike with it plus 5; null on damage opened before it existed (Shield falls back to the sheet's AC); never sent to a player (RN-20).
   - **Trap damage in a combat:** `attacker_id` is `NULL`, `trap_point_id` says the trap, `attack_key` is `trap`, and the row is born already rolled (the server rolls when the trap fires): `rolled` for a player character (waits for the master, RN-02) and `applied` for an NPC or creature (took it at once). A `CHECK` requires an attacker or a trap.
   - It disappears with the combat or either combatant (`CASCADE`). Indexes by `target_id` and by `attacker_id` (partial, `attacker_id IS NOT NULL`: a trap has none) serve that cascade.
-- **`roll_mode_requests`** are a player's requests for a better mode than the suggested one, in a combat. They keep the attacker (`combatant_id`), the target, the attack key, the three modes (`suggested_mode`, `requested_mode`, `decided_mode`), the `status` (`pending`, `answered`, `closed`) and the player's `reason` (1 to 120 characters, fiction). **`combat_reasons`** are the other short texts of the log: why a roll's mode is not the suggestion (`roll_mode`) and why the master took an extra out (`part_removed`). Events carry these rows' ids and never the text. **`combatant_states`** are the states a combatant is in for a while (`rage`, `hunters_mark_target`, `dodging`, `reckless`), with the source, the combatant and phase at which they end, the round, and the number they carry (a rage's damage bonus). All three go with the encounter or the combatant (`CASCADE`).
+- **`character_inspiration`** is the Bardic Inspiration die a character holds out of a running combat (SRD 5.1): the primary key is `character_id` (one die at a time), `sides` (6, 8, 10 or 12), `source_character_id` (the bard, `SET NULL` when it is deleted) and `seconds_left` (1 to 600 seconds of game time; the master's clock moves it and deletes a die with no time left). In a combat the die is the combatant's (`combatants.inspiration_*`) and the row is gone. **`inspiration_holds`** keeps a scene check or a group check that waits for the player's answer about the die: the request that made it (`request`), the d20 it rolled (`faces`, `modifier`, `total`, `counted`, `physical`), `answer_key` once answered, unique on `(campaign_id, idempotency_key)`.
+- **`character_effects`** are the effects that last on a character outside a running combat (RN-22): the spell or catalog key (`source_key`), who cast it (`source_character_id`), the `group_id` of the casting (the cast's id, so ending the cast ends them), the conditions and modifiers it gives, the `duration_kind`, the game time it has left in `seconds_left` (a round is 6 seconds; NULL until it is dismissed or the caster stops concentrating), the saves it asks and the master's switches (`player_visible`, `audience`, `player_label`). When a combat takes the character in the row becomes a `combatant_states` row of kind `effect` with the same id, and goes back when the combat ends. The `combatants` columns `effect_conditions`, `effect_ac_bonus`, `effect_speed_pct`, `effect_speed_add_ft`, `effect_no_action`, `effect_no_move`, `extra_action_used`, `exhaustion_level` and `hp_max_base` hold what the effects leave on a combatant and are worked out again after every change; `character_vitals.exhaustion_level` holds a character's exhaustion and `character_vitals.armor_class_base` the base armor class an effect gives (Mage Armor), worked out again in the transaction of every change to the effects.
+- **`roll_mode_requests`** are a player's requests for a better mode than the suggested one, in a combat. They keep the attacker (`combatant_id`), the target, the attack key, the three modes (`suggested_mode`, `requested_mode`, `decided_mode`), the `status` (`pending`, `answered`, `closed`) and the player's `reason` (1 to 120 characters, fiction). **`combat_reasons`** are the other short texts of the log: why a roll's mode is not the suggestion (`roll_mode`) and why the master took an extra out (`part_removed`). Events carry these rows' ids and never the text. **`combatant_states`** are the states a combatant is in for a while (`rage`, `hunters_mark_target`, `dodging`, `reckless`, and the effects that last, kind `effect`), with the source, the combatant and phase at which they end, the round, and the number they carry (a rage's damage bonus). A rage that is a Berserker's frenzy has its own combatant as `source_id` (no column was added; see Architecture, States). All three go with the encounter or the combatant (`CASCADE`).
+- **`hit_riders`** are the offers a monk's hit makes (RN-35; migration 00249): the attacker, the target, the `kind` (`open_hand`, `stunning_strike`), the round of the hit, and `used` with the `choice` once answered. They go with the encounter or the combatants (`CASCADE`). `combatants.effect_no_reaction` is true while an effect takes the combatant's reactions away (the Open Hand technique), worked out with the other `effect_*` columns.
 - `pending_damages` also keeps `parts` (the lines the hit offers), `part_rolls` (what each rolled), `steps` (the resistance, vulnerability and immunity steps per damage type), `after_steps` (the damage after them) and `landed_before` (an NPC's hit points before the damage, to give back what a removed extra took). `combatants` also keeps `attacked_hostile`, `took_damage` and `rage_end_pending` (the Rage), `condition_sources`, and the turns of the last Sneak Attack and Colossus Slayer. `puzzle_hint_tries` keeps the second d20 (`d20_b`), the one that counted and the mode.
 - **`trap_damages`** (MR-035, RN-02) is the damage a triggered trap did to a player character when **there is no combat** on the map, one row per damage part. The server rolls when the trap fires: `dice_count` (doubled on the trap attack's critical), `dice_sides` and `dice_bonus` are the rolled damage, `faces` what came out, `roll_total` the whole roll and `amount` what counts (half, rounded down, for one who passed a save that halves the damage). `status` is `rolled` (waits for the master), `applied` or `discarded`, and `applied_amount` is the amount the master applied when it was not the rolled one. `fire_id` labels the damages of one trigger; `trap_point_id` has no foreign key (the same cycle reason as `pending_damages`). It disappears with the session or the character (`CASCADE`); the index is by session. `settle_key` (unique where set) and `settle_hash` keep the idempotency key, scoped to the campaign, and the hash of the call that applied or discarded it: the damage can be settled with no session open, where no session event can hold the key, so a retry gets the first answer and the same key for another damage, amount or action is refused. It survives the end of the session (the session stays stored): the master reads those waiting in the whole campaign. The end of a combat turns the trap damage still waiting in `pending_damages` into rows here. Fantasy, numbers and IDs only.
 - **`roll_holds`** keeps an attack roll that waits for its player's answer about a Bardic Inspiration die (SRD 5.1, Bard: the creature decides after the d20 and before the result). `request` is the `RollAttackRequest` as it came (ids, keys and how the d20 was given), `face` the d20 and `modifier` the attack's bonus; `idempotency_key` is the request's (with the suffix `#window` when a Cutting Words window held the attack first), unique within the encounter, and `answer_key` is the key of the answer, set when it is given so that a retry finds the hold answered. Nothing is resolved, spent or written to the history until the answer; a hold of an earlier `round` is forgotten, and the encounter or the combatant takes it away (`CASCADE`). No personal data. The die itself is on the combatant (`inspiration_sides`, `inspiration_from`, `inspiration_expires_round`, all `NULL` together or a valid die: 6, 8, 10 or 12, round at least 1) and ends with the combat.
@@ -1235,6 +1312,13 @@ erDiagram
         timestamptz updated_at
     }
 
+    map_point_images {
+        uuid point_id PK,FK "CASCADE, scene point"
+        uuid image_id PK,FK "CASCADE, gallery image"
+        int4 position "order in the list, from 0"
+        timestamptz created_at
+    }
+
     scene_clue_reveals {
         uuid id PK
         uuid campaign_id FK "CASCADE"
@@ -1271,6 +1355,8 @@ erDiagram
     maps |o--o{ map_points : "is the submap of"
     map_points ||--o{ scene_actions : "has the actions"
     map_points ||--o{ scene_clues : "has the clues"
+    map_points ||--o{ map_point_images : "has the images"
+    gallery_images ||--o{ map_point_images : "is attached to"
     scene_clues |o--o{ scene_clue_reveals : "was revealed in"
     map_points |o--o{ scene_clue_reveals : "is the scene of"
     users ||--o{ scene_clue_reveals : "received"
@@ -1312,7 +1398,7 @@ erDiagram
   - `revealed_at` is when the master revealed the map to the players; empty, the map is hidden, and every map is born hidden. The player sees the revealed map, or the session's current map (`game_sessions.current_map_id`), even hidden; choosing the current map reveals it.
   - `revision` goes up when the name or image change (revealing does not touch it); a save with an old revision gets `aborted`, like the sheet.
   - `grid_columns` is the battle grid (MR-013, RN-21): how many 1.5 m squares fit in the image width, 4 to 200, or `NULL` without a grid (a `CHECK`). Rows are not stored: they follow the image's aspect ratio (`round(columns × height / width)`). Changing the grid touches `updated_at`, not `revision`. It is the grid **of the rules**, the one every layer, the fog and the combat use. With the calibration (`grid_factor`, MR-025, RN-25: `INT4`, default 1, 1 to 20, and `grid_columns` a multiple of the factor, by `CHECK`) the drawing's columns are `grid_columns / grid_factor` and the rules' rows are the drawing's (the image's aspect ratio) times the factor. Other drawing columns, or a smaller factor or one that is not a multiple of the old one, erase the painted layers and the players' memory, like replacing the image; a factor that is a multiple of the old one, with the same drawing columns, **multiplies** them (each square becomes a block, `rules/grid` `Scaled`). Both are refused while a combat is on the map; removing the grid turns the fog off and returns the factor to 1.
-  - Fog (MR-036): `fog_enabled` (off by default), `base_light` (`dark`, `dim` or `bright`; `dark` by default) and `group_vision` ("Visão do grupo", off) are the fog settings. It only turns on with a grid (the server checks). Turning the fog off erases nothing. `fog_on_first_grid` means the table rule "fog on new maps" was on when the map was born and has not been applied yet; the fog turns on with the first grid (RN-24). `layers_revision` and `light_revision` go up once per change of the painted layers (the light, which no player reads, on its own counter; the master reads the sum); they are counters apart from `revision` so that painting never makes another tab's `UpdateMap` fail with `aborted`. `vision_epoch` is the generation of the players' memory; it goes up with each clearing.
+  - Fog (MR-036): `fog_enabled` (off by default), `base_light` (`dark`, `dim` or `bright`; `dark` by default; `bright` shows the players the whole floor plan, and generated dungeons are made `dim`; migration `00245` moves the existing generated dungeons from `bright` to `dim`, once and idempotently) and `group_vision` ("Visão do grupo", off) are the fog settings. It only turns on with a grid (the server checks). Turning the fog off erases nothing. `fog_on_first_grid` means the table rule "fog on new maps" was on when the map was born and has not been applied yet; the fog turns on with the first grid (RN-24). `layers_revision` and `light_revision` go up once per change of the painted layers (the light, which no player reads, on its own counter; the master reads the sum); they are counters apart from `revision` so that painting never makes another tab's `UpdateMap` fail with `aborted`. `vision_epoch` is the generation of the players' memory; it goes up with each clearing.
 - **`map_layers`** keeps the layers painted on a map (MR-034, MR-036): `map_id` is the primary key (and `CASCADE` with the map), and `difficult_terrain`, `walls`, `cover`, `light` and `doors` are `BYTEA` in the `rules/grid` packed format (row by row). 1 bit per square for terrain and wall, 2 bits for cover and light, and **doors** (MR-010, RN-26) 4 bits per square (square `n` is the low nibble of byte `n / 2` when `n` is even and the high one when odd; 0 none, 1 open, 2 closed, 3 locked, 4 portcullis, 5 secret; up to 40 KB on the largest grid). They are in a separate table because `maps` is almost always read whole and the five layers add up to tens of KB on a 200 × 400 grid. A map with nothing painted has no row, and a layer with nothing painted is `NULL`. The server measures each layer against the grid when writing and reads as "nothing painted" one that does not fit; changing the drawing's columns or the image deletes the row, and a calibration that is a multiple of the old one rewrites the five layers at scale, in the same transaction.
 - **`map_vision_memory`** (MR-036): what each player **has already seen** of a map with fog on, one row per `(map_id, user_id)` (the primary key). `seen` is a bitmap in the `rules/grid` format (1 bit per square, per row; at most 10 KB on a 200 × 400 grid); a wall seen next to a seen square counts as seen. It only grows, in the writes that change what someone sees (never in a read), and keeps **squares, never creatures**: a remembered square shows no NPC. The master erases it with `ForgetMapVision` ("Esquecer o que foi visto"), and changing the grid columns or the map image erases it along with the layers (`clearLayers`), because the bitmap only serves the grid it was made on; a calibration that is a multiple of the old one rewrites it at scale instead (each seen square becomes a block, in today's epoch), so the player does not forget what he saw. It disappears with the map or the player (`CASCADE`). `epoch` is the `maps.vision_epoch` the bitmap was made in: each clearing (grid or image changed, "Esquecer o que foi visto") raises the map's epoch, and a row of an old epoch reads empty and is never written back (the write checks the epoch inside the command itself). No index: the primary key covers who reads (`map_id`, `user_id`) and who deletes by map.
 - **`map_points`**: `kind` is `battle`, `submap`, `scene`, `trap`, `treasure` or `light` (`CHECK`); `name` (1 to 80) and `description` (up to 2,000 characters, several lines) are the master's free text for the players; `x_bp` and `y_bp` are the position in base points of the image's width and height, 0 to 10000 (`CHECK`), so they do not depend on the image size. Indexes: points by `(map_id, created_at)` and by `target_map_id` (the `SET NULL`), plus two partial indexes on treasures (those found in a session and those converted by an XP award).
@@ -1332,6 +1418,7 @@ erDiagram
 
 - **`scene_actions`** (MR-015) are a RP scene's actions, one row per action: `point_id` is a `scene` point (`ON DELETE CASCADE`; the API only accepts an action on a point of that kind, and deletes the actions when the point changes kind), `position` orders the point's actions from 0 (not unique: moving renumbers the list in a transaction), `key` is `skill:<skill>`, `ability:<ability>` or `save:<ability>` (the `CHECK` only lets that format through, and the API checks the key in the rules catalog, `rules.Content.SceneCheckName`: attack, spell and combat ability never enter, MR-015), `name` is the name the master gave ("Convencer o guarda", up to 60 characters, empty for none) and `dc` goes from 1 to 30 or is `NULL`. At most 20 actions per point, checked in the `INSERT` transaction. The master always receives the DC; the player only when `map_points.show_dc` is on (RN-20). `max_attempts` is how many times each player may roll the action while the scene is open: 1 by default, 1 to 5, or 0 for unlimited; the rolls and the attempts given live in `session_events`, so lowering the limit deletes nothing. Index: `(point_id, position)`.
 - **`scene_clues`** are the clues: `position` orders the list from 0 (not unique: moving renumbers), `text` is 1 to 500 characters (`CHECK`). At most 30 per point, checked in the `INSERT` transaction with the point locked, like actions. Only the master reads them; deleting the point deletes the clues (`CASCADE`). Index: `(point_id, position)`.
+- **`map_point_images`** (MR-015, "Imagens da cena") are the gallery images the master attached to a scene point: primary key `(point_id, image_id)` (an image is on a point once), `position` orders the list from 0 (the API rewrites the whole list in one transaction with the point locked, so it is never read half changed), `created_at`. At most 8 per point, checked by the API. Both foreign keys are `ON DELETE CASCADE`: deleting the point or the gallery image deletes only the link (index `(image_id)`, `00235`). Only a scene point has any (a point that changes kind loses them). Only the master reads the list (RN-10); showing an image to the players does not read this table (`SetShownImage`, MR-019).
 - **`scene_clue_reveals`** records each reveal, one row per clue and player (unique index on `(clue_id, user_id)`: revealing again changes nothing). **The row keeps a copy of the text**, so what the player received stays as it was said at the table even if the master edits or deletes the clue, or deletes the scene (`clue_id` and `point_id` become `NULL` by `SET NULL`, and the note loses only the label). `user_id` is the player who owns the note (`CASCADE` on account deletion, like `player_notes`); `character_id` is the character the master chose, for "Só a Brisa". There is no "hide again". Indexes: a player's clues per campaign and a point's.
 - **`scene_discoveries`** has key `(campaign_id, point_id)`, and the first time counts. `maps` writes it when a scene point is revealed (`SetMapPointRevealed`, or `UpdateMapPoint` with `revealed`) and `play` writes it when the master opens the scene (`OpenScene`, even on a hidden point), in each one's transaction. It holds for the whole group and does not disappear when the point is hidden again. The list of scenes the player may label joins with `map_points` and only shows what is still a `scene`.
 - **`player_notes`** are the notes: `text` of 1 to 2,000 characters (`CHECK`), `scene_point_id` optional (the API only accepts a discovered scene; deleting the point removes the label, `SET NULL`). At most 300 per player per campaign, checked in the `INSERT` transaction; received clues do not count. Every query filters by the author, so another person's note is never found, not even by the master. Deleting the account or the campaign deletes the notes (`CASCADE`). There is no leaving a campaign or being removed as an active member yet; when there is, deleting the member's notes goes in the same transaction. Index: `(campaign_id, author_user_id, updated_at)`: a player's notes, newest first.
