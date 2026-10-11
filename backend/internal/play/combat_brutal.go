@@ -49,6 +49,17 @@ func savageAttacksDice(attacker playdb.Combatant, attack link.Attack, sheet link
 	return 1
 }
 
+// extraDiceAttack is the attack as the extra dice read it: a melee weapon thrown at a target
+// beyond melee reach is a ranged weapon attack (SRD 5.1, "Ranged Attacks"), so neither Savage
+// Attacks nor Brutal Critical adds a die to it; used within reach (or as an opportunity attack)
+// it is still a melee attack.
+func extraDiceAttack(enc playdb.Encounter, attack link.Attack, attacker, target playdb.Combatant, opportunity bool) link.Attack {
+	if thrownAtRange(enc, attack, attacker, target, opportunity) {
+		attack.Melee = false
+	}
+	return attack
+}
+
 // extraDiceName is the Portuguese name of the feature that adds the extra dice,
 // empty when there are none. savage is how many of the extra dice are the
 // Savage Attacks'; the rest are Brutal Critical's.
