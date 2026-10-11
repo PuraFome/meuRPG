@@ -3633,7 +3633,9 @@ type CombatLogHitRider struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Choice HitRiderChoice         `protobuf:"varint,1,opt,name=choice,proto3,enum=meurpg.play.v1.HitRiderChoice" json:"choice,omitempty"`
 	Result HitRiderLogResult      `protobuf:"varint,2,opt,name=result,proto3,enum=meurpg.play.v1.HitRiderLogResult" json:"result,omitempty"`
-	// The target's roll and the DC: the master's and the monk's player's lines only (RN-20).
+	// The target's roll and the DC: the master's line, and the target's player's when the target
+	// is a player's character. The monk's player reads only the result: an NPC's roll never
+	// reaches a player (RN-20).
 	D20           int32 `protobuf:"varint,3,opt,name=d20,proto3" json:"d20,omitempty"`
 	SaveTotal     int32 `protobuf:"varint,4,opt,name=save_total,json=saveTotal,proto3" json:"save_total,omitempty"`
 	Dc            int32 `protobuf:"varint,5,opt,name=dc,proto3" json:"dc,omitempty"`

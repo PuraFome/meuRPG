@@ -2049,7 +2049,9 @@ enum HitRiderLogResult {
 message CombatLogHitRider {
   HitRiderChoice choice = 1;
   HitRiderLogResult result = 2;
-  // The target's roll and the DC: the master's and the monk's player's lines only (RN-20).
+  // The target's roll and the DC: the master's line, and the target's player's when the target
+  // is a player's character. The monk's player reads only the result: an NPC's roll never
+  // reaches a player (RN-20).
   int32 d20 = 3;
   int32 save_total = 4;
   int32 dc = 5;
