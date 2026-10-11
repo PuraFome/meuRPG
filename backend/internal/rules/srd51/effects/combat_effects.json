@@ -93,6 +93,12 @@
       "modifiers": [{"kind": "base_ac", "value": 13}],
       "tags_pt": ["CA base 13 + Destreza, sem armadura"]
     },
+    "spell:shield-of-faith": {
+      "applies": "all",
+      "visibility": "public",
+      "modifiers": [{"kind": "ac_bonus", "value": 2}],
+      "tags_pt": ["CA +2"]
+    },
     "spell:pass-without-trace": {
       "applies": "all",
       "visibility": "owner",

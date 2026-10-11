@@ -203,7 +203,7 @@ func (ev *effectViewer) concentrations(groups []effectGroup) []*playv1.Concentra
 // its own call) and what the app adds itself (the web that burns).
 func (ev *effectViewer) catalog() []*playv1.CatalogEffect {
 	var out []*playv1.CatalogEffect
-	for _, key := range []string{"spell:hold-person", "spell:bless", "spell:bane", "spell:haste", "spell:web", "spell:faerie-fire", "spell:hideous-laughter", "spell:guidance", "spell:resistance", "spell:enhance-ability", "spell:heroism", "spell:longstrider", "spell:mage-armor", "spell:pass-without-trace"} {
+	for _, key := range []string{"spell:hold-person", "spell:bless", "spell:bane", "spell:haste", "spell:web", "spell:faerie-fire", "spell:hideous-laughter", "spell:guidance", "spell:resistance", "spell:enhance-ability", "spell:heroism", "spell:longstrider", "spell:mage-armor", "spell:pass-without-trace", "spell:shield-of-faith"} {
 		def, ok := ev.content.CombatSpellEffect(key)
 		if !ok {
 			continue

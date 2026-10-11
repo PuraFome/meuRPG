@@ -386,7 +386,7 @@ func TestTheCatalogComesWithoutACombatAndHoldsTheNewSpells(t *testing.T) {
 	for _, e := range res.Msg.GetCatalog() {
 		have[e.GetKey()] = true
 	}
-	for _, k := range []string{guidanceKey, resistanceKey, enhanceAbilityKey, heroismKey, longstriderKey, blessKey} {
+	for _, k := range []string{guidanceKey, resistanceKey, enhanceAbilityKey, heroismKey, longstriderKey, blessKey, shieldOfFaithKey} {
 		if !have[k] {
 			t.Errorf("the catalog lacks %s", k)
 		}
