@@ -59,4 +59,31 @@ describe('TurnOptionsState', () => {
     await state.load(api([Promise.reject(new Error('down'))]), 'c', 'e', 'B');
     expect(state.data()).toBeNull();
   });
+  it('shows a fresher answer that comes while a newer question is out, and settles with the last', async () => {
+    const state = new TurnOptionsState();
+    let first!: (r: GetTurnOptionsResponse) => void;
+    let second!: (r: GetTurnOptionsResponse) => void;
+    const client = api([
+      new Promise<GetTurnOptionsResponse>((resolve) => (first = resolve)),
+      new Promise<GetTurnOptionsResponse>((resolve) => (second = resolve)),
+    ]);
+    const a = state.load(client, 'c', 'e', 'x');
+    const b = state.load(client, 'c', 'e', 'x');
+    expect(state.settling()).toBe(true);
+    first({ yourTurn: true } as GetTurnOptionsResponse);
+    await a;
+    // Newer than what was on screen (nothing): shown, though the second question is still out.
+    expect(state.data()?.yourTurn).toBe(true);
+    expect(state.settling()).toBe(true);
+    second({ yourTurn: false } as GetTurnOptionsResponse);
+    await b;
+    expect(state.data()?.yourTurn).toBe(false);
+    expect(state.settling()).toBe(false);
+  });
+
+  it('does not stay settling after a question fails', async () => {
+    const state = new TurnOptionsState();
+    await state.load(api([Promise.reject(new Error('down'))]), 'c', 'e', 'x');
+    expect(state.settling()).toBe(false);
+  });
 });
