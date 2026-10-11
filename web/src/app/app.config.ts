@@ -1,3 +1,4 @@
+import { FullscreenOverlayContainer, OverlayContainer } from '@angular/cdk/overlay';
 import {
   ApplicationConfig,
   inject,
@@ -21,6 +22,9 @@ export const appConfig: ApplicationConfig = {
     // Loads the animations runtime lazily, only if a component (e.g. a
     // Material overlay or ripple) actually asks for it.
     provideAnimationsAsync(),
+    // Dialogs and sheets (CDK overlays) follow a map on browser full screen: the browser paints only the full-screen
+    // element's subtree, and this container moves itself into it (docs/design.md).
+    { provide: OverlayContainer, useClass: FullscreenOverlayContainer },
     // <mat-icon>name</mat-icon> defaults to Google's "Material Icons"
     // ligature font, which this app does not ship (no Google Fonts — see
     // docs/privacy.md). Point it at the self-hosted Material Symbols

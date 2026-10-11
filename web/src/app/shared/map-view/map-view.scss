@@ -5,6 +5,22 @@
   display: block;
 }
 
+// Browser full screen (the "Tela cheia" button): the host fills the screen on the page ground, and the map takes the
+// height it has instead of the in-page cap.
+:host(:fullscreen) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--mr-space-3);
+  background: var(--mr-ground);
+
+  .mv-wrap {
+    max-width: calc((100vh - 2 * var(--mr-space-3)) * var(--mv-ar, 1.5));
+  }
+}
+
 // The box is as wide as the room, but never taller than about three
 // quarters of the screen: a tall image (a tower plan) is centred, not
 // stretched down the page. The controls sit over this box, not the host.

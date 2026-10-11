@@ -44,6 +44,7 @@ import { pointHidden } from './map-labels';
 import { MapMarker } from './map-marker/map-marker';
 import { MapToken } from './map-token/map-token';
 import { RetryImage } from '../retry-image/retry-image';
+import { fullscreenOfHost } from '../../core/ui/fullscreen';
 
 /** `preview`: a still picture (the session page's card); `view`: pan and
  * zoom, points open; `tokens`: also drag the tokens (the master's session
@@ -116,6 +117,7 @@ const PREVIEW_SCALE = 2;
   styleUrl: './map-view.scss',
 })
 export class MapView {
+  protected readonly fullscreen = fullscreenOfHost();
   readonly image = input.required<MapImageRef>();
   /** The map's name: the group's accessible name. */
   readonly mapName = input('');

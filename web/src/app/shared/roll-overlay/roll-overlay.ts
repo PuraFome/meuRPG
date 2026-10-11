@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject } from '@angular/core';
 
 import { type DieShape, RollAnimator, outcomeLine } from './roll-animator';
 
@@ -132,7 +133,10 @@ const TENS = 10;
 @Component({
   selector: 'app-roll-overlay',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(document:keydown.escape)': 'animator.dismiss()' },
+  host: {
+    '(document:keydown.escape)': 'animator.dismiss()',
+    '(document:fullscreenchange)': 'followFullscreen()',
+  },
   template: `
     <p class="sr" role="status" aria-live="polite">{{ animator.announcement() }}</p>
     @if (animator.current(); as r) {
@@ -207,8 +211,41 @@ export class RollOverlay {
   protected readonly outcome = outcomeLine;
   protected readonly drawings = DRAWINGS;
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly doc = inject(DOCUMENT);
+  /** Where the host sits in the app shell, to put it back when full screen ends. */
+  private home: { parent: Node; next: Node | null } | null = null;
+
   constructor() {
-    inject(DestroyRef).onDestroy(this.animator.attach());
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(this.animator.attach());
+    destroyRef.onDestroy(() => this.restore());
+  }
+
+  /**
+   * The browser paints only the full-screen element's subtree, so while a map is on full screen the overlay's host
+   * moves inside it (a fixed `.scrim` then covers the screen) and goes back to the shell when the mode ends.
+   */
+  protected followFullscreen(): void {
+    const target = this.doc.fullscreenElement;
+    if (target && target !== this.host && !target.contains(this.host)) {
+      this.home ??= this.host.parentNode
+        ? { parent: this.host.parentNode, next: this.host.nextSibling }
+        : null;
+      target.appendChild(this.host);
+    } else if (!target) {
+      this.restore();
+    }
+  }
+
+  private restore(): void {
+    if (this.home?.parent.isConnected) {
+      this.home.parent.insertBefore(
+        this.host,
+        this.home.next?.parentNode === this.home.parent ? this.home.next : null,
+      );
+    }
+    this.home = null;
   }
 
   /** What a die shows: its face once it has landed; while it tumbles, a face it has ("00" to "90" on the tens die of a d100). */

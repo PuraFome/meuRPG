@@ -127,6 +127,17 @@
       >
         <mat-icon aria-hidden="true">fit_screen</mat-icon>
       </button>
+      @if (fullscreen.available) {
+        <button
+          type="button"
+          class="mv__btn"
+          [attr.aria-label]="fullscreen.active() ? 'Sair da tela cheia' : 'Tela cheia'"
+          [attr.aria-pressed]="fullscreen.active()"
+          (click)="fullscreen.toggle()"
+        >
+          <mat-icon aria-hidden="true">{{ fullscreen.active() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
+      }
     </div>
   }
 </div>

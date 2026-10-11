@@ -1,3 +1,4 @@
+import { stubFullscreen } from '../../core/ui/fullscreen-testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { mapPoint, mapToken } from '../../core/maps/maps-testing';
@@ -269,5 +270,42 @@ describe('MapView', () => {
     });
     const discs = Array.from(el.querySelectorAll('.tk__disc')).map((d) => d.textContent?.trim());
     expect(discs).toEqual(['Br', 'Bo', 'T']);
+  });
+
+  describe('full screen', () => {
+    let fs: ReturnType<typeof stubFullscreen>;
+    afterEach(() => fs.restore());
+
+    it('offers "Tela cheia" only where the browser has the API', () => {
+      fs = stubFullscreen(false);
+      setup({});
+      expect(el.querySelector('[aria-label="Tela cheia"]')).toBeNull();
+      fs.restore();
+      fs = stubFullscreen(true);
+      setup({});
+      expect(el.querySelector('[aria-label="Tela cheia"]')).toBeTruthy();
+    });
+
+    it("asks the host for full screen, follows the browser's state and leaves on a second click", () => {
+      fs = stubFullscreen(true);
+      setup({});
+      fs.track(el);
+      const button = () =>
+        el.querySelector<HTMLButtonElement>(
+          '[aria-label="Tela cheia"], [aria-label="Sair da tela cheia"]',
+        )!;
+      expect(button().getAttribute('aria-pressed')).toBe('false');
+      button().click();
+      expect(fs.request).toHaveBeenCalledTimes(1);
+      fs.enter(el);
+      fixture.detectChanges();
+      expect(button().getAttribute('aria-label')).toBe('Sair da tela cheia');
+      expect(button().getAttribute('aria-pressed')).toBe('true');
+      button().click();
+      expect(fs.exit).toHaveBeenCalledTimes(1);
+      fs.leave();
+      fixture.detectChanges();
+      expect(button().getAttribute('aria-label')).toBe('Tela cheia');
+    });
   });
 });
