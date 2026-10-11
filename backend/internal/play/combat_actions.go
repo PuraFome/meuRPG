@@ -180,6 +180,7 @@ func turnOf(c playdb.Combatant) link.Turn {
 		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / 10,
 		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
 		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
+		JumpLongBonusDFt: int(c.JumpLongBonusDft), JumpDoubled: c.JumpDoubled,
 	}
 }
 
@@ -2214,6 +2215,14 @@ func (s *Service) TakeAction(
 			if err := c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: true}); err != nil {
 				return nil, fmt.Errorf("mark the disengage: %w", err)
 			}
+		}
+		// Step of the Wind (SRD 5.1, Monk): its Disengage or Dash also doubles the
+		// jump distance for the rest of the turn.
+		if feature && strings.HasPrefix(actionKey, combat.StepOfTheWindFeature+":") {
+			if err := c.q.SetCombatantJumpDoubled(ctx, playdb.SetCombatantJumpDoubledParams{ID: who.ID, JumpDoubled: true}); err != nil {
+				return nil, fmt.Errorf("double the jump distance: %w", err)
+			}
+			made.JumpDoubled, made.JumpDoubledBefore = true, who.JumpDoubled
 		}
 		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 			return nil, fmt.Errorf("touch the encounter: %w", err)

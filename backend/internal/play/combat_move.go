@@ -655,13 +655,16 @@ const maxJumpDFt = 1000
 
 // longJumpDFt and highJumpDFt are the combatant's limits for a jump, in tenths
 // of a foot, with or without a running start. They were copied from the sheet
-// when the combatant joined (the standing jump is half of the running one).
+// when the combatant joined (the standing jump is half of the running one, without
+// the Thief's bonus), doubled for the turn the monk used Step of the Wind.
 func longJumpDFt(c playdb.Combatant, running bool) int {
-	return combat.Jumps{LongRunning: int(c.JumpLongDft), LongStanding: int(c.JumpLongDft) / 2}.Long(running)
+	return combat.Jumps{
+		LongRunning: int(c.JumpLongDft), LongStanding: int(c.JumpLongDft) / 2, LongRunningBonus: int(c.JumpLongBonusDft),
+	}.WithStepOfTheWind(c.JumpDoubled).Long(running)
 }
 
 func highJumpDFt(c playdb.Combatant, running bool) int {
-	return combat.Jumps{HighRunning: int(c.JumpHighDft), HighStanding: int(c.JumpHighDft) / 2}.High(running)
+	return combat.Jumps{HighRunning: int(c.JumpHighDft), HighStanding: int(c.JumpHighDft) / 2}.WithStepOfTheWind(c.JumpDoubled).High(running)
 }
 
 // jumpLimit fills the limit that applied in a TOO_FAR of a jump.

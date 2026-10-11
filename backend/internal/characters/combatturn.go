@@ -259,9 +259,13 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 	}
 	if len(d.Abilities) > 0 { // a basic sheet has no Strength to jump with
 		// What the combatant has on it, which is what MoveCombatant enforces.
+		jumps := combat.Jumps{
+			LongRunning: turn.JumpLongDFt, LongStanding: turn.JumpLongDFt / 2, LongRunningBonus: turn.JumpLongBonusDFt,
+			HighRunning: turn.JumpHighDFt, HighStanding: turn.JumpHighDFt / 2,
+		}.WithStepOfTheWind(turn.JumpDoubled)
 		out.Jumps = &rulesv1.JumpLimits{
-			LongRunningDft: i32(turn.JumpLongDFt), LongStandingDft: i32(turn.JumpLongDFt / 2),
-			HighRunningDft: i32(turn.JumpHighDFt), HighStandingDft: i32(turn.JumpHighDFt / 2),
+			LongRunningDft: i32(jumps.Long(true)), LongStandingDft: i32(jumps.Long(false)),
+			HighRunningDft: i32(jumps.High(true)), HighStandingDft: i32(jumps.High(false)),
 			RunningStart: combat.HasRunningStart(turn.LastMoveDFt),
 		}
 	}

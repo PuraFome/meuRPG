@@ -71,6 +71,7 @@ describe('ResourceClient', () => {
     const client = clientWith(calls);
     await client.spendHitDice('camp', 'c1', 8, { inApp: true }, 'k1');
     const typed = await client.spendHitDice('camp', 'c1', 8, { face: 5 }, 'k2');
+    await client.spendHitDice('camp', 'c1', 8, { face: 5, songFace: 4 }, 'k3');
     expect(calls.spend).toEqual([
       {
         campaignId: 'camp',
@@ -78,6 +79,7 @@ describe('ResourceClient', () => {
         faces: 8,
         idempotencyKey: 'k1',
         roll: { case: 'rollInApp', value: true },
+        typedSongFace: 0,
       },
       {
         campaignId: 'camp',
@@ -85,6 +87,15 @@ describe('ResourceClient', () => {
         faces: 8,
         idempotencyKey: 'k2',
         roll: { case: 'typedFace', value: 5 },
+        typedSongFace: 0,
+      },
+      {
+        campaignId: 'camp',
+        characterId: 'c1',
+        faces: 8,
+        idempotencyKey: 'k3',
+        roll: { case: 'typedFace', value: 5 },
+        typedSongFace: 4,
       },
     ]);
     expect(typed.healed).toBe(6);

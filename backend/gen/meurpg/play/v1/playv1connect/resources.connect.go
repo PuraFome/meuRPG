@@ -102,9 +102,19 @@ type ResourceServiceClient interface {
 	// spend another one after each roll, so one call spends one die. The
 	// character's player or the master.
 	//
+	// Song of Rest (SRD 5.1, Bard 2): when the latest rest of the open session is a
+	// short rest, a bard of the party with at least 1 hit point has the feature, and
+	// this is the first die the character spends since that rest, the character
+	// regains an extra die of the song (d6, d8 from bard level 9, d10 from 13, d12
+	// from 17, the largest among the bards) once for the rest. The party hears the
+	// song: anyone who rests with a bard does, the bard included. An app roll rolls
+	// the extra die too; a typed roll sends its face in `typed_song_face`.
+	//
 	// Errors: `permission_denied` for another player's character;
-	// `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT; `invalid_argument`
-	// for a die size the character does not have, or a typed face outside the die.
+	// `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT, or
+	// SONG_OF_REST_FACE_NEEDED for a typed roll that lacks the song's face;
+	// `invalid_argument` for a die size the character does not have, or a typed face
+	// outside its die.
 	SpendHitDice(context.Context, *connect.Request[v1.SpendHitDiceRequest]) (*connect.Response[v1.SpendHitDiceResponse], error)
 	// UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
 	// expended spell slots, after a short rest (SRD 5.1, Wizard, Arcane Recovery):
@@ -374,9 +384,19 @@ type ResourceServiceHandler interface {
 	// spend another one after each roll, so one call spends one die. The
 	// character's player or the master.
 	//
+	// Song of Rest (SRD 5.1, Bard 2): when the latest rest of the open session is a
+	// short rest, a bard of the party with at least 1 hit point has the feature, and
+	// this is the first die the character spends since that rest, the character
+	// regains an extra die of the song (d6, d8 from bard level 9, d10 from 13, d12
+	// from 17, the largest among the bards) once for the rest. The party hears the
+	// song: anyone who rests with a bard does, the bard included. An app roll rolls
+	// the extra die too; a typed roll sends its face in `typed_song_face`.
+	//
 	// Errors: `permission_denied` for another player's character;
-	// `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT; `invalid_argument`
-	// for a die size the character does not have, or a typed face outside the die.
+	// `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT, or
+	// SONG_OF_REST_FACE_NEEDED for a typed roll that lacks the song's face;
+	// `invalid_argument` for a die size the character does not have, or a typed face
+	// outside its die.
 	SpendHitDice(context.Context, *connect.Request[v1.SpendHitDiceRequest]) (*connect.Response[v1.SpendHitDiceResponse], error)
 	// UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
 	// expended spell slots, after a short rest (SRD 5.1, Wizard, Arcane Recovery):

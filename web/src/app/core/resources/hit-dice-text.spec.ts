@@ -1,5 +1,7 @@
 import {
   hitDieRollLine,
+  songOfRestAsk,
+  songOfRestOf,
   dieName,
   diceLeft,
   hitDiceLeftWords,
@@ -61,6 +63,25 @@ describe('hit dice words', () => {
     expect(hitDieRollLine(5, 0, 5)).toBe('Rolou 5 · recuperou 5 PV');
     expect(hitDieRollLine(4, -1, 3)).toBe('Rolou 4 − 1 = 3 · recuperou 3 PV');
     expect(hitDieRollLine(1, -3, 0)).toBe('Rolou 1 − 3 = 0 · recuperou 0 PV');
+  });
+
+  it("adds a bard's Song of Rest die to the line", () => {
+    expect(hitDieRollLine(7, 2, 13, { sides: 6, face: 4 })).toBe(
+      'Rolou 7 + 2 + 4 (Canção de Descanso, d6) = 13 · recuperou 13 PV',
+    );
+    expect(hitDieRollLine(5, 0, 8, { sides: 8, face: 3 })).toBe(
+      'Rolou 5 + 3 (Canção de Descanso, d8) = 8 · recuperou 8 PV',
+    );
+    expect(hitDieRollLine(7, 2, 4, { sides: 6, face: 4 })).toContain('(chegou ao máximo)');
+  });
+
+  it('reads the song only when the answer says it applied', () => {
+    expect(songOfRestOf({ songOfRestSides: 0, songOfRestFace: 0 })).toBeUndefined();
+    expect(songOfRestOf({ songOfRestSides: 10, songOfRestFace: 7 })).toEqual({
+      sides: 10,
+      face: 7,
+    });
+    expect(songOfRestAsk(8)).toBe('Role 1d8 da Canção de Descanso');
   });
 
   it('says when the hit points stopped at the maximum', () => {

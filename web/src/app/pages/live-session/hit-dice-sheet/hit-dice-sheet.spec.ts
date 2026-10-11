@@ -239,6 +239,79 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
       expect(flat(el.querySelector('.rolls__line'))).toContain('Rolou 5 · recuperou 5 PV');
     });
 
+    it("asks for the face of a bard's Song of Rest die after the hit die, then spends both", async () => {
+      spendHitDice.mockRejectedValueOnce(
+        new ConnectError('song', Code.FailedPrecondition, undefined, [
+          {
+            desc: ResourceBlockedSchema,
+            value: create(ResourceBlockedSchema, {
+              reason: ResourceBlockedReason.SONG_OF_REST_FACE_NEEDED,
+              needed: 6,
+            }),
+          },
+        ]),
+      );
+      const { el, settle, button } = render({ diceMode: DiceMode.PHYSICAL });
+      const type = async (value: string) => {
+        const field = el.querySelector<HTMLInputElement>('input[type=text]')!;
+        field.value = value;
+        field.dispatchEvent(new Event('input'));
+        await settle();
+      };
+      await type('5');
+      button('Confirmar 5').click();
+      await settle();
+      // No error box: the sheet asks for the song's die in the same field, keeping the 5.
+      expect(el.querySelector('[role=alert]')).toBeNull();
+      expect(flat(el.querySelector('.js-song-ask'))).toContain('recupera também um d6');
+      expect(flat(el.querySelector('.js-song-ask'))).toContain('O seu d10 deu 5');
+      expect(flat(el.querySelector('.type__hint'))).toBe(
+        'Role o seu d6 e digite o número que saiu (1 a 6).',
+      );
+      spendHitDice.mockResolvedValueOnce(
+        create(SpendHitDiceResponseSchema, {
+          ...answer({ face: 5, mod: 0, healed: 9 }),
+          songOfRestSides: 6,
+          songOfRestFace: 4,
+        }),
+      );
+      await type('4');
+      button('Confirmar 4').click();
+      await settle();
+      expect(spendHitDice.mock.calls[1].slice(2, 4)).toEqual([10, { face: 5, songFace: 4 }]);
+      expect(flat(el.querySelector('.rolls__line'))).toContain(
+        'Rolou 5 + 4 (Canção de Descanso, d6) = 9 · recuperou 9 PV',
+      );
+      expect(el.querySelector('.js-song-ask')).toBeNull();
+    });
+
+    it('lets the player go back from the song question', async () => {
+      spendHitDice.mockRejectedValueOnce(
+        new ConnectError('song', Code.FailedPrecondition, undefined, [
+          {
+            desc: ResourceBlockedSchema,
+            value: create(ResourceBlockedSchema, {
+              reason: ResourceBlockedReason.SONG_OF_REST_FACE_NEEDED,
+              needed: 8,
+            }),
+          },
+        ]),
+      );
+      const { el, settle, button } = render({ diceMode: DiceMode.PHYSICAL });
+      const field = el.querySelector<HTMLInputElement>('input[type=text]')!;
+      field.value = '3';
+      field.dispatchEvent(new Event('input'));
+      await settle();
+      button('Confirmar 3').click();
+      await settle();
+      el.querySelector<HTMLButtonElement>('.js-song-cancel')!.click();
+      await settle();
+      expect(el.querySelector('.js-song-ask')).toBeNull();
+      expect(flat(el.querySelector('.type__hint'))).toBe(
+        'Role o seu d10 e digite o número que saiu (1 a 10).',
+      );
+    });
+
     it('refuses a face outside the die before asking the server', async () => {
       const { el, settle } = render({ diceMode: DiceMode.PHYSICAL });
       const field = el.querySelector<HTMLInputElement>('input[type=text]')!;

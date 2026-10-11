@@ -50,6 +50,8 @@ export function resourceBlockedMessage(
       return 'Essa criatura não pode receber o dado.';
     case ResourceBlockedReason.NOT_AVAILABLE:
       return 'Você não tem essa habilidade.';
+    case ResourceBlockedReason.SONG_OF_REST_FACE_NEEDED:
+      return `Um bardo toca a Canção de Descanso: digite também o número do dado extra (d${needed}).`;
     case ResourceBlockedReason.INSPIRATION_PENDING:
       return INSPIRATION_PENDING_TEXT;
     default:

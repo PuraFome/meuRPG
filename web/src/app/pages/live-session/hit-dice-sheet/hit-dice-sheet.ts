@@ -22,12 +22,16 @@ import {
   diceLeft,
   dieName,
   hitDieRollLine,
+  songOfRestAsk,
+  songOfRestOf,
 } from '../../../core/resources/hit-dice-text';
 import { RollAnimator, showOfDie } from '../../../shared/roll-overlay/roll-animator';
 import { type HitDieRoll, ResourceClient } from '../../../core/resources/resources-client';
+import { ResourceBlockedReason } from '../../../../gen/meurpg/play/v1/resources_pb';
 import {
   arcaneRecoveryErrorMessage,
   hitDiceErrorMessage,
+  resourceBlocked,
 } from '../../../core/resources/resources-errors';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
@@ -153,7 +157,33 @@ export class HitDiceSheet {
   }
 
   protected rollTyped(face: number): Promise<void> {
-    return this.spend({ face });
+    const ask = this.songAsk();
+    // The second number asked for: the song's die, with the face of the hit die already typed.
+    return this.spend(ask ? { face: ask.face, songFace: face } : { face });
+  }
+
+  /**
+   * A bard's Song of Rest (SRD 5.1) gives this character an extra die with the first hit die of the rest. With a real
+   * die the server asks for its face after the first one was typed: the sheet keeps that face and asks for the
+   * song's, in the same picker.
+   */
+  protected readonly songAsk = signal<{ readonly sides: number; readonly face: number } | null>(
+    null,
+  );
+  protected readonly pickerMax = computed(() => this.songAsk()?.sides ?? this.faces() ?? 1);
+  protected readonly pickerLabel = computed(() => {
+    const ask = this.songAsk();
+    return ask ? songOfRestAsk(ask.sides) : 'Role 1' + this.chosenName() + ' para o dado de vida';
+  });
+  protected readonly pickerHint = computed(() => {
+    const ask = this.songAsk();
+    const name = ask ? dieName(ask.sides) : this.chosenName();
+    return `Role o seu ${name} e digite o número que saiu (1 a ${this.pickerMax()}).`;
+  });
+
+  protected cancelSong(): void {
+    this.songAsk.set(null);
+    this.picker()?.reset();
   }
 
   private async spend(roll: HitDieRoll): Promise<void> {
@@ -172,6 +202,7 @@ export class HitDiceSheet {
         this.key.keyFor({ faces, roll }),
       );
       this.key.renew();
+      this.songAsk.set(null);
       if (res.vitals) {
         const vitals = toVitalsVm(res.vitals);
         this.answered.set(vitals);
@@ -182,20 +213,29 @@ export class HitDiceSheet {
           'Dado de vida',
           faces,
           res.face,
-          hitDieRollLine(res.face, res.constitutionModifier, res.healed),
+          hitDieRollLine(res.face, res.constitutionModifier, res.healed, songOfRestOf(res)),
         );
         if (show) {
           this.animator.play(show);
         }
       }
       this.rolls.update((all) => [
-        hitDieRollLine(res.face, res.constitutionModifier, res.healed),
+        hitDieRollLine(res.face, res.constitutionModifier, res.healed, songOfRestOf(res)),
         ...all,
       ]);
       this.typing.set(false);
       this.picker()?.reset();
     } catch (err) {
-      this.error.set(hitDiceErrorMessage(err));
+      const blocked = resourceBlocked(err);
+      if (
+        blocked?.reason === ResourceBlockedReason.SONG_OF_REST_FACE_NEEDED &&
+        !('inApp' in roll)
+      ) {
+        this.songAsk.set({ sides: blocked.needed, face: roll.face });
+        this.picker()?.reset();
+      } else {
+        this.error.set(hitDiceErrorMessage(err));
+      }
     } finally {
       this.busy.set(false);
     }
