@@ -33,7 +33,7 @@ const REASON_TEXT: Partial<Record<DisabledReasonCode, string>> = {
   // Surto de ação: one use per turn, even with another use left.
   [DisabledReasonCode.ALREADY_USED_THIS_TURN]: 'Já usado neste turno',
   // A bonus action spell leaves no other spell this turn but a cantrip of 1 action.
-  [DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT]: 'Magia de ação bônus no turno',
+  [DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT]: 'Só um truque junto com uma magia de ação bônus',
   // Rajada de Golpes comes right after the Attack action.
   [DisabledReasonCode.ATTACK_ACTION_FIRST]: 'Só depois de atacar com a ação',
   // Short on purpose: it repeats on every spell row, and the slot rows above
@@ -72,6 +72,20 @@ export function reasonText(reason: DisabledReason | undefined, master = false): 
     return `Sem usos: ${rechargeText(reason.recharge)}`;
   }
   return REASON_TEXT[reason.code] ?? 'Indisponível agora';
+}
+
+/**
+ * Why a spell is disabled. The bonus-action-spell limit (SRD 5.1, Casting a Spell) names its case by the spell's own
+ * economy, since the server's reason carries no spell name: a bonus action spell is blocked by an earlier spell (other
+ * than a cantrip of 1 action), any other spell by an earlier bonus action spell.
+ */
+export function spellReasonText(spell: SpellOption, master = false): string {
+  if (spell.reason?.code !== DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT || spell.reason.textPt) {
+    return reasonText(spell.reason, master);
+  }
+  return spell.economy === ActionEconomy.BONUS_ACTION
+    ? 'Você já conjurou outra magia neste turno: junto com uma magia de ação bônus, só cabe um truque de 1 ação.'
+    : 'Você já conjurou uma magia de ação bônus neste turno: a outra magia só pode ser um truque de 1 ação.';
 }
 
 /** A reaction row has no button by design: "Escudo" waits to be hit. Its
