@@ -294,6 +294,9 @@ export class LiveSessionSourceLive implements LiveSessionSource {
         case 'revivifyChanged':
           yield { kind: 'revivifyChanged' };
           break;
+        case 'callingYou':
+          yield { kind: 'callingYou' };
+          break;
         case 'puzzleChanged':
           yield { kind: 'puzzleChanged', puzzleId: res.event.value.puzzleId };
           break;

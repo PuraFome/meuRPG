@@ -5,6 +5,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject, of } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { TurnAlert } from '../../core/combat/turn-alert';
 import { LightPresets } from '../../core/maps/light-presets';
 import { MapsClient } from '../../core/maps/maps-client';
 import { visionResponse } from '../../core/maps/vision-testing';
@@ -81,7 +82,7 @@ import {
   TreasureFinderSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
-import { LiveSession } from './live-session';
+import { CALLING_NOTICE_MS, LiveSession } from './live-session';
 import {
   CampaignInfoVm,
   LiveErrorKind,
@@ -1721,6 +1722,68 @@ describe('LiveSession', () => {
       await new Promise((r) => setTimeout(r));
       await new Promise((r) => setTimeout(r));
       expect(el.querySelector('app-revived-notice')).toBeNull();
+    });
+  });
+
+  describe('the master calling (Chamar a atenção)', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    const settle = async () => {
+      await new Promise((r) => setTimeout(r));
+      await new Promise((r) => setTimeout(r));
+      TestBed.inject(ApplicationRef).tick();
+    };
+
+    it('alerts a player and shows "O mestre está chamando você." until it is dismissed', async () => {
+      const nudge = vi.spyOn(TestBed.inject(TurnAlert), 'nudge');
+      const el = await render();
+      const live = el.querySelector('app-calling-notice [role="status"]');
+      expect(live?.getAttribute('aria-live')).toBe('polite');
+      expect(live?.textContent?.trim()).toBe('');
+
+      source.push({ kind: 'callingYou' });
+      await settle();
+
+      expect(nudge).toHaveBeenCalledWith('master');
+      expect(el.querySelector('app-calling-notice')?.textContent).toContain(
+        'O mestre está chamando você.',
+      );
+      el.querySelector<HTMLButtonElement>('app-calling-notice button.close')!.click();
+      await settle();
+      expect(el.querySelector('app-calling-notice')?.textContent).not.toContain('chamando você');
+    });
+
+    it('goes away by itself after a few seconds', async () => {
+      const el = await render();
+      vi.useFakeTimers();
+      try {
+        source.push({ kind: 'callingYou' });
+        await vi.advanceTimersByTimeAsync(0);
+        TestBed.inject(ApplicationRef).tick();
+        expect(el.querySelector('app-calling-notice')?.textContent).toContain('chamando você');
+        await vi.advanceTimersByTimeAsync(CALLING_NOTICE_MS);
+        TestBed.inject(ApplicationRef).tick();
+        expect(el.querySelector('app-calling-notice')?.textContent).not.toContain('chamando você');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('never alerts the master', async () => {
+      asMaster();
+      const nudge = vi.spyOn(TestBed.inject(TurnAlert), 'nudge');
+      const el = await render();
+      source.push({ kind: 'callingYou' });
+      await settle();
+      expect(nudge).not.toHaveBeenCalled();
+      expect(el.querySelector('app-calling-notice')).toBeNull();
     });
   });
 

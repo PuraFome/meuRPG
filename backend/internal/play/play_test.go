@@ -88,6 +88,11 @@ func TestAuthorizationMatrix(t *testing.T) {
 			}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// Only the master's call reaches the cooldown: the others are refused before it.
+		{"NudgePlayer", func(ctx context.Context, c client) error {
+			_, err := c.NudgePlayer(ctx, connect.NewRequest(&playv1.NudgePlayerRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		// Clearing needs no map nor image; setting them is in package maps'
 		// tests, which have maps and images.
 		{"SetCurrentMap", func(ctx context.Context, c client) error {
@@ -780,6 +785,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListOpenGameSessions"] = c.ListOpenGameSessions(ctx, connect.NewRequest(&playv1.ListOpenGameSessionsRequest{}))
 	_, calls["GetLiveSession"] = c.GetLiveSession(ctx, connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: id}))
 	_, calls["AdjustCharacterVitals"] = c.AdjustCharacterVitals(ctx, connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
+	_, calls["NudgePlayer"] = c.NudgePlayer(ctx, connect.NewRequest(&playv1.NudgePlayerRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetCurrentMap"] = c.SetCurrentMap(ctx, connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: id, MapId: id}))
 	_, calls["SetShownImage"] = c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: id, ImageId: id}))
 	_, calls["ListLeftImages"] = c.ListLeftImages(ctx, connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: id}))

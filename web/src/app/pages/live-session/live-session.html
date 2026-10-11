@@ -52,6 +52,7 @@
         <!-- A shown puzzle, open (MR-038, E10-06 states 6 to 9): in the place of the board; the one stream stays here, and so do the
              session's notices (a trap noticed, a treasure found, a clue that arrived, a combat that needs the player). -->
         <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
+        <app-calling-notice [on]="calling()" (dismissed)="calling.set(false)" />
         <app-clue-notice [clues]="notes.notice() ? notes.fresh() : []" (opened)="openNotes()" (dismissed)="notes.dismissNotice()" />
         @if (combatRunning()) {
           <div class="mr-notice mr-notice--warning page-notice puzzle-combat" role="status">
@@ -90,6 +91,11 @@
       @if (isMaster()) {
         <!-- A Revivify cast outside a combat waits for the master to say whether the creature died in the last minute. -->
         <app-revivify-ask [campaignId]="campaignId()" [reload]="revivifyTick()" />
+      }
+
+      @if (!isMaster()) {
+        <!-- The master is calling this player ("Chamar a atenção"): a polite line, in and out of combat. -->
+        <app-calling-notice [on]="calling()" (dismissed)="calling.set(false)" />
       }
 
       @if (!isMaster()) {

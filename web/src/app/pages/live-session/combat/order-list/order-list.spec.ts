@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import {
   CombatantKind,
@@ -7,6 +8,7 @@ import {
   CoverSource,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { Nudger } from '../../../../core/combat/nudger';
 import { OrderList } from './order-list';
 
 describe('OrderList', () => {
@@ -628,5 +630,52 @@ describe('OrderList under Escudo Arcano and Ajuda (PM-03a)', () => {
     );
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).querySelector('.order__ended')).toBeNull();
+  });
+
+  describe('Chamar a atenção', () => {
+    const rows = [
+      combatant({
+        id: 'pen',
+        label: 'Pensantus',
+        kind: CombatantKind.PLAYER,
+        characterId: 'pen-c',
+        hitPointsCurrent: 17,
+        hitPointsMax: 23,
+        initiative: 14,
+        armorClass: 13,
+      }),
+      combatant({
+        id: 'cap',
+        label: 'Capitão Goblin',
+        hitPointsCurrent: 19,
+        hitPointsMax: 27,
+        initiative: 16,
+        armorClass: 17,
+      }),
+    ];
+    function mount(campaignId: string) {
+      const fixture = TestBed.createComponent(OrderList);
+      fixture.componentRef.setInput(
+        'encounter',
+        encounter({ combatants: rows, currentCombatantId: 'cap' }),
+      );
+      fixture.componentRef.setInput('campaignId', campaignId);
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    it("is on a player's row alone, named for the character, and calls with the character", () => {
+      const call = vi.spyOn(TestBed.inject(Nudger), 'call').mockResolvedValue(undefined);
+      const el = mount('camp');
+      const buttons = el.querySelectorAll<HTMLButtonElement>('app-nudge-button button');
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0].getAttribute('aria-label')).toBe('Chamar a atenção de Pensantus');
+      buttons[0].click();
+      expect(call).toHaveBeenCalledWith('camp', 'pen-c');
+    });
+
+    it('is not there without the campaign', () => {
+      expect(mount('').querySelector('app-nudge-button')).toBeNull();
+    });
   });
 });

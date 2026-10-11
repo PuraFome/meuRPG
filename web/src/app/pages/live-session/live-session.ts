@@ -38,6 +38,7 @@ import {
 import { CastingClient } from '../../core/casting/casting-client';
 import { CombatClient } from '../../core/combat/combat-client';
 import { CombatState } from '../../core/combat/combat-state';
+import { TurnAlert } from '../../core/combat/turn-alert';
 import { mineTabs } from '../../core/combat/mine';
 import { casterOfRevival, returnPlace } from '../../core/revivify/revivify-flow';
 import { acts } from '../../core/combat/joint-turn';
@@ -93,6 +94,7 @@ import { RestCard } from './rest-card/rest-card';
 import { CharacterEffectsPanel } from './effects/character-effects-panel';
 import { PlayerVitals } from './player-vitals/player-vitals';
 import { RevivifyAsk } from './revivify-ask/revivify-ask';
+import { CallingNotice } from './calling-notice/calling-notice';
 import { RevivedNotice } from './revived-notice/revived-notice';
 import { openRevivifySheet } from './combat/revivify-sheet/revivify-sheet';
 import { MasterLive } from './puzzles/master-live/master-live';
@@ -141,6 +143,9 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
  * without a reload. `map_changed` reads the map again; if that answers
  * `not_found`, a player lost sight of it and gets the empty state.
  */
+/** How long "O mestre está chamando você." stays on the page if the player does not dismiss it, in ms. */
+export const CALLING_NOTICE_MS = 10_000;
+
 @Component({
   selector: 'app-live-session',
   imports: [
@@ -171,6 +176,7 @@ type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error'
     PlayerVitals,
     RevivifyAsk,
     RevivedNotice,
+    CallingNotice,
     SessionBlocked,
     SessionEnded,
     SessionHeader,
@@ -286,6 +292,10 @@ export class LiveSession {
   protected readonly revivedPlace = computed(() =>
     returnPlace(this.combat.encounter(), this.revivedId()),
   );
+  /** The master is calling this player (`calling_you`): "O mestre está chamando você." is on the page. */
+  protected readonly calling = signal(false);
+  private callingTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly turnAlert = inject(TurnAlert);
   /** Counts the `spell_casts_changed` hints (and each `ready`): the casts panel reads again when it moves. */
   protected readonly castsTick = signal(0);
   /** Counts the `group_check_changed` hints (and each `ready`): the group check's card reads again when it moves (W7-X). */
@@ -517,6 +527,7 @@ export class LiveSession {
     this.destroyRef.onDestroy(() => {
       this.toasts.clear();
       clearTimeout(this.visionTimer);
+      clearTimeout(this.callingTimer);
       this.closeStream();
       this.sessionNotes.bar.set(null);
     });
@@ -709,6 +720,7 @@ export class LiveSession {
           }
         },
         onCreaturesChanged: () => this.creaturesTick.update((n) => n + 1),
+        onCallingYou: () => this.callingYou(),
         onRevivifyChanged: () => this.revivifyTick.update((n) => n + 1),
         // A dead character lives again: its vitals are back (the character's page reads itself, on its own stream).
         onCharacterRevived: (characterId) => {
@@ -876,6 +888,17 @@ export class LiveSession {
   }
 
   /** The player's own character lives again: the notice, with who cast it when the combat's log says (the master's "Reviver" has no caster). */
+  /** The master's nudge: the same alert as a turn that comes, plus the line, which goes away by itself. */
+  private callingYou(): void {
+    if (this.isMaster()) {
+      return;
+    }
+    this.turnAlert.nudge('master');
+    this.calling.set(true);
+    clearTimeout(this.callingTimer);
+    this.callingTimer = setTimeout(() => this.calling.set(false), CALLING_NOTICE_MS);
+  }
+
   private async characterRevived(
     campaignId: string,
     generation: number,

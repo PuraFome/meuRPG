@@ -299,6 +299,29 @@ service PlayService {
   //     `spell_slots_used[0].used`.
   rpc AdjustCharacterVitals(AdjustCharacterVitalsRequest) returns (AdjustCharacterVitalsResponse);
 
+  // NudgePlayer is the master's "Chamar a atenção": it makes the player of one
+  // character feel an alert on their own screen (vibration, a chime, a shake
+  // and, in a hidden tab, "● Sua vez" in the title, as when the turn comes to
+  // them) and read "O mestre está chamando você.". Only the campaign's master
+  // may call it, and only while the campaign has an open session. The
+  // character must be a living player character of the campaign with a player.
+  //
+  // It is ephemeral: it writes nothing (no session event, no log line) and
+  // only the `calling_you` event goes, to that player's streams alone. A
+  // player that is not connected simply misses it. At most one nudge per
+  // character every 10 seconds, kept in the server's memory.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, the caller is not a member
+  //     of it, or the character is not a living player character of the
+  //     campaign with a player (an NPC, a dead character, one waiting for
+  //     approval, one whose player left).
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  //   - `resource_exhausted`: the character was nudged in the last 10 seconds.
+  rpc NudgePlayer(NudgePlayerRequest) returns (NudgePlayerResponse);
+
   // SetCurrentMap chooses the map the session shows at the table, or clears
   // it. Only the campaign's master may call it, and only while the campaign
   // has an open session. The map must be one of the campaign's
@@ -1255,7 +1278,13 @@ message WatchGameSessionResponse {
     // vitals. The master and the character's owner get it; the table reads the line of
     // the log.
     CharacterRevived character_revived = 31;
+    // The master is calling the player (NudgePlayer): shake, chime and say it. Sent only to
+    // the character's player, never stored.
+    CallingYou calling_you = 41;
   }
+
+  // CallingYou is the master's nudge. It carries nothing: the app writes the line.
+  message CallingYou {}
 
   // HiddenHitPending says a question waits for the master in a combat. It names
   // no creature: the master reads Encounter.pending_hidden_reveals.
@@ -1523,6 +1552,17 @@ message WatchGameSessionResponse {
     int32 y_bp = 4;
   }
 }
+
+// NudgePlayerRequest is the master's call for a player's attention.
+message NudgePlayerRequest {
+  // The campaign (a UUID).
+  string campaign_id = 1;
+  // The player character to call (a UUID).
+  string character_id = 2;
+}
+
+// NudgePlayerResponse is empty: the nudge is delivered, or the call fails.
+message NudgePlayerResponse {}
 
 // AdjustCharacterVitalsRequest is the master's correction. Every value set
 // replaces the current one; unset values stay as they are.

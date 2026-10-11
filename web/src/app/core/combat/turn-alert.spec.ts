@@ -224,6 +224,52 @@ describe('TurnAlert', () => {
     expect(s.alert.highlighted()).toBe(false);
   });
 
+  describe('the master calling (nudge)', () => {
+    it('alerts without any turn: vibration, chime, shake', () => {
+      const s = setup();
+      s.alert.nudge('master');
+      expect(s.vibrate).toHaveBeenCalledWith(VIBRATION_PATTERN);
+      expect(s.audio.oscillators).toHaveLength(CHIME_NOTES.length);
+      expect(s.alert.shaking()).toBe(true);
+    });
+
+    it('fires every time it is called, not only on a change', () => {
+      const s = setup();
+      s.alert.nudge('master');
+      s.alert.nudge('master');
+      expect(s.vibrate).toHaveBeenCalledTimes(2);
+    });
+
+    it('skips sound and vibration when the switch is off, but still shakes', () => {
+      const s = setup();
+      s.alert.setEnabled(false);
+      s.alert.nudge('master');
+      expect(s.vibrate).not.toHaveBeenCalled();
+      expect(s.audio.oscillators).toHaveLength(0);
+      expect(s.alert.shaking()).toBe(true);
+    });
+
+    it('does not shake under reduced motion: a static highlight instead', () => {
+      const s = setup();
+      s.env.reduced = true;
+      s.alert.nudge('master');
+      expect(s.alert.shaking()).toBe(false);
+      expect(s.alert.highlighted()).toBe(true);
+      vi.advanceTimersByTime(SHAKE_MS);
+      expect(s.alert.highlighted()).toBe(false);
+    });
+
+    it('says the master is calling in the hidden tab title, never "Sua vez" (it may not be the player\'s turn)', () => {
+      const s = setup();
+      TestBed.inject(PageTitle).begin('Sessão ao vivo');
+      s.env.hidden = true;
+      s.alert.nudge('master');
+      expect(document.title).toBe('● O mestre chama você · MeuRPG');
+      s.show();
+      expect(document.title).toBe('Sessão ao vivo · MeuRPG');
+    });
+  });
+
   describe('the tab title', () => {
     it('says "● Sua vez" while the tab is hidden, and restores it when it shows', () => {
       const s = setup();

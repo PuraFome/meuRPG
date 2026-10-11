@@ -159,6 +159,9 @@
             Dano/Cura
           </button>
         }
+        @if (live() && campaignId() && player(c) && c.characterId) {
+          <app-nudge-button [campaignId]="campaignId()" [characterId]="c.characterId" [name]="c.label" [compact]="true" />
+        }
         @if (live() && canAdjustNpc(c)) {
           <button
             mat-stroked-button

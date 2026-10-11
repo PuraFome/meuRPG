@@ -77,6 +77,8 @@ export interface LiveStreamHandlers {
   onRevivifyChanged?(): void;
   /** `puzzle_changed` (MR-038): a puzzle changed; the page reads it again (the server already throttles the hint). */
   onPuzzleChanged?(puzzleId: string): void;
+  /** `calling_you`: the master is calling this player; the page alerts (vibration, chime, shake) and says it. */
+  onCallingYou?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */
   onEnded(): void;
   /** `not_found` or `unauthenticated`: no reconnecting. */
@@ -280,6 +282,9 @@ export class LiveStream {
             break;
           case 'revivifyChanged':
             this.options.handlers.onRevivifyChanged?.();
+            break;
+          case 'callingYou':
+            this.options.handlers.onCallingYou?.();
             break;
           case 'puzzleChanged':
             this.options.handlers.onPuzzleChanged?.(event.puzzleId);

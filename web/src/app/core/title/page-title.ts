@@ -8,6 +8,9 @@ export const APP_NAME = 'MeuRPG';
 /** What the tab says while it is hidden and the turn came to the player ("● Sua vez · MeuRPG"). The dot is not alone: the words say it too. */
 export const TURN_ALERT_TITLE = '● Sua vez';
 
+/** What the tab says while it is hidden and the master called the player ("Chamar a atenção"), whoever's turn it is. */
+export const CALLING_ALERT_TITLE = '● O mestre chama você';
+
 /** The words between the parts of a title. */
 const SEPARATOR = ' · ';
 
@@ -26,8 +29,8 @@ export class PageTitle {
   private readonly title = inject(Title);
   private page = '';
   private subject = '';
-  /** The turn alert is on: the title is the alert and the app's name, whatever the page. */
-  private turnAlert = false;
+  /** The alert in the title, or empty: then the title is the alert and the app's name, whatever the page. */
+  private alertTitle = '';
   /** Who set the subject, so a component that goes away never clears the next page's. */
   private owner: object | null = null;
 
@@ -63,17 +66,18 @@ export class PageTitle {
     }
   }
 
-  /** The turn alert (`TurnAlert`) puts "● Sua vez" in the title of a hidden tab, and takes it off. */
-  setTurnAlert(on: boolean): void {
-    if (this.turnAlert !== on) {
-      this.turnAlert = on;
+  /** The turn alert (`TurnAlert`) puts "● Sua vez" (or the master's call) in the title of a hidden tab, and takes it off. */
+  setTurnAlert(on: boolean, title = TURN_ALERT_TITLE): void {
+    const next = on ? title : '';
+    if (this.alertTitle !== next) {
+      this.alertTitle = next;
       this.render();
     }
   }
 
   private render(): void {
-    if (this.turnAlert) {
-      this.title.setTitle([TURN_ALERT_TITLE, APP_NAME].join(SEPARATOR));
+    if (this.alertTitle) {
+      this.title.setTitle([this.alertTitle, APP_NAME].join(SEPARATOR));
       return;
     }
     this.title.setTitle([this.subject, this.page, APP_NAME].filter(Boolean).join(SEPARATOR));

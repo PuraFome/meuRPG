@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
+
+import { Nudger } from '../../../core/combat/nudger';
 
 import { VitalsVm } from '../live-session.types';
 import { SessionXp } from '../session-xp/session-xp';
@@ -79,5 +82,30 @@ describe('PartyPanel under Ajuda (PM-03a)', () => {
     fixture.componentRef.setInput('party', [pensantusVitals()]);
     fixture.detectChanges();
     expect(el.querySelector('.js-aid')).toBeNull();
+  });
+});
+
+describe('PartyPanel: Chamar a atenção', () => {
+  it('has the master call each character by name, and calls with that character', () => {
+    TestBed.configureTestingModule({}).overrideComponent(PartyPanel, {
+      remove: { imports: [SessionXp] },
+      add: { imports: [SessionXpStub] },
+    });
+    const call = vi.spyOn(TestBed.inject(Nudger), 'call').mockResolvedValue(undefined);
+    const fixture = TestBed.createComponent(PartyPanel);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('party', [
+      pensantusVitals(),
+      pensantusVitals({ characterId: 'b', name: 'Brisa' }),
+    ]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const buttons = el.querySelectorAll<HTMLButtonElement>('app-nudge-button button');
+    expect([...buttons].map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Chamar a atenção de Pensantus',
+      'Chamar a atenção de Brisa',
+    ]);
+    buttons[1].click();
+    expect(call).toHaveBeenCalledWith('camp', 'b');
   });
 });

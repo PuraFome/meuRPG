@@ -120,6 +120,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       onCharacterChanged: vi.fn(),
       onCharacterRevived: vi.fn(),
       onRevivifyChanged: vi.fn(),
+      onCallingYou: vi.fn(),
       onSceneChanged: vi.fn(),
       onNotesChanged: vi.fn(),
       onVisionChanged: vi.fn(),
@@ -215,6 +216,16 @@ describe('LiveStream (ADR-0005 client rules)', () => {
     await flush();
     expect(handlers.onRevivifyChanged).toHaveBeenCalledTimes(1);
     expect(handlers.onRevivifyChanged).toHaveBeenCalledWith();
+    expect(stream.status()).toBe('live');
+  });
+
+  it('tells the page the master is calling, with nothing in it', async () => {
+    stream.start();
+    last().push({ kind: 'ready' });
+    last().push({ kind: 'callingYou' });
+    await flush();
+    expect(handlers.onCallingYou).toHaveBeenCalledTimes(1);
+    expect(handlers.onCallingYou).toHaveBeenCalledWith();
     expect(stream.status()).toBe('live');
   });
 

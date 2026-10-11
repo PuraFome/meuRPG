@@ -50,6 +50,14 @@
   gap: var(--mr-space-3);
 }
 
+.member__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--mr-space-2);
+}
+
 .member__who {
   flex-grow: 1;
   min-width: 0;
