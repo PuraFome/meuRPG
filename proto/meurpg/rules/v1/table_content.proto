@@ -138,7 +138,9 @@ message TableEffect {
   string choice = 16;
   int32 count = 17;
   repeated string from = 18;
-  // grant_action: "action", "bonus_action", "reaction", "free" or "movement".
+  // grant_action: "action", "bonus_action", "reaction", "free" or "movement". The
+  // action may also name in `resource` a resource effect of the same entry (or of
+  // its class) to spend: each use spends 1, and the action is off while none is left.
   string economy = 19;
   // note: spells the feature grants (a race that knows a cantrip).
   repeated string spells = 20;
@@ -161,6 +163,16 @@ message TableFeature {
   // The text, one paragraph per entry.
   repeated string desc_pt = 3;
   repeated TableEffect effects = 4;
+  // The option list of a class or subclass feature (a table's maneuvers): options the
+  // player picks, each with a name, a text and effects of its own. An option is never
+  // gained by a level row: it applies only while the character has picked it and the
+  // feature is theirs. The server makes the option keys like the feature keys
+  // ("feature:<stem>--<option name>@mesa"; leave them empty for a new option, send
+  // them back on every update). A `choice` effect of kind "feature" on this feature
+  // with an empty `from` offers all of these options; on another feature of the same
+  // entry, `from` may list the keys of these options (a later level's "2 more").
+  // Options do not nest, and only a class or subclass feature has them. At most 60.
+  repeated TableFeature options = 5;
 }
 
 // TableFeat is a feat (MR-025): an optional rule of the game that a character takes
@@ -1097,7 +1109,9 @@ message EffectMenuField {
   // The effect is refused without it.
   bool required = 2;
   // How the editor asks: "formula" (an Int formula), "condition" (a Bool formula),
-  // "text", "number", "choice" (one value of `list`), "choices" (several) or "tags".
+  // "text", "number", "choice" (one value of `list`), "choices" (several), "tags" or
+  // "resource_ref" (the name of a resource effect the entry defines; the editor lists
+  // the ones it has).
   string kind = 3;
   // The EffectMenuList the value comes from, when it is a closed list; empty for a
   // free value. For a `choice` effect's `from` the list depends on the kind chosen:

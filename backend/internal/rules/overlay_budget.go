@@ -56,6 +56,18 @@ func (bg *budget) add(path string, n int, formulas ...string) error {
 
 // feature counts one feature's effects and checks their shape.
 func (bg *budget) feature(path string, f *TableFeature) error {
+	if len(f.Options) > MaxFeatureOptions {
+		return ovErr(f.Key, "%d options; the limit is %d per feature", len(f.Options), MaxFeatureOptions).at(path+".options", ReasonLimit)
+	}
+	for i := range f.Options {
+		at := fmt.Sprintf("%s.options[%d]", path, i)
+		if len(f.Options[i].Options) > 0 {
+			return ovErr(f.Key, "an option does not have options of its own").at(at+".options", ReasonValue)
+		}
+		if err := bg.feature(at, &f.Options[i]); err != nil {
+			return err
+		}
+	}
 	if len(f.Effects) > MaxFeatureEffects {
 		return ovErr(f.Key, "%d effects; the limit is %d per feature", len(f.Effects), MaxFeatureEffects).at(path+".effects", ReasonLimit)
 	}

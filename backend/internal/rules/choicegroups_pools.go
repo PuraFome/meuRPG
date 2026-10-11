@@ -144,6 +144,11 @@ func takenPrerequisite(reason string) OptionPrerequisite {
 func (cb *choiceBuilder) optionOf(e *optionEntry, key string) ChoiceOption {
 	c := cb.c
 	o := ChoiceOption{Key: key, Stored: key, NamePT: optionLabel(c.namePT(key))}
+	if f := c.features[key]; f != nil && isTableKey(key) && f.Parent != "" {
+		// An option of a table's own list: its text is the rule the player reads.
+		o.SummaryPT = strings.Join(f.Desc, " ")
+		return o
+	}
 	if c.choices == nil {
 		return o
 	}

@@ -163,6 +163,18 @@ export function menuResponse(): GetEffectMenuResponse {
         ],
       },
       {
+        type: 'grant_action',
+        namePt: 'Ação',
+        hintPt: 'Uma ação que o personagem passa a ter.',
+        fields: [
+          field('economy', 'choice', true, 'economies'),
+          field('resource', 'resource_ref'),
+          field('when', 'condition'),
+          field('tags', 'tags', false, 'tag_prefixes'),
+          field('text_pt', 'text'),
+        ],
+      },
+      {
         type: 'choice',
         namePt: 'Escolha',
         hintPt: 'Algo que o jogador escolhe.',

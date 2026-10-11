@@ -56,6 +56,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
               <app-feature-editor
                 [flat]="true"
                 [withLead]="true"
+                [allowOptions]="true"
                 [feature]="f.feature"
                 [menu]="menu()"
                 [basePath]="baseOf()(i)"

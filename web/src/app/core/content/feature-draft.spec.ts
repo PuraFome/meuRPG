@@ -150,3 +150,67 @@ describe('the race, subrace and background forms (E10-01 states 6 and 7)', () =>
     expect([none.speedFt, none.darkvisionFt]).toEqual([0, 0]);
   });
 });
+
+describe('the option list of a feature (a table feature the player picks from)', () => {
+  const m = menu();
+
+  function withOptions() {
+    const f = feature('Posturas', [{ type: 'choice', choice: 'feature', count: 3 }]);
+    f.options = [
+      {
+        ...feature('Postura da Garça', [
+          { type: 'grant_action', economy: 'bonus_action', resource: 'dados_de_postura' },
+        ]),
+        key: 'feature:postura-garca@mesa',
+      },
+      { ...feature('Postura do Touro'), key: 'feature:postura-touro@mesa' },
+    ];
+    return f;
+  }
+
+  it('reads the options with their keys and sends them back with the same keys, text and effects', () => {
+    const draft = featureToDraft(withOptions());
+    expect(draft.options.map((o) => o.key)).toEqual([
+      'feature:postura-garca@mesa',
+      'feature:postura-touro@mesa',
+    ]);
+    const sent = draftToFeature(draft, m);
+    expect(sent.options?.map((o) => o.key)).toEqual([
+      'feature:postura-garca@mesa',
+      'feature:postura-touro@mesa',
+    ]);
+    expect(sent.options?.[0].effects?.[0]).toMatchObject({
+      type: 'grant_action',
+      economy: 'bonus_action',
+      resource: 'dados_de_postura',
+    });
+    expect(sent.options?.[1].descPt).toEqual(['Texto.']);
+  });
+
+  it('sends a new option without a key and leaves an unnamed one out', () => {
+    const draft = featureToDraft(withOptions());
+    const sent = draftToFeature(
+      {
+        ...draft,
+        options: [
+          ...draft.options,
+          { ...emptyFeature(), name: ' Postura do Lobo ' },
+          emptyFeature(),
+        ],
+      },
+      m,
+    );
+    expect(sent.options?.map((o) => [o.key, o.namePt])).toEqual([
+      ['feature:postura-garca@mesa', 'Postura da Garça'],
+      ['feature:postura-touro@mesa', 'Postura do Touro'],
+      ['', 'Postura do Lobo'],
+    ]);
+  });
+
+  it('a feature with no options sends none (an absent repeated field is an empty list), and the paths include each option', () => {
+    expect(draftToFeature(emptyFeature(), m).options).toBeUndefined();
+    const draft = featureToDraft(withOptions());
+    const paths = featurePaths('table_subclass.levels[0].features', [draft], m);
+    expect(paths).toContain('table_subclass.levels[0].features[0].options[1].name_pt');
+  });
+});
