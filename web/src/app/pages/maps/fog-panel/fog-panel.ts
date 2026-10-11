@@ -63,6 +63,7 @@ export class FogPanel {
   protected readonly hasGrid = computed(() => this.map().gridColumns > 0);
   protected readonly on = computed(() => this.map().fogEnabled);
   protected readonly base = computed(() => this.map().baseLight);
+  protected readonly bright = LightLevel.BRIGHT;
 
   protected async set(changes: {
     fogEnabled?: boolean;

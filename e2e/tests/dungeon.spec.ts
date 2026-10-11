@@ -45,7 +45,7 @@ test('o mestre vê a prévia do servidor e a mesma semente dá a mesma prévia, 
     await master.getByRole('link', { name: 'Gerar masmorra' }).click();
     await expect(master.getByRole('heading', { level: 1, name: 'Gerar masmorra' })).toBeVisible();
     await expect(drawing(master)).toBeVisible();
-    await expect(master.getByText('luz de base “Clara”')).toBeVisible();
+    await expect(master.getByText('luz de base “Penumbra”')).toBeVisible();
 
     // The same seed, the same options: the same dungeon (the server's, never the browser's).
     await seedField(master, SEED);

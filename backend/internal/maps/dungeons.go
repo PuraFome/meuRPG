@@ -267,13 +267,14 @@ func (s *Service) CreateDungeonMap(
 					return row, fmt.Errorf("insert map: %w", err)
 				}
 				// The grid first, then the fog: the fog needs a grid. Fog on, base light
-				// "Claro" (MR-010, decided 06/10/2026): a secret room stays dark to a player
-				// until someone sees it, whatever the image shows.
+				// "Penumbra": a "Claro" map shows the players the whole floor plan, so a
+				// secret room would show; in "Penumbra" it stays dark to a player until
+				// someone sees it, whatever the image shows.
 				cols := int32(d.Width) //nolint:gosec // G115: at most 199
 				if _, err := q.SetMapGrid(ctx, mapsdb.SetMapGridParams{CampaignID: m.CampaignID, ID: row.ID, GridColumns: &cols, GridFactor: 1, Now: s.now()}); err != nil {
 					return row, fmt.Errorf("set the grid: %w", err)
 				}
-				fog, light := true, baseLightToDB[mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT]
+				fog, light := true, baseLightToDB[mapsv1.LightLevel_LIGHT_LEVEL_DIM]
 				if _, err := q.SetMapFog(ctx, mapsdb.SetMapFogParams{CampaignID: m.CampaignID, ID: row.ID, FogEnabled: &fog, BaseLight: &light, Now: s.now()}); err != nil {
 					return row, fmt.Errorf("set the fog: %w", err)
 				}

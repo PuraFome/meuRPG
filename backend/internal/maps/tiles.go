@@ -207,7 +207,7 @@ func buildTiles(p *playerView, src tileSource) *viewTiles {
 	cols, rows := tileGrid(p.g)
 	ring := src.ring()
 	out := &viewTiles{imageID: src.imageID, g: p.g, byXY: map[[2]int]int{}, at: time.Now()}
-	known := func(c, r int) bool { return p.known(grid.Square{Col: c, Row: r}) }
+	known := func(c, r int) bool { return p.terrainKnown(grid.Square{Col: c, Row: r}) } // the image is terrain: the whole plan on a "Claro" map
 	W, H := workingSize(max(1, src.width), max(1, src.height))
 	for ty := range rows {
 		for tx := range cols {

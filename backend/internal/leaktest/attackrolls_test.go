@@ -83,7 +83,7 @@ func newRollsTable(t *testing.T) *rollsTable {
 		wall = append(wall, [2]int32{12, int32(row)})
 	}
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_WALL, 1, wall)
-	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_BRIGHT.Enum()})))
+	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_DIM.Enum()})))
 	w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
 	must(m.play.SetCurrentMap(ctx, rq(&playv1.SetCurrentMapRequest{CampaignId: w.campaign, MapId: w.fogMap})))
 
