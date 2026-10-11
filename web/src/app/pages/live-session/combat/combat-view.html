@@ -213,6 +213,8 @@
           [error]="error()"
           (rollInApp)="own() && rollInApp(own()!.id)"
           (typeFace)="own() && submitFace(own()!.id, $event)"
+          (rollCreatureInApp)="rollInApp($event)"
+          (typeCreatureFace)="submitFace($event.id, $event.face)"
           (changeDice)="changeDice.emit()"
         />
       }
