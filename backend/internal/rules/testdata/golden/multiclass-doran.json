@@ -1,6 +1,6 @@
 {
   "after": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.40",
+    "ContentVersion": "srd51@a8abc93b235c+fx.41",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -770,6 +770,7 @@
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,
+    "SongOfRestSides": 0,
     "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,
@@ -948,7 +949,7 @@
     "Issues": null
   },
   "before": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.40",
+    "ContentVersion": "srd51@a8abc93b235c+fx.41",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -1428,6 +1429,7 @@
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,
+    "SongOfRestSides": 0,
     "SavageAttacks": false,
     "ReliableTalent": false,
     "TwoWeaponFighting": false,

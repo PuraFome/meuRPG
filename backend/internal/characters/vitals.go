@@ -59,6 +59,8 @@ type vitalsMax struct {
 	hitDiceTotal int
 	// wizardLevel is the WIZARD level alone (Arcane Recovery counts no other class).
 	wizardLevel int
+	// songSides is the die of the character's Song of Rest (0 without the feature).
+	songSides int
 	// conMod is the Constitution modifier: what a spent hit die adds to its roll.
 	conMod int
 	// resources are the class and race resources the sheet has at its level.
@@ -82,7 +84,7 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 		return vitalsMax{}, nil
 	}
 	d := rules.Derive(buildOf(full), content)
-	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources}
+	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides}
 	if b, ok := content.MonsterDerived(deref(beast)); ok && beast != nil {
 		m.beast, m.beastNamePT, m.beastMax = *beast, content.NamePT(*beast), max(b.HitPointsMax, 1)
 	}

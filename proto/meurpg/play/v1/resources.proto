@@ -52,9 +52,19 @@ service ResourceService {
   // spend another one after each roll, so one call spends one die. The
   // character's player or the master.
   //
+  // Song of Rest (SRD 5.1, Bard 2): when the latest rest of the open session is a
+  // short rest, a bard of the party with at least 1 hit point has the feature, and
+  // this is the first die the character spends since that rest, the character
+  // regains an extra die of the song (d6, d8 from bard level 9, d10 from 13, d12
+  // from 17, the largest among the bards) once for the rest. The party hears the
+  // song: anyone who rests with a bard does, the bard included. An app roll rolls
+  // the extra die too; a typed roll sends its face in `typed_song_face`.
+  //
   // Errors: `permission_denied` for another player's character;
-  // `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT; `invalid_argument`
-  // for a die size the character does not have, or a typed face outside the die.
+  // `failed_precondition` with ResourceBlocked NO_HIT_DICE_LEFT, or
+  // SONG_OF_REST_FACE_NEEDED for a typed roll that lacks the song's face;
+  // `invalid_argument` for a die size the character does not have, or a typed face
+  // outside its die.
   rpc SpendHitDice(SpendHitDiceRequest) returns (SpendHitDiceResponse);
 
   // UseArcaneRecovery spends the wizard's once-a-day use and recovers the chosen
@@ -186,6 +196,10 @@ enum ResourceBlockedReason {
   RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED = 13;
   // UseArcaneRecovery: the combined level of the slots is above the allowance.
   RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE = 14;
+  // SpendHitDice with a typed face: the party hears a bard's Song of Rest and this
+  // character has not had its extra die in this rest, so the face of that die
+  // (`typed_song_face`) is needed too. `needed` is the die's size.
+  RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED = 15;
 }
 
 // RestKind is the kind of a rest.
@@ -287,6 +301,14 @@ message SpendHitDiceRequest {
     bool roll_in_app = 5;
     int32 typed_face = 6;
   }
+  // The face of the Song of Rest die (SRD 5.1, Bard 2), for a typed roll only: when
+  // the party hears a bard's song during this short rest and this is the first die
+  // the character spends in it, the character regains an extra die of the song and a
+  // typed roll must carry its face. The call is refused with ResourceBlocked
+  // SONG_OF_REST_FACE_NEEDED (the die's size is in `needed`) when it is missing, and
+  // `invalid_argument` when it is outside the die. Ignored when no song applies.
+  // An app roll rolls the die on the server.
+  int32 typed_song_face = 7;
 }
 
 message SpendHitDiceResponse {
@@ -295,7 +317,12 @@ message SpendHitDiceResponse {
   // total, cut to the maximum. The total is at least 0.
   int32 face = 2;
   int32 constitution_modifier = 3;
+  // The hit points regained, the Song of Rest die included.
   int32 healed = 4;
+  // The extra die of a bard's Song of Rest (SRD 5.1) this die brought: its size and
+  // the face rolled, both 0 when no song applied. `healed` already counts it.
+  int32 song_of_rest_sides = 5;
+  int32 song_of_rest_face = 6;
 }
 
 message UseArcaneRecoveryRequest {

@@ -49,7 +49,9 @@ type RestKeeper interface {
 	TakeRest(ctx context.Context, tx pgx.Tx, campaignID string, req *playv1.TakeRestRequest) (before, after []*playv1.CharacterVitals, err error)
 	// SpendHitDie spends one hit die of the size and heals the face plus the
 	// Constitution modifier (at least 0, up to the maximum).
-	SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, characterID string, faces, face int) (before, after *playv1.CharacterVitals, conMod, healed int, err error)
+	SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, characterID string, faces, face, extra int) (before, after *playv1.CharacterVitals, conMod, healed int, err error)
+	// SongOfRest is the die of the Song of Rest the party hears (0: nobody sings).
+	SongOfRest(ctx context.Context, tx pgx.Tx, campaignID string) (int, error)
 	// UseArcaneRecovery spends the wizard's use and gives back the expended slots (a map
 	// of spell level to count), and returns the vitals before and after and the combined
 	// level recovered.
@@ -130,6 +132,10 @@ type hitDieEvent struct {
 	Modifier int32 `json:"modifier,omitempty"`
 	Healed   int32 `json:"healed"`
 	Physical bool  `json:"physical,omitempty"`
+	// SongSides and SongFace are the extra die of a bard's Song of Rest and the face
+	// rolled; both are absent when no song applied. Healed counts it.
+	SongSides int32 `json:"song_sides,omitempty"`
+	SongFace  int32 `json:"song_face,omitempty"`
 }
 
 // activeCombatBlocks refuses with COMBAT_OPEN while a combat is running: a rest in
@@ -452,12 +458,20 @@ func (s *Service) SpendHitDice(
 			}
 			face = rolled.Faces[0]
 		}
-		_, afterVitals, conMod, healed, err := s.vitals.SpendHitDie(ctx, tx, m.CampaignID, charText, faces, face)
+		songSides, songFace, err := s.songOfRestDie(ctx, tx, q, session.ID, m.CampaignID, charText, in, int(req.Msg.GetTypedSongFace()))
+		if err != nil {
+			return err
+		}
+		_, afterVitals, conMod, healed, err := s.vitals.SpendHitDie(ctx, tx, m.CampaignID, charText, faces, face, songFace)
 		if err != nil {
 			return resourceError(err)
 		}
 		after = afterVitals
-		ev = hitDieEvent{Faces: clamp32(faces, 1, maxHitDie), Face: clamp32(face, 1, maxHitDie), Modifier: clamp32(conMod, -maxHitDie, maxHitDie), Healed: clamp32(healed, 0, 1<<20), Physical: !in.inApp}
+		ev = hitDieEvent{
+			Faces: clamp32(faces, 1, maxHitDie), Face: clamp32(face, 1, maxHitDie), Modifier: clamp32(conMod, -maxHitDie, maxHitDie),
+			Healed: clamp32(healed, 0, 1<<20), Physical: !in.inApp,
+			SongSides: clamp32(songSides, 0, maxHitDie), SongFace: clamp32(songFace, 0, maxHitDie),
+		}
 		payload, err := json.Marshal(ev)
 		if err != nil {
 			return fmt.Errorf("encode the event payload: %w", err)
@@ -489,9 +503,54 @@ func (s *Service) SpendHitDice(
 	return connect.NewResponse(spendResponse(after, ev)), nil
 }
 
+// songOfRestDie says whether a bard's Song of Rest gives the character an extra die with
+// the hit die it spends now (SRD 5.1, Bard 2): the latest rest of the session is a short
+// rest, a bard of the party with at least 1 hit point has the feature (the party hears
+// it, the bard included), and the character has not had the extra die since that rest.
+// It returns the die's size and its face (rolled here for an app roll, the typed face for
+// a typed one), or 0 and 0 when no song applies. A typed roll without the song's face is
+// refused with SONG_OF_REST_FACE_NEEDED.
+func (s *Service) songOfRestDie(ctx context.Context, tx pgx.Tx, q *playdb.Queries, sessionID, campaignID, characterID string, in rollInput, typedFace int) (sides, face int, err error) {
+	kind, err := q.GetLatestRestKindInSession(ctx, sessionID)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && kind != rules.RestShort) {
+		return 0, 0, nil // outside a short rest there is no song to rest to
+	}
+	if err != nil {
+		return 0, 0, fmt.Errorf("read the latest rest: %w", err)
+	}
+	if sides, err = s.vitals.SongOfRest(ctx, tx, campaignID); err != nil || sides == 0 {
+		return 0, 0, err
+	}
+	sung, err := q.HasSongOfRestSinceLatestRest(ctx, playdb.HasSongOfRestSinceLatestRestParams{GameSessionID: sessionID, CharacterID: &characterID})
+	if err != nil {
+		return 0, 0, fmt.Errorf("read the song of rest: %w", err)
+	}
+	if sung {
+		return 0, 0, nil // once for each rest
+	}
+	if in.inApp {
+		rolled, err := dice.Roll(s.roller, dice.Expr{Count: 1, Sides: sides})
+		if err != nil {
+			return 0, 0, fmt.Errorf("roll the song of rest die: %w", err)
+		}
+		return sides, rolled.Faces[0], nil
+	}
+	switch {
+	case typedFace == 0:
+		return 0, 0, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED,
+			"the party hears a Song of Rest: type the face of its die too", func(b *playv1.ResourceBlocked) { b.Needed = clamp32(sides, 0, maxHitDie) })
+	case typedFace < 1 || typedFace > sides:
+		return 0, 0, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_song_face must be a face of the song's die"))
+	}
+	return sides, typedFace, nil
+}
+
 // maxHitDie is the largest hit die there is (the d12), a bound for the faces a request names.
 const maxHitDie = 12
 
 func spendResponse(v *playv1.CharacterVitals, ev hitDieEvent) *playv1.SpendHitDiceResponse {
-	return &playv1.SpendHitDiceResponse{Vitals: v, Face: ev.Face, ConstitutionModifier: ev.Modifier, Healed: ev.Healed}
+	return &playv1.SpendHitDiceResponse{
+		Vitals: v, Face: ev.Face, ConstitutionModifier: ev.Modifier, Healed: ev.Healed,
+		SongOfRestSides: ev.SongSides, SongOfRestFace: ev.SongFace,
+	}
 }

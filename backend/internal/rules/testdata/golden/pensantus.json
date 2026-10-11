@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.40",
+  "ContentVersion": "srd51@a8abc93b235c+fx.41",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -865,6 +865,7 @@
   "AttacksPerAction": 1,
   "CriticalRange": 20,
   "BrutalCriticalDice": 0,
+  "SongOfRestSides": 0,
   "SavageAttacks": false,
   "ReliableTalent": false,
   "TwoWeaponFighting": false,

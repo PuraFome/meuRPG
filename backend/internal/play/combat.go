@@ -389,6 +389,7 @@ func (s *Service) addParticipants(ctx context.Context, c *combatTx, grid link.Gr
 				// that decide who it can pass, and the jump limits (MR-034, RN-21).
 				Side: sideOfKind(kindNPC), Size: sizeKey(p.char.Size), SpeedFlyFt: clamp32(p.char.SpeedFlyFt, 0, 600),
 				JumpLongDft: clamp32(p.char.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(p.char.JumpHighDFt, 0, 6000),
+				JumpLongBonusDft: clamp32(p.char.JumpLongBonusDFt, 0, 6000),
 			}
 			if p.char.Player {
 				row.Kind, row.Side = kindPlayer, sideOfKind(kindPlayer)

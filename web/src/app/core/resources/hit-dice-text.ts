@@ -57,11 +57,44 @@ export function totalDiceLeft(sizes: readonly HitDieSize[]): number {
  * modifier make the total (never below 0); a modifier of 0 is not written; when the hit points stop at the
  * maximum, the line says the total was more than they could take.
  */
-export function hitDieRollLine(face: number, modifier: number, healed: number): string {
-  const total = Math.max(0, face + modifier);
-  const roll =
-    modifier === 0
-      ? `Rolou ${face}`
-      : `Rolou ${face} ${modifier > 0 ? '+' : '−'} ${Math.abs(modifier)} = ${total}`;
+export function hitDieRollLine(
+  face: number,
+  modifier: number,
+  healed: number,
+  song?: SongOfRestRoll,
+): string {
+  const dieTotal = Math.max(0, face + modifier);
+  const total = dieTotal + (song?.face ?? 0);
+  let roll = `Rolou ${face}`;
+  if (modifier !== 0) {
+    roll += ` ${modifier > 0 ? '+' : '−'} ${Math.abs(modifier)}`;
+  }
+  if (song) {
+    roll += ` + ${song.face} (Canção de Descanso, ${dieName(song.sides)})`;
+  }
+  if (modifier !== 0 || song) {
+    roll += ` = ${total}`;
+  }
   return `${roll} · recuperou ${healed} PV${healed < total ? ' (chegou ao máximo)' : ''}`;
+}
+
+/** The extra die of a bard's Song of Rest that a spent hit die brought: its size and the face rolled. */
+export interface SongOfRestRoll {
+  readonly sides: number;
+  readonly face: number;
+}
+
+/** "Role 1d6 da Canção de Descanso": what the sheet asks for when a real die must also be rolled for the song. */
+export function songOfRestAsk(sides: number): string {
+  return `Role 1${dieName(sides)} da Canção de Descanso`;
+}
+
+/** The song's roll of a spend answer (`song_of_rest_sides` and `song_of_rest_face`, both 0 when none applied). */
+export function songOfRestOf(res: {
+  readonly songOfRestSides: number;
+  readonly songOfRestFace: number;
+}): SongOfRestRoll | undefined {
+  return res.songOfRestSides > 0
+    ? { sides: res.songOfRestSides, face: res.songOfRestFace }
+    : undefined;
 }

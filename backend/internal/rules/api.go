@@ -676,6 +676,10 @@ type Derived struct {
 	// BrutalCriticalDice is how many extra weapon damage dice a melee critical
 	// hit rolls (the barbarian's Brutal Critical: 1, 2 or 3), 0 without it.
 	BrutalCriticalDice int
+	// SongOfRestSides is the die of the bard's Song of Rest (6, 8, 10 or 12), 0
+	// without it: during a short rest, a creature that hears the song and spends
+	// hit dice regains one extra die of this size (see SongOfRestFor).
+	SongOfRestSides int
 	// SavageAttacks says the character has the half-orc's Savage Attacks: a critical
 	// hit with a melee weapon attack rolls one more of the weapon's damage dice.
 	SavageAttacks bool

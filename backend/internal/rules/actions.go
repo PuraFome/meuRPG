@@ -278,6 +278,9 @@ func (x *deriver) criticalAndStyles() {
 		if !x.applies(a) {
 			continue
 		}
+		if a.effect.Type == "song_of_rest" {
+			x.d.SongOfRestSides = max(x.d.SongOfRestSides, a.effect.Sides)
+		}
 		switch {
 		case a.owner == superiorCriticalFeature:
 			x.d.CriticalRange = min(x.d.CriticalRange, 18)

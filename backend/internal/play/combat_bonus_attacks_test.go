@@ -61,10 +61,12 @@ func abilities(str, dex, con, wis, cha int32) *rulesv1.AbilityScores {
 }
 
 // turnOf passes the turns on, the master dropping any damage left, until it is
-// the next turn of the combatant with the label.
+// the next turn of the combatant with the label. A full round has at most one turn
+// per combatant, so one more pass than there are combatants always gets there (a
+// fixed 8 was too few for the cave's nine).
 func (a *armed) turnOf(t *testing.T, label string) *playv1.Encounter {
 	t.Helper()
-	for range 8 {
+	for range len(a.get(t, a.master).GetCombatants()) + 1 {
 		e := a.get(t, a.master)
 		if _, err := a.endTurn(t, a.master, e, true); err != nil {
 			t.Fatalf("EndTurn() error = %v", err)
