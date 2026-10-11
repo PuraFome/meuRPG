@@ -18,8 +18,19 @@
 .scrim {
   position: fixed;
   inset: 0;
-  // Above the sheets and dialogs (the CDK overlay sits at 1000); gone after 1.6 s.
+  // Shown as a popover (the top layer, after any open dialog, which is a popover too); the z-index is for a browser
+  // without popovers, above the CDK container at 1000.
   z-index: 2000;
+  // The browser's popover look undone: the veil covers the whole screen.
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  overflow: visible;
+  color: var(--mr-ink);
   display: grid;
   place-items: center;
   padding: var(--mr-space-4);
