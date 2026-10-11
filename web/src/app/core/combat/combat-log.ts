@@ -21,6 +21,8 @@ import {
   SpellEffectKind,
   SpellEffectOutcome,
   WildShapeEndReason,
+  HitRiderChoice,
+  HitRiderLogResult,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantStateKind, DamageStepKind } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { ContestLogLine } from '../../../gen/meurpg/play/v1/contest_types_pb';
@@ -971,6 +973,8 @@ export function logLine(
     case CombatLogKind.OPPORTUNITY_OFFERED:
       // The master offered it, in a combat without a map: the mover is the actor and the reactor the target.
       return { ...base, icon: 'swords', text: ` saiu do alcance de ${e.targetLabel || 'alguém'}` };
+    case CombatLogKind.HIT_RIDER:
+      return { ...base, icon: 'sports_martial_arts', text: hitRiderText(e) };
     case CombatLogKind.DOOR_OPENED:
       // A move opened a closed door (RN-26): "Toren abriu a porta." The server sends the line only to who saw or remembers the door.
       return { ...base, icon: 'door_open', text: ' abriu a porta' };
@@ -1284,4 +1288,31 @@ export function truncateGroups(groups: readonly LogGroup[], max: number): LogGro
     out.push({ ...g, lines });
   }
   return out;
+}
+
+/** The line of an answered monk rider: "Toren usou a Técnica da Mão Aberta (Derrubar) em Goblin: ...". The roll and the DC only come for the master and the monk's player. */
+function hitRiderText(e: CombatLogEntry): string {
+  const r = e.hitRider;
+  const target = e.targetLabel || 'alguém';
+  if (!r || r.choice === HitRiderChoice.DECLINE) {
+    return ` dispensou a técnica em ${target}`;
+  }
+  const names: Partial<Record<HitRiderChoice, string>> = {
+    [HitRiderChoice.PRONE]: 'a Técnica da Mão Aberta (Derrubar)',
+    [HitRiderChoice.PUSH]: 'a Técnica da Mão Aberta (Empurrar até 4,5 m)',
+    [HitRiderChoice.NO_REACTIONS]:
+      'a Técnica da Mão Aberta (sem reações até o fim do próximo turno)',
+    [HitRiderChoice.STUN]: 'o Golpe Atordoante',
+  };
+  const roll = r.numbers ? ` (1d20 ${r.d20} = ${r.saveTotal} contra CD ${r.dc})` : '';
+  let result = '';
+  if (r.result === HitRiderLogResult.SAVED) {
+    result = `: ${target} passou no teste${roll}`;
+  } else if (r.result === HitRiderLogResult.FAILED) {
+    result = `: ${target} falhou no teste${roll}`;
+    if (r.choice === HitRiderChoice.PUSH) {
+      result += '; o mestre posiciona a criatura até 4,5 m mais longe';
+    }
+  }
+  return ` usou ${names[r.choice] ?? 'a técnica'} em ${target}${result}`;
 }

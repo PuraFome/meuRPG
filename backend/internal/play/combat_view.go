@@ -113,7 +113,8 @@ type encounterData struct {
 	states   []playdb.CombatantState
 	requests []playdb.RollModeRequest
 	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die.
-	holds []playdb.RollHold
+	holds  []playdb.RollHold
+	riders []playdb.HitRider
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
@@ -134,7 +135,11 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the held rolls: %w", err)
 	}
-	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds}, nil
+	riders, err := q.ListHitRiders(ctx, enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the riders: %w", err)
+	}
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, riders: riders}, nil
 }
 
 // turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,
@@ -264,6 +269,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	turn := d.turnFor(v)
 	out.CurrentCombatantId, out.MasterTurn, out.TurnGroupIds = turn.currentID, turn.masterTurn, turn.groupIDs
 	out.NpcOnlyGroups = d.npcOnlyGroups(v)
+	out.HitRiders = d.hitRidersView(v, vitals)
 	ties := unresolvedTies(d.cs)
 	// Players in the same joint turn read each other's economy: they act
 	// together and say what each still has. A player outside the group does not.

@@ -29,6 +29,7 @@
       {"type": "choice", "choice": "subclass", "count": 1}
     ],
     "feature:open-hand-technique": [
+      {"type": "handler", "handler": "monk.open_hand"},
       {"type": "note"}
     ],
     "feature:monk-ability-score-improvement-1": [
@@ -41,6 +42,7 @@
       {"type": "extra_attack", "count": 2}
     ],
     "feature:stunning-strike": [
+      {"type": "handler", "handler": "monk.stunning_strike"},
       {"type": "note"}
     ],
     "feature:perfect-self": [

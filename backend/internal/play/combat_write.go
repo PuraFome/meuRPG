@@ -135,6 +135,7 @@ const (
 	eventRollModeAnswered  = "roll_mode_answered"
 	eventDamagePartRemoved = "damage_part_removed"
 	eventStateChanged      = "state_changed"
+	eventHitRider          = "hit_rider"
 )
 
 // combatWrite describes one change to a combat: who makes it, the idempotency

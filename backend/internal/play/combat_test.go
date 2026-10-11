@@ -965,6 +965,10 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.MoveCombatant(ctx, connect.NewRequest(&playv1.MoveCombatantRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, IdempotencyKey: newKey(), Col: 1, Row: 1}))
 			return err
 		},
+		"UseHitRider": func(u *user, ctx context.Context) error {
+			_, err := u.combat.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: campaign, EncounterId: enc, RiderId: "00000000-0000-4000-8000-000000000001", Choice: playv1.HitRiderChoice_HIT_RIDER_CHOICE_DECLINE, IdempotencyKey: newKey()}))
+			return err
+		},
 		"StandUp(Pensantus)": func(u *user, ctx context.Context) error {
 			_, err := u.combat.StandUp(ctx, connect.NewRequest(&playv1.StandUpRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, IdempotencyKey: newKey()}))
 			return err
@@ -1125,7 +1129,7 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventGroupCheckRequested, eventGroupCheckRolled, eventGroupCheckClosed, eventSurpriseSet,
 		eventCharacterRevived,
 		eventCharacterChoicesCompleted,
-		eventRollModeRequested, eventRollModeAnswered, eventDamagePartRemoved, eventStateChanged,
+		eventRollModeRequested, eventRollModeAnswered, eventDamagePartRemoved, eventStateChanged, eventHitRider,
 		eventRestTaken, eventHitDiceSpent, eventArcaneRecovery, eventInspirationGiven,
 		eventSpellCastOutside, eventSpellCastStarted, eventSpellCastFinished, eventSpellCastInterrupted, eventSpellCastEnded,
 		eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingVisibility, eventLastingSaved, eventLastingTriggered, eventExhaustion, eventGameTimeAdvanced,

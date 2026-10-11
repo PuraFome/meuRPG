@@ -49,6 +49,8 @@ enum EffectModifierKind {
   EFFECT_MODIFIER_KIND_EXTRA_ACTION = 5;
   EFFECT_MODIFIER_KIND_NO_MOVE = 6;
   EFFECT_MODIFIER_KIND_NO_ACTION = 7;
+  // The creature can't take reactions (the Open Hand technique).
+  EFFECT_MODIFIER_KIND_NO_REACTION = 20;
 }
 
 // EffectRollKind is a roll an effect's die touches.
