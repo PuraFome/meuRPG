@@ -214,6 +214,11 @@ export class SceneRollSheet {
       if ('holdId' in made) {
         this.offer.set(made);
         this.typing.set(false);
+        // The d20 is held for the Bardic Inspiration question: its face alone, no total and no word.
+        const held = showOfDice(this.name, made.d20);
+        if (held) {
+          this.animator.play(held);
+        }
         return;
       }
       this.roll.set(made);
@@ -274,6 +279,20 @@ export class SceneRollSheet {
       }
       this.roll.set(res.result.value.roll);
       this.offer.set(null);
+      // The finished roll, as the sheet now shows it (the d20 with the die added in the total).
+      const show = showOfDice(this.name, res.result.value.roll.roll, {
+        withTotal: true,
+        outcome:
+          res.result.value.roll.passed === undefined
+            ? undefined
+            : {
+                word: res.result.value.roll.passed ? 'Passou' : 'Falhou',
+                good: res.result.value.roll.passed,
+              },
+      });
+      if (show) {
+        this.animator.play(show);
+      }
       void this.data.state.refresh();
     } catch (err) {
       this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));

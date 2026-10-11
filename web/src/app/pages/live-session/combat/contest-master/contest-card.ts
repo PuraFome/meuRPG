@@ -20,6 +20,7 @@ import {
   RollModeKind,
   ShoveOutcome,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
+import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { type CheckDie, ContestClient } from '../../../../core/combat/contest-client';
@@ -42,6 +43,7 @@ import {
   proneLine,
   proneWord,
   skillLine,
+  skillName,
   upFirst,
   whoIs,
 } from '../../../../core/combat/contest-view';
@@ -199,6 +201,7 @@ let nextId = 0;
 })
 export class ContestCard {
   private readonly api = inject(ContestClient);
+  private readonly animator = inject(RollAnimator);
   private readonly keys = new ActionKey();
 
   readonly contest = input.required<ContestView>();
@@ -310,6 +313,11 @@ export class ContestCard {
       this.state().apply(res.encounter);
       this.contests().applyContest(res.contest);
       const roll = res.contest.defenderRoll;
+      // The master's roll for the defender, as the line under the card tells it.
+      const show = showOfCheck(`Teste de ${skillName(skill)}`, roll, { withTotal: true });
+      if (show) {
+        this.animator.play(show);
+      }
       const mine = roll ? `${rollHead(this.defenderLabel(), roll.skill)} ${totalLine(roll)}. ` : '';
       const verdict = winnerLine(this.encounter(), res.contest);
       this.said.emit(`${mine}${upFirst(verdict)}.`.trim());

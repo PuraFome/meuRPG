@@ -33,6 +33,7 @@ import {
   trapFired,
 } from '../../../../core/puzzles/puzzle-format';
 import { PuzzlesClient } from '../../../../core/puzzles/puzzles-client';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { LivePill } from '../../../../shared/live-pill/live-pill';
 import { LimitCounters } from '../../../../shared/puzzle-boards/limit-counters';
 import { PillarsBoard } from '../../../../shared/puzzle-boards/pillars-board';
@@ -79,6 +80,7 @@ export class PuzzlePlayPage {
   private readonly api = inject(PuzzlesClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly checks = inject(SceneChecks);
+  private readonly animator = inject(RollAnimator);
 
   readonly campaignId = input.required<string>();
   readonly puzzleId = input.required<string>();
@@ -284,6 +286,20 @@ export class PuzzlePlayPage {
   });
 
   constructor() {
+    // The d20 of a try for a hint, tumbling, with "Você conseguiu."/"Não deu desta vez." (never the DC); a typed die is not animated.
+    effect(() => {
+      const t = this.play.hintTry();
+      if (!t) {
+        return;
+      }
+      const show = showOfDice('Teste para uma dica', t.roll, {
+        withTotal: true,
+        outcome: { word: t.passed ? 'Passou' : 'Falhou', good: t.passed },
+      });
+      if (show) {
+        untracked(() => this.animator.play(show));
+      }
+    });
     // Another puzzle in the address: open it, and forget the one before (a late answer of that one is ignored).
     effect(() => {
       const id = this.puzzleId();
