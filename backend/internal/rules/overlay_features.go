@@ -55,12 +55,41 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	if err := checkText(f.Key, f.DescPT); err != nil {
 		return locate(err, path+".desc_pt")
 	}
+	b.know(f.Key, k)
+	effects := f.Effects
+	if len(f.Options) > 0 {
+		if k.prefix != "feature:" {
+			return ovErr(f.Key, "only a class or subclass feature has an option list").at(path+".options", ReasonEffect)
+		}
+		if len(f.Options) > MaxFeatureOptions {
+			return ovErr(f.Key, "%d options; the limit is %d per feature", len(f.Options), MaxFeatureOptions).at(path+".options", ReasonLimit)
+		}
+		keys, err := b.addOptions(f, k, path)
+		if err != nil {
+			return err
+		}
+		// A choice of features with no `from` offers this feature's own options.
+		effects = slices.Clone(f.Effects)
+		offers := false
+		for i := range effects {
+			e := &effects[i]
+			if e.Type == "choice" && e.Choice == "feature" {
+				if len(e.From) == 0 {
+					e.From = slices.Clone(keys)
+				}
+				offers = true
+			}
+		}
+		if !offers {
+			return ovErr(f.Key, "a feature with options needs a choice of features to offer them").at(path+".effects", ReasonEffect)
+		}
+	}
 	n.namesEN[f.Key] = f.NamePT
 	n.namesPT[f.Key] = f.NamePT
 	switch k.prefix {
 	case "feature:":
 		feat := &srd51.Feature{Key: f.Key, Name: f.NamePT, Class: k.class, Subclass: k.subclass, Level: k.level, Desc: slices.Clone(f.DescPT)}
-		for _, e := range f.Effects {
+		for _, e := range effects {
 			if e.Type != "choice" || e.Choice != "feature" {
 				continue
 			}
@@ -82,10 +111,77 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 		}
 		n.traits[f.Key] = t
 	}
-	if len(f.Effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: f.Key, entry: k.owner, effects: f.Effects, path: path, strict: b.strict[k.owner]})
+	b.declareResources(k, effects)
+	if len(effects) > 0 {
+		b.pending = append(b.pending, pendingEffects{owner: f.Key, entry: k.owner, effects: effects, path: path, strict: b.strict[k.owner]})
 	}
 	return nil
+}
+
+// know records which entry (and class) a feature or option belongs to, for the
+// checks that need it once every entry exists.
+func (b *overlayBuilder) know(key string, k featureKind) {
+	if b.featureEntry == nil {
+		b.featureEntry, b.featureClass, b.optionEntry = map[string]string{}, map[string]string{}, map[string]string{}
+		b.resources = map[string]map[string]bool{}
+	}
+	b.featureEntry[key], b.featureClass[key] = k.owner, k.class
+}
+
+// declareResources notes the names the resource effects of a feature declare, in
+// its entry: a grant_action may spend one of them.
+func (b *overlayBuilder) declareResources(k featureKind, effects []Effect) {
+	for i := range effects {
+		if effects[i].Type != "resource" || effects[i].Resource == "" {
+			continue
+		}
+		if b.resources[k.owner] == nil {
+			b.resources[k.owner] = map[string]bool{}
+		}
+		b.resources[k.owner][effects[i].Resource] = true
+	}
+}
+
+// addOptions registers the option list of a feature as features of their own,
+// each with the feature as its parent, and returns their keys. An option is in no
+// level row: the choice that offers it is the only way to have it.
+func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string) ([]string, error) {
+	n := b.n
+	names := map[string]bool{}
+	keys := make([]string, 0, len(f.Options))
+	for i := range f.Options {
+		o := &f.Options[i]
+		at := fmt.Sprintf("%s.options[%d]", path, i)
+		if len(o.Options) > 0 {
+			return nil, ovErr(o.Key, "an option does not have options of its own").at(at+".options", ReasonValue)
+		}
+		if err := checkTableKey("feature:", o.Key); err != nil {
+			return nil, locate(err, at)
+		}
+		if err := b.claim(o.Key); err != nil {
+			return nil, locate(err, at)
+		}
+		if err := checkEntryName(o.Key, o.NamePT); err != nil {
+			return nil, locate(err, at)
+		}
+		if names[o.NamePT] {
+			return nil, ovErr(o.Key, "two options of %q are named %q", f.NamePT, o.NamePT).at(at+".name_pt", ReasonName)
+		}
+		names[o.NamePT] = true
+		if err := checkText(o.Key, o.DescPT); err != nil {
+			return nil, locate(err, at+".desc_pt")
+		}
+		b.know(o.Key, k)
+		b.optionEntry[o.Key] = k.owner
+		n.namesEN[o.Key], n.namesPT[o.Key] = o.NamePT, o.NamePT
+		n.features[o.Key] = &srd51.Feature{Key: o.Key, Name: o.NamePT, Class: k.class, Subclass: k.subclass, Level: k.level, Desc: slices.Clone(o.DescPT), Parent: f.Key}
+		b.declareResources(k, o.Effects)
+		if len(o.Effects) > 0 {
+			b.pending = append(b.pending, pendingEffects{owner: o.Key, entry: k.owner, effects: o.Effects, path: at, strict: b.strict[k.owner]})
+		}
+		keys = append(keys, o.Key)
+	}
+	return keys, nil
 }
 
 // checkEffect is the closed menu: what is not on it is refused, naming the key.
@@ -139,7 +235,20 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		if e.Choice == "feat" && len(e.From) > 0 && e.Count > len(e.From) {
 			return fail(".count", ReasonValue, "a choice of feats cannot ask for more than the %d feats it lists", len(e.From))
 		}
+		if e.Choice == "feature" && len(slices.Compact(slices.Sorted(slices.Values(e.From)))) != len(e.From) {
+			return fail(".from", ReasonValue, "the options of a choice are listed once each")
+		}
+		if b.optionEntry[owner] != "" {
+			return fail(".type", ReasonEffect, "an option does not ask for another choice")
+		}
 		for _, k := range e.From {
+			if e.Choice == "feature" && b.optionEntry[k] != "" {
+				// An option of a feature list: the same entry's, never another's.
+				if b.optionEntry[k] != b.featureEntry[owner] {
+					return fail(".from", ReasonReference, "choice option %q belongs to another entry's list", k)
+				}
+				continue
+			}
 			if e.Choice == "feat" {
 				// The feats offered are the SRD's or the table's own, and only feats.
 				if !strings.HasPrefix(k, "feat:") || (!b.entries[k] && !b.base.exists(k)) {
@@ -159,6 +268,14 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 	case "ability_increase":
 		if attr, msg := checkAbilityIncrease(e); attr != "" {
 			return fail(attr, ReasonValue, "%s", msg)
+		}
+	case "grant_action":
+		if e.Resource != "" {
+			entry := b.featureEntry[owner]
+			_, srd := b.base.namesPT["resource:"+e.Resource]
+			if !validResourceName(e.Resource) || (!srd && !b.resources[entry][e.Resource] && !b.resources[b.featureClass[owner]][e.Resource]) {
+				return fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
+			}
 		}
 	case "resource":
 		if !validResourceName(e.Resource) {
@@ -183,7 +300,7 @@ var ownFields = map[string][]string{
 	"resource":     {"resource", "max", "recharge"},
 	"choice":       {"choice", "count", "from"},
 	"extra_attack": {"count"},
-	"grant_action": {"economy"},
+	"grant_action": {"economy", "resource"},
 	"note":         {"value", "spells"},
 	// An ability_increase is a feat's alone (checkEffect).
 	"ability_increase": {"value", "count", "from"},

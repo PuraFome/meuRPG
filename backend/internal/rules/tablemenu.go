@@ -149,8 +149,9 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "grant_action", NamePT: "Ação", HintPT: "Uma ação que o personagem passa a ter na vez dele: ação, ação bônus, reação, livre ou movimento.", Fields: []MenuField{
+	{Type: "grant_action", NamePT: "Ação", HintPT: "Uma ação que o personagem passa a ter na vez dele: ação, ação bônus, reação, livre ou movimento. Pode gastar um uso de um recurso que a entrada define (\"Gasta um uso de\").", Fields: []MenuField{
 		{Name: "economy", Required: true, Kind: "choice", List: ListEconomies},
+		{Name: "resource", Kind: "resource_ref"},
 		{Name: "when", Kind: "condition"},
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "text_pt", Kind: "text"},
@@ -160,7 +161,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista do SRD (como um estilo de luta).", Fields: []MenuField{
+	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
 		{Name: "from", Kind: "choices"},

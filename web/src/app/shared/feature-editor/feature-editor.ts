@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { EffectDraft, EffectMenuVm } from '../../core/content/effect-draft';
 import { emptyEffect } from '../../core/content/effect-draft';
-import type { FeatureDraft } from '../../core/content/feature-draft';
+import { emptyFeature, type FeatureDraft } from '../../core/content/feature-draft';
 import { EffectPicker } from '../effect-picker/effect-picker';
 import { FieldNote } from '../form-fields/field-note';
 import { TextField } from '../form-fields/text-field';
@@ -18,7 +18,7 @@ import type { SelectOption } from '../form-fields/select-field';
  */
 @Component({
   selector: 'app-feature-editor',
-  imports: [EffectPicker, FieldNote, MatButtonModule, MatIconModule, TextField],
+  imports: [EffectPicker, FieldNote, FeatureEditor, MatButtonModule, MatIconModule, TextField],
   templateUrl: './feature-editor.html',
   styleUrl: './feature-editor.scss',
 })
@@ -43,6 +43,12 @@ export class FeatureEditor {
   readonly featEditor = input(false);
   /** A narrow field projected between the name and the effect (`<… lead>`): the class editor's "Nível". */
   readonly withLead = input(false);
+  /**
+   * "Opções para escolher": a class or subclass feature may carry a list of options the player picks (a table's maneuvers),
+   * each edited here as a feature of its own (name, text, effects). A feature that has options needs a "Uma opção de uma
+   * lista do SRD" choice, whose empty list offers them.
+   */
+  readonly allowOptions = input(false);
 
   readonly featureChange = output<FeatureDraft>();
   readonly removed = output<void>();
@@ -89,6 +95,20 @@ export class FeatureEditor {
 
   protected addEffect(): void {
     this.patch({ effects: [...this.feature().effects, emptyEffect('note')] });
+  }
+
+  protected setOption(i: number, o: FeatureDraft): void {
+    const options = [...this.feature().options];
+    options[i] = o;
+    this.patch({ options });
+  }
+
+  protected addOption(): void {
+    this.patch({ options: [...this.feature().options, emptyFeature()] });
+  }
+
+  protected removeOption(i: number): void {
+    this.patch({ options: this.feature().options.filter((_, k) => k !== i) });
   }
 
   protected removeEffect(i: number): void {
