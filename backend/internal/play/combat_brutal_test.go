@@ -6,6 +6,8 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 const greataxe = "equipment:greataxe"
@@ -186,5 +188,32 @@ func TestBrutalCriticalIsPartOfTheWeaponLineOfARagingBarbarian(t *testing.T) {
 	}
 	if len(got) != 3 || got[0] != 7 || got[1] != 11 || got[2] != 4 {
 		t.Errorf("the weapon line rolled %v, want 7, 11 and 4", got)
+	}
+}
+
+// A melee weapon thrown at a target beyond melee reach is a ranged weapon attack (SRD 5.1, "Ranged
+// Attacks"): a half-orc barbarian's critical with a javelin thrown from 30 ft gets neither the Savage
+// Attacks die nor Brutal Critical's; the same javelin used in melee, or in an opportunity attack (a
+// melee attack whatever the distance), gets both.
+func TestTheExtraCriticalDiceSkipAJavelinThrownAtRange(t *testing.T) {
+	t.Parallel()
+	at := func(id string, col, row int32) playdb.Combatant {
+		return playdb.Combatant{ID: id, Kind: kindPlayer, GridCol: &col, GridRow: &row}
+	}
+	javelin := link.Attack{Key: "j", Name: "Azagaia", Weapon: true, Melee: true, Ability: "str", RangeFt: 30, LongRangeFt: 120, DiceCount: 1, DiceSides: 6}
+	sheet := link.Sheet{SavageAttacks: true, BrutalCriticalDice: 1}
+	attacker := at("a", 0, 0)
+	dice := func(target playdb.Combatant, opportunity bool) (savage, brutal int) {
+		rolled := extraDiceAttack(playdb.Encounter{}, javelin, attacker, target, opportunity)
+		return savageAttacksDice(attacker, rolled, sheet, true), brutalCriticalDice(attacker, rolled, sheet, true)
+	}
+	if s, b := dice(at("t", 6, 0), false); s != 0 || b != 0 {
+		t.Errorf("a javelin thrown from 30 ft = Savage Attacks %d, Brutal Critical %d; want none", s, b)
+	}
+	if s, b := dice(at("t", 1, 0), false); s != 1 || b != 1 {
+		t.Errorf("a javelin used in melee = Savage Attacks %d, Brutal Critical %d; want 1 and 1", s, b)
+	}
+	if s, b := dice(at("t", 6, 0), true); s != 1 || b != 1 {
+		t.Errorf("an opportunity attack with a javelin = Savage Attacks %d, Brutal Critical %d; want 1 and 1", s, b)
 	}
 }
