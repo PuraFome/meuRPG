@@ -28,6 +28,7 @@ import {
   CombatEffect,
   type InspirationOffer,
   CombatLogKind,
+  CombatantKind,
   CombatantState,
   DeathSaveOutcome,
   CombatantSide,
@@ -144,6 +145,7 @@ import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/ca
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { DeathQuestion } from './death-question/death-question';
 import { DeathSaves } from './death-saves/death-saves';
+import { DeathSaveDue, type DeathSaveRoll } from './death-save-due/death-save-due';
 import { EffectsPanel } from '../effects/effects-panel';
 import { HitRiderCard, type RiderPick } from './hit-rider/hit-rider-card';
 import { RageQuestion } from './rage-end/rage-question';
@@ -265,6 +267,7 @@ const INITIATIVE_DIE = 20;
     CreatureHero,
     DeathQuestion,
     DeathSaves,
+    DeathSaveDue,
     EffectsPanel,
     RageQuestion,
     HitRiderCard,
@@ -375,6 +378,10 @@ export class CombatView {
   /** The characters at three failures the master put away with "Ainda não". */
   protected readonly deathLater = signal<ReadonlySet<string>>(new Set());
   private readonly deathKey = new ActionKey();
+  /** The master tapped "Próximo turno" while a death save was due: the question waits for "Rolar agora" or "Passar sem rolar". */
+  protected readonly passAsking = signal<{ readonly discard: boolean } | null>(null);
+  /** The sentence of the death save the master rolled for an absent player, kept after the save is no longer due. */
+  protected readonly masterDeathResult = signal('');
   private readonly confirmDeathKey = new ActionKey();
   private readonly leaveFormKey = new ActionKey();
   /** The reaction windows whose sheet already opened by itself: it opens once for each, never again after it closed. */
@@ -921,6 +928,15 @@ export class CombatView {
       ? (this.encounter()?.combatants ?? []).filter((c) => c.state === CombatantState.DYING)
       : [],
   );
+  /** The downed player characters whose death save is due this turn: the master rolls it when the player is away (RN-03). */
+  protected readonly deathDue = computed(() =>
+    this.isMaster()
+      ? (this.encounter()?.combatants ?? []).filter(
+          (c) =>
+            c.kind === CombatantKind.PLAYER && c.state === CombatantState.DOWN && c.deathSaveDue,
+        )
+      : [],
+  );
   /** The player's hit whose damage is still to roll (the sheet was closed). */
   protected readonly ownPendingRoll = computed(() => {
     const own = this.own();
@@ -1132,6 +1148,8 @@ export class CombatView {
         untracked(() => {
           this.actionNote.set('');
           this.deathResult.set('');
+          this.masterDeathResult.set('');
+          this.passAsking.set(null);
           this.moveNote.set('');
         });
       }
@@ -1548,6 +1566,22 @@ export class CombatView {
 
   /** `discard`: the master passes the turn although a damage waits. */
   protected nextTurn(discard = false): Promise<boolean> {
+    // A death save still due: the server lets the master pass it, but he is asked first, in place.
+    if (this.deathDue().length > 0) {
+      this.passAsking.set({ discard });
+      return Promise.resolve(false);
+    }
+    return this.endTurn(discard);
+  }
+
+  /** "Passar sem rolar": the turn ends with the death save unrolled. */
+  protected passUnrolled(): Promise<boolean> {
+    const asked = this.passAsking();
+    this.passAsking.set(null);
+    return this.endTurn(asked?.discard ?? false);
+  }
+
+  private endTurn(discard: boolean): Promise<boolean> {
     // In a joint turn a player ends their own part; the master ends the part of
     // the first member who still acts (the others have their own button).
     return this.run((e) => {
@@ -2200,12 +2234,34 @@ export class CombatView {
     if (!own) {
       return;
     }
+    const text = await this.rollDeathSaveOf(own.id, own.label, die);
+    if (text) {
+      this.deathResult.set(text);
+    }
+  }
+
+  /** The master rolls the death save of a player who is not there (the server accepts the master, RN-03). */
+  protected async rollMasterDeathSave(roll: DeathSaveRoll): Promise<void> {
+    const who = this.encounter()?.combatants.find((c) => c.id === roll.id);
+    if (!who) {
+      return;
+    }
+    this.passAsking.set(null);
+    const text = await this.rollDeathSaveOf(who.id, who.label, roll.die);
+    if (text) {
+      this.masterDeathResult.set(text);
+    }
+  }
+
+  /** One death save call, with the dice animation; the sentence it announced, or '' when the call failed. */
+  private async rollDeathSaveOf(id: string, label: string, die: AttackDie): Promise<string> {
+    let text = '';
     await this.run(async (e) => {
-      const key = this.deathKey.keyFor([e.id, own.id, die]);
-      const res = await this.api.rollDeathSave(this.campaignId(), e.id, own.id, die, key);
+      const key = this.deathKey.keyFor([e.id, id, die]);
+      const res = await this.api.rollDeathSave(this.campaignId(), e.id, id, die, key);
       this.deathKey.renew();
-      const text = saveAnnouncement(res.save, own.label);
-      // The player's own death save, as the line under the sheet tells it (hidden saves arrive without a roll: nothing plays).
+      text = saveAnnouncement(res.save, label);
+      // The death save, as the line under the sheet tells it (hidden saves arrive without a roll: nothing plays).
       const show = showOfDice('Teste contra a morte', res.save.roll, {
         withTotal: true,
         outcome: {
@@ -2220,12 +2276,12 @@ export class CombatView {
       if (show) {
         this.animator.play(show);
       }
-      this.deathResult.set(text);
-      if (res.save.outcome === DeathSaveOutcome.REVIVED) {
+      if (res.save.outcome === DeathSaveOutcome.REVIVED && id === this.own()?.id) {
         this.actionNote.set(text);
       }
       return res.encounter;
     });
+    return text;
   }
 
   /** The master's "Confirmar a morte" (ConfirmDeath): the character is dead for good. */
