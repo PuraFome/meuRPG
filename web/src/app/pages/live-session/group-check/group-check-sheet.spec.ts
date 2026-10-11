@@ -15,7 +15,7 @@ import {
   textOf,
 } from '../../../core/combat/contest-testing';
 import { GroupCheckState } from '../../../core/combat/group-check-state';
-import { GroupCheckSheet, type GroupCheckSheetData } from './group-check-sheet';
+import { GroupCheckSheet, type GroupCheckSheetData, groupCheckHeading } from './group-check-sheet';
 
 const member = (over: object = {}) =>
   create(GroupCheckMemberViewSchema, { characterId: 'b', name: 'Brisa', ...over });
@@ -171,7 +171,25 @@ describe('GroupCheckSheet (board W7-Xc 10)', () => {
     button('Rolar no app')!.click();
     await settle();
     expect(api.calls).toContain('groupCheck');
-    expect(text()).toContain('Não deu para rolar o teste em grupo');
+    expect(text()).toContain('Não deu para rolar o teste');
+  });
+
+  it('names a one-person request "Teste", never "Teste em grupo"', async () => {
+    const { text, settle } = setup(
+      groupCheck({
+        group: false,
+        youRoll: true,
+        yourOption: create(CheckOptionSchema, { modifier: 7, known: true }),
+        members: [member()],
+      }),
+    );
+    await settle();
+    expect(text()).not.toContain('em grupo');
+    expect(groupCheckHeading(groupCheck({ group: false }))).toBe('Teste');
+    expect(groupCheckHeading(groupCheck({ group: false, save: true }))).toBe(
+      'Teste de resistência',
+    );
+    expect(groupCheckHeading(groupCheck())).toBe('Teste em grupo');
   });
 
   it('hides on "Fechar a folha"', async () => {

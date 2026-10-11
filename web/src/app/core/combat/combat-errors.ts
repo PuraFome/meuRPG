@@ -66,8 +66,8 @@ const CONTEST_BLOCKED_TEXT: Partial<Record<ContestBlockedReason, string>> = {
   [ContestBlockedReason.TASK_NOT_AVAILABLE]: 'Não dá para ajudar nessa tarefa.',
   [ContestBlockedReason.HIDE_NOT_PENDING]:
     'Esse esconderijo já foi decidido. A tela foi atualizada.',
-  [ContestBlockedReason.GROUP_CHECK_OPEN]: 'Já há um teste em grupo aberto.',
-  [ContestBlockedReason.GROUP_CHECK_CLOSED]: 'O mestre já encerrou esse teste em grupo.',
+  [ContestBlockedReason.GROUP_CHECK_OPEN]: 'Já há um teste aberto. Encerre-o antes de pedir outro.',
+  [ContestBlockedReason.GROUP_CHECK_CLOSED]: 'O mestre já encerrou esse teste.',
   [ContestBlockedReason.NOT_IN_GROUP_CHECK]: 'O mestre não pediu esse teste ao seu personagem.',
   [ContestBlockedReason.ALREADY_ANSWERED]: 'Você já rolou esse teste.',
   [ContestBlockedReason.COMBAT_BEGUN]: 'O combate já começou.',

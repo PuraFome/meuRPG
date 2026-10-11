@@ -257,6 +257,24 @@ describe('GroupCheckMaster, the master asks the party for a check', () => {
       expect(el.querySelector('[data-testid="group-last"]')).toBeNull();
     });
 
+    it('says "Teste encerrado." when a one-person request closes, and "Teste em grupo encerrado." for a group', async () => {
+      const one = groupCheck({ ...openCheck(), group: false, members: [openCheck().members[0]] });
+      const { api, el, settle, button } = setup(one);
+      await settle();
+      api.group = groupCheck({ ...one, open: false });
+      button('Encerrar o teste')!.click();
+      await settle();
+      const said = () => textOf(el.querySelector('[role="status"]')!);
+      expect(said()).toBe('Teste encerrado.');
+      TestBed.resetTestingModule();
+      const group = setup(openCheck());
+      await group.settle();
+      group.api.group = groupCheck({ ...openCheck(), open: false });
+      group.button('Encerrar o teste')!.click();
+      await group.settle();
+      expect(textOf(group.el.querySelector('[role="status"]')!)).toBe('Teste em grupo encerrado.');
+    });
+
     it('says the verdict is his until the DC is shown, and reads it again on each tick', async () => {
       const view = groupCheck({
         ...openCheck(),

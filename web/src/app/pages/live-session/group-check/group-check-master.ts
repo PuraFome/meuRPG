@@ -404,7 +404,7 @@ export class GroupCheckMaster {
         this.keys.keyFor({ close: id }),
       );
       this.checks.apply(view);
-      this.said.set('Teste em grupo encerrado.');
+      this.said.set(`${view.group ? 'Teste em grupo' : 'Teste'} encerrado.`);
     });
   }
 

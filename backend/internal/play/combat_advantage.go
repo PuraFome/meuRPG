@@ -596,16 +596,28 @@ func (s *Service) turnModes(ctx context.Context, campaignID string, d *encounter
 // caller changes it.
 func (t turnModes) annotate(attackKey string, targets []*playv1.TargetInReach) {
 	i := slices.IndexFunc(t.sheet.Attacks, func(a link.Attack) bool { return a.Key == attackKey })
+	if i < 0 {
+		t.annotateShape(nil, targets)
+		return
+	}
+	shape := shapeOfAttack(t.sheet.Attacks[i])
+	t.annotateShape(&shape, targets)
+}
+
+// annotateShape is annotate for an attack of a known shape; a nil shape leaves the
+// targets at the normal mode. A spell attack uses it with the shape CastSpell rolls
+// with (shapeOfSpell), so the cast sheet's suggestion is the mode the cast takes.
+func (t turnModes) annotateShape(shape *attackShape, targets []*playv1.TargetInReach) {
 	for _, tg := range targets {
 		tg.RollMode = playv1.RollMode_ROLL_MODE_NORMAL
-		if i < 0 {
+		if shape == nil {
 			continue
 		}
 		j := slices.IndexFunc(t.facts.cs, func(c playdb.Combatant) bool { return c.ID == tg.GetCombatantId() })
 		if j < 0 {
 			continue
 		}
-		r := t.facts.attackMode(t.who, t.facts.cs[j], t.sheet.Traits, shapeOfAttack(t.sheet.Attacks[i]), t.ownTurn, t.viewer, t.names)
+		r := t.facts.attackMode(t.who, t.facts.cs[j], t.sheet.Traits, *shape, t.ownTurn, t.viewer, t.names)
 		tg.RollMode, tg.Sources, tg.CriticalOnHit = modeToProto[r.Mode], r.Shown, r.CriticalOnHit
 	}
 }
