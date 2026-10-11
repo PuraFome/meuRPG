@@ -255,6 +255,27 @@ function deflectMissilesPrompt(d: PromptOf<'deflectMissiles'>, rodada: string): 
   };
 }
 
+function maneuverReducePrompt(d: PromptOf<'maneuverReduce'>, rodada: string): PromptView {
+  const first = d.options[0];
+  const plus =
+    first && first.flatBonus !== 0
+      ? ` ${first.flatBonus < 0 ? '−' : '+'} ${Math.abs(first.flatBonus)}`
+      : '';
+  const sides =
+    d.options.length === 1 && first ? `1d${first.dieSides}${plus}` : 'o dado da manobra';
+  return {
+    title: 'Você foi atingido corpo a corpo',
+    subtitle: joinDots([d.attackerLabel, ...(d.attackNamePt ? [d.attackNamePt] : []), rodada]),
+    icon: 'shield',
+    name: 'Manobra',
+    question: `Usar uma manobra? O dano cai ${sides}.`,
+    costs: ['Reação', 'Gasta um uso da manobra'],
+    note: `O ataque já acertou e causaria ${d.damage} de dano; ele ainda não foi aplicado.`,
+    useLabel: 'Usar a manobra',
+    ariaLabel: 'Você foi atingido corpo a corpo: usar uma manobra?',
+  };
+}
+
 function featherFallPrompt(f: PromptOf<'featherFall'>, rodada: string): PromptView {
   const name = REACTION_NAMES.featherFall;
   const one = f.falling.length === 1 ? f.falling[0] : undefined;
@@ -298,6 +319,7 @@ const PROMPTS: { [K in PromptCase]?: (value: PromptOf<K>, rodada: string) => Pro
   counterspell: counterspellPrompt,
   cuttingWords: cuttingWordsPrompt,
   deflectMissiles: deflectMissilesPrompt,
+  maneuverReduce: maneuverReducePrompt,
   featherFall: featherFallPrompt,
   concentrationSave: concentrationSavePrompt,
 };
@@ -334,6 +356,8 @@ export function dieSidesOf(w: ReactionWindow): number {
       return p.value.dieSides;
     case 'deflectMissiles':
       return p.value.dieSides;
+    case 'maneuverReduce':
+      return p.value.options[0]?.dieSides ?? 0;
     default:
       return 0;
   }
@@ -586,6 +610,26 @@ function deflectMissilesResult(
   };
 }
 
+function maneuverReduceResult(
+  v: ResultOf<'maneuverReduce'>,
+  _asked: ReactionWindow,
+  ctx: ResultContext,
+): ResultView {
+  const left = v.damageAfter === 0 ? 'a 0' : `para ${v.damageAfter}`;
+  return {
+    title: `${v.namePt} usada`,
+    subtitle: base(ctx).subtitle,
+    icon: 'shield',
+    pill: null,
+    text: [
+      `${v.reduction ? rollFormula(v.reduction) : ''}: o dano, de ${v.damageBefore}, caiu ${left}.`,
+    ],
+    chips: base(ctx).used,
+    note: '',
+    throwBack: false,
+  };
+}
+
 function featherFallResult(
   v: ResultOf<'featherFall'>,
   asked: ReactionWindow,
@@ -620,6 +664,7 @@ const RESULTS: {
   counterspell: counterspellResult,
   cuttingWords: cuttingWordsResult,
   deflectMissiles: deflectMissilesResult,
+  maneuverReduce: maneuverReduceResult,
   featherFall: featherFallResult,
 };
 

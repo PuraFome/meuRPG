@@ -49,6 +49,9 @@ export interface StartContestInput {
   readonly die?: CheckDie;
   /** The creature's fixed escape DC (1 to 40) of an `ESCAPE_DC` grapple: the master's alone (RN-20). */
   readonly escapeDc?: number;
+  /** A table maneuver (ContestAttackOption.maneuvers) that starts the grapple, and the face of its die when rolled with a physical die. */
+  readonly maneuverKey?: string;
+  readonly maneuverFace?: number;
 }
 
 /** What the defender answers (`RespondContest`): the skill and the roll, or the roll left to the master. */
@@ -133,6 +136,8 @@ export class ContestClient {
       skill: input.skill,
       ...(input.die ? { roll: rollInput(input.die) } : {}),
       ...(input.escapeDc ? { escapeDc: input.escapeDc } : {}),
+      ...(input.maneuverKey ? { maneuverKey: input.maneuverKey } : {}),
+      ...(input.maneuverFace ? { maneuverFace: input.maneuverFace } : {}),
     });
     return {
       encounter: need(res.encounter, 'StartContest'),

@@ -17,6 +17,7 @@ const OPTIONAL_KINDS: ReadonlySet<ReactionKind> = new Set([
   ReactionKind.COUNTERSPELL,
   ReactionKind.CUTTING_WORDS,
   ReactionKind.DEFLECT_MISSILES,
+  ReactionKind.MANEUVER_REDUCE,
   ReactionKind.FEATHER_FALL,
 ]);
 

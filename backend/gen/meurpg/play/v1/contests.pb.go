@@ -335,7 +335,15 @@ type StartContestRequest struct {
 	// The initiator's roll. Required, except for an ESCAPE_DC grapple.
 	Roll *CheckRollInput `protobuf:"bytes,9,opt,name=roll,proto3" json:"roll,omitempty"`
 	// The fixed escape DC (1 to 40) of an ESCAPE_DC grapple. Only the master.
-	EscapeDc      int32 `protobuf:"varint,10,opt,name=escape_dc,json=escapeDc,proto3" json:"escape_dc,omitempty"`
+	EscapeDc int32 `protobuf:"varint,10,opt,name=escape_dc,json=escapeDc,proto3" json:"escape_dc,omitempty"`
+	// A table maneuver (ContestAttackOption.maneuvers[].key) that starts a GRAPPLE: the player
+	// made a melee hit this turn, so the grapple costs the bonus action and one use of the
+	// maneuver's resource instead of an attack, and the superiority die is added to the
+	// Athletics check. Not with ESCAPE_DC; players only.
+	ManeuverKey string `protobuf:"bytes,11,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	// The face of the die when the player rolls physical dice (the roll is typed d20 faces): 1
+	// to the die's sides. Empty (0) when the roll is in the app, where the server rolls the die.
+	ManeuverFace  int32 `protobuf:"varint,12,opt,name=maneuver_face,json=maneuverFace,proto3" json:"maneuver_face,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -436,6 +444,20 @@ func (x *StartContestRequest) GetRoll() *CheckRollInput {
 func (x *StartContestRequest) GetEscapeDc() int32 {
 	if x != nil {
 		return x.EscapeDc
+	}
+	return 0
+}
+
+func (x *StartContestRequest) GetManeuverKey() string {
+	if x != nil {
+		return x.ManeuverKey
+	}
+	return ""
+}
+
+func (x *StartContestRequest) GetManeuverFace() int32 {
+	if x != nil {
+		return x.ManeuverFace
 	}
 	return 0
 }
@@ -2526,7 +2548,7 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x0eCheckRollInput\x12 \n" +
 	"\vroll_in_app\x18\x01 \x01(\bH\x00R\trollInApp\x127\n" +
 	"\td20_faces\x18\x02 \x01(\v2\x18.meurpg.play.v1.D20FacesH\x00R\bd20FacesB\x06\n" +
-	"\x04roll\"\xb2\x03\n" +
+	"\x04roll\"\xfa\x03\n" +
 	"\x13StartContestRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2539,7 +2561,9 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x05skill\x18\b \x01(\x0e2\x1c.meurpg.play.v1.ContestSkillR\x05skill\x122\n" +
 	"\x04roll\x18\t \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\x12\x1b\n" +
 	"\tescape_dc\x18\n" +
-	" \x01(\x05R\bescapeDc\"\x86\x01\n" +
+	" \x01(\x05R\bescapeDc\x12!\n" +
+	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKey\x12#\n" +
+	"\rmaneuver_face\x18\f \x01(\x05R\fmaneuverFace\"\x86\x01\n" +
 	"\x14StartContestResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x125\n" +
 	"\acontest\x18\x02 \x01(\v2\x1b.meurpg.play.v1.ContestViewR\acontest\"\xb3\x02\n" +

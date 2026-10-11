@@ -124,6 +124,18 @@ func (e *logEntry) reactionLine(ctx context.Context, v combatViewer, byID map[st
 			return fmt.Sprintf("%s usou Esquiva Sobrenatural: o dano de %s caiu de %d para %d.%s", who, other.Label, re.Before, re.After, by), true
 		}
 		return fmt.Sprintf("%s usou Esquiva Sobrenatural: o dano caiu pela metade.%s", who, by), true
+	case reaction.ManeuverReduceKind:
+		if !re.Used || !seesReactor {
+			return "", false
+		}
+		name := re.ManeuverName
+		if name == "" {
+			name = "uma manobra"
+		}
+		if numbers && re.Die > 0 {
+			return fmt.Sprintf("%s usou %s: 1d%d (%d) reduziu o dano, de %d, a %d.%s", who, name, re.DieSides, re.Die, re.Before, re.After, by), true
+		}
+		return fmt.Sprintf("%s usou %s: o dano caiu.%s", who, name, by), true
 	case reaction.DeflectKind:
 		if !re.Used || !seesReactor || re.Die == 0 && !re.Caught {
 			return "", false

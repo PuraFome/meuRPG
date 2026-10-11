@@ -159,6 +159,26 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
                 (pick)="chosen.set($event); error.set('')"
               />
             }
+            @if (maneuverOptions().length > 1) {
+              <fieldset class="falling">
+                <legend class="falling__cap">Qual manobra</legend>
+                @for (o of maneuverOptions(); track o.key) {
+                  <label class="falling__row">
+                    <input
+                      type="radio"
+                      class="falling__input"
+                      name="reaction-maneuver"
+                      [checked]="maneuverKey() === o.key"
+                      (change)="maneuverKey.set(o.key)"
+                    />
+                    <span class="falling__text">
+                      <b>{{ o.namePt }}</b>
+                      <small>d{{ o.dieSides }} + {{ o.flatBonus }} · {{ o.usesLeft }} usos</small>
+                    </span>
+                  </label>
+                }
+              </fieldset>
+            }
             @if (warning()) {
               <div class="mr-notice mr-notice--warning" role="status">
                 <mat-icon aria-hidden="true">info</mat-icon>
@@ -452,6 +472,17 @@ export class ReactionSheet {
     }
   });
   protected readonly chosen = signal<SlotRow | null>(defaultSlot(this.rows()));
+  /** The maneuvers a reduction offers (the first is picked), when the window is a maneuver reduction. */
+  protected readonly maneuverOptions = computed(() => {
+    const p = this.asked().prompt;
+    return p.case === 'maneuverReduce' ? p.value.options : [];
+  });
+  protected readonly maneuverKey = signal(
+    (() => {
+      const p = this.asked().prompt;
+      return p.case === 'maneuverReduce' ? (p.value.options[0]?.key ?? '') : '';
+    })(),
+  );
   protected readonly warning = computed(() =>
     this.asked().prompt.case === 'shield' ? lastSlotWarning(this.chosen(), null) : '',
   );
@@ -627,6 +658,7 @@ export class ReactionSheet {
       ...(row && !racial ? { slot: { level: row.level, pact: row.pact } } : {}),
       ...(racial ? { useRacial: true } : {}),
       ...(this.isFeatherFall() ? { creatureIds: [...this.picked()] } : {}),
+      ...(this.maneuverKey() ? { maneuverKey: this.maneuverKey() } : {}),
       ...(die ? { die } : {}),
     };
   }

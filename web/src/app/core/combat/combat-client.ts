@@ -269,6 +269,8 @@ export interface ReactionAnswer {
   readonly creatureIds?: readonly string[];
   /** The die the answer needs, when it needs one: the app rolls it, or the face typed from a physical die. */
   readonly die?: { readonly inApp: true } | { readonly typed: number };
+  /** A maneuver reduction: the option of the prompt the player uses. */
+  readonly maneuverKey?: string;
 }
 
 /** What `AnswerReaction` answers: the combat and what the answer did. */
@@ -1048,6 +1050,7 @@ export class CombatClient {
       slot: answer.slot ? { level: answer.slot.level, pact: answer.slot.pact } : undefined,
       useRacial: answer.useRacial ?? false,
       creatureIds: [...(answer.creatureIds ?? [])],
+      maneuverKey: answer.maneuverKey ?? '',
       roll: !answer.die
         ? { case: undefined }
         : 'inApp' in answer.die
