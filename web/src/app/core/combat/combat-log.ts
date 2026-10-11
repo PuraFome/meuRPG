@@ -38,6 +38,7 @@ import { degreeWord, sourceWord } from './cover';
 import { effectWords, gainWords, poolRollText, reasonWords } from './hp-effects';
 import { trapLogText } from '../traps/trap-log';
 import { article } from '../format/article';
+import { naturalMark } from './natural-mark';
 
 /**
  * The combat log as the screens read it (E6-11, E6-14, E6-15): the server
@@ -1060,7 +1061,9 @@ function effectSaveNumbers(fx: CombatLogEffect, ctx: LogContext): string {
   if (!ctx.master || fx.total === undefined || fx.dc === undefined) {
     return '';
   }
-  return ` (${fx.d20 !== undefined ? `d20 ${fx.d20}, ` : ''}total ${fx.total} contra CD ${fx.dc})`;
+  // "20 natural" is information only: a saving throw has no automatic success or failure (SRD 5.1).
+  const natural = fx.d20 !== undefined ? naturalMark(fx.d20) : '';
+  return ` (${fx.d20 !== undefined ? `d20 ${fx.d20}, ` : ''}${natural ? `${natural}, ` : ''}total ${fx.total} contra CD ${fx.dc})`;
 }
 
 function effectSaveWords(fx: CombatLogEffect): string {

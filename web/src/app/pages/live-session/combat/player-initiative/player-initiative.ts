@@ -12,6 +12,7 @@ import {
   ownCombatant,
   signed,
 } from '../../../../core/combat/combat-view';
+import { initiativeMark } from '../../../../core/combat/natural-mark';
 import { groupName } from '../../../../core/combat/creature-names';
 import { ownCreatures } from '../../../../core/combat/mine';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -102,6 +103,11 @@ export class PlayerInitiative {
   protected readonly formula = computed(() => {
     const own = this.own();
     return own ? (initiativeFormula(own) ?? '') : '';
+  });
+  /** "20 natural" / "1 natural": the player's own roll only; information, initiative has no automatic result. */
+  protected readonly mark = computed(() => {
+    const own = this.own();
+    return own ? initiativeMark(own) : '';
   });
   protected readonly players = computed(() => this.encounter().combatants.filter(isPlayer));
 

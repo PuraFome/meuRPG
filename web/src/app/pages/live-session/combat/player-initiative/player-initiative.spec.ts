@@ -87,3 +87,25 @@ describe('PlayerInitiative: the player creatures', () => {
     expect(rolled).toEqual(['w1']);
   });
 });
+
+describe('PlayerInitiative: the natural mark (information only)', () => {
+  function own(face: number | undefined): HTMLElement {
+    const fixture = TestBed.createComponent(PlayerInitiative);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [{ ...salvia, initiativeFace: face, initiativeBonus: 2 } as never] }),
+    );
+    fixture.componentRef.setInput('diceMode', DiceMode.PLAYERS_CHOOSE);
+    fixture.componentRef.setInput('dicePreference', DicePreference.APP);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+  const mark = (el: HTMLElement) =>
+    el.querySelector('[data-testid="natural-mark"]')?.textContent?.trim();
+
+  it('tags the player own natural 20 and natural 1, and nothing for another face', () => {
+    expect(mark(own(20))).toBe('20 natural');
+    expect(mark(own(1))).toBe('1 natural');
+    expect(mark(own(11))).toBeUndefined();
+  });
+});

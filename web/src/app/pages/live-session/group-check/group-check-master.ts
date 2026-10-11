@@ -22,6 +22,7 @@ import {
   memberBonus,
   memberResult,
 } from '../../../core/combat/contest-master';
+import { checkNaturalMark } from '../../../core/combat/contest-view';
 import { askedWho, askTaskGroups } from '../../../core/combat/ask-roll';
 import { GroupCheckState } from '../../../core/combat/group-check-state';
 import { HELP_TASKS } from '../../../core/combat/help-view';
@@ -79,6 +80,9 @@ function dcOf(text: string): number | null {
                 <span class="row__sub">{{ bonus(m) }}</span>
               </span>
               <span class="tag" [class.tag--ok]="m.passedKnown && m.passed">{{ result(m) }}</span>
+              @if (natural(m); as mark) {
+                <span class="tag" data-testid="natural-mark">{{ mark }}</span>
+              }
               @if (!m.answered) {
                 <button
                   mat-stroked-button
@@ -315,6 +319,10 @@ export class GroupCheckMaster {
   });
   protected readonly dc = computed(() => dcOf(this.dcText()));
   protected readonly result = memberResult;
+  /** "20 natural" / "1 natural" beside the member's result: information only, the verdict is the total against the DC. */
+  protected natural(m: GroupCheckMemberView): string {
+    return checkNaturalMark(m.roll);
+  }
 
   constructor() {
     effect(() => {

@@ -28,6 +28,7 @@ import {
   rollAttemptLine,
   rollClock,
   sceneRollFormula,
+  sceneRollMark,
 } from '../../../../core/play/scene-view';
 import { CheckMode } from '../check-mode/check-mode';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -81,6 +82,7 @@ export class SceneRollLine {
     hasModeInfo(this.roll().mode, this.roll().sources, this.faces()),
   );
   protected readonly formula = computed(() => sceneRollFormula(this.roll()));
+  protected readonly natural = computed(() => sceneRollMark(this.roll()));
   protected readonly pass = computed(() => passLabel(this.scene(), this.roll()));
   protected readonly attempt = computed(() => rollAttemptLine(this.scene(), this.roll()));
   protected readonly canGrant = computed(() => canGrantAttempt(this.scene(), this.roll()));

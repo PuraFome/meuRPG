@@ -714,6 +714,10 @@ The UI text is Portuguese (pt-BR) until i18n lands after the MVP; these rules ar
 
 Only in response to an action (opening a feature, changing step, confirming), and nothing animates under `prefers-reduced-motion`.
 
+### Natural 20 and natural 1 tag
+
+A check, saving throw, contest, group check, scene roll or initiative whose d20 that counts came up 20 or 1 carries a small `mr-tag` with the words "20 natural" or "1 natural" next to its formula (the sentence a screen reader hears says it too). It is information only: those rolls have no automatic success or failure on a natural die (SRD 5.1), so the tag never says "crítico" or "sucesso automático" and never changes a total or a verdict. Attacks keep their "crítico" wording; death saves keep their own marks. The text comes from `naturalMark` (`core/combat/natural-mark.ts`). A player sees it only on a roll whose face they already read (their own); the master sees it on every roll he already reads.
+
 ### Roll animation
 
 The dice animation plays when this screen rolls in the app, in a live session: attacks, damage (a player's, a spell's, the master's for an NPC), checks, saving throws, death saves, effect saves, the Bardic Inspiration die and the hit dice of a rest. It never plays for a physical die the player typed, for another person's roll arriving by stream, or outside play (the character editor, level-up, the campaign pages).

@@ -21,6 +21,7 @@ import { treatedPreview } from '../../../../core/combat/combat-dice';
 import {
   passText,
   sceneRollFormula,
+  sceneRollMark,
   sceneRollNote,
   sceneRollSpeech,
   signedBonus,
@@ -156,6 +157,11 @@ export class SceneRollSheet {
     return this.typing()
       ? joinDots([this.name, this.action.checkName])
       : joinDots([this.checkLine, `bônus ${this.bonusText}`]);
+  });
+  /** "20 natural" / "1 natural" of the player's own d20; information only. */
+  protected readonly natural = computed(() => {
+    const r = this.roll();
+    return r ? sceneRollMark(r) : '';
   });
   protected readonly formula = computed(() => {
     const r = this.roll();
