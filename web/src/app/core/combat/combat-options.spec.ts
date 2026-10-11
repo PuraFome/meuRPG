@@ -70,7 +70,7 @@ describe('the reasons an option is disabled', () => {
         reason: reason(DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT),
       });
     expect(spellReasonText(blocked(ActionEconomy.BONUS_ACTION))).toBe(
-      'Você já conjurou neste turno uma magia que não é truque: junto com uma magia de ação bônus, só cabe um truque de 1 ação.',
+      'Você já conjurou outra magia neste turno: junto com uma magia de ação bônus, só cabe um truque de 1 ação.',
     );
     expect(spellReasonText(blocked(ActionEconomy.ACTION))).toBe(
       'Você já conjurou uma magia de ação bônus neste turno: a outra magia só pode ser um truque de 1 ação.',

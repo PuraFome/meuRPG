@@ -76,15 +76,15 @@ export function reasonText(reason: DisabledReason | undefined, master = false): 
 
 /**
  * Why a spell is disabled. The bonus-action-spell limit (SRD 5.1, Casting a Spell) names its case by the spell's own
- * economy, since the server's reason carries no spell name: a bonus action spell is blocked by an earlier spell that is
- * not a cantrip, any other spell by an earlier bonus action spell (the other spell may only be a cantrip of 1 action).
+ * economy, since the server's reason carries no spell name: a bonus action spell is blocked by an earlier spell (other
+ * than a cantrip of 1 action), any other spell by an earlier bonus action spell.
  */
 export function spellReasonText(spell: SpellOption, master = false): string {
   if (spell.reason?.code !== DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT || spell.reason.textPt) {
     return reasonText(spell.reason, master);
   }
   return spell.economy === ActionEconomy.BONUS_ACTION
-    ? 'Você já conjurou neste turno uma magia que não é truque: junto com uma magia de ação bônus, só cabe um truque de 1 ação.'
+    ? 'Você já conjurou outra magia neste turno: junto com uma magia de ação bônus, só cabe um truque de 1 ação.'
     : 'Você já conjurou uma magia de ação bônus neste turno: a outra magia só pode ser um truque de 1 ação.';
 }
 
