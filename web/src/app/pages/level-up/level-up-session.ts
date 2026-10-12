@@ -263,6 +263,8 @@ export class LevelUpSession {
   /** The page replaced this session with `next` (the same level, read again). */
   handOver(next: LevelUpSession): void {
     this.next = next;
+    // A pick made on the old screen before it re-renders lands on the new draft too.
+    this.draft.handOver(next.draft);
     this.stop();
   }
 
@@ -273,7 +275,7 @@ export class LevelUpSession {
 
   /** The number that came out of a physical die, typed. */
   typed(value: number): void {
-    this.draft.rolled.set({ kind: 'physical', value });
+    this.current().draft.rolled.set({ kind: 'physical', value });
   }
 
   /** The die card: a kept roll of the server's is taken back on the spot, as the proto says. */
