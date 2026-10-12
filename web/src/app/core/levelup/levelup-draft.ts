@@ -491,6 +491,9 @@ export class LevelUpDraft {
   readonly averageChoices = computed<LevelUpChoicesInit>(() => this.build(null));
 
   setAbilityMode(mode: 'one' | 'two'): void {
+    if (this.forwarded((d) => d.setAbilityMode(mode))) {
+      return;
+    }
     if (mode !== this.abilityMode()) {
       this.abilityMode.set(mode);
       this.abilityKeys.set([]);
@@ -499,6 +502,9 @@ export class LevelUpDraft {
 
   /** One ability for +2, two for +1 each: a third replaces the oldest. */
   toggleAbility(key: AbilityKey): void {
+    if (this.forwarded((d) => d.toggleAbility(key))) {
+      return;
+    }
     const keys = this.abilityKeys();
     if (keys.includes(key)) {
       this.abilityKeys.set(keys.filter((k) => k !== key));
@@ -509,23 +515,38 @@ export class LevelUpDraft {
 
   /** A pick on a choice an earlier level left open: `optionKeys` is the whole selection of the choice now. */
   selectLate(choice: Choice, optionKeys: readonly string[]): void {
+    if (this.forwarded((d) => d.selectLate(choice, optionKeys))) {
+      return;
+    }
     this.lateDrafts.update((d) => withSelection(d, choice, optionKeys));
   }
 
   editLateText(choice: Choice, n: number, text: string): void {
+    if (this.forwarded((d) => d.editLateText(choice, n, text))) {
+      return;
+    }
     this.lateDrafts.update((d) => withText(d, choice, n, text));
   }
 
   /** A pick on one of the new level's own choices. */
   selectNew(choice: Choice, optionKeys: readonly string[]): void {
+    if (this.forwarded((d) => d.selectNew(choice, optionKeys))) {
+      return;
+    }
     this.newDrafts.update((d) => withSelection(d, choice, optionKeys));
   }
 
   editNewText(choice: Choice, n: number, text: string): void {
+    if (this.forwarded((d) => d.editNewText(choice, n, text))) {
+      return;
+    }
     this.newDrafts.update((d) => withText(d, choice, n, text));
   }
 
   setAsiMode(mode: AsiMode): void {
+    if (this.forwarded((d) => d.setAsiMode(mode))) {
+      return;
+    }
     if (mode !== this.asiMode() && (mode === 'increase' || this.hasFeats())) {
       this.asiMode.set(mode);
     }
@@ -533,6 +554,9 @@ export class LevelUpDraft {
 
   /** Picks a feat the character qualifies for; a feat that raises every ability it lists needs no further choice. */
   setFeat(key: string): void {
+    if (this.forwarded((d) => d.setFeat(key))) {
+      return;
+    }
     const feat = this.feats().find((f) => f.key === key);
     if (!feat?.qualifies || key === this.featKey()) {
       return;
@@ -543,6 +567,9 @@ export class LevelUpDraft {
 
   /** An ability of the feat's increase: picked or dropped, never more than `count`. */
   toggleFeatAbility(ability: Ability): void {
+    if (this.forwarded((d) => d.toggleFeatAbility(ability))) {
+      return;
+    }
     const inc = this.feat()?.increase;
     const now = this.featAbilities();
     if (!inc || this.featFixed() || !inc.from.includes(ability)) {
@@ -560,10 +587,16 @@ export class LevelUpDraft {
   }
 
   setHpCard(card: HpCard): void {
+    if (this.forwarded((d) => d.setHpCard(card))) {
+      return;
+    }
     this.hpCard.set(card);
   }
 
   setSubclass(key: string): void {
+    if (this.forwarded((d) => d.setSubclass(key))) {
+      return;
+    }
     if (key === this.subclassKey()) {
       return;
     }
@@ -592,6 +625,31 @@ export class LevelUpDraft {
     this.spells.set(offered(this.spells(), this.spellItems()));
     this.prepared.set(offered(this.prepared(), this.preparedItems()));
     this.reconcile();
+  }
+
+  /**
+   * The draft that replaced this one when the page read the sheet again (`LevelUpSession.handOver`).
+   * A pick made on the old screen in the moment before it re-renders goes there instead of being lost
+   * on this one (the radio then stayed drawn as chosen while the new draft had nothing).
+   */
+  private next: LevelUpDraft | null = null;
+
+  /** This draft was replaced by `next`: from now on its setters change `next` (or the one after it). */
+  handOver(next: LevelUpDraft): void {
+    this.next = next;
+  }
+
+  /** Runs `change` on the newest draft along the hand-overs when this one was replaced; true when it did. */
+  private forwarded(change: (d: LevelUpDraft) => void): boolean {
+    if (!this.next) {
+      return false;
+    }
+    let d: LevelUpDraft = this.next;
+    while (d.next) {
+      d = d.next;
+    }
+    change(d);
+    return true;
   }
 
   /** Takes over what `other` had picked (after the sheet was read again), keeping only what these
@@ -731,10 +789,16 @@ export class LevelUpDraft {
   }
 
   toggleCantrip(key: string): void {
+    if (this.forwarded((d) => d.toggleCantrip(key))) {
+      return;
+    }
     this.flip(this.cantrips, key, this.cantripsAsked());
   }
 
   toggleSpell(key: string): void {
+    if (this.forwarded((d) => d.toggleSpell(key))) {
+      return;
+    }
     // Magical Secrets: only so many of the new spells may come from outside the class list.
     const item = this.spellItems().find((i) => i.key === key);
     if (item?.disabled && !this.spells().has(key)) {
@@ -749,10 +813,16 @@ export class LevelUpDraft {
   }
 
   togglePrepared(key: string): void {
+    if (this.forwarded((d) => d.togglePrepared(key))) {
+      return;
+    }
     this.flip(this.prepared, key, this.preparedAsked());
   }
 
   toggleSkill(key: string): void {
+    if (this.forwarded((d) => d.toggleSkill(key))) {
+      return;
+    }
     if (this.skillItems().find((i) => i.key === key)?.disabled && !this.skills().has(key)) {
       return;
     }
@@ -762,6 +832,9 @@ export class LevelUpDraft {
 
   /** The instrument is one pick: tapping the picked one drops it. */
   toggleInstrument(key: string): void {
+    if (this.forwarded((d) => d.toggleInstrument(key))) {
+      return;
+    }
     const item = this.instrumentItems().find((i) => i.key === key);
     if (item?.disabled) {
       return;
@@ -770,11 +843,17 @@ export class LevelUpDraft {
   }
 
   toggleExpertise(key: string): void {
+    if (this.forwarded((d) => d.toggleExpertise(key))) {
+      return;
+    }
     this.flip(this.expertise, key, this.expertiseAsked());
   }
 
   /** A feature option: each choice (a fighting style, the metamagic) takes its own `choose`. */
   toggleFeature(key: string, group: readonly string[], choose: number): void {
+    if (this.forwarded((d) => d.toggleFeature(key, group, choose))) {
+      return;
+    }
     const now = this.features();
     if (now.has(key)) {
       this.flip(this.features, key, choose);
