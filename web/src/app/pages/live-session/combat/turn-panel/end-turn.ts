@@ -4,10 +4,12 @@ import {
   Injector,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,7 +26,10 @@ let nextId = 0;
  * outline while the Ação or the Ação bônus is still available, the filled
  * button once both are used. With the Ação unused it asks in place, "Ainda
  * tem ação disponível. Encerrar mesmo?", the focus on the safe "Voltar". It
- * stands in the pinned bar on a phone and in the turn card on a laptop.
+ * stands in the pinned bar on a phone and in the turn card on a laptop. A tap
+ * that comes while the turn's options are being read again after a change
+ * (`settling`: an action just spent) waits for them, so it never asks about an
+ * action the server already counted.
  */
 @Component({
   selector: 'app-end-turn',
@@ -47,8 +52,9 @@ let nextId = 0;
         [class.end--block]="block()"
         [class.end--off]="!!waiting()"
         [class.mr-button--off]="!!waiting()"
-        [disabled]="busy() || !!waiting()"
+        [disabled]="busy() || !!waiting() || queued()"
         disabledInteractive
+        [attr.aria-busy]="queued() || null"
         [attr.aria-describedby]="waiting() ? id + '-why' : null"
         (click)="press()"
       >
@@ -137,10 +143,17 @@ export class EndTurn {
   readonly waiting = input('');
   /** The character is surprised (W7-X): the turn only passes ("Passar o turno"), with nothing to ask, as nothing is available. */
   readonly surprised = input(false);
+  /**
+   * The turn's options are being read again after a change of the combat (`TurnOptionsState.settling`):
+   * `attacksLeft` may still be the one from before the action just spent.
+   */
+  readonly settling = input(false);
 
   readonly endTurn = output<void>();
 
   protected readonly asking = signal(false);
+  /** A tap that came while the options were settling: it is decided as soon as they are fresh (a moment). */
+  protected readonly queued = signal(false);
   protected readonly primary = computed(
     () =>
       this.surprised() ||
@@ -155,7 +168,27 @@ export class EndTurn {
   });
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
+  constructor() {
+    effect(() => {
+      if (this.queued() && !this.settling()) {
+        untracked(() => {
+          this.queued.set(false);
+          this.decide();
+        });
+      }
+    });
+  }
+
   protected press(): void {
+    if (this.settling()) {
+      this.queued.set(true);
+      return;
+    }
+    this.decide();
+  }
+
+  /** Ends the turn, or asks first when the action (or an attack of it) is still there to use. */
+  private decide(): void {
     if (this.waiting()) {
       return;
     }

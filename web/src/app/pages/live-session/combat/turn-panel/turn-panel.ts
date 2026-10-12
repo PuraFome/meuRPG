@@ -88,6 +88,8 @@ export class TurnPanel {
    * (`TurnEconomy`), and how many the Attack action makes. */
   readonly attacksLeft = input(0);
   readonly attacksPerAction = input(1);
+  /** The turn's options are being read again after a change: "Encerrar turno" waits for them (`EndTurn.settling`). */
+  readonly optionsSettling = input(false);
   /** The player's maximum hit points, for "com 0 de 24 pontos de vida". */
   readonly hitPointsMax = input<number | null>(null);
   /** The melee attacks an opportunity attack can use (off turn, reaction free). */

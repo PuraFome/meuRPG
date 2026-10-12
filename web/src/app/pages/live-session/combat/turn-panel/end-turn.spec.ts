@@ -107,4 +107,39 @@ describe('EndTurn', () => {
     expect(ended).toEqual([1]);
     expect(el.querySelector('[role="alertdialog"]')).toBeNull();
   });
+  it('a tap while the options settle waits for them, then ends the turn on the fresh economy', async () => {
+    // The action was just spent: the encounter says so, the options read before it still count an attack.
+    const { fixture, el, ended, end } = setup({ actionUsed: true, bonusActionUsed: false });
+    fixture.componentRef.setInput('attacksLeft', 1);
+    fixture.componentRef.setInput('settling', true);
+    fixture.detectChanges();
+    end().click();
+    fixture.detectChanges();
+    expect(ended).toEqual([]);
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(end().getAttribute('aria-busy')).toBe('true');
+    fixture.componentRef.setInput('attacksLeft', 0);
+    fixture.componentRef.setInput('settling', false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(ended).toEqual([1]);
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+  });
+
+  it('a tap while the options settle still asks when the fresh economy has the action unused', async () => {
+    const { fixture, el, ended, end } = setup({ actionUsed: false, bonusActionUsed: false });
+    fixture.componentRef.setInput('settling', true);
+    fixture.detectChanges();
+    end().click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+    fixture.componentRef.setInput('settling', false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(ended).toEqual([]);
+    expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain(
+      'Ainda tem ação disponível. Encerrar mesmo?',
+    );
+  });
 });

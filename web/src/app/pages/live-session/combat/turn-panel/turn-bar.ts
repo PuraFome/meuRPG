@@ -38,7 +38,7 @@ import { EndTurn } from './end-turn';
           } @else if (move(); as amount) {
             <p class="what">Mover&nbsp;<b>{{ amount }}</b></p>
           }
-          <app-end-turn class="row__end" [own]="me" [attacksLeft]="attacksLeft()" [busy]="busy()" [waiting]="waiting()" [label]="surprised() ? 'Passar o turno' : 'Encerrar turno'" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
+          <app-end-turn class="row__end" [own]="me" [attacksLeft]="attacksLeft()" [settling]="optionsSettling()" [busy]="busy()" [waiting]="waiting()" [label]="surprised() ? 'Passar o turno' : 'Encerrar turno'" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
         </div>
       }
     }
@@ -108,6 +108,8 @@ export class TurnBar {
   readonly busy = input(false);
   /** Extra Attack: the attacks that remain once the action is spent. */
   readonly attacksLeft = input(0);
+  /** The turn's options are being read again after a change: "Encerrar turno" waits for them (`EndTurn.settling`). */
+  readonly optionsSettling = input(false);
   /** An opportunity attack waits for an answer: the list of what is left and the end button say so instead. */
   readonly waiting = input('');
   /** The character is surprised (W7-X): the button only passes the turn. */
