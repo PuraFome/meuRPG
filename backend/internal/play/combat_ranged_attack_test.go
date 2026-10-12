@@ -100,40 +100,30 @@ func (s *sniperTable) markHalf(t *testing.T, label string) {
 	}
 }
 
-// lastEntry is the master's last log entry of a kind.
+// lastEntry is the master's last log entry of a kind. The log is newest first, across the
+// rounds and within each one (combat_log.go walks the events backward), so it is the first match.
 func (s *sniperTable) lastEntry(t *testing.T, kind playv1.CombatLogKind) *playv1.CombatLogEntry {
 	t.Helper()
-	// The log lists the rounds latest first, each round's entries in order: the last entry of
-	// the kind is the last one of the first round that has any.
-	var last *playv1.CombatLogEntry
 	for _, r := range s.log(t, s.master, s.get(t, s.master)).GetRounds() {
 		for _, en := range r.GetEntries() {
 			if en.GetKind() == kind {
-				last = en
+				return en
 			}
 		}
-		if last != nil {
-			break
-		}
 	}
-	if last == nil {
-		t.Fatalf("no %v in the master's log", kind)
-	}
-	return last
+	t.Fatalf("no %v in the master's log", kind)
+	return nil
 }
 
-// attackOf is the master's log entry of the latest attack the combatant with the label made.
+// attackOf is the master's log entry of the latest attack the combatant with the label made: the
+// first match, as the log is newest first.
 func (s *sniperTable) attackOf(t *testing.T, label string) *playv1.CombatLogEntry {
 	t.Helper()
-	for _, r := range s.log(t, s.master, s.get(t, s.master)).GetRounds() { // the latest round first
-		var last *playv1.CombatLogEntry
+	for _, r := range s.log(t, s.master, s.get(t, s.master)).GetRounds() {
 		for _, en := range r.GetEntries() {
 			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetActorLabel() == label {
-				last = en
+				return en
 			}
-		}
-		if last != nil {
-			return last
 		}
 	}
 	return nil
