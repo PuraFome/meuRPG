@@ -1,6 +1,8 @@
 package play
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -120,6 +122,37 @@ func (s *sniperTable) lastEntry(t *testing.T, kind playv1.CombatLogKind) *playv1
 	return last
 }
 
+// attackOf is the master's log entry of the latest attack the combatant with the label made.
+func (s *sniperTable) attackOf(t *testing.T, label string) *playv1.CombatLogEntry {
+	t.Helper()
+	for _, r := range s.log(t, s.master, s.get(t, s.master)).GetRounds() { // the latest round first
+		var last *playv1.CombatLogEntry
+		for _, en := range r.GetEntries() {
+			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetActorLabel() == label {
+				last = en
+			}
+		}
+		if last != nil {
+			return last
+		}
+	}
+	return nil
+}
+
+// attacksInLog lists the attacks of the master's log, for a failure's message.
+func (s *sniperTable) attacksInLog(t *testing.T) string {
+	t.Helper()
+	var out []string
+	for _, r := range s.log(t, s.master, s.get(t, s.master)).GetRounds() {
+		for _, en := range r.GetEntries() {
+			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK {
+				out = append(out, fmt.Sprintf("round %d %s: AC %d, cover %d", en.GetRound(), en.GetActorLabel(), en.GetTargetArmorClass(), en.GetCoverBonus()))
+			}
+		}
+	}
+	return strings.Join(out, "; ")
+}
+
 func hasSource(tg *playv1.TargetInReach, kind playv1.AdvantageSourceKind) bool {
 	for _, src := range tg.GetSources() {
 		if src.GetKind() == kind {
@@ -233,8 +266,8 @@ func TestMR025_ATableFeatLetsRangedWeaponsIgnoreCoverAndLongRange(t *testing.T) 
 	if hit.GetRoll().GetCover() != playv1.CoverDegree_COVER_DEGREE_HALF {
 		t.Errorf("Toren's roll = %v, want half cover", hit.GetRoll())
 	}
-	if en := s.lastEntry(t, playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK); en.GetTargetArmorClass() != 14 || en.GetCoverBonus() != 2 {
-		t.Errorf("the master's log of Toren's shot = armor class %d, cover bonus %d; want 14 = 12 + 2", en.GetTargetArmorClass(), en.GetCoverBonus())
+	if en := s.attackOf(t, "Toren"); en == nil || en.GetTargetArmorClass() != 14 || en.GetCoverBonus() != 2 {
+		t.Errorf("the master's log of Toren's shot = %v; want armor class 14 = 12 + 2, cover bonus 2; the attacks in the log: %s", en, s.attacksInLog(t))
 	}
 }
 
