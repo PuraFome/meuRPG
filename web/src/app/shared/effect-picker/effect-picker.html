@@ -59,6 +59,15 @@
               />
             }
           }
+          @case ('yes_no') {
+            <app-check-row
+              [label]="labelOf(f)"
+              [checked]="flag(f.name)"
+              [path]="path(f.name)"
+              (toggled)="setFlag(f.name, $event)"
+            />
+            <app-field-note [issues]="issues(f.name)" />
+          }
           @case ('text') {
             <app-text-field
               [label]="labelOf(f)"

@@ -13,10 +13,11 @@ import (
 // (ADR-0018, section 4): the effect types of the SRD minus the ones that need
 // code or the engine's own tables. There is no "handler" (the table never runs
 // code, not even a handler that exists), no "spellcasting" (the engine writes it
-// from the class's casting) and no "wild_shape".
+// from the class's casting) and no "wild_shape". "ranged_attack" is the table's own:
+// the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "ranged_attack", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -330,6 +331,8 @@ var ownFields = map[string][]string{
 	"superiority_die": {"value", "resource", "economy", "applies", "ability"},
 	// An ability_increase is a feat's alone (checkEffect).
 	"ability_increase": {"value", "count", "from"},
+	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
+	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
 }
 
 // unusedField is the first field of e, in the order of the proto message, that
@@ -350,10 +353,16 @@ func unusedField(e *Effect) string {
 		}
 	}
 	switch {
-	case e.Ability != "" && e.Type != "superiority_die":
+	case e.Ability != "" && !slices.Contains(own, "ability"):
 		return "ability"
-	case e.Applies != "" && e.Type != "superiority_die":
+	case e.Applies != "" && !slices.Contains(own, "applies"):
 		return "applies"
+	case e.IgnoreCover && !slices.Contains(own, "ignore_cover"):
+		return "ignore_cover"
+	case e.RangeMultiplier != 0 && !slices.Contains(own, "range_multiplier"):
+		return "range_multiplier"
+	case e.NoLongRangeDisadvantage && !slices.Contains(own, "no_long_range_disadvantage"):
+		return "no_long_range_disadvantage"
 	case e.Progression != "":
 		return "progression"
 	case e.Prepares:
@@ -422,6 +431,12 @@ func clearEffectField(e *Effect, name string) {
 		e.Ability = ""
 	case "applies":
 		e.Applies = ""
+	case "ignore_cover":
+		e.IgnoreCover = false
+	case "range_multiplier":
+		e.RangeMultiplier = 0
+	case "no_long_range_disadvantage":
+		e.NoLongRangeDisadvantage = false
 	case "progression":
 		e.Progression = ""
 	case "prepares":
@@ -462,14 +477,12 @@ func effectError(e *Effect, msg string) (attr, reason string) {
 		}
 		return false
 	}
+	if attr, ok := rangedAttackErrorAttr(e, msg); ok {
+		return attr, ReasonValue
+	}
 	switch {
 	case has("formula "):
-		for _, f := range []struct{ name, src string }{{"when", e.When}, {"value", e.Value}, {"max", e.Max}} {
-			if f.src != "" && has("formula "+strconv.Quote(f.src)) {
-				return "." + f.name, ReasonFormula
-			}
-		}
-		return "", ReasonFormula
+		return formulaAttr(e, has), ReasonFormula
 	case has("unknown target"):
 		if e.Type == "roll_mode" {
 			return ".targets", ReasonValue
@@ -523,6 +536,17 @@ func effectError(e *Effect, msg string) (attr, reason string) {
 		return ".spells", ReasonReference
 	}
 	return "", ReasonValue
+}
+
+// formulaAttr is the field whose formula a compile error names (".when", ".value"
+// or ".max"), "" when it names none of them. has says whether the error says a word.
+func formulaAttr(e *Effect, has func(words ...string) bool) string {
+	for _, f := range []struct{ name, src string }{{"when", e.When}, {"value", e.Value}, {"max", e.Max}} {
+		if f.src != "" && has("formula "+strconv.Quote(f.src)) {
+			return "." + f.name
+		}
+	}
+	return ""
 }
 
 func validResourceName(s string) bool {

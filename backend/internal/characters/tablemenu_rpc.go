@@ -78,7 +78,7 @@ func (s *Service) GetEffectMenu(
 		out := &rulesv1.EffectMenuType{Type: t.Type, NamePt: t.NamePT, HintPt: t.HintPT, FeatOnly: t.FeatOnly}
 		for _, f := range t.Fields {
 			out.Fields = append(out.Fields, &rulesv1.EffectMenuField{
-				Name: f.Name, Required: f.Required, Kind: f.Kind, List: f.List, Min: i32(f.Min), Max: i32(f.Max),
+				Name: f.Name, Required: f.Required, Kind: f.Kind, List: f.List, Min: i32(f.Min), Max: i32(f.Max), AlwaysShown: f.AlwaysShown,
 			})
 		}
 		res.Types = append(res.Types, out)

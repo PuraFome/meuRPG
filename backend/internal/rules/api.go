@@ -690,6 +690,19 @@ type Derived struct {
 	// TwoWeaponFighting says the character has the fighting style: the damage
 	// of the bonus action attack keeps the ability modifier.
 	TwoWeaponFighting bool
+	// SpellAttackRangeMultiplier, SpellAttackIgnoresCover, RangedWeaponIgnoresCover and
+	// RangedWeaponNoLongRangeDisadvantage are what the character's ranged_attack effects
+	// add up to (a table feat; rangedattack.go). SpellAttackRangeMultiplier is the
+	// largest range multiplier of a spell that needs an attack roll (2 or 3; 0 without
+	// one, see SpellRangeFt); SpellAttackIgnoresCover says half and three-quarters cover
+	// give no AC bonus against its ranged spell attacks, and RangedWeaponIgnoresCover
+	// the same against its ranged weapon attacks (a thrown weapon at range too);
+	// RangedWeaponNoLongRangeDisadvantage says those weapon attacks have no
+	// disadvantage beyond the normal range. Total cover still blocks every attack.
+	SpellAttackRangeMultiplier          int  `json:",omitempty"`
+	SpellAttackIgnoresCover             bool `json:",omitempty"`
+	RangedWeaponIgnoresCover            bool `json:",omitempty"`
+	RangedWeaponNoLongRangeDisadvantage bool `json:",omitempty"`
 	// SaveActions are a creature's actions that ask for a saving throw
 	// (a breath, a bite that knocks prone), with their DC. Empty for a
 	// character.

@@ -272,6 +272,11 @@ type AttackScene struct {
 	// HostileNearAttacker says a hostile creature that can see the attacker and
 	// is not incapacitated is within 5 ft of it (a ranged attack in close combat).
 	HostileNearAttacker bool
+	// NoLongRangeDisadvantage says the attacker's own feature takes away the
+	// disadvantage of attacking beyond the normal range, up to the long range (a table
+	// feat's ranged_attack effect, for weapon attacks): the caller sets it only for a
+	// weapon attack. Beyond the long range the attack is still refused.
+	NoLongRangeDisadvantage bool
 }
 
 // withinFive says the attacker is within 5 ft of the target. Without a map a
@@ -423,7 +428,7 @@ func rangedSources(s AttackScene) []Source {
 	if !s.Ranged {
 		return out
 	}
-	if s.DistanceKnown && s.ReachFt > 0 && s.DistanceFt > s.ReachFt && (s.LongRangeFt == 0 || s.DistanceFt <= s.LongRangeFt) {
+	if !s.NoLongRangeDisadvantage && s.DistanceKnown && s.ReachFt > 0 && s.DistanceFt > s.ReachFt && (s.LongRangeFt == 0 || s.DistanceFt <= s.LongRangeFt) {
 		out = append(out, Source{Kind: SourceLongRange, Effect: ModeDisadvantage})
 	}
 	if s.HostileNearAttacker {

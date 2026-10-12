@@ -179,6 +179,13 @@ type attackShape struct {
 	Thrown bool
 }
 
+// rangedAt says the attack is made at range: a ranged one, or a thrown weapon used on
+// a target beyond 5 ft (SRD 5.1, "Ranged Attacks"). known says dist is a real distance
+// (both on the map, not theatre of the mind): without it a thrown weapon is in melee.
+func (s attackShape) rangedAt(dist int32, known bool) bool {
+	return !s.Melee || (s.Thrown && known && dist > meleeReachFt)
+}
+
 // shapeOfAttack reads a sheet's attack. A spell attack with a range beyond touch is
 // a ranged attack; a touch spell is melee.
 func shapeOfAttack(a link.Attack) attackShape {
@@ -260,7 +267,7 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, shape attackShape, ownTurn bool, view *combatViewer) combat.AttackScene {
 	dist, known := f.distanceBetween(attacker, target)
 	known = known && !f.theatre
-	ranged := !shape.Melee || (shape.Thrown && known && dist > meleeReachFt)
+	ranged := shape.rangedAt(dist, known)
 	reach, long := shape.RangeFt, shape.LongRangeFt
 	if shape.Thrown && !ranged {
 		reach, long = meleeReachFt, 0
@@ -269,6 +276,8 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 		Attacker: creatureFacts(attacker, f.states, traits), Target: creatureFacts(target, f.states, link.Traits{}),
 		Ranged: ranged, StrengthMelee: shape.Weapon && shape.Melee && !ranged && shape.UsesStrength, OwnTurn: ownTurn,
 		DistanceKnown: known, DistanceFt: int(dist), ReachFt: reach, LongRangeFt: long,
+		// A table feat's ranged_attack effect: the weapon keeps its aim at long range.
+		NoLongRangeDisadvantage: shape.Weapon && traits.RangedWeaponNoLongRangeDisadvantage,
 	}
 	s.Helped = f.helperOf(attacker, target) != nil
 	s.AttackerUnseen = f.unseen(target, attacker)
@@ -614,6 +623,23 @@ func (t turnModes) annotate(attackKey string, targets []*playv1.TargetInReach) {
 	}
 	shape := shapeOfAttack(t.sheet.Attacks[i])
 	t.annotateShape(&shape, targets)
+}
+
+// dropIgnoredCover takes off an attack's targets the half and three-quarters cover the
+// attacker's own feature ignores for it (a table feat's ranged_attack effect), as
+// RollAttack does: a thrown weapon only on the targets it is thrown at, beyond 5 ft.
+func (t turnModes) dropIgnoredCover(attackKey string, targets []*playv1.TargetInReach) {
+	i := slices.IndexFunc(t.sheet.Attacks, func(a link.Attack) bool { return a.Key == attackKey })
+	if i < 0 {
+		return
+	}
+	shape := shapeOfAttack(t.sheet.Attacks[i])
+	for _, tg := range targets {
+		known := tg.DistanceFt != nil && !t.facts.theatre
+		if ignoresCover(t.sheet.Traits, shape, shape.rangedAt(tg.GetDistanceFt(), known)) {
+			clearPartialCover(tg)
+		}
+	}
 }
 
 // annotateShape is annotate for an attack of a known shape; a nil shape leaves the

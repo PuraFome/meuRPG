@@ -130,8 +130,10 @@ func slotOf(in *playv1.SpellSlot, c castable) (*slotRef, error) {
 
 // reachOf is how far a player's spell reaches from the caster in feet, and
 // whether it has a limit at all: Self (that is not an area that comes out of
-// the caster) reaches the caster alone, Touch 5 ft, a ranged spell its range;
-// sight, unlimited and special ranges leave it to the table.
+// the caster) reaches the caster alone, Touch 5 ft, a ranged spell its range
+// (link.Spell.RangeFt, already multiplied for a spell attack when the caster's
+// table feat has a ranged_attack that says so); sight, unlimited and special
+// ranges leave it to the table.
 func reachOf(sp link.Spell) (ft int32, limited bool) {
 	switch sp.RangeKind {
 	case rules.RangeSelf:
@@ -781,6 +783,9 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 // the cast opens. Anything else leaves the hit empty. made is the cast's event: a spell attack
 // keeps in it what the roll used up, for the cast's undo.
 func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, slotLevel int, in rollInput, cp coverPair, hit *castHit, modes *spellModes, made *actionEvent) error {
+	// A table feat's ranged_attack effect: the caster's ranged spell attack gets past
+	// half and three-quarters cover (total cover was refused before).
+	cp = cp.ignoring(modes != nil && spellIgnoresCover(modes.traits, sp))
 	cover := cp.real
 	// The cover counts for a spell attack and a Dexterity save (D4).
 	if sp.AttackType != "" || (sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover) {

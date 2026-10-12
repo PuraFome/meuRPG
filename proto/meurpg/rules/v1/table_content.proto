@@ -91,7 +91,7 @@ message TableEntry {
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
-// "sense", "roll_mode", "grant_action", "extra_attack", "choice", "ability_increase",
+// "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
 // "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
@@ -155,8 +155,23 @@ message TableEffect {
   // (a reaction, `economy` "reaction", when a melee attack hits the character: the
   // damage drops by the die plus the modifier of `ability`). `text_pt` is the rider the
   // master reads. Added later: older clients leave both empty.
+  // ranged_attack also uses `applies`, for which attacks it changes: "spell" (the
+  // attack roll of a spell that needs one) or "weapon" (a ranged weapon attack, and a
+  // thrown weapon used at range).
   string applies = 22;
   string ability = 23;
+  // ranged_attack (a table feat that makes its owner a sharper shot; the SRD has none):
+  // half and three-quarters cover give the target no bonus to its armor class against
+  // the attacks of `applies` (total cover still makes it untargetable).
+  bool ignore_cover = 24;
+  // ranged_attack, "spell" only: 2 or 3, how many times its range a spell that needs an
+  // attack roll and has a range in feet reaches; the largest the character has counts.
+  // 0 leaves the range as it is.
+  int32 range_multiplier = 25;
+  // ranged_attack, "weapon" only: attacking beyond the normal range, up to the long
+  // range, gives the roll no disadvantage. A ranged_attack effect sets at least one of
+  // ignore_cover, range_multiplier and no_long_range_disadvantage.
+  bool no_long_range_disadvantage = 26;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -1119,9 +1134,9 @@ message EffectMenuField {
   // The effect is refused without it.
   bool required = 2;
   // How the editor asks: "formula" (an Int formula), "condition" (a Bool formula),
-  // "text", "number", "choice" (one value of `list`), "choices" (several), "tags" or
+  // "text", "number", "choice" (one value of `list`), "choices" (several), "tags",
   // "resource_ref" (the name of a resource effect the entry defines; the editor lists
-  // the ones it has).
+  // the ones it has) or "yes_no" (a switch: true or false).
   string kind = 3;
   // The EffectMenuList the value comes from, when it is a closed list; empty for a
   // free value. For a `choice` effect's `from` the list depends on the kind chosen:
@@ -1131,6 +1146,10 @@ message EffectMenuField {
   // The bounds of a number; 0 when there is none.
   int32 min = 5;
   int32 max = 6;
+  // The editor shows the field even when it is optional and empty, never folded with
+  // the rarer ones: what the effect does lies in it (ranged_attack's switches, none of
+  // them required alone).
+  bool always_shown = 7;
 }
 
 // EffectMenuValue is a value of a closed list.

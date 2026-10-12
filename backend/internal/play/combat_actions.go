@@ -309,6 +309,7 @@ func (s *Service) GetTurnOptions(
 		}
 		targets := targetsFor(terrain, d.cs, who, v, reachFt(a.GetAttack().GetRangeFt(), a.GetAttack().GetLongRangeFt()), isTheatre(enc))
 		modes.annotate(a.GetAttack().GetKey(), targets)
+		modes.dropIgnoredCover(a.GetAttack().GetKey(), targets)
 		res.AttackTargets = append(res.AttackTargets, &playv1.AttackTargets{AttackKey: a.GetAttack().GetKey(), Targets: targets})
 	}
 	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, terrain, who, d.cs, v, opts, isTheatre(enc), modes); err != nil {
@@ -368,6 +369,11 @@ func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, terrai
 		if sp.AttackType != "" { // a spell attack roll: the target's mode, as CastSpell settles it (SRD 5.1)
 			shape := shapeOfSpell(sp)
 			modes.annotateShape(&shape, st.Targets)
+		}
+		if spellIgnoresCover(modes.sheet.Traits, sp) { // the caster's own feature, as CastSpell rolls it
+			for _, tg := range st.Targets {
+				clearPartialCover(tg)
+			}
 		}
 		for _, slot := range e.slots {
 			if n := dartsOf(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(st.Darts, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {
@@ -816,6 +822,13 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		cp, err := c.coverOf(ctx, v, terrain, known, attacker, coverTarget, cs)
 		if err != nil {
 			return nil, err
+		}
+		// A table feat's ranged_attack effect: half and three-quarters cover give nothing
+		// against the attacker's ranged attack of its kind (an opportunity attack is melee).
+		if opportunity := asReaction && catchID == ""; !opportunity {
+			shape := shapeOfAttack(attack)
+			dist, placedBoth := distanceFt(attacker, coverTarget)
+			cp = cp.ignoring(ignoresCover(attackerSheet.Traits, shape, shape.rangedAt(dist, placedBoth && !isTheatre(c.enc))))
 		}
 		cover := cp.real
 		if cp.shown.total() && !v.master {

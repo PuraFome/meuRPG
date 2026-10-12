@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -87,6 +88,58 @@ func (c coverView) bonus() int {
 
 // total says the target cannot be targeted.
 func (c coverView) total() bool { return c.degree == grid.CoverTotal }
+
+// ignoring is the cover when the attacker's own feature makes half and
+// three-quarters cover count for nothing (a table feat's ranged_attack effect): none,
+// so the roll, the event and the target lists all say none and nothing claims a bonus
+// the roll did not get. Total cover stays: the target is still untargetable.
+func (c coverView) ignoring(ignore bool) coverView {
+	if ignore && (c.degree == grid.CoverHalf || c.degree == grid.CoverThreeQuarters) {
+		return coverView{}
+	}
+	return c
+}
+
+// ignoring is coverView.ignoring for both covers of the pair. A real cover that is
+// ignored restricts no player's reading of the line any more.
+func (cp coverPair) ignoring(ignore bool) coverPair {
+	out := cp
+	out.real, out.shown = cp.real.ignoring(ignore), cp.shown.ignoring(ignore)
+	if out.real.degree == grid.CoverNone {
+		out.restricted, out.seenBy = false, nil
+	}
+	return out
+}
+
+// ignoresCover says the attacker's own feature makes half and three-quarters cover
+// count for nothing against an attack of this shape (link.Traits, from a table feat's
+// ranged_attack effect): a ranged weapon attack (a thrown weapon at range too) for
+// one whose weapon attacks ignore it, a ranged spell attack for one whose spell
+// attacks do. ranged says the attack is made at range (attackShape.rangedAt).
+func ignoresCover(t link.Traits, shape attackShape, ranged bool) bool {
+	switch {
+	case !ranged:
+		return false
+	case shape.Weapon:
+		return t.RangedWeaponIgnoresCover
+	}
+	return t.SpellAttackIgnoresCover
+}
+
+// spellIgnoresCover is ignoresCover for a spell the caster casts: a ranged spell
+// attack, when the caster's spell attacks ignore cover. A saving throw keeps the
+// cover's bonus (Chama Sagrada's own rule aside).
+func spellIgnoresCover(t link.Traits, sp link.Spell) bool {
+	return sp.AttackType == "ranged" && t.SpellAttackIgnoresCover
+}
+
+// clearPartialCover takes half and three-quarters cover off a target list's entry: the
+// attacker ignores it for this attack. Total cover stays.
+func clearPartialCover(t *playv1.TargetInReach) {
+	if t.GetCover() == playv1.CoverDegree_COVER_DEGREE_HALF || t.GetCover() == playv1.CoverDegree_COVER_DEGREE_THREE_QUARTERS {
+		t.Cover, t.CoverSource = playv1.CoverDegree_COVER_DEGREE_NONE, playv1.CoverSource_COVER_SOURCE_UNSPECIFIED
+	}
+}
 
 // The cover and its source as an event keeps them (empty for none).
 var (

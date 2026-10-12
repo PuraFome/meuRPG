@@ -104,7 +104,18 @@ type Effect struct {
 	// Economy what it costs when it costs one (bonus_action or reaction; empty is
 	// free) and Ability, for reduce_melee_damage, the modifier added to the die. The
 	// text_pt is the rider the master reads.
+	// ranged_attack uses Applies too: RangedAttackSpell or RangedAttackWeapon.
 	Applies string `json:"applies,omitempty"`
+
+	// ranged_attack (rangedattack.go): what the character's attacks at a distance get,
+	// for a table feat (the SRD has none). IgnoreCover takes the AC bonus of half and
+	// three-quarters cover away from the targets of those attacks; RangeMultiplier
+	// ("spell" only, 2 or 3) multiplies the range of a spell that needs an attack roll;
+	// NoLongRangeDisadvantage ("weapon" only) drops the disadvantage of attacking
+	// beyond the normal range.
+	IgnoreCover             bool `json:"ignore_cover,omitempty"`
+	RangeMultiplier         int  `json:"range_multiplier,omitempty"`
+	NoLongRangeDisadvantage bool `json:"no_long_range_disadvantage,omitempty"`
 
 	// wild_shape: the beasts a druid may turn into (wildshape.go). MaxCR is
 	// the highest challenge rating, such as "1/4", and NoFly and NoSwim leave
@@ -150,7 +161,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -224,7 +235,15 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		return fail("replaces belongs to the replaces effect")
 	}
 
+	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
+		return fail("ignore_cover, range_multiplier and no_long_range_disadvantage belong to ranged_attack")
+	}
+
 	switch e.Type {
+	case "ranged_attack":
+		if _, msg := checkRangedAttack(e); msg != "" {
+			return fail("%s", msg)
+		}
 	case "replaces":
 		other := *e
 		other.Type, other.Replaces = "", ""

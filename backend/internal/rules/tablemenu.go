@@ -36,13 +36,16 @@ type MenuField struct {
 	Required bool
 	// Kind is how the editor asks: "formula" (an Int formula), "condition" (a Bool
 	// formula), "text", "number", "choice" (one of a closed list, named by List),
-	// "choices" (several of it) or "tags".
+	// "choices" (several of it), "tags", "resource_ref" or "yes_no" (a switch).
 	Kind string
 	// List names the closed list of the menu the value comes from (a MenuList's
 	// Name), empty when the value is free.
 	List string
 	// Min and Max bound a number; both zero when it is unbounded.
 	Min, Max int
+	// AlwaysShown says the editor shows the field even when it is optional and empty:
+	// what the effect does lies in it (a ranged_attack's switches, none required alone).
+	AlwaysShown bool
 }
 
 // MenuValue is a value of a closed list: the key the effect stores and the name
@@ -111,6 +114,7 @@ const (
 	ListTagPrefixes       = "tag_prefixes"
 	ListAbilities         = "abilities"
 	ListIncreaseAmounts   = "ability_increase_amounts"
+	ListRangedAttacks     = "ranged_attack_applies"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -171,6 +175,14 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "ranged_attack", NamePT: "Ataque à distância", HintPT: "Muda os ataques de longe do personagem: os de magias que pedem jogada de ataque ou os com arma à distância (e a arma arremessada de longe). Pode tirar o bônus de meia cobertura e de três quartos do alvo, multiplicar o alcance dessas magias ou tirar a desvantagem de atirar no alcance longo da arma.", Fields: []MenuField{
+		{Name: "applies", Required: true, Kind: "choice", List: ListRangedAttacks},
+		{Name: "ignore_cover", Kind: "yes_no", AlwaysShown: true},
+		{Name: "range_multiplier", Kind: "number", Min: MinSpellRangeMultiplier, Max: MaxSpellRangeMultiplier, AlwaysShown: true},
+		{Name: "no_long_range_disadvantage", Kind: "yes_no", AlwaysShown: true},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
@@ -210,6 +222,10 @@ var (
 		ManeuverDamage: "Dano de um ataque com arma que acertou", ManeuverAttack: "Rolagem de ataque", ManeuverGrapple: "Atletismo de uma agarrada (ação bônus)",
 		ManeuverReduceMelee: "Reduz o dano de um ataque corpo a corpo (reação)",
 	}
+	rangedAttackNms = map[string][2]string{
+		RangedAttackSpell:  {"Magias com jogada de ataque", "Só as magias que pedem jogada de ataque. O alcance multiplicado vale para as que têm alcance em metros; toque e pessoal não mudam."},
+		RangedAttackWeapon: {"Ataques com arma à distância", "Armas à distância, e a arma de arremesso quando atirada de longe (a mais de 1,5 m)."},
+	}
 	economyNms  = map[string]string{"action": "Ação", "bonus_action": "Ação bônus", "reaction": "Reação", "free": "Livre", "movement": "Movimento"}
 	choiceNames = map[string]string{
 		"skill": "Perícias", "expertise": "Especialização", "cantrip": "Truques", "spell": "Magias",
@@ -225,6 +241,15 @@ var (
 		{"about:", "Sobre…", "Vale sobre um assunto (about:magic-items); o app lembra e o mestre decide."},
 	}
 )
+
+// rangedAttackValues is the list of a ranged_attack's applies, with its words.
+func rangedAttackValues() []MenuValue {
+	out := make([]MenuValue, 0, len(rangedAttackApplies))
+	for _, k := range rangedAttackApplies {
+		out = append(out, MenuValue{Key: k, NamePT: rangedAttackNms[k][0], HintPT: rangedAttackNms[k][1]})
+	}
+	return out
+}
 
 // EffectMenu gives the closed menu for this content: the table's classes are in
 // ClassIndexes, and everything else is the SRD's.
@@ -322,6 +347,7 @@ func (c *Content) EffectMenu() EffectMenu {
 		{Name: ListTagPrefixes, Values: tagPrefixes},
 		{Name: ListAbilities, Values: abilityValues},
 		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},
+		{Name: ListRangedAttacks, Values: rangedAttackValues()},
 	}
 
 	// The option sets: SRD features that offer options. A set with no option
