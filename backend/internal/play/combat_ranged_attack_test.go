@@ -101,12 +101,17 @@ func (s *sniperTable) markHalf(t *testing.T, label string) {
 // lastEntry is the master's last log entry of a kind.
 func (s *sniperTable) lastEntry(t *testing.T, kind playv1.CombatLogKind) *playv1.CombatLogEntry {
 	t.Helper()
+	// The log lists the rounds latest first, each round's entries in order: the last entry of
+	// the kind is the last one of the first round that has any.
 	var last *playv1.CombatLogEntry
 	for _, r := range s.log(t, s.master, s.get(t, s.master)).GetRounds() {
 		for _, en := range r.GetEntries() {
 			if en.GetKind() == kind {
 				last = en
 			}
+		}
+		if last != nil {
+			break
 		}
 	}
 	if last == nil {
