@@ -41,11 +41,15 @@ export interface EffectDraft {
   count: number;
   from: string[];
   economy: string;
-  /** superiority_die: where the die goes, and the ability whose modifier a reduction adds. */
+  /** superiority_die: where the die goes, and the ability whose modifier a reduction adds. ranged_attack: "spell" or "weapon". */
   applies: string;
   ability: string;
   spells: string[];
   textPt: string;
+  /** ranged_attack's switches: past half and three-quarters cover, the spell range times 2 or 3 (0 is none), no disadvantage at long range. */
+  ignoreCover: boolean;
+  rangeMultiplier: number;
+  noLongRangeDisadvantage: boolean;
 }
 
 let nextId = 0;
@@ -81,6 +85,9 @@ export function emptyEffect(type = ''): EffectDraft {
     ability: '',
     spells: [],
     textPt: '',
+    ignoreCover: false,
+    rangeMultiplier: 0,
+    noLongRangeDisadvantage: false,
   };
 }
 
@@ -111,6 +118,9 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     ability: e.ability,
     spells: [...e.spells],
     textPt: e.textPt,
+    ignoreCover: e.ignoreCover,
+    rangeMultiplier: e.rangeMultiplier,
+    noLongRangeDisadvantage: e.noLongRangeDisadvantage,
   };
 }
 
@@ -201,10 +211,25 @@ export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
         if (d.textPt.trim()) out.textPt = d.textPt.trim();
         break;
       default:
+        Object.assign(out, switchField(d, f.name));
         break;
     }
   }
   return out;
+}
+
+/** ranged_attack's switches and its multiplier, when the type reads them: only what is on (or set) is sent. */
+function switchField(d: EffectDraft, name: string): EffectInit {
+  switch (name) {
+    case 'ignore_cover':
+      return d.ignoreCover ? { ignoreCover: true } : {};
+    case 'range_multiplier':
+      return d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {};
+    case 'no_long_range_disadvantage':
+      return d.noLongRangeDisadvantage ? { noLongRangeDisadvantage: true } : {};
+    default:
+      return {};
+  }
 }
 
 /** The labels of the effect fields, in our words (the menu names the fields by their proto name). */
@@ -231,6 +256,9 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   ability: 'Habilidade somada',
   spells: 'Magias',
   text_pt: 'Texto na ficha',
+  ignore_cover: 'Ignora meia cobertura e três quartos',
+  range_multiplier: 'Multiplica o alcance da magia por',
+  no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
 };
 
 /** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
@@ -238,6 +266,9 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
 export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   resource: 'Só letras minúsculas sem acento, números e _ (de 1 a 40).',
   text_pt: 'O que a ficha mostra. {value} vira o valor com sinal.',
+  ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
+  range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
+  no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
 };
 
 /** A value of a closed list: the key the effect stores and the Portuguese name. */

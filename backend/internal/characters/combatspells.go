@@ -36,9 +36,11 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if !ok {
 		return link.Spell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
+	// A table feat's ranged_attack effect may multiply the range of a spell that needs
+	// an attack roll: the reach the cast checks and the target lists show is the caster's.
 	out := link.Spell{
 		Key: det.Spell.Key, Name: det.Spell.NamePT, Level: det.Spell.Level, Concentration: det.Duration.Concentration, Verbal: det.Components.Verbal,
-		RangeKind: det.Range.Kind, RangeFt: det.Range.DistanceFt, AttackType: det.AttackType,
+		RangeKind: det.Range.Kind, RangeFt: d.SpellRangeFt(det.AttackType, det.Range.Kind, det.Range.DistanceFt), AttackType: det.AttackType,
 	}
 	if out.Name == "" {
 		out.Name = det.Spell.Name

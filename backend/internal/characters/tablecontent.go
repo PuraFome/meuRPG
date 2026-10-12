@@ -368,6 +368,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Sense: e.GetSense(), RangeFt: int(e.GetRangeFt()), Resource: e.GetResource(), Max: e.GetMax(), Recharge: e.GetRecharge(),
 			Choice: e.GetChoice(), Count: int(e.GetCount()), From: e.GetFrom(), Economy: e.GetEconomy(), Applies: e.GetApplies(), Ability: e.GetAbility(),
 			Spells: e.GetSpells(), TextPT: e.GetTextPt(),
+			IgnoreCover: e.GetIgnoreCover(), RangeMultiplier: int(e.GetRangeMultiplier()), NoLongRangeDisadvantage: e.GetNoLongRangeDisadvantage(),
 		})
 	}
 	return out

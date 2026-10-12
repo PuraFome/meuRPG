@@ -216,6 +216,14 @@ type Traits struct {
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string
+	// SpellAttackIgnoresCover says half and three-quarters cover give the target no AC
+	// bonus against the character's ranged spell attacks, and RangedWeaponIgnoresCover
+	// the same against its ranged weapon attacks (a thrown weapon used at range too);
+	// RangedWeaponNoLongRangeDisadvantage says those weapon attacks have no disadvantage
+	// beyond the normal range. A table feat's ranged_attack effect gives them
+	// (rules.Derived); total cover still blocks. The spell range multiplier is already
+	// in the ranges (Spell.RangeFt, Attack.RangeFt of a cantrip).
+	SpellAttackIgnoresCover, RangedWeaponIgnoresCover, RangedWeaponNoLongRangeDisadvantage bool
 }
 
 // Resistance is a damage resistance of a feature or trait: its key and name, the
@@ -317,7 +325,9 @@ type Spell struct {
 	// position away.
 	Verbal bool
 	// RangeKind is "self", "touch", "ranged", "sight", "unlimited" or "special",
-	// and RangeFt the distance of a ranged spell.
+	// and RangeFt the distance of a ranged spell as this caster casts it: a spell
+	// that needs an attack roll reaches farther when a table feat multiplies its
+	// range (rules.Derived.SpellRangeFt).
 	RangeKind string
 	RangeFt   int
 	// AttackType is "melee", "ranged" or "": a spell attack, with ToHit added to

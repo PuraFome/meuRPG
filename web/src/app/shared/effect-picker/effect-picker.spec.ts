@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { type EffectDraft, emptyEffect } from '../../core/content/effect-draft';
-import { menu } from '../../core/content/content-testing';
+import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
+import { menu, rangedAttackMenu } from '../../core/content/content-testing';
 import { EffectPicker } from './effect-picker';
 
 describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
@@ -11,13 +11,13 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
 
   function setup(
     effect: EffectDraft,
-    over: { issues?: Record<string, string[]>; allowTextOnly?: boolean } = {},
+    over: { issues?: Record<string, string[]>; allowTextOnly?: boolean; menu?: EffectMenuVm } = {},
   ) {
     emitted.length = 0;
     TestBed.resetTestingModule();
     fixture = TestBed.createComponent(EffectPicker);
     fixture.componentRef.setInput('effect', effect);
-    fixture.componentRef.setInput('menu', menu());
+    fixture.componentRef.setInput('menu', over.menu ?? menu());
     fixture.componentRef.setInput('basePath', 'table_race.traits[0].effects[0]');
     fixture.componentRef.setInput('allowTextOnly', over.allowTextOnly ?? false);
     fixture.componentRef.setInput('issuesOf', (path: string) => over.issues?.[path] ?? []);
@@ -127,6 +127,41 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     range.value = '9';
     range.dispatchEvent(new Event('input'));
     expect(emitted.at(-1)?.rangeM).toBe('9');
+  });
+
+  it("shows ranged_attack's switches and multiplier unfolded, though none is required, and turns a switch on", () => {
+    const ranged = rangedAttackMenu();
+    setup({ ...emptyEffect('ranged_attack'), applies: 'spell' }, { menu: ranged });
+    const cover = field('ignore_cover') as HTMLInputElement;
+    expect(cover).not.toBeNull();
+    expect(cover.type).toBe('checkbox');
+    expect(cover.checked).toBe(false);
+    expect(field('range_multiplier')).not.toBeNull();
+    expect(field('no_long_range_disadvantage')).not.toBeNull();
+    expect(field('when')).toBeNull();
+    expect(text(el)).toContain('Ignora meia cobertura e três quartos');
+    expect(text(el)).toContain('A cobertura total continua impedindo o ataque.');
+    cover.dispatchEvent(new Event('change'));
+    expect(emitted.at(-1)?.ignoreCover).toBe(true);
+    const times = field('range_multiplier') as HTMLInputElement;
+    times.value = '2';
+    times.dispatchEvent(new Event('input'));
+    expect(emitted.at(-1)?.rangeMultiplier).toBe(2);
+
+    // A switch that is on reads as on, and a refusal at it shows under it.
+    setup(
+      { ...emptyEffect('ranged_attack'), applies: 'weapon', noLongRangeDisadvantage: true },
+      {
+        menu: ranged,
+        issues: {
+          'table_race.traits[0].effects[0].no_long_range_disadvantage': ['Só para armas.'],
+        },
+      },
+    );
+    expect((field('no_long_range_disadvantage') as HTMLInputElement).checked).toBe(true);
+    expect(text(field('no_long_range_disadvantage')!.closest('.frow')!)).toContain(
+      'Só para armas.',
+    );
   });
 
   it('puts the hint beside its field, and the refusal under it', () => {

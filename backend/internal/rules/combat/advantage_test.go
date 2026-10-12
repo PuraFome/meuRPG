@@ -277,6 +277,17 @@ func TestAttackModeForRangedAttacks(t *testing.T) {
 	if got := kinds(AttackMode(noLong).Sources); !slices.Equal(got, []string{SourceLongRange}) {
 		t.Fatalf("a spell beyond its range with no long range: %v", got)
 	}
+	// A table feat's ranged_attack effect: the long range gives no disadvantage; a hostile
+	// within 5 ft still does.
+	sharp := arrow
+	sharp.DistanceFt, sharp.NoLongRangeDisadvantage = 400, true
+	if got := AttackMode(sharp).Sources; len(got) != 0 {
+		t.Fatalf("a sharp shot at long range: %v, want no source", kinds(got))
+	}
+	sharp.HostileNearAttacker = true
+	if got := kinds(AttackMode(sharp).Sources); !slices.Equal(got, []string{SourceHostileNearby}) {
+		t.Fatalf("a sharp shot with a hostile within 5 ft: %v", got)
+	}
 }
 
 func TestSaveModeSources(t *testing.T) {

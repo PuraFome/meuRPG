@@ -120,6 +120,7 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 	for name, want := range map[string][]string{
 		ListModifierModes: modifierModes, ListProficiencyLevels: proficiencyLevels, ListRollModes: rollModes,
 		ListSenses: senses, ListRecharges: recharges, ListEconomies: economies, ListChoiceKinds: overlayChoiceKinds,
+		ListRangedAttacks: rangedAttackApplies,
 	} {
 		if got := valueKeys(menuList(t, m, name)); !slices.Equal(got, want) {
 			t.Errorf("list %s = %v, want %v", name, got, want)
@@ -193,6 +194,13 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 	for n := m.ExtraAttackMin; n <= m.ExtraAttackMax; n++ {
 		effects = append(effects, Effect{Type: "extra_attack", Count: n})
 	}
+	for _, v := range menuList(t, m, ListRangedAttacks) {
+		effects = append(effects, Effect{Type: "ranged_attack", Applies: v.Key, IgnoreCover: true})
+	}
+	for n := MinSpellRangeMultiplier; n <= MaxSpellRangeMultiplier; n++ {
+		effects = append(effects, Effect{Type: "ranged_attack", Applies: RangedAttackSpell, RangeMultiplier: n})
+	}
+	effects = append(effects, Effect{Type: "ranged_attack", Applies: RangedAttackWeapon, NoLongRangeDisadvantage: true})
 	// The option sets: each option of each set, offered by a feature choice.
 	if len(m.OptionSets) == 0 {
 		t.Fatal("the menu has no option set (fighting styles...)")
@@ -245,6 +253,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"choice":          {Type: "choice", Choice: "skill", Count: 1},
 		"note":            {Type: "note"},
 		"superiority_die": {Type: "superiority_die", Applies: ManeuverDamage, Resource: "dados_de_teste", Value: "8"},
+		"ranged_attack":   {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
@@ -326,6 +335,26 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 	for _, n := range []int{m.ExtraAttackMin - 1, m.ExtraAttackMax + 1} {
 		if with(Effect{Type: "extra_attack", Count: n}) == nil {
 			t.Errorf("extra_attack with %d attacks is accepted", n)
+		}
+	}
+	// A ranged_attack's multiplier: the bounds the menu states are the validator's, and
+	// its switches are shown though none is required alone.
+	for _, mt := range m.Types {
+		for _, f := range mt.Fields {
+			if mt.Type != "ranged_attack" || f.Name == "applies" || f.Name == "when" || f.Name == "text_pt" {
+				continue
+			}
+			if !f.AlwaysShown {
+				t.Errorf("ranged_attack's %s is folded: what the effect does is in it", f.Name)
+			}
+			if f.Name == "range_multiplier" && (f.Min != MinSpellRangeMultiplier || f.Max != MaxSpellRangeMultiplier) {
+				t.Errorf("range_multiplier bounds = %d..%d, want %d..%d", f.Min, f.Max, MinSpellRangeMultiplier, MaxSpellRangeMultiplier)
+			}
+		}
+	}
+	for _, n := range []int{MinSpellRangeMultiplier - 1, MaxSpellRangeMultiplier + 1} {
+		if with(Effect{Type: "ranged_attack", Applies: RangedAttackSpell, RangeMultiplier: n}) == nil {
+			t.Errorf("a ranged_attack that multiplies the range by %d is accepted", n)
 		}
 	}
 }

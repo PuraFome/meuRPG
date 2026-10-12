@@ -1,7 +1,7 @@
 import { create } from '@bufbuild/protobuf';
 
 import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { menu } from './content-testing';
+import { menu, rangedAttackMenu } from './content-testing';
 import {
   draftToEffect,
   effectToDraft,
@@ -201,5 +201,64 @@ describe('the effects only a feat has (MR-025)', () => {
     expect(m.fromOptions('feat')).toEqual([]);
     m.featOptions = [{ key: 'feat:mestre@mesa', namePt: 'Mestre', hintPt: '' }];
     expect(m.fromOptions('feat').map((o) => o.namePt)).toEqual(['Mestre']);
+  });
+});
+
+describe("ranged_attack: a table feat's switches and spell range multiplier", () => {
+  const m = rangedAttackMenu();
+
+  it('sends the switches that are on and the multiplier that is set, and asks for which attacks', () => {
+    const spell = {
+      ...emptyEffect('ranged_attack'),
+      applies: 'spell',
+      ignoreCover: true,
+      rangeMultiplier: 2,
+    };
+    expect(draftToEffect(spell, m)).toEqual({
+      type: 'ranged_attack',
+      applies: 'spell',
+      ignoreCover: true,
+      rangeMultiplier: 2,
+    });
+    const weapon = {
+      ...emptyEffect('ranged_attack'),
+      applies: 'weapon',
+      noLongRangeDisadvantage: true,
+    };
+    expect(draftToEffect(weapon, m)).toEqual({
+      type: 'ranged_attack',
+      applies: 'weapon',
+      noLongRangeDisadvantage: true,
+    });
+    expect(missingRequired({ ...spell, applies: '' }, m)).toEqual(['applies']);
+  });
+
+  it('reads a stored one back and sends it unchanged', () => {
+    const stored = create(TableEffectSchema, {
+      type: 'ranged_attack',
+      applies: 'weapon',
+      ignoreCover: true,
+      noLongRangeDisadvantage: true,
+    });
+    expect(draftToEffect(effectToDraft(stored), m)).toEqual({
+      type: 'ranged_attack',
+      applies: 'weapon',
+      ignoreCover: true,
+      noLongRangeDisadvantage: true,
+    });
+  });
+
+  it('never sends a switch on another type', () => {
+    const d = {
+      ...emptyEffect('modifier'),
+      target: 'ac',
+      mode: 'add',
+      value: '1',
+      ignoreCover: true,
+      rangeMultiplier: 2,
+    };
+    const sent = draftToEffect(d, m);
+    expect(sent).not.toHaveProperty('ignoreCover');
+    expect(sent).not.toHaveProperty('rangeMultiplier');
   });
 });

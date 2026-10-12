@@ -681,7 +681,7 @@ func (*TableEntry_TableFeat) isTableEntry_Body() {}
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
-// "sense", "roll_mode", "grant_action", "extra_attack", "choice", "ability_increase",
+// "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
 // "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
@@ -746,10 +746,25 @@ type TableEffect struct {
 	// (a reaction, `economy` "reaction", when a melee attack hits the character: the
 	// damage drops by the die plus the modifier of `ability`). `text_pt` is the rider the
 	// master reads. Added later: older clients leave both empty.
-	Applies       string `protobuf:"bytes,22,opt,name=applies,proto3" json:"applies,omitempty"`
-	Ability       string `protobuf:"bytes,23,opt,name=ability,proto3" json:"ability,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// ranged_attack also uses `applies`, for which attacks it changes: "spell" (the
+	// attack roll of a spell that needs one) or "weapon" (a ranged weapon attack, and a
+	// thrown weapon used at range).
+	Applies string `protobuf:"bytes,22,opt,name=applies,proto3" json:"applies,omitempty"`
+	Ability string `protobuf:"bytes,23,opt,name=ability,proto3" json:"ability,omitempty"`
+	// ranged_attack (a table feat that makes its owner a sharper shot; the SRD has none):
+	// half and three-quarters cover give the target no bonus to its armor class against
+	// the attacks of `applies` (total cover still makes it untargetable).
+	IgnoreCover bool `protobuf:"varint,24,opt,name=ignore_cover,json=ignoreCover,proto3" json:"ignore_cover,omitempty"`
+	// ranged_attack, "spell" only: 2 or 3, how many times its range a spell that needs an
+	// attack roll and has a range in feet reaches; the largest the character has counts.
+	// 0 leaves the range as it is.
+	RangeMultiplier int32 `protobuf:"varint,25,opt,name=range_multiplier,json=rangeMultiplier,proto3" json:"range_multiplier,omitempty"`
+	// ranged_attack, "weapon" only: attacking beyond the normal range, up to the long
+	// range, gives the roll no disadvantage. A ranged_attack effect sets at least one of
+	// ignore_cover, range_multiplier and no_long_range_disadvantage.
+	NoLongRangeDisadvantage bool `protobuf:"varint,26,opt,name=no_long_range_disadvantage,json=noLongRangeDisadvantage,proto3" json:"no_long_range_disadvantage,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -941,6 +956,27 @@ func (x *TableEffect) GetAbility() string {
 		return x.Ability
 	}
 	return ""
+}
+
+func (x *TableEffect) GetIgnoreCover() bool {
+	if x != nil {
+		return x.IgnoreCover
+	}
+	return false
+}
+
+func (x *TableEffect) GetRangeMultiplier() int32 {
+	if x != nil {
+		return x.RangeMultiplier
+	}
+	return 0
+}
+
+func (x *TableEffect) GetNoLongRangeDisadvantage() bool {
+	if x != nil {
+		return x.NoLongRangeDisadvantage
+	}
+	return false
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -5104,9 +5140,9 @@ type EffectMenuField struct {
 	// The effect is refused without it.
 	Required bool `protobuf:"varint,2,opt,name=required,proto3" json:"required,omitempty"`
 	// How the editor asks: "formula" (an Int formula), "condition" (a Bool formula),
-	// "text", "number", "choice" (one value of `list`), "choices" (several), "tags" or
+	// "text", "number", "choice" (one value of `list`), "choices" (several), "tags",
 	// "resource_ref" (the name of a resource effect the entry defines; the editor lists
-	// the ones it has).
+	// the ones it has) or "yes_no" (a switch: true or false).
 	Kind string `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
 	// The EffectMenuList the value comes from, when it is a closed list; empty for a
 	// free value. For a `choice` effect's `from` the list depends on the kind chosen:
@@ -5114,8 +5150,12 @@ type EffectMenuField struct {
 	// the keys of an option set.
 	List string `protobuf:"bytes,4,opt,name=list,proto3" json:"list,omitempty"`
 	// The bounds of a number; 0 when there is none.
-	Min           int32 `protobuf:"varint,5,opt,name=min,proto3" json:"min,omitempty"`
-	Max           int32 `protobuf:"varint,6,opt,name=max,proto3" json:"max,omitempty"`
+	Min int32 `protobuf:"varint,5,opt,name=min,proto3" json:"min,omitempty"`
+	Max int32 `protobuf:"varint,6,opt,name=max,proto3" json:"max,omitempty"`
+	// The editor shows the field even when it is optional and empty, never folded with
+	// the rarer ones: what the effect does lies in it (ranged_attack's switches, none of
+	// them required alone).
+	AlwaysShown   bool `protobuf:"varint,7,opt,name=always_shown,json=alwaysShown,proto3" json:"always_shown,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5190,6 +5230,13 @@ func (x *EffectMenuField) GetMax() int32 {
 		return x.Max
 	}
 	return 0
+}
+
+func (x *EffectMenuField) GetAlwaysShown() bool {
+	if x != nil {
+		return x.AlwaysShown
+	}
+	return false
 }
 
 // EffectMenuValue is a value of a closed list.
@@ -5481,7 +5528,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"tableSpell\x12;\n" +
 	"\n" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
-	"\x04body\"\xad\x04\n" +
+	"\x04body\"\xb8\x05\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -5506,7 +5553,10 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x06spells\x18\x14 \x03(\tR\x06spells\x12\x17\n" +
 	"\atext_pt\x18\x15 \x01(\tR\x06textPt\x12\x18\n" +
 	"\aapplies\x18\x16 \x01(\tR\aapplies\x12\x18\n" +
-	"\aability\x18\x17 \x01(\tR\aability\"\xc3\x01\n" +
+	"\aability\x18\x17 \x01(\tR\aability\x12!\n" +
+	"\fignore_cover\x18\x18 \x01(\bR\vignoreCover\x12)\n" +
+	"\x10range_multiplier\x18\x19 \x01(\x05R\x0frangeMultiplier\x12;\n" +
+	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
@@ -5838,14 +5888,15 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
 	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt\x128\n" +
 	"\x06fields\x18\x04 \x03(\v2 .meurpg.rules.v1.EffectMenuFieldR\x06fields\x12\x1b\n" +
-	"\tfeat_only\x18\x05 \x01(\bR\bfeatOnly\"\x8d\x01\n" +
+	"\tfeat_only\x18\x05 \x01(\bR\bfeatOnly\"\xb0\x01\n" +
 	"\x0fEffectMenuField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\brequired\x18\x02 \x01(\bR\brequired\x12\x12\n" +
 	"\x04kind\x18\x03 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04list\x18\x04 \x01(\tR\x04list\x12\x10\n" +
 	"\x03min\x18\x05 \x01(\x05R\x03min\x12\x10\n" +
-	"\x03max\x18\x06 \x01(\x05R\x03max\"U\n" +
+	"\x03max\x18\x06 \x01(\x05R\x03max\x12!\n" +
+	"\falways_shown\x18\a \x01(\bR\valwaysShown\"U\n" +
 	"\x0fEffectMenuValue\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

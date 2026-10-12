@@ -9,6 +9,8 @@ import {
   emptyEffect,
 } from '../../core/content/effect-draft';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { CheckRow } from '../form-fields/check-row';
+import { FieldNote } from '../form-fields/field-note';
 import { PickList } from '../form-fields/pick-list';
 import { SelectField, type SelectOption } from '../form-fields/select-field';
 import { TextField } from '../form-fields/text-field';
@@ -17,14 +19,14 @@ import { TextField } from '../form-fields/text-field';
  * The effect picker (MR-025, ADR-0018, section 4; E10-01 state 6, E10-02 state 3): one effect of a feature, chosen from the
  * server's closed menu. The type select lists the menu's types with their one-line explanation; the fields under it are the
  * ones the menu says that type reads, each drawn by how the menu says it is asked (a closed list, several of it, a number, a
- * formula, a text), and nothing else. Changing the type starts a new effect: what the old type had is dropped, which is also
+ * formula, a text, a yes-or-no switch), and nothing else. Changing the type starts a new effect: what the old type had is dropped, which is also
  * what is never sent. Shared by the race, subrace and background editors and, in 10.12, the class and subclass features.
  *
  * Every input carries its own path (`basePath` + the field) as `data-field`, so a refusal from the server lands on it.
  */
 @Component({
   selector: 'app-effect-picker',
-  imports: [MatIconModule, PickList, SelectField, TextField],
+  imports: [CheckRow, FieldNote, MatIconModule, PickList, SelectField, TextField],
   templateUrl: './effect-picker.html',
   styleUrl: './effect-picker.scss',
 })
@@ -59,11 +61,17 @@ export class EffectPicker {
       : (this.menu().typeOf(t)?.hintPt ?? '');
   });
   protected readonly allFields = computed(() => this.menu().fieldsOf(this.effect().type));
-  /** "Mais opções": the optional fields stay folded until they hold something, a refusal points at them, or the person opens them. */
+  /** "Mais opções": the optional fields stay folded until they hold something, a refusal points at them, or the person opens them;
+   * a field the menu says is always shown (what the effect does lies in it, as ranged_attack's switches) is never folded. */
   protected readonly expanded = signal(false);
   protected readonly fields = computed(() =>
     this.allFields().filter(
-      (f) => this.expanded() || f.required || this.filled(f) || this.issues(f.name).length > 0,
+      (f) =>
+        this.expanded() ||
+        f.required ||
+        f.alwaysShown ||
+        this.filled(f) ||
+        this.issues(f.name).length > 0,
     ),
   );
   protected readonly hidden = computed(() => this.allFields().length - this.fields().length);
@@ -77,7 +85,7 @@ export class EffectPicker {
         ? v > 0
         : typeof v === 'string'
           ? v.trim() !== ''
-          : false;
+          : v === true;
   }
 
   protected path(field: string): string {
@@ -170,6 +178,11 @@ export class EffectPicker {
     return this.effect().rangeM;
   }
 
+  /** Whether a yes-or-no field is on. */
+  protected flag(name: string): boolean {
+    return this.effect()[camel(name)] === true;
+  }
+
   protected setType(type: string): void {
     if (type !== this.effect().type) {
       this.expanded.set(false);
@@ -187,6 +200,10 @@ export class EffectPicker {
       ...this.effect(),
       [camel(name)]: Number.isInteger(n) && n > 0 ? n : 0,
     });
+  }
+
+  protected setFlag(name: string, on: boolean): void {
+    this.effectChange.emit({ ...this.effect(), [camel(name)]: on });
   }
 
   protected setMeters(text: string): void {

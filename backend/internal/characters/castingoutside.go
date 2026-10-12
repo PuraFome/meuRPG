@@ -58,7 +58,9 @@ func (s *Service) CastingOptions(ctx context.Context, tx pgx.Tx, campaignID, cha
 			CastingMinutes: i32(o.Minutes), RitualMinutes: i32(o.RitualMinutes), CastingTimePt: castingTimePT(det.CastingTime),
 			Lasts: det.Duration.Lasts(), DurationSeconds: durationSeconds(det.Duration), RestEnds: restToProto[rules.EndedByRest(det.Duration)],
 			MaxTargets: i32(det.Target.MaxTargets(o.Spell.Level, o.Spell.Level)), TargetsPerLevel: i32(det.Target.PerSlotLevel),
-			CasterOnly: det.Target.CasterOnly(), RangeKind: det.Range.Kind, RangeFt: i32(det.Range.DistanceFt),
+			CasterOnly: det.Target.CasterOnly(), RangeKind: det.Range.Kind,
+			// The reach as the caster casts it (a table feat may multiply a spell attack's), as OutsideSpell checks it.
+			RangeFt: i32(d.SpellRangeFt(det.AttackType, det.Range.Kind, det.Range.DistanceFt)),
 		}
 		for _, c := range o.Slots {
 			cs.Slots = append(cs.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free)})

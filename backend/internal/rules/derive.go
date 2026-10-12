@@ -109,6 +109,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	x.speedAndSenses()
 	x.languages()
 	x.spellcasting()
+	x.rangedAttacks()
 	x.attacks()
 	x.resourcesAndActions()
 	x.effectHints()
