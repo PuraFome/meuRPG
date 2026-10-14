@@ -19,7 +19,7 @@
 # by digest too, so the build does not depend on a moving frontend image.
 
 # ---- build stage: compile the Angular app -----------------------------------
-FROM node:22-trixie-slim@sha256:b26b04c123d9ff8ab646ceb18b9d75a1173acf64b9a401094b906d27b29338d4 AS web-build
+FROM node:22-trixie-slim@sha256:154ba2f4d6fec323d28e4f4bb86bba4677f1223391a1979cf521304e03a98dfa AS web-build
 
 WORKDIR /src
 
