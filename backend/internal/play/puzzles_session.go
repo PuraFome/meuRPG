@@ -102,29 +102,9 @@ func (s *Service) changeRun(ctx context.Context, m authz.Membership, rawID strin
 	}
 	var c *runTx
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queriesIn(tx)
-		session, err := lockOpenSession(ctx, q, m.CampaignID)
-		if err != nil {
+		var err error
+		if c, err = s.lockRunTx(ctx, s.queriesIn(tx), m, id); err != nil {
 			return err
-		}
-		row, err := q.GetPuzzleForUpdate(ctx, playdb.GetPuzzleForUpdateParams{CampaignID: m.CampaignID, ID: id})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errPuzzleNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find puzzle: %w", err)
-		}
-		def, err := decodePuzzle(row)
-		if err != nil {
-			return err
-		}
-		c = &runTx{m: m, q: q, session: session, def: def, now: s.now()}
-		run, err := q.GetPuzzleRunForUpdate(ctx, playdb.GetPuzzleRunForUpdateParams{GameSessionID: session.ID, PuzzleID: id})
-		switch {
-		case err == nil:
-			c.run = &run
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("find the puzzle's run: %w", err)
 		}
 		return change(c)
 	})
@@ -132,19 +112,55 @@ func (s *Service) changeRun(ctx context.Context, m authz.Membership, rawID strin
 		return nil, s.dbError(ctx, "change a puzzle", err)
 	}
 	if c.tell {
-		s.publishPuzzleChanged(m.CampaignID, id)
-		if c.roundBegan {
-			if dl := deadlineOf(c.def, runOrZero(c.run)); dl != nil {
-				c.later = append(c.later, dl.Sub(c.now)) // the apps read the run again when the time is up
-			}
-		}
-		for _, after := range c.later {
-			if after > 0 {
-				s.puzzles.hints.schedule(after, func() { s.sendPuzzleChanged(m.CampaignID, id) })
-			}
-		}
+		s.tellRunChange(c, id)
 	}
 	return s.masterView(ctx, nil, m.CampaignID, c.def, c.run)
+}
+
+// lockRunTx takes the locks of a change in their one order: the session's row, the puzzle, the run
+// (none yet: the puzzle was never shown in this session).
+func (s *Service) lockRunTx(ctx context.Context, q *playdb.Queries, m authz.Membership, id string) (*runTx, error) {
+	session, err := lockOpenSession(ctx, q, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	row, err := q.GetPuzzleForUpdate(ctx, playdb.GetPuzzleForUpdateParams{CampaignID: m.CampaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errPuzzleNotFound()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find puzzle: %w", err)
+	}
+	def, err := decodePuzzle(row)
+	if err != nil {
+		return nil, err
+	}
+	c := &runTx{m: m, q: q, session: session, def: def, now: s.now()}
+	run, err := q.GetPuzzleRunForUpdate(ctx, playdb.GetPuzzleRunForUpdateParams{GameSessionID: session.ID, PuzzleID: id})
+	switch {
+	case err == nil:
+		c.run = &run
+	case !errors.Is(err, pgx.ErrNoRows):
+		return nil, fmt.Errorf("find the puzzle's run: %w", err)
+	}
+	return c, nil
+}
+
+// tellRunChange sends puzzle_changed to the session once the change is committed, and again at each
+// moment the change asked for.
+func (s *Service) tellRunChange(c *runTx, id string) {
+	campaignID := c.m.CampaignID
+	s.publishPuzzleChanged(campaignID, id)
+	if c.roundBegan {
+		if dl := deadlineOf(c.def, runOrZero(c.run)); dl != nil {
+			c.later = append(c.later, dl.Sub(c.now)) // the apps read the run again when the time is up
+		}
+	}
+	for _, after := range c.later {
+		if after > 0 {
+			s.puzzles.hints.schedule(after, func() { s.sendPuzzleChanged(campaignID, id) })
+		}
+	}
 }
 
 func runOrZero(r *playdb.PuzzleRun) playdb.PuzzleRun {
@@ -193,43 +209,59 @@ func (s *Service) ShowPuzzle(
 	if err != nil {
 		return nil, err
 	}
-	run, err := s.changeRun(ctx, m, req.Msg.GetPuzzleId(), func(c *runTx) error {
-		if c.def.row.ArchivedAt != nil {
-			return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_ARCHIVED, "the puzzle is archived")
-		}
-		switch {
-		case c.run == nil:
-			row, err := c.q.InsertPuzzleRun(ctx, playdb.InsertPuzzleRunParams{
-				GameSessionID: c.session.ID, PuzzleID: c.def.row.ID, Seed: c.def.row.Seed, Start: c.def.row.Start, ShownAt: &c.now, RoundStartedAt: c.clock(), CreatedAt: c.now,
-			})
-			if err != nil {
-				return fmt.Errorf("make the puzzle's run: %w", err)
-			}
-			c.run = &row
-			c.roundBegan = true
-		case visible(c.run):
-			return nil // shown already: nothing changes
-		default:
-			// Prepared with a new start, or closed: shown (again) at its start.
-			p := c.params()
-			p.ShownAt, p.ClosedAt = &c.now, nil
-			if c.run.ClosedAt != nil {
-				toStart(&p, c.clock())
-			} else {
-				p.RoundStartSeq, p.RoundStartedAt = p.MovesMade, c.clock() // the first round begins now
-			}
-			c.roundBegan = true
-			if err := c.save(ctx, p); err != nil {
-				return err
-			}
-		}
-		c.tell = true
-		return c.event(ctx, eventPuzzleShown)
-	})
+	run, err := s.changeRun(ctx, m, req.Msg.GetPuzzleId(), func(c *runTx) error { return c.show(ctx) })
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.ShowPuzzleResponse{Run: run}), nil
+}
+
+// show makes the puzzle visible to the players: the run is made, or the prepared or closed one is shown
+// at its start. A puzzle that is shown already stays as it is.
+func (c *runTx) show(ctx context.Context) error {
+	if c.def.row.ArchivedAt != nil {
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_ARCHIVED, "the puzzle is archived")
+	}
+	switch {
+	case c.run == nil:
+		if err := c.insertShownRun(ctx); err != nil {
+			return err
+		}
+	case visible(c.run):
+		return nil // shown already: nothing changes
+	default:
+		if err := c.showAgain(ctx); err != nil {
+			return err
+		}
+	}
+	c.tell = true
+	return c.event(ctx, eventPuzzleShown)
+}
+
+// insertShownRun makes the run of a puzzle never shown in this session, shown now.
+func (c *runTx) insertShownRun(ctx context.Context) error {
+	row, err := c.q.InsertPuzzleRun(ctx, playdb.InsertPuzzleRunParams{
+		GameSessionID: c.session.ID, PuzzleID: c.def.row.ID, Seed: c.def.row.Seed, Start: c.def.row.Start, ShownAt: &c.now, RoundStartedAt: c.clock(), CreatedAt: c.now,
+	})
+	if err != nil {
+		return fmt.Errorf("make the puzzle's run: %w", err)
+	}
+	c.run = &row
+	c.roundBegan = true
+	return nil
+}
+
+// showAgain shows a run prepared with a new start, or closed, at its start.
+func (c *runTx) showAgain(ctx context.Context) error {
+	p := c.params()
+	p.ShownAt, p.ClosedAt = &c.now, nil
+	if c.run.ClosedAt != nil {
+		toStart(&p, c.clock())
+	} else {
+		p.RoundStartSeq, p.RoundStartedAt = p.MovesMade, c.clock() // the first round begins now
+	}
+	c.roundBegan = true
+	return c.save(ctx, p)
 }
 
 // needsVisibleRun is the refusal of a change that needs the players to see the
@@ -294,46 +326,60 @@ func (s *Service) ReseedPuzzle(
 		if err := notStale(c, req.Msg.GetExpectedRevision()); err != nil {
 			return err
 		}
-		if !c.def.kind.generates() {
-			return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_GENERATED_START, "this kind has no generated start")
-		}
-		seed := s.newSeed()
-		start, err := c.def.kind.generate(c.def, seed)
-		if err != nil {
-			return err
-		}
-		startJSON := toJSON(start)
-		if c.run == nil {
-			// Not shown yet: prepare the run at the new start. The players see nothing
-			// until ShowPuzzle.
-			row, err := c.q.InsertPuzzleRun(ctx, playdb.InsertPuzzleRunParams{
-				GameSessionID: c.session.ID, PuzzleID: c.def.row.ID, Seed: seed, Start: startJSON, CreatedAt: c.now,
-			})
-			if err != nil {
-				return fmt.Errorf("make the puzzle's run: %w", err)
-			}
-			c.run = &row
-			return nil
-		}
-		p := c.params()
-		p.Seed, p.Start = seed, startJSON
-		toStart(&p, c.clock())
-		if c.run.ShownAt == nil {
-			p.RoundStartedAt = nil // prepared, not shown: the round begins when it is shown
-		}
-		if err := c.save(ctx, p); err != nil {
-			return err
-		}
-		if !visible(c.run) {
-			return nil
-		}
-		c.tell, c.roundBegan = true, true
-		return c.event(ctx, eventPuzzleReset)
+		return s.reseed(ctx, c)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.ReseedPuzzleResponse{Run: run}), nil
+}
+
+// reseed draws another start for the puzzle and puts its run at it.
+func (s *Service) reseed(ctx context.Context, c *runTx) error {
+	if !c.def.kind.generates() {
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_GENERATED_START, "this kind has no generated start")
+	}
+	seed := s.newSeed()
+	start, err := c.def.kind.generate(c.def, seed)
+	if err != nil {
+		return err
+	}
+	startJSON := toJSON(start)
+	if c.run == nil {
+		return c.insertPreparedRun(ctx, seed, startJSON)
+	}
+	return c.restartAt(ctx, seed, startJSON)
+}
+
+// insertPreparedRun prepares the run at the new start of a puzzle not shown yet. The players see
+// nothing until ShowPuzzle.
+func (c *runTx) insertPreparedRun(ctx context.Context, seed int64, start []byte) error {
+	row, err := c.q.InsertPuzzleRun(ctx, playdb.InsertPuzzleRunParams{
+		GameSessionID: c.session.ID, PuzzleID: c.def.row.ID, Seed: seed, Start: start, CreatedAt: c.now,
+	})
+	if err != nil {
+		return fmt.Errorf("make the puzzle's run: %w", err)
+	}
+	c.run = &row
+	return nil
+}
+
+// restartAt puts the existing run at the new start; the players are told when they see the puzzle.
+func (c *runTx) restartAt(ctx context.Context, seed int64, start []byte) error {
+	p := c.params()
+	p.Seed, p.Start = seed, start
+	toStart(&p, c.clock())
+	if c.run.ShownAt == nil {
+		p.RoundStartedAt = nil // prepared, not shown: the round begins when it is shown
+	}
+	if err := c.save(ctx, p); err != nil {
+		return err
+	}
+	if !visible(c.run) {
+		return nil
+	}
+	c.tell, c.roundBegan = true, true
+	return c.event(ctx, eventPuzzleReset)
 }
 
 // ClosePuzzle implements playv1connect.PuzzleServiceHandler.
@@ -412,41 +458,53 @@ func (s *Service) PlayPuzzleSequence(
 		if err := notStale(c, req.Msg.GetExpectedRevision()); err != nil {
 			return err
 		}
-		if c.def.row.Kind != (sequenceKind{}).stored() {
-			return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NOT_A_SEQUENCE, "the puzzle is not a sequence")
-		}
-		if err := needsVisibleRun(c); err != nil {
-			return err
-		}
-		if c.run.SolvedAt != nil {
-			return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED, "the puzzle is solved")
-		}
-		if stopOf(c.def, *c.run, c.now) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED {
-			return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED, "a limit stopped the puzzle")
-		}
-		// Playing is the master's own act: it counts one more play and starts the
-		// steps from the clock. The app reads the run again at every step (the hint
-		// below, one for each); the attempt's progress and the counters stay as they were.
-		p := c.params()
-		p.Plays++
-		p.PlayStartedAt = &c.now
-		if p.RoundStartedAt == nil {
-			p.RoundStartedAt = &c.now // the time limit of a sequence starts at its first play of the round
-			c.roundBegan = true
-		}
-		if err := c.save(ctx, p); err != nil {
-			return err
-		}
-		c.tell = true
-		for i := 1; i <= len(c.def.solution.GetSequence().GetSteps()); i++ {
-			c.later = append(c.later, time.Duration(i)*puzzle.SequenceStep)
-		}
-		return nil // a play is not an event: the history keeps only shown, solved, reset and closed
+		return c.playSequence(ctx)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.PlayPuzzleSequenceResponse{Run: run}), nil
+}
+
+// sequencePlayable refuses a play of a puzzle that is not a sequence, not shown, solved or stopped.
+func (c *runTx) sequencePlayable() error {
+	if c.def.row.Kind != (sequenceKind{}).stored() {
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NOT_A_SEQUENCE, "the puzzle is not a sequence")
+	}
+	if err := needsVisibleRun(c); err != nil {
+		return err
+	}
+	if c.run.SolvedAt != nil {
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED, "the puzzle is solved")
+	}
+	if stopOf(c.def, *c.run, c.now) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED {
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED, "a limit stopped the puzzle")
+	}
+	return nil
+}
+
+// playSequence is the master's own act: it counts one more play and starts the
+// steps from the clock. The app reads the run again at every step (the hint
+// below, one for each); the attempt's progress and the counters stay as they were.
+func (c *runTx) playSequence(ctx context.Context) error {
+	if err := c.sequencePlayable(); err != nil {
+		return err
+	}
+	p := c.params()
+	p.Plays++
+	p.PlayStartedAt = &c.now
+	if p.RoundStartedAt == nil {
+		p.RoundStartedAt = &c.now // the time limit of a sequence starts at its first play of the round
+		c.roundBegan = true
+	}
+	if err := c.save(ctx, p); err != nil {
+		return err
+	}
+	c.tell = true
+	for i := 1; i <= len(c.def.solution.GetSequence().GetSteps()); i++ {
+		c.later = append(c.later, time.Duration(i)*puzzle.SequenceStep)
+	}
+	return nil // a play is not an event: the history keeps only shown, solved, reset and closed
 }
 
 // GetMasterPuzzleRun implements playv1connect.PuzzleServiceHandler.
@@ -527,24 +585,33 @@ func (s *Service) ListSessionPuzzles(
 	}
 	res := &playv1.ListSessionPuzzlesResponse{}
 	for _, row := range rows {
-		d, err := decodePuzzle(row)
+		out, err := s.sessionPuzzle(ctx, m.CampaignID, row, byPuzzle[row.ID], names, shown[row.ID])
 		if err != nil {
-			return nil, s.dbError(ctx, "read a puzzle", err)
-		}
-		var ex masterExtra
-		if run := byPuzzle[row.ID]; run != nil {
-			if ex, err = s.masterExtras(ctx, nil, m.CampaignID, d, *run); err != nil {
-				return nil, s.dbError(ctx, "read a puzzle", err)
-			}
-		}
-		out, err := masterRunProto(d, byPuzzle[row.ID], names, shown[row.ID], ex)
-		if err != nil {
-			return nil, s.dbError(ctx, "read a puzzle", err)
-		}
-		if err := s.flagParts(ctx, m.CampaignID, out.GetPuzzle()); err != nil {
 			return nil, s.dbError(ctx, "read a puzzle", err)
 		}
 		res.Puzzles = append(res.Puzzles, out)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// sessionPuzzle is the master's message for a puzzle row and its run in the session (nil: none).
+func (s *Service) sessionPuzzle(ctx context.Context, campaignID string, row playdb.Puzzle, run *playdb.PuzzleRun, names runNames, shown bool) (*playv1.MasterPuzzleRun, error) {
+	d, err := decodePuzzle(row)
+	if err != nil {
+		return nil, err
+	}
+	var ex masterExtra
+	if run != nil {
+		if ex, err = s.masterExtras(ctx, nil, campaignID, d, *run); err != nil {
+			return nil, err
+		}
+	}
+	out, err := masterRunProto(d, run, names, shown, ex)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.flagParts(ctx, campaignID, out.GetPuzzle()); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
