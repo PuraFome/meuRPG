@@ -276,9 +276,6 @@
   "src/app/core/maps/maps-testing.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 4
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/core/maps/paint-layers.ts": {
@@ -2078,14 +2075,6 @@
       "count": 1
     }
   },
-  "src/app/pages/maps/map-editor/map-editor.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 6
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/maps/map-grid/map-grid.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2115,9 +2104,6 @@
   "src/app/pages/maps/map-page/map-page.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/pages/maps/map-print/map-print.ts": {
@@ -2146,9 +2132,6 @@
   "src/app/pages/maps/map-print/print-sheets/print-sheets.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/pages/maps/map-print/print-table/print-table.ts": {
@@ -2173,18 +2156,12 @@
   },
   "src/app/pages/maps/point-kinds/trap-draft.ts": {
     "@typescript-eslint/no-magic-numbers": {
-      "count": 15
-    },
-    "complexity": {
-      "count": 2
+      "count": 6
     }
   },
   "src/app/pages/maps/point-kinds/trap-point-panel.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/pages/maps/point-panel/point-panel.ts": {
@@ -2356,9 +2333,6 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "complexity": {
       "count": 1
     }
   },
@@ -2604,14 +2578,6 @@
       "count": 1
     }
   },
-  "src/app/shared/map-pins/map-pins.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 2
-    },
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/shared/map-view/map-geometry.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 11
@@ -2648,9 +2614,6 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 5
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -2898,11 +2861,6 @@
       "count": 1
     }
   },
-  "src/app/core/maps/maps-client.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/live-session/casting/cast-out-sheet.ts": {
     "max-lines": {
       "count": 1
@@ -2919,11 +2877,6 @@
     }
   },
   "src/app/pages/live-session/group-check/group-check-master.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/shared/area-picker/area-map.ts": {
     "max-lines": {
       "count": 1
     }
