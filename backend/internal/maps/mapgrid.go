@@ -42,14 +42,14 @@ func (s *Service) gridFogCopy(ctx context.Context, campaignID, mapID string, dra
 		return nil, nil
 	}
 	pre, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
-	if err != nil || !pre.FogOnFirstGrid || pre.GridColumns != nil {
-		return nil, nil
+	if err == nil && pre.FogOnFirstGrid && pre.GridColumns == nil {
+		imageCopy, err := s.prepareFogCopy(ctx, campaignID, mapID, pre.ImageID)
+		if err != nil {
+			return nil, s.dbError(ctx, "copy the map's image for the fog", err)
+		}
+		return imageCopy, nil
 	}
-	imageCopy, err := s.prepareFogCopy(ctx, campaignID, mapID, pre.ImageID)
-	if err != nil {
-		return nil, s.dbError(ctx, "copy the map's image for the fog", err)
-	}
-	return imageCopy, nil
+	return nil, nil // a map that cannot be read here is refused inside the transaction
 }
 
 // gridChange is one SetMapGrid call as its transaction sees it.
