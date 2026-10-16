@@ -114,6 +114,27 @@ func (s *Service) mustRollPool(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	return s.mustRollThisWay(ctx, tx, m, in)
 }
 
+// hpCast is what one hit point spell works on: its effect, the targets with the hit
+// points they have now, the hit each one gets in the cast event, and the caster's roll.
+type hpCast struct {
+	fx      *link.HPEffect
+	targets []fxTarget
+	hits    []castHit
+	in      rollInput
+	made    *actionEvent
+}
+
+// hpKinds maps each kind of hit point effect to the function that applies it. The
+// functions return the vitals of the player's characters they changed, to publish.
+var hpKinds = map[string]func(*Service, context.Context, *combatTx, *hpCast) ([]*playv1.CharacterVitals, error){
+	rules.SpellKindHPPool:      (*Service).hpPool,
+	rules.SpellKindHPThreshold: (*Service).hpThreshold,
+	rules.SpellKindZeroHP:      (*Service).hpZero,
+	rules.SpellKindTempHP:      (*Service).hpTemp,
+	rules.SpellKindMaxHP:       (*Service).hpMax,
+	rules.SpellKindFlatHeal:    (*Service).hpFlatHeal,
+}
+
 // castHPSpell applies a spell that reads hit points to its targets, in the order
 // the caster listed them, and fills the cast event with the kind, the pool roll
 // and what it did to each. It returns the vitals of the player's characters it
@@ -121,7 +142,24 @@ func (s *Service) mustRollPool(ctx context.Context, tx pgx.Tx, m authz.Membershi
 func (s *Service) castHPSpell(ctx context.Context, c *combatTx, sp link.Spell, targs []playdb.Combatant, in rollInput, made *actionEvent) ([]castHit, []*playv1.CharacterVitals, error) {
 	fx := sp.HP
 	made.FxKind, made.FxCondition = fx.Kind, fx.Condition
-	var vitals []*playv1.CharacterVitals
+	targets, hits, err := s.readFxTargets(ctx, c, targs)
+	if err != nil {
+		return nil, nil, err
+	}
+	apply, ok := hpKinds[fx.Kind]
+	if !ok {
+		return nil, nil, fmt.Errorf("spell %s: unknown hit point effect %q", sp.Key, fx.Kind)
+	}
+	vitals, err := apply(s, ctx, c, &hpCast{fx: fx, targets: targets, hits: hits, in: in, made: made})
+	if err != nil {
+		return nil, nil, err
+	}
+	return hits, vitals, nil
+}
+
+// readFxTargets reads the hit points of every target and starts a hit for each: unaffected
+// until the effect says otherwise.
+func (s *Service) readFxTargets(ctx context.Context, c *combatTx, targs []playdb.Combatant) ([]fxTarget, []castHit, error) {
 	targets := make([]fxTarget, len(targs))
 	hits := make([]castHit, len(targs))
 	for i, t := range targs {
@@ -131,131 +169,154 @@ func (s *Service) castHPSpell(ctx context.Context, c *combatTx, sp link.Spell, t
 		}
 		hits[i] = castHit{Target: t.ID, HPBefore: clamp32(targets[i].hp, 0, math.MaxInt32), Fx: fxUnaffected}
 	}
+	return targets, hits, nil
+}
 
-	switch fx.Kind {
-	case rules.SpellKindHPPool:
-		roll, err := s.poolRoll(fx.Pool, in)
-		if err != nil {
-			return nil, nil, err
-		}
-		made.DiceCount, made.DiceSides, made.Faces = clamp32(fx.Pool.Count, 0, 100), clamp32(fx.Pool.Sides, 0, 100), faces32(roll.Faces)
-		made.Total, made.Physical = clamp32(roll.Total, 0, math.MaxInt32), roll.Physical
-		creatures := make([]combat.HPCreature, len(targets))
-		for i, t := range targets {
-			creatures[i] = combat.HPCreature{HP: t.hp, Unconscious: slices.Contains(t.c.Conditions, unconscious)}
-		}
-		for place, step := range combat.ResolvePool(roll.Total, creatures) {
-			h := &hits[step.Index]
-			h.Order, h.Left = clamp32(place+1, 0, 100), clamp32(step.Left, 0, math.MaxInt32)
-			if !step.Affected {
-				h.FxReason = step.Reason
-				continue
-			}
-			h.Fx = fxAffected
-			if err := s.giveCondition(ctx, c, targets[step.Index].c, fx.Condition, h); err != nil {
-				return nil, nil, err
-			}
-		}
-
-	case rules.SpellKindHPThreshold:
-		made.FxLimit = clamp32(fx.Threshold, 0, math.MaxInt32)
-		for i, t := range targets {
-			h := &hits[i]
-			if !combat.ResolveThreshold(fx.Threshold, t.hp) {
-				h.FxReason = fxAboveLimit
-				continue
-			}
-			h.Fx = fxAffected
-			var err error
-			if fx.Dies {
-				var v *playv1.CharacterVitals
-				if v, err = s.dropToZero(ctx, c, t, h); v != nil {
-					vitals = append(vitals, v)
-				}
-			} else {
-				err = s.giveCondition(ctx, c, t.c, fx.Condition, h)
-			}
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-
-	case rules.SpellKindZeroHP:
-		for i, t := range targets {
-			h := &hits[i]
-			if !combat.ResolveZeroHP(t.hp) {
-				h.FxReason = fxNotAtZero
-				continue
-			}
-			h.Fx = fxAffected
-			if t.c.Kind == kindPlayer { // an NPC at 0 is defeated and never a target
-				h.DeathBefore = deathOf(t.c)
-				if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{
-					ID: t.c.ID, DeathSuccesses: 3, DeathFailures: 0, DeathSaveRolled: t.c.DeathSaveRolled, Defeated: t.c.Defeated,
-				}); err != nil {
-					return nil, nil, fmt.Errorf("make the character stable: %w", err)
-				}
-			}
-		}
-
-	case rules.SpellKindTempHP:
-		roll, err := s.poolRoll(fx.Pool, in)
-		if err != nil {
-			return nil, nil, err
-		}
-		gained := roll.Total + fx.Amount
-		made.DiceCount, made.DiceSides, made.Faces, made.Modifier = clamp32(fx.Pool.Count, 0, 100), clamp32(fx.Pool.Sides, 0, 100), faces32(roll.Faces), clamp32(fx.Amount, 0, math.MaxInt32)
-		made.Total, made.Physical = clamp32(gained, 0, math.MaxInt32), roll.Physical
-		for i, t := range targets {
-			h := &hits[i]
-			h.Fx = fxAffected
-			v, err := s.giveTempHP(ctx, c, t, gained, h)
-			if err != nil {
-				return nil, nil, err
-			}
-			if v != nil {
-				vitals = append(vitals, v)
-			}
-		}
-
-	case rules.SpellKindMaxHP:
-		for i, t := range targets {
-			h := &hits[i]
-			h.Fx = fxAffected
-			v, err := s.raiseMaxHP(ctx, c, t, fx.Amount, h)
-			if err != nil {
-				return nil, nil, err
-			}
-			if v != nil {
-				vitals = append(vitals, v)
-			}
-		}
-
-	case rules.SpellKindFlatHeal:
-		for i, t := range targets {
-			h := &hits[i]
-			h.Fx = fxAffected
-			r := combat.ResolveFlatHeal(fx.Heal, t.hp, t.max, t.c.Conditions, fx.Ends)
-			hit, v, err := s.healCombatant(ctx, c, t.c, clamp32(fx.Heal, 0, math.MaxInt32))
-			if err != nil {
-				return nil, nil, err
-			}
-			healed := hit.Amount
-			h.Healed, h.Restore, h.DeathBefore = &healed, hit.Before, hit.DeathBefore
-			if v != nil {
-				vitals = append(vitals, v)
-			}
-			if len(r.Ended) > 0 {
-				if err := s.setCondition(ctx, c, t.c, r.Conditions, h); err != nil {
-					return nil, nil, err
-				}
-			}
-		}
-
-	default:
-		return nil, nil, fmt.Errorf("spell %s: unknown hit point effect %q", sp.Key, fx.Kind)
+// hpPool is Sono and Leque Cromático: a pool of dice affects the creatures in ascending
+// order of hit points, as many as it covers (RN-18).
+func (s *Service) hpPool(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1.CharacterVitals, error) {
+	fx, made := k.fx, k.made
+	roll, err := s.poolRoll(fx.Pool, k.in)
+	if err != nil {
+		return nil, err
 	}
-	return hits, vitals, nil
+	made.DiceCount, made.DiceSides, made.Faces = clamp32(fx.Pool.Count, 0, 100), clamp32(fx.Pool.Sides, 0, 100), faces32(roll.Faces)
+	made.Total, made.Physical = clamp32(roll.Total, 0, math.MaxInt32), roll.Physical
+	creatures := make([]combat.HPCreature, len(k.targets))
+	for i, t := range k.targets {
+		creatures[i] = combat.HPCreature{HP: t.hp, Unconscious: slices.Contains(t.c.Conditions, unconscious)}
+	}
+	for place, step := range combat.ResolvePool(roll.Total, creatures) {
+		h := &k.hits[step.Index]
+		h.Order, h.Left = clamp32(place+1, 0, 100), clamp32(step.Left, 0, math.MaxInt32)
+		if !step.Affected {
+			h.FxReason = step.Reason
+			continue
+		}
+		h.Fx = fxAffected
+		if err := s.giveCondition(ctx, c, k.targets[step.Index].c, fx.Condition, h); err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
+// hpThreshold is Palavra de Poder Atordoar and Matar: a creature with no more hit points than
+// the limit is stunned or dies.
+func (s *Service) hpThreshold(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1.CharacterVitals, error) {
+	fx := k.fx
+	k.made.FxLimit = clamp32(fx.Threshold, 0, math.MaxInt32)
+	var vitals []*playv1.CharacterVitals
+	for i, t := range k.targets {
+		h := &k.hits[i]
+		if !combat.ResolveThreshold(fx.Threshold, t.hp) {
+			h.FxReason = fxAboveLimit
+			continue
+		}
+		h.Fx = fxAffected
+		var err error
+		if fx.Dies {
+			var v *playv1.CharacterVitals
+			if v, err = s.dropToZero(ctx, c, t, h); v != nil {
+				vitals = append(vitals, v)
+			}
+		} else {
+			err = s.giveCondition(ctx, c, t.c, fx.Condition, h)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return vitals, nil
+}
+
+// hpZero is Poupar os Moribundos: a character at 0 hit points becomes stable.
+func (s *Service) hpZero(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1.CharacterVitals, error) {
+	for i, t := range k.targets {
+		h := &k.hits[i]
+		if !combat.ResolveZeroHP(t.hp) {
+			h.FxReason = fxNotAtZero
+			continue
+		}
+		h.Fx = fxAffected
+		if t.c.Kind == kindPlayer { // an NPC at 0 is defeated and never a target
+			h.DeathBefore = deathOf(t.c)
+			if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{
+				ID: t.c.ID, DeathSuccesses: deathSaveCount, DeathFailures: 0, DeathSaveRolled: t.c.DeathSaveRolled, Defeated: t.c.Defeated,
+			}); err != nil {
+				return nil, fmt.Errorf("make the character stable: %w", err)
+			}
+		}
+	}
+	return nil, nil
+}
+
+// hpTemp is Vitalidade Falsa: the roll plus the fixed amount, as temporary hit points.
+func (s *Service) hpTemp(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1.CharacterVitals, error) {
+	fx, made := k.fx, k.made
+	roll, err := s.poolRoll(fx.Pool, k.in)
+	if err != nil {
+		return nil, err
+	}
+	gained := roll.Total + fx.Amount
+	made.DiceCount, made.DiceSides, made.Faces, made.Modifier = clamp32(fx.Pool.Count, 0, 100), clamp32(fx.Pool.Sides, 0, 100), faces32(roll.Faces), clamp32(fx.Amount, 0, math.MaxInt32)
+	made.Total, made.Physical = clamp32(gained, 0, math.MaxInt32), roll.Physical
+	var vitals []*playv1.CharacterVitals
+	for i, t := range k.targets {
+		h := &k.hits[i]
+		h.Fx = fxAffected
+		v, err := s.giveTempHP(ctx, c, t, gained, h)
+		if err != nil {
+			return nil, err
+		}
+		if v != nil {
+			vitals = append(vitals, v)
+		}
+	}
+	return vitals, nil
+}
+
+// hpMax is Ajuda: it raises the maximum and the current hit points of each target.
+func (s *Service) hpMax(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1.CharacterVitals, error) {
+	var vitals []*playv1.CharacterVitals
+	for i, t := range k.targets {
+		h := &k.hits[i]
+		h.Fx = fxAffected
+		v, err := s.raiseMaxHP(ctx, c, t, k.fx.Amount, h)
+		if err != nil {
+			return nil, err
+		}
+		if v != nil {
+			vitals = append(vitals, v)
+		}
+	}
+	return vitals, nil
+}
+
+// hpFlatHeal is Cura Completa: a fixed healing that also ends the conditions the spell names.
+func (s *Service) hpFlatHeal(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1.CharacterVitals, error) {
+	fx := k.fx
+	var vitals []*playv1.CharacterVitals
+	for i, t := range k.targets {
+		h := &k.hits[i]
+		h.Fx = fxAffected
+		r := combat.ResolveFlatHeal(fx.Heal, t.hp, t.max, t.c.Conditions, fx.Ends)
+		hit, v, err := s.healCombatant(ctx, c, t.c, clamp32(fx.Heal, 0, math.MaxInt32))
+		if err != nil {
+			return nil, err
+		}
+		healed := hit.Amount
+		h.Healed, h.Restore, h.DeathBefore = &healed, hit.Before, hit.DeathBefore
+		if v != nil {
+			vitals = append(vitals, v)
+		}
+		if len(r.Ended) > 0 {
+			if err := s.setCondition(ctx, c, t.c, r.Conditions, h); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return vitals, nil
 }
 
 // Why a target was not affected, as a cast event stores it: a pool's reasons are
@@ -369,26 +430,36 @@ func (s *Service) giveTempHP(ctx context.Context, c *combatTx, t fxTarget, amoun
 func (s *Service) raiseMaxHP(ctx context.Context, c *combatTx, t fxTarget, amount int, h *castHit) (*playv1.CharacterVitals, error) {
 	bonus := clamp32(amount, 0, math.MaxInt32)
 	if holdsHP(t.c) {
-		bonusBefore := t.c.HpMaxBonus
-		stronger := max(bonus, bonusBefore)
-		rose := stronger - bonusBefore
-		before, maxBefore := hpOf(t.c), num(t.c.HpMax)
-		h.Healed, h.Gain, h.Restore, h.MaxBefore, h.BonusBefore = &rose, gainMaximum, &before, &maxBefore, &bonusBefore
-		now := before
-		if rose > 0 {
-			if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: t.c.ID, HpMax: new(maxBefore + rose), HpMaxBonus: stronger}); err != nil {
-				return nil, fmt.Errorf("raise the maximum hit points: %w", err)
-			}
-			if before.HP > 0 {
-				now.HP = before.HP + rose
-				if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: t.c.ID, HpCurrent: &now.HP, HpTemp: &before.Temp, Defeated: before.Defeated}); err != nil {
-					return nil, fmt.Errorf("raise the current hit points: %w", err)
-				}
+		return nil, s.raiseCombatantMaxHP(ctx, c, t, bonus, h)
+	}
+	return s.raiseCharacterMaxHP(ctx, c, t, bonus, h)
+}
+
+// raiseCombatantMaxHP is raiseMaxHP for an NPC or a creature, whose hit points are on the combatant.
+func (s *Service) raiseCombatantMaxHP(ctx context.Context, c *combatTx, t fxTarget, bonus int32, h *castHit) error {
+	bonusBefore := t.c.HpMaxBonus
+	stronger := max(bonus, bonusBefore)
+	rose := stronger - bonusBefore
+	before, maxBefore := hpOf(t.c), num(t.c.HpMax)
+	h.Healed, h.Gain, h.Restore, h.MaxBefore, h.BonusBefore = &rose, gainMaximum, &before, &maxBefore, &bonusBefore
+	now := before
+	if rose > 0 {
+		if err := c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: t.c.ID, HpMax: new(maxBefore + rose), HpMaxBonus: stronger}); err != nil {
+			return fmt.Errorf("raise the maximum hit points: %w", err)
+		}
+		if before.HP > 0 {
+			now.HP = before.HP + rose
+			if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: t.c.ID, HpCurrent: &now.HP, HpTemp: &before.Temp, Defeated: before.Defeated}); err != nil {
+				return fmt.Errorf("raise the current hit points: %w", err)
 			}
 		}
-		h.HPAfter, h.MaxAfter = &now.HP, new(maxBefore+rose)
-		return nil, nil
 	}
+	h.HPAfter, h.MaxAfter = &now.HP, new(maxBefore+rose)
+	return nil
+}
+
+// raiseCharacterMaxHP is raiseMaxHP for a player's character, whose bonus is kept on its vitals.
+func (s *Service) raiseCharacterMaxHP(ctx context.Context, c *combatTx, t fxTarget, bonus int32, h *castHit) (*playv1.CharacterVitals, error) {
 	b, a, err := s.vitals.SetHitPointsMaxBonus(ctx, c.tx, c.session.CampaignID, t.c.CharacterID, max(bonus, clamp32(t.bonus, 0, math.MaxInt32)))
 	if err != nil {
 		return nil, err

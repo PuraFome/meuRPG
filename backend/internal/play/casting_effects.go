@@ -40,74 +40,23 @@ type castRolled struct {
 // concentration, applies the spell's effect and closes the row (it lasts, or it is
 // over). The row exists already, in the casting state.
 func (s *Service) takeEffect(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan) (castOutcome, error) {
-	g, osp := plan.g, plan.osp
-	out := castOutcome{guard: g}
-
-	// The slot goes now, not at the start of a long casting (SRD 5.1, "Longer Casting
-	// Times": a casting that fails spends none). An NPC keeps no slots.
-	if plan.slot != nil && g.caster.Player {
-		v, err := s.spendSlot(ctx, c, g.caster.ID, *plan.slot, 1)
-		if err != nil {
-			return out, err
-		}
-		out.vitals = append(out.vitals, v)
+	out := castOutcome{guard: plan.g}
+	if err := s.spendCastSlot(ctx, c, plan, &out); err != nil {
+		return out, err
 	}
-
-	// A concentration spell ends the caster's other (SRD 5.1, "Duration": a creature
-	// can't concentrate on two spells at once).
-	if osp.Spell.Concentration {
-		ended, dismissed, vitals, err := s.endOtherConcentration(ctx, c, g.caster, plan.row.ID)
-		if err != nil {
-			return out, err
-		}
-		out.ended, out.dismissed = append(out.ended, ended...), append(out.dismissed, dismissed...)
-		out.vitals = append(out.vitals, vitals...)
+	if err := s.endCastConcentration(ctx, c, plan, &out); err != nil {
+		return out, err
 	}
-
-	var rolled castRolled
-	var err error
-	switch osp.Effect {
-	case link.EffectHeal:
-		rolled, out.targets, err = s.healTargets(ctx, c, plan, &out)
-	case link.EffectTempHP:
-		rolled, out.targets, err = s.tempHPTargets(ctx, c, plan, &out)
-	case link.EffectArmorClass:
-		out.targets, err = s.armorTargets(ctx, c, m, plan)
-	case link.EffectSummon:
-		out.targets = narratedTargets(plan)
-		if !osp.NPC {
-			err = s.summonFor(ctx, c, m, plan, &out)
-		}
-	default:
-		out.targets = narratedTargets(plan)
-	}
+	rolled, err := s.applyCastEffect(ctx, c, m, plan, &out)
 	if err != nil {
 		return out, err
 	}
-
 	// It lasts, or it is over (SRD 5.1, "Duration").
-	lasts := osp.Lasts || osp.Spell.Concentration
-	now := c.now
-	status, reason, endedAt := castActive, (*string)(nil), (*time.Time)(nil)
-	if !lasts {
-		status, reason, endedAt = castEnded, ptr(endInstant), &now
+	lasts := plan.osp.Lasts || plan.osp.Spell.Concentration
+	if err := s.finishCastRow(ctx, c, plan, rolled, lasts, &out); err != nil {
+		return out, err
 	}
-	targets, err := json.Marshal(nonNilTargets(out.targets))
-	if err != nil {
-		return out, fmt.Errorf("encode the cast's targets: %w", err)
-	}
-	row, err := c.q.FinishSpellCast(ctx, playdb.FinishSpellCastParams{
-		ID: plan.row.ID, Status: status, EndReason: reason, EndedAt: endedAt,
-		Concentrating: lasts && osp.Spell.Concentration, Targets: targets,
-		DiceCount: rolled.count, DiceSides: rolled.sides, RollFaces: nonNilFaces(rolled.faces), RollTotal: rolled.total,
-		Physical: rolled.physical, CreatureIds: nonNil(out.created), CastAt: &now,
-		SlotLevel: castSlotLevel(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact,
-	})
-	if err != nil {
-		return out, fmt.Errorf("finish the cast: %w", err)
-	}
-	out.row = row
-	plan.row = row
+	plan.row = out.row
 	if lasts {
 		if err := s.castCharacterEffects(ctx, c, plan); err != nil {
 			return out, err
@@ -115,6 +64,82 @@ func (s *Service) takeEffect(ctx context.Context, c *combatTx, m authz.Membershi
 	}
 	out.ev = out.event()
 	return out, nil
+}
+
+// spendCastSlot spends the slot now, not at the start of a long casting (SRD 5.1, "Longer
+// Casting Times": a casting that fails spends none). An NPC keeps no slots.
+func (s *Service) spendCastSlot(ctx context.Context, c *combatTx, plan castPlan, out *castOutcome) error {
+	if plan.slot == nil || !plan.g.caster.Player {
+		return nil
+	}
+	v, err := s.spendSlot(ctx, c, plan.g.caster.ID, *plan.slot, 1)
+	if err != nil {
+		return err
+	}
+	out.vitals = append(out.vitals, v)
+	return nil
+}
+
+// endCastConcentration ends the caster's other concentration when the spell asks for its own
+// (SRD 5.1, "Duration": a creature can't concentrate on two spells at once).
+func (s *Service) endCastConcentration(ctx context.Context, c *combatTx, plan castPlan, out *castOutcome) error {
+	if !plan.osp.Spell.Concentration {
+		return nil
+	}
+	ended, dismissed, vitals, err := s.endOtherConcentration(ctx, c, plan.g.caster, plan.row.ID)
+	if err != nil {
+		return err
+	}
+	out.ended, out.dismissed = append(out.ended, ended...), append(out.dismissed, dismissed...)
+	out.vitals = append(out.vitals, vitals...)
+	return nil
+}
+
+// applyCastEffect applies what the spell does to its targets and returns the dice it rolled.
+func (s *Service) applyCastEffect(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan, out *castOutcome) (castRolled, error) {
+	var rolled castRolled
+	var err error
+	switch plan.osp.Effect {
+	case link.EffectHeal:
+		rolled, out.targets, err = s.healTargets(ctx, c, plan, out)
+	case link.EffectTempHP:
+		rolled, out.targets, err = s.tempHPTargets(ctx, c, plan, out)
+	case link.EffectArmorClass:
+		out.targets, err = s.armorTargets(ctx, c, m, plan)
+	case link.EffectSummon:
+		out.targets = narratedTargets(plan)
+		if !plan.osp.NPC {
+			err = s.summonFor(ctx, c, m, plan, out)
+		}
+	default:
+		out.targets = narratedTargets(plan)
+	}
+	return rolled, err
+}
+
+// finishCastRow closes the cast's row: it stays active when it lasts, and is over at once when not.
+func (s *Service) finishCastRow(ctx context.Context, c *combatTx, plan castPlan, rolled castRolled, lasts bool, out *castOutcome) error {
+	now := c.now
+	status, reason, endedAt := castActive, (*string)(nil), (*time.Time)(nil)
+	if !lasts {
+		status, reason, endedAt = castEnded, ptr(endInstant), &now
+	}
+	targets, err := json.Marshal(nonNilTargets(out.targets))
+	if err != nil {
+		return fmt.Errorf("encode the cast's targets: %w", err)
+	}
+	row, err := c.q.FinishSpellCast(ctx, playdb.FinishSpellCastParams{
+		ID: plan.row.ID, Status: status, EndReason: reason, EndedAt: endedAt,
+		Concentrating: lasts && plan.osp.Spell.Concentration, Targets: targets,
+		DiceCount: rolled.count, DiceSides: rolled.sides, RollFaces: nonNilFaces(rolled.faces), RollTotal: rolled.total,
+		Physical: rolled.physical, CreatureIds: nonNil(out.created), CastAt: &now,
+		SlotLevel: castSlotLevel(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact,
+	})
+	if err != nil {
+		return fmt.Errorf("finish the cast: %w", err)
+	}
+	out.row = row
+	return nil
 }
 
 func ptr[T any](v T) *T { return &v }
@@ -164,32 +189,10 @@ func levelOf(plan castPlan) int {
 func (s *Service) healTargets(ctx context.Context, c *combatTx, plan castPlan, out *castOutcome) (castRolled, []castTarget, error) {
 	osp := plan.osp
 	h := combat.HealFeatures{Disciple: osp.Healing.Disciple, Blessed: osp.Healing.Blessed, Supreme: osp.Healing.Supreme}
-	var rolled castRolled
-	amount := 0
-	switch {
-	case osp.Spell.HP != nil && osp.Spell.HP.Kind == rules.SpellKindFlatHeal:
-		amount = osp.Spell.HP.Heal // Heal restores a fixed number
-	case osp.Spell.Heal != nil:
-		d := osp.Spell.Heal
-		sum := 0
-		if d.Count > 0 && !h.Supreme {
-			r, err := s.poolRoll(link.Dice{Count: d.Count, Sides: d.Sides}, plan.in)
-			if err != nil {
-				return rolled, nil, err
-			}
-			sum, rolled.faces, rolled.physical = r.Total, faces32(r.Faces), r.Physical
-		}
-		if d.Count > 0 && h.Supreme {
-			rolled.faces = make([]int32, d.Count)
-			for i := range rolled.faces {
-				rolled.faces[i] = clamp32(d.Sides, 0, math.MaxInt32)
-			}
-		}
-		amount = h.HealTotal(d.Count, d.Sides, d.Bonus, sum)
-		rolled.count, rolled.sides = clamp32(d.Count, 0, 100), clamp32(d.Sides, 0, 100)
+	rolled, amount, err := s.rollHealing(plan, h)
+	if err != nil {
+		return rolled, nil, err
 	}
-	amount = max(amount, 0)
-	rolled.total = clamp32(amount, 0, math.MaxInt32)
 	level := levelOf(plan)
 	extra := h.TargetExtra(level)
 
@@ -200,52 +203,106 @@ func (s *Service) healTargets(ctx context.Context, c *combatTx, plan castPlan, o
 			targets = append(targets, castTarget{ID: t.ID, Effect: castNarrated})
 			continue
 		}
-		hit, v, err := s.healCombatant(ctx, c, stub(t), clamp32(amount+extra, 0, math.MaxInt32))
+		ct, err := s.healCastTarget(ctx, c, t, amount, extra, out)
 		if err != nil {
 			return rolled, nil, err
 		}
-		out.vitals = append(out.vitals, v)
-		ct := castTarget{ID: t.ID, Effect: castHeal, Amount: hit.Amount, Extra: clamp32(extra, 0, math.MaxInt32)}
-		if hit.Before != nil && hit.After != nil {
-			ct.Before, ct.After = hit.Before.HP, hit.After.HP
-		}
 		targets = append(targets, ct)
-		healedOther = healedOther || (t.ID != plan.g.caster.ID && hit.Amount > 0)
+		healedOther = healedOther || (t.ID != plan.g.caster.ID && ct.Amount > 0)
 	}
 	if len(plan.g.targets) == 0 && selfOnly(osp.Spell) && plan.g.caster.Player {
-		hit, v, err := s.healCombatant(ctx, c, stub(plan.g.caster), clamp32(amount+extra, 0, math.MaxInt32))
+		ct, err := s.healCastTarget(ctx, c, plan.g.caster, amount, extra, out)
 		if err != nil {
 			return rolled, nil, err
-		}
-		out.vitals = append(out.vitals, v)
-		ct := castTarget{ID: plan.g.caster.ID, Effect: castHeal, Amount: hit.Amount, Extra: clamp32(extra, 0, math.MaxInt32)}
-		if hit.Before != nil && hit.After != nil {
-			ct.Before, ct.After = hit.Before.HP, hit.After.HP
 		}
 		targets = append(targets, ct)
 	}
-	// Blessed Healer: once for the casting, when a creature other than the caster regained
-	// hit points.
-	if self := h.SelfExtra(level, healedOther); self > 0 && plan.g.caster.Player {
-		hit, v, err := s.healCombatant(ctx, c, stub(plan.g.caster), clamp32(self, 0, math.MaxInt32))
-		if err != nil {
-			return rolled, nil, err
-		}
-		out.vitals = append(out.vitals, v)
-		if i := indexOfTarget(targets, plan.g.caster.ID); i >= 0 {
-			targets[i].Amount += hit.Amount
-			if hit.After != nil {
-				targets[i].After = hit.After.HP
-			}
-		} else {
-			ct := castTarget{ID: plan.g.caster.ID, Effect: castHeal, Amount: hit.Amount, Blessed: true}
-			if hit.Before != nil && hit.After != nil {
-				ct.Before, ct.After = hit.Before.HP, hit.After.HP
-			}
-			targets = append(targets, ct)
+	targets, err = s.blessedHealer(ctx, c, plan, h.SelfExtra(level, healedOther), targets, out)
+	return rolled, targets, err
+}
+
+// rollHealing works out the healing of the cast: a fixed number, or the spell's dice rolled once (or
+// at their highest number with Supreme Healing), and notes the dice for the cast's row.
+func (s *Service) rollHealing(plan castPlan, h combat.HealFeatures) (castRolled, int, error) {
+	osp := plan.osp
+	var rolled castRolled
+	amount := 0
+	switch {
+	case osp.Spell.HP != nil && osp.Spell.HP.Kind == rules.SpellKindFlatHeal:
+		amount = osp.Spell.HP.Heal // Heal restores a fixed number
+	case osp.Spell.Heal != nil:
+		var err error
+		if amount, err = s.rollHealDice(plan, h, &rolled); err != nil {
+			return rolled, 0, err
 		}
 	}
-	return rolled, targets, nil
+	amount = max(amount, 0)
+	rolled.total = clamp32(amount, 0, math.MaxInt32)
+	return rolled, amount, nil
+}
+
+// rollHealDice rolls the dice of a healing spell (or takes their highest number) and returns the
+// healing they give with the Life Domain's features.
+func (s *Service) rollHealDice(plan castPlan, h combat.HealFeatures, rolled *castRolled) (int, error) {
+	d := plan.osp.Spell.Heal
+	sum := 0
+	if d.Count > 0 && !h.Supreme {
+		r, err := s.poolRoll(link.Dice{Count: d.Count, Sides: d.Sides}, plan.in)
+		if err != nil {
+			return 0, err
+		}
+		sum, rolled.faces, rolled.physical = r.Total, faces32(r.Faces), r.Physical
+	}
+	if d.Count > 0 && h.Supreme {
+		rolled.faces = make([]int32, d.Count)
+		for i := range rolled.faces {
+			rolled.faces[i] = clamp32(d.Sides, 0, math.MaxInt32)
+		}
+	}
+	amount := h.HealTotal(d.Count, d.Sides, d.Bonus, sum)
+	rolled.count, rolled.sides = clamp32(d.Count, 0, 100), clamp32(d.Sides, 0, 100)
+	return amount, nil
+}
+
+// healCastTarget heals one player character by the cast's healing plus Disciple of Life's extra
+// and returns what the cast did to it.
+func (s *Service) healCastTarget(ctx context.Context, c *combatTx, t link.Character, amount, extra int, out *castOutcome) (castTarget, error) {
+	hit, v, err := s.healCombatant(ctx, c, stub(t), clamp32(amount+extra, 0, math.MaxInt32))
+	if err != nil {
+		return castTarget{}, err
+	}
+	out.vitals = append(out.vitals, v)
+	ct := castTarget{ID: t.ID, Effect: castHeal, Amount: hit.Amount, Extra: clamp32(extra, 0, math.MaxInt32)}
+	if hit.Before != nil && hit.After != nil {
+		ct.Before, ct.After = hit.Before.HP, hit.After.HP
+	}
+	return ct, nil
+}
+
+// blessedHealer heals the caster once for the casting, when a creature other than the caster
+// regained hit points (self is zero otherwise). It adds to the caster's own line when the caster is a
+// target too.
+func (s *Service) blessedHealer(ctx context.Context, c *combatTx, plan castPlan, self int, targets []castTarget, out *castOutcome) ([]castTarget, error) {
+	if self <= 0 || !plan.g.caster.Player {
+		return targets, nil
+	}
+	hit, v, err := s.healCombatant(ctx, c, stub(plan.g.caster), clamp32(self, 0, math.MaxInt32))
+	if err != nil {
+		return nil, err
+	}
+	out.vitals = append(out.vitals, v)
+	if i := indexOfTarget(targets, plan.g.caster.ID); i >= 0 {
+		targets[i].Amount += hit.Amount
+		if hit.After != nil {
+			targets[i].After = hit.After.HP
+		}
+		return targets, nil
+	}
+	ct := castTarget{ID: plan.g.caster.ID, Effect: castHeal, Amount: hit.Amount, Blessed: true}
+	if hit.Before != nil && hit.After != nil {
+		ct.Before, ct.After = hit.Before.HP, hit.After.HP
+	}
+	return append(targets, ct), nil
 }
 
 func indexOfTarget(targets []castTarget, id string) int {

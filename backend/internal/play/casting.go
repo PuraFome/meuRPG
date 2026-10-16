@@ -203,22 +203,11 @@ func (s *Service) inCombat(ctx context.Context, q *playdb.Queries, sessionID, ch
 // A character the caller may not pick is not found, as one that does not exist.
 func (s *Service) guardCast(ctx context.Context, c *combatTx, m authz.Membership, casterID string, targetIDs []string) (castGuard, error) {
 	g := castGuard{}
-	master := m.Role == authz.RoleMaster
 	sm, err := stageMapOf(ctx, c.q, c.session.ID)
 	if err != nil {
 		return g, err
 	}
-	// A player names an NPC by its place on the stage; the character ID of an NPC is the
-	// master's (RN-20), and a player who sends it gets what a made-up one gets.
-	viaStage := map[string]bool{}
-	if !master {
-		targetIDs = slices.Clone(targetIDs)
-		for i, id := range targetIDs {
-			if ch, ok := sm.byEntry[id]; ok {
-				targetIDs[i], viaStage[ch] = ch, true
-			}
-		}
-	}
+	targetIDs, viaStage := namedOnStage(sm, m.Role == authz.RoleMaster, targetIDs)
 	ids := append([]string{casterID}, targetIDs...)
 	chars, err := s.roster.CombatCharacters(ctx, c.tx, m.CampaignID, ids)
 	if err != nil {
@@ -233,27 +222,62 @@ func (s *Service) guardCast(ctx context.Context, c *combatTx, m authz.Membership
 		g.stage[id] = true
 	}
 	caster, ok := byID[casterID]
-	switch {
-	case !ok || caster.CombatOnly:
+	if !ok || caster.CombatOnly {
 		return g, errCharacterNotFound()
-	case caster.Player && !master && caster.PlayerUserID != m.UserID:
-		return g, connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may cast for it"))
-	case !caster.Player && !master:
-		return g, errCharacterNotFound() // an NPC is not a player's to cast for (RN-10)
+	}
+	if err := mayCastFor(caster, m); err != nil {
+		return g, err
 	}
 	g.caster = caster
 	g.secret = !caster.Player && !g.stage[caster.ID]
+	err = g.pickTargets(byID, targetIDs, viaStage, m.Role == authz.RoleMaster)
+	return g, err
+}
+
+// namedOnStage turns what a player named an NPC by, its place on the stage, into the NPC's character
+// ID (the character ID of an NPC is the master's, RN-20, and a player who sends it gets what a made-up
+// one gets). It returns the IDs and which of them came through the stage. The master names characters.
+func namedOnStage(sm stageMap, master bool, targetIDs []string) ([]string, map[string]bool) {
+	viaStage := map[string]bool{}
+	if master {
+		return targetIDs, viaStage
+	}
+	targetIDs = slices.Clone(targetIDs)
+	for i, id := range targetIDs {
+		if ch, ok := sm.byEntry[id]; ok {
+			targetIDs[i], viaStage[ch] = ch, true
+		}
+	}
+	return targetIDs, viaStage
+}
+
+// mayCastFor checks the caller may cast for the character: its player or the master for a player's
+// character, the master alone for an NPC (RN-10; a player's NPC is not found).
+func mayCastFor(caster link.Character, m authz.Membership) error {
+	master := m.Role == authz.RoleMaster
+	switch {
+	case caster.Player && !master && caster.PlayerUserID != m.UserID:
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may cast for it"))
+	case !caster.Player && !master:
+		return errCharacterNotFound() // an NPC is not a player's to cast for (RN-10)
+	}
+	return nil
+}
+
+// pickTargets adds the characters the cast is aimed at to the guard, and says the cast is secret when
+// the master aims at an NPC the players do not see.
+func (g *castGuard) pickTargets(byID map[string]link.Character, targetIDs []string, viaStage map[string]bool, master bool) error {
 	for _, id := range targetIDs {
 		t, ok := byID[id]
 		if !ok || t.CombatOnly || (!t.Player && !master && !viaStage[t.ID]) {
-			return g, errCharacterNotFound()
+			return errCharacterNotFound()
 		}
 		if !t.Player && !g.stage[t.ID] {
 			g.secret = true // the master aims at an NPC the players do not see
 		}
 		g.targets = append(g.targets, t)
 	}
-	return g, nil
+	return nil
 }
 
 // CastSpellOutsideCombat implements playv1connect.CastingServiceHandler.
@@ -273,88 +297,16 @@ func (s *Service) CastSpellOutsideCombat(
 	if err != nil {
 		return nil, err
 	}
-	casterID, spellKey, targetIDs, ritual, pick := in.casterID, in.spell, in.targetIDs, in.ritual, req.Msg.GetSummon()
-	roll, rolled := in.roll, in.rolled
 	var made castOutcome
 	res, err := s.write(ctx, combatWrite{
 		m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCastOutside, altKind: eventSpellCastStarted,
 	}, func(c *combatTx) (any, error) {
 		made = castOutcome{}
-		g, err := s.guardCast(ctx, c, m, casterID, targetIDs)
+		out, err := s.castOutside(ctx, c, m, req.Msg, in)
 		if err != nil {
 			return nil, err
 		}
-		if err := s.mayCastNow(ctx, c, g.caster); err != nil {
-			return nil, err
-		}
-		plan, err := s.planCast(ctx, c, m, g, spellKey, ritual, req.Msg.GetSlot())
-		if err != nil {
-			return nil, err
-		}
-		plan.in, plan.rolled, plan.pick = roll, rolled, pick
-		if plan.ability, err = s.abilityChoiceOf(ctx, c, spellKey, req.Msg.GetAbilityKey()); err != nil {
-			return nil, err
-		}
-		long := plan.minutes > 0
-		if long && pick != nil {
-			return nil, badCast("summon goes in FinishCast for a spell that takes time")
-		}
-		if err := s.checkCastTargets(ctx, c, m, plan); err != nil {
-			return nil, err
-		}
-		if err := s.checkReach(ctx, c, plan, m.Role == authz.RoleMaster); err != nil {
-			return nil, err
-		}
-		if !long {
-			if err := s.checkCastInput(ctx, c, m, plan); err != nil {
-				return nil, err
-			}
-		}
-		now := c.now
-		row, err := c.q.InsertSpellCast(ctx, playdb.InsertSpellCastParams{
-			CampaignID: m.CampaignID, GameSessionID: c.session.ID, CasterID: g.caster.ID, SpellKey: spellKey, Ritual: ritual,
-			SlotLevel: castSlotLevel(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact, Status: castCasting, Concentrating: long,
-			CastingMinutes: clamp32(plan.minutes, 0, 1_000_000), Lasts: plan.osp.Lasts,
-			DurationSeconds: durationOf(plan.osp), RestEnds: restOf(plan.osp), Secret: g.secret, StartedAt: now,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("insert the cast: %w", err)
-		}
-		plan.row = row
-		if long {
-			// The targets chosen now are the ones FinishCast takes effect on.
-			chosen := make([]castTarget, 0, len(g.targets))
-			for _, t := range g.targets {
-				chosen = append(chosen, castTarget{ID: t.ID})
-			}
-			body, err := json.Marshal(chosen)
-			if err != nil {
-				return nil, fmt.Errorf("encode the cast's targets: %w", err)
-			}
-			if err := c.q.SetSpellCastTargets(ctx, playdb.SetSpellCastTargetsParams{ID: row.ID, Targets: body}); err != nil {
-				return nil, fmt.Errorf("keep the cast's targets: %w", err)
-			}
-			// Casting takes the caster's concentration from the start: it ends any
-			// concentration spell (SRD 5.1, "Longer Casting Times").
-			ended, dismissed, vitals, err := s.endOtherConcentration(ctx, c, g.caster, row.ID)
-			if err != nil {
-				return nil, err
-			}
-			made = castOutcome{row: row, ended: ended, dismissed: dismissed, vitals: vitals, guard: g}
-			made.ev = castEvent{
-				CastID: row.ID, Caster: g.caster.ID, Key: spellKey, Secret: g.secret, Slot: plan.slot, Ritual: ritual,
-				Minutes: clamp32(plan.minutes, 0, 1_000_000), Ended: ended, Dismissed: dismissed,
-			}
-			c.kind, c.characterID = eventSpellCastStarted, &g.caster.ID
-			return made.ev, nil
-		}
-		out, err := s.takeEffect(ctx, c, m, plan)
-		if err != nil {
-			return nil, err
-		}
-		out.guard = g
 		made = out
-		c.characterID = &g.caster.ID
 		return out.ev, nil
 	})
 	if err != nil {
@@ -365,6 +317,114 @@ func (s *Service) CastSpellOutsideCombat(
 			Cast: cast, Vitals: vitals, CreatureIds: o.Created, DismissedCreatureIds: o.Dismissed, EndedCastIds: o.Ended,
 		}
 	})
+}
+
+// castOutside is the write of CastSpellOutsideCombat, in the transaction: it checks the cast, records
+// it, and either takes effect at once or starts a casting that takes time.
+func (s *Service) castOutside(ctx context.Context, c *combatTx, m authz.Membership, msg *playv1.CastSpellOutsideCombatRequest, in castRequest) (castOutcome, error) {
+	plan, err := s.planOutside(ctx, c, m, msg, in)
+	if err != nil {
+		return castOutcome{}, err
+	}
+	long := plan.minutes > 0
+	if plan.row, err = s.insertCast(ctx, c, m, plan, long); err != nil {
+		return castOutcome{}, err
+	}
+	if long {
+		return s.startLongCast(ctx, c, plan)
+	}
+	out, err := s.takeEffect(ctx, c, m, plan)
+	if err != nil {
+		return castOutcome{}, err
+	}
+	out.guard = plan.g
+	c.characterID = &plan.g.caster.ID
+	return out, nil
+}
+
+// planOutside reads the caster and the targets, plans the cast against the sheet and checks
+// everything the request asks for, before the cast is written.
+func (s *Service) planOutside(ctx context.Context, c *combatTx, m authz.Membership, msg *playv1.CastSpellOutsideCombatRequest, in castRequest) (castPlan, error) {
+	g, err := s.guardCast(ctx, c, m, in.casterID, in.targetIDs)
+	if err != nil {
+		return castPlan{}, err
+	}
+	if err := s.mayCastNow(ctx, c, g.caster); err != nil {
+		return castPlan{}, err
+	}
+	plan, err := s.planCast(ctx, c, m, g, in.spell, in.ritual, msg.GetSlot())
+	if err != nil {
+		return castPlan{}, err
+	}
+	plan.in, plan.rolled, plan.pick = in.roll, in.rolled, msg.GetSummon()
+	if plan.ability, err = s.abilityChoiceOf(ctx, c, in.spell, msg.GetAbilityKey()); err != nil {
+		return castPlan{}, err
+	}
+	return plan, s.checkOutsideCast(ctx, c, m, plan)
+}
+
+// checkOutsideCast checks the targets, the reach and, for a cast that takes effect at once, what
+// the spell needs from the request.
+func (s *Service) checkOutsideCast(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan) error {
+	long := plan.minutes > 0
+	if long && plan.pick != nil {
+		return badCast("summon goes in FinishCast for a spell that takes time")
+	}
+	if err := s.checkCastTargets(ctx, c, m, plan); err != nil {
+		return err
+	}
+	if err := s.checkReach(ctx, c, plan, m.Role == authz.RoleMaster); err != nil {
+		return err
+	}
+	if long {
+		return nil
+	}
+	return s.checkCastInput(ctx, c, m, plan)
+}
+
+// insertCast writes the cast's row, in the casting state.
+func (s *Service) insertCast(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan, long bool) (playdb.SpellCast, error) {
+	row, err := c.q.InsertSpellCast(ctx, playdb.InsertSpellCastParams{
+		CampaignID: m.CampaignID, GameSessionID: c.session.ID, CasterID: plan.g.caster.ID, SpellKey: plan.spell, Ritual: plan.ritual,
+		SlotLevel: castSlotLevel(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact, Status: castCasting, Concentrating: long,
+		CastingMinutes: clamp32(plan.minutes, 0, 1_000_000), Lasts: plan.osp.Lasts,
+		DurationSeconds: durationOf(plan.osp), RestEnds: restOf(plan.osp), Secret: plan.g.secret, StartedAt: c.now,
+	})
+	if err != nil {
+		return playdb.SpellCast{}, fmt.Errorf("insert the cast: %w", err)
+	}
+	return row, nil
+}
+
+// startLongCast starts a casting that takes time: it keeps the chosen targets for FinishCast and
+// takes the caster's concentration from the start.
+func (s *Service) startLongCast(ctx context.Context, c *combatTx, plan castPlan) (castOutcome, error) {
+	g, row := plan.g, plan.row
+	// The targets chosen now are the ones FinishCast takes effect on.
+	chosen := make([]castTarget, 0, len(g.targets))
+	for _, t := range g.targets {
+		chosen = append(chosen, castTarget{ID: t.ID})
+	}
+	body, err := json.Marshal(chosen)
+	if err != nil {
+		return castOutcome{}, fmt.Errorf("encode the cast's targets: %w", err)
+	}
+	if err := c.q.SetSpellCastTargets(ctx, playdb.SetSpellCastTargetsParams{ID: row.ID, Targets: body}); err != nil {
+		return castOutcome{}, fmt.Errorf("keep the cast's targets: %w", err)
+	}
+	// Casting takes the caster's concentration from the start: it ends any
+	// concentration spell (SRD 5.1, "Longer Casting Times").
+	ended, dismissed, vitals, err := s.endOtherConcentration(ctx, c, g.caster, row.ID)
+	if err != nil {
+		return castOutcome{}, err
+	}
+	made := castOutcome{row: row, ended: ended, dismissed: dismissed, vitals: vitals, guard: g}
+	made.ev = castEvent{
+		CastID: row.ID, Caster: g.caster.ID, Key: plan.spell, Secret: g.secret, Slot: plan.slot, Ritual: plan.ritual,
+		Minutes: clamp32(plan.minutes, 0, 1_000_000), Ended: ended, Dismissed: dismissed,
+	}
+	c.kind, c.characterID = eventSpellCastStarted, &g.caster.ID
+	return made, nil
 }
 
 // castSlotLevel is the slot level a cast records: 0 without a slot.
@@ -479,36 +539,52 @@ func (s *Service) planCast(ctx context.Context, c *combatTx, m authz.Membership,
 		return castPlan{}, err
 	}
 	plan := castPlan{g: g, osp: osp, spell: spellKey, ritual: ritual}
-	level := osp.Spell.Level
 	switch {
 	case ritual:
-		// A ritual spends no slot and cannot be cast at a higher level.
-		if !osp.Ritual {
-			return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NOT_A_RITUAL, "this spell does not have the ritual tag")
-		}
-		if !osp.CanRitual {
-			return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL, "the character cannot cast this spell as a ritual")
-		}
-		plan.minutes = osp.RitualMinutes
+		err = plan.planRitual()
 	case !osp.Prepared:
-		return plan, badCast("spell_key is not one of the caster's spells")
-	case level == 0:
-		if in != nil {
-			return plan, badCast("a cantrip is cast with no slot")
-		}
-		plan.minutes = osp.CastMinutes
+		err = badCast("spell_key is not one of the caster's spells")
+	case osp.Spell.Level == 0:
+		err = plan.planCantrip(in)
 	default:
-		if in == nil || in.GetLevel() < int32(level) || in.GetLevel() > 9 { //nolint:gosec // a spell level is 1 to 9
-			return plan, badCast("slot must be a spell slot of at least the spell's level")
-		}
-		i := slices.IndexFunc(osp.Slots, func(sl link.CastSlot) bool { return sl.Level == int(in.GetLevel()) && sl.Pact == in.GetPact() })
-		if i < 0 {
-			return plan, badCast("slot is not one the caster has free")
-		}
-		plan.slot = &slotRef{Level: in.GetLevel(), Pact: in.GetPact()}
-		plan.minutes = osp.CastMinutes
+		err = plan.planSlotted(in)
 	}
-	return plan, nil
+	return plan, err
+}
+
+// planRitual plans a ritual: it spends no slot and cannot be cast at a higher level.
+func (p *castPlan) planRitual() error {
+	if !p.osp.Ritual {
+		return errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NOT_A_RITUAL, "this spell does not have the ritual tag")
+	}
+	if !p.osp.CanRitual {
+		return errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL, "the character cannot cast this spell as a ritual")
+	}
+	p.minutes = p.osp.RitualMinutes
+	return nil
+}
+
+// planCantrip plans a cantrip: it is cast with no slot.
+func (p *castPlan) planCantrip(in *playv1.SpellSlot) error {
+	if in != nil {
+		return badCast("a cantrip is cast with no slot")
+	}
+	p.minutes = p.osp.CastMinutes
+	return nil
+}
+
+// planSlotted plans a spell cast with a slot: one of at least the spell's level that the caster has free.
+func (p *castPlan) planSlotted(in *playv1.SpellSlot) error {
+	if in == nil || in.GetLevel() < int32(p.osp.Spell.Level) || in.GetLevel() > 9 { //nolint:gosec // a spell level is 1 to 9
+		return badCast("slot must be a spell slot of at least the spell's level")
+	}
+	i := slices.IndexFunc(p.osp.Slots, func(sl link.CastSlot) bool { return sl.Level == int(in.GetLevel()) && sl.Pact == in.GetPact() })
+	if i < 0 {
+		return badCast("slot is not one the caster has free")
+	}
+	p.slot = &slotRef{Level: in.GetLevel(), Pact: in.GetPact()}
+	p.minutes = p.osp.CastMinutes
+	return nil
 }
 
 // checkCastTargets checks how many targets the spell takes. The master is not held to the
@@ -543,7 +619,6 @@ func (s *Service) checkCastTargets(_ context.Context, _ *combatTx, m authz.Membe
 // dice of a spell that rolls them (RN-18), the summoning choice of a summoning spell
 // and no armor on a Mage Armor target.
 func (s *Service) checkCastInput(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan) error {
-	sp := plan.osp.Spell
 	switch plan.osp.Effect {
 	case link.EffectHeal, link.EffectTempHP:
 		if rollsDice(plan.osp) {
@@ -552,20 +627,27 @@ func (s *Service) checkCastInput(ctx context.Context, c *combatTx, m authz.Membe
 			}
 		}
 	case link.EffectArmorClass:
-		for _, t := range s.effectTargets(plan) {
-			mage, err := s.roster.MageArmorAC(ctx, c.tx, m.CampaignID, t.ID)
-			if err != nil {
-				return err
-			}
-			if mage.Applies && mage.Wears {
-				return errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_TARGET_WEARS_ARMOR, "Mage Armor asks for a creature that wears no armor")
-			}
+		if err := s.checkNoArmor(ctx, c, m, plan); err != nil {
+			return err
 		}
 	}
 	if plan.pick != nil != (plan.osp.Effect == link.EffectSummon && !plan.osp.NPC) {
 		return badCast("summon is for a summoning spell, and a summoning spell needs it")
 	}
-	_ = sp
+	return nil
+}
+
+// checkNoArmor checks no Mage Armor target wears armor.
+func (s *Service) checkNoArmor(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan) error {
+	for _, t := range s.effectTargets(plan) {
+		mage, err := s.roster.MageArmorAC(ctx, c.tx, m.CampaignID, t.ID)
+		if err != nil {
+			return err
+		}
+		if mage.Applies && mage.Wears {
+			return errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_TARGET_WEARS_ARMOR, "Mage Armor asks for a creature that wears no armor")
+		}
+	}
 	return nil
 }
 
