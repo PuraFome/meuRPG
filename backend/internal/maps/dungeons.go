@@ -760,12 +760,9 @@ func (s *Service) redrawTx(ctx context.Context, tx pgx.Tx, m authz.Membership, s
 // lockRedrawMap locks the map's row and checks it is still the map the render read: the
 // generator's image, the same grid and the same factor.
 func (s *Service) lockRedrawMap(ctx context.Context, q *mapsdb.Queries, campaignID string, src *redrawSource) (mapsdb.Map, error) {
-	locked, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: src.id})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return mapsdb.Map{}, errMapNotFound()
-	}
+	locked, err := lockMap(ctx, q, campaignID, src.id)
 	if err != nil {
-		return mapsdb.Map{}, fmt.Errorf("find map: %w", err)
+		return mapsdb.Map{}, err
 	}
 	again, err := s.dungeonOf(ctx, q, campaignID, src.id)
 	if err != nil {

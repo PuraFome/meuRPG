@@ -3,7 +3,6 @@ package maps
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -279,12 +278,9 @@ func (s *Service) lockPoint(ctx context.Context, q *mapsdb.Queries, campaignID, 
 	if err != nil {
 		return mapsdb.Map{}, mapsdb.MapPoint{}, err
 	}
-	p, err := q.GetMapPointForUpdate(ctx, mapsdb.GetMapPointForUpdateParams{MapID: mapID, ID: pointID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return mapsdb.Map{}, mapsdb.MapPoint{}, errPointNotFound()
-	}
+	p, err := findPointForUpdate(ctx, q, mapID, pointID)
 	if err != nil {
-		return mapsdb.Map{}, mapsdb.MapPoint{}, fmt.Errorf("find point: %w", err)
+		return mapsdb.Map{}, mapsdb.MapPoint{}, err
 	}
 	if p.Kind != kindToDB[kind] {
 		return mapsdb.Map{}, mapsdb.MapPoint{}, badSpec("the point is not a %s point", kind.String()[len("MAP_POINT_KIND_"):])

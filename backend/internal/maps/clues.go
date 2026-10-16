@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -220,7 +219,7 @@ func (s *Service) MoveSceneClue(
 }
 
 // moveClueRows swaps a clue with its neighbor and renumbers the list from 0,
-// as the actions do. It says whether anything changed: the first clue moved
+// as moveActionRows does. It says whether anything changed: the first clue moved
 // up, or the last moved down, changes nothing.
 func moveClueRows(ctx context.Context, q *mapsdb.Queries, pointID, clueID string, step int) (bool, error) {
 	clues, err := q.ListSceneClues(ctx, pointID)
@@ -231,21 +230,14 @@ func moveClueRows(ctx context.Context, q *mapsdb.Queries, pointID, clueID string
 	if i < 0 {
 		return false, errClueNotFound()
 	}
-	j := i + step
-	if j < 0 || j >= len(clues) {
-		return false, nil // already first or last: nothing changes
-	}
-	clues[i], clues[j] = clues[j], clues[i]
-	for p := range clues {
-		want := int32(p)
-		if clues[p].Position == want {
-			continue
-		}
-		if err := q.SetSceneCluePosition(ctx, mapsdb.SetSceneCluePositionParams{ID: clues[p].ID, Position: want}); err != nil {
-			return false, fmt.Errorf("set a clue's position: %w", err)
-		}
-	}
-	return true, nil
+	return swapAndRenumber(clues, i, step,
+		func(c *mapsdb.SceneClue) *int32 { return &c.Position },
+		func(c mapsdb.SceneClue) error {
+			if err := q.SetSceneCluePosition(ctx, mapsdb.SetSceneCluePositionParams{ID: c.ID, Position: c.Position}); err != nil {
+				return fmt.Errorf("set a clue's position: %w", err)
+			}
+			return nil
+		})
 }
 
 // RemoveSceneClue implements mapsv1connect.MapServiceHandler. The players who
@@ -308,11 +300,9 @@ func (s *Service) RevealSceneClue(
 	if !ok {
 		return nil, errClueNotFound()
 	}
-	characterIDs, err := parseRevealIDs(req.Msg.GetCharacterIds())
-	if err != nil {
-		return nil, err
-	}
-	userOf, err := s.revealRecipients(ctx, m.CampaignID, characterIDs)
+	// The clue goes to each character's player, who owns the notes: an NPC, a dead or pending
+	// character, or one with no player is "not found", as a token's.
+	characterIDs, userOf, err := s.playerCharacters(ctx, m.CampaignID, req.Msg.GetCharacterIds(), true)
 	if err != nil {
 		return nil, err
 	}
@@ -329,48 +319,6 @@ func (s *Service) RevealSceneClue(
 		return nil, err
 	}
 	return connect.NewResponse(&mapsv1.RevealSceneClueResponse{Clue: clueByID(clues, call.clue.ID)}), nil
-}
-
-// parseRevealIDs checks the count of characters of a reveal and returns their
-// IDs without repeats, in the order given.
-func parseRevealIDs(ids []string) ([]string, error) {
-	if len(ids) == 0 || len(ids) > maxRevealCharacters {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("character_ids must have 1 to %d characters", maxRevealCharacters))
-	}
-	characterIDs := make([]string, 0, len(ids))
-	for _, raw := range ids {
-		id, ok := parseID(raw)
-		if !ok {
-			return nil, errCharacterNotFound()
-		}
-		if !slices.Contains(characterIDs, id) {
-			characterIDs = append(characterIDs, id)
-		}
-	}
-	return characterIDs, nil
-}
-
-// revealRecipients maps each character of a reveal to its player. Each must
-// be a living player character with a player: the clue goes to the player,
-// who owns the notes. An NPC, a dead or pending character, or one whose player
-// deleted the account is "not found", as a token's.
-func (s *Service) revealRecipients(ctx context.Context, campaignID string, characterIDs []string) (map[string]string, error) {
-	found, err := s.characters.MapCharacters(ctx, nil, campaignID, characterIDs)
-	if err != nil {
-		return nil, s.dbError(ctx, "find the characters", err)
-	}
-	userOf := make(map[string]string, len(found))
-	for _, c := range found {
-		if c.GetKind() == charactersv1.CharacterKind_CHARACTER_KIND_PLAYER && c.GetPlayerUserId() != "" {
-			userOf[c.GetId()] = c.GetPlayerUserId()
-		}
-	}
-	for _, id := range characterIDs {
-		if _, ok := userOf[id]; !ok {
-			return nil, errCharacterNotFound()
-		}
-	}
-	return userOf, nil
 }
 
 // revealRows finds the clue in the campaign, gives it to the characters who

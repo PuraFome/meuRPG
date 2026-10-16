@@ -196,10 +196,8 @@ type paintDone struct {
 func (s *Service) paintInTx(ctx context.Context, q *mapsdb.Queries, b paintBatch) (paintDone, error) {
 	done := paintDone{playersToo: b.layer != mapsv1.MapLayer_MAP_LAYER_LIGHT}
 	var err error
-	if done.mapRow, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: b.campaignID, ID: b.mapID}); errors.Is(err, pgx.ErrNoRows) {
-		return done, errMapNotFound()
-	} else if err != nil {
-		return done, fmt.Errorf("find map: %w", err)
+	if done.mapRow, err = lockMap(ctx, q, b.campaignID, b.mapID); err != nil {
+		return done, err
 	}
 	if done.mapRow.GridColumns == nil {
 		return done, errNoGrid()
@@ -700,10 +698,8 @@ func (s *Service) writeFog(ctx context.Context, m authz.Membership, mapID string
 		q := s.queries.WithTx(tx)
 		var err error
 		copied = false
-		if before, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID}); errors.Is(err, pgx.ErrNoRows) {
-			return errMapNotFound()
-		} else if err != nil {
-			return fmt.Errorf("find map: %w", err)
+		if before, err = lockMap(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
 		}
 		if msg.GetFogEnabled() && before.GridColumns == nil {
 			return errNoGrid() // the fog is made of squares

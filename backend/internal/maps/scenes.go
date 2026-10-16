@@ -365,22 +365,38 @@ func moveActionRows(ctx context.Context, q *mapsdb.Queries, pointID, actionID st
 	if i < 0 {
 		return actions, false, errActionNotFound()
 	}
+	moved, err := swapAndRenumber(actions, i, step,
+		func(a *mapsdb.SceneAction) *int32 { return &a.Position },
+		func(a mapsdb.SceneAction) error {
+			if err := q.SetSceneActionPosition(ctx, mapsdb.SetSceneActionPositionParams{ID: a.ID, Position: a.Position}); err != nil {
+				return fmt.Errorf("set an action's position: %w", err)
+			}
+			return nil
+		})
+	return actions, moved, err
+}
+
+// swapAndRenumber swaps the row at i with its neighbor step away and renumbers the list from 0:
+// positions may have gaps after a removal, and a swap of two values would leave equal ones.
+// store writes each row whose position changed. It says whether anything changed: the first row
+// moved up, or the last moved down, changes nothing.
+func swapAndRenumber[T any](rows []T, i, step int, position func(*T) *int32, store func(T) error) (bool, error) {
 	j := i + step
-	if j < 0 || j >= len(actions) {
-		return actions, false, nil // already first or last: nothing changes
+	if j < 0 || j >= len(rows) {
+		return false, nil
 	}
-	actions[i], actions[j] = actions[j], actions[i]
-	for p := range actions {
+	rows[i], rows[j] = rows[j], rows[i]
+	for p := range rows {
 		want := int32(p)
-		if actions[p].Position == want {
+		if *position(&rows[p]) == want {
 			continue
 		}
-		actions[p].Position = want
-		if err := q.SetSceneActionPosition(ctx, mapsdb.SetSceneActionPositionParams{ID: actions[p].ID, Position: want}); err != nil {
-			return actions, false, fmt.Errorf("set an action's position: %w", err)
+		*position(&rows[p]) = want
+		if err := store(rows[p]); err != nil {
+			return false, err
 		}
 	}
-	return actions, true, nil
+	return true, nil
 }
 
 // RemoveSceneAction implements mapsv1connect.MapServiceHandler.
@@ -459,12 +475,8 @@ func (s *Service) changeActions(ctx context.Context, m authz.Membership, mapID, 
 		if out.mapRow, err = s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
 			return err
 		}
-		out.point, err = q.GetMapPointForUpdate(ctx, mapsdb.GetMapPointForUpdateParams{MapID: mapID, ID: pointID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errPointNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find point: %w", err)
+		if out.point, err = findPointForUpdate(ctx, q, mapID, pointID); err != nil {
+			return err
 		}
 		if out.point.Kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SCENE] {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("only a SCENE point has actions and clues"))

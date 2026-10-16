@@ -322,12 +322,8 @@ func (s *Service) announceDeletedMap(ctx context.Context, campaignID, mapID stri
 // row as it was and as it is.
 func (s *Service) revealMapRow(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID string, revealed bool) (before, after mapsdb.Map, err error) {
 	q := s.queries.WithTx(tx)
-	before, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return before, after, errMapNotFound()
-	}
-	if err != nil {
-		return before, after, fmt.Errorf("find map: %w", err)
+	if before, err = lockMap(ctx, q, m.CampaignID, mapID); err != nil {
+		return before, after, err
 	}
 	after, err = q.SetMapRevealed(ctx, mapsdb.SetMapRevealedParams{CampaignID: m.CampaignID, ID: mapID, Revealed: revealed, Now: s.now()})
 	if err != nil {

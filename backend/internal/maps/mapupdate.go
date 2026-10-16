@@ -73,7 +73,7 @@ type mapUpdateWrite struct {
 // decided from the row locked here, so a combat that starts meanwhile is seen.
 func (s *Service) writeMapUpdate(ctx context.Context, tx pgx.Tx, c mapUpdateTx) (mapUpdateWrite, error) {
 	q := s.queries.WithTx(tx)
-	row, err := lockMapToUpdate(ctx, q, c.campaignID, c.mapID)
+	row, err := lockMap(ctx, q, c.campaignID, c.mapID)
 	if err != nil {
 		return mapUpdateWrite{}, err
 	}
@@ -108,18 +108,6 @@ func (s *Service) writeMapUpdate(ctx context.Context, tx pgx.Tx, c mapUpdateTx) 
 		return w, clearLayers(ctx, q, c.mapID)
 	}
 	return w, nil
-}
-
-// lockMapToUpdate locks the map's row.
-func lockMapToUpdate(ctx context.Context, q *mapsdb.Queries, campaignID, mapID string) (mapsdb.Map, error) {
-	row, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: mapID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return row, errMapNotFound()
-	}
-	if err != nil {
-		return row, fmt.Errorf("find map: %w", err)
-	}
-	return row, nil
 }
 
 // pickMapImage checks that the new image is in the campaign's gallery and fits

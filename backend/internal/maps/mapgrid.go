@@ -97,12 +97,9 @@ func (s *Service) writeGrid(ctx context.Context, tx pgx.Tx, c gridChange) (gridW
 
 // lockForGrid locks the map's row and reads its image's size.
 func lockForGrid(ctx context.Context, q *mapsdb.Queries, campaignID, mapID string) (mapsdb.Map, mapsdb.GetMapGridRow, error) {
-	before, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: mapID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return before, mapsdb.GetMapGridRow{}, errMapNotFound()
-	}
+	before, err := lockMap(ctx, q, campaignID, mapID)
 	if err != nil {
-		return before, mapsdb.GetMapGridRow{}, fmt.Errorf("find map: %w", err)
+		return before, mapsdb.GetMapGridRow{}, err
 	}
 	size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
 	if err != nil {

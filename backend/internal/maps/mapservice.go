@@ -809,6 +809,19 @@ func (s *Service) campaignMap(ctx context.Context, q *mapsdb.Queries, campaignID
 	return row, nil
 }
 
+// lockMap locks the campaign's map row for the rest of the transaction, or answers
+// `not_found`.
+func lockMap(ctx context.Context, q *mapsdb.Queries, campaignID, mapID string) (mapsdb.Map, error) {
+	row, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: mapID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return row, errMapNotFound()
+	}
+	if err != nil {
+		return row, fmt.Errorf("find map: %w", err)
+	}
+	return row, nil
+}
+
 // livingCharacter returns a living character of the campaign, or
 // `not_found`.
 func (s *Service) livingCharacter(ctx context.Context, campaignID, characterID string) (*charactersv1.CharacterSummary, error) {
