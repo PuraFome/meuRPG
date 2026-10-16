@@ -23,6 +23,43 @@ import (
 // The kinds of session_events rows (session_event_kinds).
 const eventCharacterVitalsAdjusted = "character_vitals_adjusted"
 
+// adjustCall is what AdjustCharacterVitals reads from its request before the transaction.
+type adjustCall struct {
+	m        authz.Membership
+	charText string
+	keyText  string
+	hash     *string
+	msg      *playv1.AdjustCharacterVitalsRequest
+}
+
+// adjustRun is what the transaction of AdjustCharacterVitals leaves for after the commit.
+type adjustRun struct {
+	after        *playv1.CharacterVitals
+	repeated     bool
+	touched      *playdb.Encounter
+	check        concentrationCheck // what the damage asks of a spell the character concentrates on
+	castsEnded   bool
+	visionMap    string // the map whose fog the change touches
+	shapeChanged bool
+}
+
+// readAdjustCall reads and checks the request, in the order the refusals have always come.
+func readAdjustCall(ctx context.Context, msg *playv1.AdjustCharacterVitalsRequest) (adjustCall, error) {
+	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return adjustCall{}, err
+	}
+	characterID, err := uuid.Parse(msg.GetCharacterId())
+	if err != nil {
+		return adjustCall{}, connect.NewError(connect.CodeNotFound, errors.New("character not found"))
+	}
+	key, err := uuid.Parse(msg.GetIdempotencyKey())
+	if err != nil {
+		return adjustCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key must be a UUID"))
+	}
+	return adjustCall{m: m, charText: characterID.String(), keyText: key.String(), hash: idem.Hash(msg), msg: msg}, nil
+}
+
 // AdjustCharacterVitals implements playv1connect.PlayServiceHandler: the
 // master's correction of a character's vitals (RN-02).
 //
@@ -35,158 +72,141 @@ func (s *Service) AdjustCharacterVitals(
 	ctx context.Context,
 	req *connect.Request[playv1.AdjustCharacterVitalsRequest],
 ) (*connect.Response[playv1.AdjustCharacterVitalsResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	call, err := readAdjustCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	characterID, err := uuid.Parse(req.Msg.GetCharacterId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("character not found"))
-	}
-	key, err := uuid.Parse(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key must be a UUID"))
-	}
-	keyText, charText := key.String(), characterID.String()
-	hash := idem.Hash(req.Msg)
-
-	var after *playv1.CharacterVitals
-	var repeated bool
-	var touched *playdb.Encounter
-	var check concentrationCheck // what the damage asks of a spell the character concentrates on
-	var castsEnded bool
-	visionMap, shapeChanged := "", false // the map whose fog the change touches
+	var run adjustRun
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		after, repeated, touched, visionMap, shapeChanged = nil, false, nil, "", false // a retry starts over
-		check, castsEnded = concentrationCheck{}, false
-		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession() // RN-02: during the session
-		}
-		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
-		}
-
-		done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{
-			GameSessionID: session.ID, IdempotencyKey: &keyText,
-		})
-		switch {
-		case err == nil:
-			if done.Kind != eventCharacterVitalsAdjusted || done.CharacterID == nil || *done.CharacterID != charText || hashDiffers(done.IdempotencyHash, hash) {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-			}
-			repeated = true // a retry of a correction already made
-			return nil
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("find the event of this idempotency key: %w", err)
-		}
-
-		// Healing from 0 also resets the death saves of the character's combatant
-		// in the session's combat (RN-03).
-		before, adjusted, err := s.changeVitals(ctx, q, tx, session.ID, m.CampaignID, charText, req.Msg)
-		if err != nil {
-			return err
-		}
-		payload, err := vitalsPayload(before, adjusted)
-		if err != nil {
-			return err
-		}
-		seq, err := q.NextSessionEventSeq(ctx, session.ID)
-		if err != nil {
-			return fmt.Errorf("next event number: %w", err)
-		}
-		if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-			GameSessionID:   session.ID,
-			Seq:             seq,
-			Kind:            eventCharacterVitalsAdjusted,
-			ActorUserID:     &m.UserID,
-			CharacterID:     &charText,
-			Payload:         payload,
-			IdempotencyKey:  &keyText,
-			IdempotencyHash: hash,
-			CreatedAt:       s.now(),
-		}); err != nil {
-			return fmt.Errorf("insert session event: %w", err)
-		}
-		// The master took a druid out of its beast form (the beast's hit points to 0):
-		// the character's own numbers are back on its combatant, and the history says
-		// so (MR-037). The event has no combat, so it is nothing for an undo to take back.
-		var ownBody *link.Character
-		shapeChanged = (before.GetWildShape() == nil) != (adjusted.GetWildShape() == nil)
-		visionMap = deref(session.CurrentMapID)
-		if before.GetWildShape() != nil && adjusted.GetWildShape() == nil && adjusted.GetHitPointsCurrent() > 0 {
-			var body link.Character
-			if adjusted, body, err = s.vitals.SetWildShape(ctx, tx, m.CampaignID, charText, "", 0); err != nil {
-				return err
-			}
-			ownBody = &body
-			seq, err := q.NextSessionEventSeq(ctx, session.ID)
-			if err != nil {
-				return fmt.Errorf("next event number: %w", err)
-			}
-			encID, round, actor, hidden := s.shapeLine(ctx, q, session.ID, charText)
-			ended, err := json.Marshal(actionEvent{OwnerCharacter: charText, Beast: before.GetWildShape().GetBeastKey(), Reason: endedByMaster, EncounterID: encID, Round: round, Actor: actor, Secret: hidden})
-			if err != nil {
-				return fmt.Errorf("encode the event payload: %w", err)
-			}
-			var encounterID *string
-			if encID != "" {
-				encounterID = &encID
-			}
-			if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-				GameSessionID: session.ID, Seq: seq, Kind: eventWildShapeEnded, ActorUserID: &m.UserID, CharacterID: &charText, Payload: ended, CreatedAt: s.now(), EncounterID: encounterID,
-			}); err != nil {
-				return fmt.Errorf("insert session event: %w", err)
-			}
-		}
-		// A combat in progress with this character shows its state ("Caído", the
-		// healing) from the vitals: its revision goes up in the same transaction, so
-		// every screen reads it again.
-		if touched, err = s.touchCombatOf(ctx, q, session.ID, charText, ownBody); err != nil {
-			return err
-		}
-		if touched != nil {
-			visionMap = deref(touched.MapID)
-		}
-		// Damage outside a combat asks the Constitution save of a spell the character
-		// concentrates on (casting.go).
-		if check, castsEnded, err = s.concentrationAfter(ctx, tx, q, session, m, before, adjusted); err != nil {
-			return err
-		}
-		after = adjusted
-		return nil
+		run = adjustRun{} // a retry starts over
+		return s.adjustVitalsTx(ctx, tx, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "adjust a character's vitals", err)
 	}
-	if repeated {
+	if run.repeated {
 		// Nothing changed and nothing goes out: answer with the vitals as
 		// they are now.
-		current, err := s.vitals.GetVitals(ctx, m.CampaignID, charText)
+		current, err := s.vitals.GetVitals(ctx, call.m.CampaignID, call.charText)
 		if err != nil {
 			return nil, s.dbError(ctx, "get vitals", err)
 		}
 		return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: current}), nil
 	}
-	s.hub.Publish(m.CampaignID, live.Event{
-		Audience: vitalsAudience(after),
+	s.publishAdjusted(ctx, call.m.CampaignID, run)
+	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: run.after, ConcentrationDc: run.check.dc, ConcentrationCastId: run.check.castID}), nil
+}
+
+// adjustVitalsTx is the transaction of AdjustCharacterVitals: lock, retry, the change, the
+// event, the beast form that ended, the combat that shows it, the concentration.
+func (s *Service) adjustVitalsTx(ctx context.Context, tx pgx.Tx, call adjustCall, run *adjustRun) error {
+	q := s.queries.WithTx(tx)
+	session, err := lockOpenSessionOrNone(ctx, q, call.m.CampaignID) // RN-02: during the session
+	if err != nil {
+		return err
+	}
+	done, again, err := eventByKey(ctx, q, session.ID, call.keyText, eventCharacterVitalsAdjusted, call.hash)
+	if err != nil {
+		return err
+	}
+	if again {
+		if done.CharacterID == nil || *done.CharacterID != call.charText {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		}
+		run.repeated = true // a retry of a correction already made
+		return nil
+	}
+	// Healing from 0 also resets the death saves of the character's combatant
+	// in the session's combat (RN-03).
+	before, adjusted, err := s.changeVitals(ctx, q, tx, session.ID, call.m.CampaignID, call.charText, call.msg)
+	if err != nil {
+		return err
+	}
+	payload, err := vitalsPayload(before, adjusted)
+	if err != nil {
+		return err
+	}
+	if err := s.appendKeyedEvent(ctx, q, keyedEvent{
+		sessionID: session.ID, kind: eventCharacterVitalsAdjusted, userID: call.m.UserID, characterID: &call.charText, key: call.keyText, hash: call.hash,
+	}, json.RawMessage(payload)); err != nil {
+		return err
+	}
+	run.shapeChanged = (before.GetWildShape() == nil) != (adjusted.GetWildShape() == nil)
+	run.visionMap = deref(session.CurrentMapID)
+	ownBody, adjusted, err := s.leaveBeastForm(ctx, tx, q, session.ID, call, before, adjusted)
+	if err != nil {
+		return err
+	}
+	// A combat in progress with this character shows its state ("Caído", the
+	// healing) from the vitals: its revision goes up in the same transaction, so
+	// every screen reads it again.
+	if run.touched, err = s.touchCombatOf(ctx, q, session.ID, call.charText, ownBody); err != nil {
+		return err
+	}
+	if run.touched != nil {
+		run.visionMap = deref(run.touched.MapID)
+	}
+	// Damage outside a combat asks the Constitution save of a spell the character
+	// concentrates on (casting.go).
+	if run.check, run.castsEnded, err = s.concentrationAfter(ctx, tx, q, session, call.m, before, adjusted); err != nil {
+		return err
+	}
+	run.after = adjusted
+	return nil
+}
+
+// leaveBeastForm is what the master taking a druid out of its beast form (the beast's hit
+// points to 0) leaves: the character's own numbers are back on its combatant, and the history
+// says so (MR-037). It returns that body (nil when the form did not end) and the vitals as
+// they are then. The event has no combat, so it is nothing for an undo to take back.
+func (s *Service) leaveBeastForm(ctx context.Context, tx pgx.Tx, q *playdb.Queries, sessionID string, call adjustCall, before, adjusted *playv1.CharacterVitals) (*link.Character, *playv1.CharacterVitals, error) {
+	if before.GetWildShape() == nil || adjusted.GetWildShape() != nil || adjusted.GetHitPointsCurrent() <= 0 {
+		return nil, adjusted, nil
+	}
+	adjusted, body, err := s.vitals.SetWildShape(ctx, tx, call.m.CampaignID, call.charText, "", 0)
+	if err != nil {
+		return nil, adjusted, err
+	}
+	seq, err := q.NextSessionEventSeq(ctx, sessionID)
+	if err != nil {
+		return nil, adjusted, fmt.Errorf("next event number: %w", err)
+	}
+	encID, round, actor, hidden := s.shapeLine(ctx, q, sessionID, call.charText)
+	ended, err := json.Marshal(actionEvent{OwnerCharacter: call.charText, Beast: before.GetWildShape().GetBeastKey(), Reason: endedByMaster, EncounterID: encID, Round: round, Actor: actor, Secret: hidden})
+	if err != nil {
+		return nil, adjusted, fmt.Errorf("encode the event payload: %w", err)
+	}
+	var encounterID *string
+	if encID != "" {
+		encounterID = &encID
+	}
+	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
+		GameSessionID: sessionID, Seq: seq, Kind: eventWildShapeEnded, ActorUserID: &call.m.UserID, CharacterID: &call.charText, Payload: ended, CreatedAt: s.now(), EncounterID: encounterID,
+	}); err != nil {
+		return nil, adjusted, fmt.Errorf("insert session event: %w", err)
+	}
+	return &body, adjusted, nil
+}
+
+// publishAdjusted tells the streams and the fog what the committed correction changed.
+func (s *Service) publishAdjusted(ctx context.Context, campaignID string, run adjustRun) {
+	s.hub.Publish(campaignID, live.Event{
+		Audience: vitalsAudience(run.after),
 		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_VitalsChanged_{
-			VitalsChanged: &playv1.WatchGameSessionResponse_VitalsChanged{Vitals: after},
+			VitalsChanged: &playv1.WatchGameSessionResponse_VitalsChanged{Vitals: run.after},
 		}},
 	})
 	pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the streams and the fog unheard
 	defer stop()
-	if touched != nil {
-		s.publishEncounterChanged(pctx, m.CampaignID, *touched)
+	if run.touched != nil {
+		s.publishEncounterChanged(pctx, campaignID, *run.touched)
 	}
-	if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
-		s.maps.VisionChanged(pctx, m.CampaignID, visionMap)
+	if run.shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
+		s.maps.VisionChanged(pctx, campaignID, run.visionMap)
 	}
-	if check.castID != "" && castsEnded {
-		s.publishCastsChanged(m.CampaignID, check.secret)
+	if run.check.castID != "" && run.castsEnded {
+		s.publishCastsChanged(campaignID, run.check.secret)
 	}
-	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: after, ConcentrationDc: check.dc, ConcentrationCastId: check.castID}), nil
 }
 
 // touchCombatOf tells the session's open combat that a character's vitals changed:
