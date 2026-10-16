@@ -559,7 +559,7 @@ func (c *Content) AnyHidden() bool { return len(c.c.archived) > 0 || len(c.c.off
 // sorted. A subclass or subrace under an off class or race counts too, but only
 // when the Build lacks that class or race: a sheet that already has the off class
 // judges its own subclass by the subclass's own switch, so it can still reach its
-// subclass level (question 80); a new sheet cannot pick the class, so it cannot
+// subclass level; a new sheet cannot pick the class, so it cannot
 // pick the subclass either. The server compares the ones of the new sheet with the
 // ones of the previous sheet and refuses an off key that is new.
 func (c *Content) OffKeys(b Build) []string {
@@ -717,8 +717,8 @@ func BuildKeys(b Build) []KeyField {
 }
 
 // ChangedSince lists the table entries a Build uses whose last change is newer
-// than savedRevision, the content revision the sheet was last saved at (RN-23,
-// question 80: a change applies at once, and the owner is told). The order is
+// than savedRevision, the content revision the sheet was last saved at (RN-23:
+// a change applies at once, and the owner is told). The order is
 // the sheet's (BuildKeys).
 func (c *Content) ChangedSince(b Build, savedRevision int, baselines map[string]int) []ChangedEntry {
 	var out []ChangedEntry

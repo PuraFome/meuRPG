@@ -96,7 +96,7 @@ func TestRN15_AcceptingAnInviteWithApprovalMakesAPendingMember(t *testing.T) {
 	}
 
 	// Accepting the same invite again changes nothing: she stays pending,
-	// and no use is spent. (An ordinary invite promotes her instead, Q25:
+	// and no use is spent. (An ordinary invite promotes her instead:
 	// TestQ25_PlainInvitePromotesPendingMember.)
 	again, err := jogadora.accept(t, token)
 	if err != nil {

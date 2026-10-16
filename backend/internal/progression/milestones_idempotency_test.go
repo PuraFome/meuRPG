@@ -11,7 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The audit of 07/10/2026 (F7): a retried AddMilestone must not add the milestone twice.
+// A retried AddMilestone must not add the milestone twice.
 
 func (u *user) planWithKey(campaignID, text, key string) (*progressionv1.AddMilestoneResponse, error) {
 	res, err := u.xp.AddMilestone(context.Background(), connect.NewRequest(&progressionv1.AddMilestoneRequest{CampaignId: campaignID, Text: text, IdempotencyKey: key}))

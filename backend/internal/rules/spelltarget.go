@@ -193,8 +193,7 @@ func (t SpellTarget) AnyNumber() bool {
 
 // LabelPT is the target as the "Magias" page and the spell editor's preview read
 // it: "Uma criatura", "Várias criaturas", "Só quem conjura" or an area, in meters
-// ("Cone de 4,5 m"). Empty for a spell without a target (none today: every spell
-// of the content has one).
+// ("Cone de 4,5 m"). Empty for a spell without a target.
 func (t SpellTarget) LabelPT() string {
 	if t.Label != "" {
 		return t.Label

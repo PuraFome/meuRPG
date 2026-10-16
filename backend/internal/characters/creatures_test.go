@@ -9,7 +9,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// TestCreatureToProto: the stat block of the Etapa 9 designs (Sálvia's wolf)
+// TestCreatureToProto: the stat block of the designs (Sálvia's wolf)
 // reaches the message with its Portuguese labels and the SRD's English text.
 func TestCreatureToProto(t *testing.T) {
 	t.Parallel()

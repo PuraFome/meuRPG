@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// The closed menu of what a table feature may do, as data (slice 10.3, MR-025,
+// The closed menu of what a table feature may do, as data (MR-025,
 // ADR-0018, section 4): the effect types and their fields, and every closed list
 // a field takes (targets, modes, senses, recharges...) with Portuguese names, so
 // the class editor never hard-codes a list. The validators (checkEffect and
@@ -399,7 +399,7 @@ func (c *content) menuLists() []MenuList {
 }
 
 // menuOptionSets are the SRD features that offer options, sorted by name. A
-// set with no option names (none today) is left out.
+// set with no option names is left out.
 func (c *content) menuOptionSets() []MenuOptionSet {
 	var sets []MenuOptionSet
 	for _, k := range sortedKeys(c.features) {

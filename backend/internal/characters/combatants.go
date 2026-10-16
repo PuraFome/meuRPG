@@ -48,7 +48,7 @@ func (s *Service) CombatParty(ctx context.Context, tx pgx.Tx, campaignID string)
 
 // PartyLevels returns the campaign's living, active player characters, oldest
 // first, with the total level of each (the sum of its class levels): the party an
-// encounter is measured against (MR-043, question 86). Not NPCs, not the dead, not a
+// encounter is measured against (MR-043). Not NPCs, not the dead, not a
 // character waiting for approval. It implements play.CombatRoster.
 func (s *Service) PartyLevels(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.PartyMember, error) {
 	rows, err := s.queriesIn(tx).ListCombatParty(ctx, campaignID)

@@ -13,8 +13,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// The table's classes and subclasses end to end (MR-025, RN-23, ADR-0018, slice
-// 10.3, artboard E10-02): the class editor starts from the server's numbers and
+// The table's classes and subclasses end to end (MR-025, RN-23, ADR-0018): the class editor starts from the server's numbers and
 // menu, a refusal points at its field, a character is created (also multiclassed)
 // and goes up with a table class and a third caster's subclass, and "A classe
 // mudou" tells each common change in its own sentence. Each test starts its own
@@ -81,7 +80,7 @@ var valleySkills = []string{"skill:animal-handling", "skill:athletics", "skill:n
 
 // guardianClass is "Guardião do Vale": a half caster that prepares from the
 // druid's list, whose table is the server's default one (the editor's start),
-// with the features of E10-02: a sense, a fighting style at level 2 chosen from
+// with these features: a sense, a fighting style at level 2 chosen from
 // the SRD's set, and an extra attack at level 5.
 func guardianClass(t *testing.T, d *rulesv1.GetClassTableDefaultsResponse, menu *rulesv1.GetEffectMenuResponse) *rulesv1.TableClass {
 	t.Helper()
@@ -132,7 +131,7 @@ func inkBlade(t *testing.T, d *rulesv1.GetClassTableDefaultsResponse) *rulesv1.T
 	return sub
 }
 
-// TestTableClassEditorStartsFromTheServer (E10-02 states 1 to 3): the master reads
+// TestTableClassEditorStartsFromTheServer: the master reads
 // the defaults of the 20-level table and the closed menu of effects, a player does
 // not, the numbers are the SRD's, the menu lists the table's own classes, and a
 // class built from each default table is accepted untouched.
@@ -179,7 +178,7 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 		}
 	}
 	// Spot values of the SRD's tables, as the artboard states them: the Paladin's
-	// half-caster table (E10-02 notes) and a third caster's at levels 3 and 20.
+	// half-caster table (notes) and a third caster's at levels 3 and 20.
 	half := castingTable(t, d, "half", "prepared")
 	for lvl, slots := range map[int][]int32{2: {2}, 5: {4, 2}, 9: {4, 3, 2}, 13: {4, 3, 3, 1}, 17: {4, 3, 3, 3, 1}} {
 		got := half.GetRows()[lvl-1].GetSlots()
@@ -256,7 +255,7 @@ func (u *user) refused(t *testing.T, campaign string, body proto.Message) []*rul
 	return violationsOfErr(t, err)
 }
 
-// TestTableClassRefusalsPointAtTheirField (E10-02 states 1 to 4): every rule a
+// TestTableClassRefusalsPointAtTheirField: every rule a
 // class or subclass breaks comes back as a violation at the exact field the editor
 // draws, with a stable reason, and a refused write changes nothing.
 func TestTableClassRefusalsPointAtTheirField(t *testing.T) {
@@ -371,7 +370,7 @@ func ownedSubclass(c *charactersv1.ClassLevel, key string) *charactersv1.ClassLe
 	return c
 }
 
-// TestTableClassMulticlassAtCreation (E10-02 state 6, MR-025): Rafa creates Corvina,
+// TestTableClassMulticlassAtCreation (MR-025): Rafa creates Corvina,
 // Mage 3 / Cleric 1, each class offering the table's subclass; the SRD's
 // prerequisites are checked on the sheet, the hit points follow the table's rule,
 // and a table class together with an SRD class, or a third caster with one, gets

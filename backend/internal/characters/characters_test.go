@@ -313,7 +313,7 @@ func TestGetSpellDetails(t *testing.T) {
 		t.Errorf("GetSpellDetails(cure wounds) = %v", cw)
 	}
 
-	// The spells that read hit points carry their rule (Etapa 8): Sono's pool at its own circle and
+	// The spells that read hit points carry their rule: Sono's pool at its own circle and
 	// what each circle adds, Palavra de Poder's limit, Cura Completa's amount; any other spell has none.
 	sleep, _ := get(player, campaign, "spell:sleep")
 	if e := sleep.GetHitPointEffect(); e.GetKind() != rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_POOL ||

@@ -281,7 +281,7 @@ func checkTargets(key string, characterIDs []string) (string, []string, error) {
 }
 
 // xpEach is each character's share of total among n, and the XP that does not
-// split (question 46).
+// split.
 func xpEach(total int32, n int) (each, lost int32) {
 	each = int32(rules.SplitXP(int(total), n)) //nolint:gosec // at most total
 	return each, total - each*int32(n)         //nolint:gosec // n is at most maxAwardTargets

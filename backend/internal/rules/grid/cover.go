@@ -1,7 +1,7 @@
 package grid
 
 // CoverBetween is the cover the target has against an attack from another
-// square (D4, Q70). The line between the two centers is walked; the best cover
+// square. The line between the two centers is walked; the best cover
 // among the squares it enters counts, leaving out the attacker's own square
 // and the target's: a wall on the line is total cover (and so is squeezing
 // between two walls), a square of painted cover gives its degree, and a square

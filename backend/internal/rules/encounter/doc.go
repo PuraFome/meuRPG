@@ -1,5 +1,5 @@
-// Package encounter is the arithmetic of an encounter (MR-043, RN-29, Etapa 10,
-// slice 10.9c): how much XP a party can spend, how much an encounter costs, which
+// Package encounter is the arithmetic of an encounter (MR-043, RN-29):
+// how much XP a party can spend, how much an encounter costs, which
 // band (low, moderate or high) that is, the strongest creature the party may meet,
 // the generator of an encounter from a seed, and the creatures one can swap for
 // another at the same XP.

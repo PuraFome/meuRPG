@@ -10,7 +10,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// The catalog with a character (slice 10.12b fix round 1): a player editing or
+// The catalog with a character: a player editing or
 // leveling their own sheet gets back the entries that sheet uses even when the
 // master archived or switched them off, marked; never another player's.
 

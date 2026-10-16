@@ -21,8 +21,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// What the play module reads and writes of a character's creatures (MR-037,
-// Etapa 9), through play.CombatRoster: recording a casting, checking what a
+// What the play module reads and writes of a character's creatures (MR-037),
+// through play.CombatRoster: recording a casting, checking what a
 // spell may summon, joining a combat, concentration ending, the combat writing
 // hit points back, and the numbers a creature's turn is worked out from. The
 // methods that write take the caller's transaction and no caller: they run

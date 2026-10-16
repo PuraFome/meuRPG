@@ -188,7 +188,7 @@ func TestDefaultSessionTimeouts(t *testing.T) {
 
 // TestReadTxSeesOneSnapshot: two reads in a ReadTx agree even when another
 // connection commits a write between them, while the same two reads as
-// autocommit statements disagree (the torn read of audit D-03). A write inside
+// autocommit statements disagree. A write inside
 // a ReadTx is refused.
 func TestReadTxSeesOneSnapshot(t *testing.T) {
 	t.Parallel()

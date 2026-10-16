@@ -8,9 +8,9 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 )
 
-// Before Etapa 6 a basic sheet had one attack: a bonus and the damage as
-// free text, such as "1d6+2 cortante". Now it has structured attacks. Old
-// sheets are converted when they are read (upgradeLegacyAttack), so no data
+// An older basic sheet has one attack: a bonus and the damage as free text,
+// such as "1d6+2 cortante". The sheet has structured attacks. Old sheets are
+// converted when they are read (upgradeLegacyAttack), so no data
 // migration is needed: the stored JSON stays as it was until the master
 // saves the sheet again, and the read is the same for everyone.
 

@@ -150,8 +150,8 @@ func checkBasicSheet(content *rules.Content, sent *charactersv1.BasicSheet) (*ch
 	return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: basic}}, nil
 }
 
-// checkChallenge checks an NPC's challenge rating and the XP it gives (MR-016,
-// D1): the rating is empty or one of the rules' ("1/8", "5"), the XP 0 to
+// checkChallenge checks an NPC's challenge rating and the XP it gives (MR-016):
+// the rating is empty or one of the rules' ("1/8", "5"), the XP 0 to
 // maxXPValue. field is where the sheet is in the request, for the error.
 func checkChallenge(content *rules.Content, field, rating string, xp int32) error {
 	if rating != "" {
@@ -236,8 +236,8 @@ func cleanCustomBackground(f *charactersv1.FullSheet) error {
 		return &fieldError{field: "sheet.full.custom_background.name", err: err}
 	}
 	cb.Name = name
-	// The rest of the "Outro" background (SRD 5.1 "Customizing a Background",
-	// question 82): one-line names and free texts, each cleaned; an empty one
+	// The rest of the "Outro" background (SRD 5.1 "Customizing a Background"):
+	// one-line names and free texts, each cleaned; an empty one
 	// is a draft and shows an issue, never an error.
 	if cb.FeatureName != "" {
 		if cb.FeatureName, err = names.Clean(cb.FeatureName, rules.MaxCustomNameLength); err != nil {

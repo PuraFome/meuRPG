@@ -57,7 +57,7 @@ func inTx(ctx context.Context, conn TxStarter, policy crdb.RetryPolicy, fn func(
 // sees the same snapshot of the database. Use it for a read RPC that runs two
 // or more queries and puts their results in one response: as separate
 // autocommit statements, each picks its own timestamp, and a write committed
-// between them would give a view that mixes two states (audit D-03).
+// between them would give a view that mixes two states.
 //
 // Why not AS OF SYSTEM TIME follower_read_timestamp(): it reads data a few
 // seconds old, and a live game must show what the table just did (a player who

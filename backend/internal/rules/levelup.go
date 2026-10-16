@@ -758,7 +758,7 @@ func isASILevel(row *srd51.Level) bool {
 
 // masterAdds are the features that ask the player for a choice the guided
 // level-up cannot ask for. It lists them (LevelUpOffer.MasterAdds) and the
-// master adds them in the editor (RN-12). None today: the choice engine asks
+// master adds them in the editor (RN-12). The set is empty: the choice engine asks
 // for them all (choicegroups.go).
 var masterAdds = map[string]bool{}
 

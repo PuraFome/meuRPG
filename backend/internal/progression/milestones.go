@@ -21,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
 
-// The planned milestones (MR-016, RN-09, RN-12, question 45): in a MILESTONES
+// The planned milestones (MR-016, RN-09, RN-12): in a MILESTONES
 // campaign the master writes the milestones ahead of time (planned_milestones)
 // and marks one reached when the party gets there.
 //

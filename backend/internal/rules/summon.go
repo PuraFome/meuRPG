@@ -8,12 +8,11 @@ import (
 	"strings"
 )
 
-// Spells that summon creatures (MR-037, Etapa 9): the "summon" kind of
+// Spells that summon creatures (MR-037): the "summon" kind of
 // effects/spells.json. Four SRD spells take it: Find Familiar, Animate Dead,
 // Conjure Animals and the warlock's Pact of the Chain, which widens Find
 // Familiar: it adds forms, and every form of the familiar then attacks with its
-// reaction. Find Steed is out (question 74: mounted combat comes after the
-// MVP). The loader checks the kind against the creatures; SummonOptions says
+// reaction. Find Steed is out (mounted combat is outside the MVP). The loader checks the kind against the creatures; SummonOptions says
 // what a cast can choose, and CheckSummon refuses a choice the spell does not
 // allow. The play module spends the slot and creates the creatures.
 

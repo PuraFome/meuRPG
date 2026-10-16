@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Spells that read hit points (MR-014, Etapa 8): the effects/spells.json file.
+// Spells that read hit points (MR-014): the effects/spells.json file.
 // Sono, Leque Cromático, the Palavras de Poder, Estabilizar and Cura
 // Completa do not roll damage: what they do depends on the hit points the
 // creatures have now. Each spell takes one of four closed kinds, and the
