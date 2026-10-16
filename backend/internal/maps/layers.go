@@ -156,97 +156,150 @@ func (s *Service) PaintMapCells(
 		return nil, badSpec("squares must have 1 to %d squares", maxPaintSquares)
 	}
 
-	var revision, changed int32
-	var mapRow mapsdb.Map
-	playersToo := layer != mapsv1.MapLayer_MAP_LAYER_LIGHT // whether what changed is something the players read
+	batch := paintBatch{campaignID: m.CampaignID, mapID: mapID, layer: layer, value: value, squares: squares}
+	var done paintDone
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		changed = 0
-		// The map's row lock makes two batches of paint take turns: each reads
-		// the layers the other left.
 		var err error
-		if mapRow, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID}); errors.Is(err, pgx.ErrNoRows) {
-			return errMapNotFound()
-		} else if err != nil {
-			return fmt.Errorf("find map: %w", err)
-		}
-		if mapRow.GridColumns == nil {
-			return errNoGrid()
-		}
-		size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: m.CampaignID, ID: mapID})
-		if err != nil {
-			return fmt.Errorf("read the map's grid: %w", err)
-		}
-		g := gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
-		for i, sq := range squares {
-			if !g.Contains(grid.Square{Col: int(sq.GetCol()), Row: int(sq.GetRow())}) {
-				return badSpec("squares[%d] is outside the map's grid of %d x %d squares", i, g.Columns, g.Rows)
-			}
-		}
-		stored, err := q.GetMapLayers(ctx, mapID)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("read the layers: %w", err)
-		}
-		set := loadLayers(stored, g)
-		asPlayersRead := playersRead(set)
-		for _, sq := range squares {
-			// A door is a whole square of the drawing (MR-025): on a calibrated map
-			// painting one square of it paints its block, so locking, unlocking or
-			// revealing is one action. The other layers are painted square by square.
-			f := 1
-			if layer == mapsv1.MapLayer_MAP_LAYER_DOORS {
-				f = max(int(mapRow.GridFactor), 1)
-			}
-			bc, br := int(sq.GetCol())/f*f, int(sq.GetRow())/f*f
-			for r := br; r < br+f; r++ {
-				for c := bc; c < bc+f; c++ {
-					if paint(set, layer, c, r, value) {
-						changed++
-					}
-				}
-			}
-		}
-		// Locking or unlocking a door, or painting a secret door where a wall is, changes
-		// nothing a player reads (a locked door reads closed, a secret one is a wall):
-		// like the light, it stays out of the number they see and out of their hints (RN-10).
-		playersToo = layer != mapsv1.MapLayer_MAP_LAYER_LIGHT &&
-			(layer != mapsv1.MapLayer_MAP_LAYER_DOORS || !bytes.Equal(asPlayersRead, playersRead(set)))
-		revision = mapRow.LayersRevision + mapRow.LightRevision
-		if changed == 0 {
-			return nil // painting what is already there changes nothing
-		}
-		err = q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
-			MapID: mapID, DifficultTerrain: nilIfBlank(set.terrain.Encode()), Walls: nilIfBlank(set.walls.Encode()),
-			Cover: nilIfBlank(set.cover.Encode()), Light: nilIfBlank(set.light.Encode()), Doors: nilIfBlank(set.doors.Encode()), Now: s.now(),
-		})
-		if err != nil {
-			return fmt.Errorf("write the layers: %w", err)
-		}
-		// The light is the master's alone: it has its own counter, so the number
-		// players see does not tell them when the master paints it. A change the
-		// players cannot see (above) counts there too.
-		if !playersToo {
-			light, err := q.BumpMapLightRevision(ctx, mapID)
-			if err != nil {
-				return fmt.Errorf("bump the light's revision: %w", err)
-			}
-			revision = mapRow.LayersRevision + light
-			return nil
-		}
-		layers, err := q.BumpMapLayersRevision(ctx, mapID)
-		if err != nil {
-			return fmt.Errorf("bump the layers' revision: %w", err)
-		}
-		revision = layers + mapRow.LightRevision
-		return nil
+		done, err = s.paintInTx(ctx, s.queries.WithTx(tx), batch)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "paint a map's squares", err)
 	}
-	if changed > 0 {
-		s.layersChanged(ctx, m.CampaignID, mapRow, playersToo, layer == mapsv1.MapLayer_MAP_LAYER_LIGHT)
+	if done.changed > 0 {
+		s.layersChanged(ctx, m.CampaignID, done.mapRow, done.playersToo, layer == mapsv1.MapLayer_MAP_LAYER_LIGHT)
 	}
-	return connect.NewResponse(&mapsv1.PaintMapCellsResponse{LayersRevision: revision, Changed: changed}), nil
+	return connect.NewResponse(&mapsv1.PaintMapCellsResponse{LayersRevision: done.revision, Changed: done.changed}), nil
+}
+
+// paintBatch is one PaintMapCells, once it passed the checks that need no read.
+type paintBatch struct {
+	campaignID string
+	mapID      string
+	layer      mapsv1.MapLayer
+	value      int32
+	squares    []*mapsv1.MapSquare
+}
+
+// paintDone is what a batch of paint did: the map's row (as it was locked), how many
+// squares changed, the revision the master reads after it, and whether what changed is
+// something the players read.
+type paintDone struct {
+	mapRow     mapsdb.Map
+	revision   int32
+	changed    int32
+	playersToo bool
+}
+
+// paintInTx paints the batch inside the transaction of q. The map's row lock makes
+// two batches of paint take turns: each reads the layers the other left.
+func (s *Service) paintInTx(ctx context.Context, q *mapsdb.Queries, b paintBatch) (paintDone, error) {
+	done := paintDone{playersToo: b.layer != mapsv1.MapLayer_MAP_LAYER_LIGHT}
+	var err error
+	if done.mapRow, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: b.campaignID, ID: b.mapID}); errors.Is(err, pgx.ErrNoRows) {
+		return done, errMapNotFound()
+	} else if err != nil {
+		return done, fmt.Errorf("find map: %w", err)
+	}
+	if done.mapRow.GridColumns == nil {
+		return done, errNoGrid()
+	}
+	g, err := paintGrid(ctx, q, b)
+	if err != nil {
+		return done, err
+	}
+	stored, err := q.GetMapLayers(ctx, b.mapID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return done, fmt.Errorf("read the layers: %w", err)
+	}
+	set := loadLayers(stored, g)
+	asPlayersRead := playersRead(set)
+	done.changed = paintSquares(set, b, max(int(done.mapRow.GridFactor), 1))
+	// Locking or unlocking a door, or painting a secret door where a wall is, changes
+	// nothing a player reads (a locked door reads closed, a secret one is a wall):
+	// like the light, it stays out of the number they see and out of their hints (RN-10).
+	done.playersToo = b.layer != mapsv1.MapLayer_MAP_LAYER_LIGHT &&
+		(b.layer != mapsv1.MapLayer_MAP_LAYER_DOORS || !bytes.Equal(asPlayersRead, playersRead(set)))
+	done.revision = done.mapRow.LayersRevision + done.mapRow.LightRevision
+	if done.changed == 0 {
+		return done, nil // painting what is already there changes nothing
+	}
+	if err := storeLayers(ctx, q, b.mapID, set, s.now()); err != nil {
+		return done, err
+	}
+	err = bumpPaintRevision(ctx, q, b.mapID, &done)
+	return done, err
+}
+
+// paintGrid reads the map's grid and checks that every square of the batch is on it.
+func paintGrid(ctx context.Context, q *mapsdb.Queries, b paintBatch) (grid.Grid, error) {
+	size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: b.campaignID, ID: b.mapID})
+	if err != nil {
+		return grid.Grid{}, fmt.Errorf("read the map's grid: %w", err)
+	}
+	g := gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
+	for i, sq := range b.squares {
+		if !g.Contains(grid.Square{Col: int(sq.GetCol()), Row: int(sq.GetRow())}) {
+			return grid.Grid{}, badSpec("squares[%d] is outside the map's grid of %d x %d squares", i, g.Columns, g.Rows)
+		}
+	}
+	return g, nil
+}
+
+// paintSquares paints the batch on the layers and says how many squares changed.
+// A door is a whole square of the drawing (MR-025): on a calibrated map painting one
+// square of it paints its block of factor x factor squares, so locking, unlocking or
+// revealing is one action. The other layers are painted square by square.
+func paintSquares(set layerSet, b paintBatch, factor int) int32 {
+	f := 1
+	if b.layer == mapsv1.MapLayer_MAP_LAYER_DOORS {
+		f = factor
+	}
+	var changed int32
+	for _, sq := range b.squares {
+		bc, br := int(sq.GetCol())/f*f, int(sq.GetRow())/f*f
+		for r := br; r < br+f; r++ {
+			for c := bc; c < bc+f; c++ {
+				if paint(set, b.layer, c, r, b.value) {
+					changed++
+				}
+			}
+		}
+	}
+	return changed
+}
+
+// storeLayers writes the five layers of a map, a layer with nothing painted as NULL.
+func storeLayers(ctx context.Context, q *mapsdb.Queries, mapID string, set layerSet, now time.Time) error {
+	err := q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
+		MapID: mapID, DifficultTerrain: nilIfBlank(set.terrain.Encode()), Walls: nilIfBlank(set.walls.Encode()),
+		Cover: nilIfBlank(set.cover.Encode()), Light: nilIfBlank(set.light.Encode()), Doors: nilIfBlank(set.doors.Encode()), Now: now,
+	})
+	if err != nil {
+		return fmt.Errorf("write the layers: %w", err)
+	}
+	return nil
+}
+
+// bumpPaintRevision raises the counter a batch of paint moves and sets the revision the
+// master reads. The light is the master's alone: it has its own counter, so the number
+// players see does not tell them when the master paints it. A change the players cannot
+// see counts there too.
+func bumpPaintRevision(ctx context.Context, q *mapsdb.Queries, mapID string, done *paintDone) error {
+	if !done.playersToo {
+		light, err := q.BumpMapLightRevision(ctx, mapID)
+		if err != nil {
+			return fmt.Errorf("bump the light's revision: %w", err)
+		}
+		done.revision = done.mapRow.LayersRevision + light
+		return nil
+	}
+	layers, err := q.BumpMapLayersRevision(ctx, mapID)
+	if err != nil {
+		return fmt.Errorf("bump the layers' revision: %w", err)
+	}
+	done.revision = layers + done.mapRow.LightRevision
+	return nil
 }
 
 // playersRead is what the layers a player reads would say if the player read them
@@ -484,16 +537,46 @@ func (s *Service) GetMapLayers(
 	if err != nil {
 		return nil, err
 	}
-	// The revision in the answer and the layers it counts are one snapshot
-	// (audit D-03): read apart, a paint between them gives layers newer than
-	// their revision, and the app would not ask again.
+	row, stored, err := s.readLayersSnapshot(ctx, m.CampaignID, mapID, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "read a map", err)
+	}
+	g := gridOf(row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
+	res := &mapsv1.GetMapLayersResponse{GridColumns: int32(g.Columns), GridRows: int32(g.Rows), LayersRevision: row.LayersRevision} //nolint:gosec // G115: a grid is at most 200 x 400
+	if v.master {
+		res.LayersRevision += row.LightRevision
+	}
+	if !g.Valid() {
+		return connect.NewResponse(res), nil
+	}
+	set := loadLayers(stored, g)
+	if foggedFor(v, row) {
+		if err := s.fillFoggedLayers(ctx, res, set, row, v); err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(res), nil
+	}
+	if v.master {
+		res.Light = nilIfBlank(set.light.Encode())
+	} else {
+		set = set.forPlayers() // a locked door reads closed and a secret one is a wall (RN-26)
+	}
+	fillLayers(res, set)
+	return connect.NewResponse(res), nil
+}
+
+// readLayersSnapshot reads the map the viewer asks for and its stored layers. The
+// revision in the answer and the layers it counts are one snapshot (audit D-03): read
+// apart, a paint between them gives layers newer than their revision, and the app would
+// not ask again.
+func (s *Service) readLayersSnapshot(ctx context.Context, campaignID, mapID string, v viewer) (mapsdb.ListMapDetailsRow, mapsdb.MapLayer, error) {
 	var (
 		row    mapsdb.ListMapDetailsRow
 		stored mapsdb.MapLayer
 	)
-	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		cm, err := loadMapsWith(ctx, q, m.CampaignID)
+		cm, err := loadMapsWith(ctx, q, campaignID)
 		if err != nil {
 			return err
 		}
@@ -509,39 +592,27 @@ func (s *Service) GetMapLayers(
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, s.dbError(ctx, "read a map", err)
-	}
-	g := gridOf(row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
-	res := &mapsv1.GetMapLayersResponse{GridColumns: int32(g.Columns), GridRows: int32(g.Rows), LayersRevision: row.LayersRevision} //nolint:gosec // G115: a grid is at most 200 x 400
-	if v.master {
-		res.LayersRevision += row.LightRevision
-	}
-	if !g.Valid() {
-		return connect.NewResponse(res), nil
-	}
-	set := loadLayers(stored, g)
-	if foggedFor(v, row) {
-		// A player gets only the squares their character sees or remembers (RN-10).
-		// The map's counter is withheld: it would tell when the master paints what
-		// they do not see; the revision is a number of what they receive.
-		pv, _, _, err := s.fogViewOf(ctx, row, v)
-		if err != nil {
-			return nil, s.dbError(ctx, "work out what a player sees", err)
-		}
-		set = filterLayers(set, pv)
-		res.DifficultTerrain, res.Wall, res.Cover, res.Doors = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode()), nilIfBlank(set.doors.Encode())
-		res.LayersRevision = hashOf(res.DifficultTerrain, res.Wall, res.Cover, res.Doors)
-		res.FogWithheld = true
-		return connect.NewResponse(res), nil
-	}
-	if v.master {
-		res.Light = nilIfBlank(set.light.Encode())
-	} else {
-		set = set.forPlayers() // a locked door reads closed and a secret one is a wall (RN-26)
-	}
+	return row, stored, err
+}
+
+// fillLayers puts the four layers a player reads in the answer; a layer with nothing
+// painted is left out.
+func fillLayers(res *mapsv1.GetMapLayersResponse, set layerSet) {
 	res.DifficultTerrain, res.Wall, res.Cover, res.Doors = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode()), nilIfBlank(set.doors.Encode())
-	return connect.NewResponse(res), nil
+}
+
+// fillFoggedLayers fills the answer of a player on a fog map: only the squares their
+// character sees or remembers (RN-10). The map's counter is withheld: it would tell when
+// the master paints what they do not see; the revision is a number of what they receive.
+func (s *Service) fillFoggedLayers(ctx context.Context, res *mapsv1.GetMapLayersResponse, set layerSet, row mapsdb.ListMapDetailsRow, v viewer) error {
+	pv, _, _, err := s.fogViewOf(ctx, row, v)
+	if err != nil {
+		return s.dbError(ctx, "work out what a player sees", err)
+	}
+	fillLayers(res, filterLayers(set, pv))
+	res.LayersRevision = hashOf(res.DifficultTerrain, res.Wall, res.Cover, res.Doors)
+	res.FogWithheld = true
+	return nil
 }
 
 // SetMapFog implements mapsv1connect.MapServiceHandler.
@@ -558,65 +629,19 @@ func (s *Service) SetMapFog(
 		return nil, errMapNotFound()
 	}
 	msg := req.Msg
-	if msg.FogEnabled == nil && msg.BaseLight == nil && msg.GroupVision == nil {
-		return nil, badSpec("nothing to change")
-	}
-	var baseLight *string
-	if msg.BaseLight != nil {
-		word, ok := baseLightToDB[msg.GetBaseLight()]
-		if !ok {
-			return nil, badSpec("base_light must be DARK, DIM or BRIGHT")
-		}
-		baseLight = &word
+	baseLight, err := fogBaseLight(msg)
+	if err != nil {
+		return nil, err
 	}
 	current, err := s.currentMap(ctx, m.CampaignID)
 	if err != nil {
 		return nil, err
 	}
-
-	// Turning the fog on keeps the raw image from the players (RN-10): an image
-	// that is also used another way is copied first, and the map gets the copy.
-	var imageCopy *fogCopy
-	if msg.GetFogEnabled() {
-		if row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: m.CampaignID, ID: mapID}); err == nil && !row.FogEnabled {
-			if imageCopy, err = s.prepareFogCopy(ctx, m.CampaignID, mapID, row.ImageID); err != nil {
-				return nil, s.dbError(ctx, "copy the map's image for the fog", err)
-			}
-		}
+	imageCopy, err := s.fogImageCopy(ctx, m.CampaignID, mapID, msg)
+	if err != nil {
+		return nil, err
 	}
-	var before, after mapsdb.Map
-	copied := false
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		var err error
-		copied = false
-		if before, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID}); errors.Is(err, pgx.ErrNoRows) {
-			return errMapNotFound()
-		} else if err != nil {
-			return fmt.Errorf("find map: %w", err)
-		}
-		if msg.GetFogEnabled() && before.GridColumns == nil {
-			return errNoGrid() // the fog is made of squares
-		}
-		// The copy is used only if the map still has the image it was made from and
-		// the fog is still off.
-		if imageCopy != nil && !before.FogEnabled && before.ImageID == imageCopy.source.ID {
-			if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
-				return err
-			}
-			if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: m.CampaignID, ID: mapID, ImageID: imageCopy.id, Now: s.now()}); err != nil {
-				return fmt.Errorf("give the map its copy of the image: %w", err)
-			}
-			copied = true
-		}
-		after, err = q.SetMapFog(ctx, mapsdb.SetMapFogParams{
-			CampaignID: m.CampaignID, ID: mapID, FogEnabled: msg.FogEnabled, BaseLight: baseLight, GroupVision: msg.GroupVision, Now: s.now(),
-		})
-		if err != nil {
-			return fmt.Errorf("set the fog's settings: %w", err)
-		}
-		return nil
-	})
+	before, after, copied, err := s.writeFog(ctx, m, mapID, msg, baseLight, imageCopy)
 	if imageCopy != nil && (err != nil || !copied) {
 		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
 	}
@@ -637,6 +662,85 @@ func (s *Service) SetMapFog(
 		return nil, err
 	}
 	return connect.NewResponse(&mapsv1.SetMapFogResponse{Map: out}), nil
+}
+
+// fogBaseLight checks that a SetMapFog changes something and that its base light, if
+// any, is one the database holds; it returns the database's word for it (nil for none).
+func fogBaseLight(msg *mapsv1.SetMapFogRequest) (*string, error) {
+	if msg.FogEnabled == nil && msg.BaseLight == nil && msg.GroupVision == nil {
+		return nil, badSpec("nothing to change")
+	}
+	if msg.BaseLight == nil {
+		return nil, nil
+	}
+	word, ok := baseLightToDB[msg.GetBaseLight()]
+	if !ok {
+		return nil, badSpec("base_light must be DARK, DIM or BRIGHT")
+	}
+	return &word, nil
+}
+
+// fogImageCopy prepares the copy of the map's image that turning the fog on needs: it
+// keeps the raw image from the players (RN-10), so an image that is also used another
+// way is copied first, and the map gets the copy. It is nil when the call does not turn
+// the fog on, or the map already has it.
+func (s *Service) fogImageCopy(ctx context.Context, campaignID, mapID string, msg *mapsv1.SetMapFogRequest) (*fogCopy, error) {
+	if !msg.GetFogEnabled() {
+		return nil, nil
+	}
+	row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
+	if err == nil && !row.FogEnabled {
+		imageCopy, err := s.prepareFogCopy(ctx, campaignID, mapID, row.ImageID)
+		if err != nil {
+			return nil, s.dbError(ctx, "copy the map's image for the fog", err)
+		}
+		return imageCopy, nil
+	}
+	return nil, nil
+}
+
+// writeFog sets the fog's settings in one transaction and returns the map's row before
+// and after, and whether the map got the copy of its image.
+func (s *Service) writeFog(ctx context.Context, m authz.Membership, mapID string, msg *mapsv1.SetMapFogRequest, baseLight *string, imageCopy *fogCopy) (before, after mapsdb.Map, copied bool, err error) {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		copied = false
+		if before, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID}); errors.Is(err, pgx.ErrNoRows) {
+			return errMapNotFound()
+		} else if err != nil {
+			return fmt.Errorf("find map: %w", err)
+		}
+		if msg.GetFogEnabled() && before.GridColumns == nil {
+			return errNoGrid() // the fog is made of squares
+		}
+		if copied, err = s.useFogCopy(ctx, q, m, before, imageCopy); err != nil {
+			return err
+		}
+		after, err = q.SetMapFog(ctx, mapsdb.SetMapFogParams{
+			CampaignID: m.CampaignID, ID: mapID, FogEnabled: msg.FogEnabled, BaseLight: baseLight, GroupVision: msg.GroupVision, Now: s.now(),
+		})
+		if err != nil {
+			return fmt.Errorf("set the fog's settings: %w", err)
+		}
+		return nil
+	})
+	return before, after, copied, err
+}
+
+// useFogCopy gives the map the copy of its image, and says whether it did. The copy is
+// used only if the map still has the image it was made from and the fog is still off.
+func (s *Service) useFogCopy(ctx context.Context, q *mapsdb.Queries, m authz.Membership, before mapsdb.Map, imageCopy *fogCopy) (bool, error) {
+	if imageCopy == nil || before.FogEnabled || before.ImageID != imageCopy.source.ID {
+		return false, nil
+	}
+	if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
+		return false, err
+	}
+	if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: m.CampaignID, ID: before.ID, ImageID: imageCopy.id, Now: s.now()}); err != nil {
+		return false, fmt.Errorf("give the map its copy of the image: %w", err)
+	}
+	return true, nil
 }
 
 // The database's base lights (maps_base_light_valid) and the API's.

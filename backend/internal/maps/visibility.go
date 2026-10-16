@@ -179,57 +179,84 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 		CreatedAt:  timestamppb.New(r.CreatedAt),
 		UpdatedAt:  timestamppb.New(r.UpdatedAt),
 	}
-	if r.GridColumns != nil {
-		out.GridColumns = *r.GridColumns
-		out.GridRows = gridRows(*r.GridColumns, r.GridFactor, r.ImageWidth, r.ImageHeight)
-		out.SquareFactor = r.GridFactor
-		out.DrawnColumns = *r.GridColumns / r.GridFactor
-		out.DrawnRows = out.GridRows / r.GridFactor
-	} else {
-		out.SquareFactor = 1
-	}
+	setMapGrid(out, r)
 	out.FogEnabled, out.GroupVision, out.LayersRevision = r.FogEnabled, r.GroupVision, r.LayersRevision
 	if v.master {
-		out.LayersRevision += r.LightRevision // the light is the master's: its changes are theirs alone
-		// The gallery is the master's preparation: its names stay with them.
-		out.Image.Name = r.ImageName
-		out.PointCount = r.PointCount
-		out.BaseLight = baseLightFromDB[r.BaseLight]
-		out.GeneratedDungeon = r.GeneratedDungeon
+		setMasterMapFields(out, r)
 	} else {
-		// A trap one of their characters knows counts for them, unless everyone
-		// sees it (the revealed count has it already).
-		for _, k := range v.traps {
-			if k.mapID == r.ID && !k.public {
-				out.PointCount++
-			}
-		}
-		if r.FogEnabled && r.GridColumns != nil {
-			// On a fog map a player never receives the image: only its size, to lay
-			// the map out. What they see is drawn square by square (GetMapVision).
-			// The counter of the layers would tell when the master paints, so it is
-			// 0 too: the app reads the view's own revision.
-			out.LayersRevision = 0
-			out.Image = &mapsv1.MapImage{Width: r.ImageWidth, Height: r.ImageHeight}
-			out.ImageWithheld = true
+		setPlayerMapFields(out, r, v)
+	}
+	out.ParentMaps = cm.parentRefs(r, v)
+	return out
+}
+
+// setMapGrid fills the grid of the Map: the rules' squares and the drawn ones (MR-025).
+func setMapGrid(out *mapsv1.Map, r mapsdb.ListMapDetailsRow) {
+	if r.GridColumns == nil {
+		out.SquareFactor = 1
+		return
+	}
+	out.GridColumns = *r.GridColumns
+	out.GridRows = gridRows(*r.GridColumns, r.GridFactor, r.ImageWidth, r.ImageHeight)
+	out.SquareFactor = r.GridFactor
+	out.DrawnColumns = *r.GridColumns / r.GridFactor
+	out.DrawnRows = out.GridRows / r.GridFactor
+}
+
+// setMasterMapFields adds what only the master reads of a map.
+func setMasterMapFields(out *mapsv1.Map, r mapsdb.ListMapDetailsRow) {
+	out.LayersRevision += r.LightRevision // the light is the master's: its changes are theirs alone
+	// The gallery is the master's preparation: its names stay with them.
+	out.Image.Name = r.ImageName
+	out.PointCount = r.PointCount
+	out.BaseLight = baseLightFromDB[r.BaseLight]
+	out.GeneratedDungeon = r.GeneratedDungeon
+}
+
+// setPlayerMapFields adjusts the Map for a player: the traps they know count for them,
+// and on a fog map they never receive the image.
+func setPlayerMapFields(out *mapsv1.Map, r mapsdb.ListMapDetailsRow, v viewer) {
+	// A trap one of their characters knows counts for them, unless everyone
+	// sees it (the revealed count has it already).
+	for _, k := range v.traps {
+		if k.mapID == r.ID && !k.public {
+			out.PointCount++
 		}
 	}
-	// The parents, in the order of the maps list (oldest first), each once.
-	// A player sees a parent only through a revealed point on a map they
-	// see.
+	if r.FogEnabled && r.GridColumns != nil {
+		// On a fog map a player never receives the image: only its size, to lay
+		// the map out. What they see is drawn square by square (GetMapVision).
+		// The counter of the layers would tell when the master paints, so it is
+		// 0 too: the app reads the view's own revision.
+		out.LayersRevision = 0
+		out.Image = &mapsv1.MapImage{Width: r.ImageWidth, Height: r.ImageHeight}
+		out.ImageWithheld = true
+	}
+}
+
+// parentRefs lists the parents of the map, in the order of the maps list (oldest first),
+// each once. A player sees a parent only through a revealed point on a map they see.
+func (cm campaignMaps) parentRefs(r mapsdb.ListMapDetailsRow, v viewer) []*mapsv1.MapRef {
 	parents := map[string]bool{}
 	for _, l := range cm.links {
 		parent, ok := cm.byID[l.MapID]
-		if l.TargetMapID == r.ID && ok && (v.master || (l.Revealed && v.seesLinked(parent.ID, parent.RevealedAt) && (v.parentKnows == nil || v.parentKnows(l)))) {
+		if l.TargetMapID == r.ID && ok && (v.master || v.knowsParentLink(l, parent)) {
 			parents[parent.ID] = true
 		}
 	}
+	var refs []*mapsv1.MapRef
 	for _, p := range cm.rows {
 		if parents[p.ID] {
-			out.ParentMaps = append(out.ParentMaps, &mapsv1.MapRef{Id: p.ID, Name: p.Name})
+			refs = append(refs, &mapsv1.MapRef{Id: p.ID, Name: p.Name})
 		}
 	}
-	return out
+	return refs
+}
+
+// knowsParentLink says whether a player may name the parent through the link: it is
+// revealed, they see the parent, and the point is one they know (parentKnows).
+func (v viewer) knowsParentLink(l mapsdb.ListSubmapLinksRow, parent mapsdb.ListMapDetailsRow) bool {
+	return l.Revealed && v.seesLinked(parent.ID, parent.RevealedAt) && (v.parentKnows == nil || v.parentKnows(l))
 }
 
 // pointToProto builds the MapPoint the viewer sees. The caller checked
@@ -259,17 +286,7 @@ func (s *Service) pointToProto(cm campaignMaps, p mapsdb.MapPoint, v viewer) *ma
 		out.Trap = publicTrap(s.trapOf(p))
 	}
 	if p.Kind == kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE] {
-		found := p.TreasureFoundAt != nil
-		if found {
-			out.TreasureFoundAt = timestamppb.New(*p.TreasureFoundAt)
-		}
-		if p.TreasureValuePo != nil && (v.master || found) {
-			out.TreasureValuePo = *p.TreasureValuePo
-		}
-		if !v.master && !found {
-			out.Description = "" // what is inside is read once the treasure is found
-		}
-		out.TreasureConverted = v.master && p.TreasureConvertedAwardID != nil
+		setTreasureFields(out, p, v)
 	}
 	if p.TargetMapID != nil {
 		if target, ok := cm.byID[*p.TargetMapID]; ok && v.seesLinked(target.ID, target.RevealedAt) {
@@ -277,6 +294,22 @@ func (s *Service) pointToProto(cm campaignMaps, p mapsdb.MapPoint, v viewer) *ma
 		}
 	}
 	return out
+}
+
+// setTreasureFields adds what the viewer reads of a treasure: the value and the
+// description only once it is found, the master always.
+func setTreasureFields(out *mapsv1.MapPoint, p mapsdb.MapPoint, v viewer) {
+	found := p.TreasureFoundAt != nil
+	if found {
+		out.TreasureFoundAt = timestamppb.New(*p.TreasureFoundAt)
+	}
+	if p.TreasureValuePo != nil && (v.master || found) {
+		out.TreasureValuePo = *p.TreasureValuePo
+	}
+	if !v.master && !found {
+		out.Description = "" // what is inside is read once the treasure is found
+	}
+	out.TreasureConverted = v.master && p.TreasureConvertedAwardID != nil
 }
 
 // tokenToProto builds the MapToken the viewer sees, with its character.
