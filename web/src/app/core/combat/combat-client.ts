@@ -35,6 +35,7 @@ import {
 import { type RollMode, type RollModeRequest } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { newKey } from '../connect/idempotency';
 import { InspirationQuestion } from '../resources/bardic-inspiration';
+import { LuckyQuestion } from './lucky-question';
 import type { Square } from './combat-grid';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -312,6 +313,9 @@ export interface ConcentrationOutcome {
   readonly result: ConcentrationSaveResult | undefined;
   /** The d20 was rolled and kept: the player holds a Bardic Inspiration die and decides before the result is told. */
   readonly offer?: OutsideInspirationOffer;
+  /** The d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky question ("Tirou 1:
+   * rolar de novo?"), which comes before the die's. */
+  readonly lucky?: LuckyOffer;
 }
 
 /** One adjustment of an NPC's hit points ("Dano/Cura"): at most one of the
@@ -1132,6 +1136,7 @@ export class CombatClient {
       encounter: need(res.encounter, 'ResolveConcentrationSave'),
       result: res.result,
       ...(res.inspirationOffer ? { offer: res.inspirationOffer } : {}),
+      ...(res.luckyOffer ? { lucky: res.luckyOffer } : {}),
     };
   }
 
@@ -1218,6 +1223,10 @@ export class CombatClient {
       area: areaOneof(extras.area),
       ...castExtrasBody(extras),
     });
+    if (res.luckyOffer) {
+      // A spell attack of a halfling whose d20 shows a 1: the d20 is kept, nothing was spent, and Lucky asks first.
+      throw new LuckyQuestion(res.luckyOffer, need(res.encounter, 'CastSpell'));
+    }
     if (res.inspirationOffer) {
       // A spell attack of a character that holds a die: the d20 is kept, nothing was spent.
       throw new InspirationQuestion(res.inspirationOffer, need(res.encounter, 'CastSpell'));

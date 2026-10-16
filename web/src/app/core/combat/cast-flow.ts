@@ -34,6 +34,7 @@ import { listing } from './cover';
 import { aidChange, effectWords, gainLine, hpSpellKind, poolDice } from './hp-effects';
 import { stateWord } from './combat-view';
 import { diceNaturalMark } from './natural-mark';
+import { luckyText } from './lucky';
 
 /**
  * The steps of the cast sheet (E6-09): the slot, the targets (and Magic
@@ -597,6 +598,11 @@ function castRow(
   const d20s: CastD20[] = [];
   if (t.attackRoll) {
     lines.push(d20Formula(t.attackRoll));
+    // "Sortudo: 1 → 14": the d20 the halfling's Lucky rolled again; the formula already has the new face.
+    const lucky = luckyText(t.attackRoll);
+    if (lucky) {
+      lines.push(lucky);
+    }
     d20s.push({
       caption: 'Ataque',
       roll: t.attackRoll,

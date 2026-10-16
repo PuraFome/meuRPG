@@ -86,7 +86,7 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 		}
 		payload, characterID, err := do(q, tx, session)
 		if errors.Is(err, errRollHeld) {
-			return nil // the roll waits for the player's answer about a die: nothing is written yet
+			return nil // the roll waits for the player's answer (a die, or Lucky): nothing is written yet
 		}
 		if err != nil {
 			return err
@@ -102,15 +102,23 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 }
 
 // errRollHeld is what a write's closure returns when its roll was kept for the player's answer
-// about a Bardic Inspiration die: the change commits with what it kept, and writes no event.
+// about a Bardic Inspiration die or the halfling's Lucky: the change commits with what it kept,
+// and writes no event.
 var errRollHeld = errors.New("the roll is held")
 
-// groupHold carries what a group check roll needs to be held for the answer about a die.
+// groupHold carries what a group check roll needs to be held for the answer about a die, or for
+// the halfling's Lucky question (lucky, which comes first).
 type groupHold struct {
 	m     authz.Membership
 	key   string
 	raw   *playv1.RollGroupCheckRequest
 	offer *playv1.OutsideInspirationOffer
+	lucky *playv1.LuckyOffer
+}
+
+// asking says the roll was kept for one of the player's answers: nothing is written yet.
+func (g *groupHold) asking() bool {
+	return g.offer != nil || g.lucky != nil
 }
 
 type groupHoldKey struct{}
@@ -255,7 +263,7 @@ func (s *Service) RollGroupCheck(
 	hold := &groupHold{m: m, key: key, raw: req.Msg}
 	ctx = context.WithValue(ctx, groupHoldKey{}, hold)
 	_, repeated, err := s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckRolled, func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
-		hold.offer = nil
+		hold.offer, hold.lucky = nil, nil
 		who, has, err := s.myCharacter(ctx, tx, m)
 		if err != nil {
 			return groupCheckEvent{}, "", err
@@ -273,7 +281,7 @@ func (s *Service) RollGroupCheck(
 		if err := s.rollMember(ctx, q, tx, m.CampaignID, session, checkID, who.ID, in, false); err != nil {
 			return groupCheckEvent{}, "", err
 		}
-		if hold.offer != nil {
+		if hold.asking() {
 			return groupCheckEvent{}, "", errRollHeld
 		}
 		return groupCheckEvent{GroupCheckID: checkID, CharacterID: who.ID}, who.ID, nil
@@ -281,8 +289,8 @@ func (s *Service) RollGroupCheck(
 	if err != nil {
 		return nil, s.dbError(ctx, "roll a group check", err)
 	}
-	if hold.offer != nil {
-		return connect.NewResponse(&playv1.RollGroupCheckResponse{InspirationOffer: hold.offer}), nil
+	if hold.asking() {
+		return connect.NewResponse(&playv1.RollGroupCheckResponse{InspirationOffer: hold.offer, LuckyOffer: hold.lucky}), nil
 	}
 	if !repeated {
 		s.hub.Publish(m.CampaignID, live.Event{
@@ -332,9 +340,9 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 	if err != nil {
 		return err
 	}
-	bonus, known := 0, false
+	bonus, known, lucky := 0, false, false
 	if len(options) == 1 && options[0].Known {
-		bonus, known = options[0].Bonus, true
+		bonus, known, lucky = options[0].Bonus, true, options[0].Lucky
 	}
 	// The same circumstances as any ability check: Poisoned, Frightened, exhaustion, the
 	// Rage on Strength, armor on Stealth and a Help (SRD 5.1, "Group Checks" are ability checks).
@@ -344,23 +352,24 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 		return err
 	}
 	// A character that holds a Bardic Inspiration die has the d20 kept until the player
-	// answers whether to use it (a roll the master makes for the player waits for no one).
+	// answers whether to use it, and so has a halfling's d20 that shows a 1, for the Lucky
+	// question (a roll the master makes for the player waits for no one).
 	var roll contestRoll
 	gh := groupHoldOf(ctx)
 	if gh != nil && !byMaster {
-		step, err := s.outsideRoll(ctx, tx, q, gh.m, holdGroupCheck, characterID, gh.key, gh.raw, rollInput{inApp: in.inApp, typedFaces: in.faces}, bonus, cm.Mode, false)
+		step, err := s.outsideRoll(ctx, tx, q, gh.m, holdGroupCheck, characterID, gh.key, gh.raw, rollInput{inApp: in.inApp, typedFaces: in.faces}, bonus, cm.Mode, false, lucky)
 		if err != nil {
 			return err
 		}
 		if step.Held {
-			gh.offer = step.Offer
+			gh.offer, gh.lucky = step.Offer, step.LuckyOffer
 			return nil
 		}
 		if step.Settled {
 			roll = contestRoll{
 				Skill: check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32),
 				Total: clamp32(step.Roll.Total, math.MinInt32, math.MaxInt32), Physical: step.Roll.Physical,
-				Mode: checkModeKey(checkModeOfRoll(cm.Mode)), Unknown: !known,
+				Mode: checkModeKey(checkModeOfRoll(cm.Mode)), Unknown: !known, Lucky: step.Lucky,
 			}
 			if step.Bonus != nil {
 				roll.BonusSides, roll.BonusFace = step.Bonus.Sides, step.Bonus.Face

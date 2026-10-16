@@ -12,7 +12,9 @@ import {
   PuzzleInvalidReason,
   PuzzleInvalidSchema,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
+import { pendingQuestionReasonText } from '../combat/combat-errors';
 import { describeConnectError } from '../connect/connect-errors';
+import { resourceBlocked } from '../resources/resources-errors';
 
 /** The typed detail of a `failed_precondition` from a puzzle call, or `null`. Never read from the message. */
 export function puzzleBlocked(err: unknown): PuzzleBlocked | null {
@@ -208,6 +210,11 @@ export function puzzleErrorMessage(
   const blocked = puzzleBlocked(err);
   if (blocked) {
     return puzzleBlockedMessage(blocked.reason, audience);
+  }
+  // Another roll of the character waits for its question (the halfling's Lucky, a Bardic Inspiration die).
+  const pending = pendingQuestionReasonText(resourceBlocked(err)?.reason);
+  if (pending) {
+    return pending;
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (

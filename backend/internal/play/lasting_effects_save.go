@@ -212,8 +212,9 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 	var made actionEvent
 	var result *playv1.EffectSaveResult
 	var offer *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
+	var lucky *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventLastingSaved, encounterID: encID}, func(c *combatTx) (any, error) {
-		result, offer = nil, nil
+		result, offer, lucky = nil, nil, nil
 		if err := notEnded(c.enc); err != nil {
 			return nil, err
 		}
@@ -299,13 +300,14 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 				result.AutoFail, le.Change = true, "failed"
 			} else {
 				// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
-				// answers (nothing has been written yet); the answer brings it back with the die added.
-				step, err := s.saveWithDie(ctx, c, m, holdEffectSave, reactor, key, req.Msg, in, save.Bonus, mode)
+				// answers (nothing has been written yet); the answer brings it back with the die added. So
+				// has a halfling's d20 that shows a 1, for the Lucky question first.
+				step, err := s.saveWithDie(ctx, c, m, holdEffectSave, reactor, key, req.Msg, in, save.Bonus, mode, sheet.Traits.Lucky)
 				if err != nil {
 					return nil, err
 				}
 				if step.Held {
-					offer = step.Offer
+					offer, lucky = step.Offer, step.LuckyOffer
 					return nil, nil
 				}
 				d20 := step.Roll
@@ -337,6 +339,8 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 				result.ExtraDice = extraDiceProto(extra, master, nm)
 				le.D20, le.Total = result.D20, result.Total
 				ev.D20, ev.Modifier, ev.Total, ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
+				// The d20 Lucky rolled again, as an index into D20Faces: the log says "Sortudo: 1 → 14".
+				ev.Lucky, result.Rerolled = step.Lucky, step.Lucky.proto()
 			}
 			if !saved && le.Change != "failed" {
 				le.Change = "failed"
@@ -367,12 +371,12 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 	if err != nil {
 		return nil, s.dbError(ctx, "roll an effect's saving throw", err)
 	}
-	if offer != nil { // nothing was written: the question is the whole answer
+	if offer != nil || lucky != nil { // nothing was written: the question is the whole answer
 		out, err := s.finish(ctx, m, res, nil)
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, InspirationOffer: offer}), nil
+		return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, InspirationOffer: offer, LuckyOffer: lucky}), nil
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
@@ -468,7 +472,7 @@ func savedResultOf(res combatResult, made actionEvent, master bool) *playv1.Effe
 		return &playv1.EffectSaveResult{}
 	}
 	le := ev.Lasting
-	out := &playv1.EffectSaveResult{D20: le.D20, Modifier: ev.Modifier, Total: le.Total, Physical: ev.Physical, Saved: le.Change == "saved", Skipped: le.Change == "skipped", EffectEnded: le.Reason == endSaved}
+	out := &playv1.EffectSaveResult{D20: le.D20, Modifier: ev.Modifier, Total: le.Total, Physical: ev.Physical, Saved: le.Change == "saved", Skipped: le.Change == "skipped", EffectEnded: le.Reason == endSaved, Rerolled: ev.Lucky.proto()}
 	if master && le.DC != 0 {
 		dc := le.DC
 		out.Dc = &dc

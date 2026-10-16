@@ -7,11 +7,12 @@
 // resource flows that need a dialog of their own: the paladin's Lay on Hands,
 // the sorcerer's Flexible Casting, and the bard's Bardic Inspiration (Metamagic
 // rides on CastSpell, in combat.proto); and the halfling's Lucky, the other question a
-// held attack roll asks.
+// held d20 roll asks (an attack roll's, and the other rolls that wait for a Bardic
+// Inspiration die).
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { CastSpellResponse, Encounter, OutsideInspirationOffer, ResolveConcentrationSaveResponse, RollAttackResponse } from "./combat_pb";
+import type { CastSpellResponse, Encounter, LuckyOffer, OutsideInspirationOffer, ResolveConcentrationSaveResponse, RollAttackResponse } from "./combat_pb";
 import { file_meurpg_play_v1_combat } from "./combat_pb";
 import type { RollGroupCheckResponse } from "./contests_pb";
 import { file_meurpg_play_v1_contests } from "./contests_pb";
@@ -33,7 +34,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/resources.proto.
  */
 export const file_meurpg_play_v1_resources: GenFile = /*@__PURE__*/
-  fileDesc("Ch5tZXVycGcvcGxheS92MS9yZXNvdXJjZXMucHJvdG8SDm1ldXJwZy5wbGF5LnYxImsKD1Jlc291cmNlQmxvY2tlZBI1CgZyZWFzb24YASABKA4yJS5tZXVycGcucGxheS52MS5SZXNvdXJjZUJsb2NrZWRSZWFzb24SDgoGbmVlZGVkGAIgASgFEhEKCWF2YWlsYWJsZRgDIAEoBSJUChVHZXRSZXN0UHJldmlld1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSJgoEa2luZBgCIAEoDjIYLm1ldXJwZy5wbGF5LnYxLlJlc3RLaW5kImoKFkdldFJlc3RQcmV2aWV3UmVzcG9uc2USLwoKY2hhcmFjdGVycxgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlJlc3RQcmV2aWV3Eh8KF2xvbmdfcmVzdF9hbHJlYWR5X3Rha2VuGAIgASgIIr8DCgtSZXN0UHJldmlldxIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIzCglyZXNvdXJjZXMYAyADKAsyIC5tZXVycGcucGxheS52MS5SZXN0UmVzb3VyY2VCYWNrEhIKCm5vX2JlbmVmaXQYBCABKAgSGgoSaGl0X3BvaW50c19jdXJyZW50GAUgASgFEhYKDmhpdF9wb2ludHNfbWF4GAYgASgFEiEKGXRlbXBvcmFyeV9oaXRfcG9pbnRzX2xvc3QYByABKAUSMAoOaGl0X2RpY2Vfc3BlbnQYCCADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIvCg1oaXRfZGljZV9iYWNrGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USGwoTaGl0X2RpY2VfYmFja19saW1pdBgKIAEoBRI3ChBzcGVsbF9zbG90c19iYWNrGAsgAygLMh0ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90QmFjaxIXCg9wYWN0X3Nsb3RzX2JhY2sYDCABKAUSGgoSY3JlYXRlZF9zbG90c19sb3N0GA0gASgFIk4KEFJlc3RSZXNvdXJjZUJhY2sSCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDQoFc3BlbnQYAyABKAUSDQoFdG90YWwYBCABKAUiLQoNU3BlbGxTbG90QmFjaxINCgVsZXZlbBgBIAEoBRINCgVjb3VudBgCIAEoBSK/AQoPVGFrZVJlc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEiYKBGtpbmQYAiABKA4yGC5tZXVycGcucGxheS52MS5SZXN0S2luZBIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSNwoQaGl0X2RpY2VfY2hvaWNlcxgEIAMoCzIdLm1ldXJwZy5wbGF5LnYxLkhpdERpY2VDaG9pY2USHQoVd2l0aG91dF9mb29kX29yX2RyaW5rGGQgASgIIk0KDUhpdERpY2VDaG9pY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEiYKBGRpY2UYAiADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZSJDChBUYWtlUmVzdFJlc3BvbnNlEi8KBnZpdGFscxgBIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyK2AQoTU3BlbmRIaXREaWNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDQoFZmFjZXMYAyABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASFAoKdHlwZWRfZmFjZRgGIAEoBUgAEhcKD3R5cGVkX3NvbmdfZmFjZRgHIAEoBUIGCgRyb2xsIrsBChRTcGVuZEhpdERpY2VSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSDAoEZmFjZRgCIAEoBRIdChVjb25zdGl0dXRpb25fbW9kaWZpZXIYAyABKAUSDgoGaGVhbGVkGAQgASgFEhoKEnNvbmdfb2ZfcmVzdF9zaWRlcxgFIAEoBRIZChFzb25nX29mX3Jlc3RfZmFjZRgGIAEoBSKMAQoYVXNlQXJjYW5lUmVjb3ZlcnlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIsCgVzbG90cxgDIAMoCzIdLm1ldXJwZy5wbGF5LnYxLlNwZWxsU2xvdEJhY2sSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJImYKGVVzZUFyY2FuZVJlY292ZXJ5UmVzcG9uc2USLwoGdml0YWxzGAEgASgLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEhgKEHJlY292ZXJlZF9sZXZlbHMYAiABKAUiywEKFFVzZUxheU9uSGFuZHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRIRCgl0YXJnZXRfaWQYBCABKAkSEAoGYW1vdW50GAUgASgFSAASLgoEY3VyZRgGIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkxheU9uSGFuZHNDdXJlSAASFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJQggKBmVmZmVjdCKhAQoVVXNlTGF5T25IYW5kc1Jlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchINCgVzcGVudBgCIAEoBRIRCglwb29sX2xlZnQYAyABKAUSEwoGaGVhbGVkGAQgASgFSACIAQESGAoQbm90aGluZ19oYXBwZW5lZBgFIAEoCEIJCgdfaGVhbGVkIoIBChZDcmVhdGVTcGVsbFNsb3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRISCgpzbG90X2xldmVsGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKGAQoXQ3JlYXRlU3BlbGxTbG90UmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRjb3N0GAMgASgFIoMBChdDb252ZXJ0U3BlbGxTbG90UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEAoIYWN0b3JfaWQYAyABKAkSEgoKc2xvdF9sZXZlbBgEIAEoBRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkihwEKGENvbnZlcnRTcGVsbFNsb3RSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISLwoGdml0YWxzGAIgASgLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEgwKBGdhaW4YAyABKAUihwEKHEdpdmVCYXJkaWNJbnNwaXJhdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhAKCGFjdG9yX2lkGAMgASgJEhEKCXRhcmdldF9pZBgEIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkifgodR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyK3AQoeQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIPCgdob2xkX2lkGAMgASgJEgsKA3VzZRgEIAEoCBIVCgtyb2xsX2luX2FwcBgFIAEoCEgAEhQKCnR5cGVkX2ZhY2UYBiABKAVIABIXCg9pZGVtcG90ZW5jeV9rZXkYByABKAlCBgoEcm9sbCJVCh9BbnN3ZXJCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEjIKBmF0dGFjaxgBIAEoCzIiLm1ldXJwZy5wbGF5LnYxLlJvbGxBdHRhY2tSZXNwb25zZSKuAQoSQW5zd2VyTHVja3lSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIPCgdob2xkX2lkGAMgASgJEg4KBnJlcm9sbBgEIAEoCBIVCgtyb2xsX2luX2FwcBgFIAEoCEgAEhQKCnR5cGVkX2ZhY2UYBiABKAVIABIXCg9pZGVtcG90ZW5jeV9rZXkYByABKAlCBgoEcm9sbCJJChNBbnN3ZXJMdWNreVJlc3BvbnNlEjIKBmF0dGFjaxgBIAEoCzIiLm1ldXJwZy5wbGF5LnYxLlJvbGxBdHRhY2tSZXNwb25zZSIzChxHZXRPdXRzaWRlSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIn0KFU91dHNpZGVJbnNwaXJhdGlvbkRpZRIUCgxjaGFyYWN0ZXJfaWQYASABKAkSFgoOY2hhcmFjdGVyX25hbWUYAiABKAkSDQoFc2lkZXMYAyABKAUSEQoJZnJvbV9uYW1lGAQgASgJEhQKDHNlY29uZHNfbGVmdBgFIAEoBSJZChdCYXJkaWNJbnNwaXJhdGlvblRhcmdldBIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIaChJkaXNhYmxlZF9yZWFzb25fcHQYAyABKAki1gIKHUdldE91dHNpZGVJbnNwaXJhdGlvblJlc3BvbnNlEjMKBG1pbmUYASABKAsyJS5tZXVycGcucGxheS52MS5PdXRzaWRlSW5zcGlyYXRpb25EaWUSDwoHaXNfYmFyZBgCIAEoCBINCgVzaWRlcxgDIAEoBRIRCgl1c2VzX2xlZnQYBCABKAUSEAoIdXNlc19tYXgYBSABKAUSOAoHdGFyZ2V0cxgGIAMoCzInLm1ldXJwZy5wbGF5LnYxLkJhcmRpY0luc3BpcmF0aW9uVGFyZ2V0EjMKBGhlbGQYByADKAsyJS5tZXVycGcucGxheS52MS5PdXRzaWRlSW5zcGlyYXRpb25EaWUSNwoGb2ZmZXJzGAggAygLMicubWV1cnBnLnBsYXkudjEuT3V0c2lkZUluc3BpcmF0aW9uT2ZmZXISEwoLY29tYmF0X29wZW4YCSABKAgicAojR2l2ZUJhcmRpY0luc3BpcmF0aW9uT3V0c2lkZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSGwoTdGFyZ2V0X2NoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkiiwEKJEdpdmVCYXJkaWNJbnNwaXJhdGlvbk91dHNpZGVSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSMgoDZGllGAIgASgLMiUubWV1cnBnLnBsYXkudjEuT3V0c2lkZUluc3BpcmF0aW9uRGllIqIBCh9BbnN3ZXJPdXRzaWRlSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg8KB2hvbGRfaWQYAiABKAkSCwoDdXNlGAMgASgIEhUKC3JvbGxfaW5fYXBwGAQgASgISAASFAoKdHlwZWRfZmFjZRgFIAEoBUgAEhcKD2lkZW1wb3RlbmN5X2tleRgGIAEoCUIGCgRyb2xsIuwDCiBBbnN3ZXJPdXRzaWRlSW5zcGlyYXRpb25SZXNwb25zZRI9CgtzY2VuZV9jaGVjaxgBIAEoCzImLm1ldXJwZy5wbGF5LnYxLlJvbGxTY2VuZUNoZWNrUmVzcG9uc2VIABI9Cgtncm91cF9jaGVjaxgCIAEoCzImLm1ldXJwZy5wbGF5LnYxLlJvbGxHcm91cENoZWNrUmVzcG9uc2VIABI9Cgt0cmFwX3NlYXJjaBgDIAEoCzImLm1ldXJwZy5wbGF5LnYxLlNlYXJjaEZvclRyYXBzUmVzcG9uc2VIABI5CghoaW50X3RyeRgEIAEoCzIlLm1ldXJwZy5wbGF5LnYxLlRyeVB1enpsZUhpbnRSZXNwb25zZUgAEjcKCnNwZWxsX2Nhc3QYBSABKAsyIS5tZXVycGcucGxheS52MS5DYXN0U3BlbGxSZXNwb25zZUgAEj0KC2VmZmVjdF9zYXZlGAYgASgLMiYubWV1cnBnLnBsYXkudjEuUm9sbEVmZmVjdFNhdmVSZXNwb25zZUgAEk4KEmNvbmNlbnRyYXRpb25fc2F2ZRgHIAEoCzIwLm1ldXJwZy5wbGF5LnYxLlJlc29sdmVDb25jZW50cmF0aW9uU2F2ZVJlc3BvbnNlSABCCAoGcmVzdWx0KpwGChVSZXNvdXJjZUJsb2NrZWRSZWFzb24SJwojUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABInCiNSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9DT01CQVRfT1BFThABEiwKKFJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PX0hJVF9ESUNFX0xFRlQQAhItCilSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT1RfRU5PVUdIX1BPSU5UUxADEi8KK1JFU09VUkNFX0JMT0NLRURfUkVBU09OX1NMT1RfTEVWRUxfVE9PX0hJR0gQBBIoCiRSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT19GUkVFX1NMT1QQBRIvCitSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9TT1JDRVJZX1BPSU5UU19GVUxMEAYSLworUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU09SQ0VSWV9QT0lOVFNfT1ZFUhAHEigKJFJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PX1VTRVNfTEVGVBAIEioKJlJFU09VUkNFX0JMT0NLRURfUkVBU09OX1RBUkdFVF9SRUZVU0VEEAkSKQolUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9UX0FWQUlMQUJMRRAKEi8KK1JFU09VUkNFX0JMT0NLRURfUkVBU09OX0lOU1BJUkFUSU9OX1BFTkRJTkcQCxIpCiVSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT19TSE9SVF9SRVNUEAwSLQopUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU0xPVF9OT1RfRVhQRU5ERUQQDRIqCiZSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9PVkVSX0FMTE9XQU5DRRAOEjQKMFJFU09VUkNFX0JMT0NLRURfUkVBU09OX1NPTkdfT0ZfUkVTVF9GQUNFX05FRURFRBAPEikKJVJFU09VUkNFX0JMT0NLRURfUkVBU09OX0xVQ0tZX1BFTkRJTkcQECpOCghSZXN0S2luZBIZChVSRVNUX0tJTkRfVU5TUEVDSUZJRUQQABITCg9SRVNUX0tJTkRfU0hPUlQQARISCg5SRVNUX0tJTkRfTE9ORxACKnAKDkxheU9uSGFuZHNDdXJlEiEKHUxBWV9PTl9IQU5EU19DVVJFX1VOU1BFQ0lGSUVEEAASHQoZTEFZX09OX0hBTkRTX0NVUkVfRElTRUFTRRABEhwKGExBWV9PTl9IQU5EU19DVVJFX1BPSVNPThACMv8KCg9SZXNvdXJjZVNlcnZpY2USZAoOR2V0UmVzdFByZXZpZXcSJS5tZXVycGcucGxheS52MS5HZXRSZXN0UHJldmlld1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5HZXRSZXN0UHJldmlld1Jlc3BvbnNlIgOQAgISTQoIVGFrZVJlc3QSHy5tZXVycGcucGxheS52MS5UYWtlUmVzdFJlcXVlc3QaIC5tZXVycGcucGxheS52MS5UYWtlUmVzdFJlc3BvbnNlElkKDFNwZW5kSGl0RGljZRIjLm1ldXJwZy5wbGF5LnYxLlNwZW5kSGl0RGljZVJlcXVlc3QaJC5tZXVycGcucGxheS52MS5TcGVuZEhpdERpY2VSZXNwb25zZRJoChFVc2VBcmNhbmVSZWNvdmVyeRIoLm1ldXJwZy5wbGF5LnYxLlVzZUFyY2FuZVJlY292ZXJ5UmVxdWVzdBopLm1ldXJwZy5wbGF5LnYxLlVzZUFyY2FuZVJlY292ZXJ5UmVzcG9uc2USXAoNVXNlTGF5T25IYW5kcxIkLm1ldXJwZy5wbGF5LnYxLlVzZUxheU9uSGFuZHNSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuVXNlTGF5T25IYW5kc1Jlc3BvbnNlEmIKD0NyZWF0ZVNwZWxsU2xvdBImLm1ldXJwZy5wbGF5LnYxLkNyZWF0ZVNwZWxsU2xvdFJlcXVlc3QaJy5tZXVycGcucGxheS52MS5DcmVhdGVTcGVsbFNsb3RSZXNwb25zZRJlChBDb252ZXJ0U3BlbGxTbG90EicubWV1cnBnLnBsYXkudjEuQ29udmVydFNwZWxsU2xvdFJlcXVlc3QaKC5tZXVycGcucGxheS52MS5Db252ZXJ0U3BlbGxTbG90UmVzcG9uc2USdAoVR2l2ZUJhcmRpY0luc3BpcmF0aW9uEiwubWV1cnBnLnBsYXkudjEuR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkdpdmVCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEnoKF0Fuc3dlckJhcmRpY0luc3BpcmF0aW9uEi4ubWV1cnBnLnBsYXkudjEuQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0Gi8ubWV1cnBnLnBsYXkudjEuQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXNwb25zZRJWCgtBbnN3ZXJMdWNreRIiLm1ldXJwZy5wbGF5LnYxLkFuc3dlckx1Y2t5UmVxdWVzdBojLm1ldXJwZy5wbGF5LnYxLkFuc3dlckx1Y2t5UmVzcG9uc2USdAoVR2V0T3V0c2lkZUluc3BpcmF0aW9uEiwubWV1cnBnLnBsYXkudjEuR2V0T3V0c2lkZUluc3BpcmF0aW9uUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkdldE91dHNpZGVJbnNwaXJhdGlvblJlc3BvbnNlEokBChxHaXZlQmFyZGljSW5zcGlyYXRpb25PdXRzaWRlEjMubWV1cnBnLnBsYXkudjEuR2l2ZUJhcmRpY0luc3BpcmF0aW9uT3V0c2lkZVJlcXVlc3QaNC5tZXVycGcucGxheS52MS5HaXZlQmFyZGljSW5zcGlyYXRpb25PdXRzaWRlUmVzcG9uc2USfQoYQW5zd2VyT3V0c2lkZUluc3BpcmF0aW9uEi8ubWV1cnBnLnBsYXkudjEuQW5zd2VyT3V0c2lkZUluc3BpcmF0aW9uUmVxdWVzdBowLm1ldXJwZy5wbGF5LnYxLkFuc3dlck91dHNpZGVJbnNwaXJhdGlvblJlc3BvbnNlQrwBChJjb20ubWV1cnBnLnBsYXkudjFCDlJlc291cmNlc1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_meurpg_play_v1_combat, file_meurpg_play_v1_contests, file_meurpg_play_v1_lasting_effects_service, file_meurpg_play_v1_play, file_meurpg_play_v1_puzzles, file_meurpg_play_v1_scene, file_meurpg_play_v1_traps, file_meurpg_rules_v1_rules]);
+  fileDesc("Ch5tZXVycGcvcGxheS92MS9yZXNvdXJjZXMucHJvdG8SDm1ldXJwZy5wbGF5LnYxImsKD1Jlc291cmNlQmxvY2tlZBI1CgZyZWFzb24YASABKA4yJS5tZXVycGcucGxheS52MS5SZXNvdXJjZUJsb2NrZWRSZWFzb24SDgoGbmVlZGVkGAIgASgFEhEKCWF2YWlsYWJsZRgDIAEoBSJUChVHZXRSZXN0UHJldmlld1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSJgoEa2luZBgCIAEoDjIYLm1ldXJwZy5wbGF5LnYxLlJlc3RLaW5kImoKFkdldFJlc3RQcmV2aWV3UmVzcG9uc2USLwoKY2hhcmFjdGVycxgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlJlc3RQcmV2aWV3Eh8KF2xvbmdfcmVzdF9hbHJlYWR5X3Rha2VuGAIgASgIIr8DCgtSZXN0UHJldmlldxIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIzCglyZXNvdXJjZXMYAyADKAsyIC5tZXVycGcucGxheS52MS5SZXN0UmVzb3VyY2VCYWNrEhIKCm5vX2JlbmVmaXQYBCABKAgSGgoSaGl0X3BvaW50c19jdXJyZW50GAUgASgFEhYKDmhpdF9wb2ludHNfbWF4GAYgASgFEiEKGXRlbXBvcmFyeV9oaXRfcG9pbnRzX2xvc3QYByABKAUSMAoOaGl0X2RpY2Vfc3BlbnQYCCADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZRIvCg1oaXRfZGljZV9iYWNrGAkgAygLMhgubWV1cnBnLnJ1bGVzLnYxLkhpdERpY2USGwoTaGl0X2RpY2VfYmFja19saW1pdBgKIAEoBRI3ChBzcGVsbF9zbG90c19iYWNrGAsgAygLMh0ubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90QmFjaxIXCg9wYWN0X3Nsb3RzX2JhY2sYDCABKAUSGgoSY3JlYXRlZF9zbG90c19sb3N0GA0gASgFIk4KEFJlc3RSZXNvdXJjZUJhY2sSCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDQoFc3BlbnQYAyABKAUSDQoFdG90YWwYBCABKAUiLQoNU3BlbGxTbG90QmFjaxINCgVsZXZlbBgBIAEoBRINCgVjb3VudBgCIAEoBSK/AQoPVGFrZVJlc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEiYKBGtpbmQYAiABKA4yGC5tZXVycGcucGxheS52MS5SZXN0S2luZBIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSNwoQaGl0X2RpY2VfY2hvaWNlcxgEIAMoCzIdLm1ldXJwZy5wbGF5LnYxLkhpdERpY2VDaG9pY2USHQoVd2l0aG91dF9mb29kX29yX2RyaW5rGGQgASgIIk0KDUhpdERpY2VDaG9pY2USFAoMY2hhcmFjdGVyX2lkGAEgASgJEiYKBGRpY2UYAiADKAsyGC5tZXVycGcucnVsZXMudjEuSGl0RGljZSJDChBUYWtlUmVzdFJlc3BvbnNlEi8KBnZpdGFscxgBIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyK2AQoTU3BlbmRIaXREaWNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDQoFZmFjZXMYAyABKAUSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASFAoKdHlwZWRfZmFjZRgGIAEoBUgAEhcKD3R5cGVkX3NvbmdfZmFjZRgHIAEoBUIGCgRyb2xsIrsBChRTcGVuZEhpdERpY2VSZXNwb25zZRIvCgZ2aXRhbHMYASABKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSDAoEZmFjZRgCIAEoBRIdChVjb25zdGl0dXRpb25fbW9kaWZpZXIYAyABKAUSDgoGaGVhbGVkGAQgASgFEhoKEnNvbmdfb2ZfcmVzdF9zaWRlcxgFIAEoBRIZChFzb25nX29mX3Jlc3RfZmFjZRgGIAEoBSKMAQoYVXNlQXJjYW5lUmVjb3ZlcnlSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIsCgVzbG90cxgDIAMoCzIdLm1ldXJwZy5wbGF5LnYxLlNwZWxsU2xvdEJhY2sSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJImYKGVVzZUFyY2FuZVJlY292ZXJ5UmVzcG9uc2USLwoGdml0YWxzGAEgASgLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEhgKEHJlY292ZXJlZF9sZXZlbHMYAiABKAUiywEKFFVzZUxheU9uSGFuZHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRIRCgl0YXJnZXRfaWQYBCABKAkSEAoGYW1vdW50GAUgASgFSAASLgoEY3VyZRgGIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkxheU9uSGFuZHNDdXJlSAASFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJQggKBmVmZmVjdCKhAQoVVXNlTGF5T25IYW5kc1Jlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlchINCgVzcGVudBgCIAEoBRIRCglwb29sX2xlZnQYAyABKAUSEwoGaGVhbGVkGAQgASgFSACIAQESGAoQbm90aGluZ19oYXBwZW5lZBgFIAEoCEIJCgdfaGVhbGVkIoIBChZDcmVhdGVTcGVsbFNsb3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIQCghhY3Rvcl9pZBgDIAEoCRISCgpzbG90X2xldmVsGAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSKGAQoXQ3JlYXRlU3BlbGxTbG90UmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIMCgRjb3N0GAMgASgFIoMBChdDb252ZXJ0U3BlbGxTbG90UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEAoIYWN0b3JfaWQYAyABKAkSEgoKc2xvdF9sZXZlbBgEIAEoBRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkihwEKGENvbnZlcnRTcGVsbFNsb3RSZXNwb25zZRIsCgllbmNvdW50ZXIYASABKAsyGS5tZXVycGcucGxheS52MS5FbmNvdW50ZXISLwoGdml0YWxzGAIgASgLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEgwKBGdhaW4YAyABKAUihwEKHEdpdmVCYXJkaWNJbnNwaXJhdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhAKCGFjdG9yX2lkGAMgASgJEhEKCXRhcmdldF9pZBgEIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkifgodR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyEi8KBnZpdGFscxgCIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscyK3AQoeQW5zd2VyQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIPCgdob2xkX2lkGAMgASgJEgsKA3VzZRgEIAEoCBIVCgtyb2xsX2luX2FwcBgFIAEoCEgAEhQKCnR5cGVkX2ZhY2UYBiABKAVIABIXCg9pZGVtcG90ZW5jeV9rZXkYByABKAlCBgoEcm9sbCJVCh9BbnN3ZXJCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlEjIKBmF0dGFjaxgBIAEoCzIiLm1ldXJwZy5wbGF5LnYxLlJvbGxBdHRhY2tSZXNwb25zZSKuAQoSQW5zd2VyTHVja3lSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRIPCgdob2xkX2lkGAMgASgJEg4KBnJlcm9sbBgEIAEoCBIVCgtyb2xsX2luX2FwcBgFIAEoCEgAEhQKCnR5cGVkX2ZhY2UYBiABKAVIABIXCg9pZGVtcG90ZW5jeV9rZXkYByABKAlCBgoEcm9sbCJJChNBbnN3ZXJMdWNreVJlc3BvbnNlEjIKBmF0dGFjaxgBIAEoCzIiLm1ldXJwZy5wbGF5LnYxLlJvbGxBdHRhY2tSZXNwb25zZSIzChxHZXRPdXRzaWRlSW5zcGlyYXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJIn0KFU91dHNpZGVJbnNwaXJhdGlvbkRpZRIUCgxjaGFyYWN0ZXJfaWQYASABKAkSFgoOY2hhcmFjdGVyX25hbWUYAiABKAkSDQoFc2lkZXMYAyABKAUSEQoJZnJvbV9uYW1lGAQgASgJEhQKDHNlY29uZHNfbGVmdBgFIAEoBSJZChdCYXJkaWNJbnNwaXJhdGlvblRhcmdldBIUCgxjaGFyYWN0ZXJfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIaChJkaXNhYmxlZF9yZWFzb25fcHQYAyABKAkiiAMKHUdldE91dHNpZGVJbnNwaXJhdGlvblJlc3BvbnNlEjMKBG1pbmUYASABKAsyJS5tZXVycGcucGxheS52MS5PdXRzaWRlSW5zcGlyYXRpb25EaWUSDwoHaXNfYmFyZBgCIAEoCBINCgVzaWRlcxgDIAEoBRIRCgl1c2VzX2xlZnQYBCABKAUSEAoIdXNlc19tYXgYBSABKAUSOAoHdGFyZ2V0cxgGIAMoCzInLm1ldXJwZy5wbGF5LnYxLkJhcmRpY0luc3BpcmF0aW9uVGFyZ2V0EjMKBGhlbGQYByADKAsyJS5tZXVycGcucGxheS52MS5PdXRzaWRlSW5zcGlyYXRpb25EaWUSNwoGb2ZmZXJzGAggAygLMicubWV1cnBnLnBsYXkudjEuT3V0c2lkZUluc3BpcmF0aW9uT2ZmZXISEwoLY29tYmF0X29wZW4YCSABKAgSMAoMbHVja3lfb2ZmZXJzGAogAygLMhoubWV1cnBnLnBsYXkudjEuTHVja3lPZmZlciJwCiNHaXZlQmFyZGljSW5zcGlyYXRpb25PdXRzaWRlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIbChN0YXJnZXRfY2hhcmFjdGVyX2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSKLAQokR2l2ZUJhcmRpY0luc3BpcmF0aW9uT3V0c2lkZVJlc3BvbnNlEi8KBnZpdGFscxgBIAEoCzIfLm1ldXJwZy5wbGF5LnYxLkNoYXJhY3RlclZpdGFscxIyCgNkaWUYAiABKAsyJS5tZXVycGcucGxheS52MS5PdXRzaWRlSW5zcGlyYXRpb25EaWUiogEKH0Fuc3dlck91dHNpZGVJbnNwaXJhdGlvblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDwoHaG9sZF9pZBgCIAEoCRILCgN1c2UYAyABKAgSFQoLcm9sbF9pbl9hcHAYBCABKAhIABIUCgp0eXBlZF9mYWNlGAUgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJQgYKBHJvbGwi7AMKIEFuc3dlck91dHNpZGVJbnNwaXJhdGlvblJlc3BvbnNlEj0KC3NjZW5lX2NoZWNrGAEgASgLMiYubWV1cnBnLnBsYXkudjEuUm9sbFNjZW5lQ2hlY2tSZXNwb25zZUgAEj0KC2dyb3VwX2NoZWNrGAIgASgLMiYubWV1cnBnLnBsYXkudjEuUm9sbEdyb3VwQ2hlY2tSZXNwb25zZUgAEj0KC3RyYXBfc2VhcmNoGAMgASgLMiYubWV1cnBnLnBsYXkudjEuU2VhcmNoRm9yVHJhcHNSZXNwb25zZUgAEjkKCGhpbnRfdHJ5GAQgASgLMiUubWV1cnBnLnBsYXkudjEuVHJ5UHV6emxlSGludFJlc3BvbnNlSAASNwoKc3BlbGxfY2FzdBgFIAEoCzIhLm1ldXJwZy5wbGF5LnYxLkNhc3RTcGVsbFJlc3BvbnNlSAASPQoLZWZmZWN0X3NhdmUYBiABKAsyJi5tZXVycGcucGxheS52MS5Sb2xsRWZmZWN0U2F2ZVJlc3BvbnNlSAASTgoSY29uY2VudHJhdGlvbl9zYXZlGAcgASgLMjAubWV1cnBnLnBsYXkudjEuUmVzb2x2ZUNvbmNlbnRyYXRpb25TYXZlUmVzcG9uc2VIAEIICgZyZXN1bHQinwEKGUFuc3dlck91dHNpZGVMdWNreVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDwoHaG9sZF9pZBgCIAEoCRIOCgZyZXJvbGwYAyABKAgSFQoLcm9sbF9pbl9hcHAYBCABKAhIABIUCgp0eXBlZF9mYWNlGAUgASgFSAASFwoPaWRlbXBvdGVuY3lfa2V5GAYgASgJQgYKBHJvbGwi5gMKGkFuc3dlck91dHNpZGVMdWNreVJlc3BvbnNlEj0KC3NjZW5lX2NoZWNrGAEgASgLMiYubWV1cnBnLnBsYXkudjEuUm9sbFNjZW5lQ2hlY2tSZXNwb25zZUgAEj0KC2dyb3VwX2NoZWNrGAIgASgLMiYubWV1cnBnLnBsYXkudjEuUm9sbEdyb3VwQ2hlY2tSZXNwb25zZUgAEj0KC3RyYXBfc2VhcmNoGAMgASgLMiYubWV1cnBnLnBsYXkudjEuU2VhcmNoRm9yVHJhcHNSZXNwb25zZUgAEjkKCGhpbnRfdHJ5GAQgASgLMiUubWV1cnBnLnBsYXkudjEuVHJ5UHV6emxlSGludFJlc3BvbnNlSAASNwoKc3BlbGxfY2FzdBgFIAEoCzIhLm1ldXJwZy5wbGF5LnYxLkNhc3RTcGVsbFJlc3BvbnNlSAASPQoLZWZmZWN0X3NhdmUYBiABKAsyJi5tZXVycGcucGxheS52MS5Sb2xsRWZmZWN0U2F2ZVJlc3BvbnNlSAASTgoSY29uY2VudHJhdGlvbl9zYXZlGAcgASgLMjAubWV1cnBnLnBsYXkudjEuUmVzb2x2ZUNvbmNlbnRyYXRpb25TYXZlUmVzcG9uc2VIAEIICgZyZXN1bHQqnAYKFVJlc291cmNlQmxvY2tlZFJlYXNvbhInCiNSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEicKI1JFU09VUkNFX0JMT0NLRURfUkVBU09OX0NPTUJBVF9PUEVOEAESLAooUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9fSElUX0RJQ0VfTEVGVBACEi0KKVJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PVF9FTk9VR0hfUE9JTlRTEAMSLworUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU0xPVF9MRVZFTF9UT09fSElHSBAEEigKJFJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PX0ZSRUVfU0xPVBAFEi8KK1JFU09VUkNFX0JMT0NLRURfUkVBU09OX1NPUkNFUllfUE9JTlRTX0ZVTEwQBhIvCitSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9TT1JDRVJZX1BPSU5UU19PVkVSEAcSKAokUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTk9fVVNFU19MRUZUEAgSKgomUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fVEFSR0VUX1JFRlVTRUQQCRIpCiVSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9OT1RfQVZBSUxBQkxFEAoSLworUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fSU5TUElSQVRJT05fUEVORElORxALEikKJVJFU09VUkNFX0JMT0NLRURfUkVBU09OX05PX1NIT1JUX1JFU1QQDBItCilSRVNPVVJDRV9CTE9DS0VEX1JFQVNPTl9TTE9UX05PVF9FWFBFTkRFRBANEioKJlJFU09VUkNFX0JMT0NLRURfUkVBU09OX09WRVJfQUxMT1dBTkNFEA4SNAowUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fU09OR19PRl9SRVNUX0ZBQ0VfTkVFREVEEA8SKQolUkVTT1VSQ0VfQkxPQ0tFRF9SRUFTT05fTFVDS1lfUEVORElORxAQKk4KCFJlc3RLaW5kEhkKFVJFU1RfS0lORF9VTlNQRUNJRklFRBAAEhMKD1JFU1RfS0lORF9TSE9SVBABEhIKDlJFU1RfS0lORF9MT05HEAIqcAoOTGF5T25IYW5kc0N1cmUSIQodTEFZX09OX0hBTkRTX0NVUkVfVU5TUEVDSUZJRUQQABIdChlMQVlfT05fSEFORFNfQ1VSRV9ESVNFQVNFEAESHAoYTEFZX09OX0hBTkRTX0NVUkVfUE9JU09OEAIy7AsKD1Jlc291cmNlU2VydmljZRJkCg5HZXRSZXN0UHJldmlldxIlLm1ldXJwZy5wbGF5LnYxLkdldFJlc3RQcmV2aWV3UmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkdldFJlc3RQcmV2aWV3UmVzcG9uc2UiA5ACAhJNCghUYWtlUmVzdBIfLm1ldXJwZy5wbGF5LnYxLlRha2VSZXN0UmVxdWVzdBogLm1ldXJwZy5wbGF5LnYxLlRha2VSZXN0UmVzcG9uc2USWQoMU3BlbmRIaXREaWNlEiMubWV1cnBnLnBsYXkudjEuU3BlbmRIaXREaWNlUmVxdWVzdBokLm1ldXJwZy5wbGF5LnYxLlNwZW5kSGl0RGljZVJlc3BvbnNlEmgKEVVzZUFyY2FuZVJlY292ZXJ5EigubWV1cnBnLnBsYXkudjEuVXNlQXJjYW5lUmVjb3ZlcnlSZXF1ZXN0GikubWV1cnBnLnBsYXkudjEuVXNlQXJjYW5lUmVjb3ZlcnlSZXNwb25zZRJcCg1Vc2VMYXlPbkhhbmRzEiQubWV1cnBnLnBsYXkudjEuVXNlTGF5T25IYW5kc1JlcXVlc3QaJS5tZXVycGcucGxheS52MS5Vc2VMYXlPbkhhbmRzUmVzcG9uc2USYgoPQ3JlYXRlU3BlbGxTbG90EiYubWV1cnBnLnBsYXkudjEuQ3JlYXRlU3BlbGxTbG90UmVxdWVzdBonLm1ldXJwZy5wbGF5LnYxLkNyZWF0ZVNwZWxsU2xvdFJlc3BvbnNlEmUKEENvbnZlcnRTcGVsbFNsb3QSJy5tZXVycGcucGxheS52MS5Db252ZXJ0U3BlbGxTbG90UmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLkNvbnZlcnRTcGVsbFNsb3RSZXNwb25zZRJ0ChVHaXZlQmFyZGljSW5zcGlyYXRpb24SLC5tZXVycGcucGxheS52MS5HaXZlQmFyZGljSW5zcGlyYXRpb25SZXF1ZXN0Gi0ubWV1cnBnLnBsYXkudjEuR2l2ZUJhcmRpY0luc3BpcmF0aW9uUmVzcG9uc2USegoXQW5zd2VyQmFyZGljSW5zcGlyYXRpb24SLi5tZXVycGcucGxheS52MS5BbnN3ZXJCYXJkaWNJbnNwaXJhdGlvblJlcXVlc3QaLy5tZXVycGcucGxheS52MS5BbnN3ZXJCYXJkaWNJbnNwaXJhdGlvblJlc3BvbnNlElYKC0Fuc3dlckx1Y2t5EiIubWV1cnBnLnBsYXkudjEuQW5zd2VyTHVja3lSZXF1ZXN0GiMubWV1cnBnLnBsYXkudjEuQW5zd2VyTHVja3lSZXNwb25zZRJ0ChVHZXRPdXRzaWRlSW5zcGlyYXRpb24SLC5tZXVycGcucGxheS52MS5HZXRPdXRzaWRlSW5zcGlyYXRpb25SZXF1ZXN0Gi0ubWV1cnBnLnBsYXkudjEuR2V0T3V0c2lkZUluc3BpcmF0aW9uUmVzcG9uc2USiQEKHEdpdmVCYXJkaWNJbnNwaXJhdGlvbk91dHNpZGUSMy5tZXVycGcucGxheS52MS5HaXZlQmFyZGljSW5zcGlyYXRpb25PdXRzaWRlUmVxdWVzdBo0Lm1ldXJwZy5wbGF5LnYxLkdpdmVCYXJkaWNJbnNwaXJhdGlvbk91dHNpZGVSZXNwb25zZRJ9ChhBbnN3ZXJPdXRzaWRlSW5zcGlyYXRpb24SLy5tZXVycGcucGxheS52MS5BbnN3ZXJPdXRzaWRlSW5zcGlyYXRpb25SZXF1ZXN0GjAubWV1cnBnLnBsYXkudjEuQW5zd2VyT3V0c2lkZUluc3BpcmF0aW9uUmVzcG9uc2USawoSQW5zd2VyT3V0c2lkZUx1Y2t5EikubWV1cnBnLnBsYXkudjEuQW5zd2VyT3V0c2lkZUx1Y2t5UmVxdWVzdBoqLm1ldXJwZy5wbGF5LnYxLkFuc3dlck91dHNpZGVMdWNreVJlc3BvbnNlQrwBChJjb20ubWV1cnBnLnBsYXkudjFCDlJlc291cmNlc1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_meurpg_play_v1_combat, file_meurpg_play_v1_contests, file_meurpg_play_v1_lasting_effects_service, file_meurpg_play_v1_play, file_meurpg_play_v1_puzzles, file_meurpg_play_v1_scene, file_meurpg_play_v1_traps, file_meurpg_rules_v1_rules]);
 
 /**
  * ResourceBlocked is the detail of a refusal that comes from a rule.
@@ -1139,7 +1140,8 @@ export type GetOutsideInspirationResponse = Message<"meurpg.play.v1.GetOutsideIn
 
   /**
    * The caller's rolls that wait for an answer about the die, in a combat too (the die is
-   * then on the combatant and `mine` is unset).
+   * then on the combatant and `mine` is unset). A roll whose Lucky question waits is in
+   * `lucky_offers` instead, until it is answered.
    *
    * @generated from field: repeated meurpg.play.v1.OutsideInspirationOffer offers = 8;
    */
@@ -1151,6 +1153,15 @@ export type GetOutsideInspirationResponse = Message<"meurpg.play.v1.GetOutsideIn
    * @generated from field: bool combat_open = 9;
    */
   combatOpen: boolean;
+
+  /**
+   * The caller's rolls that wait for the halfling's Lucky question ("Tirou 1: rolar de novo?",
+   * AnswerOutsideLucky), in a combat too, whether or not the character holds a die: a reload
+   * asks again. `attack_key` and `target_id` are empty (they are a weapon attack's).
+   *
+   * @generated from field: repeated meurpg.play.v1.LuckyOffer lucky_offers = 10;
+   */
+  luckyOffers: LuckyOffer[];
 };
 
 /**
@@ -1331,6 +1342,126 @@ export const AnswerOutsideInspirationResponseSchema: GenMessage<AnswerOutsideIns
   messageDesc(file_meurpg_play_v1_resources, 32);
 
 /**
+ * @generated from message meurpg.play.v1.AnswerOutsideLuckyRequest
+ */
+export type AnswerOutsideLuckyRequest = Message<"meurpg.play.v1.AnswerOutsideLuckyRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The held roll (a UUID), from the response's `lucky_offer` or GetOutsideInspiration's
+   * `lucky_offers`.
+   *
+   * @generated from field: string hold_id = 2;
+   */
+  holdId: string;
+
+  /**
+   * True: roll the die that shows the 1 again, and the new roll stands. False: keep the 1.
+   *
+   * @generated from field: bool reroll = 3;
+   */
+  reroll: boolean;
+
+  /**
+   * How the new d20 comes (RN-18) when `reroll` is true: the app rolls it, or the player typed
+   * the face of a real die (1 to 20). Required then.
+   *
+   * @generated from oneof meurpg.play.v1.AnswerOutsideLuckyRequest.roll
+   */
+  roll: {
+    /**
+     * @generated from field: bool roll_in_app = 4;
+     */
+    value: boolean;
+    case: "rollInApp";
+  } | {
+    /**
+     * @generated from field: int32 typed_face = 5;
+     */
+    value: number;
+    case: "typedFace";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * @generated from field: string idempotency_key = 6;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.AnswerOutsideLuckyRequest.
+ * Use `create(AnswerOutsideLuckyRequestSchema)` to create a new message.
+ */
+export const AnswerOutsideLuckyRequestSchema: GenMessage<AnswerOutsideLuckyRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 33);
+
+/**
+ * @generated from message meurpg.play.v1.AnswerOutsideLuckyResponse
+ */
+export type AnswerOutsideLuckyResponse = Message<"meurpg.play.v1.AnswerOutsideLuckyResponse"> & {
+  /**
+   * The path of the held roll answers as it does, as in AnswerOutsideInspirationResponse: the
+   * roll written, with the die rolled again in its `rerolled`; or, when the character holds a
+   * Bardic Inspiration die, the path's `inspiration_offer` on the new roll.
+   *
+   * @generated from oneof meurpg.play.v1.AnswerOutsideLuckyResponse.result
+   */
+  result: {
+    /**
+     * @generated from field: meurpg.play.v1.RollSceneCheckResponse scene_check = 1;
+     */
+    value: RollSceneCheckResponse;
+    case: "sceneCheck";
+  } | {
+    /**
+     * @generated from field: meurpg.play.v1.RollGroupCheckResponse group_check = 2;
+     */
+    value: RollGroupCheckResponse;
+    case: "groupCheck";
+  } | {
+    /**
+     * @generated from field: meurpg.play.v1.SearchForTrapsResponse trap_search = 3;
+     */
+    value: SearchForTrapsResponse;
+    case: "trapSearch";
+  } | {
+    /**
+     * @generated from field: meurpg.play.v1.TryPuzzleHintResponse hint_try = 4;
+     */
+    value: TryPuzzleHintResponse;
+    case: "hintTry";
+  } | {
+    /**
+     * @generated from field: meurpg.play.v1.CastSpellResponse spell_cast = 5;
+     */
+    value: CastSpellResponse;
+    case: "spellCast";
+  } | {
+    /**
+     * @generated from field: meurpg.play.v1.RollEffectSaveResponse effect_save = 6;
+     */
+    value: RollEffectSaveResponse;
+    case: "effectSave";
+  } | {
+    /**
+     * @generated from field: meurpg.play.v1.ResolveConcentrationSaveResponse concentration_save = 7;
+     */
+    value: ResolveConcentrationSaveResponse;
+    case: "concentrationSave";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message meurpg.play.v1.AnswerOutsideLuckyResponse.
+ * Use `create(AnswerOutsideLuckyResponseSchema)` to create a new message.
+ */
+export const AnswerOutsideLuckyResponseSchema: GenMessage<AnswerOutsideLuckyResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_resources, 34);
+
+/**
  * ResourceBlockedReason is why a resource call was refused.
  *
  * @generated from enum meurpg.play.v1.ResourceBlockedReason
@@ -1452,8 +1583,9 @@ export enum ResourceBlockedReason {
 
   /**
    * A roll is held, waiting for the player's answer to the halfling's Lucky question
-   * ("Tirou 1: rolar de novo?", AnswerLucky): the combatant does nothing else until it is
-   * answered.
+   * ("Tirou 1: rolar de novo?", AnswerLucky or AnswerOutsideLucky): the character rolls
+   * nothing else that could ask until it is answered, and the Bardic Inspiration question of
+   * the same roll waits for it.
    *
    * @generated from enum value: RESOURCE_BLOCKED_REASON_LUCKY_PENDING = 16;
    */
@@ -1735,7 +1867,8 @@ export const ResourceService: GenService<{
   },
   /**
    * GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
-   * die their character holds and, for a bard, the uses left and the party to give it to.
+   * die their character holds and, for a bard, the uses left and the party to give it to;
+   * and the caller's rolls that wait for an answer, about the die or the halfling's Lucky.
    * Only the caller's own character is described (the master gets every die held).
    *
    * @generated from rpc meurpg.play.v1.ResourceService.GetOutsideInspiration
@@ -1774,7 +1907,8 @@ export const ResourceService: GenService<{
    * saves the app rolls for a target (a spell's saving throw, a hit rider's), never ask.
    *
    * Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
-   * the die; `failed_precondition` when the die ran out meanwhile.
+   * the die; `failed_precondition` when the die ran out meanwhile; ResourceBlocked
+   * LUCKY_PENDING while the Lucky question of the same roll waits (AnswerOutsideLucky first).
    *
    * @generated from rpc meurpg.play.v1.ResourceService.AnswerOutsideInspiration
    */
@@ -1782,6 +1916,39 @@ export const ResourceService: GenService<{
     methodKind: "unary";
     input: typeof AnswerOutsideInspirationRequestSchema;
     output: typeof AnswerOutsideInspirationResponseSchema;
+  },
+  /**
+   * AnswerOutsideLucky answers the Lucky question of a d20 roll that is not a weapon attack
+   * (AnswerLucky has those): a halfling's d20 showed a 1 (SRD 5.1, Halfling, Lucky: the die may
+   * be rolled again, and the new roll stands), so roll it again, or keep the 1. The rolls that
+   * ask are the ones that wait for a Bardic Inspiration die (AnswerOutsideInspiration):
+   * RollSceneCheck, RollGroupCheck, SearchForTraps (not the Search action of a combat) and
+   * TryPuzzleHint, and, for a player's character in a combat, CastSpell (a spell attack against
+   * one target), RollEffectSave and ResolveConcentrationSave. Each answers with `lucky_offer`
+   * instead of its result when the roller's player rolls it for their own halfling and a d20
+   * shows a 1; with advantage or disadvantage the question comes when either die shows a 1, even
+   * the one that does not count, and only that die is rolled again (the first when both do). The
+   * new die is rolled in the app or typed from a real die (RN-18, as for the d20); the new roll is
+   * never asked about again, even when it is a 1, and Reliable Talent counts it as it counts any
+   * d20 of the check. When the character also holds a Bardic Inspiration die the roll stays held
+   * after the answer, and the result is the path's response with `inspiration_offer` on the new
+   * roll (answered with AnswerOutsideInspiration); otherwise the roll is written as the path
+   * writes it, with the d20 rolled again in its roll's `rerolled` ("trait:lucky"). The roll's
+   * owner only: the master's rolls never ask (a roll the master makes for a halfling waits for a
+   * decision, MR-014).
+   *
+   * Errors: `not_found` for a hold that is gone or another player's; `invalid_argument` without
+   * roll_in_app or typed_face when reroll is set, or a typed face outside 1 to 20;
+   * `failed_precondition` when the hold asks no Lucky question, it was answered already (by
+   * another answer) or its combat round is over; the path's WRONG_DICE_MODE for a way of rolling
+   * the campaign does not allow.
+   *
+   * @generated from rpc meurpg.play.v1.ResourceService.AnswerOutsideLucky
+   */
+  answerOutsideLucky: {
+    methodKind: "unary";
+    input: typeof AnswerOutsideLuckyRequestSchema;
+    output: typeof AnswerOutsideLuckyResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_resources, 0);

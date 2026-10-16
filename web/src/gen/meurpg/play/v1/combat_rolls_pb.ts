@@ -387,8 +387,8 @@ export const DamagePartSchema: GenMessage<DamagePart> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_combat_rolls, 4);
 
 /**
- * Reroll is a die rolled again: a damage die by Great Weapon Fighting, or the d20 of an
- * attack roll that showed a 1 by the halfling's Lucky.
+ * Reroll is a die rolled again: a damage die by Great Weapon Fighting, or a d20 that showed a
+ * 1 by the halfling's Lucky (an attack roll, an ability check or a saving throw).
  *
  * @generated from message meurpg.play.v1.Reroll
  */

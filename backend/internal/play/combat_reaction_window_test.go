@@ -381,7 +381,12 @@ func TestAPlayersCounterspellCountersAnNPCsCast(t *testing.T) {
 // damage rolled, lets Escudo go and applies it: the damage that asks the save.
 func concentratingHit(t *testing.T, damage int) (*armed, *playv1.Encounter) {
 	t.Helper()
-	a := newCasters(t)
+	return concentratingHitOn(t, newCasters(t), damage)
+}
+
+// concentratingHitOn is concentratingHit on a party the test made.
+func concentratingHitOn(t *testing.T, a *armed, damage int) (*armed, *playv1.Encounter) {
+	t.Helper()
 	e := a.castersFightNPCFirst(t)
 	a.concentrate(t, "Pensantus", webSpell)
 	hit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Pensantus", d20(9))

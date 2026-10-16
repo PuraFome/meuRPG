@@ -330,4 +330,29 @@ describe('GroupCheckMaster, the natural mark (information only)', () => {
   it('has no tag for a member who has not answered', async () => {
     expect(await marks(openCheck())).toEqual([]);
   });
+
+  it('says "Sortudo: 1 → 14" beside a halfling whose d20 of 1 was rolled again', async () => {
+    const view = groupCheck({
+      dc: 13,
+      needed: 1,
+      members: [
+        member({
+          characterId: 'p',
+          name: 'Pipo',
+          answered: true,
+          roll: checkRoll({
+            faces: [14],
+            modifier: 1,
+            total: 15,
+            rerolled: [{ index: 0, from: 1, to: 14, sourceKey: 'trait:lucky' }],
+          }),
+          passedKnown: true,
+          passed: true,
+        }),
+      ],
+    });
+    const { el, settle } = setup(view);
+    await settle();
+    expect(textOf(el.querySelector('[data-testid="lucky"]')!)).toBe('Sortudo: 1 → 14');
+  });
 });

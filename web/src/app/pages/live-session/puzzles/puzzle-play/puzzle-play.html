@@ -155,7 +155,9 @@
           [extraFields]="play.extraDice.fields()"
           [(extraFaces)]="play.extraDice.faces"
           [offer]="play.hintOffer()"
+          [luckyOffer]="play.hintLucky()"
           (answered)="play.answerHintDie($event.use, $event.die)"
+          (luckyAnswered)="play.answerHintLucky($event.reroll, $event.die)"
           (rolled)="play.tryHint($event)"
           (typed)="play.tryHint($event)"
         />

@@ -1132,8 +1132,12 @@ type CheckRoll struct {
 	ManeuverNamePt   string `protobuf:"bytes,14,opt,name=maneuver_name_pt,json=maneuverNamePt,proto3" json:"maneuver_name_pt,omitempty"`
 	ManeuverDieSides int32  `protobuf:"varint,15,opt,name=maneuver_die_sides,json=maneuverDieSides,proto3" json:"maneuver_die_sides,omitempty"`
 	ManeuverDieFace  int32  `protobuf:"varint,16,opt,name=maneuver_die_face,json=maneuverDieFace,proto3" json:"maneuver_die_face,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The d20 the halfling's Lucky rolled again after it showed a 1 (`source_key`
+	// "trait:lucky"), as an index into `faces`; `faces` holds the new face. Empty when nothing
+	// was rolled again.
+	Rerolled      []*Reroll `protobuf:"bytes,17,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CheckRoll) Reset() {
@@ -1276,6 +1280,13 @@ func (x *CheckRoll) GetManeuverDieFace() int32 {
 		return x.ManeuverDieFace
 	}
 	return 0
+}
+
+func (x *CheckRoll) GetRerolled() []*Reroll {
+	if x != nil {
+		return x.Rerolled
+	}
+	return nil
 }
 
 // CheckOption is what a d20 check would roll for the caller: the modifier and the
@@ -3161,11 +3172,11 @@ var File_meurpg_play_v1_contest_types_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\n" +
-	"\"meurpg/play/v1/contest_types.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"W\n" +
+	"\"meurpg/play/v1/contest_types.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a!meurpg/play/v1/combat_rolls.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"W\n" +
 	"\bRollNote\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1c\n" +
-	"\tadvantage\x18\x03 \x01(\bR\tadvantage\"\xe2\x04\n" +
+	"\tadvantage\x18\x03 \x01(\bR\tadvantage\"\x96\x05\n" +
 	"\tCheckRoll\x122\n" +
 	"\x05skill\x18\x01 \x01(\x0e2\x1c.meurpg.play.v1.ContestSkillR\x05skill\x12\x1b\n" +
 	"\tskill_key\x18\x02 \x01(\tR\bskillKey\x12\x14\n" +
@@ -3184,7 +3195,8 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\fmaneuver_key\x18\r \x01(\tR\vmaneuverKey\x12(\n" +
 	"\x10maneuver_name_pt\x18\x0e \x01(\tR\x0emaneuverNamePt\x12,\n" +
 	"\x12maneuver_die_sides\x18\x0f \x01(\x05R\x10maneuverDieSides\x12*\n" +
-	"\x11maneuver_die_face\x18\x10 \x01(\x05R\x0fmaneuverDieFace\"\xa1\x01\n" +
+	"\x11maneuver_die_face\x18\x10 \x01(\x05R\x0fmaneuverDieFace\x122\n" +
+	"\brerolled\x18\x11 \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\"\xa1\x01\n" +
 	"\vCheckOption\x12\x1a\n" +
 	"\bmodifier\x18\x01 \x01(\x05R\bmodifier\x12\x14\n" +
 	"\x05known\x18\x02 \x01(\bR\x05known\x120\n" +
@@ -3519,65 +3531,67 @@ var file_meurpg_play_v1_contest_types_proto_goTypes = []any{
 	(*GroupCheckMemberView)(nil),  // 35: meurpg.play.v1.GroupCheckMemberView
 	(*GroupCheckView)(nil),        // 36: meurpg.play.v1.GroupCheckView
 	(*CombatLogContest)(nil),      // 37: meurpg.play.v1.CombatLogContest
-	(*timestamppb.Timestamp)(nil), // 38: google.protobuf.Timestamp
-	(v1.CreatureSize)(0),          // 39: meurpg.rules.v1.CreatureSize
-	(*v1.DisabledReason)(nil),     // 40: meurpg.rules.v1.DisabledReason
-	(v1.ActionEconomy)(0),         // 41: meurpg.rules.v1.ActionEconomy
+	(*Reroll)(nil),                // 38: meurpg.play.v1.Reroll
+	(*timestamppb.Timestamp)(nil), // 39: google.protobuf.Timestamp
+	(v1.CreatureSize)(0),          // 40: meurpg.rules.v1.CreatureSize
+	(*v1.DisabledReason)(nil),     // 41: meurpg.rules.v1.DisabledReason
+	(v1.ActionEconomy)(0),         // 42: meurpg.rules.v1.ActionEconomy
 }
 var file_meurpg_play_v1_contest_types_proto_depIdxs = []int32{
 	5,  // 0: meurpg.play.v1.CheckRoll.skill:type_name -> meurpg.play.v1.ContestSkill
 	6,  // 1: meurpg.play.v1.CheckRoll.mode:type_name -> meurpg.play.v1.RollModeKind
 	16, // 2: meurpg.play.v1.CheckRoll.notes:type_name -> meurpg.play.v1.RollNote
-	6,  // 3: meurpg.play.v1.CheckOption.mode:type_name -> meurpg.play.v1.RollModeKind
-	16, // 4: meurpg.play.v1.CheckOption.notes:type_name -> meurpg.play.v1.RollNote
-	5,  // 5: meurpg.play.v1.ContestSkillOption.skill:type_name -> meurpg.play.v1.ContestSkill
-	6,  // 6: meurpg.play.v1.ContestSkillOption.mode:type_name -> meurpg.play.v1.RollModeKind
-	16, // 7: meurpg.play.v1.ContestSkillOption.notes:type_name -> meurpg.play.v1.RollNote
-	0,  // 8: meurpg.play.v1.ContestView.kind:type_name -> meurpg.play.v1.ContestKind
-	1,  // 9: meurpg.play.v1.ContestView.purpose:type_name -> meurpg.play.v1.ContestPurpose
-	2,  // 10: meurpg.play.v1.ContestView.status:type_name -> meurpg.play.v1.ContestStatus
-	17, // 11: meurpg.play.v1.ContestView.initiator_roll:type_name -> meurpg.play.v1.CheckRoll
-	17, // 12: meurpg.play.v1.ContestView.defender_roll:type_name -> meurpg.play.v1.CheckRoll
-	3,  // 13: meurpg.play.v1.ContestView.winner:type_name -> meurpg.play.v1.ContestWinner
-	4,  // 14: meurpg.play.v1.ContestView.shove_outcome:type_name -> meurpg.play.v1.ShoveOutcome
-	7,  // 15: meurpg.play.v1.ContestView.waiting_for:type_name -> meurpg.play.v1.ContestWaitFor
-	19, // 16: meurpg.play.v1.ContestView.answer_options:type_name -> meurpg.play.v1.ContestSkillOption
-	5,  // 17: meurpg.play.v1.ContestView.deferred_skill:type_name -> meurpg.play.v1.ContestSkill
-	21, // 18: meurpg.play.v1.ContestView.shove_choice:type_name -> meurpg.play.v1.ShoveChoice
-	38, // 19: meurpg.play.v1.ContestView.created_at:type_name -> google.protobuf.Timestamp
-	8,  // 20: meurpg.play.v1.ShoveChoice.push_blocked:type_name -> meurpg.play.v1.ShoveBlockedReason
-	9,  // 21: meurpg.play.v1.ContestBlocked.reason:type_name -> meurpg.play.v1.ContestBlockedReason
-	39, // 22: meurpg.play.v1.ContestTarget.size:type_name -> meurpg.rules.v1.CreatureSize
-	10, // 23: meurpg.play.v1.ContestTarget.reason:type_name -> meurpg.play.v1.ContestTargetReason
-	11, // 24: meurpg.play.v1.ContestAttackOption.kind:type_name -> meurpg.play.v1.ContestAttackOptionKind
-	40, // 25: meurpg.play.v1.ContestAttackOption.reason:type_name -> meurpg.rules.v1.DisabledReason
-	23, // 26: meurpg.play.v1.ContestAttackOption.targets:type_name -> meurpg.play.v1.ContestTarget
-	18, // 27: meurpg.play.v1.ContestAttackOption.roll_option:type_name -> meurpg.play.v1.CheckOption
-	25, // 28: meurpg.play.v1.ContestAttackOption.maneuvers:type_name -> meurpg.play.v1.ManeuverGrappleOption
-	40, // 29: meurpg.play.v1.ManeuverGrappleOption.reason:type_name -> meurpg.rules.v1.DisabledReason
-	41, // 30: meurpg.play.v1.ContestAction.economy:type_name -> meurpg.rules.v1.ActionEconomy
-	40, // 31: meurpg.play.v1.ContestAction.reason:type_name -> meurpg.rules.v1.DisabledReason
-	40, // 32: meurpg.play.v1.ContestTurnState.escape_reason:type_name -> meurpg.rules.v1.DisabledReason
-	26, // 33: meurpg.play.v1.ContestTurnState.hide_actions:type_name -> meurpg.play.v1.ContestAction
-	26, // 34: meurpg.play.v1.ContestTurnState.help_action:type_name -> meurpg.play.v1.ContestAction
-	19, // 35: meurpg.play.v1.ContestTurnState.escape_options:type_name -> meurpg.play.v1.ContestSkillOption
-	18, // 36: meurpg.play.v1.ContestTurnState.hide_option:type_name -> meurpg.play.v1.CheckOption
-	12, // 37: meurpg.play.v1.HideAttemptView.status:type_name -> meurpg.play.v1.HideAttemptStatus
-	17, // 38: meurpg.play.v1.HideAttemptView.roll:type_name -> meurpg.play.v1.CheckRoll
-	29, // 39: meurpg.play.v1.HideAttemptView.observers:type_name -> meurpg.play.v1.HideObserver
-	13, // 40: meurpg.play.v1.HelpView.kind:type_name -> meurpg.play.v1.HelpKind
-	14, // 41: meurpg.play.v1.SurpriseSuggestion.reason:type_name -> meurpg.play.v1.SurpriseSuggestionReason
-	33, // 42: meurpg.play.v1.SurpriseSuggestion.hiders:type_name -> meurpg.play.v1.HiderTotal
-	17, // 43: meurpg.play.v1.GroupCheckMemberView.roll:type_name -> meurpg.play.v1.CheckRoll
-	35, // 44: meurpg.play.v1.GroupCheckView.members:type_name -> meurpg.play.v1.GroupCheckMemberView
-	38, // 45: meurpg.play.v1.GroupCheckView.created_at:type_name -> google.protobuf.Timestamp
-	18, // 46: meurpg.play.v1.GroupCheckView.your_option:type_name -> meurpg.play.v1.CheckOption
-	15, // 47: meurpg.play.v1.CombatLogContest.line:type_name -> meurpg.play.v1.ContestLogLine
-	48, // [48:48] is the sub-list for method output_type
-	48, // [48:48] is the sub-list for method input_type
-	48, // [48:48] is the sub-list for extension type_name
-	48, // [48:48] is the sub-list for extension extendee
-	0,  // [0:48] is the sub-list for field type_name
+	38, // 3: meurpg.play.v1.CheckRoll.rerolled:type_name -> meurpg.play.v1.Reroll
+	6,  // 4: meurpg.play.v1.CheckOption.mode:type_name -> meurpg.play.v1.RollModeKind
+	16, // 5: meurpg.play.v1.CheckOption.notes:type_name -> meurpg.play.v1.RollNote
+	5,  // 6: meurpg.play.v1.ContestSkillOption.skill:type_name -> meurpg.play.v1.ContestSkill
+	6,  // 7: meurpg.play.v1.ContestSkillOption.mode:type_name -> meurpg.play.v1.RollModeKind
+	16, // 8: meurpg.play.v1.ContestSkillOption.notes:type_name -> meurpg.play.v1.RollNote
+	0,  // 9: meurpg.play.v1.ContestView.kind:type_name -> meurpg.play.v1.ContestKind
+	1,  // 10: meurpg.play.v1.ContestView.purpose:type_name -> meurpg.play.v1.ContestPurpose
+	2,  // 11: meurpg.play.v1.ContestView.status:type_name -> meurpg.play.v1.ContestStatus
+	17, // 12: meurpg.play.v1.ContestView.initiator_roll:type_name -> meurpg.play.v1.CheckRoll
+	17, // 13: meurpg.play.v1.ContestView.defender_roll:type_name -> meurpg.play.v1.CheckRoll
+	3,  // 14: meurpg.play.v1.ContestView.winner:type_name -> meurpg.play.v1.ContestWinner
+	4,  // 15: meurpg.play.v1.ContestView.shove_outcome:type_name -> meurpg.play.v1.ShoveOutcome
+	7,  // 16: meurpg.play.v1.ContestView.waiting_for:type_name -> meurpg.play.v1.ContestWaitFor
+	19, // 17: meurpg.play.v1.ContestView.answer_options:type_name -> meurpg.play.v1.ContestSkillOption
+	5,  // 18: meurpg.play.v1.ContestView.deferred_skill:type_name -> meurpg.play.v1.ContestSkill
+	21, // 19: meurpg.play.v1.ContestView.shove_choice:type_name -> meurpg.play.v1.ShoveChoice
+	39, // 20: meurpg.play.v1.ContestView.created_at:type_name -> google.protobuf.Timestamp
+	8,  // 21: meurpg.play.v1.ShoveChoice.push_blocked:type_name -> meurpg.play.v1.ShoveBlockedReason
+	9,  // 22: meurpg.play.v1.ContestBlocked.reason:type_name -> meurpg.play.v1.ContestBlockedReason
+	40, // 23: meurpg.play.v1.ContestTarget.size:type_name -> meurpg.rules.v1.CreatureSize
+	10, // 24: meurpg.play.v1.ContestTarget.reason:type_name -> meurpg.play.v1.ContestTargetReason
+	11, // 25: meurpg.play.v1.ContestAttackOption.kind:type_name -> meurpg.play.v1.ContestAttackOptionKind
+	41, // 26: meurpg.play.v1.ContestAttackOption.reason:type_name -> meurpg.rules.v1.DisabledReason
+	23, // 27: meurpg.play.v1.ContestAttackOption.targets:type_name -> meurpg.play.v1.ContestTarget
+	18, // 28: meurpg.play.v1.ContestAttackOption.roll_option:type_name -> meurpg.play.v1.CheckOption
+	25, // 29: meurpg.play.v1.ContestAttackOption.maneuvers:type_name -> meurpg.play.v1.ManeuverGrappleOption
+	41, // 30: meurpg.play.v1.ManeuverGrappleOption.reason:type_name -> meurpg.rules.v1.DisabledReason
+	42, // 31: meurpg.play.v1.ContestAction.economy:type_name -> meurpg.rules.v1.ActionEconomy
+	41, // 32: meurpg.play.v1.ContestAction.reason:type_name -> meurpg.rules.v1.DisabledReason
+	41, // 33: meurpg.play.v1.ContestTurnState.escape_reason:type_name -> meurpg.rules.v1.DisabledReason
+	26, // 34: meurpg.play.v1.ContestTurnState.hide_actions:type_name -> meurpg.play.v1.ContestAction
+	26, // 35: meurpg.play.v1.ContestTurnState.help_action:type_name -> meurpg.play.v1.ContestAction
+	19, // 36: meurpg.play.v1.ContestTurnState.escape_options:type_name -> meurpg.play.v1.ContestSkillOption
+	18, // 37: meurpg.play.v1.ContestTurnState.hide_option:type_name -> meurpg.play.v1.CheckOption
+	12, // 38: meurpg.play.v1.HideAttemptView.status:type_name -> meurpg.play.v1.HideAttemptStatus
+	17, // 39: meurpg.play.v1.HideAttemptView.roll:type_name -> meurpg.play.v1.CheckRoll
+	29, // 40: meurpg.play.v1.HideAttemptView.observers:type_name -> meurpg.play.v1.HideObserver
+	13, // 41: meurpg.play.v1.HelpView.kind:type_name -> meurpg.play.v1.HelpKind
+	14, // 42: meurpg.play.v1.SurpriseSuggestion.reason:type_name -> meurpg.play.v1.SurpriseSuggestionReason
+	33, // 43: meurpg.play.v1.SurpriseSuggestion.hiders:type_name -> meurpg.play.v1.HiderTotal
+	17, // 44: meurpg.play.v1.GroupCheckMemberView.roll:type_name -> meurpg.play.v1.CheckRoll
+	35, // 45: meurpg.play.v1.GroupCheckView.members:type_name -> meurpg.play.v1.GroupCheckMemberView
+	39, // 46: meurpg.play.v1.GroupCheckView.created_at:type_name -> google.protobuf.Timestamp
+	18, // 47: meurpg.play.v1.GroupCheckView.your_option:type_name -> meurpg.play.v1.CheckOption
+	15, // 48: meurpg.play.v1.CombatLogContest.line:type_name -> meurpg.play.v1.ContestLogLine
+	49, // [49:49] is the sub-list for method output_type
+	49, // [49:49] is the sub-list for method input_type
+	49, // [49:49] is the sub-list for extension type_name
+	49, // [49:49] is the sub-list for extension extendee
+	0,  // [0:49] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_contest_types_proto_init() }
@@ -3585,6 +3599,7 @@ func file_meurpg_play_v1_contest_types_proto_init() {
 	if File_meurpg_play_v1_contest_types_proto != nil {
 		return
 	}
+	file_meurpg_play_v1_combat_rolls_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

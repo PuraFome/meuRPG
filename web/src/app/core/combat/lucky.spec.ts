@@ -2,13 +2,20 @@ import { type MessageInitShape, create } from '@bufbuild/protobuf';
 
 import {
   AttackOutcome,
+  CombatLogEffectChange,
   CombatLogEntrySchema,
   CombatLogKind,
+  CombatantState,
+  ConcentrationSaveResultSchema,
   DiceRollSchema,
   LuckyOfferSchema,
+  SpellCastSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { EffectSaveResultSchema } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
+import { castRows } from './cast-flow';
 import { logLine } from './combat-log';
 import { LUCKY_TRAIT, luckyText, luckyWhat } from './lucky';
+import { concentrationResultView } from './reactions';
 
 const d20 = (faces: number[], rerolled: MessageInitShape<typeof DiceRollSchema>['rerolled'] = []) =>
   create(DiceRollSchema, { diceCount: faces.length, diceSides: 20, faces, modifier: 5, rerolled });
@@ -46,5 +53,99 @@ describe('the words of the halfling’s Lucky (Sortudo)', () => {
       }),
     );
     expect(line?.notes).toContain('Sortudo: 1 → 15');
+  });
+
+  // The other d20 rolls of the combat (the held outside rolls): a saving throw against an effect, a spell attack, a
+  // concentration save.
+  const again = (to: number) => [{ index: 0, from: 1, to, sourceKey: LUCKY_TRAIT }];
+
+  it('reads the reroll of a check or a save too: an effect’s result and a group check’s roll carry it the same way', () => {
+    expect(luckyText(create(EffectSaveResultSchema, { d20: 12, rerolled: again(12) }))).toBe(
+      'Sortudo: 1 → 12',
+    );
+    expect(luckyText(create(EffectSaveResultSchema, { d20: 12 }))).toBe('');
+  });
+
+  it('puts the reroll of an effect’s saving throw under its line, and nothing when no die was rolled again', () => {
+    const entry = (rerolled: ReturnType<typeof again>) =>
+      create(CombatLogEntrySchema, {
+        id: 'x',
+        kind: CombatLogKind.EFFECT,
+        effect: {
+          sourceKey: 'spell:hold-person',
+          sourceNamePt: 'Imobilizar Pessoa',
+          change: CombatLogEffectChange.SAVED,
+          targetLabels: ['Pipo'],
+          ability: 'wis',
+          abilityNamePt: 'Sabedoria',
+          d20: 14,
+          total: 15,
+          rerolled,
+        },
+      });
+    const line = logLine(entry(again(14)));
+    expect(line?.text).toContain('passou no teste de Sabedoria contra Imobilizar Pessoa');
+    expect(line?.notes).toEqual(['Sortudo: 1 → 14']);
+    expect(logLine(entry([]))?.notes).toBeUndefined();
+  });
+
+  it('puts the reroll of a spell attack’s d20 under the cast line', () => {
+    const line = logLine(
+      create(CombatLogEntrySchema, {
+        id: 'x',
+        kind: CombatLogKind.SPELL_CAST,
+        actorLabel: 'Pipo',
+        keyNamePt: 'Raio Guiador',
+        key: 'spell:guiding-bolt',
+        spell: {
+          targets: [
+            {
+              targetLabel: 'Goblin',
+              outcome: AttackOutcome.HIT,
+              attackRoll: d20([16], again(16)),
+            },
+          ],
+        },
+      }),
+    );
+    expect(line?.notes).toEqual(['Sortudo: 1 → 16']);
+  });
+
+  it('writes the reroll among the lines of the cast result, after the d20', () => {
+    const cast = create(SpellCastSchema, {
+      spellKey: 'spell:guiding-bolt',
+      targets: [{ combatantId: 'g', outcome: AttackOutcome.HIT, attackRoll: d20([16], again(16)) }],
+    });
+    const [row] = castRows(
+      cast,
+      new Map(),
+      new Map([['g', { label: 'Goblin', state: CombatantState.UNHURT }]]),
+    );
+    expect(row.lines).toContain('Sortudo: 1 → 16');
+    expect(row.lines.indexOf('Sortudo: 1 → 16')).toBe(1);
+  });
+
+  it('says the reroll on the concentration result, under the roll against the DC', () => {
+    const view = concentrationResultView(
+      create(ConcentrationSaveResultSchema, {
+        save: d20([13], again(13)),
+        dc: 10,
+        kept: true,
+        spellNamePt: 'Bênção',
+      }),
+      2,
+    );
+    expect(view.text).toHaveLength(2);
+    expect(view.text[1]).toBe('Sortudo: 1 → 13');
+    const without = concentrationResultView(
+      create(ConcentrationSaveResultSchema, {
+        save: d20([1]),
+        dc: 10,
+        kept: false,
+        spellNamePt: 'Bênção',
+      }),
+      2,
+    );
+    expect(without.text).toHaveLength(1);
   });
 });

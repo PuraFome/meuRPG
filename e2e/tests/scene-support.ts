@@ -63,10 +63,17 @@ export async function addActionRPC(page: Page, table: { campaignId: string; mapI
  * session and "Estrada do Vale" as its current map, with three scene points.
  * With `seed` the cart has the five actions of the artboards and the guard post
  * three of them; without it no point has an action (the editor test adds its own).
+ * `sheet` changes Pensantus's sheet (another race, for the halfling's Lucky).
  * Master and player pages must be signed in as each; neither navigates.
  */
-export async function tableForScenes(masterPage: Page, playerPage: Page, name: string, seed = true): Promise<SceneTable> {
-  const base = await tableForMaps(masterPage, playerPage, name);
+export async function tableForScenes(
+  masterPage: Page,
+  playerPage: Page,
+  name: string,
+  seed = true,
+  sheet: Record<string, unknown> = {},
+): Promise<SceneTable> {
+  const base = await tableForMaps(masterPage, playerPage, name, false, sheet);
   const sessionId = await startSessionRPC(masterPage, base.campaignId);
   await masterPage.goto('/');
   const image = await uploadImageRPC(masterPage, base.campaignId, 'Estrada do Vale', await canvasPng(masterPage, 2000, 1400, 'Estrada do Vale'));

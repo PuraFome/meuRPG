@@ -348,6 +348,9 @@ type InspirationHold struct {
 	AnswerKey      *string
 	CreatedAt      time.Time
 	Round          *int32
+	LuckyIndex     *int32
+	LuckyAnswerKey *string
+	LuckyTo        *int32
 }
 
 type OpportunityOffer struct {
@@ -445,6 +448,7 @@ type PuzzleHintTry struct {
 	D20B           int32
 	Counted        int32
 	RollMode       string
+	LuckyIndex     *int32
 }
 
 type PuzzleMove struct {

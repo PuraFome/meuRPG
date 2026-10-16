@@ -14,6 +14,8 @@ import {
 import {
   BonusDieSchema,
   DiceRollSchema,
+  type LuckyOffer,
+  LuckyOfferSchema,
   type OutsideInspirationOffer,
   OutsideInspirationOfferSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -172,6 +174,8 @@ export class FakeSceneClient {
   failWith: unknown = null;
   /** The question `roll` answers with instead, when the character holds a Bardic Inspiration die. */
   offer: OutsideInspirationOffer | null = null;
+  /** The Lucky question `roll` answers with instead (it comes first), when a halfling's d20 shows a 1. */
+  lucky: LuckyOffer | null = null;
   /** The roll `roll` answers with. */
   made: SceneRoll = sceneRoll('r1', 'a1', 'Pensantus', 17, {
     roll: { diceCount: 1, diceSides: 20, faces: [11], modifier: 6, total: 17 },
@@ -238,11 +242,11 @@ export class FakeSceneClient {
     actionId: string,
     die: SceneDie,
     key: string,
-  ): Promise<SceneRoll | OutsideInspirationOffer> {
+  ): Promise<SceneRoll | OutsideInspirationOffer | LuckyOffer> {
     this.record(
       `roll ${actionId} ${'inApp' in die ? 'app' : 'face' in die ? die.face : die.faces.join(',')} ${key}`,
     );
-    return this.offer ?? this.made;
+    return this.lucky ?? this.offer ?? this.made;
   }
 
   /** The scene `grantAttempt` answers with. */
@@ -266,5 +270,22 @@ export function inspirationOffer(face = 11, modifier = 6, sides = 8): OutsideIns
     sides,
     fromName: 'Orla',
     d20: { diceCount: 1, diceSides: 20, faces: [face], modifier, total: face + modifier },
+  });
+}
+
+/** The question a roll asks when a halfling's d20 shows a 1 (Sortudo): the d20 rolled (both faces with advantage or
+ * disadvantage), the die that shows the 1, the result not yet told. */
+export function luckyOffer(faces: readonly number[] = [1], modifier = 6, counted = 0): LuckyOffer {
+  return create(LuckyOfferSchema, {
+    holdId: 'h1',
+    luckyIndex: Math.max(0, faces.indexOf(1)),
+    d20: {
+      diceCount: faces.length,
+      diceSides: 20,
+      faces: [...faces],
+      countedIndex: counted,
+      modifier,
+      total: (faces[counted] ?? 0) + modifier,
+    },
   });
 }

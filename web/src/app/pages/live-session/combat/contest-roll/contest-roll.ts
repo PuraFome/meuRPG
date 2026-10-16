@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import type { CheckRoll } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
+import { luckyText } from '../../../../core/combat/lucky';
 import {
   checkNaturalMark,
   countedFace,
@@ -29,9 +30,12 @@ import {
         @if (natural()) {
           <span class="mr-tag roll__natural" data-testid="natural-mark">{{ natural() }}</span>
         }
+        @if (lucky()) {
+          <span class="roll__formula" data-testid="lucky">{{ lucky() }}</span>
+        }
       </span>
       <span class="mr-visually-hidden"
-        >Seu total: {{ roll().total }}. {{ formula() }}.{{ natural() ? ' ' + natural() + '.' : '' }}</span
+        >Seu total: {{ roll().total }}. {{ formula() }}.{{ natural() ? ' ' + natural() + '.' : '' }}{{ lucky() ? ' ' + lucky() + '.' : '' }}</span
       >
     </div>
     @if (mode() || pair().length || notes().length) {
@@ -77,6 +81,8 @@ export class ContestRoll {
   });
   /** "20 natural" or "1 natural": information only, a check has no automatic success or failure (SRD 5.1). */
   protected readonly natural = computed(() => checkNaturalMark(this.roll()));
+  /** "Sortudo: 1 → 14": the d20 the halfling's Lucky rolled again (a group check's); the faces are already the new ones. */
+  protected readonly lucky = computed(() => luckyText(this.roll()));
   protected readonly mode = computed(() => modeLabel(this.roll().mode));
   protected readonly pair = computed(() => pairOf(this.roll()));
   protected readonly notes = computed(() => noteLines(this.roll()));

@@ -5,7 +5,8 @@ syntax = "proto3";
 // resource flows that need a dialog of their own: the paladin's Lay on Hands,
 // the sorcerer's Flexible Casting, and the bard's Bardic Inspiration (Metamagic
 // rides on CastSpell, in combat.proto); and the halfling's Lucky, the other question a
-// held attack roll asks.
+// held d20 roll asks (an attack roll's, and the other rolls that wait for a Bardic
+// Inspiration die).
 package meurpg.play.v1;
 
 import "meurpg/play/v1/combat.proto";
@@ -155,7 +156,8 @@ service ResourceService {
   rpc AnswerLucky(AnswerLuckyRequest) returns (AnswerLuckyResponse);
 
   // GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
-  // die their character holds and, for a bard, the uses left and the party to give it to.
+  // die their character holds and, for a bard, the uses left and the party to give it to;
+  // and the caller's rolls that wait for an answer, about the die or the halfling's Lucky.
   // Only the caller's own character is described (the master gets every die held).
   rpc GetOutsideInspiration(GetOutsideInspirationRequest) returns (GetOutsideInspirationResponse);
 
@@ -180,8 +182,35 @@ service ResourceService {
   // saves the app rolls for a target (a spell's saving throw, a hit rider's), never ask.
   //
   // Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
-  // the die; `failed_precondition` when the die ran out meanwhile.
+  // the die; `failed_precondition` when the die ran out meanwhile; ResourceBlocked
+  // LUCKY_PENDING while the Lucky question of the same roll waits (AnswerOutsideLucky first).
   rpc AnswerOutsideInspiration(AnswerOutsideInspirationRequest) returns (AnswerOutsideInspirationResponse);
+
+  // AnswerOutsideLucky answers the Lucky question of a d20 roll that is not a weapon attack
+  // (AnswerLucky has those): a halfling's d20 showed a 1 (SRD 5.1, Halfling, Lucky: the die may
+  // be rolled again, and the new roll stands), so roll it again, or keep the 1. The rolls that
+  // ask are the ones that wait for a Bardic Inspiration die (AnswerOutsideInspiration):
+  // RollSceneCheck, RollGroupCheck, SearchForTraps (not the Search action of a combat) and
+  // TryPuzzleHint, and, for a player's character in a combat, CastSpell (a spell attack against
+  // one target), RollEffectSave and ResolveConcentrationSave. Each answers with `lucky_offer`
+  // instead of its result when the roller's player rolls it for their own halfling and a d20
+  // shows a 1; with advantage or disadvantage the question comes when either die shows a 1, even
+  // the one that does not count, and only that die is rolled again (the first when both do). The
+  // new die is rolled in the app or typed from a real die (RN-18, as for the d20); the new roll is
+  // never asked about again, even when it is a 1, and Reliable Talent counts it as it counts any
+  // d20 of the check. When the character also holds a Bardic Inspiration die the roll stays held
+  // after the answer, and the result is the path's response with `inspiration_offer` on the new
+  // roll (answered with AnswerOutsideInspiration); otherwise the roll is written as the path
+  // writes it, with the d20 rolled again in its roll's `rerolled` ("trait:lucky"). The roll's
+  // owner only: the master's rolls never ask (a roll the master makes for a halfling waits for a
+  // decision, MR-014).
+  //
+  // Errors: `not_found` for a hold that is gone or another player's; `invalid_argument` without
+  // roll_in_app or typed_face when reroll is set, or a typed face outside 1 to 20;
+  // `failed_precondition` when the hold asks no Lucky question, it was answered already (by
+  // another answer) or its combat round is over; the path's WRONG_DICE_MODE for a way of rolling
+  // the campaign does not allow.
+  rpc AnswerOutsideLucky(AnswerOutsideLuckyRequest) returns (AnswerOutsideLuckyResponse);
 }
 
 // ResourceBlocked is the detail of a refusal that comes from a rule.
@@ -231,8 +260,9 @@ enum ResourceBlockedReason {
   // (`typed_song_face`) is needed too. `needed` is the die's size.
   RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED = 15;
   // A roll is held, waiting for the player's answer to the halfling's Lucky question
-  // ("Tirou 1: rolar de novo?", AnswerLucky): the combatant does nothing else until it is
-  // answered.
+  // ("Tirou 1: rolar de novo?", AnswerLucky or AnswerOutsideLucky): the character rolls
+  // nothing else that could ask until it is answered, and the Bardic Inspiration question of
+  // the same roll waits for it.
   RESOURCE_BLOCKED_REASON_LUCKY_PENDING = 16;
 }
 
@@ -538,10 +568,15 @@ message GetOutsideInspirationResponse {
   // The master reads every die held.
   repeated OutsideInspirationDie held = 7;
   // The caller's rolls that wait for an answer about the die, in a combat too (the die is
-  // then on the combatant and `mine` is unset).
+  // then on the combatant and `mine` is unset). A roll whose Lucky question waits is in
+  // `lucky_offers` instead, until it is answered.
   repeated OutsideInspirationOffer offers = 8;
   // A combat is open: the bard gives in it.
   bool combat_open = 9;
+  // The caller's rolls that wait for the halfling's Lucky question ("Tirou 1: rolar de novo?",
+  // AnswerOutsideLucky), in a combat too, whether or not the character holds a die: a reload
+  // asks again. `attack_key` and `target_id` are empty (they are a weapon attack's).
+  repeated LuckyOffer lucky_offers = 10;
 }
 
 message GiveBardicInspirationOutsideRequest {
@@ -575,6 +610,37 @@ message AnswerOutsideInspirationResponse {
   // The path of the held roll answers as it does: the scene check, the group check, the trap
   // search, the puzzle hint try, the spell cast, the effect's saving throw or the concentration
   // save.
+  oneof result {
+    RollSceneCheckResponse scene_check = 1;
+    RollGroupCheckResponse group_check = 2;
+    SearchForTrapsResponse trap_search = 3;
+    TryPuzzleHintResponse hint_try = 4;
+    CastSpellResponse spell_cast = 5;
+    RollEffectSaveResponse effect_save = 6;
+    ResolveConcentrationSaveResponse concentration_save = 7;
+  }
+}
+
+message AnswerOutsideLuckyRequest {
+  string campaign_id = 1;
+  // The held roll (a UUID), from the response's `lucky_offer` or GetOutsideInspiration's
+  // `lucky_offers`.
+  string hold_id = 2;
+  // True: roll the die that shows the 1 again, and the new roll stands. False: keep the 1.
+  bool reroll = 3;
+  // How the new d20 comes (RN-18) when `reroll` is true: the app rolls it, or the player typed
+  // the face of a real die (1 to 20). Required then.
+  oneof roll {
+    bool roll_in_app = 4;
+    int32 typed_face = 5;
+  }
+  string idempotency_key = 6;
+}
+
+message AnswerOutsideLuckyResponse {
+  // The path of the held roll answers as it does, as in AnswerOutsideInspirationResponse: the
+  // roll written, with the die rolled again in its `rerolled`; or, when the character holds a
+  // Bardic Inspiration die, the path's `inspiration_offer` on the new roll.
   oneof result {
     RollSceneCheckResponse scene_check = 1;
     RollGroupCheckResponse group_check = 2;

@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { OutsideInspirationOffer } from '../../../../gen/meurpg/play/v1/combat_pb';
+import { luckyText } from '../../../core/combat/lucky';
 import type { InspirationRoll } from '../../../core/resources/resources-client';
 
 /**
@@ -21,6 +22,9 @@ import type { InspirationRoll } from '../../../core/resources/resources-client';
         <span class="d20__face">{{ d20() }}</span>
         <span class="d20__text">Seu d20{{ bonusText() }}. O resultado só aparece depois da sua escolha.</span>
       </p>
+      @if (lucky()) {
+        <p class="small" data-testid="lucky">{{ lucky() }}</p>
+      }
       <h3 id="offer-q" class="q">Usar a Inspiração de Bardo (d{{ offer().sides }})?</h3>
       @if (offer().fromName) {
         <p class="small">Dada por {{ offer().fromName }}. Some o dado a esta rolagem; depois dele, o dado se perde.</p>
@@ -97,6 +101,8 @@ export class InspirationOffer {
     const roll = this.offer().d20;
     return roll?.faces[roll.countedIndex] ?? roll?.faces[0] ?? 0;
   });
+  /** "Sortudo: 1 → 14": the question comes after the halfling's Lucky rolled the d20 again; the face is the new one. */
+  protected readonly lucky = computed(() => luckyText(this.offer().d20));
   protected readonly bonusText = computed(() => {
     const m = this.offer().d20?.modifier ?? 0;
     return m === 0 ? '' : ` (${m > 0 ? '+' : '−'}${Math.abs(m)} de bônus)`;

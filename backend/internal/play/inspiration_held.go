@@ -20,7 +20,8 @@ import (
 // with the request before it writes anything, the player is asked, and the answer runs the same
 // request again with the d20 already rolled. The paths that hold are the ones of a player's own
 // character: the master's rolls, and the saves the app rolls for a target in a caster's call
-// (a spell's saving throw, a hit rider's), do not wait for a die.
+// (a spell's saving throw, a hit rider's), do not wait for a die. The same holds ask the
+// halfling's Lucky question first, die or not, when a d20 shows a 1 (inspiration_lucky.go).
 
 // spellAttackPre is the d20 of a spell attack settled before the cast spent anything, when the
 // answer to a Bardic Inspiration question brings it back: spellAttack takes the mode and the roll
@@ -36,21 +37,24 @@ type spellAttackPre struct {
 
 // holdSpellAttack is asked by a cast with one spell attack before anything is spent. A caster that
 // is a player's character and holds a die gets the d20 rolled and kept: it answers the question
-// to put to the player, and the cast writes nothing. The answer's run of the cast gets the settled
-// roll in modes.pre and answers nil; so does every cast that holds no die.
+// to put to the player (the step, Held), and the cast writes nothing. So does a lucky one (a
+// halfling) whose d20 shows a 1, with the Lucky question; its d20 that shows no 1 is settled at
+// once. The answer's run of the cast, and the settled d20, get the roll in modes.pre and answer
+// the zero step; so does every cast that holds no die and is not lucky.
 func (s *Service) holdSpellAttack(
 	ctx context.Context, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, key string,
 	caster, target playdb.Combatant, sp link.Spell, in rollInput, modes *spellModes,
-) (*playv1.OutsideInspirationOffer, error) {
+) (outsideStep, error) {
 	if m.Role == authz.RoleMaster || caster.Kind != kindPlayer || !backedByCharacter(caster) {
-		return nil, nil //nolint:nilnil // no question: the master and the NPCs roll without a die
+		return outsideStep{}, nil // no question: the master and the NPCs roll without a die
 	}
+	lucky := modes.traits.Lucky // a halfling: a d20 of 1 may be rolled again (inspiration_lucky.go)
 	var before heldDie
 	if outsideOf(ctx) != nil {
 		// The error is read again by outsideRoll, which reports it.
 		before, _, _ = s.dieOf(ctx, c.q, m.CampaignID, caster.CharacterID)
-	} else if _, found, err := s.dieOf(ctx, c.q, m.CampaignID, caster.CharacterID); err != nil || !found {
-		return nil, err
+	} else if _, found, err := s.dieOf(ctx, c.q, m.CampaignID, caster.CharacterID); err != nil || (!found && !lucky) {
+		return outsideStep{}, err
 	}
 	// The mode is worked out as spellAttack does, without writing while the roll only waits and as the
 	// roll was made with when it is settled.
@@ -60,18 +64,23 @@ func (s *Service) holdSpellAttack(
 	truth := modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.v, modes.names)
 	choice, err := s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, ask)
 	if err != nil {
-		return nil, err
+		return outsideStep{}, err
 	}
-	step, err := s.outsideRoll(ctx, c.tx, c.q, m, holdSpellAttack, caster.CharacterID, key, req, in, sp.ToHit, choice.Mode, false)
+	step, err := s.outsideRoll(ctx, c.tx, c.q, m, holdSpellAttack, caster.CharacterID, key, req, in, sp.ToHit, choice.Mode, false, lucky)
 	switch {
 	case err != nil:
-		return nil, err
+		return outsideStep{}, err
 	case step.Held:
-		return step.Offer, nil
+		return step, nil
 	case step.Settled:
+		if !forced { // a lucky caster's d20 that showed no 1 goes on: the reason of its mode is written now
+			if choice, err = s.keepReason(ctx, c, choice); err != nil {
+				return outsideStep{}, err
+			}
+		}
 		modes.pre = &spellAttackPre{target: target.ID, truth: truth, choice: choice, step: step, die: before}
 	}
-	return nil, nil //nolint:nilnil // settled, or no die after all: the cast goes on
+	return outsideStep{}, nil // settled, or no die after all: the cast goes on
 }
 
 // dieUsed is the Bardic Inspiration die the cast's spell attack used, for the undo; nil when none.
@@ -85,15 +94,17 @@ func (m *spellModes) dieUsed() *resourceEvent {
 
 // saveWithDie is asked by the roll of a saving throw a player makes for their own combatant (an
 // effect's, a concentration's) once it knows the bonus and the mode, before anything is written.
-// A step that is Held says the d20 was rolled and kept, and the path answers the question and
-// writes nothing; Settled brings the d20 back with the die added; the zero step is a roll as
-// always (the master's, an NPC's, a character that holds no die).
+// A step that is Held says the d20 was rolled and kept, and the path answers the question (the
+// die's, or the Lucky one of a halfling whose d20 shows a 1) and writes nothing; Settled brings
+// the d20 back with the die added (or rolled again by Lucky), or a lucky roll that showed no 1;
+// the zero step is a roll as always (the master's, an NPC's, a character that holds no die and is
+// not lucky).
 func (s *Service) saveWithDie(
 	ctx context.Context, c *combatTx, m authz.Membership, kind string, reactor playdb.Combatant, key string,
-	raw proto.Message, in rollInput, bonus int, mode combat.RollMode,
+	raw proto.Message, in rollInput, bonus int, mode combat.RollMode, lucky bool,
 ) (outsideStep, error) {
 	if m.Role == authz.RoleMaster || reactor.Kind != kindPlayer || !backedByCharacter(reactor) || reactor.UserID == nil || *reactor.UserID != m.UserID {
 		return outsideStep{}, nil
 	}
-	return s.outsideRoll(ctx, c.tx, c.q, m, kind, reactor.CharacterID, key, raw, in, bonus, mode, false)
+	return s.outsideRoll(ctx, c.tx, c.q, m, kind, reactor.CharacterID, key, raw, in, bonus, mode, false, lucky)
 }

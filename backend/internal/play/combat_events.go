@@ -121,6 +121,9 @@ type castHit struct {
 	// attack after the d20 (the total already holds it).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
 	BonusFace  int32 `json:"bonus_face,omitempty"`
+	// Lucky is the spell attack's d20 the halfling's Lucky rolled again after it showed a 1
+	// (inspiration_lucky.go): D20, D20B and Counted are the dice after it. Nil when none was.
+	Lucky *luckyReroll `json:"lucky,omitempty"`
 	// A spell attack made with advantage or disadvantage: the other d20, which die
 	// counts (D20 is the one that does), the mode and the suggestion.
 	D20B          int32  `json:"d20_b,omitempty"`

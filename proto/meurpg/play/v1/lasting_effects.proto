@@ -10,6 +10,8 @@ syntax = "proto3";
 // them are LastingEffectService (lasting_effects_service.proto).
 package meurpg.play.v1;
 
+import "meurpg/play/v1/combat_rolls.proto";
+
 // EffectSourceKind is where an effect comes from.
 enum EffectSourceKind {
   EFFECT_SOURCE_KIND_UNSPECIFIED = 0;
@@ -302,6 +304,10 @@ message EffectSaveResult {
   // because combat.proto imports this file.
   int32 inspiration_sides = 13;
   int32 inspiration_face = 14;
+  // The d20 the halfling's Lucky rolled again after it showed a 1 (`source_key`
+  // "trait:lucky"), as an index into `d20_faces` (or the one `d20`); `d20` and `d20_faces` hold
+  // the new face. Empty when nothing was rolled again.
+  repeated Reroll rerolled = 15;
 }
 
 // What a lasting effect did to a target of a spell (CastSpell).

@@ -19,6 +19,8 @@ func (s *Service) SceneOptions(ctx context.Context, tx pgx.Tx, campaignID, chara
 	if err != nil {
 		return nil, err
 	}
+	// The halfling's Lucky is a race trait: it reaches every check and saving throw of the sheet.
+	lucky := rules.HasFeature(d, link.LuckyTrait)
 	out := make([]link.SceneOption, 0, len(keys))
 	for _, k := range keys {
 		// One key at a time: a sheet without the check (a basic sheet has no
@@ -29,7 +31,7 @@ func (s *Service) SceneOptions(ctx context.Context, tx pgx.Tx, campaignID, chara
 			continue
 		}
 		o := opts[0]
-		out = append(out, link.SceneOption{Known: true, CheckName: o.NamePT, Bonus: o.Bonus, Passive: o.Passive, HasPassive: o.HasPassive, ReliableTalent: o.ReliableTalent})
+		out = append(out, link.SceneOption{Known: true, CheckName: o.NamePT, Bonus: o.Bonus, Passive: o.Passive, HasPassive: o.HasPassive, ReliableTalent: o.ReliableTalent, Lucky: lucky})
 	}
 	return out, nil
 }

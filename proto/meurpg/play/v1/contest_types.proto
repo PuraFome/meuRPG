@@ -10,6 +10,7 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
+import "meurpg/play/v1/combat_rolls.proto";
 import "meurpg/rules/v1/rules.proto";
 
 // ContestKind is how a contest is decided.
@@ -132,6 +133,10 @@ message CheckRoll {
   string maneuver_name_pt = 14;
   int32 maneuver_die_sides = 15;
   int32 maneuver_die_face = 16;
+  // The d20 the halfling's Lucky rolled again after it showed a 1 (`source_key`
+  // "trait:lucky"), as an index into `faces`; `faces` holds the new face. Empty when nothing
+  // was rolled again.
+  repeated Reroll rerolled = 17;
 }
 
 // CheckOption is what a d20 check would roll for the caller: the modifier and the

@@ -11,14 +11,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { DiceMode, type DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
+  type DiceRoll,
+  type LuckyOffer,
   type OutsideInspirationOffer,
   type ReactionWindow,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { EffectSaveResult } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
+import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
+import { luckyText } from '../../../../core/combat/lucky';
+import { luckyHeldLine, luckyReroll } from '../../../../core/combat/lucky-question';
 import { isOpen } from '../../../../core/combat/reactions';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { type EffectSaveAnswer, EffectsClient } from '../../../../core/effects/effects-client';
@@ -30,10 +35,19 @@ import {
   missingDice,
   saveFormula,
 } from '../../../../core/effects/effects';
-import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import {
+  ResourceClient,
+  type InspirationRoll,
+  type LuckyRoll,
+} from '../../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import { InspirationOffer } from '../../inspiration/inspiration-offer';
-import { RollAnimator, type RollShow } from '../../../../shared/roll-overlay/roll-animator';
+import {
+  RollAnimator,
+  type RollShow,
+  showOfDie,
+} from '../../../../shared/roll-overlay/roll-animator';
+import { LuckyPrompt } from '../../combat/lucky-prompt/lucky-prompt';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { SheetFrame } from '../../combat/sheet-frame/sheet-frame';
@@ -72,6 +86,7 @@ const EFFECT_DIE_FACES = 4;
   imports: [
     ExtraDice,
     InspirationOffer,
+    LuckyPrompt,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -116,6 +131,18 @@ const EFFECT_DIE_FACES = 4;
               <mat-icon aria-hidden="true">error_outline</mat-icon>
               <p><strong>Falha automática.</strong> Não há d20 a rolar neste teste de resistência de {{ view().ability }}.</p>
             </div>
+          } @else if (luckyOffer(); as l) {
+            <!-- The d20 shows a 1 and the roller is a halfling: it is kept, and Lucky asks before the die's question (SRD 5.1). -->
+            <p class="what">{{ luckyHeld() }}</p>
+            <app-lucky-prompt
+              [offer]="l"
+              [canApp]="canApp"
+              [canType]="canType"
+              [preferApp]="preferApp"
+              [busy]="busy()"
+              (reroll)="answerLucky(true, $event)"
+              (keep)="answerLucky(false, null)"
+            />
           } @else if (offer(); as o) {
             <app-inspiration-offer
               [offer]="o"
@@ -194,6 +221,9 @@ const EFFECT_DIE_FACES = 4;
                   </span>
                 </p>
                 <p class="what what--small">{{ formula(r) }}{{ r.physical ? ' · dado físico' : '' }}</p>
+                @if (luckyLine()) {
+                  <p class="what what--small">{{ luckyLine() }}</p>
+                }
               }
               @if (r.textPt) {
                 <div class="mr-notice" [class.mr-notice--success]="r.effectEnded" [class.mr-notice--neutral]="!r.effectEnded">
@@ -215,7 +245,7 @@ const EFFECT_DIE_FACES = 4;
               <button mat-flat-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
                 Continuar
               </button>
-            } @else if (offer()) {
+            } @else if (offer() || luckyOffer()) {
               <button mat-stroked-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="close()">Fechar</button>
             } @else if (!view().handed) {
               <div class="stack">
@@ -266,6 +296,15 @@ export class EffectSaveSheet {
   /** The d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
   protected readonly offer = signal<OutsideInspirationOffer | null>(null);
   private readonly dieKey = new ActionKey();
+  /** The d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky question ("Tirou 1:
+   * rolar de novo?") comes first, before the die's. */
+  protected readonly luckyOffer = signal<LuckyOffer | null>(null);
+  /** The held d20, above the Lucky question. */
+  protected readonly luckyHeld = computed(() => luckyHeldLine(this.luckyOffer()));
+  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
+  private readonly luckyKey = new ActionKey();
+  /** "Sortudo: 1 → 14" under the result: the d20 Lucky rolled again (the faces and the total are the new ones). */
+  protected readonly luckyLine = computed(() => luckyText(this.result() ?? undefined));
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly extraFaces = signal<readonly (number | null)[]>([]);
   /** The d4 asked when the server refused a roll for lack of them (an effect this player does not read). */
@@ -273,6 +312,8 @@ export class EffectSaveSheet {
 
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
   protected readonly canType = this.data.diceMode !== DiceMode.APP;
+  protected readonly preferApp =
+    effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
   /** The fields of the typed answer are open: the person asked to type, or the campaign rolls physical dice only. */
   protected readonly typingNow = computed(() => this.typing() || !this.canApp);
   protected readonly pair: readonly RollField[] = [
@@ -370,9 +411,10 @@ export class EffectSaveSheet {
         this.keys.keyFor({ window: w.id, how }),
       );
       this.data.state.apply(res.encounter);
-      if (res.offer) {
-        // Nothing was written: the d20 alone, and the result after the answer.
-        this.offer.set(res.offer);
+      if (res.lucky || res.offer) {
+        // Nothing was written: the d20 alone, and the result after the answer (Lucky's question first).
+        this.luckyOffer.set(res.lucky ?? null);
+        this.offer.set(res.offer ?? null);
         this.typing.set(false);
         return;
       }
@@ -390,6 +432,58 @@ export class EffectSaveSheet {
       this.failed(err);
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the save is settled now with the new d20
+   * (or the 1), or, when the character holds a Bardic Inspiration die, the die's question comes next, on the new roll. */
+  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
+    const offer = this.luckyOffer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideLucky(
+        this.data.campaignId,
+        offer.holdId,
+        reroll,
+        die,
+        this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
+      );
+      const settled = res.result.case === 'effectSave' ? res.result.value : null;
+      if (!settled?.encounter || (!settled.result && !settled.inspirationOffer)) {
+        throw new Error('AnswerOutsideLucky answered without its saving throw');
+      }
+      this.data.state.apply(settled.encounter);
+      this.luckyKey.renew();
+      this.luckyOffer.set(null);
+      if (settled.inspirationOffer) {
+        this.offer.set(settled.inspirationOffer);
+        this.animateLucky(settled.inspirationOffer.d20, die);
+        return;
+      }
+      this.keys.renew();
+      this.result.set(settled.result!);
+      this.animate(settled.result!);
+      this.done.set(true);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The d20 the app rolled again for Lucky, tumbling, when the die's question comes next (a told result animates its
+   * own d20): the new face alone, "1 → 14". */
+  private animateLucky(roll: DiceRoll | undefined, die: LuckyRoll | null): void {
+    const again = die && 'inApp' in die ? luckyReroll(roll) : undefined;
+    const show = again
+      ? showOfDie('Sortudo', roll?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`)
+      : null;
+    if (show) {
+      this.animator.play(show);
     }
   }
 

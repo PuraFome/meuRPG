@@ -1,9 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
-import { GetOutsideInspirationResponseSchema } from '../../../../gen/meurpg/play/v1/resources_pb';
+import { OutsideInspirationOfferSchema } from '../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  AnswerOutsideLuckyResponseSchema,
+  GetOutsideInspirationResponseSchema,
+} from '../../../../gen/meurpg/play/v1/resources_pb';
+import { RollSceneCheckResponseSchema } from '../../../../gen/meurpg/play/v1/scene_pb';
+import { LUCKY_TRAIT } from '../../../core/combat/lucky';
+import { luckyOffer, sceneRoll } from '../../../core/play/scene-testing';
 import { ResourceClient } from '../../../core/resources/resources-client';
-import { BardicBlock, minutesText } from './bardic-block';
+import { BardicBlock, luckyAnswerText, minutesText } from './bardic-block';
 
 describe('BardicBlock', () => {
   function setup(state: Parameters<typeof create<typeof GetOutsideInspirationResponseSchema>>[1]) {
@@ -13,6 +20,7 @@ describe('BardicBlock', () => {
         .mockResolvedValue(create(GetOutsideInspirationResponseSchema, state)),
       giveBardicInspirationOutside: vi.fn().mockResolvedValue({}),
       answerOutsideInspiration: vi.fn(),
+      answerOutsideLucky: vi.fn(),
     };
     TestBed.configureTestingModule({ providers: [{ provide: ResourceClient, useValue: api }] });
     const fixture = TestBed.createComponent(BardicBlock);
@@ -129,6 +137,74 @@ describe('BardicBlock', () => {
     });
     await settle();
     expect(el.textContent).not.toContain('Usos:');
+  });
+
+  it('asks a held Lucky question again after a reload, in its own section, with no "Inspiração de Bardo" heading', async () => {
+    const { el, button, settle } = setup({ luckyOffers: [luckyOffer([1], 4)] });
+    await settle();
+    const headings = Array.from(el.querySelectorAll('h2'), (h) => h.textContent?.trim());
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toContain('Sortudo');
+    expect(el.textContent).toContain('Tirou 1: rolar de novo?');
+    expect(el.textContent).not.toContain('Inspiração de Bardo');
+    expect(button('Ficar com o 1')).toBeTruthy();
+  });
+
+  it('answers the Lucky question once per answer and reads the state again', async () => {
+    const { api, el, button, settle } = setup({ luckyOffers: [luckyOffer([1], 4)] });
+    api.answerOutsideLucky.mockResolvedValue(
+      create(AnswerOutsideLuckyResponseSchema, {
+        result: {
+          case: 'sceneCheck',
+          value: create(RollSceneCheckResponseSchema, {
+            roll: sceneRoll('r1', 'a1', 'Pipo', 18, {
+              roll: {
+                diceCount: 1,
+                diceSides: 20,
+                faces: [14],
+                modifier: 4,
+                total: 18,
+                rerolled: [{ index: 0, from: 1, to: 14, sourceKey: LUCKY_TRAIT }],
+              },
+            }),
+          }),
+        },
+      }),
+    );
+    await settle();
+    button('Rolar de novo')!.click();
+    await settle();
+    expect(api.answerOutsideLucky).toHaveBeenCalledWith(
+      'c1',
+      'h1',
+      true,
+      { inApp: true },
+      expect.any(String),
+    );
+    expect(api.outsideInspiration).toHaveBeenCalledTimes(2);
+    expect(el.textContent).toContain('Sortudo: 1 → 14. Seu total: 18.');
+  });
+
+  it('words what a Lucky answer came to: the 1 kept, the die’s question next, or the master sees it', () => {
+    const held = create(AnswerOutsideLuckyResponseSchema, {
+      result: {
+        case: 'trapSearch',
+        value: {
+          inspirationOffer: create(OutsideInspirationOfferSchema, {
+            holdId: 'h1',
+            sides: 8,
+            d20: { faces: [9], rerolled: [{ index: 0, from: 1, to: 9, sourceKey: LUCKY_TRAIT }] },
+          }),
+        },
+      },
+    });
+    expect(luckyAnswerText(held, true)).toBe(
+      'Sortudo: 1 → 9. Agora, a pergunta da Inspiração de Bardo.',
+    );
+    const kept = create(AnswerOutsideLuckyResponseSchema, {
+      result: { case: 'hintTry', value: { roll: { faces: [1] } } },
+    });
+    expect(luckyAnswerText(kept, false)).toBe('Você ficou com o 1. O mestre vê o resultado.');
   });
 
   it('writes the minutes of game time left, rounded up', () => {

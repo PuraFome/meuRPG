@@ -16,6 +16,7 @@ import { metersText } from '../units';
 import { circleLabel } from './combat-grid';
 import { article } from './combat-log';
 import { rollFormula, rollText } from './combat-dice';
+import { luckyText } from './lucky';
 import { freeText } from './cast-flow';
 import { ofThe } from './move-plan';
 
@@ -733,7 +734,9 @@ export function concentrationResultView(res: ConcentrationSaveResult, round: num
       `${res.save ? rollText(res.save) : ''} contra CD ${res.dc}. ${
         res.kept ? `A concentração em ${spell} continua.` : `A concentração em ${spell} acabou.`
       }`,
-    ],
+      // "Sortudo: 1 → 14": the d20 the halfling's Lucky rolled again; the roll above already has the new face.
+      luckyText(res.save),
+    ].filter(Boolean),
     chips: [],
     note: '',
     throwBack: false,

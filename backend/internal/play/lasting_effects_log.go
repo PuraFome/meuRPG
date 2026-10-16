@@ -98,6 +98,7 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 		if l.D20 != 0 {
 			d20, total := l.D20, l.Total
 			le.D20, le.Total = &d20, &total
+			le.Rerolled = e.ev.Lucky.proto() // the d20 Lucky rolled again: "Sortudo: 1 → 14"
 		}
 	}
 	if v.master && l.DC != 0 {

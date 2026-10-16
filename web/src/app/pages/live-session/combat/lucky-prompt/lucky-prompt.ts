@@ -6,6 +6,9 @@ import { LUCKY_TITLE, luckyWhat } from '../../../../core/combat/lucky';
 import type { LuckyRoll } from '../../../../core/resources/resources-client';
 import { RollPicker } from '../roll-picker/roll-picker';
 
+/** Each prompt's own heading id: a sheet and the session panel's Lucky question may both be on the page. */
+let nextId = 0;
+
 /**
  * "Tirou 1: rolar de novo?": the question a held roll asks when a halfling's d20 shows a 1 (Sortudo, SRD 5.1), after
  * the d20 and before the result, in the same place and shape as the Bardic Inspiration question (`InspirationPrompt`).
@@ -18,8 +21,8 @@ import { RollPicker } from '../roll-picker/roll-picker';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, RollPicker],
   template: `
-    <section class="ask" aria-labelledby="lucky-t">
-      <h3 class="ask__title" id="lucky-t">{{ title }}</h3>
+    <section class="ask" [attr.aria-labelledby]="titleId">
+      <h3 class="ask__title" [id]="titleId">{{ title }}</h3>
       <p class="ask__what">{{ what() }}</p>
       <app-roll-picker
         [canApp]="canApp()"
@@ -91,5 +94,6 @@ export class LuckyPrompt {
   readonly keep = output<void>();
 
   protected readonly title = LUCKY_TITLE;
+  protected readonly titleId = `lucky-t-${nextId++}`;
   protected readonly what = computed(() => luckyWhat(this.offer()));
 }

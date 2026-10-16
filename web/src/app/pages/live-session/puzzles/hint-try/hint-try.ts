@@ -12,16 +12,21 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type { OutsideInspirationOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type {
+  LuckyOffer,
+  OutsideInspirationOffer,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { treatedSentence } from '../../../../core/combat/combat-dice';
+import { luckyText } from '../../../../core/combat/lucky';
 import type { ExtraDieField } from '../../../../core/effects/effects';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
 import { checkFaces, hasModeInfo } from '../../../../core/play/check-roll';
-import type { InspirationRoll } from '../../../../core/resources/resources-client';
+import type { InspirationRoll, LuckyRoll } from '../../../../core/resources/resources-client';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { InspirationOffer } from '../../inspiration/inspiration-offer';
+import { LuckyOfferCard } from '../../inspiration/lucky-offer';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../combat/roll-picker/roll-picker';
 import { CheckMode } from '../../scene/check-mode/check-mode';
@@ -32,7 +37,8 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
  * send it). The d20 is rolled the way the table rolls (RN-18): in the app, or the face of a real die typed (1 to 20, without the bonus: the
  * server adds the character's own). A forced mode shows only its way; "cada jogador escolhe" starts on the player's own choice and keeps the
  * other as a link. A pass says "Você conseguiu." and that the hint is theirs; a fail says "Não deu desta vez." and never how far it was.
- * The button is there only while `canTry` (the server's answer says when the player may try for the next hint).
+ * The button is there only while `canTry` (the server's answer says when the player may try for the next hint). A halfling's
+ * d20 of 1 is asked about first ("Tirou 1: rolar de novo?"), then a Bardic Inspiration die the character holds.
  */
 @Component({
   selector: 'app-hint-try',
@@ -41,6 +47,7 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
     CheckMode,
     ExtraDice,
     InspirationOffer,
+    LuckyOfferCard,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -51,12 +58,12 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
       @if (r.passed) {
         <div class="mr-notice mr-notice--success" role="status">
           <mat-icon aria-hidden="true">check</mat-icon>
-          <p><strong>Você conseguiu.</strong> Esta dica é só sua; se quiser, conte aos outros.@if (total(r)) { <span class="roll"> Seu total: {{ total(r) }}.</span> }@if (note(r)) { <span class="roll"> {{ note(r) }}</span> }</p>
+          <p><strong>Você conseguiu.</strong> Esta dica é só sua; se quiser, conte aos outros.@if (total(r)) { <span class="roll"> Seu total: {{ total(r) }}.</span> }@if (note(r)) { <span class="roll"> {{ note(r) }}</span> }@if (luckyLine(r)) { <span class="roll" data-testid="lucky"> {{ luckyLine(r) }}.</span> }</p>
         </div>
       } @else {
         <div class="mr-notice mr-notice--neutral" role="status">
           <mat-icon aria-hidden="true">close</mat-icon>
-          <p>@if (total(r)) {<span class="roll">Você tirou {{ total(r) }}. </span>}<strong>Não deu desta vez.</strong> Outro jogador pode tentar, ou o mestre solta uma dica.@if (note(r)) { <span class="roll"> {{ note(r) }}</span> }</p>
+          <p>@if (total(r)) {<span class="roll">Você tirou {{ total(r) }}. </span>}<strong>Não deu desta vez.</strong> Outro jogador pode tentar, ou o mestre solta uma dica.@if (note(r)) { <span class="roll"> {{ note(r) }}</span> }@if (luckyLine(r)) { <span class="roll" data-testid="lucky"> {{ luckyLine(r) }}.</span> }</p>
         </div>
       }
     }
@@ -65,7 +72,18 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
         <app-check-mode [mode]="r.mode" [sources]="r.sources" [faces]="faces(r)" />
       }
     }
-    @if (offer(); as o) {
+    @if (luckyOffer(); as l) {
+      <!-- The d20 of the try shows a 1 and the character is a halfling: Lucky is asked first (SRD 5.1). -->
+      <app-lucky-offer
+        [offer]="l"
+        [canApp]="canApp()"
+        [canType]="canType()"
+        [preferApp]="prefersApp()"
+        [busy]="busy()"
+        (reroll)="luckyAnswered.emit({ reroll: true, die: $event })"
+        (keep)="luckyAnswered.emit({ reroll: false, die: null })"
+      />
+    } @else if (offer(); as o) {
       <!-- The d20 of the try is rolled and kept; nothing is written until the player answers (SRD 5.1, Bardic Inspiration). -->
       <app-inspiration-offer
         [offer]="o"
@@ -175,6 +193,10 @@ export class HintTryControl {
   readonly offer = input<OutsideInspirationOffer | null>(null);
   /** The player's answer about the die: use it (rolled in the app, or its typed face) or keep it. */
   readonly answered = output<{ readonly use: boolean; readonly die: InspirationRoll | null }>();
+  /** The Lucky question the try waits on, when a halfling's d20 shows a 1: it comes before the die's. */
+  readonly luckyOffer = input<LuckyOffer | null>(null);
+  /** The player's answer to Lucky: roll the d20 again (in the app, or its typed face) or keep the 1. */
+  readonly luckyAnswered = output<{ readonly reroll: boolean; readonly die: LuckyRoll | null }>();
   /** A try with the face of a real die. */
   readonly typed = output<HintDie>();
 
@@ -185,7 +207,7 @@ export class HintTryControl {
   ];
   protected readonly canApp = computed(() => this.diceMode() !== DiceMode.PHYSICAL);
   protected readonly canType = computed(() => this.diceMode() !== DiceMode.APP);
-  private readonly prefersApp = computed(
+  protected readonly prefersApp = computed(
     () => effectivePreference(this.diceMode(), this.dicePreference()) === DicePreference.APP,
   );
   /** "Digitar o resultado" as a link: only when the table lets the player choose and they prefer the app. */
@@ -255,5 +277,10 @@ export class HintTryControl {
   /** "O d20 de 6 contou como 10: perícia com proficiência.", when a feature raised the die (Talento Confiável). */
   protected note(r: HintTry): string {
     return r.roll ? (treatedSentence(r.roll) ?? '') : '';
+  }
+
+  /** "Sortudo: 1 → 14", when the halfling's Lucky rolled the d20 again; the total is already the new one. */
+  protected luckyLine(r: HintTry): string {
+    return luckyText(r.roll);
   }
 }

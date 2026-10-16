@@ -1,10 +1,18 @@
-import type { DiceRoll, LuckyOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { LuckyOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { Reroll } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 
 /**
- * The halfling's Lucky, "Sortudo" (SRD 5.1, Halfling): a 1 on the d20 of an attack roll may be rolled again, and the new
- * roll stands. The server holds the roll and asks (`RollAttackResponse.lucky_offer`); these are the words the attack
- * sheet and the combat log use for it.
+ * The halfling's Lucky, "Sortudo" (SRD 5.1, Halfling): a 1 on the d20 of an attack roll, an ability check or a saving
+ * throw may be rolled again, and the new roll stands. The server holds the roll and asks (`lucky_offer` on the roll's
+ * response: `RollAttackResponse`, and the scene check, group check, trap search, hint try, spell attack, effect save and
+ * concentration save); these are the words the sheets and the combat log use for it.
  */
+
+/** Whatever tells the dice a feature rolled again: a `DiceRoll`, a group check's `CheckRoll`, an effect's
+ * `EffectSaveResult` or the log's `CombatLogEffect`. */
+export interface WithRerolls {
+  readonly rerolled: readonly Reroll[];
+}
 
 /** The content key of the trait: a d20 it rolled again names it in `DiceRoll.rerolled`. */
 export const LUCKY_TRAIT = 'trait:lucky';
@@ -22,7 +30,7 @@ export function luckyWhat(offer: LuckyOffer | null | undefined): string {
 }
 
 /** "Sortudo: 1 → 14", beside the d20 Lucky rolled again; `''` when it rolled nothing (no 1, or the 1 kept). */
-export function luckyText(roll: DiceRoll | undefined): string {
+export function luckyText(roll: WithRerolls | undefined): string {
   return (roll?.rerolled ?? [])
     .filter((r) => r.sourceKey === LUCKY_TRAIT)
     .map((r) => `Sortudo: ${r.from} → ${r.to}`)

@@ -506,6 +506,10 @@ message RollGroupCheckResponse {
   // Set when the character holds a Bardic Inspiration die: the d20 was rolled and the check
   // was not written; AnswerOutsideInspiration settles it.
   OutsideInspirationOffer inspiration_offer = 2;
+  // Set when the character is a halfling and a d20 shows a 1 (Lucky): the d20 was rolled and
+  // the check was not written; AnswerOutsideLucky rolls it again or keeps the 1. It comes before
+  // the die's question. A roll the master makes for a player never asks.
+  LuckyOffer lucky_offer = 3;
 }
 
 // RollForPlayerRequest is the master's roll for a character.

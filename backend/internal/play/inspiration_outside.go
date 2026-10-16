@@ -60,16 +60,18 @@ type heldDie struct {
 	Sides int32
 	// Source is the character of the bard that gave it, nil when it is gone.
 	Source *string
-	// Combatant is the combatant that holds it in a running combat, nil out of one; Encounter and
-	// Round are then the combat and its round.
+	// Combatant is the character's combatant in a running combat, nil out of one; Encounter and
+	// Round are then the combat and its round. They are set even when the combatant holds no die
+	// (dieOf says not found): a halfling's Lucky question waits in the round without one.
 	Combatant *playdb.Combatant
 	Encounter string
 	Round     int32
 }
 
 // dieOf finds the die a character holds. While a combat is active and the character is one of
-// its combatants the die is the combatant's (and it holds none if the combatant holds none);
-// otherwise it is the character's row. It reads through q, so inside a change it sees the change.
+// its combatants the die is the combatant's (and it holds none if the combatant holds none: the
+// combatant and the round still come back, for the round of a Lucky question); otherwise it is
+// the character's row. It reads through q, so inside a change it sees the change.
 func (s *Service) dieOf(ctx context.Context, q *playdb.Queries, campaignID, characterID string) (heldDie, bool, error) {
 	session, err := q.GetOpenGameSession(ctx, campaignID)
 	switch {
@@ -85,10 +87,11 @@ func (s *Service) dieOf(ctx context.Context, q *playdb.Queries, campaignID, char
 			}
 			if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return backedByCharacter(o) && o.CharacterID == characterID }); i >= 0 {
 				who := cs[i]
+				die := heldDie{Combatant: &who, Encounter: enc.ID, Round: enc.Round}
 				if !holdsDie(who, enc.Round) {
-					return heldDie{}, false, nil
+					return die, false, nil
 				}
-				die := heldDie{Sides: *who.InspirationSides, Combatant: &who, Encounter: enc.ID, Round: enc.Round}
+				die.Sides = *who.InspirationSides
 				if who.InspirationFrom != nil {
 					if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == *who.InspirationFrom && backedByCharacter(o) }); j >= 0 {
 						die.Source = &cs[j].CharacterID
@@ -128,10 +131,17 @@ func spendDie(ctx context.Context, q *playdb.Queries, characterID string, die he
 	return nil
 }
 
-// staleHold says a hold made in a combat no longer has anything to answer: its round is over, or
-// the die is not the combatant's any more (used, expired, or the combat ended).
+// staleHold says a hold made in a combat no longer has anything to answer: its round is over (or
+// the combat ended), or the die is not the combatant's any more (used or expired) and no Lucky
+// question waits, which needs no die (inspiration_lucky.go).
 func staleHold(h playdb.InspirationHold, die heldDie, found bool) bool {
-	return h.Round != nil && (!found || die.Combatant == nil || die.Round != *h.Round)
+	if h.Round == nil {
+		return false
+	}
+	if die.Combatant == nil || die.Round != *h.Round {
+		return true
+	}
+	return !found && !outsideLuckyPending(h)
 }
 
 // forcedOutside is the answer to a held roll, carried to the roll path it settles.
@@ -139,6 +149,13 @@ type forcedOutside struct {
 	holdID, answerKey string
 	use               bool
 	face              int32
+	// luckyKey is the key of a Lucky answer (AnswerOutsideLucky, inspiration_lucky.go): the hold
+	// records it first, and a roll whose character holds a Bardic Inspiration die stays held for
+	// the die's question. Empty for the die's own answer.
+	luckyKey string
+	// lucky is the die Lucky rolled again, nil when the player kept the 1. The new roll is never
+	// asked about again.
+	lucky *luckyReroll
 }
 
 type forcedOutsideKey struct{}
@@ -155,25 +172,32 @@ func outsideOf(ctx context.Context) *forcedOutside {
 // outsideStep is what a roll path of a character out of a combat gets back from outsideRoll.
 type outsideStep struct {
 	// Held says the d20 was rolled and kept in a hold: the path writes nothing and answers
-	// with Offer.
-	Held  bool
-	Offer *playv1.OutsideInspirationOffer
-	// Settled says the path is the answer to a hold: Roll is its d20 (with the die added when
-	// it was used) and Bonus the die.
+	// with the question, LuckyOffer (a halfling's d20 showed a 1: it comes first) or Offer (the
+	// Bardic Inspiration die's).
+	Held       bool
+	Offer      *playv1.OutsideInspirationOffer
+	LuckyOffer *playv1.LuckyOffer
+	// Settled says the path's d20 is already rolled: the answer to a hold, with Roll its d20 (with
+	// the die added when it was used) and Bonus the die; or a lucky character's roll that showed
+	// no 1 and waits for nothing, with Roll the d20 as rolled. Lucky is the die Lucky rolled again
+	// (Roll already holds the new face), which the path's event keeps: nil when none was.
 	Settled bool
 	Roll    d20Roll
 	Bonus   *playv1.BonusDie
+	Lucky   *luckyReroll
 }
 
 // outsideRoll is asked by the roll path of a character that is not in a running combat, once
-// it knows the modifier and the mode of the roll. A character that holds no die rolls as
-// always (the zero step). One that holds a die has the d20 rolled and kept with the request
-// (a retry of the request finds it), and the player is asked; the answer calls the path again
-// with the d20 already rolled, and here the die is rolled and added, or kept, and the hold
-// is answered. It runs in the roll's transaction.
+// it knows the modifier and the mode of the roll. A character that holds no die and is not lucky
+// rolls as always (the zero step). One that holds a die has the d20 rolled and kept with the
+// request (a retry of the request finds it), and the player is asked; the answer calls the path
+// again with the d20 already rolled, and here the die is rolled and added, or kept, and the hold
+// is answered. A lucky one (a halfling, inspiration_lucky.go) has the d20 rolled here, and kept
+// the same way when a die shows a 1 (else it is settled at once); the Lucky answer comes first,
+// with the new d20. It runs in the roll's transaction.
 func (s *Service) outsideRoll(
 	ctx context.Context, tx pgx.Tx, q *playdb.Queries, m authz.Membership, kind, characterID, key string,
-	raw proto.Message, in rollInput, modifier int, mode combat.RollMode, reliable bool,
+	raw proto.Message, in rollInput, modifier int, mode combat.RollMode, reliable, lucky bool,
 ) (outsideStep, error) {
 	die, found, err := s.dieOf(ctx, q, m.CampaignID, characterID)
 	if err != nil {
@@ -181,9 +205,9 @@ func (s *Service) outsideRoll(
 	}
 	f := outsideOf(ctx)
 	switch {
-	case !found && f == nil:
+	case !found && !lucky && f == nil:
 		return outsideStep{}, nil
-	case !found && f.use:
+	case !found && f != nil && f.use:
 		return outsideStep{}, errDieGone()
 	}
 	if f != nil {
@@ -197,11 +221,21 @@ func (s *Service) outsideRoll(
 		if hold.AnswerKey == nil && staleHold(hold, die, found) {
 			return outsideStep{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll waited too long: its round is over"))
 		}
+		if f.luckyKey != "" {
+			// The Lucky answer writes the new d20 in the hold first; a character that holds a die is
+			// asked about it next, on the new roll, and nothing else is settled.
+			if hold, err = answerOutsideLuckyHold(ctx, q, hold, f, modifier, mode, reliable); err != nil {
+				return outsideStep{}, err
+			}
+			if found {
+				return outsideStep{Held: true, Offer: s.offerOfHold(ctx, tx, hold, die)}, nil
+			}
+		}
 		faces := intsOf(hold.Faces)
 		roll := d20Roll{Faces: faces, Index: int(clamp32(int(hold.Counted), 0, len(faces)-1)), Physical: hold.Physical}
 		roll.Total = faces[roll.Index] + modifier
 		roll = reliableD20(roll, modifier, reliable)
-		step := outsideStep{Settled: true}
+		step := outsideStep{Settled: true, Lucky: outsideLuckyOf(hold)}
 		if f.use {
 			if f.face < 1 || f.face > die.Sides {
 				return outsideStep{}, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_face must be a face of the die"))
@@ -221,7 +255,7 @@ func (s *Service) outsideRoll(
 	hold, err := q.GetInspirationHoldByKey(ctx, playdb.GetInspirationHoldByKeyParams{CampaignID: m.CampaignID, IdempotencyKey: key})
 	switch {
 	case err == nil:
-		return outsideStep{Held: true, Offer: s.offerOfHold(ctx, tx, hold, die)}, nil
+		return s.heldStep(ctx, tx, hold, die), nil
 	case !errors.Is(err, pgx.ErrNoRows):
 		return outsideStep{}, fmt.Errorf("find the held roll: %w", err)
 	}
@@ -231,7 +265,7 @@ func (s *Service) outsideRoll(
 	}
 	for _, h := range open {
 		if !staleHold(h, die, found) {
-			return outsideStep{}, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING, "answer the Bardic Inspiration question of the roll first")
+			return outsideStep{}, outsideAskingRefusal(h)
 		}
 		if err := q.DeleteInspirationHold(ctx, h.ID); err != nil { // a question of an earlier round: forgotten
 			return outsideStep{}, fmt.Errorf("forget the old held roll: %w", err)
@@ -253,7 +287,14 @@ func (s *Service) outsideRoll(
 	if err != nil {
 		return outsideStep{}, err
 	}
+	// The hold keeps the faces as they came up; the total counts the d20 by Reliable Talent (the
+	// offer shows it), and a Lucky answer counts the new d20 again (answerOutsideLuckyHold).
 	roll = reliableD20(roll, modifier, reliable)
+	// A lucky character without a die is asked only about a 1: any other roll goes on at once.
+	luckyAt := luckyIndexOf(roll.Faces, lucky)
+	if !found && luckyAt == nil {
+		return outsideStep{Settled: true, Roll: roll}, nil
+	}
 	body, err := proto.Marshal(raw)
 	if err != nil {
 		return outsideStep{}, fmt.Errorf("keep the request: %w", err)
@@ -261,12 +302,21 @@ func (s *Service) outsideRoll(
 	hold, err = q.InsertInspirationHold(ctx, playdb.InsertInspirationHoldParams{
 		CampaignID: m.CampaignID, CharacterID: characterID, UserID: m.UserID, Kind: kind, IdempotencyKey: key, Request: body,
 		Faces: faces32(roll.Faces), Modifier: clamp32(modifier, -1000, 1000), Total: clamp32(roll.Total, -1000, 1000),
-		Counted: clamp32(roll.Index, 0, 1), Physical: roll.Physical, CreatedAt: s.now(), Round: round,
+		Counted: clamp32(roll.Index, 0, 1), Physical: roll.Physical, CreatedAt: s.now(), Round: round, LuckyIndex: luckyAt,
 	})
 	if err != nil {
 		return outsideStep{}, fmt.Errorf("hold the roll: %w", err)
 	}
-	return outsideStep{Held: true, Offer: s.offerOfHold(ctx, tx, hold, die)}, nil
+	return s.heldStep(ctx, tx, hold, die), nil
+}
+
+// heldStep is the question a hold asks the player: the Lucky one while it waits (it comes first),
+// else the Bardic Inspiration die's.
+func (s *Service) heldStep(ctx context.Context, tx pgx.Tx, hold playdb.InspirationHold, die heldDie) outsideStep {
+	if outsideLuckyPending(hold) {
+		return outsideStep{Held: true, LuckyOffer: outsideLuckyOfferOf(hold)}
+	}
+	return outsideStep{Held: true, Offer: s.offerOfHold(ctx, tx, hold, die)}
 }
 
 func errDieGone() error {
@@ -275,13 +325,21 @@ func errDieGone() error {
 
 // offerOfHold is the question a hold asks: the d20 with the check's bonus, and the die.
 func (s *Service) offerOfHold(ctx context.Context, tx pgx.Tx, hold playdb.InspirationHold, die heldDie) *playv1.OutsideInspirationOffer {
+	return &playv1.OutsideInspirationOffer{HoldId: hold.ID, Sides: die.Sides, FromName: s.nameOf(ctx, tx, hold.CampaignID, die.Source), D20: outsideD20(hold)}
+}
+
+// outsideD20 is the d20 of a hold with the check's bonus as the modifier: both dice of a roll with
+// advantage or disadvantage, the one that counts marked, and the die Lucky rolled again once the
+// player did (the hold's faces are already the new ones then).
+func outsideD20(hold playdb.InspirationHold) *playv1.DiceRoll {
 	roll := diceRoll(1, 20, hold.Faces, hold.Modifier, hold.Total, hold.Physical)
 	if len(hold.Faces) == pairDice {
 		roll = diceRoll(pairDice, 20, hold.Faces, hold.Modifier, hold.Total, hold.Physical)
 		roll.CountedIndex = clamp32(int(hold.Counted), 0, 1)
 		markTreated(roll, hold.Modifier, hold.Total)
 	}
-	return &playv1.OutsideInspirationOffer{HoldId: hold.ID, Sides: die.Sides, FromName: s.nameOf(ctx, tx, hold.CampaignID, die.Source), D20: roll}
+	roll.Rerolled = outsideLuckyOf(hold).proto()
+	return roll
 }
 
 // nameOf is the name of a character of the table, "" when it is gone.
@@ -497,13 +555,19 @@ func (s *Service) GetOutsideInspiration(
 			out.Mine = s.dieViewOf(ctx, nil, r, me.Name)
 		}
 	}
-	// The rolls that wait for the die, wherever the die is: on the character, or on its combatant in a combat.
-	die, holds, err := s.heldRollsOf(ctx, m.CampaignID, me.ID)
+	// The rolls that wait for the die, wherever the die is: on the character, or on its combatant in a
+	// combat; and the ones that wait for the halfling's Lucky question first, die or not.
+	die, found, holds, err := s.heldRollsOf(ctx, m.CampaignID, me.ID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the held rolls", err)
 	}
 	for _, h := range holds {
-		out.Offers = append(out.Offers, s.offerOfHold(ctx, nil, h, die))
+		switch {
+		case outsideLuckyPending(h):
+			out.LuckyOffers = append(out.LuckyOffers, outsideLuckyOfferOf(h))
+		case found:
+			out.Offers = append(out.Offers, s.offerOfHold(ctx, nil, h, die))
+		}
 	}
 	sheet, err := s.roster.CombatSheet(ctx, nil, m.CampaignID, me.ID)
 	if err != nil || sheet.BardicDie == 0 {
@@ -528,18 +592,19 @@ func (s *Service) GetOutsideInspiration(
 	return connect.NewResponse(out), nil
 }
 
-// heldRollsOf lists the rolls of a character that wait for an answer about its die, with the
-// die; none when it holds no die or when a roll is stale (its combat round is over).
-func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID string) (heldDie, []playdb.InspirationHold, error) {
+// heldRollsOf lists the rolls of a character that wait for an answer, with the die it holds
+// (found): about the die, or the halfling's Lucky question, which needs no die. A stale roll (its
+// combat round is over, or its die is gone) is left out.
+func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID string) (heldDie, bool, []playdb.InspirationHold, error) {
 	die, found, err := s.dieOf(ctx, s.queries, campaignID, characterID)
-	if err != nil || !found {
-		return heldDie{}, nil, err
+	if err != nil {
+		return heldDie{}, false, nil, err
 	}
 	all, err := s.queries.ListInspirationHoldsOfCharacter(ctx, characterID)
 	if err != nil {
-		return heldDie{}, nil, fmt.Errorf("list the held rolls: %w", err)
+		return heldDie{}, false, nil, fmt.Errorf("list the held rolls: %w", err)
 	}
-	return die, slices.DeleteFunc(all, func(h playdb.InspirationHold) bool { return staleHold(h, die, found) }), nil
+	return die, found, slices.DeleteFunc(all, func(h playdb.InspirationHold) bool { return staleHold(h, die, found) }), nil
 }
 
 // openEncounterOf is the open combat of the campaign's open game session, nil when none.
@@ -602,6 +667,10 @@ func (s *Service) AnswerOutsideInspiration(
 	if hold.AnswerKey != nil && *hold.AnswerKey != key {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll was answered already"))
 	}
+	if outsideLuckyPending(hold) {
+		// The Lucky question of the same roll comes first (AnswerOutsideLucky).
+		return nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_LUCKY_PENDING, "answer the Lucky question of the roll first")
+	}
 	forced := &forcedOutside{holdID: hold.ID, answerKey: key}
 	if req.Msg.GetUse() && hold.AnswerKey == nil {
 		die, found, err := s.dieOf(ctx, s.queries, m.CampaignID, hold.CharacterID)
@@ -626,90 +695,71 @@ func (s *Service) AnswerOutsideInspiration(
 		}
 		forced.use, forced.face = true, clamp32(face, 1, int(die.Sides))
 	}
-	switch hold.Kind {
-	case holdSceneCheck:
-		var orig playv1.RollSceneCheckRequest
-		if err := proto.Unmarshal(hold.Request, &orig); err != nil {
-			return nil, s.dbError(ctx, "read the held roll", err)
-		}
-		out, err := s.RollSceneCheck(withOutside(ctx, forced), connect.NewRequest(&orig))
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&playv1.AnswerOutsideInspirationResponse{Result: &playv1.AnswerOutsideInspirationResponse_SceneCheck{SceneCheck: out.Msg}}), nil
-	case holdGroupCheck:
-		var orig playv1.RollGroupCheckRequest
-		if err := proto.Unmarshal(hold.Request, &orig); err != nil {
-			return nil, s.dbError(ctx, "read the held roll", err)
-		}
-		out, err := s.RollGroupCheck(withOutside(ctx, forced), connect.NewRequest(&orig))
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&playv1.AnswerOutsideInspirationResponse{Result: &playv1.AnswerOutsideInspirationResponse_GroupCheck{GroupCheck: out.Msg}}), nil
+	out, err := s.rerunHold(ctx, hold, forced)
+	if err != nil {
+		return nil, err
 	}
-	return s.answerCombatHold(ctx, hold, forced)
+	res := &playv1.AnswerOutsideInspirationResponse{}
+	switch o := out.(type) {
+	case *playv1.RollSceneCheckResponse:
+		res.Result = &playv1.AnswerOutsideInspirationResponse_SceneCheck{SceneCheck: o}
+	case *playv1.RollGroupCheckResponse:
+		res.Result = &playv1.AnswerOutsideInspirationResponse_GroupCheck{GroupCheck: o}
+	case *playv1.SearchForTrapsResponse:
+		res.Result = &playv1.AnswerOutsideInspirationResponse_TrapSearch{TrapSearch: o}
+	case *playv1.TryPuzzleHintResponse:
+		res.Result = &playv1.AnswerOutsideInspirationResponse_HintTry{HintTry: o}
+	case *playv1.CastSpellResponse:
+		res.Result = &playv1.AnswerOutsideInspirationResponse_SpellCast{SpellCast: o}
+	case *playv1.RollEffectSaveResponse:
+		res.Result = &playv1.AnswerOutsideInspirationResponse_EffectSave{EffectSave: o}
+	case *playv1.ResolveConcentrationSaveResponse:
+		res.Result = &playv1.AnswerOutsideInspirationResponse_ConcentrationSave{ConcentrationSave: o}
+	}
+	return connect.NewResponse(res), nil
 }
 
-// answerCombatHold runs again the request a held roll kept, with its d20 already rolled, for the
-// kinds that are rolled by the paths of the combat and of the table (the answer is the response of
-// the path itself).
-func (s *Service) answerCombatHold(ctx context.Context, hold playdb.InspirationHold, forced *forcedOutside) (*connect.Response[playv1.AnswerOutsideInspirationResponse], error) {
+// rerunHold runs again the request a held roll kept, with its d20 already rolled and the answer
+// forced, by the very path that held it, and answers the path's own response (the scene check,
+// the group check, the trap search, the puzzle hint try, the spell cast, the effect's saving throw
+// or the concentration save).
+func (s *Service) rerunHold(ctx context.Context, hold playdb.InspirationHold, forced *forcedOutside) (proto.Message, error) {
 	ctx = withOutside(ctx, forced)
-	unread := func(err error) error { return s.dbError(ctx, "read the held roll", err) }
 	switch hold.Kind {
+	case holdSceneCheck:
+		return rerun(ctx, s, hold, &playv1.RollSceneCheckRequest{}, s.RollSceneCheck)
+	case holdGroupCheck:
+		return rerun(ctx, s, hold, &playv1.RollGroupCheckRequest{}, s.RollGroupCheck)
 	case holdTrapSearch:
-		var orig playv1.SearchForTrapsRequest
-		if err := proto.Unmarshal(hold.Request, &orig); err != nil {
-			return nil, unread(err)
-		}
-		out, err := s.SearchForTraps(ctx, connect.NewRequest(&orig))
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&playv1.AnswerOutsideInspirationResponse{Result: &playv1.AnswerOutsideInspirationResponse_TrapSearch{TrapSearch: out.Msg}}), nil
+		return rerun(ctx, s, hold, &playv1.SearchForTrapsRequest{}, s.SearchForTraps)
 	case holdHintTry:
-		var orig playv1.TryPuzzleHintRequest
-		if err := proto.Unmarshal(hold.Request, &orig); err != nil {
-			return nil, unread(err)
-		}
-		out, err := s.TryPuzzleHint(ctx, connect.NewRequest(&orig))
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&playv1.AnswerOutsideInspirationResponse{Result: &playv1.AnswerOutsideInspirationResponse_HintTry{HintTry: out.Msg}}), nil
+		return rerun(ctx, s, hold, &playv1.TryPuzzleHintRequest{}, s.TryPuzzleHint)
 	case holdSpellAttack:
-		var orig playv1.CastSpellRequest
-		if err := proto.Unmarshal(hold.Request, &orig); err != nil {
-			return nil, unread(err)
-		}
-		out, err := s.CastSpell(ctx, connect.NewRequest(&orig))
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&playv1.AnswerOutsideInspirationResponse{Result: &playv1.AnswerOutsideInspirationResponse_SpellCast{SpellCast: out.Msg}}), nil
+		return rerun(ctx, s, hold, &playv1.CastSpellRequest{}, s.CastSpell)
 	case holdEffectSave:
-		var orig playv1.RollEffectSaveRequest
-		if err := proto.Unmarshal(hold.Request, &orig); err != nil {
-			return nil, unread(err)
-		}
-		out, err := s.RollEffectSave(ctx, connect.NewRequest(&orig))
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&playv1.AnswerOutsideInspirationResponse{Result: &playv1.AnswerOutsideInspirationResponse_EffectSave{EffectSave: out.Msg}}), nil
+		return rerun(ctx, s, hold, &playv1.RollEffectSaveRequest{}, s.RollEffectSave)
 	case holdConcentration:
-		var orig playv1.ResolveConcentrationSaveRequest
-		if err := proto.Unmarshal(hold.Request, &orig); err != nil {
-			return nil, unread(err)
-		}
-		out, err := s.ResolveConcentrationSave(ctx, connect.NewRequest(&orig))
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&playv1.AnswerOutsideInspirationResponse{Result: &playv1.AnswerOutsideInspirationResponse_ConcentrationSave{ConcentrationSave: out.Msg}}), nil
+		return rerun(ctx, s, hold, &playv1.ResolveConcentrationSaveRequest{}, s.ResolveConcentrationSave)
 	}
 	return nil, connect.NewError(connect.CodeNotFound, errors.New("held roll not found"))
+}
+
+// rerun reads the request a hold kept and calls its path with it.
+func rerun[Req, Res any, PReq interface {
+	*Req
+	proto.Message
+}, PRes interface {
+	*Res
+	proto.Message
+}](ctx context.Context, s *Service, hold playdb.InspirationHold, orig PReq, path func(context.Context, *connect.Request[Req]) (*connect.Response[Res], error)) (proto.Message, error) {
+	if err := proto.Unmarshal(hold.Request, orig); err != nil {
+		return nil, s.dbError(ctx, "read the held roll", err)
+	}
+	out, err := path(ctx, connect.NewRequest((*Req)(orig)))
+	if err != nil {
+		return nil, err
+	}
+	return PRes(out.Msg), nil
 }
 
 // dieToCombat moves the die of a character that joined a combat onto its combatant, with the

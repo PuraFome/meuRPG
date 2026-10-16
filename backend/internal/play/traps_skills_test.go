@@ -177,13 +177,19 @@ func TestTheTrapsOtherSkillsAreTheMastersAlone(t *testing.T) {
 
 // ---- Reliable Talent ----
 
-// rogueSheet is a rogue of the given level proficient in four skills, with expertise in all.
+// rogue is a human rogue of the given level proficient in four skills, with expertise in all.
 func (u *user) rogue(t *testing.T, campaignID, name string, level int32) *charactersv1.Character {
+	t.Helper()
+	return u.rogueOf(t, campaignID, name, "race:human", level)
+}
+
+// rogueOf is rogue of another race (a halfling, for the Lucky tests).
+func (u *user) rogueOf(t *testing.T, campaignID, name, race string, level int32) *charactersv1.Character {
 	t.Helper()
 	skills := []string{"skill:acrobatics", "skill:investigation", "skill:perception", "skill:stealth"}
 	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 		BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 14, Wisdom: 12, Charisma: 8},
-		RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:rogue", Level: level}},
+		RaceKey:    race, Classes: []*charactersv1.ClassLevel{{ClassKey: "class:rogue", Level: level}},
 		SkillProficiencyKeys: skills, ExpertiseSkillKeys: skills,
 	}}}
 	res, err := u.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{

@@ -1082,8 +1082,8 @@ func (x *DamagePart) GetResourceLeft() int32 {
 	return 0
 }
 
-// Reroll is a die rolled again: a damage die by Great Weapon Fighting, or the d20 of an
-// attack roll that showed a 1 by the halfling's Lucky.
+// Reroll is a die rolled again: a damage die by Great Weapon Fighting, or a d20 that showed a
+// 1 by the halfling's Lucky (an attack roll, an ability check or a saving throw).
 type Reroll struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The die, as an index into the roll's `faces` (in the order rolled).

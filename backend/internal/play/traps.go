@@ -199,9 +199,10 @@ func (s *Service) SearchForTraps(
 	var told []string
 	var place searchPlace
 	var offer *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
+	var lucky *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		repeated, told, place, offer = false, nil, searchPlace{}, nil
+		repeated, told, place, offer, lucky = false, nil, searchPlace{}, nil, nil
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errNoOpenSession()
@@ -274,18 +275,19 @@ func (s *Service) SearchForTraps(
 		}
 		// A character out of a combat that holds a Bardic Inspiration die has the d20 kept until the
 		// player answers, before anything is spent or written (the Search action of a combat has
-		// spent the action by now, and rolls as always). The answer brings the d20 back.
+		// spent the action by now, and rolls as always), and so has a halfling's d20 that shows a 1,
+		// for the Lucky question. The answer brings the d20 back.
 		var step outsideStep
 		if !place.spent {
 			held := in
 			if len(in.typedFaces) > 0 && cm.Mode == combat.ModeNormal { // the second die of a Perception search is not the held one
 				held.typed, held.typedFaces = in.typedFaces[0], nil
 			}
-			if step, err = s.outsideRoll(ctx, tx, q, m, holdTrapSearch, who.ID, key, req.Msg, held, bonus, cm.Mode, reliable); err != nil {
+			if step, err = s.outsideRoll(ctx, tx, q, m, holdTrapSearch, who.ID, key, req.Msg, held, bonus, cm.Mode, reliable, options[0].Lucky); err != nil {
 				return err
 			}
 			if step.Held {
-				offer = step.Offer
+				offer, lucky = step.Offer, step.LuckyOffer
 				return nil
 			}
 		}
@@ -362,6 +364,7 @@ func (s *Service) SearchForTraps(
 		ev = actionEvent{
 			Round: c.enc.Round, Actor: place.combatantID, Key: skill, D20: clampInt32(face), Modifier: clampInt32(options[0].Bonus + dieFace), Total: clampInt32(roll.Total),
 			Physical: roll.Physical, Found: found.Found, OnTurn: place.spent, D20B: clampInt32(face2), ReliableTalent: reliable,
+			Lucky: step.Lucky, // the held d20 Lucky rolled again: the first of a Perception search's two
 		}
 		if cm.Mode != combat.ModeNormal {
 			ev.RollMode, ev.Counted = modeKey(cm.Mode), clampInt32(counted)
@@ -382,8 +385,8 @@ func (s *Service) SearchForTraps(
 	if err != nil {
 		return nil, s.dbError(ctx, "search for traps", err)
 	}
-	if offer != nil { // nothing was written: the question is the whole answer
-		return connect.NewResponse(&playv1.SearchForTrapsResponse{InspirationOffer: offer}), nil
+	if offer != nil || lucky != nil { // nothing was written: the question is the whole answer
+		return connect.NewResponse(&playv1.SearchForTrapsResponse{InspirationOffer: offer, LuckyOffer: lucky}), nil
 	}
 	if !repeated {
 		pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the players unheard
@@ -415,6 +418,7 @@ func (s *Service) SearchForTraps(
 	} else if ev.D20B != 0 {
 		out.SecondRoll = checkRoll(ev.D20B, ev.Modifier, ev.Physical, ev.ReliableTalent)
 	}
+	out.Roll.Rerolled = ev.Lucky.proto() // "Sortudo: 1 → 14", with the d20 it changed
 	return connect.NewResponse(out), nil
 }
 

@@ -89,6 +89,10 @@ type sceneRollEvent struct {
 	// The Bardic Inspiration die the player added after the d20 (already in Total).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
 	BonusFace  int32 `json:"bonus_face,omitempty"`
+	// Lucky is the d20 the halfling's Lucky rolled again after it showed a 1 (inspiration_lucky.go):
+	// D20, D20B and Counted are the dice after it, and this keeps the 1 it replaced and where, so
+	// the roll still says "Sortudo: 1 → 14". Nil when nothing was rolled again.
+	Lucky *luckyReroll `json:"lucky,omitempty"`
 }
 
 // sceneGrantEvent is the payload of scene_attempt_granted: the action; the
@@ -529,7 +533,8 @@ func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sc
 		out.Roll.CountedIndex = ev.Counted
 		markTreated(out.Roll, ev.Modifier, ev.Total-ev.BonusFace)
 	}
-	out.Roll.Total = ev.Total // with the Bardic Inspiration die, when the player used it
+	out.Roll.Total = ev.Total            // with the Bardic Inspiration die, when the player used it
+	out.Roll.Rerolled = ev.Lucky.proto() // "Sortudo: 1 → 14", with the d20 it changed
 	if showPassed {
 		out.Passed = ev.Passed
 	}
@@ -637,10 +642,11 @@ func (s *Service) RollSceneCheck(
 		at       time.Time
 		doneRow  playdb.GetSessionEventByIdempotencyKeyRow
 		offer    *playv1.OutsideInspirationOffer // the roll waits for the answer about a Bardic Inspiration die
+		lucky    *playv1.LuckyOffer              // the roll waits for the halfling's Lucky answer first
 	)
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		repeated, offer = false, nil
+		repeated, offer, lucky = false, nil, nil
 		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return errNoOpenSession()
@@ -752,13 +758,14 @@ func (s *Service) RollSceneCheck(
 		}
 		shown = cm.shownCheck(names)
 		// A character that holds a Bardic Inspiration die has the d20 kept until the player
-		// answers whether to use it (SRD 5.1: before the GM says whether the roll succeeds).
-		step, err := s.outsideRoll(ctx, tx, q, m, holdSceneCheck, who.ID, key, req.Msg, in, bonus, cm.Mode, options[0].ReliableTalent)
+		// answers whether to use it (SRD 5.1: before the GM says whether the roll succeeds), and so
+		// has a halfling's d20 that shows a 1, for the Lucky question.
+		step, err := s.outsideRoll(ctx, tx, q, m, holdSceneCheck, who.ID, key, req.Msg, in, bonus, cm.Mode, options[0].ReliableTalent, options[0].Lucky)
 		if err != nil {
 			return err
 		}
 		if step.Held {
-			offer = step.Offer
+			offer, lucky = step.Offer, step.LuckyOffer
 			return nil
 		}
 		d20 := step.Roll
@@ -772,6 +779,7 @@ func (s *Service) RollSceneCheck(
 			PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 			D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
 			Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
+			Lucky: step.Lucky,
 		}
 		if step.Bonus != nil {
 			ev.BonusSides, ev.BonusFace = step.Bonus.Sides, step.Bonus.Face
@@ -797,8 +805,8 @@ func (s *Service) RollSceneCheck(
 		return nil, s.dbError(ctx, "roll a scene check", err)
 	}
 
-	if offer != nil {
-		return connect.NewResponse(&playv1.RollSceneCheckResponse{InspirationOffer: offer}), nil
+	if offer != nil || lucky != nil {
+		return connect.NewResponse(&playv1.RollSceneCheckResponse{InspirationOffer: offer, LuckyOffer: lucky}), nil
 	}
 	characterID, name := who.ID, who.Name
 	if repeated {

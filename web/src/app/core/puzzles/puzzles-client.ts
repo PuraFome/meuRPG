@@ -15,7 +15,11 @@ import {
   type TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
-import { type InspirationRoll, ResourceClient } from '../resources/resources-client';
+import {
+  type InspirationRoll,
+  type LuckyRoll,
+  ResourceClient,
+} from '../resources/resources-client';
 
 /** What the master writes about a puzzle, as `CreatePuzzle` takes it (`UpdatePuzzle` takes the same, with the ID). */
 export type PuzzleInit = Omit<
@@ -242,6 +246,29 @@ export class PuzzlesClient {
     );
     if (res.result.case !== 'hintTry') {
       throw new Error('AnswerOutsideInspiration answered without its hint try');
+    }
+    return res.result.value;
+  }
+
+  /** The answer to the Lucky question a try waits on (a halfling's d20 showed a 1): roll it again (in the app, or the typed
+   * face) or keep the 1. The try is made now with the new d20, or, when the character holds a Bardic Inspiration die, the
+   * answer carries the die's question on the new roll. */
+  async answerHintLucky(
+    campaignId: string,
+    holdId: string,
+    reroll: boolean,
+    die: LuckyRoll | null,
+    idempotencyKey: string,
+  ): Promise<TryPuzzleHintResponse> {
+    const res = await this.resources.answerOutsideLucky(
+      campaignId,
+      holdId,
+      reroll,
+      die,
+      idempotencyKey,
+    );
+    if (res.result.case !== 'hintTry') {
+      throw new Error('AnswerOutsideLucky answered without its hint try');
     }
     return res.result.value;
   }
