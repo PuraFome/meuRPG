@@ -1,0 +1,67 @@
+## a player
+refused permission_denied: only the campaign's master can do this
+## a bad key
+refused invalid_argument: idempotency_key must be a UUID
+## a scope unspecified
+refused invalid_argument: scope must be THIS or CONCENTRATION_GROUP
+## a bad effect id
+refused not_found: effect not found
+## an effect that is not there
+refused not_found: effect not found
+## rows before
+<char:pens> condition:blinded kind=master conc=false dur=rounds left=61 visible=true audience=owner label=Cegueira caster=- conds=[condition:blinded]
+<char:bri> condition:charmed kind=master conc=false dur=rounds left=1 visible=true audience=owner label=- caster=- conds=[condition:charmed]
+<char:pens> condition:deafened kind=master conc=false dur=rounds left=7200 visible=true audience=owner label=- caster=- conds=[condition:deafened]
+<char:toren> condition:poisoned kind=master conc=false dur=until_dismissed left=- visible=false audience=all label=- caster=- conds=[condition:poisoned]
+<char:bri> condition:prone kind=master conc=false dur=rounds left=3661 visible=true audience=all label=No chão caster=- conds=[condition:prone]
+<char:pens> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:enhance-ability kind=spell conc=false dur=rounds left=3600 visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:guidance kind=spell conc=false dur=rounds left=60 visible=true audience=owner label=- caster=- conds=[]
+<char:bri> spell:heroism kind=spell conc=false dur=rounds left=120 visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:mage-armor kind=spell conc=false dur=rounds left=28800 visible=true audience=all label=- caster=<char:pens> conds=[]
+## Heroism, THIS
+{
+ "ended": 1
+}
+## Brisa's temporary hit points
+Brisa has 24 hit points and 0 temporary
+## Guidance, THIS
+{
+ "ended": 1
+}
+## the same request again
+{
+ "ended": 1
+}
+## Guidance again, with a key of its own
+refused not_found: effect not found
+## casts before
+spell:bless OUTSIDE_CAST_STATUS_ACTIVE
+spell:mage-armor OUTSIDE_CAST_STATUS_ACTIVE
+## Bless, CONCENTRATION_GROUP
+{
+ "ended": 2
+}
+## casts after
+spell:mage-armor OUTSIDE_CAST_STATUS_ACTIVE
+log: spell:mage-armor OUTSIDE_CAST_STATUS_ACTIVE
+spell:bless OUTSIDE_CAST_STATUS_ENDED
+## Mage Armor, CONCENTRATION_GROUP (not a concentration)
+{
+ "ended": 1
+}
+## rows after
+<char:pens> condition:blinded kind=master conc=false dur=rounds left=61 visible=true audience=owner label=Cegueira caster=- conds=[condition:blinded]
+<char:bri> condition:charmed kind=master conc=false dur=rounds left=1 visible=true audience=owner label=- caster=- conds=[condition:charmed]
+<char:pens> condition:deafened kind=master conc=false dur=rounds left=7200 visible=true audience=owner label=- caster=- conds=[condition:deafened]
+<char:toren> condition:poisoned kind=master conc=false dur=until_dismissed left=- visible=false audience=all label=- caster=- conds=[condition:poisoned]
+<char:bri> condition:prone kind=master conc=false dur=rounds left=3661 visible=true audience=all label=No chão caster=- conds=[condition:prone]
+<char:toren> spell:enhance-ability kind=spell conc=false dur=rounds left=3600 visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
+## events
+lasting_effect_ended by <user:master> {"ended":1,"seconds":0}
+lasting_effect_ended by <user:master> {"ended":1,"seconds":0}
+lasting_effect_ended by <user:master> {"ended":2,"seconds":0}
+lasting_effect_ended by <user:master> {"ended":1,"seconds":0}

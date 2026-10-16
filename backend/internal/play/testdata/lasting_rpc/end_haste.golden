@@ -1,0 +1,13 @@
+## before: rows
+Toren spell:haste kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+## before: events
+
+## end haste
+{
+ "ended": 1
+}
+## after: rows
+Toren effect:lethargy kind=feature conc=false dur=until_end_of_turn_of ends=r2/Toren/end_of_turn visible=true audience=all label=- caster=Pensantus
+## after: events
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:haste@Toren>"],"key":"spell:haste","owner_only":true,"reason":"ended_by_master","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:haste@Toren>"],"key":"spell:haste","reason":"ended_by_master"},"round":1,"target_id":"<Toren>"}

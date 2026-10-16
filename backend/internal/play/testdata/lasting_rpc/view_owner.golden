@@ -1,0 +1,215 @@
+[
+ {
+  "cards": [
+   {
+    "casterId": "\u003cPensantus\u003e",
+    "clockTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, na rodada 11.",
+    "concentration": true,
+    "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
+    "encounterId": "\u003cuuid\u003e",
+    "endsAt": {
+     "combatantId": "\u003cPensantus\u003e",
+     "phase": "EFFECT_PHASE_START",
+     "round": 11
+    },
+    "groupId": "\u003cfx:spell:bless@Toren\u003e",
+    "id": "\u003cfx:spell:bless@Toren\u003e",
+    "modifiers": [
+     {
+      "appliesTo": [
+       "EFFECT_ROLL_KIND_ATTACK",
+       "EFFECT_ROLL_KIND_SAVE"
+      ],
+      "die": 4,
+      "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
+      "sign": 1
+     }
+    ],
+    "originPt": "De Pensantus",
+    "roundsLeft": 10,
+    "sourceKey": "spell:bless",
+    "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+    "sourceNamePt": "Bênção",
+    "tagsPt": [
+     "+1d4 em ataques e resistências"
+    ],
+    "targetIds": [
+     "\u003cToren\u003e"
+    ],
+    "targetLabels": [
+     "Toren"
+    ]
+   },
+   {
+    "clockTextPt": "Resta 1 rodada: acaba no turno de Toren, na rodada 2.",
+    "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
+    "encounterId": "\u003cuuid\u003e",
+    "endsAt": {
+     "combatantId": "\u003cToren\u003e",
+     "phase": "EFFECT_PHASE_START",
+     "round": 2
+    },
+    "groupId": "\u003cfx:effect:web-fire@Toren\u003e",
+    "id": "\u003cfx:effect:web-fire@Toren\u003e",
+    "originPt": "Do mestre",
+    "roundsLeft": 1,
+    "sourceKey": "effect:web-fire",
+    "sourceKind": "EFFECT_SOURCE_KIND_MASTER",
+    "sourceNamePt": "Teia em chamas",
+    "tagsPt": [
+     "2d4 de fogo a quem começa o turno nela"
+    ],
+    "targetIds": [
+     "\u003cToren\u003e"
+    ],
+    "targetLabels": [
+     "Toren"
+    ],
+    "turnTrigger": {
+     "damageTypeKey": "damage-type:fire",
+     "damageTypePt": "fogo",
+     "dice": "2d4",
+     "maxTriggers": 1,
+     "phase": "EFFECT_PHASE_START"
+    }
+   },
+   {
+    "clockTextPt": "Até o começo do turno de Pensantus, na rodada 1.",
+    "durationKind": "EFFECT_DURATION_KIND_UNTIL_START_OF_TURN_OF",
+    "encounterId": "\u003cuuid\u003e",
+    "endsAt": {
+     "combatantId": "\u003cPensantus\u003e",
+     "phase": "EFFECT_PHASE_START",
+     "round": 1
+    },
+    "groupId": "\u003cfx:spell:guidance@Toren\u003e",
+    "id": "\u003cfx:spell:guidance@Toren\u003e",
+    "modifiers": [
+     {
+      "die": 4,
+      "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
+      "sign": 1
+     }
+    ],
+    "originPt": "Do mestre",
+    "roundsLeft": 0,
+    "sourceKey": "spell:guidance",
+    "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+    "sourceNamePt": "Orientação",
+    "tagsPt": [
+     "+1d4 em um teste de habilidade, uma vez"
+    ],
+    "targetIds": [
+     "\u003cToren\u003e"
+    ],
+    "targetLabels": [
+     "Toren"
+    ]
+   },
+   {
+    "casterId": "\u003cGoblin\u003e",
+    "clockTextPt": "Dura até o mestre encerrar.",
+    "durationKind": "EFFECT_DURATION_KIND_UNTIL_DISMISSED",
+    "encounterId": "\u003cuuid\u003e",
+    "groupId": "\u003cfx:spell:longstrider@Toren\u003e",
+    "id": "\u003cfx:spell:longstrider@Toren\u003e",
+    "modifiers": [
+     {
+      "value": 10
+     }
+    ],
+    "originPt": "De Goblin",
+    "sourceKey": "spell:longstrider",
+    "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+    "sourceNamePt": "Passos Longos",
+    "tagsPt": [
+     "Deslocamento +3 m"
+    ],
+    "targetIds": [
+     "\u003cToren\u003e"
+    ],
+    "targetLabels": [
+     "Toren"
+    ]
+   },
+   {
+    "changesPt": [
+     "Resistência do Urso: 2d6 PV temporários, perdidos quando a magia acaba (o mestre concede)."
+    ],
+    "clockTextPt": "Restam 600 rodadas: acaba no turno de Toren, na rodada 601.",
+    "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
+    "encounterId": "\u003cuuid\u003e",
+    "endsAt": {
+     "combatantId": "\u003cToren\u003e",
+     "phase": "EFFECT_PHASE_START",
+     "round": 601
+    },
+    "groupId": "\u003cfx:spell:enhance-ability@Toren\u003e",
+    "id": "\u003cfx:spell:enhance-ability@Toren\u003e",
+    "modifiers": [
+     {
+      "abilities": [
+       "con"
+      ]
+     }
+    ],
+    "originPt": "Do mestre",
+    "roundsLeft": 600,
+    "sourceKey": "spell:enhance-ability",
+    "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+    "sourceNamePt": "Aprimorar Habilidade",
+    "tagsPt": [
+     "Vantagem em testes de Constituição"
+    ],
+    "targetIds": [
+     "\u003cToren\u003e"
+    ],
+    "targetLabels": [
+     "Toren"
+    ]
+   }
+  ],
+  "conditions": [
+   "condition:frightened",
+   "condition:poisoned"
+  ],
+  "label": "Toren",
+  "labels": [
+   "\u003cfx:condition:poisoned@Toren\u003e = Envenenado",
+   "\u003cfx:effect:web-fire@Toren\u003e = Teia em chamas"
+  ],
+  "names": [
+   "Amedrontado",
+   "Envenenado"
+  ]
+ },
+ {
+  "label": "Pensantus"
+ },
+ {
+  "conditions": [
+   "condition:prone"
+  ],
+  "label": "Brisa",
+  "labels": [
+   "\u003cfx:condition:prone@Brisa\u003e = No chão"
+  ],
+  "names": [
+   "Derrubado"
+  ]
+ },
+ {
+  "conditions": [
+   "condition:blinded",
+   "condition:paralyzed"
+  ],
+  "label": "Goblin",
+  "labels": [
+   "\u003cfx:spell:hold-person@Goblin\u003e = Paralisado"
+  ],
+  "names": [
+   "Cego",
+   "Paralisado"
+  ]
+ }
+]

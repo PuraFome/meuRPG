@@ -1,0 +1,77 @@
+{
+ "effects": [
+  {
+   "characterId": "\u003cchar:bri\u003e",
+   "characterName": "Brisa",
+   "conditionNamesPt": [
+    "Derrubado"
+   ],
+   "durationTextPt": "Dura 1 hora e 1 minuto e 1 segundo",
+   "id": "\u003ccfx:condition:prone@bri\u003e",
+   "secondsLeft": 3661,
+   "sourceKey": "condition:prone",
+   "sourceNamePt": "Derrubado"
+  },
+  {
+   "characterId": "\u003cchar:pens\u003e",
+   "characterName": "Pensantus",
+   "conditionNamesPt": [
+    "Cego"
+   ],
+   "durationTextPt": "Dura 1 minuto e 1 segundo",
+   "id": "\u003ccfx:condition:blinded@pens\u003e",
+   "secondsLeft": 61,
+   "sourceKey": "condition:blinded",
+   "sourceNamePt": "Cego"
+  },
+  {
+   "characterId": "\u003cchar:pens\u003e",
+   "characterName": "Pensantus",
+   "conditionNamesPt": [
+    "Surdo"
+   ],
+   "durationTextPt": "Dura 2 horas",
+   "id": "\u003ccfx:condition:deafened@pens\u003e",
+   "secondsLeft": 7200,
+   "sourceKey": "condition:deafened",
+   "sourceNamePt": "Surdo"
+  },
+  {
+   "characterId": "\u003cchar:pens\u003e",
+   "characterName": "Pensantus",
+   "concentration": true,
+   "durationTextPt": "Dura 1 minuto",
+   "id": "\u003ccfx:spell:bless@pens+toren\u003e",
+   "secondsLeft": 60,
+   "sourceKey": "spell:bless",
+   "sourceNamePt": "Bênção",
+   "tagsPt": [
+    "+1d4 em ataques e resistências"
+   ]
+  },
+  {
+   "characterId": "\u003cchar:pens\u003e",
+   "characterName": "Pensantus",
+   "durationTextPt": "Dura 1 minuto",
+   "id": "\u003ccfx:spell:guidance@pens\u003e",
+   "secondsLeft": 60,
+   "sourceKey": "spell:guidance",
+   "sourceNamePt": "Orientação",
+   "tagsPt": [
+    "+1d4 em um teste de habilidade, uma vez"
+   ]
+  },
+  {
+   "characterId": "\u003cchar:pens\u003e",
+   "characterName": "Pensantus",
+   "durationTextPt": "Dura 8 horas",
+   "id": "\u003ccfx:spell:mage-armor@pens\u003e",
+   "secondsLeft": 28800,
+   "sourceKey": "spell:mage-armor",
+   "sourceNamePt": "Armadura Arcana",
+   "tagsPt": [
+    "CA base 13 + Destreza, sem armadura"
+   ]
+  }
+ ]
+}

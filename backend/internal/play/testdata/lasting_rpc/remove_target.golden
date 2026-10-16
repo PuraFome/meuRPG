@@ -1,0 +1,40 @@
+## a player
+refused permission_denied: only the campaign's master can do this
+## a bad key
+refused invalid_argument: idempotency_key must be a UUID
+## a bad combat id
+refused not_found: encounter not found
+## a bad effect id
+refused not_found: effect not found
+## a bad combatant id
+refused not_found: effect not found
+## an effect that is not there
+refused not_found: effect not found
+## a combatant that is not a target
+refused not_found: effect not found
+## a combatant that is not there
+refused not_found: effect not found
+## after the refusals: rows
+Brisa condition:prone kind=master conc=false dur=until_dismissed ends=r-/-/- visible=true audience=all label=- caster=-
+Brisa spell:bless kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+Goblin spell:hold-person kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=all label=- caster=Brisa
+Toren spell:bless kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+## after the refusals: events
+
+## Brisa off Bless
+{}
+## Toren off Bless, the last target
+{}
+## the same request again
+{}
+## the Goblin off Hold Person
+{}
+## at the end: rows
+Brisa condition:prone kind=master conc=false dur=until_dismissed ends=r-/-/- visible=true audience=all label=- caster=-
+## at the end: events
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:bless@Brisa+Toren>"],"key":"spell:bless","owner_only":true,"reason":"ended_by_master","targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:bless@Brisa+Toren>"],"key":"spell:bless","reason":"ended_by_master","targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:bless@Brisa+Toren>"],"key":"spell:bless","owner_only":true,"reason":"ended_by_master","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:bless@Brisa+Toren>"],"key":"spell:bless","reason":"ended_by_master","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"ended_by_master","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"ended_by_master","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}

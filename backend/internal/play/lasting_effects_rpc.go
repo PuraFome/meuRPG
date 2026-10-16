@@ -100,82 +100,115 @@ func (ev *effectViewer) looseConditions() []*playv1.LastingEffect {
 	return out
 }
 
-// turnClock is what the clock does from the turn that is running on, in the order of the
-// initiative: the saving throws and the effects that end, over the next two rounds.
-func (ev *effectViewer) turnClock(groups []effectGroup) []*playv1.TurnClockEntry {
-	type keyed struct {
-		round int32
-		idx   int
-		phase int
-		e     *playv1.TurnClockEntry
+// clockKeyed is an entry of the turn clock with the key it is sorted by: the round, the place of
+// the combatant in the order, and the phase (the start of a turn before its end).
+type clockKeyed struct {
+	round int32
+	idx   int
+	phase int
+	e     *playv1.TurnClockEntry
+}
+
+// turnClockBuilder gathers the entries of the clock of a combat.
+type turnClockBuilder struct {
+	ev  *effectViewer
+	all []clockKeyed
+}
+
+// add puts an entry on the clock of the combatant, if it is in the combat.
+func (b *turnClockBuilder) add(r int32, who, text string, phase string, save bool, effect string) {
+	i := slices.IndexFunc(b.ev.d.cs, func(c playdb.Combatant) bool { return c.ID == who })
+	if i < 0 {
+		return
 	}
-	var all []keyed
-	order := func(id string) int {
-		return slices.IndexFunc(ev.d.cs, func(c playdb.Combatant) bool { return c.ID == id })
+	p := 0
+	if phase == combat.PhaseEnd {
+		p = 1
 	}
-	round := max(ev.d.enc.Round, 1)
-	add := func(r int32, who, text string, phase string, save bool, effect string) {
-		i := order(who)
-		if i < 0 {
-			return
-		}
-		p := 0
-		if phase == combat.PhaseEnd {
-			p = 1
-		}
-		all = append(all, keyed{r, i, p, &playv1.TurnClockEntry{
-			Round: r, CombatantId: who, CombatantLabel: ev.byID[who].Label, Phase: phaseProto(phase), IsSave: save, EffectId: effect, TextPt: text,
-		}})
+	b.all = append(b.all, clockKeyed{r, i, p, &playv1.TurnClockEntry{
+		Round: r, CombatantId: who, CombatantLabel: b.ev.byID[who].Label, Phase: phaseProto(phase), IsSave: save, EffectId: effect, TextPt: text,
+	}})
+}
+
+// addGroup puts the end of a casting and the saving throws of its targets on the clock.
+func (b *turnClockBuilder) addGroup(g effectGroup) {
+	f := g.first()
+	name := b.ev.names(deref(f.SourceKey))
+	b.addEnd(g, f, name)
+	casterLabel := b.ev.byID[deref(f.SourceID)].Label
+	for _, st := range g.rows {
+		b.addSaves(st, name, casterLabel)
 	}
-	for _, g := range groups {
-		f := g.first()
-		name := ev.names(deref(f.SourceKey))
-		casterLabel := ev.byID[deref(f.SourceID)].Label
-		var targets []string
-		for _, st := range g.rows {
-			targets = append(targets, ev.byID[st.CombatantID].Label)
-		}
-		if e := endsAtOf(f); e.Timed() && e.CombatantID != "" {
-			phase := e.Phase
-			text := fmt.Sprintf("%s em %s acaba.", name, strings.Join(targets, ", "))
-			if len(targets) == 1 && f.SourceID == nil {
-				text = name + " acaba."
-			}
-			add(int32(e.Round), e.CombatantID, text, phase, false, f.ID) //nolint:gosec // a round
-		}
-		for _, st := range g.rows {
-			dc := derefInt32(st.SaveDc)
-			if dc == 0 {
-				dc = defaultEffectDC
-			}
-			from := " contra " + name
-			if casterLabel != "" {
-				from += ", de " + casterLabel
-			}
-			if st.EndSaveAbility != nil {
-				add(nextTurnRound(ev.d.enc, ev.d.cs, st.CombatantID), st.CombatantID, fmt.Sprintf("Teste de %s (CD %d)%s.", ev.names(*st.EndSaveAbility), dc, from), combat.PhaseEnd, true, st.ID)
-			}
-			if st.StartSaveAbility != nil {
-				add(nextTurnRound(ev.d.enc, ev.d.cs, st.CombatantID), st.CombatantID, fmt.Sprintf("Teste de %s (CD %d)%s.", ev.names(*st.StartSaveAbility), dc, from), combat.PhaseStart, true, st.ID)
-			}
-		}
+}
+
+// addEnd puts the end of a casting that ends at a turn on the clock.
+func (b *turnClockBuilder) addEnd(g effectGroup, f playdb.CombatantState, name string) {
+	e := endsAtOf(f)
+	if !e.Timed() || e.CombatantID == "" {
+		return
 	}
-	slices.SortStableFunc(all, func(a, b keyed) int {
+	var targets []string
+	for _, st := range g.rows {
+		targets = append(targets, b.ev.byID[st.CombatantID].Label)
+	}
+	text := fmt.Sprintf("%s em %s acaba.", name, strings.Join(targets, ", "))
+	if len(targets) == 1 && f.SourceID == nil {
+		text = name + " acaba."
+	}
+	b.add(int32(e.Round), e.CombatantID, text, e.Phase, false, f.ID) //nolint:gosec // a round
+}
+
+// addSaves puts the saving throws of one target on the clock: at the end of its turn, then at the
+// start of the one after.
+func (b *turnClockBuilder) addSaves(st playdb.CombatantState, name, casterLabel string) {
+	dc := derefInt32(st.SaveDc)
+	if dc == 0 {
+		dc = defaultEffectDC
+	}
+	from := " contra " + name
+	if casterLabel != "" {
+		from += ", de " + casterLabel
+	}
+	for _, s := range []struct {
+		ability *string
+		phase   string
+	}{{st.EndSaveAbility, combat.PhaseEnd}, {st.StartSaveAbility, combat.PhaseStart}} {
+		if s.ability == nil {
+			continue
+		}
+		text := fmt.Sprintf("Teste de %s (CD %d)%s.", b.ev.names(*s.ability), dc, from)
+		b.add(nextTurnRound(b.ev.d.enc, b.ev.d.cs, st.CombatantID), st.CombatantID, text, s.phase, true, st.ID)
+	}
+}
+
+// entries are the entries from the round that runs on, in the order of the clock.
+func (b *turnClockBuilder) entries(round int32) []*playv1.TurnClockEntry {
+	slices.SortStableFunc(b.all, func(x, y clockKeyed) int {
 		switch {
-		case a.round != b.round:
-			return int(a.round - b.round)
-		case a.idx != b.idx:
-			return a.idx - b.idx
+		case x.round != y.round:
+			return int(x.round - y.round)
+		case x.idx != y.idx:
+			return x.idx - y.idx
 		}
-		return a.phase - b.phase
+		return x.phase - y.phase
 	})
 	var out []*playv1.TurnClockEntry
-	for _, k := range all {
+	for _, k := range b.all {
 		if k.round >= round {
 			out = append(out, k.e)
 		}
 	}
 	return out
+}
+
+// turnClock is what the clock does from the turn that is running on, in the order of the
+// initiative: the saving throws and the effects that end, over the next two rounds.
+func (ev *effectViewer) turnClock(groups []effectGroup) []*playv1.TurnClockEntry {
+	b := &turnClockBuilder{ev: ev}
+	for _, g := range groups {
+		b.addGroup(g)
+	}
+	return b.entries(max(ev.d.enc.Round, 1))
 }
 
 // concentrations lists the casters that concentrate on an effect and the effects they hold.
@@ -647,85 +680,79 @@ func groupRowsOf(rows []playdb.CombatantState, id string) ([]playdb.CombatantSta
 	}), nil
 }
 
+// effectCall is what the master's calls on one running effect read before the transaction: the
+// campaign's master, the key, the combat and the effect.
+type effectCall struct {
+	m     authz.Membership
+	key   string
+	encID string
+	effID string
+}
+
+// readEffectCall checks who calls and reads the key, the combat and the effect, in this order.
+func readEffectCall(ctx context.Context, campaignID, rawKey, rawEncounter, rawEffect string) (effectCall, error) {
+	var call effectCall
+	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster)
+	if err != nil {
+		return call, err
+	}
+	call.m = m
+	if call.key, err = parseKey(rawKey); err != nil {
+		return call, err
+	}
+	if call.encID, err = parseCombatID(rawEncounter, "encounter"); err != nil {
+		return call, err
+	}
+	if call.effID, err = parseCombatID(rawEffect, "effect"); err != nil {
+		return call, errEffectNotFound()
+	}
+	return call, nil
+}
+
+// loadEffectGroup reads the rows of the casting an effect id belongs to.
+func loadEffectGroup(ctx context.Context, c *combatTx, effID string) ([]playdb.CombatantState, error) {
+	all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the effects: %w", err)
+	}
+	return groupRowsOf(all, effID)
+}
+
+// touchEncounter marks the combat as changed by the call.
+func touchEncounter(ctx context.Context, c *combatTx) error {
+	var err error
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("touch the encounter: %w", err)
+	}
+	return nil
+}
+
+// roundsLeftOf are the rounds from the one that runs to the end of a row, none for one with no end.
+func roundsLeftOf(enc playdb.Encounter, endsRound *int32) int32 {
+	if endsRound == nil {
+		return 0
+	}
+	return max(*endsRound-max(enc.Round, 1), 0)
+}
+
 // ChangeLastingEffectDuration implements playv1connect.LastingEffectServiceHandler.
 func (s *Service) ChangeLastingEffectDuration(
 	ctx context.Context,
 	req *connect.Request[playv1.ChangeLastingEffectDurationRequest],
 ) (*connect.Response[playv1.ChangeLastingEffectDurationResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	call, err := readEffectCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetEffectId())
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	effID, err := parseCombatID(req.Msg.GetEffectId(), "effect")
-	if err != nil {
-		return nil, errEffectNotFound()
-	}
+	m := call.m
 	var secret bool
-	var changed []playdb.CombatantState
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventLastingChanged, encounterID: encID}, func(c *combatTx) (any, error) {
-		changed = nil
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the effects: %w", err)
-		}
-		rows, err := groupRowsOf(all, effID)
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventLastingChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		ev, err := s.changeDurationTx(ctx, c, call.effID, req.Msg.GetDuration())
 		if err != nil {
 			return nil, err
 		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		var caster *playdb.Combatant
-		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == deref(rows[0].SourceID) }); i >= 0 {
-			caster = &cs[i]
-		}
-		dur, err := lastingDurationOf(req.Msg.GetDuration(), durationSpec{Kind: deref(rows[0].DurationKind)})
-		if err != nil {
-			return nil, err
-		}
-		if dur.Anchor != "" && !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == dur.Anchor }) {
-			return nil, errCombatantNotFound()
-		}
-		var targets []string
-		for _, st := range rows {
-			i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
-			if i < 0 {
-				continue
-			}
-			round, who, phase := endsOf(c.enc, cs, dur, caster, cs[i])
-			row, err := c.q.SetLastingEffectEnds(ctx, playdb.SetLastingEffectEndsParams{ID: st.ID, DurationKind: &dur.Kind, EndsRound: round, EndsCombatantID: who, EndsPhase: phase})
-			if err != nil {
-				return nil, fmt.Errorf("change the duration: %w", err)
-			}
-			changed = append(changed, row)
-			targets = append(targets, st.CombatantID)
-		}
-		first := changed[0]
-		secret = s.effectHiddenFrom(first, targetsOf(cs, targets))
-		var rounds int32
-		if first.EndsRound != nil {
-			rounds = max(*first.EndsRound-max(c.enc.Round, 1), 0)
-		}
-		c.characterID = &cs[0].CharacterID
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		return actionEvent{
-			Round: c.enc.Round, Secret: secret, Actor: deref(first.SourceID), Target: targets[0],
-			Lasting: &lastingEvent{Key: deref(first.SourceKey), Change: "duration", Targets: targets, Rounds: rounds, Effects: []string{first.ID}},
-		}, nil
+		secret = ev.Secret
+		return ev, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "change an effect's duration", err)
@@ -738,8 +765,73 @@ func (s *Service) ChangeLastingEffectDuration(
 		return nil, err
 	}
 	resp := &playv1.ChangeLastingEffectDurationResponse{Encounter: out}
-	resp.Effect = s.cardAfter(ctx, m, res, effID)
+	resp.Effect = s.cardAfter(ctx, m, res, call.effID)
 	return connect.NewResponse(resp), nil
+}
+
+// changeDurationTx is the change ChangeLastingEffectDuration makes inside the combat's
+// transaction: read the casting and the combatants, work out the new end of each target, write it
+// and answer the event.
+func (s *Service) changeDurationTx(ctx context.Context, c *combatTx, effID string, choice *playv1.EffectDurationChoice) (actionEvent, error) {
+	var none actionEvent
+	if err := notEnded(c.enc); err != nil {
+		return none, err
+	}
+	rows, err := loadEffectGroup(ctx, c, effID)
+	if err != nil {
+		return none, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return none, fmt.Errorf("list the combatants: %w", err)
+	}
+	var caster *playdb.Combatant
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == deref(rows[0].SourceID) }); i >= 0 {
+		caster = &cs[i]
+	}
+	dur, err := lastingDurationOf(choice, durationSpec{Kind: deref(rows[0].DurationKind)})
+	if err != nil {
+		return none, err
+	}
+	if dur.Anchor != "" && !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == dur.Anchor }) {
+		return none, errCombatantNotFound()
+	}
+	changed, targets, err := s.writeNewEnds(ctx, c, cs, rows, dur, caster)
+	if err != nil {
+		return none, err
+	}
+	first := changed[0]
+	secret := s.effectHiddenFrom(first, targetsOf(cs, targets))
+	rounds := roundsLeftOf(c.enc, first.EndsRound)
+	c.characterID = &cs[0].CharacterID
+	if err := touchEncounter(ctx, c); err != nil {
+		return none, err
+	}
+	return actionEvent{
+		Round: c.enc.Round, Secret: secret, Actor: deref(first.SourceID), Target: targets[0],
+		Lasting: &lastingEvent{Key: deref(first.SourceKey), Change: "duration", Targets: targets, Rounds: rounds, Effects: []string{first.ID}},
+	}, nil
+}
+
+// writeNewEnds writes the end the duration gives each row of a casting, and answers the rows
+// written and the combatants they are on.
+func (s *Service) writeNewEnds(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, dur durationSpec, caster *playdb.Combatant) ([]playdb.CombatantState, []string, error) {
+	var changed []playdb.CombatantState
+	var targets []string
+	for _, st := range rows {
+		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
+		if i < 0 {
+			continue
+		}
+		round, who, phase := endsOf(c.enc, cs, dur, caster, cs[i])
+		row, err := c.q.SetLastingEffectEnds(ctx, playdb.SetLastingEffectEndsParams{ID: st.ID, DurationKind: &dur.Kind, EndsRound: round, EndsCombatantID: who, EndsPhase: phase})
+		if err != nil {
+			return nil, nil, fmt.Errorf("change the duration: %w", err)
+		}
+		changed = append(changed, row)
+		targets = append(targets, st.CombatantID)
+	}
+	return changed, targets, nil
 }
 
 // cardAfter reads the effect a change was about, as the master reads it now; nil when it is gone.
@@ -760,64 +852,41 @@ func (s *Service) cardAfter(ctx context.Context, m authz.Membership, res combatR
 	return nil
 }
 
+// visibilityInput is what SetLastingEffectVisibility reads of the master's choice: the label
+// (trimmed, none when empty) and who reads the effect.
+type visibilityInput struct {
+	label    string
+	audience string
+}
+
+// readVisibilityInput checks the label and reads the audience.
+func readVisibilityInput(msg *playv1.SetLastingEffectVisibilityRequest) (visibilityInput, error) {
+	in := visibilityInput{label: strings.TrimSpace(msg.GetPlayerLabel()), audience: "all"}
+	if utf8.RuneCountInString(in.label) > maxEffectLabel {
+		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("player_label must have at most 30 characters"))
+	}
+	if msg.GetAudience() == playv1.EffectAudience_EFFECT_AUDIENCE_OWNER {
+		in.audience = "owner"
+	}
+	return in, nil
+}
+
 // SetLastingEffectVisibility implements playv1connect.LastingEffectServiceHandler.
 func (s *Service) SetLastingEffectVisibility(
 	ctx context.Context,
 	req *connect.Request[playv1.SetLastingEffectVisibilityRequest],
 ) (*connect.Response[playv1.SetLastingEffectVisibilityResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	call, err := readEffectCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetEffectId())
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
+	m := call.m
+	in, err := readVisibilityInput(req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	effID, err := parseCombatID(req.Msg.GetEffectId(), "effect")
-	if err != nil {
-		return nil, errEffectNotFound()
-	}
-	label := strings.TrimSpace(req.Msg.GetPlayerLabel())
-	if utf8.RuneCountInString(label) > maxEffectLabel {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("player_label must have at most 30 characters"))
-	}
-	audience := "all"
-	if req.Msg.GetAudience() == playv1.EffectAudience_EFFECT_AUDIENCE_OWNER {
-		audience = "owner"
-	}
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventLastingVisibility, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the effects: %w", err)
-		}
-		rows, err := groupRowsOf(all, effID)
-		if err != nil {
-			return nil, err
-		}
-		var lbl *string
-		if label != "" {
-			lbl = &label
-		}
-		for _, st := range rows {
-			if _, err := c.q.SetLastingEffectVisibility(ctx, playdb.SetLastingEffectVisibilityParams{ID: st.ID, PlayerVisible: req.Msg.GetPlayerVisible(), Audience: audience, PlayerLabel: lbl}); err != nil {
-				return nil, fmt.Errorf("set the visibility: %w", err)
-			}
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		// A line for the master alone: a switch is nothing the table reads.
-		return actionEvent{
-			Round: c.enc.Round, Secret: true, Actor: deref(rows[0].SourceID), Target: rows[0].CombatantID,
-			Lasting: &lastingEvent{Key: deref(rows[0].SourceKey), Change: "visibility", Effects: []string{rows[0].ID}},
-		}, nil
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventLastingVisibility, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		return s.setVisibilityTx(ctx, c, call.effID, in, req.Msg.GetPlayerVisible())
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set an effect's visibility", err)
@@ -826,7 +895,45 @@ func (s *Service) SetLastingEffectVisibility(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.SetLastingEffectVisibilityResponse{Encounter: out, Effect: s.cardAfter(ctx, m, res, effID)}), nil
+	return connect.NewResponse(&playv1.SetLastingEffectVisibilityResponse{Encounter: out, Effect: s.cardAfter(ctx, m, res, call.effID)}), nil
+}
+
+// setVisibilityTx is the change SetLastingEffectVisibility makes inside the combat's transaction:
+// every row of the casting takes the switch, and one line for the master alone tells it.
+func (s *Service) setVisibilityTx(ctx context.Context, c *combatTx, effID string, in visibilityInput, visible bool) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	rows, err := loadEffectGroup(ctx, c, effID)
+	if err != nil {
+		return nil, err
+	}
+	var lbl *string
+	if in.label != "" {
+		lbl = &in.label
+	}
+	for _, st := range rows {
+		if _, err := c.q.SetLastingEffectVisibility(ctx, playdb.SetLastingEffectVisibilityParams{ID: st.ID, PlayerVisible: visible, Audience: in.audience, PlayerLabel: lbl}); err != nil {
+			return nil, fmt.Errorf("set the visibility: %w", err)
+		}
+	}
+	if err := touchEncounter(ctx, c); err != nil {
+		return nil, err
+	}
+	// A line for the master alone: a switch is nothing the table reads.
+	return actionEvent{
+		Round: c.enc.Round, Secret: true, Actor: deref(rows[0].SourceID), Target: rows[0].CombatantID,
+		Lasting: &lastingEvent{Key: deref(rows[0].SourceKey), Change: "visibility", Effects: []string{rows[0].ID}},
+	}, nil
+}
+
+// endedPublisher tells the table that effects ended: the combat, the log and the turn.
+func (s *Service) endedPublisher(campaignID string) func(ctx context.Context, d *encounterData) {
+	return func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, campaignID, d.enc)
+		s.publishLogChanged(ctx, campaignID, d.enc.ID, false)
+		s.publishTurnChanged(ctx, campaignID, d)
+	}
 }
 
 // EndLastingEffect implements playv1connect.LastingEffectServiceHandler.
@@ -853,75 +960,85 @@ func (s *Service) EndLastingEffect(
 	if err != nil {
 		return nil, err
 	}
-	rawID := req.Msg.GetEffectId()
 	var ended int32
-	var made []string
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventLastingEnded, encounterID: encID}, func(c *combatTx) (any, error) {
-		ended, made = 0, nil
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		if strings.HasPrefix(rawID, looseConditionPrefix) {
-			return s.endLooseCondition(ctx, c, cs, rawID, &ended)
-		}
-		effID, err := parseCombatID(rawID, "effect")
-		if err != nil {
-			return nil, errEffectNotFound()
-		}
-		all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the effects: %w", err)
-		}
-		rows, err := groupRowsOf(all, effID)
-		if err != nil {
-			return nil, err
-		}
-		first := rows[0]
-		reason := endByMaster
-		if scope == playv1.EffectEndScope_EFFECT_END_SCOPE_CONCENTRATION_GROUP && first.Concentration && first.SourceID != nil {
-			// The whole concentration: the caster stops concentrating and everything it held ends.
-			rows = slices.DeleteFunc(all, func(st playdb.CombatantState) bool { return !st.Concentration || deref(st.SourceID) != *first.SourceID })
-			if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == *first.SourceID && o.ConcentrationSpell != nil }); i >= 0 {
-				if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: cs[i].ID}); err != nil {
-					return nil, fmt.Errorf("end the concentration: %w", err)
-				}
-				stop := actionEvent{Round: c.enc.Round, Secret: cs[i].Hidden, Actor: cs[i].ID, ConcBefore: *cs[i].ConcentrationSpell, ConcEnded: *cs[i].ConcentrationSpell}
-				if err := insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, stop); err != nil {
-					return nil, err
-				}
-			}
-			reason = endConcentration
-		}
-		before := len(rows)
-		if err := s.endEffectRows(ctx, c, cs, rows, reason); err != nil {
-			return nil, err
-		}
-		ended = clamp32(before, 0, 100)
-		c.characterID = &cs[0].CharacterID
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		return actionEvent{
-			Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, []string{first.CombatantID})), Actor: deref(first.SourceID), Target: first.CombatantID,
-			Lasting: &lastingEvent{Key: deref(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}},
-		}, nil
+		ended = 0
+		return s.endEffectTx(ctx, c, req.Msg.GetEffectId(), scope, &ended)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end an effect", err)
 	}
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, false)
-		s.publishTurnChanged(ctx, m.CampaignID, d)
-	})
+	out, err := s.finish(ctx, m, res, s.endedPublisher(m.CampaignID))
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.EndLastingEffectResponse{Encounter: out, Ended: ended, CreatedEffectIds: made}), nil
+	// The call makes no effect of its own: created_effect_ids stays empty.
+	return connect.NewResponse(&playv1.EndLastingEffectResponse{Encounter: out, Ended: ended}), nil
+}
+
+// endEffectTx is the change EndLastingEffect makes inside the combat's transaction: a loose
+// condition goes by its id; any other effect ends with its casting, or with the whole
+// concentration it belongs to.
+func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, scope playv1.EffectEndScope, ended *int32) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	if strings.HasPrefix(rawID, looseConditionPrefix) {
+		return s.endLooseCondition(ctx, c, cs, rawID, ended)
+	}
+	effID, err := parseCombatID(rawID, "effect")
+	if err != nil {
+		return nil, errEffectNotFound()
+	}
+	all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the effects: %w", err)
+	}
+	rows, err := groupRowsOf(all, effID)
+	if err != nil {
+		return nil, err
+	}
+	first := rows[0]
+	reason := endByMaster
+	if scope == playv1.EffectEndScope_EFFECT_END_SCOPE_CONCENTRATION_GROUP && first.Concentration && first.SourceID != nil {
+		// The whole concentration: the caster stops concentrating and everything it held ends.
+		rows = slices.DeleteFunc(all, func(st playdb.CombatantState) bool { return !st.Concentration || deref(st.SourceID) != *first.SourceID })
+		if err := s.stopCasterOf(ctx, c, cs, *first.SourceID); err != nil {
+			return nil, err
+		}
+		reason = endConcentration
+	}
+	before := len(rows)
+	if err := s.endEffectRows(ctx, c, cs, rows, reason); err != nil {
+		return nil, err
+	}
+	*ended = clamp32(before, 0, 100)
+	c.characterID = &cs[0].CharacterID
+	if err := touchEncounter(ctx, c); err != nil {
+		return nil, err
+	}
+	return actionEvent{
+		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, []string{first.CombatantID})), Actor: deref(first.SourceID), Target: first.CombatantID,
+		Lasting: &lastingEvent{Key: deref(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}},
+	}, nil
+}
+
+// stopCasterOf makes the caster stop concentrating, with the line of the combat log, when it holds
+// a spell.
+func (s *Service) stopCasterOf(ctx context.Context, c *combatTx, cs []playdb.Combatant, casterID string) error {
+	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == casterID && o.ConcentrationSpell != nil })
+	if i < 0 {
+		return nil
+	}
+	if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: cs[i].ID}); err != nil {
+		return fmt.Errorf("end the concentration: %w", err)
+	}
+	stop := actionEvent{Round: c.enc.Round, Secret: cs[i].Hidden, Actor: cs[i].ID, ConcBefore: *cs[i].ConcentrationSpell, ConcEnded: *cs[i].ConcentrationSpell}
+	return insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, stop)
 }
 
 // looseConditionParts are the two parts of a loose condition's id: the combatant and the condition.
@@ -947,9 +1064,8 @@ func (s *Service) endLooseCondition(ctx context.Context, c *combatTx, cs []playd
 	}
 	*ended = 1
 	c.characterID = &who.CharacterID
-	var err2 error
-	if c.enc, err2 = c.q.TouchEncounter(ctx, c.enc.ID); err2 != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err2)
+	if err := touchEncounter(ctx, c); err != nil {
+		return nil, err
 	}
 	return actionEvent{Round: c.enc.Round, Secret: true, Actor: who.ID, CondSet: true, Conditions: next, CondBefore: who.Conditions}, nil
 }
@@ -959,69 +1075,56 @@ func (s *Service) RemoveEffectTarget(
 	ctx context.Context,
 	req *connect.Request[playv1.RemoveEffectTargetRequest],
 ) (*connect.Response[playv1.RemoveEffectTargetResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	call, err := readEffectCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetEffectId())
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	effID, err := parseCombatID(req.Msg.GetEffectId(), "effect")
-	if err != nil {
-		return nil, errEffectNotFound()
-	}
+	m := call.m
 	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
 	if err != nil {
 		return nil, errEffectNotFound()
 	}
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventLastingEnded, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the effects: %w", err)
-		}
-		rows, err := groupRowsOf(all, effID)
-		if err != nil {
-			return nil, err
-		}
-		i := slices.IndexFunc(rows, func(st playdb.CombatantState) bool { return st.CombatantID == combID })
-		if i < 0 {
-			return nil, errEffectNotFound()
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		row := rows[i]
-		if err := s.endEffectRows(ctx, c, cs, []playdb.CombatantState{row}, endByMaster); err != nil {
-			return nil, err
-		}
-		c.characterID = &cs[0].CharacterID
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		return actionEvent{
-			Round: c.enc.Round, Secret: s.effectHiddenFrom(row, targetsOf(cs, []string{combID})), Actor: deref(row.SourceID), Target: combID,
-			Lasting: &lastingEvent{Key: deref(row.SourceKey), Change: "ended", Reason: endByMaster, Targets: []string{combID}, Effects: []string{row.ID}},
-		}, nil
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventLastingEnded, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		return s.removeTargetTx(ctx, c, call.effID, combID)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "take a target off an effect", err)
 	}
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, false)
-		s.publishTurnChanged(ctx, m.CampaignID, d)
-	})
+	out, err := s.finish(ctx, m, res, s.endedPublisher(m.CampaignID))
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.RemoveEffectTargetResponse{Encounter: out}), nil
+}
+
+// removeTargetTx is the change RemoveEffectTarget makes inside the combat's transaction: the row of
+// the combatant ends and one line tells it.
+func (s *Service) removeTargetTx(ctx context.Context, c *combatTx, effID, combID string) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	rows, err := loadEffectGroup(ctx, c, effID)
+	if err != nil {
+		return nil, err
+	}
+	i := slices.IndexFunc(rows, func(st playdb.CombatantState) bool { return st.CombatantID == combID })
+	if i < 0 {
+		return nil, errEffectNotFound()
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	row := rows[i]
+	if err := s.endEffectRows(ctx, c, cs, []playdb.CombatantState{row}, endByMaster); err != nil {
+		return nil, err
+	}
+	c.characterID = &cs[0].CharacterID
+	if err := touchEncounter(ctx, c); err != nil {
+		return nil, err
+	}
+	return actionEvent{
+		Round: c.enc.Round, Secret: s.effectHiddenFrom(row, targetsOf(cs, []string{combID})), Actor: deref(row.SourceID), Target: combID,
+		Lasting: &lastingEvent{Key: deref(row.SourceKey), Change: "ended", Reason: endByMaster, Targets: []string{combID}, Effects: []string{row.ID}},
+	}, nil
 }

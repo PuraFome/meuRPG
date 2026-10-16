@@ -41,14 +41,7 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 	if !ok || def.Applies != "all" || len(plan.g.targets) == 0 {
 		return nil
 	}
-	var seconds *int32
-	kind := rules.EffectDurationUntilDismissed
-	switch {
-	case plan.osp.DurationSeconds > 0:
-		seconds, kind = new(clamp32(plan.osp.DurationSeconds, 1, 1<<30)), rules.EffectDurationRounds
-	case def.Concentration:
-		kind = rules.EffectDurationConcentration
-	}
+	seconds, kind := castClockOf(plan, def)
 	caster := plan.g.caster.ID
 	opts, err := s.castOptsOf(ctx, c, def, plan.ability, caster)
 	if err != nil {
@@ -66,28 +59,55 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 		if !ok {
 			continue
 		}
-		body, err := json.Marshal(mods)
-		if err != nil {
-			return fmt.Errorf("encode the modifiers: %w", err)
-		}
-		// The same spell on the same target does not stack (SRD 5.1, Combining Magical Effects).
-		if _, err := c.q.DeleteCharacterEffectsOfSpell(ctx, playdb.DeleteCharacterEffectsOfSpellParams{CharacterID: t.ID, SourceKey: plan.spell, GroupID: plan.row.ID}); err != nil {
-			return fmt.Errorf("replace the same spell: %w", err)
+		clock := castClock{seconds: seconds, kind: kind}
+		if err := s.putCharacterEffect(ctx, c, plan, def, t.ID, caster, mods, clock); err != nil {
+			return err
 		}
 		touched = append(touched, t.ID)
-		p := playdb.InsertCharacterEffectParams{
-			CampaignID: c.session.CampaignID, CharacterID: t.ID, SourceCharacterID: &caster, GroupID: plan.row.ID, SourceKey: plan.spell,
-			SourceKind: "spell", Concentration: def.Concentration, ConditionKeys: append([]string{}, def.Conditions...), Modifiers: body,
-			DurationKind: kind, SecondsLeft: seconds, PlayerVisible: true, Audience: "all", CreatedAt: c.now,
-		}
-		if def.Visibility == rules.EffectVisibilityOwner {
-			p.Audience = audienceOwner
-		}
-		if _, err := c.q.InsertCharacterEffect(ctx, p); err != nil {
-			return fmt.Errorf("put the effect on the character: %w", err)
-		}
 	}
 	return s.syncArmorBase(ctx, c, touched...)
+}
+
+// castClock is the clock a spell cast outside a combat gives its effect: game time, or none.
+type castClock struct {
+	seconds *int32
+	kind    string
+}
+
+// castClockOf is the duration of the effect of a cast: the spell's time when it has one, the
+// concentration, or until the master ends it.
+func castClockOf(plan castPlan, def *rules.EffectDef) (*int32, string) {
+	switch {
+	case plan.osp.DurationSeconds > 0:
+		return new(clamp32(plan.osp.DurationSeconds, 1, 1<<30)), rules.EffectDurationRounds
+	case def.Concentration:
+		return nil, rules.EffectDurationConcentration
+	}
+	return nil, rules.EffectDurationUntilDismissed
+}
+
+// putCharacterEffect writes the effect of a spell on a character, replacing the same spell on it.
+func (s *Service) putCharacterEffect(ctx context.Context, c *combatTx, plan castPlan, def *rules.EffectDef, characterID, caster string, mods []rules.EffectModifier, clock castClock) error {
+	body, err := json.Marshal(mods)
+	if err != nil {
+		return fmt.Errorf("encode the modifiers: %w", err)
+	}
+	// The same spell on the same target does not stack (SRD 5.1, Combining Magical Effects).
+	if _, err := c.q.DeleteCharacterEffectsOfSpell(ctx, playdb.DeleteCharacterEffectsOfSpellParams{CharacterID: characterID, SourceKey: plan.spell, GroupID: plan.row.ID}); err != nil {
+		return fmt.Errorf("replace the same spell: %w", err)
+	}
+	p := playdb.InsertCharacterEffectParams{
+		CampaignID: c.session.CampaignID, CharacterID: characterID, SourceCharacterID: &caster, GroupID: plan.row.ID, SourceKey: plan.spell,
+		SourceKind: "spell", Concentration: def.Concentration, ConditionKeys: append([]string{}, def.Conditions...), Modifiers: body,
+		DurationKind: clock.kind, SecondsLeft: clock.seconds, PlayerVisible: true, Audience: "all", CreatedAt: c.now,
+	}
+	if def.Visibility == rules.EffectVisibilityOwner {
+		p.Audience = audienceOwner
+	}
+	if _, err := c.q.InsertCharacterEffect(ctx, p); err != nil {
+		return fmt.Errorf("put the effect on the character: %w", err)
+	}
+	return nil
 }
 
 // endCharacterEffectsOfCast takes away the effects a cast left on characters out of a combat
@@ -213,40 +233,10 @@ func (s *Service) effectsToCombat(ctx context.Context, c *combatTx, all, added [
 		if i < 0 {
 			continue
 		}
-		target := added[i]
-		var casterCombatant *playdb.Combatant
-		if r.SourceCharacterID != nil {
-			if j := slices.IndexFunc(all, func(a playdb.Combatant) bool { return a.CharacterID == *r.SourceCharacterID && backedByCharacter(a) }); j >= 0 {
-				casterCombatant = &all[j]
-			}
+		if err := s.bringEffectIn(ctx, c, all, added[i], r); err != nil {
+			return err
 		}
-		dur := durationSpec{Kind: r.DurationKind}
-		if r.SecondsLeft != nil {
-			dur.Rounds = roundsOfSeconds(*r.SecondsLeft)
-		}
-		round, who, phase := endsOf(c.enc, all, dur, casterCombatant, target)
-		if r.DurationKind == rules.EffectDurationRounds && r.SecondsLeft == nil {
-			round, who, phase = nil, nil, nil
-		}
-		p := playdb.InsertLastingEffectParams{
-			ID: &r.ID, EncounterID: c.enc.ID, CombatantID: target.ID, StartedRound: max(c.enc.Round, 1), CreatedAt: r.CreatedAt,
-			GroupID: &r.GroupID, SourceKey: &r.SourceKey, SourceKind: &r.SourceKind, Concentration: r.Concentration,
-			ConditionKeys: r.ConditionKeys, Modifiers: r.Modifiers, DurationKind: &r.DurationKind,
-			PlayerVisible: r.PlayerVisible, Audience: r.Audience, EndsRound: round, EndsCombatantID: who, EndsPhase: phase,
-			EndSaveAbility: r.EndSaveAbility, StartSaveAbility: r.StartSaveAbility, SaveDc: r.SaveDc, OnFailEffect: r.OnFailEffect,
-			FollowsKey: r.FollowsKey, TriggerDice: r.TriggerDice, TriggerDamageType: r.TriggerDamageType, TriggerMaxTriggers: r.TriggerMaxTriggers,
-			PlayerLabel: r.PlayerLabel,
-		}
-		if casterCombatant != nil {
-			p.SourceID = &casterCombatant.ID
-		}
-		if _, err := c.q.InsertLastingEffect(ctx, p); err != nil {
-			return fmt.Errorf("bring the effect into the combat: %w", err)
-		}
-		if err := c.q.DeleteCharacterEffect(ctx, r.ID); err != nil {
-			return fmt.Errorf("take the effect off the character: %w", err)
-		}
-		touched = append(touched, target.ID)
+		touched = append(touched, added[i].ID)
 	}
 	// Every character that joined is worked out again: its exhaustion comes from its vitals.
 	for _, a := range added {
@@ -256,6 +246,60 @@ func (s *Service) effectsToCombat(ctx context.Context, c *combatTx, all, added [
 	}
 	slices.Sort(touched)
 	return s.refreshCombatants(ctx, c, slices.Compact(touched)...)
+}
+
+// bringEffectIn moves the record of an effect on a character into the combat, on its combatant.
+func (s *Service) bringEffectIn(ctx context.Context, c *combatTx, all []playdb.Combatant, target playdb.Combatant, r playdb.CharacterEffect) error {
+	var casterCombatant *playdb.Combatant
+	if r.SourceCharacterID != nil {
+		if j := slices.IndexFunc(all, func(a playdb.Combatant) bool { return a.CharacterID == *r.SourceCharacterID && backedByCharacter(a) }); j >= 0 {
+			casterCombatant = &all[j]
+		}
+	}
+	p := combatEffectParamsOf(c, r, target, endsInCombat(c, all, r, casterCombatant, target))
+	if casterCombatant != nil {
+		p.SourceID = &casterCombatant.ID
+	}
+	if _, err := c.q.InsertLastingEffect(ctx, p); err != nil {
+		return fmt.Errorf("bring the effect into the combat: %w", err)
+	}
+	if err := c.q.DeleteCharacterEffect(ctx, r.ID); err != nil {
+		return fmt.Errorf("take the effect off the character: %w", err)
+	}
+	return nil
+}
+
+// effectEndAt is where an effect that came into a combat ends: the round, whose turn and the phase.
+type effectEndAt struct {
+	round *int32
+	who   *string
+	phase *string
+}
+
+// endsInCombat works out where the time left of an effect on a character ends in the combat.
+func endsInCombat(c *combatTx, all []playdb.Combatant, r playdb.CharacterEffect, caster *playdb.Combatant, target playdb.Combatant) effectEndAt {
+	dur := durationSpec{Kind: r.DurationKind}
+	if r.SecondsLeft != nil {
+		dur.Rounds = roundsOfSeconds(*r.SecondsLeft)
+	}
+	round, who, phase := endsOf(c.enc, all, dur, caster, target)
+	if r.DurationKind == rules.EffectDurationRounds && r.SecondsLeft == nil {
+		return effectEndAt{}
+	}
+	return effectEndAt{round, who, phase}
+}
+
+// combatEffectParamsOf is the record of an effect of a character as a row of the combat.
+func combatEffectParamsOf(c *combatTx, r playdb.CharacterEffect, target playdb.Combatant, end effectEndAt) playdb.InsertLastingEffectParams {
+	return playdb.InsertLastingEffectParams{
+		ID: &r.ID, EncounterID: c.enc.ID, CombatantID: target.ID, StartedRound: max(c.enc.Round, 1), CreatedAt: r.CreatedAt,
+		GroupID: &r.GroupID, SourceKey: &r.SourceKey, SourceKind: &r.SourceKind, Concentration: r.Concentration,
+		ConditionKeys: r.ConditionKeys, Modifiers: r.Modifiers, DurationKind: &r.DurationKind,
+		PlayerVisible: r.PlayerVisible, Audience: r.Audience, EndsRound: end.round, EndsCombatantID: end.who, EndsPhase: end.phase,
+		EndSaveAbility: r.EndSaveAbility, StartSaveAbility: r.StartSaveAbility, SaveDc: r.SaveDc, OnFailEffect: r.OnFailEffect,
+		FollowsKey: r.FollowsKey, TriggerDice: r.TriggerDice, TriggerDamageType: r.TriggerDamageType, TriggerMaxTriggers: r.TriggerMaxTriggers,
+		PlayerLabel: r.PlayerLabel,
+	}
 }
 
 // effectsToCharacters runs when a combat ends, or when a character leaves it: the effects on
@@ -275,46 +319,60 @@ func (s *Service) effectsToCharacters(ctx context.Context, c *combatTx, cs, only
 		if i < 0 || !backedByCharacter(cs[i]) || (only != nil && !slices.ContainsFunc(only, func(a playdb.Combatant) bool { return a.ID == st.CombatantID })) {
 			continue
 		}
-		// The casting that held it ended while the fight ran: nothing is left to give back.
-		if cast, err := c.q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: deref(st.GroupID), CampaignID: c.session.CampaignID}); err == nil && cast.Status != castActive {
-			if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
-				return fmt.Errorf("end the effect of an ended cast: %w", err)
-			}
-			continue
-		}
-		kind := deref(st.DurationKind)
-		if kind == rules.EffectDurationUntilStartOfTurnOf || kind == rules.EffectDurationUntilEndOfTurnOf {
-			continue // its turn never comes: it ends with the combat
-		}
-		var seconds *int32
-		if st.EndsRound != nil {
-			left := max(*st.EndsRound-max(c.enc.Round, 1), 0)
-			if left == 0 {
-				continue
-			}
-			seconds = new(left * rules.SecondsPerRound)
-		}
-		p := playdb.InsertCharacterEffectParams{
-			ID: &st.ID, CampaignID: c.session.CampaignID, CharacterID: cs[i].CharacterID, GroupID: deref(st.GroupID), SourceKey: deref(st.SourceKey),
-			SourceKind: deref(st.SourceKind), Concentration: st.Concentration, ConditionKeys: st.ConditionKeys, Modifiers: st.Modifiers,
-			DurationKind: kind, SecondsLeft: seconds, EndSaveAbility: st.EndSaveAbility, StartSaveAbility: st.StartSaveAbility, SaveDc: st.SaveDc,
-			OnFailEffect: st.OnFailEffect, FollowsKey: st.FollowsKey, TriggerDice: st.TriggerDice, TriggerDamageType: st.TriggerDamageType,
-			TriggerMaxTriggers: st.TriggerMaxTriggers, TriggersFired: st.TriggersFired, PlayerVisible: st.PlayerVisible, Audience: st.Audience,
-			PlayerLabel: st.PlayerLabel, CreatedAt: st.CreatedAt,
-		}
-		if st.SourceID != nil {
-			if j := slices.IndexFunc(cs, func(a playdb.Combatant) bool { return a.ID == *st.SourceID }); j >= 0 && backedByCharacter(cs[j]) {
-				p.SourceCharacterID = &cs[j].CharacterID
-			}
-		}
-		if _, err := c.q.InsertCharacterEffect(ctx, p); err != nil {
-			return fmt.Errorf("give the effect back to the character: %w", err)
-		}
-		if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
-			return fmt.Errorf("take the effect off the combatant: %w", err)
+		if err := s.giveEffectBack(ctx, c, cs, cs[i], st); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+// giveEffectBack moves the record of an effect on a combatant back to its character, with the
+// rounds left as game time; it drops the ones with nothing to give back.
+func (s *Service) giveEffectBack(ctx context.Context, c *combatTx, cs []playdb.Combatant, who playdb.Combatant, st playdb.CombatantState) error {
+	// The casting that held it ended while the fight ran: nothing is left to give back.
+	if cast, err := c.q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: deref(st.GroupID), CampaignID: c.session.CampaignID}); err == nil && cast.Status != castActive {
+		if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+			return fmt.Errorf("end the effect of an ended cast: %w", err)
+		}
+		return nil
+	}
+	kind := deref(st.DurationKind)
+	if kind == rules.EffectDurationUntilStartOfTurnOf || kind == rules.EffectDurationUntilEndOfTurnOf {
+		return nil // its turn never comes: it ends with the combat
+	}
+	var seconds *int32
+	if st.EndsRound != nil {
+		left := max(*st.EndsRound-max(c.enc.Round, 1), 0)
+		if left == 0 {
+			return nil
+		}
+		seconds = new(left * rules.SecondsPerRound)
+	}
+	p := characterEffectParamsOf(c, st, who, kind, seconds)
+	if st.SourceID != nil {
+		if j := slices.IndexFunc(cs, func(a playdb.Combatant) bool { return a.ID == *st.SourceID }); j >= 0 && backedByCharacter(cs[j]) {
+			p.SourceCharacterID = &cs[j].CharacterID
+		}
+	}
+	if _, err := c.q.InsertCharacterEffect(ctx, p); err != nil {
+		return fmt.Errorf("give the effect back to the character: %w", err)
+	}
+	if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+		return fmt.Errorf("take the effect off the combatant: %w", err)
+	}
+	return nil
+}
+
+// characterEffectParamsOf is the record of an effect of a combatant as a row of its character.
+func characterEffectParamsOf(c *combatTx, st playdb.CombatantState, who playdb.Combatant, kind string, seconds *int32) playdb.InsertCharacterEffectParams {
+	return playdb.InsertCharacterEffectParams{
+		ID: &st.ID, CampaignID: c.session.CampaignID, CharacterID: who.CharacterID, GroupID: deref(st.GroupID), SourceKey: deref(st.SourceKey),
+		SourceKind: deref(st.SourceKind), Concentration: st.Concentration, ConditionKeys: st.ConditionKeys, Modifiers: st.Modifiers,
+		DurationKind: kind, SecondsLeft: seconds, EndSaveAbility: st.EndSaveAbility, StartSaveAbility: st.StartSaveAbility, SaveDc: st.SaveDc,
+		OnFailEffect: st.OnFailEffect, FollowsKey: st.FollowsKey, TriggerDice: st.TriggerDice, TriggerDamageType: st.TriggerDamageType,
+		TriggerMaxTriggers: st.TriggerMaxTriggers, TriggersFired: st.TriggersFired, PlayerVisible: st.PlayerVisible, Audience: st.Audience,
+		PlayerLabel: st.PlayerLabel, CreatedAt: st.CreatedAt,
+	}
 }
 
 // afterCharacterEffectsGone does what follows effects that ended on characters out of a combat:
