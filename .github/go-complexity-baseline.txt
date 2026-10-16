@@ -18,9 +18,7 @@ cognitive internal/play (*Service).AdjustCombatantHitPoints 32
 cognitive internal/play (*Service).ApplyPendingDamage 81
 cognitive internal/play (*Service).CastSummon 79
 cognitive internal/play (*Service).CloseContest 19
-cognitive internal/play (*Service).ConfirmCastTimePassed 23
 cognitive internal/play (*Service).DiscardPendingDamage 25
-cognitive internal/play (*Service).EndActiveSpell 18
 cognitive internal/play (*Service).EndConcentration 26
 cognitive internal/play (*Service).GetOutsideInspiration 30
 cognitive internal/play (*Service).GetTurnOptions 29
@@ -30,7 +28,6 @@ cognitive internal/play (*Service).ResolveShove 52
 cognitive internal/play (*Service).RespondContest 68
 cognitive internal/play (*Service).RevealHider 18
 cognitive internal/play (*Service).answerCounterspell 19
-cognitive internal/play (*Service).castProto 34
 cognitive internal/play (*Service).checkOnSolve 18
 cognitive internal/play (*Service).checkOnWrong 31
 cognitive internal/play (*Service).checkParts 16
@@ -63,7 +60,6 @@ cyclomatic internal/maps (*Service).run 30
 cyclomatic internal/play (*Service).AdjustCombatantHitPoints 29
 cyclomatic internal/play (*Service).ApplyPendingDamage 45
 cyclomatic internal/play (*Service).CastSummon 43
-cyclomatic internal/play (*Service).ConfirmCastTimePassed 16
 cyclomatic internal/play (*Service).DiscardPendingDamage 18
 cyclomatic internal/play (*Service).EndConcentration 18
 cyclomatic internal/play (*Service).GetOutsideInspiration 27
@@ -72,7 +68,6 @@ cyclomatic internal/play (*Service).GiveBardicInspirationOutside 19
 cyclomatic internal/play (*Service).ResolveShove 31
 cyclomatic internal/play (*Service).RespondContest 41
 cyclomatic internal/play (*Service).answerCounterspell 17
-cyclomatic internal/play (*Service).castProto 21
 cyclomatic internal/play (*Service).checkOnSolve 16
 cyclomatic internal/play (*Service).checkOnWrong 24
 cyclomatic internal/play (*Service).checkSources 18
