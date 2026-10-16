@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -724,6 +725,11 @@ func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *conne
 			group = slices.DeleteFunc(all, func(o playdb.PendingDamage) bool {
 				return o.Status != pendingAwaitingRoll || o.DamageType != p.DamageType || o.Healing != p.Healing
 			})
+			// The pending damages of a cast share their creation time, so the query leaves
+			// their order to their random ids: settle them in the combat's turn order.
+			slices.SortStableFunc(group, func(x, y playdb.PendingDamage) int {
+				return cmp.Compare(combatantIndex(cs, x.TargetID), combatantIndex(cs, y.TargetID))
+			})
 		}
 
 		// The damage: the dice (doubled on a critical hit under the SRD's rule, as the
@@ -938,6 +944,11 @@ func (s *Service) rollDamage(ctx context.Context, m authz.Membership, req *conne
 		}
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// combatantIndex is where a combatant stands in the turn order of cs, -1 when it is not there.
+func combatantIndex(cs []playdb.Combatant, id string) int {
+	return slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == id })
 }
 
 // afterResistance is the damage that lands on the target once its stat block's
