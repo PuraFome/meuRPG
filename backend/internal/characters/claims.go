@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Reserved characters and claim links (MR-049).
@@ -198,50 +199,33 @@ func (s *Service) CreateClaimLink(
 	return connect.NewResponse(&charactersv1.CreateClaimLinkResponse{Token: token, ExpiresAt: timestamppb.New(expires)}), nil
 }
 
+// masterAndCharacter is the first check of the master's calls on one character: the
+// caller is the campaign's master, and the character's ID is a UUID (an ID that is not
+// one names nothing). It returns the membership and the ID in canonical form.
+func masterAndCharacter(ctx context.Context, campaignID, characterID string) (authz.Membership, string, error) {
+	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster)
+	if err != nil {
+		return authz.Membership{}, "", err
+	}
+	id, ok := parseUUID(characterID)
+	if !ok {
+		return authz.Membership{}, "", errCharacterNotFound()
+	}
+	return m, id, nil
+}
+
 // RevokeClaimLink implements charactersv1connect.CharacterServiceHandler.
 func (s *Service) RevokeClaimLink(
 	ctx context.Context,
 	req *connect.Request[charactersv1.RevokeClaimLinkRequest],
 ) (*connect.Response[charactersv1.RevokeClaimLinkResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	m, id, err := masterAndCharacter(ctx, req.Msg.GetCampaignId(), req.Msg.GetCharacterId())
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
-	if !ok {
-		return nil, errCharacterNotFound()
-	}
 	now := s.now()
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		// The character first, then its link: ClaimCharacter locks them in this order too,
-		// so the two never wait for each other in a circle.
-		row, err := visibleForUpdate(ctx, q, m, id)
-		if err != nil {
-			return err
-		}
-		link, err := q.GetLatestClaimLinkForUpdate(ctx, charactersdb.GetLatestClaimLinkForUpdateParams{CampaignID: m.CampaignID, CharacterID: row.ID})
-		switch {
-		case errors.Is(err, pgx.ErrNoRows):
-			return s.requireReservedOrClaimed(row)
-		case err != nil:
-			return wrap("read the claim link", err)
-		}
-		if link.UsedAt != nil {
-			if !row.Reserved {
-				// A player took the character first (the claim and the revoke raced, or the
-				// list was stale).
-				return &claimUsedError{userID: link.UsedBy}
-			}
-			return nil // given back to the reserve since: no live link
-		}
-		if link.RevokedAt != nil {
-			return nil // revoked already
-		}
-		if _, err := q.RevokeClaimLinkByID(ctx, charactersdb.RevokeClaimLinkByIDParams{ID: link.ID, Now: now}); err != nil {
-			return wrap("revoke the claim link", err)
-		}
-		return nil
+		return s.revokeClaimLinkTx(ctx, s.queries.WithTx(tx), m, id, now)
 	})
 	if used, ok := errors.AsType[*claimUsedError](err); ok {
 		return nil, s.usedLinkError(ctx, id, used)
@@ -251,6 +235,46 @@ func (s *Service) RevokeClaimLink(
 	}
 	logging.Event(ctx, s.logger, "character.claim_link_revoked", slog.String("character_id", id))
 	return connect.NewResponse(&charactersv1.RevokeClaimLinkResponse{}), nil
+}
+
+// revokeClaimLinkTx is RevokeClaimLink's transaction: it locks the character, then its
+// latest link, and revokes that link if it is live.
+func (s *Service) revokeClaimLinkTx(ctx context.Context, q *charactersdb.Queries, m authz.Membership, id string, now time.Time) error {
+	// The character first, then its link: ClaimCharacter locks them in this order too,
+	// so the two never wait for each other in a circle.
+	row, err := visibleForUpdate(ctx, q, m, id)
+	if err != nil {
+		return err
+	}
+	link, err := q.GetLatestClaimLinkForUpdate(ctx, charactersdb.GetLatestClaimLinkForUpdateParams{CampaignID: m.CampaignID, CharacterID: row.ID})
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return s.requireReservedOrClaimed(row)
+	case err != nil:
+		return wrap("read the claim link", err)
+	}
+	return revokeLatestLink(ctx, q, row, link, now)
+}
+
+// revokeLatestLink revokes the character's latest link, unless it was used or revoked
+// already: a used one is the CLAIM_LINK_USED refusal while its player still has the
+// character, and nothing to do once the character went back to the reserve.
+func revokeLatestLink(ctx context.Context, q *charactersdb.Queries, row charactersdb.Character, link charactersdb.ClaimLink, now time.Time) error {
+	if link.UsedAt != nil {
+		if !row.Reserved {
+			// A player took the character first (the claim and the revoke raced, or the
+			// list was stale).
+			return &claimUsedError{userID: link.UsedBy}
+		}
+		return nil // given back to the reserve since: no live link
+	}
+	if link.RevokedAt != nil {
+		return nil // revoked already
+	}
+	if _, err := q.RevokeClaimLinkByID(ctx, charactersdb.RevokeClaimLinkByIDParams{ID: link.ID, Now: now}); err != nil {
+		return wrap("revoke the claim link", err)
+	}
+	return nil
 }
 
 // requireReservedOrClaimed is RevokeClaimLink's answer for a character with no link at
@@ -286,13 +310,9 @@ func (s *Service) ReturnCharacterToReserve(
 	ctx context.Context,
 	req *connect.Request[charactersv1.ReturnCharacterToReserveRequest],
 ) (*connect.Response[charactersv1.ReturnCharacterToReserveResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	m, id, err := masterAndCharacter(ctx, req.Msg.GetCampaignId(), req.Msg.GetCharacterId())
 	if err != nil {
 		return nil, err
-	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
-	if !ok {
-		return nil, errCharacterNotFound()
 	}
 	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
 	if err != nil {
@@ -301,43 +321,78 @@ func (s *Service) ReturnCharacterToReserve(
 	now := s.now()
 	var row charactersdb.Character
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		current, err := visibleForUpdate(ctx, q, m, id)
-		if err != nil {
-			return err
-		}
-		if current.Kind != kindPlayer || current.Reserved || current.ClaimedAt == nil || current.Status != statusActive {
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_CLAIMED, current.ID)
-		}
-		if s.creatureHost != nil {
-			inCombat, err := s.creatureHost.CharacterInCombat(ctx, tx, m.CampaignID, current.ID)
-			if err != nil {
-				return wrap("find the character in a combat", err)
-			}
-			if inCombat {
-				return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_IN_COMBAT, current.ID)
-			}
-		}
-		row, err = q.ReturnCharacterToReserve(ctx, charactersdb.ReturnCharacterToReserveParams{CampaignID: m.CampaignID, ID: current.ID})
-		if err != nil {
-			return wrap("return a character to the reserve", err)
-		}
-		// Whatever link is left (none is live: a used link is spent) cannot work again.
-		if _, err := q.RevokeLiveClaimLinks(ctx, charactersdb.RevokeLiveClaimLinksParams{CharacterID: current.ID, Now: &now}); err != nil {
-			return wrap("revoke the live claim links", err)
-		}
-		return nil
+		var err error
+		row, err = s.returnToReserveTx(ctx, tx, m, id, now)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "return a character to the reserve", err)
 	}
 	s.publishPartyChanged(m.CampaignID)
 	logging.Event(ctx, s.logger, "character.returned_to_reserve", slog.String("character_id", id))
+	c, err := s.characterAfterWrite(ctx, content, row, m)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&charactersv1.ReturnCharacterToReserveResponse{Character: c}), nil
+}
+
+// returnToReserveTx is ReturnCharacterToReserve's transaction: a living player
+// character a claim brought to its player, and in no combat, loses its owner and goes
+// back to the reserve, and whatever link it has left stops working.
+func (s *Service) returnToReserveTx(ctx context.Context, tx pgx.Tx, m authz.Membership, id string, now time.Time) (charactersdb.Character, error) {
+	q := s.queries.WithTx(tx)
+	current, err := visibleForUpdate(ctx, q, m, id)
+	if err != nil {
+		return charactersdb.Character{}, err
+	}
+	if !claimedThroughLink(current) {
+		return charactersdb.Character{}, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_CLAIMED, current.ID)
+	}
+	if err := s.requireOutOfCombat(ctx, tx, m.CampaignID, current.ID); err != nil {
+		return charactersdb.Character{}, err
+	}
+	row, err := q.ReturnCharacterToReserve(ctx, charactersdb.ReturnCharacterToReserveParams{CampaignID: m.CampaignID, ID: current.ID})
+	if err != nil {
+		return charactersdb.Character{}, wrap("return a character to the reserve", err)
+	}
+	// Whatever link is left (none is live: a used link is spent) cannot work again.
+	if _, err := q.RevokeLiveClaimLinks(ctx, charactersdb.RevokeLiveClaimLinksParams{CharacterID: current.ID, Now: &now}); err != nil {
+		return charactersdb.Character{}, wrap("revoke the live claim links", err)
+	}
+	return row, nil
+}
+
+// claimedThroughLink says whether a character is one ReturnCharacterToReserve takes: a
+// living player character, not reserved, that a claim link brought to its player.
+func claimedThroughLink(row charactersdb.Character) bool {
+	return row.Kind == kindPlayer && !row.Reserved && row.ClaimedAt != nil && row.Status == statusActive
+}
+
+// requireOutOfCombat refuses a character that is a combatant of the campaign's combat
+// (MR-049), inside tx. Without the play module connected, no character is in one.
+func (s *Service) requireOutOfCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID string) error {
+	if s.creatureHost == nil {
+		return nil
+	}
+	inCombat, err := s.creatureHost.CharacterInCombat(ctx, tx, campaignID, characterID)
+	if err != nil {
+		return wrap("find the character in a combat", err)
+	}
+	if inCombat {
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_IN_COMBAT, characterID)
+	}
+	return nil
+}
+
+// characterAfterWrite is the character a write answers with, read after the commit;
+// a failure is the database's refusal of reading a character.
+func (s *Service) characterAfterWrite(ctx context.Context, content *rules.Content, row charactersdb.Character, m authz.Membership) (*charactersv1.Character, error) {
 	c, err := s.character(ctx, content, row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a character", err)
 	}
-	return connect.NewResponse(&charactersv1.ReturnCharacterToReserveResponse{Character: c}), nil
+	return c, nil
 }
 
 // DeleteReservedCharacter implements charactersv1connect.CharacterServiceHandler.
@@ -512,87 +567,139 @@ func (s *Service) ClaimCharacter(
 		return nil, err
 	}
 	now := s.now()
-	var res charactersv1.ClaimCharacterResponse
+	var res *charactersv1.ClaimCharacterResponse
 	var linkCampaign string // the link's campaign, for an RN-03 refusal that comes from the unique index
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		hash, err := s.claimHash(ctx, q, userID, req.Msg.GetToken(), now)
-		if err != nil {
-			return err
+		claimed, err := s.claimTx(ctx, tx, userID, req.Msg.GetToken(), now, &linkCampaign)
+		if err == nil {
+			res = claimed
 		}
-		// Find the character without a lock, then lock it, then the link, as RevokeClaimLink
-		// does: a claim and a revoke wait for each other and the second sees the first.
-		first, err := q.GetClaimLinkByTokenHash(ctx, hash)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errClaimLinkUnusable()
-		}
-		if err != nil {
-			return wrap("read a claim link", err)
-		}
-		row, err := q.GetCharacterForUpdate(ctx, charactersdb.GetCharacterForUpdateParams{CampaignID: first.CampaignID, ID: first.CharacterID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errClaimLinkUnusable()
-		}
-		if err != nil {
-			return wrap("read a reserved character", err)
-		}
-		link, err := q.GetClaimLinkByTokenHashForUpdate(ctx, hash)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errClaimLinkUnusable()
-		}
-		if err != nil {
-			return wrap("lock a claim link", err)
-		}
-		if !linkWorks(link, now) || !row.Reserved || row.Kind != kindPlayer {
-			return errClaimLinkUnusable()
-		}
-		linkCampaign = link.CampaignID
-		_, master, err := s.members.CampaignForClaim(ctx, tx, link.CampaignID, userID)
-		if err != nil {
-			return wrap("read the campaign of a claim link", err)
-		}
-		if master {
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CLAIM_OWN_LINK, row.ID)
-		}
-		// RN-03: one living character per player per campaign. A dead one does not count.
-		living, err := q.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{CampaignID: link.CampaignID, PlayerUserID: userID})
-		switch {
-		case err == nil:
-			existing, err := q.GetCharacterNameAndOwner(ctx, charactersdb.GetCharacterNameAndOwnerParams{CampaignID: link.CampaignID, ID: living})
-			if err != nil {
-				return wrap("read the living character", err)
-			}
-			return &livingForClaimError{campaignID: link.CampaignID, id: living, name: existing.Name}
-		case !errors.Is(err, pgx.ErrNoRows):
-			return wrap("find the living character", err)
-		}
-		campaignName, err := s.members.JoinAsPlayer(ctx, tx, link.CampaignID, userID)
-		if err != nil {
-			return wrap("join the campaign", err)
-		}
-		if _, err := q.ClaimReservedCharacter(ctx, charactersdb.ClaimReservedCharacterParams{CampaignID: link.CampaignID, ID: row.ID, PlayerUserID: userID, Now: now}); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return errClaimLinkUnusable()
-			}
-			return wrap("claim a character", err)
-		}
-		spent, err := q.MarkClaimLinkUsed(ctx, charactersdb.MarkClaimLinkUsedParams{ID: link.ID, UsedBy: userID, Now: now})
-		if err != nil {
-			return wrap("spend a claim link", err)
-		}
-		if spent == 0 {
-			return errClaimLinkUnusable() // unreachable under the row lock; kept so a change cannot make a free pass
-		}
-		if err := q.DeleteClaimSignIn(ctx, userID); err != nil {
-			return wrap("delete the link signed in with", err)
-		}
-		res = charactersv1.ClaimCharacterResponse{
-			CampaignId: link.CampaignID, CampaignName: campaignName, CharacterId: row.ID, CharacterName: row.Name,
-		}
-		return nil
+		return err
 	})
+	if err != nil {
+		return nil, s.claimFailure(ctx, err, userID, linkCampaign)
+	}
+	s.publishPartyChanged(res.GetCampaignId())
+	logging.Event(ctx, s.logger, "character.claimed", slog.String("campaign_id", res.GetCampaignId()), slog.String("character_id", res.GetCharacterId()))
+	return connect.NewResponse(res), nil
+}
+
+// claimTx is ClaimCharacter's transaction: it locks the link's character and the link,
+// checks that the caller may take it, and makes the caller its player. It sets
+// *linkCampaign as soon as the link is known to work.
+func (s *Service) claimTx(ctx context.Context, tx pgx.Tx, userID, token string, now time.Time, linkCampaign *string) (*charactersv1.ClaimCharacterResponse, error) {
+	q := s.queries.WithTx(tx)
+	target, err := s.lockClaimTarget(ctx, q, userID, token, now)
+	if err != nil {
+		return nil, err
+	}
+	link, row := target.link, target.character
+	*linkCampaign = link.CampaignID
+	if err := s.checkClaimant(ctx, tx, q, target, userID); err != nil {
+		return nil, err
+	}
+	campaignName, err := s.members.JoinAsPlayer(ctx, tx, link.CampaignID, userID)
+	if err != nil {
+		return nil, wrap("join the campaign", err)
+	}
+	if err := spendClaim(ctx, q, target, userID, now); err != nil {
+		return nil, err
+	}
+	return &charactersv1.ClaimCharacterResponse{
+		CampaignId: link.CampaignID, CampaignName: campaignName, CharacterId: row.ID, CharacterName: row.Name,
+	}, nil
+}
+
+// lockClaimTarget finds the link a claim is about and its character, locks both, and
+// returns them while the link works and the character is still a reserved player
+// character; anything else is the generic refusal.
+func (s *Service) lockClaimTarget(ctx context.Context, q *charactersdb.Queries, userID, token string, now time.Time) (claimTarget, error) {
+	hash, err := s.claimHash(ctx, q, userID, token, now)
+	if err != nil {
+		return claimTarget{}, err
+	}
+	// Find the character without a lock, then lock it, then the link, as RevokeClaimLink
+	// does: a claim and a revoke wait for each other and the second sees the first.
+	first, err := q.GetClaimLinkByTokenHash(ctx, hash)
+	if err != nil {
+		return claimTarget{}, claimReadError("read a claim link", err)
+	}
+	row, err := q.GetCharacterForUpdate(ctx, charactersdb.GetCharacterForUpdateParams{CampaignID: first.CampaignID, ID: first.CharacterID})
+	if err != nil {
+		return claimTarget{}, claimReadError("read a reserved character", err)
+	}
+	link, err := q.GetClaimLinkByTokenHashForUpdate(ctx, hash)
+	if err != nil {
+		return claimTarget{}, claimReadError("lock a claim link", err)
+	}
+	if !linkWorks(link, now) || !row.Reserved || row.Kind != kindPlayer {
+		return claimTarget{}, errClaimLinkUnusable()
+	}
+	return claimTarget{link: link, character: row}, nil
+}
+
+// claimReadError is the claim's answer to a read that failed: no row is the generic
+// refusal, anything else the database's error.
+func claimReadError(what string, err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errClaimLinkUnusable()
+	}
+	return wrap(what, err)
+}
+
+// checkClaimant refuses the caller who may not take the character: the campaign's
+// master (their own link), and a player who has a living character in the campaign
+// already (RN-03).
+func (s *Service) checkClaimant(ctx context.Context, tx pgx.Tx, q *charactersdb.Queries, target claimTarget, userID string) error {
+	campaignID := target.link.CampaignID
+	_, master, err := s.members.CampaignForClaim(ctx, tx, campaignID, userID)
+	if err != nil {
+		return wrap("read the campaign of a claim link", err)
+	}
+	if master {
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CLAIM_OWN_LINK, target.character.ID)
+	}
+	// RN-03: one living character per player per campaign. A dead one does not count.
+	living, err := q.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{CampaignID: campaignID, PlayerUserID: userID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return wrap("find the living character", err)
+	}
+	existing, err := q.GetCharacterNameAndOwner(ctx, charactersdb.GetCharacterNameAndOwnerParams{CampaignID: campaignID, ID: living})
+	if err != nil {
+		return wrap("read the living character", err)
+	}
+	return &livingForClaimError{campaignID: campaignID, id: living, name: existing.Name}
+}
+
+// spendClaim makes the caller the character's player, spends the link, and forgets the
+// link the caller signed in with.
+func spendClaim(ctx context.Context, q *charactersdb.Queries, target claimTarget, userID string, now time.Time) error {
+	link := target.link
+	if _, err := q.ClaimReservedCharacter(ctx, charactersdb.ClaimReservedCharacterParams{CampaignID: link.CampaignID, ID: target.character.ID, PlayerUserID: userID, Now: now}); err != nil {
+		return claimReadError("claim a character", err)
+	}
+	spent, err := q.MarkClaimLinkUsed(ctx, charactersdb.MarkClaimLinkUsedParams{ID: link.ID, UsedBy: userID, Now: now})
+	if err != nil {
+		return wrap("spend a claim link", err)
+	}
+	if spent == 0 {
+		return errClaimLinkUnusable() // unreachable under the row lock; kept so a change cannot make a free pass
+	}
+	if err := q.DeleteClaimSignIn(ctx, userID); err != nil {
+		return wrap("delete the link signed in with", err)
+	}
+	return nil
+}
+
+// claimFailure turns the error of ClaimCharacter's transaction into what the client
+// gets: RN-03 with the living character, also when the unique index found it, and
+// otherwise as claimError does.
+func (s *Service) claimFailure(ctx context.Context, err error, userID, linkCampaign string) error {
 	if living, ok := errors.AsType[*livingForClaimError](err); ok {
-		return nil, living.connectError()
+		return living.connectError()
 	}
 	if isUniqueViolation(err, "characters_one_living_player_character") {
 		// Another claim or another character of this person won the race: answer as the
@@ -601,14 +708,9 @@ func (s *Service) ClaimCharacter(
 		if lookupErr != nil {
 			living = ""
 		}
-		return nil, (&livingForClaimError{campaignID: linkCampaign, id: living}).connectError()
+		return (&livingForClaimError{campaignID: linkCampaign, id: living}).connectError()
 	}
-	if err != nil {
-		return nil, s.claimError(ctx, "claim a character", err)
-	}
-	s.publishPartyChanged(res.GetCampaignId())
-	logging.Event(ctx, s.logger, "character.claimed", slog.String("campaign_id", res.GetCampaignId()), slog.String("character_id", res.GetCharacterId()))
-	return connect.NewResponse(&res), nil
+	return s.claimError(ctx, "claim a character", err)
 }
 
 // publishPartyChanged tells every stream of the campaign that the party changed (a
