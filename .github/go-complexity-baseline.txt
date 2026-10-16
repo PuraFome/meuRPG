@@ -91,12 +91,10 @@ cognitive internal/play (*Service).EndRage 27
 cognitive internal/play (*Service).GetCastOptions 24
 cognitive internal/play (*Service).GetCombatHighlights 18
 cognitive internal/play (*Service).GetMoveOptions 27
-cognitive internal/play (*Service).GetOutsideInspiration 30
 cognitive internal/play (*Service).GetSessionSummary 37
 cognitive internal/play (*Service).GetSurpriseSuggestion 28
 cognitive internal/play (*Service).GetTurnOptions 29
 cognitive internal/play (*Service).GiveBardicInspiration 24
-cognitive internal/play (*Service).GiveBardicInspirationOutside 29
 cognitive internal/play (*Service).GrantSceneAttempt 33
 cognitive internal/play (*Service).Help 70
 cognitive internal/play (*Service).Hide 34
@@ -158,7 +156,6 @@ cognitive internal/play (*Service).WatchGameSession 35
 cognitive internal/play (*Service).addExhaustionLevel 17
 cognitive internal/play (*Service).addParticipants 61
 cognitive internal/play (*Service).afterDamage 19
-cognitive internal/play (*Service).answerCounterspell 19
 cognitive internal/play (*Service).answerFeatherFall 25
 cognitive internal/play (*Service).answerHellishRebuke 28
 cognitive internal/play (*Service).answerOffer 25
@@ -184,8 +181,6 @@ cognitive internal/play (*Service).contestOptionsFor 50
 cognitive internal/play (*Service).cuttingWindows 21
 cognitive internal/play (*Service).damageWindows 39
 cognitive internal/play (*Service).deathsOf 16
-cognitive internal/play (*Service).dieToCharacters 22
-cognitive internal/play (*Service).dieToCombat 24
 cognitive internal/play (*Service).effectLogView 17
 cognitive internal/play (*Service).effectsToCharacters 31
 cognitive internal/play (*Service).effectsToCombat 30
@@ -197,7 +192,6 @@ cognitive internal/play (*Service).fallWindows 25
 cognitive internal/play (*Service).familiarSquares 16
 cognitive internal/play (*Service).fireWrongTrap 20
 cognitive internal/play (*Service).flexible 18
-cognitive internal/play (*Service).giveDie 21
 cognitive internal/play (*Service).groupWrite 21
 cognitive internal/play (*Service).guardCast 23
 cognitive internal/play (*Service).healTargets 44
@@ -262,7 +256,6 @@ cognitive internal/play (*encounterData).turnFor 22
 cognitive internal/play (*encounterData).view 24
 cognitive internal/play (*packagePart).stageOnWrong 21
 cognitive internal/play (*reactionFacts).cuttingWords 16
-cognitive internal/play (*windowView).counterspellPrompt 17
 cognitive internal/play (*windowView).morePrompt 39
 cognitive internal/play combatantToProto 34
 cognitive internal/play decodePuzzle 18
@@ -336,12 +329,10 @@ cyclomatic internal/play (*Service).EndRage 18
 cyclomatic internal/play (*Service).GenerateEncounter 16
 cyclomatic internal/play (*Service).GetCastOptions 25
 cyclomatic internal/play (*Service).GetMoveOptions 25
-cyclomatic internal/play (*Service).GetOutsideInspiration 27
 cyclomatic internal/play (*Service).GetSessionSummary 26
 cyclomatic internal/play (*Service).GetSurpriseSuggestion 23
 cyclomatic internal/play (*Service).GetTurnOptions 27
 cyclomatic internal/play (*Service).GiveBardicInspiration 16
-cyclomatic internal/play (*Service).GiveBardicInspirationOutside 19
 cyclomatic internal/play (*Service).GrantSceneAttempt 24
 cyclomatic internal/play (*Service).Help 45
 cyclomatic internal/play (*Service).Hide 22
@@ -385,7 +376,6 @@ cyclomatic internal/play (*Service).UseReaction 16
 cyclomatic internal/play (*Service).WatchGameSession 24
 cyclomatic internal/play (*Service).addParticipants 30
 cyclomatic internal/play (*Service).afterDamage 17
-cyclomatic internal/play (*Service).answerCounterspell 17
 cyclomatic internal/play (*Service).answerCuttingWords 17
 cyclomatic internal/play (*Service).answerFeatherFall 20
 cyclomatic internal/play (*Service).answerHellishRebuke 20
@@ -417,7 +407,6 @@ cyclomatic internal/play (*Service).endEncounter 18
 cyclomatic internal/play (*Service).fallWindows 16
 cyclomatic internal/play (*Service).familiarSquares 17
 cyclomatic internal/play (*Service).fireWrongTrap 22
-cyclomatic internal/play (*Service).giveDie 23
 cyclomatic internal/play (*Service).guardCast 24
 cyclomatic internal/play (*Service).healTargets 30
 cyclomatic internal/play (*Service).hellishWindow 19
@@ -432,7 +421,6 @@ cyclomatic internal/play (*Service).pruneOffers 18
 cyclomatic internal/play (*Service).publishReactions 18
 cyclomatic internal/play (*Service).reactionPrompts 17
 cyclomatic internal/play (*Service).reactionView 22
-cyclomatic internal/play (*Service).reactorSees 17
 cyclomatic internal/play (*Service).releaseHold 25
 cyclomatic internal/play (*Service).resolveRebuke 18
 cyclomatic internal/play (*Service).rollAttack 146
