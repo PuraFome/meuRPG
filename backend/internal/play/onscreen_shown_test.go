@@ -130,7 +130,7 @@ func TestSetShownImage_RefusalsBeforeAndWithoutASession(t *testing.T) {
 	t.Parallel()
 	st := newShownTable(t)
 	other := st.image(t, st.campaign)
-	foreign := st.harness.newCampaign(st.master, "Outra")
+	foreign := st.newCampaign(st.master, "Outra")
 	foreignImage := st.image(t, foreign)
 
 	_, err := st.show(t, "nope", false)

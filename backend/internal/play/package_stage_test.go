@@ -47,13 +47,17 @@ func newID(t *testing.T, in *campaignpackage.Import, ns, old string) string {
 }
 
 func solveDoor(mapID string, col, row int32) *playv1.PuzzleOnSolve {
-	return &playv1.PuzzleOnSolve{Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR,
-		Target: &playv1.PuzzleOnSolve_Door{Door: &playv1.PuzzleDoorTarget{MapId: mapID, Col: col, Row: row}}}
+	return &playv1.PuzzleOnSolve{
+		Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR,
+		Target: &playv1.PuzzleOnSolve_Door{Door: &playv1.PuzzleDoorTarget{MapId: mapID, Col: col, Row: row}},
+	}
 }
 
 func solvePoint(mapID, pointID string) *playv1.PuzzleOnSolve {
-	return &playv1.PuzzleOnSolve{Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT,
-		Target: &playv1.PuzzleOnSolve_Point{Point: &playv1.PuzzlePointTarget{MapId: mapID, PointId: pointID}}}
+	return &playv1.PuzzleOnSolve{
+		Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT,
+		Target: &playv1.PuzzleOnSolve_Point{Point: &playv1.PuzzlePointTarget{MapId: mapID, PointId: pointID}},
+	}
 }
 
 func TestPackageStage_OnSolveRefusals(t *testing.T) {
@@ -103,8 +107,10 @@ func TestPackageStage_OnSolveAccepted(t *testing.T) {
 	if action != solveRevealPoint || reason != 0 || out.GetPoint().GetMapId() != newID(t, in, "map", idMapA) || out.GetPoint().GetPointId() != newID(t, in, "point", idPointA) {
 		t.Errorf("a point = %q, %v, %v; want reveal_point on the new ids", action, out, reason)
 	}
-	clue := &playv1.PuzzleOnSolve{Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE, Message: "x",
-		Target: &playv1.PuzzleOnSolve_Clue{Clue: &playv1.PuzzleClueTarget{ClueId: idClueA}}}
+	clue := &playv1.PuzzleOnSolve{
+		Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE, Message: "x",
+		Target: &playv1.PuzzleOnSolve_Clue{Clue: &playv1.PuzzleClueTarget{ClueId: idClueA}},
+	}
 	action, out, reason = p.stageOnSolve(in, "Enigma", clue)
 	if action != solveRevealClue || reason != 0 || out.GetClue().GetClueId() != newID(t, in, "clue", idClueA) || out.GetMessage() != "x" {
 		t.Errorf("a clue = %q, %v, %v; want reveal_clue on the new id, with its message", action, out, reason)

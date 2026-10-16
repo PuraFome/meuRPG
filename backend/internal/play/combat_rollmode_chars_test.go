@@ -150,7 +150,7 @@ func TestRollModeRequest_RequestReplacesTheEarlierOneAndCancelIsIdempotent(t *te
 	id := second.GetRequest().GetId()
 	rmWant(t, "unknown request", a.rmCancel(t, a.caio, e, newKey()), connect.CodeNotFound, "roll mode request not found")
 	rmWant(t, "bad request id", a.rmCancel(t, a.caio, e, "nope"), connect.CodeNotFound, "roll mode request not found")
-	rmWant(t, "another player cancelling", a.rmCancel(t, a.ana, e, id), connect.CodePermissionDenied, "")
+	rmWant(t, "another player canceling", a.rmCancel(t, a.ana, e, id), connect.CodePermissionDenied, "")
 	rmOK(t, "cancel", a.rmCancel(t, a.caio, e, id))
 	rmOK(t, "cancel again", a.rmCancel(t, a.caio, e, id)) // taken back already: nothing differs
 	if got := a.get(t, a.master).GetRollModeRequests(); len(got) != 0 {
@@ -164,7 +164,7 @@ func TestRollModeRequest_RequestReplacesTheEarlierOneAndCancelIsIdempotent(t *te
 	if err != nil {
 		t.Fatalf("third RequestRollMode() error = %v", err)
 	}
-	rmOK(t, "master cancelling", a.rmCancel(t, a.master, e, third.GetRequest().GetId()))
+	rmOK(t, "master canceling", a.rmCancel(t, a.master, e, third.GetRequest().GetId()))
 }
 
 func TestRollModeRequest_AnswerRefusals(t *testing.T) {

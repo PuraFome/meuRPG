@@ -27,8 +27,10 @@ func TestTallyHighlights_CriticalHitsCountOnlyAgainstNPCs(t *testing.T) {
 	f.add(eventAttackRolled, actionEvent{Actor: "c-gob", Target: "c-toren", Outcome: outcomeCrit}) // an NPC's
 	f.add(eventAttackRolled, actionEvent{Actor: "c-gone", Target: "c-gob", Outcome: outcomeCrit})  // left the combat
 	f.add(eventSpellCast, actionEvent{Actor: "c-bri", Hits: []castHit{
-		{Target: "c-gob", Outcome: outcomeCrit}, {Target: "c-toren", Outcome: outcomeCrit},
-		{Target: "c-gob", Outcome: "hit"}, {Target: "c-gob", Outcome: outcomeCrit},
+		{Target: "c-gob", Outcome: outcomeCrit},
+		{Target: "c-toren", Outcome: outcomeCrit},
+		{Target: "c-gob", Outcome: "hit"},
+		{Target: "c-gob", Outcome: outcomeCrit},
 	}})
 	f.add(eventSpellCast, actionEvent{Actor: "c-gob", Hits: []castHit{{Target: "c-bri", Outcome: outcomeCrit}}})
 	got := tallyOf(f)

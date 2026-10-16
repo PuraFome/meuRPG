@@ -278,7 +278,7 @@ func TestStamp_ADoorIsSeenByTheOnesWhoKnowItAndTheMover(t *testing.T) {
 	skel := st.cid(t, "Esqueleto")
 
 	// A player's character opens it: the player and whoever knows the door.
-	ev := actionEvent{Actor: st.cid(t, "Toren"), Col: int32(door.Col), Row: int32(door.Row)}
+	ev := actionEvent{Actor: st.cid(t, "Toren"), Col: 5, Row: 6} // the door
 	wantStamp(t, "player mover", st.stamp(t, eventDoorOpened, ev), true, toren, pens)
 	// An unknown actor: only those who know the door.
 	wantStamp(t, "unknown mover", st.stamp(t, eventDoorOpened, actionEvent{Actor: newKey(), Col: ev.Col, Row: ev.Row}), true, pens)

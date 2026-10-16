@@ -282,7 +282,7 @@ func forwardHubEvent(stream *connect.ServerStream[playv1.WatchGameSessionRespons
 		return false, nil // another session of the campaign; not this stream's
 	}
 	if err := stream.Send(ev.Message); err != nil {
-		return true, nil // the app went away
+		return true, nil //nolint:nilerr // the app went away
 	}
 	return ev.Message.GetSessionEnded() != nil, nil
 }
