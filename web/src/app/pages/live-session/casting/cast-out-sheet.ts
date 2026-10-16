@@ -26,12 +26,10 @@ import {
   endsConcentrationOf,
   isLong,
   minutesOf,
-  minutesWords,
   needsTarget,
   resultSentences,
   resultTitle,
   rollLine,
-  ritualTimeText,
   spellLine,
   targetHeading,
   targetRows,
@@ -47,7 +45,7 @@ import {
 import { castingErrorText } from '../../../core/casting/casting-errors';
 import { type SlotRow, slotRows } from '../../../core/combat/cast-flow';
 import { ActionKey } from '../../../core/connect/idempotency';
-import { abilityMissing, needsAbility } from '../../../core/effects/ability-choice';
+import { needsAbility } from '../../../core/effects/ability-choice';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 import { AbilityPicker } from '../effects/ability-picker/ability-picker';
@@ -58,8 +56,18 @@ import {
   type SummonSheetData,
   type SummonSheetResult,
 } from '../../../shared/summon-sheet/summon-sheet';
-import { castNotice, creaturesText } from '../../../core/creatures/summon-labels';
-import { type ChoiceRow, ChoiceCards } from './choice-cards';
+import { ChoiceCards } from './choice-cards';
+import {
+  castRequestOf,
+  casterRowsOf,
+  diceOf,
+  endsConfirmText,
+  missingOf,
+  spellRowsOf,
+  summonedNotice,
+  targetChoicesOf,
+  wayRowsOf,
+} from './cast-out-view';
 import { openCastConfirm } from './confirm-sheet';
 
 /** What the page hands the sheet: whose cast it is and how the table rolls. */
@@ -146,15 +154,7 @@ export class CastOutSheet {
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
 
   protected readonly askCaster = computed(() => !!this.data.npcCasters && this.casterId() === '');
-  protected readonly casterRows = computed<readonly ChoiceRow[]>(() =>
-    (this.data.npcCasters ?? []).map((n) => ({
-      id: n.id,
-      title: n.name,
-      detail: n.detail,
-      enabled: true,
-      reason: '',
-    })),
-  );
+  protected readonly casterRows = computed(() => casterRowsOf(this.data.npcCasters ?? []));
 
   protected readonly spell = computed<CastingSpell | null>(
     () => this.options()?.spells.find((s) => s.spell?.key === this.spellKey()) ?? null,
@@ -171,44 +171,16 @@ export class CastOutSheet {
     return s && !this.cast() ? spellLine(s) : this.casterName();
   });
 
-  protected readonly spellRows = computed<readonly ChoiceRow[]>(() =>
-    (this.options()?.spells ?? []).map((s) => ({
-      id: s.spell?.key ?? '',
-      title: s.spell?.namePt ?? '',
-      detail: spellLine(s),
-      enabled: s.canCast || s.ritualAllowed,
-      reason: s.canCast || s.ritualAllowed ? '' : 'Sem espaço de magia livre.',
-    })),
-  );
+  protected readonly spellRows = computed(() => spellRowsOf(this.options()?.spells ?? []));
   /** A summoning spell (Convocar Familiar) has no target: the creature sheet casts it, as the character's sheet does. */
   protected readonly summons = computed(() => !!this.spell()?.summons && !this.data.npcCasters);
   protected readonly ways = computed<CastWay[]>(() => {
     const s = this.spell();
     return s ? waysOf(s) : [];
   });
-  protected readonly wayRows = computed<readonly ChoiceRow[]>(() => {
+  protected readonly wayRows = computed(() => {
     const s = this.spell();
-    if (!s) {
-      return [];
-    }
-    return this.ways().map((w) =>
-      w === 'slot'
-        ? {
-            id: 'slot',
-            title: 'Com espaço de magia',
-            detail:
-              s.castingMinutes > 0 ? `Tempo: ${minutesWords(s.castingMinutes)}` : s.castingTimePt,
-            enabled: true,
-            reason: '',
-          }
-        : {
-            id: 'ritual',
-            title: 'Como ritual',
-            detail: `${ritualTimeText(s)} · sem espaço de magia`,
-            enabled: true,
-            reason: '',
-          },
-    );
+    return s ? wayRowsOf(s, this.ways()) : [];
   });
   protected readonly slots = computed<readonly SlotRow[]>(() => {
     const s = this.spell();
@@ -229,17 +201,9 @@ export class CastOutSheet {
   private readonly targets = computed<readonly CastingTarget[]>(
     () => this.options()?.targets ?? [],
   );
-  protected readonly targetChoices = computed<readonly ChoiceRow[]>(() => {
+  protected readonly targetChoices = computed(() => {
     const s = this.spell();
-    return s
-      ? targetRows(s, this.targets(), this.casterId()).map((t) => ({
-          id: t.id,
-          title: t.self ? `${t.name} (você)` : t.name,
-          detail: t.detail,
-          enabled: t.enabled,
-          reason: t.reason,
-        }))
-      : [];
+    return s ? targetChoicesOf(targetRows(s, this.targets(), this.casterId())) : [];
   });
   protected readonly targetTitle = computed(() => {
     const s = this.spell();
@@ -255,24 +219,18 @@ export class CastOutSheet {
   });
   protected readonly asksAbility = computed(() => needsAbility(this.spellKey()));
   protected readonly rollsDice = computed(() => !!this.spell()?.rollsDice && !this.long());
-  protected readonly dice = computed(() => {
-    const m = /^(\d+)d(\d+)$/.exec(this.spell()?.rollDice ?? '');
-    return m ? { count: Number(m[1]), sides: Number(m[2]) } : { count: 1, sides: 4 };
-  });
+  protected readonly dice = computed(() => diceOf(this.spell()?.rollDice ?? ''));
   /** What the slot, the way and the targets still lack, as the button says it. */
-  protected readonly missing = computed(() => {
-    const s = this.spell();
-    if (!s) {
-      return '';
-    }
-    if (this.way() === 'slot' && (s.spell?.level ?? 0) > 0 && !this.slot()) {
-      return 'Escolha o espaço de magia.';
-    }
-    if (this.showTargets() && needsTarget(s) && this.chosen().length === 0) {
-      return 'Escolha em quem a magia age.';
-    }
-    return abilityMissing(this.spellKey(), this.ability());
-  });
+  protected readonly missing = computed(() =>
+    missingOf(this.spell(), {
+      way: this.way(),
+      slot: this.slot(),
+      showTargets: this.showTargets(),
+      chosen: this.chosen(),
+      spellKey: this.spellKey(),
+      ability: this.ability(),
+    }),
+  );
   protected readonly ready = computed(() => this.missing() === '' && !this.busy());
   protected readonly buttonLabel = computed(() => {
     const s = this.spell();
@@ -374,18 +332,17 @@ export class CastOutSheet {
 
   /** What the cast sends: the way, the slot, the targets, the dice and the ability when the spell asks for one. */
   private request(dice: CastDice | null): OutsideCastRequest {
-    const slot =
-      this.way() === 'ritual' || (this.spell()?.spell?.level ?? 0) === 0 ? null : this.slot();
-    return {
+    return castRequestOf({
       campaignId: this.data.campaignId,
       casterId: this.casterId(),
       spellKey: this.spellKey(),
-      asRitual: this.way() === 'ritual',
-      slot: slot ? { level: slot.level, pact: slot.pact } : null,
-      targetIds: this.chosen(),
+      way: this.way(),
+      spell: this.spell(),
+      slot: this.slot(),
+      chosen: this.chosen(),
       dice: this.rollsDice() ? (dice ?? { inApp: true as const }) : null,
-      ...(this.asksAbility() ? { abilityKey: this.ability() } : {}),
-    };
+      ability: this.asksAbility() ? this.ability() : null,
+    });
   }
 
   /** "Escolher a criatura": the creature sheet picks the form, the slot or ritual and casts (CastSummon). */
@@ -410,13 +367,7 @@ export class CastOutSheet {
       },
     ).subscribe((r) => {
       if (r) {
-        const arrived =
-          r.names.length === 1
-            ? `${r.names[0]} chegou.`
-            : r.count === 1
-              ? 'A criatura chegou.'
-              : `${creaturesText(r.count)} chegaram.`;
-        this.summoned.set(castNotice(arrived, r.spellName, r.ritual, r.castingTime, r.dismissed));
+        this.summoned.set(summonedNotice(r));
       }
     });
   }
@@ -430,12 +381,11 @@ export class CastOutSheet {
     const ends = this.ends();
     if (ends) {
       const sure = await new Promise<boolean>((resolve) => {
-        openCastConfirm(this.dialog, this.bottomSheet, {
-          title: `Isso encerra ${ends}`,
-          body: `Conjurar ${s.spell?.namePt ?? ''} encerra a concentração em ${ends}, e os efeitos dela terminam.`,
-          confirm: `Encerrar ${ends} e conjurar`,
-          cancel: 'Cancelar',
-        }).subscribe((r) => resolve(r === true));
+        openCastConfirm(
+          this.dialog,
+          this.bottomSheet,
+          endsConfirmText(s.spell?.namePt ?? '', ends),
+        ).subscribe((r) => resolve(r === true));
       });
       if (!sure) {
         return;
