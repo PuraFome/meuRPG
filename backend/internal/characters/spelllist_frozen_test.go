@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -48,6 +49,7 @@ func TestListSpellsFrozenViewers(t *testing.T) {
 		name string
 		u    *user
 	}{{"master", master}, {"owner", owner}, {"another player", other}, {"pending member", tb.pending}, {"stranger", tb.alien}, {"nobody", tb.h.anonymous()}}
+	var pendingGot []any
 	for _, v := range viewers {
 		var got []any
 		for _, r := range requests {
@@ -73,6 +75,16 @@ func TestListSpellsFrozenViewers(t *testing.T) {
 			}
 			entry["logs"] = tb.logs.take(t)
 			got = append(got, entry)
+		}
+		switch v.name {
+		case "pending member":
+			// A pending member is refused as a stranger is: the stranger's golden is theirs too.
+			pendingGot = got
+			continue
+		case "stranger":
+			if !reflect.DeepEqual(got, pendingGot) {
+				t.Errorf("the pending member reads %v, want what the stranger reads %v", pendingGot, got)
+			}
 		}
 		choicesGolden(t, "spells_"+strings.ReplaceAll(v.name, " ", "_"), got, tb.names...)
 	}
