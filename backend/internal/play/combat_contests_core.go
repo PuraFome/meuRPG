@@ -357,12 +357,31 @@ func modeShift(m combat.CheckMode) int {
 	return combat.PassivePerceptionOf(0, m) - combat.PassivePerceptionOf(0, combat.CheckNormal)
 }
 
-// checkSources are the circumstances that give a combatant's ability check advantage or
-// disadvantage now: the rules of advantage's SaveMode for an ability check (Poisoned and
-// Frightened, SRD 5.1 Conditions; a raging barbarian's Strength) and the Helps that hold for
-// the task (SRD 5.1, "Help").
-func (s *Service) checkSources(ctx context.Context, tx pgx.Tx, campaignID string, q *playdb.Queries, enc playdb.Encounter, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
-	var out []rollNote
+// checkSourceNotes are the notes of the circumstances SaveMode lists for an ability check.
+var checkSourceNotes = map[string]rollNote{
+	combat.SourcePoisonedCheck:   {Kind: notePoisoned, Label: labelPoisoned},
+	combat.SourceFrightenedCheck: {Kind: "frightened", Label: "Amedrontado"},
+	combat.SourceRageStrength:    {Kind: "rage", Label: "Fúria", Adv: true},
+	combat.SourceStealthArmor:    {Kind: "armor_stealth", Label: "Armadura que atrapalha a furtividade"},
+	combat.SourceExhaustionCheck: {Kind: "exhaustion", Label: "Exaustão"},
+	combat.SourceEffectCheck:     {Kind: "effect", Label: "Efeito ativo", Adv: true},
+}
+
+// checkAbilityOf is the ability a skill's check rolls: Strength for Athletics, Wisdom for
+// Perception, Dexterity for the rest the contests use.
+func checkAbilityOf(skill string) string {
+	switch skill {
+	case skillAthletics:
+		return "str"
+	case skillPercept:
+		return "wis"
+	}
+	return "dex"
+}
+
+// stateNotes are the notes of the conditions and the effects that give a combatant's ability
+// check advantage or disadvantage now (SaveMode, for an ability check).
+func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, q *playdb.Queries, enc playdb.Encounter, who playdb.Combatant, skill string) ([]rollNote, error) {
 	// The sheet's traits: heavy armor takes the Rage's benefits away, and some armor gives
 	// disadvantage on Dexterity (Stealth) (SRD 5.1, "Armor").
 	sheet, err := s.sheetOf(ctx, tx, campaignID, who)
@@ -373,28 +392,27 @@ func (s *Service) checkSources(ctx context.Context, tx pgx.Tx, campaignID string
 	if err != nil {
 		return nil, fmt.Errorf("list the states: %w", err)
 	}
-	ability := "dex"
-	switch skill {
-	case skillAthletics:
-		ability = "str"
-	case skillPercept:
-		ability = "wis"
+	scene := combat.SaveScene{
+		Creature: creatureFacts(who, statesOf(states), sheet.Traits), Ability: checkAbilityOf(skill), Check: true,
+		StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage,
 	}
-	for _, src := range combat.SaveMode(combat.SaveScene{Creature: creatureFacts(who, statesOf(states), sheet.Traits), Ability: ability, Check: true, StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage}) {
-		switch src.Kind {
-		case combat.SourcePoisonedCheck:
-			out = append(out, rollNote{Kind: notePoisoned, Label: labelPoisoned})
-		case combat.SourceFrightenedCheck:
-			out = append(out, rollNote{Kind: "frightened", Label: "Amedrontado"})
-		case combat.SourceRageStrength:
-			out = append(out, rollNote{Kind: "rage", Label: "Fúria", Adv: true})
-		case combat.SourceStealthArmor:
-			out = append(out, rollNote{Kind: "armor_stealth", Label: "Armadura que atrapalha a furtividade"})
-		case combat.SourceExhaustionCheck:
-			out = append(out, rollNote{Kind: "exhaustion", Label: "Exaustão"})
-		case combat.SourceEffectCheck:
-			out = append(out, rollNote{Kind: "effect", Label: "Efeito ativo", Adv: true})
+	var out []rollNote
+	for _, src := range combat.SaveMode(scene) {
+		if note, ok := checkSourceNotes[src.Kind]; ok {
+			out = append(out, note)
 		}
+	}
+	return out, nil
+}
+
+// checkSources are the circumstances that give a combatant's ability check advantage or
+// disadvantage now: the rules of advantage's SaveMode for an ability check (Poisoned and
+// Frightened, SRD 5.1 Conditions; a raging barbarian's Strength) and the Helps that hold for
+// the task (SRD 5.1, "Help").
+func (s *Service) checkSources(ctx context.Context, tx pgx.Tx, campaignID string, q *playdb.Queries, enc playdb.Encounter, who playdb.Combatant, skill string, cs []playdb.Combatant) ([]rollNote, error) {
+	out, err := s.stateNotes(ctx, tx, campaignID, q, enc, who, skill)
+	if err != nil {
+		return nil, err
 	}
 	helps, err := s.liveHelps(ctx, q, enc, cs)
 	if err != nil {
