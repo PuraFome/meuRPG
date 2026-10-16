@@ -112,33 +112,21 @@ func Process(data []byte) (*Result, error) {
 	if len(data) > MaxBytes {
 		return nil, ErrTooLarge
 	}
-	f := sniff(data)
-	if f == 0 {
-		return nil, ErrUnsupportedType
-	}
-
 	// The header first: its size says whether decoding is safe at all.
-	cfg, err := decodeConfig(f, data)
-	if err != nil || cfg.Width < 1 || cfg.Height < 1 {
-		return nil, ErrCorrupt
+	f, cfg, err := readHeader(data)
+	if err != nil {
+		return nil, err
 	}
 	if cfg.Width > MaxSide || cfg.Height > MaxSide || cfg.Width*cfg.Height > MaxPixels {
 		return nil, ErrDimensions
 	}
-	var jh jpegHeader
-	if f == formatJPEG {
-		jh = readJPEGHeader(data)
-	}
+	jh := jpegHeaderOf(f, data)
 	if decodeCost(f, cfg, jh, readPNGInfo(data)) > maxDecodeBytes {
 		return nil, ErrDimensions
 	}
-
-	img, err := decode(f, data)
+	img, err := decodeUpright(f, data, jh)
 	if err != nil {
-		return nil, ErrCorrupt
-	}
-	if f == formatJPEG {
-		img = upright(img, jh.orientation)
+		return nil, err
 	}
 
 	contentType := PNG
@@ -149,6 +137,42 @@ func Process(data []byte) (*Result, error) {
 		img = to8bit(img)
 	}
 	return finish(contentType, img, thumbnail, makeReference)
+}
+
+// readHeader recognizes the format of data and reads the image's header, without decoding
+// the pixels. A type that is not accepted is ErrUnsupportedType; a header that cannot be
+// read, or that holds no pixels, is ErrCorrupt.
+func readHeader(data []byte) (format, image.Config, error) {
+	f := sniff(data)
+	if f == 0 {
+		return 0, image.Config{}, ErrUnsupportedType
+	}
+	cfg, err := decodeConfig(f, data)
+	if err != nil || cfg.Width < 1 || cfg.Height < 1 {
+		return 0, image.Config{}, ErrCorrupt
+	}
+	return f, cfg, nil
+}
+
+// jpegHeaderOf reads the JPEG's own header (its orientation and sampling); the zero value
+// for any other format.
+func jpegHeaderOf(f format, data []byte) jpegHeader {
+	if f == formatJPEG {
+		return readJPEGHeader(data)
+	}
+	return jpegHeader{}
+}
+
+// decodeUpright decodes the image, and turns a JPEG upright as its EXIF orientation says.
+func decodeUpright(f format, data []byte, jh jpegHeader) (image.Image, error) {
+	img, err := decode(f, data)
+	if err != nil {
+		return nil, ErrCorrupt
+	}
+	if f == formatJPEG {
+		img = upright(img, jh.orientation)
+	}
+	return img, nil
 }
 
 // Encode is Process for an image the server drew itself (a generated dungeon's
@@ -193,32 +217,32 @@ func CropFit(data []byte, crop func(w, h int) image.Rectangle, outW, outH int) (
 	if len(data) > MaxBytes {
 		return nil, ErrTooLarge
 	}
-	f := sniff(data)
-	if f == 0 {
-		return nil, ErrUnsupportedType
-	}
-	cfg, err := decodeConfig(f, data)
-	if err != nil || cfg.Width < 1 || cfg.Height < 1 {
-		return nil, ErrCorrupt
+	f, cfg, err := readHeader(data)
+	if err != nil {
+		return nil, err
 	}
 	if cfg.Width > maxFitAnswerSide || cfg.Height > maxFitAnswerSide {
 		return nil, ErrDimensions
 	}
-	var jh jpegHeader
-	if f == formatJPEG {
-		jh = readJPEGHeader(data)
-	}
+	jh := jpegHeaderOf(f, data)
 	// The decoded answer and the output's working copy (4 bytes a pixel) live together.
 	if cost := decodeCost(f, cfg, jh, readPNGInfo(data)) + 4*int64(outW)*int64(outH); cost > maxFitBytes {
 		return nil, ErrDimensions
 	}
-	img, err := decode(f, data)
+	img, err := decodeUpright(f, data, jh)
 	if err != nil {
-		return nil, ErrCorrupt
+		return nil, err
 	}
-	if f == formatJPEG {
-		img = upright(img, jh.orientation)
+	dst, err := cropScaled(img, crop, outW, outH)
+	if err != nil {
+		return nil, err
 	}
+	return finish(JPEG, dst, thumbnail, makeReference)
+}
+
+// cropScaled takes the rectangle crop gives for the picture's size and scales it to exactly
+// outW x outH pixels. A crop with nothing of the picture in it is ErrDimensions.
+func cropScaled(img image.Image, crop func(w, h int) image.Rectangle, outW, outH int) (*image.RGBA, error) {
 	b := img.Bounds()
 	rect := crop(b.Dx(), b.Dy()).Add(b.Min).Intersect(b)
 	if rect.Empty() {
@@ -232,7 +256,7 @@ func CropFit(data []byte, crop func(w, h int) image.Rectangle, outW, outH int) (
 	}
 	dst := image.NewRGBA(image.Rect(0, 0, outW, outH))
 	scaleBands(dst, sub.SubImage(rect), xdraw.Src)
-	return finish(JPEG, dst, thumbnail, makeReference)
+	return dst, nil
 }
 
 // finish encodes img as contentType, refuses a file over MaxBytes and adds the
