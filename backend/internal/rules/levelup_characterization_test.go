@@ -205,21 +205,29 @@ func TestApplyLevelUpCharacterization(t *testing.T) {
 			FeatureChoiceText: map[string]string{"feature:x": "texto"}, SkillProficiencies: []string{"skill:arcana"},
 			Expertise: []string{"skill:perception"}, HitPoints: avg,
 		}},
-		{"text on a sheet that has some", srd, func() Build { b := torenLevelUp(); b.FeatureChoiceText = map[string]string{"a": "1"}; return b }(),
-			LevelUpChoices{Class: "class:fighter", FeatureChoiceText: map[string]string{"b": "2"}, HitPoints: avg}},
+		{
+			"text on a sheet that has some", srd, func() Build { b := torenLevelUp(); b.FeatureChoiceText = map[string]string{"a": "1"}; return b }(),
+			LevelUpChoices{Class: "class:fighter", FeatureChoiceText: map[string]string{"b": "2"}, HitPoints: avg},
+		},
 		{"an invocation swapped", srd, warlock, LevelUpChoices{
 			Class: "class:warlock", SwapInvocation: levelUpFirstInvocation(srd, warlock), FeatureChoices: []string{"feature:eldritch-invocation-beast-speech"}, HitPoints: avg,
 		}},
 		{"a new class with an instrument", srd, richFighter5(), LevelUpChoices{Class: "class:bard", Instrument: "proficiency:lute", HitPoints: LevelUpHitPoints{Roll: 3}}},
 		{"an unknown instrument", srd, richFighter5(), LevelUpChoices{Class: "class:bard", Instrument: "proficiency:nada", HitPoints: avg}},
 		{"a feat that raises what it lists", fixed, torenLevelUp(), LevelUpChoices{Class: "class:fighter", Feat: "feat:robusto" + tableSuffix, HitPoints: avg}},
-		{"a feat that raises what it lists, at 20", fixed, func() Build { b := torenLevelUp(); b.BaseScores[STR] = 19; return b }(),
-			LevelUpChoices{Class: "class:fighter", Feat: "feat:robusto" + tableSuffix, HitPoints: avg}},
-		{"a feat that raises what it lists, with an increase sent", fixed, torenLevelUp(),
-			LevelUpChoices{Class: "class:fighter", Feat: "feat:robusto" + tableSuffix, AbilityIncrease: map[Ability]int{CON: 1}, HitPoints: avg}},
+		{
+			"a feat that raises what it lists, at 20", fixed, func() Build { b := torenLevelUp(); b.BaseScores[STR] = 19; return b }(),
+			LevelUpChoices{Class: "class:fighter", Feat: "feat:robusto" + tableSuffix, HitPoints: avg},
+		},
+		{
+			"a feat that raises what it lists, with an increase sent", fixed, torenLevelUp(),
+			LevelUpChoices{Class: "class:fighter", Feat: "feat:robusto" + tableSuffix, AbilityIncrease: map[Ability]int{CON: 1}, HitPoints: avg},
+		},
 		{"a feat to choose from", fixed, torenLevelUp(), LevelUpChoices{Class: "class:fighter", Feat: "feat:meio" + tableSuffix, AbilityIncrease: map[Ability]int{DEX: 1}, HitPoints: avg}},
-		{"a feat on a sheet with feats", fixed, func() Build { b := torenLevelUp(); b.FeatSlots = map[string]string{"x": "y"}; return b }(),
-			LevelUpChoices{Class: "class:fighter", Feat: "feat:meio" + tableSuffix, HitPoints: avg}},
+		{
+			"a feat on a sheet with feats", fixed, func() Build { b := torenLevelUp(); b.FeatSlots = map[string]string{"x": "y"}; return b }(),
+			LevelUpChoices{Class: "class:fighter", Feat: "feat:meio" + tableSuffix, HitPoints: avg},
+		},
 		{"an unknown feat", fixed, torenLevelUp(), LevelUpChoices{Class: "class:fighter", Feat: "feat:nada", HitPoints: avg}},
 		{"refused: unknown class", srd, torenLevelUp(), LevelUpChoices{Class: "class:artificer"}},
 		{"refused: level 20", srd, top, LevelUpChoices{Class: "class:fighter"}},
@@ -331,10 +339,12 @@ func levelUpCheckCases(t *testing.T) map[string]levelUpCheckCase {
 			b.Classes = append(b.Classes[:1:1], ClassLevel{Class: "class:wizard", Level: 1})
 			b.Classes[0].Level = 3
 		}),
-		"new class: prerequisite of a class it has": {c: srd, before: wizardWith(map[Ability]int{STR: 13, DEX: 10, CON: 10, INT: 12, WIS: 10, CHA: 10}),
+		"new class: prerequisite of a class it has": {
+			c: srd, before: wizardWith(map[Ability]int{STR: 13, DEX: 10, CON: 10, INT: 12, WIS: 10, CHA: 10}),
 			after: edit(wizardWith(map[Ability]int{STR: 13, DEX: 10, CON: 10, INT: 12, WIS: 10, CHA: 10}), func(b *Build) {
 				b.Classes = append(b.Classes, ClassLevel{Class: "class:fighter", Level: 1})
-			})},
+			}),
+		},
 		"new class: at level 2": at(srd, toren, plain, func(b *Build) {
 			b.Classes = append(b.Classes[:1:1], ClassLevel{Class: "class:barbarian", Level: 2})
 			b.Classes[0].Level = 3
@@ -654,8 +664,9 @@ func TestSceneOptionsCharacterization(t *testing.T) {
 		all = append(all, SceneAction{Key: s.Key, DC: 10})
 	}
 	for _, a := range cat.Abilities {
-		all = append(all, SceneAction{Key: SceneAbility + ":" + string(a.Ability), DC: 12})
-		all = append(all, SceneAction{Key: SceneSave + ":" + string(a.Ability), DC: 14})
+		all = append(all,
+			SceneAction{Key: SceneAbility + ":" + string(a.Ability), DC: 12},
+			SceneAction{Key: SceneSave + ":" + string(a.Ability), DC: 14})
 	}
 	rogue := levelUpCharAt(t, c, "class:rogue", "subclass:thief", 11)
 	bardB := levelUpCharAt(t, c, "class:bard", "subclass:lore", 2)
