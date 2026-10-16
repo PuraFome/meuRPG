@@ -188,14 +188,7 @@ func (s *Service) answerCuttingWords(ctx context.Context, c *combatTx, w playdb.
 	if err != nil {
 		return err
 	}
-	vit, err := s.spendReactionResource(ctx, c, reactor, resBardic)
-	if err != nil {
-		return err
-	}
-	if vit != nil {
-		got.vitals = append(got.vitals, vit)
-	}
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
+	if err := s.spendCuttingWords(ctx, c, reactor, got); err != nil {
 		return err
 	}
 	effective, err := s.canBeCut(ctx, c, t.Actor)
@@ -215,26 +208,48 @@ func (s *Service) answerCuttingWords(ctx context.Context, c *combatTx, w playdb.
 		return err
 	}
 	c.lastAnswered = reaction.CuttingWords
-	rk := playv1.ReactionRollKind_REACTION_ROLL_KIND_ATTACK
-	switch t.Roll {
-	case "damage":
-		rk = playv1.ReactionRollKind_REACTION_ROLL_KIND_DAMAGE
-	case "test":
-		rk = playv1.ReactionRollKind_REACTION_ROLL_KIND_TEST
-	}
-	cw := &playv1.CuttingWordsResult{Die: diceRoll(1, int32(sides), []int32{clamp32(face, 1, 20)}, 0, clamp32(face, 1, 20), r.Physical), Effective: effective, RollKind: rk} //nolint:gosec // a die size
-	got.result = &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS, ByMaster: c.master, Used: true, Result: &playv1.ReactionResult_CuttingWords{CuttingWords: cw}}
-	// What the roll became is known when the held action is replayed, a moment later.
-	got.fill = func() {
-		switch re.Outcome {
-		case outcomeHit, outcomeCrit:
-			cw.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_HIT
-		case outcomeMiss:
-			cw.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_MISS
-		}
-	}
+	cut := &playv1.CuttingWordsResult{Die: diceRoll(1, int32(sides), []int32{clamp32(face, 1, 20)}, 0, clamp32(face, 1, 20), r.Physical), Effective: effective, RollKind: cuttingRollKind(t.Roll)} //nolint:gosec // a die size
+	got.result = &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS, ByMaster: c.master, Used: true, Result: &playv1.ReactionResult_CuttingWords{CuttingWords: cut}}
+	got.fill = cuttingFill(re, cut)
 	c.characterID = &reactor.CharacterID
 	return nil
+}
+
+// spendCuttingWords spends one use of Bardic Inspiration and the reaction, whether or not the cut
+// does anything.
+func (s *Service) spendCuttingWords(ctx context.Context, c *combatTx, reactor playdb.Combatant, got *answered) error {
+	vit, err := s.spendReactionResource(ctx, c, reactor, resBardic)
+	if err != nil {
+		return err
+	}
+	if vit != nil {
+		got.vitals = append(got.vitals, vit)
+	}
+	return s.spendReaction(ctx, c, reactor)
+}
+
+// cuttingRollKind is the kind of roll a Cutting Words window was about, as the answer tells it.
+func cuttingRollKind(roll string) playv1.ReactionRollKind {
+	switch roll {
+	case "damage":
+		return playv1.ReactionRollKind_REACTION_ROLL_KIND_DAMAGE
+	case "test":
+		return playv1.ReactionRollKind_REACTION_ROLL_KIND_TEST
+	}
+	return playv1.ReactionRollKind_REACTION_ROLL_KIND_ATTACK
+}
+
+// cuttingFill completes the result with what the roll became, known when the held action is
+// replayed, a moment later.
+func cuttingFill(re *reactionEvent, cut *playv1.CuttingWordsResult) func() {
+	return func() {
+		switch re.Outcome {
+		case outcomeHit, outcomeCrit:
+			cut.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_HIT
+		case outcomeMiss:
+			cut.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_MISS
+		}
+	}
 }
 
 // canBeCut says Cutting Words can change the roller's roll: it can hear the bard and is
@@ -286,39 +301,11 @@ func (s *Service) answerHellishRebuke(ctx context.Context, c *combatTx, m authz.
 	if err != nil {
 		return err
 	}
-	level := int32(0)
-	racial := req.GetUseRacial()
-	var slot *slotRef
-	if racial {
-		if k.legacyLeft() == 0 {
-			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "the Infernal Legacy has no use left")
-		}
-		level = reaction.InfernalLegacyLevel
-	} else {
-		sl, err := pickSlot(req.GetSlot(), k.slotsFor(spellHellishRebuke))
-		if err != nil {
-			return err
-		}
-		slot, level = &sl, sl.Level
+	level, racial, slot, err := rebukePayment(k, req)
+	if err != nil {
+		return err
 	}
-	if racial {
-		vit, err := s.spendReactionResource(ctx, c, reactor, resInfernalLegacy)
-		if err != nil {
-			return err
-		}
-		if vit != nil {
-			got.vitals = append(got.vitals, vit)
-		}
-	} else {
-		vit, err := s.spendReactionSlot(ctx, c, reactor, *slot)
-		if err != nil {
-			return err
-		}
-		if vit != nil {
-			got.vitals = append(got.vitals, vit)
-		}
-	}
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
+	if err := s.spendRebuke(ctx, c, reactor, racial, slot, got); err != nil {
 		return err
 	}
 	t.CastLevel, t.Racial, t.Dice = level, racial, int32(reaction.HellishRebukeDice(int(level))) //nolint:gosec // 2 to 10 dice
@@ -330,23 +317,73 @@ func (s *Service) answerHellishRebuke(ctx context.Context, c *combatTx, m authz.
 	}
 	ai := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == t.Actor })
 	if ai >= 0 && cs[ai].Kind != kindPlayer {
-		// The aggressor is an NPC: its saving throw is the master's. The window waits.
-		body, err := json.Marshal(t)
-		if err != nil {
-			return fmt.Errorf("encode the window's trigger: %w", err)
-		}
-		if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: stepSecond, Trigger: body}); err != nil {
-			return fmt.Errorf("ask for the aggressor's saving throw: %w", err)
-		}
-		got.ev = actionEvent{
-			Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, Slot: slot, ReactionBefore: reactor.ReactionUsed,
-			Reaction: &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Slot: slot, Racial: racial},
-		}
-		got.result = &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE, ByMaster: c.master, Used: true, NextWindowId: w.ID}
-		return nil
+		return s.askAggressorSave(ctx, c, w, reactor, t, slot, got)
 	}
 	got.ev = actionEvent{Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, Slot: slot, ReactionBefore: reactor.ReactionUsed}
 	return s.resolveRebuke(ctx, c, w, reactor, t, &playv1.AnswerReactionRequest{Roll: &playv1.AnswerReactionRequest_RollInApp{RollInApp: true}}, got)
+}
+
+// rebukePayment is what the answer pays for the spell: the Infernal Legacy (a 2nd-level cast, no slot)
+// or the slot the answer chose, and the level it casts at.
+func rebukePayment(k kit, req *playv1.AnswerReactionRequest) (level int32, racial bool, slot *slotRef, err error) {
+	if req.GetUseRacial() {
+		if k.legacyLeft() == 0 {
+			return 0, true, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "the Infernal Legacy has no use left")
+		}
+		return reaction.InfernalLegacyLevel, true, nil, nil
+	}
+	sl, err := pickSlot(req.GetSlot(), k.slotsFor(spellHellishRebuke))
+	if err != nil {
+		return 0, false, nil, err
+	}
+	return sl.Level, false, &sl, nil
+}
+
+// spendRebuke spends what rebukePayment chose, and the reactor's reaction.
+func (s *Service) spendRebuke(ctx context.Context, c *combatTx, reactor playdb.Combatant, racial bool, slot *slotRef, got *answered) error {
+	var vit *playv1.CharacterVitals
+	var err error
+	if racial {
+		vit, err = s.spendReactionResource(ctx, c, reactor, resInfernalLegacy)
+	} else {
+		vit, err = s.spendReactionSlot(ctx, c, reactor, *slot)
+	}
+	if err != nil {
+		return err
+	}
+	if vit != nil {
+		got.vitals = append(got.vitals, vit)
+	}
+	return s.spendReaction(ctx, c, reactor)
+}
+
+// askAggressorSave keeps the window open for the second step: the aggressor is an NPC, so its saving
+// throw is the master's.
+func (s *Service) askAggressorSave(ctx context.Context, c *combatTx, w playdb.ReactionWindow, reactor playdb.Combatant, t windowTrigger, slot *slotRef, got *answered) error {
+	body, err := json.Marshal(t)
+	if err != nil {
+		return fmt.Errorf("encode the window's trigger: %w", err)
+	}
+	if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: stepSecond, Trigger: body}); err != nil {
+		return fmt.Errorf("ask for the aggressor's saving throw: %w", err)
+	}
+	got.ev = actionEvent{
+		Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, Slot: slot, ReactionBefore: reactor.ReactionUsed,
+		Reaction: &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Slot: slot, Racial: t.Racial},
+	}
+	got.result = &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE, ByMaster: c.master, Used: true, NextWindowId: w.ID}
+	return nil
+}
+
+// rebukeSave is the aggressor's saving throw against the rebuke: what was rolled, the bonus, the DC
+// and whether it held.
+type rebukeSave struct {
+	face   int
+	bonus  int
+	dc     int
+	roll   d20Roll
+	reroll *luckyReroll
+	saved  bool
 }
 
 // resolveRebuke rolls the aggressor's saving throw and puts the fire on it.
@@ -360,39 +397,10 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the aggressor is gone"))
 	}
 	aggressor := cs[ai]
-	k, _, err := s.kitOf(ctx, c.tx, c.session.CampaignID, reactor)
+	sv, err := s.rebukeSave(ctx, c, reactor, aggressor, t, req)
 	if err != nil {
 		return err
 	}
-	dc := k.st.SaveDC
-	if t.Racial {
-		dc = k.st.LegacyDC
-	}
-	save, err := s.saveOf(ctx, c.tx, c.session.CampaignID, aggressor, "dex")
-	if err != nil {
-		return err
-	}
-	in := rollInput{inApp: true}
-	if aggressor.Kind != kindPlayer {
-		if in, err = s.reactionRoll(ctx, c, req, 20, aggressor); err != nil {
-			return err
-		}
-	}
-	lucky, err := s.rebukeLucky(ctx, c, aggressor)
-	if err != nil {
-		return err
-	}
-	face, rolled, err := s.d20(in, save.Bonus)
-	if err != nil {
-		return err
-	}
-	// Nobody is asked about a player's save here: a halfling's 1 is rolled again by the app (combat_lucky.go).
-	roll, reroll, err := s.luckySave(d20Roll{Faces: []int{face}, Total: rolled.Total, Physical: rolled.Physical}, save.Bonus, combat.ModeNormal, lucky)
-	if err != nil {
-		return err
-	}
-	face = roll.Face()
-	saved := combat.SaveSucceeded(roll.Total, dc)
 	// The fire: the server rolls it in the app (2d10 and a d10 for each slot level above the 1st).
 	fire, err := dice.Roll(s.roller, dice.Expr{Count: int(t.Dice), Sides: hellishDieSides})
 	if err != nil {
@@ -400,7 +408,7 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	}
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
 		EncounterID: c.enc.ID, AttackerID: &reactor.ID, TargetID: aggressor.ID, AttackKey: spellHellishRebuke, Status: pendingAwaitingRoll,
-		DiceCount: t.Dice, DiceSides: hellishDieSides, DamageType: "damage-type:fire", CreatedAt: c.now, Half: saved,
+		DiceCount: t.Dice, DiceSides: hellishDieSides, DamageType: "damage-type:fire", CreatedAt: c.now, Half: sv.saved,
 	})
 	if err != nil {
 		return fmt.Errorf("open the fire's damage: %w", err)
@@ -412,27 +420,73 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	if vit != nil {
 		got.vitals = append(got.vitals, vit)
 	}
-	re := got.ev.Reaction
-	if re == nil {
-		re = &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Racial: t.Racial}
-	}
-	re.Slot, re.Racial = got.ev.Slot, t.Racial
-	re.SaveD20, re.SaveBonus, re.SaveDC, re.Saved, re.Fire = clamp32(face, 1, 20), clamp32(save.Bonus, math.MinInt32, math.MaxInt32), clamp32(dc, 0, math.MaxInt32), saved, hit.Amount
-	re.Level = t.CastLevel
-	got.ev.Reaction = re
-	got.ev.Lucky = reroll // the aggressor's save the app rolled again: the master's line says "Sortudo: 1 → 14"
-	got.ev.Actor, got.ev.Target, got.ev.Round, got.ev.Secret = reactor.ID, aggressor.ID, c.enc.Round, reactor.Hidden || aggressor.Hidden
+	s.rebukeEvent(c, w, reactor, aggressor, t, sv, hit, got)
 	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Slot: got.ev.Slot, Racial: t.Racial}, ""); err != nil {
 		return err
 	}
 	got.result = &playv1.ReactionResult{
 		Kind: playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE, ByMaster: c.master, Used: true,
 		Result: &playv1.ReactionResult_HellishRebuke{HellishRebuke: &playv1.HellishRebukeResult{
-			Save:   rebukeSaveRoll(face, re.SaveBonus, roll, reroll),
-			SaveDc: re.SaveDC, Saved: saved, Damage: hit.Amount, Level: t.CastLevel, Racial: t.Racial,
+			Save:   rebukeSaveRoll(sv.face, clamp32(sv.bonus, math.MinInt32, math.MaxInt32), sv.roll, sv.reroll),
+			SaveDc: clamp32(sv.dc, 0, math.MaxInt32), Saved: sv.saved, Damage: hit.Amount, Level: t.CastLevel, Racial: t.Racial,
 		}},
 	}
 	return nil
+}
+
+// rebukeSave rolls the aggressor's Dexterity saving throw against the caster's DC. A player rolls in
+// the app (a halfling's 1 is rolled again, combat_lucky.go); an NPC's roll is the master's.
+func (s *Service) rebukeSave(ctx context.Context, c *combatTx, reactor, aggressor playdb.Combatant, t windowTrigger, req *playv1.AnswerReactionRequest) (rebukeSave, error) {
+	var sv rebukeSave
+	k, _, err := s.kitOf(ctx, c.tx, c.session.CampaignID, reactor)
+	if err != nil {
+		return sv, err
+	}
+	sv.dc = k.st.SaveDC
+	if t.Racial {
+		sv.dc = k.st.LegacyDC
+	}
+	save, err := s.saveOf(ctx, c.tx, c.session.CampaignID, aggressor, "dex")
+	if err != nil {
+		return sv, err
+	}
+	sv.bonus = save.Bonus
+	in := rollInput{inApp: true}
+	if aggressor.Kind != kindPlayer {
+		if in, err = s.reactionRoll(ctx, c, req, 20, aggressor); err != nil {
+			return sv, err
+		}
+	}
+	lucky, err := s.rebukeLucky(ctx, c, aggressor)
+	if err != nil {
+		return sv, err
+	}
+	face, rolled, err := s.d20(in, save.Bonus)
+	if err != nil {
+		return sv, err
+	}
+	// Nobody is asked about a player's save here: a halfling's 1 is rolled again by the app (combat_lucky.go).
+	sv.roll, sv.reroll, err = s.luckySave(d20Roll{Faces: []int{face}, Total: rolled.Total, Physical: rolled.Physical}, save.Bonus, combat.ModeNormal, lucky)
+	if err != nil {
+		return sv, err
+	}
+	sv.face = sv.roll.Face()
+	sv.saved = combat.SaveSucceeded(sv.roll.Total, sv.dc)
+	return sv, nil
+}
+
+// rebukeEvent writes the log line of the rebuke: the reactor's, completed with the save and the fire.
+func (s *Service) rebukeEvent(c *combatTx, w playdb.ReactionWindow, reactor, aggressor playdb.Combatant, t windowTrigger, sv rebukeSave, hit damageHit, got *answered) {
+	re := got.ev.Reaction
+	if re == nil {
+		re = &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Racial: t.Racial}
+	}
+	re.Slot, re.Racial = got.ev.Slot, t.Racial
+	re.SaveD20, re.SaveBonus, re.SaveDC, re.Saved, re.Fire = clamp32(sv.face, 1, 20), clamp32(sv.bonus, math.MinInt32, math.MaxInt32), clamp32(sv.dc, 0, math.MaxInt32), sv.saved, hit.Amount
+	re.Level = t.CastLevel
+	got.ev.Reaction = re
+	got.ev.Lucky = sv.reroll // the aggressor's save the app rolled again: the master's line says "Sortudo: 1 → 14"
+	got.ev.Actor, got.ev.Target, got.ev.Round, got.ev.Secret = reactor.ID, aggressor.ID, c.enc.Round, reactor.Hidden || aggressor.Hidden
 }
 
 // rebukeLucky says the app rolls a 1 again on the aggressor's Dexterity save against Hellish

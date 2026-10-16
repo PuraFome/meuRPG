@@ -34,41 +34,51 @@ func (s *Service) cuttingWindows(ctx context.Context, c *combatTx, cs []playdb.C
 		if r.ID == roller.ID || r.Side == roller.Side || r.Defeated {
 			continue
 		}
-		k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, r)
+		spec, ok, err := s.cuttingWindowOf(ctx, c, cs, r, roller, roll, base)
 		if err != nil {
 			return nil, err
 		}
-		if !ok || !k.st.CuttingWords || !k.canReact() || k.resourceLeft(resBardic) == 0 {
-			continue
+		if ok {
+			specs = append(specs, spec)
 		}
-		switch k.st.CuttingAsk {
-		case "never":
-			continue
-		case "all":
-		default: // "attacks", the default
-			if roll != "attack" {
-				continue
-			}
-		}
-		dist, sees, err := s.reactorSees(ctx, c, cs, r, roller)
-		if err != nil {
-			return nil, err
-		}
-		if !sees {
-			continue
-		}
-		// A roller that cannot hear the bard or is immune to charm opens no window: the prompt would
-		// tell the bard what the creature is (decisions-batch2-A, item 4).
-		if cut, err := s.rollerCanBeCut(ctx, c, roller); err != nil {
-			return nil, err
-		} else if !cut {
-			continue
-		}
-		t := base
-		t.Roll, t.Distance = roll, dist
-		specs = append(specs, windowSpec{kind: reaction.CuttingWords, reactor: &r, trigger: t})
 	}
 	return specs, nil
+}
+
+// cuttingWindowOf is the Cutting Words window one bard of the other side opens for the roll, if it
+// opens one.
+func (s *Service) cuttingWindowOf(ctx context.Context, c *combatTx, cs []playdb.Combatant, r, roller playdb.Combatant, roll string, base windowTrigger) (windowSpec, bool, error) {
+	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, r)
+	if err != nil {
+		return windowSpec{}, false, err
+	}
+	if !ok || !k.st.CuttingWords || !k.canReact() || k.resourceLeft(resBardic) == 0 || !cuttingAsks(k.st.CuttingAsk, roll) {
+		return windowSpec{}, false, nil
+	}
+	dist, sees, err := s.reactorSees(ctx, c, cs, r, roller)
+	if err != nil || !sees {
+		return windowSpec{}, false, err
+	}
+	// A roller that cannot hear the bard or is immune to charm opens no window: the prompt would
+	// tell the bard what the creature is (decisions-batch2-A, item 4).
+	cut, err := s.rollerCanBeCut(ctx, c, roller)
+	if err != nil || !cut {
+		return windowSpec{}, false, err
+	}
+	t := base
+	t.Roll, t.Distance = roll, dist
+	return windowSpec{kind: reaction.CuttingWords, reactor: &r, trigger: t}, true, nil
+}
+
+// cuttingAsks says the bard's "Perguntar" setting asks for this kind of roll.
+func cuttingAsks(ask, roll string) bool {
+	switch ask {
+	case "never":
+		return false
+	case "all":
+		return true
+	}
+	return roll == "attack" // "attacks", the default
 }
 
 // holdAttackRoll holds an attack roll that Cutting Words can change: nothing is rolled
@@ -114,40 +124,11 @@ func (s *Service) damageWindows(ctx context.Context, c *combatTx, cs []playdb.Co
 	base := windowTrigger{Actor: attacker.ID, Target: target.ID, Key: p.AttackKey, Damage: total, Pending: p.ID}
 	var specs []windowSpec
 	if isAttackHit(p) {
-		k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, target)
+		own, err := s.targetWindows(ctx, c, cs, p, attacker, target, base)
 		if err != nil {
 			return nil, err
 		}
-		if ok && k.canReact() {
-			dist, sees, err := s.reactorSees(ctx, c, cs, target, attacker)
-			if err != nil {
-				return nil, err
-			}
-			t := base
-			t.Distance = dist
-			if k.st.UncannyDodge && sees {
-				specs = append(specs, windowSpec{kind: reaction.UncannyDodgeKind, reactor: &target, trigger: t})
-			}
-			if opts := reduceOptionsOf(k); len(opts) > 0 {
-				melee, err := s.meleeWeaponAttack(ctx, c, attacker, p.AttackKey)
-				if err != nil {
-					return nil, err
-				}
-				if melee {
-					specs = append(specs, windowSpec{kind: reaction.ManeuverReduceKind, reactor: &target, trigger: t})
-				}
-			}
-			if k.st.Deflect {
-				ranged, err := s.rangedWeaponAttack(ctx, c, attacker, p.AttackKey)
-				if err != nil {
-					return nil, err
-				}
-				if ranged {
-					t.Ranged = true
-					specs = append(specs, windowSpec{kind: reaction.DeflectKind, reactor: &target, trigger: t})
-				}
-			}
-		}
+		specs = own
 	}
 	cw, err := s.cuttingWindows(ctx, c, cs, attacker, "damage", base)
 	if err != nil {
@@ -163,6 +144,57 @@ func (s *Service) damageWindows(ctx context.Context, c *combatTx, cs []playdb.Co
 	// target's own reactions come before a bard's: they change the damage taken.
 	slices.SortStableFunc(specs, func(a, b windowSpec) int { return rankOf(a.kind) - rankOf(b.kind) })
 	return specs, nil
+}
+
+// targetWindows lists the windows the target of an attack that hit opens for its own reactions:
+// Uncanny Dodge, a maneuver that reduces the damage and Deflect Missiles.
+func (s *Service) targetWindows(ctx context.Context, c *combatTx, cs []playdb.Combatant, p playdb.PendingDamage, attacker, target playdb.Combatant, base windowTrigger) ([]windowSpec, error) {
+	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, target)
+	if err != nil || !ok || !k.canReact() {
+		return nil, err
+	}
+	dist, sees, err := s.reactorSees(ctx, c, cs, target, attacker)
+	if err != nil {
+		return nil, err
+	}
+	t := base
+	t.Distance = dist
+	var specs []windowSpec
+	if k.st.UncannyDodge && sees {
+		specs = append(specs, windowSpec{kind: reaction.UncannyDodgeKind, reactor: &target, trigger: t})
+	}
+	reduces, err := s.reducesMelee(ctx, c, k, attacker, p.AttackKey)
+	if err != nil {
+		return nil, err
+	}
+	if reduces {
+		specs = append(specs, windowSpec{kind: reaction.ManeuverReduceKind, reactor: &target, trigger: t})
+	}
+	deflects, err := s.deflectsRanged(ctx, c, k, attacker, p.AttackKey)
+	if err != nil {
+		return nil, err
+	}
+	if deflects {
+		t.Ranged = true
+		specs = append(specs, windowSpec{kind: reaction.DeflectKind, reactor: &target, trigger: t})
+	}
+	return specs, nil
+}
+
+// reducesMelee says the target has a maneuver that reduces the damage of this melee weapon attack.
+func (s *Service) reducesMelee(ctx context.Context, c *combatTx, k kit, attacker playdb.Combatant, key string) (bool, error) {
+	if len(reduceOptionsOf(k)) == 0 {
+		return false, nil
+	}
+	return s.meleeWeaponAttack(ctx, c, attacker, key)
+}
+
+// deflectsRanged says the target can deflect this ranged weapon attack.
+func (s *Service) deflectsRanged(ctx context.Context, c *combatTx, k kit, attacker playdb.Combatant, key string) (bool, error) {
+	if !k.st.Deflect {
+		return false, nil
+	}
+	return s.rangedWeaponAttack(ctx, c, attacker, key)
 }
 
 // rankOf is the order windows of one damage are answered in: what changes the roll
@@ -247,13 +279,7 @@ func adjustedDamage(st *replayState, total int) int {
 // (SRD, Hellish Rebuke): the target survived, the damage came from a creature within
 // 60 feet that it sees, and it has the spell and a slot or the Infernal Legacy.
 func (s *Service) hellishWindow(ctx context.Context, c *combatTx, target playdb.Combatant, d damageLanded) error {
-	if d.attacker == "" || d.key == spellHellishRebuke || isCreature(target) || d.pending.Healing {
-		return nil
-	}
-	if d.hit.After != nil && d.hit.After.HP == 0 {
-		return nil // at 0 hit points the target is incapacitated (SRD): it does not react
-	}
-	if takenBy(d.hit.Amount, d.hit.Before, d.hit.After) <= 0 {
+	if !rebukeOwed(target, d) {
 		return nil
 	}
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
@@ -280,6 +306,19 @@ func (s *Service) hellishWindow(ctx context.Context, c *combatTx, target playdb.
 		trigger: windowTrigger{Actor: d.attacker, Target: target.ID, Key: d.key, Damage: d.hit.Amount, Distance: dist, Pending: d.pending.ID},
 	}})
 	return err
+}
+
+// rebukeOwed says the damage that landed on a player's character could be answered with Hellish
+// Rebuke: it came from a creature, it was not the rebuke's own fire or a healing, and it took hit
+// points off a target that still stands (at 0 hit points the target is incapacitated, SRD).
+func rebukeOwed(target playdb.Combatant, d damageLanded) bool {
+	if d.attacker == "" || d.key == spellHellishRebuke || isCreature(target) || d.pending.Healing {
+		return false
+	}
+	if d.hit.After != nil && d.hit.After.HP == 0 {
+		return false
+	}
+	return takenBy(d.hit.Amount, d.hit.Before, d.hit.After) > 0
 }
 
 // holdDataOf is what a held damage keeps: the roll, and for a damage with extras every part

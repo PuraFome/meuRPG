@@ -40,19 +40,9 @@ func (s *Service) fallWindows(ctx context.Context, c *combatTx, cs []playdb.Comb
 		if !ok || !k.canReact() || len(k.slotsFor(spellFeatherFall)) == 0 {
 			continue
 		}
-		var near int32 = -1
-		for _, f := range fallers {
-			if f.ID == r.ID {
-				near = 0
-				break
-			}
-			dist, sees, err := s.reactorSees(ctx, c, cs, r, f)
-			if err != nil {
-				return nil, err
-			}
-			if sees && (near < 0 || dist < near) {
-				near = dist
-			}
+		near, err := s.nearestFaller(ctx, c, cs, r, fallers)
+		if err != nil {
+			return nil, err
 		}
 		if near < 0 {
 			continue
@@ -63,6 +53,25 @@ func (s *Service) fallWindows(ctx context.Context, c *combatTx, cs []playdb.Comb
 		})
 	}
 	return specs, nil
+}
+
+// nearestFaller is how far the reactor is from the nearest faller it sees, in feet: 0 when it is
+// one of them, -1 when it sees none.
+func (s *Service) nearestFaller(ctx context.Context, c *combatTx, cs []playdb.Combatant, r playdb.Combatant, fallers []playdb.Combatant) (int32, error) {
+	var near int32 = -1
+	for _, f := range fallers {
+		if f.ID == r.ID {
+			return 0, nil
+		}
+		dist, sees, err := s.reactorSees(ctx, c, cs, r, f)
+		if err != nil {
+			return 0, err
+		}
+		if sees && (near < 0 || dist < near) {
+			near = dist
+		}
+	}
+	return near, nil
 }
 
 // releaseFall lets a fall damage whose windows are all closed land: an NPC's or a
@@ -119,6 +128,32 @@ func (s *Service) answerFeatherFall(ctx context.Context, c *combatTx, w playdb.R
 	if len(ids) == 0 || len(ids) > reaction.FeatherFallMaxTargets {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("creature_ids must name 1 to %d falling creatures", reaction.FeatherFallMaxTargets))
 	}
+	if err := s.checkFallers(ctx, c, reactor, t, ids); err != nil {
+		return err
+	}
+	sl, err := s.spendFeatherFall(ctx, c, reactor, req, got)
+	if err != nil {
+		return err
+	}
+	if err := s.takeFallAway(ctx, c, t.Trap, ids); err != nil {
+		return err
+	}
+	got.ev = actionEvent{
+		Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, ReactionBefore: reactor.ReactionUsed,
+		Reaction: &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Slot: &sl, Saved2: ids},
+	}
+	got.result = &playv1.ReactionResult{
+		Kind: playv1.ReactionKind_REACTION_KIND_FEATHER_FALL, ByMaster: c.master, Used: true,
+		Result: &playv1.ReactionResult_FeatherFall{FeatherFall: &playv1.FeatherFallResult{SavedIds: ids}},
+	}
+	c.lastAnswered = reaction.FeatherFall
+	c.characterID = &reactor.CharacterID
+	_, err = s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Saved: ids}, reaction.FeatherFall)
+	return err
+}
+
+// checkFallers refuses a creature that is not one of the fall or that the reactor does not see.
+func (s *Service) checkFallers(ctx context.Context, c *combatTx, reactor playdb.Combatant, t windowTrigger, ids []string) error {
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
@@ -137,25 +172,32 @@ func (s *Service) answerFeatherFall(ctx context.Context, c *combatTx, w playdb.R
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("creature_ids must be creatures of the fall"))
 		}
 	}
+	return nil
+}
+
+// spendFeatherFall spends the slot the answer chose and the reactor's reaction, and returns the slot.
+func (s *Service) spendFeatherFall(ctx context.Context, c *combatTx, reactor playdb.Combatant, req *playv1.AnswerReactionRequest, got *answered) (slotRef, error) {
 	k, err := s.reactorKit(ctx, c, reactor)
 	if err != nil {
-		return err
+		return slotRef{}, err
 	}
 	sl, err := pickSlot(req.GetSlot(), k.slotsFor(spellFeatherFall))
 	if err != nil {
-		return err
+		return sl, err
 	}
 	vit, err := s.spendReactionSlot(ctx, c, reactor, sl)
 	if err != nil {
-		return err
+		return sl, err
 	}
 	if vit != nil {
 		got.vitals = append(got.vitals, vit)
 	}
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
-		return err
-	}
-	pend, err := fallPendingsOf(ctx, c, t.Trap)
+	return sl, s.spendReaction(ctx, c, reactor)
+}
+
+// takeFallAway discards the fall damage of the creatures the answer saved.
+func (s *Service) takeFallAway(ctx context.Context, c *combatTx, trap string, ids []string) error {
+	pend, err := fallPendingsOf(ctx, c, trap)
 	if err != nil {
 		return err
 	}
@@ -166,18 +208,7 @@ func (s *Service) answerFeatherFall(ctx context.Context, c *combatTx, w playdb.R
 			}
 		}
 	}
-	got.ev = actionEvent{
-		Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, ReactionBefore: reactor.ReactionUsed,
-		Reaction: &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Slot: &sl, Saved2: ids},
-	}
-	got.result = &playv1.ReactionResult{
-		Kind: playv1.ReactionKind_REACTION_KIND_FEATHER_FALL, ByMaster: c.master, Used: true,
-		Result: &playv1.ReactionResult_FeatherFall{FeatherFall: &playv1.FeatherFallResult{SavedIds: ids}},
-	}
-	c.lastAnswered = reaction.FeatherFall
-	c.characterID = &reactor.CharacterID
-	_, err = s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Saved: ids}, reaction.FeatherFall)
-	return err
+	return nil
 }
 
 // fallPrompt is the prompt of a Feather Fall window: the falling creatures the

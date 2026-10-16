@@ -272,53 +272,92 @@ func (s *Service) factsOf(ctx context.Context, c *combatTx, w playdb.ReactionWin
 // triggerGone says whether what opened a window is not there any more.
 func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.ReactionWindow, byID map[string]playdb.Combatant) (bool, error) {
 	t := windowTriggerOf(w)
+	if gone, decided, err := s.kindTriggerGone(ctx, c, w, t, byID); decided {
+		return gone, err
+	}
+	if gone, err := s.holdGone(ctx, c, w); gone || err != nil {
+		return gone, err
+	}
+	return actorGone(w, t, byID), nil
+}
+
+// kindTriggerGone is the check each kind of window has of its own. decided is false for the kinds
+// (and the cases of a kind) that have nothing of their own to say, which go on to the checks every
+// window shares.
+func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) (gone, decided bool, err error) {
 	switch reaction.Kind(w.Kind) {
 	case reaction.Concentration:
-		r, ok := byID[deref(w.ReactorID)]
-		return !ok || r.ConcentrationSpell == nil || *r.ConcentrationSpell != t.Spell, nil
+		return concentrationGone(w, t, byID), true, nil
 	case reaction.FeatherFall:
-		pend, err := fallPendingsOf(ctx, c, t.Trap)
-		if err != nil {
-			return false, err
-		}
-		return !slices.ContainsFunc(pend, func(p playdb.PendingDamage) bool { return slices.Contains(t.Falling, p.TargetID) }), nil
+		gone, err = fallGone(ctx, c, t)
+		return gone, true, err
 	case reaction.EffectSave:
 		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
 		r, ok := byID[deref(w.ReactorID)]
 		if ok && r.Defeated && r.Kind != kindPlayer {
-			return true, nil
+			return true, true, nil
 		}
 	case reaction.Contest:
 		waits, err := contestStillWaits(ctx, c, w)
-		return !waits, err
+		return !waits, true, err
 	case reaction.Shield, reaction.MasterCheck:
 		if w.PendingDamageID != nil {
-			p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: *w.PendingDamageID})
-			if errors.Is(err, pgx.ErrNoRows) {
-				return true, nil
-			}
-			if err != nil {
-				return false, fmt.Errorf("find the pending damage of a window: %w", err)
-			}
-			return p.Status == pendingDiscarded || p.Status == pendingApplied || p.Status == pendingRolled, nil
+			gone, err = pendingGone(ctx, c, *w.PendingDamageID)
+			return gone, true, err
 		}
 	}
-	if w.HoldID != nil {
-		h, err := c.q.GetReactionHold(ctx, playdb.GetReactionHoldParams{EncounterID: c.enc.ID, ID: *w.HoldID})
-		if errors.Is(err, pgx.ErrNoRows) || (err == nil && h.State != "held") {
-			return true, nil
-		}
-		if err != nil {
-			return false, fmt.Errorf("find the hold of a window: %w", err)
-		}
+	return false, false, nil
+}
+
+// concentrationGone says the reactor no longer concentrates on the spell the window asked a save for.
+func concentrationGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) bool {
+	r, ok := byID[deref(w.ReactorID)]
+	return !ok || r.ConcentrationSpell == nil || *r.ConcentrationSpell != t.Spell
+}
+
+// fallGone says none of the creatures of the fall has its damage waiting any more.
+func fallGone(ctx context.Context, c *combatTx, t windowTrigger) (bool, error) {
+	pend, err := fallPendingsOf(ctx, c, t.Trap)
+	if err != nil {
+		return false, err
 	}
-	// The one who did it left the fight: there is nothing to react to.
-	if t.Actor != "" && reaction.Kind(w.Kind) != reaction.FeatherFall {
-		if a, ok := byID[t.Actor]; !ok || (a.Defeated && reaction.Kind(w.Kind) == reaction.CounterspellKind) {
-			return true, nil
-		}
+	return !slices.ContainsFunc(pend, func(p playdb.PendingDamage) bool { return slices.Contains(t.Falling, p.TargetID) }), nil
+}
+
+// pendingGone says the pending damage a window is about was settled or is not there.
+func pendingGone(ctx context.Context, c *combatTx, id string) (bool, error) {
+	p, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find the pending damage of a window: %w", err)
+	}
+	return p.Status == pendingDiscarded || p.Status == pendingApplied || p.Status == pendingRolled, nil
+}
+
+// holdGone says the held action a window holds is not held any more.
+func (s *Service) holdGone(ctx context.Context, c *combatTx, w playdb.ReactionWindow) (bool, error) {
+	if w.HoldID == nil {
+		return false, nil
+	}
+	h, err := c.q.GetReactionHold(ctx, playdb.GetReactionHoldParams{EncounterID: c.enc.ID, ID: *w.HoldID})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && h.State != "held") {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find the hold of a window: %w", err)
 	}
 	return false, nil
+}
+
+// actorGone says the one who did it left the fight: there is nothing to react to.
+func actorGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) bool {
+	if t.Actor == "" || reaction.Kind(w.Kind) == reaction.FeatherFall {
+		return false
+	}
+	a, ok := byID[t.Actor]
+	return !ok || (a.Defeated && reaction.Kind(w.Kind) == reaction.CounterspellKind)
 }
 
 // settleReactions runs after every change of a combat: it closes the open windows
@@ -344,72 +383,41 @@ func (s *Service) settleReactions(ctx context.Context, c *combatTx) error {
 	return nil
 }
 
+// settleState is what one round of settling looks at: the open windows, the held actions, the hits
+// that wait for windows and the combatants by id.
+type settleState struct {
+	open    []playdb.ReactionWindow
+	holds   []playdb.ReactionHold
+	waiting []playdb.PendingDamage
+	byID    map[string]playdb.Combatant
+}
+
+// settleOnce closes the open windows that stopped being valid and releases what no window holds
+// any more; it tells whether it changed anything.
 func (s *Service) settleOnce(ctx context.Context, c *combatTx) (bool, error) {
 	if c.enc.ID == "" || c.enc.Status != statusActive {
 		return false, nil
+	}
+	st, ok, err := s.loadSettleState(ctx, c)
+	if err != nil || !ok {
+		return false, err
+	}
+	changed, err := s.closeInvalidWindows(ctx, c, st)
+	if err != nil {
+		return false, err
 	}
 	open, err := openWindowsOf(ctx, c)
 	if err != nil {
 		return false, err
 	}
-	holds, err := c.q.ListHeldReactionHolds(ctx, c.enc.ID)
-	if err != nil {
-		return false, fmt.Errorf("list the held actions: %w", err)
-	}
-	waiting, err := c.q.ListOpenPendingDamages(ctx, c.enc.ID)
-	if err != nil {
-		return false, fmt.Errorf("list the pending damage: %w", err)
-	}
-	waiting = slices.DeleteFunc(waiting, func(p playdb.PendingDamage) bool { return p.Status != pendingAwaitingReaction })
-	if len(open) == 0 && len(holds) == 0 && len(waiting) == 0 {
-		return false, nil
-	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-	if err != nil {
-		return false, fmt.Errorf("list the combatants: %w", err)
-	}
-	byID := make(map[string]playdb.Combatant, len(cs))
-	for _, x := range cs {
-		byID[x.ID] = x
-	}
-	changed := false
-	for _, w := range open {
-		f, err := s.factsOf(ctx, c, w, byID)
-		if err != nil {
-			return false, err
-		}
-		if reason, closes := reaction.Closure(reaction.Kind(w.Kind), f); closes {
-			if _, err := s.closeWindow(ctx, c, w, windowClosed, reason, windowOutcome{}, c.lastAnswered); err != nil {
-				return false, err
-			}
-			changed = true
-		}
-	}
-	open, err = openWindowsOf(ctx, c)
-	if err != nil {
-		return false, err
-	}
-	openGroup := map[string]bool{}
-	openPending := map[string]bool{}
-	openFall := map[string]bool{} // the creatures a Feather Fall window may still save
-	for _, w := range open {
-		openGroup[w.GroupID] = true
-		if reaction.Kind(w.Kind) == reaction.FeatherFall {
-			for _, id := range windowTriggerOf(w).Falling {
-				openFall[id+"/"+windowTriggerOf(w).Trap] = true
-			}
-		}
-		if w.PendingDamageID != nil {
-			openPending[*w.PendingDamageID] = true
-		}
-	}
-	released, err := s.releaseWaiting(ctx, c, waiting, openPending, openFall, byID)
+	openGroup, openPending, openFall := openIndexOf(open)
+	released, err := s.releaseWaiting(ctx, c, st.waiting, openPending, openFall, st.byID)
 	if err != nil {
 		return false, err
 	}
 	changed = changed || released
 	// A held action whose windows are all closed is replayed.
-	for _, h := range holds {
+	for _, h := range st.holds {
 		if openGroup[h.GroupID] {
 			continue
 		}
@@ -421,6 +429,73 @@ func (s *Service) settleOnce(ctx context.Context, c *combatTx) (bool, error) {
 	return changed, nil
 }
 
+// loadSettleState reads what settleOnce looks at; ok is false when there is nothing to settle (no
+// window, no held action and no hit that waits), before the combatants are read.
+func (s *Service) loadSettleState(ctx context.Context, c *combatTx) (settleState, bool, error) {
+	var st settleState
+	var err error
+	if st.open, err = openWindowsOf(ctx, c); err != nil {
+		return st, false, err
+	}
+	if st.holds, err = c.q.ListHeldReactionHolds(ctx, c.enc.ID); err != nil {
+		return st, false, fmt.Errorf("list the held actions: %w", err)
+	}
+	if st.waiting, err = c.q.ListOpenPendingDamages(ctx, c.enc.ID); err != nil {
+		return st, false, fmt.Errorf("list the pending damage: %w", err)
+	}
+	st.waiting = slices.DeleteFunc(st.waiting, func(p playdb.PendingDamage) bool { return p.Status != pendingAwaitingReaction })
+	if len(st.open) == 0 && len(st.holds) == 0 && len(st.waiting) == 0 {
+		return st, false, nil
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return st, false, fmt.Errorf("list the combatants: %w", err)
+	}
+	st.byID = make(map[string]playdb.Combatant, len(cs))
+	for _, x := range cs {
+		st.byID[x.ID] = x
+	}
+	return st, true, nil
+}
+
+// closeInvalidWindows closes the open windows that stopped being valid.
+func (s *Service) closeInvalidWindows(ctx context.Context, c *combatTx, st settleState) (bool, error) {
+	changed := false
+	for _, w := range st.open {
+		f, err := s.factsOf(ctx, c, w, st.byID)
+		if err != nil {
+			return false, err
+		}
+		if reason, closes := reaction.Closure(reaction.Kind(w.Kind), f); closes {
+			if _, err := s.closeWindow(ctx, c, w, windowClosed, reason, windowOutcome{}, c.lastAnswered); err != nil {
+				return false, err
+			}
+			changed = true
+		}
+	}
+	return changed, nil
+}
+
+// openIndexOf indexes the open windows: the groups that still hold an action, the pending damages
+// they are about and the creatures a Feather Fall window may still save (by creature and trap).
+func openIndexOf(open []playdb.ReactionWindow) (openGroup, openPending, openFall map[string]bool) {
+	openGroup = map[string]bool{}
+	openPending = map[string]bool{}
+	openFall = map[string]bool{}
+	for _, w := range open {
+		openGroup[w.GroupID] = true
+		if reaction.Kind(w.Kind) == reaction.FeatherFall {
+			for _, id := range windowTriggerOf(w).Falling {
+				openFall[id+"/"+windowTriggerOf(w).Trap] = true
+			}
+		}
+		if w.PendingDamageID != nil {
+			openPending[*w.PendingDamageID] = true
+		}
+	}
+	return openGroup, openPending, openFall
+}
+
 // releaseWaiting lets what waited for windows that are all closed go on: a hit to its damage roll,
 // a fall damage to its target.
 func (s *Service) releaseWaiting(ctx context.Context, c *combatTx, waiting []playdb.PendingDamage, openPending, openFall map[string]bool, byID map[string]playdb.Combatant) (bool, error) {
@@ -429,26 +504,31 @@ func (s *Service) releaseWaiting(ctx context.Context, c *combatTx, waiting []pla
 		if openPending[p.ID] {
 			continue
 		}
-		if p.TrapPointID != nil { // a fall damage: it lands when no Feather Fall can take it away
-			if openFall[p.TargetID+"/"+*p.TrapPointID] {
-				continue
-			}
-			if err := s.releaseFall(ctx, c, p, byID); err != nil {
-				return false, err
-			}
-			changed = true
-			continue
+		released, err := s.releaseOne(ctx, c, p, openFall, byID)
+		if err != nil {
+			return false, err
 		}
-		cur, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: p.ID})
-		if err != nil || cur.Status != pendingAwaitingReaction {
-			continue
-		}
-		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingAwaitingRoll}); err != nil {
-			return false, fmt.Errorf("let the hit go on: %w", err)
-		}
-		changed = true
+		changed = changed || released
 	}
 	return changed, nil
+}
+
+// releaseOne lets one waiting pending damage go on when nothing holds it any more.
+func (s *Service) releaseOne(ctx context.Context, c *combatTx, p playdb.PendingDamage, openFall map[string]bool, byID map[string]playdb.Combatant) (bool, error) {
+	if p.TrapPointID != nil { // a fall damage: it lands when no Feather Fall can take it away
+		if openFall[p.TargetID+"/"+*p.TrapPointID] {
+			return false, nil
+		}
+		return true, s.releaseFall(ctx, c, p, byID)
+	}
+	cur, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: p.ID})
+	if err != nil || cur.Status != pendingAwaitingReaction {
+		return false, nil //nolint:nilerr // a hit that cannot be read, or that moved on already, is left alone, as the loop always did
+	}
+	if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingAwaitingRoll}); err != nil {
+		return false, fmt.Errorf("let the hit go on: %w", err)
+	}
+	return true, nil
 }
 
 // errWindowGone is the not_found of a window that is not in the combat, the same

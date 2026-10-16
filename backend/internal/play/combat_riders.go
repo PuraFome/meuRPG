@@ -194,32 +194,16 @@ func (s *Service) UseHitRider(
 	return connect.NewResponse(&playv1.UseHitRiderResponse{Encounter: out}), nil
 }
 
+// answerRider answers an offer: the choice is checked, applied (a decline spends nothing) and the
+// offer closed.
 func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membership, riderID string, in playv1.HitRiderChoice) (actionEvent, error) {
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
 	}
-	v := c.viewer(m, cs)
-	row, err := c.q.GetHitRider(ctx, playdb.GetHitRiderParams{EncounterID: c.enc.ID, ID: riderID})
+	row, attacker, target, err := s.riderOffer(ctx, c, m, cs, riderID)
 	if err != nil {
-		if !v.master { // a player is not told whether the offer exists (RN-10)
-			return actionEvent{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the monk's player or the master may answer"))
-		}
-		return actionEvent{}, connect.NewError(connect.CodeNotFound, errors.New("offer not found"))
-	}
-	attacker, okA := combatantByID(cs, row.AttackerID)
-	target, okT := combatantByID(cs, row.TargetID)
-	if !okA || !okT {
-		return actionEvent{}, connect.NewError(connect.CodeNotFound, errors.New("offer not found"))
-	}
-	if _, err := findCombatant(cs, attacker.ID, v); err != nil {
 		return actionEvent{}, err
-	}
-	if err := v.mayAct(attacker); err != nil {
-		return actionEvent{}, err
-	}
-	if row.Used || row.Round != c.enc.Round {
-		return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "the offer was answered or its round is over")
 	}
 	choice, err := riderChoiceOf(row.Kind, in)
 	if err != nil {
@@ -229,20 +213,59 @@ func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membersh
 	re := &riderEvent{Choice: choice, Result: riderDecl}
 	ev.Rider = re
 	if choice != choiceDecline {
-		sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, attacker)
-		if err != nil {
-			return actionEvent{}, err
-		}
-		if sheet.Traits.KiSaveDC <= 0 || (row.Kind == riderOpenHand && !sheet.Traits.OpenHand) || (row.Kind == riderStunning && !sheet.Traits.StunningStrike) {
-			return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "the combatant does not have this feature")
-		}
-		if err := s.applyRider(ctx, c, m, cs, attacker, target, choice, int32(sheet.Traits.KiSaveDC), re); err != nil { //nolint:gosec // a DC
+		if err := s.applyChoice(ctx, c, m, cs, row.Kind, attacker, target, choice, re); err != nil {
 			return actionEvent{}, err
 		}
 	}
+	return s.closeRider(ctx, c, row, attacker, choice, ev)
+}
+
+// riderOffer finds the open offer the caller may answer, with the monk and the target it is about:
+// a player is not told whether an offer exists (RN-10).
+func (s *Service) riderOffer(ctx context.Context, c *combatTx, m authz.Membership, cs []playdb.Combatant, riderID string) (playdb.HitRider, playdb.Combatant, playdb.Combatant, error) {
+	v := c.viewer(m, cs)
+	row, err := c.q.GetHitRider(ctx, playdb.GetHitRiderParams{EncounterID: c.enc.ID, ID: riderID})
+	if err != nil {
+		if !v.master {
+			return row, playdb.Combatant{}, playdb.Combatant{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the monk's player or the master may answer"))
+		}
+		return row, playdb.Combatant{}, playdb.Combatant{}, connect.NewError(connect.CodeNotFound, errors.New("offer not found"))
+	}
+	attacker, okA := combatantByID(cs, row.AttackerID)
+	target, okT := combatantByID(cs, row.TargetID)
+	if !okA || !okT {
+		return row, attacker, target, connect.NewError(connect.CodeNotFound, errors.New("offer not found"))
+	}
+	if _, err := findCombatant(cs, attacker.ID, v); err != nil {
+		return row, attacker, target, err
+	}
+	if err := v.mayAct(attacker); err != nil {
+		return row, attacker, target, err
+	}
+	if row.Used || row.Round != c.enc.Round {
+		return row, attacker, target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "the offer was answered or its round is over")
+	}
+	return row, attacker, target, nil
+}
+
+// applyChoice checks that the monk still has the feature the offer is for and applies the choice.
+func (s *Service) applyChoice(ctx context.Context, c *combatTx, m authz.Membership, cs []playdb.Combatant, kind string, attacker, target playdb.Combatant, choice string, re *riderEvent) error {
+	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, attacker)
+	if err != nil {
+		return err
+	}
+	if sheet.Traits.KiSaveDC <= 0 || (kind == riderOpenHand && !sheet.Traits.OpenHand) || (kind == riderStunning && !sheet.Traits.StunningStrike) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "the combatant does not have this feature")
+	}
+	return s.applyRider(ctx, c, m, cs, attacker, target, choice, int32(sheet.Traits.KiSaveDC), re) //nolint:gosec // a DC
+}
+
+// closeRider marks the offer used with the choice and touches the combat.
+func (s *Service) closeRider(ctx context.Context, c *combatTx, row playdb.HitRider, attacker playdb.Combatant, choice string, ev actionEvent) (actionEvent, error) {
 	if err := c.q.UseHitRider(ctx, playdb.UseHitRiderParams{EncounterID: c.enc.ID, ID: row.ID, Choice: &choice}); err != nil {
 		return actionEvent{}, fmt.Errorf("close the offer: %w", err)
 	}
+	var err error
 	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
 		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
 	}
@@ -254,31 +277,53 @@ func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membersh
 // failure does.
 func (s *Service) applyRider(ctx context.Context, c *combatTx, m authz.Membership, cs []playdb.Combatant, attacker, target playdb.Combatant, choice string, dc int32, re *riderEvent) error {
 	if choice == choiceStun {
-		k, ok, err := s.kitOf(ctx, c.tx, m.CampaignID, attacker)
-		if err != nil {
-			return err
-		}
-		if !ok || k.resourceLeft(resKi) < 1 {
-			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "no ki point left")
-		}
-		if _, err := s.spendReactionResource(ctx, c, attacker, resKi); err != nil {
+		if err := s.spendStunKi(ctx, c, m, attacker); err != nil {
 			return err
 		}
 	}
 	re.DC = dc
-	if ability := riderSaveAbility(choice); ability != "" {
-		saved, err := s.rollRiderSave(ctx, c, m, target, ability, dc, re)
-		if err != nil {
-			return err
-		}
-		if saved {
-			re.Result = riderSaved
-			return nil
-		}
-		re.Result = riderFailed
-	} else {
-		re.Result = riderApplied
+	landed, err := s.rollRiderOutcome(ctx, c, m, target, choice, dc, re)
+	if err != nil || !landed {
+		return err
 	}
+	return s.riderConsequence(ctx, c, cs, attacker, target, choice, re)
+}
+
+// spendStunKi spends the ki point a Stunning Strike costs.
+func (s *Service) spendStunKi(ctx context.Context, c *combatTx, m authz.Membership, attacker playdb.Combatant) error {
+	k, ok, err := s.kitOf(ctx, c.tx, m.CampaignID, attacker)
+	if err != nil {
+		return err
+	}
+	if !ok || k.resourceLeft(resKi) < 1 {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "no ki point left")
+	}
+	_, err = s.spendReactionResource(ctx, c, attacker, resKi)
+	return err
+}
+
+// rollRiderOutcome sets what the rider's result says and tells whether the choice lands: a choice
+// with no save lands, one with a save lands only when the target fails it.
+func (s *Service) rollRiderOutcome(ctx context.Context, c *combatTx, m authz.Membership, target playdb.Combatant, choice string, dc int32, re *riderEvent) (bool, error) {
+	ability := riderSaveAbility(choice)
+	if ability == "" {
+		re.Result = riderApplied
+		return true, nil
+	}
+	saved, err := s.rollRiderSave(ctx, c, m, target, ability, dc, re)
+	if err != nil {
+		return false, err
+	}
+	if saved {
+		re.Result = riderSaved
+		return false, nil
+	}
+	re.Result = riderFailed
+	return true, nil
+}
+
+// riderConsequence is what a choice does to a target that did not resist it.
+func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb.Combatant, attacker, target playdb.Combatant, choice string, re *riderEvent) error {
 	switch choice {
 	case choiceProne:
 		if !slices.Contains(target.Conditions, condProne) && len(target.Conditions) < maxConditions {
