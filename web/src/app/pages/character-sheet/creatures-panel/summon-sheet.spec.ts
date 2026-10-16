@@ -21,6 +21,7 @@ import {
   undeadSpell,
 } from '../../../core/creatures/creatures-testing';
 import { SummonSheet, type SummonSheetData } from './summon-sheet';
+import { nextTurn } from '../../../../test-settle';
 
 describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
   let api: FakeCreaturesClient;
@@ -75,7 +76,7 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
       for (let i = 0; i < 5; i++) {
         fixture.detectChanges();
         await fixture.whenStable();
-        await new Promise((r) => setTimeout(r));
+        await nextTurn();
       }
       fixture.detectChanges();
     };

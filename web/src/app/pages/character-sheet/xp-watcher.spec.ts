@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { LiveSessionSourceLive } from '../live-session/live-session-source.live';
 import type { LiveEventVm } from '../live-session/live-session.types';
 import { XpWatcher } from './xp-watcher';
+import { nextTurn } from '../../../test-settle';
 
 /** One stream the test drives by hand. */
 class Call {
@@ -30,7 +31,6 @@ describe('XpWatcher (E7-10)', () => {
   let calls: Call[];
   let snapshot: unknown[];
   let snapshotFails: boolean;
-  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
   beforeEach(() => {
     calls = [];
@@ -55,12 +55,12 @@ describe('XpWatcher (E7-10)', () => {
     const onChange = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', onChange);
-    await flush();
+    await nextTurn();
     expect(calls.map((c) => c.campaignId)).toEqual(['camp-1']);
 
     calls[0].push({ kind: 'ready' });
     calls[0].push({ kind: 'xpChanged' });
-    await flush();
+    await nextTurn();
     // The first `ready` is the page's own load; only the news counts.
     expect(onChange).toHaveBeenCalledTimes(1);
     watcher.follow(null, onChange);
@@ -70,10 +70,10 @@ describe('XpWatcher (E7-10)', () => {
     const onCharacter = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, undefined, onCharacter);
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ready' });
     calls[0].push({ kind: 'characterChanged', characterId: 'c-1' });
-    await flush();
+    await nextTurn();
     expect(onCharacter).toHaveBeenCalledExactlyOnceWith('c-1');
     watcher.follow(null, vi.fn());
   });
@@ -82,10 +82,10 @@ describe('XpWatcher (E7-10)', () => {
     const onChange = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', onChange);
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ready' });
     calls[0].push({ kind: 'ready' });
-    await flush();
+    await nextTurn();
     expect(onChange).toHaveBeenCalledTimes(1);
     watcher.follow(null, onChange);
   });
@@ -95,14 +95,14 @@ describe('XpWatcher (E7-10)', () => {
     const onCreatures = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', onChange, onCreatures);
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ready' });
     calls[0].push({ kind: 'creaturesChanged' });
-    await flush();
+    await nextTurn();
     expect(onCreatures).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
     calls[0].push({ kind: 'xpChanged' });
-    await flush();
+    await nextTurn();
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onCreatures).toHaveBeenCalledTimes(1);
     watcher.follow(null, onChange);
@@ -112,13 +112,13 @@ describe('XpWatcher (E7-10)', () => {
     const onCreatures = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', vi.fn(), onCreatures);
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ready' });
-    await flush();
+    await nextTurn();
     // The page reads on load itself: the first `ready` asks for nothing.
     expect(onCreatures).not.toHaveBeenCalled();
     calls[0].push({ kind: 'ready' });
-    await flush();
+    await nextTurn();
     expect(onCreatures).toHaveBeenCalledTimes(1);
     watcher.follow(null, vi.fn());
   });
@@ -127,20 +127,20 @@ describe('XpWatcher (E7-10)', () => {
     const onForm = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', vi.fn(), undefined, undefined, onForm);
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ready' });
     calls[0].push({ kind: 'xpChanged' });
-    await flush();
+    await nextTurn();
     expect(onForm).not.toHaveBeenCalled();
     calls[0].push({
       kind: 'vitals',
       vitals: { characterId: 'char-1' } as never,
     });
     calls[0].push({ kind: 'encounterChanged', encounterId: 'enc-1', revision: 3 });
-    await flush();
+    await nextTurn();
     expect(onForm.mock.calls).toEqual([['char-1'], [null]]);
     calls[0].push({ kind: 'ready' });
-    await flush();
+    await nextTurn();
     expect(onForm).toHaveBeenLastCalledWith(null);
     watcher.follow(null, vi.fn());
   });
@@ -150,14 +150,14 @@ describe('XpWatcher (E7-10)', () => {
     const onChange = vi.fn();
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', onChange, undefined, onContent);
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ready' });
     calls[0].push({ kind: 'contentChanged' });
-    await flush();
+    await nextTurn();
     expect(onContent).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
     calls[0].push({ kind: 'ready' });
-    await flush();
+    await nextTurn();
     expect(onContent).toHaveBeenCalledTimes(2);
     expect(calls).toHaveLength(1);
     watcher.follow(null, onChange);
@@ -167,11 +167,11 @@ describe('XpWatcher (E7-10)', () => {
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', vi.fn());
     watcher.follow('camp-1', vi.fn());
-    await flush();
+    await nextTurn();
     expect(calls).toHaveLength(1);
 
     watcher.follow('camp-2', vi.fn());
-    await flush();
+    await nextTurn();
     expect(calls[0].signal.aborted).toBe(true);
     expect(calls.map((c) => c.campaignId)).toEqual(['camp-1', 'camp-2']);
     watcher.follow(null, vi.fn());
@@ -180,7 +180,7 @@ describe('XpWatcher (E7-10)', () => {
   it('closes the stream when asked to follow nothing (the page went away)', async () => {
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', vi.fn());
-    await flush();
+    await nextTurn();
     watcher.follow(null, vi.fn());
     expect(calls[0].signal.aborted).toBe(true);
   });
@@ -188,13 +188,13 @@ describe('XpWatcher (E7-10)', () => {
   it('stops when the session ends', async () => {
     const watcher = TestBed.inject(XpWatcher);
     watcher.follow('camp-1', vi.fn());
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ended' });
-    await flush();
+    await nextTurn();
     expect(calls[0].signal.aborted).toBe(true);
     // A new session of the same campaign is followed again.
     watcher.follow('camp-1', vi.fn());
-    await flush();
+    await nextTurn();
     expect(calls).toHaveLength(2);
     watcher.follow(null, vi.fn());
   });
@@ -203,16 +203,16 @@ describe('XpWatcher (E7-10)', () => {
     const watcher = TestBed.inject(XpWatcher);
     snapshot = [{ characterId: 'char-1', revision: 1 }];
     watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ready' });
-    await flush();
+    await nextTurn();
     expect(onVitals.mock.calls).toEqual([[{ characterId: 'char-1', revision: 1 }]]);
     calls[0].push({ kind: 'vitals', vitals: { characterId: 'char-1', revision: 2 } as never });
-    await flush();
+    await nextTurn();
     expect(onVitals).toHaveBeenLastCalledWith({ characterId: 'char-1', revision: 2 });
     snapshot = [{ characterId: 'char-1', revision: 3 }];
     calls[0].push({ kind: 'ready' });
-    await flush();
+    await nextTurn();
     expect(onVitals).toHaveBeenLastCalledWith({ characterId: 'char-1', revision: 3 });
     watcher.follow(null, vi.fn());
   });
@@ -222,10 +222,10 @@ describe('XpWatcher (E7-10)', () => {
     const watcher = TestBed.inject(XpWatcher);
     snapshotFails = true;
     watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
-    await flush();
+    await nextTurn();
     calls[0].push({ kind: 'ready' });
     calls[0].push({ kind: 'vitals', vitals: { characterId: 'char-1', revision: 2 } as never });
-    await flush();
+    await nextTurn();
     expect(onVitals).toHaveBeenCalledTimes(1);
     watcher.follow(null, vi.fn());
   });
@@ -234,10 +234,10 @@ describe('XpWatcher (E7-10)', () => {
     const watcher = TestBed.inject(XpWatcher);
     snapshot = [{ characterId: 'char-1', revision: 1 }];
     watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
-    await flush();
+    await nextTurn();
     snapshot = [{ characterId: 'char-2', revision: 4 }];
     watcher.follow('camp-1', vi.fn(), undefined, undefined, undefined, onVitals);
-    await flush();
+    await nextTurn();
     expect(calls).toHaveLength(1);
     expect(onVitals).toHaveBeenCalledWith({ characterId: 'char-2', revision: 4 });
     watcher.follow(null, vi.fn());

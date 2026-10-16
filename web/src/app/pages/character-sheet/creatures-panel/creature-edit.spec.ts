@@ -9,6 +9,7 @@ import {
   isOff,
 } from '../../../core/creatures/creatures-testing';
 import { CreatureEdit, type EditMode } from './creature-edit';
+import { nextTurn } from '../../../../test-settle';
 
 describe('CreatureEdit: the questions a card asks in place', () => {
   let api: FakeCreaturesClient;
@@ -32,7 +33,7 @@ describe('CreatureEdit: the questions a card asks in place', () => {
       for (let i = 0; i < 5; i++) {
         fixture.detectChanges();
         await fixture.whenStable();
-        await new Promise((r) => setTimeout(r));
+        await nextTurn();
       }
       fixture.detectChanges();
     };

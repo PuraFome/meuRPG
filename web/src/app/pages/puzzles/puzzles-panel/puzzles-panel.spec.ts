@@ -11,8 +11,7 @@ import {
   pillarsPuzzle,
 } from '../../../core/puzzles/puzzles-testing';
 import { PuzzlesPanel } from './puzzles-panel';
-
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+import { nextTurn } from '../../../../test-settle';
 
 describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
   let api: FakePuzzlesClient;
@@ -29,7 +28,7 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
     const settle = async () => {
       for (let i = 0; i < 3; i++) {
         fixture.detectChanges();
-        await flush();
+        await nextTurn();
         await fixture.whenStable();
       }
       fixture.detectChanges();
