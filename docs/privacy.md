@@ -58,7 +58,7 @@ Copy this into any PR that touches data, logs, screens or vendors:
 
 ## Personal data inventory
 
-"While the campaign exists" means until the campaign is erased, which today happens only when its master's account is erased (see [Delete the account](#delete-the-account)).
+"While the campaign exists" means until the campaign is erased, which happens only when its master's account is erased (see [Delete the account](#delete-the-account)).
 After any erasure, copies still disappear from backups and logs within 30 days.
 Tables are described in [Data model](data/README.md).
 
@@ -68,7 +68,7 @@ Tables are described in [Data model](data/README.md).
 | --- | --- | --- | --- |
 | Google account identifier (`sub`) and its issuer | Recognise the account at sign-in | Contract | Until the account is erased |
 | Google e-mail | Security contact (an incident, a data request) and the list of who may create campaigns. Never shown to anyone. Stored only when Google says it is verified, and updated or erased at every sign-in | Contract; legitimate interest | Until the account is erased |
-| Google name and photo | Never requested and never stored | | |
+| Google name and photo | Never requested and never stored | — | — |
 | Display name: typed in the app, 1 to 40 characters, never taken from Google. Shown to the members of the person's campaigns | Show who is who at the table | Contract | Until the person clears it in the profile or the account is erased |
 | Session: a hash of the cookie value, creation and expiry times, the sign-in time and the last use (written at most every 10 minutes). No IP and no device data | Keep the sign-in | Contract | Valid for at most 30 days and ends after 14 days without use ("Sair dos outros dispositivos" ends the others at once). The expired row is swept by the database within a day |
 | Sign-in state: a hash of `state`, the PKCE verifier, the nonce, where to return to (without fragment) and, when the person came from an invite or a claim link, its kind and a hash of its token (never the token) | Complete the Google sign-in and then accept the invite or claim | Contract | 10 minutes; erased at the callback, or swept by the database |
@@ -89,7 +89,7 @@ Rows that hold only IDs, numbers and content keys say nothing about a person.
 | Members and roles: who, in which campaign, the dice preference, and whether the member still waits for the master's approval | The master and the member | Control access (RN-05, RN-15) | Contract | While the campaign exists. A pending member with no character is removed after 30 days, or at once when the master rejects the character or removes the member |
 | Character sheet and story: name, equipment, languages, traits, the "Outro" background, personality, appearance, history, allies. Free text, written as fiction | The player writes; the master and the owner read; other players never read it | Play. No field for the player's real name or e-mail | Contract | While the character exists. Characters are not deleted in the normal flow (RN-03). A pending character the master rejects is erased at once. When the player's account is erased, the character stays with the campaign and the master, with no link to the account (RN-16); one left with no player and no campaign is swept by the database within a day. An NPC goes with the master's account |
 | Master notes about a character | The master only (RN-11) | Prepare the game | Contract | While the character exists; empty notes erase the row |
-| The master's reason when he asks for changes on a pending character ("Pedir ajustes"), up to 500 characters | The master and the owner only; a list carries the status, never the reason | Tell the player what to fix | Contract | Until the character is approved or refused, or the character, campaign or player's account is erased |
+| The master's reason when they ask for changes on a pending character ("Pedir ajustes"), up to 500 characters | The master and the owner only; a list carries the status, never the reason | Tell the player what to fix | Contract | Until the character is approved or refused, or the character, campaign or player's account is erased |
 | Campaign document, hooks of an RP scene, clues the master prepares, and the encounter saved on a battle point | The master only | Prepare the game | Contract | While the campaign exists |
 | Clues revealed to a player (with a copy of the text), and the scenes the group discovered | The master and the player who received them | Let the player re-read what was said even if the master edits the clue | Contract | While the campaign exists, or until the player's account is erased. If the master erases the clue, the copy stays with the player |
 | The player's private notes (1 to 2,000 characters, with an optional scene tag) | The author only: not the master, not another player | Let the player note what happens | Contract | Until the author erases the note, the author's account is erased, or the campaign is erased |
@@ -203,25 +203,27 @@ The campaign package lets a master export a campaign as one file and create a ca
 ## Data subject rights and how we meet them
 
 Anything the person can do alone, they do in the app.
-Everything else goes through the data protection officer's channel and is answered within **15 calendar days**.
+Everything else goes through the data protection officer's channel and is answered within **15 days**.
 
 | Right | LGPD | How |
 | --- | --- | --- |
 | Confirmation and access | Art. 18, I and II | E-mail to `privacidade@meurpg.app` |
 | Portability | Art. 18, V | E-mail to the same address. A master can export a campaign's content in the app ([MR-050](product/stories.md)); that file never carries account data |
 | Correction | Art. 18, III | The display name, in the profile. The text of a character after its sheet is locked (RN-01): the player edits it when the master unlocks it, otherwise by e-mail |
+| Anonymisation, blocking or deletion of what is unnecessary | Art. 18, IV | E-mail |
 | Deletion | Art. 18, VI | E-mail; see [Delete the account](#delete-the-account) |
 | Who we share with | Art. 18, VII | The processors in this document and in the privacy notice |
 | Objection and other requests | Art. 18, §2 | E-mail |
 | Withdraw consent | Art. 18, IX | Nothing depends on consent. An optional feature added later will have an off switch |
+| Complain to the ANPD | Art. 18, §1 | At gov.br/anpd, at any time |
 
 A person can also end every other sign-in with "Sair dos outros dispositivos" in the profile.
 
 ### Delete the account
 
-**A person asks by e-mail, and there is no screen or automatic deletion yet.**
+**A person asks by e-mail: there is no screen and no automatic deletion.**
 Self-service export and deletion, and deletion after inactivity, are proposals in [RN-16](product/rules.md#rn-16-account-deletion-and-inactivity).
-Nothing is erased for inactivity today.
+Nothing is erased for inactivity.
 
 What erasing an account does, by the database's own rules:
 
