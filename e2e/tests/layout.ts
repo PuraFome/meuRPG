@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-// Layout checks that axe does not make (docs/design.md#como-uma-tela-é-feita).
+// Layout checks that axe does not make (docs/design/README.md#how-a-screen-is-made).
 // They catch what a screenshot review missed in PR #56: a search field's
 // words over its magnifier, radio tiles with their words stuck to the top,
 // and button icons a pixel or two below their words. Each check measures the

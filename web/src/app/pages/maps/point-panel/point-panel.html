@@ -4,7 +4,7 @@
 
   <div class="pp__field">
     <span class="mr-label" id="pp-kind">Tipo</span>
-    <div class="seg" role="radiogroup" aria-labelledby="pp-kind" (keydown)="onKindKey($event)">
+    <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="pp-kind" (relayKeydown)="onKindKey($event)">
       @for (k of kinds; track k) {
         <button
           type="button"

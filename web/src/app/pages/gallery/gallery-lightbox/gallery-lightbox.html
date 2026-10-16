@@ -1,10 +1,10 @@
-<dialog
+<dialog appRelayEvents
   #dialog
   class="lightbox"
   aria-labelledby="gallery-lightbox-title"
   (close)="closed.emit()"
-  (click)="onDialogClick($event)"
-  (keydown)="onKeydown($event)"
+  (relayClick)="onDialogClick($event)"
+  (relayKeydown)="onKeydown($event)"
 >
   @if (image(); as img) {
     <div class="lightbox__head">

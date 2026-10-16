@@ -357,12 +357,15 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 	var roll contestRoll
 	gh := groupHoldOf(ctx)
 	if gh != nil && !byMaster {
-		step, err := s.outsideRoll(ctx, tx, q, gh.m, holdGroupCheck, characterID, gh.key, gh.raw, rollInput{inApp: in.inApp, typedFaces: in.faces}, bonus, cm.Mode, false, lucky)
+		step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
+			Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: characterID, UserID: gh.m.UserID},
+			In: rollInput{inApp: in.inApp, typedFaces: in.faces}, Modifier: bonus, Mode: cm.Mode, Lucky: lucky, MayAsk: true,
+		})
 		if err != nil {
 			return err
 		}
-		if step.Held {
-			gh.offer, gh.lucky = step.Offer, step.LuckyOffer
+		if step.Held != nil {
+			gh.offer, gh.lucky = s.outsideOffers(ctx, tx, step.Held)
 			return nil
 		}
 		if step.Settled {

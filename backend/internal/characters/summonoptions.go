@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -38,62 +39,86 @@ func (s *Service) GetSummonOptions(
 	// The character, its slots and the creatures a casting would send away are one
 	// moment: a casting that commits between the reads would show the slot still
 	// free next to the familiar it just made.
-	out := &charactersv1.GetSummonOptionsResponse{}
+	var out *charactersv1.GetSummonOptionsResponse
 	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
-		out = &charactersv1.GetSummonOptionsResponse{} // the closure may run again
-		q := s.queries.WithTx(tx)
-		row, err := q.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: id})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errCharacterNotFound()
-		}
-		if err != nil {
-			return wrap("read a character", err)
-		}
-		if !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
-			return errCharacterNotFound()
-		}
-		if row.Kind != kindPlayer {
-			return invalidArgument(fieldErr("character_id", "is an NPC: only a player's character has creatures"))
-		}
-		b, err := s.summonCharacter(ctx, tx, m.CampaignID, id)
-		if err != nil {
-			if connect.CodeOf(err) == connect.CodeNotFound {
-				return nil // no full sheet (or a dead character): nothing to cast
-			}
-			return err
-		}
-		vitals, err := s.getVitals(ctx, tx, m.CampaignID, id, false)
-		if err != nil {
-			return err
-		}
-		// The slots, lowest circle first, the pact magic slots after their circle.
-		for _, u := range vitals.GetSpellSlots() {
-			out.Slots = append(out.Slots, &charactersv1.SummonSlot{Level: u.GetLevel(), Total: u.GetTotal(), Free: u.GetTotal() - u.GetUsed()})
-		}
-		if p := vitals.GetPactSlots(); p != nil && p.GetTotal() > 0 {
-			out.Slots = append(out.Slots, &charactersv1.SummonSlot{Level: p.GetSlotLevel(), Pact: true, Total: p.GetTotal(), Free: p.GetTotal() - p.GetUsed()})
-			slices.SortStableFunc(out.Slots, func(a, c *charactersv1.SummonSlot) int { return int(a.GetLevel() - c.GetLevel()) })
-		}
-		content, err := s.contentFor(ctx, tx, m.CampaignID)
-		if err != nil {
-			return wrap("read rules content", err)
-		}
-		d := rules.Derive(b, content)
-		for _, key := range content.SummonSpells() {
-			spell, err := s.summonSpellOptions(ctx, q, content, m.CampaignID, id, b, d, key, out.Slots)
-			if err != nil {
-				return err
-			}
-			if spell != nil {
-				out.Spells = append(out.Spells, spell)
-			}
-		}
-		return nil
+		var err error
+		out, err = s.readSummonOptions(ctx, tx, m, id) // the closure may run again: each run starts afresh
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "read the summon options", err)
 	}
 	return connect.NewResponse(out), nil
+}
+
+// readSummonOptions reads the options inside the read transaction: empty for a
+// character with nothing to cast.
+func (s *Service) readSummonOptions(ctx context.Context, tx pgx.Tx, m authz.Membership, id string) (*charactersv1.GetSummonOptionsResponse, error) {
+	out := &charactersv1.GetSummonOptionsResponse{}
+	q := s.queries.WithTx(tx)
+	if err := checkSummonOptionsCharacter(ctx, q, m, id); err != nil {
+		return out, err
+	}
+	b, err := s.summonCharacter(ctx, tx, m.CampaignID, id)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return out, nil // no full sheet (or a dead character): nothing to cast
+		}
+		return out, err
+	}
+	vitals, err := s.getVitals(ctx, tx, m.CampaignID, id, false)
+	if err != nil {
+		return out, err
+	}
+	out.Slots = summonSlots(vitals)
+	content, err := s.contentFor(ctx, tx, m.CampaignID)
+	if err != nil {
+		return out, wrap("read rules content", err)
+	}
+	d := rules.Derive(b, content)
+	for _, key := range content.SummonSpells() {
+		spell, err := s.summonSpellOptions(ctx, q, content, m.CampaignID, id, b, d, key, out.Slots)
+		if err != nil {
+			return out, err
+		}
+		if spell != nil {
+			out.Spells = append(out.Spells, spell)
+		}
+	}
+	return out, nil
+}
+
+// checkSummonOptionsCharacter is the access of ListCharacterCreatures: a
+// player's character the caller may see.
+func checkSummonOptionsCharacter(ctx context.Context, q *charactersdb.Queries, m authz.Membership, id string) error {
+	row, err := q.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errCharacterNotFound()
+	}
+	if err != nil {
+		return wrap("read a character", err)
+	}
+	if !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
+		return errCharacterNotFound()
+	}
+	if row.Kind != kindPlayer {
+		return invalidArgument(fieldErr("character_id", "is an NPC: only a player's character has creatures"))
+	}
+	return nil
+}
+
+// summonSlots are the character's slots, lowest circle first, the pact magic
+// slots after their circle.
+func summonSlots(vitals *playv1.CharacterVitals) []*charactersv1.SummonSlot {
+	var out []*charactersv1.SummonSlot
+	for _, u := range vitals.GetSpellSlots() {
+		out = append(out, &charactersv1.SummonSlot{Level: u.GetLevel(), Total: u.GetTotal(), Free: u.GetTotal() - u.GetUsed()})
+	}
+	if p := vitals.GetPactSlots(); p != nil && p.GetTotal() > 0 {
+		out = append(out, &charactersv1.SummonSlot{Level: p.GetSlotLevel(), Pact: true, Total: p.GetTotal(), Free: p.GetTotal() - p.GetUsed()})
+		slices.SortStableFunc(out, func(a, c *charactersv1.SummonSlot) int { return int(a.GetLevel() - c.GetLevel()) })
+	}
+	return out
 }
 
 // summonSpellOptions is one spell's entry, or nil when the character cannot cast
@@ -116,13 +141,27 @@ func (s *Service) summonSpellOptions(ctx context.Context, q *charactersdb.Querie
 		SpellKey: key, NamePt: content.NamePT(key), Level: int32(det.Spell.Level), CastingTimePt: castingTimePT(own.CastingTime), //nolint:gosec // a spell's circle is 1 to 9
 		Ritual: own.Ritual, Concentration: own.Concentration, CanRitual: st.canRitual, CanCastWithSlot: canSlot,
 	}
+	for _, c := range summonCircles(det.Spell.Level, st.canRitual, canSlot, slots) {
+		if sc, ok := summonCircleOptions(content, key, c, b); ok {
+			out.Circles = append(out.Circles, sc)
+		}
+	}
+	if out.Replaces, err = summonReplaces(ctx, q, content, campaignID, characterID, key, own.Concentration); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// summonCircles are the circles the spell can be cast at, lowest first: its own
+// as a ritual, and with a slot each circle of a slot from the spell's up.
+func summonCircles(level int, canRitual, canSlot bool, slots []*charactersv1.SummonSlot) []int {
 	circles := map[int]bool{}
-	if st.canRitual {
-		circles[det.Spell.Level] = true
+	if canRitual {
+		circles[level] = true
 	}
 	if canSlot {
 		for _, sl := range slots {
-			if int(sl.GetLevel()) >= det.Spell.Level && sl.GetTotal() > 0 {
+			if int(sl.GetLevel()) >= level && sl.GetTotal() > 0 {
 				circles[int(sl.GetLevel())] = true
 			}
 		}
@@ -132,39 +171,48 @@ func (s *Service) summonSpellOptions(ctx context.Context, q *charactersdb.Querie
 		levels = append(levels, c)
 	}
 	slices.Sort(levels)
-	for _, c := range levels {
-		choices, err := content.SummonOptions(key, c, b)
-		if err != nil {
-			continue // a pact slot above the spell's reach, or a circle the spell does not take
-		}
-		sc := &charactersv1.SummonCircle{Circle: int32(c)} //nolint:gosec // 1 to 9
-		for _, o := range choices.Options {
-			opt := &charactersv1.SummonOption{Count: int32(o.Count), Type: o.Type, MaxCr: o.MaxCR, Attack: creatureAttackNumber[o.Attack]} //nolint:gosec // a few dozen at most
-			for _, f := range o.Forms {
-				opt.Forms = append(opt.Forms, &charactersv1.SummonForm{MonsterKey: f.Key, NamePt: content.NamePT(f.Key), Attack: creatureAttackNumber[f.Attack]})
-			}
-			sc.Options = append(sc.Options, opt)
-		}
-		out.Circles = append(out.Circles, sc)
+	return levels
+}
+
+// summonCircleOptions is what a casting at the circle may bring; false for a
+// circle the spell does not take (a pact slot above the spell's reach).
+func summonCircleOptions(content *rules.Content, key string, circle int, b rules.Build) (*charactersv1.SummonCircle, bool) {
+	choices, err := content.SummonOptions(key, circle, b)
+	if err != nil {
+		return nil, false
 	}
-	// What a casting sends away: a new familiar replaces the old one, and a new
-	// concentration ends the creatures of the old one (SummonCreatures).
+	sc := &charactersv1.SummonCircle{Circle: int32(circle)} //nolint:gosec // 1 to 9
+	for _, o := range choices.Options {
+		opt := &charactersv1.SummonOption{Count: int32(o.Count), Type: o.Type, MaxCr: o.MaxCR, Attack: creatureAttackNumber[o.Attack]} //nolint:gosec // a few dozen at most
+		for _, f := range o.Forms {
+			opt.Forms = append(opt.Forms, &charactersv1.SummonForm{MonsterKey: f.Key, NamePt: content.NamePT(f.Key), Attack: creatureAttackNumber[f.Attack]})
+		}
+		sc.Options = append(sc.Options, opt)
+	}
+	return sc, true
+}
+
+// summonReplaces is what a casting sends away: a new familiar replaces the old
+// one, and a new concentration ends the creatures of the old one
+// (SummonCreatures).
+func summonReplaces(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID, characterID, key string, concentration bool) ([]*charactersv1.ReplacedCreature, error) {
+	var out []*charactersv1.ReplacedCreature
 	if key == "spell:find-familiar" {
 		rows, err := q.ListLiveFamiliars(ctx, charactersdb.ListLiveFamiliarsParams{CampaignID: campaignID, CharacterID: characterID})
 		if err != nil {
 			return nil, wrap("list the familiars", err)
 		}
 		for _, r := range rows {
-			out.Replaces = append(out.Replaces, replaced(content, r.CharacterCreature))
+			out = append(out, replaced(content, r.CharacterCreature))
 		}
 	}
-	if own.Concentration {
+	if concentration {
 		rows, err := q.ListLiveCreaturesOnConcentration(ctx, charactersdb.ListLiveCreaturesOnConcentrationParams{CampaignID: campaignID, CharacterID: characterID})
 		if err != nil {
 			return nil, wrap("list the creatures that depend on a concentration", err)
 		}
 		for _, r := range rows {
-			out.Replaces = append(out.Replaces, replaced(content, r.CharacterCreature))
+			out = append(out, replaced(content, r.CharacterCreature))
 		}
 	}
 	return out, nil

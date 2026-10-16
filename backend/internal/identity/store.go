@@ -24,7 +24,7 @@ var ErrNotFound = errors.New("identity: not found")
 // this package can create or look up a session, and only this package can
 // implement a Store. Other modules get accounts and display names, but they
 // cannot forge a session, directly or through a fake Store
-// (docs/architecture.md#who-is-calling).
+// (docs/architecture/identity.md#who-is-calling).
 type Store interface {
 	// saveLoginState records a sign-in that has just started.
 	saveLoginState(ctx context.Context, state LoginState) error

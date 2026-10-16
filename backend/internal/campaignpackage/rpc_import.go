@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 	"uuid"
 
@@ -49,74 +50,115 @@ func (s *Service) BeginCampaignImport(
 	ctx context.Context,
 	req *connect.Request[pkgv1.BeginCampaignImportRequest],
 ) (*connect.Response[pkgv1.BeginCampaignImportResponse], error) {
-	userID, err := authz.RequireSignedIn(ctx)
+	in, err := s.readImportStart(ctx, req.Msg)
 	if err != nil {
-		return nil, err
-	}
-	if s.blobs == nil {
-		return nil, errImagesOff()
-	}
-	name, err := cleanFileName(req.Msg.GetFileName())
-	if err != nil {
-		return nil, err
-	}
-	fingerprint := strings.TrimSpace(req.Msg.GetFingerprint())
-	if n := utf8.RuneCountInString(fingerprint); n < 1 || n > maxFingerprintLength || !utf8.ValidString(fingerprint) {
-		return nil, invalid("fingerprint must be 1 to 200 characters")
-	}
-	total := req.Msg.GetTotalBytes()
-	if total < 1 || total > MaxPackageBytes {
-		return nil, invalid("total_bytes must be 1 byte to 200 MiB")
-	}
-	if err := s.allow(ctx, s.heavy, s.heavyN, userID); err != nil {
-		return nil, err
-	}
-	// Refused before a single byte goes up: the cap and the creators list.
-	if err := s.creation.CheckCreation(ctx, userID); err != nil {
 		return nil, err
 	}
 	now := s.now()
-	var imp packagedb.CampaignImport
-	var parts []packagedb.CampaignImportPart
-	var dropped []packagedb.CampaignImport
+	var begun begunImport
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		dropped, parts = nil, nil
-		cur, err := q.GetCampaignImportOfUser(ctx, userID)
-		switch {
-		case err == nil && cur.Fingerprint == fingerprint && cur.TotalBytes == total && cur.ExpiresAt.After(now):
-			// The same file again: its parts are still good.
-			imp = cur
-			if parts, err = q.ListCampaignImportParts(ctx, cur.ID); err != nil {
-				return fmt.Errorf("list the parts: %w", err)
-			}
-			return q.TouchCampaignImport(ctx, packagedb.TouchCampaignImportParams{ID: cur.ID, UpdatedAt: now, ExpiresAt: now.Add(UploadTTL)})
-		case err == nil:
-			// Another file: the one-at-a-time rule drops the first.
-			dropped = append(dropped, cur)
-			if err := q.DeleteCampaignImport(ctx, cur.ID); err != nil {
-				return fmt.Errorf("drop the previous upload: %w", err)
-			}
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("find the upload: %w", err)
-		}
-		imp, err = q.InsertCampaignImport(ctx, packagedb.InsertCampaignImportParams{
-			ID: uuid.New().String(), UserID: userID, FileName: name, Fingerprint: fingerprint, TotalBytes: total,
-			PartSize: PartSize, PartCount: int32(PartCount(total)), //nolint:gosec // G115: at most 40
-			CreatedAt: now, ExpiresAt: now.Add(UploadTTL),
-		})
-		if err != nil {
-			return fmt.Errorf("insert the upload: %w", err)
-		}
-		return nil
+		var err error
+		begun, err = beginImport(ctx, s.queries.WithTx(tx), in, now)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "begin an import", err)
 	}
-	for _, d := range dropped {
+	for _, d := range begun.dropped {
 		s.deleteParts(context.WithoutCancel(ctx), d)
 	}
-	return connect.NewResponse(&pkgv1.BeginCampaignImportResponse{Upload: importToProto(imp, parts)}), nil
+	return connect.NewResponse(&pkgv1.BeginCampaignImportResponse{Upload: importToProto(begun.imp, begun.parts)}), nil
+}
+
+// importStart is a BeginCampaignImport request that passed every check.
+type importStart struct {
+	userID      string
+	name        string
+	fingerprint string
+	total       int64
+}
+
+// readImportStart makes BeginCampaignImport's checks, in order: the session,
+// the store, the file's name, fingerprint and size, the rate limit, and who
+// may create a campaign.
+func (s *Service) readImportStart(ctx context.Context, msg *pkgv1.BeginCampaignImportRequest) (importStart, error) {
+	userID, err := authz.RequireSignedIn(ctx)
+	if err != nil {
+		return importStart{}, err
+	}
+	if s.blobs == nil {
+		return importStart{}, errImagesOff()
+	}
+	name, err := cleanFileName(msg.GetFileName())
+	if err != nil {
+		return importStart{}, err
+	}
+	fingerprint := strings.TrimSpace(msg.GetFingerprint())
+	if n := utf8.RuneCountInString(fingerprint); n < 1 || n > maxFingerprintLength || !utf8.ValidString(fingerprint) {
+		return importStart{}, invalid("fingerprint must be 1 to 200 characters")
+	}
+	total := msg.GetTotalBytes()
+	if total < 1 || total > MaxPackageBytes {
+		return importStart{}, invalid("total_bytes must be 1 byte to 200 MiB")
+	}
+	if err := s.allow(ctx, s.heavy, s.heavyN, userID); err != nil {
+		return importStart{}, err
+	}
+	// Refused before a single byte goes up: the cap and the creators list.
+	if err := s.creation.CheckCreation(ctx, userID); err != nil {
+		return importStart{}, err
+	}
+	return importStart{userID: userID, name: name, fingerprint: fingerprint, total: total}, nil
+}
+
+// begunImport is what beginImport did: the upload, the parts it already has,
+// and the upload it dropped, whose parts go once the transaction is over.
+type begunImport struct {
+	imp     packagedb.CampaignImport
+	parts   []packagedb.CampaignImportPart
+	dropped []packagedb.CampaignImport
+}
+
+// beginImport is BeginCampaignImport's transaction: the person's upload of
+// the same file again, or a new one in place of any other.
+func beginImport(ctx context.Context, q *packagedb.Queries, in importStart, now time.Time) (begunImport, error) {
+	var begun begunImport
+	cur, err := q.GetCampaignImportOfUser(ctx, in.userID)
+	switch {
+	case err == nil && cur.Fingerprint == in.fingerprint && cur.TotalBytes == in.total && cur.ExpiresAt.After(now):
+		// The same file again: its parts are still good.
+		return resumeImport(ctx, q, cur, now)
+	case err == nil:
+		// Another file: the one-at-a-time rule drops the first.
+		begun.dropped = append(begun.dropped, cur)
+		if err := q.DeleteCampaignImport(ctx, cur.ID); err != nil {
+			return begunImport{}, fmt.Errorf("drop the previous upload: %w", err)
+		}
+	case !errors.Is(err, pgx.ErrNoRows):
+		return begunImport{}, fmt.Errorf("find the upload: %w", err)
+	}
+	begun.imp, err = q.InsertCampaignImport(ctx, packagedb.InsertCampaignImportParams{
+		ID: uuid.New().String(), UserID: in.userID, FileName: in.name, Fingerprint: in.fingerprint, TotalBytes: in.total,
+		PartSize: PartSize, PartCount: int32(PartCount(in.total)), //nolint:gosec // G115: at most 40
+		CreatedAt: now, ExpiresAt: now.Add(UploadTTL),
+	})
+	if err != nil {
+		return begunImport{}, fmt.Errorf("insert the upload: %w", err)
+	}
+	return begun, nil
+}
+
+// resumeImport keeps an upload of the same file going: its parts, and an
+// hour more.
+func resumeImport(ctx context.Context, q *packagedb.Queries, cur packagedb.CampaignImport, now time.Time) (begunImport, error) {
+	parts, err := q.ListCampaignImportParts(ctx, cur.ID)
+	if err != nil {
+		return begunImport{}, fmt.Errorf("list the parts: %w", err)
+	}
+	if err := q.TouchCampaignImport(ctx, packagedb.TouchCampaignImportParams{ID: cur.ID, UpdatedAt: now, ExpiresAt: now.Add(UploadTTL)}); err != nil {
+		return begunImport{}, err
+	}
+	return begunImport{imp: cur, parts: parts}, nil
 }
 
 // cleanFileName checks the name the app shows for the file.

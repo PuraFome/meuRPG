@@ -1,5 +1,5 @@
 @if (visible()) {
-  <section class="mr-panel panel" aria-labelledby="criaturas-heading" (click)="notice.set('')">
+  <section appRelayEvents class="mr-panel panel" aria-labelledby="criaturas-heading" (relayClick)="notice.set('')">
     <div class="panel__head">
       <h2 id="criaturas-heading" class="mr-panel__title js-title" tabindex="-1">Criaturas</h2>
       @if (countText()) {

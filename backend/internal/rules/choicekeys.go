@@ -71,11 +71,23 @@ func (c *content) choiceValueOK(stored string) bool {
 		return false
 	}
 	base, _, _ := strings.Cut(choiceKey, textSeparator)
-	switch {
-	case c.features[base] == nil && c.traits[base] == nil && c.races[base] == nil && c.subraces[base] == nil &&
-		c.backgrounds[base] == nil && c.feats[base] == nil &&
-		!c.featPick(choiceKey, value):
+	if !c.choiceOwnerKnown(base) && !c.featPick(choiceKey, value) {
 		return false
+	}
+	return c.choiceValueKnown(value)
+}
+
+// choiceOwnerKnown says the key of a choice (without its "#part") is a feature,
+// trait, race, subrace, background or feat the content has.
+func (c *content) choiceOwnerKnown(base string) bool {
+	return c.features[base] != nil || c.traits[base] != nil || c.races[base] != nil || c.subraces[base] != nil ||
+		c.backgrounds[base] != nil || c.feats[base] != nil
+}
+
+// choiceValueKnown says the value of a pick is a key the content has, by its
+// kind, or the "no language" mark.
+func (c *content) choiceValueKnown(value string) bool {
+	switch {
 	case value == LanguageNone:
 		return true
 	case strings.HasPrefix(value, abilityPrefix):

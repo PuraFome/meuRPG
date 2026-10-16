@@ -38,6 +38,7 @@ import {
   type SummonSheetData,
   type SummonSheetResult,
 } from '../../../shared/summon-sheet/summon-sheet';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 type ListState = 'loading' | 'hidden' | 'ready' | 'failed';
 
@@ -62,7 +63,7 @@ type ListState = 'loading' | 'hidden' | 'ready' | 'failed';
  */
 @Component({
   selector: 'app-creatures-panel',
-  imports: [CreatureCard, MatButtonModule, MatIconModule],
+  imports: [RelayEvents, CreatureCard, MatButtonModule, MatIconModule],
   templateUrl: './creatures-panel.html',
   styleUrl: './creatures-panel.scss',
 })
@@ -99,6 +100,8 @@ export class CreaturesPanel {
   /** A read of a list that was already shown failed: the list stays, and the panel says it may be out of date. */
   protected readonly refreshFailed = signal(false);
   private seq = 0;
+  /** The newest read, so a cast can wait for the one that is applied (see `lastLoad`). */
+  private latestLoad: Promise<unknown> = Promise.resolve();
   private wildSeq = 0;
 
   protected readonly live = computed(() =>
@@ -242,7 +245,23 @@ export class CreaturesPanel {
     });
   }
 
-  private async load(campaignId: string, characterId: string): Promise<CharacterCreature[] | null> {
+  private load(campaignId: string, characterId: string): Promise<CharacterCreature[] | null> {
+    const read = this.read(campaignId, characterId);
+    this.latestLoad = read;
+    return read;
+  }
+
+  /** Waits until the newest read has finished. A read that a newer one overtook answers `null` and applies nothing,
+   * so the cast's line must wait for the newer one: only then has the arrival been seen (and left unannounced). */
+  private async lastLoad(): Promise<void> {
+    let waited: Promise<unknown>;
+    do {
+      waited = this.latestLoad;
+      await waited;
+    } while (waited !== this.latestLoad);
+  }
+
+  private async read(campaignId: string, characterId: string): Promise<CharacterCreature[] | null> {
     const seq = ++this.seq;
     // The options are the player's (the master gives, in the campaign's list); a failed read of them only
     // takes the buttons away.
@@ -336,7 +355,8 @@ export class CreaturesPanel {
         this.heldGift = '';
         return;
       }
-      void this.load(this.campaignId(), this.characterId()).then(() => {
+      void this.load(this.campaignId(), this.characterId());
+      void this.lastLoad().then(() => {
         this.castInFlight = false;
         this.notice.set([this.confirmation(result), this.heldGift].filter((t) => t).join(' '));
         this.heldGift = '';
