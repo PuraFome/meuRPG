@@ -123,10 +123,6 @@ cognitive internal/play (*Service).AddMonsters 32
 cognitive internal/play (*Service).AdjustCharacterVitals 53
 cognitive internal/play (*Service).AdjustCombatantHitPoints 32
 cognitive internal/play (*Service).AdvanceGameTime 30
-cognitive internal/play (*Service).AnswerBardicInspiration 25
-cognitive internal/play (*Service).AnswerLucky 24
-cognitive internal/play (*Service).AnswerOutsideInspiration 33
-cognitive internal/play (*Service).AnswerOutsideLucky 21
 cognitive internal/play (*Service).AnswerRageEnd 24
 cognitive internal/play (*Service).AnswerReaction 30
 cognitive internal/play (*Service).ApplyPendingDamage 81
@@ -222,7 +218,7 @@ cognitive internal/play (*Service).buildGroupCheckView 48
 cognitive internal/play (*Service).castHPSpell 77
 cognitive internal/play (*Service).castProto 34
 cognitive internal/play (*Service).castRevivify 36
-cognitive internal/play (*Service).castSpell 303
+cognitive internal/play (*Service).castSpell 297
 cognitive internal/play (*Service).changeExhaustion 90
 cognitive internal/play (*Service).changeRun 23
 cognitive internal/play (*Service).checkOnWrong 31
@@ -230,7 +226,6 @@ cognitive internal/play (*Service).checkTargets 32
 cognitive internal/play (*Service).contestOptionsFor 50
 cognitive internal/play (*Service).cuttingWindows 21
 cognitive internal/play (*Service).damageWindows 39
-cognitive internal/play (*Service).dieOf 30
 cognitive internal/play (*Service).dieToCharacters 22
 cognitive internal/play (*Service).dieToCombat 24
 cognitive internal/play (*Service).effectsAfterTurnStart 48
@@ -253,7 +248,6 @@ cognitive internal/play (*Service).markProvokes 23
 cognitive internal/play (*Service).masterExtras 22
 cognitive internal/play (*Service).opportunityOffers 30
 cognitive internal/play (*Service).opportunityReactors 32
-cognitive internal/play (*Service).outsideRoll 49
 cognitive internal/play (*Service).participants 37
 cognitive internal/play (*Service).pendingView 30
 cognitive internal/play (*Service).prepareMetamagic 21
@@ -263,7 +257,7 @@ cognitive internal/play (*Service).reactionPrompts 26
 cognitive internal/play (*Service).reactionView 30
 cognitive internal/play (*Service).refreshCombatants 77
 cognitive internal/play (*Service).releaseHold 23
-cognitive internal/play (*Service).rollAttack 269
+cognitive internal/play (*Service).rollAttack 261
 cognitive internal/play (*Service).rollDamage 174
 cognitive internal/play (*Service).rollMember 30
 cognitive internal/play (*Service).rollParts 54
@@ -515,10 +509,6 @@ cyclomatic internal/play (*Service).AddMonsters 27
 cyclomatic internal/play (*Service).AdjustCharacterVitals 34
 cyclomatic internal/play (*Service).AdjustCombatantHitPoints 29
 cyclomatic internal/play (*Service).AdvanceGameTime 19
-cyclomatic internal/play (*Service).AnswerBardicInspiration 21
-cyclomatic internal/play (*Service).AnswerLucky 21
-cyclomatic internal/play (*Service).AnswerOutsideInspiration 32
-cyclomatic internal/play (*Service).AnswerOutsideLucky 26
 cyclomatic internal/play (*Service).AnswerRageEnd 16
 cyclomatic internal/play (*Service).AnswerReaction 26
 cyclomatic internal/play (*Service).AnswerRollModeRequest 17
@@ -619,7 +609,7 @@ cyclomatic internal/play (*Service).castCharacterEffects 16
 cyclomatic internal/play (*Service).castHPSpell 35
 cyclomatic internal/play (*Service).castProto 21
 cyclomatic internal/play (*Service).castRevivify 26
-cyclomatic internal/play (*Service).castSpell 153
+cyclomatic internal/play (*Service).castSpell 150
 cyclomatic internal/play (*Service).changeExhaustion 48
 cyclomatic internal/play (*Service).checkOnSolve 16
 cyclomatic internal/play (*Service).checkOnWrong 24
@@ -629,7 +619,6 @@ cyclomatic internal/play (*Service).chooseMode 18
 cyclomatic internal/play (*Service).contestOptionsFor 43
 cyclomatic internal/play (*Service).cuttingWindows 17
 cyclomatic internal/play (*Service).damageWindows 19
-cyclomatic internal/play (*Service).dieOf 16
 cyclomatic internal/play (*Service).effectsAfterTurnStart 37
 cyclomatic internal/play (*Service).effectsToCharacters 20
 cyclomatic internal/play (*Service).effectsToCombat 20
@@ -651,7 +640,6 @@ cyclomatic internal/play (*Service).joinCreatures 19
 cyclomatic internal/play (*Service).openRevivifyRequest 16
 cyclomatic internal/play (*Service).opportunityOffers 17
 cyclomatic internal/play (*Service).opportunityReactors 25
-cyclomatic internal/play (*Service).outsideRoll 38
 cyclomatic internal/play (*Service).participants 28
 cyclomatic internal/play (*Service).pendingView 19
 cyclomatic internal/play (*Service).prepareMetamagic 18
@@ -664,10 +652,9 @@ cyclomatic internal/play (*Service).reactorSees 17
 cyclomatic internal/play (*Service).refreshCombatants 43
 cyclomatic internal/play (*Service).releaseHold 25
 cyclomatic internal/play (*Service).resolveRebuke 18
-cyclomatic internal/play (*Service).rollAttack 150
+cyclomatic internal/play (*Service).rollAttack 146
 cyclomatic internal/play (*Service).rollDamage 92
 cyclomatic internal/play (*Service).rollMember 25
-cyclomatic internal/play (*Service).rollOrHold 19
 cyclomatic internal/play (*Service).rollParts 30
 cyclomatic internal/play (*Service).runSolveAction 19
 cyclomatic internal/play (*Service).sceneInfo 21
