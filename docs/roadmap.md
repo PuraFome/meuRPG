@@ -1,58 +1,81 @@
 # Roadmap
 
-The MVP is reached when the table plays its first full session through the app. **Current stage: pre-MVP.** Stages 1 to 10 are built, hardened and rehearsed, and the app runs in production at `https://meurpg.app` (see [Operations](operations/README.md)); the first real session comes next. After the MVP: internationalization (an English UI), then Stage 11. The per-stage delivery history (PRs, migrations, slices) is in the [archive](archive/etapas.md); who decided what, and when, is in [decisions](archive/decisions.md).
-
-The order starts with the foundation: the skeleton first, then the test base and the new app's skeleton, then each story lands finished on the Go backend, proven by its own tests. There is no gradual migration from the legacy app (old Angular and NestJS): its code has left the repository.
+The MVP is reached when the table plays its first full session through the app.
+Everything planned for the MVP is built, hardened, rehearsed and running in production (see [Operations](operations/README.md)).
+What comes next is the code-health work, one more master tool for held rolls, and then the post-MVP stories.
+There are no dates: the pace depends on everyone's free time.
 
 ```mermaid
-flowchart TD
-    E1["Stage 1, Foundation<br/>monorepo, Go server, Protobuf contracts, CI, local environment"]
-    E2["Stage 2, Test base and web<br/>Playwright against the local stack with a local OIDC provider<br/>new app skeleton in web, Go integration tests in CI"]
-    E3["Stage 3, Sign-in and campaigns<br/>MR-001, MR-002, MR-003"]
-    E4["Stage 4, Characters<br/>MR-004, MR-005, MR-006, MR-024"]
-    E5["Stage 5, Live session<br/>MR-008, MR-009, MR-011, MR-012, MR-018, MR-019, MR-028"]
-    E6["Stage 6, Combat<br/>MR-013, MR-014"]
-    E7["Stage 7, RP and XP<br/>MR-015, MR-016"]
-    E8["Stage 8, The table<br/>MR-013 and MR-014 extended, MR-029 to MR-033, MR-040"]
-    E9["Stage 9, Deep combat and map<br/>RN-21 as a circle, MR-034 to MR-037, MR-041"]
-    E10["Stage 10, Content and generation<br/>MR-025, MR-010, MR-038, MR-039<br/>MR-042, MR-043, MR-044, MR-045"]
-    MVP{{"MVP: the table plays its first full session through the app"}}
-    I18N["Internationalization<br/>English UI"]
-    E11["Stage 11, After the MVP<br/>MR-007, MR-017, MR-020, MR-021, MR-022, MR-023<br/>MR-026, MR-027, MR-046, MR-047<br/>and cleanup tasks with no story"]
-
-    E1 --> E2 --> E3 --> E4 --> E5 --> E6 --> E7 --> E8 --> E9 --> E10 --> MVP --> I18N --> E11
+flowchart LR
+    done["Built: milestones 1 to 10"] --> health["Code health"]
+    health --> held["Held rolls: the master answers every question"]
+    held --> mvp{{"MVP: the first full session"}}
+    mvp --> i18n["English UI"]
+    i18n --> later["Post-MVP stories"]
 ```
 
-## Stages
+## Done
 
-| Stage | Delivers | Stories |
-| --- | --- | --- |
-| 1. Foundation (done) | Monorepo, Go server, Protobuf contracts, CI, local environment. | — |
-| 2. Test base and web (done) | Playwright against the local stack with a local OIDC provider (devidp) instead of Google; the new Angular app skeleton in `web/`; Go integration tests against CockroachDB in CI. | — |
-| 3. Sign-in and campaigns (done) | OIDC sign-in with sessions of up to 30 days, create a campaign, generate and revoke invites, join through an invite (signed in or signing in on the way), role-based authorization in the campaign, display name. | MR-001, MR-002, MR-003 |
-| 4. Characters (done) | The rules engine over the SRD 5.1, the sheet in the official layout, NPCs, the sheet lock on the first session, the character created through an invite and its approval by the Game Master. | MR-004, MR-005, MR-006, MR-024 |
-| 5. Live session (done) | Points of interest, maps without spoilers, starting and following a session with a live stream, the campaign document, the image gallery and showing an image to the players. | MR-008, MR-009, MR-011, MR-012, MR-018, MR-019, MR-028 |
-| 6. Combat (done) | The combat rules engine, server-rolled dice with the app/physical choice, the encounter with initiative, the 1.5 m grid and movement, actions, spells, reactions, saves, death saves and the log. | MR-013, MR-014 |
-| 7. RP and XP (done) | The SRD XP tables, XP by enemies, gold, free-form or milestone with undo and history, "Pode subir de nível", RP scene actions with player rolls. | MR-015, MR-016 |
-| 8. The table (done) | Table and RP features: joint turns, movement in squares, spells ordered by what can be cast now, scene hooks and clues, player notes, NPCs on stage, combat highlights, the guided level-up and printing the map with its grid. | MR-013, MR-014, MR-029 to MR-033, MR-040 |
-| 9. Deep combat and map (done) | Circle movement, special movement (jump, difficult terrain, cover, opportunity attack), map layers, per-player fog of war, traps, lights, treasures and XP by gold, and the character's creatures (familiar, undead, summoned animals, Wild Shape) with the SRD creatures in the rules engine. | RN-21, MR-034 to MR-037, MR-041 |
-| 10. Content and generation (done) | The table's own content and rules (classes, subclasses, races, backgrounds, spells; table rules; grid calibration; combat without a grid), the dungeon generator with doors, puzzles, the players' spell list and the options the Game Master leaves available, AI-generated images, the bestiary, the encounter builder and the treasure generator. | MR-025, MR-010, MR-038, MR-039, MR-042 to MR-045 |
-| **MVP gate** | Hardening, two rehearsals and the production deploy (done); the table plays its first full session through the app with everything above. | — |
-| Internationalization | The English UI (the screens are in Portuguese until then). | — |
-| 11. After the MVP | Importing a character sheet from a PDF, the full level-up screen, a rulebook, copying characters, reusing NPCs, handing over or splitting a campaign, the player's proposal and PDF reading of rules (in this order); the table's style resource by resource (MR-046), more puzzles (MR-047) and a list of past sessions with the summary of each (the server already answers for any ended session). One cleanup task with no story: importing only the characters from the old database and decommissioning that database. (Removing the legacy app's code, `src/` and `server/`, is done; turning off its hosting is up to the project owner.) | MR-007, MR-017, MR-020 to MR-023, MR-026, MR-027, MR-046, MR-047 |
+| Milestone | What the table can do |
+| --- | --- |
+| Foundation | A monorepo with a Go server, protobuf contracts, CI and a local environment with its own sign-in provider. |
+| Sign-in and campaigns | Sign in, create a campaign, invite players and join through an invite ([MR-001](product/stories.md#mr-001-create-a-campaign), [MR-002](product/stories.md#mr-002-generate-an-invite), [MR-003](product/stories.md#mr-003-join-through-the-invite)). |
+| Characters | The sheet in the official layout computed from the SRD 5.1, NPCs, the sheet lock and the Game Master's approval of a new character ([MR-004](product/stories.md#mr-004-character-sheet-in-the-pdf-format), [MR-005](product/stories.md#mr-005-create-npcs), [MR-006](product/stories.md#mr-006-locked-sheet), [MR-024](product/stories.md#mr-024-approve-the-character-from-the-invite), [MR-049](product/stories.md#mr-049-reserved-characters-and-claim-links)). |
+| Live session | Points of interest, maps without spoilers, starting and following a session, the campaign document, the image gallery and showing an image to the players ([MR-008](product/stories.md#mr-008-points-of-interest), [MR-009](product/stories.md#mr-009-map-without-spoilers), [MR-011](product/stories.md#mr-011-start-the-session), [MR-012](product/stories.md#mr-012-follow-the-session), [MR-018](product/stories.md#mr-018-campaign-document), [MR-019](product/stories.md#mr-019-image-gallery), [MR-028](product/stories.md#mr-028-show-an-image-to-the-players)). |
+| Combat | Initiative, the 1.5 m grid, actions, spells, reactions, saves, death saves and the log ([MR-013](product/stories.md#mr-013-turn-order), [MR-014](product/stories.md#mr-014-your-turn)). |
+| RP and XP | RP scene actions with player rolls, XP by enemies, gold, free-form or milestone, with undo ([MR-015](product/stories.md#mr-015-rp-scene-actions), [MR-016](product/stories.md#mr-016-award-xp)). |
+| The table | Scene hooks and clues, player notes, NPCs on stage, combat highlights, the guided level-up and printing the map ([MR-029](product/stories.md#mr-029-scene-hooks-and-clues) to [MR-033](product/stories.md#mr-033-print-the-map-with-the-grid), [MR-040](product/stories.md#mr-040-level-up-from-the-sheet)). |
+| Deep combat and map | Circle movement, jumping, cover, opportunity attacks, map layers, traps, per-player fog of war, treasure, and the character's creatures ([MR-034](product/stories.md#mr-034-special-movement) to [MR-037](product/stories.md#mr-037-creatures-of-the-character), [MR-041](product/stories.md#mr-041-treasure-and-xp-by-gold)). |
+| Content and generation | The table's own content and rules, the dungeon generator, puzzles, AI-generated images, the bestiary, the encounter builder, the treasure generator, spell look-up, casting outside combat and the campaign package ([MR-025](product/stories.md#mr-025-register-table-content), [MR-010](product/stories.md#mr-010-generate-dungeons), [MR-038](product/stories.md#mr-038-puzzles), [MR-039](product/stories.md#mr-039-ai-generated-images-for-dungeons-and-scenes), [MR-042](product/stories.md#mr-042-bestiary) to [MR-045](product/stories.md#mr-045-look-up-spells), [MR-048](product/stories.md#mr-048-cast-spells-outside-combat), [MR-050](product/stories.md#mr-050-campaign-package-export-and-import)). |
+| MVP gate | Hardening, rehearsals and the production deploy. |
 
-Each stage delivers something for the Game Master and for the players. There are no dates: the pace depends on everyone's free time.
+## Next
+
+1. **Code health.** Bring the Go and web code under the complexity, size and lint limits, so that the ratchets in [CI](ci.md) can hold the finish line.
+2. **Held rolls.** The Game Master answers every question the app asks about a roll a player holds (see [held rolls](architecture/play/held-rolls.md)).
+3. **The first full session** through the app: the MVP.
+4. **English UI.** The screens are in Portuguese until then.
+
+## After the MVP
+
+Ideas the Game Master and the players asked for, with no story yet:
+
+- A reorganised mobile layout.
+- A map outside combat.
+- A light warning.
+- The Game Master playing the character of an absent player.
+- A free dice roller.
+- Spell zones on the map.
+- A spectator screen.
+- Bouncing 2D dice.
+
+Stories marked *Later* in [Stories](product/stories.md):
+
+| Story | What |
+| --- | --- |
+| [MR-007](product/stories.md#mr-007-import-a-sheet-from-pdf) | Import a sheet from a PDF. |
+| [MR-017](product/stories.md#mr-017-level-up) | The full level-up screen, with multiclass. |
+| [MR-020](product/stories.md#mr-020-look-up-the-rulebook) | Look up the rulebook. |
+| [MR-021](product/stories.md#mr-021-copy-a-character) | Copy a character to another campaign. |
+| [MR-022](product/stories.md#mr-022-reuse-npcs) | Reuse NPCs in several campaigns. |
+| [MR-023](product/stories.md#mr-023-hand-over-or-share-the-campaign) | Hand over or share a campaign. |
+| [MR-026](product/stories.md#mr-026-propose-a-new-race-or-class) | The player proposes a race or class. |
+| [MR-027](product/stories.md#mr-027-read-the-rules-from-a-pdf) | Read the rules from a PDF. |
+| [MR-046](product/stories.md#mr-046-table-style-feature-by-feature) | Table style, feature by feature. |
+| [MR-047](product/stories.md#mr-047-more-puzzles) | More puzzles. |
+
+Other work: a list of past sessions with the summary of each, importing the characters of the old database, and the infrastructure items below.
 
 ## Infrastructure not built yet
 
 - A shared channel for the live-session fan-out (a CockroachDB changefeed or Pub/Sub), which lifts `max-instances` above 1.
-- Enforcing the Cloud Armor OWASP rules (priorities 2000 and 2001, in preview) after reading their matches from real sessions.
-- A production log pipeline: a Cloud Logging sink to Pub/Sub read by Filebeat or Elastic Cloud, with a step that reads `jsonPayload`; today production logs stay in Cloud Logging.
-- Evaluating CockroachDB against Cloud SQL, since the code uses CockroachDB's row TTL and `40001` retries.
-- Automating the release and the infrastructure (today a release is a manual script and the Google Cloud resources are made by hand).
+- Enforcing the Cloud Armor OWASP rules after reading their matches from real sessions.
+- A production log pipeline from Cloud Logging to the ELK stack.
+- Evaluating CockroachDB against Cloud SQL.
+- Automating the release and the infrastructure.
 
 ## See also
 
 - [Stories and acceptance criteria](product/stories.md)
 - [Architecture](architecture/README.md)
-- [CONTRIBUTING.md](../CONTRIBUTING.md): the dev environment and the CI.
+- [CONTRIBUTING.md](../CONTRIBUTING.md)
