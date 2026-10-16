@@ -1,0 +1,11 @@
+Goblin 6 -> level 6 max 3, current turn "<Toren>"
+Capitão Goblin 4 -> level 4 max 13, current turn "<Toren>"
+Capitão Goblin 2 -> level 2 max 27, current turn "<Toren>"
+Capitão Goblin hp 13/27 base - temp 0 defeated=false exh=2 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Goblin hp 0/3 base 7 temp 0 defeated=true exh=6 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=true mage=- conc=- turn=idle
+
+events:
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"change":"exhaustion","key":"condition:exhaustion","level":6,"owner_only":true,"targets":["<Goblin>"]},"round":1}
+exhaustion_changed {"combatant_id":"<Capitão Goblin>","lasting":{"change":"exhaustion","key":"condition:exhaustion","level":4,"owner_only":true,"targets":["<Capitão Goblin>"]},"round":1,"secret":true}
+exhaustion_changed {"combatant_id":"<Capitão Goblin>","lasting":{"before":4,"change":"exhaustion","key":"condition:exhaustion","level":2,"owner_only":true,"targets":["<Capitão Goblin>"]},"round":1,"secret":true}
+

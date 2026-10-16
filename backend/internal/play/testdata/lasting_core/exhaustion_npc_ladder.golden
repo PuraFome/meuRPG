@@ -1,0 +1,45 @@
+set 1 -> level 1 max 7, current turn "<Goblin>"
+Goblin hp 7/7 base - temp 0 defeated=false exh=1 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+set 2 -> level 2 max 7, current turn "<Goblin>"
+Goblin hp 7/7 base - temp 0 defeated=false exh=2 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+set 3 -> level 3 max 7, current turn "<Goblin>"
+Goblin hp 7/7 base - temp 0 defeated=false exh=3 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+set 4 -> level 4 max 3, current turn "<Goblin>"
+Goblin hp 3/3 base 7 temp 0 defeated=false exh=4 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+set 5 -> level 5 max 3, current turn "<Goblin>"
+Goblin hp 3/3 base 7 temp 0 defeated=false exh=5 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=true mage=- conc=- turn=acting
+
+set 6 -> level 6 max 3, current turn "<Toren>"
+Goblin hp 0/3 base 7 temp 0 defeated=true exh=6 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=true mage=- conc=- turn=idle
+
+set 6 again -> level 6 max 3, current turn "<Toren>"
+Goblin hp 0/3 base 7 temp 0 defeated=true exh=6 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=true mage=- conc=- turn=idle
+
+lower by 1 -> level 5 max 3, current turn "<Toren>"
+Goblin hp 0/3 base 7 temp 0 defeated=true exh=5 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=true mage=- conc=- turn=idle
+
+lower by 3 -> level 2 max 7, current turn "<Toren>"
+Goblin hp 0/7 base - temp 0 defeated=true exh=2 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+
+lower by 6 -> level 0 max 7, current turn "<Toren>"
+Goblin hp 0/7 base - temp 0 defeated=true exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+
+events:
+turn_ended {"discarded":0,"from":"<Toren>","round":1,"to":"<Pensantus>"}
+turn_ended {"discarded":0,"from":"<Pensantus>","round":1,"to":"<Brisa>"}
+turn_ended {"discarded":0,"from":"<Brisa>","round":1,"to":"<Goblin>"}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"change":"exhaustion","key":"condition:exhaustion","level":1,"owner_only":true,"targets":["<Goblin>"]},"round":1}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":1,"change":"exhaustion","key":"condition:exhaustion","level":2,"owner_only":true,"targets":["<Goblin>"]},"round":1}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":2,"change":"exhaustion","key":"condition:exhaustion","level":3,"owner_only":true,"targets":["<Goblin>"]},"round":1}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":3,"change":"exhaustion","key":"condition:exhaustion","level":4,"owner_only":true,"targets":["<Goblin>"]},"round":1}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":4,"change":"exhaustion","key":"condition:exhaustion","level":5,"owner_only":true,"targets":["<Goblin>"]},"round":1}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":5,"change":"exhaustion","key":"condition:exhaustion","level":6,"owner_only":true,"targets":["<Goblin>"]},"round":1}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":6,"change":"exhaustion","key":"condition:exhaustion","level":6,"owner_only":true,"targets":["<Goblin>"]},"round":2}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":6,"change":"exhaustion","key":"condition:exhaustion","level":5,"owner_only":true,"targets":["<Goblin>"]},"round":2}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":5,"change":"exhaustion","key":"condition:exhaustion","level":2,"owner_only":true,"targets":["<Goblin>"]},"round":2}
+exhaustion_changed {"combatant_id":"<Goblin>","lasting":{"before":2,"change":"exhaustion","key":"condition:exhaustion","owner_only":true,"targets":["<Goblin>"]},"round":2}
+

@@ -1,0 +1,9 @@
+the save: d20 10 total 13 saved true
+  extra die d4 sign 1 face 3
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+
+events:
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:resistance","owner_only":true,"reason":"used","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hold-person","reason":"saved","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_saved {"combatant_id":"<Toren>","d20":10,"key":"spell:hold-person","lasting":{"ability":"wis","change":"saved","d20":10,"dc":10,"effects":["<uuid>"],"key":"spell:hold-person","targets":["<Toren>"],"total":13},"round":1,"total":13}
+

@@ -1,0 +1,19 @@
+spell:hold-person on [Goblin] -> lasting LASTING_EFFECT_OUTCOME_APPLIED why ""
+spell:mage-armor on [Toren] -> lasting LASTING_EFFECT_OUTCOME_APPLIED why ""
+spell:mage-armor on [Brisa] -> lasting LASTING_EFFECT_OUTCOME_APPLIED why ""
+spell:bless on [Toren Pensantus Brisa] -> lasting LASTING_EFFECT_OUTCOME_APPLIED why ""
+spell:bless on [Toren Pensantus Brisa] -> lasting LASTING_EFFECT_OUTCOME_APPLIED why ""
+spell:bless on [Toren Pensantus Brisa] -> lasting LASTING_EFFECT_OUTCOME_APPLIED why ""
+Brisa spell:bless kind=spell conc=true dur=rounds ends=r13/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=13 conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r3
+Brisa spell:mage-armor kind=spell conc=false dur=rounds ends=r4803/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=all label=- dc=15 conds=[] mods=[{"kind": "base_ac", "value": 16}] started=r3
+Goblin spell:hold-person kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=all label=- dc=15 conds=[condition:paralyzed] mods=[] started=r1
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r13/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=13 conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r3
+Toren spell:bless kind=spell conc=true dur=rounds ends=r13/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=13 conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r3
+Toren spell:mage-armor kind=spell conc=false dur=rounds ends=r4802/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=all label=- dc=15 conds=[] mods=[{"kind": "base_ac", "value": 15}] started=r2
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=16 conc=spell:bless turn=acting
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[condition:paralyzed] derived=[condition:paralyzed] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:hold-person turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=15 conc=- turn=idle
+
+events:
+

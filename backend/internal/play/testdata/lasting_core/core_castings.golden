@@ -1,0 +1,26 @@
+a casting on three targets:
+Brisa spell:bless kind=spell conc=true dur=rounds ends=r5/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r5/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Toren spell:bless kind=spell conc=true dur=rounds ends=r5/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:bless turn=idle
+
+cast again on Toren, no caster:
+Brisa spell:bless kind=spell conc=true dur=rounds ends=r5/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r5/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Toren spell:bless kind=spell conc=false dur=rounds ends=r10/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+
+the master ends the casting of Pensantus:
+Toren spell:bless kind=spell conc=false dur=rounds ends=r10/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:bless turn=idle
+
+the master ends the last one:
+
+events:
+lasting_effect_added {"combatant_id":"<Brisa>","lasting":{"caster":"<Brisa>","change":"added","effects":["<uuid>","<uuid>","<uuid>"],"key":"spell:bless","rounds":4,"targets":["<Brisa>","<Pensantus>","<Toren>"]},"round":1,"secret":true,"target_id":"<one of the targets>"}
+lasting_effect_ended {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:bless","owner_only":true,"reason":"replaced","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:bless","rounds":9,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_ended {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<uuid>","<uuid>"],"key":"spell:bless","owner_only":true,"reason":"ended_by_master","targets":["<Brisa>","<Pensantus>"]},"round":1,"target_id":"<one of the targets>"}
+lasting_effect_ended {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:bless","reason":"ended_by_master"},"round":1,"target_id":"<a row of the casting>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:bless","owner_only":true,"reason":"ended_by_master","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:bless","reason":"ended_by_master"},"round":1,"target_id":"<a row of the casting>"}
+

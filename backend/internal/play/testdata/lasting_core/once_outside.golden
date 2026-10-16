@@ -1,0 +1,7 @@
+the master's gift spent:
+
+the cast spent: the effects:
+cast status OUTSIDE_CAST_STATUS_ENDED
+nothing to spend:
+spell:guidance kind=spell dur=rounds left=60 mods=[{"applies_to": ["check"], "die": 4, "kind": "roll_die", "once": true, "sign": 1}] conds=[] visible=true
+

@@ -1,0 +1,64 @@
+nothing, an acrobatics check: mode 0
+  helps [] rolled []
+nothing, a stealth check: mode 0
+  helps [] rolled []
+nothing, a Dexterity save: mode 0
+  helps [] rolled []
+nothing, a Wisdom save: mode 0
+  helps [] rolled []
+exhaustion 3, an acrobatics check: mode 2
+  source exhaustion_check condition="" effect=2 hidden=false
+  helps [] rolled []
+exhaustion 3, a stealth check: mode 2
+  source exhaustion_check condition="" effect=2 hidden=false
+  helps [] rolled []
+exhaustion 3, a Dexterity save: mode 2
+  source exhaustion_save condition="" effect=2 hidden=false
+  helps [] rolled []
+exhaustion 3, a Wisdom save: mode 2
+  source exhaustion_save condition="" effect=2 hidden=false
+  helps [] rolled []
+visible effects, an acrobatics check: mode 0
+  source effect_check condition="" effect=1 hidden=false
+  source exhaustion_check condition="" effect=2 hidden=false
+  source poisoned_check condition="condition:poisoned" effect=2 hidden=false
+  die spell:guidance d4 sign 1 hidden=false once=true character=true
+  helps [] rolled []
+visible effects, a stealth check: mode 0
+  source effect_check condition="" effect=1 hidden=false
+  source exhaustion_check condition="" effect=2 hidden=false
+  source poisoned_check condition="condition:poisoned" effect=2 hidden=false
+  die spell:guidance d4 sign 1 hidden=false once=true character=true
+  bonus spell:pass-without-trace +10 hidden=false
+  helps [] rolled []
+visible effects, a Dexterity save: mode 0
+  source effect_save condition="" effect=1 hidden=false
+  source exhaustion_save condition="" effect=2 hidden=false
+  die spell:bless d4 sign 1 hidden=false once=false character=true
+  helps [] rolled []
+visible effects, a Wisdom save: mode 2
+  source exhaustion_save condition="" effect=2 hidden=false
+  die spell:bless d4 sign 1 hidden=false once=false character=true
+  helps [] rolled []
+some effects hidden, an acrobatics check: mode 0
+  source effect_check condition="" effect=1 hidden=true
+  source exhaustion_check condition="" effect=2 hidden=false
+  source poisoned_check condition="condition:poisoned" effect=2 hidden=true
+  die spell:guidance d4 sign 1 hidden=false once=true character=true
+  helps [] rolled []
+some effects hidden, a stealth check: mode 0
+  source effect_check condition="" effect=1 hidden=true
+  source exhaustion_check condition="" effect=2 hidden=false
+  source poisoned_check condition="condition:poisoned" effect=2 hidden=true
+  die spell:guidance d4 sign 1 hidden=false once=true character=true
+  bonus spell:pass-without-trace +10 hidden=true
+  helps [] rolled []
+some effects hidden, a Dexterity save: mode 0
+  source effect_save condition="" effect=1 hidden=true
+  source exhaustion_save condition="" effect=2 hidden=false
+  die spell:bless d4 sign 1 hidden=true once=false character=true
+  helps [] rolled []
+some effects hidden, a Wisdom save: mode 2
+  source exhaustion_save condition="" effect=2 hidden=false
+  die spell:bless d4 sign 1 hidden=true once=false character=true
+  helps [] rolled []

@@ -32,6 +32,7 @@ func (s *Service) spendOnceEffects(ctx context.Context, c *combatTx, dd []effect
 	return nil
 }
 
+// spendOne ends the effect a roll used.
 func (s *Service) spendOne(ctx context.Context, c *combatTx, d effectDie) error {
 	// Out of a combat the effect is a row of the character's.
 	row, err := c.q.GetCharacterEffect(ctx, playdb.GetCharacterEffectParams{ID: d.EffectID, CampaignID: c.session.CampaignID})
@@ -41,30 +42,43 @@ func (s *Service) spendOne(ctx context.Context, c *combatTx, d effectDie) error 
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("find the effect the roll spent: %w", err)
 	}
-	// In a combat it is a state of the character's combatant: the combat the change runs in, or the
-	// character's combat that is not ended.
-	var st playdb.CombatantState
-	if c.enc.ID != "" {
-		if st, err = c.q.GetLastingEffect(ctx, playdb.GetLastingEffectParams{ID: d.EffectID, EncounterID: c.enc.ID}); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil
-			}
-			return fmt.Errorf("find the effect the roll spent: %w", err)
-		}
-	} else {
-		if d.CharacterID == "" {
-			return nil
-		}
-		in, err := c.q.ListCombatEffectsOfCharacter(ctx, d.CharacterID)
-		if err != nil {
-			return fmt.Errorf("list the effects in the combats: %w", err)
-		}
-		i := slices.IndexFunc(in, func(o playdb.CombatantState) bool { return o.ID == d.EffectID })
-		if i < 0 {
-			return nil
-		}
-		st = in[i]
+	st, found, err := s.spentCombatState(ctx, c, d)
+	if err != nil || !found {
+		return err
 	}
+	return s.endSpentState(ctx, c, st)
+}
+
+// spentCombatState finds the effect a roll spent among the states of the character's combatant:
+// in the combat the change runs in, or in the character's combat that is not ended. false when
+// there is no such effect.
+func (s *Service) spentCombatState(ctx context.Context, c *combatTx, d effectDie) (playdb.CombatantState, bool, error) {
+	if c.enc.ID != "" {
+		st, err := c.q.GetLastingEffect(ctx, playdb.GetLastingEffectParams{ID: d.EffectID, EncounterID: c.enc.ID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return st, false, nil
+		}
+		if err != nil {
+			return st, false, fmt.Errorf("find the effect the roll spent: %w", err)
+		}
+		return st, true, nil
+	}
+	if d.CharacterID == "" {
+		return playdb.CombatantState{}, false, nil
+	}
+	in, err := c.q.ListCombatEffectsOfCharacter(ctx, d.CharacterID)
+	if err != nil {
+		return playdb.CombatantState{}, false, fmt.Errorf("list the effects in the combats: %w", err)
+	}
+	i := slices.IndexFunc(in, func(o playdb.CombatantState) bool { return o.ID == d.EffectID })
+	if i < 0 {
+		return playdb.CombatantState{}, false, nil
+	}
+	return in[i], true, nil
+}
+
+// endSpentState ends a state of a combat the roll spent, in that combat.
+func (s *Service) endSpentState(ctx context.Context, c *combatTx, st playdb.CombatantState) error {
 	enc, err := c.q.GetEncounterByID(ctx, st.EncounterID)
 	if err != nil {
 		return fmt.Errorf("find the combat of the effect: %w", err)
@@ -75,27 +89,36 @@ func (s *Service) spendOne(ctx context.Context, c *combatTx, d effectDie) error 
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
 	}
-	// The caster stops concentrating on it: the spell ended.
-	if st.Concentration && st.SourceID != nil {
-		if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool {
-			return o.ID == *st.SourceID && o.ConcentrationSpell != nil && *o.ConcentrationSpell == deref(st.SourceKey)
-		}); j >= 0 {
-			ev := actionEvent{Round: enc.Round, Secret: cs[j].Hidden, Actor: cs[j].ID}
-			if err := s.stopConcentrating(ctx, &cc, cs[j], &ev); err != nil {
-				return err
-			}
-			if err := insertEvent(ctx, &cc, eventConditionsSet, &cc.actorUserID, nil, ev); err != nil {
-				return err
-			}
-			c.told = cc.told
-			return nil
-		}
-	}
-	if err := s.endEffectRows(ctx, &cc, cs, []playdb.CombatantState{st}, endUsed); err != nil {
+	stopped, err := s.stopHeldConcentration(ctx, &cc, cs, st)
+	if err != nil {
 		return err
+	}
+	if !stopped {
+		if err := s.endEffectRows(ctx, &cc, cs, []playdb.CombatantState{st}, endUsed); err != nil {
+			return err
+		}
 	}
 	c.told = cc.told
 	return nil
+}
+
+// stopHeldConcentration has the caster stop concentrating on the spell the state is: the spell
+// ended. It says whether the caster was concentrating on it.
+func (s *Service) stopHeldConcentration(ctx context.Context, cc *combatTx, cs []playdb.Combatant, st playdb.CombatantState) (bool, error) {
+	if !st.Concentration || st.SourceID == nil {
+		return false, nil
+	}
+	j := slices.IndexFunc(cs, func(o playdb.Combatant) bool {
+		return o.ID == *st.SourceID && o.ConcentrationSpell != nil && *o.ConcentrationSpell == deref(st.SourceKey)
+	})
+	if j < 0 {
+		return false, nil
+	}
+	ev := actionEvent{Round: cc.enc.Round, Secret: cs[j].Hidden, Actor: cs[j].ID}
+	if err := s.stopConcentrating(ctx, cc, cs[j], &ev); err != nil {
+		return false, err
+	}
+	return true, insertEvent(ctx, cc, eventConditionsSet, &cc.actorUserID, nil, ev)
 }
 
 // spendAttackEffects spends the effects on the attacker whose disadvantage its attack roll used

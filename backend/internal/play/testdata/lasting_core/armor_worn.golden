@@ -1,0 +1,26 @@
+no effects: ArmorWorn -> no callback
+before:
+Pensantus vitals hp 27/27 temp 0 exh 0 acBase 15spell:bless kind=spell dur=rounds left=60 mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] conds=[] visible=true
+spell:mage-armor kind=spell dur=rounds left=28800 mods=[{"kind": "base_ac", "value": 13}] conds=[] visible=true
+spell:mage-armor kind=spell dur=rounds left=28800 mods=[{"kind": "base_ac", "value": 15}] conds=[] visible=true
+
+ArmorWorn -> callback
+Pensantus vitals hp 27/27 temp 0 exh 0 acBase 0
+spell:bless kind=spell dur=rounds left=60 mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] conds=[] visible=true
+cast status OUTSIDE_CAST_STATUS_ENDED
+ArmorWorn again -> no callback
+in a combat:
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Pensantus spell:haste kind=spell conc=false dur=rounds ends=r6/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"kind": "ac_bonus", "value": 2}, {"kind": "speed_multiplier", "value": 200}, {"abilities": ["dex"], "kind": "save_advantage"}, {"allowed": ["attack", "dash", "disengage", "hide", "use-an-object"], "kind": "extra_action", "max_weapon_attacks": 1}] started=r1
+Pensantus spell:mage-armor kind=spell conc=false dur=rounds ends=r4801/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[] mods=[{"kind": "base_ac", "value": 15}] started=r1
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+2 speed 200% +0ft noAction=false noReaction=false noMove=false mage=15 conc=- turn=idle
+
+ArmorWorn -> callback
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Pensantus spell:haste kind=spell conc=false dur=rounds ends=r6/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"kind": "ac_bonus", "value": 2}, {"kind": "speed_multiplier", "value": 200}, {"abilities": ["dex"], "kind": "save_advantage"}, {"allowed": ["attack", "dash", "disengage", "hide", "use-an-object"], "kind": "extra_action", "max_weapon_attacks": 1}] started=r1
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+2 speed 200% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+
+no session open: ArmorWorn -> callback
+spell:bless kind=spell dur=rounds left=60 mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] conds=[] visible=true
+spell:haste kind=spell dur=rounds left=30 mods=[{"kind": "ac_bonus", "value": 2}, {"kind": "speed_multiplier", "value": 200}, {"abilities": ["dex"], "kind": "save_advantage"}, {"allowed": ["attack", "dash", "disengage", "hide", "use-an-object"], "kind": "extra_action", "max_weapon_attacks": 1}] conds=[] visible=true
+
