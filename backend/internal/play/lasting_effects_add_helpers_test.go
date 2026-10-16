@@ -50,10 +50,8 @@ func wantRefusal(t *testing.T, call string, err error, code connect.Code, msg st
 	}
 }
 
-var (
-	uuidText = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-	atText   = regexp.MustCompile(`"at":"[^"]*",\s*`)
-)
+// atText finds a timestamp field; uuidText is shared with the undo snapshot tests.
+var atText = regexp.MustCompile(`"at":"[^"]*",\s*`)
 
 // plain writes the text without what changes from one run to the next: the ids the party
 // knows are named, any other id is numbered by its first appearance, and the timestamps go.
