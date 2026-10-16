@@ -1,0 +1,11 @@
+## bless on Toren
+<char:toren> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+## bless again on Toren and Pensantus
+<char:pens> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+## mage armor on Toren
+<char:pens> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:mage-armor kind=spell conc=false dur=rounds left=28800 visible=true audience=all label=- caster=<char:pens> conds=[]
+## the events
+

@@ -1,0 +1,53 @@
+## before
+<char:pens> condition:blinded kind=master conc=false dur=rounds left=61 visible=true audience=owner label=Cegueira caster=- conds=[condition:blinded]
+<char:bri> condition:charmed kind=master conc=false dur=rounds left=1 visible=true audience=owner label=- caster=- conds=[condition:charmed]
+<char:pens> condition:deafened kind=master conc=false dur=rounds left=7200 visible=true audience=owner label=- caster=- conds=[condition:deafened]
+<char:toren> condition:poisoned kind=master conc=false dur=until_dismissed left=- visible=false audience=all label=- caster=- conds=[condition:poisoned]
+<char:bri> condition:prone kind=master conc=false dur=rounds left=3661 visible=true audience=all label=No chão caster=- conds=[condition:prone]
+<char:pens> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:enhance-ability kind=spell conc=false dur=rounds left=3600 visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:guidance kind=spell conc=false dur=rounds left=60 visible=true audience=owner label=- caster=- conds=[]
+<char:bri> spell:heroism kind=spell conc=false dur=rounds left=120 visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:mage-armor kind=spell conc=false dur=rounds left=28800 visible=true audience=all label=- caster=<char:pens> conds=[]
+## after 1 seconds: rows
+<char:pens> condition:blinded kind=master conc=false dur=rounds left=60 visible=true audience=owner label=Cegueira caster=- conds=[condition:blinded]
+<char:pens> condition:deafened kind=master conc=false dur=rounds left=7199 visible=true audience=owner label=- caster=- conds=[condition:deafened]
+<char:toren> condition:poisoned kind=master conc=false dur=until_dismissed left=- visible=false audience=all label=- caster=- conds=[condition:poisoned]
+<char:bri> condition:prone kind=master conc=false dur=rounds left=3660 visible=true audience=all label=No chão caster=- conds=[condition:prone]
+<char:pens> spell:bless kind=spell conc=true dur=rounds left=59 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:bless kind=spell conc=true dur=rounds left=59 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:enhance-ability kind=spell conc=false dur=rounds left=3599 visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:guidance kind=spell conc=false dur=rounds left=59 visible=true audience=owner label=- caster=- conds=[]
+<char:bri> spell:heroism kind=spell conc=false dur=rounds left=119 visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:mage-armor kind=spell conc=false dur=rounds left=28799 visible=true audience=all label=- caster=<char:pens> conds=[]
+## after 1 seconds: Brisa
+Brisa has 24 hit points and 6 temporary
+## after 60 seconds: rows
+<char:pens> condition:deafened kind=master conc=false dur=rounds left=7139 visible=true audience=owner label=- caster=- conds=[condition:deafened]
+<char:toren> condition:poisoned kind=master conc=false dur=until_dismissed left=- visible=false audience=all label=- caster=- conds=[condition:poisoned]
+<char:bri> condition:prone kind=master conc=false dur=rounds left=3600 visible=true audience=all label=No chão caster=- conds=[condition:prone]
+<char:toren> spell:enhance-ability kind=spell conc=false dur=rounds left=3539 visible=true audience=owner label=- caster=- conds=[]
+<char:bri> spell:heroism kind=spell conc=false dur=rounds left=59 visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:mage-armor kind=spell conc=false dur=rounds left=28739 visible=true audience=all label=- caster=<char:pens> conds=[]
+## after 60 seconds: Brisa
+Brisa has 24 hit points and 6 temporary
+## after 59 seconds: rows
+<char:pens> condition:deafened kind=master conc=false dur=rounds left=7080 visible=true audience=owner label=- caster=- conds=[condition:deafened]
+<char:toren> condition:poisoned kind=master conc=false dur=until_dismissed left=- visible=false audience=all label=- caster=- conds=[condition:poisoned]
+<char:bri> condition:prone kind=master conc=false dur=rounds left=3541 visible=true audience=all label=No chão caster=- conds=[condition:prone]
+<char:toren> spell:enhance-ability kind=spell conc=false dur=rounds left=3480 visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:mage-armor kind=spell conc=false dur=rounds left=28680 visible=true audience=all label=- caster=<char:pens> conds=[]
+## after 59 seconds: Brisa
+Brisa has 24 hit points and 0 temporary
+## casts
+spell:bless OUTSIDE_CAST_STATUS_ACTIVE
+spell:mage-armor OUTSIDE_CAST_STATUS_ACTIVE
+log: spell:mage-armor OUTSIDE_CAST_STATUS_ACTIVE
+spell:bless OUTSIDE_CAST_STATUS_ACTIVE
+## after the long rest: rows
+<char:toren> condition:poisoned kind=master conc=false dur=until_dismissed left=- visible=false audience=all label=- caster=- conds=[condition:poisoned]

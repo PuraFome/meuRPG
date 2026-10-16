@@ -1,0 +1,81 @@
+## a player
+refused permission_denied: only the campaign's master can do this
+## a bad key
+refused invalid_argument: idempotency_key must be a UUID
+## a scope unspecified
+refused invalid_argument: scope must be THIS or CONCENTRATION_GROUP
+## a scope that is not one
+refused invalid_argument: scope must be THIS or CONCENTRATION_GROUP
+## a bad combat id
+refused not_found: encounter not found
+## a bad effect id
+refused not_found: effect not found
+## an effect that is not there
+refused not_found: effect not found
+## a combat that is not there
+refused not_found: encounter not found
+## after the refusals: rows
+Brisa condition:prone kind=master conc=false dur=until_dismissed ends=r-/-/- visible=true audience=all label=- caster=-
+Brisa spell:bless kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+Goblin spell:hold-person kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=all label=- caster=Brisa
+Toren spell:bless kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+## after the refusals: events
+
+## loose: no condition in the id
+refused not_found: effect not found
+## loose: a condition Toren does not have
+refused not_found: effect not found
+## loose: a condition an effect gives
+refused not_found: effect not found
+## loose: a combatant that is not there
+refused not_found: effect not found
+## loose: nothing after the prefix
+refused not_found: effect not found
+## loose: a combatant that is not an id
+refused not_found: effect not found
+## a loose condition off Toren
+{
+ "ended": 1
+}
+## a loose condition off Pensantus
+{
+ "ended": 1
+}
+## the same request again
+{}
+## after the loose conditions: rows
+Brisa condition:prone kind=master conc=false dur=until_dismissed ends=r-/-/- visible=true audience=all label=- caster=-
+Brisa spell:bless kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+Goblin spell:hold-person kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=all label=- caster=Brisa
+Toren spell:bless kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+## after the loose conditions: events
+conditions_set by <user:master> {"combatant_id":"<Toren>","cond_set":true,"conditions":["condition:blinded","condition:frightened"],"round":1}
+conditions_set by <user:master> {"combatant_id":"<Pensantus>","cond_set":true,"conditions":["condition:blinded","condition:frightened"],"round":1}
+lasting_effect_ended by <user:master> {"combatant_id":"<Toren>","cond_before":["condition:blinded","condition:frightened"],"cond_set":true,"conditions":["condition:blinded"],"round":1,"secret":true}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","cond_before":["condition:blinded","condition:frightened"],"cond_set":true,"conditions":["condition:frightened"],"round":1,"secret":true}
+## a condition of the master
+{
+ "ended": 1
+}
+## bless on two targets, THIS
+{
+ "ended": 2
+}
+## hold person by concentration group
+{
+ "ended": 1
+}
+## after the effects: rows
+
+## after the effects: events
+conditions_set by <user:master> {"combatant_id":"<Toren>","cond_set":true,"conditions":["condition:blinded","condition:frightened"],"round":1}
+conditions_set by <user:master> {"combatant_id":"<Pensantus>","cond_set":true,"conditions":["condition:blinded","condition:frightened"],"round":1}
+lasting_effect_ended by <user:master> {"combatant_id":"<Toren>","cond_before":["condition:blinded","condition:frightened"],"cond_set":true,"conditions":["condition:blinded"],"round":1,"secret":true}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","cond_before":["condition:blinded","condition:frightened"],"cond_set":true,"conditions":["condition:frightened"],"round":1,"secret":true}
+lasting_effect_ended by <user:master> {"lasting":{"change":"ended","effects":["<fx:condition:prone@Brisa>"],"key":"condition:prone","reason":"ended_by_master","targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}
+lasting_effect_ended by <user:master> {"lasting":{"change":"ended","effects":["<fx:condition:prone@Brisa>"],"key":"condition:prone","reason":"ended_by_master"},"round":1,"target_id":"<Brisa>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:bless@Brisa+Toren>","<fx:spell:bless@Brisa+Toren>"],"key":"spell:bless","owner_only":true,"reason":"ended_by_master","targets":["<Brisa>","<Toren>"]},"round":1,"target_id":"<one of the targets>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:bless@Brisa+Toren>"],"key":"spell:bless","reason":"ended_by_master"},"round":1,"target_id":"<a row of the casting>"}
+conditions_set by <user:master> {"combatant_id":"<Brisa>","conc_before":"spell:hold-person","conc_ended":"spell:hold-person","round":1}
+lasting_effect_ended by <user:master> {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"concentration","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"concentration"},"round":1,"target_id":"<Goblin>"}

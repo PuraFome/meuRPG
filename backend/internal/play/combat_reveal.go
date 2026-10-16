@@ -64,44 +64,21 @@ func revealDecision(rule tablerules.HiddenAreaHitRule, choice *bool) (reveal, as
 // reveals them, keeps them or opens the master's question. It runs inside the cast's
 // transaction, before the cast's own event is written.
 func (s *Service) settleHidden(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, plan areaPlan, spellKey string, choice *bool, made *actionEvent) error {
-	var hit []string
-	for i := range made.Hits {
-		if j := slices.IndexFunc(plan.targets, func(t areaTarget) bool { return t.who.ID == made.Hits[i].Target }); j >= 0 && plan.targets[j].who.Hidden {
-			made.Hits[i].HiddenAtCast = true
-			hit = append(hit, made.Hits[i].Target)
-		}
-	}
+	hit := markHiddenHits(plan, made)
 	if !v.master {
 		choice = nil // a player never chooses (a request that tried was refused at its start)
 	}
 	reveal, ask := revealDecision(c.rules.HiddenAreaHits, choice)
-	if len(hit) == 0 {
-		// Under "Perguntar a cada vez" a player's area spell holds the turn whether or
-		// not it hit a hidden creature: a wait only when one was there would tell the
-		// player that one was (RN-10). The master answers with one tap. His own cast
-		// has nothing to ask him.
-		if !ask || v.master {
-			return nil
-		}
+	// Under "Perguntar a cada vez" a player's area spell holds the turn whether or
+	// not it hit a hidden creature: a wait only when one was there would tell the
+	// player that one was (RN-10). The master answers with one tap. His own cast
+	// has nothing to ask him.
+	if len(hit) == 0 && (!ask || v.master) {
+		return nil
 	}
 	switch {
 	case ask:
-		seq, err := c.q.NextHiddenRevealSeq(ctx, c.enc.ID)
-		if err != nil {
-			return fmt.Errorf("number the hidden reveal: %w", err)
-		}
-		flat := make([]int32, 0, 2*len(plan.squares))
-		for _, sq := range plan.squares {
-			flat = append(flat, clamp32(sq.Col, 0, 1<<30), clamp32(sq.Row, 0, 1<<30))
-		}
-		q, err := c.q.InsertHiddenReveal(ctx, playdb.InsertHiddenRevealParams{
-			EncounterID: c.enc.ID, CasterID: made.Actor, SpellKey: spellKey, CombatantIds: append([]string{}, hit...),
-			OriginCol: clamp32(plan.origin.Col, 0, 1<<30), OriginRow: clamp32(plan.origin.Row, 0, 1<<30), Squares: flat, Seq: seq, CreatedAt: c.now,
-		})
-		if err != nil {
-			return fmt.Errorf("open the hidden reveal: %w", err)
-		}
-		made.PendingReveal = q.ID
+		return s.openRevealQuestion(ctx, c, plan, spellKey, hit, made)
 	case reveal:
 		lines, err := s.revealCombatants(ctx, c, m, hit)
 		if err != nil {
@@ -110,6 +87,41 @@ func (s *Service) settleHidden(ctx context.Context, c *combatTx, m authz.Members
 		// The cast's undo hides them again and takes these lines back with it.
 		made.Revealed, made.RevealLines = hit, lines
 	}
+	return nil
+}
+
+// markHiddenHits marks, in the cast's event, the hits on creatures that were hidden when it
+// was cast, and returns their ids.
+func markHiddenHits(plan areaPlan, made *actionEvent) []string {
+	var hit []string
+	for i := range made.Hits {
+		if j := slices.IndexFunc(plan.targets, func(t areaTarget) bool { return t.who.ID == made.Hits[i].Target }); j >= 0 && plan.targets[j].who.Hidden {
+			made.Hits[i].HiddenAtCast = true
+			hit = append(hit, made.Hits[i].Target)
+		}
+	}
+	return hit
+}
+
+// openRevealQuestion opens the master's question about the hidden creatures the cast hit,
+// with the area of the cast, and holds the turn until he answers.
+func (s *Service) openRevealQuestion(ctx context.Context, c *combatTx, plan areaPlan, spellKey string, hit []string, made *actionEvent) error {
+	seq, err := c.q.NextHiddenRevealSeq(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("number the hidden reveal: %w", err)
+	}
+	flat := make([]int32, 0, 2*len(plan.squares))
+	for _, sq := range plan.squares {
+		flat = append(flat, clamp32(sq.Col, 0, 1<<30), clamp32(sq.Row, 0, 1<<30))
+	}
+	q, err := c.q.InsertHiddenReveal(ctx, playdb.InsertHiddenRevealParams{
+		EncounterID: c.enc.ID, CasterID: made.Actor, SpellKey: spellKey, CombatantIds: append([]string{}, hit...),
+		OriginCol: clamp32(plan.origin.Col, 0, 1<<30), OriginRow: clamp32(plan.origin.Row, 0, 1<<30), Squares: flat, Seq: seq, CreatedAt: c.now,
+	})
+	if err != nil {
+		return fmt.Errorf("open the hidden reveal: %w", err)
+	}
+	made.PendingReveal = q.ID
 	return nil
 }
 
@@ -157,93 +169,133 @@ func (s *Service) mustNotHold(ctx context.Context, c *combatTx) error {
 	return nil
 }
 
+// revealCall is what ResolveHiddenReveal reads from its request, checked.
+type revealCall struct {
+	m           authz.Membership
+	key         string
+	encounterID string
+	askID       string
+	// answer is the state the question takes; other is the state that refuses it.
+	answer, other string
+}
+
 // ResolveHiddenReveal implements playv1connect.CombatServiceHandler.
 func (s *Service) ResolveHiddenReveal(
 	ctx context.Context,
 	req *connect.Request[playv1.ResolveHiddenRevealRequest],
 ) (*connect.Response[playv1.ResolveHiddenRevealResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	call, err := readRevealRequest(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	// Before the ids are looked at: a player gets this for any id, one that names an
-	// open question and one that does not, or the answer would say whether a
-	// player's spell hit a hidden creature (RN-10).
-	if m.Role != authz.RoleMaster {
-		return nil, errOnlyMasterReveals()
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	askID, err := uuid.Parse(req.Msg.GetPendingRevealId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("pending_reveal_id must be a UUID"))
-	}
-	answer, other := hiddenRevealKept, hiddenRevealRevealed
-	if req.Msg.GetReveal() {
-		answer, other = hiddenRevealRevealed, hiddenRevealKept
-	}
-
 	var revealed []string
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHiddenRevealAnswered, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventHiddenRevealAnswered, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
 		revealed = nil
-		q, err := c.q.GetHiddenReveal(ctx, playdb.GetHiddenRevealParams{EncounterID: c.enc.ID, ID: askID.String()})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("hidden reveal not found"))
-			}
-			return nil, fmt.Errorf("find the hidden reveal: %w", err)
-		}
-		if q.State == other {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the question was answered the other way already"))
-		}
-		made := actionEvent{Round: c.enc.Round, Actor: q.CasterID, PendingReveal: q.ID, NowHidden: answer == hiddenRevealKept}
-		if q.State == answer { // the same answer again: nothing changes
-			return made, nil
-		}
-		pending, err := c.q.ListPendingHiddenReveals(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the hidden reveals: %w", err)
-		}
-		if len(pending) == 0 || pending[0].ID != q.ID {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("answer the oldest question first"))
-		}
-		if answer == hiddenRevealRevealed {
-			if _, err := s.revealCombatants(ctx, c, m, q.CombatantIds); err != nil {
-				return nil, err
-			}
-			revealed = q.CombatantIds
-			made.Revealed = q.CombatantIds
-		}
-		if _, err := c.q.AnswerHiddenReveal(ctx, playdb.AnswerHiddenRevealParams{EncounterID: c.enc.ID, ID: q.ID, State: answer, AnsweredAt: &c.now}); err != nil {
-			return nil, fmt.Errorf("answer the hidden reveal: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		return made, nil
+		return s.revealWrite(ctx, c, call, &revealed)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer a hidden reveal", err)
 	}
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		if len(revealed) > 0 {
-			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
-			if anyInTurn(d, revealed) {
-				s.publishTurnChanged(ctx, m.CampaignID, d)
-			}
-		}
+	out, err := s.finish(ctx, call.m, res, func(ctx context.Context, d *encounterData) {
+		s.publishReveal(ctx, call.m.CampaignID, d, revealed)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.ResolveHiddenRevealResponse{Encounter: out}), nil
+}
+
+// readRevealRequest reads the request in the order the answers are given: who may call, the
+// master only, the key, the encounter, then the question.
+func readRevealRequest(ctx context.Context, req *playv1.ResolveHiddenRevealRequest) (revealCall, error) {
+	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
+	if err != nil {
+		return revealCall{}, err
+	}
+	// Before the ids are looked at: a player gets this for any id, one that names an
+	// open question and one that does not, or the answer would say whether a
+	// player's spell hit a hidden creature (RN-10).
+	if m.Role != authz.RoleMaster {
+		return revealCall{}, errOnlyMasterReveals()
+	}
+	call := revealCall{m: m, answer: hiddenRevealKept, other: hiddenRevealRevealed}
+	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
+		return revealCall{}, err
+	}
+	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+		return revealCall{}, err
+	}
+	askID, err := uuid.Parse(req.GetPendingRevealId())
+	if err != nil {
+		return revealCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("pending_reveal_id must be a UUID"))
+	}
+	call.askID = askID.String()
+	if req.GetReveal() {
+		call.answer, call.other = hiddenRevealRevealed, hiddenRevealKept
+	}
+	return call, nil
+}
+
+// revealWrite is the transaction of ResolveHiddenReveal: the question must be the oldest
+// open one, and the answer reveals the creatures or keeps them hidden. The same answer again
+// changes nothing.
+func (s *Service) revealWrite(ctx context.Context, c *combatTx, call revealCall, revealed *[]string) (any, error) {
+	q, err := c.q.GetHiddenReveal(ctx, playdb.GetHiddenRevealParams{EncounterID: c.enc.ID, ID: call.askID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("hidden reveal not found"))
+		}
+		return nil, fmt.Errorf("find the hidden reveal: %w", err)
+	}
+	if q.State == call.other {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the question was answered the other way already"))
+	}
+	made := actionEvent{Round: c.enc.Round, Actor: q.CasterID, PendingReveal: q.ID, NowHidden: call.answer == hiddenRevealKept}
+	if q.State == call.answer { // the same answer again: nothing changes
+		return made, nil
+	}
+	if err := mustBeTheOldestQuestion(ctx, c, q); err != nil {
+		return nil, err
+	}
+	if call.answer == hiddenRevealRevealed {
+		if _, err := s.revealCombatants(ctx, c, call.m, q.CombatantIds); err != nil {
+			return nil, err
+		}
+		*revealed = q.CombatantIds
+		made.Revealed = q.CombatantIds
+	}
+	if _, err := c.q.AnswerHiddenReveal(ctx, playdb.AnswerHiddenRevealParams{EncounterID: c.enc.ID, ID: q.ID, State: call.answer, AnsweredAt: &c.now}); err != nil {
+		return nil, fmt.Errorf("answer the hidden reveal: %w", err)
+	}
+	if err := touch(ctx, c); err != nil {
+		return nil, err
+	}
+	return made, nil
+}
+
+// mustBeTheOldestQuestion refuses an answer to a question that is not the oldest one open.
+func mustBeTheOldestQuestion(ctx context.Context, c *combatTx, q playdb.HiddenReveal) error {
+	pending, err := c.q.ListPendingHiddenReveals(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the hidden reveals: %w", err)
+	}
+	if len(pending) == 0 || pending[0].ID != q.ID {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("answer the oldest question first"))
+	}
+	return nil
+}
+
+// publishReveal tells the streams a question was answered, and, when creatures appeared, the
+// log and the turn.
+func (s *Service) publishReveal(ctx context.Context, campaignID string, d *encounterData, revealed []string) {
+	s.publishEncounterChanged(ctx, campaignID, d.enc)
+	if len(revealed) == 0 {
+		return
+	}
+	s.publishLogChanged(ctx, campaignID, d.enc.ID, true)
+	if anyInTurn(d, revealed) {
+		s.publishTurnChanged(ctx, campaignID, d)
+	}
 }
 
 // anyInTurn says whether one of the combatants is in the group on turn.

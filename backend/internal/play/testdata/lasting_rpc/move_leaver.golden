@@ -1,0 +1,14 @@
+## in the setup: rows
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Pensantus spell:guidance kind=spell conc=false dur=rounds ends=r9/Pensantus/start_of_turn visible=true audience=owner label=- caster=-
+Toren spell:bane kind=spell conc=false dur=until_start_of_turn_of ends=r1/Toren/start_of_turn visible=true audience=all label=- caster=-
+Toren spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Toren spell:faerie-fire kind=spell conc=false dur=rounds ends=r21/Brisa/start_of_turn visible=true audience=all label=- caster=Brisa
+Toren spell:longstrider kind=spell conc=false dur=long_rest ends=r-/-/- visible=true audience=owner label=- caster=-
+## in the setup: characters
+
+## Toren left: rows
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Pensantus spell:guidance kind=spell conc=false dur=rounds ends=r9/Pensantus/start_of_turn visible=true audience=owner label=- caster=-
+## Toren left: characters
+

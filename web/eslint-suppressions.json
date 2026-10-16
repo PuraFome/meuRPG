@@ -263,9 +263,6 @@
   "src/app/pages/bestiary/create-npc-sheet/create-npc-sheet.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/pages/campaign-detail/bestiary-panel/bestiary-panel.ts": {
@@ -1356,12 +1353,6 @@
     },
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/shared/start-combat/start-combat-saved.spec.ts": {
@@ -1973,9 +1964,6 @@
   "src/app/pages/puzzles/puzzle-form/puzzle-form.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/pages/server-unavailable/server-unavailable.ts": {
@@ -2104,9 +2092,6 @@
   },
   "src/app/shared/creatures/stat-block.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "complexity": {
       "count": 1
     }
   },
@@ -2265,14 +2250,6 @@
       "count": 10
     }
   },
-  "src/app/shared/image-generate/image-generate-dialog.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/shared/image-generate/npc-picks.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
@@ -2378,9 +2355,6 @@
   "src/app/shared/markdown/markdown.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 3
-    },
-    "complexity": {
-      "count": 3
     }
   },
   "src/app/shared/monsters/put-sheet/put-sheet.ts": {
@@ -2467,11 +2441,6 @@
       "count": 1
     }
   },
-  "src/app/shared/spell-details/spell-details-map.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/shared/spell-details/spell-details.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2512,9 +2481,6 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "complexity": {
       "count": 1
     }
   },

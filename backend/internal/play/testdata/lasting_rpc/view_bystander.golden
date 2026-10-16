@@ -1,0 +1,102 @@
+[
+ {
+  "label": "Toren",
+  "labels": [
+   "\u003cfx:effect:web-fire@Toren\u003e = Teia em chamas"
+  ]
+ },
+ {
+  "label": "Pensantus"
+ },
+ {
+  "cards": [
+   {
+    "clockTextPt": "Até o fim do turno de Goblin, na rodada 1.",
+    "durationKind": "EFFECT_DURATION_KIND_UNTIL_END_OF_TURN_OF",
+    "encounterId": "\u003cuuid\u003e",
+    "endsAt": {
+     "combatantId": "\u003cGoblin\u003e",
+     "phase": "EFFECT_PHASE_END",
+     "round": 1
+    },
+    "groupId": "\u003cfx:spell:resistance@Brisa\u003e",
+    "id": "\u003cfx:spell:resistance@Brisa\u003e",
+    "modifiers": [
+     {
+      "appliesTo": [
+       "EFFECT_ROLL_KIND_SAVE"
+      ],
+      "die": 4,
+      "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
+      "sign": 1
+     }
+    ],
+    "originPt": "Do mestre",
+    "roundsLeft": 0,
+    "sourceKey": "spell:resistance",
+    "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+    "sourceNamePt": "Resistência",
+    "tagsPt": [
+     "+1d4 em um teste de resistência, uma vez"
+    ],
+    "targetIds": [
+     "\u003cBrisa\u003e"
+    ],
+    "targetLabels": [
+     "Brisa"
+    ]
+   },
+   {
+    "casterId": "\u003cToren\u003e",
+    "clockTextPt": "Dura enquanto Toren se concentrar.",
+    "concentration": true,
+    "durationKind": "EFFECT_DURATION_KIND_CONCENTRATION",
+    "encounterId": "\u003cuuid\u003e",
+    "groupId": "\u003cfx:spell:heroism@Brisa\u003e",
+    "id": "\u003cfx:spell:heroism@Brisa\u003e",
+    "modifiers": [
+     {},
+     {}
+    ],
+    "originPt": "De Toren",
+    "sourceKey": "spell:heroism",
+    "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+    "sourceNamePt": "Heroísmo",
+    "tagsPt": [
+     "Imune a Amedrontado",
+     "PV temporários a cada turno seu"
+    ],
+    "targetIds": [
+     "\u003cBrisa\u003e"
+    ],
+    "targetLabels": [
+     "Brisa"
+    ]
+   }
+  ],
+  "conditions": [
+   "condition:prone"
+  ],
+  "label": "Brisa",
+  "labels": [
+   "\u003cfx:condition:prone@Brisa\u003e = No chão"
+  ],
+  "names": [
+   "Derrubado"
+  ]
+ },
+ {
+  "conditions": [
+   "condition:blinded",
+   "condition:paralyzed"
+  ],
+  "label": "Goblin",
+  "labels": [
+   "\u003cfx:spell:hold-person@Goblin\u003e = Paralisado"
+  ],
+  "names": [
+   "Cego",
+   "Paralisado"
+  ]
+ }
+]

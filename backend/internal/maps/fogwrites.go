@@ -127,29 +127,33 @@ func (s *Service) publishTokenWritten(ctx context.Context, campaignID string, ma
 	seen := playersSee(mapRow.ID, mapRow.RevealedAt, current)
 	if !fogged(mapRow) {
 		players := seen && ((before != nil && !before.Hidden) || (after != nil && !after.Hidden))
-		if moved {
-			s.publishTokenMoved(campaignID, *token, players)
-		} else {
-			s.publishMapChanged(campaignID, mapRow.ID, players)
-		}
+		s.publishTokenEvent(campaignID, mapRow.ID, *token, moved, players)
 		return
 	}
 	// A player's character is never hidden from the party on a fog map.
 	if player {
-		if moved {
-			s.publishTokenMoved(campaignID, *token, seen)
-		} else {
-			s.publishMapChanged(campaignID, mapRow.ID, seen)
-		}
+		s.publishTokenEvent(campaignID, mapRow.ID, *token, moved, seen)
 		s.refreshVision(ctx, campaignID, mapRow.ID)
 		return
 	}
 	// The master hears as ever. The players hear only through the view.
+	s.publishTokenEvent(campaignID, mapRow.ID, *token, moved, false)
+	s.refreshAfterNPCToken(ctx, campaignID, mapRow, before, after)
+}
+
+// publishTokenEvent tells the watching members of a token written: the stream's
+// `token_moved` for a plain move, else a `map_changed`.
+func (s *Service) publishTokenEvent(campaignID, mapID string, token mapsdb.MapToken, moved, players bool) {
 	if moved {
-		s.publishTokenMoved(campaignID, *token, false)
-	} else {
-		s.publishMapChanged(campaignID, mapRow.ID, false)
+		s.publishTokenMoved(campaignID, token, players)
+		return
 	}
+	s.publishMapChanged(campaignID, mapID, players)
+}
+
+// refreshAfterNPCToken works out again what the players see after an NPC's token was
+// written on a fog map, and tells the ones who see a square the token was on or is on.
+func (s *Service) refreshAfterNPCToken(ctx context.Context, campaignID string, mapRow mapsdb.Map, before, after *mapsdb.MapToken) {
 	// A token the master keeps hidden is no news to a player, wherever it is. It may
 	// carry a light, though, and that changes what they see: the view says so.
 	if (before == nil || before.Hidden) && (after == nil || after.Hidden) {

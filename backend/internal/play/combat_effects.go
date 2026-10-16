@@ -51,47 +51,16 @@ func (s *Service) EndCombatEffect(
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
+	key, encID, combID, err := readEndCombatEffect(req.Msg)
 	if err != nil {
 		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	if req.Msg.GetEffect() != playv1.CombatEffect_COMBAT_EFFECT_AID {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("effect must be AID: the other effects end by themselves"))
 	}
 	v := viewerOf(m)
 
 	var vitals *playv1.CharacterVitals
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventCombatEffectEnded, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil // a retry of the transaction starts over
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		target, err := findCombatant(cs, combID, v)
-		if err != nil {
-			return nil, err
-		}
-		end, after, err := s.endAid(ctx, c, target)
-		if err != nil || end == nil {
-			return nil, err // nothing to end: no event
-		}
-		vitals = after
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &target.CharacterID
-		return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, EffectEnd: end}, nil
+		return s.endAidTx(ctx, c, v, combID, &vitals)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end an effect", err)
@@ -108,6 +77,50 @@ func (s *Service) EndCombatEffect(
 		s.publishVitals(m.CampaignID, vitals)
 	}
 	return connect.NewResponse(&playv1.EndCombatEffectResponse{Encounter: out}), nil
+}
+
+// readEndCombatEffect reads the key, the combat and the combatant, and refuses an effect that is
+// not Ajuda.
+func readEndCombatEffect(msg *playv1.EndCombatEffectRequest) (key, encID, combID string, err error) {
+	if key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
+		return "", "", "", err
+	}
+	if encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+		return "", "", "", err
+	}
+	if combID, err = parseCombatID(msg.GetCombatantId(), "combatant"); err != nil {
+		return "", "", "", err
+	}
+	if msg.GetEffect() != playv1.CombatEffect_COMBAT_EFFECT_AID {
+		return "", "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("effect must be AID: the other effects end by themselves"))
+	}
+	return key, encID, combID, nil
+}
+
+// endAidTx is the change EndCombatEffect makes inside the combat's transaction: find the
+// combatant, take Ajuda off it, and answer the event; none when there was nothing to end.
+func (s *Service) endAidTx(ctx context.Context, c *combatTx, v combatViewer, combID string, vitals **playv1.CharacterVitals) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	target, err := findCombatant(cs, combID, v)
+	if err != nil {
+		return nil, err
+	}
+	end, after, err := s.endAid(ctx, c, target)
+	if err != nil || end == nil {
+		return nil, err // nothing to end: no event
+	}
+	*vitals = after
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &target.CharacterID
+	return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, EffectEnd: end}, nil
 }
 
 // endAid takes Ajuda's bonus off a combatant: the maximum falls back and the

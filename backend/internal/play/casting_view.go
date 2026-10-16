@@ -266,26 +266,13 @@ func (s *Service) ListSpellCasts(
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.queries.GetOpenGameSession(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errNoOpenSession()
-	}
+	session, err := s.openSessionOf(ctx, m.CampaignID)
 	if err != nil {
-		return nil, s.dbError(ctx, "find the open session", err)
+		return nil, err
 	}
-	var only string
-	if raw := req.Msg.GetCharacterId(); raw != "" {
-		id, ok := parseID(raw)
-		if !ok {
-			return nil, errCharacterNotFound()
-		}
-		only = id
-		if m.Role != authz.RoleMaster {
-			var err error
-			if only, err = s.playerMaySee(ctx, m, session.ID, id); err != nil {
-				return nil, err
-			}
-		}
+	only, err := s.castsAbout(ctx, m, session.ID, req.Msg.GetCharacterId())
+	if err != nil {
+		return nil, err
 	}
 	live, err := s.queries.ListLiveSpellCasts(ctx, m.CampaignID)
 	if err != nil {
@@ -299,21 +286,55 @@ func (s *Service) ListSpellCasts(
 	if err != nil {
 		return nil, s.dbError(ctx, "list the casts", err)
 	}
+	return connect.NewResponse(lens.listing(only, live, logged)), nil
+}
+
+// openSessionOf is the campaign's open session, or the error that there is none.
+func (s *Service) openSessionOf(ctx context.Context, campaignID string) (playdb.GameSession, error) {
+	session, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return playdb.GameSession{}, errNoOpenSession()
+	}
+	if err != nil {
+		return playdb.GameSession{}, s.dbError(ctx, "find the open session", err)
+	}
+	return session, nil
+}
+
+// castsAbout is the character the list is limited to: "" for none. A player names an NPC by its place on
+// the stage and may ask only about the characters they may see.
+func (s *Service) castsAbout(ctx context.Context, m authz.Membership, sessionID, raw string) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	id, ok := parseID(raw)
+	if !ok {
+		return "", errCharacterNotFound()
+	}
+	if m.Role == authz.RoleMaster {
+		return id, nil
+	}
+	return s.playerMaySee(ctx, m, sessionID, id)
+}
+
+// listing is what the viewer reads of the live casts and the log, limited to the casts that are about
+// the character (it cast them or was a target) when only is set.
+func (l castLens) listing(only string, live, logged []playdb.SpellCast) *playv1.ListSpellCastsResponse {
 	out := &playv1.ListSpellCastsResponse{}
 	about := func(r playdb.SpellCast) bool {
-		return lens.sees(r) && (only == "" || r.CasterID == only || slices.ContainsFunc(castTargetsOf(r), func(t castTarget) bool { return t.ID == only }))
+		return l.sees(r) && (only == "" || r.CasterID == only || slices.ContainsFunc(castTargetsOf(r), func(t castTarget) bool { return t.ID == only }))
 	}
 	for _, r := range live {
 		if about(r) {
-			out.Active = append(out.Active, lens.view(r))
+			out.Active = append(out.Active, l.view(r))
 		}
 	}
 	for _, r := range logged {
 		if about(r) {
-			out.Log = append(out.Log, lens.view(r))
+			out.Log = append(out.Log, l.view(r))
 		}
 	}
-	return connect.NewResponse(out), nil
+	return out
 }
 
 // playerMaySee checks a player may read about the character and returns its character ID:
@@ -346,18 +367,14 @@ func (s *Service) GetCastOptions(
 	if err != nil {
 		return nil, err
 	}
-	session, err := s.queries.GetOpenGameSession(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errNoOpenSession()
-	}
+	session, err := s.openSessionOf(ctx, m.CampaignID)
 	if err != nil {
-		return nil, s.dbError(ctx, "find the open session", err)
+		return nil, err
 	}
 	id, ok := parseID(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
-	master := m.Role == authz.RoleMaster
 	chars, err := s.roster.CombatCharacters(ctx, nil, m.CampaignID, []string{id})
 	if err != nil {
 		return nil, err
@@ -366,41 +383,56 @@ func (s *Service) GetCastOptions(
 		return nil, errCharacterNotFound()
 	}
 	caster := chars[0]
-	switch {
-	case caster.Player && !master && caster.PlayerUserID != m.UserID:
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may cast for it"))
-	case !caster.Player && !master:
-		return nil, errCharacterNotFound()
-	}
-	out := &playv1.GetCastOptionsResponse{}
-	if out.Spells, err = s.roster.CastingOptions(ctx, nil, m.CampaignID, id); err != nil {
+	if err := mayCastFor(caster, m); err != nil {
 		return nil, err
 	}
+	out := &playv1.GetCastOptionsResponse{}
+	if err := s.fillCastOptions(ctx, m, session, id, caster, out); err != nil {
+		return nil, err
+	}
+	if err := s.fillLiveCasts(ctx, m, id, out); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(out), nil
+}
+
+// fillCastOptions adds the spells the character can cast, whether it is in a combat or in a beast
+// form, and the targets it can pick with how far each spell reaches them.
+func (s *Service) fillCastOptions(ctx context.Context, m authz.Membership, session playdb.GameSession, id string, caster link.Character, out *playv1.GetCastOptionsResponse) error {
+	var err error
+	if out.Spells, err = s.roster.CastingOptions(ctx, nil, m.CampaignID, id); err != nil {
+		return err
+	}
 	if out.InCombat, err = s.inCombat(ctx, s.queries, session.ID, id); err != nil {
-		return nil, s.dbError(ctx, "find the combat", err)
+		return s.dbError(ctx, "find the combat", err)
 	}
 	if caster.Player {
 		v, err := s.vitals.GetVitals(ctx, m.CampaignID, id)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		out.WildShape = noSpellsIn(v, caster.CastsInBeastForm) != nil
 	}
 	if out.Targets, err = s.castTargetsFor(ctx, m, session, id); err != nil {
-		return nil, err
+		return err
 	}
 	for _, sp := range out.Spells {
 		if sp.Reach, err = s.reachOfTargets(ctx, m.CampaignID, sp, id, out.Targets); err != nil {
-			return nil, err
+			return err
 		}
 	}
+	return nil
+}
+
+// fillLiveCasts adds the casting the character is making and the concentration it holds.
+func (s *Service) fillLiveCasts(ctx context.Context, m authz.Membership, id string, out *playv1.GetCastOptionsResponse) error {
 	live, err := s.queries.ListLiveSpellCastsOfCaster(ctx, id)
 	if err != nil {
-		return nil, s.dbError(ctx, "list the caster's casts", err)
+		return s.dbError(ctx, "list the caster's casts", err)
 	}
 	lens, err := s.lensFor(ctx, m, live)
 	if err != nil {
-		return nil, s.dbError(ctx, "list the caster's casts", err)
+		return s.dbError(ctx, "list the caster's casts", err)
 	}
 	for _, r := range live {
 		switch {
@@ -410,7 +442,7 @@ func (s *Service) GetCastOptions(
 			out.Concentrating = lens.view(r)
 		}
 	}
-	return connect.NewResponse(out), nil
+	return nil
 }
 
 // castTargetsFor lists the characters a caller may pick as targets: the player characters of

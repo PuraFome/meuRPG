@@ -252,7 +252,7 @@ export class GalleryPage {
   protected async onLightboxAdjust(image: GalleryImage): Promise<void> {
     this.afterLightbox = null;
     this.viewingId.set(null);
-    const { openImageGenerate } = await import('../../shared/image-generate/image-generate-dialog');
+    const { openImageGenerate } = await import('../../shared/image-generate/open-image-generate');
     openImageGenerate(this.dialog, this.bottomSheet, {
       campaignId: this.campaignId(),
       origin: { kind: 'gallery' },

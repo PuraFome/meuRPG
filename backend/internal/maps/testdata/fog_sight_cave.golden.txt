@@ -1,0 +1,8 @@
+grid 24x16 group=false combat=false openPlan=false members=4
+stands brisa@(4,7) pens@(5,8) salvia@(3,8) toren@(6,7)
+extra 
+ana onMap=true revision=1897604761
+caio onMap=true revision=841235741
+bia onMap=true revision=1891073046
+dani onMap=true revision=1759227102
+master onMap=false revision=993905047

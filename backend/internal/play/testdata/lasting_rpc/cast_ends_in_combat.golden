@@ -1,0 +1,22 @@
+## in the combat: rows
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Toren spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Toren spell:mage-armor kind=spell conc=false dur=rounds ends=r4801/Pensantus/start_of_turn visible=true audience=all label=- caster=Pensantus
+## in the combat: armor
+Brisa base armor class -
+Goblin base armor class -
+Pensantus base armor class -
+Toren base armor class 15
+## bless abandoned: rows
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Toren spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Toren spell:mage-armor kind=spell conc=false dur=rounds ends=r4801/Pensantus/start_of_turn visible=true audience=all label=- caster=Pensantus
+## mage armor abandoned: rows
+Pensantus spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Toren spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Toren spell:mage-armor kind=spell conc=false dur=rounds ends=r4801/Pensantus/start_of_turn visible=true audience=all label=- caster=Pensantus
+## mage armor abandoned: armor
+Brisa base armor class -
+Goblin base armor class -
+Pensantus base armor class -
+Toren base armor class 15

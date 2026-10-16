@@ -30,6 +30,16 @@ export interface CreateNpcResult {
   readonly existed: boolean;
 }
 
+/** The NPC the server answered with; the sheet's attacks are the ones it really got. */
+function madeNpc(
+  made: Awaited<ReturnType<CreaturesClient['createNpc']>>,
+  name: string,
+): CreateNpcResult {
+  const sheet = made?.sheet?.content;
+  const attacks = sheet?.case === 'basic' ? sheet.value.attacks.map((a) => a.name) : [];
+  return { id: made?.id ?? '', name: made?.name ?? name, attacks, existed: false };
+}
+
 /** The longest name an NPC has (`CreateNpcFromCreature`: 1 to 80 characters, one line). */
 const NAME_MAX = 80;
 
@@ -142,9 +152,7 @@ export class CreateNpcSheet {
         this.role(),
         this.key,
       );
-      const sheet = made?.sheet?.content;
-      const attacks = sheet?.case === 'basic' ? sheet.value.attacks.map((a) => a.name) : [];
-      this.sheet.close({ id: made?.id ?? '', name: made?.name ?? name, attacks, existed: false });
+      this.sheet.close(madeNpc(made, name));
     } catch (err) {
       if (npcAlreadyMade(err)) {
         this.sheet.close({ id: '', name, attacks: [], existed: true });

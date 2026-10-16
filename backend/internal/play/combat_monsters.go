@@ -59,110 +59,147 @@ func (e *monstersEvent) sameAdd(o monstersEvent) bool {
 	return e.CreatureKey == o.CreatureKey && e.Count == o.Count && e.NameHash == o.NameHash && e.Rolled == o.Rolled && e.Hidden == o.Hidden
 }
 
+// addMonstersCall is what AddMonsters reads from its request and the database before its
+// transaction, checked.
+type addMonstersCall struct {
+	m           authz.Membership
+	key         string
+	encounterID string
+	count       int
+	rolled      bool
+	hidden      bool
+	creatureKey string
+	hp          link.MonsterHitPoints
+	name        string
+	// asked is what the event of the add keeps, to check a retry.
+	asked monstersEvent
+}
+
 // AddMonsters implements playv1connect.CombatServiceHandler.
 func (s *Service) AddMonsters(
 	ctx context.Context,
 	req *connect.Request[playv1.AddMonstersRequest],
 ) (*connect.Response[playv1.AddMonstersResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	call, err := s.readAddMonstersRequest(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	count := int(req.Msg.GetCount())
-	if count == 0 {
-		count = 1
-	}
-	if count < 1 || count > maxNPCCopies {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("count must be 1 to %d", maxNPCCopies))
-	}
-	var rolled bool
-	switch req.Msg.GetHitPoints() {
-	case playv1.MonsterHitPoints_MONSTER_HIT_POINTS_UNSPECIFIED, playv1.MonsterHitPoints_MONSTER_HIT_POINTS_AVERAGE:
-	case playv1.MonsterHitPoints_MONSTER_HIT_POINTS_ROLLED:
-		rolled = true
-	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("hit_points is not a known mode"))
-	}
-	hidden := req.Msg.Hidden == nil || req.Msg.GetHidden() // a new monster starts hidden, as any NPC
-
-	// What the creature is, read before the write (never through the pool inside it).
-	creatureKey := req.Msg.GetCreatureKey()
-	hp, ok, err := s.roster.MonsterHitPoints(ctx, nil, m.CampaignID, creatureKey)
-	if err != nil {
-		return nil, s.dbError(ctx, "read a creature", err)
-	}
-	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("creature_key is not an SRD creature"))
-	}
-	name, err := s.monsterName(ctx, m.CampaignID, creatureKey, req.Msg.GetName(), nil)
-	if err != nil {
-		return nil, err
-	}
-	sum := sha256.Sum256([]byte(name))
-	asked := monstersEvent{CreatureKey: creatureKey, Count: count, NameHash: hex.EncodeToString(sum[:8]), Rolled: rolled, Hidden: hidden}
-
 	var done monstersEvent
 	// No request hash: the add is compared by its own digest, which reads the defaults written out as the same request.
-	res, err := s.write(ctx, combatWrite{m: m, key: key, kind: eventCombatantsAdded, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		if len(cs)+count > maxCombatants {
-			// Typed, so the app says it in words instead of guessing from an invalid argument.
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS, fmt.Sprintf("a combat has at most %d combatants", maxCombatants))
-		}
-		parts, batchItems, err := s.planMonsters(ctx, c, m, []monsterBatch{{creatureKey: creatureKey, name: name, count: count, hp: hp}}, rolled, hidden)
-		if err != nil {
-			return nil, err
-		}
-		items := batchItems[0]
-		_, news, err := s.addParticipants(ctx, c, link.Grid{Columns: c.enc.GridColumns, Rows: c.enc.GridRows}, cs, parts)
-		if err != nil {
-			return nil, err
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		done = asked
-		done.Items = items
-		for i, n := range news {
-			done.Items[i].ID = n.ID
-		}
-		return actionEvent{Round: c.enc.Round, Monsters: &done}, nil
+	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, kind: eventCombatantsAdded, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
+		return s.monstersWrite(ctx, c, call, &done)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "add monsters", err)
 	}
 	if res.repeated {
-		// A retry: the same parameters get the same answer; any other is refused, as is
-		// a key another kind of change (AddCombatants) used.
-		ev, err := readEvent(res.payload)
-		if err != nil || ev.Monsters == nil || !ev.Monsters.sameAdd(asked) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		if done, err = retriedMonsters(res.payload, call.asked); err != nil {
+			return nil, err
 		}
-		done = *ev.Monsters
 	}
 	ids := make([]string, len(done.Items))
 	for i, it := range done.Items {
 		ids[i] = it.ID
 	}
-	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, ids...))
+	out, err := s.finish(ctx, call.m, res, s.changedFor(call.m.CampaignID, ids...))
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.AddMonstersResponse{Encounter: out, CombatantIds: ids}), nil
+}
+
+// readAddMonstersRequest reads the request in the order the answers are given: who may call,
+// the key, the encounter, the count, the hit points mode, the creature and the name.
+func (s *Service) readAddMonstersRequest(ctx context.Context, req *playv1.AddMonstersRequest) (addMonstersCall, error) {
+	m, key, encID, err := masterCaller(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+	if err != nil {
+		return addMonstersCall{}, err
+	}
+	call := addMonstersCall{m: m, key: key, encounterID: encID, count: int(req.GetCount()), creatureKey: req.GetCreatureKey()}
+	if call.count == 0 {
+		call.count = 1
+	}
+	if call.count < 1 || call.count > maxNPCCopies {
+		return addMonstersCall{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("count must be 1 to %d", maxNPCCopies))
+	}
+	if call.rolled, err = rolledHitPoints(req.GetHitPoints(), "hit_points"); err != nil {
+		return addMonstersCall{}, err
+	}
+	call.hidden = req.Hidden == nil || req.GetHidden() // a new monster starts hidden, as any NPC
+
+	// What the creature is, read before the write (never through the pool inside it).
+	hp, ok, err := s.roster.MonsterHitPoints(ctx, nil, m.CampaignID, call.creatureKey)
+	if err != nil {
+		return addMonstersCall{}, s.dbError(ctx, "read a creature", err)
+	}
+	if !ok {
+		return addMonstersCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("creature_key is not an SRD creature"))
+	}
+	call.hp = hp
+	if call.name, err = s.monsterName(ctx, m.CampaignID, call.creatureKey, req.GetName(), nil); err != nil {
+		return addMonstersCall{}, err
+	}
+	sum := sha256.Sum256([]byte(call.name))
+	call.asked = monstersEvent{CreatureKey: call.creatureKey, Count: call.count, NameHash: hex.EncodeToString(sum[:8]), Rolled: call.rolled, Hidden: call.hidden}
+	return call, nil
+}
+
+// rolledHitPoints says whether the monsters' hit points are rolled (not the average), and
+// refuses a mode the app does not know. field names the request's field in the refusal.
+func rolledHitPoints(mode playv1.MonsterHitPoints, field string) (bool, error) {
+	switch mode {
+	case playv1.MonsterHitPoints_MONSTER_HIT_POINTS_UNSPECIFIED, playv1.MonsterHitPoints_MONSTER_HIT_POINTS_AVERAGE:
+		return false, nil
+	case playv1.MonsterHitPoints_MONSTER_HIT_POINTS_ROLLED:
+		return true, nil
+	}
+	return false, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s is not a known mode", field))
+}
+
+// monstersWrite is the transaction of AddMonsters: the room, the hit points, the combatants,
+// and the event that keeps each monster's dice.
+func (s *Service) monstersWrite(ctx context.Context, c *combatTx, call addMonstersCall, done *monstersEvent) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	if len(cs)+call.count > maxCombatants {
+		// Typed, so the app says it in words instead of guessing from an invalid argument.
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS, fmt.Sprintf("a combat has at most %d combatants", maxCombatants))
+	}
+	batch := monsterBatch{creatureKey: call.creatureKey, name: call.name, count: call.count, hp: call.hp}
+	parts, batchItems, err := s.planMonsters(ctx, c, call.m, []monsterBatch{batch}, call.rolled, call.hidden)
+	if err != nil {
+		return nil, err
+	}
+	items := batchItems[0]
+	_, news, err := s.addParticipants(ctx, c, link.Grid{Columns: c.enc.GridColumns, Rows: c.enc.GridRows}, cs, parts)
+	if err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, c); err != nil {
+		return nil, err
+	}
+	*done = call.asked
+	done.Items = items
+	for i, n := range news {
+		done.Items[i].ID = n.ID
+	}
+	return actionEvent{Round: c.enc.Round, Monsters: done}, nil
+}
+
+// retriedMonsters reads the answer of an add that was made already: the same parameters get
+// the same answer; any other is refused, as is a key another kind of change (AddCombatants)
+// used.
+func retriedMonsters(payload []byte, asked monstersEvent) (monstersEvent, error) {
+	ev, err := readEvent(payload)
+	if err != nil || ev.Monsters == nil || !ev.Monsters.sameAdd(asked) {
+		return monstersEvent{}, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+	}
+	return *ev.Monsters, nil
 }
 
 // monsterName is the base name of a creature's monsters: the master's, or the creature's
@@ -262,14 +299,13 @@ func (m startMonsters) count() int {
 	return n
 }
 
+// startMonsters reads the monsters of a StartEncounter request: the hit points mode, the
+// number of groups, and each group in turn.
 func (s *Service) startMonsters(ctx context.Context, campaignID string, req *playv1.StartEncounterRequest) (startMonsters, error) {
 	out := startMonsters{hidden: req.MonstersHidden == nil || req.GetMonstersHidden()}
-	switch req.GetMonsterHitPoints() {
-	case playv1.MonsterHitPoints_MONSTER_HIT_POINTS_UNSPECIFIED, playv1.MonsterHitPoints_MONSTER_HIT_POINTS_AVERAGE:
-	case playv1.MonsterHitPoints_MONSTER_HIT_POINTS_ROLLED:
-		out.rolled = true
-	default:
-		return startMonsters{}, connect.NewError(connect.CodeInvalidArgument, errors.New("monster_hit_points is not a known mode"))
+	var err error
+	if out.rolled, err = rolledHitPoints(req.GetMonsterHitPoints(), "monster_hit_points"); err != nil {
+		return startMonsters{}, err
 	}
 	groups := req.GetMonsters()
 	if len(groups) > maxEncounterEntries {
@@ -277,35 +313,46 @@ func (s *Service) startMonsters(ctx context.Context, campaignID string, req *pla
 	}
 	var nameOf func(string) string // read once, for the first group that needs it
 	for i, g := range groups {
-		count := int(g.GetCount())
-		if count == 0 {
-			count = 1
-		}
-		if count < 1 || count > maxEntryCount {
-			return startMonsters{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("monsters[%d].count must be 1 to %d", i, maxEntryCount))
-		}
-		if slices.ContainsFunc(out.batches, func(b monsterBatch) bool { return b.creatureKey == g.GetCreatureKey() }) {
-			return startMonsters{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("monsters[%d] repeats a creature", i))
-		}
-		hp, ok, err := s.roster.MonsterHitPoints(ctx, nil, campaignID, g.GetCreatureKey())
-		if err != nil {
-			return startMonsters{}, s.dbError(ctx, "read a creature", err)
-		}
-		if !ok {
-			return startMonsters{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("monsters[%d].creature_key is not an SRD creature", i))
-		}
-		if nameOf == nil && strings.TrimSpace(g.GetName()) == "" {
-			if nameOf, err = s.roster.ContentNames(ctx, nil, campaignID); err != nil {
-				return startMonsters{}, s.dbError(ctx, "read the content names", err)
-			}
-		}
-		name, err := s.monsterName(ctx, campaignID, g.GetCreatureKey(), g.GetName(), nameOf)
+		b, err := s.startGroup(ctx, campaignID, i, g, out.batches, &nameOf)
 		if err != nil {
 			return startMonsters{}, err
 		}
-		out.batches = append(out.batches, monsterBatch{creatureKey: g.GetCreatureKey(), name: name, count: count, hp: hp})
+		out.batches = append(out.batches, b)
 	}
 	return out, nil
+}
+
+// startGroup checks the i-th group of monsters of a start: its count, that its creature is
+// not in a group before it and is an SRD creature, and its name. nameOf is read when the first
+// group that needs it asks.
+func (s *Service) startGroup(ctx context.Context, campaignID string, i int, g *playv1.MonsterGroup, before []monsterBatch, nameOf *func(string) string) (monsterBatch, error) {
+	count := int(g.GetCount())
+	if count == 0 {
+		count = 1
+	}
+	if count < 1 || count > maxEntryCount {
+		return monsterBatch{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("monsters[%d].count must be 1 to %d", i, maxEntryCount))
+	}
+	if slices.ContainsFunc(before, func(b monsterBatch) bool { return b.creatureKey == g.GetCreatureKey() }) {
+		return monsterBatch{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("monsters[%d] repeats a creature", i))
+	}
+	hp, ok, err := s.roster.MonsterHitPoints(ctx, nil, campaignID, g.GetCreatureKey())
+	if err != nil {
+		return monsterBatch{}, s.dbError(ctx, "read a creature", err)
+	}
+	if !ok {
+		return monsterBatch{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("monsters[%d].creature_key is not an SRD creature", i))
+	}
+	if *nameOf == nil && strings.TrimSpace(g.GetName()) == "" {
+		if *nameOf, err = s.roster.ContentNames(ctx, nil, campaignID); err != nil {
+			return monsterBatch{}, s.dbError(ctx, "read the content names", err)
+		}
+	}
+	name, err := s.monsterName(ctx, campaignID, g.GetCreatureKey(), g.GetName(), *nameOf)
+	if err != nil {
+		return monsterBatch{}, err
+	}
+	return monsterBatch{creatureKey: g.GetCreatureKey(), name: name, count: count, hp: hp}, nil
 }
 
 // countPlanned is how many combatants the participants make.

@@ -1,0 +1,73 @@
+[
+ {
+  "label": "Toren",
+  "labels": [
+   "\u003cfx:effect:web-fire@Toren\u003e = Teia em chamas"
+  ]
+ },
+ {
+  "cards": [
+   {
+    "clockTextPt": "Dura até um descanso longo.",
+    "durationKind": "EFFECT_DURATION_KIND_LONG_REST",
+    "encounterId": "\u003cuuid\u003e",
+    "groupId": "\u003cfx:spell:longstrider@Pensantus\u003e",
+    "id": "\u003cfx:spell:longstrider@Pensantus\u003e",
+    "modifiers": [
+     {
+      "value": 10
+     }
+    ],
+    "originPt": "Do mestre",
+    "sourceKey": "spell:longstrider",
+    "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+    "sourceNamePt": "Passos Longos",
+    "tagsPt": [
+     "Deslocamento +3 m"
+    ],
+    "targetIds": [
+     "\u003cPensantus\u003e"
+    ],
+    "targetLabels": [
+     "Pensantus"
+    ]
+   }
+  ],
+  "conditions": [
+   "condition:deafened"
+  ],
+  "label": "Pensantus",
+  "labels": [
+   "\u003cfx:condition:deafened@Pensantus\u003e = Surdo"
+  ],
+  "names": [
+   "Surdo"
+  ]
+ },
+ {
+  "conditions": [
+   "condition:prone"
+  ],
+  "label": "Brisa",
+  "labels": [
+   "\u003cfx:condition:prone@Brisa\u003e = No chão"
+  ],
+  "names": [
+   "Derrubado"
+  ]
+ },
+ {
+  "conditions": [
+   "condition:blinded",
+   "condition:paralyzed"
+  ],
+  "label": "Goblin",
+  "labels": [
+   "\u003cfx:spell:hold-person@Goblin\u003e = Paralisado"
+  ],
+  "names": [
+   "Cego",
+   "Paralisado"
+  ]
+ }
+]

@@ -1,0 +1,30 @@
+spell:hold-person | Imobilizar Pessoa | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:bless | Bênção | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:bane | Perdição | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:haste | Velocidade | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:web | Teia | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 600 | yes | yes
+spell:faerie-fire | Fogo das Fadas | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:hideous-laughter | Riso Histérico | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:guidance | Orientação | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:resistance | Resistência | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:enhance-ability | Aprimorar Habilidade | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 600 | yes | yes
+spell:heroism | Heroísmo | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 10 | yes | yes
+spell:longstrider | Passos Longos | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 600 | no | yes
+spell:mage-armor | Armadura Arcana | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 600 | no | yes
+spell:pass-without-trace | Passos sem Pegadas | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 600 | yes | yes
+spell:shield-of-faith | Escudo da Fé | EFFECT_SOURCE_KIND_SPELL | EFFECT_DURATION_KIND_ROUNDS | 100 | yes | yes
+effect:web-fire | Teia em chamas | EFFECT_SOURCE_KIND_MASTER | EFFECT_DURATION_KIND_ROUNDS | 1 | no | no
+condition:grappled | Agarrado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:frightened | Amedrontado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:stunned | Atordoado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:blinded | Cego | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:prone | Derrubado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:charmed | Enfeitiçado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:poisoned | Envenenado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:restrained | Impedido | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:incapacitated | Incapacitado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:unconscious | Inconsciente | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:invisible | Invisível | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:paralyzed | Paralisado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:petrified | Petrificado | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no
+condition:deafened | Surdo | EFFECT_SOURCE_KIND_CONDITION | EFFECT_DURATION_KIND_UNTIL_DISMISSED | 0 | no | no

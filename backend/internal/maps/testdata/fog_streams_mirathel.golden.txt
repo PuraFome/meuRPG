@@ -1,0 +1,64 @@
+== a player's character is placed
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+== a player's character moves
+master: token_moved map pens (3500, 3000)
+ana: token_moved map pens (3500, 3000)
+caio: token_moved map pens (3500, 3000)
+== a goblin is placed (hidden)
+master: map_changed map
+ana: -
+caio: -
+== a hidden goblin moves
+master: token_moved map goblin (5500, 5000)
+ana: -
+caio: -
+== a hidden goblin is shown
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+== a visible goblin moves
+master: token_moved map goblin (6000, 5000)
+ana: token_moved map goblin (6000, 5000)
+caio: token_moved map goblin (6000, 5000)
+== a visible goblin is hidden
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+== a hidden goblin is removed
+master: map_changed map
+ana: -
+caio: -
+== a goblin is placed and shown
+master: map_changed map; map_changed map
+ana: map_changed map
+caio: map_changed map
+== a visible goblin picks up a torch
+master: map_changed map
+ana: -
+caio: -
+== a visible goblin is removed
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+== a second player's character is placed
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+== a player's character is removed
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+== the map is hidden from the players
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+== a token moves on a map the players do not see
+master: token_moved map toren (8500, 8000)
+ana: -
+caio: -
+== a goblin is placed on a map the players do not see
+master: map_changed map; map_changed map
+ana: -
+caio: -

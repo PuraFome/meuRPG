@@ -1,0 +1,65 @@
+{
+ "effects": [
+  {
+   "characterId": "\u003cchar:bri\u003e",
+   "characterName": "Brisa",
+   "conditionNamesPt": [
+    "Derrubado"
+   ],
+   "durationTextPt": "Dura 1 hora e 1 minuto e 1 segundo",
+   "id": "\u003ccfx:condition:prone@bri\u003e",
+   "secondsLeft": 3661,
+   "sourceKey": "condition:prone",
+   "sourceNamePt": "Derrubado"
+  },
+  {
+   "characterId": "\u003cchar:pens\u003e",
+   "characterName": "Pensantus",
+   "durationTextPt": "Dura 8 horas",
+   "id": "\u003ccfx:spell:mage-armor@pens\u003e",
+   "secondsLeft": 28800,
+   "sourceKey": "spell:mage-armor",
+   "sourceNamePt": "Armadura Arcana",
+   "tagsPt": [
+    "CA base 13 + Destreza, sem armadura"
+   ]
+  },
+  {
+   "characterId": "\u003cchar:toren\u003e",
+   "characterName": "Toren",
+   "concentration": true,
+   "durationTextPt": "Dura 1 minuto",
+   "id": "\u003ccfx:spell:bless@pens+toren\u003e",
+   "secondsLeft": 60,
+   "sourceKey": "spell:bless",
+   "sourceNamePt": "Bênção",
+   "tagsPt": [
+    "+1d4 em ataques e resistências"
+   ]
+  },
+  {
+   "characterId": "\u003cchar:toren\u003e",
+   "characterName": "Toren",
+   "durationTextPt": "Dura 1 hora",
+   "id": "\u003ccfx:spell:enhance-ability@toren\u003e",
+   "secondsLeft": 3600,
+   "sourceKey": "spell:enhance-ability",
+   "sourceNamePt": "Aprimorar Habilidade",
+   "tagsPt": [
+    "Vantagem em testes de Força",
+    "Força do Touro: a capacidade de carga dobra."
+   ]
+  },
+  {
+   "characterId": "\u003cchar:toren\u003e",
+   "characterName": "Toren",
+   "durationTextPt": "Dura até o mestre encerrar",
+   "id": "\u003ccfx:spell:longstrider@toren\u003e",
+   "sourceKey": "spell:longstrider",
+   "sourceNamePt": "Passos Longos",
+   "tagsPt": [
+    "Deslocamento +3 m"
+   ]
+  }
+ ]
+}

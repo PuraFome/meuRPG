@@ -298,6 +298,36 @@ describe('AwardXpSheet (E7-07)', () => {
       expect(close).not.toHaveBeenCalled();
     });
 
+    it('takes the character who cannot receive off the list, so the retry can go', async () => {
+      award.mockRejectedValueOnce(
+        new ConnectError('x', Code.FailedPrecondition, undefined, [
+          {
+            desc: XPBlockedSchema,
+            value: {
+              reason: XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE,
+              characterId: 't1',
+            },
+          },
+        ]),
+      );
+      const { fixture, el } = setup();
+      await fill(fixture, el);
+      await press(fixture, el);
+
+      expect(boxes(el)).toHaveLength(2);
+      expect(el.textContent).not.toContain('Toren');
+      await press(fixture, el);
+      expect(award.mock.calls[1][3]).toEqual(['p1', 'b1']);
+    });
+
+    it('keeps the list when the refusal names no character', async () => {
+      award.mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
+      const { fixture, el } = setup();
+      await fill(fixture, el);
+      await press(fixture, el);
+      expect(boxes(el)).toHaveLength(3);
+    });
+
     it('repeats the same key on a retry, and makes a new one when a value changed', async () => {
       award
         .mockRejectedValueOnce(new ConnectError('x', Code.Unavailable))
@@ -327,6 +357,14 @@ describe('AwardXpSheet (E7-07)', () => {
       );
       await fixture.whenStable();
     });
+  });
+
+  it('closes with nothing when the answer carries no award', async () => {
+    award.mockResolvedValue(create(AwardXPResponseSchema, {}));
+    const { fixture, el } = setup();
+    await fill(fixture, el);
+    await press(fixture, el);
+    expect(close).toHaveBeenCalledWith(undefined);
   });
 
   it('closes with nothing on "Cancelar" and on the close button', () => {

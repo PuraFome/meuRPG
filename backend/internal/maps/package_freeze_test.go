@@ -61,6 +61,7 @@ func checkPackageGolden(t *testing.T, name, got string) {
 const (
 	pkgMapA    = "11111111-1111-4111-8111-111111111111"
 	pkgMapB    = "22222222-2222-4222-8222-222222222222"
+	pkgMapC    = "77777777-7777-4777-8777-777777777777"
 	pkgMapGone = "33333333-3333-4333-8333-333333333333"
 	pkgPoint1  = "44444444-4444-4444-8444-444444444441"
 	pkgPoint2  = "44444444-4444-4444-8444-444444444442"
@@ -586,6 +587,7 @@ func packageFixture(t *testing.T) []pkgEntry {
 		},
 	}
 	mapTwo := &pkgv1.PackageMap{Id: pkgMapB, Name: "Subsolo", ImageId: pkgImage2, GridFactor: 1, BaseLight: "dark"}
+	mapThree := &pkgv1.PackageMap{Id: pkgMapC, Name: "Grade vazia", ImageId: pkgImage1, GridColumns: 20, GridFactor: 1, BaseLight: "bright"}
 	return []pkgEntry{
 		{listKind, campaignpackage.ImagesEntry, jsonOf(t, &pkgv1.PackageImages{Images: []*pkgv1.PackageImage{
 			{Id: pkgImage1, Name: "Mapa", File: "images/1"},
@@ -597,6 +599,7 @@ func packageFixture(t *testing.T) []pkgEntry {
 		{imageKind, "images/3", patternImage(t, 50, 20)},
 		{mapKind, "maps/1.json", jsonOf(t, mapOne)},
 		{mapKind, "maps/2.json", jsonOf(t, mapTwo)},
+		{mapKind, "maps/3.json", jsonOf(t, mapThree)},
 	}
 }
 
@@ -632,13 +635,17 @@ func stageApplyExportGolden(t *testing.T, s *scenes) string {
 	if err != nil {
 		t.Fatalf("Apply() error = %v", err)
 	}
+	// A part with nothing staged writes nothing.
+	if err := db.InTx(ctx, s.h.pool, func(tx pgx.Tx) error { return mapsP.Apply(ctx, tx, newStageImport()) }); err != nil {
+		t.Fatalf("Apply() with nothing staged error = %v", err)
+	}
 	b.WriteString(importedOf(t, s.h, s.campaign))
 
 	// Export the imported maps and put the package's ids back.
 	var pairs []string
 	for _, ns := range []string{nsImage, nsMap, nsPoint, nsClue} {
 		for _, old := range []string{
-			pkgImage1, pkgImage2, pkgImage3, pkgMapA, pkgMapB, pkgPoint1, pkgPoint2, pkgClue1, pkgClue2,
+			pkgImage1, pkgImage2, pkgImage3, pkgMapA, pkgMapB, pkgMapC, pkgPoint1, pkgPoint2, pkgClue1, pkgClue2,
 			"44444444-4444-4444-8444-444444444443", "44444444-4444-4444-8444-444444444444", "44444444-4444-4444-8444-444444444445",
 			"44444444-4444-4444-8444-444444444446", "44444444-4444-4444-8444-444444444447",
 		} {

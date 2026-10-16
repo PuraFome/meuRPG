@@ -26,6 +26,7 @@ import { xpBlocked, xpErrorMessage } from '../../core/progression/xp-errors';
 import { parseAmount, shortDivision, splitXp } from '../../core/progression/xp-math';
 import { SheetFrame } from '../sheet/sheet-frame/sheet-frame';
 import { injectSheet } from '../sheet/sheet-host';
+import { awardInputOf } from './award-input';
 import { TreasureStrip } from './treasure-strip';
 import { XpActions } from './xp-actions';
 import { XpReason } from './xp-reason';
@@ -264,32 +265,17 @@ export class AwardXpSheet {
     }
     // Wrong or missing fields: show every error and go to the first one.
     if (this.reason.invalid || this.amount.invalid) {
-      this.reason.markAsTouched();
-      this.amount.markAsTouched();
-      if (this.reason.invalid) {
-        this.reasonField().focus();
-      } else {
-        this.amountField().nativeElement.focus();
-      }
+      this.focusFirstInvalid();
       return;
     }
     if (this.blocked()) {
       return;
     }
     const reason = this.reason.value.trim();
-    const total = this.total();
     const ids = this.rows()
       .filter((r) => this.checked().has(r.id))
       .map((r) => r.id);
-    const fromCombat =
-      !this.gold && !!this.data.encounterId && total === this.data.amount
-        ? this.data.encounterId
-        : '';
-    const input = this.gold
-      ? ({ mode: 'gold', gold: total } as const)
-      : fromCombat
-        ? ({ mode: 'enemies', encounterId: fromCombat } as const)
-        : ({ mode: 'manual', amount: total } as const);
+    const input = awardInputOf(this.gold, this.total(), this.data);
 
     // New values are a new award; the same values again are a retry.
     const key = this.key.keyFor([input, reason, ids]);
@@ -304,23 +290,38 @@ export class AwardXpSheet {
       }
     } catch (err) {
       this.error.set(xpErrorMessage(err, 'dar o XP'));
-      // A character that cannot receive (died, left) leaves the list, so the retry can go.
-      const blocked = xpBlocked(err);
-      if (
-        blocked?.reason === XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE &&
-        blocked.characterId
-      ) {
-        this.rows.update((rows) => rows.filter((r) => r.id !== blocked.characterId));
-        this.checked.update((set) => {
-          const next = new Set(set);
-          next.delete(blocked.characterId);
-          return next;
-        });
-      }
+      this.dropIneligible(err);
       this.frame().scrollToTop();
     } finally {
       this.busy.set(false);
     }
+  }
+
+  private focusFirstInvalid(): void {
+    this.reason.markAsTouched();
+    this.amount.markAsTouched();
+    if (this.reason.invalid) {
+      this.reasonField().focus();
+    } else {
+      this.amountField().nativeElement.focus();
+    }
+  }
+
+  /** A character that cannot receive (died, left) leaves the list, so the retry can go. */
+  private dropIneligible(err: unknown): void {
+    const blocked = xpBlocked(err);
+    if (
+      blocked?.reason !== XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE ||
+      !blocked.characterId
+    ) {
+      return;
+    }
+    this.rows.update((rows) => rows.filter((r) => r.id !== blocked.characterId));
+    this.checked.update((set) => {
+      const next = new Set(set);
+      next.delete(blocked.characterId);
+      return next;
+    });
   }
 
   protected cancel(): void {
