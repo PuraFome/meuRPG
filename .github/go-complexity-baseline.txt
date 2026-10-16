@@ -407,10 +407,6 @@ cognitive internal/play squareNear 16
 cognitive internal/play startTurn 17
 cognitive internal/play tallyHighlights 59
 cognitive internal/play/live (*Hub).Publish 17
-cognitive internal/progression (*Service).AddMilestone 20
-cognitive internal/progression (*Service).MoveMilestone 24
-cognitive internal/progression (*Service).milestoneViews 21
-cognitive internal/progression (*Service).viewsOf 40
 cognitive internal/rules (*Content).EffectMenu 32
 cognitive internal/rules (*Content).GenerateTreasure 16
 cognitive internal/rules (*Content).ListCreatures 29
@@ -746,8 +742,6 @@ cyclomatic internal/play playerRunProto 20
 cyclomatic internal/play resolveTrap 33
 cyclomatic internal/play resourceLogView 16
 cyclomatic internal/play tallyHighlights 38
-cyclomatic internal/progression (*Service).MoveMilestone 17
-cyclomatic internal/progression (*Service).viewsOf 28
 cyclomatic internal/rules (*Content).EffectMenu 27
 cyclomatic internal/rules (*Content).ListCreatures 24
 cyclomatic internal/rules (*Content).ListSpells 18
