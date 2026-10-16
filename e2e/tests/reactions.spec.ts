@@ -182,6 +182,8 @@ test(
       const shield = p.getByRole('alertdialog', { name: 'Você foi atingido: usar Escudo Arcano?' });
       await expect(shield).toBeVisible();
       await shield.getByRole('button', { name: 'Deixar passar' }).click();
+      // The sheet closes only once AnswerReaction returns; until then the window is open and RollDamage is refused.
+      await expect(shield).toHaveCount(0);
       const dmg = await callRPC(m, 'meurpg.play.v1.CombatService/RollDamage', { campaignId, encounterId: enc.id, pendingDamageId: pending, rollInApp: true, idempotencyKey: crypto.randomUUID() });
       expect(dmg.ok(), await dmg.text()).toBeTruthy();
       const apply = await callRPC(m, 'meurpg.play.v1.CombatService/ApplyPendingDamage', { campaignId, encounterId: enc.id, pendingDamageId: pending, idempotencyKey: crypto.randomUUID() });
