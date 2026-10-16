@@ -230,12 +230,12 @@ func (s *Service) ResolveConcentrationSave(
 			// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 			// answers (nothing has been written yet); the answer brings it back with the die added. So
 			// has a halfling's d20 that shows a 1, for the Lucky question first.
-			step, err := s.saveWithDie(ctx, c, m, holdConcentration, reactor, key, req.Msg, in, save.Bonus, mode, sheet.Traits.Lucky)
+			step, err := s.heldGate(ctx, s.inspirationGate(c), saveSpec(m, heldConcentrationSave, reactor, key, req.Msg, in, save.Bonus, mode, sheet.Traits.Lucky))
 			if err != nil {
 				return nil, err
 			}
-			if step.Held {
-				offer, lucky = step.Offer, step.LuckyOffer
+			if step.Held != nil {
+				offer, lucky = s.outsideOffers(ctx, c.tx, step.Held)
 				return nil, nil
 			}
 			d20 := step.Roll
