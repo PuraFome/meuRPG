@@ -1,0 +1,23 @@
+{
+  "a bridge joins two pools": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 4 escolhas em P (PT); o personagem tem 3.\"}]",
+  "a bridge of three pools": "null",
+  "a bridge owned first": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 4 escolhas em Ponte (PT); o personagem tem 3.\"}]",
+  "a bridge within the sum": "null",
+  "a count of zero offers nothing": "null",
+  "a feature owned twice counts once": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 2 escolhas em P (PT); o personagem tem 1.\"}]",
+  "a pick of another pool": "null",
+  "a pick that is no feature": "null",
+  "invocations at level 0": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 1 escolhas em Invocações Místicas; o personagem tem 0.\"}]",
+  "invocations joined by a pool of their options": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 3 escolhas em Invocações Místicas; o personagem tem 2.\"}]",
+  "invocations not owned": "null",
+  "invocations of a class without them": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 1 escolhas em Invocações Místicas; o personagem tem 0.\"}]",
+  "invocations of a warlock 2": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 3 escolhas em Invocações Místicas; o personagem tem 2.\"}]",
+  "invocations of two warlock entries": "null",
+  "invocations past the table": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 1 escolhas em Invocações Místicas; o personagem tem 0.\"}]",
+  "invocations within the count": "null",
+  "nothing": "null",
+  "one pool over its count": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 2 escolhas em P (PT); o personagem tem 1.\"}]",
+  "one pool within its count": "null",
+  "two options of one name count once": "null",
+  "two pools apart": "[{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 2 escolhas em P (PT); o personagem tem 1.\"},{\"Code\":\"choice_count\",\"Field\":\"full.feature_choice_keys\",\"Message\":\"Há 2 escolhas em Q (PT); o personagem tem 1.\"}]"
+}

@@ -45,6 +45,7 @@ import { MapMarker } from './map-marker/map-marker';
 import { MapToken } from './map-token/map-token';
 import { RetryImage } from '../retry-image/retry-image';
 import { fullscreenOfHost } from '../../core/ui/fullscreen';
+import { RelayEvents } from '../relay-events/relay-events';
 
 /** `preview`: a still picture (the session page's card); `view`: pan and
  * zoom, points open; `tokens`: also drag the tokens (the master's session
@@ -112,7 +113,7 @@ const PREVIEW_SCALE = 2;
  */
 @Component({
   selector: 'app-map-view',
-  imports: [MapMarker, MapToken, MatIconModule, RetryImage],
+  imports: [RelayEvents, MapMarker, MapToken, MatIconModule, RetryImage],
   templateUrl: './map-view.html',
   styleUrl: './map-view.scss',
 })

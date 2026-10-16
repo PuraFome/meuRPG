@@ -51,8 +51,8 @@ func (c *content) loadLights(fsys fs.FS) error {
 		seen[key] = true
 		c.lights = append(c.lights, LightPreset{Key: key, NamePT: c.namesPT[key], BrightFt: in.BrightFt, DimFt: in.DimFt, DurationPT: in.DurationPT})
 	}
-	for k := range c.namesPT {
-		if strings.HasPrefix(k, "light:") && !seen[k] {
+	for _, k := range c.namesWithPrefix("light:") {
+		if !seen[k] {
 			return fmt.Errorf("effects/names_pt.json names %q, which is not in lights.json", k)
 		}
 	}
