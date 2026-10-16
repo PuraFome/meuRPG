@@ -103,7 +103,6 @@ cognitive internal/play (*Service).CastSpellOutsideCombat 43
 cognitive internal/play (*Service).CastSummon 79
 cognitive internal/play (*Service).ChangeLastingEffectDuration 33
 cognitive internal/play (*Service).ClearHelp 19
-cognitive internal/play (*Service).CloseContest 19
 cognitive internal/play (*Service).CloseGroupCheck 27
 cognitive internal/play (*Service).CloseScene 18
 cognitive internal/play (*Service).ConfirmCastTimePassed 23
@@ -143,7 +142,6 @@ cognitive internal/play (*Service).PlayPuzzleSequence 18
 cognitive internal/play (*Service).PreviewRevivify 25
 cognitive internal/play (*Service).PreviewSpellArea 23
 cognitive internal/play (*Service).PutOnStage 20
-cognitive internal/play (*Service).ReleaseGrapple 23
 cognitive internal/play (*Service).RemoveCombatant 48
 cognitive internal/play (*Service).RemoveDamagePart 40
 cognitive internal/play (*Service).RemoveEffectTarget 21
@@ -153,8 +151,6 @@ cognitive internal/play (*Service).ReseedPuzzle 19
 cognitive internal/play (*Service).ResolveConcentrationSave 74
 cognitive internal/play (*Service).ResolveHiddenReveal 36
 cognitive internal/play (*Service).ResolveHide 55
-cognitive internal/play (*Service).ResolveShove 52
-cognitive internal/play (*Service).RespondContest 68
 cognitive internal/play (*Service).RevealHider 18
 cognitive internal/play (*Service).ReviveInCombat 16
 cognitive internal/play (*Service).RollDeathSave 45
@@ -256,7 +252,6 @@ cognitive internal/play (*Service).pendingView 30
 cognitive internal/play (*Service).planCast 16
 cognitive internal/play (*Service).prepareMetamagic 21
 cognitive internal/play (*Service).prepareSummon 18
-cognitive internal/play (*Service).pruneHolds 38
 cognitive internal/play (*Service).pruneOffers 19
 cognitive internal/play (*Service).publishReactions 31
 cognitive internal/play (*Service).raiseMaxHP 18
@@ -438,8 +433,6 @@ cyclomatic internal/play (*Service).RequestRollMode 29
 cyclomatic internal/play (*Service).ResolveConcentrationSave 39
 cyclomatic internal/play (*Service).ResolveHiddenReveal 22
 cyclomatic internal/play (*Service).ResolveHide 33
-cyclomatic internal/play (*Service).ResolveShove 31
-cyclomatic internal/play (*Service).RespondContest 41
 cyclomatic internal/play (*Service).ReviveInCombat 17
 cyclomatic internal/play (*Service).RollDeathSave 29
 cyclomatic internal/play (*Service).RollEffectSave 50
@@ -489,7 +482,6 @@ cyclomatic internal/play (*Service).castSpell 150
 cyclomatic internal/play (*Service).changeExhaustion 48
 cyclomatic internal/play (*Service).checkOnSolve 16
 cyclomatic internal/play (*Service).checkOnWrong 24
-cyclomatic internal/play (*Service).checkSources 18
 cyclomatic internal/play (*Service).checkTargets 25
 cyclomatic internal/play (*Service).chooseMode 18
 cyclomatic internal/play (*Service).contestOptionsFor 43
@@ -515,7 +507,6 @@ cyclomatic internal/play (*Service).opportunityReactors 25
 cyclomatic internal/play (*Service).participants 28
 cyclomatic internal/play (*Service).pendingView 19
 cyclomatic internal/play (*Service).prepareMetamagic 18
-cyclomatic internal/play (*Service).pruneHolds 28
 cyclomatic internal/play (*Service).pruneOffers 18
 cyclomatic internal/play (*Service).publishReactions 18
 cyclomatic internal/play (*Service).reactionPrompts 17
