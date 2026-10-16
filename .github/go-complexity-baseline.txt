@@ -162,7 +162,6 @@ cognitive internal/play (*Service).RollEffectSave 98
 cognitive internal/play (*Service).RollGroupCheck 20
 cognitive internal/play (*Service).RollSceneCheck 87
 cognitive internal/play (*Service).SaveBattleEncounter 18
-cognitive internal/play (*Service).SearchForTraps 134
 cognitive internal/play (*Service).SetCombatantConditions 53
 cognitive internal/play (*Service).SetCombatantCover 17
 cognitive internal/play (*Service).SetCombatantHidden 21
@@ -274,7 +273,6 @@ cognitive internal/play (*Service).rollParts 54
 cognitive internal/play (*Service).runSolveAction 17
 cognitive internal/play (*Service).sceneInfo 27
 cognitive internal/play (*Service).sceneRolls 25
-cognitive internal/play (*Service).searcherPlace 33
 cognitive internal/play (*Service).selectionChecker 35
 cognitive internal/play (*Service).setArchived 16
 cognitive internal/play (*Service).settleHidden 18
@@ -444,7 +442,6 @@ cyclomatic internal/play (*Service).ReviveInCombat 17
 cyclomatic internal/play (*Service).RollDeathSave 29
 cyclomatic internal/play (*Service).RollEffectSave 50
 cyclomatic internal/play (*Service).RollSceneCheck 53
-cyclomatic internal/play (*Service).SearchForTraps 83
 cyclomatic internal/play (*Service).SetCombatantConditions 33
 cyclomatic internal/play (*Service).SetCombatantSide 16
 cyclomatic internal/play (*Service).SetInitiativeOrder 18
@@ -531,7 +528,6 @@ cyclomatic internal/play (*Service).rollParts 30
 cyclomatic internal/play (*Service).runSolveAction 19
 cyclomatic internal/play (*Service).sceneInfo 21
 cyclomatic internal/play (*Service).sceneRolls 18
-cyclomatic internal/play (*Service).searcherPlace 20
 cyclomatic internal/play (*Service).selectionChecker 19
 cyclomatic internal/play (*Service).settleOnce 25
 cyclomatic internal/play (*Service).shapeChange 38
@@ -580,7 +576,6 @@ maintainability internal/play (*Service).Help 19
 maintainability internal/play (*Service).ResolveConcentrationSave 18
 maintainability internal/play (*Service).RollEffectSave 15
 maintainability internal/play (*Service).RollSceneCheck 13
-maintainability internal/play (*Service).SearchForTraps 5
 maintainability internal/play (*Service).StartEncounter 19
 maintainability internal/play (*Service).TakeAction 7
 maintainability internal/play (*Service).castSpell 0
