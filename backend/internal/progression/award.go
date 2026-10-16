@@ -324,7 +324,7 @@ func (s *Service) give(ctx context.Context, m authz.Membership, g grant) (progre
 	var given givenAward
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		given, err = s.giveInTx(ctx, tx, m, g) // a retry starts over
+		given, err = s.giveTx(ctx, tx, m, g) // a retry starts over
 		return err
 	})
 	if err != nil {
@@ -371,9 +371,9 @@ func (s *Service) retriedAward(ctx context.Context, m authz.Membership, g grant)
 	return award, true, err
 }
 
-// giveInTx is the award's transaction: the key again, the checks against what
+// giveTx is the award's transaction: the key again, the checks against what
 // the campaign is now, then the writes and the session's event.
-func (s *Service) giveInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, g grant) (givenAward, error) {
+func (s *Service) giveTx(ctx context.Context, tx pgx.Tx, m authz.Membership, g grant) (givenAward, error) {
 	q := s.queries.WithTx(tx)
 	done, err := q.GetXPAwardByKey(ctx, progressiondb.GetXPAwardByKeyParams{CampaignID: m.CampaignID, IdempotencyKey: g.key})
 	if err == nil {

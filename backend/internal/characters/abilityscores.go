@@ -275,7 +275,7 @@ func (s *Service) RollAbilityScores(
 	}
 	res := &charactersv1.RollAbilityScoresResponse{}
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		return s.rollAbilityScoresIn(ctx, tx, m, typed, res)
+		return s.rollAbilityScores(ctx, tx, m, typed, res)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "roll the ability scores", err)
@@ -305,9 +305,9 @@ func typedAbilityDice(sets []*charactersv1.AbilityRollSet) ([][]int, error) {
 	return typed, nil
 }
 
-// rollAbilityScoresIn is RollAbilityScores' transaction: the table's rule, then the sets
+// rollAbilityScores is RollAbilityScores' transaction: the table's rule, then the sets
 // stored already or new ones, written into res.
-func (s *Service) rollAbilityScoresIn(ctx context.Context, tx pgx.Tx, m authz.Membership, typed [][]int, res *charactersv1.RollAbilityScoresResponse) error {
+func (s *Service) rollAbilityScores(ctx context.Context, tx pgx.Tx, m authz.Membership, typed [][]int, res *charactersv1.RollAbilityScoresResponse) error {
 	q := s.queries.WithTx(tx)
 	_, tr, err := s.content.For(ctx, tx, m.CampaignID)
 	if err != nil {

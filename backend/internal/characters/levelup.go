@@ -489,7 +489,7 @@ func (s *Service) PreviewLevelUp(
 		if t, err = s.readLevelUpTarget(ctx, tx, m, req.Msg.GetCharacterId(), choices.GetClassKey()); err != nil {
 			return err
 		}
-		plan, err = s.planLevelUpIn(ctx, tx, s.queries.WithTx(tx), m, t, choices)
+		plan, err = s.planLevelUp(ctx, tx, s.queries.WithTx(tx), m, t, choices)
 		return err
 	})
 	if err != nil {
@@ -716,7 +716,7 @@ func (s *Service) levelUpIn(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	if err != nil {
 		return leveledUp{}, err
 	}
-	plan, err := s.planLevelUpIn(ctx, tx, q, m, t, choices)
+	plan, err := s.planLevelUp(ctx, tx, q, m, t, choices)
 	if err != nil {
 		return leveledUp{}, err
 	}
