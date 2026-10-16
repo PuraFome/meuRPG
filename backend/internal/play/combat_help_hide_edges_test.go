@@ -12,7 +12,7 @@ import (
 
 // Edges of Help, ClearHelp, Hide and ResolveHide that the tests of combat_help_test.go and
 // combat_hide_test.go leave out: the exact refusal messages, the feature form of Hide, the
-// master's bypasses. They freeze the behaviour before the functions are split into phases.
+// master's bypasses. They freeze the behavior before the functions are split into phases.
 
 // wantHelpHideMessage fails unless err is a connect error of this code whose message is exactly msg.
 func wantHelpHideMessage(t *testing.T, call string, err error, code connect.Code, msg string) {
@@ -42,8 +42,10 @@ func TestHelpAndClearHelpRefusalMessagesAreFrozen(t *testing.T) {
 		msg  string
 	}{
 		"no kind": {func(r *playv1.HelpRequest) { r.AllyId = c.id(t, "Toren") }, connect.CodeInvalidArgument, "kind must be CHECK or ATTACK"},
-		"a check with no task": {func(r *playv1.HelpRequest) { r.Kind, r.AllyId = playv1.HelpKind_HELP_KIND_CHECK, c.id(t, "Toren") },
-			connect.CodeInvalidArgument, "task_key must name the check of the task"},
+		"a check with no task": {
+			func(r *playv1.HelpRequest) { r.Kind, r.AllyId = playv1.HelpKind_HELP_KIND_CHECK, c.id(t, "Toren") },
+			connect.CodeInvalidArgument, "task_key must name the check of the task",
+		},
 		"a check with a task of 101 bytes": {func(r *playv1.HelpRequest) {
 			r.Kind, r.AllyId, r.TaskKey = playv1.HelpKind_HELP_KIND_CHECK, c.id(t, "Toren"), long
 		}, connect.CodeInvalidArgument, "task_key must name the check of the task"},
