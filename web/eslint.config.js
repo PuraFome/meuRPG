@@ -79,9 +79,12 @@ module.exports = tseslint.config(
     // A bare number in app code needs a name: a `const` whose name (and comment) says what it is. The common
     // neutral values are allowed (-1, 0, 1, 2, the radix 10, 100 for percentages, 1000 for milliseconds), and so are
     // default values, enum members, readonly fields and array indexes. Specs are exempt: their numbers are the data.
+    // An app file holds one thing: at most 400 lines of code (the Angular style guide's limit; blank lines and
+    // comments do not count). Specs are exempt: a long table of cases is still one subject.
     files: ['src/app/**/*.ts'],
     ignores: ['**/*.spec.ts'],
     rules: {
+      'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
       '@typescript-eslint/no-magic-numbers': [
         'error',
         {

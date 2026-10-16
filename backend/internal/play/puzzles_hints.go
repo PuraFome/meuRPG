@@ -241,12 +241,15 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	// A character that holds a Bardic Inspiration die has the d20 kept until the player answers,
 	// before anything is spent or written, and so has a halfling's d20 that shows a 1, for the
 	// Lucky question; the answer brings it back (with the die added, or rolled again).
-	step, err := s.outsideRoll(ctx, tx, q, m, holdHintTry, who.ID, key, raw, in, bonus, cm.Mode, options[0].ReliableTalent, options[0].Lucky)
+	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
+		Kind: heldHintTry, Key: key, Request: raw, Roller: heldRoller{CampaignID: m.CampaignID, CharacterID: who.ID, UserID: m.UserID},
+		In: in, Modifier: bonus, Mode: cm.Mode, Reliable: options[0].ReliableTalent, Lucky: options[0].Lucky, MayAsk: true,
+	})
 	if err != nil {
 		return nil, err
 	}
-	if step.Held {
-		res.offer, res.lucky = step.Offer, step.LuckyOffer
+	if step.Held != nil {
+		res.offer, res.lucky = s.outsideOffers(ctx, tx, step.Held)
 		return nil, nil
 	}
 	spendTx, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
@@ -260,12 +263,6 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return nil, err
 	}
 	d20 := step.Roll
-	if !step.Settled {
-		if d20, err = s.d20With(in, bonus, cm.Mode); err != nil {
-			return nil, err
-		}
-		d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
-	}
 	dieFace := 0
 	if step.Bonus != nil {
 		dieFace, res.bonus = int(step.Bonus.Face), step.Bonus // the die the player added after rolling: the total holds it
