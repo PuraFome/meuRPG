@@ -70,6 +70,9 @@ type forcedOutside struct {
 type forcedOutsideKey struct{}
 
 func withOutside(ctx context.Context, f *forcedOutside) context.Context {
+	if f != nil {
+		ctx = withHeldReply(ctx, replyOfOutside(f))
+	}
 	return context.WithValue(ctx, forcedOutsideKey{}, f)
 }
 
