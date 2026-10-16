@@ -18,7 +18,12 @@ This directory is the source of truth about the product, the rules and the archi
 | [operations.md](operations.md) | Operators | Deploy, secrets, costs and alerts |
 | [archive/](archive/README.md) | Anyone looking for history | Decision history, per-stage delivery history and archived notes |
 | `adr/` | Maintainers | Hard-to-reverse decisions. A separate private repository; the local folder is in `.gitignore` and not versioned here |
-| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Everyone | How to run, test and open a PR |
+| [development.md](development.md) | PR authors | The local environment in full: native options, sign-in, images, variables |
+| [testing.md](testing.md) | PR authors | The test layers, how to run them and what each proves |
+| [ci.md](ci.md) | PR authors | What each CI job checks, the ratchets and gates, pinning and Dependabot |
+| [performance.md](performance.md) | PR authors | The memory and time budgets in code and how to measure them |
+| [rules-content.md](rules-content.md) | PR authors | The SRD snapshot, effects, names and texts, and how to change them |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Everyone | Tools, everyday commands, the PR flow and the docs rule |
 | [../README.md](../README.md) | Newcomers | Project overview: what works, the look, the stack, how to run it |
 
 API contracts (`.proto`) and database migrations are not documented here: the `.proto` files in `proto/meurpg/**/v1/*.proto` are the reference themselves; migrations live in `backend/migrations/`.
@@ -29,11 +34,13 @@ The readers' docs have a Portuguese (Brazil) version under [pt-BR/](pt-BR/README
 
 ## Keeping the docs current
 
-Documentation changes in the same PR as the code. A PR that changes behavior without changing its document goes back in review. The full "what to update when" table and the writing rules are in [CONTRIBUTING.md → How to keep the docs current](../CONTRIBUTING.md#how-to-keep-the-docs-current).
+A change keeps current the docs that say what the code cannot: the product rules, stories, glossary and privacy (with their PT-BR twins), the ADRs, the runbooks and the reference that is not generated.
+Implementation detail lives in the code, its comments and its tests.
+The table of which doc a change touches is in [CONTRIBUTING.md](../CONTRIBUTING.md#keeping-the-docs-current).
 
-Quick conventions:
+Conventions:
 
+- Every doc is written as if for the first time: the current state, with no history, dates or PR numbers. Who decided what, and when, goes to the [archive](archive/decisions.md).
 - English, with software terms as usual. Code, comments and names in code are in English; quoted UI strings stay in Portuguese.
 - Diagrams in Mermaid, which GitHub renders directly in Markdown.
 - The first sentence of each section is the answer; the context follows.
-- Documents say what the system does and why. When something was decided and by whom goes to the [archive](archive/decisions.md).
