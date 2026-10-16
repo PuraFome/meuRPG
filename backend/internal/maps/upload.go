@@ -246,6 +246,19 @@ func (s *Service) store(ctx context.Context, m authz.Membership, name string, re
 	return s.storeImage(ctx, m.CampaignID, &m.UserID, name, res, false, "", nil, nil)
 }
 
+// imageStore is one storeImage: what the image is, and who and how it is made.
+type imageStore struct {
+	campaignID    string
+	id            string
+	uploadedBy    *string
+	name          string
+	res           *images.Result
+	generated     bool
+	generatedKind string
+	parent        *string
+	finish        func(ctx context.Context, q *mapsdb.Queries, imageID string) error
+}
+
 // storeImage is store for any image of the campaign: uploadedBy is who made it
 // (nil when nobody is left to name), and a generated image (MR-039) says so and,
 // with the way it was made (generatedKind) and, when it is an edit, names its parent (kept only if that image still exists
@@ -254,78 +267,113 @@ func (s *Service) store(ctx context.Context, m authz.Membership, name string, re
 // rolls the image back and is returned as it is: the generated image and the
 // request that made it are recorded together, or not at all.
 func (s *Service) storeImage(ctx context.Context, campaignID string, uploadedBy *string, name string, res *images.Result, generated bool, generatedKind string, parent *string, finish func(ctx context.Context, q *mapsdb.Queries, imageID string) error) (mapsdb.GalleryImage, error) {
-	m := authz.Membership{CampaignID: campaignID}
-	id := uuid.New().String()
-	imageKey, thumbnailKey := blobKeys(m.CampaignID, id)
+	st := &imageStore{
+		campaignID: campaignID, id: uuid.New().String(), uploadedBy: uploadedBy, name: name, res: res,
+		generated: generated, generatedKind: generatedKind, parent: parent, finish: finish,
+	}
+	if err := s.writeImageFiles(ctx, st); err != nil {
+		return mapsdb.GalleryImage{}, err
+	}
+	var row mapsdb.GalleryImage
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		row, err = s.insertImageRow(ctx, s.queries.WithTx(tx), st)
+		return err
+	})
+	if err != nil {
+		s.deleteFiles(ctx, st.campaignID, st.id)
+		return mapsdb.GalleryImage{}, s.storeError(ctx, err)
+	}
+	return row, nil
+}
+
+// writeImageFiles writes the image's files: the image, its thumbnail and, when it
+// has one, its reference. If one fails, the ones written are deleted again.
+func (s *Service) writeImageFiles(ctx context.Context, st *imageStore) error {
+	imageKey, thumbnailKey := blobKeys(st.campaignID, st.id)
 	type file struct {
 		key         string
 		contentType string
 		content     []byte
 	}
-	files := []file{{imageKey, res.ContentType, res.Data}, {thumbnailKey, res.ContentType, res.Thumbnail}}
-	if res.Reference != nil {
-		files = append(files, file{referenceKey(m.CampaignID, id), images.JPEG, res.Reference})
+	files := []file{{imageKey, st.res.ContentType, st.res.Data}, {thumbnailKey, st.res.ContentType, st.res.Thumbnail}}
+	if st.res.Reference != nil {
+		files = append(files, file{referenceKey(st.campaignID, st.id), images.JPEG, st.res.Reference})
 	}
 	for _, f := range files {
 		if err := s.blobs.Put(ctx, f.key, f.contentType, bytes.NewReader(f.content)); err != nil {
-			s.deleteFiles(ctx, m.CampaignID, id)
+			s.deleteFiles(ctx, st.campaignID, st.id)
 			s.logger.ErrorContext(ctx, "maps: cannot store an image file", "error", err)
-			return mapsdb.GalleryImage{}, errStorage()
+			return errStorage()
 		}
 	}
+	return nil
+}
 
-	size := int32(len(res.Data)) //nolint:gosec // G115: at most images.MaxBytes
-	var row mapsdb.GalleryImage
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		usage, err := q.GetGalleryUsage(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("read the gallery usage: %w", err)
-		}
-		if usage.ImageCount >= s.maxImages || usage.ByteCount+int64(size) > int64(s.maxBytes) {
-			return errQuota()
-		}
-		parentID := parent
-		if parentID != nil {
-			if _, err := q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: m.CampaignID, ID: *parentID}); errors.Is(err, pgx.ErrNoRows) {
-				parentID = nil
-			} else if err != nil {
-				return fmt.Errorf("find the parent image: %w", err)
-			}
-		}
-		row, err = q.InsertGalleryImage(ctx, mapsdb.InsertGalleryImageParams{
-			ID:            id,
-			CampaignID:    m.CampaignID,
-			UploadedBy:    uploadedBy,
-			Name:          name,
-			ContentType:   res.ContentType,
-			Width:         int32(res.Width),  //nolint:gosec // G115: at most images.MaxSide
-			Height:        int32(res.Height), //nolint:gosec // G115: at most images.MaxSide
-			ByteSize:      size,
-			CreatedAt:     s.now(),
-			Generated:     generated,
-			ParentImageID: parentID,
-			GeneratedKind: generatedKind,
-		})
-		if err != nil {
-			return fmt.Errorf("insert gallery image: %w", err)
-		}
-		if finish != nil {
-			return finish(ctx, q, id)
-		}
-		return nil
+// insertImageRow is the transaction of a store: it counts the gallery against
+// its quota, inserts the row and runs finish.
+func (s *Service) insertImageRow(ctx context.Context, q *mapsdb.Queries, st *imageStore) (mapsdb.GalleryImage, error) {
+	size := int32(len(st.res.Data)) //nolint:gosec // G115: at most images.MaxBytes
+	usage, err := q.GetGalleryUsage(ctx, st.campaignID)
+	if err != nil {
+		return mapsdb.GalleryImage{}, fmt.Errorf("read the gallery usage: %w", err)
+	}
+	if usage.ImageCount >= s.maxImages || usage.ByteCount+int64(size) > int64(s.maxBytes) {
+		return mapsdb.GalleryImage{}, errQuota()
+	}
+	parentID, err := existingParent(ctx, q, st.campaignID, st.parent)
+	if err != nil {
+		return mapsdb.GalleryImage{}, err
+	}
+	row, err := q.InsertGalleryImage(ctx, mapsdb.InsertGalleryImageParams{
+		ID:            st.id,
+		CampaignID:    st.campaignID,
+		UploadedBy:    st.uploadedBy,
+		Name:          st.name,
+		ContentType:   st.res.ContentType,
+		Width:         int32(st.res.Width),  //nolint:gosec // G115: at most images.MaxSide
+		Height:        int32(st.res.Height), //nolint:gosec // G115: at most images.MaxSide
+		ByteSize:      size,
+		CreatedAt:     s.now(),
+		Generated:     st.generated,
+		ParentImageID: parentID,
+		GeneratedKind: st.generatedKind,
 	})
 	if err != nil {
-		s.deleteFiles(ctx, m.CampaignID, id)
-		if errors.Is(err, errRequestClosed) {
-			return mapsdb.GalleryImage{}, err
-		}
-		if he, ok := errors.AsType[*httpError](err); ok {
-			return mapsdb.GalleryImage{}, he
-		}
-		return mapsdb.GalleryImage{}, s.dbError(ctx, "save an uploaded image", err)
+		return mapsdb.GalleryImage{}, fmt.Errorf("insert gallery image: %w", err)
+	}
+	if st.finish != nil {
+		return row, st.finish(ctx, q, st.id)
 	}
 	return row, nil
+}
+
+// existingParent returns the parent image if the campaign still holds it, and
+// nil if the master deleted it meanwhile.
+func existingParent(ctx context.Context, q *mapsdb.Queries, campaignID string, parent *string) (*string, error) {
+	if parent == nil {
+		return nil, nil
+	}
+	_, err := q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: *parent})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find the parent image: %w", err)
+	}
+	return parent, nil
+}
+
+// storeError is the answer for a store whose transaction failed: the request's
+// own refusals as they are, the rest as a database error.
+func (s *Service) storeError(ctx context.Context, err error) error {
+	if errors.Is(err, errRequestClosed) {
+		return err
+	}
+	if he, ok := errors.AsType[*httpError](err); ok {
+		return he
+	}
+	return s.dbError(ctx, "save an uploaded image", err)
 }
 
 // errStorage is the answer when the blob store fails.

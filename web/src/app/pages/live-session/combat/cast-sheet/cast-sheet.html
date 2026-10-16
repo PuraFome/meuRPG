@@ -1,63 +1,63 @@
-<app-sheet-frame [title]="title()" [subtitle]="subtitle()" [phone]="inSheet" (closed)="close()">
-  @if (!done()) {
+<app-sheet-frame [title]="tx.title()" [subtitle]="tx.subtitle()" [phone]="inSheet" (closed)="close()">
+  @if (!s.done()) {
     <app-spell-help head-action [name]="data.name" (press)="describe()" />
   }
   <div class="body">
-    @if (error()) {
+    @if (s.error()) {
       <div class="mr-notice mr-notice--danger" role="alert">
         <mat-icon aria-hidden="true">error</mat-icon>
-        <p>{{ error() }}</p>
+        <p>{{ s.error() }}</p>
       </div>
     }
 
-    @if (luckyOffer(); as l) {
+    @if (questions.luckyOffer(); as l) {
       <!-- The d20 of the spell attack shows a 1 and the caster is a halfling: it is kept, nothing is spent, and Lucky asks first (SRD 5.1). -->
-      <p class="lucky-d20">{{ luckyHeld() }}</p>
+      <p class="lucky-d20">{{ questions.luckyHeld() }}</p>
       <app-lucky-prompt
         [offer]="l"
         [canApp]="canApp"
         [canType]="canTypeDamage"
         [preferApp]="preferApp"
-        [busy]="busy()"
-        [(typing)]="typing"
-        (reroll)="answerLucky(true, $event)"
-        (keep)="answerLucky(false, null)"
+        [busy]="s.busy()"
+        [(typing)]="s.typing"
+        (reroll)="questions.answerLucky(true, $event)"
+        (keep)="questions.answerLucky(false, null)"
       />
-    } @else if (offer(); as o) {
+    } @else if (questions.offer(); as o) {
       <!-- The d20 of the spell attack is rolled and kept; nothing is spent until the player answers (SRD 5.1, Bardic Inspiration). -->
       <app-inspiration-offer
         [offer]="o"
         [canApp]="canApp"
         [canType]="canTypeDamage"
-        [busy]="busy()"
-        (use)="answerDie(true, $event)"
-        (keep)="answerDie(false, null)"
+        [busy]="s.busy()"
+        (use)="questions.answerDie(true, $event)"
+        (keep)="questions.answerDie(false, null)"
       />
-    } @else if (!done()) {
-      @if (rows().length) {
-        <app-slot-picker [rows]="rows()" [chosen]="slot()" (pick)="pickSlot($event)" />
-        @if (warning()) {
+    } @else if (!s.done()) {
+      @if (ch.rows().length) {
+        <app-slot-picker [rows]="ch.rows()" [chosen]="s.slot()" (pick)="pickSlot($event)" />
+        @if (ch.warning()) {
           <div class="mr-notice mr-notice--warning" role="status">
             <mat-icon aria-hidden="true">info</mat-icon>
-            <p><strong>{{ warning() }}</strong></p>
+            <p><strong>{{ ch.warning() }}</strong></p>
           </div>
         }
       }
-      @if (asksAbility) {
-        <app-ability-picker [chosen]="ability()" (pick)="pickAbility($event)" />
+      @if (ch.asksAbility) {
+        <app-ability-picker [chosen]="s.ability()" (pick)="ch.pickAbility($event)" />
       }
-      @if (damageChoices().length) {
+      @if (ch.damageChoices().length) {
         <app-damage-type-picker
-          [choices]="damageChoices()"
-          [chosen]="damageType()"
-          [choice]="details()!.damageChoice"
-          (pick)="pickDamageType($event)"
+          [choices]="ch.damageChoices()"
+          [chosen]="ch.damageType()"
+          [choice]="s.details()!.damageChoice"
+          (pick)="ch.pickDamageType($event)"
         />
       }
-      @if (flow; as f) {
+      @if (ar.flow; as f) {
         <!-- An area placed on the map (PM-02a, PM-02b): step 1 places it, step 2 says who is inside. -->
-        @if (f.step() === 'place' && placement !== Placement.CASTER) {
-          <app-area-step [n]="1" [title]="stepOne" />
+        @if (f.step() === 'place' && ar.placement !== Placement.CASTER) {
+          <app-area-step [n]="1" [title]="ar.stepOne" />
           @if (data.map; as m) {
             <app-area-map
               [image]="m.image"
@@ -66,11 +66,11 @@
               [rows]="m.rows"
               [layers]="m.layers"
               [fog]="m.fog"
-              [combatants]="combatants()"
+              [combatants]="ar.combatants()"
               [casterId]="data.casterId"
               [spell]="data.name"
-              [placement]="placement"
-              [area]="areaShape"
+              [placement]="ar.placement"
+              [area]="ar.shape"
               [rangeFt]="data.targets?.rangeFt ?? 0"
               [placed]="f.placed()"
               [preview]="f.preview()"
@@ -87,7 +87,7 @@
               <p><strong>Você não vê esse ponto: há uma parede no caminho.</strong> O ponto de origem fica do lado de cá dela.</p>
             </div>
           }
-          @if (areaWarning(); as w) {
+          @if (ar.warning(); as w) {
             <div class="mr-notice mr-notice--warning" role="alert">
               <mat-icon aria-hidden="true">warning</mat-icon>
               <p><strong>{{ w.strong }}</strong> {{ w.rest }}</p>
@@ -103,11 +103,11 @@
               [rows]="m.rows"
               [layers]="m.layers"
               [fog]="m.fog"
-              [combatants]="combatants()"
+              [combatants]="ar.combatants()"
               [casterId]="data.casterId"
               [spell]="data.name"
-              [placement]="placement"
-              [area]="areaShape"
+              [placement]="ar.placement"
+              [area]="ar.shape"
               [rangeFt]="0"
               [placed]="f.placed()"
               [preview]="f.preview()"
@@ -115,20 +115,20 @@
             />
           }
           <app-area-list
-            [rows]="areaRows()"
-            [count]="areaCount()"
-            [warning]="areaWarning()"
-            [nobody]="areaAsks() ? nobodyLine() : null"
-            [note]="coverNote()"
-            [npcs]="npcs()"
-            [creatures]="creatures()"
+            [rows]="ar.rows()"
+            [count]="ar.count()"
+            [warning]="ar.warning()"
+            [nobody]="ar.asks() ? ar.nobodyLine() : null"
+            [note]="ar.coverNote()"
+            [npcs]="ch.npcs()"
+            [creatures]="ch.creatures()"
           />
-          @if (sculptRows().length) {
+          @if (ch.sculptRows().length) {
             <app-sculpt-picker
-              [rows]="sculptRows()"
-              [chosen]="sculpted()"
-              [limit]="sculptLimit()"
-              (pick)="toggleSculpt($event)"
+              [rows]="ch.sculptRows()"
+              [chosen]="s.sculpted()"
+              [limit]="ch.sculptLimit()"
+              (pick)="ch.toggleSculpt($event)"
             />
           }
         }
@@ -138,55 +138,55 @@
             <p>{{ f.error() }}</p>
           </div>
         }
-      } @else if (rule().kind !== 'none') {
+      } @else if (ch.rule().kind !== 'none') {
         <app-cast-targets
-          [rows]="targetRows()"
-          [rule]="rule()"
-          [chosen]="chosen()"
-          [dealt]="dealt()"
-          [total]="dartsTotal()"
-          [npcs]="npcs()"
-          [creatures]="creatures()"
-          [area]="hpArea()"
-          (toggle)="toggle($event)"
-          (deal)="deal($event)"
+          [rows]="ch.targetRows()"
+          [rule]="ch.rule()"
+          [chosen]="s.chosen()"
+          [dealt]="s.dealt()"
+          [total]="ch.dartsTotal()"
+          [npcs]="ch.npcs()"
+          [creatures]="ch.creatures()"
+          [area]="ch.hpArea()"
+          (toggle)="ch.toggle($event)"
+          (deal)="ch.deal($event)"
         />
-        @if (sculptRows().length) {
+        @if (ch.sculptRows().length) {
           <app-sculpt-picker
-            [rows]="sculptRows()"
-            [chosen]="sculpted()"
-            [limit]="sculptLimit()"
-            (pick)="toggleSculpt($event)"
+            [rows]="ch.sculptRows()"
+            [chosen]="s.sculpted()"
+            [limit]="ch.sculptLimit()"
+            (pick)="ch.toggleSculpt($event)"
           />
         }
-        @if (listAsking()) {
+        @if (s.listAsking()) {
           <!-- Nobody ticked on a list that may hit nobody (PM-02d state 13): asked in place, nothing spent yet. -->
           <div class="mr-notice mr-notice--warning" role="alert">
             <mat-icon aria-hidden="true">warning</mat-icon>
-            <p><strong>{{ nobodyLine().strong }}</strong> {{ nobodyLine().rest }}</p>
+            <p><strong>{{ ar.nobodyLine().strong }}</strong> {{ ar.nobodyLine().rest }}</p>
           </div>
         }
       }
-      @if (metaRows().length) {
+      @if (ch.metaRows().length) {
         <app-metamagic-picker
-          [rows]="metaRows()"
-          [points]="sorceryPoints"
-          [picks]="picks()"
-          [candidates]="metaCandidates()"
-          [firstTarget]="chosen()[0]"
-          [targetIds]="chosen()"
-          [line]="metaLine()"
-          (flip)="toggleMeta($event)"
-          (picked)="setPicks($event)"
+          [rows]="ch.metaRows()"
+          [points]="ch.sorceryPoints"
+          [picks]="s.picks()"
+          [candidates]="ch.metaCandidates()"
+          [firstTarget]="s.chosen()[0]"
+          [targetIds]="s.chosen()"
+          [line]="ch.metaLine()"
+          (flip)="ch.toggleMeta($event)"
+          (picked)="ch.setPicks($event)"
         />
-        @if (metaCost() > 0) {
-          <button matButton="text" type="button" class="nometa" [disabled]="busy()" (click)="noMetamagic()">
+        @if (ch.metaCost() > 0) {
+          <button matButton="text" type="button" class="nometa" [disabled]="s.busy()" (click)="ch.noMetamagic()">
             Sem Metamagia
           </button>
         }
       }
-      @if (pool(); as p) {
-        @if (usesPicker() && (!flow || (flow.step() === 'list' && !areaAsks()))) {
+      @if (ch.pool(); as p) {
+        @if (ch.usesPicker() && (!ar.flow || (ar.flow.step() === 'list' && !ar.asks()))) {
           <app-roll-picker
             [compact]="true"
             [canApp]="canApp"
@@ -198,69 +198,69 @@
             [min]="p.count"
             [max]="p.count * p.sides"
             [modifier]="0"
-            [busy]="busy() || !ready()"
-            [appLabel]="metaCost() > 0 ? castText() : 'Conjurar e rolar no app'"
+            [busy]="s.busy() || !ch.ready()"
+            [appLabel]="ch.metaCost() > 0 ? castText() : 'Conjurar e rolar no app'"
             [sticky]="true"
-            [(typing)]="typing"
-            (app)="castPooled({ inApp: true })"
-            (typed)="castPooled({ poolSum: $event })"
+            [(typing)]="s.typing"
+            (app)="caller.cast({ inApp: true })"
+            (typed)="caller.cast({ poolSum: $event })"
           />
         }
       }
-      @if (kind() === 'attack') {
-        @if (chosen().length) {
+      @if (ch.kind() === 'attack') {
+        @if (s.chosen().length) {
           <app-roll-mode-picker
-            [suggested]="suggested()"
-            [sources]="sources()"
-            [approval]="approval"
-            [mixed]="mixed() && picked() === null"
-            [mode]="chosenMode()"
-            (modeChange)="setMode($event)"
-            [(reason)]="reason"
-            [busy]="busy()"
+            [suggested]="md.suggested()"
+            [sources]="md.sources()"
+            [approval]="md.approval"
+            [mixed]="md.mixed() && s.picked() === null"
+            [mode]="md.chosen()"
+            (modeChange)="md.set($event)"
+            [(reason)]="s.reason"
+            [busy]="s.busy()"
           />
         }
       }
-      @if (kind() === 'attack' && modeReady() && faceCount() === 2 && canType()) {
+      @if (ch.kind() === 'attack' && md.ready() && md.faceCount() === 2 && md.canType()) {
         <app-multi-roll
           [fields]="d20Fields"
           [canApp]="canApp"
           [canType]="true"
           [preferApp]="preferApp"
-          [combine]="combine()"
+          [combine]="md.combine()"
           [modifier]="data.attackBonus"
           totalNote="Total do ataque"
           appLabel="Conjurar e rolar no app"
-          [hint]="'Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ' + (combine() === 'lower' ? 'menor' : 'maior') + '.'"
-          [busy]="busy() || !ready()"
-          [(typing)]="typing"
-          (app)="castRolled({ inApp: true })"
-          (typed)="castPair($event)"
+          [hint]="'Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ' + (md.combine() === 'lower' ? 'menor' : 'maior') + '.'"
+          [busy]="s.busy() || !ch.ready()"
+          [(typing)]="s.typing"
+          (app)="caller.cast({ inApp: true })"
+          (typed)="caller.cast({ faces: $event })"
         />
-      } @else if (kind() === 'attack' && modeReady()) {
+      } @else if (ch.kind() === 'attack' && md.ready()) {
         <app-roll-picker
           [compact]="true"
           [canApp]="canApp"
-          [canType]="canType()"
+          [canType]="md.canType()"
           [preferApp]="preferApp"
           [label]="'Role 1d20 para ' + data.name + (data.attackBonus < 0 ? ' (−' : ' (+') + (data.attackBonus < 0 ? -data.attackBonus : data.attackBonus) + ')'"
           hint="Role o seu dado e digite o número que saiu (1 a 20)."
           totalNote="Total do ataque"
           [modifier]="data.attackBonus"
-          [busy]="busy() || !ready()"
-          [appLabel]="metaCost() > 0 ? castText() : 'Conjurar e rolar no app'"
+          [busy]="s.busy() || !ch.ready()"
+          [appLabel]="ch.metaCost() > 0 ? castText() : 'Conjurar e rolar no app'"
           [sticky]="true"
-          [(typing)]="typing"
-          (app)="castRolled({ inApp: true })"
-          (typed)="castRolled({ face: $event })"
+          [(typing)]="s.typing"
+          (app)="caller.cast({ inApp: true })"
+          (typed)="caller.cast({ face: $event })"
         />
       }
     } @else {
-      <app-cast-result [rows]="resultRows()" [plain]="plain()" [sentence]="sentence()" [pool]="poolText()" />
-      @if (nextRoll(); as r) {
+      <app-cast-result [rows]="tx.resultRows()" [plain]="tx.plain()" [sentence]="tx.sentence()" [pool]="tx.poolText()" />
+      @if (tx.nextRoll(); as r) {
         <div class="dmg">
           <p class="dmg__what">
-            {{ r.what }}.{{ r.crit && (!canApp || typing()) ? ' ' + r.crit : '' }}
+            {{ r.what }}.{{ r.crit && (!canApp || s.typing()) ? ' ' + r.crit : '' }}
             @if (r.count > 1) {
               Role um de cada vez ou todos no app.
             }
@@ -277,67 +277,67 @@
             [max]="r.range.max"
             [modifier]="r.modifier"
             [fixedText]="r.fixedText"
-            [busy]="busy()"
+            [busy]="s.busy()"
             [appLabel]="r.count > 1 ? 'Rolar o dano no app' : 'Rolar ' + r.name + ' no app'"
             [sticky]="true"
-            [(typing)]="typing"
-            (app)="rollAll()"
+            [(typing)]="s.typing"
+            (app)="damage.rollAll()"
             (typed)="rollTyped($event)"
           />
         </div>
       }
-      <app-cast-slots [after]="after()" [shieldLost]="shieldLost()" [notes]="notes()" />
+      <app-cast-slots [after]="tx.after()" [shieldLost]="tx.shieldLost()" [notes]="tx.notes()" />
     }
   </div>
 
-  @if (!done() && flow; as f) {
+  @if (!s.done() && ar.flow; as f) {
     <div foot>
       @if (f.step() === 'place') {
-        @if (missing()) {
-          <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
+        @if (ch.missing()) {
+          <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ ch.missing() }}</p>
         } @else if (!f.ready()) {
-          <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ notPlaced }}</p>
+          <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ ar.notPlaced }}</p>
         }
         <div class="actions actions--stack">
           <button
             mat-flat-button
             type="button"
             class="cast"
-            [class.cast--off]="!f.ready() || !!missing()"
-            [disabled]="f.busy() || !f.ready() || !!missing()"
+            [class.cast--off]="!f.ready() || !!ch.missing()"
+            [disabled]="f.busy() || !f.ready() || !!ch.missing()"
             disabledInteractive
             (click)="confirmArea()"
           >
-            {{ confirmText }}
+            {{ ar.confirmText }}
           </button>
           <button mat-button type="button" class="quiet" [disabled]="f.busy()" (click)="close()">Cancelar</button>
         </div>
       } @else {
-        @if (endsConcentration(); as ends) {
+        @if (tx.endsConcentration(); as ends) {
           <p class="ends" role="status"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span><b>{{ ends.ends }}</b>@if (ends.goes) { {{ ends.goes }}}</span></p>
         }
         <div class="actions actions--stack">
-          @if (areaAsks()) {
-            <button mat-flat-button type="button" class="cast" [disabled]="busy()" (click)="castAnyway()">
+          @if (ar.asks()) {
+            <button mat-flat-button type="button" class="cast" [disabled]="s.busy()" (click)="caller.castAnyway()">
               <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar mesmo assim
             </button>
-          } @else if (!usesPicker()) {
+          } @else if (!ch.usesPicker()) {
             <button
               mat-flat-button
               type="button"
               class="cast"
-              [class.cast--off]="!ready()"
-              [disabled]="busy() || !ready()"
+              [class.cast--off]="!ch.ready()"
+              [disabled]="s.busy() || !ch.ready()"
               disabledInteractive
-              (click)="castNow()"
+              (click)="caller.castNow()"
             >
               <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar {{ data.name }}
             </button>
           }
-          @if (placement === Placement.CASTER) {
-            <button #changePlace mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="close()">Cancelar</button>
+          @if (ar.placement === Placement.CASTER) {
+            <button #changePlace mat-stroked-button type="button" class="cancel" [disabled]="s.busy()" (click)="close()">Cancelar</button>
           } @else {
-            <button #changePlace mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="changeArea()">
+            <button #changePlace mat-stroked-button type="button" class="cancel" [disabled]="s.busy()" (click)="changeArea()">
               <mat-icon aria-hidden="true">arrow_back</mat-icon>Mudar o local
             </button>
           }
@@ -345,23 +345,23 @@
       }
     </div>
   }
-  @if (!done() && !flow && kind() !== 'attack' && !(kind() === 'pool' && usesPicker())) {
+  @if (!s.done() && !ar.flow && ch.kind() !== 'attack' && !(ch.kind() === 'pool' && ch.usesPicker())) {
     <div foot>
-      @if (endsConcentration(); as ends) {
+      @if (tx.endsConcentration(); as ends) {
         <!-- A concentration spell cast over another one: what it ends, and what goes with it (the combat's own data). -->
         <p class="ends" role="status"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span><b>{{ ends.ends }}</b>@if (ends.goes) { {{ ends.goes }}}</span></p>
       }
-      @if (missing()) {
-        <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
-      } @else if (dartsLine()) {
-        <p class="missing" role="status"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ dartsLine() }}</p>
+      @if (ch.missing()) {
+        <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ ch.missing() }}</p>
+      } @else if (ch.dartsLine()) {
+        <p class="missing" role="status"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ ch.dartsLine() }}</p>
       }
-      @if (listAsking()) {
+      @if (s.listAsking()) {
         <div class="actions actions--stack">
-          <button mat-flat-button type="button" class="cast" [disabled]="busy()" (click)="castAnyway()">
+          <button mat-flat-button type="button" class="cast" [disabled]="s.busy()" (click)="caller.castAnyway()">
             <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar mesmo assim
           </button>
-          <button #backToList mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="listAsking.set(false)">Voltar à lista</button>
+          <button #backToList mat-stroked-button type="button" class="cancel" [disabled]="s.busy()" (click)="s.listAsking.set(false)">Voltar à lista</button>
         </div>
       } @else {
       <!-- Two real buttons of the same width side by side; stacked under 480px, "Conjurar" on top. -->
@@ -370,19 +370,19 @@
           mat-flat-button
           type="button"
           class="cast"
-          [class.cast--off]="!ready()"
-          [disabled]="busy() || !ready()"
+          [class.cast--off]="!ch.ready()"
+          [disabled]="s.busy() || !ch.ready()"
           disabledInteractive
-          (click)="castNow()"
+          (click)="caller.castNow()"
         >
           <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ castText() }}
         </button>
-        <button mat-stroked-button type="button" class="cancel" [disabled]="busy()" (click)="close()">Cancelar</button>
+        <button mat-stroked-button type="button" class="cancel" [disabled]="s.busy()" (click)="close()">Cancelar</button>
       </div>
       }
     </div>
   }
-  @if (done() && !owed()) {
+  @if (s.done() && !damage.owed()) {
     <div foot>
       <button #back mat-flat-button type="button" class="cast" (click)="close()">Voltar à sua vez</button>
     </div>

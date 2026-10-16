@@ -80,50 +80,67 @@ func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, 
 	if d == nil || e.dmg == nil {
 		return
 	}
-	names := func(string) string { return "" }
-	if e.rolls != nil && e.rolls.names != nil {
-		names = e.rolls.names
-	}
 	if dice {
-		for _, r := range e.dmg.Parts {
-			if e.removed != nil && r.Key == e.removed.Key {
-				r.Counted = false
-			}
-			if r.Conditional && !v.master {
-				r.Counted = true // the same lines whatever the target is
-			}
-			pr := partRollProto(r, dtPT)
-			if v.master {
-				pr.RiderPt = r.Rider
-			}
-			d.Parts = append(d.Parts, pr)
-		}
+		e.dressParts(d, v)
 	}
 	if !v.master && !targetsOwn && holdsHitPoints {
-		// The damage as rolled, before the target's modifiers and with every die the roll made.
-		switch {
-		case len(e.dmg.Parts) > 0:
-			shown := slices.Clone(e.dmg.Parts)
-			for i := range shown {
-				if e.removed != nil && shown[i].Key == e.removed.Key {
-					shown[i].Counted = false
-				}
-			}
-			d.Amount = clamp32(shownTotalOf(shown), 0, math.MaxInt32)
-		case len(e.dmg.Steps) > 0 || e.dmg.Shown > 0:
-			d.Amount = e.dmg.Shown
-		}
+		e.dressShownAmount(d)
 	}
 	if v.master || targetsOwn {
-		var ignored []string
-		if e.applied != nil {
-			ignored = e.applied.Ignored
-		}
-		d.Steps = stepsProto(e.dmg.Steps, ignored, names, dtPT)
+		e.dressSteps(d)
 	}
 	if e.removed != nil && e.applied == nil && (v.master || targetsOwn) {
 		d.Amount = e.removed.Amount
 	}
+}
+
+// dressParts adds what each part rolled to the damage. The line of the part the master
+// took out shows it as not counted.
+func (e *logEntry) dressParts(d *playv1.CombatLogDamage, v combatViewer) {
+	for _, r := range e.dmg.Parts {
+		if e.removed != nil && r.Key == e.removed.Key {
+			r.Counted = false
+		}
+		if r.Conditional && !v.master {
+			r.Counted = true // the same lines whatever the target is
+		}
+		pr := partRollProto(r, dtPT)
+		if v.master {
+			pr.RiderPt = r.Rider
+		}
+		d.Parts = append(d.Parts, pr)
+	}
+}
+
+// dressShownAmount gives a player who is not the target's the damage as rolled, before the
+// target's modifiers and with every die the roll made.
+func (e *logEntry) dressShownAmount(d *playv1.CombatLogDamage) {
+	switch {
+	case len(e.dmg.Parts) > 0:
+		shown := slices.Clone(e.dmg.Parts)
+		for i := range shown {
+			if e.removed != nil && shown[i].Key == e.removed.Key {
+				shown[i].Counted = false
+			}
+		}
+		d.Amount = clamp32(shownTotalOf(shown), 0, math.MaxInt32)
+	case len(e.dmg.Steps) > 0 || e.dmg.Shown > 0:
+		d.Amount = e.dmg.Shown
+	}
+}
+
+// dressSteps adds the steps resistance took the damage through, minus the sources the
+// master told the app to ignore.
+func (e *logEntry) dressSteps(d *playv1.CombatLogDamage) {
+	names := func(string) string { return "" }
+	if e.rolls != nil && e.rolls.names != nil {
+		names = e.rolls.names
+	}
+	var ignored []string
+	if e.applied != nil {
+		ignored = e.applied.Ignored
+	}
+	d.Steps = stepsProto(e.dmg.Steps, ignored, names, dtPT)
 }
 
 // removalView is the master's removal of an extra, as a line for him and the attacker's player.

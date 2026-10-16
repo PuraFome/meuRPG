@@ -2,80 +2,24 @@ import { signal } from '@angular/core';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import type {
-  DiceRoll,
-  LuckyOffer,
-  OutsideInspirationOffer,
-} from '../../../gen/meurpg/play/v1/combat_pb';
-import type { AdvantageSource, RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
-import {
-  PuzzleBlockedReason,
-  type PuzzleMoveSchema,
-  type PuzzleRun,
-  type TryPuzzleHintResponse,
-} from '../../../gen/meurpg/play/v1/puzzles_pb';
-import { ActionKey, newKey } from '../connect/idempotency';
-import { needsTwoD20, takesTwo } from '../play/check-roll';
-import { ExtraDiceState } from '../effects/extra-dice-state';
-import { isTransient, puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
+import type { PuzzleMoveSchema, PuzzleRun } from '../../../gen/meurpg/play/v1/puzzles_pb';
+import { newKey } from '../connect/idempotency';
 import type { InspirationRoll, LuckyRoll } from '../resources/resources-client';
+import { puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
+import { PuzzleHints } from './puzzle-hints';
+import {
+  type HintTry,
+  type MoveVerdict,
+  type PlayApi,
+  type Schedule,
+  notSent,
+} from './puzzle-play-api';
+import { RETRY_WAITS_MS, hintLineStale, movedOn, withRetry } from './puzzle-play-support';
 import type { HintDie, MoveAnswer } from './puzzles-client';
 
-/** What the player's page needs from the client; `PuzzlesClient` is one. */
-export interface PlayApi {
-  run(campaignId: string, puzzleId: string): Promise<PuzzleRun>;
-  move(
-    campaignId: string,
-    puzzleId: string,
-    move: MessageInitShape<typeof PuzzleMoveSchema>,
-    idempotencyKey: string,
-  ): Promise<MoveAnswer>;
-  tryHint(
-    campaignId: string,
-    puzzleId: string,
-    die: HintDie,
-    idempotencyKey: string,
-    extraDieFaces?: readonly number[],
-  ): Promise<TryPuzzleHintResponse>;
-  /** The answer about the Bardic Inspiration die a try waits on; absent in a client that has no such question. */
-  answerHintDie?(
-    campaignId: string,
-    holdId: string,
-    use: boolean,
-    die: InspirationRoll | null,
-    idempotencyKey: string,
-  ): Promise<TryPuzzleHintResponse>;
-  /** The answer to the Lucky question a try waits on (a halfling's d20 of 1); absent in a client that has no such question. */
-  answerHintLucky?(
-    campaignId: string,
-    holdId: string,
-    reroll: boolean,
-    die: LuckyRoll | null,
-    idempotencyKey: string,
-  ): Promise<TryPuzzleHintResponse>;
-}
-
-/** What a move came to, for the page that sent it: a typed answer or a deciphered message is judged, not applied. */
-export interface MoveVerdict {
-  /** The move reached the server and was judged. */
-  readonly sent: boolean;
-  /** The judged move was wrong (the player's own: a wrong answer, a wrong bell). */
-  readonly wrong: boolean;
-  readonly solved: boolean;
-}
-
-/** The player's own try for a hint by a skill check, as the page says it ("Você conseguiu." / "Não deu desta vez."). */
-export interface HintTry {
-  readonly passed: boolean;
-  /** The player's own roll: the d20 and the total with the bonus. Never the DC. */
-  readonly roll: DiceRoll | undefined;
-  /** The mode the d20 rolled with and the circumstances behind it. */
-  readonly mode: RollMode;
-  readonly sources: readonly AdvantageSource[];
-}
-
-/** Calls `fn` after `ms` and returns what cancels it: the sequence's reveal reads the run again at each step. */
-export type Schedule = (ms: number, fn: () => void) => () => void;
+// The API of the play lives in `puzzle-play-api`; the pages import it from here.
+export type { HintTry, MoveVerdict, PlayApi, Schedule };
+export { RETRY_WAITS_MS };
 
 const timeoutSchedule: Schedule = (ms, fn) => {
   const id = setTimeout(fn, ms);
@@ -84,9 +28,6 @@ const timeoutSchedule: Schedule = (ms, fn) => {
 
 /** A little after the server's `next_in_ms`, so the read finds the step revealed, never the one before it. */
 export const REVEAL_SLACK_MS = 60;
-
-/** Waits before the 1st, 2nd and 3rd retry of a move whose answer never came. */
-export const RETRY_WAITS_MS: readonly number[] = [400, 1200, 3000];
 
 /**
  * The player's open puzzle (MR-038, RN-27): the run as the server last said it, and the moves.
@@ -111,24 +52,24 @@ export class PuzzlePlay {
   readonly message = signal('');
   /** Moves sent and not answered yet. */
   readonly pending = signal(0);
+  /** The tries for a hint, apart from the moves; the signals below are theirs, kept here for the pages. */
+  private readonly hints: PuzzleHints;
   /** A try for a hint is in flight. */
-  readonly hintBusy = signal(false);
+  readonly hintBusy: PuzzleHints['busy'];
   /** The last try for a hint, until the next one or the next change of the puzzle. */
-  readonly hintTry = signal<HintTry | null>(null);
+  readonly hintTry: PuzzleHints['last'];
   /** The try's d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
-  readonly hintOffer = signal<OutsideInspirationOffer | null>(null);
+  readonly hintOffer: PuzzleHints['offer'];
   /** The try's d20 was rolled and kept because a halfling's d20 shows a 1: the Lucky question, asked before the die's. */
-  readonly hintLucky = signal<LuckyOffer | null>(null);
-  /** One key per Lucky answer (roll again this way, or keep the 1): a retry of a lost answer never rolls the d20 twice. */
-  private readonly luckyKeys = new ActionKey();
+  readonly hintLucky: PuzzleHints['lucky'];
   /** The next try with a real die takes two d20: the server said so, or the last result had advantage or disadvantage. */
-  readonly hintPair = signal(false);
+  readonly hintPair: PuzzleHints['pair'];
   /** The d4 an effect adds to a try with a real die (Orientação): asked when the server says the roll takes them. */
-  readonly extraDice = new ExtraDiceState();
+  readonly extraDice: PuzzleHints['extraDice'];
+  /** The server refused a try because the table rolls its dice the other way: the page reads the campaign's dice mode again. */
+  readonly diceModeStale: PuzzleHints['diceModeStale'];
   /** What to say when the first read of the run failed and nothing is on screen, or `''`; "Tentar de novo" reads again. */
   readonly loadError = signal('');
-  /** The server refused a try because the table rolls its dice the other way: the page reads the campaign's dice mode again. */
-  readonly diceModeStale = signal(0);
 
   constructor(
     private readonly api: PlayApi,
@@ -137,7 +78,27 @@ export class PuzzlePlay {
       new Promise((resolve) => setTimeout(resolve, ms)),
     private readonly makeKey: () => string = newKey,
     private readonly schedule: Schedule = timeoutSchedule,
-  ) {}
+  ) {
+    this.hints = new PuzzleHints({
+      api,
+      campaignId,
+      wait,
+      makeKey,
+      run: this.run,
+      gone: this.gone,
+      message: this.message,
+      openSeq: () => this.openSeq,
+      apply: (run) => this.apply(run),
+      refresh: () => this.refresh(),
+    });
+    this.hintBusy = this.hints.busy;
+    this.hintTry = this.hints.last;
+    this.hintOffer = this.hints.offer;
+    this.hintLucky = this.hints.lucky;
+    this.hintPair = this.hints.pair;
+    this.extraDice = this.hints.extraDice;
+    this.diceModeStale = this.hints.diceModeStale;
+  }
 
   private cancelReveal: (() => void) | null = null;
   /** The page left: a read that is still on its way never starts a timer after it. */
@@ -168,14 +129,11 @@ export class PuzzlePlay {
     this.bellQueue = Promise.resolve();
     this.bellEpoch++;
     this.pending.set(0);
-    this.hintBusy.set(false);
     this.run.set(null);
     this.gone.set(false);
     this.loadError.set('');
     this.message.set('');
-    this.hintTry.set(null);
-    this.hintPair.set(false);
-    this.extraDice.fields.set([]);
+    this.hints.reset();
     this.pendingId = puzzleId;
     await this.refresh();
   }
@@ -228,13 +186,7 @@ export class PuzzlePlay {
     }
     // What a player tried for a hint is about the hint they were at: once it moves on (the master released one, the player may try again),
     // or the puzzle is over, the line goes.
-    if (
-      current &&
-      (next.hints.length !== current.hints.length ||
-        (next.canTryHint && !current.canTryHint) ||
-        next.solved ||
-        next.stopped)
-    ) {
+    if (current && hintLineStale(current, next)) {
       this.hintTry.set(null);
     }
     this.run.set(next);
@@ -272,11 +224,11 @@ export class PuzzlePlay {
     const turn = this.bellQueue.then(async () => {
       if (seq !== this.openSeq) {
         // Made for the puzzle that was open before: opening this one already cleared the count.
-        return { sent: false, wrong: false, solved: false } satisfies MoveVerdict;
+        return notSent();
       }
       if (epoch !== this.bellEpoch) {
         this.pending.update((n) => n - 1);
-        return { sent: false, wrong: false, solved: false } satisfies MoveVerdict;
+        return notSent();
       }
       const verdict = await this.send(move, true);
       if (verdict.wrong && seq === this.openSeq) {
@@ -297,12 +249,11 @@ export class PuzzlePlay {
       if (counted) {
         this.pending.update((n) => n - 1);
       }
-      return { sent: false, wrong: false, solved: false };
+      return notSent();
     }
-    const kind = move.kind?.case;
     // A typed answer spends an attempt: a second one made before the first is judged (Enter held, a double tap) is not sent.
-    if ((kind === 'riddle' || kind === 'cipher') && this.pending() > 0) {
-      return { sent: false, wrong: false, solved: false };
+    if (isTypedAnswer(move) && this.pending() > 0) {
+      return notSent();
     }
     const seq = this.openSeq;
     const key = this.makeKey();
@@ -313,7 +264,7 @@ export class PuzzlePlay {
     try {
       const answer = await this.sendWithRetry(run.puzzleId, move, key);
       if (seq !== this.openSeq) {
-        return { sent: false, wrong: false, solved: false };
+        return notSent();
       }
       this.apply(answer.run);
       return {
@@ -323,15 +274,10 @@ export class PuzzlePlay {
       };
     } catch (err) {
       if (seq !== this.openSeq) {
-        return { sent: false, wrong: false, solved: false };
+        return notSent();
       }
-      this.message.set(puzzleErrorMessage(err, 'fazer essa jogada', 'player'));
-      const blocked = puzzleBlocked(err);
-      const notFound = ConnectError.from(err, Code.Unavailable).code === Code.NotFound;
-      if (blocked || notFound) {
-        await this.refresh();
-      }
-      return { sent: false, wrong: false, solved: false };
+      await this.moveFailed(err);
+      return notSent();
     } finally {
       if (seq === this.openSeq) {
         this.pending.update((n) => n - 1);
@@ -339,227 +285,41 @@ export class PuzzlePlay {
     }
   }
 
-  /**
-   * "Tentar uma dica": rolls the puzzle's skill check for the next hint, in the app or from the face of a real die. A pass puts the
-   * hint in `run.hints` (this player's alone); the answer is the run as this player reads it, and their own roll. The DC never
-   * reaches here. The same key goes with a retry, so a lost answer never rolls twice.
-   */
-  async tryHint(die: HintDie): Promise<void> {
-    const run = this.run();
-    if (!run || !run.canTryHint || this.hintBusy() || this.gone()) {
-      return;
-    }
-    const extra = this.extraDice.take(!('inApp' in die));
-    if (extra === null) {
-      this.message.set(this.extraDice.missingText());
-      return;
-    }
-    const seq = this.openSeq;
-    const key = this.makeKey();
-    this.hintBusy.set(true);
-    this.message.set('');
-    try {
-      const answer = await this.sendHintWithRetry(run.puzzleId, die, key, extra);
-      if (seq !== this.openSeq) {
-        return;
-      }
-      this.settleHint(answer, run);
-    } catch (err) {
-      if (seq !== this.openSeq) {
-        return;
-      }
-      if (this.askForMore(err, die)) {
-        return;
-      }
-      this.message.set(puzzleErrorMessage(err, 'tentar a dica', 'player'));
-      if (puzzleBlocked(err)?.reason === PuzzleBlockedReason.WRONG_DICE_MODE) {
-        // The table's dice mode changed under the page: read it again, so the way to roll on screen is the one the server wants.
-        this.diceModeStale.update((n) => n + 1);
-      }
-      if (puzzleBlocked(err) || ConnectError.from(err, Code.Unavailable).code === Code.NotFound) {
-        await this.refresh();
-      }
-    } finally {
-      if (seq === this.openSeq) {
-        this.hintBusy.set(false);
-      }
+  /** Says why a move failed; a refusal or a closed puzzle says the screen was stale, so the run is read again. */
+  private async moveFailed(err: unknown): Promise<void> {
+    this.message.set(puzzleErrorMessage(err, 'fazer essa jogada', 'player'));
+    const notFound = ConnectError.from(err, Code.Unavailable).code === Code.NotFound;
+    if (puzzleBlocked(err) || notFound) {
+      await this.refresh();
     }
   }
 
-  /** What a try came to: the run as this player reads it, their roll and the form for the next one. */
-  private settleHint(answer: TryPuzzleHintResponse, run: PuzzleRun): void {
-    if (answer.luckyOffer || answer.inspirationOffer) {
-      // Nothing was written: the question is the whole answer, the Lucky one first, then the die's.
-      this.hintLucky.set(answer.luckyOffer ?? null);
-      this.hintOffer.set(answer.luckyOffer ? null : (answer.inspirationOffer ?? null));
-      return;
-    }
-    this.hintOffer.set(null);
-    this.hintLucky.set(null);
-    this.apply(answer.run ?? run);
-    this.hintTry.set({
-      passed: answer.passed,
-      roll: answer.roll,
-      mode: answer.mode,
-      sources: answer.sources,
-    });
-    this.hintPair.set(takesTwo(answer.mode));
-    this.extraDice.fields.set([]);
+  /** "Tentar uma dica": see `PuzzleHints.try`. */
+  tryHint(die: HintDie): Promise<void> {
+    return this.hints.try(die);
   }
 
-  /** The answer about the die: the try is made now, with the d20 it rolled and the die when it was used. */
-  async answerHintDie(use: boolean, die: InspirationRoll | null): Promise<void> {
-    const offer = this.hintOffer();
-    const run = this.run();
-    if (!offer || !run || this.hintBusy() || !this.api.answerHintDie) {
-      return;
-    }
-    const seq = this.openSeq;
-    this.hintBusy.set(true);
-    this.message.set('');
-    try {
-      const answer = await this.api.answerHintDie(
-        this.campaignId(),
-        offer.holdId,
-        use,
-        die,
-        this.makeKey(),
-      );
-      if (seq === this.openSeq) {
-        this.settleHint(answer, run);
-      }
-    } catch (err) {
-      if (seq === this.openSeq) {
-        this.message.set(
-          puzzleErrorMessage(err, 'responder sobre a Inspiração de Bardo', 'player'),
-        );
-      }
-    } finally {
-      if (seq === this.openSeq) {
-        this.hintBusy.set(false);
-      }
-    }
+  /** The answer about the Bardic Inspiration die the try waits on. */
+  answerHintDie(use: boolean, die: InspirationRoll | null): Promise<void> {
+    return this.hints.answerDie(use, die);
   }
 
-  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the try is made now with the new d20, or the
-   * Bardic Inspiration question comes next, on the new roll. The key stays the same until the answer gets through. */
-  async answerHintLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    const offer = this.hintLucky();
-    const run = this.run();
-    if (!offer || !run || this.hintBusy() || !this.api.answerHintLucky) {
-      return;
-    }
-    const seq = this.openSeq;
-    this.hintBusy.set(true);
-    this.message.set('');
-    try {
-      const answer = await this.api.answerHintLucky(
-        this.campaignId(),
-        offer.holdId,
-        reroll,
-        die,
-        this.luckyKeys.keyFor({ hold: offer.holdId, reroll, die }),
-      );
-      this.luckyKeys.renew();
-      if (seq === this.openSeq) {
-        this.settleHint(answer, run);
-      }
-    } catch (err) {
-      if (seq === this.openSeq) {
-        this.message.set(puzzleErrorMessage(err, 'responder ao Sortudo', 'player'));
-      }
-    } finally {
-      if (seq === this.openSeq) {
-        this.hintBusy.set(false);
-      }
-    }
+  /** The answer to the Lucky question the try waits on. */
+  answerHintLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
+    return this.hints.answerLucky(reroll, die);
   }
 
-  /** A real die refused because the roll takes more dice (the second d20, or the d4 of an effect): the form asks for them. */
-  private askForMore(err: unknown, die: HintDie): boolean {
-    if (this.askForPair(err, die)) {
-      return true;
-    }
-    const more = this.extraDice.fromRefusal(err);
-    if (more) {
-      this.message.set(more);
-    }
-    return more !== '';
-  }
-
-  /** A real die refused because the roll takes two d20: the form now asks for both, and nothing is said as an error. */
-  private askForPair(err: unknown, die: HintDie): boolean {
-    if (needsTwoD20(err) && 'face' in die) {
-      this.hintPair.set(true);
-      return true;
-    }
-    return false;
-  }
-
-  private async sendHintWithRetry(
-    puzzleId: string,
-    die: HintDie,
-    key: string,
-    extra: readonly number[],
-  ): Promise<TryPuzzleHintResponse> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await this.api.tryHint(this.campaignId(), puzzleId, die, key, extra);
-      } catch (err) {
-        const waitMs = RETRY_WAITS_MS[attempt];
-        if (waitMs === undefined || !isTransient(err)) {
-          throw err;
-        }
-        await this.wait(waitMs);
-      }
-    }
-  }
-
-  private async sendWithRetry(
+  private sendWithRetry(
     puzzleId: string,
     move: MessageInitShape<typeof PuzzleMoveSchema>,
     key: string,
   ): Promise<MoveAnswer> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await this.api.move(this.campaignId(), puzzleId, move, key);
-      } catch (err) {
-        const waitMs = RETRY_WAITS_MS[attempt];
-        if (waitMs === undefined || !isTransient(err)) {
-          throw err;
-        }
-        await this.wait(waitMs);
-      }
-    }
+    return withRetry(() => this.api.move(this.campaignId(), puzzleId, move, key), this.wait);
   }
 }
 
-/**
- * Whether a read of the same revision is further along than the one on screen. A play of the sequence reveals a step, a time limit
- * stops the puzzle, a clue reaches the notes: none changes the revision, so the page takes the newer of two reads of one revision by what only moves forward.
- */
-function movedOn(current: PuzzleRun, next: PuzzleRun): boolean {
-  if (next.revision < current.revision) {
-    return false;
-  }
-  if (next.stopped && !current.stopped) {
-    return true;
-  }
-  // The player found the key of the cipher in the adventure: a clue that reached their notes, which moves no revision either.
-  if (next.keyClueId !== '' && current.keyClueId === '') {
-    return true;
-  }
-  const a = current.sequence;
-  const b = next.sequence;
-  if (!a || !b) {
-    return false;
-  }
-  if (b.plays !== a.plays) {
-    return b.plays > a.plays;
-  }
-  // The same play: it only goes forward, and once it ended (not playing, nothing shown) a late read from the middle of it never brings it back.
-  if (!a.playing) {
-    return false;
-  }
-  return !b.playing || b.shown.length > a.shown.length;
+/** A riddle answer or a cipher text: the moves the server judges (and may count as an attempt). */
+function isTypedAnswer(move: MessageInitShape<typeof PuzzleMoveSchema>): boolean {
+  const kind = move.kind?.case;
+  return kind === 'riddle' || kind === 'cipher';
 }

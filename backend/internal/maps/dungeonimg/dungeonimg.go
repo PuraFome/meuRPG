@@ -94,37 +94,68 @@ func Render(f Floorplan, w, h int) (*image.Paletted, error) {
 	side := max(w/cols, h/rows, 1)
 	edge := max(1, side/outlineDivisor)
 
-	colSq, nearW, nearE := axis(w, cols, edge)
-	rowSq, nearN, nearS := axis(h, rows, edge)
-	solidAt := func(c, r int) bool {
-		if c < 0 || r < 0 || c >= cols || r >= rows {
-			return true // beyond the grid is rock
-		}
-		return f.Solid[r*cols+c]
-	}
+	p := painter{f: f, w: w}
+	p.colSq, p.nearW, p.nearE = axis(w, cols, edge)
+	p.rowSq, p.nearN, p.nearS = axis(h, rows, edge)
 
 	img := image.NewPaletted(image.Rect(0, 0, w, h), palette)
 	for y := range h {
-		sr := rowSq[y]
-		row := img.Pix[y*img.Stride : y*img.Stride+w]
-		for x := range w {
-			sc := colSq[x]
-			if f.Solid[sr*cols+sc] {
-				row[x] = idxWall
-				continue
-			}
-			// A floor pixel is ink where it is along an edge that meets a solid
-			// square (the corner pixels also look at the diagonal square).
-			ink := nearW[x] && solidAt(sc-1, sr) || nearE[x] && solidAt(sc+1, sr) ||
-				nearN[y] && solidAt(sc, sr-1) || nearS[y] && solidAt(sc, sr+1) ||
-				nearW[x] && nearN[y] && solidAt(sc-1, sr-1) || nearE[x] && nearN[y] && solidAt(sc+1, sr-1) ||
-				nearW[x] && nearS[y] && solidAt(sc-1, sr+1) || nearE[x] && nearS[y] && solidAt(sc+1, sr+1)
-			if ink {
-				row[x] = idxInk
-			} // else idxFloor, the zero value
-		}
+		p.paintRow(img.Pix[y*img.Stride:y*img.Stride+w], y)
 	}
 	return img, nil
+}
+
+// painter holds what Render needs to paint a pixel: the plan, the square each pixel of
+// an axis falls in, and which pixels are near the low (W, N) and the high (E, S) side of
+// their square.
+type painter struct {
+	f            Floorplan
+	w            int
+	colSq, rowSq []int
+	nearW, nearE []bool
+	nearN, nearS []bool
+}
+
+// solidAt says whether a square is solid; beyond the grid is rock.
+func (p *painter) solidAt(c, r int) bool {
+	if c < 0 || r < 0 || c >= p.f.Cols || r >= p.f.Rows {
+		return true
+	}
+	return p.f.Solid[r*p.f.Cols+c]
+}
+
+// paintRow paints the pixels of row y: a wall pixel for a solid square, ink along the
+// edge of a floor square that meets a solid one, and the floor (the zero value) elsewhere.
+func (p *painter) paintRow(row []uint8, y int) {
+	sr := p.rowSq[y]
+	for x := range p.w {
+		sc := p.colSq[x]
+		switch {
+		case p.f.Solid[sr*p.f.Cols+sc]:
+			row[x] = idxWall
+		case p.inked(x, y, sc, sr):
+			row[x] = idxInk
+		}
+	}
+}
+
+// inked says whether the floor pixel (x, y), in the square (sc, sr), is ink: it is along
+// an edge that meets a solid square, or in a corner whose diagonal square is solid.
+func (p *painter) inked(x, y, sc, sr int) bool {
+	return p.edgeInked(x, y, sc, sr) || p.cornerInked(x, y, sc, sr)
+}
+
+// edgeInked says whether the pixel is near a side of its square whose neighbor is solid.
+func (p *painter) edgeInked(x, y, sc, sr int) bool {
+	return p.nearW[x] && p.solidAt(sc-1, sr) || p.nearE[x] && p.solidAt(sc+1, sr) ||
+		p.nearN[y] && p.solidAt(sc, sr-1) || p.nearS[y] && p.solidAt(sc, sr+1)
+}
+
+// cornerInked says whether the pixel is near a corner of its square whose diagonal
+// neighbor is solid.
+func (p *painter) cornerInked(x, y, sc, sr int) bool {
+	return p.nearW[x] && p.nearN[y] && p.solidAt(sc-1, sr-1) || p.nearE[x] && p.nearN[y] && p.solidAt(sc+1, sr-1) ||
+		p.nearW[x] && p.nearS[y] && p.solidAt(sc-1, sr+1) || p.nearE[x] && p.nearS[y] && p.solidAt(sc+1, sr+1)
 }
 
 // axis maps each of the n pixels of an axis to its square (of count squares), and

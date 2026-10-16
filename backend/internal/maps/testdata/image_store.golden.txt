@@ -1,0 +1,47 @@
+== a plain image
+name="Nome" type=image/png 40x30 size=107 generated=false kind="" parent=- uploadedBy=true rows=1 files=[campaigns/<uuid>/images/<uuid>,campaigns/<uuid>/images/<uuid>.thumb]
+
+== an image with a reference
+name="Nome" type=image/png 40x30 size=107 generated=false kind="" parent=- uploadedBy=true rows=1 files=[campaigns/<uuid>/images/<uuid>,campaigns/<uuid>/images/<uuid>.ref,campaigns/<uuid>/images/<uuid>.thumb]
+
+(parent stored first)
+== a generated image whose parent is there
+name="Nome" type=image/png 40x30 size=107 generated=true kind="scene" parent=set uploadedBy=true rows=2 files=[campaigns/<uuid>/images/<uuid>,campaigns/<uuid>/images/<uuid>.thumb,campaigns/<uuid>/images/<uuid>,campaigns/<uuid>/images/<uuid>.thumb]
+
+== a generated image whose parent is gone
+name="Nome" type=image/png 40x30 size=107 generated=true kind="map_scene" parent=- uploadedBy=true rows=1 files=[campaigns/<uuid>/images/<uuid>,campaigns/<uuid>/images/<uuid>.thumb]
+
+(finish got the row's id: true, read the row inside the transaction: true)
+== a finish that succeeds
+name="Nome" type=image/png 40x30 size=107 generated=false kind="" parent=- uploadedBy=true rows=1 files=[campaigns/<uuid>/images/<uuid>,campaigns/<uuid>/images/<uuid>.thumb]
+
+== a finish that fails
+error=internal: internal error code=internal internal error rows=0 files=[]
+
+== a finish that finds the request closed
+error=maps: the image request is closed code=- rows=0 files=[]
+
+== a finish that refuses with an HTTP error
+error=too many pixels code=http 400 DIMENSIONS "too many pixels" rows=0 files=[]
+
+== a finish that refuses with a Connect error
+error=failed_precondition: not now code=failed_precondition not now rows=0 files=[]
+
+== the 1th file cannot be written
+error=cannot store the image right now, please try again code=http 503  "cannot store the image right now, please try again" rows=0 files=[]
+
+== the 2th file cannot be written
+error=cannot store the image right now, please try again code=http 503  "cannot store the image right now, please try again" rows=0 files=[]
+
+== the 3th file cannot be written
+error=cannot store the image right now, please try again code=http 503  "cannot store the image right now, please try again" rows=0 files=[]
+
+== a gallery at its image limit
+error=the campaign's gallery is full code=http 429 QUOTA "the campaign's gallery is full" rows=1 files=[campaigns/<uuid>/images/<uuid>,campaigns/<uuid>/images/<uuid>.thumb]
+
+== an image that exactly fills the bytes
+name="Nome" type=image/png 40x30 size=107 generated=false kind="" parent=- uploadedBy=true rows=1 files=[campaigns/<uuid>/images/<uuid>,campaigns/<uuid>/images/<uuid>.thumb]
+
+== an image one byte over the bytes
+error=the campaign's gallery is full code=http 429 QUOTA "the campaign's gallery is full" rows=0 files=[]
+

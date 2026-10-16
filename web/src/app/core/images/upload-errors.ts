@@ -8,12 +8,16 @@ export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as
 /** The `accept` attribute for `<input type="file">`. */
 export const ACCEPT_ATTRIBUTE = ACCEPTED_IMAGE_TYPES.join(',');
 
+const KIB = 1024;
+const MIB = KIB * KIB;
+const DEFAULT_GALLERY_MIB = 500;
+
 /** The limits the app assumes before `ListGalleryImages` answers; the
  * server's `GalleryUsage` replaces them as soon as it does. */
 export const DEFAULT_LIMITS = {
   maxImages: 300,
-  maxBytes: 500 * 1024 * 1024,
-  maxImageBytes: 10 * 1024 * 1024,
+  maxBytes: DEFAULT_GALLERY_MIB * MIB,
+  maxImageBytes: 10 * MIB,
 } as const;
 
 /**
@@ -79,24 +83,47 @@ export class UploadFailed extends Error {
  * HTML page) falls back to the status alone.
  */
 export function uploadFailureFromResponse(status: number, body: string): UploadFailureKind {
-  let parsed: { code?: unknown; reason?: unknown } | null = null;
-  try {
-    parsed = JSON.parse(body) as { code?: unknown; reason?: unknown };
-  } catch {
-    parsed = null;
+  const parsed = parseErrorBody(body);
+  if (typeof parsed?.reason === 'string' && REASONS.has(parsed.reason)) {
+    return parsed.reason as UploadFailureKind;
   }
-  if (parsed && typeof parsed === 'object') {
-    if (typeof parsed.reason === 'string' && REASONS.has(parsed.reason)) {
-      return parsed.reason as UploadFailureKind;
-    }
-    if (typeof parsed.code === 'string' && CODES[parsed.code]) {
-      return CODES[parsed.code];
-    }
+  if (typeof parsed?.code === 'string' && CODES[parsed.code]) {
+    return CODES[parsed.code];
   }
   return STATUSES[status] ?? 'UNKNOWN';
 }
 
+/** The JSON object of an error body, or `null` for anything else (plain text, HTML, a bare number). */
+function parseErrorBody(body: string): { code?: unknown; reason?: unknown } | null {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return parsed && typeof parsed === 'object'
+      ? (parsed as { code?: unknown; reason?: unknown })
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 type Limits = Pick<GalleryUsage, 'maxImages' | 'maxBytes' | 'maxImageBytes'>;
+
+const FAILURE_TEXT: Readonly<Record<UploadFailureKind, (limits: Limits) => string>> = {
+  UNSUPPORTED_TYPE: () => 'Esse arquivo não é uma imagem JPEG, PNG ou WebP.',
+  TOO_LARGE: (limits) => `A imagem passa de ${formatBytes(limits.maxImageBytes)}.`,
+  DIMENSIONS: () => 'A imagem é grande demais (mais de 8192 pixels de lado ou 40 megapixels).',
+  CORRUPT: () => 'Não deu para ler essa imagem. Ela pode estar corrompida.',
+  QUOTA: (limits) =>
+    `A galeria está cheia: ${limits.maxImages} imagens ou ${formatBytes(limits.maxBytes)}.`,
+  RATE_LIMITED: () => 'Muitos envios em pouco tempo. Espere alguns segundos e tente de novo.',
+  NETWORK: () => 'A conexão caiu durante o envio. Tente de novo.',
+  UNAUTHENTICATED: () => 'Sua sessão terminou. Entre de novo e envie outra vez.',
+  PERMISSION_DENIED: () => 'Só o mestre da campanha pode enviar imagens.',
+  NOT_FOUND: () => 'Essa campanha não existe, ou você não é membro dela.',
+  UNAVAILABLE: () => 'O servidor não está recebendo imagens agora. Tente de novo em instantes.',
+  CANCELED: () => 'Envio cancelado.',
+  MALFORMED_REQUEST: () => 'Algo deu errado no envio. Tente de novo em instantes.',
+  UNKNOWN: () => 'Algo deu errado no envio. Tente de novo em instantes.',
+};
 
 /**
  * The Portuguese sentence for a failure, shown after "Não deu para enviar
@@ -107,35 +134,7 @@ export function uploadFailureMessage(
   kind: UploadFailureKind,
   limits: Limits = DEFAULT_LIMITS,
 ): string {
-  switch (kind) {
-    case 'UNSUPPORTED_TYPE':
-      return 'Esse arquivo não é uma imagem JPEG, PNG ou WebP.';
-    case 'TOO_LARGE':
-      return `A imagem passa de ${formatBytes(limits.maxImageBytes)}.`;
-    case 'DIMENSIONS':
-      return 'A imagem é grande demais (mais de 8192 pixels de lado ou 40 megapixels).';
-    case 'CORRUPT':
-      return 'Não deu para ler essa imagem. Ela pode estar corrompida.';
-    case 'QUOTA':
-      return `A galeria está cheia: ${limits.maxImages} imagens ou ${formatBytes(limits.maxBytes)}.`;
-    case 'RATE_LIMITED':
-      return 'Muitos envios em pouco tempo. Espere alguns segundos e tente de novo.';
-    case 'NETWORK':
-      return 'A conexão caiu durante o envio. Tente de novo.';
-    case 'UNAUTHENTICATED':
-      return 'Sua sessão terminou. Entre de novo e envie outra vez.';
-    case 'PERMISSION_DENIED':
-      return 'Só o mestre da campanha pode enviar imagens.';
-    case 'NOT_FOUND':
-      return 'Essa campanha não existe, ou você não é membro dela.';
-    case 'UNAVAILABLE':
-      return 'O servidor não está recebendo imagens agora. Tente de novo em instantes.';
-    case 'CANCELED':
-      return 'Envio cancelado.';
-    case 'MALFORMED_REQUEST':
-    case 'UNKNOWN':
-      return 'Algo deu errado no envio. Tente de novo em instantes.';
-  }
+  return FAILURE_TEXT[kind](limits);
 }
 
 /**

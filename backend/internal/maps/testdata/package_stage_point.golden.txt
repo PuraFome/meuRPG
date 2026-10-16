@@ -1,0 +1,289 @@
+== a good scene
+point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
+no problems
+counts scenes=1 battles=0 treasures=0
+
+== a scene with actions and clues
+point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="ganchos" showDC=true x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
+  action key=skill:investigation name="Procurar" dc=15 attempts=2
+  action key=save:wis name="" dc=nil attempts=0
+  clue text="pista um"
+  clue text="pista dois"
+no problems
+counts scenes=1 battles=0 treasures=0
+
+== an empty name
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a name of 81 characters
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a name with a line break
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a kind that does not exist
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== an id that is not a UUID
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== an id used twice
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a description of 2001 characters
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== hooks of 4001 characters
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a position of 10001
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a negative position
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== hooks on a battle point
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a DC shown by a battle point
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a target on a scene
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a submap to its own map
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a submap to another map
+point kind=submap name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=true stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a submap to a map the package defines
+point kind=submap name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=true stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
+no problems
+counts scenes=0 battles=0 treasures=0
+
+== a battle to another map
+point kind=battle name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=true stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE limit=0
+counts scenes=0 battles=1 treasures=0
+
+== a submap with stairs up
+point kind=submap name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=up trap=false trapState=nil value=nil light=false/nil/0/0
+no problems
+counts scenes=0 battles=0 treasures=0
+
+== a submap with stairs down
+point kind=submap name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=down trap=false trapState=nil value=nil light=false/nil/0/0
+no problems
+counts scenes=0 battles=0 treasures=0
+
+== a submap with stairs sideways
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== stairs on a scene
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a trap point
+point kind=trap name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=true trapState=armed value=nil light=false/nil/0/0
+no problems
+counts scenes=0 battles=0 treasures=0
+
+== a trap point left triggered
+point kind=trap name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=true trapState=armed value=nil light=false/nil/0/0
+no problems
+counts scenes=0 battles=0 treasures=0
+
+== a trap point with no trap
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a trap with an unknown damage type
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a trap with an unknown condition
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a trap with a DC of 99
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a trap on a scene
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a treasure of 250
+point kind=treasure name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=250 light=false/nil/0/0
+no problems
+counts scenes=0 battles=0 treasures=1
+
+== a treasure with no value
+point kind=treasure name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=0 light=false/nil/0/0
+no problems
+counts scenes=0 battles=0 treasures=1
+
+== a treasure of a negative value
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a treasure value on a scene
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a torch
+point kind=light name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=true/light:torch/20/20
+no problems
+counts scenes=0 battles=0 treasures=0
+
+== a light of its own radii
+point kind=light name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=true/nil/10/20
+no problems
+counts scenes=0 battles=0 treasures=0
+
+== a light of an unknown preset
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a light with no spec
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a light on a scene
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== actions on a battle point
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== clues on a battle point
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_POINT name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== 21 actions
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_LIMIT limit=20
+counts scenes=0 battles=0 treasures=0
+
+== 20 actions
+point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+  action key=skill:arcana name="" dc=nil attempts=0
+no problems
+counts scenes=1 battles=0 treasures=0
+
+== 31 clues
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_LIMIT limit=20
+counts scenes=0 battles=0 treasures=0
+
+== an action of an unknown check
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT limit=0
+counts scenes=0 battles=0 treasures=0
+
+== an action with a DC of 31
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== an action with a name of 61
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== an action with 6 attempts
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a clue of an empty text
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a clue of 501 characters
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a clue with an id that is not a UUID
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a clue id twice
+point nil
+problem kind=PACKAGE_PROBLEM_KIND_SCENE name="A ponte" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+counts scenes=0 battles=0 treasures=0
+
+== a battle point
+point kind=battle name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
+no problems
+counts scenes=0 battles=1 treasures=0
+

@@ -34,6 +34,7 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
+import { refusalMessage } from '../../core/levelup/levelup-errors';
 import {
   SKILLS,
   SPELLS,
@@ -379,6 +380,31 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('O Clérigo ganha 1d8 por nível');
       // The preview is asked for the class that gains the level.
       expect(client.preview.mock.calls.at(-1)?.[2].classKey).toBe('class:cleric');
+    });
+
+    it('says what failed and stays on the class when the options of the other class do not come', async () => {
+      const f = await multiclass();
+      client.options.mockRejectedValue(new ConnectError('x', Code.Unavailable));
+      await click(f, radio(f, 'Clérigo'));
+      expect(el(f).querySelector('.js-failure')).not.toBeNull();
+      expect(text(f)).toContain('Pensantus · Mago 3 → Mago 4');
+      expect(radio(f, 'Mago').checked).toBe(true);
+    });
+
+    it('holds "Próximo" with the server\'s rule when the choices of the step break it', async () => {
+      const f = await setup();
+      client.preview.mockResolvedValue({
+        after: undefined,
+        refusal: create(LevelUpRefusalSchema, {
+          reason: LevelUpRefusalReason.ABILITY_SHAPE,
+          field: 'ability_increase',
+        }),
+      });
+      await click(f, pickRow(f, 'Inteligência').querySelector('input'));
+      await vi.advanceTimersByTimeAsync(QUIET_MS);
+      await load(f);
+      expect(button(f, 'Próximo').getAttribute('aria-disabled')).toBe('true');
+      expect(text(f)).toContain(refusalMessage({ reason: LevelUpRefusalReason.ABILITY_SHAPE }));
     });
 
     it('says the level of the class, never the total, in a hit points step of a multiclass sheet', async () => {
@@ -1532,6 +1558,24 @@ describe('LevelUpPage', () => {
       watcher.hint();
       await load(f);
       expect(client.catalog).toHaveBeenCalledWith('camp-1', 'ch-1', true);
+    });
+
+    it('shows the blocked page when the read after a change finds the level cannot be taken any more', async () => {
+      const f = await setup();
+      client.character.mockRejectedValue(
+        new ConnectError('x', Code.FailedPrecondition, undefined, [
+          {
+            desc: CharacterBlockedSchema,
+            value: create(CharacterBlockedSchema, {
+              reason: CharacterBlockedReason.CANNOT_LEVEL_UP,
+            }),
+          },
+        ]),
+      );
+      watcher.hint();
+      await load(f);
+      expect(text(f)).toContain('Ainda não dá para subir de nível');
+      expect(el(f).querySelector('app-steps-bar')).toBeNull();
     });
 
     it('says nothing when what the page shows did not change', async () => {

@@ -481,4 +481,177 @@ describe('ClassEditor', () => {
     await settle(fixture, 3);
     expect(save.mock.calls[0][2].value.minimums).toBeUndefined();
   });
+
+  describe('the edits behind the controls, pinned on the draft', () => {
+    /** The component's own methods and draft: the controls call exactly these. */
+    interface Api {
+      draft(): {
+        saves: number[];
+        skillChoose: number;
+        skillFrom: string[];
+        proficiencies: string[];
+        multiclassProficiencies: string[];
+        minimums: Record<string, number>;
+        anyOf: Record<string, number>;
+        asiLevels: number[];
+        casting: { kind: string; preparation: string };
+        rows: { profBonus: number; cantrips: number; spells: number; slots: number[] }[];
+        features: { id: string; level: number }[];
+      };
+      status(): string;
+      question(): { kind: string } | null;
+      questionText(): string;
+      tableNote(): string;
+      setSave(i: 0 | 1, ability: number): void;
+      toggleSkill(key: string): void;
+      setSkillChoose(n: number): void;
+      toggleProficiency(key: string, on: boolean): void;
+      addOther(key: string): void;
+      removeOther(key: string): void;
+      othersOf(list: string[]): string[];
+      addMulticlassProficiency(key: string): void;
+      removeMulticlassProficiency(key: string): void;
+      addRequirement(f: 'minimums' | 'anyOf', a: string): void;
+      moveRequirement(f: 'minimums' | 'anyOf', from: string, to: string): void;
+      setRequirement(f: 'minimums' | 'anyOf', a: string, text: string): void;
+      requirementValues(f: 'minimums' | 'anyOf'): string[];
+      abilityName(field: string): string;
+      setKind(kind: string): void;
+      setPreparation(p: string): void;
+      patchCasting(p: Record<string, unknown>): void;
+      answerQuestion(replace: boolean): void;
+      editCell(e: { level: number; field: string; slot?: number; value: number }): void;
+      setAsi(levels: string[]): void;
+      addFromGrid(level: number): void;
+      openFeature(): string;
+      subclassLink(e: unknown): string[];
+      newSubclassLink(): string[];
+    }
+    const api = (e: ReturnType<typeof guardiao> | null = guardiao()) => {
+      const page = setup(e);
+      return {
+        ...page,
+        c: page.fixture.componentInstance as unknown as Api,
+      };
+    };
+
+    it('swaps a saving throw, toggles skills and never lets the number to choose go under 0', () => {
+      const { c } = api();
+      c.setSave(1, Ability.CHARISMA);
+      expect(c.draft().saves).toEqual([Ability.STRENGTH, Ability.CHARISMA]);
+      c.toggleSkill('skill:arcana');
+      c.toggleSkill('skill:stealth');
+      expect(c.draft().skillFrom).toEqual([
+        'skill:perception',
+        'skill:investigation',
+        'skill:stealth',
+      ]);
+      c.setSkillChoose(-3);
+      expect(c.draft().skillChoose).toBe(0);
+      c.setSkillChoose(4);
+      expect(c.draft().skillChoose).toBe(4);
+    });
+
+    it('turns a proficiency group on once and off, and lists the others apart from the six groups', () => {
+      const { c } = api();
+      c.toggleProficiency('proficiency:heavy-armor', true);
+      c.toggleProficiency('proficiency:heavy-armor', true);
+      expect(c.draft().proficiencies.filter((k) => k === 'proficiency:heavy-armor')).toHaveLength(
+        1,
+      );
+      c.toggleProficiency('proficiency:shields', false);
+      expect(c.draft().proficiencies).toEqual([
+        'proficiency:light-armor',
+        'proficiency:heavy-armor',
+      ]);
+      c.addOther('proficiency:tool-x');
+      expect(c.othersOf(c.draft().proficiencies)).toEqual(['proficiency:tool-x']);
+      c.removeOther('proficiency:tool-x');
+      expect(c.othersOf(c.draft().proficiencies)).toEqual([]);
+      c.addMulticlassProficiency('proficiency:light-armor');
+      expect(c.draft().multiclassProficiencies).toEqual(['proficiency:light-armor']);
+      c.removeMulticlassProficiency('proficiency:light-armor');
+      expect(c.draft().multiclassProficiencies).toEqual([]);
+    });
+
+    it('moves a requirement to a free ability only, and types a minimum that falls back to 1', () => {
+      const { c } = api();
+      c.addRequirement('anyOf', 'strength');
+      c.addRequirement('anyOf', 'wisdom');
+      expect(c.requirementValues('anyOf')).toEqual(['strength', 'wisdom']);
+      expect(c.draft().anyOf['strength']).toBe(13);
+      c.moveRequirement('anyOf', 'strength', 'wisdom');
+      c.moveRequirement('anyOf', 'strength', 'strength');
+      expect(c.requirementValues('anyOf')).toEqual(['strength', 'wisdom']);
+      c.setRequirement('anyOf', 'strength', '15 pontos');
+      expect(c.draft().anyOf['strength']).toBe(15);
+      c.setRequirement('anyOf', 'strength', '');
+      expect(c.draft().anyOf['strength']).toBe(1);
+      c.moveRequirement('anyOf', 'strength', 'dexterity');
+      expect(c.requirementValues('anyOf')).toEqual(['dexterity', 'wisdom']);
+      expect(c.abilityName('wisdom')).toBe('Sabedoria');
+      expect(c.abilityName('nonsense')).toBe('nonsense');
+    });
+
+    it('edits each column of a row, keeps the ASI levels in order, and adds a feature at the level of its row', () => {
+      const { c } = api();
+      c.editCell({ level: 3, field: 'cantrips', value: 2 });
+      c.editCell({ level: 3, field: 'spells', value: 5 });
+      c.editCell({ level: 3, field: 'profBonus', value: 9 });
+      c.editCell({ level: 3, field: 'slot', slot: 1, value: 6 });
+      expect(c.draft().rows[2]).toMatchObject({ cantrips: 2, spells: 5, profBonus: 9 });
+      expect(c.draft().rows[2].slots[1]).toBe(6);
+      expect(c.draft().rows[3].cantrips).not.toBe(2);
+      c.setAsi(['12', '4', '8']);
+      expect(c.draft().asiLevels).toEqual([4, 8, 12]);
+      c.addFromGrid(5);
+      expect(c.draft().features.some((f) => f.level === 5 && f.id === c.openFeature())).toBe(true);
+    });
+
+    it('asks about the table on a change of the casting preparation, answers both ways and says what happened', () => {
+      const { c } = api();
+      c.setPreparation('prepared');
+      expect(c.question()).toBeNull();
+      c.editCell({ level: 5, field: 'slot', slot: 0, value: 9 });
+      c.setPreparation('known');
+      expect(c.question()?.kind).toBe('casting');
+      expect(c.questionText()).toContain(
+        'Você editou a tabela dos níveis. Refazê-la com o padrão do class:ranger',
+      );
+      c.answerQuestion(false);
+      expect(c.question()).toBeNull();
+      expect(c.status()).toBe('A conjuração mudou; a tabela ficou como estava.');
+      expect(c.draft().rows[4].slots[0]).toBe(9);
+      expect(c.tableNote()).toContain('As magias são conhecidas');
+      c.setPreparation('prepared');
+      c.answerQuestion(true);
+      expect(c.status()).toBe('A tabela foi refeita com o padrão.');
+      expect(c.draft().rows[4].slots[0]).not.toBe(9);
+      expect(c.tableNote()).toContain('As magias são preparadas');
+      c.answerQuestion(true);
+      expect(c.question()).toBeNull();
+    });
+
+    it('says in the note where the numbers come from for each way of casting', () => {
+      const { c } = api();
+      c.setKind('');
+      expect(c.tableNote()).toContain('Uma classe sem conjuração só tem o bônus de proficiência');
+      c.setKind('third');
+      expect(c.tableNote()).toContain('Preenchida com o padrão de um terço.');
+      c.patchCasting({ startLevel: 4 });
+      expect(c.draft().casting.kind).toBe('third');
+    });
+
+    it('links to a subclass and to a new one in the same table', () => {
+      const { c } = api();
+      expect(c.newSubclassLink()).toEqual(['/campaigns', 'camp-1', 'content', 'new', 'subclass']);
+      expect(c.subclassLink({ key: 'subclass:x' })).toEqual([
+        '/campaigns',
+        'camp-1',
+        'content',
+        'entries',
+        'subclass:x',
+      ]);
+    });
+  });
 });

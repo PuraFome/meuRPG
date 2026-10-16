@@ -28,7 +28,7 @@ For the saves rolled inside someone else's call, a halfling's Lucky is applied a
 The path tells the gate what the roll is (`rollSpec`: the kind, the idempotency key, the request to run again, the roller, how the d20 is counted, whether the roller is lucky and whether the path may ask at all), inside its own transaction (`gateEnv`: only the transaction's queries, never the pool).
 The gate answers with a `gateResult`:
 
-- **zero:** the roll waits for nobody; the path rolls as usual;
+- **zero:** only for the two paths that roll their own die (the registry's `ownRoll`): the group check, whose `rollCheck` picks the die, and the trap search, whose Perception search rolls a second die. Every other path gets `Held` or `Settled`, also when nothing is asked, because the gate rolls the d20 itself;
 - **`Held`:** the roll waits and nothing but the hold is written; the response carries the question (`lucky_offer` or `inspiration_offer`);
 - **`Settled`:** the gate decided the d20, with Reliable Talent applied, the Bardic Inspiration die added (`Bonus`) and the die Lucky rolled again (`Lucky`), for the path's event to keep.
 

@@ -38,6 +38,45 @@ import { nextTurn } from '../../../../../test-settle';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Sheet = any;
 
+/** Where the members the sheet handed to its parts live now: a name a spec reads finds its part, bound to it. */
+const MOVED: Record<string, string> = {
+  damageIntro: 'dmg.intro',
+  damageLabel: 'dmg.label',
+  damageHint: 'dmg.hint',
+  damageModifier: 'dmg.modifier',
+  damageAppLabel: 'dmg.appLabel',
+  modeReady: 'mode.ready',
+  askMaster: 'modes.ask',
+  cancelAsk: 'modes.cancel',
+  setMode: 'mode.set',
+  modeChoice: 'mode.choice',
+  followReaction: 'rolls.followReaction',
+};
+const PARTS = ['s', 'mode', 'dmg', 'questions', 'modes', 'rolls'];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function seen(cmp: any): Sheet {
+  return new Proxy(cmp, {
+    get(target, key: string) {
+      const path =
+        MOVED[key] ??
+        (key in target && key !== 'busy'
+          ? ''
+          : (PARTS.find((p) => key in target[p]) ?? '') + '.' + key);
+      if (path === '') {
+        return target[key];
+      }
+      const steps = path.split('.').filter(Boolean);
+      const owner = steps.slice(0, -1).reduce((o, k) => o[k], target);
+      const value = owner[steps[steps.length - 1]];
+      // A signal is a field of its owner and stays as it is; a method is bound to it.
+      const isMethod =
+        typeof value === 'function' && !Object.hasOwn(owner, steps[steps.length - 1]);
+      return isMethod ? value.bind(owner) : value;
+    },
+  });
+}
+
 const plain = (t: string | null | undefined) =>
   (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -168,7 +207,7 @@ async function open(over: Over = {}) {
   fixture.detectChanges();
   return {
     fixture,
-    sheet: fixture.componentInstance as Sheet,
+    sheet: seen(fixture.componentInstance),
     el: fixture.nativeElement as HTMLElement,
     state,
     api,

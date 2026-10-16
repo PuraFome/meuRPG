@@ -16,24 +16,17 @@ import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
-  type CheckOption,
   type ContestAttackOption,
   type ContestSkillOption,
-  type ManeuverGrappleOption,
   ContestKind,
   ContestPurpose,
   ContestSkill,
-  ContestStatus,
-  ContestTargetReason,
-  type RollNote,
-  RollModeKind,
   ShoveBlockedReason,
   ShoveOutcome,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
-import { reasonText } from '../../../../core/combat/combat-options';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { type CheckDie, ContestClient } from '../../../../core/combat/contest-client';
 import type { ContestState } from '../../../../core/combat/contest-state';
@@ -43,13 +36,11 @@ import {
   escapeIntro,
   holdLine,
   initiatorVerdict,
-  isSettled,
   named,
   ofNamed,
   proneLine,
   pushLine,
   sheetTitle,
-  sheetTitleWith,
   signed,
   sizeWord,
   skillChoices,
@@ -60,8 +51,21 @@ import {
   waitTitle,
   whoIs,
 } from '../../../../core/combat/contest-view';
-import { metersText } from '../../../../core/units';
-import { joinDots, tight } from '../../../../core/format/text';
+import {
+  ESCAPE_AT,
+  ESCAPE_STEPS,
+  GRAPPLE_AT,
+  GRAPPLE_STEPS,
+  type Stage,
+  checkOf,
+  limitTextOf,
+  maneuverWhy,
+  stageOf,
+  subtitleOf,
+  targetRowsOf,
+  titleOf,
+  whyOf,
+} from './contest-sheet-view';
 import { CheckRollForm } from '../check-roll-form/check-roll-form';
 import { ContestRoll } from '../contest-roll/contest-roll';
 import { AttackSteps } from '../attack-sheet/attack-steps';
@@ -93,28 +97,6 @@ export interface ContestSheetData {
 /** What the sheet answers when it closes: the contest it started or follows, so the page can bring it back with the result. */
 export interface ContestSheetResult {
   readonly contestId: string;
-}
-
-/** Where the sheet is: choosing the target, rolling, waiting for the other side, choosing what a won shove does, or the result. */
-type Stage = 'target' | 'roll' | 'wait' | 'choice' | 'result';
-
-const GRAPPLE_STEPS = ['Alvo', 'Disputa', 'Resultado'] as const;
-const ESCAPE_STEPS = ['Teste', 'Resultado'] as const;
-/** The step each stage of a grapple or a shove is on (Resultado is the last). */
-const GRAPPLE_AT: Record<Stage, number> = { target: 0, roll: 1, wait: 1, choice: 2, result: 2 };
-const ESCAPE_AT: Record<Stage, number> = { target: 0, roll: 0, wait: 0, choice: 1, result: 1 };
-
-/** What a check rolls, from what the server sent for it: the modifier, the mode and the circumstances behind the mode. */
-function checkOf(option: CheckOption | ContestSkillOption | undefined): {
-  modifier: number;
-  mode: RollModeKind;
-  notes: readonly RollNote[];
-} {
-  return {
-    modifier: option?.modifier ?? 0,
-    mode: option?.mode ?? RollModeKind.NORMAL,
-    notes: option?.notes ?? [],
-  };
 }
 
 export function openContestSheet(
@@ -189,7 +171,7 @@ export class ContestSheet {
   protected readonly stage = computed<Stage>(() => {
     const c = this.contest();
     if (c) {
-      return this.stageOf(c);
+      return stageOf(c);
     }
     return this.rolling() ? 'roll' : 'target';
   });
@@ -200,49 +182,21 @@ export class ContestSheet {
 
   // ---- the target ----
 
-  protected readonly rows = computed(() => {
-    const enc = this.encounter();
-    return (this.data.attack?.targets ?? [])
-      .filter(
-        (t) =>
-          t.reason !== ContestTargetReason.OUT_OF_REACH &&
-          t.reason !== ContestTargetReason.NOT_PLACED,
-      )
-      .map((t) => {
-        const c = enc?.combatants.find((x) => x.id === t.combatantId);
-        return {
-          id: t.combatantId,
-          who: whoIs(c),
-          label: c?.label ?? 'Alguém',
-          sub: tight(
-            joinDots(
-              [sizeWord(t.size), t.distanceFt > 0 ? `a ${metersText(t.distanceFt)}` : ''].filter(
-                Boolean,
-              ),
-            ),
-          ),
-          blocked: t.eligible ? '' : 'Grande demais: no máximo um tamanho acima do seu.',
-        };
-      });
-  });
+  protected readonly rows = computed(() =>
+    targetRowsOf(this.data.attack, this.encounter()?.combatants ?? []),
+  );
   protected readonly target = computed(
     () => this.rows().find((r) => r.id === this.targetId()) ?? null,
   );
   protected readonly ownSize = computed(() => sizeWord(this.initiator()?.size ?? 0));
-  protected readonly limitText = computed(() => {
-    const size = this.ownSize();
-    return `Alvo: no máximo um tamanho acima do seu${size ? ` (${size})` : ''}, ao alcance.`;
-  });
+  protected readonly limitText = computed(() => limitTextOf(this.ownSize()));
   protected readonly canRoll = computed(
     () => (!this.needsHand || this.free()) && this.target() !== null,
   );
   /** Why "Rolar a disputa" is off, in words: the missing reminder first. */
-  protected readonly why = computed(() => {
-    if (this.needsHand && !this.free()) {
-      return 'Confirme que tem uma mão livre';
-    }
-    return this.target() ? '' : 'Escolha o alvo';
-  });
+  protected readonly why = computed(() =>
+    whyOf(this.needsHand, this.free(), this.target() !== null),
+  );
 
   // ---- the table maneuver that starts a grapple ----
 
@@ -257,12 +211,7 @@ export class ContestSheet {
     this.maneuvers().find((o) => o.key === this.maneuverKey()),
   );
 
-  protected maneuverWhy(o: ManeuverGrappleOption): string {
-    if (o.enabled) {
-      return `d${o.sides} · ${o.usesLeft} ${o.usesLeft === 1 ? 'uso' : 'usos'} · ação bônus`;
-    }
-    return o.noMeleeHit ? 'Precisa de um acerto corpo a corpo neste turno.' : reasonText(o.reason);
-  }
+  protected readonly maneuverWhy = maneuverWhy;
 
   protected pickManeuver(key: string): void {
     this.maneuverKey.set(key);
@@ -305,26 +254,10 @@ export class ContestSheet {
     const id = c?.defenderId ?? (this.escape ? this.data.holderId : this.targetId());
     return whoIs(enc?.combatants.find((x) => x.id === id));
   });
-  protected readonly title = computed(() => {
-    if (this.escape) {
-      return sheetTitle(ContestPurpose.ESCAPE);
-    }
-    const stage = this.stage();
-    if (stage === 'target') {
-      return sheetTitle(this.data.purpose);
-    }
-    return sheetTitleWith(this.data.purpose, named(this.other()));
-  });
-  protected readonly subtitle = computed(() => {
-    const stage = this.stage();
-    if (this.escape) {
-      return 'Ação';
-    }
-    if (stage === 'target') {
-      return 'Ação · substitui um ataque';
-    }
-    return stage === 'choice' ? 'Resultado' : 'Disputa';
-  });
+  protected readonly title = computed(() =>
+    titleOf(this.escape, this.data.purpose, this.stage(), this.other()),
+  );
+  protected readonly subtitle = computed(() => subtitleOf(this.escape, this.stage()));
   protected readonly intro = computed(() => {
     const c = this.contest();
     return escapeIntro(this.other(), c?.kind === ContestKind.ESCAPE_DC);
@@ -395,16 +328,6 @@ export class ContestSheet {
     });
     // After the result the focus goes to its one action.
     effect(() => this.done()?.nativeElement.focus());
-  }
-
-  private stageOf(c: NonNullable<ReturnType<ContestSheet['contest']>>): Stage {
-    if (isSettled(c)) {
-      return 'result';
-    }
-    if (c.status === ContestStatus.AWAITING_OUTCOME && c.youChoose) {
-      return 'choice';
-    }
-    return 'wait';
   }
 
   protected setFree(value: boolean): void {

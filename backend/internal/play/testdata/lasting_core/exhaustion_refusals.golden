@@ -1,0 +1,33 @@
+set by a player -> permission_denied: only the campaign's master can do this
+set a bad key -> invalid_argument: idempotency_key must be a UUID
+set no subject -> invalid_argument: set character_id or combatant_id
+set no subject and a bad level -> invalid_argument: set character_id or combatant_id
+set a bad character id -> not_found: character not found
+set a bad encounter id -> not_found: encounter not found
+set an empty encounter id -> not_found: encounter not found
+set a bad combatant id -> not_found: combatant not found
+set a bad combatant id and a bad level -> not_found: combatant not found
+set a level under 0 -> invalid_argument: level must be 0 to 6
+set a level over 6 -> invalid_argument: level must be 0 to 6
+set a combatant that is not in the combat -> not_found: combatant not found
+set a character that is not in the campaign -> not_found: character not found
+set a stale expected level -> aborted: the level of exhaustion is not the one the screen shows
+set level 6 without confirmation -> failed_precondition: level 6 is death: confirm_death must be true
+set a stale level before level 6 asks to confirm -> aborted: the level of exhaustion is not the one the screen shows
+lower by a player -> permission_denied: only the campaign's master can do this
+lower a bad key -> invalid_argument: idempotency_key must be a UUID
+lower no subject -> invalid_argument: set character_id or combatant_id
+lower by 0 -> invalid_argument: by must be 1 to 6
+lower by 7 -> invalid_argument: by must be 1 to 6
+lower by -1 -> invalid_argument: by must be 1 to 6
+lower no reason -> invalid_argument: reason is a long rest or the master
+lower by 0 and no reason -> invalid_argument: by must be 1 to 6
+lower a stale expected level -> aborted: the level of exhaustion is not the one the screen shows
+state:
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+events:
+

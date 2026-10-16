@@ -308,53 +308,83 @@ func (e *NotAuthorizedError) Is(target error) bool { return target == ErrNotAuth
 // image there is not the result: a draft is never taken. An interaction that is
 // not completed has no result.
 func parseAnswer(status int, body io.Reader) (Image, error) {
-	// Decoded straight from the stream: the answer is never held as bytes and
-	// as a structure at once. One byte over the cap is enough to know it is too big.
+	doc, err := decodeAnswer(status, body)
+	if err != nil {
+		return Image{}, err
+	}
+	if status >= 400 || doc.Error != nil {
+		return Image{}, answerError(status, doc.Error)
+	}
+	if doc.Status != "completed" {
+		return Image{}, incompleteError(doc)
+	}
+	return lastImage(doc)
+}
+
+// decodeAnswer reads the answer's JSON. It is decoded straight from the stream: the
+// answer is never held as bytes and as a structure at once. One byte over the cap is
+// enough to know it is too big.
+func decodeAnswer(status int, body io.Reader) (interaction, error) {
 	limited := &io.LimitedReader{R: body, N: maxResponseBytes + 1}
 	var doc interaction
 	err := json.NewDecoder(limited).Decode(&doc)
 	if limited.N <= 0 {
-		return Image{}, errors.Join(ErrUnavailable, errors.New("the answer is too big"))
+		return interaction{}, errors.Join(ErrUnavailable, errors.New("the answer is too big"))
 	}
 	if err != nil {
-		return Image{}, errors.Join(ErrUnavailable, fmt.Errorf("cannot read the answer (status %d)", status))
+		return interaction{}, errors.Join(ErrUnavailable, fmt.Errorf("cannot read the answer (status %d)", status))
 	}
-	if status >= 400 || doc.Error != nil {
-		reason := ""
-		if e := doc.Error; e != nil {
-			if len(e.Details) > 0 {
-				reason = e.Details[0].Reason
-			}
-			if reason == "" {
-				reason = e.Status
-			}
-			if word := safetyWord(e.Message); word != "" && status == http.StatusBadRequest {
-				return Image{}, &RefusedError{Reason: word}
-			}
-			if reason == "" {
-				reason = strings.Trim(string(e.Code), `"`)
-			}
+	return doc, nil
+}
+
+// answerError is the error of an answer with an error status or an error object (e is
+// nil for a bare error status): a refusal for safety, a refused key, or the service
+// being unavailable.
+func answerError(status int, e *apiErrorBody) error {
+	reason := ""
+	if e != nil {
+		if word := safetyWord(e.Message); word != "" && status == http.StatusBadRequest {
+			return &RefusedError{Reason: word}
 		}
-		if status == http.StatusUnauthorized || status == http.StatusForbidden {
-			return Image{}, &NotAuthorizedError{Status: status, Reason: reason}
-		}
-		// Google's own words go up for the log only (the caller logs the error and
-		// shows the master a fixed reason), cut short: it can quote part of the request.
-		if e := doc.Error; e != nil && e.Message != "" {
-			return Image{}, errors.Join(ErrUnavailable, fmt.Errorf("status %d: %s: %s", status, reason, truncate(e.Message, maxLoggedMessage)))
-		}
-		return Image{}, errors.Join(ErrUnavailable, fmt.Errorf("status %d", status))
+		reason = errorReason(e)
 	}
-	if doc.Status != "completed" {
-		// Incomplete, failed, canceled: no result, even if a draft is there. A
-		// safety stop says so in its errors.
-		for _, e := range doc.Errors {
-			if word := safetyWord(e.Code + " " + e.Message); word != "" {
-				return Image{}, &RefusedError{Reason: word}
-			}
-		}
-		return Image{}, ErrNoImage
+	if status == http.StatusUnauthorized || status == http.StatusForbidden {
+		return &NotAuthorizedError{Status: status, Reason: reason}
 	}
+	// Google's own words go up for the log only (the caller logs the error and
+	// shows the master a fixed reason), cut short: it can quote part of the request.
+	if e != nil && e.Message != "" {
+		return errors.Join(ErrUnavailable, fmt.Errorf("status %d: %s: %s", status, reason, truncate(e.Message, maxLoggedMessage)))
+	}
+	return errors.Join(ErrUnavailable, fmt.Errorf("status %d", status))
+}
+
+// errorReason is Google's reason for an error, for the log: the first detail's, else the
+// status word, else the code.
+func errorReason(e *apiErrorBody) string {
+	if len(e.Details) > 0 && e.Details[0].Reason != "" {
+		return e.Details[0].Reason
+	}
+	if e.Status != "" {
+		return e.Status
+	}
+	return strings.Trim(string(e.Code), `"`)
+}
+
+// incompleteError is the error of an interaction that is not completed (incomplete,
+// failed, canceled): no result, even if a draft is there. A safety stop says so in its
+// errors.
+func incompleteError(doc interaction) error {
+	for _, e := range doc.Errors {
+		if word := safetyWord(e.Code + " " + e.Message); word != "" {
+			return &RefusedError{Reason: word}
+		}
+	}
+	return ErrNoImage
+}
+
+// lastImage is the last image block of the model_output steps of a completed interaction.
+func lastImage(doc interaction) (Image, error) {
 	var last *interBlock
 	for i := range doc.Steps {
 		if doc.Steps[i].Type != "model_output" {

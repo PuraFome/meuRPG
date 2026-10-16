@@ -1,0 +1,28 @@
+no effects: GearChanged -> no callback
+Toren vitals hp 44/44 temp 0 exh 0 acBase 0
+
+a base of 13 for Dexterity 14, and a bonus beside it: GearChanged -> callback
+Pensantus vitals hp 27/27 temp 0 exh 0 acBase 15
+spell:mage-armor kind=spell dur=rounds left=28800 mods=[{"kind": "base_ac", "value": 15}, {"kind": "ac_bonus", "value": 1}] conds=[] visible=true
+
+the same again: GearChanged -> no callback
+Pensantus vitals hp 27/27 temp 0 exh 0 acBase 15
+spell:mage-armor kind=spell dur=rounds left=28800 mods=[{"kind": "base_ac", "value": 15}, {"kind": "ac_bonus", "value": 1}] conds=[] visible=true
+
+in a combat, Mage Armor added:
+Pensantus spell:mage-armor kind=spell conc=false dur=rounds ends=r4801/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[] mods=[{"kind": "base_ac", "value": 15}] started=r1
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=15 conc=- turn=idle
+
+GearChanged, nothing changed -> no callback
+GearChanged -> callback
+Pensantus spell:mage-armor kind=spell conc=false dur=rounds ends=r4801/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[] mods=[{"kind": "base_ac", "value": 15}] started=r1
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=15 conc=- turn=idle
+
+GearChanged again -> no callback
+armor worn: GearChanged -> no callback
+Brisa vitals hp 24/24 temp 0 exh 0 acBase 0
+spell:mage-armor kind=spell dur=rounds left=28800 mods=[{"kind": "base_ac", "value": 13}] conds=[] visible=true
+
+no session open: GearChanged -> callback
+spell:mage-armor kind=spell dur=rounds left=28800 mods=[{"kind": "base_ac", "value": 15}] conds=[] visible=true
+

@@ -1,5 +1,11 @@
-import { PuzzleAlphabet, PuzzleSolveAction } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import {
+  PuzzleAlphabet,
+  PuzzleKind,
+  PuzzleSolveAction,
+} from '../../../gen/meurpg/play/v1/puzzles_pb';
+import {
+  alphabetSize,
+  cipherSolutionOf,
   clamped,
   draftErrors,
   draftOf,
@@ -7,9 +13,14 @@ import {
   neighbourLinks,
   newDraft,
   onSolveOf,
+  protoKindOf,
   resized,
+  sequenceError,
   startRequestOf,
+  textLength,
   toInit,
+  wrongTarget,
+  wrongTargetOf,
 } from './puzzle-draft';
 import {
   cipherPuzzle,
@@ -575,3 +586,304 @@ const NO_WRONG_FOR_TEST = {
   keptSeconds: 0,
   combined: false,
 };
+
+describe("the puzzle form's draft, the edges", () => {
+  const withData = (
+    puzzle: ReturnType<typeof lockPuzzle>,
+    over: Record<string, unknown>,
+  ): ReturnType<typeof lockPuzzle> => Object.assign(puzzle, over);
+
+  it('opens a puzzle whose solution or start the server did not send as empty or zero values of its size', () => {
+    const lock = withData(lockPuzzle('b', 'x'), { solution: undefined, start: undefined });
+    expect(draftOf(lock)).toMatchObject({
+      kind: 'lock',
+      lockSolution: [0, 0, 0, 0],
+      lockStart: [0, 0, 0, 0],
+    });
+    const pillars = withData(pillarsPuzzle('c', 'x'), { solution: undefined });
+    expect(draftOf(pillars)).toMatchObject({ kind: 'pillars', mural: [0, 0, 0, 0] });
+    const riddle = withData(riddlePuzzle('r', 'x'), { solution: undefined });
+    expect(draftOf(riddle)).toMatchObject({ kind: 'riddle', answers: [] });
+    const sequence = withData(sequencePuzzle('s', 'x'), { solution: undefined });
+    expect(draftOf(sequence)).toMatchObject({ kind: 'sequence', steps: [] });
+    const cipher = withData(cipherPuzzle('c', 'x'), { solution: undefined });
+    expect(draftOf(cipher)).toMatchObject({
+      kind: 'cipher',
+      cipherMessage: '',
+      cipherMethod: 'shift',
+      shift: 3,
+      keyword: '',
+    });
+  });
+
+  it('opens a puzzle with no config as no draft at all', () => {
+    expect(draftOf(withData(lightsPuzzle('a', 'x'), { config: undefined }))).toBeNull();
+  });
+
+  it('opens a cipher by its keyword or its shift, and keeps the scene clue of the key', () => {
+    const keyword = cipherPuzzle('k', 'x', {
+      config: { kind: { case: 'cipher', value: { keyClueId: 'clue-1' } } },
+      solution: {
+        kind: {
+          case: 'cipher',
+          value: { message: 'olá', method: { case: 'keyword', value: 'chave' } },
+        },
+      },
+    });
+    expect(draftOf(keyword)).toMatchObject({
+      cipherMessage: 'olá',
+      cipherMethod: 'keyword',
+      keyword: 'chave',
+      shift: 3,
+      keyClueId: 'clue-1',
+    });
+    const shift = cipherPuzzle('s', 'x', {
+      solution: {
+        kind: { case: 'cipher', value: { message: 'abc', method: { case: 'shift', value: 7 } } },
+      },
+    });
+    expect(draftOf(shift)).toMatchObject({ cipherMethod: 'shift', shift: 7, keyword: '' });
+  });
+
+  it('opens the point and clue targets of "Ao resolver", and the message alone when there is no target', () => {
+    const solve = (on: Record<string, unknown>) =>
+      draftOf(lightsPuzzle('a', 'x', { onSolve: on }))?.solve;
+    expect(
+      solve({ message: 'M', target: { case: 'point', value: { mapId: 'm', pointId: 'p' } } }),
+    ).toEqual({
+      choice: 'point',
+      mapId: 'm',
+      col: -1,
+      row: -1,
+      pointId: 'p',
+      clueId: '',
+      message: 'M',
+    });
+    expect(solve({ message: 'M', target: { case: 'clue', value: { clueId: 'c' } } })).toEqual({
+      choice: 'clue',
+      mapId: '',
+      col: -1,
+      row: -1,
+      pointId: '',
+      clueId: 'c',
+      message: 'M',
+    });
+    expect(solve({ message: 'só aviso' })).toEqual({
+      choice: 'notify',
+      mapId: '',
+      col: -1,
+      row: -1,
+      pointId: '',
+      clueId: '',
+      message: 'só aviso',
+    });
+    const none = withData(lightsPuzzle('a', 'x'), { onSolve: undefined });
+    expect(draftOf(none)?.solve).toMatchObject({ choice: 'notify', message: '' });
+  });
+
+  it('opens the hint check, the parts and the hints of a puzzle', () => {
+    const puzzle = lightsPuzzle('a', 'x', {
+      clue: 'pista',
+      hints: ['h1', 'h2'],
+      hintCheck: { skillKey: 'skill:arcana', dc: 12 },
+      parts: [{ characterId: 'c1', text: 'parte', ownerUnavailable: true }],
+    });
+    expect(draftOf(puzzle)).toMatchObject({
+      name: 'x',
+      clue: 'pista',
+      hints: ['h1', 'h2'],
+      hintCheck: { skillKey: 'skill:arcana', dcText: '12' },
+      parts: [{ characterId: 'c1', text: 'parte', ownerUnavailable: true }],
+      wrong: { option: 'none', attempts: 3, combined: false },
+    });
+  });
+
+  it('reads "Ao errar" with the time alone, rounding the minutes up to at least one', () => {
+    const wrong = (onWrong: Record<string, unknown>) =>
+      draftOf(riddlePuzzle('p', 'x', { onWrong }))?.wrong;
+    expect(wrong({ timeLimitSeconds: 10 })).toMatchObject({
+      option: 'limits',
+      minutesText: '1',
+      keptSeconds: 10,
+      movesText: '',
+    });
+    expect(wrong({ timeLimitSeconds: 600, maxMoves: 7 })).toMatchObject({
+      option: 'limits',
+      minutesText: '10',
+      movesText: '7',
+      combined: false,
+    });
+    expect(wrong({ attemptsPerPlayer: 2, timeLimitSeconds: 60 })).toMatchObject({
+      option: 'attempts',
+      attempts: 2,
+      combined: true,
+    });
+    expect(wrong({})).toMatchObject({ option: 'none', combined: false });
+  });
+
+  it('turns an empty minutes field into no time limit, and keeps the kept seconds only for the same minutes', () => {
+    const base = { ...newDraft('riddle'), name: 'x' };
+    const limits = (minutesText: string, keptSeconds: number) =>
+      toInit({
+        ...base,
+        wrong: { ...NO_WRONG_FOR_TEST, option: 'limits', movesText: '4', minutesText, keptSeconds },
+      }).onWrong;
+    expect(limits('', 90)).toEqual({ maxMoves: 4, timeLimitSeconds: 0 });
+    expect(limits(' 2 ', 90)).toEqual({ maxMoves: 4, timeLimitSeconds: 90 });
+    expect(limits('3', 90)).toEqual({ maxMoves: 4, timeLimitSeconds: 180 });
+    expect(limits('2', 0)).toEqual({ maxMoves: 4, timeLimitSeconds: 120 });
+  });
+
+  it('asks the server for a start only for the lights and the pillars', () => {
+    expect(startRequestOf({ ...newDraft('lights'), size: 4 })).toEqual({
+      config: { kind: { case: 'lights', value: { size: 4 } } },
+      solution: undefined,
+    });
+    expect(startRequestOf(newDraft('pillars'))?.solution).toEqual({
+      kind: { case: 'pillars', value: { pillars: [0, 0, 0, 0] } },
+    });
+    for (const kind of ['lock', 'riddle', 'sequence', 'cipher'] as const) {
+      expect(startRequestOf(newDraft(kind))).toBeNull();
+    }
+  });
+
+  it('writes the cipher solution trimmed, by the method chosen', () => {
+    const base = { ...newDraft('cipher'), cipherMessage: ' olá ', keyword: ' chave ', shift: 5 };
+    expect(cipherSolutionOf(base)).toEqual({ message: 'olá', method: { case: 'shift', value: 5 } });
+    expect(cipherSolutionOf({ ...base, cipherMethod: 'keyword' })).toEqual({
+      message: 'olá',
+      method: { case: 'keyword', value: 'chave' },
+    });
+  });
+
+  it('counts the letters of a text as code points and the faces of an alphabet', () => {
+    expect(textLength('abc')).toBe(3);
+    expect(textLength('a😀b')).toBe(3);
+    expect(textLength('')).toBe(0);
+    expect(alphabetSize(PuzzleAlphabet.DIGITS)).toBe(10);
+    expect(alphabetSize(PuzzleAlphabet.LETTERS)).toBe(26);
+  });
+
+  it('names the proto kind of each form kind', () => {
+    expect(protoKindOf('lights')).toBe(PuzzleKind.LIGHTS);
+    expect(protoKindOf('lock')).toBe(PuzzleKind.LOCK);
+    expect(protoKindOf('pillars')).toBe(PuzzleKind.PILLARS);
+    expect(protoKindOf('riddle')).toBe(PuzzleKind.RIDDLE);
+    expect(protoKindOf('sequence')).toBe(PuzzleKind.SEQUENCE);
+    expect(protoKindOf('cipher')).toBe(PuzzleKind.CIPHER);
+  });
+
+  it('points a refusal at the field of "Ao errar" that the server names', () => {
+    expect(wrongTargetOf('on_wrong.trap')).toBe('trap');
+    expect(wrongTargetOf('on_wrong.attempts_per_player')).toBe('attempts');
+    expect(wrongTargetOf('on_wrong.max_moves')).toBe('moves');
+    expect(wrongTargetOf('on_wrong.time_limit_seconds')).toBe('minutes');
+    expect(wrongTargetOf('on_wrong')).toBe('');
+    expect(wrongTargetOf('')).toBe('');
+  });
+
+  it('points its own check at the field of the chosen option that is wrong', () => {
+    const at = (over: Record<string, unknown>) =>
+      wrongTarget({ ...newDraft('riddle'), wrong: { ...NO_WRONG_FOR_TEST, ...over } });
+    expect(at({})).toBe('');
+    expect(at({ option: 'attempts' })).toBe('');
+    expect(at({ option: 'trap' })).toBe('trap');
+    expect(at({ option: 'trap', mapId: 'm' })).toBe('trap');
+    expect(at({ option: 'trap', mapId: 'm', pointId: 'p' })).toBe('');
+    expect(at({ option: 'limits' })).toBe('both');
+    expect(at({ option: 'limits', movesText: '0' })).toBe('moves');
+    expect(at({ option: 'limits', movesText: '201' })).toBe('moves');
+    expect(at({ option: 'limits', movesText: '12', minutesText: '0' })).toBe('minutes');
+    expect(at({ option: 'limits', minutesText: '241' })).toBe('minutes');
+    expect(at({ option: 'limits', minutesText: '12345' })).toBe('minutes');
+    expect(at({ option: 'limits', movesText: '10', minutesText: '5' })).toBe('');
+    expect(at({ option: 'limits', minutesText: '5' })).toBe('');
+  });
+
+  it('counts a sequence as faulty below three steps, with one bell, and fine otherwise', () => {
+    expect(sequenceError({ ...newDraft('sequence'), steps: [0, 1] })).toBe(
+      'Faltam passos: a sequência vai de 3 a 12, e tem 2.',
+    );
+    expect(sequenceError({ ...newDraft('sequence'), steps: [1, 1, 1] })).toContain('dois sinos');
+    expect(sequenceError({ ...newDraft('sequence'), steps: [0, 1, 0] })).toBeUndefined();
+  });
+
+  it('refuses texts over their limits, with the count, for each field', () => {
+    const long = (n: number) => 'a'.repeat(n);
+    const riddle = draftErrors({
+      ...newDraft('riddle'),
+      name: 'x'.repeat(81),
+      clue: long(501),
+      riddleText: long(501),
+      answers: [long(81), '!!!'],
+      hints: [long(301), '  '],
+      solve: { ...newDraft('riddle').solve, message: long(201) },
+      parts: [
+        { characterId: 'c', text: long(301), ownerUnavailable: false },
+        { characterId: 'c', text: 'ok', ownerUnavailable: false },
+        { characterId: '', text: 'ok', ownerUnavailable: false },
+        { characterId: '', text: '', ownerUnavailable: false },
+      ],
+    });
+    expect(riddle.name).toBe('O nome passa de 80 letras: tem 81.');
+    expect(riddle.clue).toBe('A pista passa de 500 letras: tem 501.');
+    expect(riddle.riddle).toBe('O enigma passa de 500 letras: tem 501.');
+    expect(riddle.answerRows).toEqual({
+      0: 'Esta resposta passa de 80 letras: tem 81.',
+      1: 'Esta resposta não tem nenhuma letra ou número.',
+    });
+    expect(riddle.hints).toEqual({
+      0: 'A dica passa de 300 letras: tem 301.',
+      1: 'Escreva a dica, ou tire esta.',
+    });
+    expect(riddle.message).toBe('A mensagem passa de 200 letras: tem 201.');
+    expect(riddle.parts).toEqual({
+      0: { text: 'A parte passa de 300 letras: tem 301.' },
+      1: { owner: 'Cada personagem lê uma parte só.' },
+      3: { text: 'Escreva a parte, ou tire esta.' },
+    });
+    const cipher = draftErrors({ ...newDraft('cipher'), cipherMessage: long(301) });
+    expect(cipher.cipherMessage).toBe('A mensagem passa de 300 letras: tem 301.');
+    expect(isValid(cipher)).toBe(false);
+  });
+
+  it('judges every field in isValid, and a clean draft is valid', () => {
+    const clean = draftErrors({ ...newDraft('lights'), name: 'ok' });
+    expect(isValid(clean)).toBe(true);
+    for (const patch of [
+      { name: 'x' },
+      { clue: 'x' },
+      { message: 'x' },
+      { target: 'x' },
+      { lock: 'x' },
+      { riddle: 'x' },
+      { answers: 'x' },
+      { sequence: 'x' },
+      { cipherMessage: 'x' },
+      { cipherKey: 'x' },
+      { check: 'x' },
+      { wrong: 'x' },
+      { hints: { 0: 'x' } },
+      { answerRows: { 0: 'x' } },
+      { parts: { 0: { text: 'x' } } },
+    ]) {
+      expect(isValid({ ...clean, ...patch })).toBe(false);
+    }
+  });
+
+  it('asks for the target of a door, a point or a clue by what is missing', () => {
+    const target = (solve: Partial<ReturnType<typeof newDraft>['solve']>) =>
+      draftErrors({
+        ...newDraft('lights'),
+        name: 'ok',
+        solve: { ...newDraft('lights').solve, ...solve },
+      }).target;
+    expect(target({ choice: 'door', mapId: 'm', col: 1, row: -1 })).toBe(
+      'Escolha a porta que se abre.',
+    );
+    expect(target({ choice: 'door', mapId: 'm', col: 1, row: 1 })).toBeUndefined();
+    expect(target({ choice: 'point', mapId: 'm' })).toBe('Escolha o ponto que aparece no mapa.');
+    expect(target({ choice: 'clue' })).toBe('Escolha a pista que vai a quem resolver.');
+    expect(target({ choice: 'clue', clueId: 'c' })).toBeUndefined();
+  });
+});

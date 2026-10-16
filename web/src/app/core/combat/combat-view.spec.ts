@@ -1,5 +1,6 @@
 import { CombatantKind, CombatantState } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from './combat-testing';
+import { creatureTurnTitle } from './creature-names';
 import {
   combatantInitial,
   ownCombatant,
@@ -219,6 +220,70 @@ describe('combat view helpers', () => {
       expect(banner.who).toBeNull();
       expect(banner.next).toBeNull();
       expect(banner.nextIsMine).toBe(false);
+    });
+
+    it('names a woman, a creature and nobody on a turn of one', () => {
+      const brisa = combatant({ id: 'b', label: 'Brisa', kind: CombatantKind.PLAYER });
+      const wolf = combatant({
+        id: 'w',
+        label: 'Lobo atroz',
+        kind: CombatantKind.CREATURE,
+        ownerCharacterId: 'char-b',
+      });
+      const e = (current: string) =>
+        encounter({ combatants: [brisa, wolf, order[1]], currentCombatantId: current });
+      expect(turnBanner(e('b')).title).toBe('Vez da Brisa');
+      expect(turnBanner(e('w')).title).toBe(creatureTurnTitle(e('w'), [wolf], false));
+      expect(turnBanner(e('')).title).toBe('Ninguém está na vez');
+      expect(turnBanner(e('')).who).toBeNull();
+    });
+
+    it('names a joint turn: the members, the copies of one NPC, and the own part that has not ended', () => {
+      const P = CombatantKind.PLAYER;
+      const joint = (members: ReturnType<typeof combatant>[]) =>
+        encounter({
+          combatants: members,
+          turnGroupIds: members.map((m) => m.id),
+          currentCombatantId: members[0].id,
+        });
+      const players = [
+        combatant({ id: 'b', label: 'Brisa', kind: P, initiative: 19 }),
+        combatant({ id: 't', label: 'Toren', kind: P, initiative: 19 }),
+      ];
+      expect(turnBanner(joint(players))).toMatchObject({
+        title: 'Vez de Brisa e Toren',
+        mine: false,
+        ownEnded: false,
+      });
+      const goblins = [
+        combatant({ id: 'g1', label: 'Goblin 1', initiative: 12 }),
+        combatant({ id: 'g2', label: 'Goblin 2', initiative: 12 }),
+      ];
+      expect(turnBanner(joint(goblins)).title).toBe('Vez dos Goblins');
+      const own = turnBanner(
+        joint([
+          combatant({ id: 'b', label: 'Brisa', kind: P, initiative: 19, mine: true }),
+          players[1],
+        ]),
+      );
+      expect(own).toMatchObject({ title: 'Sua vez, Brisa', mine: true, ownEnded: false });
+      expect(own.who?.id).toBe('b');
+      const creatures = [
+        combatant({
+          id: 'w1',
+          label: 'Lobo 1',
+          kind: CombatantKind.CREATURE,
+          ownerCharacterId: 'x',
+        }),
+        combatant({
+          id: 'w2',
+          label: 'Lobo 2',
+          kind: CombatantKind.CREATURE,
+          ownerCharacterId: 'x',
+        }),
+      ];
+      const ce = joint(creatures);
+      expect(turnBanner(ce).title).toBe(creatureTurnTitle(ce, creatures, false));
     });
 
     it('has no next when it is the only one standing', () => {
