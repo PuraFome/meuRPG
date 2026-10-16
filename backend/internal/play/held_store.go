@@ -48,7 +48,7 @@ const (
 )
 
 // checksTheAnswer says the table refuses an answer to a roll whose question went stale (its combat
-// round is over) or whose die is gone. Today's behaviour: roll_holds leaves it to the attack's own checks
+// round is over) or whose die is gone. Today's behavior: roll_holds leaves it to the attack's own checks
 // of the turn, and E4-6, which moves the attack to the other table, decides it.
 func (t heldTable) checksTheAnswer() bool { return t == inspirationHolds }
 
