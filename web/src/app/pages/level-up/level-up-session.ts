@@ -8,41 +8,20 @@ import {
   type Character,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { Ability, type DerivedSheet, type PactMagic } from '../../../gen/meurpg/rules/v1/rules_pb';
-import {
-  formatModifier,
-  pactSlotsText,
-  spellLevelLabel,
-} from '../../core/characters/character-labels';
+import { Ability, type DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { formatModifier } from '../../core/characters/character-labels';
 import { isTableKey } from '../../core/content/catalog';
 import { newKey } from '../../core/connect/idempotency';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import { describeLevelUpFailure } from '../../core/levelup/levelup-errors';
 import { changeRows, type ChangeRow } from '../../core/levelup/levelup-summary';
+import { type GiveRow, givesOf, newSpellsTitle } from './level-up-gives';
 import { LevelUpPreview } from './level-up-preview';
-import { hitDiceSum } from '../../core/resources/hit-dice-text';
 
 const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
 
-/** "1 magia conhecida", "2 magias conhecidas"; "1 magia para o livro", "2 magias para o livro"; empty for none. */
-export function newSpellsTitle(count: number, spellbook: boolean): string {
-  if (count < 1) {
-    return '';
-  }
-  const noun = count === 1 ? '1 magia' : `${count} magias`;
-  if (spellbook) {
-    return `${noun} para o livro`;
-  }
-  return `${noun} ${count === 1 ? 'conhecida' : 'conhecidas'}`;
-}
-
-/** One line of "O que o nível N dá": what it is, and whether it is chosen, still to choose, or automatic. */
-export interface GiveRow {
-  readonly title: string;
-  readonly sub: string;
-  readonly tag: 'chosen' | 'choose' | 'auto';
-}
+export { newSpellsTitle, type GiveRow };
 
 /**
  * Everything the steps of one guided level-up share (MR-040): the character as the
@@ -304,106 +283,9 @@ export class LevelUpSession {
   }
 
   /** "O que o nível N dá", in the order of the steps: chosen, still to choose, and automatic. */
-  readonly gives = computed<GiveRow[]>(() => {
-    const d = this.draft;
-    const o = this.options;
-    const t = d.totals();
-    const out: GiveRow[] = [];
-    const choice = (title: string, step: 'abilities' | 'picks' | 'spells', done: boolean): void => {
-      const n = this.stepNumber(step);
-      out.push({
-        title,
-        sub: done ? `Feito no passo ${n}` : `Passo ${n}`,
-        tag: done ? 'chosen' : 'choose',
-      });
-    };
-    const pending = (step: 'picks' | 'spells', ids: readonly string[]) =>
-      d
-        .missing()
-        .some((m) => m.step === step && ids.some((id) => m.id === id || m.id.startsWith(id)));
-    if (o.abilityScoreImprovement) {
-      choice(
-        d.featSummary()
-          ? `Talento: ${d.featSummary()!.name}`
-          : d.hasFeats()
-            ? 'Incremento ou talento'
-            : 'Incremento no Valor de Habilidade',
-        'abilities',
-        d.missingIn('abilities').length === 0,
-      );
-    }
-    if (o.lateChoices.length > 0) {
-      choice('Escolhas que ficaram para trás', 'picks', !pending('picks', ['late']));
-    }
-    if (o.newChoices.length > 0) {
-      choice('Escolhas do nível', 'picks', !pending('picks', ['new']));
-    }
-    if (o.subclassDue) {
-      choice('Subclasse', 'picks', d.subclassKey() !== '');
-    }
-    for (const f of t.featureChoices) {
-      const i = t.featureChoices.indexOf(f);
-      choice(f.feature?.namePt ?? 'Característica', 'picks', !pending('picks', [`feature-${i}`]));
-    }
-    if (t.skills > 0) {
-      choice(
-        t.skills === 1 ? 'Perícia nova' : `${t.skills} perícias novas`,
-        'picks',
-        !pending('picks', ['skills']),
-      );
-    }
-    if (t.expertise > 0) {
-      choice('Especialização', 'picks', !pending('picks', ['expertise']));
-    }
-    const bits = [
-      t.cantrips > 0 ? (t.cantrips === 1 ? 'Truque novo' : `${t.cantrips} truques novos`) : '',
-      newSpellsTitle(t.spells, d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK),
-    ].filter((s) => s !== '');
-    if (bits.length > 0) {
-      choice(bits.join(' e '), 'spells', !pending('spells', ['cantrips', 'spells']));
-    }
-    if (d.effective().prepares && d.preparedMaxAfter() > 0) {
-      choice(
-        `Magias preparadas: até ${d.preparedMaxAfter()}`,
-        'spells',
-        !pending('spells', ['prepared']),
-      );
-    }
-    const auto = (title: string, change: string): void => {
-      out.push({ title, sub: `Entra sozinho · ${change}`, tag: 'auto' });
-    };
-    const slots = (arr: readonly number[], i: number) => arr[i] ?? 0;
-    for (let i = 0; i < Math.max(o.spellSlotsBefore.length, o.spellSlotsAfter.length); i++) {
-      const was = slots(o.spellSlotsBefore, i);
-      const now = slots(o.spellSlotsAfter, i);
-      if (was !== now) auto(`Espaços de ${spellLevelLabel(i + 1)}`, `${was} → ${now}`);
-    }
-    const pact = (m: PactMagic | undefined) => pactSlotsText(m);
-    if (pact(o.pactMagicBefore) !== pact(o.pactMagicAfter)) {
-      auto('Espaços do pacto', `${pact(o.pactMagicBefore)} → ${pact(o.pactMagicAfter)}`);
-    }
-    const pb = (n: number) => `${formatModifier(n)}`;
-    if (o.proficiencyBonusBefore !== o.proficiencyBonusAfter) {
-      auto(
-        'Bônus de proficiência',
-        `${pb(o.proficiencyBonusBefore)} → ${pb(o.proficiencyBonusAfter)}`,
-      );
-    }
-    const dice = (s: DerivedSheet) => hitDiceSum(s.hitDice);
-    out.push({
-      title: 'Dados de vida',
-      sub: `Entra sozinho · ${dice(this.before)} → ${dice(this.after())}`,
-      tag: 'auto',
-    });
-    const chosen = new Set(t.featureChoices.map((f) => f.feature?.key));
-    const skip = new Set(o.masterAdds.map((m) => m.key));
-    for (const f of o.newFeatures) {
-      if (chosen.has(f.key) || skip.has(f.key) || /ability-score-improvement|subclass/.test(f.key))
-        continue;
-      out.push({ title: f.namePt, sub: 'Característica do nível', tag: 'auto' });
-    }
-    return out;
-  });
+  readonly gives = computed<GiveRow[]>(() =>
+    givesOf({ draft: this.draft, options: this.options, before: this.before, after: this.after() }),
+  );
 
   /** What the master adds in the sheet editor: the level's features the flow does not cover. */
   readonly masterAdds = computed(() => LIST.format(this.options.masterAdds.map((m) => m.namePt)));

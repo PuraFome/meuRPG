@@ -10,7 +10,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -25,33 +24,49 @@ import {
   type TableEntry,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
-import { formatDateTime } from '../../../core/characters/character-labels';
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
 import { TableContentClient, contentErrorText } from '../../../core/content/content-client';
 import { type ContentContext, loadContext } from '../../../core/content/content-context';
 import { readEntry } from '../../../core/content/content-read';
 import {
-  KIND_NOUNS,
   KIND_WORDS,
   type ContentNavKind,
   entryState,
   navOfKind,
   savedSentence,
-  usageSentence,
 } from '../../../core/content/content-kinds';
 import { ContentWatcher } from '../../../core/content/content-watcher';
 import { EffectMenuVm } from '../../../core/content/effect-draft';
 import { LiveSessionSourceLive } from '../../../core/play/live-session-source.live';
 import { mediaQuery, PHONE_QUERY } from '../../../shared/map-view/media-query';
-import { openSheet } from '../../../shared/sheet/sheet-host';
 import { ArchiveQuestion } from '../archive/archive-question';
-import { ArchiveSheet } from '../archive/archive-sheet';
 import { BackgroundEditor } from '../background-editor/background-editor';
 import { EntryRead } from '../entry-read/entry-read';
 import { FeatEditor } from '../feat-editor/feat-editor';
 import { RaceEditor } from '../race-editor/race-editor';
 import { type EditorSaved, SpellEditor } from '../spell-editor/spell-editor';
 import { ClassEditor } from '../class-editor/class-editor';
+import {
+  EDITABLE,
+  NEW_KINDS,
+  entriesAfterSave,
+  extrasErrorOf,
+  kindTagOf,
+  usageOf,
+  extrasErrors,
+  backLabelOf,
+  subraceParentOf,
+  wireMenu,
+  archivedDay,
+  archivedWordOf,
+  confirmArchiveInSheet,
+  headingOf,
+  mergeRefreshed,
+  nameResolver,
+  nounPhraseOf,
+  replaceEntry,
+  updatedLine,
+} from './content-entry-model';
 import { SubclassEditor } from '../subclass-editor/subclass-editor';
 
 type PageState =
@@ -59,46 +74,6 @@ type PageState =
   | { status: 'not-found' }
   | { status: 'error'; message: string }
   | { status: 'ready'; ctx: ContentContext };
-
-/** The URL's word for the kind of a new entry ("new/spell"). */
-const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
-  spell: TableContentKind.SPELL,
-  race: TableContentKind.RACE,
-  subrace: TableContentKind.SUBRACE,
-  background: TableContentKind.BACKGROUND,
-  class: TableContentKind.CLASS,
-  subclass: TableContentKind.SUBCLASS,
-  feat: TableContentKind.FEAT,
-};
-
-const NEW_TITLES: Readonly<Record<number, string>> = {
-  [TableContentKind.SPELL]: 'Nova magia',
-  [TableContentKind.RACE]: 'Nova raça',
-  [TableContentKind.SUBRACE]: 'Nova sub-raça',
-  [TableContentKind.BACKGROUND]: 'Novo antecedente',
-  [TableContentKind.CLASS]: 'Nova classe',
-  [TableContentKind.SUBCLASS]: 'Nova subclasse',
-  [TableContentKind.FEAT]: 'Novo talento',
-};
-
-/** The table's own feats a "feat" choice may list (the catalog has no feats; the SRD's are not offered by name). */
-function featChoices(
-  entries: readonly TableEntry[],
-): { key: string; namePt: string; hintPt: string }[] {
-  return entries
-    .filter((e) => e.kind === TableContentKind.FEAT && !e.archived)
-    .map((e) => ({ key: e.key, namePt: e.namePt, hintPt: '' }));
-}
-
-const EDITABLE = new Set<TableContentKind>([
-  TableContentKind.SPELL,
-  TableContentKind.RACE,
-  TableContentKind.SUBRACE,
-  TableContentKind.BACKGROUND,
-  TableContentKind.CLASS,
-  TableContentKind.SUBCLASS,
-  TableContentKind.FEAT,
-]);
 
 /**
  * One entry of the table's content (MR-025, RN-23; E10-01 states 4 to 9): the master's editor for a spell, a race, a subrace
@@ -170,11 +145,14 @@ export class ContentEntry {
   private readonly menuError = signal('');
   /** What blocks this entry: the catalog always, the menu for every editor but the spell's (which does not use it), the defaults
    * for the class and the subclass. */
-  protected readonly extrasError = computed(
-    () =>
-      this.catalogError() ||
-      (this.kind() === TableContentKind.SPELL ? '' : this.menuError()) ||
-      (this.needsDefaults() ? this.defaultsError() : ''),
+  protected readonly extrasError = computed(() =>
+    extrasErrorOf({
+      catalog: this.catalogError(),
+      menu: this.menuError(),
+      defaults: this.defaultsError(),
+      spell: this.kind() === TableContentKind.SPELL,
+      needsDefaults: this.needsDefaults(),
+    }),
   );
   private readonly defaultsError = signal('');
   protected readonly needsDefaults = computed(
@@ -212,52 +190,20 @@ export class ContentEntry {
     () => this.isNew() && !EDITABLE.has(this.newKind() as TableContentKind),
   );
 
-  protected readonly heading = computed(() => {
-    const e = this.entry();
-    if (e) {
-      return e.namePt;
-    }
-    const k = this.newKind();
-    return k === null ? 'Conteúdo da mesa' : (NEW_TITLES[k] ?? 'Conteúdo da mesa');
-  });
-  protected readonly kindTag = computed(() => {
-    const k = this.kind();
-    return k === null ? '' : `${KIND_WORDS[k]} da mesa`;
-  });
+  protected readonly heading = computed(() => headingOf(this.entry(), this.newKind()));
+  protected readonly kindTag = computed(() => kindTagOf(this.kind()));
   protected readonly state_ = computed(() => {
     const e = this.entry();
     return e ? entryState(e, this.isMaster()) : null;
   });
-  protected readonly updated = computed(() => {
-    const e = this.entry();
-    return e?.updatedAt
-      ? `Atualizada em ${formatDateTime(timestampDate(e.updatedAt)).slice(0, 10)}`
-      : '';
-  });
-  protected readonly archivedOn = computed(() => {
-    const e = this.entry();
-    return e?.archivedAt ? formatDateTime(timestampDate(e.archivedAt)).slice(0, 10) : '';
-  });
-  protected readonly using = computed(() => {
-    const e = this.entry();
-    return e ? usageSentence(e.namePt, e.charactersUsing) : '';
-  });
-  protected readonly backLabel = computed(() =>
-    this.isMaster()
-      ? `Voltar para ${this.nav()?.plural ?? 'Conteúdo da mesa'}`
-      : 'Voltar para Conteúdo da mesa',
-  );
+  protected readonly updated = computed(() => updatedLine(this.entry()));
+  protected readonly archivedOn = computed(() => archivedDay(this.entry()));
+  protected readonly using = computed(() => usageOf(this.entry()));
+  protected readonly backLabel = computed(() => backLabelOf(this.isMaster(), this.nav()));
   protected readonly backQuery = computed(() =>
     this.isMaster() && this.nav() ? { kind: this.nav()!.slug } : {},
   );
-  protected readonly nameOf = computed<(key: string) => string>(() => {
-    const cat = this.catalog();
-    const entries = this.ctx()?.entries ?? [];
-    return (key) =>
-      cat?.nameOf(key) ??
-      entries.find((e) => e.key === key)?.namePt ??
-      key.replace(/^[a-z-]+:/, '');
-  });
+  protected readonly nameOf = computed(() => nameResolver(this.catalog(), this.entries()));
   /** The entry a player reads (or the master where the app has no editor yet), written by `readEntry`. */
   protected readonly read = computed(() => {
     const e = this.entry();
@@ -266,22 +212,14 @@ export class ContentEntry {
       : null;
   });
   /** "A raça Corujeiro" / "O antecedente Cartógrafo": the noun of the kind with its article, so the copy agrees. */
-  protected readonly nounPhrase = computed(() => {
-    const e = this.entry();
-    const n = e ? KIND_NOUNS[e.kind] : undefined;
-    return e && n ? `${n.article} ${n.noun} ${e.namePt}` : '';
-  });
-  protected readonly archivedWord = computed(() => {
-    const e = this.entry();
-    return (e ? KIND_NOUNS[e.kind]?.archived : undefined) ?? 'arquivada';
-  });
+  protected readonly nounPhrase = computed(() => nounPhraseOf(this.entry()));
+  protected readonly archivedWord = computed(() => archivedWordOf(this.entry()));
   protected readonly saveBlocked = computed(() =>
     this.asking() ? 'Responda à pergunta de arquivar para voltar a salvar.' : '',
   );
-  protected readonly subraceParent = computed(() => {
-    const body = this.entry()?.body;
-    return body?.case === 'tableSubrace' ? body.value.raceKey : this.parentKey();
-  });
+  protected readonly subraceParent = computed(() =>
+    subraceParentOf(this.entry(), this.parentKey()),
+  );
   protected readonly entries = computed(() => this.ctx()?.entries ?? []);
 
   constructor() {
@@ -323,21 +261,11 @@ export class ContentEntry {
         return;
       }
       if (res.status === 'ok' && now.status === 'ready') {
-        const open = now.ctx.entries.find((e) => e.key === this.key());
-        const editing = this.editing();
-        const entries = res.ctx.entries.map((e) =>
-          // The entry being edited keeps its body and revision when another write changed them: what is typed is not thrown
-          // away, and "Salvar" says the entry changed (stale) as it always did. Only the switches and the counts follow.
-          // A reader (a player, or a master with no editor open) adopts the new entry whole.
-          editing && open && e.key === open.key && e.revision !== open.revision
-            ? ({
-                ...open,
-                off: e.off,
-                archived: e.archived,
-                archivedAt: e.archivedAt,
-                charactersUsing: e.charactersUsing,
-              } as TableEntry)
-            : e,
+        const entries = mergeRefreshed(
+          now.ctx.entries,
+          res.ctx.entries,
+          this.key(),
+          this.editing(),
         );
         this.state.set({ status: 'ready', ctx: { ...res.ctx, entries } });
         await this.refreshCatalog(entries, mine);
@@ -397,28 +325,14 @@ export class ContentEntry {
         ? this.client.classDefaults(ctx.campaignId).then((d) => this.defaults.set(d))
         : Promise.resolve();
     const menu = ctx.isMaster
-      ? this.client.effectMenu(ctx.campaignId).then((m) => {
-          const vm = new EffectMenuVm(m);
-          this.menu.set(vm);
-        })
+      ? this.client.effectMenu(ctx.campaignId).then((m) => this.menu.set(new EffectMenuVm(m)))
       : Promise.resolve();
     void Promise.allSettled([catalog, menu, defaults]).then((results) => {
-      const cat = this.catalog();
-      const vm = this.menu();
-      if (cat && vm) {
-        vm.classNamePt = (key) => cat.nameOf(key);
-        vm.featOptions = featChoices(ctx.entries);
-      }
-      const [c, m, df] = results;
-      this.defaultsError.set(
-        df.status === 'rejected' ? contentErrorText(df.reason, 'abrir o editor') : '',
-      );
-      this.catalogError.set(
-        c.status === 'rejected' ? contentErrorText(c.reason, 'abrir esta entrada') : '',
-      );
-      this.menuError.set(
-        m.status === 'rejected' ? contentErrorText(m.reason, 'abrir o editor') : '',
-      );
+      wireMenu(this.menu(), this.catalog(), ctx.entries);
+      const errors = extrasErrors(results);
+      this.defaultsError.set(errors.defaults);
+      this.catalogError.set(errors.catalog);
+      this.menuError.set(errors.menu);
       this.loadingExtras.set(false);
     });
   }
@@ -440,10 +354,7 @@ export class ContentEntry {
     if (s.status !== 'ready') {
       return;
     }
-    const exists = s.ctx.entries.some((e) => e.key === res.entry.key);
-    const entries = exists
-      ? s.ctx.entries.map((e) => (e.key === res.entry.key ? res.entry : e))
-      : [...s.ctx.entries, res.entry].sort((a, b) => a.namePt.localeCompare(b.namePt, 'pt-BR'));
+    const entries = entriesAfterSave(s.ctx.entries, res.entry);
     this.state.set({
       status: 'ready',
       ctx: { ...s.ctx, entries, tableRevision: res.entry.revision },
@@ -472,18 +383,7 @@ export class ContentEntry {
       this.asking.set(true);
       return;
     }
-    const confirmed = await new Promise<boolean>((resolve) =>
-      openSheet<ArchiveSheet, { name: string; using: number }, boolean>(
-        this.dialog,
-        this.bottomSheet,
-        ArchiveSheet,
-        {
-          data: { name: e.namePt, using: e.charactersUsing },
-          ariaLabel: `Arquivar ${e.namePt}?`,
-          labelledBy: 'archive-t',
-        },
-      ).subscribe((r) => resolve(r === true)),
-    );
+    const confirmed = await confirmArchiveInSheet(this.dialog, this.bottomSheet, e);
     if (confirmed) {
       await this.archive();
     }
@@ -497,25 +397,31 @@ export class ContentEntry {
   }
 
   protected async archive(): Promise<void> {
-    const e = this.entry();
-    if (!e) {
-      return;
-    }
-    this.archiving.set(true);
-    this.actionError.set('');
-    try {
-      this.replace(await this.client.archive(this.campaignId(), e.key));
-      this.asking.set(false);
-      this.status.set(`${this.nounPhrase()} foi ${this.archivedWord()}.`);
-      this.savedLine.set('');
-    } catch (err) {
-      this.actionError.set(contentErrorText(err, 'arquivar'));
-    } finally {
-      this.archiving.set(false);
-    }
+    await this.changeArchived(
+      (id, key) => this.client.archive(id, key),
+      'arquivar',
+      () => {
+        this.asking.set(false);
+        this.status.set(`${this.nounPhrase()} foi ${this.archivedWord()}.`);
+        this.savedLine.set('');
+      },
+    );
   }
 
   protected async unarchive(): Promise<void> {
+    await this.changeArchived(
+      (id, key) => this.client.unarchive(id, key),
+      'desarquivar',
+      () => this.status.set(`${this.nounPhrase()} voltou.`),
+    );
+  }
+
+  /** "Arquivar" and "Desarquivar" share the shape: the entry as the server answers replaces the one on the page. */
+  private async changeArchived(
+    call: (campaignId: string, key: string) => Promise<TableEntry>,
+    verb: string,
+    done: () => void,
+  ): Promise<void> {
     const e = this.entry();
     if (!e) {
       return;
@@ -523,10 +429,10 @@ export class ContentEntry {
     this.archiving.set(true);
     this.actionError.set('');
     try {
-      this.replace(await this.client.unarchive(this.campaignId(), e.key));
-      this.status.set(`${this.nounPhrase()} voltou.`);
+      this.replace(await call(this.campaignId(), e.key));
+      done();
     } catch (err) {
-      this.actionError.set(contentErrorText(err, 'desarquivar'));
+      this.actionError.set(contentErrorText(err, verb));
     } finally {
       this.archiving.set(false);
     }
@@ -538,7 +444,7 @@ export class ContentEntry {
     if (s.status === 'ready') {
       this.state.set({
         status: 'ready',
-        ctx: { ...s.ctx, entries: s.ctx.entries.map((x) => (x.key === entry.key ? entry : x)) },
+        ctx: { ...s.ctx, entries: replaceEntry(s.ctx.entries, entry) },
       });
     }
   }

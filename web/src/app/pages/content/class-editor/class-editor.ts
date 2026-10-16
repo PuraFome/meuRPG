@@ -26,19 +26,16 @@ import {
   type CastingDraft,
   type CastingKind,
   type ClassDraft,
-  LEVEL_COUNT,
   type LevelFeature,
   type Preparation,
   castingOfKind,
   classFeatureBase,
-  classFeaturePaths,
   classToDraft,
   defaultTableOf,
   draftToClass,
   emptyClass,
   featureIdOfPath,
   gridColumns,
-  isGridPath,
   newLevelFeatureId,
   rowsEdited,
   rowsOfTable,
@@ -58,32 +55,42 @@ import { NumberStepper } from '../../../shared/form-fields/number-stepper';
 import { PickList } from '../../../shared/form-fields/pick-list';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
-import {
-  type GridChip,
-  type GridEdit,
-  type GridRowVm,
-  LevelGrid,
-} from '../../../shared/level-grid/level-grid';
+import { type GridEdit, type GridRowVm, LevelGrid } from '../../../shared/level-grid/level-grid';
 import { CastingFields } from '../class-parts/casting-fields';
 import { ClassFeatures } from '../class-parts/class-features';
 import { type NavSection, SectionNav } from '../class-parts/section-nav';
 import { TableQuestion } from '../class-parts/table-question';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import type { EditorSaved } from '../spell-editor/spell-editor';
-
-/** The armor, shield and weapon groups every class lists (the keys; the names are the server's). */
-const ARMOR_KEYS = [
-  'proficiency:light-armor',
-  'proficiency:medium-armor',
-  'proficiency:heavy-armor',
-  'proficiency:shields',
-] as const;
-const WEAPON_KEYS = ['proficiency:simple-weapons', 'proficiency:martial-weapons'] as const;
-const GROUP_KEYS: readonly string[] = [...ARMOR_KEYS, ...WEAPON_KEYS];
-
-/** The question that comes up when a change would replace a table the master edited. */
-type TableAsk =
-  { readonly kind: 'casting'; readonly next: CastingDraft } | { readonly kind: 'restore' };
+import {
+  ARMOR_KEYS,
+  ASI_OPTIONS,
+  HIT_DICE,
+  LEVEL_NUMBERS,
+  LEVEL_OPTIONS,
+  subclassesOf,
+  GROUP_KEYS,
+  REQUIREMENT_GROUPS,
+  SECTIONS,
+  WEAPON_KEYS,
+  type RequirementField,
+  type TableAsk,
+  addedRequirement,
+  answeredQuestion,
+  classViolationContext,
+  editedRows,
+  emptyDefaults,
+  gridRowsOf,
+  isKnownPath,
+  movedRequirement,
+  questionTextOf,
+  removedRequirement,
+  sectionHasIssue,
+  tableNoteOf,
+  toggled,
+  typedRequirement,
+  withProficiency,
+} from './class-editor-model';
 
 /**
  * The class editor (MR-025, RN-23, ADR-0018; E10-02 states 1 to 3): one page with sections and a list of them at the side. The
@@ -136,62 +143,30 @@ export class ClassEditor {
   readonly reload = output<void>();
   readonly cancelled = output<void>();
 
-  protected readonly draft = signal<ClassDraft>(emptyClass(this.emptyDefaults()));
+  protected readonly draft = signal<ClassDraft>(emptyClass(emptyDefaults()));
   protected readonly openFeature = signal('');
   protected readonly question = signal<TableAsk | null>(null);
   protected readonly allCircles = signal(false);
   protected readonly status = signal('');
 
   protected readonly saver = new EntrySaver(
-    ((editor: ClassEditor) => ({
-      aOne: 'uma classe',
-      nameOf: (key: string) => editor.entries().find((e) => e.key === key)?.namePt ?? '',
-      get maxFeatures() {
-        return editor.menu().maxFeatures;
-      },
-      get featureCount() {
-        return editor.draft().features.length;
-      },
-      // "Too many features" is the panel head's, with the counter, and not one feature row's.
-      redirect: (field: string, reason: string) =>
-        reason === 'limit' && /^table_class\.levels\[\d+\]\.features\[\d+\]$/.test(field)
-          ? 'table_class.features'
-          : field,
-    }))(this),
+    classViolationContext({ entries: this.entries, menu: this.menu, draft: this.draft }),
     'a classe',
   );
 
-  private static readonly SECTIONS = [
-    { id: 'basics', label: 'Básico' },
-    { id: 'profs', label: 'Proficiências' },
-    { id: 'casting', label: 'Conjuração' },
-    { id: 'table', label: 'Tabela dos 20 níveis' },
-    { id: 'features', label: 'Características' },
-    { id: 'subclasses', label: 'Subclasse' },
-  ] as const;
-
   /** The list of sections, each with whether a refusal is inside it. */
   protected readonly sections = computed<NavSection[]>(() =>
-    ClassEditor.SECTIONS.map((s) => ({ ...s, issue: this.sectionIssues(s.id) })),
+    SECTIONS.map((s) => ({ ...s, issue: sectionHasIssue(s.id, this.saver.placement().fields) })),
   );
 
   protected readonly abilities = computed(() => this.catalog().abilities);
   protected readonly abilityOptions = computed<SelectOption<number>[]>(() =>
     this.abilities().map((a) => ({ value: a.ability as number, label: a.name })),
   );
-  protected readonly hitDice: SelectOption<number>[] = [6, 8, 10, 12].map((n) => ({
-    value: n,
-    label: `d${n}`,
-  }));
-  protected readonly levelOptions: SelectOption<number>[] = Array.from(
-    { length: LEVEL_COUNT },
-    (_, i) => ({ value: i + 1, label: String(i + 1) }),
-  );
-  protected readonly levelNumbers = Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1);
-  protected readonly asiOptions: SelectOption[] = this.levelOptions.map((o) => ({
-    value: String(o.value),
-    label: o.label,
-  }));
+  protected readonly hitDice = HIT_DICE;
+  protected readonly levelOptions = LEVEL_OPTIONS;
+  protected readonly levelNumbers = LEVEL_NUMBERS;
+  protected readonly asiOptions = ASI_OPTIONS;
   protected readonly skills = computed(() => this.catalog().skills);
   protected readonly spellOptions = computed<SelectOption[]>(() => [...this.catalog().spells]);
 
@@ -214,65 +189,20 @@ export class ClassEditor {
   );
   protected readonly isNew = computed(() => this.entry() === null);
   protected readonly selfKey = computed(() => this.entry()?.key ?? '');
-  protected readonly subclasses = computed(() => {
-    const key = this.selfKey();
-    return key
-      ? this.entries().filter(
-          (e) => e.body.case === 'tableSubclass' && e.body.value.classKey === key,
-        )
-      : [];
-  });
+  protected readonly subclasses = computed(() => subclassesOf(this.entries(), this.selfKey()));
 
-  protected readonly gridRows = computed<GridRowVm[]>(() => {
-    const d = this.draft();
-    return d.rows.map((row, i) => {
-      const level = i + 1;
-      const chips: GridChip[] = [];
-      if (d.asiLevels.includes(level))
-        chips.push({
-          id: `asi-${level}`,
-          label: 'Incremento no Valor de Habilidade',
-          locked: true,
-        });
-      if (d.subclassLevel === level)
-        chips.push({ id: `sub-${level}`, label: 'Escolha de subclasse', locked: true });
-      for (const f of d.features.filter((x) => x.level === level)) {
-        chips.push({ id: f.id, label: f.feature.name.trim() || 'Sem nome', locked: false });
-      }
-      return { level, base: `table_class.levels[${i}]`, row, chips };
-    });
-  });
+  protected readonly gridRows = computed<GridRowVm[]>(() => gridRowsOf(this.draft()));
 
   /** "Preenchida com a tabela do SRD de Paladino": says where the numbers come from, in the server's words. */
-  protected readonly tableNote = computed(() => {
-    const t = defaultTableOf(this.casting(), this.defaults());
-    const ref = t?.referenceClassKey ? this.catalog().nameOf(t.referenceClassKey) : '';
-    const kind = this.casting().kind;
-    if (kind === '') {
-      return 'Uma classe sem conjuração só tem o bônus de proficiência e as características em cada nível. “Restaurar o padrão” volta ao bônus do SRD.';
-    }
-    const from = ref
-      ? `Preenchida com a tabela do ${ref} do SRD.`
-      : 'Preenchida com o padrão de um terço.';
-    const prep =
-      this.casting().preparation === 'prepared'
-        ? ' As magias são preparadas: o número vem da habilidade e do nível, não da tabela.'
-        : ' As magias são conhecidas: a coluna “Magias” diz quantas.';
-    return `${from} Edite o que quiser; “Restaurar o padrão” volta a ela.${prep}`;
-  });
+  protected readonly tableNote = computed(() =>
+    tableNoteOf(this.casting(), this.defaults(), (k) => this.catalog().nameOf(k)),
+  );
 
-  protected readonly questionText = computed(() => {
-    const q = this.question();
-    if (!q) return '';
-    const t =
-      q.kind === 'restore'
-        ? defaultTableOf(this.casting(), this.defaults())
-        : defaultTableOf(q.next, this.defaults());
-    const ref = t?.referenceClassKey ? ` do ${this.catalog().nameOf(t.referenceClassKey)}` : '';
-    return q.kind === 'restore'
-      ? `Voltar a tabela ao padrão${ref}? O que você editou nela se perde.`
-      : `Você editou a tabela dos níveis. Refazê-la com o padrão${ref} para esta conjuração? O que você editou nela se perde.`;
-  });
+  protected readonly questionText = computed(() =>
+    questionTextOf(this.question(), this.casting(), this.defaults(), (k) =>
+      this.catalog().nameOf(k),
+    ),
+  );
 
   constructor() {
     // Keyed on the entry's key and revision, never on the object: archiving hands the page a new object with the same revision,
@@ -286,15 +216,6 @@ export class ClassEditor {
       const defaults = this.defaults();
       untracked(() => this.start(defaults));
     });
-  }
-
-  private emptyDefaults(): GetClassTableDefaultsResponse {
-    return {
-      profBonus: [],
-      asiLevels: [],
-      subclassLevel: 3,
-      tables: [],
-    } as unknown as GetClassTableDefaultsResponse;
   }
 
   private start(defaults: GetClassTableDefaultsResponse): void {
@@ -321,32 +242,6 @@ export class ClassEditor {
 
   protected readonly issuesOf = (path: string): readonly string[] => this.saver.issues(path);
 
-  /** Whether a section has a refusal in it. */
-  private sectionIssues(id: string): boolean {
-    const fields = this.saver.placement().fields;
-    const match = (f: string): boolean => {
-      const p = f.replace('table_class.', '');
-      switch (id) {
-        case 'basics':
-          return /^(name_pt|hit_die|saving_throws|skill_)/.test(p);
-        case 'profs':
-          return /^(proficiencies|multiclass_|minimums|any_of)/.test(p);
-        case 'casting':
-          return p.startsWith('casting');
-        case 'table':
-          return (
-            /^levels(\[\d+\](\.(prof_bonus|cantrips_known|spells_known|slots.*))?)?$/.test(p) ||
-            p.startsWith('asi_levels')
-          );
-        case 'features':
-          return /^levels\[\d+\]\.features/.test(p) || p === 'features';
-        default:
-          return p.startsWith('subclass_level');
-      }
-    };
-    return fields.some(match);
-  }
-
   private scrollTo(id: string): void {
     const el = this.host.nativeElement.querySelector<HTMLElement>(`#sec-${id}`);
     el?.scrollIntoView?.({ block: 'start', behavior: 'auto' });
@@ -361,12 +256,7 @@ export class ClassEditor {
   }
 
   protected toggleSkill(key: string): void {
-    const d = this.draft();
-    this.patch({
-      skillFrom: d.skillFrom.includes(key)
-        ? d.skillFrom.filter((k) => k !== key)
-        : [...d.skillFrom, key],
-    });
+    this.patch({ skillFrom: toggled(this.draft().skillFrom, key) });
   }
 
   protected setSkillChoose(n: number): void {
@@ -376,12 +266,7 @@ export class ClassEditor {
   // ---- The proficiencies.
 
   protected toggleProficiency(key: string, on: boolean): void {
-    const d = this.draft();
-    this.patch({
-      proficiencies: on
-        ? [...d.proficiencies.filter((k) => k !== key), key]
-        : d.proficiencies.filter((k) => k !== key),
-    });
+    this.patch({ proficiencies: withProficiency(this.draft().proficiencies, key, on) });
   }
 
   protected has(key: string): boolean {
@@ -410,17 +295,9 @@ export class ClassEditor {
     });
   }
 
-  /** The two multiclass groups: "todas" (`minimums`) and "pelo menos uma" (`any_of`). */
-  protected readonly requirementGroups = [
-    {
-      field: 'minimums' as const,
-      label: 'Quem entra na classe precisa de todas estas habilidades',
-      add: 'Adicionar habilidade',
-    },
-    { field: 'anyOf' as const, label: 'Ou de pelo menos uma destas', add: 'Adicionar habilidade' },
-  ];
+  protected readonly requirementGroups = REQUIREMENT_GROUPS;
 
-  protected requirementPath(field: 'minimums' | 'anyOf', ability?: AbilityField): string {
+  protected requirementPath(field: RequirementField, ability?: AbilityField): string {
     return `table_class.${field === 'anyOf' ? 'any_of' : 'minimums'}${ability ? '.' + ability : ''}`;
   }
 
@@ -428,7 +305,7 @@ export class ClassEditor {
     return this.abilities().map((a) => ({ value: a.field, label: a.name }));
   }
 
-  protected requirementValues(field: 'minimums' | 'anyOf'): AbilityField[] {
+  protected requirementValues(field: RequirementField): AbilityField[] {
     const m = this.draft()[field];
     return ABILITY_FIELDS.filter((a) => m[a] > 0);
   }
@@ -437,33 +314,27 @@ export class ClassEditor {
     return this.abilities().find((a) => a.field === field)?.name ?? field;
   }
 
-  protected addRequirement(field: 'minimums' | 'anyOf', ability: string): void {
-    const d = this.draft();
-    this.patch({ [field]: { ...d[field], [ability]: 13 } });
+  protected addRequirement(field: RequirementField, ability: string): void {
+    this.patch({ [field]: addedRequirement(this.draft(), field, ability) });
   }
 
-  protected removeRequirement(field: 'minimums' | 'anyOf', ability: string): void {
-    const d = this.draft();
-    this.patch({ [field]: { ...d[field], [ability]: 0 } });
+  protected removeRequirement(field: RequirementField, ability: string): void {
+    this.patch({ [field]: removedRequirement(this.draft(), field, ability) });
   }
 
   /** Another ability for a row: the minimum moves with it (a row never takes an ability another row has). */
-  protected moveRequirement(field: 'minimums' | 'anyOf', from: AbilityField, to: string): void {
-    const d = this.draft();
-    if (to === from || d[field][to as AbilityField] > 0) return;
-    this.patch({ [field]: { ...d[field], [from]: 0, [to]: d[field][from] } });
+  protected moveRequirement(field: RequirementField, from: AbilityField, to: string): void {
+    const moved = movedRequirement(this.draft(), field, from, to);
+    if (moved) this.patch({ [field]: moved });
   }
 
-  protected freeRequirementOptions(field: 'minimums' | 'anyOf'): SelectOption[] {
+  protected freeRequirementOptions(field: RequirementField): SelectOption[] {
     const m = this.draft()[field];
     return this.requirementOptions().filter((o) => !(m[o.value as AbilityField] > 0));
   }
 
-  protected setRequirement(field: 'minimums' | 'anyOf', ability: AbilityField, text: string): void {
-    const n = Number(text.replace(/\D/g, ''));
-    const d = this.draft();
-    // A field emptied or at 0 keeps its place at 1 until it is taken off: 0 would remove the line while it is typed.
-    this.patch({ [field]: { ...d[field], [ability]: Number.isFinite(n) && n > 0 ? n : 1 } });
+  protected setRequirement(field: RequirementField, ability: AbilityField, text: string): void {
+    this.patch({ [field]: typedRequirement(this.draft(), field, ability, text) });
   }
 
   // ---- The casting and the table.
@@ -505,27 +376,11 @@ export class ClassEditor {
   protected answerQuestion(replace: boolean): void {
     const q = this.question();
     this.question.set(null);
-    if (!q) return;
-    if (q.kind === 'restore') {
-      if (replace) {
-        this.patch({
-          rows: rowsOfTable(defaultTableOf(this.casting(), this.defaults()), this.defaults()),
-        });
-        this.status.set('A tabela voltou ao padrão.');
-      }
-      return;
+    const answer = q && answeredQuestion(q, replace, this.draft(), this.defaults());
+    if (answer) {
+      this.patch(answer.patch);
+      this.status.set(answer.status);
     }
-    this.patch({
-      casting: q.next,
-      rows: replace
-        ? rowsOfTable(defaultTableOf(q.next, this.defaults()), this.defaults())
-        : this.draft().rows,
-    });
-    this.status.set(
-      replace
-        ? 'A tabela foi refeita com o padrão.'
-        : 'A conjuração mudou; a tabela ficou como estava.',
-    );
   }
 
   protected restore(): void {
@@ -537,20 +392,7 @@ export class ClassEditor {
   }
 
   protected editCell(e: GridEdit): void {
-    const rows = this.draft().rows.map((r, i) => {
-      if (i !== e.level - 1) return r;
-      switch (e.field) {
-        case 'profBonus':
-          return { ...r, profBonus: e.value };
-        case 'cantrips':
-          return { ...r, cantrips: e.value };
-        case 'spells':
-          return { ...r, spells: e.value };
-        default:
-          return { ...r, slots: r.slots.map((n, k) => (k === e.slot ? e.value : n)) };
-      }
-    });
-    this.patch({ rows });
+    this.patch({ rows: editedRows(this.draft().rows, e) });
   }
 
   protected setAsi(levels: string[]): void {
@@ -594,47 +436,8 @@ export class ClassEditor {
     return ['/campaigns', this.campaignId(), 'content', 'new', 'subclass'];
   }
 
-  private readonly known = (path: string): boolean => {
-    const p = 'table_class';
-    const d = this.draft();
-    const fixed = [
-      `${p}.name_pt`,
-      `${p}.hit_die`,
-      `${p}.saving_throws`,
-      `${p}.saving_throws[0]`,
-      `${p}.saving_throws[1]`,
-      `${p}.skill_choose`,
-      `${p}.skill_from`,
-      `${p}.proficiencies`,
-      `${p}.multiclass_proficiencies`,
-      `${p}.multiclass_skill_choose`,
-      `${p}.minimums`,
-      `${p}.any_of`,
-      `${p}.subclass_level`,
-      `${p}.asi_levels`,
-      `${p}.casting.kind`,
-      `${p}.casting.ability`,
-      `${p}.casting.list_from`,
-      `${p}.casting.preparation`,
-      `${p}.casting.start_level`,
-      `${p}.casting.prepared_max`,
-      `${p}.casting`,
-      `${p}.features`,
-    ];
-    if (fixed.includes(path)) return true;
-    if (
-      ABILITY_FIELDS.some((a) =>
-        path === `${p}.minimums.${a}`
-          ? d.minimums[a] > 0
-          : path === `${p}.any_of.${a}`
-            ? d.anyOf[a] > 0
-            : false,
-      )
-    )
-      return true;
-    if (isGridPath(path, `${p}.levels`, this.columns(), true)) return true;
-    return classFeaturePaths(d.features, this.menu()).includes(path);
-  };
+  private readonly known = (path: string): boolean =>
+    isKnownPath(path, this.draft(), this.columns(), this.menu());
 
   protected async save(): Promise<void> {
     if (this.saver.saving() || this.saveBlocked()) {
