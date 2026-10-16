@@ -174,31 +174,80 @@ func checkRow(c *entryErrors, key, path string, level int, r TableLevel, casts, 
 }
 
 // addClass registers a class: its contract (ADR-0018, section 8), the 20-level
-// table, the features, the Ability Score Improvements and the casting.
+// table, the features, the Ability Score Improvements and the casting. Every
+// field that is wrong is reported, each at its own path, in one error.
 func (b *overlayBuilder) addClass(tc *TableClass, path string) error {
-	n := b.n
 	key := tc.Key
-	slug := slugOfKey(key)
-	// Every field that is wrong is reported, each at its own path, in one error.
 	var c entryErrors
-	if !slices.Contains([]int{6, 8, 10, 12}, tc.HitDie) {
+	if !slices.Contains(validHitDice, tc.HitDie) {
 		c.at(key, path, ".hit_die", ReasonValue, "the hit die is 6, 8, 10 or 12")
 	}
-	saves := make([]string, 0, 2)
-	if len(tc.SavingThrows) != 2 {
-		c.at(key, path, ".saving_throws", ReasonValue, "a class has two different saving throws")
-	} else {
-		for i, a := range tc.SavingThrows {
-			if _, ok := abilityIndex[a]; !ok {
-				c.at(key, path, fmt.Sprintf(".saving_throws[%d]", i), ReasonValue, "a saving throw is not one of the six abilities")
-				continue
-			}
-			saves = append(saves, string(a))
-		}
-		if len(saves) == 2 && tc.SavingThrows[0] == tc.SavingThrows[1] {
-			c.at(key, path, ".saving_throws[1]", ReasonValue, "a class has two different saving throws")
-		}
+	saves := checkSavingThrows(&c, key, path, tc.SavingThrows)
+	b.checkClassSkills(&c, tc, path)
+	mc := b.multiclassOf(&c, tc, path)
+	subLevel := checkSubclassLevel(&c, tc, path)
+	b.classSubLevel[key] = subLevel
+	if len(tc.Levels) != MaxLevel {
+		c.at(key, path, ".levels", ReasonTable, "the class table needs %d rows, got %d", MaxLevel, len(tc.Levels))
 	}
+	asi := asiLevels(&c, key, path, tc.ASILevels)
+
+	cl := &srd51.Class{
+		Key: key, Name: tc.NamePT, HitDie: tc.HitDie, SavingThrows: saves,
+		SkillChoices:  srd51.Choice{Choose: tc.SkillChoose, From: slices.Clone(tc.SkillFrom)},
+		Proficiencies: slices.Clone(tc.Proficiencies), Multiclass: mc, SubclassLevel: subLevel,
+	}
+	rows := b.classRows(&c, tc, path, cl, asi)
+	if err := c.err(); err != nil {
+		return err
+	}
+
+	b.register(tc.TableEntry)
+	b.n.classes[key] = cl
+	b.n.classLevels[key] = rows
+	if tc.Casting.ListFrom != "" {
+		b.n.listFrom[key] = tc.Casting.ListFrom
+	}
+	return nil
+}
+
+// validHitDice are the hit dice a table class may have.
+var validHitDice = []int{6, 8, 10, 12}
+
+// classSavingThrows is the number of saving throws a class is proficient in.
+const classSavingThrows = 2
+
+// The SRD's proficiency bonus: 2 at level 1, and one more every 4 levels.
+const (
+	baseProficiencyBonus     = 2
+	levelsPerProficiencyStep = 4
+)
+
+// checkSavingThrows checks the two saving throws of a class and returns the ones
+// that are abilities.
+func checkSavingThrows(c *entryErrors, key, path string, in []Ability) []string {
+	saves := make([]string, 0, classSavingThrows)
+	if len(in) != classSavingThrows {
+		c.at(key, path, ".saving_throws", ReasonValue, "a class has two different saving throws")
+		return saves
+	}
+	for i, a := range in {
+		if _, ok := abilityIndex[a]; !ok {
+			c.at(key, path, fmt.Sprintf(".saving_throws[%d]", i), ReasonValue, "a saving throw is not one of the six abilities")
+			continue
+		}
+		saves = append(saves, string(a))
+	}
+	if len(saves) == classSavingThrows && in[0] == in[1] {
+		c.at(key, path, ".saving_throws[1]", ReasonValue, "a class has two different saving throws")
+	}
+	return saves
+}
+
+// checkClassSkills checks the skills a class chooses from and the proficiencies
+// it gives, as a first class and as a multiclass.
+func (b *overlayBuilder) checkClassSkills(c *entryErrors, tc *TableClass, path string) {
+	key := tc.Key
 	if tc.SkillChoose < 0 || tc.SkillChoose > len(tc.SkillFrom) {
 		c.at(key, path, ".skill_choose", ReasonValue, "the class chooses from the skills it lists")
 	}
@@ -220,38 +269,42 @@ func (b *overlayBuilder) addClass(tc *TableClass, path string) error {
 	if tc.MulticlassSkillChoose < 0 || tc.MulticlassSkillChoose > len(tc.SkillFrom) {
 		c.at(key, path, ".multiclass_skill_choose", ReasonValue, "the multiclass skills come from the class's list")
 	}
+}
+
+// multiclassOf is the class's multiclass contract in the SRD's shape.
+func (b *overlayBuilder) multiclassOf(c *entryErrors, tc *TableClass, path string) srd51.Multiclass {
 	mc := srd51.Multiclass{Proficiencies: slices.Clone(tc.MulticlassProficiencies)}
-	mc.Minimums = minimums(&c, key, path+".minimums", tc.Minimums)
-	mc.AnyOf = minimums(&c, key, path+".any_of", tc.AnyOf)
+	mc.Minimums = minimums(c, tc.Key, path+".minimums", tc.Minimums)
+	mc.AnyOf = minimums(c, tc.Key, path+".any_of", tc.AnyOf)
 	if tc.MulticlassSkillChoose > 0 {
 		mc.SkillChoices = &srd51.Choice{Choose: tc.MulticlassSkillChoose, From: slices.Clone(tc.SkillFrom)}
 	}
+	return mc
+}
+
+// checkSubclassLevel is the level at which the class chooses its subclass: the
+// default when the table gives none or a level that is not one.
+func checkSubclassLevel(c *entryErrors, tc *TableClass, path string) int {
 	subLevel := tc.SubclassLevel
 	if subLevel == 0 {
 		subLevel = defaultSubclassLevel
 	}
 	if subLevel < 1 || subLevel > MaxLevel {
-		c.at(key, path, ".subclass_level", ReasonValue, "the subclass is chosen at level 1 to %d", MaxLevel)
+		c.at(tc.Key, path, ".subclass_level", ReasonValue, "the subclass is chosen at level 1 to %d", MaxLevel)
 		subLevel = defaultSubclassLevel
 	}
-	b.classSubLevel[key] = subLevel
-	if len(tc.Levels) != MaxLevel {
-		c.at(key, path, ".levels", ReasonTable, "the class table needs %d rows, got %d", MaxLevel, len(tc.Levels))
-	}
-	asi := asiLevels(&c, key, path, tc.ASILevels)
+	return subLevel
+}
 
-	cl := &srd51.Class{
-		Key: key, Name: tc.NamePT, HitDie: tc.HitDie, SavingThrows: saves,
-		SkillChoices:  srd51.Choice{Choose: tc.SkillChoose, From: slices.Clone(tc.SkillFrom)},
-		Proficiencies: slices.Clone(tc.Proficiencies), Multiclass: mc, SubclassLevel: subLevel,
-	}
-
+// classRows checks the casting and builds the 20 rows of the class table, with
+// their features. It sets the class's spellcasting when it casts.
+func (b *overlayBuilder) classRows(c *entryErrors, tc *TableClass, path string, cl *srd51.Class, asi []int) []*srd51.Level {
+	key := tc.Key
 	// The casting, and the Spellcasting feature the engine writes for it.
 	casts, start := tc.Casting.Kind != CastingNone, 0
-	castKey := "feature:class-" + slug + "-spellcasting" + tableSuffix
 	beforeCasting := len(c.list)
 	if casts {
-		start = b.checkCasting(&c, key, path, &tc.Casting, false)
+		start = b.checkCasting(c, key, path, &tc.Casting, false)
 		cl.Spellcasting = &srd51.ClassSpellcaster{Level: start, Ability: string(tc.Casting.Ability)}
 	} else if tc.Casting.ListFrom != "" || tc.Casting.PreparedMax != "" {
 		at := ".casting.list_from"
@@ -260,81 +313,128 @@ func (b *overlayBuilder) addClass(tc *TableClass, path string) error {
 		}
 		c.at(key, path, at, ReasonCasting, "a class that does not cast has no spell list to reuse")
 	}
-	// A casting with a wrong kind or start level has no rows to compare against: the cells are only range-checked.
-	castingKnown := !casts || start > 0
-	castingOK := len(c.list) == beforeCasting
-
+	r := &classRowBuilder{
+		b: b, c: c, tc: tc, path: path, slug: slugOfKey(key), asi: asi, casts: casts, start: start,
+		// A casting with a wrong kind or start level has no rows to compare against: the cells are only range-checked.
+		castingKnown: !casts || start > 0,
+		castingOK:    len(c.list) == beforeCasting,
+	}
 	rows := make([]*srd51.Level, MaxLevel)
-	userFeatures := 0
-	limited := false
 	for i := range tc.Levels {
-		lvl := i + 1
-		if lvl > MaxLevel {
+		if i+1 > MaxLevel {
 			break
 		}
-		tl := &tc.Levels[i]
-		if tl.ProfBonus < 0 || tl.ProfBonus > 12 {
-			c.at(key, path, fmt.Sprintf(".levels[%d].prof_bonus", i), ReasonValue, "level %d: the proficiency bonus is 1 to 12 (0 for the SRD's)", lvl)
-		}
-		pb := tl.ProfBonus
-		if pb == 0 {
-			pb = 2 + (lvl-1)/4
-		}
-		checkRow(&c, key, fmt.Sprintf("%s.levels[%d]", path, i), lvl, tl.TableLevel, casts && lvl >= start, tc.Casting.Kind == CastingPact, castingKnown)
-		row := &srd51.Level{Class: key, Level: lvl, ProfBonus: pb}
-		if casts {
-			row.Spellcasting = &srd51.LevelSpellcasting{CantripsKnown: tl.CantripsKnown, SpellsKnown: tl.SpellsKnown, Slots: tl.Slots}
-		}
-		if casts && lvl == start {
-			if err := b.claim(castKey); err != nil {
-				c.add(err)
-			} else {
-				n.features[castKey] = &srd51.Feature{Key: castKey, Name: castingFeatureName, Class: key, Level: lvl, Desc: []string{"Esta classe conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
-				n.namesEN[castKey], n.namesPT[castKey] = castingFeatureName, castingFeatureName
-				if castingOK {
-					if err := b.compileOwn(castKey, path, castingEffect(&tc.Casting, key)); err != nil {
-						c.add(err)
-					}
-				}
-				row.Features = append(row.Features, castKey)
-			}
-		}
-		for j := range tl.Features {
-			f := &tl.Features[j]
-			userFeatures++
-			if userFeatures > MaxTableFeatures && !limited {
-				limited = true
-				c.at(key, path, fmt.Sprintf(".levels[%d].features[%d]", i, j), ReasonLimit, "more than %d features; the limit is %d per class", MaxTableFeatures, MaxTableFeatures)
-			}
-			if err := b.addFeature(f, featureKind{prefix: "feature:", owner: key, class: key, level: lvl}, fmt.Sprintf("%s.levels[%d].features[%d]", path, i, j)); err != nil {
-				c.add(err)
-				continue
-			}
-			row.Features = append(row.Features, f.Key)
-		}
-		if k := slices.Index(asi, lvl); k >= 0 {
-			asiKey := "feature:class-" + slug + "-ability-score-improvement-" + strconv.Itoa(k+1) + tableSuffix
-			if err := b.claim(asiKey); err != nil {
-				c.add(err)
-			} else {
-				n.features[asiKey] = &srd51.Feature{Key: asiKey, Name: asiName, Class: key, Level: lvl, Desc: []string{asiText}}
-				n.namesEN[asiKey], n.namesPT[asiKey] = asiName, asiName
-				row.Features = append(row.Features, asiKey)
-			}
-		}
-		rows[i] = row
+		rows[i] = r.row(i)
 	}
-	if err := c.err(); err != nil {
-		return err
-	}
+	return rows
+}
 
-	b.register(tc.TableEntry)
-	n.classes[key] = cl
-	n.classLevels[key] = rows
-	if tc.Casting.ListFrom != "" {
-		n.listFrom[key] = tc.Casting.ListFrom
+// classRowBuilder is the state of the loop over the rows of a class table.
+type classRowBuilder struct {
+	b    *overlayBuilder
+	c    *entryErrors
+	tc   *TableClass
+	path string
+	slug string
+	asi  []int
+
+	casts, castingKnown, castingOK bool
+	start                          int
+
+	// userFeatures counts the features of the table so far, and limited says the
+	// limit was reported already.
+	userFeatures int
+	limited      bool
+}
+
+// row builds the table row of the i-th level: the proficiency bonus, the
+// casting columns, the Spellcasting feature the engine writes at the first
+// casting level, the table's features and the Ability Score Improvement.
+func (r *classRowBuilder) row(i int) *srd51.Level {
+	key, tc := r.tc.Key, r.tc
+	lvl := i + 1
+	tl := &tc.Levels[i]
+	pb := r.profBonus(tl, i, lvl)
+	checkRow(r.c, key, fmt.Sprintf("%s.levels[%d]", r.path, i), lvl, tl.TableLevel, r.casts && lvl >= r.start, tc.Casting.Kind == CastingPact, r.castingKnown)
+	row := &srd51.Level{Class: key, Level: lvl, ProfBonus: pb}
+	if r.casts {
+		row.Spellcasting = &srd51.LevelSpellcasting{CantripsKnown: tl.CantripsKnown, SpellsKnown: tl.SpellsKnown, Slots: tl.Slots}
 	}
-	return nil
+	if r.casts && lvl == r.start {
+		r.castingFeature(row)
+	}
+	r.features(row, tl, i)
+	r.improvement(row)
+	return row
+}
+
+// profBonus is the level's proficiency bonus: the table's, or the SRD's when it gives none.
+func (r *classRowBuilder) profBonus(tl *TableClassLevel, i, lvl int) int {
+	if tl.ProfBonus < 0 || tl.ProfBonus > maxTableProfBonus {
+		r.c.at(r.tc.Key, r.path, fmt.Sprintf(".levels[%d].prof_bonus", i), ReasonValue, "level %d: the proficiency bonus is 1 to %d (0 for the SRD's)", lvl, maxTableProfBonus)
+	}
+	if tl.ProfBonus == 0 {
+		return baseProficiencyBonus + (lvl-1)/levelsPerProficiencyStep
+	}
+	return tl.ProfBonus
+}
+
+// maxTableProfBonus is the highest proficiency bonus a table class may give.
+const maxTableProfBonus = 12
+
+// castingFeature registers the Spellcasting feature of the class on its first
+// casting level.
+func (r *classRowBuilder) castingFeature(row *srd51.Level) {
+	n, tc, key := r.b.n, r.tc, r.tc.Key
+	castKey := "feature:class-" + r.slug + "-spellcasting" + tableSuffix
+	if err := r.b.claim(castKey); err != nil {
+		r.c.add(err)
+		return
+	}
+	n.features[castKey] = &srd51.Feature{Key: castKey, Name: castingFeatureName, Class: key, Level: row.Level, Desc: []string{"Esta classe conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
+	n.namesEN[castKey], n.namesPT[castKey] = castingFeatureName, castingFeatureName
+	if r.castingOK {
+		if err := r.b.compileOwn(castKey, r.path, castingEffect(&tc.Casting, key)); err != nil {
+			r.c.add(err)
+		}
+	}
+	row.Features = append(row.Features, castKey)
+}
+
+// features registers the table's features of a level and lists them in the row.
+func (r *classRowBuilder) features(row *srd51.Level, tl *TableClassLevel, i int) {
+	key := r.tc.Key
+	for j := range tl.Features {
+		f := &tl.Features[j]
+		r.userFeatures++
+		if r.userFeatures > MaxTableFeatures && !r.limited {
+			r.limited = true
+			r.c.at(key, r.path, fmt.Sprintf(".levels[%d].features[%d]", i, j), ReasonLimit, "more than %d features; the limit is %d per class", MaxTableFeatures, MaxTableFeatures)
+		}
+		kind := featureKind{prefix: "feature:", owner: key, class: key, level: row.Level}
+		if err := r.b.addFeature(f, kind, fmt.Sprintf("%s.levels[%d].features[%d]", r.path, i, j)); err != nil {
+			r.c.add(err)
+			continue
+		}
+		row.Features = append(row.Features, f.Key)
+	}
+}
+
+// improvement registers the Ability Score Improvement of the level, if it has one.
+func (r *classRowBuilder) improvement(row *srd51.Level) {
+	k := slices.Index(r.asi, row.Level)
+	if k < 0 {
+		return
+	}
+	asiKey := "feature:class-" + r.slug + "-ability-score-improvement-" + strconv.Itoa(k+1) + tableSuffix
+	if err := r.b.claim(asiKey); err != nil {
+		r.c.add(err)
+		return
+	}
+	n := r.b.n
+	n.features[asiKey] = &srd51.Feature{Key: asiKey, Name: asiName, Class: r.tc.Key, Level: row.Level, Desc: []string{asiText}}
+	n.namesEN[asiKey], n.namesPT[asiKey] = asiName, asiName
+	row.Features = append(row.Features, asiKey)
 }
 
 const (
