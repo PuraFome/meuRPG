@@ -46,7 +46,6 @@ cognitive internal/maps (*Service).UnmarkTreasureFound 19
 cognitive internal/maps (*Service).UpdateMap 72
 cognitive internal/maps (*Service).UpdateMapPoint 31
 cognitive internal/maps (*Service).UpdateSceneAction 33
-cognitive internal/maps (*Service).UseGeneratedImageAsMapImage 59
 cognitive internal/maps (*Service).applyPointChange 32
 cognitive internal/maps (*Service).applySpecChange 51
 cognitive internal/maps (*Service).attachPointDetails 21
@@ -361,7 +360,6 @@ cyclomatic internal/maps (*Service).SetMapGrid 49
 cyclomatic internal/maps (*Service).UpdateMap 40
 cyclomatic internal/maps (*Service).UpdateMapPoint 34
 cyclomatic internal/maps (*Service).UpdateSceneAction 24
-cyclomatic internal/maps (*Service).UseGeneratedImageAsMapImage 49
 cyclomatic internal/maps (*Service).applyPointChange 31
 cyclomatic internal/maps (*Service).applySpecChange 30
 cyclomatic internal/maps (*Service).checkCharacters 21
