@@ -1,0 +1,178 @@
+<app-sheet-frame
+  [title]="view().title"
+  [subtitle]="view().subtitle"
+  [phone]="inSheet"
+  [closable]="!busy()"
+  (closed)="close()"
+>
+  <ol class="steps" aria-label="Passos do teste">
+    <li class="step" [attr.aria-current]="stage() === 'ask' ? 'step' : null">
+      <span class="step__dot" [class.step__dot--done]="stage() === 'result'">
+        @if (stage() === 'result') {
+          <mat-icon aria-hidden="true">check</mat-icon>
+        } @else {
+          1
+        }
+      </span>
+      Teste
+    </li>
+    <li class="step" [class.step--todo]="stage() !== 'result'" [attr.aria-current]="stage() === 'result' ? 'step' : null">
+      <span class="step__dot">2</span>
+      Resultado
+    </li>
+  </ol>
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+  @switch (stage()) {
+    @case ('ask') {
+      @if (view().autoFail) {
+        <div class="mr-notice mr-notice--danger" data-testid="auto-fail">
+          <mat-icon aria-hidden="true">error_outline</mat-icon>
+          <p><strong>Falha automática.</strong> Não há d20 a rolar neste teste de resistência de {{ view().ability }}.</p>
+        </div>
+      } @else if (luckyOffer(); as l) {
+        <!-- The d20 shows a 1 and the roller is a halfling: it is kept, and Lucky asks before the die's question (SRD 5.1). -->
+        <p class="what">{{ luckyHeld() }}</p>
+        <app-lucky-prompt
+          [offer]="l"
+          [canApp]="canApp"
+          [canType]="canType"
+          [preferApp]="preferApp"
+          [busy]="busy()"
+          (reroll)="answerLucky(true, $event)"
+          (keep)="answerLucky(false, null)"
+        />
+      } @else if (offer(); as o) {
+        <app-inspiration-offer
+          [offer]="o"
+          [canApp]="canApp"
+          [canType]="canType"
+          [busy]="busy()"
+          (use)="answerDie(true, $event)"
+          (keep)="answerDie(false, null)"
+        />
+      } @else if (view().handed) {
+        <div class="mr-notice mr-notice--neutral" role="status">
+          <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+          <p>Esperando o mestre: você deixou a rolagem com ele.</p>
+        </div>
+      } @else {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>Teste de resistência de <b>{{ view().ability }}</b>. {{ view().consequence }}</p>
+        </div>
+        <p class="what">
+          @if (view().modifier) {
+            {{ view().modifier }}
+          }
+          {{ view().modeLine }}
+        </p>
+        @if (view().dice.length > 0) {
+          <ul class="dice-list" aria-label="Dados que os efeitos somam">
+            @for (d of view().dice; track $index) {
+              <li>
+                {{ d.sourceNamePt }}: {{ d.sign < 0 ? 'subtrai' : 'soma' }} 1d{{ d.faces }} a este teste.
+              </li>
+            }
+          </ul>
+        }
+        @if (typingNow()) {
+          <app-extra-dice [fields]="fields()" [(faces)]="extraFaces" />
+          @if (view().mode === 'normal') {
+            <app-roll-picker
+              [canApp]="false"
+              [canType]="true"
+              [min]="1"
+              [max]="20"
+              [modifier]="modifier()"
+              [label]="'Resultado do d20 do teste de resistência de ' + view().ability"
+              hint="Role o seu dado e digite o número que saiu (1 a 20)."
+              totalNote="Teste de resistência"
+              [busy]="busy()"
+              (typed)="answerTyped([$event])"
+            />
+          } @else {
+            <app-multi-roll
+              [fields]="pair"
+              [canApp]="false"
+              [canType]="true"
+              [combine]="view().mode === 'advantage' ? 'higher' : 'lower'"
+              hint="Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada)."
+              [busy]="busy()"
+              (typed)="answerTyped($event)"
+            />
+          }
+        }
+      }
+    }
+    @case ('result') {
+      @if (result(); as r) {
+        <div class="res" role="status" aria-live="polite">
+          @if (r.autoFail) {
+            <span class="pill pill--bad"><mat-icon aria-hidden="true">close</mat-icon>Falhou</span>
+            <p class="what">Sem rolagem.</p>
+          } @else {
+            <p class="res__row">
+              <span class="res__die">{{ r.d20 }}</span>
+              <span class="res__total">{{ r.total }}</span>
+              <span class="pill" [class.pill--bad]="!r.saved">
+                <mat-icon aria-hidden="true">{{ r.saved ? 'check' : 'close' }}</mat-icon>{{ r.saved ? 'Passou' : 'Falhou' }}
+              </span>
+            </p>
+            <p class="what what--small">{{ formula(r) }}{{ r.physical ? ' · dado físico' : '' }}</p>
+            @if (luckyLine()) {
+              <p class="what what--small">{{ luckyLine() }}</p>
+            }
+          }
+          @if (r.textPt) {
+            <div class="mr-notice" [class.mr-notice--success]="r.effectEnded" [class.mr-notice--neutral]="!r.effectEnded">
+              <mat-icon aria-hidden="true">{{ r.effectEnded ? 'check_circle' : 'info' }}</mat-icon>
+              <p>{{ r.textPt }}</p>
+            </div>
+          }
+        </div>
+      }
+    }
+    @default {
+      <p class="what" role="status">{{ goneText() }}</p>
+    }
+  }
+  <div foot>
+    @switch (stage()) {
+      @case ('ask') {
+        @if (view().autoFail) {
+          <button mat-flat-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
+            Continuar
+          </button>
+        } @else if (offer() || luckyOffer()) {
+          <button mat-stroked-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="close()">Fechar</button>
+        } @else if (!view().handed) {
+          <div class="stack">
+            @if (canApp) {
+              <button mat-flat-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
+                <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
+              </button>
+            }
+            @if (canType && !typingNow()) {
+              <button mat-stroked-button type="button" class="btn" [attr.data-initial-focus]="canApp ? null : ''" [disabled]="busy()" (click)="typing.set(true)">
+                Digitar o resultado
+              </button>
+            }
+            <button mat-button type="button" class="btn btn--link" [disabled]="busy()" (click)="answer({ kind: 'hand' })">
+              Deixar o mestre rolar por mim
+            </button>
+          </div>
+        } @else {
+          <button mat-stroked-button type="button" class="btn" data-initial-focus (click)="close()">Fechar</button>
+        }
+      }
+      @default {
+        <button mat-stroked-button type="button" class="btn" data-initial-focus (click)="close()">Fechar</button>
+      }
+    }
+  </div>
+</app-sheet-frame>
