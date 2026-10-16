@@ -252,23 +252,32 @@ func (s *Service) endOfTurn(ctx context.Context, c *combatTx, v combatViewer, cu
 	if err != nil {
 		return false, err
 	}
-	if hasState(states, current.ID, stateRage) && !current.AttackedHostile && !current.TookDamage {
-		if !v.master {
-			if !current.RageEndPending {
-				if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: current.ID, RageEndPending: true}); err != nil {
-					return false, fmt.Errorf("ask about the rage: %w", err)
-				}
-				if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-					return false, fmt.Errorf("touch the encounter: %w", err)
-				}
-			}
-			return true, nil
-		}
-		if err := s.endRage(ctx, c, current, "no_attack"); err != nil {
+	if !hasState(states, current.ID, stateRage) || current.AttackedHostile || current.TookDamage {
+		return false, nil
+	}
+	if !v.master {
+		if err := s.askRageEnd(ctx, c, current); err != nil {
 			return false, err
 		}
+		return true, nil
 	}
-	return false, nil
+	return false, s.endRage(ctx, c, current, "no_attack")
+}
+
+// askRageEnd marks the question about the rage as pending, once, and touches the combat so
+// that every screen reads it.
+func (s *Service) askRageEnd(ctx context.Context, c *combatTx, current playdb.Combatant) error {
+	if current.RageEndPending {
+		return nil
+	}
+	if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: current.ID, RageEndPending: true}); err != nil {
+		return fmt.Errorf("ask about the rage: %w", err)
+	}
+	var err error
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("touch the encounter: %w", err)
+	}
+	return nil
 }
 
 // afterTurnPart does what a combatant's part of the turn ending leaves: the states that
@@ -297,6 +306,57 @@ func (s *Service) afterTurnPart(ctx context.Context, c *combatTx, current playdb
 	return nil
 }
 
+// rageCall is what the rage handlers read from their requests: who asks, the key, the
+// combat and the combatant named.
+type rageCall struct {
+	m                  authz.Membership
+	key, encID, combID string
+}
+
+// readRageCall reads and checks the call, in the order the refusals have always come.
+func readRageCall(ctx context.Context, campaignID, rawKey, encounterID, combatantID string) (rageCall, error) {
+	m, err := authz.RequireCampaignMember(ctx, campaignID)
+	if err != nil {
+		return rageCall{}, err
+	}
+	key, err := parseKey(rawKey)
+	if err != nil {
+		return rageCall{}, err
+	}
+	encID, err := parseCombatID(encounterID, "encounter")
+	if err != nil {
+		return rageCall{}, err
+	}
+	combID, err := parseCombatID(combatantID, "combatant")
+	if err != nil {
+		return rageCall{}, err
+	}
+	return rageCall{m: m, key: key, encID: encID, combID: combID}, nil
+}
+
+// publishRageChanged tells the streams that the combat and its log changed.
+func (s *Service) publishRageChanged(campaignID string) func(ctx context.Context, d *encounterData) {
+	return func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, campaignID, d.enc)
+		s.publishLogChanged(ctx, campaignID, d.enc.ID, true)
+	}
+}
+
+// actorOf finds the combatant a call names in the combat, as the caller sees it, and checks
+// that the caller may act for it.
+func (s *Service) actorOf(ctx context.Context, c *combatTx, call rageCall) (playdb.Combatant, combatViewer, error) {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return playdb.Combatant{}, combatViewer{}, fmt.Errorf("list the combatants: %w", err)
+	}
+	v := c.viewer(call.m, cs)
+	who, err := findCombatant(cs, call.combID, v)
+	if err != nil {
+		return who, v, err
+	}
+	return who, v, v.mayAct(who)
+}
+
 // AnswerRageEnd implements playv1connect.CombatServiceHandler: the barbarian's player
 // answers "A sua fúria vai acabar?". Letting it end ends the rage; the screen then
 // ends the turn. Going on drops the question: the barbarian attacks.
@@ -304,70 +364,53 @@ func (s *Service) AnswerRageEnd(
 	ctx context.Context,
 	req *connect.Request[playv1.AnswerRageEndRequest],
 ) (*connect.Response[playv1.AnswerRageEndResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
+	call, err := readRageCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetCombatantId())
 	if err != nil {
 		return nil, err
 	}
 	endRage := req.Msg.GetEndRage()
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v := c.viewer(m, cs)
-		who, err := findCombatant(cs, combID, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(who); err != nil {
-			return nil, err
-		}
-		if !who.RageEndPending {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING, "no question waits")
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &who.CharacterID
-		if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: who.ID, AttackedHostile: who.AttackedHostile, TookDamage: who.TookDamage}); err != nil {
-			return nil, fmt.Errorf("drop the question: %w", err)
-		}
-		if !endRage {
-			return nil, nil // the turn goes on: nothing to write down
-		}
-		// The rage ends: its own line.
-		who.RageEndPending = false
-		if err := s.endRage(ctx, c, who, "no_attack"); err != nil {
-			return nil, err
-		}
-		return actionEvent{Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, StateKind: stateRage, StateReason: "no_attack"}, nil
+	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		return s.answerRageIn(ctx, c, call, endRage)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer the rage question", err)
 	}
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
-	})
+	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID))
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.AnswerRageEndResponse{Encounter: out}), nil
+}
+
+// answerRageIn is the change of AnswerRageEnd: the question is dropped, and the rage ends when
+// the player lets it. It writes no event when the turn simply goes on.
+func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, endRage bool) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	who, _, err := s.actorOf(ctx, c, call)
+	if err != nil {
+		return nil, err
+	}
+	if !who.RageEndPending {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING, "no question waits")
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &who.CharacterID
+	if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: who.ID, AttackedHostile: who.AttackedHostile, TookDamage: who.TookDamage}); err != nil {
+		return nil, fmt.Errorf("drop the question: %w", err)
+	}
+	if !endRage {
+		return nil, nil // the turn goes on: nothing to write down
+	}
+	// The rage ends: its own line.
+	who.RageEndPending = false
+	if err := s.endRage(ctx, c, who, "no_attack"); err != nil {
+		return nil, err
+	}
+	return actionEvent{Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, StateKind: stateRage, StateReason: "no_attack"}, nil
 }
 
 // EndRage implements playv1connect.CombatServiceHandler: a bonus action on the
@@ -376,73 +419,56 @@ func (s *Service) EndRage(
 	ctx context.Context,
 	req *connect.Request[playv1.EndRageRequest],
 ) (*connect.Response[playv1.EndRageResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	call, err := readRageCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetCombatantId())
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: encID}, func(c *combatTx) (any, error) {
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v := c.viewer(m, cs)
-		who, err := findCombatant(cs, combID, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(who); err != nil {
-			return nil, err
-		}
-		if err := s.mustActNow(ctx, c, who); err != nil {
-			return nil, err
-		}
-		states, err := s.readStates(ctx, c.tx, c.enc.ID)
-		if err != nil {
-			return nil, err
-		}
-		if !hasState(states, who.ID, stateRage) {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_RAGING, "the combatant is not raging")
-		}
-		if who.BonusActionUsed && !v.master {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
-		}
-		if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-			ID: who.ID, ActionUsed: who.ActionUsed, BonusActionUsed: true, ReactionUsed: who.ReactionUsed, Dashed: who.Dashed,
-		}); err != nil {
-			return nil, fmt.Errorf("spend the bonus action: %w", err)
-		}
-		if err := s.endRage(ctx, c, who, "by_choice"); err != nil {
-			return nil, err
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &who.CharacterID
-		return actionEvent{Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, StateKind: stateRage, StateReason: "by_choice", BonusBefore: who.BonusActionUsed}, nil
+	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		return s.endRageIn(ctx, c, call)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end the rage", err)
 	}
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
-	})
+	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID))
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.EndRageResponse{Encounter: out}), nil
+}
+
+// endRageIn is the change of EndRage: the combatant must be raging and, but for the master,
+// have its bonus action; the bonus action is spent and the rage ends by choice.
+func (s *Service) endRageIn(ctx context.Context, c *combatTx, call rageCall) (any, error) {
+	who, v, err := s.actorOf(ctx, c, call)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.mustActNow(ctx, c, who); err != nil {
+		return nil, err
+	}
+	states, err := s.readStates(ctx, c.tx, c.enc.ID)
+	if err != nil {
+		return nil, err
+	}
+	if !hasState(states, who.ID, stateRage) {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_RAGING, "the combatant is not raging")
+	}
+	if who.BonusActionUsed && !v.master {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
+	}
+	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+		ID: who.ID, ActionUsed: who.ActionUsed, BonusActionUsed: true, ReactionUsed: who.ReactionUsed, Dashed: who.Dashed,
+	}); err != nil {
+		return nil, fmt.Errorf("spend the bonus action: %w", err)
+	}
+	if err := s.endRage(ctx, c, who, "by_choice"); err != nil {
+		return nil, err
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &who.CharacterID
+	return actionEvent{Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, StateKind: stateRage, StateReason: "by_choice", BonusBefore: who.BonusActionUsed}, nil
 }
 
 // ---- the view ----

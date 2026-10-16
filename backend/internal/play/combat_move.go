@@ -986,46 +986,73 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, err
 	}
-	enc := d.enc
-	v, sight, err := s.viewerWith(ctx, m, enc, d.cs)
+	v, sight, err := s.viewerWith(ctx, m, d.enc, d.cs)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out what the player sees", err)
 	}
-	who, err := findCombatant(d.cs, combID, v)
+	who, sight, err := s.moverToPlan(ctx, m, d, v, sight, combID)
 	if err != nil {
 		return nil, err
 	}
-	if err := v.mayAct(who); err != nil {
-		return nil, err
-	}
-	if sight == nil && v.master { // the master's warning follows the same fog rule as the real offers
-		if sight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
-			return nil, s.dbError(ctx, "work out what the players see", err)
-		}
-	}
-	if err := notEnded(enc); err != nil {
-		return nil, err
-	}
-	if !v.master {
-		switch {
-		case enc.Status != statusActive:
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-		case !actsNow(enc, who):
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
-		}
-		if err := s.mustNotBeDown(ctx, nil, m.CampaignID, who); err != nil {
-			return nil, err
-		}
-	}
-	if isTheatre(enc) {
+	if isTheatre(d.enc) {
 		// Without a map there is nowhere to go: a valid, empty answer, with what
 		// SpendMovement can still spend.
 		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftDFt(who), 0, math.MaxInt32), Flier: flies(who)}), nil
 	}
+	jump := req.Msg.GetJump()
+	out, err := s.moveOptionsOn(ctx, m, d, v, sight, who, jump)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.markProvokes(ctx, m, d.enc, d.cs, who, v, sight, out); err != nil {
+		return nil, s.dbError(ctx, "work out the opportunity attacks", err)
+	}
+	if !v.master {
+		s.markKnownTraps(ctx, m.CampaignID, d.enc, who, out, jump == playv1.JumpKind_JUMP_KIND_LONG) // the warning before stepping into a trap the character knows
+	}
+	return connect.NewResponse(out), nil
+}
+
+// moverToPlan finds the combatant whose moves are asked, which the caller may act for, and
+// checks that the combat is one it can move in now: not ended and, for a player, running, on
+// the combatant's turn and with the character on its feet. It returns the fog of the master's
+// view too.
+func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, sight *fogSight, combID string) (playdb.Combatant, *fogSight, error) {
+	enc := d.enc
+	who, err := findCombatant(d.cs, combID, v)
+	if err != nil {
+		return who, sight, err
+	}
+	if err := v.mayAct(who); err != nil {
+		return who, sight, err
+	}
+	if sight == nil && v.master { // the master's warning follows the same fog rule as the real offers
+		if sight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
+			return who, sight, s.dbError(ctx, "work out what the players see", err)
+		}
+	}
+	if err := notEnded(enc); err != nil {
+		return who, sight, err
+	}
+	if v.master {
+		return who, sight, nil
+	}
+	switch {
+	case enc.Status != statusActive:
+		return who, sight, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
+	case !actsNow(enc, who):
+		return who, sight, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
+	}
+	return who, sight, s.mustNotBeDown(ctx, nil, m.CampaignID, who)
+}
+
+// moveOptionsOn works out the squares the combatant on the map can go to, or land on with
+// a long jump.
+func (s *Service) moveOptionsOn(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, sight *fogSight, who playdb.Combatant, jump playv1.JumpKind) (*playv1.GetMoveOptionsResponse, error) {
 	if !placed(who) {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the combatant is not on the map yet")
 	}
-	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, enc)
+	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, d.enc)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain", err)
 	}
@@ -1036,28 +1063,18 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain the player knows", err)
 	}
-	jump := req.Msg.GetJump()
 	switch jump {
-	case playv1.JumpKind_JUMP_KIND_UNSPECIFIED, playv1.JumpKind_JUMP_KIND_LONG:
+	case playv1.JumpKind_JUMP_KIND_UNSPECIFIED:
+	case playv1.JumpKind_JUMP_KIND_LONG:
+		return jumpOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v)), nil
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("jump must be unset or LONG: a high jump moves nobody"))
 	}
-	var out *playv1.GetMoveOptionsResponse
-	if jump == playv1.JumpKind_JUMP_KIND_LONG {
-		out = jumpOptions(planOn(v, terrain, known), who, occupantsFor(d.cs, who, v))
-	} else {
-		var derr error
-		if out, derr = s.moveOptionsWithDrag(ctx, planOn(v, terrain, known), d.cs, who, v); derr != nil {
-			return nil, s.dbError(ctx, "work out the drag", derr)
-		}
+	out, err := s.moveOptionsWithDrag(ctx, planOn(v, terrain, known), d.cs, who, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "work out the drag", err)
 	}
-	if err := s.markProvokes(ctx, m, enc, d.cs, who, v, sight, out); err != nil {
-		return nil, s.dbError(ctx, "work out the opportunity attacks", err)
-	}
-	if !v.master {
-		s.markKnownTraps(ctx, m.CampaignID, enc, who, out, jump == playv1.JumpKind_JUMP_KIND_LONG) // the warning before stepping into a trap the character knows
-	}
-	return connect.NewResponse(out), nil
+	return out, nil
 }
 
 // jumpOptions works out where the combatant can land with a long jump (SRD 5.1,
@@ -1106,8 +1123,14 @@ func moveOptions(t grid.Terrain, who playdb.Combatant, occ grid.OccupantMap) *pl
 	if left <= 0 {
 		return out
 	}
-	// Inside the circle, the squares that are not reachable: why not. They come
-	// in reading order too, like the reachable ones.
+	out.Refused = refusedSquares(t, from, left, reachable, occ, mover)
+	return out
+}
+
+// refusedSquares lists the squares inside the circle of the movement left that are not
+// reachable, and why not. They come in reading order too, like the reachable ones.
+func refusedSquares(t grid.Terrain, from grid.Square, left int, reachable map[grid.Square]bool, occ grid.OccupantMap, mover grid.Mover) []*playv1.RefusedSquare {
+	var refused []*playv1.RefusedSquare
 	radius := left/grid.DFtPerSquare + 1
 	for row := max(from.Row-radius, 0); row <= min(from.Row+radius, t.Grid.Rows-1); row++ {
 		for col := max(from.Col-radius, 0); col <= min(from.Col+radius, t.Grid.Columns-1); col++ {
@@ -1115,21 +1138,66 @@ func moveOptions(t grid.Terrain, who playdb.Combatant, occ grid.OccupantMap) *pl
 			if sq == from || reachable[sq] || grid.LengthDFt(from, sq) > left {
 				continue
 			}
-			mv := t.Move(from, sq, occ, mover)
-			reason := playv1.MoveRefusal_MOVE_REFUSAL_TOO_COSTLY
-			switch {
-			case mv.Blocked && mv.By == grid.StopOccupied:
-				reason = playv1.MoveRefusal_MOVE_REFUSAL_ENEMY
-				if _, here := occ.At(sq); here {
-					reason = playv1.MoveRefusal_MOVE_REFUSAL_OCCUPIED
-				}
-			case mv.Blocked:
-				reason = playv1.MoveRefusal_MOVE_REFUSAL_WALL
-			}
-			out.Refused = append(out.Refused, &playv1.RefusedSquare{Col: clamp32(col, 0, math.MaxInt32), Row: clamp32(row, 0, math.MaxInt32), Reason: reason})
+			reason := moveRefusalOf(t.Move(from, sq, occ, mover), occ, sq)
+			refused = append(refused, &playv1.RefusedSquare{Col: clamp32(col, 0, math.MaxInt32), Row: clamp32(row, 0, math.MaxInt32), Reason: reason})
 		}
 	}
-	return out
+	return refused
+}
+
+// moveRefusalOf is why a move to the square cannot be made: too costly unless something
+// stops it, and then an enemy, an occupant or a wall.
+func moveRefusalOf(mv grid.Move, occ grid.OccupantMap, sq grid.Square) playv1.MoveRefusal {
+	switch {
+	case mv.Blocked && mv.By == grid.StopOccupied:
+		if _, here := occ.At(sq); here {
+			return playv1.MoveRefusal_MOVE_REFUSAL_OCCUPIED
+		}
+		return playv1.MoveRefusal_MOVE_REFUSAL_ENEMY
+	case mv.Blocked:
+		return playv1.MoveRefusal_MOVE_REFUSAL_WALL
+	}
+	return playv1.MoveRefusal_MOVE_REFUSAL_TOO_COSTLY
+}
+
+// masterTargetCall is what the master's marks on a combatant read from their requests: who
+// asks, the key and the combat and combatant named.
+type masterTargetCall struct {
+	m                  authz.Membership
+	key, encID, combID string
+}
+
+// readMasterTargetCall reads and checks the master's call, in the order the refusals have
+// always come.
+func readMasterTargetCall(ctx context.Context, campaignID, rawKey, encounterID, combatantID string) (masterTargetCall, error) {
+	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster)
+	if err != nil {
+		return masterTargetCall{}, err
+	}
+	key, err := parseKey(rawKey)
+	if err != nil {
+		return masterTargetCall{}, err
+	}
+	encID, err := parseCombatID(encounterID, "encounter")
+	if err != nil {
+		return masterTargetCall{}, err
+	}
+	combID, err := parseCombatID(combatantID, "combatant")
+	if err != nil {
+		return masterTargetCall{}, err
+	}
+	return masterTargetCall{m: m, key: key, encID: encID, combID: combID}, nil
+}
+
+// sideKeyOf is the side as the table stores it, and false for UNSPECIFIED (not a side).
+func sideKeyOf(side playv1.CombatantSide) (string, bool) {
+	switch side {
+	case playv1.CombatantSide_COMBATANT_SIDE_PARTY:
+		return sidePartyKey, true
+	case playv1.CombatantSide_COMBATANT_SIDE_ENEMY:
+		return sideEnemyKey, true
+	}
+	return "", false
 }
 
 // SetCombatantSide implements playv1connect.CombatServiceHandler.
@@ -1137,72 +1205,66 @@ func (s *Service) SetCombatantSide(
 	ctx context.Context,
 	req *connect.Request[playv1.SetCombatantSideRequest],
 ) (*connect.Response[playv1.SetCombatantSideResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	call, err := readMasterTargetCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetCombatantId())
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	var side string
-	switch req.Msg.GetSide() {
-	case playv1.CombatantSide_COMBATANT_SIDE_PARTY:
-		side = sidePartyKey
-	case playv1.CombatantSide_COMBATANT_SIDE_ENEMY:
-		side = sideEnemyKey
-	default:
+	side, ok := sideKeyOf(req.Msg.GetSide())
+	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("side must be PARTY or ENEMY"))
 	}
-
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSideSet, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		target, err := findCombatant(cs, combID, viewerOf(m))
-		if err != nil {
-			return nil, err
-		}
-		if target.Kind != kindNPC {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a player's character is always on the party's side"))
-		}
-		if err := c.q.SetCombatantSide(ctx, playdb.SetCombatantSideParams{ID: target.ID, Side: side}); err != nil {
-			return nil, fmt.Errorf("set the side: %w", err)
-		}
-		// An offer waits for a hostile reactor: one that is now an ally of the
-		// mover (or the mover, now an ally of the reactor) no longer attacks.
-		now := s.now()
-		if _, err := c.q.SkipPendingOpportunityOffersBetweenAllies(ctx, playdb.SkipPendingOpportunityOffersBetweenAlliesParams{
-			EncounterID: c.enc.ID, MoverID: target.ID, AnsweredAt: &now,
-		}); err != nil {
-			return nil, fmt.Errorf("pass over the offers between allies: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &target.CharacterID
-		return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Side: side, SideBefore: target.Side}, nil
+	m := call.m
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventSideSet, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		return s.sideIn(ctx, c, call, side)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set a combatant's side", err)
 	}
-	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, combID))
+	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, call.combID))
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.SetCombatantSideResponse{Encounter: out}), nil
+}
+
+// sideIn is the change of SetCombatantSide: an NPC changes sides, and the offers that wait
+// between what are now allies are passed over.
+func (s *Service) sideIn(ctx context.Context, c *combatTx, call masterTargetCall, side string) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	target, err := s.masterTargetOf(ctx, c, call)
+	if err != nil {
+		return nil, err
+	}
+	if target.Kind != kindNPC {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a player's character is always on the party's side"))
+	}
+	if err := c.q.SetCombatantSide(ctx, playdb.SetCombatantSideParams{ID: target.ID, Side: side}); err != nil {
+		return nil, fmt.Errorf("set the side: %w", err)
+	}
+	// An offer waits for a hostile reactor: one that is now an ally of the
+	// mover (or the mover, now an ally of the reactor) no longer attacks.
+	now := s.now()
+	if _, err := c.q.SkipPendingOpportunityOffersBetweenAllies(ctx, playdb.SkipPendingOpportunityOffersBetweenAlliesParams{
+		EncounterID: c.enc.ID, MoverID: target.ID, AnsweredAt: &now,
+	}); err != nil {
+		return nil, fmt.Errorf("pass over the offers between allies: %w", err)
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &target.CharacterID
+	return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Side: side, SideBefore: target.Side}, nil
+}
+
+// masterTargetOf finds the combatant the master's call names, as the master sees it.
+func (s *Service) masterTargetOf(ctx context.Context, c *combatTx, call masterTargetCall) (playdb.Combatant, error) {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return playdb.Combatant{}, fmt.Errorf("list the combatants: %w", err)
+	}
+	return findCombatant(cs, call.combID, viewerOf(call.m))
 }
 
 // SetCombatantCover implements playv1connect.CombatServiceHandler.
@@ -1210,19 +1272,7 @@ func (s *Service) SetCombatantCover(
 	ctx context.Context,
 	req *connect.Request[playv1.SetCombatantCoverRequest],
 ) (*connect.Response[playv1.SetCombatantCoverResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
+	call, err := readMasterTargetCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetCombatantId())
 	if err != nil {
 		return nil, err
 	}
@@ -1230,36 +1280,37 @@ func (s *Service) SetCombatantCover(
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cover must be NONE, HALF, THREE_QUARTERS or TOTAL"))
 	}
-
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventCoverSet, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		target, err := findCombatant(cs, combID, viewerOf(m))
-		if err != nil {
-			return nil, err
-		}
-		if err := c.q.SetCombatantCoverMark(ctx, playdb.SetCombatantCoverMarkParams{ID: target.ID, CoverMark: mark}); err != nil {
-			return nil, fmt.Errorf("set the cover: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &target.CharacterID
-		return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, CoverMark: mark, CoverMarkBefore: target.CoverMark}, nil
+	m := call.m
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventCoverSet, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		return s.coverIn(ctx, c, call, mark)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a combatant's cover", err)
 	}
-	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, combID))
+	out, err := s.finish(ctx, m, res, s.changedFor(m.CampaignID, call.combID))
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.SetCombatantCoverResponse{Encounter: out}), nil
+}
+
+// coverIn is the change of SetCombatantCover: the master's cover mark on a combatant.
+func (s *Service) coverIn(ctx context.Context, c *combatTx, call masterTargetCall, mark string) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	target, err := s.masterTargetOf(ctx, c, call)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.q.SetCombatantCoverMark(ctx, playdb.SetCombatantCoverMarkParams{ID: target.ID, CoverMark: mark}); err != nil {
+		return nil, fmt.Errorf("set the cover: %w", err)
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &target.CharacterID
+	return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, CoverMark: mark, CoverMarkBefore: target.CoverMark}, nil
 }
 
 // coverMarkKey is a cover as the table stores the master's mark, and false for
