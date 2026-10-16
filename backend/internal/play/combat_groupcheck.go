@@ -49,10 +49,23 @@ type groupCheckEvent struct {
 	CharacterID  string `json:"character_id,omitempty"`
 }
 
+// groupChange is what one write of the group check does inside the transaction: it changes the
+// rows and says the payload of the event, and the character the event is about (empty for none).
+type groupChange func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (payload groupCheckEvent, characterID string, err error)
+
+// groupCall is who makes a write of the group check, and the idempotency data of the call.
+type groupCall struct {
+	m    authz.Membership
+	key  string
+	hash *string
+	kind string
+}
+
 // groupWrite runs one change to the open session's group check, as the scene checks do: one
 // transaction locks the open session, replays a retry of the key, lets do change the rows
 // and appends the event. It returns whether the call was a retry.
-func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string, hash *string, kind string, do func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (payload groupCheckEvent, characterID string, err error)) (groupCheckEvent, bool, error) {
+func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string, hash *string, kind string, do groupChange) (groupCheckEvent, bool, error) {
+	call := groupCall{m: m, key: key, hash: hash, kind: kind}
 	var ev groupCheckEvent
 	var repeated bool
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -65,40 +78,58 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 		if err != nil {
 			return fmt.Errorf("lock the open session: %w", err)
 		}
-		done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
-		switch {
-		case err == nil:
-			if done.Kind != kind || done.ActorUserID == nil || *done.ActorUserID != m.UserID || hashDiffers(done.IdempotencyHash, hash) {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-			}
-			repeated = true
-			// A retry answers what the first call made: the check it names is in the event.
-			if err := json.Unmarshal(done.Payload, &ev); err != nil {
-				return fmt.Errorf("read the event of this idempotency key: %w", err)
-			}
+		replayed, found, err := groupReplay(ctx, q, session.ID, call)
+		if err != nil {
+			return err
+		}
+		if found {
+			ev, repeated = replayed, true
 			return nil
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("find the event of this idempotency key: %w", err)
 		}
-		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), hash: hash, svc: s})
-		if err != nil {
-			return err
-		}
-		payload, characterID, err := do(q, tx, session)
-		if errors.Is(err, errRollHeld) {
-			return nil // the roll waits for the player's answer (a die, or Lucky): nothing is written yet
-		}
-		if err != nil {
-			return err
-		}
-		if characterID != "" {
-			c.characterID = &characterID
-		}
-		ev = payload
-		_, err = insertSceneEvent(ctx, c, kind, &m.UserID, &key, payload)
+		ev, err = s.groupApply(ctx, tx, q, session, call, do)
 		return err
 	})
 	return ev, repeated, err
+}
+
+// groupReplay finds the event a retry of the call's key already made. found is false when the key
+// is new; a key used for another change, kind or caller is refused.
+func groupReplay(ctx context.Context, q *playdb.Queries, sessionID string, call groupCall) (ev groupCheckEvent, found bool, err error) {
+	done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: sessionID, IdempotencyKey: &call.key})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return groupCheckEvent{}, false, nil
+	}
+	if err != nil {
+		return groupCheckEvent{}, false, fmt.Errorf("find the event of this idempotency key: %w", err)
+	}
+	if done.Kind != call.kind || done.ActorUserID == nil || *done.ActorUserID != call.m.UserID || hashDiffers(done.IdempotencyHash, call.hash) {
+		return groupCheckEvent{}, false, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+	}
+	// A retry answers what the first call made: the check it names is in the event.
+	if err := json.Unmarshal(done.Payload, &ev); err != nil {
+		return groupCheckEvent{}, true, fmt.Errorf("read the event of this idempotency key: %w", err)
+	}
+	return ev, true, nil
+}
+
+// groupApply lets do change the rows of a call that is not a retry and appends its event.
+func (s *Service) groupApply(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call groupCall, do groupChange) (groupCheckEvent, error) {
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), hash: call.hash, svc: s})
+	if err != nil {
+		return groupCheckEvent{}, err
+	}
+	payload, characterID, err := do(q, tx, session)
+	if errors.Is(err, errRollHeld) {
+		return groupCheckEvent{}, nil // the roll waits for the player's answer (a die, or Lucky): nothing is written yet
+	}
+	if err != nil {
+		return groupCheckEvent{}, err
+	}
+	if characterID != "" {
+		c.characterID = &characterID
+	}
+	_, err = insertSceneEvent(ctx, c, call.kind, &call.m.UserID, &call.key, payload)
+	return payload, err
 }
 
 // errRollHeld is what a write's closure returns when its roll was kept for the player's answer
@@ -139,6 +170,44 @@ func (s *Service) publishGroupCheckChanged(campaignID string) {
 	})
 }
 
+// maxGroupCheckDC is the highest DC a group check can ask (0 asks none).
+const maxGroupCheckDC = 40
+
+// minGroupSize is the fewest characters a group verdict is over.
+const minGroupSize = 2
+
+// groupAsk is a request for a group check that passed the checks that need no database.
+type groupAsk struct {
+	skill        string
+	characterIDs []string
+	dc           int32
+	showDC       bool
+	group        *bool
+}
+
+// parseGroupAsk checks what a request for a group check says by itself, in the order the
+// refusals are made: the skill, the characters named and the DC.
+func (s *Service) parseGroupAsk(msg *playv1.RequestGroupCheckRequest) (groupAsk, error) {
+	skill := msg.GetSkillKey()
+	if !isCheckKey(skill) || s.roster.SceneCheckName(skill) == "" {
+		return groupAsk{}, connect.NewError(connect.CodeInvalidArgument, errors.New("skill_key must be a skill, an ability check or a saving throw"))
+	}
+	askedIDs := msg.GetCharacterIds()
+	for i, id := range askedIDs {
+		if _, err := parseCombatID(id, "character"); err != nil {
+			return groupAsk{}, err
+		}
+		if slices.Contains(askedIDs[:i], id) {
+			return groupAsk{}, connect.NewError(connect.CodeInvalidArgument, errors.New("character_ids names a character twice"))
+		}
+	}
+	dc := msg.GetDc()
+	if dc < 0 || dc > maxGroupCheckDC {
+		return groupAsk{}, connect.NewError(connect.CodeInvalidArgument, errors.New("dc must be 1 to 40, or 0 for none"))
+	}
+	return groupAsk{skill: skill, characterIDs: askedIDs, dc: dc, showDC: msg.GetShowDc(), group: msg.Group}, nil
+}
+
 // RequestGroupCheck implements playv1connect.ContestServiceHandler.
 func (s *Service) RequestGroupCheck(
 	ctx context.Context,
@@ -152,73 +221,13 @@ func (s *Service) RequestGroupCheck(
 	if err != nil {
 		return nil, err
 	}
-	skill := req.Msg.GetSkillKey()
-	if !isCheckKey(skill) || s.roster.SceneCheckName(skill) == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("skill_key must be a skill, an ability check or a saving throw"))
+	ask, err := s.parseGroupAsk(req.Msg)
+	if err != nil {
+		return nil, err
 	}
-	askedIDs := req.Msg.GetCharacterIds()
-	for i, id := range askedIDs {
-		if _, err := parseCombatID(id, "character"); err != nil {
-			return nil, err
-		}
-		if slices.Contains(askedIDs[:i], id) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("character_ids names a character twice"))
-		}
-	}
-	dc := req.Msg.GetDc()
-	if dc < 0 || dc > 40 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("dc must be 1 to 40, or 0 for none"))
-	}
-	var created playdb.GroupCheck
 	ev, repeated, err := s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckRequested, func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
-		if _, err := q.GetOpenGroupCheck(ctx, session.ID); err == nil {
-			return groupCheckEvent{}, "", errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_GROUP_CHECK_OPEN, "a group check is open already")
-		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return groupCheckEvent{}, "", fmt.Errorf("find the open group check: %w", err)
-		}
-		party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
-		if err != nil {
-			return groupCheckEvent{}, "", err
-		}
-		if len(party) == 0 {
-			return groupCheckEvent{}, "", connect.NewError(connect.CodeInvalidArgument, errors.New("the campaign has no living player character to ask"))
-		}
-		// The characters asked: all of the party, or the ones named (each must be a living
-		// player character of this campaign: never an NPC, a dead or an unknown one).
-		asked := party
-		if len(askedIDs) > 0 {
-			asked = make([]link.Character, 0, len(askedIDs))
-			for _, id := range askedIDs {
-				i := slices.IndexFunc(party, func(c link.Character) bool { return c.ID == id })
-				if i < 0 {
-					return groupCheckEvent{}, "", connect.NewError(connect.CodeInvalidArgument, errors.New("character_ids must name living player characters of this campaign"))
-				}
-				asked = append(asked, party[i])
-			}
-		}
-		// A group check is the default of asking everyone; asking some is judged one by one.
-		isGroup := len(askedIDs) == 0
-		if req.Msg.Group != nil {
-			isGroup = req.Msg.GetGroup()
-		}
-		if isGroup && len(asked) < 2 && req.Msg.Group != nil {
-			return groupCheckEvent{}, "", connect.NewError(connect.CodeInvalidArgument, errors.New("a group check needs at least two characters; ask one without group"))
-		}
-		var dcValue *int32
-		if dc > 0 {
-			dcValue = &dc
-		}
-		if created, err = q.InsertGroupCheck(ctx, playdb.InsertGroupCheckParams{
-			GameSessionID: session.ID, SkillKey: skill, Dc: dcValue, ShowDc: req.Msg.GetShowDc(), IsGroup: isGroup, CreatedAt: s.now(),
-		}); err != nil {
-			return groupCheckEvent{}, "", fmt.Errorf("ask the group check: %w", err)
-		}
-		for _, ch := range asked {
-			if err := q.InsertGroupCheckMember(ctx, playdb.InsertGroupCheckMemberParams{GroupCheckID: created.ID, CharacterID: ch.ID}); err != nil {
-				return groupCheckEvent{}, "", fmt.Errorf("ask a character: %w", err)
-			}
-		}
-		return groupCheckEvent{GroupCheckID: created.ID}, "", nil
+		ev, err := s.askGroupCheck(ctx, q, tx, m, session, ask)
+		return ev, "", err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "ask a group check", err)
@@ -231,6 +240,77 @@ func (s *Service) RequestGroupCheck(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.RequestGroupCheckResponse{GroupCheck: view}), nil
+}
+
+// askGroupCheck writes the group check the master asked: one open check at a time, over the
+// characters asked.
+func (s *Service) askGroupCheck(ctx context.Context, q *playdb.Queries, tx pgx.Tx, m authz.Membership, session playdb.GameSession, ask groupAsk) (groupCheckEvent, error) {
+	if _, err := q.GetOpenGroupCheck(ctx, session.ID); err == nil {
+		return groupCheckEvent{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_GROUP_CHECK_OPEN, "a group check is open already")
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return groupCheckEvent{}, fmt.Errorf("find the open group check: %w", err)
+	}
+	party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
+	if err != nil {
+		return groupCheckEvent{}, err
+	}
+	if len(party) == 0 {
+		return groupCheckEvent{}, connect.NewError(connect.CodeInvalidArgument, errors.New("the campaign has no living player character to ask"))
+	}
+	asked, err := askedCharacters(party, ask.characterIDs)
+	if err != nil {
+		return groupCheckEvent{}, err
+	}
+	isGroup, err := askIsGroup(ask, len(asked))
+	if err != nil {
+		return groupCheckEvent{}, err
+	}
+	var dcValue *int32
+	if ask.dc > 0 {
+		dcValue = &ask.dc
+	}
+	created, err := q.InsertGroupCheck(ctx, playdb.InsertGroupCheckParams{
+		GameSessionID: session.ID, SkillKey: ask.skill, Dc: dcValue, ShowDc: ask.showDC, IsGroup: isGroup, CreatedAt: s.now(),
+	})
+	if err != nil {
+		return groupCheckEvent{}, fmt.Errorf("ask the group check: %w", err)
+	}
+	for _, ch := range asked {
+		if err := q.InsertGroupCheckMember(ctx, playdb.InsertGroupCheckMemberParams{GroupCheckID: created.ID, CharacterID: ch.ID}); err != nil {
+			return groupCheckEvent{}, fmt.Errorf("ask a character: %w", err)
+		}
+	}
+	return groupCheckEvent{GroupCheckID: created.ID}, nil
+}
+
+// askedCharacters are the characters asked: all of the party, or the ones named (each must be a
+// living player character of this campaign: never an NPC, a dead or an unknown one).
+func askedCharacters(party []link.Character, named []string) ([]link.Character, error) {
+	if len(named) == 0 {
+		return party, nil
+	}
+	asked := make([]link.Character, 0, len(named))
+	for _, id := range named {
+		i := slices.IndexFunc(party, func(c link.Character) bool { return c.ID == id })
+		if i < 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("character_ids must name living player characters of this campaign"))
+		}
+		asked = append(asked, party[i])
+	}
+	return asked, nil
+}
+
+// askIsGroup says whether the request has a group verdict. A group check is the default of asking
+// everyone; asking some is judged one by one, unless the master says group.
+func askIsGroup(ask groupAsk, askedCount int) (bool, error) {
+	isGroup := len(ask.characterIDs) == 0
+	if ask.group != nil {
+		isGroup = *ask.group
+	}
+	if isGroup && askedCount < minGroupSize && ask.group != nil {
+		return false, connect.NewError(connect.CodeInvalidArgument, errors.New("a group check needs at least two characters; ask one without group"))
+	}
+	return isGroup, nil
 }
 
 // isCheckKey says whether a key can be asked: a skill ("skill:stealth"), an ability check
@@ -263,28 +343,7 @@ func (s *Service) RollGroupCheck(
 	hold := &groupHold{m: m, key: key, raw: req.Msg}
 	ctx = context.WithValue(ctx, groupHoldKey{}, hold)
 	_, repeated, err := s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckRolled, func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
-		hold.offer, hold.lucky = nil, nil
-		who, has, err := s.myCharacter(ctx, tx, m)
-		if err != nil {
-			return groupCheckEvent{}, "", err
-		}
-		if !has {
-			return groupCheckEvent{}, "", errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK, "you have no living character in this check")
-		}
-		force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
-		if err != nil {
-			return groupCheckEvent{}, "", err
-		}
-		if force.refuses(in.inApp) {
-			return groupCheckEvent{}, "", errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
-		}
-		if err := s.rollMember(ctx, q, tx, m.CampaignID, session, checkID, who.ID, in, false); err != nil {
-			return groupCheckEvent{}, "", err
-		}
-		if hold.asking() {
-			return groupCheckEvent{}, "", errRollHeld
-		}
-		return groupCheckEvent{GroupCheckID: checkID, CharacterID: who.ID}, who.ID, nil
+		return s.rollOwnGroupCheck(ctx, q, tx, m, session, hold, checkID, in)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "roll a group check", err)
@@ -293,12 +352,7 @@ func (s *Service) RollGroupCheck(
 		return connect.NewResponse(&playv1.RollGroupCheckResponse{InspirationOffer: hold.offer, LuckyOffer: hold.lucky}), nil
 	}
 	if !repeated {
-		s.hub.Publish(m.CampaignID, live.Event{
-			Audience: live.Audience{Master: true, UserID: m.UserID},
-			Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_GroupCheckChanged_{
-				GroupCheckChanged: &playv1.WatchGameSessionResponse_GroupCheckChanged{},
-			}},
-		})
+		s.publishGroupRolled(m)
 	}
 	view, err := s.groupCheckView(ctx, m, checkID)
 	if err != nil {
@@ -307,22 +361,89 @@ func (s *Service) RollGroupCheck(
 	return connect.NewResponse(&playv1.RollGroupCheckResponse{GroupCheck: view}), nil
 }
 
+// publishGroupRolled tells the master and the roller that a player rolled: the other players
+// have nothing to read of it.
+func (s *Service) publishGroupRolled(m authz.Membership) {
+	s.hub.Publish(m.CampaignID, live.Event{
+		Audience: live.Audience{Master: true, UserID: m.UserID},
+		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_GroupCheckChanged_{
+			GroupCheckChanged: &playv1.WatchGameSessionResponse_GroupCheckChanged{},
+		}},
+	})
+}
+
+// rollOwnGroupCheck rolls the caller's own character for the group check, in the dice mode the
+// campaign has them roll in. A roll kept for an answer (hold.asking) writes no event.
+func (s *Service) rollOwnGroupCheck(ctx context.Context, q *playdb.Queries, tx pgx.Tx, m authz.Membership, session playdb.GameSession, hold *groupHold, checkID string, in checkInput) (groupCheckEvent, string, error) {
+	hold.offer, hold.lucky = nil, nil
+	who, has, err := s.myCharacter(ctx, tx, m)
+	if err != nil {
+		return groupCheckEvent{}, "", err
+	}
+	if !has {
+		return groupCheckEvent{}, "", errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK, "you have no living character in this check")
+	}
+	force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
+	if err != nil {
+		return groupCheckEvent{}, "", err
+	}
+	if force.refuses(in.inApp) {
+		return groupCheckEvent{}, "", errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
+	}
+	if err := s.rollMember(ctx, q, tx, m.CampaignID, session, checkID, who.ID, in, false); err != nil {
+		return groupCheckEvent{}, "", err
+	}
+	if hold.asking() {
+		return groupCheckEvent{}, "", errRollHeld
+	}
+	return groupCheckEvent{GroupCheckID: checkID, CharacterID: who.ID}, who.ID, nil
+}
+
 // rollMember rolls a character's check for an open group check: its number for the skill
 // and a normal d20 (the check has no combat, so no circumstance changes the roll).
 func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, campaignID string, session playdb.GameSession, checkID, characterID string, in checkInput, byMaster bool) error {
-	check, err := q.GetGroupCheck(ctx, playdb.GetGroupCheckParams{GameSessionID: session.ID, ID: checkID})
+	check, err := openCheckOfMember(ctx, q, session.ID, checkID, characterID)
+	if err != nil {
+		return err
+	}
+	options, err := s.roster.SceneOptions(ctx, tx, campaignID, characterID, []string{check.SkillKey})
+	if err != nil {
+		return err
+	}
+	spec := memberRoll{check: check, characterID: characterID, in: in, byMaster: byMaster}
+	if len(options) == 1 && options[0].Known {
+		spec.bonus, spec.known, spec.lucky = options[0].Bonus, true, options[0].Lucky
+	}
+	// The same circumstances as any ability check: Poisoned, Frightened, exhaustion, the
+	// Rage on Strength, armor on Stealth and a Help (SRD 5.1, "Group Checks" are ability checks).
+	ability, isCheck := checkKey(check.SkillKey)
+	spec.mode, err = s.checkModeOf(ctx, tx, campaignID, session.ID, characterID, check.SkillKey, ability, isCheck)
+	if err != nil {
+		return err
+	}
+	roll, held, err := s.memberRollOf(ctx, q, tx, spec)
+	if err != nil || held {
+		return err
+	}
+	return s.keepMemberRoll(ctx, q, tx, session, spec, roll)
+}
+
+// openCheckOfMember is the open group check the character may still answer: it exists, is open,
+// names the character and the character did not answer yet.
+func openCheckOfMember(ctx context.Context, q *playdb.Queries, sessionID, checkID, characterID string) (playdb.GroupCheck, error) {
+	check, err := q.GetGroupCheck(ctx, playdb.GetGroupCheckParams{GameSessionID: sessionID, ID: checkID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return connect.NewError(connect.CodeNotFound, errors.New("group check not found"))
+		return playdb.GroupCheck{}, connect.NewError(connect.CodeNotFound, errors.New("group check not found"))
 	}
 	if err != nil {
-		return fmt.Errorf("find the group check: %w", err)
+		return playdb.GroupCheck{}, fmt.Errorf("find the group check: %w", err)
 	}
 	if check.Status != "open" {
-		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_GROUP_CHECK_CLOSED, "the group check is closed")
+		return playdb.GroupCheck{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_GROUP_CHECK_CLOSED, "the group check is closed")
 	}
 	members, err := q.ListGroupCheckMembers(ctx, check.ID)
 	if err != nil {
-		return fmt.Errorf("list the members: %w", err)
+		return playdb.GroupCheck{}, fmt.Errorf("list the members: %w", err)
 	}
 	var member *playdb.GroupCheckMember
 	for i := range members {
@@ -332,74 +453,93 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 	}
 	switch {
 	case member == nil:
-		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK, "the character is not in this check")
+		return playdb.GroupCheck{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK, "the character is not in this check")
 	case member.RolledAt != nil:
-		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_ALREADY_ANSWERED, "the character answered already")
+		return playdb.GroupCheck{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_ALREADY_ANSWERED, "the character answered already")
 	}
-	options, err := s.roster.SceneOptions(ctx, tx, campaignID, characterID, []string{check.SkillKey})
+	return check, nil
+}
+
+// memberRoll is what rolling one character's group check needs: the check, who rolls and how,
+// the character's modifier for the skill and the circumstances of the roll.
+type memberRoll struct {
+	check       playdb.GroupCheck
+	characterID string
+	in          checkInput
+	byMaster    bool
+	bonus       int
+	known       bool
+	lucky       bool
+	mode        checkMode
+}
+
+// memberRollOf makes the d20 of the member. held says the roll was kept for the player's answer
+// (a Bardic Inspiration die, or the halfling's Lucky): nothing is written then.
+//
+// A character that holds a Bardic Inspiration die has the d20 kept until the player
+// answers whether to use it, and so has a halfling's d20 that shows a 1, for the Lucky
+// question (a roll the master makes for the player waits for no one).
+func (s *Service) memberRollOf(ctx context.Context, q *playdb.Queries, tx pgx.Tx, spec memberRoll) (roll contestRoll, held bool, err error) {
+	if gh := groupHoldOf(ctx); gh != nil && !spec.byMaster {
+		var settled bool
+		roll, settled, held, err = s.gatedMemberRoll(ctx, q, tx, gh, spec)
+		if err != nil || held {
+			return contestRoll{}, held, err
+		}
+		if settled {
+			return roll, false, nil
+		}
+	}
+	roll, err = s.rollCheck(spec.in, checkModeOfRoll(spec.mode.Mode), spec.bonus, spec.check.SkillKey, nil, !spec.known)
+	return roll, false, err
+}
+
+// gatedMemberRoll puts the member's d20 through the held-roll gate. It says whether the gate
+// settled the roll (settled), or kept it for an answer (held).
+func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx.Tx, gh *groupHold, spec memberRoll) (roll contestRoll, settled, held bool, err error) {
+	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
+		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
+		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Lucky: spec.lucky, MayAsk: true,
+	})
+	if err != nil {
+		return contestRoll{}, false, false, err
+	}
+	if step.Held != nil {
+		gh.offer, gh.lucky = s.outsideOffers(ctx, tx, step.Held)
+		return contestRoll{}, false, true, nil
+	}
+	if !step.Settled {
+		return contestRoll{}, false, false, nil
+	}
+	roll = contestRoll{
+		Skill: spec.check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: clamp32(spec.bonus, math.MinInt32, math.MaxInt32),
+		Total: clamp32(step.Roll.Total, math.MinInt32, math.MaxInt32), Physical: step.Roll.Physical,
+		Mode: checkModeKey(checkModeOfRoll(spec.mode.Mode)), Unknown: !spec.known, Lucky: step.Lucky,
+	}
+	if step.Bonus != nil {
+		roll.BonusSides, roll.BonusFace = step.Bonus.Sides, step.Bonus.Face
+	}
+	return roll, true, false, nil
+}
+
+// keepMemberRoll spends the Helps the roll used and keeps the roll on the member.
+func (s *Service) keepMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx.Tx, session playdb.GameSession, spec memberRoll, roll contestRoll) error {
+	roll.Notes = notesOfSources(spec.mode.Sources, spec.mode.hide)
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &spec.characterID})
 	if err != nil {
 		return err
 	}
-	bonus, known, lucky := 0, false, false
-	if len(options) == 1 && options[0].Known {
-		bonus, known, lucky = options[0].Bonus, true, options[0].Lucky
-	}
-	// The same circumstances as any ability check: Poisoned, Frightened, exhaustion, the
-	// Rage on Strength, armor on Stealth and a Help (SRD 5.1, "Group Checks" are ability checks).
-	ability, isCheck := checkKey(check.SkillKey)
-	cm, err := s.checkModeOf(ctx, tx, campaignID, session.ID, characterID, check.SkillKey, ability, isCheck)
-	if err != nil {
+	if err := s.spendCheckHelps(ctx, c, spec.mode.Helps); err != nil {
 		return err
 	}
-	// A character that holds a Bardic Inspiration die has the d20 kept until the player
-	// answers whether to use it, and so has a halfling's d20 that shows a 1, for the Lucky
-	// question (a roll the master makes for the player waits for no one).
-	var roll contestRoll
-	gh := groupHoldOf(ctx)
-	if gh != nil && !byMaster {
-		step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
-			Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: characterID, UserID: gh.m.UserID},
-			In: rollInput{inApp: in.inApp, typedFaces: in.faces}, Modifier: bonus, Mode: cm.Mode, Lucky: lucky, MayAsk: true,
-		})
-		if err != nil {
-			return err
-		}
-		if step.Held != nil {
-			gh.offer, gh.lucky = s.outsideOffers(ctx, tx, step.Held)
-			return nil
-		}
-		if step.Settled {
-			roll = contestRoll{
-				Skill: check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32),
-				Total: clamp32(step.Roll.Total, math.MinInt32, math.MaxInt32), Physical: step.Roll.Physical,
-				Mode: checkModeKey(checkModeOfRoll(cm.Mode)), Unknown: !known, Lucky: step.Lucky,
-			}
-			if step.Bonus != nil {
-				roll.BonusSides, roll.BonusFace = step.Bonus.Sides, step.Bonus.Face
-			}
-		}
-	}
-	if roll.Skill == "" {
-		if roll, err = s.rollCheck(in, checkModeOfRoll(cm.Mode), bonus, check.SkillKey, nil, !known); err != nil {
-			return err
-		}
-	}
-	roll.Notes = notesOfSources(cm.Sources, cm.hide)
-	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &characterID})
-	if err != nil {
-		return err
-	}
-	if err := s.spendCheckHelps(ctx, c, cm.Helps); err != nil {
-		return err
-	}
-	roll.ByMaster = byMaster
+	roll.ByMaster = spec.byMaster
 	stored, err := encodeRoll(roll)
 	if err != nil {
 		return err
 	}
 	now := s.now()
 	if _, err := q.SetGroupCheckMemberRoll(ctx, playdb.SetGroupCheckMemberRollParams{
-		GroupCheckID: check.ID, CharacterID: characterID, Roll: stored, RolledByMaster: byMaster, RolledAt: &now,
+		GroupCheckID: spec.check.ID, CharacterID: spec.characterID, Roll: stored, RolledByMaster: spec.byMaster, RolledAt: &now,
 	}); err != nil {
 		return fmt.Errorf("keep the roll: %w", err)
 	}
@@ -468,34 +608,8 @@ func (s *Service) CloseGroupCheck(
 		return nil, err
 	}
 	_, repeated, err := s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckClosed, func(q *playdb.Queries, _ pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
-		check, err := q.GetGroupCheck(ctx, playdb.GetGroupCheckParams{GameSessionID: session.ID, ID: checkID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return groupCheckEvent{}, "", connect.NewError(connect.CodeNotFound, errors.New("group check not found"))
-		}
-		if err != nil {
-			return groupCheckEvent{}, "", fmt.Errorf("find the group check: %w", err)
-		}
-		if check.Status != "open" {
-			return groupCheckEvent{}, "", errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_GROUP_CHECK_CLOSED, "the group check is closed")
-		}
-		members, err := q.ListGroupCheckMembers(ctx, check.ID)
-		if err != nil {
-			return groupCheckEvent{}, "", fmt.Errorf("list the members: %w", err)
-		}
-		var verdict *bool
-		if check.Dc != nil && check.IsGroup {
-			passed := 0
-			for _, mb := range members {
-				if roll, err := decodeRoll(mb.Roll); err == nil && roll != nil && int(roll.Total) >= int(*check.Dc) {
-					passed++
-				}
-			}
-			verdict = new(combat.GroupCheckPasses(passed, len(members)))
-		}
-		if _, err := q.CloseGroupCheck(ctx, playdb.CloseGroupCheckParams{GameSessionID: session.ID, ID: check.ID, Passed: verdict, ClosedAt: new(s.now())}); err != nil {
-			return groupCheckEvent{}, "", fmt.Errorf("close the group check: %w", err)
-		}
-		return groupCheckEvent{GroupCheckID: check.ID}, "", nil
+		ev, err := s.closeGroupCheckRows(ctx, q, session.ID, checkID)
+		return ev, "", err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "close a group check", err)
@@ -508,6 +622,44 @@ func (s *Service) CloseGroupCheck(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.CloseGroupCheckResponse{GroupCheck: view}), nil
+}
+
+// closeGroupCheckRows closes an open group check, with the group's verdict when there is a DC and a
+// group to judge.
+func (s *Service) closeGroupCheckRows(ctx context.Context, q *playdb.Queries, sessionID, checkID string) (groupCheckEvent, error) {
+	check, err := q.GetGroupCheck(ctx, playdb.GetGroupCheckParams{GameSessionID: sessionID, ID: checkID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return groupCheckEvent{}, connect.NewError(connect.CodeNotFound, errors.New("group check not found"))
+	}
+	if err != nil {
+		return groupCheckEvent{}, fmt.Errorf("find the group check: %w", err)
+	}
+	if check.Status != "open" {
+		return groupCheckEvent{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_GROUP_CHECK_CLOSED, "the group check is closed")
+	}
+	members, err := q.ListGroupCheckMembers(ctx, check.ID)
+	if err != nil {
+		return groupCheckEvent{}, fmt.Errorf("list the members: %w", err)
+	}
+	if _, err := q.CloseGroupCheck(ctx, playdb.CloseGroupCheckParams{GameSessionID: sessionID, ID: check.ID, Passed: groupVerdictOf(check, members), ClosedAt: new(s.now())}); err != nil {
+		return groupCheckEvent{}, fmt.Errorf("close the group check: %w", err)
+	}
+	return groupCheckEvent{GroupCheckID: check.ID}, nil
+}
+
+// groupVerdictOf is the verdict a group check closes with: a character that did not answer counts
+// as failed. It is nil when there is no DC, or the rolls are judged one by one.
+func groupVerdictOf(check playdb.GroupCheck, members []playdb.GroupCheckMember) *bool {
+	if check.Dc == nil || !check.IsGroup {
+		return nil
+	}
+	passed := 0
+	for _, mb := range members {
+		if roll, err := decodeRoll(mb.Roll); err == nil && roll != nil && int(roll.Total) >= int(*check.Dc) {
+			passed++
+		}
+	}
+	return new(combat.GroupCheckPasses(passed, len(members)))
 }
 
 // GetGroupCheck implements playv1connect.ContestServiceHandler.
@@ -592,99 +744,158 @@ func (s *Service) groupCheckView(ctx context.Context, m authz.Membership, checkI
 	return view, nil
 }
 
+// groupViewer is who reads a group check: the master, or a player and their character.
+type groupViewer struct {
+	master  bool
+	mine    link.Character
+	hasMine bool
+}
+
 // buildGroupCheckView is a group check as the caller may read it: the master everything;
 // a player their own roll, and passed or failed only when the master shows the DC.
-//
-//nolint:gocyclo // one view for each audience, with the facts each may read in one place
 func (s *Service) buildGroupCheckView(ctx context.Context, m authz.Membership, check playdb.GroupCheck, members []playdb.GroupCheckMember) (*playv1.GroupCheckView, error) {
-	master := m.Role == authz.RoleMaster
+	viewer, asked, err := s.groupViewerOf(ctx, m, members)
+	if err != nil || !asked {
+		return nil, err
+	}
+	out := s.groupCheckHeader(check, len(members), viewer.master)
+	passed, err := s.addGroupMembers(ctx, out, m.CampaignID, check, members, viewer)
+	if err != nil {
+		return nil, err
+	}
+	setGroupVerdict(out, check, viewer.master, passed, len(members))
+	return out, nil
+}
+
+// addGroupMembers adds to the view the members the viewer may read (all for the master, the
+// viewer's own for a player) and counts the ones who passed, of all the members.
+func (s *Service) addGroupMembers(ctx context.Context, out *playv1.GroupCheckView, campaignID string, check playdb.GroupCheck, members []playdb.GroupCheckMember, viewer groupViewer) (int, error) {
+	names := s.groupMemberNames(ctx, campaignID, members)
+	passed := 0
+	for _, mb := range members {
+		roll, err := decodeRoll(mb.Roll)
+		if err != nil {
+			return 0, err
+		}
+		didPass := roll != nil && check.Dc != nil && int(roll.Total) >= int(*check.Dc)
+		if didPass {
+			passed++
+		}
+		isMine := viewer.hasMine && mb.CharacterID == viewer.mine.ID
+		if !viewer.master && !isMine {
+			continue // a player reads their own roll only
+		}
+		out.Members = append(out.Members, groupMemberViewOf(check, mb, roll, names[mb.CharacterID], viewer.master, didPass))
+		if isMine && roll == nil {
+			s.offerOwnRoll(ctx, out, campaignID, check, viewer.mine.ID)
+		}
+	}
+	return passed, nil
+}
+
+// offerOwnRoll tells the player that their character may roll the open check now, and what the roll adds.
+func (s *Service) offerOwnRoll(ctx context.Context, out *playv1.GroupCheckView, campaignID string, check playdb.GroupCheck, characterID string) {
+	if check.Status != "open" {
+		return
+	}
+	out.YouRoll = true
+	out.YourOption = s.groupYourOption(ctx, campaignID, check, characterID)
+}
+
+// groupViewerOf says who reads the check. asked is false for a player who was not asked, who
+// reads no group check at all (RN-10).
+func (s *Service) groupViewerOf(ctx context.Context, m authz.Membership, members []playdb.GroupCheckMember) (viewer groupViewer, asked bool, err error) {
+	viewer.master = m.Role == authz.RoleMaster
+	if viewer.master {
+		return viewer, true, nil
+	}
+	if viewer.mine, viewer.hasMine, err = s.myCharacter(ctx, nil, m); err != nil {
+		return groupViewer{}, false, err
+	}
+	asked = viewer.hasMine && slices.ContainsFunc(members, func(mb playdb.GroupCheckMember) bool { return mb.CharacterID == viewer.mine.ID })
+	return viewer, asked, nil
+}
+
+// groupCheckHeader is the part of the view that does not depend on the rolls: the master alone
+// reads the DC and how many were asked.
+func (s *Service) groupCheckHeader(check playdb.GroupCheck, askedCount int, master bool) *playv1.GroupCheckView {
 	out := &playv1.GroupCheckView{
 		Id: check.ID, SkillKey: check.SkillKey, SkillNamePt: s.roster.SceneCheckName(check.SkillKey), Open: check.Status == "open",
 		ShowDc: check.ShowDc, CreatedAt: timestamppb.New(check.CreatedAt),
 		Group: check.IsGroup, Save: strings.HasPrefix(check.SkillKey, "save:"),
 	}
 	if master {
-		out.AskedCount = clamp32(len(members), 0, math.MaxInt32)
-	}
-	hasDC := check.Dc != nil
-	if master && hasDC {
-		out.Dc = *check.Dc
-	}
-	var mine link.Character
-	var hasMine bool
-	if !master {
-		var err error
-		if mine, hasMine, err = s.myCharacter(ctx, nil, m); err != nil {
-			return nil, err
-		}
-		// A player who was not asked reads no group check at all (RN-10).
-		if !hasMine || !slices.ContainsFunc(members, func(mb playdb.GroupCheckMember) bool { return mb.CharacterID == mine.ID }) {
-			return nil, nil
+		out.AskedCount = clamp32(askedCount, 0, math.MaxInt32)
+		if check.Dc != nil {
+			out.Dc = *check.Dc
 		}
 	}
+	return out
+}
+
+// groupMemberNames are the names of the characters of the check, by ID. A roster that cannot
+// say leaves the names empty.
+func (s *Service) groupMemberNames(ctx context.Context, campaignID string, members []playdb.GroupCheckMember) map[string]string {
 	names := map[string]string{}
 	ids := make([]string, 0, len(members))
 	for _, mb := range members {
 		ids = append(ids, mb.CharacterID)
 	}
-	if chars, err := s.roster.CombatCharacters(ctx, nil, m.CampaignID, ids); err == nil {
+	if chars, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids); err == nil {
 		for _, ch := range chars {
 			names[ch.ID] = ch.Name
 		}
 	}
-	passed := 0
-	for _, mb := range members {
-		roll, err := decodeRoll(mb.Roll)
-		if err != nil {
-			return nil, err
-		}
-		answered := roll != nil
-		didPass := answered && hasDC && int(roll.Total) >= int(*check.Dc)
-		if didPass {
-			passed++
-		}
-		isMine := hasMine && mb.CharacterID == mine.ID
-		if !master && !isMine {
-			continue // a player reads their own roll only
-		}
-		view := &playv1.GroupCheckMemberView{CharacterId: mb.CharacterID, Name: names[mb.CharacterID], Answered: answered}
-		if answered {
-			view.Roll = roll.proto()
-			if !master {
-				view.Roll.BonusKnown = true
-			}
-			if hasDC && (master || check.ShowDc) {
-				view.PassedKnown, view.Passed = true, didPass
-			}
-		}
-		out.Members = append(out.Members, view)
-		if isMine && !answered && check.Status == "open" {
-			out.YouRoll = true
-			if options, err := s.roster.SceneOptions(ctx, nil, m.CampaignID, mine.ID, []string{check.SkillKey}); err == nil && len(options) == 1 {
-				// The mode the roll will have, so a player with physical dice types the right
-				// number of faces.
-				mode := playv1.RollModeKind_ROLL_MODE_KIND_NORMAL
-				ability, isCheck := checkKey(check.SkillKey)
-				if cm, err := s.checkModeOf(ctx, nil, m.CampaignID, check.GameSessionID, mine.ID, check.SkillKey, ability, isCheck); err == nil {
-					mode = checkModeProto(checkModeOfRoll(cm.Mode))
-				}
-				out.YourOption = &playv1.CheckOption{
-					Modifier: clamp32(options[0].Bonus, math.MinInt32, math.MaxInt32), Known: options[0].Known, Mode: mode,
-				}
-			}
-		}
+	return names
+}
+
+// groupMemberViewOf is one member as the viewer reads it: the roll once answered, and whether it
+// passed only to the master, or to the player when the master shows the DC.
+func groupMemberViewOf(check playdb.GroupCheck, mb playdb.GroupCheckMember, roll *contestRoll, name string, master, didPass bool) *playv1.GroupCheckMemberView {
+	view := &playv1.GroupCheckMemberView{CharacterId: mb.CharacterID, Name: name, Answered: roll != nil}
+	if roll == nil {
+		return view
 	}
+	view.Roll = roll.proto()
+	if !master {
+		view.Roll.BonusKnown = true
+	}
+	if check.Dc != nil && (master || check.ShowDc) {
+		view.PassedKnown, view.Passed = true, didPass
+	}
+	return view
+}
+
+// groupYourOption is what the player's own character would roll, or nil when the roster knows no
+// number for it.
+func (s *Service) groupYourOption(ctx context.Context, campaignID string, check playdb.GroupCheck, characterID string) *playv1.CheckOption {
+	options, err := s.roster.SceneOptions(ctx, nil, campaignID, characterID, []string{check.SkillKey})
+	if err != nil || len(options) != 1 {
+		return nil
+	}
+	// The mode the roll will have, so a player with physical dice types the right
+	// number of faces.
+	mode := playv1.RollModeKind_ROLL_MODE_KIND_NORMAL
+	ability, isCheck := checkKey(check.SkillKey)
+	if cm, err := s.checkModeOf(ctx, nil, campaignID, check.GameSessionID, characterID, check.SkillKey, ability, isCheck); err == nil {
+		mode = checkModeProto(checkModeOfRoll(cm.Mode))
+	}
+	return &playv1.CheckOption{Modifier: clamp32(options[0].Bonus, math.MinInt32, math.MaxInt32), Known: options[0].Known, Mode: mode}
+}
+
+// setGroupVerdict sets the group's count and verdict on the view: none when each roll is judged
+// alone; the master always (with a DC); the players only when the check is closed with the DC shown.
+func setGroupVerdict(out *playv1.GroupCheckView, check playdb.GroupCheck, master bool, passed, askedCount int) {
 	switch {
 	case !check.IsGroup:
 		// Each roll is judged alone: no count and no group verdict.
 	case master:
 		out.PassedCount = clamp32(passed, 0, math.MaxInt32)
-		out.Needed = clamp32(combat.GroupCheckNeeded(len(members)), 0, math.MaxInt32)
-		if hasDC {
-			out.VerdictKnown, out.GroupPassed = true, combat.GroupCheckPasses(passed, len(members))
+		out.Needed = clamp32(combat.GroupCheckNeeded(askedCount), 0, math.MaxInt32)
+		if check.Dc != nil {
+			out.VerdictKnown, out.GroupPassed = true, combat.GroupCheckPasses(passed, askedCount)
 		}
 	case check.Status != "open" && check.ShowDc && check.Passed != nil:
 		out.VerdictKnown, out.GroupPassed = true, *check.Passed
 	}
-	return out, nil
 }
