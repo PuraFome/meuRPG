@@ -19,6 +19,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import type { SavingState } from '../../core/connect/saving-state';
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
@@ -56,7 +57,7 @@ import { OwnerChanges } from './owner-changes/owner-changes';
 import { RejectConfirm } from './reject-confirm/reject-confirm';
 import { RequestChanges } from './request-changes/request-changes';
 import { formatWhen, issueTitle } from './sheet-format';
-import { type SavingState, SheetWrites, playerNameOf } from './character-sheet-writes';
+import { SheetWrites, playerNameOf } from './character-sheet-writes';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from '../../core/play/xp-watcher';
 import { ResourceCounters } from './resource-counters/resource-counters';
