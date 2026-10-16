@@ -17,12 +17,13 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/jackc/pgx/v5"
+
 	pkgv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
-	"github.com/jackc/pgx/v5"
 )
 
 // Characterization of the maps module's share of the campaign package (MR-050):
@@ -171,8 +172,10 @@ func stagePointGolden(t *testing.T, part *mapsPart) string {
 		{name: "a target on a scene", edit: func(pp *pkgv1.PackagePoint) { pp.TargetMapId = pkgMapB }},
 		{name: "a submap to its own map", edit: with(submap, func(pp *pkgv1.PackagePoint) { pp.TargetMapId = pkgMapA })},
 		{name: "a submap to another map", edit: with(submap, func(pp *pkgv1.PackagePoint) { pp.TargetMapId = pkgMapB })},
-		{name: "a submap to a map the package defines", edit: with(submap, func(pp *pkgv1.PackagePoint) { pp.TargetMapId = pkgMapB }),
-			prepare: func(in *campaignpackage.Import) { in.IDs.Define(nsMap, pkgMapB) }},
+		{
+			name: "a submap to a map the package defines", edit: with(submap, func(pp *pkgv1.PackagePoint) { pp.TargetMapId = pkgMapB }),
+			prepare: func(in *campaignpackage.Import) { in.IDs.Define(nsMap, pkgMapB) },
+		},
 		{name: "a battle to another map", edit: with(battle, func(pp *pkgv1.PackagePoint) { pp.TargetMapId = pkgMapGone })},
 		{name: "a submap with stairs up", edit: with(submap, func(pp *pkgv1.PackagePoint) { pp.Stairs = "up" })},
 		{name: "a submap with stairs down", edit: with(submap, func(pp *pkgv1.PackagePoint) { pp.Stairs = "down" })},
@@ -334,8 +337,10 @@ func stageMapGolden(t *testing.T, part *mapsPart) string {
 			pm.GridColumns, pm.GridFactor = 400, 4
 			pm.Layers = nil
 		}},
-		{name: "an image with no size", edit: func(pm *pkgv1.PackageMap) { pm.Layers = nil },
-			prepare: func(in *campaignpackage.Import) {}},
+		{
+			name: "an image with no size", edit: func(pm *pkgv1.PackageMap) { pm.Layers = nil },
+			prepare: func(*campaignpackage.Import) {},
+		},
 		{name: "a layer of another grid", edit: func(pm *pkgv1.PackageMap) { pm.Layers.Walls = []byte{1, 2, 3} }},
 		{name: "a cover of another grid", edit: func(pm *pkgv1.PackageMap) { pm.Layers.Cover = []byte{9} }},
 		{name: "a light layer of another grid", edit: func(pm *pkgv1.PackageMap) { pm.Layers.Light = []byte{9} }},
@@ -587,8 +592,11 @@ func packageFixture(t *testing.T) []pkgEntry {
 			{Id: pkgImage2, Name: "Cena", File: "images/2", Generated: true, GeneratedKind: "scene", ParentImageId: pkgImage1},
 			{Id: pkgImage3, Name: "Cópia", File: "images/3", CopyOfImageId: pkgImage1},
 		}})},
-		{imageKind, "images/1", patternImage(t, 400, 300)}, {imageKind, "images/2", patternImage(t, 40, 30)}, {imageKind, "images/3", patternImage(t, 50, 20)},
-		{mapKind, "maps/1.json", jsonOf(t, mapOne)}, {mapKind, "maps/2.json", jsonOf(t, mapTwo)},
+		{imageKind, "images/1", patternImage(t, 400, 300)},
+		{imageKind, "images/2", patternImage(t, 40, 30)},
+		{imageKind, "images/3", patternImage(t, 50, 20)},
+		{mapKind, "maps/1.json", jsonOf(t, mapOne)},
+		{mapKind, "maps/2.json", jsonOf(t, mapTwo)},
 	}
 }
 
@@ -629,9 +637,11 @@ func stageApplyExportGolden(t *testing.T, s *scenes) string {
 	// Export the imported maps and put the package's ids back.
 	var pairs []string
 	for _, ns := range []string{nsImage, nsMap, nsPoint, nsClue} {
-		for _, old := range []string{pkgImage1, pkgImage2, pkgImage3, pkgMapA, pkgMapB, pkgPoint1, pkgPoint2, pkgClue1, pkgClue2,
+		for _, old := range []string{
+			pkgImage1, pkgImage2, pkgImage3, pkgMapA, pkgMapB, pkgPoint1, pkgPoint2, pkgClue1, pkgClue2,
 			"44444444-4444-4444-8444-444444444443", "44444444-4444-4444-8444-444444444444", "44444444-4444-4444-8444-444444444445",
-			"44444444-4444-4444-8444-444444444446", "44444444-4444-4444-8444-444444444447"} {
+			"44444444-4444-4444-8444-444444444446", "44444444-4444-4444-8444-444444444447",
+		} {
 			if id, ok := in.IDs.Get(ns, old); ok {
 				pairs = append(pairs, id, old)
 			}
