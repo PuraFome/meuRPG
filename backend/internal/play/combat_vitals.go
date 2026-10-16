@@ -66,44 +66,61 @@ func (s *Service) spendSlot(ctx context.Context, c *combatTx, characterID string
 	if err != nil {
 		return nil, err
 	}
-	noSlot := func() error {
-		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot of that level",
-			func(b *playv1.EncounterBlocked) { b.MinLevel = slot.Level })
+	req, missing, err := slotAdjustment(now, slot, delta)
+	if err != nil {
+		return nil, err
 	}
-	req := &playv1.AdjustCharacterVitalsRequest{}
-	if slot.Pact {
-		p := now.GetPactSlots()
-		if p == nil || p.GetSlotLevel() != slot.Level {
-			return s.lostOnGiveBack(ctx, now, delta, "pact slot", noSlot())
-		}
-		used := p.GetUsed() + delta
-		if used > p.GetTotal() {
-			if delta < 0 {
-				used = p.GetTotal()
-			} else {
-				return nil, noSlot()
-			}
-		}
-		used = max(used, 0)
-		req.PactSlotsUsed = &used
-	} else {
-		i := slices.IndexFunc(now.GetSpellSlots(), func(u *playv1.SpellSlotUsage) bool { return u.GetLevel() == slot.Level })
-		if i < 0 {
-			return s.lostOnGiveBack(ctx, now, delta, "spell slot", noSlot())
-		}
-		u := now.GetSpellSlots()[i]
-		used := u.GetUsed() + delta
-		if used > u.GetTotal() {
-			if delta < 0 {
-				used = u.GetTotal()
-			} else {
-				return nil, noSlot()
-			}
-		}
-		req.SpellSlotsUsed = []*playv1.SpellSlotsUsed{{Level: slot.Level, Used: max(used, 0)}}
+	if missing != "" {
+		return s.lostOnGiveBack(ctx, now, delta, missing, errNoSlot(slot))
 	}
 	_, after, err := s.vitalsOf(ctx, c, characterID, req)
 	return after, err
+}
+
+// errNoSlot is the refusal of a spend with no free slot of the level.
+func errNoSlot(slot slotRef) error {
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot of that level",
+		func(b *playv1.EncounterBlocked) { b.MinLevel = slot.Level })
+}
+
+// slotAdjustment is what the sheet is asked to change to spend (delta 1) or give back
+// (delta -1) a slot. When the sheet has no slot of that kind or level it returns no request and
+// names the one that is missing; when every slot of the level is used, the NO_SLOT refusal.
+func slotAdjustment(now *playv1.CharacterVitals, slot slotRef, delta int32) (req *playv1.AdjustCharacterVitalsRequest, missing string, err error) {
+	if slot.Pact {
+		p := now.GetPactSlots()
+		if p == nil || p.GetSlotLevel() != slot.Level {
+			return nil, "pact slot", nil
+		}
+		used, ok := slotUsedAfter(p.GetUsed(), p.GetTotal(), delta)
+		if !ok {
+			return nil, "", errNoSlot(slot)
+		}
+		return &playv1.AdjustCharacterVitalsRequest{PactSlotsUsed: &used}, "", nil
+	}
+	i := slices.IndexFunc(now.GetSpellSlots(), func(u *playv1.SpellSlotUsage) bool { return u.GetLevel() == slot.Level })
+	if i < 0 {
+		return nil, "spell slot", nil
+	}
+	u := now.GetSpellSlots()[i]
+	used, ok := slotUsedAfter(u.GetUsed(), u.GetTotal(), delta)
+	if !ok {
+		return nil, "", errNoSlot(slot)
+	}
+	return &playv1.AdjustCharacterVitalsRequest{SpellSlotsUsed: []*playv1.SpellSlotsUsed{{Level: slot.Level, Used: used}}}, "", nil
+}
+
+// slotUsedAfter is the count of used slots after a spend or a give-back; false when a spend
+// finds none free. A give-back above the total is cut to it, and never goes below 0.
+func slotUsedAfter(current, total, delta int32) (int32, bool) {
+	used := current + delta
+	if used > total {
+		if delta >= 0 {
+			return 0, false
+		}
+		used = total
+	}
+	return max(used, 0), true
 }
 
 // lostOnGiveBack answers a spend that finds nothing to spend: for a spend, the
