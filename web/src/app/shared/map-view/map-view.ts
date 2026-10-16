@@ -45,6 +45,7 @@ import { MapMarker } from './map-marker/map-marker';
 import { MapToken } from './map-token/map-token';
 import { RetryImage } from '../retry-image/retry-image';
 import { fullscreenOfHost } from '../../core/ui/fullscreen';
+import { RelayEvents } from '../relay-events/relay-events';
 
 /** `preview`: a still picture (the session page's card); `view`: pan and
  * zoom, points open; `tokens`: also drag the tokens (the master's session
@@ -112,7 +113,7 @@ const PREVIEW_SCALE = 2;
  */
 @Component({
   selector: 'app-map-view',
-  imports: [MapMarker, MapToken, MatIconModule, RetryImage],
+  imports: [RelayEvents, MapMarker, MapToken, MatIconModule, RetryImage],
   templateUrl: './map-view.html',
   styleUrl: './map-view.scss',
 })
@@ -136,7 +137,7 @@ export class MapView {
   readonly hint = input<string | null>(null);
   /** A kind of point is waiting for a click: the cursor says so. */
   readonly placing = input(false);
-  /** NPCs as white rounded squares and creatures with a dashed ring (the fog map, docs/design.md). */
+  /** NPCs as white rounded squares and creatures with a dashed ring (the fog map, docs/design/README.md). */
   readonly kindShapes = input(false);
   /** The screen draws traps, chests and lights itself (`app-map-pins`): their markers are then only hit areas. */
   readonly pinsDrawn = input(false);
@@ -144,7 +145,7 @@ export class MapView {
   readonly labels = input(true);
   /** Markers and tokens drawn at 40 %, so what is painted shows through (the editor while painting). */
   readonly faded = input(false);
-  /** The grid's columns, when the map has one: the tokens are then sized to the square (a fog map, docs/design.md). */
+  /** The grid's columns, when the map has one: the tokens are then sized to the square (a fog map, docs/design/README.md). */
   readonly squares = input(0);
   /** Opens zoomed in on this spot, once the view has its size (the phone's fog map: the party at 2x). Read again only when it changes to another spot. */
   readonly startAt = input<{ xBp: number; yBp: number } | null>(null);

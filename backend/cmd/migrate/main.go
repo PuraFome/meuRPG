@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	// The pgx driver for database/sql, which goose needs.
 	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
@@ -93,36 +94,55 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 		ctx = runCtx
 	}
 
-	switch command {
-	case "up":
-		results, err := provider.Up(ctx)
-		if err != nil {
-			return fmt.Errorf("up: %w", lockCause(ctx, err))
-		}
-		for _, r := range results {
-			logger.Info("migration applied", "version", r.Source.Version, "file", r.Source.Path, "duration_ms", r.Duration.Milliseconds())
-		}
-		logger.Info("database is up to date", "applied", len(results))
-	case "down":
-		result, err := provider.Down(ctx)
-		if err != nil {
-			return fmt.Errorf("down: %w", lockCause(ctx, err))
-		}
-		logger.Info("migration rolled back", "version", result.Source.Version, "file", result.Source.Path)
-	case "status":
-		statuses, err := provider.Status(ctx)
-		if err != nil {
-			return fmt.Errorf("status: %w", err)
-		}
-		for _, s := range statuses {
-			attrs := []any{"version", s.Source.Version, "file", s.Source.Path, "state", string(s.State)}
-			if !s.AppliedAt.IsZero() {
-				attrs = append(attrs, "applied_at", s.AppliedAt)
-			}
-			logger.Info("migration", attrs...)
-		}
-	default:
+	apply, ok := commands[command]
+	if !ok {
 		return fmt.Errorf("unknown command %q; %s", command, usage)
+	}
+	return apply(ctx, logger, provider)
+}
+
+// commands are what run can do, by the name given on the command line.
+var commands = map[string]func(context.Context, *slog.Logger, *goose.Provider) error{
+	"up":     migrateUp,
+	"down":   migrateDown,
+	"status": migrateStatus,
+}
+
+// migrateUp applies every pending migration, logging each one.
+func migrateUp(ctx context.Context, logger *slog.Logger, provider *goose.Provider) error {
+	results, err := provider.Up(ctx)
+	if err != nil {
+		return fmt.Errorf("up: %w", lockCause(ctx, err))
+	}
+	for _, r := range results {
+		logger.InfoContext(ctx, "migration applied", "version", r.Source.Version, "file", r.Source.Path, "duration_ms", r.Duration.Milliseconds())
+	}
+	logger.InfoContext(ctx, "database is up to date", "applied", len(results))
+	return nil
+}
+
+// migrateDown rolls the latest migration back.
+func migrateDown(ctx context.Context, logger *slog.Logger, provider *goose.Provider) error {
+	result, err := provider.Down(ctx)
+	if err != nil {
+		return fmt.Errorf("down: %w", lockCause(ctx, err))
+	}
+	logger.InfoContext(ctx, "migration rolled back", "version", result.Source.Version, "file", result.Source.Path)
+	return nil
+}
+
+// migrateStatus logs every migration with its state, and when it was applied.
+func migrateStatus(ctx context.Context, logger *slog.Logger, provider *goose.Provider) error {
+	statuses, err := provider.Status(ctx)
+	if err != nil {
+		return fmt.Errorf("status: %w", err)
+	}
+	for _, s := range statuses {
+		attrs := []any{"version", s.Source.Version, "file", s.Source.Path, "state", string(s.State)}
+		if !s.AppliedAt.IsZero() {
+			attrs = append(attrs, "applied_at", s.AppliedAt)
+		}
+		logger.InfoContext(ctx, "migration", attrs...)
 	}
 	return nil
 }

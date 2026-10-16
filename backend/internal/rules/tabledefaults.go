@@ -71,6 +71,22 @@ var defaultSources = []struct {
 	{CastingPact, PreparationPrepared, "class:warlock", 1},
 }
 
+// The third caster's defaults (a subclass that casts): its slots are the
+// full table at a third of the level, rounded up; two cantrips, a third from
+// level 10; and, for the one that knows its spells, 3 at levels 3 and 4, one
+// more every two levels after that, 11 at level 20.
+const (
+	thirdStartLevel       = 3
+	thirdLevelDivisor     = 3
+	thirdCantrips         = 2
+	thirdMoreCantripLevel = 10
+	thirdSpellsKnownStart = 3
+	thirdSpellsKnownEvery = 2
+)
+
+// profBonusEvery is how many levels each step of the proficiency bonus lasts.
+const profBonusEvery = 4
+
 // TableDefaults gives the defaults of the 20-level table, from the SRD's class
 // tables. Table classes never feed it: the numbers are always the SRD's.
 func (c *Content) TableDefaults() TableDefaults {
@@ -79,53 +95,62 @@ func (c *Content) TableDefaults() TableDefaults {
 		SubclassLevel: defaultSubclassLevel,
 	}
 	for lvl := 1; lvl <= MaxLevel; lvl++ {
-		d.ProfBonus = append(d.ProfBonus, 2+(lvl-1)/4)
+		d.ProfBonus = append(d.ProfBonus, 2+(lvl-1)/profBonusEvery)
 	}
-	row := func(lvl int) DefaultRow { return DefaultRow{Level: lvl, ProfBonus: d.ProfBonus[lvl-1]} }
-
 	none := DefaultTable{Kind: CastingNone, StartLevel: 0}
 	for lvl := 1; lvl <= MaxLevel; lvl++ {
-		none.Rows = append(none.Rows, row(lvl))
+		none.Rows = append(none.Rows, d.defaultRow(lvl))
 	}
 	d.Tables = append(d.Tables, none)
-
 	for _, src := range defaultSources {
-		t := DefaultTable{Kind: src.kind, Preparation: src.preparation, StartLevel: src.start, Reference: src.reference}
-		for lvl := 1; lvl <= MaxLevel; lvl++ {
-			r := row(lvl)
-			if sc := c.c.classLevels[src.reference][lvl-1].Spellcasting; sc != nil && lvl >= src.start {
-				r.CantripsKnown, r.Slots = sc.CantripsKnown, sc.Slots
-				if src.preparation == PreparationKnown {
-					r.SpellsKnown = sc.SpellsKnown
-				}
-			}
-			t.Rows = append(t.Rows, r)
-		}
-		d.Tables = append(d.Tables, t)
+		d.Tables = append(d.Tables, c.sourceDefaultTable(&d, src.kind, src.preparation, src.reference, src.start))
 	}
-
-	// A subclass that casts (a third of the levels): its slots are the full table
-	// at a third of the level, rounded up; two cantrips, a third from level 10; and,
-	// for the one that knows its spells, 3 at levels 3 and 4, one more every two
-	// levels after that, 11 at level 20. These numbers are our default, written in
-	// our own words: the master edits what they want.
+	// These numbers are our default, written in our own words: the master
+	// edits what they want.
 	for _, prep := range []string{PreparationKnown, PreparationPrepared} {
-		t := DefaultTable{Kind: CastingThird, Preparation: prep, StartLevel: 3}
-		for lvl := 1; lvl <= MaxLevel; lvl++ {
-			r := row(lvl)
-			if lvl >= t.StartLevel {
-				r.Slots = c.c.classLevels["class:wizard"][(lvl+2)/3-1].Spellcasting.Slots
-				r.CantripsKnown = 2
-				if lvl >= 10 {
-					r.CantripsKnown = 3
-				}
-				if prep == PreparationKnown {
-					r.SpellsKnown = 3 + (lvl-3)/2
-				}
-			}
-			t.Rows = append(t.Rows, r)
-		}
-		d.Tables = append(d.Tables, t)
+		d.Tables = append(d.Tables, c.thirdDefaultTable(&d, prep))
 	}
 	return d
+}
+
+// defaultRow is a level's row with its proficiency bonus and nothing else.
+func (d *TableDefaults) defaultRow(lvl int) DefaultRow {
+	return DefaultRow{Level: lvl, ProfBonus: d.ProfBonus[lvl-1]}
+}
+
+// sourceDefaultTable copies a reference class's spellcasting columns from its
+// start level; a class that prepares has no spells known.
+func (c *Content) sourceDefaultTable(d *TableDefaults, kind, preparation, reference string, start int) DefaultTable {
+	t := DefaultTable{Kind: kind, Preparation: preparation, StartLevel: start, Reference: reference}
+	for lvl := 1; lvl <= MaxLevel; lvl++ {
+		r := d.defaultRow(lvl)
+		if sc := c.c.classLevels[reference][lvl-1].Spellcasting; sc != nil && lvl >= start {
+			r.CantripsKnown, r.Slots = sc.CantripsKnown, sc.Slots
+			if preparation == PreparationKnown {
+				r.SpellsKnown = sc.SpellsKnown
+			}
+		}
+		t.Rows = append(t.Rows, r)
+	}
+	return t
+}
+
+// thirdDefaultTable is the third caster's table (the constants above).
+func (c *Content) thirdDefaultTable(d *TableDefaults, prep string) DefaultTable {
+	t := DefaultTable{Kind: CastingThird, Preparation: prep, StartLevel: thirdStartLevel}
+	for lvl := 1; lvl <= MaxLevel; lvl++ {
+		r := d.defaultRow(lvl)
+		if lvl >= t.StartLevel {
+			r.Slots = c.c.classLevels["class:wizard"][(lvl+thirdLevelDivisor-1)/thirdLevelDivisor-1].Spellcasting.Slots
+			r.CantripsKnown = thirdCantrips
+			if lvl >= thirdMoreCantripLevel {
+				r.CantripsKnown = thirdCantrips + 1
+			}
+			if prep == PreparationKnown {
+				r.SpellsKnown = thirdSpellsKnownStart + (lvl-thirdStartLevel)/thirdSpellsKnownEvery
+			}
+		}
+		t.Rows = append(t.Rows, r)
+	}
+	return t
 }

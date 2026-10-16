@@ -48,6 +48,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // the "pgx" driver for database/sql, which goose needs
+	"github.com/pressly/goose/v3"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/testenv"
@@ -521,33 +522,8 @@ func buildTemplate(rawURL string) (templateDB, error) {
 	if err != nil {
 		return templateDB{}, err
 	}
-	sources := provider.ListSources()
-	latest := sources[len(sources)-1].Version
-
-	for {
-		_, err := admin.ExecContext(ctx, "CREATE DATABASE "+name)
-		if err == nil {
-			// This process creates it, so it migrates it.
-			if _, err := provider.Up(ctx); err != nil {
-				return templateDB{}, fmt.Errorf("migrate the template: %w", err)
-			}
-			break
-		}
-		if !isCode(err, "42P04") { // duplicate_database
-			return templateDB{}, fmt.Errorf("create the template: %w", err)
-		}
-		// Another process made it: wait until it is complete.
-		err = waitForVersion(ctx, tpl, latest)
-		if errors.Is(err, errStalled) {
-			if _, err := admin.ExecContext(ctx, "DROP DATABASE IF EXISTS "+name+" CASCADE"); err != nil {
-				return templateDB{}, fmt.Errorf("drop a stalled template: %w", err)
-			}
-			continue
-		}
-		if err != nil {
-			return templateDB{}, err
-		}
-		break
+	if err := ensureMigrated(ctx, admin, tpl, provider, name); err != nil {
+		return templateDB{}, err
 	}
 
 	ddl, tables, err := schemaDDL(ctx, tpl)
@@ -559,6 +535,46 @@ func buildTemplate(rawURL string) (templateDB, error) {
 		return templateDB{}, err
 	}
 	return templateDB{name: name, ddl: ddl, tables: tables, reference: reference}, nil
+}
+
+// ensureMigrated returns once the template name has every migration: made
+// and migrated here, or by another process. A template whose migrations
+// stalled is dropped and made again.
+func ensureMigrated(ctx context.Context, admin, tpl *sql.DB, provider *goose.Provider, name string) error {
+	sources := provider.ListSources()
+	latest := sources[len(sources)-1].Version
+	for {
+		again, err := createOrAwait(ctx, admin, tpl, provider, name, latest)
+		if !again {
+			return err
+		}
+	}
+}
+
+// createOrAwait makes and migrates the template, or, when another process
+// made it, waits until it has the latest migration. again says the template
+// was stalled and is dropped: try once more.
+func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Provider, name string, latest int64) (again bool, _ error) {
+	_, err := admin.ExecContext(ctx, "CREATE DATABASE "+name)
+	if err == nil {
+		// This process creates it, so it migrates it.
+		if _, err := provider.Up(ctx); err != nil {
+			return false, fmt.Errorf("migrate the template: %w", err)
+		}
+		return false, nil
+	}
+	if !isCode(err, "42P04") { // duplicate_database
+		return false, fmt.Errorf("create the template: %w", err)
+	}
+	// Another process made it: wait until it is complete.
+	err = waitForVersion(ctx, tpl, latest)
+	if !errors.Is(err, errStalled) {
+		return false, err
+	}
+	if _, err := admin.ExecContext(ctx, "DROP DATABASE IF EXISTS "+name+" CASCADE"); err != nil {
+		return false, fmt.Errorf("drop a stalled template: %w", err)
+	}
+	return true, nil
 }
 
 // seededTables are the tables of the freshly migrated template that have rows:
@@ -632,7 +648,7 @@ func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, []string, error) {
 		return nil, nil, err
 	}
 
-	var ddl, order []string
+	var ddl []string
 	for _, s := range sequences {
 		stmt, err := showCreate(ctx, tpl, "SEQUENCE", s)
 		if err != nil {
@@ -646,31 +662,55 @@ func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, []string, error) {
 			return nil, nil, err
 		}
 	}
-	// Each round adds the tables whose references are all created.
-	done := map[string]bool{}
-	for len(done) < len(tables) {
-		progress := false
-		for _, table := range tables {
-			if done[table] {
-				continue
-			}
-			ready := true
-			for _, m := range references.FindAllStringSubmatch(create[table], -1) {
-				if ref := m[1]; ref != table && !done[ref] {
-					ready = false
-				}
-			}
-			if ready {
-				ddl, done[table], progress = append(ddl, create[table]), true, true
-				order = append(order, table)
-			}
-		}
-		if !progress {
-			left := slices.DeleteFunc(slices.Clone(tables), func(t string) bool { return done[t] })
-			return nil, nil, fmt.Errorf("foreign keys in a cycle among %s", strings.Join(left, ", "))
-		}
+	order, err := orderByReferences(tables, create)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, table := range order {
+		ddl = append(ddl, create[table])
 	}
 	return ddl, order, nil
+}
+
+// orderByReferences orders tables so that each comes after the tables its
+// CREATE statement (create) references, in rounds over tables in their
+// order; a table found ready counts as created for the rest of its round.
+func orderByReferences(tables []string, create map[string]string) ([]string, error) {
+	var order []string
+	done := map[string]bool{}
+	for len(done) < len(tables) {
+		var progress bool
+		order, progress = addReadyTables(tables, create, done, order)
+		if !progress {
+			left := slices.DeleteFunc(slices.Clone(tables), func(t string) bool { return done[t] })
+			return nil, fmt.Errorf("foreign keys in a cycle among %s", strings.Join(left, ", "))
+		}
+	}
+	return order, nil
+}
+
+// addReadyTables is one round: it marks done, and appends to order, every
+// table not done yet whose references are all done.
+func addReadyTables(tables []string, create map[string]string, done map[string]bool, order []string) (_ []string, progress bool) {
+	for _, table := range tables {
+		if done[table] || !referencesDone(create[table], table, done) {
+			continue
+		}
+		done[table], progress = true, true
+		order = append(order, table)
+	}
+	return order, progress
+}
+
+// referencesDone reports whether every table stmt references, other than
+// table itself, is done.
+func referencesDone(stmt, table string, done map[string]bool) bool {
+	for _, m := range references.FindAllStringSubmatch(stmt, -1) {
+		if ref := m[1]; ref != table && !done[ref] {
+			return false
+		}
+	}
+	return true
 }
 
 func names(ctx context.Context, conn *sql.DB, query string) ([]string, error) {
