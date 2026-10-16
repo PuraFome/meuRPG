@@ -3,7 +3,7 @@
 // Store is the whole interface: Put, Open and Delete. The filesystem
 // implementation (NewFS) keeps each file under a directory, for the local
 // stack and the tests. The Cloud Storage one (NewGCS) keeps them in a
-// private bucket, for Cloud Run (docs/operations.md#images).
+// private bucket, for Cloud Run (docs/operations/reference.md#images-and-the-bucket).
 //
 // A key is a path made of lowercase letters, digits, dots, dashes and
 // underscores, such as "campaigns/<id>/images/<id>.thumb" (ValidKey). The

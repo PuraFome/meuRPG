@@ -1,0 +1,665 @@
+{
+  "classes": [
+    {
+      "hitDie": 12,
+      "key": "class:barbarian",
+      "name": "Barbarian",
+      "namePt": "Bárbaro",
+      "savingThrows": [
+        "ABILITY_STRENGTH",
+        "ABILITY_CONSTITUTION"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:animal-handling",
+          "skill:athletics",
+          "skill:intimidation",
+          "skill:nature",
+          "skill:perception",
+          "skill:survival"
+        ]
+      },
+      "subclassLevel": 3
+    },
+    {
+      "hitDie": 8,
+      "key": "class:bard",
+      "name": "Bard",
+      "namePt": "Bardo",
+      "savingThrows": [
+        "ABILITY_DEXTERITY",
+        "ABILITY_CHARISMA"
+      ],
+      "skillChoice": {
+        "count": 3,
+        "skillKeys": [
+          "skill:acrobatics",
+          "skill:animal-handling",
+          "skill:arcana",
+          "skill:athletics",
+          "skill:deception",
+          "skill:history",
+          "skill:insight",
+          "skill:intimidation",
+          "skill:investigation",
+          "skill:medicine",
+          "skill:nature",
+          "skill:perception",
+          "skill:performance",
+          "skill:persuasion",
+          "skill:religion",
+          "skill:sleight-of-hand",
+          "skill:stealth",
+          "skill:survival"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_CHARISMA",
+        "firstLevel": 1,
+        "maxSpellLevelByLevel": [
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6,
+          7,
+          7,
+          8,
+          8,
+          9,
+          9,
+          9,
+          9
+        ],
+        "preparation": "SPELL_PREPARATION_KNOWN"
+      },
+      "subclassLevel": 3
+    },
+    {
+      "hitDie": 8,
+      "key": "class:warlock",
+      "name": "Warlock",
+      "namePt": "Bruxo",
+      "savingThrows": [
+        "ABILITY_WISDOM",
+        "ABILITY_CHARISMA"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:arcana",
+          "skill:deception",
+          "skill:history",
+          "skill:intimidation",
+          "skill:investigation",
+          "skill:nature",
+          "skill:religion"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_CHARISMA",
+        "firstLevel": 1,
+        "maxSpellLevelByLevel": [
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "preparation": "SPELL_PREPARATION_KNOWN"
+      },
+      "subclassLevel": 1
+    },
+    {
+      "hitDie": 8,
+      "key": "class:cleric",
+      "name": "Cleric",
+      "namePt": "Clérigo",
+      "savingThrows": [
+        "ABILITY_WISDOM",
+        "ABILITY_CHARISMA"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:history",
+          "skill:insight",
+          "skill:medicine",
+          "skill:persuasion",
+          "skill:religion"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_WISDOM",
+        "firstLevel": 1,
+        "maxSpellLevelByLevel": [
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6,
+          7,
+          7,
+          8,
+          8,
+          9,
+          9,
+          9,
+          9
+        ],
+        "preparation": "SPELL_PREPARATION_PREPARED"
+      },
+      "subclassLevel": 1
+    },
+    {
+      "hitDie": 8,
+      "key": "class:druid",
+      "name": "Druid",
+      "namePt": "Druida",
+      "savingThrows": [
+        "ABILITY_INTELLIGENCE",
+        "ABILITY_WISDOM"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:arcana",
+          "skill:animal-handling",
+          "skill:insight",
+          "skill:medicine",
+          "skill:nature",
+          "skill:perception",
+          "skill:religion",
+          "skill:survival"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_WISDOM",
+        "firstLevel": 1,
+        "maxSpellLevelByLevel": [
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6,
+          7,
+          7,
+          8,
+          8,
+          9,
+          9,
+          9,
+          9
+        ],
+        "preparation": "SPELL_PREPARATION_PREPARED"
+      },
+      "subclassLevel": 2
+    },
+    {
+      "hitDie": 6,
+      "key": "class:sorcerer",
+      "name": "Sorcerer",
+      "namePt": "Feiticeiro",
+      "savingThrows": [
+        "ABILITY_CONSTITUTION",
+        "ABILITY_CHARISMA"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:arcana",
+          "skill:deception",
+          "skill:insight",
+          "skill:intimidation",
+          "skill:persuasion",
+          "skill:religion"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_CHARISMA",
+        "firstLevel": 1,
+        "maxSpellLevelByLevel": [
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6,
+          7,
+          7,
+          8,
+          8,
+          9,
+          9,
+          9,
+          9
+        ],
+        "preparation": "SPELL_PREPARATION_KNOWN"
+      },
+      "subclassLevel": 1
+    },
+    {
+      "hitDie": 10,
+      "key": "class:fighter",
+      "name": "Fighter",
+      "namePt": "Guerreiro",
+      "savingThrows": [
+        "ABILITY_STRENGTH",
+        "ABILITY_CONSTITUTION"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:acrobatics",
+          "skill:animal-handling",
+          "skill:athletics",
+          "skill:history",
+          "skill:insight",
+          "skill:intimidation",
+          "skill:perception",
+          "skill:survival"
+        ]
+      },
+      "subclassLevel": 3
+    },
+    {
+      "hitDie": 8,
+      "key": "class:rogue",
+      "name": "Rogue",
+      "namePt": "Ladino",
+      "savingThrows": [
+        "ABILITY_DEXTERITY",
+        "ABILITY_INTELLIGENCE"
+      ],
+      "skillChoice": {
+        "count": 4,
+        "skillKeys": [
+          "skill:acrobatics",
+          "skill:athletics",
+          "skill:deception",
+          "skill:insight",
+          "skill:intimidation",
+          "skill:investigation",
+          "skill:perception",
+          "skill:performance",
+          "skill:persuasion",
+          "skill:sleight-of-hand",
+          "skill:stealth"
+        ]
+      },
+      "subclassLevel": 3
+    },
+    {
+      "hitDie": 6,
+      "key": "class:wizard",
+      "name": "Wizard",
+      "namePt": "Mago",
+      "savingThrows": [
+        "ABILITY_INTELLIGENCE",
+        "ABILITY_WISDOM"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:arcana",
+          "skill:history",
+          "skill:insight",
+          "skill:investigation",
+          "skill:medicine",
+          "skill:religion"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_INTELLIGENCE",
+        "firstLevel": 1,
+        "maxSpellLevelByLevel": [
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6,
+          7,
+          7,
+          8,
+          8,
+          9,
+          9,
+          9,
+          9
+        ],
+        "preparation": "SPELL_PREPARATION_SPELLBOOK"
+      },
+      "subclassLevel": 2
+    },
+    {
+      "hitDie": 8,
+      "key": "class:monk",
+      "name": "Monk",
+      "namePt": "Monge",
+      "savingThrows": [
+        "ABILITY_STRENGTH",
+        "ABILITY_DEXTERITY"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:acrobatics",
+          "skill:athletics",
+          "skill:history",
+          "skill:insight",
+          "skill:religion",
+          "skill:stealth"
+        ]
+      },
+      "subclassLevel": 3
+    },
+    {
+      "hitDie": 10,
+      "key": "class:paladin",
+      "name": "Paladin",
+      "namePt": "Paladino",
+      "savingThrows": [
+        "ABILITY_WISDOM",
+        "ABILITY_CHARISMA"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:athletics",
+          "skill:insight",
+          "skill:intimidation",
+          "skill:medicine",
+          "skill:persuasion",
+          "skill:religion"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_CHARISMA",
+        "firstLevel": 2,
+        "maxSpellLevelByLevel": [
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          5
+        ],
+        "preparation": "SPELL_PREPARATION_PREPARED"
+      },
+      "subclassLevel": 3
+    },
+    {
+      "hitDie": 10,
+      "key": "class:ranger",
+      "name": "Ranger",
+      "namePt": "Patrulheiro",
+      "savingThrows": [
+        "ABILITY_STRENGTH",
+        "ABILITY_DEXTERITY"
+      ],
+      "skillChoice": {
+        "count": 3,
+        "skillKeys": [
+          "skill:animal-handling",
+          "skill:athletics",
+          "skill:insight",
+          "skill:investigation",
+          "skill:nature",
+          "skill:perception",
+          "skill:stealth",
+          "skill:survival"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_WISDOM",
+        "firstLevel": 2,
+        "maxSpellLevelByLevel": [
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          3,
+          3,
+          3,
+          3,
+          4,
+          4,
+          4,
+          4,
+          5,
+          5,
+          5,
+          5
+        ],
+        "preparation": "SPELL_PREPARATION_KNOWN"
+      },
+      "subclassLevel": 3
+    }
+  ],
+  "subclasses": [
+    {
+      "classKey": "class:ranger",
+      "key": "subclass:hunter",
+      "name": "Hunter",
+      "namePt": "Caçador"
+    },
+    {
+      "classKey": "class:monk",
+      "key": "subclass:open-hand",
+      "name": "Open Hand",
+      "namePt": "Caminho da Mão Aberta"
+    },
+    {
+      "classKey": "class:barbarian",
+      "key": "subclass:berserker",
+      "name": "Berserker",
+      "namePt": "Caminho do Furioso"
+    },
+    {
+      "classKey": "class:fighter",
+      "key": "subclass:champion",
+      "name": "Champion",
+      "namePt": "Campeão"
+    },
+    {
+      "classKey": "class:druid",
+      "key": "subclass:land",
+      "name": "Land",
+      "namePt": "Círculo da Terra"
+    },
+    {
+      "classKey": "class:bard",
+      "key": "subclass:lore",
+      "name": "Lore",
+      "namePt": "Colégio do Conhecimento"
+    },
+    {
+      "alwaysPrepared": [
+        {
+          "classLevel": 1,
+          "spellKey": "spell:bless"
+        },
+        {
+          "classLevel": 1,
+          "spellKey": "spell:cure-wounds"
+        },
+        {
+          "classLevel": 3,
+          "spellKey": "spell:lesser-restoration"
+        },
+        {
+          "classLevel": 3,
+          "spellKey": "spell:spiritual-weapon"
+        },
+        {
+          "classLevel": 5,
+          "spellKey": "spell:beacon-of-hope"
+        },
+        {
+          "classLevel": 5,
+          "spellKey": "spell:revivify"
+        },
+        {
+          "classLevel": 7,
+          "spellKey": "spell:death-ward"
+        },
+        {
+          "classLevel": 9,
+          "spellKey": "spell:mass-cure-wounds"
+        },
+        {
+          "classLevel": 9,
+          "spellKey": "spell:raise-dead"
+        },
+        {
+          "classLevel": 7,
+          "spellKey": "spell:guardian-of-faith"
+        }
+      ],
+      "classKey": "class:cleric",
+      "key": "subclass:life",
+      "name": "Life",
+      "namePt": "Domínio da Vida"
+    },
+    {
+      "classKey": "class:wizard",
+      "key": "subclass:evocation",
+      "name": "Evocation",
+      "namePt": "Escola de Evocação"
+    },
+    {
+      "alwaysPrepared": [
+        {
+          "classLevel": 3,
+          "spellKey": "spell:protection-from-evil-and-good"
+        },
+        {
+          "classLevel": 3,
+          "spellKey": "spell:sanctuary"
+        },
+        {
+          "classLevel": 5,
+          "spellKey": "spell:lesser-restoration"
+        },
+        {
+          "classLevel": 5,
+          "spellKey": "spell:zone-of-truth"
+        },
+        {
+          "classLevel": 9,
+          "spellKey": "spell:beacon-of-hope"
+        },
+        {
+          "classLevel": 9,
+          "spellKey": "spell:dispel-magic"
+        },
+        {
+          "classLevel": 13,
+          "spellKey": "spell:freedom-of-movement"
+        },
+        {
+          "classLevel": 13,
+          "spellKey": "spell:guardian-of-faith"
+        },
+        {
+          "classLevel": 17,
+          "spellKey": "spell:commune"
+        },
+        {
+          "classLevel": 17,
+          "spellKey": "spell:flame-strike"
+        }
+      ],
+      "classKey": "class:paladin",
+      "key": "subclass:devotion",
+      "name": "Devotion",
+      "namePt": "Juramento de Devoção"
+    },
+    {
+      "classKey": "class:rogue",
+      "key": "subclass:thief",
+      "name": "Thief",
+      "namePt": "Ladrão"
+    },
+    {
+      "classKey": "class:sorcerer",
+      "key": "subclass:draconic",
+      "name": "Draconic",
+      "namePt": "Linhagem Dracônica"
+    },
+    {
+      "classKey": "class:warlock",
+      "key": "subclass:fiend",
+      "name": "Fiend",
+      "namePt": "O Corruptor"
+    }
+  ]
+}

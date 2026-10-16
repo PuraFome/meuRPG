@@ -24,7 +24,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -185,62 +184,113 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	if !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
 		return levelUpTarget{}, errCharacterNotFound()
 	}
-	switch row.Status {
-	case statusDead:
-		return levelUpTarget{}, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD, row.ID)
-	case statusPending:
-		return levelUpTarget{}, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL, row.ID)
-	}
-	cannot := errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CANNOT_LEVEL_UP, row.ID)
-	sheet, err := loadSheet(row.ID, row.Sheet)
-	if err != nil {
+	if err := levelUpStatusBlocked(row); err != nil {
 		return levelUpTarget{}, err
 	}
-	full := sheet.GetFull()
-	if row.Kind != kindPlayer || full == nil || s.levelUps == nil {
-		return levelUpTarget{}, cannot
+	full, err := s.levelUpSheet(row)
+	if err != nil {
+		return levelUpTarget{}, err
 	}
 	content, tableRules, err := s.content.For(ctx, tx, m.CampaignID)
 	if err != nil {
 		return levelUpTarget{}, wrap("read rules content", err)
 	}
+	if err := s.checkLevelUpDue(ctx, tx, row, full, content); err != nil {
+		return levelUpTarget{}, err
+	}
+	build := buildOf(full)
+	if err := sheetNeedsMaster(build, content); err != nil {
+		return levelUpTarget{}, err
+	}
+	classKey, idx, err := levelUpClassOf(content, m, build, classKey)
+	if err != nil {
+		return levelUpTarget{}, err
+	}
+	return levelUpTarget{row: row, full: full, build: build, classKey: classKey, idx: idx, content: content, rules: tableRules}, nil
+}
+
+// levelUpStatusBlocked is the CharacterBlocked refusal of a dead or pending
+// character, nil for any other.
+func levelUpStatusBlocked(row charactersdb.Character) error {
+	switch row.Status {
+	case statusDead:
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD, row.ID)
+	case statusPending:
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL, row.ID)
+	}
+	return nil
+}
+
+// errCannotLevelUp is the refusal of a character that has no level to take now.
+func errCannotLevelUp(characterID string) error {
+	return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CANNOT_LEVEL_UP, characterID)
+}
+
+// levelUpSheet is the stored full sheet of a player character, the only kind
+// the guided level-up takes. Without the progression module's rule nothing can
+// level up.
+func (s *Service) levelUpSheet(row charactersdb.Character) (*charactersv1.FullSheet, error) {
+	sheet, err := loadSheet(row.ID, row.Sheet)
+	if err != nil {
+		return nil, err
+	}
+	full := sheet.GetFull()
+	if row.Kind != kindPlayer || full == nil || s.levelUps == nil {
+		return nil, errCannotLevelUp(row.ID)
+	}
+	return full, nil
+}
+
+// checkLevelUpDue asks the progression module whether the character has a
+// level to take now (RN-12).
+func (s *Service) checkLevelUpDue(ctx context.Context, tx pgx.Tx, row charactersdb.Character, full *charactersv1.FullSheet, content *rules.Content) error {
 	d := rules.Derive(buildOf(full), content)
 	reason, err := s.levelUps.LevelUpReason(ctx, tx, deref(row.CampaignID), row.ID, i32(d.TotalLevel), full.GetExperiencePoints(), i32(d.NextLevelXP))
 	if err != nil {
-		return levelUpTarget{}, wrap("check the level up", err)
+		return wrap("check the level up", err)
 	}
 	if reason == charactersv1.LevelUpReason_LEVEL_UP_REASON_UNSPECIFIED {
-		return levelUpTarget{}, cannot
+		return errCannotLevelUp(row.ID)
 	}
-	build := buildOf(full)
-	// A sheet that does not pass today's rules by itself cannot be fixed by
-	// the level's choices: it is the master's to correct.
-	if err := rules.Validate(build, content); err != nil {
-		field := ""
-		if ve, ok := errors.AsType[*rules.ValidationError](err); ok {
-			field = ve.Field
-		}
-		return levelUpTarget{}, errRefused(&charactersv1.LevelUpRefusal{
-			Field: field, Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SHEET_NEEDS_MASTER,
-		})
+	return nil
+}
+
+// sheetNeedsMaster refuses a sheet that does not pass today's rules by itself:
+// the level's choices cannot fix it, it is the master's to correct.
+func sheetNeedsMaster(build rules.Build, content *rules.Content) error {
+	err := rules.Validate(build, content)
+	if err == nil {
+		return nil
 	}
+	field := ""
+	if ve, ok := errors.AsType[*rules.ValidationError](err); ok {
+		field = ve.Field
+	}
+	return errRefused(&charactersv1.LevelUpRefusal{
+		Field: field, Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SHEET_NEEDS_MASTER,
+	})
+}
+
+// levelUpClassOf resolves the class that gains the level (empty: the first
+// one) and its place in the sheet: past the last class for a class the
+// character does not have yet.
+func levelUpClassOf(content *rules.Content, m authz.Membership, build rules.Build, classKey string) (string, int, error) {
 	if classKey == "" && len(build.Classes) > 0 {
 		classKey = build.Classes[0].Class
 	}
-	idx := slices.IndexFunc(build.Classes, func(c rules.ClassLevel) bool { return c.Class == classKey })
-	if idx < 0 {
-		// A class of the content the character does not have is multiclassing: the
-		// rules judge the prerequisites. The table's retired and switched-off classes
-		// are not a new choice (RN-23); the master's switch does not bind the master.
-		if !isClassKey(content, classKey) {
-			return levelUpTarget{}, invalidArgument(fieldErr("class_key", "is not a class"))
-		}
-		if reason, key := newClassRefusal(content, m, classKey); reason != charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_UNSPECIFIED {
-			return levelUpTarget{}, errRefused(&charactersv1.LevelUpRefusal{Field: "class_key", Reason: reason, ClassKey: key})
-		}
-		idx = len(build.Classes)
+	if idx := slices.IndexFunc(build.Classes, func(c rules.ClassLevel) bool { return c.Class == classKey }); idx >= 0 {
+		return classKey, idx, nil
 	}
-	return levelUpTarget{row: row, full: full, build: build, classKey: classKey, idx: idx, content: content, rules: tableRules}, nil
+	// A class of the content the character does not have is multiclassing: the
+	// rules judge the prerequisites. The table's retired and switched-off classes
+	// are not a new choice (RN-23); the master's switch does not bind the master.
+	if !isClassKey(content, classKey) {
+		return "", 0, invalidArgument(fieldErr("class_key", "is not a class"))
+	}
+	if reason, key := newClassRefusal(content, m, classKey); reason != charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_UNSPECIFIED {
+		return "", 0, errRefused(&charactersv1.LevelUpRefusal{Field: "class_key", Reason: reason, ClassKey: key})
+	}
+	return classKey, len(build.Classes), nil
 }
 
 // isClassKey says the content has a class with this key.
@@ -300,80 +350,113 @@ func (s *Service) GetLevelUpOptions(
 	}
 	// The character, the dice setting and the kept roll are one moment: a level-up
 	// that commits between them would offer the level just taken, with its roll gone.
-	var (
-		t         levelUpTarget
-		offer     rules.LevelUpOffer
-		diceRule  charactersv1.LevelUpDiceRule
-		roll      charactersdb.GetLevelUpRollRow
-		rollFound bool
-	)
+	var read levelUpOptionsRead
 	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if t, err = s.readLevelUpTarget(ctx, tx, m, req.Msg.GetCharacterId(), req.Msg.GetClassKey()); err != nil {
-			return err
-		}
-		if offer, err = rules.LevelUpOptions(t.build, t.classKey, t.content); err != nil {
-			return levelUpRulesError(err)
-		}
-		if diceRule, err = s.diceRule(ctx, tx, m); err != nil {
-			return err
-		}
-		roll, err = s.queries.WithTx(tx).GetLevelUpRoll(ctx, charactersdb.GetLevelUpRollParams{CharacterID: t.row.ID, ToLevel: i32(offer.TotalTo)})
-		rollFound = err == nil
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return wrap("read the kept roll", err)
-		}
-		return nil
+		read, err = s.readLevelUpOptions(ctx, tx, m, req.Msg)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "read the level up options", err)
 	}
-	out := levelUpOptionsToProto(offer)
+	return connect.NewResponse(&charactersv1.GetLevelUpOptionsResponse{Options: levelUpOptionsFor(m, read)}), nil
+}
+
+// levelUpOptionsRead is what GetLevelUpOptions reads in its transaction.
+type levelUpOptionsRead struct {
+	t        levelUpTarget
+	offer    rules.LevelUpOffer
+	diceRule charactersv1.LevelUpDiceRule
+	// roll is the hit die kept for the level, when rollFound.
+	roll      charactersdb.GetLevelUpRollRow
+	rollFound bool
+}
+
+// readLevelUpOptions reads the character, the level's offer, the dice setting
+// and the kept roll, through tx.
+func (s *Service) readLevelUpOptions(ctx context.Context, tx pgx.Tx, m authz.Membership, req *charactersv1.GetLevelUpOptionsRequest) (levelUpOptionsRead, error) {
+	var (
+		r   levelUpOptionsRead
+		err error
+	)
+	if r.t, err = s.readLevelUpTarget(ctx, tx, m, req.GetCharacterId(), req.GetClassKey()); err != nil {
+		return r, err
+	}
+	if r.offer, err = rules.LevelUpOptions(r.t.build, r.t.classKey, r.t.content); err != nil {
+		return r, levelUpRulesError(err)
+	}
+	if r.diceRule, err = s.diceRule(ctx, tx, m); err != nil {
+		return r, err
+	}
+	r.roll, err = s.queries.WithTx(tx).GetLevelUpRoll(ctx, charactersdb.GetLevelUpRollParams{CharacterID: r.t.row.ID, ToLevel: i32(r.offer.TotalTo)})
+	r.rollFound = err == nil
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return r, wrap("read the kept roll", err)
+	}
+	return r, nil
+}
+
+// levelUpOptionsFor is the options message the caller reads.
+func levelUpOptionsFor(m authz.Membership, r levelUpOptionsRead) *charactersv1.LevelUpOptions {
+	t := r.t
+	out := levelUpOptionsToProto(r.offer)
 	out.ClassChoices = classChoicesToProto(t.content, m, rules.LevelUpClasses(t.build, t.content))
-	out.Feats = featOptionsToProto(offer.Feats, t.rules.FeatsAllowed, isMaster(m))
+	out.Feats = featOptionsToProto(r.offer.Feats, t.rules.FeatsAllowed, isMaster(m))
 	if !isMaster(m) {
-		// A subclass the master archived or switched off is not offered to a player (RN-23), unless
-		// the character's own sheet already has it.
-		out.Subclasses = slices.DeleteFunc(out.Subclasses, func(sub *charactersv1.LevelUpSubclass) bool {
-			return (sub.GetArchived() || sub.GetOff()) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Subclass == sub.GetKey() })
-		})
-		// Nor a reference to a hidden class the sheet does not use (a list a table
-		// class or subclass reuses).
-		hiddenList := func(k string) bool {
-			return k != "" && t.content.Hidden(k) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Class == k })
-		}
-		if hiddenList(out.GetSpellListClassKey()) {
-			out.SpellListClassKey = ""
-		}
-		// Nor the name of a hidden race or subrace a feat asks for.
-		hiddenRace := func(k string) bool {
-			return k != "" && t.content.Hidden(k) && t.build.Race != k && t.build.Subrace != k
-		}
-		for _, f := range out.Feats {
-			if hiddenRace(f.GetPrerequisite().GetRaceKey()) {
-				f.Prerequisite.RaceKey = ""
-			}
-			for _, u := range f.GetUnmet() {
-				if hiddenRace(u.GetKey()) && u.GetKind() == rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE {
-					u.Key = ""
-				}
-			}
-		}
-		for _, sub := range out.Subclasses {
-			if hiddenList(sub.GetSpellListClassKey()) {
-				sub.SpellListClassKey = ""
-			}
-		}
+		hideFromPlayer(out, t)
 	}
-	out.DiceRule = diceRule
+	out.DiceRule = r.diceRule
 	out.HitPointsRule = hitPointsRuleToProto(t.rules.HitPoints)
-	if rollFound {
-		out.KeptHitPointRoll, out.KeptHitPointRollClassKey = roll.Value, roll.ClassKey
+	if r.rollFound {
+		out.KeptHitPointRoll, out.KeptHitPointRollClassKey = r.roll.Value, r.roll.ClassKey
 	}
-	return connect.NewResponse(&charactersv1.GetLevelUpOptionsResponse{Options: out}), nil
+	return out
+}
+
+// hideFromPlayer takes out of a player's options what the master retired or
+// switched off (RN-23), unless the character's own sheet already uses it.
+func hideFromPlayer(out *charactersv1.LevelUpOptions, t levelUpTarget) {
+	// A subclass the master archived or switched off is not offered.
+	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(sub *charactersv1.LevelUpSubclass) bool {
+		return (sub.GetArchived() || sub.GetOff()) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Subclass == sub.GetKey() })
+	})
+	// Nor a reference to a hidden class the sheet does not use (a list a table
+	// class or subclass reuses).
+	if hiddenListOf(t, out.GetSpellListClassKey()) {
+		out.SpellListClassKey = ""
+	}
+	// Nor the name of a hidden race or subrace a feat asks for.
+	for _, f := range out.Feats {
+		hideFeatRace(f, t)
+	}
+	for _, sub := range out.Subclasses {
+		if hiddenListOf(t, sub.GetSpellListClassKey()) {
+			sub.SpellListClassKey = ""
+		}
+	}
+}
+
+// hiddenListOf says k is a hidden class the character's sheet does not have.
+func hiddenListOf(t levelUpTarget, k string) bool {
+	return k != "" && t.content.Hidden(k) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Class == k })
+}
+
+// hiddenRaceOf says k is a hidden race or subrace that is not the character's.
+func hiddenRaceOf(t levelUpTarget, k string) bool {
+	return k != "" && t.content.Hidden(k) && t.build.Race != k && t.build.Subrace != k
+}
+
+// hideFeatRace blanks the hidden race a feat asks for, in its prerequisite and
+// in what the character does not meet.
+func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
+	if hiddenRaceOf(t, f.GetPrerequisite().GetRaceKey()) {
+		f.Prerequisite.RaceKey = ""
+	}
+	for _, u := range f.GetUnmet() {
+		if hiddenRaceOf(t, u.GetKey()) && u.GetKind() == rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE {
+			u.Key = ""
+		}
+	}
 }
 
 // levelUpRulesError turns a refusal from package rules, in a call that
@@ -440,74 +523,115 @@ func (s *Service) RollLevelUpHitPoints(
 	if err != nil {
 		return nil, err
 	}
-	// The master keeps the sheet editor: the guided level-up is the player's.
-	if isMaster(m) {
-		return nil, errPermission("only the owning player levels up a character with the guided level-up")
+	id, err := checkRollRequest(m, req.Msg)
+	if err != nil {
+		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
-	if !ok {
-		return nil, errCharacterNotFound()
-	}
-	if _, ok := parseUUID(req.Msg.GetIdempotencyKey()); !ok {
-		return nil, invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
-	}
-	res := &charactersv1.RollLevelUpHitPointsResponse{}
+	var res *charactersv1.RollLevelUpHitPointsResponse
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		row, err := visibleForUpdate(ctx, q, m, id) // locked: two rolls of the same level wait for each other
-		if err != nil {
-			return err
-		}
-		t, err := s.newLevelUpTarget(ctx, tx, m, row, req.Msg.GetClassKey())
-		if err != nil {
-			return err
-		}
-		rule, err := s.diceRule(ctx, tx, m)
-		if err != nil {
-			return err
-		}
-		if rule == charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_PHYSICAL {
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_DICE_FORCED_PHYSICAL, row.ID)
-		}
-		// A table where everybody takes the average never rolls (RN-24).
-		if t.rules.HitPoints == HitPointsAverage {
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY, row.ID)
-		}
-		offer, lerr := rules.LevelUpOptions(t.build, t.classKey, t.content)
-		if lerr != nil {
-			return levelUpRulesError(lerr)
-		}
-		key := charactersdb.GetLevelUpRollParams{CharacterID: row.ID, ToLevel: i32(offer.TotalTo)}
-		kept, err := q.GetLevelUpRoll(ctx, key)
-		if err == nil {
-			// One roll per level, for the class that rolled it.
-			if kept.ClassKey != t.classKey {
-				return errRefused(&charactersv1.LevelUpRefusal{
-					Field: "class_key", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINT_ROLL_OTHER_CLASS,
-				})
-			}
-			res.Die, res.Value, res.AlreadyRolled = kept.Die, kept.Value, true
-			return nil
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return wrap("read the kept roll", err)
-		}
-		rolled, err := dice.Roll(s.roller, dice.Expr{Count: 1, Sides: offer.HitDie})
-		if err != nil {
-			return wrap("roll the hit die", err)
-		}
-		if _, err := q.InsertLevelUpRoll(ctx, charactersdb.InsertLevelUpRollParams{
-			CharacterID: row.ID, ClassKey: t.classKey, ToLevel: key.ToLevel, Die: i32(offer.HitDie), Value: i32(rolled.Total), Now: s.now(),
-		}); err != nil {
-			return wrap("keep the roll", err)
-		}
-		res.Die, res.Value, res.AlreadyRolled = i32(offer.HitDie), i32(rolled.Total), false
-		return nil
+		var err error
+		res, err = s.rollLevelUpIn(ctx, tx, m, id, req.Msg.GetClassKey())
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "roll the level up hit points", err)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// errOnlyThePlayer refuses the master a call of the guided level-up: the master
+// keeps the sheet editor, the guided level-up is the player's.
+func errOnlyThePlayer() error {
+	return errPermission("only the owning player levels up a character with the guided level-up")
+}
+
+// checkRollRequest checks who calls and the request's IDs, and returns the
+// character's ID. The idempotency key is only checked: the kept roll is what
+// makes a second call answer the same.
+func checkRollRequest(m authz.Membership, req *charactersv1.RollLevelUpHitPointsRequest) (string, error) {
+	if isMaster(m) {
+		return "", errOnlyThePlayer()
+	}
+	id, ok := parseUUID(req.GetCharacterId())
+	if !ok {
+		return "", errCharacterNotFound()
+	}
+	if _, ok := parseUUID(req.GetIdempotencyKey()); !ok {
+		return "", invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
+	}
+	return id, nil
+}
+
+// rollLevelUpIn rolls the hit die of the character's next level in tx, or
+// answers the roll already kept for it.
+func (s *Service) rollLevelUpIn(ctx context.Context, tx pgx.Tx, m authz.Membership, id, classKey string) (*charactersv1.RollLevelUpHitPointsResponse, error) {
+	q := s.queries.WithTx(tx)
+	row, err := visibleForUpdate(ctx, q, m, id) // locked: two rolls of the same level wait for each other
+	if err != nil {
+		return nil, err
+	}
+	t, err := s.newLevelUpTarget(ctx, tx, m, row, classKey)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.checkRollAllowed(ctx, tx, m, t); err != nil {
+		return nil, err
+	}
+	offer, lerr := rules.LevelUpOptions(t.build, t.classKey, t.content)
+	if lerr != nil {
+		return nil, levelUpRulesError(lerr)
+	}
+	key := charactersdb.GetLevelUpRollParams{CharacterID: row.ID, ToLevel: i32(offer.TotalTo)}
+	kept, err := q.GetLevelUpRoll(ctx, key)
+	if err == nil {
+		return keptRollAnswer(kept, t.classKey)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, wrap("read the kept roll", err)
+	}
+	return s.keepNewRoll(ctx, q, t, key, offer.HitDie)
+}
+
+// checkRollAllowed refuses a roll in the app that the campaign's dice setting
+// or the table's rule does not allow.
+func (s *Service) checkRollAllowed(ctx context.Context, tx pgx.Tx, m authz.Membership, t levelUpTarget) error {
+	rule, err := s.diceRule(ctx, tx, m)
+	if err != nil {
+		return err
+	}
+	if rule == charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_PHYSICAL {
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_DICE_FORCED_PHYSICAL, t.row.ID)
+	}
+	// A table where everybody takes the average never rolls (RN-24).
+	if t.rules.HitPoints == HitPointsAverage {
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY, t.row.ID)
+	}
+	return nil
+}
+
+// keptRollAnswer answers the roll kept for the level: one roll per level, for
+// the class that rolled it.
+func keptRollAnswer(kept charactersdb.GetLevelUpRollRow, classKey string) (*charactersv1.RollLevelUpHitPointsResponse, error) {
+	if kept.ClassKey != classKey {
+		return nil, errRefused(&charactersv1.LevelUpRefusal{
+			Field: "class_key", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINT_ROLL_OTHER_CLASS,
+		})
+	}
+	return &charactersv1.RollLevelUpHitPointsResponse{Die: kept.Die, Value: kept.Value, AlreadyRolled: true}, nil
+}
+
+// keepNewRoll rolls the hit die and keeps the result for the level.
+func (s *Service) keepNewRoll(ctx context.Context, q *charactersdb.Queries, t levelUpTarget, key charactersdb.GetLevelUpRollParams, hitDie int) (*charactersv1.RollLevelUpHitPointsResponse, error) {
+	rolled, err := dice.Roll(s.roller, dice.Expr{Count: 1, Sides: hitDie})
+	if err != nil {
+		return nil, wrap("roll the hit die", err)
+	}
+	if _, err := q.InsertLevelUpRoll(ctx, charactersdb.InsertLevelUpRollParams{
+		CharacterID: t.row.ID, ClassKey: t.classKey, ToLevel: key.ToLevel, Die: i32(hitDie), Value: i32(rolled.Total), Now: s.now(),
+	}); err != nil {
+		return nil, wrap("keep the roll", err)
+	}
+	return &charactersv1.RollLevelUpHitPointsResponse{Die: i32(hitDie), Value: i32(rolled.Total), AlreadyRolled: false}, nil
 }
 
 // LevelUpCharacter implements charactersv1connect.CharacterServiceHandler.
@@ -519,112 +643,149 @@ func (s *Service) LevelUpCharacter(
 	if err != nil {
 		return nil, err
 	}
-	if isMaster(m) {
-		return nil, errPermission("only the owning player levels up a character with the guided level-up")
+	id, err := checkLevelUpRequest(m, req.Msg)
+	if err != nil {
+		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
-	if !ok {
-		return nil, errCharacterNotFound()
-	}
-	revision := req.Msg.GetRevision()
-	if revision < 1 {
-		return nil, invalidArgument(fieldErr("revision", "must be at least 1"))
-	}
-	choices := req.Msg.GetChoices()
-	if err := checkLevelUpChoices(choices); err != nil {
-		return nil, invalidArgument(err)
-	}
-	if _, ok := hpMethodToDB[choices.GetHitPoints().GetMethod()]; !ok {
-		return nil, invalidArgument(fieldErr("choices.hit_points.method", "is required"))
-	}
-
-	var row charactersdb.Character
-	var leveled bool
-	var leveledContent *rules.Content // the content read in the transaction
+	var done leveledUp
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		current, err := visibleForUpdate(ctx, q, m, id)
-		if err != nil {
-			return err
-		}
-		// The checks that stand in for the sheet's lock come in this order:
-		// who the character is (dead, pending), then the revision (a retry of
-		// a level-up that already went through is stale, not "cannot"), then
-		// whether it can level up now.
-		switch current.Status {
-		case statusDead:
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD, current.ID)
-		case statusPending:
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL, current.ID)
-		}
-		if current.Revision != revision {
-			return errStaleRevision()
-		}
-		t, err := s.newLevelUpTarget(ctx, tx, m, current, choices.GetClassKey())
-		if err != nil {
-			return err
-		}
-		plan, err := s.planLevelUpIn(ctx, tx, q, m, t, choices)
-		if err != nil {
-			return err
-		}
-		if plan.refusal != nil {
-			return errRefused(plan.refusal)
-		}
-		// A level-up never clears what a change of the table's content flagged.
-		carryFlags(t.content, t.full, plan.sheet)
-		leveledContent = t.content
-		doc, err := storeJSON.Marshal(&charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: plan.sheet}})
-		if err != nil {
-			return wrap("encode a sheet", err)
-		}
-		row, err = q.UpdateCharacterSheet(ctx, charactersdb.UpdateCharacterSheetParams{
-			CampaignID: m.CampaignID, ID: id, Revision: revision, Name: current.Name, Sheet: doc, Now: s.now(),
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errStaleRevision()
-		}
-		if err != nil {
-			return wrap("update sheet", err)
-		}
-		if err := s.carryHitPoints(ctx, q, t.content, id, current.Sheet, doc); err != nil {
-			return err
-		}
-		record, err := storeJSON.Marshal(plan.record)
-		if err != nil {
-			return wrap("encode the level up", err)
-		}
-		if _, err := q.InsertLevelUp(ctx, charactersdb.InsertLevelUpParams{
-			CampaignID: m.CampaignID, CharacterID: id, ClassKey: t.classKey,
-			FromLevel: i32(plan.toLevel - 1), ToLevel: i32(plan.toLevel),
-			HpMethod: hpMethodToDB[plan.record.GetHitPoints().GetMethod()], HpValue: plan.record.GetHitPoints().GetValue(),
-			Choices: record, CreatedAt: s.now(),
-		}); err != nil {
-			return wrap("record the level up", err)
-		}
-		// The roll was used: the next level rolls again.
-		if err := q.DeleteLevelUpRoll(ctx, charactersdb.DeleteLevelUpRollParams{CharacterID: id, ToLevel: i32(plan.toLevel)}); err != nil {
-			return wrap("delete the used roll", err)
-		}
-		leveled = true
-		return nil
+		var err error
+		done, err = s.levelUpIn(ctx, tx, m, id, req.Msg.GetRevision(), req.Msg.GetChoices())
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "level up a character", err)
 	}
-	if leveled {
-		logging.Event(ctx, s.logger, "levelup.done", slog.String("character_id", id))
-	}
-	if leveled && s.live != nil {
-		s.live.PublishXPChanged(m.CampaignID)
-		s.live.PublishVitalsChanged(ctx, m.CampaignID, id)
-	}
+	s.announceLevelUp(ctx, m.CampaignID, id)
 	// The response is derived from the content the level-up was checked with.
-	c, err := s.character(ctx, leveledContent, row, m)
+	c, err := s.character(ctx, done.content, done.row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a leveled up character", err)
 	}
 	return connect.NewResponse(&charactersv1.LevelUpCharacterResponse{Character: c}), nil
+}
+
+// leveledUp is what a committed level-up leaves: the character's new row and the
+// content the level-up was checked with.
+type leveledUp struct {
+	row     charactersdb.Character
+	content *rules.Content
+}
+
+// checkLevelUpRequest checks who calls and the request's shape, before anything
+// is read, and returns the character's ID.
+func checkLevelUpRequest(m authz.Membership, req *charactersv1.LevelUpCharacterRequest) (string, error) {
+	if isMaster(m) {
+		return "", errOnlyThePlayer()
+	}
+	id, ok := parseUUID(req.GetCharacterId())
+	if !ok {
+		return "", errCharacterNotFound()
+	}
+	if req.GetRevision() < 1 {
+		return "", invalidArgument(fieldErr("revision", "must be at least 1"))
+	}
+	choices := req.GetChoices()
+	if err := checkLevelUpChoices(choices); err != nil {
+		return "", invalidArgument(err)
+	}
+	if _, ok := hpMethodToDB[choices.GetHitPoints().GetMethod()]; !ok {
+		return "", invalidArgument(fieldErr("choices.hit_points.method", "is required"))
+	}
+	return id, nil
+}
+
+// levelUpIn checks and plans the level-up on the locked row, then writes it, in tx.
+func (s *Service) levelUpIn(ctx context.Context, tx pgx.Tx, m authz.Membership, id string, revision int32, choices *charactersv1.LevelUpChoices) (leveledUp, error) {
+	q := s.queries.WithTx(tx)
+	current, err := visibleForUpdate(ctx, q, m, id)
+	if err != nil {
+		return leveledUp{}, err
+	}
+	// The checks that stand in for the sheet's lock come in this order:
+	// who the character is (dead, pending), then the revision (a retry of
+	// a level-up that already went through is stale, not "cannot"), then
+	// whether it can level up now.
+	if err := levelUpStatusBlocked(current); err != nil {
+		return leveledUp{}, err
+	}
+	if current.Revision != revision {
+		return leveledUp{}, errStaleRevision()
+	}
+	t, err := s.newLevelUpTarget(ctx, tx, m, current, choices.GetClassKey())
+	if err != nil {
+		return leveledUp{}, err
+	}
+	plan, err := s.planLevelUpIn(ctx, tx, q, m, t, choices)
+	if err != nil {
+		return leveledUp{}, err
+	}
+	if plan.refusal != nil {
+		return leveledUp{}, errRefused(plan.refusal)
+	}
+	// A level-up never clears what a change of the table's content flagged.
+	carryFlags(t.content, t.full, plan.sheet)
+	row, err := s.writeLevelUp(ctx, q, m, current, revision, t, plan)
+	if err != nil {
+		return leveledUp{}, err
+	}
+	return leveledUp{row: row, content: t.content}, nil
+}
+
+// writeLevelUp saves the new sheet, moves the current hit points with the
+// maximum, records the level-up for the master and deletes the used roll.
+func (s *Service) writeLevelUp(ctx context.Context, q *charactersdb.Queries, m authz.Membership, current charactersdb.Character, revision int32, t levelUpTarget, plan levelUpPlan) (charactersdb.Character, error) {
+	id := current.ID
+	doc, err := storeJSON.Marshal(&charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: plan.sheet}})
+	if err != nil {
+		return charactersdb.Character{}, wrap("encode a sheet", err)
+	}
+	row, err := q.UpdateCharacterSheet(ctx, charactersdb.UpdateCharacterSheetParams{
+		CampaignID: m.CampaignID, ID: id, Revision: revision, Name: current.Name, Sheet: doc, Now: s.now(),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return charactersdb.Character{}, errStaleRevision()
+	}
+	if err != nil {
+		return charactersdb.Character{}, wrap("update sheet", err)
+	}
+	if err := s.carryHitPoints(ctx, q, t.content, id, current.Sheet, doc); err != nil {
+		return charactersdb.Character{}, err
+	}
+	if err := s.recordLevelUp(ctx, q, m, id, t.classKey, plan); err != nil {
+		return charactersdb.Character{}, err
+	}
+	return row, nil
+}
+
+// recordLevelUp keeps what ListLevelUps shows and deletes the used roll: the
+// next level rolls again.
+func (s *Service) recordLevelUp(ctx context.Context, q *charactersdb.Queries, m authz.Membership, id, classKey string, plan levelUpPlan) error {
+	record, err := storeJSON.Marshal(plan.record)
+	if err != nil {
+		return wrap("encode the level up", err)
+	}
+	if _, err := q.InsertLevelUp(ctx, charactersdb.InsertLevelUpParams{
+		CampaignID: m.CampaignID, CharacterID: id, ClassKey: classKey,
+		FromLevel: i32(plan.toLevel - 1), ToLevel: i32(plan.toLevel),
+		HpMethod: hpMethodToDB[plan.record.GetHitPoints().GetMethod()], HpValue: plan.record.GetHitPoints().GetValue(),
+		Choices: record, CreatedAt: s.now(),
+	}); err != nil {
+		return wrap("record the level up", err)
+	}
+	if err := q.DeleteLevelUpRoll(ctx, charactersdb.DeleteLevelUpRollParams{CharacterID: id, ToLevel: i32(plan.toLevel)}); err != nil {
+		return wrap("delete the used roll", err)
+	}
+	return nil
+}
+
+// announceLevelUp logs the committed level-up and tells the live session.
+func (s *Service) announceLevelUp(ctx context.Context, campaignID, id string) {
+	logging.Event(ctx, s.logger, "levelup.done", slog.String("character_id", id))
+	if s.live != nil {
+		s.live.PublishXPChanged(campaignID)
+		s.live.PublishVitalsChanged(ctx, campaignID, id)
+	}
 }
 
 // ListLevelUps implements charactersv1connect.CharacterServiceHandler.
@@ -636,45 +797,17 @@ func (s *Service) ListLevelUps(
 	if err != nil {
 		return nil, err
 	}
-	size := req.Msg.GetPageSize()
-	switch {
-	case size == 0:
-		size = defaultLevelUpsPage
-	case size < 0 || size > maxLevelUpsListed:
-		return nil, invalidArgument(fieldErr("page_size", "must be 1 to %d", maxLevelUpsListed))
-	}
-	params := charactersdb.ListLevelUpsParams{CampaignID: m.CampaignID, MaxRows: size + 1} // one more tells whether there is a next page
-	if token := req.Msg.GetPageToken(); token != "" {
-		at, id, ok := parseLevelUpsToken(token)
-		if !ok {
-			return nil, invalidArgument(fieldErr("page_token", "is not a token of this list"))
-		}
-		params.BeforeCreatedAt, params.BeforeID = &at, &id
-	}
-	if raw := req.Msg.GetCharacterId(); raw != "" {
-		id, ok := parseUUID(raw)
-		if !ok {
-			return nil, errCharacterNotFound()
-		}
-		params.CharacterID = &id
+	params, err := levelUpsParams(m, req.Msg)
+	if err != nil {
+		return nil, err
 	}
 	rows, err := s.queries.ListLevelUps(ctx, params)
 	if err != nil {
 		return nil, s.dbError(ctx, "list level ups", err)
 	}
 	res := &charactersv1.ListLevelUpsResponse{}
-	if int32(len(rows)) > size { //nolint:gosec // at most maxLevelUpsListed+1
-		rows = rows[:size]
-		last := rows[len(rows)-1]
-		res.NextPageToken = levelUpsToken(last.CreatedAt, last.ID)
-	}
-	var playerIDs []string
-	for _, row := range rows {
-		if row.PlayerUserID != nil {
-			playerIDs = append(playerIDs, *row.PlayerUserID)
-		}
-	}
-	displayNames, err := s.displayNames(ctx, playerIDs)
+	rows, res.NextPageToken = levelUpsPage(rows, params.MaxRows-1)
+	displayNames, err := s.displayNames(ctx, levelUpPlayerIDs(rows))
 	if err != nil {
 		return nil, s.dbError(ctx, "read display names", err)
 	}
@@ -683,20 +816,79 @@ func (s *Service) ListLevelUps(
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
 	for _, row := range rows {
-		choices := &charactersv1.LevelUpChoices{}
-		if err := loadJSON.Unmarshal(row.Choices, choices); err != nil {
-			return nil, s.dbError(ctx, "list level ups", errors.Join(errCorruptDocument, err))
+		l, err := levelUpToProto(content, displayNames, row)
+		if err != nil {
+			return nil, s.dbError(ctx, "list level ups", err)
 		}
-		res.LevelUps = append(res.LevelUps, &charactersv1.LevelUp{
-			Id: row.ID, CharacterId: row.CharacterID, CharacterName: row.CharacterName,
-			PlayerDisplayName: displayNames[deref(row.PlayerUserID)],
-			ClassKey:          row.ClassKey, ClassNamePt: content.NamePT(row.ClassKey),
-			FromLevel: row.FromLevel, ToLevel: row.ToLevel,
-			Choices: choices, NamesPt: levelUpNames(content, row.ClassKey, choices),
-			CreatedAt: timestamppb.New(row.CreatedAt),
-		})
+		res.LevelUps = append(res.LevelUps, l)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// levelUpsParams turns the request into the query's parameters: the page size,
+// the cursor and the character.
+func levelUpsParams(m authz.Membership, req *charactersv1.ListLevelUpsRequest) (charactersdb.ListLevelUpsParams, error) {
+	size := req.GetPageSize()
+	switch {
+	case size == 0:
+		size = defaultLevelUpsPage
+	case size < 0 || size > maxLevelUpsListed:
+		return charactersdb.ListLevelUpsParams{}, invalidArgument(fieldErr("page_size", "must be 1 to %d", maxLevelUpsListed))
+	}
+	params := charactersdb.ListLevelUpsParams{CampaignID: m.CampaignID, MaxRows: size + 1} // one more tells whether there is a next page
+	if token := req.GetPageToken(); token != "" {
+		at, id, ok := parseLevelUpsToken(token)
+		if !ok {
+			return charactersdb.ListLevelUpsParams{}, invalidArgument(fieldErr("page_token", "is not a token of this list"))
+		}
+		params.BeforeCreatedAt, params.BeforeID = &at, &id
+	}
+	if raw := req.GetCharacterId(); raw != "" {
+		id, ok := parseUUID(raw)
+		if !ok {
+			return charactersdb.ListLevelUpsParams{}, errCharacterNotFound()
+		}
+		params.CharacterID = &id
+	}
+	return params, nil
+}
+
+// levelUpsPage cuts the rows to the page and returns the next page's token, empty
+// on the last page.
+func levelUpsPage(rows []charactersdb.ListLevelUpsRow, size int32) ([]charactersdb.ListLevelUpsRow, string) {
+	if int32(len(rows)) <= size { //nolint:gosec // at most maxLevelUpsListed+1
+		return rows, ""
+	}
+	rows = rows[:size]
+	last := rows[len(rows)-1]
+	return rows, levelUpsToken(last.CreatedAt, last.ID)
+}
+
+// levelUpPlayerIDs is the players of the rows' characters.
+func levelUpPlayerIDs(rows []charactersdb.ListLevelUpsRow) []string {
+	var playerIDs []string
+	for _, row := range rows {
+		if row.PlayerUserID != nil {
+			playerIDs = append(playerIDs, *row.PlayerUserID)
+		}
+	}
+	return playerIDs
+}
+
+// levelUpToProto is one row of the list, with the names of what it chose.
+func levelUpToProto(content *rules.Content, displayNames map[string]string, row charactersdb.ListLevelUpsRow) (*charactersv1.LevelUp, error) {
+	choices := &charactersv1.LevelUpChoices{}
+	if err := loadJSON.Unmarshal(row.Choices, choices); err != nil {
+		return nil, errors.Join(errCorruptDocument, err)
+	}
+	return &charactersv1.LevelUp{
+		Id: row.ID, CharacterId: row.CharacterID, CharacterName: row.CharacterName,
+		PlayerDisplayName: displayNames[deref(row.PlayerUserID)],
+		ClassKey:          row.ClassKey, ClassNamePt: content.NamePT(row.ClassKey),
+		FromLevel: row.FromLevel, ToLevel: row.ToLevel,
+		Choices: choices, NamesPt: levelUpNames(content, row.ClassKey, choices),
+		CreatedAt: timestamppb.New(row.CreatedAt),
+	}, nil
 }
 
 // levelUpNames names every content key a level-up's choices hold.
@@ -715,218 +907,6 @@ func levelUpNames(content *rules.Content, classKey string, c *charactersv1.Level
 		}
 	}
 	return names
-}
-
-// checkLevelUpChoices checks the shape of the choices: the lists' sizes (the
-// same limits as the sheet's), before anything is built from them. Unknown
-// keys are found by rules.Validate on the new sheet.
-func checkLevelUpChoices(c *charactersv1.LevelUpChoices) error {
-	if c == nil {
-		return fieldErr("choices", "is required")
-	}
-	for _, l := range []struct {
-		field string
-		keys  []string
-		limit int
-	}{
-		{"choices.cantrip_keys", c.GetCantripKeys(), rules.MaxCantrips},
-		{"choices.known_spell_keys", c.GetKnownSpellKeys(), rules.MaxKnownSpells},
-		{"choices.prepared_spell_keys", c.GetPreparedSpellKeys(), rules.MaxPreparedSpells},
-		{"choices.feature_choice_keys", c.GetFeatureChoiceKeys(), rules.MaxListLength},
-		{"choices.late_choice_keys", c.GetLateChoiceKeys(), rules.MaxListLength},
-		{"choices.skill_proficiency_keys", c.GetSkillProficiencyKeys(), rules.MaxSkillKeys},
-		{"choices.expertise_skill_keys", c.GetExpertiseSkillKeys(), rules.MaxSkillKeys},
-	} {
-		if len(l.keys) > l.limit {
-			return fieldErr(l.field, "must have at most %d entries", l.limit)
-		}
-	}
-	for _, l := range []struct {
-		field string
-		keys  []string
-	}{
-		{"choices.cantrip_keys", c.GetCantripKeys()},
-		{"choices.known_spell_keys", c.GetKnownSpellKeys()},
-		{"choices.prepared_spell_keys", c.GetPreparedSpellKeys()},
-		{"choices.feature_choice_keys", c.GetFeatureChoiceKeys()},
-		{"choices.late_choice_keys", c.GetLateChoiceKeys()},
-		{"choices.skill_proficiency_keys", c.GetSkillProficiencyKeys()},
-		{"choices.expertise_skill_keys", c.GetExpertiseSkillKeys()},
-	} {
-		if len(slices.Compact(slices.Sorted(slices.Values(l.keys)))) != len(l.keys) {
-			return fieldErr(l.field, "repeats an entry")
-		}
-	}
-	if len(c.GetFeatureChoiceText()) > rules.MaxChoiceTexts {
-		return fieldErr("choices.feature_choice_text", "must have at most %d entries", rules.MaxChoiceTexts)
-	}
-	for key, text := range c.GetFeatureChoiceText() {
-		if strings.TrimSpace(text) == "" {
-			delete(c.FeatureChoiceText, key)
-			continue
-		}
-		clean, err := names.Clean(text, rules.MaxChoiceTextLength)
-		if err != nil {
-			return &fieldError{field: "choices.feature_choice_text", err: err}
-		}
-		c.FeatureChoiceText[key] = clean
-	}
-	if len(c.GetSwapInvocationKey()) > maxChoiceKeyLength {
-		return fieldErr("choices.swap_invocation_key", "must be at most %d characters", maxChoiceKeyLength)
-	}
-	if len(c.GetFeatKey()) > maxContentKeyLength {
-		return fieldErr("choices.feat_key", "must be at most %d characters", maxContentKeyLength)
-	}
-	if m := c.GetHitPoints().GetMethod(); charactersv1.LevelUpHitPointsMethod_name[int32(m)] == "" {
-		return fieldErr("choices.hit_points.method", "is not a known method")
-	}
-	if v := c.GetHitPoints().GetValue(); v < 0 || v > 1000 {
-		return fieldErr("choices.hit_points.value", "must be 0 to 1000")
-	}
-	return nil
-}
-
-// levelUpPlan is what a set of choices makes of a character's sheet.
-type levelUpPlan struct {
-	// sheet is the new full sheet: the stored one with the choices added.
-	sheet *charactersv1.FullSheet
-	// refusal is the first rule the choices break, nil when they are allowed.
-	refusal *charactersv1.LevelUpRefusal
-	// retiredChoice says a new choice is one the master archived or, for a player,
-	// switched off, whatever the refusal is: the sheet it builds is not theirs to read
-	// (RN-23).
-	retiredChoice bool
-	// record is what ListLevelUps keeps: the choices, with the hit points
-	// value the level took.
-	record *charactersv1.LevelUpChoices
-	// toLevel is the character's total level after the level-up.
-	toLevel int
-}
-
-// planLevelUpIn builds the new sheet from the stored one and the choices, and
-// checks it with the rules. The error is a Connect error for what the client
-// got wrong (`invalid_argument`, the dice setting); a rule of the level that
-// the choices break is plan.refusal. A choice that is not ready (a preview
-// without a hit points method, an in-app roll that was never made) takes the
-// average, and the plan still carries the sheet as far as the choices go.
-func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.Queries, m authz.Membership, t levelUpTarget, choices *charactersv1.LevelUpChoices) (levelUpPlan, error) {
-	if err := checkLevelUpChoices(choices); err != nil {
-		return levelUpPlan{}, invalidArgument(err)
-	}
-	offer, lerr := rules.LevelUpOptions(t.build, t.classKey, t.content)
-	if lerr != nil {
-		return levelUpPlan{}, levelUpRulesError(lerr)
-	}
-	plan := levelUpPlan{toLevel: offer.TotalTo, record: proto.CloneOf(choices)}
-	plan.record.ClassKey = t.classKey
-	// Feats are an optional rule of the game: only a table that plays with them lets the
-	// level take one. The plan is still built (as with the other refusals) so the preview
-	// can show what the rest of the choices make.
-	if choices.GetFeatKey() != "" && !t.rules.FeatsAllowed {
-		plan.refusal = &charactersv1.LevelUpRefusal{
-			Field: "choices.feat_key", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEATS_NOT_ALLOWED,
-		}
-	}
-
-	// The hit points of the level.
-	method := choices.GetHitPoints().GetMethod()
-	if method == charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_UNSPECIFIED {
-		method = charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE // a preview without a method
-	}
-	hp := rules.LevelUpHitPoints{Average: true}
-	value := offer.HitPointAverage
-	// The table's rule (RN-24) refuses the method it does not allow, with the
-	// average standing in for the rest of the plan. A preview without a method
-	// has not chosen one, so it is not refused.
-	if chosen := choices.GetHitPoints().GetMethod(); chosen != charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_UNSPECIFIED &&
-		!hitPointsMethodAllowed(t.rules.HitPoints, chosen) {
-		plan.refusal = &charactersv1.LevelUpRefusal{
-			Field: "choices.hit_points.method", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINTS_RULE,
-		}
-		method = charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE
-	}
-	switch method {
-	case charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_IN_APP:
-		rule, err := s.diceRule(ctx, tx, m)
-		if err != nil {
-			return levelUpPlan{}, err
-		}
-		if rule == charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_PHYSICAL {
-			return levelUpPlan{}, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_DICE_FORCED_PHYSICAL, t.row.ID)
-		}
-		kept, err := q.GetLevelUpRoll(ctx, charactersdb.GetLevelUpRollParams{CharacterID: t.row.ID, ToLevel: i32(offer.TotalTo)})
-		switch {
-		case err == nil && kept.ClassKey != t.classKey:
-			plan.refusal = &charactersv1.LevelUpRefusal{
-				Field: "choices.hit_points", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINT_ROLL_OTHER_CLASS,
-			}
-		case err == nil:
-			hp, value = rules.LevelUpHitPoints{Roll: int(kept.Value)}, int(kept.Value)
-		case errors.Is(err, pgx.ErrNoRows):
-			plan.refusal = &charactersv1.LevelUpRefusal{
-				Field: "choices.hit_points", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINT_ROLL_MISSING,
-			}
-		default:
-			return levelUpPlan{}, wrap("read the kept roll", err)
-		}
-	case charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_ROLLED_PHYSICAL:
-		rule, err := s.diceRule(ctx, tx, m)
-		if err != nil {
-			return levelUpPlan{}, err
-		}
-		if rule == charactersv1.LevelUpDiceRule_LEVEL_UP_DICE_RULE_FORCED_IN_APP {
-			return levelUpPlan{}, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_DICE_FORCED_IN_APP, t.row.ID)
-		}
-		if typed := int(choices.GetHitPoints().GetValue()); typed < 1 || typed > offer.HitDie {
-			// Not a result of this die: refuse it, and build the rest with the average.
-			plan.refusal = &charactersv1.LevelUpRefusal{
-				Field: "choices.hit_points.value", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_HIT_POINTS,
-			}
-		} else {
-			hp, value = rules.LevelUpHitPoints{Roll: typed}, typed
-		}
-	}
-	plan.record.HitPoints = &charactersv1.LevelUpHitPoints{Method: method, Value: i32(value)}
-
-	// The new Build, written onto a copy of the stored sheet.
-	after, err := rules.ApplyLevelUp(t.build, levelUpChoicesFromProto(t.classKey, choices, hp), t.content)
-	if err != nil {
-		return levelUpPlan{}, levelUpRulesError(err)
-	}
-	plan.sheet = applyLevelUp(t.full, after, t.idx)
-	checked, err := checkSheet(t.content, &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: plan.sheet}})
-	if err != nil {
-		return levelUpPlan{}, invalidArgument(err)
-	}
-	plan.sheet = checked.GetFull()
-	// A table entry the master archived is not a new choice (RN-23).
-	if _, field, found := newArchivedChoice(t.content, t.full, plan.sheet); found {
-		plan.retiredChoice = true
-		if plan.refusal == nil {
-			plan.refusal = &charactersv1.LevelUpRefusal{
-				Field: field, Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE,
-			}
-		}
-	}
-	// Nor an option the master switched off, for a player (RN-23).
-	if _, field, found := newOffChoice(t.content, t.full, plan.sheet); found && !isMaster(m) {
-		plan.retiredChoice = true
-		if plan.refusal == nil {
-			plan.refusal = &charactersv1.LevelUpRefusal{
-				Field: field, Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE,
-			}
-		}
-	}
-	if plan.refusal == nil {
-		if err := rules.CheckLevelUp(t.build, buildOf(plan.sheet), t.content); err != nil {
-			le, ok := errors.AsType[*rules.LevelUpError](err)
-			if !ok {
-				return levelUpPlan{}, err
-			}
-			plan.refusal = refusalOf(le)
-		}
-	}
-	return plan, nil
 }
 
 // levelUpChoicesFromProto turns the message into the rules' choices.
@@ -1007,42 +987,6 @@ func abilityMapsEqual(a, b map[rules.Ability]int) bool {
 
 // levelUpOptionsToProto copies rules.LevelUpOffer into the message.
 func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
-	named := func(keys []rules.NamedKey) []*charactersv1.LevelUpNamedKey {
-		var out []*charactersv1.LevelUpNamedKey
-		for _, k := range keys {
-			out = append(out, &charactersv1.LevelUpNamedKey{Key: k.Key, NamePt: k.NamePT})
-		}
-		return out
-	}
-	choices := func(in []rules.LevelUpFeatureChoice) []*charactersv1.LevelUpFeatureChoice {
-		var out []*charactersv1.LevelUpFeatureChoice
-		for _, c := range in {
-			fc := &charactersv1.LevelUpFeatureChoice{
-				Feature:     &charactersv1.LevelUpNamedKey{Key: c.Feature.Key, NamePt: c.Feature.NamePT},
-				SubclassKey: c.Subclass, Choose: i32(c.Choose), Options: named(c.Options),
-			}
-			for _, b := range c.Blocked {
-				fc.Blocked = append(fc.Blocked, &charactersv1.LevelUpBlockedOption{
-					Option: &charactersv1.LevelUpNamedKey{Key: b.Key, NamePt: b.NamePT}, ReasonPt: b.ReasonPT,
-				})
-			}
-			out = append(out, fc)
-		}
-		return out
-	}
-	pact := func(p *rules.PactMagic) *rulesv1.PactMagic {
-		if p == nil {
-			return nil
-		}
-		return &rulesv1.PactMagic{SlotLevel: i32(p.SlotLevel), Count: i32(p.Slots)}
-	}
-	slots := func(s [9]int) []int32 {
-		out := make([]int32, len(s))
-		for i, n := range s {
-			out[i] = i32(n)
-		}
-		return out
-	}
 	out := &charactersv1.LevelUpOptions{
 		ClassKey: o.Class, ClassNamePt: o.ClassNamePT,
 		FromLevel: i32(o.FromLevel), ToLevel: i32(o.ToLevel), TotalFromLevel: i32(o.TotalFrom), TotalToLevel: i32(o.TotalTo),
@@ -1051,36 +995,105 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		Cantrips: i32(o.Cantrips), Spells: i32(o.Spells),
 		SpellListClassKey: o.SpellList, MaxSpellLevel: i32(o.MaxSpellLevel),
 		Prepares: o.Prepares, PreparedMax: i32(o.PreparedMax), PreparedMaxAfter: i32(o.PreparedMaxAfter),
-		FeatureChoices: choices(o.FeatureChoices), SkillChoices: i32(o.SkillChoices), ExpertiseChoices: i32(o.ExpertiseChoices),
+		FeatureChoices: levelUpFeatureChoicesToProto(o.FeatureChoices), SkillChoices: i32(o.SkillChoices), ExpertiseChoices: i32(o.ExpertiseChoices),
 		ProficiencyBonusBefore: i32(o.ProficiencyBonusBefore), ProficiencyBonusAfter: i32(o.ProficiencyBonusAfter),
-		SpellSlotsBefore: slots(o.SlotsBefore), SpellSlotsAfter: slots(o.SlotsAfter),
-		PactMagicBefore: pact(o.PactBefore), PactMagicAfter: pact(o.PactAfter),
-		NewFeatures: named(o.NewFeatures), MasterAdds: named(o.MasterAdds), AnyClassSpells: i32(o.AnyClassSpells),
+		SpellSlotsBefore: slotCountsToProto(o.SlotsBefore), SpellSlotsAfter: slotCountsToProto(o.SlotsAfter),
+		PactMagicBefore: pactMagicToProto(o.PactBefore), PactMagicAfter: pactMagicToProto(o.PactAfter),
+		NewFeatures: levelUpNamedKeysToProto(o.NewFeatures), MasterAdds: levelUpNamedKeysToProto(o.MasterAdds), AnyClassSpells: i32(o.AnyClassSpells),
 		LateChoices: choiceGroupsToProto(o.LateChoices), NewChoices: choiceGroupsToProto(o.NewChoices),
 		CanSwapInvocation: o.CanSwapInvocation,
 	}
 	out.SpellsKind = spellsKindOf(o.SpellsKind)
 	out.IsNewClass = o.NewClass
 	if mc := o.Multiclass; mc != nil {
-		for _, p := range mc.Proficiencies {
-			out.ProficiencyGains = append(out.ProficiencyGains, &charactersv1.LevelUpProficiencyGain{Key: p.Key, NamePt: p.NamePT, Kind: p.Kind, AlreadyHave: p.AlreadyHave})
-		}
-		pick := func(kind charactersv1.LevelUpProficiencyKind, p *rules.MulticlassPick) {
-			if p == nil {
-				return
-			}
-			ch := &charactersv1.LevelUpProficiencyChoice{Kind: kind, Count: i32(p.Choose)}
-			for _, o := range p.From {
-				ch.From = append(ch.From, &charactersv1.LevelUpProficiencyOption{Key: o.Key, NamePt: o.NamePT, AlreadyHave: o.AlreadyHave})
-			}
-			out.ProficiencyChoices = append(out.ProficiencyChoices, ch)
-		}
-		pick(charactersv1.LevelUpProficiencyKind_LEVEL_UP_PROFICIENCY_KIND_SKILL, mc.Skills)
-		pick(charactersv1.LevelUpProficiencyKind_LEVEL_UP_PROFICIENCY_KIND_INSTRUMENT, mc.Instruments)
+		out.ProficiencyGains, out.ProficiencyChoices = multiclassOfferToProto(mc)
 	}
-	for _, sub := range o.Subclasses {
-		out.Subclasses = append(out.Subclasses, &charactersv1.LevelUpSubclass{
-			Key: sub.Key, NamePt: sub.NamePT, FeatureChoices: choices(sub.FeatureChoices),
+	out.Subclasses = levelUpSubclassesToProto(o.Subclasses)
+	return out
+}
+
+// levelUpNamedKeysToProto copies named keys into the message; none gives nil.
+func levelUpNamedKeysToProto(keys []rules.NamedKey) []*charactersv1.LevelUpNamedKey {
+	var out []*charactersv1.LevelUpNamedKey
+	for _, k := range keys {
+		out = append(out, &charactersv1.LevelUpNamedKey{Key: k.Key, NamePt: k.NamePT})
+	}
+	return out
+}
+
+// levelUpFeatureChoicesToProto copies the features' choices, with the options
+// they block; none gives nil.
+func levelUpFeatureChoicesToProto(in []rules.LevelUpFeatureChoice) []*charactersv1.LevelUpFeatureChoice {
+	var out []*charactersv1.LevelUpFeatureChoice
+	for _, c := range in {
+		fc := &charactersv1.LevelUpFeatureChoice{
+			Feature:     &charactersv1.LevelUpNamedKey{Key: c.Feature.Key, NamePt: c.Feature.NamePT},
+			SubclassKey: c.Subclass, Choose: i32(c.Choose), Options: levelUpNamedKeysToProto(c.Options),
+		}
+		for _, b := range c.Blocked {
+			fc.Blocked = append(fc.Blocked, &charactersv1.LevelUpBlockedOption{
+				Option: &charactersv1.LevelUpNamedKey{Key: b.Key, NamePt: b.NamePT}, ReasonPt: b.ReasonPT,
+			})
+		}
+		out = append(out, fc)
+	}
+	return out
+}
+
+// pactMagicToProto copies the pact slots; nil for a character without them.
+func pactMagicToProto(p *rules.PactMagic) *rulesv1.PactMagic {
+	if p == nil {
+		return nil
+	}
+	return &rulesv1.PactMagic{SlotLevel: i32(p.SlotLevel), Count: i32(p.Slots)}
+}
+
+// slotCountsToProto copies the slot count of each of the nine spell levels.
+func slotCountsToProto(s [9]int) []int32 {
+	out := make([]int32, len(s))
+	for i, n := range s {
+		out[i] = i32(n)
+	}
+	return out
+}
+
+// multiclassOfferToProto copies what a new class brings: the proficiencies it
+// gains, and the skills and instruments to pick, skills first.
+func multiclassOfferToProto(mc *rules.MulticlassOffer) ([]*charactersv1.LevelUpProficiencyGain, []*charactersv1.LevelUpProficiencyChoice) {
+	var gains []*charactersv1.LevelUpProficiencyGain
+	for _, p := range mc.Proficiencies {
+		gains = append(gains, &charactersv1.LevelUpProficiencyGain{Key: p.Key, NamePt: p.NamePT, Kind: p.Kind, AlreadyHave: p.AlreadyHave})
+	}
+	var picks []*charactersv1.LevelUpProficiencyChoice
+	for _, p := range []struct {
+		kind charactersv1.LevelUpProficiencyKind
+		pick *rules.MulticlassPick
+	}{
+		{charactersv1.LevelUpProficiencyKind_LEVEL_UP_PROFICIENCY_KIND_SKILL, mc.Skills},
+		{charactersv1.LevelUpProficiencyKind_LEVEL_UP_PROFICIENCY_KIND_INSTRUMENT, mc.Instruments},
+	} {
+		if p.pick != nil {
+			picks = append(picks, multiclassPickToProto(p.kind, p.pick))
+		}
+	}
+	return gains, picks
+}
+
+// multiclassPickToProto copies one pick of a new class.
+func multiclassPickToProto(kind charactersv1.LevelUpProficiencyKind, p *rules.MulticlassPick) *charactersv1.LevelUpProficiencyChoice {
+	ch := &charactersv1.LevelUpProficiencyChoice{Kind: kind, Count: i32(p.Choose)}
+	for _, o := range p.From {
+		ch.From = append(ch.From, &charactersv1.LevelUpProficiencyOption{Key: o.Key, NamePt: o.NamePT, AlreadyHave: o.AlreadyHave})
+	}
+	return ch
+}
+
+// levelUpSubclassesToProto copies the subclasses the level offers; none gives nil.
+func levelUpSubclassesToProto(in []rules.LevelUpSubclass) []*charactersv1.LevelUpSubclass {
+	var out []*charactersv1.LevelUpSubclass
+	for _, sub := range in {
+		out = append(out, &charactersv1.LevelUpSubclass{
+			Key: sub.Key, NamePt: sub.NamePT, FeatureChoices: levelUpFeatureChoicesToProto(sub.FeatureChoices),
 			Cantrips: i32(sub.Cantrips), SkillChoices: i32(sub.SkillChoices), ExpertiseChoices: i32(sub.ExpertiseChoices),
 			Archived: sub.Archived, Off: sub.Off,
 			Spells: i32(sub.Spells), SpellsKind: spellsKindOf(sub.SpellsKind), SpellListClassKey: sub.SpellList, MaxSpellLevel: i32(sub.MaxSpellLevel),

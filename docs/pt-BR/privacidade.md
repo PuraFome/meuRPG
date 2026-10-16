@@ -108,24 +108,24 @@ Copie no PR que mexe em dados, logs, telas ou fornecedores:
 | Cookie de sessão `__Host-meurpg_session` | Aparelho do usuário | Manter o login | Estritamente necessário | Até o logout, que apaga a sessão no servidor, ou 14 dias sem uso, ou 30 dias. "Sair dos outros dispositivos" (perfil) apaga as outras sessões na hora |
 | Cookie de login `__Host-meurpg_login` (o `state`) | Aparelho do usuário | Amarrar o login ao navegador que o começou (contra login CSRF) | Estritamente necessário | 10 minutos; apagado no callback |
 
-**O app novo (`web/`) não guarda nada no navegador além desses dois cookies**, os dois `HttpOnly` e nunca lidos pelo JavaScript da página. Nada de `localStorage`, `sessionStorage`, IndexedDB, cookie gravado pelo JavaScript, ou Worker guardando token ou dado pessoal, sem exceção, com uma trava automática (`web/src/no-web-storage.spec.ts`) que varre o código-fonte atrás dessas APIs. Ver [Arquitetura](../architecture.md#nothing-in-the-browser-besides-the-session-cookie).
+**O app novo (`web/`) não guarda nada no navegador além desses dois cookies**, os dois `HttpOnly` e nunca lidos pelo JavaScript da página. Nada de `localStorage`, `sessionStorage`, IndexedDB, cookie gravado pelo JavaScript, ou Worker guardando token ou dado pessoal, sem exceção, com uma trava automática (`web/src/no-web-storage.spec.ts`) que varre o código-fonte atrás dessas APIs. Ver [Arquitetura](../architecture/web.md#nothing-in-the-browser-besides-the-session-cookie).
 
-**No app antigo (descontinuado)**, `users.name` era guardado, e havia duas colunas sem finalidade: `characters.email` e `sheet.playerName`. Não há migração de dados: as três simplesmente não existem no schema novo (ver [Modelo de dados](../data.md)). No app antigo, mapas ficavam em base64 no banco, e galeria e campanhas ficavam no `localStorage`.
+**No app antigo (descontinuado)**, `users.name` era guardado, e havia duas colunas sem finalidade: `characters.email` e `sheet.playerName`. Não há migração de dados: as três simplesmente não existem no schema novo (ver [Modelo de dados](../data/README.md)). No app antigo, mapas ficavam em base64 no banco, e galeria e campanhas ficavam no `localStorage`.
 
 **Bug do app antigo (descontinuado):** o logout e o "Excluir conta" chamavam rotas que não existiam no NestJS (`POST /api/auth/logout` e `DELETE /api/auth/account`). O logout só limpava o navegador, e o token continuava válido no servidor até expirar. A exclusão falhava, então o direito de eliminação (art. 18, VI) não funcionava lá. O código do app antigo saiu do repositório; o sistema novo implementa os dois desde o primeiro deploy com login e prova com teste automático.
 
 ### Os logs da API
 
-Os logs da API guardam o `user_id` (um UUID de conta, pseudônimo) e IDs de jogo, e nada que identifique a pessoa por si só. Cada linha tem `request_id`, `user_id` e `campaign_id` quando existem, e as linhas de `rpc`, de stream e de evento dizem o que foi feito, só com IDs e enums (ver [Arquitetura](../architecture.md#logs)).
+Os logs da API guardam o `user_id` (um UUID de conta, pseudônimo) e IDs de jogo, e nada que identifique a pessoa por si só. Cada linha tem `request_id`, `user_id` e `campaign_id` quando existem, e as linhas de `rpc`, de stream e de evento dizem o que foi feito, só com IDs e enums (ver [Arquitetura](../architecture/logs.md#logs)).
 
 | Dado no log | Por quê | Retenção |
 | --- | --- | --- |
-| `user_id` (UUID da conta) | Seguir uma sessão de jogo e achar a causa de um erro. É dado pessoal pseudônimo: só vira uma pessoa com o banco, e some do banco com a conta | A do log: em produção, o padrão do Cloud Logging (30 dias no bucket `_Default`); no ELK de ensaio, a que está em [Operação](../operations.md) |
+| `user_id` (UUID da conta) | Seguir uma sessão de jogo e achar a causa de um erro. É dado pessoal pseudônimo: só vira uma pessoa com o banco, e some do banco com a conta | A do log: em produção, o padrão do Cloud Logging (30 dias no bucket `_Default`); no ELK de ensaio, a que está em [Operação](../operations/README.md) |
 | `campaign_id`, `session_id`, `character_id` e outros IDs | O mesmo | A do log |
 | `request_id` | Juntar as linhas de uma requisição; volta ao navegador no header `X-Request-Id` | A do log |
 | Caminho da requisição e código do resultado | Operar o serviço | A do log |
 
-O que **não** está nos logs da API: o IP, o user agent, cookies e headers, a query da URL, e-mail, qualquer nome (de exibição, de personagem, de NPC, de campanha), qualquer texto digitado (documentos, notas, pistas, *prompts*, entradas de conteúdo) e corpo de requisição ou de resposta. Uma trava no *handler* descarta os atributos com nomes como `email`, `token`, `name` ou `text` (a lista está na [Arquitetura](../architecture.md#what-never-goes-in-the-log)). O IP e o user agent aparecem só no log de requisições que o próprio Cloud Run escreve, a linha da tabela acima sobre o Cloud Run.
+O que **não** está nos logs da API: o IP, o user agent, cookies e headers, a query da URL, e-mail, qualquer nome (de exibição, de personagem, de NPC, de campanha), qualquer texto digitado (documentos, notas, pistas, *prompts*, entradas de conteúdo) e corpo de requisição ou de resposta. Uma trava no *handler* descarta os atributos com nomes como `email`, `token`, `name` ou `text` (a lista está na [Arquitetura](../architecture/logs.md#what-never-goes-in-the-log)). O IP e o user agent aparecem só no log de requisições que o próprio Cloud Run escreve, a linha da tabela acima sobre o Cloud Run.
 
 Ao excluir a conta, os logs não são reescritos: o `user_id` deles deixa de apontar para alguém quando a conta some do banco, e a linha vence na retenção. Um log nunca é fonte para responder a um pedido do titular.
 
@@ -138,9 +138,9 @@ O login do mestre (`backend/internal/identity`) cumpre assim os itens desta pág
 - **`GetMe` devolve só o ID da conta** e a hora em que a sessão acaba. A requisição é vazia, então o GET do Connect não põe dado pessoal na URL.
 - **Respostas sem cache.** `GetMe`, `SignOut`, `SignOutOtherSessions`, `CountOtherSessions` e as rotas `/auth/*` saem com `Cache-Control: no-store`; as rotas `/auth/*` também com `Referrer-Policy: no-referrer`.
 - **Excluir a conta** apaga identidades e sessões junto, por `ON DELETE CASCADE`.
-- **Os limites de taxa da API.** O limite por IP de toda a API (`platform/ratelimit`, [Arquitetura](../architecture.md#abuse-limits)) guarda o IP do cliente só na memória da instância, como o do login, e nunca no banco nem no log; as recusas viram uma linha `WARN` com o nome do limite e, para os limites por usuário, o `user_id` que já está em toda linha, nunca com o IP. A lista `CAMPAIGN_CREATORS` (e-mails de quem pode criar campanhas) é configuração do servidor e não vai para o log; o e-mail verificado de cada conta continua só na tabela de identidades (RN-30).
+- **Os limites de taxa da API.** O limite por IP de toda a API (`platform/ratelimit`, [Arquitetura](../architecture/api.md#abuse-limits)) guarda o IP do cliente só na memória da instância, como o do login, e nunca no banco nem no log; as recusas viram uma linha `WARN` com o nome do limite e, para os limites por usuário, o `user_id` que já está em toda linha, nunca com o IP. A lista `CAMPAIGN_CREATORS` (e-mails de quem pode criar campanhas) é configuração do servidor e não vai para o log; o e-mail verificado de cada conta continua só na tabela de identidades (RN-30).
 - **Limite de tentativas no `/auth/login`.** Para contar as tentativas, o servidor guarda o IP do cliente (o prefixo `/64`, no IPv6) só na memória da instância, nunca no banco nem no log. É a linha "IP nos limitadores de taxa" do inventário: some em até 2 minutos depois da última tentativa, ou quando a instância para.
-- **Usuários de teste do devidp** (o provedor OIDC de desenvolvimento, ver [CONTRIBUTING.md](../../CONTRIBUTING.md#local-sign-in-with-the-devidp)) são fictícios, com e-mails em `example.com`. Ele não existe em produção, então nenhum dado real passa por ele.
+- **Usuários de teste do devidp** (o provedor OIDC de desenvolvimento, ver [CONTRIBUTING.md](../development.md#sign-in-with-the-devidp)) são fictícios, com e-mails em `example.com`. Ele não existe em produção, então nenhum dado real passa por ele.
 
 ### O que o módulo campaigns já faz
 
@@ -176,7 +176,7 @@ O módulo `characters` (`backend/internal/characters`) e o começo do `play` cum
 
 ### O que a sessão ao vivo já faz
 
-A sessão ao vivo do `play` (ver [Arquitetura](../architecture.md#live-session)) cumpre assim os itens desta página:
+A sessão ao vivo do `play` (ver [Arquitetura](../architecture/play/live-session.md#live-session)) cumpre assim os itens desta página:
 
 - **O aviso não abre conexão.** `ListOpenGameSessions` tem a requisição vazia, então aceita GET sem pôr dado na URL; a resposta leva o nome das campanhas da própria pessoa e sai com `Cache-Control: no-store`.
 - **O jogador só vê os números do próprio personagem.** O filtro roda no servidor, na foto (`GetLiveSession`) e no stream: cada evento leva a audiência, e o hub só o entrega a ela (`TestPlayersSeeOnlyTheirOwnVitals`). As notas do mestre nunca saem pela sessão ao vivo (`TestRN11_LiveSessionNeverCarriesMasterNotes`).
@@ -244,7 +244,7 @@ Quase tudo é autoatendimento, dentro do app e logado. A sessão já prova quem 
 Jogador e mestre têm tratamentos diferentes (RN-16).
 
 - **Jogador:** a exclusão é imediata e definitiva. Conta, handles, senha, sessões e participação nas campanhas somem na hora. Os personagens dele **não são apagados**: ficam vinculados ao mestre da campanha, sem o dono original (ver a tensão com a identidade, abaixo).
-- **Mestre:** a conta entra em espera. As sessões são revogadas na hora — ninguém consegue mais usar a conta —, mas a linha da conta em si (o par `issuer`/`subject` do provedor de login, ver [Modelo de dados](../data.md)) só é apagada de vez depois de **30 dias**. Se o mestre entrar de novo com a **mesma conta Google** dentro desses 30 dias, a conta é restaurada por completo: nada foi perdido. Passados os 30 dias sem esse retorno, tudo é apagado: a conta e as campanhas dele (mapas, NPCs, notas, eventos, XP).
+- **Mestre:** a conta entra em espera. As sessões são revogadas na hora — ninguém consegue mais usar a conta —, mas a linha da conta em si (o par `issuer`/`subject` do provedor de login, ver [Modelo de dados](../data/README.md)) só é apagada de vez depois de **30 dias**. Se o mestre entrar de novo com a **mesma conta Google** dentro desses 30 dias, a conta é restaurada por completo: nada foi perdido. Passados os 30 dias sem esse retorno, tudo é apagado: a conta e as campanhas dele (mapas, NPCs, notas, eventos, XP).
 - **Em qualquer exclusão**, o que resta (contas de mesa órfãs, backups, logs, imagens) some por completo até 30 dias depois da exclusão de fato.
 - **Inatividade:** cada pessoa escolhe no próprio perfil quanto tempo de inatividade leva à exclusão automática da conta; o padrão é 1 ano.
 
@@ -270,7 +270,7 @@ flowchart TD
     M --> K
 ```
 
-Os personagens já seguem esse desenho no banco. E um personagem de jogador que fica sem jogador e sem campanha — o jogador excluiu a conta e a campanha foi apagada, em qualquer ordem — é apagado pelo TTL do banco em até 1 dia: ninguém mais o alcança, e guardar o texto livre dele não teria finalidade (ver [Modelo de dados](../data.md#tables-by-module)).
+Os personagens já seguem esse desenho no banco. E um personagem de jogador que fica sem jogador e sem campanha — o jogador excluiu a conta e a campanha foi apagada, em qualquer ordem — é apagado pelo TTL do banco em até 1 dia: ninguém mais o alcança, e guardar o texto livre dele não teria finalidade (ver [Modelo de dados](../data/README.md#modules-and-tables)).
 
 Por isso os eventos da sessão guardam só IDs: quando a dona dos dados some, o evento fica anônimo sem ninguém editar o histórico. A espera de 30 dias do mestre usa uma marca de "apagar em" na conta, conferida no login, em vez da exclusão imediata da linha.
 
@@ -300,12 +300,12 @@ Os dados ficam em São Paulo (`southamerica-east1`). O acesso de um fornecedor d
 | GitHub Pages | Hospedagem do build Angular do app antigo (descontinuado; o código dele não está mais no repositório). A fazer: o dono do projeto desliga nas configurações do repositório | IP de quem visita | **Lacuna temporária.** Acaba quando o dono do projeto desligar |
 | Google (API do Gemini) | Gera as imagens que o mestre pede (MR-039, RN-28, ADR-0019), com uma chave do AI Studio, pelo servidor | O texto que o mestre escreve, o estilo, as imagens da galeria que ele escolhe como referência e, num ajuste, a imagem anterior. Nunca nome de pessoa, e-mail nem ficha. O Google pode guardar os dados por pouco tempo, ou em cache, **em qualquer país**: conta como transferência internacional | [Termos dos serviços pagos da API do Gemini](https://ai.google.dev/gemini-api/terms) (Paid Services; nenhum modelo de imagem tem nível gratuito). O aviso de privacidade nomeia o Google como operador e declara a transferência. **A definir:** o mecanismo de transferência (Resolução CD/ANPD nº 19/2024) |
 | Cloudflare Workers AI | Jev, depois do MVP | Só contexto de jogo, sem dado pessoal | **A definir** antes do Jev |
-| ImprovMX | Encaminha o e-mail enviado a `@meurpg.app` (o contato `privacidade@meurpg.app`) para quem o responde ([Operações](../operations.md#dns-certificates-and-e-mail)) | A mensagem em trânsito: o endereço e o nome de quem envia, o assunto e o texto. O log dele guarda remetente, destinatário e assunto por 7 dias, nunca o texto ([ImprovMX, "What do we log?"](https://improvmx.com/guides/what-do-we-log/)). Ele não diz onde ficam os servidores: conta como transferência internacional | **A definir:** o contrato e o mecanismo de transferência (Resolução CD/ANPD nº 19/2024). O aviso de privacidade o nomeia como operador |
+| ImprovMX | Encaminha o e-mail enviado a `@meurpg.app` (o contato `privacidade@meurpg.app`) para quem o responde ([Operações](../operations/runbook.md#dns-certificates-and-e-mail)) | A mensagem em trânsito: o endereço e o nome de quem envia, o assunto e o texto. O log dele guarda remetente, destinatário e assunto por 7 dias, nunca o texto ([ImprovMX, "What do we log?"](https://improvmx.com/guides/what-do-we-log/)). Ele não diz onde ficam os servidores: conta como transferência internacional | **A definir:** o contrato e o mecanismo de transferência (Resolução CD/ANPD nº 19/2024). O aviso de privacidade o nomeia como operador |
 | Have I Been Pwned | Checa se a senha nova já vazou | 5 caracteres do hash da senha, saindo do servidor. Não identifica ninguém | Não é operador |
 
 ### O banco do app antigo
 
-O CockroachDB do app antigo (usado pelo NestJS) pode ser apagado. Não é o mesmo banco do sistema novo — é um cluster à parte, que só precisa ser descomissionado. Antes de apagar, uma tarefa única importa só os personagens de lá para o banco novo (ver [Modelo de dados](../data.md)); o resto (campanhas, mapas e sessões do app antigo, se existirem) não é importado. Depois de descomissionado, os backups dele somem no prazo do provedor (30 dias). Isso é uma tarefa do [roadmap](../roadmap.md) (Etapa 11); falta só a data.
+O CockroachDB do app antigo (usado pelo NestJS) pode ser apagado. Não é o mesmo banco do sistema novo — é um cluster à parte, que só precisa ser descomissionado. Antes de apagar, uma tarefa única importa só os personagens de lá para o banco novo (ver [Modelo de dados](../data/README.md)); o resto (campanhas, mapas e sessões do app antigo, se existirem) não é importado. Depois de descomissionado, os backups dele somem no prazo do provedor (30 dias). Isso é uma tarefa do [roadmap](../roadmap.md) (Etapa 11); falta só a data.
 
 ### O que as imagens geradas mandam ao Google (MR-039, RN-28)
 
@@ -327,7 +327,7 @@ O CockroachDB do app antigo (usado pelo NestJS) pode ser apagado. Não é o mesm
 
 ### Logs no ELK
 
-O ELK que guarda os logs da API (Elasticsearch no ambiente de ensaio e, se vier, em produção; ver [Operação](../operations.md#logs-in-elk)) apaga cada linha com 14 dias, pela política ILM `meurpg-logs`, dentro do teto de 30 dias dos logs. Quem lê: só a equipe de operação, por `meurpg_reader` (só leitura de `logs-meurpg-*`) ou pelo Kibana com login; o log tem `user_id` e `campaign_id`, que são identificadores pseudônimos, e nenhum e-mail, nome ou texto livre (o contrato de logs os proíbe). Uma exclusão de conta não apaga linhas já escritas: elas somem sozinhas em até 14 dias. Rodando por nós, o ELK não é um operador; se a produção usar o Elastic Cloud, ele entra em "Operadores e onde os dados ficam".
+O ELK que guarda os logs da API (Elasticsearch no ambiente de ensaio e, se vier, em produção; ver [Operação](../operations/logs.md#locally-with-elk)) apaga cada linha com 14 dias, pela política ILM `meurpg-logs`, dentro do teto de 30 dias dos logs. Quem lê: só a equipe de operação, por `meurpg_reader` (só leitura de `logs-meurpg-*`) ou pelo Kibana com login; o log tem `user_id` e `campaign_id`, que são identificadores pseudônimos, e nenhum e-mail, nome ou texto livre (o contrato de logs os proíbe). Uma exclusão de conta não apaga linhas já escritas: elas somem sozinhas em até 14 dias. Rodando por nós, o ELK não é um operador; se a produção usar o Elastic Cloud, ele entra em "Operadores e onde os dados ficam".
 
 ## Cookies e navegador
 
@@ -372,7 +372,7 @@ Todo PR responde. Um "sim" pede uma seção curta de riscos e medidas no PR. Doi
 
 - ImprovMX (o encaminhamento de `privacidade@meurpg.app`): o contrato e o mecanismo de transferência, e por quanto tempo as mensagens ficam nas caixas de e-mail de quem responde.
 - Contrato LGPD com a Cockroach Labs; contratos para Render, GitHub Pages e Cloudflare enquanto forem usados.
-- Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual, o legado Unlimited, fica; trocar de plano perde o Unlimited, e está em avaliação se vale migrar para o Cloud SQL ou outro produto (ver [Operação](../operations.md)).
+- Conferir no console do CockroachDB Cloud que os backups ficam em São Paulo e são guardados por no máximo 30 dias. O plano atual, o legado Unlimited, fica; trocar de plano perde o Unlimited, e está em avaliação se vale migrar para o Cloud SQL ou outro produto (ver [Operação](../operations/README.md)).
 - Antes de ler PDFs de regras com IA (MR-027, depois do MVP): escolher o operador, dizer o que sai do servidor, e tratar o direito autoral de livros oficiais (o resultado só aparece para a mesa). O PDF não fica guardado: só existe enquanto é processado e é apagado logo depois, com um prazo curto (TTL) no arquivo guardado para garantir o apagamento mesmo se o processamento falhar. Quando a MR-027 for construída, o PDF entra no inventário acima com esse prazo.
 - O mecanismo de transferência do Google (API do Gemini), Resolução CD/ANPD nº 19/2024 (ver as linhas do Gemini acima).
 - Revisão por advogado do aviso de privacidade, dos termos de uso e do tratamento do texto livre que fica com o mestre. Até lá, as duas páginas dizem que não passaram por revisão.
@@ -388,8 +388,8 @@ A exclusão da conta e a cópia dos dados são pedidas por e-mail por enquanto, 
 
 ## Ver também
 
-- [Arquitetura](../architecture.md): módulos, login e onde cada peça roda.
-- [Modelo de dados](../data.md): as tabelas citadas aqui.
-- [Operação](../operations.md): segredos, logs e alertas.
+- [Arquitetura](../architecture/README.md): módulos, login e onde cada peça roda.
+- [Modelo de dados](../data/README.md): as tabelas citadas aqui.
+- [Operação](../operations/README.md): segredos, logs e alertas.
 - [Regras de negócio](produto/regras.md): RN-10 e RN-11, que também protegem o que o jogador vê; RN-16, exclusão de conta e inatividade; RN-17, login do jogador sem Google.
 - `docs/adr/` (repositório privado): ADR-0002 (sessão), ADR-0009 (login do jogador sem Google), ADR-0010 (privacidade), ADR-0011 (papéis por campanha).

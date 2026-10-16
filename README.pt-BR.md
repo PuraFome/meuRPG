@@ -17,8 +17,8 @@
   <a href="backend/go.mod"><img alt="Go" src="https://img.shields.io/github/go-mod/go-version/PuraFome/meuRPG?filename=backend%2Fgo.mod&amp;logo=go&amp;logoColor=white&amp;label=Go"></a>
   <a href="web/package.json"><img alt="Angular" src="https://img.shields.io/github/package-json/dependency-version/PuraFome/meuRPG/%40angular%2Fcore?filename=web%2Fpackage.json&amp;logo=angular&amp;logoColor=white&amp;label=Angular&amp;color=DD0031"></a>
   <a href="proto/"><img alt="API: Connect + Protobuf" src="https://img.shields.io/badge/API-Connect%20%2B%20Protobuf-4B32C3"></a>
-  <a href="docs/data.md"><img alt="Banco: CockroachDB" src="https://img.shields.io/badge/banco-CockroachDB-6933FF?logo=cockroachlabs&amp;logoColor=white"></a>
-  <a href="docs/operations.md"><img alt="Infra: Cloud Run em São Paulo" src="https://img.shields.io/badge/infra-Cloud%20Run%20%C2%B7%20S%C3%A3o%20Paulo-4285F4?logo=googlecloud&amp;logoColor=white"></a>
+  <a href="docs/data/README.md"><img alt="Banco: CockroachDB" src="https://img.shields.io/badge/banco-CockroachDB-6933FF?logo=cockroachlabs&amp;logoColor=white"></a>
+  <a href="docs/operations/README.md"><img alt="Infra: Cloud Run em São Paulo" src="https://img.shields.io/badge/infra-Cloud%20Run%20%C2%B7%20S%C3%A3o%20Paulo-4285F4?logo=googlecloud&amp;logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -66,7 +66,7 @@ O MeuRPG é o companheiro de uma mesa de D&D 5e. O mestre prepara o mundo e cond
 
 ## O visual: a ficha de papel
 
-As telas imitam a ficha oficial de D&D 5e: os medalhões de habilidade, o escudo da CA, os pontos de proficiência. O número de jogo é a coisa mais visível da tela. O tema claro e o escuro seguem o sistema operacional, com contraste AA nos dois, e cada tela funciona no celular, na mesa de jogo. Os princípios, os tokens e como uma tela é desenhada e revisada estão em [Design](docs/design.md) (em inglês).
+As telas imitam a ficha oficial de D&D 5e: os medalhões de habilidade, o escudo da CA, os pontos de proficiência. O número de jogo é a coisa mais visível da tela. O tema claro e o escuro seguem o sistema operacional, com contraste AA nos dois, e cada tela funciona no celular, na mesa de jogo. Os princípios, os tokens e como uma tela é desenhada e revisada estão em [Design](docs/design/README.md) (em inglês).
 
 <p align="center">
   <img alt="A campanha Mirathel no celular, pelo mestre, no tema claro: a sessão em andamento, o Pensantus travado e os NPCs" src="docs/img/campanha-celular-claro.webp" width="300">
@@ -81,12 +81,12 @@ As telas imitam a ficha oficial de D&D 5e: os medalhões de habilidade, o escudo
 | Backend | Go, num monólito modular (`identity`, `authz`, `campaigns`, `rules`, `characters`, `play`, `maps` e outros), que também é o BFF do app |
 | API | Protobuf + [Connect](https://connectrpc.com), em `proto/`; o cliente TypeScript do `web/` é gerado dos mesmos `.proto` |
 | Banco | CockroachDB, com as queries no sqlc e as migrations no goose |
-| Web | Angular 21 (standalone, zoneless) com Angular Material, no visual da [ficha de papel](docs/design.md) |
+| Web | Angular 21 (standalone, zoneless) com Angular Material, no visual da [ficha de papel](docs/design/README.md) |
 | Login | OpenID Connect com PKCE; o navegador só recebe um cookie `__Host-` com uma sessão opaca |
 | Regras | Um motor puro sobre o SRD 5.1, com os efeitos em JSON e as fórmulas num sandbox |
 | Infra | Cloud Run e CockroachDB no Google Cloud, em São Paulo |
 
-O desenho completo, com os diagramas, está em [Arquitetura](docs/architecture.md) (em inglês).
+O desenho completo, com os diagramas, está em [Arquitetura](docs/architecture/README.md) (em inglês).
 
 ## Como rodar
 
@@ -99,7 +99,7 @@ make e2e     # testes pela tela (Playwright) e de acessibilidade (axe)
 make down    # derruba tudo
 ```
 
-No Mac, dá para rodar tudo sem Docker: `make db-native-start` e depois `make up LOCAL_STACK=native` (ver [All native](CONTRIBUTING.md#everything-native-mac-optional)).
+No Mac, dá para rodar tudo sem Docker: `make db-native-start` e depois `make up LOCAL_STACK=native` (ver [All native](docs/development.md#everything-native-mac-optional)).
 
 Abra `http://localhost:8080` no Chrome e clique em "Entrar": o login vai para o **devidp**, um provedor de teste que só existe na sua máquina e no CI, e um clique em "Mestre Teste" volta logado. O Safari não aceita cookie `Secure` em `http://localhost`.
 
@@ -127,7 +127,7 @@ Todos os comandos estão em `make help` e no [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Qualidade
 
-Todo código entra por PR, com o CI verde. O que cada job confere está em [CONTRIBUTING](CONTRIBUTING.md#what-ci-checks).
+Todo código entra por PR, com o CI verde. O que cada job confere está em [CONTRIBUTING](docs/ci.md#workflows).
 
 - **Cada critério de aceite vira um teste:** `go test` para a regra que roda no servidor, Playwright para o que aparece na tela, marcado com a história (`@MR-001`).
 - **Acessibilidade:** o [axe](https://github.com/dequelabs/axe-core) passa nas telas principais, no tema claro e no escuro, no computador e no celular, e o CI falha em qualquer violação séria ou crítica das regras WCAG 2.1 A e AA.
@@ -147,7 +147,7 @@ Todo código entra por PR, com o CI verde. O que cada job confere está em [CONT
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Como rodar, testar e abrir um PR (em inglês) |
 | [Visão](docs/pt-BR/produto/visao.md), [Histórias](docs/pt-BR/produto/historias.md), [Regras](docs/pt-BR/produto/regras.md), [Glossário](docs/pt-BR/produto/glossario.md) | O que o app faz, para quem, e como o jogo se comporta nele |
 | [Privacidade](docs/pt-BR/privacidade.md) | Os dados pessoais que guardamos |
-| [Roadmap](docs/roadmap.md), [Arquitetura](docs/architecture.md), [Dados](docs/data.md), [Design](docs/design.md), [Operação](docs/operations.md) | Documentação de engenharia, em inglês |
+| [Roadmap](docs/roadmap.md), [Arquitetura](docs/architecture/README.md), [Dados](docs/data/README.md), [Design](docs/design/README.md), [Operação](docs/operations/README.md) | Documentação de engenharia, em inglês |
 
 ## Conteúdo de regras e licença
 
@@ -159,7 +159,7 @@ As regras vêm do System Reference Document 5.1 (SRD 5.1), sob a licença Creati
 - Três tabelas vêm do SRD 5.2.1 (as regras de 2024, também CC BY 4.0): os jeitos de fazer habilidades, o orçamento de XP dos encontros e os valores dos itens mágicos. O app rotula cada uma "SRD 5.2.1 (regras de 2024)", e o NOTICE traz a atribuição delas.
 - Os nomes em português e os efeitos estruturados são nossos. Os textos em português das magias e dos itens mágicos são tradução nossa do inglês do SRD 5.1, que continua a um botão de distância (“Ver em inglês”).
 - Nenhum texto de livro fora do SRD entra no repositório: o que a mesa usar de outros livros ela cadastra com as próprias palavras.
-- Como o motor funciona: [Architecture → rules module](docs/architecture.md#rules-module-rules-as-data). Como atualizar o SRD: [CONTRIBUTING.md](CONTRIBUTING.md#rules-content-srd).
+- Como o motor funciona: [Architecture → rules module](docs/architecture/rules.md). Como atualizar o SRD: [CONTRIBUTING.md](docs/rules-content.md#rules-content-srd).
 
 As fontes (Alegreya e Alegreya Sans, OFL 1.1) e os ícones (Material Symbols, Apache 2.0) também estão no [NOTICE](NOTICE), com as licenças em [`third_party/licenses/`](third_party/licenses/).
 

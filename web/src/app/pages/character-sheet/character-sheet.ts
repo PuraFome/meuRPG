@@ -76,7 +76,7 @@ type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'
 
 /**
  * "/campaigns/:id/characters/:characterId" (MR-004): the sheet as the paper
- * sheet (docs/design.md, direction A). The header (name, state, identity
+ * sheet (docs/design/README.md, direction A). The header (name, state, identity
  * fields and the viewer's actions), then the notices (approval, rules
  * issues), then the sheet: four columns from 1200px (ability medallions;
  * proficiencies; combat, spells and equipment; features and story), the
