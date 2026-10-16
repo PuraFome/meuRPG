@@ -178,28 +178,46 @@ export function wildActionLine(
   if (!feature?.action || inForm) {
     return null;
   }
-  const n = feature.usesLeft;
-  const uses = resource
-    ? isUnlimited(resource.total)
-      ? 'usos ilimitados'
-      : `restam ${n} de ${resource.total} ${resource.total === 1 ? 'uso' : 'usos'}`
-    : `restam ${n} ${n === 1 ? 'uso' : 'usos'}`;
-  const back =
-    resource?.recharge === 'long_rest'
-      ? 'volta no descanso longo'
-      : resource?.recharge === 'dawn'
-        ? 'volta ao amanhecer'
-        : 'volta no descanso curto ou longo';
-  const reason = feature.enabled
-    ? ''
-    : feature.reason?.code === DisabledReasonCode.NO_USES
-      ? 'Sem usos'
-      : feature.reason?.code === DisabledReasonCode.ACTION_USED
-        ? 'Sem ação disponível'
-        : reasonText(feature.reason);
   return {
     key: feature.action.key,
-    detail: tight(joinDots(['Vire uma fera', uses, back])),
-    reason,
+    detail: tight(
+      joinDots(['Vire uma fera', wildUses(feature.usesLeft, resource), wildRecharge(resource)]),
+    ),
+    reason: wildReason(feature),
   };
+}
+
+/** "restam 2 de 2 usos", "usos ilimitados", or the bare count while the resource is not read. */
+function wildUses(left: number, resource: ResourceUsageVm | undefined): string {
+  if (!resource) {
+    return `restam ${left} ${left === 1 ? 'uso' : 'usos'}`;
+  }
+  return isUnlimited(resource.total)
+    ? 'usos ilimitados'
+    : `restam ${left} de ${resource.total} ${resource.total === 1 ? 'uso' : 'usos'}`;
+}
+
+const WILD_RECHARGE: Readonly<Record<string, string>> = {
+  long_rest: 'volta no descanso longo',
+  dawn: 'volta ao amanhecer',
+};
+
+/** When the uses come back; the short or long rest unless the resource says otherwise. */
+function wildRecharge(resource: ResourceUsageVm | undefined): string {
+  return WILD_RECHARGE[resource?.recharge ?? ''] ?? 'volta no descanso curto ou longo';
+}
+
+/** Why Wild Shape cannot be used now; empty while it can. */
+function wildReason(feature: ActionOption): string {
+  if (feature.enabled) {
+    return '';
+  }
+  switch (feature.reason?.code) {
+    case DisabledReasonCode.NO_USES:
+      return 'Sem usos';
+    case DisabledReasonCode.ACTION_USED:
+      return 'Sem ação disponível';
+    default:
+      return reasonText(feature.reason);
+  }
 }
