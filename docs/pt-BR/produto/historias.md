@@ -1063,8 +1063,8 @@ A história cobre classes **e** subclasses próprias, raças e sub-raças, antec
 - **Testes (navegador).** `e2e/tests/images.spec.ts` (`@MR-039 @RN-28 @RN-10`: gerar a arte da cena de um mapa, ajustar, mostrar, e o jogador só a vê depois; o mapa com textura vira a imagem do mapa e as camadas ficam; só os NPCs que os jogadores veem; o limite do mês; geração desligada; o seletor da sessão marca o mapa inteiro), mais o Vitest `imagegen-form`, `imagegen-errors`, `imagegen-run`, `image-generate-dialog` e `image-picker-dialog`.
 
 #### Relacionadas
-- Usa a API do Gemini (o modelo de imagem, o "Nano Banana"), com uma chave do Google AI Studio, pelo servidor, atrás de uma interface pequena (ADR-0019, que substitui a ADR-0014, que usava o Vertex AI). O modelo é configurável: `gemini-3.1-flash-image` por padrão. O operador novo, o Google (API do Gemini), entra em [Privacidade](../privacidade.md#o-que-as-imagens-geradas-mandam-ao-google-mr-039-rn-28); a chave é um segredo, e o custo e o limite ficam em [Operação](../../operations.md#generated-images-the-gemini-api).
-- Em aberto: o número do limite por campanha por mês (proposta: 20) sai de vez depois de medir o custo com a chave de verdade (US$ 0,067 por imagem de 1K no `gemini-3.1-flash-image`).
+- Usa a API do Gemini (o modelo de imagem, o "Nano Banana"), com uma chave do Google AI Studio, pelo servidor, atrás de uma interface pequena (ADR-0019, que substitui a ADR-0014, que usava o Vertex AI). O modelo é configurável: `gemini-nano-banana-2.1` (Nano Banana 2.1) por padrão. O operador novo, o Google (API do Gemini), entra em [Privacidade](../privacidade.md#o-que-as-imagens-geradas-mandam-ao-google-mr-039-rn-28); a chave é um segredo, e o custo e o limite ficam em [Operação](../../operations.md#generated-images-the-gemini-api).
+- Em aberto: o número do limite por campanha por mês (proposta: 20) sai de vez depois de medir o custo com a chave de verdade (US$ 0,0336 por imagem de 1K no `gemini-nano-banana-2.1`).
 
 ### MR-040: Subir de nível pela ficha
 

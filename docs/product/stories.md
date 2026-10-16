@@ -1062,8 +1062,8 @@ The story covers own classes **and** subclasses, races and subraces, backgrounds
 - **Tests (browser).** `e2e/tests/images.spec.ts` (`@MR-039 @RN-28 @RN-10`: generate the scene art of a map, adjust, show, and the player sees it only afterwards; the textured map becomes the map image and the layers stay; only the NPCs the players see; the month limit; generation off; the session picker marks the whole map), plus Vitest `imagegen-form`, `imagegen-errors`, `imagegen-run`, `image-generate-dialog` and `image-picker-dialog`.
 
 #### Related
-- Uses the Gemini API (the image model, "Nano Banana"), with a Google AI Studio key, from the server, behind a small interface (ADR-0019, which replaces ADR-0014, which used Vertex AI). The model is configurable: `gemini-3.1-flash-image` by default. The new processor, Google (Gemini API), is in [Privacy](../privacy.md#what-generated-images-send-to-google-mr-039-rn-28); the key is a secret, and cost and limit are in [Operations](../operations.md#generated-images-the-gemini-api).
-- Open: the per-campaign monthly limit (proposal: 20) is settled for good after measuring the cost with the real key (US$ 0.067 per 1K image on `gemini-3.1-flash-image`).
+- Uses the Gemini API (the image model, "Nano Banana"), with a Google AI Studio key, from the server, behind a small interface (ADR-0019, which replaces ADR-0014, which used Vertex AI). The model is configurable: `gemini-nano-banana-2.1` (Nano Banana 2.1) by default. The new processor, Google (Gemini API), is in [Privacy](../privacy.md#what-generated-images-send-to-google-mr-039-rn-28); the key is a secret, and cost and limit are in [Operations](../operations.md#generated-images-the-gemini-api).
+- Open: the per-campaign monthly limit (proposal: 20) is settled for good after measuring the cost with the real key (US$ 0.0336 per 1K image on `gemini-nano-banana-2.1`).
 
 ### MR-040: Level up from the sheet
 

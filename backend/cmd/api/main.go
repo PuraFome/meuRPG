@@ -17,7 +17,7 @@
 //	BLOB_DIR            directory for uploaded images (optional; never with BLOB_BUCKET, never on Cloud Run)
 //	BLOB_BUCKET         Cloud Storage bucket for uploaded images (optional; the store on Cloud Run)
 //	GEMINI_API_KEY      key of the Gemini API: turns image generation on (optional, secret)
-//	GEMINI_IMAGE_MODEL  the image model (default gemini-3.1-flash-image)
+//	GEMINI_IMAGE_MODEL  the image model (default gemini-nano-banana-2.1)
 //	IMAGE_GENERATOR     "fake" uses the deterministic fake generator, never on Cloud Run (optional)
 //	IMAGE_MONTHLY_LIMIT images a campaign may generate per month (default 20)
 //	IMAGE_DAILY_LIMIT   images the whole server may generate per day (default 100)

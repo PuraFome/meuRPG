@@ -189,7 +189,7 @@ Image generation (MR-039, RN-28) calls the Gemini API. Without a key, it is off 
 | Variable | Required | What it is |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | No | The Google AI Studio key. **A secret:** it never goes to the repository, a test, the log or an error message (the backend shows it as `[REDACTED]`). Without it, the startup log says generation is off and the calls answer `failed_precondition` with the reason `OFF`. |
-| `GEMINI_IMAGE_MODEL` | No | The model; default `gemini-3.1-flash-image`. |
+| `GEMINI_IMAGE_MODEL` | No | The model; default `gemini-nano-banana-2.1`. |
 | `IMAGE_GENERATOR` | No | `fake` uses the fake generator (`backend/internal/maps/images/gen`): no key and no network, it returns a deterministic PNG of the requested aspect ratio. It is what `make up` (Docker and native) uses. A `[recusa]`, `[vazio]`, `[erro]` or `[lento]` in the request text makes the fake refuse, return no image, fail or take long. The server refuses to start with `fake` on Cloud Run. |
 | `IMAGE_MONTHLY_LIMIT` | No | Images per campaign per month; default 20 (see [Operations](docs/operations.md#generated-images-the-gemini-api)). |
 | `IMAGE_DAILY_LIMIT` | No | Images for the whole server per Brasília day; default 100. It is the ceiling of the Gemini account (see [Operations](docs/operations.md#abuse-limits)). |
