@@ -63,6 +63,7 @@ import {
   toggleAlsoFind,
   trapErrors,
 } from './trap-draft';
+import { alsoKeyMove, changeAt, severityLine } from './trap-edits';
 import { PointFoot } from './point-foot';
 import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
@@ -161,16 +162,10 @@ export class TrapPointPanel {
   );
   protected readonly saved = computed(() => this.point().trap !== undefined);
   protected readonly saveSeverity = computed(() =>
-    this.severities()
-      .map((s) => `${s.namePt.toLocaleLowerCase('pt-BR')} ${s.saveDcMin} a ${s.saveDcMax}`)
-      .join(' · '),
+    severityLine(this.severities(), (s) => `${s.saveDcMin} a ${s.saveDcMax}`),
   );
   protected readonly attackSeverity = computed(() =>
-    this.severities()
-      .map(
-        (s) => `${s.namePt.toLocaleLowerCase('pt-BR')} +${s.attackBonusMin} a +${s.attackBonusMax}`,
-      )
-      .join(' · '),
+    severityLine(this.severities(), (s) => `+${s.attackBonusMin} a +${s.attackBonusMax}`),
   );
   protected readonly areaWords = computed(() => {
     const n = this.draft().areaSize;
@@ -323,33 +318,19 @@ export class TrapPointPanel {
 
   /** The listbox's keys: the arrows move the cursor, Space or Enter picks, Escape closes and gives the focus back to the button. */
   protected onAlsoKey(event: KeyboardEvent): void {
-    const last = this.skills().length - 1;
-    switch (event.key) {
-      case 'ArrowDown':
-        this.alsoCursor.update((i) => Math.min(last, i + 1));
-        break;
-      case 'ArrowUp':
-        this.alsoCursor.update((i) => Math.max(0, i - 1));
-        break;
-      case 'Home':
-        this.alsoCursor.set(0);
-        break;
-      case 'End':
-        this.alsoCursor.set(Math.max(0, last));
-        break;
-      case ' ':
-      case 'Enter': {
-        const skill = this.skills()[this.alsoCursor()];
-        if (skill) {
-          this.toggleSkill(skill.key);
-        }
-        break;
+    const move = alsoKeyMove(event.key, this.alsoCursor(), this.skills().length - 1);
+    if (move === null) {
+      return;
+    }
+    if (move === 'pick') {
+      const skill = this.skills()[this.alsoCursor()];
+      if (skill) {
+        this.toggleSkill(skill.key);
       }
-      case 'Escape':
-        this.closeAlso();
-        break;
-      default:
-        return;
+    } else if (move === 'close') {
+      this.closeAlso();
+    } else {
+      this.alsoCursor.set(move);
     }
     event.preventDefault();
     event.stopPropagation();
@@ -388,7 +369,7 @@ export class TrapPointPanel {
   }
 
   protected patchDamage(i: number, change: Partial<DamageDraft>): void {
-    this.patch({ damage: this.draft().damage.map((d, n) => (n === i ? { ...d, ...change } : d)) });
+    this.patch({ damage: changeAt(this.draft().damage, i, change) });
   }
 
   protected addCondition(): void {
@@ -400,9 +381,7 @@ export class TrapPointPanel {
   }
 
   protected patchCondition(i: number, change: Partial<ConditionDraft>): void {
-    this.patch({
-      conditions: this.draft().conditions.map((c, n) => (n === i ? { ...c, ...change } : c)),
-    });
+    this.patch({ conditions: changeAt(this.draft().conditions, i, change) });
   }
 
   protected addSave(): void {
@@ -414,43 +393,34 @@ export class TrapPointPanel {
   }
 
   protected patchSave(change: Partial<SaveDraft>): void {
+    this.onSave((s) => ({ ...s, ...change }));
+  }
+
+  /** Changes the save when there is one; the parts of a failure only exist inside it. */
+  private onSave(edit: (s: SaveDraft) => SaveDraft): void {
     const s = this.draft().save;
     if (s) {
-      this.patch({ save: { ...s, ...change } });
+      this.patch({ save: edit(s) });
     }
   }
 
   protected addFailDamage(): void {
-    const s = this.draft().save;
-    if (s) {
-      this.patchSave({ failDamage: [...s.failDamage, newDamage()] });
-    }
+    this.patchSave({ failDamage: [...(this.draft().save?.failDamage ?? []), newDamage()] });
   }
 
   protected removeFailDamage(i: number): void {
-    const s = this.draft().save;
-    if (s) {
-      this.patchSave({ failDamage: s.failDamage.filter((_, n) => n !== i) });
-    }
+    this.onSave((s) => ({ ...s, failDamage: s.failDamage.filter((_, n) => n !== i) }));
   }
 
   protected patchFailDamage(i: number, change: Partial<DamageDraft>): void {
-    const s = this.draft().save;
-    if (s) {
-      this.patchSave({
-        failDamage: s.failDamage.map((d, n) => (n === i ? { ...d, ...change } : d)),
-      });
-    }
+    this.onSave((s) => ({ ...s, failDamage: changeAt(s.failDamage, i, change) }));
   }
 
   protected patchFailCondition(change: Partial<ConditionDraft> | null): void {
-    const s = this.draft().save;
-    if (s) {
-      this.patchSave({
-        failCondition:
-          change === null ? null : { ...(s.failCondition ?? newCondition()), ...change },
-      });
-    }
+    this.onSave((s) => ({
+      ...s,
+      failCondition: change === null ? null : { ...(s.failCondition ?? newCondition()), ...change },
+    }));
   }
 
   /** What a preset is, under its name: the fall of a pit, or the parts of its effect ("1 perfurante, 2d10 veneno · resistência de Constituição"). */
