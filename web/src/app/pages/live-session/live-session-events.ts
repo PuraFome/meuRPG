@@ -29,7 +29,7 @@ export class LiveSessionEvents {
       document: this.services.document,
       handlers: {
         ...this.sessionHandlers(campaignId, generation),
-        ...this.mapHandlers(),
+        ...this.mapHandlers(generation),
         ...this.combatHandlers(generation),
         ...this.tableHandlers(),
       },
@@ -90,7 +90,7 @@ export class LiveSessionEvents {
   }
 
   /** The map, the fog and the image on show. */
-  private mapHandlers() {
+  private mapHandlers(generation: number) {
     const { state, parts, loader, view } = this;
     return {
       onCurrentMap: (mapId) => this.showMap(mapId),
@@ -103,7 +103,7 @@ export class LiveSessionEvents {
           // In a combat the NPCs come with the combat, not with the map: a player whose sight changed (their own move, an
           // ally's, a light, a door) may now see one the last read left out. Only the combat read carries it (RN-10).
           if (!state.isMaster() && parts.combat.encounter() && !view.inTheatre()) {
-            void loader.loadCombat(state.generation);
+            void loader.loadCombat(generation);
           }
         }
       },
