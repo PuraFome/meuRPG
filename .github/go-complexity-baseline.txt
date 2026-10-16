@@ -14,7 +14,6 @@ cognitive internal/maps (*Service).AddSceneClue 18
 cognitive internal/maps (*Service).CreateDungeonMap 57
 cognitive internal/maps (*Service).CreateMap 34
 cognitive internal/maps (*Service).CreateMapPoint 34
-cognitive internal/maps (*Service).DeleteGalleryImage 20
 cognitive internal/maps (*Service).DeleteMap 25
 cognitive internal/maps (*Service).DeleteMapPoint 24
 cognitive internal/maps (*Service).DisarmTrap 19
@@ -41,7 +40,6 @@ cognitive internal/maps (*Service).SetMapFog 40
 cognitive internal/maps (*Service).SetMapGrid 73
 cognitive internal/maps (*Service).SetMapPointRevealed 16
 cognitive internal/maps (*Service).SetMapRevealed 16
-cognitive internal/maps (*Service).SetSceneImages 25
 cognitive internal/maps (*Service).UnmarkTreasureFound 19
 cognitive internal/maps (*Service).UpdateMap 72
 cognitive internal/maps (*Service).UpdateMapPoint 31
@@ -65,9 +63,6 @@ cognitive internal/maps (*Service).prepareMap 20
 cognitive internal/maps (*Service).publishTokenWritten 26
 cognitive internal/maps (*Service).reserve 76
 cognitive internal/maps (*Service).run 32
-cognitive internal/maps (*Service).serve 18
-cognitive internal/maps (*Service).serveTile 31
-cognitive internal/maps (*Service).storeImage 24
 cognitive internal/maps (*Service).updateVision 27
 cognitive internal/maps (*imagesPart).Stage 23
 cognitive internal/maps (*mapsPart).Apply 18
@@ -77,10 +72,6 @@ cognitive internal/maps (*mapsPart).stageMap 22
 cognitive internal/maps (*mapsPart).stagePoint 27
 cognitive internal/maps (*trapScene).sightOf 16
 cognitive internal/maps (campaignMaps).mapToProto 21
-cognitive internal/maps blackenBlocks 33
-cognitive internal/maps buildTiles 19
-cognitive internal/maps decodeWorkingCopy 25
-cognitive internal/maps renderTile 30
 cognitive internal/maps treasureDescription 25
 cognitive internal/maps/dungeonimg Render 29
 cognitive internal/maps/images readJPEGHeader 16
@@ -339,7 +330,6 @@ cyclomatic internal/maps (*Service).AddSceneAction 17
 cyclomatic internal/maps (*Service).CreateDungeonMap 33
 cyclomatic internal/maps (*Service).CreateMap 21
 cyclomatic internal/maps (*Service).CreateMapPoint 26
-cyclomatic internal/maps (*Service).DeleteGalleryImage 16
 cyclomatic internal/maps (*Service).DeleteMap 18
 cyclomatic internal/maps (*Service).DeleteMapPoint 17
 cyclomatic internal/maps (*Service).GenerateMapImage 16
@@ -374,14 +364,11 @@ cyclomatic internal/maps (*Service).playersSeenOf 20
 cyclomatic internal/maps (*Service).publishTokenWritten 21
 cyclomatic internal/maps (*Service).reserve 40
 cyclomatic internal/maps (*Service).run 30
-cyclomatic internal/maps (*Service).serveTile 27
 cyclomatic internal/maps (*Service).updateVision 23
 cyclomatic internal/maps (*imagesPart).Stage 20
 cyclomatic internal/maps (*mapsPart).stageMap 22
 cyclomatic internal/maps (*mapsPart).stagePoint 27
 cyclomatic internal/maps (campaignMaps).mapToProto 19
-cyclomatic internal/maps decodeWorkingCopy 27
-cyclomatic internal/maps renderTile 21
 cyclomatic internal/maps/dungeonimg Render 33
 cyclomatic internal/maps/images CropFit 19
 cyclomatic internal/maps/images Process 17
