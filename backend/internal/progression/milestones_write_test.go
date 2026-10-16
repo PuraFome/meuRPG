@@ -11,13 +11,13 @@ import (
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 )
 
-// Characterization of AddMilestone and MoveMilestone (MR-016, question 45):
+// What AddMilestone and MoveMilestone (MR-016, question 45) do:
 // each refusal with its exact words and in the order the checks run, each
 // failure with its one log line, and what each call writes (the rows of
 // planned_milestones, their positions, no session event). Every step is a
 // line of a golden file (testdata/milestones_add.golden.json and
-// testdata/milestones_move.golden.json); run with -update-history-golden to
-// write them again after a change of behavior that was meant.
+// testdata/milestones_move.golden.json); run with -update to write them
+// again after a change of behavior that was meant.
 
 // milestoneRowsShown is how many stored rows a step shows before it only
 // counts them (the list at the limit has 100).
@@ -25,12 +25,12 @@ const milestoneRowsShown = 6
 
 // milestoneSteps is the record of a test's steps, for its golden file.
 type milestoneSteps struct {
-	rig    *historyRig
+	rig    *faultRig
 	steps  map[string]any
 	events int // the campaign's session events when the steps began
 }
 
-func newMilestoneSteps(t *testing.T, rig *historyRig) *milestoneSteps {
+func newMilestoneSteps(t *testing.T, rig *faultRig) *milestoneSteps {
 	t.Helper()
 	return &milestoneSteps{rig: rig, steps: map[string]any{}, events: rig.campaignEvents(t)}
 }
@@ -57,7 +57,7 @@ func (s *milestoneSteps) record(t *testing.T, name string, answer any, err error
 	}
 	step := map[string]any{"rows": rows}
 	if err != nil {
-		step["refusal"] = historyRefusal(err)
+		step["refusal"] = refusal(err)
 	} else {
 		step["answer"] = answer
 	}
@@ -76,7 +76,7 @@ func (s *milestoneSteps) record(t *testing.T, name string, answer any, err error
 // (gaps kept), the limit and the retry that is still answered at it.
 func TestAddMilestoneStepByStep(t *testing.T) {
 	t.Parallel()
-	rig := newHistoryRig(t, milestones, 1)
+	rig := newFaultRig(t, milestones, 1)
 	ctx := t.Context()
 	outsider, pending := rig.h.newUser("Intruso"), rig.h.newUser("Pendente")
 	rig.h.joinPending(rig.master, rig.campaign, pending)
@@ -188,7 +188,7 @@ func TestAddMilestoneStepByStep(t *testing.T) {
 }
 
 // milestoneIDOf is the ID of the planned milestone with the text.
-func milestoneIDOf(t *testing.T, rig *historyRig, text string) string {
+func milestoneIDOf(t *testing.T, rig *faultRig, text string) string {
 	t.Helper()
 	var id string
 	if err := rig.h.pool.QueryRow(t.Context(), `SELECT id FROM planned_milestones WHERE campaign_id = $1 AND text = $2`, rig.campaign, text).Scan(&id); err != nil {
@@ -203,7 +203,7 @@ func milestoneIDOf(t *testing.T, rig *historyRig, text string) string {
 // positions renumbered from 0 when something moves.
 func TestMoveMilestoneStepByStep(t *testing.T) {
 	t.Parallel()
-	rig := newHistoryRig(t, milestones, 1)
+	rig := newFaultRig(t, milestones, 1)
 	ctx := t.Context()
 	outsider, pending := rig.h.newUser("Intruso"), rig.h.newUser("Pendente")
 	rig.h.joinPending(rig.master, rig.campaign, pending)
