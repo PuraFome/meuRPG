@@ -5,10 +5,10 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"uuid"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
-	"uuid"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -93,6 +93,7 @@ func TestSetMapGrid_Refusals(t *testing.T) {
 		{"a grid past the limit, on a map that does not exist", m, s.campaign, unknownMap, 11, 20, 0, notFound},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := tt.user.setGridWith(tt.campaign, tt.mapID, tt.columns, tt.factor)
 			if tt.want.message == "" {
 				wantCode(t, tt.name, err, tt.code)
