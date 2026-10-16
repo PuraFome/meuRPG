@@ -65,10 +65,8 @@ cognitive internal/play (*Service).AdjustCharacterVitals 53
 cognitive internal/play (*Service).AdjustCombatantHitPoints 32
 cognitive internal/play (*Service).AnswerRageEnd 24
 cognitive internal/play (*Service).AnswerReaction 30
-cognitive internal/play (*Service).AnswerRollModeRequest 20
 cognitive internal/play (*Service).ApplyPendingDamage 81
 cognitive internal/play (*Service).BeginCombat 29
-cognitive internal/play (*Service).CancelRollModeRequest 22
 cognitive internal/play (*Service).CastSpellOutsideCombat 43
 cognitive internal/play (*Service).CastSummon 79
 cognitive internal/play (*Service).ChangeLastingEffectDuration 33
@@ -85,14 +83,11 @@ cognitive internal/play (*Service).DiscardPendingDamage 25
 cognitive internal/play (*Service).EndActiveSpell 18
 cognitive internal/play (*Service).EndCombatEffect 20
 cognitive internal/play (*Service).EndConcentration 26
-cognitive internal/play (*Service).EndGameSession 22
 cognitive internal/play (*Service).EndLastingEffect 40
 cognitive internal/play (*Service).EndRage 27
 cognitive internal/play (*Service).GetCastOptions 24
-cognitive internal/play (*Service).GetCombatHighlights 18
 cognitive internal/play (*Service).GetMoveOptions 27
 cognitive internal/play (*Service).GetOutsideInspiration 30
-cognitive internal/play (*Service).GetSessionSummary 37
 cognitive internal/play (*Service).GetSurpriseSuggestion 28
 cognitive internal/play (*Service).GetTurnOptions 29
 cognitive internal/play (*Service).GiveBardicInspiration 24
@@ -110,12 +105,10 @@ cognitive internal/play (*Service).OpenScene 22
 cognitive internal/play (*Service).PlayPuzzleSequence 18
 cognitive internal/play (*Service).PreviewRevivify 25
 cognitive internal/play (*Service).PreviewSpellArea 23
-cognitive internal/play (*Service).PutOnStage 20
 cognitive internal/play (*Service).ReleaseGrapple 23
 cognitive internal/play (*Service).RemoveCombatant 48
 cognitive internal/play (*Service).RemoveEffectTarget 21
 cognitive internal/play (*Service).RequestGroupCheck 44
-cognitive internal/play (*Service).RequestRollMode 42
 cognitive internal/play (*Service).ReseedPuzzle 19
 cognitive internal/play (*Service).ResolveConcentrationSave 74
 cognitive internal/play (*Service).ResolveHiddenReveal 36
@@ -128,7 +121,6 @@ cognitive internal/play (*Service).RollDeathSave 45
 cognitive internal/play (*Service).RollEffectSave 98
 cognitive internal/play (*Service).RollGroupCheck 20
 cognitive internal/play (*Service).RollSceneCheck 87
-cognitive internal/play (*Service).SaveBattleEncounter 18
 cognitive internal/play (*Service).SearchForTraps 134
 cognitive internal/play (*Service).SetCombatantConditions 53
 cognitive internal/play (*Service).SetCombatantCover 17
@@ -137,15 +129,12 @@ cognitive internal/play (*Service).SetCombatantSide 21
 cognitive internal/play (*Service).SetInitiativeOrder 30
 cognitive internal/play (*Service).SetLastingEffectVisibility 23
 cognitive internal/play (*Service).SetRevivifyBlocked 20
-cognitive internal/play (*Service).SetShownImage 34
-cognitive internal/play (*Service).SetSpeaker 23
 cognitive internal/play (*Service).SetSurprised 25
 cognitive internal/play (*Service).ShowPuzzle 16
 cognitive internal/play (*Service).SpendHitDice 48
 cognitive internal/play (*Service).SpendMovement 44
 cognitive internal/play (*Service).StandUp 45
 cognitive internal/play (*Service).StartEncounter 59
-cognitive internal/play (*Service).StartGameSession 23
 cognitive internal/play (*Service).SubmitInitiative 61
 cognitive internal/play (*Service).TakeAction 161
 cognitive internal/play (*Service).TakeRest 55
@@ -154,7 +143,6 @@ cognitive internal/play (*Service).UpdatePuzzle 33
 cognitive internal/play (*Service).UseArcaneRecovery 46
 cognitive internal/play (*Service).UseLayOnHands 34
 cognitive internal/play (*Service).UseReaction 20
-cognitive internal/play (*Service).WatchGameSession 35
 cognitive internal/play (*Service).addExhaustionLevel 17
 cognitive internal/play (*Service).addParticipants 61
 cognitive internal/play (*Service).afterDamage 19
@@ -166,7 +154,6 @@ cognitive internal/play (*Service).answerRider 23
 cognitive internal/play (*Service).applyHintTry 27
 cognitive internal/play (*Service).applyMove 44
 cognitive internal/play (*Service).applyRider 22
-cognitive internal/play (*Service).baseCheckModeOf 28
 cognitive internal/play (*Service).buildGroupCheckView 48
 cognitive internal/play (*Service).castCharacterEffects 20
 cognitive internal/play (*Service).castHPSpell 77
@@ -179,7 +166,6 @@ cognitive internal/play (*Service).checkOnSolve 18
 cognitive internal/play (*Service).checkOnWrong 31
 cognitive internal/play (*Service).checkParts 16
 cognitive internal/play (*Service).checkTargets 32
-cognitive internal/play (*Service).chooseMode 19
 cognitive internal/play (*Service).contestOptionsFor 50
 cognitive internal/play (*Service).cuttingWindows 21
 cognitive internal/play (*Service).damageWindows 39
@@ -189,7 +175,6 @@ cognitive internal/play (*Service).dieToCombat 24
 cognitive internal/play (*Service).effectLogView 17
 cognitive internal/play (*Service).effectsToCharacters 31
 cognitive internal/play (*Service).effectsToCombat 30
-cognitive internal/play (*Service).encounterParty 39
 cognitive internal/play (*Service).endCharacterEffect 51
 cognitive internal/play (*Service).endEncounter 18
 cognitive internal/play (*Service).endOfTurn 18
@@ -235,7 +220,6 @@ cognitive internal/play (*Service).shapeChange 71
 cognitive internal/play (*Service).shapeUndo 22
 cognitive internal/play (*Service).sightChange 75
 cognitive internal/play (*Service).sightUndo 16
-cognitive internal/play (*Service).slowFall 23
 cognitive internal/play (*Service).spellAttack 16
 cognitive internal/play (*Service).spellSave 28
 cognitive internal/play (*Service).spellTargetsFor 24
@@ -249,9 +233,6 @@ cognitive internal/play (*Service).triggerGone 29
 cognitive internal/play (*Service).useShield 16
 cognitive internal/play (*Service).viewerOf 42
 cognitive internal/play (*castMeta).take 24
-cognitive internal/play (*combatTx).stamp 41
-cognitive internal/play (*combatTx).stampDoor 23
-cognitive internal/play (*combatTx).stampPlacedCast 22
 cognitive internal/play (*contestReader).contestView 46
 cognitive internal/play (*contestReader).helpViews 17
 cognitive internal/play (*contestReader).state 16
@@ -260,7 +241,6 @@ cognitive internal/play (*effectViewer).decorate 21
 cognitive internal/play (*effectViewer).turnClock 33
 cognitive internal/play (*encounterData).turnFor 22
 cognitive internal/play (*encounterData).view 24
-cognitive internal/play (*packagePart).stageOnWrong 21
 cognitive internal/play (*reactionFacts).cuttingWords 16
 cognitive internal/play (*windowView).counterspellPrompt 17
 cognitive internal/play (*windowView).morePrompt 39
@@ -273,7 +253,6 @@ cognitive internal/play playerRunProto 21
 cognitive internal/play resourceTargetsFor 17
 cognitive internal/play squareNear 16
 cognitive internal/play startTurn 17
-cognitive internal/play tallyHighlights 59
 cognitive internal/play/live (*Hub).Publish 17
 cyclomatic internal/identity (*Service).completeLogin 16
 cyclomatic internal/identity safeReturnTo 16
@@ -317,7 +296,6 @@ cyclomatic internal/play (*Service).AdjustCharacterVitals 34
 cyclomatic internal/play (*Service).AdjustCombatantHitPoints 29
 cyclomatic internal/play (*Service).AnswerRageEnd 16
 cyclomatic internal/play (*Service).AnswerReaction 26
-cyclomatic internal/play (*Service).AnswerRollModeRequest 17
 cyclomatic internal/play (*Service).ApplyPendingDamage 45
 cyclomatic internal/play (*Service).BeginCombat 17
 cyclomatic internal/play (*Service).CastSpellOutsideCombat 23
@@ -333,11 +311,9 @@ cyclomatic internal/play (*Service).EndCombatEffect 16
 cyclomatic internal/play (*Service).EndConcentration 18
 cyclomatic internal/play (*Service).EndLastingEffect 25
 cyclomatic internal/play (*Service).EndRage 18
-cyclomatic internal/play (*Service).GenerateEncounter 16
 cyclomatic internal/play (*Service).GetCastOptions 25
 cyclomatic internal/play (*Service).GetMoveOptions 25
 cyclomatic internal/play (*Service).GetOutsideInspiration 27
-cyclomatic internal/play (*Service).GetSessionSummary 26
 cyclomatic internal/play (*Service).GetSurpriseSuggestion 23
 cyclomatic internal/play (*Service).GetTurnOptions 27
 cyclomatic internal/play (*Service).GiveBardicInspiration 16
@@ -353,7 +329,6 @@ cyclomatic internal/play (*Service).PreviewRevivify 22
 cyclomatic internal/play (*Service).PreviewSpellArea 23
 cyclomatic internal/play (*Service).RemoveCombatant 27
 cyclomatic internal/play (*Service).RequestGroupCheck 28
-cyclomatic internal/play (*Service).RequestRollMode 29
 cyclomatic internal/play (*Service).ResolveConcentrationSave 39
 cyclomatic internal/play (*Service).ResolveHiddenReveal 22
 cyclomatic internal/play (*Service).ResolveHide 33
@@ -368,7 +343,6 @@ cyclomatic internal/play (*Service).SetCombatantConditions 33
 cyclomatic internal/play (*Service).SetCombatantSide 16
 cyclomatic internal/play (*Service).SetInitiativeOrder 18
 cyclomatic internal/play (*Service).SetLastingEffectVisibility 16
-cyclomatic internal/play (*Service).SetShownImage 25
 cyclomatic internal/play (*Service).SetSurprised 18
 cyclomatic internal/play (*Service).SpendHitDice 28
 cyclomatic internal/play (*Service).SpendMovement 26
@@ -382,7 +356,6 @@ cyclomatic internal/play (*Service).UpdatePuzzle 20
 cyclomatic internal/play (*Service).UseArcaneRecovery 28
 cyclomatic internal/play (*Service).UseLayOnHands 24
 cyclomatic internal/play (*Service).UseReaction 16
-cyclomatic internal/play (*Service).WatchGameSession 24
 cyclomatic internal/play (*Service).addParticipants 30
 cyclomatic internal/play (*Service).afterDamage 17
 cyclomatic internal/play (*Service).answerCounterspell 17
@@ -394,7 +367,6 @@ cyclomatic internal/play (*Service).answerRider 21
 cyclomatic internal/play (*Service).applyHintTry 28
 cyclomatic internal/play (*Service).applyMove 38
 cyclomatic internal/play (*Service).applyRider 16
-cyclomatic internal/play (*Service).baseCheckModeOf 24
 cyclomatic internal/play (*Service).buildGroupCheckView 36
 cyclomatic internal/play (*Service).castCharacterEffects 16
 cyclomatic internal/play (*Service).castHPSpell 35
@@ -405,13 +377,11 @@ cyclomatic internal/play (*Service).checkOnSolve 16
 cyclomatic internal/play (*Service).checkOnWrong 24
 cyclomatic internal/play (*Service).checkSources 18
 cyclomatic internal/play (*Service).checkTargets 25
-cyclomatic internal/play (*Service).chooseMode 18
 cyclomatic internal/play (*Service).contestOptionsFor 43
 cyclomatic internal/play (*Service).cuttingWindows 17
 cyclomatic internal/play (*Service).damageWindows 19
 cyclomatic internal/play (*Service).effectsToCharacters 20
 cyclomatic internal/play (*Service).effectsToCombat 20
-cyclomatic internal/play (*Service).encounterParty 24
 cyclomatic internal/play (*Service).endCharacterEffect 24
 cyclomatic internal/play (*Service).endEncounter 18
 cyclomatic internal/play (*Service).fallWindows 16
@@ -445,7 +415,6 @@ cyclomatic internal/play (*Service).searcherPlace 20
 cyclomatic internal/play (*Service).settleOnce 25
 cyclomatic internal/play (*Service).shapeChange 38
 cyclomatic internal/play (*Service).sightChange 40
-cyclomatic internal/play (*Service).slowFall 23
 cyclomatic internal/play (*Service).spellAttack 16
 cyclomatic internal/play (*Service).spellSave 25
 cyclomatic internal/play (*Service).spellTargetsFor 16
@@ -457,14 +426,10 @@ cyclomatic internal/play (*Service).triggerGone 27
 cyclomatic internal/play (*Service).useShield 18
 cyclomatic internal/play (*Service).viewerOf 28
 cyclomatic internal/play (*castMeta).take 18
-cyclomatic internal/play (*combatTx).stamp 29
-cyclomatic internal/play (*combatTx).stampPlacedCast 16
 cyclomatic internal/play (*contestReader).contestView 39
 cyclomatic internal/play (*effectViewer).card 28
 cyclomatic internal/play (*effectViewer).turnClock 18
 cyclomatic internal/play (*encounterData).view 17
-cyclomatic internal/play (*packagePart).stageOnSolve 16
-cyclomatic internal/play (*packagePart).stageOnWrong 20
 cyclomatic internal/play (*windowView).morePrompt 29
 cyclomatic internal/play (*windowView).waitOf 23
 cyclomatic internal/play (textContext).sentence 21
@@ -474,7 +439,6 @@ cyclomatic internal/play masterRunProto 17
 cyclomatic internal/play planArea 22
 cyclomatic internal/play playerRunProto 20
 cyclomatic internal/play resourceLogView 16
-cyclomatic internal/play tallyHighlights 38
 maintainability internal/maps (*Service).reserve 19
 maintainability internal/play (*Service).ApplyPendingDamage 16
 maintainability internal/play (*Service).Help 19
