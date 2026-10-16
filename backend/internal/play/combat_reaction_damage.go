@@ -225,7 +225,7 @@ func (s *Service) holdDamage(ctx context.Context, c *combatTx, m authz.Membershi
 }
 
 // replayedRoll is the roll a held damage kept, as the result of its dice.
-func replayedRoll(expr dice.Expr, r *heldRoll) dice.Result {
+func replayedRoll(expr dice.Expr, r *rolledDamage) dice.Result {
 	faces := make([]int, len(r.Faces))
 	for i, f := range r.Faces {
 		faces[i] = int(f)
@@ -285,7 +285,7 @@ func (s *Service) hellishWindow(ctx context.Context, c *combatTx, target playdb.
 // holdDataOf is what a held damage keeps: the roll, and for a damage with extras every part
 // as it rolled (the replay lands those very dice and spends the slot only then).
 func holdDataOf(roll dice.Result, faces []int32, pr *partsRoll) holdData {
-	data := holdData{Rolled: &heldRoll{Faces: faces, Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32), Physical: roll.Physical}}
+	data := holdData{Rolled: &rolledDamage{Faces: faces, Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32), Physical: roll.Physical}}
 	if pr != nil {
 		data.Parts, data.PartRolls = pr.parts, pr.rolls
 	}
