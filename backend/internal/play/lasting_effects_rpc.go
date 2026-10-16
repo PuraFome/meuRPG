@@ -269,8 +269,68 @@ func lastingDurationOf(ch *playv1.EffectDurationChoice, fallback durationSpec) (
 	return d, nil
 }
 
+// lastingInput is what AddLastingEffect reads from its request before it opens the transaction:
+// the key, the combat, and the combatants the effect is about.
+type lastingInput struct {
+	key         string
+	encounterID string
+	targetIDs   []string
+	casterID    string
+}
+
+// The limits of the saving throw's difficulty class the master may set.
+const (
+	minEffectDC = 1
+	maxEffectDC = 40
+)
+
+// parseLastingInput checks the request: the key, the combat, the targets and the caster, the
+// difficulty class and the label.
+func parseLastingInput(msg *playv1.AddLastingEffectRequest) (lastingInput, error) {
+	var in lastingInput
+	key, err := parseKey(msg.GetIdempotencyKey())
+	if err != nil {
+		return in, err
+	}
+	in.key = key
+	if in.encounterID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+		return in, err
+	}
+	if in.targetIDs, err = parseTargetIDs(msg.GetTargetIds()); err != nil {
+		return in, err
+	}
+	if raw := msg.GetCasterId(); raw != "" {
+		if in.casterID, err = parseCombatID(raw, "combatant"); err != nil {
+			return in, err
+		}
+	}
+	if dc := msg.SaveDc; dc != nil && (*dc < minEffectDC || *dc > maxEffectDC) {
+		return in, errInvalidEffect("save_dc must be 1 to 40")
+	}
+	return in, checkEffectLabel(msg.GetPlayerLabel())
+}
+
+// parseTargetIDs reads the targets: one to ten combatants, none twice.
+func parseTargetIDs(raw []string) ([]string, error) {
+	if n := len(raw); n < 1 || n > maxEffectTargets {
+		return nil, errInvalidEffect("target_ids must have 1 to 10 combatants")
+	}
+	var ids []string
+	for _, r := range raw {
+		id, err := parseCombatID(r, "combatant")
+		if err != nil {
+			return nil, err
+		}
+		if slices.Contains(ids, id) {
+			return nil, errInvalidEffect("target_ids repeats a combatant")
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 // AddLastingEffect implements playv1connect.LastingEffectServiceHandler.
-func (s *Service) AddLastingEffect( //nolint:gocognit,gocyclo // the steps of one transaction in one closure, like the other writes of the combat
+func (s *Service) AddLastingEffect(
 	ctx context.Context,
 	req *connect.Request[playv1.AddLastingEffectRequest],
 ) (*connect.Response[playv1.AddLastingEffectResponse], error) {
@@ -278,186 +338,19 @@ func (s *Service) AddLastingEffect( //nolint:gocognit,gocyclo // the steps of on
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
+	in, err := parseLastingInput(req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	bad := func(text string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(text)) }
-	if n := len(req.Msg.GetTargetIds()); n < 1 || n > maxEffectTargets {
-		return nil, bad("target_ids must have 1 to 10 combatants")
-	}
-	var targetIDs []string
-	for _, raw := range req.Msg.GetTargetIds() {
-		id, err := parseCombatID(raw, "combatant")
-		if err != nil {
-			return nil, err
-		}
-		if slices.Contains(targetIDs, id) {
-			return nil, bad("target_ids repeats a combatant")
-		}
-		targetIDs = append(targetIDs, id)
-	}
-	casterID := ""
-	if raw := req.Msg.GetCasterId(); raw != "" {
-		if casterID, err = parseCombatID(raw, "combatant"); err != nil {
-			return nil, err
-		}
-	}
-	if dc := req.Msg.SaveDc; dc != nil && (*dc < 1 || *dc > 40) {
-		return nil, bad("save_dc must be 1 to 40")
-	}
-	if utf8.RuneCountInString(req.Msg.GetPlayerLabel()) > maxEffectLabel {
-		return nil, bad("player_label must have at most 30 characters")
-	}
-	catalogKey := req.Msg.GetCatalogKey()
-
 	var made []playdb.CombatantState
 	var secret bool
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventLastingAdded, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: in.key, hash: idem.Hash(req.Msg), kind: eventLastingAdded, encounterID: in.encounterID}, func(c *combatTx) (any, error) {
 		made = nil
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v := viewerOf(m)
-		var targets []playdb.Combatant
-		for _, id := range targetIDs {
-			t, err := findCombatant(cs, id, v)
-			if err != nil {
-				return nil, err
-			}
-			targets = append(targets, t)
-		}
-		var caster *playdb.Combatant
-		if casterID != "" {
-			cb, err := findCombatant(cs, casterID, v)
-			if err != nil {
-				return nil, err
-			}
-			caster = &cb
-		}
-		content, err := s.contentOf(ctx, c)
+		rows, ev, err := s.addLastingEffectTx(ctx, c, m, in, req.Msg)
 		if err != nil {
 			return nil, err
 		}
-		spec := effectSpec{key: catalogKey, caster: caster, targets: targets, dc: req.Msg.SaveDc, audience: ""}
-		var spellOpts castOpts
-		fallback := durationSpec{Kind: rules.EffectDurationUntilDismissed}
-		switch {
-		case strings.HasPrefix(catalogKey, "condition:"):
-			info, ok := content.ConditionInfo(catalogKey)
-			if !ok || catalogKey == "condition:exhaustion" {
-				return nil, bad("catalog_key is not an effect the master may add")
-			}
-			spec.sourceKind, spec.conditions = "master", []string{catalogKey}
-			spec.audience = info.Visibility
-		case strings.HasPrefix(catalogKey, "spell:"):
-			def, ok := content.CombatSpellEffect(catalogKey)
-			if !ok {
-				return nil, bad("catalog_key is not an effect the master may add")
-			}
-			spec.sourceKind, spec.def, spec.concentration = "spell", def, def.Concentration && caster != nil
-			ability, err := s.abilityChoiceOf(ctx, c, catalogKey, req.Msg.GetAbilityKey())
-			if err != nil {
-				return nil, err
-			}
-			casterCharacter := ""
-			if caster != nil {
-				casterCharacter = caster.CharacterID
-			}
-			opts, err := s.castOptsOf(ctx, c, def, ability, casterCharacter)
-			if err != nil {
-				return nil, err
-			}
-			spellOpts = opts
-			if spec.modifiers, _, err = s.modifiersFor(ctx, c, def, "", opts); err != nil {
-				return nil, err
-			}
-			if r := content.SpellEffectRounds(catalogKey); r > 0 {
-				fallback = durationSpec{Kind: rules.EffectDurationRounds, Rounds: int32(r)} //nolint:gosec // 10 rounds a minute
-			} else if def.Concentration {
-				fallback = durationSpec{Kind: rules.EffectDurationConcentration}
-			}
-		default:
-			def, ok := content.CombatEffect(catalogKey)
-			if !ok || def.Kind != "master" {
-				return nil, bad("catalog_key is not an effect the master may add")
-			}
-			spec.sourceKind, spec.def = "master", def
-			fallback = durationSpec{Kind: def.Duration.Kind, Rounds: int32(def.Duration.Rounds)} //nolint:gosec // a small number of the file
-		}
-		if spec.dur, err = lastingDurationOf(req.Msg.GetDuration(), fallback); err != nil {
-			return nil, err
-		}
-		if spec.dur.Anchor != "" && !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == spec.dur.Anchor }) {
-			return nil, errCombatantNotFound()
-		}
-		if req.Msg.Concentration != nil && caster != nil && spec.def != nil && deref(&spec.sourceKind) == "spell" {
-			spec.concentration = req.Msg.GetConcentration()
-		}
-		if v := req.Msg.PlayerVisible; v != nil {
-			spec.visible = v
-		}
-		if a := req.Msg.GetAudience(); a != playv1.EffectAudience_EFFECT_AUDIENCE_UNSPECIFIED {
-			spec.audience = map[playv1.EffectAudience]string{playv1.EffectAudience_EFFECT_AUDIENCE_ALL: rules.EffectVisibilityPublic, playv1.EffectAudience_EFFECT_AUDIENCE_OWNER: rules.EffectVisibilityOwner}[a]
-		}
-		spec.label = req.Msg.GetPlayerLabel()
-		if spec.concentration && caster != nil {
-			// One concentration for each caster: the new spell ends the old one and what it held.
-			if caster.ConcentrationSpell != nil && *caster.ConcentrationSpell != catalogKey {
-				stop := actionEvent{Round: c.enc.Round, Secret: caster.Hidden, Actor: caster.ID}
-				if err := s.stopConcentrating(ctx, c, *caster, &stop); err != nil {
-					return nil, err
-				}
-				if err := insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, stop); err != nil {
-					return nil, err
-				}
-			}
-			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: caster.ID, ConcentrationSpell: &catalogKey}); err != nil {
-				return nil, fmt.Errorf("set the concentration: %w", err)
-			}
-		}
-		var rows []playdb.CombatantState
-		if hasBaseAC(spec.def) {
-			// The base armor class is the target's own (13 + its Dexterity): one record per target,
-			// and none for a target that wears armor.
-			spec.group = uuid.New().String()
-			for _, t := range targets {
-				mods, ok, err := s.modifiersForTarget(ctx, c, spec.def, t, spellOpts)
-				if err != nil {
-					return nil, err
-				}
-				if !ok {
-					continue
-				}
-				one := spec
-				one.targets, one.modifiers = []playdb.Combatant{t}, mods
-				made1, err := s.addEffects(ctx, c, cs, one)
-				if err != nil {
-					return nil, err
-				}
-				rows = append(rows, made1...)
-			}
-		} else {
-			var err error
-			if rows, err = s.addEffects(ctx, c, cs, spec); err != nil {
-				return nil, err
-			}
-		}
-		made = rows
-		ev := addedPayload(c, rows, catalogKey)
-		secret = ev.Secret
-		c.characterID = &targets[0].CharacterID
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
+		made, secret = rows, ev.Secret
 		return ev, nil
 	})
 	if err != nil {
@@ -470,21 +363,243 @@ func (s *Service) AddLastingEffect( //nolint:gocognit,gocyclo // the steps of on
 	if err != nil {
 		return nil, err
 	}
-	resp := &playv1.AddLastingEffectResponse{Encounter: out}
-	if len(made) > 0 {
-		if d, derr := s.encounterDataOf(ctx, res); derr == nil {
-			if ev, verr := s.effectViewerFor(ctx, m, d, combatViewer{master: true}, s.namesFor(ctx, m.CampaignID)); verr == nil {
-				for _, g := range groupsOf(d.states) {
-					if slices.ContainsFunc(g.rows, func(st playdb.CombatantState) bool {
-						return slices.ContainsFunc(made, func(o playdb.CombatantState) bool { return o.ID == st.ID })
-					}) {
-						resp.Effects = append(resp.Effects, ev.card(g, ""))
-					}
-				}
-			}
+	return connect.NewResponse(&playv1.AddLastingEffectResponse{Encounter: out, Effects: s.addedCards(ctx, m, res, made)}), nil
+}
+
+// addLastingEffectTx is the change AddLastingEffect makes inside the combat's transaction: read
+// and validate (the combat, the combatants), resolve the effect, write it and the concentration,
+// and answer the effect it made and the event that tells it.
+func (s *Service) addLastingEffectTx(ctx context.Context, c *combatTx, m authz.Membership, in lastingInput, msg *playv1.AddLastingEffectRequest) ([]playdb.CombatantState, actionEvent, error) {
+	var none actionEvent
+	if err := notEnded(c.enc); err != nil {
+		return nil, none, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, none, fmt.Errorf("list the combatants: %w", err)
+	}
+	targets, caster, err := lastingPartiesOf(cs, in, viewerOf(m))
+	if err != nil {
+		return nil, none, err
+	}
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return nil, none, err
+	}
+	spec, opts, err := s.planLastingEffect(ctx, c, content, cs, msg, targets, caster)
+	if err != nil {
+		return nil, none, err
+	}
+	if err := s.holdConcentration(ctx, c, spec); err != nil {
+		return nil, none, err
+	}
+	rows, err := s.putLastingEffects(ctx, c, cs, spec, opts)
+	if err != nil {
+		return nil, none, err
+	}
+	ev := addedPayload(c, rows, spec.key)
+	c.characterID = &targets[0].CharacterID
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, none, fmt.Errorf("touch the encounter: %w", err)
+	}
+	return rows, ev, nil
+}
+
+// lastingPartiesOf finds the targets and the caster among the combatants, as the viewer sees them.
+func lastingPartiesOf(cs []playdb.Combatant, in lastingInput, v combatViewer) ([]playdb.Combatant, *playdb.Combatant, error) {
+	var targets []playdb.Combatant
+	for _, id := range in.targetIDs {
+		t, err := findCombatant(cs, id, v)
+		if err != nil {
+			return nil, nil, err
+		}
+		targets = append(targets, t)
+	}
+	if in.casterID == "" {
+		return targets, nil, nil
+	}
+	cb, err := findCombatant(cs, in.casterID, v)
+	if err != nil {
+		return nil, nil, err
+	}
+	return targets, &cb, nil
+}
+
+// lastingSource is what the catalog says about an effect: how long it lasts when the master says
+// nothing, and what the cast decided about its modifiers.
+type lastingSource struct {
+	fallback durationSpec
+	opts     castOpts
+}
+
+// planLastingEffect resolves the request into the spec of the effect: the catalog entry, the
+// duration, the concentration, who reads it and the label.
+func (s *Service) planLastingEffect(ctx context.Context, c *combatTx, content *rules.Content, cs []playdb.Combatant, msg *playv1.AddLastingEffectRequest, targets []playdb.Combatant, caster *playdb.Combatant) (effectSpec, castOpts, error) {
+	catalogKey := msg.GetCatalogKey()
+	spec := effectSpec{key: catalogKey, caster: caster, targets: targets, dc: msg.SaveDc, audience: ""}
+	var src lastingSource
+	var err error
+	switch catalogKindOf(catalogKey) {
+	case catalogCondition:
+		src, err = lastingConditionSource(content, &spec)
+	case catalogSpell:
+		src, err = s.lastingSpellSource(ctx, c, content, &spec, msg.GetAbilityKey())
+	default:
+		src, err = lastingMasterSource(content, &spec)
+	}
+	if err != nil {
+		return spec, src.opts, err
+	}
+	err = applyLastingChoices(&spec, cs, msg, src.fallback)
+	return spec, src.opts, err
+}
+
+// lastingConditionSource is a condition: until dismissed, read as the condition says.
+func lastingConditionSource(content *rules.Content, spec *effectSpec) (lastingSource, error) {
+	info, err := conditionOfCatalog(content, spec.key)
+	if err != nil {
+		return lastingSource{}, err
+	}
+	spec.sourceKind, spec.conditions = "master", []string{spec.key}
+	spec.audience = info.Visibility
+	return lastingSource{fallback: durationSpec{Kind: rules.EffectDurationUntilDismissed}}, nil
+}
+
+// lastingSpellSource is a spell's effect: its modifiers worked out from the caster, and the spell's
+// own duration.
+func (s *Service) lastingSpellSource(ctx context.Context, c *combatTx, content *rules.Content, spec *effectSpec, abilityKey string) (lastingSource, error) {
+	src := lastingSource{fallback: durationSpec{Kind: rules.EffectDurationUntilDismissed}}
+	def, err := spellEffectOfCatalog(content, spec.key)
+	if err != nil {
+		return src, err
+	}
+	spec.sourceKind, spec.def, spec.concentration = "spell", def, def.Concentration && spec.caster != nil
+	ability, err := s.abilityChoiceOf(ctx, c, spec.key, abilityKey)
+	if err != nil {
+		return src, err
+	}
+	casterCharacter := ""
+	if spec.caster != nil {
+		casterCharacter = spec.caster.CharacterID
+	}
+	if src.opts, err = s.castOptsOf(ctx, c, def, ability, casterCharacter); err != nil {
+		return src, err
+	}
+	if spec.modifiers, _, err = s.modifiersFor(ctx, c, def, "", src.opts); err != nil {
+		return src, err
+	}
+	if r := content.SpellEffectRounds(spec.key); r > 0 {
+		src.fallback = durationSpec{Kind: rules.EffectDurationRounds, Rounds: int32(r)} //nolint:gosec // 10 rounds a minute
+	} else if def.Concentration {
+		src.fallback = durationSpec{Kind: rules.EffectDurationConcentration}
+	}
+	return src, nil
+}
+
+// lastingMasterSource is an effect of the master's own, with the duration the catalog gives it.
+func lastingMasterSource(content *rules.Content, spec *effectSpec) (lastingSource, error) {
+	def, err := masterEffectOfCatalog(content, spec.key)
+	if err != nil {
+		return lastingSource{}, err
+	}
+	spec.sourceKind, spec.def = "master", def
+	return lastingSource{fallback: durationSpec{Kind: def.Duration.Kind, Rounds: int32(def.Duration.Rounds)}}, nil //nolint:gosec // a small number of the file
+}
+
+// applyLastingChoices puts what the master chose on the spec: the duration (checked against the
+// combatants), the concentration, who sees the effect and the label.
+func applyLastingChoices(spec *effectSpec, cs []playdb.Combatant, msg *playv1.AddLastingEffectRequest, fallback durationSpec) error {
+	var err error
+	if spec.dur, err = lastingDurationOf(msg.GetDuration(), fallback); err != nil {
+		return err
+	}
+	if spec.dur.Anchor != "" && !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == spec.dur.Anchor }) {
+		return errCombatantNotFound()
+	}
+	if msg.Concentration != nil && spec.caster != nil && spec.def != nil && spec.sourceKind == "spell" {
+		spec.concentration = msg.GetConcentration()
+	}
+	if v := msg.PlayerVisible; v != nil {
+		spec.visible = v
+	}
+	spec.audience = chosenAudience(msg.GetAudience(), spec.audience)
+	spec.label = msg.GetPlayerLabel()
+	return nil
+}
+
+// holdConcentration makes the effect the caster's concentration. One concentration for each
+// caster: the new spell ends the old one and what it held.
+func (s *Service) holdConcentration(ctx context.Context, c *combatTx, spec effectSpec) error {
+	caster := spec.caster
+	if !spec.concentration || caster == nil {
+		return nil
+	}
+	if caster.ConcentrationSpell != nil && *caster.ConcentrationSpell != spec.key {
+		stop := actionEvent{Round: c.enc.Round, Secret: caster.Hidden, Actor: caster.ID}
+		if err := s.stopConcentrating(ctx, c, *caster, &stop); err != nil {
+			return err
+		}
+		if err := insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, stop); err != nil {
+			return err
 		}
 	}
-	return connect.NewResponse(resp), nil
+	if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: caster.ID, ConcentrationSpell: &spec.key}); err != nil {
+		return fmt.Errorf("set the concentration: %w", err)
+	}
+	return nil
+}
+
+// putLastingEffects writes the effect on the targets. An effect that sets a base armor class is a
+// record for each target, with the class worked out for it, and none for a target that wears armor.
+func (s *Service) putLastingEffects(ctx context.Context, c *combatTx, cs []playdb.Combatant, spec effectSpec, opts castOpts) ([]playdb.CombatantState, error) {
+	if !hasBaseAC(spec.def) {
+		return s.addEffects(ctx, c, cs, spec)
+	}
+	// The base armor class is the target's own (13 + its Dexterity).
+	var rows []playdb.CombatantState
+	spec.group = uuid.New().String()
+	for _, t := range spec.targets {
+		mods, ok, err := s.modifiersForTarget(ctx, c, spec.def, t, opts)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+		one := spec
+		one.targets, one.modifiers = []playdb.Combatant{t}, mods
+		made, err := s.addEffects(ctx, c, cs, one)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, made...)
+	}
+	return rows, nil
+}
+
+// addedCards are the cards of the effects the call made, as the master reads them; read after the
+// commit, and none when the read fails or the call made nothing.
+func (s *Service) addedCards(ctx context.Context, m authz.Membership, res combatResult, made []playdb.CombatantState) []*playv1.LastingEffect {
+	if len(made) == 0 {
+		return nil
+	}
+	d, err := s.encounterDataOf(ctx, res)
+	if err != nil {
+		return nil
+	}
+	ev, err := s.effectViewerFor(ctx, m, d, combatViewer{master: true}, s.namesFor(ctx, m.CampaignID))
+	if err != nil {
+		return nil
+	}
+	var cards []*playv1.LastingEffect
+	for _, g := range groupsOf(d.states) {
+		if slices.ContainsFunc(g.rows, func(st playdb.CombatantState) bool {
+			return slices.ContainsFunc(made, func(o playdb.CombatantState) bool { return o.ID == st.ID })
+		}) {
+			cards = append(cards, ev.card(g, ""))
+		}
+	}
+	return cards
 }
 
 // addedPayload is the event of a casting of an effect that began: one line for it.
