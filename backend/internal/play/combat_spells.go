@@ -212,33 +212,8 @@ func (s *Service) CastSpell(
 // the range, and nobody is without a grid: RN-25), and that no target of a single-target spell has total cover (D4).
 // It does not read the database.
 func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int, theatre bool) error {
-	bad := func(msg string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(msg)) }
-	switch {
-	case selfOnly(sp):
-		if slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID != caster.ID }) {
-			return bad("this spell reaches the caster alone: leave the targets out")
-		}
-	case dartsTotal > 0:
-		sum := 0
-		for _, d := range darts {
-			if d < 1 {
-				return bad("every target of Magic Missile needs at least one dart")
-			}
-			sum += d
-		}
-		if len(targs) == 0 || sum != dartsTotal {
-			return bad(fmt.Sprintf("the darts of the targets must add up to %d", dartsTotal))
-		}
-	default:
-		if slices.ContainsFunc(darts, func(d int) bool { return d != 0 }) {
-			return bad("darts are only for Magic Missile")
-		}
-		if !sp.Area && len(targs) == 0 {
-			return bad("this spell needs a target")
-		}
-		if limit := maxTargetsOf(sp, slotLevel); limit > 0 && len(targs) > limit && !v.master {
-			return bad(fmt.Sprintf("this spell takes at most %d targets with this slot", limit))
-		}
+	if err := checkTargetCount(v, sp, caster, targs, darts, dartsTotal, slotLevel); err != nil {
+		return err
 	}
 	if v.master {
 		return nil
@@ -254,13 +229,64 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 		if t.ID == caster.ID || !limited || theatre { // without a grid the master judges the range (RN-25)
 			continue
 		}
-		if !placed(caster) || !placed(t) {
-			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the caster and the target must be on the map")
+		if err := checkTargetReach(caster, t, reach); err != nil {
+			return err
 		}
-		if dist, _ := distanceFt(caster, t); dist > reach {
-			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the spell's range",
-				func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
+	}
+	return nil
+}
+
+// badTargets is the refusal of a request whose targets a spell does not take.
+func badTargets(msg string) error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New(msg))
+}
+
+// checkTargetCount checks how many targets a spell takes and how the darts of Magic Missile are shared.
+func checkTargetCount(v combatViewer, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int) error {
+	switch {
+	case selfOnly(sp):
+		if slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID != caster.ID }) {
+			return badTargets("this spell reaches the caster alone: leave the targets out")
 		}
+	case dartsTotal > 0:
+		return checkDarts(targs, darts, dartsTotal)
+	default:
+		if slices.ContainsFunc(darts, func(d int) bool { return d != 0 }) {
+			return badTargets("darts are only for Magic Missile")
+		}
+		if !sp.Area && len(targs) == 0 {
+			return badTargets("this spell needs a target")
+		}
+		if limit := maxTargetsOf(sp, slotLevel); limit > 0 && len(targs) > limit && !v.master {
+			return badTargets(fmt.Sprintf("this spell takes at most %d targets with this slot", limit))
+		}
+	}
+	return nil
+}
+
+// checkDarts checks that every target of Magic Missile gets a dart and that the darts add up.
+func checkDarts(targs []playdb.Combatant, darts []int, dartsTotal int) error {
+	sum := 0
+	for _, d := range darts {
+		if d < 1 {
+			return badTargets("every target of Magic Missile needs at least one dart")
+		}
+		sum += d
+	}
+	if len(targs) == 0 || sum != dartsTotal {
+		return badTargets(fmt.Sprintf("the darts of the targets must add up to %d", dartsTotal))
+	}
+	return nil
+}
+
+// checkTargetReach checks that the caster and the target are on the map and that the target is in reach.
+func checkTargetReach(caster, t playdb.Combatant, reach int32) error {
+	if !placed(caster) || !placed(t) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the caster and the target must be on the map")
+	}
+	if dist, _ := distanceFt(caster, t); dist > reach {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond the spell's range",
+			func(b *playv1.EncounterBlocked) { b.MissingFt = dist - reach })
 	}
 	return nil
 }
@@ -308,31 +334,56 @@ func (s *Service) d20(in rollInput, modifier int) (face int, roll dice.Result, e
 	return in.typed, roll, nil
 }
 
+// spellAttackRolled is the d20 of a spell attack: the mode as it was worked out, the choice made on it
+// and the gate that rolled the die.
+type spellAttackRolled struct {
+	truth  modeResult
+	choice modeChoice
+	step   gateResult
+}
+
+// spellAttackD20 settles the mode of a spell attack's roll, as RollAttack does, and rolls its d20. The
+// answer to a Bardic Inspiration question brings the mode and the d20 it was held with.
+func (s *Service) spellAttackD20(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, in rollInput, modes *spellModes) (spellAttackRolled, error) {
+	if pre := modes.pre; pre != nil && pre.target == target.ID {
+		return spellAttackRolled{truth: pre.truth, choice: pre.choice, step: pre.step}, nil
+	}
+	var r spellAttackRolled
+	var err error
+	r.truth = modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.v, modes.names)
+	if r.choice, err = s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, r.truth.Mode, modes.ask); err != nil {
+		return r, err
+	}
+	// This roll waits for nobody (MayAsk is false): the gate rolls the d20 and settles it.
+	r.step, err = s.heldGate(ctx, combatGate(c), rollSpec{Kind: heldSpellAttack, In: in, Modifier: sp.ToHit, Mode: r.choice.Mode})
+	return r, err
+}
+
+// spendSpellAttackRoll uses up what the roll used: the Help aimed at the target and Zombaria Viciosa's
+// disadvantage, which a second attack of the cast reads spent. made keeps both, for the cast's undo.
+func (s *Service) spendSpellAttackRoll(ctx context.Context, c *combatTx, caster, target playdb.Combatant, modes *spellModes, made *actionEvent) error {
+	used, err := s.consumeHelps(ctx, c, caster, target, modes.in.cs) // the Help aimed at the target is used (SRD 5.1, "Help")
+	if err != nil {
+		return err
+	}
+	made.HelpUsed = append(made.HelpUsed, used...)
+	if err := s.spendAttackEffects(ctx, c, caster, made); err != nil {
+		return err
+	}
+	markSpent(modes.in.states, caster.ID, made.EffectsSpent, c.now)
+	return nil
+}
+
 // spellAttack rolls a spell attack against a target, as RollAttack does, and
 // opens its pending damage on a hit. Like an attack (afterAttack), the roll uses the
 // Help aimed at the target and spends the effect that gave the caster's next attack
 // roll disadvantage; made keeps both, for the cast's undo.
 func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, in rollInput, cover coverView, hit *castHit, modes *spellModes, made *actionEvent) error {
-	// Advantage and disadvantage (SRD 5.1): the mode of the roll, as RollAttack settles it. The
-	// answer to a Bardic Inspiration question brings the mode and the d20 it was held with.
-	var (
-		truth  modeResult
-		choice modeChoice
-		step   gateResult
-		err    error
-	)
-	if pre := modes.pre; pre != nil && pre.target == target.ID {
-		truth, choice, step = pre.truth, pre.choice, pre.step
-	} else {
-		truth = modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.v, modes.names)
-		if choice, err = s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, modes.ask); err != nil {
-			return err
-		}
-		// This roll waits for nobody (MayAsk is false): the gate rolls the d20 and settles it.
-		if step, err = s.heldGate(ctx, combatGate(c), rollSpec{Kind: heldSpellAttack, In: in, Modifier: sp.ToHit, Mode: choice.Mode}); err != nil {
-			return err
-		}
+	rolled, err := s.spellAttackD20(ctx, c, sp, caster, target, in, modes)
+	if err != nil {
+		return err
 	}
+	step := rolled.step
 	hit.Lucky = step.Lucky // the d20 Lucky rolled again: the cast's line says "Sortudo: 1 → 14"
 	bonusFace := 0
 	if bonus := step.Bonus; bonus != nil {
@@ -340,36 +391,46 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 		hit.BonusSides, hit.BonusFace = bonus.Sides, bonus.Face
 	}
 	d20 := step.Roll
-	face, roll := d20.Face(), d20
-	modes.attack[target.ID] = truth.Shown
-	used, err := s.consumeHelps(ctx, c, caster, target, modes.in.cs) // the Help aimed at the target is used (SRD 5.1, "Help")
+	modes.attack[target.ID] = rolled.truth.Shown
+	if err := s.spendSpellAttackRoll(ctx, c, caster, target, modes, made); err != nil {
+		return err
+	}
+	choice := rolled.choice
+	hit.D20B, hit.Counted, hit.RollMode, hit.SuggestedMode, hit.ReasonID = clamp32(d20.otherFace(), 0, 20), clamp32(d20.Index, 0, 1), modeKey(choice.Mode), modeKey(choice.Suggested), choice.ReasonID
+	result, targetAC, err := s.resolveSpellAttack(ctx, c, m, sp, caster, target, cover, hit, modes, rolled, bonusFace)
 	if err != nil {
 		return err
 	}
-	made.HelpUsed = append(made.HelpUsed, used...)
-	// Zombaria Viciosa's disadvantage was for this roll: a second attack of the cast reads it spent.
-	if err := s.spendAttackEffects(ctx, c, caster, made); err != nil {
-		return err
-	}
-	markSpent(modes.in.states, caster.ID, made.EffectsSpent, c.now)
-	hit.D20B, hit.Counted, hit.RollMode, hit.SuggestedMode, hit.ReasonID = clamp32(d20.otherFace(), 0, 20), clamp32(d20.Index, 0, 1), modeKey(choice.Mode), modeKey(choice.Suggested), choice.ReasonID
+	return s.openSpellAttackHit(ctx, c, sp, caster, target, hit, result, targetAC)
+}
+
+// resolveSpellAttack works the armor class of the target out, rolls the dice that add to the attack and
+// settles the hit; hit keeps the roll as the cast shows it.
+func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit, modes *spellModes, rolled spellAttackRolled, bonusFace int) (combat.AttackResult, int, error) {
+	d20 := rolled.step.Roll
+	face := d20.Face()
 	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 	if err != nil {
-		return err
+		return combat.AttackResult{}, 0, err
 	}
 	targetAC := sheet.ArmorClass + int(target.AcBonus) + int(target.EffectAcBonus) + cover.bonus()
 	// Bênção and Perdição (SRD 5.1): the d4 the app rolls for the caster's spell attack.
 	extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, caster.ID, rules.RollAppliesAttack), nil)
 	if err != nil {
-		return err
+		return combat.AttackResult{}, 0, err
 	}
 	hit.Extra = extra
 	result := combat.ResolveAttack(sp.ToHit+bonusFace+extraTotal, targetAC, face)
-	if result.Hit && truth.CriticalOnHit { // a paralyzed or unconscious target within 5 ft (SRD 5.1)
+	if result.Hit && rolled.truth.CriticalOnHit { // a paralyzed or unconscious target within 5 ft (SRD 5.1)
 		result.Critical = true
 	}
 	hit.TargetAC = clamp32(targetAC, 0, math.MaxInt32)
-	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), clamp32(sp.ToHit+bonusFace, math.MinInt32, math.MaxInt32), clamp32(result.Total, math.MinInt32, math.MaxInt32), roll.Physical
+	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), clamp32(sp.ToHit+bonusFace, math.MinInt32, math.MaxInt32), clamp32(result.Total, math.MinInt32, math.MaxInt32), d20.Physical
+	return result, targetAC, nil
+}
+
+// openSpellAttackHit says the outcome of a spell attack and opens its pending damage on a hit.
+func (s *Service) openSpellAttackHit(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, hit *castHit, result combat.AttackResult, targetAC int) error {
 	hit.Outcome = outcomeMiss
 	if !result.Hit {
 		return nil
@@ -397,18 +458,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 // The d20 is always rolled by the app (RN-18 is for the table's own dice).
 func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit, modes *spellModes) error {
 	if c.sculpted[target.ID] {
-		// Sculpt Spells (SRD 5.1): the creature succeeds on its own, with no roll, and takes
-		// no damage when the spell would deal half on a success.
-		hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: true, Sculpted: true}
-		if len(sp.Damages) == 0 || sp.SaveOnSuccess != "other" {
-			return nil
-		}
-		for _, part := range sp.Damages {
-			if err := s.openSpellPending(ctx, c, sp, part, caster, target, false, false, hit); err != nil {
-				return err
-			}
-		}
-		return nil
+		return s.sculptedSave(ctx, c, sp, caster, target, hit)
 	}
 	save, err := s.saveOf(ctx, c.tx, m.CampaignID, target, sp.SaveAbility)
 	if err != nil {
@@ -420,7 +470,6 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	}
 	creature := creatureFacts(target, modes.in.states, targetSheet.Traits)
 	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true})
-	mode := combat.Resolve(sources)
 	modes.save[target.ID] = shownSources(sources, modes.names)
 	// Cover adds to a Dexterity save (SRD): half +2, three-quarters +5. The bonus
 	// the save shows already has it.
@@ -432,47 +481,69 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		// Stunned, paralyzed, unconscious and petrified creatures fail Strength and
 		// Dexterity saves without rolling (SRD 5.1, Conditions).
 		hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Auto: true, Unknown: !save.Known}
-	} else {
-		saveMode := mode
-		if c.meta.disadvantaged(target.ID) { // Heightened Spell: disadvantage on its first save, which an advantage cancels
-			saveMode = combat.Resolve(append(slices.Clone(sources), combat.Source{Kind: "heightened-spell", Effect: combat.ModeDisadvantage}))
-		}
-		d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, saveMode)
-		if err != nil {
-			return err
-		}
-		// Nobody is asked about this save: a halfling player's 1 is rolled again by the app (combat_lucky.go).
-		d20, lucky, err := s.luckySave(d20, save.Bonus, saveMode, luckySaver(target, targetSheet.Traits))
-		if err != nil {
-			return err
-		}
-		// Bênção and Perdição: a d4 on the target's saving throw.
-		extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, target.ID, rules.RollAppliesSave), nil)
-		if err != nil {
-			return err
-		}
-		if err := s.spendOnceEffects(ctx, c, extra); err != nil {
-			return err
-		}
-		saved = combat.SaveSucceeded(d20.Total+extraTotal, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
-		hit.Save = &saveRoll{
-			Extra: extra,
-			D20:   clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total+extraTotal, math.MinInt32, math.MaxInt32),
-			DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
-			D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode), Lucky: lucky,
-		}
+	} else if saved, err = s.rollSpellSave(ctx, c, sp, target, save, targetSheet, sources, combat.Resolve(sources), hit, modes); err != nil {
+		return err
 	}
 	if len(sp.Damages) == 0 || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {
 		return nil
 	}
 	// One pending damage for each damage type, all of the cast: each is its own
 	// roll, and the resistance of the target is read for its type when it lands.
+	return s.openSavePendings(ctx, c, sp, caster, target, saved && sp.SaveOnSuccess == "half", hit)
+}
+
+// sculptedSave is the save of a creature Sculpt Spells (SRD 5.1) spares: it succeeds on its own, with no
+// roll, and takes no damage when the spell would deal half on a success.
+func (s *Service) sculptedSave(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, hit *castHit) error {
+	hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: true, Sculpted: true}
+	if len(sp.Damages) == 0 || sp.SaveOnSuccess != "other" {
+		return nil
+	}
+	return s.openSavePendings(ctx, c, sp, caster, target, false, hit)
+}
+
+// openSavePendings opens a pending damage for each damage type of the spell.
+func (s *Service) openSavePendings(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, half bool, hit *castHit) error {
 	for _, part := range sp.Damages {
-		if err := s.openSpellPending(ctx, c, sp, part, caster, target, false, saved && sp.SaveOnSuccess == "half", hit); err != nil {
+		if err := s.openSpellPending(ctx, c, sp, part, caster, target, false, half, hit); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// rollSpellSave rolls a target's saving throw against the spell and fills the hit with it; it says whether
+// the target saved.
+func (s *Service) rollSpellSave(ctx context.Context, c *combatTx, sp link.Spell, target playdb.Combatant, save link.Save, targetSheet link.Sheet, sources []combat.Source, mode combat.RollMode, hit *castHit, modes *spellModes) (bool, error) {
+	saveMode := mode
+	if c.meta.disadvantaged(target.ID) { // Heightened Spell: disadvantage on its first save, which an advantage cancels
+		saveMode = combat.Resolve(append(slices.Clone(sources), combat.Source{Kind: "heightened-spell", Effect: combat.ModeDisadvantage}))
+	}
+	d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, saveMode)
+	if err != nil {
+		return false, err
+	}
+	// Nobody is asked about this save: a halfling player's 1 is rolled again by the app (combat_lucky.go).
+	d20, lucky, err := s.luckySave(d20, save.Bonus, saveMode, luckySaver(target, targetSheet.Traits))
+	if err != nil {
+		return false, err
+	}
+	// Bênção and Perdição: a d4 on the target's saving throw.
+	extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, target.ID, rules.RollAppliesSave), nil)
+	if err != nil {
+		return false, err
+	}
+	if err := s.spendOnceEffects(ctx, c, extra); err != nil {
+		return false, err
+	}
+	saved := combat.SaveSucceeded(d20.Total+extraTotal, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
+	hit.Save = &saveRoll{
+		Extra: extra,
+		D20:   clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total+extraTotal, math.MinInt32, math.MaxInt32),
+		DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
+		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode), Lucky: lucky,
+	}
+	return saved, nil
 }
 
 // openDarts opens Magic Missile's damage for a target: its darts, each one
