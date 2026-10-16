@@ -49,80 +49,101 @@ func contestTargets(enc playdb.Encounter, cs []playdb.Combatant, who playdb.Comb
 	return out
 }
 
-// contestOptionsFor works out the contest side of GetTurnOptions for a combatant: the
-// special attacks that replace one attack of the Attack action, and the state of its turn. gate
-// is why the combatant cannot act now (UNSPECIFIED when it can).
-//
-//nolint:gocyclo // one flat list of the reasons a special attack is off, as the turn options list the others
-func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, who playdb.Combatant, opts *rulesv1.TurnOptions, gate rulesv1.DisabledReasonCode) ([]*playv1.ContestAttackOption, *playv1.ContestTurnState, error) {
-	cd, err := s.loadContestData(ctx, s.queries, d.enc, d.cs)
-	if err != nil {
-		return nil, nil, err
-	}
-	r := &contestReader{s: s, m: m, v: v, d: cd}
-	state := &playv1.ContestTurnState{Hidden: isHidden(cd.hiding, who.ID)}
+// characterGone says an error is the answer for a character that is gone from the campaign.
+func characterGone(err error) bool { return connect.CodeOf(err) == connect.CodeNotFound }
 
-	// The grapple: who holds this combatant (never a creature the viewer does not see), and
-	// who it holds.
-	hold, grappled := holdOn(holdsOf(cd.holds), who)
-	if grappled {
-		state.Grappled = true
-		if grappler, ok := combatantByID(d.cs, hold.GrapplerID); ok && (v.master || v.sees(grappler)) {
-			state.GrapplerId = grappler.ID
-		}
-		state.CanEscape, state.EscapeReason = true, gateReason(gate)
-		if state.EscapeReason == nil && who.ActionUsed && !v.master {
-			state.CanEscape, state.EscapeReason = false, &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED}
-		} else if state.EscapeReason != nil {
-			state.CanEscape = false
-		}
-		for _, sk := range []string{skillAthletics, skillAcrobat} {
-			n, notes, err := r.optionOf(ctx, who, sk)
-			if err != nil {
-				return nil, nil, err
-			}
-			state.EscapeOptions = append(state.EscapeOptions, &playv1.ContestSkillOption{
-				Skill: skillEnum(sk), Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Known: n.Known || !v.master,
-				Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes),
-			})
-		}
+// checkOptionOf is what a check would roll, as an option reads it: the master reads whether
+// the number is known, a player always reads it.
+func checkOptionOf(n checkNumbers, notes []rollNote, master bool) *playv1.CheckOption {
+	return &playv1.CheckOption{Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Known: n.Known || !master, Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes)}
+}
+
+// escapeAvailability says whether the grappled combatant can escape now, and if not why: the
+// gate (it is not its turn...) or the action it spent (the master is never refused).
+func escapeAvailability(gate rulesv1.DisabledReasonCode, who playdb.Combatant, master bool) *rulesv1.DisabledReason {
+	reason := gateReason(gate)
+	if reason == nil && who.ActionUsed && !master {
+		reason = &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED}
 	}
+	return reason
+}
+
+// fillGrappled fills the state of a grappled combatant: who holds it (never a creature the
+// viewer does not see), whether it can escape and what each skill of the escape would roll.
+func (s *Service) fillGrappled(ctx context.Context, d *encounterData, v combatViewer, who playdb.Combatant, hold playdb.CombatHold, gate rulesv1.DisabledReasonCode, r *contestReader, state *playv1.ContestTurnState) error {
+	state.Grappled = true
+	if grappler, ok := combatantByID(d.cs, hold.GrapplerID); ok && (v.master || v.sees(grappler)) {
+		state.GrapplerId = grappler.ID
+	}
+	state.EscapeReason = escapeAvailability(gate, who, v.master)
+	state.CanEscape = state.EscapeReason == nil
+	for _, sk := range []string{skillAthletics, skillAcrobat} {
+		n, notes, err := r.optionOf(ctx, who, sk)
+		if err != nil {
+			return err
+		}
+		state.EscapeOptions = append(state.EscapeOptions, &playv1.ContestSkillOption{
+			Skill: skillEnum(sk), Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Known: n.Known || !v.master,
+			Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes),
+		})
+	}
+	return nil
+}
+
+// holdingOf is the creature the combatant holds, when the viewer sees it.
+func holdingOf(cd *contestData, cs []playdb.Combatant, v combatViewer, who playdb.Combatant) string {
 	for _, h := range cd.holds {
 		if h.GrapplerID != who.ID {
 			continue
 		}
-		if g, ok := combatantByID(d.cs, h.GrappledID); ok && isGrappled(g) && (v.master || v.sees(g)) {
-			state.HoldingId = g.ID
-			break
+		if g, ok := combatantByID(cs, h.GrappledID); ok && isGrappled(g) && (v.master || v.sees(g)) {
+			return g.ID
 		}
 	}
-	surprised, err := s.surprisedNow(ctx, nil, d.enc, who)
-	if err != nil {
-		return nil, nil, err
-	}
-	state.Surprised = surprised
+	return ""
+}
+
+// helpTargetOf is the creature the combatant was helped to attack, when the viewer sees it.
+func helpTargetOf(cd *contestData, cs []playdb.Combatant, v combatViewer, who playdb.Combatant) string {
+	var out string
 	for _, h := range cd.helps {
 		if h.Kind == helpAttack && helpsAlly(h, who) {
-			if t, ok := combatantByID(d.cs, deref(h.TargetID)); ok && (v.master || v.sees(t)) {
-				state.HelpTargetId = t.ID
+			if t, ok := combatantByID(cs, deref(h.TargetID)); ok && (v.master || v.sees(t)) {
+				out = t.ID
 			}
 		}
 	}
-	if err := s.hideAndHelpActions(ctx, m, who, opts, state, r); err != nil {
-		return nil, nil, err
-	}
+	return out
+}
 
-	// The special attacks: they replace one attack of the Attack action.
-	if mayAttack(who, false) != nil {
-		return nil, state, nil //nolint:nilerr // a combatant that cannot attack has no special attack to list; that is no failure
+// contestTurnState is the state of a combatant's turn the contests add: hidden, grappled,
+// holding, surprised, helped, and the Hide and Help actions.
+func (s *Service) contestTurnState(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, who playdb.Combatant, opts *rulesv1.TurnOptions, gate rulesv1.DisabledReasonCode, r *contestReader) (*playv1.ContestTurnState, error) {
+	cd := r.d
+	state := &playv1.ContestTurnState{Hidden: isHidden(cd.hiding, who.ID)}
+	// The grapple: who holds this combatant, and who it holds.
+	if hold, grappled := holdOn(holdsOf(cd.holds), who); grappled {
+		if err := s.fillGrappled(ctx, d, v, who, hold, gate, r, state); err != nil {
+			return nil, err
+		}
 	}
-	sheet, err := s.sheetOf(ctx, nil, m.CampaignID, who)
-	if connect.CodeOf(err) == connect.CodeNotFound { // a character that is gone attacks no more
-		return nil, state, nil
-	}
+	state.HoldingId = holdingOf(cd, d.cs, v, who)
+	surprised, err := s.surprisedNow(ctx, nil, d.enc, who)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+	state.Surprised = surprised
+	state.HelpTargetId = helpTargetOf(cd, d.cs, v, who)
+	if err := s.hideAndHelpActions(ctx, m, who, opts, state, r); err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// attackBudget is how many attacks of the Attack action the combatant has left and why the
+// special attacks are off now (nil when they are on): the gate, or the action or attacks
+// spent. The master is never refused for the economy.
+func attackBudget(sheet link.Sheet, who playdb.Combatant, master bool, gate rulesv1.DisabledReasonCode) (int, *rulesv1.DisabledReason) {
 	perAction := max(sheet.AttacksPerAction, 1)
 	last, hasLast := lastAttack(sheet, who)
 	castCantrip := hasLast && last.Spell
@@ -131,24 +152,41 @@ func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *
 		left = 0
 	}
 	reason := gateReason(gate)
-	if reason == nil && left == 0 && !v.master {
+	if reason == nil && left == 0 && !master {
 		code := rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED
 		if !castCantrip && who.AttacksMade > 0 && perAction > 1 {
 			code = rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACKS_USED
 		}
 		reason = &rulesv1.DisabledReason{Code: code}
 	}
-	roll, _, err := s.contestRollOption(ctx, r, who)
-	if connect.CodeOf(err) == connect.CodeNotFound { // a character that is gone attacks no more
-		return nil, state, nil
+	return left, reason
+}
+
+// specialAttacks are the grapple and the shove that replace one attack of the Attack action.
+// A combatant that cannot attack, or whose character is gone, has none to list.
+func (s *Service) specialAttacks(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, who playdb.Combatant, gate rulesv1.DisabledReasonCode, r *contestReader) ([]*playv1.ContestAttackOption, error) {
+	if mayAttack(who, false) != nil {
+		return nil, nil //nolint:nilerr // a combatant that cannot attack has no special attack to list; that is no failure
 	}
+	sheet, err := s.sheetOf(ctx, nil, m.CampaignID, who)
 	if err != nil {
-		return nil, nil, err
+		if characterGone(err) { // a character that is gone attacks no more
+			return nil, nil
+		}
+		return nil, err
+	}
+	left, reason := attackBudget(sheet, who, v.master, gate)
+	roll, _, err := s.contestRollOption(ctx, r, who)
+	if err != nil {
+		if characterGone(err) { // a character that is gone attacks no more
+			return nil, nil
+		}
+		return nil, err
 	}
 	targets := contestTargets(d.enc, d.cs, who, v)
 	maneuvers, err := s.grappleManeuverOptions(ctx, m.CampaignID, d.enc, who, sheet, gateReason(gate), v.master)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var out []*playv1.ContestAttackOption
 	for _, kind := range []playv1.ContestAttackOptionKind{playv1.ContestAttackOptionKind_CONTEST_ATTACK_OPTION_KIND_GRAPPLE, playv1.ContestAttackOptionKind_CONTEST_ATTACK_OPTION_KIND_SHOVE} {
@@ -161,6 +199,26 @@ func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *
 		}
 		out = append(out, opt)
 	}
+	return out, nil
+}
+
+// contestOptionsFor works out the contest side of GetTurnOptions for a combatant: the
+// special attacks that replace one attack of the Attack action, and the state of its turn. gate
+// is why the combatant cannot act now (UNSPECIFIED when it can).
+func (s *Service) contestOptionsFor(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, who playdb.Combatant, opts *rulesv1.TurnOptions, gate rulesv1.DisabledReasonCode) ([]*playv1.ContestAttackOption, *playv1.ContestTurnState, error) {
+	cd, err := s.loadContestData(ctx, s.queries, d.enc, d.cs)
+	if err != nil {
+		return nil, nil, err
+	}
+	r := &contestReader{s: s, m: m, v: v, d: cd}
+	state, err := s.contestTurnState(ctx, m, d, v, who, opts, gate, r)
+	if err != nil {
+		return nil, nil, err
+	}
+	out, err := s.specialAttacks(ctx, m, d, v, who, gate, r)
+	if err != nil {
+		return nil, nil, err
+	}
 	return out, state, nil
 }
 
@@ -170,50 +228,78 @@ func (s *Service) contestRollOption(ctx context.Context, r *contestReader, who p
 	if err != nil {
 		return nil, nil, err
 	}
-	return &playv1.CheckOption{Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Known: n.Known || !r.v.master, Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes)}, notes, nil
+	return checkOptionOf(n, notes, r.v.master), notes, nil
+}
+
+// contestActionOf is a standard or feature action as the contests list it.
+func contestActionOf(a *rulesv1.ActionOption) *playv1.ContestAction {
+	return &playv1.ContestAction{Key: a.GetAction().GetKey(), Economy: a.GetAction().GetEconomy(), Enabled: a.GetEnabled(), Reason: a.GetReason()}
+}
+
+// standardHideAndHelp lists the standard Hide and Help of the turn options.
+func standardHideAndHelp(opts *rulesv1.TurnOptions, state *playv1.ContestTurnState) {
+	for _, a := range opts.GetStandardActions() {
+		switch a.GetAction().GetKey() {
+		case actionHide:
+			state.HideActions = append(state.HideActions, contestActionOf(a))
+		case actionHelp:
+			state.HelpAction = contestActionOf(a)
+		}
+	}
+}
+
+// featureHideActions lists the features that give the Hide action (Cunning Action). It says
+// gone when the character is gone, and the rest of the actions are not listed.
+func (s *Service) featureHideActions(ctx context.Context, m authz.Membership, who playdb.Combatant, opts *rulesv1.TurnOptions, state *playv1.ContestTurnState) (gone bool, err error) {
+	if len(opts.GetFeatureActions()) == 0 {
+		return false, nil
+	}
+	sheet, err := s.sheetOf(ctx, nil, m.CampaignID, who)
+	if err != nil {
+		return characterGone(err), ignoreGone(err) // a character that is gone has no feature to list
+	}
+	for _, a := range opts.GetFeatureActions() {
+		if i := slices.IndexFunc(sheet.FeatureActions, func(fa link.FeatureAction) bool { return fa.Key == a.GetAction().GetKey() }); i >= 0 && sheet.FeatureActions[i].Standard == actionHide {
+			state.HideActions = append(state.HideActions, contestActionOf(a))
+		}
+	}
+	return false, nil
+}
+
+// ignoreGone is the error of a call, or nil when it only says the character is gone.
+func ignoreGone(err error) error {
+	if characterGone(err) {
+		return nil
+	}
+	return err
+}
+
+// hideOptionOf is what a Hide would roll, when the combatant can hide at all.
+func (s *Service) hideOptionOf(ctx context.Context, who playdb.Combatant, state *playv1.ContestTurnState, r *contestReader) error {
+	if len(state.HideActions) == 0 {
+		return nil
+	}
+	n, notes, err := r.optionOf(ctx, who, skillStealth)
+	if err != nil {
+		if characterGone(err) { // a character that is gone hides no more
+			state.HideActions = nil
+		}
+		return ignoreGone(err)
+	}
+	state.HideOption = checkOptionOf(n, notes, r.v.master)
+	return nil
 }
 
 // hideAndHelpActions fills what the sheet's actions say of Hide and Help: the standard Hide
 // and the features that give it (Cunning Action), the Help, each with its economy and
 // whether it can be taken now, and what a Hide would roll.
 func (s *Service) hideAndHelpActions(ctx context.Context, m authz.Membership, who playdb.Combatant, opts *rulesv1.TurnOptions, state *playv1.ContestTurnState, r *contestReader) error {
-	ref := func(a *rulesv1.ActionOption) *playv1.ContestAction {
-		return &playv1.ContestAction{Key: a.GetAction().GetKey(), Economy: a.GetAction().GetEconomy(), Enabled: a.GetEnabled(), Reason: a.GetReason()}
+	standardHideAndHelp(opts, state)
+	gone, err := s.featureHideActions(ctx, m, who, opts, state)
+	if err != nil || gone {
+		return err
 	}
-	for _, a := range opts.GetStandardActions() {
-		switch a.GetAction().GetKey() {
-		case actionHide:
-			state.HideActions = append(state.HideActions, ref(a))
-		case actionHelp:
-			state.HelpAction = ref(a)
-		}
-	}
-	if len(opts.GetFeatureActions()) > 0 {
-		sheet, err := s.sheetOf(ctx, nil, m.CampaignID, who)
-		if connect.CodeOf(err) == connect.CodeNotFound { // a character that is gone has no feature to list
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		for _, a := range opts.GetFeatureActions() {
-			if i := slices.IndexFunc(sheet.FeatureActions, func(fa link.FeatureAction) bool { return fa.Key == a.GetAction().GetKey() }); i >= 0 && sheet.FeatureActions[i].Standard == actionHide {
-				state.HideActions = append(state.HideActions, ref(a))
-			}
-		}
-	}
-	if len(state.HideActions) > 0 {
-		n, notes, err := r.optionOf(ctx, who, skillStealth)
-		if connect.CodeOf(err) == connect.CodeNotFound { // a character that is gone hides no more
-			state.HideActions = nil
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		state.HideOption = &playv1.CheckOption{Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Known: n.Known || !r.v.master, Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes)}
-	}
-	return nil
+	return s.hideOptionOf(ctx, who, state, r)
 }
 
 // gateReason is the reason a gate code gives for a disabled option, nil when the combatant can act.
