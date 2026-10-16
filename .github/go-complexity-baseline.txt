@@ -362,7 +362,6 @@ cognitive internal/play (*Service).refreshCombatants 77
 cognitive internal/play (*Service).releaseHold 23
 cognitive internal/play (*Service).releaseWaiting 16
 cognitive internal/play (*Service).resolveRebuke 18
-cognitive internal/play (*Service).rollAttack 261
 cognitive internal/play (*Service).rollDamage 174
 cognitive internal/play (*Service).rollMember 30
 cognitive internal/play (*Service).rollPartDice 17
@@ -782,7 +781,6 @@ cyclomatic internal/play (*Service).reactorSees 17
 cyclomatic internal/play (*Service).refreshCombatants 43
 cyclomatic internal/play (*Service).releaseHold 25
 cyclomatic internal/play (*Service).resolveRebuke 18
-cyclomatic internal/play (*Service).rollAttack 146
 cyclomatic internal/play (*Service).rollDamage 92
 cyclomatic internal/play (*Service).rollMember 25
 cyclomatic internal/play (*Service).rollParts 30
@@ -910,7 +908,6 @@ maintainability internal/play (*Service).SearchForTraps 5
 maintainability internal/play (*Service).StartEncounter 19
 maintainability internal/play (*Service).TakeAction 7
 maintainability internal/play (*Service).castSpell 0
-maintainability internal/play (*Service).rollAttack 0
 maintainability internal/play (*Service).rollDamage 4
 maintainability internal/play (*Service).settleTrapDamage 19
 maintainability internal/progression (*Service).give 17
