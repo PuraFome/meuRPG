@@ -104,7 +104,6 @@ cognitive internal/play (*Service).CastSummon 79
 cognitive internal/play (*Service).ChangeLastingEffectDuration 33
 cognitive internal/play (*Service).ClearHelp 19
 cognitive internal/play (*Service).CloseContest 19
-cognitive internal/play (*Service).CloseGroupCheck 27
 cognitive internal/play (*Service).CloseScene 18
 cognitive internal/play (*Service).ConfirmCastTimePassed 23
 cognitive internal/play (*Service).ConfirmDeath 31
@@ -147,7 +146,6 @@ cognitive internal/play (*Service).ReleaseGrapple 23
 cognitive internal/play (*Service).RemoveCombatant 48
 cognitive internal/play (*Service).RemoveDamagePart 40
 cognitive internal/play (*Service).RemoveEffectTarget 21
-cognitive internal/play (*Service).RequestGroupCheck 44
 cognitive internal/play (*Service).RequestRollMode 42
 cognitive internal/play (*Service).ReseedPuzzle 19
 cognitive internal/play (*Service).ResolveConcentrationSave 74
@@ -159,7 +157,6 @@ cognitive internal/play (*Service).RevealHider 18
 cognitive internal/play (*Service).ReviveInCombat 16
 cognitive internal/play (*Service).RollDeathSave 45
 cognitive internal/play (*Service).RollEffectSave 98
-cognitive internal/play (*Service).RollGroupCheck 20
 cognitive internal/play (*Service).RollSceneCheck 87
 cognitive internal/play (*Service).SaveBattleEncounter 18
 cognitive internal/play (*Service).SearchForTraps 134
@@ -204,7 +201,6 @@ cognitive internal/play (*Service).applyLastingSpell 44
 cognitive internal/play (*Service).applyMove 44
 cognitive internal/play (*Service).applyRider 22
 cognitive internal/play (*Service).baseCheckModeOf 28
-cognitive internal/play (*Service).buildGroupCheckView 48
 cognitive internal/play (*Service).castCharacterEffects 20
 cognitive internal/play (*Service).castHPSpell 77
 cognitive internal/play (*Service).castProto 34
@@ -238,7 +234,6 @@ cognitive internal/play (*Service).familiarSquares 16
 cognitive internal/play (*Service).fireWrongTrap 20
 cognitive internal/play (*Service).flexible 18
 cognitive internal/play (*Service).giveDie 21
-cognitive internal/play (*Service).groupWrite 21
 cognitive internal/play (*Service).guardCast 23
 cognitive internal/play (*Service).healTargets 44
 cognitive internal/play (*Service).hideAndHelpActions 20
@@ -268,7 +263,6 @@ cognitive internal/play (*Service).releaseWaiting 16
 cognitive internal/play (*Service).resolveRebuke 18
 cognitive internal/play (*Service).rollAttack 261
 cognitive internal/play (*Service).rollDamage 174
-cognitive internal/play (*Service).rollMember 30
 cognitive internal/play (*Service).rollPartDice 17
 cognitive internal/play (*Service).rollParts 54
 cognitive internal/play (*Service).runSolveAction 17
@@ -401,7 +395,6 @@ cyclomatic internal/play (*Service).BeginCombat 17
 cyclomatic internal/play (*Service).CastSpellOutsideCombat 23
 cyclomatic internal/play (*Service).CastSummon 43
 cyclomatic internal/play (*Service).ChangeLastingEffectDuration 20
-cyclomatic internal/play (*Service).CloseGroupCheck 18
 cyclomatic internal/play (*Service).ConfirmCastTimePassed 16
 cyclomatic internal/play (*Service).ConfirmDeath 20
 cyclomatic internal/play (*Service).ConfirmRevivifyTime 24
@@ -433,7 +426,6 @@ cyclomatic internal/play (*Service).PreviewRevivify 22
 cyclomatic internal/play (*Service).PreviewSpellArea 23
 cyclomatic internal/play (*Service).RemoveCombatant 27
 cyclomatic internal/play (*Service).RemoveDamagePart 27
-cyclomatic internal/play (*Service).RequestGroupCheck 28
 cyclomatic internal/play (*Service).RequestRollMode 29
 cyclomatic internal/play (*Service).ResolveConcentrationSave 39
 cyclomatic internal/play (*Service).ResolveHiddenReveal 22
@@ -480,7 +472,6 @@ cyclomatic internal/play (*Service).applyLastingSpell 33
 cyclomatic internal/play (*Service).applyMove 38
 cyclomatic internal/play (*Service).applyRider 16
 cyclomatic internal/play (*Service).baseCheckModeOf 24
-cyclomatic internal/play (*Service).buildGroupCheckView 36
 cyclomatic internal/play (*Service).castCharacterEffects 16
 cyclomatic internal/play (*Service).castHPSpell 35
 cyclomatic internal/play (*Service).castProto 21
@@ -526,7 +517,6 @@ cyclomatic internal/play (*Service).releaseHold 25
 cyclomatic internal/play (*Service).resolveRebuke 18
 cyclomatic internal/play (*Service).rollAttack 146
 cyclomatic internal/play (*Service).rollDamage 92
-cyclomatic internal/play (*Service).rollMember 25
 cyclomatic internal/play (*Service).rollParts 30
 cyclomatic internal/play (*Service).runSolveAction 19
 cyclomatic internal/play (*Service).sceneInfo 21
