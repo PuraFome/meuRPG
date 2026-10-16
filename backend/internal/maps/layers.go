@@ -160,7 +160,7 @@ func (s *Service) PaintMapCells(
 	var done paintDone
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		done, err = s.paintInTx(ctx, s.queries.WithTx(tx), batch)
+		done, err = s.paintTx(ctx, s.queries.WithTx(tx), batch)
 		return err
 	})
 	if err != nil {
@@ -191,9 +191,9 @@ type paintDone struct {
 	playersToo bool
 }
 
-// paintInTx paints the batch inside the transaction of q. The map's row lock makes
+// paintTx paints the batch inside the transaction of q. The map's row lock makes
 // two batches of paint take turns: each reads the layers the other left.
-func (s *Service) paintInTx(ctx context.Context, q *mapsdb.Queries, b paintBatch) (paintDone, error) {
+func (s *Service) paintTx(ctx context.Context, q *mapsdb.Queries, b paintBatch) (paintDone, error) {
 	done := paintDone{playersToo: b.layer != mapsv1.MapLayer_MAP_LAYER_LIGHT}
 	var err error
 	if done.mapRow, err = lockMap(ctx, q, b.campaignID, b.mapID); err != nil {
@@ -646,8 +646,8 @@ func (s *Service) SetMapFog(
 	}
 	// The players hear of what they read (the switch, "Visão do grupo"), not of the
 	// base light, which is the master's.
-	playersRead := before.FogEnabled != after.FogEnabled || before.GroupVision != after.GroupVision
-	s.publishMapChanged(m.CampaignID, mapID, playersRead && playersSee(mapID, after.RevealedAt, current))
+	playersHear := before.FogEnabled != after.FogEnabled || before.GroupVision != after.GroupVision
+	s.publishMapChanged(m.CampaignID, mapID, playersHear && playersSee(mapID, after.RevealedAt, current))
 	// What everyone sees, and remembers, is worked out again (the base light is the
 	// master's, but it moves what the squares look like).
 	if after.FogEnabled {

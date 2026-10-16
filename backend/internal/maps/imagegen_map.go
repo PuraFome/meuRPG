@@ -830,7 +830,7 @@ func (s *Service) UseGeneratedImageAsMapImage(
 	var out useOutcome
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		out, err = s.useInTx(ctx, s.queries.WithTx(tx), &call)
+		out, err = s.useGeneratedImageTx(ctx, s.queries.WithTx(tx), &call)
 		return err
 	})
 	s.discardFogCopy(ctx, m.CampaignID, call.imageCopy, err != nil || !out.copied)
@@ -868,8 +868,8 @@ type useOutcome struct {
 	alreadyUsed bool
 }
 
-// changed is the refusal for a map that is no longer the one the picture was drawn for.
-func (c *useCall) changed() error {
+// errMapChanged is the refusal for a map that is no longer the one the picture was drawn for.
+func (c *useCall) errMapChanged() error {
 	return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED, c.status)
 }
 
@@ -897,9 +897,9 @@ func (s *Service) texturedMapRequest(ctx context.Context, campaignID, imageID st
 	return request, nil
 }
 
-// useInTx is one attempt of the transaction: it locks the map, answers a retry,
+// useGeneratedImageTx is one attempt of the transaction: it locks the map, answers a retry,
 // checks the map is still the one the picture was drawn for, and swaps the image.
-func (s *Service) useInTx(ctx context.Context, q *mapsdb.Queries, c *useCall) (useOutcome, error) {
+func (s *Service) useGeneratedImageTx(ctx context.Context, q *mapsdb.Queries, c *useCall) (useOutcome, error) {
 	campaignID := c.m.CampaignID
 	locked, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: c.mapID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -931,10 +931,10 @@ func (s *Service) useInTx(ctx context.Context, q *mapsdb.Queries, c *useCall) (u
 		return useOutcome{}, err
 	}
 	if c.request.MapPlanHash == nil || planHash(solid) != *c.request.MapPlanHash {
-		return useOutcome{}, c.changed()
+		return useOutcome{}, c.errMapChanged()
 	}
 	if c.fogSeen != locked.FogEnabled {
-		return useOutcome{}, c.changed() // the fog changed after the copy was prepared, and the revision did not
+		return useOutcome{}, c.errMapChanged() // the fog changed after the copy was prepared, and the revision did not
 	}
 	return s.swapMapImage(ctx, q, c, locked, old, fresh)
 }
@@ -950,7 +950,7 @@ func checkUseGrid(ctx context.Context, q *mapsdb.Queries, c *useCall, locked map
 	if !fits || locked.GridColumns == nil ||
 		request.MapGridColumns == nil || *locked.GridColumns != *request.MapGridColumns ||
 		request.MapGridFactor == nil || locked.GridFactor != *request.MapGridFactor {
-		return c.changed()
+		return c.errMapChanged()
 	}
 	return nil
 }
@@ -972,7 +972,7 @@ func (s *Service) checkUseSize(ctx context.Context, q *mapsdb.Queries, c *useCal
 	}
 	if request.MapWidth == nil || request.MapHeight == nil || old.Width != *request.MapWidth || old.Height != *request.MapHeight ||
 		fresh.Width != old.Width || fresh.Height != old.Height {
-		return old, fresh, c.changed()
+		return old, fresh, c.errMapChanged()
 	}
 	return old, fresh, nil
 }

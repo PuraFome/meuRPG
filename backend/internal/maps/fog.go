@@ -430,7 +430,7 @@ const familiarSightSquares = 20
 // the map too.
 func (s *Service) familiarEyes(ctx context.Context, tx pgx.Tx, in fogInput, members []link.PartyMember, stands map[string]grid.Square, combat link.CombatPositions) (map[string][]vision.Viewer, error) {
 	var out map[string][]vision.Viewer
-	creatures := &creatureTokens{s: s, tx: tx, in: in}
+	creatures := &creatureSquares{s: s, tx: tx, in: in}
 	for _, m := range members {
 		eyes, ok, err := familiarViewer(ctx, creatures, stands, combat, m)
 		if err != nil {
@@ -449,7 +449,7 @@ func (s *Service) familiarEyes(ctx context.Context, tx pgx.Tx, in fogInput, memb
 
 // familiarViewer is the viewer the member's familiar is, if the member looks through
 // its eyes and it is in range of the character.
-func familiarViewer(ctx context.Context, creatures *creatureTokens, stands map[string]grid.Square, combat link.CombatPositions, m link.PartyMember) (vision.Viewer, bool, error) {
+func familiarViewer(ctx context.Context, creatures *creatureSquares, stands map[string]grid.Square, combat link.CombatPositions, m link.PartyMember) (vision.Viewer, bool, error) {
 	if m.Eyes == nil {
 		return vision.Viewer{}, false, nil
 	}
@@ -477,9 +477,9 @@ func withinFamiliarSight(character, familiar grid.Square) bool {
 	return dc*dc+dr*dr <= familiarSightSquares*familiarSightSquares
 }
 
-// creatureTokens are the squares of a map's creature tokens, read once and only if
+// creatureSquares are the squares of a map's creature tokens, read once and only if
 // a familiar needs them.
-type creatureTokens struct {
+type creatureSquares struct {
 	s       *Service
 	tx      pgx.Tx
 	in      fogInput
@@ -487,7 +487,7 @@ type creatureTokens struct {
 }
 
 // squareOf is the square of a creature's token on the map, if it has one.
-func (c *creatureTokens) squareOf(ctx context.Context, creatureID string) (grid.Square, bool, error) {
+func (c *creatureSquares) squareOf(ctx context.Context, creatureID string) (grid.Square, bool, error) {
 	if c.squares == nil {
 		if err := c.load(ctx); err != nil {
 			return grid.Square{}, false, err
@@ -497,7 +497,7 @@ func (c *creatureTokens) squareOf(ctx context.Context, creatureID string) (grid.
 	return sq, ok, nil
 }
 
-func (c *creatureTokens) load(ctx context.Context) error {
+func (c *creatureSquares) load(ctx context.Context) error {
 	c.squares = map[string]grid.Square{}
 	rows, err := queriesIn(c.s.queries, c.tx).ListMapCreatureTokens(ctx, c.in.mapID)
 	if err != nil {

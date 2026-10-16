@@ -119,7 +119,7 @@ func (s *Service) AddSceneAction(
 	}
 	call := &addActionCall{pointID: pointID, action: action, scopedKey: scopedKey, requestHash: requestHash}
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
-		return s.addActionRows(ctx, q, call)
+		return s.appendAction(ctx, q, call)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "add a scene action", err)
@@ -156,10 +156,10 @@ func (s *Service) cleanNewAction(msg *mapsv1.AddSceneActionRequest) (newAction, 
 	return newAction{key: key, name: name, dc: dc, attempts: attempts}, nil
 }
 
-// addActionRows reads the point's actions and adds the new one after them, or
+// appendAction reads the point's actions and adds the new one after them, or
 // finds the one an earlier call with the same key added, and leaves the list
 // as the caller answers it.
-func (s *Service) addActionRows(ctx context.Context, q *mapsdb.Queries, call *addActionCall) error {
+func (s *Service) appendAction(ctx context.Context, q *mapsdb.Queries, call *addActionCall) error {
 	// The point is locked by now, so two calls with the same key take turns.
 	current, err := q.ListSceneActions(ctx, call.pointID)
 	if err != nil {
@@ -230,7 +230,7 @@ func (s *Service) UpdateSceneAction(
 	var actions []mapsdb.SceneAction
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
 		var err error
-		changed, actions, err = s.updateActionRows(ctx, q, pointID, actionID, edit)
+		changed, actions, err = s.editAction(ctx, q, pointID, actionID, edit)
 		return err
 	})
 	if err != nil {
@@ -279,9 +279,9 @@ func (s *Service) cleanActionEdit(msg *mapsv1.UpdateSceneActionRequest) (actionE
 	return edit, nil
 }
 
-// updateActionRows locks the action, applies the edit and reads the point's
+// editAction locks the action, applies the edit and reads the point's
 // actions as they are now.
-func (s *Service) updateActionRows(ctx context.Context, q *mapsdb.Queries, pointID, actionID string, edit actionEdit) (mapsdb.SceneAction, []mapsdb.SceneAction, error) {
+func (s *Service) editAction(ctx context.Context, q *mapsdb.Queries, pointID, actionID string, edit actionEdit) (mapsdb.SceneAction, []mapsdb.SceneAction, error) {
 	a, err := q.GetSceneActionForUpdate(ctx, mapsdb.GetSceneActionForUpdateParams{PointID: pointID, ID: actionID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return mapsdb.SceneAction{}, nil, errActionNotFound()
@@ -340,7 +340,7 @@ func (s *Service) MoveSceneAction(
 	moved := false
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
 		var err error
-		actions, moved, err = moveActionRows(ctx, q, pointID, actionID, step)
+		actions, moved, err = shiftAction(ctx, q, pointID, actionID, step)
 		return err
 	})
 	if err != nil {
@@ -352,11 +352,11 @@ func (s *Service) MoveSceneAction(
 	return connect.NewResponse(&mapsv1.MoveSceneActionResponse{Actions: s.actionsToProto(actions, true)}), nil
 }
 
-// moveActionRows swaps an action with its neighbor and renumbers the list
+// shiftAction swaps an action with its neighbor and renumbers the list
 // from 0: positions may have gaps after a removal, and a swap of two values
 // would leave equal ones. It returns the list as it is and whether anything
 // changed: the first action moved up, or the last moved down, changes nothing.
-func moveActionRows(ctx context.Context, q *mapsdb.Queries, pointID, actionID string, step int) ([]mapsdb.SceneAction, bool, error) {
+func shiftAction(ctx context.Context, q *mapsdb.Queries, pointID, actionID string, step int) ([]mapsdb.SceneAction, bool, error) {
 	actions, err := q.ListSceneActions(ctx, pointID)
 	if err != nil {
 		return actions, false, fmt.Errorf("list the actions: %w", err)

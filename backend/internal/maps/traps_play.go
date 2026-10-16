@@ -797,7 +797,7 @@ func (s *Service) DisarmTrap(
 	var res trapDisarm
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		res, err = s.disarmTrapIn(ctx, tx, m, mapID, pointID)
+		res, err = s.disarmTrapTx(ctx, tx, m, mapID, pointID)
 		return err
 	})
 	if err != nil {
@@ -825,10 +825,10 @@ type trapDisarm struct {
 	changed bool
 }
 
-// disarmTrapIn is the transaction of DisarmTrap: a trap already disarmed changes nothing;
+// disarmTrapTx is the transaction of DisarmTrap: a trap already disarmed changes nothing;
 // otherwise the players who know it are read before the change, it is disarmed (its
 // firing time kept) and the disarm is recorded.
-func (s *Service) disarmTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string) (trapDisarm, error) {
+func (s *Service) disarmTrapTx(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string) (trapDisarm, error) {
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP)
 	if err != nil {

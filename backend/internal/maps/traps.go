@@ -316,7 +316,7 @@ func (s *Service) RevealTrap(
 	var res trapReveal
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		res, err = s.revealTrapIn(ctx, tx, m, trapRevealCall{mapID: mapID, pointID: pointID, all: all, ids: ids, userOf: userOf})
+		res, err = s.revealTrapTx(ctx, tx, m, trapRevealCall{mapID: mapID, pointID: pointID, all: all, ids: ids, userOf: userOf})
 		return err
 	})
 	if err != nil {
@@ -357,9 +357,9 @@ type trapReveal struct {
 	changed  bool
 }
 
-// revealTrapIn is the transaction of RevealTrap: lock the trap, reveal it, and record the
+// revealTrapTx is the transaction of RevealTrap: lock the trap, reveal it, and record the
 // reveal when it changed something.
-func (s *Service) revealTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membership, call trapRevealCall) (trapReveal, error) {
+func (s *Service) revealTrapTx(ctx context.Context, tx pgx.Tx, m authz.Membership, call trapRevealCall) (trapReveal, error) {
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, call.mapID, call.pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP)
 	if err != nil {
@@ -440,7 +440,7 @@ func (s *Service) MarkTreasureFound(
 	var res treasureChange // changed: this call is the one that found it
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		res, err = s.markTreasureIn(ctx, tx, m, mapID, pointID, ids)
+		res, err = s.markTreasureFoundTx(ctx, tx, m, mapID, pointID, ids)
 		return err
 	})
 	if err != nil {
@@ -466,10 +466,10 @@ type treasureChange struct {
 	changed bool
 }
 
-// markTreasureIn is the transaction of MarkTreasureFound: lock the treasure, mark it found
+// markTreasureFoundTx is the transaction of MarkTreasureFound: lock the treasure, mark it found
 // (in the session open now, if any), replace its finders and, when it was not found
 // before, record the find.
-func (s *Service) markTreasureIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string, ids []string) (treasureChange, error) {
+func (s *Service) markTreasureFoundTx(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string, ids []string) (treasureChange, error) {
 	var res treasureChange
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE)
@@ -540,7 +540,7 @@ func (s *Service) UnmarkTreasureFound(
 	var res treasureChange
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		res, err = s.unmarkTreasureIn(ctx, tx, m, mapID, pointID)
+		res, err = s.unmarkTreasureFoundTx(ctx, tx, m, mapID, pointID)
 		return err
 	})
 	if err != nil {
@@ -557,10 +557,10 @@ func (s *Service) UnmarkTreasureFound(
 	return connect.NewResponse(&mapsv1.UnmarkTreasureFoundResponse{Point: out}), nil
 }
 
-// unmarkTreasureIn is the transaction of UnmarkTreasureFound: a treasure that is not
+// unmarkTreasureFoundTx is the transaction of UnmarkTreasureFound: a treasure that is not
 // found has nothing to unmark; a found one is cleared, its finders forgotten and the
 // change recorded.
-func (s *Service) unmarkTreasureIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string) (treasureChange, error) {
+func (s *Service) unmarkTreasureFoundTx(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string) (treasureChange, error) {
 	var res treasureChange
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE)

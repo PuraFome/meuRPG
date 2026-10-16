@@ -430,7 +430,7 @@ func TestBlackenBlocksIsFrozen(t *testing.T) {
 						for i := range show {
 							show[i] = true
 						}
-						blackenBlocks(show, wc, f.g, nb, x0, y0, w, h)
+						blackenBlocks(show, wc, f.g, nb, tileBox{x0: x0, y0: y0, w: w, h: h})
 						bits := make([]byte, len(show))
 						for i, s := range show {
 							if s {

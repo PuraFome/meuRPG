@@ -95,7 +95,7 @@ func (s *Service) AddSceneClue(
 	}
 	call := &addClueCall{pointID: pointID, text: text, scopedKey: scopedKey, requestHash: requestHash}
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
-		return s.addClueRows(ctx, q, call)
+		return s.appendClue(ctx, q, call)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "add a scene clue", err)
@@ -110,9 +110,9 @@ func (s *Service) AddSceneClue(
 	return connect.NewResponse(&mapsv1.AddSceneClueResponse{Clue: clueByID(clues, call.added.ID), Clues: clues}), nil
 }
 
-// addClueRows reads the point's clues and adds the new one after them, or
+// appendClue reads the point's clues and adds the new one after them, or
 // finds the one an earlier call with the same key added.
-func (s *Service) addClueRows(ctx context.Context, q *mapsdb.Queries, call *addClueCall) error {
+func (s *Service) appendClue(ctx context.Context, q *mapsdb.Queries, call *addClueCall) error {
 	// The point is locked by now, so two calls with the same key take turns.
 	current, err := q.ListSceneClues(ctx, call.pointID)
 	if err != nil {
@@ -202,7 +202,7 @@ func (s *Service) MoveSceneClue(
 	moved := false
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
 		var err error
-		moved, err = moveClueRows(ctx, q, pointID, clueID, step)
+		moved, err = shiftClue(ctx, q, pointID, clueID, step)
 		return err
 	})
 	if err != nil {
@@ -218,10 +218,10 @@ func (s *Service) MoveSceneClue(
 	return connect.NewResponse(&mapsv1.MoveSceneClueResponse{Clues: clues}), nil
 }
 
-// moveClueRows swaps a clue with its neighbor and renumbers the list from 0,
-// as moveActionRows does. It says whether anything changed: the first clue moved
+// shiftClue swaps a clue with its neighbor and renumbers the list from 0,
+// as shiftAction does. It says whether anything changed: the first clue moved
 // up, or the last moved down, changes nothing.
-func moveClueRows(ctx context.Context, q *mapsdb.Queries, pointID, clueID string, step int) (bool, error) {
+func shiftClue(ctx context.Context, q *mapsdb.Queries, pointID, clueID string, step int) (bool, error) {
 	clues, err := q.ListSceneClues(ctx, pointID)
 	if err != nil {
 		return false, fmt.Errorf("list the clues: %w", err)
@@ -314,7 +314,7 @@ func (s *Service) RevealSceneClue(
 	var res clueReveal
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		res, err = s.revealRows(ctx, tx, call)
+		res, err = s.revealClueTx(ctx, tx, call)
 		return err
 	})
 	if err != nil {
@@ -328,9 +328,9 @@ func (s *Service) RevealSceneClue(
 	return connect.NewResponse(&mapsv1.RevealSceneClueResponse{Clue: clueByID(clues, res.clue.ID)}), nil
 }
 
-// revealRows finds the clue in the campaign, gives it to the characters who
+// revealClueTx finds the clue in the campaign, gives it to the characters who
 // did not have it yet and records the reveal as a session event.
-func (s *Service) revealRows(ctx context.Context, tx pgx.Tx, call revealCall) (clueReveal, error) {
+func (s *Service) revealClueTx(ctx context.Context, tx pgx.Tx, call revealCall) (clueReveal, error) {
 	q := s.queries.WithTx(tx)
 	clue, err := q.GetSceneClueInCampaign(ctx, mapsdb.GetSceneClueInCampaignParams{CampaignID: call.m.CampaignID, ID: call.clueID})
 	if errors.Is(err, pgx.ErrNoRows) {

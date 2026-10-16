@@ -287,7 +287,7 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 	var res reservation
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		res, err = s.reserveIn(ctx, s.queries.WithTx(tx), &n, campaignID)
+		res, err = s.reserveTx(ctx, s.queries.WithTx(tx), &n, campaignID)
 		return err
 	})
 	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == pgUniqueViolation {
@@ -331,9 +331,9 @@ func (s *Service) racedReservation(ctx context.Context, existing mapsdb.ImageReq
 	return existing, status, nil
 }
 
-// reserveIn is one attempt of reserve's transaction: the replay of an earlier
+// reserveTx is one attempt of reserve's transaction: the replay of an earlier
 // try with the same key, or the checks in their order and the insert.
-func (s *Service) reserveIn(ctx context.Context, q *mapsdb.Queries, n *newRequest, campaignID string) (reservation, error) {
+func (s *Service) reserveTx(ctx context.Context, q *mapsdb.Queries, n *newRequest, campaignID string) (reservation, error) {
 	// A retry with the same key: the first request, whatever it became.
 	existing, err := q.GetImageRequestByKey(ctx, mapsdb.GetImageRequestByKeyParams{CampaignID: campaignID, IdempotencyKey: n.key})
 	if err == nil {

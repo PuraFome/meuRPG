@@ -240,7 +240,7 @@ func (s *Service) PlaceTreasure(
 	var placed treasurePlacement
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		placed, err = s.placeTreasureIn(ctx, s.queries.WithTx(tx), m.CampaignID, plan, scopedKey, requestHash)
+		placed, err = s.placeTreasureTx(ctx, s.queries.WithTx(tx), m.CampaignID, plan, scopedKey, requestHash)
 		return err
 	})
 	if err != nil {
@@ -353,9 +353,9 @@ func treasureName(msg *mapsv1.PlaceTreasureRequest, mode string) (string, error)
 	return name, nil
 }
 
-// placeTreasureIn is the transaction of PlaceTreasure: the map, the replay of the key, the
+// placeTreasureTx is the transaction of PlaceTreasure: the map, the replay of the key, the
 // square, the cap and the insert.
-func (s *Service) placeTreasureIn(ctx context.Context, q *mapsdb.Queries, campaignID string, plan treasurePlan, scopedKey, requestHash string) (treasurePlacement, error) {
+func (s *Service) placeTreasureTx(ctx context.Context, q *mapsdb.Queries, campaignID string, plan treasurePlan, scopedKey, requestHash string) (treasurePlacement, error) {
 	mapRow, err := s.campaignMap(ctx, q, campaignID, plan.mapID)
 	if err != nil {
 		return treasurePlacement{}, err
