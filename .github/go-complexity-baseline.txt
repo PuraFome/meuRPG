@@ -102,7 +102,6 @@ cognitive internal/play (*Service).CancelRollModeRequest 22
 cognitive internal/play (*Service).CastSpellOutsideCombat 43
 cognitive internal/play (*Service).CastSummon 79
 cognitive internal/play (*Service).ChangeLastingEffectDuration 33
-cognitive internal/play (*Service).ClearHelp 19
 cognitive internal/play (*Service).CloseContest 19
 cognitive internal/play (*Service).CloseGroupCheck 27
 cognitive internal/play (*Service).CloseScene 18
@@ -129,8 +128,6 @@ cognitive internal/play (*Service).GetTurnOptions 29
 cognitive internal/play (*Service).GiveBardicInspiration 24
 cognitive internal/play (*Service).GiveBardicInspirationOutside 29
 cognitive internal/play (*Service).GrantSceneAttempt 33
-cognitive internal/play (*Service).Help 70
-cognitive internal/play (*Service).Hide 34
 cognitive internal/play (*Service).ListCharacterEffects 29
 cognitive internal/play (*Service).ListCombatLog 34
 cognitive internal/play (*Service).ListSessionPuzzles 19
@@ -152,7 +149,6 @@ cognitive internal/play (*Service).RequestRollMode 42
 cognitive internal/play (*Service).ReseedPuzzle 19
 cognitive internal/play (*Service).ResolveConcentrationSave 74
 cognitive internal/play (*Service).ResolveHiddenReveal 36
-cognitive internal/play (*Service).ResolveHide 55
 cognitive internal/play (*Service).ResolveShove 52
 cognitive internal/play (*Service).RespondContest 68
 cognitive internal/play (*Service).RevealHider 18
@@ -288,7 +284,6 @@ cognitive internal/play (*Service).slowFall 23
 cognitive internal/play (*Service).spellAttack 16
 cognitive internal/play (*Service).spellSave 28
 cognitive internal/play (*Service).spellTargetsFor 24
-cognitive internal/play (*Service).spendHide 23
 cognitive internal/play (*Service).spendOne 26
 cognitive internal/play (*Service).spendSlot 17
 cognitive internal/play (*Service).startMonsters 23
@@ -422,8 +417,6 @@ cyclomatic internal/play (*Service).GetTurnOptions 27
 cyclomatic internal/play (*Service).GiveBardicInspiration 16
 cyclomatic internal/play (*Service).GiveBardicInspirationOutside 19
 cyclomatic internal/play (*Service).GrantSceneAttempt 24
-cyclomatic internal/play (*Service).Help 45
-cyclomatic internal/play (*Service).Hide 22
 cyclomatic internal/play (*Service).ListCharacterEffects 21
 cyclomatic internal/play (*Service).ListCombatLog 22
 cyclomatic internal/play (*Service).ListSpellCasts 18
@@ -437,7 +430,6 @@ cyclomatic internal/play (*Service).RequestGroupCheck 28
 cyclomatic internal/play (*Service).RequestRollMode 29
 cyclomatic internal/play (*Service).ResolveConcentrationSave 39
 cyclomatic internal/play (*Service).ResolveHiddenReveal 22
-cyclomatic internal/play (*Service).ResolveHide 33
 cyclomatic internal/play (*Service).ResolveShove 31
 cyclomatic internal/play (*Service).RespondContest 41
 cyclomatic internal/play (*Service).ReviveInCombat 17
@@ -540,7 +532,6 @@ cyclomatic internal/play (*Service).slowFall 23
 cyclomatic internal/play (*Service).spellAttack 16
 cyclomatic internal/play (*Service).spellSave 25
 cyclomatic internal/play (*Service).spellTargetsFor 16
-cyclomatic internal/play (*Service).spendHide 21
 cyclomatic internal/play (*Service).spendOne 19
 cyclomatic internal/play (*Service).startMonsters 16
 cyclomatic internal/play (*Service).syncContests 19
@@ -576,7 +567,6 @@ cyclomatic internal/play tallyHighlights 38
 maintainability internal/maps (*Service).RedrawDungeonMap 16
 maintainability internal/maps (*Service).reserve 19
 maintainability internal/play (*Service).ApplyPendingDamage 16
-maintainability internal/play (*Service).Help 19
 maintainability internal/play (*Service).ResolveConcentrationSave 18
 maintainability internal/play (*Service).RollEffectSave 15
 maintainability internal/play (*Service).RollSceneCheck 13
