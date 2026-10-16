@@ -149,6 +149,15 @@ func (s *summonJSON) empty() bool {
 		s.Attack == "" && s.Type == "" && len(s.Options) == 0 && len(s.MultiplierAtLevel) == 0
 }
 
+// maxSummonCircle is the highest circle of a slot.
+const maxSummonCircle = 9
+
+// minSummonMultiplier is the smallest number a multiplier_at_level may give.
+const minSummonMultiplier = 2
+
+// summonFail builds the error of a summon entry's field.
+type summonFail func(string, ...any) error
+
 // loadSummon checks a summon entry and stores it.
 func (c *content) loadSummon(key string, spellLevel int, in *summonJSON, fail func(string, ...any) error) error {
 	def := &summonDef{spellLevel: spellLevel, creatures: slices.Clone(in.Creatures), count: in.Count, perLevel: in.CountPerLevel, attack: in.Attack, typ: in.Type}
@@ -160,70 +169,85 @@ func (c *content) loadSummon(key string, spellLevel int, in *summonJSON, fail fu
 	if byList == byBand {
 		return fail("a summon takes either creatures or options")
 	}
-	creature := func(k string) error {
-		if _, ok := c.monsters[k]; !ok {
-			return fail("%q is not a creature", k)
-		}
-		return nil
-	}
+	var err error
 	if byList {
-		if in.Count < 1 || in.CountPerLevel < 0 || in.Type != "" || len(in.MultiplierAtLevel) != 0 {
-			return fail("a summon of creatures takes a count of at least 1 and a count_per_level, nothing else")
-		}
-		seen := map[string]bool{}
-		for _, k := range in.Creatures {
-			if err := creature(k); err != nil {
-				return err
-			}
-			if seen[k] {
-				return fail("%q is listed twice", k)
-			}
-			seen[k] = true
-		}
-		for _, u := range in.Unlocks {
-			if _, ok := c.features[u.Feature]; !ok {
-				return fail("%q is not a feature", u.Feature)
-			}
-			if len(u.Creatures) == 0 || !slices.Contains(summonAttacks, u.Attack) {
-				return fail("an unlock needs creatures and an attack of %v", summonAttacks)
-			}
-			for _, k := range u.Creatures {
-				if err := creature(k); err != nil {
-					return err
-				}
-				if seen[k] {
-					return fail("%q is listed twice", k)
-				}
-				seen[k] = true
-			}
-			def.unlocks = append(def.unlocks, summonUnlock{feature: u.Feature, creatures: slices.Clone(u.Creatures), attack: u.Attack})
-		}
+		err = c.loadSummonList(def, in, fail)
 	} else {
-		if in.Count != 0 || in.CountPerLevel != 0 || len(in.Unlocks) != 0 {
-			return fail("a summon of a creature type takes options, not a count")
-		}
-		if _, ok := creatureTypeNamePT[in.Type]; !ok {
-			return fail("%q is not a creature type", in.Type)
-		}
-		for _, o := range in.Options {
-			if _, ok := crEighths(o.MaxCR); !ok || o.Count < 1 {
-				return fail("an option needs a count of at least 1 and a max_cr that is a challenge rating")
-			}
-			def.options = append(def.options, summonBand{count: o.Count, maxCR: o.MaxCR})
-		}
-		for circle, times := range in.MultiplierAtLevel {
-			n, err := strconv.Atoi(circle)
-			if err != nil || n <= spellLevel || n > 9 || times < 2 {
-				return fail("multiplier_at_level maps a circle above the spell's own, up to 9, to a number of at least 2")
-			}
-			def.multipliers = append(def.multipliers, summonMultiplier{circle: n, times: times})
-		}
-		slices.SortFunc(def.multipliers, func(a, b summonMultiplier) int { return a.circle - b.circle })
+		err = loadSummonBands(def, spellLevel, in, fail)
+	}
+	if err != nil {
+		return err
 	}
 	if c.summons == nil {
 		c.summons = map[string]*summonDef{}
 	}
 	c.summons[key] = def
+	return nil
+}
+
+// loadSummonList checks a summon of listed creatures and the creatures that
+// features unlock: each a creature of the content, none listed twice.
+func (c *content) loadSummonList(def *summonDef, in *summonJSON, fail summonFail) error {
+	if in.Count < 1 || in.CountPerLevel < 0 || in.Type != "" || len(in.MultiplierAtLevel) != 0 {
+		return fail("a summon of creatures takes a count of at least 1 and a count_per_level, nothing else")
+	}
+	seen := map[string]bool{}
+	if err := c.checkSummonCreatures(in.Creatures, seen, fail); err != nil {
+		return err
+	}
+	for _, u := range in.Unlocks {
+		if _, ok := c.features[u.Feature]; !ok {
+			return fail("%q is not a feature", u.Feature)
+		}
+		if len(u.Creatures) == 0 || !slices.Contains(summonAttacks, u.Attack) {
+			return fail("an unlock needs creatures and an attack of %v", summonAttacks)
+		}
+		if err := c.checkSummonCreatures(u.Creatures, seen, fail); err != nil {
+			return err
+		}
+		def.unlocks = append(def.unlocks, summonUnlock{feature: u.Feature, creatures: slices.Clone(u.Creatures), attack: u.Attack})
+	}
+	return nil
+}
+
+// checkSummonCreatures refuses a key that is not a creature, and one seen
+// before in the entry.
+func (c *content) checkSummonCreatures(keys []string, seen map[string]bool, fail summonFail) error {
+	for _, k := range keys {
+		if _, ok := c.monsters[k]; !ok {
+			return fail("%q is not a creature", k)
+		}
+		if seen[k] {
+			return fail("%q is listed twice", k)
+		}
+		seen[k] = true
+	}
+	return nil
+}
+
+// loadSummonBands checks a summon of a creature type: its bands of count and
+// challenge rating, and the circles that multiply the counts.
+func loadSummonBands(def *summonDef, spellLevel int, in *summonJSON, fail summonFail) error {
+	if in.Count != 0 || in.CountPerLevel != 0 || len(in.Unlocks) != 0 {
+		return fail("a summon of a creature type takes options, not a count")
+	}
+	if _, ok := creatureTypeNamePT[in.Type]; !ok {
+		return fail("%q is not a creature type", in.Type)
+	}
+	for _, o := range in.Options {
+		if _, ok := crEighths(o.MaxCR); !ok || o.Count < 1 {
+			return fail("an option needs a count of at least 1 and a max_cr that is a challenge rating")
+		}
+		def.options = append(def.options, summonBand{count: o.Count, maxCR: o.MaxCR})
+	}
+	for circle, times := range in.MultiplierAtLevel {
+		n, err := strconv.Atoi(circle)
+		if err != nil || n <= spellLevel || n > maxSummonCircle || times < minSummonMultiplier {
+			return fail("multiplier_at_level maps a circle above the spell's own, up to 9, to a number of at least 2")
+		}
+		def.multipliers = append(def.multipliers, summonMultiplier{circle: n, times: times})
+	}
+	slices.SortFunc(def.multipliers, func(a, b summonMultiplier) int { return a.circle - b.circle })
 	return nil
 }
 
@@ -266,7 +290,7 @@ func (c *Content) SummonOptions(spell string, circle int, b Build) (SummonChoice
 	if !ok {
 		return SummonChoices{}, fmt.Errorf("%w: %s", ErrNotSummonSpell, spell)
 	}
-	if circle < def.spellLevel || circle > 9 {
+	if circle < def.spellLevel || circle > maxSummonCircle {
 		return SummonChoices{}, fmt.Errorf("%w: %s at circle %d", ErrSummonCircle, spell, circle)
 	}
 	sp := c.c.spells[spell]
@@ -285,26 +309,33 @@ func (c *Content) SummonOptions(spell string, circle int, b Build) (SummonChoice
 		opt.Forms = append(opt.Forms, SummonForm{Key: k, Attack: def.attack})
 	}
 	if len(def.unlocks) > 0 {
-		owned := map[string]bool{}
-		for _, f := range Derive(b, c).Features {
-			owned[f.Key] = true
-		}
-		for _, u := range def.unlocks {
-			if !owned[u.feature] {
-				continue
-			}
-			for _, k := range u.creatures {
-				opt.Forms = append(opt.Forms, SummonForm{Key: k})
-			}
-			// The feature changes the familiar whatever its form: the SRD lets
-			// a Pact of the Chain warlock's familiar attack with its reaction.
-			for i := range opt.Forms {
-				opt.Forms[i].Attack = u.attack
-			}
-		}
+		opt.Forms = c.unlockedForms(def, opt.Forms, b)
 	}
 	out.Options = []SummonOption{opt}
 	return out, nil
+}
+
+// unlockedForms adds the forms the build's features unlock, each of which
+// changes what every form may do.
+func (c *Content) unlockedForms(def *summonDef, forms []SummonForm, b Build) []SummonForm {
+	owned := map[string]bool{}
+	for _, f := range Derive(b, c).Features {
+		owned[f.Key] = true
+	}
+	for _, u := range def.unlocks {
+		if !owned[u.feature] {
+			continue
+		}
+		for _, k := range u.creatures {
+			forms = append(forms, SummonForm{Key: k})
+		}
+		// The feature changes the familiar whatever its form: the SRD lets
+		// a Pact of the Chain warlock's familiar attack with its reaction.
+		for i := range forms {
+			forms[i].Attack = u.attack
+		}
+	}
+	return forms
 }
 
 // CheckSummon refuses a choice the spell does not allow with this slot and
