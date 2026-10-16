@@ -49,7 +49,7 @@ var bucketName = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{1,220}[a-z0-9]$`)
 // download, delete) do not justify the client library and its dependencies.
 //
 // An object is named by its key as it is. The bucket must have uniform
-// bucket-level access and no public access (docs/operations.md#images);
+// bucket-level access and no public access (docs/operations/reference.md#images-and-the-bucket);
 // the API is the only reader.
 //
 // Neither the token nor a response body ever goes into an error or a log:

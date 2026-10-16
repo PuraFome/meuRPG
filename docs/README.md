@@ -10,12 +10,12 @@ This directory is the source of truth about the product, the rules and the archi
 | [product/glossary.md](product/glossary.md) | Everyone | What each term means |
 | [product/rules.md](product/rules.md) | Product owner, story developer | How the game behaves inside the app |
 | [product/stories.md](product/stories.md) | Product owner, story developer | What to build and how to know it is done |
-| [design.md](design.md) | Anyone touching a screen | The app's look: principles, tokens, components, and how a screen is designed and reviewed |
-| [architecture.md](architecture.md) | PR authors | How the system is built and where it runs |
-| [data.md](data.md) | PR authors | Tables, relations and migrations |
+| [design/](design/README.md) | Anyone touching a screen | The app's look: principles, tokens, components, and how a screen is designed and reviewed |
+| [architecture/](architecture/README.md) | PR authors | How the system is built and where it runs |
+| [data/](data/README.md) | PR authors | Tables, relations and migrations |
 | [privacy.md](privacy.md) | PR authors, reviewers | Which personal data we keep, why and for how long, and the privacy checklist of every PR |
 | [roadmap.md](roadmap.md) | Everyone | The stages up to the MVP and what comes after |
-| [operations.md](operations.md) | Operators | Deploy, secrets, costs and alerts |
+| [operations/](operations/README.md) | Operators | Deploy, secrets, costs and alerts |
 | [archive/](archive/README.md) | Anyone looking for history | Decision history, per-stage delivery history and archived notes |
 | `adr/` | Maintainers | Hard-to-reverse decisions. A separate private repository; the local folder is in `.gitignore` and not versioned here |
 | [development.md](development.md) | PR authors | The local environment in full: native options, sign-in, images, variables |

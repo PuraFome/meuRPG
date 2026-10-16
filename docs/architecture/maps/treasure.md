@@ -3,7 +3,7 @@
 The treasure generator is a pure function of `rules` (`treasure.go`, `treasure_generate.go`): the mode (`individual` or `hoard`), the party level (1 to 20) and a **seed** always give the same treasure.
 `TreasureService` (`proto/meurpg/maps/v1/treasure.proto`, in the `maps` module, mounted in the same `Mount` as `MapService`) serves it to the master and puts it on a map (RN-09, RN-10).
 **All calls are the master's; a player, a pending member and a non-member get `not_found` from all of them** (the function `requireDungeonMaster`, shared with `DungeonService`), so a generated treasure never reaches a player before they find the point.
-The tables and loading rules are in [CONTRIBUTING](../../../CONTRIBUTING.md#rules-content-srd) (`effects/treasure.json`, `effects/magic_item_values.json`).
+The tables and loading rules are in [CONTRIBUTING](../../rules-content.md#rules-content-srd) (`effects/treasure.json`, `effects/magic_item_values.json`).
 
 ```mermaid
 flowchart LR
@@ -50,7 +50,7 @@ A treasure's description always fits the 2,000 characters of a point (`TestTreas
 
 - **One random sequence each** for coins, gems, art and items, derived from the seed and a phase constant mixed by SplitMix64 (`seed ^ splitmix(phase)`): changing the item table does not change the same seed's coins. The generator is ours (SplitMix64, pinned to its reference vector by `TestTreasureRNGMatchesSplitMix64`, with Lemire's unbiased integers, as in the dungeon generator), not `math/rand`, whose sequence is not promised across Go versions.
 - **A seed gives the same treasure within a content version, and only within it.** Changing the tables or items (a new `fx.<n>` revision) changes every seed's treasure. So `Treasure` carries the `content_version`, `PlaceTreasure` requires it back, and a different one is `failed_precondition` with `TreasureBlocked CONTENT_CHANGED` ("gere de novo"). To keep a name fix from shuffling seeds, each rarity's units are drawn **in key order**, not Portuguese-name order.
-- **Items** use `MagicItemUnits` (see Magic items in [Architecture](../../architecture.md#magic-items)): the rarity is drawn by weight, then one of its units and one of the unit's options. A "Varia" family (the Potion of Healing) comes out as one of its variants, and the value is the variant's. **An artifact never comes out:** the table refuses the `artifact` rarity and `varies`.
+- **Items** use `MagicItemUnits` (see Magic items in [Architecture](../rules-creatures-items.md#magic-items)): the rarity is drawn by weight, then one of its units and one of the unit's options. A "Varia" family (the Potion of Healing) comes out as one of its variants, and the value is the variant's. **An artifact never comes out:** the table refuses the `artifact` rarity and `varies`.
 - Equal gems and art objects join (two fire agates are one piece of `count` 2).
 - Each coin stack is worth `quantity × coin value` in whole gp, rounded down (10 pp = 1 gp, 2 ep = 1 gp, 100 cp = 1 gp, 1 pp = 10 gp): 7 cp are worth 0 gp.
 - **Totals:** `coins_po`, `gems_po` and `art_po` add up to **`gold_po`**, the point's gold; `items_po` is the items' value, apart.

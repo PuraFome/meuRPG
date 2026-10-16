@@ -10,7 +10,7 @@
 // service runs them in order.
 //
 // The format is described in proto/meurpg/campaignpackage/v1/format.proto and
-// in docs/architecture.md#campaign-package.
+// in docs/architecture/campaign-package.md.
 package campaignpackage
 
 import (

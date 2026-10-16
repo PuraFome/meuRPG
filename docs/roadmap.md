@@ -54,5 +54,5 @@ Each stage delivers something for the Game Master and for the players. There are
 ## See also
 
 - [Stories and acceptance criteria](product/stories.md)
-- [Architecture](architecture.md)
+- [Architecture](architecture/README.md)
 - [CONTRIBUTING.md](../CONTRIBUTING.md): the dev environment and the CI.

@@ -2,7 +2,7 @@
 
 Puzzles (MR-038, RN-27) belong to `play` because they are played inside the session: the master makes them in the campaign, shows one to the open session's players, and they solve it live.
 The code is `backend/internal/play/puzzles*.go` (with `puzzles_rules.go` and `puzzles_hints.go`), the arithmetic is `backend/internal/rules/puzzle` (`answers.go`, `cipher.go`, `sequence.go`) and the API is `proto/meurpg/play/v1/puzzles.proto` (`PuzzleService`).
-The queries are the `Puzzles` block of `play`'s `queries.sql`; the tables are in [Data](../../data.md#tables-by-module).
+The queries are the `Puzzles` block of `play`'s `queries.sql`; the tables are in [Data](../../data/README.md#modules-and-tables).
 
 There are six kinds: "Apagar as luzes", the combination lock, the rotating symbols, the riddle, the sequence and the cipher.
 

@@ -170,7 +170,7 @@ The server has already filtered what each sees: the screen only draws what arriv
 Errors become Portuguese through the code and `EncounterBlocked` detail (`combat-errors.ts`); `blockedMessage` is a table of sentences by reason, and the log's `logLine` a table of one builder per kind in `combat-log.ts`.
 Dragging a token saves one move at a time per combatant (`MoveSaves`); if the server refuses, the token goes back and the screen says why.
 The combat code loads only with the session page.
-The grid has its own page (`/campaigns/:id/maps/:mapId/grid`, `MapService.SetMapGrid`) and printing the map another (`/campaigns/:id/maps/:mapId/print`, MR-033, web only; see [Design](../../design.md#print-the-map)).
+The grid has its own page (`/campaigns/:id/maps/:mapId/grid`, `MapService.SetMapGrid`) and printing the map another (`/campaigns/:id/maps/:mapId/print`, MR-033, web only; see [Design](../../design/maps.md#printing-pagesmapsmap-print)).
 
 **How `CombatView` is put together.** The component (`combat-view.ts`) is the composition and the inputs the template reads; the logic is in parts it builds in field initializers, each a plain class that reads the screen through a few getters, so each is tested with the same fake `CombatClient`:
 

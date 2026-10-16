@@ -45,7 +45,7 @@ Fixing old findings is welcome and never required.
 
 - `make lint` runs `buf lint`, `buf format` and `golangci-lint` (the version in the `Makefile`, which must equal the `golangci-lint-action` in `backend.yml` and `golangci_version` in `.github/scripts/go-complexity.sh`) as the same ratchet, against `origin/main` (`git fetch origin main` first; `LINT_BASE=<ref>` changes the base).
 - `make lint-all` runs them on the whole backend with every finding, to pick what to clean up next.
-- The linters, their settings and the reason for each one are in `backend/.golangci.yml`. Highlights: `sloglint` (a fixed message per call site, `snake_case` keys; see [Architecture](architecture.md#logs)), `nolintlint` (every `//nolint` names its linter, says why and still suppresses something), `gocyclo` and `gocognit` at 15, `maintidx` at 20, `mnd` (a bare number becomes a named `const` with a comment) and `goconst`.
+- The linters, their settings and the reason for each one are in `backend/.golangci.yml`. Highlights: `sloglint` (a fixed message per call site, `snake_case` keys; see [Architecture](architecture/logs.md#logs)), `nolintlint` (every `//nolint` names its linter, says why and still suppresses something), `gocyclo` and `gocognit` at 15, `maintidx` at 20, `mnd` (a bare number becomes a named `const` with a comment) and `goconst`.
 - `wrapcheck`, `gochecknoglobals`, `funlen`, `nilnil` and `exhaustive` are off on purpose. `wrapcheck` is off because authorization errors are `*connect.Error` and stay unwrapped for `rpclog`'s type switch.
 
 ### Complexity totals

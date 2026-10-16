@@ -142,7 +142,7 @@ erDiagram
 One row per game night; ids and times only, no personal data.
 `session_number` counts the campaign's sessions from 1 (`UNIQUE (campaign_id, session_number)`).
 A session is open while `ended_at` is empty; the partial unique index `game_sessions_one_open_per_campaign` leaves at most one open per campaign.
-Starting a session writes the row, locks the sheets and turns off the story releases in one transaction; the last two belong to `characters`, which `play` calls through an interface (see [Architecture](../architecture.md#play-module-game-sessions)).
+Starting a session writes the row, locks the sheets and turns off the story releases in one transaction; the last two belong to `characters`, which `play` calls through an interface (see [Architecture](../architecture/play/README.md)).
 
 What the session shows is on the row, all optional and independent, none set in a new session:
 
@@ -153,7 +153,7 @@ What the session shows is on the row, all optional and independent, none set in 
 | `shown_image_keep` | When on, stopping the display, swapping or ending the session copies the image into `campaign_left_images` ([gallery.md](gallery.md)), in the same transaction. |
 | `open_scene_point_id` | The `scene` map point the master opened, one at a time. Opening a hidden point does not reveal it (RN-10). `SET NULL` when the point is deleted. |
 
-`play` keeps only the ids; the `maps` module owns the targets and `play` reads them through the `MapKeeper` interface (see [Architecture](../architecture.md#what-the-session-shows)).
+`play` keeps only the ids; the `maps` module owns the targets and `play` reads them through the `MapKeeper` interface (see [Architecture](../architecture/play/live-session.md#what-the-session-shows)).
 There is no index on these columns: only deleting a map or image searches for them, and the table is small.
 What counts as "scene open again" is the last `scene_opened` event of the session: a roll only counts toward `scene_actions.max_attempts` if it comes after it, so closing and reopening a scene resets the counts without deleting history.
 

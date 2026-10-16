@@ -17,7 +17,7 @@ flowchart LR
     Layers -->|"walls and painted light"| Fog["per-player fog"]
 ```
 
-- **The five layers.** Difficult terrain and wall (1 bit per square), cover (2 bits: none, half, three-quarters), light (2 bits: unpainted, dark, dim, bright) and doors (4 bits: none, open, closed, locked, portcullis, secret; see [Doors](doors.md)), in the `rules/grid` format (see Grid, vision and presets in [Architecture](../../architecture.md#grid-vision-and-presets)).
+- **The five layers.** Difficult terrain and wall (1 bit per square), cover (2 bits: none, half, three-quarters), light (2 bits: unpainted, dark, dim, bright) and doors (4 bits: none, open, closed, locked, portcullis, secret; see [Doors](doors.md)), in the `rules/grid` format (see Grid, vision and presets in [Architecture](../rules-maps.md#grid)).
 - **Storage.** The `map_layers` table, one row per map, not four `maps` columns: `maps` is read whole by almost every call and the layers would go along every time. A map with nothing painted has no row, and a layer with nothing painted is `NULL` (sent empty). The limits on the largest grid (200 × 400) are 10 KB per 1-bit layer, 20 KB per 2-bit layer and 40 KB for doors.
 - **Painting.** `PaintMapCells(layer, value, squares)` takes up to 400 squares per call (`maxPaintSquares`), all inside the grid (a square outside refuses the whole batch). The last write wins, with no revision, because painting is dragging; repeating what is already there changes nothing and does not raise the revision. The call locks the map row (`GetMapForUpdate`), so consecutive batches wait for each other. `failed_precondition` `NO_GRID` without a grid.
 - **Revisions.** `Map.layers_revision` rises once per change of the layers a player reads (terrain, wall, cover, doors). The **painted light**, which no player reads, has its own counter (`maps.light_revision`) and the master reads the sum, so a player's number never says when the master paints light. On a fogged map a player receives 0 in `Map.layers_revision` and, in `GetMapLayers`, a number of what they receive. Both are **separate** from `Map.revision` (the guard of name and image), so painting never makes another tab's `UpdateMap` fail with `aborted`.
@@ -35,7 +35,7 @@ flowchart LR
 The calibration (MR-025, RN-25) says how many 1.5 m squares each square of a map's drawing is worth.
 `SetMapGrid(columns, square_factor)`: `columns` are the **drawing's** columns (4 to 200; 0 removes the grid and turns fog off) and `square_factor` is 1 to 20 (0 means 1).
 The rules' grid, `columns × factor` wide and `rows × factor` high, may not exceed 200 × 400.
-Combat without a grid is described in [Architecture](../../architecture.md#combat-without-a-grid-theatre-of-the-mind).
+Combat without a grid is described in [Architecture](../play/theatre.md).
 
 ```mermaid
 flowchart TD
@@ -74,7 +74,7 @@ The browser only draws and checks formats (the same limits as the `.proto`, so a
 - **`PaintSession`** (`paint-session.ts`) joins the queue and the layers and says whether painting is possible: before the first read answers, or if it fails, painting is off and never says "Tudo salvo". A read never overrides waiting strokes (it waits for the queue to empty and checks again), and a new grid empties the queue.
 - **Leaving with strokes waiting** sends them (`flush`); if the server does not receive them, the page asks ("Há traços que o servidor não recebeu", `canDeactivate` with the `confirmLeave` pattern). Closing the tab with the queue busy asks the browser's question (`beforeunload`).
 - The editor reads the layers again only when the map opens or the grid changes (`layers_revision`), never while strokes wait. It does not listen to the stream: what another tab painted appears on reload.
-- Frame timing of a drag across the biggest map: [CONTRIBUTING](../../../CONTRIBUTING.md#map-editor-in-the-browser).
+- Frame timing of a drag across the biggest map: [CONTRIBUTING](../../performance.md#the-map-editor-in-the-browser).
 
 ### Combat, erasing and errors
 

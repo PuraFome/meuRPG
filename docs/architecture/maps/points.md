@@ -34,7 +34,7 @@ Disarming it later shows "Desarmada" to whoever sees it, and re-arming it does n
 An undone trigger makes the trap hidden again if it was hidden before.
 
 **Who knows a trap (RN-10).**
-The table `map_point_reveals(point_id, character_id, how, at)` says which characters know it; `how` is `noticed` or `searched` (written in play, see Traps in play in [Architecture](../../architecture.md#traps-in-play)) or `master` (`RevealTrap`, 1 to 50 player characters or all, writes `trap_revealed` with a session open).
+The table `map_point_reveals(point_id, character_id, how, at)` says which characters know it; `how` is `noticed` or `searched` (written in play, see Traps in play in [Architecture](../play/traps.md#traps-in-play)) or `master` (`RevealTrap`, 1 to 50 player characters or all, writes `trap_revealed` with a session open).
 
 - `viewerOf` reads, for each player, the traps revealed to their characters (`knownTraps`) and `seesPoint` decides. Revealing to all is the `revealed_at` the point already had.
 - A trap only some characters know is announced only to their players (`map_changed` through `PublishToUsers`) when it changes, is revealed, hidden or deleted. The players are read in the transaction, before the `DELETE` removes the `map_point_reveals` rows. A triggered trap, or one revealed to all, everyone sees.

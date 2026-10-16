@@ -10,7 +10,7 @@ See also [Privacy](../privacy.md#the-legacy-app-database).
 ## Modules and tables
 
 Each table belongs to one module, which is the only code that writes it.
-A module reads another module's data through that module's interface, never by joining its tables (see [Architecture](../architecture.md)).
+A module reads another module's data through that module's interface, never by joining its tables (see [Architecture](../architecture/README.md)).
 The `play` module's tables are split over three pages because there are 35 of them.
 
 | Module | Page | Tables |
@@ -117,7 +117,7 @@ Keys and hashes are opaque values with no personal data.
 | `campaign_content_imports` | `create_key`, `create_hash`, `response` | Primary key `(campaign_id, create_key)`; a retry returns the stored `response`. |
 | `campaign_exports` | `create_key`, `create_hash` | Unique where set. |
 | `characters`, `map_points` | `create_key`, `create_hash` | `characters`: partial unique `(campaign_id, create_key)`, used by `CreateCharacter` and by "Create NPC" from a creature (one such NPC per campaign and creature). `map_points`: the treasure generator's "Put on the map". |
-| `campaigns`, `maps`, `scene_actions`, `scene_clues`, `player_notes`, `game_sessions`, `puzzles`, `planned_milestones`, `campaign_content`, `character_creatures` | `create_key`, `create_hash` (`TEXT`, optional) | The key of the RPC that creates the row. It stores the owner and the app's key (`<user>:<key>`, `<campaign>:<key>` or `<campaign>:<author>:<key>`), so it is unique per owner. A partial unique index `<table>_create_key_idx` makes it hold under concurrency. `NULL` on rows made without a key. See [Architecture](../architecture.md#api-contracts-protobuf). |
+| `campaigns`, `maps`, `scene_actions`, `scene_clues`, `player_notes`, `game_sessions`, `puzzles`, `planned_milestones`, `campaign_content`, `character_creatures` | `create_key`, `create_hash` (`TEXT`, optional) | The key of the RPC that creates the row. It stores the owner and the app's key (`<user>:<key>`, `<campaign>:<key>` or `<campaign>:<author>:<key>`), so it is unique per owner. A partial unique index `<table>_create_key_idx` makes it hold under concurrency. `NULL` on rows made without a key. See [Architecture](../architecture/api.md#contracts). |
 
 ## Reference tables
 
@@ -134,7 +134,7 @@ The test databases copy a seeded table with its rows and never empty it (`intern
 Migrations are numbered `NNNNN_description.sql` files in `backend/migrations/`, embedded in the `migrate` binary and applied by goose (`make migrate` locally, the `cmd/migrate` job in production).
 
 - **Production is live, so a migration only adds:** a table, column, index or row; never a rename, a drop, or a new `NOT NULL` without a default on something the running code reads.
-  The old code must keep working on the new schema during the switch and after a roll back ([Operations](../operations.md#releasing-a-new-version)).
+  The old code must keep working on the new schema during the switch and after a roll back ([Operations](../operations/runbook.md#release-a-new-version)).
   To remove something, release the code that stops using it first and drop it in a later release.
 - **One change per migration:** a `CREATE TABLE IF NOT EXISTS` with its constraints inside, a `CREATE INDEX IF NOT EXISTS`, or an `ALTER TABLE`.
   A migration that creates several indexes writes each in its own `CREATE INDEX IF NOT EXISTS`.
@@ -142,7 +142,7 @@ Migrations are numbered `NNNNN_description.sql` files in `backend/migrations/`, 
   Every statement is idempotent (`IF NOT EXISTS`, `IF EXISTS`), and a backfill touches only rows still in the old state.
   `TestMigrationsAreSafeToRerun` runs every `Up` twice.
 - **Indexes in their own migration**, not inside `CREATE TABLE`, because sqlc reads the migrations with the PostgreSQL parser, which does not know CockroachDB's inline index syntax.
-  Covered columns use `INCLUDE`; row TTL goes in `WITH (...)` (see [Contributing](../../CONTRIBUTING.md#queries-with-sqlc)).
+  Covered columns use `INCLUDE`; row TTL goes in `WITH (...)` (see [Contributing](../../CONTRIBUTING.md#code-rules-that-bite)).
 - **Numbering has gaps.** goose accepts them.
   A new migration takes the number after the highest, never an unused one.
 - **Ownership:** each module's migrations only create and change that module's tables.
@@ -158,17 +158,17 @@ A second `migrate` waits (up to 10 minutes, polling every second) and then exits
 A run that cannot renew cancels itself before the lease can end, so goose stops between statements; a statement already sent keeps going as a CockroachDB schema-change job, which no lock holds back.
 A run that crashed leaves the row, and the next run takes it once `expires_at` has passed.
 All times are the database clock's `now()`, never the runner's.
-See [Operations](../operations.md#the-connection-pool).
+See [Operations](../operations/reference.md#database-connections).
 
 ## Who may read what
 
 The RN-10 rule (what the master hides never reaches a player) is enforced in the module's code, not by the database: every table is read through a service that classifies the caller.
 Each module page ends its tables with a "Who reads" line.
-`backend/internal/leaktest` proves it: a campaign with one hidden thing of each kind, every read and every stream event asked by every person (see [Architecture](../architecture.md#leak-tests-rn-10)).
+`backend/internal/leaktest` proves it: a campaign with one hidden thing of each kind, every read and every stream event asked by every person (see [Architecture](../testing.md#leak-tests-rn-10)).
 Tables whose rows only the master reads are marked **master only** on their page.
 
 ## See also
 
 - [Glossary](../product/glossary.md)
 - [Business rules](../product/rules.md)
-- [Architecture](../architecture.md): the modules that own each table.
+- [Architecture](../architecture/README.md): the modules that own each table.

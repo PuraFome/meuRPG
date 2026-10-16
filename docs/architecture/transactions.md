@@ -12,7 +12,7 @@ With a few simultaneous requests every one holds a connection and waits for anot
 | `db.ReadTx(ctx, pool, fn)` | A read that joins several statements into one response. `READ ONLY`, with the same retry. |
 
 `fn` may run more than once, so it follows the rules below.
-The pool opens at most 10 connections unless `pool_max_conns` is in `DATABASE_URL` (`db.defaultMaxConns`; why 10 is in [Operations](../operations.md#the-connection-pool)), and every statement has a 30 s `statement_timeout` (`db.defaultStatementTimeout`).
+The pool opens at most 10 connections unless `pool_max_conns` is in `DATABASE_URL` (`db.defaultMaxConns`; why 10 is in [Operations](../operations/reference.md#database-connections)), and every statement has a 30 s `statement_timeout` (`db.defaultStatementTimeout`).
 The pool size is a safety net, not the fix: no path may hold a connection and ask for another, whatever the size.
 
 ## Rules for a closure
@@ -51,4 +51,4 @@ Every test pool (`platform/dbtest`) has one connection (`MaxConns = 1`) and an `
   A test that must hold a transaction open while the service works uses `dbtest.SideConnection`.
 - `MEURPG_TEST_POOL_MAX_CONNS=8` applies to the whole process and lists all violations at once.
 
-How to run these tests is in [CONTRIBUTING](../../CONTRIBUTING.md#integration-test-databases).
+How to run these tests is in [CONTRIBUTING](../development.md#test-databases).

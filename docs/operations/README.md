@@ -53,7 +53,7 @@ Nothing here is created from the repository by automation: the GCP resources are
 | CPU and memory | 2 vCPU, 1 GiB, CPU only during a request | One browser action makes every open screen ask for its turn options again at once |
 | `GOMEMLIMIT` | `400MiB` | The memory budgets in [reference](reference.md#memory-budgets) were sized against it |
 | `min-instances` | 0 | Scales to zero when idle |
-| `max-instances` | **1** | The live-session fan-out (`play/live` hub) and the rate-limit counters are in process memory, so a second instance would split a table in two ([architecture](../architecture.md#live-session)) |
+| `max-instances` | **1** | The live-session fan-out (`play/live` hub) and the rate-limit counters are in process memory, so a second instance would split a table in two ([architecture](../architecture/play/live-session.md#live-session)) |
 | `concurrency` | 50 | Each live stream counts; a table has about 14 at once. At Cloud Run's default of 80 the worst case of stalled request bodies passes `GOMEMLIMIT` |
 | Request timeout | `--timeout=2100` (35 minutes) | Streams live up to 10 minutes and a campaign package download up to 30 |
 | Ingress | `internal-and-cloud-load-balancing` | Only the load balancer reaches the service; with it `TRUSTED_PROXY_HOPS=2` |
@@ -63,7 +63,7 @@ When one instance stops being enough, the hub gives way to a shared channel (see
 
 ## See also
 
-- [Architecture](../architecture.md)
-- [Data model](../data.md)
+- [Architecture](../architecture/README.md)
+- [Data model](../data/README.md)
 - [Privacy](../privacy.md)
 - `docs/adr/` (private repository): infrastructure decisions that are hard to undo.

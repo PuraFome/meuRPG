@@ -1,4 +1,4 @@
-// dependency-cruiser config: the layer rules of the web app (see docs/architecture.md#web-app-web and
+// dependency-cruiser config: the layer rules of the web app (see docs/architecture/web.md#web-app and
 // CONTRIBUTING "Web and e2e linters"). Run it with `npm run depcruise`.
 //
 // A ratchet, like ESLint's: violations recorded in .dependency-cruiser-known-violations.json are ignored

@@ -60,7 +60,7 @@ Each module with a campaign-scoped service has a `TestAuthorizationMatrix` that 
 A pending member accepted an invite with approval (RN-15, MR-024) and waits for the master to approve the character they created.
 They are not a member: `campaign_members.status = 'pending'`, and `RequireCampaignMember` and `RequireCampaignRole` answer them exactly as they answer a stranger (`not_found`), so every existing and future call leaves them out without anyone remembering them.
 
-- **A pending membership that never gets a character** is deleted 30 days after joining (`campaigns.PendingMemberLifetime`, a CockroachDB row TTL on `campaign_members.pending_expires_at`, see [Data](../data.md#tables-by-module)).
+- **A pending membership that never gets a character** is deleted 30 days after joining (`campaigns.PendingMemberLifetime`, a CockroachDB row TTL on `campaign_members.pending_expires_at`, see [Data](../data/README.md#modules-and-tables)).
   The deadline binds as soon as it passes, not when the job runs: the membership reads ignore a pending member past it, `ActivatePendingMember` will not activate it, and an invite accepted by that person deletes the stale row first.
   The master sees and removes pending members earlier with `ListPendingMembers` and `RemovePendingMember`.
 - **An ordinary invite (no approval)** accepted by a pending member of the same campaign promotes them in the same transaction: it spends a use, activates the membership and approves their character through the `campaigns.Characters` interface, which `characters` implements (`cmd/api` connects them with `SetCharacters`, because neither module imports the other).
@@ -294,7 +294,7 @@ How players roll is a campaign setting plus a preference per member (RN-18, MR-0
 
 ## Table rules
 
-The choices on the "Regras da mesa" page (MR-025, RN-24) belong to `campaigns` (`tablerules.go`, table `campaign_table_rules`, see [Data](../data.md)) and apply to the whole campaign.
+The choices on the "Regras da mesa" page (MR-025, RN-24) belong to `campaigns` (`tablerules.go`, table `campaign_table_rules`, see [Data](../data/README.md)) and apply to the whole campaign.
 Their shape, a plain value with no behaviour, is `platform/tablerules`, so modules share the type without importing each other.
 The zero value is the SRD's defaults.
 
@@ -340,7 +340,7 @@ An award and a mode change take turns: the award reads the mode inside its own t
 
 Each campaign has a Markdown document that only the master reads and writes (MR-018): game preparation, gallery images, links to maps and sheets.
 It is master-only because it holds spoilers; if players ever read part of it, the authorization and this section change.
-The code is `backend/internal/campaigns/document.go`, the contract `proto/meurpg/campaigns/v1/campaign_document.proto`, the table in [Data](../data.md#tables-by-module).
+The code is `backend/internal/campaigns/document.go`, the contract `proto/meurpg/campaigns/v1/campaign_document.proto`, the table in [Data](../data/README.md#modules-and-tables).
 
 | `CampaignDocumentService` call | Master | Player | Non-member | Anonymous | Pending member |
 | --- | --- | --- | --- | --- | --- |

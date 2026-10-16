@@ -1,7 +1,7 @@
 # Campaign package tables
 
 The `campaignpackage` module (MR-050) owns the export and import of a whole campaign.
-The files themselves are blobs, not rows (see [Architecture](../architecture.md#campaign-package-mr-050)).
+The files themselves are blobs, not rows (see [Architecture](../architecture/campaign-package.md#campaign-package-mr-050)).
 
 ```mermaid
 erDiagram

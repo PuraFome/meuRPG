@@ -230,4 +230,4 @@ Usar as mesmas palavras nas conversas, nos documentos e no código evita muita c
 
 - [Visão do produto](visao.md)
 - [Regras de negócio](regras.md)
-- [Modelo de dados](../../data.md): onde cada termo vira tabela.
+- [Modelo de dados](../../data/README.md): onde cada termo vira tabela.

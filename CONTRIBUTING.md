@@ -42,10 +42,10 @@ The initial web bundle is a build gate (500 kB), see [docs/ci.md](docs/ci.md#the
 
 ## Code rules that bite
 
-- **Transactions:** inside `db.InTx`, use only `s.queries.WithTx(tx)`. A read through the pool takes a second connection while the transaction holds the first and can lock up the pool; the test pools have one connection and fail such a test with the stack. A cross-module call that reads receives the `tx`. See [Architecture](docs/architecture.md#transactions-and-the-connection-pool).
-- **Migrations only add:** production is live, and the migration runs before the new revision gets traffic. A new table, column, index or row; never a rename, a drop or a new `NOT NULL` without a default on something running code reads. To remove something, release the code that stops using it first and drop it in a later release. Use SQL that both PostgreSQL (sqlc's parser) and CockroachDB accept: an index in its own migration with `CREATE INDEX IF NOT EXISTS`; every migration must run twice without error. A new session event kind is a row in `session_event_kinds`. Details in [docs/data.md](docs/data.md).
+- **Transactions:** inside `db.InTx`, use only `s.queries.WithTx(tx)`. A read through the pool takes a second connection while the transaction holds the first and can lock up the pool; the test pools have one connection and fail such a test with the stack. A cross-module call that reads receives the `tx`. See [Architecture](docs/architecture/transactions.md#transactions-and-the-connection-pool).
+- **Migrations only add:** production is live, and the migration runs before the new revision gets traffic. A new table, column, index or row; never a rename, a drop or a new `NOT NULL` without a default on something running code reads. To remove something, release the code that stops using it first and drop it in a later release. Use SQL that both PostgreSQL (sqlc's parser) and CockroachDB accept: an index in its own migration with `CREATE INDEX IF NOT EXISTS`; every migration must run twice without error. A new session event kind is a row in `session_event_kinds`. Details in [docs/data/README.md](docs/data/README.md).
 - **Rules content:** a change under `backend/internal/rules/srd51/effects/` raises the revision in `effects/revision.json`; the SRD snapshot in `data/` is generated, never edited. See [docs/rules-content.md](docs/rules-content.md).
-- **Screens** follow the [design](docs/design.md) (the `--mr-*` tokens and the common pieces, never a hand-written colour) and enter `e2e/tests/a11y.spec.ts`. A screen change carries before and after screenshots at 390, 768 and 1280 px, in both themes.
+- **Screens** follow the [design](docs/design/README.md) (the `--mr-*` tokens and the common pieces, never a hand-written colour) and enter `e2e/tests/a11y.spec.ts`. A screen change carries before and after screenshots at 390, 768 and 1280 px, in both themes.
 - **Secrets** (the OIDC client secret, `GEMINI_API_KEY`, session cookies) never go to the repository, a test, a log or an issue.
 - The app's UI text is in Portuguese; code, comments, commits and docs are in English.
 
@@ -69,10 +69,10 @@ Update them in the same PR:
 | --- | --- |
 | A product rule, a story or its priority, a term | `docs/product/rules.md`, `stories.md`, `glossary.md` **and** their PT-BR twins under `docs/pt-BR/produto/` (same structure, same ids) |
 | Personal data, a log, a cookie, an image or a vendor | `docs/privacy.md` and `docs/pt-BR/privacidade.md`, and the privacy checklist in the PR |
-| Deploy, a secret, an alert or a cost | `docs/operations.md` |
-| The system's structure: a module, an external service, infrastructure | `docs/architecture.md`, and an ADR if it is hard to undo |
-| A table or column | The migration and `docs/data.md` |
-| Colour, font, spacing or a visual component | `docs/design.md` and the visual system in Claude Design |
+| Deploy, a secret, an alert or a cost | `docs/operations/README.md` |
+| The system's structure: a module, an external service, infrastructure | `docs/architecture/README.md`, and an ADR if it is hard to undo |
+| A table or column | The migration and `docs/data/README.md` |
+| Colour, font, spacing or a visual component | `docs/design/README.md` and the visual system in Claude Design |
 | A command, a tool or the CI | This file, `docs/development.md`, `docs/testing.md` or `docs/ci.md` |
 | A project milestone | `docs/roadmap.md` |
 | A dependency, font, icon or third-party content | A licence compatible with Apache 2.0; `NOTICE`, the licence in `third_party/licenses/` and the "Créditos" page when the licence asks for attribution |
@@ -107,4 +107,4 @@ Third-party content keeps its own licence, listed in [NOTICE](NOTICE): SRD 5.1 (
 | [docs/ci.md](docs/ci.md) | The CI jobs, the ratchets and gates, pinning and Dependabot |
 | [docs/performance.md](docs/performance.md) | The memory and time budgets in code and how to measure |
 | [docs/rules-content.md](docs/rules-content.md) | The SRD snapshot, the effects, names and texts, and how to change them |
-| [docs/architecture.md](docs/architecture.md) | How the system is built |
+| [docs/architecture/README.md](docs/architecture/README.md) | How the system is built |

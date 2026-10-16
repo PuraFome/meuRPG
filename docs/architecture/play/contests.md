@@ -3,7 +3,7 @@
 `ContestService` (`contests.proto`, messages in `contest_types.proto`) is the contract of grapple, shove, escape, dragging, Hide, Help, the group check and surprise (W7-X, RN-34).
 `play.Service` implements it next to `CombatService`.
 The pure rules are `rules/combat/contest.go` (comparison of totals, the size limit, the escape DC, passive Perception, the half-of-the-group count, the dragging cost).
-The service is `play/combat_contests*.go` (start, answer, shove choice, close, release, views), `combat_drag.go`, `combat_hide.go`, `combat_help.go`, `combat_surprise.go` and `combat_groupcheck.go`; the queries are in `queries_contests.sql` (tables in [Data](../../data.md)).
+The service is `play/combat_contests*.go` (start, answer, shove choice, close, release, views), `combat_drag.go`, `combat_hide.go`, `combat_help.go`, `combat_surprise.go` and `combat_groupcheck.go`; the queries are in `queries_contests.sql` (tables in [Data](../../data/README.md)).
 
 | Call | Who may | What it does |
 | --- | --- | --- |

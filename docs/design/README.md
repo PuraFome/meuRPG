@@ -94,7 +94,7 @@ The UI text is Brazilian Portuguese until i18n lands; these rules are about that
 
 ## How a screen is made
 
-Every new screen, and every visible change to a screen, goes through five steps (they are also in [CONTRIBUTING](../../CONTRIBUTING.md#screens-design-and-review)).
+Every new screen, and every visible change to a screen, goes through five steps (they are also in [CONTRIBUTING](README.md#how-a-screen-is-made)).
 
 1. **Brief:** the screen's single task, who uses it (master or player), where (phone at the table or laptop), the real data and every state (empty, loading, error, locked, pending, dead, no permission).
 2. **Design in Claude Design** with the system above, at 390 px and 1280 px, with real data, approved before the code. A small fix inside the system needs no design.

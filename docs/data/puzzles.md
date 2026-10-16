@@ -1,6 +1,6 @@
 # Puzzle tables
 
-The `play` module owns puzzles (MR-038, RN-27) because they are played inside the session: the master makes them in the campaign, shows one to the open session's players, and they play it together (see [Architecture](../architecture.md#puzzles-mr-038)).
+The `play` module owns puzzles (MR-038, RN-27) because they are played inside the session: the master makes them in the campaign, shows one to the open session's players, and they play it together (see [Architecture](../architecture/play/puzzles.md)).
 
 ```mermaid
 erDiagram

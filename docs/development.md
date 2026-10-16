@@ -11,7 +11,7 @@ Every published port binds `127.0.0.1`: the local CockroachDB has no password.
 
 | Service | Port | Notes |
 | --- | --- | --- |
-| `api` | 8080 | Server, API and the Angular build on one origin. `LOG_LEVEL` defaults to `debug` (every request, RPC, stream and game event, with a `request_id`); `LOG_LEVEL=info make up` lowers it. See [Architecture](architecture.md#logs). |
+| `api` | 8080 | Server, API and the Angular build on one origin. `LOG_LEVEL` defaults to `debug` (every request, RPC, stream and game event, with a `request_id`); `LOG_LEVEL=info make up` lowers it. See [Architecture](architecture/logs.md#logs). |
 | `idp` (devidp) | 9090 | Sign-in, see [below](#sign-in-with-the-devidp). |
 | `cockroach` | 26257 (SQL), 8081 (console) | One insecure node. |
 
@@ -100,11 +100,11 @@ Without `OIDC_ISSUER` or without `DATABASE_URL` the backend still starts, warns 
 | `OIDC_REDIRECT_URL` | Yes | The backend's public URL plus `/auth/callback`; locally `http://localhost:8080/auth/callback`, registered at the provider exactly the same. |
 | `OIDC_CA_FILE` | No | A PEM file with the certificate of a local provider with a self-signed certificate. |
 | `OIDC_MAX_AGE` | No | A duration such as `1h`, sent as `max_age`. Only for a provider that documents it (the devidp does, `compose.yaml` sets `1h`); not with Google. |
-| `SESSION_IDLE_TIMEOUT` | No | How long a session may go unused before it ends: `1h` to `720h`. The 30-day absolute limit does not change. See [Operations](operations.md#environment-variables-and-secrets). |
+| `SESSION_IDLE_TIMEOUT` | No | How long a session may go unused before it ends: `1h` to `720h`. The 30-day absolute limit does not change. See [Operations](operations/reference.md#environment-variables). |
 
 To try a real provider: create a confidential client (Authorization Code, PKCE S256, scopes `openid email`, the redirect URL above); start only the database with `docker compose -f deploy/local/compose.yaml up -d cockroach migrate`; run `OIDC_ISSUER=... OIDC_CLIENT_ID=... OIDC_CLIENT_SECRET=... OIDC_REDIRECT_URL=http://localhost:8080/auth/callback make run`; open `http://localhost:8080/auth/login?return_to=/` in Chrome or Firefox.
 To see who is signed in: `http://localhost:8080/meurpg.identity.v1.IdentityService/GetMe?connect=v1&encoding=json&message=%7B%7D`.
-A Connect call from `curl` needs `-H 'Connect-Protocol-Version: 1'` (CSRF protection, see [Architecture](architecture.md#csrf)).
+A Connect call from `curl` needs `-H 'Connect-Protocol-Version: 1'` (CSRF protection, see [Architecture](architecture/identity.md#csrf)).
 
 ## Gallery images
 
@@ -114,7 +114,7 @@ The images the master uploads (MR-019) live in the folder `BLOB_DIR` locally and
 | Variable | What it does |
 | --- | --- |
 | `BLOB_DIR` | The folder for images and thumbnails. Without it, images are off: `POST /uploads/images`, `GET /images/...` and `GalleryService` answer `503`/`unavailable`, and the rest of the app works. A folder without write permission keeps the API from starting. Never together with `BLOB_BUCKET`; refused on Cloud Run. |
-| `BLOB_BUCKET` | The Cloud Storage bucket, for production. See [Operations](operations.md#images). |
+| `BLOB_BUCKET` | The Cloud Storage bucket, for production. See [Operations](operations/reference.md#images-and-the-bucket). |
 
 With `make run`, `BLOB_DIR=/tmp/meurpg-images make run` turns images on.
 To upload with `curl`, sign in with Chrome as "Mestre Teste", create a campaign, copy the `__Host-meurpg_session` cookie value (a secret: paste it nowhere) and the campaign ID from the URL, then send `campaign_id` before `file`:
@@ -144,7 +144,7 @@ Image generation (MR-039, RN-28) calls the Gemini API; without a key it is off a
 | `IMAGE_DAILY_LIMIT` | Images for the whole server per Brasília day: the ceiling of the Gemini account. `make up` raises it so repeated e2e runs are not capped. |
 
 The tests always use the fake generator. `TestRealGemini` (in `backend/internal/maps/images/gen`) uses the real model and only runs with `MEURPG_TEST_GEMINI_API_KEY` (and optionally `MEURPG_TEST_GEMINI_MODEL`) set on your machine; CI never sets them.
-The limits are explained in [Operations](operations.md#generated-images-the-gemini-api).
+The limits are explained in [Operations](operations/reference.md#generated-images-the-gemini-api).
 
 ## Abuse-limit variables
 
@@ -156,14 +156,14 @@ The backend limits the request rate (per IP and per user, in memory) and what on
 | `CAMPAIGN_CREATORS` | Verified e-mails, comma-separated, that may create campaigns; empty means anyone. |
 | `RATE_LIMIT_MULTIPLIER` | Multiplies every rate limit. `make up` uses 10, because the e2e suite sends several accounts' requests from one address. |
 
-The numbers and how each limit counts are in [Architecture](architecture.md#abuse-limits) and [Operations](operations.md#abuse-limits).
+The numbers and how each limit counts are in [Architecture](architecture/api.md#abuse-limits) and [Operations](operations/reference.md#abuse-limits).
 
 ## Logs in ELK
 
 `make elk-up` starts Elasticsearch, Kibana and Filebeat (`deploy/elk/compose.yaml`) that keep the API's logs, reading the containers of `make up` and the `~/.meurpg/run*/api.log` files of `LOCAL_STACK=native`.
 The first run creates `deploy/elk/.env` with random passwords; Kibana is at `http://localhost:5601`.
 From the terminal, `deploy/elk/logs.sh help` lists `errors`, `request <id>`, `tail` and more; `make elk-down` and `make elk-logs` stop it and follow its own logs.
-See [Operations](operations.md#logs-in-elk).
+See [Operations](operations/logs.md#locally-with-elk).
 
 ## Tools
 

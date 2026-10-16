@@ -53,7 +53,7 @@ The index on `user_id` serves "sign out of all devices" and account deletion.
 
 One row per sign-in in progress, keyed by the SHA-256 of `state` (`state_hash`).
 It holds the PKCE `code_verifier`, the `nonce` and `return_to`, lives at most 10 minutes (`CHECK`, hourly row TTL).
-`intent_kind` and `intent_data` hold what to finish right after sign-in, such as accepting an invite (see [Architecture](../architecture.md#accepting-an-invite-through-sign-in)).
+`intent_kind` and `intent_data` hold what to finish right after sign-in, such as accepting an invite (see [Architecture](../architecture/campaigns.md#accepting-an-invite-through-sign-in)).
 Both are `NULL` on an ordinary sign-in and a `CHECK` requires them together, the kind with 1 to 32 characters and the data with at most 256 bytes.
 For an invite, `intent_data` is the SHA-256 of the invite token, never the token.
 

@@ -240,6 +240,6 @@ Combat only moves a token that already exists, at the end of the fight; the mast
 
 - A player reads a revealed map or the session's current map, the points revealed to them, the tokens the fog lets them see, and their own vision memory.
   Hidden maps, points, NPC tokens, traps nobody found and unfound treasure never reach them (RN-10).
-- Per-player fog tiles are assembled on the server from the map image; the original image of a fog map is never sent to a player (see [Architecture](../architecture.md#per-player-image-tiles)).
+- Per-player fog tiles are assembled on the server from the map image; the original image of a fog map is never sent to a player (see [Architecture](../architecture/maps/fog.md#per-player-image-tiles)).
 - `generated_dungeons`, `scene_clues`, `scene_actions` (the DC only when `show_dc` is on), `hooks`, `map_point_images` and `map_layers`' light are master only; the player receives the other layers (walls, cover, terrain, doors) filtered by what the character sees.
 - A player reads a revealed clue through `scene_clue_reveals`, only their own rows.

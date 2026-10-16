@@ -49,9 +49,9 @@ erDiagram
 
 ## `gallery_images`
 
-The row keeps only the image's description; **the file lives in the blob store** (on disk locally, in Cloud Storage in production) under `campaigns/<campaign_id>/images/<id>` and `…/<id>.thumb`, plus `…/<id>.ref`, the 1,024 px reference that goes to the AI, only for larger images (see [Architecture](../architecture.md#ai-generated-images-mr-039-rn-28-adr-0019)).
+The row keeps only the image's description; **the file lives in the blob store** (on disk locally, in Cloud Storage in production) under `campaigns/<campaign_id>/images/<id>` and `…/<id>.thumb`, plus `…/<id>.ref`, the 1,024 px reference that goes to the AI, only for larger images (see [Architecture](../architecture/maps/image-generation.md)).
 `id` has no `DEFAULT`: the API creates the id before writing the files, whose keys carry it.
-The files go first and the row last, so every row has its files; deleting does the opposite (see [Architecture](../architecture.md#maps-module-gallery-and-images)).
+The files go first and the row last, so every row has its files; deleting does the opposite (see [Architecture](../architecture/maps/README.md)).
 Deleting a campaign deletes the rows but not the files: the blob-store prefix `campaigns/<campaign_id>/` is deleted separately (see [Privacy](../privacy.md)).
 
 - **The stored image is not the one uploaded:** the server encoded it again, without metadata.

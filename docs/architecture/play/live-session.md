@@ -59,7 +59,7 @@ Events, after `ready`:
 | --- | --- |
 | `heartbeat` | Every 25 s (`DefaultHeartbeat`) |
 | `vitals_changed` | A character's HP, slots or resources changed; to the master and the owner |
-| `current_map_changed`, `map_changed`, `token_moved`, `vision_changed`, `trap_noticed` | The map (see [Architecture](../../architecture.md#maps-module-maps-points-and-tokens)) |
+| `current_map_changed`, `map_changed`, `token_moved`, `vision_changed`, `trap_noticed` | The map (see [Architecture](../maps/README.md#maps-points-and-tokens)) |
 | `shown_image_changed`, `left_images_changed` | The image on show and the list left with the players |
 | `encounter_changed`, `turn_changed`, `combatant_moved`, `combat_log_changed` | Combat (see [Combat log and events](combat-log.md)) |
 | `scene_changed`, `scene_check_rolled`, `stage_changed`, `notes_changed` | Scenes (see [Scenes and stage](scenes-and-stage.md)) |
@@ -118,7 +118,7 @@ sequenceDiagram
 | The person left the campaign | `not_found` at the next check | "Peça um convite ao mestre" |
 
 The app reconnects with growing delay (1 s, 2 s, 4 s, up to 30 s, with jitter) and only with the tab visible.
-With the tab hidden for 2 minutes it closes the stream itself and reopens with a fresh snapshot when the tab returns (see [Operations](../../operations.md#live-session-stream)).
+With the tab hidden for 2 minutes it closes the stream itself and reopens with a fresh snapshot when the tab returns (see [Operations](../../operations/reference.md#live-session-stream)).
 
 ### In the app
 
@@ -138,9 +138,9 @@ It adds no read a player could not already make (RN-10).
 
 The hub keeps each campaign's subscriptions in server memory (`play/live`).
 Publishing never waits: each subscription has a 16-event buffer, and the one that fills is dropped instead of delaying the master's change.
-With two instances, a change on one would not reach streams on the other, so the service runs with `max-instances = 1` while fan-out is in memory (see [Operations](../../operations.md)).
+With two instances, a change on one would not reach streams on the other, so the service runs with `max-instances = 1` while fan-out is in memory (see [Operations](../../operations/README.md)).
 When one instance is not enough, a shared channel (a CockroachDB changefeed or Pub/Sub) takes the hub's place and nothing above changes.
-During a release the old revision keeps its open streams while new calls reach the new revision, so those streams hear nothing until they end or the page reloads: release between sessions ([Operations](../../operations.md#releasing-a-new-version)).
+During a release the old revision keeps its open streams while new calls reach the new revision, so those streams hear nothing until they end or the page reloads: release between sessions ([Operations](../../operations/runbook.md#release-a-new-version)).
 
 The stream goes through the same HTTP stack as everything else.
 The request log wraps the response in a `statusRecorder` that passes `Flush` through, `CrossOriginProtection` refuses a POST from another origin (the stream is a POST with `Content-Type: application/connect+json`), the server speaks HTTP/1.1 and h2c, and there is no `WriteTimeout`.
@@ -181,7 +181,7 @@ Both live on the session's row in `game_sessions`, and only the master changes t
 - Choosing the current map reveals it, in the transaction that locks the session row.
   If the master hides the current map afterwards, the player keeps seeing it while it is current (`Map.revealed` false, `Map.current` true).
 - The shown image does not open the gallery.
-  The player receives the image's id only while it is shown; afterwards `GET /images/{id}` answers `404` to them unless the master left it with the players (see [Architecture](../../architecture.md#serving-images) and [MR-028](../../product/stories.md#mr-028-show-an-image-to-the-players)).
+  The player receives the image's id only while it is shown; afterwards `GET /images/{id}` answers `404` to them unless the master left it with the players (see [Architecture](../maps/images.md#serving-images) and [MR-028](../../product/stories.md#mr-028-show-an-image-to-the-players)).
 
 ### Images left with the players
 

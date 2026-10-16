@@ -65,9 +65,9 @@ If any step fails, the files are deleted and nothing remains.
 - **Size.** Pixels per square are `⌊8192 / max(columns, rows)⌋` capped at 24, below the upload's 40 megapixels.
 - **Encoding.** A 4-colour palette PNG (one byte per pixel) through `images.Encode`, the same path as an upload without the decoding: no metadata (ADR-0012), with the 480 px thumbnail. The image stays hidden like every gallery image; on a fogged map the player gets tiles, never the image.
 - **The plan is a function of the layers** (`solidOf`): solid is the wall layer's square and the secret door's; everything else, doors included, is floor. A wall the master cleared becomes a hole. Creation and "Redesenhar" use the same code.
-- Timings: `go test -bench Render ./internal/maps/dungeonimg` and `TestDungeonMapCreationTiming -v` (see [CONTRIBUTING](../../../CONTRIBUTING.md#dungeon-map-measurements)).
+- Timings: `go test -bench Render ./internal/maps/dungeonimg` and `TestDungeonMapCreationTiming -v` (see [CONTRIBUTING](../../performance.md#time-budgets-the-tests-check)).
 
-**The record** (`generated_dungeons`, see [Data](../../data.md)) holds the options as used, the seed, the generator version, the final cells (2 bits per square) and the rooms.
+**The record** (`generated_dungeons`, see [Data](../../data/README.md)) holds the options as used, the seed, the generator version, the final cells (2 bits per square) and the rooms.
 Only the master reads it.
 Because the cells are stored, a new generator version never changes a map that already exists.
 

@@ -2,7 +2,7 @@
 
 The master asks a model (the Gemini API) for an image, and the server stores it in the gallery like any image: hidden from the players until the master shows it (MR-039, RN-28, ADR-0019).
 The code is in `backend/internal/maps` (`imagegen.go`, `imagegen_map.go`; contract `ImageGenerationService` in `proto/meurpg/maps/v1/imagegen.proto`) and in `backend/internal/maps/images/gen`, a small package that only talks to the model and knows no campaign, person or database.
-Configuration (`GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`, `IMAGE_GENERATOR`, the monthly and daily limits) is in [CONTRIBUTING](../../../CONTRIBUTING.md#ai-generated-images); costs and memory are in [Operations](../../operations.md#generated-images-the-gemini-api).
+Configuration (`GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`, `IMAGE_GENERATOR`, the monthly and daily limits) is in [CONTRIBUTING](../../development.md#ai-generated-images); costs and memory are in [Operations](../../operations/reference.md#generated-images-the-gemini-api).
 
 | `ImageGenerationService` call | What it does |
 | --- | --- |
@@ -16,7 +16,7 @@ Configuration (`GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`, `IMAGE_GENERATOR`, the mo
 
 Only the master calls.
 A player, a pending member and an outsider get `not_found`, as for a hidden image (the service does not reveal that the campaign generates images); without a session, `unauthenticated`.
-The refusals the master can resolve are `failed_precondition` with the `ImageGenerationBlocked` detail: `OFF` (no key, or no image storage), `LIMIT_REACHED` (with the month's tally), `DAILY_LIMIT_REACHED` (the server-wide cap, see Abuse limits in [Architecture](../../architecture.md#abuse-limits)), `GALLERY_FULL`, `REQUEST_TOO_LARGE`, `PLAYERS_SEE_NOTHING`, `MAP_HAS_NO_GRID`, `MAP_IMAGE_TOO_LARGE` and `MAP_CHANGED`.
+The refusals the master can resolve are `failed_precondition` with the `ImageGenerationBlocked` detail: `OFF` (no key, or no image storage), `LIMIT_REACHED` (with the month's tally), `DAILY_LIMIT_REACHED` (the server-wide cap, see Abuse limits in [Architecture](../api.md#abuse-limits)), `GALLERY_FULL`, `REQUEST_TOO_LARGE`, `PLAYERS_SEE_NOTHING`, `MAP_HAS_NO_GRID`, `MAP_IMAGE_TOO_LARGE` and `MAP_CHANGED`.
 
 ## The month's slot, in three steps (RN-28)
 
@@ -50,7 +50,7 @@ Each request carries a repeat-guard key (`idempotency_key`, unique per campaign)
 Every live request keeps its shrunk references in memory until its call goes out, also while it waits for the call slot.
 So at most **5 requests are alive at once** (`maxPendingRequests`: one calling the model, four waiting).
 A sixth is `resource_exhausted` ("Muitas imagens sendo geradas agora. Espere uma terminar e tente de novo."), before any image is read and without spending the month's slot.
-The measured worst case and how to measure it again are in [Operations](../../operations.md#generated-images-the-gemini-api).
+The measured worst case and how to measure it again are in [Operations](../../operations/reference.md#generated-images-the-gemini-api).
 
 - Each reference image is its **reference**: a JPEG of at most 1024 px on the longer side, quality 85, stored next to the image in the blob store (`<id>.ref`, only for an image larger than 1024 px). It is made on upload, from the image already decoded in `images.Process`; an older image gets it the first time it is used, inside the upload slot, shrunk in strips. Deleting the image deletes the reference. All of this happens **before** the month's slot is reserved.
 - The whole request body is at most 8 MiB (with base64). Above that after shrinking, `REQUEST_TOO_LARGE`, no slot spent.

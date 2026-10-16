@@ -1,7 +1,7 @@
 # Creatures, Wild Shape and the familiar
 
 A creature belongs to a character, and in combat it is a combatant of kind `creature` (MR-037).
-The rules (what a spell lets you summon, a creature's numbers) belong to `rules` (see [Architecture](../../architecture.md#creatures-summons-and-wild-shape-rules)); this page is what the server stores and does with them, plus Wild Shape and the familiar's eyes (MR-036).
+The rules (what a spell lets you summon, a creature's numbers) belong to `rules` (see [Architecture](../rules-creatures-items.md#creatures)); this page is what the server stores and does with them, plus Wild Shape and the familiar's eyes (MR-036).
 
 The `characters` module stores the creature (`character_creatures`); `play` puts it in combat (`combatants.kind = 'creature'`).
 The two meet in two small interfaces wired in `cmd/api`: `play.CombatRoster` (what combat asks of `characters`) and `characters.CreatureHost` (what `characters` asks of `play`, set with `SetCreatureHost`).

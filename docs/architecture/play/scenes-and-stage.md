@@ -111,7 +111,7 @@ sequenceDiagram
 - **Who has each clue:** the master receives each clue with `revealed_to`; "Todos", "Só a Brisa" and "Ninguém ainda" are computed by the screen.
 - **Discoveries** (`scene_discoveries`): a scene is discovered when its point is revealed on the map (`SetMapPointRevealed(true)` or `UpdateMapPoint` with `revealed`) or when the master opens it, even hidden.
   It holds for the whole party and keeps holding if the point is hidden again.
-  It is the only list of scenes a player reaches by name outside the map and the open scene (see [Architecture](../../architecture.md#notes-module-player-notes)).
+  It is the only list of scenes a player reaches by name outside the map and the open scene (see [Architecture](../notes.md#notes-module-player-notes)).
 
 **How the modules meet.** `play` reads the scene through `MapKeeper.ScenePoint` (hooks and clues come only for the master), stores the discovery through `MapKeeper.DiscoverScene` in `OpenScene`'s transaction, and asks `CombatRoster.SceneOptions` and `CombatRoster.SceneCheckName` (`characters.Service`).
 `maps` asks which point is the open scene through `LiveSession.OpenScenePoint`, to notify the stream when an action or the open scene's point changes.
@@ -124,7 +124,7 @@ sequenceDiagram
 **In the app.** `MapsClient` (the action calls) and `SceneClient` (`OpenScene`, `CloseScene`, `GetOpenScene`, `RollSceneCheck`) are called only by lazy code.
 `SceneState` keeps the scene as each person sees it and says in a live region what changed; it reads after `ready` (the first read is silent) and on each `scene_changed` or `scene_check_rolled`.
 `SceneBlocked` reasons become text through `scene-errors.ts`, never the message.
-The screens are in [Design](../../design.md#rp-scenes).
+The screens are in [Design](../../design/session.md#rp-scenes-stage-clues-and-notes).
 
 ## NPCs on stage
 

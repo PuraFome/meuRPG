@@ -1,9 +1,9 @@
 # Performance budgets
 
-The server is small (see [Operations](operations.md#hosting) for its CPU, memory and `GOMEMLIMIT`), so the work that can grow with user input has a budget in code.
+The server is small (see [Operations](operations/README.md#what-runs-where) for its CPU, memory and `GOMEMLIMIT`), so the work that can grow with user input has a budget in code.
 This page lists each budget and where it is set, then the commands that measure the expensive paths.
 No timings are recorded here: they depend on the machine, so measure on yours with the commands below.
-How the deployed numbers add up against the memory limit is in [Operations](operations.md#fog-image-tiles).
+How the deployed numbers add up against the memory limit is in [Operations](architecture/maps/fog.md#per-player-image-tiles).
 
 ## Budgets the code enforces
 
@@ -30,7 +30,7 @@ How the deployed numbers add up against the memory limit is in [Operations](oper
 | Dungeon size | 15 to 199 wide, 15 to 399 high | `Options` in `backend/internal/rules/dungeon/options.go` |
 | Web initial bundle | 500 kB (warning from 490 kB) | `web/angular.json`; see [CI](ci.md#the-web-bundle-budget) |
 
-Request rate limits and per-account caps are in [Architecture](architecture.md#abuse-limits).
+Request rate limits and per-account caps are in [Architecture](architecture/api.md#abuse-limits).
 Nothing the tile and scene caches hold is stored on disk or in the database: a restart empties them and they rebuild themselves.
 
 ## Time budgets the tests check
@@ -67,5 +67,5 @@ Run them from `backend/`, without `-race` (the detector multiplies time and memo
 
 ### The map editor in the browser
 
-Painting on a big map must not freeze the screen: `PaintedLayers` (`web/src/app/core/maps/paint-layers.ts`) decodes the whole grid once per animation frame (`requestAnimationFrame`), not on every square the pointer crosses, and batches go to the server outside the drawing path (see [Architecture](architecture.md#map-editor)).
+Painting on a big map must not freeze the screen: `PaintedLayers` (`web/src/app/core/maps/paint-layers.ts`) decodes the whole grid once per animation frame (`requestAnimationFrame`), not on every square the pointer crosses, and batches go to the server outside the drawing path (see [Architecture](architecture/maps/editor.md#the-map-editor)).
 To measure it, write a Playwright test that creates the largest map the server accepts (200 x 400 squares), enters "Pintar", picks the wall and the 3 x 3 brush, and records the duration of each `requestAnimationFrame` while `page.mouse` drags across the map; a frame budget is 16.7 ms.

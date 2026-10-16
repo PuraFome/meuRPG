@@ -1,4 +1,4 @@
-// docs/design.md: the display-name form, one panel at reading width.
+// docs/design/README.md: the display-name form, one panel at reading width.
 .profile-panel {
   max-width: 640px;
 
@@ -15,7 +15,7 @@
 }
 
 // "Sessões": the same panel width as the name form; the confirmation sits
-// in the panel, like the gallery card's (docs/design.md).
+// in the panel, like the gallery card's (docs/design/README.md).
 .sessions {
   margin-top: var(--mr-space-4);
   display: flex;

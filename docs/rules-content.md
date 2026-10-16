@@ -2,7 +2,7 @@
 
 The rules content is data: an imported snapshot of the SRD 5.1 plus handwritten effects, names and texts, embedded in the binary.
 This page says where each file lives, which tests guard it and how to change it.
-How the engine reads the content is in [Architecture](architecture.md#rules-module-rules-as-data); the decision to keep it as versioned data is ADR-0008.
+How the engine reads the content is in [Architecture](architecture/rules.md); the decision to keep it as versioned data is ADR-0008.
 
 The `rules` module is pure: its tests need no database, Docker or network and run in seconds, so they are the fast loop for working on the engine, the effects and the names (commands in [Testing](testing.md#go-unit-and-characterization-tests)).
 
@@ -82,7 +82,7 @@ A spell or trap outside the SRD never enters.
 
 `effects/spells.json` gives each entry a `kind`; the kinds are the `SpellKind*` constants in `backend/internal/rules/spelleffects.go`:
 
-- `hp_pool`, `hp_threshold`, `zero_hp_target`, `flat_heal`, `temp_hp` and `max_hp` read hit points (see [Architecture](architecture.md#spells-that-read-hp)); a spell of one of these kinds also needs a computation in `rules/combat/hpspells.go` and its test.
+- `hp_pool`, `hp_threshold`, `zero_hp_target`, `flat_heal`, `temp_hp` and `max_hp` read hit points (see [Architecture](architecture/play/casting.md#spells-that-read-hp)); a spell of one of these kinds also needs a computation in `rules/combat/hpspells.go` and its test.
 - `ignores_cover` (no other fields) marks a spell whose saving throw gets no cover bonus; `Content.IgnoresCover` answers it.
 - `revive` takes `hit_points`, `window_rounds` and `source` and nothing else; `Content.Revive` answers it and `play` casts it.
 - `summon` lists the creatures (`creatures`, with `count`, `count_per_level` and what each may do: `attack` is `none`, `reaction` or `full`; `unlocks` for a feature such as Pact of the Chain) or gives CR bands of a type (`type`, `options` with `count` and `max_cr`, `multiplier_at_level`). A new spell of this kind needs its test in `rules/summon_test.go`.
@@ -118,4 +118,4 @@ They are **our own translation of the SRD 5.1 English text in `data/`**, an adap
 
 Loading is strict: a key that is not an SRD entry of the file's kind, a JSON field the format does not know, a paragraph count different from the English one, an empty paragraph, and a `material` on a spell without a material component (or one without a `material`) refuse to load.
 An entry a file lacks falls back to the English on the screen, flagged (`text_pt_missing`, `description_pt_missing`, `desc_pt_missing` in the API); `TestTextsPTCoverEverySpellAndItem` and `TestRuleTextsPTCoverEverySRDEntry` fail while any entry lacks its text.
-The screen shows the Portuguese first with a "Ver em inglês" button (see [Architecture](architecture.md#portuguese-texts-of-the-srd)).
+The screen shows the Portuguese first with a "Ver em inglês" button (see [Architecture](architecture/rules.md#portuguese-texts-of-the-srd)).

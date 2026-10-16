@@ -42,7 +42,7 @@ flowchart LR
 | Sign-in | OpenID Connect with PKCE, then an opaque server-side session in an `__Host-` `HttpOnly` cookie. See [Identity](identity.md). |
 | Real time | A Connect server stream, open only during a game session and only while the tab is visible. Nothing else stays connected. |
 | Images | A blob store (`platform/blob`): a folder (`BLOB_DIR`) locally, a Cloud Storage bucket (`BLOB_BUCKET`) in production. Without either, image routes answer `503`. |
-| Hosting | Cloud Run in `southamerica-east1`; the database is in the same region. Sizing, scaling and cost are in [Operations](../operations.md). |
+| Hosting | Cloud Run in `southamerica-east1`; the database is in the same region. Sizing, scaling and cost are in [Operations](../operations/README.md). |
 
 One instance serves the app (`max-instances` 1): the rate limits, the stream fan-out and some caches live in process memory and are exact only with one instance.
 Changing that means revisiting those pieces ([API](api.md#abuse-limits)).
@@ -143,6 +143,6 @@ The outermost layers are in `platform/httpserver`; the Connect options are in `c
 | OIDC sign-in, sessions, CSRF | [Identity](identity.md) |
 | Roles, pending members, invites, claim links, table rules, the document | [Campaigns](campaigns.md) |
 | The campaign file format, export and import | [Campaign package](campaign-package.md) |
-| Tables and columns | [Data](../data.md) |
-| Deploy, secrets, alerts, cost | [Operations](../operations.md) |
+| Tables and columns | [Data](../data/README.md) |
+| Deploy, secrets, alerts, cost | [Operations](../operations/README.md) |
 | Personal data and vendors | [Privacy](../privacy.md) |

@@ -200,7 +200,7 @@ The latest combat (`GetLatestEncounter`) is the open one, then the ended ones by
 `revision` goes up on each change.
 `mode` (MR-025, RN-25) is `grid` (the combat on the map, default) or `theatre` (gridless, "theatre of the mind"); the master chooses at the start and nothing changes it later.
 In `theatre`, `map_id` and `map_point_id` are `NULL`, `grid_columns` and `grid_rows` are 0 (`encounters_grid_valid` requires exactly this) and no combatant has a square; `grid` keeps 4 to 200 columns and 1 to 400 rows.
-Spent movement stays in `combatants.movement_used_dft` in both modes (see [Architecture](../architecture.md#combat-without-a-grid-theatre-of-the-mind)).
+Spent movement stays in `combatants.movement_used_dft` in both modes (see [Architecture](../architecture/play/theatre.md)).
 
 ## `combatants`
 

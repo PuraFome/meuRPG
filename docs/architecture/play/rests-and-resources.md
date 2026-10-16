@@ -5,7 +5,7 @@ Rests, hit dice and the class resource flows are `ResourceService` (`resources.p
 
 ## Vitals
 
-`character_vitals` holds current HP, temporary HP, spell slots used per level, the slots Flexible Casting created, pact slots used, hit dice used by die size, resource uses spent, exhaustion level and the maximum-HP bonus (see [Data model](../../data.md#tables-by-module)).
+`character_vitals` holds current HP, temporary HP, spell slots used per level, the slots Flexible Casting created, pact slots used, hit dice used by die size, resource uses spent, exhaustion level and the maximum-HP bonus (see [Data model](../../data/README.md#modules-and-tables)).
 They belong to the character and last from one session to the next.
 `play` reads and changes them through `play.VitalsKeeper` (`ListVitals`, `GetVitals`, `AdjustVitals` and more), which `characters.Service` implements.
 The messages (`CharacterVitals`) belong to `play.proto`, because only `PlayService` serves them.

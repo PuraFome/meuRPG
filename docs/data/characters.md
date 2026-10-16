@@ -252,13 +252,13 @@ It lives in `characters` and not in `campaigns` so that `characters` never write
   Archiving and unarchiving change only `archived_at` and the campaign revision (for the cache), not the entry's `revision` and `updated_at`; `updated_at` is the date of the last real change, the one the "A classe mudou" warning shows.
   The limits are 300 entries per campaign and 64 KiB of `data` per entry (server rules, which show the error on the field; a 128 KiB `CHECK` on `data` is the last defence, with room for JSONB being longer than compact protojson).
 - **`campaign_content_state`**: the campaign's content revision, one row per campaign, created by the first write (no row means revision 0).
-  Every write raises it in the same transaction, so two writes to one campaign run one after the other, and every content read reads this row inside the caller's transaction (see [Architecture](../architecture.md#live-table-content)).
+  Every write raises it in the same transaction, so two writes to one campaign run one after the other, and every content read reads this row inside the caller's transaction (see [Architecture](../architecture/characters-table-content.md#the-live-source)).
 - **`campaign_content_off`**: the options the master turned off for the players ("Opções para os jogadores").
   **No row means on**; turning on again deletes the row.
   The key is that of an SRD or table class, subclass, race, subrace, background, spell or feat (`class:wizard`, `race:anao@mesa`); it is not a foreign key, because SRD keys live in the rules snapshot, and the server checks the key exists before writing.
   Each write raises the campaign revision.
 - **`campaign_content_imports`**: the idempotency record of `ImportTableContent`, primary key `(campaign_id, create_key)`, with `create_hash` and the stored `response` (protobuf).
-  See [Architecture](../architecture.md#content-packs-exporttablecontent-importtablecontent).
+  See [Architecture](../architecture/characters-table-content.md#content-packs-exporttablecontent-importtablecontent).
 
 Only names and texts the master writes; no personal data (see [Privacy](../privacy.md)).
 

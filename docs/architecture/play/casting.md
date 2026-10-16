@@ -14,7 +14,7 @@ The spell, the level (`slot`: level or pact, none for a cantrip) and the targets
   The master is never limited.
 - **How many targets.** `SpellDetails.Target` says whether a spell hits an area and how many it takes: what the master wrote on a table spell, the 5e-database's structured area on an SRD one and, for one without a structured area, the SRD text read with two patterns (`rules/spelltarget.go`).
   A spell attack takes one target, so a wrong guess never blocks the master.
-  A table spell goes through the same `CombatSpell`, with the campaign's content (see [Architecture](../../architecture.md#spell-targets-and-the-magias-page)).
+  A table spell goes through the same `CombatSpell`, with the campaign's content (see [Architecture](../characters-table-content.md#spell-targets-and-the-magias-page)).
 - **At most 10 listed targets**, the master's too: what each target suffered stays in the cast's event, and a `session_events` payload is at most 16 KiB.
   A placed area spell is not listed: it reaches who the server finds inside, up to the 40 combatants a combat holds.
   Past 10 listed is `invalid_argument`.
@@ -54,7 +54,7 @@ The cast sheets show a damage cantrip's dice from `Attack.spell_dice`, never fro
 ## Spells that read HP
 
 Six SRD spells roll no damage because what they do depends on the HP of whoever is in the area, and two more (False Life and Aid) change hit points without being damage or healing (MR-014).
-What each does is handwritten content in `rules/srd51/effects/spells.json`, in a closed set of types the loader checks; changing the file needs a new revision (see [Contributing](../../../CONTRIBUTING.md#changing-an-effect-or-a-name)).
+What each does is handwritten content in `rules/srd51/effects/spells.json`, in a closed set of types the loader checks; changing the file needs a new revision (see [Contributing](../../rules-content.md#changing-an-effect-a-name-or-a-text)).
 `rules.SpellEffect(key, level)` returns the effect already at the slot's level.
 An `hp_pool` takes plain dice (no bonus, at most 30) of a die that exists at a table (d4, d6, d8, d10, d12, d20, d100).
 

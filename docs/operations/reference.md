@@ -59,8 +59,8 @@ Only the service account `meurpg-api` reads them (`roles/secretmanager.secretAcc
 
 With `max-instances=1`, 10 is the whole load on the cluster; if the instances grow, instances times `pool_max_conns` is what counts.
 A request waits for a free connection, and the wait ends when a holder lets go (no holder keeps one longer than 30 s).
-A request that asks for a second connection while its transaction holds the first stalls the pool; the symptom is `context canceled` or `context deadline exceeded` in simple reads together with a slow request ([architecture](../architecture.md#transactions-and-the-connection-pool)).
-`migrate` has its own connection and no `statement_timeout`; two `migrate up` runs wait for each other on a lease lock ([data](../data.md#migration-lock)).
+A request that asks for a second connection while its transaction holds the first stalls the pool; the symptom is `context canceled` or `context deadline exceeded` in simple reads together with a slow request ([architecture](../architecture/transactions.md#transactions-and-the-connection-pool)).
+`migrate` has its own connection and no `statement_timeout`; two `migrate up` runs wait for each other on a lease lock ([data](../data/README.md#migration-lock)).
 
 ## The client IP
 
@@ -76,7 +76,7 @@ After any change to the setup, check that the counted item is the caller's addre
 
 ## Abuse limits
 
-The rate limits are in process memory ([architecture](../architecture.md#abuse-limits), rule RN-30). The symptom of a limit is `429` with `Retry-After`, or `resource_exhausted`, and a `rate limit hit` line at `WARN` with the limit name and no IP.
+The rate limits are in process memory ([architecture](../architecture/api.md#abuse-limits), rule RN-30). The symptom of a limit is `429` with `Retry-After`, or `resource_exhausted`, and a `rate limit hit` line at `WARN` with the limit name and no IP.
 
 | Limit | Value | Set by |
 | --- | --- | --- |
@@ -94,7 +94,7 @@ The limits are not a defence against a volume attack: that is the job of the [ed
 
 ## Live session stream
 
-`PlayService.WatchGameSession` is open only while someone has the session page open and visible. An open stream is a request in progress, so the instance is billed while it lasts ([architecture](../architecture.md#live-session)).
+`PlayService.WatchGameSession` is open only while someone has the session page open and visible. An open stream is a request in progress, so the instance is billed while it lasts ([architecture](../architecture/play/live-session.md#live-session)).
 
 | Rule | Value | Where |
 | --- | --- | --- |
@@ -117,7 +117,7 @@ More than 8 campaigns with table content in play at once makes the content cache
 
 ## Images and the bucket
 
-Gallery images live in a blob store ([architecture](../architecture.md#where-images-are-stored)); production uses one Cloud Storage bucket.
+Gallery images live in a blob store ([architecture](../architecture/maps/images.md#where-images-are-stored)); production uses one Cloud Storage bucket.
 
 - The bucket is in `southamerica-east1`, Standard class, with uniform bucket-level access, public-access prevention and a 7-day soft delete (the deadline in [Privacy](../privacy.md)).
 - Only `meurpg-api` has access, as `roles/storage.objectUser` on the bucket. There is no public URL and no signed URL: the API delivers every image after checking who is asking.
@@ -128,7 +128,7 @@ Gallery images live in a blob store ([architecture](../architecture.md#where-ima
 
 ### Campaign package
 
-Export and import of a campaign (MR-050, [architecture](../architecture.md#campaign-package-mr-050)) use the same store and are off when it is off.
+Export and import of a campaign (MR-050, [architecture](../architecture/campaign-package.md#campaign-package-mr-050)) use the same store and are off when it is off.
 
 | What | Value | Where |
 | --- | --- | --- |
@@ -163,7 +163,7 @@ The costs as configured. These are estimates for deciding architecture, not a bi
 | Item | Driver | Price page |
 | --- | --- | --- |
 | Cloud Run | 2 vCPU and 1 GiB, billed per request time, scales to zero. A stream open all month would cost tens of dollars, which is why streams exist only during a session and end after 10 minutes | [Cloud Run pricing](https://cloud.google.com/run/pricing) |
-| Egress | Billed per GiB out of São Paulo with no free tier. Map images go through Cloud Storage and the browser caches them (the master's for a year, immutable; the player's revalidates with a `304`) ([architecture](../architecture.md#serving-images)) | [Network pricing](https://cloud.google.com/vpc/network-pricing) |
+| Egress | Billed per GiB out of São Paulo with no free tier. Map images go through Cloud Storage and the browser caches them (the master's for a year, immutable; the player's revalidates with a `304`) ([architecture](../architecture/maps/images.md#serving-images)) | [Network pricing](https://cloud.google.com/vpc/network-pricing) |
 | Global external Application Load Balancer | A forwarding rule billed all month plus a per-GB charge; the largest fixed cost | [VPC pricing](https://cloud.google.com/vpc/network-pricing) |
 | Cloud Armor Standard | A policy, a charge per rule and per million requests, billed all month | [Cloud Armor pricing](https://cloud.google.com/armor/pricing) |
 | Cloud Storage | Standard class, São Paulo, per GiB per month; the 7-day soft delete is billed at the same price; reads are class B operations | [Storage pricing](https://cloud.google.com/storage/pricing) |

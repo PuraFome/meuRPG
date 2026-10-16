@@ -91,7 +91,7 @@ From the `Scene` (the grid, the walls and doors, the map's base light, the paint
 - `Compile` returns an error for an invalid grid or layers of another grid.
 
 Budgets: the sketch's cave well below 1 ms, a 60 × 40 map below 10 ms and the biggest (200 × 400) below 300 ms.
-Measure with `go test ./internal/rules/vision -run '^$' -bench . -benchmem` (in `backend/`); the maps module's fog benchmark is in [CONTRIBUTING](../../CONTRIBUTING.md#fog-measurements).
+Measure with `go test ./internal/rules/vision -run '^$' -bench . -benchmem` (in `backend/`); the maps module's fog benchmark is in [CONTRIBUTING](maps/fog.md#the-budget).
 
 ## Dungeon generator
 

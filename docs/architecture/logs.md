@@ -1,7 +1,7 @@
 # Logs
 
 Every API log is one JSON line on stdout, and every request, RPC, stream and game event leaves a line tied to one `request_id`.
-Operators read and filter these logs ([Operations](../operations.md)); this page says what a line holds and never holds.
+Operators read and filter these logs ([Operations](../operations/README.md)); this page says what a line holds and never holds.
 The code is in `backend/internal/platform/logging`, `platform/rpclog` and `platform/httpserver`.
 
 ## Fields

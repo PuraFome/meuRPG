@@ -65,7 +65,7 @@ flowchart LR
      https://$DOMAIN/meurpg.system.v1.SystemService/GetServerInfo
    ```
 
-This is safe because a migration only adds (a table, column or row; never a rename or a drop of something the running code reads; see [CONTRIBUTING](../../CONTRIBUTING.md#queries-with-sqlc)): the old revision keeps working on the new schema while traffic switches, and after a [roll back](#roll-back).
+This is safe because a migration only adds (a table, column or row; never a rename or a drop of something the running code reads; see [CONTRIBUTING](../../CONTRIBUTING.md#code-rules-that-bite)): the old revision keeps working on the new schema while traffic switches, and after a [roll back](#roll-back).
 
 ## Roll back
 

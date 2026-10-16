@@ -100,7 +100,7 @@ A write locks, checks, changes, records and only then tells.
 3.
    It checks the idempotency key in `session_events`: a repeated key changes nothing, stores nothing and answers with the state as it is now; the same key with another request is `invalid_argument`.
 4.
-   It reads the other modules through the interfaces above, passing the transaction (`WithTx`; never the pool inside `InTx`, see [Architecture](../../architecture.md#transactions-and-the-connection-pool)).
+   It reads the other modules through the interfaces above, passing the transaction (`WithTx`; never the pool inside `InTx`, see [Architecture](../transactions.md#transactions-and-the-connection-pool)).
 5.
    It writes the rows and one `session_events` row, with ids and numbers only (ADR-0007).
 6.
@@ -119,8 +119,8 @@ What a player may not see stays out of the response, never blank or zero.
 - Each stream event carries its own audience (everyone, the master, or one user), and the hub delivers only to the subscriptions in it.
 - Most events are contentless hints (`encounter_changed`, `scene_changed`, `puzzle_changed`): the app reads the state again, already filtered.
 - Armor class, an NPC's numbers, the DC of a check, a hidden combatant, a puzzle's answer and a clue's text never reach a player who may not have them.
-- The leak tests (`internal/leaktest`) read every response and stream event as every person against a campaign with one hidden thing of each kind; a new RPC must be classified or the test fails (see [Architecture](../../architecture.md#leak-tests-rn-10)).
-- A test that proves something absent looks for a unique needle and has a positive control (see [Contributing](../../../CONTRIBUTING.md#test-types)).
+- The leak tests (`internal/leaktest`) read every response and stream event as every person against a campaign with one hidden thing of each kind; a new RPC must be classified or the test fails (see [Architecture](../../testing.md#leak-tests-rn-10)).
+- A test that proves something absent looks for a unique needle and has a positive control (see [Contributing](../../testing.md)).
 
 ## Pages
 

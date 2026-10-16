@@ -18,7 +18,7 @@ The code is in `backend/internal/maps`, the contract in `proto/meurpg/maps/v1` (
 | Generated dungeon maps | [Dungeons](dungeons.md) |
 | The treasure generator | [Treasure](treasure.md) |
 
-RP scenes (a scene point's actions, clues and opening in the session) are `maps` code too (`scenes.go`, `clues.go`, `sceneimages.go`): see RP scenes in [Architecture](../../architecture.md#rp-scenes).
+RP scenes (a scene point's actions, clues and opening in the session) are `maps` code too (`scenes.go`, `clues.go`, `sceneimages.go`): see RP scenes in [Architecture](../play/scenes-and-stage.md).
 
 ## `MapService`
 
@@ -44,7 +44,7 @@ A non-active member (and a pending member) gets `not_found` on everything, as in
 
 ## Maps, points and tokens
 
-- **The battle grid (MR-013, RN-21).** `maps.grid_columns` stores how many 1.5 m squares fit across the image's width; rows come from the image's proportion. Without a grid (`NULL`), combat does not start on the map (see Combat without a grid in [Architecture](../../architecture.md#combat-without-a-grid-theatre-of-the-mind)). The grid arithmetic and `play`'s grid read are in `maps.SessionMaps`.
+- **The battle grid (MR-013, RN-21).** `maps.grid_columns` stores how many 1.5 m squares fit across the image's width; rows come from the image's proportion. Without a grid (`NULL`), combat does not start on the map (see Combat without a grid in [Architecture](../play/theatre.md)). The grid arithmetic and `play`'s grid read are in `maps.SessionMaps`.
 - **Positions are in base points.** `x_bp` and `y_bp` go from 0 to 10000 across the image's width and height (5000 is the middle), independent of the image's size, so swapping the image or zooming moves nothing. The response carries the image's width and height so the screen draws the map before the image arrives.
 - **Point kinds.** A point has a name (up to 80 characters) and a description for the players (up to 2,000, with line breaks). The kinds are battle, sub-map, RP scene, trap, treasure and light ([Points](points.md)).
   - A sub-map point leads to another map of the same campaign, never itself; the app first opens the point's sheet, with "Abrir <mapa>".

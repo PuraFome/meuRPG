@@ -3,7 +3,7 @@
 `web/` is the Angular app.
 The Go server serves its build on the same origin as the API, so the browser needs no CORS and the session cookie is first-party (ADR-0006).
 This page covers how the app is served and secured, how it is organised, how it talks to the server, and the screens of sign-in, campaigns, invites and claim links.
-How a screen is designed and reviewed is in [Design](../design.md).
+How a screen is designed and reviewed is in [Design](../design/README.md).
 
 ## How it is served
 
@@ -16,7 +16,7 @@ The API paths (`isAPIPath`) are `/meurpg.*`, `/auth/*`, `/images/*`, `/uploads/*
 | --- | --- |
 | Cache | A hashed asset (`name-<8 characters>.ext`, from `outputHashing: "all"`) gets `Cache-Control: public, max-age=31536000, immutable`. `index.html` and files copied as they are (`favicon.ico`, `material-symbols/*`) get `no-cache`. |
 | MIME types | The server teaches Go's `mime` package `.webmanifest` (`application/manifest+json`) and `.ico` (`image/x-icon`); the production image has no `mime.types`. |
-| Legal pages | `/terms`, `/privacy` and `/credits` are lazy routes of the app, public ([Design](../design.md#legal-pages-pageslegal)). |
+| Legal pages | `/terms`, `/privacy` and `/credits` are lazy routes of the app, public ([Design](../design/README.md#logo-icons-and-footer)). |
 | Dev | `cd web && npm start` runs Angular with `proxy.conf.json`, forwarding the API paths to `localhost:8080`. |
 | Codegen | `make proto` runs `buf generate`; `protoc-gen-es` (Connect-ES v2: one plugin makes messages and services) writes `web/src/gen/`, committed like the Go side. |
 
@@ -58,10 +58,10 @@ The app's CSP is `default-src 'self'; script-src 'self'; style-src 'self' 'unsaf
 
 What two pages share moves to `shared/` or `core/`.
 Import cycles are never allowed.
-CI enforces this with dependency-cruiser (`web/.dependency-cruiser.cjs`, `npm run depcruise`); `web/.dependency-cruiser-known-violations.json` is empty, so any violation fails ([CONTRIBUTING](../../CONTRIBUTING.md#web-and-e2e-linters)).
+CI enforces this with dependency-cruiser (`web/.dependency-cruiser.cjs`, `npm run depcruise`); `web/.dependency-cruiser-known-violations.json` is empty, so any violation fails ([CONTRIBUTING](../ci.md#web-and-e2e-linters)).
 The generated code in `web/src/gen` is outside the layers.
 
-The visual system is `--mr-*` CSS properties in `web/src/styles.scss` and shared pieces in `web/src/styles/_ui.scss` ([Design](../design.md)).
+The visual system is `--mr-*` CSS properties in `web/src/styles.scss` and shared pieces in `web/src/styles/_ui.scss` ([Design](../design/README.md)).
 Fonts are Alegreya and Alegreya Sans (OFL), Latin subset in woff2, from `@fontsource`; icons are the self-hosted Material Symbols font (`@material-symbols/font-400`, copied by an `assets` entry in `angular.json`).
 Both are served by Go itself, never from Google Fonts, which the CSP blocks and [Privacy](../privacy.md) forbids.
 Licences are in `NOTICE` and `third_party/licenses/`.
@@ -159,4 +159,4 @@ The page never shows an e-mail or a rule id ([Campaigns](campaigns.md#claim-link
 
 - **Unit tests** (Vitest, `web/src/**/*.spec.ts`) cover error mapping, the fragment cut (`replaceState` called, no storage touched), the sign-in form fields, and the approval flow.
 - **End to end** (Playwright, in `e2e/tests`): `campaigns.spec.ts`, `invite.spec.ts` (including the invite sign-in path), `character-approval.spec.ts`, `claim-links.spec.ts`, `login.spec.ts` and `sessions.spec.ts`, tagged by story (`@MR-001`...).
-- **Accessibility:** `a11y.spec.ts` runs axe on the main screens ([CONTRIBUTING](../../CONTRIBUTING.md#end-to-end-tests-playwright)).
+- **Accessibility:** `a11y.spec.ts` runs axe on the main screens ([CONTRIBUTING](../testing.md#end-to-end-tests-playwright)).

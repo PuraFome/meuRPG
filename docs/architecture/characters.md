@@ -2,7 +2,7 @@
 
 The player creates their own character and the master creates the NPCs; the sheet comes back with the numbers computed by the server (MR-003, MR-004, MR-005, MR-006).
 The character of someone who joined through an invite with approval waits for the master to approve or refuse it (MR-024, RN-15).
-The code lives in `backend/internal/characters`, the tables are in [Data model](../data.md), and the arithmetic is in the [rules module](rules.md).
+The code lives in `backend/internal/characters`, the tables are in [Data model](../data/README.md), and the arithmetic is in the [rules module](rules.md).
 
 The module serves three Connect services:
 

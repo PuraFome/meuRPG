@@ -4,7 +4,7 @@ A master exports a campaign as one file, `<campaign>.meurpg.zip`, and creates a 
 The code is `backend/internal/campaignpackage`.
 The format is `proto/meurpg/campaignpackage/v1/format.proto`: the messages written inside the zip, as protobuf JSON with the field names of the `.proto`, embedding the API's own messages for sheets, traps, puzzles and table entries, so the format follows the API.
 The calls are in `campaignpackage.proto` (`CampaignPackageService`).
-The cleanup rules of the bucket are in [Operations](../operations.md#campaign-package) and the personal data in [Privacy](../privacy.md#what-the-campaign-package-does-mr-050).
+The cleanup rules of the bucket are in [Operations](../operations/reference.md#campaign-package) and the personal data in [Privacy](../privacy.md#what-the-campaign-package-does-mr-050).
 
 ## The format
 
@@ -136,7 +136,7 @@ The rows of exports and uploads have no foreign key to the campaign or the accou
 - It deletes what expired, file first and row after.
 - It also takes orphans, whatever their expiry: exports whose campaign or account no longer exists and uploads whose account is gone (deleting a campaign or an account does not call this package's code).
 - `DeleteCampaignPackages` and `DeleteUserPackages` delete at once what a campaign or an account owns, for a caller that wants it.
-- The bucket's own lifecycle rule is the last word ([Operations](../operations.md#campaign-package)).
+- The bucket's own lifecycle rule is the last word ([Operations](../operations/reference.md#campaign-package)).
 
 At shutdown an export in flight stops with the server (`Cancel`); the next read marks it interrupted.
 

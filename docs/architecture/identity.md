@@ -3,7 +3,7 @@
 The master signs in through an OpenID Connect (OIDC) provider with Authorization Code and PKCE, and the server opens an opaque session of at most 30 days, kept in an `__Host-` `HttpOnly` cookie (ADR-0002).
 The code is `backend/internal/identity`.
 It knows no particular provider: Google in production, the devidp (a local OIDC provider) or a fake one in tests.
-Everything comes from configuration ([CONTRIBUTING](../../CONTRIBUTING.md#sign-in-with-an-oidc-provider)) and from OIDC discovery (`/.well-known/openid-configuration`).
+Everything comes from configuration ([CONTRIBUTING](../development.md#sign-in-with-another-oidc-provider)) and from OIDC discovery (`/.well-known/openid-configuration`).
 A sign-in without Google for players (RN-17) is not implemented; see ADR-0009.
 
 ## Routes
@@ -58,7 +58,7 @@ A browser has one login cookie, so a second sign-in started in it (another tab) 
   The database stores only the SHA-256 (`auth_sessions.token_hash`).
 - **Absolute lifetime:** 30 calendar days from sign-in (`identity.SessionLifetime`), not renewed by use (NIST SP 800-63B-4, AAL1).
 - **Idle lifetime** (ASVS 5.0 V7.3.1): a session unused for 14 days ends and behaves like one that does not exist (`unauthenticated`).
-  `SESSION_IDLE_TIMEOUT` changes it, from `1h` to `720h` ([Operations](../operations.md#environment-variables-and-secrets)).
+  `SESSION_IDLE_TIMEOUT` changes it, from `1h` to `720h` ([Operations](../operations/reference.md#environment-variables)).
   Use never extends the 30 days.
 - **Last use** is written to `auth_sessions.last_used_at` at most once every 10 minutes per session (`sessionTouchEvery`): the interceptor reads the session, which already carries the field, and only if it is older issues one `UPDATE ... WHERE id = $1 AND last_used_at < $limit`, outside any transaction and without failing the request on error.
 - **An open stream counts as use.**

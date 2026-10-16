@@ -1,7 +1,7 @@
 # Progression module: XP and milestones
 
 The master gives XP to the party and records milestones, and the whole campaign reads the history and everyone's XP (MR-016, RN-09, RN-12).
-The `progression` module owns the tables `xp_awards`, `xp_award_shares` and `xp_award_treasures` (see [Data](../data.md)) and the `ProgressionService` (`proto/meurpg/progression/v1/progression.proto`).
+The `progression` module owns the tables `xp_awards`, `xp_award_shares` and `xp_award_treasures` (see [Data](../data/README.md)) and the `ProgressionService` (`proto/meurpg/progression/v1/progression.proto`).
 XP itself is a number on the sheet (`FullSheet.experience_points`), so `characters` is what changes it; `progression` asks through an interface.
 The code is in `backend/internal/progression`.
 

@@ -127,7 +127,7 @@ A live stream ends by itself after `play.DefaultMaxLifetime` (10 minutes) and th
 There are in-memory rate limits and per-account caps.
 The rate limits stop a script; none hinders a real table.
 All rate limits use `platform/ratelimit`, a token bucket with a per-client and a global limit.
-`RATE_LIMIT_MULTIPLIER` scales all of them (default 1; the e2e stack uses 10, see [Operations](../operations.md#abuse-limits)).
+`RATE_LIMIT_MULTIPLIER` scales all of them (default 1; the e2e stack uses 10, see [Operations](../operations/reference.md#abuse-limits)).
 The numbers are in `ratelimit.NewPolicy` and in the constants next to each limiter.
 
 | Limit | Key | Where | Answer |
@@ -169,7 +169,7 @@ The numbers are in `ratelimit.NewPolicy` and in the constants next to each limit
 | Who may create campaigns | `CAMPAIGN_CREATORS`: verified e-mails, comma-separated; empty means anyone. Someone invited to a campaign plays without being on the list. | `permission_denied` with `NOT_ALLOWED` |
 | Invites that still work in a campaign | 50 (`campaigns.MaxActiveInvites`): not revoked, not expired, with uses left | `resource_exhausted` |
 | Characters and NPCs in a campaign, living or dead | 1,000 (`characters.DefaultMaxCharactersPerCampaign`) | `resource_exhausted` |
-| Images generated per campaign per month, and per server per Brasília day | `IMAGE_MONTHLY_LIMIT` and `IMAGE_DAILY_LIMIT` ([Operations](../operations.md#generated-images-the-gemini-api)) | `failed_precondition` with reason `DAILY_LIMIT_REACHED` for the daily cap |
+| Images generated per campaign per month, and per server per Brasília day | `IMAGE_MONTHLY_LIMIT` and `IMAGE_DAILY_LIMIT` ([Operations](../operations/reference.md#generated-images-the-gemini-api)) | `failed_precondition` with reason `DAILY_LIMIT_REACHED` for the daily cap |
 
 Each count runs in the transaction of the create it guards, with `WithTx(tx)`, so under `SERIALIZABLE` two creates racing for the last place conflict and the one that retries counts again.
 The campaign cap reads verified e-mails through `identity` (`PostgresStore.VerifiedEmails`); `campaigns` never reads the users table.

@@ -1,6 +1,6 @@
 # Logs
 
-The API writes one JSON line per event to stdout. On Cloud Run that goes to Cloud Logging; on a developer machine an optional ELK stack reads it. The fields, levels and what never goes in a line are defined once, in [Architecture](../architecture.md#logs) (code: `backend/internal/platform/logging`); this page covers where the lines go and how to search them.
+The API writes one JSON line per event to stdout. On Cloud Run that goes to Cloud Logging; on a developer machine an optional ELK stack reads it. The fields, levels and what never goes in a line are defined once, in [Architecture](../architecture/logs.md#logs) (code: `backend/internal/platform/logging`); this page covers where the lines go and how to search them.
 
 ## On Cloud Run
 
