@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -69,21 +68,6 @@ func luckyNote(r *luckyReroll) string {
 	return fmt.Sprintf(" Sortudo: %d → %d.", r.From, r.To)
 }
 
-// luckyPending says the hold waits for its Lucky answer: a die showed a 1 and neither the Lucky
-// question nor the roll was answered.
-func luckyPending(h playdb.RollHold) bool {
-	return h.LuckyIndex != nil && h.LuckyAnswerKey == nil && h.AnswerKey == nil
-}
-
-// luckyOfHold is the die a hold's Lucky answer rolled again; nil before the answer, when the
-// player kept the 1, and for a hold that asked no Lucky question.
-func luckyOfHold(h playdb.RollHold) *luckyReroll {
-	if h.LuckyIndex == nil || h.LuckyTo == nil {
-		return nil
-	}
-	return &luckyReroll{Index: *h.LuckyIndex, From: 1, To: *h.LuckyTo}
-}
-
 // luckyIndexOf is the die of a lucky attacker's roll that shows a 1, the one Lucky would roll
 // again: nil when none does, or when the attacker is not lucky.
 func luckyIndexOf(faces []int, lucky bool) *int32 {
@@ -139,27 +123,18 @@ func (s *Service) luckySave(roll d20Roll, modifier int, mode combat.RollMode, lu
 	return d20Roll{Faces: faces, Index: idx, Total: faces[idx] + modifier, Physical: roll.Physical}, reroll, nil
 }
 
-// luckyOfferOf is the question a hold asks the player of a lucky attacker: the d20 with the
-// attack's bonus, the die that shows the 1, the attack and its target.
-func luckyOfferOf(hold playdb.RollHold, physical bool) *playv1.LuckyOffer {
-	var orig playv1.RollAttackRequest
-	_ = proto.Unmarshal(hold.Request, &orig) // a request this module wrote
-	return &playv1.LuckyOffer{
-		HoldId: hold.ID, D20: heldD20(hold, physical), LuckyIndex: derefInt32(hold.LuckyIndex),
-		AttackKey: orig.GetAttackKey(), TargetId: orig.GetTargetId(),
-	}
-}
-
 // luckyOfferView is the held roll of a combatant that waits for its Lucky answer, for its player
 // and the master, so the question is still there when the screen is read again.
 func luckyOfferView(d *encounterData, c playdb.Combatant, v combatViewer) *playv1.LuckyOffer {
 	if !v.master && !v.owns(c) {
 		return nil
 	}
-	for _, h := range d.holds {
-		if h.CombatantID == c.ID && h.Round == d.enc.Round && luckyPending(h) {
-			_, physical := rollOfHold(h)
-			return luckyOfferOf(h, physical)
+	for _, row := range d.holds {
+		if row.CombatantID != c.ID || row.Round != d.enc.Round {
+			continue
+		}
+		if h := heldOfRollHold(row); luckyAsks(h) {
+			return heldOffer{Hold: h, Asks: askLucky}.luckyOffer()
 		}
 	}
 	return nil

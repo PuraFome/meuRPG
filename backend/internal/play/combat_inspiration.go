@@ -2,10 +2,8 @@ package play
 
 import (
 	"context"
-	"slices"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -49,36 +47,6 @@ func dieHeldBy(c playdb.Combatant, round int32) *playv1.InspirationDie {
 	return &playv1.InspirationDie{Sides: *c.InspirationSides, ExpiresAtRound: *c.InspirationExpiresRound, FromCombatantId: deref(c.InspirationFrom)}
 }
 
-// offerOf is the question a hold asks the player: the d20 with the attack's bonus, the attack, its
-// target and the die the attacker holds.
-func offerOf(hold playdb.RollHold, die *playv1.InspirationDie, cs []playdb.Combatant, physical bool) *playv1.InspirationOffer {
-	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == die.GetFromCombatantId() }); i >= 0 {
-		die.FromLabel = cs[i].Label
-	}
-	var orig playv1.RollAttackRequest
-	_ = proto.Unmarshal(hold.Request, &orig) // a request this module wrote
-	return &playv1.InspirationOffer{
-		HoldId: hold.ID, Die: die, AttackKey: orig.GetAttackKey(), TargetId: orig.GetTargetId(), D20: heldD20(hold, physical),
-	}
-}
-
-// heldD20 is the d20 of a hold, with the attack's bonus as the modifier: both dice of a roll with
-// advantage or disadvantage, the one that counts marked, and the die Lucky rolled again once the
-// player did (the hold's face and request are already the new ones then).
-func heldD20(hold playdb.RollHold, physical bool) *playv1.DiceRoll {
-	var orig playv1.RollAttackRequest
-	_ = proto.Unmarshal(hold.Request, &orig) // a request this module wrote
-	roll := diceRoll(1, 20, []int32{hold.Face}, hold.Modifier, hold.Face+hold.Modifier, physical)
-	if faces := orig.GetD20Faces(); len(faces) == pairDice { // advantage or disadvantage: both dice, the one that counts marked
-		mode, _ := modeFromProto(orig.GetRollMode())
-		counted := mode.Pick(intsOf(faces))
-		roll = diceRoll(pairDice, 20, faces, hold.Modifier, hold.Face+hold.Modifier, physical)
-		roll.CountedIndex = clamp32(counted, 0, 1)
-	}
-	roll.Rerolled = luckyOfHold(hold).proto()
-	return roll
-}
-
 // heldAttackOffer is what RollAttack answers for a held roll: the d20 and the question, the attack
 // not resolved (no outcome, no action spent, no damage). The Lucky question comes first; the
 // die's comes once it is answered.
@@ -106,24 +74,17 @@ func inspirationOfferView(d *encounterData, c playdb.Combatant, v combatViewer) 
 	if (!v.master && !v.owns(c)) || die == nil {
 		return nil
 	}
-	for _, h := range d.holds {
-		if h.CombatantID != c.ID || h.Round != d.enc.Round {
+	for _, row := range d.holds {
+		if row.CombatantID != c.ID || row.Round != d.enc.Round {
 			continue
 		}
-		if luckyPending(h) {
+		h := heldOfRollHold(row)
+		if luckyAsks(h) {
 			return nil
 		}
-		_, physical := rollOfHold(h)
-		return offerOf(h, die, d.cs, physical)
+		return heldOffer{Hold: h, Asks: askDie}.attackDieOffer(die, d.cs)
 	}
 	return nil
-}
-
-// rollOfHold says how the d20 of a hold was given: typed from a real die or rolled in the app.
-func rollOfHold(h playdb.RollHold) (face int32, physical bool) {
-	var orig playv1.RollAttackRequest
-	_ = proto.Unmarshal(h.Request, &orig)
-	return h.Face, typedRoll(&orig)
 }
 
 // bonusRollOf reads how the Bardic Inspiration die of AnswerBardicInspiration comes, when the player

@@ -37,38 +37,6 @@ type inspirationGivenEvent struct {
 	Sides  int32  `json:"sides"`
 }
 
-// The kinds of roll that wait for an answer about the die (inspiration_holds.kind). The first
-// four are rolled out of a combat (the trap search and the hint try also by a character in one,
-// when the die is its combatant's); the last three only in a combat, by a player's character.
-const (
-	holdSceneCheck    = "scene_check"
-	holdGroupCheck    = "group_check"
-	holdTrapSearch    = "trap_search"
-	holdHintTry       = "hint_try"
-	holdSpellAttack   = "spell_attack"
-	holdEffectSave    = "effect_save"
-	holdConcentration = "concentration_save"
-)
-
-// offerOfHold is the question a hold asks: the d20 with the check's bonus, and the die.
-func (s *Service) offerOfHold(ctx context.Context, tx pgx.Tx, hold playdb.InspirationHold, die heldDie) *playv1.OutsideInspirationOffer {
-	return &playv1.OutsideInspirationOffer{HoldId: hold.ID, Sides: die.Sides, FromName: s.nameOf(ctx, tx, hold.CampaignID, die.Source), D20: outsideD20(hold)}
-}
-
-// outsideD20 is the d20 of a hold with the check's bonus as the modifier: both dice of a roll with
-// advantage or disadvantage, the one that counts marked, and the die Lucky rolled again once the
-// player did (the hold's faces are already the new ones then).
-func outsideD20(hold playdb.InspirationHold) *playv1.DiceRoll {
-	roll := diceRoll(1, 20, hold.Faces, hold.Modifier, hold.Total, hold.Physical)
-	if len(hold.Faces) == pairDice {
-		roll = diceRoll(pairDice, 20, hold.Faces, hold.Modifier, hold.Total, hold.Physical)
-		roll.CountedIndex = clamp32(int(hold.Counted), 0, 1)
-		markTreated(roll, hold.Modifier, hold.Total)
-	}
-	roll.Rerolled = outsideLuckyOf(hold).proto()
-	return roll
-}
-
 // nameOf is the name of a character of the table, "" when it is gone.
 func (s *Service) nameOf(ctx context.Context, tx pgx.Tx, campaignID string, id *string) string {
 	if id == nil {
@@ -288,12 +256,13 @@ func (s *Service) GetOutsideInspiration(
 	if err != nil {
 		return nil, s.dbError(ctx, "list the held rolls", err)
 	}
+	state := rollerState{Die: die, Holds: found}
 	for _, h := range holds {
-		switch {
-		case outsideLuckyPending(h):
-			out.LuckyOffers = append(out.LuckyOffers, outsideLuckyOfferOf(h))
+		switch asked := askedBy(h, state); {
+		case asked.Asks == askLucky:
+			out.LuckyOffers = append(out.LuckyOffers, asked.luckyOffer())
 		case found:
-			out.Offers = append(out.Offers, s.offerOfHold(ctx, nil, h, die))
+			out.Offers = append(out.Offers, s.outsideDieOffer(ctx, nil, asked))
 		}
 	}
 	sheet, err := s.roster.CombatSheet(ctx, nil, m.CampaignID, me.ID)
@@ -322,16 +291,17 @@ func (s *Service) GetOutsideInspiration(
 // heldRollsOf lists the rolls of a character that wait for an answer, with the die it holds
 // (found): about the die, or the halfling's Lucky question, which needs no die. A stale roll (its
 // combat round is over, or its die is gone) is left out.
-func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID string) (heldDie, bool, []playdb.InspirationHold, error) {
+func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID string) (heldDie, bool, []heldRoll, error) {
 	die, found, err := s.dieOf(ctx, s.queries, campaignID, characterID)
 	if err != nil {
 		return heldDie{}, false, nil, err
 	}
-	all, err := s.queries.ListInspirationHoldsOfCharacter(ctx, characterID)
+	all, err := newHeldStores(s.queries).of(inspirationHolds).openOf(ctx, heldRoller{CharacterID: characterID})
 	if err != nil {
-		return heldDie{}, false, nil, fmt.Errorf("list the held rolls: %w", err)
+		return heldDie{}, false, nil, err
 	}
-	return die, found, slices.DeleteFunc(all, func(h playdb.InspirationHold) bool { return staleHold(h, die, found) }), nil
+	state := rollerState{Die: die, Holds: found}
+	return die, found, slices.DeleteFunc(all, func(h heldRoll) bool { return h.stale(state) }), nil
 }
 
 // openEncounterOf is the open combat of the campaign's open game session, nil when none.

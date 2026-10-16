@@ -15,7 +15,7 @@ import (
 // not a weapon attack: the scene check, the group check, the trap search and the puzzle hint try,
 // and, in a combat, the spell attack against one target, the effect's saving throw and the
 // concentration save. Each already keeps its d20 in an inspiration_holds row when the character
-// holds a Bardic Inspiration die (outsideRoll, inspiration_outside.go); a lucky character's d20
+// holds a Bardic Inspiration die (the gate, held_gate.go); a lucky character's d20
 // that shows a 1 is kept in the same row (lucky_index), die or not, and the path answers with the
 // question "Tirou 1: rolar de novo?" instead of its result. AnswerOutsideLucky rolls the die again
 // (in the app or typed, RN-18), or keeps the 1, and runs the same request again with the new d20:
@@ -24,21 +24,6 @@ import (
 // counts any d20 of the check. As with the die, only the player who rolls for their own character
 // is asked: the master's rolls never wait here (a roll the master makes for a halfling waits for
 // a decision, MR-014).
-
-// outsideLuckyOf is the die a hold's Lucky answer rolled again; nil before the answer, when the
-// player kept the 1, and for a hold that asked no Lucky question.
-func outsideLuckyOf(h playdb.InspirationHold) *luckyReroll {
-	if h.LuckyIndex == nil || h.LuckyTo == nil {
-		return nil
-	}
-	return &luckyReroll{Index: *h.LuckyIndex, From: 1, To: *h.LuckyTo}
-}
-
-// outsideLuckyOfferOf is the Lucky question a hold asks: the d20 with the roll's bonus and the die
-// that shows the 1. A roll that is not a weapon attack names no attack and no target.
-func outsideLuckyOfferOf(h playdb.InspirationHold) *playv1.LuckyOffer {
-	return &playv1.LuckyOffer{HoldId: h.ID, D20: outsideD20(h), LuckyIndex: derefInt32(h.LuckyIndex)}
-}
 
 // countedAfterLucky is countedAfter for the faces a row of inspiration_holds kept.
 func countedAfterLucky(hold playdb.InspirationHold, faces []int, mode combat.RollMode) int {

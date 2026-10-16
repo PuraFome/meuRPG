@@ -11,11 +11,11 @@ import (
 
 // The held roll of the d20 rolls that are not a weapon attack (SRD 5.1, Bard 1: the creature
 // "can wait until after it rolls the d20 before deciding to use the Bardic Inspiration die, but
-// must decide before the GM says whether the roll succeeds"). They use the mechanism of the scene
-// check (outsideRoll, inspiration_holds, AnswerOutsideInspiration), whose die is the character's
-// out of a combat and its combatant's in one (dieOf): the roll path rolls the d20 and keeps it
-// with the request before it writes anything, the player is asked, and the answer runs the same
-// request again with the d20 already rolled. The paths that hold are the ones of a player's own
+// must decide before the GM says whether the roll succeeds"). They use the gate (held_gate.go) and
+// inspiration_holds, whose die is the character's out of a combat and its combatant's in one
+// (dieOf): the roll path asks the gate, which rolls the d20 and keeps it with the request before
+// anything is written, the player is asked, and the answer runs the same request again with the d20
+// already rolled. The paths that hold are the ones of a player's own
 // character: the master's rolls, and the saves the app rolls for a target in a caster's call
 // (a spell's saving throw, a hit rider's), do not wait for a die. The same holds ask the
 // halfling's Lucky question first, die or not, when a d20 shows a 1 (inspiration_lucky.go).
@@ -32,11 +32,11 @@ type spellAttackPre struct {
 	die heldDie
 }
 
-// holdSpellAttack is asked by a cast before anything is spent, and has something to say about a cast with one spell attack. A caster that
-// is a player's character and holds a die gets the d20 rolled and kept: it answers the question
-// to put to the player (the question comes back), and the cast writes nothing. So does a lucky one (a halfling)
-// whose d20 shows a 1, with the Lucky question; its d20 that shows no 1 is settled at
-// once. The answer's run of the cast, and the settled d20, get the roll in modes.pre and answer
+// holdSpellAttack is asked by every cast before anything is spent, and has something to say about a cast
+// with one spell attack. A caster that is a player's character and holds a die gets the d20 rolled and kept:
+// it answers the question to put to the player (the question comes back), and the cast writes nothing. So
+// does a lucky one (a halfling) whose d20 shows a 1, with the Lucky question; its d20 that shows no 1 is
+// settled at once. The answer's run of the cast, and the settled d20, get the roll in modes.pre and answer
 // no question; so does every cast that holds no die and is not lucky.
 func (s *Service) holdSpellAttack(
 	ctx context.Context, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, key string,
