@@ -29,7 +29,6 @@ cognitive internal/campaigns (*Service).SetCampaignXpMode 19
 cognitive internal/campaigns (*Service).UpdateCampaignDocument 16
 cognitive internal/campaigns (*Service).acceptInvite 28
 cognitive internal/characters (*Service).AdjustCreatureHitPoints 33
-cognitive internal/characters (*Service).AdjustVitals 25
 cognitive internal/characters (*Service).ApproveCharacter 20
 cognitive internal/characters (*Service).ClaimCharacter 46
 cognitive internal/characters (*Service).CombatSheet 17
@@ -57,14 +56,12 @@ cognitive internal/characters (*Service).RenameCreature 18
 cognitive internal/characters (*Service).RequestCharacterChanges 26
 cognitive internal/characters (*Service).ResubmitCharacter 24
 cognitive internal/characters (*Service).ReturnCharacterToReserve 22
-cognitive internal/characters (*Service).ReviveCharacter 23
 cognitive internal/characters (*Service).RevokeClaimLink 17
 cognitive internal/characters (*Service).RollAbilityScores 47
 cognitive internal/characters (*Service).RollLevelUpHitPoints 28
 cognitive internal/characters (*Service).SetOptionSwitches 63
 cognitive internal/characters (*Service).SummonCreatures 33
 cognitive internal/characters (*Service).SyncCreatures 21
-cognitive internal/characters (*Service).TakeRest 38
 cognitive internal/characters (*Service).UpdateCharacter 69
 cognitive internal/characters (*Service).UpdateCharacterStory 19
 cognitive internal/characters (*Service).UpdateTableEntry 39
@@ -73,14 +70,12 @@ cognitive internal/characters (*Service).newLevelUpTarget 18
 cognitive internal/characters (*Service).planLevelUpIn 38
 cognitive internal/characters (*Service).setArchived 35
 cognitive internal/characters (*Service).summonSpellOptions 32
-cognitive internal/characters (*Service).writeVitals 16
 cognitive internal/characters (*keyAssigner).assignIn 18
 cognitive internal/characters (*packagePart).Apply 24
 cognitive internal/characters (*packagePart).exportCharacters 19
 cognitive internal/characters (*packagePart).stageContent 21
 cognitive internal/characters (*packagePart).stageOne 24
 cognitive internal/characters applyChoicePicks 33
-cognitive internal/characters applyVitalsChange 53
 cognitive internal/characters catalogToProto 25
 cognitive internal/characters checkLevelUpChoices 18
 cognitive internal/characters checkPack 22
@@ -91,7 +86,6 @@ cognitive internal/characters derivedToProto 29
 cognitive internal/characters forPlayer 18
 cognitive internal/characters fullReactionStats 16
 cognitive internal/characters levelUpOptionsToProto 21
-cognitive internal/characters planRest 23
 cognitive internal/characters spellcastingBlock 17
 cognitive internal/characters walkUnknown 20
 cognitive internal/characters withoutArchived 17
@@ -572,7 +566,6 @@ cyclomatic internal/campaignpackage (*Service).BeginCampaignImport 22
 cyclomatic internal/campaigns (*Service).CreateCampaign 16
 cyclomatic internal/campaigns (*Service).acceptInvite 20
 cyclomatic internal/characters (*Service).AdjustCreatureHitPoints 24
-cyclomatic internal/characters (*Service).AdjustVitals 21
 cyclomatic internal/characters (*Service).ClaimCharacter 28
 cyclomatic internal/characters (*Service).CombatSpell 19
 cyclomatic internal/characters (*Service).CompleteCharacterChoices 24
@@ -592,13 +585,11 @@ cyclomatic internal/characters (*Service).ListTableEntries 22
 cyclomatic internal/characters (*Service).RequestCharacterChanges 21
 cyclomatic internal/characters (*Service).ResubmitCharacter 22
 cyclomatic internal/characters (*Service).ReturnCharacterToReserve 16
-cyclomatic internal/characters (*Service).ReviveCharacter 16
 cyclomatic internal/characters (*Service).RollAbilityScores 27
 cyclomatic internal/characters (*Service).RollLevelUpHitPoints 17
 cyclomatic internal/characters (*Service).SetOptionSwitches 37
 cyclomatic internal/characters (*Service).SummonCreatures 20
 cyclomatic internal/characters (*Service).SyncCreatures 17
-cyclomatic internal/characters (*Service).TakeRest 21
 cyclomatic internal/characters (*Service).UpdateCharacter 47
 cyclomatic internal/characters (*Service).UpdateTableEntry 24
 cyclomatic internal/characters (*Service).characterToProto 23
@@ -609,7 +600,6 @@ cyclomatic internal/characters (*Service).summonSpellOptions 22
 cyclomatic internal/characters (*packagePart).stageContent 18
 cyclomatic internal/characters (*packagePart).stageOne 19
 cyclomatic internal/characters applyChoicePicks 18
-cyclomatic internal/characters applyVitalsChange 37
 cyclomatic internal/characters catalogToProto 19
 cyclomatic internal/characters checkPack 19
 cyclomatic internal/characters cleanBasicSheet 19
@@ -617,7 +607,6 @@ cyclomatic internal/characters cleanFullSheet 28
 cyclomatic internal/characters derivedToProto 28
 cyclomatic internal/characters forPlayer 17
 cyclomatic internal/characters fullReactionStats 17
-cyclomatic internal/characters planRest 18
 cyclomatic internal/characters withoutArchived 16
 cyclomatic internal/identity (*Service).completeLogin 16
 cyclomatic internal/identity safeReturnTo 16
