@@ -18,7 +18,10 @@ import (
 // conditions.
 type cleanRules struct{ noRules }
 
-func (cleanRules) TrapPreset(key string) (rules.TrapPreset, bool) { return rules.TrapPreset{}, key == "trap:pit" }
+func (cleanRules) TrapPreset(key string) (rules.TrapPreset, bool) {
+	return rules.TrapPreset{}, key == "trap:pit"
+}
+
 func (cleanRules) IsSkill(key string) bool { return key == "skill:arcana" || key == "skill:history" }
 func (cleanRules) NamePT(key string) string {
 	if key == "damage-type:fire" || key == "condition:poisoned" {
