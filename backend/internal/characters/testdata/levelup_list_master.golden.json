@@ -1,0 +1,35 @@
+{
+  "levelUps": [
+    {
+      "characterId": "\u003cstrahd\u003e",
+      "characterName": "Strahd",
+      "choices": {},
+      "classKey": "class:gone",
+      "fromLevel": 3,
+      "id": "\u003cstrahd-level\u003e",
+      "toLevel": 4
+    },
+    {
+      "characterId": "\u003cpensantus\u003e",
+      "characterName": "Pensantus",
+      "choices": {
+        "cantripKeys": [
+          "spell:mage-hand"
+        ],
+        "featKey": "feat:not-there",
+        "instrumentKey": "proficiency:lute"
+      },
+      "classKey": "class:wizard",
+      "classNamePt": "Mago",
+      "fromLevel": 3,
+      "id": "\u003cpensantus-level\u003e",
+      "namesPt": {
+        "class:wizard": "Mago",
+        "proficiency:lute": "Alaúde",
+        "spell:mage-hand": "Mãos Mágicas"
+      },
+      "playerDisplayName": "Dona",
+      "toLevel": 4
+    }
+  ]
+}

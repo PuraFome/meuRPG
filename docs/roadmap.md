@@ -1,6 +1,6 @@
 # Roadmap
 
-The MVP is reached when the table plays its first full session through the app. **Current stage: pre-MVP.** Stages 1 to 10 are built, hardened and rehearsed, and the app runs in production at `https://meurpg.app` (see [Operations](operations.md)); the first real session comes next. After the MVP: internationalization (an English UI), then Stage 11. The per-stage delivery history (PRs, migrations, slices) is in the [archive](archive/etapas.md); who decided what, and when, is in [decisions](archive/decisions.md).
+The MVP is reached when the table plays its first full session through the app. **Current stage: pre-MVP.** Stages 1 to 10 are built, hardened and rehearsed, and the app runs in production at `https://meurpg.app` (see [Operations](operations/README.md)); the first real session comes next. After the MVP: internationalization (an English UI), then Stage 11. The per-stage delivery history (PRs, migrations, slices) is in the [archive](archive/etapas.md); who decided what, and when, is in [decisions](archive/decisions.md).
 
 The order starts with the foundation: the skeleton first, then the test base and the new app's skeleton, then each story lands finished on the Go backend, proven by its own tests. There is no gradual migration from the legacy app (old Angular and NestJS): its code has left the repository.
 
@@ -43,8 +43,16 @@ flowchart TD
 
 Each stage delivers something for the Game Master and for the players. There are no dates: the pace depends on everyone's free time.
 
+## Infrastructure not built yet
+
+- A shared channel for the live-session fan-out (a CockroachDB changefeed or Pub/Sub), which lifts `max-instances` above 1.
+- Enforcing the Cloud Armor OWASP rules (priorities 2000 and 2001, in preview) after reading their matches from real sessions.
+- A production log pipeline: a Cloud Logging sink to Pub/Sub read by Filebeat or Elastic Cloud, with a step that reads `jsonPayload`; today production logs stay in Cloud Logging.
+- Evaluating CockroachDB against Cloud SQL, since the code uses CockroachDB's row TTL and `40001` retries.
+- Automating the release and the infrastructure (today a release is a manual script and the Google Cloud resources are made by hand).
+
 ## See also
 
 - [Stories and acceptance criteria](product/stories.md)
-- [Architecture](architecture.md)
+- [Architecture](architecture/README.md)
 - [CONTRIBUTING.md](../CONTRIBUTING.md): the dev environment and the CI.
