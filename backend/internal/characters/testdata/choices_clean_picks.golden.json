@@ -1,0 +1,424 @@
+[
+  {
+    "case": "no picks",
+    "error": "picks is required",
+    "field": "picks",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks"
+          }
+        }
+      ],
+      "message": "picks is required"
+    }
+  },
+  {
+    "case": "an empty list",
+    "error": "picks is required",
+    "field": "picks",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks"
+          }
+        }
+      ],
+      "message": "picks is required"
+    }
+  },
+  {
+    "case": "51 picks",
+    "error": "picks must have at most 50 entries",
+    "field": "picks",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks"
+          }
+        }
+      ],
+      "message": "picks must have at most 50 entries"
+    }
+  },
+  {
+    "case": "50 picks",
+    "count": 50,
+    "picks": {
+      "picks": [
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        },
+        {
+          "choiceKey": "feature:x"
+        }
+      ]
+    }
+  },
+  {
+    "case": "an empty key",
+    "error": "picks.choice_key must be 1 to 120 characters",
+    "field": "picks.choice_key",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.choice_key"
+          }
+        }
+      ],
+      "message": "picks.choice_key must be 1 to 120 characters"
+    }
+  },
+  {
+    "case": "a key of 121",
+    "error": "picks.choice_key must be 1 to 120 characters",
+    "field": "picks.choice_key",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.choice_key"
+          }
+        }
+      ],
+      "message": "picks.choice_key must be 1 to 120 characters"
+    }
+  },
+  {
+    "case": "a key of 120",
+    "count": 1,
+    "picks": {
+      "picks": [
+        {
+          "choiceKey": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+        }
+      ]
+    }
+  },
+  {
+    "case": "too many options",
+    "error": "picks has too many option keys or texts",
+    "field": "picks",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks"
+          }
+        }
+      ],
+      "message": "picks has too many option keys or texts"
+    }
+  },
+  {
+    "case": "too many texts",
+    "error": "picks has too many option keys or texts",
+    "field": "picks",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks"
+          }
+        }
+      ],
+      "message": "picks has too many option keys or texts"
+    }
+  },
+  {
+    "case": "a long text",
+    "error": "picks.texts must be at most 40 characters, got 41",
+    "field": "picks.texts",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.texts"
+          }
+        }
+      ],
+      "message": "picks.texts must be at most 40 characters, got 41"
+    }
+  },
+  {
+    "case": "a control character",
+    "error": "picks.texts must not contain the character U+0007",
+    "field": "picks.texts",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.texts"
+          }
+        }
+      ],
+      "message": "picks.texts must not contain the character U+0007"
+    }
+  },
+  {
+    "case": "invalid UTF-8",
+    "error": "picks.texts must be valid UTF-8",
+    "field": "picks.texts",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.texts"
+          }
+        }
+      ],
+      "message": "picks.texts must be valid UTF-8"
+    }
+  },
+  {
+    "case": "blank texts stay open, the others are trimmed",
+    "count": 1,
+    "picks": {
+      "picks": [
+        {
+          "choiceKey": "feature:x",
+          "texts": [
+            "",
+            "gnolls",
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "case": "the key is checked before the texts",
+    "error": "picks.choice_key must be 1 to 120 characters",
+    "field": "picks.choice_key",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.choice_key"
+          }
+        }
+      ],
+      "message": "picks.choice_key must be 1 to 120 characters"
+    }
+  },
+  {
+    "case": "the counts are checked before the texts",
+    "error": "picks has too many option keys or texts",
+    "field": "picks",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks"
+          }
+        }
+      ],
+      "message": "picks has too many option keys or texts"
+    }
+  },
+  {
+    "case": "the first bad pick wins",
+    "error": "picks.texts must not contain the character U+0007",
+    "field": "picks.texts",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.texts"
+          }
+        }
+      ],
+      "message": "picks.texts must not contain the character U+0007"
+    }
+  },
+  {
+    "case": "repeated options",
+    "count": 1,
+    "picks": {
+      "picks": [
+        {
+          "choiceKey": "feature:x",
+          "optionKeys": [
+            "a",
+            "b",
+            "a"
+          ]
+        }
+      ]
+    }
+  }
+]
