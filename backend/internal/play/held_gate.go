@@ -124,16 +124,10 @@ func (s *Service) rollHeldAttack(
 	if err != nil || rolled.Held != nil {
 		return attackRolled{Held: rolled.Held}, err
 	}
-	d20 := rolled.Roll
-	if !rolled.Settled {
-		if d20, err = s.d20With(in, toHit, choice.Mode); err != nil {
-			return attackRolled{}, err
-		}
-	}
 	if choice, err = s.keepReason(ctx, c, choice); err != nil {
 		return attackRolled{}, err
 	}
-	out := attackRolled{Choice: choice, D20: d20, ToHit: toHit, Lucky: rolled.Lucky}
+	out := attackRolled{Choice: choice, D20: rolled.Roll, ToHit: toHit, Lucky: rolled.Lucky}
 	if rolled.Bonus != nil {
 		out.Bonus = answer.die
 	}
@@ -274,7 +268,7 @@ func encounterOf(r heldRoller) string {
 // the settled d20 of a roll with nothing to ask, else nothing (the path rolls).
 func (s *Service) heldGate(ctx context.Context, env gateEnv, spec rollSpec) (gateResult, error) {
 	if !spec.MayAsk {
-		return gateResult{}, nil
+		return s.gateRoll(spec)
 	}
 	st, err := s.rollerStateOf(ctx, env, spec.Roller)
 	if err != nil {
@@ -285,9 +279,30 @@ func (s *Service) heldGate(ctx context.Context, env gateEnv, spec rollSpec) (gat
 		return s.gateAnswer(ctx, ae, a)
 	}
 	if !st.Holds && !spec.Lucky {
-		return gateResult{}, nil
+		return s.gateRoll(spec)
 	}
 	return s.gateAsk(ctx, ae)
+}
+
+// gateD20 rolls the d20 of a roll, counted as the spec says: Reliable Talent applied, the faces as they
+// came up.
+func (s *Service) gateD20(spec rollSpec) (d20Roll, error) {
+	roll, err := s.d20With(spec.In, spec.Modifier, spec.Mode)
+	if err != nil {
+		return d20Roll{}, err
+	}
+	return reliableD20(roll, spec.Modifier, spec.Reliable), nil
+}
+
+// gateRoll is the d20 of a roll that waits for nobody: rolled here and settled, for the paths that take
+// the gate's roll. The group check (rollCheck) and the trap search (the second die of a Perception search)
+// roll their own, and get nothing back.
+func (s *Service) gateRoll(spec rollSpec) (gateResult, error) {
+	if heldRegistry[spec.Kind].ownRoll {
+		return gateResult{}, nil
+	}
+	roll, err := s.gateD20(spec)
+	return gateResult{Settled: true, Roll: roll}, err
 }
 
 // gateAsk rolls the d20 of a roll that may wait and keeps it when a question is to be asked. A retry of the
@@ -305,13 +320,12 @@ func (s *Service) gateAsk(ctx context.Context, ae answering) (gateResult, error)
 	if err := s.gateOpen(ctx, ae, stores); err != nil {
 		return gateResult{}, err
 	}
-	roll, err := s.d20With(spec.In, spec.Modifier, spec.Mode)
+	// The hold keeps the faces as they came up; the total counts the d20 by Reliable Talent (the offer
+	// shows it), and a Lucky answer counts the new d20 again.
+	roll, err := s.gateD20(spec)
 	if err != nil {
 		return gateResult{}, err
 	}
-	// The hold keeps the faces as they came up; the total counts the d20 by Reliable Talent (the offer
-	// shows it), and a Lucky answer counts the new d20 again.
-	roll = reliableD20(roll, spec.Modifier, spec.Reliable)
 	// A lucky roller without a die is asked only about a 1: any other roll goes on at once.
 	luckyAt := luckyIndexOf(roll.Faces, spec.Lucky)
 	if !ae.st.Holds && luckyAt == nil {
