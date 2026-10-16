@@ -195,7 +195,6 @@ cognitive internal/play (*Service).SetSurprised 25
 cognitive internal/play (*Service).SpendHitDice 48
 cognitive internal/play (*Service).SpendMovement 44
 cognitive internal/play (*Service).StandUp 45
-cognitive internal/play (*Service).StartContest 153
 cognitive internal/play (*Service).StartEncounter 59
 cognitive internal/play (*Service).StartGameSession 23
 cognitive internal/play (*Service).SubmitInitiative 61
@@ -586,7 +585,6 @@ cyclomatic internal/play (*Service).SetSurprised 18
 cyclomatic internal/play (*Service).SpendHitDice 28
 cyclomatic internal/play (*Service).SpendMovement 26
 cyclomatic internal/play (*Service).StandUp 26
-cyclomatic internal/play (*Service).StartContest 77
 cyclomatic internal/play (*Service).StartEncounter 39
 cyclomatic internal/play (*Service).SubmitInitiative 33
 cyclomatic internal/play (*Service).TakeAction 81
@@ -811,7 +809,6 @@ maintainability internal/play (*Service).ResolveConcentrationSave 18
 maintainability internal/play (*Service).RollEffectSave 14
 maintainability internal/play (*Service).RollSceneCheck 12
 maintainability internal/play (*Service).SearchForTraps 5
-maintainability internal/play (*Service).StartContest 8
 maintainability internal/play (*Service).StartEncounter 19
 maintainability internal/play (*Service).TakeAction 7
 maintainability internal/play (*Service).castSpell 0
