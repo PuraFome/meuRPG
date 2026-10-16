@@ -305,6 +305,105 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['revivifyChanged']);
   });
 
+  /** Every event of the wire, each with its content, through the real client: the table of events stays whole. */
+  async function eventsOf(...wire: { case: string; value?: object }[]) {
+    const responses = wire.map((event) =>
+      create(WatchGameSessionResponseSchema, { event } as unknown as Parameters<
+        typeof create<typeof WatchGameSessionResponseSchema>
+      >[1]),
+    );
+    const out = [];
+    for await (const e of sourceAnswering(responses).watch(
+      'camp-1',
+      new AbortController().signal,
+    )) {
+      out.push(e);
+    }
+    return out;
+  }
+
+  it('maps the map, vision, image and session events with their content', async () => {
+    expect(
+      await eventsOf(
+        { case: 'heartbeat', value: {} },
+        { case: 'sessionEnded', value: {} },
+        { case: 'currentMapChanged', value: { mapId: 'm1' } },
+        { case: 'currentMapChanged', value: { mapId: '' } },
+        { case: 'mapChanged', value: { mapId: 'm2' } },
+        {
+          case: 'tokenMoved',
+          value: { mapId: 'm2', characterId: 'c1', xBp: 120, yBp: 340 },
+        },
+        { case: 'visionChanged', value: { mapId: 'm2' } },
+        {
+          case: 'shownImageChanged',
+          value: { image: { id: 'i1', name: 'Mapa', width: 10, height: 20, url: '/i1' } },
+        },
+        { case: 'shownImageChanged', value: {} },
+        { case: 'leftImagesChanged', value: {} },
+        { case: 'trapNoticed', value: { mapId: 'm2', pointId: 'p1' } },
+      ),
+    ).toEqual([
+      { kind: 'heartbeat' },
+      { kind: 'ended' },
+      { kind: 'currentMap', mapId: 'm1' },
+      { kind: 'currentMap', mapId: null },
+      { kind: 'mapChanged', mapId: 'm2' },
+      { kind: 'tokenMoved', mapId: 'm2', characterId: 'c1', xBp: 120, yBp: 340 },
+      { kind: 'visionChanged', mapId: 'm2' },
+      { kind: 'shownImage', image: { id: 'i1', name: 'Mapa', width: 10, height: 20, url: '/i1' } },
+      { kind: 'shownImage', image: null },
+      { kind: 'leftImages' },
+      { kind: 'trapNoticed', mapId: 'm2', pointId: 'p1' },
+    ]);
+  });
+
+  it('maps the combat, scene and notes events with their content, and drops vitals without a body', async () => {
+    expect(
+      await eventsOf(
+        { case: 'vitalsChanged', value: {} },
+        { case: 'vitalsChanged', value: { vitals: { characterId: 'c1', name: 'Toren' } } },
+        { case: 'encounterChanged', value: { encounterId: 'e1', revision: 4, mode: 2 } },
+        {
+          case: 'turnChanged',
+          value: {
+            encounterId: 'e1',
+            round: 3,
+            currentCombatantId: 'k1',
+            masterTurn: true,
+            revision: 5,
+          },
+        },
+        { case: 'combatantMoved', value: { encounterId: 'e1', combatantId: 'k1', col: 2, row: 7 } },
+        { case: 'combatLogChanged', value: {} },
+        { case: 'sceneChanged', value: {} },
+        { case: 'sceneCheckRolled', value: {} },
+        { case: 'notesChanged', value: {} },
+        { case: 'stageChanged', value: {} },
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        kind: 'vitals',
+        vitals: expect.objectContaining({ name: 'Toren' }),
+      }),
+      { kind: 'encounterChanged', encounterId: 'e1', revision: 4, mode: 2 },
+      {
+        kind: 'turnChanged',
+        encounterId: 'e1',
+        round: 3,
+        currentCombatantId: 'k1',
+        masterTurn: true,
+        revision: 5,
+      },
+      { kind: 'combatantMoved', encounterId: 'e1', combatantId: 'k1', col: 2, row: 7 },
+      { kind: 'combatLogChanged' },
+      { kind: 'sceneChanged' },
+      { kind: 'sceneCheckRolled' },
+      { kind: 'notesChanged' },
+      { kind: 'stageChanged' },
+    ]);
+  });
+
   it('still takes an event it does not know as a sign the stream is alive', async () => {
     // An empty `event` is what a newer server's oneof case looks like to this app.
     expect(await events([create(WatchGameSessionResponseSchema, {})])).toEqual(['heartbeat']);
