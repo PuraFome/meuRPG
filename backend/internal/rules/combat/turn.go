@@ -490,31 +490,11 @@ func IsFreeCantrip(economy string, level int) bool {
 func spellOption(d rules.Derived, turn TurnState, u Usage, sp rules.SpellEntry) SpellOption {
 	o := SpellOption{Spell: sp, Economy: spellEconomy(sp.CastingTime)}
 	if sp.Level > 0 {
-		o.Slots = castingSlots(d, u, sp.Level)
+		o.Slots = slotChoices(d, u, sp.Level)
 	}
 	o.Reason = spellReason(turn, o, sp)
 	o.Enabled = o.Reason == nil
 	return o
-}
-
-// highestSlotLevel is the highest spell slot level.
-const highestSlotLevel = 9
-
-// castingSlots are the free slots of the level and above, then the pact slot
-// when it is high enough.
-func castingSlots(d rules.Derived, u Usage, level int) []SlotChoice {
-	var out []SlotChoice
-	for l := level; l <= highestSlotLevel; l++ {
-		if free := SlotsFree(d, u, l); free > 0 {
-			out = append(out, SlotChoice{Level: l, Free: free})
-		}
-	}
-	if p := d.PactMagic; p != nil && p.SlotLevel >= level {
-		if free := PactSlotsFree(d, u); free > 0 {
-			out = append(out, SlotChoice{Level: p.SlotLevel, Pact: true, Free: free})
-		}
-	}
-	return out
 }
 
 // spellReason is why the spell cannot be cast now, or nil. The first reason

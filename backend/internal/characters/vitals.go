@@ -39,7 +39,7 @@ const MaxTemporaryHitPoints = 999
 
 // maxSpellLevel is the highest spell level, the length of
 // character_vitals.spell_slots_used.
-const maxSpellLevel = 9
+const maxSpellLevel = rules.MaxSlotLevel
 
 // vitalsRow is a character with its stored vitals: a row of ListVitals or
 // GetVitals, which have the same columns. The vitals columns are nil when

@@ -149,9 +149,6 @@ func (s *summonJSON) empty() bool {
 		s.Attack == "" && s.Type == "" && len(s.Options) == 0 && len(s.MultiplierAtLevel) == 0
 }
 
-// maxSummonCircle is the highest circle of a slot.
-const maxSummonCircle = 9
-
 // minSummonMultiplier is the smallest number a multiplier_at_level may give.
 const minSummonMultiplier = 2
 
@@ -242,7 +239,7 @@ func loadSummonBands(def *summonDef, spellLevel int, in *summonJSON, fail summon
 	}
 	for circle, times := range in.MultiplierAtLevel {
 		n, err := strconv.Atoi(circle)
-		if err != nil || n <= spellLevel || n > maxSummonCircle || times < minSummonMultiplier {
+		if err != nil || n <= spellLevel || n > MaxSlotLevel || times < minSummonMultiplier {
 			return fail("multiplier_at_level maps a circle above the spell's own, up to 9, to a number of at least 2")
 		}
 		def.multipliers = append(def.multipliers, summonMultiplier{circle: n, times: times})
@@ -290,7 +287,7 @@ func (c *Content) SummonOptions(spell string, circle int, b Build) (SummonChoice
 	if !ok {
 		return SummonChoices{}, fmt.Errorf("%w: %s", ErrNotSummonSpell, spell)
 	}
-	if circle < def.spellLevel || circle > maxSummonCircle {
+	if circle < def.spellLevel || circle > MaxSlotLevel {
 		return SummonChoices{}, fmt.Errorf("%w: %s at circle %d", ErrSummonCircle, spell, circle)
 	}
 	sp := c.c.spells[spell]

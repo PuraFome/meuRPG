@@ -615,7 +615,7 @@ func (c *content) monsterDerived(m *srd51.Monster) Derived {
 		SpeedWalkFt:  m.Speed.Walk, SpeedFlyFt: m.Speed.Fly, SpeedSwimFt: m.Speed.Swim,
 		SpeedClimbFt: m.Speed.Climb, SpeedBurrowFt: m.Speed.Burrow, Hover: m.Speed.Hover,
 		Senses: c.monsterSenses(m), PassivePerception: m.PassivePerception,
-		SpellSlots: make([]int, maxSpellSlotLevel), AttacksPerAction: 1,
+		SpellSlots: make([]int, MaxSlotLevel), AttacksPerAction: 1,
 		StandardActions: slices.Clone(c.standardActions),
 	}
 	if note := c.armorClassNote(m); note != "" {
@@ -639,9 +639,6 @@ func (c *content) monsterDerived(m *srd51.Monster) Derived {
 	}
 	return d
 }
-
-// maxSpellSlotLevel is the number of spell slot levels.
-const maxSpellSlotLevel = 9
 
 // monsterAbilities writes the scores and the saves (the bonus the stat block
 // lists, the modifier for the rest), and returns the modifiers.

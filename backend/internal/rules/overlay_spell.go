@@ -82,7 +82,7 @@ func (b *overlayBuilder) addSpell(ts *TableSpell, path string) error {
 // components, texts and classes, and writes the SRD spell from them.
 func (b *overlayBuilder) spellHead(c *entryErrors, ts *TableSpell, path string) *srd51.Spell {
 	key := ts.Key
-	if ts.Level < 0 || ts.Level > maxSpellLevel {
+	if ts.Level < 0 || ts.Level > MaxSlotLevel {
 		c.at(key, path, ".level", ReasonValue, "the spell level is 0 to 9")
 	}
 	if sch, ok := b.base.named[ts.School]; !ok || sch == nil || !strings.HasPrefix(ts.School, "school:") {
@@ -244,7 +244,7 @@ func (b *overlayBuilder) spellDamage(c *entryErrors, key, path string, i, level 
 		return out, false
 	}
 	out.AtSlotLevel = map[string]string{}
-	for slot := level; slot <= 9; slot++ {
+	for slot := level; slot <= MaxSlotLevel; slot++ {
 		out.AtSlotLevel[strconv.Itoa(slot)] = diceText(base.Count+per*(slot-level), base.Sides)
 	}
 	return out, ok
@@ -267,7 +267,7 @@ func spellHeal(c *entryErrors, key, path string, level int, h TableSpellHeal) ma
 		return nil
 	}
 	out := map[string]string{}
-	for slot := level; slot <= 9; slot++ {
+	for slot := level; slot <= MaxSlotLevel; slot++ {
 		text := diceText(base.Count+per*(slot-level), base.Sides)
 		if h.AddsModifier {
 			text += " + MOD"

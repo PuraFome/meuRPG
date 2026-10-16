@@ -1075,9 +1075,6 @@ const (
 // have one to pick.
 const minChoiceDamageTypes = 2
 
-// maxCorrectedSlot is the highest spell slot level a damage table may list.
-const maxCorrectedSlot = 9
-
 // hitPointsRollPattern is a creature's hit point roll, "6d8+6" or "3d8".
 var hitPointsRollPattern = regexp.MustCompile(`^(\d+d\d+)([+-]\d+)?$`)
 
