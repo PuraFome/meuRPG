@@ -45,17 +45,8 @@ func (c *content) loadLights(fsys fs.FS) error {
 	seen := map[string]bool{}
 	for _, in := range f.Lights {
 		key := "light:" + in.Key
-		switch {
-		case in.Key == "" || strings.ContainsAny(in.Key, " :") || seen[key]:
-			return fmt.Errorf("%s: light key %q is empty, has a space or colon, or is repeated", name, in.Key)
-		case in.BrightFt < 0 || in.DimFt < 0 || in.BrightFt+in.DimFt == 0:
-			return fmt.Errorf("%s: %s needs a radius: bright_ft and dim_ft can't be negative, nor both 0", name, key)
-		case in.BrightFt%5 != 0 || in.DimFt%5 != 0:
-			return fmt.Errorf("%s: %s: the radii are whole squares of 5 ft", name, key)
-		case strings.TrimSpace(in.DurationPT) == "":
-			return fmt.Errorf("%s: %s has no duration_pt", name, key)
-		case c.namesPT[key] == "":
-			return fmt.Errorf("%s: %s has no Portuguese name in effects/names_pt.json", name, key)
+		if err := c.checkLight(name, key, in.Key, in.BrightFt, in.DimFt, in.DurationPT, seen); err != nil {
+			return err
 		}
 		seen[key] = true
 		c.lights = append(c.lights, LightPreset{Key: key, NamePT: c.namesPT[key], BrightFt: in.BrightFt, DimFt: in.DimFt, DurationPT: in.DurationPT})
@@ -64,6 +55,27 @@ func (c *content) loadLights(fsys fs.FS) error {
 		if strings.HasPrefix(k, "light:") && !seen[k] {
 			return fmt.Errorf("effects/names_pt.json names %q, which is not in lights.json", k)
 		}
+	}
+	return nil
+}
+
+// lightRadiusStep is the step of a light's radii: whole squares of 5 ft.
+const lightRadiusStep = 5
+
+// checkLight refuses a light of the file: its key (raw is the file's, key
+// with the prefix), its radii, its duration, then its Portuguese name.
+func (c *content) checkLight(name, key, raw string, bright, dim int, duration string, seen map[string]bool) error {
+	switch {
+	case raw == "" || strings.ContainsAny(raw, " :") || seen[key]:
+		return fmt.Errorf("%s: light key %q is empty, has a space or colon, or is repeated", name, raw)
+	case bright < 0 || dim < 0 || bright+dim == 0:
+		return fmt.Errorf("%s: %s needs a radius: bright_ft and dim_ft can't be negative, nor both 0", name, key)
+	case bright%lightRadiusStep != 0 || dim%lightRadiusStep != 0:
+		return fmt.Errorf("%s: %s: the radii are whole squares of 5 ft", name, key)
+	case strings.TrimSpace(duration) == "":
+		return fmt.Errorf("%s: %s has no duration_pt", name, key)
+	case c.namesPT[key] == "":
+		return fmt.Errorf("%s: %s has no Portuguese name in effects/names_pt.json", name, key)
 	}
 	return nil
 }

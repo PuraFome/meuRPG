@@ -345,7 +345,7 @@ type Service struct {
 
 // queriesIn is q on the transaction, or q itself (the pool) when tx is nil. A
 // read made while the caller holds a transaction must use the transaction: a
-// read through the pool takes a second connection (see docs/architecture.md,
+// read through the pool takes a second connection (see docs/architecture/README.md,
 // "Dentro de uma transação, nenhuma leitura pelo pool").
 func queriesIn(q *mapsdb.Queries, tx pgx.Tx) *mapsdb.Queries {
 	if tx == nil {
