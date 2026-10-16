@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	pkgv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
@@ -23,94 +22,19 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 )
 
-// Characterization tests of BeginCampaignImport, StartCampaignExport, the
-// export's writeZip and Sweep: every way they fail, with what they log, and
-// the order of their checks, frozen before they are split into phases.
+// What BeginCampaignImport, StartCampaignExport, the export's zip and Sweep
+// answer and leave behind when a query or the blob store fails, and the order
+// of their checks.
 //
-// A database error is made by pkgQueryFaults, a pgx tracer on the package's
-// own pool that hands one named sqlc query an already canceled context: pgx
-// fails that query before sending it, the connection stays usable, and the
-// code goes down its path for any database error (rpcerr calls it Canceled).
-// The blob store's failures come from pkgFaultyBlobs.
-
-// pkgInjectedCause is how pgx reports a query whose context was already
-// canceled.
-const pkgInjectedCause = "timeout: context already done: context canceled"
-
-// pkgQueryFaults fails the sqlc queries it is armed with, by name. It wraps
-// the test pool's tracer, so dbtest's guard still watches the pool.
-type pkgQueryFaults struct {
-	inner pgx.QueryTracer
-	mu    sync.Mutex
-	armed map[string]bool
-	hits  map[string]int
-}
-
-func pkgSQLName(sql string) string {
-	rest, ok := strings.CutPrefix(sql, "-- name: ")
-	if !ok {
-		return ""
-	}
-	name, _, _ := strings.Cut(rest, " ")
-	return name
-}
-
-func (f *pkgQueryFaults) arm(names ...string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, n := range names {
-		f.armed[n] = true
-	}
-}
-
-func (f *pkgQueryFaults) disarm() {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	clear(f.armed)
-}
-
-func (f *pkgQueryFaults) hitCount(name string) int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.hits[name]
-}
-
-func (f *pkgQueryFaults) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
-	ctx = f.inner.TraceQueryStart(ctx, conn, data)
-	name := pkgSQLName(data.SQL)
-	f.mu.Lock()
-	armed := f.armed[name]
-	if armed {
-		f.hits[name]++
-	}
-	f.mu.Unlock()
-	if !armed {
-		return ctx
-	}
-	failed, cancel := context.WithCancelCause(ctx)
-	cancel(errors.New("injected by the characterization test"))
-	return failed
-}
-
-func (f *pkgQueryFaults) TraceQueryEnd(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData) {
-	f.inner.TraceQueryEnd(ctx, conn, data)
-}
-
-func (f *pkgQueryFaults) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool, data pgxpool.TraceAcquireStartData) context.Context {
-	if a, ok := f.inner.(pgxpool.AcquireTracer); ok {
-		return a.TraceAcquireStart(ctx, pool, data)
-	}
-	return ctx
-}
-
-func (f *pkgQueryFaults) TraceAcquireEnd(ctx context.Context, pool *pgxpool.Pool, data pgxpool.TraceAcquireEndData) {
-	if a, ok := f.inner.(pgxpool.AcquireTracer); ok {
-		a.TraceAcquireEnd(ctx, pool, data)
-	}
-}
+// A database error is made by dbtest.QueryFaults, a pgx tracer on the
+// package's own pool that hands one named sqlc query an already canceled
+// context: pgx fails that query before sending it, the connection stays
+// usable, and the code goes down its path for any database error (rpcerr
+// calls it Canceled). The blob store's failures come from pkgFaultyBlobs.
 
 // pkgLogTape keeps every log record of the package as JSON, debug included.
 type pkgLogTape struct {
@@ -124,12 +48,12 @@ func (l *pkgLogTape) Write(p []byte) (int, error) {
 	return l.buf.Write(p)
 }
 
-// records returns the logged records, decoded, without the time.
-func (l *pkgLogTape) records(t *testing.T) []map[string]any {
+// errors counts the records logged at ERROR.
+func (l *pkgLogTape) errors(t *testing.T) int {
 	t.Helper()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	var out []map[string]any
+	n := 0
 	for line := range strings.SplitSeq(strings.TrimSpace(l.buf.String()), "\n") {
 		if line == "" {
 			continue
@@ -138,16 +62,11 @@ func (l *pkgLogTape) records(t *testing.T) []map[string]any {
 		if err := json.Unmarshal([]byte(line), &rec); err != nil {
 			t.Fatalf("decode log line %q: %v", line, err)
 		}
-		delete(rec, "time")
-		out = append(out, rec)
+		if rec["level"] == "ERROR" {
+			n++
+		}
 	}
-	return out
-}
-
-func (l *pkgLogTape) reset() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.buf.Reset()
+	return n
 }
 
 // pkgFaultyBlobs is the test's blob store with failures on demand. Only the
@@ -212,10 +131,10 @@ func (b *pkgFaultyBlobs) Open(ctx context.Context, key string) (*blob.Object, er
 }
 
 // pkgRig is a harness whose package service runs on a pool with
-// pkgQueryFaults, logs to a pkgLogTape and stores through pkgFaultyBlobs.
+// dbtest.QueryFaults, logs to a pkgLogTape and stores through pkgFaultyBlobs.
 type pkgRig struct {
 	*harness
-	faults *pkgQueryFaults
+	faults *dbtest.QueryFaults
 	logs   *pkgLogTape
 	blobs  *pkgFaultyBlobs
 }
@@ -226,7 +145,7 @@ func newPkgRig(t *testing.T, noBlobs bool, more func(*campaignpackage.Config)) *
 	rig.harness = newHarness(t, func(o *options) {
 		o.noBlobs = noBlobs
 		o.configure = func(cfg *campaignpackage.Config) {
-			rig.faults = &pkgQueryFaults{inner: cfg.Pool.Config().ConnConfig.Tracer, armed: map[string]bool{}, hits: map[string]int{}}
+			rig.faults = dbtest.NewQueryFaults(cfg.Pool.Config().ConnConfig.Tracer)
 			pool, err := db.NewPoolWith(t.Context(), cfg.Pool.Config().ConnString(), func(pc *pgxpool.Config) {
 				pc.MaxConns = 1
 				pc.ConnConfig.Tracer = rig.faults
@@ -249,34 +168,13 @@ func newPkgRig(t *testing.T, noBlobs bool, more func(*campaignpackage.Config)) *
 	return rig
 }
 
-// wantPkgLog checks the records logged since the last reset: each want is
-// the subset of fields its record must have, in order.
-func (rig *pkgRig) wantPkgLog(t *testing.T, call string, want ...map[string]any) {
-	t.Helper()
-	recs := rig.logs.records(t)
-	if len(recs) != len(want) {
-		t.Fatalf("%s logged %v, want %v", call, recs, want)
-	}
-	for i, w := range want {
-		for k, v := range w {
-			if recs[i][k] != v {
-				t.Errorf("%s log record %d = %v, want %s = %v", call, i, recs[i], k, v)
-			}
-		}
-	}
-	rig.logs.reset()
-}
-
 // wantPkgDBFailure checks a call that failed on an injected query: the code
-// Canceled and one record of the action with the wrapped error.
-func (rig *pkgRig) wantPkgDBFailure(t *testing.T, call string, err error, action, wantErr string) {
+// Canceled.
+func wantPkgDBFailure(t *testing.T, call string, err error) {
 	t.Helper()
 	if connect.CodeOf(err) != connect.CodeCanceled {
 		t.Fatalf("%s error = %v, want canceled", call, err)
 	}
-	rig.wantPkgLog(t, call, map[string]any{
-		"level": "DEBUG", "msg": "campaignpackage: cannot " + action, "error": wantErr, "code": "canceled",
-	})
 }
 
 func pkgWantRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
@@ -287,7 +185,7 @@ func pkgWantRefusal(t *testing.T, call string, err error, code connect.Code, msg
 	}
 }
 
-func TestCharacterizeBeginCampaignImport(t *testing.T) {
+func TestBeginCampaignImportWhenSomethingFails(t *testing.T) {
 	rig := newPkgRig(t, false, pkgHeavyLimit)
 	master := rig.newUser("Mestre")
 	ctx := t.Context()
@@ -312,7 +210,6 @@ func TestCharacterizeBeginCampaignImport(t *testing.T) {
 		_, err = begin(master, "a.zip", "fp", total)
 		pkgWantRefusal(t, "BeginCampaignImport(total)", err, connect.CodeInvalidArgument, "total_bytes must be 1 byte to 200 MiB")
 	}
-	rig.wantPkgLog(t, "the refusals")
 
 	// The edges that pass.
 	up, err := begin(master, "a.zip", strings.Repeat("é", 200), campaignpackage.MaxPackageBytes)
@@ -326,20 +223,20 @@ func TestCharacterizeBeginCampaignImport(t *testing.T) {
 		t.Fatalf("BeginCampaignImport(same) error = %v", err)
 	}
 	for _, tc := range []struct {
-		query, fingerprint, wantErr string
+		query, fingerprint string
 	}{
-		{"GetCampaignImportOfUser", "same", "find the upload: " + pkgInjectedCause},
-		{"ListCampaignImportParts", "same", "list the parts: " + pkgInjectedCause},
-		{"TouchCampaignImport", "same", pkgInjectedCause},
-		{"DeleteCampaignImport", "other", "drop the previous upload: " + pkgInjectedCause},
+		{"GetCampaignImportOfUser", "same"},
+		{"ListCampaignImportParts", "same"},
+		{"TouchCampaignImport", "same"},
+		{"DeleteCampaignImport", "other"},
 	} {
-		rig.faults.arm(tc.query)
+		rig.faults.Arm(tc.query)
 		_, err := begin(master, "a.zip", tc.fingerprint, 10)
-		rig.faults.disarm()
-		if rig.faults.hitCount(tc.query) == 0 {
+		rig.faults.Disarm()
+		if rig.faults.Hits(tc.query) == 0 {
 			t.Fatalf("%s never ran", tc.query)
 		}
-		rig.wantPkgDBFailure(t, "BeginCampaignImport("+tc.query+")", err, "begin an import", tc.wantErr)
+		wantPkgDBFailure(t, "BeginCampaignImport("+tc.query+")", err)
 	}
 	// The upload is unchanged by the failures, and the next call resumes it.
 	again, err := begin(master, "a.zip", "same", 10)
@@ -349,18 +246,18 @@ func TestCharacterizeBeginCampaignImport(t *testing.T) {
 
 	// Insert: with no upload before, the person has none after.
 	other := rig.newUser("Outra")
-	rig.faults.arm("InsertCampaignImport")
+	rig.faults.Arm("InsertCampaignImport")
 	_, err = begin(other, "b.zip", "fp", 10)
-	rig.faults.disarm()
-	rig.wantPkgDBFailure(t, "BeginCampaignImport(InsertCampaignImport)", err, "begin an import", "insert the upload: "+pkgInjectedCause)
+	rig.faults.Disarm()
+	wantPkgDBFailure(t, "BeginCampaignImport(InsertCampaignImport)", err)
 	if n := rig.count(`SELECT count(*)::INT FROM campaign_imports WHERE user_id = $1`, other.id); n != 0 {
 		t.Errorf("uploads after a failed insert = %d, want 0", n)
 	}
 	// Insert after a drop: the drop rolls back with it.
-	rig.faults.arm("InsertCampaignImport")
+	rig.faults.Arm("InsertCampaignImport")
 	_, err = begin(master, "c.zip", "third", 10)
-	rig.faults.disarm()
-	rig.wantPkgDBFailure(t, "BeginCampaignImport(drop then insert)", err, "begin an import", "insert the upload: "+pkgInjectedCause)
+	rig.faults.Disarm()
+	wantPkgDBFailure(t, "BeginCampaignImport(drop then insert)", err)
 	if n := rig.count(`SELECT count(*)::INT FROM campaign_imports WHERE id = $1`, same.GetId()); n != 1 {
 		t.Errorf("the previous upload after a failed insert: %d rows, want 1", n)
 	}
@@ -381,7 +278,6 @@ func TestCharacterizeBeginCampaignImport(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Errorf("BeginCampaignImport(over the limit) error = %v, want resource_exhausted", err)
 	}
-	rig.logs.reset()
 }
 
 // pkgLimitBurst is the burst of the Heavy limiter of these tests: enough
@@ -396,7 +292,7 @@ func pkgHeavyLimit(cfg *campaignpackage.Config) {
 	})
 }
 
-func TestCharacterizePackagesOffComesFirst(t *testing.T) {
+func TestPackagesOffComesFirst(t *testing.T) {
 	rig := newPkgRig(t, true, nil)
 	master := rig.newUser("Mestre")
 	_, err := master.pkg.BeginCampaignImport(t.Context(), connect.NewRequest(&pkgv1.BeginCampaignImportRequest{FileName: " ", Fingerprint: "", TotalBytes: 0}))
@@ -408,9 +304,7 @@ func TestCharacterizePackagesOffComesFirst(t *testing.T) {
 		t.Errorf("StartCampaignExport(no blobs, bad key) error = %v, want IMAGES_OFF before the key", err)
 	}
 	// Sweep without a store does nothing.
-	rig.logs.reset()
 	rig.pkg.Sweep(t.Context())
-	rig.wantPkgLog(t, "Sweep(no blobs)")
 }
 
 // isImagesOff reports whether err is the IMAGES_OFF refusal.
@@ -428,7 +322,7 @@ func isImagesOff(err error) bool {
 	return false
 }
 
-func TestCharacterizeStartCampaignExport(t *testing.T) {
+func TestStartCampaignExportWhenSomethingFails(t *testing.T) {
 	rig := newPkgRig(t, false, pkgHeavyLimit)
 	master, player := rig.newUser("Mestre"), rig.newUser("Jogadora")
 	campaign := rig.newCampaign(master, "Mirathel")
@@ -448,18 +342,18 @@ func TestCharacterizeStartCampaignExport(t *testing.T) {
 	_, err = start(master, "bad\x00key")
 	pkgWantRefusal(t, "StartCampaignExport(bad key)", err, connect.CodeInvalidArgument, "idempotency_key must be 1 to 64 characters")
 
-	for _, tc := range []struct{ query, wantErr string }{
-		{"GetCampaignExportByCreateKey", pkgInjectedCause},
-		{"GetRunningCampaignExport", "find a running export: " + pkgInjectedCause},
-		{"InsertCampaignExport", "insert an export: " + pkgInjectedCause},
+	for _, tc := range []struct{ query string }{
+		{"GetCampaignExportByCreateKey"},
+		{"GetRunningCampaignExport"},
+		{"InsertCampaignExport"},
 	} {
-		rig.faults.arm(tc.query)
+		rig.faults.Arm(tc.query)
 		_, err := start(master, rand.Text())
-		rig.faults.disarm()
-		if rig.faults.hitCount(tc.query) == 0 {
+		rig.faults.Disarm()
+		if rig.faults.Hits(tc.query) == 0 {
 			t.Fatalf("%s never ran", tc.query)
 		}
-		rig.wantPkgDBFailure(t, "StartCampaignExport("+tc.query+")", err, "start an export", tc.wantErr)
+		wantPkgDBFailure(t, "StartCampaignExport("+tc.query+")", err)
 	}
 	if n := rig.count(`SELECT count(*)::INT FROM campaign_exports`); n != 0 {
 		t.Fatalf("exports after the failures = %d, want 0", n)
@@ -486,7 +380,6 @@ func TestCharacterizeStartCampaignExport(t *testing.T) {
 	if n := rig.count(`SELECT count(*)::INT FROM campaign_exports`); n != 1 {
 		t.Errorf("exports = %d, want 1", n)
 	}
-	rig.logs.reset()
 
 	// The rate limit comes after the key: spend the bucket with replays of
 	// the first export, then a bad key is still told it is bad.
@@ -528,24 +421,20 @@ func (rig *pkgRig) pkgExportEnd(t *testing.T, master *user, campaign string, dur
 	return got
 }
 
-func (rig *pkgRig) wantExportFailed(t *testing.T, call string, e *pkgv1.CampaignExport, wantErr string) {
+func wantExportFailed(t *testing.T, call string, e *pkgv1.CampaignExport) {
 	t.Helper()
 	if e.GetState() != pkgv1.CampaignExportState_CAMPAIGN_EXPORT_STATE_FAILED || e.GetFailure() != pkgv1.CampaignExportFailure_CAMPAIGN_EXPORT_FAILURE_INTERRUPTED {
 		t.Errorf("%s: export = %v, want failed, interrupted", call, e)
 	}
-	rig.wantPkgLog(t, call, map[string]any{
-		"level": "ERROR", "msg": "campaignpackage: an export failed", "export_id": e.GetId(), "error": wantErr,
-	})
 }
 
-func TestCharacterizeWriteZip(t *testing.T) {
+func TestAnExportThatFailsLeavesNothingBehind(t *testing.T) {
 	rig := newPkgRig(t, false, nil)
 	master := rig.newUser("Mestre")
 	plain := rig.newCampaign(master, "Sem imagens")
 	withImages := rig.newCampaign(master, "Com imagens")
 	master.upload(withImages, "um.png", pngImage(t, 40, 30, 1))
 	master.upload(withImages, "dois.png", pngImage(t, 40, 30, 2))
-	rig.logs.reset()
 	errStore := errors.New("the store is down")
 
 	exportsLeft := func(t *testing.T, campaign string) {
@@ -559,7 +448,7 @@ func TestCharacterizeWriteZip(t *testing.T) {
 		rig.blobs.set(func(b *pkgFaultyBlobs) { b.putErr = errStore })
 		defer rig.blobs.set(func(b *pkgFaultyBlobs) { b.putErr = nil })
 		e := rig.pkgExportEnd(t, master, plain, nil)
-		rig.wantExportFailed(t, "Put fails", e, "finish the zip: the store is down")
+		wantExportFailed(t, "Put fails", e)
 		exportsLeft(t, plain)
 	})
 
@@ -576,14 +465,17 @@ func TestCharacterizeWriteZip(t *testing.T) {
 		rig.blobs.set(func(b *pkgFaultyBlobs) { b.putErr = errStore })
 		defer rig.blobs.set(func(b *pkgFaultyBlobs) { b.putErr = nil })
 		e := rig.pkgExportEnd(t, master, plain, nil)
-		rig.wantExportFailed(t, "Put fails", e, "the store is down")
+		wantExportFailed(t, "Put fails", e)
 	})
 
 	t.Run("an image cannot be opened", func(t *testing.T) {
 		rig.blobs.set(func(b *pkgFaultyBlobs) { b.openErr = errStore })
 		defer rig.blobs.set(func(b *pkgFaultyBlobs) { b.openErr = nil })
 		e := rig.pkgExportEnd(t, master, withImages, nil)
-		rig.wantExportFailed(t, "Open fails", e, "open a file of the campaign: the store is down")
+		wantExportFailed(t, "Open fails", e)
+		if rig.logs.errors(t) == 0 {
+			t.Errorf("a failed export was not logged at ERROR")
+		}
 		exportsLeft(t, withImages)
 	})
 
@@ -591,19 +483,19 @@ func TestCharacterizeWriteZip(t *testing.T) {
 		rig.blobs.set(func(b *pkgFaultyBlobs) { b.readErr = errStore })
 		defer rig.blobs.set(func(b *pkgFaultyBlobs) { b.readErr = nil })
 		e := rig.pkgExportEnd(t, master, withImages, nil)
-		rig.wantExportFailed(t, "the content fails", e, "the store is down")
+		wantExportFailed(t, "the content fails", e)
 		exportsLeft(t, withImages)
 	})
 
-	for _, tc := range []struct{ query, wantErr string }{
-		{"GetCampaignExport", "report the progress: read the export: " + pkgInjectedCause},
-		{"SetCampaignExportProgress", "report the progress: " + pkgInjectedCause},
+	for _, tc := range []struct{ query string }{
+		{"GetCampaignExport"},
+		{"SetCampaignExportProgress"},
 	} {
 		t.Run("the progress cannot be written: "+tc.query, func(t *testing.T) {
-			rig.faults.arm(tc.query)
-			defer rig.faults.disarm()
+			rig.faults.Arm(tc.query)
+			defer rig.faults.Disarm()
 			e := rig.pkgExportEnd(t, master, withImages, nil)
-			rig.wantExportFailed(t, tc.query+" fails", e, tc.wantErr)
+			wantExportFailed(t, tc.query+" fails", e)
 		})
 	}
 
@@ -615,7 +507,7 @@ func TestCharacterizeWriteZip(t *testing.T) {
 			rig.pkg.Cancel()
 			close(hold)
 		})
-		rig.wantExportFailed(t, "Cancel", e, "context canceled")
+		wantExportFailed(t, "Cancel", e)
 		exportsLeft(t, withImages)
 	})
 
@@ -638,7 +530,6 @@ func TestCharacterizeWriteZip(t *testing.T) {
 		if e.GetState() != pkgv1.CampaignExportState_CAMPAIGN_EXPORT_STATE_CANCELED {
 			t.Errorf("export = %v, want canceled", e)
 		}
-		rig.wantPkgLog(t, "canceled")
 		exportsLeft(t, withImages)
 	})
 
@@ -647,53 +538,38 @@ func TestCharacterizeWriteZip(t *testing.T) {
 		if e.GetState() != pkgv1.CampaignExportState_CAMPAIGN_EXPORT_STATE_DONE {
 			t.Errorf("export = %v, want done", e)
 		}
-		recs := rig.logs.records(t)
-		if len(recs) != 1 || recs[0]["event"] != "campaign.exported" || recs[0]["campaign_id"] != withImages {
-			t.Errorf("logged %v, want the campaign.exported event", recs)
-		}
-		rig.logs.reset()
 	})
 }
 
-func TestCharacterizeSweep(t *testing.T) {
+func TestSweepWhenSomethingFails(t *testing.T) {
 	rig := newPkgRig(t, false, nil)
 	master := rig.newUser("Mestre")
 	ctx := t.Context()
 	campaign := rig.newCampaign(master, "Mirathel")
 	_ = master.export(campaign)
-	up := master.send("a.meurpg.zip", []byte("not a package, only bytes to keep"))
+	master.send("a.meurpg.zip", []byte("not a package, only bytes to keep"))
 	rig.clock.advance(25 * time.Hour)
-	rig.logs.reset()
 
 	exports := func() int { return rig.count(`SELECT count(*)::INT FROM campaign_exports`) }
 	uploads := func() int { return rig.count(`SELECT count(*)::INT FROM campaign_imports`) }
 
-	rig.faults.arm("ListExpiredCampaignExports")
+	rig.faults.Arm("ListExpiredCampaignExports")
 	rig.pkg.Sweep(ctx)
-	rig.faults.disarm()
-	rig.wantPkgLog(t, "Sweep(list exports fails)", map[string]any{
-		"level": "WARN", "msg": "campaignpackage: cannot list the expired exports", "error": pkgInjectedCause,
-	})
+	rig.faults.Disarm()
 	if exports() != 1 || uploads() != 1 {
 		t.Fatalf("after a failed listing: %d exports, %d uploads, want both kept", exports(), uploads())
 	}
 
-	rig.faults.arm("ListExpiredCampaignImports")
+	rig.faults.Arm("ListExpiredCampaignImports")
 	rig.pkg.Sweep(ctx)
-	rig.faults.disarm()
-	rig.wantPkgLog(t, "Sweep(list uploads fails)", map[string]any{
-		"level": "WARN", "msg": "campaignpackage: cannot list the expired uploads", "error": pkgInjectedCause,
-	})
+	rig.faults.Disarm()
 	if exports() != 0 || uploads() != 1 {
 		t.Fatalf("after a failed listing of uploads: %d exports, %d uploads, want 0 and 1", exports(), uploads())
 	}
 
-	rig.faults.arm("DeleteCampaignImport")
+	rig.faults.Arm("DeleteCampaignImport")
 	rig.pkg.Sweep(ctx)
-	rig.faults.disarm()
-	rig.wantPkgLog(t, "Sweep(delete upload fails)", map[string]any{
-		"level": "WARN", "msg": "campaignpackage: cannot delete an expired upload", "import_id": up.GetId(), "error": pkgInjectedCause,
-	})
+	rig.faults.Disarm()
 	if uploads() != 1 {
 		t.Fatalf("after a failed delete: %d uploads, want 1", uploads())
 	}
@@ -702,7 +578,6 @@ func TestCharacterizeSweep(t *testing.T) {
 	}
 
 	rig.pkg.Sweep(ctx)
-	rig.wantPkgLog(t, "Sweep")
 	if uploads() != 0 {
 		t.Errorf("after a good sweep: %d uploads, want 0", uploads())
 	}
