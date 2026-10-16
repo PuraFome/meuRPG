@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -182,208 +183,308 @@ func effectSaveRollOf(msg *playv1.RollEffectSaveRequest) (in rollInput, delegate
 	return in, delegate, skip, nil
 }
 
+// effectSaveCall is a RollEffectSave request once it is read: who asks, the keys and ids it
+// names, and how the save is answered.
+type effectSaveCall struct {
+	m            authz.Membership
+	key          string
+	encID, winID string
+	in           rollInput
+	delegate     bool
+	skip         bool
+	typedExtra   []int32
+}
+
+// readEffectSaveCall reads a RollEffectSave request, refusing in the order the handler always
+// did: the caller, the keys, the ids, the answer.
+func readEffectSaveCall(ctx context.Context, msg *playv1.RollEffectSaveRequest) (effectSaveCall, error) {
+	var call effectSaveCall
+	var err error
+	if call.m, err = authz.RequireCampaignMember(ctx, msg.GetCampaignId()); err != nil {
+		return call, err
+	}
+	if call.key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
+		return call, err
+	}
+	if call.encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+		return call, err
+	}
+	if call.winID, err = parseCombatID(msg.GetWindowId(), "window"); err != nil {
+		return call, err
+	}
+	if call.in, call.delegate, call.skip, err = effectSaveRollOf(msg); err != nil {
+		return call, err
+	}
+	call.typedExtra = msg.GetExtraDieFaces()
+	return call, nil
+}
+
+// effectSaveRun is what a try of the change leaves for the answer. A retry starts it over.
+type effectSaveRun struct {
+	made   actionEvent
+	result *playv1.EffectSaveResult
+	offer  *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
+	lucky  *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
+}
+
 // RollEffectSave implements playv1connect.LastingEffectServiceHandler.
-func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one transaction in one closure, like the other writes of the combat
+func (s *Service) RollEffectSave(
 	ctx context.Context,
 	req *connect.Request[playv1.RollEffectSaveRequest],
 ) (*connect.Response[playv1.RollEffectSaveResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	call, err := readEffectSaveCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	winID, err := parseCombatID(req.Msg.GetWindowId(), "window")
-	if err != nil {
-		return nil, err
-	}
-	in, delegate, skip, err := effectSaveRollOf(req.Msg)
-	if err != nil {
-		return nil, err
-	}
-	typedExtra := req.Msg.GetExtraDieFaces()
-
-	var made actionEvent
-	var result *playv1.EffectSaveResult
-	var offer *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
-	var lucky *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventLastingSaved, encounterID: encID}, func(c *combatTx) (any, error) {
-		result, offer, lucky = nil, nil, nil
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		w, reactor, err := s.windowToAnswer(ctx, c, m, winID)
-		if err != nil {
-			return nil, err
-		}
-		if reaction.Kind(w.Kind) != reaction.EffectSave {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this window is not an effect's saving throw: use AnswerReaction"))
-		}
-		t := windowTriggerOf(w)
-		master := m.Role == authz.RoleMaster
-		switch {
-		case skip && !master:
-			return nil, errWindowDenied()
-		case delegate && master:
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the master rolls it: use roll_in_app or d20_face"))
-		case t.Handed && !master:
-			return nil, errWindowDenied() // the roll was left to the master
-		}
-		if delegate {
-			return nil, s.handSaveToMaster(ctx, c, w, t)
-		}
-		st, err := c.q.GetLastingEffect(ctx, playdb.GetLastingEffectParams{ID: t.Effect, EncounterID: c.enc.ID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errNotYourTurnToAnswer() // the window closes with its effect: never reached
-		}
-		if err != nil {
-			return nil, fmt.Errorf("find the effect: %w", err)
-		}
-		content, err := s.contentOf(ctx, c)
-		if err != nil {
-			return nil, err
-		}
-		def, _ := s.effectDef(content, deref(st.SourceKey))
-		ability := deref(st.EndSaveAbility)
-		if t.Phase == combat.PhaseStart {
-			ability = deref(st.StartSaveAbility)
-		}
-		dc := derefInt32(st.SaveDc)
-		if dc == 0 {
-			dc = defaultEffectDC
-		}
-		ev := actionEvent{Round: c.enc.Round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{reactor}), Actor: reactor.ID, Key: deref(st.SourceKey)}
-		le := &lastingEvent{Key: deref(st.SourceKey), Change: "saved", Targets: []string{reactor.ID}, Caster: deref(st.SourceID), Ability: ability, DC: dc, Effects: []string{st.ID}}
-		out := windowOutcome{ByMaster: master, Used: true}
-		saved := false
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		switch {
-		case skip:
-			le.Change = "skipped"
-			saved = false
-			result = &playv1.EffectSaveResult{Skipped: true}
-		default:
-			if !master {
-				if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
-					return nil, err
-				}
-			}
-			states, err := s.readStates(ctx, c.tx, c.enc.ID)
-			if err != nil {
-				return nil, err
-			}
-			sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
-			if err != nil {
-				return nil, err
-			}
-			creature := creatureFacts(reactor, states, sheet.Traits)
-			sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true})
-			if t.OnDamage { // Riso Histérico: advantage on the save the damage asks (SRD)
-				sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
-			}
-			mode := combat.Resolve(sources)
-			save, err := s.saveOf(ctx, c.tx, c.session.CampaignID, reactor, ability)
-			if err != nil {
-				return nil, err
-			}
-			result = &playv1.EffectSaveResult{Modifier: clamp32(save.Bonus, math.MinInt32, math.MaxInt32)}
-			if combat.AutoFailsSave(creature, ability) {
-				result.AutoFail, le.Change = true, "failed"
-			} else {
-				// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
-				// answers (nothing has been written yet); the answer brings it back with the die added. So
-				// has a halfling's d20 that shows a 1, for the Lucky question first.
-				step, err := s.heldGate(ctx, s.inspirationGate(c), saveSpec(m, heldEffectSave, reactor, key, req.Msg, in, save.Bonus, mode, sheet.Traits.Lucky))
-				if err != nil {
-					return nil, err
-				}
-				if step.Held != nil {
-					offer, lucky = s.outsideOffers(ctx, c.tx, step.Held)
-					return nil, nil
-				}
-				d20 := step.Roll
-				if step.Bonus != nil {
-					result.InspirationSides, result.InspirationFace = step.Bonus.Sides, step.Bonus.Face
-				}
-				extra, delta, err := s.rollEffectDice(in, effectDiceFor(states, reactor.ID, rules.RollAppliesSave), typedExtra)
-				if err != nil {
-					return nil, err
-				}
-				if err := s.spendOnceEffects(ctx, c, extra); err != nil {
-					return nil, err
-				}
-				total := d20.Total + delta
-				saved = combat.SaveSucceeded(total, int(dc))
-				for _, f := range d20.Faces {
-					result.D20Faces = append(result.D20Faces, clamp32(f, 1, 20))
-				}
-				result.D20, result.Total, result.Physical, result.Saved = clamp32(d20.Face(), 1, 20), clamp32(total, math.MinInt32, math.MaxInt32), d20.Physical, saved
-				nm, nerr := s.namerFor(ctx, c.tx, c.session.CampaignID)
-				if nerr != nil {
-					return nil, nerr
-				}
-				result.ExtraDice = extraDiceProto(extra, master, nm)
-				le.D20, le.Total = result.D20, result.Total
-				ev.D20, ev.Modifier, ev.Total, ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
-				// The d20 Lucky rolled again, as an index into D20Faces: the log says "Sortudo: 1 → 14".
-				ev.Lucky, result.Rerolled = step.Lucky, step.Lucky.proto()
-			}
-			if !saved && le.Change != "failed" {
-				le.Change = "failed"
-			}
-			if saved {
-				le.Change = "saved"
-			}
-			result.Saved = saved
-		}
-		if master {
-			result.Dc = &dc
-		}
-		// The window closes first: a pass ends the effect, which closes the effect's other windows.
-		if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, out, ""); err != nil {
-			return nil, err
-		}
-		if err := s.resolveEffectSave(ctx, c, cs, content, def, st, reactor, t.Phase, saved, skip, &result); err != nil {
-			return nil, err
-		}
-		ev.Lasting = le
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &reactor.CharacterID
-		made = ev
-		return ev, nil
+	var run effectSaveRun
+	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventLastingSaved, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		run.result, run.offer, run.lucky = nil, nil, nil
+		return s.writeEffectSave(ctx, c, call, req.Msg, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "roll an effect's saving throw", err)
 	}
-	if offer != nil || lucky != nil { // nothing was written: the question is the whole answer
+	return s.effectSaveAnswer(ctx, call.m, res, &run)
+}
+
+// effectSaveAnswer is the response of a save once the change is written: the question alone when
+// the d20 was kept for one, else the encounter and the result (rebuilt from the event on a retry
+// the change never ran for).
+func (s *Service) effectSaveAnswer(ctx context.Context, m authz.Membership, res combatResult, run *effectSaveRun) (*connect.Response[playv1.RollEffectSaveResponse], error) {
+	if run.offer != nil || run.lucky != nil { // nothing was written: the question is the whole answer
 		out, err := s.finish(ctx, m, res, nil)
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, InspirationOffer: offer, LuckyOffer: lucky}), nil
+		return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, InspirationOffer: run.offer, LuckyOffer: run.lucky}), nil
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !made.Secret)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !run.made.Secret)
 	})
 	if err != nil {
 		return nil, err
 	}
-	if result == nil { // a retry the closure never ran for: the first answer is in the event
-		result = savedResultOf(res, made, m.Role == authz.RoleMaster)
+	if run.result == nil { // a retry the closure never ran for: the first answer is in the event
+		run.result = savedResultOf(res, run.made, m.Role == authz.RoleMaster)
 	}
-	return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, Result: result}), nil
+	return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, Result: run.result}), nil
+}
+
+// effectSaveStep is the save being answered, inside the change: the request, the window and who
+// answers it, the effect it is for and the event it writes.
+type effectSaveStep struct {
+	call    effectSaveCall
+	msg     *playv1.RollEffectSaveRequest
+	run     *effectSaveRun
+	w       playdb.ReactionWindow
+	reactor playdb.Combatant
+	t       windowTrigger
+	master  bool
+	st      playdb.CombatantState
+	content *rules.Content
+	def     *rules.EffectDef
+	ability string
+	dc      int32
+	cs      []playdb.Combatant
+	ev      actionEvent
+	le      *lastingEvent
+}
+
+// writeEffectSave is the change of an effect's saving throw, in the transaction: the window and
+// the effect, the answer (skipped, auto-failed or rolled), the window closed, what the save does
+// to the effect, and the event.
+func (s *Service) writeEffectSave(ctx context.Context, c *combatTx, call effectSaveCall, msg *playv1.RollEffectSaveRequest, run *effectSaveRun) (any, error) {
+	x := &effectSaveStep{call: call, msg: msg, run: run}
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	var err error
+	if x.w, x.reactor, err = s.windowToAnswer(ctx, c, call.m, call.winID); err != nil {
+		return nil, err
+	}
+	if reaction.Kind(x.w.Kind) != reaction.EffectSave {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this window is not an effect's saving throw: use AnswerReaction"))
+	}
+	x.t = windowTriggerOf(x.w)
+	x.master = call.m.Role == authz.RoleMaster
+	if err := refuseSaveAnswer(x.t, x.master, call.skip, call.delegate); err != nil {
+		return nil, err
+	}
+	if call.delegate {
+		return nil, s.handSaveToMaster(ctx, c, x.w, x.t)
+	}
+	if err := s.loadEffectSave(ctx, c, x); err != nil {
+		return nil, err
+	}
+	saved, held, err := s.answerEffectSave(ctx, c, x)
+	if err != nil || held {
+		return nil, err
+	}
+	return s.settleEffectSave(ctx, c, x, saved)
+}
+
+// loadEffectSave reads what the save is about: the effect, its definition, the ability and the DC
+// it asks, the combatants, and starts the event and the log line.
+func (s *Service) loadEffectSave(ctx context.Context, c *combatTx, x *effectSaveStep) error {
+	st, err := c.q.GetLastingEffect(ctx, playdb.GetLastingEffectParams{ID: x.t.Effect, EncounterID: c.enc.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errNotYourTurnToAnswer() // the window closes with its effect: never reached
+	}
+	if err != nil {
+		return fmt.Errorf("find the effect: %w", err)
+	}
+	x.st = st
+	if x.content, err = s.contentOf(ctx, c); err != nil {
+		return err
+	}
+	x.def, _ = s.effectDef(x.content, deref(st.SourceKey))
+	x.ability = deref(st.EndSaveAbility)
+	if x.t.Phase == combat.PhaseStart {
+		x.ability = deref(st.StartSaveAbility)
+	}
+	x.dc = derefInt32(st.SaveDc)
+	if x.dc == 0 {
+		x.dc = defaultEffectDC
+	}
+	x.ev = actionEvent{Round: c.enc.Round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{x.reactor}), Actor: x.reactor.ID, Key: deref(st.SourceKey)}
+	x.le = &lastingEvent{Key: deref(st.SourceKey), Change: "saved", Targets: []string{x.reactor.ID}, Caster: deref(st.SourceID), Ability: x.ability, DC: x.dc, Effects: []string{st.ID}}
+	if x.cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	return nil
+}
+
+// answerEffectSave answers the save: the master's skip, or the roll. It says whether the target
+// saved, and whether the d20 was kept for a question instead (nothing is written then).
+func (s *Service) answerEffectSave(ctx context.Context, c *combatTx, x *effectSaveStep) (saved, held bool, err error) {
+	if x.call.skip {
+		x.le.Change = "skipped"
+		x.run.result = &playv1.EffectSaveResult{Skipped: true}
+		return false, false, nil
+	}
+	return s.rollEffectSaveD20(ctx, c, x)
+}
+
+// effectSaveFacts is what the roll of an effect's save is made from: the effects' states, the
+// target's save and its roll mode.
+type effectSaveFacts struct {
+	states   map[string][]playdb.CombatantState
+	sheet    link.Sheet
+	creature combat.Creature
+	save     link.Save
+	mode     combat.RollMode
+}
+
+// readEffectSaveFacts checks the way of rolling and reads the target's save and the mode it is
+// rolled with: advantage after damage asks (Riso Histérico, SRD).
+func (s *Service) readEffectSaveFacts(ctx context.Context, c *combatTx, x *effectSaveStep) (effectSaveFacts, error) {
+	var f effectSaveFacts
+	if !x.master {
+		if err := s.mustRollThisWay(ctx, c.tx, x.call.m, x.call.in); err != nil {
+			return f, err
+		}
+	}
+	var err error
+	if f.states, err = s.readStates(ctx, c.tx, c.enc.ID); err != nil {
+		return f, err
+	}
+	if f.sheet, err = s.sheetOf(ctx, c.tx, c.session.CampaignID, x.reactor); err != nil {
+		return f, err
+	}
+	f.creature = creatureFacts(x.reactor, f.states, f.sheet.Traits)
+	sources := combat.SaveMode(combat.SaveScene{Creature: f.creature, Ability: x.ability, EffectVisible: true})
+	if x.t.OnDamage { // Riso Histérico: advantage on the save the damage asks (SRD)
+		sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
+	}
+	f.mode = combat.Resolve(sources)
+	f.save, err = s.saveOf(ctx, c.tx, c.session.CampaignID, x.reactor, x.ability)
+	return f, err
+}
+
+// rollEffectSaveD20 rolls the save, or fails it for a target that cannot make it.
+func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectSaveStep) (saved, held bool, err error) {
+	f, err := s.readEffectSaveFacts(ctx, c, x)
+	if err != nil {
+		return false, false, err
+	}
+	x.run.result = &playv1.EffectSaveResult{Modifier: clamp32(f.save.Bonus, math.MinInt32, math.MaxInt32)}
+	if combat.AutoFailsSave(f.creature, x.ability) {
+		x.run.result.AutoFail, x.le.Change = true, "failed"
+		return false, false, nil
+	}
+	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
+	// answers (nothing has been written yet); the answer brings it back with the die added. So
+	// has a halfling's d20 that shows a 1, for the Lucky question first.
+	step, err := s.heldGate(ctx, s.inspirationGate(c), saveSpec(x.call.m, heldEffectSave, x.reactor, x.call.key, x.msg, x.call.in, f.save.Bonus, f.mode, f.sheet.Traits.Lucky))
+	if err != nil {
+		return false, false, err
+	}
+	if step.Held != nil {
+		x.run.offer, x.run.lucky = s.outsideOffers(ctx, c.tx, step.Held)
+		return false, true, nil
+	}
+	extra, delta, err := s.rollEffectDice(x.call.in, effectDiceFor(f.states, x.reactor.ID, rules.RollAppliesSave), x.call.typedExtra)
+	if err != nil {
+		return false, false, err
+	}
+	if err := s.spendOnceEffects(ctx, c, extra); err != nil {
+		return false, false, err
+	}
+	return s.recordEffectSaveRoll(ctx, c, x, step, extra, delta)
+}
+
+// recordEffectSaveRoll writes what the d20 and the dice showed in the result, the log line and the
+// event, and says whether the target saved.
+func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effectSaveStep, step gateResult, extra []effectDie, delta int) (saved, held bool, err error) {
+	d20, result := step.Roll, x.run.result
+	if step.Bonus != nil {
+		result.InspirationSides, result.InspirationFace = step.Bonus.Sides, step.Bonus.Face
+	}
+	total := d20.Total + delta
+	saved = combat.SaveSucceeded(total, int(x.dc))
+	for _, f := range d20.Faces {
+		result.D20Faces = append(result.D20Faces, clamp32(f, 1, 20))
+	}
+	result.D20, result.Total, result.Physical, result.Saved = clamp32(d20.Face(), 1, 20), clamp32(total, math.MinInt32, math.MaxInt32), d20.Physical, saved
+	nm, err := s.namerFor(ctx, c.tx, c.session.CampaignID)
+	if err != nil {
+		return false, false, err
+	}
+	result.ExtraDice = extraDiceProto(extra, x.master, nm)
+	x.le.D20, x.le.Total = result.D20, result.Total
+	x.le.Change = "failed"
+	if saved {
+		x.le.Change = "saved"
+	}
+	x.ev.D20, x.ev.Modifier, x.ev.Total, x.ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
+	// The d20 Lucky rolled again, as an index into D20Faces: the log says "Sortudo: 1 → 14".
+	x.ev.Lucky, result.Rerolled = step.Lucky, step.Lucky.proto()
+	return saved, false, nil
+}
+
+// settleEffectSave closes the window, does what the answer does to the effect, and writes the
+// event.
+func (s *Service) settleEffectSave(ctx context.Context, c *combatTx, x *effectSaveStep, saved bool) (any, error) {
+	if x.master {
+		dc := x.dc
+		x.run.result.Dc = &dc
+	}
+	// The window closes first: a pass ends the effect, which closes the effect's other windows.
+	if _, err := s.closeWindow(ctx, c, x.w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: x.master, Used: true}, ""); err != nil {
+		return nil, err
+	}
+	if err := s.resolveEffectSave(ctx, c, x.cs, x.content, x.def, x.st, x.reactor, x.t.Phase, saved, x.call.skip, &x.run.result); err != nil {
+		return nil, err
+	}
+	x.ev.Lasting = x.le
+	var err error
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &x.reactor.CharacterID
+	x.run.made = x.ev
+	return x.ev, nil
 }
 
 // resolveEffectSave does what an answered saving throw does to its effect: a pass ends it on
