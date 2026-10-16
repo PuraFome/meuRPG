@@ -1,0 +1,95 @@
+[
+  {
+    "case": "a beast that speaks Abyssal",
+    "logs": [
+      {
+        "character_id": "\u003cranger\u003e",
+        "choices": 2,
+        "event": "character.choices_completed",
+        "level": "DEBUG",
+        "msg": "event"
+      }
+    ],
+    "refusal": null
+  },
+  {
+    "case": "the same style for the fighter and the paladin",
+    "logs": null,
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:paladin-fighting-style",
+                "field": "sheet.full.feature_choice_keys",
+                "labelPt": "Estilo de Luta (Paladino, nível 2)",
+                "optionKey": "feature:fighting-style-defense",
+                "picked": 1,
+                "required": 1
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET"
+          }
+        }
+      ],
+      "message": "an option asks for something the sheet does not have"
+    }
+  },
+  {
+    "case": "a stored race the rules do not know",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "sheet.full.race_key"
+          }
+        }
+      ],
+      "message": "sheet.full.race_key is not a known race"
+    }
+  },
+  {
+    "case": "the same style in both of the champion's choices",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "sheet.full.feature_choice_keys[1]"
+          }
+        }
+      ],
+      "message": "sheet.full.feature_choice_keys[1] repeats an entry"
+    }
+  },
+  {
+    "case": "two styles without a history",
+    "live": 2,
+    "logs": [
+      {
+        "character_id": "\u003cchampion\u003e",
+        "choices": 2,
+        "event": "character.choices_completed",
+        "level": "DEBUG",
+        "msg": "event"
+      }
+    ],
+    "refusal": null
+  },
+  {
+    "case": "the champion after",
+    "picks": [
+      "feature:fighter-fighting-style-defense",
+      "feature:fighter-fighting-style-dueling"
+    ],
+    "revision": 3
+  }
+]
