@@ -120,38 +120,57 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 	}
 	var out []*playv1.ReactionPrompt
 	for _, w := range open {
-		if w.Kind != string(reaction.Shield) || w.PendingDamageID == nil || w.ReactorID == nil {
-			continue
-		}
-		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == *w.ReactorID })
-		if i < 0 || (!v.master && !v.owns(d.cs[i])) {
-			continue
-		}
-		k, ok, err := s.kitOf(ctx, nil, m.CampaignID, d.cs[i])
+		prompt, ok, err := s.shieldPrompt(ctx, m, d, v, names, w)
 		if err != nil {
-			return nil, s.dbError(ctx, "work out the reaction", err)
+			return nil, err
 		}
-		if !ok {
-			continue
+		if ok {
+			out = append(out, prompt)
 		}
-		t := windowTriggerOf(w)
-		prompt := &playv1.ReactionPrompt{PendingDamageId: *w.PendingDamageID, TargetId: *w.ReactorID, SpellKey: shield, Slots: k.slotsFor(spellShield), SpellNamePt: names(shield)}
-		if v.master {
-			prompt.AttackerId = t.Actor
-		}
-		// Who attacked, and with what, only when the viewer sees the attacker (RN-20):
-		// the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
-		if j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == t.Actor }); j >= 0 && v.sees(d.cs[j]) {
-			prompt.AttackerLabel = d.cs[j].Label
-			if sheet, err := s.sheetOf(ctx, nil, m.CampaignID, d.cs[j]); err == nil {
-				if k := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == t.Key }); k >= 0 {
-					prompt.AttackNamePt = sheet.Attacks[k].Name
-				}
-			}
-		}
-		out = append(out, prompt)
 	}
 	return out, nil
+}
+
+// shieldPrompt is the prompt of one open window, when it is a Shield window the viewer may read.
+func (s *Service) shieldPrompt(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, names func(key string) string, w playdb.ReactionWindow) (*playv1.ReactionPrompt, bool, error) {
+	if w.Kind != string(reaction.Shield) || w.PendingDamageID == nil || w.ReactorID == nil {
+		return nil, false, nil
+	}
+	i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == *w.ReactorID })
+	if i < 0 || (!v.master && !v.owns(d.cs[i])) {
+		return nil, false, nil
+	}
+	k, ok, err := s.kitOf(ctx, nil, m.CampaignID, d.cs[i])
+	if err != nil {
+		return nil, false, s.dbError(ctx, "work out the reaction", err)
+	}
+	if !ok {
+		return nil, false, nil
+	}
+	t := windowTriggerOf(w)
+	prompt := &playv1.ReactionPrompt{PendingDamageId: *w.PendingDamageID, TargetId: *w.ReactorID, SpellKey: shield, Slots: k.slotsFor(spellShield), SpellNamePt: names(shield)}
+	if v.master {
+		prompt.AttackerId = t.Actor
+	}
+	s.nameShieldAttacker(ctx, m, d, v, t, prompt)
+	return prompt, true, nil
+}
+
+// nameShieldAttacker says who attacked, and with what, only when the viewer sees the attacker
+// (RN-20): the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
+func (s *Service) nameShieldAttacker(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, t windowTrigger, prompt *playv1.ReactionPrompt) {
+	j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == t.Actor })
+	if j < 0 || !v.sees(d.cs[j]) {
+		return
+	}
+	prompt.AttackerLabel = d.cs[j].Label
+	sheet, err := s.sheetOf(ctx, nil, m.CampaignID, d.cs[j])
+	if err != nil {
+		return
+	}
+	if k := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == t.Key }); k >= 0 {
+		prompt.AttackNamePt = sheet.Attacks[k].Name
+	}
 }
 
 // reactionTarget finds the Shield window of a hit that waits for a reaction, the
@@ -199,20 +218,9 @@ func (s *Service) reactionTarget(ctx context.Context, c *combatTx, v combatViewe
 // all its damage away. It closes the window.
 func (s *Service) useShield(ctx context.Context, c *combatTx, w playdb.ReactionWindow, p playdb.PendingDamage, attacker, target playdb.Combatant, slotIn *playv1.SpellSlot) (actionEvent, *playv1.CharacterVitals, error) {
 	var none actionEvent
-	if target.ReactionUsed {
-		return none, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is already used")
-	}
-	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, target)
+	slots, err := s.shieldSlots(ctx, c, target)
 	if err != nil {
 		return none, nil, err
-	}
-	var slots []*rulesv1.SlotChoice
-	if ok && !k.down && !target.Defeated {
-		slots = k.slotsFor(spellShield)
-	}
-	if len(slots) == 0 {
-		return none, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for Escudo",
-			func(b *playv1.EncounterBlocked) { b.MinLevel = 1 })
 	}
 	slot, err := slotOf(slotIn, castable{level: 1, slots: slots})
 	if err != nil {
@@ -230,19 +238,10 @@ func (s *Service) useShield(ctx context.Context, c *combatTx, w playdb.ReactionW
 	if err := c.q.SetCombatantAcBonus(ctx, playdb.SetCombatantAcBonusParams{ID: target.ID, AcBonus: combat.ShieldACBonus}); err != nil {
 		return none, nil, fmt.Errorf("give the armor class bonus: %w", err)
 	}
-
-	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, target)
+	stopped, err := s.shieldStops(ctx, c, w, p, target)
 	if err != nil {
 		return none, nil, err
 	}
-	// Escudo replaces the bonus the target had: the hit is compared again with the
-	// armor class it was compared with (cover included), plus the Escudo's 5. A
-	// damage opened before the column existed falls back to the sheet's.
-	base := sheet.ArmorClass
-	if p.AttackArmorClass != nil {
-		base = int(*p.AttackArmorClass) - int(target.AcBonus)
-	}
-	stopped := windowTriggerOf(w).Magic || int(num(p.AttackTotal)) < base+combat.ShieldACBonus
 	next := pendingAwaitingRoll
 	if stopped {
 		next = pendingDiscarded
@@ -269,6 +268,42 @@ func (s *Service) useShield(ctx context.Context, c *combatTx, w playdb.ReactionW
 	}, vitals, nil
 }
 
+// shieldSlots reads the free slots Escudo can be cast with and refuses a target that cannot cast it.
+func (s *Service) shieldSlots(ctx context.Context, c *combatTx, target playdb.Combatant) ([]*rulesv1.SlotChoice, error) {
+	if target.ReactionUsed {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is already used")
+	}
+	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, target)
+	if err != nil {
+		return nil, err
+	}
+	var slots []*rulesv1.SlotChoice
+	if ok && !k.down && !target.Defeated {
+		slots = k.slotsFor(spellShield)
+	}
+	if len(slots) == 0 {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for Escudo",
+			func(b *playv1.EncounterBlocked) { b.MinLevel = 1 })
+	}
+	return slots, nil
+}
+
+// shieldStops says Escudo stops the hit. Escudo replaces the bonus the target had: the hit is
+// compared again with the armor class it was compared with (cover included), plus the Escudo's 5. A
+// damage opened before the column existed falls back to the sheet's. A Magic Missile has no
+// comparison: Shield takes all its damage away.
+func (s *Service) shieldStops(ctx context.Context, c *combatTx, w playdb.ReactionWindow, p playdb.PendingDamage, target playdb.Combatant) (bool, error) {
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, target)
+	if err != nil {
+		return false, err
+	}
+	base := sheet.ArmorClass
+	if p.AttackArmorClass != nil {
+		base = int(*p.AttackArmorClass) - int(target.AcBonus)
+	}
+	return windowTriggerOf(w).Magic || int(num(p.AttackTotal)) < base+combat.ShieldACBonus, nil
+}
+
 // passShield lets the hit go on ("Não usar"): the window is answered and, when it was
 // the last one of the hit, the damage goes on to its roll.
 func (s *Service) passShield(ctx context.Context, c *combatTx, w playdb.ReactionWindow, p playdb.PendingDamage, target playdb.Combatant) (actionEvent, error) {
@@ -287,19 +322,7 @@ func (s *Service) UseReaction(
 	ctx context.Context,
 	req *connect.Request[playv1.UseReactionRequest],
 ) (*connect.Response[playv1.UseReactionResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	pendingID, err := parseCombatID(req.Msg.GetPendingDamageId(), "pending damage")
+	m, key, encID, pendingID, err := parseReactionCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetPendingDamageId())
 	if err != nil {
 		return nil, err
 	}
@@ -309,20 +332,10 @@ func (s *Service) UseReaction(
 	var vitals *playv1.CharacterVitals
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventReactionUsed, encounterID: encID}, func(c *combatTx) (any, error) {
 		vitals = nil
-		w, p, attacker, target, err := s.reactionTarget(ctx, c, v, pendingID)
-		if err != nil {
+		var err error
+		if made, vitals, err = s.shieldChange(ctx, c, v, pendingID, req.Msg.GetSlot()); err != nil {
 			return nil, err
 		}
-		if err := s.mustBeFirstOfGroup(ctx, c, w); err != nil {
-			return nil, err
-		}
-		if made, vitals, err = s.useShield(ctx, c, w, p, attacker, target, req.Msg.GetSlot()); err != nil {
-			return nil, err
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		made.Round = c.enc.Round
 		return made, nil
 	})
 	if err != nil {
@@ -350,6 +363,45 @@ func (s *Service) UseReaction(
 		}
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// parseReactionCall reads the caller's membership and the ids of a Shield answer, in the order the
+// handlers always checked them.
+func parseReactionCall(ctx context.Context, campaignID, keyRaw, encounterRaw, pendingRaw string) (m authz.Membership, key string, encID, pendingID string, err error) {
+	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
+		return m, key, "", "", err
+	}
+	if key, err = parseKey(keyRaw); err != nil {
+		return m, key, "", "", err
+	}
+	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
+		return m, key, "", "", err
+	}
+	if pendingID, err = parseCombatID(pendingRaw, "pending damage"); err != nil {
+		return m, key, encID, "", err
+	}
+	return m, key, encID, pendingID, nil
+}
+
+// shieldChange is the change of a Shield used: the window of the hit is found, must be the first of
+// its group to answer, and Escudo is cast for it.
+func (s *Service) shieldChange(ctx context.Context, c *combatTx, v combatViewer, pendingID string, slot *playv1.SpellSlot) (actionEvent, *playv1.CharacterVitals, error) {
+	w, p, attacker, target, err := s.reactionTarget(ctx, c, v, pendingID)
+	if err != nil {
+		return actionEvent{}, nil, err
+	}
+	if err := s.mustBeFirstOfGroup(ctx, c, w); err != nil {
+		return actionEvent{}, nil, err
+	}
+	made, vitals, err := s.useShield(ctx, c, w, p, attacker, target, slot)
+	if err != nil {
+		return made, vitals, err
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return made, vitals, fmt.Errorf("touch the encounter: %w", err)
+	}
+	made.Round = c.enc.Round
+	return made, vitals, nil
 }
 
 // stopOtherHits discards the hits on the target, other than answered, that the
