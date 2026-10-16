@@ -109,26 +109,11 @@ The limits are not a defence against a volume attack: that is the job of the [ed
 
 ## Memory budgets
 
-The instance has 1 GiB and `GOMEMLIMIT=400MiB`. These are the caps that keep the worst case inside it; the sums and how to measure them are in [CONTRIBUTING](../../CONTRIBUTING.md#fog-tile-measurements).
-
-| Budget | Value | Where |
-| --- | --- | --- |
-| Fog map working copy | Up to 2,048 px on the longer side | `maps/tiles.go` (`workingMaxSide`) |
-| Maps with a working copy | 2 for the whole server, least recently used leaves first | `workingCopies` |
-| Simultaneous tile renders | 1; others wait up to 8 s, then `503` `BUSY` with `Retry-After: 2` | `renderWait` |
-| Tile cache misses per user | 60 at once and 10 per second, then `429` `RATE_LIMITED` | `newTileRenderer` |
-| Finished-tile cache | 32 MiB of PNG | `tileCacheBytes` |
-| Image refused at the first tile | Decoding would exceed 192 MiB | `decodeLimit` |
-| Table-content cache | 8 contents, at most 24 MiB of stored data | `characters/tablesource.go` (`maxLiveContents`, `maxLiveBytes`) |
-| Content catalogs | 8, holding their content weakly | `characters/contentsource.go` (`maxCatalogs`) |
-| Table-content entries | 300 per campaign, 64 KiB each | `rules.MaxOverlayEntries`, `characters.MaxTableEntryBytes` |
-| Image generation | 1 call to the model at a time; at most 5 requests kept alive | `maps/imagegen.go` (`maxGenerating`, `maxPendingRequests`) |
-| Image processing | One decoded image at a time on the server (upload, first fog tile, reference, crop of a generated image) | `processing` slot in `maps` |
-
+The instance has 1 GiB, and the service sets `GOMEMLIMIT=400MiB` (an environment variable of the Cloud Run service, kept by every release).
+The caps that keep the worst case inside it are set in code and listed in [Performance](../performance.md#budgets-the-code-enforces), with the commands that measure them.
 None of these caches is stored on disk or in the database: a restart empties them and they rebuild on the next read.
-Fog maps in play at once above `workingCopies` make the copies take turns and first tiles slower (`503` `BUSY` becomes likelier); the remedy is a higher `workingCopies` or more instances.
-With more than 8 campaigns with table content in play at once, the content cache thrashes and each read assembles again; the number to change is `maxLiveContents`.
-To measure again: `MEURPG_MEASURE=1 go test ./internal/characters -run TestLiveContentMemory -v` and the commands in CONTRIBUTING.
+More fogged maps in play at once than `workingCopies` makes the working copies take turns and first tiles slower (`503` `BUSY` becomes likelier); the remedy is a higher `workingCopies` or more instances.
+More than 8 campaigns with table content in play at once makes the content cache thrash, and each read assembles again; the number to change is `maxLiveContents`.
 
 ## Images and the bucket
 

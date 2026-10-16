@@ -22,6 +22,9 @@ How the deployed numbers add up against the memory limit is in [Operations](oper
 | One render at a time | A request waits 8 s for its turn, then gets `503` with `Retry-After`; a user's cache misses are also rate limited | `renderWait`, `retryAfterSeconds`, `tileRenderer.gate` |
 | Compiled fog scenes | 8 scenes, 24 viewers' views each | `litCacheSize`, `viewsPerScene` in `maps/fog.go` |
 | Live table contents | 8 contents and 24 MiB of stored data; the newest always stays | `maxLiveContents`, `maxLiveBytes` in `backend/internal/characters/tablesource.go` |
+| Table-content entries | 300 per campaign, 64 KiB each | `rules.MaxOverlayEntries`, `characters.MaxTableEntryBytes` |
+| Content catalogs | 8, holding their content weakly | `maxCatalogs` in `backend/internal/characters/contentsource.go` |
+| Generated-image requests kept alive | 5 | `maxPendingRequests` in `backend/internal/maps/imagegen.go` |
 | One table overlay | 2,000 effects, 500 distinct formulas, 60 traits per race, 20 effects per feature | `MaxOverlayEffects`, `MaxOverlayFormulas`, `MaxTraits`, `MaxFeatureEffects` in `backend/internal/rules/overlay_budget.go` |
 | Database pool | 10 connections in production | `defaultMaxConns` in `backend/internal/platform/db/db.go` |
 | Dungeon size | 15 to 199 wide, 15 to 399 high | `Options` in `backend/internal/rules/dungeon/options.go` |
