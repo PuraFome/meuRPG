@@ -1,0 +1,115 @@
+== a goblin moves between two squares nobody sees
+master: token_moved map goblin1 (7708, 4062)
+ana: -
+caio: -
+bia: -
+== a goblin moves where the players see it
+master: token_moved map goblin2 (8958, 4687)
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a goblin the master keeps hidden moves in plain view
+master: token_moved map hiddenGoblin (8958, 5312)
+ana: -
+caio: -
+bia: -
+== a player's character moves
+master: token_moved map toren (3125, 4687)
+ana: token_moved map toren (3125, 4687)
+caio: token_moved map toren (3125, 4687); vision_changed map
+bia: token_moved map toren (3125, 4687)
+== a player's character moves where nobody else is
+master: token_moved map salvia (1458, 5937)
+ana: token_moved map salvia (1458, 5937)
+caio: token_moved map salvia (1458, 5937)
+bia: token_moved map salvia (1458, 5937)
+== a visible goblin is hidden
+master: map_changed map
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a hidden goblin is shown in plain view
+master: map_changed map
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a hidden goblin is shown in the dark
+master: map_changed map
+ana: -
+caio: -
+bia: -
+== a goblin in the dark is hidden again
+master: map_changed map
+ana: -
+caio: -
+bia: -
+== a goblin in plain view is removed
+master: map_changed map
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a hidden goblin is removed
+master: map_changed map
+ana: -
+caio: -
+bia: -
+== a goblin is placed again where the players see it
+master: map_changed map
+ana: -
+caio: -
+bia: -
+== a player's character is taken off the map
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+bia: map_changed map; vision_changed map
+== a player's character is placed again
+master: map_changed map
+ana: map_changed map
+caio: map_changed map
+bia: map_changed map; vision_changed map
+== a hidden goblin picks up a torch
+master: map_changed map
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a hidden goblin with a torch moves
+master: token_moved map goblin1 (7291, 4687)
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a visible goblin picks up a torch
+master: map_changed map
+ana: -
+caio: -
+bia: -
+== a visible goblin with a torch moves in the dark
+master: token_moved map captain (8958, 2812)
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a player's character picks up a torch
+master: map_changed map
+ana: map_changed map; vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a goblin puts the torch out
+master: map_changed map
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a combat starts
+master: other event encounter_changed:{encounter_id:"c3e5835e-7def-450a-98b0-527c8d26f82a"  revision:1  mode:ENCOUNTER_MODE_GRID}
+ana: other event encounter_changed:{encounter_id:"c3e5835e-7def-450a-98b0-527c8d26f82a"  revision:1  mode:ENCOUNTER_MODE_GRID}
+caio: other event encounter_changed:{encounter_id:"c3e5835e-7def-450a-98b0-527c8d26f82a"  revision:1  mode:ENCOUNTER_MODE_GRID}
+bia: other event encounter_changed:{encounter_id:"c3e5835e-7def-450a-98b0-527c8d26f82a"  revision:1  mode:ENCOUNTER_MODE_GRID}
+== a goblin moves during the combat
+master: token_moved map captain (8541, 2812)
+ana: vision_changed map
+caio: vision_changed map
+bia: vision_changed map
+== a player's character moves during the combat
+master: token_moved map toren (3541, 4687)
+ana: token_moved map toren (3541, 4687)
+caio: token_moved map toren (3541, 4687)
+bia: token_moved map toren (3541, 4687)

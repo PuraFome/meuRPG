@@ -1,0 +1,152 @@
+{
+  "ana": {
+    "characterOnMap": true,
+    "fogEnabled": true,
+    "gridColumns": 24,
+    "gridRows": 16,
+    "revision": 1744796685,
+    "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAQQUREFBEREREAQEQUREREREREJEJEREQUREREREREREREQzQTQUREFAAREREAAAAQQUREFAAAAAAAAAAAERERBAAAAAAAAAAAAAAQRAAAAAAAAAAAAAAQRAQAAAAAAAAAAAAQQAQAAAAAAAAAAAAAEREAAAAAAAAA",
+    "tileSquares": 16,
+    "tiles": [
+      {
+        "revision": 350358225
+      },
+      {
+        "revision": 889584945,
+        "tx": 1
+      }
+    ],
+    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+  },
+  "ana_tokens": [
+    "pens",
+    "toren",
+    "brisa",
+    "salvia"
+  ],
+  "bia": {
+    "characterOnMap": true,
+    "fogEnabled": true,
+    "gridColumns": 24,
+    "gridRows": 16,
+    "revision": 1316734609,
+    "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAAMUREFBEREREAAAAQM0RERDQzUzVDREQUQ0REREQzMzMzQzQTMUREFAAREREAADMTMUREFAAAAAAAEBERERERBAAAAAAAAAAAAAAQMAAAAAAAAAAAAAAAMAMAAAAAAAAAAAAAMAMAAAAAAAAAAAAAEREAAAAAAAAA",
+    "tileSquares": 16,
+    "tiles": [
+      {
+        "revision": 320007558
+      },
+      {
+        "revision": 533382608,
+        "tx": 1
+      }
+    ],
+    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+  },
+  "bia_tokens": [
+    "pens",
+    "toren",
+    "brisa",
+    "salvia"
+  ],
+  "caio": {
+    "characterOnMap": true,
+    "fogEnabled": true,
+    "gridColumns": 24,
+    "gridRows": 16,
+    "revision": 1106879855,
+    "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAAMUREFBEREREAAAAQM0RERDQzUzVDREQUQ0REREQzMzMzQzQTMUREFAAREREAMDMTMUREFAAAAAAAERERERERAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "tileSquares": 16,
+    "tiles": [
+      {
+        "revision": 655882678
+      },
+      {
+        "revision": 147210224,
+        "tx": 1
+      }
+    ],
+    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+  },
+  "caio_tokens": [
+    "pens",
+    "toren",
+    "brisa",
+    "salvia"
+  ],
+  "dani": {
+    "characterOnMap": true,
+    "fogEnabled": true,
+    "gridColumns": 24,
+    "gridRows": 16,
+    "revision": 1821640381,
+    "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAQQUREFBEREREAREQUREREREREJDJDVVUVRERERERUVVVVVVVVQUREFAARVVUAAABQQUREFAAAAAAAAAAAERERJQAAAAAAAAAAAABQUCICAAAAAAAAAAAAAFUiAgEAAAAAAAAAAFBVIgEAAAAAAAAAAFUVEQEAAAAA",
+    "tileSquares": 16,
+    "tiles": [
+      {
+        "revision": 953331559
+      },
+      {
+        "revision": 1878628710,
+        "tx": 1
+      }
+    ],
+    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+  },
+  "dani_tokens": [
+    "pens",
+    "toren",
+    "brisa",
+    "salvia"
+  ],
+  "master_as_pens": {
+    "characterOnMap": true,
+    "fogEnabled": true,
+    "gridColumns": 24,
+    "gridRows": 16,
+    "revision": 1744796685,
+    "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAQQUREFBEREREAQEQUREREREREJEJEREQUREREREREREREQzQTQUREFAAREREAAAAQQUREFAAAAAAAAAAAERERBAAAAAAAAAAAAAAQRAAAAAAAAAAAAAAQRAQAAAAAAAAAAAAQQAQAAAAAAAAAAAAAEREAAAAAAAAA",
+    "tileSquares": 16,
+    "tiles": [
+      {
+        "revision": 350358225
+      },
+      {
+        "revision": 889584945,
+        "tx": 1
+      }
+    ],
+    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+  },
+  "master_as_pens_tokens": [
+    "pens",
+    "toren",
+    "brisa",
+    "salvia"
+  ],
+  "master_as_toren": {
+    "characterOnMap": true,
+    "fogEnabled": true,
+    "gridColumns": 24,
+    "gridRows": 16,
+    "revision": 1106879855,
+    "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAAMUREFBEREREAAAAQM0RERDQzUzVDREQUQ0REREQzMzMzQzQTMUREFAAREREAMDMTMUREFAAAAAAAERERERERAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "tileSquares": 16,
+    "tiles": [
+      {
+        "revision": 655882678
+      },
+      {
+        "revision": 147210224,
+        "tx": 1
+      }
+    ],
+    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+  },
+  "master_as_toren_tokens": [
+    "pens",
+    "toren",
+    "brisa",
+    "salvia"
+  ]
+}
