@@ -1,0 +1,36 @@
+{
+  "canTryHint": true,
+  "clue": "Procure no chão da Cripta.",
+  "config": {
+    "riddle": {
+      "text": "Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?"
+    }
+  },
+  "hintByCheck": true,
+  "hintSkillKey": "skill:investigation",
+  "hints": [
+    "dica um: o que acompanha você ao meio-dia"
+  ],
+  "kind": "PUZZLE_KIND_RIDDLE",
+  "lastMove": {
+    "at": "<time>",
+    "characterName": "Pensantus",
+    "wrong": true
+  },
+  "limits": {
+    "attemptsPerPlayer": 2,
+    "maxMoves": 9,
+    "movesMade": 3
+  },
+  "myPart": "A porta ouve o que o chão esconde…",
+  "name": "A porta da Cripta pergunta",
+  "partHolders": [
+    "Pensantus"
+  ],
+  "puzzleId": "<puzzle>",
+  "revision": 7,
+  "sharedHints": 1,
+  "state": {
+    "riddle": {}
+  }
+}

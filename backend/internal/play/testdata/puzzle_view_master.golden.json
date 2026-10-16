@@ -1,0 +1,165 @@
+{
+  "attempts": [
+    {
+      "characterName": "Toren",
+      "wrong": 2
+    },
+    {
+      "characterName": "Pensantus",
+      "left": 1,
+      "wrong": 1
+    },
+    {
+      "characterName": "Brisa",
+      "left": 2
+    }
+  ],
+  "hintTries": [
+    {
+      "at": "<time>",
+      "characterName": "Toren",
+      "hint": 1,
+      "passed": true,
+      "roll": {
+        "diceCount": 1,
+        "diceSides": 20,
+        "faces": [
+          20
+        ],
+        "physical": true,
+        "total": 20
+      }
+    },
+    {
+      "at": "<time>",
+      "characterName": "Pensantus",
+      "hint": 1,
+      "roll": {
+        "diceCount": 1,
+        "diceSides": 20,
+        "faces": [
+          1
+        ],
+        "modifier": 4,
+        "physical": true,
+        "total": 5
+      }
+    }
+  ],
+  "lastMove": {
+    "at": "<time>",
+    "characterName": "Pensantus",
+    "move": {
+      "riddle": {
+        "answer": "vento"
+      }
+    },
+    "wrong": true
+  },
+  "minimum": {
+    "moves": 1,
+    "solvable": true
+  },
+  "minimumFromStart": {
+    "moves": 1,
+    "solvable": true
+  },
+  "movesMade": 3,
+  "puzzle": {
+    "campaignId": "<uuid>",
+    "clue": "Procure no chão da Cripta.",
+    "config": {
+      "riddle": {
+        "text": "Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?"
+      }
+    },
+    "createdAt": "<time>",
+    "hintCheck": {
+      "dc": 15,
+      "skillKey": "skill:investigation"
+    },
+    "hints": [
+      "dica um: o que acompanha você ao meio-dia",
+      "dica dois: some quando a tocha apaga",
+      "dica três: é escura"
+    ],
+    "id": "<puzzle>",
+    "kind": "PUZZLE_KIND_RIDDLE",
+    "minimum": {
+      "moves": 1,
+      "solvable": true
+    },
+    "name": "A porta da Cripta pergunta",
+    "onSolve": {
+      "action": "PUZZLE_SOLVE_ACTION_NOTIFY"
+    },
+    "onWrong": {
+      "attemptsPerPlayer": 2,
+      "maxMoves": 9,
+      "trap": {
+        "mapId": "<map>",
+        "pointId": "<trap>"
+      }
+    },
+    "parts": [
+      {
+        "characterId": "<toren>",
+        "text": "A porta ouve o que o chão esconde…"
+      },
+      {
+        "characterId": "<pensantus>",
+        "text": "…os tambores ecoam três vezes."
+      }
+    ],
+    "shown": true,
+    "solution": {
+      "riddle": {
+        "answers": [
+          "sombra",
+          "a sombra"
+        ]
+      }
+    },
+    "start": {
+      "riddle": {}
+    },
+    "updatedAt": "<time>"
+  },
+  "releasedHints": 1,
+  "run": {
+    "clue": "Procure no chão da Cripta.",
+    "config": {
+      "riddle": {
+        "text": "Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?"
+      }
+    },
+    "hintByCheck": true,
+    "hintSkillKey": "skill:investigation",
+    "hints": [
+      "dica um: o que acompanha você ao meio-dia"
+    ],
+    "kind": "PUZZLE_KIND_RIDDLE",
+    "lastMove": {
+      "at": "<time>",
+      "characterName": "Pensantus",
+      "wrong": true
+    },
+    "limits": {
+      "attemptsLeft": 2,
+      "attemptsPerPlayer": 2,
+      "maxMoves": 9,
+      "movesMade": 3
+    },
+    "name": "A porta da Cripta pergunta",
+    "puzzleId": "<puzzle>",
+    "revision": 7,
+    "sharedHints": 1,
+    "state": {
+      "riddle": {}
+    }
+  },
+  "start": {
+    "riddle": {}
+  },
+  "status": "PUZZLE_RUN_STATUS_SHOWN"
+}
