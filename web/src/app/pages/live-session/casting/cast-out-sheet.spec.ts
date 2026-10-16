@@ -10,6 +10,7 @@ import {
   GetCastOptionsResponseSchema,
   OutsideCastStatus,
 } from '../../../../gen/meurpg/play/v1/casting_pb';
+import { SlotChoiceSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CastingClient } from '../../../core/casting/casting-client';
 import {
   FakeCastingClient,
@@ -279,5 +280,110 @@ describe('CastOutSheet (MR-048)', () => {
     expect(el.querySelector('app-ability-picker')).toBeNull();
     await click('button.cast');
     expect(api.casts[0].req.abilityKey).toBeUndefined();
+  });
+
+  it('says what is still missing, slot first and then the target, and a cantrip needs no slot', async () => {
+    const light = castingSpell('spell:sacred-flame', 'Chama Sagrada', 0, {
+      effect: CastingEffectKind.HEAL,
+      maxTargets: 1,
+      rangeKind: 'ranged',
+      rangeFt: 60,
+    });
+    const twoSlots = castingSpell('spell:cure-wounds', 'Curar Ferimentos', 1, {
+      effect: CastingEffectKind.HEAL,
+      maxTargets: 1,
+      rangeKind: 'touch',
+      slots: [
+        create(SlotChoiceSchema, { level: 1, free: 2 }),
+        create(SlotChoiceSchema, { level: 2, free: 1 }),
+      ],
+    });
+    const { el, click } = await setup(withSpells(twoSlots, light));
+    await click('label.row', 'Curar Ferimentos');
+    expect(plain(el.querySelector('.missing')?.textContent)).toContain(
+      'Escolha o espaço de magia.',
+    );
+    await click('label.row', '1º nível');
+    expect(plain(el.querySelector('.missing')?.textContent)).toContain(
+      'Escolha em quem a magia age.',
+    );
+    await click('button', 'Outra magia');
+    expect(plain(el.querySelector('.cap')?.textContent)).toBe('Magia');
+    await click('label.row', 'Chama Sagrada');
+    expect(el.querySelector('app-slot-picker')).toBeNull();
+    expect(plain(el.querySelector('.missing')?.textContent)).toContain(
+      'Escolha em quem a magia age.',
+    );
+  });
+
+  it('turns a spell off in the list when there is neither a slot nor a ritual for it', async () => {
+    const spent = castingSpell('spell:shield', 'Escudo', 1, { canCast: false, slots: [] });
+    const { el } = await setup(withSpells(spent, alarm));
+    const rows = Array.from(el.querySelectorAll('label.row'));
+    const off = rows.find((r) => r.textContent?.includes('Escudo'));
+    expect(off?.classList.contains('row--off')).toBe(true);
+    expect(plain(off?.textContent)).toContain('Sem espaço de magia livre.');
+    expect(
+      rows.find((r) => r.textContent?.includes('Alarme'))?.classList.contains('row--off'),
+    ).toBe(false);
+  });
+
+  it('picks the only free slot by itself, and the spell opened on from the sheet', async () => {
+    const one = castingSpell('spell:alarm', 'Alarme', 1, {
+      ritualAllowed: true,
+      ritualMinutes: 11,
+      castingMinutes: 1,
+      effect: CastingEffectKind.NARRATED,
+    });
+    const { el, api, click } = await setup(withSpells(one), { spellKey: 'spell:alarm' });
+    expect(plain(el.querySelector('.frame__title')?.textContent)).toBe('Alarme');
+    expect(el.querySelector('.missing')).toBeNull();
+    await click('label.row', 'Como ritual');
+    await click('label.row', 'Com espaço de magia');
+    expect(el.querySelector('.missing')).toBeNull();
+    await click('button.cast');
+    expect(api.casts[0].req).toMatchObject({ asRitual: false, slot: { level: 1, pact: false } });
+  });
+
+  it('casts after the confirmation that ends a concentration, naming both spells', async () => {
+    const bless = castingSpell('spell:bless', 'Bênção', 1, {
+      lasts: true,
+      durationSeconds: 60,
+      maxTargets: 3,
+      targetsPerLevel: 1,
+    });
+    bless.spell!.concentration = true;
+    const { api, click, settle } = await setup((a) => {
+      withSpells(bless)(a);
+      a.options_.concentrating = outsideCast({ spellNamePt: 'Escudo da Fé', concentrating: true });
+    });
+    await click('label.row', 'Bênção');
+    await click('label.row', '1º nível');
+    await click('label.row', 'Toren');
+    await click('button.cast');
+    const dialog = document.querySelector('app-cast-confirm-sheet');
+    expect(plain(dialog?.textContent)).toContain(
+      'Conjurar Bênção encerra a concentração em Escudo da Fé, e os efeitos dela terminam.',
+    );
+    (
+      Array.from(dialog!.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Encerrar Escudo da Fé e conjurar'),
+      ) as HTMLElement
+    ).click();
+    await settle();
+    expect(api.casts).toHaveLength(1);
+    expect(api.casts[0].req).toMatchObject({ spellKey: 'spell:bless', targetIds: ['toren'] });
+  });
+
+  it('titles the master casting as an NPC until one is picked, then by its name', async () => {
+    const { el, click } = await setup(withSpells(alarm), {
+      master: true,
+      casterId: '',
+      casterName: '',
+      npcCasters: [{ id: 'lich', name: 'Lich', detail: 'Mago 18' }],
+    });
+    expect(plain(el.querySelector('.frame__title')?.textContent)).toBe('Conjurar: como NPC');
+    await click('label.row', 'Lich');
+    expect(plain(el.querySelector('.frame__title')?.textContent)).toBe('Conjurar: Lich');
   });
 });
