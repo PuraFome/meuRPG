@@ -1,0 +1,33 @@
+haste, longstrider, hold person, hideous laughter on a poisoned Brisa, mage armor:
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[condition:poisoned,condition:prone,condition:incapacitated] derived=[condition:prone,condition:incapacitated] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[condition:paralyzed] derived=[condition:paralyzed] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +10ft noAction=false noReaction=false noMove=false mage=15 conc=spell:haste turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+2 speed 200% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+Toren at exhaustion 5 after a copy that was out of date and shield of faith:
+Toren hp -/- base - temp - defeated=false exh=5 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+4 speed 100% +0ft noAction=false noReaction=false noMove=true mage=- conc=- turn=acting
+
+the laughter and the armor ended: the hand-set condition stays:
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[condition:poisoned] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +10ft noAction=false noReaction=false noMove=false mage=- conc=spell:haste turn=idle
+
+effects:
+Goblin spell:hold-person kind=spell conc=false dur=rounds ends=r4/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[condition:paralyzed] mods=[] started=r1
+Pensantus spell:longstrider kind=spell conc=false dur=rounds ends=r601/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"kind": "speed_add", "value": 10}] started=r1
+Toren spell:haste kind=spell conc=true dur=rounds ends=r4/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=owner label=- dc=- conds=[] mods=[{"kind": "ac_bonus", "value": 2}, {"kind": "speed_multiplier", "value": 200}, {"abilities": ["dex"], "kind": "save_advantage"}, {"allowed": ["attack", "dash", "disengage", "hide", "use-an-object"], "kind": "extra_action", "max_weapon_attacks": 1}] started=r1
+Toren spell:shield-of-faith kind=spell conc=false dur=rounds ends=r4/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[] mods=[{"kind": "ac_bonus", "value": 2}] started=r1
+
+events:
+conditions_set {"combatant_id":"<Brisa>","cond_set":true,"conditions":["condition:poisoned"],"round":1}
+lasting_effect_added {"combatant_id":"<Pensantus>","lasting":{"caster":"<Pensantus>","change":"added","effects":["<uuid>"],"key":"spell:haste","rounds":3,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:longstrider","rounds":600,"targets":["<Pensantus>"]},"round":1,"secret":true,"target_id":"<Pensantus>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:hold-person","rounds":3,"targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:hideous-laughter","rounds":3,"targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:mage-armor","rounds":4800,"targets":["<Pensantus>"]},"round":1,"target_id":"<Pensantus>"}
+exhaustion_changed {"combatant_id":"<Toren>","lasting":{"change":"exhaustion","key":"condition:exhaustion","level":5,"owner_only":true,"targets":["<Toren>"]},"round":1}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:shield-of-faith","rounds":3,"targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hideous-laughter","reason":"ended_by_master","targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hideous-laughter","reason":"ended_by_master"},"round":1,"target_id":"<a row of the casting>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:mage-armor","reason":"ended_by_master","targets":["<Pensantus>"]},"round":1,"target_id":"<Pensantus>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:mage-armor","reason":"ended_by_master"},"round":1,"target_id":"<a row of the casting>"}
+

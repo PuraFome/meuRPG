@@ -1,0 +1,4 @@
+hold person on the Goblin -> lasting LASTING_EFFECT_OUTCOME_NO_EFFECT why "" save SAVE_OUTCOME_FAILED
+Goblin spell:heroism kind=spell conc=false dur=rounds ends=r11/Goblin/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:paralyzed"], "kind": "condition_immunity"}] started=r1
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+

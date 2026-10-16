@@ -1,0 +1,16 @@
+after the master ended one:
+Toren condition:frightened kind=master conc=false dur=rounds ends=r2/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[condition:frightened] mods=[] started=r1
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[condition:frightened] derived=[condition:frightened] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+after its round:
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+events:
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"condition:poisoned","targets":["<Goblin>"]},"round":1,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"condition:frightened","rounds":1,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"condition:poisoned","owner_only":true,"reason":"ended_by_master","targets":["<Goblin>"]},"round":1,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"condition:poisoned","reason":"ended_by_master"},"round":1,"secret":true,"target_id":"<a row of the casting>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"condition:frightened","owner_only":true,"reason":"duration","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+

@@ -1,0 +1,37 @@
+resistance held by Brisa's concentration:
+Toren spell:resistance kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["save"], "die": 4, "kind": "roll_die", "once": true, "sign": 1}] started=r1
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:resistance turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+spent:
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+spent with no caster:
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+spent while the caster concentrates on another spell:
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:bless turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+not spent: no character, an effect nobody has:
+Toren spell:resistance kind=spell conc=false dur=rounds ends=r11/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["save"], "die": 4, "kind": "roll_die", "once": true, "sign": 1}] started=r1
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:bless turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+spent from outside the combat:
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:bless turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+events:
+lasting_effect_added {"combatant_id":"<Brisa>","lasting":{"caster":"<Brisa>","change":"added","effects":["<uuid>"],"key":"spell:resistance","rounds":10,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_ended {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:resistance","owner_only":true,"reason":"concentration","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+conditions_set {"combatant_id":"<Brisa>","conc_before":"spell:resistance","conc_ended":"spell:resistance","round":1}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:resistance","rounds":10,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:resistance","owner_only":true,"reason":"used","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_added {"combatant_id":"<Brisa>","lasting":{"caster":"<Brisa>","change":"added","effects":["<uuid>"],"key":"spell:resistance","rounds":10,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_ended {"combatant_id":"<Brisa>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:resistance","owner_only":true,"reason":"used","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:resistance","rounds":10,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:resistance","owner_only":true,"reason":"used","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+

@@ -1,0 +1,19 @@
+spell:hold-person on Bandido -> lasting LASTING_EFFECT_OUTCOME_APPLIED why "" save SAVE_OUTCOME_FAILED
+spell:hold-person on Bandido -> lasting LASTING_EFFECT_OUTCOME_UNSPECIFIED why "" save SAVE_OUTCOME_SAVED
+spell:hold-person on Lobo -> lasting LASTING_EFFECT_OUTCOME_NO_EFFECT why "alvo não é humanoide" save SAVE_OUTCOME_FAILED
+spell:hold-person on Ogro -> lasting LASTING_EFFECT_OUTCOME_NO_EFFECT why "alvo não é humanoide" save SAVE_OUTCOME_FAILED
+spell:hideous-laughter on Lobo -> lasting LASTING_EFFECT_OUTCOME_NO_EFFECT why "a Inteligência do alvo é 4 ou menos" save SAVE_OUTCOME_FAILED
+spell:hideous-laughter on Mímico -> lasting LASTING_EFFECT_OUTCOME_NO_EFFECT why "o alvo é imune à condição" save SAVE_OUTCOME_FAILED
+spell:hideous-laughter on Goblin -> lasting LASTING_EFFECT_OUTCOME_UNSPECIFIED why "" save SAVE_OUTCOME_SAVED
+spell:hideous-laughter on Bandido -> lasting LASTING_EFFECT_OUTCOME_APPLIED why "" save SAVE_OUTCOME_FAILED
+Bandido spell:hideous-laughter kind=spell conc=true dur=rounds ends=r18/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=all label=- dc=15 conds=[condition:prone,condition:incapacitated] mods=[] started=r8
+Bandido hp 11/11 base - temp 0 defeated=false exh=0 fails=0 conds=[condition:prone,condition:incapacitated] derived=[condition:prone,condition:incapacitated] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Lobo hp 11/11 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Mímico hp 58/58 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Ogro hp 59/59 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:hideous-laughter turn=acting
+
+events:
+lasting_effect_ended {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hold-person","reason":"concentration","targets":["<Bandido>"]},"round":2,"secret":true,"target_id":"<Bandido>"}
+

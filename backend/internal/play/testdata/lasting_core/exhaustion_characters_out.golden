@@ -1,0 +1,17 @@
+out of a combat: Brisa 4 -> level 4 max 12; Brisa vitals hp 12/12 temp 0 exh 4 acBase 0
+out of a combat: Brisa lower by 2 -> level 2 max 24; Brisa vitals hp 12/24 temp 0 exh 2 acBase 0
+after the combat ended: Toren 2 -> level 2 max 44; Toren vitals hp 44/44 temp 0 exh 2 acBase 0
+out of a combat: Pensantus 6 without confirmation -> failed_precondition: level 6 is death: confirm_death must be true
+out of a combat: Pensantus 6 -> level 6 max 8; state CHARACTER_STATE_DEAD
+out of a combat: Pensantus 6 again -> not_found: character not found level 0
+Brisa hp -/- base - temp - defeated=false exh=2 fails=0 conds=[condition:exhaustion] derived=[condition:exhaustion] ac+0 speed 50% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+events:
+exhaustion_changed {"lasting":{"change":"exhaustion","key":"condition:exhaustion","level":4,"owner_only":true}}
+exhaustion_changed {"lasting":{"before":4,"change":"exhaustion","key":"condition:exhaustion","level":2,"owner_only":true}}
+exhaustion_changed {"lasting":{"change":"exhaustion","key":"condition:exhaustion","level":2,"owner_only":true}}
+exhaustion_changed {"lasting":{"change":"exhaustion","key":"condition:exhaustion","level":6,"owner_only":true}}
+

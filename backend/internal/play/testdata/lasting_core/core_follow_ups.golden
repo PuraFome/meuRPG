@@ -1,0 +1,43 @@
+Toren's turn in round 2:
+Goblin hp 7/7 base - temp 4 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+Toren vitals hp 44/44 temp 4 exh 0 acBase 0
+the goblin's turn in round 2:
+Goblin hp 7/7 base - temp 4 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+a web and a fire on it:
+Goblin effect:web-fire kind=master conc=false dur=rounds ends=r3/Goblin/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[] mods=[] started=r2
+Goblin spell:heroism kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:frightened"], "kind": "condition_immunity"}, {"kind": "turn_temp_hp", "value": 4}] started=r1
+Goblin spell:web kind=spell conc=false dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[] started=r2
+Pensantus spell:haste kind=spell conc=false dur=rounds ends=r10/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"kind": "ac_bonus", "value": 2}, {"kind": "speed_multiplier", "value": 200}, {"abilities": ["dex"], "kind": "save_advantage"}, {"allowed": ["attack", "dash", "disengage", "hide", "use-an-object"], "kind": "extra_action", "max_weapon_attacks": 1}] started=r1
+Toren spell:heroism kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:frightened"], "kind": "condition_immunity"}, {"kind": "turn_temp_hp", "value": 4}] started=r1
+
+the fire ended:
+Goblin spell:heroism kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:frightened"], "kind": "condition_immunity"}, {"kind": "turn_temp_hp", "value": 4}] started=r1
+Pensantus spell:haste kind=spell conc=false dur=rounds ends=r10/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"kind": "ac_bonus", "value": 2}, {"kind": "speed_multiplier", "value": 200}, {"abilities": ["dex"], "kind": "save_advantage"}, {"allowed": ["attack", "dash", "disengage", "hide", "use-an-object"], "kind": "extra_action", "max_weapon_attacks": 1}] started=r1
+Toren spell:heroism kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:frightened"], "kind": "condition_immunity"}, {"kind": "turn_temp_hp", "value": 4}] started=r1
+
+heroism ended:
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren vitals hp 44/44 temp 0 exh 0 acBase 0
+haste ended:
+Pensantus effect:lethargy kind=feature conc=false dur=until_end_of_turn_of ends=r3/Pensantus/end_of_turn spent=false fired=0 follows=spell:haste caster=- visible=true audience=all label=- dc=- conds=[] mods=[{"kind": "no_move"}, {"kind": "no_action"}] started=r2
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=true noReaction=false noMove=true mage=- conc=spell:heroism turn=idle
+
+events:
+lasting_effect_added {"combatant_id":"<Pensantus>","lasting":{"caster":"<Pensantus>","change":"added","effects":["<uuid>","<uuid>"],"key":"spell:heroism","rounds":10,"targets":["<Goblin>","<Toren>"]},"round":1,"secret":true,"target_id":"<one of the targets>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:haste","rounds":9,"targets":["<Pensantus>"]},"round":1,"secret":true,"target_id":"<Pensantus>"}
+lasting_effect_triggered {"combatant_id":"<Goblin>","key":"spell:heroism","lasting":{"amount":4,"change":"temp_hp","effects":["<uuid>"],"key":"spell:heroism","targets":["<Goblin>"]},"round":1,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_triggered {"combatant_id":"<Toren>","key":"spell:heroism","lasting":{"amount":4,"change":"temp_hp","effects":["<uuid>"],"key":"spell:heroism","targets":["<Toren>"]},"round":2,"target_id":"<Toren>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:web","rounds":9,"targets":["<Goblin>"]},"round":2,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"effect:web-fire","rounds":1,"targets":["<Goblin>"]},"round":2,"target_id":"<Goblin>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:web","owner_only":true,"reason":"burned","targets":["<Goblin>"]},"round":2,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"effect:web-fire","reason":"ended_by_master","targets":["<Goblin>"]},"round":2,"target_id":"<Goblin>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"effect:web-fire","reason":"ended_by_master"},"round":2,"target_id":"<a row of the casting>"}
+lasting_effect_ended {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<uuid>","<uuid>"],"key":"spell:heroism","owner_only":true,"reason":"ended_by_master","targets":["<Goblin>","<Toren>"]},"round":2,"secret":true,"target_id":"<one of the targets>"}
+lasting_effect_ended {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:heroism","reason":"ended_by_master"},"round":2,"secret":true,"target_id":"<a row of the casting>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"effect:lethargy","rounds":1,"targets":["<Pensantus>"]},"round":2,"target_id":"<Pensantus>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:haste","owner_only":true,"reason":"ended_by_master","targets":["<Pensantus>"]},"round":2,"target_id":"<Pensantus>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:haste","reason":"ended_by_master"},"round":2,"target_id":"<a row of the casting>"}
+
