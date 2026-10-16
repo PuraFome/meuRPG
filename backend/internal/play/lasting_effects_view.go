@@ -128,19 +128,13 @@ func (ev *effectViewer) conditionHidden(who playdb.Combatant, cond string) bool 
 // decorate fills what the effects add to a combatant the viewer sees: the conditions they may
 // read, the labels, the cards and the exhaustion.
 func (ev *effectViewer) decorate(p *playv1.Combatant, c playdb.Combatant) {
-	states := statesOf(ev.d.states)
 	if !ev.v.master && !ev.v.owns(c) {
-		p.Conditions, p.ConditionNamesPt = nil, nil
-		for _, k := range c.Conditions {
-			if !ev.conditionHidden(c, k) {
-				p.Conditions = append(p.Conditions, k)
-				p.ConditionNamesPt = append(p.ConditionNamesPt, ev.names(k))
-			}
-		}
+		ev.decorateConditions(p, c)
 	}
 	if ev.v.master || ev.v.owns(c) {
 		p.ExhaustionLevel = c.ExhaustionLevel
 	}
+	states := statesOf(ev.d.states)
 	for _, g := range groupsOf(effectsOn(states, c.ID)) {
 		own := g.rows[0] // the row of this combatant (the rows of a group are one for each target)
 		if !ev.readsEffect(own) {
@@ -149,11 +143,29 @@ func (ev *effectViewer) decorate(p *playv1.Combatant, c playdb.Combatant) {
 		if label := ev.labelFor(own); label != "" {
 			p.EffectLabels = append(p.EffectLabels, &playv1.EffectLabel{EffectId: own.ID, TextPt: label})
 		}
-		if ev.v.master || ev.v.owns(c) {
-			if card := ev.card(effectGroup{rows: []playdb.CombatantState{own}}, c.ID); card != nil && ev.hasCard(own) {
-				p.Effects = append(p.Effects, card)
-			}
+		ev.decorateCard(p, c, own)
+	}
+}
+
+// decorateConditions leaves on the combatant only the conditions the viewer may read.
+func (ev *effectViewer) decorateConditions(p *playv1.Combatant, c playdb.Combatant) {
+	p.Conditions, p.ConditionNamesPt = nil, nil
+	for _, k := range c.Conditions {
+		if !ev.conditionHidden(c, k) {
+			p.Conditions = append(p.Conditions, k)
+			p.ConditionNamesPt = append(p.ConditionNamesPt, ev.names(k))
 		}
+	}
+}
+
+// decorateCard puts the card of an effect on its combatant, for the master and the combatant's
+// own player.
+func (ev *effectViewer) decorateCard(p *playv1.Combatant, c playdb.Combatant, own playdb.CombatantState) {
+	if !ev.v.master && !ev.v.owns(c) {
+		return
+	}
+	if card := ev.card(effectGroup{rows: []playdb.CombatantState{own}}, c.ID); card != nil && ev.hasCard(own) {
+		p.Effects = append(p.Effects, card)
 	}
 }
 
@@ -220,6 +232,32 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 	f := g.first()
 	key := deref(f.SourceKey)
 	def, _ := ev.s.effectDef(ev.content, key)
+	out := ev.cardHead(f, key, def)
+	ev.cardTargets(out, g, onTarget)
+	caster, casterSeen := ev.byID[deref(f.SourceID)]
+	casterSeen = casterSeen && ev.v.sees(caster)
+	if casterSeen {
+		out.CasterId = caster.ID
+	}
+	out.OriginPt = ev.originOf(f, caster, casterSeen)
+	for _, m := range effectModifiers(f) {
+		out.Modifiers = append(out.Modifiers, modifierProto(m))
+	}
+	ev.cardClock(out, f, caster, casterSeen)
+	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)))
+	ev.cardNotes(out, f, def)
+	if ev.v.master {
+		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), deref(f.PlayerLabel)
+		out.EndTextPt = ev.endText(f, caster)
+		if f.PlayerVisible {
+			out.PlayersSeePt = ev.labelForOthers(f)
+		}
+	}
+	return out
+}
+
+// cardHead is the card with what names the effect: the ids, the source, the conditions it gives.
+func (ev *effectViewer) cardHead(f playdb.CombatantState, key string, def *rules.EffectDef) *playv1.LastingEffect {
 	// The casting's id is the master's: for an effect that came from a cast outside a combat it is
 	// that cast's id (RN-10).
 	group := f.ID
@@ -230,23 +268,33 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		Id: f.ID, GroupId: group, EncounterId: f.EncounterID, SourceKey: key, SourceNamePt: ev.names(key),
 		Concentration: f.Concentration, ConditionKeys: f.ConditionKeys,
 	}
-	switch deref(f.SourceKind) {
-	case "spell":
-		out.SourceKind = playv1.EffectSourceKind_EFFECT_SOURCE_KIND_SPELL
-	case "feature":
-		out.SourceKind = playv1.EffectSourceKind_EFFECT_SOURCE_KIND_FEATURE
-	default:
-		out.SourceKind = playv1.EffectSourceKind_EFFECT_SOURCE_KIND_MASTER
-		if len(f.ConditionKeys) > 0 && def == nil {
-			out.SourceKind = playv1.EffectSourceKind_EFFECT_SOURCE_KIND_CONDITION
-		}
-	}
+	out.SourceKind = sourceKindProto(deref(f.SourceKind), len(f.ConditionKeys) > 0 && def == nil)
 	if out.SourceNamePt == "" && len(f.ConditionKeys) > 0 {
 		out.SourceNamePt = ev.names(f.ConditionKeys[0])
 	}
 	for _, k := range f.ConditionKeys {
 		out.ConditionNamesPt = append(out.ConditionNamesPt, ev.names(k))
 	}
+	return out
+}
+
+// sourceKindProto is where an effect comes from; one the master made that only gives conditions
+// and is not in the catalog is a condition.
+func sourceKindProto(kind string, onlyConditions bool) playv1.EffectSourceKind {
+	switch kind {
+	case "spell":
+		return playv1.EffectSourceKind_EFFECT_SOURCE_KIND_SPELL
+	case "feature":
+		return playv1.EffectSourceKind_EFFECT_SOURCE_KIND_FEATURE
+	}
+	if onlyConditions {
+		return playv1.EffectSourceKind_EFFECT_SOURCE_KIND_CONDITION
+	}
+	return playv1.EffectSourceKind_EFFECT_SOURCE_KIND_MASTER
+}
+
+// cardTargets names the targets the viewer may read (all of them, or the one of a player's card).
+func (ev *effectViewer) cardTargets(out *playv1.LastingEffect, g effectGroup, onTarget string) {
 	for _, st := range g.rows {
 		if onTarget != "" && st.CombatantID != onTarget {
 			continue
@@ -257,15 +305,10 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		out.TargetIds = append(out.TargetIds, st.CombatantID)
 		out.TargetLabels = append(out.TargetLabels, ev.byID[st.CombatantID].Label)
 	}
-	caster, casterSeen := ev.byID[deref(f.SourceID)]
-	casterSeen = casterSeen && ev.v.sees(caster)
-	if casterSeen {
-		out.CasterId = caster.ID
-	}
-	out.OriginPt = ev.originOf(f, caster, casterSeen)
-	for _, m := range effectModifiers(f) {
-		out.Modifiers = append(out.Modifiers, modifierProto(m))
-	}
+}
+
+// cardClock puts the duration of the effect on its card: the kind, where it ends and the text.
+func (ev *effectViewer) cardClock(out *playv1.LastingEffect, f playdb.CombatantState, caster playdb.Combatant, casterSeen bool) {
 	out.DurationKind = durationKindProto(deref(f.DurationKind))
 	if e := endsAtOf(f); e.Timed() {
 		end := &playv1.EffectEnd{Round: clamp32(e.Round, 0, 1<<20), CombatantId: e.CombatantID, Phase: phaseProto(e.Phase)}
@@ -273,7 +316,11 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		out.EndsAt, out.RoundsLeft = end, new(clamp32(e.RoundsLeft(int(round)), 0, 1<<20))
 	}
 	out.ClockTextPt = ev.clockText(f, caster, casterSeen)
-	ownCaster := ev.v.master || (casterSeen && ev.v.owns(caster))
+}
+
+// cardSaves puts the saving throws and the trigger of the effect on its card; the DC is the
+// caster's own to read.
+func (ev *effectViewer) cardSaves(out *playv1.LastingEffect, f playdb.CombatantState, ownCaster bool) {
 	if f.EndSaveAbility != nil {
 		out.EndSave = ev.saveProto(*f.EndSaveAbility, combat.PhaseEnd, f.SaveDc, ownCaster)
 	}
@@ -286,11 +333,13 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 			DamageTypePt: ev.names(deref(f.TriggerDamageType)), MaxTriggers: derefInt32(f.TriggerMaxTriggers),
 		}
 	}
+}
+
+// cardNotes puts the tags, how to break free and what the effect changes on its card.
+func (ev *effectViewer) cardNotes(out *playv1.LastingEffect, f playdb.CombatantState, def *rules.EffectDef) {
 	if def != nil {
-		out.TagsPt, out.BreakFreeAbility = append(append(append([]string{}, def.TagsPT...), modifierTagsPT(effectModifiers(f))...), spentTagsPT(f)...), def.BreakFree
-		if def.BreakFree != "" {
-			out.BreakFreeAbility = def.BreakFree
-		}
+		out.TagsPt = append(append(append([]string{}, def.TagsPT...), modifierTagsPT(effectModifiers(f))...), spentTagsPT(f)...)
+		out.BreakFreeAbility = def.BreakFree
 	}
 	for _, k := range f.ConditionKeys {
 		if info, ok := ev.content.ConditionInfo(k); ok {
@@ -298,14 +347,6 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		}
 	}
 	out.ChangesPt = append(out.ChangesPt, narratedNotesPT(effectModifiers(f))...)
-	if ev.v.master {
-		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), deref(f.PlayerLabel)
-		out.EndTextPt = ev.endText(f, caster)
-		if f.PlayerVisible {
-			out.PlayersSeePt = ev.labelForOthers(f)
-		}
-	}
-	return out
 }
 
 // originOf says whose it is, without naming a caster the viewer does not see.
