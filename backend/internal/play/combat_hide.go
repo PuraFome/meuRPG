@@ -62,6 +62,13 @@ func (s *Service) observerOf(ctx context.Context, tx pgx.Tx, campaignID string, 
 	return observerView{passive: passive, known: n.Known, noticed: combat.NoticesHider(stealth, passive)}, nil
 }
 
+// hidePlan is a Hide request once the checks that need no database are done.
+type hidePlan struct {
+	combatantID string
+	actionKey   string
+	in          checkInput
+}
+
 // Hide implements playv1connect.ContestServiceHandler.
 func (s *Service) Hide(
 	ctx context.Context,
@@ -71,15 +78,7 @@ func (s *Service) Hide(
 	if err != nil {
 		return nil, err
 	}
-	combatantID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	actionKey := req.Msg.GetActionKey()
-	if actionKey == "" {
-		actionKey = actionHide
-	}
-	in, err := parseCheckInput(req.Msg.GetRoll())
+	plan, err := parseHidePlan(req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -88,55 +87,11 @@ func (s *Service) Hide(
 	var vitals *playv1.CharacterVitals // the resource a feature spent
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHideAttempted, encounterID: encID}, func(c *combatTx) (any, error) {
 		made, vitals = actionEvent{}, nil
-		if err := mustBeRunning(c); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v := c.viewer(m, cs)
-		who, err := findCombatant(cs, combatantID, v)
+		ev, spent, err := s.attemptHide(ctx, c, m, plan)
 		if err != nil {
 			return nil, err
 		}
-		if err := v.mayAct(who); err != nil {
-			return nil, err
-		}
-		if err := s.mustActNow(ctx, c, who); err != nil {
-			return nil, err
-		}
-		if !v.master {
-			if err := s.mustRollThisWay(ctx, c.tx, m, in.rollInput()); err != nil {
-				return nil, err
-			}
-		}
-		if vitals, err = s.spendHide(ctx, c, m, v, who, actionKey); err != nil {
-			return nil, err
-		}
-		roll, err := s.rollFor(ctx, c, who, skillStealth, in, cs)
-		if err != nil {
-			return nil, err
-		}
-		roll.ByMaster = v.master && !initiatorIsNPC(who)
-		stored, err := encodeRoll(roll)
-		if err != nil {
-			return nil, err
-		}
-		attempt, err := c.q.InsertHideAttempt(ctx, playdb.InsertHideAttemptParams{
-			EncounterID: c.enc.ID, HiderID: who.ID, Status: hidePending, Roll: stored, Round: c.enc.Round, CreatedAt: c.now,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("keep the hide attempt: %w", err)
-		}
-		if err := touch(ctx, c); err != nil {
-			return nil, err
-		}
-		c.characterID = &who.CharacterID
-		made = actionEvent{
-			Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey,
-			Contest: &contestEvent{ContestID: attempt.ID, Line: contestLineHideTried},
-		}
+		made, vitals = ev, spent
 		return made, nil
 	})
 	if err != nil {
@@ -163,6 +118,86 @@ func (s *Service) Hide(
 	return connect.NewResponse(&playv1.HideResponse{Encounter: out, Attempt: attempt}), nil
 }
 
+// parseHidePlan reads the combatant, the action (the standard Hide unless a feature gives it) and
+// the roll of a Hide.
+func parseHidePlan(msg *playv1.HideRequest) (hidePlan, error) {
+	combatantID, err := parseCombatID(msg.GetCombatantId(), "combatant")
+	if err != nil {
+		return hidePlan{}, err
+	}
+	actionKey := msg.GetActionKey()
+	if actionKey == "" {
+		actionKey = actionHide
+	}
+	in, err := parseCheckInput(msg.GetRoll())
+	if err != nil {
+		return hidePlan{}, err
+	}
+	return hidePlan{combatantID: combatantID, actionKey: actionKey, in: in}, nil
+}
+
+// attemptHide is the change of a Hide: the cost of the action, the Stealth roll and the pending
+// attempt that waits for the master. It gives what a feature spent, for the vitals to stream.
+func (s *Service) attemptHide(ctx context.Context, c *combatTx, m authz.Membership, p hidePlan) (actionEvent, *playv1.CharacterVitals, error) {
+	if err := mustBeRunning(c); err != nil {
+		return actionEvent{}, nil, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return actionEvent{}, nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	v := c.viewer(m, cs)
+	who, err := s.hider(ctx, c, m, v, cs, p)
+	if err != nil {
+		return actionEvent{}, nil, err
+	}
+	vitals, err := s.spendHide(ctx, c, m, v, who, p.actionKey)
+	if err != nil {
+		return actionEvent{}, nil, err
+	}
+	roll, err := s.rollFor(ctx, c, who, skillStealth, p.in, cs)
+	if err != nil {
+		return actionEvent{}, vitals, err
+	}
+	roll.ByMaster = v.master && !initiatorIsNPC(who)
+	stored, err := encodeRoll(roll)
+	if err != nil {
+		return actionEvent{}, vitals, err
+	}
+	attempt, err := c.q.InsertHideAttempt(ctx, playdb.InsertHideAttemptParams{
+		EncounterID: c.enc.ID, HiderID: who.ID, Status: hidePending, Roll: stored, Round: c.enc.Round, CreatedAt: c.now,
+	})
+	if err != nil {
+		return actionEvent{}, vitals, fmt.Errorf("keep the hide attempt: %w", err)
+	}
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, vitals, err
+	}
+	c.characterID = &who.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: p.actionKey,
+		Contest: &contestEvent{ContestID: attempt.ID, Line: contestLineHideTried},
+	}, vitals, nil
+}
+
+// hider finds the combatant that hides, who may act now and, for a player, roll this way.
+func (s *Service) hider(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, cs []playdb.Combatant, p hidePlan) (playdb.Combatant, error) {
+	who, err := findCombatant(cs, p.combatantID, v)
+	if err != nil {
+		return who, err
+	}
+	if err := v.mayAct(who); err != nil {
+		return who, err
+	}
+	if err := s.mustActNow(ctx, c, who); err != nil {
+		return who, err
+	}
+	if !v.master {
+		return who, s.mustRollThisWay(ctx, c.tx, m, p.in.rollInput())
+	}
+	return who, nil
+}
+
 // spendHide spends what the Hide costs the combatant: the action of the standard Hide, or
 // the economy and the resource of a feature that gives Hide (the rogue's Cunning Action).
 // It refuses a combatant that has no such action, or whose economy is spent.
@@ -183,44 +218,18 @@ func (s *Service) spendHide(ctx context.Context, c *combatTx, m authz.Membership
 	option := list[i]
 	var fa link.FeatureAction
 	if feature {
-		sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, who)
-		if err != nil {
+		if fa, err = s.hideFeature(ctx, c, m, who, actionKey); err != nil {
 			return nil, err
 		}
-		fi := slices.IndexFunc(sheet.FeatureActions, func(a link.FeatureAction) bool { return a.Key == actionKey })
-		if fi < 0 || sheet.FeatureActions[fi].Standard != actionHide {
-			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AVAILABLE, "the action is not a Hide")
-		}
-		fa = sheet.FeatureActions[fi]
 	}
-	economy := option.GetAction().GetEconomy()
 	if !option.GetEnabled() && !v.master {
-		if feature {
-			if err := featureError(option.GetReason(), v.master); err != nil {
-				return nil, err
-			}
-		}
-		if economy == rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
-		}
-		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+		return nil, spentHideRefusal(option, feature, v.master)
 	}
 	if _, err := breakRun(ctx, c, who); err != nil {
 		return nil, err
 	}
-	after := who
-	switch economy {
-	case rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION:
-		after.BonusActionUsed = true
-	case rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION, rulesv1.ActionEconomy_ACTION_ECONOMY_FREE, rulesv1.ActionEconomy_ACTION_ECONOMY_MOVEMENT:
-		return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AVAILABLE, "Hide is an action or a bonus action")
-	default:
-		after.ActionUsed = true
-	}
-	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-		ID: who.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
-	}); err != nil {
-		return nil, fmt.Errorf("spend the action: %w", err)
+	if err := spendHideEconomy(ctx, c, who, option.GetAction().GetEconomy()); err != nil {
+		return nil, err
 	}
 	if feature && fa.Resource != "" && !fa.Pool && who.Kind == kindPlayer {
 		return s.spendResource(ctx, c, who.CharacterID, fa.Resource, 1)
@@ -228,9 +237,85 @@ func (s *Service) spendHide(ctx context.Context, c *combatTx, m authz.Membership
 	return nil, nil
 }
 
+// hideFeature finds the feature action of the sheet that gives the Hide, refusing a key that is
+// not a Hide.
+func (s *Service) hideFeature(ctx context.Context, c *combatTx, m authz.Membership, who playdb.Combatant, actionKey string) (link.FeatureAction, error) {
+	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, who)
+	if err != nil {
+		return link.FeatureAction{}, err
+	}
+	fi := slices.IndexFunc(sheet.FeatureActions, func(a link.FeatureAction) bool { return a.Key == actionKey })
+	if fi < 0 || sheet.FeatureActions[fi].Standard != actionHide {
+		return link.FeatureAction{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AVAILABLE, "the action is not a Hide")
+	}
+	return sheet.FeatureActions[fi], nil
+}
+
+// spentHideRefusal is why a Hide whose economy is spent is refused: the reason of the feature,
+// or the bonus action or the action that is used.
+func spentHideRefusal(option *rulesv1.ActionOption, feature, master bool) error {
+	if feature {
+		if err := featureError(option.GetReason(), master); err != nil {
+			return err
+		}
+	}
+	if option.GetAction().GetEconomy() == rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
+	}
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+}
+
+// spendHideEconomy marks the bonus action or the action of the Hide as used.
+func spendHideEconomy(ctx context.Context, c *combatTx, who playdb.Combatant, economy rulesv1.ActionEconomy) error {
+	after := who
+	switch economy {
+	case rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION:
+		after.BonusActionUsed = true
+	case rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION, rulesv1.ActionEconomy_ACTION_ECONOMY_FREE, rulesv1.ActionEconomy_ACTION_ECONOMY_MOVEMENT:
+		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AVAILABLE, "Hide is an action or a bonus action")
+	default:
+		after.ActionUsed = true
+	}
+	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+		ID: who.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
+	}); err != nil {
+		return fmt.Errorf("spend the action: %w", err)
+	}
+	return nil
+}
+
+// resolveHidePlan is a ResolveHide request once the checks that need no database are done.
+type resolveHidePlan struct {
+	attemptID string
+	refusal   string   // the master's reason, trimmed
+	clearly   []string // the creatures that see the hider clearly, once each
+	refuse    bool
+}
+
+// parseResolveHidePlan reads the attempt, the reason and the creatures of the master's decision.
+func parseResolveHidePlan(msg *playv1.ResolveHideRequest) (resolveHidePlan, error) {
+	var p resolveHidePlan
+	var err error
+	if p.attemptID, err = parseCombatID(msg.GetAttemptId(), "hide attempt"); err != nil {
+		return p, err
+	}
+	if p.refusal, err = trimReason(msg.GetRefusal()); err != nil {
+		return p, err
+	}
+	for _, id := range msg.GetSeesClearlyIds() {
+		cid, err := parseCombatID(id, "combatant")
+		if err != nil {
+			return p, err
+		}
+		if !slices.Contains(p.clearly, cid) {
+			p.clearly = append(p.clearly, cid)
+		}
+	}
+	p.refuse = msg.GetRefuse()
+	return p, nil
+}
+
 // ResolveHide implements playv1connect.ContestServiceHandler.
-//
-//nolint:gocognit,gocyclo // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) ResolveHide(
 	ctx context.Context,
 	req *connect.Request[playv1.ResolveHideRequest],
@@ -247,96 +332,19 @@ func (s *Service) ResolveHide(
 	if err != nil {
 		return nil, err
 	}
-	attemptID, err := parseCombatID(req.Msg.GetAttemptId(), "hide attempt")
+	plan, err := parseResolveHidePlan(req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	refusal, err := trimReason(req.Msg.GetRefusal())
-	if err != nil {
-		return nil, err
-	}
-	var clearly []string
-	for _, id := range req.Msg.GetSeesClearlyIds() {
-		cid, err := parseCombatID(id, "combatant")
-		if err != nil {
-			return nil, err
-		}
-		if !slices.Contains(clearly, cid) {
-			clearly = append(clearly, cid)
-		}
-	}
-	refuse := req.Msg.GetRefuse()
 
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHideResolved, encounterID: encID}, func(c *combatTx) (any, error) {
 		made = actionEvent{}
-		if err := notEnded(c.enc); err != nil {
+		ev, err := s.decideHide(ctx, c, m, plan)
+		if err != nil {
 			return nil, err
 		}
-		attempt, err := c.q.GetHideAttempt(ctx, playdb.GetHideAttemptParams{EncounterID: c.enc.ID, ID: attemptID})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, connect.NewError(connect.CodeNotFound, errors.New("hide attempt not found"))
-			}
-			return nil, fmt.Errorf("find the hide attempt: %w", err)
-		}
-		if attempt.Status != hidePending {
-			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_HIDE_NOT_PENDING, "the hide attempt is answered already")
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		hider, ok := combatantByID(cs, attempt.HiderID)
-		if !ok {
-			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_HIDE_NOT_PENDING, "the hider left the combat")
-		}
-		roll, err := decodeRoll(attempt.Roll)
-		if err != nil || roll == nil {
-			return nil, fmt.Errorf("read the roll of hide attempt %s: %w", attempt.ID, err)
-		}
-		line := contestLineHideRefused
-		status := hideRefused
-		var reason *string
-		if refuse {
-			if refusal != "" {
-				reason = &refusal
-			}
-		} else {
-			status, line = hideApplied, contestLineHideApplied
-			if err := c.q.DeleteHidingOfHider(ctx, hider.ID); err != nil {
-				return nil, fmt.Errorf("forget the earlier hiding: %w", err)
-			}
-			for _, o := range cs {
-				if o.ID == hider.ID || o.Defeated || !oppositeSide(hider, o) {
-					continue
-				}
-				ob, err := s.observerOf(ctx, c.tx, m.CampaignID, c.enc, o, int(roll.Total), cs, c.q)
-				if err != nil {
-					return nil, err
-				}
-				noticed := ob.noticed || slices.Contains(clearly, o.ID)
-				if err := c.q.UpsertHiding(ctx, playdb.UpsertHidingParams{
-					HiderID: hider.ID, ObserverID: o.ID, EncounterID: c.enc.ID, Noticed: noticed,
-					Total: roll.Total, Passive: clamp32(ob.passive, math.MinInt32, math.MaxInt32), CreatedAt: c.now,
-				}); err != nil {
-					return nil, fmt.Errorf("keep what a creature noticed: %w", err)
-				}
-			}
-		}
-		if _, err := c.q.SetHideAttemptDecision(ctx, playdb.SetHideAttemptDecisionParams{
-			EncounterID: c.enc.ID, ID: attempt.ID, Status: status, Refusal: reason, ResolvedAt: &c.now,
-		}); err != nil {
-			return nil, fmt.Errorf("decide the hide attempt: %w", err)
-		}
-		if err := touch(ctx, c); err != nil {
-			return nil, err
-		}
-		c.characterID = &hider.CharacterID
-		made = actionEvent{
-			Round: c.enc.Round, Secret: true, Actor: hider.ID,
-			Contest: &contestEvent{ContestID: attempt.ID, Line: line},
-		}
+		made = ev
 		return made, nil
 	})
 	if err != nil {
@@ -353,11 +361,106 @@ func (s *Service) ResolveHide(
 	if err != nil {
 		return nil, err
 	}
-	attempt, err := s.hideAttemptFor(ctx, m, res.encounterID, attemptID)
+	attempt, err := s.hideAttemptFor(ctx, m, res.encounterID, plan.attemptID)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.ResolveHideResponse{Encounter: out, Attempt: attempt}), nil
+}
+
+// decideHide is the change of ResolveHide: the master refuses the attempt, or applies it and each
+// creature that could see the hider keeps what it noticed.
+func (s *Service) decideHide(ctx context.Context, c *combatTx, m authz.Membership, p resolveHidePlan) (actionEvent, error) {
+	if err := notEnded(c.enc); err != nil {
+		return actionEvent{}, err
+	}
+	attempt, err := pendingHideAttempt(ctx, c, p.attemptID)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+	}
+	hider, ok := combatantByID(cs, attempt.HiderID)
+	if !ok {
+		return actionEvent{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_HIDE_NOT_PENDING, "the hider left the combat")
+	}
+	roll, err := decodeRoll(attempt.Roll)
+	if err != nil || roll == nil {
+		return actionEvent{}, fmt.Errorf("read the roll of hide attempt %s: %w", attempt.ID, err)
+	}
+	status, line := hideRefused, contestLineHideRefused
+	var reason *string
+	if p.refuse {
+		reason = refusalReason(p.refusal)
+	} else {
+		status, line = hideApplied, contestLineHideApplied
+		if err := s.noteObservers(ctx, c, m, hider, roll, p.clearly, cs); err != nil {
+			return actionEvent{}, err
+		}
+	}
+	if _, err := c.q.SetHideAttemptDecision(ctx, playdb.SetHideAttemptDecisionParams{
+		EncounterID: c.enc.ID, ID: attempt.ID, Status: status, Refusal: reason, ResolvedAt: &c.now,
+	}); err != nil {
+		return actionEvent{}, fmt.Errorf("decide the hide attempt: %w", err)
+	}
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
+	}
+	c.characterID = &hider.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: true, Actor: hider.ID,
+		Contest: &contestEvent{ContestID: attempt.ID, Line: line},
+	}, nil
+}
+
+// refusalReason is the master's reason as the row keeps it: none when he gave none.
+func refusalReason(refusal string) *string {
+	if refusal == "" {
+		return nil
+	}
+	return &refusal
+}
+
+// pendingHideAttempt reads the attempt the master decides, which has to be waiting for him.
+func pendingHideAttempt(ctx context.Context, c *combatTx, attemptID string) (playdb.CombatHideAttempt, error) {
+	attempt, err := c.q.GetHideAttempt(ctx, playdb.GetHideAttemptParams{EncounterID: c.enc.ID, ID: attemptID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return attempt, connect.NewError(connect.CodeNotFound, errors.New("hide attempt not found"))
+	}
+	if err != nil {
+		return attempt, fmt.Errorf("find the hide attempt: %w", err)
+	}
+	if attempt.Status != hidePending {
+		return attempt, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_HIDE_NOT_PENDING, "the hide attempt is answered already")
+	}
+	return attempt, nil
+}
+
+// noteObservers replaces the hiding of the hider with what each creature of the other side
+// notices of the roll: its passive Perception against the total, or seeing the hider clearly.
+func (s *Service) noteObservers(ctx context.Context, c *combatTx, m authz.Membership, hider playdb.Combatant, roll *contestRoll, clearly []string, cs []playdb.Combatant) error {
+	if err := c.q.DeleteHidingOfHider(ctx, hider.ID); err != nil {
+		return fmt.Errorf("forget the earlier hiding: %w", err)
+	}
+	for _, o := range cs {
+		if o.ID == hider.ID || o.Defeated || !oppositeSide(hider, o) {
+			continue
+		}
+		ob, err := s.observerOf(ctx, c.tx, m.CampaignID, c.enc, o, int(roll.Total), cs, c.q)
+		if err != nil {
+			return err
+		}
+		noticed := ob.noticed || slices.Contains(clearly, o.ID)
+		if err := c.q.UpsertHiding(ctx, playdb.UpsertHidingParams{
+			HiderID: hider.ID, ObserverID: o.ID, EncounterID: c.enc.ID, Noticed: noticed,
+			Total: roll.Total, Passive: clamp32(ob.passive, math.MinInt32, math.MaxInt32), CreatedAt: c.now,
+		}); err != nil {
+			return fmt.Errorf("keep what a creature noticed: %w", err)
+		}
+	}
+	return nil
 }
 
 // hideAttemptFor reads a hide attempt back as the caller may read it.
