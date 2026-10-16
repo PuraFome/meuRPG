@@ -199,56 +199,72 @@ export interface TurnBanner {
 export function turnBanner(e: Encounter): TurnBanner {
   const joint = jointTurn(e);
   const after = afterTurn(e);
-  if (e.masterTurn && !joint) {
-    return {
-      title: 'Vez do mestre',
-      who: null,
-      mine: false,
-      masterTurn: true,
-      next: null,
-      nextIsMine: false,
-      after: null,
-      joint: null,
-      ownEnded: false,
-    };
-  }
   if (joint) {
-    const own = joint.members.find((m) => m.mine);
-    const labels = joint.members.map((m) => m.label);
-    const named = joint.npcOnly ? npcPlural(labels) : null;
-    let title = named ? `Vez d${named}` : `Vez de ${listNames(labels)}`;
-    // A player's creatures alone: "Vez dos Lobos atrozes da Sálvia" (their player's own tab says "dos seus").
-    if (!own && joint.members.every(isCreature)) {
-      title = creatureTurnTitle(e, joint.members, false);
-    }
-    if (own && !own.turnPartEnded) {
-      title = `Sua vez, ${own.label}`;
-    } else if (own) {
-      title = 'Você encerrou a sua parte';
-    }
-    const who = own ?? joint.acting[0] ?? joint.members[0];
-    return {
-      title,
-      who,
-      mine: !!own && !own.turnPartEnded,
-      masterTurn: e.masterTurn,
-      next: null,
-      nextIsMine: after?.mine ?? false,
-      after,
-      joint,
-      ownEnded: !!own?.turnPartEnded,
-    };
+    return jointBanner(e, joint, after);
   }
+  return e.masterTurn ? MASTER_BANNER : soloBanner(e, after);
+}
+
+const MASTER_BANNER: TurnBanner = {
+  title: 'Vez do mestre',
+  who: null,
+  mine: false,
+  masterTurn: true,
+  next: null,
+  nextIsMine: false,
+  after: null,
+  joint: null,
+  ownEnded: false,
+};
+
+/** The title of a joint turn: the caller's own part when they have one, else who is on turn. */
+function jointTitle(e: Encounter, joint: JointTurn, own: Combatant | undefined): string {
+  if (own) {
+    return own.turnPartEnded ? 'Você encerrou a sua parte' : `Sua vez, ${own.label}`;
+  }
+  // A player's creatures alone: "Vez dos Lobos atrozes da Sálvia" (their player's own tab says "dos seus").
+  if (joint.members.every(isCreature)) {
+    return creatureTurnTitle(e, joint.members, false);
+  }
+  const labels = joint.members.map((m) => m.label);
+  const named = joint.npcOnly ? npcPlural(labels) : null;
+  return named ? `Vez d${named}` : `Vez de ${listNames(labels)}`;
+}
+
+function jointBanner(e: Encounter, joint: JointTurn, after: TurnBanner['after']): TurnBanner {
+  const own = joint.members.find((m) => m.mine);
+  return {
+    title: jointTitle(e, joint, own),
+    who: own ?? joint.acting[0] ?? joint.members[0],
+    mine: !!own && !own.turnPartEnded,
+    masterTurn: e.masterTurn,
+    next: null,
+    nextIsMine: after?.mine ?? false,
+    after,
+    joint,
+    ownEnded: !!own?.turnPartEnded,
+  };
+}
+
+/** The title of a turn of one: the caller's own, a creature's, or a name with its article. */
+function soloTitle(e: Encounter, who: Combatant | null): string {
+  if (!who) {
+    return 'Ninguém está na vez';
+  }
+  if (who.mine) {
+    return `Sua vez, ${who.label}`;
+  }
+  if (who.kind === CombatantKind.CREATURE) {
+    return creatureTurnTitle(e, [who], false);
+  }
+  return `Vez d${article(who.label) === 'a' ? 'a' : 'o'} ${who.label}`;
+}
+
+function soloBanner(e: Encounter, after: TurnBanner['after']): TurnBanner {
   const who = currentCombatant(e);
   const next = nextCombatant(e);
   return {
-    title: who
-      ? who.mine
-        ? `Sua vez, ${who.label}`
-        : who.kind === CombatantKind.CREATURE
-          ? creatureTurnTitle(e, [who], false)
-          : `Vez d${article(who.label) === 'a' ? 'a' : 'o'} ${who.label}`
-      : 'Ninguém está na vez',
+    title: soloTitle(e, who),
     who,
     mine: who?.mine ?? false,
     masterTurn: false,
