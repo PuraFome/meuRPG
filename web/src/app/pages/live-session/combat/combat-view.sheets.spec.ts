@@ -1331,6 +1331,36 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
     expect(m.view.reactionOpen()).toBe(false);
   });
 
+  it('lowers the reaction flag when the sheet fails, so the next window can open', async () => {
+    const m = await setup();
+    let fail: (err: unknown) => void = () => undefined;
+    m.view.dialog.open = () => ({
+      afterClosed: () =>
+        new Observable((subscriber) => {
+          fail = (err) => subscriber.error(err);
+        }),
+    });
+    m.view.sheets.reactions.reaction(shield());
+    expect(m.view.reactionOpen()).toBe(true);
+    fail(new Error('boom'));
+    expect(m.view.reactionOpen()).toBe(false);
+  });
+
+  it('lowers the reaction flag when the effect saving throw sheet fails', async () => {
+    const m = await setup();
+    let fail: (err: unknown) => void = () => undefined;
+    m.view.dialog.open = () => ({
+      afterClosed: () =>
+        new Observable((subscriber) => {
+          fail = (err) => subscriber.error(err);
+        }),
+    });
+    m.view.sheets.reactions.reaction(effectSave());
+    expect(m.view.reactionOpen()).toBe(true);
+    fail(new Error('boom'));
+    expect(m.view.reactionOpen()).toBe(false);
+  });
+
   it('hands over the monk’s throw-back request and marks its window as handled', async () => {
     const m = await setup({
       enc: theatre({
