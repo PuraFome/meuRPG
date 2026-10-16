@@ -228,7 +228,12 @@ func (s *Service) WatchGameSession(
 	}}); err != nil {
 		return nil // the app went away
 	}
+	return s.watchLoop(ctx, stream, m, sub, session)
+}
 
+// watchLoop sends the stream's events, its heartbeat and its checks until the
+// stream is over.
+func (s *Service) watchLoop(ctx context.Context, stream *connect.ServerStream[playv1.WatchGameSessionResponse], m authz.Membership, sub *live.Subscription, session playdb.GameSession) error {
 	heartbeat := time.NewTicker(s.live.Heartbeat)
 	defer heartbeat.Stop()
 	recheck := time.NewTicker(s.live.Recheck)
@@ -243,24 +248,8 @@ func (s *Service) WatchGameSession(
 		case <-lifetime.C:
 			return nil // the app opens a new one
 		case ev, ok := <-sub.Events():
-			if !ok {
-				switch err := sub.Err(); {
-				case errors.Is(err, live.ErrSlow):
-					return errWatchSlow()
-				case errors.Is(err, live.ErrReplaced):
-					return errWatchReplaced()
-				}
-				return nil // the server is shutting down
-			}
-			sub.Taken(ev) // a coalesced hint that follows is queued again
-			if ended := ev.Message.GetSessionEnded(); ended != nil && ended.GetGameSession().GetId() != session.ID {
-				continue // another session of the campaign; not this stream's
-			}
-			if err := stream.Send(ev.Message); err != nil {
-				return nil // the app went away
-			}
-			if ev.Message.GetSessionEnded() != nil {
-				return nil
+			if done, err := forwardHubEvent(stream, sub, session.ID, ev, ok); done {
+				return err
 			}
 		case <-heartbeat.C:
 			if err := stream.Send(&playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_Heartbeat_{
@@ -269,20 +258,51 @@ func (s *Service) WatchGameSession(
 				return nil
 			}
 		case <-recheck.C:
-			if _, err := authz.RecheckCampaignMember(ctx, m.CampaignID); err != nil {
-				return err // unauthenticated or not_found, as a new call would get
-			}
-			// A session that ended without this stream hearing about it
-			// (it cannot happen with one server; it costs one read).
-			current, err := s.queries.GetOpenGameSession(ctx, m.CampaignID)
-			switch {
-			case errors.Is(err, pgx.ErrNoRows) || (err == nil && current.ID != session.ID):
-				return s.sendSessionEnded(ctx, stream, session.ID, m.CampaignID)
-			case err != nil:
-				return s.dbError(ctx, "check the open session", err)
+			if done, err := s.recheckWatch(ctx, stream, m.CampaignID, session.ID); done {
+				return err
 			}
 		}
 	}
+}
+
+// forwardHubEvent sends an event of the hub to the app. It says whether the
+// stream is over, and why: a nil error is an ordinary end.
+func forwardHubEvent(stream *connect.ServerStream[playv1.WatchGameSessionResponse], sub *live.Subscription, sessionID string, ev live.Event, ok bool) (bool, error) {
+	if !ok {
+		switch err := sub.Err(); {
+		case errors.Is(err, live.ErrSlow):
+			return true, errWatchSlow()
+		case errors.Is(err, live.ErrReplaced):
+			return true, errWatchReplaced()
+		}
+		return true, nil // the server is shutting down
+	}
+	sub.Taken(ev) // a coalesced hint that follows is queued again
+	if ended := ev.Message.GetSessionEnded(); ended != nil && ended.GetGameSession().GetId() != sessionID {
+		return false, nil // another session of the campaign; not this stream's
+	}
+	if err := stream.Send(ev.Message); err != nil {
+		return true, nil // the app went away
+	}
+	return ev.Message.GetSessionEnded() != nil, nil
+}
+
+// recheckWatch is what a stream does every Recheck: it reads the login again
+// and the open session. It says whether the stream is over, and why.
+func (s *Service) recheckWatch(ctx context.Context, stream *connect.ServerStream[playv1.WatchGameSessionResponse], campaignID, sessionID string) (bool, error) {
+	if _, err := authz.RecheckCampaignMember(ctx, campaignID); err != nil {
+		return true, err // unauthenticated or not_found, as a new call would get
+	}
+	// A session that ended without this stream hearing about it
+	// (it cannot happen with one server; it costs one read).
+	current, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows) || (err == nil && current.ID != sessionID):
+		return true, s.sendSessionEnded(ctx, stream, sessionID, campaignID)
+	case err != nil:
+		return true, s.dbError(ctx, "check the open session", err)
+	}
+	return false, nil
 }
 
 // sendSessionEnded sends session_ended for a session that ended while the
