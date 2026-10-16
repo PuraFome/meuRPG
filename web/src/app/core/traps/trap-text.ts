@@ -130,35 +130,37 @@ function damagesText(damage: readonly TrapDamage[]): string {
   return damage.map(damageText).join(' e ');
 }
 
+type TrapAttack = NonNullable<TrapEffect['attack']>;
+type TrapSave = NonNullable<TrapEffect['save']>;
+
+function attackText(a: TrapAttack): string {
+  const n = a.count > 1 ? ` (${a.count} ataques)` : '';
+  return `Ataque +${a.bonus}${n}: ${a.damage ? damageText(a.damage) : 'sem dano'}`;
+}
+
+function saveText(s: TrapSave): string {
+  const fail = [
+    s.onFail?.damage.length ? damagesText(s.onFail.damage) : '',
+    s.onFail?.condition ? `fica ${s.onFail.condition.conditionPt}` : '',
+  ].filter(Boolean);
+  const pass = s.onPass === TrapPassOutcome.HALF ? 'metade do dano' : 'nada';
+  const who = s.appliesTo === TrapSaveApplies.HIT ? ' (de quem foi atingido)' : '';
+  return `Resistência de ${ABILITY[s.ability] ?? 'habilidade'} CD ${s.dc}${who}: ${fail.join(' e ') || 'sem efeito'}; quem passa leva ${pass}`;
+}
+
 /** What the trap does, in one or two sentences ("Dano: 2d6 de concussão."). Empty when it only describes. */
 export function effectText(effect: TrapEffect | undefined): string {
   if (!effect) {
     return '';
   }
-  const parts: string[] = [];
-  if (effect.attack) {
-    const a = effect.attack;
-    const n = a.count > 1 ? ` (${a.count} ataques)` : '';
-    parts.push(`Ataque +${a.bonus}${n}: ${a.damage ? damageText(a.damage) : 'sem dano'}`);
-  }
-  if (effect.damage.length > 0) {
-    parts.push(`Dano: ${damagesText(effect.damage)}`);
-  }
-  if (effect.save) {
-    const s = effect.save;
-    const fail = [
-      s.onFail?.damage.length ? damagesText(s.onFail.damage) : '',
-      s.onFail?.condition ? `fica ${s.onFail.condition.conditionPt}` : '',
-    ].filter(Boolean);
-    const pass = s.onPass === TrapPassOutcome.HALF ? 'metade do dano' : 'nada';
-    const who = s.appliesTo === TrapSaveApplies.HIT ? ' (de quem foi atingido)' : '';
-    parts.push(
-      `Resistência de ${ABILITY[s.ability] ?? 'habilidade'} CD ${s.dc}${who}: ${fail.join(' e ') || 'sem efeito'}; quem passa leva ${pass}`,
-    );
-  }
-  if (effect.conditions.length > 0) {
-    parts.push(`Deixa ${listNames(effect.conditions.map((c) => c.conditionPt))}`);
-  }
+  const parts = [
+    effect.attack ? attackText(effect.attack) : '',
+    effect.damage.length > 0 ? `Dano: ${damagesText(effect.damage)}` : '',
+    effect.save ? saveText(effect.save) : '',
+    effect.conditions.length > 0
+      ? `Deixa ${listNames(effect.conditions.map((c) => c.conditionPt))}`
+      : '',
+  ].filter((part) => part !== '');
   if (parts.length === 0) {
     return '';
   }

@@ -199,6 +199,31 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
     expect(flat(el.querySelector('.list__n'))).toContain('3 magias');
   });
 
+  it('cleans what the link names before asking: levels once and sorted, a school that is not one dropped, the name cut', async () => {
+    await open(
+      `/campaigns/camp-1/spells?q=${'a'.repeat(120)}&levels=3,x,1,3,10&school=school:nope&class=class:wizard`,
+    );
+    expect(requests[0]).toMatchObject({
+      query: 'a'.repeat(100),
+      levels: [1, 3],
+      schoolKeys: [],
+      classKey: 'class:wizard',
+    });
+  });
+
+  it('writes the filters back into the link, without the empty ones', async () => {
+    const { settle } = await open(
+      '/campaigns/camp-1/spells?q=%20maos%20&levels=2,0&school=school:evocation&mine=1',
+    );
+    await settle();
+    const url = TestBed.inject(Router).url;
+    expect(url).toContain('q=maos');
+    expect(url).toContain('levels=0,2');
+    expect(url).toContain('school=school:evocation');
+    expect(url).toContain('mine=1');
+    expect(url).not.toContain('class=');
+  });
+
   it('gives the master no "Só as que posso aprender"', async () => {
     role = Role.MASTER;
     const { el } = await open('/campaigns/camp-1/spells?mine=1');

@@ -11,6 +11,7 @@ import {
   DerivedClassSchema,
   DerivedSheetSchema,
   HitDiceSchema,
+  PactMagicSchema,
   SpellSchema,
   SpellSlotsSchema,
   SpellcastingSchema,
@@ -614,5 +615,243 @@ describe('changeRows: a class new to the sheet (SRD 5.1, "Multiclassing")', () =
     const plain = changeRows(pensantus(false), pensantus(true), ctx);
     expect(plain.map((r) => r.key)).not.toContain('total-level');
     expect(plain.map((r) => r.key)).not.toContain('equipment');
+  });
+});
+
+describe('changeRows: the lines the other cases leave out', () => {
+  const sheet = (init: Parameters<typeof create<typeof DerivedSheetSchema>>[1] = {}) =>
+    create(DerivedSheetSchema, {
+      classes: [
+        create(DerivedClassSchema, { classKey: 'class:warlock', namePt: 'Bruxo', level: 2 }),
+      ],
+      totalLevel: 2,
+      proficiencyBonus: 2,
+      armorClass: 12,
+      initiative: 1,
+      passivePerception: 10,
+      passiveInsight: 11,
+      passiveInvestigation: 9,
+      ...init,
+    });
+  const warlockCtx: SummaryContext = { ...ctx, classKey: 'class:warlock', spellbook: false };
+  const caster = (classKey: string, classNamePt: string, over = {}) =>
+    create(SpellcastingSchema, { classKey, classNamePt, saveDc: 12, attackBonus: 4, ...over });
+  const keys = (rows: { key: string }[]) => rows.map((r) => r.key);
+
+  it('shows the armour, the initiative, the proficiency and the passive scores that move', () => {
+    const rows = changeRows(
+      sheet(),
+      sheet({
+        proficiencyBonus: 3,
+        armorClass: 13,
+        initiative: 2,
+        passivePerception: 11,
+        passiveInsight: 12,
+        passiveInvestigation: 10,
+      }),
+      warlockCtx,
+    );
+    expect(rows.slice(1)).toEqual([
+      { key: 'proficiency', label: 'Bônus de proficiência', before: '+2', after: '+3', sub: '' },
+      { key: 'armor', label: 'Classe de Armadura', before: '12', after: '13', sub: '' },
+      { key: 'initiative', label: 'Iniciativa', before: '+1', after: '+2', sub: '' },
+      { key: 'passive-perception', label: 'Percepção passiva', before: '10', after: '11', sub: '' },
+      {
+        key: 'passive-investigation',
+        label: 'Investigação passiva',
+        before: '9',
+        after: '10',
+        sub: '',
+      },
+      { key: 'passive-insight', label: 'Intuição passiva', before: '11', after: '12', sub: '' },
+    ]);
+  });
+
+  it('shows only the level when nothing else moves', () => {
+    expect(keys(changeRows(sheet(), sheet(), warlockCtx))).toEqual(['level']);
+  });
+
+  it('joins several classes with a slash on a sheet that is not multiclassing', () => {
+    const two = sheet({
+      classes: [
+        create(DerivedClassSchema, { namePt: 'Bruxo', level: 2 }),
+        create(DerivedClassSchema, { namePt: 'Mago', level: 1 }),
+      ],
+    });
+    expect(changeRows(two, two, warlockCtx)[0]).toMatchObject({
+      before: 'Bruxo 2 / Mago 1',
+      after: 'Bruxo 2 / Mago 1',
+    });
+  });
+
+  it("names the pact slots, with the tag of the table when the class is the table's own", () => {
+    const before = sheet({
+      spellcasting: [caster('class:warlock', 'Bruxo')],
+      pactMagic: create(PactMagicSchema, { count: 1, slotLevel: 1 }),
+    });
+    const after = sheet({
+      spellcasting: [caster('class:warlock', 'Bruxo')],
+      pactMagic: create(PactMagicSchema, { count: 2, slotLevel: 1 }),
+    });
+    const free = changeRows(before, after, warlockCtx).find((r) => r.key === 'pact');
+    expect(free).toMatchObject({ label: 'Espaços do pacto', sub: '' });
+    expect(plain(free?.before ?? '')).toBe('1 espaço de 1º nível');
+    expect(plain(free?.after ?? '')).toBe('2 espaços de 1º nível');
+    expect(free?.table).toBeUndefined();
+    const table = changeRows(before, after, { ...warlockCtx, table: true }).find(
+      (r) => r.key === 'pact',
+    );
+    expect(table).toMatchObject({ sub: 'Da tabela da classe', table: true });
+    // No pact before: "nenhum espaço"; no row at all when the pact does not move.
+    const first = changeRows(
+      sheet({ spellcasting: [caster('class:warlock', 'Bruxo')] }),
+      after,
+      warlockCtx,
+    );
+    expect(plain(first.find((r) => r.key === 'pact')?.before ?? '')).toBe('nenhum espaço');
+    expect(keys(changeRows(after, after, warlockCtx))).not.toContain('pact');
+  });
+
+  it('shows the prepared spells of a class that did not cast before as a dash', () => {
+    const after = sheet({ spellcasting: [caster('class:warlock', 'Bruxo', { preparedMax: 3 })] });
+    const rows = changeRows(sheet(), after, { ...warlockCtx, prepared: ['Luz'] });
+    expect(rows.find((r) => r.key === 'prepared')).toEqual({
+      key: 'prepared',
+      label: 'Magias preparadas',
+      before: '—',
+      after: '3',
+      sub: 'Nova: Luz',
+    });
+  });
+
+  it('lists every circle of slots that either sheet has, in order', () => {
+    const before = sheet({ spellSlots: [create(SpellSlotsSchema, { level: 3, count: 1 })] });
+    const after = sheet({
+      spellSlots: [
+        create(SpellSlotsSchema, { level: 1, count: 4 }),
+        create(SpellSlotsSchema, { level: 3, count: 2 }),
+      ],
+      spellcasting: [caster('class:warlock', 'Bruxo')],
+    });
+    const rows = changeRows(before, after, warlockCtx).filter((r) => r.key.startsWith('slots-'));
+    expect(rows.map((r) => [r.key, r.before, r.after])).toEqual([
+      ['slots-1', '0', '4'],
+      ['slots-3', '1', '2'],
+    ]);
+  });
+});
+
+describe('changeRows: what a new class says about its slots and its features', () => {
+  const sheetOf = (casters: [string, string][], classes: [string, number][], extra = {}) =>
+    create(DerivedSheetSchema, {
+      classes: classes.map(([k, level]) =>
+        create(DerivedClassSchema, { classKey: k, namePt: k.slice(6), level }),
+      ),
+      totalLevel: 6,
+      nextLevelXp: 0,
+      proficiencyBonus: 3,
+      spellcasting: casters.map(([classKey, classNamePt]) =>
+        create(SpellcastingSchema, { classKey, classNamePt, saveDc: 12, attackBonus: 4 }),
+      ),
+      ...extra,
+    });
+  const slots = [create(SpellSlotsSchema, { level: 1, count: 2 })];
+  const mcCtx = (summary: ReturnType<typeof create<typeof LevelUpMulticlassSummarySchema>>) =>
+    ({
+      ...ctx,
+      cantrips: [],
+      spells: [],
+      prepared: [],
+      multiclass: { newClassName: 'Bruxa', summary, newFeatures: [] },
+    }) satisfies SummaryContext;
+  const slotSub = (after: DerivedSheet, summary: Parameters<typeof mcCtx>[0] | null) =>
+    changeRows(sheetOf([], [['class:fighter', 5]]), after, {
+      ...mcCtx(summary ?? create(LevelUpMulticlassSummarySchema)),
+      classKey: after.spellcasting[0]?.classKey ?? 'class:wizard',
+      multiclass: { newClassName: 'Bruxa', summary, newFeatures: [] },
+    }).find((r) => r.key === 'slots-1')?.sub;
+
+  it('says the slots are those of the table of the one class that casts, when its level is not the caster level', () => {
+    const one = sheetOf([['class:druid', 'Druida']], [['class:druid', 2]], { spellSlots: slots });
+    const summary = create(LevelUpMulticlassSummarySchema, { casterLevelAfter: 1 });
+    expect(slotSub(one, summary)).toBe('Espaços da tabela da Druida.');
+    const mage = sheetOf([['class:wizard', 'Mago']], [['class:wizard', 2]], { spellSlots: slots });
+    expect(slotSub(mage, summary)).toBe('Espaços da tabela do Mago.');
+    // The casting class is not among the classes of the sheet: level 0.
+    const lost = sheetOf([['class:wizard', 'Mago']], [['class:fighter', 5]], { spellSlots: slots });
+    expect(slotSub(lost, summary)).toBe('Espaços da tabela do Mago.');
+  });
+
+  it('says "a Bruxa" when the one caster has that level, and nothing when two classes cast without the table', () => {
+    const witch = sheetOf([['class:warlock', 'Bruxa']], [['class:warlock', 1]], {
+      spellSlots: slots,
+    });
+    const summary = create(LevelUpMulticlassSummarySchema, { casterLevelAfter: 1 });
+    expect(slotSub(witch, summary)).toBe('Nível de conjurador 1: só a Bruxa conta.');
+    const two = sheetOf(
+      [
+        ['class:wizard', 'Mago'],
+        ['class:cleric', 'Clérigo'],
+      ],
+      [['class:wizard', 2]],
+      { spellSlots: slots },
+    );
+    expect(slotSub(two, summary)).toBe('');
+    // No summary from the server: nothing to explain.
+    expect(slotSub(witch, null)).toBe('');
+  });
+
+  it('lists the proficiencies the table gives, the exceptions with no features, and leaves the feature line out when it has nothing', () => {
+    const after = sheetOf([], [['class:fighter', 5]]);
+    const withProf = changeRows(sheetOf([], [['class:fighter', 5]]), after, {
+      ...mcCtx(
+        create(LevelUpMulticlassSummarySchema, {
+          proficienciesGained: [
+            { key: 'a', namePt: 'Armadura leve' },
+            { key: 'b', namePt: 'Escudos' },
+          ],
+          exceptions: [
+            LevelUpMulticlassException.EXTRA_ATTACK,
+            LevelUpMulticlassException.CHANNEL_DIVINITY,
+          ],
+        }),
+      ),
+    });
+    expect(withProf.find((r) => r.key === 'proficiencies')).toMatchObject({
+      after: 'Armadura leve e Escudos',
+      sub: 'Só as da tabela de multiclasse.',
+    });
+    expect(withProf.find((r) => r.key === 'new-class-features')).toMatchObject({
+      after: 'nenhuma',
+      sub: expect.stringContaining('Ataque Extra não se soma'),
+    });
+    const bare = changeRows(
+      sheetOf([], [['class:fighter', 5]]),
+      after,
+      mcCtx(create(LevelUpMulticlassSummarySchema)),
+    );
+    expect(bare.map((r) => r.key)).not.toContain('new-class-features');
+    expect(bare.find((r) => r.key === 'total-level')?.sub).toBe(
+      'O XP para este nível é o do nível total.',
+    );
+    const noSummary = changeRows(after, after, {
+      ...ctx,
+      multiclass: { newClassName: 'Druida', summary: null, newFeatures: ['Conjuração'] },
+    });
+    expect(noSummary.find((r) => r.key === 'proficiencies')).toMatchObject({
+      after: 'nenhuma',
+      sub: 'A tabela de multiclasse da Druida não dá nenhuma.',
+    });
+  });
+
+  it('says the proficiency bonus moved by the total level', () => {
+    const before = sheetOf([], [['class:fighter', 4]], { proficiencyBonus: 2, totalLevel: 4 });
+    const after = sheetOf([], [['class:fighter', 5]], { proficiencyBonus: 3, totalLevel: 5 });
+    const rows = changeRows(before, after, mcCtx(create(LevelUpMulticlassSummarySchema)));
+    expect(rows.find((r) => r.key === 'proficiency')).toMatchObject({
+      before: '+2',
+      after: '+3',
+      sub: 'Pelo nível total (5).',
+    });
   });
 });

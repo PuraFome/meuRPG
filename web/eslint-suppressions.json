@@ -14,17 +14,6 @@
       "count": 3
     }
   },
-  "src/app/core/combat/cast-flow.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 3
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/core/combat/combat-dice.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
@@ -35,24 +24,9 @@
       "count": 2
     }
   },
-  "src/app/core/combat/combat-log.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/combat/combat-notices.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/core/combat/combat-options.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    }
-  },
-  "src/app/core/combat/combat-view.ts": {
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/combat/creature-names.ts": {
@@ -63,11 +37,6 @@
   "src/app/core/combat/death-saves.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    }
-  },
-  "src/app/core/combat/spell-summary.ts": {
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/content/option-switches.spec.ts": {
@@ -140,41 +109,9 @@
       "count": 9
     }
   },
-  "src/app/core/images/upload-errors.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 5
-    },
-    "complexity": {
-      "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/app/core/levelup/levelup-draft.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/levelup/levelup-errors.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 2
-    }
-  },
   "src/app/core/levelup/levelup-feed.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 3
-    }
-  },
-  "src/app/core/levelup/levelup-summary.ts": {
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/levelup/levelup-testing.ts": {
@@ -185,14 +122,6 @@
   "src/app/core/maps/calibration.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 3
-    }
-  },
-  "src/app/core/maps/door-paint.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 2
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/maps/dungeon-layout.ts": {
@@ -278,56 +207,8 @@
       "count": 3
     }
   },
-  "src/app/core/progression/xp-errors.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "src/app/core/puzzles/puzzle-draft.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 5
-    },
-    "complexity": {
-      "count": 2
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/puzzles/puzzle-errors.ts": {
-    "complexity": {
-      "count": 2
-    }
-  },
-  "src/app/core/puzzles/puzzle-format.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 7
-    },
-    "complexity": {
-      "count": 1
-    }
-  },
-  "src/app/core/puzzles/puzzle-play.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 3
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/core/puzzles/puzzle-text.ts": {
     "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    }
-  },
-  "src/app/core/puzzles/puzzles-testing.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 19
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -349,11 +230,6 @@
   "src/app/core/traps/trap-search.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    }
-  },
-  "src/app/core/traps/trap-text.ts": {
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/units.ts": {
@@ -646,14 +522,6 @@
       "count": 1
     }
   },
-  "src/app/pages/character-editor/character-editor-source.live.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/character-editor/character-editor.spec.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 2
@@ -661,9 +529,6 @@
   },
   "src/app/pages/character-editor/character-editor.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -768,19 +633,8 @@
       "count": 1
     }
   },
-  "src/app/pages/character-sheet/character-sheet-source.live.ts": {
-    "complexity": {
-      "count": 3
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/character-sheet/character-sheet.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -820,9 +674,6 @@
     },
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/pages/character-sheet/features-panel/features-panel.ts": {
@@ -855,11 +706,6 @@
   },
   "src/app/pages/character-sheet/proficiency-column/proficiency-column.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/pages/character-sheet/sheet-format.ts": {
-    "complexity": {
       "count": 1
     }
   },
@@ -907,9 +753,6 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 4
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -938,9 +781,6 @@
   },
   "src/app/pages/content/content-entry/content-entry.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -1110,16 +950,8 @@
       "count": 1
     }
   },
-  "src/app/pages/level-up/level-up-session.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/pages/level-up/level-up.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -2174,9 +2006,6 @@
   "src/app/pages/spells/spells.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/pages/table-rules/fog-switch/fog-switch.ts": {
@@ -2199,9 +2028,6 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -2771,16 +2597,6 @@
   "src/test-settle.spec.ts": {
     "no-restricted-syntax": {
       "count": 2
-    }
-  },
-  "src/app/core/combat/combat-client.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/combat/reactions.ts": {
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/core/maps/maps-client.ts": {

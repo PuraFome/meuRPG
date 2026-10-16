@@ -116,69 +116,19 @@ var generatedKinds = map[string]bool{"": true, "scene": true, "map_scene": true,
 func (p *imagesPart) Stage(ctx context.Context, in *campaignpackage.Import) error {
 	staged := &stagedImages{byOld: map[string]*stagedImage{}}
 	in.Set(stashImages, staged)
-	entries := in.Pkg.Entries(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGES)
-	files := in.Pkg.Entries(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE)
-	if len(entries) == 0 {
-		if len(files) > 0 {
-			in.Problem(pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_MISSING_ENTRY, 0)
-		}
-		return nil
-	}
-	if len(entries) != 1 || entries[0].GetPath() != campaignpackage.ImagesEntry {
-		in.Problem(pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY, 0)
-		return nil
-	}
-	var list pkgv1.PackageImages
-	if !in.Read(campaignpackage.ImagesEntry, &list) {
+	list, ok := p.readImageList(in)
+	if !ok {
 		return nil
 	}
 	s := p.s
-	image := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE
-	if int32(len(list.GetImages())) > s.maxImages { //nolint:gosec // G115: a list of at most 2,000 entries
-		in.Problem(image, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_LIMIT, int64(s.maxImages))
-		return nil
-	}
 	base := s.now()
 	used := map[string]bool{}
 	var bytesTotal int64
 	for i, img := range list.GetImages() {
-		name, err := names.Clean(img.GetName(), maxNameLength)
-		if err != nil {
-			in.Problem(image, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
-			continue
-		}
-		id, ok := in.IDs.Define(nsImage, img.GetId())
-		if !ok || !generatedKinds[img.GetGeneratedKind()] || (img.GetGeneratedKind() != "" && !img.GetGenerated()) {
-			in.Problem(image, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
-			continue
-		}
-		entry, ok := in.Pkg.Entry(img.GetFile())
-		switch {
-		case !ok || entry.GetKind() != pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE:
-			in.Problem(image, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_MISSING_ENTRY, 0)
-			continue
-		case used[img.GetFile()]:
-			in.Problem(image, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_DUPLICATE, 0)
-			continue
-		}
-		used[img.GetFile()] = true
-		si := &stagedImage{
-			oldID: img.GetId(), id: id, name: name, generated: img.GetGenerated(), generatedKind: img.GetGeneratedKind(),
-			createdAt: base.Add(-time.Duration(i) * orderStep), // the list is newest first
-		}
-		si.parentOld = in.IDs.Ref(nsImage, img.GetParentImageId(), image, name)
-		si.copyOld = in.IDs.Ref(nsImage, img.GetCopyOfImageId(), image, name)
-		si.parentOld, si.copyOld = img.GetParentImageId(), img.GetCopyOfImageId()
-		if !p.stageFile(ctx, in, si, img.GetFile()) {
-			continue
-		}
-		bytesTotal += int64(si.size)
-		staged.list = append(staged.list, si)
-		staged.byOld[si.oldID] = si
-		in.Counts.Images++
-		in.Counts.ImageBytes += entry.GetSize()
+		bytesTotal += p.stageListed(ctx, in, staged, used, img, base.Add(-time.Duration(i)*orderStep)) // the list is newest first
 	}
-	for _, f := range files {
+	image := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE
+	for _, f := range in.Pkg.Entries(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE) {
 		if !used[f.GetPath()] {
 			in.Problem(image, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY, 0)
 		}
@@ -187,6 +137,86 @@ func (p *imagesPart) Stage(ctx context.Context, in *campaignpackage.Import) erro
 		in.Problem(image, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_LIMIT, int64(s.maxBytes))
 	}
 	return nil
+}
+
+// readImageList reads the package's list of images. It says whether there is a
+// list to stage: a package with no list stages nothing (and has no image
+// files), and one with a list that is not the one entry, or is too long, is a
+// problem and stages nothing either.
+func (p *imagesPart) readImageList(in *campaignpackage.Import) (*pkgv1.PackageImages, bool) {
+	image := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE
+	entries := in.Pkg.Entries(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGES)
+	if len(entries) == 0 {
+		if len(in.Pkg.Entries(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE)) > 0 {
+			in.Problem(image, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_MISSING_ENTRY, 0)
+		}
+		return nil, false
+	}
+	if len(entries) != 1 || entries[0].GetPath() != campaignpackage.ImagesEntry {
+		in.Problem(image, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY, 0)
+		return nil, false
+	}
+	var list pkgv1.PackageImages
+	if !in.Read(campaignpackage.ImagesEntry, &list) {
+		return nil, false
+	}
+	if int32(len(list.GetImages())) > p.s.maxImages { //nolint:gosec // G115: a list of at most 2,000 entries
+		in.Problem(image, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_LIMIT, int64(p.s.maxImages))
+		return nil, false
+	}
+	return &list, true
+}
+
+// stageListed checks one image of the list and stages it. It returns the bytes it
+// adds to the gallery, 0 for an image with a problem (recorded).
+func (p *imagesPart) stageListed(ctx context.Context, in *campaignpackage.Import, staged *stagedImages, used map[string]bool, img *pkgv1.PackageImage, createdAt time.Time) int64 {
+	image := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE
+	name, err := names.Clean(img.GetName(), maxNameLength)
+	if err != nil {
+		in.Problem(image, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
+		return 0
+	}
+	id, ok := in.IDs.Define(nsImage, img.GetId())
+	if !ok || !generatedKinds[img.GetGeneratedKind()] || (img.GetGeneratedKind() != "" && !img.GetGenerated()) {
+		in.Problem(image, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
+		return 0
+	}
+	entry, ok := claimImageFile(in, used, img.GetFile(), name)
+	if !ok {
+		return 0
+	}
+	si := &stagedImage{
+		oldID: img.GetId(), id: id, name: name, generated: img.GetGenerated(), generatedKind: img.GetGeneratedKind(),
+		createdAt: createdAt,
+	}
+	si.parentOld = in.IDs.Ref(nsImage, img.GetParentImageId(), image, name)
+	si.copyOld = in.IDs.Ref(nsImage, img.GetCopyOfImageId(), image, name)
+	si.parentOld, si.copyOld = img.GetParentImageId(), img.GetCopyOfImageId()
+	if !p.stageFile(ctx, in, si, img.GetFile()) {
+		return 0
+	}
+	staged.list = append(staged.list, si)
+	staged.byOld[si.oldID] = si
+	in.Counts.Images++
+	in.Counts.ImageBytes += entry.GetSize()
+	return int64(si.size)
+}
+
+// claimImageFile finds the image file an entry of the list names, which must be an
+// image file that no other image of the list uses, and marks it used.
+func claimImageFile(in *campaignpackage.Import, used map[string]bool, file, name string) (*pkgv1.PackageEntry, bool) {
+	image := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_IMAGE
+	entry, ok := in.Pkg.Entry(file)
+	switch {
+	case !ok || entry.GetKind() != pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_IMAGE_FILE:
+		in.Problem(image, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_MISSING_ENTRY, 0)
+		return nil, false
+	case used[file]:
+		in.Problem(image, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_DUPLICATE, 0)
+		return nil, false
+	}
+	used[file] = true
+	return entry, true
 }
 
 // stageFile reads one image file through the upload's pipeline. It reports
@@ -252,6 +282,14 @@ func (p *imagesPart) Apply(ctx context.Context, tx pgx.Tx, in *campaignpackage.I
 		return nil
 	}
 	q := p.s.queries.WithTx(tx)
+	if err := insertStagedImages(ctx, q, in, staged); err != nil {
+		return err
+	}
+	return linkStagedImages(ctx, q, in, staged)
+}
+
+// insertStagedImages writes the rows of the staged images.
+func insertStagedImages(ctx context.Context, q *mapsdb.Queries, in *campaignpackage.Import, staged *stagedImages) error {
 	for _, si := range staged.list {
 		if err := q.InsertImportedGalleryImage(ctx, mapsdb.InsertImportedGalleryImageParams{
 			ID: si.id, CampaignID: in.CampaignID, UploadedBy: &in.UserID, Name: si.name, ContentType: si.contentType,
@@ -261,6 +299,12 @@ func (p *imagesPart) Apply(ctx context.Context, tx pgx.Tx, in *campaignpackage.I
 			return fmt.Errorf("insert an imported image: %w", err)
 		}
 	}
+	return nil
+}
+
+// linkStagedImages points the rows at their parent and at the image they are
+// the copy of, once every row exists.
+func linkStagedImages(ctx context.Context, q *mapsdb.Queries, in *campaignpackage.Import, staged *stagedImages) error {
 	for _, si := range staged.list {
 		parent, copyOf := staged.refs(in, si)
 		if parent == nil && copyOf == nil {
@@ -353,6 +397,8 @@ func (p *mapsPart) Export(ctx context.Context, tx pgx.Tx, campaignID string, sna
 	return nil
 }
 
+// exportMap builds a map's entry: the map, its layers and its points with the
+// actions and clues of the scenes.
 func (p *mapsPart) exportMap(ctx context.Context, q *mapsdb.Queries, m mapsdb.Map) (*pkgv1.PackageMap, error) {
 	out := &pkgv1.PackageMap{
 		Id: m.ID, Name: m.Name, ImageId: m.ImageID, GridFactor: m.GridFactor, Revealed: m.RevealedAt != nil,
@@ -361,14 +407,9 @@ func (p *mapsPart) exportMap(ctx context.Context, q *mapsdb.Queries, m mapsdb.Ma
 	if m.GridColumns != nil {
 		out.GridColumns = *m.GridColumns
 	}
-	layers, err := q.GetMapLayers(ctx, m.ID)
-	switch {
-	case err == nil:
-		out.Layers = &pkgv1.PackageLayers{
-			DifficultTerrain: layers.DifficultTerrain, Walls: layers.Walls, Cover: layers.Cover, Light: layers.Light, Doors: layers.Doors,
-		}
-	case !errors.Is(err, pgx.ErrNoRows):
-		return nil, fmt.Errorf("read a map's layers: %w", err)
+	var err error
+	if out.Layers, err = exportLayers(ctx, q, m.ID); err != nil {
+		return nil, err
 	}
 	points, err := q.ListMapPoints(ctx, m.ID)
 	if err != nil {
@@ -387,23 +428,44 @@ func (p *mapsPart) exportMap(ctx context.Context, q *mapsdb.Queries, m mapsdb.Ma
 		if err != nil {
 			return nil, err
 		}
-		for _, a := range actions {
-			if a.PointID == pt.ID {
-				act := &pkgv1.PackageAction{Key: a.Key, Name: a.Name, MaxAttempts: a.MaxAttempts}
-				if a.Dc != nil {
-					act.Dc = *a.Dc
-				}
-				pp.Actions = append(pp.Actions, act)
-			}
-		}
-		for _, c := range clues {
-			if c.PointID == pt.ID {
-				pp.Clues = append(pp.Clues, &pkgv1.PackageClue{Id: c.ID, Text: c.Text})
-			}
-		}
+		pp.Actions, pp.Clues = exportSceneRows(pt.ID, actions, clues)
 		out.Points = append(out.Points, pp)
 	}
 	return out, nil
+}
+
+// exportLayers reads a map's painted layers, nil when it has none.
+func exportLayers(ctx context.Context, q *mapsdb.Queries, mapID string) (*pkgv1.PackageLayers, error) {
+	layers, err := q.GetMapLayers(ctx, mapID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read a map's layers: %w", err)
+	}
+	return &pkgv1.PackageLayers{
+		DifficultTerrain: layers.DifficultTerrain, Walls: layers.Walls, Cover: layers.Cover, Light: layers.Light, Doors: layers.Doors,
+	}, nil
+}
+
+// exportSceneRows picks a point's actions and clues out of the map's.
+func exportSceneRows(pointID string, actions []mapsdb.SceneAction, clues []mapsdb.SceneClue) (outActions []*pkgv1.PackageAction, outClues []*pkgv1.PackageClue) {
+	for _, a := range actions {
+		if a.PointID != pointID {
+			continue
+		}
+		act := &pkgv1.PackageAction{Key: a.Key, Name: a.Name, MaxAttempts: a.MaxAttempts}
+		if a.Dc != nil {
+			act.Dc = *a.Dc
+		}
+		outActions = append(outActions, act)
+	}
+	for _, c := range clues {
+		if c.PointID == pointID {
+			outClues = append(outClues, &pkgv1.PackageClue{Id: c.ID, Text: c.Text})
+		}
+	}
+	return outActions, outClues
 }
 
 func (p *mapsPart) exportPoint(pt mapsdb.MapPoint) (*pkgv1.PackagePoint, error) {
@@ -450,93 +512,125 @@ func (p *mapsPart) Stage(_ context.Context, in *campaignpackage.Import) error {
 		if !in.Read(e.GetPath(), &pm) {
 			continue
 		}
-		sm := p.stageMap(in, &pm, imgs, base.Add(time.Duration(i)*orderStep))
-		if sm != nil {
-			set.maps = append(set.maps, sm)
-			in.Counts.Maps++
-			for _, pt := range sm.points {
-				in.Facts.PointMap[pt.oldID] = sm.oldID
-				in.Facts.PointKind[pt.oldID] = pt.kind
-				in.Facts.PointName[pt.oldID] = pt.name
-			}
+		if sm := p.stageMap(in, &pm, imgs, base.Add(time.Duration(i)*orderStep)); sm != nil {
+			set.add(in, sm)
 		}
 	}
-	in.Facts.DoorAt = func(mapID string, col, row int) bool {
-		for _, sm := range set.maps {
-			if sm.oldID != mapID || sm.doors == nil {
-				continue
-			}
-			sq := grid.Square{Col: col, Row: row}
-			return sm.grid.Contains(sq) && sm.doors.At(sq) != grid.DoorNone
-		}
-		return false
-	}
+	in.Facts.DoorAt = set.hasDoorAt
 	return nil
+}
+
+// add keeps a staged map and tells the later parts what it holds.
+func (set *stagedMapSet) add(in *campaignpackage.Import, sm *stagedMap) {
+	set.maps = append(set.maps, sm)
+	in.Counts.Maps++
+	for _, pt := range sm.points {
+		in.Facts.PointMap[pt.oldID] = sm.oldID
+		in.Facts.PointKind[pt.oldID] = pt.kind
+		in.Facts.PointName[pt.oldID] = pt.name
+	}
+}
+
+// hasDoorAt says whether a staged map (by its package id) has a door on a square.
+func (set *stagedMapSet) hasDoorAt(mapID string, col, row int) bool {
+	for _, sm := range set.maps {
+		if sm.oldID != mapID || sm.doors == nil {
+			continue
+		}
+		sq := grid.Square{Col: col, Row: row}
+		return sm.grid.Contains(sq) && sm.doors.At(sq) != grid.DoorNone
+	}
+	return false
 }
 
 // stageMap checks one map; nil when it has a problem (recorded).
 func (p *mapsPart) stageMap(in *campaignpackage.Import, pm *pkgv1.PackageMap, imgs *stagedImages, createdAt time.Time) *stagedMap {
-	s := p.s
 	mapKind := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_MAP
 	name, err := names.Clean(pm.GetName(), maxNameLength)
 	if err != nil {
 		in.Problem(mapKind, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
 		return nil
 	}
-	invalid := func() *stagedMap {
+	sm, ok := p.stageMapShell(in, pm, imgs, name, createdAt)
+	if !ok {
 		in.Problem(mapKind, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
 		return nil
 	}
+	if !p.stageMapPoints(in, pm, sm) {
+		return nil
+	}
+	return sm
+}
+
+// stageMapShell checks everything of a map but its points: the id, the image,
+// the base light, the grid and the painted layers. It says false for a map that
+// is invalid (the caller records it).
+func (p *mapsPart) stageMapShell(in *campaignpackage.Import, pm *pkgv1.PackageMap, imgs *stagedImages, name string, createdAt time.Time) (*stagedMap, bool) {
 	id, ok := in.IDs.Define(nsMap, pm.GetId())
 	if !ok {
-		return invalid()
+		return nil, false
 	}
 	sm := &stagedMap{
 		oldID: pm.GetId(), id: id, name: name, factor: pm.GetGridFactor(), revealed: pm.GetRevealed(), fog: pm.GetFogEnabled(), onGrid: pm.GetFogOnFirstGrid(),
 		group: pm.GetGroupVision(), baseLight: pm.GetBaseLight(), createdAt: createdAt,
 	}
-	sm.imageID = in.IDs.Ref(nsImage, pm.GetImageId(), mapKind, name)
+	sm.imageID = in.IDs.Ref(nsImage, pm.GetImageId(), pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_MAP, name)
 	if sm.baseLight != "dark" && sm.baseLight != "dim" && sm.baseLight != "bright" {
-		return invalid()
+		return nil, false
 	}
-	var g grid.Grid
-	if cols := pm.GetGridColumns(); cols != 0 {
-		drawn := cols / max(sm.factor, 1)
-		if sm.factor < 1 || sm.factor > grid.MaxFactor || cols%sm.factor != 0 || drawn < minGridColumns || drawn > maxGridColumns {
-			return invalid()
-		}
-		sm.columns = &cols
-		if img := imgs.find(pm.GetImageId()); img != nil {
-			engine, err := grid.EngineGrid(int(drawn), int(sm.factor), img.width, img.height)
-			if err != nil || engine.Columns != int(cols) {
-				return invalid()
-			}
-			g = engine
-		}
-	} else if sm.factor != 1 || sm.fog {
-		return invalid() // no grid: no scale and no fog (SetMapFog needs a grid)
+	g, ok := stageMapGrid(sm, pm, imgs)
+	if !ok {
+		return nil, false
 	}
 	sm.grid = g
 	if !p.stageLayers(sm, pm.GetLayers(), g) {
-		return invalid()
+		return nil, false
 	}
+	return sm, true
+}
+
+// stageMapGrid checks a map's grid and scale, and returns the engine's grid when
+// the image is known. A map with no grid has no scale and no fog (SetMapFog
+// needs a grid).
+func stageMapGrid(sm *stagedMap, pm *pkgv1.PackageMap, imgs *stagedImages) (grid.Grid, bool) {
+	cols := pm.GetGridColumns()
+	if cols == 0 {
+		return grid.Grid{}, sm.factor == 1 && !sm.fog
+	}
+	drawn := cols / max(sm.factor, 1)
+	if sm.factor < 1 || sm.factor > grid.MaxFactor || cols%sm.factor != 0 || drawn < minGridColumns || drawn > maxGridColumns {
+		return grid.Grid{}, false
+	}
+	sm.columns = &cols
+	img := imgs.find(pm.GetImageId())
+	if img == nil {
+		return grid.Grid{}, true
+	}
+	engine, err := grid.EngineGrid(int(drawn), int(sm.factor), img.width, img.height)
+	if err != nil || engine.Columns != int(cols) {
+		return grid.Grid{}, false
+	}
+	return engine, true
+}
+
+// stageMapPoints checks a map's points and keeps the good ones in sm. It says
+// false when the map has too many, or any has a problem (each recorded).
+func (p *mapsPart) stageMapPoints(in *campaignpackage.Import, pm *pkgv1.PackageMap, sm *stagedMap) bool {
+	s := p.s
 	if int32(len(pm.GetPoints())) > s.maxPoints { //nolint:gosec // G115: bounded by the entry's size
-		in.Problem(mapKind, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_LIMIT, int64(s.maxPoints))
-		return nil
+		in.Problem(pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_MAP, sm.name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_LIMIT, int64(s.maxPoints))
+		return false
 	}
 	good := true
 	for i, pp := range pm.GetPoints() {
-		pt := p.stagePoint(in, pm, sm, pp, createdAt.Add(time.Duration(i)*time.Microsecond))
+		pt := p.stagePoint(in, pm, sm, pp, sm.createdAt.Add(time.Duration(i)*time.Microsecond))
 		if pt == nil {
 			good = false
 			continue
 		}
 		sm.points = append(sm.points, pt)
 	}
-	if !good {
-		return nil
-	}
-	return sm
+	return good
 }
 
 // find returns the staged image with this package id.
@@ -598,82 +692,129 @@ func specReason(err error) pkgv1.PackageProblemReason {
 	return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
 }
 
+// reasonNone says a check of a point found nothing wrong.
+const reasonNone = pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNSPECIFIED
+
 // stagePoint checks one point and its actions and clues; nil when it has a
 // problem (recorded).
 func (p *mapsPart) stagePoint(in *campaignpackage.Import, pm *pkgv1.PackageMap, sm *stagedMap, pp *pkgv1.PackagePoint, createdAt time.Time) *stagedPoint {
-	s := p.s
-	kindOfPoint := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_POINT
+	problemKind := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_POINT
 	name, err := cleanName("name", pp.GetName())
 	if err != nil {
-		in.Problem(kindOfPoint, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
+		in.Problem(problemKind, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
 		return nil
 	}
 	kind, ok := kindToDB[pp.GetKind()]
 	if ok && pp.GetKind() == mapsv1.MapPointKind_MAP_POINT_KIND_SCENE {
-		kindOfPoint = pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_SCENE
-	}
-	bad := func(reason pkgv1.PackageProblemReason) *stagedPoint {
-		in.Problem(kindOfPoint, name, reason, 0)
-		return nil
-	}
-	if !ok {
-		return bad(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+		problemKind = pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_SCENE
 	}
 	pt := &stagedPoint{oldID: pp.GetId(), kind: kind, name: name, x: pp.GetXBp(), y: pp.GetYBp(), showDC: pp.GetShowDc(), revealed: pp.GetRevealed(), createdAt: createdAt, mapID: sm.id}
-	if pt.id, ok = in.IDs.Define(nsPoint, pp.GetId()); !ok {
-		return bad(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+	if reason := p.checkPoint(in, pm, pt, pp, ok, problemKind); reason != reasonNone {
+		in.Problem(problemKind, name, reason, 0)
+		return nil
 	}
-	isScene := pp.GetKind() == mapsv1.MapPointKind_MAP_POINT_KIND_SCENE
+	if !p.stageScene(in, pt, pp, problemKind) {
+		return nil
+	}
+	countPoint(in.Counts, pp.GetKind())
+	return pt
+}
+
+// checkPoint fills the checked fields of a point and returns the first thing
+// wrong with it. knownKind says the kind is one a point may have.
+func (p *mapsPart) checkPoint(in *campaignpackage.Import, pm *pkgv1.PackageMap, pt *stagedPoint, pp *pkgv1.PackagePoint, knownKind bool, problemKind pkgv1.PackageProblemKind) pkgv1.PackageProblemReason {
+	invalid := pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
+	if !knownKind {
+		return invalid
+	}
+	var ok bool
+	if pt.id, ok = in.IDs.Define(nsPoint, pp.GetId()); !ok {
+		return invalid
+	}
+	if !p.fillPointText(pt, pp) {
+		return invalid
+	}
+	if reason := stagePointTarget(in, pm, pt, pp, problemKind); reason != reasonNone {
+		return reason
+	}
+	if reason := p.fillPointSpec(pt, pp); reason != reasonNone {
+		return reason
+	}
+	if !fillPointStairs(pt, pp) {
+		return invalid
+	}
+	if pp.GetKind() != mapsv1.MapPointKind_MAP_POINT_KIND_SCENE && (len(pp.GetActions()) > 0 || len(pp.GetClues()) > 0) {
+		return invalid
+	}
+	return reasonNone
+}
+
+// fillPointText checks the point's description, hooks and position, and that
+// only a scene has hooks or shows its DCs. It says whether they are all good.
+func (p *mapsPart) fillPointText(pt *stagedPoint, pp *pkgv1.PackagePoint) bool {
 	var errs [4]error
 	pt.desc, errs[0] = cleanDescription(pp.GetDescription())
 	pt.hooks, errs[1] = cleanHooks(pp.GetHooks())
 	errs[2] = checkPosition(pp.GetXBp(), pp.GetYBp())
-	if (pt.hooks != "" || pt.showDC) && !isScene {
+	if (pt.hooks != "" || pt.showDC) && pp.GetKind() != mapsv1.MapPointKind_MAP_POINT_KIND_SCENE {
 		errs[3] = errOnlyScenesHaveHooks()
 	}
-	if err := errors.Join(errs[:]...); err != nil {
-		return bad(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+	return errors.Join(errs[:]...) == nil
+}
+
+// stagePointTarget checks the map a point leads to, and notes it for the new id.
+func stagePointTarget(in *campaignpackage.Import, pm *pkgv1.PackageMap, pt *stagedPoint, pp *pkgv1.PackagePoint, problemKind pkgv1.PackageProblemKind) pkgv1.PackageProblemReason {
+	if pp.GetTargetMapId() == "" {
+		return reasonNone
 	}
-	if pp.GetTargetMapId() != "" {
-		if !leads(kind) || pp.GetTargetMapId() == pm.GetId() {
-			return bad(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
-		}
-		target := in.IDs.Ref(nsMap, pp.GetTargetMapId(), kindOfPoint, name)
-		if target != "" {
-			pt.target = &target
-		}
+	if !leads(pt.kind) || pp.GetTargetMapId() == pm.GetId() {
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
 	}
-	// A trap comes back armed, whatever state it was left in.
+	target := in.IDs.Ref(nsMap, pp.GetTargetMapId(), problemKind, pt.name)
+	if target != "" {
+		pt.target = &target
+	}
+	return reasonNone
+}
+
+// fillPointSpec checks the point's trap, treasure or light as the master's own
+// calls do. A trap comes back armed, whatever state it was left in.
+func (p *mapsPart) fillPointSpec(pt *stagedPoint, pp *pkgv1.PackagePoint) pkgv1.PackageProblemReason {
 	trap := pp.GetTrap()
 	if trap != nil {
 		trap = proto.Clone(trap).(*mapsv1.TrapSpec) //nolint:forcetypeassert // Clone returns the same type
 		trap.State = mapsv1.TrapState_TRAP_STATE_UNSPECIFIED
 	}
-	if pt.spec, err = s.specFor(kind, trap, pp.TreasureValuePo, pp.GetLight()); err != nil {
-		return bad(specReason(err))
+	var err error
+	if pt.spec, err = p.s.specFor(pt.kind, trap, pp.TreasureValuePo, pp.GetLight()); err != nil {
+		return specReason(err)
 	}
-	if pp.GetStairs() != "" {
-		if kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP] || (pp.GetStairs() != "up" && pp.GetStairs() != "down") {
-			return bad(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
-		}
-		stairs := pp.GetStairs()
-		pt.stairs = &stairs
+	return reasonNone
+}
+
+// fillPointStairs checks a submap point's stairs. It says whether they are good.
+func fillPointStairs(pt *stagedPoint, pp *pkgv1.PackagePoint) bool {
+	if pp.GetStairs() == "" {
+		return true
 	}
-	if !isScene && (len(pp.GetActions()) > 0 || len(pp.GetClues()) > 0) {
-		return bad(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+	if pt.kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP] || (pp.GetStairs() != "up" && pp.GetStairs() != "down") {
+		return false
 	}
-	if !p.stageScene(in, pt, pp, kindOfPoint) {
-		return nil
-	}
-	switch pp.GetKind() {
+	stairs := pp.GetStairs()
+	pt.stairs = &stairs
+	return true
+}
+
+// countPoint counts a staged point for the preview, by its kind.
+func countPoint(counts *pkgv1.PackageCounts, kind mapsv1.MapPointKind) {
+	switch kind {
 	case mapsv1.MapPointKind_MAP_POINT_KIND_SCENE:
-		in.Counts.Scenes++
+		counts.Scenes++
 	case mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE:
-		in.Counts.BattlePoints++
+		counts.BattlePoints++
 	case mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE:
-		in.Counts.TreasurePoints++
+		counts.TreasurePoints++
 	}
-	return pt
 }
 
 // stageScene checks a scene's actions and clues.

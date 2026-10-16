@@ -44,4 +44,36 @@ describe('spellSummary (the line under a spell in the list, E8-02)', () => {
     expect(spellSummary(null)).toBe('');
     expect(spellSummary(undefined)).toBe('');
   });
+
+  it('says the healing of the slot level, and the dice of a cantrip without a type', () => {
+    expect(
+      plain(
+        spellSummary({
+          spell: { level: 1 },
+          range: { kind: SpellRangeKind.TOUCH },
+          damage: [],
+          healBySlotLevel: { 1: '1d8+MOD' },
+        } as never),
+      ),
+    ).toBe('Toque · cura 1d8+mod.');
+    expect(
+      plain(
+        spellSummary(
+          {
+            spell: { level: 0 },
+            range: { kind: SpellRangeKind.RANGED, distanceFt: 0 },
+            damage: [{ bySlotLevel: {}, byCharacterLevel: {} }],
+            healBySlotLevel: {},
+          } as never,
+          '2d10',
+        ),
+      ),
+    ).toBe('2d10');
+  });
+
+  it('says nothing for a spell with no range kind and nothing to roll', () => {
+    expect(spellSummary({ spell: { level: 2 }, damage: [], healBySlotLevel: {} } as never)).toBe(
+      '',
+    );
+  });
 });

@@ -30,47 +30,50 @@ export function milestoneHasHistoryText(name: string): string {
   return `${name} já foi alcançado e depois desfeito: o histórico de XP guarda isso, então ele não pode ser removido. Ele continua na lista de planejados.`;
 }
 
+const BLOCKED_MESSAGES: Readonly<Partial<Record<XPBlockedReason, string>>> = {
+  [XPBlockedReason.XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED]:
+    'O combate ainda não terminou. Encerre o combate para dar o XP dele.',
+  [XPBlockedReason.XP_BLOCKED_REASON_ALREADY_AWARDED]:
+    'O XP desse combate já foi dado. Para dar de novo, desfaça esse prêmio em "Experiência", na página da campanha.',
+  [XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_GIVE]:
+    'Não há XP para dar: o total é pequeno demais para cada um receber pelo menos 1 XP.',
+  [XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_UNDO]:
+    'Não há nenhum prêmio para desfazer. A tela foi atualizada.',
+  [XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE]:
+    'Um dos personagens marcados não pode receber: ele morreu ou saiu da campanha. A lista foi atualizada.',
+  [XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED]:
+    'Esse marco já foi alcançado. A lista foi atualizada.',
+  [XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_NOT_REACHED]:
+    'Esse marco não está mais alcançado: ele foi desfeito. A lista foi atualizada.',
+  [XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED]:
+    'Um dos personagens marcados já tem esse marco. A lista foi atualizada.',
+  [XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY]: milestoneHasHistoryText('Esse marco'),
+  [XPBlockedReason.XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET]:
+    'Um dos tesouros marcados não está mais como encontrado: o mestre desmarcou o achado. A lista foi atualizada; confira e tente de novo.',
+  [XPBlockedReason.XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED]:
+    'Um dos tesouros marcados já virou XP em outro prêmio. A lista foi atualizada; confira e tente de novo.',
+  [XPBlockedReason.XP_BLOCKED_REASON_TREASURES_OVER_LIMIT]:
+    'Os tesouros marcados valem mais de 1.000.000 PO juntos, o máximo de um prêmio. Desmarque alguns e converta o resto depois.',
+};
+
+/** What a mode that does not take this kind of award says it takes instead. */
+const MODE_NOT_ALLOWED_MESSAGES: Readonly<Partial<Record<XpMode, string>>> = {
+  [XpMode.MILESTONES]: 'Esta campanha conta marcos, não XP. Use "Registrar marco".',
+  [XpMode.GOLD]: 'Esta campanha conta XP por ouro: dê o ouro encontrado ou um valor avulso.',
+  [XpMode.ENEMIES]:
+    'Esta campanha conta XP por inimigos derrotados: dê o XP de um combate ou um valor avulso.',
+};
+
 /** Portuguese for every `XPBlocked` reason: what happened and what to do. */
 export function xpBlockedMessage(blocked: XPBlocked): string {
-  switch (blocked.reason) {
-    case XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED:
-      switch (blocked.xpMode) {
-        case XpMode.MILESTONES:
-          return 'Esta campanha conta marcos, não XP. Use "Registrar marco".';
-        case XpMode.GOLD:
-          return 'Esta campanha conta XP por ouro: dê o ouro encontrado ou um valor avulso.';
-        case XpMode.ENEMIES:
-          return 'Esta campanha conta XP por inimigos derrotados: dê o XP de um combate ou um valor avulso.';
-        default:
-          return 'Esta campanha não aceita essa forma de dar XP.';
-      }
-    case XPBlockedReason.XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED:
-      return 'O combate ainda não terminou. Encerre o combate para dar o XP dele.';
-    case XPBlockedReason.XP_BLOCKED_REASON_ALREADY_AWARDED:
-      return 'O XP desse combate já foi dado. Para dar de novo, desfaça esse prêmio em "Experiência", na página da campanha.';
-    case XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_GIVE:
-      return 'Não há XP para dar: o total é pequeno demais para cada um receber pelo menos 1 XP.';
-    case XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_UNDO:
-      return 'Não há nenhum prêmio para desfazer. A tela foi atualizada.';
-    case XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE:
-      return 'Um dos personagens marcados não pode receber: ele morreu ou saiu da campanha. A lista foi atualizada.';
-    case XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED:
-      return 'Esse marco já foi alcançado. A lista foi atualizada.';
-    case XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_NOT_REACHED:
-      return 'Esse marco não está mais alcançado: ele foi desfeito. A lista foi atualizada.';
-    case XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED:
-      return 'Um dos personagens marcados já tem esse marco. A lista foi atualizada.';
-    case XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY:
-      return milestoneHasHistoryText('Esse marco');
-    case XPBlockedReason.XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET:
-      return 'Um dos tesouros marcados não está mais como encontrado: o mestre desmarcou o achado. A lista foi atualizada; confira e tente de novo.';
-    case XPBlockedReason.XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED:
-      return 'Um dos tesouros marcados já virou XP em outro prêmio. A lista foi atualizada; confira e tente de novo.';
-    case XPBlockedReason.XP_BLOCKED_REASON_TREASURES_OVER_LIMIT:
-      return 'Os tesouros marcados valem mais de 1.000.000 PO juntos, o máximo de um prêmio. Desmarque alguns e converta o resto depois.';
-    default:
-      return 'Isso não pode ser feito agora. A tela foi atualizada.';
+  if (blocked.reason === XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED) {
+    return (
+      MODE_NOT_ALLOWED_MESSAGES[blocked.xpMode] ?? 'Esta campanha não aceita essa forma de dar XP.'
+    );
   }
+  return (
+    BLOCKED_MESSAGES[blocked.reason] ?? 'Isso não pode ser feito agora. A tela foi atualizada.'
+  );
 }
 
 /** Whether an undo found no award to undo (`NOTHING_TO_UNDO`): the list on screen is stale. */

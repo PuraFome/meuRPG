@@ -383,7 +383,7 @@ describe('CharacterEditor, before the catalog arrives', () => {
     const { cmp } = await loading();
     expect(cmp.state().status).toBe('loading');
     expect(cmp.availableSubraces()).toEqual([]);
-    expect(cmp.nameOfKey('race:gnome')).toBeUndefined();
+    expect(cmp.views.nameOfKey('race:gnome')).toBeUndefined();
     expect(cmp.raceOptions()).toEqual([]);
     expect(cmp.classOptions()).toEqual([]);
     expect(cmp.backgroundOptions()).toEqual([]);
@@ -398,8 +398,8 @@ describe('CharacterEditor, before the catalog arrives', () => {
     expect(cmp.selectedBackgroundVm()).toBeUndefined();
     expect(cmp.levelDice()).toEqual([]);
     expect(cmp.sections()).toEqual([]);
-    expect(cmp.availableCantrips()).toEqual([]);
-    expect(cmp.availableSpells()).toEqual([]);
+    expect(cmp.views.availableCantrips()).toEqual([]);
+    expect(cmp.views.availableSpells()).toEqual([]);
     expect(cmp.sectionViews()).toEqual([]);
     expect(cmp.magiasLink()).toEqual([]);
     expect(cmp.choiceBonusesHint()).toBe('');
@@ -439,13 +439,13 @@ describe('CharacterEditor, before the catalog arrives', () => {
 
   it('refuses to ask the server for a draft while the page is not ready', async () => {
     const { cmp } = await loading();
-    await expect(cmp.serverHitPoints.ask()).rejects.toThrow('the page is not ready');
-    await expect(cmp.serverChoices.ask()).rejects.toThrow('the page is not ready');
+    await expect(cmp.server.hitPoints.ask()).rejects.toThrow('the page is not ready');
+    await expect(cmp.server.choices.ask()).rejects.toThrow('the page is not ready');
   });
 
   it('keeps every pick when it has no catalog to judge them by', async () => {
     const { cmp } = await loading();
-    expect(cmp.intersectWithAvailable(new Set(['spell:any']), [])).toEqual(['spell:any']);
+    expect(cmp.draft.intersectWithAvailable(new Set(['spell:any']), [])).toEqual(['spell:any']);
   });
 });
 
@@ -542,7 +542,7 @@ describe('CharacterEditor, the class blocks', () => {
     cmp.addClass();
     cmp.addClass();
     cmp.changeBlock(1, { classKey: 'class:fighter', level: 2 });
-    expect(cmp.extraClasses()).toEqual([
+    expect(cmp.picks.extraClasses()).toEqual([
       { classKey: 'class:fighter', level: 2, subclassKey: '', customSubclassName: '' },
       { classKey: '', level: 1, subclassKey: '', customSubclassName: '' },
     ]);
@@ -551,7 +551,7 @@ describe('CharacterEditor, the class blocks', () => {
     cmp.fullForm.patchValue({ className: 'class:wizard' });
     expect(cmp.otherClassKeys(1)).toEqual(['class:wizard']);
     cmp.removeClass(1);
-    expect(cmp.extraClasses().length).toBe(1);
+    expect(cmp.picks.extraClasses().length).toBe(1);
   });
 
   it('lists what the blocks still lack, in words, and holds the save', async () => {
@@ -559,7 +559,7 @@ describe('CharacterEditor, the class blocks', () => {
     fill(cmp, { level: 20 });
     cmp.addClass();
     cmp.changeBlock(1, { level: 25 });
-    expect(cmp.classProblems()).toEqual([
+    expect(cmp.draft.classProblems()).toEqual([
       'Classe 2',
       'Nível da classe 2',
       'o nível total vai até 20',
@@ -572,14 +572,17 @@ describe('CharacterEditor, the class blocks', () => {
   it('lists the levels whose hit-point roll is missing or does not fit the die', async () => {
     const { cmp } = await ready();
     fill(cmp, { level: 3, hitPointsMethod: 'rolled' });
-    expect(cmp.rollProblems()).toEqual(['Dado de vida do nível 2', 'Dado de vida do nível 3']);
+    expect(cmp.draft.rollProblems()).toEqual([
+      'Dado de vida do nível 2',
+      'Dado de vida do nível 3',
+    ]);
     cmp.hitPointsRolls.set([4, 9]);
-    expect(cmp.rollProblems()).toEqual(['Dado de vida do nível 3']);
+    expect(cmp.draft.rollProblems()).toEqual(['Dado de vida do nível 3']);
     cmp.hitPointsRolls.set([4, 6]);
-    expect(cmp.rollProblems()).toEqual([]);
+    expect(cmp.draft.rollProblems()).toEqual([]);
     // A class not chosen yet has no die: nothing to roll against.
     cmp.fullForm.patchValue({ className: '' });
-    expect(cmp.rollProblems()).toEqual([]);
+    expect(cmp.draft.rollProblems()).toEqual([]);
   });
 
   it('rolls a level of a block with no class against the first die', async () => {
@@ -587,7 +590,7 @@ describe('CharacterEditor, the class blocks', () => {
     fill(cmp, { level: 1, hitPointsMethod: 'rolled' });
     cmp.addClass();
     expect(cmp.rollsNeeded()).toBe(1);
-    expect(cmp.rollProblems()).toEqual(['Dado de vida do nível 2']);
+    expect(cmp.draft.rollProblems()).toEqual(['Dado de vida do nível 2']);
   });
 });
 
@@ -614,7 +617,7 @@ describe('CharacterEditor, the spell and skill picks', () => {
     const { cmp } = await ready();
     fill(cmp, { className: 'class:wizard', level: 3 });
     cmp.selectedSpellsKnown.set(new Set(['spell:unheard-of', 'spell:shield', 'spell:bless']));
-    expect(cmp.buildFullValue().spellsKnown.sort()).toEqual(['spell:shield', 'spell:unheard-of']);
+    expect(cmp.draft.build().spellsKnown.sort()).toEqual(['spell:shield', 'spell:unheard-of']);
   });
 
   it('counts the cantrips the server says the class knows', async () => {
@@ -642,9 +645,9 @@ describe('CharacterEditor, the spell and skill picks', () => {
     const { cmp } = await ready();
     fill(cmp);
     cmp.toggleSkill('skill:arcana');
-    expect(cmp.selectedSkills().size).toBe(0);
+    expect(cmp.picks.selectedSkills().size).toBe(0);
     cmp.toggleSkill('skill:nature');
-    expect(cmp.selectedSkills().has('skill:nature')).toBe(true);
+    expect(cmp.picks.selectedSkills().has('skill:nature')).toBe(true);
     // Expertise needs a proficient skill (the race's counts).
     cmp.toggleExpertise('skill:history');
     expect(cmp.expertiseSkills().size).toBe(0);
@@ -654,7 +657,7 @@ describe('CharacterEditor, the spell and skill picks', () => {
     expect(cmp.expertiseSkills().size).toBe(0);
     cmp.toggleExpertise('skill:nature');
     cmp.toggleSkill('skill:nature');
-    expect(cmp.selectedSkills().size).toBe(0);
+    expect(cmp.picks.selectedSkills().size).toBe(0);
     expect(cmp.expertiseSkills().size).toBe(0);
     // Unticking a skill with no expertise leaves the expertise alone.
     cmp.toggleSkill('skill:nature');
@@ -744,13 +747,13 @@ describe('CharacterEditor, saving', () => {
   it('opens no step when nothing is wrong, or when there is no stepper to open it on', async () => {
     const { cmp } = await ready();
     fill(cmp);
-    cmp.openFirstInvalidStep();
+    cmp.submitting.openFirstInvalidStep();
     expect(cmp.bonusesOpen()).toBe(false);
     cmp.fullForm.patchValue({
       extraAbilityBonuses: { str: 99, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     cmp.stepper = undefined;
-    cmp.openFirstInvalidStep();
+    cmp.submitting.openFirstInvalidStep();
     expect(cmp.bonusesOpen()).toBe(true);
   });
 
@@ -894,9 +897,9 @@ describe('CharacterEditor, reading the page', () => {
         }),
       );
     const { cmp } = await render();
-    expect(cmp.preparedMaxByClass()).toEqual({ 'class:wizard': 6 });
+    expect(cmp.picks.preparedMaxByClass()).toEqual({ 'class:wizard': 6 });
     expect(cmp.hasCuttingWords()).toBe(true);
-    expect(cmp.grantedSpells().map((s: SpellOptionVm) => s.key)).toEqual([
+    expect(cmp.picks.grantedSpells().map((s: SpellOptionVm) => s.key)).toEqual([
       'spell:shield',
       'spell:bless',
     ]);
@@ -1010,15 +1013,18 @@ describe('CharacterEditor, what the server says about the draft', () => {
   it('forgets the picks and texts of a choice the draft no longer offers', async () => {
     const { cmp, fixture, fake } = await ready();
     fake.choicesFn = askStyle;
-    cmp.featureChoiceKeys.set(['feature:gone', 'feature:style-defense']);
-    cmp.featureChoiceText.set({ 'choice:fighter-style#0': 'kept', 'choice:gone#0': 'dropped' });
+    cmp.picks.featureChoiceKeys.set(['feature:gone', 'feature:style-defense']);
+    cmp.picks.featureChoiceText.set({
+      'choice:fighter-style#0': 'kept',
+      'choice:gone#0': 'dropped',
+    });
     vi.useFakeTimers();
     fill(cmp, { className: 'class:fighter' });
     fixture.detectChanges();
     await vi.advanceTimersByTimeAsync(PAUSE);
     fixture.detectChanges();
-    expect(cmp.featureChoiceKeys()).toEqual(['feature:style-defense']);
-    expect(cmp.featureChoiceText()).toEqual({ 'choice:fighter-style#0': 'kept' });
+    expect(cmp.picks.featureChoiceKeys()).toEqual(['feature:style-defense']);
+    expect(cmp.picks.featureChoiceText()).toEqual({ 'choice:fighter-style#0': 'kept' });
   });
 
   it('leads a blocked save to the Escolhas step, also when it is already open', async () => {
@@ -1046,13 +1052,13 @@ describe('CharacterEditor, what the server says about the draft', () => {
   it('has nowhere to lead a blocked save when there is no stepper or no Escolhas step', async () => {
     const { cmp } = await ready();
     cmp.stepper = undefined;
-    cmp.focusFirstPendingChoice();
+    cmp.submitting.focusFirstPendingChoice();
     const { cmp: other } = await (async () => {
       TestBed.resetTestingModule();
       configure({ id: 'camp-1' });
       return render();
     })();
-    other.focusFirstPendingChoice();
+    other.submitting.focusFirstPendingChoice();
     expect(other.state().status).toBe('ready');
   });
 });

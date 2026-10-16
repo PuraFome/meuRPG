@@ -12,134 +12,124 @@ import { describeConnectError } from '../connect/connect-errors';
 import { formatInt, tight } from '../format/text';
 import type { StepKey } from './levelup-flow';
 
+/** The step of every refused rule that is not about a retired option. */
+const REFUSAL_STEPS: Readonly<Partial<Record<LevelUpRefusalReason, StepKey>>> = {
+  [LevelUpRefusalReason.ABILITY_NOT_DUE]: 'abilities',
+  [LevelUpRefusalReason.ABILITY_SHAPE]: 'abilities',
+  [LevelUpRefusalReason.FEAT]: 'abilities',
+  [LevelUpRefusalReason.FEAT_PREREQUISITE]: 'abilities',
+  [LevelUpRefusalReason.FEATS_NOT_ALLOWED]: 'abilities',
+  [LevelUpRefusalReason.ABILITY_ABOVE_20]: 'abilities',
+  [LevelUpRefusalReason.HIT_POINTS]: 'hp',
+  [LevelUpRefusalReason.HIT_POINTS_RULE]: 'hp',
+  [LevelUpRefusalReason.HIT_POINT_ROLL_MISSING]: 'hp',
+  [LevelUpRefusalReason.HIT_POINT_ROLL_OTHER_CLASS]: 'hp',
+  [LevelUpRefusalReason.MULTICLASS_PREREQUISITE]: 'class',
+  [LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT]: 'class',
+  [LevelUpRefusalReason.CLASS]: 'class',
+  [LevelUpRefusalReason.PROFICIENCY_CHOICE]: 'picks',
+  [LevelUpRefusalReason.INSTRUMENT_CHOICE]: 'picks',
+  [LevelUpRefusalReason.SUBCLASS]: 'picks',
+  [LevelUpRefusalReason.FEATURE_CHOICE]: 'picks',
+  [LevelUpRefusalReason.LATE_CHOICE_MISSING]: 'picks',
+  [LevelUpRefusalReason.SKILLS]: 'picks',
+  [LevelUpRefusalReason.EXPERTISE]: 'picks',
+  [LevelUpRefusalReason.CANTRIPS]: 'spells',
+  [LevelUpRefusalReason.SPELLS]: 'spells',
+  [LevelUpRefusalReason.PREPARED]: 'spells',
+};
+
+/** A retired option sits in the step of the field it is chosen in. */
+function retiredChoiceStep(field: string): StepKey | null {
+  if (/class|feature_choice/.test(field)) {
+    return 'picks';
+  }
+  return /spell|cantrip/.test(field) ? 'spells' : null;
+}
+
 /** The step a refused rule belongs to, so the message can send the player there. */
 export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey | null {
-  switch (reason) {
-    case LevelUpRefusalReason.ARCHIVED_CHOICE:
-    case LevelUpRefusalReason.SWITCHED_OFF_CHOICE:
-      // A retired option sits in the step of the field it is chosen in.
-      return /class|feature_choice/.test(field)
-        ? 'picks'
-        : /spell|cantrip/.test(field)
-          ? 'spells'
-          : null;
-    case LevelUpRefusalReason.ABILITY_NOT_DUE:
-    case LevelUpRefusalReason.ABILITY_SHAPE:
-    case LevelUpRefusalReason.FEAT:
-    case LevelUpRefusalReason.FEAT_PREREQUISITE:
-    case LevelUpRefusalReason.FEATS_NOT_ALLOWED:
-    case LevelUpRefusalReason.ABILITY_ABOVE_20:
-      return 'abilities';
-    case LevelUpRefusalReason.HIT_POINTS:
-    case LevelUpRefusalReason.HIT_POINTS_RULE:
-    case LevelUpRefusalReason.HIT_POINT_ROLL_MISSING:
-    case LevelUpRefusalReason.HIT_POINT_ROLL_OTHER_CLASS:
-      return 'hp';
-    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE:
-    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT:
-    case LevelUpRefusalReason.CLASS:
-      return 'class';
-    case LevelUpRefusalReason.PROFICIENCY_CHOICE:
-    case LevelUpRefusalReason.INSTRUMENT_CHOICE:
-    case LevelUpRefusalReason.SUBCLASS:
-    case LevelUpRefusalReason.FEATURE_CHOICE:
-    case LevelUpRefusalReason.LATE_CHOICE_MISSING:
-    case LevelUpRefusalReason.SKILLS:
-    case LevelUpRefusalReason.EXPERTISE:
-      return 'picks';
-    case LevelUpRefusalReason.CANTRIPS:
-    case LevelUpRefusalReason.SPELLS:
-    case LevelUpRefusalReason.PREPARED:
-      return 'spells';
-    default:
-      return null;
+  if (
+    reason === LevelUpRefusalReason.ARCHIVED_CHOICE ||
+    reason === LevelUpRefusalReason.SWITCHED_OFF_CHOICE
+  ) {
+    return retiredChoiceStep(field);
   }
+  return REFUSAL_STEPS[reason] ?? null;
 }
+
+const REFUSAL_MESSAGES: Readonly<Partial<Record<LevelUpRefusalReason, string>>> = {
+  [LevelUpRefusalReason.ARCHIVED_CHOICE]:
+    'O mestre arquivou uma das opções que você escolheu, e ela não vale mais como escolha nova. Volte e escolha outra.',
+  [LevelUpRefusalReason.SWITCHED_OFF_CHOICE]:
+    'O mestre desligou uma das opções que você escolheu para os jogadores. Volte e escolha outra.',
+  [LevelUpRefusalReason.CLASS]:
+    'Esse nível não vale para a classe escolhida. Volte para a ficha e comece de novo.',
+  [LevelUpRefusalReason.MAX_LEVEL]: 'Este personagem já está no nível máximo.',
+  [LevelUpRefusalReason.MULTICLASS_PREREQUISITE]:
+    'Esta classe nova pede uma habilidade que o personagem ainda não tem. Escolha outra classe.',
+  [LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT]:
+    'Uma classe que o personagem já tem pede uma habilidade que ele não tem, e por isso nenhuma classe nova entra. Suba uma classe que ele já tem.',
+  [LevelUpRefusalReason.PROFICIENCY_CHOICE]:
+    'Escolha a perícia que a classe nova dá, da lista dela e que o personagem ainda não tenha.',
+  [LevelUpRefusalReason.INSTRUMENT_CHOICE]:
+    'Escolha o instrumento musical da classe nova, entre os da lista.',
+  [LevelUpRefusalReason.LOCKED_FIELD]:
+    'Algo que o nível não muda ficou diferente na ficha. Volte para a ficha e comece de novo.',
+  [LevelUpRefusalReason.ABILITY_NOT_DUE]: 'Este nível não dá incremento no valor de habilidade.',
+  [LevelUpRefusalReason.ABILITY_SHAPE]: 'O aumento é de +2 em uma habilidade, ou de +1 em duas.',
+  [LevelUpRefusalReason.ABILITY_ABOVE_20]: 'Nenhuma habilidade passa de 20. Escolha outra.',
+  [LevelUpRefusalReason.FEAT]:
+    'O talento escolhido não vale neste nível: ele não existe mais, saiu da lista ou este nível não o permite. Escolha outro.',
+  [LevelUpRefusalReason.FEAT_PREREQUISITE]:
+    'A ficha não atende ao pré-requisito do talento. Escolha outro talento ou aumente habilidades.',
+  [LevelUpRefusalReason.FEATS_NOT_ALLOWED]:
+    'O mestre não usa talentos nesta mesa. Aumente habilidades.',
+  [LevelUpRefusalReason.HIT_POINTS]: 'O resultado do dado de vida está fora do que o dado permite.',
+  [LevelUpRefusalReason.HIT_POINTS_RULE]:
+    'A mesa decidiu como se ganham os pontos de vida do nível: use o jeito que ela deixa.',
+  [LevelUpRefusalReason.SUBCLASS]: 'Escolha a subclasse do nível.',
+  [LevelUpRefusalReason.CANTRIPS]: 'Escolha todos os truques novos do nível, nem mais nem menos.',
+  [LevelUpRefusalReason.SPELLS]: 'Escolha todas as magias novas do nível, nem mais nem menos.',
+  [LevelUpRefusalReason.PREPARED]: 'As magias preparadas só ganham vagas novas: nenhuma sai.',
+  [LevelUpRefusalReason.FEATURE_CHOICE]: 'Escolha todas as opções das novas características.',
+  [LevelUpRefusalReason.LATE_CHOICE_MISSING]:
+    'Ainda há escolhas que ficaram para trás em níveis anteriores. Faça todas antes de subir de nível.',
+  [LevelUpRefusalReason.SKILLS]: 'Escolha todas as perícias novas do nível.',
+  [LevelUpRefusalReason.EXPERTISE]: 'Escolha todas as especializações novas do nível.',
+  [LevelUpRefusalReason.SHEET_ISSUE]:
+    'Alguma das escolhas não vale para a ficha, como uma magia fora da lista da classe ou preparada demais. Confira as magias.',
+  [LevelUpRefusalReason.HIT_POINT_ROLL_MISSING]: 'Role o dado de vida antes de confirmar.',
+  [LevelUpRefusalReason.HIT_POINT_ROLL_OTHER_CLASS]:
+    'O dado deste nível já foi rolado para outra classe.',
+  [LevelUpRefusalReason.SHEET_NEEDS_MASTER]:
+    'A ficha tem um problema que nenhuma escolha resolve. Peça ao mestre para corrigir a ficha.',
+};
+
+const REFUSAL_FALLBACK = 'As regras não aceitaram as escolhas. Confira cada passo.';
 
 /** What a rule the level broke says, by its reason (never by the server's message). */
 export function refusalMessage(refusal: Pick<LevelUpRefusal, 'reason'>): string {
-  switch (refusal.reason) {
-    case LevelUpRefusalReason.ARCHIVED_CHOICE:
-      return 'O mestre arquivou uma das opções que você escolheu, e ela não vale mais como escolha nova. Volte e escolha outra.';
-    case LevelUpRefusalReason.SWITCHED_OFF_CHOICE:
-      return 'O mestre desligou uma das opções que você escolheu para os jogadores. Volte e escolha outra.';
-    case LevelUpRefusalReason.CLASS:
-      return 'Esse nível não vale para a classe escolhida. Volte para a ficha e comece de novo.';
-    case LevelUpRefusalReason.MAX_LEVEL:
-      return 'Este personagem já está no nível máximo.';
-    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE:
-      return 'Esta classe nova pede uma habilidade que o personagem ainda não tem. Escolha outra classe.';
-    case LevelUpRefusalReason.MULTICLASS_PREREQUISITE_CURRENT:
-      return 'Uma classe que o personagem já tem pede uma habilidade que ele não tem, e por isso nenhuma classe nova entra. Suba uma classe que ele já tem.';
-    case LevelUpRefusalReason.PROFICIENCY_CHOICE:
-      return 'Escolha a perícia que a classe nova dá, da lista dela e que o personagem ainda não tenha.';
-    case LevelUpRefusalReason.INSTRUMENT_CHOICE:
-      return 'Escolha o instrumento musical da classe nova, entre os da lista.';
-    case LevelUpRefusalReason.LOCKED_FIELD:
-      return 'Algo que o nível não muda ficou diferente na ficha. Volte para a ficha e comece de novo.';
-    case LevelUpRefusalReason.ABILITY_NOT_DUE:
-      return 'Este nível não dá incremento no valor de habilidade.';
-    case LevelUpRefusalReason.ABILITY_SHAPE:
-      return 'O aumento é de +2 em uma habilidade, ou de +1 em duas.';
-    case LevelUpRefusalReason.ABILITY_ABOVE_20:
-      return 'Nenhuma habilidade passa de 20. Escolha outra.';
-    case LevelUpRefusalReason.FEAT:
-      return 'O talento escolhido não vale neste nível: ele não existe mais, saiu da lista ou este nível não o permite. Escolha outro.';
-    case LevelUpRefusalReason.FEAT_PREREQUISITE:
-      return 'A ficha não atende ao pré-requisito do talento. Escolha outro talento ou aumente habilidades.';
-    case LevelUpRefusalReason.FEATS_NOT_ALLOWED:
-      return 'O mestre não usa talentos nesta mesa. Aumente habilidades.';
-    case LevelUpRefusalReason.HIT_POINTS:
-      return 'O resultado do dado de vida está fora do que o dado permite.';
-    case LevelUpRefusalReason.HIT_POINTS_RULE:
-      return 'A mesa decidiu como se ganham os pontos de vida do nível: use o jeito que ela deixa.';
-    case LevelUpRefusalReason.SUBCLASS:
-      return 'Escolha a subclasse do nível.';
-    case LevelUpRefusalReason.CANTRIPS:
-      return 'Escolha todos os truques novos do nível, nem mais nem menos.';
-    case LevelUpRefusalReason.SPELLS:
-      return 'Escolha todas as magias novas do nível, nem mais nem menos.';
-    case LevelUpRefusalReason.PREPARED:
-      return 'As magias preparadas só ganham vagas novas: nenhuma sai.';
-    case LevelUpRefusalReason.FEATURE_CHOICE:
-      return 'Escolha todas as opções das novas características.';
-    case LevelUpRefusalReason.LATE_CHOICE_MISSING:
-      return 'Ainda há escolhas que ficaram para trás em níveis anteriores. Faça todas antes de subir de nível.';
-    case LevelUpRefusalReason.SKILLS:
-      return 'Escolha todas as perícias novas do nível.';
-    case LevelUpRefusalReason.EXPERTISE:
-      return 'Escolha todas as especializações novas do nível.';
-    case LevelUpRefusalReason.SHEET_ISSUE:
-      return 'Alguma das escolhas não vale para a ficha, como uma magia fora da lista da classe ou preparada demais. Confira as magias.';
-    case LevelUpRefusalReason.HIT_POINT_ROLL_MISSING:
-      return 'Role o dado de vida antes de confirmar.';
-    case LevelUpRefusalReason.HIT_POINT_ROLL_OTHER_CLASS:
-      return 'O dado deste nível já foi rolado para outra classe.';
-    case LevelUpRefusalReason.SHEET_NEEDS_MASTER:
-      return 'A ficha tem um problema que nenhuma escolha resolve. Peça ao mestre para corrigir a ficha.';
-    default:
-      return 'As regras não aceitaram as escolhas. Confira cada passo.';
-  }
+  return REFUSAL_MESSAGES[refusal.reason] ?? REFUSAL_FALLBACK;
 }
+
+const BLOCKED_MESSAGES: Readonly<Partial<Record<CharacterBlockedReason, string>>> = {
+  [CharacterBlockedReason.CANNOT_LEVEL_UP]:
+    'Este personagem não pode subir de nível agora: o mestre ainda não marcou um marco, ou o XP não chegou.',
+  [CharacterBlockedReason.CHARACTER_DEAD]: 'Esse personagem está morto e não sobe de nível.',
+  [CharacterBlockedReason.AWAITING_APPROVAL]: 'Esse personagem ainda espera a aprovação do mestre.',
+  [CharacterBlockedReason.DICE_FORCED_PHYSICAL]:
+    'Neste jogo todos rolam os próprios dados: digite o número que saiu.',
+  [CharacterBlockedReason.DICE_FORCED_IN_APP]: 'Neste jogo todos rolam no app: use "Rolar no app".',
+  [CharacterBlockedReason.HIT_POINTS_AVERAGE_ONLY]:
+    'A mesa usa a média nos pontos de vida: o dado não é rolado.',
+};
 
 /** Why the character cannot go through the flow (or roll its die) now. */
 export function blockedMessage(reason: CharacterBlockedReason | undefined): string {
-  switch (reason) {
-    case CharacterBlockedReason.CANNOT_LEVEL_UP:
-      return 'Este personagem não pode subir de nível agora: o mestre ainda não marcou um marco, ou o XP não chegou.';
-    case CharacterBlockedReason.CHARACTER_DEAD:
-      return 'Esse personagem está morto e não sobe de nível.';
-    case CharacterBlockedReason.AWAITING_APPROVAL:
-      return 'Esse personagem ainda espera a aprovação do mestre.';
-    case CharacterBlockedReason.DICE_FORCED_PHYSICAL:
-      return 'Neste jogo todos rolam os próprios dados: digite o número que saiu.';
-    case CharacterBlockedReason.DICE_FORCED_IN_APP:
-      return 'Neste jogo todos rolam no app: use "Rolar no app".';
-    case CharacterBlockedReason.HIT_POINTS_AVERAGE_ONLY:
-      return 'A mesa usa a média nos pontos de vida: o dado não é rolado.';
-    default:
-      return 'Não foi possível concluir a ação agora.';
-  }
+  return (
+    (reason !== undefined && BLOCKED_MESSAGES[reason]) || 'Não foi possível concluir a ação agora.'
+  );
 }
 
 /** What a failed call of the flow means for the screen. */
@@ -194,6 +184,9 @@ export function describeLevelUpFailure(err: unknown): LevelUpFailure {
   };
 }
 
+/** The level the SRD stops at: a character there has nothing left to level up to. */
+const MAX_LEVEL = 20;
+
 /**
  * Why a character cannot level up now, in words that say what is missing: a milestone the master has not marked, or
  * the XP still to come, from the sheet's own numbers (the campaign's mode is known). A character at level 20 is done.
@@ -204,7 +197,7 @@ export function cannotLevelUpMessage(
   nextLevelXp: number,
   level: number,
 ): string {
-  if (level >= 20) {
+  if (level >= MAX_LEVEL) {
     return 'Este personagem já está no nível máximo.';
   }
   if (mode === XpMode.MILESTONES) {

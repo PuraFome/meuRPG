@@ -216,6 +216,44 @@ describe('the Wild Shape line of the turn', () => {
     ).toBe('Sem ação disponível');
   });
 
+  it('says the uses without a resource, and the other recharges', () => {
+    expect(
+      plain(
+        wildActionLine(feature({ enabled: true, usesLeft: 1 }), false, undefined)?.detail ?? '',
+      ),
+    ).toBe('Vire uma fera · restam 1 uso · volta no descanso curto ou longo');
+    expect(
+      plain(
+        wildActionLine(feature({ enabled: true, usesLeft: 0 }), false, undefined)?.detail ?? '',
+      ),
+    ).toContain('restam 0 usos');
+    expect(
+      plain(
+        wildActionLine(feature({ enabled: true, usesLeft: 1 }), false, {
+          ...resource,
+          total: 1,
+          recharge: 'long_rest',
+        })?.detail ?? '',
+      ),
+    ).toBe('Vire uma fera · restam 1 de 1 uso · volta no descanso longo');
+    expect(
+      plain(
+        wildActionLine(feature({ enabled: true }), false, { ...resource, recharge: 'dawn' })
+          ?.detail ?? '',
+      ),
+    ).toContain('volta ao amanhecer');
+  });
+
+  it("writes the reason of a code the line has no sentence for from the server's text", () => {
+    const line = wildActionLine(
+      feature({ enabled: false, code: DisabledReasonCode.NOT_YOUR_TURN }),
+      false,
+      resource,
+    );
+    expect(line?.reason).not.toBe('');
+    expect(line?.reason).not.toBe('Sem usos');
+  });
+
   it('is not there without the feature or while in a form', () => {
     expect(wildActionLine(undefined, false, resource)).toBeNull();
     expect(wildActionLine(feature({ enabled: true }), true, resource)).toBeNull();

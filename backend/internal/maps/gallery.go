@@ -155,64 +155,84 @@ func (s *Service) DeleteGalleryImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "check whether the image is left with the players", err)
 	}
+	portraits, err := s.deleteImageRows(ctx, m.CampaignID, id.String())
+	if err != nil {
+		return nil, err
+	}
+	s.deleteFiles(ctx, m.CampaignID, id.String())
+	s.publishImageDeleted(m.CampaignID, shown == id.String(), portraits > 0, wasLeft)
+	return connect.NewResponse(&mapsv1.DeleteGalleryImageResponse{}), nil
+}
 
+// deleteImageRows deletes the image's row, unless a map uses it, and clears it
+// as the portrait of the NPCs that had it; it returns how many lost it.
+func (s *Service) deleteImageRows(ctx context.Context, campaignID, imageID string) (int64, error) {
 	var portraits int64 // the NPCs that lost it as their portrait
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		portraits = 0
-		// An image a map uses stays, and the answer names the maps (MR-019:
-		// "o app diz em qual mapa ela está").
-		usedIn, err := s.mapsUsing(ctx, q, m.CampaignID, id.String())
-		if err != nil {
-			return fmt.Errorf("list the maps that use the image: %w", err)
-		}
-		if len(usedIn) > 0 {
-			return errImageInUse(usedIn)
-		}
-		_, err = q.DeleteGalleryImage(ctx, mapsdb.DeleteGalleryImageParams{
-			CampaignID: m.CampaignID, ID: id.String(),
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errImageNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("delete gallery image: %w", err)
-		}
-		if portraits, err = s.characters.ClearPortraits(ctx, tx, m.CampaignID, id.String()); err != nil {
-			return fmt.Errorf("clear the portraits: %w", err)
-		}
-		return nil
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		portraits, err = s.deleteImageTx(ctx, tx, campaignID, imageID)
+		return err
 	})
-	// The check above runs in the transaction, so a map created at the same
+	// The check in the transaction runs in it, so a map created at the same
 	// time makes one of the two retry (SERIALIZABLE). The foreign key
 	// (maps.image_id, ON DELETE RESTRICT) is the backstop.
 	if isForeignKeyViolation(err) {
-		usedIn, _ := s.mapsUsing(ctx, s.queries, m.CampaignID, id.String())
-		return nil, errImageInUse(usedIn)
+		usedIn, _ := s.mapsUsing(ctx, s.queries, campaignID, imageID)
+		return 0, errImageInUse(usedIn)
 	}
 	if err != nil {
-		return nil, s.dbError(ctx, "delete a gallery image", err)
+		return 0, s.dbError(ctx, "delete a gallery image", err)
 	}
-	s.deleteFiles(ctx, m.CampaignID, id.String())
-	if shown == id.String() {
+	return portraits, nil
+}
+
+// deleteImageTx is the transaction of a delete. An image a map uses stays, and
+// the answer names the maps (MR-019: "o app diz em qual mapa ela está").
+func (s *Service) deleteImageTx(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (int64, error) {
+	q := s.queries.WithTx(tx)
+	usedIn, err := s.mapsUsing(ctx, q, campaignID, imageID)
+	if err != nil {
+		return 0, fmt.Errorf("list the maps that use the image: %w", err)
+	}
+	if len(usedIn) > 0 {
+		return 0, errImageInUse(usedIn)
+	}
+	_, err = q.DeleteGalleryImage(ctx, mapsdb.DeleteGalleryImageParams{CampaignID: campaignID, ID: imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, errImageNotFound()
+	}
+	if err != nil {
+		return 0, fmt.Errorf("delete gallery image: %w", err)
+	}
+	portraits, err := s.characters.ClearPortraits(ctx, tx, campaignID, imageID)
+	if err != nil {
+		return 0, fmt.Errorf("clear the portraits: %w", err)
+	}
+	return portraits, nil
+}
+
+// publishImageDeleted tells everyone in the session what a deleted image took
+// with it: the image on the screen, the NPC portraits on the stage and the
+// image left with the players.
+func (s *Service) publishImageDeleted(campaignID string, wasShown, hadPortraits, wasLeft bool) {
+	if wasShown {
 		// Everyone watching the session stops seeing it.
-		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
+		s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
 			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{},
 		}})
 	}
-	if portraits > 0 {
+	if hadPortraits {
 		// The NPC may have been on the stage: its portrait is gone for everyone.
-		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
+		s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
 			StageChanged: &playv1.WatchGameSessionResponse_StageChanged{},
 		}})
 	}
 	if wasLeft {
 		// It left the players' list too (the foreign key deleted the row).
-		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+		s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
 			LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
 		}})
 	}
-	return connect.NewResponse(&mapsv1.DeleteGalleryImageResponse{}), nil
 }
 
 func imageToProto(r mapsdb.GalleryImage) *mapsv1.GalleryImage {

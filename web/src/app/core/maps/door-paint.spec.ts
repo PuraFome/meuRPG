@@ -159,3 +159,50 @@ describe('doorBlock and wallUnderDoor (revealing a secret door)', () => {
     expect(wallUnderDoor([], 10, 10, 2, { col: 3, row: 2 })).toEqual([]);
   });
 });
+
+describe('planDoor, the cases around the edges', () => {
+  // A wall row across the middle (row 1) of a 3 x 3 map: floor above and below.
+  const across = reader(['0,1', '1,1', '2,1']);
+
+  it('opens a gap with floor above and below, not only to the sides', () => {
+    expect(planDoor(across, 3, 3, 1, 1, 4)).toEqual({
+      ok: true,
+      kind: 4,
+      writes: [
+        { layer: MapLayer.DOORS, value: 4 },
+        { layer: MapLayer.WALL, value: 0 },
+      ],
+    });
+  });
+
+  it('puts a door in a floor gap with a wall above and below', () => {
+    const gap = reader(['1,0', '1,2']);
+    expect(planDoor(gap, 3, 3, 1, 1, 5)).toEqual({
+      ok: true,
+      kind: 5,
+      writes: [{ layer: MapLayer.DOORS, value: 5 }],
+    });
+  });
+
+  it('refuses a wall at the edge of the grid (no floor outside it) and a floor square beside one wall only', () => {
+    expect(planDoor(reader(['0,0', '0,1', '0,2']), 3, 3, 0, 1, 2)).toEqual({ ok: false });
+    expect(planDoor(reader(['0,1']), 3, 3, 1, 1, 2)).toEqual({ ok: false });
+    // The grid edge counts as no wall: floor at the border is no gap.
+    expect(planDoor(reader([]), 3, 3, 0, 0, 2)).toEqual({ ok: false });
+  });
+
+  it('refuses squares before the origin and past the last row', () => {
+    expect(planDoor(split, 5, 3, -1, 1, 2)).toEqual({ ok: false });
+    expect(planDoor(split, 5, 3, 1, -1, 2)).toEqual({ ok: false });
+    expect(planDoor(split, 5, 3, 1, 3, 2)).toEqual({ ok: false });
+  });
+
+  it('takes a door away without writing the wall twice when the wall is already there', () => {
+    const both = reader(['2,1'], { '2,1': 3 });
+    expect(planDoor(both, 5, 3, 2, 1, 0)).toEqual({
+      ok: true,
+      kind: 0,
+      writes: [{ layer: MapLayer.DOORS, value: 0 }],
+    });
+  });
+});

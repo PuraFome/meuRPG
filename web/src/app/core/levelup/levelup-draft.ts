@@ -2,79 +2,39 @@ import { computed, signal } from '@angular/core';
 
 import {
   type Choice,
-  LevelUpHitPointsMethod,
   LevelUpHitPointsRule,
-  LevelUpProficiencyKind,
   LevelUpSpellsKind,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import type { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
+import type { AbilityKey } from '../characters/characters.types';
+import { type ChoiceDrafts, keepDraftsOf, withSelection, withText } from './levelup-choices';
+import { LevelUpAbilities } from './levelup-abilities';
 import {
-  Ability,
-  type FeatOption,
-  type Skill,
-  type Spell,
-} from '../../../gen/meurpg/rules/v1/rules_pb';
-import { abilityName } from '../content/feat-text';
-import { ABILITY_KEYS, type AbilityKey } from '../characters/characters.types';
+  type AsiMode,
+  type HpCard,
+  type LevelUpCatalog,
+  type PickSet,
+  type Rolled,
+} from './levelup-draft-types';
+import type { Missing, SheetKeys, StepKey } from './levelup-flow';
+import { LevelUpLists } from './levelup-lists';
+import { missingChoices } from './levelup-missing';
+import {
+  adoptedHitPoints,
+  anyPicked,
+  featureOptionKeys,
+  flip,
+  keepOnly,
+  nextFeatures,
+  offeredAmong,
+  subclassPrepares,
+  trim,
+} from './levelup-picks';
+import { choicesRequest } from './levelup-request';
 import type { LevelUpChoicesInit } from './levelup-client';
-import {
-  type ChoiceDrafts,
-  keepDraftsOf,
-  missingIn,
-  storedKeysOf,
-  textsOf,
-  withSelection,
-  withText,
-} from './levelup-choices';
-import {
-  type Missing,
-  type PickItem,
-  type SheetKeys,
-  type StepKey,
-  cantripOptions,
-  expertiseOptions,
-  needText,
-  preparedMore,
-  preparedOptions,
-  proficiencyPick,
-  skillOptions,
-  spellOptions,
-  stepsFor,
-  totalsFor,
-  withSubclass,
-} from './levelup-flow';
 
-/** The two cards of "Pontos de vida": the average, or a die. */
-export type HpCard = 'average' | 'roll';
-
-/** A die result: the server's kept roll, or the one typed from a physical die. */
-export interface Rolled {
-  readonly kind: 'app' | 'physical';
-  readonly value: number;
-}
-
-const WIRE_ABILITY: Record<AbilityKey, string> = {
-  str: 'strength',
-  dex: 'dexterity',
-  con: 'constitution',
-  int: 'intelligence',
-  wis: 'wisdom',
-  cha: 'charisma',
-};
-
-const WIRE_OF_ABILITY: Readonly<Record<number, AbilityKey>> = {
-  [Ability.STRENGTH]: 'str',
-  [Ability.DEXTERITY]: 'dex',
-  [Ability.CONSTITUTION]: 'con',
-  [Ability.INTELLIGENCE]: 'int',
-  [Ability.WISDOM]: 'wis',
-  [Ability.CHARISMA]: 'cha',
-};
-
-/** What the player takes at an Ability Score Improvement level: the increase of the SRD, or a feat. */
-export type AsiMode = 'increase' | 'feat';
-
-type PickSet = ReturnType<typeof signal<ReadonlySet<string>>>;
+export type { AsiMode, HpCard, Rolled };
 
 /**
  * Everything the player has chosen so far in one guided level-up (MR-040):
@@ -83,6 +43,9 @@ type PickSet = ReturnType<typeof signal<ReadonlySet<string>>>;
  * what is still missing and the `LevelUpChoices` to send. Nothing is saved
  * until "Confirmar o nível N" (the server checks every choice with the rules
  * engine); this only counts the picks against the counts the server gave.
+ *
+ * The picks and the ways to change them live here; what they are read against is built by `LevelUpLists` (the lists to
+ * pick from and their counts) and `LevelUpAbilities` (the increase or the feat), whose members this class exposes as its own.
  */
 export class LevelUpDraft {
   readonly abilityMode = signal<'one' | 'two'>('one');
@@ -120,306 +83,91 @@ export class LevelUpDraft {
     },
   });
 
+  // What the picks are read against (see `LevelUpLists` and `LevelUpAbilities`).
+  readonly effective: LevelUpLists['effective'];
+  readonly listName: LevelUpLists['listName'];
+  readonly totals: LevelUpLists['totals'];
+  readonly more: LevelUpLists['more'];
+  readonly steps: LevelUpLists['steps'];
+  readonly cantripItems: LevelUpLists['cantripItems'];
+  readonly spellItems: LevelUpLists['spellItems'];
+  readonly preparedItems: LevelUpLists['preparedItems'];
+  readonly skillItems: LevelUpLists['skillItems'];
+  readonly instrumentItems: LevelUpLists['instrumentItems'];
+  readonly instrumentAsked: LevelUpLists['instrumentAsked'];
+  readonly expertiseItems: LevelUpLists['expertiseItems'];
+  readonly names: LevelUpLists['names'];
+  readonly cantripsAsked: LevelUpLists['cantripsAsked'];
+  readonly spellsAsked: LevelUpLists['spellsAsked'];
+  readonly preparedAsked: LevelUpLists['preparedAsked'];
+  readonly skillsAsked: LevelUpLists['skillsAsked'];
+  readonly expertiseAsked: LevelUpLists['expertiseAsked'];
+  readonly outsidePicked: LevelUpLists['outsidePicked'];
+  readonly outsideMax: LevelUpLists['outsideMax'];
+  readonly abilityAsked: LevelUpAbilities['abilityAsked'];
+  readonly feats: LevelUpAbilities['feats'];
+  readonly hasFeats: LevelUpAbilities['hasFeats'];
+  readonly taking: LevelUpAbilities['taking'];
+  readonly feat: LevelUpAbilities['feat'];
+  readonly featFixed: LevelUpAbilities['featFixed'];
+  readonly featCapped: LevelUpAbilities['featCapped'];
+  readonly featAsked: LevelUpAbilities['featAsked'];
+  readonly featSummary: LevelUpAbilities['featSummary'];
+  readonly pickedKeys: LevelUpAbilities['pickedKeys'];
+  readonly abilityIncrease: LevelUpAbilities['abilityIncrease'];
+  private readonly abilities: LevelUpAbilities;
+
   constructor(
     readonly options: LevelUpOptions,
     readonly have: SheetKeys,
-    readonly catalog: {
-      readonly spells: readonly Spell[];
-      readonly skills: readonly Skill[];
-      readonly names?: ReadonlyMap<string, string>;
-      readonly classes?: readonly {
-        readonly key: string;
-        readonly namePt: string;
-        readonly hitDie?: number;
-      }[];
-    },
+    readonly catalog: LevelUpCatalog,
   ) {
     this.preparedMax.set(options.preparedMaxAfter);
     this.startCard = options.hitPointsRule === LevelUpHitPointsRule.ROLL_ONLY ? 'roll' : 'average';
     this.hpCard.set(this.startCard);
+    const lists = new LevelUpLists(options, have, catalog, {
+      subclassKey: this.subclassKey,
+      spells: this.spells,
+      skills: this.skills,
+      preparedMax: this.preparedMax,
+    });
+    this.effective = lists.effective;
+    this.listName = lists.listName;
+    this.totals = lists.totals;
+    this.more = lists.more;
+    this.steps = lists.steps;
+    this.cantripItems = lists.cantripItems;
+    this.spellItems = lists.spellItems;
+    this.preparedItems = lists.preparedItems;
+    this.skillItems = lists.skillItems;
+    this.instrumentItems = lists.instrumentItems;
+    this.instrumentAsked = lists.instrumentAsked;
+    this.expertiseItems = lists.expertiseItems;
+    this.names = lists.names;
+    this.cantripsAsked = lists.cantripsAsked;
+    this.spellsAsked = lists.spellsAsked;
+    this.preparedAsked = lists.preparedAsked;
+    this.skillsAsked = lists.skillsAsked;
+    this.expertiseAsked = lists.expertiseAsked;
+    this.outsidePicked = lists.outsidePicked;
+    this.outsideMax = lists.outsideMax;
+    const abilities = new LevelUpAbilities(options, this);
+    this.abilities = abilities;
+    this.abilityAsked = abilities.abilityAsked;
+    this.feats = abilities.feats;
+    this.hasFeats = abilities.hasFeats;
+    this.taking = abilities.taking;
+    this.feat = abilities.feat;
+    this.featFixed = abilities.featFixed;
+    this.featCapped = abilities.featCapped;
+    this.featAsked = abilities.featAsked;
+    this.featSummary = abilities.featSummary;
+    this.pickedKeys = abilities.pickedKeys;
+    this.abilityIncrease = abilities.abilityIncrease;
   }
 
-  /** The server's options with the picked subclass's casting folded in: what the spell steps read. */
-  readonly effective = computed(() => withSubclass(this.options, this.subclassKey()));
-  /** Whose spell list the new spells come from, by name: the class's own, the one a table class reuses, a third caster's. */
-  readonly listName = computed(
-    () =>
-      this.catalog.classes?.find((c) => c.key === this.effective().spellListClassKey)?.namePt ??
-      this.options.classNamePt,
-  );
-  readonly totals = computed(() => totalsFor(this.options, this.subclassKey()));
-  readonly more = computed(() =>
-    preparedMore(this.effective(), this.preparedMaxAfter(), this.have.prepared.length),
-  );
-  readonly steps = computed<StepKey[]>(() => stepsFor(this.options, this.totals(), this.more()));
-
-  readonly cantripItems = computed<PickItem[]>(() =>
-    cantripOptions(this.effective(), this.catalog.spells, this.have),
-  );
-  private readonly spellItemsBase = computed<PickItem[]>(() =>
-    spellOptions(this.effective(), this.catalog.spells, this.have),
-  );
-  /** The new spells, with the rows from outside the class list turned off once the cap is reached. */
-  readonly spellItems = computed<PickItem[]>(() => {
-    const base = this.spellItemsBase();
-    const full =
-      base.filter((i) => i.outside && this.spells().has(i.key)).length >=
-      this.options.anyClassSpells;
-    return full
-      ? base.map((i) =>
-          i.outside && !this.spells().has(i.key)
-            ? { ...i, disabled: `Limite de ${this.options.anyClassSpells} de outra classe` }
-            : i,
-        )
-      : base;
-  });
-  readonly preparedItems = computed<PickItem[]>(() =>
-    preparedOptions(this.effective(), this.catalog.spells, this.have, this.spells()),
-  );
-  readonly skillItems = computed<PickItem[]>(() =>
-    skillOptions(this.catalog.skills, this.have, this.options),
-  );
-  /** The instruments of a new Bard, with the ones the character has turned off. */
-  readonly instrumentItems = computed<PickItem[]>(() =>
-    (
-      this.options.proficiencyChoices.find((c) => c.kind === LevelUpProficiencyKind.INSTRUMENT)
-        ?.from ?? []
-    ).map((f) => ({
-      key: f.key,
-      name: f.namePt,
-      sub: '',
-      ...(f.alreadyHave ? { disabled: 'Você já tem' } : {}),
-    })),
-  );
-  readonly instrumentAsked = computed(() =>
-    proficiencyPick(this.options, LevelUpProficiencyKind.INSTRUMENT),
-  );
-  readonly expertiseItems = computed<PickItem[]>(() =>
-    expertiseOptions(this.catalog.skills, this.have, this.skills()),
-  );
-
-  /** The Portuguese name of every key the screen may show. */
-  readonly names = computed(() => {
-    const names = new Map<string, string>(this.catalog.names);
-    for (const s of this.catalog.spells) names.set(s.key, s.namePt);
-    for (const s of this.catalog.skills) names.set(s.key, s.namePt);
-    for (const s of this.options.subclasses) names.set(s.key, s.namePt);
-    for (const f of this.totals().featureChoices) {
-      names.set(f.feature?.key ?? '', f.feature?.namePt ?? '');
-      for (const o of f.options) names.set(o.key, o.namePt);
-    }
-    return names;
-  });
-
-  /** What each count asks: the server's own number, never less. A list with fewer rows than that is
-   * said so (`short`), never a way through: the server refuses fewer. Only the spells to prepare are
-   * capped by their list, since the server asks for no more than the new maximum, not exactly that. */
-  readonly cantripsAsked = computed(() => this.totals().cantrips);
-  readonly spellsAsked = computed(() => this.totals().spells);
-  readonly preparedAsked = computed(() => Math.min(this.more(), this.preparedItems().length));
-  readonly skillsAsked = computed(() => this.totals().skills);
-  readonly expertiseAsked = computed(() => this.totals().expertise);
-
-  /** How many spells from outside the class list were picked, and how many may be (Magical Secrets). */
-  readonly outsidePicked = computed(
-    () => this.spellItems().filter((i) => i.outside && this.spells().has(i.key)).length,
-  );
-  readonly outsideMax = computed(() => this.options.anyClassSpells);
-
-  readonly abilityAsked = computed(() => (this.abilityMode() === 'one' ? 1 : 2));
-
-  /** The feats the server offers at this level (empty: the step is today's increase only). */
-  readonly feats = computed<readonly FeatOption[]>(() => this.options.feats);
-  readonly hasFeats = computed(
-    () => this.options.abilityScoreImprovement && this.feats().length > 0,
-  );
-  readonly taking = computed(() => this.hasFeats() && this.asiMode() === 'feat');
-  /** The picked feat, as the server lists it. */
-  readonly feat = computed(() => this.feats().find((f) => f.key === this.featKey()));
-  /** The feat raises every ability it lists: nothing to pick, and the server applies it (stopping each at 20). */
-  readonly featFixed = computed(() => {
-    const inc = this.feat()?.increase;
-    return inc !== undefined && inc.count >= inc.from.length;
-  });
-  /** The abilities of the feat's list the server says would pass 20. */
-  readonly featCapped = computed<readonly Ability[]>(() => {
-    const feat = this.feat();
-    return feat?.increase ? feat.cappedAbilities : [];
-  });
-  /** How many abilities the player picks for a feat that gives a choice: the count, or fewer when too few are below 20. */
-  readonly featAsked = computed(() => {
-    const inc = this.feat()?.increase;
-    if (!inc || this.featFixed()) {
-      return 0;
-    }
-    const free = inc.from.filter((a) => !this.featCapped().includes(a)).length;
-    return Math.min(inc.count, free);
-  });
-  /** "Talento: Atleta" with "+1 Força, +1 Destreza": what the Resumo and the list of the level say of the feat. */
-  readonly featSummary = computed(() => {
-    const feat = this.feat();
-    if (!this.taking() || !feat) {
-      return null;
-    }
-    const inc = feat.increase;
-    const raised = this.featFixed()
-      ? (inc?.from ?? []).filter((a) => !this.featCapped().includes(a))
-      : this.featAbilities();
-    return {
-      name: feat.namePt,
-      increase: inc ? raised.map((a) => `+${inc.value} ${abilityName(a)}`).join(', ') : '',
-    };
-  });
-  /** The abilities raised by what was picked, in the sheet's own keys: the increase, or the feat's. */
-  readonly pickedKeys = computed<readonly AbilityKey[]>(() =>
-    this.taking()
-      ? (this.featFixed() ? (this.feat()?.increase?.from ?? []) : this.featAbilities()).map(
-          (a) => WIRE_OF_ABILITY[a],
-        )
-      : this.abilityKeys(),
-  );
-
-  readonly abilityIncrease = computed<Partial<Record<AbilityKey, number>>>(() => {
-    if (this.taking()) {
-      // A feat that raises every ability it lists sends no increase: the server applies it, stopping at 20.
-      const inc = this.feat()?.increase;
-      if (!inc || this.featFixed() || this.featAbilities().length !== this.featAsked()) {
-        return {};
-      }
-      return Object.fromEntries(this.featAbilities().map((a) => [WIRE_OF_ABILITY[a], inc.value]));
-    }
-    const keys = this.abilityKeys();
-    if (!this.options.abilityScoreImprovement || keys.length !== this.abilityAsked()) {
-      return {};
-    }
-    const amount = this.abilityMode() === 'one' ? 2 : 1;
-    return Object.fromEntries(keys.map((k) => [k, amount]));
-  });
-
   /** Every choice still to make, in step order, each with the picker that holds it. */
-  readonly missing = computed<Missing[]>(() => {
-    const o = this.options;
-    const t = this.totals();
-    const out: Missing[] = [];
-    if (this.taking()) {
-      if (this.feat() === undefined) {
-        out.push({ step: 'abilities', id: 'abilities', text: 'Falta escolher o talento.' });
-      } else if (this.featAbilities().length < this.featAsked()) {
-        out.push({
-          step: 'abilities',
-          id: 'abilities',
-          text: needText(
-            this.featAsked() - this.featAbilities().length,
-            'habilidade',
-            'habilidades',
-          ),
-        });
-      }
-    } else if (o.abilityScoreImprovement && this.abilityKeys().length < this.abilityAsked()) {
-      const n = this.abilityAsked() - this.abilityKeys().length;
-      out.push({
-        step: 'abilities',
-        id: 'abilities',
-        text: needText(n, 'habilidade', 'habilidades'),
-      });
-    }
-    if (this.hpCard() === 'roll' && this.rolled() === null) {
-      out.push({ step: 'hp', id: 'hp', text: 'Falta rolar o dado de vida.' });
-    }
-    // What an earlier level left open comes first: the server refuses the level without it.
-    const late = missingIn(o.lateChoices, this.lateDrafts());
-    if (late.count > 0) {
-      out.push({
-        step: 'picks',
-        id: 'late',
-        text: needText(late.count, 'escolha que ficou para trás', 'escolhas que ficaram para trás'),
-      });
-    }
-    const fresh = missingIn(o.newChoices, this.newDrafts());
-    if (fresh.count > 0) {
-      out.push({
-        step: 'picks',
-        id: 'new',
-        text: needText(fresh.count, 'escolha do nível', 'escolhas do nível'),
-      });
-    }
-    if (o.subclassDue && this.subclassKey() === '') {
-      out.push({ step: 'picks', id: 'subclass', text: 'Falta escolher a subclasse.' });
-    }
-    t.featureChoices.forEach((f, i) => {
-      const picked = f.options.filter((opt) => this.features().has(opt.key)).length;
-      if (picked < f.choose) {
-        const n = f.choose - picked;
-        out.push({
-          step: 'picks',
-          id: `feature-${i}`,
-          text: needText(
-            n,
-            `opção de ${f.feature?.namePt ?? 'característica'}`,
-            `opções de ${f.feature?.namePt ?? 'característica'}`,
-          ),
-        });
-      }
-    });
-    const short = (picked: ReadonlySet<string>, asked: number) => Math.max(0, asked - picked.size);
-    // A list with fewer rows than the level asks cannot be completed: the message says so (the server would refuse less).
-    const lack = (asked: number, items: readonly PickItem[], what: string): string =>
-      items.length < asked
-        ? `A lista só traz ${items.length} ${what} e o nível pede ${asked}. Peça ao mestre para ajustar a ficha.`
-        : '';
-    let n = short(this.skills(), this.skillsAsked());
-    if (n > 0)
-      out.push({
-        step: 'picks',
-        id: 'skills',
-        text:
-          lack(this.skillsAsked(), this.skillItems(), 'perícias') ||
-          needText(n, 'perícia', 'perícias'),
-      });
-    if (this.instrumentAsked() > 0 && this.instrument() === '') {
-      out.push({ step: 'picks', id: 'instrument', text: 'Falta escolher o instrumento.' });
-    }
-    n = short(this.expertise(), this.expertiseAsked());
-    if (n > 0)
-      out.push({
-        step: 'picks',
-        id: 'expertise',
-        text:
-          lack(this.expertiseAsked(), this.expertiseItems(), 'perícias para a especialização') ||
-          needText(n, 'especialização', 'especializações'),
-      });
-    n = short(this.cantrips(), this.cantripsAsked());
-    if (n > 0)
-      out.push({
-        step: 'spells',
-        id: 'cantrips',
-        text:
-          lack(this.cantripsAsked(), this.cantripItems(), 'truques') ||
-          needText(n, 'truque', 'truques'),
-      });
-    n = short(this.spells(), this.spellsAsked());
-    if (n > 0) {
-      const where =
-        this.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK
-          ? 'para o livro'
-          : 'para as magias conhecidas';
-      out.push({
-        step: 'spells',
-        id: 'spells',
-        text:
-          lack(this.spellsAsked(), this.spellItems(), 'magias') ||
-          needText(n, 'magia', 'magias').replace(/\.$/, ` ${where}.`),
-      });
-    }
-    n = short(this.prepared(), this.preparedAsked());
-    if (n > 0)
-      out.push({
-        step: 'spells',
-        id: 'prepared',
-        text: needText(n, 'magia', 'magias', 'preparar'),
-      });
-    return out;
-  });
+  readonly missing = computed<Missing[]>(() => missingChoices(this));
 
   /** What is missing in `step`, if anything: the step's "Próximo" waits for it. */
   missingIn(step: StepKey): readonly Missing[] {
@@ -427,59 +175,27 @@ export class LevelUpDraft {
   }
 
   /** Whether anything was chosen beyond the defaults: leaving then asks first. */
-  readonly dirty = computed(
-    () =>
-      this.abilityKeys().length > 0 ||
-      this.featKey() !== '' ||
-      this.hpCard() !== this.startCard ||
-      this.subclassKey() !== '' ||
-      this.lateDrafts().size > 0 ||
-      this.newDrafts().size > 0 ||
-      this.instrument() !== '' ||
-      [
-        this.cantrips(),
-        this.spells(),
-        this.prepared(),
-        this.features(),
-        this.skills(),
-        this.expertise(),
-      ].some((s) => s.size > 0),
-  );
+  readonly dirty = computed(() => anyPicked(this, this.startCard));
 
   private build(hp: Rolled | null): LevelUpChoicesInit {
-    const increase = this.abilityIncrease();
-    return {
-      classKey: this.options.classKey,
-      abilityIncrease: Object.fromEntries(
-        ABILITY_KEYS.filter((k) => increase[k]).map((k) => [WIRE_ABILITY[k], increase[k]]),
-      ),
-      featKey: this.taking() ? this.featKey() : '',
-      subclassKey: this.subclassKey(),
-      cantripKeys: [...this.cantrips()],
-      knownSpellKeys: [...this.spells()],
-      preparedSpellKeys: [...this.prepared()],
-      featureChoiceKeys: [
-        ...this.features(),
-        ...storedKeysOf(this.options.newChoices, this.newDrafts()),
-      ],
-      lateChoiceKeys: storedKeysOf(this.options.lateChoices, this.lateDrafts()),
-      featureChoiceText: {
-        ...textsOf(this.options.lateChoices, this.lateDrafts()),
-        ...textsOf(this.options.newChoices, this.newDrafts()),
+    return choicesRequest(
+      {
+        options: this.options,
+        abilityIncrease: this.abilityIncrease(),
+        featKey: this.taking() ? this.featKey() : '',
+        subclassKey: this.subclassKey(),
+        cantrips: this.cantrips(),
+        spells: this.spells(),
+        prepared: this.prepared(),
+        features: this.features(),
+        skills: this.skills(),
+        expertise: this.expertise(),
+        instrument: this.instrument(),
+        lateDrafts: this.lateDrafts(),
+        newDrafts: this.newDrafts(),
       },
-      skillProficiencyKeys: [...this.skills()],
-      expertiseSkillKeys: [...this.expertise()],
-      instrumentKey: this.instrument(),
-      hitPoints: hp
-        ? {
-            method:
-              hp.kind === 'app'
-                ? LevelUpHitPointsMethod.ROLLED_IN_APP
-                : LevelUpHitPointsMethod.ROLLED_PHYSICAL,
-            value: hp.value,
-          }
-        : { method: LevelUpHitPointsMethod.AVERAGE },
-    };
+      hp,
+    );
   }
 
   /** The choices to send. Incomplete is fine for a preview: the answer says what is missing. */
@@ -505,12 +221,7 @@ export class LevelUpDraft {
     if (this.forwarded((d) => d.toggleAbility(key))) {
       return;
     }
-    const keys = this.abilityKeys();
-    if (keys.includes(key)) {
-      this.abilityKeys.set(keys.filter((k) => k !== key));
-      return;
-    }
-    this.abilityKeys.set([...keys, key].slice(-this.abilityAsked()));
+    this.abilityKeys.set(this.abilities.nextAbilityKeys(key));
   }
 
   /** A pick on a choice an earlier level left open: `optionKeys` is the whole selection of the choice now. */
@@ -570,19 +281,9 @@ export class LevelUpDraft {
     if (this.forwarded((d) => d.toggleFeatAbility(ability))) {
       return;
     }
-    const inc = this.feat()?.increase;
-    const now = this.featAbilities();
-    if (!inc || this.featFixed() || !inc.from.includes(ability)) {
-      return;
-    }
-    if (now.includes(ability)) {
-      this.featAbilities.set(now.filter((a) => a !== ability));
-    } else if (this.featCapped().includes(ability)) {
-      return;
-    } else if (this.featAsked() === 1) {
-      this.featAbilities.set([ability]);
-    } else if (now.length < this.featAsked()) {
-      this.featAbilities.set([...now, ability]);
+    const next = this.abilities.nextFeatAbilities(ability);
+    if (next) {
+      this.featAbilities.set(next);
     }
   }
 
@@ -600,30 +301,21 @@ export class LevelUpDraft {
     if (key === this.subclassKey()) {
       return;
     }
-    const gone = new Set(
-      (
-        this.options.subclasses.find((c) => c.key === this.subclassKey())?.featureChoices ?? []
-      ).flatMap((f) => f.options.map((o) => o.key)),
-    );
-    const preparing = (k: string) => this.options.subclasses.find((c) => c.key === k)?.prepares;
     const before = this.subclassKey();
+    const gone = featureOptionKeys(this.options, before);
     this.subclassKey.set(key);
     // A subclass that prepares (a third caster) says its own maximum until the preview gives the exact one.
     // One that does not leaves the maximum as it is: the pending ability increase may have moved it.
-    if (preparing(before) || preparing(key)) {
+    if (subclassPrepares(this.options, before) || subclassPrepares(this.options, key)) {
       this.preparedMax.set(this.effective().preparedMaxAfter);
     }
     // Only what belonged to the previous subclass goes: its feature options. The cantrips, skills and
     // expertise that the level itself asks for stay, trimmed to what the new subclass's counts allow.
     this.features.set(new Set([...this.features()].filter((k) => !gone.has(k))));
     // The spells the subclass brought (a third caster's list) go with it: keep only what the lists now offer.
-    const offered = (picked: ReadonlySet<string>, items: readonly PickItem[]) => {
-      const ok = new Set(items.map((i) => i.key));
-      return new Set([...picked].filter((k) => ok.has(k)));
-    };
-    this.cantrips.set(offered(this.cantrips(), this.cantripItems()));
-    this.spells.set(offered(this.spells(), this.spellItems()));
-    this.prepared.set(offered(this.prepared(), this.preparedItems()));
+    this.cantrips.set(offeredAmong(this.cantrips(), this.cantripItems()));
+    this.spells.set(offeredAmong(this.spells(), this.spellItems()));
+    this.prepared.set(offeredAmong(this.prepared(), this.preparedItems()));
     this.reconcile();
   }
 
@@ -662,13 +354,7 @@ export class LevelUpDraft {
     if (other.taking() && this.feats().some((f) => f.key === other.featKey() && f.qualifies)) {
       this.asiMode.set('feat');
       this.setFeat(other.featKey());
-      const inc = this.feat()?.increase;
-      this.featAbilities.set(
-        other
-          .featAbilities()
-          .filter((a) => inc?.from.includes(a) && !this.featCapped().includes(a))
-          .slice(0, this.featAsked()),
-      );
+      this.featAbilities.set(this.abilities.adoptedFeatAbilities(other.featAbilities()));
     }
     this.adoptHitPoints(other);
     const sameLevel =
@@ -680,13 +366,9 @@ export class LevelUpDraft {
     if (this.options.subclasses.some((c) => c.key === other.subclassKey())) {
       this.subclassKey.set(other.subclassKey());
     }
-    const keep = (picked: ReadonlySet<string>, items: readonly PickItem[]) => {
-      const ok = new Set(items.map((i) => i.key));
-      return new Set([...picked].filter((k) => ok.has(k)));
-    };
-    this.cantrips.set(keep(other.cantrips(), this.cantripItems()));
-    this.spells.set(keep(other.spells(), this.spellItems()));
-    this.prepared.set(keep(other.prepared(), this.preparedItems()));
+    this.cantrips.set(offeredAmong(other.cantrips(), this.cantripItems()));
+    this.spells.set(offeredAmong(other.spells(), this.spellItems()));
+    this.prepared.set(offeredAmong(other.prepared(), this.preparedItems()));
     const options = new Set(
       this.totals().featureChoices.flatMap((f) => f.options.map((o) => o.key)),
     );
@@ -694,7 +376,7 @@ export class LevelUpDraft {
     this.lateDrafts.set(keepDraftsOf(this.options.lateChoices, other.lateDrafts()));
     this.newDrafts.set(keepDraftsOf(this.options.newChoices, other.newDrafts()));
     this.skills.set(
-      keep(
+      offeredAmong(
         other.skills(),
         this.skillItems().filter((i) => !i.disabled),
       ),
@@ -702,97 +384,42 @@ export class LevelUpDraft {
     if (this.instrumentItems().some((i) => i.key === other.instrument() && !i.disabled)) {
       this.instrument.set(other.instrument());
     }
-    this.expertise.set(keep(other.expertise(), this.expertiseItems()));
+    this.expertise.set(offeredAmong(other.expertise(), this.expertiseItems()));
     this.reconcile();
   }
 
-  /** The hit points card and die result of `other`, as far as these options still allow them: the rule of
-   * the table decides the card, an in-app roll is the server's own kept roll for this class and level (a roll
-   * belongs to the level it was made for), and a typed one stays only for the same level and a die it fits. */
+  /** The hit points card and die result of `other`, as far as these options still allow them. */
   private adoptHitPoints(other: LevelUpDraft): void {
-    const o = this.options;
-    const card =
-      o.hitPointsRule === LevelUpHitPointsRule.AVERAGE_ONLY
-        ? 'average'
-        : o.hitPointsRule === LevelUpHitPointsRule.ROLL_ONLY
-          ? 'roll'
-          : other.hpCard();
-    this.hpCard.set(card);
-    const was = other.rolled();
-    let keep: Rolled | null = null;
-    if (card === 'roll' && was) {
-      if (was.kind === 'app') {
-        const keptClass = o.keptHitPointRollClassKey;
-        if (o.keptHitPointRoll === was.value && (keptClass === '' || keptClass === o.classKey)) {
-          keep = was;
-        }
-      } else if (
-        o.classKey === other.options.classKey &&
-        o.toLevel === other.options.toLevel &&
-        Number.isInteger(was.value) &&
-        was.value >= 1 &&
-        was.value <= o.hitDie
-      ) {
-        keep = was;
-      }
-    }
-    this.rolled.set(keep);
+    const kept = adoptedHitPoints(this.options, other.options, other.hpCard(), other.rolled());
+    this.hpCard.set(kept.card);
+    this.rolled.set(kept.rolled);
   }
 
   /** Brings every pick set back in step with the counts: the picks beyond what a count asks go (the first
    * ones stay), the prepared spells stay among the offered ones, and expertise stays on trained skills only.
    * Run after anything that moves a count or a list. */
   private reconcile(): void {
-    this.trim(this.cantrips, this.cantripsAsked());
-    this.trim(this.spells, this.spellsAsked());
+    trim(this.cantrips, this.cantripsAsked());
+    trim(this.spells, this.spellsAsked());
     const offered = new Set(this.preparedItems().map((i) => i.key));
-    this.keepOnly(this.prepared, (k) => offered.has(k));
-    this.trim(this.prepared, this.preparedAsked());
-    this.trim(this.skills, this.skillsAsked());
+    keepOnly(this.prepared, (k) => offered.has(k));
+    trim(this.prepared, this.preparedAsked());
+    trim(this.skills, this.skillsAsked());
     this.dropUntrainedExpertise();
-    this.trim(this.expertise, this.expertiseAsked());
+    trim(this.expertise, this.expertiseAsked());
   }
 
   /** Expertise only in what is trained. */
   private dropUntrainedExpertise(): void {
     const trained = new Set([...this.have.skills, ...this.skills()]);
-    this.keepOnly(this.expertise, (k) => trained.has(k));
-  }
-
-  /** Drops the picks `keep` refuses, leaving the set itself alone when nothing goes (a new set would wake every reader). */
-  private keepOnly(set: PickSet, keep: (key: string) => boolean): void {
-    const kept = [...set()].filter(keep);
-    if (kept.length !== set().size) {
-      set.set(new Set(kept));
-    }
-  }
-
-  /** Keeps the first `max` picks of a list. */
-  private trim(set: PickSet, max: number): void {
-    if (set().size > max) {
-      set.set(new Set([...set()].slice(0, max)));
-    }
-  }
-
-  /** Picks or drops `key`: with a single place the pick replaces, otherwise a full list refuses. */
-  private flip(set: PickSet, key: string, max: number): void {
-    const now = set();
-    if (now.has(key)) {
-      const next = new Set(now);
-      next.delete(key);
-      set.set(next);
-    } else if (max === 1) {
-      set.set(new Set([key]));
-    } else if (now.size < max) {
-      set.set(new Set([...now, key]));
-    }
+    keepOnly(this.expertise, (k) => trained.has(k));
   }
 
   toggleCantrip(key: string): void {
     if (this.forwarded((d) => d.toggleCantrip(key))) {
       return;
     }
-    this.flip(this.cantrips, key, this.cantripsAsked());
+    flip(this.cantrips, key, this.cantripsAsked());
   }
 
   toggleSpell(key: string): void {
@@ -804,7 +431,7 @@ export class LevelUpDraft {
     if (item?.disabled && !this.spells().has(key)) {
       return;
     }
-    this.flip(this.spells, key, this.spellsAsked());
+    flip(this.spells, key, this.spellsAsked());
     // A spell dropped from the book cannot stay prepared.
     const book = new Set([...this.have.known, ...this.spells()]);
     if (this.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK) {
@@ -816,7 +443,7 @@ export class LevelUpDraft {
     if (this.forwarded((d) => d.togglePrepared(key))) {
       return;
     }
-    this.flip(this.prepared, key, this.preparedAsked());
+    flip(this.prepared, key, this.preparedAsked());
   }
 
   toggleSkill(key: string): void {
@@ -826,7 +453,7 @@ export class LevelUpDraft {
     if (this.skillItems().find((i) => i.key === key)?.disabled && !this.skills().has(key)) {
       return;
     }
-    this.flip(this.skills, key, this.skillsAsked());
+    flip(this.skills, key, this.skillsAsked());
     this.dropUntrainedExpertise();
   }
 
@@ -846,7 +473,7 @@ export class LevelUpDraft {
     if (this.forwarded((d) => d.toggleExpertise(key))) {
       return;
     }
-    this.flip(this.expertise, key, this.expertiseAsked());
+    flip(this.expertise, key, this.expertiseAsked());
   }
 
   /** A feature option: each choice (a fighting style, the metamagic) takes its own `choose`. */
@@ -854,16 +481,6 @@ export class LevelUpDraft {
     if (this.forwarded((d) => d.toggleFeature(key, group, choose))) {
       return;
     }
-    const now = this.features();
-    if (now.has(key)) {
-      this.flip(this.features, key, choose);
-      return;
-    }
-    const inGroup = [...now].filter((k) => group.includes(k));
-    if (choose === 1) {
-      this.features.set(new Set([...now].filter((k) => !group.includes(k)).concat(key)));
-    } else if (inGroup.length < choose) {
-      this.features.set(new Set([...now, key]));
-    }
+    this.features.set(nextFeatures(this.features(), key, group, choose));
   }
 }

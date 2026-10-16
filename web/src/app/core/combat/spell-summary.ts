@@ -14,26 +14,35 @@ export function spellSummary(details: SpellDetails | null | undefined, cantripDi
   if (!details) {
     return '';
   }
-  const parts: string[] = [];
+  const level = details.spell?.level ?? 0;
+  const range = rangePart(details);
+  const effect = effectPart(details, level, cantripDice);
+  return tight(joinDots([range, effect].filter((part) => part !== '')));
+}
+
+/** "Alcance 27 m", "Toque" or "Pessoal"; empty for a range with none of them. */
+function rangePart(details: SpellDetails): string {
   const range = details.range;
   if (range?.kind === SpellRangeKind.RANGED && range.distanceFt > 0) {
-    parts.push(`Alcance ${metersText(range.distanceFt)}`);
-  } else if (range?.kind === SpellRangeKind.TOUCH) {
-    parts.push('Toque');
-  } else if (range?.kind === SpellRangeKind.SELF) {
-    parts.push('Pessoal');
+    return `Alcance ${metersText(range.distanceFt)}`;
   }
-  const level = details.spell?.level ?? 0;
+  if (range?.kind === SpellRangeKind.TOUCH) {
+    return 'Toque';
+  }
+  return range?.kind === SpellRangeKind.SELF ? 'Pessoal' : '';
+}
+
+/** What the spell rolls: the pool of hit points, the damage dice with their type or the healing. */
+function effectPart(details: SpellDetails, level: number, cantripDice: string): string {
   const pool = poolDice(details, level);
-  const dice = damageDice(details, level, cantripDice);
-  const type = details.damage[0]?.damageTypePt ?? '';
-  const heal = details.healBySlotLevel[level];
   if (pool) {
-    parts.push(`${pool.count}d${pool.sides} PV de criaturas`);
-  } else if (dice) {
-    parts.push(type ? `${dice} de ${type}` : dice);
-  } else if (heal) {
-    parts.push(`cura ${heal.replace('MOD', 'mod.')}`);
+    return `${pool.count}d${pool.sides} PV de criaturas`;
   }
-  return tight(joinDots(parts));
+  const dice = damageDice(details, level, cantripDice);
+  if (dice) {
+    const type = details.damage[0]?.damageTypePt ?? '';
+    return type ? `${dice} de ${type}` : dice;
+  }
+  const heal = details.healBySlotLevel[level];
+  return heal ? `cura ${heal.replace('MOD', 'mod.')}` : '';
 }

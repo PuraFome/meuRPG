@@ -76,6 +76,9 @@ describe('ContentEntry', () => {
       matches: opts.phone === true,
       addEventListener: () => undefined,
       removeEventListener: () => undefined,
+      // The bottom sheet's breakpoint observer still uses the old pair.
+      addListener: () => undefined,
+      removeListener: () => undefined,
     })) as never;
     TestBed.resetTestingModule();
     watcher = fakeContentWatcher();
@@ -494,5 +497,77 @@ describe('ContentEntry', () => {
     expect(el.querySelector('app-feat-editor')).toBeNull();
     expect(text(el)).toContain('Pré-requisito');
     expect(text(el)).toContain('Força 13');
+  });
+
+  describe('a new entry, a save and the phone sheet', () => {
+    const newPage = async (kind: string, role = Role.MASTER) => {
+      const page = await setup(role, '');
+      page.params$.next(convertToParamMap({ id: 'camp-1', kind }));
+      await settle(page.fixture, 4);
+      return page;
+    };
+
+    it('titles a new entry by the kind in the link, and says there is nothing to create for a word it does not know', async () => {
+      const feat = await newPage('feat');
+      expect(text(feat.el.querySelector('h1')!)).toBe('Novo talento');
+      expect(text(feat.el)).toContain('Voltar para Talentos');
+      const spell = await newPage('spell');
+      expect(text(spell.el.querySelector('h1')!)).toBe('Nova magia');
+      const odd = await newPage('nonsense');
+      expect(text(odd.el.querySelector('h1')!)).toBe('Entrada não encontrada');
+      const player = await newPage('feat', Role.PLAYER);
+      expect(text(player.el)).toContain('Voltar para Conteúdo da mesa');
+    });
+
+    it('says the page failed to open when the list does not come', async () => {
+      const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+      list.mockRejectedValue(new Error('offline'));
+      await (fixture.componentInstance as unknown as { load(): Promise<void> }).load();
+      await settle(fixture, 4);
+      expect(text(el)).toContain('Tentar de novo');
+      expect(el.querySelector('app-race-editor')).toBeNull();
+    });
+
+    it('puts a saved entry in the list in place, says it, and keeps the others', async () => {
+      const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+      try {
+        const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
+        const open = mirathel().find((e) => e.key === 'race:corujeiro@mesa')!;
+        const page = fixture.componentInstance as unknown as {
+          onSaved(r: { entry: unknown; affected: unknown[] }): Promise<void>;
+        };
+        await page.onSaved({
+          entry: { ...open, namePt: 'Corujeiro Novo', revision: 9 },
+          affected: [],
+        });
+        await settle(fixture, 4);
+        expect(text(el.querySelector('h1')!)).toBe('Corujeiro Novo');
+        expect(text(el)).toContain('A raça Corujeiro Novo foi salva.');
+        expect(scroll).toHaveBeenCalledWith({ top: 0 });
+      } finally {
+        scroll.mockRestore();
+      }
+    });
+
+    it('asks in a sheet on a phone and archives on "Arquivar", and leaves it be on "Voltar"', async () => {
+      const { fixture, el } = await setup(Role.MASTER, 'class:guardi-o-do-vale@mesa', mirathel(), {
+        phone: true,
+      });
+      const sheetButton = (label: string) =>
+        Array.from(
+          document.querySelectorAll<HTMLButtonElement>('app-archive-sheet app-pair-foot button'),
+        ).find((b) => text(b).includes(label))!;
+      click(el, 'Arquivar');
+      await settle(fixture, 4);
+      sheetButton('Voltar').click();
+      await settle(fixture, 4);
+      expect(archive).not.toHaveBeenCalled();
+      click(el, 'Arquivar');
+      await settle(fixture, 4);
+      sheetButton('Arquivar').click();
+      await settle(fixture, 4);
+      expect(archive).toHaveBeenCalledWith('camp-1', 'class:guardi-o-do-vale@mesa');
+      expect(text(el)).toContain('Desarquivar');
+    });
   });
 });
