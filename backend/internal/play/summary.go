@@ -90,39 +90,15 @@ func (s *Service) GetSessionSummary(
 	if err != nil {
 		return nil, err
 	}
-	id, err := uuid.Parse(req.Msg.GetGameSessionId())
+	session, err := s.endedSession(ctx, m.CampaignID, req.Msg.GetGameSessionId())
 	if err != nil {
-		return nil, errSessionNotFound()
-	}
-	session, err := s.queries.GetGameSessionInCampaign(ctx, playdb.GetGameSessionInCampaignParams{CampaignID: m.CampaignID, ID: id.String()})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errSessionNotFound()
-	}
-	if err != nil {
-		return nil, s.dbError(ctx, "find the session", err)
-	}
-	if session.EndedAt == nil {
-		// Its numbers keep moving until the master ends it, and each combat has
-		// its own highlights meanwhile.
-		return nil, errBlocked(playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_SESSION_NOT_ENDED,
-			"the game session has not ended")
+		return nil, err
 	}
 
 	var st sessionTally
-	combats, err := s.queries.ListSessionCombats(ctx, session.ID)
+	combats, err := s.tallyCombats(ctx, session.ID, &st)
 	if err != nil {
-		return nil, s.dbError(ctx, "list the session's combats", err)
-	}
-	for _, enc := range combats {
-		events, err := s.queries.ListEncounterCombatEvents(ctx, &enc.ID)
-		if err != nil {
-			return nil, s.dbError(ctx, "list a combat's events", fmt.Errorf("summary: %w", err))
-		}
-		cs, err := s.queries.ListCombatants(ctx, enc.ID)
-		if err != nil {
-			return nil, s.dbError(ctx, "list the combatants", err)
-		}
-		st.addCombat(tallyHighlights(events, cs))
+		return nil, err
 	}
 
 	scenesOpened, err := s.tallyChecks(ctx, session.ID, &st)
@@ -134,28 +110,9 @@ func (s *Service) GetSessionSummary(
 		return nil, err
 	}
 
-	// The names of the ones who only rolled checks or found treasure, and whose character each
-	// one is (for "mine").
-	ids := make([]string, 0, len(st.list))
-	for _, t := range st.list {
-		ids = append(ids, t.characterID)
-	}
-	chars := map[string]link.Character{}
-	if len(ids) > 0 {
-		// Whatever their status: a character that died during the session is
-		// still in its summary, with its name and its player.
-		found, err := s.roster.SessionCharacters(ctx, nil, m.CampaignID, ids)
-		if err != nil {
-			return nil, s.dbError(ctx, "read the characters' names", err)
-		}
-		for _, c := range found {
-			chars[c.ID] = c
-		}
-	}
-	for _, t := range st.list {
-		if t.name == "" {
-			t.name = chars[t.characterID].Name
-		}
+	chars, err := s.nameTallies(ctx, m.CampaignID, &st)
+	if err != nil {
+		return nil, err
 	}
 	if m.Role != authz.RoleMaster {
 		// A character the master gave back to the reserve is invisible to the players,
@@ -170,39 +127,121 @@ func (s *Service) GetSessionSummary(
 		Categories: categoriesOf(sessionHighlightKinds, st.list),
 	}
 	if m.Role == authz.RoleMaster {
-		sum.Combats = clamp32(len(combats), 0, 1<<30)
-		sum.ScenesOpened = clamp32(scenesOpened, 0, 1<<30)
-		for _, t := range st.list {
-			sum.ChecksPassed += t.checksPassed
-			sum.ChecksTried += t.checksTried
-			sum.Players = append(sum.Players, characterSummary(t))
-		}
+		fillMasterSummary(sum, st.list, combats, scenesOpened)
 	} else if m.UserID != "" {
-		// Every character the caller played in the session, summed: a player
-		// that lost a character and went on with another sees both.
-		var own []*characterTally
-		for _, t := range st.list {
-			if chars[t.characterID].PlayerUserID == m.UserID {
-				own = append(own, t)
-			}
-		}
-		if len(own) > 0 {
-			total := *own[len(own)-1] // named after the latest
-			total.damage, total.healing, total.taken, total.finalBlows, total.crits, total.checksPassed, total.checksTried, total.treasurePO = 0, 0, 0, 0, 0, 0, 0, 0
-			for _, t := range own {
-				total.damage += t.damage
-				total.healing += t.healing
-				total.taken += t.taken
-				total.finalBlows += t.finalBlows
-				total.crits += t.crits
-				total.checksPassed += t.checksPassed
-				total.checksTried += t.checksTried
-				total.treasurePO += t.treasurePO
-			}
-			sum.Mine = characterSummary(&total)
-		}
+		sum.Mine = playerResult(st.list, chars, m.UserID)
 	}
 	return connect.NewResponse(&playv1.GetSessionSummaryResponse{Summary: sum}), nil
+}
+
+// endedSession finds the campaign's session with the id: not found for any other
+// (and for an id that is not a UUID), and refused while it is still open.
+func (s *Service) endedSession(ctx context.Context, campaignID, raw string) (playdb.GameSession, error) {
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return playdb.GameSession{}, errSessionNotFound()
+	}
+	session, err := s.queries.GetGameSessionInCampaign(ctx, playdb.GetGameSessionInCampaignParams{CampaignID: campaignID, ID: id.String()})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return session, errSessionNotFound()
+	}
+	if err != nil {
+		return session, s.dbError(ctx, "find the session", err)
+	}
+	if session.EndedAt == nil {
+		// Its numbers keep moving until the master ends it, and each combat has
+		// its own highlights meanwhile.
+		return session, errBlocked(playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_SESSION_NOT_ENDED,
+			"the game session has not ended")
+	}
+	return session, nil
+}
+
+// tallyCombats sums the highlights of each combat of the session into the tallies
+// and returns how many combats there were.
+func (s *Service) tallyCombats(ctx context.Context, sessionID string, st *sessionTally) (int, error) {
+	combats, err := s.queries.ListSessionCombats(ctx, sessionID)
+	if err != nil {
+		return 0, s.dbError(ctx, "list the session's combats", err)
+	}
+	for _, enc := range combats {
+		events, err := s.queries.ListEncounterCombatEvents(ctx, &enc.ID)
+		if err != nil {
+			return 0, s.dbError(ctx, "list a combat's events", fmt.Errorf("summary: %w", err))
+		}
+		cs, err := s.queries.ListCombatants(ctx, enc.ID)
+		if err != nil {
+			return 0, s.dbError(ctx, "list the combatants", err)
+		}
+		st.addCombat(tallyHighlights(events, cs))
+	}
+	return len(combats), nil
+}
+
+// nameTallies gives a name to the ones who only rolled checks or found treasure,
+// and returns the characters of the tallies (for "mine" and the reserve).
+func (s *Service) nameTallies(ctx context.Context, campaignID string, st *sessionTally) (map[string]link.Character, error) {
+	ids := make([]string, 0, len(st.list))
+	for _, t := range st.list {
+		ids = append(ids, t.characterID)
+	}
+	chars := map[string]link.Character{}
+	if len(ids) > 0 {
+		// Whatever their status: a character that died during the session is
+		// still in its summary, with its name and its player.
+		found, err := s.roster.SessionCharacters(ctx, nil, campaignID, ids)
+		if err != nil {
+			return nil, s.dbError(ctx, "read the characters' names", err)
+		}
+		for _, c := range found {
+			chars[c.ID] = c
+		}
+	}
+	for _, t := range st.list {
+		if t.name == "" {
+			t.name = chars[t.characterID].Name
+		}
+	}
+	return chars, nil
+}
+
+// fillMasterSummary adds the master's numbers and the table of every character.
+func fillMasterSummary(sum *playv1.SessionSummary, list []*characterTally, combats, scenesOpened int) {
+	sum.Combats = clamp32(combats, 0, 1<<30)
+	sum.ScenesOpened = clamp32(scenesOpened, 0, 1<<30)
+	for _, t := range list {
+		sum.ChecksPassed += t.checksPassed
+		sum.ChecksTried += t.checksTried
+		sum.Players = append(sum.Players, characterSummary(t))
+	}
+}
+
+// playerResult is the numbers of every character the player played in the
+// session, summed: a player that lost a character and went on with another sees
+// both. Nil when they played none.
+func playerResult(list []*characterTally, chars map[string]link.Character, userID string) *playv1.SessionCharacterSummary {
+	var own []*characterTally
+	for _, t := range list {
+		if chars[t.characterID].PlayerUserID == userID {
+			own = append(own, t)
+		}
+	}
+	if len(own) == 0 {
+		return nil
+	}
+	total := *own[len(own)-1] // named after the latest
+	total.damage, total.healing, total.taken, total.finalBlows, total.crits, total.checksPassed, total.checksTried, total.treasurePO = 0, 0, 0, 0, 0, 0, 0, 0
+	for _, t := range own {
+		total.damage += t.damage
+		total.healing += t.healing
+		total.taken += t.taken
+		total.finalBlows += t.finalBlows
+		total.crits += t.crits
+		total.checksPassed += t.checksPassed
+		total.checksTried += t.checksTried
+		total.treasurePO += t.treasurePO
+	}
+	return characterSummary(&total)
 }
 
 // tallyChecks adds the checks passed and tried outside combat to the tallies,
