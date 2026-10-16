@@ -1,0 +1,1721 @@
+== Action Surge ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== Action Surge after a Dodge ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== Action Surge after the Attack action ==
+ok
+roll 
+event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
+== Action Surge as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== Action Surge in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== Action Surge in the next turn with two uses ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 2}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 2}
+== Action Surge twice in a turn with two uses ==
+refused failed_precondition: already used in this turn [ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== Action Surge twice in a turn with two uses as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1, "surged_before": true}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 2}
+== Action Surge with the extra action ==
+refused failed_precondition: the extra action takes a standard action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action twice as the master ==
+ok
+roll 
+event action_taken {"bonus_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "feature:cunning-action:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | true | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action twice in the same turn ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action with no choice ==
+refused invalid_argument: action_key is not one of the standard or feature actions
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action with the extra action ==
+refused failed_precondition: the extra action takes a standard action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action: Dash ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:cunning-action:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action: Dash after the action is used ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "key": "feature:cunning-action:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== Cunning Action: Dash as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:cunning-action:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action: Disengage ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:cunning-action:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action: Disengage after a Dash ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "feature:cunning-action:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | true | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action: Disengage in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:cunning-action:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Cunning Action: Hide, which has its own call ==
+refused invalid_argument: Hide and Help have their own calls: ContestService.Hide and ContestService.Help
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Dash ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Dash after the Attack action ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 1 | false | false | false | 0 | equipment:battleaxe | <nil> | <nil> | false | false | 0
+damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
+== Dash as the master for the player's hero ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Dash by an NPC as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Goblin", "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | true | false | false | true | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Dash in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Dash with the extra action ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | true | false | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== Disengage ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Disengage by an NPC as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Goblin", "key": "standard:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | true | false | false | false | true | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Disengage in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Disengage with the extra action ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | true | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== Dodge ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== Dodge after the Attack action ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 1 | false | false | false | 0 | equipment:battleaxe | <nil> | <nil> | false | false | 0
+damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
+== Dodge as the master for the player's hero ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== Dodge by Pensantus on her turn ==
+ok
+roll 
+event action_taken {"combatant_id": "Pensantus", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Pensantus | dodging | 0 | start_of_turn | - | 1 | Pensantus
+== Dodge by a hidden NPC as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Goblin", "key": "standard:dodge", "round": 1, "secret": true, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | true | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | true | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Goblin | dodging | 0 | start_of_turn | - | 1 | Goblin
+== Dodge by a player's hero below full hit points ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | 5 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
+== Dodge by an NPC as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Goblin", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | true | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Goblin | dodging | 0 | start_of_turn | - | 1 | Goblin
+== Dodge in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== Dodge of a combatant that was Dodging last round ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== Dodge with the extra action, which Haste does not allow ==
+refused failed_precondition: the extra action does not take this action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== Flurry of Blows after a Dash ==
+refused failed_precondition: Flurry of Blows comes after the Attack action [ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Flurry of Blows after a Dodge ==
+refused failed_precondition: Flurry of Blows comes after the Attack action [ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== Flurry of Blows after the Attack action ==
+ok
+roll 
+event action_taken {"action_before": true, "attack_key_before": "attack:unarmed-strike", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | false | false | 1 | false | false | false | 2 | attack:unarmed-strike | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+damage attack:unarmed-strike | awaiting_roll | -1 | damage-type:bludgeoning
+== Flurry of Blows after the Attack action as the master ==
+ok
+roll 
+event action_taken {"action_before": true, "attack_key_before": "attack:unarmed-strike", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | false | false | 1 | false | false | false | 2 | attack:unarmed-strike | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+damage attack:unarmed-strike | awaiting_roll | -1 | damage-type:bludgeoning
+== Flurry of Blows after the bonus action is used ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | false | false | 1 | false | false | false | 0 | attack:unarmed-strike | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+damage attack:unarmed-strike | awaiting_roll | -1 | damage-type:bludgeoning
+== Flurry of Blows after two strikes ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | false | false | 1 | false | false | false | 0 | attack:unarmed-strike | <nil> | <nil> | false | false | 0
+damage attack:unarmed-strike | awaiting_roll | -1 | damage-type:bludgeoning
+damage attack:unarmed-strike | awaiting_roll | -1 | damage-type:bludgeoning
+== Flurry of Blows before the Attack action ==
+refused failed_precondition: Flurry of Blows comes after the Attack action [ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Flurry of Blows before the Attack action as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 2 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Flurry of Blows in a combat without a map ==
+refused failed_precondition: Flurry of Blows comes after the Attack action [ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== Flurry of Blows with the ki spent ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | false | false | 1 | false | false | false | 0 | attack:unarmed-strike | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 4}
+damage attack:unarmed-strike | awaiting_roll | -1 | damage-type:bludgeoning
+== Hide with the extra action ==
+refused invalid_argument: Hide and Help have their own calls: ContestService.Hide and ContestService.Help
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== Nimble Escape :disengage ==
+ok
+roll 
+event action_taken {"combatant_id": "Ragna", "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Ragna | false | true | false | false | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Nimble Escape :disengage as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Ragna", "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Ragna | false | true | false | false | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Nimble Escape :disengage as the master twice ==
+ok
+roll 
+event action_taken {"bonus_before": true, "combatant_id": "Ragna", "disengaged_before": true, "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Ragna | false | true | false | false | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Nimble Escape :disengage twice ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Ragna | false | true | false | false | true | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Nimble Escape :hide ==
+refused invalid_argument: Hide and Help have their own calls: ContestService.Hide and ContestService.Help
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Ragna | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Patient Defense ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Patient Defense after the action is used ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Patient Defense as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Patient Defense in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Patient Defense twice ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Patient Defense with the ki spent ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 4}
+== Patient Defense with the ki spent as the master ==
+refused failed_precondition: no uses left [ENCOUNTER_BLOCKED_REASON_NO_USES] recharge RECHARGE_SHORT_REST
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 4}
+== Rage ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Rage after the Attack action ==
+ok
+roll 
+event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | false | false | 1 | false | false | false | 0 | equipment:battleaxe | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
+== Rage after the action is used ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Rage as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Rage in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Rage twice as the master ==
+ok
+roll 
+event action_taken {"bonus_before": true, "combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 2}
+== Rage twice in the same turn ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Rage while concentrating ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "conc_before": "spell:bless", "conc_ended": "spell:bless", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Rage with Frenzy by a Berserker ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Rage with Frenzy by a Berserker as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Rage with Frenzy by a hero that has none ==
+refused failed_precondition: only a Berserker has Frenzy [ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Rage with the extra action ==
+refused failed_precondition: the extra action takes a standard action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Rage with the uses spent ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 3}
+== Rage with the uses spent as the master ==
+refused failed_precondition: no uses left [ENCOUNTER_BLOCKED_REASON_NO_USES] recharge RECHARGE_LONG_REST
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 3}
+== Rage without Frenzy by a Berserker ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Ready ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:ready", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Reckless Attack ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
+== Reckless Attack after Rage ==
+ok
+roll 
+event action_taken {"bonus_before": true, "combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | rage | 2 | - | 11 | 1 | -
+state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
+== Reckless Attack after the first attack ==
+refused failed_precondition: Reckless Attack is declared with the first attack of the turn [ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 1 | false | false | false | 0 | equipment:battleaxe | <nil> | <nil> | false | false | 0
+damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
+== Reckless Attack after the first attack as the master ==
+ok
+roll 
+event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 1 | false | false | false | 0 | equipment:battleaxe | <nil> | <nil> | false | false | 0
+state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
+damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
+== Reckless Attack as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
+== Reckless Attack in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
+== Reckless Attack twice ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
+== Search ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:search", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Search by an NPC as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Goblin", "key": "standard:search", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | true | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Search with the extra action, which Haste does not allow ==
+refused failed_precondition: the extra action does not take this action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== Second Wind after the action is used ==
+ok healed 8
+roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
+event action_taken {"action_before": true, "after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | 16 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind as the master against forced real dice ==
+ok healed 4
+roll {"diceCount":1,"diceSides":10,"faces":[2],"modifier":2,"total":4}
+event action_taken {"after": {"hp": 12}, "amount": 4, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [2], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 4}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 12 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind as the master with a typed sum ==
+ok healed 11
+roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":11}
+event action_taken {"after": {"hp": 19}, "amount": 11, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 11}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 19 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind as the master with no roll ==
+refused invalid_argument: set roll_in_app or typed_sum for Retomar o fôlego
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Second Wind as the master with the app's dice ==
+ok healed 10
+roll {"diceCount":1,"diceSides":10,"faces":[8],"modifier":2,"total":10}
+event action_taken {"after": {"hp": 18}, "amount": 10, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [8], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 10}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 18 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind in a combat without a map ==
+ok healed 8
+roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
+event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 16 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind of an NPC is not a feature it has ==
+refused invalid_argument: action_key is not one of the standard or feature actions
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Second Wind rolled in the app ==
+ok healed 8
+roll {"diceCount":1,"diceSides":10,"faces":[6],"modifier":2,"total":8}
+event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [6], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 8}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 16 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind rolled in the app at full hit points ==
+ok healed 0
+roll {"diceCount":1,"diceSides":10,"faces":[4],"modifier":2,"total":6}
+event action_taken {"after": {"hp": 20}, "before": {"hp": 20}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [4], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 6}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 20 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind rolled in the app when the master forces real dice ==
+refused failed_precondition: this is not how the campaign has you roll your dice [ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Second Wind rolled in the app when the player prefers real dice ==
+ok healed 5
+roll {"diceCount":1,"diceSides":10,"faces":[3],"modifier":2,"total":5}
+event action_taken {"after": {"hp": 13}, "amount": 5, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [3], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 5}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 13 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind typed when the master forces the app's dice ==
+refused failed_precondition: this is not how the campaign has you roll your dice [ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Second Wind typed when the player prefers real dice ==
+ok healed 7
+roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":7}
+event action_taken {"after": {"hp": 15}, "amount": 7, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 7}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 15 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind with a typed sum ==
+ok healed 9
+roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":9}
+event action_taken {"after": {"hp": 17}, "amount": 9, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 9}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 17 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind with a typed sum of 0 ==
+refused invalid_argument: typed_sum must be 1 to 10
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 8 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
+== Second Wind with a typed sum of 11 ==
+refused invalid_argument: typed_sum must be 1 to 10
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 8 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
+== Second Wind with no roll ==
+refused invalid_argument: set roll_in_app or typed_sum for Retomar o fôlego
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 8 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
+== Second Wind with no uses left in a later turn ==
+refused failed_precondition: no uses left [ENCOUNTER_BLOCKED_REASON_NO_USES] recharge RECHARGE_SHORT_REST
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 13 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind with temporary hit points ==
+ok healed 8
+roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
+event action_taken {"after": {"hp": 16, "temp": 5}, "amount": 8, "before": {"hp": 8, "temp": 5}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 16 | 5 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind with the highest typed sum ==
+ok healed 12
+roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":12}
+event action_taken {"after": {"hp": 20}, "amount": 12, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 12}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 20 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Second Wind with the lowest typed sum ==
+ok healed 3
+roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":3}
+event action_taken {"after": {"hp": 11}, "amount": 3, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 3}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 11 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== Slow Fall by a monk after the reaction is used ==
+refused failed_precondition: the reaction is used [ENCOUNTER_BLOCKED_REASON_REACTION_USED]
+combatant Brisa | false | false | true | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall by a monk after the reaction is used as the master ==
+refused failed_precondition: there is no fall damage to reduce
+combatant Brisa | false | false | true | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall by a monk at 0 hit points ==
+refused failed_precondition: the character is down [ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Brisa | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
+== Slow Fall by a monk in a combat that did not begin ==
+refused failed_precondition: the combat is not running [ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall by a monk out of the fight ==
+refused failed_precondition: it is not this combatant's turn [ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | true | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall by a surprised monk ==
+refused failed_precondition: the combatant is surprised
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall in a combat that ended ==
+refused failed_precondition: the combat has ended [ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall on a fall that waits ==
+ok
+roll 
+event action_taken {"amount": 20, "combatant_id": "Toren", "fall_cuts": [{"before": 30, "pending_id": "?"}], "key": "feature:slow-fall", "round": 1, "run_before": 150}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
+combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0
+combatant Goblin 1 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 2 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 3 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Ogro | false | false | false | false | false | 0 | false | false | false | 0 | - | 59 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | true | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 150
+damage trap | awaiting_reaction | 10 | damage-type:bludgeoning
+== Slow Fall twice on a fall that waits ==
+refused failed_precondition: the reaction is used [ENCOUNTER_BLOCKED_REASON_REACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
+combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0
+combatant Goblin 1 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 2 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 3 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Ogro | false | false | false | false | false | 0 | false | false | false | 0 | - | 59 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | true | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 150
+damage trap | awaiting_reaction | 10 | damage-type:bludgeoning
+== Slow Fall twice on a fall that waits as the master ==
+ok
+roll 
+event action_taken {"amount": 10, "combatant_id": "Toren", "fall_cuts": [{"before": 10, "pending_id": "?"}], "key": "feature:slow-fall", "reaction_before": true, "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
+combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0
+combatant Goblin 1 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 2 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 3 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Ogro | false | false | false | false | false | 0 | false | false | false | 0 | - | 59 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | true | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 150
+damage trap | awaiting_reaction | 0 | damage-type:bludgeoning
+== Slow Fall with no fall ==
+refused failed_precondition: there is no fall damage to reduce
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall with no fall in a combat without a map ==
+refused failed_precondition: there is no fall damage to reduce
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall with no fall, out of turn ==
+refused failed_precondition: there is no fall damage to reduce
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Slow Fall with no fall, out of turn, as the master ==
+refused failed_precondition: there is no fall damage to reduce
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Step of the Wind twice ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | true | 0 | false | false | true | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Step of the Wind: Dash ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "jump_doubled": true, "key": "feature:step-of-the-wind:dash", "resource": "ki", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | true | false | 0 | false | false | true | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Step of the Wind: Dash in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "jump_doubled": true, "key": "feature:step-of-the-wind:dash", "resource": "ki", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | true | false | 0 | false | false | true | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Step of the Wind: Disengage ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "jump_doubled": true, "key": "feature:step-of-the-wind:disengage", "resource": "ki", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | true | 0 | false | false | true | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Step of the Wind: Disengage as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "jump_doubled": true, "key": "feature:step-of-the-wind:disengage", "resource": "ki", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | true | 0 | false | false | true | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
+== Use an Object ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:use-an-object", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== Use an Object with the extra action ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:use-an-object", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== a Dash after Cunning Action: Dash ==
+ok
+roll 
+event action_taken {"bonus_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | true | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a Dash after a Dodge ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== a Disengage after a Dash ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a Dodge after Action Surge ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?", "surged_before": true}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== a Dodge in a combat that ended ==
+refused failed_precondition: the combat has ended [ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a Dodge while a fall waits for the monk's reaction ==
+refused failed_precondition: a reaction waits for its answer [ENCOUNTER_BLOCKED_REASON_REACTION_PENDING]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
+combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0
+combatant Goblin 1 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 2 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 3 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Ogro | false | false | false | false | false | 0 | false | false | false | 0 | - | 59 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 150
+damage trap | awaiting_reaction | 30 | damage-type:bludgeoning
+== a Dodge with a Frenzy that is only for a rage ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== a Dodge with a typed sum that it does not use ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== a Dodge with the app's roll that it does not use ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== a Search after a Search as the master ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "key": "standard:search", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a Search after an Attack ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 1 | false | false | false | 0 | equipment:battleaxe | <nil> | <nil> | false | false | 0
+damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
+== a bard's Bardic Inspiration ==
+refused invalid_argument: this action is taken with the resource service
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a bard's Bardic Inspiration key on a fighter's sheet ==
+refused invalid_argument: this action is taken with the resource service
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a druid's Wild Shape ==
+refused invalid_argument: the Wild Shape action is taken with AssumeWildShape
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a paladin's Divine Sense ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:divine-sense", "resource": "divine_sense", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"divine_sense": 1}
+== a paladin's Divine Sense as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "feature:divine-sense", "resource": "divine_sense", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"divine_sense": 1}
+== a paladin's Divine Sense twice ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"divine_sense": 1}
+== a paladin's Lay on Hands ==
+refused invalid_argument: this action is taken with the resource service
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a paladin's Lay on Hands as the master ==
+refused invalid_argument: this action is taken with the resource service
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a poisoned and a prone combatant still acts ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== a second Action Surge as the master ==
+refused failed_precondition: no uses left [ENCOUNTER_BLOCKED_REASON_NO_USES] recharge RECHARGE_SHORT_REST
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== a second Action Surge in the same turn ==
+refused failed_precondition: no uses left [ENCOUNTER_BLOCKED_REASON_NO_USES] recharge RECHARGE_SHORT_REST
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== a second Dash after a Dash ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a second Dash as the master ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== a second Dodge after Action Surge and a Dodge ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | true | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
+== a second Dodge as the master ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== a second Dodge in the same turn ==
+refused failed_precondition: the action of this turn is used [ENCOUNTER_BLOCKED_REASON_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== a second Second Wind as the master ==
+refused failed_precondition: no uses left [ENCOUNTER_BLOCKED_REASON_NO_USES] recharge RECHARGE_SHORT_REST
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 13 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== a second Second Wind in the same turn ==
+refused failed_precondition: the bonus action of this turn is used [ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 13 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== refused Bardic Inspiration ==
+refused invalid_argument: this action is taken with the resource service
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused Help, which has its own call ==
+refused invalid_argument: Hide and Help have their own calls: ContestService.Hide and ContestService.Help
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused Hide, which has its own call ==
+refused invalid_argument: Hide and Help have their own calls: ContestService.Hide and ContestService.Help
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused Lay on Hands ==
+refused invalid_argument: this action is taken with the resource service
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a campaign that is not a UUID ==
+refused not_found: campaign not found
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a combat that did not begin ==
+refused failed_precondition: the combat is not running [ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a combatant at 0 hit points ==
+refused failed_precondition: the character is down [ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
+== refused a combatant nobody knows ==
+refused not_found: combatant not found
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a combatant out of turn ==
+refused failed_precondition: it is not this combatant's turn [ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a combatant out of turn for the master ==
+refused failed_precondition: it is not this combatant's turn [ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a combatant that is not a UUID ==
+refused not_found: combatant not found
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a combatant with no action by an effect ==
+refused failed_precondition: the combatant cannot act now [ENCOUNTER_BLOCKED_REASON_CANNOT_ACT]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a defeated NPC ==
+refused failed_precondition: it is not this combatant's turn [ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 0 | 0 | true | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a feature of a combatant with no action by an effect ==
+refused failed_precondition: the combatant cannot act now [ENCOUNTER_BLOCKED_REASON_CANNOT_ACT]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a feature the hero does not have ==
+refused invalid_argument: action_key is not one of the standard or feature actions
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a hidden NPC on its turn to a player ==
+refused not_found: combatant not found
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | true | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a hidden NPC the player does not see ==
+refused failed_precondition: it is not this combatant's turn [ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | true | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a key with no kind ==
+refused invalid_argument: action_key is not one of the standard or feature actions
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a paralyzed combatant ==
+refused failed_precondition: the combatant cannot act now [ENCOUNTER_BLOCKED_REASON_CANNOT_ACT]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a petrified combatant ==
+refused failed_precondition: the combatant cannot act now [ENCOUNTER_BLOCKED_REASON_CANNOT_ACT]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a revealed NPC on its turn to a player ==
+refused permission_denied: only the combatant's player or the master may do this
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a stunned combatant ==
+refused failed_precondition: the combatant cannot act now [ENCOUNTER_BLOCKED_REASON_CANNOT_ACT]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a surprised combatant ==
+refused failed_precondition: the combatant is surprised
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a trait the hero does not have ==
+refused invalid_argument: action_key is not one of the standard or feature actions
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused a user who is not in the campaign ==
+refused not_found: campaign not found
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an NPC defeated in its own turn ==
+refused failed_precondition: it is not this combatant's turn [ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 0 | 0 | true | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an action key of 101 characters ==
+refused invalid_argument: action_key is not one of the standard or feature actions
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an action that does not exist ==
+refused invalid_argument: action_key is not one of the standard or feature actions
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an empty action key ==
+refused invalid_argument: action_key is not one of the standard or feature actions
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an encounter nobody knows ==
+refused not_found: encounter not found
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an encounter that is not a UUID ==
+refused not_found: encounter not found
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an idempotency key that is not a UUID ==
+refused invalid_argument: idempotency_key must be a UUID
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an incapacitated combatant ==
+refused failed_precondition: the combatant cannot act now [ENCOUNTER_BLOCKED_REASON_CANNOT_ACT]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused an unconscious combatant ==
+refused failed_precondition: the combatant cannot act now [ENCOUNTER_BLOCKED_REASON_CANNOT_ACT]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused another player's combatant ==
+refused permission_denied: only the combatant's player or the master may do this
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused converting a spell slot ==
+refused invalid_argument: this action is taken with the resource service
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused creating a spell slot ==
+refused invalid_argument: this action is taken with the resource service
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused for the master while a question waits for the master ==
+refused failed_precondition: the turn waits for the master [ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused roll_in_app false ==
+refused invalid_argument: roll_in_app must be true
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused the Wild Shape action ==
+refused invalid_argument: the Wild Shape action is taken with AssumeWildShape
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused the Wild Shape action of a level ==
+refused invalid_argument: the Wild Shape action is taken with AssumeWildShape
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused the attack, which has its own call ==
+refused invalid_argument: an attack is rolled with RollAttack, and a spell is cast with CastSpell
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused the cast, which has its own call ==
+refused invalid_argument: an attack is rolled with RollAttack, and a spell is cast with CastSpell
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused the extra action for a feature ==
+refused failed_precondition: the extra action takes a standard action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused the extra action for the master without Haste ==
+refused failed_precondition: the combatant has no extra action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused the extra action without Haste ==
+refused failed_precondition: the combatant has no extra action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused while a question waits for the master ==
+refused failed_precondition: the turn waits for the master [ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== refused while an NPC may react to the player's attack ==
+refused failed_precondition: a reaction waits for its answer [ENCOUNTER_BLOCKED_REASON_REACTION_PENDING]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Mago | false | false | false | false | false | 0 | false | false | false | 0 | - | 40 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 1 | false | false | false | 0 | equipment:battleaxe | <nil> | <nil> | false | false | 0
+damage equipment:battleaxe | awaiting_reaction | -1 | damage-type:slashing
+== refused while an opportunity attack waits ==
+refused failed_precondition: an opportunity attack waits for its answer [ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
+combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0
+combatant Goblin 1 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 2 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 3 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Ogro | false | false | false | false | false | 0 | false | false | false | 0 | - | 59 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 112
+== the action after the extra action ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "dashed_before": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== the extra action already marked used ==
+refused failed_precondition: the extra action of this turn is used [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== the extra action as the master ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | true | false | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== the extra action for a feature with Haste ==
+refused failed_precondition: the extra action takes a standard action [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== the extra action in a combat without a map ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | true | false | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== the extra action of Haste after a lethargy ==
+refused failed_precondition: the combatant cannot act now [ENCOUNTER_BLOCKED_REASON_CANNOT_ACT]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== the extra action twice ==
+refused failed_precondition: the extra action of this turn is used [ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | false | false | true | false | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== the extra action with the action already used ==
+ok
+roll 
+event action_taken {"action_before": true, "combatant_id": "Toren", "extra_used": true, "key": "standard:dash", "round": 1}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | true | false | 0 | - | <nil> | <nil> | false | false | 0
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
+== the master is not stopped while an NPC may react ==
+refused failed_precondition: a reaction waits for its answer [ENCOUNTER_BLOCKED_REASON_REACTION_PENDING]
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Mago | false | false | false | false | false | 0 | false | false | false | 0 | - | 40 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 1 | false | false | false | 0 | equipment:battleaxe | <nil> | <nil> | false | false | 0
+damage equipment:battleaxe | awaiting_reaction | -1 | damage-type:slashing
+== the master is not stopped while an opportunity attack waits ==
+ok
+roll 
+event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "run_before": 112, "state_id": "?"}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
+combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0
+combatant Goblin 1 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 2 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Goblin 3 | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Ogro | false | false | false | false | false | 0 | false | false | false | 0 | - | 59 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 112
+state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
+== the same Second Wind twice ==
+ok healed 8
+roll {"diceCount":1,"diceSides":10,"faces":[6],"modifier":2,"total":8}
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | false | true | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+vitals Toren | 16 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
+== the same key from another user ==
+refused invalid_argument: idempotency_key was already used for another change
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== the same key with another action ==
+refused invalid_argument: idempotency_key was already used for another change
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+== the same request twice ==
+ok
+roll 
+combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
+combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+combatant Toren | true | false | false | true | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
