@@ -653,7 +653,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 	var made actionEvent
 	var shown []*playv1.AdvantageSource // the circumstances of the mode, as the caller may read them
 	var reason string                   // why the mode is not the suggestion (the caller's own text, or the master's)
-	var held *inspirationHold           // the roll waits for the player's answer: Lucky, or a Bardic Inspiration die
+	var held *heldOffer                 // the roll waits for the player's answer: Lucky, or a Bardic Inspiration die
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
 		held = nil
 		attackKey := attackKey // a throw back is the caught missile, under its own key
@@ -742,9 +742,6 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		attack := attackerSheet.Attacks[i]
 		if c.replay != nil { // Cutting Words took a die off the roll (PM-04)
 			attack.ToHit -= int(c.replay.reduction)
-		}
-		if f := forcedOf(ctx); f != nil { // the answer to a held roll: its bonus is the one the roll was made with, Cutting Words included
-			attack.ToHit = f.toHit
 		}
 		terrain, err := s.terrainOf(ctx, c.tx, m.CampaignID, c.enc)
 		if err != nil {
@@ -840,11 +837,15 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		// A roll that waits for a Lucky or Bardic Inspiration answer comes first: nothing else
 		// rolls or opens a window until it is answered, and the answer does not open the windows
 		// again (they were answered before the d20 was kept, combat_inspiration.go).
-		lucky := attackerSheet.Traits.Lucky // a halfling: a d20 of 1 may be rolled again (combat_lucky.go)
-		if err := s.refuseWhileAsking(ctx, c, attacker, key, lucky); err != nil {
+		spec := rollSpec{
+			Kind: heldWeaponAttack, Key: key, Window: c.replay != nil, Roller: attackRoller(m, attacker, c.enc.Round),
+			Lucky:  attackerSheet.Traits.Lucky, // a halfling: a d20 of 1 may be rolled again (combat_lucky.go)
+			MayAsk: true,
+		}
+		if err := s.heldBlocked(ctx, combatGate(c), spec); err != nil {
 			return nil, err
 		}
-		if forcedOf(ctx) == nil {
+		if _, answering := heldReplyOf(ctx); !answering {
 			if held, ok, err := s.holdAttackRoll(ctx, c, m, req.Msg, cs, attacker, target, attackKey); err != nil {
 				return nil, err
 			} else if ok {
@@ -876,32 +877,20 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			shape.Thrown, shape.RangeFt, shape.LongRangeFt = false, meleeReachFt, 0
 		}
 		truth := modeIn.facts(c.enc, c.sight).attackMode(attacker, modeTarget, attackerSheet.Traits, shape, actsNow(c.enc, attacker) && !asReaction, v, names)
-		// A roll that may wait for a Lucky or Bardic Inspiration answer is not settled yet: its mode
-		// is worked out without writing, and the answer settles it with the mode the roll was made
-		// with (or the reason is written below, when the roll goes on after all).
-		forced := forcedOf(ctx)
-		choice, err := s.chooseMode(ctx, c, v, attacker, target, attackKey, truth.Mode, modeAsk{
-			want: req.Msg.GetRollMode(), reason: req.Msg.GetModeReason(), requestID: req.Msg.GetRollModeRequestId(),
-			dry: mayHold(forced, attacker, c.enc.Round, lucky), trusted: forced != nil,
-		})
+		rolled, err := s.rollHeldAttack(ctx, c, v, req.Msg, spec, attacker, target, attackKey, truth.Mode, in, attack.ToHit)
 		if err != nil {
 			return nil, err
 		}
-		shown, reason = truth.Shown, choice.Reason
-		d20, bonus, h, err := s.rollOrHold(ctx, c, attacker, req.Msg, key, in, attack.ToHit, choice, lucky)
-		if err != nil {
-			return nil, err
-		}
-		if h != nil {
-			held = h // nothing is resolved, spent or written until the answer
+		if rolled.Held != nil {
+			held = rolled.Held // nothing is resolved, spent or written until the answer
 			return nil, nil
 		}
-		if choice, err = s.keepReason(ctx, c, choice); err != nil { // a lucky roll with no 1 goes on
-			return nil, err
-		}
+		attack.ToHit = rolled.ToHit
+		choice, d20 := rolled.Choice, rolled.D20
+		shown, reason = truth.Shown, choice.Reason
 		bonusFace := 0
-		if bonus != nil {
-			bonusFace = int(bonus.Face) // the die the player added after rolling
+		if rolled.Bonus != nil {
+			bonusFace = int(rolled.Bonus.Face) // the die the player added after rolling
 		}
 		face := d20.Face()
 		roll := d20
@@ -959,12 +948,10 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
 			CoverRestricted: cp.restricted, CoverSeenBy: cp.seenBy,
 		}
-		if bonus != nil {
-			made.Res = &resourceEvent{Kind: resBardicUse, Sides: bonus.Sides, Face: bonus.Face, FromID: bonus.From, ExpiresRound: bonus.ExpiresRound}
+		if rolled.Bonus != nil {
+			made.Res = &resourceEvent{Kind: resBardicUse, Sides: rolled.Bonus.Sides, Face: rolled.Bonus.Face, FromID: rolled.Bonus.From, ExpiresRound: rolled.Bonus.ExpiresRound}
 		}
-		if forced != nil {
-			made.Lucky = forced.lucky // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
-		}
+		made.Lucky = rolled.Lucky // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
 		// An attack gives the attacker's position away, hit or miss, and uses the Help aimed
 		// at its target (SRD 5.1, "Unseen Attackers and Targets", "Help").
 		if err := s.afterAttack(ctx, c, attacker, target, cs, &made); err != nil {
@@ -1067,7 +1054,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		return nil, s.dbError(ctx, "work out what the player sees", err)
 	}
 	if held != nil {
-		return s.heldAnswer(ctx, m, res, held, req.Msg)
+		return s.heldAttackResponse(ctx, m, res, held, req.Msg)
 	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
