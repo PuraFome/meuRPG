@@ -698,12 +698,6 @@
   "src/app/pages/character-editor/character-editor.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 23
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/pages/character-editor/class-block/class-block.ts": {

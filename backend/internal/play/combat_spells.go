@@ -281,9 +281,9 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 	var made actionEvent
 	var modes *spellModes                // the d20 rolls of the cast: their modes and circumstances
 	var vitals []*playv1.CharacterVitals // the slot spent, if it was a player's, and the characters a hit point spell changed
-	var asked outsideStep                // the d20 of a spell attack was rolled and kept for the Bardic Inspiration or Lucky question
+	var asked *outsideAsk                // the d20 of a spell attack was rolled and kept for the Bardic Inspiration or Lucky question
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals, asked = nil, outsideStep{}
+		vitals, asked = nil, nil
 		targets := slices.Clone(targets) // an area replaces the list, and a retry starts from the request's
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
@@ -501,13 +501,8 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		// question of a 1), before anything is spent, and the player decides before the result is
 		// told (inspiration_held.go). The answer runs the cast again with the d20 already rolled. A
 		// cast that waited for a reaction window is not asked.
-		if sp.AttackType != "" && len(targs) == 1 && c.replay == nil {
-			if asked, err = s.holdSpellAttack(ctx, c, m, req.Msg, key, caster, targs[0], sp, in, modes); err != nil {
-				return nil, err
-			}
-			if asked.Held {
-				return nil, nil
-			}
+		if asked, err = s.holdSpellAttack(ctx, c, m, req.Msg, key, caster, targs, sp, in, modes); err != nil || asked != nil {
+			return nil, err
 		}
 
 		// The cast spends the slot and the economy at once (MR-014).
@@ -665,12 +660,12 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 	if err != nil {
 		return nil, s.dbError(ctx, "cast a spell", err)
 	}
-	if asked.Held { // nothing was spent or written: the question is the whole answer
+	if asked != nil { // nothing was spent or written: the question is the whole answer
 		out, err := s.finish(ctx, m, res, nil)
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, InspirationOffer: asked.Offer, LuckyOffer: asked.LuckyOffer}), nil
+		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, InspirationOffer: asked.Offer, LuckyOffer: asked.Lucky}), nil
 	}
 	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
 		return nil, s.dbError(ctx, "work out what the player sees", err)

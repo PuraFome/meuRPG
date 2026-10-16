@@ -1,0 +1,85 @@
+{
+  "activity": [
+    {
+      "at": "2026-03-01T20:00:02Z",
+      "id": "search-pens-investigation",
+      "search": {
+        "characterId": "pens",
+        "characterName": "Pensantus",
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            17
+          ],
+          "modifier": 2,
+          "rerolled": [
+            {
+              "from": 1,
+              "sourceKey": "trait:lucky",
+              "to": 4
+            }
+          ],
+          "total": 19
+        },
+        "secondRoll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            4
+          ],
+          "modifier": 2,
+          "total": 6
+        },
+        "skill": "TRAP_SEARCH_SKILL_INVESTIGATION"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:06Z",
+      "id": "notice-toren-pens",
+      "notice": {
+        "characterIds": [
+          "pens"
+        ],
+        "characterNames": [
+          "Pensantus"
+        ],
+        "pointId": "pitA",
+        "trapName": "Fosso A"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:14Z",
+      "firing": {
+        "caught": [
+          {
+            "characterId": "pens",
+            "damages": [
+              {
+                "amount": 4,
+                "damageTypeKey": "damage-type:piercing",
+                "damageTypePt": "perfurante",
+                "roll": {
+                  "diceCount": 1,
+                  "diceSides": 6,
+                  "faces": [
+                    4
+                  ],
+                  "total": 4
+                },
+                "status": "PENDING_DAMAGE_STATUS_APPLIED",
+                "targetDefeated": true
+              }
+            ],
+            "targetId": "wolf",
+            "targetLabel": "Nanquim"
+          }
+        ],
+        "id": "firing-one",
+        "name": "Fosso A",
+        "pointId": "pitA"
+      },
+      "id": "firing-one"
+    }
+  ]
+}
