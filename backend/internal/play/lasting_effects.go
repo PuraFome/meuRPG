@@ -210,41 +210,10 @@ func (s *Service) addEffects(ctx context.Context, c *combatTx, cs []playdb.Comba
 	if spec.group == "" {
 		spec.group = uuid.New().String()
 	}
-	def := spec.def
-	conditions, mods := spec.conditions, spec.modifiers
-	if def != nil {
-		if conditions == nil {
-			conditions = def.Conditions
-		}
-		if mods == nil {
-			mods = def.Modifiers
-		}
-	}
+	conditions, mods := spec.conditionsAndModifiers()
 	body, err := json.Marshal(append([]rules.EffectModifier{}, mods...))
 	if err != nil {
 		return nil, fmt.Errorf("encode the modifiers: %w", err)
-	}
-	visible, audience := true, rules.EffectVisibilityPublic
-	if def != nil && def.Visibility != "" {
-		audience = def.Visibility
-	}
-	if spec.audience != "" {
-		audience = spec.audience
-	}
-	if spec.visible != nil {
-		visible = *spec.visible
-	}
-	dbAudience := "all"
-	if audience == rules.EffectVisibilityOwner || audience == "owner" {
-		dbAudience = "owner"
-	}
-	var label *string
-	if spec.label != "" {
-		label = &spec.label
-	}
-	var casterID *string
-	if spec.caster != nil {
-		casterID = &spec.caster.ID
 	}
 	var rows []playdb.CombatantState
 	for _, target := range spec.targets {
@@ -253,32 +222,7 @@ func (s *Service) addEffects(ctx context.Context, c *combatTx, cs []playdb.Comba
 				return nil, err
 			}
 		}
-		round, who, phase := endsOf(c.enc, cs, spec.dur, spec.caster, target)
-		p := playdb.InsertLastingEffectParams{
-			EncounterID: c.enc.ID, CombatantID: target.ID, StartedRound: max(c.enc.Round, 1), CreatedAt: c.now,
-			GroupID: &spec.group, SourceKey: &spec.key, SourceKind: &spec.sourceKind, Concentration: spec.concentration,
-			ConditionKeys: append([]string{}, conditions...), Modifiers: body, DurationKind: &spec.dur.Kind,
-			PlayerVisible: visible, Audience: dbAudience, SourceID: casterID,
-			EndsRound: round, EndsCombatantID: who, EndsPhase: phase, SaveDc: spec.dc, PlayerLabel: label,
-		}
-		if spec.follows != "" {
-			p.FollowsKey = &spec.follows
-		}
-		if def != nil {
-			if def.EndSave != nil {
-				p.EndSaveAbility = &def.EndSave.Ability
-			}
-			if def.StartSave != nil {
-				p.StartSaveAbility = &def.StartSave.Ability
-				if def.StartSave.OnFail != "" {
-					p.OnFailEffect = &def.StartSave.OnFail
-				}
-			}
-			if t := def.Trigger; t != nil {
-				p.TriggerDice, p.TriggerDamageType, p.TriggerMaxTriggers = &t.Dice, &t.DamageType, new(int32(t.MaxTriggers)) //nolint:gosec // a small number of the file
-			}
-		}
-		row, err := c.q.InsertLastingEffect(ctx, p)
+		row, err := c.q.InsertLastingEffect(ctx, spec.insertParams(c, cs, target, conditions, body))
 		if err != nil {
 			return nil, fmt.Errorf("make the effect: %w", err)
 		}
@@ -289,6 +233,84 @@ func (s *Service) addEffects(ctx context.Context, c *combatTx, cs []playdb.Comba
 		ids[i] = t.ID
 	}
 	return rows, s.refreshCombatants(ctx, c, ids...)
+}
+
+// conditionsAndModifiers are the conditions and the modifiers of the effect: the spec's own
+// replace the definition's when set.
+func (spec effectSpec) conditionsAndModifiers() ([]string, []rules.EffectModifier) {
+	conditions, mods := spec.conditions, spec.modifiers
+	if spec.def != nil {
+		if conditions == nil {
+			conditions = spec.def.Conditions
+		}
+		if mods == nil {
+			mods = spec.def.Modifiers
+		}
+	}
+	return conditions, mods
+}
+
+// visibilityOf says whether the players see the effect and, as the database keeps it, whose it is.
+func (spec effectSpec) visibilityOf() (visible bool, audience string) {
+	audience = rules.EffectVisibilityPublic
+	if spec.def != nil && spec.def.Visibility != "" {
+		audience = spec.def.Visibility
+	}
+	if spec.audience != "" {
+		audience = spec.audience
+	}
+	visible = true
+	if spec.visible != nil {
+		visible = *spec.visible
+	}
+	if audience == rules.EffectVisibilityOwner || audience == "owner" {
+		return visible, "owner"
+	}
+	return visible, "all"
+}
+
+// insertParams is the row of the effect on one target.
+func (spec effectSpec) insertParams(c *combatTx, cs []playdb.Combatant, target playdb.Combatant, conditions []string, body []byte) playdb.InsertLastingEffectParams {
+	visible, audience := spec.visibilityOf()
+	var label *string
+	if spec.label != "" {
+		label = &spec.label
+	}
+	var casterID *string
+	if spec.caster != nil {
+		casterID = &spec.caster.ID
+	}
+	round, who, phase := endsOf(c.enc, cs, spec.dur, spec.caster, target)
+	p := playdb.InsertLastingEffectParams{
+		EncounterID: c.enc.ID, CombatantID: target.ID, StartedRound: max(c.enc.Round, 1), CreatedAt: c.now,
+		GroupID: &spec.group, SourceKey: &spec.key, SourceKind: &spec.sourceKind, Concentration: spec.concentration,
+		ConditionKeys: append([]string{}, conditions...), Modifiers: body, DurationKind: &spec.dur.Kind,
+		PlayerVisible: visible, Audience: audience, SourceID: casterID,
+		EndsRound: round, EndsCombatantID: who, EndsPhase: phase, SaveDc: spec.dc, PlayerLabel: label,
+	}
+	if spec.follows != "" {
+		p.FollowsKey = &spec.follows
+	}
+	if spec.def != nil {
+		setSavesAndTrigger(&p, spec.def)
+	}
+	return p
+}
+
+// setSavesAndTrigger puts on the row the saving throws and the damage per turn the definition asks.
+func setSavesAndTrigger(p *playdb.InsertLastingEffectParams, def *rules.EffectDef) {
+	if def.EndSave != nil {
+		p.EndSaveAbility = &def.EndSave.Ability
+	}
+	if def.StartSave != nil {
+		p.StartSaveAbility = &def.StartSave.Ability
+		if def.StartSave.OnFail != "" {
+			p.OnFailEffect = &def.StartSave.OnFail
+		}
+	}
+	if t := def.Trigger; t != nil {
+		p.TriggerDice, p.TriggerDamageType, p.TriggerMaxTriggers = &t.Dice, &t.DamageType, new(int32(t.MaxTriggers)) //nolint:gosec // a small number of the file
+	}
 }
 
 // dropSameSpell ends, on a target, the effect of the same spell another casting left
@@ -309,7 +331,7 @@ func (s *Service) dropSameSpell(ctx context.Context, c *combatTx, cs []playdb.Co
 // conditions (the ones set by hand stay, the effects' come and go), the armor class, the
 // speed, and whether it can act and move; and the exhaustion it carries (a character's is
 // its vitals').
-func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...string) error { //nolint:gocognit,gocyclo // the steps of one transaction in one closure, like the other writes of the combat
+func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...string) error {
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
@@ -324,96 +346,176 @@ func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...str
 		if i < 0 {
 			continue
 		}
-		cb := cs[i]
-		level := int(cb.ExhaustionLevel)
-		if cb.Kind == kindPlayer {
-			vit, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, cb.CharacterID)
-			if err != nil && connect.CodeOf(err) != connect.CodeNotFound {
-				return err
-			}
-			if err == nil {
-				level = int(vit.GetExhaustionLevel())
-				if int32(level) != cb.ExhaustionLevel { //nolint:gosec // 0 to 6
-					if err := c.q.SetCombatantExhaustionLevel(ctx, playdb.SetCombatantExhaustionLevelParams{ID: cb.ID, ExhaustionLevel: int32(level)}); err != nil { //nolint:gosec // 0 to 6
-						return fmt.Errorf("copy the exhaustion: %w", err)
-					}
-				}
-			}
+		if err := s.refreshOne(ctx, c, cs, rows, i); err != nil {
+			return err
 		}
-		var derived []string
-		var mods []rules.EffectModifier
-		for _, st := range rows {
-			if st.CombatantID != id {
-				continue
-			}
-			for _, k := range st.ConditionKeys {
-				if !slices.Contains(derived, k) {
-					derived = append(derived, k)
-				}
-			}
-			mods = append(mods, effectModifiers(st)...)
-		}
-		if level > 0 && !slices.Contains(derived, "condition:exhaustion") {
-			derived = append(derived, "condition:exhaustion")
-		}
-		base := slices.DeleteFunc(slices.Clone(cb.Conditions), func(k string) bool { return slices.Contains(cb.EffectConditions, k) })
-		conds := slices.Clone(base)
-		for _, k := range derived {
-			if !slices.Contains(conds, k) {
-				conds = append(conds, k)
-			}
-		}
-		pct := combat.SpeedPercent(mods)
-		if combat.ExhaustionAt(level).SpeedHalved {
-			pct /= 2
-		}
-		ac := combat.ArmorClassBonus(mods)
-		// Mage Armor: the base armor class the effects give, which the combat's rolls read.
-		if want := int32(combat.BaseAC(mods)); (cb.MageArmorAc == nil && want != 0) || (cb.MageArmorAc != nil && *cb.MageArmorAc != want) { //nolint:gosec // 0 to 60
-			var value *int32
-			if want > 0 {
-				value = &want
-			}
-			if err := c.q.SetCombatantMageArmorAC(ctx, playdb.SetCombatantMageArmorACParams{ID: cb.ID, MageArmorAc: value}); err != nil {
-				return fmt.Errorf("work out the base armor class: %w", err)
-			}
-			cs[i].MageArmorAc = value
-		}
-		if cb.Kind == kindPlayer {
-			players = append(players, cb.CharacterID)
-		}
-		noAction := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoAction })
-		noReaction := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoReaction })
-		// Speed 0 (exhaustion 5, the lethargy) is no movement; a percentage of 0 is never stored.
-		noMove := ex0(level) || slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoMove })
-		if derived == nil {
-			derived = []string{}
-		}
-		if conds == nil {
-			conds = []string{}
-		}
-		if slices.Equal(conds, cb.Conditions) && slices.Equal(derived, cb.EffectConditions) && int(cb.EffectAcBonus) == ac && int(cb.EffectSpeedPct) == pct && cb.EffectNoAction == noAction && cb.EffectNoReaction == noReaction && cb.EffectNoMove == noMove && int(cb.EffectSpeedAddFt) == combat.SpeedAddFt(mods) {
-			continue
-		}
-		if err := c.q.SetCombatantEffectState(ctx, playdb.SetCombatantEffectStateParams{
-			ID: cb.ID, Conditions: conds, EffectConditions: derived, EffectAcBonus: int32(ac), EffectSpeedPct: int32(pct), EffectNoAction: noAction, EffectNoReaction: noReaction, EffectNoMove: noMove, EffectSpeedAddFt: int32(combat.SpeedAddFt(mods)), //nolint:gosec // small numbers
-		}); err != nil {
-			return fmt.Errorf("work out the effects' state: %w", err)
-		}
-		cs[i].Conditions, cs[i].EffectConditions = conds, derived
-		// A caster that cannot act loses the concentration (SRD, Concentration:
-		// incapacitated).
-		if cb.ConcentrationSpell != nil && (combat.Creature{Conditions: conds}).Incapacitated() {
-			ev := actionEvent{Round: c.enc.Round, Secret: cb.Hidden, Actor: cb.ID}
-			if err := s.stopConcentrating(ctx, c, cs[i], &ev); err != nil {
-				return err
-			}
-			if err := insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, ev); err != nil {
-				return err
-			}
+		if cs[i].Kind == kindPlayer {
+			players = append(players, cs[i].CharacterID)
 		}
 	}
 	return s.syncArmorBase(ctx, c, players...)
+}
+
+// effectState is what the effects leave on one combatant.
+type effectState struct {
+	conds, derived               []string
+	mods                         []rules.EffectModifier
+	ac, pct, addFt               int
+	noAction, noReaction, noMove bool
+}
+
+// refreshOne works out again the combatant cs[i] and writes what changed.
+func (s *Service) refreshOne(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, i int) error {
+	cb := cs[i]
+	level, err := s.exhaustionOfCombatant(ctx, c, cb)
+	if err != nil {
+		return err
+	}
+	st := effectStateOf(cb, level, rows)
+	if err := s.refreshMageArmor(ctx, c, cs, i, st.mods); err != nil {
+		return err
+	}
+	if st.sameAs(cb) {
+		return nil
+	}
+	if err := c.q.SetCombatantEffectState(ctx, playdb.SetCombatantEffectStateParams{
+		ID: cb.ID, Conditions: st.conds, EffectConditions: st.derived, EffectAcBonus: int32(st.ac), EffectSpeedPct: int32(st.pct), EffectNoAction: st.noAction, EffectNoReaction: st.noReaction, EffectNoMove: st.noMove, EffectSpeedAddFt: int32(st.addFt), //nolint:gosec // small numbers
+	}); err != nil {
+		return fmt.Errorf("work out the effects' state: %w", err)
+	}
+	cs[i].Conditions, cs[i].EffectConditions = st.conds, st.derived
+	return s.dropConcentrationIfIncapacitated(ctx, c, cs[i])
+}
+
+// exhaustionOfCombatant is the level of exhaustion a combatant carries: a character's is its
+// vitals', and the combatant's copy is made again when it is out of date.
+func (s *Service) exhaustionOfCombatant(ctx context.Context, c *combatTx, cb playdb.Combatant) (int, error) {
+	level := int(cb.ExhaustionLevel)
+	if cb.Kind != kindPlayer {
+		return level, nil
+	}
+	vit, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, cb.CharacterID)
+	if err != nil {
+		if connect.CodeOf(err) != connect.CodeNotFound {
+			return level, err
+		}
+		return level, nil
+	}
+	level = int(vit.GetExhaustionLevel())
+	if int32(level) != cb.ExhaustionLevel { //nolint:gosec // 0 to 6
+		if err := c.q.SetCombatantExhaustionLevel(ctx, playdb.SetCombatantExhaustionLevelParams{ID: cb.ID, ExhaustionLevel: int32(level)}); err != nil { //nolint:gosec // 0 to 6
+			return level, fmt.Errorf("copy the exhaustion: %w", err)
+		}
+	}
+	return level, nil
+}
+
+// effectStateOf works out what the effects and the exhaustion leave on a combatant.
+func effectStateOf(cb playdb.Combatant, level int, rows []playdb.CombatantState) effectState {
+	var st effectState
+	st.derived, st.mods = effectsOfCombatant(cb.ID, rows)
+	if level > 0 && !slices.Contains(st.derived, "condition:exhaustion") {
+		st.derived = append(st.derived, "condition:exhaustion")
+	}
+	base := slices.DeleteFunc(slices.Clone(cb.Conditions), func(k string) bool { return slices.Contains(cb.EffectConditions, k) })
+	st.conds = slices.Clone(base)
+	for _, k := range st.derived {
+		if !slices.Contains(st.conds, k) {
+			st.conds = append(st.conds, k)
+		}
+	}
+	st.pct = combat.SpeedPercent(st.mods)
+	if combat.ExhaustionAt(level).SpeedHalved {
+		st.pct /= 2
+	}
+	st.ac = combat.ArmorClassBonus(st.mods)
+	st.addFt = combat.SpeedAddFt(st.mods)
+	st.noAction = slices.ContainsFunc(st.mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoAction })
+	st.noReaction = slices.ContainsFunc(st.mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoReaction })
+	// Speed 0 (exhaustion 5, the lethargy) is no movement; a percentage of 0 is never stored.
+	st.noMove = ex0(level) || slices.ContainsFunc(st.mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierNoMove })
+	if st.derived == nil {
+		st.derived = []string{}
+	}
+	if st.conds == nil {
+		st.conds = []string{}
+	}
+	return st
+}
+
+// effectsOfCombatant are the conditions (each once) and the modifiers the effects on a combatant give.
+func effectsOfCombatant(id string, rows []playdb.CombatantState) (derived []string, mods []rules.EffectModifier) {
+	for _, row := range rows {
+		if row.CombatantID != id {
+			continue
+		}
+		for _, k := range row.ConditionKeys {
+			if !slices.Contains(derived, k) {
+				derived = append(derived, k)
+			}
+		}
+		mods = append(mods, effectModifiers(row)...)
+	}
+	return derived, mods
+}
+
+// sameAs says the combatant already holds this state.
+func (st effectState) sameAs(cb playdb.Combatant) bool {
+	return slices.Equal(st.conds, cb.Conditions) && slices.Equal(st.derived, cb.EffectConditions) && int(cb.EffectAcBonus) == st.ac &&
+		int(cb.EffectSpeedPct) == st.pct && cb.EffectNoAction == st.noAction && cb.EffectNoReaction == st.noReaction &&
+		cb.EffectNoMove == st.noMove && int(cb.EffectSpeedAddFt) == st.addFt
+}
+
+// refreshMageArmor keeps the base armor class the effects give (Mage Armor), which the combat's
+// rolls read, on the combatant cs[i].
+func (s *Service) refreshMageArmor(ctx context.Context, c *combatTx, cs []playdb.Combatant, i int, mods []rules.EffectModifier) error {
+	cb := cs[i]
+	want := int32(combat.BaseAC(mods)) //nolint:gosec // 0 to 60
+	if (cb.MageArmorAc == nil && want == 0) || (cb.MageArmorAc != nil && *cb.MageArmorAc == want) {
+		return nil
+	}
+	var value *int32
+	if want > 0 {
+		value = &want
+	}
+	if err := c.q.SetCombatantMageArmorAC(ctx, playdb.SetCombatantMageArmorACParams{ID: cb.ID, MageArmorAc: value}); err != nil {
+		return fmt.Errorf("work out the base armor class: %w", err)
+	}
+	cs[i].MageArmorAc = value
+	return nil
+}
+
+// dropConcentrationIfIncapacitated ends the concentration of a caster that cannot act (SRD,
+// Concentration: incapacitated).
+func (s *Service) dropConcentrationIfIncapacitated(ctx context.Context, c *combatTx, cb playdb.Combatant) error {
+	if cb.ConcentrationSpell == nil || !(combat.Creature{Conditions: cb.Conditions}).Incapacitated() {
+		return nil
+	}
+	ev := actionEvent{Round: c.enc.Round, Secret: cb.Hidden, Actor: cb.ID}
+	if err := s.stopConcentrating(ctx, c, cb, &ev); err != nil {
+		return err
+	}
+	return insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, ev)
+}
+
+// casting is the rows of one casting of an effect: they share a group and a source key.
+type casting struct {
+	key, group string
+	rows       []playdb.CombatantState
+}
+
+// castingsOf groups rows by casting, in the order of their first rows.
+func castingsOf(rows []playdb.CombatantState) []*casting {
+	var castings []*casting
+	for _, st := range rows {
+		i := slices.IndexFunc(castings, func(k *casting) bool { return k.group == deref(st.GroupID) && k.key == deref(st.SourceKey) })
+		if i < 0 {
+			castings = append(castings, &casting{key: deref(st.SourceKey), group: deref(st.GroupID)})
+			i = len(castings) - 1
+		}
+		castings[i].rows = append(castings[i].rows, st)
+	}
+	return castings
 }
 
 // endEffectRows ends effects: it closes the saving throws they ask, takes the rows away,
@@ -428,52 +530,15 @@ func (s *Service) endEffectRows(ctx context.Context, c *combatTx, cs []playdb.Co
 	if err != nil {
 		return err
 	}
-	type casting struct {
-		key, group string
-		rows       []playdb.CombatantState
-	}
-	var castings []*casting
-	for _, st := range rows {
-		i := slices.IndexFunc(castings, func(k *casting) bool { return k.group == deref(st.GroupID) && k.key == deref(st.SourceKey) })
-		if i < 0 {
-			castings = append(castings, &casting{key: deref(st.SourceKey), group: deref(st.GroupID)})
-			i = len(castings) - 1
-		}
-		castings[i].rows = append(castings[i].rows, st)
-	}
 	followUp := reason
 	if reason == endCasterLeft {
 		reason = endLeft // the log and the windows know one reason for a leaver
 	}
 	touched := map[string]bool{}
-	for _, k := range castings {
-		var targets, ids []string
-		for _, st := range k.rows {
-			c.endedEffects = append(c.endedEffects, st)
-			if err := s.closeEffectWindows(ctx, c, st, reason); err != nil {
-				return err
-			}
-			if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
-				return fmt.Errorf("end the effect: %w", err)
-			}
-			targets, ids = append(targets, st.CombatantID), append(ids, st.ID)
-			touched[st.CombatantID] = true
-		}
-		if err := s.afterEffectEnded(ctx, c, cs, content, k.rows, followUp); err != nil {
+	for _, k := range castingsOf(rows) {
+		if err := s.endCasting(ctx, c, cs, content, k, reason, followUp, touched); err != nil {
 			return err
 		}
-		first := k.rows[0]
-		hidden := s.effectHiddenFrom(first, targetsOf(cs, targets))
-		line, err := insertEventID(ctx, c, eventLastingEnded, &c.actorUserID, nil, actionEvent{
-			Round: c.enc.Round, Secret: hidden, Actor: deref(first.SourceID), Target: targets[0],
-			Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
-		})
-		if err != nil {
-			return err
-		}
-		// The change's own event names the line, so that its undo, which puts the rows
-		// back, takes the line back too (write, UndoLastAction).
-		c.endedLines = append(c.endedLines, line)
 	}
 	ids := make([]string, 0, len(touched))
 	for id := range touched {
@@ -481,6 +546,39 @@ func (s *Service) endEffectRows(ctx context.Context, c *combatTx, cs []playdb.Co
 	}
 	slices.Sort(ids)
 	return s.refreshCombatants(ctx, c, ids...)
+}
+
+// endCasting ends the rows of one casting: the windows they asked, the rows, what follows and
+// the line of the log. touched collects the combatants that lost a row.
+func (s *Service) endCasting(ctx context.Context, c *combatTx, cs []playdb.Combatant, content *rules.Content, k *casting, reason, followUp string, touched map[string]bool) error {
+	var targets, ids []string
+	for _, st := range k.rows {
+		c.endedEffects = append(c.endedEffects, st)
+		if err := s.closeEffectWindows(ctx, c, st, reason); err != nil {
+			return err
+		}
+		if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+			return fmt.Errorf("end the effect: %w", err)
+		}
+		targets, ids = append(targets, st.CombatantID), append(ids, st.ID)
+		touched[st.CombatantID] = true
+	}
+	if err := s.afterEffectEnded(ctx, c, cs, content, k.rows, followUp); err != nil {
+		return err
+	}
+	first := k.rows[0]
+	hidden := s.effectHiddenFrom(first, targetsOf(cs, targets))
+	line, err := insertEventID(ctx, c, eventLastingEnded, &c.actorUserID, nil, actionEvent{
+		Round: c.enc.Round, Secret: hidden, Actor: deref(first.SourceID), Target: targets[0],
+		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
+	})
+	if err != nil {
+		return err
+	}
+	// The change's own event names the line, so that its undo, which puts the rows
+	// back, takes the line back too (write, UndoLastAction).
+	c.endedLines = append(c.endedLines, line)
+	return nil
 }
 
 // targetsOf are the combatants of ids.
@@ -496,8 +594,7 @@ func targetsOf(cs []playdb.Combatant, ids []string) []playdb.Combatant {
 
 // afterEffectEnded does what follows an effect that ended on its targets.
 func (s *Service) afterEffectEnded(ctx context.Context, c *combatTx, cs []playdb.Combatant, content *rules.Content, rows []playdb.CombatantState, reason string) error {
-	first := rows[0]
-	key := deref(first.SourceKey)
+	key := deref(rows[0].SourceKey)
 	def, ok := s.effectDef(content, key)
 	if !ok {
 		return nil
@@ -506,44 +603,57 @@ func (s *Service) afterEffectEnded(ctx context.Context, c *combatTx, cs []playdb
 		return nil
 	}
 	for _, st := range rows {
-		if def.OnEnd != "" {
-			next, ok := content.CombatEffect(def.OnEnd)
-			i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
-			if ok && i >= 0 && !cs[i].Defeated {
-				var caster *playdb.Combatant
-				if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == deref(st.SourceID) }); j >= 0 {
-					caster = &cs[j]
-				}
-				if err := s.leaveFollowUp(ctx, c, cs, effectSpec{
-					key: def.OnEnd, sourceKind: "feature", def: next, caster: caster, targets: []playdb.Combatant{cs[i]},
-					dur: durationSpec{Kind: next.Duration.Kind}, follows: key,
-				}); err != nil {
-					return err
-				}
-			}
+		if err := s.afterEffectRowEnded(ctx, c, cs, content, def, key, st); err != nil {
+			return err
 		}
-		// The temporary hit points the spell gave go with it (SRD 5.1, Heroism).
-		if slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP }) {
-			if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID }); i >= 0 {
-				if err := s.clearTempHP(ctx, c, cs[i]); err != nil {
-					return err
-				}
-			}
+	}
+	return nil
+}
+
+// afterEffectRowEnded does what follows one row of an effect that ended: what the effect leaves
+// (Haste's lethargy), the temporary hit points it gave (SRD 5.1, Heroism) and the effects it burns.
+func (s *Service) afterEffectRowEnded(ctx context.Context, c *combatTx, cs []playdb.Combatant, content *rules.Content, def *rules.EffectDef, key string, st playdb.CombatantState) error {
+	if def.OnEnd != "" {
+		if err := s.leaveOnEnd(ctx, c, cs, content, def, key, st); err != nil {
+			return err
 		}
-		if len(def.EndsEffectsOf) > 0 {
-			all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
-			if err != nil {
-				return fmt.Errorf("list the effects: %w", err)
-			}
-			burned := slices.DeleteFunc(all, func(o playdb.CombatantState) bool {
-				return o.CombatantID != st.CombatantID || !slices.Contains(def.EndsEffectsOf, deref(o.SourceKey)) || o.ID == st.ID
-			})
-			if err := s.endEffectRows(ctx, c, cs, burned, endBurned); err != nil {
+	}
+	// The temporary hit points the spell gave go with it (SRD 5.1, Heroism).
+	if slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP }) {
+		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID }); i >= 0 {
+			if err := s.clearTempHP(ctx, c, cs[i]); err != nil {
 				return err
 			}
 		}
 	}
-	return nil
+	if len(def.EndsEffectsOf) == 0 {
+		return nil
+	}
+	all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	burned := slices.DeleteFunc(all, func(o playdb.CombatantState) bool {
+		return o.CombatantID != st.CombatantID || !slices.Contains(def.EndsEffectsOf, deref(o.SourceKey)) || o.ID == st.ID
+	})
+	return s.endEffectRows(ctx, c, cs, burned, endBurned)
+}
+
+// leaveOnEnd makes what the effect leaves on a target that is still in the fight.
+func (s *Service) leaveOnEnd(ctx context.Context, c *combatTx, cs []playdb.Combatant, content *rules.Content, def *rules.EffectDef, key string, st playdb.CombatantState) error {
+	next, ok := content.CombatEffect(def.OnEnd)
+	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
+	if !ok || i < 0 || cs[i].Defeated {
+		return nil
+	}
+	var caster *playdb.Combatant
+	if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == deref(st.SourceID) }); j >= 0 {
+		caster = &cs[j]
+	}
+	return s.leaveFollowUp(ctx, c, cs, effectSpec{
+		key: def.OnEnd, sourceKind: "feature", def: next, caster: caster, targets: []playdb.Combatant{cs[i]},
+		dur: durationSpec{Kind: next.Duration.Kind}, follows: key,
+	})
 }
 
 // leaveFollowUp makes what an effect that ended leaves on its target (Haste's lethargy)

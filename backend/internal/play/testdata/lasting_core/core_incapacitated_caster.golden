@@ -1,0 +1,15 @@
+after the cast:
+Goblin spell:hold-person kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=all label=- dc=14 conds=[condition:paralyzed] mods=[] started=r1
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[condition:paralyzed] derived=[condition:paralyzed] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:hold-person turn=acting
+
+Pensantus laughs:
+Pensantus spell:hideous-laughter kind=spell conc=false dur=rounds ends=r4/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[condition:prone,condition:incapacitated] mods=[] started=r1
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[condition:prone,condition:incapacitated] derived=[condition:prone,condition:incapacitated] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+events:
+lasting_effect_ended {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hold-person","reason":"concentration","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
+conditions_set {"combatant_id":"<Pensantus>","conc_before":"spell:hold-person","conc_ended":"spell:hold-person","round":1}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:hideous-laughter","rounds":3,"targets":["<Pensantus>"]},"round":1,"target_id":"<Pensantus>"}
+

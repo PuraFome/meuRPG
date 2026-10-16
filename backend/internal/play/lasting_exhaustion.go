@@ -107,136 +107,31 @@ func (s *Service) exhaustionCall(ctx context.Context, campaignID, rawKey, rawEnc
 	return m, key, exhaustionTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("set character_id or combatant_id"))
 }
 
+// exhaustionChange is what a change of exhaustion asks for.
+type exhaustionChange struct {
+	subject exhaustionTarget
+	// level is the level to set; a negative number takes that many levels off the one it is now.
+	level int32
+	// expected is the level the master's screen shows.
+	expected     int32
+	confirmDeath bool
+}
+
+// exhaustionDone is what the transaction leaves for the answer and the streams.
+type exhaustionDone struct {
+	level, hpMax int32
+	vitals       *playv1.CharacterVitals
+}
+
 // changeExhaustion sets the level (a negative number takes that many levels off the one it is
 // now) of a character or a combatant in one transaction: the vitals or the combatant's row, the
 // state the effects leave, the death confirmation of level 6 and the line of the log.
-func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key string, hash *string, subject exhaustionTarget, level, expected int32, confirmDeath bool, kind string) (int32, int32, *playv1.Encounter, error) { //nolint:gocognit,gocyclo // the steps of one transaction in one closure, like the other writes of the combat
-	var final, hpMax int32
-	var vitals *playv1.CharacterVitals
-	var secret bool
-	encID := ""
-	if subject.combatant != nil {
-		encID = subject.combatant.EncounterID
-		if id, err := parseCombatID(encID, "encounter"); err == nil {
-			encID = id
-		}
-	}
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: hash, kind: kind, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals = nil
-		var cs []playdb.Combatant
-		var who *playdb.Combatant
-		if c.enc.ID == "" { // a character, and the combat of the session if it runs
-			enc, err := c.q.GetLatestEncounter(ctx, c.session.ID)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				return nil, fmt.Errorf("find the encounter: %w", err)
-			}
-			if err == nil && enc.Status != statusEnded {
-				c.enc = enc
-			}
-		}
-		if c.enc.ID != "" {
-			var err error
-			if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
-				return nil, fmt.Errorf("list the combatants: %w", err)
-			}
-		}
-		switch {
-		case subject.combatant != nil:
-			cb, err := findCombatant(cs, subject.combatant.ID, viewerOf(m))
-			if err != nil {
-				return nil, err
-			}
-			who = &cb
-		default:
-			if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.Kind == kindPlayer && o.CharacterID == subject.characterID }); i >= 0 {
-				who = &cs[i]
-			}
-		}
-		// The character's level is its vitals'; an NPC's is its combatant's.
-		var before int32
-		if who != nil && who.Kind != kindPlayer {
-			before = who.ExhaustionLevel
-		} else {
-			charID := subject.characterID
-			if who != nil {
-				charID = who.CharacterID
-			}
-			v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, charID)
-			if err != nil {
-				return nil, err
-			}
-			before = v.GetExhaustionLevel()
-		}
-		if expected != before {
-			return nil, connect.NewError(connect.CodeAborted, errors.New("the level of exhaustion is not the one the screen shows"))
-		}
-		target := level
-		if level < 0 {
-			target = max(before+level, 0)
-		}
-		if target == combat.MaxExhaustion && !confirmDeath && target != before {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("level 6 is death: confirm_death must be true"))
-		}
-		ev := actionEvent{Round: c.enc.Round, Secret: who != nil && who.Hidden}
-		if who != nil {
-			ev.Actor = who.ID
-			c.characterID = &who.CharacterID
-		}
-		if who != nil && who.Kind != kindPlayer {
-			hp, err := s.setNPCExhaustion(ctx, c, *who, target)
-			if err != nil {
-				return nil, err
-			}
-			hpMax = hp
-		} else {
-			charID := subject.characterID
-			if who != nil {
-				charID = who.CharacterID
-			}
-			_, after, err := s.vitals.SetExhaustion(ctx, c.tx, c.session.CampaignID, charID, target)
-			if err != nil {
-				return nil, err
-			}
-			vitals, hpMax = after, after.GetHitPointsMax()
-			if charID != "" && who == nil {
-				c.characterID = &charID
-			}
-			if who == nil && target == combat.MaxExhaustion && target != before {
-				// No combat to hold a confirmation: the master's confirm_death is the confirmation
-				// (RN-03), so the character dies as the master's "marcar como morto" leaves it.
-				if err := s.roster.MarkDead(ctx, c.tx, c.session.CampaignID, charID, c.now); err != nil {
-					return nil, err
-				}
-			}
-			if who != nil && target == combat.MaxExhaustion {
-				// Level 6 is death: the character goes to the confirmation as the third failed death
-				// save does; only the master's ConfirmDeath says it died (RN-03).
-				if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{ID: who.ID, DeathSuccesses: 0, DeathFailures: deathFailuresToDie, DeathSaveRolled: who.DeathSaveRolled, Defeated: who.Defeated}); err != nil {
-					return nil, fmt.Errorf("take the character to the death confirmation: %w", err)
-				}
-			}
-		}
-		final = target
-		if who != nil {
-			if err := c.q.SetCombatantExhaustionLevel(ctx, playdb.SetCombatantExhaustionLevelParams{ID: who.ID, ExhaustionLevel: target}); err != nil {
-				return nil, fmt.Errorf("copy the exhaustion: %w", err)
-			}
-			if err := s.refreshCombatants(ctx, c, who.ID); err != nil {
-				return nil, err
-			}
-		}
-		if c.enc.ID != "" {
-			var err error
-			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-				return nil, fmt.Errorf("touch the encounter: %w", err)
-			}
-		}
-		// The exhaustion is the owner's and the master's: no line for the other players (RN-10).
-		ev.Lasting = &lastingEvent{Key: conditionExhaustion, Change: "exhaustion", Level: target, Before: before, OwnerOnly: true}
-		if who != nil {
-			ev.Lasting.Targets = []string{who.ID}
-		}
-		return ev, nil
+func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key string, hash *string, subject exhaustionTarget, level, expected int32, confirmDeath bool, kind string) (int32, int32, *playv1.Encounter, error) {
+	ch := exhaustionChange{subject: subject, level: level, expected: expected, confirmDeath: confirmDeath}
+	var done exhaustionDone
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: hash, kind: kind, encounterID: exhaustionEncounterID(subject)}, func(c *combatTx) (any, error) {
+		done = exhaustionDone{}
+		return s.writeExhaustion(ctx, c, m, ch, &done)
 	})
 	if err != nil {
 		return 0, 0, nil, s.dbError(ctx, "set the exhaustion", err)
@@ -245,14 +140,193 @@ func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key 
 	if res.encounterID != "" {
 		enc, err = s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 			s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !secret)
+			// The stream is told the log changed for everyone; a hidden NPC's line is Secret in the event itself.
+			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
 		})
 		if err != nil {
 			return 0, 0, nil, err
 		}
 	}
-	s.publishVitals(m.CampaignID, vitals)
-	return final, hpMax, enc, nil
+	s.publishVitals(m.CampaignID, done.vitals)
+	return done.level, done.hpMax, enc, nil
+}
+
+// exhaustionEncounterID is the combat the call names, when it names a combatant.
+func exhaustionEncounterID(subject exhaustionTarget) string {
+	if subject.combatant == nil {
+		return ""
+	}
+	if id, err := parseCombatID(subject.combatant.EncounterID, "encounter"); err == nil {
+		return id
+	}
+	return subject.combatant.EncounterID
+}
+
+// writeExhaustion is the transaction of changeExhaustion: find who it is, check the level the
+// screen showed, write the level, copy it to the combatant and write the line.
+func (s *Service) writeExhaustion(ctx context.Context, c *combatTx, m authz.Membership, ch exhaustionChange, done *exhaustionDone) (any, error) {
+	cs, err := s.exhaustionCombat(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	who, err := exhaustionWho(cs, ch.subject, m)
+	if err != nil {
+		return nil, err
+	}
+	before, err := s.exhaustionBefore(ctx, c, ch.subject, who)
+	if err != nil {
+		return nil, err
+	}
+	target, err := ch.targetFrom(before)
+	if err != nil {
+		return nil, err
+	}
+	ev := actionEvent{Round: c.enc.Round, Secret: who != nil && who.Hidden}
+	if who != nil {
+		ev.Actor = who.ID
+		c.characterID = &who.CharacterID
+	}
+	if err := s.applyExhaustion(ctx, c, ch.subject, who, target, before, done); err != nil {
+		return nil, err
+	}
+	done.level = target
+	if who != nil {
+		if err := s.copyExhaustion(ctx, c, *who, target); err != nil {
+			return nil, err
+		}
+	}
+	if c.enc.ID != "" {
+		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+			return nil, fmt.Errorf("touch the encounter: %w", err)
+		}
+	}
+	// The exhaustion is the owner's and the master's: no line for the other players (RN-10).
+	ev.Lasting = &lastingEvent{Key: conditionExhaustion, Change: "exhaustion", Level: target, Before: before, OwnerOnly: true}
+	if who != nil {
+		ev.Lasting.Targets = []string{who.ID}
+	}
+	return ev, nil
+}
+
+// exhaustionCombat loads the combat the change runs in (a character's is the session's, if it
+// runs) and its combatants; nil when there is none.
+func (s *Service) exhaustionCombat(ctx context.Context, c *combatTx) ([]playdb.Combatant, error) {
+	if c.enc.ID == "" { // a character, and the combat of the session if it runs
+		enc, err := c.q.GetLatestEncounter(ctx, c.session.ID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("find the encounter: %w", err)
+		}
+		if err == nil && enc.Status != statusEnded {
+			c.enc = enc
+		}
+	}
+	if c.enc.ID == "" {
+		return nil, nil
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	return cs, nil
+}
+
+// exhaustionWho is the combatant the change is about: the one named, or the character's in the
+// combat; nil for a character that is not in it.
+func exhaustionWho(cs []playdb.Combatant, subject exhaustionTarget, m authz.Membership) (*playdb.Combatant, error) {
+	if subject.combatant != nil {
+		cb, err := findCombatant(cs, subject.combatant.ID, viewerOf(m))
+		if err != nil {
+			return nil, err
+		}
+		return &cb, nil
+	}
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.Kind == kindPlayer && o.CharacterID == subject.characterID }); i >= 0 {
+		return &cs[i], nil
+	}
+	return nil, nil
+}
+
+// exhaustionCharacterID is the character whose vitals hold the level: the combatant's, or the one named.
+func exhaustionCharacterID(subject exhaustionTarget, who *playdb.Combatant) string {
+	if who != nil {
+		return who.CharacterID
+	}
+	return subject.characterID
+}
+
+// exhaustionBefore is the level now: a character's is its vitals', an NPC's its combatant's.
+func (s *Service) exhaustionBefore(ctx context.Context, c *combatTx, subject exhaustionTarget, who *playdb.Combatant) (int32, error) {
+	if who != nil && who.Kind != kindPlayer {
+		return who.ExhaustionLevel, nil
+	}
+	v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, exhaustionCharacterID(subject, who))
+	if err != nil {
+		return 0, err
+	}
+	return v.GetExhaustionLevel(), nil
+}
+
+// targetFrom is the level to set, once the level now is the one the screen showed; level 6 is
+// death and asks for the master's confirmation.
+func (ch exhaustionChange) targetFrom(before int32) (int32, error) {
+	if ch.expected != before {
+		return 0, connect.NewError(connect.CodeAborted, errors.New("the level of exhaustion is not the one the screen shows"))
+	}
+	target := ch.level
+	if ch.level < 0 {
+		target = max(before+ch.level, 0)
+	}
+	if target == combat.MaxExhaustion && !ch.confirmDeath && target != before {
+		return 0, connect.NewError(connect.CodeFailedPrecondition, errors.New("level 6 is death: confirm_death must be true"))
+	}
+	return target, nil
+}
+
+// applyExhaustion writes the level: an NPC's on its combatant, a character's in its vitals.
+func (s *Service) applyExhaustion(ctx context.Context, c *combatTx, subject exhaustionTarget, who *playdb.Combatant, target, before int32, done *exhaustionDone) error {
+	if who != nil && who.Kind != kindPlayer {
+		hp, err := s.setNPCExhaustion(ctx, c, *who, target)
+		if err != nil {
+			return err
+		}
+		done.hpMax = hp
+		return nil
+	}
+	return s.setCharacterExhaustion(ctx, c, subject, who, target, before, done)
+}
+
+// setCharacterExhaustion sets a character's level in its vitals; level 6 takes it to the death
+// confirmation (in a combat, as the third failed death save does) or, with no combat to hold
+// one, the master's confirm_death is the confirmation (RN-03) and it dies as the master's
+// "marcar como morto" leaves it.
+func (s *Service) setCharacterExhaustion(ctx context.Context, c *combatTx, subject exhaustionTarget, who *playdb.Combatant, target, before int32, done *exhaustionDone) error {
+	charID := exhaustionCharacterID(subject, who)
+	_, after, err := s.vitals.SetExhaustion(ctx, c.tx, c.session.CampaignID, charID, target)
+	if err != nil {
+		return err
+	}
+	done.vitals, done.hpMax = after, after.GetHitPointsMax()
+	if charID != "" && who == nil {
+		c.characterID = &charID
+	}
+	dies := target == combat.MaxExhaustion
+	if who == nil && dies && target != before {
+		return s.roster.MarkDead(ctx, c.tx, c.session.CampaignID, charID, c.now)
+	}
+	if who != nil && dies {
+		if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{ID: who.ID, DeathSuccesses: 0, DeathFailures: deathFailuresToDie, DeathSaveRolled: who.DeathSaveRolled, Defeated: who.Defeated}); err != nil {
+			return fmt.Errorf("take the character to the death confirmation: %w", err)
+		}
+	}
+	return nil
+}
+
+// copyExhaustion copies the level to the combatant and works out what it leaves on it.
+func (s *Service) copyExhaustion(ctx context.Context, c *combatTx, who playdb.Combatant, target int32) error {
+	if err := c.q.SetCombatantExhaustionLevel(ctx, playdb.SetCombatantExhaustionLevelParams{ID: who.ID, ExhaustionLevel: target}); err != nil {
+		return fmt.Errorf("copy the exhaustion: %w", err)
+	}
+	return s.refreshCombatants(ctx, c, who.ID)
 }
 
 // setNPCExhaustion puts a level of exhaustion on an NPC: from level 4 its maximum is halved and its

@@ -1,0 +1,20 @@
+addEffects with no target -> 0 rows, <nil>
+addedEventID with no rows -> "", <nil>
+refreshCombatants with an unknown id -> <nil>
+syncArmorBase with no id -> <nil>
+effectsAfterTurnStart on a defeated goblin and Toren -> <nil>
+effectDamage with "not dice" -> <nil>
+effectDamage with "0d4" -> <nil>
+Goblin spell:heroism kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:frightened"], "kind": "condition_immunity"}, {"kind": "turn_temp_hp", "value": 4}] started=r1
+Toren spell:heroism kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:frightened"], "kind": "condition_immunity"}, {"kind": "turn_temp_hp", "value": 4}] started=r1
+Goblin hp 7/7 base - temp 0 defeated=true exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+events:
+lasting_effect_added {"combatant_id":"<Pensantus>","lasting":{"caster":"<Pensantus>","change":"added","effects":["<uuid>","<uuid>"],"key":"spell:heroism","rounds":10,"targets":["<Goblin>","<Toren>"]},"round":1,"secret":true,"target_id":"<one of the targets>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"effect:web-fire","rounds":1,"targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:web","rounds":600,"targets":["<Goblin>"]},"round":1,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:web","owner_only":true,"reason":"burned","targets":["<Goblin>"]},"round":1,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"effect:web-fire","reason":"duration","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
+lasting_effect_triggered {"combatant_id":"<Toren>","key":"spell:heroism","lasting":{"amount":4,"change":"temp_hp","effects":["<uuid>"],"key":"spell:heroism","targets":["<Toren>"]},"round":2,"target_id":"<Toren>"}
+

@@ -49,7 +49,8 @@ export function isTableKey(key: string): boolean {
   return key.endsWith('@mesa');
 }
 
-export function catalogVm(content: Content, entries: readonly TableEntry[] = []): CatalogVm {
+/** Every Portuguese name the catalog and the table's entries give, by key. */
+function nameIndex(content: Content, entries: readonly TableEntry[]): Map<string, string> {
   const names = new Map<string, string>();
   for (const r of content.races) names.set(r.key, r.namePt);
   for (const r of content.subraces) names.set(r.key, r.namePt);
@@ -63,6 +64,20 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
   for (const n of content.languages) names.set(n.key, n.namePt);
   for (const n of content.proficiencies) names.set(n.key, n.namePt);
   for (const n of content.damageTypes) names.set(n.key, n.namePt);
+  return names;
+}
+
+/** The first name given to each school of magic, in the order the spells list them. */
+function schoolNames(spells: Content['spells']): Map<string, string> {
+  const schools = new Map<string, string>();
+  for (const s of spells) {
+    if (s.schoolKey && !schools.has(s.schoolKey)) schools.set(s.schoolKey, s.schoolNamePt);
+  }
+  return schools;
+}
+
+export function catalogVm(content: Content, entries: readonly TableEntry[] = []): CatalogVm {
+  const names = nameIndex(content, entries);
   const fields = [
     'strength',
     'dexterity',
@@ -82,10 +97,7 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
   }
   const subclassLevels = new Map(content.classes.map((c) => [c.key, c.subclassLevel]));
 
-  const schools = new Map<string, string>();
-  for (const s of content.spells) {
-    if (s.schoolKey && !schools.has(s.schoolKey)) schools.set(s.schoolKey, s.schoolNamePt);
-  }
+  const schools = schoolNames(content.spells);
   const byName = (a: { label: string }, b: { label: string }) =>
     a.label.localeCompare(b.label, 'pt-BR');
   const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

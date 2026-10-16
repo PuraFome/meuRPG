@@ -3,10 +3,6 @@ import { create } from '@bufbuild/protobuf';
 import {
   type GetClassTableDefaultsResponse,
   GetClassTableDefaultsResponseSchema,
-  EffectMenuListSchema,
-  EffectMenuTypeSchema,
-  type GetEffectMenuResponse,
-  GetEffectMenuResponseSchema,
   type TableEntry,
   TableContentKind,
   TableEntrySchema,
@@ -22,7 +18,7 @@ import {
 import { Ability, ContentSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { type CatalogAbility, type CatalogVm, catalogVm } from './catalog';
 import { ContentWatcher } from './content-watcher';
-import { EffectMenuVm } from './effect-draft';
+export { menu, menuResponse, rangedAttackMenu } from './content-testing-menu';
 
 /** Test builders: an entry as the server sends it, and a small effect menu with the shape of the real one. */
 
@@ -117,238 +113,6 @@ export function feature(
   });
 }
 
-/** The menu: the real one's types and field order (backend/internal/rules/tablemenu.go), with a few of its lists. */
-export function menuResponse(): GetEffectMenuResponse {
-  const field = (name: string, kind: string, required = false, list = '', min = 0, max = 0) => ({
-    name,
-    kind,
-    required,
-    list,
-    min,
-    max,
-  });
-  return create(GetEffectMenuResponseSchema, {
-    types: [
-      {
-        type: 'modifier',
-        namePt: 'Modificador',
-        hintPt: 'Soma, define ou limita um número da ficha.',
-        fields: [
-          field('target', 'choice', true, 'modifier_targets'),
-          field('mode', 'choice', true, 'modifier_modes'),
-          field('value', 'formula', true),
-          field('when', 'condition'),
-          field('tags', 'tags', false, 'tag_prefixes'),
-          field('text_pt', 'text'),
-        ],
-      },
-      {
-        type: 'proficiency',
-        namePt: 'Proficiência',
-        hintPt: 'Dá proficiência.',
-        fields: [
-          field('proficiency', 'choice', true, 'proficiency_targets'),
-          field('level', 'choice', false, 'proficiency_levels'),
-          field('when', 'condition'),
-          field('text_pt', 'text'),
-        ],
-      },
-      {
-        type: 'sense',
-        namePt: 'Sentido',
-        hintPt: 'Visão no escuro.',
-        fields: [
-          field('sense', 'choice', true, 'senses'),
-          field('range_ft', 'number', true, '', 1),
-          field('when', 'condition'),
-          field('text_pt', 'text'),
-        ],
-      },
-      {
-        type: 'grant_action',
-        namePt: 'Ação',
-        hintPt: 'Uma ação que o personagem passa a ter.',
-        fields: [
-          field('economy', 'choice', true, 'economies'),
-          field('resource', 'resource_ref'),
-          field('when', 'condition'),
-          field('tags', 'tags', false, 'tag_prefixes'),
-          field('text_pt', 'text'),
-        ],
-      },
-      {
-        type: 'superiority_die',
-        namePt: 'Dado de manobra',
-        hintPt: 'Um dado que uma opção soma a uma rolagem.',
-        fields: [
-          field('applies', 'choice', true, 'maneuver_applies'),
-          field('resource', 'resource_ref', true),
-          field('value', 'formula', true),
-          field('ability', 'choice', false, 'abilities'),
-          field('economy', 'choice', false, 'economies'),
-          field('when', 'condition'),
-          field('text_pt', 'text'),
-        ],
-      },
-      {
-        type: 'choice',
-        namePt: 'Escolha',
-        hintPt: 'Algo que o jogador escolhe.',
-        fields: [
-          field('choice', 'choice', true, 'choice_kinds'),
-          field('count', 'number', true, '', 1),
-          field('from', 'choices'),
-          field('when', 'condition'),
-          field('text_pt', 'text'),
-        ],
-      },
-      {
-        type: 'ability_increase',
-        namePt: 'Aumento de habilidade',
-        hintPt: 'O jogador escolhe habilidades de uma lista.',
-        featOnly: true,
-        fields: [
-          field('count', 'number', true, '', 1),
-          field('from', 'choices', true, 'abilities'),
-          field('value', 'choice', true, 'ability_increase_amounts'),
-          field('text_pt', 'text'),
-        ],
-      },
-      {
-        type: 'note',
-        namePt: 'Nota e magia concedida',
-        hintPt: 'Um lembrete.',
-        fields: [
-          field('text_pt', 'text'),
-          field('value', 'formula'),
-          field('spells', 'choices'),
-          field('tags', 'tags', false, 'tag_prefixes'),
-          field('when', 'condition'),
-        ],
-      },
-    ],
-    lists: [
-      {
-        name: 'modifier_targets',
-        values: [
-          { key: 'speed.walk', namePt: 'Deslocamento' },
-          { key: 'ac', namePt: 'Classe de Armadura' },
-        ],
-      },
-      { name: 'modifier_modes', values: [{ key: 'add', namePt: 'Somar' }] },
-      { name: 'proficiency_targets', values: [{ key: 'skill:perception', namePt: 'Percepção' }] },
-      {
-        name: 'proficiency_levels',
-        values: [
-          { key: 'half', namePt: 'Metade' },
-          { key: 'full', namePt: 'Completa' },
-        ],
-      },
-      { name: 'senses', values: [{ key: 'darkvision', namePt: 'Visão no escuro' }] },
-      {
-        name: 'choice_kinds',
-        values: [
-          { key: 'skill', namePt: 'Perícias' },
-          { key: 'feature', namePt: 'Uma opção de uma lista do SRD' },
-          { key: 'feat', namePt: 'Talentos' },
-        ],
-      },
-      {
-        name: 'abilities',
-        values: [
-          { key: 'strength', namePt: 'Força' },
-          { key: 'dexterity', namePt: 'Destreza' },
-          { key: 'constitution', namePt: 'Constituição' },
-        ],
-      },
-      {
-        name: 'ability_increase_amounts',
-        values: [
-          { key: '1', namePt: '+1' },
-          { key: '2', namePt: '+2' },
-        ],
-      },
-      {
-        name: 'skills',
-        values: [
-          { key: 'skill:arcana', namePt: 'Arcanismo' },
-          { key: 'skill:perception', namePt: 'Percepção' },
-        ],
-      },
-      {
-        name: 'languages',
-        values: [
-          { key: 'language:common', namePt: 'Comum' },
-          { key: 'language:primordial', namePt: 'Primordial' },
-        ],
-      },
-      {
-        name: 'tools',
-        values: [{ key: 'proficiency:cartographers-tools', namePt: 'Ferramentas de cartógrafo' }],
-      },
-      {
-        name: 'tag_prefixes',
-        values: [
-          { key: 'against:', namePt: 'Contra…' },
-          { key: 'about:', namePt: 'Sobre…' },
-        ],
-      },
-    ],
-    helpers: [
-      { call: 'mod("<habilidade>")', returns: 'number', hintPt: 'O modificador.' },
-      { call: 'prof()', returns: 'number', hintPt: 'O bônus de proficiência.' },
-    ],
-    optionSets: [
-      {
-        key: 'feature:fighting-style',
-        namePt: 'Estilo de luta',
-        choose: 1,
-        options: [{ key: 'option:archery', namePt: 'Arquearia' }],
-      },
-    ],
-    classIndexes: ['wizard', 'cleric'],
-    maxFeaturesPerClass: 60,
-    maxEffectsPerFeature: 4,
-    maxTagsPerEffect: 4,
-    extraAttackMin: 2,
-    extraAttackMax: 4,
-  });
-}
-
-export function menu(): EffectMenuVm {
-  return new EffectMenuVm(menuResponse());
-}
-
-/** The menu with the real one's ranged_attack (a table feat's switches and a spell range multiplier), for its own specs. */
-export function rangedAttackMenu(): EffectMenuVm {
-  const res = menuResponse();
-  res.types.push(
-    create(EffectMenuTypeSchema, {
-      type: 'ranged_attack',
-      namePt: 'Ataque à distância',
-      hintPt: 'Muda os ataques de longe do personagem.',
-      fields: [
-        { name: 'applies', kind: 'choice', required: true, list: 'ranged_attack_applies' },
-        { name: 'ignore_cover', kind: 'yes_no', alwaysShown: true },
-        { name: 'range_multiplier', kind: 'number', min: 2, max: 3, alwaysShown: true },
-        { name: 'no_long_range_disadvantage', kind: 'yes_no', alwaysShown: true },
-        { name: 'when', kind: 'condition' },
-        { name: 'text_pt', kind: 'text' },
-      ],
-    }),
-  );
-  res.lists.push(
-    create(EffectMenuListSchema, {
-      name: 'ranged_attack_applies',
-      values: [
-        { key: 'spell', namePt: 'Magias com jogada de ataque' },
-        { key: 'weapon', namePt: 'Ataques com arma à distância' },
-      ],
-    }),
-  );
-  return new EffectMenuVm(res);
-}
-
 /** The six abilities as the catalog names them, for the specs. */
 export const abilities: readonly CatalogAbility[] = (
   ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const
@@ -426,13 +190,35 @@ export function fakeContentWatcher() {
   };
 }
 
+/** The levels of a class table, the spell levels a slot row has, and the level a prof bonus step takes. */
+const CLASS_LEVELS = 20;
+const SPELL_LEVELS = 9;
+const PROF_STEP = 4;
+/** Numbers as a space separated text: an array literal of them would be all magic numbers. */
+const numbers = (text: string): number[] => text.split(' ').map(Number);
+const ASI_LEVELS = numbers('4 8 12 16 19');
+const THIRD_CASTER_START = 3;
+/** Slots by level, as "from level:slots" steps: the last step that starts at or below the level wins. */
+const slotLadder =
+  (steps: string) =>
+  (level: number): number[] =>
+    steps
+      .split('|')
+      .map((step) => step.split(':'))
+      .filter(([from]) => level >= Number(from))
+      .map(([, slots]) => numbers(slots))
+      .pop() ?? [];
+/** A few cantrips and spells known, as the rows carry them. */
+const CANTRIPS = { cleric: 3, sorcerer: 4, pact: 2, third: 2 };
+const KNOWN = { sorcerer: 2, ranger: 2, pact: 2, third: 3 };
+
 /** `GetClassTableDefaults` with the shape of the server's: the proficiency bonus, the ASI levels and one table per way of casting.
  * The slots are a few of the SRD's (the half caster of the paladin at 2, 5 and 9); the specs prove what the editor does with the
  * rows, not the numbers. */
 export function classDefaults(): GetClassTableDefaultsResponse {
-  const prof = (i: number) => 2 + Math.floor(i / 4);
+  const prof = (i: number) => 2 + Math.floor(i / PROF_STEP);
   const rows = (start: number, slotsAt: (level: number) => number[], cantrips = 0, known = 0) =>
-    Array.from({ length: 20 }, (_, i) => {
+    Array.from({ length: CLASS_LEVELS }, (_, i) => {
       const level = i + 1;
       const casts = start > 0 && level >= start;
       return {
@@ -441,20 +227,18 @@ export function classDefaults(): GetClassTableDefaultsResponse {
         cantripsKnown: casts ? cantrips : 0,
         spellsKnown: casts ? known : 0,
         slots: casts
-          ? [...slotsAt(level), ...Array<number>(9 - slotsAt(level).length).fill(0)]
+          ? [...slotsAt(level), ...Array<number>(SPELL_LEVELS - slotsAt(level).length).fill(0)]
           : [],
       };
     });
-  const half = (level: number) =>
-    level < 3 ? [2] : level < 5 ? [3] : level < 9 ? [4, 2] : [4, 3, 2];
-  const full = (level: number) =>
-    level < 2 ? [2] : level < 3 ? [3] : level < 5 ? [4, 2] : [4, 3, 3];
-  const pact = (level: number) => [0, 0, level < 5 ? 2 : 4];
-  const third = (level: number) => (level < 7 ? [2] : [4, 2]);
+  const half = slotLadder('0:2|3:3|5:4 2|9:4 3 2');
+  const full = slotLadder('0:2|2:3|3:4 2|5:4 3 3');
+  const pact = slotLadder('0:0 0 2|5:0 0 4');
+  const third = slotLadder('0:2|7:4 2');
   return create(GetClassTableDefaultsResponseSchema, {
-    profBonus: Array.from({ length: 20 }, (_, i) => prof(i)),
-    asiLevels: [4, 8, 12, 16, 19],
-    subclassLevel: 3,
+    profBonus: Array.from({ length: CLASS_LEVELS }, (_, i) => prof(i)),
+    asiLevels: ASI_LEVELS,
+    subclassLevel: THIRD_CASTER_START,
     tables: [
       { kind: '', preparation: '', startLevel: 0, referenceClassKey: '', rows: rows(0, () => []) },
       {
@@ -462,14 +246,14 @@ export function classDefaults(): GetClassTableDefaultsResponse {
         preparation: 'prepared',
         startLevel: 1,
         referenceClassKey: 'class:cleric',
-        rows: rows(1, full, 3),
+        rows: rows(1, full, CANTRIPS.cleric),
       },
       {
         kind: 'full',
         preparation: 'known',
         startLevel: 1,
         referenceClassKey: 'class:sorcerer',
-        rows: rows(1, full, 4, 2),
+        rows: rows(1, full, CANTRIPS.sorcerer, KNOWN.sorcerer),
       },
       {
         kind: 'half',
@@ -483,35 +267,35 @@ export function classDefaults(): GetClassTableDefaultsResponse {
         preparation: 'known',
         startLevel: 2,
         referenceClassKey: 'class:ranger',
-        rows: rows(2, half, 0, 2),
+        rows: rows(2, half, 0, KNOWN.ranger),
       },
       {
         kind: 'pact',
         preparation: 'known',
         startLevel: 1,
         referenceClassKey: 'class:warlock',
-        rows: rows(1, pact, 2, 2),
+        rows: rows(1, pact, CANTRIPS.pact, KNOWN.pact),
       },
       {
         kind: 'pact',
         preparation: 'prepared',
         startLevel: 1,
         referenceClassKey: 'class:warlock',
-        rows: rows(1, pact, 2),
+        rows: rows(1, pact, CANTRIPS.pact),
       },
       {
         kind: 'third',
         preparation: 'known',
-        startLevel: 3,
+        startLevel: THIRD_CASTER_START,
         referenceClassKey: '',
-        rows: rows(3, third, 2, 3),
+        rows: rows(THIRD_CASTER_START, third, CANTRIPS.third, KNOWN.third),
       },
       {
         kind: 'third',
         preparation: 'prepared',
-        startLevel: 3,
+        startLevel: THIRD_CASTER_START,
         referenceClassKey: '',
-        rows: rows(3, third, 2),
+        rows: rows(THIRD_CASTER_START, third, CANTRIPS.third),
       },
     ],
   });

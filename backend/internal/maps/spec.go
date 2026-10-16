@@ -90,32 +90,12 @@ func (s *Service) cleanTrap(in *mapsv1.TrapSpec, current *string) (trapData, err
 	if in == nil {
 		return trapData{}, badSpec("trap is required for a TRAP point")
 	}
-	if in.GetPresetKey() != "" {
-		if _, ok := s.rules.TrapPreset(in.GetPresetKey()); !ok {
-			return trapData{}, badSpec("trap.preset_key is not a trap preset")
-		}
+	if err := s.checkTrapFields(in); err != nil {
+		return trapData{}, err
 	}
-	switch {
-	case in.GetNoticeDc() < 0 || in.GetNoticeDc() > 30:
-		return trapData{}, badSpec("trap.notice_dc must be 0 (none) or 1 to 30")
-	case in.GetFindDc() < 1 || in.GetFindDc() > 30:
-		return trapData{}, badSpec("trap.find_dc must be 1 to 30")
-	case in.GetAreaSize() < 1 || in.GetAreaSize() > 4:
-		return trapData{}, badSpec("trap.area_size must be 1 to 4")
-	case in.GetTrigger() != rulesv1.TrapTrigger_TRAP_TRIGGER_ENTER && in.GetTrigger() != rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL:
-		return trapData{}, badSpec("trap.trigger is required")
-	}
-	// An unspecified state keeps the current one (a new trap starts armed): an
-	// edit that does not mention it never re-arms a trap.
-	stateDB := "armed"
-	if current != nil {
-		stateDB = *current
-	}
-	if in.GetState() != mapsv1.TrapState_TRAP_STATE_UNSPECIFIED {
-		var ok bool
-		if stateDB, ok = trapStateToDB[in.GetState()]; !ok {
-			return trapData{}, badSpec("trap.state is not a trap state")
-		}
+	stateDB, err := trapStateOf(in, current)
+	if err != nil {
+		return trapData{}, err
 	}
 	effect, err := s.cleanEffect(in.GetEffect())
 	if err != nil {
@@ -134,6 +114,44 @@ func (s *Service) cleanTrap(in *mapsv1.TrapSpec, current *string) (trapData, err
 		return trapData{}, fmt.Errorf("encode the trap: %w", err)
 	}
 	return trapData{json: b, state: stateDB}, nil
+}
+
+// checkTrapFields checks the preset, the DCs, the area and the trigger of a trap, in that
+// order: the first fault is the one the caller reads.
+func (s *Service) checkTrapFields(in *mapsv1.TrapSpec) error {
+	if in.GetPresetKey() != "" {
+		if _, ok := s.rules.TrapPreset(in.GetPresetKey()); !ok {
+			return badSpec("trap.preset_key is not a trap preset")
+		}
+	}
+	switch {
+	case in.GetNoticeDc() < 0 || in.GetNoticeDc() > 30:
+		return badSpec("trap.notice_dc must be 0 (none) or 1 to 30")
+	case in.GetFindDc() < 1 || in.GetFindDc() > 30:
+		return badSpec("trap.find_dc must be 1 to 30")
+	case in.GetAreaSize() < 1 || in.GetAreaSize() > 4:
+		return badSpec("trap.area_size must be 1 to 4")
+	case in.GetTrigger() != rulesv1.TrapTrigger_TRAP_TRIGGER_ENTER && in.GetTrigger() != rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL:
+		return badSpec("trap.trigger is required")
+	}
+	return nil
+}
+
+// trapStateOf is the stored state of a trap. An unspecified state keeps the current one (a
+// new trap starts armed): an edit that does not mention it never re-arms a trap.
+func trapStateOf(in *mapsv1.TrapSpec, current *string) (string, error) {
+	stateDB := "armed"
+	if current != nil {
+		stateDB = *current
+	}
+	if in.GetState() == mapsv1.TrapState_TRAP_STATE_UNSPECIFIED {
+		return stateDB, nil
+	}
+	stateDB, ok := trapStateToDB[in.GetState()]
+	if !ok {
+		return "", badSpec("trap.state is not a trap state")
+	}
+	return stateDB, nil
 }
 
 // cleanAlsoFind checks the skills the master lets find a trap besides Perception
@@ -204,17 +222,8 @@ func (s *Service) cleanEffect(in *rulesv1.TrapEffect) (*rulesv1.TrapEffect, erro
 }
 
 func (s *Service) cleanSave(sv *rulesv1.TrapSaveEffect, hasAttack bool) (*rulesv1.TrapSaveEffect, error) {
-	switch {
-	case !abilityKeys[sv.GetAbility()]:
-		return nil, badSpec("trap.effect.save.ability is required")
-	case sv.GetDc() < 1 || sv.GetDc() > 30:
-		return nil, badSpec("trap.effect.save.dc must be 1 to 30")
-	case sv.GetAppliesTo() != rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_CAUGHT && sv.GetAppliesTo() != rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT:
-		return nil, badSpec("trap.effect.save.applies_to is required")
-	case sv.GetAppliesTo() == rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT && !hasAttack:
-		return nil, badSpec("trap.effect.save.applies_to HIT needs an attack")
-	case sv.GetOnPass() != rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF && sv.GetOnPass() != rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_NONE:
-		return nil, badSpec("trap.effect.save.on_pass is required")
+	if err := checkSaveFields(sv, hasAttack); err != nil {
+		return nil, err
 	}
 	fail, err := s.cleanDamages("trap.effect.save.on_fail.damage", sv.GetOnFail().GetDamage())
 	if err != nil {
@@ -226,15 +235,42 @@ func (s *Service) cleanSave(sv *rulesv1.TrapSaveEffect, hasAttack bool) (*rulesv
 			return nil, err
 		}
 	}
-	switch {
-	case len(fail) == 0 && onFail.Condition == nil:
-		return nil, badSpec("trap.effect.save.on_fail must do damage or give a condition")
-	case sv.GetOnPass() == rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF && len(fail) == 0:
-		return nil, badSpec("trap.effect.save.on_pass HALF needs damage on a failure")
+	if err := checkSaveOutcome(sv, onFail); err != nil {
+		return nil, err
 	}
 	return &rulesv1.TrapSaveEffect{
 		Ability: sv.GetAbility(), Dc: sv.GetDc(), AppliesTo: sv.GetAppliesTo(), OnFail: onFail, OnPass: sv.GetOnPass(),
 	}, nil
+}
+
+// checkSaveFields checks the ability, the DC, who the save applies to and what a pass does,
+// in that order.
+func checkSaveFields(sv *rulesv1.TrapSaveEffect, hasAttack bool) error {
+	switch {
+	case !abilityKeys[sv.GetAbility()]:
+		return badSpec("trap.effect.save.ability is required")
+	case sv.GetDc() < 1 || sv.GetDc() > 30:
+		return badSpec("trap.effect.save.dc must be 1 to 30")
+	case sv.GetAppliesTo() != rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_CAUGHT && sv.GetAppliesTo() != rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT:
+		return badSpec("trap.effect.save.applies_to is required")
+	case sv.GetAppliesTo() == rulesv1.TrapSaveApplies_TRAP_SAVE_APPLIES_HIT && !hasAttack:
+		return badSpec("trap.effect.save.applies_to HIT needs an attack")
+	case sv.GetOnPass() != rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF && sv.GetOnPass() != rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_NONE:
+		return badSpec("trap.effect.save.on_pass is required")
+	}
+	return nil
+}
+
+// checkSaveOutcome checks that a failure does something, and that half damage on a pass has
+// damage to halve.
+func checkSaveOutcome(sv *rulesv1.TrapSaveEffect, onFail *rulesv1.TrapOnFail) error {
+	switch {
+	case len(onFail.GetDamage()) == 0 && onFail.Condition == nil:
+		return badSpec("trap.effect.save.on_fail must do damage or give a condition")
+	case sv.GetOnPass() == rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF && len(onFail.GetDamage()) == 0:
+		return badSpec("trap.effect.save.on_pass HALF needs damage on a failure")
+	}
+	return nil
 }
 
 func (s *Service) cleanDamages(where string, in []*rulesv1.TrapDamage) ([]*rulesv1.TrapDamage, error) {

@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -17,36 +18,24 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
-  AreaPlacement,
-  AttackOutcome,
-  type AttackRoll,
   type Combatant,
   type Encounter,
   type GetTurnOptionsResponse,
-  type PendingDamage,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { DisabledReasonCode, type Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
+import { type Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
-import { coverText } from '../../../../core/combat/cover';
-import { d20Count, modeWord, orNormal, sourceLine } from '../../../../core/combat/roll-mode';
-import { rollFormula } from '../../../../core/combat/combat-dice';
-import { article } from '../../../../core/combat/combat-log';
+import { d20Count, orNormal } from '../../../../core/combat/roll-mode';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
-import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
-import { restamText } from '../../../../core/combat/theatre';
 import { ofThe } from '../../../../core/combat/move-plan';
-import { joinDots } from '../../../../core/format/text';
 import { standUpRow } from '../../../../core/combat/stand-up';
 import { cannotAct, conditionTags } from '../../../../core/combat/conditions';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { RageStatus } from '../rage-end/rage-status';
 import type { CombatState } from '../../../../core/combat/combat-state';
-import { attackName, reasonText } from '../../../../core/combat/combat-options';
-import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
+import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import {
   combatantInitial,
   isDown,
@@ -57,11 +46,26 @@ import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
 import { NextTurn } from '../combat-bar/next-turn';
-import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
+import { MultiRoll } from '../multi-roll/multi-roll';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { MasterSpend } from '../theatre/master-spend';
 import { TheatrePill } from '../theatre/theatre-pill';
 import { AttackChoice } from './attack-choice';
+import {
+  D20_FIELDS,
+  type LastRoll,
+  areaSpellsOf,
+  attackShow,
+  coverNoteOf,
+  distanceText,
+  modeLinesOf,
+  pairHintOf,
+  resultOf,
+  rollLabelOf,
+  rollWhyOf,
+  rollableAttacks,
+  statsOf,
+} from './npc-card-view';
 import { PendingDamages } from './pending-damages';
 
 /**
@@ -77,6 +81,7 @@ import { PendingDamages } from './pending-damages';
  * has none; the order list and the map keep their tokens.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-npc-card',
   imports: [
     AttackChoice,
@@ -152,11 +157,7 @@ export class NpcCard {
   private readonly picker = viewChild(RollPicker);
   private readonly multi = viewChild(MultiRoll);
   /** The d20 just rolled: shown with the armor class, until the turn changes. */
-  protected readonly last = signal<{
-    roll: AttackRoll;
-    pending: PendingDamage | null;
-    subject: string;
-  } | null>(null);
+  protected readonly last = signal<LastRoll | null>(null);
   private key = newKey();
   /** The reaction spell's name, remembered from the prompt that waited (it is gone once answered). */
   protected readonly shieldName = signal('Escudo Arcano');
@@ -180,11 +181,7 @@ export class NpcCard {
   protected readonly full = computed(
     () => this.isNpc() || (this.theatre() && !this.isCreatureSubject()),
   );
-  protected readonly attacks = computed<Attack[]>(() =>
-    (this.options()?.options?.attacks ?? []).flatMap((a) =>
-      a.attack && a.attack.saveDc === 0 ? [a.attack] : [],
-    ),
-  );
+  protected readonly attacks = computed<Attack[]>(() => rollableAttacks(this.options()));
   protected readonly attack = computed(
     () => this.attacks().find((a) => a.key === this.attackKey()) ?? null,
   );
@@ -197,32 +194,9 @@ export class NpcCard {
   );
   protected readonly pendings = computed(() => this.options()?.pendingDamages ?? []);
   /** The NPC's spells whose area is placed on the map (none without a map): each one a "Conjurar" for the master's picker. */
-  protected readonly areaSpells = computed(() => {
-    const opts = this.options();
-    if (this.theatre() || !opts?.options) {
-      return [];
-    }
-    return (opts.options.spells ?? []).flatMap((s) => {
-      const t = (opts.spellTargets ?? []).find((x) => x.spellKey === s.spell?.key);
-      return s.spell && s.enabled && t && t.placement !== AreaPlacement.UNSPECIFIED
-        ? [{ key: s.spell.key, name: s.spell.namePt || s.spell.name }]
-        : [];
-    });
-  });
+  protected readonly areaSpells = computed(() => areaSpellsOf(this.options(), this.theatre()));
   /** A hit whose damage is still to roll or to apply holds the attacker's next attack: the server refuses it too. */
-  protected readonly rollWhy = computed(() => {
-    if (this.pendings().length > 0) {
-      return 'Role ou aplique o dano do ataque anterior antes de rolar outro.';
-    }
-    // The server turns every option off for a combatant that cannot act (incapacitated, lethargy): say so here too.
-    const off = (this.options()?.options?.attacks ?? []).find(
-      (a) =>
-        !a.enabled &&
-        (a.reason?.code === DisabledReasonCode.INCAPACITATED ||
-          a.reason?.code === DisabledReasonCode.EFFECT_LETHARGY),
-    );
-    return off ? reasonText(off.reason, true) : '';
-  });
+  protected readonly rollWhy = computed(() => rollWhyOf(this.options(), this.pendings().length));
   /**
    * Every condition `rollAttack` checks, in one place: the picker's buttons are off exactly when a roll would be refused,
    * so a "Confirmar" that looks enabled is never dropped (the attack, the target and the reason can change under the card
@@ -240,50 +214,10 @@ export class NpcCard {
     const id = this.last()?.pending?.id;
     return this.pendings().filter((p) => p.id !== id);
   });
-  protected readonly stats = computed(() => {
-    const c = this.subject();
-    return {
-      hp:
-        c.hitPointsMax !== undefined ? { now: c.hitPointsCurrent ?? 0, max: c.hitPointsMax } : null,
-      ac: c.armorClass,
-      speed: {
-        meters: metersFixed(c.speedDft / 10),
-        squares: this.theatre() ? '' : squaresText(reachSquares(c.speedFt)),
-      },
-      movement: this.theatre()
-        ? restamText(c.movementLeftDft)
-        : joinDots([
-            metersFixed(c.movementLeftDft / 10),
-            squaresText(reachSquares(c.movementLeftFt)),
-          ]),
-    };
-  });
-  protected readonly result = computed(() => {
-    const l = this.last();
-    if (!l) {
-      return null;
-    }
-    const target = this.encounter().combatants.find((c) => c.id === l.roll.targetId);
-    // Escudo can turn a hit into a miss after the roll (the master's answer, or the player's).
-    const stopped = this.reactionStopped();
-    return {
-      total: l.roll.d20?.total ?? 0,
-      formula: l.roll.d20 ? rollFormula(l.roll.d20) : '',
-      physical: l.roll.d20?.physical ?? false,
-      // A reaction holds the roll (Palavras de Interrupção): no outcome until it is answered.
-      held: l.roll.heldForReaction,
-      word: l.roll.heldForReaction
-        ? 'Esperando a reação'
-        : stopped
-          ? `Errou: o ${this.shieldName()} segurou`
-          : outcomeWord(l.roll.outcome),
-      hit: !l.roll.heldForReaction && !stopped && isHit(l.roll.outcome),
-      against:
-        l.roll.targetArmorClass !== undefined
-          ? `contra CA ${l.roll.targetArmorClass} ${article(target?.label ?? '') === 'a' ? 'da' : 'do'} ${target?.label ?? ''}`
-          : '',
-    };
-  });
+  protected readonly stats = computed(() => statsOf(this.subject(), this.theatre()));
+  protected readonly result = computed(() =>
+    resultOf(this.last(), this.encounter(), this.reactionStopped(), this.shieldName()),
+  );
   /** The mode the server works out for this attack on this target (advantage, disadvantage, normal): the d20 the master
    * types follow it, one face or two, as the player's own sheet does (SRD 5.1, "Advantage and Disadvantage"). */
   protected readonly rollMode = computed(() =>
@@ -292,34 +226,19 @@ export class NpcCard {
     ),
   );
   /** Why the roll has advantage or disadvantage ("Vantagem: atacante não visto"), so the master knows which die counts and why. */
-  protected readonly modeLines = computed(() => {
-    const mode = this.rollMode();
-    if (mode === RollMode.NORMAL) {
-      return [];
-    }
-    const sources = this.targets().find((t) => t.combatantId === this.targetId())?.sources ?? [];
-    return sources.length
-      ? sources.map((src) => sourceLine(src))
-      : [`${modeWord(mode)} neste ataque.`];
-  });
+  protected readonly modeLines = computed(() =>
+    modeLinesOf(
+      this.rollMode(),
+      this.targets().find((t) => t.combatantId === this.targetId())?.sources ?? [],
+    ),
+  );
   protected readonly faceCount = computed(() => d20Count(this.rollMode()));
-  protected readonly d20Fields: readonly RollField[] = [
-    { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },
-    { key: 'd20-2', label: 'Segundo d20', min: 1, max: 20 },
-  ];
+  protected readonly d20Fields = D20_FIELDS;
   protected readonly combine = computed(() =>
     this.rollMode() === RollMode.DISADVANTAGE ? 'lower' : 'higher',
   );
-  protected readonly pairHint = computed(
-    () =>
-      `Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ${this.combine() === 'lower' ? 'menor' : 'maior'}.`,
-  );
-  protected readonly rollLabel = computed(() => {
-    const a = this.attack();
-    return a
-      ? `Role 1d20 para ${attackName(a)} (${a.attackBonus < 0 ? '−' : '+'}${Math.abs(a.attackBonus)})`
-      : '';
-  });
+  protected readonly pairHint = computed(() => pairHintOf(this.combine()));
+  protected readonly rollLabel = computed(() => rollLabelOf(this.attack()));
 
   constructor() {
     // Each new turn starts clean, with the first attack and the first target.
@@ -369,21 +288,12 @@ export class NpcCard {
     this.key = newKey();
   }
 
-  /** " · Meia cobertura (do mapa)": the cover the target has against this attacker. */
   protected coverNote(t: TargetInReach): string {
-    const text = coverText(t.cover, t.coverSource);
-    return text ? ` · ${text}` : '';
+    return coverNoteOf(t);
   }
 
   protected distance(ft: number | undefined, tooFar: boolean): string {
-    const parts: string[] = [];
-    if (ft !== undefined) {
-      parts.push(`a ${metersFixed(ft)}`);
-    }
-    if (tooFar) {
-      parts.push('fora do alcance');
-    }
-    return parts.join(', ');
+    return distanceText(ft, tooFar);
   }
 
   protected rollApp(): Promise<void> {
@@ -454,15 +364,7 @@ export class NpcCard {
       this.key = newKey();
       this.state().apply(res.encounter);
       this.last.set({ roll: res.roll, pending: res.pending ?? null, subject: this.subject().id });
-      // The master's own screen shows this total and the word; a roll a reaction holds shows the face alone.
-      const held = res.roll.heldForReaction;
-      const hit = isHit(res.roll.outcome);
-      const show = showOfDice(`Ataque com ${attackName(a)}`, res.roll.d20, {
-        withTotal: true,
-        outcome: held ? undefined : { word: outcomeWord(res.roll.outcome), good: hit },
-        critical: !held && res.roll.outcome === AttackOutcome.CRITICAL_HIT,
-        fumble: !held && !hit,
-      });
+      const show = attackShow(a, res.roll);
       if (show) {
         this.animator.play(show);
       }

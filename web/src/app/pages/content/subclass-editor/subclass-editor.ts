@@ -27,21 +27,23 @@ import {
   type SubclassDraft,
   castingOfKind,
   defaultTableOf,
-  draftToSubclass,
   emptyCasting,
   emptyRow,
-  emptySubclass,
   featureIdOfPath,
   gridColumns,
-  groupOfAlwaysPrepared,
   isGridPath,
   rowsEdited,
   rowsOfTable,
+} from '../../../core/content/class-draft';
+import {
+  draftToSubclass,
+  emptySubclass,
+  groupOfAlwaysPrepared,
   subclassFeatureBase,
   subclassFeaturePaths,
   subclassRowBase,
   subclassToDraft,
-} from '../../../core/content/class-draft';
+} from '../../../core/content/subclass-draft';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';

@@ -1,0 +1,33 @@
+by a player -> permission_denied: only the campaign's master can do this
+a bad key -> invalid_argument: idempotency_key must be a UUID
+0 seconds -> invalid_argument: seconds must be 1 to 86400
+-1 second -> invalid_argument: seconds must be 1 to 86400
+a day and a second -> invalid_argument: seconds must be 1 to 86400
+a bad key and 0 seconds -> invalid_argument: idempotency_key must be a UUID
+before:
+spell:bless kind=spell dur=rounds left=60 mods=[] conds=[] visible=true
+spell:guidance kind=spell dur=rounds left=60 mods=[] conds=[] visible=true
+spell:bless kind=spell dur=rounds left=600 mods=[] conds=[] visible=true
+spell:longstrider kind=spell dur=rounds left=86400 mods=[] conds=[] visible=true
+
+a minute, call 1 -> ended 2
+spell:bless kind=spell dur=rounds left=540 mods=[] conds=[] visible=true
+spell:longstrider kind=spell dur=rounds left=86340 mods=[] conds=[] visible=true
+
+a minute, call 2 -> ended 2
+spell:bless kind=spell dur=rounds left=540 mods=[] conds=[] visible=true
+spell:longstrider kind=spell dur=rounds left=86340 mods=[] conds=[] visible=true
+
+the same key for 61 seconds -> invalid_argument: idempotency_key was already used for another change
+a key with no hyphens -> no error
+the same key written with hyphens -> no error
+a combat running -> failed_precondition: a combat is running: finish it before resting
+the combat ended, a day -> ended 2
+after a day:
+
+events:
+game_time_advanced {"ended":2,"seconds":60}
+game_time_advanced {"ended":0,"seconds":6}
+game_time_advanced {"ended":2,"seconds":86400}
+
+no session open -> failed_precondition: the campaign has no open game session

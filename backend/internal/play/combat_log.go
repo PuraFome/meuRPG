@@ -91,6 +91,58 @@ type damageLog struct {
 	discarded *actionEvent
 }
 
+// logSnapshot is what ListCombatLog reads of the database, in one transaction.
+type logSnapshot struct {
+	enc    playdb.Encounter
+	events []playdb.ListEncounterEventsRow
+	cs     []playdb.Combatant
+	recent []playdb.ListRecentSessionEventsRow
+	// the reasons and the requests the events point at
+	reasons  []playdb.CombatReason
+	requests []playdb.RollModeRequest
+}
+
+// readLogSnapshot reads the combat's events, its combatants and the master's undo marker
+// as one snapshot (audit D-03): a log line whose actor is missing, or an "undo" that
+// points at an event the list does not have, would be a torn read.
+func (s *Service) readLogSnapshot(ctx context.Context, m authz.Membership, encID string) (logSnapshot, error) {
+	var snap logSnapshot
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		return snap.read(ctx, s.queries.WithTx(tx), m, encID)
+	})
+	return snap, err
+}
+
+// read fills the snapshot from the queries of the transaction it is read in.
+func (snap *logSnapshot) read(ctx context.Context, q *playdb.Queries, m authz.Membership, encID string) error {
+	session, err := openSessionWith(ctx, q, m.CampaignID)
+	if err != nil {
+		return err
+	}
+	if snap.enc, err = encounterInSessionWith(ctx, q, session.ID, encID); err != nil {
+		return err
+	}
+	if snap.events, err = q.ListEncounterEvents(ctx, playdb.ListEncounterEventsParams{EncounterID: &snap.enc.ID, Limit: logEventLimit}); err != nil {
+		return fmt.Errorf("list the combat's events: %w", err)
+	}
+	if snap.reasons, err = q.ListEncounterCombatReasons(ctx, snap.enc.ID); err != nil {
+		return fmt.Errorf("list the reasons: %w", err)
+	}
+	if snap.requests, err = q.ListEncounterRollModeRequests(ctx, snap.enc.ID); err != nil {
+		return fmt.Errorf("list the requests: %w", err)
+	}
+	// With the dismissed creatures: their lines survive a concentration ending.
+	if snap.cs, err = q.ListCombatantsWithDismissed(ctx, snap.enc.ID); err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	if m.Role == authz.RoleMaster {
+		if snap.recent, err = q.ListRecentSessionEvents(ctx, playdb.ListRecentSessionEventsParams{GameSessionID: session.ID, Limit: recentEvents}); err != nil {
+			return fmt.Errorf("read the latest events: %w", err)
+		}
+	}
+	return nil
+}
+
 // ListCombatLog implements playv1connect.CombatServiceHandler.
 func (s *Service) ListCombatLog(
 	ctx context.Context,
@@ -104,64 +156,20 @@ func (s *Service) ListCombatLog(
 	if err != nil {
 		return nil, err
 	}
-	// The combat's events, its combatants and the master's undo marker are one
-	// snapshot (audit D-03): a log line whose actor is missing, or an "undo" that
-	// points at an event the list does not have, would be a torn read.
-	var (
-		enc    playdb.Encounter
-		events []playdb.ListEncounterEventsRow
-		cs     []playdb.Combatant
-		recent []playdb.ListRecentSessionEventsRow
-		// the reasons and the requests the events point at
-		reasons  []playdb.CombatReason
-		requests []playdb.RollModeRequest
-	)
-	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		session, err := openSessionWith(ctx, q, m.CampaignID)
-		if err != nil {
-			return err
-		}
-		if enc, err = encounterInSessionWith(ctx, q, session.ID, encID); err != nil {
-			return err
-		}
-		if events, err = q.ListEncounterEvents(ctx, playdb.ListEncounterEventsParams{EncounterID: &enc.ID, Limit: logEventLimit}); err != nil {
-			return fmt.Errorf("list the combat's events: %w", err)
-		}
-		if reasons, err = q.ListEncounterCombatReasons(ctx, enc.ID); err != nil {
-			return fmt.Errorf("list the reasons: %w", err)
-		}
-		if requests, err = q.ListEncounterRollModeRequests(ctx, enc.ID); err != nil {
-			return fmt.Errorf("list the requests: %w", err)
-		}
-		// With the dismissed creatures: their lines survive a concentration ending.
-		if cs, err = q.ListCombatantsWithDismissed(ctx, enc.ID); err != nil {
-			return fmt.Errorf("list the combatants: %w", err)
-		}
-		if m.Role == authz.RoleMaster {
-			if recent, err = q.ListRecentSessionEvents(ctx, playdb.ListRecentSessionEventsParams{GameSessionID: session.ID, Limit: recentEvents}); err != nil {
-				return fmt.Errorf("read the latest events: %w", err)
-			}
-		}
-		return nil
-	})
+	snap, err := s.readLogSnapshot(ctx, m, encID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the combat log", err)
 	}
-	slices.Reverse(events) // oldest first, as buildLog reads them
+	slices.Reverse(snap.events) // oldest first, as buildLog reads them
 	// The log's lines are filtered by who could see them when they happened
 	// (actionEvent.SeenBy), not by what the viewer sees now; only the current
 	// rules about hidden combatants are worked out from the combatants as they are.
-	v := viewerOf(m)
-	if !v.master {
-		rules, err := s.tableRules(ctx, nil, m.CampaignID)
-		if err != nil {
-			return nil, s.dbError(ctx, "read the table's rules", err)
-		}
-		v.hideDeath = rules.DeathSavesHidden
+	v, err := s.logViewer(ctx, m)
+	if err != nil {
+		return nil, err
 	}
-	entries := buildLog(events)
-	rolls := newLogRolls(reasons, requests, s.namesFor(ctx, m.CampaignID))
+	entries := buildLog(snap.events)
+	rolls := newLogRolls(snap.reasons, snap.requests, s.namesFor(ctx, m.CampaignID))
 	for _, e := range entries {
 		e.rolls = rolls
 	}
@@ -169,15 +177,15 @@ func (s *Service) ListCombatLog(
 	res := &playv1.ListCombatLogResponse{}
 	var lastID string
 	if v.master {
-		if last, ok := lastAction(recent, enc.ID); ok {
+		if last, ok := lastAction(snap.recent, snap.enc.ID); ok {
 			lastID = last.ID
 			res.UndoableEventId = last.ID
 		}
 	}
 
 	names := &keyNames{s: s, campaignID: m.CampaignID, byCharacter: map[string]link.Sheet{}}
-	byID := make(map[string]playdb.Combatant, len(cs))
-	for _, c := range cs {
+	byID := make(map[string]playdb.Combatant, len(snap.cs))
+	for _, c := range snap.cs {
 		byID[c.ID] = c
 	}
 	// Latest first, in groups by round.
@@ -186,13 +194,34 @@ func (s *Service) ListCombatLog(
 		if !ok {
 			continue
 		}
-		if n := len(res.Rounds); n == 0 || res.Rounds[n-1].Round != out.Round {
-			res.Rounds = append(res.Rounds, &playv1.CombatLogRound{Round: out.Round})
-		}
-		last := res.Rounds[len(res.Rounds)-1]
-		last.Entries = append(last.Entries, out)
+		res.Rounds = appendToRound(res.Rounds, out)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// logViewer is who reads the log: the member, and for a player the table's rule on the
+// death saves.
+func (s *Service) logViewer(ctx context.Context, m authz.Membership) (combatViewer, error) {
+	v := viewerOf(m)
+	if !v.master {
+		rules, err := s.tableRules(ctx, nil, m.CampaignID)
+		if err != nil {
+			return v, s.dbError(ctx, "read the table's rules", err)
+		}
+		v.hideDeath = rules.DeathSavesHidden
+	}
+	return v, nil
+}
+
+// appendToRound puts a line in the group of its round: the last group when it is the
+// round's, else a new one.
+func appendToRound(rounds []*playv1.CombatLogRound, out *playv1.CombatLogEntry) []*playv1.CombatLogRound {
+	if n := len(rounds); n == 0 || rounds[n-1].Round != out.Round {
+		rounds = append(rounds, &playv1.CombatLogRound{Round: out.Round})
+	}
+	last := rounds[len(rounds)-1]
+	last.Entries = append(last.Entries, out)
+	return rounds
 }
 
 // buildLog turns a combat's events, in order, into entries. An event an undo
@@ -1032,38 +1061,47 @@ func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *
 			out.RevivedDeathRound = h.DeathRound
 		}
 		target := byID[h.Target]
-		// The players' line never lists a creature that was hidden when an area hit it
-		// (not even after the master reveals it: the line would say the spell hit it),
-		// nor one that is hidden now or that a combatant that left no longer names.
-		if !v.master && (h.HiddenAtCast || target.Hidden || target.ID == "" || h.unseenBy(e.ev.CoverUsers, v.userID)) {
+		if e.spellTargetUnseen(v, h, target) {
 			continue
 		}
-		t := &playv1.CombatLogSpellTarget{
-			TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
-			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
-			Effect: effectView(h, v, target),
-		}
-		coverKey, coverSource := h.coverFor(v, e.ev.CoverUsers)
-		t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
-		t.Hidden = v.master && h.HiddenAtCast
-		if v.master && h.TargetAC > 0 {
-			t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
-		}
-		if dl, ok := e.pend[h.Pending]; ok {
-			if slices.Contains(e.stopped, h.Pending) { // Escudo stopped the spell attack
-				t.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_MISS
-			} else {
-				t.Damage = dl.view(v, caster, target)
-			}
-		}
-		for _, id := range h.More { // the other damage types of the spell
-			if dl, ok := e.pend[id]; ok {
-				t.MoreDamages = append(t.MoreDamages, dl.view(v, caster, target))
-			}
-		}
-		out.Targets = append(out.Targets, t)
+		out.Targets = append(out.Targets, e.spellTargetView(v, h, caster, target))
 	}
 	return out
+}
+
+// spellTargetUnseen says the players' line never lists the target: a creature that was
+// hidden when an area hit it (not even after the master reveals it: the line would say the
+// spell hit it), nor one that is hidden now or that a combatant that left no longer names.
+func (e *logEntry) spellTargetUnseen(v combatViewer, h castHit, target playdb.Combatant) bool {
+	return !v.master && (h.HiddenAtCast || target.Hidden || target.ID == "" || h.unseenBy(e.ev.CoverUsers, v.userID))
+}
+
+// spellTargetView is what one target of the cast did, as the viewer gets it.
+func (e *logEntry) spellTargetView(v combatViewer, h castHit, caster, target playdb.Combatant) *playv1.CombatLogSpellTarget {
+	t := &playv1.CombatLogSpellTarget{
+		TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
+		AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
+		Effect: effectView(h, v, target),
+	}
+	coverKey, coverSource := h.coverFor(v, e.ev.CoverUsers)
+	t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
+	t.Hidden = v.master && h.HiddenAtCast
+	if v.master && h.TargetAC > 0 {
+		t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
+	}
+	if dl, ok := e.pend[h.Pending]; ok {
+		if slices.Contains(e.stopped, h.Pending) { // Escudo stopped the spell attack
+			t.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_MISS
+		} else {
+			t.Damage = dl.view(v, caster, target)
+		}
+	}
+	for _, id := range h.More { // the other damage types of the spell
+		if dl, ok := e.pend[id]; ok {
+			t.MoreDamages = append(t.MoreDamages, dl.view(v, caster, target))
+		}
+	}
+	return t
 }
 
 // view is a spell target's damage or heal as the viewer gets it: the amount that
@@ -1078,6 +1116,22 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	if d.roll == nil {
 		return out // the cast opened it and it is not rolled yet
 	}
+	d.viewAmount(out, v, target)
+	r := d.roll
+	if v.master || v.owns(caster) { // the caster's dice, as for an attack's damage
+		out.Roll = diceRoll(r.DiceCount, r.DiceSides, r.Faces, r.Modifier, r.Total, r.Physical)
+	}
+	if d.applied != nil { // the master's apply of a character's damage
+		d.viewApplied(out, v, target)
+		return out
+	}
+	d.viewLanded(out, v, target)
+	return out
+}
+
+// viewAmount sets the amount the damage or heal came to, the type and the critical rule:
+// a player who is not the target's reads it as rolled.
+func (d *damageLog) viewAmount(out *playv1.CombatLogDamage, v combatViewer, target playdb.Combatant) {
 	r := d.roll
 	out.Amount, out.DamageTypeKey, out.DamageTypePt = d.hit.Amount, r.DamageType, damageTypePT[r.DamageType]
 	if !v.master && !v.owns(target) && d.hit.Shown > 0 { // as rolled, before the target's modifiers (RN-20)
@@ -1090,35 +1144,39 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 		// lacked: everyone but the master and the target's player gets the roll (RN-20).
 		out.Amount = r.Total
 	}
-	if v.master || v.owns(caster) { // the caster's dice, as for an attack's damage
-		out.Roll = diceRoll(r.DiceCount, r.DiceSides, r.Faces, r.Modifier, r.Total, r.Physical)
+}
+
+// viewApplied adds the master's apply of a character's damage to the view.
+func (d *damageLog) viewApplied(out *playv1.CombatLogDamage, v combatViewer, target playdb.Combatant) {
+	ap := d.applied
+	out.Amount = ap.Amount
+	out.RelentlessEndurance = ap.Relentless
+	if !v.hiddenFrom(ap.DeathHidden, target) { // a hit at 0 is a death save failure (RN-24)
+		out.DeathFailuresAdded = ap.FailuresAdded
 	}
-	if d.applied != nil { // the master's apply of a character's damage
-		out.Amount = d.applied.Amount
-		out.RelentlessEndurance = d.applied.Relentless
-		if !v.hiddenFrom(d.applied.DeathHidden, target) { // a hit at 0 is a death save failure (RN-24)
-			out.DeathFailuresAdded = d.applied.FailuresAdded
-		}
-		if d.applied.Overridden && v.master {
-			rolled := d.applied.Rolled
-			out.RolledAmount = &rolled
-		}
-		if dc := d.applied.ConcentrationDC; dc > 0 && (v.master || v.owns(target)) {
-			out.ConcentrationDc = &dc
-		}
-		if after := d.applied.After; after != nil {
-			out.TargetDown = !after.Defeated && after.HP == 0
-		}
-		return out
+	if ap.Overridden && v.master {
+		rolled := ap.Rolled
+		out.RolledAmount = &rolled
 	}
-	if after := d.hit.After; after != nil && d.status == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
-		out.TargetDefeated = after.Defeated
+	if dc := ap.ConcentrationDC; dc > 0 && (v.master || v.owns(target)) {
+		out.ConcentrationDc = &dc
+	}
+	if after := ap.After; after != nil {
 		out.TargetDown = !after.Defeated && after.HP == 0
-		if dc := d.hit.ConcentrationDC; dc > 0 && (v.master || v.owns(target)) {
-			out.ConcentrationDc = &dc
-		}
 	}
-	return out
+}
+
+// viewLanded adds what the damage did to the target when it landed by itself (an NPC's).
+func (d *damageLog) viewLanded(out *playv1.CombatLogDamage, v combatViewer, target playdb.Combatant) {
+	after := d.hit.After
+	if after == nil || d.status != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+		return
+	}
+	out.TargetDefeated = after.Defeated
+	out.TargetDown = !after.Defeated && after.HP == 0
+	if dc := d.hit.ConcentrationDC; dc > 0 && (v.master || v.owns(target)) {
+		out.ConcentrationDc = &dc
+	}
 }
 
 // damage is the damage of an attack as the viewer gets it. The target's hit
@@ -1135,19 +1193,8 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice, e.dmg.SavageDice)
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
-	if ap := e.applied; ap != nil { // the master's apply of a character's damage
-		d.Amount = ap.Amount
-		d.RelentlessEndurance = ap.Relentless
-		if !ap.DeathHidden || targetsOwn { // a hit at 0 is a death save failure, which the table may keep to the owner and the master (RN-24)
-			d.DeathFailuresAdded = ap.FailuresAdded
-		}
-		if ap.Overridden && master {
-			rolled := ap.Rolled
-			d.RolledAmount = &rolled
-		}
-		if dc := ap.ConcentrationDC; dc > 0 && targetsOwn {
-			d.ConcentrationDc = &dc
-		}
+	if e.applied != nil { // the master's apply of a character's damage
+		e.damageApplied(d, master, targetsOwn)
 	}
 	if after := e.dmg.After; after != nil && e.status == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
 		d.TargetDefeated = after.Defeated
@@ -1161,6 +1208,23 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 		d.ConcentrationDc = &dc
 	}
 	return d
+}
+
+// damageApplied adds the master's apply of a character's damage to an attack's damage.
+func (e *logEntry) damageApplied(d *playv1.CombatLogDamage, master, targetsOwn bool) {
+	ap := e.applied
+	d.Amount = ap.Amount
+	d.RelentlessEndurance = ap.Relentless
+	if !ap.DeathHidden || targetsOwn { // a hit at 0 is a death save failure, which the table may keep to the owner and the master (RN-24)
+		d.DeathFailuresAdded = ap.FailuresAdded
+	}
+	if ap.Overridden && master {
+		rolled := ap.Rolled
+		d.RolledAmount = &rolled
+	}
+	if dc := ap.ConcentrationDC; dc > 0 && targetsOwn {
+		d.ConcentrationDc = &dc
+	}
 }
 
 // trapEntry is the firing as the viewer gets it: everyone gets the trap (it is
@@ -1247,20 +1311,8 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 		}
 		n.byCharacter[sheetKey(c)] = sheet
 	}
-	for _, a := range sheet.Attacks {
-		if a.Key == key {
-			return a.Name
-		}
-	}
-	for _, a := range sheet.Actions {
-		if a.Key == key {
-			return a.Name
-		}
-	}
-	for _, a := range sheet.FeatureActions {
-		if a.Key == key {
-			return a.Name
-		}
+	if name, found := sheetActionName(sheet, key); found {
+		return name
 	}
 	if strings.HasPrefix(key, "spell:") && !isCreature(c) {
 		if sp, err := n.s.roster.CombatSpell(ctx, nil, n.campaignID, c.CharacterID, key, 0, ""); err == nil {
@@ -1268,6 +1320,27 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 		}
 	}
 	return ""
+}
+
+// sheetActionName is the name of the key among the attacks, the actions and the feature
+// actions of a sheet, in that order; found says the sheet has the key.
+func sheetActionName(sheet link.Sheet, key string) (name string, found bool) {
+	for _, a := range sheet.Attacks {
+		if a.Key == key {
+			return a.Name, true
+		}
+	}
+	for _, a := range sheet.Actions {
+		if a.Key == key {
+			return a.Name, true
+		}
+	}
+	for _, a := range sheet.FeatureActions {
+		if a.Key == key {
+			return a.Name, true
+		}
+	}
+	return "", false
 }
 
 // contentName is the name of a content key in the campaign's content, "" when it

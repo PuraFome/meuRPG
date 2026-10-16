@@ -131,33 +131,43 @@ func Render(p Plan, w, h int) (*image.Paletted, error) {
 	if !p.valid() {
 		return nil, ErrPlan
 	}
-	solid := p.Solid
-	if p.Seen != nil {
-		// What is not seen is rock to the outline (so a seen floor beside it is not
-		// outlined as if it opened onto something), and black below.
-		solid = make([]bool, len(p.Solid))
-		for i := range solid {
-			solid[i] = p.Solid[i] || !p.Seen[i]
-		}
-	}
-	img, err := dungeonimg.Render(dungeonimg.Floorplan{Cols: p.Cols, Rows: p.Rows, Solid: solid}, w, h)
+	img, err := dungeonimg.Render(dungeonimg.Floorplan{Cols: p.Cols, Rows: p.Rows, Solid: p.drawnSolid()}, w, h)
 	if err != nil {
 		return nil, err
 	}
 	img.Palette = extendPalette(img.Palette)
 	if p.Seen != nil {
-		for y := range h {
-			sr := y * p.Rows / h
-			row := img.Pix[y*img.Stride : y*img.Stride+w]
-			for x := range w {
-				if !p.Seen[sr*p.Cols+x*p.Cols/w] {
-					row[x] = idxBlack
-				}
-			}
-		}
+		blackOutUnseen(img, p, w, h)
 	}
 	drawMarkers(img, p, w, h)
 	return img, nil
+}
+
+// drawnSolid is the squares the drawing outlines as solid. What is not seen is rock to the
+// outline (so a seen floor beside it is not outlined as if it opened onto something), and
+// black below.
+func (p Plan) drawnSolid() []bool {
+	if p.Seen == nil {
+		return p.Solid
+	}
+	solid := make([]bool, len(p.Solid))
+	for i := range solid {
+		solid[i] = p.Solid[i] || !p.Seen[i]
+	}
+	return solid
+}
+
+// blackOutUnseen paints with the black index every pixel of a square that is not seen.
+func blackOutUnseen(img *image.Paletted, p Plan, w, h int) {
+	for y := range h {
+		sr := y * p.Rows / h
+		row := img.Pix[y*img.Stride : y*img.Stride+w]
+		for x := range w {
+			if !p.Seen[sr*p.Cols+x*p.Cols/w] {
+				row[x] = idxBlack
+			}
+		}
+	}
 }
 
 // textureRock is the rock of the textured map's drawing.

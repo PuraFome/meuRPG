@@ -14,11 +14,6 @@
       "count": 3
     }
   },
-  "src/app/core/campaigns/table-rules.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/core/combat/cast-flow.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
@@ -75,51 +70,6 @@
       "count": 1
     }
   },
-  "src/app/core/content/catalog.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "src/app/core/content/content-kinds.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    }
-  },
-  "src/app/core/content/content-read.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 3
-    },
-    "complexity": {
-      "count": 1
-    }
-  },
-  "src/app/core/content/content-testing.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 30
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/content/content-violations.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/content/effect-draft.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/core/content/option-switches.spec.ts": {
     "no-restricted-syntax": {
       "count": 1
@@ -128,14 +78,6 @@
   "src/app/core/content/spell-draft.spec.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 10
-    }
-  },
-  "src/app/core/content/spell-draft.ts": {
-    "complexity": {
-      "count": 4
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/core/creatures/creatures-testing.ts": {
@@ -1281,17 +1223,6 @@
       "count": 1
     }
   },
-  "src/app/pages/live-session/combat/attack-sheet/attack-sheet.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/live-session/combat/attack-sheet/attack-steps.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -1300,14 +1231,6 @@
   "src/app/pages/live-session/combat/cast-sheet/cast-result.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 2
-    }
-  },
-  "src/app/pages/live-session/combat/cast-sheet/cast-sheet.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/pages/live-session/combat/cast-sheet/cast-targets.ts": {
@@ -1518,41 +1441,8 @@
       "count": 1
     }
   },
-  "src/app/pages/live-session/combat/move-page/move-page.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 7
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/live-session/combat/npc-card/attack-choice.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/combat/npc-card/npc-card.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/combat/npc-card/pending-damages.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "complexity": {
       "count": 1
     }
   },
@@ -2893,22 +2783,12 @@
       "count": 1
     }
   },
-  "src/app/core/content/class-draft.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/core/maps/maps-client.ts": {
     "max-lines": {
       "count": 1
     }
   },
   "src/app/pages/live-session/casting/cast-out-sheet.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/combat/contest-sheet/contest-sheet.ts": {
     "max-lines": {
       "count": 1
     }

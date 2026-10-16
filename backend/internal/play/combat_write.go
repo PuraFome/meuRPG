@@ -299,127 +299,186 @@ func (s *Service) write(ctx context.Context, w combatWrite, do func(c *combatTx)
 	}
 }
 
+// changeRun is what one try of writeOnce keeps for after the commit.
+type changeRun struct {
+	res   combatResult
+	last  *actionEvent // the last event stamped with who could see it
+	ended *combatTx    // the change's transaction, for what it leaves to tell
+}
+
 // writeOnce is one try of write, with the sight it was given.
 func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight, do func(c *combatTx) (payload any, err error)) (combatResult, error) {
-	var res combatResult
-	var last *actionEvent
-	var ended *combatTx // the change's transaction, for what it leaves to tell
+	var run changeRun
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res, ended = combatResult{encounterID: w.encounterID, sight: sight}, nil
-		last = nil
-		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, w.m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession() // MR-013: during the session
-		}
-		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
-		}
-		res.session = session
-
-		done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{
-			GameSessionID: session.ID, IdempotencyKey: &w.key,
-		})
-		switch {
-		case err == nil:
-			if done.Kind != w.kind && (w.altKind == "" || done.Kind != w.altKind) {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-			}
-			// The key was used for another request of the same kind: a retry has the very same
-			// one. An event from before the hash was kept has none, and is replayed as it was.
-			if hashDiffers(done.IdempotencyHash, w.hash) {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-			}
-			// A key is its author's: another member replaying it would be handed the
-			// answer to a change that was not theirs (the vitals of someone else's
-			// character, a roll).
-			if done.ActorUserID == nil || *done.ActorUserID != w.m.UserID {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-			}
-			res.repeated = true // a retry of a change already made
-			res.payload = done.Payload
-			return nil
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("find the event of this idempotency key: %w", err)
-		}
-
-		c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s, master: w.m.Role == authz.RoleMaster, sight: sight, hash: w.hash}
-		if c.rules, err = s.tableRules(ctx, tx, w.m.CampaignID); err != nil {
-			return err
-		}
-		if w.encounterID != "" {
-			c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
-			if errors.Is(err, pgx.ErrNoRows) {
-				return connect.NewError(connect.CodeNotFound, errors.New("encounter not found"))
-			}
-			if err != nil {
-				return fmt.Errorf("find the encounter: %w", err)
-			}
-			if sight != nil && c.enc.Revision != sight.rev {
-				return errSightStale
-			}
-		}
-		payload, err := do(c)
-		if err != nil || payload == nil {
-			return err
-		}
-		// A change to a combatant's hit points may defeat a creature or give one back
-		// (MR-037): the creatures follow, before the change's own event is written.
-		if err := s.syncCreatures(ctx, c); err != nil {
-			return err
-		}
-		// The offers nobody can answer any more stop holding the mover's turn.
-		if err := s.pruneOffers(ctx, c); err != nil {
-			return err
-		}
-		// A grapple ends when its grappler is incapacitated or the grappled creature leaves its reach.
-		if err := s.pruneHolds(ctx, c); err != nil {
-			return err
-		}
-		// The reaction windows that stopped being valid close, and what the ones
-		// that are all answered held goes on.
-		if err := s.settleReactions(ctx, c); err != nil {
-			return err
-		}
-		res.encounterID = c.enc.ID
-		res.kind = c.kind
-		res.characterID = deref(c.characterID)
-		res.event = nil
-		if ev, ok := payload.(actionEvent); ok {
-			res.event = &ev
-		}
-		ended = c
-		c.stamped = nil
-		if ev, ok := payload.(actionEvent); ok && len(c.endedEffects) > 0 && slices.Contains(undoableKinds, c.kind) {
-			ev.Restore, ev.EndedLines, ev.FollowUps, ev.FollowUpLines = c.endedEffects, c.endedLines, c.followUps, c.followUpLines
-			payload = ev
-		}
-		if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload); err != nil {
-			return err
-		}
-		last = c.stamped
-		return nil
+		run = changeRun{res: combatResult{encounterID: w.encounterID, sight: sight}}
+		return s.changeInTx(ctx, tx, w, sight, do, &run)
 	})
 	if err != nil {
 		return combatResult{}, err
 	}
-	res.stamped = last
-	if ended != nil {
-		res.lines = ended.lines
-		res.notes, res.tellIDs = ended.reactionNotes, ended.tellIDs
+	run.res.stamped = run.last
+	if run.ended != nil {
+		run.res.lines = run.ended.lines
+		run.res.notes, run.res.tellIDs = run.ended.reactionNotes, run.ended.tellIDs
 	}
-	if ended != nil && ended.castsChanged != castsUnchanged {
-		s.publishCastsChanged(w.m.CampaignID, ended.castsChanged == castsMasterOnly)
+	s.tellEnded(ctx, w.m.CampaignID, run.ended)
+	return run.res, nil
+}
+
+// changeInTx is the change inside its transaction: the session's lock, the retry of a
+// key already used, the change itself, what follows from it and its event.
+func (s *Service) changeInTx(ctx context.Context, tx pgx.Tx, w combatWrite, sight *fogSight, do func(c *combatTx) (payload any, err error), run *changeRun) error {
+	q := s.queries.WithTx(tx)
+	session, err := q.GetOpenGameSessionForUpdate(ctx, w.m.CampaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errNoOpenSession() // MR-013: during the session
+	}
+	if err != nil {
+		return fmt.Errorf("lock the open session: %w", err)
+	}
+	run.res.session = session
+
+	if repeated, err := s.replayOfKey(ctx, q, session, w, &run.res); err != nil || repeated {
+		return err
+	}
+	c, err := s.openChange(ctx, tx, q, session, w, sight)
+	if err != nil {
+		return err
+	}
+	payload, err := do(c)
+	if err != nil || payload == nil {
+		return err
+	}
+	if err := s.settleChange(ctx, c); err != nil {
+		return err
+	}
+	return run.record(ctx, c, w, payload)
+}
+
+// replayOfKey says whether the key was used for this very change already, and then
+// leaves the first try's payload in res: a retry changes nothing. A key used for
+// another change is refused.
+func (s *Service) replayOfKey(ctx context.Context, q *playdb.Queries, session playdb.GameSession, w combatWrite, res *combatResult) (bool, error) {
+	done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{
+		GameSessionID: session.ID, IdempotencyKey: &w.key,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find the event of this idempotency key: %w", err)
+	}
+	if done.Kind != w.kind && (w.altKind == "" || done.Kind != w.altKind) {
+		return false, errKeyReused()
+	}
+	// The key was used for another request of the same kind: a retry has the very same
+	// one. An event from before the hash was kept has none, and is replayed as it was.
+	if hashDiffers(done.IdempotencyHash, w.hash) {
+		return false, errKeyReused()
+	}
+	// A key is its author's: another member replaying it would be handed the
+	// answer to a change that was not theirs (the vitals of someone else's
+	// character, a roll).
+	if done.ActorUserID == nil || *done.ActorUserID != w.m.UserID {
+		return false, errKeyReused()
+	}
+	res.repeated = true // a retry of a change already made
+	res.payload = done.Payload
+	return true, nil
+}
+
+// openChange builds the change's transaction state: the table's rules and the combat
+// the change is about, found in the session and checked against the sight.
+func (s *Service) openChange(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, w combatWrite, sight *fogSight) (*combatTx, error) {
+	c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s, master: w.m.Role == authz.RoleMaster, sight: sight, hash: w.hash}
+	var err error
+	if c.rules, err = s.tableRules(ctx, tx, w.m.CampaignID); err != nil {
+		return nil, err
+	}
+	if w.encounterID == "" {
+		return c, nil
+	}
+	c.enc, err = q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: w.encounterID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("encounter not found"))
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find the encounter: %w", err)
+	}
+	if sight != nil && c.enc.Revision != sight.rev {
+		return nil, errSightStale
+	}
+	return c, nil
+}
+
+// settleChange follows what the change did through the rest of the combat, before the
+// change's own event is written.
+func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
+	// A change to a combatant's hit points may defeat a creature or give one back
+	// (MR-037): the creatures follow.
+	if err := s.syncCreatures(ctx, c); err != nil {
+		return err
+	}
+	// The offers nobody can answer any more stop holding the mover's turn.
+	if err := s.pruneOffers(ctx, c); err != nil {
+		return err
+	}
+	// A grapple ends when its grappler is incapacitated or the grappled creature leaves its reach.
+	if err := s.pruneHolds(ctx, c); err != nil {
+		return err
+	}
+	// The reaction windows that stopped being valid close, and what the ones
+	// that are all answered held goes on.
+	return s.settleReactions(ctx, c)
+}
+
+// record writes the change's event and keeps in the result what the handlers and the log
+// line read of it.
+func (r *changeRun) record(ctx context.Context, c *combatTx, w combatWrite, payload any) error {
+	r.res.encounterID = c.enc.ID
+	r.res.kind = c.kind
+	r.res.characterID = deref(c.characterID)
+	r.res.event = nil
+	if ev, ok := payload.(actionEvent); ok {
+		r.res.event = &ev
+	}
+	r.ended = c
+	c.stamped = nil
+	if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, withEndedEffects(c, payload)); err != nil {
+		return err
+	}
+	r.last = c.stamped
+	return nil
+}
+
+// withEndedEffects keeps the effects the change ended in its event, so that the undo puts
+// them back (RN-22).
+func withEndedEffects(c *combatTx, payload any) any {
+	ev, ok := payload.(actionEvent)
+	if !ok || len(c.endedEffects) == 0 || !slices.Contains(undoableKinds, c.kind) {
+		return payload
+	}
+	ev.Restore, ev.EndedLines, ev.FollowUps, ev.FollowUpLines = c.endedEffects, c.endedLines, c.followUps, c.followUpLines
+	return ev
+}
+
+// tellEnded tells the streams what the committed change left to tell: the casts outside
+// a combat that changed, and the vitals and the fog of a familiar's sight that ended.
+func (s *Service) tellEnded(ctx context.Context, campaignID string, ended *combatTx) {
+	if ended == nil {
+		return
+	}
+	if ended.castsChanged != castsUnchanged {
+		s.publishCastsChanged(campaignID, ended.castsChanged == castsMasterOnly)
 	}
 	// A turn that started ended some familiar's sight (MR-036): the player's vitals
 	// and the fog's view change.
-	if ended != nil && len(ended.told) > 0 {
+	if len(ended.told) > 0 {
 		for _, v := range ended.told {
-			s.publishVitals(w.m.CampaignID, v)
+			s.publishVitals(campaignID, v)
 		}
-		s.maps.VisionChanged(ctx, w.m.CampaignID, deref(ended.enc.MapID))
+		s.maps.VisionChanged(ctx, campaignID, deref(ended.enc.MapID))
 	}
-	return res, nil
 }
 
 // combatEventNames are the names of the combat's log events, where the kind
