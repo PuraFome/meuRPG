@@ -527,7 +527,7 @@ func (s *Service) SetMapRevealed(
 // drawn columns, and rules/grid.EngineGrid refuses what passes the limits).
 const (
 	minGridColumns = 4
-	maxGridColumns = 200
+	maxGridColumns = grid.MaxColumns // 200, the rules' limit too
 )
 
 // SetMapGrid implements mapsv1connect.MapServiceHandler. calibration.go says
