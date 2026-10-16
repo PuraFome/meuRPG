@@ -25,7 +25,7 @@ const (
 	notIdempotentOK = "idempotency_key must be a UUID"
 )
 
-func (a *armed) endSession(t *testing.T) {
+func (a *armed) endRevivifySession(t *testing.T) {
 	t.Helper()
 	a.master.end(t, a.master.liveSession(t, a.campaignID).GetGameSession())
 }
@@ -194,7 +194,7 @@ func TestRevivifyFrozen_RequestsNeedTheOpenSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RequestRevivify() error = %v", err)
 	}
-	a.endSession(t)
+	a.endRevivifySession(t)
 	_, err = a.ask(a.ana, a.pens, a.toren, newKey())
 	wantRevivifyRefusal(t, "a request with no session", err, connect.CodeFailedPrecondition, noSessionMsg)
 	_, err = a.answerRevivify(t, a.master, req.GetId(), true, newKey())
@@ -383,7 +383,7 @@ func TestRevivifyFrozen_SwitchInACombat(t *testing.T) {
 		t.Errorf("Toren's switch is off after the end, want on")
 	}
 	// No open session: a combatant names nothing, a character is still switched.
-	a.endSession(t)
+	a.endRevivifySession(t)
 	wantRevivifyRefusal(t, "a combatant with no session", a.switchRaw(t, switchCombatant(newKey()), true), connect.CodeFailedPrecondition, noSessionMsg)
 	if err := a.switchRaw(t, switchCharacter(a.toren.GetId()), false); err != nil {
 		t.Fatalf("SetRevivifyBlocked(character) with no session error = %v", err)
