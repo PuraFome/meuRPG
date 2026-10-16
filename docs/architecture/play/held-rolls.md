@@ -1,0 +1,159 @@
+# Held rolls
+
+A d20 that may wait for a question is rolled, kept, asked about and settled in one place: the held-roll gate.
+The questions are the halfling's Lucky (RN-35) and a Bardic Inspiration die, asked in that order, so the player decides after seeing the d20 and before the result (SRD 5.1).
+The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.go`, `held_registry.go`, `held_roller.go`, `combat_lucky.go`, `inspiration_held.go`, `inspiration_lucky.go` and `inspiration_outside.go`.
+
+## The eight kinds
+
+Whichever path rolls the d20 asks the same gate.
+
+| Kind (`heldKind`) | Path | Where it is held |
+| --- | --- | --- |
+| Weapon attack | `RollAttack` | `roll_holds` |
+| Spell attack against one target | `CastSpell` (`inspiration_held.go`) | `inspiration_holds` |
+| The effect's saving throw | `RollEffectSave` | `inspiration_holds` |
+| The concentration save | `ResolveConcentrationSave` | `inspiration_holds` |
+| Scene check | `RollSceneCheck` | `inspiration_holds` |
+| Group check | `RollGroupCheck` | `inspiration_holds` |
+| Trap search | `SearchForTraps` (out of combat; the Search action in combat has spent the action when the d20 is rolled) | `inspiration_holds` |
+| Puzzle hint try | `TryPuzzleHint` | `inspiration_holds` |
+
+**Not held, on purpose:** a cast with several targets (Scorching Ray, Twinned Spell) or one that waited for a reaction window; the attack cantrips (they hold in `roll_holds` through `RollAttack`); the master's rolls (the master never waits here); the saving throws the app rolls for a target inside someone else's call (a spell's save, a hit rider's, a trap's: the target's player is not rolling); death saves, initiative, the contests, Hide, the Counterspell check.
+For the saves rolled inside someone else's call, a halfling's Lucky is applied automatically: `autoLucky` (`combat_lucky.go`) rolls the first die showing a 1 again in the app, and the reroll is kept in `saveRoll.Lucky` or `actionEvent.Lucky`, shown as `DiceRoll.rerolled`.
+`luckySaver` gives it to a player's character only, never to an NPC.
+
+## The gate
+
+The path tells the gate what the roll is (`rollSpec`: the kind, the idempotency key, the request to run again, the roller, how the d20 is counted, whether the roller is lucky and whether the path may ask at all), inside its own transaction (`gateEnv`: only the transaction's queries, never the pool).
+The gate answers with a `gateResult`:
+
+- **zero:** the roll waits for nobody; the path rolls as usual;
+- **`Held`:** the roll waits and nothing but the hold is written; the response carries the question (`lucky_offer` or `inspiration_offer`);
+- **`Settled`:** the gate decided the d20, with Reliable Talent applied, the Bardic Inspiration die added (`Bonus`) and the die Lucky rolled again (`Lucky`), for the path's event to keep.
+
+The weapon attack asks `heldBlocked` first, before a reaction window can hold the roll, and `heldMayWait` for the mode's dry run (`chooseMode` writes the mode's reason only when the roll goes on, via `keepReason`).
+
+```mermaid
+flowchart TD
+    A["path: rollSpec"] --> B{"MayAsk?"}
+    B -- no --> Z["zero: the path rolls"]
+    B -- yes --> C{"an answer in the context?"}
+    C -- yes --> D["gateAnswer: load the hold,<br/>refuse an answer already given"]
+    D --> E{"which question?"}
+    E -- Lucky --> F["luckyQuestion.apply:<br/>the new d20 on the row"]
+    F --> G{"does the roller hold a die?"}
+    G -- yes --> H["Held: the die's question,<br/>on the new roll"]
+    G -- no --> I["gateSettle"]
+    E -- die --> I
+    I --> J["dieQuestion.apply: spend the die,<br/>close the row under the answer's key"]
+    J --> K["Settled: roll, Bonus, Lucky"]
+    C -- no --> L{"holds a die or lucky?"}
+    L -- no --> Z
+    L -- yes --> M{"the hold of this request exists?"}
+    M -- yes --> H2["Held: the question again,<br/>nothing rolled"]
+    M -- no --> N["forget the stale hold,<br/>refuse an open question"]
+    N --> O["roll the d20"]
+    O --> P{"a die or a 1 to ask about?"}
+    P -- no --> K2["Settled: the d20 as rolled"]
+    P -- yes --> Q["insert the hold,<br/>touch the combat if its table says so"]
+    Q --> H3["Held: the first question that waits"]
+```
+
+## The stores
+
+A held roll is a `heldRoll` whichever table keeps it: the faces, the die that counts, the modifier and total, the request to run again, the two answer keys and the Lucky columns.
+Two stores, behind `heldStores`, read and write the rows.
+
+| Store | Table | Scope and owner | Notes |
+| --- | --- | --- | --- |
+| `rollHoldStore` | `roll_holds` | Scoped by the combat, owned by the combatant | The weapon attack. A row converts on read: the faces from the request pinned with them, the die that counts by the pinned mode, the total as the face and the bonus, physical when the request typed the d20. A reaction window's replay key (`#window`) moves to `Window`. A question moves the combat's revision (`asked`) |
+| `inspirationHoldStore` | `inspiration_holds` | Scoped by the campaign, owned by the character | Every other roll. A question does not move the combat's revision |
+
+Both are read together for the one-question-at-a-time rule: a weapon attack waiting in `roll_holds` and a hold in `inspiration_holds` block each other (`INSPIRATION_PENDING`).
+A weapon attack's Lucky answer keeps the new d20 on the row only when the die's question follows.
+A hold made in a combat records its `round`; one of an earlier round, or whose combatant no longer holds the die, is stale and forgotten by the next roll (`heldRoll.stale`).
+
+## The questions are a chain
+
+`chain` is the ordered list of what a held roll may ask: `luckyQuestion` first (the 1 is on the table first, SRD 5.1) and `dieQuestion` after it.
+Each says when it waits (`pending`), what it asks (`offer`) and what its answer writes (`apply`).
+
+- **Lucky** waits while `lucky_index` is set and neither it nor the roll was answered.
+  Its answer replaces the die that showed the 1, counts the d20 again by the roll's mode and Reliable Talent, writes the faces and the Lucky columns, and is never asked again.
+- **The die** waits while the roller holds one and nothing is answered.
+  Its answer is final: it spends the die when the player used it and closes the row under the answer's key.
+
+A later question, such as a master's reroll or Cutting Words on a check, would be one more link with its own columns and rule for who answers.
+
+## The registry and the one answer
+
+`heldRegistry` has one `heldKindDef` per kind: the table it writes, the tables whose open question refuses it, how the pinned request runs again (`rerun`, one per path), the attack and target a question names (the weapon attack only) and how the dice of a pair are pinned in the request.
+`answerHeld` is what the four answer RPCs call: `AnswerLucky`, `AnswerBardicInspiration`, `AnswerOutsideLucky` and `AnswerOutsideInspiration`.
+It:
+
+1. finds the hold in either store;
+2. checks who may answer (`mayAnswerHeld`): a weapon attack's by whoever may act for its combatant, its player or the master; every other roll's by its player alone (the master cannot);
+3. checks the answer against the roll as it stands (the question must be open, Lucky's first; an answer already given is answered again, never twice with another key);
+4. rolls the reroll or the die the way the campaign has the player roll (RN-18; the master is exempt);
+5. runs the pinned request again through the registry with the answer in the context (`heldReply`): the path answers with its own response, still held with the next question, or resolved and written under the roll's key.
+
+## Lucky (halfling, RN-35)
+
+SRD 5.1: a 1 on the d20 of an attack roll, ability check or saving throw may be rolled again, and the new roll stands.
+`link.Traits.Lucky` (`trait:lucky`) reaches the path with the sheet; for the checks, `link.SceneOption.Lucky` (set by `characters/combatscene.go`).
+The gate rolls a lucky character's d20 itself.
+A roll with no 1 and no die comes back settled at once; a 1 is kept in the row with `lucky_index`, the die that shows it in the order rolled (with advantage or disadvantage the question comes for either die and only that die is rolled again).
+The response carries `lucky_offer` (a `LuckyOffer`; with no attack and no target outside combat); on the combatant it is `Combatant.lucky_offer`, visible to the master and the owner only; `inspiration_offer` is unset while Lucky waits.
+Only the player who rolls for their own character is asked.
+
+The answer is `AnswerLucky(hold, reroll, roll)` for a weapon attack and `AnswerOutsideLucky(hold, reroll, roll)` for the others: the d20 rolled again in the app or typed (RN-18), or the 1 kept.
+The path runs again for the stored request, in its own transaction, which first writes the answer in the row (`lucky_answer_key`, `lucky_to`; a second answer is refused there).
+When the roller also holds a die, the row stays open with the new d20 and the response carries `inspiration_offer` on the new roll; otherwise the roll settles at once under the key it came with.
+Each path keeps the reroll where it keeps its d20: the attack's event (`actionEvent.Lucky`), the scene roll's event, a group member's `contestRoll`, the trap search's and saves' `actionEvent.Lucky`, the cast's `castHit.Lucky`, `puzzle_hint_tries.lucky_index`.
+Views show it as `rerolled` (`DiceRoll`, `CheckRoll`, `EffectSaveResult`, `CombatLogEffect`; the concentration line adds "Sortudo: 1 → 14.").
+Lucky spends nothing, so the undo has nothing to put back.
+
+While Lucky waits, the character's other rolls, `AnswerBardicInspiration` and the die's answer are refused with `LUCKY_PENDING`.
+`GetOutsideInspiration.lucky_offers` lists the question for a reload.
+A hold of a combat round that waits for Lucky needs no die: `dieOf` gives the combatant and round even when it holds none, and `heldRoll.stale` forgets it only when the round or combat is over; out of a combat it is not an orphan when the dice run out (`DeleteOrphanInspirationHolds`).
+
+## Bardic Inspiration on a roll
+
+### In combat
+
+`RollAttack` of a combatant that holds a die rolls (or takes) the d20 and keeps it in a `roll_holds` row with the request, resolves nothing, and answers with `inspiration_offer` (the d20, the die, who gave it).
+The offer is also on the combatant (`Combatant.inspiration_offer`), so it survives a reload.
+`AnswerBardicInspiration(hold, use, roll)` runs `RollAttack` again for the stored request, with the d20 already rolled and, when the player uses the die, the die rolled in the app or typed and added to the total; the attack resolves against the combat as it is then, and the die leaves the combatant.
+A second attack while a question waits is `INSPIRATION_PENDING`; a hold of an earlier round is forgotten; the master may answer for anyone.
+The undo of the attack gives the die back.
+
+**With a reaction window** (Cutting Words holds the roll before anything is rolled): the window first; when it is answered the held attack is replayed, the d20 is rolled with the bard's die already off the bonus, and only then is it kept for the question.
+The replay ends without an event (`ambientDoneError.asking`), and the hold's key gets the `#window` suffix because the request's own key belongs to the event that stood for the held attack.
+The answer never opens the windows again.
+
+In a combat only attack rolls wait on the weapon path; the saving throws the app rolls for a spell and a combatant's ability checks are resolved in the same call as the roll.
+For a player's own character in a combat, the leveled spell attack against one target, the effect's saving throw and the concentration save are also held (`inspiration_holds`): the cast is held before the slot or the action is spent, the answer runs the cast again with the held d20 in `spellModes.pre`, and the cast event keeps the used die in `actionEvent.Die` so the undo holds it again.
+The concentration save's window stays open while the question waits.
+
+### Out of a combat (`inspiration_outside.go`)
+
+The die a character holds between fights is a row of `character_inspiration` (one per character, so a second die is refused; `sides`, `source_character_id`, `seconds_left`).
+It is not a `character_effects` row: effects come from a spell or an action and are added to a roll by themselves, while this die is the player's to decide on after the d20.
+It uses the effects' clock: `seconds_left` (10 minutes, 600) moves only when the master moves game time (`advanceGameTime`, which a rest also calls), and a die with no time left is deleted, so any rest ends it.
+
+- `GiveBardicInspirationOutside(target_character_id)` (the bard's player, their own character; `COMBAT_OPEN` while a combat runs) spends the `bardic_inspiration` use through `spendResource`, inserts the row and writes the `inspiration_given` event under the idempotency key.
+  `TARGET_REFUSED` is the bard itself, a character that holds a die, or a character that is not a player's; `NO_USES_LEFT` and `NOT_AVAILABLE` as in combat.
+- `GetOutsideInspiration` answers each caller their own: the holder the die and the rolls that wait; the bard the uses and the party (a player character's name only); the master every die held.
+- **The carry.** `effectsToCombat` calls `dieToCombat`, which moves the row onto the combatant (`combatants.inspiration_*`; expiry round = the combat's round + the whole rounds left, none when less than a round is left) and deletes it.
+  `effectsToCharacters` calls `dieToCharacters`, which gives it back with the rounds left in seconds.
+  The row and the combatant's die are never both set.
+- **Using it.** A roll path asks the gate after it knows the modifier and the mode.
+  `dieOf` finds the die: the character's row out of a combat, the combatant's own die while a combat is active and the character is in it; `spendDie` uses up whichever it is.
+  A character with a die has the d20 rolled once and kept in `inspiration_holds` (the request, faces, modifier and total; unique on the request's key, so a retry finds it); the response carries `inspiration_offer`.
+  A second roll while the question waits is `INSPIRATION_PENDING`.
+- `AnswerOutsideInspiration(hold, use, roll)` (the roll's owner; another player's hold or another campaign's is `not_found`) rolls the die in the app or takes the typed face and calls the same RPC again with the stored request and the faces; in that transaction `dieQuestion.apply` deletes the die (`failed_precondition` if it is gone), adds the face to the total and answers the hold under the answer's key.
+- The scene check writes the face in the event (`bonus_sides`, `bonus_face`; the total holds it and the pass or fail follows the total); the group check in the member's roll (`CheckRoll.bonus_die_*`).
+- The offer of every kind is an `OutsideInspirationOffer` (the d20 and bonus the player already sees, never a DC or an armor class).
+  `GetOutsideInspiration` lists the caller's offers wherever the die is.
+- Holds of a character are deleted when the die goes back to it (`dieToCharacters`).

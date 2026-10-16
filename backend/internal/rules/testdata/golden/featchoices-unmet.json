@@ -1,0 +1,15 @@
+{
+  "a zero minimum is no minimum": "[{\"Kind\":\"ability_any_of\",\"Abilities\":null,\"Key\":\"\",\"Value\":0}]",
+  "all armor covers heavy": "null",
+  "all armor is not shields": "[{\"Kind\":\"proficiency\",\"Abilities\":null,\"Key\":\"proficiency:shields\",\"Value\":0}]",
+  "any of met by one": "null",
+  "everything unmet": "[{\"Kind\":\"ability_minimum\",\"Abilities\":[{\"Ability\":\"str\",\"Minimum\":13}],\"Key\":\"\",\"Value\":0},{\"Kind\":\"ability_minimum\",\"Abilities\":[{\"Ability\":\"con\",\"Minimum\":15}],\"Key\":\"\",\"Value\":0},{\"Kind\":\"ability_any_of\",\"Abilities\":[{\"Ability\":\"int\",\"Minimum\":13},{\"Ability\":\"wis\",\"Minimum\":14}],\"Key\":\"\",\"Value\":0},{\"Kind\":\"proficiency\",\"Abilities\":null,\"Key\":\"proficiency:heavy-armor\",\"Value\":0},{\"Kind\":\"spellcasting\",\"Abilities\":null,\"Key\":\"\",\"Value\":0},{\"Kind\":\"race\",\"Abilities\":null,\"Key\":\"race:dwarf\",\"Value\":0},{\"Kind\":\"level\",\"Abilities\":null,\"Key\":\"\",\"Value\":5}]",
+  "nothing asked": "null",
+  "spellcasting by a class": "null",
+  "spellcasting by a pact": "null",
+  "spellcasting by a spell": "null",
+  "the level reached": "null",
+  "the proficiency itself": "null",
+  "the race": "null",
+  "the subrace": "null"
+}

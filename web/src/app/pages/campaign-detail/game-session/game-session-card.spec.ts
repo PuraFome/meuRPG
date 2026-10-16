@@ -223,7 +223,7 @@ describe('GameSessionCard', () => {
     buttonNamed(el, 'Encerrar sessão').click();
     await fixture.whenStable();
     fixture.detectChanges();
-    // Can't be undone: it asks first, in place (docs/design.md).
+    // Can't be undone: it asks first, in place (docs/design/README.md).
     expect(fake.endGameSession).not.toHaveBeenCalled();
     expect(el.textContent).toContain('Encerrar a sessão 2? Ela não reabre depois.');
 

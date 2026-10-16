@@ -19,7 +19,7 @@ function marker(point: Partial<ViewPoint> & { name: string; kind: number }): HTM
   return fixture.nativeElement;
 }
 
-describe("MapMarker: a generated dungeon's stairs (docs/design.md)", () => {
+describe("MapMarker: a generated dungeon's stairs (docs/design/README.md)", () => {
   it('draws a point the server marks as a stair with its arrow, up or down, for the master and for a player alike', () => {
     expect(
       marker({ name: 'Escada para cima', kind: MapPointKind.SUBMAP, stairs: 1 }).querySelector(

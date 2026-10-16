@@ -136,37 +136,75 @@ var minuteUnits = []string{DurationMinute, DurationHour, DurationDay}
 // metamagicReason is why the spell does not take the option, in Portuguese, or ""
 // when it does. It reads the spell as the SRD gives it.
 func metamagicReason(key string, d *SpellDetails, slotLevel int) string {
-	name := d.Spell.NamePT
 	switch key {
 	case MetamagicCareful, MetamagicHeightened:
-		if d.Save == nil {
-			return fmt.Sprintf("%s não pede teste de resistência.", name)
-		}
+		return metamagicSaveReason(d)
 	case MetamagicDistant:
-		if d.Range.Kind != RangeTouch && (d.Range.Kind != RangeRanged || d.Range.DistanceFt < distantMinRangeFt) {
-			return fmt.Sprintf("O alcance de %s não pode ser dobrado.", name)
-		}
+		return metamagicDistantReason(d)
 	case MetamagicEmpowered:
-		if len(d.Damage) == 0 {
-			return fmt.Sprintf("%s não rola dados de dano.", name)
-		}
+		return metamagicEmpoweredReason(d)
 	case MetamagicExtended:
-		if d.Duration.Kind != DurationTimed || !slices.Contains(minuteUnits, d.Duration.Unit) {
-			return "Só vale para magias de 1 minuto ou mais."
-		}
+		return metamagicExtendedReason(d)
 	case MetamagicQuickened:
-		if d.CastingTime.Unit != CastAction || d.CastingTime.Amount != 1 {
-			return fmt.Sprintf("%s não é conjurada com 1 ação.", name)
-		}
+		return metamagicQuickenedReason(d)
 	case MetamagicTwinned:
-		switch {
-		case d.Range.Kind == RangeSelf:
-			return fmt.Sprintf("%s tem alcance Pessoal.", name)
-		case d.Target.IsArea():
-			return fmt.Sprintf("%s atinge uma área: não tem “um só alvo”.", name)
-		case d.Target.Kind != TargetCreature || d.Target.MaxTargets(max(slotLevel, d.Spell.Level), d.Spell.Level) != 1:
-			return fmt.Sprintf("%s pode atingir mais de uma criatura.", name)
-		}
+		return metamagicTwinnedReason(d, slotLevel)
+	}
+	return ""
+}
+
+// metamagicSaveReason: Careful and Heightened Spell need a saving throw.
+func metamagicSaveReason(d *SpellDetails) string {
+	if d.Save == nil {
+		return fmt.Sprintf("%s não pede teste de resistência.", d.Spell.NamePT)
+	}
+	return ""
+}
+
+// metamagicDistantReason: Distant Spell needs a range of touch or of 5 feet or
+// more.
+func metamagicDistantReason(d *SpellDetails) string {
+	if d.Range.Kind != RangeTouch && (d.Range.Kind != RangeRanged || d.Range.DistanceFt < distantMinRangeFt) {
+		return fmt.Sprintf("O alcance de %s não pode ser dobrado.", d.Spell.NamePT)
+	}
+	return ""
+}
+
+// metamagicEmpoweredReason: Empowered Spell rerolls damage dice.
+func metamagicEmpoweredReason(d *SpellDetails) string {
+	if len(d.Damage) == 0 {
+		return fmt.Sprintf("%s não rola dados de dano.", d.Spell.NamePT)
+	}
+	return ""
+}
+
+// metamagicExtendedReason: Extended Spell needs a duration of a minute or more.
+func metamagicExtendedReason(d *SpellDetails) string {
+	if d.Duration.Kind != DurationTimed || !slices.Contains(minuteUnits, d.Duration.Unit) {
+		return "Só vale para magias de 1 minuto ou mais."
+	}
+	return ""
+}
+
+// metamagicQuickenedReason: Quickened Spell needs a casting time of 1 action.
+func metamagicQuickenedReason(d *SpellDetails) string {
+	if d.CastingTime.Unit != CastAction || d.CastingTime.Amount != 1 {
+		return fmt.Sprintf("%s não é conjurada com 1 ação.", d.Spell.NamePT)
+	}
+	return ""
+}
+
+// metamagicTwinnedReason: Twinned Spell needs a spell of one creature at the
+// slot it is cast with, not of the caster alone nor of an area.
+func metamagicTwinnedReason(d *SpellDetails, slotLevel int) string {
+	name := d.Spell.NamePT
+	switch {
+	case d.Range.Kind == RangeSelf:
+		return fmt.Sprintf("%s tem alcance Pessoal.", name)
+	case d.Target.IsArea():
+		return fmt.Sprintf("%s atinge uma área: não tem “um só alvo”.", name)
+	case d.Target.Kind != TargetCreature || d.Target.MaxTargets(max(slotLevel, d.Spell.Level), d.Spell.Level) != 1:
+		return fmt.Sprintf("%s pode atingir mais de uma criatura.", name)
 	}
 	return ""
 }

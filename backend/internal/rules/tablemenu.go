@@ -251,6 +251,12 @@ func rangedAttackValues() []MenuValue {
 	return out
 }
 
+// The bounds the menu offers for an extra_attack effect.
+const (
+	menuExtraAttackMin = 2
+	menuExtraAttackMax = 4
+)
+
 // EffectMenu gives the closed menu for this content: the table's classes are in
 // ClassIndexes, and everything else is the SRD's.
 func (c *Content) EffectMenu() EffectMenu {
@@ -258,89 +264,130 @@ func (c *Content) EffectMenu() EffectMenu {
 	m := EffectMenu{
 		Types:               slices.Clone(menuTypes),
 		MaxFeaturesPerClass: MaxTableFeatures, MaxEffectsPerFeature: MaxFeatureEffects, MaxTagsPerEffect: maxEffectList,
-		ExtraAttackMin: 2, ExtraAttackMax: 4,
+		ExtraAttackMin: menuExtraAttackMin, ExtraAttackMax: menuExtraAttackMax,
 	}
-	abilityName := func(a Ability) string { return x.namePT(string(a)) }
+	m.Lists = x.menuLists()
+	m.OptionSets = x.menuOptionSets()
+	m.Helpers = menuHelpers()
+	for k := range x.classes {
+		m.ClassIndexes = append(m.ClassIndexes, strings.TrimPrefix(k, "class:"))
+	}
+	slices.Sort(m.ClassIndexes)
+	return m
+}
 
-	var targets, rolls, profs []MenuValue
+// menuAbilityName is an ability's Portuguese name.
+func (c *content) menuAbilityName(a Ability) string { return c.namePT(string(a)) }
+
+// menuSkillRolls are the skills as modifier or roll targets ("skill.stealth").
+func (c *content) menuSkillRolls() []MenuValue {
+	var out []MenuValue
+	for _, k := range c.skillOrder {
+		out = append(out, MenuValue{Key: "skill." + strings.TrimPrefix(k, "skill:"), NamePT: "Perícia: " + c.namePT(k)})
+	}
+	return out
+}
+
+// menuSaves are the six saving throws as targets ("save.dex").
+func (c *content) menuSaves() []MenuValue {
+	var out []MenuValue
+	for _, a := range AllAbilities() {
+		out = append(out, MenuValue{Key: "save." + string(a), NamePT: "Teste de resistência de " + c.menuAbilityName(a)})
+	}
+	return out
+}
+
+// menuModifierTargets are the fixed targets, then the skills, then the saves.
+func (c *content) menuModifierTargets() []MenuValue {
+	var targets []MenuValue
 	for _, k := range modifierTargets {
 		targets = append(targets, MenuValue{Key: k, NamePT: modifierTargetNames[k]})
 	}
-	for _, k := range x.skillOrder {
-		targets = append(targets, MenuValue{Key: "skill." + strings.TrimPrefix(k, "skill:"), NamePT: "Perícia: " + x.namePT(k)})
-	}
-	for _, a := range AllAbilities() {
-		targets = append(targets, MenuValue{Key: "save." + string(a), NamePT: "Teste de resistência de " + abilityName(a)})
-	}
+	targets = append(targets, c.menuSkillRolls()...)
+	return append(targets, c.menuSaves()...)
+}
+
+// menuRollTargets are the fixed rolls, the ability checks, the skills and the
+// saves.
+func (c *content) menuRollTargets() []MenuValue {
+	var rolls []MenuValue
 	for _, k := range []string{"attack", "death_save", "initiative", "check.all", "save.all"} {
 		rolls = append(rolls, MenuValue{Key: k, NamePT: rollTargetNames[k]})
 	}
 	for _, a := range AllAbilities() {
-		rolls = append(rolls, MenuValue{Key: "check." + string(a), NamePT: "Testes de " + abilityName(a)})
+		rolls = append(rolls, MenuValue{Key: "check." + string(a), NamePT: "Testes de " + c.menuAbilityName(a)})
 	}
-	for _, k := range x.skillOrder {
-		rolls = append(rolls, MenuValue{Key: "skill." + strings.TrimPrefix(k, "skill:"), NamePT: "Perícia: " + x.namePT(k)})
-	}
-	for _, a := range AllAbilities() {
-		rolls = append(rolls, MenuValue{Key: "save." + string(a), NamePT: "Teste de resistência de " + abilityName(a)})
-	}
+	rolls = append(rolls, c.menuSkillRolls()...)
+	return append(rolls, c.menuSaves()...)
+}
+
+// menuProficiencies are what a proficiency effect may name, with the skills
+// and the tools on their own (in the content's order: the caller sorts them).
+func (c *content) menuProficiencies() (profs, skills, tools []MenuValue) {
 	profs = append(profs, MenuValue{Key: "skill:*", NamePT: "Todas as perícias"}, MenuValue{Key: "initiative", NamePT: "Iniciativa"})
-	var skills, languages, tools []MenuValue
-	for _, k := range x.skillOrder {
-		v := MenuValue{Key: k, NamePT: x.namePT(k)}
+	for _, k := range c.skillOrder {
+		v := MenuValue{Key: k, NamePT: c.namePT(k)}
 		skills = append(skills, v)
 		profs = append(profs, v)
 	}
-	for _, a := range AllAbilities() {
-		profs = append(profs, MenuValue{Key: "save." + string(a), NamePT: "Teste de resistência de " + abilityName(a)})
-	}
-	for _, k := range sortedKeys(x.proficiencies) {
-		switch x.proficiencies[k].Kind {
+	profs = append(profs, c.menuSaves()...)
+	for _, k := range sortedKeys(c.proficiencies) {
+		switch c.proficiencies[k].Kind {
 		case "armor", "weapon":
-			profs = append(profs, MenuValue{Key: k, NamePT: x.proficiencyNamePT(k)})
+			profs = append(profs, MenuValue{Key: k, NamePT: c.proficiencyNamePT(k)})
 		case "tool", "other":
-			v := MenuValue{Key: k, NamePT: x.proficiencyNamePT(k)}
+			v := MenuValue{Key: k, NamePT: c.proficiencyNamePT(k)}
 			profs = append(profs, v)
 			tools = append(tools, v)
 		}
 	}
-	for _, k := range sortedKeys(x.languages) {
-		languages = append(languages, MenuValue{Key: k, NamePT: x.namePT(k)})
-	}
-	sortByName := func(vs []MenuValue) {
-		slices.SortStableFunc(vs, func(a, b MenuValue) int { return strings.Compare(strings.ToLower(a.NamePT), strings.ToLower(b.NamePT)) })
-	}
-	sortByName(skills)
-	sortByName(languages)
-	sortByName(tools)
+	return profs, skills, tools
+}
 
-	named := func(keys []string, name func(string) string) []MenuValue {
-		out := make([]MenuValue, 0, len(keys))
-		for _, k := range keys {
-			out = append(out, MenuValue{Key: k, NamePT: name(k)})
-		}
-		return out
+// sortMenuByName sorts values by their Portuguese name, ignoring case.
+func sortMenuByName(vs []MenuValue) {
+	slices.SortStableFunc(vs, func(a, b MenuValue) int { return strings.Compare(strings.ToLower(a.NamePT), strings.ToLower(b.NamePT)) })
+}
+
+// namedMenu gives each key its name.
+func namedMenu(keys []string, name func(string) string) []MenuValue {
+	out := make([]MenuValue, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, MenuValue{Key: k, NamePT: name(k)})
 	}
+	return out
+}
+
+// menuLists are the menu's closed lists, in the order the editor shows them.
+func (c *content) menuLists() []MenuList {
+	profs, skills, tools := c.menuProficiencies()
+	var languages []MenuValue
+	for _, k := range sortedKeys(c.languages) {
+		languages = append(languages, MenuValue{Key: k, NamePT: c.namePT(k)})
+	}
+	sortMenuByName(skills)
+	sortMenuByName(languages)
+	sortMenuByName(tools)
 	var abilityValues []MenuValue
 	for _, a := range AllAbilities() {
-		abilityValues = append(abilityValues, MenuValue{Key: string(a), NamePT: abilityName(a)})
+		abilityValues = append(abilityValues, MenuValue{Key: string(a), NamePT: c.menuAbilityName(a)})
 	}
 	var modes []MenuValue
 	for _, k := range modifierModes {
 		modes = append(modes, MenuValue{Key: k, NamePT: modeNames[k][0], HintPT: modeNames[k][1]})
 	}
-	m.Lists = []MenuList{
-		{Name: ListModifierTargets, Values: targets},
+	return []MenuList{
+		{Name: ListModifierTargets, Values: c.menuModifierTargets()},
 		{Name: ListModifierModes, Values: modes},
 		{Name: ListProficiencies, Values: profs},
-		{Name: ListProficiencyLevels, Values: named(proficiencyLevels, func(k string) string { return levelNames[k] })},
-		{Name: ListRollModes, Values: named(rollModes, func(k string) string { return rollNames[k] })},
-		{Name: ListRollTargets, Values: rolls},
-		{Name: ListSenses, Values: named(senses, func(k string) string { return senseNames[k] })},
-		{Name: ListRecharges, Values: named(recharges, func(k string) string { return rechargeNms[k] })},
-		{Name: ListEconomies, Values: named(economies, func(k string) string { return economyNms[k] })},
-		{Name: ListManeuverApplies, Values: named(maneuverApplies, func(k string) string { return maneuverNms[k] })},
-		{Name: ListChoiceKinds, Values: named(overlayChoiceKinds, func(k string) string { return choiceNames[k] })},
+		{Name: ListProficiencyLevels, Values: namedMenu(proficiencyLevels, func(k string) string { return levelNames[k] })},
+		{Name: ListRollModes, Values: namedMenu(rollModes, func(k string) string { return rollNames[k] })},
+		{Name: ListRollTargets, Values: c.menuRollTargets()},
+		{Name: ListSenses, Values: namedMenu(senses, func(k string) string { return senseNames[k] })},
+		{Name: ListRecharges, Values: namedMenu(recharges, func(k string) string { return rechargeNms[k] })},
+		{Name: ListEconomies, Values: namedMenu(economies, func(k string) string { return economyNms[k] })},
+		{Name: ListManeuverApplies, Values: namedMenu(maneuverApplies, func(k string) string { return maneuverNms[k] })},
+		{Name: ListChoiceKinds, Values: namedMenu(overlayChoiceKinds, func(k string) string { return choiceNames[k] })},
 		{Name: ListSkills, Values: skills},
 		{Name: ListLanguages, Values: languages},
 		{Name: ListTools, Values: tools},
@@ -349,47 +396,58 @@ func (c *Content) EffectMenu() EffectMenu {
 		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},
 		{Name: ListRangedAttacks, Values: rangedAttackValues()},
 	}
+}
 
-	// The option sets: SRD features that offer options. A set with no option
-	// names (none today) is left out.
-	for _, k := range sortedKeys(x.features) {
-		f := x.features[k]
+// menuOptionSets are the SRD features that offer options, sorted by name. A
+// set with no option names (none today) is left out.
+func (c *content) menuOptionSets() []MenuOptionSet {
+	var sets []MenuOptionSet
+	for _, k := range sortedKeys(c.features) {
+		f := c.features[k]
 		if len(f.Options) == 0 {
 			continue
 		}
-		set := MenuOptionSet{Key: k, NamePT: x.namePT(k), Choose: f.OptionsChoose}
+		set := MenuOptionSet{Key: k, NamePT: c.namePT(k), Choose: f.OptionsChoose}
 		for _, o := range f.Options {
-			set.Options = append(set.Options, MenuValue{Key: o, NamePT: x.namePT(o)})
+			set.Options = append(set.Options, MenuValue{Key: o, NamePT: c.namePT(o)})
 		}
-		m.OptionSets = append(m.OptionSets, set)
+		sets = append(sets, set)
 	}
-	// Two sets with one name (the Fighter's and the Paladin's fighting styles) say
-	// whose they are, and, when the class repeats it too (the Sorcerer's three
-	// Metamagic), at which level.
+	c.labelMenuOptionSets(sets)
+	slices.SortStableFunc(sets, func(a, b MenuOptionSet) int { return strings.Compare(a.NamePT, b.NamePT) })
+	return sets
+}
+
+// labelMenuOptionSets makes two sets with one name (the Fighter's and the
+// Paladin's fighting styles) say whose they are, and, when the class repeats
+// it too (the Sorcerer's three Metamagic), at which level.
+func (c *content) labelMenuOptionSets(sets []MenuOptionSet) {
 	names := map[string]int{}
-	for _, set := range m.OptionSets {
+	for _, set := range sets {
 		names[set.NamePT]++
 	}
 	withClass := map[string]int{}
-	for _, set := range m.OptionSets {
+	for _, set := range sets {
 		if names[set.NamePT] > 1 {
-			withClass[set.NamePT+" ("+x.namePT(x.features[set.Key].Class)+")"]++
+			withClass[set.NamePT+" ("+c.namePT(c.features[set.Key].Class)+")"]++
 		}
 	}
-	for i, set := range m.OptionSets {
+	for i, set := range sets {
 		if names[set.NamePT] < 2 {
 			continue
 		}
-		f := x.features[set.Key]
-		label := set.NamePT + " (" + x.namePT(f.Class)
+		f := c.features[set.Key]
+		label := set.NamePT + " (" + c.namePT(f.Class)
 		if withClass[label+")"] > 1 {
 			label += fmt.Sprintf(", nível %d", f.Level)
 		}
-		m.OptionSets[i].NamePT = label + ")"
+		sets[i].NamePT = label + ")"
 	}
-	slices.SortStableFunc(m.OptionSets, func(a, b MenuOptionSet) int { return strings.Compare(a.NamePT, b.NamePT) })
+}
 
-	m.Helpers = []FormulaHelper{
+// menuHelpers are the functions a formula may call, with their hints.
+func menuHelpers() []FormulaHelper {
+	return []FormulaHelper{
 		{Call: "level()", Returns: "number", HintPT: "O nível total do personagem."},
 		{Call: `classLevel("<classe>")`, Returns: "number", HintPT: "O nível numa classe, pelo índice dela (sem o \"class:\"); 0 se o personagem não a tem."},
 		{Call: `mod("<habilidade>")`, Returns: "number", HintPT: `O modificador de uma habilidade: "str", "dex", "con", "int", "wis" ou "cha".`},
@@ -402,9 +460,4 @@ func (c *Content) EffectMenu() EffectMenu {
 		{Call: "min(a, b)", Returns: "number", HintPT: "O menor dos dois."},
 		{Call: "max(a, b)", Returns: "number", HintPT: "O maior dos dois."},
 	}
-	for k := range x.classes {
-		m.ClassIndexes = append(m.ClassIndexes, strings.TrimPrefix(k, "class:"))
-	}
-	slices.Sort(m.ClassIndexes)
-	return m
 }

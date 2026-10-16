@@ -59,7 +59,7 @@ func realisticRows(t testing.TB) []charactersdb.CampaignContent {
 // 300-entry limit: the contents (minus the shared SRD), the catalogs ListContent
 // serves for each (the master's and the players') and the time of a miss (the
 // stored data decoded into an overlay, With). Run with MEURPG_MEASURE=1 and -v
-// (docs/operations.md).
+// (docs/operations/README.md).
 func TestLiveContentMemory(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {
 		t.Skip("set MEURPG_MEASURE=1 to measure")
@@ -113,7 +113,7 @@ func TestLiveContentMemory(t *testing.T) {
 // TestLiveContentMemoryAtMaximumText measures a table whose 300 entries each
 // carry nearly the 64 KiB of text an entry may hold, the biggest content the
 // limits allow, decoded from stored data the way a read does. Run with
-// MEURPG_MEASURE=1 and -v (docs/operations.md).
+// MEURPG_MEASURE=1 and -v (docs/operations/README.md).
 func TestLiveContentMemoryAtMaximumText(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {
 		t.Skip("set MEURPG_MEASURE=1 to measure")

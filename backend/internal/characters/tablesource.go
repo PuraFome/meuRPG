@@ -16,7 +16,7 @@ import (
 
 // maxLiveContents is how many campaign contents (the SRD plus one table's layer)
 // the live source keeps, the plan's budget (ADR-0018, section 5): about 1.5 MB each
-// with a real table (docs/operations.md).
+// with a real table (docs/operations/README.md).
 const maxLiveContents = 8
 
 // maxLiveBytes bounds the stored data (the entries' JSON, which the content keeps

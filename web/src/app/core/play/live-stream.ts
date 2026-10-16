@@ -45,7 +45,7 @@ export function backoffDelay(attempt: number, random: () => number = Math.random
 
 /**
  * The live session's stream, with ADR-0005's client rules
- * (docs/architecture.md#live-session):
+ * (docs/architecture/play/live-session.md#live-session):
  *
  * - `ready` first; the page reads the snapshot on each one;
  * - reconnects after any end that is not final, with backoff and jitter,

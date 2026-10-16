@@ -20,7 +20,7 @@ const allowed connect.Code = 0
 
 // TestAuthorizationMatrix calls every CharacterService and ContentService
 // method as each kind of caller and checks who gets in (ADR-0011, and the
-// table in docs/architecture.md):
+// table in docs/architecture/README.md):
 //
 //	master        the campaign's master
 //	owner         the player who owns the character the call is about

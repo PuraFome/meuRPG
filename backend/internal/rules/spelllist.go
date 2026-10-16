@@ -71,18 +71,29 @@ func (c *Content) ListSpells(f SpellFilter) []SpellEntry {
 	}
 	var out []SpellEntry
 	for _, e := range c.c.catalog.Spells {
-		switch {
-		case f.Hidden != nil && f.Hidden(e.Key):
-		case query != "" && !strings.Contains(foldPT(e.NamePT), query) && !strings.Contains(foldPT(e.Name), query):
-		case list != "" && !slices.Contains(e.Classes, list):
-		case len(f.Levels) > 0 && !slices.Contains(f.Levels, e.Level):
-		case len(f.Schools) > 0 && !slices.Contains(f.Schools, e.School):
-		case f.Learnable != nil && !slices.ContainsFunc(f.Learnable, func(a SpellAccess) bool {
-			return e.Level <= a.MaxLevel && slices.Contains(e.Classes, a.List)
-		}):
-		default:
+		if spellPasses(f, e, query, list) {
 			out = append(out, e)
 		}
 	}
 	return out
+}
+
+// spellPasses says whether a spell passes every field of the filter; query
+// is the folded query, and list the class list ("" for any).
+func spellPasses(f SpellFilter, e SpellEntry, query, list string) bool {
+	switch {
+	case f.Hidden != nil && f.Hidden(e.Key):
+		return false
+	case query != "" && !strings.Contains(foldPT(e.NamePT), query) && !strings.Contains(foldPT(e.Name), query):
+		return false
+	case list != "" && !slices.Contains(e.Classes, list):
+		return false
+	case len(f.Levels) > 0 && !slices.Contains(f.Levels, e.Level):
+		return false
+	case len(f.Schools) > 0 && !slices.Contains(f.Schools, e.School):
+		return false
+	}
+	return f.Learnable == nil || slices.ContainsFunc(f.Learnable, func(a SpellAccess) bool {
+		return e.Level <= a.MaxLevel && slices.Contains(e.Classes, a.List)
+	})
 }
