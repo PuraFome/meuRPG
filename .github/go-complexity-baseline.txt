@@ -21,8 +21,6 @@ cognitive internal/campaigns (*Service).UpdateCampaignDocument 16
 cognitive internal/campaigns (*Service).acceptInvite 28
 cognitive internal/characters (*Service).AdjustCreatureHitPoints 33
 cognitive internal/characters (*Service).AdjustVitals 25
-cognitive internal/characters (*Service).ApproveCharacter 20
-cognitive internal/characters (*Service).ClaimCharacter 46
 cognitive internal/characters (*Service).CombatSheet 17
 cognitive internal/characters (*Service).CombatSpell 20
 cognitive internal/characters (*Service).CompleteCharacterChoices 38
@@ -43,13 +41,8 @@ cognitive internal/characters (*Service).ListSpells 29
 cognitive internal/characters (*Service).ListTableEntries 40
 cognitive internal/characters (*Service).MonsterNpc 21
 cognitive internal/characters (*Service).PartyVision 17
-cognitive internal/characters (*Service).RejectCharacter 16
 cognitive internal/characters (*Service).RenameCreature 18
-cognitive internal/characters (*Service).RequestCharacterChanges 26
-cognitive internal/characters (*Service).ResubmitCharacter 24
-cognitive internal/characters (*Service).ReturnCharacterToReserve 22
 cognitive internal/characters (*Service).ReviveCharacter 23
-cognitive internal/characters (*Service).RevokeClaimLink 17
 cognitive internal/characters (*Service).RollAbilityScores 47
 cognitive internal/characters (*Service).RollLevelUpHitPoints 28
 cognitive internal/characters (*Service).SetOptionSwitches 63
@@ -495,7 +488,6 @@ cyclomatic internal/campaigns (*Service).CreateCampaign 16
 cyclomatic internal/campaigns (*Service).acceptInvite 20
 cyclomatic internal/characters (*Service).AdjustCreatureHitPoints 24
 cyclomatic internal/characters (*Service).AdjustVitals 21
-cyclomatic internal/characters (*Service).ClaimCharacter 28
 cyclomatic internal/characters (*Service).CombatSpell 19
 cyclomatic internal/characters (*Service).CompleteCharacterChoices 24
 cyclomatic internal/characters (*Service).CreateCharacter 46
@@ -511,9 +503,6 @@ cyclomatic internal/characters (*Service).ListCreatures 17
 cyclomatic internal/characters (*Service).ListLevelUps 17
 cyclomatic internal/characters (*Service).ListSpells 26
 cyclomatic internal/characters (*Service).ListTableEntries 22
-cyclomatic internal/characters (*Service).RequestCharacterChanges 21
-cyclomatic internal/characters (*Service).ResubmitCharacter 22
-cyclomatic internal/characters (*Service).ReturnCharacterToReserve 16
 cyclomatic internal/characters (*Service).ReviveCharacter 16
 cyclomatic internal/characters (*Service).RollAbilityScores 27
 cyclomatic internal/characters (*Service).RollLevelUpHitPoints 17
