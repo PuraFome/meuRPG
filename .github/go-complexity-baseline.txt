@@ -7,8 +7,6 @@
 # The list may only shrink: CI fails when a function enters it or gets
 # worse, and when one gets better until this file is written again.
 # See CONTRIBUTING.md, "Complexity totals".
-cognitive internal/identity (*Service).completeLogin 16
-cognitive internal/identity/oidctest New 17
 cognitive internal/maps (*Service).GenerateMapImage 17
 cognitive internal/maps (*Service).checkCharacters 31
 cognitive internal/maps (*Service).playersSeenOf 30
@@ -154,9 +152,6 @@ cognitive internal/play squareNear 16
 cognitive internal/play startTurn 17
 cognitive internal/play tallyHighlights 59
 cognitive internal/play/live (*Hub).Publish 17
-cyclomatic internal/identity (*Service).completeLogin 16
-cyclomatic internal/identity safeReturnTo 16
-cyclomatic internal/identity/oidctest New 23
 cyclomatic internal/maps (*Service).GenerateMapImage 16
 cyclomatic internal/maps (*Service).checkCharacters 21
 cyclomatic internal/maps (*Service).playersSeenOf 20
