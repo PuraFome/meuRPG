@@ -1,0 +1,479 @@
+[
+  {
+    "answer": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43+mesa.4",
+      "spells": [
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:lamina-de-nanquim@mesa",
+          "level": 1,
+          "name": "Lâmina de Nanquim",
+          "namePt": "Lâmina de Nanquim",
+          "schoolKey": "school:evocation",
+          "schoolNamePt": "Evocação"
+        }
+      ],
+      "total": 1
+    },
+    "logs": null,
+    "request": "by name, a table spell and an archived one"
+  },
+  {
+    "answer": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43+mesa.4"
+    },
+    "logs": null,
+    "request": "the switched-off wizard's 3rd circle of evocation"
+  },
+  {
+    "answer": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43+mesa.4",
+      "spells": [
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:mage-armor",
+          "level": 1,
+          "name": "Mage Armor",
+          "namePt": "Armadura Arcana",
+          "schoolKey": "school:abjuration",
+          "schoolNamePt": "Abjuração"
+        },
+        {
+          "classKeys": [
+            "class:bard",
+            "class:cleric",
+            "class:druid",
+            "class:paladin",
+            "class:ranger",
+            "class:sorcerer"
+          ],
+          "concentration": true,
+          "key": "spell:detect-magic",
+          "level": 1,
+          "name": "Detect Magic",
+          "namePt": "Detectar Magia",
+          "ritual": true,
+          "schoolKey": "school:divination",
+          "schoolNamePt": "Adivinhação"
+        },
+        {
+          "classKeys": [
+            "class:bard",
+            "class:sorcerer"
+          ],
+          "concentration": true,
+          "key": "spell:silent-image",
+          "level": 1,
+          "name": "Silent Image",
+          "namePt": "Imagem Silenciosa",
+          "schoolKey": "school:illusion",
+          "schoolNamePt": "Ilusão"
+        },
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:magic-missile",
+          "level": 1,
+          "name": "Magic Missile",
+          "namePt": "Mísseis Mágicos",
+          "schoolKey": "school:evocation",
+          "schoolNamePt": "Evocação"
+        }
+      ],
+      "total": 4
+    },
+    "logs": null,
+    "request": "the sorcerer's 1st circle, by name"
+  },
+  {
+    "answer": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43+mesa.4"
+    },
+    "logs": null,
+    "request": "an unknown class"
+  },
+  {
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    },
+    "request": "what Pensantus can learn of the 1st circle, by name"
+  },
+  {
+    "answer": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43+mesa.4",
+      "nextPageToken": "czEwOjQ0YTllYzdjOWMxNg",
+      "spells": [
+        {
+          "classKeys": [
+            "class:druid"
+          ],
+          "concentration": true,
+          "key": "spell:shapechange",
+          "level": 9,
+          "name": "Shapechange",
+          "namePt": "Alterar Forma",
+          "schoolKey": "school:transmutation",
+          "schoolNamePt": "Transmutação"
+        },
+        {
+          "classKeys": [
+            "class:warlock"
+          ],
+          "key": "spell:imprisonment",
+          "level": 9,
+          "name": "Imprisonment",
+          "namePt": "Aprisionamento",
+          "schoolKey": "school:abjuration",
+          "schoolNamePt": "Abjuração"
+        },
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:meteor-swarm",
+          "level": 9,
+          "name": "Meteor Swarm",
+          "namePt": "Chuva de Meteoros",
+          "schoolKey": "school:evocation",
+          "schoolNamePt": "Evocação"
+        },
+        {
+          "classKeys": [
+            "class:cleric"
+          ],
+          "key": "spell:mass-heal",
+          "level": 9,
+          "name": "Mass Heal",
+          "namePt": "Cura Completa em Massa",
+          "schoolKey": "school:conjuration",
+          "schoolNamePt": "Conjuração"
+        },
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:wish",
+          "level": 9,
+          "name": "Wish",
+          "namePt": "Desejo",
+          "schoolKey": "school:conjuration",
+          "schoolNamePt": "Conjuração"
+        },
+        {
+          "concentration": true,
+          "key": "spell:weird",
+          "level": 9,
+          "name": "Weird",
+          "namePt": "Encarnação Fantasmagórica",
+          "schoolKey": "school:illusion",
+          "schoolNamePt": "Ilusão"
+        },
+        {
+          "classKeys": [
+            "class:bard",
+            "class:warlock"
+          ],
+          "concentration": true,
+          "key": "spell:true-polymorph",
+          "level": 9,
+          "name": "True Polymorph",
+          "namePt": "Metamorfose Verdadeira",
+          "schoolKey": "school:transmutation",
+          "schoolNamePt": "Transmutação"
+        },
+        {
+          "key": "spell:prismatic-wall",
+          "level": 9,
+          "name": "Prismatic Wall",
+          "namePt": "Muralha Prismática",
+          "schoolKey": "school:abjuration",
+          "schoolNamePt": "Abjuração"
+        },
+        {
+          "classKeys": [
+            "class:bard",
+            "class:sorcerer",
+            "class:warlock"
+          ],
+          "key": "spell:power-word-kill",
+          "level": 9,
+          "name": "Power Word Kill",
+          "namePt": "Palavra de Poder Matar",
+          "schoolKey": "school:enchantment",
+          "schoolNamePt": "Encantamento"
+        },
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:time-stop",
+          "level": 9,
+          "name": "Time Stop",
+          "namePt": "Parar o Tempo",
+          "schoolKey": "school:transmutation",
+          "schoolNamePt": "Transmutação"
+        }
+      ],
+      "total": 15
+    },
+    "logs": null,
+    "next page": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43+mesa.4",
+      "spells": [
+        {
+          "classKeys": [
+            "class:cleric",
+            "class:sorcerer"
+          ],
+          "concentration": true,
+          "key": "spell:gate",
+          "level": 9,
+          "name": "Gate",
+          "namePt": "Portal",
+          "schoolKey": "school:conjuration",
+          "schoolNamePt": "Conjuração"
+        },
+        {
+          "classKeys": [
+            "class:cleric",
+            "class:warlock"
+          ],
+          "key": "spell:astral-projection",
+          "level": 9,
+          "name": "Astral Projection",
+          "namePt": "Projeção Astral",
+          "schoolKey": "school:necromancy",
+          "schoolNamePt": "Necromancia"
+        },
+        {
+          "classKeys": [
+            "class:cleric",
+            "class:druid"
+          ],
+          "key": "spell:true-resurrection",
+          "level": 9,
+          "name": "True Resurrection",
+          "namePt": "Ressurreição Verdadeira",
+          "schoolKey": "school:necromancy",
+          "schoolNamePt": "Necromancia"
+        },
+        {
+          "classKeys": [
+            "class:bard",
+            "class:druid",
+            "class:warlock"
+          ],
+          "key": "spell:foresight",
+          "level": 9,
+          "name": "Foresight",
+          "namePt": "Sexto Sentido",
+          "schoolKey": "school:divination",
+          "schoolNamePt": "Adivinhação"
+        },
+        {
+          "classKeys": [
+            "class:druid"
+          ],
+          "concentration": true,
+          "key": "spell:storm-of-vengeance",
+          "level": 9,
+          "name": "Storm of Vengeance",
+          "namePt": "Tempestade da Vingança",
+          "schoolKey": "school:conjuration",
+          "schoolNamePt": "Conjuração"
+        }
+      ],
+      "total": 15
+    },
+    "request": "the 9th circle in pages of 10"
+  },
+  {
+    "answer": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43+mesa.4",
+      "spells": [
+        {
+          "classKeys": [
+            "class:druid"
+          ],
+          "concentration": true,
+          "key": "spell:shapechange",
+          "level": 9,
+          "name": "Shapechange",
+          "namePt": "Alterar Forma",
+          "schoolKey": "school:transmutation",
+          "schoolNamePt": "Transmutação"
+        },
+        {
+          "classKeys": [
+            "class:warlock"
+          ],
+          "key": "spell:imprisonment",
+          "level": 9,
+          "name": "Imprisonment",
+          "namePt": "Aprisionamento",
+          "schoolKey": "school:abjuration",
+          "schoolNamePt": "Abjuração"
+        },
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:meteor-swarm",
+          "level": 9,
+          "name": "Meteor Swarm",
+          "namePt": "Chuva de Meteoros",
+          "schoolKey": "school:evocation",
+          "schoolNamePt": "Evocação"
+        },
+        {
+          "classKeys": [
+            "class:cleric"
+          ],
+          "key": "spell:mass-heal",
+          "level": 9,
+          "name": "Mass Heal",
+          "namePt": "Cura Completa em Massa",
+          "schoolKey": "school:conjuration",
+          "schoolNamePt": "Conjuração"
+        },
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:wish",
+          "level": 9,
+          "name": "Wish",
+          "namePt": "Desejo",
+          "schoolKey": "school:conjuration",
+          "schoolNamePt": "Conjuração"
+        },
+        {
+          "concentration": true,
+          "key": "spell:weird",
+          "level": 9,
+          "name": "Weird",
+          "namePt": "Encarnação Fantasmagórica",
+          "schoolKey": "school:illusion",
+          "schoolNamePt": "Ilusão"
+        },
+        {
+          "classKeys": [
+            "class:bard",
+            "class:warlock"
+          ],
+          "concentration": true,
+          "key": "spell:true-polymorph",
+          "level": 9,
+          "name": "True Polymorph",
+          "namePt": "Metamorfose Verdadeira",
+          "schoolKey": "school:transmutation",
+          "schoolNamePt": "Transmutação"
+        },
+        {
+          "key": "spell:prismatic-wall",
+          "level": 9,
+          "name": "Prismatic Wall",
+          "namePt": "Muralha Prismática",
+          "schoolKey": "school:abjuration",
+          "schoolNamePt": "Abjuração"
+        },
+        {
+          "classKeys": [
+            "class:bard",
+            "class:sorcerer",
+            "class:warlock"
+          ],
+          "key": "spell:power-word-kill",
+          "level": 9,
+          "name": "Power Word Kill",
+          "namePt": "Palavra de Poder Matar",
+          "schoolKey": "school:enchantment",
+          "schoolNamePt": "Encantamento"
+        },
+        {
+          "classKeys": [
+            "class:sorcerer"
+          ],
+          "key": "spell:time-stop",
+          "level": 9,
+          "name": "Time Stop",
+          "namePt": "Parar o Tempo",
+          "schoolKey": "school:transmutation",
+          "schoolNamePt": "Transmutação"
+        },
+        {
+          "classKeys": [
+            "class:cleric",
+            "class:sorcerer"
+          ],
+          "concentration": true,
+          "key": "spell:gate",
+          "level": 9,
+          "name": "Gate",
+          "namePt": "Portal",
+          "schoolKey": "school:conjuration",
+          "schoolNamePt": "Conjuração"
+        },
+        {
+          "classKeys": [
+            "class:cleric",
+            "class:warlock"
+          ],
+          "key": "spell:astral-projection",
+          "level": 9,
+          "name": "Astral Projection",
+          "namePt": "Projeção Astral",
+          "schoolKey": "school:necromancy",
+          "schoolNamePt": "Necromancia"
+        },
+        {
+          "classKeys": [
+            "class:cleric",
+            "class:druid"
+          ],
+          "key": "spell:true-resurrection",
+          "level": 9,
+          "name": "True Resurrection",
+          "namePt": "Ressurreição Verdadeira",
+          "schoolKey": "school:necromancy",
+          "schoolNamePt": "Necromancia"
+        },
+        {
+          "classKeys": [
+            "class:bard",
+            "class:druid",
+            "class:warlock"
+          ],
+          "key": "spell:foresight",
+          "level": 9,
+          "name": "Foresight",
+          "namePt": "Sexto Sentido",
+          "schoolKey": "school:divination",
+          "schoolNamePt": "Adivinhação"
+        },
+        {
+          "classKeys": [
+            "class:druid"
+          ],
+          "concentration": true,
+          "key": "spell:storm-of-vengeance",
+          "level": 9,
+          "name": "Storm of Vengeance",
+          "namePt": "Tempestade da Vingança",
+          "schoolKey": "school:conjuration",
+          "schoolNamePt": "Conjuração"
+        }
+      ],
+      "total": 15
+    },
+    "logs": null,
+    "request": "the default page of the 9th circle"
+  }
+]
