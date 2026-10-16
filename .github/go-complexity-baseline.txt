@@ -157,12 +157,7 @@ cognitive internal/maps (*Service).serve 18
 cognitive internal/maps (*Service).serveTile 31
 cognitive internal/maps (*Service).storeImage 24
 cognitive internal/maps (*Service).updateVision 27
-cognitive internal/maps (*imagesPart).Stage 23
 cognitive internal/maps (*mapsPart).Apply 18
-cognitive internal/maps (*mapsPart).Stage 16
-cognitive internal/maps (*mapsPart).exportMap 22
-cognitive internal/maps (*mapsPart).stageMap 22
-cognitive internal/maps (*mapsPart).stagePoint 27
 cognitive internal/maps (*trapScene).sightOf 16
 cognitive internal/maps (campaignMaps).mapToProto 21
 cognitive internal/maps blackenBlocks 33
@@ -663,9 +658,6 @@ cyclomatic internal/maps (*Service).reserve 40
 cyclomatic internal/maps (*Service).run 30
 cyclomatic internal/maps (*Service).serveTile 27
 cyclomatic internal/maps (*Service).updateVision 23
-cyclomatic internal/maps (*imagesPart).Stage 20
-cyclomatic internal/maps (*mapsPart).stageMap 22
-cyclomatic internal/maps (*mapsPart).stagePoint 27
 cyclomatic internal/maps (campaignMaps).mapToProto 19
 cyclomatic internal/maps decodeWorkingCopy 27
 cyclomatic internal/maps renderTile 21
