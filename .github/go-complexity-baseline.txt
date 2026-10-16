@@ -22,8 +22,6 @@ cognitive internal/campaigns (*Service).acceptInvite 28
 cognitive internal/characters (*Service).AdjustCreatureHitPoints 33
 cognitive internal/characters (*Service).ApproveCharacter 20
 cognitive internal/characters (*Service).ClaimCharacter 46
-cognitive internal/characters (*Service).CombatSheet 17
-cognitive internal/characters (*Service).CombatSpell 20
 cognitive internal/characters (*Service).CompleteCharacterChoices 38
 cognitive internal/characters (*Service).CreateNpcFromCreature 23
 cognitive internal/characters (*Service).DismissCreature 22
@@ -36,7 +34,6 @@ cognitive internal/characters (*Service).ListCreatures 16
 cognitive internal/characters (*Service).ListLevelUps 19
 cognitive internal/characters (*Service).ListSpells 29
 cognitive internal/characters (*Service).MonsterNpc 21
-cognitive internal/characters (*Service).PartyVision 17
 cognitive internal/characters (*Service).RejectCharacter 16
 cognitive internal/characters (*Service).RenameCreature 18
 cognitive internal/characters (*Service).RequestCharacterChanges 26
@@ -49,16 +46,11 @@ cognitive internal/characters (*Service).SyncCreatures 21
 cognitive internal/characters (*Service).newLevelUpTarget 18
 cognitive internal/characters (*Service).planLevelUpIn 38
 cognitive internal/characters (*Service).summonSpellOptions 32
-cognitive internal/characters (*packagePart).Apply 24
-cognitive internal/characters (*packagePart).exportCharacters 19
-cognitive internal/characters (*packagePart).stageContent 21
-cognitive internal/characters (*packagePart).stageOne 24
 cognitive internal/characters applyChoicePicks 33
 cognitive internal/characters catalogToProto 25
 cognitive internal/characters checkLevelUpChoices 18
 cognitive internal/characters cleanChoicePicks 17
 cognitive internal/characters derivedToProto 29
-cognitive internal/characters fullReactionStats 16
 cognitive internal/characters levelUpOptionsToProto 21
 cognitive internal/characters spellcastingBlock 17
 cognitive internal/identity (*Service).completeLogin 16
@@ -466,7 +458,6 @@ cyclomatic internal/campaigns (*Service).CreateCampaign 16
 cyclomatic internal/campaigns (*Service).acceptInvite 20
 cyclomatic internal/characters (*Service).AdjustCreatureHitPoints 24
 cyclomatic internal/characters (*Service).ClaimCharacter 28
-cyclomatic internal/characters (*Service).CombatSpell 19
 cyclomatic internal/characters (*Service).CompleteCharacterChoices 24
 cyclomatic internal/characters (*Service).CreateNpcFromCreature 20
 cyclomatic internal/characters (*Service).GetLevelUpOptions 25
@@ -485,12 +476,9 @@ cyclomatic internal/characters (*Service).SyncCreatures 17
 cyclomatic internal/characters (*Service).newLevelUpTarget 18
 cyclomatic internal/characters (*Service).planLevelUpIn 30
 cyclomatic internal/characters (*Service).summonSpellOptions 22
-cyclomatic internal/characters (*packagePart).stageContent 18
-cyclomatic internal/characters (*packagePart).stageOne 19
 cyclomatic internal/characters applyChoicePicks 18
 cyclomatic internal/characters catalogToProto 19
 cyclomatic internal/characters derivedToProto 28
-cyclomatic internal/characters fullReactionStats 17
 cyclomatic internal/identity (*Service).completeLogin 16
 cyclomatic internal/identity safeReturnTo 16
 cyclomatic internal/identity/oidctest New 23
