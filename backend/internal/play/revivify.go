@@ -137,6 +137,14 @@ func revivifySlot(c castable) (*playv1.SpellSlot, int32) {
 	return &playv1.SpellSlot{Level: best.GetLevel(), Pact: best.GetPact()}, best.GetFree()
 }
 
+// revivifyScene is a combat as the caller reads it for the preview: its data, what the caller
+// sees and the caster.
+type revivifyScene struct {
+	d      *encounterData
+	v      combatViewer
+	caster playdb.Combatant
+}
+
 // PreviewRevivify implements playv1connect.RevivifyServiceHandler.
 func (s *Service) PreviewRevivify(
 	ctx context.Context,
@@ -157,25 +165,39 @@ func (s *Service) PreviewRevivify(
 	if err != nil {
 		return nil, err
 	}
-	_, d, err := s.readEncounter(ctx, m.CampaignID, encID)
+	sc, err := s.previewScene(ctx, m, encID, casterID)
 	if err != nil {
 		return nil, err
 	}
+	return s.previewInside(ctx, m, sc)
+}
+
+// previewScene reads the combat and finds the caster, who must be the caller's to act for.
+func (s *Service) previewScene(ctx context.Context, m authz.Membership, encID, casterID string) (revivifyScene, error) {
+	_, d, err := s.readEncounter(ctx, m.CampaignID, encID)
+	if err != nil {
+		return revivifyScene{}, err
+	}
 	if err := notEnded(d.enc); err != nil {
-		return nil, err
+		return revivifyScene{}, err
 	}
 	v, _, err := s.viewerWith(ctx, m, d.enc, d.cs)
 	if err != nil {
-		return nil, s.dbError(ctx, "work out what the player sees", err)
+		return revivifyScene{}, s.dbError(ctx, "work out what the player sees", err)
 	}
 	caster, err := findCombatant(d.cs, casterID, v)
 	if err != nil {
-		return nil, err
+		return revivifyScene{}, err
 	}
 	if err := v.mayAct(caster); err != nil {
-		return nil, err
+		return revivifyScene{}, err
 	}
-	opts, err := s.optionsOf(ctx, nil, m.CampaignID, caster)
+	return revivifyScene{d: d, v: v, caster: caster}, nil
+}
+
+// previewInside is the preview of a combat: the caster's slot and who the spell reaches.
+func (s *Service) previewInside(ctx context.Context, m authz.Membership, sc revivifyScene) (*connect.Response[playv1.PreviewRevivifyResponse], error) {
+	opts, err := s.optionsOf(ctx, nil, m.CampaignID, sc.caster)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
@@ -187,34 +209,49 @@ func (s *Service) PreviewRevivify(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the spell", err)
 	}
-	// What the caster sees: for the master asking about a player's character, what that player
-	// sees, so the reasons he reads are the ones that keep the creature off their list.
-	sees := v
-	if v.master && caster.UserID != nil {
-		if sees, _, err = s.viewerWith(ctx, authz.Membership{CampaignID: m.CampaignID, UserID: *caster.UserID, Role: authz.RolePlayer}, d.enc, d.cs); err != nil {
-			return nil, s.dbError(ctx, "work out what the player sees", err)
-		}
+	sees, err := s.previewSees(ctx, m, sc)
+	if err != nil {
+		return nil, err
 	}
 	res := &playv1.PreviewRevivifyResponse{CountsTime: true}
 	res.Slot, res.SlotsFree = revivifySlot(cast)
-	for _, t := range d.cs {
-		if !canBeDead(t) || t.ID == caster.ID {
+	listRevivifyTargets(res, spec, sc, sees)
+	return connect.NewResponse(res), nil
+}
+
+// previewSees is what the caster sees: for the master asking about a player's character, what
+// that player sees, so the reasons he reads are the ones that keep the creature off their list.
+func (s *Service) previewSees(ctx context.Context, m authz.Membership, sc revivifyScene) (combatViewer, error) {
+	if !sc.v.master || sc.caster.UserID == nil {
+		return sc.v, nil
+	}
+	player := authz.Membership{CampaignID: m.CampaignID, UserID: *sc.caster.UserID, Role: authz.RolePlayer}
+	sees, _, err := s.viewerWith(ctx, player, sc.d.enc, sc.d.cs)
+	if err != nil {
+		return sc.v, s.dbError(ctx, "work out what the player sees", err)
+	}
+	return sees, nil
+}
+
+// listRevivifyTargets fills the preview: a player's list holds only the creatures the spell
+// reaches and they see; the master also gets the reason for each one it does not reach.
+func listRevivifyTargets(res *playv1.PreviewRevivifyResponse, spec rules.ReviveSpec, sc revivifyScene, sees combatViewer) {
+	for _, t := range sc.d.cs {
+		if !canBeDead(t) || t.ID == sc.caster.ID {
 			continue
 		}
-		reason, since := revivifyVerdict(spec, d.enc, d.cs, caster, t, sees, false)
+		reason, since := revivifyVerdict(spec, sc.d.enc, sc.d.cs, sc.caster, t, sees, false)
 		switch {
-		case reason == playv1.RevivifyUnavailableReason_REVIVIFY_UNAVAILABLE_REASON_UNSPECIFIED:
-			if !v.sees(t) {
-				continue // a player never lists what they do not see
+		case reason != playv1.RevivifyUnavailableReason_REVIVIFY_UNAVAILABLE_REASON_UNSPECIFIED:
+			if sc.v.master {
+				res.Unavailable = append(res.Unavailable, &playv1.RevivifyUnavailable{
+					TargetId: t.ID, Name: t.Label, Reason: reason, DeathRound: t.DeathRound, RoundsSinceDeath: new(since),
+				})
 			}
+		case sc.v.sees(t): // a player never lists what they do not see
 			res.Targets = append(res.Targets, &playv1.RevivifyTarget{TargetId: t.ID, Name: t.Label, DeathRound: t.DeathRound, RoundsSinceDeath: new(since)})
-		case v.master:
-			res.Unavailable = append(res.Unavailable, &playv1.RevivifyUnavailable{
-				TargetId: t.ID, Name: t.Label, Reason: reason, DeathRound: t.DeathRound, RoundsSinceDeath: new(since),
-			})
 		}
 	}
-	return connect.NewResponse(res), nil
 }
 
 // revivifyShape checks the request of a Revivify cast and returns the dead creature it names:
@@ -238,6 +275,40 @@ func revivifyShape(in *playv1.CastSpellRequest) (string, error) {
 	return targetID, nil
 }
 
+// revivifyInput is what a Revivify cast names, read before anything is opened.
+type revivifyInput struct {
+	key, encounterID, casterID, targetID string
+}
+
+// revivifyInputOf reads the key, the combat, the caster and the dead creature of a cast.
+func revivifyInputOf(msg *playv1.CastSpellRequest) (revivifyInput, error) {
+	key, err := parseKey(msg.GetIdempotencyKey())
+	if err != nil {
+		return revivifyInput{}, err
+	}
+	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	if err != nil {
+		return revivifyInput{}, err
+	}
+	casterID, err := parseCombatID(msg.GetCasterId(), "combatant")
+	if err != nil {
+		return revivifyInput{}, err
+	}
+	targetID, err := revivifyShape(msg)
+	if err != nil {
+		return revivifyInput{}, err
+	}
+	return revivifyInput{key: key, encounterID: encID, casterID: casterID, targetID: targetID}, nil
+}
+
+// revivifyOutcome is what the transaction of a cast leaves for what happens after the commit.
+type revivifyOutcome struct {
+	made   actionEvent
+	vitals []*playv1.CharacterVitals
+	told   *revivedCharacter
+	v      combatViewer
+}
+
 // castRevivify is CastSpell for Revivify inside a combat: the cast spends the slot and the action,
 // touches a creature that died within the minute, and the creature returns with 1 hit point. The
 // caster confirmed the diamonds (material_confirmed); the app only notes that they were spent.
@@ -251,106 +322,118 @@ func (s *Service) castRevivify(
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
+	in, err := revivifyInputOf(req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	casterID, err := parseCombatID(req.Msg.GetCasterId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	targetID, err := revivifyShape(req.Msg)
-	if err != nil {
-		return nil, err
-	}
-	v := viewerOf(m)
-
-	var made actionEvent
-	var vitals []*playv1.CharacterVitals
-	var told *revivedCharacter
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals, told = nil, nil
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v = c.viewer(m, cs)
-		caster, slot, err := s.revivifyCaster(ctx, c, m, v, cs, casterID, req.Msg.GetSlot())
-		if err != nil {
-			return nil, err
-		}
-		target, err := s.revivifyTarget(ctx, c, m, v, cs, caster, targetID)
-		if err != nil {
-			return nil, err
-		}
-		// A Counterspell can answer this cast like any other: it waits for the windows and
-		// happens when they are answered (PM-04, combat_reaction_hold.go).
-		if held, ok, err := s.holdCast(ctx, c, m, req.Msg, cs, caster, revivifyKey, slot.Level, []playdb.Combatant{target}); err != nil {
-			return nil, err
-		} else if ok {
-			made = held
-			return made, nil
-		}
-		if made, vitals, err = s.spendForRevivify(ctx, c, caster, slot); err != nil {
-			return nil, err
-		}
-		if c.replay != nil && c.replay.countered {
-			// The slot and the action are spent, as casting expended them, and nothing else
-			// happens: the creature stays dead (SRD, Counterspell).
-			made.Secret = caster.Hidden
-			made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: revivifyKey, Level: slot.Level}
-			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-				return nil, fmt.Errorf("touch the encounter: %w", err)
-			}
-			c.characterID = &caster.CharacterID
-			return made, nil
-		}
-		hit, more, back, err := s.bringBack(ctx, c, m, v, target)
-		if err != nil {
-			return nil, err
-		}
-		vitals = append(vitals, more...)
-		told = back
-		made.Hits = []castHit{hit}
-		made.Secret = caster.Hidden || target.Hidden
-		c.characterID = &caster.CharacterID
-		return made, nil
+	out := &revivifyOutcome{v: viewerOf(m)}
+	res, err := s.write(ctx, combatWrite{m: m, key: in.key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: in.encounterID}, func(c *combatTx) (any, error) {
+		return s.revivifyWrite(ctx, c, m, req.Msg, in, out)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "cast Revivify", err)
 	}
-	if v, err = s.viewerAfter(ctx, m, res, v); err != nil {
+	return s.revivifyReply(ctx, m, res, out)
+}
+
+// revivifyWrite is the transaction of a cast: check the caster and the target, let a Counterspell
+// answer, spend the slot and the action, and bring the creature back.
+func (s *Service) revivifyWrite(ctx context.Context, c *combatTx, m authz.Membership, msg *playv1.CastSpellRequest, in revivifyInput, out *revivifyOutcome) (any, error) {
+	out.vitals, out.told = nil, nil
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	out.v = c.viewer(m, cs)
+	caster, slot, err := s.revivifyCaster(ctx, c, m, out.v, cs, in.casterID, msg.GetSlot())
+	if err != nil {
+		return nil, err
+	}
+	target, err := s.revivifyTarget(ctx, c, m, out.v, cs, caster, in.targetID)
+	if err != nil {
+		return nil, err
+	}
+	// A Counterspell can answer this cast like any other: it waits for the windows and
+	// happens when they are answered (PM-04, combat_reaction_hold.go).
+	if held, ok, err := s.holdCast(ctx, c, m, msg, cs, caster, revivifyKey, slot.Level, []playdb.Combatant{target}); err != nil {
+		return nil, err
+	} else if ok {
+		out.made = held
+		return out.made, nil
+	}
+	if out.made, out.vitals, err = s.spendForRevivify(ctx, c, caster, slot); err != nil {
+		return nil, err
+	}
+	if c.replay != nil && c.replay.countered {
+		return s.revivifyCountered(ctx, c, caster, slot, out)
+	}
+	return s.revivifyRaise(ctx, c, m, caster, target, out)
+}
+
+// revivifyCountered ends a cast a Counterspell stopped. The slot and the action are spent, as
+// casting expended them, and nothing else happens: the creature stays dead (SRD, Counterspell).
+func (s *Service) revivifyCountered(ctx context.Context, c *combatTx, caster playdb.Combatant, slot *slotRef, out *revivifyOutcome) (any, error) {
+	out.made.Secret = caster.Hidden
+	out.made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: revivifyKey, Level: slot.Level}
+	var err error
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &caster.CharacterID
+	return out.made, nil
+}
+
+// revivifyRaise brings the target back and notes it in the event.
+func (s *Service) revivifyRaise(ctx context.Context, c *combatTx, m authz.Membership, caster, target playdb.Combatant, out *revivifyOutcome) (any, error) {
+	hit, more, back, err := s.bringBack(ctx, c, m, out.v, target)
+	if err != nil {
+		return nil, err
+	}
+	out.vitals = append(out.vitals, more...)
+	out.told = back
+	out.made.Hits = []castHit{hit}
+	out.made.Secret = caster.Hidden || target.Hidden
+	c.characterID = &caster.CharacterID
+	return out.made, nil
+}
+
+// revivifyReply is what happens after the commit: the viewer, the event, the hints and the answer.
+func (s *Service) revivifyReply(ctx context.Context, m authz.Membership, res combatResult, out *revivifyOutcome) (*connect.Response[playv1.CastSpellResponse], error) {
+	v, err := s.viewerAfter(ctx, m, res, out.v)
+	if err != nil {
 		return nil, s.dbError(ctx, "work out what the player sees", err)
 	}
-	ev, err := resultEvent(res, made)
+	ev, err := resultEvent(res, out.made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the spell", err)
 	}
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
-		for _, vit := range vitals {
-			s.publishVitals(m.CampaignID, vit)
-		}
-		if told != nil {
-			s.PublishCharacterEvent(ctx, m.CampaignID, told.owner, told.characterID, characterRevived)
-		}
+	enc, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishRevivified(ctx, m, d, ev, out)
 	})
 	if err != nil {
 		return nil, err
 	}
 	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the cast: nothing of it happened yet
-		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out}), nil
+		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: enc}), nil
 	}
 	spell, err := s.castProto(ctx, res, ev, v)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, Cast: spell}), nil
+	return connect.NewResponse(&playv1.CastSpellResponse{Encounter: enc, Cast: spell}), nil
+}
+
+// publishRevivified tells the table what the cast changed: the combat, the log, the slot's vitals
+// and the character that came back.
+func (s *Service) publishRevivified(ctx context.Context, m authz.Membership, d *encounterData, ev actionEvent, out *revivifyOutcome) {
+	s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+	s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
+	for _, vit := range out.vitals {
+		s.publishVitals(m.CampaignID, vit)
+	}
+	if out.told != nil {
+		s.PublishCharacterEvent(ctx, m.CampaignID, out.told.owner, out.told.characterID, characterRevived)
+	}
 }
 
 // bringBack makes the creature live again. A player's character comes back through the
@@ -475,6 +558,28 @@ type revivedCharacter struct {
 	owner       string
 }
 
+// revivifyBlockTarget is who the master's switch names: a combatant of the open combat or a
+// character, one of the two.
+type revivifyBlockTarget struct {
+	combatantID, characterID string
+}
+
+// revivifyBlockTargetOf reads the target of the switch.
+func revivifyBlockTargetOf(msg *playv1.SetRevivifyBlockedRequest) (revivifyBlockTarget, error) {
+	switch t := msg.GetTarget().(type) {
+	case *playv1.SetRevivifyBlockedRequest_CombatantId:
+		id, err := parseCombatID(t.CombatantId, "combatant")
+		return revivifyBlockTarget{combatantID: id}, err
+	case *playv1.SetRevivifyBlockedRequest_CharacterId:
+		id, err := uuid.Parse(t.CharacterId)
+		if err != nil {
+			return revivifyBlockTarget{}, connect.NewError(connect.CodeNotFound, errors.New("character not found"))
+		}
+		return revivifyBlockTarget{characterID: id.String()}, nil
+	}
+	return revivifyBlockTarget{}, connect.NewError(connect.CodeInvalidArgument, errors.New("set combatant_id or character_id"))
+}
+
 // SetRevivifyBlocked implements playv1connect.RevivifyServiceHandler: the master's switch
 // "Revivificar não funciona nesta morte" on a creature that died of old age or lost a body part
 // (SRD 5.1, Revivify). Only the master. Setting what it already is changes nothing.
@@ -486,46 +591,16 @@ func (s *Service) SetRevivifyBlocked(
 	if err != nil {
 		return nil, err
 	}
-	var combatantID, characterID string
-	switch t := req.Msg.GetTarget().(type) {
-	case *playv1.SetRevivifyBlockedRequest_CombatantId:
-		if combatantID, err = parseCombatID(t.CombatantId, "combatant"); err != nil {
-			return nil, err
-		}
-	case *playv1.SetRevivifyBlockedRequest_CharacterId:
-		id, perr := uuid.Parse(t.CharacterId)
-		if perr != nil {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("character not found"))
-		}
-		characterID = id.String()
-	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set combatant_id or character_id"))
+	target, err := revivifyBlockTargetOf(req.Msg)
+	if err != nil {
+		return nil, err
 	}
 	blocked := req.Msg.GetBlocked()
 
 	var encounterID string
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		encounterID = ""
-		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		hasSession := err == nil
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("lock the open session: %w", err)
-		}
-		if combatantID != "" {
-			if !hasSession {
-				return errNoOpenSession()
-			}
-			encounterID, err = s.blockCombatant(ctx, tx, q, session.ID, m.CampaignID, combatantID, blocked)
-			return err
-		}
-		if err := s.roster.SetRevivifyBlocked(ctx, tx, m.CampaignID, characterID, blocked); err != nil {
-			return err
-		}
-		if !hasSession {
-			return nil
-		}
-		encounterID, err = s.blockDeadInCombat(ctx, q, session.ID, characterID, blocked)
+		var err error
+		encounterID, err = s.setBlockedIn(ctx, tx, m, target, blocked)
 		return err
 	})
 	if err != nil {
@@ -535,6 +610,30 @@ func (s *Service) SetRevivifyBlocked(
 		s.PublishEncounterChanged(ctx, m.CampaignID, encounterID)
 	}
 	return connect.NewResponse(&playv1.SetRevivifyBlockedResponse{}), nil
+}
+
+// setBlockedIn is the transaction of the switch. It returns the combat that changed, empty when
+// none did.
+func (s *Service) setBlockedIn(ctx context.Context, tx pgx.Tx, m authz.Membership, target revivifyBlockTarget, blocked bool) (string, error) {
+	q := s.queries.WithTx(tx)
+	session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
+	hasSession := err == nil
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("lock the open session: %w", err)
+	}
+	if target.combatantID != "" {
+		if !hasSession {
+			return "", errNoOpenSession()
+		}
+		return s.blockCombatant(ctx, tx, q, session.ID, m.CampaignID, target.combatantID, blocked)
+	}
+	if err := s.roster.SetRevivifyBlocked(ctx, tx, m.CampaignID, target.characterID, blocked); err != nil {
+		return "", err
+	}
+	if !hasSession {
+		return "", nil
+	}
+	return s.blockDeadInCombat(ctx, q, session.ID, target.characterID, blocked)
 }
 
 // blockCombatant sets the switch on a dead combatant of the open combat, and on its character
@@ -618,21 +717,10 @@ func (s *Service) combatantInOpenSession(ctx context.Context, q *playdb.Queries,
 // died: the master gets all of them, with the window and his switch; a player gets only their own
 // character, with the round and no more; for the others the list does not exist (RN-10).
 func (s *Service) deathsOf(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer) []*playv1.CombatDeath {
-	var dead []playdb.Combatant
-	for _, c := range d.cs {
-		if canBeDead(c) && c.DeathRound != nil && (v.master || v.owns(c)) {
-			dead = append(dead, c)
-		}
-	}
+	dead := deadInOrder(d.cs, v)
 	if len(dead) == 0 {
 		return nil
 	}
-	slices.SortStableFunc(dead, func(a, b playdb.Combatant) int {
-		if c := int(*a.DeathRound) - int(*b.DeathRound); c != 0 {
-			return c
-		}
-		return int(deref32(a.DeathOrderIndex)) - int(deref32(b.DeathOrderIndex))
-	})
 	var spec rules.ReviveSpec
 	if v.master {
 		var err error
@@ -643,19 +731,42 @@ func (s *Service) deathsOf(ctx context.Context, m authz.Membership, d *encounter
 	}
 	out := make([]*playv1.CombatDeath, 0, len(dead))
 	for _, c := range dead {
-		death := &playv1.CombatDeath{
-			CombatantId: c.ID, Name: c.Label, DeathRound: *c.DeathRound, IsPlayerCharacter: c.Kind == kindPlayer,
-		}
-		if c.Kind == kindPlayer {
-			death.CharacterId = c.CharacterID
-		}
-		if v.master {
-			_, fits := windowOf(spec, d.enc, d.cs, c)
-			death.FitsRevivify, death.RevivifyBlocked = new(fits), new(c.RevivifyBlocked)
-		}
-		out = append(out, death)
+		out = append(out, combatDeathOf(c, spec, d, v))
 	}
 	return out
+}
+
+// deadInOrder is the dead the viewer may read about, by the round and the place in the order they
+// died in.
+func deadInOrder(cs []playdb.Combatant, v combatViewer) []playdb.Combatant {
+	var dead []playdb.Combatant
+	for _, c := range cs {
+		if canBeDead(c) && c.DeathRound != nil && (v.master || v.owns(c)) {
+			dead = append(dead, c)
+		}
+	}
+	slices.SortStableFunc(dead, func(a, b playdb.Combatant) int {
+		if c := int(*a.DeathRound) - int(*b.DeathRound); c != 0 {
+			return c
+		}
+		return int(deref32(a.DeathOrderIndex)) - int(deref32(b.DeathOrderIndex))
+	})
+	return dead
+}
+
+// combatDeathOf is one entry of the list of deaths; the window and the switch are the master's.
+func combatDeathOf(c playdb.Combatant, spec rules.ReviveSpec, d *encounterData, v combatViewer) *playv1.CombatDeath {
+	death := &playv1.CombatDeath{
+		CombatantId: c.ID, Name: c.Label, DeathRound: *c.DeathRound, IsPlayerCharacter: c.Kind == kindPlayer,
+	}
+	if c.Kind == kindPlayer {
+		death.CharacterId = c.CharacterID
+	}
+	if v.master {
+		_, fits := windowOf(spec, d.enc, d.cs, c)
+		death.FitsRevivify, death.RevivifyBlocked = new(fits), new(c.RevivifyBlocked)
+	}
+	return death
 }
 
 func deref32(n *int32) int32 {
