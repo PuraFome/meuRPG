@@ -209,7 +209,7 @@ cognitive internal/play (*Service).UseLayOnHands 34
 cognitive internal/play (*Service).WatchGameSession 35
 cognitive internal/play (*Service).addEffects 42
 cognitive internal/play (*Service).addParticipants 61
-cognitive internal/play (*Service).afterEffectEnded 40
+cognitive internal/play (*Service).afterEffectEnded 36
 cognitive internal/play (*Service).answerFeatherFall 25
 cognitive internal/play (*Service).answerHellishRebuke 28
 cognitive internal/play (*Service).answerOffer 25
@@ -617,7 +617,7 @@ cyclomatic internal/play (*Service).WatchGameSession 24
 cyclomatic internal/play (*Service).addEffects 26
 cyclomatic internal/play (*Service).addParticipants 30
 cyclomatic internal/play (*Service).afterDamage 17
-cyclomatic internal/play (*Service).afterEffectEnded 20
+cyclomatic internal/play (*Service).afterEffectEnded 19
 cyclomatic internal/play (*Service).answerCounterspell 17
 cyclomatic internal/play (*Service).answerCuttingWords 17
 cyclomatic internal/play (*Service).answerFeatherFall 20
