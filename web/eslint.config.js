@@ -62,6 +62,18 @@ module.exports = tseslint.config(
         { skipStrings: true, skipTemplates: true, skipComments: true, skipRegExps: true },
       ],
       'max-depth': ['error', 4],
+      // `.replace(/ /g, ' ')` swaps a space for a space: a non-breaking space typed as a plain one, which does
+      // nothing (CodeQL js/identity-replacement). It came back three times (#235, #380, #399): write the
+      // non-breaking space as ` `, or let `\s` match it.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.property.name=/^replace(All)?$/][arguments.0.regex.pattern=' '][arguments.1.value=' ']",
+          message:
+            "This replaces a space with itself. Write the non-breaking space as '\\u00a0' (or match it with \\s).",
+        },
+      ],
     },
   },
   {
