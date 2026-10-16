@@ -24,6 +24,13 @@ import (
 // loginFormReadTimeout is how long a client has to send POST /auth/login's form.
 const loginFormReadTimeout = 10 * time.Second
 
+// The bytes safeReturnTo refuses: the control characters are below the
+// space, and DEL.
+const (
+	asciiSpace  = 0x20
+	asciiDelete = 0x7f
+)
+
 const (
 	// loginCookieName ties a sign-in to the browser that started it: it
 	// holds the same random state that goes to the provider. Without it,
@@ -353,21 +360,9 @@ func (s *Service) completeLogin(r *http.Request) (login LoginState, token string
 	ctx := r.Context()
 	query := r.URL.Query()
 
-	// 1. The state in the URL must be the one in this browser's cookie.
-	// This check comes before any database access, so a stranger who
-	// learned a state (the URL goes to the platform's request logs) cannot
-	// burn it for the real user.
-	state := query.Get("state")
-	cookieState, _ := cookieValue(r.Header, loginCookieName)
-	if state == "" || cookieState == "" {
-		return LoginState{}, "", Session{}, badLogin("missing_state", nil)
-	}
-	if subtle.ConstantTimeCompare([]byte(state), []byte(cookieState)) != 1 {
-		return LoginState{}, "", Session{}, badLogin("state_mismatch", nil)
-	}
-	stateHash, ok := secret.Hash(state)
-	if !ok {
-		return LoginState{}, "", Session{}, badLogin("malformed_state", nil)
+	stateHash, err := callbackStateHash(r, query.Get("state"))
+	if err != nil {
+		return LoginState{}, "", Session{}, err
 	}
 
 	// 2. The state must exist and be fresh. Taking it deletes it, so a
@@ -381,49 +376,90 @@ func (s *Service) completeLogin(r *http.Request) (login LoginState, token string
 		return LoginState{}, "", Session{}, unavailable("store_error", err)
 	}
 
-	// 3. The provider may report an error instead of a code, e.g. when the
-	// user cancels. Its error_description is not logged or shown: it is
-	// free text from the query string.
+	code, err := callbackCode(query)
+	if err != nil {
+		return LoginState{}, "", Session{}, err
+	}
+	id, err := s.exchangeCode(ctx, code, login)
+	if err != nil {
+		return LoginState{}, "", Session{}, err
+	}
+	token, session, err = s.startLoginSession(r, id, now)
+	if err != nil {
+		return LoginState{}, "", Session{}, err
+	}
+	return login, token, session, nil
+}
+
+// callbackStateHash is check 1: the state in the URL must be the one in
+// this browser's cookie. This check comes before any database access, so a
+// stranger who learned a state (the URL goes to the platform's request
+// logs) cannot burn it for the real user.
+func callbackStateHash(r *http.Request, state string) ([]byte, error) {
+	cookieState, _ := cookieValue(r.Header, loginCookieName)
+	if state == "" || cookieState == "" {
+		return nil, badLogin("missing_state", nil)
+	}
+	if subtle.ConstantTimeCompare([]byte(state), []byte(cookieState)) != 1 {
+		return nil, badLogin("state_mismatch", nil)
+	}
+	stateHash, ok := secret.Hash(state)
+	if !ok {
+		return nil, badLogin("malformed_state", nil)
+	}
+	return stateHash, nil
+}
+
+// callbackCode is check 3: the provider may report an error instead of a
+// code, e.g. when the user cancels. Its error_description is not logged or
+// shown: it is free text from the query string.
+func callbackCode(query url.Values) (string, error) {
 	if providerErr := query.Get("error"); providerErr != "" {
-		return LoginState{}, "", Session{}, badLogin("provider_error", errors.New(oauthErrorCode(providerErr)))
+		return "", badLogin("provider_error", errors.New(oauthErrorCode(providerErr)))
 	}
 	code := query.Get("code")
 	if code == "" {
-		return LoginState{}, "", Session{}, badLogin("missing_code", nil)
+		return "", badLogin("missing_code", nil)
 	}
+	return code, nil
+}
 
+// exchangeCode runs checks 4 and 5: it trades the code for tokens, proving
+// with the PKCE verifier that we started this flow, then verifies the ID
+// token (signature, iss, aud, exp, nonce, azp, sub).
+func (s *Service) exchangeCode(ctx context.Context, code string, login LoginState) (verifiedIdentity, error) {
 	p, err := s.providers.get(ctx)
 	if err != nil {
-		return LoginState{}, "", Session{}, unavailable("discovery_failed", err)
+		return verifiedIdentity{}, unavailable("discovery_failed", err)
 	}
-
-	// 4. Trade the code for tokens, proving with the PKCE verifier that we
-	// started this flow.
 	rawIDToken, err := p.exchange(ctx, code, login.CodeVerifier)
 	if err != nil {
 		if re, ok := errors.AsType[*oauth2.RetrieveError](err); ok {
 			// Log only the OAuth error code, not the response body.
-			return LoginState{}, "", Session{}, badLogin("token_exchange_rejected", errors.New(oauthErrorCode(re.ErrorCode)))
+			return verifiedIdentity{}, badLogin("token_exchange_rejected", errors.New(oauthErrorCode(re.ErrorCode)))
 		}
-		return LoginState{}, "", Session{}, &loginError{status: http.StatusBadGateway, reason: "token_exchange_failed", err: err}
+		return verifiedIdentity{}, &loginError{status: http.StatusBadGateway, reason: "token_exchange_failed", err: err}
 	}
-
-	// 5. Verify the ID token: signature, iss, aud, exp, nonce, azp, sub.
 	id, err := p.verify(ctx, rawIDToken, login.Nonce)
 	if err != nil {
-		return LoginState{}, "", Session{}, badLogin("invalid_id_token", err)
+		return verifiedIdentity{}, badLogin("invalid_id_token", err)
 	}
+	return id, nil
+}
 
+// startLoginSession stores the user and starts their session.
+func (s *Service) startLoginSession(r *http.Request, id verifiedIdentity, now time.Time) (string, Session, error) {
+	ctx := r.Context()
 	userID, err := s.store.UpsertUser(ctx, ExternalIdentity{Issuer: id.Issuer, Subject: id.Subject, Email: id.Email})
 	if err != nil {
-		return LoginState{}, "", Session{}, unavailable("store_error", err)
+		return "", Session{}, unavailable("store_error", err)
 	}
 
 	// The 30 days count from now, whatever auth_time says: it is recorded,
 	// not trusted (see verifiedIdentity).
-	token, session, err = s.startSession(ctx, userID, now, id.AuthTime)
+	token, session, err := s.startSession(ctx, userID, now, id.AuthTime)
 	if err != nil {
-		return LoginState{}, "", Session{}, unavailable("store_error", err)
+		return "", Session{}, unavailable("store_error", err)
 	}
 	// A browser that signs in again gets a new session (never the old
 	// token, which rules out session fixation), and the old one is revoked
@@ -432,7 +468,7 @@ func (s *Service) completeLogin(r *http.Request) (login LoginState, token string
 	if old, ok := cookieValue(r.Header, SessionCookieName); ok {
 		s.revokeQuietly(ctx, old)
 	}
-	return login, token, session, nil
+	return token, session, nil
 }
 
 // revokeQuietly revokes the session behind a cookie value, if there is one.
@@ -477,19 +513,31 @@ func safeReturnTo(raw string) (string, bool) {
 	if i := strings.IndexByte(raw, '#'); i >= 0 {
 		raw = raw[:i]
 	}
-	if raw == "" || len(raw) > maxReturnToLength || raw[0] != '/' || strings.HasPrefix(raw, "//") {
+	if !isSitePath(raw) || !isPlainPath(raw) {
 		return "", false
-	}
-	for _, c := range raw {
-		if c == '\\' || c < 0x20 || c == 0x7f {
-			return "", false
-		}
 	}
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "" || u.Host != "" || u.User != nil || u.Opaque != "" {
 		return "", false
 	}
 	return raw, true
+}
+
+// isSitePath is true for a bounded string that starts with one slash, not
+// two: "//host" is another site to a browser.
+func isSitePath(raw string) bool {
+	return raw != "" && len(raw) <= maxReturnToLength && raw[0] == '/' && !strings.HasPrefix(raw, "//")
+}
+
+// isPlainPath is false when the string has a backslash (which a browser
+// reads as a slash) or a control character.
+func isPlainPath(raw string) bool {
+	for _, c := range raw {
+		if c == '\\' || c < asciiSpace || c == asciiDelete {
+			return false
+		}
+	}
+	return true
 }
 
 // setAuthHeaders sets the headers every /auth/* response needs. The
