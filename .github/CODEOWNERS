@@ -1,0 +1,8 @@
+# Who answers for each part of the repository. GitHub asks them for a review
+# when a pull request touches their files.
+*                       @vfraga
+# The product docs (rules, stories, glossary, privacy) and their PT-BR twins
+# are the product owner's.
+/docs/product/          @PuraFome @vfraga
+/docs/pt-BR/            @PuraFome @vfraga
+/docs/privacy.md        @PuraFome @vfraga

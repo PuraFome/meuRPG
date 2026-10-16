@@ -239,11 +239,6 @@ func (s *Service) ResolveConcentrationSave(
 				return nil, nil
 			}
 			d20 := step.Roll
-			if !step.Settled {
-				if d20, err = s.d20With(in, save.Bonus, mode); err != nil {
-					return nil, err
-				}
-			}
 			bonusFace := 0
 			if step.Bonus != nil {
 				bonusFace = int(step.Bonus.Face) // the die the player added after rolling
