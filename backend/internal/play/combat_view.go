@@ -169,37 +169,18 @@ func (d *encounterData) turnFor(v combatViewer) turnView {
 		return turnView{}
 	}
 	members := turnMembers(d.cs)
-	acting := func(cs []playdb.Combatant) (playdb.Combatant, bool) {
-		// A living member is the current one; a defeated one only when it is the
-		// last that has not ended its part.
-		found, ok := playdb.Combatant{}, false
-		for _, c := range cs {
-			if c.TurnState != turnActing {
-				continue
-			}
-			if !c.Defeated {
-				return c, true
-			}
-			if !ok {
-				found, ok = c, true
-			}
-		}
-		return found, ok
-	}
-	if _, someone := acting(members); !someone {
+	first, someone := firstActing(members)
+	if !someone {
 		return turnView{}
 	}
-	ids := func(cs []playdb.Combatant) []string {
-		var out []string
-		for _, c := range cs {
-			out = append(out, c.ID)
-		}
-		return out
-	}
 	if v.master {
-		first, _ := acting(members)
-		return turnView{currentID: first.ID, groupIDs: ids(members), flags: true}
+		return turnView{currentID: first.ID, groupIDs: idsOf(members), flags: true}
 	}
+	return playerTurn(v, members)
+}
+
+// playerTurn is the turn a player is told, from the members of the group on turn.
+func playerTurn(v combatViewer, members []playdb.Combatant) turnView {
 	var seen []playdb.Combatant
 	for _, c := range members {
 		if v.sees(c) {
@@ -207,14 +188,42 @@ func (d *encounterData) turnFor(v combatViewer) turnView {
 		}
 	}
 	hasPlayer := slices.ContainsFunc(members, inParty) // a player's character or its creature: a player plays it
-	first, visibleActs := acting(seen)
+	first, visibleActs := firstActing(seen)
 	if !visibleActs {
-		return turnView{masterTurn: true, groupIDs: ids(seen), flags: hasPlayer} // only hidden members act
+		return turnView{masterTurn: true, groupIDs: idsOf(seen), flags: hasPlayer} // only hidden members act
 	}
 	if !hasPlayer && len(seen) > 1 {
-		return turnView{groupIDs: ids(seen)} // NPCs alone: named by the group, none picked
+		return turnView{groupIDs: idsOf(seen)} // NPCs alone: named by the group, none picked
 	}
-	return turnView{currentID: first.ID, groupIDs: ids(seen), flags: hasPlayer}
+	return turnView{currentID: first.ID, groupIDs: idsOf(seen), flags: hasPlayer}
+}
+
+// firstActing is the member whose part is running. A living member is the
+// current one; a defeated one only when it is the last that has not ended its
+// part.
+func firstActing(cs []playdb.Combatant) (playdb.Combatant, bool) {
+	found, ok := playdb.Combatant{}, false
+	for _, c := range cs {
+		if c.TurnState != turnActing {
+			continue
+		}
+		if !c.Defeated {
+			return c, true
+		}
+		if !ok {
+			found, ok = c, true
+		}
+	}
+	return found, ok
+}
+
+// idsOf are the IDs of the combatants, in order (nil for none).
+func idsOf(cs []playdb.Combatant) []string {
+	var out []string
+	for _, c := range cs {
+		out = append(out, c.ID)
+	}
+	return out
 }
 
 // npcOnlyGroups are the groups of two or more NPCs, adjacent in the order with
@@ -249,6 +258,32 @@ func (d *encounterData) npcOnlyGroups(v combatViewer) []*playv1.NpcGroup {
 // characters' vitals by character ID; a player only learns from them that a
 // character is down, and the master gets the hit points.
 func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, npcs map[string]masterNPC, names func(key string) string) *playv1.Encounter {
+	out := d.encounterHeader(v)
+	turn := d.turnFor(v)
+	out.CurrentCombatantId, out.MasterTurn, out.TurnGroupIds = turn.currentID, turn.masterTurn, turn.groupIDs
+	out.NpcOnlyGroups = d.npcOnlyGroups(v)
+	out.HitRiders = d.hitRidersView(v, vitals)
+	rd := combatantReader{
+		d: d, v: v, turn: turn, vitals: vitals, armorClass: armorClass, npcs: npcs, names: names,
+		ties:        unresolvedTies(d.cs),
+		byCombatant: statesOf(d.states),
+		// Players in the same joint turn read each other's economy: they act
+		// together and say what each still has. A player outside the group does not.
+		shared: !v.master && slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return v.owns(c) && inTurn(d.enc, c) }),
+	}
+	for _, c := range d.cs {
+		if v.sees(c) {
+			out.Combatants = append(out.Combatants, rd.read(c))
+			if c.RageEndPending {
+				out.RagePendingCombatantId = c.ID
+			}
+		}
+	}
+	return out
+}
+
+// encounterHeader is the Encounter without the turn and the combatants.
+func (d *encounterData) encounterHeader(v combatViewer) *playv1.Encounter {
 	e := d.enc
 	out := &playv1.Encounter{
 		Id:          e.ID,
@@ -266,45 +301,53 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	if v.master {
 		out.MapPointId = deref(e.MapPointID)
 	}
-	turn := d.turnFor(v)
-	out.CurrentCombatantId, out.MasterTurn, out.TurnGroupIds = turn.currentID, turn.masterTurn, turn.groupIDs
-	out.NpcOnlyGroups = d.npcOnlyGroups(v)
-	out.HitRiders = d.hitRidersView(v, vitals)
-	ties := unresolvedTies(d.cs)
-	// Players in the same joint turn read each other's economy: they act
-	// together and say what each still has. A player outside the group does not.
-	shared := !v.master && slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return v.owns(c) && inTurn(e, c) })
-	byCombatant := statesOf(d.states)
-	for _, c := range d.cs {
-		if v.sees(c) {
-			var vit *playv1.CharacterVitals
-			if c.Kind == kindPlayer { // a creature's character_id is its owner's: never the owner's vitals
-				vit = vitals[c.CharacterID]
-			}
-			p := combatantToProto(c, v, ties[c.ID], vit, armorClass[sheetKey(c)], npcs[sheetKey(c)].portrait, actsNow(e, c), names)
-			if v.master { // the creature of a monster: the master's alone (RN-20)
-				p.BestiaryCreatureKey, p.ChallengeRating = npcs[sheetKey(c)].monsterKey, npcs[sheetKey(c)].challengeRating
-			}
-			if shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
-				shareEconomy(p, c)
-			}
-			p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
-			p.InspirationOffer = inspirationOfferView(d, c, v)
-			p.LuckyOffer = luckyOfferView(d, c, v)
-			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
-			p.States = statesFor(byCombatant[c.ID], d.cs, v)
-			p.ConditionSources = conditionSourcesFor(c, d.cs, v, names)
-			if v.master || v.owns(c) { // the two things that decide whether a rage ends
-				p.AttackedHostileSinceLastTurn, p.TookDamageSinceLastTurn = c.AttackedHostile, c.TookDamage
-			}
-			if c.RageEndPending {
-				out.RagePendingCombatantId = c.ID
-			}
-			out.Combatants = append(out.Combatants, p)
-		}
-	}
 	return out
 }
+
+// combatantReader is what view works each combatant out of: the viewer, the turn
+// and the tables the combatant's copy reads.
+type combatantReader struct {
+	d           *encounterData
+	v           combatViewer
+	turn        turnView
+	vitals      map[string]*playv1.CharacterVitals
+	armorClass  map[string]int32
+	npcs        map[string]masterNPC
+	names       func(key string) string
+	ties        map[string]bool
+	byCombatant map[string][]playdb.CombatantState
+	shared      bool
+}
+
+// read builds the copy of a combatant the viewer sees.
+func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
+	d, v, e := r.d, r.v, r.d.enc
+	var vit *playv1.CharacterVitals
+	if c.Kind == kindPlayer { // a creature's character_id is its owner's: never the owner's vitals
+		vit = r.vitals[c.CharacterID]
+	}
+	p := combatantToProto(c, v, r.ties[c.ID], vit, r.armorClass[sheetKey(c)], r.npcs[sheetKey(c)].portrait, actsNow(e, c), r.names)
+	if v.master { // the creature of a monster: the master's alone (RN-20)
+		p.BestiaryCreatureKey, p.ChallengeRating = r.npcs[sheetKey(c)].monsterKey, r.npcs[sheetKey(c)].challengeRating
+	}
+	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
+		shareEconomy(p, c)
+	}
+	p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
+	p.InspirationOffer = inspirationOfferView(d, c, v)
+	p.LuckyOffer = luckyOfferView(d, c, v)
+	p.TurnPartEnded = r.turn.flags && e.Status == statusActive && c.TurnState == turnEnded
+	p.States = statesFor(r.byCombatant[c.ID], d.cs, v)
+	p.ConditionSources = conditionSourcesFor(c, d.cs, v, r.names)
+	if v.master || v.owns(c) { // the two things that decide whether a rage ends
+		p.AttackedHostileSinceLastTurn, p.TookDamageSinceLastTurn = c.AttackedHostile, c.TookDamage
+	}
+	return p
+}
+
+// deathSaveGoal is how many death save successes make a character stable, and how many
+// failures kill it (RN-03).
+const deathSaveGoal = 3
 
 // combatantToProto builds the Combatant the viewer sees. The caller checked
 // that the viewer sees it. armorClass is its sheet's, and portrait the URL of
@@ -312,14 +355,52 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 // onTurn says it acts now: it is in the group on turn and its part has not
 // ended, in a running combat.
 func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, portrait string, onTurn bool, names func(key string) string) *playv1.Combatant {
-	controls := v.owns(c)                    // the caller's player plays it: their character or its creature
-	mine := controls && c.Kind == kindPlayer // only their own character is "mine"; the web finds its combatant with it
-	detail := v.master || controls           // the numbers of the turn: the master's and the player's
+	controls := v.owns(c)          // the caller's player plays it: their character or its creature
+	detail := v.master || controls // the numbers of the turn: the master's and the player's
+	out := publicCombatant(c, v, controls)
+	for _, key := range c.Conditions {
+		out.ConditionNamesPt = append(out.ConditionNamesPt, names(key))
+	}
+	if out.ConcentrationSpell != "" {
+		out.ConcentrationSpellNamePt = names(out.ConcentrationSpell)
+	}
+	if placed(c) {
+		out.Col, out.Row = *c.GridCol, *c.GridRow
+	}
+	identityFor(out, c, v, detail, names)
+	// A player's roll is public among the players, and so is a creature's: it
+	// is on the party's side. An NPC's never reaches a player (RN-20).
+	if c.Initiative != nil && (v.master || inParty(c)) {
+		out.Initiative = c.Initiative
+	}
+	if detail {
+		out.InitiativeBonus = new(c.InitiativeBonus)
+		out.InitiativeFace = c.InitiativeFace
+		shareEconomy(out, c)
+		out.ArmorClassBonus = c.AcBonus + c.EffectAcBonus
+		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
+	}
+	characterFormsFor(out, c, vitals, detail)
+	if controls && isCreature(c) {
+		// A creature's hit points are numbers to its owner's player and the master
+		// (below); everyone else gets the state word.
+		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
+		out.HitPointsMaxBonus = c.HpMaxBonus
+	}
+	if v.master {
+		masterFields(out, c, tieUnresolved, vitals, armorClass, portrait)
+	}
+	out.State = stateWordFor(out.State, c, v, vitals)
+	return out
+}
+
+// publicCombatant is the Combatant with what every viewer who sees it reads.
+func publicCombatant(c playdb.Combatant, v combatViewer, controls bool) *playv1.Combatant {
 	out := &playv1.Combatant{
 		Id:                 c.ID,
 		Label:              c.Label,
 		Kind:               kindToProto[c.Kind],
-		Mine:               mine,
+		Mine:               controls && c.Kind == kindPlayer, // only their own character is "mine"; the web finds its combatant with it
 		ControlledByMe:     controls,
 		Placed:             placed(c),
 		State:              stateOf(c),
@@ -338,15 +419,11 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		// ("Estável", "Morto").
 		out.DeathSuccesses, out.DeathFailures = 0, 0
 	}
-	for _, key := range c.Conditions {
-		out.ConditionNamesPt = append(out.ConditionNamesPt, names(key))
-	}
-	if out.ConcentrationSpell != "" {
-		out.ConcentrationSpellNamePt = names(out.ConcentrationSpell)
-	}
-	if placed(c) {
-		out.Col, out.Row = *c.GridCol, *c.GridRow
-	}
+	return out
+}
+
+// identityFor says whose a creature is, or which character an entry stands for.
+func identityFor(out *playv1.Combatant, c playdb.Combatant, v combatViewer, detail bool, names func(key string) string) {
 	switch {
 	case isCreature(c):
 		// A creature stands for no character of its own: its owner is public (the
@@ -359,18 +436,11 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 	case c.Kind == kindPlayer || v.master:
 		out.CharacterId = c.CharacterID // an NPC's character is the master's secret
 	}
-	// A player's roll is public among the players, and so is a creature's: it
-	// is on the party's side. An NPC's never reaches a player (RN-20).
-	if c.Initiative != nil && (v.master || inParty(c)) {
-		out.Initiative = c.Initiative
-	}
-	if detail {
-		out.InitiativeBonus = new(c.InitiativeBonus)
-		out.InitiativeFace = c.InitiativeFace
-		shareEconomy(out, c)
-		out.ArmorClassBonus = c.AcBonus + c.EffectAcBonus
-		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
-	}
+}
+
+// characterFormsFor tells of the shape a player's character took (Wild Shape) and of the
+// creature it sees through (familiar).
+func characterFormsFor(out *playv1.Combatant, c playdb.Combatant, vitals *playv1.CharacterVitals, detail bool) {
 	if w := vitals.GetWildShape(); w != nil && c.Kind == kindPlayer {
 		// The party sees the wolf; the beast's hit points are numbers for the master
 		// and its own player, like the character's (RN-20).
@@ -382,48 +452,49 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 	if fs := vitals.GetFamiliarSight(); fs != nil && c.Kind == kindPlayer && detail {
 		out.FamiliarSightCreatureId = fs.GetCreatureId()
 	}
-	if controls && isCreature(c) {
-		// A creature's hit points are numbers to its owner's player and the master
-		// (below); everyone else gets the state word.
-		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
-		out.HitPointsMaxBonus = c.HpMaxBonus
+}
+
+// masterFields are what only the master reads of a combatant.
+func masterFields(out *playv1.Combatant, c playdb.Combatant, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, portrait string) {
+	out.Hidden = c.Hidden
+	out.TieUnresolved = tieUnresolved
+	if armorClass > 0 {
+		out.ArmorClass = new(armorClass)
 	}
-	if v.master {
-		out.Hidden = c.Hidden
-		out.TieUnresolved = tieUnresolved
-		if armorClass > 0 {
-			out.ArmorClass = new(armorClass)
-		}
-		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
-		out.HitPointsMaxBonus = c.HpMaxBonus
-		out.XpValue = c.XpValue // an NPC's, the master's alone (RN-20); 0 for a player's character
-		out.PortraitUrl = portrait
-		if vitals != nil {
-			out.HitPointsCurrent = new(vitals.GetHitPointsCurrent())
-			out.HitPointsMax = new(vitals.GetHitPointsMax())
-			out.HitPointsTemporary = new(vitals.GetHitPointsTemporary())
-			out.HitPointsMaxBonus = vitals.GetHitPointsMaxBonus()
-		}
+	out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
+	out.HitPointsMaxBonus = c.HpMaxBonus
+	out.XpValue = c.XpValue // an NPC's, the master's alone (RN-20); 0 for a player's character
+	out.PortraitUrl = portrait
+	if vitals != nil {
+		out.HitPointsCurrent = new(vitals.GetHitPointsCurrent())
+		out.HitPointsMax = new(vitals.GetHitPointsMax())
+		out.HitPointsTemporary = new(vitals.GetHitPointsTemporary())
+		out.HitPointsMaxBonus = vitals.GetHitPointsMaxBonus()
 	}
-	// A player's character at 0 hit points is down ("Caído"): everyone who
-	// sees it gets the word, never the numbers (those are the master's, above).
-	// With three death save successes it is "Estável"; with three failures it is
-	// "Morrendo" for the master, and still "Caído" for the players, who never
-	// hear it died before the master confirms (RN-03). A confirmed death is
-	// "Morto".
+}
+
+// stateWordFor is the state word of a combatant, from the one it has so far.
+//
+// A player's character at 0 hit points is down ("Caído"): everyone who
+// sees it gets the word, never the numbers (those are the master's).
+// With three death save successes it is "Estável"; with three failures it is
+// "Morrendo" for the master, and still "Caído" for the players, who never
+// hear it died before the master confirms (RN-03). A confirmed death is
+// "Morto".
+func stateWordFor(state playv1.CombatantState, c playdb.Combatant, v combatViewer, vitals *playv1.CharacterVitals) playv1.CombatantState {
 	switch {
 	case c.Kind == kindPlayer && c.Defeated:
-		out.State = playv1.CombatantState_COMBATANT_STATE_DEAD
+		return playv1.CombatantState_COMBATANT_STATE_DEAD
 	case c.Kind == kindPlayer && isDownIn(vitals):
-		out.State = playv1.CombatantState_COMBATANT_STATE_DOWN
 		switch {
-		case c.DeathSuccesses >= 3:
-			out.State = playv1.CombatantState_COMBATANT_STATE_STABLE
-		case c.DeathFailures >= 3 && v.master:
-			out.State = playv1.CombatantState_COMBATANT_STATE_DYING
+		case c.DeathSuccesses >= deathSaveGoal:
+			return playv1.CombatantState_COMBATANT_STATE_STABLE
+		case c.DeathFailures >= deathSaveGoal && v.master:
+			return playv1.CombatantState_COMBATANT_STATE_DYING
 		}
+		return playv1.CombatantState_COMBATANT_STATE_DOWN
 	}
-	return out
+	return state
 }
 
 // shareEconomy gives a player's combatant's turn economy to another player who
@@ -456,7 +527,7 @@ func isDownIn(v *playv1.CharacterVitals) bool {
 // turn.
 func deathSaveDue(c playdb.Combatant, vitals *playv1.CharacterVitals) bool {
 	return c.Kind == kindPlayer && !c.Defeated && isDownIn(vitals) &&
-		c.DeathSuccesses < 3 && c.DeathFailures < 3 && !c.DeathSaveRolled
+		c.DeathSuccesses < deathSaveGoal && c.DeathFailures < deathSaveGoal && !c.DeathSaveRolled
 }
 
 // The database's statuses and kinds, and the API's.
