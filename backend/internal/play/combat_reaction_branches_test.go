@@ -14,7 +14,7 @@ import (
 
 // The branches of the reaction answers (PM-04) that the first reaction tests did not reach:
 // each refusal with its code and message, each way a reaction can end. Frozen as they are; a
-// finding is commented where the behaviour looks odd.
+// finding is commented where the behavior looks odd.
 
 // wantReactionRefusal fails unless err is a connect error with this code and message.
 func wantReactionRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
@@ -318,7 +318,8 @@ func openPitRig(t *testing.T) (*trapRig, *playv1.Encounter, *mapsv1.MapPoint) {
 	t.Helper()
 	r := newTrapRig(t)
 	pt := r.trap(t, "Fosso", 9, 7, pit("1d6"), func(s *mapsv1.TrapSpec) { s.PresetKey = "trap:simple-pit" })
-	return r, r.fight(t), pt
+	e := r.fight(t)
+	return r, e, pt
 }
 
 // threeFall has the master put two Goblins next to the pit (no creature of the NPCs' fires a trap
@@ -610,7 +611,8 @@ func damageFight(t *testing.T, toren func(t *testing.T, a *armed) *charactersv1.
 		reveal:   []string{"Goblin"},
 		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Reator": {4, 4}, "Brisa": {8, 8}},
 	})
-	return a, a.passTo(t, e, "Goblin")
+	e = a.passTo(t, e, "Goblin")
+	return a, e
 }
 
 // TestTheWindowsOfADamageAreAnsweredCuttingWordsFirst: the bard's window comes before the target's own

@@ -11,7 +11,7 @@ import (
 
 // The branches of the monk's riders that the first tests did not reach (UseHitRider): what
 // each choice does after the target's save, and each refusal with its code and message.
-// Frozen as they are; a finding is commented where the behaviour looks odd.
+// Frozen as they are; a finding is commented where the behavior looks odd.
 
 // wantRiderRefusal fails unless err is a connect error with this code and message.
 func wantRiderRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
@@ -110,7 +110,7 @@ func TestTheTargetsSaveDecidesWhatARiderDoes(t *testing.T) {
 			if line.GetResult() != tc.want || line.GetChoice() != tc.choice {
 				t.Errorf("the rider line = %v / %v, want %v / %v", line.GetChoice(), line.GetResult(), tc.choice, tc.want)
 			}
-			if !line.GetNumbers() || line.GetD20() != int32(tc.d20) || line.GetDc() != 13 {
+			if !line.GetNumbers() || int(line.GetD20()) != tc.d20 || line.GetDc() != 13 {
 				t.Errorf("the master's numbers = %v d20 %d dc %d, want the save's d20 %d against DC 13", line.GetNumbers(), line.GetD20(), line.GetDc(), tc.d20)
 			}
 			for _, cond := range []string{"condition:prone", "condition:stunned"} {
@@ -155,7 +155,6 @@ func TestARiderRefusalsKeepTheirCodesAndMessages(t *testing.T) {
 	_, err = a.useRider(t, a.caio, e, stun, playv1.HitRiderChoice_HIT_RIDER_CHOICE_STUN)
 	wantBlockedBy(t, "UseHitRider(stun) without ki", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED)
 	wantRiderRefusal(t, "UseHitRider(stun) without ki", err, connect.CodeFailedPrecondition, "no ki point left")
-
 }
 
 // TestARiderWhoseFeatureTheSheetLacksIsRefused: an Open Hand offer on a monk of no Way (a row
