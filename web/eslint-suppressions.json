@@ -712,14 +712,6 @@
       "count": 1
     }
   },
-  "src/app/pages/character-editor/character-editor-source.live.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/character-editor/character-editor.spec.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 2
@@ -727,9 +719,6 @@
   },
   "src/app/pages/character-editor/character-editor.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -834,19 +823,8 @@
       "count": 1
     }
   },
-  "src/app/pages/character-sheet/character-sheet-source.live.ts": {
-    "complexity": {
-      "count": 3
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/character-sheet/character-sheet.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -894,9 +872,6 @@
     },
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/pages/character-sheet/features-panel/features-panel.ts": {
@@ -929,11 +904,6 @@
   },
   "src/app/pages/character-sheet/proficiency-column/proficiency-column.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/pages/character-sheet/sheet-format.ts": {
-    "complexity": {
       "count": 1
     }
   },
