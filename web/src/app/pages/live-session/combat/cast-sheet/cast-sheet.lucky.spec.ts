@@ -22,8 +22,7 @@ import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { CastSheet, type CastSheetData } from './cast-sheet';
 
-const flat = (n: Element | null | undefined) =>
-  n?.textContent?.replace(/\s+/g, ' ').trim().replace(/ /g, ' ') ?? '';
+const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
 /** The spell attack's d20 (+5), and what Lucky rolled again. */
 const d20 = (face: number, again?: number) =>

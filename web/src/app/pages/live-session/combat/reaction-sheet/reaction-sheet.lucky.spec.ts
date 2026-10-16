@@ -24,8 +24,7 @@ import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { ReactionSheet, type ReactionSheetData } from './reaction-sheet';
 
-const plain = (text: string | null | undefined) =>
-  (text ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+const plain = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim();
 
 const save = () =>
   reactionWindow({

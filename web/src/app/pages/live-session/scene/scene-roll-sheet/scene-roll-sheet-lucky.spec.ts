@@ -23,8 +23,7 @@ import {
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { SceneRollSheet, type SceneRollSheetData } from './scene-roll-sheet';
 
-const flat = (n: Element | null | undefined) =>
-  n?.textContent?.replace(/\s+/g, ' ').trim().replace(/ /g, ' ') ?? '';
+const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
 /** The scene check written after the Lucky answer: the new d20 (or the 1 kept), and what Lucky rolled again. */
 function written(to: number | null) {
