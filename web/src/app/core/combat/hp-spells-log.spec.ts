@@ -185,6 +185,16 @@ describe('the other spells that read hit points in the log (E8-03)', () => {
     );
   });
 
+  it('tells the master of a target with no effect read only what the spell is', () => {
+    const bare = cast('vazio', 'Palavra de Poder Atordoar', {
+      effectKind: SpellEffectKind.THRESHOLD,
+      targets: [{ targetId: 'c', targetLabel: 'Capitão Goblin' }],
+    });
+    expect(plain(logLine(bare, '', master)!.text)).toMatch(
+      /^ conjura Palavra de Poder Atordoar no Capitão Goblin: /,
+    );
+  });
+
   it('Cura Completa: the amount only where the server sends it', () => {
     const heal = (healed: number | undefined) =>
       cast('cura', 'Cura Completa', {
