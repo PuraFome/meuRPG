@@ -1,0 +1,202 @@
+# Attacks and damage
+
+An attack is two calls, `RollAttack` then `RollDamage`, because with physical dice the player types the d20 and then the damage (RN-18, MR-012, MR-014).
+This page covers the two steps, pending damage, roll modes, damage parts, resistance, combatant states, conditions and concentration, and the feature actions.
+
+## The two-step attack
+
+`RollAttack` checks who may: the player on their own character, on their turn, with the action free, the target in sight and in reach; the master on any combatant on turn, with no limit of reach or action (the Captain with several weapons is theirs).
+It rolls the d20 (`crypto/rand` in the app, or the typed face 1 to 20), spends the action and compares with the target's AC (`rules/combat.ResolveAttackFrom`).
+A natural roll in the sheet's critical range or more is a critical hit for a weapon attack, a spell attack needs the 20, and a natural 1 misses.
+The response carries the roll in numbers (`1d20 (13) + 6 = 19`) and the result, never the AC for the player; the master's response carries `target_armor_class`, with a Shield's +5 stored in the event so a resend finds the same.
+`TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries` searches the AC in the player's JSON and checks the master's has it.
+A hit opens a `pending_damages` row (stored, so a resend or a reload finds it).
+A weapon attack held for a Lucky or Bardic Inspiration question is in [Held rolls](held-rolls.md); a hit that waits for a reaction is in [Reactions](reactions.md).
+
+`RollDamage` rolls the damage dice (on a critical as the table rule says; the modifier once; the attack's type) or validates the typed sum (`dice.Physical`, from N to N × faces).
+
+```mermaid
+sequenceDiagram
+    actor J as Player
+    participant S as play (server)
+    participant DB as CockroachDB
+    actor M as Master
+    J->>S: RollAttack(attacker, attack, target, d20)
+    S->>S: reach (RN-21), RN-18, target's AC (server only)
+    S->>DB: spends the action, opens the pending damage, event attack_rolled
+    S-->>J: the d20, Hit or Miss (never the AC)
+    J->>S: RollDamage(pending_id, dice)
+    alt The target is an NPC or a creature
+        S->>DB: applies at once (temporary HP first, 0 = defeated), event damage_rolled
+        S-->>J: Applied, "Goblin 2 defeated"
+    else The target is a player character
+        S->>DB: stores the roll (ROLLED), event damage_rolled
+        S-->>J: Pending: the master applies
+        M->>S: ApplyPendingDamage(pending_id)
+        S->>DB: adjusts character_vitals (RN-02), event damage_applied
+    end
+```
+
+The Attack action makes one attack, or more with Extra Attack: `combatants.attacks_made` counts the turn's attacks, the first spends the action, the following fit while any remain (`AttacksLeft`) and the last gives `ATTACKS_USED`; the counter returns to 0 at the start of the turn.
+Extra Attack belongs to weapon attacks only: a cantrip spends the whole action and counts no attack, and after a weapon attack a cantrip gives `ACTION_USED`, and vice versa.
+An NPC's multiattack stays the master's, who may attack again.
+
+**Beams and bonus action attacks.**
+A cantrip with several beams (Eldritch Blast) is one attack roll per `RollAttack`, each beam with its own damage (Agonizing Blast on each), up to `Attack.Beams`; the combatant row remembers the attack of the action (`action_attack_key`) and `attacks_made` counts the beams.
+`GetTurnOptions` offers the next beam the same way (`beams_left`).
+When the action's attacks are all made, a weapon attack goes on as a bonus action attack if a rule lets it (`combat.BonusAttack`):
+
+- after the Attack action with a light melee weapon, a different light melee weapon (Two-Weapon Fighting; the character must carry two light melee weapons, because the app does not track hands: `BonusAttackTurn.NoSecondLight`; the damage leaves out the ability modifier unless negative or the character has the style);
+- after the Attack action with an unarmed strike or a monk weapon, one unarmed strike (Martial Arts, full modifier);
+- after Flurry of Blows, its two unarmed strikes (`bonus_attacks_left`);
+- for a frenzied rage, a melee weapon attack (see [States](#states)).
+
+The bonus action attack spends the bonus action (`BONUS_ACTION_USED` when spent), never an attack of the Attack action, and the undo gives it back.
+The server picks the rule from the state of the turn, so the request has no flag; `GetTurnOptions` shows the same choice beforehand and the app lists the attack with the "Ação bônus" tag and a line saying which rule makes it one.
+
+## Pending damage
+
+`pending_damages` stores a hit's damage, with the dice copied from the sheet at the time of the hit: a sheet changed later does not touch an open roll.
+A critical already comes with the table rule applied (see [Table rules in combat](table-rules.md)).
+The state goes `awaiting_reaction` → `awaiting_roll` → `rolled` (player characters only) → `applied` or `discarded`.
+
+- **An NPC or creature applies at once** (`ApplyDamage`: temporary HP first, floor at 0); at 0 HP it is `defeated` and `nextTurn` skips it.
+- **A player character's damage waits for the master** (RN-02): `ApplyPendingDamage` goes through `character_vitals` (the same path as the correction), with a floor at 0 and any `amount` the master wants in place of the rolled one; `DiscardPendingDamage` is "Não aplicar".
+  At 0 HP the character is down: `GetEncounter` shows `COMBATANT_STATE_DOWN` ("Caído") to everyone who sees them, with no numbers.
+  Death saves are in [Death and revival](death-and-revival.md).
+- **`EndTurn` with open damage** of the combatant on turn refuses with `PENDING_DAMAGE`; only the master passes anyway (`discard_pending_damage`, "Passar o turno mesmo assim?"), and the open damage is discarded in the same transaction.
+- **A heal** is a pending damage that is a heal; `RollDamage` heals at once, up to the maximum, by NPC and by character (through `character_vitals`); whoever was at 0 rises and the death saves reset.
+- **Brutal Critical and Savage Attacks.** `pending_damages.extra_dice` carries the extra dice a melee critical adds: `Derived.BrutalCriticalDice` from the barbarian and `Derived.SavageAttacks` from the half-orc (`savage_dice` is the half-orc's share, used to name the extra die).
+  A thrown weapon beyond reach is not melee (`thrownAtRange`).
+  `RollDamage` rolls `dice_count + extra_dice` dice of the weapon's die in one roll and `typed_sum` is checked against all of them.
+- **Relentless Endurance** (`combat_relentless.go`) runs where a character's damage reaches its vitals (`ApplyPendingDamage` and the trap damage the master settles): when `combat.ApplyDamage` says the character fell to 0, the left-over damage is below the hit point maximum and the `relentless_endurance` resource has a use, the use is spent in the same transaction and the HP set to 1.
+  The `damage_applied` event keeps `relentless` for the log (`CombatLogDamage.relentless_endurance`) and the undo.
+
+### Resistance
+
+The damage of each type goes through the target's modifiers (`combat.Adjust`, SRD 5.1 "Damage Resistance and Vulnerability"): resistance halves rounding down, vulnerability doubles, immunity nulls, and the same resistance from two sources counts once.
+`modifiersOf` (`combat_parts.go`) lists them:
+
+- a creature's or an NPC's with a `monster_key` (what "Pôr no combate" and "Criar NPC" make, and a character's creature) from its SRD stat block, through `CombatRoster.DamageModifiers`;
+- a player character's from its race and features (`effects/damage_resistances.json`: the tiefling's fire, the dwarf's poison, the draconic lineages) and the Rage's, which holds only while the state lasts and no heavy armor is worn.
+
+Only stat block entries with no condition count; an entry the SRD qualifies ("from nonmagical weapons", silvered, adamantine) is not applied, because the app does not know whether a weapon was magical, and the master corrects an NPC's HP by hand (`AdjustCombatantHitPoints`).
+The steps are kept per type with their sources (`pending_damages.steps`) and shown to the master and the target's player as `DamageStep[]`.
+The master may leave a source out when applying (`ignore_modifiers`, at most `maxIgnoredSources`).
+An NPC's resistances reach the master alone (RN-20).
+A trap's damage on an NPC or creature goes through the same adjustment.
+
+### Damage by parts
+
+A hit with more than the weapon opens `PendingDamage.parts[]`:
+
+- the weapon;
+- the **offered** extras (Sneak Attack, Divine Smite with the slot to spend, Hunter's Mark, Colossus Slayer); a line that cannot be chosen is disabled and says why;
+- the **automatic** lines (Rage's bonus, only on a melee Strength weapon attack; Improved Divine Smite; Dueling; Brutal Critical through `automaticLines`).
+
+A critical doubles the dice of every part (or follows the table's "maximum plus a roll"), never the fixed numbers (SRD 5.1 "Critical Hits").
+In the app the server rolls every part; with physical dice the player types a sum for each part (`typed_parts[]`).
+Divine Smite's extra die against an undead or fiend is rolled as its own part and only counts when the target is one: the player sees "+1d8" and never why, and the damage a player reads on an NPC is the damage as rolled (`damageHit.Shown`), so the total says nothing either.
+Sneak Attack and Colossus Slayer are once per turn (`sneak_attack_turn`, `colossus_slayer_turn`); Hunter's Mark follows the caster's concentration (`combatant_states`).
+Great Weapon Fighting rerolls 1s and 2s once, shown on the part.
+The master sees the damage by part and takes an extra out with a reason (`RemoveDamagePart`); the weapon and automatic lines stay.
+Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls.
+
+## Roll modes
+
+Every d20 the app rolls for a creature (weapon, spell and creature attacks, spell saves, traps, puzzle hints, scene checks, trap searches) goes through one rule: the server works out the sources of advantage and disadvantage (`rules/combat/advantage.go`), and the mode follows SRD 5.1 "Advantage and Disadvantage": one or more of each cancel to a normal roll, and sources of the same kind never add up.
+The pure rules are `AttackMode`, `SaveMode` and `Resolve`; the facts they read (positions, conditions, states, traits) are gathered in `combat_advantage.go`.
+`GetTurnOptions` and every roll answer carry `mode`, `suggested_mode` and `sources[]` (`AdvantageSource`: kind, effect, Portuguese sentence).
+Death saves and initiative are untouched.
+
+- **Who sets the mode.** The player rolls the suggestion, or disadvantage with a reason of 1 to 120 characters.
+  Advantage the server did not suggest, and "normal" where it suggested disadvantage, is the master's to give: the player sends `RequestRollMode` with the reason and the master answers (`AnswerRollModeRequest`: approve, refuse or any mode), and the attack names `roll_mode_request_id`.
+  The master sets any mode on his own rolls with a reason.
+  A request closes when the attack uses it, when the player takes it back (`CancelRollModeRequest`), or when the turn or combat ends.
+  Every change is a log line.
+- **Where the text lives.** `session_events` holds ids and numbers only, so reasons are rows of `combat_reasons` and `roll_mode_requests`; the event carries the row's id.
+  A reason is read by the master and the attacker's player only.
+- **Physical dice.** With a real die the player types both faces (`d20_faces`, in the order rolled); the server picks the one that counts (`counted_index`).
+  A call with the wrong number of faces is refused with a message saying how many.
+  `RollSceneCheck`, `SearchForTraps` and `TryPuzzleHint` take the same field.
+- **What counts as a source.** Conditions of attacker and target (Blinded, Frightened, Invisible, Paralyzed, Poisoned, Prone with the 5 ft rule, Restrained, Stunned, Unconscious, Petrified); an attacker or target the other cannot see (a fog map hides it from the player; the master's own "hidden" mark changes no roll); long range (not for a weapon attack whose attacker has a `ranged_attack` with `no_long_range_disadvantage`) and a hostile within 5 ft for ranged attacks; Reckless Attack; Danger Sense (only against an effect the character sees); Dodge; Pack Tactics; Rage on Strength checks and saves; Frightened and Poisoned on ability checks; the Help; lasting effects (see [Lasting effects](lasting-effects.md)).
+  A hit within 5 ft against a Paralyzed or Unconscious target is a critical hit (`critical_on_hit`).
+- **What the player sees.** Only the sources they can see are listed; the mode counts all of them.
+- **Spell attacks.** `GetTurnOptions` writes the same `roll_mode`, `sources` and `critical_on_hit` on each target of a spell that makes an attack roll (`turnModes.annotateShape` with `shapeOfSpell`), so the cast sheet suggests the mode `CastSpell` will roll and asks for the right number of typed d20.
+
+## States
+
+`combatant_states` holds what lasts a while: Rage, Marcado (Hunter's Mark), Esquivando (Dodge, also from Patient Defense) and Ataque descuidado, each with its source and end.
+A condition's source and end (Stunned by a Stunning Strike) live in `combatants.condition_sources`.
+The app refuses a spell to a raging character.
+The log has one line for each state that begins or ends.
+
+- **Rage** lasts 10 rounds.
+  It ends early at the end of the barbarian's turn if it neither attacked a hostile creature nor took damage since its last turn: the player is asked first (`AnswerRageEnd`: "Voltar e atacar" or "Deixar a fúria acabar"); the master's end applies the rule by itself.
+  Unconsciousness, defeat or the end of the combat ends a Rage.
+  `EndRage` ends it with the bonus action.
+- **Frenzy** (`combat_frenzy.go`).
+  `TakeActionRequest.frenzy` on `feature:rage` makes the rage a frenzy, refused with `FRENZY_UNAVAILABLE` unless the sheet has the Berserker's `feature:frenzy` (`link.Traits.Frenzy`).
+  It is stored on the rage's own `combatant_states` row with no new column: a frenzied rage has its own combatant as `source_id`, and the view sets `CombatantEffect.frenzy` ("Em frenesi").
+  On the barbarian's turns after the one the rage began in, `combat.BonusAttack` returns `BonusFrenzy` for a melee weapon attack with no Attack action required (`BonusAttackTurn.FrenzyReady`); `ActionOption.offers_frenzy` tells the screen to ask.
+  When a frenzied rage ends (`endRage`, `afterStatesEnded`, or `endEncounter` with reason `left`), `addExhaustionLevel` adds one level of exhaustion in the same transaction (level 6 goes to the death confirmation) and writes an `exhaustion` event with `Reason: "frenzy"`; the owner and master read "Frenesi: +1 nível de exaustão".
+
+## Conditions and concentration
+
+Conditions are labels (`combatants.conditions`, SRD keys like `condition:poisoned`): `SetCombatantConditions` swaps the whole set (master only; a player may only end the concentration of their own character).
+Players see the conditions of the combatants they see (keys and Portuguese names, `condition_names_pt`), never a hidden one's.
+Conditions that come from lasting effects are managed there (see [Lasting effects](lasting-effects.md)).
+The browser keeps a list of the 15 condition names in `core/combat/conditions.ts`; it must match `names_pt.json`.
+
+A concentration spell puts its name in the caster's `concentration_spell`; a second swaps it, and the log says which ended (RN-22).
+When damage is applied to someone concentrating, the response and log carry `concentration_dc` (`combat.ConcentrationDC` of the damage taken, without what temporary HP absorbed), only for the master and the target's player.
+A spell is one source of damage however many types it deals: the reminder comes once per target and cast, on the damage that settles the cast's last pending damage for that target in any way (applied, or discarded: the DC then comes with the discard, from what landed before it, and there is none when nothing landed), with the DC from the sum of what the cast cost the target (`pending_damages.taken`, set when damage lands and cleared by the undo).
+The save itself is `ResolveConcentrationSave` (see [Reactions](reactions.md)).
+
+## Standard and feature actions
+
+`TakeAction` accepts the ten standard actions (Dash, Disengage, Dodge, Help, Hide, Ready, Search, Use an Object and more, from `effects/standard_actions.json`) and the `TurnOptions`' `feature_actions`.
+It spends the economy (a free action spends nothing) and, for a feature action, a use of its resource (`NO_USES` with the `recharge`; only player characters count uses) and goes to the log.
+Uses spent live in `character_vitals.resources_used` (`{key: uses}`, clipped to the sheet's maximum on read).
+A race trait key (`trait:`) is treated as a feature action.
+Dash is a mark (`markDashed`), not a count: a second Dash in the same turn still gives double the speed, not triple.
+Dodge adds the `dodging` state until the start of the dodger's next turn.
+
+| Feature action | Economy | How combat treats it |
+| --- | --- | --- |
+| Second Wind (fighter) | Bonus action, 1 use per short rest | Heals 1d10 + level through the HP path |
+| Action Surge (fighter 2) | Free; 2 uses from level 17 but once per turn (`combatants.action_surged`, `ALREADY_USED_THIS_TURN`, which the master may override) | Returns the action and the attacks |
+| Rage (barbarian) | Bonus action; unlimited at level 20 (99 uses, shown "ilimitado") | Spends the use; the effects are the states above |
+| Bardic Inspiration (bard) | Bonus action | `GiveBardicInspiration` (see [Vitals, rests and class resources](rests-and-resources.md)) |
+| Cutting Words, Uncanny Dodge, Deflect Missiles (reaction) | Reaction | Spend the reaction; their windows are in [Reactions](reactions.md) |
+| Divine Sense (paladin) | Action | Spends a use |
+| Lay on Hands (paladin) | Action | `UseLayOnHands` (see [Vitals, rests and class resources](rests-and-resources.md)) |
+| Channel Divinity (cleric: Turn Undead, Preserve Life; paladin: Sacred Weapon, Turn the Unholy) | Action | Spends the action and one use of the shared `channel_divinity` pool |
+| Wild Shape (druid) | Action | Not through `TakeAction` (it needs the beast): `AssumeWildShape` (see [Creatures](creatures.md)) |
+| Flexible Casting (sorcerer) | Bonus action | `CreateSpellSlot`, `ConvertSpellSlot` |
+| Flurry of Blows (monk 2) | Bonus action | Needs the Attack action first (`ATTACK_ACTION_FIRST`); spends 1 ki and gives two unarmed strikes rolled as bonus action attacks |
+| Patient Defense, Step of the Wind (monk 2) | Bonus action | 1 ki each (the feature's `grant_action` names the resource). One action per choice (`feature:step-of-the-wind:disengage`, `:dash`; Patient Defense takes Dodge), with the standard action's effect. Step of the Wind doubles every jump distance until the monk's next turn |
+| Slow Fall (monk 4) | Reaction | Takes 5 times the monk level off the pit fall damage waiting for the monk (`combat_slowfall.go`; refused, with the reaction kept, when none waits; the event keeps `fall_cuts`) |
+| Cunning Action (rogue 2) | Bonus action | One action per choice (`feature:cunning-action:dash`, `:disengage`, `:hide`), with the standard action's effect (`rules.featureStandards`; `link.FeatureAction.Standard`). A table bonus action whose text names Disengage, Hide or Dash routes the same way (`rules.standardsNamedIn`) |
+| Fast Hands (rogue) | Bonus action | Spends the economy and logs |
+| Hunter's Prey: Giant Killer (ranger); Fighting Style: Protection (fighter, paladin) | Reaction | Spends the reaction and logs; usable off turn |
+| Breath Weapon (dragonborn) | Action | Spends the action and a use and logs |
+
+Only Second Wind and Action Surge change numbers; the rest spend and log, and the effect is the table's.
+
+### The monk's riders (RN-35)
+
+A hit that qualifies opens one row per rider in `hit_riders` (`combat_riders.go`): the Open Hand technique when the attack was one of Flurry of Blows' by a monk with `feature:open-hand-technique`, and Stunning Strike for any melee hit by a monk with `feature:stunning-strike`.
+The features reach play as `link.Traits.OpenHand`, `StunningStrike` and `KiSaveDC`.
+`Encounter.hit_riders` carries the open offers (the master's all, a player's their own character's).
+`CombatService.UseHitRider` spends the ki, rolls the target's save in the transaction, and applies the failure: Prone as a condition, or a lasting effect from `combat_effects.json` (`effect:stunning-strike`, `effect:open-hand-no-reactions`) anchored to the monk's end of turn.
+The no-reactions effect uses the modifier `no_reaction`, which `refreshCombatants` copies to `combatants.effect_no_reaction`; the opportunity, reaction-window and `kit.canReact` gates read it.
+The answer is a `hit_rider` event (`CombatLogKind.HIT_RIDER`) and cannot be undone.
+Its log line carries the target's d20, save total and the DC only for the master, and for the target's player when a player's character made the save; the monk's player reads only the result, since an NPC's roll never reaches a player (`TestOpenHandRidersOnlyOnFlurryHits`).
+
+## Not modeled
+
+- Wild Shape's duration (hours) is not counted.
+- A druid already in a beast form cannot use Wild Shape again to change form: they return to the normal form first.
+- Swimming and climbing cost no extra (see [Movement](movement.md)).
+- A stat block resistance with a condition is left to the master (above).

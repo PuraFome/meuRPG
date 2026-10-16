@@ -1,0 +1,16 @@
+{
+  "bad: a category twice": "effects/consumables.json: \"potion\" is not a magic item category, or is repeated",
+  "bad: a label of no restriction": "effects/names_pt.json: \"attunement:by-a-bard\" is not an attunement restriction of any item",
+  "bad: an item of a listed category": "effects/consumables.json: item:v1 is already consumable through its category potion",
+  "bad: an item twice": "effects/consumables.json: item:r100 is listed twice",
+  "bad: an unknown category": "effects/consumables.json: \"gem\" is not a magic item category, or is repeated",
+  "bad: an unknown item": "effects/consumables.json: \"item:nope\" is not a magic item",
+  "bad: missing": "open effects/consumables.json: file does not exist",
+  "bad: no label for a restriction": "effects/names_pt.json: no Portuguese label \"attunement:by-a-wizard\" for an attunement restriction",
+  "bad: unknown field": "effects/consumables.json: json: unknown field \"x\"",
+  "ok: categories and items": "accepted [\"item:fam\",\"item:r100\",\"item:s1\",\"item:v1\",\"item:v2\"]",
+  "ok: nothing": "accepted []",
+  "order: categories before items": "effects/consumables.json: \"gem\" is not a magic item category, or is repeated",
+  "order: items before labels": "effects/consumables.json: \"item:nope\" is not a magic item",
+  "order: items in the file's order": "effects/consumables.json: \"item:nope\" is not a magic item"
+}

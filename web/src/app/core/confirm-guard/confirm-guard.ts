@@ -18,7 +18,7 @@ export const CONFIRM_GUARD_MS = 500;
 export const CONFIRM_SELECTOR = '[data-confirm]';
 
 /**
- * The double-click guard of the inline confirmations (docs/design.md, "Confirm in
+ * The double-click guard of the inline confirmations (docs/design/README.md, "Confirm in
  * place"). For {@link CONFIRM_GUARD_MS} after a `data-confirm` container appears,
  * its buttons carry `aria-disabled="true"` (their own value comes back after) and
  * a click on one of them is swallowed. Only a button the guard marked is guarded,

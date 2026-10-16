@@ -1,0 +1,153 @@
+[
+  {
+    "a campaign that does not exist": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "this campaign": {
+      "answer": {
+        "characters": [
+          {
+            "characterId": "\u003cAna half-elf\u003e",
+            "labelsPt": [
+              "+1 em duas habilidades (Meio-elfo)",
+              "Estilo de Luta (Guerreiro, nível 1)"
+            ],
+            "name": "Ana half-elf",
+            "pendingCount": 3
+          },
+          {
+            "characterId": "\u003cCaio fighter\u003e",
+            "labelsPt": [
+              "Estilo de Luta (Guerreiro, nível 1)"
+            ],
+            "name": "Caio fighter",
+            "pendingCount": 1
+          }
+        ]
+      },
+      "logs": null
+    },
+    "viewer": "master"
+  },
+  {
+    "a campaign that does not exist": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "this campaign": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "viewer": "owner"
+  },
+  {
+    "a campaign that does not exist": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "this campaign": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "viewer": "another player"
+  },
+  {
+    "a campaign that does not exist": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "this campaign": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "viewer": "pending member"
+  },
+  {
+    "a campaign that does not exist": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "this campaign": {
+      "logs": null,
+      "refusal": {
+        "code": "not_found",
+        "message": "campaign not found"
+      }
+    },
+    "viewer": "stranger"
+  },
+  {
+    "a campaign that does not exist": {
+      "logs": null,
+      "refusal": {
+        "code": "unauthenticated",
+        "message": "sign in to continue"
+      }
+    },
+    "this campaign": {
+      "logs": null,
+      "refusal": {
+        "code": "unauthenticated",
+        "message": "sign in to continue"
+      }
+    },
+    "viewer": "nobody"
+  },
+  {
+    "a sheet that cannot be read": {
+      "logs": [
+        {
+          "error": "a stored character document cannot be read: the sheet of character \u003cCaio fighter\u003e",
+          "level": "ERROR",
+          "msg": "characters: cannot read the open choices"
+        }
+      ],
+      "refusal": {
+        "code": "internal",
+        "message": "this character cannot be read right now"
+      }
+    },
+    "viewer": "master"
+  },
+  {
+    "completing a sheet that cannot be read": {
+      "logs": [
+        {
+          "error": "a stored character document cannot be read: the sheet of character \u003cCaio fighter\u003e",
+          "level": "ERROR",
+          "msg": "characters: cannot complete the choices of a character"
+        }
+      ],
+      "refusal": {
+        "code": "internal",
+        "message": "this character cannot be read right now"
+      }
+    },
+    "viewer": "master"
+  }
+]

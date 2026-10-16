@@ -144,26 +144,8 @@ func (p *Package) checkFile(f *zip.File, pr *Problems) bool {
 // images.json, read as it is: this is only a label on a refusal): the master
 // knows "Mapa antigo.png", not "images/7".
 func (p *Package) nameImages(zr *zip.Reader, pr *Problems) {
-	var index *zip.File
-	for _, f := range zr.File {
-		if f.Name == ImagesEntry && f.UncompressedSize64 <= MaxEntryBytes {
-			index = f
-		}
-	}
-	if index == nil {
-		return
-	}
-	rc, err := index.Open()
-	if err != nil {
-		return
-	}
-	defer func() { _ = rc.Close() }()
-	data, err := io.ReadAll(io.LimitReader(rc, MaxEntryBytes+1))
-	if err != nil || len(data) > MaxEntryBytes {
-		return
-	}
-	var list pkgv1.PackageImages
-	if (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, &list) != nil {
+	list, ok := readImagesIndex(zr)
+	if !ok {
 		return
 	}
 	for _, img := range list.GetImages() {
@@ -173,6 +155,35 @@ func (p *Package) nameImages(zr *zip.Reader, pr *Problems) {
 			}
 		}
 	}
+}
+
+// readImagesIndex reads images.json for nameImages, leniently: the last
+// entry of that name that is not too big, with unknown fields ignored. ok is
+// false when there is none, or it cannot be read.
+func readImagesIndex(zr *zip.Reader) (*pkgv1.PackageImages, bool) {
+	var index *zip.File
+	for _, f := range zr.File {
+		if f.Name == ImagesEntry && f.UncompressedSize64 <= MaxEntryBytes {
+			index = f
+		}
+	}
+	if index == nil {
+		return nil, false
+	}
+	rc, err := index.Open()
+	if err != nil {
+		return nil, false
+	}
+	defer func() { _ = rc.Close() }()
+	data, err := io.ReadAll(io.LimitReader(rc, MaxEntryBytes+1))
+	if err != nil || len(data) > MaxEntryBytes {
+		return nil, false
+	}
+	var list pkgv1.PackageImages
+	if (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, &list) != nil {
+		return nil, false
+	}
+	return &list, true
 }
 
 // printable makes an entry's name safe to put in a problem: it is the file's

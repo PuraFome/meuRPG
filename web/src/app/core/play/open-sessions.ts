@@ -38,7 +38,7 @@ export const POLL_INTERVAL_MS = 30_000;
 
 /**
  * The open sessions of the signed-in person's campaigns, kept fresh by a
- * light poll (RN-06; docs/architecture.md#live-session): every 30 seconds
+ * light poll (RN-06; docs/architecture/play/live-session.md#live-session): every 30 seconds
  * while the person is signed in and the tab is visible, once as soon as the
  * tab becomes visible again, and nothing while it is hidden. There is no
  * open connection: the live stream exists only on the session page.

@@ -171,23 +171,11 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 			out.ChaMod = a.Modifier
 		}
 	}
-	for _, cl := range d.Classes {
-		if cl.ClassKey == "class:bard" {
-			out.BardicDie = content.BardicInspirationDie(cl.Level)
-		}
+	if level, ok := lastClassLevel(d, "class:bard"); ok {
+		out.BardicDie = content.BardicInspirationDie(level)
 	}
 	for _, a := range d.Attacks {
-		name := a.NamePT
-		if name == "" {
-			name = a.Name
-		}
-		out.Attacks = append(out.Attacks, link.Attack{
-			Key: a.Key, Name: name, Save: a.SaveDC > 0, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
-			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
-			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
-			Beams: a.Beams, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts, AbilityMod: a.AbilityMod,
-			Ability: string(a.Ability), Finesse: a.Finesse, TwoHanded: a.TwoHanded, Weapon: a.Kind == "weapon",
-		})
+		out.Attacks = append(out.Attacks, combatAttack(a))
 	}
 	for _, a := range d.StandardActions {
 		out.Actions = append(out.Actions, link.Action{Key: a.Key, Name: a.NamePT})
@@ -199,15 +187,35 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,
 		})
 	}
+	out.FighterLevel, _ = lastClassLevel(d, "class:fighter")
+	out.MonkLevel, _ = lastClassLevel(d, "class:monk")
+	return out, nil
+}
+
+// lastClassLevel is the level of the class on the sheet, the last entry when the
+// class is there twice, and whether it is there at all.
+func lastClassLevel(d rules.Derived, classKey string) (level int, ok bool) {
 	for _, cl := range d.Classes {
-		if cl.ClassKey == "class:fighter" {
-			out.FighterLevel = cl.Level
-		}
-		if cl.ClassKey == "class:monk" {
-			out.MonkLevel = cl.Level
+		if cl.ClassKey == classKey {
+			level, ok = cl.Level, true
 		}
 	}
-	return out, nil
+	return level, ok
+}
+
+// combatAttack is one attack of the derived sheet as the combat reads it.
+func combatAttack(a rules.Attack) link.Attack {
+	name := a.NamePT
+	if name == "" {
+		name = a.Name
+	}
+	return link.Attack{
+		Key: a.Key, Name: name, Save: a.SaveDC > 0, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
+		DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
+		DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
+		Beams: a.Beams, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts, AbilityMod: a.AbilityMod,
+		Ability: string(a.Ability), Finesse: a.Finesse, TwoHanded: a.TwoHanded, Weapon: a.Kind == "weapon",
+	}
 }
 
 // poolResources are the resources that count points, not uses: Cura pelas mãos

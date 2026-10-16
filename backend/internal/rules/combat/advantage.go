@@ -335,80 +335,93 @@ var targetConditionSources = []conditionSource{
 // who a Frightened creature fears, so Frightened always counts as the source being in
 // sight.
 func AttackMode(s AttackScene) AttackModeResult {
-	var out AttackModeResult
-	add := func(kind string, effect RollMode, condition string) {
-		out.Sources = append(out.Sources, Source{Kind: kind, Effect: effect, Condition: condition})
-	}
 	within, known := s.withinFive()
+	var out AttackModeResult
+	out.Sources = conditionSources(s)
+	out.Sources = append(out.Sources, proneTargetSources(s, within, known)...)
+	out.CriticalOnHit = known && within && (s.Target.Has(conditionParalyzed) || s.Target.Has(conditionUnconscious))
+	out.Sources = appendRules(out.Sources, sceneRules(s))
+	out.Sources = append(out.Sources, rangedSources(s)...)
+	out.Sources = append(out.Sources, attackerEffectSources(s)...)
+	return out
+}
 
-	// The conditions of the attacker and of the target.
-	for _, r := range attackerConditionSources {
-		if s.Attacker.Has(r.condition) {
-			add(r.kind, r.effect, r.condition)
+// sourceRule is a source that applies when on is true.
+type sourceRule struct {
+	on        bool
+	kind      string
+	effect    RollMode
+	condition string
+}
+
+// appendRules appends the sources of the rules that apply, in order.
+func appendRules(out []Source, rs []sourceRule) []Source {
+	for _, r := range rs {
+		if r.on {
+			out = append(out, Source{Kind: r.kind, Effect: r.effect, Condition: r.condition})
 		}
 	}
-	for _, r := range targetConditionSources {
-		if s.Target.Has(r.condition) {
-			add(r.kind, r.effect, r.condition)
+	return out
+}
+
+// appendConditions appends the sources of the creature's conditions, in the
+// order of the table.
+func appendConditions(out []Source, c Creature, table []conditionSource) []Source {
+	for _, r := range table {
+		if c.Has(r.condition) {
+			out = append(out, Source{Kind: r.kind, Effect: r.effect, Condition: r.condition})
 		}
 	}
+	return out
+}
+
+// conditionSources are the sources of the conditions of the attacker and of the
+// target, of the attacker's exhaustion and of Faerie Fire's outline.
+func conditionSources(s AttackScene) []Source {
+	out := appendConditions(nil, s.Attacker, attackerConditionSources)
+	out = appendConditions(out, s.Target, targetConditionSources)
 	if s.Attacker.Exhaustion >= exhaustionAttackLevel {
-		add(SourceExhaustionAttack, ModeDisadvantage, "")
+		out = append(out, Source{Kind: SourceExhaustionAttack, Effect: ModeDisadvantage})
 	}
 	if s.Target.Outlined {
 		// Faerie Fire: the target gets nothing from being invisible, and an attacker that
 		// sees it has advantage.
-		out.Sources = slices.DeleteFunc(out.Sources, func(src Source) bool { return src.Kind == SourceInvisibleTarget })
+		out = slices.DeleteFunc(out, func(src Source) bool { return src.Kind == SourceInvisibleTarget })
 		if !s.TargetUnseen {
-			add(SourceOutlinedTarget, ModeAdvantage, "")
+			out = append(out, Source{Kind: SourceOutlinedTarget, Effect: ModeAdvantage})
 		}
 	}
-	if s.Target.Has(conditionProne) && known {
-		if within {
-			add(SourceProneTarget, ModeAdvantage, conditionProne)
-		} else {
-			add(SourceProneTarget, ModeDisadvantage, conditionProne)
-		}
-	}
-	if known && within && (s.Target.Has(conditionParalyzed) || s.Target.Has(conditionUnconscious)) {
-		out.CriticalOnHit = true
-	}
-
-	// Reckless Attack.
-	if s.Attacker.Reckless && s.StrengthMelee && s.OwnTurn {
-		add(SourceRecklessAttacker, ModeAdvantage, "")
-	}
-	if s.Target.Reckless {
-		add(SourceRecklessTarget, ModeAdvantage, "")
-	}
-
-	// Dodge: the benefit needs the target to see the attacker.
-	targetSees := !s.AttackerUnseen && !s.Attacker.Has(conditionInvisible) && !s.Target.Has(conditionBlinded)
-	if s.Target.dodgeHolds() && targetSees {
-		add(SourceDodgingTarget, ModeDisadvantage, "")
-	}
-
-	// Pack Tactics.
-	if s.Attacker.PackTactics && s.AllyNearTarget {
-		add(SourcePackTactics, ModeAdvantage, "")
-	}
-
-	// Unseen Attackers and Targets. An invisible attacker is listed by its condition.
-	if s.AttackerUnseen && !s.Attacker.Has(conditionInvisible) {
-		add(SourceUnseenAttacker, ModeAdvantage, "")
-	}
-	if s.TargetUnseen && !s.Target.Has(conditionInvisible) {
-		add(SourceUnseenTarget, ModeDisadvantage, "")
-	}
-
-	// Help: the attack roll of the creature an ally helped (SRD 5.1, "Help").
-	if s.Helped {
-		add(SourceHelp, ModeAdvantage, "")
-	}
-
-	out.Sources = append(out.Sources, rangedSources(s)...)
-	out.Sources = append(out.Sources, attackerEffectSources(s)...)
 	return out
+}
+
+// proneTargetSources is the source of a prone target, when the distance is
+// known: advantage within 5 ft, disadvantage beyond.
+func proneTargetSources(s AttackScene, within, known bool) []Source {
+	if !s.Target.Has(conditionProne) || !known {
+		return nil
+	}
+	effect := ModeDisadvantage
+	if within {
+		effect = ModeAdvantage
+	}
+	return []Source{{Kind: SourceProneTarget, Effect: effect, Condition: conditionProne}}
+}
+
+// sceneRules are the sources of the features and the scene, in the order
+// they are listed: Reckless Attack, Dodge (the target must see the
+// attacker), Pack Tactics, Unseen Attackers and Targets (an invisible
+// creature is listed by its condition) and Help (SRD 5.1, "Help").
+func sceneRules(s AttackScene) []sourceRule {
+	targetSees := !s.AttackerUnseen && !s.Attacker.Has(conditionInvisible) && !s.Target.Has(conditionBlinded)
+	return []sourceRule{
+		{s.Attacker.Reckless && s.StrengthMelee && s.OwnTurn, SourceRecklessAttacker, ModeAdvantage, ""},
+		{s.Target.Reckless, SourceRecklessTarget, ModeAdvantage, ""},
+		{s.Target.dodgeHolds() && targetSees, SourceDodgingTarget, ModeDisadvantage, ""},
+		{s.Attacker.PackTactics && s.AllyNearTarget, SourcePackTactics, ModeAdvantage, ""},
+		{s.AttackerUnseen && !s.Attacker.Has(conditionInvisible), SourceUnseenAttacker, ModeAdvantage, ""},
+		{s.TargetUnseen && !s.Target.Has(conditionInvisible), SourceUnseenTarget, ModeDisadvantage, ""},
+		{s.Helped, SourceHelp, ModeAdvantage, ""},
+	}
 }
 
 // attackerEffectSources are the disadvantages an effect that lasts gives the attacker's own
@@ -455,50 +468,61 @@ type SaveScene struct {
 // SaveMode lists the circumstances of a saving throw or an ability check (SRD
 // 5.1, Conditions, "Dodge", Barbarian "Rage" and "Danger Sense").
 func SaveMode(s SaveScene) []Source {
-	var out []Source
-	add := func(kind string, effect RollMode, condition string) {
-		out = append(out, Source{Kind: kind, Effect: effect, Condition: condition})
+	rs := dexSaveRules(s)
+	rs = append(rs, sourceRule{s.Ability == strengthAbility && s.Creature.Raging, SourceRageStrength, ModeAdvantage, ""})
+	rs = append(rs, saveRules(s)...)
+	rs = append(rs, checkRules(s)...)
+	return appendRules(nil, rs)
+}
+
+// dexSaveRules are the sources of a Dexterity saving throw: Dodge, Danger
+// Sense and Restrained. None applies to a check or to another save.
+func dexSaveRules(s SaveScene) []sourceRule {
+	if s.Check || s.Ability != dexterityAbility {
+		return nil
 	}
 	c := s.Creature
-	if !s.Check {
-		if s.Ability == dexterityAbility && c.dodgeHolds() {
-			add(SourceDodgingSave, ModeAdvantage, "")
-		}
-		if s.Ability == dexterityAbility && c.DangerSense && s.EffectVisible &&
-			!c.Has(conditionBlinded) && !c.Has(conditionDeafened) && !c.Incapacitated() {
-			add(SourceDangerSense, ModeAdvantage, "")
-		}
-		if s.Ability == dexterityAbility && c.Has(conditionRestrained) {
-			add(SourceRestrainedSave, ModeDisadvantage, conditionRestrained)
-		}
+	return []sourceRule{
+		{c.dodgeHolds(), SourceDodgingSave, ModeAdvantage, ""},
+		{dangerSenseHolds(s), SourceDangerSense, ModeAdvantage, ""},
+		{c.Has(conditionRestrained), SourceRestrainedSave, ModeDisadvantage, conditionRestrained},
 	}
-	if s.Ability == strengthAbility && c.Raging {
-		add(SourceRageStrength, ModeAdvantage, "")
-	}
-	if !s.Check && slices.Contains(c.SaveAdvantage, s.Ability) {
-		add(SourceEffectSave, ModeAdvantage, "")
-	}
-	if !s.Check && c.Exhaustion >= exhaustionAttackLevel {
-		add(SourceExhaustionSave, ModeDisadvantage, "")
-	}
-	if s.Check && slices.Contains(c.CheckAdvantage, s.Ability) {
-		add(SourceEffectCheck, ModeAdvantage, "")
-	}
-	if s.Check && c.Exhaustion >= 1 {
-		add(SourceExhaustionCheck, ModeDisadvantage, "")
-	}
-	if s.Check && s.StealthArmor && s.Ability == dexterityAbility {
-		add(SourceStealthArmor, ModeDisadvantage, "")
-	}
+}
+
+// saveRules are the sources of any saving throw: an effect's advantage and
+// exhaustion. None applies to a check.
+func saveRules(s SaveScene) []sourceRule {
 	if s.Check {
-		if c.Has(conditionPoisoned) {
-			add(SourcePoisonedCheck, ModeDisadvantage, conditionPoisoned)
-		}
-		if c.Has(conditionFrightened) {
-			add(SourceFrightenedCheck, ModeDisadvantage, conditionFrightened)
-		}
+		return nil
 	}
-	return out
+	c := s.Creature
+	return []sourceRule{
+		{slices.Contains(c.SaveAdvantage, s.Ability), SourceEffectSave, ModeAdvantage, ""},
+		{c.Exhaustion >= exhaustionAttackLevel, SourceExhaustionSave, ModeDisadvantage, ""},
+	}
+}
+
+// dangerSenseHolds says Danger Sense gives its advantage: the creature sees
+// the effect, and is neither blinded, deafened nor incapacitated.
+func dangerSenseHolds(s SaveScene) bool {
+	c := s.Creature
+	return c.DangerSense && s.EffectVisible && !c.Has(conditionBlinded) && !c.Has(conditionDeafened) && !c.Incapacitated()
+}
+
+// checkRules are the sources of an ability check that come after Rage. None
+// applies to a saving throw.
+func checkRules(s SaveScene) []sourceRule {
+	if !s.Check {
+		return nil
+	}
+	c := s.Creature
+	return []sourceRule{
+		{slices.Contains(c.CheckAdvantage, s.Ability), SourceEffectCheck, ModeAdvantage, ""},
+		{c.Exhaustion >= exhaustionCheckLevel, SourceExhaustionCheck, ModeDisadvantage, ""},
+		{s.StealthArmor && s.Ability == dexterityAbility, SourceStealthArmor, ModeDisadvantage, ""},
+		{c.Has(conditionPoisoned), SourcePoisonedCheck, ModeDisadvantage, conditionPoisoned},
+		{c.Has(conditionFrightened), SourceFrightenedCheck, ModeDisadvantage, conditionFrightened},
+	}
 }
 
 // AutoFailsSave says the creature fails a saving throw without rolling it: a
@@ -514,6 +538,10 @@ func AutoFailsSave(c Creature, ability string) bool {
 // exhaustionAttackLevel is the level of exhaustion that gives disadvantage on attack rolls
 // and saving throws (SRD, Conditions: level 3); level 1 gives it on ability checks.
 const exhaustionAttackLevel = 3
+
+// exhaustionCheckLevel is the level of exhaustion that gives disadvantage on ability
+// checks (SRD, Conditions: level 1).
+const exhaustionCheckLevel = 1
 
 // pairOfDice is the d20 a roll with advantage or disadvantage takes.
 const pairOfDice = 2

@@ -252,7 +252,7 @@ func (s *Service) SetCampaignNames(n CampaignNames) { s.campaignNames = n }
 // interceptor that finds the caller's session, and the authz.Caller that
 // reads it back. *identity.Service is the real one. Tests pass a fake, so
 // nothing here, or in package authz, can set the caller itself
-// (docs/architecture.md#who-is-calling).
+// (docs/architecture/identity.md#who-is-calling).
 type Sessions interface {
 	// Interceptor finds the caller's session (from the session cookie).
 	Interceptor() connect.Interceptor

@@ -1,0 +1,229 @@
+{
+  "abilityScoreImprovement": true,
+  "anyClassSpells": 1,
+  "canSwapInvocation": true,
+  "cantrips": 1,
+  "classKey": "class:warlock",
+  "classNamePt": "Bruxo",
+  "expertiseChoices": 2,
+  "featureChoices": [
+    {
+      "blocked": [
+        {
+          "option": {
+            "key": "feature:no",
+            "namePt": "Não"
+          },
+          "reasonPt": "Já tem"
+        },
+        {
+          "option": {
+            "key": "feature:no2",
+            "namePt": "Não 2"
+          },
+          "reasonPt": "Outra razão"
+        }
+      ],
+      "choose": 2,
+      "feature": {
+        "key": "feature:style",
+        "namePt": "Estilo"
+      },
+      "options": [
+        {
+          "key": "feature:opt:i",
+          "namePt": "Nome feature:opti"
+        },
+        {
+          "key": "feature:opt:ii",
+          "namePt": "Nome feature:optii"
+        }
+      ],
+      "subclassKey": "subclass:x"
+    },
+    {
+      "choose": 1,
+      "feature": {
+        "key": "feature:bare"
+      }
+    }
+  ],
+  "fromLevel": 2,
+  "hitDie": 8,
+  "hitPointAverage": 5,
+  "isNewClass": true,
+  "lateChoices": [
+    {
+      "level": 1,
+      "origin": "CHOICE_ORIGIN_RACE",
+      "sourceKey": "race:elf",
+      "sourceNamePt": "Elfo"
+    }
+  ],
+  "masterAdds": [
+    {
+      "key": "feature:master:i",
+      "namePt": "Nome feature:masteri"
+    }
+  ],
+  "maxSpellLevel": 2,
+  "newChoices": [
+    {
+      "level": 2,
+      "origin": "CHOICE_ORIGIN_RACE",
+      "sourceKey": "race:dwarf",
+      "sourceNamePt": "Anão"
+    }
+  ],
+  "newFeatures": [
+    {
+      "key": "feature:new:i",
+      "namePt": "Nome feature:newi"
+    },
+    {
+      "key": "feature:new:ii",
+      "namePt": "Nome feature:newii"
+    }
+  ],
+  "pactMagicAfter": {
+    "count": 2,
+    "slotLevel": 2
+  },
+  "pactMagicBefore": {
+    "count": 1,
+    "slotLevel": 1
+  },
+  "preparedMax": 3,
+  "preparedMaxAfter": 4,
+  "prepares": true,
+  "proficiencyBonusAfter": 3,
+  "proficiencyBonusBefore": 3,
+  "proficiencyChoices": [
+    {
+      "count": 1,
+      "from": [
+        {
+          "alreadyHave": true,
+          "key": "skill:arcana",
+          "namePt": "Arcanismo"
+        },
+        {
+          "key": "skill:history",
+          "namePt": "História"
+        }
+      ],
+      "kind": "LEVEL_UP_PROFICIENCY_KIND_SKILL"
+    },
+    {
+      "count": 1,
+      "from": [
+        {
+          "key": "instrument:lute",
+          "namePt": "Alaúde"
+        }
+      ],
+      "kind": "LEVEL_UP_PROFICIENCY_KIND_INSTRUMENT"
+    }
+  ],
+  "proficiencyGains": [
+    {
+      "alreadyHave": true,
+      "key": "armor:light",
+      "kind": "armor",
+      "namePt": "Leve"
+    },
+    {
+      "key": "weapon:simple",
+      "kind": "weapon",
+      "namePt": "Simples"
+    }
+  ],
+  "skillChoices": 1,
+  "spellListClassKey": "class:warlock",
+  "spellSlotsAfter": [
+    4,
+    3,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "spellSlotsBefore": [
+    4,
+    3,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "spells": 2,
+  "spellsKind": "LEVEL_UP_SPELLS_KIND_SPELLBOOK",
+  "subclassDue": true,
+  "subclasses": [
+    {
+      "archived": true,
+      "cantrips": 1,
+      "expertiseChoices": 3,
+      "featureChoices": [
+        {
+          "blocked": [
+            {
+              "option": {
+                "key": "feature:no",
+                "namePt": "Não"
+              },
+              "reasonPt": "Já tem"
+            },
+            {
+              "option": {
+                "key": "feature:no2",
+                "namePt": "Não 2"
+              },
+              "reasonPt": "Outra razão"
+            }
+          ],
+          "choose": 2,
+          "feature": {
+            "key": "feature:style",
+            "namePt": "Estilo"
+          },
+          "options": [
+            {
+              "key": "feature:opt:i",
+              "namePt": "Nome feature:opti"
+            },
+            {
+              "key": "feature:opt:ii",
+              "namePt": "Nome feature:optii"
+            }
+          ],
+          "subclassKey": "subclass:x"
+        }
+      ],
+      "key": "subclass:fiend",
+      "maxSpellLevel": 2,
+      "namePt": "Corruptor",
+      "off": true,
+      "preparedMaxAfter": 7,
+      "prepares": true,
+      "skillChoices": 2,
+      "spellListClassKey": "class:wizard",
+      "spells": 4,
+      "spellsKind": "LEVEL_UP_SPELLS_KIND_KNOWN"
+    },
+    {
+      "key": "subclass:archfey",
+      "namePt": "Arquifada",
+      "spellsKind": "LEVEL_UP_SPELLS_KIND_SPELLBOOK"
+    }
+  ],
+  "toLevel": 3,
+  "totalFromLevel": 5,
+  "totalToLevel": 6
+}

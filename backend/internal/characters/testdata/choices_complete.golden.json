@@ -1,0 +1,2094 @@
+[
+  {
+    "case": "nobody signed in",
+    "logs": null,
+    "refusal": {
+      "code": "unauthenticated",
+      "message": "sign in to continue"
+    }
+  },
+  {
+    "case": "a stranger",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "campaign not found"
+    }
+  },
+  {
+    "case": "a pending member",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "campaign not found"
+    }
+  },
+  {
+    "case": "an id that is no uuid, before the revision and the picks",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    }
+  },
+  {
+    "case": "revision 0, before the picks",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "expected_revision"
+          }
+        }
+      ],
+      "message": "expected_revision must be at least 1"
+    }
+  },
+  {
+    "case": "a negative revision",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "expected_revision"
+          }
+        }
+      ],
+      "message": "expected_revision must be at least 1"
+    }
+  },
+  {
+    "case": "no picks",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks"
+          }
+        }
+      ],
+      "message": "picks is required"
+    }
+  },
+  {
+    "case": "a bad pick shape",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.choice_key"
+          }
+        }
+      ],
+      "message": "picks.choice_key must be 1 to 120 characters"
+    }
+  },
+  {
+    "case": "a character that does not exist",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    }
+  },
+  {
+    "case": "another player's character",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    }
+  },
+  {
+    "case": "an NPC, for a player",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    }
+  },
+  {
+    "case": "a stale revision",
+    "logs": null,
+    "refusal": {
+      "code": "aborted",
+      "message": "the character changed since you opened it; reload it and try again"
+    }
+  },
+  {
+    "case": "a stale revision with a choice not open",
+    "logs": null,
+    "refusal": {
+      "code": "aborted",
+      "message": "the character changed since you opened it; reload it and try again"
+    }
+  },
+  {
+    "case": "a basic sheet, for the master",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "character_id"
+          }
+        }
+      ],
+      "message": "character_id is a character with a basic sheet, which has no choices"
+    }
+  },
+  {
+    "case": "a basic sheet with a stale revision",
+    "logs": null,
+    "refusal": {
+      "code": "aborted",
+      "message": "the character changed since you opened it; reload it and try again"
+    }
+  },
+  {
+    "case": "a choice not open",
+    "logs": null,
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:nope",
+                "field": "picks.choice_key"
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OPEN"
+          }
+        }
+      ],
+      "message": "the sheet has no such choice open"
+    }
+  },
+  {
+    "case": "a choice already made",
+    "logs": null,
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:fighter-fighting-style",
+                "field": "picks",
+                "labelPt": "Estilo de Luta (Guerreiro, nível 1)",
+                "picked": 1,
+                "required": 1
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_ALREADY_MADE"
+          }
+        }
+      ],
+      "message": "a choice already made does not change"
+    }
+  },
+  {
+    "case": "an option not listed",
+    "logs": null,
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "race:half-elf#abilities",
+                "field": "picks",
+                "labelPt": "+1 em duas habilidades (Meio-elfo)",
+                "optionKey": "ability:nope",
+                "required": 2
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED"
+          }
+        }
+      ],
+      "message": "a pick is not one the sheet offers"
+    }
+  },
+  {
+    "case": "the history fails",
+    "logs": [
+      {
+        "code": "internal",
+        "error": "append the choices event: the history is down",
+        "level": "ERROR",
+        "msg": "characters: cannot complete the choices of a character"
+      }
+    ],
+    "refusal": {
+      "code": "internal",
+      "message": "internal error"
+    }
+  },
+  {
+    "case": "the owner's first ability",
+    "character": {
+      "campaignId": "\u003ccampaign\u003e",
+      "derived": {
+        "abilities": [
+          {
+            "ability": "ABILITY_STRENGTH",
+            "base": 15,
+            "modifier": 2,
+            "namePt": "Força",
+            "score": 15
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "base": 14,
+            "bonus": 1,
+            "modifier": 2,
+            "namePt": "Destreza",
+            "score": 15
+          },
+          {
+            "ability": "ABILITY_CONSTITUTION",
+            "base": 13,
+            "modifier": 1,
+            "namePt": "Constituição",
+            "score": 13
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "base": 10,
+            "namePt": "Inteligência",
+            "score": 10
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "base": 12,
+            "modifier": 1,
+            "namePt": "Sabedoria",
+            "score": 12
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "base": 8,
+            "bonus": 2,
+            "namePt": "Carisma",
+            "score": 10
+          }
+        ],
+        "actions": [
+          {
+            "economy": "ACTION_ECONOMY_BONUS_ACTION",
+            "key": "feature:second-wind",
+            "namePt": "Retomar o Fôlego",
+            "resourceKey": "second_wind",
+            "sourceKey": "feature:second-wind"
+          }
+        ],
+        "armorClass": 12,
+        "armorClassDescription": "Sem armadura",
+        "attacks": [
+          {
+            "attackBonus": 4,
+            "damage": "3",
+            "damageDice": {
+              "bonus": 3
+            },
+            "damageTypeKey": "damage-type:bludgeoning",
+            "damageTypePt": "concussão",
+            "key": "attack:unarmed-strike",
+            "kind": "ATTACK_KIND_WEAPON",
+            "melee": true,
+            "name": "Unarmed Strike",
+            "namePt": "Golpe desarmado",
+            "rangeFt": 5
+          }
+        ],
+        "backgroundNamePt": "Acólito",
+        "classes": [
+          {
+            "classKey": "class:fighter",
+            "level": 1,
+            "namePt": "Guerreiro"
+          }
+        ],
+        "contentVersion": "srd51@a8abc93b235c+fx.43",
+        "features": [
+          {
+            "key": "trait:darkvision",
+            "name": "Darkvision",
+            "namePt": "Visão no Escuro",
+            "sourcePt": "Meio-elfo"
+          },
+          {
+            "key": "trait:fey-ancestry",
+            "name": "Fey Ancestry",
+            "namePt": "Ancestral Feérico",
+            "sourcePt": "Meio-elfo"
+          },
+          {
+            "key": "trait:skill-versatility",
+            "name": "Skill Versatility",
+            "namePt": "Versatilidade em Perícia",
+            "sourcePt": "Meio-elfo"
+          },
+          {
+            "key": "background-feature:shelter-of-the-faithful",
+            "name": "Shelter of the Faithful",
+            "namePt": "Abrigo dos Fiéis",
+            "sourcePt": "Acólito"
+          },
+          {
+            "key": "feature:fighter-fighting-style",
+            "name": "Fighting Style",
+            "namePt": "Estilo de Luta",
+            "sourcePt": "Guerreiro 1"
+          },
+          {
+            "key": "feature:second-wind",
+            "name": "Second Wind",
+            "namePt": "Retomar o Fôlego",
+            "sourcePt": "Guerreiro 1"
+          },
+          {
+            "key": "feature:fighter-fighting-style-defense",
+            "name": "Fighting Style: Defense",
+            "namePt": "Estilo de Luta: Defesa",
+            "sourcePt": "Guerreiro 1",
+            "summaryPt": "+1 de CA enquanto usa armadura."
+          }
+        ],
+        "hints": [
+          {
+            "sourceKey": "race:half-elf",
+            "text": "Meio-elfo: escolha +1 em 2 habilidades (FOR, DES, CON, INT, SAB) no passo Escolhas."
+          },
+          {
+            "sourceKey": "trait:fey-ancestry",
+            "text": "Vantagem em testes de resistência contra ficar enfeitiçado; magia não faz você dormir."
+          },
+          {
+            "sourceKey": "feature:second-wind",
+            "text": "Retomar o fôlego: recupera 1d10+1 pontos de vida, uma vez por descanso curto ou longo."
+          }
+        ],
+        "hitDice": [
+          {
+            "count": 1,
+            "faces": 10
+          }
+        ],
+        "hitPointsMax": 11,
+        "initiative": 2,
+        "issues": [
+          {
+            "code": "skill_count",
+            "field": "full.skill_proficiency_keys",
+            "message": "Faltam 4 perícias para escolher."
+          }
+        ],
+        "languages": [
+          "Comum",
+          "Élfico"
+        ],
+        "nextLevelXp": 300,
+        "passiveInsight": 13,
+        "passiveInvestigation": 10,
+        "passivePerception": 11,
+        "proficiencies": {
+          "armor": [
+            "Escudos",
+            "Todas as armaduras"
+          ],
+          "weapons": [
+            "Armas marciais",
+            "Armas simples"
+          ]
+        },
+        "proficiencyBonus": 2,
+        "raceNamePt": "Meio-elfo",
+        "resources": [
+          {
+            "key": "second_wind",
+            "max": 1,
+            "namePt": "Retomar o Fôlego",
+            "recharge": "RECHARGE_SHORT_REST",
+            "sourceKey": "feature:second-wind"
+          }
+        ],
+        "savingThrows": [
+          {
+            "ability": "ABILITY_STRENGTH",
+            "bonus": 4,
+            "namePt": "Força",
+            "proficient": true
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "namePt": "Destreza"
+          },
+          {
+            "ability": "ABILITY_CONSTITUTION",
+            "bonus": 3,
+            "namePt": "Constituição",
+            "proficient": true
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "namePt": "Inteligência"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "namePt": "Sabedoria"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "namePt": "Carisma"
+          }
+        ],
+        "senses": [
+          {
+            "key": "trait:darkvision",
+            "namePt": "Visão no escuro",
+            "rangeFt": 60,
+            "sense": "darkvision"
+          }
+        ],
+        "skills": [
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:acrobatics",
+            "namePt": "Acrobacia",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:animal-handling",
+            "namePt": "Adestrar Animais",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:arcana",
+            "namePt": "Arcanismo",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_STRENGTH",
+            "bonus": 2,
+            "key": "skill:athletics",
+            "namePt": "Atletismo",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:performance",
+            "namePt": "Atuação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:deception",
+            "namePt": "Enganação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:stealth",
+            "namePt": "Furtividade",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:history",
+            "namePt": "História",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:intimidation",
+            "namePt": "Intimidação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 3,
+            "key": "skill:insight",
+            "namePt": "Intuição",
+            "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:investigation",
+            "namePt": "Investigação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:medicine",
+            "namePt": "Medicina",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:nature",
+            "namePt": "Natureza",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:perception",
+            "namePt": "Percepção",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:persuasion",
+            "namePt": "Persuasão",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:sleight-of-hand",
+            "namePt": "Prestidigitação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": 2,
+            "key": "skill:religion",
+            "namePt": "Religião",
+            "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:survival",
+            "namePt": "Sobrevivência",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          }
+        ],
+        "speedWalkFt": 30,
+        "standardActions": [
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:attack",
+            "namePt": "Atacar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:cast-a-spell",
+            "namePt": "Conjurar uma magia"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:dash",
+            "namePt": "Disparada"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:disengage",
+            "namePt": "Desengajar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:dodge",
+            "namePt": "Esquivar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:help",
+            "namePt": "Ajudar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:hide",
+            "namePt": "Esconder"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:ready",
+            "namePt": "Preparar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:search",
+            "namePt": "Procurar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:use-an-object",
+            "namePt": "Usar um objeto"
+          }
+        ],
+        "totalLevel": 1
+      },
+      "id": "\u003chalf-elf\u003e",
+      "kind": "CHARACTER_KIND_PLAYER",
+      "name": "half-elf",
+      "playerDisplayName": "Ana",
+      "playerUserId": "\u003cana\u003e",
+      "revision": 3,
+      "sheet": {
+        "full": {
+          "backgroundKey": "background:acolyte",
+          "baseScores": {
+            "charisma": 8,
+            "constitution": 13,
+            "dexterity": 14,
+            "intelligence": 10,
+            "strength": 15,
+            "wisdom": 12
+          },
+          "classes": [
+            {
+              "classKey": "class:fighter",
+              "level": 1
+            }
+          ],
+          "featureChoiceKeys": [
+            "feature:fighter-fighting-style-defense",
+            "race:half-elf#abilities=ability:dex"
+          ],
+          "knownIssues": [
+            "skill_count|full.skill_proficiency_keys|Faltam 4 perícias para escolher."
+          ],
+          "raceKey": "race:half-elf"
+        }
+      },
+      "state": "CHARACTER_STATE_LOCKED",
+      "story": {}
+    },
+    "history": [
+      "\u003ccampaign\u003e character_choices_completed \u003cana\u003e {\"character_id\":\"\u003chalf-elf\u003e\",\"count\":1}"
+    ],
+    "live": 1,
+    "logs": [
+      {
+        "character_id": "\u003chalf-elf\u003e",
+        "choices": 1,
+        "event": "character.choices_completed",
+        "level": "DEBUG",
+        "msg": "event"
+      }
+    ]
+  },
+  {
+    "case": "the owner's second ability, the first sent again",
+    "character": {
+      "campaignId": "\u003ccampaign\u003e",
+      "derived": {
+        "abilities": [
+          {
+            "ability": "ABILITY_STRENGTH",
+            "base": 15,
+            "modifier": 2,
+            "namePt": "Força",
+            "score": 15
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "base": 14,
+            "bonus": 1,
+            "modifier": 2,
+            "namePt": "Destreza",
+            "score": 15
+          },
+          {
+            "ability": "ABILITY_CONSTITUTION",
+            "base": 13,
+            "bonus": 1,
+            "modifier": 2,
+            "namePt": "Constituição",
+            "score": 14
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "base": 10,
+            "namePt": "Inteligência",
+            "score": 10
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "base": 12,
+            "modifier": 1,
+            "namePt": "Sabedoria",
+            "score": 12
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "base": 8,
+            "bonus": 2,
+            "namePt": "Carisma",
+            "score": 10
+          }
+        ],
+        "actions": [
+          {
+            "economy": "ACTION_ECONOMY_BONUS_ACTION",
+            "key": "feature:second-wind",
+            "namePt": "Retomar o Fôlego",
+            "resourceKey": "second_wind",
+            "sourceKey": "feature:second-wind"
+          }
+        ],
+        "armorClass": 12,
+        "armorClassDescription": "Sem armadura",
+        "attacks": [
+          {
+            "attackBonus": 4,
+            "damage": "3",
+            "damageDice": {
+              "bonus": 3
+            },
+            "damageTypeKey": "damage-type:bludgeoning",
+            "damageTypePt": "concussão",
+            "key": "attack:unarmed-strike",
+            "kind": "ATTACK_KIND_WEAPON",
+            "melee": true,
+            "name": "Unarmed Strike",
+            "namePt": "Golpe desarmado",
+            "rangeFt": 5
+          }
+        ],
+        "backgroundNamePt": "Acólito",
+        "classes": [
+          {
+            "classKey": "class:fighter",
+            "level": 1,
+            "namePt": "Guerreiro"
+          }
+        ],
+        "contentVersion": "srd51@a8abc93b235c+fx.43",
+        "features": [
+          {
+            "key": "trait:darkvision",
+            "name": "Darkvision",
+            "namePt": "Visão no Escuro",
+            "sourcePt": "Meio-elfo"
+          },
+          {
+            "key": "trait:fey-ancestry",
+            "name": "Fey Ancestry",
+            "namePt": "Ancestral Feérico",
+            "sourcePt": "Meio-elfo"
+          },
+          {
+            "key": "trait:skill-versatility",
+            "name": "Skill Versatility",
+            "namePt": "Versatilidade em Perícia",
+            "sourcePt": "Meio-elfo"
+          },
+          {
+            "key": "background-feature:shelter-of-the-faithful",
+            "name": "Shelter of the Faithful",
+            "namePt": "Abrigo dos Fiéis",
+            "sourcePt": "Acólito"
+          },
+          {
+            "key": "feature:fighter-fighting-style",
+            "name": "Fighting Style",
+            "namePt": "Estilo de Luta",
+            "sourcePt": "Guerreiro 1"
+          },
+          {
+            "key": "feature:second-wind",
+            "name": "Second Wind",
+            "namePt": "Retomar o Fôlego",
+            "sourcePt": "Guerreiro 1"
+          },
+          {
+            "key": "feature:fighter-fighting-style-defense",
+            "name": "Fighting Style: Defense",
+            "namePt": "Estilo de Luta: Defesa",
+            "sourcePt": "Guerreiro 1",
+            "summaryPt": "+1 de CA enquanto usa armadura."
+          }
+        ],
+        "hints": [
+          {
+            "sourceKey": "trait:fey-ancestry",
+            "text": "Vantagem em testes de resistência contra ficar enfeitiçado; magia não faz você dormir."
+          },
+          {
+            "sourceKey": "feature:second-wind",
+            "text": "Retomar o fôlego: recupera 1d10+1 pontos de vida, uma vez por descanso curto ou longo."
+          }
+        ],
+        "hitDice": [
+          {
+            "count": 1,
+            "faces": 10
+          }
+        ],
+        "hitPointsMax": 12,
+        "initiative": 2,
+        "issues": [
+          {
+            "code": "skill_count",
+            "field": "full.skill_proficiency_keys",
+            "message": "Faltam 4 perícias para escolher."
+          }
+        ],
+        "languages": [
+          "Comum",
+          "Élfico"
+        ],
+        "nextLevelXp": 300,
+        "passiveInsight": 13,
+        "passiveInvestigation": 10,
+        "passivePerception": 11,
+        "proficiencies": {
+          "armor": [
+            "Escudos",
+            "Todas as armaduras"
+          ],
+          "weapons": [
+            "Armas marciais",
+            "Armas simples"
+          ]
+        },
+        "proficiencyBonus": 2,
+        "raceNamePt": "Meio-elfo",
+        "resources": [
+          {
+            "key": "second_wind",
+            "max": 1,
+            "namePt": "Retomar o Fôlego",
+            "recharge": "RECHARGE_SHORT_REST",
+            "sourceKey": "feature:second-wind"
+          }
+        ],
+        "savingThrows": [
+          {
+            "ability": "ABILITY_STRENGTH",
+            "bonus": 4,
+            "namePt": "Força",
+            "proficient": true
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "namePt": "Destreza"
+          },
+          {
+            "ability": "ABILITY_CONSTITUTION",
+            "bonus": 4,
+            "namePt": "Constituição",
+            "proficient": true
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "namePt": "Inteligência"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "namePt": "Sabedoria"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "namePt": "Carisma"
+          }
+        ],
+        "senses": [
+          {
+            "key": "trait:darkvision",
+            "namePt": "Visão no escuro",
+            "rangeFt": 60,
+            "sense": "darkvision"
+          }
+        ],
+        "skills": [
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:acrobatics",
+            "namePt": "Acrobacia",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:animal-handling",
+            "namePt": "Adestrar Animais",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:arcana",
+            "namePt": "Arcanismo",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_STRENGTH",
+            "bonus": 2,
+            "key": "skill:athletics",
+            "namePt": "Atletismo",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:performance",
+            "namePt": "Atuação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:deception",
+            "namePt": "Enganação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:stealth",
+            "namePt": "Furtividade",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:history",
+            "namePt": "História",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:intimidation",
+            "namePt": "Intimidação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 3,
+            "key": "skill:insight",
+            "namePt": "Intuição",
+            "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:investigation",
+            "namePt": "Investigação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:medicine",
+            "namePt": "Medicina",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:nature",
+            "namePt": "Natureza",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:perception",
+            "namePt": "Percepção",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:persuasion",
+            "namePt": "Persuasão",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:sleight-of-hand",
+            "namePt": "Prestidigitação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": 2,
+            "key": "skill:religion",
+            "namePt": "Religião",
+            "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:survival",
+            "namePt": "Sobrevivência",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          }
+        ],
+        "speedWalkFt": 30,
+        "standardActions": [
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:attack",
+            "namePt": "Atacar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:cast-a-spell",
+            "namePt": "Conjurar uma magia"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:dash",
+            "namePt": "Disparada"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:disengage",
+            "namePt": "Desengajar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:dodge",
+            "namePt": "Esquivar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:help",
+            "namePt": "Ajudar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:hide",
+            "namePt": "Esconder"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:ready",
+            "namePt": "Preparar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:search",
+            "namePt": "Procurar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:use-an-object",
+            "namePt": "Usar um objeto"
+          }
+        ],
+        "totalLevel": 1
+      },
+      "id": "\u003chalf-elf\u003e",
+      "kind": "CHARACTER_KIND_PLAYER",
+      "name": "half-elf",
+      "playerDisplayName": "Ana",
+      "playerUserId": "\u003cana\u003e",
+      "revision": 4,
+      "sheet": {
+        "full": {
+          "backgroundKey": "background:acolyte",
+          "baseScores": {
+            "charisma": 8,
+            "constitution": 13,
+            "dexterity": 14,
+            "intelligence": 10,
+            "strength": 15,
+            "wisdom": 12
+          },
+          "classes": [
+            {
+              "classKey": "class:fighter",
+              "level": 1
+            }
+          ],
+          "featureChoiceKeys": [
+            "feature:fighter-fighting-style-defense",
+            "race:half-elf#abilities=ability:dex",
+            "race:half-elf#abilities=ability:con"
+          ],
+          "knownIssues": [
+            "skill_count|full.skill_proficiency_keys|Faltam 4 perícias para escolher."
+          ],
+          "raceKey": "race:half-elf"
+        }
+      },
+      "state": "CHARACTER_STATE_LOCKED",
+      "story": {}
+    },
+    "history": [
+      "\u003ccampaign\u003e character_choices_completed \u003cana\u003e {\"character_id\":\"\u003chalf-elf\u003e\",\"count\":1}"
+    ],
+    "live": 2,
+    "logs": [
+      {
+        "character_id": "\u003chalf-elf\u003e",
+        "choices": 1,
+        "event": "character.choices_completed",
+        "level": "DEBUG",
+        "msg": "event"
+      }
+    ]
+  },
+  {
+    "case": "the master completes another's style",
+    "character": {
+      "campaignId": "\u003ccampaign\u003e",
+      "canAccessMasterNotes": true,
+      "canEdit": true,
+      "canEditStory": true,
+      "canMarkDead": true,
+      "canSetStoryEditing": true,
+      "derived": {
+        "abilities": [
+          {
+            "ability": "ABILITY_STRENGTH",
+            "base": 15,
+            "bonus": 1,
+            "modifier": 3,
+            "namePt": "Força",
+            "score": 16
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "base": 14,
+            "bonus": 1,
+            "modifier": 2,
+            "namePt": "Destreza",
+            "score": 15
+          },
+          {
+            "ability": "ABILITY_CONSTITUTION",
+            "base": 13,
+            "bonus": 1,
+            "modifier": 2,
+            "namePt": "Constituição",
+            "score": 14
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "base": 10,
+            "bonus": 1,
+            "namePt": "Inteligência",
+            "score": 11
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "base": 12,
+            "bonus": 1,
+            "modifier": 1,
+            "namePt": "Sabedoria",
+            "score": 13
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "base": 8,
+            "bonus": 1,
+            "modifier": -1,
+            "namePt": "Carisma",
+            "score": 9
+          }
+        ],
+        "actions": [
+          {
+            "economy": "ACTION_ECONOMY_BONUS_ACTION",
+            "key": "feature:second-wind",
+            "namePt": "Retomar o Fôlego",
+            "resourceKey": "second_wind",
+            "sourceKey": "feature:second-wind"
+          }
+        ],
+        "armorClass": 12,
+        "armorClassDescription": "Sem armadura",
+        "attacks": [
+          {
+            "attackBonus": 5,
+            "damage": "4",
+            "damageDice": {
+              "bonus": 4
+            },
+            "damageTypeKey": "damage-type:bludgeoning",
+            "damageTypePt": "concussão",
+            "key": "attack:unarmed-strike",
+            "kind": "ATTACK_KIND_WEAPON",
+            "melee": true,
+            "name": "Unarmed Strike",
+            "namePt": "Golpe desarmado",
+            "rangeFt": 5
+          }
+        ],
+        "backgroundNamePt": "Acólito",
+        "classes": [
+          {
+            "classKey": "class:fighter",
+            "level": 1,
+            "namePt": "Guerreiro"
+          }
+        ],
+        "contentVersion": "srd51@a8abc93b235c+fx.43",
+        "features": [
+          {
+            "key": "background-feature:shelter-of-the-faithful",
+            "name": "Shelter of the Faithful",
+            "namePt": "Abrigo dos Fiéis",
+            "sourcePt": "Acólito"
+          },
+          {
+            "key": "feature:fighter-fighting-style",
+            "name": "Fighting Style",
+            "namePt": "Estilo de Luta",
+            "sourcePt": "Guerreiro 1"
+          },
+          {
+            "key": "feature:second-wind",
+            "name": "Second Wind",
+            "namePt": "Retomar o Fôlego",
+            "sourcePt": "Guerreiro 1"
+          },
+          {
+            "key": "feature:fighter-fighting-style-archery",
+            "name": "Fighting Style: Archery",
+            "namePt": "Estilo de Luta: Arquearia",
+            "sourcePt": "Guerreiro 1",
+            "summaryPt": "+2 nas jogadas de ataque com armas à distância."
+          }
+        ],
+        "hints": [
+          {
+            "sourceKey": "feature:second-wind",
+            "text": "Retomar o fôlego: recupera 1d10+1 pontos de vida, uma vez por descanso curto ou longo."
+          }
+        ],
+        "hitDice": [
+          {
+            "count": 1,
+            "faces": 10
+          }
+        ],
+        "hitPointsMax": 12,
+        "initiative": 2,
+        "issues": [
+          {
+            "code": "skill_count",
+            "field": "full.skill_proficiency_keys",
+            "message": "Faltam 2 perícias para escolher."
+          }
+        ],
+        "languages": [
+          "Comum"
+        ],
+        "nextLevelXp": 300,
+        "passiveInsight": 13,
+        "passiveInvestigation": 10,
+        "passivePerception": 11,
+        "proficiencies": {
+          "armor": [
+            "Escudos",
+            "Todas as armaduras"
+          ],
+          "weapons": [
+            "Armas marciais",
+            "Armas simples"
+          ]
+        },
+        "proficiencyBonus": 2,
+        "raceNamePt": "Humano",
+        "resources": [
+          {
+            "key": "second_wind",
+            "max": 1,
+            "namePt": "Retomar o Fôlego",
+            "recharge": "RECHARGE_SHORT_REST",
+            "sourceKey": "feature:second-wind"
+          }
+        ],
+        "savingThrows": [
+          {
+            "ability": "ABILITY_STRENGTH",
+            "bonus": 5,
+            "namePt": "Força",
+            "proficient": true
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "namePt": "Destreza"
+          },
+          {
+            "ability": "ABILITY_CONSTITUTION",
+            "bonus": 4,
+            "namePt": "Constituição",
+            "proficient": true
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "namePt": "Inteligência"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "namePt": "Sabedoria"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "bonus": -1,
+            "namePt": "Carisma"
+          }
+        ],
+        "skills": [
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:acrobatics",
+            "namePt": "Acrobacia",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:animal-handling",
+            "namePt": "Adestrar Animais",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:arcana",
+            "namePt": "Arcanismo",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_STRENGTH",
+            "bonus": 3,
+            "key": "skill:athletics",
+            "namePt": "Atletismo",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "bonus": -1,
+            "key": "skill:performance",
+            "namePt": "Atuação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "bonus": -1,
+            "key": "skill:deception",
+            "namePt": "Enganação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:stealth",
+            "namePt": "Furtividade",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:history",
+            "namePt": "História",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "bonus": -1,
+            "key": "skill:intimidation",
+            "namePt": "Intimidação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 3,
+            "key": "skill:insight",
+            "namePt": "Intuição",
+            "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:investigation",
+            "namePt": "Investigação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:medicine",
+            "namePt": "Medicina",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "key": "skill:nature",
+            "namePt": "Natureza",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:perception",
+            "namePt": "Percepção",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "bonus": -1,
+            "key": "skill:persuasion",
+            "namePt": "Persuasão",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 2,
+            "key": "skill:sleight-of-hand",
+            "namePt": "Prestidigitação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": 2,
+            "key": "skill:religion",
+            "namePt": "Religião",
+            "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "bonus": 1,
+            "key": "skill:survival",
+            "namePt": "Sobrevivência",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          }
+        ],
+        "speedWalkFt": 30,
+        "standardActions": [
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:attack",
+            "namePt": "Atacar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:cast-a-spell",
+            "namePt": "Conjurar uma magia"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:dash",
+            "namePt": "Disparada"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:disengage",
+            "namePt": "Desengajar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:dodge",
+            "namePt": "Esquivar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:help",
+            "namePt": "Ajudar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:hide",
+            "namePt": "Esconder"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:ready",
+            "namePt": "Preparar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:search",
+            "namePt": "Procurar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:use-an-object",
+            "namePt": "Usar um objeto"
+          }
+        ],
+        "totalLevel": 1
+      },
+      "id": "\u003ccaios-fighter\u003e",
+      "kind": "CHARACTER_KIND_PLAYER",
+      "name": "caios-fighter",
+      "playerDisplayName": "Caio",
+      "playerUserId": "\u003ccaio\u003e",
+      "revision": 3,
+      "sheet": {
+        "full": {
+          "backgroundKey": "background:acolyte",
+          "baseScores": {
+            "charisma": 8,
+            "constitution": 13,
+            "dexterity": 14,
+            "intelligence": 10,
+            "strength": 15,
+            "wisdom": 12
+          },
+          "classes": [
+            {
+              "classKey": "class:fighter",
+              "level": 1
+            }
+          ],
+          "featureChoiceKeys": [
+            "feature:fighter-fighting-style-archery"
+          ],
+          "knownIssues": [
+            "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+          ],
+          "raceKey": "race:human"
+        }
+      },
+      "state": "CHARACTER_STATE_LOCKED",
+      "story": {}
+    },
+    "history": [
+      "\u003ccampaign\u003e character_choices_completed \u003cmaster\u003e {\"character_id\":\"\u003ccaios-fighter\u003e\",\"count\":1}"
+    ],
+    "live": 3,
+    "logs": [
+      {
+        "character_id": "\u003ccaios-fighter\u003e",
+        "choices": 1,
+        "event": "character.choices_completed",
+        "level": "DEBUG",
+        "msg": "event"
+      }
+    ]
+  },
+  {
+    "case": "the master completes an NPC's style",
+    "character": {
+      "campaignId": "\u003ccampaign\u003e",
+      "canAccessMasterNotes": true,
+      "canEdit": true,
+      "canEditStory": true,
+      "derived": {
+        "abilities": [
+          {
+            "ability": "ABILITY_STRENGTH",
+            "base": 16,
+            "bonus": 1,
+            "modifier": 3,
+            "namePt": "Força",
+            "score": 17
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "base": 12,
+            "bonus": 1,
+            "modifier": 1,
+            "namePt": "Destreza",
+            "score": 13
+          },
+          {
+            "ability": "ABILITY_CONSTITUTION",
+            "base": 14,
+            "bonus": 1,
+            "modifier": 2,
+            "namePt": "Constituição",
+            "score": 15
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "base": 8,
+            "bonus": 1,
+            "modifier": -1,
+            "namePt": "Inteligência",
+            "score": 9
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "base": 10,
+            "bonus": 1,
+            "namePt": "Sabedoria",
+            "score": 11
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "base": 10,
+            "bonus": 1,
+            "namePt": "Carisma",
+            "score": 11
+          }
+        ],
+        "actions": [
+          {
+            "economy": "ACTION_ECONOMY_BONUS_ACTION",
+            "key": "feature:second-wind",
+            "namePt": "Retomar o Fôlego",
+            "resourceKey": "second_wind",
+            "sourceKey": "feature:second-wind"
+          },
+          {
+            "economy": "ACTION_ECONOMY_FREE",
+            "key": "feature:action-surge-1-use",
+            "namePt": "Surto de Ação",
+            "resourceKey": "action_surge",
+            "sourceKey": "feature:action-surge-1-use"
+          }
+        ],
+        "armorClass": 18,
+        "armorClassDescription": "Cota de malha + escudo",
+        "attacks": [
+          {
+            "attackBonus": 5,
+            "damage": "1d8+3",
+            "damageDice": {
+              "bonus": 3,
+              "count": 1,
+              "sides": 8
+            },
+            "damageTypeKey": "damage-type:slashing",
+            "damageTypePt": "cortante",
+            "key": "equipment:longsword",
+            "kind": "ATTACK_KIND_WEAPON",
+            "melee": true,
+            "name": "Longsword",
+            "namePt": "Espada longa",
+            "rangeFt": 5,
+            "versatileDamage": "1d10+3",
+            "versatileDamageDice": {
+              "bonus": 3,
+              "count": 1,
+              "sides": 10
+            }
+          },
+          {
+            "attackBonus": 5,
+            "damage": "4",
+            "damageDice": {
+              "bonus": 4
+            },
+            "damageTypeKey": "damage-type:bludgeoning",
+            "damageTypePt": "concussão",
+            "key": "attack:unarmed-strike",
+            "kind": "ATTACK_KIND_WEAPON",
+            "melee": true,
+            "name": "Unarmed Strike",
+            "namePt": "Golpe desarmado",
+            "rangeFt": 5
+          }
+        ],
+        "classes": [
+          {
+            "classKey": "class:fighter",
+            "level": 2,
+            "namePt": "Guerreiro"
+          }
+        ],
+        "contentVersion": "srd51@a8abc93b235c+fx.43",
+        "features": [
+          {
+            "key": "feature:fighter-fighting-style",
+            "name": "Fighting Style",
+            "namePt": "Estilo de Luta",
+            "sourcePt": "Guerreiro 1"
+          },
+          {
+            "key": "feature:second-wind",
+            "name": "Second Wind",
+            "namePt": "Retomar o Fôlego",
+            "sourcePt": "Guerreiro 1"
+          },
+          {
+            "key": "feature:action-surge-1-use",
+            "name": "Action Surge (1 use)",
+            "namePt": "Surto de Ação (1 uso)",
+            "sourcePt": "Guerreiro 2"
+          },
+          {
+            "key": "feature:fighter-fighting-style-archery",
+            "name": "Fighting Style: Archery",
+            "namePt": "Estilo de Luta: Arquearia",
+            "sourcePt": "Guerreiro 1",
+            "summaryPt": "+2 nas jogadas de ataque com armas à distância."
+          }
+        ],
+        "hints": [
+          {
+            "sourceKey": "equipment:chain-mail",
+            "text": "Desvantagem em Furtividade com cota de malha."
+          },
+          {
+            "sourceKey": "feature:second-wind",
+            "text": "Retomar o fôlego: recupera 1d10+2 pontos de vida, uma vez por descanso curto ou longo."
+          }
+        ],
+        "hitDice": [
+          {
+            "count": 2,
+            "faces": 10
+          }
+        ],
+        "hitPointsMax": 20,
+        "initiative": 1,
+        "issues": [
+          {
+            "code": "missing",
+            "field": "full.background_key",
+            "message": "Escolha um antecedente."
+          },
+          {
+            "code": "skill_count",
+            "field": "full.skill_proficiency_keys",
+            "message": "Faltam 2 perícias para escolher."
+          }
+        ],
+        "languages": [
+          "Comum"
+        ],
+        "nextLevelXp": 900,
+        "passiveInsight": 10,
+        "passiveInvestigation": 9,
+        "passivePerception": 10,
+        "proficiencies": {
+          "armor": [
+            "Escudos",
+            "Todas as armaduras"
+          ],
+          "weapons": [
+            "Armas marciais",
+            "Armas simples"
+          ]
+        },
+        "proficiencyBonus": 2,
+        "raceNamePt": "Humano",
+        "resources": [
+          {
+            "key": "second_wind",
+            "max": 1,
+            "namePt": "Retomar o Fôlego",
+            "recharge": "RECHARGE_SHORT_REST",
+            "sourceKey": "feature:second-wind"
+          },
+          {
+            "key": "action_surge",
+            "max": 1,
+            "namePt": "Surto de Ação",
+            "recharge": "RECHARGE_SHORT_REST",
+            "sourceKey": "feature:action-surge-1-use"
+          }
+        ],
+        "savingThrows": [
+          {
+            "ability": "ABILITY_STRENGTH",
+            "bonus": 5,
+            "namePt": "Força",
+            "proficient": true
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 1,
+            "namePt": "Destreza"
+          },
+          {
+            "ability": "ABILITY_CONSTITUTION",
+            "bonus": 4,
+            "namePt": "Constituição",
+            "proficient": true
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": -1,
+            "namePt": "Inteligência"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "namePt": "Sabedoria"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "namePt": "Carisma"
+          }
+        ],
+        "skills": [
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 1,
+            "key": "skill:acrobatics",
+            "namePt": "Acrobacia",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "key": "skill:animal-handling",
+            "namePt": "Adestrar Animais",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": -1,
+            "key": "skill:arcana",
+            "namePt": "Arcanismo",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_STRENGTH",
+            "bonus": 3,
+            "key": "skill:athletics",
+            "namePt": "Atletismo",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:performance",
+            "namePt": "Atuação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:deception",
+            "namePt": "Enganação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 1,
+            "key": "skill:stealth",
+            "namePt": "Furtividade",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": -1,
+            "key": "skill:history",
+            "namePt": "História",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:intimidation",
+            "namePt": "Intimidação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "key": "skill:insight",
+            "namePt": "Intuição",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": -1,
+            "key": "skill:investigation",
+            "namePt": "Investigação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "key": "skill:medicine",
+            "namePt": "Medicina",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": -1,
+            "key": "skill:nature",
+            "namePt": "Natureza",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "key": "skill:perception",
+            "namePt": "Percepção",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_CHARISMA",
+            "key": "skill:persuasion",
+            "namePt": "Persuasão",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_DEXTERITY",
+            "bonus": 1,
+            "key": "skill:sleight-of-hand",
+            "namePt": "Prestidigitação",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_INTELLIGENCE",
+            "bonus": -1,
+            "key": "skill:religion",
+            "namePt": "Religião",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          },
+          {
+            "ability": "ABILITY_WISDOM",
+            "key": "skill:survival",
+            "namePt": "Sobrevivência",
+            "proficiency": "PROFICIENCY_LEVEL_NONE"
+          }
+        ],
+        "speedWalkFt": 30,
+        "standardActions": [
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:attack",
+            "namePt": "Atacar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:cast-a-spell",
+            "namePt": "Conjurar uma magia"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:dash",
+            "namePt": "Disparada"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:disengage",
+            "namePt": "Desengajar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:dodge",
+            "namePt": "Esquivar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:help",
+            "namePt": "Ajudar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:hide",
+            "namePt": "Esconder"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:ready",
+            "namePt": "Preparar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:search",
+            "namePt": "Procurar"
+          },
+          {
+            "economy": "ACTION_ECONOMY_ACTION",
+            "key": "standard:use-an-object",
+            "namePt": "Usar um objeto"
+          }
+        ],
+        "totalLevel": 2
+      },
+      "id": "\u003cenemy\u003e",
+      "kind": "CHARACTER_KIND_ENEMY",
+      "name": "Bandido",
+      "revision": 2,
+      "sheet": {
+        "full": {
+          "armorKey": "equipment:chain-mail",
+          "baseScores": {
+            "charisma": 10,
+            "constitution": 14,
+            "dexterity": 12,
+            "intelligence": 8,
+            "strength": 16,
+            "wisdom": 10
+          },
+          "classes": [
+            {
+              "classKey": "class:fighter",
+              "level": 2
+            }
+          ],
+          "featureChoiceKeys": [
+            "feature:fighter-fighting-style-archery"
+          ],
+          "knownIssues": [
+            "missing|full.background_key|Escolha um antecedente.",
+            "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+          ],
+          "raceKey": "race:human",
+          "shield": true,
+          "weaponKeys": [
+            "equipment:longsword"
+          ]
+        }
+      },
+      "state": "CHARACTER_STATE_DRAFT",
+      "story": {}
+    },
+    "history": [
+      "\u003ccampaign\u003e character_choices_completed \u003cmaster\u003e {\"character_id\":\"\u003cenemy\u003e\",\"count\":1}"
+    ],
+    "live": 4,
+    "logs": [
+      {
+        "character_id": "\u003cenemy\u003e",
+        "choices": 1,
+        "event": "character.choices_completed",
+        "level": "DEBUG",
+        "msg": "event"
+      }
+    ]
+  },
+  {
+    "case": "a dead character, as its owner",
+    "logs": null,
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.CharacterBlocked",
+          "value": {
+            "characterId": "\u003chalf-elf\u003e",
+            "reason": "CHARACTER_BLOCKED_REASON_CHARACTER_DEAD"
+          }
+        }
+      ],
+      "message": "the character is dead, so only the master edits its sheet"
+    }
+  },
+  {
+    "case": "a dead character with a stale revision, as the master",
+    "logs": null,
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.CharacterBlocked",
+          "value": {
+            "characterId": "\u003chalf-elf\u003e",
+            "reason": "CHARACTER_BLOCKED_REASON_CHARACTER_DEAD"
+          }
+        }
+      ],
+      "message": "the character is dead, so only the master edits its sheet"
+    }
+  }
+]

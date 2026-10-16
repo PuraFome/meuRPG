@@ -772,12 +772,6 @@ func (s *Service) RollSceneCheck(
 			return nil
 		}
 		d20 := step.Roll
-		if !step.Settled {
-			if d20, err = s.d20With(in, bonus, cm.Mode); err != nil {
-				return err
-			}
-			d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
-		}
 		ev = sceneRollEvent{
 			PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 			D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),

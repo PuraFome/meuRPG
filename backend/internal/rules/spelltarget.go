@@ -71,6 +71,17 @@ type spellTargetOverride struct {
 	LabelPT      string `json:"label_pt,omitempty"`
 }
 
+// The bounds of a hand-written target.
+const (
+	maxTargetCount        = 20
+	maxTargetPerSlotLevel = 10
+	targetSizeStepFt      = 5
+	maxTargetLabel        = 80
+)
+
+// targetShapes are the shapes of an area target.
+var targetShapes = []string{ShapeCone, ShapeCube, ShapeCylinder, ShapeLine, ShapeSphere}
+
 // loadSpellTargets reads and checks effects/spell_targets.json: every key is a
 // spell of the content, the kinds are closed, and an area has a shape and a size
 // in steps of 5 ft.
@@ -82,35 +93,64 @@ func (c *content) loadSpellTargets(fsys fs.FS) error {
 	c.srdTargets = map[string]SpellTarget{}
 	for _, key := range sortedKeys(f.Spells) {
 		in := f.Spells[key]
-		fail := func(format string, a ...any) error {
-			return fmt.Errorf("effects/spell_targets.json: %s: %s", key, fmt.Sprintf(format, a...))
-		}
 		if _, ok := c.spells[key]; !ok {
 			return fmt.Errorf("effects/spell_targets.json: %q is not a spell of the content", key)
 		}
-		t := SpellTarget{Kind: in.Kind, Count: in.Count, PerSlotLevel: in.PerSlotLevel, Shape: in.Shape, SizeFt: in.SizeFt, Label: in.LabelPT}
-		switch in.Kind {
-		case TargetSelf, TargetNone, TargetCreature:
-			if in.Count != 0 || in.Shape != "" || in.SizeFt != 0 || (in.Kind != TargetCreature && in.PerSlotLevel != 0) {
-				return fail("a %s target takes no other field", in.Kind)
-			}
-		case TargetCreatures:
-			if in.Count < 1 || in.Count > 20 || in.PerSlotLevel < 0 || in.PerSlotLevel > 10 || in.Shape != "" || in.SizeFt != 0 {
-				return fail("creatures: a count of 1 to 20 and 0 to 10 more per slot level")
-			}
-		case TargetArea:
-			if !slices.Contains([]string{ShapeCone, ShapeCube, ShapeCylinder, ShapeLine, ShapeSphere}, in.Shape) || in.SizeFt < 5 || in.SizeFt%5 != 0 || in.Count != 0 || in.PerSlotLevel != 0 {
-				return fail("an area is a cone, cube, cylinder, line or sphere of a multiple of 5 ft")
-			}
-		default:
-			return fail("the kind %q is not creature, creatures, area, self or none", in.Kind)
+		if msg := checkSpellTarget(in); msg != "" {
+			return fmt.Errorf("effects/spell_targets.json: %s: %s", key, msg)
 		}
-		if utf8.RuneCountInString(in.LabelPT) > 80 || strings.ContainsFunc(in.LabelPT, isHiddenRune) {
-			return fail("label_pt is one line of at most 80 characters")
-		}
-		c.srdTargets[key] = t
+		c.srdTargets[key] = SpellTarget{Kind: in.Kind, Count: in.Count, PerSlotLevel: in.PerSlotLevel, Shape: in.Shape, SizeFt: in.SizeFt, Label: in.LabelPT}
 	}
 	return nil
+}
+
+// checkSpellTarget says what is wrong with an override, or "": its kind's
+// fields, then its label.
+func checkSpellTarget(in spellTargetOverride) string {
+	if msg := checkSpellTargetKind(in); msg != "" {
+		return msg
+	}
+	if utf8.RuneCountInString(in.LabelPT) > maxTargetLabel || strings.ContainsFunc(in.LabelPT, isHiddenRune) {
+		return "label_pt is one line of at most 80 characters"
+	}
+	return ""
+}
+
+// checkSpellTargetKind checks the fields each kind takes.
+func checkSpellTargetKind(in spellTargetOverride) string {
+	switch in.Kind {
+	case TargetSelf, TargetNone, TargetCreature:
+		return checkSingleTarget(in)
+	case TargetCreatures:
+		return checkCreaturesOverride(in)
+	case TargetArea:
+		return checkAreaOverride(in)
+	default:
+		return fmt.Sprintf("the kind %q is not creature, creatures, area, self or none", in.Kind)
+	}
+}
+
+// checkSingleTarget: self, none and creature take no other field, but a
+// creature may take more per slot level.
+func checkSingleTarget(in spellTargetOverride) string {
+	if in.Count != 0 || in.Shape != "" || in.SizeFt != 0 || (in.Kind != TargetCreature && in.PerSlotLevel != 0) {
+		return fmt.Sprintf("a %s target takes no other field", in.Kind)
+	}
+	return ""
+}
+
+func checkCreaturesOverride(in spellTargetOverride) string {
+	if in.Count < 1 || in.Count > maxTargetCount || in.PerSlotLevel < 0 || in.PerSlotLevel > maxTargetPerSlotLevel || in.Shape != "" || in.SizeFt != 0 {
+		return "creatures: a count of 1 to 20 and 0 to 10 more per slot level"
+	}
+	return ""
+}
+
+func checkAreaOverride(in spellTargetOverride) string {
+	if !slices.Contains(targetShapes, in.Shape) || in.SizeFt < targetSizeStepFt || in.SizeFt%targetSizeStepFt != 0 || in.Count != 0 || in.PerSlotLevel != 0 {
+		return "an area is a cone, cube, cylinder, line or sphere of a multiple of 5 ft"
+	}
+	return ""
 }
 
 // srdTarget says whom an SRD spell reaches: the hand-written override when there

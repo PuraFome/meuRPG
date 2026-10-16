@@ -101,30 +101,11 @@ func (s *Service) MonsterNpc(ctx context.Context, tx pgx.Tx, campaignID, masterU
 		return link.Character{}, false, wrap("read the NPC of a monster", err)
 	}
 	if err != nil {
-		basic, err := npcSheetFromCreature(content, monsterKey)
+		params, err := monsterNpcParams(content, c, campaignID, masterUserID, monsterKey, key, at)
 		if err != nil {
 			return link.Character{}, false, err
 		}
-		basic.CombatOnly = true
-		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: basic}}
-		params := charactersdb.InsertNpcFromCreatureParams{
-			CampaignID: campaignID, Kind: kindMinion, MasterUserID: &masterUserID, Name: c.NamePT, CreateKey: key, Now: at,
-		}
-		if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
-			return link.Character{}, false, fmt.Errorf("encode a sheet: %w", err)
-		}
-		if params.Story, err = storeJSON.Marshal(&charactersv1.CharacterStory{}); err != nil {
-			return link.Character{}, false, fmt.Errorf("encode a story: %w", err)
-		}
-		if row, err = q.InsertNpcFromCreature(ctx, params); err != nil {
-			if !errors.Is(err, pgx.ErrNoRows) {
-				return link.Character{}, false, wrap("insert the NPC of a monster", err)
-			}
-			// Another transaction made it first: read it.
-			if row, err = q.GetCharacterByCreateKey(ctx, charactersdb.GetCharacterByCreateKeyParams{CampaignID: campaignID, CreateKey: key}); err != nil {
-				return link.Character{}, false, wrap("read the NPC of a monster", err)
-			}
-		} else if err := s.checkRoom(ctx, q, campaignID, true); err != nil {
+		if row, err = s.insertMonsterNpc(ctx, q, params); err != nil {
 			return link.Character{}, false, err
 		}
 	}
@@ -133,4 +114,42 @@ func (s *Service) MonsterNpc(ctx context.Context, tx pgx.Tx, campaignID, masterU
 		return link.Character{}, false, err
 	}
 	return out, true, nil
+}
+
+// monsterNpcParams is the row of the creature's NPC: a minion of the master, with
+// the sheet "Criar NPC" makes, marked combat_only, and an empty story.
+func monsterNpcParams(content *rules.Content, c rules.Creature, campaignID, masterUserID, monsterKey, key string, at time.Time) (charactersdb.InsertNpcFromCreatureParams, error) {
+	params := charactersdb.InsertNpcFromCreatureParams{
+		CampaignID: campaignID, Kind: kindMinion, MasterUserID: &masterUserID, Name: c.NamePT, CreateKey: key, Now: at,
+	}
+	basic, err := npcSheetFromCreature(content, monsterKey)
+	if err != nil {
+		return params, err
+	}
+	basic.CombatOnly = true
+	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: basic}}
+	if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
+		return params, fmt.Errorf("encode a sheet: %w", err)
+	}
+	if params.Story, err = storeJSON.Marshal(&charactersv1.CharacterStory{}); err != nil {
+		return params, fmt.Errorf("encode a story: %w", err)
+	}
+	return params, nil
+}
+
+// insertMonsterNpc writes the NPC, inside the campaign's cap; when another
+// transaction made it first, it reads that one.
+func (s *Service) insertMonsterNpc(ctx context.Context, q *charactersdb.Queries, params charactersdb.InsertNpcFromCreatureParams) (charactersdb.Character, error) {
+	row, err := q.InsertNpcFromCreature(ctx, params)
+	if err == nil {
+		return row, s.checkRoom(ctx, q, params.CampaignID, true)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return row, wrap("insert the NPC of a monster", err)
+	}
+	// Another transaction made it first: read it.
+	if row, err = q.GetCharacterByCreateKey(ctx, charactersdb.GetCharacterByCreateKeyParams{CampaignID: params.CampaignID, CreateKey: params.CreateKey}); err != nil {
+		return row, wrap("read the NPC of a monster", err)
+	}
+	return row, nil
 }

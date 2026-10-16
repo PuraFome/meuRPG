@@ -32,19 +32,9 @@ func (s *Service) CreateNpcFromCreature(
 	if err != nil {
 		return nil, err
 	}
-	// A basic sheet is the MINION's and the STORY NPC's; ENEMY and BOSS take a
-	// full sheet, which a creature cannot fill (it has no class or race).
-	kind, ok := kindToDB[req.Msg.GetKind()]
-	if !ok || (kind != kindMinion && kind != kindStory) {
-		return nil, invalidArgument(fieldErr("kind", "must be MINION or STORY"))
-	}
-	name, err := names.Clean(req.Msg.GetName(), MaxNameLength)
+	params, err := checkNpcFromCreature(req.Msg, m)
 	if err != nil {
-		return nil, invalidArgument(&fieldError{field: "name", err: err})
-	}
-	createKey, ok := parseUUID(req.Msg.GetIdempotencyKey())
-	if !ok {
-		return nil, invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
+		return nil, err
 	}
 	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write, as the other creates
 	if err != nil {
@@ -54,42 +44,16 @@ func (s *Service) CreateNpcFromCreature(
 	if err != nil {
 		return nil, invalidArgument(err)
 	}
-	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: basic}}
-	params := charactersdb.InsertNpcFromCreatureParams{
-		CampaignID: m.CampaignID, Kind: kind, MasterUserID: &m.UserID, Name: name, CreateKey: createKey, Now: s.now(),
-	}
-	if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
-		return nil, s.dbError(ctx, "encode a sheet", err)
-	}
-	if params.Story, err = storeJSON.Marshal(&charactersv1.CharacterStory{}); err != nil {
-		return nil, s.dbError(ctx, "encode a story", err)
+	params.Now = s.now()
+	if what, err := encodeNpcFromCreature(&params, basic); err != nil {
+		return nil, s.dbError(ctx, what, err)
 	}
 
 	var row charactersdb.Character
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
 		var err error
-		row, err = q.InsertNpcFromCreature(ctx, params)
-		if err == nil {
-			return s.checkRoom(ctx, q, m.CampaignID, true)
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return wrap("insert an NPC from a creature", err)
-		}
-		// The key was used: an earlier call made this NPC. Answer with it, if
-		// the request is the same one.
-		row, err = q.GetCharacterByCreateKey(ctx, charactersdb.GetCharacterByCreateKeyParams{CampaignID: m.CampaignID, CreateKey: createKey})
-		if err != nil {
-			return wrap("read the NPC of an idempotency key", err)
-		}
-		kept, err := loadSheet(row.ID, row.Sheet)
-		if err != nil {
-			return err
-		}
-		if row.Kind != kind || row.Name != name || kept.GetBasic().GetMonsterKey() != basic.GetMonsterKey() {
-			return invalidArgument(fieldErr("idempotency_key", "was already used for another NPC"))
-		}
-		return nil
+		row, err = s.insertNpcFromCreature(ctx, s.queries.WithTx(tx), params, basic.GetMonsterKey())
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "create an NPC from a creature", err)
@@ -99,6 +63,67 @@ func (s *Service) CreateNpcFromCreature(
 		return nil, s.dbError(ctx, "read a new character", err)
 	}
 	return connect.NewResponse(&charactersv1.CreateNpcFromCreatureResponse{Character: c}), nil
+}
+
+// checkNpcFromCreature checks the request's kind, name and idempotency key, in
+// that order, and starts the row of the NPC with them.
+func checkNpcFromCreature(msg *charactersv1.CreateNpcFromCreatureRequest, m authz.Membership) (charactersdb.InsertNpcFromCreatureParams, error) {
+	// A basic sheet is the MINION's and the STORY NPC's; ENEMY and BOSS take a
+	// full sheet, which a creature cannot fill (it has no class or race).
+	kind, ok := kindToDB[msg.GetKind()]
+	if !ok || (kind != kindMinion && kind != kindStory) {
+		return charactersdb.InsertNpcFromCreatureParams{}, invalidArgument(fieldErr("kind", "must be MINION or STORY"))
+	}
+	name, err := names.Clean(msg.GetName(), MaxNameLength)
+	if err != nil {
+		return charactersdb.InsertNpcFromCreatureParams{}, invalidArgument(&fieldError{field: "name", err: err})
+	}
+	createKey, ok := parseUUID(msg.GetIdempotencyKey())
+	if !ok {
+		return charactersdb.InsertNpcFromCreatureParams{}, invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
+	}
+	return charactersdb.InsertNpcFromCreatureParams{CampaignID: m.CampaignID, Kind: kind, MasterUserID: &m.UserID, Name: name, CreateKey: createKey}, nil
+}
+
+// encodeNpcFromCreature writes the NPC's basic sheet and its empty story into the
+// row. On a failure it also says what it was doing, for dbError.
+func encodeNpcFromCreature(params *charactersdb.InsertNpcFromCreatureParams, basic *charactersv1.BasicSheet) (string, error) {
+	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Basic{Basic: basic}}
+	var err error
+	if params.Sheet, err = storeJSON.Marshal(sheet); err != nil {
+		return "encode a sheet", err
+	}
+	if params.Story, err = storeJSON.Marshal(&charactersv1.CharacterStory{}); err != nil {
+		return "encode a story", err
+	}
+	return "", nil
+}
+
+// insertNpcFromCreature writes the NPC inside the campaign's cap or, when its key
+// was used, answers with the NPC an earlier call made, if the request is the same
+// one (the same kind, name and creature).
+func (s *Service) insertNpcFromCreature(ctx context.Context, q *charactersdb.Queries, params charactersdb.InsertNpcFromCreatureParams, monsterKey string) (charactersdb.Character, error) {
+	row, err := q.InsertNpcFromCreature(ctx, params)
+	if err == nil {
+		return row, s.checkRoom(ctx, q, params.CampaignID, true)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return row, wrap("insert an NPC from a creature", err)
+	}
+	// The key was used: an earlier call made this NPC. Answer with it, if
+	// the request is the same one.
+	row, err = q.GetCharacterByCreateKey(ctx, charactersdb.GetCharacterByCreateKeyParams{CampaignID: params.CampaignID, CreateKey: params.CreateKey})
+	if err != nil {
+		return row, wrap("read the NPC of an idempotency key", err)
+	}
+	kept, err := loadSheet(row.ID, row.Sheet)
+	if err != nil {
+		return row, err
+	}
+	if row.Kind != params.Kind || row.Name != params.Name || kept.GetBasic().GetMonsterKey() != monsterKey {
+		return row, invalidArgument(fieldErr("idempotency_key", "was already used for another NPC"))
+	}
+	return row, nil
 }
 
 // maxNpcAttacks is how many of a creature's attacks go to the sheet: the
