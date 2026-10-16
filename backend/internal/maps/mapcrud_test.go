@@ -418,7 +418,7 @@ func TestDeleteMap_WhoHearsAboutIt(t *testing.T) {
 	m.setMapRevealed(s.campaign, cave.GetId(), true)
 	for i, target := range []*mapsv1.Map{tower, cave} {
 		p := m.createPoint(&mapsv1.CreateMapPointRequest{
-			CampaignId: s.campaign, MapId: s.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP, Name: target.GetName(), TargetMapId: target.GetId(), XBp: int32(500 + 100*i), YBp: 500, //nolint:gosec // G115: tiny
+			CampaignId: s.campaign, MapId: s.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP, Name: target.GetName(), TargetMapId: target.GetId(), XBp: int32(500 + 100*i), YBp: 500,
 		})
 		if i == 0 {
 			m.setPointRevealed(s.campaign, p, true)
