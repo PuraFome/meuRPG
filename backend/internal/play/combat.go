@@ -774,231 +774,25 @@ func (s *Service) EndTurn(
 	ctx context.Context,
 	req *connect.Request[playv1.EndTurnRequest],
 ) (*connect.Response[playv1.EndTurnResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, call, err := readEndTurn(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	// Empty only when nobody is acting (see the orphaned turn below).
-	expected := ""
-	if raw := req.Msg.GetExpectedCombatantId(); raw != "" {
-		if expected, err = parseCombatID(raw, "combatant"); err != nil {
-			return nil, err
-		}
-	}
-	v := viewerOf(m)
-	stale := connect.NewError(connect.CodeAborted, errors.New("that combatant's part of the turn is not the one running"))
-
-	var dropped []playdb.PendingDamage // the damage the master passed the turn over
-	var passed bool                    // the turn passed to the next group (the last part ended)
-	var secret bool                    // the part that ended is a hidden member's: no line for the players
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventTurnEnded, altKind: eventTurnPartEnded, encounterID: encID}, func(c *combatTx) (any, error) {
-		dropped, passed, secret = nil, false, false
-		if c.enc.Status != statusActive {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-		}
-		// A late tap from a screen that saw an earlier round: when a group is the
-		// only one, the last part ending starts the next round with the same members.
-		if r := req.Msg.GetExpectedRound(); r != 0 && r != c.enc.Round {
-			return nil, stale
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		// A combatant the player does not see is not found, before anything else can
-		// answer differently (a stale turn, a part that ended): so it is on every call.
-		v = c.viewer(m, cs)
-		if !v.master && expected != "" && slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == expected }) {
-			if _, err := findCombatant(cs, expected, v); err != nil {
-				return nil, err
-			}
-		}
-		// An orphaned turn: nobody acts, because the combatants of the turn left
-		// the fight (the last one who could act was removed, or its character was
-		// deleted). The master starts the turns again from the top of the order,
-		// in the same round; without this the combat could never move.
-		if !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState == turnActing }) {
-			// The turn that ended waits for the saving throws of the effects on its members: it is
-			// held, not orphaned, and another tap changes nothing.
-			if held, err := s.endSaveOpen(ctx, c); err != nil {
-				return nil, err
-			} else if held {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "a reaction waits for its answer")
-			}
-			if !v.master {
-				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master can start the turns again"))
-			}
-			// The master's screen may still hold the id of the one who left.
-			if expected != "" && (c.enc.CurrentCombatantID == nil || *c.enc.CurrentCombatantID != expected) {
-				return nil, stale
-			}
-			first, _, ok := nextTurnGroup(cs, "", "")
-			if !ok {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "no combatant can take a turn")
-			}
-			passed = true
-			if err := startTurn(ctx, c, first, c.enc.Round); err != nil {
-				return nil, err
-			}
-			return map[string]any{"to": first[0], "round": c.enc.Round}, nil
-		}
-		// A double tap, or a stale screen: that member's part ended already, or
-		// the turn passed, and nothing changes, so one tap never ends two parts
-		// or two turns.
-		at := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == expected })
-		if at < 0 || cs[at].TurnState != turnActing {
-			return nil, stale
-		}
-		current, err := findCombatant(cs, expected, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(current); err != nil {
-			return nil, err
-		}
-		// The turn waits for the master's answer to a question of an area spell, and
-		// his own turn passing waits too.
-		if err := s.mustNotHold(ctx, c); err != nil {
-			return nil, err
-		}
-		// A rage ends with the turn if the barbarian attacked no hostile creature and took
-		// no damage: the player is asked first (the master applies the rule himself).
-		if wait, err := s.endOfTurn(ctx, c, v, current); err != nil {
-			return nil, err
-		} else if wait {
-			return nil, nil
-		}
-		// The turn waits for an opportunity attack's answer; the master may end it
-		// anyway, which passes the offers over.
-		if err := s.mustNotWaitForOffers(ctx, c, current); err != nil {
-			return nil, err
-		}
-		if _, err := c.q.SkipPendingOpportunityOffersOfMover(ctx, playdb.SkipPendingOpportunityOffersOfMoverParams{EncounterID: c.enc.ID, MoverID: current.ID, AnsweredAt: &c.now}); err != nil {
-			return nil, fmt.Errorf("pass the opportunity offers over: %w", err)
-		}
-		// A player whose character is down rolls its death save first (RN-03); the
-		// master may end the part anyway.
-		if !v.master && current.Kind == kindPlayer {
-			vit, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, current.CharacterID)
-			if err != nil && connect.CodeOf(err) != connect.CodeNotFound { // not found: the character died meanwhile
-				return nil, err
-			}
-			if err == nil && deathSaveDue(current, vit) {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_DUE, "roll your death save before ending the turn")
-			}
-		}
-		// A damage still to roll or to apply holds the member's part; only the
-		// master may pass it over, which drops the damage (RN-02: he has the last
-		// word).
-		if dropped, err = c.pendingOf(ctx, current.ID); err != nil {
-			return nil, err
-		}
-		if !v.master {
-			// A damage on a creature the player does not see is the master's to roll (an
-			// area spell hit a hidden creature): it does not hold their turn, and no
-			// refusal says it exists (RN-10).
-			dropped = slices.DeleteFunc(dropped, func(p playdb.PendingDamage) bool { return !pendingVisible(p, cs, v) })
-		}
-		if len(dropped) > 0 {
-			if !v.master || !req.Msg.GetDiscardPendingDamage() {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_PENDING_DAMAGE, "a damage is still to roll or to apply")
-			}
-			for i, p := range dropped {
-				if dropped[i], err = c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingDiscarded, ResolvedAt: &c.now}); err != nil {
-					return nil, fmt.Errorf("discard the pending damage: %w", err)
-				}
-				// One event for each, written before the turn's own, so the log shows
-				// the attack as dropped and an undo stays closed once the turn passes.
-				tgt, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
-				if err := insertEvent(ctx, c, eventDamageDiscarded, &m.UserID, nil, actionEvent{
-					Round: c.enc.Round, Secret: secretOf(current, tgt), Actor: current.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-					Amount: num(p.Amount), PrevStatus: p.Status,
-				}); err != nil {
-					return nil, err
-				}
-			}
-		}
-		// A reaction window holds the turn too (PM-04), except the ones the damage the
-		// master just dropped was waiting on: they close with it.
-		droppedIDs := make([]string, len(dropped))
-		for i, p := range dropped {
-			droppedIDs[i] = p.ID
-		}
-		if err := s.reactionGate(ctx, c, droppedIDs...); err != nil {
-			return nil, err
-		}
-		c.characterID = &current.CharacterID
-		if err := c.q.EndCombatantTurnPart(ctx, current.ID); err != nil {
-			return nil, fmt.Errorf("end the part: %w", err)
-		}
-		if err := s.afterTurnPart(ctx, c, current); err != nil {
-			return nil, err
-		}
-		// The saving throws the effects on the member ask at the end of its turn open now.
-		if err := s.openEndSaves(ctx, c, current); err != nil {
-			return nil, err
-		}
-		// Who still acts: the turn passes only when the last member ends.
-		if acting := othersActing(cs, current.ID); len(acting) > 0 {
-			// A part of a group of NPCs alone is the master's, like the group (RN-20),
-			// and so is a hidden member's: no line for the players.
-			holdsPlayer := slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState != turnIdle && inParty(o) })
-			secret = current.Hidden || !holdsPlayer
-			c.kind = eventTurnPartEnded
-			if err := setCurrent(ctx, c, acting[0], c.enc.Round); err != nil {
-				return nil, err
-			}
-			return actionEvent{Round: c.enc.Round, Secret: secret, Actor: current.ID}, nil
-		}
-		// The turn waits for the saving throws of the effects: it passes when they are answered.
-		if held, err := s.endSaveOpen(ctx, c); err != nil {
-			return nil, err
-		} else if held {
-			secret = current.Hidden
-			c.kind = eventTurnPartEnded
-			return actionEvent{Round: c.enc.Round, Secret: secret, Actor: current.ID}, nil
-		}
-		next, newRound, ok := nextTurnGroup(cs, current.ID, "")
-		if !ok {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "no combatant can take a turn")
-		}
-		round := c.enc.Round
-		if newRound {
-			round++
-		}
-		// The next group's turn starts: every member's movement, action, bonus
-		// action, dash and reaction come back.
-		passed = true
-		if err := startTurn(ctx, c, next, round); err != nil {
-			return nil, err
-		}
-		return map[string]any{"from": current.ID, "to": next[0], "round": round, "discarded": len(dropped)}, nil
+	var out endTurnOutcome
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventTurnEnded, altKind: eventTurnPartEnded, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
+		out = endTurnOutcome{}
+		return s.endTurnWrite(ctx, c, m, call, &out)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end a turn", err)
 	}
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishTurnChanged(ctx, m.CampaignID, d)
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		if len(dropped) > 0 { // the attacks they belong to show them dropped
-			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !touchesHidden(d.cs, dropped))
-		}
-		if !passed { // a part ended: its line, which a hidden member keeps from the players
-			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !secret)
-		}
+	enc, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEndTurn(ctx, m.CampaignID, &out, d)
 	})
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.EndTurnResponse{Encounter: out}), nil
+	return connect.NewResponse(&playv1.EndTurnResponse{Encounter: enc}), nil
 }
 
 // SetCombatantHidden implements playv1connect.CombatServiceHandler.
