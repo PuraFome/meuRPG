@@ -152,28 +152,7 @@ func (s *Service) CreatePuzzle(
 		row, _, err = idem.Create(ctx, scopedKey, requestHash, q.GetPuzzleByCreateKey,
 			func(p playdb.Puzzle) *string { return p.CreateHash },
 			func() (playdb.Puzzle, error) {
-				built, action, target, err := s.buildPuzzle(ctx, tx, m.CampaignID, in)
-				if err != nil {
-					return row, err
-				}
-				d, err := fromBuilt(kindOf(in.config), in, built, action, target)
-				if err != nil {
-					return row, err
-				}
-				cols, err := columnsOf(d)
-				if err != nil {
-					return row, err
-				}
-				p, err := q.InsertPuzzle(ctx, playdb.InsertPuzzleParams{
-					CampaignID: m.CampaignID, Kind: d.row.Kind, Name: d.row.Name, Config: cols.config, Solution: cols.solution,
-					Seed: d.row.Seed, Start: cols.start, MinimumMoves: d.row.MinimumMoves, Clue: d.row.Clue, Hints: cols.hints,
-					SolveAction: action, SolveTarget: cols.target, HintSkill: cols.hintSkill, HintDc: cols.hintDC, Parts: cols.parts, OnWrong: cols.onWrong,
-					CreateKey: scopedKey, CreateHash: requestHash, CreatedAt: s.now(),
-				})
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					return p, fmt.Errorf("insert puzzle: %w", err)
-				}
-				return p, err
+				return s.insertPuzzle(ctx, tx, m.CampaignID, in, scopedKey, requestHash)
 			})
 		return err
 	})
@@ -185,6 +164,42 @@ func (s *Service) CreatePuzzle(
 		return nil, s.dbError(ctx, "read the new puzzle", err)
 	}
 	return connect.NewResponse(&playv1.CreatePuzzleResponse{Puzzle: out}), nil
+}
+
+// insertPuzzle checks what the master wrote and stores the puzzle under the request's key.
+func (s *Service) insertPuzzle(ctx context.Context, tx pgx.Tx, campaignID string, in puzzleInput, scopedKey, requestHash *string) (playdb.Puzzle, error) {
+	d, action, cols, err := s.builtColumns(ctx, tx, campaignID, kindOf(in.config), in)
+	if err != nil {
+		return playdb.Puzzle{}, err
+	}
+	p, err := s.queriesIn(tx).InsertPuzzle(ctx, playdb.InsertPuzzleParams{
+		CampaignID: campaignID, Kind: d.row.Kind, Name: d.row.Name, Config: cols.config, Solution: cols.solution,
+		Seed: d.row.Seed, Start: cols.start, MinimumMoves: d.row.MinimumMoves, Clue: d.row.Clue, Hints: cols.hints,
+		SolveAction: action, SolveTarget: cols.target, HintSkill: cols.hintSkill, HintDc: cols.hintDC, Parts: cols.parts, OnWrong: cols.onWrong,
+		CreateKey: scopedKey, CreateHash: requestHash, CreatedAt: s.now(),
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return p, fmt.Errorf("insert puzzle: %w", err)
+	}
+	return p, err
+}
+
+// builtColumns checks everything the master wrote and gives the puzzle's definition, its solve
+// action and the JSON of its columns.
+func (s *Service) builtColumns(ctx context.Context, tx pgx.Tx, campaignID string, kind puzzleKind, in puzzleInput) (puzzleDef, string, puzzleColumns, error) {
+	built, action, target, err := s.buildPuzzle(ctx, tx, campaignID, in)
+	if err != nil {
+		return puzzleDef{}, "", puzzleColumns{}, err
+	}
+	d, err := fromBuilt(kind, in, built, action, target)
+	if err != nil {
+		return puzzleDef{}, "", puzzleColumns{}, err
+	}
+	cols, err := columnsOf(d)
+	if err != nil {
+		return puzzleDef{}, "", puzzleColumns{}, err
+	}
+	return d, action, cols, nil
 }
 
 // masterPuzzle is the master's message for a row.
@@ -236,63 +251,9 @@ func (s *Service) UpdatePuzzle(
 		puzzleExtras{hintCheck: req.Msg.GetHintCheck(), parts: req.Msg.GetParts(), onWrong: req.Msg.GetOnWrong()})
 	var row playdb.Puzzle
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queriesIn(tx)
-		old, err := q.GetPuzzleForUpdate(ctx, playdb.GetPuzzleForUpdateParams{CampaignID: m.CampaignID, ID: id})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errPuzzleNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find puzzle: %w", err)
-		}
-		shown, err := q.ListShownPuzzleIDs(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("read which puzzles were shown: %w", err)
-		}
-		if slices.Contains(shown, id) {
-			return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_ALREADY_SHOWN, "the puzzle was shown in a session: it cannot be edited any more")
-		}
-		oldDef, err := decodePuzzle(old)
-		if err != nil {
-			return err
-		}
-		kind := kindOf(in.config)
-		if kind == nil || kind.id() != oldDef.kind.id() {
-			return puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_KIND, "config", "the kind of a puzzle cannot change")
-		}
-		// A seed of 0 keeps the start the puzzle has, as long as what makes it (the
-		// config and the answer) did not change.
-		if kind.generates() && in.seed <= 0 {
-			if sameAnswer(oldDef, in) {
-				in.seed = old.Seed
-			}
-		}
-		built, action, target, err := s.buildPuzzle(ctx, tx, m.CampaignID, in)
-		if err != nil {
-			return err
-		}
-		d, err := fromBuilt(kind, in, built, action, target)
-		if err != nil {
-			return err
-		}
-		cols, err := columnsOf(d)
-		if err != nil {
-			return err
-		}
-		// A run prepared with a new start before the edit would carry a start that no
-		// longer fits (another board, another mural): drop it, the master draws again.
-		if err := q.DeletePreparedPuzzleRuns(ctx, id); err != nil {
-			return fmt.Errorf("drop the prepared runs: %w", err)
-		}
-		row, err = q.UpdatePuzzle(ctx, playdb.UpdatePuzzleParams{
-			CampaignID: m.CampaignID, ID: id, Name: d.row.Name, Config: cols.config, Solution: cols.solution, Seed: d.row.Seed,
-			Start: cols.start, MinimumMoves: d.row.MinimumMoves, Clue: d.row.Clue, Hints: cols.hints,
-			SolveAction: action, SolveTarget: cols.target, HintSkill: cols.hintSkill, HintDc: cols.hintDC, Parts: cols.parts, OnWrong: cols.onWrong,
-			UpdatedAt: s.now(),
-		})
-		if err != nil {
-			return fmt.Errorf("update puzzle: %w", err)
-		}
-		return nil
+		var err error
+		row, err = s.updatePuzzle(ctx, tx, m.CampaignID, id, in)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "update a puzzle", err)
@@ -302,6 +263,67 @@ func (s *Service) UpdatePuzzle(
 		return nil, s.dbError(ctx, "read the edited puzzle", err)
 	}
 	return connect.NewResponse(&playv1.UpdatePuzzleResponse{Puzzle: out}), nil
+}
+
+// updatePuzzle is the edit's transaction: the puzzle is locked, must be one nobody saw yet, and keeps its kind.
+func (s *Service) updatePuzzle(ctx context.Context, tx pgx.Tx, campaignID, id string, in puzzleInput) (playdb.Puzzle, error) {
+	q := s.queriesIn(tx)
+	old, oldDef, err := lockUnshownPuzzle(ctx, q, campaignID, id)
+	if err != nil {
+		return playdb.Puzzle{}, err
+	}
+	kind := kindOf(in.config)
+	if kind == nil || kind.id() != oldDef.kind.id() {
+		return playdb.Puzzle{}, puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_KIND, "config", "the kind of a puzzle cannot change")
+	}
+	// A seed of 0 keeps the start the puzzle has, as long as what makes it (the
+	// config and the answer) did not change.
+	if kind.generates() && in.seed <= 0 && sameAnswer(oldDef, in) {
+		in.seed = old.Seed
+	}
+	d, action, cols, err := s.builtColumns(ctx, tx, campaignID, kind, in)
+	if err != nil {
+		return playdb.Puzzle{}, err
+	}
+	// A run prepared with a new start before the edit would carry a start that no
+	// longer fits (another board, another mural): drop it, the master draws again.
+	if err := q.DeletePreparedPuzzleRuns(ctx, id); err != nil {
+		return playdb.Puzzle{}, fmt.Errorf("drop the prepared runs: %w", err)
+	}
+	row, err := q.UpdatePuzzle(ctx, playdb.UpdatePuzzleParams{
+		CampaignID: campaignID, ID: id, Name: d.row.Name, Config: cols.config, Solution: cols.solution, Seed: d.row.Seed,
+		Start: cols.start, MinimumMoves: d.row.MinimumMoves, Clue: d.row.Clue, Hints: cols.hints,
+		SolveAction: action, SolveTarget: cols.target, HintSkill: cols.hintSkill, HintDc: cols.hintDC, Parts: cols.parts, OnWrong: cols.onWrong,
+		UpdatedAt: s.now(),
+	})
+	if err != nil {
+		return playdb.Puzzle{}, fmt.Errorf("update puzzle: %w", err)
+	}
+	return row, nil
+}
+
+// lockUnshownPuzzle locks the campaign's puzzle for an edit and decodes it; a puzzle that was shown in
+// a session cannot be edited any more.
+func lockUnshownPuzzle(ctx context.Context, q *playdb.Queries, campaignID, id string) (playdb.Puzzle, puzzleDef, error) {
+	old, err := q.GetPuzzleForUpdate(ctx, playdb.GetPuzzleForUpdateParams{CampaignID: campaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return playdb.Puzzle{}, puzzleDef{}, errPuzzleNotFound()
+	}
+	if err != nil {
+		return playdb.Puzzle{}, puzzleDef{}, fmt.Errorf("find puzzle: %w", err)
+	}
+	shown, err := q.ListShownPuzzleIDs(ctx, campaignID)
+	if err != nil {
+		return playdb.Puzzle{}, puzzleDef{}, fmt.Errorf("read which puzzles were shown: %w", err)
+	}
+	if slices.Contains(shown, id) {
+		return playdb.Puzzle{}, puzzleDef{}, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_ALREADY_SHOWN, "the puzzle was shown in a session: it cannot be edited any more")
+	}
+	oldDef, err := decodePuzzle(old)
+	if err != nil {
+		return playdb.Puzzle{}, puzzleDef{}, err
+	}
+	return old, oldDef, nil
 }
 
 // sameAnswer says whether the request's config and answer are the puzzle's own, so
@@ -442,30 +464,9 @@ func (s *Service) setArchived(ctx context.Context, campaignID, rawID string, arc
 	var row playdb.Puzzle
 	changed := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		changed = false
-		q := s.queriesIn(tx)
-		cur, err := q.GetPuzzleForUpdate(ctx, playdb.GetPuzzleForUpdateParams{CampaignID: campaignID, ID: id})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errPuzzleNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find puzzle: %w", err)
-		}
-		if (cur.ArchivedAt != nil) == archive {
-			row = cur // already so: nothing changes
-			return nil
-		}
-		var at *time.Time
-		now := s.now()
-		if archive {
-			at = &now
-		}
-		row, err = q.SetPuzzleArchived(ctx, playdb.SetPuzzleArchivedParams{CampaignID: campaignID, ID: id, ArchivedAt: at, UpdatedAt: now})
-		if err != nil {
-			return fmt.Errorf("archive puzzle: %w", err)
-		}
-		changed = true
-		return nil
+		var err error
+		row, changed, err = s.flipArchived(ctx, s.queriesIn(tx), campaignID, id, archive)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "archive a puzzle", err)
@@ -482,6 +483,31 @@ func (s *Service) setArchived(ctx context.Context, campaignID, rawID string, arc
 		return nil, s.dbError(ctx, "read a puzzle", err)
 	}
 	return p, nil
+}
+
+// flipArchived archives or brings back the locked puzzle, and says whether the row changed: a puzzle
+// that is so already stays as it is.
+func (s *Service) flipArchived(ctx context.Context, q *playdb.Queries, campaignID, id string, archive bool) (playdb.Puzzle, bool, error) {
+	cur, err := q.GetPuzzleForUpdate(ctx, playdb.GetPuzzleForUpdateParams{CampaignID: campaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return playdb.Puzzle{}, false, errPuzzleNotFound()
+	}
+	if err != nil {
+		return playdb.Puzzle{}, false, fmt.Errorf("find puzzle: %w", err)
+	}
+	if (cur.ArchivedAt != nil) == archive {
+		return cur, false, nil // already so: nothing changes
+	}
+	var at *time.Time
+	now := s.now()
+	if archive {
+		at = &now
+	}
+	row, err := q.SetPuzzleArchived(ctx, playdb.SetPuzzleArchivedParams{CampaignID: campaignID, ID: id, ArchivedAt: at, UpdatedAt: now})
+	if err != nil {
+		return playdb.Puzzle{}, false, fmt.Errorf("archive puzzle: %w", err)
+	}
+	return row, true, nil
 }
 
 // ArchivePuzzle implements playv1connect.PuzzleServiceHandler.

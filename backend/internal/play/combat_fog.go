@@ -305,42 +305,9 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 	if kind == eventDoorOpened {
 		return c.stampDoor(ctx, ev, cs)
 	}
-	var npcSquares [][]grid.Square // for each NPC in the event, where it could have been seen
-	for _, id := range ev.combatantIDs() {
-		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
-		if i < 0 || cs[i].Kind != kindNPC {
-			continue
-		}
-		var squares []grid.Square
-		if placed(cs[i]) {
-			squares = append(squares, squareOfCombatant(cs[i]))
-		}
-		if kind == eventCombatantMoved && id == ev.Actor && ev.From != nil && ev.From.Placed {
-			squares = append(squares, grid.Square{Col: int(ev.From.Col), Row: int(ev.From.Row)})
-		}
-		if kind == eventAttackRolled && ev.OfferID != "" && id == ev.Target {
-			// An opportunity attack is made at the mover on the square it left: the line
-			// is judged there, whatever the mover's square is now.
-			squares = []grid.Square{{Col: int(ev.Col), Row: int(ev.Row)}}
-		}
-		npcSquares = append(npcSquares, squares)
-	}
+	npcSquares := npcSquaresOf(kind, ev, cs)
 	if ev.Trap != nil { // the firing is public; what it did to an NPC is for the players who saw it
-		t := *ev.Trap
-		t.Caught = slices.Clone(t.Caught)
-		for i, cc := range t.Caught {
-			j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == cc.Target })
-			if j < 0 || cs[j].Kind != kindNPC {
-				continue
-			}
-			t.Caught[i].Fogged, t.Caught[i].SeenBy = true, nil
-			for _, u := range c.sight.sight.Users() {
-				if c.sight.seesNPC(u, cs[j]) {
-					t.Caught[i].SeenBy = append(t.Caught[i].SeenBy, u)
-				}
-			}
-		}
-		ev.Trap = &t
+		ev.Trap = c.stampTrap(ev.Trap, cs)
 	}
 	if ev.Secret {
 		ev.Fogged, ev.SeenBy = true, nil
@@ -353,7 +320,66 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 		return ev, nil
 	}
 	ev.Fogged = true
-	ev.SeenBy = nil
+	ev.SeenBy = c.seenByAll(npcSquares)
+	return ev, nil
+}
+
+// npcSquaresOf lists, for each NPC in the event, the squares where it could have
+// been seen.
+func npcSquaresOf(kind string, ev actionEvent, cs []playdb.Combatant) [][]grid.Square {
+	var npcSquares [][]grid.Square
+	for _, id := range ev.combatantIDs() {
+		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
+		if i < 0 || cs[i].Kind != kindNPC {
+			continue
+		}
+		npcSquares = append(npcSquares, npcSightSquares(kind, ev, cs[i]))
+	}
+	return npcSquares
+}
+
+// npcSightSquares is where an NPC of an event could have been seen: where it
+// stands and, for a move, where it left; an opportunity attack is judged on the
+// square the mover left.
+func npcSightSquares(kind string, ev actionEvent, npc playdb.Combatant) []grid.Square {
+	var squares []grid.Square
+	if placed(npc) {
+		squares = append(squares, squareOfCombatant(npc))
+	}
+	if kind == eventCombatantMoved && npc.ID == ev.Actor && ev.From != nil && ev.From.Placed {
+		squares = append(squares, grid.Square{Col: int(ev.From.Col), Row: int(ev.From.Row)})
+	}
+	if kind == eventAttackRolled && ev.OfferID != "" && npc.ID == ev.Target {
+		// An opportunity attack is made at the mover on the square it left: the line
+		// is judged there, whatever the mover's square is now.
+		squares = []grid.Square{{Col: int(ev.Col), Row: int(ev.Row)}}
+	}
+	return squares
+}
+
+// stampTrap fogs, in a copy of the firing, each NPC it caught with the players
+// who saw it.
+func (c *combatTx) stampTrap(trap *trapFireEvent, cs []playdb.Combatant) *trapFireEvent {
+	t := *trap
+	t.Caught = slices.Clone(t.Caught)
+	for i, cc := range t.Caught {
+		j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == cc.Target })
+		if j < 0 || cs[j].Kind != kindNPC {
+			continue
+		}
+		t.Caught[i].Fogged, t.Caught[i].SeenBy = true, nil
+		for _, u := range c.sight.sight.Users() {
+			if c.sight.seesNPC(u, cs[j]) {
+				t.Caught[i].SeenBy = append(t.Caught[i].SeenBy, u)
+			}
+		}
+	}
+	return &t
+}
+
+// seenByAll lists the players who saw every NPC, each on one of its squares.
+func (c *combatTx) seenByAll(npcSquares [][]grid.Square) []string {
+	var seenBy []string
 	for _, u := range c.sight.sight.Users() {
 		all := true
 		for _, squares := range npcSquares {
@@ -363,10 +389,10 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 			}
 		}
 		if all {
-			ev.SeenBy = append(ev.SeenBy, u)
+			seenBy = append(seenBy, u)
 		}
 	}
-	return ev, nil
+	return seenBy
 }
 
 // stampPlacedCast is stamp for an area spell the server placed. Its line is the caster's
@@ -375,7 +401,6 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 // if they saw at least one of the NPCs it hit, listing the ones they saw. A cast that hit no
 // NPC is every player's, as any line with no NPC in it.
 func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) actionEvent {
-	users := c.sight.sight.Users()
 	anySeen := false
 	var seenSome []string
 	for i := range ev.Hits {
@@ -385,22 +410,7 @@ func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) action
 			continue
 		}
 		anySeen, h.Fogged, h.SeenMask = true, true, 0
-		for _, u := range users {
-			if !c.sight.sight.Sees(u, squareOfCombatant(cs[j])) {
-				continue
-			}
-			k := slices.Index(ev.CoverUsers, u)
-			if k < 0 && len(ev.CoverUsers) < maxCoverUsers {
-				ev.CoverUsers = append(ev.CoverUsers, u)
-				k = len(ev.CoverUsers) - 1
-			}
-			if k >= 0 {
-				h.SeenMask |= 1 << k
-			}
-			if !slices.Contains(seenSome, u) {
-				seenSome = append(seenSome, u)
-			}
-		}
+		seenSome = c.markCastHitSeen(&ev, h, cs[j], seenSome)
 	}
 	if !anySeen {
 		return ev
@@ -410,6 +420,29 @@ func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) action
 		ev.SeenBy = append(ev.SeenBy, *cs[i].UserID) // the caster's player always has the line of their own spell
 	}
 	return ev
+}
+
+// markCastHitSeen records, for an NPC an area spell hit, each player who sees it:
+// as a bit of the hit's mask (of the event's CoverUsers) and in the list of the
+// players who saw some target. It returns that list.
+func (c *combatTx) markCastHitSeen(ev *actionEvent, h *castHit, npc playdb.Combatant, seenSome []string) []string {
+	for _, u := range c.sight.sight.Users() {
+		if !c.sight.sight.Sees(u, squareOfCombatant(npc)) {
+			continue
+		}
+		k := slices.Index(ev.CoverUsers, u)
+		if k < 0 && len(ev.CoverUsers) < maxCoverUsers {
+			ev.CoverUsers = append(ev.CoverUsers, u)
+			k = len(ev.CoverUsers) - 1
+		}
+		if k >= 0 {
+			h.SeenMask |= 1 << k
+		}
+		if !slices.Contains(seenSome, u) {
+			seenSome = append(seenSome, u)
+		}
+	}
+	return seenSome
 }
 
 // stampDoor writes into a door_opened event who may have the line, on a fog map,
@@ -422,32 +455,13 @@ func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) action
 func (c *combatTx) stampDoor(ctx context.Context, ev actionEvent, cs []playdb.Combatant) (actionEvent, error) {
 	door := grid.Square{Col: int(ev.Col), Row: int(ev.Row)}
 	ev.Fogged, ev.SeenBy = true, nil
-	own := ""
-	// An NPC that opened the door is named in the line, so a player who only knows the
-	// door must also have seen the NPC, on the square it came from or the one it stands
-	// on, like any other line with an NPC in it.
-	var npcSquares []grid.Square
-	npcMover := false
-	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Actor }); i >= 0 {
-		if cs[i].UserID != nil {
-			own = *cs[i].UserID
-		}
-		if cs[i].Kind == kindNPC {
-			npcMover = true
-			if placed(cs[i]) {
-				npcSquares = append(npcSquares, squareOfCombatant(cs[i]))
-			}
-			if ev.From != nil && ev.From.Placed {
-				npcSquares = append(npcSquares, grid.Square{Col: int(ev.From.Col), Row: int(ev.From.Row)})
-			}
-		}
-	}
+	mover := doorMoverOf(ev, cs)
 	for _, u := range c.sight.sight.Users() {
-		if u == own {
+		if u == mover.own {
 			ev.SeenBy = append(ev.SeenBy, u)
 			continue
 		}
-		if npcMover && !slices.ContainsFunc(npcSquares, func(sq grid.Square) bool { return c.sight.sight.Sees(u, sq) }) {
+		if mover.npc && !slices.ContainsFunc(mover.squares, func(sq grid.Square) bool { return c.sight.sight.Sees(u, sq) }) {
 			continue
 		}
 		known, err := c.sight.knownTerrain(ctx, c.tx, combatViewer{userID: u})
@@ -459,6 +473,39 @@ func (c *combatTx) stampDoor(ctx context.Context, ev actionEvent, cs []playdb.Co
 		}
 	}
 	return ev, nil
+}
+
+// doorMover is who opened a door: the player behind it (own, empty for none) and,
+// for an NPC, the squares a player must have seen it on.
+type doorMover struct {
+	own     string
+	npc     bool
+	squares []grid.Square
+}
+
+// doorMoverOf finds who opened the door. An NPC that did is named in the line, so
+// a player who only knows the door must also have seen the NPC, on the square it
+// came from or the one it stands on, like any other line with an NPC in it.
+func doorMoverOf(ev actionEvent, cs []playdb.Combatant) doorMover {
+	var m doorMover
+	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Actor })
+	if i < 0 {
+		return m
+	}
+	if cs[i].UserID != nil {
+		m.own = *cs[i].UserID
+	}
+	if cs[i].Kind != kindNPC {
+		return m
+	}
+	m.npc = true
+	if placed(cs[i]) {
+		m.squares = append(m.squares, squareOfCombatant(cs[i]))
+	}
+	if ev.From != nil && ev.From.Placed {
+		m.squares = append(m.squares, grid.Square{Col: int(ev.From.Col), Row: int(ev.From.Row)})
+	}
+	return m
 }
 
 // combatantIDs lists the combatants an event is about: who did it, who it was done

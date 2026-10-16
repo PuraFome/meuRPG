@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -55,24 +56,9 @@ func (s *Service) TryPuzzleHint(
 	if err != nil {
 		return nil, err
 	}
-	var in rollInput
-	in.extraFaces = req.Msg.GetExtraDieFaces()
-	switch roll := req.Msg.GetRoll().(type) {
-	case *playv1.TryPuzzleHintRequest_RollInApp:
-		if !roll.RollInApp {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
-		}
-		in.inApp = true
-	case *playv1.TryPuzzleHintRequest_D20Face:
-		in.typed = int(roll.D20Face)
-		if in.typed < 1 || in.typed > 20 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
-		}
-	default:
-		var err error
-		if in.typedFaces, err = typedD20Faces(req.Msg.GetD20Faces()); err != nil {
-			return nil, err
-		}
+	in, err := hintRollInput(req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
 	res := &hintTryResult{}
@@ -92,6 +78,37 @@ func (s *Service) TryPuzzleHint(
 	if !res.replayed {
 		s.publishPuzzleChanged(m.CampaignID, id) // the master reads the try; the revision moved
 	}
+	return s.hintTryAnswer(ctx, m, res, names)
+}
+
+// hintRollInput reads how the player rolls: in the app, one typed d20, or the typed dice of a mode.
+func hintRollInput(msg *playv1.TryPuzzleHintRequest) (rollInput, error) {
+	var in rollInput
+	in.extraFaces = msg.GetExtraDieFaces()
+	switch roll := msg.GetRoll().(type) {
+	case *playv1.TryPuzzleHintRequest_RollInApp:
+		if !roll.RollInApp {
+			return rollInput{}, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
+		}
+		in.inApp = true
+	case *playv1.TryPuzzleHintRequest_D20Face:
+		in.typed = int(roll.D20Face)
+		if in.typed < 1 || in.typed > 20 {
+			return rollInput{}, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
+		}
+	default:
+		faces, err := typedD20Faces(msg.GetD20Faces())
+		if err != nil {
+			return rollInput{}, err
+		}
+		in.typedFaces = faces
+	}
+	return in, nil
+}
+
+// hintTryAnswer is the answer of a try that was written (or replayed): the player's run as it is
+// now, the roll, and the die that was added.
+func (s *Service) hintTryAnswer(ctx context.Context, m authz.Membership, res *hintTryResult, names runNames) (*connect.Response[playv1.TryPuzzleHintResponse], error) {
 	view, err := s.viewerOf(ctx, nil, m, res.d, res.run)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the puzzle after a try", err)
@@ -171,80 +188,55 @@ func nextHintToTry(ctx context.Context, q *playdb.Queries, m authz.Membership, d
 	return next, nil
 }
 
+// hintTryTx is one try inside its transaction: the session, the puzzle and the run it locked.
+type hintTryTx struct {
+	s       *Service
+	tx      pgx.Tx
+	q       *playdb.Queries
+	m       authz.Membership
+	session playdb.GameSession
+	d       puzzleDef
+	run     playdb.PuzzleRun
+	key     string
+	in      rollInput
+	raw     *playv1.TryPuzzleHintRequest
+	res     *hintTryResult
+}
+
+// hintTryPlan is what the try works out before it rolls: who rolls, the hint they try for, what their
+// sheet adds to the skill, how the check is rolled and the modifier.
+type hintTryPlan struct {
+	who    link.Character
+	next   int
+	option link.SceneOption
+	cm     checkMode
+	bonus  int
+}
+
 // applyHintTry is the try's transaction. The session's row is locked first and then
 // the run's, as every change to a run does, so a try, a move and the master's release
 // of the same hint take turns.
 func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membership, puzzleID, key string, in rollInput, raw *playv1.TryPuzzleHintRequest, res *hintTryResult) (runNames, error) {
-	q := s.queriesIn(tx)
-	session, err := lockOpenSession(ctx, q, m.CampaignID)
-	if err != nil {
+	h := &hintTryTx{s: s, tx: tx, q: s.queriesIn(tx), m: m, key: key, in: in, raw: raw, res: res}
+	if err := h.lock(ctx, puzzleID); err != nil {
 		return nil, err
 	}
-	d, _, err := s.shownRun(ctx, q, session, m.CampaignID, puzzleID)
-	if err != nil {
-		return nil, err
-	}
-	run, err := q.GetPuzzleRunForUpdate(ctx, playdb.GetPuzzleRunForUpdateParams{GameSessionID: session.ID, PuzzleID: puzzleID})
-	if err != nil {
-		return nil, fmt.Errorf("lock the puzzle's run: %w", err)
-	}
-	res.d, res.run = d, run
-
 	// A retry of a try already made answers as the first call did, and rolls nothing.
-	done, replayed, err := hintTryByKey(ctx, q, m, run.ID, key, in)
+	done, replayed, err := hintTryByKey(ctx, h.q, m, h.run.ID, key, in)
 	if err != nil {
 		return nil, err
 	}
 	if replayed {
 		res.try, res.replayed = done, true
-		return s.namesOfRuns(ctx, tx, m.CampaignID, run)
+		return s.namesOfRuns(ctx, tx, m.CampaignID, h.run)
 	}
 
 	now := s.now()
-	if err := hintTryOpen(d, run, now); err != nil {
-		return nil, err
-	}
-	who, has, err := s.myCharacter(ctx, tx, m)
+	plan, err := h.plan(ctx, now)
 	if err != nil {
 		return nil, err
 	}
-	if !has {
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_CHARACTER, "you have no living character to roll for")
-	}
-	next, err := nextHintToTry(ctx, q, m, d, run)
-	if err != nil {
-		return nil, err
-	}
-	force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if force.refuses(in.inApp) {
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
-	}
-	options, err := s.roster.SceneOptions(ctx, tx, m.CampaignID, who.ID, []string{d.hintCheck.GetSkillKey()})
-	if err != nil {
-		return nil, err
-	}
-	if len(options) != 1 || !options[0].Known {
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_SKILL, "your character has no numbers for this skill")
-	}
-	ability, isCheck := checkKey(d.hintCheck.GetSkillKey())
-	cm, err := s.checkModeOf(ctx, tx, m.CampaignID, session.ID, who.ID, d.hintCheck.GetSkillKey(), ability, isCheck)
-	if err != nil {
-		return nil, err
-	}
-	bonus, err := s.withEffectDice(in, in.extraFaces, &cm, options[0].Bonus)
-	if err != nil {
-		return nil, err
-	}
-	// A character that holds a Bardic Inspiration die has the d20 kept until the player answers,
-	// before anything is spent or written, and so has a halfling's d20 that shows a 1, for the
-	// Lucky question; the answer brings it back (with the die added, or rolled again).
-	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
-		Kind: heldHintTry, Key: key, Request: raw, Roller: heldRoller{CampaignID: m.CampaignID, CharacterID: who.ID, UserID: m.UserID},
-		In: in, Modifier: bonus, Mode: cm.Mode, Reliable: options[0].ReliableTalent, Lucky: options[0].Lucky, MayAsk: true,
-	})
+	step, err := h.roll(ctx, plan)
 	if err != nil {
 		return nil, err
 	}
@@ -252,57 +244,149 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		res.offer, res.lucky = s.outsideOffers(ctx, tx, step.Held)
 		return nil, nil
 	}
-	spendTx, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
+	return h.write(ctx, plan, step, now)
+}
+
+// lock locks the session's row, reads the shown puzzle and locks its run.
+func (h *hintTryTx) lock(ctx context.Context, puzzleID string) error {
+	var err error
+	if h.session, err = lockOpenSession(ctx, h.q, h.m.CampaignID); err != nil {
+		return err
+	}
+	if h.d, _, err = h.s.shownRun(ctx, h.q, h.session, h.m.CampaignID, puzzleID); err != nil {
+		return err
+	}
+	if h.run, err = h.q.GetPuzzleRunForUpdate(ctx, playdb.GetPuzzleRunForUpdateParams{GameSessionID: h.session.ID, PuzzleID: puzzleID}); err != nil {
+		return fmt.Errorf("lock the puzzle's run: %w", err)
+	}
+	h.res.d, h.res.run = h.d, h.run
+	return nil
+}
+
+// plan refuses a try that cannot be made and works out the one that can, before anything is rolled.
+func (h *hintTryTx) plan(ctx context.Context, now time.Time) (hintTryPlan, error) {
+	if err := hintTryOpen(h.d, h.run, now); err != nil {
+		return hintTryPlan{}, err
+	}
+	who, has, err := h.s.myCharacter(ctx, h.tx, h.m)
+	if err != nil {
+		return hintTryPlan{}, err
+	}
+	if !has {
+		return hintTryPlan{}, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_CHARACTER, "you have no living character to roll for")
+	}
+	next, err := nextHintToTry(ctx, h.q, h.m, h.d, h.run)
+	if err != nil {
+		return hintTryPlan{}, err
+	}
+	force, err := h.s.dice.ForcedDice(ctx, h.tx, h.m.CampaignID, h.m.UserID)
+	if err != nil {
+		return hintTryPlan{}, err
+	}
+	if force.refuses(h.in.inApp) {
+		return hintTryPlan{}, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
+	}
+	plan := hintTryPlan{who: who, next: next}
+	if err := h.skill(ctx, &plan); err != nil {
+		return hintTryPlan{}, err
+	}
+	return plan, nil
+}
+
+// skill reads what the character's sheet adds to the hint's skill and how the check is rolled.
+func (h *hintTryTx) skill(ctx context.Context, plan *hintTryPlan) error {
+	key := h.d.hintCheck.GetSkillKey()
+	options, err := h.s.roster.SceneOptions(ctx, h.tx, h.m.CampaignID, plan.who.ID, []string{key})
+	if err != nil {
+		return err
+	}
+	if len(options) != 1 || !options[0].Known {
+		return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_SKILL, "your character has no numbers for this skill")
+	}
+	plan.option = options[0]
+	ability, isCheck := checkKey(key)
+	if plan.cm, err = h.s.checkModeOf(ctx, h.tx, h.m.CampaignID, h.session.ID, plan.who.ID, key, ability, isCheck); err != nil {
+		return err
+	}
+	plan.bonus, err = h.s.withEffectDice(h.in, h.in.extraFaces, &plan.cm, plan.option.Bonus)
+	return err
+}
+
+// roll rolls the d20. A character that holds a Bardic Inspiration die has the d20 kept until the player answers,
+// before anything is spent or written, and so has a halfling's d20 that shows a 1, for the
+// Lucky question; the answer brings it back (with the die added, or rolled again).
+func (h *hintTryTx) roll(ctx context.Context, plan hintTryPlan) (gateResult, error) {
+	return h.s.heldGate(ctx, h.s.outsideGate(h.tx, h.q), rollSpec{
+		Kind: heldHintTry, Key: h.key, Request: h.raw, Roller: heldRoller{CampaignID: h.m.CampaignID, CharacterID: plan.who.ID, UserID: h.m.UserID},
+		In: h.in, Modifier: plan.bonus, Mode: plan.cm.Mode, Reliable: plan.option.ReliableTalent, Lucky: plan.option.Lucky, MayAsk: true,
+	})
+}
+
+// write spends what the roll used, records the try and moves the run's revision with it, so the
+// app applies the read that follows.
+func (h *hintTryTx) write(ctx context.Context, plan hintTryPlan, step gateResult, now time.Time) (runNames, error) {
+	if err := h.spend(ctx, plan.cm); err != nil {
+		return nil, err
+	}
+	try, err := h.record(ctx, plan, step, now)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.spendOnceEffects(ctx, spendTx, cm.Rolled); err != nil {
+	p := paramsOf(&h.run)
+	p.Revision, p.UpdatedAt = h.run.Revision+1, now
+	saved, err := h.q.SavePuzzleRun(ctx, p)
+	if err != nil {
+		return nil, fmt.Errorf("save the puzzle's run: %w", err)
+	}
+	h.res.try, h.res.run = try, saved
+	names, err := h.s.namerFor(ctx, h.tx, h.m.CampaignID)
+	if err != nil {
 		return nil, err
 	}
-	if err := s.spendCheckHelps(ctx, spendTx, cm.Helps); err != nil {
-		return nil, err
+	h.res.sources = plan.cm.shownCheck(names)
+	return h.s.namesOfRuns(ctx, h.tx, h.m.CampaignID, saved)
+}
+
+// spend uses the once-only effects and the helps the check counted.
+func (h *hintTryTx) spend(ctx context.Context, cm checkMode) error {
+	spendTx, err := h.s.openTx(ctx, combatTx{tx: h.tx, q: h.q, session: h.session, now: h.s.now(), svc: h.s, master: true})
+	if err != nil {
+		return err
 	}
+	if err := h.s.spendOnceEffects(ctx, spendTx, cm.Rolled); err != nil {
+		return err
+	}
+	return h.s.spendCheckHelps(ctx, spendTx, cm.Helps)
+}
+
+// record writes the try row for the roll.
+func (h *hintTryTx) record(ctx context.Context, plan hintTryPlan, step gateResult, now time.Time) (playdb.PuzzleHintTry, error) {
 	d20 := step.Roll
 	dieFace := 0
 	if step.Bonus != nil {
-		dieFace, res.bonus = int(step.Bonus.Face), step.Bonus // the die the player added after rolling: the total holds it
+		dieFace, h.res.bonus = int(step.Bonus.Face), step.Bonus // the die the player added after rolling: the total holds it
 	}
-	roll := d20
-	face := d20.Face()
-	passed := roll.Total >= int(d.hintCheck.GetDc())
+	passed := d20.Total >= int(h.d.hintCheck.GetDc())
 	var granted *int32
 	if passed {
-		g := clamp32(next+1, 1, maxHints)
+		g := clamp32(plan.next+1, 1, maxHints)
 		granted = &g
 	}
 	var luckyAt *int32 // the d20 Lucky rolled again: the try keeps where, its faces the new one
 	if step.Lucky != nil {
 		luckyAt = new(clamp32(int(step.Lucky.Index), 0, 1))
 	}
-	try, err := q.InsertPuzzleHintTry(ctx, playdb.InsertPuzzleHintTryParams{
-		RunID: run.ID, UserID: &m.UserID, CharacterID: &who.ID, IdempotencyKey: key, HintIndex: clamp32(next, 0, maxHints),
-		Passed: passed, GrantedCount: granted, D20: clamp32(face, 1, 20), Modifier: clamp32(bonus+dieFace, -1000, 1000),
-		Total: clamp32(roll.Total, -1000, 1000), Physical: roll.Physical, CreatedAt: now,
-		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
+	try, err := h.q.InsertPuzzleHintTry(ctx, playdb.InsertPuzzleHintTryParams{
+		RunID: h.run.ID, UserID: &h.m.UserID, CharacterID: &plan.who.ID, IdempotencyKey: h.key, HintIndex: clamp32(plan.next, 0, maxHints),
+		Passed: passed, GrantedCount: granted, D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(plan.bonus+dieFace, -1000, 1000),
+		Total: clamp32(d20.Total, -1000, 1000), Physical: d20.Physical, CreatedAt: now,
+		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(plan.cm.Mode),
 		LuckyIndex: luckyAt,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("record the try: %w", err)
+		return playdb.PuzzleHintTry{}, fmt.Errorf("record the try: %w", err)
 	}
-	// The run's revision moves with the try, so the app applies the read that follows.
-	p := paramsOf(&run)
-	p.Revision, p.UpdatedAt = run.Revision+1, now
-	saved, err := q.SavePuzzleRun(ctx, p)
-	if err != nil {
-		return nil, fmt.Errorf("save the puzzle's run: %w", err)
-	}
-	res.try, res.run = try, saved
-	names, err := s.namerFor(ctx, tx, m.CampaignID)
-	if err != nil {
-		return nil, err
-	}
-	res.sources = cm.shownCheck(names)
-	return s.namesOfRuns(ctx, tx, m.CampaignID, saved)
+	return try, nil
 }
 
 // hintRollProto is the try's d20: the pair when it was rolled with advantage or

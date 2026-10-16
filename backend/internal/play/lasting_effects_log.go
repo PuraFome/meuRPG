@@ -71,10 +71,7 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 	}
 	names := s.namesFor(ctx, campaignID)
 	if out.Kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION {
-		out.Effect = &playv1.CombatLogEffect{SourceKey: l.Key, SourceNamePt: names(l.Key), ExhaustionLevel: l.Level, ExhaustionBefore: l.Before, Reason: l.Reason}
-		for _, id := range l.Targets {
-			out.Effect.TargetLabels = append(out.Effect.TargetLabels, byID[id].Label)
-		}
+		out.Effect = exhaustionLogEffect(l, names, byID)
 		return
 	}
 	le := &playv1.CombatLogEffect{
@@ -92,18 +89,30 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 			le.TargetLabels = append(le.TargetLabels, t.Label)
 		}
 	}
-	// The roll is the master's and the target's player's; the DC the master's alone (RN-10:
-	// the DC of an NPC's effect never reaches a player).
-	if v.master || slices.ContainsFunc(l.Targets, func(id string) bool { return v.owns(byID[id]) }) {
-		if l.D20 != 0 {
-			d20, total := l.D20, l.Total
-			le.D20, le.Total = &d20, &total
-			le.Rerolled = e.ev.Lucky.proto() // the d20 Lucky rolled again: "Sortudo: 1 → 14"
-		}
+	effectLogRoll(le, e, v, byID)
+	out.Effect = le
+}
+
+// exhaustionLogEffect is the effect part of an exhaustion line: it names every target, whoever reads it.
+func exhaustionLogEffect(l *lastingEvent, names func(string) string, byID map[string]playdb.Combatant) *playv1.CombatLogEffect {
+	le := &playv1.CombatLogEffect{SourceKey: l.Key, SourceNamePt: names(l.Key), ExhaustionLevel: l.Level, ExhaustionBefore: l.Before, Reason: l.Reason}
+	for _, id := range l.Targets {
+		le.TargetLabels = append(le.TargetLabels, byID[id].Label)
+	}
+	return le
+}
+
+// effectLogRoll adds the roll and the DC to the effect: the roll is the master's and the target's
+// player's; the DC the master's alone (RN-10: the DC of an NPC's effect never reaches a player).
+func effectLogRoll(le *playv1.CombatLogEffect, e *logEntry, v combatViewer, byID map[string]playdb.Combatant) {
+	l := e.ev.Lasting
+	if l.D20 != 0 && (v.master || slices.ContainsFunc(l.Targets, func(id string) bool { return v.owns(byID[id]) })) {
+		d20, total := l.D20, l.Total
+		le.D20, le.Total = &d20, &total
+		le.Rerolled = e.ev.Lucky.proto() // the d20 Lucky rolled again: "Sortudo: 1 → 14"
 	}
 	if v.master && l.DC != 0 {
 		dc := l.DC
 		le.Dc = &dc
 	}
-	out.Effect = le
 }

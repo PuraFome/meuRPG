@@ -73,26 +73,7 @@ func (m modeChoice) changed() bool { return m.Mode != m.Suggested }
 func (s *Service) chooseMode(ctx context.Context, c *combatTx, v combatViewer, attacker, target playdb.Combatant, attackKey string, truth combat.RollMode, ask modeAsk) (modeChoice, error) {
 	out := modeChoice{Mode: truth, Suggested: truth, ByMaster: v.master}
 	if ask.requestID != "" {
-		req, err := c.q.GetRollModeRequest(ctx, playdb.GetRollModeRequestParams{EncounterID: c.enc.ID, ID: ask.requestID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return out, connect.NewError(connect.CodeNotFound, errors.New("roll mode request not found"))
-		}
-		if err != nil {
-			return out, fmt.Errorf("find the roll mode request: %w", err)
-		}
-		if req.CombatantID != attacker.ID || req.TargetID != target.ID || req.AttackKey != attackKey {
-			return out, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_mode_request_id is for another attack"))
-		}
-		switch req.Status {
-		case "pending":
-			return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_PENDING, "the master has not answered yet")
-		case "closed":
-			return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
-		}
-		out.Mode, out.Reason, out.RequestID, out.ByMaster = modeOfKey(deref(req.DecidedMode)), req.Reason, req.ID, true
-		// The master decided: the mode may differ from today's suggestion (a condition
-		// changed meanwhile), and the player rolls what he answered.
-		return out, nil
+		return useModeRequest(ctx, c, attacker, target, attackKey, ask.requestID, out)
 	}
 	want, asked := modeFromProto(ask.want)
 	if !asked || want == truth {
@@ -113,6 +94,28 @@ func (s *Service) chooseMode(ctx context.Context, c *combatTx, v combatViewer, a
 		return out, nil
 	}
 	return s.keepReason(ctx, c, out)
+}
+
+// useModeRequest takes the mode of the master's answer to a request, for the
+// attack the request was made for.
+func useModeRequest(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, attackKey, requestID string, out modeChoice) (modeChoice, error) {
+	req, err := findRollModeRequest(ctx, c, requestID)
+	if err != nil {
+		return out, err
+	}
+	if req.CombatantID != attacker.ID || req.TargetID != target.ID || req.AttackKey != attackKey {
+		return out, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_mode_request_id is for another attack"))
+	}
+	switch req.Status {
+	case "pending":
+		return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_PENDING, "the master has not answered yet")
+	case "closed":
+		return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
+	}
+	out.Mode, out.Reason, out.RequestID, out.ByMaster = modeOfKey(deref(req.DecidedMode)), req.Reason, req.ID, true
+	// The master decided: the mode may differ from today's suggestion (a condition
+	// changed meanwhile), and the player rolls what he answered.
+	return out, nil
 }
 
 // keepReason writes the reason of a free change of mode (one nobody had to approve) in
@@ -157,6 +160,43 @@ func (in attackModeInputs) facts(enc playdb.Encounter, sight *fogSight) modeFact
 	return modeFacts{cs: in.cs, states: in.states, theatre: isTheatre(enc), sight: sight, hiding: in.hiding, helps: in.helps}
 }
 
+// rollModeAsk is a RequestRollMode call once its fields are checked.
+type rollModeAsk struct {
+	key, encID, attackerID, targetID, attackKey, reason string
+	want                                                combat.RollMode
+}
+
+// maxAttackKeyLength is the longest attack key a request may name.
+const maxAttackKeyLength = 100
+
+// parseRollModeAsk checks the fields of a request, in the order of the proto.
+func parseRollModeAsk(msg *playv1.RequestRollModeRequest) (rollModeAsk, error) {
+	var in rollModeAsk
+	var err error
+	if in.key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
+		return in, err
+	}
+	if in.encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+		return in, err
+	}
+	if in.attackerID, err = parseCombatID(msg.GetAttackerId(), "combatant"); err != nil {
+		return in, err
+	}
+	if in.targetID, err = parseCombatID(msg.GetTargetId(), "combatant"); err != nil {
+		return in, err
+	}
+	in.attackKey = msg.GetAttackKey()
+	if in.attackKey == "" || len(in.attackKey) > maxAttackKeyLength {
+		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key must name one of the attacker's attacks"))
+	}
+	var ok bool
+	if in.want, ok = modeFromProto(msg.GetRollMode()); !ok {
+		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_mode must be set"))
+	}
+	in.reason, err = cleanReason(msg.GetReason())
+	return in, err
+}
+
 // RequestRollMode implements playv1connect.CombatServiceHandler.
 func (s *Service) RequestRollMode(
 	ctx context.Context,
@@ -169,93 +209,17 @@ func (s *Service) RequestRollMode(
 	if m.Role == authz.RoleMaster {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the master sets the mode on the roll"))
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	attackerID, err := parseCombatID(req.Msg.GetAttackerId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	targetID, err := parseCombatID(req.Msg.GetTargetId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	attackKey := req.Msg.GetAttackKey()
-	if attackKey == "" || len(attackKey) > 100 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key must name one of the attacker's attacks"))
-	}
-	want, ok := modeFromProto(req.Msg.GetRollMode())
-	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_mode must be set"))
-	}
-	reason, err := cleanReason(req.Msg.GetReason())
+	in, err := parseRollModeAsk(req.Msg)
 	if err != nil {
 		return nil, err
 	}
 
 	var made actionEvent
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventRollModeRequested, encounterID: encID}, func(c *combatTx) (any, error) {
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v := c.viewer(m, cs)
-		attacker, err := findCombatant(cs, attackerID, v)
+	res, err := s.write(ctx, combatWrite{m: m, key: in.key, hash: idem.Hash(req.Msg), kind: eventRollModeRequested, encounterID: in.encID}, func(c *combatTx) (any, error) {
+		var err error
+		made, err = s.storeRollModeRequest(ctx, c, m, in)
 		if err != nil {
 			return nil, err
-		}
-		if err := v.mayAct(attacker); err != nil {
-			return nil, err
-		}
-		target, err := findCombatant(cs, targetID, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.mustActNow(ctx, c, attacker); err != nil {
-			return nil, err
-		}
-		sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, attacker)
-		if err != nil {
-			return nil, err
-		}
-		i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == attackKey })
-		if i < 0 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key is not one of the attacker's attacks"))
-		}
-		in, err := s.readModeInputs(ctx, c, cs)
-		if err != nil {
-			return nil, err
-		}
-		names, err := s.namerFor(ctx, c.tx, m.CampaignID)
-		if err != nil {
-			return nil, err
-		}
-		truth := in.facts(c.enc, c.sight).attackMode(attacker, target, sheet.Traits, shapeOfAttack(sheet.Attacks[i]), actsNow(c.enc, attacker), v, names)
-		if !want.Better(truth.Mode) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_mode must be better than the suggestion: roll the suggested mode, or disadvantage, without asking"))
-		}
-		if _, err := c.q.CloseRollModeRequestsOf(ctx, playdb.CloseRollModeRequestsOfParams{CombatantID: attacker.ID, AnsweredAt: &c.now}); err != nil {
-			return nil, fmt.Errorf("close the earlier requests: %w", err)
-		}
-		row, err := c.q.InsertRollModeRequest(ctx, playdb.InsertRollModeRequestParams{
-			EncounterID: c.enc.ID, CombatantID: attacker.ID, TargetID: target.ID, AttackKey: attackKey,
-			SuggestedMode: modeKey(truth.Mode), RequestedMode: modeKey(want), Reason: reason, CreatedAt: c.now,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("keep the request: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &attacker.CharacterID
-		made = actionEvent{
-			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: attackKey,
-			RequestID: row.ID, RollMode: modeKey(want), SuggestedMode: modeKey(truth.Mode),
 		}
 		return made, nil
 	})
@@ -279,6 +243,100 @@ func (s *Service) RequestRollMode(
 		}
 	}
 	return connect.NewResponse(resp), nil
+}
+
+// askedAttack is the two sides of a request and the attack it names.
+type askedAttack struct {
+	attacker, target playdb.Combatant
+	viewer           combatViewer
+	cs               []playdb.Combatant
+	sheet            link.Sheet
+	attack           link.Attack
+}
+
+// resolveAskedAttack finds who asks, against whom and with which attack, and
+// checks that the attacker may act now.
+func (s *Service) resolveAskedAttack(ctx context.Context, c *combatTx, m authz.Membership, in rollModeAsk) (askedAttack, error) {
+	var out askedAttack
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return out, fmt.Errorf("list the combatants: %w", err)
+	}
+	out.cs = cs
+	out.viewer = c.viewer(m, cs)
+	if out.attacker, err = findCombatant(cs, in.attackerID, out.viewer); err != nil {
+		return out, err
+	}
+	if err := out.viewer.mayAct(out.attacker); err != nil {
+		return out, err
+	}
+	if out.target, err = findCombatant(cs, in.targetID, out.viewer); err != nil {
+		return out, err
+	}
+	if err := s.mustActNow(ctx, c, out.attacker); err != nil {
+		return out, err
+	}
+	if out.sheet, err = s.sheetOf(ctx, c.tx, m.CampaignID, out.attacker); err != nil {
+		return out, err
+	}
+	i := slices.IndexFunc(out.sheet.Attacks, func(a link.Attack) bool { return a.Key == in.attackKey })
+	if i < 0 {
+		return out, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key is not one of the attacker's attacks"))
+	}
+	out.attack = out.sheet.Attacks[i]
+	return out, nil
+}
+
+// storeRollModeRequest checks a request against the suggestion, closes the
+// attacker's earlier requests and keeps the new one.
+func (s *Service) storeRollModeRequest(ctx context.Context, c *combatTx, m authz.Membership, in rollModeAsk) (actionEvent, error) {
+	var zero actionEvent
+	ask, err := s.resolveAskedAttack(ctx, c, m, in)
+	if err != nil {
+		return zero, err
+	}
+	modeInputs, err := s.readModeInputs(ctx, c, ask.cs)
+	if err != nil {
+		return zero, err
+	}
+	names, err := s.namerFor(ctx, c.tx, m.CampaignID)
+	if err != nil {
+		return zero, err
+	}
+	truth := modeInputs.facts(c.enc, c.sight).attackMode(ask.attacker, ask.target, ask.sheet.Traits, shapeOfAttack(ask.attack), actsNow(c.enc, ask.attacker), ask.viewer, names)
+	if !in.want.Better(truth.Mode) {
+		return zero, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_mode must be better than the suggestion: roll the suggested mode, or disadvantage, without asking"))
+	}
+	if _, err := c.q.CloseRollModeRequestsOf(ctx, playdb.CloseRollModeRequestsOfParams{CombatantID: ask.attacker.ID, AnsweredAt: &c.now}); err != nil {
+		return zero, fmt.Errorf("close the earlier requests: %w", err)
+	}
+	row, err := c.q.InsertRollModeRequest(ctx, playdb.InsertRollModeRequestParams{
+		EncounterID: c.enc.ID, CombatantID: ask.attacker.ID, TargetID: ask.target.ID, AttackKey: in.attackKey,
+		SuggestedMode: modeKey(truth.Mode), RequestedMode: modeKey(in.want), Reason: in.reason, CreatedAt: c.now,
+	})
+	if err != nil {
+		return zero, fmt.Errorf("keep the request: %w", err)
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return zero, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &ask.attacker.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: secretOf(ask.attacker, ask.target), Actor: ask.attacker.ID, Target: ask.target.ID, Key: in.attackKey,
+		RequestID: row.ID, RollMode: modeKey(in.want), SuggestedMode: modeKey(truth.Mode),
+	}, nil
+}
+
+// findRollModeRequest reads a request of the combat, or says it is not found.
+func findRollModeRequest(ctx context.Context, c *combatTx, id string) (playdb.RollModeRequest, error) {
+	row, err := c.q.GetRollModeRequest(ctx, playdb.GetRollModeRequestParams{EncounterID: c.enc.ID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return row, connect.NewError(connect.CodeNotFound, errors.New("roll mode request not found"))
+	}
+	if err != nil {
+		return row, fmt.Errorf("find the roll mode request: %w", err)
+	}
+	return row, nil
 }
 
 // AnswerRollModeRequest implements playv1connect.CombatServiceHandler.
@@ -308,39 +366,7 @@ func (s *Service) AnswerRollModeRequest(
 	}
 
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventRollModeAnswered, encounterID: encID}, func(c *combatTx) (any, error) {
-		row, err := c.q.GetRollModeRequest(ctx, playdb.GetRollModeRequestParams{EncounterID: c.enc.ID, ID: reqID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("roll mode request not found"))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("find the roll mode request: %w", err)
-		}
-		switch {
-		case row.Status == "closed":
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
-		case row.Status == "answered" && modeOfKey(deref(row.DecidedMode)) != decided:
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is answered already")
-		case row.Status == "answered":
-			return nil, nil // the same answer again: nothing differs
-		}
-		mode := modeKey(decided)
-		if _, err := c.q.AnswerRollModeRequest(ctx, playdb.AnswerRollModeRequestParams{ID: row.ID, DecidedMode: &mode, AnsweredAt: &c.now}); err != nil {
-			return nil, fmt.Errorf("answer the roll mode request: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		attacker, _ := findCombatant(cs, row.CombatantID, combatViewer{master: true})
-		target, _ := findCombatant(cs, row.TargetID, combatViewer{master: true})
-		c.characterID = &attacker.CharacterID
-		return actionEvent{
-			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: row.AttackKey,
-			RequestID: row.ID, RollMode: mode, SuggestedMode: row.SuggestedMode, Requested: row.RequestedMode,
-		}, nil
+		return s.answerRollMode(ctx, c, reqID, decided)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer a roll mode request", err)
@@ -353,6 +379,41 @@ func (s *Service) AnswerRollModeRequest(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.AnswerRollModeRequestResponse{Encounter: out}), nil
+}
+
+// answerRollMode records the master's answer. The same answer again writes
+// nothing (a nil result).
+func (s *Service) answerRollMode(ctx context.Context, c *combatTx, reqID string, decided combat.RollMode) (any, error) {
+	row, err := findRollModeRequest(ctx, c, reqID)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case row.Status == "closed":
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
+	case row.Status == "answered" && modeOfKey(deref(row.DecidedMode)) != decided:
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is answered already")
+	case row.Status == "answered":
+		return nil, nil // the same answer again: nothing differs
+	}
+	mode := modeKey(decided)
+	if _, err := c.q.AnswerRollModeRequest(ctx, playdb.AnswerRollModeRequestParams{ID: row.ID, DecidedMode: &mode, AnsweredAt: &c.now}); err != nil {
+		return nil, fmt.Errorf("answer the roll mode request: %w", err)
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	attacker, _ := findCombatant(cs, row.CombatantID, combatViewer{master: true})
+	target, _ := findCombatant(cs, row.TargetID, combatViewer{master: true})
+	c.characterID = &attacker.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: row.AttackKey,
+		RequestID: row.ID, RollMode: mode, SuggestedMode: row.SuggestedMode, Requested: row.RequestedMode,
+	}, nil
 }
 
 // CancelRollModeRequest implements playv1connect.CombatServiceHandler.
@@ -377,39 +438,7 @@ func (s *Service) CancelRollModeRequest(
 		return nil, err
 	}
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventRollModeAnswered, encounterID: encID}, func(c *combatTx) (any, error) {
-		row, err := c.q.GetRollModeRequest(ctx, playdb.GetRollModeRequestParams{EncounterID: c.enc.ID, ID: reqID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("roll mode request not found"))
-		}
-		if err != nil {
-			return nil, fmt.Errorf("find the roll mode request: %w", err)
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v := c.viewer(m, cs)
-		attacker, err := findCombatant(cs, row.CombatantID, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(attacker); err != nil {
-			return nil, err
-		}
-		if row.Status == "closed" {
-			return nil, nil // taken back already
-		}
-		if err := c.q.CloseRollModeRequest(ctx, playdb.CloseRollModeRequestParams{ID: row.ID, AnsweredAt: &c.now}); err != nil {
-			return nil, fmt.Errorf("close the roll mode request: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &attacker.CharacterID
-		return actionEvent{
-			Round: c.enc.Round, Secret: attacker.Hidden, Actor: attacker.ID, Target: row.TargetID, Key: row.AttackKey,
-			RequestID: row.ID, Canceled: true, SuggestedMode: row.SuggestedMode, Requested: row.RequestedMode,
-		}, nil
+		return s.cancelRollMode(ctx, c, m, reqID)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "cancel a roll mode request", err)
@@ -421,6 +450,41 @@ func (s *Service) CancelRollModeRequest(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.CancelRollModeRequestResponse{Encounter: out}), nil
+}
+
+// cancelRollMode takes a request back. One already closed writes nothing (a
+// nil result).
+func (s *Service) cancelRollMode(ctx context.Context, c *combatTx, m authz.Membership, reqID string) (any, error) {
+	row, err := findRollModeRequest(ctx, c, reqID)
+	if err != nil {
+		return nil, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	v := c.viewer(m, cs)
+	attacker, err := findCombatant(cs, row.CombatantID, v)
+	if err != nil {
+		return nil, err
+	}
+	if err := v.mayAct(attacker); err != nil {
+		return nil, err
+	}
+	if row.Status == "closed" {
+		return nil, nil // taken back already
+	}
+	if err := c.q.CloseRollModeRequest(ctx, playdb.CloseRollModeRequestParams{ID: row.ID, AnsweredAt: &c.now}); err != nil {
+		return nil, fmt.Errorf("close the roll mode request: %w", err)
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &attacker.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: attacker.Hidden, Actor: attacker.ID, Target: row.TargetID, Key: row.AttackKey,
+		RequestID: row.ID, Canceled: true, SuggestedMode: row.SuggestedMode, Requested: row.RequestedMode,
+	}, nil
 }
 
 // closeRequestsOf closes the open roll mode requests of a combatant: its turn

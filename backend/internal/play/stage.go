@@ -221,39 +221,53 @@ func (s *Service) PutOnStage(
 		return nil, err
 	}
 	stage, err := s.changeStage(ctx, m, "put an NPC on the stage", func(c *combatTx) (string, string, error) {
-		if c.session.OpenScenePointID == nil {
-			return "", "", errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open, so there is no stage")
-		}
-		// Any living NPC of the campaign: a player's character is not one.
-		chars, err := s.roster.CombatCharacters(ctx, c.tx, m.CampaignID, []string{characterID})
-		if err != nil {
-			return "", "", err
-		}
-		if len(chars) != 1 || chars[0].Player {
-			return "", "", errCharacterNotFound()
-		}
-		if chars[0].CombatOnly {
-			return "", "", connect.NewError(connect.CodeInvalidArgument, errors.New("a monster's NPC is not a character the master can put on the stage"))
-		}
-		rows, err := c.q.ListStage(ctx, c.session.ID)
-		if err != nil {
-			return "", "", fmt.Errorf("list the stage: %w", err)
-		}
-		if slices.ContainsFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == characterID }) {
-			return "", "", nil // already there: nothing changes
-		}
-		if len(rows) >= maxStage {
-			return "", "", errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_STAGE_FULL, "the stage is full")
-		}
-		if _, err := c.q.InsertStageNPC(ctx, playdb.InsertStageNPCParams{GameSessionID: c.session.ID, CharacterID: characterID, CreatedAt: c.now}); err != nil {
-			return "", "", fmt.Errorf("put the NPC on the stage: %w", err)
-		}
-		return stagePut, characterID, nil
+		return s.putNPC(ctx, c, m.CampaignID, characterID)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.PutOnStageResponse{Stage: stage}), nil
+}
+
+// putNPC is PutOnStage's change: it puts the NPC at the end of the stage, unless it is
+// there already (nothing changes).
+func (s *Service) putNPC(ctx context.Context, c *combatTx, campaignID, characterID string) (string, string, error) {
+	if c.session.OpenScenePointID == nil {
+		return "", "", errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open, so there is no stage")
+	}
+	if err := s.checkStageNPC(ctx, c, campaignID, characterID); err != nil {
+		return "", "", err
+	}
+	rows, err := c.q.ListStage(ctx, c.session.ID)
+	if err != nil {
+		return "", "", fmt.Errorf("list the stage: %w", err)
+	}
+	if slices.ContainsFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == characterID }) {
+		return "", "", nil // already there: nothing changes
+	}
+	if len(rows) >= maxStage {
+		return "", "", errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_STAGE_FULL, "the stage is full")
+	}
+	if _, err := c.q.InsertStageNPC(ctx, playdb.InsertStageNPCParams{GameSessionID: c.session.ID, CharacterID: characterID, CreatedAt: c.now}); err != nil {
+		return "", "", fmt.Errorf("put the NPC on the stage: %w", err)
+	}
+	return stagePut, characterID, nil
+}
+
+// checkStageNPC checks that the character is a living NPC of the campaign the master
+// may put on the stage: a player's character is not one, nor the NPC of a monster.
+func (s *Service) checkStageNPC(ctx context.Context, c *combatTx, campaignID, characterID string) error {
+	chars, err := s.roster.CombatCharacters(ctx, c.tx, campaignID, []string{characterID})
+	if err != nil {
+		return err
+	}
+	if len(chars) != 1 || chars[0].Player {
+		return errCharacterNotFound()
+	}
+	if chars[0].CombatOnly {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a monster's NPC is not a character the master can put on the stage"))
+	}
+	return nil
 }
 
 // TakeOffStage implements playv1connect.PlayServiceHandler.
@@ -301,40 +315,45 @@ func (s *Service) SetSpeaker(
 		}
 	}
 	stage, err := s.changeStage(ctx, m, "set the speaker", func(c *combatTx) (string, string, error) {
-		rows, err := c.q.ListStage(ctx, c.session.ID)
-		if err != nil {
-			return "", "", fmt.Errorf("list the stage: %w", err)
-		}
-		speaking := slices.IndexFunc(rows, func(r playdb.StageNpc) bool { return r.Speaking })
-		if characterID == "" {
-			if speaking < 0 {
-				return "", "", nil // nobody speaks already
-			}
-			if err := c.q.ClearStageSpeakers(ctx, c.session.ID); err != nil {
-				return "", "", fmt.Errorf("clear the speaker: %w", err)
-			}
-			return stageSpeaker, "", nil
-		}
-		i := slices.IndexFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == characterID })
-		if i < 0 {
-			return "", "", errCharacterNotFound() // not on the stage
-		}
-		if i == speaking {
-			return "", "", nil // speaks already
-		}
-		// One speaks at a time: the old one stops before the new one starts.
-		if err := c.q.ClearStageSpeakers(ctx, c.session.ID); err != nil {
-			return "", "", fmt.Errorf("clear the speaker: %w", err)
-		}
-		if _, err := c.q.SetStageSpeaker(ctx, playdb.SetStageSpeakerParams{GameSessionID: c.session.ID, CharacterID: characterID}); err != nil {
-			return "", "", fmt.Errorf("set the speaker: %w", err)
-		}
-		return stageSpeaker, characterID, nil
+		return setSpeakerOf(ctx, c, characterID)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.SetSpeakerResponse{Stage: stage}), nil
+}
+
+// setSpeakerOf is SetSpeaker's change: the NPC speaks, or nobody when it is empty.
+func setSpeakerOf(ctx context.Context, c *combatTx, characterID string) (string, string, error) {
+	rows, err := c.q.ListStage(ctx, c.session.ID)
+	if err != nil {
+		return "", "", fmt.Errorf("list the stage: %w", err)
+	}
+	speaking := slices.IndexFunc(rows, func(r playdb.StageNpc) bool { return r.Speaking })
+	if characterID == "" {
+		if speaking < 0 {
+			return "", "", nil // nobody speaks already
+		}
+		if err := c.q.ClearStageSpeakers(ctx, c.session.ID); err != nil {
+			return "", "", fmt.Errorf("clear the speaker: %w", err)
+		}
+		return stageSpeaker, "", nil
+	}
+	i := slices.IndexFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == characterID })
+	if i < 0 {
+		return "", "", errCharacterNotFound() // not on the stage
+	}
+	if i == speaking {
+		return "", "", nil // speaks already
+	}
+	// One speaks at a time: the old one stops before the new one starts.
+	if err := c.q.ClearStageSpeakers(ctx, c.session.ID); err != nil {
+		return "", "", fmt.Errorf("clear the speaker: %w", err)
+	}
+	if _, err := c.q.SetStageSpeaker(ctx, playdb.SetStageSpeakerParams{GameSessionID: c.session.ID, CharacterID: characterID}); err != nil {
+		return "", "", fmt.Errorf("set the speaker: %w", err)
+	}
+	return stageSpeaker, characterID, nil
 }
 
 // clearStage empties the session's stage inside tx, and writes the event when
