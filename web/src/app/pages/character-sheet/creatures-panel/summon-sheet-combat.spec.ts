@@ -14,6 +14,7 @@ import {
   summonAnswer,
 } from '../../../core/creatures/creatures-testing';
 import { SummonSheet, type SummonSheetData } from './summon-sheet';
+import { nextTurn } from '../../../../test-settle';
 
 /** Conjurar Animais in a combat (E9-12): the group's one initiative d20 follows the campaign's dice (RN-18). */
 describe("SummonSheet in a combat: the group's initiative die", () => {
@@ -55,7 +56,7 @@ describe("SummonSheet in a combat: the group's initiative die", () => {
       for (let i = 0; i < 5; i++) {
         fixture.detectChanges();
         await fixture.whenStable();
-        await new Promise((r) => setTimeout(r));
+        await nextTurn();
       }
       fixture.detectChanges();
     };

@@ -25,9 +25,9 @@ import { OUTCOME_UNKNOWN } from '../../../core/connect/connect-errors';
 import { plain } from '../../../core/images/gallery-testing';
 import { UploadFailed } from '../../../core/images/upload-errors';
 import { CampaignImportPage } from './campaign-import';
+import { nextTurn } from '../../../../test-settle';
 
 const MIB = 1024 * 1024;
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /** A 35-byte package; the fake server cuts it into parts of 10 (four parts). */
 function packageFile(name = 'Mirathel.meurpg.zip', lastModified = 1_700_000_000_000): File {
@@ -68,7 +68,7 @@ describe('CampaignImportPage', () => {
     if (vi.isFakeTimers()) {
       await vi.advanceTimersByTimeAsync(0);
     } else {
-      await flush();
+      await nextTurn();
       await fixture.whenStable();
     }
     fixture.detectChanges();

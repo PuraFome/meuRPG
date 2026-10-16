@@ -6,6 +6,12 @@ import type { LiveEventVm } from '../../pages/live-session/live-session.types';
 import { OpenSessions } from '../../shell/live-notice/open-sessions';
 import { CONTENT_DEBOUNCE_MS, ContentWatcher } from './content-watcher';
 
+// With --coverage test-setup.ts only hooks the first file of a worker, so the fake clock this file leaves on would
+// reach the next file (a real setTimeout never fires on a fake clock).
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 /** One stream the test drives by hand. */
 class Call {
   private queue: LiveEventVm[] = [];

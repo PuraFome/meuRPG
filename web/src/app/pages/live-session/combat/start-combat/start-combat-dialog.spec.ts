@@ -14,6 +14,7 @@ import { CONNECT_TRANSPORT } from '../../../../core/connect/transport';
 import { flat } from '../../../../core/creatures/creatures-testing';
 import { RosterClient } from '../../../../core/maps/roster-client';
 import { type CombatMapInfo, StartCombatDialog, type StartCombatData } from './start-combat-dialog';
+import { nextTurn } from '../../../../../test-settle';
 
 const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
 
@@ -51,7 +52,7 @@ async function settle(fixture: {
   whenStable: () => Promise<unknown>;
 }): Promise<void> {
   await fixture.whenStable();
-  await new Promise((r) => setTimeout(r, 0));
+  await nextTurn();
   await fixture.whenStable();
   fixture.detectChanges();
 }
@@ -204,7 +205,7 @@ describe('"Iniciar combate": how the combat is played (RN-25, E10-04 state 1)', 
     const fixture = TestBed.createComponent(StartCombatDialog);
     fixture.detectChanges();
     await Promise.resolve();
-    await new Promise((r) => setTimeout(r, 0));
+    await nextTurn();
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(plain(el.textContent)).toContain('Carregando');

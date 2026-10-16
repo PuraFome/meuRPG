@@ -26,6 +26,7 @@ import {
   GameSessionVm,
 } from '../campaign-detail/game-session/game-session-card.types';
 import { SessionSummaryPage } from './session-summary-page';
+import { nextTurn } from '../../../test-settle';
 
 /** The text of an element as read, without the icons' ligature names. */
 const words = (e: Element | null | undefined) => {
@@ -142,7 +143,7 @@ describe('SessionSummaryPage', () => {
   async function settle(fixture: { whenStable(): Promise<unknown>; detectChanges(): void }) {
     for (let i = 0; i < 4; i++) {
       await fixture.whenStable();
-      await new Promise((resolve) => setTimeout(resolve));
+      await nextTurn();
       fixture.detectChanges();
     }
   }

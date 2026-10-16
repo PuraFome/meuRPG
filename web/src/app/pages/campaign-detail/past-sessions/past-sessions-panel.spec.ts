@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { CampaignSessions } from '../game-session/campaign-sessions';
 import { GameSessionSource, GameSessionVm } from '../game-session/game-session-card.types';
 import { PastSessionsPanel } from './past-sessions-panel';
+import { nextTurn } from '../../../../test-settle';
 
 const plain = (text: string | null | undefined) =>
   (text ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
@@ -57,7 +58,7 @@ describe('PastSessionsPanel', () => {
   }
   async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
     await fixture.whenStable();
-    await new Promise((resolve) => setTimeout(resolve));
+    await nextTurn();
     fixture.detectChanges();
   }
   const rows = (el: HTMLElement) =>
