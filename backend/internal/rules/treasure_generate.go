@@ -95,12 +95,7 @@ func (c *Content) GenerateTreasure(mode string, level int, seed uint64) (Treasur
 	if mode != TreasureIndividual && mode != TreasureHoard {
 		return Treasure{}, ErrTreasureMode
 	}
-	var band *treasureBand
-	for i := range c.c.treasure.bands {
-		if b := &c.c.treasure.bands[i]; level >= b.from && level <= b.to {
-			band = b
-		}
-	}
+	band := c.c.treasureBandOf(level)
 	if band == nil {
 		return Treasure{}, ErrTreasureLevel
 	}
@@ -109,22 +104,7 @@ func (c *Content) GenerateTreasure(mode string, level int, seed uint64) (Treasur
 		m = band.hoard
 	}
 	t := Treasure{Mode: mode, Level: level, Seed: seed, ContentVersion: c.Version()}
-
-	coins := newTreasureRNG(seed, phaseCoins)
-	for _, cr := range m.coins {
-		if coins.intn(100) >= cr.chance {
-			continue
-		}
-		n := coins.roll(cr.dice)
-		if n == 0 {
-			continue
-		}
-		v := n * coinCopper[cr.coin] / 100
-		t.Coins = append(t.Coins, TreasureCoin{Coin: cr.coin, Count: n, ValuePO: v})
-		t.CoinsPO += v
-	}
-	slices.SortFunc(t.Coins, func(a, b TreasureCoin) int { return coinCopper[a.Coin] - coinCopper[b.Coin] })
-
+	t.Coins, t.CoinsPO = rollTreasureCoins(newTreasureRNG(seed, phaseCoins), m.coins)
 	if m.gems != nil {
 		t.Gems, t.GemsPO = c.c.drawPieces(newTreasureRNG(seed, phaseGems), m.gems, c.c.treasure.gems)
 	}
@@ -136,6 +116,38 @@ func (c *Content) GenerateTreasure(mode string, level int, seed uint64) (Treasur
 	}
 	t.GoldPO = t.CoinsPO + t.GemsPO + t.ArtPO
 	return t, nil
+}
+
+// treasureBandOf is the band of the level (the last one that has it), or nil.
+func (c *content) treasureBandOf(level int) *treasureBand {
+	var band *treasureBand
+	for i := range c.treasure.bands {
+		if b := &c.treasure.bands[i]; level >= b.from && level <= b.to {
+			band = b
+		}
+	}
+	return band
+}
+
+// rollTreasureCoins rolls each coin's chance and amount, and returns the
+// coins from the cheapest with their worth in PO.
+func rollTreasureCoins(coins *treasureRNG, rolls []coinRoll) ([]TreasureCoin, int) {
+	var out []TreasureCoin
+	total := 0
+	for _, cr := range rolls {
+		if coins.intn(maxChancePct) >= cr.chance {
+			continue
+		}
+		n := coins.roll(cr.dice)
+		if n == 0 {
+			continue
+		}
+		v := n * coinCopper[cr.coin] / copperPerGold
+		out = append(out, TreasureCoin{Coin: cr.coin, Count: n, ValuePO: v})
+		total += v
+	}
+	slices.SortFunc(out, func(a, b TreasureCoin) int { return coinCopper[a.Coin] - coinCopper[b.Coin] })
+	return out, total
 }
 
 // drawPieces rolls the gems or the art objects of a hoard, and groups them by
