@@ -333,6 +333,13 @@
                   <button mat-button type="button" class="notice__ok" (click)="openEffectSave(pending)">Rolar o teste</button>
                 </div>
               }
+              @if (ownLucky()) {
+                <div class="mr-notice mr-notice--warning notice" data-testid="lucky-pending">
+                  <mat-icon aria-hidden="true">casino</mat-icon>
+                  <p>A sua rolagem espera a sua resposta: tirou 1, rolar de novo?</p>
+                  <button mat-button type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                </div>
+              }
               @if (ownOffer(); as offer) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
                   <mat-icon aria-hidden="true">music_note</mat-icon>

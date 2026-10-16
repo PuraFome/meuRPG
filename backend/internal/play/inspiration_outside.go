@@ -239,10 +239,11 @@ func (s *Service) outsideRoll(
 	}
 	var round *int32
 	if die.Combatant != nil {
-		// A weapon attack of the combatant that waits for the same die is a question too.
+		// A weapon attack of the combatant that waits for the same die is a question too (or for
+		// its Lucky answer first, combat_lucky.go).
 		switch attack, err := q.GetOpenRollHoldOf(ctx, playdb.GetOpenRollHoldOfParams{EncounterID: die.Encounter, CombatantID: die.Combatant.ID}); {
 		case err == nil && attack.Round == die.Round:
-			return outsideStep{}, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING, "answer the Bardic Inspiration question of the roll first")
+			return outsideStep{}, askingRefusal(attack)
 		case err != nil && !errors.Is(err, pgx.ErrNoRows):
 			return outsideStep{}, fmt.Errorf("find the open held attack: %w", err)
 		}

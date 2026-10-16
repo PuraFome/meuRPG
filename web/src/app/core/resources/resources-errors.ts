@@ -6,8 +6,8 @@ import {
   ResourceBlockedSchema,
 } from '../../../gen/meurpg/play/v1/resources_pb';
 import {
-  INSPIRATION_PENDING_TEXT,
   combatErrorMessage,
+  pendingQuestionReasonText,
   sessionClosed,
 } from '../combat/combat-errors';
 import { describeConnectError } from '../connect/connect-errors';
@@ -29,6 +29,11 @@ export function resourceBlockedMessage(
   needed = 0,
   available = 0,
 ): string {
+  // A roll that waits for its question (Lucky, the Bardic Inspiration die): the same words as in every call that rolls.
+  const pending = pendingQuestionReasonText(reason);
+  if (pending) {
+    return pending;
+  }
   switch (reason) {
     case ResourceBlockedReason.COMBAT_OPEN:
       return 'Há um combate em andamento: termine o combate antes de descansar.';
@@ -52,8 +57,6 @@ export function resourceBlockedMessage(
       return 'Você não tem essa habilidade.';
     case ResourceBlockedReason.SONG_OF_REST_FACE_NEEDED:
       return `Um bardo toca a Canção de Descanso: digite também o número do dado extra (d${needed}).`;
-    case ResourceBlockedReason.INSPIRATION_PENDING:
-      return INSPIRATION_PENDING_TEXT;
     default:
       return 'Isso não pode ser feito agora. A tela foi atualizada.';
   }

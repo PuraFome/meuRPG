@@ -720,7 +720,13 @@ type CombatServiceClient interface {
 	// because the master rules on what provoked it at the table. The server compares the total with the target's armor
 	// class (plus the +5 of an active Escudo): a
 	// natural 20 hits and is a critical hit, a natural 1 misses, any other
-	// roll hits when the total reaches the armor class. The answer carries the
+	// roll hits when the total reaches the armor class. A halfling (Lucky, SRD 5.1)
+	// whose d20 shows a 1 is asked first: the roll is held with `lucky_offer` and
+	// resolved by AnswerLucky, with the new d20 when the player rolls it again; an
+	// attacker that holds a Bardic Inspiration die is held the same way, with
+	// `inspiration_offer` (AnswerBardicInspiration). A second roll of the combatant while
+	// a question waits is refused with a ResourceBlocked detail (LUCKY_PENDING or
+	// INSPIRATION_PENDING). The answer carries the
 	// roll as numbers and the outcome, never the armor class. A hit opens a
 	// pending damage (stored, so a retry or a reload finds it) for RollDamage;
 	// a miss ends the attack. When the hit lands on a player's character that
@@ -2592,7 +2598,13 @@ type CombatServiceHandler interface {
 	// because the master rules on what provoked it at the table. The server compares the total with the target's armor
 	// class (plus the +5 of an active Escudo): a
 	// natural 20 hits and is a critical hit, a natural 1 misses, any other
-	// roll hits when the total reaches the armor class. The answer carries the
+	// roll hits when the total reaches the armor class. A halfling (Lucky, SRD 5.1)
+	// whose d20 shows a 1 is asked first: the roll is held with `lucky_offer` and
+	// resolved by AnswerLucky, with the new d20 when the player rolls it again; an
+	// attacker that holds a Bardic Inspiration die is held the same way, with
+	// `inspiration_offer` (AnswerBardicInspiration). A second roll of the combatant while
+	// a question waits is refused with a ResourceBlocked detail (LUCKY_PENDING or
+	// INSPIRATION_PENDING). The answer carries the
 	// roll as numbers and the outcome, never the armor class. A hit opens a
 	// pending damage (stored, so a retry or a reload finds it) for RollDamage;
 	// a miss ends the attack. When the hit lands on a player's character that

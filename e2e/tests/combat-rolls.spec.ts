@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { combatRPC, getEncounterRPC, waitTurnLeaves } from './combat-support';
-import { grog, rollsTable, vex } from './combat-rolls-support';
+import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
 import { openSessionPage } from './live-session-support';
 import { callRPC } from './support';
 
@@ -103,3 +103,37 @@ test('a fúria do bárbaro corta o dano pela metade e o mestre vê o passo da re
     await done().catch(() => undefined);
   }
 });
+
+test(
+  'o halfling tira 1 no ataque: "Tirou 1: rolar de novo?", o novo d20 digitado e "Sortudo: 1 → 15"',
+  { tag: ['@MR-014', '@RN-35', '@RN-18'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const { p, campaignId, done } = await rollsTable(browser, 'Sortudo', pipo, { weaponKeys: ['equipment:battleaxe'] }, { Pipo: 20, 'Goblin 1': 15, 'Capitão Goblin': 5, 'Goblin 2': 4 });
+    try {
+      await openSessionPage(p, campaignId);
+      await expect(p.getByRole('heading', { name: 'Sua vez, Pipo' })).toBeVisible();
+      await p.getByRole('button', { name: /^Atacar com Machado de batalha/ }).click();
+      const sheet = p.getByRole('dialog', { name: /Atacar com Machado de batalha/ });
+      await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await sheet.getByLabel(/Role 1d20 para/).fill('1');
+      await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
+
+      // A 1 on the d20 (SRD 5.1, Halfling, Lucky): the question comes before the result.
+      await expect(sheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeVisible();
+      await expect(sheet.getByText('O mestre ainda não disse se acertou.')).toBeVisible();
+      await expect(sheet.getByRole('button', { name: 'Ficar com o 1' })).toBeVisible();
+      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await sheet.getByLabel(/Role 1d20 de novo/).fill('15');
+      await sheet.getByRole('button', { name: 'Confirmar 15' }).click();
+
+      // The new roll stands: the result is told with it, and the sheet says what Lucky did.
+      await expect(sheet.getByText('Sortudo: 1 → 15')).toBeVisible();
+      await expect(sheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeHidden();
+      await expect(sheet.getByText(/Acertou|Crítico/).first()).toBeVisible();
+    } finally {
+      await done().catch(() => undefined);
+    }
+  },
+);

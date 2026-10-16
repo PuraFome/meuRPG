@@ -653,7 +653,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 	var made actionEvent
 	var shown []*playv1.AdvantageSource // the circumstances of the mode, as the caller may read them
 	var reason string                   // why the mode is not the suggestion (the caller's own text, or the master's)
-	var held *inspirationHold           // the roll waits for the player's answer about a Bardic Inspiration die
+	var held *inspirationHold           // the roll waits for the player's answer: Lucky, or a Bardic Inspiration die
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: encID}, func(c *combatTx) (any, error) {
 		held = nil
 		attackKey := attackKey // a throw back is the caught missile, under its own key
@@ -837,10 +837,11 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 
 		// A Cutting Words can change the roll: it waits for the windows, and is rolled
 		// when they are answered (PM-04, combat_reaction_hold.go).
-		// A roll that waits for a Bardic Inspiration answer comes first: nothing else rolls or
-		// opens a window until it is answered, and the answer does not open the windows again
-		// (they were answered before the d20 was kept, combat_inspiration.go).
-		if err := s.refuseWhileAsking(ctx, c, attacker, key); err != nil {
+		// A roll that waits for a Lucky or Bardic Inspiration answer comes first: nothing else
+		// rolls or opens a window until it is answered, and the answer does not open the windows
+		// again (they were answered before the d20 was kept, combat_inspiration.go).
+		lucky := attackerSheet.Traits.Lucky // a halfling: a d20 of 1 may be rolled again (combat_lucky.go)
+		if err := s.refuseWhileAsking(ctx, c, attacker, key, lucky); err != nil {
 			return nil, err
 		}
 		if forcedOf(ctx) == nil {
@@ -875,24 +876,28 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 			shape.Thrown, shape.RangeFt, shape.LongRangeFt = false, meleeReachFt, 0
 		}
 		truth := modeIn.facts(c.enc, c.sight).attackMode(attacker, modeTarget, attackerSheet.Traits, shape, actsNow(c.enc, attacker) && !asReaction, v, names)
-		// A roll that waits for a Bardic Inspiration die is not settled yet: its mode is worked
-		// out without writing, and the answer settles it with the mode the roll was made with.
+		// A roll that may wait for a Lucky or Bardic Inspiration answer is not settled yet: its mode
+		// is worked out without writing, and the answer settles it with the mode the roll was made
+		// with (or the reason is written below, when the roll goes on after all).
 		forced := forcedOf(ctx)
 		choice, err := s.chooseMode(ctx, c, v, attacker, target, attackKey, truth.Mode, modeAsk{
 			want: req.Msg.GetRollMode(), reason: req.Msg.GetModeReason(), requestID: req.Msg.GetRollModeRequestId(),
-			dry: forced == nil && holdsDie(attacker, c.enc.Round), trusted: forced != nil,
+			dry: mayHold(forced, attacker, c.enc.Round, lucky), trusted: forced != nil,
 		})
 		if err != nil {
 			return nil, err
 		}
 		shown, reason = truth.Shown, choice.Reason
-		d20, bonus, h, err := s.rollOrHold(ctx, c, attacker, req.Msg, key, in, attack.ToHit, choice)
+		d20, bonus, h, err := s.rollOrHold(ctx, c, attacker, req.Msg, key, in, attack.ToHit, choice, lucky)
 		if err != nil {
 			return nil, err
 		}
 		if h != nil {
 			held = h // nothing is resolved, spent or written until the answer
 			return nil, nil
+		}
+		if choice, err = s.keepReason(ctx, c, choice); err != nil { // a lucky roll with no 1 goes on
+			return nil, err
 		}
 		bonusFace := 0
 		if bonus != nil {
@@ -956,6 +961,9 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		}
 		if bonus != nil {
 			made.Res = &resourceEvent{Kind: resBardicUse, Sides: bonus.Sides, Face: bonus.Face, FromID: bonus.From, ExpiresRound: bonus.ExpiresRound}
+		}
+		if forced != nil {
+			made.Lucky = forced.lucky // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
 		}
 		// An attack gives the attacker's position away, hit or miss, and uses the Help aimed
 		// at its target (SRD 5.1, "Unseen Attackers and Targets", "Help").

@@ -1278,9 +1278,10 @@ SELECT EXISTS (
 ) AS taken;
 
 -- name: InsertRollHold :one
--- An attack roll that waits for the answer about a Bardic Inspiration die.
-INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+-- An attack roll that waits for the answer about a Bardic Inspiration die, or for the Lucky
+-- question of a d20 that shows a 1 (lucky_index, NULL without one).
+INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at, lucky_index)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: GetRollHold :one
@@ -1296,6 +1297,12 @@ SELECT * FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answe
 
 -- name: AnswerRollHold :exec
 UPDATE roll_holds SET answer_key = $2 WHERE id = $1;
+
+-- name: AnswerRollHoldLucky :one
+-- The answer to the Lucky question of a held roll: the d20 that counts and the request with the
+-- faces after it, the answer's key and the new face (NULL when the player kept the 1).
+UPDATE roll_holds SET face = $2, request = $3, lucky_answer_key = $4, lucky_to = $5 WHERE id = $1
+RETURNING *;
 
 -- name: DeleteRollHold :exec
 DELETE FROM roll_holds WHERE id = $1;

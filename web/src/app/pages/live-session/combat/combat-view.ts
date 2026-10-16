@@ -27,6 +27,7 @@ import {
   type Combatant,
   CombatEffect,
   type InspirationOffer,
+  type LuckyOffer,
   CombatLogKind,
   CombatantKind,
   CombatantState,
@@ -255,6 +256,13 @@ const RETRYABLE: ReadonlySet<Code> = new Set([
  */
 /** The d20 the initiative is rolled with. */
 const INITIATIVE_DIE = 20;
+
+/** The questions of a held attack roll the page reopens the attack sheet at: the halfling's Lucky about a 1 (asked
+ * first) and the Bardic Inspiration die. */
+interface HeldRoll {
+  readonly offer?: InspirationOffer;
+  readonly lucky?: LuckyOffer;
+}
 
 @Component({
   selector: 'app-combat-view',
@@ -1174,10 +1182,11 @@ export class CombatView {
         untracked(() => this.openReaction(window));
       }
     });
-    // A roll held for Bardic Inspiration (the player read the screen again, or left the sheet): the question opens by itself, once.
+    // A roll held for a question, Lucky or Bardic Inspiration (the player read the screen again, or left the sheet): the
+    // question opens by itself, once.
     effect(() => {
       const e = this.encounter();
-      const offer = this.ownOffer();
+      const offer = this.ownLucky() ?? this.ownOffer();
       // The turn options arrive after the combat: the question opens when its attack is in them.
       const ready = this.options() !== null;
       // While an attack sheet is open it is the one that gets the answer of its own roll.
@@ -1823,19 +1832,26 @@ export class CombatView {
   protected readonly ownDie = computed(() => this.own()?.inspirationDie ?? null);
   /** The attack roll of the player's character that waits for the answer about the die. */
   protected readonly ownOffer = computed(() => this.own()?.inspirationOffer ?? null);
+  /** The attack roll of the player's halfling that waits for the Lucky answer ("Tirou 1: rolar de novo?"), asked first. */
+  protected readonly ownLucky = computed(() => this.own()?.luckyOffer ?? null);
   /** The held rolls the page already opened its question for: a roll's own sheet registers its hold, so the reading
    * of the screen does not open the question a second time. */
   private readonly inspirationHandled = new Set<string>();
   private readonly attackSheetOpen = signal(false);
 
-  /** "Responder": the question of a held roll, at the d20 that was rolled. `false` while the attack is not in the options. */
+  /** "Responder": the question of a held roll (Lucky first, then the die's), at the d20 that was rolled. `false` while
+   * the attack is not in the options. */
   protected openHeldRoll(): boolean {
-    const offer = this.ownOffer();
-    const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === offer?.attackKey);
-    if (!offer || !attack) {
+    const held: HeldRoll = {
+      offer: this.ownOffer() ?? undefined,
+      lucky: this.ownLucky() ?? undefined,
+    };
+    const key = (held.lucky ?? held.offer)?.attackKey;
+    const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === key);
+    if (!key || !attack) {
       return false;
     }
-    this.attackSheet(offer.attackKey, undefined, false, undefined, undefined, offer);
+    this.attackSheet(key, undefined, false, undefined, undefined, held);
     return true;
   }
 
@@ -1934,13 +1950,18 @@ export class CombatView {
     }
   }
 
+  /** The label of a combatant of the combat, `''` when it is not in it. */
+  private labelOf(e: Encounter, id: string): string {
+    return e.combatants.find((c) => c.id === id)?.label ?? '';
+  }
+
   private attackSheet(
     key: string,
     resume?: PendingDamage,
     asReaction = false,
     who?: Combatant,
     creatureOpts?: GetTurnOptionsResponse | null,
-    held?: InspirationOffer,
+    held?: HeldRoll,
     catchWindowId = '',
     useExtraAction = false,
     thrown?: { attack: Attack; targets: TargetInReach[] },
@@ -1981,11 +2002,11 @@ export class CombatView {
             targetLabel: e.combatants.find((c) => c.id === resume.targetId)?.label ?? '',
           }
         : undefined,
-      inspiration: held
-        ? {
-            offer: held,
-            targetLabel: e.combatants.find((c) => c.id === held.targetId)?.label ?? '',
-          }
+      inspiration: held?.offer
+        ? { offer: held.offer, targetLabel: this.labelOf(e, held.offer.targetId) }
+        : undefined,
+      lucky: held?.lucky
+        ? { offer: held.lucky, targetLabel: this.labelOf(e, held.lucky.targetId) }
         : undefined,
       onHeld: (holdId) => this.inspirationHandled.add(holdId),
     };

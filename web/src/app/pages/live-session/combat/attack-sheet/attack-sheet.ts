@@ -20,6 +20,7 @@ import {
   AttackRollSchema,
   CombatantSide,
   type InspirationOffer,
+  type LuckyOffer,
   type PendingDamage,
   PendingDamageStatus,
   type TargetInReach,
@@ -46,6 +47,7 @@ import {
   missMark,
   outcomeWord,
   stageAfterRoll,
+  stageOfAnswer,
   steps,
   targetAfter,
   targetRows,
@@ -58,7 +60,11 @@ import {
   CombatClient,
 } from '../../../../core/combat/combat-client';
 import { ActionKey } from '../../../../core/connect/idempotency';
-import { type InspirationRoll, ResourceClient } from '../../../../core/resources/resources-client';
+import {
+  type InspirationRoll,
+  type LuckyRoll,
+  ResourceClient,
+} from '../../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import {
   damageFormula,
@@ -114,6 +120,8 @@ import { DamageParts } from '../damage-parts/damage-parts';
 import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { InspirationPrompt } from '../inspiration-prompt/inspiration-prompt';
+import { LuckyPrompt } from '../lucky-prompt/lucky-prompt';
+import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
 import { RollPicker } from '../roll-picker/roll-picker';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { injectSheet } from '../sheet-host';
@@ -169,7 +177,10 @@ export interface AttackSheetData {
   /** A roll held for the Bardic Inspiration question (the player left the sheet, or read the screen again): the sheet
    * opens at the question, with the d20 that was rolled. */
   readonly inspiration?: { readonly offer: InspirationOffer; readonly targetLabel: string };
-  /** A roll of this sheet was held for the Bardic Inspiration question: the page learns the hold, so it does not open the question a second time. */
+  /** The same for a roll held for the halfling's Lucky question ("Tirou 1: rolar de novo?"), which comes first. */
+  readonly lucky?: { readonly offer: LuckyOffer; readonly targetLabel: string };
+  /** A roll of this sheet was held for a question (Lucky or Bardic Inspiration): the page learns the hold, so it does not
+   * open the question a second time. */
   readonly onHeld?: (holdId: string) => void;
   /** The monk's throw back after Defletir Projéteis: the reaction window that caught the missile
    * (`RollAttack.catch_window_id`). It is part of the same reaction, so it asks nothing more. */
@@ -200,6 +211,7 @@ export interface AttackSheetData {
     MultiRoll,
     RollModePicker,
     InspirationPrompt,
+    LuckyPrompt,
     MatButtonModule,
     MatIconModule,
     RollPicker,
@@ -215,34 +227,44 @@ export class AttackSheet {
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly attack = this.data.attack;
+  /** The held roll the sheet opens at (the screen was read again): its question, Lucky first. */
+  private readonly reopened = this.data.lucky ?? this.data.inspiration;
 
   protected readonly stage = signal<AttackStage>(
-    this.data.inspiration
-      ? 'inspire'
-      : this.data.resume
-        ? 'damage'
-        : this.data.opportunity
-          ? 'roll'
-          : 'target',
+    this.data.lucky
+      ? 'lucky'
+      : this.data.inspiration
+        ? 'inspire'
+        : this.data.resume
+          ? 'damage'
+          : this.data.opportunity
+            ? 'roll'
+            : 'target',
   );
   protected readonly targetId = signal<string | null>(
-    this.data.opportunity?.targetId ?? this.data.inspiration?.offer.targetId ?? null,
+    this.data.opportunity?.targetId ?? this.reopened?.offer.targetId ?? null,
   );
   protected readonly typing = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly roll = signal<AttackRoll | null>(
-    this.data.inspiration
+    this.reopened
       ? create(AttackRollSchema, {
           attackerId: this.data.attackerId,
-          targetId: this.data.inspiration.offer.targetId,
-          attackKey: this.data.inspiration.offer.attackKey,
-          d20: this.data.inspiration.offer.d20,
+          targetId: this.reopened.offer.targetId,
+          attackKey: this.reopened.offer.attackKey,
+          d20: this.reopened.offer.d20,
         })
       : null,
   );
   /** The Bardic Inspiration question of a held roll: the d20 is rolled, the result waits for the answer. */
   protected readonly offer = signal<InspirationOffer | null>(this.data.inspiration?.offer ?? null);
+  /** The Lucky question of a held roll whose d20 shows a 1: asked before the die's. */
+  protected readonly luckyOffer = signal<LuckyOffer | null>(this.data.lucky?.offer ?? null);
+  /** The roll waits for an answer: neither a result nor the damage is told. */
+  protected readonly asking = computed(
+    () => this.stage() === 'lucky' || this.stage() === 'inspire',
+  );
   protected readonly pending = signal<PendingDamage | null>(this.data.resume?.pending ?? null);
   /** The damage rolled, once it is. */
   protected readonly damage = signal<PendingDamage | null>(null);
@@ -273,6 +295,8 @@ export class AttackSheet {
   private readonly requestKeys = new ActionKey();
   /** One key per answer about the die (use it with this die, or keep it): the same answer again is a retry. */
   private readonly answerKeys = new ActionKey();
+  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
+  private readonly luckyKeys = new ActionKey();
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 
@@ -389,11 +413,7 @@ export class AttackSheet {
     return row ?? null;
   });
   protected readonly targetLabel = computed(
-    () =>
-      this.target()?.label ??
-      this.data.resume?.targetLabel ??
-      this.data.inspiration?.targetLabel ??
-      '',
+    () => this.target()?.label ?? this.data.resume?.targetLabel ?? this.reopened?.targetLabel ?? '',
   );
   protected readonly doneLabel = this.data.opportunity ? 'Fechar' : 'Voltar à sua vez';
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
@@ -404,7 +424,7 @@ export class AttackSheet {
   protected readonly outcome = computed(() => {
     const r = this.roll();
     // A held roll has no result yet: neither a word nor a pill (the master has not said, or a reaction holds it).
-    return r && !r.heldForReaction && this.stage() !== 'inspire'
+    return r && !r.heldForReaction && !this.asking()
       ? {
           word: outcomeWord(r.outcome),
           hit: isHit(r.outcome),
@@ -620,21 +640,28 @@ export class AttackSheet {
         untracked(() => void this.followReaction());
       }
     });
-    // A roll a reaction window held (Palavras de Interrupção) and a Bardic Inspiration die the attacker holds: once the window
-    // is answered the d20 is kept for the question, and the sheet that waited for the window shows it.
+    // A roll a reaction window held (Palavras de Interrupção) and a question for the attacker (a d20 of 1 of a halfling,
+    // a Bardic Inspiration die it holds): once the window is answered the d20 is kept for the question, and the sheet that
+    // waited for the window shows it.
     effect(() => {
       const waiting = this.roll()?.heldForReaction === true;
-      const offer = this.data.state
-        .encounter()
-        ?.combatants.find((c) => c.id === this.data.attackerId)?.inspirationOffer;
-      if (waiting && offer && this.stage() === 'done') {
-        untracked(() => {
-          this.offer.set(offer);
-          this.data.onHeld?.(offer.holdId);
-          this.stage.set('inspire');
-        });
+      const me = this.data.state.encounter()?.combatants.find((c) => c.id === this.data.attackerId);
+      if (waiting && this.stage() === 'done') {
+        untracked(() => this.askAfterWindow(me?.luckyOffer, me?.inspirationOffer));
       }
     });
+  }
+
+  /** The question the combat now carries for the roll a reaction window held: Lucky first, then the die's. */
+  private askAfterWindow(lucky: LuckyOffer | undefined, offer: InspirationOffer | undefined): void {
+    const held = lucky ?? offer;
+    if (!held) {
+      return;
+    }
+    this.luckyOffer.set(lucky ?? null);
+    this.offer.set(offer ?? null);
+    this.data.onHeld?.(held.holdId);
+    this.stage.set(lucky ? 'lucky' : 'inspire');
   }
 
   /** Reads the attacker's pending damages again: the hit that waited for a reaction is now a damage to roll, or gone
@@ -874,27 +901,66 @@ export class AttackSheet {
     }
   }
 
-  /** What a roll answered: the result and, for a hit, the damage; or, for a roll held for the Bardic Inspiration die,
-   * the d20 and the question (no result is told before the answer). */
+  /** What a roll answered: the result and, for a hit, the damage; or, for a held roll, the d20 and its question (Lucky
+   * about a 1 first, then the Bardic Inspiration die): no result is told before the answer. */
   private settle(res: {
     readonly roll: AttackRoll;
     readonly pending: PendingDamage | undefined;
     readonly offer?: InspirationOffer;
+    readonly lucky?: LuckyOffer;
   }): void {
     this.roll.set(res.roll);
     this.pending.set(res.pending ?? null);
     this.offer.set(res.offer ?? null);
-    if (res.offer) {
-      this.data.onHeld?.(res.offer.holdId);
+    this.luckyOffer.set(res.lucky ?? null);
+    const held = res.lucky ?? res.offer;
+    if (held) {
+      this.data.onHeld?.(held.holdId);
     }
     this.typing.set(false);
-    this.stage.set(
-      res.offer
-        ? 'inspire'
-        : res.roll.heldForReaction
-          ? 'done'
-          : stageAfterRoll(res.roll.outcome, res.pending),
-    );
+    this.stage.set(stageOfAnswer(res));
+  }
+
+  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the answer resolves the held attack, or
+   * moves on to the Bardic Inspiration question on the new roll when the attacker holds a die. */
+  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
+    const offer = this.luckyOffer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerLucky(
+        this.data.campaignId,
+        this.data.encounterId,
+        offer.holdId,
+        reroll,
+        die,
+        this.luckyKeys.keyFor({ holdId: offer.holdId, reroll, die }),
+      );
+      this.luckyKeys.renew();
+      this.data.state.apply(res.encounter);
+      this.settle(res);
+      if (die && 'inApp' in die) {
+        this.animateLucky(res.roll);
+      }
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The d20 the app rolled again for Lucky, tumbling: the new face alone, "1 → 14" (the sheet tells the result). */
+  private animateLucky(roll: AttackRoll): void {
+    const again = roll.d20?.rerolled.find((r) => r.sourceKey === LUCKY_TRAIT);
+    const show = again
+      ? showOfDie('Sortudo', roll.d20?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`)
+      : null;
+    if (show) {
+      this.animator.play(show);
+    }
   }
 
   /** "Somar o d8" (rolled in the app, or the typed face) or "Guardar o dado": the answer finishes the held attack. */

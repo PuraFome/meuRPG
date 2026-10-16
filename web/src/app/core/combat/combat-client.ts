@@ -20,6 +20,7 @@ import {
   type GetTurnOptionsResponse,
   type InspirationOffer,
   type ListCombatLogResponse,
+  type LuckyOffer,
   HitRiderChoice,
   JumpKind,
   MonsterHitPoints,
@@ -120,6 +121,9 @@ export interface AttackResult {
   /** The attacker holds a Bardic Inspiration die: the d20 is rolled and the result is held until the player answers
    * (`AnswerBardicInspiration`). `roll` then carries only the d20, with no outcome. */
   readonly offer?: InspirationOffer;
+  /** The attacker is a halfling and a d20 shows a 1 (Sortudo): the result is held until the player rolls it again or
+   * keeps the 1 (`AnswerLucky`). It comes before `offer`, which is unset meanwhile. */
+  readonly lucky?: LuckyOffer;
 }
 
 /** What a move answers: the combat, and whether it stopped short or provoked. */
@@ -1458,14 +1462,18 @@ function toParticipant(spec: JoinSpec): MessageInitShape<typeof ParticipantSchem
   return { characterId: spec.characterId, count: spec.count ?? 1, hidden: spec.hidden };
 }
 
-/** The answer of `RollAttack` and of `AnswerBardicInspiration`: a held roll has the d20 in the offer and no outcome yet. */
+/** The answer of `RollAttack`, `AnswerBardicInspiration` and `AnswerLucky`: a held roll has the d20 in its question
+ * and no outcome yet. */
 export function attackResult(res: RollAttackResponse): AttackResult {
   const offer = res.inspirationOffer;
+  const lucky = res.luckyOffer;
   return {
     encounter: need(res.encounter, 'RollAttack'),
-    roll: res.roll ?? create(AttackRollSchema, { d20: need(offer?.d20, 'RollAttack') }),
+    roll:
+      res.roll ?? create(AttackRollSchema, { d20: need(offer?.d20 ?? lucky?.d20, 'RollAttack') }),
     pending: res.pendingDamage,
     offer,
+    lucky,
   };
 }
 
