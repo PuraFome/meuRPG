@@ -306,7 +306,6 @@ cognitive internal/play (*Service).checkCastInput 17
 cognitive internal/play (*Service).checkOnSolve 18
 cognitive internal/play (*Service).checkOnWrong 31
 cognitive internal/play (*Service).checkParts 16
-cognitive internal/play (*Service).checkTargets 32
 cognitive internal/play (*Service).chooseMode 19
 cognitive internal/play (*Service).contestOptionsFor 50
 cognitive internal/play (*Service).cuttingWindows 21
@@ -381,8 +380,6 @@ cognitive internal/play (*Service).shapeUndo 22
 cognitive internal/play (*Service).sightChange 75
 cognitive internal/play (*Service).sightUndo 16
 cognitive internal/play (*Service).slowFall 23
-cognitive internal/play (*Service).spellAttack 16
-cognitive internal/play (*Service).spellSave 28
 cognitive internal/play (*Service).spellTargetsFor 24
 cognitive internal/play (*Service).spendHide 23
 cognitive internal/play (*Service).spendOne 26
@@ -742,7 +739,6 @@ cyclomatic internal/play (*Service).changeExhaustion 48
 cyclomatic internal/play (*Service).checkOnSolve 16
 cyclomatic internal/play (*Service).checkOnWrong 24
 cyclomatic internal/play (*Service).checkSources 18
-cyclomatic internal/play (*Service).checkTargets 25
 cyclomatic internal/play (*Service).chooseMode 18
 cyclomatic internal/play (*Service).contestOptionsFor 43
 cyclomatic internal/play (*Service).cuttingWindows 17
@@ -794,8 +790,6 @@ cyclomatic internal/play (*Service).settleTrapDamage 40
 cyclomatic internal/play (*Service).shapeChange 38
 cyclomatic internal/play (*Service).sightChange 40
 cyclomatic internal/play (*Service).slowFall 23
-cyclomatic internal/play (*Service).spellAttack 16
-cyclomatic internal/play (*Service).spellSave 25
 cyclomatic internal/play (*Service).spellTargetsFor 16
 cyclomatic internal/play (*Service).spendHide 21
 cyclomatic internal/play (*Service).spendOne 19
