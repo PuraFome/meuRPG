@@ -133,7 +133,7 @@ func (s *Service) writeMapUpdate(ctx context.Context, tx pgx.Tx, c mapUpdateTx) 
 	}
 	var w mapUpdateWrite
 	if c.imageID != nil {
-		if w.copied, err = s.pickMapImage(ctx, q, c, row, &params); err != nil {
+		if params.ImageID, w.copied, err = s.pickMapImage(ctx, q, c, row); err != nil {
 			return mapUpdateWrite{}, err
 		}
 	}
@@ -157,32 +157,30 @@ func (s *Service) writeMapUpdate(ctx context.Context, tx pgx.Tx, c mapUpdateTx) 
 	return w, nil
 }
 
-// pickMapImage checks that the new image is in the campaign's gallery and fits
-// the map's grid, and puts it (or the copy made for it) into the update. It tells
-// whether the copy was used.
-func (s *Service) pickMapImage(ctx context.Context, q *mapsdb.Queries, c mapUpdateTx, row mapsdb.Map, params *mapsdb.UpdateMapParams) (bool, error) {
+// pickMapImage checks that the new image is in the campaign's gallery and fits the map's
+// grid, and returns the image the map takes: the new one, or the copy made for it, which
+// is then added to the gallery.
+func (s *Service) pickMapImage(ctx context.Context, q *mapsdb.Queries, c mapUpdateTx, row mapsdb.Map) (imageID string, copied bool, err error) {
 	img, err := q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: c.campaignID, ID: *c.imageID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, errNotAGalleryImage()
+		return "", false, errNotAGalleryImage()
 	}
 	if err != nil {
-		return false, fmt.Errorf("find image: %w", err)
+		return "", false, fmt.Errorf("find image: %w", err)
 	}
 	if err := checkImageFitsGrid(row, *c.imageID, img); err != nil {
-		return false, err
+		return "", false, err
 	}
 	if *c.imageID != row.ImageID && c.fogSeen != row.FogEnabled {
-		return false, errStaleMap() // the fog changed after the copy was prepared, and the revision did not
+		return "", false, errStaleMap() // the fog changed after the copy was prepared, and the revision did not
 	}
-	params.ImageID = *c.imageID
 	if c.imageCopy == nil || *c.imageID != c.imageCopy.source.ID {
-		return false, nil
+		return *c.imageID, false, nil
 	}
 	if err := c.imageCopy.insert(ctx, q, s, c.campaignID, c.userID); err != nil {
-		return false, err
+		return "", false, err
 	}
-	params.ImageID = c.imageCopy.id
-	return true, nil
+	return c.imageCopy.id, true, nil
 }
 
 // checkImageFitsGrid refuses an image that would make a calibrated map's grid

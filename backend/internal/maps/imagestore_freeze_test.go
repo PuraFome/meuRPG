@@ -98,7 +98,7 @@ func TestStoreImageIsFrozen(t *testing.T) {
 
 	type finisher = func(ctx context.Context, q *mapsdb.Queries, imageID string) error
 	store := func(res *images.Result, generated bool, kind string, parent *string, finish finisher) (mapsdb.GalleryImage, error) {
-		return svc.storeImage(ctx, campaign, &user, "Nome", res, generated, kind, parent, finish)
+		return svc.storeImage(ctx, imageStore{campaignID: campaign, uploadedBy: &user, name: "Nome", res: res, generated: generated, generatedKind: kind, parent: parent, finish: finish})
 	}
 	count := func() int {
 		var n int

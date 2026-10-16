@@ -275,16 +275,20 @@ func (s *Service) RemoveSceneClue(
 	return connect.NewResponse(&mapsv1.RemoveSceneClueResponse{Clues: clues}), nil
 }
 
-// revealCall is one RevealSceneClue inside its transaction: who gets the clue
-// (character to player), and the clue and the players who did not have it yet
-// out.
+// revealCall is one RevealSceneClue as its transaction sees it: who gets the clue (character
+// to player).
 type revealCall struct {
 	m            authz.Membership
 	clueID       string
 	characterIDs []string
 	userOf       map[string]string
-	clue         mapsdb.SceneClue
-	newUsers     []string
+}
+
+// clueReveal is what the transaction of RevealSceneClue ends with: the clue, and the players
+// who just got it.
+type clueReveal struct {
+	clue     mapsdb.SceneClue
+	newUsers []string
 }
 
 // RevealSceneClue implements mapsv1connect.MapServiceHandler.
@@ -306,86 +310,88 @@ func (s *Service) RevealSceneClue(
 	if err != nil {
 		return nil, err
 	}
-	call := &revealCall{m: m, clueID: clueID, characterIDs: characterIDs, userOf: userOf}
+	call := revealCall{m: m, clueID: clueID, characterIDs: characterIDs, userOf: userOf}
+	var res clueReveal
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		return s.revealRows(ctx, tx, call)
+		var err error
+		res, err = s.revealRows(ctx, tx, call)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "reveal a scene clue", err)
 	}
-	s.publishReveal(ctx, call)
-	clues, err := s.cluesOfPoint(ctx, m.CampaignID, call.clue.PointID)
+	s.publishReveal(ctx, m.CampaignID, res)
+	clues, err := s.cluesOfPoint(ctx, m.CampaignID, res.clue.PointID)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&mapsv1.RevealSceneClueResponse{Clue: clueByID(clues, call.clue.ID)}), nil
+	return connect.NewResponse(&mapsv1.RevealSceneClueResponse{Clue: clueByID(clues, res.clue.ID)}), nil
 }
 
 // revealRows finds the clue in the campaign, gives it to the characters who
 // did not have it yet and records the reveal as a session event.
-func (s *Service) revealRows(ctx context.Context, tx pgx.Tx, call *revealCall) error {
+func (s *Service) revealRows(ctx context.Context, tx pgx.Tx, call revealCall) (clueReveal, error) {
 	q := s.queries.WithTx(tx)
-	var err error
-	call.newUsers = call.newUsers[:0]
-	if call.clue, err = q.GetSceneClueInCampaign(ctx, mapsdb.GetSceneClueInCampaignParams{CampaignID: call.m.CampaignID, ID: call.clueID}); errors.Is(err, pgx.ErrNoRows) {
-		return errClueNotFound()
+	clue, err := q.GetSceneClueInCampaign(ctx, mapsdb.GetSceneClueInCampaignParams{CampaignID: call.m.CampaignID, ID: call.clueID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return clueReveal{}, errClueNotFound()
 	} else if err != nil {
-		return fmt.Errorf("find clue: %w", err)
+		return clueReveal{}, fmt.Errorf("find clue: %w", err)
 	}
 	now := s.now()
-	gave, err := s.insertReveals(ctx, q, call, now) // the characters that did not have it yet
+	gave, newUsers, err := s.insertReveals(ctx, q, call, clue, now) // the characters that did not have it yet
 	if err != nil {
-		return err
+		return clueReveal{}, err
 	}
+	res := clueReveal{clue: clue, newUsers: newUsers}
 	if len(gave) == 0 {
-		return nil // everyone had it: nothing changes, nothing is recorded
+		return res, nil // everyone had it: nothing changes, nothing is recorded
 	}
-	payload, err := json.Marshal(clueRevealedEvent{ClueID: call.clue.ID, PointID: call.clue.PointID, CharacterIDs: gave})
+	payload, err := json.Marshal(clueRevealedEvent{ClueID: clue.ID, PointID: clue.PointID, CharacterIDs: gave})
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return clueReveal{}, fmt.Errorf("encode the event payload: %w", err)
 	}
 	// With no open session nothing is written here: the reveal is still
 	// made, as an XP award is.
 	if _, err := s.live.AppendEvent(ctx, tx, call.m.CampaignID, eventClueRevealed, call.m.UserID, payload, now); err != nil {
-		return fmt.Errorf("record the reveal: %w", err)
+		return clueReveal{}, fmt.Errorf("record the reveal: %w", err)
 	}
-	return nil
+	return res, nil
 }
 
 // insertReveals writes one reveal per character and returns the characters
 // who did not have the clue yet, noting their players in call.newUsers.
-func (s *Service) insertReveals(ctx context.Context, q *mapsdb.Queries, call *revealCall, now time.Time) ([]string, error) {
-	var gave []string
+func (s *Service) insertReveals(ctx context.Context, q *mapsdb.Queries, call revealCall, clue mapsdb.SceneClue, now time.Time) (gave, newUsers []string, err error) {
 	for _, id := range call.characterIDs {
 		character := id
 		n, err := q.InsertClueReveal(ctx, mapsdb.InsertClueRevealParams{
-			CampaignID: call.m.CampaignID, ClueID: &call.clue.ID, PointID: &call.clue.PointID, UserID: call.userOf[id],
-			CharacterID: &character, Text: call.clue.Text, Now: now,
+			CampaignID: call.m.CampaignID, ClueID: &clue.ID, PointID: &clue.PointID, UserID: call.userOf[id],
+			CharacterID: &character, Text: clue.Text, Now: now,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("reveal the clue: %w", err)
+			return nil, nil, fmt.Errorf("reveal the clue: %w", err)
 		}
 		if n == 1 {
 			gave = append(gave, id)
-			if !slices.Contains(call.newUsers, call.userOf[id]) {
-				call.newUsers = append(call.newUsers, call.userOf[id])
+			if !slices.Contains(newUsers, call.userOf[id]) {
+				newUsers = append(newUsers, call.userOf[id])
 			}
 		}
 	}
-	return gave, nil
+	return gave, newUsers, nil
 }
 
 // publishReveal tells the players who got the clue, and the master's open
 // scene. Only the players who got it hear of it; a player who is offline reads
 // it on their next ListNotes.
-func (s *Service) publishReveal(ctx context.Context, call *revealCall) {
-	if len(call.newUsers) == 0 {
+func (s *Service) publishReveal(ctx context.Context, campaignID string, res clueReveal) {
+	if len(res.newUsers) == 0 {
 		return
 	}
-	s.live.PublishToUsers(call.m.CampaignID, call.newUsers, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_NotesChanged_{
+	s.live.PublishToUsers(campaignID, res.newUsers, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_NotesChanged_{
 		NotesChanged: &playv1.WatchGameSessionResponse_NotesChanged{},
 	}})
-	s.publishSceneChangedToMasterIf(ctx, call.m.CampaignID, call.clue.PointID)
+	s.publishSceneChangedToMasterIf(ctx, campaignID, res.clue.PointID)
 }
 
 // cluesChanged tells the master's watching streams that a point's clues

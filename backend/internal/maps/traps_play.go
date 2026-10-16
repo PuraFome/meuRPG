@@ -796,8 +796,9 @@ func (s *Service) DisarmTrap(
 	}
 	var res trapDisarm
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res.changed = false
-		return s.disarmTrapIn(ctx, tx, m, mapID, pointID, &res)
+		var err error
+		res, err = s.disarmTrapIn(ctx, tx, m, mapID, pointID)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "disarm a trap", err)
@@ -827,34 +828,34 @@ type trapDisarm struct {
 // disarmTrapIn is the transaction of DisarmTrap: a trap already disarmed changes nothing;
 // otherwise the players who know it are read before the change, it is disarmed (its
 // firing time kept) and the disarm is recorded.
-func (s *Service) disarmTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string, res *trapDisarm) error {
+func (s *Service) disarmTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string) (trapDisarm, error) {
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP)
 	if err != nil {
-		return err
+		return trapDisarm{}, err
 	}
-	res.mapRow, res.after = mapRow, before
+	res := trapDisarm{mapRow: mapRow, after: before}
 	if before.TrapState != nil && *before.TrapState == "disarmed" {
-		return nil // already disarmed: nothing changes, nothing is recorded
+		return res, nil // already disarmed: nothing changes, nothing is recorded
 	}
 	if res.knowers, err = s.trapKnowers(ctx, tx, q, m.CampaignID, before); err != nil {
-		return err
+		return trapDisarm{}, err
 	}
 	now := s.now()
 	disarmed := "disarmed"
 	if res.after, err = q.SetTrapState(ctx, mapsdb.SetTrapStateParams{MapID: mapID, ID: pointID, TrapState: &disarmed, TrapTriggeredAt: before.TrapTriggeredAt, Now: now}); err != nil {
-		return fmt.Errorf("disarm the trap: %w", err)
+		return trapDisarm{}, fmt.Errorf("disarm the trap: %w", err)
 	}
 	payload, err := json.Marshal(trapDisarmedEvent{PointID: pointID})
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return trapDisarm{}, fmt.Errorf("encode the event payload: %w", err)
 	}
 	// With no open session nothing is written here: the trap is still disarmed.
 	if _, err := s.live.AppendEvent(ctx, tx, m.CampaignID, eventTrapDisarmed, m.UserID, payload, now); err != nil {
-		return fmt.Errorf("record the disarm: %w", err)
+		return trapDisarm{}, fmt.Errorf("record the disarm: %w", err)
 	}
 	res.changed = true
-	return nil
+	return res, nil
 }
 
 // TrapFirer is what this package needs from the play module to fire a trap when

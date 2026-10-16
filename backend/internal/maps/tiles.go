@@ -966,7 +966,6 @@ func (s *Service) handleTile(w http.ResponseWriter, r *http.Request) {
 // for the master, the character they ask as.
 type tileAccess struct {
 	m      authz.Membership
-	master bool
 	as     string
 	viewer string
 	src    tileSource
@@ -1066,7 +1065,7 @@ func (s *Service) authorizeTile(ctx context.Context, mapID, as string) (tileAcce
 	if master {
 		viewer = "as:" + as
 	}
-	return tileAccess{m: m, master: master, as: as, viewer: viewer, src: src}, nil
+	return tileAccess{m: m, as: as, viewer: viewer, src: src}, nil
 }
 
 // viewTilesOf returns the tiles the viewer has on the map, from memory or built

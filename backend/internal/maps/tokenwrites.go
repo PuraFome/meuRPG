@@ -69,31 +69,31 @@ type tokenPlacement struct {
 	placed     bool // a new token, not a move
 }
 
-// putToken inserts the character's token, or moves the one it has.
-func (s *Service) putToken(ctx context.Context, q *mapsdb.Queries, mapID string, x, y int32, character *charactersv1.CharacterSummary, pl *tokenPlacement) error {
-	var err error
+// putToken inserts the character's token, or moves the one it has. It returns the token as it
+// was (empty for a new one), as it is, and whether it is new.
+func (s *Service) putToken(ctx context.Context, q *mapsdb.Queries, mapID string, x, y int32, character *charactersv1.CharacterSummary) (was, token mapsdb.MapToken, placed bool, err error) {
 	key := mapsdb.GetMapTokenForUpdateParams{MapID: mapID, CharacterID: character.GetId()}
-	pl.was, err = q.GetMapTokenForUpdate(ctx, key)
+	was, err = q.GetMapTokenForUpdate(ctx, key)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		// A player's character starts visible, an NPC hidden (question
 		// 31 for Samuel): the master reveals an NPC when the group meets
 		// it.
-		pl.token, err = q.InsertMapToken(ctx, mapsdb.InsertMapTokenParams{
+		token, err = q.InsertMapToken(ctx, mapsdb.InsertMapTokenParams{
 			MapID: mapID, CharacterID: character.GetId(), XBp: x, YBp: y,
 			Hidden:    character.GetKind() != charactersv1.CharacterKind_CHARACTER_KIND_PLAYER,
 			UpdatedAt: s.now(),
 		})
-		pl.placed = true
+		placed = true
 	case err == nil:
-		pl.token, err = q.MoveMapToken(ctx, mapsdb.MoveMapTokenParams{
+		token, err = q.MoveMapToken(ctx, mapsdb.MoveMapTokenParams{
 			MapID: mapID, CharacterID: character.GetId(), XBp: x, YBp: y, UpdatedAt: s.now(),
 		})
 	}
 	if err != nil {
-		return fmt.Errorf("place token: %w", err)
+		return was, token, placed, fmt.Errorf("place token: %w", err)
 	}
-	return nil
+	return was, token, placed, nil
 }
 
 // placeTokenTx places or moves the character's token in one transaction.
@@ -101,12 +101,13 @@ func (s *Service) placeTokenTx(ctx context.Context, campaignID, mapID string, x,
 	var pl tokenPlacement
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		pl.placed = false
 		var err error
+		pl = tokenPlacement{}
 		if pl.mapRow, err = s.campaignMap(ctx, q, campaignID, mapID); err != nil {
 			return err
 		}
-		return s.putToken(ctx, q, mapID, x, y, character, &pl)
+		pl.was, pl.token, pl.placed, err = s.putToken(ctx, q, mapID, x, y, character)
+		return err
 	})
 	return pl, err
 }

@@ -218,8 +218,9 @@ func (s *Service) storePicture(ctx context.Context, campaignID, id string, row m
 		name = "Imagem " + strconv.Itoa(int(row.Number))
 	}
 	// The gallery row and the request's end go in one transaction, allowed once.
-	stored, err := s.storeImage(fin, campaignID, row.RequestedBy, name, res, true, kind, parent,
-		func(ctx context.Context, q *mapsdb.Queries, imageID string) error {
+	stored, err := s.storeImage(fin, imageStore{
+		campaignID: campaignID, uploadedBy: row.RequestedBy, name: name, res: res, generated: true, generatedKind: kind, parent: parent,
+		finish: func(ctx context.Context, q *mapsdb.Queries, imageID string) error {
 			n, err := q.FinishImageRequestDone(ctx, mapsdb.FinishImageRequestDoneParams{CampaignID: campaignID, ID: id, ImageID: &imageID, Now: new(s.now())})
 			if err != nil {
 				return fmt.Errorf("finish the request: %w", err)
@@ -228,7 +229,8 @@ func (s *Service) storePicture(ctx context.Context, campaignID, id string, row m
 				return errRequestClosed
 			}
 			return nil
-		})
+		},
+	})
 	if err != nil {
 		s.storeFailed(fin, campaignID, id, err)
 		return

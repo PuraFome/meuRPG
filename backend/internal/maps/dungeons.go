@@ -187,9 +187,14 @@ func (s *Service) CreateDungeonMap(
 	ctx context.Context,
 	req *connect.Request[mapsv1.CreateDungeonMapRequest],
 ) (*connect.Response[mapsv1.CreateDungeonMapResponse], error) {
-	in, replay, err := s.readDungeonCreate(ctx, req.Msg)
-	if err != nil || replay != nil {
-		return replay, err
+	in, err := s.checkDungeonCreate(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	if in.scopedKey != nil {
+		if replay, replayed, err := s.dungeonKeyReplay(ctx, in); replayed || err != nil {
+			return replay, err
+		}
 	}
 	d, seed, err := s.planDungeon(ctx, in, req.Msg)
 	if err != nil {
@@ -222,49 +227,45 @@ func (s *Service) CreateDungeonMap(
 	return connect.NewResponse(&mapsv1.CreateDungeonMapResponse{Map: out, Seed: seed, RoomCount: int32(len(d.Rooms))}), nil //nolint:gosec // G115: at most 500 rooms
 }
 
-// readDungeonCreate checks who asks, the name and the key of a CreateDungeonMap. A retry of
-// a call that already made its map is answered before the dungeon is drawn again (the render
-// is the costly part): with the first call's map, seed and room count, and with no other map
-// and no count against the limit. That answer is the second result.
-func (s *Service) readDungeonCreate(ctx context.Context, msg *mapsv1.CreateDungeonMapRequest) (dungeonCreate, *connect.Response[mapsv1.CreateDungeonMapResponse], error) {
+// checkDungeonCreate checks who asks, the name and the key of a CreateDungeonMap, in that
+// order.
+func (s *Service) checkDungeonCreate(ctx context.Context, msg *mapsv1.CreateDungeonMapRequest) (dungeonCreate, error) {
 	m, err := requireDungeonMaster(ctx, msg.GetCampaignId())
 	if err != nil {
-		return dungeonCreate{}, nil, err
+		return dungeonCreate{}, err
 	}
 	if s.blobs == nil {
-		return dungeonCreate{}, nil, errImagesOff()
+		return dungeonCreate{}, errImagesOff()
 	}
 	name, err := cleanName("name", msg.GetName())
 	if err != nil {
-		return dungeonCreate{}, nil, err
+		return dungeonCreate{}, err
 	}
 	// The key is unique in the campaign, and kept with a hash of the whole request.
 	scopedKey, requestHash, err := keyOf(m.CampaignID, msg.GetIdempotencyKey(), msg)
 	if err != nil {
-		return dungeonCreate{}, nil, err
+		return dungeonCreate{}, err
 	}
-	in := dungeonCreate{m: m, name: name, scopedKey: scopedKey, requestHash: requestHash}
-	if scopedKey == nil {
-		return in, nil, nil
-	}
-	replay, err := s.dungeonKeyReplay(ctx, in)
-	return in, replay, err
+	return dungeonCreate{m: m, name: name, scopedKey: scopedKey, requestHash: requestHash}, nil
 }
 
-// dungeonKeyReplay is the answer for a key that already made its map, or nil for a key
-// that is new. A key kept with another request is refused.
-func (s *Service) dungeonKeyReplay(ctx context.Context, in dungeonCreate) (*connect.Response[mapsv1.CreateDungeonMapResponse], error) {
+// dungeonKeyReplay answers a retry of a call that already made its map, before the dungeon is
+// drawn again (the render is the costly part): with the first call's map, seed and room count,
+// and with no other map and no count against the limit. replayed is false for a key that is
+// new. A key kept with another request is refused.
+func (s *Service) dungeonKeyReplay(ctx context.Context, in dungeonCreate) (res *connect.Response[mapsv1.CreateDungeonMapResponse], replayed bool, err error) {
 	prior, err := s.queries.GetMapByCreateKey(ctx, in.scopedKey)
 	switch {
 	case err == nil:
 		if err := idem.SameRequest(prior.CreateHash, in.requestHash); err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return s.dungeonReplay(ctx, in.m, prior)
+		res, err = s.dungeonReplay(ctx, in.m, prior)
+		return res, true, err
 	case !errors.Is(err, pgx.ErrNoRows):
-		return nil, s.dbError(ctx, "find the dungeon of the key", err)
+		return nil, false, s.dbError(ctx, "find the dungeon of the key", err)
 	}
-	return nil, nil //nolint:nilnil // a new key: there is nothing to replay
+	return nil, false, nil // a new key: there is nothing to replay
 }
 
 // planDungeon draws the seed, runs the generator and asks the cheap questions: the options
@@ -620,9 +621,31 @@ func (s *Service) RedrawDungeonMap(
 // readRedrawSource reads what the new image is drawn from, and refuses a map that is no
 // longer the generated dungeon's.
 func (s *Service) readRedrawSource(ctx context.Context, campaignID, mapID string) (*redrawSource, error) {
-	row, old, g, err := s.readRedrawMap(ctx, campaignID, mapID)
+	rec, err := s.dungeonOf(ctx, s.queries, campaignID, mapID)
 	if err != nil {
-		return nil, err
+		return nil, s.dbError(ctx, "read a dungeon", err)
+	}
+	row, err := s.campaignMap(ctx, s.queries, campaignID, mapID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read a map", err)
+	}
+	if row.GridColumns == nil {
+		return nil, errNoGrid()
+	}
+	// Only the generator's own image is ever replaced, and deleted: when the master put
+	// another image on the map, the map is no longer the dungeon's.
+	if !isGeneratedImage(rec, row) {
+		return nil, errImageChanged()
+	}
+	old, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: row.ImageID})
+	if err != nil {
+		return nil, s.dbError(ctx, "read the map's image", err)
+	}
+	// The grid is read the way the map reads it (gridOf), and must still be the dungeon's,
+	// on an image of the size drawn for it.
+	g := gridOf(row.GridColumns, row.GridFactor, old.Width, old.Height)
+	if !drawnAsDungeon(rec, row, old, g) {
+		return nil, errImageChanged()
 	}
 	stored, err := s.queries.GetMapLayers(ctx, mapID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -639,38 +662,6 @@ func (s *Service) readRedrawSource(ctx context.Context, campaignID, mapID string
 		return nil, s.dbError(ctx, "read whether the image is used elsewhere", err)
 	}
 	return &redrawSource{id: mapID, row: row, old: old, g: g, stored: stored, used: used}, nil
-}
-
-// readRedrawMap reads the dungeon's record, the map and its image, and checks the map is
-// still the one the generator drew.
-func (s *Service) readRedrawMap(ctx context.Context, campaignID, mapID string) (mapsdb.Map, mapsdb.GalleryImage, grid.Grid, error) {
-	rec, err := s.dungeonOf(ctx, s.queries, campaignID, mapID)
-	if err != nil {
-		return mapsdb.Map{}, mapsdb.GalleryImage{}, grid.Grid{}, s.dbError(ctx, "read a dungeon", err)
-	}
-	row, err := s.campaignMap(ctx, s.queries, campaignID, mapID)
-	if err != nil {
-		return mapsdb.Map{}, mapsdb.GalleryImage{}, grid.Grid{}, s.dbError(ctx, "read a map", err)
-	}
-	if row.GridColumns == nil {
-		return mapsdb.Map{}, mapsdb.GalleryImage{}, grid.Grid{}, errNoGrid()
-	}
-	// Only the generator's own image is ever replaced, and deleted: when the master put
-	// another image on the map, the map is no longer the dungeon's.
-	if !isGeneratedImage(rec, row) {
-		return mapsdb.Map{}, mapsdb.GalleryImage{}, grid.Grid{}, errImageChanged()
-	}
-	old, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: row.ImageID})
-	if err != nil {
-		return mapsdb.Map{}, mapsdb.GalleryImage{}, grid.Grid{}, s.dbError(ctx, "read the map's image", err)
-	}
-	// The grid is read the way the map reads it (gridOf), and must still be the dungeon's,
-	// on an image of the size drawn for it.
-	g := gridOf(row.GridColumns, row.GridFactor, old.Width, old.Height)
-	if !drawnAsDungeon(rec, row, old, g) {
-		return mapsdb.Map{}, mapsdb.GalleryImage{}, grid.Grid{}, errImageChanged()
-	}
-	return row, old, g, nil
 }
 
 // drawnAsDungeon says whether the map is still drawn the dungeon's way: one square of the
