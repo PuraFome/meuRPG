@@ -1,0 +1,308 @@
+    <app-sheet-frame
+      [title]="title()"
+      [subtitle]="subtitle()"
+      [icon]="icon()"
+      [phone]="inSheet"
+      [closable]="false"
+    >
+      @if (error()) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ error() }}</p>
+        </div>
+      }
+      @switch (stage()) {
+        @case ('ask') {
+          @if (luckyOffer(); as l) {
+            <!-- The save's d20 shows a 1 and the reactor is a halfling: it is kept, and Lucky asks before the die's question (SRD 5.1). -->
+            <p class="what">{{ luckyHeld() }}</p>
+            <app-lucky-prompt
+              [offer]="l"
+              [canApp]="canApp"
+              [canType]="canType"
+              [preferApp]="preferApp"
+              [busy]="busy()"
+              (reroll)="answerLucky(true, $event)"
+              (keep)="answerLucky(false, null)"
+            />
+          } @else if (offer(); as o) {
+            <app-inspiration-offer
+              [offer]="o"
+              [canApp]="canApp"
+              [canType]="canType"
+              [busy]="busy()"
+              (use)="answerDie(true, $event)"
+              (keep)="answerDie(false, null)"
+            />
+          } @else if (view(); as v) {
+            <p class="what">{{ v.question }}</p>
+            @if (isFeatherFall()) {
+              <ng-container *ngTemplateOutlet="falling" />
+            }
+            @if (rows().length > 0) {
+              <app-slot-picker
+                [rows]="rows()"
+                [chosen]="chosen()"
+                [label]="pickerLabel()"
+                (pick)="chosen.set($event); error.set('')"
+              />
+            }
+            @if (maneuverOptions().length > 1) {
+              <fieldset class="falling">
+                <legend class="falling__cap">Qual manobra</legend>
+                @for (o of maneuverOptions(); track o.key) {
+                  <label class="falling__row">
+                    <input
+                      type="radio"
+                      class="falling__input"
+                      name="reaction-maneuver"
+                      [checked]="maneuverKey() === o.key"
+                      (change)="maneuverKey.set(o.key)"
+                    />
+                    <span class="falling__text">
+                      <b>{{ o.namePt }}</b>
+                      <small>d{{ o.dieSides }} + {{ o.flatBonus }} · {{ o.usesLeft }} usos</small>
+                    </span>
+                  </label>
+                }
+              </fieldset>
+            }
+            @if (warning()) {
+              <div class="mr-notice mr-notice--warning" role="status">
+                <mat-icon aria-hidden="true">info</mat-icon>
+                <p><strong>{{ warning() }}</strong></p>
+              </div>
+            }
+            @if (v.costs.length > 0) {
+              <ul class="chips" aria-label="O que a reação custa">
+                @for (c of v.costs; track c; let first = $first) {
+                  <li class="chip" [class.chip--accent]="first">{{ c }}</li>
+                }
+              </ul>
+            }
+            @if (v.note) {
+              <p class="small">{{ v.note }}</p>
+            }
+            @if (concentrationModeText()) {
+              <p class="what" role="status">{{ concentrationModeText() }}</p>
+            }
+            @if (typingSave()) {
+              @if (extra.fields().length > 0) {
+                <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
+              }
+              @if (concentrationDice() === 1) {
+                <app-roll-picker
+                  [canApp]="false"
+                  [canType]="true"
+                  [min]="1"
+                  [max]="20"
+                  [modifier]="saveBonus()"
+                  label="Role 1d20 para o teste de resistência de Constituição"
+                  hint="Role o seu dado e digite o número que saiu (1 a 20)."
+                  totalNote="Teste de Constituição"
+                  [busy]="busy()"
+                  (typed)="concentrate({ kind: 'typed', face: $event })"
+                />
+              } @else {
+                <app-multi-roll
+                  [fields]="pair"
+                  [canApp]="false"
+                  [canType]="true"
+                  [modifier]="saveBonus()"
+                  [combine]="concentrationMode() === 'advantage' ? 'higher' : 'lower'"
+                  totalNote="Teste de Constituição"
+                  hint="Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada)."
+                  [busy]="busy()"
+                  (typed)="concentrate({ kind: 'typed', face: $event[0], second: $event[1] })"
+                />
+              }
+            }
+          }
+        }
+        @case ('roll') {
+          <p class="what">{{ rollQuestion() }}</p>
+          <app-roll-picker
+            [canApp]="canApp"
+            [canType]="canType"
+            [preferApp]="preferApp"
+            [min]="1"
+            [max]="rollSides()"
+            [modifier]="0"
+            [label]="rollLabel()"
+            hint="Role o seu dado e digite o número que saiu."
+            [totalNote]="name()"
+            [appLabel]="'Rolar no app'"
+            [busy]="busy()"
+            (app)="use({ inApp: true })"
+            (typed)="use({ typed: $event })"
+          />
+        }
+        @case ('gone') {
+          <p class="what" role="status">{{ goneText() }}</p>
+        }
+        @default {
+          @if (shown(); as r) {
+            <div class="res" role="status" aria-live="polite">
+              @if (r.pill; as pill) {
+                <span class="pill" [class.pill--bad]="!pill.good">
+                  <mat-icon aria-hidden="true">{{ pill.good ? 'check' : 'close' }}</mat-icon>{{ pill.word }}
+                </span>
+              }
+              @for (t of r.text; track $index; let first = $first) {
+                <p class="what" [class.what--strong]="first">{{ t }}</p>
+              }
+              @if (r.throwBack && throwQuestion()) {
+                <p class="what">{{ throwQuestion() }}</p>
+              }
+              @if (r.chips.length > 0) {
+                <ul class="chips" aria-label="O que a reação gastou">
+                  @for (c of r.chips; track c) {
+                    <li class="chip">{{ c }}</li>
+                  }
+                </ul>
+              }
+              @if (r.note) {
+                <p class="small">{{ r.note }}</p>
+              }
+            </div>
+          }
+        }
+      }
+      <div foot>
+        @switch (stage()) {
+          @case ('ask') {
+            @if (offer() || luckyOffer()) {
+              <!-- The question about the die (or Lucky's) is the whole step: its own buttons answer it. -->
+            } @else if (isConcentration()) {
+              <div class="stack">
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="pair__btn"
+                  data-initial-focus
+                  [disabled]="busy()"
+                  (click)="concentrate({ kind: 'app' })"
+                >
+                  <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="pair__btn"
+                  [disabled]="busy()"
+                  (click)="typingSave.set(true)"
+                >
+                  Digitar o resultado
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="pair__btn"
+                  [disabled]="busy()"
+                  (click)="concentrate({ kind: 'hand' })"
+                >
+                  Deixar o mestre rolar por mim
+                </button>
+              </div>
+            } @else {
+              <div class="pair">
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="pair__btn"
+                  [disabled]="busy() || !canUse()"
+                  disabledInteractive
+                  (click)="use()"
+                >
+                  {{ view()?.useLabel }}
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="pair__btn"
+                  data-initial-focus
+                  [disabled]="busy()"
+                  (click)="pass()"
+                >
+                  Deixar passar
+                </button>
+              </div>
+              <p class="fine">
+                <mat-icon aria-hidden="true">info</mat-icon>{{ fineText() }}
+              </p>
+              @if (refreshed) {
+                <p class="fine fine--now" role="status">
+                  <mat-icon aria-hidden="true">sync</mat-icon>Combate atualizado agora.
+                </p>
+              }
+            }
+          }
+          @case ('roll') {
+            <button mat-stroked-button type="button" class="pair__btn pair__btn--one" data-initial-focus (click)="back()">
+              Voltar
+            </button>
+            @if (rollingAt() !== null) {
+              <p class="fine">
+                <mat-icon aria-hidden="true">info</mat-icon>{{ fineText() }}
+              </p>
+            }
+          }
+          @default {
+            @if (stage() === 'result' && shown()?.throwBack) {
+              <div class="pair">
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="pair__btn"
+                  [disabled]="busy()"
+                  (click)="throwBack()"
+                >
+                  Devolver (1 de chi)
+                </button>
+                <button
+                  #keep
+                  mat-stroked-button
+                  type="button"
+                  class="pair__btn"
+                  data-initial-focus
+                  [disabled]="busy()"
+                  (click)="keepMissile()"
+                >
+                  Guardar a flecha
+                </button>
+              </div>
+            } @else {
+              <button #close mat-stroked-button type="button" class="pair__btn pair__btn--one" data-initial-focus (click)="done()">
+                Fechar
+              </button>
+            }
+          }
+        }
+      </div>
+    </app-sheet-frame>
+
+    <ng-template #falling>
+      <fieldset class="falling">
+        <legend class="falling__cap">Quem cai, e você vê (até {{ maxTargets() === 5 ? 'cinco' : maxTargets() }})</legend>
+        @for (f of fallingRows(); track f.id) {
+          <label class="falling__row">
+            <input
+              type="checkbox"
+              class="falling__input"
+              [checked]="picked().has(f.id)"
+              [disabled]="!picked().has(f.id) && picked().size >= maxTargets()"
+              (change)="toggle(f.id)"
+            />
+            <span class="falling__box" aria-hidden="true">
+              @if (picked().has(f.id)) {
+                <mat-icon>check</mat-icon>
+              }
+            </span>
+            <span class="falling__text">
+              <b>{{ f.label }}</b>
+              <small>{{ f.detail }}</small>
+            </span>
+          </label>
+        }
+      </fieldset>
+    </ng-template>

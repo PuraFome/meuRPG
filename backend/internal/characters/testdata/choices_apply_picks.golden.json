@@ -1,0 +1,481 @@
+[
+  {
+    "case": "both abilities",
+    "feature_choice_keys": [
+      "feature:fighter-fighting-style-defense",
+      "race:half-elf#abilities=ability:dex",
+      "race:half-elf#abilities=ability:con"
+    ],
+    "feature_choice_text": {},
+    "labels": [
+      "+1 em duas habilidades (Meio-elfo)"
+    ],
+    "text_map_is_nil": false
+  },
+  {
+    "case": "one ability of two",
+    "feature_choice_keys": [
+      "feature:fighter-fighting-style-defense",
+      "race:half-elf#abilities=ability:dex"
+    ],
+    "feature_choice_text": {},
+    "labels": [
+      "+1 em duas habilidades (Meio-elfo)"
+    ],
+    "text_map_is_nil": false
+  },
+  {
+    "case": "no option",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "race:half-elf#abilities",
+                "field": "picks",
+                "labelPt": "+1 em duas habilidades (Meio-elfo)",
+                "required": 2
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICES_MISSING"
+          }
+        }
+      ],
+      "message": "the sheet has choices still to make: complete them first"
+    }
+  },
+  {
+    "case": "the same choice twice",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.choice_key"
+          }
+        }
+      ],
+      "message": "picks.choice_key repeats a choice"
+    }
+  },
+  {
+    "case": "a choice the sheet does not have",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:metamagic-1",
+                "field": "picks.choice_key"
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OPEN"
+          }
+        }
+      ],
+      "message": "the sheet has no such choice open"
+    }
+  },
+  {
+    "case": "a choice already made",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:fighter-fighting-style",
+                "field": "picks",
+                "labelPt": "Estilo de Luta (Guerreiro, nível 1)",
+                "picked": 1,
+                "required": 1
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_ALREADY_MADE"
+          }
+        }
+      ],
+      "message": "a choice already made does not change"
+    }
+  },
+  {
+    "case": "an option the choice does not list",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "race:half-elf#abilities",
+                "field": "picks",
+                "labelPt": "+1 em duas habilidades (Meio-elfo)",
+                "optionKey": "ability:nope",
+                "required": 2
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED"
+          }
+        }
+      ],
+      "message": "a pick is not one the sheet offers"
+    }
+  },
+  {
+    "case": "three abilities for two",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "race:half-elf#abilities",
+                "field": "picks",
+                "labelPt": "+1 em duas habilidades (Meio-elfo)",
+                "required": 2
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED"
+          }
+        }
+      ],
+      "message": "a pick is not one the sheet offers"
+    }
+  },
+  {
+    "case": "a repeated option",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "race:half-elf#abilities",
+                "field": "picks",
+                "labelPt": "+1 em duas habilidades (Meio-elfo)",
+                "required": 2
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED"
+          }
+        }
+      ],
+      "message": "a pick is not one the sheet offers"
+    }
+  },
+  {
+    "case": "the option already made, alone",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "race:half-elf#abilities",
+                "field": "picks",
+                "labelPt": "+1 em duas habilidades (Meio-elfo)",
+                "picked": 1,
+                "required": 2
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICES_MISSING"
+          }
+        }
+      ],
+      "message": "the sheet has choices still to make: complete them first"
+    }
+  },
+  {
+    "case": "the option already made and a new one",
+    "feature_choice_keys": [
+      "feature:fighter-fighting-style-defense",
+      "race:half-elf#abilities=ability:dex",
+      "race:half-elf#abilities=ability:con"
+    ],
+    "feature_choice_text": {
+      "other#1": "kept"
+    },
+    "labels": [
+      "+1 em duas habilidades (Meio-elfo)"
+    ],
+    "text_map_is_nil": false
+  },
+  {
+    "case": "a good pick, then a choice not open",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:nope",
+                "field": "picks.choice_key"
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OPEN"
+          }
+        }
+      ],
+      "message": "the sheet has no such choice open"
+    }
+  },
+  {
+    "case": "a good pick, then the same again",
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "picks.choice_key"
+          }
+        }
+      ],
+      "message": "picks.choice_key repeats a choice"
+    }
+  },
+  {
+    "case": "an unmet prerequisite",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:eldritch-invocations",
+                "field": "picks",
+                "labelPt": "Invocações Místicas (Bruxo, nível 5)",
+                "optionKey": "feature:eldritch-invocation-agonizing-blast",
+                "picked": 2,
+                "required": 3
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET"
+          }
+        }
+      ],
+      "message": "an option asks for something the sheet does not have"
+    }
+  },
+  {
+    "case": "an unmet prerequisite before an unknown option",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:eldritch-invocations",
+                "field": "picks",
+                "labelPt": "Invocações Místicas (Bruxo, nível 5)",
+                "optionKey": "feature:eldritch-invocation-agonizing-blast",
+                "picked": 2,
+                "required": 3
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET"
+          }
+        }
+      ],
+      "message": "an option asks for something the sheet does not have"
+    }
+  },
+  {
+    "case": "an unknown option before an unmet prerequisite",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:eldritch-invocations",
+                "field": "picks",
+                "labelPt": "Invocações Místicas (Bruxo, nível 5)",
+                "optionKey": "feature:nope",
+                "picked": 2,
+                "required": 3
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED"
+          }
+        }
+      ],
+      "message": "a pick is not one the sheet offers"
+    }
+  },
+  {
+    "case": "the open invocation",
+    "feature_choice_keys": [
+      "feature:pact-of-the-chain",
+      "feature:eldritch-invocation-armor-of-shadows",
+      "feature:eldritch-invocation-devils-sight",
+      "feature:eldritch-invocation-mask-of-many-faces"
+    ],
+    "feature_choice_text": {},
+    "labels": [
+      "Invocações Místicas (Bruxo, nível 5)"
+    ],
+    "text_map_is_nil": false
+  },
+  {
+    "case": "the humanoid with one race",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:favored-enemy-1-type",
+                "field": "picks",
+                "labelPt": "Inimigo Favorito: tipo de inimigo (Patrulheiro, nível 1)",
+                "required": 1
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICES_MISSING"
+          }
+        }
+      ],
+      "message": "the sheet has choices still to make: complete them first"
+    }
+  },
+  {
+    "case": "the humanoid with a race not written",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:favored-enemy-1-type",
+                "field": "picks",
+                "labelPt": "Inimigo Favorito: tipo de inimigo (Patrulheiro, nível 1)",
+                "required": 1
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICES_MISSING"
+          }
+        }
+      ],
+      "message": "the sheet has choices still to make: complete them first"
+    }
+  },
+  {
+    "case": "the humanoid with three races",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:favored-enemy-1-type",
+                "field": "picks",
+                "labelPt": "Inimigo Favorito: tipo de inimigo (Patrulheiro, nível 1)",
+                "required": 1
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICES_MISSING"
+          }
+        }
+      ],
+      "message": "the sheet has choices still to make: complete them first"
+    }
+  },
+  {
+    "case": "the humanoid with two races",
+    "feature_choice_keys": [
+      "feature:natural-explorer-1-terrain-type=terrain:forest",
+      "feature:favored-enemy-1-type=creature-type:humanoid"
+    ],
+    "feature_choice_text": {
+      "feature:favored-enemy-1-type#1": "gnolls",
+      "feature:favored-enemy-1-type#2": "orcs"
+    },
+    "labels": [
+      "Inimigo Favorito: tipo de inimigo (Patrulheiro, nível 1)"
+    ],
+    "text_map_is_nil": false
+  },
+  {
+    "case": "the humanoid with two races and no language",
+    "feature_choice_keys": [
+      "feature:natural-explorer-1-terrain-type=terrain:forest",
+      "feature:favored-enemy-1-type=creature-type:humanoid",
+      "feature:favored-enemy-1-type#language=language:none"
+    ],
+    "feature_choice_text": {
+      "feature:favored-enemy-1-type#1": "gnolls",
+      "feature:favored-enemy-1-type#2": "orcs"
+    },
+    "labels": [
+      "Inimigo Favorito: tipo de inimigo (Patrulheiro, nível 1)",
+      "Inimigo Favorito: idioma que falam (Patrulheiro, nível 1)"
+    ],
+    "text_map_is_nil": false
+  },
+  {
+    "case": "the humanoid with two races and their language",
+    "refusal": {
+      "code": "failed_precondition",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.ChoiceRefusal",
+          "value": {
+            "issues": [
+              {
+                "choiceKey": "feature:favored-enemy-1-type#language",
+                "field": "picks",
+                "labelPt": "Inimigo Favorito: idioma que falam (Patrulheiro, nível 1)",
+                "optionKey": "language:gnoll",
+                "required": 1
+              }
+            ],
+            "reason": "CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED"
+          }
+        }
+      ],
+      "message": "a pick is not one the sheet offers"
+    }
+  },
+  {
+    "case": "a beast with texts",
+    "feature_choice_keys": [
+      "feature:natural-explorer-1-terrain-type=terrain:forest",
+      "feature:favored-enemy-1-type=creature-type:beast"
+    ],
+    "feature_choice_text": {},
+    "labels": [
+      "Inimigo Favorito: tipo de inimigo (Patrulheiro, nível 1)"
+    ],
+    "text_map_is_nil": false
+  }
+]

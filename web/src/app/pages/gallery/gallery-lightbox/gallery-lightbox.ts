@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { GalleryImage } from '../../../../gen/meurpg/maps/v1/gallery_pb';
 import { imageMeta } from '../../../core/images/image-format';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 /** How far a finger must travel sideways to turn the page (phone). */
 const SWIPE_PX = 50;
@@ -35,7 +36,7 @@ const SWIPE_PX = 50;
  */
 @Component({
   selector: 'app-gallery-lightbox',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [RelayEvents, MatButtonModule, MatIconModule],
   templateUrl: './gallery-lightbox.html',
   styleUrl: './gallery-lightbox.scss',
 })

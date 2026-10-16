@@ -9,7 +9,7 @@ MR-xxx · RN-xx
 - [ ] Testei na tela (com prints, se algo visível mudou)
 
 ## Telas (se algo visível mudou)
-- [ ] Segue o `docs/design.md` (tokens e peças comuns, nenhuma cor escrita à mão)
+- [ ] Segue o `docs/design/README.md` (tokens e peças comuns, nenhuma cor escrita à mão)
 - [ ] Prints de antes e depois a 390px e 1280px, no tema claro e no escuro
 - [ ] Todo estado da tela conferido: vazio, carregando, erro e os de permissão
 - [ ] Olhei cada peça de perto (2x): ícones na altura das palavras, nada grudado na borda, nada por cima de outra coisa

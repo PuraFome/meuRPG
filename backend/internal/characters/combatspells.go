@@ -36,26 +36,47 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if !ok {
 		return link.Spell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
+	// The phases run in this order on purpose: a later one may clear what an
+	// earlier one set (a hit point effect drops the damage and the heal, a spell
+	// that only reaches the caster drops the saving throw).
+	out := spellBasics(d, det)
+	mod := spellCasterNumbers(&out, d, det)
+	spellRolls(&out, d, det, slotLevel, damageType, mod)
+	spellHitPointEffect(&out, content, spellKey, slotLevel)
+	spellKinds(&out, content, d, det, spellKey)
+	spellTargets(&out, det)
+	return out, nil
+}
+
+// castEconomy is the part of the turn a casting time spends; a longer one
+// (a minute, a ritual) spends none of it.
+var castEconomy = map[string]string{
+	rules.CastAction:      rules.EconomyAction,
+	rules.CastBonusAction: rules.EconomyBonusAction,
+	rules.CastReaction:    rules.EconomyReaction,
+}
+
+// spellBasics is what the spell is: its key, name, level, range and the turn
+// economy its casting time spends.
+func spellBasics(d rules.Derived, det *rules.SpellDetails) link.Spell {
 	// A table feat's ranged_attack effect may multiply the range of a spell that needs
 	// an attack roll: the reach the cast checks and the target lists show is the caster's.
 	out := link.Spell{
 		Key: det.Spell.Key, Name: det.Spell.NamePT, Level: det.Spell.Level, Concentration: det.Duration.Concentration, Verbal: det.Components.Verbal,
 		RangeKind: det.Range.Kind, RangeFt: d.SpellRangeFt(det.AttackType, det.Range.Kind, det.Range.DistanceFt), AttackType: det.AttackType,
+		Economy: castEconomy[det.CastingTime.Unit],
 	}
 	if out.Name == "" {
 		out.Name = det.Spell.Name
 	}
-	switch det.CastingTime.Unit {
-	case rules.CastAction:
-		out.Economy = rules.EconomyAction
-	case rules.CastBonusAction:
-		out.Economy = rules.EconomyBonusAction
-	case rules.CastReaction:
-		out.Economy = rules.EconomyReaction
-	}
+	return out
+}
 
-	// The class that casts it: the first that has it on its list, or the first
-	// class that casts at all (as the sheet's own attacks pick it).
+// spellCasterNumbers sets the caster's attack bonus, save DC and the spell's
+// saving throw, and returns the spellcasting ability's modifier (what a heal
+// adds). The class that casts it is the first that has it on its list, or the
+// first class that casts at all (as the sheet's own attacks pick it).
+func spellCasterNumbers(out *link.Spell, d rules.Derived, det *rules.SpellDetails) int {
 	var mod int
 	if sc := casterFor(d, det.Spell.Classes); sc != nil {
 		mod = abilityMod(d, sc.Ability)
@@ -70,6 +91,11 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	} else {
 		out.SaveDC = 0
 	}
+	return mod
+}
+
+// spellRolls sets the damage the engine rolls at the slot level and the heal.
+func spellRolls(out *link.Spell, d rules.Derived, det *rules.SpellDetails, slotLevel int, damageType string, mod int) {
 	out.DamageChoice, out.DamageTypes = det.DamageChoice, det.DamageTypeChoices()
 	for _, roll := range det.DamageAtChoosing(slotLevel, d.TotalLevel, damageType) {
 		// A damage without a type is no damage the engine rolls (Sono's pool of
@@ -85,22 +111,35 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 		}
 		out.Heal = h
 	}
-	// A spell that reads hit points rolls no damage and opens no heal: the cast
-	// applies the effect itself.
-	if fx, ok := content.SpellEffect(spellKey, slotLevel); ok {
-		out.Damages, out.Heal = nil, nil
-		out.HP = &link.HPEffect{
-			Kind: fx.Kind, Pool: link.Dice{Count: fx.Dice.Count, Sides: fx.Dice.Sides}, Condition: fx.Condition,
-			Threshold: fx.Threshold, Dies: fx.Dies, Heal: fx.Heal, Ends: fx.Ends, Amount: fx.Amount,
-		}
+}
+
+// spellHitPointEffect sets the effect of a spell that reads hit points. Such a
+// spell rolls no damage and opens no heal: the cast applies the effect itself.
+func spellHitPointEffect(out *link.Spell, content *rules.Content, spellKey string, slotLevel int) {
+	fx, ok := content.SpellEffect(spellKey, slotLevel)
+	if !ok {
+		return
 	}
+	out.Damages, out.Heal = nil, nil
+	out.HP = &link.HPEffect{
+		Kind: fx.Kind, Pool: link.Dice{Count: fx.Dice.Count, Sides: fx.Dice.Sides}, Condition: fx.Condition,
+		Threshold: fx.Threshold, Dies: fx.Dies, Heal: fx.Heal, Ends: fx.Ends, Amount: fx.Amount,
+	}
+}
+
+// spellKinds sets what kind of spell it is for the rules that read it: a
+// summon, one that ignores cover, an evocation the caster may sculpt.
+func spellKinds(out *link.Spell, content *rules.Content, d rules.Derived, det *rules.SpellDetails, spellKey string) {
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
 	out.IgnoresCover = content.IgnoresCover(spellKey)
 	out.Evocation = det.Spell.School == "school:evocation"
 	out.Sculpts = rules.HasFeature(d, "feature:sculpt-spells")
-	// Whom it reaches: the table spell's own target, or the SRD spell's (the
-	// structured area, then the text; see rules.SpellTarget).
+}
+
+// spellTargets sets whom it reaches: the table spell's own target, or the SRD
+// spell's (the structured area, then the text; see rules.SpellTarget).
+func spellTargets(out *link.Spell, det *rules.SpellDetails) {
 	out.Area = det.Target.AnyNumber()
 	if det.Target.Kind == rules.TargetArea {
 		out.AreaShape, out.AreaSizeFt, out.AreaWidthFt = det.Target.Shape, det.Target.SizeFt, det.AreaWidthFt()
@@ -115,7 +154,6 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 		// (Contact Other Plane asks the caster's own save) rolls no saving throw.
 		out.SaveAbility, out.SaveOnSuccess, out.SaveDC = "", "", 0
 	}
-	return out, nil
 }
 
 // casterFor picks the Spellcasting of a class that has the spell on its list,

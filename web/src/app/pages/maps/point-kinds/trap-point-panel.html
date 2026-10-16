@@ -2,7 +2,7 @@
   <section class="mr-panel tp__presets" aria-labelledby="tp-presets">
     <h2 class="mr-panel__title" id="tp-presets">Predefinições do SRD</h2>
     <p class="pk__hint">Preenche o formulário; você muda qualquer campo depois.</p>
-    <div class="pk__radios" role="radiogroup" aria-labelledby="tp-presets" (keydown)="onKey($event)">
+    <div appRelayEvents class="pk__radios" role="radiogroup" aria-labelledby="tp-presets" (relayKeydown)="onKey($event)">
       @for (p of presets(); track p.key) {
         <button type="button" role="radio" class="pk__radio" [class.pk__radio--on]="draft().presetKey === p.key" [attr.aria-checked]="draft().presetKey === p.key" [tabIndex]="draft().presetKey === p.key || (!draft().presetKey && $first) ? 0 : -1" (click)="choosePreset(p)">
           <span class="pk__dot" aria-hidden="true"></span>
@@ -94,7 +94,7 @@
 
     <div class="pk__group pk__rule">
       <h3 class="pk__h" id="tf-area">Área de disparo</h3>
-      <div class="seg" role="radiogroup" aria-labelledby="tf-area" (keydown)="onKey($event)">
+      <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="tf-area" (relayKeydown)="onKey($event)">
         @for (n of sizes; track n) {
           <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().areaSize === n" [attr.aria-checked]="draft().areaSize === n" [tabIndex]="draft().areaSize === n ? 0 : -1" (click)="patch({ areaSize: n })">
             <mat-icon class="chk" [class.chk--hide]="!(draft().areaSize === n)" aria-hidden="true">check</mat-icon>{{ n }}×{{ n }}
@@ -103,7 +103,7 @@
       </div>
       <p class="pk__hint">{{ areaWords() }}</p>
       <h3 class="pk__h" id="tf-trigger">Gatilho</h3>
-      <div class="seg" role="radiogroup" aria-labelledby="tf-trigger" (keydown)="onKey($event)">
+      <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="tf-trigger" (relayKeydown)="onKey($event)">
         <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().trigger === Enter" [attr.aria-checked]="draft().trigger === Enter" [tabIndex]="draft().trigger === Enter ? 0 : -1" (click)="patch({ trigger: Enter })">
           <mat-icon class="chk" [class.chk--hide]="!(draft().trigger === Enter)" aria-hidden="true">check</mat-icon>Ao entrar na área
         </button>
@@ -291,7 +291,7 @@
           </div>
 
           <h5 class="part__sub" id="part-pass">Se passar</h5>
-          <div class="seg seg--small" role="radiogroup" aria-labelledby="part-pass" (keydown)="onKey($event)">
+          <div appRelayEvents class="seg seg--small" role="radiogroup" aria-labelledby="part-pass" (relayKeydown)="onKey($event)">
             <button type="button" role="radio" class="seg__item" [class.seg__item--on]="s.onPass === NoneOutcome" [attr.aria-checked]="s.onPass === NoneOutcome" [tabIndex]="s.onPass === NoneOutcome ? 0 : -1" (click)="patchSave({ onPass: NoneOutcome })">
               <mat-icon class="chk" [class.chk--hide]="!(s.onPass === NoneOutcome)" aria-hidden="true">check</mat-icon>Nada
             </button>
@@ -322,7 +322,7 @@
       </div>
 
       <h3 class="pk__h" id="tf-targets">Quem é pego</h3>
-      <div class="seg" role="radiogroup" aria-labelledby="tf-targets" (keydown)="onKey($event)">
+      <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="tf-targets" (relayKeydown)="onKey($event)">
         <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().targets === Area" [attr.aria-checked]="draft().targets === Area" [tabIndex]="draft().targets === Area ? 0 : -1" (click)="patch({ targets: Area })">
           <mat-icon class="chk" [class.chk--hide]="!(draft().targets === Area)" aria-hidden="true">check</mat-icon>Quem está na área
         </button>
@@ -334,7 +334,7 @@
 
     <div class="pk__group pk__rule">
       <h3 class="pk__h" id="tf-state">Estado</h3>
-      <div class="seg" role="radiogroup" aria-labelledby="tf-state" (keydown)="onKey($event)">
+      <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="tf-state" (relayKeydown)="onKey($event)">
         @for (s of [Armed, Triggered, Disarmed]; track s) {
           <button type="button" role="radio" class="seg__item" [class.seg__item--on]="draft().state === s" [attr.aria-checked]="draft().state === s" [tabIndex]="draft().state === s ? 0 : -1" (click)="patch({ state: s })">
             <mat-icon class="chk" [class.chk--hide]="!(draft().state === s)" aria-hidden="true">check</mat-icon>{{ s === Armed ? 'Armada' : s === Triggered ? 'Disparada' : 'Desarmada' }}

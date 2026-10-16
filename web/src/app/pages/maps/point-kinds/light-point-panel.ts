@@ -35,6 +35,7 @@ import {
   withPreset,
 } from './light-draft';
 import { PointFoot } from './point-foot';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 /**
  * The panel of a Luz point (E9-02 2, MR-036): its name, the SRD's light sources as 52 px radios (the key, the two
@@ -45,7 +46,7 @@ import { PointFoot } from './point-foot';
  */
 @Component({
   selector: 'app-light-point-panel',
-  imports: [MatFormFieldModule, MatIconModule, MatInputModule, PointFoot],
+  imports: [RelayEvents, MatFormFieldModule, MatIconModule, MatInputModule, PointFoot],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './light-point-panel.html',
   styleUrl: './point-panel-kinds.scss',

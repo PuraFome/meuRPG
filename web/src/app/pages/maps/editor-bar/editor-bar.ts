@@ -20,6 +20,7 @@ import type { RosterEntry } from '../../../core/maps/roster-client';
 import { ChestIcon } from '../../../shared/chest-icon/chest-icon';
 import { pointKindIcon, pointKindLabel } from '../../../shared/map-view/map-labels';
 import { scaleLabel } from '../../../shared/map-view/map-geometry';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 export type EditorMode = 'points' | 'paint';
 
@@ -48,7 +49,7 @@ const LIGHT_ICON: Readonly<Record<LightDegree, string>> = {
  */
 @Component({
   selector: 'app-editor-bar',
-  imports: [ChestIcon, DoorMark, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [RelayEvents, ChestIcon, DoorMark, MatButtonModule, MatIconModule, MatMenuModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './editor-bar.html',
   styleUrl: './editor-bar.scss',

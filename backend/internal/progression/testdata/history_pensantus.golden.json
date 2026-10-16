@@ -1,0 +1,283 @@
+{
+  "ListMilestones": {
+    "milestones": [
+      {
+        "hasHistory": true,
+        "id": "<milestone-a>",
+        "marks": [
+          {
+            "createdAt": "<t06>",
+            "givenByDisplayName": "Samuel",
+            "givenByUserId": "<master>",
+            "id": "<mark-a>",
+            "mode": "XP_AWARD_MODE_MILESTONE",
+            "reason": "Chegar ao Vale Seco",
+            "shares": [
+              {
+                "characterId": "<pensantus>",
+                "characterName": "Pensantus"
+              }
+            ]
+          },
+          {
+            "createdAt": "<t07>",
+            "givenByDisplayName": "Samuel",
+            "givenByUserId": "<master>",
+            "id": "<mark-a-given>",
+            "mode": "XP_AWARD_MODE_MILESTONE",
+            "reason": "Chegar ao Vale Seco",
+            "shares": [
+              {
+                "characterId": "<toren>",
+                "characterName": "Toren"
+              }
+            ]
+          }
+        ],
+        "reached": true,
+        "reachedAt": "<t06>",
+        "text": "Chegar ao Vale Seco"
+      },
+      {
+        "hasHistory": true,
+        "id": "<milestone-c>",
+        "marks": [
+          {
+            "createdAt": "<t12>",
+            "givenByDisplayName": "Samuel",
+            "givenByUserId": "<master>",
+            "id": "<mark-c-again>",
+            "mode": "XP_AWARD_MODE_MILESTONE",
+            "reason": "Derrotar a Sombra",
+            "shares": [
+              {
+                "characterId": "<toren>",
+                "characterName": "Toren"
+              }
+            ]
+          }
+        ],
+        "reached": true,
+        "reachedAt": "<t12>",
+        "text": "Derrotar a Sombra"
+      },
+      {
+        "id": "<mark-off-list>",
+        "marks": [
+          {
+            "createdAt": "<t13>",
+            "givenByDisplayName": "Samuel",
+            "givenByUserId": "<master>",
+            "id": "<mark-off-list>",
+            "mode": "XP_AWARD_MODE_MILESTONE",
+            "reason": "Derrotaram o chefe",
+            "shares": [
+              {
+                "characterId": "<brisa>",
+                "characterName": "Brisa"
+              }
+            ]
+          }
+        ],
+        "offList": true,
+        "reached": true,
+        "reachedAt": "<t13>",
+        "text": "Derrotaram o chefe"
+      }
+    ]
+  },
+  "ListXPAwards": {
+    "awards": [
+      {
+        "createdAt": "<t14>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<mark-off-list-undone>",
+        "mode": "XP_AWARD_MODE_MILESTONE",
+        "reason": "Achar o mapa do tesouro",
+        "shares": [
+          {
+            "characterId": "<pensantus>",
+            "characterName": "Pensantus"
+          }
+        ],
+        "undone": true,
+        "undoneAt": "<t15>",
+        "undoneByDisplayName": "Samuel"
+      },
+      {
+        "createdAt": "<t13>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<mark-off-list>",
+        "mode": "XP_AWARD_MODE_MILESTONE",
+        "reason": "Derrotaram o chefe",
+        "shares": [
+          {
+            "characterId": "<brisa>",
+            "characterName": "Brisa"
+          }
+        ]
+      },
+      {
+        "createdAt": "<t12>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<mark-c-again>",
+        "mode": "XP_AWARD_MODE_MILESTONE",
+        "reason": "Derrotar a Sombra",
+        "shares": [
+          {
+            "characterId": "<toren>",
+            "characterName": "Toren"
+          }
+        ]
+      },
+      {
+        "createdAt": "<t10>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<mark-c-undone>",
+        "mode": "XP_AWARD_MODE_MILESTONE",
+        "reason": "Derrotar a Sombra",
+        "shares": [
+          {
+            "characterId": "<pensantus>",
+            "characterName": "Pensantus"
+          }
+        ],
+        "undone": true,
+        "undoneAt": "<t11>",
+        "undoneByDisplayName": "Samuel"
+      },
+      {
+        "createdAt": "<t08>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<mark-b-undone>",
+        "mode": "XP_AWARD_MODE_MILESTONE",
+        "shares": [
+          {
+            "characterId": "<brisa>",
+            "characterName": "Brisa"
+          }
+        ],
+        "undone": true,
+        "undoneAt": "<t09>",
+        "undoneByDisplayName": "Samuel"
+      },
+      {
+        "createdAt": "<t07>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<mark-a-given>",
+        "mode": "XP_AWARD_MODE_MILESTONE",
+        "reason": "Chegar ao Vale Seco",
+        "shares": [
+          {
+            "characterId": "<toren>",
+            "characterName": "Toren"
+          }
+        ]
+      },
+      {
+        "createdAt": "<t06>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<mark-a>",
+        "mode": "XP_AWARD_MODE_MILESTONE",
+        "reason": "Chegar ao Vale Seco",
+        "shares": [
+          {
+            "characterId": "<pensantus>",
+            "characterName": "Pensantus"
+          }
+        ]
+      },
+      {
+        "createdAt": "<t04>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<award-manual-undone>",
+        "mode": "XP_AWARD_MODE_MANUAL",
+        "reason": "Pela ajuda ao ferreiro",
+        "shares": [
+          {
+            "characterId": "<pensantus>",
+            "characterName": "Pensantus",
+            "xp": 10
+          }
+        ],
+        "totalXp": 10,
+        "undone": true,
+        "undoneAt": "<t05>",
+        "undoneByDisplayName": "Samuel"
+      },
+      {
+        "createdAt": "<t03>",
+        "encounterId": "<encounter>",
+        "encounterName": "Emboscada na estrada",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "id": "<award-enemies>",
+        "mode": "XP_AWARD_MODE_ENEMIES",
+        "reason": "Pela ajuda ao ferreiro",
+        "shares": [
+          {
+            "characterId": "<pensantus>",
+            "characterName": "Pensantus",
+            "xp": 16
+          },
+          {
+            "characterId": "<toren>",
+            "characterName": "Toren",
+            "xp": 16
+          },
+          {
+            "characterId": "<brisa>",
+            "characterName": "Brisa",
+            "xp": 16
+          }
+        ],
+        "totalXp": 50
+      },
+      {
+        "createdAt": "<t02>",
+        "id": "<award-manual-gone-master>",
+        "mode": "XP_AWARD_MODE_MANUAL",
+        "reason": "Pela ajuda ao ferreiro",
+        "shares": [
+          {
+            "characterId": "<brisa>",
+            "characterName": "Brisa",
+            "xp": 30
+          }
+        ],
+        "totalXp": 30
+      },
+      {
+        "createdAt": "<t01>",
+        "givenByDisplayName": "Samuel",
+        "givenByUserId": "<master>",
+        "gold": 180,
+        "id": "<award-gold>",
+        "mode": "XP_AWARD_MODE_GOLD",
+        "reason": "Voltar à cidade",
+        "shares": [
+          {
+            "characterId": "<pensantus>",
+            "characterName": "Pensantus",
+            "xp": 90
+          },
+          {
+            "characterId": "<toren>",
+            "characterName": "Toren",
+            "xp": 90
+          }
+        ],
+        "totalXp": 180,
+        "treasureCount": 2
+      }
+    ]
+  }
+}
