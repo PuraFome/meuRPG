@@ -28,10 +28,10 @@ func spellsRestParalyze(label string) func(t *testing.T, a *armed, e *playv1.Enc
 
 // spellsRestNextTo puts a creature on a square, then the next step of the fight runs on the fight as it is.
 func spellsRestNextTo(label string, col, row int32, then func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
-	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+	return func(t *testing.T, a *armed, _ *playv1.Encounter) *playv1.Encounter {
 		t.Helper()
 		a.put(t, label, col, row)
-		e = a.get(t, a.master)
+		e := a.get(t, a.master)
 		if then == nil {
 			return e
 		}
@@ -41,7 +41,7 @@ func spellsRestNextTo(label string, col, row int32, then func(t *testing.T, a *a
 
 // spellsRestOffMap takes a creature off the map before the cast.
 func spellsRestOffMap(label string) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
-	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+	return func(t *testing.T, a *armed, _ *playv1.Encounter) *playv1.Encounter {
 		t.Helper()
 		a.execSQL(t, `UPDATE combatants SET grid_col = NULL, grid_row = NULL WHERE label = $1`, label)
 		return a.get(t, a.master)
@@ -52,7 +52,8 @@ func spellsRestOffMap(label string) func(t *testing.T, a *armed, e *playv1.Encou
 func spellsRestTableCasters(t *testing.T) (*armed, *playv1.Encounter) {
 	t.Helper()
 	a := newTableCasters(t)
-	return a, a.castersFight(t, 1)
+	e := a.castersFight(t, 1)
+	return a, e
 }
 
 // spellsRestScenarios are the scenarios of the golden, in the order they are listed.
