@@ -79,27 +79,14 @@ func (s *Service) checkModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessio
 	return cm, nil
 }
 
+// baseCheckModeOf is checkModeOf without the Stealth armor of a character out of a combat.
 func (s *Service) baseCheckModeOf(ctx context.Context, tx pgx.Tx, campaignID, sessionID, characterID, skillKey string, ability string, check bool) (checkMode, error) {
 	q := s.queriesIn(tx)
-	enc, err := q.GetLatestEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && enc.Status == statusEnded) {
-		return s.outsideModeOf(ctx, tx, campaignID, characterID, skillKey, ability, check)
-	}
+	enc, cs, who, inCombat, err := s.checkCombatant(ctx, q, sessionID, characterID)
 	if err != nil {
 		return checkMode{}, err
 	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return checkMode{}, err
-	}
-	var who playdb.Combatant
-	found := false
-	for _, c := range cs {
-		if c.CharacterID == characterID && c.Kind == kindPlayer {
-			who, found = c, true
-		}
-	}
-	if !found {
+	if !inCombat {
 		return s.outsideModeOf(ctx, tx, campaignID, characterID, skillKey, ability, check)
 	}
 	states, err := s.readStates(ctx, tx, enc.ID)
@@ -121,31 +108,66 @@ func (s *Service) baseCheckModeOf(ctx context.Context, tx pgx.Tx, campaignID, se
 		if err != nil {
 			return checkMode{}, err
 		}
-		for _, h := range helps {
-			if h.Kind == helpCheck && helpsAlly(h, who) && deref(h.Task) == skillKey {
-				sources = append(sources, combat.Source{Kind: combat.SourceHelp, Effect: combat.ModeAdvantage})
-				helpIDs = append(helpIDs, h.ID)
-			}
-		}
+		sources, helpIDs = withCheckHelps(sources, helps, who, skillKey)
 	}
 	applies := rules.RollAppliesSave
 	if check {
 		applies = rules.RollAppliesCheck
-	}
-	var bonuses []effectBonus
-	for _, st := range effectsOn(states, who.ID) {
-		if n := combat.CheckBonus(effectModifiers(st), skillKey); n != 0 && check {
-			bonuses = append(bonuses, effectBonus{Key: deref(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
-		}
 	}
 	diceOf := effectDiceFor(states, who.ID, applies)
 	for i := range diceOf {
 		diceOf[i].CharacterID = characterID
 	}
 	return checkMode{
-		Mode: combat.Resolve(sources), Sources: sources, Dice: diceOf, Bonuses: bonuses, Helps: helpIDs,
+		Mode: combat.Resolve(sources), Sources: sources, Dice: diceOf, Bonuses: checkBonusesOf(states, who.ID, skillKey, check), Helps: helpIDs,
 		hide: hideFor(hiddenConditionsOf(states, who), hasHiddenEffect(states, who.ID)),
 	}, nil
+}
+
+// checkCombatant finds the character's player combatant in the session's latest
+// combat. inCombat is false when there is none to read: no combat, a combat that
+// ended or a character that is not in it.
+func (s *Service) checkCombatant(ctx context.Context, q *playdb.Queries, sessionID, characterID string) (enc playdb.Encounter, cs []playdb.Combatant, who playdb.Combatant, inCombat bool, err error) {
+	enc, err = q.GetLatestEncounter(ctx, sessionID)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && enc.Status == statusEnded) {
+		return enc, nil, who, false, nil
+	}
+	if err != nil {
+		return enc, nil, who, false, err
+	}
+	if cs, err = q.ListCombatants(ctx, enc.ID); err != nil {
+		return enc, nil, who, false, err
+	}
+	for _, c := range cs {
+		if c.CharacterID == characterID && c.Kind == kindPlayer {
+			who, inCombat = c, true
+		}
+	}
+	return enc, cs, who, inCombat, nil
+}
+
+// withCheckHelps adds, to the sources of a check, the advantage of each Help for its
+// task that the combatant may use, and lists those Helps.
+func withCheckHelps(sources []combat.Source, helps []playdb.CombatHelp, who playdb.Combatant, skillKey string) ([]combat.Source, []string) {
+	var ids []string
+	for _, h := range helps {
+		if h.Kind == helpCheck && helpsAlly(h, who) && deref(h.Task) == skillKey {
+			sources = append(sources, combat.Source{Kind: combat.SourceHelp, Effect: combat.ModeAdvantage})
+			ids = append(ids, h.ID)
+		}
+	}
+	return sources, ids
+}
+
+// checkBonusesOf are the fixed bonuses the combatant's effects add to a check.
+func checkBonusesOf(states map[string][]playdb.CombatantState, combatantID, skillKey string, check bool) []effectBonus {
+	var bonuses []effectBonus
+	for _, st := range effectsOn(states, combatantID) {
+		if n := combat.CheckBonus(effectModifiers(st), skillKey); n != 0 && check {
+			bonuses = append(bonuses, effectBonus{Key: deref(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
+		}
+	}
+	return bonuses
 }
 
 // spendCheckHelps uses up the Helps that gave a check advantage: the ally's next check for
