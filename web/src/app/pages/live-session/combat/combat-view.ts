@@ -104,7 +104,7 @@ export class CombatView extends CombatViewFlowsDirective {
           this.deathResult.set('');
           this.masterDeathResult.set('');
           this.passAsking.set(null);
-          this.moveNote.set('');
+          this.moves.moveNote.set('');
         });
       }
     });

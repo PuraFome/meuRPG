@@ -530,28 +530,28 @@ describe('CombatView state: the master reach and the moves', () => {
   it('draws nothing while the reach is off, and offers the switch for whoever is placed on turn', async () => {
     const { view, fixture, callsOf } = reach();
     await settle(fixture);
-    expect(view.masterReach()).toBeNull();
-    expect(view.reachSwitch()).toEqual({ name: 'do Goblin', on: false });
+    expect(view.moves.masterReach()).toBeNull();
+    expect(view.moves.reachSwitch()).toEqual({ name: 'do Goblin', on: false });
     expect(callsOf('moveOptions')).toHaveLength(0);
   });
 
   it('reads the squares of whoever is on turn when the reach is on, and draws them from the server answer', async () => {
     const { view, fixture, callsOf } = reach();
-    view.reachOn.set(true);
+    view.moves.reachOn.set(true);
     await settle(fixture);
     expect(callsOf('moveOptions').map((c) => c.args.slice(0, 3))).toEqual([['c', 'enc', 'g']]);
-    expect(view.masterReach()).toEqual({
+    expect(view.moves.masterReach()).toEqual({
       origin: { col: 3, row: 4 },
       leftDft: 150,
       squares: [{ col: 3, row: 5 }],
     });
-    expect(view.reachSwitch()).toEqual({ name: 'do Goblin', on: true });
+    expect(view.moves.reachSwitch()).toEqual({ name: 'do Goblin', on: true });
   });
 
   it('asks for the long jump squares while the jump page is on, and the walk ones otherwise', async () => {
     const { view, fixture, callsOf, state } = reach();
-    view.reachOn.set(true);
-    view.moveJump.set({ runningStart: true });
+    view.moves.reachOn.set(true);
+    view.moves.jump.set({ runningStart: true });
     state.moving.set(true);
     await settle(fixture);
     expect(callsOf('moveOptions').at(-1)?.args[3]).toEqual({ runningStart: true });
@@ -566,26 +566,26 @@ describe('CombatView state: the master reach and the moves', () => {
       enc: encounter({ currentCombatantId: 'g', combatants: [toren, goblin] }),
       master: true,
     });
-    unplaced.view.reachOn.set(true);
+    unplaced.view.moves.reachOn.set(true);
     await settle(unplaced.fixture);
-    expect(unplaced.view.masterReach()).toBeNull();
-    expect(unplaced.view.reachSwitch()).toBeNull();
+    expect(unplaced.view.moves.masterReach()).toBeNull();
+    expect(unplaced.view.moves.reachSwitch()).toBeNull();
     expect(unplaced.callsOf('moveOptions')).toHaveLength(0);
 
     const guest = mountCombatView({
       enc: encounter({ currentCombatantId: 'g', combatants: [toren, placedGoblin] }),
     });
-    guest.view.reachOn.set(true);
-    expect(guest.view.masterReach()).toBeNull();
-    expect(guest.view.reachSwitch()).toBeNull();
+    guest.view.moves.reachOn.set(true);
+    expect(guest.view.moves.masterReach()).toBeNull();
+    expect(guest.view.moves.reachSwitch()).toBeNull();
 
     const { view, fixture, state } = reach();
-    view.reachOn.set(true);
+    view.moves.reachOn.set(true);
     await settle(fixture);
-    expect(view.moveOptions.data()).not.toBeNull();
+    expect(view.moves.options.data()).not.toBeNull();
     state.apply(next(state.encounter() as Encounter, { status: EncounterStatus.ENDED }));
     await settle(fixture);
-    expect(view.moveOptions.data()).toBeNull();
+    expect(view.moves.options.data()).toBeNull();
   });
 
   it('asks where the player can go only on the "Mover" page of a turn they act on, and clears it when the turn passes', async () => {
@@ -600,36 +600,36 @@ describe('CombatView state: the master reach and the moves', () => {
     state.moving.set(true);
     await settle(fixture);
     expect(callsOf('moveOptions').map((c) => c.args.slice(0, 3))).toEqual([['c', 'enc', 't']]);
-    expect(view.moveOptions.data()).not.toBeNull();
+    expect(view.moves.options.data()).not.toBeNull();
     state.apply(next(enc, { currentCombatantId: 'g' }));
     await settle(fixture);
-    expect(view.moveOptions.data()).toBeNull();
+    expect(view.moves.options.data()).toBeNull();
     // The page closes with the turn.
     expect(state.moving()).toBe(false);
-    expect(view.moverId()).toBe('');
+    expect(view.moves.moverId()).toBe('');
   });
 
   it('tells that a creature left the combat while its "Mover" page was open', async () => {
     const mine = mountCombatView({ enc: player() });
     mine.view.moves.moverName = 'Lobo';
-    mine.view.moverId.set('sumiu');
+    mine.view.moves.moverId.set('sumiu');
     await settle(mine.fixture);
-    expect(mine.view.moveNote()).toBe('O Lobo saiu do combate.');
-    expect(mine.view.moverId()).toBe('');
+    expect(mine.view.moves.moveNote()).toBe('O Lobo saiu do combate.');
+    expect(mine.view.moves.moverId()).toBe('');
 
     const fem = mountCombatView({ enc: player() });
     fem.view.moves.moverName = 'Loba';
-    fem.view.moverId.set('sumiu');
+    fem.view.moves.moverId.set('sumiu');
     await settle(fem.fixture);
-    expect(fem.view.moveNote()).toBe('A Loba saiu do combate.');
+    expect(fem.view.moves.moveNote()).toBe('A Loba saiu do combate.');
   });
 
   it('does not tell it for the character own page, nor without a name', async () => {
     const noName = mountCombatView({ enc: player() });
-    noName.view.moverId.set('sumiu');
+    noName.view.moves.moverId.set('sumiu');
     await settle(noName.fixture);
-    expect(noName.view.moveNote()).toBe('');
-    expect(noName.view.moverId()).toBe('');
+    expect(noName.view.moves.moveNote()).toBe('');
+    expect(noName.view.moves.moverId()).toBe('');
   });
 
   it('closes the full-screen map when the combat is not running any more', async () => {
@@ -651,7 +651,7 @@ describe('CombatView state: the master reach and the moves', () => {
     view.deathResult.set('x');
     view.masterDeathResult.set('y');
     view.passAsking.set({ discard: false });
-    view.moveNote.set('z');
+    view.moves.moveNote.set('z');
     await settle(fixture);
     // The same turn read again keeps them.
     state.apply(next(enc));
@@ -663,7 +663,7 @@ describe('CombatView state: the master reach and the moves', () => {
       view.actionNote(),
       view.deathResult(),
       view.masterDeathResult(),
-      view.moveNote(),
+      view.moves.moveNote(),
     ]).toEqual(['', '', '', '']);
     expect(view.passAsking()).toBeNull();
   });
@@ -685,7 +685,7 @@ describe('CombatView state: the master reach and the moves', () => {
     const can = (over: object) =>
       mountCombatView({
         enc: player({ combatants: [{ ...toren, ...over } as never, goblin] }),
-      }).view.canDisengage();
+      }).view.moves.canDisengage();
     expect(can({})).toBe(true);
     expect(can({ actionUsed: true })).toBe(false);
     expect(can({ disengaged: true })).toBe(false);
@@ -693,7 +693,7 @@ describe('CombatView state: the master reach and the moves', () => {
       mountCombatView({
         enc: player({ combatants: [seen, goblin] }),
         master: true,
-      }).view.canDisengage(),
+      }).view.moves.canDisengage(),
     ).toBe(false);
   });
 
@@ -704,10 +704,10 @@ describe('CombatView state: the master reach and the moves', () => {
         combatants: [toren, { ...wolf, disengaged: true } as never],
       }),
     });
-    view.moverId.set('w');
-    expect(view.canDisengage()).toBe(false);
-    view.moverId.set('');
-    expect(view.canDisengage()).toBe(true);
+    view.moves.moverId.set('w');
+    expect(view.moves.canDisengage()).toBe(false);
+    view.moves.moverId.set('');
+    expect(view.moves.canDisengage()).toBe(true);
   });
 
   it('reads the jump limits from the character options, or from the creature one on its page', async () => {
@@ -719,11 +719,11 @@ describe('CombatView state: the master reach and the moves', () => {
       }),
     });
     await settle(fixture);
-    expect(view.moverJumps().longRunningDft).toBe(100);
-    view.moverId.set('w');
-    expect(view.moverJumps().longRunningDft).toBe(200);
-    view.moverId.set('nenhum');
-    expect(view.moverJumps()).toBeUndefined();
+    expect(view.moves.jumps().longRunningDft).toBe(100);
+    view.moves.moverId.set('w');
+    expect(view.moves.jumps().longRunningDft).toBe(200);
+    view.moves.moverId.set('nenhum');
+    expect(view.moves.jumps()).toBeUndefined();
   });
 
   it('marks the reactors on the map, the square the mover left only for the one who answers', () => {
@@ -1531,7 +1531,7 @@ describe('CombatView state: the familiar and the form of the druid', () => {
       matches: [PHONE_QUERY],
       inputs: { vitals: [row] },
     });
-    view.openTransform();
+    view.sheets.actions.wildShape();
     expect(opened).toHaveLength(1);
     expect(opened[0].config.ariaLabel).toBe('Forma Selvagem');
     expect(opened[0].config.data).toEqual({
@@ -1547,12 +1547,12 @@ describe('CombatView state: the familiar and the form of the druid', () => {
 
   it('opens the list with no uses without a row, does not apply a closed sheet, and opens nothing for the master', () => {
     const { view, opened, state } = mountCombatView({ enc: druid(), matches: [PHONE_QUERY] });
-    view.openTransform();
+    view.sheets.actions.wildShape();
     expect(opened[0].config.data['uses']).toBeNull();
     opened[0].close({});
     expect(state.encounter()?.revision).toBe(1);
     const m = mountCombatView({ enc: druid({}, seen), master: true });
-    m.view.openTransform();
+    m.view.sheets.actions.wildShape();
     expect(m.opened).toHaveLength(0);
   });
 

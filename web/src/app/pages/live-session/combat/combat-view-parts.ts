@@ -77,20 +77,6 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     takeAction: (id, key) => this.takeActionFor(id, key),
     openSpend: (id) => this.sheets.actions.spend(id),
   });
-  protected readonly moverId = this.moves.moverId;
-  protected readonly dropStart = this.moves.dropStart;
-  protected readonly moveError = this.moves.moveError;
-  protected readonly moveNote = this.moves.moveNote;
-  protected readonly lockedDoor = this.moves.lockedDoor;
-  protected readonly forcedMove = this.moves.forcedMove;
-  protected readonly forcedNote = this.moves.forcedNote;
-  protected readonly moveJump = this.moves.jump;
-  protected readonly reachOn = this.moves.reachOn;
-  protected readonly moveOptions = this.moves.options;
-  protected readonly canDisengage = this.moves.canDisengage;
-  protected readonly moverJumps = this.moves.jumps;
-  protected readonly masterReach = this.moves.masterReach;
-  protected readonly reachSwitch = this.moves.reachSwitch;
   /** The player's side of the contests (W7-X): grapple, shove, escape, Hide, Help, and the questions a contest asks. */
   protected readonly contest = new ContestHost({
     dialog: this.dialog,

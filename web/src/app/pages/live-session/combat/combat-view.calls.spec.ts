@@ -1310,11 +1310,11 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
 
   it('a player\'s drop opens the "Mover" page on that square and never moves by itself', async () => {
     const { view, state, callsOf } = mountCombatView({ enc: grid('t', toren(), goblin()) });
-    view.moveError.set('old');
-    await view.drop({ id: 't', col: 4, row: 4 });
-    expect(view.dropStart()).toEqual({ col: 4, row: 4 });
+    view.moves.moveError.set('old');
+    await view.moves.drop({ id: 't', col: 4, row: 4 });
+    expect(view.moves.dropStart()).toEqual({ col: 4, row: 4 });
     expect(state.moving()).toBe(true);
-    expect(view.moveError()).toBe('');
+    expect(view.moves.moveError()).toBe('');
     expect(callsOf('move')).toEqual([]);
   });
 
@@ -1323,8 +1323,8 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       enc: grid('g', toren(), goblin()),
       master: true,
     });
-    await view.drop({ id: 'nobody', col: 5, row: 5 });
-    await view.drop({ id: 'g', col: 3, row: 3 });
+    await view.moves.drop({ id: 'nobody', col: 5, row: 5 });
+    await view.moves.drop({ id: 'g', col: 3, row: 3 });
     expect(callsOf('move')).toEqual([]);
     expect(state.moving()).toBe(false);
   });
@@ -1336,7 +1336,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: moveAnswer(e) },
     });
-    await view.drop({ id: 'g', col: 0, row: 0 });
+    await view.moves.drop({ id: 'g', col: 0, row: 0 });
     expect(callsOf('move')[0].args.slice(0, 5)).toEqual(['c', 'enc', 'g', 0, 0]);
   });
 
@@ -1354,7 +1354,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       },
     });
     view.error.set('old');
-    const dropping = view.drop({ id: 'g', col: 5, row: 5 });
+    const dropping = view.moves.drop({ id: 'g', col: 5, row: 5 });
     expect(spot(view, 'g')).toEqual([5, 5]);
     expect(view.error()).toBe('');
     expect(callsOf('move')[0].args).toEqual(['c', 'enc', 'g', 5, 5, undefined, undefined, false]);
@@ -1375,8 +1375,8 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
           }),
       },
     });
-    const first = view.drop({ id: 'g', col: 5, row: 5 });
-    const second = view.drop({ id: 'g', col: 6, row: 6 });
+    const first = view.moves.drop({ id: 'g', col: 5, row: 5 });
+    const second = view.moves.drop({ id: 'g', col: 6, row: 6 });
     await second;
     expect(callsOf('move')).toHaveLength(1);
     finish[0]();
@@ -1396,7 +1396,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: moveAnswer(e, { lockedDoor: true }) },
     });
-    await view.drop({ id: 'g', col: 5, row: 3 });
+    await view.moves.drop({ id: 'g', col: 5, row: 3 });
     expect(view.error()).toBe(
       'Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.',
     );
@@ -1409,7 +1409,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: moveAnswer(moved(4, 3), { stoppedEarly: true }) },
     });
-    await view.drop({ id: 'g', col: 5, row: 3 });
+    await view.moves.drop({ id: 'g', col: 5, row: 3 });
     expect(view.error()).toBe(
       'Uma grade levadiça ou uma porta secreta parou o movimento. Abra a porta (toque nela no mapa) e mova de novo.',
     );
@@ -1421,7 +1421,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: moveAnswer(moved(4, 3), { stoppedEarly: true, lockedDoor: true }) },
     });
-    await view.drop({ id: 'g', col: 5, row: 3 });
+    await view.moves.drop({ id: 'g', col: 5, row: 3 });
     expect(view.error()).toContain('Uma porta trancada');
   });
 
@@ -1431,7 +1431,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: refuse(Code.InvalidArgument) },
     });
-    await view.drop({ id: 'g', col: 5, row: 5 });
+    await view.moves.drop({ id: 'g', col: 5, row: 5 });
     expect(spot(view, 'g')).toEqual([3, 3]);
     expect(view.error()).toBe('Não deu para mover o token: confira os campos e tente de novo.');
     expect(callsOf('get')).toEqual([]);
@@ -1446,7 +1446,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
         get: () => encounter({ round: 3, combatants: [toren(), goblin()] }),
       },
     });
-    await view.drop({ id: 'g', col: 5, row: 5 });
+    await view.moves.drop({ id: 'g', col: 5, row: 5 });
     await nextTurn();
     expect(callsOf('get')).toHaveLength(1);
     expect(state.encounter()?.round).toBe(3);
@@ -1471,74 +1471,74 @@ describe('CombatView calls: the "Mover" page', () => {
 
   it('"Mover para cá" sends the square for the character and closes the page', async () => {
     const { view, state, callsOf } = mountMover(result());
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(callsOf('move')[0].args).toEqual(['c', 'enc', 't', 4, 2]);
     expect(state.moving()).toBe(false);
-    expect(view.moveError()).toBe('');
+    expect(view.moves.moveError()).toBe('');
   });
 
   it('moves the creature the page was opened for', async () => {
     const wolf = combatant({ id: 'w', label: 'Lobo', controlledByMe: true });
     const e = grid('t', toren(), wolf);
     const { view, callsOf } = mountMover(result({}, e), e);
-    view.moverId.set('w');
-    await view.confirmMove({ col: 6, row: 6 });
+    view.moves.moverId.set('w');
+    await view.moves.confirmMove({ col: 6, row: 6 });
     expect(callsOf('move')[0].args.slice(0, 5)).toEqual(['c', 'enc', 'w', 6, 6]);
   });
 
   it('does nothing when nobody moves (no character of the player)', async () => {
     const { view, callsOf } = mountMover(result(), grid('g', goblin()));
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(callsOf('move')).toEqual([]);
   });
 
   it("a refusal keeps the page open with the refusal's words next to the map, not on the page", async () => {
     const { view, state } = mountMover({ move: refuse(Code.InvalidArgument) });
     view.error.set('old');
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(state.moving()).toBe(true);
-    expect(view.moveError()).toBe('Não deu para mover: confira os campos e tente de novo.');
+    expect(view.moves.moveError()).toBe('Não deu para mover: confira os campos e tente de novo.');
     expect(view.error()).toBe('');
   });
 
   it('a move that stopped short says so and still closes the page', async () => {
     const { view, state } = mountMover(result({ stoppedEarly: true }));
-    await view.confirmMove({ col: 4, row: 2 });
-    expect(view.moveNote()).toBe('Você parou antes: algo bloqueou o caminho.');
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.moveNote()).toBe('Você parou antes: algo bloqueou o caminho.');
     expect(state.moving()).toBe(false);
   });
 
   it('a locked door keeps the page open, with the notice', async () => {
     const { view, state } = mountMover(result({ lockedDoor: true }));
-    await view.confirmMove({ col: 4, row: 2 });
-    expect(view.lockedDoor()).toBe(true);
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.lockedDoor()).toBe(true);
     expect(state.moving()).toBe(true);
-    expect(view.moveNote()).toBe('');
+    expect(view.moves.moveNote()).toBe('');
   });
 
   it('a locked door wins over a stop-short in the answer', async () => {
     const { view } = mountMover(result({ lockedDoor: true, stoppedEarly: true }));
-    await view.confirmMove({ col: 4, row: 2 });
-    expect(view.lockedDoor()).toBe(true);
-    expect(view.moveNote()).toBe('');
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.lockedDoor()).toBe(true);
+    expect(view.moves.moveNote()).toBe('');
   });
 
   it("forgets the last move's note and locked door when a new move starts", async () => {
     const { view } = mountMover(result());
-    view.moveNote.set('old');
-    view.lockedDoor.set(true);
-    await view.confirmMove({ col: 4, row: 2 });
-    expect(view.moveNote()).toBe('');
-    expect(view.lockedDoor()).toBe(false);
+    view.moves.moveNote.set('old');
+    view.moves.lockedDoor.set(true);
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.moveNote()).toBe('');
+    expect(view.moves.lockedDoor()).toBe(false);
   });
 
   it('a move while another call is in flight sends nothing and is read as a refusal with no words', async () => {
     const { view, callsOf, state } = mountMover(result());
     view.busy.set(true);
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(callsOf('move')).toEqual([]);
     expect(state.moving()).toBe(true);
-    expect(view.moveError()).toBe('');
+    expect(view.moves.moveError()).toBe('');
   });
 
   it('a stale refusal reads the combat again', async () => {
@@ -1546,32 +1546,32 @@ describe('CombatView calls: the "Mover" page', () => {
       move: refuse(Code.Unavailable),
       get: () => grid('t', toren(), goblin()),
     });
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(callsOf('get')).toHaveLength(1);
   });
 
   it('"Desengajar" takes the Disengage action for whoever moves', async () => {
     const { view, callsOf } = mountMover();
-    expect(await view.disengage()).toBe(true);
+    expect(await view.moves.disengage()).toBe(true);
     expect(callsOf('takeAction')[0].args).toEqual(['c', 'enc', 't', 'standard:disengage']);
   });
 
   it('"Desengajar" is nothing without a mover', async () => {
     const { view, callsOf } = mountMover({}, grid('g', goblin()));
-    expect(await view.disengage()).toBe(false);
+    expect(await view.moves.disengage()).toBe(false);
     expect(callsOf('takeAction')).toEqual([]);
   });
 
   it('closeFullPage puts every trace of the page away', () => {
     const { view, state } = mountMover();
-    view.lockedDoor.set(true);
-    view.moverId.set('w');
-    view.dropStart.set({ col: 1, row: 1 });
+    view.moves.lockedDoor.set(true);
+    view.moves.moverId.set('w');
+    view.moves.dropStart.set({ col: 1, row: 1 });
     state.mapOpen.set(true);
-    view.closeFullPage();
-    expect(view.lockedDoor()).toBe(false);
-    expect(view.moverId()).toBe('');
-    expect(view.dropStart()).toBeNull();
+    view.moves.closeFullPage();
+    expect(view.moves.lockedDoor()).toBe(false);
+    expect(view.moves.moverId()).toBe('');
+    expect(view.moves.dropStart()).toBeNull();
     expect(state.moving()).toBe(false);
     expect(state.mapOpen()).toBe(false);
   });
@@ -1592,26 +1592,26 @@ describe("CombatView calls: a jump's note", () => {
   it('says how far a long jump went, in meters', async () => {
     const { view, state } = mountCombatView({ enc: jumper(0), api: answerWith(100) });
     state.moving.set(true);
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
-    expect(view.moveNote()).toBe('Você saltou 3,0 m.');
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    expect(view.moves.moveNote()).toBe('Você saltou 3,0 m.');
     expect(state.moving()).toBe(false);
   });
 
   it('says how high a high jump went', async () => {
     const { view } = mountCombatView({ enc: jumper(0), api: answerWith(60) });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
-    expect(view.moveNote()).toBe('Você saltou 1,8 m para cima.');
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
+    expect(view.moves.moveNote()).toBe('Você saltou 1,8 m para cima.');
   });
 
   it('charges only what the jump added to the movement already used', async () => {
     const { view } = mountCombatView({ enc: jumper(40), api: answerWith(100) });
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
-    expect(view.moveNote()).toBe('Você saltou 1,8 m.');
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    expect(view.moves.moveNote()).toBe('Você saltou 1,8 m.');
   });
 
   it("a high jump stays on the character's own square", async () => {
     const { view, callsOf } = mountCombatView({ enc: jumper(0), api: answerWith(60) });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
     const args = callsOf('move')[0].args;
     expect(args.slice(0, 7).slice(0, 5)).toEqual(['c', 'enc', 't', 1, 1]);
     expect(args[5]).toEqual({ kind: 'high', heightDft: 60 });
@@ -1619,15 +1619,15 @@ describe("CombatView calls: a jump's note", () => {
 
   it('a long jump sends the square and its kind', async () => {
     const { view, callsOf } = mountCombatView({ enc: jumper(0), api: answerWith(60) });
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
     const args = callsOf('move')[0].args;
     expect(args.slice(0, 6)).toEqual(['c', 'enc', 't', 9, 3, { kind: 'long' }]);
   });
 
   it('a new jump after one that worked takes a new key', async () => {
     const { view, callsOf } = mountCombatView({ enc: jumper(0), api: answerWith(60) });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
     const [first, second] = callsOf('move');
     expect(second.args[6]).not.toBe(first.args[6]);
   });
@@ -1638,9 +1638,9 @@ describe("CombatView calls: a jump's note", () => {
       api: { move: refuse(Code.InvalidArgument) },
     });
     state.moving.set(true);
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
-    expect(view.moveNote()).toBe('');
-    expect(view.moveError()).toBe('Não deu para mover: confira os campos e tente de novo.');
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
+    expect(view.moves.moveNote()).toBe('');
+    expect(view.moves.moveError()).toBe('Não deu para mover: confira os campos e tente de novo.');
     expect(state.moving()).toBe(true);
   });
 
@@ -1650,9 +1650,9 @@ describe("CombatView calls: a jump's note", () => {
       api: answerWith(60, { lockedDoor: true }),
     });
     state.moving.set(true);
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
-    expect(view.moveNote()).toBe('Você saltou 1,8\u00a0m.');
-    expect(view.lockedDoor()).toBe(true);
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    expect(view.moves.moveNote()).toBe('Você saltou 1,8\u00a0m.');
+    expect(view.moves.lockedDoor()).toBe(true);
     expect(state.moving()).toBe(true);
   });
 
@@ -1661,7 +1661,7 @@ describe("CombatView calls: a jump's note", () => {
       enc: theatre('g', goblin()),
       master: true,
     });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
     expect(callsOf('move')).toEqual([]);
   });
 });
@@ -1669,22 +1669,22 @@ describe("CombatView calls: a jump's note", () => {
 describe('CombatView calls: opening the movement', () => {
   it('opens the "Mover" page of the character on a map, clearing the traces of the last one', () => {
     const { view, state, opened } = mountCombatView({ enc: grid('t', toren(), goblin()) });
-    view.lockedDoor.set(true);
-    view.moverId.set('w');
-    view.dropStart.set({ col: 1, row: 1 });
-    view.moveError.set('old');
-    view.openMove();
+    view.moves.lockedDoor.set(true);
+    view.moves.moverId.set('w');
+    view.moves.dropStart.set({ col: 1, row: 1 });
+    view.moves.moveError.set('old');
+    view.moves.open();
     expect(state.moving()).toBe(true);
-    expect(view.lockedDoor()).toBe(false);
-    expect(view.moverId()).toBe('');
-    expect(view.dropStart()).toBeNull();
-    expect(view.moveError()).toBe('');
+    expect(view.moves.lockedDoor()).toBe(false);
+    expect(view.moves.moverId()).toBe('');
+    expect(view.moves.dropStart()).toBeNull();
+    expect(view.moves.moveError()).toBe('');
     expect(opened).toEqual([]);
   });
 
   it('without a map it opens the sheet that asks how far, for the character', () => {
     const { view, state, opened } = mountCombatView({ enc: theatre('t', toren()) });
-    view.openMove();
+    view.moves.open();
     expect(state.moving()).toBe(false);
     expect(opened).toHaveLength(1);
     expect(opened[0].component).toBe(SpendSheet);
@@ -1700,44 +1700,44 @@ describe('CombatView calls: opening the movement', () => {
       enc: theatre('t', toren()),
       matches: [PHONE_QUERY],
     });
-    view.openMove();
+    view.moves.open();
     expect(opened[0].config.ariaLabel).toBe('Gastar movimento');
-    view.moveNote.set('Você parou antes');
+    view.moves.moveNote.set('Você parou antes');
     opened[0].close(true);
-    expect(view.moveNote()).toBe('');
+    expect(view.moves.moveNote()).toBe('');
   });
 
   it('opens no spend sheet without a combatant to spend for', () => {
     const { view, opened } = mountCombatView({ enc: theatre('g', goblin()), master: true });
-    view.openSpend();
+    view.sheets.actions.spend();
     expect(opened).toEqual([]);
   });
 
   it("opens the page of a creature of the player's, with its name kept for the day it leaves", () => {
     const wolf = combatant({ id: 'w', label: 'Lobo atroz 1', controlledByMe: true });
     const { view, state } = mountCombatView({ enc: grid('t', toren(), wolf) });
-    view.lockedDoor.set(true);
-    view.dropStart.set({ col: 1, row: 1 });
-    view.moveError.set('old');
-    view.openCreatureMove('w');
-    expect(view.moverId()).toBe('w');
+    view.moves.lockedDoor.set(true);
+    view.moves.dropStart.set({ col: 1, row: 1 });
+    view.moves.moveError.set('old');
+    view.moves.openCreature('w');
+    expect(view.moves.moverId()).toBe('w');
     expect(view.moves.moverName).toBe('Lobo atroz 1');
     expect(state.moving()).toBe(true);
-    expect(view.lockedDoor()).toBe(false);
-    expect(view.dropStart()).toBeNull();
-    expect(view.moveError()).toBe('');
+    expect(view.moves.lockedDoor()).toBe(false);
+    expect(view.moves.dropStart()).toBeNull();
+    expect(view.moves.moveError()).toBe('');
   });
 
   it('an unknown creature opens the page with no name', () => {
     const { view } = mountCombatView({ enc: grid('t', toren()) });
-    view.openCreatureMove('ghost');
+    view.moves.openCreature('ghost');
     expect(view.moves.moverName).toBe('');
   });
 
   it("without a map the creature's movement is the spend sheet for that creature", () => {
     const wolf = combatant({ id: 'w', label: 'Lobo', controlledByMe: true });
     const { view, state, opened } = mountCombatView({ enc: theatre('t', toren(), wolf) });
-    view.openCreatureMove('w');
+    view.moves.openCreature('w');
     expect(state.moving()).toBe(false);
     expect(opened).toHaveLength(1);
     expect(opened[0].config.data).toMatchObject({ combatantId: 'w' });

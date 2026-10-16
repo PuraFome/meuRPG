@@ -6,21 +6,16 @@ import {
   CoverDegree,
   type Encounter,
   type OpportunityOffer,
-  type ReactionWindow,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { type AttackDie, newKey } from '../../../core/combat/combat-client';
 import { type MineTab, membersToEnd } from '../../../core/combat/mine';
-import type { Square } from '../../../core/combat/combat-grid';
 import { outcomeText, saveAnnouncement } from '../../../core/combat/death-saves';
 import { showOfDice, showOfDie } from '../../../shared/roll-overlay/roll-animator';
 import { currentCombatant } from '../../../core/combat/combat-view';
-import type { TokenDrop } from '../../../shared/combat-map/combat-map';
 import { initiativeLine } from '../../../core/combat/combat-derived';
 import { type DeathSaveRoll } from './death-save-due/death-save-due';
 import { type RiderPick } from './hit-rider/hit-rider-card';
-import { type JumpRequest } from './move-page/move-page';
 import { type MasterAnswer } from './opportunity/opportunity-card';
-import type { DoorSquare } from '../../../core/maps/layers';
 import {
   type StartCombatData,
   StartCombatDialog,
@@ -375,61 +370,14 @@ export abstract class CombatViewFlowsDirective extends CombatViewPartsDirective 
     await this.calls.run((current) => this.api.place(this.campaignId(), current.id, id));
   }
 
-  // ---- sheets and moving: the template and the screens below call these ----
+  // ---- the sheets and moving are bound by the template through `sheets` and `moves` ----
 
+  /** "Ver pelos olhos do familiar": only with a familiar to look through. */
   protected askFamiliarEyes(): void {
     const name = this.familiar();
     if (name) {
       this.sheets.actions.familiarEyes(name);
     }
-  }
-  protected openTransform(): void {
-    this.sheets.actions.wildShape();
-  }
-  protected openDoor(door: DoorSquare): void {
-    this.sheets.actions.door(door);
-  }
-  protected describeSpell(key: string, name: string): void {
-    this.sheets.actions.describeSpell(key, name);
-  }
-  protected openCast(key: string): Promise<void> {
-    return this.sheets.cast(key);
-  }
-  protected openMasterArea(key: string): void {
-    this.sheets.masterArea(key);
-  }
-  protected openConditions(combatantId: string): void {
-    this.sheets.actions.conditions(combatantId);
-  }
-  protected openEffectSave(window: ReactionWindow): void {
-    this.sheets.reactions.effectSave(window);
-  }
-  protected adjustNpc(combatantId: string): void {
-    this.sheets.actions.adjustNpc(combatantId);
-  }
-  protected openSpend(id?: string): void {
-    this.sheets.actions.spend(id);
-  }
-  protected drop(drop: TokenDrop): Promise<void> {
-    return this.moves.drop(drop);
-  }
-  protected confirmMove(to: Square): Promise<void> {
-    return this.moves.confirmMove(to);
-  }
-  protected confirmJump(req: JumpRequest): Promise<void> {
-    return this.moves.confirmJump(req);
-  }
-  protected disengage(): Promise<boolean> {
-    return this.moves.disengage();
-  }
-  protected closeFullPage(): void {
-    this.moves.closeFullPage();
-  }
-  protected openMove(): void {
-    this.moves.open();
-  }
-  protected openCreatureMove(id: string): void {
-    this.moves.openCreature(id);
   }
 
   protected leave(): void {
