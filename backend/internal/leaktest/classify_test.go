@@ -255,6 +255,7 @@ var notReads = map[string]classified{
 	playv1connect.PuzzleServiceUnarchivePuzzleProcedure:                         {masterWrite, masterOnlyWhy},
 	playv1connect.PuzzleServiceUpdatePuzzleProcedure:                            {masterWrite, masterOnlyWhy},
 	playv1connect.ResourceServiceAnswerBardicInspirationProcedure:               {playerAction, "a player answers the question of their own held roll"},
+	playv1connect.ResourceServiceAnswerLuckyProcedure:                           {playerAction, "a halfling's player answers the Lucky question of their own held roll"},
 	playv1connect.ResourceServiceAnswerOutsideInspirationProcedure:              {playerAction, "a player answers the question of a roll of their own character, out of a combat"},
 	playv1connect.ResourceServiceConvertSpellSlotProcedure:                      {playerAction, "a sorcerer's player converts a slot of their own combatant"},
 	playv1connect.ResourceServiceCreateSpellSlotProcedure:                       {playerAction, "a sorcerer's player makes a slot with their own combatant"},

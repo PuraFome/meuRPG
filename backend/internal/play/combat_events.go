@@ -274,6 +274,10 @@ type actionEvent struct {
 	// CriticalMax says the table's critical rule was "máximo mais uma rolagem" when
 	// the attack was rolled (RN-24): the answer of a retry says the same.
 	CriticalMaxRule bool `json:"critical_max_rule,omitempty"`
+	// Lucky is the d20 the halfling's Lucky rolled again after it showed a 1 (combat_lucky.go):
+	// D20, D20B and Counted are the dice after it, and this keeps the 1 it replaced and where,
+	// so the log says "Sortudo: 1 → 14". Nil when there was no Lucky question or the 1 was kept.
+	Lucky *luckyReroll `json:"lucky,omitempty"`
 	// TargetAC is the armor class the total was compared with: only the
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`

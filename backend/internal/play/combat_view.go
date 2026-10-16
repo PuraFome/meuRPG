@@ -290,6 +290,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 			}
 			p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
 			p.InspirationOffer = inspirationOfferView(d, c, v)
+			p.LuckyOffer = luckyOfferView(d, c, v)
 			p.TurnPartEnded = turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 			p.States = statesFor(byCombatant[c.ID], d.cs, v)
 			p.ConditionSources = conditionSourcesFor(c, d.cs, v, names)

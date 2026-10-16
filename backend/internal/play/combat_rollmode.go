@@ -45,9 +45,10 @@ type modeAsk struct {
 	want      playv1.RollMode
 	reason    string
 	requestID string
-	// dry works the mode out without writing (the roll waits for a Bardic Inspiration die and
-	// is settled later); trusted takes the mode a held roll was made with, which was checked
-	// when it was held, even if the circumstances changed meanwhile.
+	// dry works the mode out without writing (the roll may wait for a Bardic Inspiration die or
+	// a Lucky answer and be settled later: keepReason writes it if it goes on); trusted takes the
+	// mode a held roll was made with, which was checked when it was held, even if the
+	// circumstances changed meanwhile.
 	dry, trusted bool
 }
 
@@ -108,10 +109,21 @@ func (s *Service) chooseMode(ctx context.Context, c *combatTx, v combatViewer, a
 		return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_NEEDS_APPROVAL, "a better mode needs the master's approval")
 	}
 	out.Mode, out.Reason = want, reason
-	if ask.dry || reason == "" {
+	if ask.dry {
 		return out, nil
 	}
-	row, err := c.q.InsertCombatReason(ctx, playdb.InsertCombatReasonParams{EncounterID: c.enc.ID, Kind: "roll_mode", Reason: reason, CreatedAt: c.now})
+	return s.keepReason(ctx, c, out)
+}
+
+// keepReason writes the reason of a free change of mode (one nobody had to approve) in
+// combat_reasons, once: chooseMode does it, unless its roll could wait for a question (dry); then
+// the roll does it when it goes on after all (a lucky attacker's d20 that shows no 1). A choice with
+// no reason, a reason already written, or the master's answer to a request writes nothing.
+func (s *Service) keepReason(ctx context.Context, c *combatTx, out modeChoice) (modeChoice, error) {
+	if out.Reason == "" || out.ReasonID != "" || out.RequestID != "" || !out.changed() {
+		return out, nil
+	}
+	row, err := c.q.InsertCombatReason(ctx, playdb.InsertCombatReasonParams{EncounterID: c.enc.ID, Kind: "roll_mode", Reason: out.Reason, CreatedAt: c.now})
 	if err != nil {
 		return out, fmt.Errorf("keep the reason of the mode: %w", err)
 	}

@@ -6,7 +6,8 @@
 // "Resting"), the hit dice a player spends on a short rest, and the four
 // resource flows that need a dialog of their own: the paladin's Lay on Hands,
 // the sorcerer's Flexible Casting, and the bard's Bardic Inspiration (Metamagic
-// rides on CastSpell, in combat.proto).
+// rides on CastSpell, in combat.proto); and the halfling's Lucky, the other question a
+// held attack roll asks.
 package playv1connect
 
 import (
@@ -65,6 +66,9 @@ const (
 	// ResourceServiceAnswerBardicInspirationProcedure is the fully-qualified name of the
 	// ResourceService's AnswerBardicInspiration RPC.
 	ResourceServiceAnswerBardicInspirationProcedure = "/meurpg.play.v1.ResourceService/AnswerBardicInspiration"
+	// ResourceServiceAnswerLuckyProcedure is the fully-qualified name of the ResourceService's
+	// AnswerLucky RPC.
+	ResourceServiceAnswerLuckyProcedure = "/meurpg.play.v1.ResourceService/AnswerLucky"
 	// ResourceServiceGetOutsideInspirationProcedure is the fully-qualified name of the
 	// ResourceService's GetOutsideInspiration RPC.
 	ResourceServiceGetOutsideInspirationProcedure = "/meurpg.play.v1.ResourceService/GetOutsideInspiration"
@@ -173,6 +177,25 @@ type ResourceServiceClient interface {
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
 	// face outside the die.
 	AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error)
+	// AnswerLucky answers the question a held attack roll asks when a halfling's d20 shows a 1
+	// (SRD 5.1, Halfling, Lucky: the die may be rolled again, and the new roll stands): roll it
+	// again, or keep the 1. RollAttack holds the result of a halfling's weapon attack or attack
+	// cantrip whose d20 shows a 1 until this call (RollAttackResponse.lucky_offer); with advantage
+	// or disadvantage the question comes when either die shows a 1, even the one that does not
+	// count, and only that die is rolled again (one of them when both show a 1). The new die is
+	// rolled in the app or typed from a real die (RN-18, as for the d20); the new roll is never
+	// asked about again, even when it is a 1. When the attacker also holds a Bardic Inspiration
+	// die the roll stays held after the answer and the response carries the die's question on the
+	// new roll (RollAttackResponse.inspiration_offer, answered with AnswerBardicInspiration);
+	// otherwise the attack is resolved, as RollAttack would have resolved it with the new d20. The
+	// roll's owner or the master.
+	//
+	// Errors: `not_found` for a hold that is gone; `permission_denied` for another player's roll;
+	// `invalid_argument` without roll_in_app or typed_face when reroll is set, or a typed face
+	// outside 1 to 20; `failed_precondition` when the hold asks no Lucky question or it was
+	// answered already (by another answer); EncounterBlocked WRONG_DICE_MODE for a player's way of
+	// rolling the campaign does not allow.
+	AnswerLucky(context.Context, *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error)
 	// GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
 	// die their character holds and, for a bard, the uses left and the party to give it to.
 	// Only the caller's own character is described (the master gets every die held).
@@ -267,6 +290,12 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(resourceServiceMethods.ByName("AnswerBardicInspiration")),
 			connect.WithClientOptions(opts...),
 		),
+		answerLucky: connect.NewClient[v1.AnswerLuckyRequest, v1.AnswerLuckyResponse](
+			httpClient,
+			baseURL+ResourceServiceAnswerLuckyProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("AnswerLucky")),
+			connect.WithClientOptions(opts...),
+		),
 		getOutsideInspiration: connect.NewClient[v1.GetOutsideInspirationRequest, v1.GetOutsideInspirationResponse](
 			httpClient,
 			baseURL+ResourceServiceGetOutsideInspirationProcedure,
@@ -299,6 +328,7 @@ type resourceServiceClient struct {
 	convertSpellSlot             *connect.Client[v1.ConvertSpellSlotRequest, v1.ConvertSpellSlotResponse]
 	giveBardicInspiration        *connect.Client[v1.GiveBardicInspirationRequest, v1.GiveBardicInspirationResponse]
 	answerBardicInspiration      *connect.Client[v1.AnswerBardicInspirationRequest, v1.AnswerBardicInspirationResponse]
+	answerLucky                  *connect.Client[v1.AnswerLuckyRequest, v1.AnswerLuckyResponse]
 	getOutsideInspiration        *connect.Client[v1.GetOutsideInspirationRequest, v1.GetOutsideInspirationResponse]
 	giveBardicInspirationOutside *connect.Client[v1.GiveBardicInspirationOutsideRequest, v1.GiveBardicInspirationOutsideResponse]
 	answerOutsideInspiration     *connect.Client[v1.AnswerOutsideInspirationRequest, v1.AnswerOutsideInspirationResponse]
@@ -347,6 +377,11 @@ func (c *resourceServiceClient) GiveBardicInspiration(ctx context.Context, req *
 // AnswerBardicInspiration calls meurpg.play.v1.ResourceService.AnswerBardicInspiration.
 func (c *resourceServiceClient) AnswerBardicInspiration(ctx context.Context, req *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error) {
 	return c.answerBardicInspiration.CallUnary(ctx, req)
+}
+
+// AnswerLucky calls meurpg.play.v1.ResourceService.AnswerLucky.
+func (c *resourceServiceClient) AnswerLucky(ctx context.Context, req *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error) {
+	return c.answerLucky.CallUnary(ctx, req)
 }
 
 // GetOutsideInspiration calls meurpg.play.v1.ResourceService.GetOutsideInspiration.
@@ -461,6 +496,25 @@ type ResourceServiceHandler interface {
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
 	// face outside the die.
 	AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error)
+	// AnswerLucky answers the question a held attack roll asks when a halfling's d20 shows a 1
+	// (SRD 5.1, Halfling, Lucky: the die may be rolled again, and the new roll stands): roll it
+	// again, or keep the 1. RollAttack holds the result of a halfling's weapon attack or attack
+	// cantrip whose d20 shows a 1 until this call (RollAttackResponse.lucky_offer); with advantage
+	// or disadvantage the question comes when either die shows a 1, even the one that does not
+	// count, and only that die is rolled again (one of them when both show a 1). The new die is
+	// rolled in the app or typed from a real die (RN-18, as for the d20); the new roll is never
+	// asked about again, even when it is a 1. When the attacker also holds a Bardic Inspiration
+	// die the roll stays held after the answer and the response carries the die's question on the
+	// new roll (RollAttackResponse.inspiration_offer, answered with AnswerBardicInspiration);
+	// otherwise the attack is resolved, as RollAttack would have resolved it with the new d20. The
+	// roll's owner or the master.
+	//
+	// Errors: `not_found` for a hold that is gone; `permission_denied` for another player's roll;
+	// `invalid_argument` without roll_in_app or typed_face when reroll is set, or a typed face
+	// outside 1 to 20; `failed_precondition` when the hold asks no Lucky question or it was
+	// answered already (by another answer); EncounterBlocked WRONG_DICE_MODE for a player's way of
+	// rolling the campaign does not allow.
+	AnswerLucky(context.Context, *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error)
 	// GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
 	// die their character holds and, for a bard, the uses left and the party to give it to.
 	// Only the caller's own character is described (the master gets every die held).
@@ -551,6 +605,12 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(resourceServiceMethods.ByName("AnswerBardicInspiration")),
 		connect.WithHandlerOptions(opts...),
 	)
+	resourceServiceAnswerLuckyHandler := connect.NewUnaryHandler(
+		ResourceServiceAnswerLuckyProcedure,
+		svc.AnswerLucky,
+		connect.WithSchema(resourceServiceMethods.ByName("AnswerLucky")),
+		connect.WithHandlerOptions(opts...),
+	)
 	resourceServiceGetOutsideInspirationHandler := connect.NewUnaryHandler(
 		ResourceServiceGetOutsideInspirationProcedure,
 		svc.GetOutsideInspiration,
@@ -589,6 +649,8 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 			resourceServiceGiveBardicInspirationHandler.ServeHTTP(w, r)
 		case ResourceServiceAnswerBardicInspirationProcedure:
 			resourceServiceAnswerBardicInspirationHandler.ServeHTTP(w, r)
+		case ResourceServiceAnswerLuckyProcedure:
+			resourceServiceAnswerLuckyHandler.ServeHTTP(w, r)
 		case ResourceServiceGetOutsideInspirationProcedure:
 			resourceServiceGetOutsideInspirationHandler.ServeHTTP(w, r)
 		case ResourceServiceGiveBardicInspirationOutsideProcedure:
@@ -638,6 +700,10 @@ func (UnimplementedResourceServiceHandler) GiveBardicInspiration(context.Context
 
 func (UnimplementedResourceServiceHandler) AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.AnswerBardicInspiration is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) AnswerLucky(context.Context, *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.AnswerLucky is not implemented"))
 }
 
 func (UnimplementedResourceServiceHandler) GetOutsideInspiration(context.Context, *connect.Request[v1.GetOutsideInspirationRequest]) (*connect.Response[v1.GetOutsideInspirationResponse], error) {

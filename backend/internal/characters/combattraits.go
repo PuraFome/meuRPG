@@ -74,6 +74,8 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	}
 	t.GreatWeaponFighting = slices.ContainsFunc(greatWeaponFighting, func(k string) bool { return rules.HasFeature(d, k) })
 	t.PackTactics = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, packTacticsSuffix) })
+	// The halfling's Lucky is a race trait, so every halfling has it, whichever its subrace.
+	t.Lucky = rules.HasFeature(d, link.LuckyTrait)
 	for _, f := range d.Features {
 		if typ, ok := strings.CutPrefix(f.Key, creatureTypePrefix); ok {
 			t.CreatureType = typ

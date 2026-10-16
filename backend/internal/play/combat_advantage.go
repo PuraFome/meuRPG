@@ -574,10 +574,11 @@ func (ev actionEvent) d20Faces() []int32 {
 	return []int32{ev.D20B, ev.D20}
 }
 
-// d20Proto is the d20 of an attack event as a DiceRoll.
+// d20Proto is the d20 of an attack event as a DiceRoll, with the die Lucky rolled again.
 func d20Proto(ev actionEvent) *playv1.DiceRoll {
 	roll := diceRoll(clamp32(len(ev.d20Faces()), 1, 2), 20, ev.d20Faces(), ev.Modifier, ev.Total, ev.Physical)
 	roll.CountedIndex = ev.Counted
+	roll.Rerolled = ev.Lucky.proto()
 	return roll
 }
 

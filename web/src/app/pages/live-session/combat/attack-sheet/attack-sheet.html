@@ -157,8 +157,21 @@
         [damage]="damage()"
         [waiting]="waiting()"
         [damageLine]="damageLine()"
-        [asking]="stage() === 'inspire'"
+        [asking]="asking()"
       />
+
+      @if (stage() === 'lucky') {
+        <app-lucky-prompt
+          [offer]="luckyOffer()"
+          [canApp]="canApp"
+          [canType]="canType"
+          [preferApp]="preferApp"
+          [busy]="busy()"
+          [(typing)]="typing"
+          (reroll)="answerLucky(true, $event)"
+          (keep)="answerLucky(false, null)"
+        />
+      }
 
       @if (stage() === 'inspire') {
         <app-inspiration-prompt

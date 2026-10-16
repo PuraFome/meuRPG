@@ -39,6 +39,7 @@ import { effectWords, gainWords, poolRollText, reasonWords } from './hp-effects'
 import { trapLogText } from '../traps/trap-log';
 import { article } from '../format/article';
 import { naturalMark } from './natural-mark';
+import { luckyText } from './lucky';
 
 /**
  * The combat log as the screens read it (E6-11, E6-14, E6-15): the server
@@ -893,7 +894,9 @@ export function logLine(
         icon: e.key.startsWith('spell:') ? 'auto_awesome' : 'swords',
         text: attackText(e),
         roll: pairOf(e.attackRoll, 'd20 do ataque'),
-        notes: [modeNote(e.modeChange), ...damageNotes(e.damage)].filter(Boolean),
+        notes: [modeNote(e.modeChange), luckyText(e.attackRoll), ...damageNotes(e.damage)].filter(
+          Boolean,
+        ),
       };
     case CombatLogKind.ACTION:
       return {

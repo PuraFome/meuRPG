@@ -1082,12 +1082,18 @@ func (x *DamagePart) GetResourceLeft() int32 {
 	return 0
 }
 
-// Reroll is a die rerolled by Great Weapon Fighting.
+// Reroll is a die rolled again: a damage die by Great Weapon Fighting, or the d20 of an
+// attack roll that showed a 1 by the halfling's Lucky.
 type Reroll struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Index         int32                  `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
-	From          int32                  `protobuf:"varint,2,opt,name=from,proto3" json:"from,omitempty"`
-	To            int32                  `protobuf:"varint,3,opt,name=to,proto3" json:"to,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The die, as an index into the roll's `faces` (in the order rolled).
+	Index int32 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	From  int32 `protobuf:"varint,2,opt,name=from,proto3" json:"from,omitempty"`
+	To    int32 `protobuf:"varint,3,opt,name=to,proto3" json:"to,omitempty"`
+	// The feature that rolled it again, as a content key: "trait:lucky" for the halfling's
+	// Lucky (its Portuguese name is in the content's names, "Sortudo"). Empty for Great
+	// Weapon Fighting, which only rerolls damage dice.
+	SourceKey     string `protobuf:"bytes,4,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1141,6 +1147,13 @@ func (x *Reroll) GetTo() int32 {
 		return x.To
 	}
 	return 0
+}
+
+func (x *Reroll) GetSourceKey() string {
+	if x != nil {
+		return x.SourceKey
+	}
+	return ""
 }
 
 // DamagePartRoll is what one part of a damage rolled.
@@ -1678,11 +1691,13 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\fslot_options\x18\x10 \x03(\v2\x1a.meurpg.play.v1.SlotOptionR\vslotOptions\x12\x17\n" +
 	"\anote_pt\x18\x11 \x01(\tR\x06notePt\x12\x1a\n" +
 	"\bmaneuver\x18\x12 \x01(\bR\bmaneuver\x12#\n" +
-	"\rresource_left\x18\x13 \x01(\x05R\fresourceLeft\"B\n" +
+	"\rresource_left\x18\x13 \x01(\x05R\fresourceLeft\"a\n" +
 	"\x06Reroll\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\x05R\x04from\x12\x0e\n" +
-	"\x02to\x18\x03 \x01(\x05R\x02to\"\xed\x02\n" +
+	"\x02to\x18\x03 \x01(\x05R\x02to\x12\x1d\n" +
+	"\n" +
+	"source_key\x18\x04 \x01(\tR\tsourceKey\"\xed\x02\n" +
 	"\x0eDamagePartRoll\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1d\n" +

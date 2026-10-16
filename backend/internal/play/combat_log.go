@@ -638,6 +638,7 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 			out.Reason = e.rolls.reasonOf(e.ev)
 			out.BonusDice = bonusDiceOf(e.ev)
 			out.AttackRoll.ExtraDice = extraDiceProto(e.ev.Extra, v.master, nil)
+			out.AttackRoll.Rerolled = e.ev.Lucky.proto() // "Sortudo: 1 → 14", with the d20 it changed
 		}
 		if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 			out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
