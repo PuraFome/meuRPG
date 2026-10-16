@@ -17,6 +17,49 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
+// partRemoval is what RemoveDamagePart reads of its request, checked.
+type partRemoval struct {
+	m         authz.Membership
+	key       string
+	encID     string
+	pendingID string
+	partKey   string
+	reason    string
+}
+
+// partRemovalOf checks the request in the order the handler always refused it: the
+// master's role, the key, the combat, the pending damage, the part, the reason.
+func partRemovalOf(ctx context.Context, msg *playv1.RemoveDamagePartRequest) (partRemoval, error) {
+	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return partRemoval{}, err
+	}
+	key, err := parseKey(msg.GetIdempotencyKey())
+	if err != nil {
+		return partRemoval{}, err
+	}
+	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	if err != nil {
+		return partRemoval{}, err
+	}
+	pendingID, err := parseCombatID(msg.GetPendingDamageId(), "pending damage")
+	if err != nil {
+		return partRemoval{}, err
+	}
+	partKey := msg.GetPartKey()
+	if partKey == "" || len(partKey) > maxPartKeyLen {
+		return partRemoval{}, connect.NewError(connect.CodeInvalidArgument, errors.New("part_key must name a part of the damage"))
+	}
+	reason, err := cleanReason(msg.GetReason())
+	if err != nil {
+		return partRemoval{}, err
+	}
+	return partRemoval{m: m, key: key, encID: encID, pendingID: pendingID, partKey: partKey, reason: reason}, nil
+}
+
+// maxPartKeyLen is the longest key of a part of a damage the master may name.
+const maxPartKeyLen = 100
+
 // RemoveDamagePart implements playv1connect.CombatServiceHandler: the master takes an
 // extra out of a rolled damage, with a reason (PM-06b, decision 17). Sneak Attack
 // without an ally near the target in a combat with no map is the usual case: the
@@ -27,98 +70,17 @@ func (s *Service) RemoveDamagePart(
 	ctx context.Context,
 	req *connect.Request[playv1.RemoveDamagePartRequest],
 ) (*connect.Response[playv1.RemoveDamagePartResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	r, err := partRemovalOf(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	pendingID, err := parseCombatID(req.Msg.GetPendingDamageId(), "pending damage")
-	if err != nil {
-		return nil, err
-	}
-	partKey := req.Msg.GetPartKey()
-	if partKey == "" || len(partKey) > 100 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("part_key must name a part of the damage"))
-	}
-	reason, err := cleanReason(req.Msg.GetReason())
-	if err != nil {
-		return nil, err
-	}
-
 	var made actionEvent
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventDamagePartRemoved, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		p, err := rolledPending(ctx, c, pendingID)
+	res, err := s.write(ctx, combatWrite{m: r.m, key: r.key, hash: idem.Hash(req.Msg), kind: eventDamagePartRemoved, encounterID: r.encID}, func(c *combatTx) (any, error) {
+		ev, err := s.removePartInTx(ctx, c, r)
 		if err != nil {
 			return nil, err
 		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
-		target, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
-		// The master gave a player's character the damage already: it went through the
-		// vitals, and he corrects them by hand.
-		if p.Status == pendingApplied && !holdsHP(target) {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied to a character already")
-		}
-		parts, rolls := readParts(p.Parts), readPartRolls(p.PartRolls)
-		if !takeOut(parts, rolls, partKey) {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE, "that part cannot be taken out")
-		}
-		if err := giveBackOnce(ctx, c, attacker, partKey); err != nil {
-			return nil, err
-		}
-
-		byType, total := countedByType(rolls)
-		// The target's modifiers are the ones the roll used: the stored groups say them.
-		land := settleSteps(byType, modsOfGroups(readStepGroups(p.Steps)), nil)
-		amount := clamp32(total, 0, math.MaxInt32)
-		var after *int32
-		if land.changed {
-			after = &land.amount
-		}
-		made = actionEvent{
-			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: partKey,
-			DamageType: p.DamageType, Rolled: num(p.Amount), Total: amount,
-		}
-		landed := amount
-		if land.changed {
-			landed = land.amount
-		}
-		made.Amount = landed
-		if holdsHP(target) && p.Status == pendingApplied {
-			now, err := giveBackHitPoints(ctx, c, p, target, landed)
-			if err != nil {
-				return nil, err
-			}
-			made.Before, made.After = new(hpOf(target)), &now
-			amount = landed
-		}
-		if err := c.q.SetPendingDamageAmount(ctx, playdb.SetPendingDamageAmountParams{
-			ID: p.ID, Amount: &amount, RollTotal: new(clamp32(total, 0, math.MaxInt32)), Parts: mustJSON(parts), PartRolls: mustJSON(rolls), Steps: mustJSON(land.groups), AfterSteps: after,
-		}); err != nil {
-			return nil, fmt.Errorf("keep the damage without the extra: %w", err)
-		}
-		row, err := c.q.InsertCombatReason(ctx, playdb.InsertCombatReasonParams{EncounterID: c.enc.ID, Kind: "part_removed", Reason: reason, CreatedAt: c.now})
-		if err != nil {
-			return nil, fmt.Errorf("keep the reason: %w", err)
-		}
-		made.ReasonID, made.Amount = row.ID, amount
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &attacker.CharacterID
+		made = ev
 		return made, nil
 	})
 	if err != nil {
@@ -128,9 +90,9 @@ func (s *Service) RemoveDamagePart(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the removal", err)
 	}
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
+	out, err := s.finish(ctx, r.m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, r.m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, r.m.CampaignID, d.enc.ID, !ev.Secret)
 	})
 	if err != nil {
 		return nil, err
@@ -140,6 +102,106 @@ func (s *Service) RemoveDamagePart(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.RemoveDamagePartResponse{Encounter: out, PendingDamage: pending}), nil
+}
+
+// removePartInTx is the removal inside its transaction: the part comes out of the rolled
+// damage, the damage is worked out again and kept, and the removal's event is returned.
+func (s *Service) removePartInTx(ctx context.Context, c *combatTx, r partRemoval) (actionEvent, error) {
+	if err := notEnded(c.enc); err != nil {
+		return actionEvent{}, err
+	}
+	p, err := rolledPending(ctx, c, r.pendingID)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+	}
+	attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	target, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
+	// The master gave a player's character the damage already: it went through the
+	// vitals, and he corrects them by hand.
+	if p.Status == pendingApplied && !holdsHP(target) {
+		return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied to a character already")
+	}
+	parts, rolls := readParts(p.Parts), readPartRolls(p.PartRolls)
+	if !takeOut(parts, rolls, r.partKey) {
+		return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE, "that part cannot be taken out")
+	}
+	if err := giveBackOnce(ctx, c, attacker, r.partKey); err != nil {
+		return actionEvent{}, err
+	}
+	rem, err := workOutRemoval(ctx, c, p, attacker, target, r.partKey, rolls)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	made, err := keepRemoval(ctx, c, p, parts, rolls, rem, r.reason)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &attacker.CharacterID
+	return made, nil
+}
+
+// removal is the damage worked out again without the part that came out.
+type removal struct {
+	ev     actionEvent
+	total  int32 // the roll's total, before the target's modifiers
+	amount int32 // the amount the pending damage keeps
+	land   landing
+}
+
+// workOutRemoval works the damage out again from the parts that still count, through the
+// target's modifiers, and gives an NPC that took the damage at once the difference.
+func workOutRemoval(ctx context.Context, c *combatTx, p playdb.PendingDamage, attacker, target playdb.Combatant, partKey string, rolls []partRoll) (removal, error) {
+	byType, total := countedByType(rolls)
+	// The target's modifiers are the ones the roll used: the stored groups say them.
+	land := settleSteps(byType, modsOfGroups(readStepGroups(p.Steps)), nil)
+	amount := clamp32(total, 0, math.MaxInt32)
+	rem := removal{total: amount, amount: amount, land: land}
+	rem.ev = actionEvent{
+		Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: partKey,
+		DamageType: p.DamageType, Rolled: num(p.Amount), Total: amount,
+	}
+	landed := amount
+	if land.changed {
+		landed = land.amount
+	}
+	rem.ev.Amount = landed
+	if holdsHP(target) && p.Status == pendingApplied {
+		now, err := giveBackHitPoints(ctx, c, p, target, landed)
+		if err != nil {
+			return removal{}, err
+		}
+		rem.ev.Before, rem.ev.After = new(hpOf(target)), &now
+		rem.amount = landed
+	}
+	return rem, nil
+}
+
+// keepRemoval stores the damage without the part and the master's reason, and returns the
+// removal's event with the reason and the amount the damage keeps.
+func keepRemoval(ctx context.Context, c *combatTx, p playdb.PendingDamage, parts []partRecord, rolls []partRoll, rem removal, reason string) (actionEvent, error) {
+	var after *int32
+	if rem.land.changed {
+		after = &rem.land.amount
+	}
+	if err := c.q.SetPendingDamageAmount(ctx, playdb.SetPendingDamageAmountParams{
+		ID: p.ID, Amount: &rem.amount, RollTotal: &rem.total, Parts: mustJSON(parts), PartRolls: mustJSON(rolls), Steps: mustJSON(rem.land.groups), AfterSteps: after,
+	}); err != nil {
+		return actionEvent{}, fmt.Errorf("keep the damage without the extra: %w", err)
+	}
+	row, err := c.q.InsertCombatReason(ctx, playdb.InsertCombatReasonParams{EncounterID: c.enc.ID, Kind: "part_removed", Reason: reason, CreatedAt: c.now})
+	if err != nil {
+		return actionEvent{}, fmt.Errorf("keep the reason: %w", err)
+	}
+	made := rem.ev
+	made.ReasonID, made.Amount = row.ID, rem.amount
+	return made, nil
 }
 
 // countedByType sums the dice and numbers of the parts that count, by damage type, and

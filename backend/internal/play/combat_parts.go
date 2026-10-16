@@ -562,47 +562,11 @@ type rollPartsInput struct {
 // every die; with physical dice the player typed one sum for each group of dice.
 func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 	out := partsRoll{byType: map[string]int{}, physical: !r.in.inApp}
-	var final []partRecord
-	chosen := 0
-	for _, sp := range r.parts {
-		if sp.Kind == partExtra && sp.Choosable {
-			mark := r.choice.marks[sp.Key]
-			selected := sp.Selected
-			if r.choice.chosen {
-				selected = mark != nil
-			}
-			if selected {
-				if sp.Resource != "" {
-					// One maneuver per attack.
-					if chosen++; chosen > 1 {
-						return partsRoll{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE, "only one maneuver for each attack")
-					}
-				}
-				if err := r.selectOK(sp, mark); err != nil {
-					return partsRoll{}, err
-				}
-			}
-			sp.Selected = selected
-			if mark != nil {
-				sp.SlotLevel, sp.Pact = mark.GetSlotLevel(), mark.GetPact()
-			}
-		}
-		final = append(final, sp)
+	final, err := r.markedParts()
+	if err != nil {
+		return partsRoll{}, err
 	}
-	// The extra die of Divine Smite follows the smite.
-	smite := slices.IndexFunc(final, func(sp partRecord) bool { return sp.Key == combat.ExtraDivineSmite && sp.Selected })
-	for i := range final {
-		if final[i].Key == combat.ExtraDivineSmiteExtra {
-			final[i].Selected = smite >= 0
-			if smite >= 0 {
-				final[i].SlotLevel, final[i].Pact = final[smite].SlotLevel, final[smite].Pact
-			}
-		}
-	}
-	// A smite's dice depend on the slot: 2d8 for a 1st level slot, one more for each level above.
-	if smite >= 0 {
-		final[smite].Count = clamp32(combat.SmiteDice(int(final[smite].SlotLevel)), 0, 100)
-	}
+	linkDivineSmite(final)
 	diceParts := 0
 	for _, sp := range final {
 		if r.counts(sp) && sp.Count > 0 && sp.Sides > 0 {
@@ -613,38 +577,118 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 		if !r.counts(sp) {
 			continue
 		}
-		count, fixed := r.diceOf(sp)
-		pr := partRoll{
-			Key: sp.Key, Label: sp.Label, Count: clamp32(count, 0, 200), Sides: sp.Sides, Flat: sp.Flat, Fixed: clamp32(fixed, 0, 10000),
-			DamageType: sp.DamageType, Conditional: sp.Conditional, Counted: true, Physical: !r.in.inApp,
-			Resource: sp.Resource, Rider: sp.Rider,
-		}
-		if count > 0 {
-			if err := s.rollPartDice(&pr, sp, r, diceParts); err != nil {
-				return partsRoll{}, err
-			}
-		}
-		// The extra die of Divine Smite counts against an undead or a fiend only.
-		if sp.Key == combat.ExtraDivineSmiteExtra && r.target.CreatureType != "undead" && r.target.CreatureType != "fiend" {
-			pr.Counted = false
+		pr, err := s.rollPart(sp, r, diceParts)
+		if err != nil {
+			return partsRoll{}, err
 		}
 		out.rolls = append(out.rolls, pr)
 		out.parts = append(out.parts, sp)
 	}
-	for _, pr := range out.rolls {
+	out.sumUp()
+	return out, nil
+}
+
+// markedParts applies the player's marks to the choosable extras: the ones marked are
+// checked now, and the slot a mark names goes with its part.
+func (r rollPartsInput) markedParts() ([]partRecord, error) {
+	var final []partRecord
+	chosen := 0
+	for _, sp := range r.parts {
+		marked, err := r.markedPart(sp, &chosen)
+		if err != nil {
+			return nil, err
+		}
+		final = append(final, marked)
+	}
+	return final, nil
+}
+
+// markedPart is a part with the player's mark applied (a part that is no choosable extra
+// stays as it is). chosen counts the maneuvers marked so far.
+func (r rollPartsInput) markedPart(sp partRecord, chosen *int) (partRecord, error) {
+	if sp.Kind != partExtra || !sp.Choosable {
+		return sp, nil
+	}
+	mark := r.choice.marks[sp.Key]
+	selected := sp.Selected
+	if r.choice.chosen {
+		selected = mark != nil
+	}
+	if selected {
+		if err := r.checkMarked(sp, mark, chosen); err != nil {
+			return sp, err
+		}
+	}
+	sp.Selected = selected
+	if mark != nil {
+		sp.SlotLevel, sp.Pact = mark.GetSlotLevel(), mark.GetPact()
+	}
+	return sp, nil
+}
+
+// checkMarked refuses a second maneuver for the attack and an extra that does not hold now.
+func (r rollPartsInput) checkMarked(sp partRecord, mark *playv1.SelectedExtra, chosen *int) error {
+	if sp.Resource != "" {
+		// One maneuver per attack.
+		if *chosen++; *chosen > 1 {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE, "only one maneuver for each attack")
+		}
+	}
+	return r.selectOK(sp, mark)
+}
+
+// linkDivineSmite makes the extra die of Divine Smite follow the smite, and sets the
+// smite's dice by the slot it spends: 2d8 for a 1st level slot, one more for each level above.
+func linkDivineSmite(final []partRecord) {
+	smite := slices.IndexFunc(final, func(sp partRecord) bool { return sp.Key == combat.ExtraDivineSmite && sp.Selected })
+	for i := range final {
+		if final[i].Key == combat.ExtraDivineSmiteExtra {
+			final[i].Selected = smite >= 0
+			if smite >= 0 {
+				final[i].SlotLevel, final[i].Pact = final[smite].SlotLevel, final[smite].Pact
+			}
+		}
+	}
+	if smite >= 0 {
+		final[smite].Count = clamp32(combat.SmiteDice(int(final[smite].SlotLevel)), 0, 100)
+	}
+}
+
+// rollPart rolls one part that counts.
+func (s *Service) rollPart(sp partRecord, r rollPartsInput, diceParts int) (partRoll, error) {
+	count, fixed := r.diceOf(sp)
+	pr := partRoll{
+		Key: sp.Key, Label: sp.Label, Count: clamp32(count, 0, 200), Sides: sp.Sides, Flat: sp.Flat, Fixed: clamp32(fixed, 0, 10000),
+		DamageType: sp.DamageType, Conditional: sp.Conditional, Counted: true, Physical: !r.in.inApp,
+		Resource: sp.Resource, Rider: sp.Rider,
+	}
+	if count > 0 {
+		if err := s.rollPartDice(&pr, sp, r, diceParts); err != nil {
+			return partRoll{}, err
+		}
+	}
+	// The extra die of Divine Smite counts against an undead or a fiend only.
+	if sp.Key == combat.ExtraDivineSmiteExtra && r.target.CreatureType != "undead" && r.target.CreatureType != "fiend" {
+		pr.Counted = false
+	}
+	return pr, nil
+}
+
+// sumUp adds the rolls that count, by damage type and all together, never below 0.
+func (r *partsRoll) sumUp() {
+	for _, pr := range r.rolls {
 		if !pr.Counted {
 			continue
 		}
 		n := int(pr.Sum) + int(pr.Flat) + int(pr.Fixed)
-		out.byType[pr.DamageType] += n
+		r.byType[pr.DamageType] += n
 	}
-	for typ, n := range out.byType {
-		out.byType[typ] = max(n, 0)
+	for typ, n := range r.byType {
+		r.byType[typ] = max(n, 0)
 	}
-	for _, n := range out.byType {
-		out.total += n
+	for _, n := range r.byType {
+		r.total += n
 	}
-	return out, nil
 }
 
 // diceOf is the dice a part rolls and the fixed number that comes without rolling: the
@@ -676,26 +720,7 @@ func (r rollPartsInput) counts(sp partRecord) bool {
 func (s *Service) rollPartDice(pr *partRoll, sp partRecord, r rollPartsInput, diceParts int) error {
 	expr := dice.Expr{Count: int(pr.Count), Sides: int(pr.Sides)}
 	if r.in.inApp {
-		res, err := dice.Roll(s.roller, expr)
-		if err != nil {
-			return fmt.Errorf("roll the damage: %w", err)
-		}
-		faces := res.Faces
-		if sp.Reroll {
-			kept, rerolls, err := combat.GreatWeaponFighting(faces, int(pr.Sides), s.roller.Roll)
-			if err != nil {
-				return fmt.Errorf("reroll the damage: %w", err)
-			}
-			faces = kept
-			for _, rr := range rerolls {
-				pr.Rerolled = append(pr.Rerolled, rerolled{Index: clamp32(rr.Index, 0, 200), From: clamp32(rr.From, 0, 100), To: clamp32(rr.To, 0, 100)})
-			}
-		}
-		pr.Faces = faces32(faces)
-		for _, f := range faces {
-			pr.Sum += clamp32(f, 0, 100)
-		}
-		return nil
+		return s.rollInApp(pr, sp, expr)
 	}
 	typed, ok := r.typed[sp.Key]
 	if !ok && diceParts == 1 {
@@ -708,6 +733,31 @@ func (s *Service) rollPartDice(pr *partRoll, sp partRecord, r rollPartsInput, di
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the sum of %s must be %d to %d", sp.Key, expr.Count, expr.Count*expr.Sides))
 	}
 	pr.Sum = clamp32(typed, 0, 100000)
+	return nil
+}
+
+// rollInApp rolls the dice of a part with the server's roller, rerolling the low faces of
+// a weapon that does so.
+func (s *Service) rollInApp(pr *partRoll, sp partRecord, expr dice.Expr) error {
+	res, err := dice.Roll(s.roller, expr)
+	if err != nil {
+		return fmt.Errorf("roll the damage: %w", err)
+	}
+	faces := res.Faces
+	if sp.Reroll {
+		kept, rerolls, err := combat.GreatWeaponFighting(faces, int(pr.Sides), s.roller.Roll)
+		if err != nil {
+			return fmt.Errorf("reroll the damage: %w", err)
+		}
+		faces = kept
+		for _, rr := range rerolls {
+			pr.Rerolled = append(pr.Rerolled, rerolled{Index: clamp32(rr.Index, 0, 200), From: clamp32(rr.From, 0, 100), To: clamp32(rr.To, 0, 100)})
+		}
+	}
+	pr.Faces = faces32(faces)
+	for _, f := range faces {
+		pr.Sum += clamp32(f, 0, 100)
+	}
 	return nil
 }
 
@@ -821,63 +871,90 @@ func (s *Service) isHurt(ctx context.Context, c *combatTx, campaignID string, wh
 	return vit.GetHitPointsCurrent() < vit.GetHitPointsMax(), nil
 }
 
+// extraCheck is what the check of a marked extra reads of the combat when the damage is
+// rolled: the attacker, and the turn the once-per-turn marks are compared with.
+type extraCheck struct {
+	c          *combatTx
+	campaignID string
+	attacker   playdb.Combatant
+	turn       string
+}
+
+// errExtraNotAvailable is the refusal of an extra that does not hold now.
+func errExtraNotAvailable() error {
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE, "that extra does not hold now")
+}
+
 // selectionChecker returns the check a marked extra passes when the damage is rolled:
 // its condition still holds (the hit stored it; the once-per-turn marks and the
 // concentration are read again), and a Divine Smite names a free slot. It also
 // remembers the slot vitals it read.
 func (s *Service) selectionChecker(ctx context.Context, c *combatTx, campaignID string, attacker playdb.Combatant) func(sp partRecord, mark *playv1.SelectedExtra) error {
-	key := turnKey(c.enc)
-	notAvailable := func() error {
-		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE, "that extra does not hold now")
-	}
+	e := extraCheck{c: c, campaignID: campaignID, attacker: attacker, turn: turnKey(c.enc)}
 	return func(sp partRecord, mark *playv1.SelectedExtra) error {
-		if !sp.Available {
-			return notAvailable()
-		}
-		if sp.Resource != "" {
-			// A table maneuver: the attacker's own, with a use left now.
-			if attacker.Kind != kindPlayer {
-				return notAvailable()
-			}
-			vit, err := s.vitals.GetVitalsTx(ctx, c.tx, campaignID, attacker.CharacterID)
-			if err != nil {
-				return err
-			}
-			if usesLeftOf(vit)[sp.Resource] <= 0 {
-				return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left")
-			}
-			return nil
-		}
-		switch sp.Key {
-		case combat.ExtraSneakAttack:
-			if deref(attacker.SneakAttackTurn) == key {
-				return notAvailable()
-			}
-		case combat.ExtraColossusSlayer:
-			if deref(attacker.ColossusSlayerTurn) == key {
-				return notAvailable()
-			}
-		case combat.ExtraHuntersMark:
-			if deref(attacker.ConcentrationSpell) != "spell:hunters-mark" {
-				return notAvailable()
-			}
-		case combat.ExtraDivineSmite:
-			if mark == nil || mark.GetSlotLevel() < 1 || mark.GetSlotLevel() > 9 {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("a Divine Smite names the slot it spends"))
-			}
-			vit, err := s.vitals.GetVitalsTx(ctx, c.tx, campaignID, attacker.CharacterID)
-			if err != nil {
-				return err
-			}
-			if !slices.ContainsFunc(freeSmiteSlots(vit), func(o *playv1.SlotOption) bool {
-				return o.GetLevel() == mark.GetSlotLevel() && o.GetPact() == mark.GetPact()
-			}) {
-				return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot of that level",
-					func(b *playv1.EncounterBlocked) { b.MinLevel = mark.GetSlotLevel() })
-			}
-		}
-		return nil
+		return s.checkExtra(ctx, e, sp, mark)
 	}
+}
+
+// checkExtra is the check of one marked extra.
+func (s *Service) checkExtra(ctx context.Context, e extraCheck, sp partRecord, mark *playv1.SelectedExtra) error {
+	if !sp.Available {
+		return errExtraNotAvailable()
+	}
+	if sp.Resource != "" {
+		return s.checkManeuverUses(ctx, e, sp)
+	}
+	switch sp.Key {
+	case combat.ExtraSneakAttack:
+		if deref(e.attacker.SneakAttackTurn) == e.turn {
+			return errExtraNotAvailable()
+		}
+	case combat.ExtraColossusSlayer:
+		if deref(e.attacker.ColossusSlayerTurn) == e.turn {
+			return errExtraNotAvailable()
+		}
+	case combat.ExtraHuntersMark:
+		if deref(e.attacker.ConcentrationSpell) != "spell:hunters-mark" {
+			return errExtraNotAvailable()
+		}
+	case combat.ExtraDivineSmite:
+		return s.checkSmiteSlot(ctx, e, mark)
+	}
+	return nil
+}
+
+// checkManeuverUses checks a table maneuver: the attacker's own, with a use left now.
+func (s *Service) checkManeuverUses(ctx context.Context, e extraCheck, sp partRecord) error {
+	if e.attacker.Kind != kindPlayer {
+		return errExtraNotAvailable()
+	}
+	vit, err := s.vitals.GetVitalsTx(ctx, e.c.tx, e.campaignID, e.attacker.CharacterID)
+	if err != nil {
+		return err
+	}
+	if usesLeftOf(vit)[sp.Resource] <= 0 {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left")
+	}
+	return nil
+}
+
+// checkSmiteSlot checks that a Divine Smite names a slot level and that the attacker has
+// a free slot of it.
+func (s *Service) checkSmiteSlot(ctx context.Context, e extraCheck, mark *playv1.SelectedExtra) error {
+	if mark == nil || mark.GetSlotLevel() < 1 || mark.GetSlotLevel() > 9 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a Divine Smite names the slot it spends"))
+	}
+	vit, err := s.vitals.GetVitalsTx(ctx, e.c.tx, e.campaignID, e.attacker.CharacterID)
+	if err != nil {
+		return err
+	}
+	if !slices.ContainsFunc(freeSmiteSlots(vit), func(o *playv1.SlotOption) bool {
+		return o.GetLevel() == mark.GetSlotLevel() && o.GetPact() == mark.GetPact()
+	}) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot of that level",
+			func(b *playv1.EncounterBlocked) { b.MinLevel = mark.GetSlotLevel() })
+	}
+	return nil
 }
 
 // ---- resistance, vulnerability and immunity ----
@@ -888,37 +965,45 @@ func (s *Service) selectionChecker(ctx context.Context, c *combatTx, campaignID 
 // and Vulnerability"). Rage's resistance holds only while the state lasts and no heavy
 // armor is worn.
 func (s *Service) modifiersOf(ctx context.Context, c *combatTx, campaignID string, states map[string][]playdb.CombatantState, who playdb.Combatant) ([]combat.Modifier, error) {
-	var out []combat.Modifier
 	if holdsHP(who) {
-		mods, err := s.roster.DamageModifiers(ctx, c.tx, campaignID, who.CharacterID, deref(who.MonsterKey))
-		if err != nil {
-			return nil, err
-		}
-		source := mods.Source
-		if source == "" {
-			source = "stat-block"
-		}
-		if len(mods.Immune) > 0 {
-			out = append(out, combat.Modifier{Kind: combat.StepImmunity, Source: source, DamageTypes: mods.Immune})
-		}
-		if len(mods.Resistant) > 0 {
-			out = append(out, combat.Modifier{Kind: combat.StepResistance, Source: source, DamageTypes: mods.Resistant})
-		}
-		if len(mods.Vulnerable) > 0 {
-			out = append(out, combat.Modifier{Kind: combat.StepVulnerability, Source: source, DamageTypes: mods.Vulnerable})
-		}
-		return out, nil
+		return s.statBlockModifiers(ctx, c, campaignID, who)
 	}
 	sheet, err := s.sheetOf(ctx, c.tx, campaignID, who)
 	if err != nil {
 		return nil, err
 	}
+	var out []combat.Modifier
 	raging := hasState(states, who.ID, stateRage) && !sheet.Traits.HeavyArmor
 	for _, r := range sheet.Traits.Resistances {
 		if r.While == rules.ResistanceWhileRage && !raging {
 			continue
 		}
 		out = append(out, combat.Modifier{Kind: combat.StepResistance, Source: r.Source, DamageTypes: r.DamageTypes})
+	}
+	return out, nil
+}
+
+// statBlockModifiers are the immunities, resistances and vulnerabilities of a creature
+// or an NPC, from its stat block.
+func (s *Service) statBlockModifiers(ctx context.Context, c *combatTx, campaignID string, who playdb.Combatant) ([]combat.Modifier, error) {
+	mods, err := s.roster.DamageModifiers(ctx, c.tx, campaignID, who.CharacterID, deref(who.MonsterKey))
+	if err != nil {
+		return nil, err
+	}
+	source := mods.Source
+	if source == "" {
+		source = "stat-block"
+	}
+	var out []combat.Modifier
+	for _, g := range []struct {
+		kind  string
+		types []string
+	}{
+		{combat.StepImmunity, mods.Immune}, {combat.StepResistance, mods.Resistant}, {combat.StepVulnerability, mods.Vulnerable},
+	} {
+		if len(g.types) > 0 {
+			out = append(out, combat.Modifier{Kind: g.kind, Source: source, DamageTypes: g.types})
+		}
 	}
 	return out, nil
 }
@@ -989,38 +1074,51 @@ func dtPT(key string) string { return damageTypePT[key] }
 func (s *Service) pendingView(ctx context.Context, campaignID string, p playdb.PendingDamage, cs []playdb.Combatant, v combatViewer) *playv1.PendingDamage {
 	out := pendingProto(p, cs)
 	out.Parts = partsProto(p, ruleOfPending(p), dtPT)
-	if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID }); i >= 0 && !v.master && holdsHP(cs[i]) && !v.owns(cs[i]) {
-		// A player reads the damage as rolled: not what the target's modifiers made of it,
-		// nor whether a conditional die counted.
-		if shown, ok := shownOfPending(p); ok {
-			out.Amount = shown
-			if out.Roll != nil {
-				out.Roll.Total = shown
-			}
-		}
+	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID })
+	if i >= 0 && !v.master && holdsHP(cs[i]) && !v.owns(cs[i]) {
+		showAsRolled(out, p)
 	}
 	out.PartRolls = partRollsProto(p, v.master, dtPT)
-	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID })
 	if i >= 0 && (v.master || (cs[i].Kind == kindPlayer && v.owns(cs[i]))) {
-		groups := readStepGroups(p.Steps)
-		if len(groups) > 0 {
+		if groups := readStepGroups(p.Steps); len(groups) > 0 {
 			out.Steps = stepsProto(groups, nil, s.namesFor(ctx, campaignID), dtPT)
 			out.AmountAfterSteps = p.AfterSteps
 		}
 	}
 	if p.Status == pendingAwaitingRoll && slices.ContainsFunc(out.Parts, func(d *playv1.DamagePart) bool { return d.GetNeedsSlot() }) {
-		if j := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == deref(p.AttackerID) }); j >= 0 && cs[j].Kind == kindPlayer {
-			if vit, err := s.vitals.GetVitals(ctx, campaignID, cs[j].CharacterID); err == nil {
-				slots := freeSmiteSlots(vit)
-				for _, d := range out.Parts {
-					if d.GetNeedsSlot() {
-						d.SlotOptions = slots
-					}
-				}
-			}
-		}
+		s.addSlotOptions(ctx, campaignID, out, p, cs)
 	}
 	return out
+}
+
+// showAsRolled makes a player read the damage as rolled: not what the target's modifiers
+// made of it, nor whether a conditional die counted.
+func showAsRolled(out *playv1.PendingDamage, p playdb.PendingDamage) {
+	if shown, ok := shownOfPending(p); ok {
+		out.Amount = shown
+		if out.Roll != nil {
+			out.Roll.Total = shown
+		}
+	}
+}
+
+// addSlotOptions gives the parts that need a slot (a Divine Smite) the slots the attacker,
+// a player's character, has free.
+func (s *Service) addSlotOptions(ctx context.Context, campaignID string, out *playv1.PendingDamage, p playdb.PendingDamage, cs []playdb.Combatant) {
+	j := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == deref(p.AttackerID) })
+	if j < 0 || cs[j].Kind != kindPlayer {
+		return
+	}
+	vit, err := s.vitals.GetVitals(ctx, campaignID, cs[j].CharacterID)
+	if err != nil {
+		return
+	}
+	slots := freeSmiteSlots(vit)
+	for _, d := range out.Parts {
+		if d.GetNeedsSlot() {
+			d.SlotOptions = slots
+		}
+	}
 }
 
 // settleLanding is the damage that lands, and the steps that made it, for a target
@@ -1074,43 +1172,75 @@ func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID 
 func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.Combatant, pr *partsRoll, ev *actionEvent) (*playv1.CharacterVitals, error) {
 	ev.Parts = pr.rolls
 	var vit *playv1.CharacterVitals
-	key := turnKey(c.enc)
-	sneak, colossus := attacker.SneakAttackTurn, attacker.ColossusSlayerTurn
+	once := onceTurn{key: turnKey(c.enc), sneak: attacker.SneakAttackTurn, colossus: attacker.ColossusSlayerTurn}
 	for i, r := range pr.rolls {
 		if !r.Counted && !r.Conditional {
 			continue
 		}
-		part := pr.parts[i]
-		if part.Resource != "" && part.Kind == partExtra {
-			v, err := s.spendResource(ctx, c, attacker.CharacterID, part.Resource, 1)
-			if err != nil {
-				return nil, err
-			}
+		v, spent, err := s.spendForPart(ctx, c, attacker, pr.parts[i], r.Key, ev)
+		if err != nil {
+			return nil, err
+		}
+		if spent {
 			vit = v
-			ev.ManeuverSpent = append(ev.ManeuverSpent, part.Resource)
 			continue
 		}
-		switch r.Key {
-		case combat.ExtraDivineSmite:
-			ref := slotRef{Level: part.SlotLevel, Pact: part.Pact}
-			var err error
-			if vit, err = s.spendSlot(ctx, c, attacker.CharacterID, ref, 1); err != nil {
-				return nil, err
-			}
-			ev.Slot = &ref
-		case combat.ExtraSneakAttack:
-			sneak = &key
-		case combat.ExtraColossusSlayer:
-			colossus = &key
-		}
+		once.mark(r.Key)
 	}
-	if sneak != attacker.SneakAttackTurn || colossus != attacker.ColossusSlayerTurn {
-		ev.OnceBefore = &onceMarks{Sneak: deref(attacker.SneakAttackTurn), Colossus: deref(attacker.ColossusSlayerTurn)}
-		if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{ID: attacker.ID, SneakAttackTurn: sneak, ColossusSlayerTurn: colossus}); err != nil {
-			return nil, fmt.Errorf("mark the once-per-turn damage: %w", err)
-		}
+	if err := s.keepOnceMarks(ctx, c, attacker, once, ev); err != nil {
+		return nil, err
 	}
 	return vit, nil
+}
+
+// onceTurn is the once-per-turn marks of the attacker while the parts of a roll settle.
+type onceTurn struct {
+	key             string // the turn
+	sneak, colossus *string
+}
+
+// mark notes that the part of the key was used this turn.
+func (o *onceTurn) mark(partKey string) {
+	switch partKey {
+	case combat.ExtraSneakAttack:
+		o.sneak = &o.key
+	case combat.ExtraColossusSlayer:
+		o.colossus = &o.key
+	}
+}
+
+// keepOnceMarks stores the once-per-turn marks the roll changed, and the ones before in the
+// event for the undo.
+func (s *Service) keepOnceMarks(ctx context.Context, c *combatTx, attacker playdb.Combatant, once onceTurn, ev *actionEvent) error {
+	if once.sneak == attacker.SneakAttackTurn && once.colossus == attacker.ColossusSlayerTurn {
+		return nil
+	}
+	ev.OnceBefore = &onceMarks{Sneak: deref(attacker.SneakAttackTurn), Colossus: deref(attacker.ColossusSlayerTurn)}
+	if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{ID: attacker.ID, SneakAttackTurn: once.sneak, ColossusSlayerTurn: once.colossus}); err != nil {
+		return fmt.Errorf("mark the once-per-turn damage: %w", err)
+	}
+	return nil
+}
+
+// spendForPart spends what a part that counted costs: the use of a maneuver or the slot of
+// a Divine Smite, noted in the event for the undo. spent says it cost one.
+func (s *Service) spendForPart(ctx context.Context, c *combatTx, attacker playdb.Combatant, part partRecord, key string, ev *actionEvent) (vit *playv1.CharacterVitals, spent bool, err error) {
+	if part.Resource != "" && part.Kind == partExtra {
+		if vit, err = s.spendResource(ctx, c, attacker.CharacterID, part.Resource, 1); err != nil {
+			return nil, false, err
+		}
+		ev.ManeuverSpent = append(ev.ManeuverSpent, part.Resource)
+		return vit, true, nil
+	}
+	if key != combat.ExtraDivineSmite {
+		return nil, false, nil
+	}
+	ref := slotRef{Level: part.SlotLevel, Pact: part.Pact}
+	if vit, err = s.spendSlot(ctx, c, attacker.CharacterID, ref, 1); err != nil {
+		return nil, false, err
+	}
+	ev.Slot = &ref
+	return vit, true, nil
 }
 
 // onceMarks are the once-per-turn marks of a combatant before a damage roll, for the undo.
