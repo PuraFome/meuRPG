@@ -224,44 +224,7 @@ func (s *Service) PlaceTreasure(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
-	if !ok {
-		return nil, errMapNotFound()
-	}
-	mode, err := treasureMode(req.Msg.GetMode())
-	if err != nil {
-		return nil, err
-	}
-	level := req.Msg.GetPartyLevel()
-	if level < rules.MinTreasureLevel || level > rules.MaxTreasureLevel {
-		return nil, badTreasure("party_level", "must be %d to %d", rules.MinTreasureLevel, rules.MaxTreasureLevel)
-	}
-	if req.Msg.Seed == nil {
-		return nil, badTreasure("seed", "is required: the treasure is rolled again from it")
-	}
-	key, err := cleanKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, withTreasureField(err, "idempotency_key")
-	}
-	if req.Msg.GetContentVersion() == "" {
-		return nil, badTreasure("content_version", "is required: send the one the treasure came with")
-	}
-	if req.Msg.GetContentVersion() != s.rules.Version() {
-		return nil, errContentChanged()
-	}
-	name := defaultTreasureName(mode)
-	if req.Msg.Name != nil {
-		if name, err = cleanName("name", req.Msg.GetName()); err != nil {
-			return nil, withTreasureField(err, "name")
-		}
-	}
-	// The server rolls the treasure again: what the app computed or showed is never
-	// trusted, only the three inputs.
-	t, err := s.rules.GenerateTreasure(mode, int(level), req.Msg.GetSeed())
-	if err != nil {
-		return nil, badTreasure("party_level", "must be 1 to 20")
-	}
-	description, err := cleanDescription(treasureDescription(t))
+	plan, err := s.planTreasure(req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -271,80 +234,194 @@ func (s *Service) PlaceTreasure(
 	}
 	// The key is unique in the campaign, and it is kept with a hash of the whole request:
 	// a retry returns the first point only when it is the same request.
-	scopedKey := m.CampaignID + ":" + key
-	requestHash := hashTreasureRequest(mapID, req.Msg.GetColumn(), req.Msg.GetRow(), mode, level, req.Msg.GetSeed(), name, req.Msg.GetContentVersion())
+	scopedKey := m.CampaignID + ":" + plan.key
+	requestHash := hashTreasureRequest(plan.mapID, plan.column, plan.row, plan.mode, plan.level, plan.seed, plan.name, plan.version)
 
-	var point mapsdb.MapPoint
-	var mapRow mapsdb.Map
-	replayed := false
+	var placed treasurePlacement
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		replayed = false
-		var err error
-		if mapRow, err = s.campaignMap(ctx, q, m.CampaignID, mapID); err != nil {
-			return err
-		}
-		// A retry finds the point the first call made.
-		prior, err := q.GetMapPointByCreateKey(ctx, &scopedKey)
-		if err == nil {
-			return replayOf(prior, requestHash, &point, &replayed)
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("find the point of the key: %w", err)
-		}
-		size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: m.CampaignID, ID: mapID})
-		if err != nil {
-			return fmt.Errorf("read the map's grid: %w", err)
-		}
-		g := gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
-		if !g.Valid() {
-			return errNoGrid()
-		}
-		sq := grid.Square{Col: int(req.Msg.GetColumn()), Row: int(req.Msg.GetRow())}
-		if !g.Contains(sq) {
-			if sq.Col < 0 || sq.Col >= g.Columns {
-				return badTreasure("column", "is outside the map's grid")
-			}
-			return badTreasure("row", "is outside the map's grid")
-		}
-		x, y := g.CenterOf(sq)
-		value := int32(t.GoldPO) //nolint:gosec // G115: at most 1,000,000
-		count, err := q.CountMapPoints(ctx, mapID)
-		if err != nil {
-			return fmt.Errorf("count points: %w", err)
-		}
-		if count >= s.maxPoints {
-			return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the map already has %d points", s.maxPoints))
-		}
-		point, err = q.InsertTreasurePoint(ctx, mapsdb.InsertTreasurePointParams{
-			MapID: mapID, Name: name, Description: description, XBp: int32(x), YBp: int32(y), //nolint:gosec // G115: 0 to 10000
-			TreasureValuePo: &value, CreateKey: &scopedKey, CreateHash: &requestHash, Now: s.now(),
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			// Another call with the same key won the race: its point is ours.
-			prior, err = q.GetMapPointByCreateKey(ctx, &scopedKey)
-			if err != nil {
-				return fmt.Errorf("find the point of the key: %w", err)
-			}
-			return replayOf(prior, requestHash, &point, &replayed)
-		}
-		if err != nil {
-			return fmt.Errorf("insert point: %w", err)
-		}
-		return nil
+		placed = treasurePlacement{}
+		return s.placeTreasureIn(ctx, s.queries.WithTx(tx), m.CampaignID, plan, scopedKey, requestHash, &placed)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "place a treasure", err)
 	}
 	// A new point is hidden: only the master hears about it (MR-009).
-	if !replayed {
-		s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(mapID, mapRow.RevealedAt, current) && everyoneSees(point), point)
+	if !placed.replayed {
+		s.publishPointsChanged(ctx, m.CampaignID, placed.mapRow, playersSee(plan.mapID, placed.mapRow.RevealedAt, current) && everyoneSees(placed.point), placed.point)
 	}
-	out, err := s.masterPoint(ctx, m, point)
+	out, err := s.masterPoint(ctx, m, placed.point)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&mapsv1.PlaceTreasureResponse{Point: out, Treasure: treasureToProto(t)}), nil
+	return connect.NewResponse(&mapsv1.PlaceTreasureResponse{Point: out, Treasure: treasureToProto(plan.treasure)}), nil
+}
+
+// treasurePlan is a PlaceTreasure request after its checks: the inputs, the treasure the
+// server rolled from them and the description the point will carry.
+type treasurePlan struct {
+	mapID, mode, key, name, version string
+	level                           int32
+	column, row                     int32
+	seed                            uint64
+	treasure                        rules.Treasure
+	description                     string
+}
+
+// treasurePlacement is what one attempt of the PlaceTreasure transaction ends with.
+type treasurePlacement struct {
+	point    mapsdb.MapPoint
+	mapRow   mapsdb.Map
+	replayed bool
+}
+
+// planTreasure checks a PlaceTreasure request, field by field in a fixed order (the first
+// fault is the one the caller reads), and rolls the treasure again.
+func (s *Service) planTreasure(msg *mapsv1.PlaceTreasureRequest) (treasurePlan, error) {
+	plan, err := s.treasureInputs(msg)
+	if err != nil {
+		return treasurePlan{}, err
+	}
+	// The server rolls the treasure again: what the app computed or showed is never
+	// trusted, only the three inputs.
+	plan.treasure, err = s.rules.GenerateTreasure(plan.mode, int(plan.level), plan.seed)
+	if err != nil {
+		return treasurePlan{}, badTreasure("party_level", "must be 1 to 20")
+	}
+	plan.description, err = cleanDescription(treasureDescription(plan.treasure))
+	if err != nil {
+		return treasurePlan{}, err
+	}
+	return plan, nil
+}
+
+// treasureInputs is the part of a PlaceTreasure request the app sends: the map, the mode,
+// the level, the seed, the key, the content version and the name.
+func (s *Service) treasureInputs(msg *mapsv1.PlaceTreasureRequest) (treasurePlan, error) {
+	mapID, ok := parseID(msg.GetMapId())
+	if !ok {
+		return treasurePlan{}, errMapNotFound()
+	}
+	mode, err := treasureMode(msg.GetMode())
+	if err != nil {
+		return treasurePlan{}, err
+	}
+	level := msg.GetPartyLevel()
+	if level < rules.MinTreasureLevel || level > rules.MaxTreasureLevel {
+		return treasurePlan{}, badTreasure("party_level", "must be %d to %d", rules.MinTreasureLevel, rules.MaxTreasureLevel)
+	}
+	if msg.Seed == nil {
+		return treasurePlan{}, badTreasure("seed", "is required: the treasure is rolled again from it")
+	}
+	key, err := cleanKey(msg.GetIdempotencyKey())
+	if err != nil {
+		return treasurePlan{}, withTreasureField(err, "idempotency_key")
+	}
+	if err := s.checkTreasureVersion(msg.GetContentVersion()); err != nil {
+		return treasurePlan{}, err
+	}
+	name, err := treasureName(msg, mode)
+	if err != nil {
+		return treasurePlan{}, err
+	}
+	return treasurePlan{
+		mapID: mapID, mode: mode, key: key, name: name, version: msg.GetContentVersion(),
+		level: level, column: msg.GetColumn(), row: msg.GetRow(), seed: msg.GetSeed(),
+	}, nil
+}
+
+// checkTreasureVersion refuses a missing content version, and one the server no longer has.
+func (s *Service) checkTreasureVersion(version string) error {
+	if version == "" {
+		return badTreasure("content_version", "is required: send the one the treasure came with")
+	}
+	if version != s.rules.Version() {
+		return errContentChanged()
+	}
+	return nil
+}
+
+// treasureName is the name the master gave the point, or the default of the mode.
+func treasureName(msg *mapsv1.PlaceTreasureRequest, mode string) (string, error) {
+	if msg.Name == nil {
+		return defaultTreasureName(mode), nil
+	}
+	name, err := cleanName("name", msg.GetName())
+	if err != nil {
+		return "", withTreasureField(err, "name")
+	}
+	return name, nil
+}
+
+// placeTreasureIn is the transaction of PlaceTreasure: the map, the replay of the key, the
+// square, the cap and the insert.
+func (s *Service) placeTreasureIn(ctx context.Context, q *mapsdb.Queries, campaignID string, plan treasurePlan, scopedKey, requestHash string, placed *treasurePlacement) error {
+	var err error
+	if placed.mapRow, err = s.campaignMap(ctx, q, campaignID, plan.mapID); err != nil {
+		return err
+	}
+	// A retry finds the point the first call made.
+	prior, err := q.GetMapPointByCreateKey(ctx, &scopedKey)
+	if err == nil {
+		return replayOf(prior, requestHash, &placed.point, &placed.replayed)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("find the point of the key: %w", err)
+	}
+	x, y, err := s.treasureSquareCenter(ctx, q, campaignID, plan)
+	if err != nil {
+		return err
+	}
+	return s.insertTreasurePoint(ctx, q, plan, [2]int{x, y}, scopedKey, requestHash, placed)
+}
+
+// treasureSquareCenter is the middle of the square asked, in basis points of the map.
+func (s *Service) treasureSquareCenter(ctx context.Context, q *mapsdb.Queries, campaignID string, plan treasurePlan) (int, int, error) {
+	size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: plan.mapID})
+	if err != nil {
+		return 0, 0, fmt.Errorf("read the map's grid: %w", err)
+	}
+	g := gridOf(size.GridColumns, size.GridFactor, size.ImageWidth, size.ImageHeight)
+	if !g.Valid() {
+		return 0, 0, errNoGrid()
+	}
+	sq := grid.Square{Col: int(plan.column), Row: int(plan.row)}
+	if !g.Contains(sq) {
+		if sq.Col < 0 || sq.Col >= g.Columns {
+			return 0, 0, badTreasure("column", "is outside the map's grid")
+		}
+		return 0, 0, badTreasure("row", "is outside the map's grid")
+	}
+	x, y := g.CenterOf(sq)
+	return x, y, nil
+}
+
+// insertTreasurePoint counts the map's points against the cap and inserts the hidden
+// point; when another call with the same key won the race, its point is ours.
+func (s *Service) insertTreasurePoint(ctx context.Context, q *mapsdb.Queries, plan treasurePlan, center [2]int, scopedKey, requestHash string, placed *treasurePlacement) error {
+	value := int32(plan.treasure.GoldPO) //nolint:gosec // G115: at most 1,000,000
+	count, err := q.CountMapPoints(ctx, plan.mapID)
+	if err != nil {
+		return fmt.Errorf("count points: %w", err)
+	}
+	if count >= s.maxPoints {
+		return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the map already has %d points", s.maxPoints))
+	}
+	placed.point, err = q.InsertTreasurePoint(ctx, mapsdb.InsertTreasurePointParams{
+		MapID: plan.mapID, Name: plan.name, Description: plan.description, XBp: int32(center[0]), YBp: int32(center[1]), //nolint:gosec // G115: 0 to 10000
+		TreasureValuePo: &value, CreateKey: &scopedKey, CreateHash: &requestHash, Now: s.now(),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Another call with the same key won the race: its point is ours.
+		prior, err := q.GetMapPointByCreateKey(ctx, &scopedKey)
+		if err != nil {
+			return fmt.Errorf("find the point of the key: %w", err)
+		}
+		return replayOf(prior, requestHash, &placed.point, &placed.replayed)
+	}
+	if err != nil {
+		return fmt.Errorf("insert point: %w", err)
+	}
+	return nil
 }
 
 // replayOf takes the point an earlier call with the same key made, once it is the same
@@ -378,54 +455,75 @@ func defaultTreasureName(mode string) string {
 // objects and 6 items.
 func treasureDescription(t rules.Treasure) string {
 	var lines []string
-	if len(t.Coins) > 0 {
-		parts := make([]string, len(t.Coins))
-		for i, c := range t.Coins {
-			parts[i] = ptInt(c.Count) + " " + coinPT[c.Coin]
-		}
-		lines = append(lines, "Moedas: "+joinPT(parts)+".")
-	}
-	pieces := func(title string, list []rules.TreasurePiece) {
-		if len(list) == 0 {
-			return
-		}
-		lines = append(lines, title+":")
-		for _, p := range list {
-			if p.Count == 1 {
-				lines = append(lines, fmt.Sprintf("- %s (%s PO)", p.NamePT, ptInt(p.ValuePO)))
-			} else {
-				lines = append(lines, fmt.Sprintf("- %d × %s (%s PO cada)", p.Count, p.NamePT, ptInt(p.ValuePO)))
-			}
-		}
-	}
-	pieces("Gemas", t.Gems)
-	pieces("Obras de arte", t.Art)
-	if len(t.Items) > 0 {
-		lines = append(lines, "Itens mágicos:")
-		var order []string
-		count := map[string]int{}
-		first := map[string]rules.TreasureItem{}
-		for _, it := range t.Items {
-			if count[it.Key] == 0 {
-				order = append(order, it.Key)
-				first[it.Key] = it
-			}
-			count[it.Key]++
-		}
-		for _, key := range order {
-			it := first[key]
-			note := "item " + rarityPT[it.Rarity]
-			if it.Attunement {
-				note += ", exige sintonização"
-			}
-			label := it.NamePT
-			if count[key] > 1 {
-				label = fmt.Sprintf("%d × %s", count[key], it.NamePT)
-			}
-			lines = append(lines, "- "+label+" ("+note+")")
-		}
-	}
+	lines = append(lines, coinsLines(t.Coins)...)
+	lines = append(lines, piecesLines("Gemas", t.Gems)...)
+	lines = append(lines, piecesLines("Obras de arte", t.Art)...)
+	lines = append(lines, itemsLines(t.Items)...)
 	return strings.Join(lines, "\n")
+}
+
+// coinsLines is the one line of coins, "Moedas: 1.200 PP e 340 PO.", or none.
+func coinsLines(coins []rules.TreasureCoin) []string {
+	if len(coins) == 0 {
+		return nil
+	}
+	parts := make([]string, len(coins))
+	for i, c := range coins {
+		parts[i] = ptInt(c.Count) + " " + coinPT[c.Coin]
+	}
+	return []string{"Moedas: " + joinPT(parts) + "."}
+}
+
+// piecesLines is a title and a line for each gem or art object, or none without any.
+func piecesLines(title string, list []rules.TreasurePiece) []string {
+	if len(list) == 0 {
+		return nil
+	}
+	lines := []string{title + ":"}
+	for _, p := range list {
+		if p.Count == 1 {
+			lines = append(lines, fmt.Sprintf("- %s (%s PO)", p.NamePT, ptInt(p.ValuePO)))
+		} else {
+			lines = append(lines, fmt.Sprintf("- %d × %s (%s PO cada)", p.Count, p.NamePT, ptInt(p.ValuePO)))
+		}
+	}
+	return lines
+}
+
+// itemsLines is "Itens mágicos:" and a line for each different item, in the order the
+// generator gave them, with the count of the identical ones and the note of the rarity.
+func itemsLines(items []rules.TreasureItem) []string {
+	if len(items) == 0 {
+		return nil
+	}
+	lines := []string{"Itens mágicos:"}
+	var order []string
+	count := map[string]int{}
+	first := map[string]rules.TreasureItem{}
+	for _, it := range items {
+		if count[it.Key] == 0 {
+			order = append(order, it.Key)
+			first[it.Key] = it
+		}
+		count[it.Key]++
+	}
+	for _, key := range order {
+		lines = append(lines, itemLine(first[key], count[key]))
+	}
+	return lines
+}
+
+// itemLine is one magic item's line: "- 2 × Name (item rare, exige sintonização)".
+func itemLine(it rules.TreasureItem, count int) string {
+	note := "item " + rarityPT[it.Rarity]
+	if it.Attunement {
+		note += ", exige sintonização"
+	}
+	label := it.NamePT
+	if count > 1 {
+		label = fmt.Sprintf("%d × %s", count, it.NamePT)
+	}
+	return "- " + label + " (" + note + ")"
 }
 
 // joinPT joins "a", "b" and "c" the Portuguese way: "a, b e c".
