@@ -373,7 +373,7 @@ describe('CharacterEditor', () => {
       background: 'background:acolyte',
       equipmentText: 'Grimório\nAdaga',
     });
-    cmp.selectedSkills.set(new Set(['skill:arcana', 'skill:history']));
+    cmp.picks.selectedSkills.set(new Set(['skill:arcana', 'skill:history']));
     cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:ray-of-frost']));
 
     await cmp.submit();
@@ -483,10 +483,10 @@ describe('CharacterEditor', () => {
 
     cmp.fullForm.patchValue({ className: 'class:wizard' });
 
-    const cantripKeys = cmp.availableCantrips().map((s: { key: string }) => s.key);
+    const cantripKeys = cmp.views.availableCantrips().map((s: { key: string }) => s.key);
     expect(cantripKeys.sort()).toEqual(['spell:fire-bolt', 'spell:ray-of-frost']);
 
-    const spellKeys = cmp.availableSpells().map((s: { key: string }) => s.key);
+    const spellKeys = cmp.views.availableSpells().map((s: { key: string }) => s.key);
     // The Cleric-only spell never shows for a Wizard.
     expect(spellKeys.sort()).toEqual(['spell:fireball', 'spell:magic-missile', 'spell:shield']);
   });
@@ -758,7 +758,7 @@ describe('CharacterEditor', () => {
         spellsKnown: 0,
         preparedMax: 1,
       });
-      cmp.preparedMaxByClass.set({ 'class:wizard': 1 });
+      cmp.picks.preparedMaxByClass.set({ 'class:wizard': 1 });
       cmp.toggleSpellPrepared('spell:shield');
       cmp.toggleSpellPrepared('spell:magic-missile');
       fixture.detectChanges();
@@ -828,7 +828,7 @@ describe('CharacterEditor', () => {
       cmp.toggleSkill('skill:arcana');
 
       expect(cmp.chosenSkills().size).toBe(0);
-      expect(cmp.buildFullValue().skillProficiencies).toEqual([]);
+      expect(cmp.draft.build().skillProficiencies).toEqual([]);
     });
 
     it('drops a pick that the race starts to give', async () => {
@@ -836,12 +836,12 @@ describe('CharacterEditor', () => {
       cmp.fullForm.patchValue({ race: '' });
       fixture.detectChanges();
       cmp.toggleSkill('skill:arcana');
-      expect(cmp.buildFullValue().skillProficiencies).toEqual(['skill:arcana']);
+      expect(cmp.draft.build().skillProficiencies).toEqual(['skill:arcana']);
 
       cmp.fullForm.patchValue({ race: 'race:gnome' });
       fixture.detectChanges();
 
-      expect(cmp.buildFullValue().skillProficiencies).toEqual([]);
+      expect(cmp.draft.build().skillProficiencies).toEqual([]);
     });
   });
 
@@ -1843,7 +1843,7 @@ describe('CharacterEditor', () => {
   describe('a character made for a player to claim (MR-049)', () => {
     function fill(cmp: {
       fullForm: { patchValue(v: object): void };
-      selectedSkills: { set(v: Set<string>): void };
+      picks: { selectedSkills: { set(v: Set<string>): void } };
     }): void {
       cmp.fullForm.patchValue({
         name: 'Kai',
@@ -1852,7 +1852,7 @@ describe('CharacterEditor', () => {
         level: 1,
         background: 'background:acolyte',
       });
-      cmp.selectedSkills.set(new Set(['skill:arcana', 'skill:history']));
+      cmp.picks.selectedSkills.set(new Set(['skill:arcana', 'skill:history']));
     }
 
     it("opens the editor in the master's mode, titled and labelled for the reserve, with the banner", async () => {
@@ -3024,14 +3024,14 @@ describe('CharacterEditor, leaving the route while a read or a save is in flight
     fake.loadCharacterForEditFn = (_c, id) =>
       Promise.resolve(id === 'A' ? fullSheetFor({ hitPointsRolls: [3, 4] }) : basicSheetFor());
     const { fixture, cmp } = await render();
-    expect(cmp.selectedSkills().size).toBe(1);
+    expect(cmp.picks.selectedSkills().size).toBe(1);
 
     params$.next(convertToParamMap({ id: 'camp-1', characterId: 'B' }));
     await nextTurn();
     await fixture.whenStable();
     expect(cmp.state().kind).toBe('story');
 
-    expect(cmp.selectedSkills().size).toBe(0);
+    expect(cmp.picks.selectedSkills().size).toBe(0);
     expect(cmp.selectedCantrips().size).toBe(0);
     expect(cmp.hitPointsRolls()).toEqual([]);
   });

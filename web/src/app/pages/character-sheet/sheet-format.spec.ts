@@ -55,6 +55,35 @@ describe('sheet-format', () => {
     expect(issueTitle(issue('something_new'))).toBe('Pendência de regra.');
   });
 
+  it('titles every code the rules service sends', () => {
+    const title = (code: string) => issueTitle({ code, field: '', message: 'x' });
+    expect(
+      [
+        'spell_count',
+        'spell_level',
+        'expertise',
+        'unknown_key',
+        'subclass_level',
+        'multiclass_prerequisite',
+        'hit_point_rolls',
+        'score_above_20',
+        'level',
+        'formula',
+      ].map(title),
+    ).toEqual([
+      'Magias a revisar.',
+      'Magias a revisar.',
+      'Especialização a revisar.',
+      'Escolha inválida.',
+      'Subclasse cedo demais.',
+      'Pré-requisito de multiclasse.',
+      'Rolagens de pontos de vida.',
+      'Habilidade acima de 20.',
+      'Nível acima do máximo.',
+      'Efeito ignorado.',
+    ]);
+  });
+
   it('lists one slot row per level that has slots, with an accessible count', () => {
     expect(spellSlotRows([4, 0, 1])).toEqual([
       { level: 1, label: '1º nível', count: 4, countLabel: '4 espaços' },
