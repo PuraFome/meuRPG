@@ -39,30 +39,39 @@ func (s *Service) PartyVision(ctx context.Context, tx pgx.Tx, campaignID string)
 		if user == "" {
 			continue // its player deleted the account (RN-16): nobody sees through it
 		}
-		// A basic sheet has no skills: its passive Perception is the plain 10.
-		member := link.PartyMember{CharacterID: row.ID, UserID: user, Dead: row.IsDead, PassivePerception: basicPassivePerception}
-		if member.Dead {
-			out = append(out, member) // it sees and notices nothing: its player sees the party's view
-			continue
-		}
-		sheet, err := loadSheet(row.ID, row.Sheet)
+		member, err := partyMember(content, row, user)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the party's senses", err)
-		}
-		if full := sheet.GetFull(); full != nil {
-			// The form's senses and passive Perception, when the druid is a beast (MR-037).
-			derived := derive(content, full, row.WildShapeBeast)
-			member.Senses = sensesOf(derived.Senses)
-			member.PassivePerception = derived.PassivePerception
-		}
-		if row.FamiliarID != nil && row.FamiliarMonsterKey != nil {
-			if d, ok := content.MonsterDerived(*row.FamiliarMonsterKey); ok {
-				member.Eyes = &link.FamiliarEyes{CreatureID: *row.FamiliarID, Senses: sensesOf(d.Senses)}
-			}
 		}
 		out = append(out, member)
 	}
 	return out, nil
+}
+
+// partyMember is what one character of the party sees with. The error is a
+// stored sheet that cannot be read.
+func partyMember(content *rules.Content, row charactersdb.ListPartyVisionRow, user string) (link.PartyMember, error) {
+	// A basic sheet has no skills: its passive Perception is the plain 10.
+	member := link.PartyMember{CharacterID: row.ID, UserID: user, Dead: row.IsDead, PassivePerception: basicPassivePerception}
+	if member.Dead {
+		return member, nil // it sees and notices nothing: its player sees the party's view
+	}
+	sheet, err := loadSheet(row.ID, row.Sheet)
+	if err != nil {
+		return link.PartyMember{}, err
+	}
+	if full := sheet.GetFull(); full != nil {
+		// The form's senses and passive Perception, when the druid is a beast (MR-037).
+		derived := derive(content, full, row.WildShapeBeast)
+		member.Senses = sensesOf(derived.Senses)
+		member.PassivePerception = derived.PassivePerception
+	}
+	if row.FamiliarID != nil && row.FamiliarMonsterKey != nil {
+		if d, ok := content.MonsterDerived(*row.FamiliarMonsterKey); ok {
+			member.Eyes = &link.FamiliarEyes{CreatureID: *row.FamiliarID, Senses: sensesOf(d.Senses)}
+		}
+	}
+	return member, nil
 }
 
 // sensesOf turns the derived senses into the ranges the fog uses: the largest
