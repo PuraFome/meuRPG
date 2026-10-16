@@ -860,8 +860,8 @@ describe('CharacterEditor, reading the page', () => {
       });
     const { cmp, fixture } = await render();
     // The same component reads again (another route): the first answers are stale.
-    cmp.loadForCreate('camp-2', 'player', false);
-    cmp.loadForEdit('camp-2', 'char-2');
+    cmp.loader.forCreate('camp-2', 'player', false);
+    cmp.loader.forEdit('camp-2', 'char-2');
     late[0].ok?.(catalog());
     late[1].fail?.(new ConnectError('x', Code.NotFound));
     await settleView(fixture);
@@ -877,7 +877,7 @@ describe('CharacterEditor, reading the page', () => {
         fail = reject;
       });
     const { cmp, fixture } = await render();
-    cmp.loadSeq++;
+    cmp.loader.seq++;
     fail(new ConnectError('x', Code.NotFound));
     await settleView(fixture);
     expect(cmp.state().status).toBe('loading');
