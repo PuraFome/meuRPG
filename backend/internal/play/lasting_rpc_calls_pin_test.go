@@ -23,7 +23,10 @@ type rpcScript struct {
 	b strings.Builder
 }
 
-func (a *armed) rpcScript(t *testing.T) *rpcScript { return &rpcScript{t: t, a: a} }
+func (a *armed) rpcScript(t *testing.T) *rpcScript {
+	t.Helper()
+	return &rpcScript{t: t, a: a}
+}
 
 // say writes the answer of a call: the refusal, or the message without its encounter.
 func (s *rpcScript) say(name string, res proto.Message, err error) {

@@ -17,7 +17,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -474,14 +473,4 @@ func (a *armed) rpcEffectID(t *testing.T, key, label string) string {
 	}
 	t.Fatalf("%s has no %s", label, key)
 	return ""
-}
-
-// rpcCharacters are the characters of the fixture named by their label.
-func (a *armed) rpcCharacters(labels ...string) []*charactersv1.Character {
-	by := map[string]*charactersv1.Character{"Toren": a.toren, "Pensantus": a.pens, "Brisa": a.bri}
-	var out []*charactersv1.Character
-	for _, l := range labels {
-		out = append(out, by[l])
-	}
-	return out
 }
