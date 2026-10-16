@@ -482,19 +482,35 @@ func (s *Service) prepare(ctx context.Context, campaignID string, n newRequest, 
 		}
 	}
 	if n.source != nil {
-		src, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: *n.source})
-		if errors.Is(err, pgx.ErrNoRows) || err == nil && !src.Generated {
-			return p, errImageNotFound()
-		}
-		if err != nil {
-			return p, s.dbError(ctx, "find the image to edit", err)
-		}
-		img, err := s.shrunkImage(ctx, campaignID, *n.source)
-		if err != nil {
+		if err := s.prepareSource(ctx, campaignID, *n.source, &p); err != nil {
 			return p, err
 		}
-		p.previous = &img
 	}
+	err := s.prepareReferences(ctx, campaignID, n, &p)
+	return p, err
+}
+
+// prepareSource reads the image an edit adjusts, which must be a generated one of the
+// campaign, into p.previous.
+func (s *Service) prepareSource(ctx context.Context, campaignID, source string, p *prepared) error {
+	src, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: source})
+	if errors.Is(err, pgx.ErrNoRows) || err == nil && !src.Generated {
+		return errImageNotFound()
+	}
+	if err != nil {
+		return s.dbError(ctx, "find the image to edit", err)
+	}
+	img, err := s.shrunkImage(ctx, campaignID, source)
+	if err != nil {
+		return err
+	}
+	p.previous = &img
+	return nil
+}
+
+// prepareReferences shrinks the object images, then the character images (the
+// request's, then the NPCs' portraits prepareMap added), into p.references.
+func (s *Service) prepareReferences(ctx context.Context, campaignID string, n newRequest, p *prepared) error {
 	for _, character := range []bool{false, true} {
 		ids := n.references
 		if character {
@@ -503,12 +519,12 @@ func (s *Service) prepare(ctx context.Context, campaignID string, n newRequest, 
 		for _, id := range ids {
 			img, err := s.shrunkImage(ctx, campaignID, id)
 			if err != nil {
-				return p, err
+				return err
 			}
 			p.references = append(p.references, gen.Reference{Image: img, Character: character})
 		}
 	}
-	return p, nil
+	return nil
 }
 
 // shrunkImage returns a gallery image as the small JPEG it travels as: its
@@ -1171,93 +1187,112 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 	// this one request: logged with its stack, recorded as failed. Declared last,
 	// so it runs first, before the waiters are woken and the slot is given back.
 	defer safego.Recover(s.logger, "image request", func() { s.finishFailed(campaignID, id, stateFailed, reasonUnavailable) })
-	select {
-	case s.generating <- struct{}{}:
-		defer func() { <-s.generating }()
-		if s.baseCtx.Err() != nil { // a slot freed by the shutdown itself
-			s.finishFailed(campaignID, id, stateFailed, reasonShutdown)
-			return
-		}
-	case <-ctx.Done():
-		// Never sent: the slot goes back at once.
-		s.finishFailed(campaignID, id, stateFailed, endReason(s.baseCtx))
+	release, ok := s.acquireCallSlot(ctx, campaignID, id)
+	defer release()
+	if !ok {
 		return
 	}
+	row, request, ok := s.readyToSend(ctx, campaignID, id, prep)
+	if !ok {
+		return
+	}
+	picture, err := s.generator.Generate(ctx, request)
+	if err != nil {
+		s.endWithoutPicture(ctx, campaignID, id, err)
+		return
+	}
+	s.storePicture(ctx, campaignID, id, row, picture.Data)
+}
 
+// acquireCallSlot waits for one of the calls to the model that may run at once. ok is
+// false when the request ends there: a slot freed by the shutdown itself, or the
+// request's own end before it had one (never sent: the slot goes back at once). The
+// release is always safe to defer.
+func (s *Service) acquireCallSlot(ctx context.Context, campaignID, id string) (release func(), ok bool) {
+	select {
+	case s.generating <- struct{}{}:
+		release = func() { <-s.generating }
+		if s.baseCtx.Err() != nil { // a slot freed by the shutdown itself
+			s.finishFailed(campaignID, id, stateFailed, reasonShutdown)
+			return release, false
+		}
+		return release, true
+	case <-ctx.Done():
+		s.finishFailed(campaignID, id, stateFailed, endReason(s.baseCtx))
+		return func() {}, false
+	}
+}
+
+// readyToSend reads the pending request, builds what the model gets and marks the
+// request as sent. ok is false when there is nothing to send: it was canceled before
+// it started, it cannot be built, the shutdown came, or a Cancel came first.
+func (s *Service) readyToSend(ctx context.Context, campaignID, id string, prep prepared) (row mapsdb.ImageRequest, request gen.Request, ok bool) {
 	row, err := s.queries.GetImageRequest(ctx, mapsdb.GetImageRequestParams{CampaignID: campaignID, ID: id})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot read an image request to run it", "error", err)
 		s.finishFailed(campaignID, id, stateFailed, reasonUnavailable)
-		return
+		return row, request, false
 	}
 	if row.Status != statePending {
-		return // canceled before it started
+		return row, request, false // canceled before it started
 	}
 	request, reason, err := s.modelRequest(ctx, row, prep)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot build an image request", "error", err, "reason", reason)
 		s.finishFailed(campaignID, id, stateFailed, reason)
-		return
+		return row, request, false
 	}
 	if s.baseCtx.Err() != nil {
 		s.finishFailed(campaignID, id, stateFailed, reasonShutdown)
-		return
+		return row, request, false
 	}
 	// The request leaves now. A Cancel that came first wins: nothing is sent.
 	sent, err := s.queries.MarkImageRequestSent(ctx, mapsdb.MarkImageRequestSentParams{CampaignID: campaignID, ID: id, SentAt: new(s.now())})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot mark an image request as sent", "error", err)
 		s.finishFailed(campaignID, id, stateFailed, reasonUnavailable)
-		return
+		return row, request, false
 	}
-	if sent == 0 {
-		return
-	}
+	return row, request, sent != 0
+}
 
-	picture, err := s.generator.Generate(ctx, request)
-	if err != nil {
-		if s.baseCtx.Err() != nil {
-			// Cut off by the shutdown: the call may have been billed, so the slot
-			// is not given back. The request expires as a sent one (expireStale).
-			return
-		}
-		state, why := stateFailed, reasonUnavailable
-		certainlyFree := false // the slot goes back only when the call surely was not billed
-		switch refused := (*gen.RefusedError)(nil); {
-		case errors.As(err, &refused):
-			state, why, certainlyFree = stateRefused, reasonRefused, true
-		case errors.Is(err, gen.ErrNoImage):
-			why, certainlyFree = reasonNoImage, true
-		case errors.Is(err, gen.ErrNotAuthorized):
-			// The operator's problem: the key was refused. Say it loudly, once.
-			why, certainlyFree = reasonServiceOff, true
-			s.logger.ErrorContext(ctx, "maps: the image service refused the API key", "error", err)
-		}
-		// The error says a status or a kind, never the text (package gen).
-		s.logger.WarnContext(ctx, "maps: an image request ended without a picture", "reason", why, "error", err)
-		if certainlyFree {
-			s.finishFailed(campaignID, id, state, why)
-		} else {
-			// A timeout, a cut connection or an answer that cannot be read may have been billed.
-			s.finishSpent(campaignID, id, why)
-		}
+// endWithoutPicture records how a call that returned an error ended. The slot goes
+// back only when the call surely was not billed.
+func (s *Service) endWithoutPicture(ctx context.Context, campaignID, id string, err error) {
+	if s.baseCtx.Err() != nil {
+		// Cut off by the shutdown: the call may have been billed, so the slot
+		// is not given back. The request expires as a sent one (expireStale).
 		return
 	}
-	// The picture is here: finish it on a context of its own, even in a shutdown.
+	state, why := stateFailed, reasonUnavailable
+	certainlyFree := false // the slot goes back only when the call surely was not billed
+	switch refused := (*gen.RefusedError)(nil); {
+	case errors.As(err, &refused):
+		state, why, certainlyFree = stateRefused, reasonRefused, true
+	case errors.Is(err, gen.ErrNoImage):
+		why, certainlyFree = reasonNoImage, true
+	case errors.Is(err, gen.ErrNotAuthorized):
+		// The operator's problem: the key was refused. Say it loudly, once.
+		why, certainlyFree = reasonServiceOff, true
+		s.logger.ErrorContext(ctx, "maps: the image service refused the API key", "error", err)
+	}
+	// The error says a status or a kind, never the text (package gen).
+	s.logger.WarnContext(ctx, "maps: an image request ended without a picture", "reason", why, "error", err)
+	if certainlyFree {
+		s.finishFailed(campaignID, id, state, why)
+	} else {
+		// A timeout, a cut connection or an answer that cannot be read may have been billed.
+		s.finishSpent(campaignID, id, why)
+	}
+}
+
+// storePicture stores the picture the model returned together with the request's end,
+// on a context of its own, even in a shutdown.
+func (s *Service) storePicture(ctx context.Context, campaignID, id string, row mapsdb.ImageRequest, data []byte) {
 	fin, cancelFin := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancelFin()
-	var res *images.Result
 	kind := s.generatedKindOf(fin, row)
-	switch {
-	case row.Kind == kindTexturedMap:
-		// The textured map is the map's rectangle of the padded canvas, in the size of the map's image.
-		res, err = s.cropToMap(fin, picture.Data, row)
-	case row.Kind == kindEdit && kind == kindTexturedMap && row.MapWidth != nil && row.MapHeight != nil:
-		// An edit of a textured map keeps the map's size, so it can be used as the map's image too.
-		res, err = s.fitToMap(fin, picture.Data, row)
-	default:
-		res, err = s.process(fin, picture.Data)
-	}
+	res, err := s.processPicture(fin, row, kind, data)
 	if err != nil {
 		s.logger.WarnContext(fin, "maps: the generated picture cannot be used", "error", err)
 		s.finishSpent(campaignID, id, reasonNoImage)
@@ -1284,21 +1319,42 @@ func (s *Service) run(campaignID, id string, prep prepared) {
 			return nil
 		})
 	if err != nil {
-		why := reasonUnavailable
-		if he, ok := errors.AsType[*httpError](err); ok && he.reason == ReasonQuota {
-			why = reasonGalleryFull
-		}
-		if errors.Is(err, errRequestClosed) {
-			s.logger.WarnContext(fin, "maps: a generated picture arrived for a request that is closed; it was dropped")
-			return
-		}
-		s.logger.ErrorContext(fin, "maps: cannot store a generated image", "error", err, "reason", why)
-		s.finishSpent(campaignID, id, why)
+		s.storeFailed(fin, campaignID, id, err)
 		return
 	}
 	s.logger.InfoContext(fin, "maps: an image was generated", "campaign", campaignID, "request", id, "image", stored.ID)
 	// The background context has no request fields, so the campaign is explicit.
 	logging.Event(fin, s.logger, "image.generated", slog.String("campaign_id", campaignID), slog.String("generation_id", id), slog.String("image_id", stored.ID), slog.String("kind", kind))
+}
+
+// processPicture makes the gallery picture of what the model returned, by the way the
+// request was made.
+func (s *Service) processPicture(ctx context.Context, row mapsdb.ImageRequest, kind string, data []byte) (*images.Result, error) {
+	switch {
+	case row.Kind == kindTexturedMap:
+		// The textured map is the map's rectangle of the padded canvas, in the size of the map's image.
+		return s.cropToMap(ctx, data, row)
+	case row.Kind == kindEdit && kind == kindTexturedMap && row.MapWidth != nil && row.MapHeight != nil:
+		// An edit of a textured map keeps the map's size, so it can be used as the map's image too.
+		return s.fitToMap(ctx, data, row)
+	default:
+		return s.process(ctx, data)
+	}
+}
+
+// storeFailed records why a picture the model returned (the call was billed) could not
+// be stored: the slot stays spent, unless the request was closed meanwhile.
+func (s *Service) storeFailed(ctx context.Context, campaignID, id string, err error) {
+	why := reasonUnavailable
+	if he, ok := errors.AsType[*httpError](err); ok && he.reason == ReasonQuota {
+		why = reasonGalleryFull
+	}
+	if errors.Is(err, errRequestClosed) {
+		s.logger.WarnContext(ctx, "maps: a generated picture arrived for a request that is closed; it was dropped")
+		return
+	}
+	s.logger.ErrorContext(ctx, "maps: cannot store a generated image", "error", err, "reason", why)
+	s.finishSpent(campaignID, id, why)
 }
 
 // generatedKindOf is the way a request's picture was made, as the gallery records it: the
