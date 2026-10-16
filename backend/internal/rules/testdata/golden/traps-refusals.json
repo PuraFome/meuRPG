@@ -51,6 +51,7 @@
   "bad: key with a colon": "effects/traps.json: trap key \"trap:a\" is empty, has a space or colon, or is repeated",
   "bad: key with a space": "effects/traps.json: trap key \"a b\" is empty, has a space or colon, or is repeated",
   "bad: kind before description": "effects/traps.json: trap:a: kind must be mechanical or magic",
+  "bad: last damage row ending before it starts": "effects/traps.json: severity.damage_by_level must cover levels 1 to 20 in order, with no gap (at level 11)",
   "bad: name before ranges": "effects/traps.json: severity setback has no name_pt",
   "bad: negative fall": "effects/traps.json: trap:a: fall_ft must be a multiple of 10, up to 200",
   "bad: negative notice DC": "effects/traps.json: trap:a: the DCs must be 1 to 30 (notice_dc may be left out)",

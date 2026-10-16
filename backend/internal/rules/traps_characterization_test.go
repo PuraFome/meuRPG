@@ -224,6 +224,7 @@ func trapCases() map[string]trapCase {
 	sev("bad: damage rows with a gap", `"from":11`, `"from":12`)
 	sev("bad: damage rows starting at 2", `"from":1,`, `"from":2,`)
 	sev("bad: damage row ending before it starts", `"to":10`, `"to":0`)
+	sev("bad: last damage row ending before it starts", `"to":20`, `"to":10`)
 	sev("bad: damage row past the last level", `"to":20`, `"to":21`)
 	sev("bad: damage rows that stop at 19", `"to":20`, `"to":19`)
 	sev("bad: setback damage not dice", `"setback":"1d10"`, `"setback":"lots"`)
