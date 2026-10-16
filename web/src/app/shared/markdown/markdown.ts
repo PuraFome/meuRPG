@@ -59,88 +59,194 @@ interface Budget {
   left: number;
 }
 
-/** Parses a document body into blocks. */
-export function parseMarkdown(source: string): Block[] {
-  const lines = source.replace(/\r\n?/g, '\n').split('\n');
-  const budget: Budget = { left: WORK_BUDGET };
-  const blocks: Block[] = [];
-  let paragraph: string[] = [];
-  let list: { ordered: boolean; start: number; items: Inline[][] } | null = null;
+const HEADING = /^ {0,3}(#{1,3}) +(\S.*)$/;
+const GALLERY_IMAGE = /^ {0,3}!\[([^\]\n]{0,500})\]\(image:([^)\s]{1,64})\)$/;
+const BULLET = /^ {0,3}[-*] +(\S.*)$/;
+const NUMBERED = /^ {0,3}(\d{1,9})[.)] +(\S.*)$/;
 
-  const flushParagraph = () => {
-    if (paragraph.length > 0) {
-      blocks.push({
-        type: 'paragraph',
-        children: parseInline(paragraph.join(' '), budget),
-      });
-      paragraph = [];
-    }
-  };
-  const flushList = () => {
-    if (list) {
-      blocks.push({ type: 'list', ordered: list.ordered, start: list.start, items: list.items });
-      list = null;
-    }
-  };
+type OpenList = { ordered: boolean; start: number; items: Inline[][] };
 
-  for (const raw of lines) {
+/** The blocks of one document being read line by line: the open paragraph and list wait here until something ends them. */
+class BlockReader {
+  readonly blocks: Block[] = [];
+  private readonly budget: Budget = { left: WORK_BUDGET };
+  private paragraph: string[] = [];
+  private list: OpenList | null = null;
+
+  /** One line of the source, in the order the subset tries its rules. */
+  feed(raw: string): void {
     const line = raw.trimEnd();
     if (line.trim() === '') {
-      flushParagraph();
-      flushList();
-      continue;
+      this.flush();
+      return;
     }
-
-    const heading = /^ {0,3}(#{1,3}) +(\S.*)$/.exec(line);
-    if (heading) {
-      flushParagraph();
-      flushList();
-      blocks.push({
-        type: 'heading',
-        level: heading[1].length === 3 ? 3 : 2,
-        children: parseInline(heading[2].trim(), budget),
-      });
-      continue;
+    if (
+      this.heading(line) ||
+      this.image(line) ||
+      this.listItem(line) ||
+      this.continuation(raw, line)
+    ) {
+      return;
     }
-
-    const image = /^ {0,3}!\[([^\]\n]{0,500})\]\(image:([^)\s]{1,64})\)$/.exec(line.trim());
-    if (image && UUID.test(image[2])) {
-      flushParagraph();
-      flushList();
-      blocks.push({ type: 'image', id: image[2].toLowerCase(), caption: image[1].trim() });
-      continue;
-    }
-
-    const bullet = /^ {0,3}[-*] +(\S.*)$/.exec(line);
-    const numbered = bullet ? null : /^ {0,3}(\d{1,9})[.)] +(\S.*)$/.exec(line);
-    if (bullet || numbered) {
-      flushParagraph();
-      const ordered = numbered !== null;
-      if (list && list.ordered !== ordered) {
-        flushList();
-      }
-      list ??= { ordered, start: numbered ? Number(numbered[1]) : 1, items: [] };
-      list.items.push(parseInline((bullet ? bullet[1] : numbered![2]).trim(), budget));
-      continue;
-    }
-
-    // A plain line ends a list unless it is indented: then it continues the
-    // last item.
-    if (list && /^\s/.test(raw)) {
-      // Appended in place: copying the item's tokens for every line would be
-      // quadratic in the number of lines.
-      const item = list.items[list.items.length - 1];
-      for (const token of parseInline(' ' + line.trim(), budget)) {
-        item.push(token);
-      }
-      continue;
-    }
-    flushList();
-    paragraph.push(line.trim());
+    this.flushList();
+    this.paragraph.push(line.trim());
   }
-  flushParagraph();
-  flushList();
-  return blocks;
+
+  /** The end of the document closes whatever is open. */
+  finish(): void {
+    this.flush();
+  }
+
+  private flush(): void {
+    this.flushParagraph();
+    this.flushList();
+  }
+
+  private flushParagraph(): void {
+    if (this.paragraph.length > 0) {
+      this.blocks.push({
+        type: 'paragraph',
+        children: parseInline(this.paragraph.join(' '), this.budget),
+      });
+      this.paragraph = [];
+    }
+  }
+
+  private flushList(): void {
+    if (this.list) {
+      this.blocks.push({
+        type: 'list',
+        ordered: this.list.ordered,
+        start: this.list.start,
+        items: this.list.items,
+      });
+      this.list = null;
+    }
+  }
+
+  private heading(line: string): boolean {
+    const heading = HEADING.exec(line);
+    if (!heading) {
+      return false;
+    }
+    this.flush();
+    this.blocks.push({
+      type: 'heading',
+      level: heading[1].length === 3 ? 3 : 2,
+      children: parseInline(heading[2].trim(), this.budget),
+    });
+    return true;
+  }
+
+  private image(line: string): boolean {
+    const image = GALLERY_IMAGE.exec(line.trim());
+    if (!image || !UUID.test(image[2])) {
+      return false;
+    }
+    this.flush();
+    this.blocks.push({ type: 'image', id: image[2].toLowerCase(), caption: image[1].trim() });
+    return true;
+  }
+
+  private listItem(line: string): boolean {
+    const bullet = BULLET.exec(line);
+    const numbered = bullet ? null : NUMBERED.exec(line);
+    if (!bullet && !numbered) {
+      return false;
+    }
+    this.flushParagraph();
+    const ordered = numbered !== null;
+    if (this.list && this.list.ordered !== ordered) {
+      this.flushList();
+    }
+    this.list ??= { ordered, start: numbered ? Number(numbered[1]) : 1, items: [] };
+    this.list.items.push(parseInline((bullet ? bullet[1] : numbered![2]).trim(), this.budget));
+    return true;
+  }
+
+  /** A plain line ends a list unless it is indented: then it continues the last item. */
+  private continuation(raw: string, line: string): boolean {
+    if (!this.list || !/^\s/.test(raw)) {
+      return false;
+    }
+    // Appended in place: copying the item's tokens for every line would be
+    // quadratic in the number of lines.
+    const item = this.list.items[this.list.items.length - 1];
+    for (const token of parseInline(' ' + line.trim(), this.budget)) {
+      item.push(token);
+    }
+    return true;
+  }
+}
+
+/** Parses a document body into blocks. */
+export function parseMarkdown(source: string): Block[] {
+  const reader = new BlockReader();
+  for (const raw of source.replace(/\r\n?/g, '\n').split('\n')) {
+    reader.feed(raw);
+  }
+  reader.finish();
+  return reader.blocks;
+}
+
+/** What one step of the inline scanner read: some text to keep as typed, or a token; either way up to `end`. */
+type Step =
+  | { readonly text: string; readonly end: number }
+  | { readonly token: Inline; readonly end: number };
+
+/** `\` before a punctuation mark writes the mark literally. */
+function readEscape(text: string, i: number): Step | null {
+  return i + 1 < text.length && PUNCTUATION.includes(text[i + 1])
+    ? { text: text[i + 1], end: i + 2 }
+    : null;
+}
+
+/** An image that is not a gallery image on its own line (an external image, one inside a sentence) stays as text, "!" and all. */
+function readImageText(text: string, i: number, budget: Budget): Step | null {
+  if (text[i + 1] !== '[') {
+    return null;
+  }
+  const image = readLink(text, i + 1, budget);
+  return image ? { text: text.slice(i, image.end), end: image.end } : null;
+}
+
+function readLinkStep(text: string, i: number, budget: Budget): Step | null {
+  const link = readLink(text, i, budget);
+  return link ? { token: link.token, end: link.end } : null;
+}
+
+/** `**bold**` or `*italic*` at `i`; a marker with no valid closing stays as text. */
+function readEmphasis(text: string, i: number, budget: Budget, depth: number): Step {
+  const bold = text.startsWith('**', i);
+  const marker = bold ? '**' : '*';
+  const close = findClosing(text, i + marker.length, marker, budget);
+  if (close > i + marker.length) {
+    const inner = text.slice(i + marker.length, close);
+    // Spaces right inside the markers mean it is not emphasis ("2 * 3 *").
+    if (inner.trim() === inner) {
+      const children = parseInline(inner, budget, depth + 1);
+      return {
+        token: { type: bold ? 'bold' : 'italic', children },
+        end: close + marker.length,
+      };
+    }
+  }
+  return { text: marker, end: i + marker.length };
+}
+
+function readStep(text: string, i: number, budget: Budget, depth: number): Step | null {
+  switch (text[i]) {
+    case '\\':
+      return readEscape(text, i);
+    case '!':
+      return readImageText(text, i, budget);
+    case '[':
+      return readLinkStep(text, i, budget);
+    case '*':
+      return depth < MAX_INLINE_DEPTH ? readEmphasis(text, i, budget, depth) : null;
+    default:
+      return null;
+  }
 }
 
 /** Parses one run of text into inline tokens. */
@@ -151,9 +257,6 @@ export function parseInline(
 ): Inline[] {
   const out: Inline[] = [];
   let buffer = '';
-  const pushText = (s: string) => {
-    buffer += s;
-  };
   const flush = () => {
     if (buffer !== '') {
       out.push({ type: 'text', text: buffer });
@@ -164,61 +267,23 @@ export function parseInline(
   let i = 0;
   while (i < text.length) {
     if (budget.left <= 0) {
-      pushText(text.slice(i));
+      buffer += text.slice(i);
       break;
     }
     budget.left -= 1;
-    const ch = text[i];
-
-    if (ch === '\\' && i + 1 < text.length && PUNCTUATION.includes(text[i + 1])) {
-      pushText(text[i + 1]);
-      i += 2;
+    const step = readStep(text, i, budget, depth);
+    if (!step) {
+      buffer += text[i];
+      i += 1;
       continue;
     }
-
-    // An image that is not a gallery image on its own line (an external
-    // image, one inside a sentence) stays as text, "!" and all.
-    if (ch === '!' && text[i + 1] === '[') {
-      const image = readLink(text, i + 1, budget);
-      if (image) {
-        pushText(text.slice(i, image.end));
-        i = image.end;
-        continue;
-      }
+    if ('token' in step) {
+      flush();
+      out.push(step.token);
+    } else {
+      buffer += step.text;
     }
-
-    if (ch === '[') {
-      const link = readLink(text, i, budget);
-      if (link) {
-        flush();
-        out.push(link.token);
-        i = link.end;
-        continue;
-      }
-    }
-
-    if (ch === '*' && depth < MAX_INLINE_DEPTH) {
-      const bold = text.startsWith('**', i);
-      const marker = bold ? '**' : '*';
-      const close = findClosing(text, i + marker.length, marker, budget);
-      if (close > i + marker.length) {
-        const inner = text.slice(i + marker.length, close);
-        // Spaces right inside the markers mean it is not emphasis ("2 * 3 *").
-        if (inner.trim() === inner) {
-          flush();
-          const children = parseInline(inner, budget, depth + 1);
-          out.push({ type: bold ? 'bold' : 'italic', children });
-          i = close + marker.length;
-          continue;
-        }
-      }
-      pushText(marker);
-      i += marker.length;
-      continue;
-    }
-
-    pushText(ch);
-    i += 1;
+    i = step.end;
   }
   flush();
   return out;
@@ -256,12 +321,12 @@ function findClosing(text: string, from: number, marker: string, budget: Budget)
   return -1;
 }
 
-/** `[text](target)` at `start`, if it is a link the subset knows. */
-function readLink(
+/** The label of a link: `start` is its "[", the result's `end` the "]" (or where the scan stopped). */
+function readLabel(
   text: string,
   start: number,
   budget: Budget,
-): { token: Inline; end: number } | null {
+): { label: string; end: number } | null {
   let j = start + 1;
   let label = '';
   for (; j < text.length && j - start <= MAX_LINK_TEXT + 1; j += 1) {
@@ -278,10 +343,11 @@ function readLink(
       label += c;
     }
   }
-  if (text[j] !== ']' || text[j + 1] !== '(' || label.trim() === '') {
-    return null;
-  }
-  const urlStart = j + 2;
+  return { label, end: j };
+}
+
+/** The position of the ")" that ends a link's target from `urlStart`, or -1 when it has whitespace, a "(" or no end. */
+function findTargetEnd(text: string, urlStart: number, budget: Budget): number {
   let k = urlStart;
   for (; k < text.length && k - urlStart <= MAX_LINK_URL; k += 1) {
     budget.left -= 1;
@@ -290,14 +356,32 @@ function readLink(
       break;
     }
     if (/\s/.test(c) || c === '(') {
-      return null;
+      return -1;
     }
   }
-  if (text[k] !== ')') {
+  return text[k] === ')' ? k : -1;
+}
+
+/** `[text](target)` at `start`, if it is a link the subset knows. */
+function readLink(
+  text: string,
+  start: number,
+  budget: Budget,
+): { token: Inline; end: number } | null {
+  const read = readLabel(text, start, budget);
+  if (!read) {
     return null;
   }
-  const target = text.slice(urlStart, k);
-  const token = linkToken(label.trim(), target);
+  const { label, end: j } = read;
+  if (text[j] !== ']' || text[j + 1] !== '(' || label.trim() === '') {
+    return null;
+  }
+  const urlStart = j + 2;
+  const k = findTargetEnd(text, urlStart, budget);
+  if (k === -1) {
+    return null;
+  }
+  const token = linkToken(label.trim(), text.slice(urlStart, k));
   return token ? { token, end: k + 1 } : null;
 }
 

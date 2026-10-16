@@ -264,3 +264,91 @@ describe('indented list continuation lines', () => {
     expect(t2).toBeLessThan(Math.max(t1, 50) * 3);
   }, 120_000);
 });
+
+describe('parseMarkdown: what the first pass leaves loose', () => {
+  it('starts a new list when the kind changes, and keeps a loose paragraph apart', () => {
+    const blocks = parseMarkdown('- a\n1. b\n- c\npar');
+    expect(blocks.map((b) => b.type)).toEqual(['list', 'list', 'list', 'paragraph']);
+    expect(blocks[1]).toMatchObject({ ordered: true, start: 1 });
+  });
+
+  it('ends a list with a blank line and a paragraph with a list', () => {
+    const blocks = parseMarkdown('texto\n- item\n\nfim');
+    expect(blocks.map((b) => b.type)).toEqual(['paragraph', 'list', 'paragraph']);
+  });
+
+  it('closes a list or paragraph before a heading and before an image', () => {
+    const blocks = parseMarkdown(`- a\n# T\ntexto\n![c](image:${IMG})\n- b\n![c](image:${IMG})`);
+    expect(blocks.map((b) => b.type)).toEqual([
+      'list',
+      'heading',
+      'paragraph',
+      'image',
+      'list',
+      'image',
+    ]);
+  });
+
+  it('reads an ordered list that closes with a parenthesis, from its own number', () => {
+    expect(parseMarkdown('3) a\n4) b')).toMatchObject([{ ordered: true, start: 3 }]);
+  });
+
+  it('leaves a bracket without a link as text, in every way it can fail', () => {
+    for (const src of [
+      '[a](',
+      '[a]',
+      '[](https://x.com)',
+      '[[a]](https://x.com)',
+      '[a](https://x .com)',
+      '[a](https://x.com(y)',
+      '[a](ftp://x.com)',
+      '[a](nocolon)',
+      '[a](map:not-a-uuid)',
+      '[a](https://u:p@x.com)',
+      '[a](https:///)',
+      `[${'a'.repeat(600)}](https://x.com)`,
+      `[a](https://x.com/${'a'.repeat(2100)})`,
+    ]) {
+      const [block] = parseMarkdown(src);
+      expect(block.type, src).toBe('paragraph');
+      expect(block.type === 'paragraph' && inlineText(block.children), src).toBe(src);
+    }
+  });
+
+  it('reads a link whose label has an escaped bracket', () => {
+    expect(parseInline('[a\\]b](https://x.com)')).toEqual([
+      { type: 'link', href: 'https://x.com/', text: 'a]b' },
+    ]);
+  });
+
+  it('does not close emphasis inside a link label or across an escape', () => {
+    expect(parseInline('*a [b*](https://x.com) c*')).toEqual([
+      {
+        type: 'italic',
+        children: [text('a '), { type: 'link', href: 'https://x.com/', text: 'b*' }, text(' c')],
+      },
+    ]);
+    expect(parseInline('*a\\*b*')).toEqual([{ type: 'italic', children: [text('a*b')] }]);
+    expect(parseInline('**a *b* c**')).toEqual([
+      {
+        type: 'bold',
+        children: [text('a '), { type: 'italic', children: [text('b')] }, text(' c')],
+      },
+    ]);
+    expect(parseInline('*a **b** c*')).toEqual([
+      {
+        type: 'italic',
+        children: [text('a '), { type: 'bold', children: [text('b')] }, text(' c')],
+      },
+    ]);
+  });
+
+  it('turns the rest of the text to plain text when the work budget runs out', () => {
+    expect(parseInline('abc *de* f', { left: 0 })).toEqual([text('abc *de* f')]);
+    expect(parseInline('*abc*', { left: 3 })).toEqual([text('*abc*')]);
+  });
+
+  it('keeps a backslash before a non-punctuation as it is', () => {
+    expect(parseInline('a\\b')).toEqual([text('a\\b')]);
+  });
+});

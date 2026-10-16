@@ -26,7 +26,6 @@ import {
   CLUE_MAX,
   JUDGED_KINDS,
   NAME_MAX,
-  FORM_KINDS,
   NO_WRONG,
   draftErrors,
   draftOf,
@@ -39,7 +38,7 @@ import {
   textLength,
   toInit,
 } from '../../../core/puzzles/puzzle-draft';
-import { kindIcon, kindName } from '../../../core/puzzles/puzzle-format';
+import { kindName } from '../../../core/puzzles/puzzle-format';
 import {
   type FormSection,
   invalidSection,
@@ -52,7 +51,7 @@ import { PuzzlesClient } from '../../../core/puzzles/puzzles-client';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { HintCheckField } from '../fields/hint-check-field';
 import { HintsField } from '../fields/hints-field';
-import { type PickOption, PickGroup } from '../fields/pick-group';
+import { PickGroup } from '../fields/pick-group';
 import { PartsField } from '../fields/parts-field';
 import { SolveField } from '../fields/solve-field';
 import { WrongField } from '../fields/wrong-field';
@@ -62,6 +61,7 @@ import { LockForm } from './lock-form';
 import { PillarsForm } from './pillars-form';
 import { RiddleForm } from './riddle-form';
 import { SequenceForm } from './sequence-form';
+import { KIND_OPTIONS } from './puzzle-form-kinds';
 import { NO_PREVIEW, type StartPreview } from './start-preview';
 
 type Load =
@@ -71,24 +71,6 @@ type Load =
 
 /** How long a change of the board waits before the server draws a start (the master is still clicking). */
 const PREVIEW_PAUSE_MS = 300;
-
-const KIND_OPTIONS: readonly PickOption<FormKind>[] = FORM_KINDS.map((kind) => ({
-  value: kind,
-  title: kindName(protoKindOf(kind)),
-  icon: kindIcon(protoKindOf(kind)),
-  sub:
-    kind === 'lights'
-      ? 'Uma grade de luzes. Cada toque troca a luz e as quatro vizinhas.'
-      : kind === 'lock'
-        ? 'Rodas de dígitos, letras ou runas. Você escolhe a solução.'
-        : kind === 'pillars'
-          ? 'Pilares com símbolos que giram, para copiar um mural.'
-          : kind === 'riddle'
-            ? 'Um enigma que os jogadores respondem por escrito.'
-            : kind === 'sequence'
-              ? 'Sinos que você toca e os jogadores repetem, na mesma ordem.'
-              : 'Uma mensagem de letras trocadas, que eles decifram.',
-}));
 
 /**
  * "/campaigns/:id/puzzles/new" and ".../:puzzleId/edit" (MR-038, E10-06 state 2): the master makes or edits a puzzle of

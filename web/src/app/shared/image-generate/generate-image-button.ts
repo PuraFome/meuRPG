@@ -102,7 +102,7 @@ export class GenerateImageButton {
     }
     this.opening = true;
     try {
-      const { openImageGenerate } = await import('./image-generate-dialog');
+      const { openImageGenerate } = await import('./open-image-generate');
       openImageGenerate(this.dialog, this.sheet, {
         campaignId: this.campaignId(),
         origin: this.origin(),
