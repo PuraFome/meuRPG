@@ -68,7 +68,7 @@ func TestLastingCoreARollSpendsAnEffectInACombat(t *testing.T) {
 		l.say("%s:\n%s%s", what, a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Brisa", "Toren"))
 	}
 	// Held by the concentration of Brisa: she stops concentrating.
-	a.mustAddEffect(t, e, resistanceKey, []string{"Toren"}, withCaster(a, t, "Brisa"))
+	a.mustAddEffect(t, e, resistanceKey, []string{"Toren"}, withCaster(t, a, "Brisa"))
 	snap("resistance held by Brisa's concentration")
 	spend(e.GetId(), resistanceKey, "Toren")
 	snap("spent")
@@ -77,7 +77,7 @@ func TestLastingCoreARollSpendsAnEffectInACombat(t *testing.T) {
 	spend(e.GetId(), resistanceKey, "Toren")
 	snap("spent with no caster")
 	// A caster that concentrates on something else: the effect ends alone, the concentration stays.
-	a.mustAddEffect(t, e, resistanceKey, []string{"Toren"}, withCaster(a, t, "Brisa"))
+	a.mustAddEffect(t, e, resistanceKey, []string{"Toren"}, withCaster(t, a, "Brisa"))
 	a.execSQL(t, `UPDATE combatants SET concentration_spell = 'spell:bless' WHERE id = $1`, a.id(t, "Brisa"))
 	spend(e.GetId(), resistanceKey, "Toren")
 	snap("spent while the caster concentrates on another spell")

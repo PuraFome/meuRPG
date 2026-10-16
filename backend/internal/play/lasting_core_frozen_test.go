@@ -47,7 +47,7 @@ func wantLastingGolden(t *testing.T, name, got string) {
 		}
 		return
 	}
-	want, err := os.ReadFile(path) //nolint:gosec // a fixed path of the repository
+	want, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read the golden file: %v (write it with -update-lasting-core)", err)
 	}

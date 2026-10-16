@@ -1,6 +1,7 @@
 package play
 
 import (
+	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -139,7 +140,7 @@ func TestLastingCoreExhaustionLadderOfAnNPC(t *testing.T) {
 			setOn(goblin)(r)
 			r.Level, r.ExpectedLevel = level, before
 		})
-		step("set "+string(rune('0'+level)), res, err)
+		step("set "+strconv.Itoa(int(level)), res, err)
 	}
 	res, err := a.coreSetExhaustion(t, a.master, e, func(r *playv1.SetExhaustionRequest) {
 		setOn(goblin)(r)
@@ -157,7 +158,7 @@ func TestLastingCoreExhaustionLadderOfAnNPC(t *testing.T) {
 			lowerOn(goblin)(r)
 			r.By, r.ExpectedLevel = by, before
 		})
-		step("lower by "+string(rune('0'+by)), res, err)
+		step("lower by "+strconv.Itoa(int(by)), res, err)
 	}
 	l.say("events:\n%s", a.coreEvents(t, eventExhaustion, eventTurnEnded))
 	wantLastingGolden(t, "exhaustion_npc_ladder", a.coreNames(t, l.String()))
@@ -233,7 +234,7 @@ func TestLastingCoreExhaustionOfCharacters(t *testing.T) {
 		t.Fatalf("SetExhaustion(Toren) error = %v", err)
 	}
 	l.say("after the combat ended: Toren 2 -> level %d max %d; %s", res.GetLevel(), res.GetHitPointsMax(), a.coreVitals(t, "Toren", a.toren))
-	res, err = a.coreSetExhaustion(t, a.master, idle, func(r *playv1.SetExhaustionRequest) { byChar(a.pens)(r); r.Level = 6 })
+	_, err = a.coreSetExhaustion(t, a.master, idle, func(r *playv1.SetExhaustionRequest) { byChar(a.pens)(r); r.Level = 6 })
 	l.say("out of a combat: Pensantus 6 without confirmation -> %s", coreRefusal(err))
 	res, err = a.coreSetExhaustion(t, a.master, idle, func(r *playv1.SetExhaustionRequest) { byChar(a.pens)(r); r.Level, r.ConfirmDeath = 6, true })
 	if err != nil {

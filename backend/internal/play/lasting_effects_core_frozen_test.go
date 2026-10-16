@@ -32,7 +32,7 @@ func (a *armed) coreEndEffect(t *testing.T, e *playv1.Encounter, label, key stri
 	return err
 }
 
-func withCaster(a *armed, t *testing.T, label string) func(*playv1.AddLastingEffectRequest) {
+func withCaster(t *testing.T, a *armed, label string) func(*playv1.AddLastingEffectRequest) {
 	return func(r *playv1.AddLastingEffectRequest) { r.CasterId = a.id(t, label) }
 }
 
@@ -47,7 +47,7 @@ func TestLastingCoreACastingOnSeveralTargetsEndsTogether(t *testing.T) {
 		t.Helper()
 		a.mustAddEffect(t, e, "spell:bless", []string{"Toren", "Pensantus", "Brisa"}, edit)
 	}
-	add(func(r *playv1.AddLastingEffectRequest) { withCaster(a, t, "Brisa")(r); a.rounds(t, 4, "Brisa")(r) })
+	add(func(r *playv1.AddLastingEffectRequest) { withCaster(t, a, "Brisa")(r); a.rounds(t, 4, "Brisa")(r) })
 	l.say("a casting on three targets:\n%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Brisa"))
 	a.mustAddEffect(t, e, "spell:bless", []string{"Toren"}, a.rounds(t, 9, "Toren"))
 	l.say("cast again on Toren, no caster:\n%s", a.coreEffects(t, e.GetId()))
@@ -77,7 +77,7 @@ func TestLastingCoreWhatTheEffectsLeaveOnTheCombatants(t *testing.T) {
 	}
 	a.setConditions(t, e, "Brisa", "condition:poisoned")
 	a.mustAddEffect(t, e, "spell:haste", []string{"Toren"}, func(r *playv1.AddLastingEffectRequest) {
-		withCaster(a, t, "Pensantus")(r)
+		withCaster(t, a, "Pensantus")(r)
 		a.rounds(t, 3, "Pensantus")(r)
 	})
 	a.mustAddEffect(t, e, "spell:longstrider", []string{"Pensantus"}, nil)
@@ -130,7 +130,7 @@ func TestLastingCoreWhatFollowsAnEffectThatEnded(t *testing.T) {
 	a := newCasters(t)
 	e := a.closeFight(t)
 	var l coreLog
-	a.mustAddEffect(t, e, "spell:heroism", []string{"Toren", "Goblin"}, withCaster(a, t, "Pensantus"))
+	a.mustAddEffect(t, e, "spell:heroism", []string{"Toren", "Goblin"}, withCaster(t, a, "Pensantus"))
 	a.mustAddEffect(t, e, "spell:haste", []string{"Pensantus"}, a.rounds(t, 9, "Pensantus"))
 	// Toren's turn is next (round 2): he and the goblin (in round 1) start theirs with Heroism's
 	// temporary hit points; the goblin's second turn adds nothing, it has them.
@@ -224,11 +224,11 @@ func TestLastingCoreAddingEffectsKeepsWhatTheRequestSays(t *testing.T) {
 	})
 	add("spell:enhance-ability", []string{"Pensantus"}, func(r *playv1.AddLastingEffectRequest) { r.AbilityKey = "luck" })
 	add("spell:heroism", []string{"Brisa"}, func(r *playv1.AddLastingEffectRequest) {
-		withCaster(a, t, "Brisa")(r)
+		withCaster(t, a, "Brisa")(r)
 		kind(playv1.EffectDurationKind_EFFECT_DURATION_KIND_CONCENTRATION, 0, "")(r)
 		r.Concentration = new(false)
 	})
-	add("spell:guidance", []string{"Toren"}, withCaster(a, t, "Pensantus"))
+	add("spell:guidance", []string{"Toren"}, withCaster(t, a, "Pensantus"))
 	add("effect:web-fire", []string{"Toren"}, nil)
 	add("effect:lethargy", []string{"Toren"}, nil)
 	add("spell:unknown", []string{"Toren"}, nil)

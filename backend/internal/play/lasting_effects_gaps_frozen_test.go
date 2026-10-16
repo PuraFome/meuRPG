@@ -51,7 +51,7 @@ func TestLastingCoreWhoTakesHoldOfAnEffectThatNeedsTheSheet(t *testing.T) {
 	res := a.mustAddEffect(t, e, mageArmorKey, []string{"Brisa", "Pensantus", "Toren"}, nil)
 	l.say("mage armor on Brisa (armored), Pensantus and Toren: %d effects", len(res.GetEffects()))
 	a.mustAddEffect(t, e, mageArmorKey, []string{"Brisa"}, nil)
-	a.mustAddEffect(t, e, heroismKey, []string{"Toren"}, withCaster(a, t, "Goblin"))
+	a.mustAddEffect(t, e, heroismKey, []string{"Toren"}, withCaster(t, a, "Goblin"))
 	l.say("%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Brisa", "Pensantus", "Toren"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded))
 	wantLastingGolden(t, "gaps_sheet", a.coreNames(t, l.String()))
@@ -85,7 +85,7 @@ func TestLastingCoreTheCoreInOddStates(t *testing.T) {
 	a := newCasters(t)
 	e := a.closeFight(t)
 	var l coreLog
-	a.mustAddEffect(t, e, heroismKey, []string{"Toren", "Goblin"}, withCaster(a, t, "Pensantus"))
+	a.mustAddEffect(t, e, heroismKey, []string{"Toren", "Goblin"}, withCaster(t, a, "Pensantus"))
 	a.mustAddEffect(t, e, "effect:web-fire", []string{"Goblin"}, nil)
 	a.mustAddEffect(t, e, webSpell, []string{"Goblin"}, nil)
 	a.execSQL(t, `UPDATE combatants SET defeated = true WHERE id = $1`, a.id(t, "Goblin"))
