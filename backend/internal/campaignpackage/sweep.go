@@ -48,19 +48,32 @@ func (s *Service) Sweep(ctx context.Context) {
 		return
 	}
 	now := s.now()
+	if !s.sweepExports(ctx, now) {
+		return
+	}
+	s.sweepImports(ctx, now)
+}
+
+// sweepExports deletes the expired exports, a batch at a time. It reports
+// false when it could not list them, which ends the pass.
+func (s *Service) sweepExports(ctx context.Context, now time.Time) bool {
 	for {
 		rows, err := s.queries.ListExpiredCampaignExports(ctx, packagedb.ListExpiredCampaignExportsParams{ExpiresAt: now, Limit: sweepBatch})
 		if err != nil {
 			s.logger.WarnContext(ctx, "campaignpackage: cannot list the expired exports", "error", err)
-			return
+			return false
 		}
 		for _, e := range rows {
 			s.deleteExport(ctx, e)
 		}
 		if len(rows) < sweepBatch {
-			break
+			return true
 		}
 	}
+}
+
+// sweepImports deletes the expired uploads, parts first, a batch at a time.
+func (s *Service) sweepImports(ctx context.Context, now time.Time) {
 	for {
 		rows, err := s.queries.ListExpiredCampaignImports(ctx, packagedb.ListExpiredCampaignImportsParams{ExpiresAt: now, Limit: sweepBatch})
 		if err != nil {
@@ -74,7 +87,7 @@ func (s *Service) Sweep(ctx context.Context) {
 			}
 		}
 		if len(rows) < sweepBatch {
-			break
+			return
 		}
 	}
 }
