@@ -7,23 +7,12 @@
 # The list may only shrink: CI fails when a function enters it or gets
 # worse, and when one gets better until this file is written again.
 # See CONTRIBUTING.md, "Complexity totals".
-cognitive internal/maps (*Service).GenerateMapImage 17
-cognitive internal/maps (*Service).checkCharacters 31
-cognitive internal/maps (*Service).playersSeenOf 30
-cognitive internal/maps (*Service).prepare 20
-cognitive internal/maps (*Service).prepareMap 20
-cognitive internal/maps (*Service).run 32
-cognitive internal/maps/images readJPEGHeader 16
-cognitive internal/play (*Service).AdjustCombatantHitPoints 32
-cognitive internal/play (*Service).ApplyPendingDamage 81
 cognitive internal/play (*Service).CastSummon 79
 cognitive internal/play (*Service).CloseContest 19
 cognitive internal/play (*Service).ConfirmCastTimePassed 23
-cognitive internal/play (*Service).DiscardPendingDamage 25
 cognitive internal/play (*Service).EndActiveSpell 18
 cognitive internal/play (*Service).EndConcentration 26
 cognitive internal/play (*Service).GetOutsideInspiration 30
-cognitive internal/play (*Service).GetTurnOptions 29
 cognitive internal/play (*Service).GiveBardicInspirationOutside 29
 cognitive internal/play (*Service).ReleaseGrapple 23
 cognitive internal/play (*Service).ResolveShove 52
@@ -34,7 +23,6 @@ cognitive internal/play (*Service).castProto 34
 cognitive internal/play (*Service).checkOnSolve 18
 cognitive internal/play (*Service).checkOnWrong 31
 cognitive internal/play (*Service).checkParts 16
-cognitive internal/play (*Service).checkTargets 32
 cognitive internal/play (*Service).contestOptionsFor 50
 cognitive internal/play (*Service).dieToCharacters 22
 cognitive internal/play (*Service).dieToCombat 24
@@ -47,27 +35,16 @@ cognitive internal/play (*Service).shapeChange 71
 cognitive internal/play (*Service).shapeUndo 22
 cognitive internal/play (*Service).sightChange 75
 cognitive internal/play (*Service).sightUndo 16
-cognitive internal/play (*Service).spellAttack 16
-cognitive internal/play (*Service).spellSave 28
-cognitive internal/play (*Service).spellTargetsFor 24
 cognitive internal/play (*Service).syncContests 26
 cognitive internal/play (*contestReader).contestView 46
 cognitive internal/play (*contestReader).helpViews 17
 cognitive internal/play (*contestReader).state 16
 cognitive internal/play (*windowView).counterspellPrompt 17
 cognitive internal/play decodePuzzle 18
-cyclomatic internal/maps (*Service).GenerateMapImage 16
-cyclomatic internal/maps (*Service).checkCharacters 21
-cyclomatic internal/maps (*Service).playersSeenOf 20
-cyclomatic internal/maps (*Service).run 30
-cyclomatic internal/play (*Service).AdjustCombatantHitPoints 29
-cyclomatic internal/play (*Service).ApplyPendingDamage 45
 cyclomatic internal/play (*Service).CastSummon 43
 cyclomatic internal/play (*Service).ConfirmCastTimePassed 16
-cyclomatic internal/play (*Service).DiscardPendingDamage 18
 cyclomatic internal/play (*Service).EndConcentration 18
 cyclomatic internal/play (*Service).GetOutsideInspiration 27
-cyclomatic internal/play (*Service).GetTurnOptions 27
 cyclomatic internal/play (*Service).GiveBardicInspirationOutside 19
 cyclomatic internal/play (*Service).ResolveShove 31
 cyclomatic internal/play (*Service).RespondContest 41
@@ -76,7 +53,6 @@ cyclomatic internal/play (*Service).castProto 21
 cyclomatic internal/play (*Service).checkOnSolve 16
 cyclomatic internal/play (*Service).checkOnWrong 24
 cyclomatic internal/play (*Service).checkSources 18
-cyclomatic internal/play (*Service).checkTargets 25
 cyclomatic internal/play (*Service).contestOptionsFor 43
 cyclomatic internal/play (*Service).familiarSquares 17
 cyclomatic internal/play (*Service).giveDie 23
@@ -84,9 +60,5 @@ cyclomatic internal/play (*Service).pruneHolds 28
 cyclomatic internal/play (*Service).reactorSees 17
 cyclomatic internal/play (*Service).shapeChange 38
 cyclomatic internal/play (*Service).sightChange 40
-cyclomatic internal/play (*Service).spellAttack 16
-cyclomatic internal/play (*Service).spellSave 25
-cyclomatic internal/play (*Service).spellTargetsFor 16
 cyclomatic internal/play (*Service).syncContests 19
 cyclomatic internal/play (*contestReader).contestView 39
-maintainability internal/play (*Service).ApplyPendingDamage 16
