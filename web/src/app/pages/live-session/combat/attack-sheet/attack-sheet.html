@@ -7,23 +7,23 @@
       <h2 class="sheet__title" id="sheet-t" tabindex="-1">{{ title() }}</h2>
       <p class="sheet__sub">{{ subtitle() }}</p>
     </div>
-    <button type="button" class="sheet__close" aria-label="Fechar" [disabled]="busy()" (click)="close()">
+    <button type="button" class="sheet__close" aria-label="Fechar" [disabled]="s.busy()" (click)="close()">
       <mat-icon aria-hidden="true">close</mat-icon>
     </button>
   </div>
 
-  @if (!typing()) {
+  @if (!s.typing()) {
     <app-attack-steps [steps]="stepList()" />
   }
 
   <div #body class="sheet__body">
-  @if (error()) {
+  @if (s.error()) {
     <div class="mr-notice mr-notice--danger" role="alert">
       <mat-icon aria-hidden="true">error</mat-icon>
-      <p>{{ error() }}</p>
+      <p>{{ s.error() }}</p>
     </div>
   }
-  @switch (stage()) {
+  @switch (s.stage()) {
     @case ('target') {
       <p class="sheet__ask" id="target-label">{{ theatre() ? 'Escolha o alvo (quem você vê)' : 'Escolha o alvo (só quem você vê)' }}</p>
       <div class="targets" role="radiogroup" aria-labelledby="target-label">
@@ -35,7 +35,7 @@
               name="attack-target"
               [value]="t.id"
               [disabled]="!!t.blocked"
-              [checked]="targetId() === t.id"
+              [checked]="s.targetId() === t.id"
               (change)="pick(t.id)"
               (click)="$event.detail > 0 && pick(t.id); $event.detail > 0 && advance()"
               (keydown.enter)="pick(t.id); advance()"
@@ -73,7 +73,7 @@
         </p>
       }
       <div class="sheet__foot">
-        <button mat-stroked-button type="button" class="sheet__done" [disabled]="busy()" (click)="close()">Cancelar</button>
+        <button mat-stroked-button type="button" class="sheet__done" [disabled]="s.busy()" (click)="close()">Cancelar</button>
       </div>
     }
     @case ('roll') {
@@ -87,32 +87,32 @@
           <button type="button" class="link" (click)="change()">Trocar</button>
         }
       </div>
-      @if (hasMode()) {
+      @if (mode.hasMode()) {
         <app-roll-mode-picker
-          [suggested]="suggested()"
-          [sources]="sources()"
-          [approval]="approval"
-          [request]="request()"
-          [mode]="chosen()"
-          (modeChange)="setMode($event)"
-          [(reason)]="reason"
-          [busy]="busy()"
-          (ask)="askMaster()"
-          (cancelAsk)="cancelAsk()"
+          [suggested]="mode.suggested()"
+          [sources]="mode.sources()"
+          [approval]="mode.approval"
+          [request]="modes.request()"
+          [mode]="mode.chosen()"
+          (modeChange)="mode.set($event)"
+          [(reason)]="modes.reason"
+          [busy]="s.busy()"
+          (ask)="modes.ask()"
+          (cancelAsk)="modes.cancel()"
         />
-        @if (criticalOnHit()) {
+        @if (mode.criticalOnHit()) {
           <p class="sheet__note">
             <mat-icon aria-hidden="true">info</mat-icon>
             Acerto crítico automático (a 1,5 m de alvo paralisado ou inconsciente)
           </p>
         }
       }
-      @if (modeReady()) {
+      @if (mode.ready()) {
         <!-- The d4 an effect adds (Bênção, Perdição) with physical dice: typed before the d20 is confirmed. -->
-        @if (extraFields().length > 0 && (typing() || !canApp)) {
+        @if (extraFields().length > 0 && (s.typing() || !canApp)) {
           <app-extra-dice class="sheet__extra" [fields]="extraFields()" [(faces)]="extraFaces" />
         }
-        @if (faceCount() === 1) {
+        @if (mode.faceCount() === 1) {
           <app-roll-picker
             [canApp]="canApp"
             [canType]="canType"
@@ -121,25 +121,25 @@
             hint="Role o seu dado e digite o número que saiu (1 a 20)."
             totalNote="Total do ataque"
             [modifier]="attack.attackBonus"
-            [busy]="busy()"
+            [busy]="s.busy()"
             [sticky]="true"
-            [(typing)]="typing"
+            [(typing)]="s.typing"
             (app)="rollAttack({ inApp: true })"
             (typed)="rollAttackTyped($event)"
           />
         } @else {
           <app-multi-roll
-            [fields]="d20Fields()"
+            [fields]="d20Fields"
             [canApp]="canApp"
             [canType]="canType"
             [preferApp]="preferApp"
-            [combine]="combine()"
+            [combine]="mode.combine()"
             [modifier]="attack.attackBonus"
             totalNote="Total do ataque"
             [appLabel]="'Rolar 2d20 no app'"
-            [hint]="'Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ' + (combine() === 'lower' ? 'menor' : 'maior') + '.'"
-            [busy]="busy()"
-            [(typing)]="typing"
+            [hint]="'Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ' + (mode.combine() === 'lower' ? 'menor' : 'maior') + '.'"
+            [busy]="s.busy()"
+            [(typing)]="s.typing"
             (app)="rollAttack({ inApp: true })"
             (typed)="rollAttackPair($event)"
           />
@@ -149,47 +149,47 @@
     @default {
       <app-attack-result
         [targetLabel]="targetLabel()"
-        [roll]="roll()"
+        [roll]="s.roll()"
         [d20Formula]="d20Formula()"
         [outcome]="outcome()"
         [held]="held()"
-        [showDamage]="stage() === 'done'"
-        [damage]="damage()"
+        [showDamage]="s.stage() === 'done'"
+        [damage]="s.damage()"
         [waiting]="waiting()"
-        [damageLine]="damageLine()"
-        [asking]="asking()"
+        [damageLine]="dmg.line()"
+        [asking]="s.asking()"
       />
 
-      @if (stage() === 'lucky') {
+      @if (s.stage() === 'lucky') {
         <app-lucky-prompt
-          [offer]="luckyOffer()"
+          [offer]="questions.luckyOffer()"
           [canApp]="canApp"
           [canType]="canType"
           [preferApp]="preferApp"
-          [busy]="busy()"
-          [(typing)]="typing"
-          (reroll)="answerLucky(true, $event)"
-          (keep)="answerLucky(false, null)"
+          [busy]="s.busy()"
+          [(typing)]="s.typing"
+          (reroll)="questions.answerLucky(true, $event)"
+          (keep)="questions.answerLucky(false, null)"
         />
       }
 
-      @if (stage() === 'inspire') {
+      @if (s.stage() === 'inspire') {
         <app-inspiration-prompt
-          [die]="offer()?.die"
+          [die]="questions.offer()?.die"
           [canApp]="canApp"
           [canType]="canType"
           [preferApp]="preferApp"
-          [busy]="busy()"
-          [(typing)]="typing"
-          (use)="answerInspiration(true, $event)"
-          (keep)="answerInspiration(false, null)"
+          [busy]="s.busy()"
+          [(typing)]="s.typing"
+          (use)="questions.answerInspiration(true, $event)"
+          (keep)="questions.answerInspiration(false, null)"
         />
       }
 
-      @if (stage() === 'damage' && dice(); as d) {
+      @if (s.stage() === 'damage' && dmg.dice(); as d) {
         <div class="dmg">
-          @if (brutalCard(); as card) {
-            @if (!typing() && canApp) {
+          @if (dmg.brutalCard(); as card) {
+            @if (!s.typing() && canApp) {
               <div class="crit">
                 <span class="crit__cap">Dano do crítico</span>
                 <b class="crit__sum">{{ card.sum }}</b>
@@ -198,22 +198,22 @@
             }
           } @else {
             <p class="dmg__what">
-              {{ showCritical() ? damageIntro() : (pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
+              {{ dmg.showCritical() ? dmg.intro() : (s.pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
             </p>
           }
-          @if (parts().length) {
-            <app-damage-parts [parts]="parts()" [(picks)]="picks" [disabled]="busy()" />
+          @if (dmg.parts().length) {
+            <app-damage-parts [parts]="dmg.parts()" [(picks)]="s.picks" [disabled]="s.busy()" />
             <app-multi-roll
-              [fields]="damageFields()"
+              [fields]="dmg.fields()"
               [canApp]="canApp"
               [canType]="canType"
               [preferApp]="preferApp"
-              [modifier]="damageFlat()"
+              [modifier]="dmg.flat()"
               totalNote="Dano total"
               appLabel="Rolar o dano no app"
               hint="Role os dados de cada linha e digite a soma de cada uma, sem os números fixos."
-              [busy]="busy()"
-              [(typing)]="typing"
+              [busy]="s.busy()"
+              [(typing)]="s.typing"
               (app)="rollDamage({ inApp: true })"
               (typed)="rollDamageParts($event)"
             />
@@ -222,19 +222,19 @@
               [canApp]="canApp"
               [canType]="canType"
               [preferApp]="preferApp"
-              [label]="damageLabel()"
-              [hint]="damageHint()"
-              [totalNote]="totalNote()"
-              [typedFormula]="typedFormula()"
-              [min]="range().min"
-              [max]="range().max"
-              [modifier]="damageModifier()"
+              [label]="dmg.label()"
+              [hint]="dmg.hint()"
+              [totalNote]="dmg.totalNote()"
+              [typedFormula]="dmg.typedFormula()"
+              [min]="dmg.range().min"
+              [max]="dmg.range().max"
+              [modifier]="dmg.modifier()"
               [confirmTotal]="true"
-              [fixedText]="fixedText()"
-              [busy]="busy()"
-              [appLabel]="damageAppLabel()"
+              [fixedText]="dmg.fixedText()"
+              [busy]="s.busy()"
+              [appLabel]="dmg.appLabel()"
               [sticky]="true"
-              [(typing)]="typing"
+              [(typing)]="s.typing"
               (app)="rollDamage({ inApp: true })"
               (typed)="rollDamageTyped($event)"
             />
@@ -242,13 +242,13 @@
         </div>
       }
 
-      @if (stage() === 'done') {
-        @if (damage() && after()) {
-          <p class="after" [class.after--out]="defeated()">
-            @if (defeated()) {
+      @if (s.stage() === 'done') {
+        @if (s.damage() && dmg.after()) {
+          <p class="after" [class.after--out]="dmg.defeated()">
+            @if (dmg.defeated()) {
               <mat-icon aria-hidden="true">close</mat-icon>
             }
-            {{ after() }}
+            {{ dmg.after() }}
           </p>
         }
         <p class="sheet__note">

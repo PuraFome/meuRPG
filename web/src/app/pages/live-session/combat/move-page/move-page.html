@@ -38,7 +38,7 @@
             [layers]="layers()"
             [reach]="reach()"
             [chosen]="readOnly() ? null : frame()"
-            [dragged]="dragMark()"
+            [dragged]="drag.mark()"
             [pickSquares]="!readOnly()"
             [showTurn]="readOnly()"
             [ownMoveId]="readOnly() ? null : (own()?.id ?? null)"
@@ -75,8 +75,8 @@
           @if (chosen()) {
             <li><span class="mr-swatch mr-swatch--chosen" aria-hidden="true"></span>Quadrado escolhido</li>
           }
-          @if (dragLegend()) {
-            <li><span class="mr-swatch mr-swatch--dragged" aria-hidden="true"></span>{{ dragLegend() }}</li>
+          @if (drag.legend()) {
+            <li><span class="mr-swatch mr-swatch--dragged" aria-hidden="true"></span>{{ drag.legend() }}</li>
           }
         </app-map-layers-legend>
         @if (!jumping()) {
@@ -108,11 +108,11 @@
             </div>
           }
         </div>
-        @if (dragLine()) {
-          <p class="move__drag" data-testid="drag-line">{{ dragLine() }}</p>
+        @if (drag.line()) {
+          <p class="move__drag" data-testid="drag-line">{{ drag.line() }}</p>
         }
-        @if (dragText() && !visibleError()) {
-          <p class="move__drag-text" role="status" data-testid="drag-text">{{ dragText() }}</p>
+        @if (drag.text() && !visibleError()) {
+          <p class="move__drag-text" role="status" data-testid="drag-text">{{ drag.text() }}</p>
         }
         @if (visibleError()) {
           <div class="mr-notice mr-notice--danger" role="alert">
