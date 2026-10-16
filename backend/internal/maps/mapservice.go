@@ -714,94 +714,13 @@ func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campa
 // that changes kind leaves behind. Each kind needs its own data, and refuses
 // another's; a point keeps what it has unless the request replaces it.
 func (s *Service) applySpecChange(ctx context.Context, q *mapsdb.Queries, p mapsdb.MapPoint, c pointChange, params *mapsdb.UpdateMapPointParams) error {
-	trap, treasure, light := kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TRAP], kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE], kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT]
-	switch {
-	case params.Kind == trap:
-		if c.trap != nil {
-			var current *string
-			if p.Kind == trap {
-				current = p.TrapState
-			}
-			t, err := s.cleanTrap(c.trap, current)
-			if err != nil {
-				return err
-			}
-			params.Trap, params.TrapState = t.json, &t.state
-			if t.state == stateTriggered && params.TrapTriggeredAt == nil {
-				params.TrapTriggeredAt = &params.Now // the first time it fires, for good
-			}
-		} else if p.Kind != trap {
-			return badSpec("trap is required to make a point a TRAP")
-		}
-	case c.trap != nil:
-		return errNotThatKind("trap", "TRAP")
-	default:
-		params.Trap, params.TrapState, params.TrapTriggeredAt = nil, nil, nil
-		if p.Kind == trap {
-			if err := q.DeletePointReveals(ctx, p.ID); err != nil {
-				return fmt.Errorf("forget the trap's reveals: %w", err)
-			}
-		}
+	if err := s.applyTrapChange(ctx, q, p, c, params); err != nil {
+		return err
 	}
-
-	converted := p.TreasureConvertedAwardID != nil
-	switch {
-	case params.Kind == treasure:
-		switch {
-		case c.treasure != nil:
-			v, err := cleanTreasureValue(*c.treasure)
-			if err != nil {
-				return err
-			}
-			if converted && (p.TreasureValuePo == nil || *p.TreasureValuePo != v) {
-				return errTreasureConverted() // its worth became XP
-			}
-			params.TreasureValuePo = &v
-		case p.Kind != treasure:
-			zero := int32(0)
-			params.TreasureValuePo = &zero
-		}
-	case c.treasure != nil:
-		return errNotThatKind("treasure_value_po", "TREASURE")
-	default:
-		if p.Kind == treasure {
-			if converted {
-				return errTreasureConverted()
-			}
-			// Like a delete: a found treasure is part of the session's record, unmarked
-			// before it goes, never lost silently with its finders.
-			if p.TreasureFoundAt != nil {
-				return errTreasureFound()
-			}
-			if err := q.DeleteTreasureFinders(ctx, p.ID); err != nil {
-				return fmt.Errorf("forget the treasure's finders: %w", err)
-			}
-		}
-		params.TreasureValuePo, params.TreasureFoundAt, params.TreasureSessionID = nil, nil, nil
+	if err := applyTreasureChange(ctx, q, p, c, params); err != nil {
+		return err
 	}
-
-	switch {
-	case params.Kind == light:
-		if c.light != nil {
-			l, err := s.cleanLight(c.light)
-			if err != nil {
-				return err
-			}
-			params.LightPreset, params.LightBrightFt, params.LightDimFt = l.preset, &l.bright, &l.dimmed
-		} else if p.Kind != light {
-			return badSpec("light is required to make a point a LIGHT")
-		}
-		// No player ever receives a light, so it has nothing to reveal.
-		if c.revealed != nil && *c.revealed {
-			return badSpec("a LIGHT point is never shown to the players, so it cannot be revealed")
-		}
-		params.RevealedAt = nil
-	case c.light != nil:
-		return errNotThatKind("light", "LIGHT")
-	default:
-		params.LightPreset, params.LightBrightFt, params.LightDimFt = nil, nil, nil
-	}
-	return nil
+	return s.applyLightChange(p, c, params)
 }
 
 // DeleteMapPoint implements mapsv1connect.MapServiceHandler.
