@@ -99,6 +99,25 @@ import {
 import { brisaVitals, pensantusVitals } from '../../core/play/live-testing';
 import { nextTurn } from '../../../test-settle';
 
+/**
+ * The page's protected members, looked up where the page keeps them (its own, the state, the view, the sheets, the events
+ * and the loader), so a test reads `page.vitals()` as the user of the page would think of it.
+ */
+function flat(fixture: ComponentFixture<LiveSession>): object {
+  const page = fixture.componentInstance as unknown as Record<string, Record<string, unknown>>;
+  const homes = [page, page['state'], page['view'], page['sheets'], page['events'], page['loader']];
+  return new Proxy(
+    {},
+    {
+      get(_target, key: string) {
+        const home = homes.find((h) => key in h);
+        const value = home?.[key];
+        return typeof value === 'function' ? value.bind(home) : value;
+      },
+    },
+  );
+}
+
 class KindError extends Error {
   constructor(readonly kind: LiveErrorKind) {
     super(kind);
@@ -639,7 +658,7 @@ describe('LiveSession', () => {
   it("reads the player's sheet again when the table's content changes", async () => {
     const fixture = TestBed.createComponent(LiveSession);
     await settle(fixture);
-    const page = fixture.componentInstance as unknown as {
+    const page = flat(fixture) as unknown as {
       playerSheet(): PlayerSheetVm | null;
     };
     expect(page.playerSheet()?.armorClass).toBe(14);
@@ -665,7 +684,7 @@ describe('LiveSession', () => {
     casting.active = [mage(OutsideCastStatus.ACTIVE)];
     const fixture = TestBed.createComponent(LiveSession);
     await settle(fixture);
-    const page = fixture.componentInstance as unknown as { ownSheet(): PlayerSheetVm | null };
+    const page = flat(fixture) as unknown as { ownSheet(): PlayerSheetVm | null };
     expect(page.ownSheet()?.armorClass).toBe(16);
     casting.active = [mage(OutsideCastStatus.ENDED)];
     source.push({ kind: 'spellCastsChanged' });
@@ -724,7 +743,7 @@ describe('LiveSession', () => {
     source.snapshot = { ...(source.snapshot as LiveSnapshotVm), vitals: [] };
     const fixture = TestBed.createComponent(LiveSession);
     await settle(fixture);
-    const page = fixture.componentInstance as unknown as {
+    const page = flat(fixture) as unknown as {
       combat: { apply(e: Encounter): void };
       ownCharacterName(): string;
       highlightsCharacterId(): string;
@@ -1185,7 +1204,7 @@ describe('LiveSession', () => {
     };
     // The component's state is protected; the test reads it to state what the player ends up with.
     const state = (fixture: ComponentFixture<LiveSession>) =>
-      fixture.componentInstance as unknown as {
+      flat(fixture) as unknown as {
         shownImage(): ShownImageVm | null;
         currentMapId(): string | null;
       };
@@ -1466,7 +1485,7 @@ describe('LiveSession', () => {
       const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as { combat: CombatState };
+      const page = flat(fixture) as unknown as { combat: CombatState };
       get.mockClear();
       // No combat on screen: a hint about the vision reads the map only.
       source.push({ kind: 'visionChanged', mapId: 'map-1' });
@@ -1836,7 +1855,7 @@ describe('LiveSession', () => {
       const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const state = (fixture.componentInstance as unknown as { combat: CombatState }).combat;
+      const state = (flat(fixture) as unknown as { combat: CombatState }).combat;
       get.mockClear();
 
       source.push({ kind: 'reactionWindowOpened', encounterId: 'e1', windowId: 'w1' });
@@ -1860,7 +1879,7 @@ describe('LiveSession', () => {
       const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const state = (fixture.componentInstance as unknown as { combat: CombatState }).combat;
+      const state = (flat(fixture) as unknown as { combat: CombatState }).combat;
       get.mockClear();
       source.push({
         kind: 'reactionWindowClosed',
@@ -1901,7 +1920,7 @@ describe('LiveSession', () => {
       const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(shown);
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as { combat: CombatState };
+      const page = flat(fixture) as unknown as { combat: CombatState };
       get.mockClear();
       return { fixture, get, state: page.combat };
     }
@@ -2069,7 +2088,7 @@ describe('LiveSession', () => {
     it('bumps the creatures when the stream says they changed', async () => {
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as { creaturesTick(): number };
+      const page = flat(fixture) as unknown as { creaturesTick(): number };
       const before = page.creaturesTick();
       source.push({ kind: 'creaturesChanged' });
       await settle(fixture);
@@ -2161,7 +2180,7 @@ describe('LiveSession', () => {
     it('takes the familiar band away at once when the way back to the own eyes works', async () => {
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as {
+      const page = flat(fixture) as unknown as {
         vitals(): readonly { familiarSight: unknown }[];
         familiarStopped(id: string): void;
       };
@@ -2183,7 +2202,7 @@ describe('LiveSession', () => {
       asMaster();
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as {
+      const page = flat(fixture) as unknown as {
         viewAs(): string | null;
         viewGone(): string;
         setViewAs(id: string | null): void;
@@ -2201,7 +2220,7 @@ describe('LiveSession', () => {
     it("closes the players' highlights card and the summary under it", async () => {
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as {
+      const page = flat(fixture) as unknown as {
         combat: CombatState;
         highlightsFor(): Encounter | null;
         closeHighlights(): void;
@@ -2219,7 +2238,7 @@ describe('LiveSession', () => {
       asMaster();
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as {
+      const page = flat(fixture) as unknown as {
         combat: CombatState;
         combatStarted(e: Encounter): void;
       };
@@ -2230,7 +2249,7 @@ describe('LiveSession', () => {
     it('words the ended combat for the highlights: rounds and defeated enemies', async () => {
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as {
+      const page = flat(fixture) as unknown as {
         combat: CombatState;
         highlightsSub(): string;
       };
@@ -2270,7 +2289,7 @@ describe('LiveSession', () => {
       source.push({ kind: 'characterRevived', characterId: 'pensantus' });
       await settle(fixture);
       expect(log).toHaveBeenCalled();
-      const page = fixture.componentInstance as unknown as {
+      const page = flat(fixture) as unknown as {
         revivedCaster(): string;
         revivedId(): string;
       };
@@ -2303,11 +2322,15 @@ describe('LiveSession', () => {
       vitals(): readonly { hitPointsCurrent: number }[];
       campaign(): { name: string } | null;
     };
-    const pageOf = (fixture: ComponentFixture<LiveSession>) =>
-      fixture.componentInstance as unknown as Page;
+    const pageOf = (fixture: ComponentFixture<LiveSession>) => flat(fixture) as unknown as Page;
     /** The test browser has no `matchMedia`: say whether the screen is a phone. */
     const phone = (matches: boolean) => {
-      window.matchMedia = (() => ({ matches })) as unknown as typeof window.matchMedia;
+      const list = {
+        matches,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      };
+      window.matchMedia = (() => list) as unknown as typeof window.matchMedia;
     };
     beforeEach(() => phone(false));
     afterEach(() => {
