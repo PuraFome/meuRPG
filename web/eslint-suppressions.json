@@ -116,6 +116,11 @@
       "count": 1
     }
   },
+  "src/app/core/content/option-switches.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "src/app/core/content/spell-draft.spec.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 10
@@ -448,6 +453,11 @@
       "count": 1
     }
   },
+  "src/app/pages/campaign-detail/creatures/give-creature-sheet.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "src/app/pages/campaign-detail/creatures/give-creature-sheet.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -672,6 +682,11 @@
   },
   "src/app/pages/character-editor/ability-scores/dice-result/dice-result.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/pages/character-editor/character-editor-choices.spec.ts": {
+    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -1563,6 +1578,11 @@
       "count": 1
     }
   },
+  "src/app/pages/live-session/combat/reaction-queue/reaction-queue.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "src/app/pages/live-session/combat/roll-picker/roll-picker.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2255,6 +2275,11 @@
       "count": 1
     }
   },
+  "src/app/pages/spells/spells.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "src/app/pages/spells/spells.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2723,6 +2748,11 @@
       "count": 1
     }
   },
+  "src/app/shared/spell-details/open-spell-details.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "src/app/shared/spell-details/spell-body.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2853,6 +2883,11 @@
   "src/app/shell/user-menu/user-menu.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
+    }
+  },
+  "src/test-settle.spec.ts": {
+    "no-restricted-syntax": {
+      "count": 2
     }
   }
 }
