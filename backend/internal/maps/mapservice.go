@@ -352,124 +352,29 @@ func (s *Service) UpdateMap(
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	if req.Msg.Name == nil && req.Msg.ImageId == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set name, image_id or both"))
-	}
-	if req.Msg.GetRevision() < 1 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("revision must be at least 1"))
-	}
-	var name, imageID *string
-	if req.Msg.Name != nil {
-		clean, err := cleanName("name", req.Msg.GetName())
-		if err != nil {
-			return nil, err
-		}
-		name = &clean
-	}
-	if req.Msg.ImageId != nil {
-		id, ok := parseID(req.Msg.GetImageId())
-		if !ok {
-			return nil, errNotAGalleryImage()
-		}
-		imageID = &id
+	update, err := checkMapUpdate(req.Msg)
+	if err != nil {
+		return nil, err
 	}
 	current, err := s.currentMap(ctx, m.CampaignID)
 	if err != nil {
 		return nil, err
 	}
-	// A map with the fog on never has an image a player can fetch (RN-10): a new
-	// image that is also used another way is copied, and the map gets the copy.
-	var imageCopy *fogCopy
-	if imageID != nil {
-		if old, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: m.CampaignID, ID: mapID}); err == nil && *imageID != old.ImageID {
-			if old.FogEnabled {
-				imageCopy, err = s.prepareFogCopy(ctx, m.CampaignID, mapID, *imageID)
-			} else {
-				// A map without fog never takes a fog map's own image either.
-				imageCopy, err = s.prepareReuseCopy(ctx, m.CampaignID, *imageID)
-			}
-			if err != nil {
-				return nil, s.dbError(ctx, "copy the map's image", err)
-			}
-		}
+	imageCopy, err := s.updateImageCopy(ctx, m.CampaignID, mapID, update.imageID)
+	if err != nil {
+		return nil, err
 	}
-	var updated mapsdb.Map
-	cleared, copied := false, false
+	var w mapUpdateWrite
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		cleared, copied = false, false
-		row, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errMapNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find map: %w", err)
-		}
-		if row.Revision != req.Msg.GetRevision() {
-			return errStaleMap()
-		}
-		params := mapsdb.UpdateMapParams{CampaignID: m.CampaignID, ID: mapID, Name: row.Name, ImageID: row.ImageID, Revision: row.Revision, Now: s.now()}
-		if name != nil {
-			params.Name = *name
-		}
-		if imageID != nil {
-			img, err := q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: m.CampaignID, ID: *imageID})
-			if errors.Is(err, pgx.ErrNoRows) {
-				return errNotAGalleryImage()
-			}
-			if err != nil {
-				return fmt.Errorf("find image: %w", err)
-			}
-			// The rows follow the image's proportions: a taller image on a calibrated
-			// map could pass the rules' 400 rows (MR-025), which no layer, combat or
-			// CHECK accepts. The master picks another image or recalibrates first.
-			if row.GridColumns != nil && *imageID != row.ImageID {
-				if _, err := grid.EngineGrid(int(*row.GridColumns/row.GridFactor), int(row.GridFactor), int(img.Width), int(img.Height)); err != nil {
-					return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(
-						"this image would make the map's grid pass the limit of %d x %d squares: lower the calibration first", grid.MaxColumns, grid.MaxRows))
-				}
-			}
-			params.ImageID = *imageID
-			if imageCopy != nil && *imageID == imageCopy.source.ID {
-				if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
-					return err
-				}
-				params.ImageID, copied = imageCopy.id, true
-			}
-		}
-		// A new image clears the painted layers (D2), which a fight standing on
-		// them cannot lose; the same image again clears nothing. Decided from the
-		// row locked here, so a combat that starts meanwhile is seen.
-		imageChanged := params.ImageID != row.ImageID
-		if imageChanged {
-			if err := s.refuseWhileCombat(ctx, tx, m.CampaignID, mapID); err != nil {
-				return err
-			}
-		}
-		updated, err = q.UpdateMap(ctx, params)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errStaleMap() // never, under the lock above: a second guard
-		}
-		if err != nil {
-			return fmt.Errorf("update map: %w", err)
-		}
-		if imageChanged {
-			cleared = true
-			return clearLayers(ctx, q, mapID)
-		}
-		return nil
+		var err error
+		w, err = s.writeMapUpdate(ctx, tx, mapUpdateTx{mapUpdate: update, campaignID: m.CampaignID, userID: m.UserID, mapID: mapID, imageCopy: imageCopy})
+		return err
 	})
-	if imageCopy != nil && (err != nil || !copied) {
-		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
-	}
+	s.discardUpdateCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
 	if err != nil {
 		return nil, s.dbError(ctx, "update a map", err)
 	}
-	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
-	if cleared {
-		s.tiles.forget(mapID)
-		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers
-	}
+	s.announceMapUpdate(ctx, m, mapID, current, w)
 	out, err := s.masterMap(ctx, m, mapID)
 	if err != nil {
 		return nil, err
