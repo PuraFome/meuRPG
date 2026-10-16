@@ -171,49 +171,76 @@ func (s *Service) openRevivifyRequest(ctx context.Context, tx pgx.Tx, q *playdb.
 	if err != nil {
 		return playdb.RevivifyRequest{}, err
 	}
-	// A caster in a combat casts inside it, where the minute is counted.
-	if enc, err := q.GetOpenEncounter(ctx, session.ID); err == nil {
-		cs, err := q.ListCombatants(ctx, enc.ID)
-		if err != nil {
-			return playdb.RevivifyRequest{}, fmt.Errorf("list the combatants: %w", err)
-		}
-		if slices.ContainsFunc(cs, func(c playdb.Combatant) bool {
-			return c.Kind == kindPlayer && c.CharacterID == caster.ID && !c.Defeated
-		}) {
-			return playdb.RevivifyRequest{}, connect.NewError(connect.CodeInvalidArgument, errors.New("the caster is in a combat: cast Revivify inside it"))
-		}
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return playdb.RevivifyRequest{}, fmt.Errorf("find the open encounter: %w", err)
+	if err := s.refuseCasterInCombat(ctx, q, session.ID, caster); err != nil {
+		return playdb.RevivifyRequest{}, err
 	}
-	cast, err := s.outsideOptions(ctx, tx, m.CampaignID, caster)
+	slot, err := s.outsideSlot(ctx, tx, m.CampaignID, caster, req.GetSlot())
 	if err != nil {
 		return playdb.RevivifyRequest{}, err
 	}
-	if !cast.enabled {
-		if err := castError(cast.reason, true); err != nil {
-			return playdb.RevivifyRequest{}, err
-		}
-	}
-	slot, err := slotOf(req.GetSlot(), cast)
-	if err != nil {
+	if err := s.requireDeadTarget(ctx, tx, m.CampaignID, targetID); err != nil {
 		return playdb.RevivifyRequest{}, err
-	}
-	if slot == nil {
-		return playdb.RevivifyRequest{}, connect.NewError(connect.CodeInvalidArgument, errors.New("slot must be a spell slot of the 3rd level or more"))
-	}
-	dead, err := s.roster.DeadCharacters(ctx, tx, m.CampaignID)
-	if err != nil {
-		return playdb.RevivifyRequest{}, err
-	}
-	// The same answer for a character that is not dead, one that does not exist and one the
-	// master marked (RN-10).
-	if !slices.ContainsFunc(dead, func(d link.DeadCharacter) bool { return d.ID == targetID && !d.RevivifyBlocked }) {
-		return playdb.RevivifyRequest{}, connect.NewError(connect.CodeNotFound, errors.New("character not found"))
 	}
 	return q.InsertRevivifyRequest(ctx, playdb.InsertRevivifyRequestParams{
 		CampaignID: m.CampaignID, GameSessionID: session.ID, CasterCharacterID: caster.ID, TargetCharacterID: targetID,
 		RequestedByUserID: &m.UserID, SlotLevel: slot.Level, SlotPact: slot.Pact, CreatedAt: s.now(), CreateKey: scoped, CreateHash: hash,
 	})
+}
+
+// refuseCasterInCombat stops a cast outside a combat for a caster that is in one: there the
+// minute is counted.
+func (s *Service) refuseCasterInCombat(ctx context.Context, q *playdb.Queries, sessionID string, caster link.Character) error {
+	enc, err := q.GetOpenEncounter(ctx, sessionID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("find the open encounter: %w", err)
+	}
+	cs, err := q.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	if slices.ContainsFunc(cs, func(c playdb.Combatant) bool {
+		return c.Kind == kindPlayer && c.CharacterID == caster.ID && !c.Defeated
+	}) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("the caster is in a combat: cast Revivify inside it"))
+	}
+	return nil
+}
+
+// outsideSlot checks the caster has the spell and the slot the cast names.
+func (s *Service) outsideSlot(ctx context.Context, tx pgx.Tx, campaignID string, caster link.Character, in *playv1.SpellSlot) (*slotRef, error) {
+	cast, err := s.outsideOptions(ctx, tx, campaignID, caster)
+	if err != nil {
+		return nil, err
+	}
+	if !cast.enabled {
+		if err := castError(cast.reason, true); err != nil {
+			return nil, err
+		}
+	}
+	slot, err := slotOf(in, cast)
+	if err != nil {
+		return nil, err
+	}
+	if slot == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slot must be a spell slot of the 3rd level or more"))
+	}
+	return slot, nil
+}
+
+// requireDeadTarget gives the same answer for a character that is not dead, one that does not
+// exist and one the master marked (RN-10).
+func (s *Service) requireDeadTarget(ctx context.Context, tx pgx.Tx, campaignID, targetID string) error {
+	dead, err := s.roster.DeadCharacters(ctx, tx, campaignID)
+	if err != nil {
+		return err
+	}
+	if !slices.ContainsFunc(dead, func(d link.DeadCharacter) bool { return d.ID == targetID && !d.RevivifyBlocked }) {
+		return connect.NewError(connect.CodeNotFound, errors.New("character not found"))
+	}
+	return nil
 }
 
 // ListRevivifyRequests implements playv1connect.RevivifyServiceHandler.
@@ -243,6 +270,39 @@ func (s *Service) ListRevivifyRequests(
 	return connect.NewResponse(&playv1.ListRevivifyRequestsResponse{Requests: out}), nil
 }
 
+// revivifyAnswer is what the master's answer names, read before the transaction opens.
+type revivifyAnswer struct {
+	id           string
+	scoped, hash *string
+	within       bool
+}
+
+// revivifyAnswerOf reads the answer. Only the master answers: a player gets the same not_found
+// for any pending_id.
+func revivifyAnswerOf(m authz.Membership, msg *playv1.ConfirmRevivifyTimeRequest) (revivifyAnswer, error) {
+	if m.Role != authz.RoleMaster {
+		return revivifyAnswer{}, errRevivifyRequestNotFound()
+	}
+	id, err := uuid.Parse(msg.GetPendingId())
+	if err != nil {
+		return revivifyAnswer{}, errRevivifyRequestNotFound()
+	}
+	key, err := parseKey(msg.GetIdempotencyKey())
+	if err != nil {
+		return revivifyAnswer{}, err
+	}
+	return revivifyAnswer{id: id.String(), scoped: idem.Scope(m.CampaignID+":"+m.UserID, key), hash: idem.Hash(msg), within: msg.GetWithinMinute()}, nil
+}
+
+// revivifyAnswered is what the transaction of an answer leaves for after the commit.
+type revivifyAnswered struct {
+	row         playdb.RevivifyRequest
+	replayed    bool
+	vitals      []*playv1.CharacterVitals
+	slotsLeft   int32
+	encounterID string // the combat that had the dead character, if one did
+}
+
 // ConfirmRevivifyTime implements playv1connect.RevivifyServiceHandler.
 func (s *Service) ConfirmRevivifyTime(
 	ctx context.Context,
@@ -252,87 +312,99 @@ func (s *Service) ConfirmRevivifyTime(
 	if err != nil {
 		return nil, err
 	}
-	if m.Role != authz.RoleMaster {
-		return nil, errRevivifyRequestNotFound() // a player gets this for any pending_id
-	}
-	id, err := uuid.Parse(req.Msg.GetPendingId())
-	if err != nil {
-		return nil, errRevivifyRequestNotFound()
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
+	in, err := revivifyAnswerOf(m, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	scoped, hash := idem.Scope(m.CampaignID+":"+m.UserID, key), idem.Hash(req.Msg)
-
-	var row playdb.RevivifyRequest
-	var replayed bool
-	var vitals []*playv1.CharacterVitals
-	var slotsLeft int32
-	var encounterID string // the combat that had the dead character, if one did
+	out := &revivifyAnswered{}
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		replayed, vitals, slotsLeft, encounterID = false, nil, 0, ""
-		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
-		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
-		}
-		row, err = q.GetRevivifyRequestForUpdate(ctx, playdb.GetRevivifyRequestForUpdateParams{CampaignID: m.CampaignID, ID: id.String()})
-		if errors.Is(err, pgx.ErrNoRows) || (err == nil && row.GameSessionID != session.ID) {
-			return errRevivifyRequestNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("read the request: %w", err)
-		}
-		if row.Status != revivifyPending {
-			if row.AnswerKey != nil && *row.AnswerKey == *scoped {
-				if err := idem.SameRequest(row.AnswerHash, hash); err != nil {
-					return err
-				}
-				replayed = true // the same answer again
-				return nil
-			}
-			return connect.NewError(connect.CodeFailedPrecondition, errors.New("the request was answered already"))
-		}
-		status := revivifyDenied
-		if req.Msg.GetWithinMinute() {
-			status = revivifyConfirmed
-			if vitals, slotsLeft, encounterID, err = s.reviveOutside(ctx, tx, q, session, m, row); err != nil {
-				return err
-			}
-		}
-		at := s.now()
-		row, err = q.AnswerRevivifyRequest(ctx, playdb.AnswerRevivifyRequestParams{ID: row.ID, Status: status, AnsweredAt: &at, AnswerKey: scoped, AnswerHash: hash})
-		if err != nil {
-			return fmt.Errorf("answer the request: %w", err)
-		}
-		return nil
+		*out = revivifyAnswered{}
+		return s.answerRevivify(ctx, tx, m, in, out)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer Revivify", err)
 	}
-	if !replayed {
-		logging.Event(ctx, s.logger, "revivify.answered", slog.String("request_id", row.ID), slog.String("status", row.Status))
-		s.publishRevivifyChanged(m.CampaignID, deref(row.RequestedByUserID))
-		for _, v := range vitals {
-			s.publishVitals(m.CampaignID, v)
-		}
-		if row.Status == revivifyConfirmed {
-			s.PublishCharacterEvent(ctx, m.CampaignID, s.ownerOf(ctx, m.CampaignID, row.TargetCharacterID), row.TargetCharacterID, characterRevived)
-			if encounterID != "" {
-				s.PublishEncounterChanged(ctx, m.CampaignID, encounterID)
-			}
-		}
+	if !out.replayed {
+		s.announceAnswer(ctx, m, out)
 	}
-	left := map[string]int32{row.ID: slotsLeft}
-	out, err := s.revivifyRequestsProto(ctx, m.CampaignID, []playdb.RevivifyRequest{row}, left)
+	left := map[string]int32{out.row.ID: out.slotsLeft}
+	rows, err := s.revivifyRequestsProto(ctx, m.CampaignID, []playdb.RevivifyRequest{out.row}, left)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.ConfirmRevivifyTimeResponse{Request: out[0]}), nil
+	return connect.NewResponse(&playv1.ConfirmRevivifyTimeResponse{Request: rows[0]}), nil
+}
+
+// answerRevivify is the transaction of the answer: "less than a minute" revives the target,
+// "já passou" ends the request at no cost.
+func (s *Service) answerRevivify(ctx context.Context, tx pgx.Tx, m authz.Membership, in revivifyAnswer, out *revivifyAnswered) error {
+	q := s.queries.WithTx(tx)
+	session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errNoOpenSession()
+	}
+	if err != nil {
+		return fmt.Errorf("lock the open session: %w", err)
+	}
+	row, replayed, err := s.pendingRevivify(ctx, q, session, m, in)
+	if err != nil {
+		return err
+	}
+	out.row = row
+	if replayed {
+		out.replayed = true // the same answer again
+		return nil
+	}
+	status := revivifyDenied
+	if in.within {
+		status = revivifyConfirmed
+		if out.vitals, out.slotsLeft, out.encounterID, err = s.reviveOutside(ctx, tx, q, session, m, row); err != nil {
+			return err
+		}
+	}
+	at := s.now()
+	out.row, err = q.AnswerRevivifyRequest(ctx, playdb.AnswerRevivifyRequestParams{ID: row.ID, Status: status, AnsweredAt: &at, AnswerKey: in.scoped, AnswerHash: in.hash})
+	if err != nil {
+		return fmt.Errorf("answer the request: %w", err)
+	}
+	return nil
+}
+
+// pendingRevivify reads and locks the request the answer names. It returns replayed for a request
+// the same answer (same key, same request) already closed.
+func (s *Service) pendingRevivify(ctx context.Context, q *playdb.Queries, session playdb.GameSession, m authz.Membership, in revivifyAnswer) (playdb.RevivifyRequest, bool, error) {
+	row, err := q.GetRevivifyRequestForUpdate(ctx, playdb.GetRevivifyRequestForUpdateParams{CampaignID: m.CampaignID, ID: in.id})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && row.GameSessionID != session.ID) {
+		return row, false, errRevivifyRequestNotFound()
+	}
+	if err != nil {
+		return row, false, fmt.Errorf("read the request: %w", err)
+	}
+	if row.Status == revivifyPending {
+		return row, false, nil
+	}
+	if row.AnswerKey != nil && *row.AnswerKey == *in.scoped {
+		return row, true, idem.SameRequest(row.AnswerHash, in.hash)
+	}
+	return row, false, connect.NewError(connect.CodeFailedPrecondition, errors.New("the request was answered already"))
+}
+
+// announceAnswer logs the answer and tells the table: the master and the caster's player, the
+// vitals the slot changed and, for a confirmation, the character that came back.
+func (s *Service) announceAnswer(ctx context.Context, m authz.Membership, out *revivifyAnswered) {
+	row := out.row
+	logging.Event(ctx, s.logger, "revivify.answered", slog.String("request_id", row.ID), slog.String("status", row.Status))
+	s.publishRevivifyChanged(m.CampaignID, deref(row.RequestedByUserID))
+	for _, v := range out.vitals {
+		s.publishVitals(m.CampaignID, v)
+	}
+	if row.Status != revivifyConfirmed {
+		return
+	}
+	s.PublishCharacterEvent(ctx, m.CampaignID, s.ownerOf(ctx, m.CampaignID, row.TargetCharacterID), row.TargetCharacterID, characterRevived)
+	if out.encounterID != "" {
+		s.PublishEncounterChanged(ctx, m.CampaignID, out.encounterID)
+	}
 }
 
 // reviveOutside is the master's "less than a minute": the slot is spent, the diamonds are noted,
