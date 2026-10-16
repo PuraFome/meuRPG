@@ -35,6 +35,11 @@ on:
       - ".github/workflows/e2e.yml"
       - ".node-version"
       - "!**/*.md"
+  # The nightly run and a manual run test everything, with no path filter
+  # (03:00 in São Paulo).
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
 
 # Only a pull request's runs cancel each other (a newer push makes the older
 # run pointless). A push to main always runs to the end, so every merge
@@ -49,6 +54,46 @@ permissions:
   contents: read
 
 jobs:
+  # Chooses the Playwright shards. The plain shards always run. The slow
+  # accessibility (@a11y) shards run on main, the nightly and manual runs, and
+  # on a pull request only when it touches what they scan: the web app, the
+  # tests or the stack. Other pull requests get the fast signal.
+  plan:
+    name: plan (which shards run)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history: the diff against the base branch needs it.
+          fetch-depth: 0
+
+      - name: Choose the shards
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          a11y=true
+          if [ "$EVENT" = pull_request ]; then
+            changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+            if grep -Eq '^(web/|e2e/|deploy/local/|\.github/workflows/e2e\.yml$|\.node-version$)' <<<"$changed"; then
+              a11y=true
+            else
+              a11y=false
+            fi
+          fi
+          matrix=$(jq -nc --argjson a11y "$a11y" '
+            [range(1; 4) | {part: "\(.)/3", args: "--grep-invert @a11y --shard=\(.)/3"}]
+            + (if $a11y then [range(1; 7) | {part: "a11y \(.)/6", args: "--grep @a11y --shard=\(.)/6"}] else [] end)
+            | {include: .}')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix"
+
   # Lints the Playwright tests (a missing `await` is the classic flake) and
   # type-checks them, without Docker, so a mistake fails in about a minute
   # instead of after the images and shards. ESLint is a ratchet:
@@ -168,29 +213,10 @@ jobs:
     name: playwright ${{ matrix.part }} (local stack with devidp)
     runs-on: ubuntu-26.04
     timeout-minutes: 30
-    needs: image
+    needs: [image, plan]
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - part: a11y 1/6
-            args: --grep @a11y --shard=1/6
-          - part: a11y 2/6
-            args: --grep @a11y --shard=2/6
-          - part: a11y 3/6
-            args: --grep @a11y --shard=3/6
-          - part: a11y 4/6
-            args: --grep @a11y --shard=4/6
-          - part: a11y 5/6
-            args: --grep @a11y --shard=5/6
-          - part: a11y 6/6
-            args: --grep @a11y --shard=6/6
-          - part: 1/3
-            args: --grep-invert @a11y --shard=1/3
-          - part: 2/3
-            args: --grep-invert @a11y --shard=2/3
-          - part: 3/3
-            args: --grep-invert @a11y --shard=3/3
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -285,3 +311,31 @@ jobs:
             e2e/test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  # Opens (or adds to) a GitHub issue when a run outside a pull request fails,
+  # so a red main or nightly does not go unnoticed.
+  report:
+    name: report (issue when main is red)
+    needs: [lint, image, plan, e2e]
+    if: ${{ always() && github.event_name != 'pull_request' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW: ${{ github.workflow }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body=$(printf 'O workflow %s falhou na main.\n\nCommit: %s\nExecução: %s' "$WORKFLOW" "$SHA" "$RUN_URL")
+          gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
+          number=$(gh issue list --label ci-red --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --label ci-red --title "CI vermelho: $WORKFLOW na main" --body "$body"
+          fi

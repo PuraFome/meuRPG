@@ -263,12 +263,6 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return nil, err
 	}
 	d20 := step.Roll
-	if !step.Settled {
-		if d20, err = s.d20With(in, bonus, cm.Mode); err != nil {
-			return nil, err
-		}
-		d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
-	}
 	dieFace := 0
 	if step.Bonus != nil {
 		dieFace, res.bonus = int(step.Bonus.Face), step.Bonus // the die the player added after rolling: the total holds it
