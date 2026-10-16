@@ -859,22 +859,8 @@ func (p *mapsPart) Apply(ctx context.Context, tx pgx.Tx, in *campaignpackage.Imp
 	q := p.s.queries.WithTx(tx)
 	// Every map first: a point may lead to a map that comes later in the package.
 	for _, sm := range set.maps {
-		var revealed *time.Time
-		if sm.revealed {
-			revealed = &sm.createdAt
-		}
-		if err := q.InsertImportedMap(ctx, mapsdb.InsertImportedMapParams{
-			ID: sm.id, CampaignID: in.CampaignID, Name: sm.name, ImageID: sm.imageID, RevealedAt: revealed, GridColumns: sm.columns,
-			GridFactor: sm.factor, FogEnabled: sm.fog, FogOnFirstGrid: sm.onGrid, GroupVision: sm.group, BaseLight: sm.baseLight, Now: sm.createdAt,
-		}); err != nil {
-			return fmt.Errorf("insert an imported map: %w", err)
-		}
-		if sm.columns != nil && slicesAny(sm.layers[:]) {
-			if err := q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
-				MapID: sm.id, DifficultTerrain: sm.layers[0], Walls: sm.layers[1], Cover: sm.layers[2], Light: sm.layers[3], Doors: sm.layers[4], Now: sm.createdAt,
-			}); err != nil {
-				return fmt.Errorf("insert an imported map's layers: %w", err)
-			}
+		if err := insertStagedMap(ctx, q, in.CampaignID, sm); err != nil {
+			return err
 		}
 	}
 	for _, sm := range set.maps {
@@ -883,6 +869,30 @@ func (p *mapsPart) Apply(ctx context.Context, tx pgx.Tx, in *campaignpackage.Imp
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+// insertStagedMap writes a staged map's row and, when it has a grid and
+// something painted, its layers.
+func insertStagedMap(ctx context.Context, q *mapsdb.Queries, campaignID string, sm *stagedMap) error {
+	var revealed *time.Time
+	if sm.revealed {
+		revealed = &sm.createdAt
+	}
+	if err := q.InsertImportedMap(ctx, mapsdb.InsertImportedMapParams{
+		ID: sm.id, CampaignID: campaignID, Name: sm.name, ImageID: sm.imageID, RevealedAt: revealed, GridColumns: sm.columns,
+		GridFactor: sm.factor, FogEnabled: sm.fog, FogOnFirstGrid: sm.onGrid, GroupVision: sm.group, BaseLight: sm.baseLight, Now: sm.createdAt,
+	}); err != nil {
+		return fmt.Errorf("insert an imported map: %w", err)
+	}
+	if sm.columns == nil || !slicesAny(sm.layers[:]) {
+		return nil
+	}
+	if err := q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
+		MapID: sm.id, DifficultTerrain: sm.layers[0], Walls: sm.layers[1], Cover: sm.layers[2], Light: sm.layers[3], Doors: sm.layers[4], Now: sm.createdAt,
+	}); err != nil {
+		return fmt.Errorf("insert an imported map's layers: %w", err)
 	}
 	return nil
 }
