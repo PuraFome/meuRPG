@@ -1,0 +1,705 @@
+{
+  "abilities": [
+    {
+      "ability": "ABILITY_STRENGTH",
+      "base": 12,
+      "modifier": 1,
+      "namePt": "Força",
+      "score": 12
+    },
+    {
+      "ability": "ABILITY_DEXTERITY",
+      "base": 16,
+      "modifier": 3,
+      "namePt": "Destreza",
+      "score": 16
+    },
+    {
+      "ability": "ABILITY_CONSTITUTION",
+      "base": 15,
+      "bonus": 1,
+      "modifier": 3,
+      "namePt": "Constituição",
+      "score": 16
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "base": 16,
+      "bonus": 2,
+      "modifier": 4,
+      "namePt": "Inteligência",
+      "score": 18
+    },
+    {
+      "ability": "ABILITY_WISDOM",
+      "base": 13,
+      "modifier": 1,
+      "namePt": "Sabedoria",
+      "score": 13
+    },
+    {
+      "ability": "ABILITY_CHARISMA",
+      "base": 12,
+      "modifier": 1,
+      "namePt": "Carisma",
+      "score": 12
+    }
+  ],
+  "armorClass": 13,
+  "armorClassDescription": "Sem armadura",
+  "attacks": [
+    {
+      "attackBonus": 3,
+      "damage": "1d6+1",
+      "damageDice": {
+        "bonus": 1,
+        "count": 1,
+        "sides": 6
+      },
+      "damageTypeKey": "damage-type:bludgeoning",
+      "damageTypePt": "concussão",
+      "key": "equipment:quarterstaff",
+      "kind": "ATTACK_KIND_WEAPON",
+      "melee": true,
+      "name": "Quarterstaff",
+      "namePt": "Bordão",
+      "rangeFt": 5,
+      "versatileDamage": "1d8+1",
+      "versatileDamageDice": {
+        "bonus": 1,
+        "count": 1,
+        "sides": 8
+      }
+    },
+    {
+      "attackBonus": 6,
+      "beams": 1,
+      "damage": "1d10",
+      "damageDice": {
+        "count": 1,
+        "sides": 10
+      },
+      "damageTypeKey": "damage-type:fire",
+      "damageTypePt": "fogo",
+      "key": "spell:fire-bolt",
+      "kind": "ATTACK_KIND_SPELL",
+      "name": "Fire Bolt",
+      "namePt": "Raio de Fogo",
+      "rangeFt": 120,
+      "spellDice": "1d10"
+    },
+    {
+      "attackBonus": 6,
+      "beams": 1,
+      "damage": "1d8",
+      "damageDice": {
+        "count": 1,
+        "sides": 8
+      },
+      "damageTypeKey": "damage-type:cold",
+      "damageTypePt": "frio",
+      "key": "spell:ray-of-frost",
+      "kind": "ATTACK_KIND_SPELL",
+      "name": "Ray of Frost",
+      "namePt": "Raio de Gelo",
+      "rangeFt": 60,
+      "spellDice": "1d8"
+    },
+    {
+      "attackBonus": 3,
+      "damage": "2",
+      "damageDice": {
+        "bonus": 2
+      },
+      "damageTypeKey": "damage-type:bludgeoning",
+      "damageTypePt": "concussão",
+      "key": "attack:unarmed-strike",
+      "kind": "ATTACK_KIND_WEAPON",
+      "melee": true,
+      "name": "Unarmed Strike",
+      "namePt": "Golpe desarmado",
+      "rangeFt": 5
+    }
+  ],
+  "backgroundEquipmentPt": "Um tinteiro, uma pena e roupas comuns.",
+  "backgroundNamePt": "Sábio",
+  "classes": [
+    {
+      "classKey": "class:wizard",
+      "level": 3,
+      "namePt": "Mago",
+      "subclassNamePt": "Escola de Evocação"
+    }
+  ],
+  "contentVersion": "srd51@a8abc93b235c+fx.43",
+  "features": [
+    {
+      "key": "trait:darkvision",
+      "name": "Darkvision",
+      "namePt": "Visão no Escuro",
+      "sourcePt": "Gnomo"
+    },
+    {
+      "key": "trait:gnome-cunning",
+      "name": "Gnome Cunning",
+      "namePt": "Esperteza Gnômica",
+      "sourcePt": "Gnomo"
+    },
+    {
+      "key": "trait:artificers-lore",
+      "name": "Artificer's Lore",
+      "namePt": "Conhecimento de Artífice",
+      "sourcePt": "Gnomo das Rochas"
+    },
+    {
+      "key": "trait:tinker",
+      "name": "Tinker",
+      "namePt": "Engenhoqueiro",
+      "sourcePt": "Gnomo das Rochas"
+    },
+    {
+      "key": "background-feature:custom",
+      "name": "Pesquisador",
+      "namePt": "Pesquisador",
+      "sourcePt": "Sábio"
+    },
+    {
+      "key": "feature:spellcasting-wizard",
+      "name": "Spellcasting: Wizard",
+      "namePt": "Conjuração: Mago",
+      "sourcePt": "Mago 1"
+    },
+    {
+      "key": "feature:arcane-recovery",
+      "name": "Arcane Recovery",
+      "namePt": "Recuperação Arcana",
+      "sourcePt": "Mago 1"
+    },
+    {
+      "key": "feature:arcane-tradition",
+      "name": "Arcane Tradition",
+      "namePt": "Tradição Arcana",
+      "sourcePt": "Mago 2"
+    },
+    {
+      "key": "feature:evocation-savant",
+      "name": "Evocation Savant",
+      "namePt": "Evocação Instruída",
+      "sourcePt": "Escola de Evocação (Mago 2)"
+    },
+    {
+      "key": "feature:sculpt-spells",
+      "name": "Sculpt Spells",
+      "namePt": "Esculpir Magias",
+      "sourcePt": "Escola de Evocação (Mago 2)"
+    }
+  ],
+  "hints": [
+    {
+      "sourceKey": "trait:gnome-cunning",
+      "text": "Vantagem em testes de resistência de INT, SAB e CAR contra magia."
+    },
+    {
+      "sourceKey": "trait:artificers-lore",
+      "text": "História +8 sobre itens mágicos, objetos alquímicos ou engenhocas."
+    },
+    {
+      "sourceKey": "feature:arcane-recovery",
+      "text": "Recuperação arcana: uma vez por dia, depois de um descanso curto, recupera espaços de magia que somem até 2 níveis (nenhum de 6º nível ou mais)."
+    }
+  ],
+  "hitDice": [
+    {
+      "count": 3,
+      "faces": 6
+    }
+  ],
+  "hitPointsMax": 23,
+  "initiative": 3,
+  "languages": [
+    "Comum",
+    "Gnômico",
+    "Dracônico",
+    "Élfico"
+  ],
+  "nextLevelXp": 2700,
+  "passiveInsight": 13,
+  "passiveInvestigation": 16,
+  "passivePerception": 11,
+  "proficiencies": {
+    "tools": [
+      "Ferramentas de funileiro"
+    ],
+    "weapons": [
+      "Adagas",
+      "Bestas leves",
+      "Bordões",
+      "Dardos",
+      "Fundas"
+    ]
+  },
+  "proficiencyBonus": 2,
+  "raceNamePt": "Gnomo",
+  "resources": [
+    {
+      "key": "arcane_recovery",
+      "max": 1,
+      "namePt": "Recuperação Arcana",
+      "recharge": "RECHARGE_LONG_REST",
+      "sourceKey": "feature:arcane-recovery"
+    }
+  ],
+  "savingThrows": [
+    {
+      "ability": "ABILITY_STRENGTH",
+      "bonus": 1,
+      "namePt": "Força"
+    },
+    {
+      "ability": "ABILITY_DEXTERITY",
+      "bonus": 3,
+      "namePt": "Destreza"
+    },
+    {
+      "ability": "ABILITY_CONSTITUTION",
+      "bonus": 3,
+      "namePt": "Constituição"
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "bonus": 6,
+      "namePt": "Inteligência",
+      "proficient": true
+    },
+    {
+      "ability": "ABILITY_WISDOM",
+      "bonus": 3,
+      "namePt": "Sabedoria",
+      "proficient": true
+    },
+    {
+      "ability": "ABILITY_CHARISMA",
+      "bonus": 1,
+      "namePt": "Carisma"
+    }
+  ],
+  "senses": [
+    {
+      "key": "trait:darkvision",
+      "namePt": "Visão no escuro",
+      "rangeFt": 60,
+      "sense": "darkvision"
+    }
+  ],
+  "skills": [
+    {
+      "ability": "ABILITY_DEXTERITY",
+      "bonus": 3,
+      "key": "skill:acrobatics",
+      "namePt": "Acrobacia",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_WISDOM",
+      "bonus": 1,
+      "key": "skill:animal-handling",
+      "namePt": "Adestrar Animais",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "bonus": 6,
+      "key": "skill:arcana",
+      "namePt": "Arcanismo",
+      "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+    },
+    {
+      "ability": "ABILITY_STRENGTH",
+      "bonus": 1,
+      "key": "skill:athletics",
+      "namePt": "Atletismo",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_CHARISMA",
+      "bonus": 1,
+      "key": "skill:performance",
+      "namePt": "Atuação",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_CHARISMA",
+      "bonus": 1,
+      "key": "skill:deception",
+      "namePt": "Enganação",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_DEXTERITY",
+      "bonus": 3,
+      "key": "skill:stealth",
+      "namePt": "Furtividade",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "bonus": 6,
+      "key": "skill:history",
+      "namePt": "História",
+      "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+    },
+    {
+      "ability": "ABILITY_CHARISMA",
+      "bonus": 1,
+      "key": "skill:intimidation",
+      "namePt": "Intimidação",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_WISDOM",
+      "bonus": 3,
+      "key": "skill:insight",
+      "namePt": "Intuição",
+      "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "bonus": 6,
+      "key": "skill:investigation",
+      "namePt": "Investigação",
+      "proficiency": "PROFICIENCY_LEVEL_PROFICIENT"
+    },
+    {
+      "ability": "ABILITY_WISDOM",
+      "bonus": 1,
+      "key": "skill:medicine",
+      "namePt": "Medicina",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "bonus": 4,
+      "key": "skill:nature",
+      "namePt": "Natureza",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_WISDOM",
+      "bonus": 1,
+      "key": "skill:perception",
+      "namePt": "Percepção",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_CHARISMA",
+      "bonus": 1,
+      "key": "skill:persuasion",
+      "namePt": "Persuasão",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_DEXTERITY",
+      "bonus": 3,
+      "key": "skill:sleight-of-hand",
+      "namePt": "Prestidigitação",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "bonus": 4,
+      "key": "skill:religion",
+      "namePt": "Religião",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    },
+    {
+      "ability": "ABILITY_WISDOM",
+      "bonus": 1,
+      "key": "skill:survival",
+      "namePt": "Sobrevivência",
+      "proficiency": "PROFICIENCY_LEVEL_NONE"
+    }
+  ],
+  "speedWalkFt": 25,
+  "spellSlots": [
+    {
+      "count": 4,
+      "level": 1
+    },
+    {
+      "count": 2,
+      "level": 2
+    }
+  ],
+  "spellcasting": [
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "attackBonus": 6,
+      "cantripsKnown": 3,
+      "classKey": "class:wizard",
+      "classNamePt": "Mago",
+      "preparedMax": 7,
+      "saveDc": 14,
+      "spellbook": true
+    }
+  ],
+  "spells": [
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:bard",
+          "class:sorcerer",
+          "class:warlock",
+          "class:wizard"
+        ],
+        "key": "spell:minor-illusion",
+        "name": "Minor Illusion",
+        "namePt": "Ilusão Menor",
+        "schoolKey": "school:illusion",
+        "schoolNamePt": "Ilusão"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "key": "spell:fire-bolt",
+        "name": "Fire Bolt",
+        "namePt": "Raio de Fogo",
+        "schoolKey": "school:evocation",
+        "schoolNamePt": "Evocação"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "key": "spell:ray-of-frost",
+        "name": "Ray of Frost",
+        "namePt": "Raio de Gelo",
+        "schoolKey": "school:evocation",
+        "schoolNamePt": "Evocação"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "key": "spell:mage-armor",
+        "level": 1,
+        "name": "Mage Armor",
+        "namePt": "Armadura Arcana",
+        "schoolKey": "school:abjuration",
+        "schoolNamePt": "Abjuração"
+      }
+    },
+    {
+      "spell": {
+        "classKeys": [
+          "class:bard",
+          "class:sorcerer",
+          "class:warlock",
+          "class:wizard"
+        ],
+        "key": "spell:comprehend-languages",
+        "level": 1,
+        "name": "Comprehend Languages",
+        "namePt": "Compreender Idiomas",
+        "ritual": true,
+        "schoolKey": "school:divination",
+        "schoolNamePt": "Adivinhação"
+      }
+    },
+    {
+      "spell": {
+        "classKeys": [
+          "class:wizard"
+        ],
+        "key": "spell:find-familiar",
+        "level": 1,
+        "name": "Find Familiar",
+        "namePt": "Convocar Familiar",
+        "ritual": true,
+        "schoolKey": "school:conjuration",
+        "schoolNamePt": "Conjuração"
+      }
+    },
+    {
+      "spell": {
+        "classKeys": [
+          "class:bard",
+          "class:cleric",
+          "class:druid",
+          "class:paladin",
+          "class:ranger",
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "concentration": true,
+        "key": "spell:detect-magic",
+        "level": 1,
+        "name": "Detect Magic",
+        "namePt": "Detectar Magia",
+        "ritual": true,
+        "schoolKey": "school:divination",
+        "schoolNamePt": "Adivinhação"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "key": "spell:shield",
+        "level": 1,
+        "name": "Shield",
+        "namePt": "Escudo Arcano",
+        "reaction": true,
+        "schoolKey": "school:abjuration",
+        "schoolNamePt": "Abjuração"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "key": "spell:burning-hands",
+        "level": 1,
+        "name": "Burning Hands",
+        "namePt": "Mãos Flamejantes",
+        "schoolKey": "school:evocation",
+        "schoolNamePt": "Evocação"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "key": "spell:magic-missile",
+        "level": 1,
+        "name": "Magic Missile",
+        "namePt": "Mísseis Mágicos",
+        "schoolKey": "school:evocation",
+        "schoolNamePt": "Evocação"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:bard",
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "key": "spell:sleep",
+        "level": 1,
+        "name": "Sleep",
+        "namePt": "Sono",
+        "schoolKey": "school:enchantment",
+        "schoolNamePt": "Encantamento"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "key": "spell:scorching-ray",
+        "level": 2,
+        "name": "Scorching Ray",
+        "namePt": "Raio Ardente",
+        "schoolKey": "school:evocation",
+        "schoolNamePt": "Evocação"
+      }
+    },
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:sorcerer",
+          "class:wizard"
+        ],
+        "concentration": true,
+        "key": "spell:web",
+        "level": 2,
+        "name": "Web",
+        "namePt": "Teia",
+        "schoolKey": "school:conjuration",
+        "schoolNamePt": "Conjuração"
+      }
+    }
+  ],
+  "standardActions": [
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:attack",
+      "namePt": "Atacar"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:cast-a-spell",
+      "namePt": "Conjurar uma magia"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:dash",
+      "namePt": "Disparada"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:disengage",
+      "namePt": "Desengajar"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:dodge",
+      "namePt": "Esquivar"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:help",
+      "namePt": "Ajudar"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:hide",
+      "namePt": "Esconder"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:ready",
+      "namePt": "Preparar"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:search",
+      "namePt": "Procurar"
+    },
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "standard:use-an-object",
+      "namePt": "Usar um objeto"
+    }
+  ],
+  "subraceNamePt": "Gnomo das Rochas",
+  "totalLevel": 3
+}

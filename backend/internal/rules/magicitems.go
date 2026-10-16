@@ -79,53 +79,73 @@ type MagicItem struct {
 // DescPTMissing says the item has no Portuguese text yet: the English is all there is.
 func (m MagicItem) DescPTMissing() bool { return len(m.DescPT) == 0 }
 
+// checkMagicItems refuses a snapshot without exactly the SRD's items, and an
+// item whose fields, variants or family do not hold together.
 func (c *content) checkMagicItems() error {
 	if len(c.magicItems) != magicItemsTotal {
 		return fmt.Errorf("data/magic-items.json: %d items, want %d", len(c.magicItems), magicItemsTotal)
 	}
 	for _, k := range sortedKeys(c.magicItems) {
-		m := c.magicItems[k]
-		fail := func(format string, a ...any) error {
-			return fmt.Errorf("data/magic-items.json: %s: %s", k, fmt.Sprintf(format, a...))
-		}
-		if !slices.Contains(magicCategories, m.Category) {
-			return fail("%q is not a category", m.Category)
-		}
-		if m.Rarity != RarityVaries && !slices.Contains(MagicRarities(), m.Rarity) {
-			return fail("%q is not a rarity", m.Rarity)
-		}
-		if len(m.Desc) == 0 {
-			return fail("no description")
-		}
-		if m.AttunementBy != "" && !m.Attunement {
-			return fail("an attunement restriction without attunement")
-		}
-		if m.Standalone && (len(m.Variants) == 0 || m.Rarity == RarityVaries) {
-			return fail("standalone, but not a family with a rarity")
-		}
-		if m.Rarity == RarityVaries && len(m.Variants) == 0 {
-			return fail("rarity varies, but no variants")
-		}
-		if len(m.Variants) > 0 && m.VariantOf != "" {
-			return fail("a variant with variants")
-		}
-		for _, v := range m.Variants {
-			vi, ok := c.magicItems[v]
-			if !ok || vi.VariantOf != k {
-				return fail("variant %q does not point back", v)
-			}
-			if vi.Rarity == RarityVaries {
-				return fail("variant %q has no rarity", v)
-			}
-		}
-		if m.VariantOf != "" {
-			f, ok := c.magicItems[m.VariantOf]
-			if !ok || !slices.Contains(f.Variants, k) {
-				return fail("family %q does not list it", m.VariantOf)
-			}
+		if msg := c.checkMagicItem(k, c.magicItems[k]); msg != "" {
+			return fmt.Errorf("data/magic-items.json: %s: %s", k, msg)
 		}
 	}
 	return nil
+}
+
+// checkMagicItem says what is wrong with an item, or "": its own fields,
+// then its variants, then its family.
+func (c *content) checkMagicItem(k string, m *srd51.MagicItem) string {
+	if msg := checkMagicItemFields(m); msg != "" {
+		return msg
+	}
+	if msg := c.checkMagicItemVariants(k, m); msg != "" {
+		return msg
+	}
+	if m.VariantOf != "" {
+		f, ok := c.magicItems[m.VariantOf]
+		if !ok || !slices.Contains(f.Variants, k) {
+			return fmt.Sprintf("family %q does not list it", m.VariantOf)
+		}
+	}
+	return ""
+}
+
+// checkMagicItemFields checks the category, the rarity, the text, the
+// attunement and the shape of a family.
+func checkMagicItemFields(m *srd51.MagicItem) string {
+	switch {
+	case !slices.Contains(magicCategories, m.Category):
+		return fmt.Sprintf("%q is not a category", m.Category)
+	case m.Rarity != RarityVaries && !slices.Contains(MagicRarities(), m.Rarity):
+		return fmt.Sprintf("%q is not a rarity", m.Rarity)
+	case len(m.Desc) == 0:
+		return "no description"
+	case m.AttunementBy != "" && !m.Attunement:
+		return "an attunement restriction without attunement"
+	case m.Standalone && (len(m.Variants) == 0 || m.Rarity == RarityVaries):
+		return "standalone, but not a family with a rarity"
+	case m.Rarity == RarityVaries && len(m.Variants) == 0:
+		return "rarity varies, but no variants"
+	case len(m.Variants) > 0 && m.VariantOf != "":
+		return "a variant with variants"
+	}
+	return ""
+}
+
+// checkMagicItemVariants refuses a variant that does not point back to the
+// family, and one without a rarity of its own.
+func (c *content) checkMagicItemVariants(k string, m *srd51.MagicItem) string {
+	for _, v := range m.Variants {
+		vi, ok := c.magicItems[v]
+		if !ok || vi.VariantOf != k {
+			return fmt.Sprintf("variant %q does not point back", v)
+		}
+		if vi.Rarity == RarityVaries {
+			return fmt.Sprintf("variant %q has no rarity", v)
+		}
+	}
+	return ""
 }
 
 func (c *content) attunementPT(by string) string {
@@ -152,6 +172,15 @@ func (c *content) loadMagicItemEffects(fsys fs.FS) error {
 		return err
 	}
 	c.consumables = map[string]bool{}
+	if err := c.loadConsumables(name, f); err != nil {
+		return err
+	}
+	return c.checkAttunementLabels()
+}
+
+// loadConsumables marks the items of the file's categories, then its single
+// items, as consumable.
+func (c *content) loadConsumables(name string, f consumablesFile) error {
 	cats := map[string]bool{}
 	for _, cat := range f.Categories {
 		if !slices.Contains(magicCategories, cat) || cats[cat] {
@@ -176,6 +205,12 @@ func (c *content) loadMagicItemEffects(fsys fs.FS) error {
 		}
 		c.consumables[k] = true
 	}
+	return nil
+}
+
+// checkAttunementLabels refuses an attunement restriction without its
+// Portuguese label, and a label of no restriction.
+func (c *content) checkAttunementLabels() error {
 	restrictions := map[string]bool{}
 	for _, m := range c.magicItems {
 		if m.AttunementBy != "" {
@@ -206,6 +241,8 @@ type MagicItemUnit struct {
 	Options []string
 }
 
+// buildMagicItems makes the entries, sorted by Portuguese name, and the
+// units a treasure rolls at each rarity.
 func (c *content) buildMagicItems() {
 	for _, k := range sortedKeys(c.magicItems) {
 		c.magicItemEntries = append(c.magicItemEntries, c.magicItemEntry(c.magicItems[k]))
@@ -219,20 +256,26 @@ func (c *content) buildMagicItems() {
 		case !e.IsFamily():
 			c.magicUnits[e.Rarity] = append(c.magicUnits[e.Rarity], MagicItemUnit{Key: e.Key, Options: []string{e.Key}})
 		default:
-			if e.Standalone {
-				c.magicUnits[e.Rarity] = append(c.magicUnits[e.Rarity], MagicItemUnit{Key: e.Key, Options: []string{e.Key}})
+			c.addFamilyUnits(e)
+		}
+	}
+}
+
+// addFamilyUnits adds a family's units: itself when it is standalone, and
+// one unit at each rarity its variants have.
+func (c *content) addFamilyUnits(e MagicItemEntry) {
+	if e.Standalone {
+		c.magicUnits[e.Rarity] = append(c.magicUnits[e.Rarity], MagicItemUnit{Key: e.Key, Options: []string{e.Key}})
+	}
+	for _, r := range MagicRarities() {
+		var opts []string
+		for _, v := range e.Variants {
+			if c.magicItems[v].Rarity == r {
+				opts = append(opts, v)
 			}
-			for _, r := range MagicRarities() {
-				var opts []string
-				for _, v := range e.Variants {
-					if c.magicItems[v].Rarity == r {
-						opts = append(opts, v)
-					}
-				}
-				if len(opts) > 0 {
-					c.magicUnits[r] = append(c.magicUnits[r], MagicItemUnit{Key: e.Key, Options: opts})
-				}
-			}
+		}
+		if len(opts) > 0 {
+			c.magicUnits[r] = append(c.magicUnits[r], MagicItemUnit{Key: e.Key, Options: opts})
 		}
 	}
 }

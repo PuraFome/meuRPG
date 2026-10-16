@@ -141,52 +141,69 @@ func (s *Service) writeExport(ctx context.Context, exportID, campaignID string) 
 // writeZip writes the snapshot as a package to w, updating the progress.
 func (s *Service) writeZip(ctx context.Context, dst io.Writer, exportID string, snap *Snapshot) (*Writer, error) {
 	w := NewWriter(dst, s.now())
-	total := snap.BlobBytes() + 1 // +1: never divide by zero
-	var done int64
-	lastReport := time.Time{}
-	report := func() error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if time.Since(lastReport) < progressEvery {
-			return nil
-		}
-		lastReport = time.Now()
-		pct := int32(min(99, done*100/total)) //nolint:gosec // G115: 0 to 99
-		stillRunning, err := s.reportProgress(ctx, exportID, pct)
-		if err != nil {
-			return err
-		}
-		if !stillRunning {
-			return errNoLongerRunning
-		}
-		return nil
-	}
+	progress := &exportProgress{s: s, exportID: exportID, total: snap.BlobBytes() + 1} // +1: never divide by zero
 	for _, e := range snap.entries {
-		if err := report(); err != nil {
+		if err := progress.report(ctx); err != nil {
 			return w, err
 		}
-		if e.blob == "" {
-			if err := w.AddBytes(e.kind, e.name, e.data, zip.Deflate); err != nil {
-				return w, err
-			}
-			continue
-		}
-		obj, err := s.blobs.Open(ctx, e.blob)
-		if err != nil {
-			return w, fmt.Errorf("open a file of the campaign: %w", err)
-		}
-		err = w.AddFile(e.kind, e.name, obj.Content)
-		_ = obj.Close()
-		if err != nil {
+		if err := s.writeEntry(ctx, w, e); err != nil {
 			return w, err
 		}
-		done += e.size
+		if e.blob != "" {
+			progress.done += e.size
+		}
 	}
 	if err := w.Close(s.version, snap.CampaignName); err != nil {
 		return w, err
 	}
 	return w, nil
+}
+
+// writeEntry writes one entry of the snapshot: its JSON, or the file it
+// names, copied from the blob store.
+func (s *Service) writeEntry(ctx context.Context, w *Writer, e snapshotEntry) error {
+	if e.blob == "" {
+		return w.AddBytes(e.kind, e.name, e.data, zip.Deflate)
+	}
+	obj, err := s.blobs.Open(ctx, e.blob)
+	if err != nil {
+		return fmt.Errorf("open a file of the campaign: %w", err)
+	}
+	err = w.AddFile(e.kind, e.name, obj.Content)
+	_ = obj.Close()
+	return err
+}
+
+// exportProgress is how far writeZip got: the bytes of the files copied so
+// far, of total, and when the percentage was last written.
+type exportProgress struct {
+	s          *Service
+	exportID   string
+	total      int64
+	done       int64
+	lastReport time.Time
+}
+
+// report ends the export when its context ended, and otherwise writes the
+// percentage, at most once every progressEvery; it ends the export as well
+// when the row says it is no longer running.
+func (p *exportProgress) report(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if time.Since(p.lastReport) < progressEvery {
+		return nil
+	}
+	p.lastReport = time.Now()
+	pct := int32(min(99, p.done*100/p.total)) //nolint:gosec // G115: 0 to 99
+	stillRunning, err := p.s.reportProgress(ctx, p.exportID, pct)
+	if err != nil {
+		return err
+	}
+	if !stillRunning {
+		return errNoLongerRunning
+	}
+	return nil
 }
 
 // reportProgress writes the percentage and says whether the export is still
