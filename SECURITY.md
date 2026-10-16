@@ -6,9 +6,10 @@ in the next release.
 
 ## Reporting a vulnerability
 
-Please report it privately, through GitHub's private vulnerability reporting:
-the **Security** tab of this repository, then **Report a vulnerability**. Do
-not open a public issue, pull request or discussion about it.
+Please report it privately: through GitHub's private vulnerability
+reporting (the **Security** tab of this repository, then **Report a
+vulnerability**), or by e-mail to admin@meurpg.app. Do not open a public
+issue, pull request or discussion about it.
 
 Say what you found, how to reproduce it and what an attacker could do with
 it. You will get an answer within 7 days. Please give us a reasonable time to
