@@ -249,7 +249,9 @@ func TestTurnOptionsReadWhoHoldsAndWhoHelps(t *testing.T) {
 	// Brisa helps Toren attack the Hobgoblin (seen again), and Toren reads whom.
 	c.execSQL(t, `UPDATE combatants SET hidden = false WHERE id = $1`, c.id(t, c.hob))
 	c.advance(t, "Brisa")
-	c.moveTo(t, a.master, "Brisa", 5, 3)
+	if _, err := c.moveTo(t, a.master, "Brisa", 5, 3); err != nil {
+		t.Fatalf("placing Brisa: %v", err)
+	}
 	if _, err := c.helpAttack(t, a.bia, "Brisa", "Toren", c.hob); err != nil {
 		t.Fatalf("Help(attack) error = %v", err)
 	}
