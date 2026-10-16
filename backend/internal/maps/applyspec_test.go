@@ -103,13 +103,19 @@ func specInvalid(msg string) specRefusal {
 }
 
 var (
-	specTreasureFound = specRefusal{connect.CodeFailedPrecondition,
-		"the treasure was found: unmark it before deleting it or changing its kind", mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_TREASURE_FOUND}
-	specTreasureConverted = specRefusal{connect.CodeFailedPrecondition,
-		"the treasure was turned into XP: its value and its found mark cannot change", mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_TREASURE_CONVERTED}
+	specTreasureFound = specRefusal{
+		code:    connect.CodeFailedPrecondition,
+		message: "the treasure was found: unmark it before deleting it or changing its kind",
+		reason:  mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_TREASURE_FOUND,
+	}
+	specTreasureConverted = specRefusal{
+		code:    connect.CodeFailedPrecondition,
+		message: "the treasure was turned into XP: its value and its found mark cannot change",
+		reason:  mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_TREASURE_CONVERTED,
+	}
 )
 
-func TestApplySpecChange_Matrix(t *testing.T) {
+func TestApplySpecChange_Matrix(t *testing.T) { //nolint:tparallel // the cases share one database connection and edit one map in order
 	t.Parallel()
 	s := newScenes(t, false)
 	m := s.master
@@ -154,121 +160,209 @@ func TestApplySpecChange_Matrix(t *testing.T) {
 		refused *specRefusal
 	}{
 		// The trap.
-		{name: "a scene becomes a trap", start: startScene, want: armed,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind, r.Trap = kind(trap), trapSpec() }},
-		{name: "a scene becomes a triggered trap", start: startScene,
+		{
+			name: "a scene becomes a trap", start: startScene, want: armed,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind, r.Trap = kind(trap), trapSpec() },
+		},
+		{
+			name: "a scene becomes a triggered trap", start: startScene,
 			want: specRow{kind: "trap", trap: true, trapState: "triggered", triggered: true, treasure: -1},
 			edit: func(r *mapsv1.UpdateMapPointRequest) {
 				r.Kind, r.Trap = kind(trap), trapSpec(func(t *mapsv1.TrapSpec) { t.State = mapsv1.TrapState_TRAP_STATE_TRIGGERED })
-			}},
-		{name: "a scene becomes a trap without a spec", start: startScene, refused: new(specInvalid("trap is required to make a point a TRAP")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(trap) }},
-		{name: "a trap is renamed and keeps its spec", start: startTrap, want: armed,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Armadilha velha") }},
-		{name: "a trap is sent its kind again", start: startTrap, want: armed,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(trap) }},
-		{name: "a trap gets a new spec that does not mention the state", start: startTrap, want: armed,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Trap = trapSpec(func(t *mapsv1.TrapSpec) { t.FindDc = 9 }) }},
-		{name: "a trap is triggered", start: startTrap,
+			},
+		},
+		{
+			name: "a scene becomes a trap without a spec", start: startScene, refused: new(specInvalid("trap is required to make a point a TRAP")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(trap) },
+		},
+		{
+			name: "a trap is renamed and keeps its spec", start: startTrap, want: armed,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Armadilha velha") },
+		},
+		{
+			name: "a trap is sent its kind again", start: startTrap, want: armed,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(trap) },
+		},
+		{
+			name: "a trap gets a new spec that does not mention the state", start: startTrap, want: armed,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Trap = trapSpec(func(t *mapsv1.TrapSpec) { t.FindDc = 9 }) },
+		},
+		{
+			name: "a trap is triggered", start: startTrap,
 			want: specRow{kind: "trap", trap: true, trapState: "triggered", triggered: true, treasure: -1},
 			edit: func(r *mapsv1.UpdateMapPointRequest) {
 				r.Trap = trapSpec(func(t *mapsv1.TrapSpec) { t.State = mapsv1.TrapState_TRAP_STATE_TRIGGERED })
-			}},
-		{name: "a trap is disarmed", start: startTrap, want: specRow{kind: "trap", trap: true, trapState: "disarmed", treasure: -1},
+			},
+		},
+		{
+			name: "a trap is disarmed", start: startTrap, want: specRow{kind: "trap", trap: true, trapState: "disarmed", treasure: -1},
 			edit: func(r *mapsv1.UpdateMapPointRequest) {
 				r.Trap = trapSpec(func(t *mapsv1.TrapSpec) { t.State = mapsv1.TrapState_TRAP_STATE_DISARMED })
-			}},
-		{name: "a trap with a bad spec", start: startTrap, refused: new(specInvalid("trap.find_dc must be 1 to 30")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Trap = trapSpec(func(t *mapsv1.TrapSpec) { t.FindDc = 0 }) }},
-		{name: "a trap becomes a scene", start: startTrap, want: sceneRow,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) }},
-		{name: "a scene is sent a trap", start: startScene, refused: new(specInvalid("trap is only for a TRAP point")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Trap = trapSpec() }},
+			},
+		},
+		{
+			name: "a trap with a bad spec", start: startTrap, refused: new(specInvalid("trap.find_dc must be 1 to 30")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Trap = trapSpec(func(t *mapsv1.TrapSpec) { t.FindDc = 0 }) },
+		},
+		{
+			name: "a trap becomes a scene", start: startTrap, want: sceneRow,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) },
+		},
+		{
+			name: "a scene is sent a trap", start: startScene, refused: new(specInvalid("trap is only for a TRAP point")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Trap = trapSpec() },
+		},
 		// The treasure.
-		{name: "a scene becomes a treasure of nothing", start: startScene, want: treasureRow(0),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(treasure) }},
-		{name: "a scene becomes a treasure with a value", start: startScene, want: treasureRow(250),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind, r.TreasureValuePo = kind(treasure), new(int32(250)) }},
-		{name: "a treasure changes its value", start: startTreasure, want: treasureRow(7),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(7)) }},
-		{name: "a treasure is renamed and keeps its value", start: startTreasure, want: treasureRow(100),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Tesouro velho") }},
-		{name: "a treasure is sent its kind again", start: startTreasure, want: treasureRow(100),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(treasure) }},
-		{name: "a treasure of too much", start: startTreasure, refused: new(specInvalid("treasure_value_po must be 0 to 1000000")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(1_000_001)) }},
-		{name: "a treasure of less than nothing", start: startTreasure, refused: new(specInvalid("treasure_value_po must be 0 to 1000000")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(-1)) }},
-		{name: "a scene is sent a value", start: startScene, refused: new(specInvalid("treasure_value_po is only for a TREASURE point")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(5)) }},
-		{name: "a treasure becomes a scene", start: startTreasure, want: sceneRow,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) }},
-		{name: "a found treasure keeps its mark when it is renamed", start: startFound,
+		{
+			name: "a scene becomes a treasure of nothing", start: startScene, want: treasureRow(0),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(treasure) },
+		},
+		{
+			name: "a scene becomes a treasure with a value", start: startScene, want: treasureRow(250),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind, r.TreasureValuePo = kind(treasure), new(int32(250)) },
+		},
+		{
+			name: "a treasure changes its value", start: startTreasure, want: treasureRow(7),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(7)) },
+		},
+		{
+			name: "a treasure is renamed and keeps its value", start: startTreasure, want: treasureRow(100),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Tesouro velho") },
+		},
+		{
+			name: "a treasure is sent its kind again", start: startTreasure, want: treasureRow(100),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(treasure) },
+		},
+		{
+			name: "a treasure of too much", start: startTreasure, refused: new(specInvalid("treasure_value_po must be 0 to 1000000")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(1_000_001)) },
+		},
+		{
+			name: "a treasure of less than nothing", start: startTreasure, refused: new(specInvalid("treasure_value_po must be 0 to 1000000")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(-1)) },
+		},
+		{
+			name: "a scene is sent a value", start: startScene, refused: new(specInvalid("treasure_value_po is only for a TREASURE point")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(5)) },
+		},
+		{
+			name: "a treasure becomes a scene", start: startTreasure, want: sceneRow,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) },
+		},
+		{
+			name: "a found treasure keeps its mark when it is renamed", start: startFound,
 			want: specRow{kind: "treasure", treasure: 100, found: true},
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Achado") }},
-		{name: "a found treasure becomes a scene", start: startFound, refused: &specTreasureFound,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) }},
-		{name: "a converted treasure becomes a scene", start: startConverted, refused: &specTreasureConverted,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) }},
-		{name: "a converted treasure keeps its value when the same one is sent", start: startConverted, want: convertedRow(100),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(100)) }},
-		{name: "a converted treasure changes its value", start: startConverted, refused: &specTreasureConverted,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(101)) }},
-		{name: "a converted treasure with a value out of range", start: startConverted, refused: new(specInvalid("treasure_value_po must be 0 to 1000000")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(-5)) }},
-		{name: "a converted treasure is renamed", start: startConverted, want: convertedRow(100),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Convertido") }},
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Achado") },
+		},
+		{
+			name: "a found treasure becomes a scene", start: startFound, refused: &specTreasureFound,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) },
+		},
+		{
+			name: "a converted treasure becomes a scene", start: startConverted, refused: &specTreasureConverted,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) },
+		},
+		{
+			name: "a converted treasure keeps its value when the same one is sent", start: startConverted, want: convertedRow(100),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(100)) },
+		},
+		{
+			name: "a converted treasure changes its value", start: startConverted, refused: &specTreasureConverted,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(101)) },
+		},
+		{
+			name: "a converted treasure with a value out of range", start: startConverted, refused: new(specInvalid("treasure_value_po must be 0 to 1000000")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.TreasureValuePo = new(int32(-5)) },
+		},
+		{
+			name: "a converted treasure is renamed", start: startConverted, want: convertedRow(100),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Convertido") },
+		},
 		// The light.
-		{name: "a scene becomes a light", start: startScene, want: lightRow("light:torch/20/20"),
+		{
+			name: "a scene becomes a light", start: startScene, want: lightRow("light:torch/20/20"),
 			edit: func(r *mapsv1.UpdateMapPointRequest) {
 				r.Kind, r.Light = kind(light), &mapsv1.LightSpec{PresetKey: "light:torch", BrightFt: 20, DimFt: 20}
-			}},
-		{name: "a scene becomes a light without a spec", start: startScene, refused: new(specInvalid("light is required to make a point a LIGHT")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(light) }},
-		{name: "a light is renamed and keeps its radii", start: startLight, want: lightRow("light:torch/20/20"),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Luz velha") }},
-		{name: "a light changes its radii", start: startLight, want: lightRow("/10/15"),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Light = &mapsv1.LightSpec{BrightFt: 10, DimFt: 15} }},
-		{name: "a light with no radius", start: startLight, refused: new(specInvalid("light needs a radius: bright_ft and dim_ft cannot both be 0")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Light = &mapsv1.LightSpec{} }},
-		{name: "a light is revealed", start: startLight,
+			},
+		},
+		{
+			name: "a scene becomes a light without a spec", start: startScene, refused: new(specInvalid("light is required to make a point a LIGHT")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(light) },
+		},
+		{
+			name: "a light is renamed and keeps its radii", start: startLight, want: lightRow("light:torch/20/20"),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Name = new("Luz velha") },
+		},
+		{
+			name: "a light changes its radii", start: startLight, want: lightRow("/10/15"),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Light = &mapsv1.LightSpec{BrightFt: 10, DimFt: 15} },
+		},
+		{
+			name: "a light with no radius", start: startLight, refused: new(specInvalid("light needs a radius: bright_ft and dim_ft cannot both be 0")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Light = &mapsv1.LightSpec{} },
+		},
+		{
+			name: "a light is revealed", start: startLight,
 			refused: new(specInvalid("a LIGHT point is never shown to the players, so it cannot be revealed")),
-			edit:    func(r *mapsv1.UpdateMapPointRequest) { r.Revealed = new(true) }},
-		{name: "a light is hidden", start: startLight, want: lightRow("light:torch/20/20"),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Revealed = new(false) }},
-		{name: "a scene is sent a light", start: startScene, refused: new(specInvalid("light is only for a LIGHT point")),
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Light = &mapsv1.LightSpec{PresetKey: "light:torch"} }},
-		{name: "a light becomes a scene", start: startLight, want: sceneRow,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) }},
+			edit:    func(r *mapsv1.UpdateMapPointRequest) { r.Revealed = new(true) },
+		},
+		{
+			name: "a light is hidden", start: startLight, want: lightRow("light:torch/20/20"),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Revealed = new(false) },
+		},
+		{
+			name: "a scene is sent a light", start: startScene, refused: new(specInvalid("light is only for a LIGHT point")),
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Light = &mapsv1.LightSpec{PresetKey: "light:torch"} },
+		},
+		{
+			name: "a light becomes a scene", start: startLight, want: sceneRow,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) },
+		},
 		// The order: the trap, then the treasure, then the light.
-		{name: "a scene becomes a trap without a spec but with a bad value", start: startScene,
+		{
+			name: "a scene becomes a trap without a spec but with a bad value", start: startScene,
 			refused: new(specInvalid("trap is required to make a point a TRAP")),
-			edit:    func(r *mapsv1.UpdateMapPointRequest) { r.Kind, r.TreasureValuePo = kind(trap), new(int32(-1)) }},
-		{name: "a trap spec on a treasure with a bad value", start: startScene,
+			edit:    func(r *mapsv1.UpdateMapPointRequest) { r.Kind, r.TreasureValuePo = kind(trap), new(int32(-1)) },
+		},
+		{
+			name: "a trap spec on a treasure with a bad value", start: startScene,
 			refused: new(specInvalid("trap is only for a TRAP point")),
 			edit: func(r *mapsv1.UpdateMapPointRequest) {
 				r.Kind, r.Trap, r.TreasureValuePo = kind(treasure), trapSpec(), new(int32(-1))
-			}},
-		{name: "a trap with a value", start: startScene, refused: new(specInvalid("treasure_value_po is only for a TREASURE point")),
+			},
+		},
+		{
+			name: "a trap with a value", start: startScene, refused: new(specInvalid("treasure_value_po is only for a TREASURE point")),
 			edit: func(r *mapsv1.UpdateMapPointRequest) {
 				r.Kind, r.Trap, r.TreasureValuePo = kind(trap), trapSpec(), new(int32(3))
-			}},
-		{name: "a trap with a light", start: startScene, refused: new(specInvalid("light is only for a LIGHT point")),
+			},
+		},
+		{
+			name: "a trap with a light", start: startScene, refused: new(specInvalid("light is only for a LIGHT point")),
 			edit: func(r *mapsv1.UpdateMapPointRequest) {
 				r.Kind, r.Trap, r.Light = kind(trap), trapSpec(), &mapsv1.LightSpec{PresetKey: "light:torch"}
-			}},
-		{name: "a found treasure becomes a scene with a light", start: startFound, refused: &specTreasureFound,
+			},
+		},
+		{
+			name: "a found treasure becomes a scene with a light", start: startFound, refused: &specTreasureFound,
 			edit: func(r *mapsv1.UpdateMapPointRequest) {
 				r.Kind, r.Light = kind(scene), &mapsv1.LightSpec{PresetKey: "light:torch"}
-			}},
-		{name: "a found and converted treasure becomes a scene", start: startConverted, refused: &specTreasureConverted,
-			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) }},
-		{name: "a converted treasure becomes a trap without a spec", start: startConverted,
+			},
+		},
+		{
+			name: "a found and converted treasure becomes a scene", start: startConverted, refused: &specTreasureConverted,
+			edit: func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(scene) },
+		},
+		{
+			name: "a converted treasure becomes a trap without a spec", start: startConverted,
 			refused: new(specInvalid("trap is required to make a point a TRAP")),
-			edit:    func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(trap) }},
-		{name: "a light without a spec is refused before it is told it cannot be revealed", start: startScene,
+			edit:    func(r *mapsv1.UpdateMapPointRequest) { r.Kind = kind(trap) },
+		},
+		{
+			name: "a light without a spec is refused before it is told it cannot be revealed", start: startScene,
 			refused: new(specInvalid("light is required to make a point a LIGHT")),
-			edit:    func(r *mapsv1.UpdateMapPointRequest) { r.Kind, r.Revealed = kind(light), new(true) }},
+			edit:    func(r *mapsv1.UpdateMapPointRequest) { r.Kind, r.Revealed = kind(light), new(true) },
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			p := tt.start()
