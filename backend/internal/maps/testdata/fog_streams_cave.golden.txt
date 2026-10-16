@@ -99,10 +99,10 @@ ana: vision_changed map
 caio: vision_changed map
 bia: vision_changed map
 == a combat starts
-master: other event encounter_changed:{encounter_id:"c3e5835e-7def-450a-98b0-527c8d26f82a"  revision:1  mode:ENCOUNTER_MODE_GRID}
-ana: other event encounter_changed:{encounter_id:"c3e5835e-7def-450a-98b0-527c8d26f82a"  revision:1  mode:ENCOUNTER_MODE_GRID}
-caio: other event encounter_changed:{encounter_id:"c3e5835e-7def-450a-98b0-527c8d26f82a"  revision:1  mode:ENCOUNTER_MODE_GRID}
-bia: other event encounter_changed:{encounter_id:"c3e5835e-7def-450a-98b0-527c8d26f82a"  revision:1  mode:ENCOUNTER_MODE_GRID}
+master: other event *playv1.WatchGameSessionResponse_EncounterChanged_
+ana: other event *playv1.WatchGameSessionResponse_EncounterChanged_
+caio: other event *playv1.WatchGameSessionResponse_EncounterChanged_
+bia: other event *playv1.WatchGameSessionResponse_EncounterChanged_
 == a goblin moves during the combat
 master: token_moved map captain (8541, 2812)
 ana: vision_changed map

@@ -4,19 +4,8 @@
     "fogEnabled": true,
     "gridColumns": 24,
     "gridRows": 16,
-    "revision": 1744796685,
     "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAQQUREFBEREREAQEQUREREREREJEJEREQUREREREREREREQzQTQUREFAAREREAAAAQQUREFAAAAAAAAAAAERERBAAAAAAAAAAAAAAQRAAAAAAAAAAAAAAQRAQAAAAAAAAAAAAQQAQAAAAAAAAAAAAAEREAAAAAAAAA",
-    "tileSquares": 16,
-    "tiles": [
-      {
-        "revision": 350358225
-      },
-      {
-        "revision": 889584945,
-        "tx": 1
-      }
-    ],
-    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+    "tileSquares": 16
   },
   "ana_tokens": [
     "pens",
@@ -29,19 +18,8 @@
     "fogEnabled": true,
     "gridColumns": 24,
     "gridRows": 16,
-    "revision": 1316734609,
     "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAAMUREFBEREREAAAAQM0RERDQzUzVDREQUQ0REREQzMzMzQzQTMUREFAAREREAADMTMUREFAAAAAAAEBERERERBAAAAAAAAAAAAAAQMAAAAAAAAAAAAAAAMAMAAAAAAAAAAAAAMAMAAAAAAAAAAAAAEREAAAAAAAAA",
-    "tileSquares": 16,
-    "tiles": [
-      {
-        "revision": 320007558
-      },
-      {
-        "revision": 533382608,
-        "tx": 1
-      }
-    ],
-    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+    "tileSquares": 16
   },
   "bia_tokens": [
     "pens",
@@ -54,19 +32,8 @@
     "fogEnabled": true,
     "gridColumns": 24,
     "gridRows": 16,
-    "revision": 1106879855,
     "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAAMUREFBEREREAAAAQM0RERDQzUzVDREQUQ0REREQzMzMzQzQTMUREFAAREREAMDMTMUREFAAAAAAAERERERERAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "tileSquares": 16,
-    "tiles": [
-      {
-        "revision": 655882678
-      },
-      {
-        "revision": 147210224,
-        "tx": 1
-      }
-    ],
-    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+    "tileSquares": 16
   },
   "caio_tokens": [
     "pens",
@@ -79,19 +46,8 @@
     "fogEnabled": true,
     "gridColumns": 24,
     "gridRows": 16,
-    "revision": 1821640381,
     "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAQQUREFBEREREAREQUREREREREJDJDVVUVRERERERUVVVVVVVVQUREFAARVVUAAABQQUREFAAAAAAAAAAAERERJQAAAAAAAAAAAABQUCICAAAAAAAAAAAAAFUiAgEAAAAAAAAAAFBVIgEAAAAAAAAAAFUVEQEAAAAA",
-    "tileSquares": 16,
-    "tiles": [
-      {
-        "revision": 953331559
-      },
-      {
-        "revision": 1878628710,
-        "tx": 1
-      }
-    ],
-    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+    "tileSquares": 16
   },
   "dani_tokens": [
     "pens",
@@ -104,19 +60,8 @@
     "fogEnabled": true,
     "gridColumns": 24,
     "gridRows": 16,
-    "revision": 1744796685,
     "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAQQUREFBEREREAQEQUREREREREJEJEREQUREREREREREREQzQTQUREFAAREREAAAAQQUREFAAAAAAAAAAAERERBAAAAAAAAAAAAAAQRAAAAAAAAAAAAAAQRAQAAAAAAAAAAAAQQAQAAAAAAAAAAAAAEREAAAAAAAAA",
-    "tileSquares": 16,
-    "tiles": [
-      {
-        "revision": 350358225
-      },
-      {
-        "revision": 889584945,
-        "tx": 1
-      }
-    ],
-    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+    "tileSquares": 16
   },
   "master_as_pens_tokens": [
     "pens",
@@ -129,19 +74,8 @@
     "fogEnabled": true,
     "gridColumns": 24,
     "gridRows": 16,
-    "revision": 1106879855,
     "states": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEREREQAAAAAAAAAAMUREFBEREREAAAAQM0RERDQzUzVDREQUQ0REREQzMzMzQzQTMUREFAAREREAMDMTMUREFAAAAAAAERERERERAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "tileSquares": 16,
-    "tiles": [
-      {
-        "revision": 655882678
-      },
-      {
-        "revision": 147210224,
-        "tx": 1
-      }
-    ],
-    "tilesPath": "/images/maps/a66fa740-e010-4ec1-b679-f3258db6e284/tiles/"
+    "tileSquares": 16
   },
   "master_as_toren_tokens": [
     "pens",

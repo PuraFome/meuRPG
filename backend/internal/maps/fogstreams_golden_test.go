@@ -95,7 +95,7 @@ func (sc *fogStreamScript) line(ev *playv1.WatchGameSessionResponse) string {
 		tm := ev.GetTokenMoved()
 		return fmt.Sprintf("token_moved %s %s (%d, %d)", label(tm.GetMapId()), label(tm.GetCharacterId()), tm.GetXBp(), tm.GetYBp())
 	}
-	return "other event " + fmt.Sprint(ev)
+	return fmt.Sprintf("other event %T", ev.GetEvent())
 }
 
 // drain toggles the probe map to end every stream, and returns the lines of each.
@@ -212,6 +212,12 @@ func TestFogStreams_WhoIsToldOfEachTokenWriteWithFog(t *testing.T) {
 		var v any
 		if err := json.Unmarshal(raw, &v); err != nil {
 			t.Fatal(err)
+		}
+		// The revision and the tiles' path hash and name the map, which is new on every run.
+		if tree, ok := v.(map[string]any); ok {
+			delete(tree, "revision")
+			delete(tree, "tilesPath")
+			delete(tree, "tiles")
 		}
 		views[label] = v
 		get := u.mustGetMapAs(c.campaign, c.mapID, firstOf(as))
