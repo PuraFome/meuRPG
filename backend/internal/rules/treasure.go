@@ -164,21 +164,24 @@ type valuesFile struct {
 }
 
 type treasureFile struct {
-	Source string `json:"source"`
-	Gems   []struct {
-		ValuePO int      `json:"value_po"`
-		Names   []string `json:"names_pt"`
-	} `json:"gems"`
-	Art []struct {
-		ValuePO int      `json:"value_po"`
-		Names   []string `json:"names_pt"`
-	} `json:"art"`
-	Bands []struct {
-		From       int          `json:"from"`
-		To         int          `json:"to"`
-		Individual treasureJSON `json:"individual"`
-		Hoard      treasureJSON `json:"hoard"`
-	} `json:"bands"`
+	Source string             `json:"source"`
+	Gems   []treasureTierJSON `json:"gems"`
+	Art    []treasureTierJSON `json:"art"`
+	Bands  []treasureBandJSON `json:"bands"`
+}
+
+// treasureTierJSON is a value tier of gems or art objects, with its names.
+type treasureTierJSON struct {
+	ValuePO int      `json:"value_po"`
+	Names   []string `json:"names_pt"`
+}
+
+// treasureBandJSON is the treasure of a band of levels.
+type treasureBandJSON struct {
+	From       int          `json:"from"`
+	To         int          `json:"to"`
+	Individual treasureJSON `json:"individual"`
+	Hoard      treasureJSON `json:"hoard"`
 }
 
 type treasureJSON struct {
@@ -215,7 +218,7 @@ func (c *content) loadTreasure(fsys fs.FS) error {
 	if err := c.loadMagicItemValues(fsys); err != nil {
 		return err
 	}
-	const name = "effects/treasure.json"
+	const name = treasureFileName
 	var f treasureFile
 	if err := readJSON(fsys, name, &f); err != nil {
 		return err
@@ -231,64 +234,97 @@ func (c *content) loadTreasure(fsys fs.FS) error {
 		t.units[r] = sorted
 	}
 	names := map[string]bool{}
-	tiers := func(kind string, in []struct {
-		ValuePO int      `json:"value_po"`
-		Names   []string `json:"names_pt"`
-	},
-	) ([]treasureTier, error) {
-		var out []treasureTier
-		for i, in := range in {
-			switch {
-			case in.ValuePO < 1 || in.ValuePO > 10000:
-				return nil, fmt.Errorf("%s: %s tier %d: value_po must be 1 to 10,000", name, kind, i)
-			case i > 0 && in.ValuePO <= out[i-1].valuePO:
-				return nil, fmt.Errorf("%s: %s tiers must rise in value (%d)", name, kind, in.ValuePO)
-			case len(in.Names) == 0:
-				return nil, fmt.Errorf("%s: %s tier %d PO has no names", name, kind, in.ValuePO)
-			}
-			for _, n := range in.Names {
-				if strings.TrimSpace(n) == "" || utf8.RuneCountInString(n) > 60 || names[n] {
-					return nil, fmt.Errorf("%s: %s name %q is empty, too long or repeated", name, kind, n)
-				}
-				names[n] = true
-			}
-			out = append(out, treasureTier{valuePO: in.ValuePO, names: slices.Clone(in.Names)})
-		}
-		if len(out) == 0 {
-			return nil, fmt.Errorf("%s: no %s tiers", name, kind)
-		}
-		return out, nil
-	}
 	var err error
-	if t.gems, err = tiers("gem", f.Gems); err != nil {
+	if t.gems, err = treasureTiers("gem", f.Gems, names); err != nil {
 		return err
 	}
-	if t.art, err = tiers("art", f.Art); err != nil {
+	if t.art, err = treasureTiers("art", f.Art, names); err != nil {
 		return err
 	}
-	if len(f.Bands) == 0 {
+	return c.loadTreasureBands(f.Bands)
+}
+
+// treasureFileName is the file of the treasure tables.
+const treasureFileName = "effects/treasure.json"
+
+// The bounds of a value tier and of its names.
+const (
+	maxTierValuePO = 10000
+	maxTierName    = 60
+)
+
+// treasureTiers checks the value tiers of a kind ("gem" or "art"): values
+// that rise within bounds, and names, none repeated across the kinds (names
+// holds those seen).
+func treasureTiers(kind string, in []treasureTierJSON, names map[string]bool) ([]treasureTier, error) {
+	const name = treasureFileName
+	var out []treasureTier
+	for i, tier := range in {
+		switch {
+		case tier.ValuePO < 1 || tier.ValuePO > maxTierValuePO:
+			return nil, fmt.Errorf("%s: %s tier %d: value_po must be 1 to 10,000", name, kind, i)
+		case i > 0 && tier.ValuePO <= out[i-1].valuePO:
+			return nil, fmt.Errorf("%s: %s tiers must rise in value (%d)", name, kind, tier.ValuePO)
+		case len(tier.Names) == 0:
+			return nil, fmt.Errorf("%s: %s tier %d PO has no names", name, kind, tier.ValuePO)
+		}
+		if err := checkTierNames(kind, tier.Names, names); err != nil {
+			return nil, err
+		}
+		out = append(out, treasureTier{valuePO: tier.ValuePO, names: slices.Clone(tier.Names)})
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%s: no %s tiers", name, kind)
+	}
+	return out, nil
+}
+
+// checkTierNames refuses an empty name, one too long and one seen before.
+func checkTierNames(kind string, tierNames []string, names map[string]bool) error {
+	for _, n := range tierNames {
+		if strings.TrimSpace(n) == "" || utf8.RuneCountInString(n) > maxTierName || names[n] {
+			return fmt.Errorf("%s: %s name %q is empty, too long or repeated", treasureFileName, kind, n)
+		}
+		names[n] = true
+	}
+	return nil
+}
+
+// loadTreasureBands checks the bands, which must cover every level from
+// MinTreasureLevel to MaxTreasureLevel in order, and their two modes.
+func (c *content) loadTreasureBands(bands []treasureBandJSON) error {
+	const name = treasureFileName
+	if len(bands) == 0 {
 		return fmt.Errorf("%s: no bands", name)
 	}
 	next := MinTreasureLevel
-	for _, b := range f.Bands {
+	for _, b := range bands {
 		if b.From != next || b.To < b.From || b.To > MaxTreasureLevel {
 			return fmt.Errorf("%s: band %d-%d must start at level %d and stay within %d", name, b.From, b.To, next, MaxTreasureLevel)
 		}
 		next = b.To + 1
-		band := treasureBand{from: b.From, to: b.To}
-		where := fmt.Sprintf("%s: band %d-%d", name, b.From, b.To)
-		if band.individual, err = c.checkTreasureMode(where+", individual", b.Individual, false); err != nil {
+		band, err := c.treasureBand(b)
+		if err != nil {
 			return err
 		}
-		if band.hoard, err = c.checkTreasureMode(where+", hoard", b.Hoard, true); err != nil {
-			return err
-		}
-		t.bands = append(t.bands, band)
+		c.treasure.bands = append(c.treasure.bands, band)
 	}
 	if next != MaxTreasureLevel+1 {
 		return fmt.Errorf("%s: the bands stop at level %d, not %d", name, next-1, MaxTreasureLevel)
 	}
 	return nil
+}
+
+// treasureBand checks a band's individual mode, then its hoard.
+func (c *content) treasureBand(b treasureBandJSON) (treasureBand, error) {
+	band := treasureBand{from: b.From, to: b.To}
+	where := fmt.Sprintf("%s: band %d-%d", treasureFileName, b.From, b.To)
+	var err error
+	if band.individual, err = c.checkTreasureMode(where+", individual", b.Individual, false); err != nil {
+		return band, err
+	}
+	band.hoard, err = c.checkTreasureMode(where+", hoard", b.Hoard, true)
+	return band, err
 }
 
 func (c *content) loadMagicItemValues(fsys fs.FS) error {
@@ -327,25 +363,20 @@ func (c *content) loadMagicItemValues(fsys fs.FS) error {
 	return nil
 }
 
+// maxChancePct is the highest chance a roll may have, in percent.
+const maxChancePct = 100
+
+// copperPerGold is how many copper pieces a gold piece is worth.
+const copperPerGold = 100
+
+// checkTreasureMode checks a mode's coins and, for a hoard, its gems, art and
+// items, and the most its gold could be worth.
 func (c *content) checkTreasureMode(where string, in treasureJSON, hoard bool) (treasureMode, error) {
 	var m treasureMode
-	if len(in.Coins) == 0 {
-		return m, fmt.Errorf("%s: no coins", where)
-	}
-	seen := map[string]bool{}
-	for _, cr := range in.Coins {
-		if _, ok := coinCopper[cr.Coin]; !ok || seen[cr.Coin] {
-			return m, fmt.Errorf("%s: coin %q does not exist or is repeated", where, cr.Coin)
-		}
-		seen[cr.Coin] = true
-		d, err := parseTreasureDice(cr.Dice)
-		if err != nil {
-			return m, fmt.Errorf("%s: %s: %w", where, cr.Coin, err)
-		}
-		if cr.ChancePct < 1 || cr.ChancePct > 100 {
-			return m, fmt.Errorf("%s: %s: chance_pct must be 1 to 100", where, cr.Coin)
-		}
-		m.coins = append(m.coins, coinRoll{coin: cr.Coin, dice: d, chance: cr.ChancePct})
+	coins, err := checkTreasureCoins(where, in)
+	m.coins = coins
+	if err != nil {
+		return m, err
 	}
 	if !hoard {
 		if in.Gems != nil || in.Art != nil || in.Items != nil {
@@ -353,7 +384,6 @@ func (c *content) checkTreasureMode(where string, in treasureJSON, hoard bool) (
 		}
 		return m, nil
 	}
-	var err error
 	if m.gems, err = c.checkPick(where+", gems", in.Gems, maxTreasureGems, c.treasure.gems); err != nil {
 		return m, err
 	}
@@ -363,25 +393,53 @@ func (c *content) checkTreasureMode(where string, in treasureJSON, hoard bool) (
 	if m.items, err = c.checkPick(where+", items", in.Items, maxTreasureItems, nil); err != nil {
 		return m, err
 	}
-	// The gold (coins, gems and art) becomes a point's value and must fit what a map
-	// point holds; the items do not count: they are never part of it.
-	worst := 0
-	for _, cr := range m.coins {
-		worst += cr.dice.max() * coinCopper[cr.coin] / 100
-	}
-	top := func(p *pickRoll, value func(weighted) int) int {
-		best := 0
-		for _, w := range p.choices {
-			best = max(best, value(w))
-		}
-		return best * p.count.max()
-	}
-	worst += top(m.gems, func(w weighted) int { return w.value })
-	worst += top(m.art, func(w weighted) int { return w.value })
-	if worst > maxTreasureValue {
+	if worst := worstTreasureGold(m); worst > maxTreasureValue {
 		return m, fmt.Errorf("%s: could be worth %d PO, over the %d PO limit", where, worst, maxTreasureValue)
 	}
 	return m, nil
+}
+
+// checkTreasureCoins checks the coin rolls: each coin once, a roll that
+// parses and a chance of 1 to 100. It returns the rolls read before a fault.
+func checkTreasureCoins(where string, in treasureJSON) ([]coinRoll, error) {
+	var out []coinRoll
+	if len(in.Coins) == 0 {
+		return out, fmt.Errorf("%s: no coins", where)
+	}
+	seen := map[string]bool{}
+	for _, cr := range in.Coins {
+		if _, ok := coinCopper[cr.Coin]; !ok || seen[cr.Coin] {
+			return out, fmt.Errorf("%s: coin %q does not exist or is repeated", where, cr.Coin)
+		}
+		seen[cr.Coin] = true
+		d, err := parseTreasureDice(cr.Dice)
+		if err != nil {
+			return out, fmt.Errorf("%s: %s: %w", where, cr.Coin, err)
+		}
+		if cr.ChancePct < 1 || cr.ChancePct > maxChancePct {
+			return out, fmt.Errorf("%s: %s: chance_pct must be 1 to 100", where, cr.Coin)
+		}
+		out = append(out, coinRoll{coin: cr.Coin, dice: d, chance: cr.ChancePct})
+	}
+	return out, nil
+}
+
+// worstTreasureGold is the most a hoard's gold (coins, gems and art) could be
+// worth. The gold becomes a point's value and must fit what a map point
+// holds; the items do not count: they are never part of it.
+func worstTreasureGold(m treasureMode) int {
+	worst := 0
+	for _, cr := range m.coins {
+		worst += cr.dice.max() * coinCopper[cr.coin] / copperPerGold
+	}
+	top := func(p *pickRoll) int {
+		best := 0
+		for _, w := range p.choices {
+			best = max(best, w.value)
+		}
+		return best * p.count.max()
+	}
+	return worst + top(m.gems) + top(m.art)
 }
 
 // checkPick checks a gems, art or items entry. tiers is the list the value tiers
@@ -397,40 +455,63 @@ func (c *content) checkPick(where string, in *pickJSON, limit int, tiers []treas
 	if count.max() > limit || count.min() < 0 {
 		return nil, fmt.Errorf("%s: %s can give more than %d", where, in.Count, limit)
 	}
-	if in.ChancePct < 1 || in.ChancePct > 100 {
+	if in.ChancePct < 1 || in.ChancePct > maxChancePct {
 		return nil, fmt.Errorf("%s: chance_pct must be 1 to 100", where)
 	}
 	p := &pickRoll{chance: in.ChancePct, count: count}
 	if tiers != nil {
-		if len(in.Rarities) > 0 || len(in.Tiers) == 0 {
-			return nil, fmt.Errorf("%s: needs tiers, not rarities", where)
-		}
-		seen := map[int]bool{}
-		for _, t := range in.Tiers {
-			ok := slices.ContainsFunc(tiers, func(x treasureTier) bool { return x.valuePO == t.ValuePO })
-			if !ok || seen[t.ValuePO] || t.Weight < 1 {
-				return nil, fmt.Errorf("%s: tier %d PO does not exist, is repeated or has no weight", where, t.ValuePO)
-			}
-			seen[t.ValuePO] = true
-			p.choices = append(p.choices, weighted{value: t.ValuePO, weight: t.Weight})
-		}
-		return p, nil
+		p.choices, err = pickTiers(where, in, tiers)
+	} else {
+		p.choices, err = c.pickRarities(where, in)
 	}
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// pickTiers reads the weighted tiers of gems or art, each one of tiers, once.
+func pickTiers(where string, in *pickJSON, tiers []treasureTier) ([]weighted, error) {
+	if len(in.Rarities) > 0 || len(in.Tiers) == 0 {
+		return nil, fmt.Errorf("%s: needs tiers, not rarities", where)
+	}
+	var out []weighted
+	seen := map[int]bool{}
+	for _, t := range in.Tiers {
+		ok := slices.ContainsFunc(tiers, func(x treasureTier) bool { return x.valuePO == t.ValuePO })
+		if !ok || seen[t.ValuePO] || t.Weight < 1 {
+			return nil, fmt.Errorf("%s: tier %d PO does not exist, is repeated or has no weight", where, t.ValuePO)
+		}
+		seen[t.ValuePO] = true
+		out = append(out, weighted{value: t.ValuePO, weight: t.Weight})
+	}
+	return out, nil
+}
+
+// pickRarities reads the weighted rarities of the items: each a rarity a
+// treasure rolls, once, with items to roll.
+func (c *content) pickRarities(where string, in *pickJSON) ([]weighted, error) {
 	if len(in.Tiers) > 0 || len(in.Rarities) == 0 {
 		return nil, fmt.Errorf("%s: needs rarities, not tiers", where)
 	}
+	var out []weighted
 	seen := map[string]bool{}
 	for _, r := range in.Rarities {
-		// The artifact has no value and a treasure never holds one; "varies" is a
-		// family, not a rarity an item has.
-		if r.Rarity == RarityArtifact || r.Rarity == RarityVaries || !slices.Contains(MagicRarities(), r.Rarity) || seen[r.Rarity] || r.Weight < 1 {
+		if !treasureRarity(r.Rarity) || seen[r.Rarity] || r.Weight < 1 {
 			return nil, fmt.Errorf("%s: rarity %q is not one a treasure rolls, is repeated or has no weight", where, r.Rarity)
 		}
 		seen[r.Rarity] = true
 		if len(c.magicUnits[r.Rarity]) == 0 {
 			return nil, fmt.Errorf("%s: there are no %s magic items", where, r.Rarity)
 		}
-		p.choices = append(p.choices, weighted{rarity: r.Rarity, weight: r.Weight})
+		out = append(out, weighted{rarity: r.Rarity, weight: r.Weight})
 	}
-	return p, nil
+	return out, nil
+}
+
+// treasureRarity says whether a treasure may roll the rarity. The artifact
+// has no value and a treasure never holds one; "varies" is a family, not a
+// rarity an item has.
+func treasureRarity(r string) bool {
+	return r != RarityArtifact && r != RarityVaries && slices.Contains(MagicRarities(), r)
 }

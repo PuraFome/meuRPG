@@ -37,7 +37,7 @@ export const appConfig: ApplicationConfig = {
       inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
     }),
     // A double-click never confirms a destructive inline action: every inline
-    // confirmation ignores clicks for its first 500 ms (docs/design.md).
+    // confirmation ignores clicks for its first 500 ms (docs/design/README.md).
     provideAppInitializer(() => inject(ConfirmGuard).start()),
     // No root fallback for CharacterSheetSource / CharacterEditorSource /
     // CampaignCharactersSource / GameSessionSource on purpose: each is

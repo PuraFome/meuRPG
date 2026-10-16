@@ -108,24 +108,24 @@ Copy this into any PR that touches data, logs, screens or vendors:
 | Session cookie `__Host-meurpg_session` | User's device | Keep the sign-in | Strictly necessary | Until sign-out, which erases the session on the server, or 14 days without use, or 30 days. "Sair dos outros dispositivos" (profile) erases the other sessions at once |
 | Login cookie `__Host-meurpg_login` (the `state`) | User's device | Bind the sign-in to the browser that started it (against login CSRF) | Strictly necessary | 10 minutes; erased at the callback |
 
-**The new app (`web/`) stores nothing in the browser besides these two cookies**, both `HttpOnly` and never read by the page's JavaScript. No `localStorage`, `sessionStorage`, IndexedDB, cookie written by JavaScript, or Worker keeping a token or personal data, with no exceptions, and an automatic guard (`web/src/no-web-storage.spec.ts`) that scans the source for these APIs. See [Architecture](architecture.md#nothing-in-the-browser-besides-the-session-cookie).
+**The new app (`web/`) stores nothing in the browser besides these two cookies**, both `HttpOnly` and never read by the page's JavaScript. No `localStorage`, `sessionStorage`, IndexedDB, cookie written by JavaScript, or Worker keeping a token or personal data, with no exceptions, and an automatic guard (`web/src/no-web-storage.spec.ts`) that scans the source for these APIs. See [Architecture](architecture/web.md#nothing-in-the-browser-besides-the-session-cookie).
 
-**In the legacy app (discontinued)**, `users.name` was stored, and there were two columns with no purpose: `characters.email` and `sheet.playerName`. There is no data migration: all three simply do not exist in the new schema (see [Data model](data.md)). In the legacy app, maps were kept as base64 in the database, and the gallery and campaigns were kept in `localStorage`.
+**In the legacy app (discontinued)**, `users.name` was stored, and there were two columns with no purpose: `characters.email` and `sheet.playerName`. There is no data migration: all three simply do not exist in the new schema (see [Data model](data/README.md)). In the legacy app, maps were kept as base64 in the database, and the gallery and campaigns were kept in `localStorage`.
 
 **Bug in the legacy app (discontinued):** sign-out and "Excluir conta" called routes that did not exist in NestJS (`POST /api/auth/logout` and `DELETE /api/auth/account`). Sign-out only cleared the browser, and the token stayed valid on the server until it expired. Deletion failed, so the right to erasure (art. 18, VI) did not work there. The legacy app's code is gone from the repository; the new system implements both from the first deploy with sign-in and proves them with an automated test.
 
 ### API logs
 
-API logs keep the `user_id` (an account UUID, a pseudonym) and game IDs, and nothing that identifies the person by itself. Each line has `request_id`, `user_id` and `campaign_id` when they exist, and the `rpc`, stream and event lines say what was done, with only IDs and enums (see [Architecture](architecture.md#logs)).
+API logs keep the `user_id` (an account UUID, a pseudonym) and game IDs, and nothing that identifies the person by itself. Each line has `request_id`, `user_id` and `campaign_id` when they exist, and the `rpc`, stream and event lines say what was done, with only IDs and enums (see [Architecture](architecture/logs.md#logs)).
 
 | Log data | Why | Retention |
 | --- | --- | --- |
-| `user_id` (account UUID) | Follow a game session and find the cause of an error. It is pseudonymous personal data: it becomes a person only with the database, and it leaves the database with the account | The log's: in production, the Cloud Logging default (30 days in the `_Default` bucket); in the rehearsal ELK, the one in [Operations](operations.md) |
+| `user_id` (account UUID) | Follow a game session and find the cause of an error. It is pseudonymous personal data: it becomes a person only with the database, and it leaves the database with the account | The log's: in production, the Cloud Logging default (30 days in the `_Default` bucket); in the rehearsal ELK, the one in [Operations](operations/README.md) |
 | `campaign_id`, `session_id`, `character_id` and other IDs | The same | The log's |
 | `request_id` | Join the lines of one request; returns to the browser in the `X-Request-Id` header | The log's |
 | Request path and result code | Operate the service | The log's |
 
-What is **not** in the API logs: the IP, the user agent, cookies and headers, the URL query, e-mail, any name (display, character, NPC, campaign), any typed text (documents, notes, clues, prompts, content entries) and request or response bodies. A guard in the handler drops attributes with names such as `email`, `token`, `name` or `text` (the list is in [Architecture](architecture.md#what-never-goes-in-the-log)). The IP and user agent appear only in the request log that Cloud Run itself writes, the Cloud Run row of the table above.
+What is **not** in the API logs: the IP, the user agent, cookies and headers, the URL query, e-mail, any name (display, character, NPC, campaign), any typed text (documents, notes, clues, prompts, content entries) and request or response bodies. A guard in the handler drops attributes with names such as `email`, `token`, `name` or `text` (the list is in [Architecture](architecture/logs.md#what-never-goes-in-the-log)). The IP and user agent appear only in the request log that Cloud Run itself writes, the Cloud Run row of the table above.
 
 When an account is deleted, the logs are not rewritten: their `user_id` stops pointing to anyone once the account leaves the database, and the line expires with the retention. A log is never a source for answering a data subject request.
 
@@ -138,9 +138,9 @@ The game master's sign-in (`backend/internal/identity`) meets the items of this 
 - **`GetMe` returns only the account ID** and the time the session ends. The request is empty, so Connect GET puts no personal data in the URL.
 - **No-cache responses.** `GetMe`, `SignOut`, `SignOutOtherSessions`, `CountOtherSessions` and the `/auth/*` routes go out with `Cache-Control: no-store`; the `/auth/*` routes also with `Referrer-Policy: no-referrer`.
 - **Deleting the account** erases identities and sessions with it, by `ON DELETE CASCADE`.
-- **The API rate limits.** The per-IP limit for the whole API (`platform/ratelimit`, [Architecture](architecture.md#abuse-limits)) keeps the client IP only in the instance's memory, like the login one, and never in the database or the log; refusals become a `WARN` line with the name of the limit and, for per-user limits, the `user_id` that is already on every line, never the IP. The `CAMPAIGN_CREATORS` list (e-mails of who may create campaigns) is server configuration and does not go to the log; each account's verified e-mail stays only in the identities table (RN-30).
+- **The API rate limits.** The per-IP limit for the whole API (`platform/ratelimit`, [Architecture](architecture/api.md#abuse-limits)) keeps the client IP only in the instance's memory, like the login one, and never in the database or the log; refusals become a `WARN` line with the name of the limit and, for per-user limits, the `user_id` that is already on every line, never the IP. The `CAMPAIGN_CREATORS` list (e-mails of who may create campaigns) is server configuration and does not go to the log; each account's verified e-mail stays only in the identities table (RN-30).
 - **Attempt limit on `/auth/login`.** To count attempts, the server keeps the client IP (the `/64` prefix, for IPv6) only in the instance's memory, never in the database or the log. It is the "IP in the rate limiters" row of the inventory: it disappears within 2 minutes after the last attempt, or when the instance stops.
-- **devidp test users** (the development OIDC provider, see [CONTRIBUTING.md](../CONTRIBUTING.md#local-sign-in-with-the-devidp)) are fictional, with e-mails at `example.com`. It does not exist in production, so no real data passes through it.
+- **devidp test users** (the development OIDC provider, see [CONTRIBUTING.md](development.md#sign-in-with-the-devidp)) are fictional, with e-mails at `example.com`. It does not exist in production, so no real data passes through it.
 
 ### What the campaigns module does
 
@@ -176,7 +176,7 @@ The `characters` module (`backend/internal/characters`) and the start of `play` 
 
 ### What the live session does
 
-The live session of `play` (see [Architecture](architecture.md#live-session)) meets the items of this page as follows:
+The live session of `play` (see [Architecture](architecture/play/live-session.md#live-session)) meets the items of this page as follows:
 
 - **The notice does not open a connection.** `ListOpenGameSessions` has an empty request, so it accepts GET without putting data in the URL; the response carries the names of the person's own campaigns and goes out with `Cache-Control: no-store`.
 - **A player sees only their own character's numbers.** The filter runs on the server, in the snapshot (`GetLiveSession`) and in the stream: each event carries its audience, and the hub delivers it only to that audience (`TestPlayersSeeOnlyTheirOwnVitals`). Master notes never leave through the live session (`TestRN11_LiveSessionNeverCarriesMasterNotes`).
@@ -244,7 +244,7 @@ Almost everything is self-service, inside the app, signed in. The session alread
 Players and masters are treated differently (RN-16).
 
 - **Player:** deletion is immediate and final. Account, handles, password, sessions and campaign membership disappear at once. The player's characters are **not deleted**: they stay linked to the campaign master, without the original owner (see the tension with identity, below).
-- **Master:** the account goes on hold. Sessions are revoked at once, so nobody can use the account, but the account row itself (the `issuer`/`subject` pair from the sign-in provider, see [Data model](data.md)) is only deleted for good after **30 days**. If the master signs in again with the **same Google account** within those 30 days, the account is fully restored: nothing was lost. After 30 days without that return, everything is deleted: the account and the master's campaigns (maps, NPCs, notes, events, XP).
+- **Master:** the account goes on hold. Sessions are revoked at once, so nobody can use the account, but the account row itself (the `issuer`/`subject` pair from the sign-in provider, see [Data model](data/README.md)) is only deleted for good after **30 days**. If the master signs in again with the **same Google account** within those 30 days, the account is fully restored: nothing was lost. After 30 days without that return, everything is deleted: the account and the master's campaigns (maps, NPCs, notes, events, XP).
 - **After any deletion**, what is left (orphaned table accounts, backups, logs, images) disappears completely within 30 days of the actual deletion.
 - **Inactivity:** each person chooses in their own profile how long of inactivity leads to automatic deletion of the account. The default is 1 year.
 
@@ -270,7 +270,7 @@ flowchart TD
     M --> K
 ```
 
-Characters already follow this design in the database. A player character left with no player and no campaign (the player deleted the account and the campaign was deleted, in either order) is deleted by the database TTL within 1 day: nobody can reach it any more, and keeping its free text would have no purpose (see [Data model](data.md#tables-by-module)).
+Characters already follow this design in the database. A player character left with no player and no campaign (the player deleted the account and the campaign was deleted, in either order) is deleted by the database TTL within 1 day: nobody can reach it any more, and keeping its free text would have no purpose (see [Data model](data/README.md#modules-and-tables)).
 
 That is why session events store only IDs: when the data's owner disappears, the event becomes anonymous without anyone editing the history. The master's 30-day hold uses a "delete at" mark on the account, checked at sign-in, instead of deleting the row at once.
 
@@ -300,12 +300,12 @@ Data lives in São Paulo (`southamerica-east1`). Access by a vendor outside Braz
 | GitHub Pages | Hosting of the legacy app's Angular build (discontinued; its code is no longer in the repository). To do: the project owner turns it off in the repository settings | IP of visitors | **Temporary gap.** Ends when the project owner turns it off |
 | Google (Gemini API) | Generates the images the master asks for (MR-039, RN-28, ADR-0019), with an AI Studio key, through the server | The text the master writes, the style, the gallery images the master picks as reference and, in a refinement, the previous image. Never a person's name, e-mail or sheet. Google may keep the data briefly, or in cache, **in any country**: it counts as an international transfer | [Gemini API Paid Services terms](https://ai.google.dev/gemini-api/terms) (no image model has a free tier). The privacy notice names Google as a processor and states the transfer. **To be defined:** the transfer mechanism (Resolution CD/ANPD no. 19/2024) |
 | Cloudflare Workers AI | Jev, after the MVP | Only game context, no personal data | **To be defined** before Jev |
-| ImprovMX | Forwards the e-mail sent to `@meurpg.app` (the contact `privacidade@meurpg.app`) to the people who answer it ([Operations](operations.md#dns-certificates-and-e-mail)) | The message in transit: the sender's address and name, the subject and the text. Its log keeps the sender, the recipient and the subject for 7 days, never the text ([ImprovMX, "What do we log?"](https://improvmx.com/guides/what-do-we-log/)). It does not say where its servers are: count it as an international transfer | **To be defined:** the contract and the transfer mechanism (Resolution CD/ANPD no. 19/2024). The privacy notice names it as a processor |
+| ImprovMX | Forwards the e-mail sent to `@meurpg.app` (the contact `privacidade@meurpg.app`) to the people who answer it ([Operations](operations/runbook.md#dns-certificates-and-e-mail)) | The message in transit: the sender's address and name, the subject and the text. Its log keeps the sender, the recipient and the subject for 7 days, never the text ([ImprovMX, "What do we log?"](https://improvmx.com/guides/what-do-we-log/)). It does not say where its servers are: count it as an international transfer | **To be defined:** the contract and the transfer mechanism (Resolution CD/ANPD no. 19/2024). The privacy notice names it as a processor |
 | Have I Been Pwned | Checks whether a new password has leaked | 5 characters of the password hash, leaving the server. Identifies nobody | Not a processor |
 
 ### The legacy app database
 
-The legacy app's CockroachDB (used by NestJS) can be deleted. It is not the new system's database: it is a separate cluster that only needs to be decommissioned. Before deleting it, a one-off task imports only the characters from there into the new database (see [Data model](data.md)); the rest (campaigns, maps and sessions of the legacy app, if any) is not imported. After decommissioning, its backups disappear within the provider's period (30 days). This is a [roadmap](roadmap.md) task (Etapa 11); only the date is missing.
+The legacy app's CockroachDB (used by NestJS) can be deleted. It is not the new system's database: it is a separate cluster that only needs to be decommissioned. Before deleting it, a one-off task imports only the characters from there into the new database (see [Data model](data/README.md)); the rest (campaigns, maps and sessions of the legacy app, if any) is not imported. After decommissioning, its backups disappear within the provider's period (30 days). This is a [roadmap](roadmap.md) task (Etapa 11); only the date is missing.
 
 ### What generated images send to Google (MR-039, RN-28)
 
@@ -327,7 +327,7 @@ The legacy app's CockroachDB (used by NestJS) can be deleted. It is not the new 
 
 ### Logs in ELK
 
-The ELK that stores the API logs (Elasticsearch in the rehearsal environment and, if it comes, in production; see [Operations](operations.md#logs-in-elk)) deletes each line after 14 days, through the ILM policy `meurpg-logs`, within the 30-day cap on logs. Who reads: only the operations team, through `meurpg_reader` (read-only on `logs-meurpg-*`) or Kibana with a login. The log holds `user_id` and `campaign_id`, which are pseudonymous identifiers, and no e-mail, name or free text (the logging contract forbids them). Deleting an account does not delete lines already written: they disappear by themselves within 14 days. Run by us, ELK is not a processor; if production uses Elastic Cloud, it joins the processors table above.
+The ELK that stores the API logs (Elasticsearch in the rehearsal environment and, if it comes, in production; see [Operations](operations/logs.md#locally-with-elk)) deletes each line after 14 days, through the ILM policy `meurpg-logs`, within the 30-day cap on logs. Who reads: only the operations team, through `meurpg_reader` (read-only on `logs-meurpg-*`) or Kibana with a login. The log holds `user_id` and `campaign_id`, which are pseudonymous identifiers, and no e-mail, name or free text (the logging contract forbids them). Deleting an account does not delete lines already written: they disappear by themselves within 14 days. Run by us, ELK is not a processor; if production uses Elastic Cloud, it joins the processors table above.
 
 ## Cookies and the browser
 
@@ -372,7 +372,7 @@ Every PR answers them. One "yes" needs a short section of risks and measures in 
 
 - ImprovMX (the forwarding of `privacidade@meurpg.app`): the contract and the transfer mechanism, and how long the messages stay in the mailboxes of the people who answer.
 - LGPD contract with Cockroach Labs; contracts for Render, GitHub Pages and Cloudflare while they are used.
-- Check in the CockroachDB Cloud console that backups stay in São Paulo and are kept for 30 days at most. The current plan, the legacy Unlimited, stays; changing plan loses Unlimited, and whether to migrate to Cloud SQL or another product is under evaluation (see [Operations](operations.md)).
+- Check in the CockroachDB Cloud console that backups stay in São Paulo and are kept for 30 days at most. The current plan, the legacy Unlimited, stays; changing plan loses Unlimited, and whether to migrate to Cloud SQL or another product is under evaluation (see [Operations](operations/README.md)).
 - Before reading rule PDFs with AI (MR-027, after the MVP): choose the processor, say what leaves the server, and handle the copyright of official books (the result only appears to the table). The PDF is not stored: it exists only while being processed and is deleted right after, with a short TTL on the stored file to guarantee deletion even if processing fails. When MR-027 is built, the PDF joins the inventory above with that period.
 - The transfer mechanism for Google (Gemini API), Resolution CD/ANPD no. 19/2024 (see the Gemini rows above).
 - Lawyer review of the privacy notice, the terms of use and the treatment of free text left with the master. Until then both pages say they have had none.
@@ -388,8 +388,8 @@ Account deletion and data export are handled by e-mail for now, so both pages sa
 
 ## See also
 
-- [Architecture](architecture.md): modules, sign-in and where each piece runs.
-- [Data model](data.md): the tables cited here.
-- [Operations](operations.md): secrets, logs and alerts.
+- [Architecture](architecture/README.md): modules, sign-in and where each piece runs.
+- [Data model](data/README.md): the tables cited here.
+- [Operations](operations/README.md): secrets, logs and alerts.
 - [Business rules](product/rules.md): RN-10 and RN-11, which also protect what the player sees; RN-16, account deletion and inactivity; RN-17, player sign-in without Google.
 - `docs/adr/` (private repository): ADR-0002 (session), ADR-0009 (player sign-in without Google), ADR-0010 (privacy), ADR-0011 (roles per campaign).
