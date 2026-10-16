@@ -157,7 +157,6 @@ cognitive internal/maps (*Service).serve 18
 cognitive internal/maps (*Service).serveTile 31
 cognitive internal/maps (*Service).storeImage 24
 cognitive internal/maps (*Service).updateVision 27
-cognitive internal/maps (*mapsPart).Apply 18
 cognitive internal/maps (*trapScene).sightOf 16
 cognitive internal/maps (campaignMaps).mapToProto 21
 cognitive internal/maps blackenBlocks 33
