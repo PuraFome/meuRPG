@@ -53,97 +53,6 @@ const (
 	holdConcentration = "concentration_save"
 )
 
-// heldDie is the Bardic Inspiration die a character holds now, wherever it is kept: a row of
-// character_inspiration out of a combat, the combatant's own die in a running combat (the row is
-// gone then, so the two are never both set).
-type heldDie struct {
-	Sides int32
-	// Source is the character of the bard that gave it, nil when it is gone.
-	Source *string
-	// Combatant is the character's combatant in a running combat, nil out of one; Encounter and
-	// Round are then the combat and its round. They are set even when the combatant holds no die
-	// (dieOf says not found): a halfling's Lucky question waits in the round without one.
-	Combatant *playdb.Combatant
-	Encounter string
-	Round     int32
-}
-
-// dieOf finds the die a character holds. While a combat is active and the character is one of
-// its combatants the die is the combatant's (and it holds none if the combatant holds none: the
-// combatant and the round still come back, for the round of a Lucky question); otherwise it is
-// the character's row. It reads through q, so inside a change it sees the change.
-func (s *Service) dieOf(ctx context.Context, q *playdb.Queries, campaignID, characterID string) (heldDie, bool, error) {
-	session, err := q.GetOpenGameSession(ctx, campaignID)
-	switch {
-	case err == nil:
-		enc, err := q.GetOpenEncounter(ctx, session.ID)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return heldDie{}, false, fmt.Errorf("find the open encounter: %w", err)
-		}
-		if err == nil && enc.Status == statusActive {
-			cs, err := q.ListCombatants(ctx, enc.ID)
-			if err != nil {
-				return heldDie{}, false, fmt.Errorf("list the combatants: %w", err)
-			}
-			if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return backedByCharacter(o) && o.CharacterID == characterID }); i >= 0 {
-				who := cs[i]
-				die := heldDie{Combatant: &who, Encounter: enc.ID, Round: enc.Round}
-				if !holdsDie(who, enc.Round) {
-					return die, false, nil
-				}
-				die.Sides = *who.InspirationSides
-				if who.InspirationFrom != nil {
-					if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == *who.InspirationFrom && backedByCharacter(o) }); j >= 0 {
-						die.Source = &cs[j].CharacterID
-					}
-				}
-				return die, true, nil
-			}
-		}
-	case !errors.Is(err, pgx.ErrNoRows):
-		return heldDie{}, false, fmt.Errorf("find the open session: %w", err)
-	}
-	row, err := q.GetCharacterInspiration(ctx, playdb.GetCharacterInspirationParams{CharacterID: characterID, CampaignID: campaignID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return heldDie{}, false, nil
-	}
-	if err != nil {
-		return heldDie{}, false, fmt.Errorf("find the die of the character: %w", err)
-	}
-	return heldDie{Sides: row.Sides, Source: row.SourceCharacterID}, true, nil
-}
-
-// spendDie uses up the die a roll settled on: the combatant's own, or the character's row.
-func spendDie(ctx context.Context, q *playdb.Queries, characterID string, die heldDie) error {
-	if die.Combatant != nil {
-		if err := q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: die.Combatant.ID}); err != nil {
-			return fmt.Errorf("use the die of the combatant: %w", err)
-		}
-		return nil
-	}
-	n, err := q.DeleteCharacterInspiration(ctx, characterID)
-	if err != nil {
-		return fmt.Errorf("use the die: %w", err)
-	}
-	if n == 0 {
-		return errDieGone()
-	}
-	return nil
-}
-
-// staleHold says a hold made in a combat no longer has anything to answer: its round is over (or
-// the combat ended), or the die is not the combatant's any more (used or expired) and no Lucky
-// question waits, which needs no die (inspiration_lucky.go).
-func staleHold(h playdb.InspirationHold, die heldDie, found bool) bool {
-	if h.Round == nil {
-		return false
-	}
-	if die.Combatant == nil || die.Round != *h.Round {
-		return true
-	}
-	return !found && !outsideLuckyPending(h)
-}
-
 // forcedOutside is the answer to a held roll, carried to the roll path it settles.
 type forcedOutside struct {
 	holdID, answerKey string
@@ -317,10 +226,6 @@ func (s *Service) heldStep(ctx context.Context, tx pgx.Tx, hold playdb.Inspirati
 		return outsideStep{Held: true, LuckyOffer: outsideLuckyOfferOf(hold)}
 	}
 	return outsideStep{Held: true, Offer: s.offerOfHold(ctx, tx, hold, die)}
-}
-
-func errDieGone() error {
-	return connect.NewError(connect.CodeFailedPrecondition, errors.New("the character holds no die any more"))
 }
 
 // offerOfHold is the question a hold asks: the d20 with the check's bonus, and the die.

@@ -28,12 +28,6 @@ import (
 // is asked: the master's rolls never wait here (a roll the master makes for a halfling waits for
 // a decision, MR-014).
 
-// outsideLuckyPending says the hold waits for its Lucky answer: a die showed a 1 and neither the
-// Lucky question nor the roll was answered.
-func outsideLuckyPending(h playdb.InspirationHold) bool {
-	return h.LuckyIndex != nil && h.LuckyAnswerKey == nil && h.AnswerKey == nil
-}
-
 // outsideLuckyOf is the die a hold's Lucky answer rolled again; nil before the answer, when the
 // player kept the 1, and for a hold that asked no Lucky question.
 func outsideLuckyOf(h playdb.InspirationHold) *luckyReroll {
