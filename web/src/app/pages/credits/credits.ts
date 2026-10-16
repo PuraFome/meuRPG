@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 /**
  * The exact SRD 5.1 attribution text CC-BY-4.0 requires — copied, once, from
  * the "Legal Information" section of the SRD 5.1 PDF, as recorded in the
- * private ADR-0008 (`docs/adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md`,
+ * private ADR-0025 (`docs/adr/0025-srd-5-1-embedded-as-rules-source.md`,
  * not in this worktree). Do not edit this string without checking that ADR:
  * the license requires it verbatim, and `credits.spec.ts` checks it
  * byte-for-byte. The backend's `NOTICE` file and `srd51.Attribution` (owned

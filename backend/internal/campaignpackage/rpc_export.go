@@ -67,63 +67,94 @@ func (s *Service) StartCampaignExport(
 	ctx context.Context,
 	req *connect.Request[pkgv1.StartCampaignExportRequest],
 ) (*connect.Response[pkgv1.StartCampaignExportResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	in, err := s.readExportStart(ctx, req.Msg)
 	if err != nil {
 		return nil, err
-	}
-	if s.blobs == nil {
-		return nil, errImagesOff()
-	}
-	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	if err := s.allow(ctx, s.heavy, s.heavyN, m.UserID); err != nil {
-		return nil, err
-	}
-	scoped, hash := idem.Scope(m.CampaignID+":"+m.UserID, key), idem.Hash(req.Msg)
-	id, err := newExportID()
-	if err != nil {
-		return nil, s.dbError(ctx, "start an export", err)
 	}
 	var row packagedb.CampaignExport
 	started := false
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		started = false
-		var replayed bool
 		var err error
-		row, replayed, err = idem.Create(ctx, scoped, hash, q.GetCampaignExportByCreateKey,
-			func(e packagedb.CampaignExport) *string { return e.CreateHash },
-			func() (packagedb.CampaignExport, error) {
-				// An export already running for the campaign is the answer: two
-				// would only do the same work twice.
-				if running, err := q.GetRunningCampaignExport(ctx, m.CampaignID); err == nil {
-					return running, nil
-				} else if !errors.Is(err, pgx.ErrNoRows) {
-					return packagedb.CampaignExport{}, fmt.Errorf("find a running export: %w", err)
-				}
-				now := s.now()
-				e, err := q.InsertCampaignExport(ctx, packagedb.InsertCampaignExportParams{
-					ID: id, CampaignID: m.CampaignID, RequestedBy: m.UserID, CreateKey: scoped, CreateHash: hash,
-					Now: now, ExpiresAt: now.Add(ExportTTL),
-				})
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					return e, fmt.Errorf("insert an export: %w", err)
-				}
-				started = err == nil && e.ID == id
-				return e, err
-			})
-		_ = replayed
+		row, started, err = s.startExport(ctx, s.queries.WithTx(tx), in)
 		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "start an export", err)
 	}
 	if started {
-		s.launchExport(row.ID, m.CampaignID)
+		s.launchExport(row.ID, in.campaignID)
 	}
 	return connect.NewResponse(&pkgv1.StartCampaignExportResponse{Export: exportToProto(row)}), nil
+}
+
+// exportStart is a StartCampaignExport request that passed every check, with
+// the ID a new export would get.
+type exportStart struct {
+	campaignID string
+	userID     string
+	// scoped and hash are the idempotency key, unique for the master in the
+	// campaign, and the hash of the request.
+	scoped, hash *string
+	id           string
+}
+
+// readExportStart makes StartCampaignExport's checks, in order: the master,
+// the store, the idempotency key and the rate limit.
+func (s *Service) readExportStart(ctx context.Context, msg *pkgv1.StartCampaignExportRequest) (exportStart, error) {
+	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return exportStart{}, err
+	}
+	if s.blobs == nil {
+		return exportStart{}, errImagesOff()
+	}
+	key, err := idem.Clean(msg.GetIdempotencyKey())
+	if err != nil {
+		return exportStart{}, err
+	}
+	if err := s.allow(ctx, s.heavy, s.heavyN, m.UserID); err != nil {
+		return exportStart{}, err
+	}
+	scoped, hash := idem.Scope(m.CampaignID+":"+m.UserID, key), idem.Hash(msg)
+	id, err := newExportID()
+	if err != nil {
+		return exportStart{}, s.dbError(ctx, "start an export", err)
+	}
+	return exportStart{campaignID: m.CampaignID, userID: m.UserID, scoped: scoped, hash: hash, id: id}, nil
+}
+
+// startExport is StartCampaignExport's transaction: the export of the key,
+// or the one running for the campaign, or a new one. started is true for a
+// new one, which the caller launches.
+func (s *Service) startExport(ctx context.Context, q *packagedb.Queries, in exportStart) (row packagedb.CampaignExport, started bool, err error) {
+	row, _, err = idem.Create(ctx, in.scoped, in.hash, q.GetCampaignExportByCreateKey,
+		func(e packagedb.CampaignExport) *string { return e.CreateHash },
+		func() (packagedb.CampaignExport, error) {
+			e, inserted, err := s.insertExportUnlessRunning(ctx, q, in)
+			started = inserted
+			return e, err
+		})
+	return row, started, err
+}
+
+// insertExportUnlessRunning inserts a new export, unless one is already
+// running for the campaign: that one is the answer, since two would only do
+// the same work twice. inserted is true for a new row.
+func (s *Service) insertExportUnlessRunning(ctx context.Context, q *packagedb.Queries, in exportStart) (e packagedb.CampaignExport, inserted bool, err error) {
+	if running, err := q.GetRunningCampaignExport(ctx, in.campaignID); err == nil {
+		return running, false, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return packagedb.CampaignExport{}, false, fmt.Errorf("find a running export: %w", err)
+	}
+	now := s.now()
+	e, err = q.InsertCampaignExport(ctx, packagedb.InsertCampaignExportParams{
+		ID: in.id, CampaignID: in.campaignID, RequestedBy: in.userID, CreateKey: in.scoped, CreateHash: in.hash,
+		Now: now, ExpiresAt: now.Add(ExportTTL),
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return e, false, fmt.Errorf("insert an export: %w", err)
+	}
+	return e, err == nil && e.ID == in.id, err
 }
 
 // GetCampaignExport implements campaignpackagev1connect.CampaignPackageServiceHandler.

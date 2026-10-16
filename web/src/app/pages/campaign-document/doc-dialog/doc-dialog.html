@@ -1,10 +1,10 @@
-<dialog
+<dialog appRelayEvents
   #dialog
   class="doc-dialog"
   [class.doc-dialog--wide]="size() === 'wide'"
   [attr.aria-labelledby]="titleId"
   (close)="closed.emit()"
-  (click)="onClick($event)"
+  (relayClick)="onClick($event)"
 >
   <header class="doc-dialog__head">
     @if (icon()) {

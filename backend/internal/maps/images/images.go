@@ -50,7 +50,7 @@ const jpegQuality = 88
 // maxDecodeBytes is the most memory an image may need while it is decoded,
 // turned upright and shrunk into its thumbnail, as estimated by decodeCost.
 // With one image processed at a time (package maps), this keeps an upload
-// well inside the server's 512 MiB (docs/operations.md).
+// well inside the server's 512 MiB (docs/operations/README.md).
 const maxDecodeBytes = 256 << 20
 
 // The media types Process writes.
@@ -171,7 +171,7 @@ const MaxFitPixels = 16_000_000
 
 // The most a model answer CropFit decodes may be on a side (the model returns at most
 // 4K), and the most memory the whole call may need, the decoded answer and the
-// working copy of the output together: the slot's budget (docs/operations.md). A
+// working copy of the output together: the slot's budget (docs/operations/README.md). A
 // 4096 x 4096 answer into 16 megapixels measures 151 MiB; the limit leaves it room.
 const (
 	maxFitAnswerSide = 4096

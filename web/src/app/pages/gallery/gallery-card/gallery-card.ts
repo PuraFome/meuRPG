@@ -40,7 +40,7 @@ let nextId = 0;
  *   always there under the card, and tapping the thumbnail is "Ver".
  * - Renaming happens in place: the name becomes a field with "Salvar nome"
  *   and "Cancelar" (Esc cancels too).
- * - Deleting confirms in place (docs/design.md: an action that can't be
+ * - Deleting confirms in place (docs/design/README.md: an action that can't be
  *   undone asks on the same screen): "Apagar <nome>? Não dá para desfazer."
  *   with "Apagar imagem", focused, and "Cancelar".
  *

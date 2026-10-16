@@ -1,0 +1,321 @@
+[
+  {
+    "case": "a query of 101 characters",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "query"
+          }
+        }
+      ],
+      "message": "query must have at most 100 characters"
+    }
+  },
+  {
+    "answer": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43"
+    },
+    "case": "a query of 100 accented characters",
+    "logs": null
+  },
+  {
+    "case": "the query before the levels",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "query"
+          }
+        }
+      ],
+      "message": "query must have at most 100 characters"
+    }
+  },
+  {
+    "case": "21 levels before the schools",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "levels"
+          }
+        }
+      ],
+      "message": "levels must have at most 20 entries"
+    }
+  },
+  {
+    "case": "21 schools before a level out of range",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "school_keys"
+          }
+        }
+      ],
+      "message": "school_keys must have at most 20 entries"
+    }
+  },
+  {
+    "case": "circle 10",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "levels"
+          }
+        }
+      ],
+      "message": "levels must be 0 to 9"
+    }
+  },
+  {
+    "case": "circle -1",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "levels"
+          }
+        }
+      ],
+      "message": "levels must be 0 to 9"
+    }
+  },
+  {
+    "case": "a level before the page size",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "levels"
+          }
+        }
+      ],
+      "message": "levels must be 0 to 9"
+    }
+  },
+  {
+    "case": "page size 401",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "page_size"
+          }
+        }
+      ],
+      "message": "page_size must be 1 to 400"
+    }
+  },
+  {
+    "case": "page size -1",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "page_size"
+          }
+        }
+      ],
+      "message": "page_size must be 1 to 400"
+    }
+  },
+  {
+    "case": "the page size before the token",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "page_size"
+          }
+        }
+      ],
+      "message": "page_size must be 1 to 400"
+    }
+  },
+  {
+    "case": "a token that is not base64",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "page_token"
+          }
+        }
+      ],
+      "message": "page_token is not a token of this list"
+    }
+  },
+  {
+    "case": "a token of other filters",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "page_token"
+          }
+        }
+      ],
+      "message": "page_token is not a token of this list"
+    }
+  },
+  {
+    "case": "a token with a negative offset",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "page_token"
+          }
+        }
+      ],
+      "message": "page_token is not a token of this list"
+    }
+  },
+  {
+    "case": "the token before the character",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "page_token"
+          }
+        }
+      ],
+      "message": "page_token is not a token of this list"
+    }
+  },
+  {
+    "case": "a token past the end of the list",
+    "logs": null,
+    "refusal": {
+      "code": "invalid_argument",
+      "details": [
+        {
+          "type": "meurpg.characters.v1.InvalidField",
+          "value": {
+            "field": "page_token"
+          }
+        }
+      ],
+      "message": "page_token is not a token of this list"
+    }
+  },
+  {
+    "answer": {
+      "contentVersion": "srd51@a8abc93b235c+fx.43",
+      "total": 1
+    },
+    "case": "a token at the end of the list",
+    "logs": null
+  },
+  {
+    "case": "a character that is no uuid",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    }
+  },
+  {
+    "case": "a character that does not exist",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    }
+  },
+  {
+    "case": "another player's character",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    }
+  },
+  {
+    "case": "a story NPC, as the master",
+    "logs": null,
+    "refusal": {
+      "code": "failed_precondition",
+      "message": "a basic sheet has no casting classes"
+    }
+  },
+  {
+    "case": "the character before a token past the end",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "character not found"
+    }
+  },
+  {
+    "case": "a pending member, before the query",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "campaign not found"
+    }
+  },
+  {
+    "case": "a stranger",
+    "logs": null,
+    "refusal": {
+      "code": "not_found",
+      "message": "campaign not found"
+    }
+  },
+  {
+    "case": "nobody",
+    "logs": null,
+    "refusal": {
+      "code": "unauthenticated",
+      "message": "sign in to continue"
+    }
+  }
+]

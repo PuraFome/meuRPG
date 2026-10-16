@@ -23,7 +23,7 @@ export function characterRowSub(c: CampaignCharacterListItemVm, isMaster: boolea
   return parts.join(', ');
 }
 
-/** The tag's tone for a character's state (docs/design.md#cor): pending in
+/** The tag's tone for a character's state (docs/design/tokens.md#colour): pending in
  * the warning colour, dead in the danger colour, draft and locked neutral. */
 export function stateTagClass(state: CharacterState): string {
   switch (state) {
