@@ -24,45 +24,21 @@ import (
 // empty when none of them was in one and none was seen through.
 func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, actorUserID string, creatureIDs []string, at time.Time) (string, error) {
 	q := s.queries.WithTx(tx)
-	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil // no session: no combat
-	}
-	if err != nil {
-		return "", fmt.Errorf("lock the open session: %w", err)
-	}
-	enc, err := q.GetOpenEncounter(ctx, session.ID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("find the open encounter: %w", err)
+	session, enc, found, err := openCombatOf(ctx, q, campaignID)
+	if err != nil || !found {
+		return "", err
 	}
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
 		return "", fmt.Errorf("list the combatants: %w", err)
 	}
-	leaving := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool {
-		return o.CreatureID == nil || !slices.Contains(creatureIDs, *o.CreatureID)
-	})
+	leaving := creatureCombatantsOf(cs, creatureIDs)
 	// A player looking through a familiar that goes stops seeing: the sight is the
 	// familiar's, and the conditions it gave leave with it, now, not at the start
 	// of the character's next turn.
-	var blind []playdb.Combatant
-	for _, who := range cs {
-		if who.Kind != kindPlayer {
-			continue
-		}
-		vitals, err := s.vitals.GetVitalsTx(ctx, tx, campaignID, who.CharacterID)
-		if connect.CodeOf(err) == connect.CodeNotFound {
-			continue // the character died or left meanwhile
-		}
-		if err != nil {
-			return "", err
-		}
-		if sight := vitals.GetFamiliarSight(); sight != nil && slices.Contains(creatureIDs, sight.GetCreatureId()) {
-			blind = append(blind, who)
-		}
+	blind, err := s.lookingThrough(ctx, tx, campaignID, cs, creatureIDs)
+	if err != nil {
+		return "", err
 	}
 	if len(leaving) == 0 && len(blind) == 0 {
 		return "", nil
@@ -71,31 +47,12 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 	if err != nil {
 		return "", err
 	}
-	for _, who := range blind {
-		if err := s.endSight(ctx, c, who, sightFamiliarGone, false); err != nil {
-			return "", err
-		}
+	cs, leaving, err = s.endSights(ctx, c, blind, creatureIDs, cs, leaving)
+	if err != nil {
+		return "", err
 	}
-	if len(blind) > 0 {
-		if cs, err = q.ListCombatants(ctx, enc.ID); err != nil { // their conditions changed
-			return "", fmt.Errorf("list the combatants: %w", err)
-		}
-		leaving = slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool {
-			return o.CreatureID == nil || !slices.Contains(creatureIDs, *o.CreatureID)
-		})
-	}
-	if len(leaving) > 0 {
-		// A creature that leaves keeps the hit points it has (it may be dismissed
-		// right after, which the characters module settles).
-		if err := s.writeBackCreatures(ctx, c, leaving); err != nil {
-			return "", err
-		}
-		if err := s.discardDamageOf(ctx, c, cs, leaving); err != nil {
-			return "", err
-		}
-		if _, _, err := s.dropCombatants(ctx, c, cs, leaving, false); err != nil {
-			return "", err
-		}
+	if err := s.dismissLeavers(ctx, c, cs, leaving); err != nil {
+		return "", err
 	}
 	if c.enc, err = q.TouchEncounter(ctx, enc.ID); err != nil {
 		return "", fmt.Errorf("touch the encounter: %w", err)
@@ -106,6 +63,90 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 		}
 	}
 	return enc.ID, nil
+}
+
+// openCombatOf is the campaign's open session, locked, and its open combat; false when
+// there is no session or no combat.
+func openCombatOf(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, playdb.Encounter, bool, error) {
+	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return session, playdb.Encounter{}, false, nil // no session: no combat
+	}
+	if err != nil {
+		return session, playdb.Encounter{}, false, fmt.Errorf("lock the open session: %w", err)
+	}
+	enc, err := q.GetOpenEncounter(ctx, session.ID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return session, enc, false, nil
+	}
+	if err != nil {
+		return session, enc, false, fmt.Errorf("find the open encounter: %w", err)
+	}
+	return session, enc, true, nil
+}
+
+// endSights ends the sight of the players who look through a creature that leaves and
+// reads the combatants again, as their conditions changed; cs and leaving are returned as
+// they were when none looks through one.
+func (s *Service) endSights(ctx context.Context, c *combatTx, blind []playdb.Combatant, creatureIDs []string, cs, leaving []playdb.Combatant) (all, going []playdb.Combatant, err error) {
+	for _, who := range blind {
+		if err := s.endSight(ctx, c, who, sightFamiliarGone, false); err != nil {
+			return nil, nil, err
+		}
+	}
+	if len(blind) == 0 {
+		return cs, leaving, nil
+	}
+	if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil { // their conditions changed
+		return nil, nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	return cs, creatureCombatantsOf(cs, creatureIDs), nil
+}
+
+// creatureCombatantsOf are the combatants of cs that are one of the creatures.
+func creatureCombatantsOf(cs []playdb.Combatant, creatureIDs []string) []playdb.Combatant {
+	return slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool {
+		return o.CreatureID == nil || !slices.Contains(creatureIDs, *o.CreatureID)
+	})
+}
+
+// lookingThrough are the players of cs whose character looks through one of the creatures.
+func (s *Service) lookingThrough(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, creatureIDs []string) ([]playdb.Combatant, error) {
+	var blind []playdb.Combatant
+	for _, who := range cs {
+		if who.Kind != kindPlayer {
+			continue
+		}
+		vitals, err := s.vitals.GetVitalsTx(ctx, tx, campaignID, who.CharacterID)
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			continue // the character died or left meanwhile
+		}
+		if err != nil {
+			return nil, err
+		}
+		if sight := vitals.GetFamiliarSight(); sight != nil && slices.Contains(creatureIDs, sight.GetCreatureId()) {
+			blind = append(blind, who)
+		}
+	}
+	return blind, nil
+}
+
+// dismissLeavers takes the combatants of the creatures that leave out of the combat; cs
+// are the combatants as they are. Nothing is done when none leaves.
+func (s *Service) dismissLeavers(ctx context.Context, c *combatTx, cs, leaving []playdb.Combatant) error {
+	if len(leaving) == 0 {
+		return nil
+	}
+	// A creature that leaves keeps the hit points it has (it may be dismissed
+	// right after, which the characters module settles).
+	if err := s.writeBackCreatures(ctx, c, leaving); err != nil {
+		return err
+	}
+	if err := s.discardDamageOf(ctx, c, cs, leaving); err != nil {
+		return err
+	}
+	_, _, err := s.dropCombatants(ctx, c, cs, leaving, false)
+	return err
 }
 
 // CreatureInCombat says whether the creature is a combatant of the campaign's

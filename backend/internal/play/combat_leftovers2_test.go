@@ -181,7 +181,6 @@ func ringAround(col, row, ring int32) []playdb.Combatant {
 	var out []playdb.Combatant
 	for r := row - ring; r <= row+ring; r++ {
 		for c := col - ring; c <= col+ring; c++ {
-			c, r := c, r
 			out = append(out, playdb.Combatant{GridCol: &c, GridRow: &r})
 		}
 	}

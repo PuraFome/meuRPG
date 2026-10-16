@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -68,30 +67,15 @@ func (s *Service) ReviveInCombat(ctx context.Context, tx pgx.Tx, campaignID, cha
 	if _, _, err := s.vitals.SetArmorBase(ctx, tx, campaignID, characterID, 0); err != nil && connect.CodeOf(err) != connect.CodeNotFound {
 		return "", err
 	}
-	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil // no session: no combat
-	}
-	if err != nil {
-		return "", fmt.Errorf("lock the open session: %w", err)
-	}
-	enc, err := q.GetOpenEncounter(ctx, session.ID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("find the open encounter: %w", err)
+	session, enc, found, err := openCombatOf(ctx, q, campaignID)
+	if err != nil || !found {
+		return "", err
 	}
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
 		return "", fmt.Errorf("list the combatants: %w", err)
 	}
-	var who *playdb.Combatant
-	for i := range cs {
-		if cs[i].Kind == kindPlayer && cs[i].CharacterID == characterID && cs[i].Defeated {
-			who = &cs[i]
-		}
-	}
+	who := defeatedPlayerOf(cs, characterID)
 	if who == nil {
 		return "", nil
 	}
@@ -107,6 +91,18 @@ func (s *Service) ReviveInCombat(ctx context.Context, tx pgx.Tx, campaignID, cha
 		return "", err
 	}
 	return enc.ID, nil
+}
+
+// defeatedPlayerOf is the combatant of the character in cs when it is defeated, the last
+// one when several match; nil otherwise.
+func defeatedPlayerOf(cs []playdb.Combatant, characterID string) *playdb.Combatant {
+	var who *playdb.Combatant
+	for i := range cs {
+		if cs[i].Kind == kindPlayer && cs[i].CharacterID == characterID && cs[i].Defeated {
+			who = &cs[i]
+		}
+	}
+	return who
 }
 
 // PublishCharacterEvent implements characters.ReviewHost: the hint that a pending character's

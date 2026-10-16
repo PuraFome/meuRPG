@@ -70,50 +70,73 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 	for _, x := range d.cs {
 		wv.byID[x.ID] = x
 	}
-	order := make([]reaction.Window, len(open))
-	for i, w := range open {
-		order[i] = reaction.Window{ID: w.ID, Group: w.GroupID, Seq: w.Seq, Open: true}
-	}
-	var windows []*playv1.ReactionWindow
 	var wait reaction.Wait
 	holds := reaction.HoldsTurn
 	holdsSet := false
-	for _, w := range open {
-		var reactor *playdb.Combatant
-		if w.ReactorID != nil {
-			if r, ok := wv.byID[*w.ReactorID]; ok {
-				reactor = &r
-			}
-		}
-		answers := v.master || (reactor != nil && v.owns(*reactor))
-		if answers {
-			pw, err := wv.window(w, reactor, reaction.AnswerNow(order, w.ID))
-			if err != nil {
-				return nil, nil, err
-			}
-			windows = append(windows, pw)
-		}
-		wv.waitOf(w, reactor, answers, &wait)
-		if !holdsSet && !answers {
-			h, err := wv.holdsOf(w)
-			if err != nil {
-				return nil, nil, err
-			}
-			holds, holdsSet = h, true
-		}
+	windows, err := wv.openWindows(open, &wait, &holds, &holdsSet)
+	if err != nil {
+		return nil, nil, err
 	}
 	windows = wv.offerWindows(offers, windows, &wait, &holds, &holdsSet)
 	// The master's question about a hidden creature an area hit (PM-02c) is a window too: the
 	// master answers it with ResolveHiddenReveal, and every player reads the same wait.
 	windows = wv.revealWindows(reveals, windows, &wait, &holds, &holdsSet)
-	var out *playv1.ReactionWait
-	if title := wait.Title(); title != "" {
-		out = &playv1.ReactionWait{TitlePt: title}
-		if !v.master {
-			out.DetailPt = reaction.Detail(holds, wait, "")
+	return windows, wv.waitLine(wait, holds), nil
+}
+
+// openWindows builds the open windows the caller answers and adds each to the line the
+// caller reads.
+func (wv *windowView) openWindows(open []playdb.ReactionWindow, wait *reaction.Wait, holds *reaction.Holds, holdsSet *bool) ([]*playv1.ReactionWindow, error) {
+	order := make([]reaction.Window, len(open))
+	for i, w := range open {
+		order[i] = reaction.Window{ID: w.ID, Group: w.GroupID, Seq: w.Seq, Open: true}
+	}
+	var windows []*playv1.ReactionWindow
+	for _, w := range open {
+		reactor := wv.reactorOf(w)
+		answers := wv.v.master || (reactor != nil && wv.v.owns(*reactor))
+		if answers {
+			pw, err := wv.window(w, reactor, reaction.AnswerNow(order, w.ID))
+			if err != nil {
+				return nil, err
+			}
+			windows = append(windows, pw)
+		}
+		wv.waitOf(w, reactor, answers, wait)
+		if !*holdsSet && !answers {
+			h, err := wv.holdsOf(w)
+			if err != nil {
+				return nil, err
+			}
+			*holds, *holdsSet = h, true
 		}
 	}
-	return windows, out, nil
+	return windows, nil
+}
+
+// reactorOf is the combatant that reacts in the window; nil when it has none or it left.
+func (wv *windowView) reactorOf(w playdb.ReactionWindow) *playdb.Combatant {
+	if w.ReactorID == nil {
+		return nil
+	}
+	if r, ok := wv.byID[*w.ReactorID]; ok {
+		return &r
+	}
+	return nil
+}
+
+// waitLine is the line the caller reads of the windows it does not answer, with what they
+// hold for the player; nil when nothing is waited for.
+func (wv *windowView) waitLine(wait reaction.Wait, holds reaction.Holds) *playv1.ReactionWait {
+	title := wait.Title()
+	if title == "" {
+		return nil
+	}
+	out := &playv1.ReactionWait{TitlePt: title}
+	if !wv.v.master {
+		out.DetailPt = reaction.Detail(holds, wait, "")
+	}
+	return out
 }
 
 // offerWindows adds the opportunity-attack offers the reader may see, as windows (RN-21): the offer's
@@ -181,29 +204,37 @@ func (wv *windowView) opportunityWindow(o playdb.OpportunityOffer, mover, reacto
 // or a creature the caller does not see is "o mestre"; only a player's character the
 // caller sees is named (never which NPC, never why).
 func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant, answers bool, wait *reaction.Wait) {
-	save := reaction.Kind(w.Kind) == reaction.Concentration
-	if reaction.Kind(w.Kind) == reaction.Contest {
-		// A contest names the player that owes the next step, and is the master's otherwise;
-		// whoever answers it reads its sheet instead.
-		switch {
-		case answers && reactor == nil:
-		case answers:
-		case reactor != nil && reactor.Kind == kindPlayer && wv.v.sees(*reactor):
-			wait.Contesters = append(wait.Contesters, reactor.Label)
-		default:
-			wait.Master = true
-		}
-		return
-	}
-	if reaction.Kind(w.Kind) == reaction.EffectSave {
+	switch reaction.Kind(w.Kind) {
+	case reaction.Contest:
+		wv.contestWait(reactor, answers, wait)
+	case reaction.EffectSave:
 		wv.effectSaveWait(w, reactor, answers, wait)
-		return
+	default:
+		wv.reactionWait(reaction.Kind(w.Kind) == reaction.Concentration, reactor, answers, wait)
 	}
+}
+
+// contestWait names the player that owes the next step of a contest, and is the master's
+// otherwise; whoever answers it reads its sheet instead.
+func (wv *windowView) contestWait(reactor *playdb.Combatant, answers bool, wait *reaction.Wait) {
+	switch {
+	case answers:
+	case reactor != nil && reactor.Kind == kindPlayer && wv.v.sees(*reactor):
+		wait.Contesters = append(wait.Contesters, reactor.Label)
+	default:
+		wait.Master = true
+	}
+}
+
+// reactionWait adds a reaction or a concentration save (save) to the line: the master
+// reads every player's, a player only the ones of characters they see.
+func (wv *windowView) reactionWait(save bool, reactor *playdb.Combatant, answers bool, wait *reaction.Wait) {
+	player := reactor != nil && reactor.Kind == kindPlayer
 	if wv.v.master {
 		switch {
-		case reactor != nil && reactor.Kind == kindPlayer && save:
+		case player && save:
 			wait.Savers = append(wait.Savers, reactor.Label)
-		case reactor != nil && reactor.Kind == kindPlayer:
+		case player:
 			wait.Reactors = append(wait.Reactors, reactor.Label)
 		default:
 			wait.Self = true
@@ -214,9 +245,9 @@ func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		return
 	}
 	switch {
-	case reactor != nil && reactor.Kind == kindPlayer && wv.v.sees(*reactor) && save:
+	case player && wv.v.sees(*reactor) && save:
 		wait.Savers = append(wait.Savers, reactor.Label)
-	case reactor != nil && reactor.Kind == kindPlayer && wv.v.sees(*reactor):
+	case player && wv.v.sees(*reactor):
 		wait.Reactors = append(wait.Reactors, reactor.Label)
 	default:
 		wait.Master = true
