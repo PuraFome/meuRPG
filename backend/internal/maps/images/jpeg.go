@@ -7,6 +7,17 @@ import (
 	"image/draw"
 )
 
+// The JPEG markers the header walk tells apart.
+const (
+	markerAPP1  = 0xe1 // the segment that holds the EXIF block
+	markerSOS   = 0xda // start of scan: the image data begins
+	markerSOF0  = 0xc0 // first frame header
+	markerSOF15 = 0xcf // last frame header
+	markerDHT   = 0xc4 // Huffman tables
+	markerJPG   = 0xc8 // reserved
+	markerDAC   = 0xcc // arithmetic conditioning
+)
+
 // jpegHeader is what Process needs from a JPEG's header and image/jpeg does
 // not tell: how costly the image is to decode, and its EXIF orientation.
 type jpegHeader struct {
@@ -42,25 +53,42 @@ func readJPEGHeader(data []byte) jpegHeader {
 		if length < 2 || i+2+length > len(data) {
 			break
 		}
-		segment := data[i+4 : i+2+length]
-		switch {
-		case marker == 0xe1:
-			if o, ok := exifOrientation(segment); ok {
-				h.orientation = o
-			}
-		case marker >= 0xc0 && marker <= 0xcf && marker != 0xc4 && marker != 0xc8 && marker != 0xcc:
-			// SOF2, SOF6, SOF10 and SOF14 are the progressive ones.
-			h.progressive = marker&0x03 == 0x02
-			if s, ok := samplesPerPixel(segment); ok {
-				h.samples = s
-			}
-			return h
-		case marker == 0xda: // start of scan: the image data begins
+		if done := h.readSegment(marker, data[i+4:i+2+length]); done {
 			return h
 		}
 		i += 2 + length
 	}
 	return h
+}
+
+// readSegment takes what one segment tells (the EXIF orientation of an APP1,
+// the frame header of an SOF) and reports whether the walk is over: at the
+// frame header and at the start of scan, whatever follows is image data.
+func (h *jpegHeader) readSegment(marker byte, segment []byte) (done bool) {
+	switch {
+	case marker == markerAPP1:
+		if o, ok := exifOrientation(segment); ok {
+			h.orientation = o
+		}
+	case isFrameMarker(marker):
+		// SOF2, SOF6, SOF10 and SOF14 are the progressive ones.
+		h.progressive = marker&0x03 == 0x02
+		if s, ok := samplesPerPixel(segment); ok {
+			h.samples = s
+		}
+		return true
+	case marker == markerSOS:
+		return true
+	}
+	return false
+}
+
+// isFrameMarker is true for SOF0 to SOF15 except 0xC4 (the Huffman tables),
+// 0xC8 (reserved) and 0xCC (the arithmetic conditioning), which are other
+// things.
+func isFrameMarker(marker byte) bool {
+	return marker >= markerSOF0 && marker <= markerSOF15 &&
+		marker != markerDHT && marker != markerJPG && marker != markerDAC
 }
 
 // samplesPerPixel reads a frame header's components and their sampling
