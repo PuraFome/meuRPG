@@ -174,6 +174,26 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 		byID[c.ID] = c
 	}
 	caster := byID[ev.Actor]
+	out := castHeaderProto(ev, v, caster)
+	for _, h := range ev.Hits {
+		target := byID[h.Target]
+		if !v.sees(target) || (!v.master && h.HiddenAtCast) { // a retry is built from the combat as it stands: a target hidden since is not told, and one that was hidden when the area hit it never is
+			continue
+		}
+		r := targetResultProto(ev, h, v, caster, target)
+		if h.Pending != "" && (v.master || v.owns(caster)) {
+			if err := s.attachPendingDamages(ctx, res, h, cs, r, out); err != nil {
+				return nil, err
+			}
+		}
+		out.Targets = append(out.Targets, r)
+	}
+	return out, nil
+}
+
+// castHeaderProto is what a cast says as a whole: the spell, the slot, the concentration it ended, the effect
+// header of a spell that reads hit points and the Metamagic it spent.
+func castHeaderProto(ev actionEvent, v combatViewer, caster playdb.Combatant) *playv1.SpellCast {
 	out := &playv1.SpellCast{
 		CastId: ev.CastID, SpellKey: ev.Key, Slot: slotProto(ev.Slot), Concentrating: ev.Concentrate,
 		ConcentrationEndedSpellKey: ev.ConcEnded,
@@ -182,49 +202,51 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 	if ev.Res != nil && ev.Res.Kind == resMetamagic {
 		out.MetamagicKeys, out.SorceryPointsSpent = ev.Res.Keys, ev.Res.Spent
 	}
-	for _, h := range ev.Hits {
-		target := byID[h.Target]
-		if !v.sees(target) || (!v.master && h.HiddenAtCast) { // a retry is built from the combat as it stands: a target hidden since is not told, and one that was hidden when the area hit it never is
-			continue
-		}
-		r := &playv1.SpellTargetResult{
-			CombatantId: h.Target, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
-			AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
-			Effect: effectView(h, v, target),
-		}
-		r.AttackMode = modeToProto[modeOfKey(h.RollMode)]
-		if h.BonusFace != 0 && r.AttackRoll != nil { // only who reads the roll reads the die added to it
-			r.BonusDice = []*playv1.BonusDie{{SourceKey: bardicInspirationFt, Sides: h.BonusSides, Face: h.BonusFace, Used: true}}
-		}
-		switch h.Lasting {
-		case lastingApplied:
-			r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_APPLIED
-		case lastingNoEffect:
-			r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT
-			if v.master {
-				r.NoEffectReasonMaster = h.NoEffectWhy
-			}
-		}
-		coverKey, coverSource := h.coverFor(v, ev.CoverUsers)
-		r.Cover, r.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
-		if h.Pending != "" && (v.master || v.owns(caster)) {
-			for i, id := range append([]string{h.Pending}, h.More...) {
-				p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: res.encounterID, ID: id})
-				switch {
-				case errors.Is(err, pgx.ErrNoRows): // an undo took it away meanwhile
-				case err != nil:
-					return nil, s.dbError(ctx, "read the pending damage", err)
-				default:
-					if i == 0 {
-						r.PendingDamageId = id
-					} else {
-						r.MorePendingDamageIds = append(r.MorePendingDamageIds, id)
-					}
-					out.PendingDamages = append(out.PendingDamages, pendingProto(p, cs))
-				}
-			}
-		}
-		out.Targets = append(out.Targets, r)
+	return out
+}
+
+// targetResultProto is what the cast did to one target, as the viewer may read it, without the pending damages.
+func targetResultProto(ev actionEvent, h castHit, v combatViewer, caster, target playdb.Combatant) *playv1.SpellTargetResult {
+	r := &playv1.SpellTargetResult{
+		CombatantId: h.Target, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
+		AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
+		Effect: effectView(h, v, target),
 	}
-	return out, nil
+	r.AttackMode = modeToProto[modeOfKey(h.RollMode)]
+	if h.BonusFace != 0 && r.AttackRoll != nil { // only who reads the roll reads the die added to it
+		r.BonusDice = []*playv1.BonusDie{{SourceKey: bardicInspirationFt, Sides: h.BonusSides, Face: h.BonusFace, Used: true}}
+	}
+	switch h.Lasting {
+	case lastingApplied:
+		r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_APPLIED
+	case lastingNoEffect:
+		r.LastingEffect = playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT
+		if v.master {
+			r.NoEffectReasonMaster = h.NoEffectWhy
+		}
+	}
+	coverKey, coverSource := h.coverFor(v, ev.CoverUsers)
+	r.Cover, r.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
+	return r
+}
+
+// attachPendingDamages reads the pending damages a hit opened and adds them to the cast and to the target's
+// result: the first one by its own field, the others in the list that follows.
+func (s *Service) attachPendingDamages(ctx context.Context, res combatResult, h castHit, cs []playdb.Combatant, r *playv1.SpellTargetResult, out *playv1.SpellCast) error {
+	for i, id := range append([]string{h.Pending}, h.More...) {
+		p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: res.encounterID, ID: id})
+		switch {
+		case errors.Is(err, pgx.ErrNoRows): // an undo took it away meanwhile
+		case err != nil:
+			return s.dbError(ctx, "read the pending damage", err)
+		default:
+			if i == 0 {
+				r.PendingDamageId = id
+			} else {
+				r.MorePendingDamageIds = append(r.MorePendingDamageIds, id)
+			}
+			out.PendingDamages = append(out.PendingDamages, pendingProto(p, cs))
+		}
+	}
+	return nil
 }
