@@ -165,7 +165,6 @@ cognitive internal/play (*Service).ListCombatLog 34
 cognitive internal/play (*Service).ListSpellCasts 22
 cognitive internal/play (*Service).ListTrapActivity 131
 cognitive internal/play (*Service).ListTrapDamages 27
-cognitive internal/play (*Service).MoveCombatant 198
 cognitive internal/play (*Service).OfferOpportunity 35
 cognitive internal/play (*Service).OpenScene 22
 cognitive internal/play (*Service).PreviewRevivify 25
@@ -209,7 +208,7 @@ cognitive internal/play (*Service).UseLayOnHands 34
 cognitive internal/play (*Service).WatchGameSession 35
 cognitive internal/play (*Service).addEffects 42
 cognitive internal/play (*Service).addParticipants 61
-cognitive internal/play (*Service).afterEffectEnded 40
+cognitive internal/play (*Service).afterEffectEnded 36
 cognitive internal/play (*Service).answerFeatherFall 25
 cognitive internal/play (*Service).answerHellishRebuke 28
 cognitive internal/play (*Service).answerOffer 25
@@ -573,7 +572,6 @@ cyclomatic internal/play (*Service).ListCombatLog 22
 cyclomatic internal/play (*Service).ListSpellCasts 18
 cyclomatic internal/play (*Service).ListTrapActivity 69
 cyclomatic internal/play (*Service).ListTrapDamages 19
-cyclomatic internal/play (*Service).MoveCombatant 123
 cyclomatic internal/play (*Service).OfferOpportunity 24
 cyclomatic internal/play (*Service).OpenScene 16
 cyclomatic internal/play (*Service).PreviewRevivify 22
@@ -617,7 +615,7 @@ cyclomatic internal/play (*Service).WatchGameSession 24
 cyclomatic internal/play (*Service).addEffects 26
 cyclomatic internal/play (*Service).addParticipants 30
 cyclomatic internal/play (*Service).afterDamage 17
-cyclomatic internal/play (*Service).afterEffectEnded 20
+cyclomatic internal/play (*Service).afterEffectEnded 19
 cyclomatic internal/play (*Service).answerCounterspell 17
 cyclomatic internal/play (*Service).answerCuttingWords 17
 cyclomatic internal/play (*Service).answerFeatherFall 20
@@ -834,7 +832,6 @@ maintainability internal/play (*Service).ApplyPendingDamage 16
 maintainability internal/play (*Service).EndTurn 12
 maintainability internal/play (*Service).Help 19
 maintainability internal/play (*Service).ListTrapActivity 11
-maintainability internal/play (*Service).MoveCombatant 0
 maintainability internal/play (*Service).ResolveConcentrationSave 18
 maintainability internal/play (*Service).RollEffectSave 14
 maintainability internal/play (*Service).RollSceneCheck 12
