@@ -120,7 +120,6 @@ cognitive internal/play (*Service).ArmorWorn 27
 cognitive internal/play (*Service).BeginCombat 29
 cognitive internal/play (*Service).CancelRollModeRequest 22
 cognitive internal/play (*Service).CastSpellOutsideCombat 43
-cognitive internal/play (*Service).CastSummon 79
 cognitive internal/play (*Service).ChangeLastingEffectDuration 33
 cognitive internal/play (*Service).ClearHelp 19
 cognitive internal/play (*Service).CloseContest 19
@@ -135,7 +134,6 @@ cognitive internal/play (*Service).CreaturesLeaving 37
 cognitive internal/play (*Service).DiscardPendingDamage 25
 cognitive internal/play (*Service).EndActiveSpell 18
 cognitive internal/play (*Service).EndCombatEffect 20
-cognitive internal/play (*Service).EndConcentration 26
 cognitive internal/play (*Service).EndGameSession 22
 cognitive internal/play (*Service).EndLastingEffect 40
 cognitive internal/play (*Service).EndRage 27
@@ -258,7 +256,6 @@ cognitive internal/play (*Service).endEffectRows 21
 cognitive internal/play (*Service).endEncounter 18
 cognitive internal/play (*Service).endOfTurn 18
 cognitive internal/play (*Service).fallWindows 25
-cognitive internal/play (*Service).familiarSquares 16
 cognitive internal/play (*Service).fireByHandInCombat 31
 cognitive internal/play (*Service).fireInCombat 47
 cognitive internal/play (*Service).fireOutside 65
@@ -284,7 +281,6 @@ cognitive internal/play (*Service).participants 37
 cognitive internal/play (*Service).pendingView 30
 cognitive internal/play (*Service).planCast 16
 cognitive internal/play (*Service).prepareMetamagic 21
-cognitive internal/play (*Service).prepareSummon 18
 cognitive internal/play (*Service).pruneHolds 38
 cognitive internal/play (*Service).pruneOffers 19
 cognitive internal/play (*Service).publishReactions 31
@@ -310,10 +306,6 @@ cognitive internal/play (*Service).settleHidden 18
 cognitive internal/play (*Service).settleOnce 33
 cognitive internal/play (*Service).settleParts 19
 cognitive internal/play (*Service).settleTrapDamage 83
-cognitive internal/play (*Service).shapeChange 71
-cognitive internal/play (*Service).shapeUndo 22
-cognitive internal/play (*Service).sightChange 75
-cognitive internal/play (*Service).sightUndo 16
 cognitive internal/play (*Service).slowFall 23
 cognitive internal/play (*Service).spellAttack 16
 cognitive internal/play (*Service).spellSave 28
@@ -483,7 +475,6 @@ cyclomatic internal/play (*Service).ApplyPendingDamage 45
 cyclomatic internal/play (*Service).ArmorWorn 20
 cyclomatic internal/play (*Service).BeginCombat 17
 cyclomatic internal/play (*Service).CastSpellOutsideCombat 23
-cyclomatic internal/play (*Service).CastSummon 43
 cyclomatic internal/play (*Service).ChangeLastingEffectDuration 20
 cyclomatic internal/play (*Service).CloseGroupCheck 18
 cyclomatic internal/play (*Service).ConfirmCastTimePassed 16
@@ -493,7 +484,6 @@ cyclomatic internal/play (*Service).CreatureDropped 17
 cyclomatic internal/play (*Service).CreaturesLeaving 28
 cyclomatic internal/play (*Service).DiscardPendingDamage 18
 cyclomatic internal/play (*Service).EndCombatEffect 16
-cyclomatic internal/play (*Service).EndConcentration 18
 cyclomatic internal/play (*Service).EndLastingEffect 25
 cyclomatic internal/play (*Service).EndRage 18
 cyclomatic internal/play (*Service).FireTrap 42
@@ -590,7 +580,6 @@ cyclomatic internal/play (*Service).encounterParty 24
 cyclomatic internal/play (*Service).endCharacterEffect 24
 cyclomatic internal/play (*Service).endEncounter 18
 cyclomatic internal/play (*Service).fallWindows 16
-cyclomatic internal/play (*Service).familiarSquares 17
 cyclomatic internal/play (*Service).fireByHandInCombat 17
 cyclomatic internal/play (*Service).fireInCombat 27
 cyclomatic internal/play (*Service).fireOutside 31
@@ -627,8 +616,6 @@ cyclomatic internal/play (*Service).searcherPlace 20
 cyclomatic internal/play (*Service).selectionChecker 19
 cyclomatic internal/play (*Service).settleOnce 25
 cyclomatic internal/play (*Service).settleTrapDamage 40
-cyclomatic internal/play (*Service).shapeChange 38
-cyclomatic internal/play (*Service).sightChange 40
 cyclomatic internal/play (*Service).slowFall 23
 cyclomatic internal/play (*Service).spellAttack 16
 cyclomatic internal/play (*Service).spellSave 25
