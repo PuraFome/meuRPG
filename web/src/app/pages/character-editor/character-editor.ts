@@ -12,7 +12,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { CdkStep } from '@angular/cdk/stepper';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,25 +24,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
-import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import {
-  characterBlockedMessage,
-  contentRef,
-  describeCharacterError,
-  invalidFieldPath,
-  switchedOffKey,
-} from '../../core/characters/character-errors';
+import { contentRef, characterBlockedMessage } from '../../core/characters/character-errors';
 import { ContentWatcher } from '../../core/content/content-watcher';
 import { LiveSessionSourceLive } from '../../core/play/live-session-source.live';
-import { catalogChanged, offControlOf, offersChanged } from './catalog-changes';
-import {
-  abilityLabel,
-  characterKindLabel,
-  spellLevelLabel,
-} from '../../core/characters/character-labels';
-import { CharacterKind, isFullSheetKind } from '../../core/characters/characters.types';
-import { ActionKey } from '../../core/connect/idempotency';
+import { offControlOf } from './catalog-changes';
+import { spellLevelLabel } from '../../core/characters/character-labels';
+import { isFullSheetKind } from '../../core/characters/characters.types';
 import { formatXp } from '../../core/format/text';
 import {
   applySelection,
@@ -65,17 +54,12 @@ import {
   AbilityMethodKey,
   AbilityTableVm,
   AlignmentKey,
-  CharacterEditorMode,
   CharacterEditorSource,
   CharacterForEdit,
   CharacterFormValue,
-  CuttingWordsAskKey,
   ExtraClassValue,
-  HitPointsMethod,
   RulesCatalogVm,
-  SpellLimitsVm,
   SpellOptionVm,
-  SpellPreparation,
 } from './character-editor.types';
 import { ClassBlockFields } from './class-block/class-block';
 import { GrantedSpells } from './granted-spells/granted-spells';
@@ -83,45 +67,87 @@ import {
   ClassBlock,
   MAX_TOTAL_LEVEL,
   type CasterSection,
-  type ExtraSpellList,
-  allOfSection,
   blocksOf,
-  cantripsOf,
   casterSections,
-  extraSpellLists,
   hitDiceAfterFirst,
-  leveledOf,
   offered,
   unlisted,
-  outsideTheLists,
   sectionName,
   totalLevel,
 } from './class-blocks';
 import type { SpellDetailsData } from '../../shared/spell-details/spell-details';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
+import {
+  catalogNameOf,
+  chosenSkillsOf,
+  choiceBonusesHintOf,
+  choicesSubtitleOf,
+  finalConstitutionOf,
+  grantedSkillsOf,
+  sectionHeadingOf,
+  skillNoteOf,
+  subclassHintOf,
+  subclassWaits,
+} from './catalog-views';
+import { CUTTING_WORDS_OPTIONS } from './editor-options';
+import { EditorLoader } from './editor-loader';
+import {
+  type PageState,
+  type ReadyState,
+  actionsNoteOf,
+  cancelLinkOf,
+  createLabelOf,
+  leadOf,
+  pageTitleOf,
+  previewInputOf,
+  startingXp,
+  tableHitPointsMethod,
+} from './editor-state';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
-import { validRoll } from './hit-points-preview';
 import { ServerHitPoints } from './hit-points-server';
 import { ServerChoices } from './server-choices';
 import {
   EDITOR_STEP_LABELS,
   EditorField,
   EditorStepKey,
-  FULL_SHEET_FIELDS,
-  UNPLACED_RESULTS_FIELD,
   countLabel,
   describeBonusesInUse,
   describeInvalidFields,
-  invalidFields,
 } from './editor-labels';
+import {
+  buildFullValue,
+  choicesAfterAnswer,
+  classProblemsOf,
+  invalidFullFieldsOf,
+  rollProblemsOf,
+  serverDraftNeeded,
+} from './full-draft';
+import { createFullForm, fullFormValueOf } from './full-form';
 import {
   basicFormToValue,
   createBasicForm,
   invalidBasicFields,
   patchBasicForm,
 } from './npc-short-form/basic-form';
+import { SaveFlow } from './save-flow';
+import {
+  CUSTOM_BACKGROUND_PROFICIENCIES,
+  CUSTOM_BACKGROUND_SKILLS,
+  toggledCapped,
+  toggledExpertise,
+  toggledSkill,
+} from './skill-picks';
+import {
+  availableCantripsOf,
+  availableSpellsOf,
+  buildSectionView,
+  filterByName,
+  keepAvailable,
+  sectionExtrasOf,
+} from './spell-views';
+import { SpellPicks } from './spell-picks';
 import { DefeatXp } from './defeat-xp/defeat-xp';
 import { FeatsField } from './feats-field/feats-field';
 import { PortraitField } from './portrait-field/portrait-field';
@@ -129,110 +155,9 @@ import { NpcShortForm } from './npc-short-form/npc-short-form';
 import { SkillPicker } from './skill-picker/skill-picker';
 import { SpellPicker } from './spell-picker/spell-picker';
 
-/** The NPC route's `:kind` segment (plan §5) to `CharacterKind`. */
-const NPC_ROUTE_KINDS: Record<string, CharacterKind> = {
-  enemy: 'enemy',
-  boss: 'boss',
-  minion: 'minion',
-  story: 'story',
-};
-
-type ReadyState = {
-  status: 'ready';
-  mode: CharacterEditorMode;
-  kind: CharacterKind;
-  campaignId: string;
-  characterId: string | null;
-  revision: number;
-  catalog: RulesCatalogVm;
-  /** The sheet is locked (a session started, RN-01): the XP is no longer
-   * typed here, only the master's awards change it (MR-016). */
-  xpLocked: boolean;
-  /** The character is reserved (MR-049): the master makes it for a player to claim, and the page says so. */
-  reserved: boolean;
-};
-
-type ErrorState = {
-  status: 'error';
-  message: string;
-  /** Where "Voltar" goes: the sheet when editing one, else the campaign. */
-  backLink: string[];
-  backLabel: string;
-  /** Set when nothing went wrong, but the sheet may not be edited now
-   * (locked or dead): the page names that state instead of an error. */
-  blocked?: { title: string };
-};
-
-type PageState = { status: 'loading'; title: string } | ErrorState | ReadyState;
-
-/** The page title: known from the route alone, so the loading state shows
- * it too. */
-function titleFor(mode: CharacterEditorMode, kind: CharacterKind, reserved = false): string {
-  if (mode === 'edit') {
-    return 'Editar ficha';
-  }
-  if (reserved) {
-    return 'Criar personagem para um jogador';
-  }
-  return kind === 'player' ? 'Criar personagem' : 'Criar NPC';
-}
-
-/** "Preparadas 7 de 5" for a preparing class whose number is known, and whether it is past the number. */
-function preparedCountLine(
-  preparation: SpellPreparation | null,
-  picked: number,
-  max: number | undefined,
-) {
-  if (preparation === 'known' || max === undefined) {
-    return { text: '', over: false };
-  }
-  return { text: `Preparadas ${picked} de ${max}`, over: picked > max };
-}
-
-/** What each spell list of a section takes at most: `null` where there is no number to show. `preparedMax` is the
- * number of prepared spells whether or not the class prepares, for the "Preparadas N de M" line. */
-function spellListLimits(
-  server: SpellLimitsVm | undefined,
-  preparation: SpellPreparation | null,
-  saved: number | undefined,
-) {
-  const preparedMax = server && server.preparedMax > 0 ? server.preparedMax : saved;
-  return {
-    cantrips: server?.cantripsKnown ? server.cantripsKnown : null,
-    known: preparation === 'known' && server?.spellsKnown ? server.spellsKnown : null,
-    prepared: preparation !== 'known' && preparedMax ? preparedMax : null,
-    preparedMax,
-  };
-}
-
-type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
-
-/** The "search box" the catalog-backed pickers use to narrow a long list
- * (cantrips, spells) — a plain case-insensitive substring match on the
- * Portuguese name, no new dependency. */
-/** The bard's "Perguntar" choices for Palavras de Interrupção, as the sheet says them. */
-const CUTTING_WORDS_OPTIONS: readonly {
-  readonly value: CuttingWordsAskKey;
-  readonly label: string;
-}[] = [
-  { value: 'all', label: 'Em todos os testes do inimigo' },
-  { value: 'only-attacks', label: 'Só em ataques' },
-  { value: 'never', label: 'Nunca' },
-];
-
-const BONUS_LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
-
-/** "+2 e +1". */
-function bonusWords(bonuses: readonly number[]): string {
-  return BONUS_LIST.format(bonuses.map((b) => `+${b}`));
-}
-
-function filterByName<T extends { readonly namePt: string }>(
-  items: readonly T[],
-  query: string,
-): readonly T[] {
-  const q = query.trim().toLowerCase();
-  return q ? items.filter((item) => item.namePt.toLowerCase().includes(q)) : items;
+/** The server cannot derive a draft while the page has no lists to read it by. */
+function pageNotReady(): Promise<never> {
+  return Promise.reject(new Error('the page is not ready'));
 }
 
 /**
@@ -325,7 +250,6 @@ function filterByName<T extends { readonly namePt: string }>(
 })
 export class CharacterEditor {
   private readonly source = inject(CharacterEditorSource);
-  private readonly createKey = new ActionKey();
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -345,9 +269,29 @@ export class CharacterEditor {
   @ViewChild(ChoiceGroups) private choiceGroups?: ChoiceGroups;
 
   protected readonly state = signal<PageState>({ status: 'loading', title: 'Ficha' });
+  /** The lists of the catalog while the page is open on a sheet, else `null`. */
+  private readonly readyCatalog = computed(() => {
+    const s = this.state();
+    return s.status === 'ready' ? s.catalog : null;
+  });
+
+  /** The save: the request, the navigation after it and what a refusal does (`SaveFlow`). */
+  private readonly saving = new SaveFlow({
+    source: this.source,
+    navigate: (commands) => this.router.navigate(commands),
+    full: () => this.buildFullValue(),
+    basic: () => basicFormToValue(this.basicForm),
+    name: (isBasic) =>
+      isBasic ? this.basicForm.getRawValue().name : this.fullForm.getRawValue().name,
+    abilityMethod: () => (this.abilityTable() ? this.abilityMethod() : null),
+    stillHere: () => this.loader.stillHere(),
+    nameOfKey: (key) => this.nameOfKey(key),
+    markSwitchedOff: (key) => this.markSwitchedOff(key),
+    refreshCatalog: () => this.refreshCatalog(),
+  });
   /** The class block a refusal points at (`full.classes[i]`), so the block says so. */
-  protected readonly serverClassProblem = signal<number | null>(null);
-  protected readonly saveState = signal<SavingState>({ status: 'idle' });
+  protected readonly serverClassProblem = this.saving.classProblem;
+  protected readonly saveState = this.saving.state;
   protected readonly selectedSkills = signal<ReadonlySet<string>>(new Set());
   /** The custom background's two granted skills (`CustomBackground.skills`,
    * integrator fix, phase 2) — a separate, capped-at-2 selection from
@@ -368,16 +312,9 @@ export class CharacterEditor {
   /** The hit points the server derives for the draft while the "Pontos de vida" box is on screen. */
   private readonly serverHitPoints = new ServerHitPoints(() => {
     const s = this.state();
-    if (s.status !== 'ready') {
-      return Promise.reject(new Error('the page is not ready'));
-    }
-    return this.source.previewCharacter({
-      campaignId: s.campaignId,
-      characterId: s.mode === 'edit' ? s.characterId : null,
-      kind: s.kind,
-      full: this.buildFullValue(),
-      ...(s.reserved && s.mode === 'create' ? { forPlayer: true } : {}),
-    });
+    return s.status === 'ready'
+      ? this.source.previewCharacter(previewInputOf(s, this.buildFullValue(), true))
+      : pageNotReady();
   });
   /** What the server says the effects add to the hit points of the draft; `null` while it has no answer (the box adds up by itself). */
   protected readonly hitPointsFromEffects = computed(
@@ -393,15 +330,9 @@ export class CharacterEditor {
   /** The choices the server reads in the draft while the "Escolhas" step may be on screen. */
   private readonly serverChoices = new ServerChoices(() => {
     const s = this.state();
-    if (s.status !== 'ready') {
-      return Promise.reject(new Error('the page is not ready'));
-    }
-    return this.source.previewChoices({
-      campaignId: s.campaignId,
-      characterId: s.mode === 'edit' ? s.characterId : null,
-      kind: s.kind,
-      full: this.buildFullValue(),
-    });
+    return s.status === 'ready'
+      ? this.source.previewChoices(previewInputOf(s, this.buildFullValue(), false))
+      : pageNotReady();
   });
   protected readonly choicesAnswer = this.serverChoices.answer.asReadonly();
   protected readonly choiceGroupsOfDraft = computed(() => this.choicesAnswer()?.groups ?? []);
@@ -432,29 +363,26 @@ export class CharacterEditor {
   /** The line next to the counter of the step: "Tharn · Guerreiro 1 · Draconato". */
   protected readonly choicesSubtitle = computed(() => {
     this.formChanges();
-    const s = this.state();
-    if (s.status !== 'ready') {
+    if (this.state().status !== 'ready') {
       return '';
     }
     const v = this.fullForm.getRawValue();
-    const cls = this.selectedClass();
-    return [
-      v.name.trim(),
-      cls ? `${cls.namePt} ${v.level}` : '',
-      this.selectedSubrace()?.namePt ?? this.selectedRace()?.namePt ?? '',
-    ]
-      .filter((p) => p !== '')
-      .join(' · ');
+    return choicesSubtitleOf(
+      v.name,
+      this.selectedClass(),
+      v.level,
+      this.selectedRace(),
+      this.selectedSubrace(),
+    );
   });
 
   /** Catalog-backed pickers (integrator fix: the editor must never make a
    * person type a content key) — cantrips and the known/prepared spell
    * lists, each a filterable checkbox list over `RulesCatalogVm.spells`. */
-  protected readonly selectedCantrips = signal<ReadonlySet<string>>(new Set());
-  protected readonly selectedSpellsKnown = signal<ReadonlySet<string>>(new Set());
-  protected readonly selectedSpellsPrepared = signal<ReadonlySet<string>>(new Set());
-  /** The search of each list, by `<section>:<list>`: "0:cantrips", "1:known", "1:prepared". */
-  private readonly spellFilters = signal<Readonly<Record<string, string>>>({});
+  private readonly picks = new SpellPicks({ sections: () => this.sections() });
+  protected readonly selectedCantrips = this.picks.cantrips;
+  protected readonly selectedSpellsKnown = this.picks.known;
+  protected readonly selectedSpellsPrepared = this.picks.prepared;
   /** Spells the sheet has that neither a pick of this form nor its subclass gave it (a race's or a feature's spell):
    * only known on an edit, from the server's own derived sheet, as it was when the sheet was opened. */
   protected readonly grantedSpells = signal<readonly SpellOptionVm[]>([]);
@@ -478,57 +406,7 @@ export class CharacterEditor {
   ];
   protected readonly alignmentLabel = (key: AlignmentKey) => ALIGNMENT_LABELS[key];
 
-  protected readonly fullForm = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(80)]],
-    race: ['', Validators.required],
-    subrace: [''],
-    className: ['', Validators.required],
-    subclassName: [''],
-    customSubclassName: [''],
-    level: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
-    background: ['', Validators.required],
-    customBackgroundName: ['', Validators.maxLength(40)],
-    // The "Outro" background's feature (a name and a text) and its equipment, in the player's words.
-    customBackgroundFeatureName: ['', Validators.maxLength(40)],
-    customBackgroundFeatureText: ['', Validators.maxLength(1000)],
-    customBackgroundEquipment: ['', Validators.maxLength(500)],
-    /** A content key from the catalog, or `''` for "Sem armadura" — never
-     * typed (integrator fix). */
-    armor: [''],
-    shield: [false],
-    /** Content keys, `<mat-select multiple>` — never typed. */
-    weaponKeys: [[] as string[]],
-    equipmentText: ['', Validators.maxLength(4000)],
-    languagesText: ['', Validators.maxLength(2000)],
-    toolProficienciesText: ['', Validators.maxLength(2000)],
-    experiencePoints: [0, [Validators.required, Validators.min(0), Validators.max(1000000)]],
-    // An enemy's or boss's ND and the XP it gives when defeated (E7-11); a
-    // player's stay empty and 0 and are never shown.
-    challengeRating: [''],
-    xpValue: [0, [Validators.required, Validators.min(0), Validators.max(1000000)]],
-    // An enemy's or boss's portrait (MR-031): a gallery image's ID, or empty.
-    portraitImageId: [''],
-    alignment: ['' as AlignmentKey],
-    customFeaturesText: ['', Validators.maxLength(5000)],
-    cuttingWordsAsk: ['only-attacks' as CuttingWordsAskKey],
-    hitPointsMethod: ['average' as HitPointsMethod],
-    abilities: this.fb.nonNullable.group({
-      str: [10, [Validators.required, Validators.min(1), Validators.max(30)]],
-      dex: [10, [Validators.required, Validators.min(1), Validators.max(30)]],
-      con: [10, [Validators.required, Validators.min(1), Validators.max(30)]],
-      int: [10, [Validators.required, Validators.min(1), Validators.max(30)]],
-      wis: [10, [Validators.required, Validators.min(1), Validators.max(30)]],
-      cha: [10, [Validators.required, Validators.min(1), Validators.max(30)]],
-    }),
-    extraAbilityBonuses: this.fb.nonNullable.group({
-      str: [0, [Validators.required, Validators.min(-10), Validators.max(10)]],
-      dex: [0, [Validators.required, Validators.min(-10), Validators.max(10)]],
-      con: [0, [Validators.required, Validators.min(-10), Validators.max(10)]],
-      int: [0, [Validators.required, Validators.min(-10), Validators.max(10)]],
-      wis: [0, [Validators.required, Validators.min(-10), Validators.max(10)]],
-      cha: [0, [Validators.required, Validators.min(-10), Validators.max(10)]],
-    }),
-  });
+  protected readonly fullForm = createFullForm(this.fb);
 
   protected readonly basicForm = createBasicForm(this.fb);
 
@@ -585,7 +463,7 @@ export class CharacterEditor {
   );
   protected readonly selectedHitPointsMethod = toSignal(
     this.fullForm.controls.hitPointsMethod.valueChanges,
-    { initialValue: 'average' as HitPointsMethod },
+    { initialValue: 'average' as const },
   );
   /** Every class of the sheet, in the order of the blocks: the first one is the form's own fields. */
   protected readonly blocks = computed<ClassBlock[]>(() =>
@@ -610,8 +488,8 @@ export class CharacterEditor {
   protected readonly rollsNeeded = computed(() => Math.max(0, this.totalLevelValue() - 1));
   /** The die of each of those levels, which differs between the classes of a multiclass. */
   protected readonly levelDice = computed(() => {
-    const s = this.state();
-    return s.status === 'ready' ? hitDiceAfterFirst(s.catalog, this.blocks()) : [];
+    const catalog = this.readyCatalog();
+    return catalog ? hitDiceAfterFirst(catalog, this.blocks()) : [];
   });
   protected readonly selectedSubraceKey = toSignal(this.fullForm.controls.subrace.valueChanges, {
     initialValue: '',
@@ -620,29 +498,13 @@ export class CharacterEditor {
     initialValue: this.fullForm.controls.abilities.getRawValue(),
   });
 
-  protected readonly availableSubraces = computed(() => {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return [];
-    }
-    return s.catalog.races.find((r) => r.key === this.selectedRaceKey())?.subraces ?? [];
-  });
+  protected readonly availableSubraces = computed(
+    () => this.readyCatalog()?.races.find((r) => r.key === this.selectedRaceKey())?.subraces ?? [],
+  );
 
   /** The Portuguese name of any entry of the catalog, for a message that names one (never the key itself). */
   private nameOfKey(key: string): string | undefined {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return undefined;
-    }
-    const c = s.catalog;
-    return [
-      ...c.races,
-      ...c.classes,
-      ...c.backgrounds,
-      ...c.spells,
-      ...c.races.flatMap((r) => r.subraces),
-      ...c.classes.flatMap((k) => k.subclasses),
-    ].find((e) => e.key === key)?.namePt;
+    return catalogNameOf(this.readyCatalog() ?? undefined, key);
   }
 
   /** The caller is the master: the one who is offered what is switched off for the players. */
@@ -651,254 +513,112 @@ export class CharacterEditor {
     return s.status === 'ready' && s.catalog.viewerIsMaster;
   });
   /** What each list offers as a NEW choice: never a retired entry, unless it is the value the form already has. */
-  protected readonly raceOptions = computed(() => {
-    const s = this.state();
-    return s.status === 'ready'
-      ? offered(s.catalog.races, [this.selectedRaceKey()], this.master())
-      : [];
-  });
+  protected readonly raceOptions = computed(() =>
+    offered(this.readyCatalog()?.races ?? [], [this.selectedRaceKey()], this.master()),
+  );
   protected readonly subraceOptions = computed(() =>
     offered(this.availableSubraces(), [this.selectedSubraceKey()], this.master()),
   );
-  protected readonly classOptions = computed(() => {
-    const s = this.state();
-    return s.status === 'ready'
-      ? offered(s.catalog.classes, [this.selectedClassKey()], this.master())
-      : [];
-  });
+  protected readonly classOptions = computed(() =>
+    offered(this.readyCatalog()?.classes ?? [], [this.selectedClassKey()], this.master()),
+  );
   protected readonly subclassOptions = computed(() =>
     offered(this.selectedClass()?.subclasses ?? [], [this.selectedSubclassKey()], this.master()),
   );
-  protected readonly backgroundOptions = computed(() => {
-    const s = this.state();
-    return s.status === 'ready'
-      ? offered(s.catalog.backgrounds, [this.selectedBackground()], this.master())
-      : [];
-  });
+  protected readonly backgroundOptions = computed(() =>
+    offered(this.readyCatalog()?.backgrounds ?? [], [this.selectedBackground()], this.master()),
+  );
   /** A value the catalog does not list at all (a key from an old sheet): the select says so instead of staying blank. */
   protected readonly raceUnlisted = computed(() =>
-    unlisted(
-      this.state().status === 'ready' ? (this.state() as ReadyState).catalog.races : [],
-      this.selectedRaceKey(),
-    ),
+    unlisted(this.readyCatalog()?.races ?? [], this.selectedRaceKey()),
   );
   protected readonly classUnlisted = computed(() =>
-    unlisted(
-      this.state().status === 'ready' ? (this.state() as ReadyState).catalog.classes : [],
-      this.selectedClassKey(),
-    ),
+    unlisted(this.readyCatalog()?.classes ?? [], this.selectedClassKey()),
   );
   protected readonly backgroundUnlisted = computed(
     () =>
       this.selectedBackground() !== 'custom' &&
-      unlisted(
-        this.state().status === 'ready' ? (this.state() as ReadyState).catalog.backgrounds : [],
-        this.selectedBackground(),
-      ),
+      unlisted(this.readyCatalog()?.backgrounds ?? [], this.selectedBackground()),
   );
 
-  protected readonly selectedClass = computed(() => {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return undefined;
-    }
-    return s.catalog.classes.find((c) => c.key === this.selectedClassKey());
-  });
+  protected readonly selectedClass = computed(() =>
+    this.readyCatalog()?.classes.find((c) => c.key === this.selectedClassKey()),
+  );
 
   /** Faces of the chosen class's hit die, or 0 before a class is chosen. */
   protected readonly hitDie = computed(() => this.selectedClass()?.hitDie ?? 0);
 
-  /** The Constitution the rolled hit points use: the typed score plus what
-   * the race and subrace give plus the manual bonus (the same sum the
-   * server makes; this one only feeds the preview). */
-  protected readonly finalConstitution = computed(() => {
-    const s = this.state();
-    const race =
-      s.status === 'ready'
-        ? s.catalog.races.find((r) => r.key === this.selectedRaceKey())
-        : undefined;
-    const subrace = race?.subraces.find((sr) => sr.key === this.selectedSubraceKey());
-    return (
-      (this.baseScores().con ?? 0) +
-      (race?.constitutionBonus ?? 0) +
-      (subrace?.constitutionBonus ?? 0) +
-      (this.bonusesValue().con ?? 0)
-    );
-  });
+  /** The Constitution the rolled hit points use (the same sum the server makes; this one only feeds the preview). */
+  protected readonly finalConstitution = computed(() =>
+    finalConstitutionOf(
+      this.baseScores().con,
+      this.selectedRace(),
+      this.selectedSubrace(),
+      this.bonusesValue().con,
+    ),
+  );
 
   /** The spell lists the sheet reads from: one section per class that casts, or per subclass that
    * casts (a third caster), from its level. Empty for a sheet that casts nothing: no "Magias" step. */
   protected readonly sections = computed<CasterSection[]>(() => {
-    const s = this.state();
-    return s.status === 'ready' ? casterSections(s.catalog, this.blocks()) : [];
+    const catalog = this.readyCatalog();
+    return catalog ? casterSections(catalog, this.blocks()) : [];
   });
   protected readonly isCaster = computed(() => this.sections().length > 0);
   /** The heading of a section when there is more than one: "Clérigo · 1º nível". */
   protected sectionHeading(section: CasterSection): string {
-    const name = section.subclassNamePt
-      ? `${section.namePt} · ${section.subclassNamePt}`
-      : section.namePt;
-    const max = section.maxCircle;
-    return max === null
-      ? name
-      : max === 0
-        ? `${name} · só truques`
-        : `${name} · até o ${max}º nível de magia`;
+    return sectionHeadingOf(section);
   }
   protected sectionLabel = sectionName;
 
   /** Every cantrip and spell of the sheet's lists, for "the chosen line" and for what a save may send. */
-  protected readonly availableCantrips = computed(() =>
-    this.unionOf((sec, spells) => cantripsOf(spells, sec, new Set(this.selectedCantrips()), true)),
-  );
+  protected readonly availableCantrips = computed(() => {
+    const catalog = this.readyCatalog();
+    return catalog ? availableCantripsOf(catalog, this.sections(), this.selectedCantrips()) : [];
+  });
   protected readonly availableSpells = computed(() => {
-    const own = this.unionOf((sec, spells) =>
-      allOfSection(spells, sec).filter((sp) => sp.level >= 1),
-    );
-    // The patron's spells and the Magical Secrets are picks of the sheet too, though no class list has them.
-    const seen = new Set(own.map((sp) => sp.key));
-    const extra = this.sectionExtras()
-      .flatMap((e) => e.lists.flatMap((l) => l.spells))
-      .filter((sp) => !seen.has(sp.key) && seen.add(sp.key));
-    return [...own, ...extra];
+    const catalog = this.readyCatalog();
+    return catalog ? availableSpellsOf(catalog, this.sections(), this.sectionExtras()) : [];
   });
   /** For each section, the spells outside its list that `PreviewChoices` lets it pick. */
-  private readonly sectionExtras = computed<{ index: number; lists: ExtraSpellList[] }[]>(() => {
-    const s = this.state();
-    const sources = this.choicesAnswer()?.spellSources ?? [];
-    if (s.status !== 'ready' || sources.length === 0) {
+  private readonly sectionExtras = computed(() => {
+    const catalog = this.readyCatalog();
+    if (!catalog) {
       return [];
     }
     const picked = new Set([...this.selectedSpellsKnown(), ...this.selectedSpellsPrepared()]);
-    return this.sections().map((section) => ({
-      index: section.index,
-      lists: extraSpellLists(
-        s.catalog,
-        section,
-        sources.find((src) => src.classKey === section.classKey),
-        picked,
-        this.master(),
-      ),
-    }));
-  });
-  private unionOf(
-    pick: (section: CasterSection, spells: readonly SpellOptionVm[]) => SpellOptionVm[],
-  ): SpellOptionVm[] {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return [];
-    }
-    const seen = new Map<string, SpellOptionVm>();
-    for (const section of this.sections()) {
-      for (const spell of pick(section, s.catalog.spells)) {
-        seen.set(spell.key, spell);
-      }
-    }
-    return [...seen.values()].sort(
-      (a, b) => a.level - b.level || a.namePt.localeCompare(b.namePt, 'pt-BR'),
+    return sectionExtrasOf(
+      catalog,
+      this.sections(),
+      this.choicesAnswer()?.spellSources ?? [],
+      picked,
+      this.master(),
     );
-  }
+  });
 
-  /** What each section's pickers list now: the cantrips, the spells up to the circle the class level
-   * reaches (plus any picked above it, so it can be unchecked), each narrowed by its own search. */
+  /** What each section's pickers list now (`buildSectionView`). */
   protected readonly sectionViews = computed(() => {
-    const s = this.state();
-    if (s.status !== 'ready') {
+    const catalog = this.readyCatalog();
+    if (!catalog) {
       return [];
     }
-    const filters = this.spellFilters();
-    const query = (section: CasterSection, list: string) =>
-      filters[`${section.index}:${list}`] ?? '';
-    return this.sections().map((section) => {
-      const cantrips = cantripsOf(
-        s.catalog.spells,
+    const sections = this.sections();
+    return sections.map((section) =>
+      buildSectionView({
+        catalog,
+        sections,
         section,
-        this.selectedCantrips(),
-        this.master(),
-      );
-      // An always-prepared spell is never a pick: it is in its locked row, free, and never in these lists.
-      const alwaysKeys = new Set(section.alwaysPrepared);
-      const known = leveledOf(
-        s.catalog.spells,
-        section,
-        this.selectedSpellsKnown(),
-        this.master(),
-      ).filter((sp) => !alwaysKeys.has(sp.key));
-      const prepared = leveledOf(
-        s.catalog.spells,
-        section,
-        this.selectedSpellsPrepared(),
-        this.master(),
-      ).filter((sp) => !alwaysKeys.has(sp.key));
-      // A wizard prepares only from the spellbook (SRD 5.1): its list is the book's spells (and what is already prepared,
-      // so a wrong pick can still be unchecked).
-      const preparable =
-        section.preparation === 'spellbook'
-          ? prepared.filter(
-              (sp) =>
-                this.selectedSpellsKnown().has(sp.key) || this.selectedSpellsPrepared().has(sp.key),
-            )
-          : prepared;
-      // The subclass's always-prepared spells, shown in this class's section, checked and locked, never in the count.
-      const byKey = new Map(s.catalog.spells.map((sp) => [sp.key, sp]));
-      const always = section.alwaysPrepared.flatMap((k) => (byKey.has(k) ? [byKey.get(k)!] : []));
-      // The draft's own numbers when the server has answered; else the saved sheet's prepared number (an edit).
-      const limits = spellListLimits(
-        this.spellLimits().get(section.classKey),
-        section.preparation,
-        this.preparedMaxByClass()[section.classKey],
-      );
-      const max = limits.preparedMax;
-      const picked = prepared.filter(
-        (sp) => this.selectedSpellsPrepared().has(sp.key) && !alwaysKeys.has(sp.key),
-      ).length;
-      const preparation = section.preparation;
-      const noLeveledYet =
-        section.maxCircle === 0 &&
-        this.selectedSpellsKnown().size === 0 &&
-        this.selectedSpellsPrepared().size === 0;
-      return {
-        section,
-        id: String(section.index),
-        extras: this.sectionExtras().find((e) => e.index === section.index)?.lists ?? [],
-        /** The extra lists add to the known spells of a "known" or "spellbook" class, else to the prepared ones. */
-        extrasToKnown: section.preparation !== 'prepared',
-        cantrips: {
-          all: cantrips,
-          shown: filterByName(cantrips, query(section, 'cantrips')),
-          filter: query(section, 'cantrips'),
-          // A cantrip already on the sheet keeps the picker, so it can still be unchecked.
-          show:
-            cantrips.length > 0 ||
-            (this.sections().length === 1 && this.selectedCantrips().size > 0),
-          outside: outsideTheLists(s.catalog, this.sections(), query(section, 'cantrips'), true),
-        },
-        known: {
-          all: known,
-          shown: filterByName(known, query(section, 'known')),
-          filter: query(section, 'known'),
-          show: !noLeveledYet && (preparation === 'known' || preparation === 'spellbook'),
-          outside: outsideTheLists(s.catalog, this.sections(), query(section, 'known'), false),
-        },
-        prepared: {
-          all: preparable,
-          shown: filterByName(preparable, query(section, 'prepared')),
-          filter: query(section, 'prepared'),
-          show: !noLeveledYet && (preparation === 'prepared' || preparation === 'spellbook'),
-          outside: outsideTheLists(s.catalog, this.sections(), query(section, 'prepared'), false),
-        },
-        always,
-        // The most each list takes (0 or none: no limit to show).
-        cantripsLimit: limits.cantrips,
-        knownLimit: limits.known,
-        preparedLimit: limits.prepared,
-        alwaysSourcePt: section.alwaysSourcePt,
-        // On an edit the server says how many the class prepares (its own number, from the saved sheet).
-        preparedCount: preparedCountLine(section.preparation, picked, max),
-        noLeveledYet,
-        castingStarts: `O ${sectionName(section)} conjura magias a partir do nível ${section.firstLevel}.`,
-      };
-    });
+        cantrips: this.selectedCantrips(),
+        known: this.selectedSpellsKnown(),
+        prepared: this.selectedSpellsPrepared(),
+        master: this.master(),
+        filters: this.picks.filters(),
+        extras: this.sectionExtras(),
+        // The draft's own numbers when the server has answered; else the saved sheet's prepared number (an edit).
+        serverLimits: this.spellLimits().get(section.classKey),
+        savedPreparedMax: this.preparedMaxByClass()[section.classKey],
+      }),
+    );
   });
   /** How many spells each casting class prepares, from the saved sheet's derived numbers (an edit only). */
   protected readonly preparedMaxByClass = signal<Readonly<Record<string, number>>>({});
@@ -914,13 +634,13 @@ export class CharacterEditor {
 
   /** The search of an extra list ("0:patron"), and what it narrows. */
   protected spellFilterOf(id: string): string {
-    return this.spellFilters()[id] ?? '';
+    return this.picks.filterOf(id);
   }
   protected setExtraFilter(id: string, value: string): void {
-    this.spellFilters.update((f) => ({ ...f, [id]: value }));
+    this.picks.setFilter(id, value);
   }
   protected filterSpells(spells: readonly SpellOptionVm[], id: string): readonly SpellOptionVm[] {
-    return filterByName(spells, this.spellFilterOf(id));
+    return filterByName(spells, this.picks.filterOf(id));
   }
 
   protected setSpellFilter(
@@ -928,69 +648,40 @@ export class CharacterEditor {
     list: 'cantrips' | 'known' | 'prepared',
     value: string,
   ): void {
-    this.spellFilters.update((f) => ({ ...f, [`${section}:${list}`]: value }));
+    this.picks.setFilter(`${section}:${list}`, value);
   }
 
   /** The entries chosen in the closed selects, for the "Da mesa" tag beside the name (a select shows only text). */
-  protected readonly selectedRace = computed(() => {
-    const s = this.state();
-    return s.status === 'ready'
-      ? s.catalog.races.find((r) => r.key === this.selectedRaceKey())
-      : undefined;
-  });
+  protected readonly selectedRace = computed(() =>
+    this.readyCatalog()?.races.find((r) => r.key === this.selectedRaceKey()),
+  );
   protected readonly selectedSubrace = computed(() =>
     this.availableSubraces().find((r) => r.key === this.selectedSubraceKey()),
   );
   protected readonly selectedSubclass = computed(() =>
     this.selectedClass()?.subclasses.find((c) => c.key === this.selectedSubclassKey()),
   );
-  protected readonly selectedBackgroundVm = computed(() => {
-    const s = this.state();
-    return s.status === 'ready'
-      ? s.catalog.backgrounds.find((b) => b.key === this.selectedBackground())
-      : undefined;
-  });
+  protected readonly selectedBackgroundVm = computed(() =>
+    this.readyCatalog()?.backgrounds.find((b) => b.key === this.selectedBackground()),
+  );
 
-  /** The skills the race, the subrace and the background give, with where each comes from ("da raça", "do
-   * antecedente"). The server counts them as given, never as a pick: the step shows them taken and locked, and a
-   * pick on one of them is dropped, as the rules say a repeated proficiency is traded for another of the same
-   * kind. */
-  protected readonly grantedSkills = computed<ReadonlyMap<string, string>>(() => {
-    const granted = new Map<string, string>();
-    const give = (keys: readonly string[] | undefined, source: string) => {
-      for (const key of keys ?? []) {
-        if (!granted.has(key)) {
-          granted.set(key, source);
-        }
-      }
-    };
-    give(this.selectedRace()?.skillKeys, 'da raça');
-    give(this.selectedSubrace()?.skillKeys, 'da raça');
-    if (this.selectedBackground() === 'custom') {
-      give(Array.from(this.customBackgroundSkills()), 'do antecedente');
-    } else {
-      give(this.selectedBackgroundVm()?.skillKeys, 'do antecedente');
-    }
-    return granted;
-  });
+  /** The skills the race, the subrace and the background give, with where each comes from (`grantedSkillsOf`). */
+  protected readonly grantedSkills = computed<ReadonlyMap<string, string>>(() =>
+    grantedSkillsOf(
+      this.selectedRace(),
+      this.selectedSubrace(),
+      this.selectedBackgroundVm(),
+      this.selectedBackground() === 'custom',
+      Array.from(this.customBackgroundSkills()),
+    ),
+  );
   /** The skills the player picked, without the ones already given. */
-  protected readonly chosenSkills = computed(
-    () => new Set(Array.from(this.selectedSkills()).filter((k) => !this.grantedSkills().has(k))),
+  protected readonly chosenSkills = computed(() =>
+    chosenSkillsOf(this.selectedSkills(), this.grantedSkills()),
   );
 
   /** What the first class asks of the skills and the saving throws, from the server's entry for it. */
-  protected readonly skillNote = computed(() => {
-    const c = this.selectedClass();
-    if (!c || c.skillChoose <= 0) {
-      return '';
-    }
-    const saves = c.savingThrows.map((a) => abilityLabel(a));
-    const savesText =
-      saves.length > 0
-        ? ` e dá proficiência nos testes de resistência de ${BONUS_LIST.format(saves)}`
-        : '';
-    return `O ${c.namePt} escolhe ${c.skillChoose} ${c.skillChoose === 1 ? 'perícia' : 'perícias'} ao começar${savesText}.`;
-  });
+  protected readonly skillNote = computed(() => skillNoteOf(this.selectedClass()));
   protected readonly spellCircle = spellLevelLabel;
   /** "Ver em Magias", for a spell the lists leave out. */
   protected readonly magiasLink = computed(() => {
@@ -999,40 +690,22 @@ export class CharacterEditor {
   });
 
   /** The race's "+2 e +1 à sua escolha": where the player puts them (the server's numbers, from the catalog). */
-  protected readonly choiceBonusesHint = computed(() => {
-    const s = this.state();
-    const race =
-      s.status === 'ready'
-        ? s.catalog.races.find((r) => r.key === this.selectedRaceKey())
-        : undefined;
-    const bonuses = race?.choiceBonuses ?? [];
-    return bonuses.length > 0
-      ? `Dá ${bonusWords(bonuses)} nas habilidades que você escolher: ponha em “Bônus manuais”, no passo Habilidades.`
-      : '';
-  });
+  protected readonly choiceBonusesHint = computed(() => choiceBonusesHintOf(this.selectedRace()));
   /** A table background's equipment, as the master wrote it. */
-  protected readonly backgroundEquipment = computed(() => {
-    const s = this.state();
-    return s.status === 'ready'
-      ? (s.catalog.backgrounds.find((b) => b.key === this.selectedBackground())?.equipmentPt ?? '')
-      : '';
-  });
+  protected readonly backgroundEquipment = computed(
+    () => this.selectedBackgroundVm()?.equipmentPt ?? '',
+  );
   protected readonly toolOptions = computed(() => this.toolsAndLanguages('tool'));
   protected readonly languageOptions = computed(() => this.toolsAndLanguages('language'));
   private toolsAndLanguages(kind: 'tool' | 'language') {
-    const s = this.state();
-    return s.status === 'ready' ? s.catalog.toolsAndLanguages.filter((t) => t.kind === kind) : [];
+    return this.readyCatalog()?.toolsAndLanguages.filter((t) => t.kind === kind) ?? [];
   }
 
   /** The hint under "Subclasse" while the level is below the one where the
    * class chooses it; empty once the level reaches it. */
-  protected readonly subclassHint = computed(() => {
-    const c = this.selectedClass();
-    const level = this.selectedLevel();
-    return c && c.subclassLevel > 0 && !(level >= c.subclassLevel)
-      ? `O ${c.namePt} escolhe a subclasse no nível ${c.subclassLevel}.`
-      : '';
-  });
+  protected readonly subclassHint = computed(() =>
+    subclassHintOf(this.selectedClass(), this.selectedLevel()),
+  );
 
   /** The player picked another class: a subclass belongs to one class, so the
    * old one (SRD or custom) must not survive. Wired to the select's
@@ -1045,17 +718,21 @@ export class CharacterEditor {
   /** A block of the multiclass layout changed: block 0 is the form's own fields, the rest the extra classes. */
   protected changeBlock(index: number, change: Partial<ClassBlock>): void {
     if (index === 0) {
-      const f = this.fullForm.controls;
-      if (change.classKey !== undefined) f.className.setValue(change.classKey);
-      if (change.level !== undefined) f.level.setValue(change.level);
-      if (change.subclassKey !== undefined) f.subclassName.setValue(change.subclassKey);
-      if (change.customSubclassName !== undefined)
-        f.customSubclassName.setValue(change.customSubclassName);
+      this.patchFirstBlock(change);
       return;
     }
     this.extraClasses.update((list) =>
       list.map((c, i) => (i === index - 1 ? { ...c, ...change } : c)),
     );
+  }
+
+  private patchFirstBlock(change: Partial<ClassBlock>): void {
+    const f = this.fullForm.controls;
+    if (change.classKey !== undefined) f.className.setValue(change.classKey);
+    if (change.level !== undefined) f.level.setValue(change.level);
+    if (change.subclassKey !== undefined) f.subclassName.setValue(change.subclassKey);
+    if (change.customSubclassName !== undefined)
+      f.customSubclassName.setValue(change.customSubclassName);
   }
 
   /** The classes the other blocks already use: a class cannot be taken twice (the SRD's multiclass), so they are not offered here. */
@@ -1133,44 +810,10 @@ export class CharacterEditor {
 
   /** The line under the title: what this form is for, and that the
    * sheet's numbers come from the server. */
-  protected readonly lead = computed(() => {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return '';
-    }
-    const kind = characterKindLabel(s.kind);
-    if (s.mode === 'edit') {
-      return isFullSheetKind(s.kind)
-        ? 'As mudanças valem quando você salvar. Modificadores, Classe de Armadura e pontos de vida são recalculados na hora.'
-        : `Ficha curta de ${kind.toLowerCase()}.`;
-    }
-    if (s.reserved) {
-      return 'Preencha os passos na ordem que quiser. O personagem fica reservado e nenhum jogador o vê até um deles assumir pelo link que você gerar. Modificadores, Classe de Armadura e pontos de vida são calculados quando você salvar.';
-    }
-    if (s.kind === 'player') {
-      return 'Preencha os passos na ordem que quiser. Modificadores, Classe de Armadura e pontos de vida são calculados quando você criar.';
-    }
-    return isFullSheetKind(s.kind)
-      ? `${kind} com ficha completa, como a de um jogador. Só você vê os NPCs da campanha.`
-      : `${kind}: ficha curta, só com o que se usa na mesa. Só você vê os NPCs da campanha.`;
-  });
-
-  protected readonly pageTitle = computed(() => {
-    const s = this.state();
-    if (s.status === 'loading') {
-      return s.title;
-    }
-    if (s.status === 'error') {
-      return s.blocked?.title ?? 'Não foi possível abrir o formulário';
-    }
-    return titleFor(s.mode, s.kind, s.reserved);
-  });
-
+  protected readonly lead = computed(() => leadOf(this.state()));
+  protected readonly pageTitle = computed(() => pageTitleOf(this.state()));
   /** The label of the create button: "Salvar como reservado" for a character made for a player to claim. */
-  protected readonly createLabel = computed(() => {
-    const s = this.state();
-    return s.status === 'ready' && s.reserved ? 'Salvar como reservado' : this.pageTitle();
-  });
+  protected readonly createLabel = computed(() => createLabelOf(this.state()));
 
   /** Whether the character being made or edited is reserved: the page tells the master so. */
   protected readonly reserved = computed(() => {
@@ -1180,32 +823,10 @@ export class CharacterEditor {
 
   /** Cancel goes back where the person came from: the sheet being edited,
    * or the campaign. */
-  protected readonly cancelLink = computed(() => {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return ['/'];
-    }
-    return s.characterId
-      ? ['/campaigns', s.campaignId, 'characters', s.characterId]
-      : ['/campaigns', s.campaignId];
-  });
+  protected readonly cancelLink = computed(() => cancelLinkOf(this.state()));
 
   /** What the buttons do, in one line next to them. */
-  protected readonly actionsNote = computed(() => {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return '';
-    }
-    const full = isFullSheetKind(s.kind);
-    if (s.mode === 'create') {
-      return full
-        ? 'Cria com o que estiver preenchido em todos os passos. Cancelar volta para a campanha sem criar.'
-        : 'Cancelar volta para a campanha sem criar.';
-    }
-    return full
-      ? 'Salva todos os passos de uma vez. Cancelar volta para a ficha sem salvar.'
-      : 'Cancelar volta para a ficha sem salvar.';
-  });
+  protected readonly actionsNote = computed(() => actionsNoteOf(this.state()));
 
   protected stepHasError(step: EditorStepKey): boolean {
     return this.stepsWithErrors().has(step);
@@ -1214,6 +835,20 @@ export class CharacterEditor {
   /** What the page says after the table's content changed under the person ("" when nothing did). */
   protected readonly contentNote = signal('');
   private readonly campaignIdSignal = signal('');
+
+  /** What the page reads from the server to open, and the routes it drops the answers of (`EditorLoader`). */
+  private readonly loader = new EditorLoader({
+    source: this.source,
+    state: this.state,
+    abilityTable: this.abilityTable,
+    lockedOrigin: this.lockedOrigin,
+    contentNote: this.contentNote,
+    campaignId: this.campaignIdSignal,
+    reservedRoute: () => this.isReservedRoute(),
+    reset: () => this.resetEditing(),
+    created: (ready, table) => this.createLoaded(ready, table),
+    edited: (ready, existing, catalog) => this.editLoaded(ready, existing, catalog),
+  });
 
   constructor() {
     // Only a player's editor follows the hint: the master writes the content himself, and an open stream would keep the
@@ -1224,12 +859,11 @@ export class CharacterEditor {
     );
     // The subclass of a one-class sheet waits for the level the class chooses it at (as in a block), unless one is chosen.
     effect(() => {
-      const c = this.selectedClass();
-      const waits =
-        !!c &&
-        c.subclassLevel > 0 &&
-        this.selectedLevel() < c.subclassLevel &&
-        this.selectedSubclassKey() === '';
+      const waits = subclassWaits(
+        this.selectedClass(),
+        this.selectedLevel(),
+        this.selectedSubclassKey(),
+      );
       const control = this.fullForm.controls.subclassName;
       if (waits && control.enabled) {
         control.disable({ emitEvent: false });
@@ -1241,10 +875,15 @@ export class CharacterEditor {
     // class at least): the box adds up what the effects give, and the spell pickers count against the class's numbers.
     effect(() => {
       const s = this.state();
-      const hitPointsBoxOn =
-        this.selectedHitPointsMethod() === 'rolled' && this.rollsNeeded() > 0 && this.hitDie() > 0;
-      const featsOn = this.master() && this.featKeys().length > 0;
-      const boxOn = s.status === 'ready' && (hitPointsBoxOn || this.isCaster() || featsOn);
+      const boxOn = serverDraftNeeded({
+        ready: s.status === 'ready',
+        rolledBox:
+          this.selectedHitPointsMethod() === 'rolled' &&
+          this.rollsNeeded() > 0 &&
+          this.hitDie() > 0,
+        caster: this.isCaster(),
+        feats: this.master() && this.featKeys().length > 0,
+      });
       if (!boxOn) {
         untracked(() => this.serverHitPoints.stop());
         return;
@@ -1278,52 +917,33 @@ export class CharacterEditor {
         return;
       }
       untracked(() => {
-        const gone = new Set(answer.notOffered);
-        if (gone.size > 0) {
-          this.featureChoiceKeys.update((keys) => keys.filter((k) => !gone.has(k)));
+        const next = choicesAfterAnswer(answer, this.featureChoiceKeys(), this.featureChoiceText());
+        if (next.keys) {
+          this.featureChoiceKeys.set(next.keys);
         }
-        const live = new Set(answer.groups.flatMap((g) => g.choices.map((c) => c.key)));
-        const texts = this.featureChoiceText();
-        const kept = Object.entries(texts).filter(([k]) =>
-          live.has(k.slice(0, k.lastIndexOf('#'))),
-        );
-        if (kept.length !== Object.keys(texts).length) {
-          this.featureChoiceText.set(Object.fromEntries(kept));
+        if (next.texts) {
+          this.featureChoiceText.set(next.texts);
         }
       });
     });
     // A new player's sheet made above level 1 starts at its level's XP in a campaign that levels by XP, until the
     // person types in the field; a milestone campaign keeps the 0.
     effect(() => {
-      const s = this.state();
-      const level = this.totalLevelValue();
-      if (s.status !== 'ready' || s.mode !== 'create' || s.kind !== 'player') {
-        return;
-      }
-      const table = s.catalog.levelXp;
+      const xp = startingXp(this.state(), this.totalLevelValue());
       const control = this.fullForm.controls.experiencePoints;
-      if (s.catalog.xpMode !== 'enemies' || !table || table.length === 0 || control.dirty) {
-        return;
+      if (xp !== null && !control.dirty) {
+        untracked(() => control.setValue(xp));
       }
-      const xp = table[Math.min(Math.max(Math.trunc(level) || 1, 1), table.length) - 1];
-      untracked(() => control.setValue(xp));
     });
     this.destroyRef.onDestroy(() => {
-      this.destroyed = true;
+      this.loader.destroy();
       this.serverChoices.stop();
       this.serverHitPoints.stop();
-      this.loadSeq++;
     });
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      this.resolveAndLoad(params);
+      this.loader.resolve(params);
     });
   }
-
-  /** Counts the loads, so a late answer for a route the person left is dropped, and a save that outlives its route does not navigate. */
-  private loadSeq = 0;
-  /** Counts the reads of the lists after a `content_changed`, so an older answer never replaces a newer one. */
-  private catalogSeq = 0;
-  private destroyed = false;
 
   /** A reused component starts every route from nothing: nothing of the previous character stays in the form or the pick sets. */
   private resetEditing(): void {
@@ -1335,10 +955,7 @@ export class CharacterEditor {
     this.extraClasses.set([]);
     this.expertiseSkills.set(new Set());
     this.hitPointsRolls.set([]);
-    this.selectedCantrips.set(new Set());
-    this.selectedSpellsKnown.set(new Set());
-    this.selectedSpellsPrepared.set(new Set());
-    this.spellFilters.set({});
+    this.picks.reset();
     this.featureChoiceKeys.set([]);
     this.featureChoiceText.set({});
     this.featKeys.set([]);
@@ -1350,27 +967,8 @@ export class CharacterEditor {
     this.abilityTable.set(null);
     this.abilityMethod.set('typed');
     this.lockedOrigin.set(null);
-    this.serverClassProblem.set(null);
-    this.saveState.set({ status: 'idle' });
+    this.saving.reset();
     this.contentNote.set('');
-  }
-
-  private resolveAndLoad(params: ParamMap): void {
-    const campaignId = params.get('id');
-    if (!campaignId) {
-      return;
-    }
-    const characterId = params.get('characterId');
-    const npcKind = params.get('kind');
-    this.campaignIdSignal.set(campaignId);
-
-    if (characterId) {
-      this.loadForEdit(campaignId, characterId);
-      return;
-    }
-    const kind: CharacterKind = npcKind ? (NPC_ROUTE_KINDS[npcKind] ?? 'enemy') : 'player';
-    // `/campaigns/:id/reserved/new` (MR-049): the master makes a player character for a player to claim.
-    this.loadForCreate(campaignId, kind, this.isReservedRoute());
   }
 
   /**
@@ -1382,201 +980,66 @@ export class CharacterEditor {
     return snapshot?.data['reserved'] === true;
   }
 
-  private loadForCreate(campaignId: string, kind: CharacterKind, reserved: boolean): void {
-    const seq = ++this.loadSeq;
-    this.resetEditing();
-    this.state.set({ status: 'loading', title: titleFor('create', kind, reserved) });
-    // A player (or a pending member) makes the scores the table's rules allow; the master's NPCs, and the characters
-    // the master makes for a player to claim, are free.
-    const table =
-      kind === 'player' && !reserved
-        ? this.source.loadAbilityTable(campaignId)
-        : Promise.resolve(null);
-    Promise.all([this.source.loadCatalog(campaignId), table]).then(
-      ([catalog, abilityTable]) => {
-        if (seq !== this.loadSeq) {
-          return;
-        }
-        this.abilityTable.set(abilityTable);
-        if (abilityTable?.hitPoints === 'roll') {
-          this.fullForm.controls.hitPointsMethod.setValue('rolled');
-        } else if (abilityTable?.hitPoints === 'average') {
-          this.fullForm.controls.hitPointsMethod.setValue('average');
-        }
-        this.state.set({
-          status: 'ready',
-          mode: 'create',
-          kind,
-          campaignId,
-          characterId: null,
-          revision: 1,
-          catalog,
-          xpLocked: false,
-          reserved,
-        });
-        // A new enemy, boss or minion starts at ND 0 and 10 XP, so nobody is left without a
-        // number; a story NPC gives none (and never shows the fields).
-        if (kind === 'enemy' || kind === 'boss') {
-          this.fullForm.patchValue({ challengeRating: '0', xpValue: 10 });
-        } else if (kind === 'story') {
-          this.basicForm.patchValue({ challengeRating: '', xpValue: 0 });
-        }
-      },
-      (err: unknown) => {
-        if (seq !== this.loadSeq) {
-          return;
-        }
-        this.state.set({
-          status: 'error',
-          message: describeCharacterError(err),
-          backLink: ['/campaigns', campaignId],
-          backLabel: 'Voltar para a campanha',
-        });
-      },
+  /** The lists of a new sheet arrived (`EditorLoader`). */
+  private createLoaded(ready: ReadyState, table: AbilityTableVm | null): void {
+    this.abilityTable.set(table);
+    const method = tableHitPointsMethod(table);
+    if (method) {
+      this.fullForm.controls.hitPointsMethod.setValue(method);
+    }
+    this.state.set(ready);
+    // A new enemy, boss or minion starts at ND 0 and 10 XP, so nobody is left without a
+    // number; a story NPC gives none (and never shows the fields).
+    if (ready.kind === 'enemy' || ready.kind === 'boss') {
+      this.fullForm.patchValue({ challengeRating: '0', xpValue: 10 });
+    } else if (ready.kind === 'story') {
+      this.basicForm.patchValue({ challengeRating: '', xpValue: 0 });
+    }
+  }
+
+  /** The lists and the sheet of an edit arrived (`EditorLoader`). */
+  private editLoaded(ready: ReadyState, existing: CharacterForEdit, catalog: RulesCatalogVm): void {
+    this.state.set(ready);
+    if (existing.full) {
+      this.openSavedSheet(existing, existing.full, catalog);
+    }
+    if (existing.basic) {
+      patchBasicForm(this.fb, this.basicForm, existing.basic);
+    }
+  }
+
+  private openSavedSheet(
+    existing: CharacterForEdit,
+    full: CharacterFormValue,
+    catalog: RulesCatalogVm,
+  ): void {
+    this.patchFullForm(full);
+    this.preparedMaxByClass.set(existing.preparedMax ?? {});
+    this.hasCuttingWords.set((existing.featureKeys ?? []).includes('feature:cutting-words'));
+    // What the sheet has from outside the form is told once, as the sheet has it: a spell of the subclass it
+    // has now stays out of this list, and stays out when the subclass is changed (the save drops it with the subclass).
+    const granted = new Set(existing.grantedSpellKeys ?? []);
+    const fromSubclass = new Set(this.sections().flatMap((sec) => sec.alwaysPrepared));
+    this.grantedSpells.set(
+      catalog.spells.filter((sp) => granted.has(sp.key) && !fromSubclass.has(sp.key)),
     );
   }
 
   /** The table's rules for the scores changed under the person (the server refused the way of rolling the step offered):
    * they are read again, so the step offers what is allowed now. */
-  protected async rereadAbilityTable(): Promise<void> {
-    const s = this.state();
-    if (s.status !== 'ready' || !this.abilityTable()) {
-      return;
-    }
-    const seq = this.loadSeq;
-    try {
-      const table = await this.source.loadAbilityTable(s.campaignId);
-      if (seq === this.loadSeq && table) {
-        this.abilityTable.set(table);
-      }
-    } catch {
-      // The refusal the step already shows stays; the next try reads the table again.
-    }
-  }
-
-  private loadForEdit(campaignId: string, characterId: string): void {
-    const seq = ++this.loadSeq;
-    this.resetEditing();
-    this.state.set({ status: 'loading', title: titleFor('edit', 'player') });
-    Promise.all([
-      // With the sheet: what it has comes back even when the master retired it since.
-      this.source.loadCatalog(campaignId, characterId),
-      this.source.loadCharacterForEdit(campaignId, characterId),
-    ])
-      .then(async ([catalog, existing]) => {
-        // A player's own draft keeps the way its scores were made (RN-24): the step shows that way and its limits.
-        // The master (and an NPC, or a sheet made before the rules) keeps the free editor.
-        const origin = existing.abilityOrigin ?? null;
-        const table =
-          origin && existing.kind === 'player'
-            ? await this.source.loadAbilityTable(campaignId)
-            : null;
-        if (seq !== this.loadSeq) {
-          return null;
-        }
-        this.abilityTable.set(table);
-        this.lockedOrigin.set(table ? origin : null);
-        return [catalog, existing] as const;
-      })
-      .then((loaded) => {
-        if (loaded === null || seq !== this.loadSeq) {
-          return;
-        }
-        const [catalog, existing] = loaded;
-        if (existing.blocked) {
-          // Say it before the form: a player who opens the edit URL of a
-          // locked sheet would otherwise fill it in and only learn at "Salvar".
-          this.state.set({
-            status: 'error',
-            message: characterBlockedMessage(existing.blocked),
-            backLink: ['/campaigns', campaignId, 'characters', characterId],
-            backLabel: 'Voltar para a ficha',
-            blocked: {
-              title: existing.blocked === 'character_dead' ? 'Personagem morto' : 'Ficha travada',
-            },
-          });
-          return;
-        }
-        this.state.set({
-          status: 'ready',
-          mode: 'edit',
-          kind: existing.kind,
-          campaignId,
-          characterId,
-          revision: existing.revision,
-          catalog,
-          xpLocked: existing.sheetLocked,
-          reserved: existing.reserved === true,
-        });
-        if (existing.full) {
-          this.patchFullForm(existing.full);
-          this.preparedMaxByClass.set(existing.preparedMax ?? {});
-          this.hasCuttingWords.set((existing.featureKeys ?? []).includes('feature:cutting-words'));
-          // What the sheet has from outside the form is told once, as the sheet has it: a spell of the subclass it
-          // has now stays out of this list, and stays out when the subclass is changed (the save drops it with the subclass).
-          const granted = new Set(existing.grantedSpellKeys ?? []);
-          const fromSubclass = new Set(this.sections().flatMap((sec) => sec.alwaysPrepared));
-          this.grantedSpells.set(
-            catalog.spells.filter((sp) => granted.has(sp.key) && !fromSubclass.has(sp.key)),
-          );
-        }
-        if (existing.basic) {
-          patchBasicForm(this.fb, this.basicForm, existing.basic);
-        }
-      })
-      .catch((err: unknown) => {
-        if (seq !== this.loadSeq) {
-          return;
-        }
-        this.state.set({
-          status: 'error',
-          message: describeCharacterError(err),
-          backLink: ['/campaigns', campaignId, 'characters', characterId],
-          backLabel: 'Voltar para a ficha',
-        });
-      });
+  protected rereadAbilityTable(): Promise<void> {
+    return this.loader.rereadAbilityTable();
   }
 
   private patchFullForm(full: CharacterFormValue): void {
-    this.fullForm.setValue({
-      name: full.name,
-      race: full.race,
-      subrace: full.subrace,
-      className: full.className,
-      subclassName: full.subclassName,
-      customSubclassName: full.customSubclassName,
-      level: full.level,
-      background: full.background,
-      customBackgroundName: full.customBackgroundName,
-      customBackgroundFeatureName: full.customBackgroundFeatureName,
-      customBackgroundFeatureText: full.customBackgroundFeatureText,
-      customBackgroundEquipment: full.customBackgroundEquipment,
-      armor: full.armor,
-      shield: full.shield,
-      weaponKeys: full.weapons,
-      equipmentText: full.equipmentText,
-      languagesText: full.languagesText,
-      toolProficienciesText: full.toolProficienciesText,
-      experiencePoints: full.experiencePoints,
-      challengeRating: full.challengeRating,
-      xpValue: full.xpValue,
-      portraitImageId: full.portraitImageId,
-      alignment: full.alignment,
-      customFeaturesText: full.customFeaturesText,
-      cuttingWordsAsk: full.cuttingWordsAsk,
-      hitPointsMethod: full.hitPointsMethod,
-      abilities: full.abilities,
-      extraAbilityBonuses: full.extraAbilityBonuses,
-    });
+    this.fullForm.setValue(fullFormValueOf(full));
     this.selectedSkills.set(new Set(full.skillProficiencies));
     this.customBackgroundSkills.set(new Set(full.customBackgroundSkills ?? []));
     this.customBackgroundProficiencies.set(full.customBackgroundProficiencies);
     this.extraClasses.set(full.extraClasses);
     this.expertiseSkills.set(new Set(full.expertiseSkillKeys));
     this.hitPointsRolls.set(full.hitPointsRolls);
-    this.selectedCantrips.set(new Set(full.cantrips));
-    this.selectedSpellsKnown.set(new Set(full.spellsKnown));
-    this.selectedSpellsPrepared.set(new Set(full.spellsPrepared));
+    this.picks.load(full.cantrips, full.spellsKnown, full.spellsPrepared);
     this.featureChoiceKeys.set(full.featureChoiceKeys);
     this.featureChoiceText.set(full.featureChoiceText);
     this.featKeys.set(full.featKeys ?? []);
@@ -1609,21 +1072,19 @@ export class CharacterEditor {
 
   /** "Escolher Rajada Mística agora": the spell becomes one of the sheet's cantrips (the "Magias" step), and the choices are read again. */
   protected addChoiceCantrip(spellKey: string): void {
-    if (!this.selectedCantrips().has(spellKey)) {
-      this.selectedCantrips.set(new Set([...this.selectedCantrips(), spellKey]));
-    }
+    this.picks.addCantrip(spellKey);
+  }
+
+  /** The index of the stepper's step with that label; -1 when the page has no stepper or the step. */
+  private stepIndexOf(label: string): number {
+    return this.stepper?.steps.toArray().findIndex((step) => step.label === label) ?? -1;
   }
 
   /** The blocked "Criar personagem": the "Escolhas" step opens and the focus goes to the first choice still open. */
   private focusFirstPendingChoice(): void {
     const stepper = this.stepper;
-    if (!stepper) {
-      return;
-    }
-    const index = stepper.steps
-      .toArray()
-      .findIndex((st) => st.label === EDITOR_STEP_LABELS.escolhas);
-    if (index < 0) {
+    const index = this.stepIndexOf(EDITOR_STEP_LABELS.escolhas);
+    if (!stepper || index < 0) {
       return;
     }
     if (index === stepper.selectedIndex) {
@@ -1635,72 +1096,46 @@ export class CharacterEditor {
   }
 
   protected toggleSkill(key: string): void {
-    if (this.grantedSkills().has(key)) {
+    const next = toggledSkill(
+      this.selectedSkills(),
+      this.expertiseSkills(),
+      this.grantedSkills(),
+      key,
+    );
+    if (!next) {
       return;
     }
-    const next = new Set(this.selectedSkills());
-    if (next.has(key)) {
-      next.delete(key);
-      // Expertise requires proficiency first — drop it too so the
-      // invariant (expertise ⊆ proficient) never breaks silently.
-      if (this.expertiseSkills().has(key)) {
-        const nextExpertise = new Set(this.expertiseSkills());
-        nextExpertise.delete(key);
-        this.expertiseSkills.set(nextExpertise);
-      }
-    } else {
-      next.add(key);
+    if (next.expertise) {
+      this.expertiseSkills.set(next.expertise);
     }
-    this.selectedSkills.set(next);
+    this.selectedSkills.set(next.skills);
   }
 
   /** Toggles expertise on a proficient skill (doubles its proficiency
    * bonus — Bard, Rogue). A no-op on a skill that is not proficient yet:
    * the checkbox is disabled for those in the template. */
   protected toggleExpertise(key: string): void {
-    if (!this.selectedSkills().has(key) && !this.grantedSkills().has(key)) {
-      return;
+    const next = toggledExpertise(
+      this.selectedSkills(),
+      this.grantedSkills(),
+      this.expertiseSkills(),
+      key,
+    );
+    if (next) {
+      this.expertiseSkills.set(next);
     }
-    const next = new Set(this.expertiseSkills());
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
-    }
-    this.expertiseSkills.set(next);
-  }
-
-  private toggleInSet(current: ReadonlySet<string>, key: string): Set<string> {
-    const next = new Set(current);
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
-    }
-    return next;
   }
 
   protected toggleCantrip(key: string): void {
-    this.selectedCantrips.set(this.toggleInSet(this.selectedCantrips(), key));
+    this.picks.toggleCantrip(key);
   }
 
   protected toggleSpellKnown(key: string): void {
-    const next = this.toggleInSet(this.selectedSpellsKnown(), key);
-    this.selectedSpellsKnown.set(next);
-    // A spell leaving the spellbook is no longer prepared (a wizard prepares from the book only).
-    const sections = this.sections();
-    if (
-      !next.has(key) &&
-      sections.length > 0 &&
-      sections.every((c) => c.preparation === 'spellbook') &&
-      this.selectedSpellsPrepared().has(key)
-    ) {
-      this.selectedSpellsPrepared.set(this.toggleInSet(this.selectedSpellsPrepared(), key));
-    }
+    this.picks.toggleKnown(key);
   }
 
   protected toggleSpellPrepared(key: string): void {
-    this.selectedSpellsPrepared.set(this.toggleInSet(this.selectedSpellsPrepared(), key));
+    this.picks.togglePrepared(key);
   }
 
   /** Only the selected keys that are still in the (class-filtered) catalog
@@ -1709,12 +1144,7 @@ export class CharacterEditor {
     selected: ReadonlySet<string>,
     available: readonly { readonly key: string }[],
   ): string[] {
-    const availableKeys = new Set(available.map((item) => item.key));
-    const s = this.state();
-    // A pick the catalog does not know at all is kept, never dropped quietly: the server judges it. Only a spell that is
-    // known and not on the lists any more (the class changed) goes.
-    const known = new Set(s.status === 'ready' ? s.catalog.spells.map((sp) => sp.key) : []);
-    return Array.from(selected).filter((key) => availableKeys.has(key) || !known.has(key));
+    return keepAvailable(selected, available, this.readyCatalog()?.spells ?? []);
   }
 
   /** The "?" next to a spell: its description, as a bottom sheet on a phone
@@ -1745,18 +1175,14 @@ export class CharacterEditor {
    * (`CustomBackground.skill_keys`: "at most 2"): a third click while two
    * are already chosen does nothing, so the player unchecks one first. */
   protected toggleCustomBackgroundSkill(key: string): void {
-    const next = new Set(this.customBackgroundSkills());
-    if (next.has(key)) {
-      next.delete(key);
-    } else if (next.size < 2) {
-      next.add(key);
-    }
-    this.customBackgroundSkills.set(next);
+    this.customBackgroundSkills.set(
+      toggledCapped(this.customBackgroundSkills(), key, CUSTOM_BACKGROUND_SKILLS),
+    );
   }
 
   /** Picks or drops one of the "Outro" background's two tools or languages; a third does nothing, like the skills. */
   protected setCustomProficiencies(keys: readonly string[]): void {
-    this.customBackgroundProficiencies.set(keys.slice(0, 2));
+    this.customBackgroundProficiencies.set(keys.slice(0, CUSTOM_BACKGROUND_PROFICIENCIES));
   }
 
   protected readonly backgroundProficienciesCount = computed(() =>
@@ -1769,123 +1195,53 @@ export class CharacterEditor {
   );
 
   private buildFullValue(): CharacterFormValue {
-    const v = this.fullForm.getRawValue();
-    const bgSkills = Array.from(this.customBackgroundSkills());
-    return {
-      name: v.name,
-      race: v.race,
-      subrace: v.subrace,
-      className: v.className,
-      subclassName: v.subclassName,
-      customSubclassName: v.customSubclassName,
-      level: v.level,
-      background: v.background,
-      customBackgroundName: v.customBackgroundName,
-      // CustomBackground.skill_keys: "fewer than 2 shows an issue" — the
-      // server reports that; the editor just sends what was chosen, even 0
-      // or 1, rather than guessing or blocking submission over it.
-      customBackgroundSkills:
-        v.background === 'custom' && bgSkills.length === 2 ? [bgSkills[0], bgSkills[1]] : null,
-      // The tools or languages, the feature and the equipment the same way: fewer than asked is sent as is,
-      // and the server shows an issue on the sheet, never an error.
-      customBackgroundProficiencies:
-        v.background === 'custom' ? [...this.customBackgroundProficiencies()] : [],
-      customBackgroundFeatureName: v.background === 'custom' ? v.customBackgroundFeatureName : '',
-      customBackgroundFeatureText: v.background === 'custom' ? v.customBackgroundFeatureText : '',
-      customBackgroundEquipment: v.background === 'custom' ? v.customBackgroundEquipment : '',
-      // A blank block never gets here: `classProblems` stops the save first.
-      extraClasses: this.extraClasses().filter((c) => c.classKey !== ''),
-      skillProficiencies: Array.from(this.chosenSkills()),
-      expertiseSkillKeys: Array.from(this.expertiseSkills()),
-      abilities: v.abilities,
-      extraAbilityBonuses: v.extraAbilityBonuses,
-      hitPointsMethod: v.hitPointsMethod,
-      // Only as many rolls as the current level needs — a roll left over
-      // from a higher level typed earlier is dropped, not sent stale.
-      hitPointsRolls: this.hitPointsRolls().slice(0, this.rollsNeeded()),
+    return buildFullValue({
+      form: this.fullForm.getRawValue(),
+      customBackgroundSkills: this.customBackgroundSkills(),
+      customBackgroundProficiencies: this.customBackgroundProficiencies(),
+      extraClasses: this.extraClasses(),
+      chosenSkills: this.chosenSkills(),
+      expertiseSkills: this.expertiseSkills(),
+      hitPointsRolls: this.hitPointsRolls(),
+      rollsNeeded: this.rollsNeeded(),
       isCaster: this.isCaster(),
-      // Never send a stale pick: if the class or level changed after a
-      // spell was chosen and it dropped off the (class-filtered) catalog
-      // list, it never reaches the server — no typed key ever could get
-      // here in the first place (integrator fix).
       cantrips: this.intersectWithAvailable(this.selectedCantrips(), this.availableCantrips()),
       spellsKnown: this.intersectWithAvailable(this.selectedSpellsKnown(), this.availableSpells()),
       spellsPrepared: this.intersectWithAvailable(
         this.selectedSpellsPrepared(),
         this.availableSpells(),
       ),
-      armor: v.armor,
-      shield: v.shield,
-      weapons: v.weaponKeys,
-      equipmentText: v.equipmentText,
-      languagesText: v.languagesText,
-      toolProficienciesText: v.toolProficienciesText,
-      experiencePoints: v.experiencePoints,
-      challengeRating: v.challengeRating,
-      xpValue: v.xpValue,
-      portraitImageId: v.portraitImageId,
-      alignment: v.alignment,
-      customFeaturesText: v.customFeaturesText,
-      featureChoiceKeys: [...this.featureChoiceKeys()],
-      featureChoiceText: { ...this.featureChoiceText() },
-      cuttingWordsAsk: v.cuttingWordsAsk,
-      // Only the master's editor sends the feats; a player's save keeps the stored ones (the server refuses a change).
-      ...(this.master()
-        ? { featKeys: [...this.featKeys()], featSlots: { ...this.featSlots() } }
-        : {}),
-    };
+      featureChoiceKeys: this.featureChoiceKeys(),
+      featureChoiceText: this.featureChoiceText(),
+      feats: this.master() ? { keys: this.featKeys(), slots: this.featSlots() } : null,
+    });
   }
 
-  /** The full sheet's invalid fields right now, plus the placing that is
-   * not finished (it has no control of its own: see `abilitiesIncomplete`). */
   /** What the class blocks still lack, in words ("Classe 2", "o nível total vai até 20"): not controls of the
    * form, so the page adds them to the invalid fields while they stand. */
-  private readonly classProblems = computed<string[]>(() => {
-    const problems: string[] = [];
-    this.extraClasses().forEach((c, i) => {
-      if (c.classKey === '') problems.push(`Classe ${i + 2}`);
-      if (!Number.isInteger(c.level) || c.level < 1 || c.level > MAX_TOTAL_LEVEL)
-        problems.push(`Nível da classe ${i + 2}`);
-    });
-    if (this.totalLevelProblem()) problems.push('o nível total vai até 20');
-    return problems;
-  });
+  private readonly classProblems = computed<string[]>(() =>
+    classProblemsOf(this.extraClasses(), this.totalLevelProblem()),
+  );
 
   /** With "Rolado", the levels whose roll is empty or does not fit that level's die: the form keeps no control for
    * them, so the page adds them to the invalid fields while they stand. */
-  private readonly rollProblems = computed<string[]>(() => {
-    const dice = this.levelDice();
-    const rolls = this.hitPointsRolls();
-    if (this.selectedHitPointsMethod() !== 'rolled' || this.hitDie() === 0) {
-      return [];
-    }
-    const problems: string[] = [];
-    for (let i = 0; i < this.rollsNeeded(); i++) {
-      if (validRoll(rolls[i], dice[i] || this.hitDie()) === null) {
-        problems.push(`Dado de vida do nível ${i + 2}`);
-      }
-    }
-    return problems;
-  });
+  private readonly rollProblems = computed<string[]>(() =>
+    rollProblemsOf(
+      this.selectedHitPointsMethod() === 'rolled',
+      this.hitDie(),
+      this.rollsNeeded(),
+      this.levelDice(),
+      this.hitPointsRolls(),
+    ),
+  );
 
+  /** The full sheet's invalid fields right now, plus the placing that is not finished (it has no control of its
+   * own: see `abilitiesIncomplete`). */
   private currentInvalidFullFields(): EditorField[] {
-    const fields: EditorField[] = [
-      ...invalidFields(this.fullForm, FULL_SHEET_FIELDS),
-      ...this.classProblems().map((label) => ({ path: 'classes', label, step: 'basico' as const })),
-      ...this.rollProblems().map((label) => ({
-        path: 'hitPointsRolls',
-        label,
-        step: 'atributos' as const,
-      })),
-    ];
-    if (!this.abilitiesIncomplete()) {
-      return fields;
-    }
-    const problem = this.abilitiesProblem();
-    return [
-      ...fields,
-      problem ? { ...UNPLACED_RESULTS_FIELD, label: problem } : UNPLACED_RESULTS_FIELD,
-    ];
+    return invalidFullFieldsOf(this.fullForm, this.classProblems(), this.rollProblems(), {
+      incomplete: this.abilitiesIncomplete(),
+      problem: this.abilitiesProblem(),
+    });
   }
 
   /** After a submit with an invalid field: opens the step of the first one
@@ -1900,13 +1256,8 @@ export class CharacterEditor {
       this.bonusesOpen.set(true);
     }
     const stepper = this.stepper;
-    if (!stepper) {
-      return;
-    }
-    const index = stepper.steps
-      .toArray()
-      .findIndex((step) => step.label === EDITOR_STEP_LABELS[first.step!]);
-    if (index >= 0 && index !== stepper.selectedIndex) {
+    const index = this.stepIndexOf(EDITOR_STEP_LABELS[first.step]);
+    if (stepper && index >= 0 && index !== stepper.selectedIndex) {
       stepper.goTo(index);
     }
   }
@@ -1917,91 +1268,38 @@ export class CharacterEditor {
       return;
     }
     const isBasic = !isFullSheetKind(s.kind);
-    const form = isBasic ? this.basicForm : this.fullForm;
     // A choice still open: the button only leads to it (it is aria-disabled, not disabled, so it can be reached and activated).
     if (!isBasic && this.choicesBlocked()) {
       this.focusFirstPendingChoice();
       return;
     }
-    if (
-      form.invalid ||
-      (!isBasic &&
-        (this.abilitiesIncomplete() ||
-          this.classProblems().length > 0 ||
-          this.rollProblems().length > 0))
-    ) {
-      form.markAllAsTouched();
-      this.saveState.set({ status: 'idle' });
-      this.showErrors.set(true);
-      if (!isBasic) {
-        this.openFirstInvalidStep();
-      }
+    if (this.hasProblems(isBasic)) {
+      this.showProblems(isBasic);
       return;
     }
+    await this.saving.run(s, isBasic);
+  }
 
-    this.saveState.set({ status: 'saving' });
-    // The save finishes on the server whatever the person does meanwhile; only the navigation depends on still being here.
-    const seq = this.loadSeq;
-    const stillHere = (): boolean => !this.destroyed && seq === this.loadSeq;
-    try {
-      if (s.mode === 'create') {
-        const input = {
-          campaignId: s.campaignId,
-          kind: s.kind,
-          full: isBasic ? null : this.buildFullValue(),
-          basic: isBasic ? basicFormToValue(this.basicForm) : null,
-          ...(this.abilityTable() && !isBasic ? { abilityMethod: this.abilityMethod() } : {}),
-          ...(s.reserved ? { forPlayer: true } : {}),
-        };
-        // A retry of the same form (a lost answer, a second tap) sends the same key and makes one character.
-        const res = await this.source.createCharacter({
-          ...input,
-          idempotencyKey: this.createKey.keyFor(input),
-        });
-        this.createKey.renew();
-        if (!stillHere()) {
-          return;
-        }
-        // A reserved character goes to the list, where its link is made; any other, to its sheet.
-        await this.router.navigate(
-          s.reserved
-            ? ['/campaigns', s.campaignId]
-            : ['/campaigns', s.campaignId, 'characters', res.characterId],
-        );
-      } else if (s.characterId) {
-        await this.source.updateCharacter({
-          campaignId: s.campaignId,
-          characterId: s.characterId,
-          revision: s.revision,
-          name: isBasic ? this.basicForm.getRawValue().name : this.fullForm.getRawValue().name,
-          full: isBasic ? null : this.buildFullValue(),
-          basic: isBasic ? basicFormToValue(this.basicForm) : null,
-        });
-        if (!stillHere()) {
-          return;
-        }
-        await this.router.navigate(['/campaigns', s.campaignId, 'characters', s.characterId]);
-      }
-      this.saveState.set({ status: 'idle' });
-    } catch (err) {
-      if (!stillHere()) {
-        return;
-      }
-      // A refusal that names a key says it by name; one that points at a class block marks that block.
-      const field = invalidFieldPath(err);
-      const block = field ? /^full\.classes\[(\d+)\]/.exec(field) : null;
-      this.serverClassProblem.set(block ? Number(block[1]) : null);
-      // An option the master switched off after the lists were read is an error on its field (E10-01 state 5). The name is
-      // taken before the lists are read again, because the entry may be gone from them.
-      const refused = switchedOffKey(err);
-      if (refused !== null && this.markSwitchedOff(refused)) {
-        void this.refreshCatalog();
-        return;
-      }
-      this.saveState.set({
-        status: 'error',
-        message: describeCharacterError(err, (key) => this.nameOfKey(key)),
-      });
+  /** The form of the kind being saved is invalid, or what the full sheet keeps outside its controls is unfinished. */
+  private hasProblems(isBasic: boolean): boolean {
+    if (isBasic) {
+      return this.basicForm.invalid;
+    }
+    return (
+      this.fullForm.invalid ||
+      this.abilitiesIncomplete() ||
+      this.classProblems().length > 0 ||
+      this.rollProblems().length > 0
+    );
+  }
+
+  /** A save with something to fix: every field says so, the notice lists them and the first step opens. */
+  private showProblems(isBasic: boolean): void {
+    (isBasic ? this.basicForm : this.fullForm).markAllAsTouched();
+    this.saving.state.set({ status: 'idle' });
+    this.showErrors.set(true);
+    if (!isBasic) {
+      this.openFirstInvalidStep();
     }
   }
 
@@ -2021,7 +1319,7 @@ export class CharacterEditor {
     });
     this.fullForm.controls[control].markAsTouched();
     this.showErrors.set(true);
-    this.saveState.set({ status: 'idle' });
+    this.saving.state.set({ status: 'idle' });
     this.openFirstInvalidStep();
     afterNextRender(
       () =>
@@ -2041,30 +1339,7 @@ export class CharacterEditor {
   }
 
   /** `content_changed` (RN-23): the lists are read again with this person's role; what was typed stays. Resolves when done. */
-  private async refreshCatalog(): Promise<void> {
-    const s = this.state();
-    if (s.status !== 'ready') {
-      return;
-    }
-    // The newest read is the one that counts, and an answer for a route the person left does not count at all.
-    const seq = ++this.catalogSeq;
-    const route = this.loadSeq;
-    try {
-      const catalog = await this.source.loadCatalog(s.campaignId, s.characterId ?? undefined);
-      if (seq !== this.catalogSeq || route !== this.loadSeq) {
-        return;
-      }
-      const now = this.state();
-      if (now.status === 'ready' && catalogChanged(now.catalog, catalog)) {
-        this.state.set({ ...now, catalog });
-        if (offersChanged(now.catalog, catalog)) {
-          this.contentNote.set(
-            'O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.',
-          );
-        }
-      }
-    } catch {
-      // Keep the lists on screen: the next change reads again.
-    }
+  private refreshCatalog(): Promise<void> {
+    return this.loader.refreshCatalog();
   }
 }
