@@ -1476,19 +1476,8 @@
       "count": 1
     }
   },
-  "src/app/core/play/live-session-source.live.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/pages/live-session/live-session.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -1515,9 +1504,6 @@
   "src/app/pages/live-session/puzzles/master-run/master-run.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/pages/live-session/puzzles/puzzle-notice/puzzle-notice.spec.ts": {
@@ -1702,9 +1688,6 @@
   },
   "src/app/pages/live-session/traps/trap-search-sheet/trap-search-sheet.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -2566,21 +2549,6 @@
     }
   },
   "src/app/core/maps/maps-client.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/casting/cast-out-sheet.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/effects/effect-save-sheet/effect-save-sheet.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/group-check/group-check-master.ts": {
     "max-lines": {
       "count": 1
     }

@@ -289,6 +289,31 @@ describe('MasterRun (MR-038, E10-06 states 3 to 5)', () => {
       expect(el.querySelector('[role="alert"]')?.textContent).toContain('o servidor não respondeu');
     });
 
+    it.each([
+      ['releaseHint', 'soltar a dica', ['Mostrar a próxima dica']],
+      ['reseed', 'recomeçar o quebra-cabeça', ['Gerar outro começo']],
+      ['reset', 'recomeçar o quebra-cabeça', ['Recomeçar', 'Recomeçar']],
+      ['close', 'fechar o quebra-cabeça', ['Fechar', 'Fechar']],
+    ] as const)(
+      'names what %s was for when its answer is lost and the card is read again',
+      async (method, what, taps) => {
+        const done = liveLights({ releasedHints: 1 });
+        const { el, settle, host } = await render(liveLights(), (a) => {
+          a.runResults.set('a', done);
+          (a as unknown as Record<string, unknown>)[method] = () =>
+            Promise.reject(new ConnectError('x', Code.Unavailable));
+        });
+        for (const tap of taps) {
+          const scope = el.querySelector('app-map-ask') ?? el;
+          button(scope as HTMLElement, tap).click();
+          await settle();
+        }
+        expect(host.updates).toEqual([done]);
+        expect(el.querySelector('[role="alert"]')?.textContent).toContain(`pedido de ${what}.`);
+        expect(el.querySelector('app-map-ask')).toBeNull();
+      },
+    );
+
     it('sends the revision of the run it shows on the hint, the new start, the restart and the sequence', async () => {
       const shown = (revision: number) =>
         liveLights({ run: { ...liveLights().run!, revision } as never });
@@ -809,6 +834,20 @@ describe('MasterRun (MR-038, E10-06 states 3 to 5)', () => {
       expect(play.getAttribute('aria-disabled') ?? String(play.disabled)).toMatch(/true/);
       play.click();
       expect(api.calls.some((c) => c[0] === 'playSequence')).toBe(false);
+    });
+
+    it('names the sequence when the answer to playing it is lost and the card is read again', async () => {
+      const done = sequence({ releasedHints: 1 });
+      const { el, settle, host } = await render(sequence(), (a) => {
+        a.runResults.set('s', done);
+        a.playSequence = () => Promise.reject(new ConnectError('x', Code.Unavailable));
+      });
+      button(el, 'Tocar a sequência').click();
+      await settle();
+      expect(host.updates).toEqual([done]);
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        'pedido de tocar a sequência.',
+      );
     });
 
     it('says the refusal in words when the server refuses to play it', async () => {

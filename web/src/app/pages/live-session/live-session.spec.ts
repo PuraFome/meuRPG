@@ -1,5 +1,6 @@
 import { ApplicationRef, Injectable, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject, of } from 'rxjs';
@@ -43,6 +44,7 @@ import {
   CombatantKind,
   CombatantState,
   type Encounter,
+  EncounterMode,
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../core/combat/combat-testing';
@@ -64,6 +66,7 @@ import { ResourceClient } from '../../core/resources/resources-client';
 import { restPreview, restPreviewResponse } from '../../core/resources/resources-testing';
 import { CharacterVitalsSchema } from '../../../gen/meurpg/play/v1/play_pb';
 import { CombatClient } from '../../core/combat/combat-client';
+import { TrapsClient } from '../../core/traps/traps-client';
 import { ContestClient } from '../../core/combat/contest-client';
 import { FakeContestClient, groupCheck } from '../../core/combat/contest-testing';
 import { CombatState } from '../../core/combat/combat-state';
@@ -82,7 +85,7 @@ import {
   TreasureFinderSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { OpenSessions } from '../../core/play/open-sessions';
-import { CALLING_NOTICE_MS, LiveSession } from './live-session';
+import { CALLING_NOTICE_MS, LiveSession, mageArmorClassOf } from './live-session';
 import {
   CampaignInfoVm,
   LiveErrorKind,
@@ -95,6 +98,25 @@ import {
 } from '../../core/play/live-session.types';
 import { brisaVitals, pensantusVitals } from '../../core/play/live-testing';
 import { nextTurn } from '../../../test-settle';
+
+/**
+ * The page's protected members, looked up where the page keeps them (its own, the state, the view, the sheets, the events
+ * and the loader), so a test reads `page.vitals()` as the user of the page would think of it.
+ */
+function flat(fixture: ComponentFixture<LiveSession>): object {
+  const page = fixture.componentInstance as unknown as Record<string, Record<string, unknown>>;
+  const homes = [page, page['state'], page['view'], page['sheets'], page['events'], page['loader']];
+  return new Proxy(
+    {},
+    {
+      get(_target, key: string) {
+        const home = homes.find((h) => key in h);
+        const value = home?.[key];
+        return typeof value === 'function' ? value.bind(home) : value;
+      },
+    },
+  );
+}
 
 class KindError extends Error {
   constructor(readonly kind: LiveErrorKind) {
@@ -636,7 +658,7 @@ describe('LiveSession', () => {
   it("reads the player's sheet again when the table's content changes", async () => {
     const fixture = TestBed.createComponent(LiveSession);
     await settle(fixture);
-    const page = fixture.componentInstance as unknown as {
+    const page = flat(fixture) as unknown as {
       playerSheet(): PlayerSheetVm | null;
     };
     expect(page.playerSheet()?.armorClass).toBe(14);
@@ -662,7 +684,7 @@ describe('LiveSession', () => {
     casting.active = [mage(OutsideCastStatus.ACTIVE)];
     const fixture = TestBed.createComponent(LiveSession);
     await settle(fixture);
-    const page = fixture.componentInstance as unknown as { ownSheet(): PlayerSheetVm | null };
+    const page = flat(fixture) as unknown as { ownSheet(): PlayerSheetVm | null };
     expect(page.ownSheet()?.armorClass).toBe(16);
     casting.active = [mage(OutsideCastStatus.ENDED)];
     source.push({ kind: 'spellCastsChanged' });
@@ -721,7 +743,7 @@ describe('LiveSession', () => {
     source.snapshot = { ...(source.snapshot as LiveSnapshotVm), vitals: [] };
     const fixture = TestBed.createComponent(LiveSession);
     await settle(fixture);
-    const page = fixture.componentInstance as unknown as {
+    const page = flat(fixture) as unknown as {
       combat: { apply(e: Encounter): void };
       ownCharacterName(): string;
       highlightsCharacterId(): string;
@@ -1182,7 +1204,7 @@ describe('LiveSession', () => {
     };
     // The component's state is protected; the test reads it to state what the player ends up with.
     const state = (fixture: ComponentFixture<LiveSession>) =>
-      fixture.componentInstance as unknown as {
+      flat(fixture) as unknown as {
         shownImage(): ShownImageVm | null;
         currentMapId(): string | null;
       };
@@ -1463,7 +1485,7 @@ describe('LiveSession', () => {
       const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const page = fixture.componentInstance as unknown as { combat: CombatState };
+      const page = flat(fixture) as unknown as { combat: CombatState };
       get.mockClear();
       // No combat on screen: a hint about the vision reads the map only.
       source.push({ kind: 'visionChanged', mapId: 'map-1' });
@@ -1833,7 +1855,7 @@ describe('LiveSession', () => {
       const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const state = (fixture.componentInstance as unknown as { combat: CombatState }).combat;
+      const state = (flat(fixture) as unknown as { combat: CombatState }).combat;
       get.mockClear();
 
       source.push({ kind: 'reactionWindowOpened', encounterId: 'e1', windowId: 'w1' });
@@ -1857,7 +1879,7 @@ describe('LiveSession', () => {
       const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(null);
       const fixture = TestBed.createComponent(LiveSession);
       await settle(fixture);
-      const state = (fixture.componentInstance as unknown as { combat: CombatState }).combat;
+      const state = (flat(fixture) as unknown as { combat: CombatState }).combat;
       get.mockClear();
       source.push({
         kind: 'reactionWindowClosed',
@@ -1869,6 +1891,600 @@ describe('LiveSession', () => {
       await settle(fixture);
       expect(state.reactionNotice()).toBeNull();
       expect(get).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the combat news on the stream (MR-013)', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    const running = (over: Partial<Encounter> = {}) =>
+      encounter({
+        id: 'e1',
+        revision: 5,
+        currentCombatantId: 'a',
+        combatants: [
+          combatant({ id: 'a', label: 'Aldo', col: 1, row: 1 }),
+          combatant({ id: 'b', label: 'Bia', col: 2, row: 2 }),
+        ],
+        ...over,
+      });
+    /** The page with the combat already read: later reads are counted from here. */
+    async function withCombat(shown: Encounter | null = running()) {
+      const get = vi.spyOn(TestBed.inject(CombatClient), 'get').mockResolvedValue(shown);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const page = flat(fixture) as unknown as { combat: CombatState };
+      get.mockClear();
+      return { fixture, get, state: page.combat };
+    }
+
+    it('reads the combat again only when the news is newer than the copy on screen', async () => {
+      const { fixture, get } = await withCombat();
+      const hint = async (change: Partial<LiveEventVm & { kind: 'encounterChanged' }>) => {
+        source.push({
+          kind: 'encounterChanged',
+          encounterId: 'e1',
+          revision: 5,
+          ...change,
+        } as LiveEventVm);
+        await settle(fixture);
+      };
+      await hint({ revision: 3 });
+      expect(get).not.toHaveBeenCalled();
+      await hint({ revision: 5 });
+      expect(get).not.toHaveBeenCalled();
+      await hint({ revision: 6 });
+      expect(get).toHaveBeenCalledTimes(1);
+      await hint({ revision: 0 });
+      expect(get).toHaveBeenCalledTimes(2);
+      await hint({ encounterId: 'other', revision: 1 });
+      expect(get).toHaveBeenCalledTimes(3);
+    });
+
+    it('reads a combat that arrives while the screen has none', async () => {
+      const { fixture, get } = await withCombat(null);
+      source.push({ kind: 'encounterChanged', encounterId: 'e1', revision: 1 });
+      await settle(fixture);
+      expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks the master for the damages that wait on a combat with a map, and not on a theatre', async () => {
+      asMaster();
+      const damages = vi.spyOn(TestBed.inject(TrapsClient), 'damages');
+      const { fixture } = await withCombat();
+      damages.mockClear();
+      source.push({ kind: 'encounterChanged', encounterId: 'e1', revision: 9 });
+      await settle(fixture);
+      expect(damages).toHaveBeenCalledTimes(1);
+      source.push({
+        kind: 'encounterChanged',
+        encounterId: 'e1',
+        revision: 10,
+        mode: EncounterMode.THEATRE,
+      });
+      await settle(fixture);
+      expect(damages).toHaveBeenCalledTimes(1);
+    });
+
+    it('moves the turn in place, and reads the combat when it is not the one on screen', async () => {
+      const { fixture, get, state } = await withCombat();
+      source.push({
+        kind: 'turnChanged',
+        encounterId: 'e1',
+        round: 3,
+        currentCombatantId: 'b',
+        masterTurn: false,
+        revision: 6,
+      });
+      await settle(fixture);
+      expect(state.encounter()?.currentCombatantId).toBe('b');
+      expect(state.encounter()?.round).toBe(3);
+      expect(get).not.toHaveBeenCalled();
+      source.push({
+        kind: 'turnChanged',
+        encounterId: 'other',
+        round: 1,
+        currentCombatantId: 'x',
+        masterTurn: false,
+      });
+      await settle(fixture);
+      expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it('moves a combatant in place, and reads the combat for one it does not know', async () => {
+      const { fixture, get, state } = await withCombat();
+      source.push({ kind: 'combatantMoved', encounterId: 'e1', combatantId: 'b', col: 7, row: 8 });
+      await settle(fixture);
+      const moved = state.encounter()?.combatants.find((c) => c.id === 'b');
+      expect([moved?.col, moved?.row]).toEqual([7, 8]);
+      expect(get).not.toHaveBeenCalled();
+      source.push({ kind: 'combatantMoved', encounterId: 'e1', combatantId: 'zz', col: 1, row: 1 });
+      await settle(fixture);
+      expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads a combat without a map again on a move, and leaves the traps alone', async () => {
+      const { fixture, get } = await withCombat(running({ mode: EncounterMode.THEATRE }));
+      source.push({ kind: 'combatantMoved', encounterId: 'e1', combatantId: 'b', col: 7, row: 8 });
+      await settle(fixture);
+      expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it("reads the log again on combat_log_changed, and the master's damages with it", async () => {
+      asMaster();
+      const damages = vi.spyOn(TestBed.inject(TrapsClient), 'damages');
+      const { fixture, state } = await withCombat();
+      damages.mockClear();
+      const before = state.logTick();
+      source.push({ kind: 'combatLogChanged' });
+      await settle(fixture);
+      expect(state.logTick()).toBe(before + 1);
+      expect(damages).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries a combat read that failed, once, a moment later', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        const get = vi
+          .spyOn(TestBed.inject(CombatClient), 'get')
+          .mockRejectedValueOnce(new Error('network'))
+          .mockResolvedValue(running());
+        const fixture = TestBed.createComponent(LiveSession);
+        await settle(fixture);
+        expect(get).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1600);
+        expect(get).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(5000);
+        expect(get).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  describe('the rest of the stream', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+
+    it('tells the player a trap was noticed, by the name on the map or in words when it is not there', async () => {
+      const activity = vi.spyOn(TestBed.inject(TrapsClient), 'activity');
+      const fixture = TestBed.createComponent(LiveSession);
+      const el = await settle(fixture);
+      activity.mockClear();
+      source.push({ kind: 'trapNoticed', mapId: 'other', pointId: 'nowhere' });
+      await settle(fixture);
+      expect(textOf(el)).toContain('Você notou uma armadilha.');
+      expect(textOf(el)).toContain('Ela já aparece no seu mapa.');
+      expect(activity).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads the notes and the puzzles on notes_changed, and the scene on stage_changed', async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const before = puzzles.calls.length;
+      source.push({ kind: 'notesChanged' });
+      await settle(fixture);
+      expect(puzzles.calls.length).toBeGreaterThan(before);
+      scenes.calls.length = 0;
+      source.push({ kind: 'stageChanged' });
+      await settle(fixture);
+      expect(scenes.calls.length).toBeGreaterThan(0);
+    });
+
+    it('bumps the creatures when the stream says they changed', async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const page = flat(fixture) as unknown as { creaturesTick(): number };
+      const before = page.creaturesTick();
+      source.push({ kind: 'creaturesChanged' });
+      await settle(fixture);
+      expect(page.creaturesTick()).toBe(before + 1);
+    });
+
+    it('leaves the blocked page when the stream fails for good with a refusal', async () => {
+      source.failWith = new KindError('forbidden');
+      const el = await render();
+      expect(textOf(el)).toContain('Voltar para a campanha');
+      expect(textOf(el)).not.toContain('Ao vivo');
+    });
+
+    it('ends the page when the snapshot says there is no session', async () => {
+      source.snapshot = new KindError('no-session');
+      const el = await render();
+      expect(textOf(el)).toContain('Nenhuma sessão em andamento');
+    });
+
+    it('sends a signed-out snapshot to sign in', async () => {
+      source.snapshot = new KindError('signed-out');
+      await render();
+      expect(signIn).toHaveBeenCalled();
+    });
+
+    it('starts over on a transient snapshot failure: the stream is restarted', async () => {
+      const read = vi.spyOn(source, 'getLiveSession');
+      source.snapshot = new KindError('transient');
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      expect(read.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('shows "Não foi possível abrir a sessão" for a campaign that fails, and "Tentar de novo" starts over', async () => {
+      source.campaign = new Error('down');
+      const fixture = TestBed.createComponent(LiveSession);
+      const el = await settle(fixture);
+      expect(textOf(el)).toContain('Não foi possível abrir a sessão');
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: false,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+      button(el, 'Tentar de novo').click();
+      await settle(fixture);
+      expect(textOf(el)).toContain('Sessão 4');
+    });
+
+    it('signs a person out of a campaign that answers signed-out', async () => {
+      source.campaign = new KindError('signed-out');
+      await render();
+      expect(signIn).toHaveBeenCalled();
+    });
+
+    it('says "sem acesso" for a campaign the server hides', async () => {
+      source.campaign = new KindError('no-access');
+      const el = await render();
+      expect(textOf(el)).toContain('Peça um convite ao mestre');
+    });
+
+    it('asks the master for the class and player names once for the same party', async () => {
+      asMaster();
+      const info = vi.spyOn(source, 'getPartyInfo');
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      expect(info).toHaveBeenCalledTimes(1);
+      source.push({ kind: 'ready' });
+      await settle(fixture);
+      expect(info).toHaveBeenCalledTimes(1);
+    });
+
+    it('lists the maps again for the master when the map changes, or the current one does', async () => {
+      asMaster();
+      const maps = TestBed.inject(MapsClient) as unknown as FakeMapsClient;
+      const list = vi.spyOn(maps, 'list');
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      list.mockClear();
+      source.push({ kind: 'mapChanged', mapId: 'other' });
+      await settle(fixture);
+      expect(list).toHaveBeenCalledTimes(1);
+      source.push({ kind: 'currentMap', mapId: null });
+      await settle(fixture);
+      expect(list).toHaveBeenCalledTimes(2);
+    });
+
+    it('takes the familiar band away at once when the way back to the own eyes works', async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const page = flat(fixture) as unknown as {
+        vitals(): readonly { familiarSight: unknown }[];
+        familiarStopped(id: string): void;
+      };
+      source.push({
+        kind: 'vitals',
+        vitals: {
+          ...pensantusVitals(),
+          familiarSight: { creatureId: 'f1', inCombat: false },
+          revision: 99,
+        },
+      });
+      await settle(fixture);
+      expect(page.vitals()[0].familiarSight).not.toBeNull();
+      page.familiarStopped('pensantus');
+      expect(page.vitals()[0].familiarSight).toBeNull();
+    });
+
+    it('drops "Ver como" back to Todos and says why when the character is gone', async () => {
+      asMaster();
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const page = flat(fixture) as unknown as {
+        viewAs(): string | null;
+        viewGone(): string;
+        setViewAs(id: string | null): void;
+        viewAsGone(): void;
+      };
+      page.setViewAs('pensantus');
+      expect(page.viewAs()).toBe('pensantus');
+      page.viewAsGone();
+      expect(page.viewAs()).toBeNull();
+      expect(page.viewGone()).toContain('morreu ou saiu da campanha');
+      page.setViewAs(null);
+      expect(page.viewGone()).toBe('');
+    });
+
+    it("closes the players' highlights card and the summary under it", async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const page = flat(fixture) as unknown as {
+        combat: CombatState;
+        highlightsFor(): Encounter | null;
+        closeHighlights(): void;
+      };
+      page.closeHighlights();
+      page.combat.apply(encounter({ id: 'done', status: EncounterStatus.ENDED, combatants: [] }));
+      await settle(fixture);
+      expect(page.highlightsFor()?.id).toBe('done');
+      page.closeHighlights();
+      expect(page.highlightsFor()).toBeNull();
+      expect(page.combat.shown()).toBeNull();
+    });
+
+    it('shows a combat the master started at once', async () => {
+      asMaster();
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const page = flat(fixture) as unknown as {
+        combat: CombatState;
+        combatStarted(e: Encounter): void;
+      };
+      page.combatStarted(encounter({ id: 'new' }));
+      expect(page.combat.encounter()?.id).toBe('new');
+    });
+
+    it('words the ended combat for the highlights: rounds and defeated enemies', async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const page = flat(fixture) as unknown as {
+        combat: CombatState;
+        highlightsSub(): string;
+      };
+      expect(page.highlightsSub()).toBe('');
+      page.combat.apply(
+        encounter({
+          id: 'done',
+          name: 'Emboscada',
+          round: 1,
+          status: EncounterStatus.ENDED,
+          combatants: [
+            combatant({ id: 'p', label: 'P', kind: CombatantKind.PLAYER }),
+            combatant({ id: 'g1', label: 'G1', defeated: true }),
+            combatant({ id: 'g2', label: 'G2' }),
+          ],
+        }),
+      );
+      expect(page.highlightsSub()).toBe('Emboscada · 1 rodada · 1 de 2 derrotados');
+      page.combat.apply(
+        encounter({
+          id: 'done2',
+          name: 'Briga',
+          round: 3,
+          status: EncounterStatus.ENDED,
+          combatants: [],
+        }),
+      );
+      expect(page.highlightsSub()).toBe('Briga · 3 rodadas');
+    });
+
+    it('names who cast Revivificar on a character that lives again, from the combat log', async () => {
+      const combatApi = TestBed.inject(CombatClient);
+      vi.spyOn(combatApi, 'get').mockResolvedValue(encounter({ id: 'e1', combatants: [] }));
+      const log = vi.spyOn(combatApi, 'log').mockResolvedValue({ rounds: [] } as never);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      source.push({ kind: 'characterRevived', characterId: 'pensantus' });
+      await settle(fixture);
+      expect(log).toHaveBeenCalled();
+      const page = flat(fixture) as unknown as {
+        revivedCaster(): string;
+        revivedId(): string;
+      };
+      expect(page.revivedId()).toBe('pensantus');
+      expect(page.revivedCaster()).toBe('');
+      log.mockRejectedValue(new Error('x'));
+      source.push({ kind: 'characterRevived', characterId: 'pensantus' });
+      await settle(fixture);
+      expect(page.revivedCaster()).toBe('');
+    });
+  });
+
+  describe('the sheets the page opens', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    type Page = {
+      adjust(v: unknown): void;
+      changeDice(): void;
+      openNotes(): void;
+      searchTraps(): void;
+      openRevivify(): void;
+      takeVitals(v: readonly unknown[]): void;
+      vitals(): readonly { hitPointsCurrent: number }[];
+      campaign(): { name: string } | null;
+    };
+    const pageOf = (fixture: ComponentFixture<LiveSession>) => flat(fixture) as unknown as Page;
+    /** The test browser has no `matchMedia`: say whether the screen is a phone. */
+    const phone = (matches: boolean) => {
+      const list = {
+        matches,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      };
+      window.matchMedia = (() => list) as unknown as typeof window.matchMedia;
+    };
+    beforeEach(() => phone(false));
+    afterEach(() => {
+      delete (window as unknown as Record<string, unknown>)['matchMedia'];
+    });
+
+    it('opens "Ajustar" in a dialog and takes the numbers the sheet saved', async () => {
+      asMaster();
+      const dialog = TestBed.inject(MatDialog);
+      const saved = { ...pensantusVitals(), hitPointsCurrent: 5, revision: 50 };
+      const open = vi
+        .spyOn(dialog, 'open')
+        .mockReturnValue({ afterClosed: () => of({ kind: 'saved', vitals: saved }) } as never);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      pageOf(fixture).adjust(pensantusVitals());
+      await settle(fixture);
+      expect(open).toHaveBeenCalledTimes(1);
+      expect((open.mock.calls[0][1] as { data: { playerName: string } }).data.playerName).toBe(
+        'Vinicius',
+      );
+      expect(pageOf(fixture).vitals()[0].hitPointsCurrent).toBe(5);
+    });
+
+    it('ends the page when the "Ajustar" sheet says the session ended', async () => {
+      asMaster();
+      vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+        afterClosed: () => of({ kind: 'ended' }),
+      } as never);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      pageOf(fixture).adjust(pensantusVitals());
+      const el = await settle(fixture);
+      expect(textOf(el)).toContain('Sessão 4 encerrada');
+    });
+
+    it('opens "Ajustar" in a bottom sheet on a phone, and leaves the numbers alone when it is dismissed', async () => {
+      asMaster();
+      const sheet = TestBed.inject(MatBottomSheet);
+      const open = vi
+        .spyOn(sheet, 'open')
+        .mockReturnValue({ afterDismissed: () => of(undefined) } as never);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      phone(true);
+      pageOf(fixture).adjust(pensantusVitals());
+      expect(open).toHaveBeenCalledTimes(1);
+      expect((open.mock.calls[0][1] as { ariaLabel: string }).ariaLabel).toBe('Ajustar Pensantus');
+      expect(pageOf(fixture).vitals()[0].hitPointsCurrent).toBe(17);
+    });
+
+    it('reads the campaign again after the dice dialog closes', async () => {
+      const dialog = TestBed.inject(MatDialog);
+      const open = vi
+        .spyOn(dialog, 'open')
+        .mockReturnValue({ afterClosed: () => of(true) } as never);
+      const read = vi.spyOn(source, 'getCampaign');
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      read.mockClear();
+      pageOf(fixture).changeDice();
+      await settle(fixture);
+      expect(open).toHaveBeenCalledTimes(1);
+      expect((open.mock.calls[0][1] as { data: { campaignName: string } }).data.campaignName).toBe(
+        'Mirathel',
+      );
+      expect(read).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens the notes sheet', async () => {
+      const dialog = TestBed.inject(MatDialog);
+      const open = vi
+        .spyOn(dialog, 'open')
+        .mockReturnValue({ afterClosed: () => of(undefined) } as never);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      pageOf(fixture).openNotes();
+      await settle(fixture);
+      expect(open).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens "Procurar armadilhas" and reads the activity again when it closes', async () => {
+      const dialog = TestBed.inject(MatDialog);
+      const open = vi
+        .spyOn(dialog, 'open')
+        .mockReturnValue({ afterClosed: () => of(true) } as never);
+      const activity = vi.spyOn(TestBed.inject(TrapsClient), 'activity');
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      activity.mockClear();
+      pageOf(fixture).searchTraps();
+      await settle(fixture);
+      expect(open).toHaveBeenCalledTimes(1);
+      expect((open.mock.calls[0][1] as { data: { inCombat: boolean } }).data.inCombat).toBe(false);
+      expect(activity).toHaveBeenCalledTimes(1);
+    });
+
+    it('does nothing for the sheets before the campaign is known', async () => {
+      source.campaign = new Error('down');
+      const dialog = TestBed.inject(MatDialog);
+      const open = vi.spyOn(dialog, 'open');
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      pageOf(fixture).changeDice();
+      pageOf(fixture).searchTraps();
+      pageOf(fixture).openRevivify();
+      expect(open).not.toHaveBeenCalled();
+    });
+
+    it('takes the numbers a rest answered with', async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      pageOf(fixture).takeVitals([{ ...pensantusVitals(), hitPointsCurrent: 23, revision: 60 }]);
+      expect(pageOf(fixture).vitals()[0].hitPointsCurrent).toBe(23);
+    });
+  });
+
+  describe('mageArmorClassOf', () => {
+    const cast = (over: Record<string, unknown>) =>
+      create(OutsideCastSchema, {
+        spellKey: 'spell:mage-armor',
+        status: OutsideCastStatus.ACTIVE,
+        targets: [
+          create(OutsideCastTargetSchema, {
+            characterId: 'pensantus',
+            effect: CastEffect.ARMOR_CLASS,
+            armorClass: 13,
+          }),
+        ],
+        ...over,
+      });
+
+    it('is the best armor class a lasting Armadura Arcana gives the character, 0 without one', () => {
+      const other = create(OutsideCastTargetSchema, {
+        characterId: 'brisa',
+        effect: CastEffect.ARMOR_CLASS,
+        armorClass: 19,
+      });
+      const bigger = create(OutsideCastTargetSchema, {
+        characterId: 'pensantus',
+        effect: CastEffect.ARMOR_CLASS,
+        armorClass: 15,
+      });
+      const healing = create(OutsideCastTargetSchema, {
+        characterId: 'pensantus',
+        effect: CastEffect.HEAL,
+        armorClass: 20,
+      });
+      expect(mageArmorClassOf([], 'pensantus')).toBe(0);
+      expect(mageArmorClassOf([cast({})], 'pensantus')).toBe(13);
+      expect(mageArmorClassOf([cast({}), cast({ targets: [bigger] })], 'pensantus')).toBe(15);
+      expect(mageArmorClassOf([cast({ targets: [other, healing] })], 'pensantus')).toBe(0);
+      expect(mageArmorClassOf([cast({ spellKey: 'spell:shield' })], 'pensantus')).toBe(0);
+      expect(mageArmorClassOf([cast({ status: OutsideCastStatus.ENDED })], 'pensantus')).toBe(0);
     });
   });
 });

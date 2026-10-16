@@ -174,6 +174,32 @@ describe('TrapSearchSheet', () => {
       expect(list.getAttribute('aria-activedescendant')).toBe('trap-other-1');
     });
 
+    it('moves the cursor with Home, End and the arrows without leaving the list, and Space picks', () => {
+      const { fixture, el } = setup([]);
+      choose(fixture, el);
+      const list = el.querySelector<HTMLElement>('[role=listbox]')!;
+      const key = (k: string) => {
+        const event = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
+        list.dispatchEvent(event);
+        fixture.detectChanges();
+        return event.defaultPrevented;
+      };
+      const cursor = () => list.getAttribute('aria-activedescendant');
+      expect(key('End')).toBe(true);
+      expect(cursor()).toBe('trap-other-2');
+      expect(key('ArrowDown')).toBe(true);
+      expect(cursor()).toBe('trap-other-2');
+      expect(key('ArrowUp')).toBe(true);
+      expect(cursor()).toBe('trap-other-1');
+      expect(key('Home')).toBe(true);
+      expect(key('ArrowUp')).toBe(true);
+      expect(cursor()).toBe('trap-other-0');
+      expect(key(' ')).toBe(true);
+      expect(el.querySelector('.other__value')?.textContent?.trim()).toBe('Acrobacia +1');
+      expect(key('a')).toBe(false);
+      expect(cursor()).toBe('trap-other-0');
+    });
+
     it('titles the physical die for the skill picked: "Role 1d20 para Arcanismo (+8)"', () => {
       const { fixture, el } = setup([]);
       choose(fixture, el);
