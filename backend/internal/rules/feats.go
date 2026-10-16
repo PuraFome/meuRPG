@@ -250,25 +250,46 @@ func (c *content) unmetPrerequisite(e FeatEntry, b Build, d Derived) []FeatUnmet
 	for _, s := range d.Abilities {
 		score[s.Ability] = s.Score
 	}
+	out := unmetMinimums(p, score)
+	if u, unmet := unmetAnyOf(p, score); unmet {
+		out = append(out, u)
+	}
+	return append(out, unmetOthers(p, b, d)...)
+}
+
+// unmetMinimums are the abilities under their minimum, one entry each, in the
+// order of the abilities.
+func unmetMinimums(p FeatPrerequisite, score map[Ability]int) []FeatUnmet {
 	var out []FeatUnmet
 	for _, a := range AllAbilities() {
 		if least := p.Minimums[a]; least > 0 && score[a] < least {
 			out = append(out, FeatUnmet{Kind: FeatUnmetAbilityMinimum, Abilities: []AbilityMinimum{{Ability: a, Minimum: least}}})
 		}
 	}
-	if len(p.AnyOf) > 0 {
-		met := false
-		var all []AbilityMinimum
-		for _, a := range AllAbilities() {
-			if least := p.AnyOf[a]; least > 0 {
-				all = append(all, AbilityMinimum{Ability: a, Minimum: least})
-				met = met || score[a] >= least
-			}
-		}
-		if !met {
-			out = append(out, FeatUnmet{Kind: FeatUnmetAbilityAnyOf, Abilities: all})
+	return out
+}
+
+// unmetAnyOf is the "one of these abilities" part, unmet when no ability reaches
+// its minimum. A list of zeros is never met.
+func unmetAnyOf(p FeatPrerequisite, score map[Ability]int) (FeatUnmet, bool) {
+	if len(p.AnyOf) == 0 {
+		return FeatUnmet{}, false
+	}
+	met := false
+	var all []AbilityMinimum
+	for _, a := range AllAbilities() {
+		if least := p.AnyOf[a]; least > 0 {
+			all = append(all, AbilityMinimum{Ability: a, Minimum: least})
+			met = met || score[a] >= least
 		}
 	}
+	return FeatUnmet{Kind: FeatUnmetAbilityAnyOf, Abilities: all}, !met
+}
+
+// unmetOthers are the proficiency, the spellcasting, the race and the level the
+// character lacks, in that order.
+func unmetOthers(p FeatPrerequisite, b Build, d Derived) []FeatUnmet {
+	var out []FeatUnmet
 	if p.Proficiency != "" && !hasProficiency(d, p.Proficiency) {
 		out = append(out, FeatUnmet{Kind: FeatUnmetProficiency, Key: p.Proficiency})
 	}
@@ -302,19 +323,38 @@ func hasProficiency(d Derived, key string) bool {
 // real, the keys it names exist and the numbers are in range. owner is the feat's
 // key, for the messages; it returns the first problem and the field it is at.
 func (c *content) checkFeatShape(f *srd51.Feat) (field, msg string) {
-	for _, m := range []struct {
-		name string
-		set  map[string]int
-	}{{"minimums", f.Minimums}, {"any_of", f.AnyOf}} {
-		for k, v := range m.set {
-			if _, ok := abilityIndex[Ability(k)]; !ok {
-				return m.name, fmt.Sprintf("unknown ability %q", k)
-			}
-			if v < 1 || v > MaxScore {
-				return m.name, fmt.Sprintf("the minimum score of %s is 1 to %d", k, MaxScore)
-			}
+	if field, msg = checkFeatScores("minimums", f.Minimums); field != "" {
+		return field, msg
+	}
+	if field, msg = checkFeatScores("any_of", f.AnyOf); field != "" {
+		return field, msg
+	}
+	if field, msg = c.checkFeatKeys(f); field != "" {
+		return field, msg
+	}
+	if f.Level < 0 || f.Level > MaxLevel {
+		return "level", fmt.Sprintf("the level is 0 to %d", MaxLevel)
+	}
+	return "", ""
+}
+
+// checkFeatScores checks one set of minimum scores of a prerequisite, named
+// name: real abilities, each 1 to MaxScore.
+func checkFeatScores(name string, set map[string]int) (field, msg string) {
+	for k, v := range set {
+		if _, ok := abilityIndex[Ability(k)]; !ok {
+			return name, fmt.Sprintf("unknown ability %q", k)
+		}
+		if v < 1 || v > MaxScore {
+			return name, fmt.Sprintf("the minimum score of %s is 1 to %d", k, MaxScore)
 		}
 	}
+	return "", ""
+}
+
+// checkFeatKeys checks the proficiency and the race (or subrace) a prerequisite
+// names exist.
+func (c *content) checkFeatKeys(f *srd51.Feat) (field, msg string) {
 	if f.Proficiency != "" {
 		if _, ok := c.proficiencies[f.Proficiency]; !ok {
 			return "proficiency", fmt.Sprintf("unknown proficiency %q", f.Proficiency)
@@ -326,9 +366,6 @@ func (c *content) checkFeatShape(f *srd51.Feat) (field, msg string) {
 		if !race && !subrace {
 			return "race", fmt.Sprintf("unknown race or subrace %q", f.Race)
 		}
-	}
-	if f.Level < 0 || f.Level > MaxLevel {
-		return "level", fmt.Sprintf("the level is 0 to %d", MaxLevel)
 	}
 	return "", ""
 }
