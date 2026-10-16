@@ -1453,9 +1453,10 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
       await expect(p.getByRole('status').filter({ hasText: 'Teste contra a morte' })).toBeVisible();
       if (i === 0) {
         // The result line shows while the roll call is still running (the app marks itself busy and disables every button that
-        // takes a call, "Encerrar concentração" among them), and axe reads a button's colour live but its disabled state from
-        // a snapshot of the page: scanned mid-way, the disabled grey is judged as a live label. Wait for the busy state to end.
-        await expect(p.getByRole('button', { name: 'Encerrar concentração' })).toBeEnabled();
+        // takes a call), and axe reads a button's colour live but its disabled state from a snapshot of the page: scanned
+        // mid-way, a disabled grey is judged as a live label. Wait for the busy state to end on "Encerrar turno", which is on
+        // the screen for the whole turn ("Encerrar concentração" is not: the concentration can end while the call lands).
+        await expect(p.getByRole('button', { name: 'Encerrar turno' })).toBeEnabled();
         await expectScreenPasses(p, `Caído, depois de rolar ${where}`);
       }
       await endTurnOf(p, m, campaignId, 'Pensantus');
