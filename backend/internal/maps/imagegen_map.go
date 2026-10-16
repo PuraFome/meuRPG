@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"maps"
 	"slices"
 	"uuid"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/refimg"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -268,26 +270,10 @@ func (s *Service) playersSeenOf(ctx context.Context, campaignID string, sub *sub
 	var view *vision.View
 	isFog := fogged(sub.row)
 	if isFog {
-		points, err := s.queries.ListMapPoints(ctx, sub.row.ID)
-		if err != nil {
-			return nil, s.dbError(ctx, "list the points", err)
-		}
-		sg, err := s.newSight(ctx, nil, fogInputOfRow(sub.row, sub.imgW, sub.imgH), points, sub.tokens)
-		if err != nil {
-			return nil, s.dbError(ctx, "work out what the players see", err)
-		}
-		sg.group = true // every player character's view, joined
-		v, onMap := sg.viewOf("")
-		if !onMap {
-			out.nobody = true
-			out.seen = make([]bool, sub.g.Squares())
-			return out, nil
-		}
-		view = v
-		var some bool
-		out.seen, some = seenSquares(sub.g, view)
-		if !some { // characters on the map that see nothing (magical darkness, blind): no view
-			out.nobody = true
+		var done bool
+		if view, done, err = s.groupView(ctx, sub, out); err != nil {
+			return nil, err
+		} else if done {
 			return out, nil
 		}
 	}
@@ -304,31 +290,65 @@ func (s *Service) playersSeenOf(ctx context.Context, campaignID string, sub *sub
 		byID[c.GetId()] = c
 	}
 	for _, t := range sub.tokens {
-		c, ok := byID[t.CharacterID]
-		if !ok {
-			continue // dead, or waiting for approval
-		}
-		at := sub.g.SquareOf(int(t.XBp), int(t.YBp))
-		party := c.GetKind() == charactersv1.CharacterKind_CHARACTER_KIND_PLAYER
-		if !party {
-			out.npcTokens = append(out.npcTokens, t.CharacterID)
-		}
-		if party {
-			if sq, ok := combat.Positions[t.CharacterID]; ok {
-				at = sq
-			}
-		} else if t.Hidden || combat.Running {
-			continue
-		}
-		if isFog && view.At(at) < vision.SeenGrey {
-			continue // not on a square anyone sees now
-		}
-		out.markers = append(out.markers, refimg.Marker{Col: at.Col, Row: at.Row, Party: party})
-		if !party {
-			out.npcs = append(out.npcs, npcSeen{id: t.CharacterID, name: c.GetName()})
+		if c, ok := byID[t.CharacterID]; ok { // not dead, nor waiting for approval
+			out.addToken(sub, t, c, combat, view)
 		}
 	}
 	return out, nil
+}
+
+// groupView works out the joined view of every player's character on a fog map
+// into out.seen. done is true when there is nothing more to read: nobody is on the
+// map, or the characters on it see nothing (magical darkness, blind: no view).
+func (s *Service) groupView(ctx context.Context, sub *subject, out *playersSeen) (view *vision.View, done bool, err error) {
+	points, err := s.queries.ListMapPoints(ctx, sub.row.ID)
+	if err != nil {
+		return nil, false, s.dbError(ctx, "list the points", err)
+	}
+	sg, err := s.newSight(ctx, nil, fogInputOfRow(sub.row, sub.imgW, sub.imgH), points, sub.tokens)
+	if err != nil {
+		return nil, false, s.dbError(ctx, "work out what the players see", err)
+	}
+	sg.group = true // every player character's view, joined
+	view, onMap := sg.viewOf("")
+	if !onMap {
+		out.nobody = true
+		out.seen = make([]bool, sub.g.Squares())
+		return view, true, nil
+	}
+	var some bool
+	out.seen, some = seenSquares(sub.g, view)
+	if !some {
+		out.nobody = true
+		return view, true, nil
+	}
+	return view, false, nil
+}
+
+// addToken puts a token of a living character in the players' view: a marker, and for
+// an NPC its entry in the pickable list. The party sits where its combat square is
+// while a combat runs; an NPC that is hidden, or any NPC while a combat runs, is left
+// out. With the fog on (view is not nil), only a square seen now counts.
+func (p *playersSeen) addToken(sub *subject, t mapsdb.MapToken, c *charactersv1.CharacterSummary, combat link.CombatPositions, view *vision.View) {
+	at := sub.g.SquareOf(int(t.XBp), int(t.YBp))
+	party := c.GetKind() == charactersv1.CharacterKind_CHARACTER_KIND_PLAYER
+	if !party {
+		p.npcTokens = append(p.npcTokens, t.CharacterID)
+	}
+	if party {
+		if sq, ok := combat.Positions[t.CharacterID]; ok {
+			at = sq
+		}
+	} else if t.Hidden || combat.Running {
+		return
+	}
+	if view != nil && view.At(at) < vision.SeenGrey {
+		return // not on a square anyone sees now
+	}
+	p.markers = append(p.markers, refimg.Marker{Col: at.Col, Row: at.Row, Party: party})
+	if !party {
+		p.npcs = append(p.npcs, npcSeen{id: t.CharacterID, name: c.GetName()})
+	}
 }
 
 // seenSquares says which squares a view sees, and whether it sees any.
@@ -478,29 +498,9 @@ func (s *Service) GenerateMapImage(
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	objects, err := cleanImageIDs(req.Msg.GetObjectImageIds(), gen.MaxObjectReferences, "object_image_ids")
+	objects, characters, npcs, err := cleanMapReferences(req.Msg, layout)
 	if err != nil {
 		return nil, err
-	}
-	characters, err := cleanImageIDs(req.Msg.GetCharacterImageIds(), gen.MaxCharacterReferences, "character_image_ids")
-	if err != nil {
-		return nil, err
-	}
-	npcs, err := cleanNpcIDs(req.Msg.GetNpcCharacterIds())
-	if err != nil {
-		return nil, err
-	}
-	if hasDuplicates(append(append([]string{}, objects...), characters...)) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an image is listed twice as a reference"))
-	}
-	// The textured map takes no characters at all: it can become the map the players read.
-	if layout == gen.LayoutTexture {
-		if len(npcs) > 0 {
-			return nil, errField("npc_character_ids", "must be empty for a textured map")
-		}
-		if len(characters) > 0 {
-			return nil, errField("character_image_ids", "must be empty for a textured map")
-		}
 	}
 	name, err := imageNameOf(req.Msg.GetName(), "")
 	if err != nil {
@@ -516,6 +516,36 @@ func (s *Service) GenerateMapImage(
 		return nil, err
 	}
 	return connect.NewResponse(&mapsv1.GenerateMapImageResponse{Generation: s.generationToProto(row), Status: status}), nil
+}
+
+// cleanMapReferences checks the images and NPCs of a request made from a map: the
+// counts, the IDs, the repeats, and that a textured map takes no characters at all
+// (it can become the map the players read).
+func cleanMapReferences(req *mapsv1.GenerateMapImageRequest, layout string) (objects, characters, npcs []string, err error) {
+	objects, err = cleanImageIDs(req.GetObjectImageIds(), gen.MaxObjectReferences, "object_image_ids")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	characters, err = cleanImageIDs(req.GetCharacterImageIds(), gen.MaxCharacterReferences, "character_image_ids")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	npcs, err = cleanNpcIDs(req.GetNpcCharacterIds())
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if hasDuplicates(append(append([]string{}, objects...), characters...)) {
+		return nil, nil, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an image is listed twice as a reference"))
+	}
+	if layout == gen.LayoutTexture {
+		if len(npcs) > 0 {
+			return nil, nil, nil, errField("npc_character_ids", "must be empty for a textured map")
+		}
+		if len(characters) > 0 {
+			return nil, nil, nil, errField("character_image_ids", "must be empty for a textured map")
+		}
+	}
+	return objects, characters, npcs, nil
 }
 
 // cleanNpcIDs checks the NPC IDs of a request: UUIDs, no repeats, at most as many as
@@ -551,37 +581,12 @@ func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newReque
 		}
 		return err
 	}
-	// The textured map takes no characters (GenerateMapImage refused them): no players'
-	// view is worked out for it. The scene art and the isometric view start from it.
-	players := &playersSeen{}
-	if n.mapReq.layout != gen.LayoutTexture {
-		if players, err = s.playersSeenOf(ctx, campaignID, sub); err != nil {
-			return err
-		}
-		if players.nobody {
-			return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING, status)
-		}
-	} else {
-		if int64(sub.imgW)*int64(sub.imgH) > maxTexturePixels {
-			return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE, status)
-		}
-		if err := s.checkTexturePortraits(ctx, campaignID, n, sub); err != nil {
-			return err
-		}
-	}
-	if n.mapReq.layout != gen.LayoutTexture {
-		if err := s.checkCharacters(ctx, campaignID, n, p, players); err != nil {
-			return err
-		}
+	players, err := s.mapPlayers(ctx, campaignID, n, p, sub, status)
+	if err != nil {
+		return err
 	}
 	if n.name == "" {
-		// The map's name only when the players already see the map: a hidden map's name can be a
-		// secret, and they read the name of a picture they are shown (RN-10).
-		if sub.row.RevealedAt != nil {
-			p.name = suffixedName(sub.row.Name, " · "+kindNamePT(n.kind))
-		} else {
-			p.name = datedName(kindTitlePT(n.kind), s.now())
-		}
+		p.name = s.defaultMapPictureName(n.kind, sub.row)
 	}
 	ref, err := s.referenceOf(n.mapReq.layout, sub, players, refimg.Side)
 	if err != nil {
@@ -600,6 +605,38 @@ func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newReque
 		p.rooms = sub.rooms
 	}
 	return nil
+}
+
+// mapPlayers checks what the request may say of the map's creatures and returns the
+// players' view. The textured map takes no characters (GenerateMapImage refused them):
+// no view is worked out for it, but its map must fit a texture and no object may be an
+// NPC's portrait. The scene art and the isometric view start from the players' view.
+func (s *Service) mapPlayers(ctx context.Context, campaignID string, n *newRequest, p *prepared, sub *subject, status *mapsv1.ImageGenerationStatus) (*playersSeen, error) {
+	if n.mapReq.layout == gen.LayoutTexture {
+		if int64(sub.imgW)*int64(sub.imgH) > maxTexturePixels {
+			return nil, errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_IMAGE_TOO_LARGE, status)
+		}
+		return &playersSeen{}, s.checkTexturePortraits(ctx, campaignID, n, sub)
+	}
+	players, err := s.playersSeenOf(ctx, campaignID, sub)
+	if err != nil {
+		return nil, err
+	}
+	if players.nobody {
+		return nil, errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_PLAYERS_SEE_NOTHING, status)
+	}
+	return players, s.checkCharacters(ctx, campaignID, n, p, players)
+}
+
+// defaultMapPictureName is the name of a picture made from a map when the master
+// gave none: the map's name only when the players already see the map (a hidden
+// map's name can be a secret, and they read the name of a picture they are shown,
+// RN-10), else a dated one.
+func (s *Service) defaultMapPictureName(kind string, row mapsdb.Map) string {
+	if row.RevealedAt != nil {
+		return suffixedName(row.Name, " · "+kindNamePT(kind))
+	}
+	return datedName(kindTitlePT(kind), s.now())
 }
 
 // kindTitlePT is the way a picture of a map was made, at the start of a default name ("Vista isométrica · 06/10").
@@ -664,30 +701,48 @@ func (s *Service) checkCharacters(ctx context.Context, campaignID string, n *new
 			return errField("npc_character_ids", "has a creature the players do not see")
 		}
 	}
+	if err := s.checkHiddenPortraits(ctx, campaignID, n, players, visible); err != nil {
+		return err
+	}
+	return s.addNpcPortraits(ctx, campaignID, n, p)
+}
+
+// checkHiddenPortraits refuses, as a character or as an object, the portrait of an NPC
+// whose token is on the map and whom the players do not see.
+func (s *Service) checkHiddenPortraits(ctx context.Context, campaignID string, n *newRequest, players *playersSeen, visible map[string]bool) error {
 	var hidden []string
 	for _, id := range players.npcTokens {
 		if !visible[id] {
 			hidden = append(hidden, id)
 		}
 	}
-	if len(hidden) > 0 && (len(n.characters) > 0 || len(n.references) > 0) {
-		portraits, err := s.characters.NpcPortraits(ctx, nil, campaignID, hidden)
-		if err != nil {
-			return s.dbError(ctx, "read the portraits", err)
+	if len(hidden) == 0 || len(n.characters) == 0 && len(n.references) == 0 {
+		return nil
+	}
+	portraits, err := s.characters.NpcPortraits(ctx, nil, campaignID, hidden)
+	if err != nil {
+		return s.dbError(ctx, "read the portraits", err)
+	}
+	// In the order of the NPCs, so the same request always gets the same refusal.
+	for _, npc := range slices.Sorted(maps.Keys(portraits)) {
+		img := portraits[npc]
+		if img == "" {
+			continue
 		}
-		for _, img := range portraits {
-			if img == "" {
-				continue
-			}
-			// The portrait is refused wherever it comes: as a character, or chosen as an object.
-			if slices.Contains(n.characters, img) {
-				return errField("character_image_ids", "has the portrait of a creature the players do not see")
-			}
-			if slices.Contains(n.references, img) {
-				return errField("object_image_ids", "has the portrait of a creature the players do not see")
-			}
+		// The portrait is refused wherever it comes: as a character, or chosen as an object.
+		if slices.Contains(n.characters, img) {
+			return errField("character_image_ids", "has the portrait of a creature the players do not see")
+		}
+		if slices.Contains(n.references, img) {
+			return errField("object_image_ids", "has the portrait of a creature the players do not see")
 		}
 	}
+	return nil
+}
+
+// addNpcPortraits adds the portraits of the NPCs the master marked to p, as characters
+// (once each, also when the master picked the image too), within the characters' cap.
+func (s *Service) addNpcPortraits(ctx context.Context, campaignID string, n *newRequest, p *prepared) error {
 	if len(n.mapReq.npcs) == 0 {
 		return nil
 	}
