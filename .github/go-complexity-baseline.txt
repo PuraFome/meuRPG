@@ -28,7 +28,6 @@ cognitive internal/play (*Service).GiveBardicInspirationOutside 29
 cognitive internal/play (*Service).ReleaseGrapple 23
 cognitive internal/play (*Service).ResolveShove 52
 cognitive internal/play (*Service).RespondContest 68
-cognitive internal/play (*Service).RevealHider 18
 cognitive internal/play (*Service).answerCounterspell 19
 cognitive internal/play (*Service).castProto 34
 cognitive internal/play (*Service).checkOnSolve 18
@@ -50,7 +49,6 @@ cognitive internal/play (*Service).sightUndo 16
 cognitive internal/play (*Service).spellAttack 16
 cognitive internal/play (*Service).spellSave 28
 cognitive internal/play (*Service).spellTargetsFor 24
-cognitive internal/play (*Service).syncContests 26
 cognitive internal/play (*contestReader).contestView 46
 cognitive internal/play (*contestReader).helpViews 17
 cognitive internal/play (*contestReader).state 16
@@ -87,6 +85,5 @@ cyclomatic internal/play (*Service).sightChange 40
 cyclomatic internal/play (*Service).spellAttack 16
 cyclomatic internal/play (*Service).spellSave 25
 cyclomatic internal/play (*Service).spellTargetsFor 16
-cyclomatic internal/play (*Service).syncContests 19
 cyclomatic internal/play (*contestReader).contestView 39
 maintainability internal/play (*Service).ApplyPendingDamage 16
