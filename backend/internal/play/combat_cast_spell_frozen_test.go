@@ -57,12 +57,12 @@ func (g *castGolden) settle(t *testing.T, path string) {
 		sb.WriteString("== " + n + " ==\n" + g.blocks[n] + "\n")
 	}
 	if os.Getenv("UPDATE_GOLDEN") != "" {
-		if err := os.WriteFile(path, []byte(sb.String()), 0o644); err != nil { //nolint:gosec // a test's golden file
+		if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
 			t.Fatalf("write %s: %v", path, err)
 		}
 		return
 	}
-	want, err := os.ReadFile(path) //nolint:gosec // a test's golden file
+	want, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
 	}
@@ -98,12 +98,12 @@ func castLabels(e *playv1.Encounter) map[string]string {
 }
 
 // spellJSON is a message as sorted JSON, with the ids replaced by labels.
-func spellJSON(m proto.Message, names map[string]string, clear ...string) string {
+func spellJSON(m proto.Message, names map[string]string, omit ...string) string {
 	if m == nil || !m.ProtoReflect().IsValid() {
 		return ""
 	}
 	c := proto.Clone(m)
-	for _, f := range clear {
+	for _, f := range omit {
 		if fd := c.ProtoReflect().Descriptor().Fields().ByName(protoreflect.Name(f)); fd != nil {
 			c.ProtoReflect().Clear(fd)
 		}
@@ -219,6 +219,7 @@ type castPlay func(t *testing.T) (a *armed, before int, res *playv1.CastSpellRes
 // castOn is a scenario that plays its own fight.
 func castOn(name string, play castPlay) castScenario {
 	return castScenario{name: name, run: func(t *testing.T) string {
+		t.Helper()
 		a, before, res, err := play(t)
 		return a.castReport(t, before, res, err)
 	}}
@@ -295,6 +296,7 @@ func asCaio(a *armed) *user { return a.caio }
 // scenario plays the fight and the cast.
 func (f castFight) scenario(name string) castScenario {
 	return castOn(name, func(t *testing.T) (*armed, int, *playv1.CastSpellResponse, error) {
+		t.Helper()
 		a := newCasters(t)
 		e := a.castersFight(t, 1)
 		if f.turn != "" {
@@ -327,7 +329,7 @@ func pensantus(spell string, slot *playv1.SpellSlot, edit func(*playv1.CastSpell
 
 // TestCastSpellIsFrozen runs every scenario on a fight of its own and compares what each reads with the
 // golden.
-func TestCastSpellIsFrozen(t *testing.T) {
+func TestCastSpellIsFrozen(t *testing.T) { //nolint:tparallel // the golden is compared once every scenario of the group has run
 	t.Parallel()
 	g := &castGolden{}
 	t.Run("scenarios", func(t *testing.T) {
@@ -379,7 +381,7 @@ func (f castFight) first(before func(t *testing.T, a *armed, e *playv1.Encounter
 
 // queued is a fight step that queues the dice the cast will roll.
 func queued(faces ...int) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
-	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+	return func(_ *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
 		a.h.roller.queue(faces...)
 		return e
 	}
@@ -388,6 +390,7 @@ func queued(faces ...int) func(t *testing.T, a *armed, e *playv1.Encounter) *pla
 // hurtTo sets the hit points of a player's character before the cast.
 func hurtTo(label string, hp int32) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
 	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+		t.Helper()
 		c := map[string]*charactersv1.Character{"Toren": a.toren, "Pensantus": a.pens, "Brisa": a.bri}[label]
 		a.correct(t, c, hpIs(hp))
 		return e
@@ -397,6 +400,7 @@ func hurtTo(label string, hp int32) func(t *testing.T, a *armed, e *playv1.Encou
 // castFirst casts a spell as Pensantus (a request that has to go through) before the scenario's own.
 func castFirst(spell string, slot *playv1.SpellSlot, roll func(*playv1.CastSpellRequest), targets ...string) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
 	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+		t.Helper()
 		if roll == nil {
 			roll = noCastRoll
 		}
@@ -408,6 +412,7 @@ func castFirst(spell string, slot *playv1.SpellSlot, roll func(*playv1.CastSpell
 // defeat takes a combatant to 0 hit points with the master's correction.
 func defeat(label string) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
 	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+		t.Helper()
 		if _, err := a.adjustHP(t, e, label, func(r *playv1.AdjustCombatantHitPointsRequest) {
 			r.Change = &playv1.AdjustCombatantHitPointsRequest_Damage{Damage: 200}
 		}); err != nil {
@@ -474,6 +479,7 @@ func castRequestScenarios() []castScenario {
 			}
 		}).by(asMasterOf)),
 		castOn("ten goblins asleep", func(t *testing.T) (*armed, int, *playv1.CastSpellResponse, error) {
+			t.Helper()
 			a := newCasters(t)
 			e := a.castersFight(t, 10)
 			before := a.castEvents(t)
@@ -488,6 +494,7 @@ func asMasterOf(a *armed) *user { return a.master }
 // slotsAllUsed spends every spell slot of a player's character before the cast.
 func slotsAllUsed(label string) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
 	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+		t.Helper()
 		c := map[string]*charactersv1.Character{"Toren": a.toren, "Pensantus": a.pens, "Brisa": a.bri}[label]
 		if _, err := a.h.pool.Exec(t.Context(), `UPDATE character_vitals SET spell_slots_used = '{9,9,9}' WHERE character_id = $1`, c.GetId()); err != nil {
 			t.Fatalf("spend the slots: %v", err)
@@ -499,6 +506,7 @@ func slotsAllUsed(label string) func(t *testing.T, a *armed, e *playv1.Encounter
 // deadToren leaves Toren dead (three failed death saves), and confirmed when confirm is set.
 func deadToren(confirm bool) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
 	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+		t.Helper()
 		a.correct(t, a.toren, hpIs(0))
 		if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET death_failures = 3 WHERE id = $1`, a.id(t, "Toren")); err != nil {
 			t.Fatalf("set the failed saves: %v", err)
@@ -573,14 +581,17 @@ func castRefusalScenarios() []castScenario {
 		castRefused("a reaction spell", pensantus(shieldSpell, slotOfLevel(1), nil).to()),
 		castRefused("a second action spell", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) { r.Targets[0].Darts = 3 }).first(castFirst(sleepSpell, slotOfLevel(1), poolInApp, "Goblin"))),
 		castRefused("a second bonus action spell", brisa(healingWord, slotOfLevel(1), nil).to("Toren").first(func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+			t.Helper()
 			a.mustCast(t, a.bia, e, "Brisa", healingWord, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
 			return a.get(t, a.master)
 		})),
 		castRefused("a leveled spell after a bonus action spell", brisa(cureWounds, slotOfLevel(1), nil).to("Toren").first(func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+			t.Helper()
 			a.mustCast(t, a.bia, e, "Brisa", healingWord, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
 			return a.get(t, a.master)
 		})),
 		castRefused("a bonus action spell after a leveled spell", brisa(healingWord, slotOfLevel(1), nil).to("Toren").first(func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+			t.Helper()
 			a.mustCast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
 			return a.get(t, a.master)
 		})),
@@ -615,11 +626,13 @@ func castRefusalScenarios() []castScenario {
 		castRefused("darts for another spell", pensantus(holdPerson, slotOfLevel(2), func(r *playv1.CastSpellRequest) { r.Targets[0].Darts = 1 })),
 		castRefused("a spell with no target", pensantus(holdPerson, slotOfLevel(2), nil).to()),
 		castRefused("two targets for a single target spell", pensantus(holdPerson, slotOfLevel(2), nil).to("Goblin", "Capitão Goblin")),
-		castRefused("a target out of range", pensantus(holdPerson, slotOfLevel(2), nil).first(func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+		castRefused("a target out of range", pensantus(holdPerson, slotOfLevel(2), nil).first(func(t *testing.T, a *armed, _ *playv1.Encounter) *playv1.Encounter {
+			t.Helper()
 			a.put(t, "Goblin", 19, 9)
 			return a.get(t, a.master)
 		})),
-		castRefused("a target behind total cover", pensantus(holdPerson, slotOfLevel(2), nil).first(func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+		castRefused("a target behind total cover", pensantus(holdPerson, slotOfLevel(2), nil).first(func(t *testing.T, a *armed, _ *playv1.Encounter) *playv1.Encounter {
+			t.Helper()
 			if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET cover_mark = 'total' WHERE label = 'Goblin'`); err != nil {
 				t.Fatalf("mark the cover: %v", err)
 			}
@@ -632,10 +645,12 @@ func castRefusalScenarios() []castScenario {
 		castRefused("a pool spell with no roll", pensantus(sleepSpell, slotOfLevel(1), nil)),
 		castRefused("a pool spell with a d20 face", pensantus(sleepSpell, slotOfLevel(1), d20Face(10))),
 		castRefused("a spell attack in app for a player who rolls physical dice", brisa(guidingBolt, slotOfLevel(1), poolInApp).first(func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+			t.Helper()
 			a.setPhysical(t, a.bia)
 			return e
 		})),
 		castRefused("a spell attack with a face for a player who rolls in the app", brisa(guidingBolt, slotOfLevel(1), d20Face(14)).first(func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+			t.Helper()
 			a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_APP)
 			return e
 		})),
@@ -667,6 +682,7 @@ func castThroughScenarios() []castScenario {
 		pensantus(holdPerson, slotOfLevel(2), nil).first(queued(4)).scenario("hold person"),
 		pensantus(holdPerson, slotOfLevel(2), nil).to("Capitão Goblin").first(queued(19)).scenario("hold person saved"),
 		pensantus(holdPerson, slotOfLevel(2), nil).first(func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+			t.Helper()
 			e = castFirst(webSpell, slotOfLevel(2), nil, "Goblin")(t, a, e)
 			a.passTo(t, e, "Toren")
 			return a.passTo(t, e, "Pensantus")

@@ -300,7 +300,6 @@ cognitive internal/play (*Service).castCharacterEffects 20
 cognitive internal/play (*Service).castHPSpell 77
 cognitive internal/play (*Service).castProto 34
 cognitive internal/play (*Service).castRevivify 36
-cognitive internal/play (*Service).castSpell 297
 cognitive internal/play (*Service).changeExhaustion 90
 cognitive internal/play (*Service).changeRun 23
 cognitive internal/play (*Service).checkCastInput 17
@@ -739,7 +738,6 @@ cyclomatic internal/play (*Service).castCharacterEffects 16
 cyclomatic internal/play (*Service).castHPSpell 35
 cyclomatic internal/play (*Service).castProto 21
 cyclomatic internal/play (*Service).castRevivify 26
-cyclomatic internal/play (*Service).castSpell 150
 cyclomatic internal/play (*Service).changeExhaustion 48
 cyclomatic internal/play (*Service).checkOnSolve 16
 cyclomatic internal/play (*Service).checkOnWrong 24
@@ -909,7 +907,6 @@ maintainability internal/play (*Service).RollSceneCheck 13
 maintainability internal/play (*Service).SearchForTraps 5
 maintainability internal/play (*Service).StartEncounter 19
 maintainability internal/play (*Service).TakeAction 7
-maintainability internal/play (*Service).castSpell 0
 maintainability internal/play (*Service).rollAttack 0
 maintainability internal/play (*Service).rollDamage 4
 maintainability internal/play (*Service).settleTrapDamage 19
