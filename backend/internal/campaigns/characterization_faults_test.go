@@ -22,7 +22,7 @@ import (
 // (CreateCampaign, acceptInvite, SetCampaignXpMode, UpdateCampaignDocument):
 // every way they fail, with the action and the wrapped error they log, the
 // order of their checks, and the events they log. They freeze today's
-// behaviour so the handlers can be split into phases without changing it.
+// behavior so the handlers can be split into phases without changing it.
 //
 // A database error is made by campaignsQueryFaults: a pgx tracer on the
 // service's own pool that hands one named sqlc query an already canceled
@@ -397,10 +397,11 @@ func (w *acceptInviteWorld) wantAcceptedEvents(t *testing.T, pending ...bool) {
 	if len(recs) != len(pending) {
 		t.Fatalf("logged %v, want %d invite.accepted events", recs, len(pending))
 	}
-	for i, rec := range recs {
+	for i, p := range pending {
+		rec := recs[i]
 		want := map[string]any{
 			"level": "DEBUG", "msg": "event", "event": "invite.accepted",
-			"campaign_id": w.campaignID, "pending_approval": pending[i],
+			"campaign_id": w.campaignID, "pending_approval": p,
 		}
 		if len(rec) != len(want) {
 			t.Errorf("event %d = %v, want %v", i, rec, want)
