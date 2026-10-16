@@ -1,6 +1,7 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { GetMapResponse } from '../../../gen/meurpg/maps/v1/maps_pb';
+import { nextTurn } from '../../../test-settle';
 import { MapState } from './map-state';
 import { mapMessage, mapPoint, mapResponse, mapToken } from './maps-testing';
 
@@ -78,6 +79,43 @@ describe('MapState', () => {
     resolvers['a'](response('a'));
     await first;
     expect(state.map()?.id).toBe('b');
+  });
+
+  it('resolves an overtaken refresh only once the newer read is on screen (the trap search reads the names right after)', async () => {
+    const pending: ((r: GetMapResponse) => void)[] = [];
+    const state = new MapState(
+      () => new Promise<GetMapResponse>((resolve) => pending.push(resolve)),
+    );
+    const opened = state.open('a');
+    pending[0](response('a'));
+    await opened;
+    const empty = { ...response('a'), points: [] } as unknown as GetMapResponse;
+    state.apply(empty);
+
+    let mine = false;
+    const own = state.refresh().then(() => (mine = true)); // the caller that reads points() right after
+    const stream = state.refresh(); // map_changed from the stream, started before the first answer came
+    pending[1](response('a'));
+    await nextTurn();
+    expect(mine).toBe(false);
+    expect(state.points()).toEqual([]);
+
+    pending[2](response('a'));
+    await own;
+    await stream;
+    expect(state.points().map((p) => p.name)).toEqual(['Taverna']);
+  });
+
+  it('does not wait on an overtaken read when the map was closed meanwhile', async () => {
+    const pending: ((r: GetMapResponse) => void)[] = [];
+    const state = new MapState(
+      () => new Promise<GetMapResponse>((resolve) => pending.push(resolve)),
+    );
+    const opened = state.open('a');
+    await state.open(null);
+    pending[0](response('a'));
+    await opened;
+    expect(state.status()).toBe('idle');
   });
 
   it('moves a token without reading again, only on the open map', async () => {
