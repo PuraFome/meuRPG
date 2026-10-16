@@ -1,0 +1,400 @@
+{
+  "activity": [
+    {
+      "at": "2026-03-01T20:00:01Z",
+      "id": "search-toren-perception",
+      "search": {
+        "characterId": "toren",
+        "characterName": "Toren",
+        "foundNames": [
+          "Fosso A"
+        ],
+        "foundPointIds": [
+          "pitA"
+        ],
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            15
+          ],
+          "modifier": 3,
+          "total": 18
+        },
+        "skill": "TRAP_SEARCH_SKILL_PERCEPTION"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:02Z",
+      "id": "search-pens-investigation",
+      "search": {
+        "characterId": "pens",
+        "characterName": "Pensantus",
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            17
+          ],
+          "modifier": 2,
+          "rerolled": [
+            {
+              "from": 1,
+              "sourceKey": "trait:lucky",
+              "to": 4
+            }
+          ],
+          "total": 19
+        },
+        "secondRoll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            4
+          ],
+          "modifier": 2,
+          "total": 6
+        },
+        "skill": "TRAP_SEARCH_SKILL_INVESTIGATION"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:03Z",
+      "id": "search-bri-other",
+      "search": {
+        "characterId": "bri",
+        "characterName": "Brisa",
+        "foundNames": [
+          "Fosso B",
+          ""
+        ],
+        "foundPointIds": [
+          "pitB",
+          "lost"
+        ],
+        "otherSkillKey": "skill:stealth",
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            9
+          ],
+          "modifier": 1,
+          "physical": true,
+          "total": 11,
+          "treatedAs": 10,
+          "treatedAsSource": "feature:reliable-talent"
+        },
+        "secondRoll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            12
+          ],
+          "modifier": 1,
+          "physical": true,
+          "rerolled": [
+            {
+              "from": 1,
+              "sourceKey": "trait:lucky",
+              "to": 12
+            }
+          ],
+          "total": 13
+        },
+        "skill": "TRAP_SEARCH_SKILL_OTHER"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:04Z",
+      "id": "search-toren-lucky-second-missing",
+      "search": {
+        "characterId": "toren",
+        "characterName": "Toren",
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            20
+          ],
+          "total": 20
+        },
+        "skill": "TRAP_SEARCH_SKILL_PERCEPTION"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:05Z",
+      "id": "search-nobody",
+      "search": {
+        "foundNames": [
+          "Fosso A"
+        ],
+        "foundPointIds": [
+          "pitA"
+        ],
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            11
+          ],
+          "total": 11
+        },
+        "skill": "TRAP_SEARCH_SKILL_PERCEPTION"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:06Z",
+      "id": "notice-toren-pens",
+      "notice": {
+        "characterIds": [
+          "toren",
+          "pens"
+        ],
+        "characterNames": [
+          "Toren",
+          "Pensantus"
+        ],
+        "pointId": "pitA",
+        "trapName": "Fosso A"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:07Z",
+      "id": "notice-bri-toren",
+      "notice": {
+        "characterIds": [
+          "bri",
+          "toren"
+        ],
+        "characterNames": [
+          "Brisa",
+          "Toren"
+        ],
+        "pointId": "pitB",
+        "trapName": "Fosso B"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:08Z",
+      "id": "notice-lost-trap",
+      "notice": {
+        "characterIds": [
+          "bri"
+        ],
+        "characterNames": [
+          "Brisa"
+        ],
+        "pointId": "lost"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:14Z",
+      "firing": {
+        "caught": [
+          {
+            "attacks": [
+              {
+                "mode": "ROLL_MODE_NORMAL",
+                "outcome": "ATTACK_OUTCOME_HIT",
+                "roll": {
+                  "diceCount": 1,
+                  "diceSides": 20,
+                  "faces": [
+                    14
+                  ],
+                  "modifier": 5,
+                  "total": 19
+                },
+                "targetArmorClass": 15
+              }
+            ],
+            "characterId": "toren",
+            "conditionKeys": [
+              "condition:restrained"
+            ],
+            "damages": [
+              {
+                "amount": 4,
+                "damageId": "damage-rolled",
+                "damageTypeKey": "damage-type:piercing",
+                "damageTypePt": "perfurante",
+                "roll": {
+                  "diceCount": 1,
+                  "diceSides": 6,
+                  "faces": [
+                    4
+                  ],
+                  "total": 4
+                },
+                "status": "PENDING_DAMAGE_STATUS_ROLLED"
+              },
+              {
+                "amount": 3,
+                "damageId": "damage-applied",
+                "damageTypeKey": "damage-type:piercing",
+                "damageTypePt": "perfurante",
+                "roll": {
+                  "diceCount": 1,
+                  "diceSides": 6,
+                  "faces": [
+                    5
+                  ],
+                  "total": 5
+                },
+                "status": "PENDING_DAMAGE_STATUS_APPLIED"
+              },
+              {
+                "amount": 2,
+                "critical": true,
+                "damageId": "damage-discarded",
+                "damageTypeKey": "damage-type:fire",
+                "damageTypePt": "fogo",
+                "half": true,
+                "roll": {
+                  "diceCount": 1,
+                  "diceSides": 4,
+                  "faces": [
+                    2
+                  ],
+                  "total": 2
+                },
+                "status": "PENDING_DAMAGE_STATUS_DISCARDED"
+              },
+              {
+                "amount": 4,
+                "damageTypeKey": "damage-type:acid",
+                "damageTypePt": "ácido",
+                "roll": {
+                  "diceCount": 1,
+                  "diceSides": 4,
+                  "faces": [
+                    1
+                  ],
+                  "total": 1
+                },
+                "status": "PENDING_DAMAGE_STATUS_ROLLED"
+              }
+            ],
+            "save": {
+              "bonusKnown": true,
+              "dc": 13,
+              "mode": "ROLL_MODE_NORMAL",
+              "outcome": "SAVE_OUTCOME_FAILED",
+              "roll": {
+                "diceCount": 1,
+                "diceSides": 20,
+                "faces": [
+                  8
+                ],
+                "modifier": 2,
+                "total": 10
+              }
+            },
+            "saves": [
+              {
+                "bonusKnown": true,
+                "dc": 13,
+                "mode": "ROLL_MODE_NORMAL",
+                "outcome": "SAVE_OUTCOME_FAILED",
+                "roll": {
+                  "diceCount": 1,
+                  "diceSides": 20,
+                  "faces": [
+                    8
+                  ],
+                  "modifier": 2,
+                  "total": 10
+                }
+              }
+            ],
+            "targetId": "toren",
+            "targetLabel": "Toren"
+          },
+          {
+            "characterId": "pens",
+            "damages": [
+              {
+                "amount": 4,
+                "damageTypeKey": "damage-type:piercing",
+                "damageTypePt": "perfurante",
+                "roll": {
+                  "diceCount": 1,
+                  "diceSides": 6,
+                  "faces": [
+                    4
+                  ],
+                  "total": 4
+                },
+                "status": "PENDING_DAMAGE_STATUS_APPLIED",
+                "targetDefeated": true
+              }
+            ],
+            "targetId": "wolf",
+            "targetLabel": "Nanquim"
+          },
+          {
+            "characterId": "bri",
+            "targetId": "bri",
+            "targetLabel": "Brisa"
+          },
+          {
+            "characterId": "bri",
+            "conditionKeys": [
+              "condition:prone"
+            ],
+            "targetId": "bri",
+            "targetLabel": "Brisa"
+          }
+        ],
+        "id": "firing-one",
+        "name": "Fosso A",
+        "pointId": "pitA"
+      },
+      "id": "firing-one"
+    },
+    {
+      "at": "2026-03-01T20:00:18Z",
+      "firing": {
+        "caught": [
+          {
+            "characterId": "toren",
+            "conditionKeys": [
+              "condition:poisoned"
+            ],
+            "targetId": "toren",
+            "targetLabel": "Toren"
+          }
+        ],
+        "id": "firing-toren-only",
+        "name": "Fosso B",
+        "pointId": "pitB"
+      },
+      "id": "firing-toren-only"
+    },
+    {
+      "at": "2026-03-01T20:00:19Z",
+      "firing": {
+        "id": "firing-nobody",
+        "pointId": "lost"
+      },
+      "id": "firing-nobody"
+    },
+    {
+      "at": "2026-03-01T20:00:20Z",
+      "firing": {
+        "caught": [
+          {
+            "characterId": "goblin",
+            "targetId": "goblin",
+            "targetLabel": "Goblin"
+          }
+        ],
+        "id": "firing-an-npc",
+        "name": "Fosso B",
+        "pointId": "pitB"
+      },
+      "id": "firing-an-npc"
+    }
+  ]
+}
