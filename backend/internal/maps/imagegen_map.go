@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"maps"
 	"slices"
 	"uuid"
 
@@ -674,7 +675,9 @@ func (s *Service) checkCharacters(ctx context.Context, campaignID string, n *new
 		if err != nil {
 			return s.dbError(ctx, "read the portraits", err)
 		}
-		for _, img := range portraits {
+		// In the order of the NPCs, so the same request always gets the same refusal.
+		for _, npc := range slices.Sorted(maps.Keys(portraits)) {
+			img := portraits[npc]
 			if img == "" {
 				continue
 			}
