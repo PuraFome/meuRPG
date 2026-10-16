@@ -24,6 +24,7 @@ import {
   memberResult,
 } from '../../../core/combat/contest-master';
 import { checkNaturalMark } from '../../../core/combat/contest-view';
+import { luckyText } from '../../../core/combat/lucky';
 import { askedWho, askTaskGroups } from '../../../core/combat/ask-roll';
 import { GroupCheckState } from '../../../core/combat/group-check-state';
 import { HELP_TASKS } from '../../../core/combat/help-view';
@@ -83,6 +84,9 @@ function dcOf(text: string): number | null {
               <span class="tag" [class.tag--ok]="m.passedKnown && m.passed">{{ result(m) }}</span>
               @if (natural(m); as mark) {
                 <span class="tag" data-testid="natural-mark">{{ mark }}</span>
+              }
+              @if (lucky(m); as again) {
+                <span class="tag" data-testid="lucky">{{ again }}</span>
               }
               @if (!m.answered) {
                 <button
@@ -324,6 +328,11 @@ export class GroupCheckMaster {
   /** "20 natural" / "1 natural" beside the member's result: information only, the verdict is the total against the DC. */
   protected natural(m: GroupCheckMemberView): string {
     return checkNaturalMark(m.roll);
+  }
+
+  /** "Sortudo: 1 → 14" beside a halfling's result: the d20 that showed a 1 was rolled again, and the total is the new one. */
+  protected lucky(m: GroupCheckMemberView): string {
+    return luckyText(m.roll);
   }
 
   constructor() {

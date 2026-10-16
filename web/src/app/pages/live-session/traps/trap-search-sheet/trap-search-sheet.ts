@@ -18,12 +18,19 @@ import type { Observable } from 'rxjs';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { MapPointKind } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import type { SearchForTrapsResponse } from '../../../../../gen/meurpg/play/v1/traps_pb';
-import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import {
+  ResourceClient,
+  type InspirationRoll,
+  type LuckyRoll,
+} from '../../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import { InspirationOffer } from '../../inspiration/inspiration-offer';
+import { LuckyOfferCard } from '../../inspiration/lucky-offer';
+import { luckyText } from '../../../../core/combat/lucky';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type {
   DiceRoll,
+  LuckyOffer,
   OutsideInspirationOffer,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -98,7 +105,15 @@ export function openTrapSearch(
  */
 @Component({
   selector: 'app-trap-search-sheet',
-  imports: [CheckMode, ExtraDice, InspirationOffer, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [
+    CheckMode,
+    ExtraDice,
+    InspirationOffer,
+    LuckyOfferCard,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+  ],
   templateUrl: './trap-search-sheet.html',
   styleUrl: './trap-search-sheet.scss',
 })
@@ -155,7 +170,11 @@ export class TrapSearchSheet {
   protected readonly extra = new ExtraDiceState();
   /** The d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
   protected readonly offer = signal<OutsideInspirationOffer | null>(null);
+  /** The d20 was rolled and kept because a halfling's d20 shows a 1 ("Tirou 1: rolar de novo?"): asked before the die's. */
+  protected readonly luckyOffer = signal<LuckyOffer | null>(null);
   private readonly dieKey = new ActionKey();
+  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
+  private readonly luckyKey = new ActionKey();
   protected readonly result = signal<{
     res: SearchForTrapsResponse;
     names: readonly string[];
@@ -184,6 +203,8 @@ export class TrapSearchSheet {
           .map((x) => this.formula(x, r.skillLabel))
       : [];
   });
+  /** "Sortudo: 1 → 14": the held d20 the halfling's Lucky rolled again; the formula is already the new one. */
+  protected readonly lucky = computed(() => luckyText(this.result()?.res.roll));
   /** Both dice of a search with advantage or disadvantage, the one that counts marked. */
   protected readonly faces = computed(() => {
     const res = this.result()?.res;
@@ -362,8 +383,7 @@ export class TrapSearchSheet {
         other,
         extra,
       );
-      if (res.inspirationOffer) {
-        this.holdForDie(res.inspirationOffer);
+      if (this.holdFor(res.luckyOffer, res.inspirationOffer)) {
         return;
       }
       await this.showResult(res);
@@ -380,14 +400,23 @@ export class TrapSearchSheet {
     }
   }
 
-  /** The d20 is rolled and kept: the d20 alone tumbles, and the result is told after the answer. */
-  private holdForDie(offer: OutsideInspirationOffer): void {
-    this.offer.set(offer);
+  /** The d20 is rolled and kept for a question, the halfling's Lucky about a 1 (first) or the Bardic Inspiration die: the
+   * d20 alone tumbles, and the result is told after the answer. `false` when the search asks nothing. */
+  private holdFor(
+    lucky: LuckyOffer | undefined,
+    offer: OutsideInspirationOffer | undefined,
+  ): boolean {
+    if (!lucky && !offer) {
+      return false;
+    }
+    this.luckyOffer.set(lucky ?? null);
+    this.offer.set(lucky ? null : (offer ?? null));
     this.typing.set(false);
-    const held = showOfDice('Procurar armadilhas', offer.d20);
+    const held = showOfDice('Procurar armadilhas', (lucky ?? offer)?.d20);
     if (held) {
       this.animator.play(held);
     }
+    return true;
   }
 
   /** The search as the result card tells it. */
@@ -431,6 +460,41 @@ export class TrapSearchSheet {
       await this.showResult(res.result.value);
     } catch (err) {
       this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the search is made now with the new d20, or,
+   * when the character holds a Bardic Inspiration die, the die's question comes next, on the new roll. */
+  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
+    const offer = this.luckyOffer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideLucky(
+        this.data.campaignId,
+        offer.holdId,
+        reroll,
+        die,
+        this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
+      );
+      if (res.result.case !== 'trapSearch') {
+        throw new Error('AnswerOutsideLucky answered without its trap search');
+      }
+      this.luckyKey.renew();
+      this.luckyOffer.set(null);
+      const next = res.result.value.inspirationOffer;
+      if (next) {
+        this.holdFor(undefined, next);
+        return;
+      }
+      await this.showResult(res.result.value);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
     } finally {
       this.busy.set(false);
     }

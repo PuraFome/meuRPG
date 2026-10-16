@@ -209,9 +209,10 @@ func (s *Service) refuseWhileAsking(ctx context.Context, c *combatTx, attacker p
 	case err == nil && open.Round == c.enc.Round && open.IdempotencyKey != key:
 		return askingRefusal(open)
 	}
-	// A spell attack or a saving throw of the character waiting for the same die is a question too
-	// (inspiration_held.go); one of an earlier round is forgotten when the next such roll is made.
-	if !holds || !backedByCharacter(attacker) {
+	// A spell attack or a saving throw of the character waiting for the same die, or for its Lucky
+	// answer, is a question too (inspiration_held.go, inspiration_lucky.go); one of an earlier round
+	// is forgotten when the next such roll is made.
+	if !backedByCharacter(attacker) {
 		return nil
 	}
 	asking, err := c.q.ListInspirationHoldsOfCharacter(ctx, attacker.CharacterID)
@@ -219,8 +220,8 @@ func (s *Service) refuseWhileAsking(ctx context.Context, c *combatTx, attacker p
 		return fmt.Errorf("list the held rolls: %w", err)
 	}
 	die := heldDie{Combatant: &attacker, Round: c.enc.Round}
-	if slices.ContainsFunc(asking, func(h playdb.InspirationHold) bool { return !staleHold(h, die, true) }) {
-		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING, "answer the Bardic Inspiration question of the roll first")
+	if i := slices.IndexFunc(asking, func(h playdb.InspirationHold) bool { return !staleHold(h, die, holds) }); i >= 0 {
+		return outsideAskingRefusal(asking[i])
 	}
 	return nil
 }

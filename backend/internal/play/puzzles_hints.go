@@ -31,9 +31,11 @@ type hintTryResult struct {
 	replayed bool
 	sources  []*playv1.AdvantageSource
 	// offer is the question about a Bardic Inspiration die the try waits on: the d20 was rolled and
-	// kept, and nothing else of the result exists. bonus is the die the answer added.
+	// kept, and nothing else of the result exists. bonus is the die the answer added. lucky is the
+	// halfling's Lucky question the try waits on instead (it comes first).
 	offer *playv1.OutsideInspirationOffer
 	bonus *playv1.BonusDie
+	lucky *playv1.LuckyOffer
 }
 
 // TryPuzzleHint implements playv1connect.PuzzleServiceHandler.
@@ -84,8 +86,8 @@ func (s *Service) TryPuzzleHint(
 	if err != nil {
 		return nil, s.dbError(ctx, "try for a puzzle hint", err)
 	}
-	if res.offer != nil { // nothing was written: the question is the whole answer
-		return connect.NewResponse(&playv1.TryPuzzleHintResponse{InspirationOffer: res.offer}), nil
+	if res.offer != nil || res.lucky != nil { // nothing was written: the question is the whole answer
+		return connect.NewResponse(&playv1.TryPuzzleHintResponse{InspirationOffer: res.offer, LuckyOffer: res.lucky}), nil
 	}
 	if !res.replayed {
 		s.publishPuzzleChanged(m.CampaignID, id) // the master reads the try; the revision moved
@@ -119,7 +121,7 @@ func hintTryByKey(ctx context.Context, q *playdb.Queries, m authz.Membership, ru
 	done, err := q.GetPuzzleHintTryByKey(ctx, playdb.GetPuzzleHintTryByKeyParams{RunID: runID, IdempotencyKey: key})
 	switch {
 	case err == nil:
-		sameRoll := done.Physical != in.inApp && (in.inApp || sameTypedFaces(done.D20, done.D20B, done.Counted, in))
+		sameRoll := done.Physical != in.inApp && (in.inApp || sameTypedFaces(done, in))
 		if done.UserID == nil || *done.UserID != m.UserID || !sameRoll {
 			return playdb.PuzzleHintTry{}, false, errKeyReused()
 		}
@@ -237,13 +239,14 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return nil, err
 	}
 	// A character that holds a Bardic Inspiration die has the d20 kept until the player answers,
-	// before anything is spent or written; the answer brings it back with the die added.
-	step, err := s.outsideRoll(ctx, tx, q, m, holdHintTry, who.ID, key, raw, in, bonus, cm.Mode, options[0].ReliableTalent)
+	// before anything is spent or written, and so has a halfling's d20 that shows a 1, for the
+	// Lucky question; the answer brings it back (with the die added, or rolled again).
+	step, err := s.outsideRoll(ctx, tx, q, m, holdHintTry, who.ID, key, raw, in, bonus, cm.Mode, options[0].ReliableTalent, options[0].Lucky)
 	if err != nil {
 		return nil, err
 	}
 	if step.Held {
-		res.offer = step.Offer
+		res.offer, res.lucky = step.Offer, step.LuckyOffer
 		return nil, nil
 	}
 	spendTx, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
@@ -275,11 +278,16 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		g := clamp32(next+1, 1, maxHints)
 		granted = &g
 	}
+	var luckyAt *int32 // the d20 Lucky rolled again: the try keeps where, its faces the new one
+	if step.Lucky != nil {
+		luckyAt = new(clamp32(int(step.Lucky.Index), 0, 1))
+	}
 	try, err := q.InsertPuzzleHintTry(ctx, playdb.InsertPuzzleHintTryParams{
 		RunID: run.ID, UserID: &m.UserID, CharacterID: &who.ID, IdempotencyKey: key, HintIndex: clamp32(next, 0, maxHints),
 		Passed: passed, GrantedCount: granted, D20: clamp32(face, 1, 20), Modifier: clamp32(bonus+dieFace, -1000, 1000),
 		Total: clamp32(roll.Total, -1000, 1000), Physical: roll.Physical, CreatedAt: now,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
+		LuckyIndex: luckyAt,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("record the try: %w", err)
@@ -301,24 +309,46 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 }
 
 // hintRollProto is the try's d20: the pair when it was rolled with advantage or
-// disadvantage, with the one that counts marked.
+// disadvantage, with the one that counts marked, and the die Lucky rolled again.
 func hintRollProto(t playdb.PuzzleHintTry) *playv1.DiceRoll {
 	if t.D20B == 0 {
-		return treatedRoll(t.D20, t.Modifier, t.Total, t.Physical)
+		out := treatedRoll(t.D20, t.Modifier, t.Total, t.Physical)
+		out.Rerolled = hintLucky(t).proto()
+		return out
 	}
 	out := diceRoll(2, 20, pairOf(t.D20, t.D20B, t.Counted), t.Modifier, t.Total, t.Physical)
 	out.CountedIndex = t.Counted
+	out.Rerolled = hintLucky(t).proto()
 	return markTreated(out, t.Modifier, t.Total)
 }
 
-// sameTypedFaces says whether the dice a call types are the dice of the try made before.
-func sameTypedFaces(counted, other, index int32, in rollInput) bool {
-	if len(in.typedFaces) == 0 {
-		return other == 0 && int(counted) == in.typed
+// hintFaces are the try's d20 in the order rolled: the pair, or the one.
+func hintFaces(t playdb.PuzzleHintTry) []int32 {
+	if t.D20B == 0 {
+		return []int32{t.D20}
 	}
-	want := pairOf(counted, other, index)
-	if other == 0 {
-		want = []int32{counted}
+	return pairOf(t.D20, t.D20B, t.Counted)
+}
+
+// hintLucky is the d20 the halfling's Lucky rolled again on the try (it only ever rolls a 1
+// again, and the try keeps the new face): nil when none was.
+func hintLucky(t playdb.PuzzleHintTry) *luckyReroll {
+	faces := hintFaces(t)
+	if t.LuckyIndex == nil || int(*t.LuckyIndex) >= len(faces) {
+		return nil
+	}
+	return &luckyReroll{Index: *t.LuckyIndex, From: 1, To: faces[*t.LuckyIndex]}
+}
+
+// sameTypedFaces says whether the dice a call types are the dice of the try made before: the
+// faces it rolled, with the 1 Lucky rolled again put back (the request typed the 1).
+func sameTypedFaces(done playdb.PuzzleHintTry, in rollInput) bool {
+	want := hintFaces(done)
+	if r := hintLucky(done); r != nil {
+		want[r.Index] = r.From
+	}
+	if len(in.typedFaces) == 0 {
+		return len(want) == 1 && int(want[0]) == in.typed
 	}
 	if len(want) != len(in.typedFaces) {
 		return false

@@ -1406,8 +1406,12 @@ type RollSceneCheckResponse struct {
 	// Set instead of `roll` when the character holds a Bardic Inspiration die: the d20 was
 	// rolled and nothing was written; AnswerOutsideInspiration settles the roll.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,2,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Set instead of `roll` when the character is a halfling and a d20 shows a 1 (Lucky): the
+	// d20 was rolled and nothing was written; AnswerOutsideLucky rolls it again or keeps the 1.
+	// It comes before the die's question.
+	LuckyOffer    *LuckyOffer `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RollSceneCheckResponse) Reset() {
@@ -1450,6 +1454,13 @@ func (x *RollSceneCheckResponse) GetRoll() *SceneRoll {
 func (x *RollSceneCheckResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
+	}
+	return nil
+}
+
+func (x *RollSceneCheckResponse) GetLuckyOffer() *LuckyOffer {
+	if x != nil {
+		return x.LuckyOffer
 	}
 	return nil
 }
@@ -1672,10 +1683,12 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
 	"\td20_faces\x18\x06 \x03(\x05R\bd20Faces\x12&\n" +
 	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFacesB\x06\n" +
-	"\x04roll\"\x9d\x01\n" +
+	"\x04roll\"\xda\x01\n" +
 	"\x16RollSceneCheckResponse\x12-\n" +
 	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\x12T\n" +
-	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\"\xa4\x01\n" +
+	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x12;\n" +
+	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"luckyOffer\"\xa4\x01\n" +
 	"\x18GrantSceneAttemptRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
@@ -1740,6 +1753,7 @@ var file_meurpg_play_v1_scene_proto_goTypes = []any{
 	(*AdvantageSource)(nil),           // 27: meurpg.play.v1.AdvantageSource
 	(*BonusDie)(nil),                  // 28: meurpg.play.v1.BonusDie
 	(*OutsideInspirationOffer)(nil),   // 29: meurpg.play.v1.OutsideInspirationOffer
+	(*LuckyOffer)(nil),                // 30: meurpg.play.v1.LuckyOffer
 }
 var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SceneBlocked.reason:type_name -> meurpg.play.v1.SceneBlockedReason
@@ -1761,12 +1775,13 @@ var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	2,  // 16: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
 	11, // 17: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
 	29, // 18: meurpg.play.v1.RollSceneCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
-	2,  // 19: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	30, // 19: meurpg.play.v1.RollSceneCheckResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	2,  // 20: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_scene_proto_init() }

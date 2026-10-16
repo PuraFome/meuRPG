@@ -1,7 +1,10 @@
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { OutsideInspirationOfferSchema } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  LuckyOfferSchema,
+  OutsideInspirationOfferSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   PuzzleBlockedReason,
   PuzzleBlockedSchema,
@@ -344,6 +347,59 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
       expect(play.hintOffer()).toBeNull();
       expect(play.hintTry()?.passed).toBe(true);
       expect(play.run()?.hints).toEqual(['Uma dica.']);
+    });
+
+    it('holds the try for the Lucky question first, then the die’s on the new roll, then settles it', async () => {
+      const { fake, play } = setup();
+      fake.playerRunResult = { ...base, revision: 1 };
+      await play.open('p1');
+      fake.hintResult = () =>
+        create(TryPuzzleHintResponseSchema, {
+          luckyOffer: create(LuckyOfferSchema, { holdId: 'h1', luckyIndex: 0 }),
+        });
+      await play.tryHint({ inApp: true });
+      expect(play.hintLucky()?.holdId).toBe('h1');
+      expect(play.hintOffer()).toBeNull();
+      expect(play.hintTry()).toBeNull();
+      const asked: unknown[][] = [];
+      (fake as { answerHintLucky?: unknown }).answerHintLucky = async (...args: unknown[]) => {
+        asked.push(args);
+        return create(TryPuzzleHintResponseSchema, {
+          inspirationOffer: create(OutsideInspirationOfferSchema, { holdId: 'h1', sides: 8 }),
+        });
+      };
+      await play.answerHintLucky(true, { face: 14 });
+      expect(asked[0].slice(0, 4)).toEqual(['camp-1', 'h1', true, { face: 14 }]);
+      expect(play.hintLucky()).toBeNull();
+      expect(play.hintOffer()?.holdId).toBe('h1');
+      expect(play.hintTry()).toBeNull();
+      (fake as { answerHintDie?: unknown }).answerHintDie = async () =>
+        hintAnswer({ ...base, revision: 2, hints: ['Uma dica.'], sharedHints: 0 }, true, 17);
+      await play.answerHintDie(false, null);
+      expect(play.hintOffer()).toBeNull();
+      expect(play.hintTry()?.passed).toBe(true);
+    });
+
+    it('keeps the key of a Lucky answer that failed, so a retry never rolls the d20 twice', async () => {
+      const { fake, play } = setup();
+      fake.playerRunResult = { ...base, revision: 1 };
+      await play.open('p1');
+      fake.hintResult = () =>
+        create(TryPuzzleHintResponseSchema, {
+          luckyOffer: create(LuckyOfferSchema, { holdId: 'h1', luckyIndex: 0 }),
+        });
+      await play.tryHint({ inApp: true });
+      const keys: string[] = [];
+      (fake as { answerHintLucky?: unknown }).answerHintLucky = async (...args: unknown[]) => {
+        keys.push(args[4] as string);
+        throw new ConnectError('down', Code.Unavailable);
+      };
+      await play.answerHintLucky(true, { inApp: true });
+      await play.answerHintLucky(true, { inApp: true });
+      expect(keys).toHaveLength(2);
+      expect(keys[0]).toBe(keys[1]);
+      expect(play.hintLucky()?.holdId).toBe('h1');
+      expect(play.message()).toContain('Sortudo');
     });
 
     it('tries with the d20 rolled in the app, with its own key, and keeps the hint the player won', async () => {

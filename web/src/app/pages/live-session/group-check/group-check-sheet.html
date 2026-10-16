@@ -15,21 +15,43 @@
   }
 
   @if (stage() === 'roll') {
-    <div class="mr-notice mr-notice--neutral note">
-      <mat-icon aria-hidden="true">info</mat-icon>
-      <p>{{ askLine() }}</p>
-    </div>
-    <p class="line">Seu teste: <b>{{ modifierText() }}</b>.</p>
-    <app-check-roll-form
-      [mode]="mode()"
-      [notes]="notes()"
-      [modifier]="modifier()"
-      [checkName]="skill()"
-      [diceMode]="data.diceMode"
-      [preference]="data.preference"
-      [busy]="busy()"
-      (roll)="rollWith($event)"
-    />
+    @if (luckyOffer(); as l) {
+      <!-- The d20 shows a 1 and the character is a halfling: Lucky is asked before anything is written (SRD 5.1). -->
+      <app-lucky-offer
+        [offer]="l"
+        [canApp]="canApp"
+        [canType]="canType"
+        [preferApp]="preferApp"
+        [busy]="busy()"
+        (reroll)="answerLucky(true, $event)"
+        (keep)="answerLucky(false, null)"
+      />
+    } @else if (offer(); as o) {
+      <app-inspiration-offer
+        [offer]="o"
+        [canApp]="canApp"
+        [canType]="canType"
+        [busy]="busy()"
+        (use)="answerDie(true, $event)"
+        (keep)="answerDie(false, null)"
+      />
+    } @else {
+      <div class="mr-notice mr-notice--neutral note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>{{ askLine() }}</p>
+      </div>
+      <p class="line">Seu teste: <b>{{ modifierText() }}</b>.</p>
+      <app-check-roll-form
+        [mode]="mode()"
+        [notes]="notes()"
+        [modifier]="modifier()"
+        [checkName]="skill()"
+        [diceMode]="data.diceMode"
+        [preference]="data.preference"
+        [busy]="busy()"
+        (roll)="rollWith($event)"
+      />
+    }
   } @else {
     @if (roll(); as r) {
       <app-contest-roll [roll]="r" />

@@ -4,6 +4,7 @@ import { createClient } from '@connectrpc/connect';
 import type { CharacterVitals } from '../../../gen/meurpg/play/v1/play_pb';
 import {
   type AnswerOutsideInspirationResponse,
+  type AnswerOutsideLuckyResponse,
   type ConvertSpellSlotResponse,
   type CreateSpellSlotResponse,
   type GetOutsideInspirationResponse,
@@ -284,6 +285,32 @@ export class ResourceClient {
       idempotencyKey,
       roll:
         use && roll
+          ? 'inApp' in roll
+            ? { case: 'rollInApp', value: true }
+            : { case: 'typedFace', value: roll.face }
+          : { case: undefined },
+    });
+  }
+
+  /** The answer to the Lucky question of a held roll that is not a weapon attack (a scene check, a group check, a trap
+   * search, a puzzle hint try, a spell attack, an effect's saving throw or a concentration save): roll the d20 that
+   * showed the 1 again (in the app, or its typed face) or keep the 1. Answers the held path's own response, in the same
+   * oneof as `answerOutsideInspiration`: written, with the d20 rolled again in its `rerolled`; or, when the character
+   * holds a Bardic Inspiration die, still held, with the die's question on the new roll. `roll` is only for `reroll`. */
+  answerOutsideLucky(
+    campaignId: string,
+    holdId: string,
+    reroll: boolean,
+    roll: LuckyRoll | null,
+    idempotencyKey: string,
+  ): Promise<AnswerOutsideLuckyResponse> {
+    return this.client.answerOutsideLucky({
+      campaignId,
+      holdId,
+      reroll,
+      idempotencyKey,
+      roll:
+        reroll && roll
           ? 'inApp' in roll
             ? { case: 'rollInApp', value: true }
             : { case: 'typedFace', value: roll.face }

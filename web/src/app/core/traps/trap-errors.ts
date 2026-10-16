@@ -2,8 +2,14 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { MapBlockedReason, MapBlockedSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { combatErrorMessage, encounterBlocked, sessionClosed } from '../combat/combat-errors';
+import {
+  combatErrorMessage,
+  encounterBlocked,
+  pendingQuestionReasonText,
+  sessionClosed,
+} from '../combat/combat-errors';
 import { describeConnectError } from '../connect/connect-errors';
+import { resourceBlocked } from '../resources/resources-errors';
 
 /** The reason of a trap call that failed with `EncounterBlocked`, or `null`. */
 export function trapBlockedReason(err: unknown): EncounterBlockedReason | null {
@@ -32,6 +38,11 @@ export function trapErrorMessage(err: unknown, what = 'fazer isso'): string {
     case EncounterBlockedReason.ACTION_USED:
       return 'Você já usou a sua ação neste turno.';
     default:
+  }
+  // Another roll of the character waits for its question (the halfling's Lucky, a Bardic Inspiration die).
+  const pending = pendingQuestionReasonText(resourceBlocked(err)?.reason);
+  if (pending) {
+    return pending;
   }
   if (sessionClosed(err)) {
     return 'A sessão acabou: as armadilhas só mudam durante a sessão.';

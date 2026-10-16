@@ -1647,8 +1647,12 @@ type EffectSaveResult struct {
 	// because combat.proto imports this file.
 	InspirationSides int32 `protobuf:"varint,13,opt,name=inspiration_sides,json=inspirationSides,proto3" json:"inspiration_sides,omitempty"`
 	InspirationFace  int32 `protobuf:"varint,14,opt,name=inspiration_face,json=inspirationFace,proto3" json:"inspiration_face,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The d20 the halfling's Lucky rolled again after it showed a 1 (`source_key`
+	// "trait:lucky"), as an index into `d20_faces` (or the one `d20`); `d20` and `d20_faces` hold
+	// the new face. Empty when nothing was rolled again.
+	Rerolled      []*Reroll `protobuf:"bytes,15,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EffectSaveResult) Reset() {
@@ -1777,6 +1781,13 @@ func (x *EffectSaveResult) GetInspirationFace() int32 {
 		return x.InspirationFace
 	}
 	return 0
+}
+
+func (x *EffectSaveResult) GetRerolled() []*Reroll {
+	if x != nil {
+		return x.Rerolled
+	}
+	return nil
 }
 
 // A reason an option of the turn is unavailable because of an effect or a
@@ -2115,7 +2126,7 @@ var File_meurpg_play_v1_lasting_effects_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\n" +
-	"$meurpg/play/v1/lasting_effects.proto\x12\x0emeurpg.play.v1\"\xb8\x02\n" +
+	"$meurpg/play/v1/lasting_effects.proto\x12\x0emeurpg.play.v1\x1a!meurpg/play/v1/combat_rolls.proto\"\xb8\x02\n" +
 	"\x0eEffectModifier\x126\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\".meurpg.play.v1.EffectModifierKindR\x04kind\x12\x10\n" +
 	"\x03die\x18\x02 \x01(\x05R\x03die\x12\x12\n" +
@@ -2238,7 +2249,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x0esource_name_pt\x18\x02 \x01(\tR\fsourceNamePt\x12\x14\n" +
 	"\x05faces\x18\x03 \x01(\x05R\x05faces\x12\x12\n" +
 	"\x04sign\x18\x04 \x01(\x05R\x04sign\x12\x12\n" +
-	"\x04face\x18\x05 \x01(\x05R\x04face\"\xc5\x03\n" +
+	"\x04face\x18\x05 \x01(\x05R\x04face\"\xf9\x03\n" +
 	"\x10EffectSaveResult\x12\x10\n" +
 	"\x03d20\x18\x01 \x01(\x05R\x03d20\x12\x1a\n" +
 	"\bmodifier\x18\x02 \x01(\x05R\bmodifier\x12\x14\n" +
@@ -2255,7 +2266,8 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\atext_pt\x18\v \x01(\tR\x06textPt\x12\x13\n" +
 	"\x02dc\x18\f \x01(\x05H\x00R\x02dc\x88\x01\x01\x12+\n" +
 	"\x11inspiration_sides\x18\r \x01(\x05R\x10inspirationSides\x12)\n" +
-	"\x10inspiration_face\x18\x0e \x01(\x05R\x0finspirationFaceB\x05\n" +
+	"\x10inspiration_face\x18\x0e \x01(\x05R\x0finspirationFace\x122\n" +
+	"\brerolled\x18\x0f \x03(\v2\x16.meurpg.play.v1.RerollR\brerolledB\x05\n" +
 	"\x03_dc\"K\n" +
 	"\n" +
 	"EffectNote\x12\x17\n" +
@@ -2370,6 +2382,7 @@ var file_meurpg_play_v1_lasting_effects_proto_goTypes = []any{
 	(*ExtraActionOption)(nil),  // 20: meurpg.play.v1.ExtraActionOption
 	(*EffectLabel)(nil),        // 21: meurpg.play.v1.EffectLabel
 	(*CharacterEffect)(nil),    // 22: meurpg.play.v1.CharacterEffect
+	(*Reroll)(nil),             // 23: meurpg.play.v1.Reroll
 }
 var file_meurpg_play_v1_lasting_effects_proto_depIdxs = []int32{
 	2,  // 0: meurpg.play.v1.EffectModifier.kind:type_name -> meurpg.play.v1.EffectModifierKind
@@ -2391,12 +2404,13 @@ var file_meurpg_play_v1_lasting_effects_proto_depIdxs = []int32{
 	5,  // 16: meurpg.play.v1.EffectSavePrompt.phase:type_name -> meurpg.play.v1.EffectPhase
 	17, // 17: meurpg.play.v1.EffectSavePrompt.extra_dice:type_name -> meurpg.play.v1.ExtraDie
 	17, // 18: meurpg.play.v1.EffectSaveResult.extra_dice:type_name -> meurpg.play.v1.ExtraDie
-	4,  // 19: meurpg.play.v1.CharacterEffect.audience:type_name -> meurpg.play.v1.EffectAudience
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	23, // 19: meurpg.play.v1.EffectSaveResult.rerolled:type_name -> meurpg.play.v1.Reroll
+	4,  // 20: meurpg.play.v1.CharacterEffect.audience:type_name -> meurpg.play.v1.EffectAudience
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_lasting_effects_proto_init() }
@@ -2404,6 +2418,7 @@ func file_meurpg_play_v1_lasting_effects_proto_init() {
 	if File_meurpg_play_v1_lasting_effects_proto != nil {
 		return
 	}
+	file_meurpg_play_v1_combat_rolls_proto_init()
 	file_meurpg_play_v1_lasting_effects_proto_msgTypes[2].OneofWrappers = []any{}
 	file_meurpg_play_v1_lasting_effects_proto_msgTypes[4].OneofWrappers = []any{}
 	file_meurpg_play_v1_lasting_effects_proto_msgTypes[8].OneofWrappers = []any{}

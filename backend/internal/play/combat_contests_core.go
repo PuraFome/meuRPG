@@ -144,6 +144,9 @@ type contestRoll struct {
 	ManeuverName  string `json:"maneuver_name,omitempty"`
 	ManeuverSides int32  `json:"maneuver_sides,omitempty"`
 	ManeuverFace  int32  `json:"maneuver_face,omitempty"`
+	// Lucky is the d20 the halfling's Lucky rolled again after it showed a 1 (a group check's,
+	// inspiration_lucky.go): Faces hold the new face, and this the 1 it replaced and where.
+	Lucky *luckyReroll `json:"lucky,omitempty"`
 }
 
 func checkModeKey(m combat.CheckMode) string {
@@ -185,6 +188,7 @@ func (r contestRoll) proto() *playv1.CheckRoll {
 		Mode: checkModeProto(checkModeOfKey(r.Mode)), Notes: notesProto(r.Notes), BonusKnown: !r.Unknown, RolledByMaster: r.ByMaster,
 		BonusDieSides: r.BonusSides, BonusDieFace: r.BonusFace,
 		ManeuverKey: r.ManeuverKey, ManeuverNamePt: r.ManeuverName, ManeuverDieSides: r.ManeuverSides, ManeuverDieFace: r.ManeuverFace,
+		Rerolled: r.Lucky.proto(),
 	}
 	return out
 }

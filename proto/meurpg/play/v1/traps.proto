@@ -98,6 +98,10 @@ message SearchForTrapsResponse {
   OutsideInspirationOffer inspiration_offer = 7;
   // The Bardic Inspiration die the player added after the d20, already in `roll`'s total.
   repeated BonusDie bonus_dice = 8;
+  // Set instead of the rest, like `inspiration_offer`, when the character is a halfling and the
+  // held d20 shows a 1 (Lucky): ResourceService.AnswerOutsideLucky rolls it again or keeps the 1,
+  // before the die's question. The second d20 of a Perception search is not asked about.
+  LuckyOffer lucky_offer = 9;
 }
 
 // FireTrapRequest is the master firing a trap by hand.

@@ -213,14 +213,15 @@ func (e *logEntry) reactionLine(ctx context.Context, v combatViewer, byID map[st
 		if !seesReactor {
 			return "", false
 		}
+		lucky := luckyNote(e.ev.Lucky) // the d20 the halfling's Lucky rolled again, with the numbers
 		if re.Kept {
 			if numbers && re.SaveD20 > 0 {
-				return fmt.Sprintf("%s manteve a concentração em %s: 1d20 (%d) + %d = %d contra CD %d.%s", who, spell, re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus, re.SaveDC, by), true
+				return fmt.Sprintf("%s manteve a concentração em %s: 1d20 (%d) + %d = %d contra CD %d.%s%s", who, spell, re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus, re.SaveDC, lucky, by), true
 			}
 			return fmt.Sprintf("%s manteve a concentração em %s.%s", who, spell, by), true
 		}
 		if numbers {
-			return fmt.Sprintf("%s falhou no teste de concentração em %s: 1d20 (%d) + %d = %d contra CD %d.%s", who, spell, re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus, re.SaveDC, by), true
+			return fmt.Sprintf("%s falhou no teste de concentração em %s: 1d20 (%d) + %d = %d contra CD %d.%s%s", who, spell, re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus, re.SaveDC, lucky, by), true
 		}
 		return "", false // the line that says the concentration ended is the conditions one
 	}

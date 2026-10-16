@@ -136,6 +136,55 @@ func (q *Queries) AnswerInspirationHold(ctx context.Context, arg AnswerInspirati
 	return err
 }
 
+const answerInspirationHoldLucky = `-- name: AnswerInspirationHoldLucky :one
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, lucky_answer_key = $5, lucky_to = $6 WHERE id = $1
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to
+`
+
+type AnswerInspirationHoldLuckyParams struct {
+	ID             string
+	Faces          []int32
+	Counted        int32
+	Total          int32
+	LuckyAnswerKey *string
+	LuckyTo        *int32
+}
+
+// The answer to the Lucky question of a held roll: the d20 after it (the faces, the one that
+// counts and the total), the answer's key and the new face (NULL when the player kept the 1).
+func (q *Queries) AnswerInspirationHoldLucky(ctx context.Context, arg AnswerInspirationHoldLuckyParams) (InspirationHold, error) {
+	row := q.db.QueryRow(ctx, answerInspirationHoldLucky,
+		arg.ID,
+		arg.Faces,
+		arg.Counted,
+		arg.Total,
+		arg.LuckyAnswerKey,
+		arg.LuckyTo,
+	)
+	var i InspirationHold
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Kind,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Faces,
+		&i.Modifier,
+		&i.Total,
+		&i.Counted,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.CreatedAt,
+		&i.Round,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
+	)
+	return i, err
+}
+
 const answerRevivifyRequest = `-- name: AnswerRevivifyRequest :one
 UPDATE revivify_requests
 SET status = $1, answered_at = $2, answer_key = $3, answer_hash = $4
@@ -1132,12 +1181,14 @@ func (q *Queries) DeleteOpportunityOffersOfMove(ctx context.Context, moveID stri
 const deleteOrphanInspirationHolds = `-- name: DeleteOrphanInspirationHolds :exec
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
+  AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
 `
 
 // The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 // A roll held in a combat (round set) has its die on the combatant and is forgotten by the
-// round it was held in (outsideRoll) or when the combat ends (dieToCharacters).
+// round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
+// Lucky question still waits stays: that question needs no die.
 func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) error {
 	_, err := q.db.Exec(ctx, deleteOrphanInspirationHolds, campaignID)
 	return err
@@ -1725,7 +1776,7 @@ func (q *Queries) GetHitRider(ctx context.Context, arg GetHitRiderParams) (HitRi
 }
 
 const getInspirationHold = `-- name: GetInspirationHold :one
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
 `
 
 type GetInspirationHoldParams struct {
@@ -1752,12 +1803,15 @@ func (q *Queries) GetInspirationHold(ctx context.Context, arg GetInspirationHold
 		&i.AnswerKey,
 		&i.CreatedAt,
 		&i.Round,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
 	)
 	return i, err
 }
 
 const getInspirationHoldByKey = `-- name: GetInspirationHoldByKey :one
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
 `
 
 type GetInspirationHoldByKeyParams struct {
@@ -1784,6 +1838,9 @@ func (q *Queries) GetInspirationHoldByKey(ctx context.Context, arg GetInspiratio
 		&i.AnswerKey,
 		&i.CreatedAt,
 		&i.Round,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
 	)
 	return i, err
 }
@@ -2316,7 +2373,7 @@ func (q *Queries) GetPuzzleHintCursor(ctx context.Context, arg GetPuzzleHintCurs
 }
 
 const getPuzzleHintTryByKey = `-- name: GetPuzzleHintTryByKey :one
-SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode FROM puzzle_hint_tries
+SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index FROM puzzle_hint_tries
 WHERE run_id = $1 AND idempotency_key = $2
 `
 
@@ -2346,6 +2403,7 @@ func (q *Queries) GetPuzzleHintTryByKey(ctx context.Context, arg GetPuzzleHintTr
 		&i.D20B,
 		&i.Counted,
 		&i.RollMode,
+		&i.LuckyIndex,
 	)
 	return i, err
 }
@@ -3725,9 +3783,9 @@ func (q *Queries) InsertHitRider(ctx context.Context, arg InsertHitRiderParams) 
 }
 
 const insertInspirationHold = `-- name: InsertInspirationHold :one
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to
 `
 
 type InsertInspirationHoldParams struct {
@@ -3744,8 +3802,11 @@ type InsertInspirationHoldParams struct {
 	Physical       bool
 	CreatedAt      time.Time
 	Round          *int32
+	LuckyIndex     *int32
 }
 
+// A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
+// of a d20 that shows a 1 (lucky_index, NULL without one).
 func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirationHoldParams) (InspirationHold, error) {
 	row := q.db.QueryRow(ctx, insertInspirationHold,
 		arg.CampaignID,
@@ -3761,6 +3822,7 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		arg.Physical,
 		arg.CreatedAt,
 		arg.Round,
+		arg.LuckyIndex,
 	)
 	var i InspirationHold
 	err := row.Scan(
@@ -3779,6 +3841,9 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		&i.AnswerKey,
 		&i.CreatedAt,
 		&i.Round,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
 	)
 	return i, err
 }
@@ -4140,9 +4205,9 @@ func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puz
 }
 
 const insertPuzzleHintTry = `-- name: InsertPuzzleHintTry :one
-INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-RETURNING id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+RETURNING id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index
 `
 
 type InsertPuzzleHintTryParams struct {
@@ -4161,8 +4226,10 @@ type InsertPuzzleHintTryParams struct {
 	D20B           int32
 	Counted        int32
 	RollMode       string
+	LuckyIndex     *int32
 }
 
+// lucky_index is the d20 the halfling's Lucky rolled again (NULL when none was).
 func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintTryParams) (PuzzleHintTry, error) {
 	row := q.db.QueryRow(ctx, insertPuzzleHintTry,
 		arg.RunID,
@@ -4180,6 +4247,7 @@ func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintT
 		arg.D20B,
 		arg.Counted,
 		arg.RollMode,
+		arg.LuckyIndex,
 	)
 	var i PuzzleHintTry
 	err := row.Scan(
@@ -4199,6 +4267,7 @@ func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintT
 		&i.D20B,
 		&i.Counted,
 		&i.RollMode,
+		&i.LuckyIndex,
 	)
 	return i, err
 }
@@ -6008,7 +6077,7 @@ func (q *Queries) ListHitRiders(ctx context.Context, encounterID string) ([]HitR
 }
 
 const listInspirationHoldsOfCharacter = `-- name: ListInspirationHoldsOfCharacter :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at
 `
 
 func (q *Queries) ListInspirationHoldsOfCharacter(ctx context.Context, characterID string) ([]InspirationHold, error) {
@@ -6036,6 +6105,9 @@ func (q *Queries) ListInspirationHoldsOfCharacter(ctx context.Context, character
 			&i.AnswerKey,
 			&i.CreatedAt,
 			&i.Round,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
 		); err != nil {
 			return nil, err
 		}
@@ -6767,7 +6839,7 @@ func (q *Queries) ListReactionWindowsOfGroup(ctx context.Context, arg ListReacti
 }
 
 const listRecentPuzzleHintTries = `-- name: ListRecentPuzzleHintTries :many
-SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode FROM puzzle_hint_tries
+SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index FROM puzzle_hint_tries
 WHERE run_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT 50
@@ -6800,6 +6872,7 @@ func (q *Queries) ListRecentPuzzleHintTries(ctx context.Context, runID string) (
 			&i.D20B,
 			&i.Counted,
 			&i.RollMode,
+			&i.LuckyIndex,
 		); err != nil {
 			return nil, err
 		}

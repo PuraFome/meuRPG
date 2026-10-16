@@ -26,6 +26,9 @@
         @if (natural()) {
           <span class="mr-tag res__natural" data-testid="natural-mark">{{ natural() }}</span>
         }
+        @if (lucky()) {
+          <span class="res__cap" data-testid="lucky">{{ lucky() }}</span>
+        }
         <span class="res__cap">Seu total em {{ action.checkName }}</span>
         @if (modeInfo()) {
           <app-check-mode [mode]="r.mode" [sources]="r.sources" [faces]="faces()" />
@@ -43,6 +46,18 @@
       </span>
     </div>
     <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado.</p>
+  } @else if (luckyOffer(); as l) {
+    <!-- The d20 shows a 1 and the character is a halfling: Lucky is asked before anything else (SRD 5.1). -->
+    <app-lucky-offer
+      [offer]="l"
+      [canApp]="canApp"
+      [canType]="canType"
+      [preferApp]="preferApp"
+      [busy]="busy()"
+      [(typing)]="typing"
+      (reroll)="answerLucky(true, $event)"
+      (keep)="answerLucky(false, null)"
+    />
   } @else if (offer(); as o) {
     <app-inspiration-offer
       [offer]="o"

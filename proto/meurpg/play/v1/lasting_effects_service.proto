@@ -278,6 +278,10 @@ message RollEffectSaveResponse {
   // ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
   // never asks.
   OutsideInspirationOffer inspiration_offer = 3;
+  // Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
+  // halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
+  // rolls it again or keeps the 1 (the die's question, if any, comes after it).
+  LuckyOffer lucky_offer = 4;
 }
 
 message SetExhaustionRequest {

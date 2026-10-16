@@ -300,6 +300,10 @@ message RollSceneCheckResponse {
   // Set instead of `roll` when the character holds a Bardic Inspiration die: the d20 was
   // rolled and nothing was written; AnswerOutsideInspiration settles the roll.
   OutsideInspirationOffer inspiration_offer = 2;
+  // Set instead of `roll` when the character is a halfling and a d20 shows a 1 (Lucky): the
+  // d20 was rolled and nothing was written; AnswerOutsideLucky rolls it again or keeps the 1.
+  // It comes before the die's question.
+  LuckyOffer lucky_offer = 3;
 }
 
 // GrantSceneAttemptRequest gives one character one more attempt at one action.

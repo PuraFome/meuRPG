@@ -34,6 +34,9 @@
         @for (line of rolls(); track line) {
           <span class="res__formula">{{ line }}</span>
         }
+        @if (lucky()) {
+          <span class="res__formula" data-testid="lucky">{{ lucky() }}</span>
+        }
         @if (modeInfo()) {
           <app-check-mode [mode]="r.res.mode" [sources]="r.res.sources" [faces]="faces()" />
         }
@@ -54,6 +57,17 @@
     @if (r.res.spentAction) {
       <p class="note"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>A procura gastou a sua ação.</p>
     }
+  } @else if (luckyOffer(); as l) {
+    <!-- The d20 of the search shows a 1 and the character is a halfling: Lucky is asked first (SRD 5.1). -->
+    <app-lucky-offer
+      [offer]="l"
+      [canApp]="canApp"
+      [canType]="canType"
+      [preferApp]="preferApp"
+      [busy]="busy()"
+      (reroll)="answerLucky(true, $event)"
+      (keep)="answerLucky(false, null)"
+    />
   } @else if (offer(); as o) {
     <!-- The d20 of the search is rolled and kept; nothing is written until the player answers (SRD 5.1, Bardic Inspiration). -->
     <app-inspiration-offer
@@ -126,7 +140,7 @@
   <div foot class="foot">
     @if (result()) {
       <button #done matButton="outlined" type="button" (click)="cancel()">Fechar</button>
-    } @else if (offer()) {
+    } @else if (offer() || luckyOffer()) {
       <button matButton="outlined" type="button" [disabled]="busy()" (click)="cancel()">Fechar</button>
     } @else if (typing() || firstFace() !== null) {
       <button matButton="filled" type="button" [class.foot__off]="face() === null" [attr.aria-disabled]="face() === null || busy()" (click)="confirmTyped()">

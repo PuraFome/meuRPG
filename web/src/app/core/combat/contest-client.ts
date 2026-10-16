@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { type MessageInitShape } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
-import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { Encounter, LuckyOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   type CheckRollInputSchema,
   ContestService,
@@ -230,19 +230,24 @@ export class ContestClient {
   }
 
   /** The player's own roll for the open group check (once). Throws `InspirationAsked` when the character holds a Bardic
-   * Inspiration die: the d20 is rolled and kept, and the session panel asks whether to use it. */
+   * Inspiration die: the d20 is rolled and kept, and the session panel asks whether to use it. Answers the Lucky question
+   * instead of the check when a halfling's d20 shows a 1: it comes first, and the sheet asks it ("Tirou 1: rolar de
+   * novo?"); the die's question, if any, comes after it. */
   async rollGroupCheck(
     campaignId: string,
     groupCheckId: string,
     die: CheckDie,
     key: string,
-  ): Promise<GroupCheckView> {
+  ): Promise<GroupCheckView | LuckyOffer> {
     const res = await this.client.rollGroupCheck({
       campaignId,
       idempotencyKey: key,
       groupCheckId,
       roll: rollInput(die),
     });
+    if (res.luckyOffer) {
+      return res.luckyOffer;
+    }
     if (res.inspirationOffer) {
       // The roll waits for the answer about a Bardic Inspiration die: the session panel asks it.
       throw new InspirationAsked();

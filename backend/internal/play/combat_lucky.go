@@ -52,6 +52,15 @@ func (r *luckyReroll) proto() []*playv1.Reroll {
 	return []*playv1.Reroll{{Index: r.Index, From: r.From, To: r.To, SourceKey: link.LuckyTrait}}
 }
 
+// luckyNote is the sentence a log line written as text adds for the d20 Lucky rolled again
+// (" Sortudo: 1 → 14."), "" when none was: the structured lines carry it in DiceRoll.rerolled.
+func luckyNote(r *luckyReroll) string {
+	if r == nil {
+		return ""
+	}
+	return fmt.Sprintf(" Sortudo: %d → %d.", r.From, r.To)
+}
+
 // luckyPending says the hold waits for its Lucky answer: a die showed a 1 and neither the Lucky
 // question nor the roll was answered.
 func luckyPending(h playdb.RollHold) bool {
@@ -265,7 +274,7 @@ func (s *Service) AnswerLucky(
 	}
 	var reroll *luckyReroll
 	if req.Msg.GetReroll() {
-		if reroll, err = s.rollLuckyDie(ctx, hold, in); err != nil {
+		if reroll, err = s.rollLuckyDie(ctx, *hold.LuckyIndex, in); err != nil {
 			return nil, err
 		}
 	}
@@ -315,9 +324,10 @@ func (s *Service) mayAnswerLucky(ctx context.Context, m authz.Membership, hold p
 	return s.mustRollThisWay(ctx, nil, m, in)
 }
 
-// rollLuckyDie rolls again the die of the hold that shows the 1 (or takes the face the player
-// typed from a real die): the new roll stands, whatever it is.
-func (s *Service) rollLuckyDie(ctx context.Context, hold playdb.RollHold, in rollInput) (*luckyReroll, error) {
+// rollLuckyDie rolls again the die of a hold that shows the 1, at index (or takes the face the
+// player typed from a real die): the new roll stands, whatever it is. AnswerLucky and
+// AnswerOutsideLucky (inspiration_lucky.go) both roll it here.
+func (s *Service) rollLuckyDie(ctx context.Context, index int32, in rollInput) (*luckyReroll, error) {
 	face := in.typed
 	if in.inApp {
 		rolled, err := dice.Roll(s.roller, dice.Expr{Count: 1, Sides: d20Sides})
@@ -326,7 +336,7 @@ func (s *Service) rollLuckyDie(ctx context.Context, hold playdb.RollHold, in rol
 		}
 		face = rolled.Faces[0]
 	}
-	return &luckyReroll{Index: *hold.LuckyIndex, From: 1, To: clamp32(face, 1, d20Sides)}, nil
+	return &luckyReroll{Index: index, From: 1, To: clamp32(face, 1, d20Sides)}, nil
 }
 
 // luckyAnswered runs RollAttack for the held request with the Lucky answer's d20 (forced), or, for

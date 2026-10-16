@@ -279,11 +279,11 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 	v := viewerOf(m)
 
 	var made actionEvent
-	var modes *spellModes                     // the d20 rolls of the cast: their modes and circumstances
-	var vitals []*playv1.CharacterVitals      // the slot spent, if it was a player's, and the characters a hit point spell changed
-	var offer *playv1.OutsideInspirationOffer // the d20 of a spell attack was rolled and kept for the Bardic Inspiration question
+	var modes *spellModes                // the d20 rolls of the cast: their modes and circumstances
+	var vitals []*playv1.CharacterVitals // the slot spent, if it was a player's, and the characters a hit point spell changed
+	var asked outsideStep                // the d20 of a spell attack was rolled and kept for the Bardic Inspiration or Lucky question
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: encID}, func(c *combatTx) (any, error) {
-		vitals, offer = nil, nil
+		vitals, asked = nil, outsideStep{}
 		targets := slices.Clone(targets) // an area replaces the list, and a retry starts from the request's
 		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 		if err != nil {
@@ -497,16 +497,15 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		}
 
 		// A player's spell attack against one target, when the character holds a Bardic Inspiration
-		// die: the d20 is rolled now and kept, before anything is spent, and the player decides about
-		// the die before the result is told (inspiration_held.go). The answer runs the cast again
-		// with the d20 already rolled. A cast that waited for a reaction window is not asked.
+		// die or is a halfling: the d20 is rolled now (and kept, for the die, or for the Lucky
+		// question of a 1), before anything is spent, and the player decides before the result is
+		// told (inspiration_held.go). The answer runs the cast again with the d20 already rolled. A
+		// cast that waited for a reaction window is not asked.
 		if sp.AttackType != "" && len(targs) == 1 && c.replay == nil {
-			asked, err := s.holdSpellAttack(ctx, c, m, req.Msg, key, caster, targs[0], sp, in, modes)
-			if err != nil {
+			if asked, err = s.holdSpellAttack(ctx, c, m, req.Msg, key, caster, targs[0], sp, in, modes); err != nil {
 				return nil, err
 			}
-			if asked != nil {
-				offer = asked
+			if asked.Held {
 				return nil, nil
 			}
 		}
@@ -666,12 +665,12 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 	if err != nil {
 		return nil, s.dbError(ctx, "cast a spell", err)
 	}
-	if offer != nil { // nothing was spent or written: the question is the whole answer
+	if asked.Held { // nothing was spent or written: the question is the whole answer
 		out, err := s.finish(ctx, m, res, nil)
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, InspirationOffer: offer}), nil
+		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: out, InspirationOffer: asked.Offer, LuckyOffer: asked.LuckyOffer}), nil
 	}
 	if v, err = s.viewerAfter(ctx, m, res, v); err != nil { // a replay never ran the closure: the fog filter still holds
 		return nil, s.dbError(ctx, "work out what the player sees", err)
@@ -837,6 +836,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	)
 	if pre := modes.pre; pre != nil && pre.target == target.ID {
 		truth, choice, d20, bonus = pre.truth, pre.choice, pre.step.Roll, pre.step.Bonus
+		hit.Lucky = pre.step.Lucky // the d20 Lucky rolled again: the cast's line says "Sortudo: 1 → 14"
 	} else {
 		truth = modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.v, modes.names)
 		if choice, err = s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, modes.ask); err != nil {

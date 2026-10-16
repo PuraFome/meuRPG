@@ -10,7 +10,20 @@
       </div>
     }
 
-    @if (offer(); as o) {
+    @if (luckyOffer(); as l) {
+      <!-- The d20 of the spell attack shows a 1 and the caster is a halfling: it is kept, nothing is spent, and Lucky asks first (SRD 5.1). -->
+      <p class="lucky-d20">{{ luckyHeld() }}</p>
+      <app-lucky-prompt
+        [offer]="l"
+        [canApp]="canApp"
+        [canType]="canTypeDamage"
+        [preferApp]="preferApp"
+        [busy]="busy()"
+        [(typing)]="typing"
+        (reroll)="answerLucky(true, $event)"
+        (keep)="answerLucky(false, null)"
+      />
+    } @else if (offer(); as o) {
       <!-- The d20 of the spell attack is rolled and kept; nothing is spent until the player answers (SRD 5.1, Bardic Inspiration). -->
       <app-inspiration-offer
         [offer]="o"

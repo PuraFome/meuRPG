@@ -276,6 +276,16 @@ func (s *Service) ListTrapActivity(
 			if l.ev.D20B != 0 {
 				sr.SecondRoll = checkRoll(l.ev.D20B, l.ev.Modifier, l.ev.Physical, l.ev.ReliableTalent)
 			}
+			// The d20 the halfling's Lucky rolled again: the first or the second, each told here as a
+			// roll of its own ("Sortudo: 1 → 14").
+			if r := l.ev.Lucky; r != nil {
+				one := (&luckyReroll{From: r.From, To: r.To}).proto()
+				if r.Index == 0 {
+					sr.Roll.Rerolled = one
+				} else if sr.SecondRoll != nil {
+					sr.SecondRoll.Rerolled = one
+				}
+			}
 			for _, id := range l.ev.Found {
 				sr.FoundNames = append(sr.FoundNames, trapNames[id])
 			}

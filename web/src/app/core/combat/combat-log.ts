@@ -932,7 +932,16 @@ export function logLine(
         return { ...base, icon: 'favorite', ...reviveCastText(e, ctx) };
       }
       const cast = castText(e, ctx);
-      return { ...base, icon: 'auto_awesome', text: cast.text, card: cast.card };
+      // "Sortudo: 1 → 14": a spell attack's d20 the halfling's Lucky rolled again (the server sends the roll to whoever
+      // may read it), kept by the event so a reload still finds it.
+      const lucky = (e.spell?.targets ?? []).map((t) => luckyText(t.attackRoll)).filter(Boolean);
+      return {
+        ...base,
+        icon: 'auto_awesome',
+        text: cast.text,
+        card: cast.card,
+        ...(lucky.length ? { notes: lucky } : {}),
+      };
     }
     case CombatLogKind.CHARACTER_REVIVED:
       // The master brought a dead character back: the server puts the combatant in the target and sends no actor.
@@ -990,9 +999,7 @@ export function logLine(
         text: effectEndedText(e, ctx),
       };
     case CombatLogKind.EFFECT:
-      return e.effect
-        ? { ...base, icon: 'auto_awesome', actor: '', text: effectLogText(e.effect, ctx) }
-        : null;
+      return e.effect ? effectLine(base, e.effect, ctx) : null;
     case CombatLogKind.EXHAUSTION:
       return e.effect
         ? { ...base, icon: 'battery_alert', actor: '', text: exhaustionLogText(e.effect, ctx) }
@@ -1091,6 +1098,23 @@ const EFFECT_LINES: Partial<Record<CombatLogEffectChange, EffectLine>> = {
   [CombatLogEffectChange.TEMP_HP]: (fx, ctx) =>
     `${fx.sourceNamePt} deu ${fx.amount} PV temporários ${effectTargets(fx, ctx, 'a')}`,
 };
+
+/** The line of a lasting effect, with the d20 the halfling's Lucky rolled again on its saving throw as a note
+ * ("Sortudo: 1 → 14", sent only to whoever may read the roll). */
+function effectLine(
+  base: Pick<LogLine, 'id' | 'actor' | 'hidden' | 'undoable'>,
+  fx: CombatLogEffect,
+  ctx: LogContext,
+): LogLine {
+  const lucky = luckyText(fx);
+  return {
+    ...base,
+    icon: 'auto_awesome',
+    actor: '',
+    text: effectLogText(fx, ctx),
+    ...(lucky ? { notes: [lucky] } : {}),
+  };
+}
 
 /** The line of a lasting effect: "Heroísmo deu 5 PV temporários a Brisa", "Brisa passou no teste de Destreza contra Teia". */
 function effectLogText(fx: CombatLogEffect, ctx: LogContext): string {

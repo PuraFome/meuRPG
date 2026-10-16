@@ -210,8 +210,8 @@ type Traits struct {
 	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
-	// Lucky is the halfling's trait (LuckyTrait): a 1 on the d20 of an attack roll may be
-	// rolled again, and the new roll stands. The player is asked before the result.
+	// Lucky is the halfling's trait (LuckyTrait): a 1 on the d20 of an attack roll or a saving
+	// throw may be rolled again, and the new roll stands. The player is asked before the result.
 	Lucky bool
 	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.
 	HeavyArmor bool
@@ -610,6 +610,10 @@ type SceneOption struct {
 	// ReliableTalent says a d20 of this check counts as at least 10 (the
 	// character has Reliable Talent and the check adds the proficiency bonus).
 	ReliableTalent bool
+	// Lucky says the character is a halfling (LuckyTrait): a 1 on the d20 of
+	// this check (or saving throw) may be rolled again, and the new roll
+	// stands. Its player is asked before the result.
+	Lucky bool
 }
 
 // Creature is a creature of a player's character (MR-037, Etapa 9) as a

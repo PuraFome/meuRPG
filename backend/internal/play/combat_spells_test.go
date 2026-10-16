@@ -67,15 +67,27 @@ func newCasters(t *testing.T) *armed { return newCastersAt(t, 3) }
 // newCastersAt is newCasters with Pensantus at the given wizard level.
 func newCastersAt(t *testing.T, wizardLevel int32) *armed {
 	t.Helper()
+	return newCastersOf(t, wizardLevel, "")
+}
+
+// newCastersOf is newCastersAt with the three heroes of one race (a halfling party for the Lucky
+// tests); "" keeps each one's own.
+func newCastersOf(t *testing.T, wizardLevel int32, race string) *armed {
 	t.Helper()
+	raceOr := func(own string) string {
+		if race == "" {
+			return own
+		}
+		return race
+	}
 	return newArmedWith(t, func(a *armed) {
-		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", raceOr("race:human"), 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
-		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", wizardLevel,
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", raceOr("race:gnome"), wizardLevel,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
 			[]string{magicMissileSpell, shieldSpell, sleepSpell, burningHands, holdPerson, webSpell},
 			[]string{magicMissileSpell, shieldSpell, sleepSpell, burningHands, holdPerson, webSpell})
-		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 3,
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", raceOr("race:human"), 3,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil,
 			[]string{cureWounds, healingWord, guidingBolt})
 	})

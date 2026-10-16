@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
-import type { Encounter, OutsideInspirationOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type {
+  Encounter,
+  LuckyOffer,
+  OutsideInspirationOffer,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import type {
   CatalogEffect,
   CharacterEffect,
@@ -41,6 +45,9 @@ export interface EffectSaveOutcome {
   readonly result: EffectSaveResult | undefined;
   /** The d20 was rolled and kept: the player holds a Bardic Inspiration die and decides before the result is told. */
   readonly offer?: OutsideInspirationOffer;
+  /** The d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky question ("Tirou 1:
+   * rolar de novo?"), which comes before the die's. */
+  readonly lucky?: LuckyOffer;
 }
 
 /** The duration the master picks, as the form holds it (the server's `EffectDurationChoice`). */
@@ -125,6 +132,7 @@ export class EffectsClient {
       encounter: res.encounter,
       result: res.result,
       ...(res.inspirationOffer ? { offer: res.inspirationOffer } : {}),
+      ...(res.luckyOffer ? { lucky: res.luckyOffer } : {}),
     };
   }
 

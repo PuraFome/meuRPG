@@ -25,7 +25,9 @@ import {
   type SpellTargetResult,
   type SpellTargets,
   AttackOutcome,
+  type DiceRoll,
   type Encounter,
+  type LuckyOffer,
   type OutsideInspirationOffer,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -118,12 +120,19 @@ import {
   RollAnimator,
   type RollShow,
   showOfDice,
+  showOfDie,
 } from '../../../../shared/roll-overlay/roll-animator';
 import { InspirationQuestion } from '../../../../core/resources/bardic-inspiration';
+import { LuckyQuestion, luckyHeldLine, luckyReroll } from '../../../../core/combat/lucky-question';
 import type { Pool } from '../../../../core/resources/pools';
-import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import {
+  ResourceClient,
+  type InspirationRoll,
+  type LuckyRoll,
+} from '../../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import { InspirationOffer } from '../../inspiration/inspiration-offer';
+import { LuckyPrompt } from '../lucky-prompt/lucky-prompt';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
@@ -233,6 +242,7 @@ export interface CastSheetData {
     AbilityPicker,
     DamageTypePicker,
     InspirationOffer,
+    LuckyPrompt,
     MatButtonModule,
     MetamagicPicker,
     MatIconModule,
@@ -279,6 +289,13 @@ export class CastSheet {
    * before the result is told. Nothing was spent yet. */
   protected readonly offer = signal<OutsideInspirationOffer | null>(null);
   private readonly answerKey = new ActionKey();
+  /** The spell attack's d20 was rolled and kept because it shows a 1 and the caster is a halfling: the Lucky question
+   * ("Tirou 1: rolar de novo?") comes first, before the die's. Nothing was spent yet. */
+  protected readonly luckyOffer = signal<LuckyOffer | null>(null);
+  /** The held d20, above the Lucky question: the sheet has no result to show it in yet. */
+  protected readonly luckyHeld = computed(() => luckyHeldLine(this.luckyOffer()));
+  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
+  private readonly luckyKey = new ActionKey();
   /** Every damage and heal of the cast as it is now, by ID. */
   protected readonly pendings = signal<ReadonlyMap<string, PendingDamage>>(
     new Map((this.data.resume ?? []).map((p) => [p.id, p])),
@@ -1052,21 +1069,35 @@ export class CastSheet {
       );
       this.showCast(res.encounter, res.cast);
     } catch (err) {
-      if (err instanceof InspirationQuestion) {
-        this.data.state.apply(err.encounter);
-        this.offer.set(err.offer);
-        this.typing.set(false);
-        // The d20 alone, no total and no word: the result is told after the answer.
-        const held = showOfDice(this.data.name, err.offer.d20);
-        if (held) {
-          this.animator.play(held);
-        }
-        return;
+      if (!this.asks(err)) {
+        this.error.set(combatErrorMessage(err, 'conjurar a magia'));
       }
-      this.error.set(combatErrorMessage(err, 'conjurar a magia'));
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** A cast that answered a question instead of the cast (nothing was spent, the d20 is kept on the server): the sheet
+   * shows it, Lucky's about a 1 first, else the Bardic Inspiration die's. False for any other error. */
+  private asks(err: unknown): boolean {
+    const question =
+      err instanceof LuckyQuestion || err instanceof InspirationQuestion ? err : null;
+    if (!question) {
+      return false;
+    }
+    this.data.state.apply(question.encounter);
+    if (question instanceof LuckyQuestion) {
+      this.luckyOffer.set(question.offer);
+    } else {
+      this.offer.set(question.offer);
+    }
+    this.typing.set(false);
+    // The d20 alone, no total and no word: the result is told after the answer.
+    const held = showOfDice(this.data.name, question.offer.d20);
+    if (held) {
+      this.animator.play(held);
+    }
+    return true;
   }
 
   /** The cast as the result step shows it. */
@@ -1076,6 +1107,56 @@ export class CastSheet {
     this.animateCast(cast);
     this.pendings.set(new Map(cast.pendingDamages.map((p) => [p.id, p])));
     this.typing.set(false);
+  }
+
+  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the spell is cast now with the new d20
+   * (or the 1), or, when the caster holds a Bardic Inspiration die, the die's question comes next, on the new roll. */
+  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
+    const offer = this.luckyOffer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideLucky(
+        this.data.campaignId,
+        offer.holdId,
+        reroll,
+        die,
+        this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
+      );
+      const settled = res.result.case === 'spellCast' ? res.result.value : null;
+      if (!settled?.encounter || (!settled.cast && !settled.inspirationOffer)) {
+        throw new Error('AnswerOutsideLucky answered without its cast');
+      }
+      this.luckyKey.renew();
+      this.luckyOffer.set(null);
+      this.typing.set(false);
+      if (settled.inspirationOffer) {
+        this.data.state.apply(settled.encounter);
+        this.offer.set(settled.inspirationOffer);
+        this.animateLucky(settled.inspirationOffer.d20, die);
+        return;
+      }
+      this.showCast(settled.encounter, settled.cast!);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The d20 the app rolled again for Lucky, tumbling, when the die's question comes next (a cast that is told animates
+   * its own d20): the new face alone, "1 → 14". */
+  private animateLucky(roll: DiceRoll | undefined, die: LuckyRoll | null): void {
+    const again = die && 'inApp' in die ? luckyReroll(roll) : undefined;
+    const show = again
+      ? showOfDie('Sortudo', roll?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`)
+      : null;
+    if (show) {
+      this.animator.play(show);
+    }
   }
 
   /** The answer about the die: the spell is cast now, with the d20 it rolled and the die when it was used. */

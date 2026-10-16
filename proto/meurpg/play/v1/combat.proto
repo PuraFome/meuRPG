@@ -2928,8 +2928,9 @@ message DiceRoll {
   // other roll.
   int32 counted_index = 9;
   // The dice a feature rolled again: a fighting style's damage dice (Great Weapon
-  // Fighting), or the halfling's Lucky on an attack d20 that showed a 1 (`source_key`
-  // "trait:lucky", from 1 to the new face). `faces` holds the faces that count.
+  // Fighting), or the halfling's Lucky on a d20 that showed a 1 (`source_key`
+  // "trait:lucky", from 1 to the new face): an attack roll, an ability check or a saving
+  // throw. `faces` holds the faces that count.
   repeated Reroll rerolled = 10;
   // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção and
   // Perdição's d4 on attack rolls and saving throws. `total` already has them. For a
@@ -3394,17 +3395,23 @@ message InspirationOffer {
 
 // LuckyOffer asks the player of a held roll whether to roll again a d20 that shows a 1 (SRD
 // 5.1, Halfling, Lucky: the new roll must be used): RollAttack answered it instead of the
-// outcome. The attack is only resolved after AnswerLucky.
+// outcome, and the attack is only resolved after AnswerLucky. The other rolls that wait for a
+// Bardic Inspiration die (a scene check, a group check, a trap search, a puzzle hint try, and,
+// in a combat, a spell attack against one target, an effect's saving throw or a concentration
+// save) answer it the same way instead of their result, with `attack_key` and `target_id`
+// empty, and AnswerOutsideLucky settles them. Only the roller's player gets it (and, for a
+// weapon attack, the master): it carries the d20 and the bonus the player already sees, never a
+// DC, an armor class or an NPC's number (RN-10, RN-20).
 message LuckyOffer {
   // The held roll (a UUID).
   string hold_id = 1;
-  // The d20 of the held roll, with the attack's bonus as the modifier: both dice with
+  // The d20 of the held roll, with the roll's bonus as the modifier: both dice with
   // advantage or disadvantage, the one that counts marked (`counted_index`).
   DiceRoll d20 = 2;
   // The die that shows the 1, as an index into `d20.faces`: the one AnswerLucky rolls again
   // (0 for a single d20; with both dice on 1, the first).
   int32 lucky_index = 3;
-  // The attack and its target.
+  // The attack and its target; empty for a roll that is not a weapon attack.
   string attack_key = 4;
   string target_id = 5;
 }
@@ -3428,7 +3435,9 @@ message BonusDie {
 // by AnswerOutsideInspiration (SRD 5.1: the creature can wait until after it rolls the d20 and
 // must decide before the GM says whether the roll succeeds). Only the roller's player gets it
 // (and the master reads the dice held, never an offer): it carries the d20 and the bonus the
-// player already sees, never a DC, an armor class or an NPC's number (RN-10, RN-20).
+// player already sees, never a DC, an armor class or an NPC's number (RN-10, RN-20). A halfling's
+// roll whose d20 shows a 1 asks the Lucky question first (LuckyOffer, AnswerOutsideLucky); this
+// one comes after it, on the new roll.
 message OutsideInspirationOffer {
   // The held roll (a UUID).
   string hold_id = 1;
@@ -4075,6 +4084,11 @@ message CastSpellResponse {
   // cantrip's attack (RollAttack holds those) and a cast that waited for a reaction window
   // do not ask.
   OutsideInspirationOffer inspiration_offer = 7;
+  // Set instead of `cast`, like `inspiration_offer`, when the caster is the player's own
+  // halfling and a d20 of that spell attack shows a 1: the player decides whether to roll it
+  // again before the result is told (ResourceService.AnswerOutsideLucky). The Lucky question
+  // comes first; the die's, when the caster holds one, comes after it, on the new roll.
+  LuckyOffer lucky_offer = 8;
 }
 
 // SpellCast is a cast, as the caller may see it.
@@ -4658,6 +4672,9 @@ message CombatLogEffect {
   optional int32 d20 = 7;
   optional int32 total = 8;
   optional int32 dc = 9;
+  // SAVED and SAVE_FAILED, with the roll: the d20 the halfling's Lucky rolled again after it
+  // showed a 1 (`source_key` "trait:lucky"); `d20` is the new face.
+  repeated Reroll rerolled = 15;
   // DAMAGE: the damage type's Portuguese name and the amount rolled.
   string damage_type_pt = 10;
   int32 amount = 11;
@@ -5548,6 +5565,10 @@ message ResolveConcentrationSaveResponse {
   // ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
   // never asks.
   OutsideInspirationOffer inspiration_offer = 3;
+  // Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
+  // halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
+  // rolls it again or keeps the 1 (the die's question, if any, comes after it).
+  LuckyOffer lucky_offer = 4;
 }
 
 message ConcentrationSaveResult {

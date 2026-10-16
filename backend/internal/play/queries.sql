@@ -1008,8 +1008,9 @@ WHERE run_id = $1 AND seq > $2 AND wrong AND user_id IS NOT NULL
 GROUP BY user_id;
 
 -- name: InsertPuzzleHintTry :one
-INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+-- lucky_index is the d20 the halfling's Lucky rolled again (NULL when none was).
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 RETURNING *;
 
 -- name: GetPuzzleHintTryByKey :one
@@ -1639,8 +1640,10 @@ UPDATE character_inspiration SET seconds_left = seconds_left - $2::INT4 WHERE ca
 DELETE FROM character_inspiration WHERE campaign_id = $1;
 
 -- name: InsertInspirationHold :one
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+-- A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
+-- of a d20 that shows a 1 (lucky_index, NULL without one).
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 RETURNING *;
 
 -- name: GetInspirationHoldByKey :one
@@ -1661,12 +1664,20 @@ DELETE FROM inspiration_holds WHERE character_id = $1;
 -- name: AnswerInspirationHold :exec
 UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
 
+-- name: AnswerInspirationHoldLucky :one
+-- The answer to the Lucky question of a held roll: the d20 after it (the faces, the one that
+-- counts and the total), the answer's key and the new face (NULL when the player kept the 1).
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, lucky_answer_key = $5, lucky_to = $6 WHERE id = $1
+RETURNING *;
+
 -- name: DeleteOrphanInspirationHolds :exec
 -- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 -- A roll held in a combat (round set) has its die on the combatant and is forgotten by the
--- round it was held in (outsideRoll) or when the combat ends (dieToCharacters).
+-- round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
+-- Lucky question still waits stays: that question needs no die.
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
+  AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);
 
 -- name: InsertHitRider :one

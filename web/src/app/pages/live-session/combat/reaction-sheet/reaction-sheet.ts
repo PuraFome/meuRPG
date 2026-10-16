@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   type ConcentrationSaveResult,
+  type LuckyOffer,
   type OutsideInspirationOffer,
   type ReactionResult,
   EncounterBlockedReason,
@@ -35,6 +36,7 @@ import {
   type ReactionAnswer,
 } from '../../../../core/combat/combat-client';
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
+import { luckyHeldLine, luckyReroll } from '../../../../core/combat/lucky-question';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import {
   type ConcentrationMode,
@@ -62,15 +64,21 @@ import {
 } from '../../../../core/combat/reaction-autopass';
 import { metersText } from '../../../../core/units';
 import { ActionKey } from '../../../../core/connect/idempotency';
-import { ResourceClient, type InspirationRoll } from '../../../../core/resources/resources-client';
+import {
+  ResourceClient,
+  type InspirationRoll,
+  type LuckyRoll,
+} from '../../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import { InspirationOffer } from '../../inspiration/inspiration-offer';
+import { LuckyPrompt } from '../lucky-prompt/lucky-prompt';
 import { SlotPicker } from '../cast-sheet/slot-picker';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import {
   RollAnimator,
   type RollShow,
   showOfConcentration,
+  showOfDie,
   showOfReaction,
 } from '../../../../shared/roll-overlay/roll-animator';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
@@ -140,6 +148,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
   imports: [
     ExtraDice,
     InspirationOffer,
+    LuckyPrompt,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -165,7 +174,19 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
       }
       @switch (stage()) {
         @case ('ask') {
-          @if (offer(); as o) {
+          @if (luckyOffer(); as l) {
+            <!-- The save's d20 shows a 1 and the reactor is a halfling: it is kept, and Lucky asks before the die's question (SRD 5.1). -->
+            <p class="what">{{ luckyHeld() }}</p>
+            <app-lucky-prompt
+              [offer]="l"
+              [canApp]="canApp"
+              [canType]="canType"
+              [preferApp]="preferApp"
+              [busy]="busy()"
+              (reroll)="answerLucky(true, $event)"
+              (keep)="answerLucky(false, null)"
+            />
+          } @else if (offer(); as o) {
             <app-inspiration-offer
               [offer]="o"
               [canApp]="canApp"
@@ -311,8 +332,8 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
       <div foot>
         @switch (stage()) {
           @case ('ask') {
-            @if (offer()) {
-              <!-- The question about the die is the whole step: its own buttons answer it. -->
+            @if (offer() || luckyOffer()) {
+              <!-- The question about the die (or Lucky's) is the whole step: its own buttons answer it. -->
             } @else if (isConcentration()) {
               <div class="stack">
                 <button
@@ -475,6 +496,13 @@ export class ReactionSheet {
    * decides before the result is told. The window stays open. */
   protected readonly offer = signal<OutsideInspirationOffer | null>(null);
   private readonly dieKey = new ActionKey();
+  /** The concentration save's d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky
+   * question ("Tirou 1: rolar de novo?") comes first, before the die's. The window stays open. */
+  protected readonly luckyOffer = signal<LuckyOffer | null>(null);
+  /** The held d20, above the Lucky question. */
+  protected readonly luckyHeld = computed(() => luckyHeldLine(this.luckyOffer()));
+  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
+  private readonly luckyKey = new ActionKey();
   /** The d4 an effect adds to the typed saving throw (Bênção, Perdição): asked when the server says the roll takes them. */
   protected readonly extra = new ExtraDiceState();
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
@@ -859,8 +887,10 @@ export class ReactionSheet {
         this.keys.keyFor({ window: w.id, how: sent }),
       );
       this.data.state.apply(res.encounter);
-      if (res.offer) {
-        this.offer.set(res.offer);
+      if (res.lucky || res.offer) {
+        // Nothing was written: the window stays open and the question comes (Lucky's first).
+        this.luckyOffer.set(res.lucky ?? null);
+        this.offer.set(res.offer ?? null);
         this.typingSave.set(false);
         return;
       }
@@ -887,6 +917,54 @@ export class ReactionSheet {
     this.play(() => showOfConcentration(result));
     this.step.set('result');
     this.typingSave.set(false);
+  }
+
+  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the save is settled now with the new d20
+   * (or the 1), or, when the character holds a Bardic Inspiration die, the die's question comes next, on the new roll. */
+  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
+    const offer = this.luckyOffer();
+    if (!offer || this.busy()) {
+      return;
+    }
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.resources.answerOutsideLucky(
+        this.data.campaignId,
+        offer.holdId,
+        reroll,
+        die,
+        this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
+      );
+      const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
+      if (!settled?.encounter || (!settled.result && !settled.inspirationOffer)) {
+        throw new Error('AnswerOutsideLucky answered without its concentration save');
+      }
+      this.data.state.apply(settled.encounter);
+      this.luckyKey.renew();
+      this.luckyOffer.set(null);
+      if (settled.inspirationOffer) {
+        this.offer.set(settled.inspirationOffer);
+        const again = die && 'inApp' in die ? luckyReroll(settled.inspirationOffer.d20) : undefined;
+        if (again) {
+          // The d20 the app rolled again, tumbling: the new face alone, "1 → 14" (the die's question shows the rest).
+          this.play(() =>
+            showOfDie(
+              'Sortudo',
+              settled.inspirationOffer?.d20?.diceSides ?? 0,
+              again.to,
+              `${again.from} → ${again.to}`,
+            ),
+          );
+        }
+        return;
+      }
+      this.showSave(settled.result!);
+    } catch (err) {
+      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   /** The answer about the die: the save is settled now, with the d20 it rolled and the die when it was used. */

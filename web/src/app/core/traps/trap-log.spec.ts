@@ -147,4 +147,25 @@ describe('trap log', () => {
       text: ' notou a armadilha Fosso escondido ao passar',
     });
   });
+
+  it('says the d20 the halfling’s Lucky rolled again beside the search’s roll', () => {
+    const lucky = create(TrapActivitySchema, {
+      id: 'l',
+      search: {
+        characterName: 'Pipo',
+        skill: TrapSearchSkill.INVESTIGATION,
+        roll: {
+          diceCount: 1,
+          diceSides: 20,
+          faces: [14],
+          modifier: 4,
+          total: 18,
+          rerolled: [{ index: 0, from: 1, to: 14, sourceKey: 'trait:lucky' }],
+        },
+      },
+    });
+    expect(activityLines(lucky, true)[0].text).toBe(
+      ' procurou armadilhas (Investigação): 1d20 (14) + 4 = 18; Sortudo: 1 → 14, e não achou nada',
+    );
+  });
 });

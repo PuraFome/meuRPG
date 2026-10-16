@@ -8,6 +8,7 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type TrapActivity, TrapSearchSkill } from '../../../gen/meurpg/play/v1/traps_pb';
 import { rollText } from '../combat/combat-dice';
+import { luckyText } from '../combat/lucky';
 import { conditionName } from '../combat/conditions';
 import { listNames } from '../maps/scene-clues';
 import { skillKeyName } from './trap-search';
@@ -118,7 +119,10 @@ export function activityLines(a: TrapActivity, master: boolean): TrapLine[] {
   }
   if (a.search) {
     const s = a.search;
-    const rolls = [s.roll, s.secondRoll].filter((r) => r !== undefined).map((r) => rollText(r));
+    // A d20 the halfling's Lucky rolled again says so beside it: "1d20 (14) + 4 = 18; Sortudo: 1 → 14".
+    const rolls = [s.roll, s.secondRoll]
+      .filter((r) => r !== undefined)
+      .map((r) => [rollText(r), luckyText(r)].filter(Boolean).join('; '));
     const found = s.foundNames.filter(Boolean);
     const outcome =
       found.length > 0
