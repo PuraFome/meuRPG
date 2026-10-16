@@ -360,8 +360,6 @@ cognitive internal/rules checkRow 26
 cognitive internal/rules checkTarget 25
 cognitive internal/rules levelUpOptionsWith 43
 cognitive internal/rules load 31
-cognitive internal/rules/combat AttackMode 31
-cognitive internal/rules/combat SaveMode 27
 cognitive internal/rules/dungeon (*gen).connect 34
 cognitive internal/rules/dungeon (*gen).deriveCorridors 46
 cognitive internal/rules/dungeon (*gen).extraLoops 39
@@ -754,9 +752,6 @@ cyclomatic internal/rules levelUpOptionsWith 30
 cyclomatic internal/rules load 39
 cyclomatic internal/rules metamagicReason 20
 cyclomatic internal/rules unusedField 23
-cyclomatic internal/rules/combat AttackMode 30
-cyclomatic internal/rules/combat BonusAttack 19
-cyclomatic internal/rules/combat SaveMode 28
 cyclomatic internal/rules/dungeon (*gen).connect 18
 cyclomatic internal/rules/dungeon (*gen).deriveCorridors 28
 cyclomatic internal/rules/dungeon (*gen).extraLoops 22
