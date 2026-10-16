@@ -50,9 +50,34 @@ func (s *Service) syncContests(ctx context.Context, c *combatTx) error {
 	if c.enc.ID == "" || c.enc.Status != statusActive {
 		return nil
 	}
+	waiting, err := waitingContestsOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	have, err := contestWindowsByContest(ctx, c)
+	if err != nil {
+		return err
+	}
+	if len(waiting) == 0 && len(have) == 0 {
+		return nil
+	}
+	byID, err := contestCombatantsByID(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, row := range waiting {
+		if err := s.syncContestWindow(ctx, c, row, contestReactor(row, byID), have); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// waitingContestsOf lists the latest contests of the encounter that wait for an answer.
+func waitingContestsOf(ctx context.Context, c *combatTx) ([]playdb.CombatContest, error) {
 	rows, err := c.q.ListContests(ctx, playdb.ListContestsParams{EncounterID: c.enc.ID, Limit: contestMaxListed})
 	if err != nil {
-		return fmt.Errorf("list the contests: %w", err)
+		return nil, fmt.Errorf("list the contests: %w", err)
 	}
 	waiting := rows[:0:0]
 	for _, r := range rows {
@@ -60,9 +85,14 @@ func (s *Service) syncContests(ctx context.Context, c *combatTx) error {
 			waiting = append(waiting, r)
 		}
 	}
+	return waiting, nil
+}
+
+// contestWindowsByContest is the open CONTEST windows, by the contest each one waits on.
+func contestWindowsByContest(ctx context.Context, c *combatTx) (map[string]playdb.ReactionWindow, error) {
 	open, err := openWindowsOf(ctx, c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	have := map[string]playdb.ReactionWindow{}
 	for _, w := range open {
@@ -70,35 +100,38 @@ func (s *Service) syncContests(ctx context.Context, c *combatTx) error {
 			have[windowTriggerOf(w).Contest] = w
 		}
 	}
-	if len(waiting) == 0 && len(have) == 0 {
-		return nil
-	}
+	return have, nil
+}
+
+// contestCombatantsByID is the combatants of the encounter by id.
+func contestCombatantsByID(ctx context.Context, c *combatTx) (map[string]playdb.Combatant, error) {
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return nil, fmt.Errorf("list the combatants: %w", err)
 	}
 	byID := make(map[string]playdb.Combatant, len(cs))
 	for _, x := range cs {
 		byID[x.ID] = x
 	}
-	for _, row := range waiting {
-		reactor := contestReactor(row, byID)
-		if w, ok := have[row.ID]; ok {
-			if deref(w.ReactorID) == idOf(reactor) {
-				continue
-			}
-			if _, err := s.closeWindow(ctx, c, w, windowClosed, reaction.ReasonTriggerGone, windowOutcome{}, ""); err != nil {
-				return err
-			}
+	return byID, nil
+}
+
+// syncContestWindow keeps the window of a waiting contest when its reactor is the same, and
+// otherwise closes it (if there is one) and opens the window of the reactor.
+func (s *Service) syncContestWindow(ctx context.Context, c *combatTx, row playdb.CombatContest, reactor *playdb.Combatant, have map[string]playdb.ReactionWindow) error {
+	if w, ok := have[row.ID]; ok {
+		if deref(w.ReactorID) == idOf(reactor) {
+			return nil
 		}
-		if _, err := s.openWindows(ctx, c, row.ID, nil, []windowSpec{{
-			kind: reaction.Contest, reactor: reactor,
-			trigger: windowTrigger{Contest: row.ID, Actor: row.InitiatorID, Target: row.DefenderID},
-		}}); err != nil {
+		if _, err := s.closeWindow(ctx, c, w, windowClosed, reaction.ReasonTriggerGone, windowOutcome{}, ""); err != nil {
 			return err
 		}
 	}
-	return nil
+	_, err := s.openWindows(ctx, c, row.ID, nil, []windowSpec{{
+		kind: reaction.Contest, reactor: reactor,
+		trigger: windowTrigger{Contest: row.ID, Actor: row.InitiatorID, Target: row.DefenderID},
+	}})
+	return err
 }
 
 func idOf(c *playdb.Combatant) string {
