@@ -30,7 +30,7 @@ func upcastWindow(t *testing.T) (*armed, *playv1.Encounter, *playv1.ReactionWind
 	return a, e, w
 }
 
-func typedAnswer(face int32) func(*playv1.AnswerReactionRequest) {
+func counterspellTypedAnswer(face int32) func(*playv1.AnswerReactionRequest) {
 	return func(r *playv1.AnswerReactionRequest) {
 		useAnswer(3)(r)
 		r.Roll = &playv1.AnswerReactionRequest_Typed{Typed: face}
@@ -64,7 +64,7 @@ func TestCounterspellAboveTheSlotAsksAnAbilityCheck(t *testing.T) {
 		t.Errorf("roll_in_app false message = %q", err)
 	}
 	for _, face := range []int32{0, 21} {
-		_, err = a.answerReaction(t, a.ana, e, w.GetId(), typedAnswer(face))
+		_, err = a.answerReaction(t, a.ana, e, w.GetId(), counterspellTypedAnswer(face))
 		wantCode(t, "typed out of range", err, connect.CodeInvalidArgument)
 		if err.Error() != "invalid_argument: typed must be 1 to 20" {
 			t.Errorf("typed %d message = %q", face, err)
@@ -79,7 +79,7 @@ func TestCounterspellAboveTheSlotAsksAnAbilityCheck(t *testing.T) {
 		t.Errorf("slot message = %q", err)
 	}
 	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_APP)
-	_, err = a.answerReaction(t, a.ana, e, w.GetId(), typedAnswer(10))
+	_, err = a.answerReaction(t, a.ana, e, w.GetId(), counterspellTypedAnswer(10))
 	wantBlockedBy(t, "typed on app dice", err, blockedWrongDice)
 	if err.Error() != "failed_precondition: this is not how the campaign has you roll your dice" {
 		t.Errorf("wrong dice message = %q", err)
@@ -87,7 +87,7 @@ func TestCounterspellAboveTheSlotAsksAnAbilityCheck(t *testing.T) {
 	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
 
 	// A 9 and the +4 are a 13 against 14: the spell goes through, the slot and the reaction are spent.
-	res := a.mustAnswer(t, a.ana, e, w.GetId(), typedAnswer(9))
+	res := a.mustAnswer(t, a.ana, e, w.GetId(), counterspellTypedAnswer(9))
 	c := res.GetResult().GetCounterspell()
 	if c.GetCountered() || c.GetCheckDc() != 14 || c.GetCheck().GetTotal() != 13 || c.GetCheck().GetModifier() != 4 || c.GetCheck().GetFaces()[0] != 9 || !c.GetCheck().GetPhysical() {
 		t.Fatalf("result = %v, want the spell through on a 13 against 14 with a typed die", c)
