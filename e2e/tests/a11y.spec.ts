@@ -91,16 +91,28 @@ const wcag = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
  * the layout checks of layout.ts on the same screen: icons in line with
  * their words, nothing over an icon, tiles centred. */
 async function expectScreenPasses(page: Page, screen: string): Promise<void> {
-  // A dialog still fading in has colours between two states: axe would judge
-  // the contrast of a frame nobody stops on (it failed that way once, in the
-  // spell dialog, and again in the Escudo prompt on a slow runner). Wait for
-  // the transitions that end, the ones that have not started yet ("pending",
-  // the dialog's first frame) included; a looping one never does.
+  // A dialog fading in, or a button whose focus ring is still fading, has
+  // colours between two states: axe would judge the contrast of a frame nobody
+  // stops on. Wait until every animation that ends has ended ("pending" ones,
+  // a dialog's first frame, included; a looping one never ends), checked two
+  // frames later, so that focus the app moves after rendering, and the
+  // transition it starts, are seen too.
   await page.waitForFunction(
     () =>
-      document
-        .getAnimations()
-        .every((a) => a.playState === 'finished' || a.playState === 'idle' || a.effect?.getComputedTiming().iterations === Infinity),
+      new Promise<boolean>((resolve) => {
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() =>
+            resolve(
+              document
+                .getAnimations()
+                .every(
+                  (a) =>
+                    a.playState === 'finished' || a.playState === 'idle' || a.effect?.getComputedTiming().iterations === Infinity,
+                ),
+            ),
+          ),
+        );
+      }),
     undefined,
     { timeout: 5_000 },
   );
