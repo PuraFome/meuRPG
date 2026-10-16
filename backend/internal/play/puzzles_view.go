@@ -130,34 +130,13 @@ func playerRunProto(d puzzleDef, run playdb.PuzzleRun, names runNames, v playerV
 		}
 	}
 	if len(run.LastMove) > 0 {
-		last, err := lastMoveOf(run)
+		last, err := playerLastMove(d, run, names, v)
 		if err != nil {
 			return nil, err
 		}
-		if run.LastMoverCharacterID != nil {
-			last.CharacterName = names[*run.LastMoverCharacterID]
-		}
-		// A typed answer is its author's, and which bell was struck would give the
-		// sequence away: the players read that it was wrong, and for which step.
-		if d.kind.judges() {
-			last.Move = nil
-		}
-		// The trap's name goes only to a player who sees its point, and nothing at all to
-		// the others (an empty name would hint that there is a trap).
-		if v.player && !v.trapSeen {
-			last.TrapName = ""
-		}
 		out.LastMove = last
 	}
-	reason := stopOf(d, run, v.now)
-	if reason != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED {
-		out.Stopped, out.StoppedMessage = true, stoppedLine
-	}
-	out.Limits = limitsProto(d, run, v.now, v.wrongMine)
-	if d.hintCheck != nil {
-		out.HintByCheck, out.HintSkillKey = true, d.hintCheck.GetSkillKey()
-		out.CanTryHint = v.player && v.hasCharacter && !out.Solved && !out.Stopped && visible < len(d.hints) && !v.tried
-	}
+	playerLimitsInto(out, d, run, v, visible)
 	out.MyPart, out.PartHolders = v.myPart, v.partHolders
 	if d.solution.GetSequence() != nil {
 		out.Sequence = playbackProto(d, run, v.now)
@@ -169,6 +148,42 @@ func playerRunProto(d puzzleDef, run playdb.PuzzleRun, names runNames, v playerV
 		}
 	}
 	return out, nil
+}
+
+// playerLastMove is the run's last move as a player reads it: who made it, and not what was
+// typed nor which bell was struck.
+func playerLastMove(d puzzleDef, run playdb.PuzzleRun, names runNames, v playerView) (*playv1.PuzzleLastMove, error) {
+	last, err := lastMoveOf(run)
+	if err != nil {
+		return nil, err
+	}
+	if run.LastMoverCharacterID != nil {
+		last.CharacterName = names[*run.LastMoverCharacterID]
+	}
+	// A typed answer is its author's, and which bell was struck would give the
+	// sequence away: the players read that it was wrong, and for which step.
+	if d.kind.judges() {
+		last.Move = nil
+	}
+	// The trap's name goes only to a player who sees its point, and nothing at all to
+	// the others (an empty name would hint that there is a trap).
+	if v.player && !v.trapSeen {
+		last.TrapName = ""
+	}
+	return last, nil
+}
+
+// playerLimitsInto says into out whether a limit stopped the puzzle, the limits, and what the
+// hint by a check allows the reader.
+func playerLimitsInto(out *playv1.PuzzleRun, d puzzleDef, run playdb.PuzzleRun, v playerView, visible int) {
+	if stopOf(d, run, v.now) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED {
+		out.Stopped, out.StoppedMessage = true, stoppedLine
+	}
+	out.Limits = limitsProto(d, run, v.now, v.wrongMine)
+	if d.hintCheck != nil {
+		out.HintByCheck, out.HintSkillKey = true, d.hintCheck.GetSkillKey()
+		out.CanTryHint = v.player && v.hasCharacter && !out.Solved && !out.Stopped && visible < len(d.hints) && !v.tried
+	}
 }
 
 // lastMoveOf decodes the run's last move, as stored (with the typed text or the bell).
@@ -206,69 +221,117 @@ func (s *Service) viewerOf(ctx context.Context, tx pgx.Tx, m authz.Membership, d
 	}
 	v.player = true
 	q := s.queriesIn(tx)
-	if d.onWrong.GetAttemptsPerPlayer() > 0 {
-		rows, err := q.CountWrongPuzzleMoves(ctx, playdb.CountWrongPuzzleMovesParams{RunID: run.ID, Seq: run.RoundStartSeq})
-		if err != nil {
-			return v, fmt.Errorf("count the player's wrong moves: %w", err)
-		}
-		for _, r := range rows {
-			if r.UserID != nil && *r.UserID == m.UserID {
-				v.wrongMine = int(r.Wrong)
-			}
+	if err := wrongMovesOf(ctx, q, m, d, run, &v); err != nil {
+		return v, err
+	}
+	if err := hintsOf(ctx, q, m, d, run, &v); err != nil {
+		return v, err
+	}
+	if err := s.keyFoundBy(ctx, tx, m, d, &v); err != nil {
+		return v, err
+	}
+	if err := s.trapSeenBy(ctx, m, d, run, &v); err != nil {
+		return v, err
+	}
+	err := s.partsOf(ctx, tx, m, d, &v)
+	return v, err
+}
+
+// wrongMovesOf reads the reader's wrong moves of the round into v.
+func wrongMovesOf(ctx context.Context, q *playdb.Queries, m authz.Membership, d puzzleDef, run playdb.PuzzleRun, v *playerView) error {
+	if d.onWrong.GetAttemptsPerPlayer() <= 0 {
+		return nil
+	}
+	rows, err := q.CountWrongPuzzleMoves(ctx, playdb.CountWrongPuzzleMovesParams{RunID: run.ID, Seq: run.RoundStartSeq})
+	if err != nil {
+		return fmt.Errorf("count the player's wrong moves: %w", err)
+	}
+	for _, r := range rows {
+		if r.UserID != nil && *r.UserID == m.UserID {
+			v.wrongMine = int(r.Wrong)
 		}
 	}
-	if d.hintCheck != nil {
-		won, err := q.GetPuzzleHintCursor(ctx, playdb.GetPuzzleHintCursorParams{RunID: run.ID, UserID: &m.UserID})
-		if err != nil {
-			return v, fmt.Errorf("read the hints the player won: %w", err)
-		}
-		v.won = int(won)
-		next := max(int(run.ReleasedHints), v.won)
-		if next < len(d.hints) {
-			if v.tried, err = q.HasTriedPuzzleHint(ctx, playdb.HasTriedPuzzleHintParams{RunID: run.ID, UserID: &m.UserID, HintIndex: clamp32(next, 0, maxHints)}); err != nil {
-				return v, fmt.Errorf("read whether the player tried: %w", err)
-			}
+	return nil
+}
+
+// hintsOf reads into v the hints the reader won by a check and whether they tried for the next.
+func hintsOf(ctx context.Context, q *playdb.Queries, m authz.Membership, d puzzleDef, run playdb.PuzzleRun, v *playerView) error {
+	if d.hintCheck == nil {
+		return nil
+	}
+	won, err := q.GetPuzzleHintCursor(ctx, playdb.GetPuzzleHintCursorParams{RunID: run.ID, UserID: &m.UserID})
+	if err != nil {
+		return fmt.Errorf("read the hints the player won: %w", err)
+	}
+	v.won = int(won)
+	next := max(int(run.ReleasedHints), v.won)
+	if next < len(d.hints) {
+		if v.tried, err = q.HasTriedPuzzleHint(ctx, playdb.HasTriedPuzzleHintParams{RunID: run.ID, UserID: &m.UserID, HintIndex: clamp32(next, 0, maxHints)}); err != nil {
+			return fmt.Errorf("read whether the player tried: %w", err)
 		}
 	}
-	if id := d.config.GetCipher().GetKeyClueId(); id != "" && s.puzzles.maps != nil {
-		found, err := s.puzzles.maps.PuzzleClueFoundBy(ctx, tx, m.CampaignID, id, m.UserID)
-		if err != nil {
-			return v, err
-		}
-		v.keyFound = found
+	return nil
+}
+
+// keyFoundBy reads into v whether the reader found the clue with the cipher's key.
+func (s *Service) keyFoundBy(ctx context.Context, tx pgx.Tx, m authz.Membership, d puzzleDef, v *playerView) error {
+	id := d.config.GetCipher().GetKeyClueId()
+	if id == "" || s.puzzles.maps == nil {
+		return nil
 	}
-	if last := (&playv1.PuzzleLastMove{}); len(run.LastMove) > 0 {
-		if err := fromJSON(run.LastMove, last); err != nil {
-			return v, err
-		}
-		if last.GetTrapName() != "" && d.onWrong.GetTrap() != nil && s.puzzles.maps != nil {
-			t := d.onWrong.GetTrap()
-			seen, err := s.puzzles.maps.PuzzleTrapSeenBy(ctx, m, t.GetMapId(), t.GetPointId())
-			if err != nil {
-				return v, err
-			}
-			v.trapSeen = seen
+	found, err := s.puzzles.maps.PuzzleClueFoundBy(ctx, tx, m.CampaignID, id, m.UserID)
+	if err != nil {
+		return err
+	}
+	v.keyFound = found
+	return nil
+}
+
+// trapSeenBy reads into v whether the reader sees the point of the trap the last wrong move fired.
+func (s *Service) trapSeenBy(ctx context.Context, m authz.Membership, d puzzleDef, run playdb.PuzzleRun, v *playerView) error {
+	if len(run.LastMove) == 0 {
+		return nil
+	}
+	last := &playv1.PuzzleLastMove{}
+	if err := fromJSON(run.LastMove, last); err != nil {
+		return err
+	}
+	if last.GetTrapName() == "" || d.onWrong.GetTrap() == nil || s.puzzles.maps == nil {
+		return nil
+	}
+	t := d.onWrong.GetTrap()
+	seen, err := s.puzzles.maps.PuzzleTrapSeenBy(ctx, m, t.GetMapId(), t.GetPointId())
+	if err != nil {
+		return err
+	}
+	v.trapSeen = seen
+	return nil
+}
+
+// partsOf reads into v whether the reader has a character in the party, their part of the
+// split information and who else has one.
+func (s *Service) partsOf(ctx context.Context, tx pgx.Tx, m authz.Membership, d puzzleDef, v *playerView) error {
+	if len(d.parts) == 0 && d.hintCheck == nil {
+		return nil
+	}
+	party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
+	if err != nil {
+		return err
+	}
+	isMine := func(c link.Character) bool { return c.PlayerUserID != "" && c.PlayerUserID == m.UserID }
+	v.hasCharacter = slices.ContainsFunc(party, isMine)
+	mine := slices.IndexFunc(party, isMine)
+	for _, p := range d.parts {
+		i := slices.IndexFunc(party, func(c link.Character) bool { return c.ID == p.GetCharacterId() })
+		switch {
+		case i < 0: // no owner, or one that is not in the party any more: nobody reads it
+		case i == mine:
+			v.myPart = p.GetText()
+		default:
+			v.partHolders = append(v.partHolders, party[i].Name)
 		}
 	}
-	if len(d.parts) > 0 || d.hintCheck != nil {
-		party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
-		if err != nil {
-			return v, err
-		}
-		v.hasCharacter = slices.ContainsFunc(party, func(c link.Character) bool { return c.PlayerUserID != "" && c.PlayerUserID == m.UserID })
-		mine := slices.IndexFunc(party, func(c link.Character) bool { return c.PlayerUserID != "" && c.PlayerUserID == m.UserID })
-		for _, p := range d.parts {
-			i := slices.IndexFunc(party, func(c link.Character) bool { return c.ID == p.GetCharacterId() })
-			switch {
-			case i < 0: // no owner, or one that is not in the party any more: nobody reads it
-			case i == mine:
-				v.myPart = p.GetText()
-			default:
-				v.partHolders = append(v.partHolders, party[i].Name)
-			}
-		}
-	}
-	return v, nil
+	return nil
 }
 
 // masterExtra is what the master reads of a run besides what the players read: the
@@ -291,38 +354,52 @@ func (s *Service) masterExtras(ctx context.Context, tx pgx.Tx, campaignID string
 	}
 	slices.Reverse(tries) // oldest first
 	ex.tries = tries
+	if err := s.triersNamed(ctx, tx, campaignID, &ex); err != nil {
+		return ex, err
+	}
+	if d.onWrong.GetAttemptsPerPlayer() > 0 {
+		err := s.wrongMovesByUser(ctx, tx, q, campaignID, run, &ex)
+		return ex, err
+	}
+	return ex, nil
+}
+
+// triersNamed reads into ex the names of the characters of the tries.
+func (s *Service) triersNamed(ctx context.Context, tx pgx.Tx, campaignID string, ex *masterExtra) error {
 	var ids []string
-	for _, t := range tries {
+	for _, t := range ex.tries {
 		if t.CharacterID != nil {
 			ids = append(ids, *t.CharacterID)
 		}
 	}
-	if len(ids) > 0 {
-		chars, err := s.roster.SessionCharacters(ctx, tx, campaignID, ids)
-		if err != nil {
-			return ex, fmt.Errorf("read the names of the characters that tried: %w", err)
-		}
-		for _, c := range chars {
-			if !c.Reserved {
-				ex.names[c.ID] = c.Name
-			}
+	if len(ids) == 0 {
+		return nil
+	}
+	chars, err := s.roster.SessionCharacters(ctx, tx, campaignID, ids)
+	if err != nil {
+		return fmt.Errorf("read the names of the characters that tried: %w", err)
+	}
+	for _, c := range chars {
+		if !c.Reserved {
+			ex.names[c.ID] = c.Name
 		}
 	}
-	if d.onWrong.GetAttemptsPerPlayer() > 0 {
-		rows, err := q.CountWrongPuzzleMoves(ctx, playdb.CountWrongPuzzleMovesParams{RunID: run.ID, Seq: run.RoundStartSeq})
-		if err != nil {
-			return ex, fmt.Errorf("count the wrong moves: %w", err)
-		}
-		for _, r := range rows {
-			if r.UserID != nil {
-				ex.wrong[*r.UserID] = int(r.Wrong)
-			}
-		}
-		if ex.party, err = s.roster.CombatParty(ctx, tx, campaignID); err != nil {
-			return ex, err
+	return nil
+}
+
+// wrongMovesByUser reads into ex each player's wrong moves of the round and the party.
+func (s *Service) wrongMovesByUser(ctx context.Context, tx pgx.Tx, q *playdb.Queries, campaignID string, run playdb.PuzzleRun, ex *masterExtra) error {
+	rows, err := q.CountWrongPuzzleMoves(ctx, playdb.CountWrongPuzzleMovesParams{RunID: run.ID, Seq: run.RoundStartSeq})
+	if err != nil {
+		return fmt.Errorf("count the wrong moves: %w", err)
+	}
+	for _, r := range rows {
+		if r.UserID != nil {
+			ex.wrong[*r.UserID] = int(r.Wrong)
 		}
 	}
-	return ex, nil
+	ex.party, err = s.roster.CombatParty(ctx, tx, campaignID)
+	return err
 }
 
 // runStatus is where a puzzle stands in the session: no run, or a run the master
@@ -360,19 +437,9 @@ func masterRunProto(d puzzleDef, run *playdb.PuzzleRun, names runNames, shown bo
 	if err != nil {
 		return nil, err
 	}
-	start := &playv1.PuzzleState{}
-	if err := fromJSON(run.Start, start); err != nil {
+	if err := masterNumbersInto(out, d, run, players); err != nil {
 		return nil, err
 	}
-	if out.Minimum, err = d.kind.minimum(d, players.GetState()); err != nil {
-		return nil, err
-	}
-	if out.MinimumFromStart, err = d.kind.minimum(d, start); err != nil {
-		return nil, err
-	}
-	out.Start = start
-	out.ReleasedHints = int32(min(max(int(run.ReleasedHints), 0), len(d.hints))) //nolint:gosec // at most 10
-	out.MovesMade = run.MovesMade
 	if run.ShownAt != nil {
 		out.Run = players
 	}
@@ -388,6 +455,34 @@ func masterRunProto(d puzzleDef, run *playdb.PuzzleRun, names runNames, shown bo
 		}
 	}
 	out.StopReason = stopOf(d, *run, ex.now)
+	out.HintTries = hintTriesProto(ex)
+	out.Attempts = attemptsProto(d, ex)
+	return out, nil
+}
+
+// masterNumbersInto sets the shortest ways from now and from the start, the start itself,
+// the hints released and the moves made: what only the master may know of the run.
+func masterNumbersInto(out *playv1.MasterPuzzleRun, d puzzleDef, run *playdb.PuzzleRun, players *playv1.PuzzleRun) error {
+	start := &playv1.PuzzleState{}
+	if err := fromJSON(run.Start, start); err != nil {
+		return err
+	}
+	var err error
+	if out.Minimum, err = d.kind.minimum(d, players.GetState()); err != nil {
+		return err
+	}
+	if out.MinimumFromStart, err = d.kind.minimum(d, start); err != nil {
+		return err
+	}
+	out.Start = start
+	out.ReleasedHints = int32(min(max(int(run.ReleasedHints), 0), len(d.hints))) //nolint:gosec // at most 10
+	out.MovesMade = run.MovesMade
+	return nil
+}
+
+// hintTriesProto is the tries for a hint, oldest first.
+func hintTriesProto(ex masterExtra) []*playv1.PuzzleHintTry {
+	var tries []*playv1.PuzzleHintTry
 	for _, t := range ex.tries {
 		try := &playv1.PuzzleHintTry{
 			Hint: t.HintIndex + 1, Passed: t.Passed, At: timestamppb.New(t.CreatedAt),
@@ -396,18 +491,27 @@ func masterRunProto(d puzzleDef, run *playdb.PuzzleRun, names runNames, shown bo
 		if t.CharacterID != nil {
 			try.CharacterName = ex.names[*t.CharacterID]
 		}
-		out.HintTries = append(out.HintTries, try)
+		tries = append(tries, try)
 	}
-	if limit := d.onWrong.GetAttemptsPerPlayer(); limit > 0 {
-		for _, c := range ex.party {
-			if c.PlayerUserID == "" {
-				continue
-			}
-			wrong := ex.wrong[c.PlayerUserID]
-			out.Attempts = append(out.Attempts, &playv1.PuzzleAttempts{
-				CharacterName: c.Name, Wrong: clamp32(wrong, 0, 1<<20), Left: max(limit-clamp32(wrong, 0, 1<<20), 0),
-			})
+	return tries
+}
+
+// attemptsProto is each player's wrong moves of the round and the attempts they have left,
+// when the puzzle limits them.
+func attemptsProto(d puzzleDef, ex masterExtra) []*playv1.PuzzleAttempts {
+	limit := d.onWrong.GetAttemptsPerPlayer()
+	if limit <= 0 {
+		return nil
+	}
+	var attempts []*playv1.PuzzleAttempts
+	for _, c := range ex.party {
+		if c.PlayerUserID == "" {
+			continue
 		}
+		wrong := ex.wrong[c.PlayerUserID]
+		attempts = append(attempts, &playv1.PuzzleAttempts{
+			CharacterName: c.Name, Wrong: clamp32(wrong, 0, 1<<20), Left: max(limit-clamp32(wrong, 0, 1<<20), 0),
+		})
 	}
-	return out, nil
+	return attempts
 }
