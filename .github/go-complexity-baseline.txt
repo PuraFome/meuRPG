@@ -15,10 +15,6 @@ cognitive internal/campaignpackage (*Service).StartCampaignExport 16
 cognitive internal/campaignpackage (*Service).Sweep 18
 cognitive internal/campaignpackage (*Service).writeZip 21
 cognitive internal/campaignpackage FileName 16
-cognitive internal/campaigns (*Service).CreateCampaign 28
-cognitive internal/campaigns (*Service).SetCampaignXpMode 19
-cognitive internal/campaigns (*Service).UpdateCampaignDocument 16
-cognitive internal/campaigns (*Service).acceptInvite 28
 cognitive internal/characters (*Service).AdjustCreatureHitPoints 33
 cognitive internal/characters (*Service).AdjustVitals 25
 cognitive internal/characters (*Service).ApproveCharacter 20
@@ -491,8 +487,6 @@ cognitive internal/rules/vision (*Lit).seeWalls 20
 cyclomatic cmd/api run 21
 cyclomatic cmd/migrate run 17
 cyclomatic internal/campaignpackage (*Service).BeginCampaignImport 22
-cyclomatic internal/campaigns (*Service).CreateCampaign 16
-cyclomatic internal/campaigns (*Service).acceptInvite 20
 cyclomatic internal/characters (*Service).AdjustCreatureHitPoints 24
 cyclomatic internal/characters (*Service).AdjustVitals 21
 cyclomatic internal/characters (*Service).ClaimCharacter 28
