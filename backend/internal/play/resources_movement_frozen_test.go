@@ -80,7 +80,9 @@ func TestArcaneRecoveryRequestRefusalsFrozen(t *testing.T) {
 		_, err := r.ana.resource.UseArcaneRecovery(t.Context(), connect.NewRequest(req))
 		return err
 	}
-	slot := func(level, count int32) *playv1.SpellSlotBack { return &playv1.SpellSlotBack{Level: level, Count: count} }
+	slot := func(level, count int32) *playv1.SpellSlotBack {
+		return &playv1.SpellSlotBack{Level: level, Count: count}
+	}
 	const levelsMsg = "slots must name one to nine spell levels"
 	wantResFrozen(t, "no slots", call(func(*playv1.UseArcaneRecoveryRequest) {}), connect.CodeInvalidArgument, levelsMsg)
 	tooMany := func(q *playv1.UseArcaneRecoveryRequest) {
