@@ -2,7 +2,7 @@
   <h2 class="mr-panel__title" id="view-as-title">Ver como</h2>
   <p class="va__lead">Veja o mapa como um jogador vê. Só você, e só aqui: nada muda para ninguém.</p>
 
-  <div class="va__rows" role="radiogroup" aria-labelledby="view-as-title" (keydown)="onKey($event)">
+  <div appRelayEvents class="va__rows" role="radiogroup" aria-labelledby="view-as-title" (relayKeydown)="onKey($event)">
     @for (row of rows(); track row.id; let i = $index) {
       <button
         type="button"

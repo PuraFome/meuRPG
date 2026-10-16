@@ -251,9 +251,12 @@ var (
 	riderDurations = []string{EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf}
 )
 
+// combatEffectsName is the file loadCombatEffects reads.
+const combatEffectsName = "effects/combat_effects.json"
+
 // loadCombatEffects reads and checks effects/combat_effects.json.
 func (c *content) loadCombatEffects(fsys fs.FS) error {
-	const name = "effects/combat_effects.json"
+	const name = combatEffectsName
 	var f combatEffectsFile
 	if err := readJSON(fsys, name, &f); err != nil {
 		return err
@@ -262,6 +265,22 @@ func (c *content) loadCombatEffects(fsys fs.FS) error {
 		return fmt.Errorf("%s: it needs a source line", name)
 	}
 	out := &combatEffects{conditions: map[string]ConditionInfo{}, spells: map[string]*EffectDef{}, effects: map[string]*EffectDef{}}
+	steps := []func(f *combatEffectsFile, out *combatEffects) error{
+		c.loadEffectConditions, c.loadEffectSpells, c.loadEffectEntries, c.checkEffectNames, c.checkEffectDefs,
+	}
+	for _, step := range steps {
+		if err := step(&f, out); err != nil {
+			return err
+		}
+	}
+	c.combatEffects = out
+	return nil
+}
+
+// loadEffectConditions keeps the file's conditions, and refuses one that is
+// not the SRD's, one of no audience or lines, and a missing one.
+func (c *content) loadEffectConditions(f *combatEffectsFile, out *combatEffects) error {
+	const name = combatEffectsName
 	for key, info := range f.Conditions {
 		if _, ok := c.named[key]; !ok {
 			return fmt.Errorf("%s: %q is not an SRD condition", name, key)
@@ -280,6 +299,13 @@ func (c *content) loadCombatEffects(fsys fs.FS) error {
 			return fmt.Errorf("%s: the condition %s is missing", name, key)
 		}
 	}
+	return nil
+}
+
+// loadEffectSpells keeps the spells' effects, with what the spell says of
+// itself.
+func (c *content) loadEffectSpells(f *combatEffectsFile, out *combatEffects) error {
+	const name = combatEffectsName
 	for key, def := range f.Spells {
 		sp, ok := c.spells[key]
 		if !ok {
@@ -294,6 +320,13 @@ func (c *content) loadCombatEffects(fsys fs.FS) error {
 		}
 		out.spells[key] = def
 	}
+	return nil
+}
+
+// loadEffectEntries keeps the effects that are not spells, with their
+// Portuguese names; a kind left out is "feature".
+func (c *content) loadEffectEntries(f *combatEffectsFile, out *combatEffects) error {
+	const name = combatEffectsName
 	for key, def := range f.Effects {
 		if !strings.HasPrefix(key, "effect:") {
 			return fmt.Errorf("%s: effect key %q must start with \"effect:\"", name, key)
@@ -307,17 +340,26 @@ func (c *content) loadCombatEffects(fsys fs.FS) error {
 		}
 		out.effects[key] = def
 	}
-	for k := range c.namesPT {
-		if strings.HasPrefix(k, "effect:") && out.effects[k] == nil {
+	return nil
+}
+
+// checkEffectNames refuses a Portuguese effect name with no effect behind it.
+func (c *content) checkEffectNames(_ *combatEffectsFile, out *combatEffects) error {
+	for _, k := range c.namesWithPrefix("effect:") {
+		if out.effects[k] == nil {
 			return fmt.Errorf("effects/names_pt.json names %q, which is not in combat_effects.json", k)
 		}
 	}
+	return nil
+}
+
+// checkEffectDefs checks every definition, spells first, in key order.
+func (c *content) checkEffectDefs(_ *combatEffectsFile, out *combatEffects) error {
 	for _, def := range allDefs(out) {
-		if err := c.checkEffectDef(name, def, out); err != nil {
+		if err := c.checkEffectDef(combatEffectsName, def, out); err != nil {
 			return err
 		}
 	}
-	c.combatEffects = out
 	return nil
 }
 
@@ -355,21 +397,47 @@ func allDefs(f *combatEffects) []*EffectDef {
 	return out
 }
 
+// effectFail builds the error of a definition's field, prefixed with the file
+// and the effect's key.
+type effectFail func(format string, a ...any) error
+
+// effectDefCheck is one step of checkEffectDef: one field, or a group of
+// related fields, of a definition.
+type effectDefCheck func(c *content, d *EffectDef, all *combatEffects, bad effectFail) error
+
+// effectDefChecks are checkEffectDef's steps, in the order the first refusal
+// is chosen.
+var effectDefChecks = []effectDefCheck{
+	checkEffectHeader,
+	checkEffectConditions,
+	checkEffectModifiers,
+	checkEffectSaves,
+	checkEffectTrigger,
+	checkEffectFollowers,
+	checkEffectFooter,
+}
+
 // checkEffectDef refuses what an effect of the file may not say.
-func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) error { //nolint:gocyclo // one check for each field of the closed definition
+func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) error {
 	bad := func(format string, a ...any) error {
 		return fmt.Errorf("%s: %s: %s", file, d.Key, fmt.Sprintf(format, a...))
 	}
+	for _, check := range effectDefChecks {
+		if err := check(c, d, all, bad); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkEffectHeader checks the closed values: kind, duration, applies,
+// visibility and target type.
+func checkEffectHeader(_ *content, d *EffectDef, _ *combatEffects, bad effectFail) error {
 	if !slices.Contains(effectKinds, d.Kind) {
 		return bad("kind must be spell, feature or master")
 	}
-	if d.Duration != nil {
-		if !slices.Contains(effectDurations, d.Duration.Kind) {
-			return bad("unknown duration kind %q", d.Duration.Kind)
-		}
-		if (d.Duration.Kind == EffectDurationRounds) != (d.Duration.Rounds > 0) {
-			return bad("rounds go with the rounds duration, and only with it")
-		}
+	if err := checkEffectDuration(d.Duration, bad); err != nil {
+		return err
 	}
 	if d.Applies != "" && !slices.Contains(effectApplies, d.Applies) {
 		return bad("applies must be all or failed_save")
@@ -380,44 +448,91 @@ func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) 
 	if d.TargetType != "" && d.TargetType != "humanoid" {
 		return bad("the only target type limit is humanoid")
 	}
+	return nil
+}
+
+// checkEffectDuration refuses an unknown kind, and rounds on any kind but
+// the rounds one (or that one without them).
+func checkEffectDuration(dur *EffectDuration, bad effectFail) error {
+	if dur == nil {
+		return nil
+	}
+	if !slices.Contains(effectDurations, dur.Kind) {
+		return bad("unknown duration kind %q", dur.Kind)
+	}
+	if (dur.Kind == EffectDurationRounds) != (dur.Rounds > 0) {
+		return bad("rounds go with the rounds duration, and only with it")
+	}
+	return nil
+}
+
+func checkEffectConditions(_ *content, d *EffectDef, all *combatEffects, bad effectFail) error {
 	for _, k := range d.Conditions {
 		if _, ok := all.conditions[k]; !ok {
 			return bad("%q is not an SRD condition", k)
 		}
 	}
+	return nil
+}
+
+func checkEffectModifiers(_ *content, d *EffectDef, _ *combatEffects, bad effectFail) error {
 	for i, m := range d.Modifiers {
 		if err := checkModifier(m); err != nil {
 			return bad("modifiers[%d]: %v", i, err)
 		}
 	}
+	return nil
+}
+
+// checkEffectSaves checks the end save, then the start save.
+func checkEffectSaves(_ *content, d *EffectDef, all *combatEffects, bad effectFail) error {
 	for _, s := range []*EffectSave{d.EndSave, d.StartSave} {
-		if s == nil {
-			continue
-		}
-		if !slices.Contains(saveAbilities, s.Ability) {
-			return bad("a save needs an ability")
-		}
-		if s.OnPass != "" && s.OnPass != "end" {
-			return bad("on_pass can only be end")
-		}
-		if s.OnFail != "" {
-			if _, ok := all.effects[s.OnFail]; !ok {
-				return bad("on_fail names %q, which is not an effect of the file", s.OnFail)
-			}
+		if err := checkEffectSave(s, all, bad); err != nil {
+			return err
 		}
 	}
-	if t := d.Trigger; t != nil {
-		f, ok := ParseDice(t.Dice)
-		if !ok || f.Count < 1 || f.AddsModifier {
-			return bad("turn_trigger.dice %q is not a dice formula", t.Dice)
-		}
-		if !strings.HasPrefix(t.DamageType, "damage-type:") || c.named[t.DamageType] == nil {
-			return bad("turn_trigger.damage_type %q is not an SRD damage type", t.DamageType)
-		}
-		if t.MaxTriggers < 1 {
-			return bad("turn_trigger.max_triggers must be at least 1")
+	return nil
+}
+
+func checkEffectSave(s *EffectSave, all *combatEffects, bad effectFail) error {
+	if s == nil {
+		return nil
+	}
+	if !slices.Contains(saveAbilities, s.Ability) {
+		return bad("a save needs an ability")
+	}
+	if s.OnPass != "" && s.OnPass != "end" {
+		return bad("on_pass can only be end")
+	}
+	if s.OnFail != "" {
+		if _, ok := all.effects[s.OnFail]; !ok {
+			return bad("on_fail names %q, which is not an effect of the file", s.OnFail)
 		}
 	}
+	return nil
+}
+
+func checkEffectTrigger(c *content, d *EffectDef, _ *combatEffects, bad effectFail) error {
+	t := d.Trigger
+	if t == nil {
+		return nil
+	}
+	f, ok := ParseDice(t.Dice)
+	if !ok || f.Count < 1 || f.AddsModifier {
+		return bad("turn_trigger.dice %q is not a dice formula", t.Dice)
+	}
+	if !strings.HasPrefix(t.DamageType, "damage-type:") || c.named[t.DamageType] == nil {
+		return bad("turn_trigger.damage_type %q is not an SRD damage type", t.DamageType)
+	}
+	if t.MaxTriggers < 1 {
+		return bad("turn_trigger.max_triggers must be at least 1")
+	}
+	return nil
+}
+
+// checkEffectFollowers checks on_end, then ends_effects_of: each names an
+// effect or a spell of the file.
+func checkEffectFollowers(_ *content, d *EffectDef, all *combatEffects, bad effectFail) error {
 	for _, k := range append([]string{d.OnEnd}, d.EndsEffectsOf...) {
 		if k == "" {
 			continue
@@ -426,6 +541,11 @@ func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) 
 			return bad("%q is not an effect of the file", k)
 		}
 	}
+	return nil
+}
+
+// checkEffectFooter checks break_free and the label's length.
+func checkEffectFooter(_ *content, d *EffectDef, _ *combatEffects, bad effectFail) error {
 	if d.BreakFree != "" && !slices.Contains(saveAbilities, d.BreakFree) {
 		return bad("break_free needs an ability")
 	}
@@ -435,75 +555,135 @@ func (c *content) checkEffectDef(file string, d *EffectDef, all *combatEffects) 
 	return nil
 }
 
+// The bounds of a modifier's numbers.
+const (
+	// minModifierDie is the smallest die a roll_die adds: a d2.
+	minModifierDie = 2
+	// maxBaseAC is the highest armor class a base_ac may set.
+	maxBaseAC = 60
+	// maxSpeedPercent is the highest speed_multiplier, in percent.
+	maxSpeedPercent = 400
+)
+
+// modifierChecks are the checks of each kind of modifier that has fields; a
+// kind missing here takes none.
+var modifierChecks = map[string]func(m EffectModifier) error{
+	ModifierRollDie:           checkRollDie,
+	ModifierCheckBonus:        checkCheckBonus,
+	ModifierBaseAC:            checkBaseAC,
+	ModifierSpeedAdd:          checkSpeedAdd,
+	ModifierACBonus:           checkACBonus,
+	ModifierSpeedMultiplier:   checkSpeedMultiplier,
+	ModifierSaveAdvantage:     checkSaveAdvantage,
+	ModifierCheckAdvantage:    checkCheckAdvantage,
+	ModifierConditionImmunity: checkConditionImmunity,
+	ModifierTurnTempHP:        checkTurnTempHP,
+	ModifierExtraAction:       checkExtraAction,
+}
+
 // checkModifier checks one modifier's fields against its kind.
-func checkModifier(m EffectModifier) error { //nolint:gocyclo,gocognit // one case for each kind of modifier
+func checkModifier(m EffectModifier) error {
 	if !slices.Contains(modifierKinds, m.Kind) {
 		return fmt.Errorf("unknown kind %q", m.Kind)
 	}
-	switch m.Kind {
-	case ModifierRollDie:
-		if m.Die < 2 || (m.Sign != 1 && m.Sign != -1) || len(m.AppliesTo) == 0 {
-			return fmt.Errorf("roll_die needs die, sign (1 or -1) and applies_to")
+	if check, ok := modifierChecks[m.Kind]; ok {
+		return check(m)
+	}
+	return nil
+}
+
+func checkRollDie(m EffectModifier) error {
+	if m.Die < minModifierDie || (m.Sign != 1 && m.Sign != -1) || len(m.AppliesTo) == 0 {
+		return fmt.Errorf("roll_die needs die, sign (1 or -1) and applies_to")
+	}
+	for _, a := range m.AppliesTo {
+		if a != RollAppliesAttack && a != RollAppliesSave && a != RollAppliesCheck {
+			return fmt.Errorf("applies_to %q: only attack, save and check", a)
 		}
-		for _, a := range m.AppliesTo {
-			if a != RollAppliesAttack && a != RollAppliesSave && a != RollAppliesCheck {
-				return fmt.Errorf("applies_to %q: only attack, save and check", a)
-			}
+	}
+	return nil
+}
+
+func checkCheckBonus(m EffectModifier) error {
+	if m.Skill == "" || m.Value == 0 {
+		return fmt.Errorf("check_bonus needs a skill and a value")
+	}
+	return nil
+}
+
+func checkBaseAC(m EffectModifier) error {
+	if m.Value < 1 || m.Value > maxBaseAC {
+		return fmt.Errorf("base_ac needs an armor class from 1 to 60")
+	}
+	return nil
+}
+
+func checkSpeedAdd(m EffectModifier) error {
+	if m.Value < 1 {
+		return fmt.Errorf("speed_add needs a value in feet")
+	}
+	return nil
+}
+
+func checkACBonus(m EffectModifier) error {
+	if m.Value < 1 {
+		return fmt.Errorf("ac_bonus needs a value")
+	}
+	return nil
+}
+
+func checkSpeedMultiplier(m EffectModifier) error {
+	if m.Value < 0 || m.Value > maxSpeedPercent {
+		return fmt.Errorf("speed_multiplier is a percent from 0 to 400")
+	}
+	return nil
+}
+
+func checkSaveAdvantage(m EffectModifier) error {
+	if len(m.Abilities) == 0 {
+		return fmt.Errorf("save_advantage needs abilities")
+	}
+	return checkModifierAbilities(m.Abilities)
+}
+
+func checkCheckAdvantage(m EffectModifier) error {
+	if len(m.Abilities) == 0 && !m.Choose {
+		return fmt.Errorf("check_advantage needs abilities, or choose")
+	}
+	return checkModifierAbilities(m.Abilities)
+}
+
+// checkModifierAbilities refuses an ability key that is not one of the six.
+func checkModifierAbilities(abilities []string) error {
+	for _, a := range abilities {
+		if !slices.Contains(saveAbilities, a) {
+			return fmt.Errorf("unknown ability %q", a)
 		}
-	case ModifierCheckBonus:
-		if m.Skill == "" || m.Value == 0 {
-			return fmt.Errorf("check_bonus needs a skill and a value")
-		}
-	case ModifierBaseAC:
-		if m.Value < 1 || m.Value > 60 {
-			return fmt.Errorf("base_ac needs an armor class from 1 to 60")
-		}
-	case ModifierSpeedAdd:
-		if m.Value < 1 {
-			return fmt.Errorf("speed_add needs a value in feet")
-		}
-	case ModifierACBonus:
-		if m.Value < 1 {
-			return fmt.Errorf("ac_bonus needs a value")
-		}
-	case ModifierSpeedMultiplier:
-		if m.Value < 0 || m.Value > 400 {
-			return fmt.Errorf("speed_multiplier is a percent from 0 to 400")
-		}
-	case ModifierSaveAdvantage:
-		if len(m.Abilities) == 0 {
-			return fmt.Errorf("save_advantage needs abilities")
-		}
-		for _, a := range m.Abilities {
-			if !slices.Contains(saveAbilities, a) {
-				return fmt.Errorf("unknown ability %q", a)
-			}
-		}
-	case ModifierCheckAdvantage:
-		if len(m.Abilities) == 0 && !m.Choose {
-			return fmt.Errorf("check_advantage needs abilities, or choose")
-		}
-		for _, a := range m.Abilities {
-			if !slices.Contains(saveAbilities, a) {
-				return fmt.Errorf("unknown ability %q", a)
-			}
-		}
-	case ModifierConditionImmunity:
-		if len(m.Conditions) == 0 {
-			return fmt.Errorf("condition_immunity needs conditions")
-		}
-	case ModifierTurnTempHP:
-		if !m.FromCaster && m.Value < 1 {
-			return fmt.Errorf("turn_temp_hp needs a value, or from_caster")
-		}
-	case ModifierExtraAction:
-		if len(m.Allowed) == 0 || m.MaxWeaponAttacks < 1 {
-			return fmt.Errorf("extra_action needs allowed and max_weapon_attacks")
-		}
-		for _, a := range m.Allowed {
-			if !slices.Contains(extraActions, a) {
-				return fmt.Errorf("%q is not a standard action", a)
-			}
+	}
+	return nil
+}
+
+func checkConditionImmunity(m EffectModifier) error {
+	if len(m.Conditions) == 0 {
+		return fmt.Errorf("condition_immunity needs conditions")
+	}
+	return nil
+}
+
+func checkTurnTempHP(m EffectModifier) error {
+	if !m.FromCaster && m.Value < 1 {
+		return fmt.Errorf("turn_temp_hp needs a value, or from_caster")
+	}
+	return nil
+}
+
+func checkExtraAction(m EffectModifier) error {
+	if len(m.Allowed) == 0 || m.MaxWeaponAttacks < 1 {
+		return fmt.Errorf("extra_action needs allowed and max_weapon_attacks")
+	}
+	for _, a := range m.Allowed {
+		if !slices.Contains(extraActions, a) {
+			return fmt.Errorf("%q is not a standard action", a)
 		}
 	}
 	return nil

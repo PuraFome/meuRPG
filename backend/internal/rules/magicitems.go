@@ -222,8 +222,8 @@ func (c *content) checkAttunementLabels() error {
 			return fmt.Errorf("effects/names_pt.json: no Portuguese label %q for an attunement restriction", k)
 		}
 	}
-	for k := range c.namesPT {
-		if strings.HasPrefix(k, "attunement:") && !restrictions[k] {
+	for _, k := range c.namesWithPrefix("attunement:") {
+		if !restrictions[k] {
 			return fmt.Errorf("effects/names_pt.json: %q is not an attunement restriction of any item", k)
 		}
 	}

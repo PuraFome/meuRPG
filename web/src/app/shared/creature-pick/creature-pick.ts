@@ -47,6 +47,7 @@ let nextId = 0;
       @for (c of found(); track c.key; let i = $index) {
         <li
           role="option"
+          tabindex="-1"
           class="pick__opt"
           [id]="id + '-o' + i"
           [class.pick__opt--on]="i === active()"

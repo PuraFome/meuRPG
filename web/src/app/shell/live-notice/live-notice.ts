@@ -16,7 +16,7 @@ import { OpenSessions, sessionsToAnnounce } from '../../core/play/open-sessions'
  *
  * The link is stroked, not filled: the notice lands on pages that already
  * have their own filled primary action, and a screen has one fill
- * (docs/design.md). The accent frame and the icon make it stand out.
+ * (docs/design/README.md). The accent frame and the icon make it stand out.
  *
  * Part of the initial bundle (the app shell), so it uses plain elements
  * styled with the tokens, not MatButton.

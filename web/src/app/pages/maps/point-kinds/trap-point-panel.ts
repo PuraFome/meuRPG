@@ -64,6 +64,7 @@ import {
   trapErrors,
 } from './trap-draft';
 import { PointFoot } from './point-foot';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 /**
  * The panel of an Armadilha point (E9-02 3 and 4, MR-035): "Predefinições do SRD" (the eight sample traps, as radios, and
@@ -78,6 +79,7 @@ import { PointFoot } from './point-foot';
 @Component({
   selector: 'app-trap-point-panel',
   imports: [
+    RelayEvents,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,

@@ -11,48 +11,74 @@ import (
 // disadvantage (roll_mode), bonuses that only count in some situations
 // (tagged proficiency and modifier effects) and notes with a text.
 func (x *deriver) effectHints() {
-	levels := x.skillLevel
 	for _, a := range x.active {
-		e := a.effect
 		if !x.applies(a) {
 			continue
 		}
-		switch {
-		case e.Type == "roll_mode":
-			targets := make([]string, len(e.Targets))
-			for i, t := range e.Targets {
-				targets[i] = hintTarget(t)
-			}
-			x.hint(a, targets, e.Roll, 0)
-		case e.Type == "proficiency" && len(e.Tags) > 0 && strings.HasPrefix(e.Proficiency, "skill:"):
-			// Such as Artificer's Lore: History with expertise, only about
-			// magic items. The hint carries the whole bonus.
-			s, ok := x.c.skills[e.Proficiency]
-			if !ok {
-				continue
-			}
-			lvl := max(levels[e.Proficiency], proficiencyLevelOf(e.Level))
-			v := x.mods[Ability(s.Ability)] + x.profBonus(lvl)
-			x.hint(a, []string{e.Proficiency}, "bonus", v)
-		case e.Type == "modifier" && len(e.Tags) > 0:
-			if x.appliedTagged[e] {
-				continue
-			}
-			v, ok := x.value(a)
-			if ok {
-				x.hint(a, []string{hintTarget(e.Target)}, "bonus", v)
-			}
-		case e.Type == "note" && e.TextPT != "":
-			v := 0
-			if e.value != nil {
-				var ok bool
-				if v, ok = x.value(a); !ok {
-					continue
-				}
-			}
-			x.hint(a, nil, "note", v)
+		x.effectHint(a)
+	}
+}
+
+// effectHint dispatches one applying effect to the hint of its kind; the other
+// effects give none.
+func (x *deriver) effectHint(a activeEffect) {
+	e := a.effect
+	switch {
+	case e.Type == "roll_mode":
+		x.rollModeHint(a)
+	case e.Type == "proficiency" && len(e.Tags) > 0 && strings.HasPrefix(e.Proficiency, "skill:"):
+		x.taggedSkillHint(a)
+	case e.Type == "modifier" && len(e.Tags) > 0:
+		x.taggedModifierHint(a)
+	case e.Type == "note" && e.TextPT != "":
+		x.noteHint(a)
+	}
+}
+
+// rollModeHint is advantage or disadvantage on the effect's targets.
+func (x *deriver) rollModeHint(a activeEffect) {
+	targets := make([]string, len(a.effect.Targets))
+	for i, t := range a.effect.Targets {
+		targets[i] = hintTarget(t)
+	}
+	x.hint(a, targets, a.effect.Roll, 0)
+}
+
+// taggedSkillHint is a skill proficiency that only counts in some situations,
+// such as Artificer's Lore: History with expertise, only about magic items. The
+// hint carries the whole bonus.
+func (x *deriver) taggedSkillHint(a activeEffect) {
+	e := a.effect
+	s, ok := x.c.skills[e.Proficiency]
+	if !ok {
+		return
+	}
+	lvl := max(x.skillLevel[e.Proficiency], proficiencyLevelOf(e.Level))
+	v := x.mods[Ability(s.Ability)] + x.profBonus(lvl)
+	x.hint(a, []string{e.Proficiency}, "bonus", v)
+}
+
+// taggedModifierHint is a situational modifier no step applied already.
+func (x *deriver) taggedModifierHint(a activeEffect) {
+	if x.appliedTagged[a.effect] {
+		return
+	}
+	if v, ok := x.value(a); ok {
+		x.hint(a, []string{hintTarget(a.effect.Target)}, "bonus", v)
+	}
+}
+
+// noteHint is a note with a text, and its value when it has one; a value that
+// fails drops the note.
+func (x *deriver) noteHint(a activeEffect) {
+	v := 0
+	if a.effect.value != nil {
+		var ok bool
+		if v, ok = x.value(a); !ok {
+			return
 		}
 	}
+	x.hint(a, nil, "note", v)
 }
 
 // hintTarget writes skill targets as skill keys ("skill.history" becomes
@@ -97,113 +123,154 @@ func signed(n int) string {
 // the custom background's skills and the multiclass prerequisites. Spell
 // choices are checked in spellcasting.
 func (x *deriver) checkChoices() {
-	c := x.c
+	allowed, expertiseAllowed := x.skillAllowance()
+	chosen := x.chosenSkills()
+	x.checkSkillCount(allowed, len(chosen))
+	x.checkExpertiseCount(expertiseAllowed)
+	x.checkOptionCounts()
+	x.checkCustomBackground()
+	x.checkMulticlass()
+}
 
-	// Skills: the player chooses the starting class's skills, one more from
-	// some multiclass classes, and those that effects or traits offer
-	// (Skill Versatility, the bard's Bonus Proficiencies). Race and
-	// background skills come automatically and do not count.
-	automatic := x.automaticSkills
-	allowed := 0
+// skillAllowance is how many skills and how many expertise picks the effects
+// give. Skills: the player chooses the starting class's skills, one more from
+// some multiclass classes, and those that effects or traits offer (Skill
+// Versatility, the bard's Bonus Proficiencies). Race and background skills come
+// automatically and do not count.
+func (x *deriver) skillAllowance() (skills, expertise int) {
 	for i, oc := range x.classes {
 		switch {
 		case i == 0:
-			allowed += oc.class.SkillChoices.Choose
+			skills += oc.class.SkillChoices.Choose
 		case oc.class.Multiclass.SkillChoices != nil:
-			allowed += oc.class.Multiclass.SkillChoices.Choose
+			skills += oc.class.Multiclass.SkillChoices.Choose
 		}
 	}
 	for _, t := range x.ownedTraits() {
 		if t.ProficiencyChoices > 0 && len(t.ProficiencyOptions) > 0 && strings.HasPrefix(t.ProficiencyOptions[0], "proficiency:skill-") {
-			allowed += t.ProficiencyChoices
+			skills += t.ProficiencyChoices
 		}
 	}
-	expertiseAllowed := 0
 	for _, a := range x.active {
-		if a.effect.Type == "choice" {
-			switch a.effect.Choice {
-			case "skill":
-				allowed += a.effect.Count
-			case "expertise":
-				expertiseAllowed += a.effect.Count
-			}
+		if a.effect.Type != "choice" {
+			continue
+		}
+		switch a.effect.Choice {
+		case "skill":
+			skills += a.effect.Count
+		case "expertise":
+			expertise += a.effect.Count
 		}
 	}
+	return skills, expertise
+}
+
+// chosenSkills are the skills the player chose, without the automatic ones; an
+// unknown key is an issue and counts for nothing.
+func (x *deriver) chosenSkills() map[string]bool {
 	chosen := map[string]bool{}
 	for i, s := range x.b.SkillProficiencies {
-		if _, ok := c.skills[s]; !ok {
+		if _, ok := x.c.skills[s]; !ok {
 			x.issue(IssueUnknownKey, fmt.Sprintf("full.skill_proficiency_keys[%d]", i), "A perícia escolhida não existe.")
 			continue
 		}
-		if !automatic[s] {
+		if !x.automaticSkills[s] {
 			chosen[s] = true
 		}
 	}
-	if len(x.classes) > 0 {
-		switch n := len(chosen); {
-		case n > allowed:
-			subject, change := x.skillChange(allowed, n)
-			x.issueChange(IssueSkillCount, "full.skill_proficiency_keys", subject, change,
-				fmt.Sprintf("Há %d perícias escolhidas; o personagem escolhe %d.", n, allowed))
-		case n < allowed:
-			x.d.OpenChoices = append(x.d.OpenChoices, OpenChoice{Kind: OpenChoiceSkills, Missing: allowed - n})
-			subject, change := x.skillChange(allowed, n)
-			x.issueChange(IssueSkillCount, "full.skill_proficiency_keys", subject, change,
-				missingSkills(allowed-n))
-		}
-	}
+	return chosen
+}
 
-	// Expertise comes from features such as the rogue's Expertise.
+// checkSkillCount compares the chosen skills with the allowance; a sheet without
+// a class has none to compare.
+func (x *deriver) checkSkillCount(allowed, n int) {
+	if len(x.classes) == 0 {
+		return
+	}
+	switch {
+	case n > allowed:
+		subject, change := x.skillChange(allowed, n)
+		x.issueChange(IssueSkillCount, "full.skill_proficiency_keys", subject, change,
+			fmt.Sprintf("Há %d perícias escolhidas; o personagem escolhe %d.", n, allowed))
+	case n < allowed:
+		x.d.OpenChoices = append(x.d.OpenChoices, OpenChoice{Kind: OpenChoiceSkills, Missing: allowed - n})
+		subject, change := x.skillChange(allowed, n)
+		x.issueChange(IssueSkillCount, "full.skill_proficiency_keys", subject, change,
+			missingSkills(allowed-n))
+	}
+}
+
+// checkExpertiseCount adds the expertise of features such as the rogue's
+// Expertise to what the effects give, and compares the sheet's with it.
+func (x *deriver) checkExpertiseCount(allowed int) {
 	for _, f := range x.d.Features {
-		if feat, ok := c.features[f.Key]; ok {
-			expertiseAllowed += feat.ExpertiseChoices
+		if feat, ok := x.c.features[f.Key]; ok {
+			allowed += feat.ExpertiseChoices
 		}
 	}
-	if n := len(x.b.Expertise); n > expertiseAllowed {
-		x.issue(IssueExpertise, "full.expertise_skill_keys", "Há %d perícias com especialização; o personagem tem %d.", n, expertiseAllowed)
+	if n := len(x.b.Expertise); n > allowed {
+		x.issue(IssueExpertise, "full.expertise_skill_keys", "Há %d perícias com especialização; o personagem tem %d.", n, allowed)
 	}
+}
 
-	x.checkOptionCounts()
+// checkCustomBackground checks a custom background: it grants two skills, like
+// every SRD background.
+func (x *deriver) checkCustomBackground() {
+	if !x.customBackground() {
+		return
+	}
+	if n := len(x.b.CustomBackgroundSkills); n < CustomBackgroundSkillCount {
+		x.issue(IssueSkillCount, "full.custom_background.skill_keys", "O antecedente personalizado concede %d perícias; faltam %d.", CustomBackgroundSkillCount, CustomBackgroundSkillCount-n)
+	}
+	x.checkCustomBackgroundParts()
+	x.checkCustomBackgroundLanguages()
+}
 
-	// A custom background grants two skills, like every SRD background.
-	if x.customBackground() {
-		if n := len(x.b.CustomBackgroundSkills); n < CustomBackgroundSkillCount {
-			x.issue(IssueSkillCount, "full.custom_background.skill_keys", "O antecedente personalizado concede %d perícias; faltam %d.", CustomBackgroundSkillCount, CustomBackgroundSkillCount-n)
-		}
-		// SRD 5.1 "Customizing a Background": two tools or languages, a feature and
-		// the equipment too (question 82). A sheet written before these fields
-		// existed shows nothing new: the three warnings come only once the sheet has
-		// any of them, that is, once the editor that writes them saved it.
-		if x.customBackgroundStarted() {
-			if n := len(x.b.CustomBackgroundProficiencies); n < CustomBackgroundProficiencyCount {
-				x.issue(IssueMissing, "full.custom_background.proficiency_keys", "O antecedente personalizado concede %d ferramentas ou idiomas; faltam %d.", CustomBackgroundProficiencyCount, CustomBackgroundProficiencyCount-n)
-			}
-			if x.b.CustomBackgroundFeatureName == "" || x.b.CustomBackgroundFeature == "" {
-				x.issue(IssueMissing, "full.custom_background.feature_name", "O antecedente personalizado tem uma característica: falta o nome ou o texto dela.")
-			}
-			if x.b.CustomBackgroundEquipment == "" {
-				x.issue(IssueMissing, "full.custom_background.equipment", "O antecedente personalizado traz equipamento: falta descrevê-lo.")
-			}
-		}
-		// A language the race already gives uses one of the two picks for nothing.
-		if x.race != nil {
-			for i, k := range x.b.CustomBackgroundProficiencies {
-				if slices.Contains(x.race.Languages, k) {
-					x.issue(IssueMissing, fmt.Sprintf("full.custom_background.proficiency_keys[%d]", i), "O idioma %s já vem da raça: ele gasta uma das duas escolhas do antecedente sem acrescentar nada.", x.c.namePT(k))
-				}
-			}
+// checkCustomBackgroundParts: SRD 5.1 "Customizing a Background": two tools or
+// languages, a feature and the equipment too (question 82). A sheet written
+// before these fields existed shows nothing new: the three warnings come only
+// once the sheet has any of them, that is, once the editor that writes them
+// saved it.
+func (x *deriver) checkCustomBackgroundParts() {
+	if !x.customBackgroundStarted() {
+		return
+	}
+	b := x.b
+	if n := len(b.CustomBackgroundProficiencies); n < CustomBackgroundProficiencyCount {
+		x.issue(IssueMissing, "full.custom_background.proficiency_keys", "O antecedente personalizado concede %d ferramentas ou idiomas; faltam %d.", CustomBackgroundProficiencyCount, CustomBackgroundProficiencyCount-n)
+	}
+	if b.CustomBackgroundFeatureName == "" || b.CustomBackgroundFeature == "" {
+		x.issue(IssueMissing, "full.custom_background.feature_name", "O antecedente personalizado tem uma característica: falta o nome ou o texto dela.")
+	}
+	if b.CustomBackgroundEquipment == "" {
+		x.issue(IssueMissing, "full.custom_background.equipment", "O antecedente personalizado traz equipamento: falta descrevê-lo.")
+	}
+}
+
+// checkCustomBackgroundLanguages: a language the race already gives uses one of
+// the two picks for nothing.
+func (x *deriver) checkCustomBackgroundLanguages() {
+	if x.race == nil {
+		return
+	}
+	for i, k := range x.b.CustomBackgroundProficiencies {
+		if slices.Contains(x.race.Languages, k) {
+			x.issue(IssueMissing, fmt.Sprintf("full.custom_background.proficiency_keys[%d]", i), "O idioma %s já vem da raça: ele gasta uma das duas escolhas do antecedente sem acrescentar nada.", x.c.namePT(k))
 		}
 	}
+}
 
-	// Multiclassing needs the prerequisites of every class, the first one
-	// included.
-	if len(x.classes) > 1 {
-		for _, oc := range x.classes {
-			if !x.meetsMulticlass(oc) {
-				x.issueChange(IssueMulticlass, fmt.Sprintf("full.classes[%d].class_key", oc.index), oc.key,
-					"agora pede outras habilidades para multiclasse; os desta ficha não cumprem.",
-					fmt.Sprintf("As habilidades não cumprem o pré-requisito de multiclasse de %s.", c.namePT(oc.key)))
-			}
+// checkMulticlass: multiclassing needs the prerequisites of every class, the
+// first one included.
+func (x *deriver) checkMulticlass() {
+	if len(x.classes) <= 1 {
+		return
+	}
+	for _, oc := range x.classes {
+		if !x.meetsMulticlass(oc) {
+			x.issueChange(IssueMulticlass, fmt.Sprintf("full.classes[%d].class_key", oc.index), oc.key,
+				"agora pede outras habilidades para multiclasse; os desta ficha não cumprem.",
+				fmt.Sprintf("As habilidades não cumprem o pré-requisito de multiclasse de %s.", x.c.namePT(oc.key)))
 		}
 	}
 }
@@ -280,33 +347,16 @@ type optionPool struct {
 // than its features allow. A repeated option name counts once (the same
 // style from two classes is the same style).
 func (x *deriver) checkOptionCounts() {
+	for _, p := range x.optionPools() {
+		x.checkPoolCount(p)
+	}
+}
+
+// optionPools are the pools of the features the sheet owns, each feature once,
+// and the warlock's invocations last with the number the class tables give.
+func (x *deriver) optionPools() []*optionPool {
 	c := x.c
 	var pools []*optionPool
-	join := func(feature string, choose int, options []string) {
-		var into *optionPool
-		for _, p := range pools {
-			if !slices.ContainsFunc(options, func(o string) bool { return p.options[o] }) {
-				continue
-			}
-			if into == nil {
-				into = p
-				continue
-			}
-			into.allowed += p.allowed // the new feature bridges two pools
-			for o := range p.options {
-				into.options[o] = true
-			}
-			p.allowed, p.options = 0, map[string]bool{}
-		}
-		if into == nil {
-			into = &optionPool{name: c.namePT(feature), options: map[string]bool{}}
-			pools = append(pools, into)
-		}
-		into.allowed += choose
-		for _, o := range options {
-			into.options[o] = true
-		}
-	}
 	seen := map[string]bool{}
 	for _, f := range x.d.Features {
 		if seen[f.Key] {
@@ -317,28 +367,67 @@ func (x *deriver) checkOptionCounts() {
 			continue
 		}
 		for _, d := range c.featureGains([]string{f.Key}, "").choices {
-			join(d.feature, d.choose, d.options)
+			pools = c.joinPool(pools, d.feature, d.choose, d.options)
 		}
 	}
 	if inv := c.features[invocationsFeature]; inv != nil && seen[invocationsFeature] {
-		known := 0
-		for _, oc := range x.classes {
-			if rows := c.classLevels[oc.key]; oc.level >= 1 && oc.level <= len(rows) {
-				known += invocationsKnown(rows[oc.level-1])
-			}
-		}
-		join(invocationsFeature, known, inv.Options)
+		pools = c.joinPool(pools, invocationsFeature, x.invocationsKnownTotal(), inv.Options)
 	}
+	return pools
+}
 
+// joinPool adds a feature's options to the pool that shares one of them, or to
+// a new pool named after it. A feature whose options are in two pools bridges
+// them: the first takes the second's options and allowance.
+func (c *content) joinPool(pools []*optionPool, feature string, choose int, options []string) []*optionPool {
+	var into *optionPool
 	for _, p := range pools {
-		names := map[string]bool{}
-		for _, key := range x.b.FeatureChoices {
-			if f, ok := c.features[key]; ok && p.options[key] {
-				names[f.Name] = true
-			}
+		if !slices.ContainsFunc(options, func(o string) bool { return p.options[o] }) {
+			continue
 		}
-		if n := len(names); n > p.allowed {
-			x.issue(IssueChoiceCount, "full.feature_choice_keys", "Há %d escolhas em %s; o personagem tem %d.", n, p.name, p.allowed)
+		if into == nil {
+			into = p
+			continue
 		}
+		into.allowed += p.allowed // the new feature bridges two pools
+		for o := range p.options {
+			into.options[o] = true
+		}
+		p.allowed, p.options = 0, map[string]bool{}
+	}
+	if into == nil {
+		into = &optionPool{name: c.namePT(feature), options: map[string]bool{}}
+		pools = append(pools, into)
+	}
+	into.allowed += choose
+	for _, o := range options {
+		into.options[o] = true
+	}
+	return pools
+}
+
+// invocationsKnownTotal is the invocations the class tables give the sheet's
+// classes at their levels.
+func (x *deriver) invocationsKnownTotal() int {
+	known := 0
+	for _, oc := range x.classes {
+		if rows := x.c.classLevels[oc.key]; oc.level >= 1 && oc.level <= len(rows) {
+			known += invocationsKnown(rows[oc.level-1])
+		}
+	}
+	return known
+}
+
+// checkPoolCount raises the issue of a pool whose picks, by name, pass its
+// allowance.
+func (x *deriver) checkPoolCount(p *optionPool) {
+	names := map[string]bool{}
+	for _, key := range x.b.FeatureChoices {
+		if f, ok := x.c.features[key]; ok && p.options[key] {
+			names[f.Name] = true
+		}
+	}
+	if n := len(names); n > p.allowed {
+		x.issue(IssueChoiceCount, "full.feature_choice_keys", "Há %d escolhas em %s; o personagem tem %d.", n, p.name, p.allowed)
 	}
 }

@@ -96,7 +96,7 @@ func TestRN15_PendingMemberLooksLikeAStranger(t *testing.T) {
 }
 
 // TestPendingMayCallIsTheAgreedList pins the allowance to the product
-// decision (RN-15, MR-024, docs/architecture.md): a pending member may see
+// decision (RN-15, MR-024, docs/architecture/README.md): a pending member may see
 // the campaign's name and work on their one character (and send it again when the master asked
 // for changes), nothing else.
 // Changing the list means changing this test, the matrices and the docs.

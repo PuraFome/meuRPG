@@ -20,7 +20,7 @@ import (
 const nudgeCooldown = 10 * time.Second
 
 // nudgeBook remembers, in memory, when each character was last nudged. The server runs one
-// instance (docs/operations.md) and a nudge is ephemeral, so a restart that forgets the times
+// instance (docs/operations/README.md) and a nudge is ephemeral, so a restart that forgets the times
 // costs nothing. The zero value is ready to use.
 type nudgeBook struct {
 	mu   sync.Mutex

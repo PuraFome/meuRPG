@@ -45,26 +45,8 @@ func (c *Content) SpellSources(b Build) []SpellSource {
 		if sc == nil {
 			continue
 		}
-		src := SpellSource{Class: oc.key}
-		if oc.subclass != nil && oc.subclass.ExpandedList {
-			for _, ss := range oc.subclass.Spells {
-				if ss.ClassLevel <= oc.level {
-					src.Patron = append(src.Patron, PatronSpell{Spell: ss.Spell, ClassLevel: ss.ClassLevel})
-				}
-			}
-		}
-		for lvl := 1; lvl <= oc.level; lvl++ {
-			classFeatures, subFeatures := cc.levelFeatures(oc.key, oc.subclass, lvl)
-			for _, fk := range slices.Concat(classFeatures, subFeatures) {
-				switch {
-				case strings.HasPrefix(fk, "feature:magical-secrets-") && !isTableKey(fk):
-					src.Secrets += secretsPerFeature
-				case fk == "feature:additional-magical-secrets":
-					src.Secrets += secretsPerFeature
-					src.SecretsBeyondKnown += secretsPerFeature
-				}
-			}
-		}
+		src := SpellSource{Class: oc.key, Patron: patronSpells(oc)}
+		src.Secrets, src.SecretsBeyondKnown = cc.magicalSecrets(oc)
 		if src.Secrets > 0 {
 			src.SecretsMaxSpellLevel = sc.MaxSpellLevel
 		}
@@ -73,4 +55,46 @@ func (c *Content) SpellSources(b Build) []SpellSource {
 		}
 	}
 	return out
+}
+
+// patronSpells are the spells a subclass with an expanded list adds up to the
+// class level.
+func patronSpells(oc ownedClass) []PatronSpell {
+	if oc.subclass == nil || !oc.subclass.ExpandedList {
+		return nil
+	}
+	var out []PatronSpell
+	for _, ss := range oc.subclass.Spells {
+		if ss.ClassLevel <= oc.level {
+			out = append(out, PatronSpell{Spell: ss.Spell, ClassLevel: ss.ClassLevel})
+		}
+	}
+	return out
+}
+
+// magicalSecrets counts the spells the Magical Secrets features of a class and
+// its subclass give up to the class level, and how many of them are beyond the
+// spells known.
+func (c *content) magicalSecrets(oc ownedClass) (secrets, beyondKnown int) {
+	for lvl := 1; lvl <= oc.level; lvl++ {
+		classFeatures, subFeatures := c.levelFeatures(oc.key, oc.subclass, lvl)
+		for _, fk := range slices.Concat(classFeatures, subFeatures) {
+			s, b := magicalSecretsOf(fk)
+			secrets += s
+			beyondKnown += b
+		}
+	}
+	return secrets, beyondKnown
+}
+
+// magicalSecretsOf is what one feature gives: the Bard's Magical Secrets, or the
+// College of Lore's Additional Magical Secrets, beyond the spells known.
+func magicalSecretsOf(fk string) (secrets, beyondKnown int) {
+	switch {
+	case strings.HasPrefix(fk, "feature:magical-secrets-") && !isTableKey(fk):
+		return secretsPerFeature, 0
+	case fk == "feature:additional-magical-secrets":
+		return secretsPerFeature, secretsPerFeature
+	}
+	return 0, 0
 }
