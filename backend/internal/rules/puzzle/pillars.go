@@ -118,7 +118,7 @@ type PillarStep struct {
 }
 
 // encode turns the positions into a number in base Glyphs (pillar 0 is the lowest
-// digit), the index of a state in the search (Minimum decodes it inline).
+// digit), the index of a state in the search (decode is its inverse).
 func (p Pillars) encode(state []int) int {
 	n := 0
 	for i := p.Count - 1; i >= 0; i-- {

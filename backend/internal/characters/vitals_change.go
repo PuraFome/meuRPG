@@ -11,7 +11,7 @@ import (
 
 // The master's correction of the vitals (AdjustVitals), one value of the request at a
 // time: each function checks the value req sets against its maximum and puts it on v,
-// or does nothing when req leaves it alone. Errors are fieldErrors with the request's
+// or does nothing when req leaves it alone. Errors are fieldErr values with the request's
 // field names.
 
 // vitalsChange checks and applies one value of a correction.

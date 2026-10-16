@@ -358,13 +358,12 @@ func TestTableClassRefusalsPointAtTheirField(t *testing.T) {
 	}
 }
 
-// hitPointsFor is the sheet's hit points as the editor sends them.
+// hitPointsAverage is the sheet's hit points as the editor sends them.
 func hitPointsAverage() *charactersv1.HitPoints {
 	return &charactersv1.HitPoints{Method: charactersv1.HitPointsMethod_HIT_POINTS_METHOD_AVERAGE}
 }
 
-// tableOptions are the options a player of the campaign reads for a class: the
-// table's subclasses of an SRD class, with the "Da mesa" entries among them.
+// ownedSubclass sets the subclass of a class level to key.
 func ownedSubclass(c *charactersv1.ClassLevel, key string) *charactersv1.ClassLevel {
 	c.Subclass = &charactersv1.ClassLevel_SubclassKey{SubclassKey: key}
 	return c

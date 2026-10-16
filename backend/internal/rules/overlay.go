@@ -67,7 +67,7 @@ const (
 )
 
 // Overlay is the table's content as the engine takes it. Its shape follows the
-// fields the editors fill (slice 10.1c maps the protos onto it one to one).
+// fields the editors fill (the protos map onto it one to one).
 type Overlay struct {
 	// Revision is the table's content_revision. It goes in the content
 	// version: "srd51@<commit>+fx.<n>+mesa.<revision>".

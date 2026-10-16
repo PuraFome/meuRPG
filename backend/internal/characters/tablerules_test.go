@@ -22,8 +22,7 @@ import (
 
 // The table's rules outside combat (MR-025, RN-24): the hit points of a level-up
 // and the ability scores of a new sheet. The rules are saved through the real
-// CampaignService and read through the real ContentSource wiring (probeSource
-// reads them with campaigns.Service, in the caller's transaction).
+// CampaignService and read through the real ContentSource wiring.
 
 // setRules saves the table's rules as master: the defaults, changed by change.
 func setRules(t *testing.T, master *user, campaignID string, change func(*campaignsv1.TableRules)) {
@@ -218,7 +217,7 @@ const (
 // The dice of the ability scores design: 16, 14, 13, 12, 10 and 8.
 var drawingDice = []int{6, 5, 5, 2, 5, 5, 4, 1, 5, 4, 4, 3, 4, 4, 4, 2, 4, 3, 3, 2, 3, 3, 2, 1}
 
-// abilityTable is a campaign with a master and four players, and a server whose
+// newAbilityTable is a campaign with a master and four players, and a server whose
 // dice give the drawing's sets first and six 18s next.
 func newAbilityTable(t *testing.T) (*harness, *user, []*user, string, *testDiceRules) {
 	t.Helper()

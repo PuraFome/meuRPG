@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// ResistanceWhile says when a resistance holds. "" is always (a race's); "rage" is
-// while the character is raging (the barbarian's).
+// The Resistance* constants say when a resistance holds. "" is always (a race's);
+// "rage" is while the character is raging (the barbarian's).
 const (
 	ResistanceAlways    = ""
 	ResistanceWhileRage = "rage"

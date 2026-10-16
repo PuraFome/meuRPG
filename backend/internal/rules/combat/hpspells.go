@@ -18,7 +18,7 @@ type HPCreature struct {
 	Unconscious bool
 }
 
-// PoolReason says why a creature of a pool was not affected.
+// The Pool* constants say why a creature of a pool was not affected.
 const (
 	// PoolAffected: it was affected.
 	PoolAffected = ""

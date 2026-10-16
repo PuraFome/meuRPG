@@ -29,7 +29,7 @@ import (
 // after play's own authorization check. The rules do every number; this file
 // reads and copies them.
 
-// creatureRows turns the rows of a list into creature views.
+// creatureViews turns the rows of a list into creature views.
 func creatureViews[T any](rows []T, pick func(T) (charactersdb.CharacterCreature, *string)) []creatureView {
 	out := make([]creatureView, 0, len(rows))
 	for _, r := range rows {

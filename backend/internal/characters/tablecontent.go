@@ -764,7 +764,7 @@ type keyAssigner struct {
 	foreign bool
 }
 
-// featuresOfBody lists the (level, features) groups of a body, in order.
+// featureGroups lists the (level, features) groups of a body, in order.
 func featureGroups(body tableBody) []struct {
 	level    int
 	features []*rulesv1.TableFeature

@@ -40,8 +40,8 @@ func crEighths(rating string) (int, bool) {
 	return 8 * n, true
 }
 
-// sizeNamePT, creatureTypeNamePT, armorClassNamePT and saveSuccessNamePT are
-// the Portuguese labels of the stat block's fixed words.
+// sizeNamePT, creatureTypeNamePT and armorClassNamePT are the Portuguese
+// labels of the stat block's fixed words.
 var (
 	sizeNamePT = map[string]string{
 		"Tiny": "Miúdo", "Small": "Pequeno", "Medium": "Médio", "Large": "Grande", "Huge": "Enorme", "Gargantuan": "Imenso",

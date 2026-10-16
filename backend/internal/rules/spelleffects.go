@@ -63,7 +63,7 @@ type ReviveSpec struct {
 
 // SpellEffect is what a spell that reads hit points does, at a slot level.
 type SpellEffect struct {
-	// Kind is one of the SpellKind constants.
+	// Kind is one of the SpellKind* constants.
 	Kind string
 	// Dice is the pool of an hp_pool spell at the slot level: the spell's dice
 	// plus the extra dice of each level above its own. No Bonus, no modifier.
