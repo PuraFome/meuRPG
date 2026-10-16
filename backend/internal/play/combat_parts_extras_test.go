@@ -236,3 +236,104 @@ func TestRollDamageRefusesTwoManeuversAndOneWithNoUseLeft(t *testing.T) {
 	wantBlockedBy(t, "RollDamage(a maneuver with no die left)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES)
 	wantPartsRefusal(t, "RollDamage(a maneuver with no die left)", err, connect.CodeFailedPrecondition, "no uses left")
 }
+
+// partsFight is a theatre combat with a creature of the SRD beside Toren (the party's
+// fighter, Brisa a second one with a rapier), Toren first.
+func partsFight(t *testing.T, toren func(a *armed), monster string) (*armed, *playv1.Encounter, string) {
+	t.Helper()
+	a := newArmedWith(t, func(a *armed) {
+		toren(a)
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, abilities(10, 14, 12, 16, 8), nil, []string{fireBolt})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, abilities(10, 16, 14, 10, 8), []string{rapier}, nil)
+	})
+	e := a.monsterSetup(t, true)
+	a.h.roller.queue(1)
+	res := a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
+		r.CreatureKey, r.Count, r.Hidden = monster, 1, new(false)
+	})
+	label := ""
+	for _, c := range res.GetEncounter().GetCombatants() {
+		if c.GetId() == res.GetCombatantIds()[0] {
+			label = c.GetLabel()
+		}
+	}
+	if label == "" {
+		t.Fatalf("%s is not in the combat", monster)
+	}
+	return a, a.begin(t, a.get(t, a.master)), label
+}
+
+// TestRollDamageRerollsTheLowFacesOfAGreatWeapon: Great Weapon Fighting rolls a die that
+// came up 1 or 2 again, once, and the part shows the reroll.
+func TestRollDamageRerollsTheLowFacesOfAGreatWeapon(t *testing.T) {
+	t.Parallel()
+	a, e, shrub := partsFight(t, func(a *armed) {
+		a.toren = a.caio.heroWith(t, a.campaignID, "Toren", classLevel("class:fighter", 2, ""), abilities(16, 12, 14, 10, 8), []string{"equipment:greatsword"}, nil,
+			[]string{"feature:fighter-fighting-style-great-weapon-fighting"})
+	}, "monster:awakened-shrub")
+	hit := a.mustAttack(t, a.caio, e, "Toren", "equipment:greatsword", shrub, d20(15))
+	a.h.roller.queue(1, 5, 4) // the two dice, then the reroll of the 1
+	dmg := a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), inAppDamage).GetPendingDamage()
+	var weapon *playv1.DamagePartRoll
+	for _, r := range dmg.GetPartRolls() {
+		if r.GetPartKey() == extraWeaponDamage {
+			weapon = r
+		}
+	}
+	if weapon == nil {
+		t.Fatalf("the part rolls = %v, want the weapon's", dmg.GetPartRolls())
+	}
+	if f := weapon.GetFaces(); len(f) != 2 || f[0] != 4 || f[1] != 5 || weapon.GetSum() != 9 {
+		t.Errorf("the weapon rolled %v (sum %d), want 4 and 5 (9) after the reroll of the 1", weapon.GetFaces(), weapon.GetSum())
+	}
+	if rr := weapon.GetRerolled(); len(rr) != 1 || rr[0].GetIndex() != 0 || rr[0].GetFrom() != 1 || rr[0].GetTo() != 4 || rr[0].GetSourceKey() != "" {
+		t.Errorf("the rerolls = %v, want the die 0 from 1 to 4", rr)
+	}
+}
+
+// TestMonsterResistanceHalvesTheDamageAndTheMasterSeesTheStep: a creature resistant to a
+// type takes half of it, the master reads the step with the creature's key as its source,
+// and the player reads the damage as rolled.
+func TestMonsterResistanceHalvesTheDamageAndTheMasterSeesTheStep(t *testing.T) {
+	t.Parallel()
+	a, e, shrub := partsFight(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, abilities(16, 12, 14, 10, 8), []string{rapier}, nil)
+	}, "monster:awakened-shrub")
+	hit := a.mustAttack(t, a.caio, e, "Toren", rapier, shrub, d20(15))
+	a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), typedDamage(6))
+	attackLine := func(u *user) *playv1.CombatLogDamage {
+		for _, r := range a.log(t, u, e).GetRounds() {
+			for _, en := range r.GetEntries() {
+				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK {
+					return en.GetDamage()
+				}
+			}
+		}
+		return nil
+	}
+	master := attackLine(a.master)
+	if master == nil {
+		t.Fatal("the master reads no attack line")
+	}
+	if steps := master.GetSteps(); len(steps) != 1 || steps[0].GetKind() != playv1.DamageStepKind_DAMAGE_STEP_KIND_RESISTANCE ||
+		len(steps[0].GetSourceKeys()) != 1 || steps[0].GetSourceKeys()[0] != "monster:awakened-shrub" || steps[0].GetBefore() != 9 || steps[0].GetAfter() != 4 {
+		t.Errorf("the master's steps = %v, want one resistance from the creature, 9 to 4", master.GetSteps())
+	}
+	if player := attackLine(a.caio); player == nil || len(player.GetSteps()) != 0 || player.GetAmount() != 9 {
+		t.Errorf("the player reads %v, want the damage as rolled (9) and no step", player)
+	}
+}
+
+// TestRageResistanceHoldsOnlyWhileRaging: a barbarian who is not raging takes the whole
+// damage, and the resistance of the rage is no step of it.
+func TestRageResistanceHoldsOnlyWhileRaging(t *testing.T) {
+	t.Parallel()
+	a, e := rollsTable(t)
+	e = a.passTo(t, e, "Goblin")
+	a.h.roller.queue(4)
+	hit := a.mustAttack(t, a.master, e, "Goblin", sword, "Brisa", d20(18))
+	dmg := a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage).GetPendingDamage()
+	if len(dmg.GetSteps()) != 0 || dmg.GetAmount() != 6 || dmg.GetAmountAfterSteps() != 0 {
+		t.Errorf("the damage = %v, want 6 with no step: Brisa is not raging", dmg)
+	}
+}
