@@ -64,7 +64,6 @@ cognitive internal/play (*Service).chooseMode 19
 cognitive internal/play (*Service).contestOptionsFor 50
 cognitive internal/play (*Service).dieToCharacters 22
 cognitive internal/play (*Service).dieToCombat 24
-cognitive internal/play (*Service).effectLogView 17
 cognitive internal/play (*Service).encounterParty 39
 cognitive internal/play (*Service).familiarSquares 16
 cognitive internal/play (*Service).giveDie 21
@@ -80,7 +79,6 @@ cognitive internal/play (*Service).slowFall 23
 cognitive internal/play (*Service).spellAttack 16
 cognitive internal/play (*Service).spellSave 28
 cognitive internal/play (*Service).spellTargetsFor 24
-cognitive internal/play (*Service).spendSlot 17
 cognitive internal/play (*Service).syncContests 26
 cognitive internal/play (*combatTx).stamp 41
 cognitive internal/play (*combatTx).stampDoor 23
