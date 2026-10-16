@@ -49,7 +49,7 @@ func (a *armed) revivifyBase(t *testing.T, target string, edit func(*playv1.Cast
 	return req
 }
 
-func (a *armed) castRaw(t *testing.T, u *user, req *playv1.CastSpellRequest) (*playv1.CastSpellResponse, error) {
+func (a *armed) castRevivifyRaw(t *testing.T, u *user, req *playv1.CastSpellRequest) (*playv1.CastSpellResponse, error) {
 	t.Helper()
 	res, err := u.combat.CastSpell(t.Context(), connect.NewRequest(req))
 	if err != nil {
@@ -286,7 +286,7 @@ func TestRevivifyFrozen_CastRefusals(t *testing.T) {
 
 	shape := func(call string, edit func(*playv1.CastSpellRequest), code connect.Code, msg string) {
 		t.Helper()
-		_, err := a.castRaw(t, a.ana, a.revivifyBase(t, "Toren", edit))
+		_, err := a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, "Toren", edit))
 		wantRevivifyRefusal(t, call, err, code, msg)
 	}
 	const one = "Revivify takes one target: the dead creature, as dead_target_id"
@@ -309,13 +309,13 @@ func TestRevivifyFrozen_CastRefusals(t *testing.T) {
 	shape("a damage type", func(r *playv1.CastSpellRequest) { r.DamageTypeKey = "damage:fire" }, connect.CodeInvalidArgument, rolls)
 
 	// Who may cast, and the options the caster has.
-	_, err := a.castRaw(t, a.caio, a.revivifyBase(t, "Toren", nil))
+	_, err := a.castRevivifyRaw(t, a.caio, a.revivifyBase(t, "Toren", nil))
 	wantRevivifyRefusal(t, "another player's caster", err, connect.CodePermissionDenied, "only the combatant's player or the master may do this")
-	_, err = a.castRaw(t, a.ana, a.revivifyBase(t, "Toren", func(r *playv1.CastSpellRequest) { r.CasterId = newKey() }))
+	_, err = a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, "Toren", func(r *playv1.CastSpellRequest) { r.CasterId = newKey() }))
 	wantRevivifyRefusal(t, "a caster that is not there", err, connect.CodeNotFound, "combatant not found")
 	slot := func(call string, s *playv1.SpellSlot, msg string) {
 		t.Helper()
-		_, err := a.castRaw(t, a.ana, a.revivifyBase(t, "Toren", func(r *playv1.CastSpellRequest) { r.Slot = s }))
+		_, err := a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, "Toren", func(r *playv1.CastSpellRequest) { r.Slot = s }))
 		wantRevivifyRefusal(t, call, err, connect.CodeInvalidArgument, msg)
 	}
 	slot("no slot", nil, revivifyNoSlotMsg)
@@ -326,7 +326,7 @@ func TestRevivifyFrozen_CastRefusals(t *testing.T) {
 
 	// The action is used: a player is refused, the master is not stopped by it.
 	a.execSQL(t, `UPDATE combatants SET action_used = true WHERE id = $1`, a.id(t, "Ilaria"))
-	_, err = a.castRaw(t, a.ana, a.revivifyBase(t, "Toren", nil))
+	_, err = a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, "Toren", nil))
 	wantRevivifyRefusal(t, "the action used", err, connect.CodeFailedPrecondition, "the action of this turn is used")
 	wantBlockedBy(t, "the action used", err, blockedActionUsed)
 	a.execSQL(t, `UPDATE combatants SET action_used = false WHERE id = $1`, a.id(t, "Ilaria"))
@@ -335,7 +335,7 @@ func TestRevivifyFrozen_CastRefusals(t *testing.T) {
 	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) {
 		r.SpellSlotsUsed = []*playv1.SpellSlotsUsed{{Level: 3, Used: 2}}
 	})
-	_, err = a.castRaw(t, a.ana, a.revivifyBase(t, "Toren", nil))
+	_, err = a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, "Toren", nil))
 	wantRevivifyRefusal(t, "no slot left", err, connect.CodeFailedPrecondition, "there is no free spell slot for this spell")
 	if b := wantBlockedBy(t, "no slot left", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT); b.GetMinLevel() != 3 {
 		t.Errorf("NO_SLOT min_level = %d, want 3", b.GetMinLevel())
@@ -346,10 +346,10 @@ func TestRevivifyFrozen_CastRefusals(t *testing.T) {
 
 	// Not Ilaria's turn, and a caster that has no Revivify on its own turn.
 	e = a.passTo(t, e, "Brisa")
-	_, err = a.castRaw(t, a.ana, a.revivifyBase(t, "Toren", nil))
+	_, err = a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, "Toren", nil))
 	wantRevivifyRefusal(t, "out of turn", err, connect.CodeFailedPrecondition, "it is not this combatant's turn")
 	wantBlockedBy(t, "out of turn", err, reasonNotTurn)
-	_, err = a.castRaw(t, a.bia, a.revivifyBase(t, "Toren", func(r *playv1.CastSpellRequest) { r.CasterId = a.id(t, "Brisa") }))
+	_, err = a.castRevivifyRaw(t, a.bia, a.revivifyBase(t, "Toren", func(r *playv1.CastSpellRequest) { r.CasterId = a.id(t, "Brisa") }))
 	wantRevivifyRefusal(t, "a caster with no Revivify", err, connect.CodeInvalidArgument, "spell_key is not one of the caster's spells")
 	if v := a.vitals(t, a.pens); usedSlots(v, 3) != 0 || byLabel(t, a.get(t, a.master), "Ilaria").GetActionUsed() {
 		t.Errorf("a refused cast spent something: slots %d", usedSlots(v, 3))
@@ -359,7 +359,7 @@ func TestRevivifyFrozen_CastRefusals(t *testing.T) {
 	if _, err := a.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()})); err != nil {
 		t.Fatalf("EndEncounter() error = %v", err)
 	}
-	_, err = a.castRaw(t, a.ana, a.revivifyBase(t, "Toren", nil))
+	_, err = a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, "Toren", nil))
 	wantRevivifyRefusal(t, "a cast after the end", err, connect.CodeFailedPrecondition, "the combat has ended")
 }
 
@@ -387,18 +387,18 @@ func TestRevivifyFrozen_TheMastersCastIsHeldToTheWindowAndHisSwitchOnly(t *testi
 
 	// The player cannot touch either: far, and one is hidden.
 	for _, who := range []string{"Toren", "Goblin"} {
-		_, err := a.castRaw(t, a.ana, a.revivifyBase(t, who, nil))
+		_, err := a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, who, nil))
 		wantRevivifyRefusal(t, "the player's cast on "+who, err, connect.CodeFailedPrecondition, "the action of this turn is used")
 	}
 	a.execSQL(t, `UPDATE combatants SET action_used = false WHERE id = $1`, a.id(t, "Ilaria"))
 	for _, who := range []string{"Toren", "Goblin"} {
-		_, err := a.castRaw(t, a.ana, a.revivifyBase(t, who, nil))
+		_, err := a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, who, nil))
 		wantRevivifyRefusal(t, "the player's cast on "+who, err, connect.CodeFailedPrecondition, revivifyTargetMsg)
 	}
 	a.execSQL(t, `UPDATE combatants SET action_used = true WHERE id = $1`, a.id(t, "Ilaria"))
 
 	// The master revives the hidden goblin from afar with the action already used.
-	if _, err := a.castRaw(t, a.master, a.revivifyBase(t, "Goblin", nil)); err != nil {
+	if _, err := a.castRevivifyRaw(t, a.master, a.revivifyBase(t, "Goblin", nil)); err != nil {
 		t.Fatalf("the master's Revivify on the hidden goblin from afar error = %v", err)
 	}
 	if cur, _, defeated := a.hp(t, "Goblin"); cur != 1 || defeated {
@@ -421,7 +421,7 @@ func TestRevivifyFrozen_TheMastersCastIsHeldToTheWindowAndHisSwitchOnly(t *testi
 	})); err != nil {
 		t.Fatalf("SetRevivifyBlocked() error = %v", err)
 	}
-	_, err := a.castRaw(t, a.master, a.revivifyBase(t, "Toren", nil))
+	_, err := a.castRevivifyRaw(t, a.master, a.revivifyBase(t, "Toren", nil))
 	wantRevivifyRefusal(t, "the master's cast on a marked death", err, connect.CodeFailedPrecondition, revivifyTargetMsg)
 	if _, err := a.master.revivify.SetRevivifyBlocked(t.Context(), connect.NewRequest(&playv1.SetRevivifyBlockedRequest{
 		CampaignId: a.campaignID, Target: &playv1.SetRevivifyBlockedRequest_CombatantId{CombatantId: a.id(t, "Toren")}, Blocked: false,
@@ -429,10 +429,10 @@ func TestRevivifyFrozen_TheMastersCastIsHeldToTheWindowAndHisSwitchOnly(t *testi
 		t.Fatalf("SetRevivifyBlocked(false) error = %v", err)
 	}
 	a.execSQL(t, `UPDATE encounters SET round = 30 WHERE id = $1`, e.GetId())
-	_, err = a.castRaw(t, a.master, a.revivifyBase(t, "Toren", nil))
+	_, err = a.castRevivifyRaw(t, a.master, a.revivifyBase(t, "Toren", nil))
 	wantRevivifyRefusal(t, "the master's cast past the window", err, connect.CodeFailedPrecondition, revivifyTargetMsg)
 	a.execSQL(t, `UPDATE encounters SET round = 3 WHERE id = $1`, e.GetId())
-	if _, err := a.castRaw(t, a.master, a.revivifyBase(t, "Toren", nil)); err != nil {
+	if _, err := a.castRevivifyRaw(t, a.master, a.revivifyBase(t, "Toren", nil)); err != nil {
 		t.Fatalf("the master's Revivify on Toren from afar error = %v", err)
 	}
 	if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 1 {
@@ -498,9 +498,9 @@ func TestRevivifyFrozen_FogHidesAnNPCInTheDarkFromThePlayer(t *testing.T) {
 	wantRevivifyLine(t, "the master", pv, err, "slot=3/2 time=true targets=[Toren r1 s0] unavailable=[Goblin NOT_SEEN r1 s0]")
 
 	a.passTo(t, e, "Ilaria")
-	_, err = a.castRaw(t, a.ana, a.revivifyBase(t, "Goblin", nil))
+	_, err = a.castRevivifyRaw(t, a.ana, a.revivifyBase(t, "Goblin", nil))
 	wantRevivifyRefusal(t, "the player's cast on a creature in the dark", err, connect.CodeFailedPrecondition, revivifyTargetMsg)
-	if _, err := a.castRaw(t, a.master, a.revivifyBase(t, "Goblin", nil)); err != nil {
+	if _, err := a.castRevivifyRaw(t, a.master, a.revivifyBase(t, "Goblin", nil)); err != nil {
 		t.Fatalf("the master's Revivify on the goblin in the dark error = %v", err)
 	}
 	if cur, _, defeated := a.hp(t, "Goblin"); cur != 1 || defeated {
