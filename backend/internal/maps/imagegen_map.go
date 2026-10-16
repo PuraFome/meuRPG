@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
@@ -755,130 +756,201 @@ func (s *Service) UseGeneratedImageAsMapImage(
 	if !ok {
 		return nil, errImageNotFound()
 	}
-	request, err := s.queries.GetImageRequestForImage(ctx, mapsdb.GetImageRequestForImageParams{CampaignID: m.CampaignID, ImageID: &imageID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errImageNotFound()
-	}
+	request, err := s.texturedMapRequest(ctx, m.CampaignID, imageID)
 	if err != nil {
-		return nil, s.dbError(ctx, "find the request of a generated image", err)
+		return nil, err
 	}
-	// A textured map, or an edit of one (it kept the map's basis): the gallery says which.
-	picture, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: m.CampaignID, ID: imageID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errImageNotFound()
-	}
-	if err != nil {
-		return nil, s.dbError(ctx, "read the generated image", err)
-	}
-	if picture.GeneratedKind != kindTexturedMap || request.MapID == nil {
-		return nil, errImageNotFound() // not a textured map, or its map is gone
-	}
-	mapID := *request.MapID
+	call := useCall{m: m, request: request, imageID: imageID, mapID: *request.MapID}
 	current, err := s.currentMap(ctx, m.CampaignID)
 	if err != nil {
 		return nil, err
 	}
-	status, err := s.freshStatus(ctx, m.CampaignID) // for the refusal's detail, read outside the transaction
+	call.status, err = s.freshStatus(ctx, m.CampaignID) // for the refusal's detail, read outside the transaction
 	if err != nil {
 		return nil, s.dbError(ctx, "read the image generation status", err)
 	}
-	// A fog map's image is always its own, as UpdateMap gives (prepareFogCopy): when the
-	// picture is also used another way (shown, a portrait, another map) the map gets a
-	// copy. What can be read before the transaction is read here; the copy's row goes in it.
-	var imageCopy *fogCopy
-	if before, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: m.CampaignID, ID: mapID}); err == nil && before.ImageID != imageID {
-		if before.FogEnabled {
-			imageCopy, err = s.prepareFogCopy(ctx, m.CampaignID, mapID, imageID)
-		} else {
-			imageCopy, err = s.prepareReuseCopy(ctx, m.CampaignID, imageID)
-		}
-		if err != nil {
-			return nil, s.dbError(ctx, "copy the textured map", err)
-		}
+	if call.imageCopy, err = s.useImageCopy(ctx, m.CampaignID, call.mapID, imageID); err != nil {
+		return nil, s.dbError(ctx, "copy the textured map", err)
 	}
-	var updated mapsdb.Map
-	copied, alreadyUsed := false, false
+	var out useOutcome
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		copied, alreadyUsed = false, false
-		locked, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errImageNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find the map: %w", err)
-		}
-		if locked.ImageID == imageID {
-			updated = locked // already its image: a retry changes nothing
-			return nil
-		}
-		// A Use that already happened (maybe with a copy, for a fog map): the same answer
-		// while the image it set is still the map's, with no new copy and no write.
-		if again, err := q.GetImageRequest(ctx, mapsdb.GetImageRequestParams{CampaignID: m.CampaignID, ID: request.ID}); err != nil {
-			return fmt.Errorf("read the request again: %w", err)
-		} else if again.UsedMapImageID != nil && *again.UsedMapImageID == locked.ImageID {
-			updated, alreadyUsed = locked, true
-			return nil
-		}
-		changed := errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED, status)
-		fits, err := mapImageFitsRequest(ctx, q, m.CampaignID, request, locked.ImageID)
-		if err != nil {
-			return err
-		}
-		if !fits || locked.GridColumns == nil ||
-			request.MapGridColumns == nil || *locked.GridColumns != *request.MapGridColumns ||
-			request.MapGridFactor == nil || locked.GridFactor != *request.MapGridFactor {
-			return changed
-		}
-		old, err := q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: m.CampaignID, ID: locked.ImageID})
-		if err != nil {
-			return fmt.Errorf("read the map's image: %w", err)
-		}
-		fresh, err := q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: m.CampaignID, ID: imageID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errImageNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("read the textured map: %w", err)
-		}
-		if request.MapWidth == nil || request.MapHeight == nil || old.Width != *request.MapWidth || old.Height != *request.MapHeight ||
-			fresh.Width != old.Width || fresh.Height != old.Height {
-			return changed
-		}
-		// What the drawing showed: a wall painted, or a secret door revealed, since then.
-		solid, _, _, err := s.planAt(ctx, q, m.CampaignID, locked, gridOf(locked.GridColumns, locked.GridFactor, old.Width, old.Height))
-		if err != nil {
-			return err
-		}
-		if request.MapPlanHash == nil || planHash(solid) != *request.MapPlanHash {
-			return changed
-		}
-		if imageCopy != nil {
-			if fresh, err = imageCopy.insertRow(ctx, q, s, m.CampaignID, &m.UserID); err != nil {
-				return err
-			}
-			copied = true
-		}
-		if updated, err = s.replaceMapImageKeepingLayers(ctx, q, locked, old, fresh); err != nil {
-			return err
-		}
-		return q.MarkImageRequestUsed(ctx, mapsdb.MarkImageRequestUsedParams{CampaignID: m.CampaignID, ID: request.ID, UsedMapImageID: &fresh.ID})
+		out = useOutcome{}
+		return s.useInTx(ctx, s.queries.WithTx(tx), &call, &out)
 	})
-	if imageCopy != nil && (err != nil || !copied) {
-		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
+	if call.imageCopy != nil && (err != nil || !out.copied) {
+		s.deleteFiles(ctx, m.CampaignID, call.imageCopy.id) // made for nothing
 	}
 	if err != nil {
 		return nil, s.dbError(ctx, "use a generated image as the map's image", err)
 	}
-	if !alreadyUsed {
-		s.tiles.forget(mapID) // the fog's tiles are cut from the image
-		s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
+	if !out.alreadyUsed {
+		s.tiles.forget(call.mapID) // the fog's tiles are cut from the image
+		s.publishMapChanged(m.CampaignID, call.mapID, playersSee(call.mapID, out.updated.RevealedAt, current))
 	}
-	out, err := s.masterMap(ctx, m, mapID)
+	masterMap, err := s.masterMap(ctx, m, call.mapID)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&mapsv1.UseGeneratedImageAsMapImageResponse{Map: out}), nil
+	return connect.NewResponse(&mapsv1.UseGeneratedImageAsMapImageResponse{Map: masterMap}), nil
+}
+
+// useCall is what UseGeneratedImageAsMapImage read before its transaction.
+type useCall struct {
+	m       authz.Membership
+	request mapsdb.ImageRequest
+	imageID string
+	mapID   string
+	status  *mapsv1.ImageGenerationStatus
+	// imageCopy is the copy of the picture the map gets when the picture is used
+	// another way too, or nil.
+	imageCopy *fogCopy
+}
+
+// useOutcome is what one attempt of the transaction decided.
+type useOutcome struct {
+	updated     mapsdb.Map
+	copied      bool
+	alreadyUsed bool
+}
+
+// changed is the refusal for a map that is no longer the one the picture was drawn for.
+func (c *useCall) changed() error {
+	return errBlocked(mapsv1.ImageGenerationBlockedReason_IMAGE_GENERATION_BLOCKED_REASON_MAP_CHANGED, c.status)
+}
+
+// texturedMapRequest finds the request that made a gallery image and checks the
+// image is a textured map, or an edit of one (it kept the map's basis): the
+// gallery says which. Anything else, or a map that is gone, is `not_found`.
+func (s *Service) texturedMapRequest(ctx context.Context, campaignID, imageID string) (mapsdb.ImageRequest, error) {
+	request, err := s.queries.GetImageRequestForImage(ctx, mapsdb.GetImageRequestForImageParams{CampaignID: campaignID, ImageID: &imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return mapsdb.ImageRequest{}, errImageNotFound()
+	}
+	if err != nil {
+		return mapsdb.ImageRequest{}, s.dbError(ctx, "find the request of a generated image", err)
+	}
+	picture, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return mapsdb.ImageRequest{}, errImageNotFound()
+	}
+	if err != nil {
+		return mapsdb.ImageRequest{}, s.dbError(ctx, "read the generated image", err)
+	}
+	if picture.GeneratedKind != kindTexturedMap || request.MapID == nil {
+		return mapsdb.ImageRequest{}, errImageNotFound() // not a textured map, or its map is gone
+	}
+	return request, nil
+}
+
+// useImageCopy makes what can be made before the transaction of the copy a map
+// gets when the picture is also used another way: a fog map's image is always
+// its own, as UpdateMap gives (prepareFogCopy), and a map without fog gets a copy
+// too when the picture is used elsewhere. The copy's row goes in the transaction.
+// A map that cannot be read here gets none; the transaction refuses it.
+func (s *Service) useImageCopy(ctx context.Context, campaignID, mapID, imageID string) (*fogCopy, error) {
+	before, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
+	if err == nil && before.ImageID != imageID {
+		if before.FogEnabled {
+			return s.prepareFogCopy(ctx, campaignID, mapID, imageID)
+		}
+		return s.prepareReuseCopy(ctx, campaignID, imageID)
+	}
+	return nil, nil
+}
+
+// useInTx is one attempt of the transaction: it locks the map, answers a retry,
+// checks the map is still the one the picture was drawn for, and swaps the image.
+func (s *Service) useInTx(ctx context.Context, q *mapsdb.Queries, c *useCall, out *useOutcome) error {
+	campaignID := c.m.CampaignID
+	locked, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: c.mapID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errImageNotFound()
+	}
+	if err != nil {
+		return fmt.Errorf("find the map: %w", err)
+	}
+	if locked.ImageID == c.imageID {
+		out.updated = locked // already its image: a retry changes nothing
+		return nil
+	}
+	// A Use that already happened (maybe with a copy, for a fog map): the same answer
+	// while the image it set is still the map's, with no new copy and no write.
+	if again, err := q.GetImageRequest(ctx, mapsdb.GetImageRequestParams{CampaignID: campaignID, ID: c.request.ID}); err != nil {
+		return fmt.Errorf("read the request again: %w", err)
+	} else if again.UsedMapImageID != nil && *again.UsedMapImageID == locked.ImageID {
+		out.updated, out.alreadyUsed = locked, true
+		return nil
+	}
+	if err := checkUseGrid(ctx, q, c, locked); err != nil {
+		return err
+	}
+	old, fresh, err := s.checkUseSize(ctx, q, c, locked)
+	if err != nil {
+		return err
+	}
+	// What the drawing showed: a wall painted, or a secret door revealed, since then.
+	solid, _, _, err := s.planAt(ctx, q, campaignID, locked, gridOf(locked.GridColumns, locked.GridFactor, old.Width, old.Height))
+	if err != nil {
+		return err
+	}
+	if c.request.MapPlanHash == nil || planHash(solid) != *c.request.MapPlanHash {
+		return c.changed()
+	}
+	return s.swapMapImage(ctx, q, c, out, locked, old, fresh)
+}
+
+// checkUseGrid refuses a map whose image is not the one the request was made
+// over, or whose grid is not the request's.
+func checkUseGrid(ctx context.Context, q *mapsdb.Queries, c *useCall, locked mapsdb.Map) error {
+	request := c.request
+	fits, err := mapImageFitsRequest(ctx, q, c.m.CampaignID, request, locked.ImageID)
+	if err != nil {
+		return err
+	}
+	if !fits || locked.GridColumns == nil ||
+		request.MapGridColumns == nil || *locked.GridColumns != *request.MapGridColumns ||
+		request.MapGridFactor == nil || locked.GridFactor != *request.MapGridFactor {
+		return c.changed()
+	}
+	return nil
+}
+
+// checkUseSize reads the map's current image and the textured one, and refuses
+// a size that is not the request's. It returns both.
+func (s *Service) checkUseSize(ctx context.Context, q *mapsdb.Queries, c *useCall, locked mapsdb.Map) (old, fresh mapsdb.GalleryImage, err error) {
+	request := c.request
+	old, err = q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: c.m.CampaignID, ID: locked.ImageID})
+	if err != nil {
+		return old, fresh, fmt.Errorf("read the map's image: %w", err)
+	}
+	fresh, err = q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: c.m.CampaignID, ID: c.imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return old, fresh, errImageNotFound()
+	}
+	if err != nil {
+		return old, fresh, fmt.Errorf("read the textured map: %w", err)
+	}
+	if request.MapWidth == nil || request.MapHeight == nil || old.Width != *request.MapWidth || old.Height != *request.MapHeight ||
+		fresh.Width != old.Width || fresh.Height != old.Height {
+		return old, fresh, c.changed()
+	}
+	return old, fresh, nil
+}
+
+// swapMapImage puts the textured map on the map (a copy of it, when there is
+// one) and marks the request used.
+func (s *Service) swapMapImage(ctx context.Context, q *mapsdb.Queries, c *useCall, out *useOutcome, locked mapsdb.Map, old, fresh mapsdb.GalleryImage) error {
+	var err error
+	if c.imageCopy != nil {
+		if fresh, err = c.imageCopy.insertRow(ctx, q, s, c.m.CampaignID, &c.m.UserID); err != nil {
+			return err
+		}
+		out.copied = true
+	}
+	if out.updated, err = s.replaceMapImageKeepingLayers(ctx, q, locked, old, fresh); err != nil {
+		return err
+	}
+	return q.MarkImageRequestUsed(ctx, mapsdb.MarkImageRequestUsedParams{CampaignID: c.m.CampaignID, ID: c.request.ID, UsedMapImageID: &fresh.ID})
 }
 
 // maxEditChain bounds the walk up the edits of an edit: far more than a master makes.
