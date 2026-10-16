@@ -228,3 +228,32 @@ func TestRemoveDamagePartRefusesADamageAlreadyAppliedToACharacter(t *testing.T) 
 	wantBlockedBy(t, "RemoveDamagePart(a damage applied to a character)", err, blockedDamageResolved)
 	wantPartsRefusal(t, "RemoveDamagePart(a damage applied to a character)", err, connect.CodeFailedPrecondition, "the damage was applied to a character already")
 }
+
+// TestRemoveDamagePartGivesTheOncePerTurnUseBack: the Colossus Slayer the master took out
+// was never in the damage, so the turn may add it again; the mark of the turn is cleared.
+func TestRemoveDamagePartGivesTheOncePerTurnUseBack(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.heroWith(t, a.campaignID, "Toren", classLevel("class:ranger", 3, "subclass:hunter"), abilities(16, 14, 14, 10, 10), []string{rapier}, nil,
+			[]string{"feature:hunters-prey-colossus-slayer"})
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, abilities(10, 14, 12, 16, 8), nil, []string{fireBolt})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, abilities(10, 16, 14, 10, 8), []string{rapier}, nil)
+	})
+	e := a.threeAndAGoblin(t)
+	if _, err := a.adjustHP(t, e, "Goblin", damageHP(1)); err != nil {
+		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
+	}
+	res := a.mustAttack(t, a.caio, e, "Toren", rapier, "Goblin", d20(15))
+	pendingID := res.GetPendingDamage().GetId()
+	a.mustDamage(t, a.caio, e, pendingID, extrasMarked([]*playv1.SelectedExtra{{Key: "colossus-slayer"}},
+		&playv1.TypedPart{PartKey: extraWeaponDamage, Sum: 1}, &playv1.TypedPart{PartKey: "colossus-slayer", Sum: 2}))
+	a.wantMark(t, "Toren", "colossus_slayer_turn")
+	if _, err := a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(&playv1.RemoveDamagePartRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: pendingID, PartKey: "colossus-slayer", Reason: "motivo", IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("RemoveDamagePart() error = %v", err)
+	}
+	if got := a.column(t, a.id(t, "Toren"), "colossus_slayer_turn"); got != nil {
+		t.Errorf("the Colossus Slayer mark after the removal = %q, want none", *got)
+	}
+}
