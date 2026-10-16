@@ -260,75 +260,37 @@ func Load(getenv func(string) string) (Config, error) {
 		cfg.TraceProject = strings.TrimSpace(getenv("GOOGLE_CLOUD_PROJECT"))
 	}
 
-	var errs []error
-	if hopsErr != nil {
-		errs = append(errs, hopsErr)
-	}
+	// The errors are collected in the order of the variables below, which is
+	// the order the joined message lists them in.
+	errs := appendErr(nil, hopsErr)
 
-	if raw := strings.TrimSpace(getenv("PORT")); raw != "" {
-		port, err := strconv.Atoi(raw)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Errorf("PORT must be a number, got %q", raw))
-		case port < 1 || port > 65535:
-			errs = append(errs, fmt.Errorf("PORT must be between 1 and 65535, got %d", port))
-		default:
-			cfg.Port = port
-		}
-	}
+	var err error
+	cfg.Port, err = loadPort(getenv)
+	errs = appendErr(errs, err)
 
 	cfg.ListenHost = strings.TrimSpace(getenv("LISTEN_HOST"))
-
-	if raw := strings.TrimSpace(getenv("WEB_DIR")); raw != "" {
-		cfg.WebDir = raw
-	}
+	cfg.WebDir = orDefault(strings.TrimSpace(getenv("WEB_DIR")), DefaultWebDir)
 
 	cfg.BlobDir = strings.TrimSpace(getenv("BLOB_DIR"))
 	cfg.BlobBucket = strings.TrimSpace(getenv("BLOB_BUCKET"))
-	switch {
-	case cfg.BlobDir != "" && cfg.BlobBucket != "":
-		errs = append(errs, errors.New("BLOB_DIR and BLOB_BUCKET are both set; choose one: BLOB_BUCKET for Cloud Storage, BLOB_DIR for a local folder"))
-	case cfg.CloudRun && cfg.BlobDir != "":
-		errs = append(errs, errors.New("BLOB_DIR is not allowed on Cloud Run, whose disk is lost when the instance stops; use BLOB_BUCKET"))
-	}
+	errs = appendErr(errs, checkBlobs(cfg))
 
 	images, imageErrs := loadImages(getenv, cfg.CloudRun)
 	cfg.Images = images
 	errs = append(errs, imageErrs...)
 
-	if raw := strings.TrimSpace(getenv("LOG_LEVEL")); raw != "" {
-		level, err := parseLogLevel(raw)
-		if err != nil {
-			errs = append(errs, err)
-		} else {
-			cfg.LogLevel = level
-		}
-	}
+	cfg.LogLevel, err = loadLogLevel(getenv)
+	errs = appendErr(errs, err)
 
-	if cfg.CloudRun && cfg.DatabaseURL != "" {
-		if err := checkDatabaseTLS(cfg.DatabaseURL.Reveal()); err != nil {
-			errs = append(errs, err)
-		}
-	}
+	errs = appendErr(errs, checkCloudRunDatabase(cfg))
 
 	limits, limitErrs := loadLimits(getenv)
 	cfg.Limits = limits
 	errs = append(errs, limitErrs...)
-	if cfg.CloudRun && limits.MaxCampaignsPerUser == CampaignCapOff {
-		errs = append(errs, errors.New("MAX_CAMPAIGNS_PER_USER=off is for the local and CI stacks only, never on Cloud Run"))
-	}
+	errs = appendErr(errs, checkCloudRunCampaignCap(cfg))
 
-	if raw := strings.TrimSpace(getenv("SESSION_IDLE_TIMEOUT")); raw != "" {
-		d, err := time.ParseDuration(raw)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Errorf("SESSION_IDLE_TIMEOUT must be a duration like 336h, got %q", raw))
-		case d < time.Hour || d > maxOIDCMaxAge:
-			errs = append(errs, fmt.Errorf("SESSION_IDLE_TIMEOUT must be between 1h and 720h, got %q", raw))
-		default:
-			cfg.SessionIdleTimeout = d
-		}
-	}
+	cfg.SessionIdleTimeout, err = loadSessionIdleTimeout(getenv)
+	errs = appendErr(errs, err)
 
 	oidc, oidcErrs := loadOIDC(getenv)
 	cfg.OIDC = oidc
@@ -338,6 +300,105 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
 	}
 	return cfg, nil
+}
+
+// appendErr appends err to errs when there is one.
+func appendErr(errs []error, err error) []error {
+	if err != nil {
+		return append(errs, err)
+	}
+	return errs
+}
+
+// orDefault is raw, or def when raw is empty.
+func orDefault(raw, def string) string {
+	if raw == "" {
+		return def
+	}
+	return raw
+}
+
+// Bounds of PORT: a TCP port.
+const (
+	minPort = 1
+	maxPort = 65535
+)
+
+// loadPort reads PORT; unset means DefaultPort.
+func loadPort(getenv func(string) string) (int, error) {
+	raw := strings.TrimSpace(getenv("PORT"))
+	if raw == "" {
+		return DefaultPort, nil
+	}
+	port, err := strconv.Atoi(raw)
+	switch {
+	case err != nil:
+		return DefaultPort, fmt.Errorf("PORT must be a number, got %q", raw)
+	case port < minPort || port > maxPort:
+		return DefaultPort, fmt.Errorf("PORT must be between 1 and 65535, got %d", port)
+	default:
+		return port, nil
+	}
+}
+
+// checkBlobs refuses two image stores at once, and a folder on Cloud Run.
+func checkBlobs(cfg Config) error {
+	switch {
+	case cfg.BlobDir != "" && cfg.BlobBucket != "":
+		return errors.New("BLOB_DIR and BLOB_BUCKET are both set; choose one: BLOB_BUCKET for Cloud Storage, BLOB_DIR for a local folder")
+	case cfg.CloudRun && cfg.BlobDir != "":
+		return errors.New("BLOB_DIR is not allowed on Cloud Run, whose disk is lost when the instance stops; use BLOB_BUCKET")
+	default:
+		return nil
+	}
+}
+
+// loadLogLevel reads LOG_LEVEL; unset means DefaultLogLevel.
+func loadLogLevel(getenv func(string) string) (slog.Level, error) {
+	raw := strings.TrimSpace(getenv("LOG_LEVEL"))
+	if raw == "" {
+		return DefaultLogLevel, nil
+	}
+	level, err := parseLogLevel(raw)
+	if err != nil {
+		return DefaultLogLevel, err
+	}
+	return level, nil
+}
+
+// checkCloudRunDatabase applies checkDatabaseTLS to the database of a Cloud
+// Run instance; elsewhere (and without a database) anything goes.
+func checkCloudRunDatabase(cfg Config) error {
+	if !cfg.CloudRun || cfg.DatabaseURL == "" {
+		return nil
+	}
+	return checkDatabaseTLS(cfg.DatabaseURL.Reveal())
+}
+
+// checkCloudRunCampaignCap refuses MAX_CAMPAIGNS_PER_USER=off on Cloud Run.
+func checkCloudRunCampaignCap(cfg Config) error {
+	if cfg.CloudRun && cfg.Limits.MaxCampaignsPerUser == CampaignCapOff {
+		return errors.New("MAX_CAMPAIGNS_PER_USER=off is for the local and CI stacks only, never on Cloud Run")
+	}
+	return nil
+}
+
+// loadSessionIdleTimeout reads SESSION_IDLE_TIMEOUT; unset means zero (the
+// identity module's default).
+func loadSessionIdleTimeout(getenv func(string) string) (time.Duration, error) {
+	raw := strings.TrimSpace(getenv("SESSION_IDLE_TIMEOUT"))
+	if raw == "" {
+		return 0, nil
+	}
+	d, err := time.ParseDuration(raw)
+	switch {
+	case err != nil:
+		return 0, fmt.Errorf("SESSION_IDLE_TIMEOUT must be a duration like 336h, got %q", raw)
+	case d < time.Hour || d > maxOIDCMaxAge:
+		return 0, fmt.Errorf("SESSION_IDLE_TIMEOUT must be between 1h and 720h, got %q", raw)
+	default:
+		return d, nil
+	}
 }
 
 // loadTrustedProxyHops reads TRUSTED_PROXY_HOPS. Off Cloud Run the server is
@@ -410,18 +471,39 @@ func loadOIDC(getenv func(string) string) (OIDC, []error) {
 
 	var errs []error
 	if rawMaxAge != "" {
-		maxAge, err := time.ParseDuration(rawMaxAge)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Errorf("OIDC_MAX_AGE must be a duration like 1h or 90m, got %q", rawMaxAge))
-		case maxAge < time.Second || maxAge > maxOIDCMaxAge:
-			errs = append(errs, fmt.Errorf("OIDC_MAX_AGE must be between 1s and 720h, got %q", rawMaxAge))
-		default:
-			// max_age is a whole number of seconds.
-			o.MaxAge = maxAge.Truncate(time.Second)
-		}
+		var err error
+		o.MaxAge, err = parseOIDCMaxAge(rawMaxAge)
+		errs = appendErr(errs, err)
 	}
+	errs = appendErr(errs, checkOIDCRequired(o))
+	if o.IssuerURL != "" {
+		errs = appendErr(errs, checkIssuerURL(o.IssuerURL))
+	}
+	if o.RedirectURL != "" {
+		errs = appendErr(errs, checkRedirectURL(o.RedirectURL))
+	}
+	if len(errs) > 0 {
+		return OIDC{}, errs
+	}
+	return o, nil
+}
 
+// parseOIDCMaxAge reads OIDC_MAX_AGE, between a second and a session.
+func parseOIDCMaxAge(raw string) (time.Duration, error) {
+	maxAge, err := time.ParseDuration(raw)
+	switch {
+	case err != nil:
+		return 0, fmt.Errorf("OIDC_MAX_AGE must be a duration like 1h or 90m, got %q", raw)
+	case maxAge < time.Second || maxAge > maxOIDCMaxAge:
+		return 0, fmt.Errorf("OIDC_MAX_AGE must be between 1s and 720h, got %q", raw)
+	default:
+		// max_age is a whole number of seconds.
+		return maxAge.Truncate(time.Second), nil
+	}
+}
+
+// checkOIDCRequired names the required OIDC variables that are missing.
+func checkOIDCRequired(o OIDC) error {
 	required := []struct {
 		name  string
 		value string
@@ -438,23 +520,9 @@ func loadOIDC(getenv func(string) string) (OIDC, []error) {
 		}
 	}
 	if len(missing) > 0 {
-		errs = append(errs, fmt.Errorf("sign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing %s", strings.Join(missing, ", ")))
+		return fmt.Errorf("sign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing %s", strings.Join(missing, ", "))
 	}
-
-	if o.IssuerURL != "" {
-		if err := checkIssuerURL(o.IssuerURL); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if o.RedirectURL != "" {
-		if err := checkRedirectURL(o.RedirectURL); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if len(errs) > 0 {
-		return OIDC{}, errs
-	}
-	return o, nil
+	return nil
 }
 
 // checkIssuerURL applies OpenID Connect Discovery's rules: an https URL with
@@ -598,51 +666,82 @@ func loadLimits(getenv func(string) string) (Limits, []error) {
 	var (
 		l    Limits
 		errs []error
+		err  error
 	)
 	if raw := strings.TrimSpace(getenv("RATE_LIMIT_MULTIPLIER")); raw != "" {
-		f, err := strconv.ParseFloat(raw, 64)
-		switch {
-		case err != nil || math.IsNaN(f):
-			errs = append(errs, fmt.Errorf("RATE_LIMIT_MULTIPLIER must be a number, got %q", raw))
-		case f <= 0 || f > maxRateMultiplier:
-			errs = append(errs, fmt.Errorf("RATE_LIMIT_MULTIPLIER must be above 0 and at most %d, got %s", maxRateMultiplier, raw))
-		default:
-			l.RateMultiplier = f
-		}
+		l.RateMultiplier, err = parseRateMultiplier(raw)
+		errs = appendErr(errs, err)
 	}
 	if raw := strings.TrimSpace(getenv("MAX_CAMPAIGNS_PER_USER")); raw != "" {
-		n, err := strconv.Atoi(raw)
-		switch {
-		case strings.EqualFold(raw, "off"):
-			// No cap: for the local and CI stacks, where the e2e suite makes
-			// hundreds of campaigns as one test master. Refused on Cloud Run (Load).
-			l.MaxCampaignsPerUser = CampaignCapOff
-		case err != nil:
-			errs = append(errs, fmt.Errorf("MAX_CAMPAIGNS_PER_USER must be a number, got %q", raw))
-		case n < 1 || n > maxCampaignsPerUserLimit:
-			errs = append(errs, fmt.Errorf("MAX_CAMPAIGNS_PER_USER must be between 1 and %d, got %d", maxCampaignsPerUserLimit, n))
-		default:
-			l.MaxCampaignsPerUser = n
-		}
+		l.MaxCampaignsPerUser, err = parseCampaignCap(raw)
+		errs = appendErr(errs, err)
 	}
 	if raw := strings.TrimSpace(getenv("CAMPAIGN_CREATORS")); raw != "" {
-		seen := map[string]bool{}
-		for i, entry := range strings.Split(raw, ",") {
-			email := strings.ToLower(strings.TrimSpace(entry))
-			switch {
-			case email == "":
-				continue // a trailing comma
-			case !strings.Contains(email, "@"):
-				errs = append(errs, fmt.Errorf("CAMPAIGN_CREATORS entry %d is not an e-mail address", i+1))
-			case !seen[email]:
-				seen[email] = true
-				l.CampaignCreators = append(l.CampaignCreators, email)
-			}
-		}
+		var entryErrs []error
+		l.CampaignCreators, entryErrs = parseCampaignCreators(raw)
+		errs = append(errs, entryErrs...)
+		// errs holds the other variables' errors too, so one of them hides
+		// this one (frozen as is by TestLoadCharacterization).
 		if len(l.CampaignCreators) == 0 && len(errs) == 0 {
 			// Only separators: an empty list would let anyone create campaigns.
 			errs = append(errs, errors.New("CAMPAIGN_CREATORS has no e-mail address; leave it empty to let anyone create"))
 		}
 	}
 	return l, errs
+}
+
+// parseRateMultiplier reads RATE_LIMIT_MULTIPLIER: above 0, at most
+// maxRateMultiplier.
+func parseRateMultiplier(raw string) (float64, error) {
+	f, err := strconv.ParseFloat(raw, 64)
+	switch {
+	case err != nil || math.IsNaN(f):
+		return 0, fmt.Errorf("RATE_LIMIT_MULTIPLIER must be a number, got %q", raw)
+	case f <= 0 || f > maxRateMultiplier:
+		return 0, fmt.Errorf("RATE_LIMIT_MULTIPLIER must be above 0 and at most %d, got %s", maxRateMultiplier, raw)
+	default:
+		return f, nil
+	}
+}
+
+// parseCampaignCap reads MAX_CAMPAIGNS_PER_USER: a number up to
+// maxCampaignsPerUserLimit, or "off" (CampaignCapOff).
+func parseCampaignCap(raw string) (int, error) {
+	n, err := strconv.Atoi(raw)
+	switch {
+	case strings.EqualFold(raw, "off"):
+		// No cap: for the local and CI stacks, where the e2e suite makes
+		// hundreds of campaigns as one test master. Refused on Cloud Run (Load).
+		return CampaignCapOff, nil
+	case err != nil:
+		return 0, fmt.Errorf("MAX_CAMPAIGNS_PER_USER must be a number, got %q", raw)
+	case n < 1 || n > maxCampaignsPerUserLimit:
+		return 0, fmt.Errorf("MAX_CAMPAIGNS_PER_USER must be between 1 and %d, got %d", maxCampaignsPerUserLimit, n)
+	default:
+		return n, nil
+	}
+}
+
+// parseCampaignCreators reads CAMPAIGN_CREATORS: the e-mails in lower case,
+// without repeats, and an error per entry that is not one (by position: the
+// entry is personal data).
+func parseCampaignCreators(raw string) ([]string, []error) {
+	var (
+		creators []string
+		errs     []error
+	)
+	seen := map[string]bool{}
+	for i, entry := range strings.Split(raw, ",") {
+		email := strings.ToLower(strings.TrimSpace(entry))
+		switch {
+		case email == "":
+			continue // a trailing comma
+		case !strings.Contains(email, "@"):
+			errs = append(errs, fmt.Errorf("CAMPAIGN_CREATORS entry %d is not an e-mail address", i+1))
+		case !seen[email]:
+			seen[email] = true
+			creators = append(creators, email)
+		}
+	}
+	return creators, errs
 }

@@ -156,7 +156,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	// Ctrl+C kills the process right away instead of waiting for the drain.
 	context.AfterFunc(ctx, stop)
 
-	logger.Info("starting api", "commit", commit) // the version is on every line already
+	logger.InfoContext(ctx, "starting api", "commit", commit) // the version is on every line already
 
 	// Loading the rules content checks every entry and compiles every
 	// formula (ADR-0008). An error is a bug in the embedded data, so stop.
@@ -164,130 +164,37 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	if err != nil {
 		return fmt.Errorf("load the rules content: %w", err)
 	}
-	logger.Info("client ip source", "trusted_proxy_hops", cfg.TrustedProxyHops)
-	logger.Info("rules content loaded", "content_version", rulesContent.Version())
+	logger.InfoContext(ctx, "client ip source", "trusted_proxy_hops", cfg.TrustedProxyHops)
+	logger.InfoContext(ctx, "rules content loaded", "content_version", rulesContent.Version())
 
+	pool, err := openDatabase(ctx, logger, cfg)
+	if err != nil {
+		return err
+	}
 	// database stays a nil interface when DATABASE_URL is empty. It must not
 	// hold a nil *pgxpool.Pool: an interface holding a typed nil pointer is
 	// not == nil, and /readyz would then call Ping on it.
 	var database httpserver.Pinger
-	var pool *pgxpool.Pool
-	if cfg.DatabaseURL == "" {
-		logger.Warn("DATABASE_URL is not set; running without a database")
-	} else {
-		pool, err = db.NewPool(ctx, cfg.DatabaseURL.Reveal())
-		if err != nil {
-			return err
-		}
+	if pool != nil {
 		defer pool.Close()
-
-		// A failed ping is not fatal: the database may come up later, and
-		// until it does /readyz reports it as down.
-		if err := pool.Ping(ctx); err != nil {
-			logger.Warn("database is not reachable yet", "error", err)
-		}
 		database = pool
 	}
 
-	// Images need somewhere to live. blobs stays a nil interface without
-	// BLOB_DIR or BLOB_BUCKET (never a nil *blob.FS, for the reason given for
-	// database above), and the maps module then answers 503 for images.
-	var blobs blob.Store
-	switch {
-	case cfg.BlobBucket != "":
-		gcs, err := blob.NewGCS(cfg.BlobBucket)
-		if err != nil {
-			return err
-		}
-		// The check only reports: a metadata server or network hiccup at
-		// boot must not take images away for the whole revision. The store
-		// stays on, and each call succeeds or fails on its own (the image
-		// routes answer an error when one fails).
-		if err := gcs.Check(ctx); err != nil {
-			logger.Warn("the images bucket could not be reached at start; images stay on and each call is tried on its own: check BLOB_BUCKET, the service account's role and the metadata server if uploads fail", "error", err)
-		} else {
-			logger.Info("the images bucket is reachable")
-		}
-		blobs = gcs
-		logger.Info("images are stored in Cloud Storage")
-	case cfg.BlobDir == "":
-		logger.Warn("BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503")
-	default:
-		fs, err := blob.NewFS(cfg.BlobDir)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = fs.Close() }()
-		blobs = fs
-		logger.Info("images are stored on disk", "dir", cfg.BlobDir)
+	blobs, closeBlobs, err := openBlobs(ctx, logger, cfg)
+	if err != nil {
+		return err
 	}
+	defer closeBlobs()
 
 	// The request-rate limits (docs/architecture/api.md#abuse-limits), in this
 	// instance's memory. They are built before the modules, which hold two of them.
 	policy := ratelimit.NewPolicy(cfg.Limits.RateMultiplier)
 
-	// Image generation (MR-039, RN-28) needs a key, or the fake. imageGenerator
-	// stays a nil interface without them (never a nil *gen.Gemini), and the maps
-	// module then answers with the typed "off" reason.
-	var imageGenerator gen.Generator
-	switch {
-	case cfg.Images.Fake:
-		imageGenerator = &gen.Fake{}
-		logger.Warn("IMAGE_GENERATOR=fake: images are made by the fake generator, not by a model")
-	case cfg.Images.GeminiAPIKey != "":
-		imageGenerator = &gen.Gemini{Key: cfg.Images.GeminiAPIKey, ModelName: cfg.Images.Model, Logger: logger}
-		// The model name is not secret; the key never goes into a log line.
-		logger.Info("image generation is on", "model", imageGenerator.Model())
-	default:
-		logger.Warn("GEMINI_API_KEY is not set; image generation is off")
-	}
-
-	// Sign-in needs a provider and a database. identityService stays nil
-	// when either is missing, and the sign-in routes then answer 503.
-	// Campaigns, characters and game sessions need to know who is calling,
-	// so they come with sign-in.
-	var identityService *identity.Service
-	var m *modules
-	switch {
-	case !cfg.OIDC.Configured():
-		logger.Warn("OIDC_ISSUER is not set; sign-in is disabled")
-	case pool == nil:
-		logger.Warn("sign-in is disabled: it needs DATABASE_URL")
-	default:
-		m, err = wireModules(logger, pool, rulesContent, blobs, imageGenerator, wireOptions{
-			MonthlyImages:       cfg.Images.MonthlyLimit,
-			DailyImages:         cfg.Images.DailyLimit,
-			MaxCampaignsPerUser: cfg.Limits.MaxCampaignsPerUser,
-			CampaignCreators:    cfg.Limits.CampaignCreators,
-			Policy:              policy,
-			TrustedProxyHops:    cfg.TrustedProxyHops,
-		})
-		if err != nil {
-			return err
-		}
-		identityService, err = identity.New(ctx, identity.Config{
-			OIDC:   cfg.OIDC,
-			Store:  m.users,
-			Logger: logger,
-			// Zero (SESSION_IDLE_TIMEOUT unset) means the 14-day default.
-			SessionIdleTimeout: cfg.SessionIdleTimeout,
-			// Behind Cloud Run the sign-in rate limit reads the client IP
-			// from X-Forwarded-For; anywhere else, from the connection.
-			TrustedProxyHops: cfg.TrustedProxyHops,
-			// What a user may ask to finish right after signing in
-			// (POST /auth/login): today, accepting a campaign invite.
-			Intents: map[string]identity.IntentHandler{
-				campaigns.InviteIntentKind: m.campaigns.InviteIntent(),
-				// A claim link only brings the person back to its card; signing in never claims.
-				characters.ClaimIntentKind: m.characters.ClaimIntent(),
-			},
-		})
-		if err != nil {
-			return err
-		}
-		// The issuer and client ID are not secret; the client secret is
-		// never logged (config.Secret prints as [REDACTED] anyway).
-		logger.Info("sign-in is enabled", "issuer", cfg.OIDC.IssuerURL, "client_id", cfg.OIDC.ClientID, "max_age", cfg.OIDC.MaxAge.String())
+	identityService, m, err := wireSignIn(ctx, logger, cfg, pool, signInParts{
+		rules: rulesContent, blobs: blobs, images: newImageGenerator(ctx, logger, cfg), policy: policy,
+	})
+	if err != nil {
+		return err
 	}
 
 	srv := httpserver.New(httpserver.Config{
@@ -299,27 +206,182 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// The per-IP limit on every API request, before a session is looked up.
 		Limit: ratelimit.Middleware(policy.IP, cfg.TrustedProxyHops, ratelimit.NewNotifier(logger, "api requests by ip")),
 	})
-
-	connectOpts := connectOptions(logger)
-	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
-	if identityService != nil {
-		mountModules(srv.Handle, m, identityService, connectOpts, policy.RPC, logger)
-		// Live streams never end on their own: end them when the graceful
-		// shutdown starts, instead of holding it until its deadline.
-		srv.OnShutdown(m.play.Close)
-		// At shutdown the pictures in flight stop: a request still waiting for a
-		// call slot gives its slot back, the long polls answer, and a call already
-		// sent is cut off (its slot stays spent). Cloud Run gives 10 s in all.
-		srv.OnShutdown(m.maps.CancelGenerations)
-		// An export in flight stops with the server; the next read marks it
-		// interrupted. The sweeper deletes what expired while it runs.
-		srv.OnShutdown(m.packages.Cancel)
-		m.packages.RunSweeper(ctx)
-	} else {
-		identity.MountDisabled(srv.Handle, connectOpts...)
-		logger.Warn("campaigns, characters, game sessions, images and maps are disabled: they need sign-in")
+	mountServices(ctx, logger, srv, m, identityService, policy)
+	if err := mountWeb(ctx, logger, srv, cfg); err != nil {
+		return err
 	}
 
+	err = srv.Run(ctx)
+	if m != nil {
+		// The goroutines write their last lines before the pool closes: about a
+		// second, inside Cloud Run's 10 s with the HTTP drain.
+		waitCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		m.maps.WaitForGenerations(waitCtx)
+	}
+	return err
+}
+
+// openDatabase opens the pool, or returns nil when DATABASE_URL is empty.
+// The caller closes it.
+func openDatabase(ctx context.Context, logger *slog.Logger, cfg config.Config) (*pgxpool.Pool, error) {
+	if cfg.DatabaseURL == "" {
+		logger.WarnContext(ctx, "DATABASE_URL is not set; running without a database")
+		return nil, nil
+	}
+	pool, err := db.NewPool(ctx, cfg.DatabaseURL.Reveal())
+	if err != nil {
+		return nil, err
+	}
+	// A failed ping is not fatal: the database may come up later, and
+	// until it does /readyz reports it as down.
+	if err := pool.Ping(ctx); err != nil {
+		logger.WarnContext(ctx, "database is not reachable yet", "error", err)
+	}
+	return pool, nil
+}
+
+// openBlobs opens where images live, and returns what closes it. The store
+// stays a nil interface without BLOB_DIR or BLOB_BUCKET (never a nil
+// *blob.FS, for the reason given for database in run), and the maps module
+// then answers 503 for images.
+func openBlobs(ctx context.Context, logger *slog.Logger, cfg config.Config) (blob.Store, func(), error) {
+	noClose := func() {}
+	switch {
+	case cfg.BlobBucket != "":
+		gcs, err := blob.NewGCS(cfg.BlobBucket)
+		if err != nil {
+			return nil, noClose, err
+		}
+		// The check only reports: a metadata server or network hiccup at
+		// boot must not take images away for the whole revision. The store
+		// stays on, and each call succeeds or fails on its own (the image
+		// routes answer an error when one fails).
+		if err := gcs.Check(ctx); err != nil {
+			logger.WarnContext(ctx, "the images bucket could not be reached at start; images stay on and each call is tried on its own: check BLOB_BUCKET, the service account's role and the metadata server if uploads fail", "error", err)
+		} else {
+			logger.InfoContext(ctx, "the images bucket is reachable")
+		}
+		logger.InfoContext(ctx, "images are stored in Cloud Storage")
+		return gcs, noClose, nil
+	case cfg.BlobDir == "":
+		logger.WarnContext(ctx, "BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503")
+		return nil, noClose, nil
+	default:
+		fs, err := blob.NewFS(cfg.BlobDir)
+		if err != nil {
+			return nil, noClose, err
+		}
+		logger.InfoContext(ctx, "images are stored on disk", "dir", cfg.BlobDir)
+		return fs, func() { _ = fs.Close() }, nil
+	}
+}
+
+// newImageGenerator is the image generator (MR-039, RN-28): it needs a key,
+// or the fake. It stays a nil interface without them (never a nil
+// *gen.Gemini), and the maps module then answers with the typed "off" reason.
+func newImageGenerator(ctx context.Context, logger *slog.Logger, cfg config.Config) gen.Generator {
+	switch {
+	case cfg.Images.Fake:
+		logger.WarnContext(ctx, "IMAGE_GENERATOR=fake: images are made by the fake generator, not by a model")
+		return &gen.Fake{}
+	case cfg.Images.GeminiAPIKey != "":
+		generator := &gen.Gemini{Key: cfg.Images.GeminiAPIKey, ModelName: cfg.Images.Model, Logger: logger}
+		// The model name is not secret; the key never goes into a log line.
+		logger.InfoContext(ctx, "image generation is on", "model", generator.Model())
+		return generator
+	default:
+		logger.WarnContext(ctx, "GEMINI_API_KEY is not set; image generation is off")
+		return nil
+	}
+}
+
+// signInParts are what the signed-in modules are built from, besides the pool.
+type signInParts struct {
+	rules  *rules.Content
+	blobs  blob.Store
+	images gen.Generator
+	policy ratelimit.Policy
+}
+
+// wireSignIn builds sign-in and the modules that come with it. Sign-in needs
+// a provider and a database: without either, both results are nil, and the
+// sign-in routes answer 503. Campaigns, characters and game sessions need to
+// know who is calling, so they come with sign-in.
+func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, pool *pgxpool.Pool, parts signInParts) (*identity.Service, *modules, error) {
+	switch {
+	case !cfg.OIDC.Configured():
+		logger.WarnContext(ctx, "OIDC_ISSUER is not set; sign-in is disabled")
+		return nil, nil, nil
+	case pool == nil:
+		logger.WarnContext(ctx, "sign-in is disabled: it needs DATABASE_URL")
+		return nil, nil, nil
+	}
+	m, err := wireModules(logger, pool, parts.rules, parts.blobs, parts.images, wireOptions{
+		MonthlyImages:       cfg.Images.MonthlyLimit,
+		DailyImages:         cfg.Images.DailyLimit,
+		MaxCampaignsPerUser: cfg.Limits.MaxCampaignsPerUser,
+		CampaignCreators:    cfg.Limits.CampaignCreators,
+		Policy:              parts.policy,
+		TrustedProxyHops:    cfg.TrustedProxyHops,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	identityService, err := identity.New(ctx, identity.Config{
+		OIDC:   cfg.OIDC,
+		Store:  m.users,
+		Logger: logger,
+		// Zero (SESSION_IDLE_TIMEOUT unset) means the 14-day default.
+		SessionIdleTimeout: cfg.SessionIdleTimeout,
+		// Behind Cloud Run the sign-in rate limit reads the client IP
+		// from X-Forwarded-For; anywhere else, from the connection.
+		TrustedProxyHops: cfg.TrustedProxyHops,
+		// What a user may ask to finish right after signing in
+		// (POST /auth/login): today, accepting a campaign invite.
+		Intents: map[string]identity.IntentHandler{
+			campaigns.InviteIntentKind: m.campaigns.InviteIntent(),
+			// A claim link only brings the person back to its card; signing in never claims.
+			characters.ClaimIntentKind: m.characters.ClaimIntent(),
+		},
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	// The issuer and client ID are not secret; the client secret is
+	// never logged (config.Secret prints as [REDACTED] anyway).
+	logger.InfoContext(ctx, "sign-in is enabled", "issuer", cfg.OIDC.IssuerURL, "client_id", cfg.OIDC.ClientID, "max_age", cfg.OIDC.MaxAge.String())
+	return identityService, m, nil
+}
+
+// mountServices mounts the system service, and the signed-in modules when
+// sign-in is on (identityService and m are set together), else the disabled
+// sign-in routes.
+func mountServices(ctx context.Context, logger *slog.Logger, srv *httpserver.Server, m *modules, identityService *identity.Service, policy ratelimit.Policy) {
+	connectOpts := connectOptions(logger)
+	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
+	if identityService == nil {
+		identity.MountDisabled(srv.Handle, connectOpts...)
+		logger.WarnContext(ctx, "campaigns, characters, game sessions, images and maps are disabled: they need sign-in")
+		return
+	}
+	mountModules(srv.Handle, m, identityService, connectOpts, policy.RPC, logger)
+	// Live streams never end on their own: end them when the graceful
+	// shutdown starts, instead of holding it until its deadline.
+	srv.OnShutdown(m.play.Close)
+	// At shutdown the pictures in flight stop: a request still waiting for a
+	// call slot gives its slot back, the long polls answer, and a call already
+	// sent is cut off (its slot stays spent). Cloud Run gives 10 s in all.
+	srv.OnShutdown(m.maps.CancelGenerations)
+	// An export in flight stops with the server; the next read marks it
+	// interrupted. The sweeper deletes what expired while it runs.
+	srv.OnShutdown(m.packages.Cancel)
+	m.packages.RunSweeper(ctx)
+}
+
+// mountWeb serves the Angular build when WEB_DIR has one; without it the
+// server runs API-only.
+func mountWeb(ctx context.Context, logger *slog.Logger, srv *httpserver.Server, cfg config.Config) error {
 	// Forms on the app's pages (the invite page's POST to /auth/login) are
 	// redirected to the provider, so its origin must pass the CSP's
 	// form-action. The issuer and its authorization endpoint share an origin
@@ -334,20 +396,11 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		return err
 	case ok:
 		srv.Handle("/", static)
-		logger.Info("serving the web app", "dir", cfg.WebDir)
+		logger.InfoContext(ctx, "serving the web app", "dir", cfg.WebDir)
 	default:
-		logger.Info("no web build found; running API-only", "dir", cfg.WebDir)
+		logger.InfoContext(ctx, "no web build found; running API-only", "dir", cfg.WebDir)
 	}
-
-	err = srv.Run(ctx)
-	if m != nil {
-		// The goroutines write their last lines before the pool closes: about a
-		// second, inside Cloud Run's 10 s with the HTTP drain.
-		waitCtx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		m.maps.WaitForGenerations(waitCtx)
-	}
-	return err
+	return nil
 }
 
 // modules are the services the sign-in needs, wired together.

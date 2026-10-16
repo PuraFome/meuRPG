@@ -49,26 +49,32 @@ func (c *content) loadDamageResistances(fsys fs.FS) error {
 	c.resistances = map[string]Resistance{}
 	for _, key := range sortedKeys(f.Resistances) {
 		in := f.Resistances[key]
-		fail := func(format string, a ...any) error {
-			return fmt.Errorf("effects/damage_resistances.json: %s: %s", key, fmt.Sprintf(format, a...))
-		}
-		if !strings.HasPrefix(key, "feature:") && !strings.HasPrefix(key, "trait:") || !c.exists(key) {
-			return fail("not a feature or a trait of the content")
-		}
-		if len(in.DamageTypes) == 0 {
-			return fail("no damage type")
-		}
-		for _, t := range in.DamageTypes {
-			if !strings.HasPrefix(t, "damage-type:") || !c.exists(t) {
-				return fail("%q is not a damage type", t)
-			}
-		}
-		if in.While != ResistanceAlways && in.While != ResistanceWhileRage {
-			return fail("while must be empty or %q", ResistanceWhileRage)
+		if msg := c.checkResistance(key, in.DamageTypes, in.While); msg != "" {
+			return fmt.Errorf("effects/damage_resistances.json: %s: %s", key, msg)
 		}
 		c.resistances[key] = Resistance{Source: key, NamePT: c.namePT(key), DamageTypes: slices.Clone(in.DamageTypes), While: in.While}
 	}
 	return nil
+}
+
+// checkResistance says what is wrong with a resistance of the file, or "":
+// its key, its damage types, then when it holds.
+func (c *content) checkResistance(key string, damageTypes []string, while string) string {
+	if !strings.HasPrefix(key, "feature:") && !strings.HasPrefix(key, "trait:") || !c.exists(key) {
+		return "not a feature or a trait of the content"
+	}
+	if len(damageTypes) == 0 {
+		return "no damage type"
+	}
+	for _, t := range damageTypes {
+		if !strings.HasPrefix(t, "damage-type:") || !c.exists(t) {
+			return fmt.Sprintf("%q is not a damage type", t)
+		}
+	}
+	if while != ResistanceAlways && while != ResistanceWhileRage {
+		return fmt.Sprintf("while must be empty or %q", ResistanceWhileRage)
+	}
+	return ""
 }
 
 // Resistances lists the damage resistances the character's features and traits
