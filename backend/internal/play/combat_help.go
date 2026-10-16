@@ -99,9 +99,61 @@ func helpsAlly(h playdb.CombatHelp, c playdb.Combatant) bool {
 	return *h.AllyCombatantID == c.ID
 }
 
+// maxHelpTaskKey is the longest task_key a Help with a check may name.
+const maxHelpTaskKey = 100
+
+// helpPlan is a Help request once the checks that need no database are done.
+type helpPlan struct {
+	kind     playv1.HelpKind
+	helperID string
+	allyID   string
+	targetID string // a Help with an attack
+	taskKey  string // a Help with a check
+}
+
+// parseHelpPlan reads the ids and the form of a Help, refusing a request whose form does not fit its
+// kind. A kind the app does not know passes, as it always has.
+func parseHelpPlan(msg *playv1.HelpRequest) (helpPlan, error) {
+	var p helpPlan
+	var err error
+	if p.helperID, err = parseCombatID(msg.GetCombatantId(), "combatant"); err != nil {
+		return p, err
+	}
+	if p.allyID, err = parseCombatID(msg.GetAllyId(), "combatant"); err != nil {
+		return p, err
+	}
+	p.kind, p.taskKey = msg.GetKind(), msg.GetTaskKey()
+	switch p.kind {
+	case playv1.HelpKind_HELP_KIND_CHECK:
+		err = checkHelpWithACheck(msg)
+	case playv1.HelpKind_HELP_KIND_ATTACK:
+		p.targetID, err = checkHelpWithAnAttack(msg)
+	case playv1.HelpKind_HELP_KIND_UNSPECIFIED:
+		err = connect.NewError(connect.CodeInvalidArgument, errors.New("kind must be CHECK or ATTACK"))
+	}
+	return p, err
+}
+
+// checkHelpWithACheck refuses a Help with a check that aims at a creature or names no task.
+func checkHelpWithACheck(msg *playv1.HelpRequest) error {
+	if msg.GetTargetId() != "" {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("target_id is for a Help with an attack"))
+	}
+	if key := msg.GetTaskKey(); key == "" || len(key) > maxHelpTaskKey {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("task_key must name the check of the task"))
+	}
+	return nil
+}
+
+// checkHelpWithAnAttack refuses a Help with an attack that names a task, and gives its target.
+func checkHelpWithAnAttack(msg *playv1.HelpRequest) (string, error) {
+	if msg.GetTaskKey() != "" {
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("task_key is for a Help with a check"))
+	}
+	return parseCombatID(msg.GetTargetId(), "combatant")
+}
+
 // Help implements playv1connect.ContestServiceHandler.
-//
-//nolint:gocognit,gocyclo // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) Help(
 	ctx context.Context,
 	req *connect.Request[playv1.HelpRequest],
@@ -110,125 +162,19 @@ func (s *Service) Help(
 	if err != nil {
 		return nil, err
 	}
-	helperID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
+	plan, err := parseHelpPlan(req.Msg)
 	if err != nil {
 		return nil, err
-	}
-	allyID, err := parseCombatID(req.Msg.GetAllyId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	kind := req.Msg.GetKind()
-	var targetID string
-	taskKey := req.Msg.GetTaskKey()
-	switch kind {
-	case playv1.HelpKind_HELP_KIND_CHECK:
-		if req.Msg.GetTargetId() != "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_id is for a Help with an attack"))
-		}
-		if taskKey == "" || len(taskKey) > 100 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("task_key must name the check of the task"))
-		}
-	case playv1.HelpKind_HELP_KIND_ATTACK:
-		if taskKey != "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("task_key is for a Help with a check"))
-		}
-		if targetID, err = parseCombatID(req.Msg.GetTargetId(), "combatant"); err != nil {
-			return nil, err
-		}
-	case playv1.HelpKind_HELP_KIND_UNSPECIFIED:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("kind must be CHECK or ATTACK"))
 	}
 
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHelpGiven, encounterID: encID}, func(c *combatTx) (any, error) {
 		made = actionEvent{}
-		if err := mustBeRunning(c); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v := c.viewer(m, cs)
-		helper, err := findCombatant(cs, helperID, v)
+		ev, err := s.giveHelp(ctx, c, m, plan)
 		if err != nil {
 			return nil, err
 		}
-		if err := v.mayAct(helper); err != nil {
-			return nil, err
-		}
-		if err := s.mustActNow(ctx, c, helper); err != nil {
-			return nil, err
-		}
-		ally, err := findCombatant(cs, allyID, v)
-		if err != nil {
-			return nil, err
-		}
-		if ally.ID == helper.ID || ally.Defeated || ally.Side != helper.Side {
-			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AN_ALLY, "that is not an ally the combatant can help")
-		}
-		// Help is an action of the sheet: it is there, and the action is free.
-		opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, helper)
-		if err != nil {
-			return nil, err
-		}
-		i := slices.IndexFunc(opts.GetStandardActions(), func(a *rulesv1.ActionOption) bool { return a.GetAction().GetKey() == actionHelp })
-		switch {
-		case i < 0:
-			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AVAILABLE, "the combatant has no Help action")
-		case !opts.GetStandardActions()[i].GetEnabled() && !v.master:
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
-		}
-
-		row := playdb.InsertHelpParams{
-			GameSessionID: c.session.ID, EncounterID: &c.enc.ID, HelperCharacterID: helper.CharacterID, AllyCharacterID: ally.CharacterID,
-			ExpiresRound: new(c.enc.Round + 1), CreatedRound: &c.enc.Round, CreatedAt: c.now,
-			HelperCombatantID: &helper.ID, AllyCombatantID: &ally.ID,
-		}
-		switch kind {
-		case playv1.HelpKind_HELP_KIND_CHECK:
-			if err := s.mustBeATask(ctx, c, helper, taskKey); err != nil {
-				return nil, err
-			}
-			row.Kind, row.Task = helpCheck, &taskKey
-		case playv1.HelpKind_HELP_KIND_ATTACK:
-			target, err := findCombatant(cs, targetID, v)
-			if err != nil {
-				return nil, err
-			}
-			if target.Defeated || target.Side == helper.Side || target.ID == helper.ID {
-				return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AN_ALLY, "the target is not a creature the ally can attack")
-			}
-			if !v.master && !isTheatre(c.enc) {
-				if !placed(helper) || !placed(target) {
-					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the combatants must be on the map")
-				}
-				if dist, _ := distanceFt(helper, target); dist > combat.MeleeReachFt {
-					return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond 5 feet of the helper",
-						func(b *playv1.EncounterBlocked) { b.MissingFt = dist - combat.MeleeReachFt })
-				}
-			}
-			row.Kind, row.TargetID = helpAttack, &target.ID
-		}
-		if _, err := breakRun(ctx, c, helper); err != nil {
-			return nil, err
-		}
-		if err := spendAction(ctx, c, helper, v.master); err != nil {
-			return nil, err
-		}
-		inserted, err := c.q.InsertHelp(ctx, row)
-		if err != nil {
-			return nil, fmt.Errorf("keep the help: %w", err)
-		}
-		if err := touch(ctx, c); err != nil {
-			return nil, err
-		}
-		c.characterID = &helper.CharacterID
-		made = actionEvent{
-			Round: c.enc.Round, Secret: secretOf(helper, ally), Actor: helper.ID, Target: ally.ID,
-			Contest: &contestEvent{HelpID: inserted.ID, Line: contestLineHelped},
-		}
+		made = ev
 		return made, nil
 	})
 	if err != nil {
@@ -250,6 +196,136 @@ func (s *Service) Help(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.HelpResponse{Encounter: out, Help: view}), nil
+}
+
+// giveHelp is the change of a Help: who helps whom, what the action costs, and the row kept.
+func (s *Service) giveHelp(ctx context.Context, c *combatTx, m authz.Membership, p helpPlan) (actionEvent, error) {
+	if err := mustBeRunning(c); err != nil {
+		return actionEvent{}, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+	}
+	v := c.viewer(m, cs)
+	helper, ally, err := s.helpParties(ctx, c, v, cs, p)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	if err := s.mustHaveHelpAction(ctx, c, m, v, helper); err != nil {
+		return actionEvent{}, err
+	}
+	row := playdb.InsertHelpParams{
+		GameSessionID: c.session.ID, EncounterID: &c.enc.ID, HelperCharacterID: helper.CharacterID, AllyCharacterID: ally.CharacterID,
+		ExpiresRound: new(c.enc.Round + 1), CreatedRound: &c.enc.Round, CreatedAt: c.now,
+		HelperCombatantID: &helper.ID, AllyCombatantID: &ally.ID,
+	}
+	if err := s.aimHelp(ctx, c, v, cs, helper, p, &row); err != nil {
+		return actionEvent{}, err
+	}
+	if _, err := breakRun(ctx, c, helper); err != nil {
+		return actionEvent{}, err
+	}
+	if err := spendAction(ctx, c, helper, v.master); err != nil {
+		return actionEvent{}, err
+	}
+	inserted, err := c.q.InsertHelp(ctx, row)
+	if err != nil {
+		return actionEvent{}, fmt.Errorf("keep the help: %w", err)
+	}
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
+	}
+	c.characterID = &helper.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: secretOf(helper, ally), Actor: helper.ID, Target: ally.ID,
+		Contest: &contestEvent{HelpID: inserted.ID, Line: contestLineHelped},
+	}, nil
+}
+
+// helpParties finds the helper, who may act now, and the ally, who must be another standing
+// creature of the helper's side.
+func (s *Service) helpParties(ctx context.Context, c *combatTx, v combatViewer, cs []playdb.Combatant, p helpPlan) (helper, ally playdb.Combatant, err error) {
+	if helper, err = findCombatant(cs, p.helperID, v); err != nil {
+		return helper, ally, err
+	}
+	if err = v.mayAct(helper); err != nil {
+		return helper, ally, err
+	}
+	if err = s.mustActNow(ctx, c, helper); err != nil {
+		return helper, ally, err
+	}
+	if ally, err = findCombatant(cs, p.allyID, v); err != nil {
+		return helper, ally, err
+	}
+	if ally.ID == helper.ID || ally.Defeated || ally.Side != helper.Side {
+		return helper, ally, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AN_ALLY, "that is not an ally the combatant can help")
+	}
+	return helper, ally, nil
+}
+
+// mustHaveHelpAction checks that Help is an action of the helper's sheet and that the action is
+// free (the master is not stopped by a spent action).
+func (s *Service) mustHaveHelpAction(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, helper playdb.Combatant) error {
+	opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, helper)
+	if err != nil {
+		return err
+	}
+	list := opts.GetStandardActions()
+	i := slices.IndexFunc(list, func(a *rulesv1.ActionOption) bool { return a.GetAction().GetKey() == actionHelp })
+	switch {
+	case i < 0:
+		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AVAILABLE, "the combatant has no Help action")
+	case !list[i].GetEnabled() && !v.master:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+	}
+	return nil
+}
+
+// aimHelp says on the row what the Help is for: the task of a check, or the creature of an attack.
+func (s *Service) aimHelp(ctx context.Context, c *combatTx, v combatViewer, cs []playdb.Combatant, helper playdb.Combatant, p helpPlan, row *playdb.InsertHelpParams) error {
+	switch p.kind {
+	case playv1.HelpKind_HELP_KIND_CHECK:
+		if err := s.mustBeATask(ctx, c, helper, p.taskKey); err != nil {
+			return err
+		}
+		row.Kind, row.Task = helpCheck, &p.taskKey
+	case playv1.HelpKind_HELP_KIND_ATTACK:
+		target, err := helpTarget(c, v, cs, helper, p.targetID)
+		if err != nil {
+			return err
+		}
+		row.Kind, row.TargetID = helpAttack, &target.ID
+	}
+	return nil
+}
+
+// helpTarget finds the creature a Help with an attack aims at: a standing enemy of the helper's
+// side, within 5 feet of the helper unless the master gives it or the combat is a theatre.
+func helpTarget(c *combatTx, v combatViewer, cs []playdb.Combatant, helper playdb.Combatant, targetID string) (playdb.Combatant, error) {
+	target, err := findCombatant(cs, targetID, v)
+	if err != nil {
+		return target, err
+	}
+	if target.Defeated || target.Side == helper.Side || target.ID == helper.ID {
+		return target, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AN_ALLY, "the target is not a creature the ally can attack")
+	}
+	if !v.master && !isTheatre(c.enc) {
+		return target, mustBeWithinHelpReach(helper, target)
+	}
+	return target, nil
+}
+
+// mustBeWithinHelpReach checks that both are on the map and the helper is within 5 feet of the target.
+func mustBeWithinHelpReach(helper, target playdb.Combatant) error {
+	if !placed(helper) || !placed(target) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the combatants must be on the map")
+	}
+	if dist, _ := distanceFt(helper, target); dist > combat.MeleeReachFt {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is beyond 5 feet of the helper",
+			func(b *playv1.EncounterBlocked) { b.MissingFt = dist - combat.MeleeReachFt })
+	}
+	return nil
 }
 
 // mustBeATask checks that a Help with a check names a check the app knows (a skill or an
@@ -314,26 +390,11 @@ func (s *Service) ClearHelp(
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHelpCleared, encounterID: encID}, func(c *combatTx) (any, error) {
 		made = actionEvent{}
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		help, err := c.q.GetHelp(ctx, playdb.GetHelpParams{GameSessionID: c.session.ID, ID: helpID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("help not found"))
-		}
+		ev, err := clearHelp(ctx, c, helpID)
 		if err != nil {
-			return nil, fmt.Errorf("find the help: %w", err)
-		}
-		if help.ConsumedAt != nil || help.ClearedAt != nil {
-			return nil, errNotAwaiting()
-		}
-		if err := c.q.SetHelpCleared(ctx, playdb.SetHelpClearedParams{ID: help.ID, ClearedAt: &c.now}); err != nil {
-			return nil, fmt.Errorf("clear the help: %w", err)
-		}
-		if err := touch(ctx, c); err != nil {
 			return nil, err
 		}
-		made = actionEvent{Round: c.enc.Round, Contest: &contestEvent{HelpID: help.ID}}
+		made = ev
 		return made, nil
 	})
 	if err != nil {
@@ -344,4 +405,28 @@ func (s *Service) ClearHelp(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.ClearHelpResponse{Encounter: out}), nil
+}
+
+// clearHelp is the change of ClearHelp: a Help that is still awaited is taken back for good.
+func clearHelp(ctx context.Context, c *combatTx, helpID string) (actionEvent, error) {
+	if err := notEnded(c.enc); err != nil {
+		return actionEvent{}, err
+	}
+	help, err := c.q.GetHelp(ctx, playdb.GetHelpParams{GameSessionID: c.session.ID, ID: helpID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return actionEvent{}, connect.NewError(connect.CodeNotFound, errors.New("help not found"))
+	}
+	if err != nil {
+		return actionEvent{}, fmt.Errorf("find the help: %w", err)
+	}
+	if help.ConsumedAt != nil || help.ClearedAt != nil {
+		return actionEvent{}, errNotAwaiting()
+	}
+	if err := c.q.SetHelpCleared(ctx, playdb.SetHelpClearedParams{ID: help.ID, ClearedAt: &c.now}); err != nil {
+		return actionEvent{}, fmt.Errorf("clear the help: %w", err)
+	}
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
+	}
+	return actionEvent{Round: c.enc.Round, Contest: &contestEvent{HelpID: help.ID}}, nil
 }
