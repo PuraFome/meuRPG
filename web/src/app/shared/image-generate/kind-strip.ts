@@ -9,6 +9,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { KIND_LABEL, type KindChoice, type KindKey } from '../../core/images/imagegen-copy';
+import { RelayEvents } from '../relay-events/relay-events';
 
 /**
  * The three ways to ask for a picture, as one bordered strip of radios (E10-07 1 to 3): "Arte da cena", "Vista isométrica" and "O mapa com
@@ -18,10 +19,10 @@ import { KIND_LABEL, type KindChoice, type KindKey } from '../../core/images/ima
  */
 @Component({
   selector: 'app-kind-strip',
-  imports: [MatIconModule],
+  imports: [RelayEvents, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="strip" role="radiogroup" aria-label="Como a imagem é feita" [attr.aria-describedby]="describedBy()" (keydown)="onKey($event)">
+    <div appRelayEvents class="strip" role="radiogroup" aria-label="Como a imagem é feita" [attr.aria-describedby]="describedBy()" (relayKeydown)="onKey($event)">
       @for (c of choices(); track c.key) {
         <button
           type="button"

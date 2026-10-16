@@ -14,6 +14,6 @@ Where to look for what:
 
 - "Why does the rule say this?" Start at [decisions.md](decisions.md), by question number or by RN-xx / MR-xx id.
 - "Which PR or migration delivered it?" Start at [etapas.md](etapas.md), by Etapa or by story id.
-- "What does the system do now?" Go to [architecture](../architecture.md), [data model](../data.md), [operations](../operations.md), [design](../design.md) and [product](../product/rules.md), not here.
+- "What does the system do now?" Go to [architecture](../architecture/README.md), [data model](../data/README.md), [operations](../operations/README.md), [design](../design/README.md) and [product](../product/rules.md), not here.
 
 New history goes here when a doc stops needing it, not into the docs. The private ADRs (`docs/adr/`) are a separate record of architecture decisions and stay private.

@@ -191,7 +191,33 @@ func loadSRD() (*Content, error) {
 // load reads a snapshot (data/*.json) and its effects (effects/*.json) from
 // fsys, indexes them and compiles every formula.
 func load(fsys fs.FS) (*content, error) {
-	c := &content{
+	c := newContent()
+	if err := c.loadSnapshot(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadRevision(fsys); err != nil {
+		return nil, err
+	}
+	if err := c.loadNamesPT(fsys); err != nil {
+		return nil, err
+	}
+	c.compiler = formula.NewCompiler(c.classIndexes())
+	if err := c.loadEffectFiles(fsys); err != nil {
+		return nil, err
+	}
+	c.multiclassTable = c.findMulticlassTable()
+	c.buildCatalog(nil)
+	c.buildCreatures()
+	c.buildMagicItems()
+	if err := c.loadTreasure(fsys); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// newContent is a content with every map made.
+func newContent() *content {
+	return &content{
 		abilities:      map[Ability]srd51.AbilityScore{},
 		skills:         map[string]*srd51.Skill{},
 		races:          map[string]*srd51.Race{},
@@ -218,109 +244,105 @@ func load(fsys fs.FS) (*content, error) {
 		namesEN:        map[string]string{},
 		optionParents:  map[string]string{},
 	}
+}
+
+// contentStep is one step of load that reads files.
+type contentStep func(fsys fs.FS) error
+
+// runContentSteps runs the steps in order and stops at the first error.
+func runContentSteps(fsys fs.FS, steps []contentStep) error {
+	for _, step := range steps {
+		if err := step(fsys); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// noFiles makes a step of a check that reads no file.
+func noFiles(check func() error) contentStep {
+	return func(fs.FS) error { return check() }
+}
+
+// loadSnapshot reads the manifest and the data files, checks them, reads the
+// translations and the level rows, and applies the corrections.
+func (c *content) loadSnapshot(fsys fs.FS) error {
+	return runContentSteps(fsys, []contentStep{
+		c.loadManifest, c.loadData, noFiles(c.checkMonsters), noFiles(c.checkMagicItems),
+		c.loadTextsPT, c.loadRuleTextsPT, c.indexLevels, c.applyCorrections,
+	})
+}
+
+// loadManifest reads data/manifest.json, which must name its snapshot.
+func (c *content) loadManifest(fsys fs.FS) error {
 	if err := readJSON(fsys, "data/manifest.json", &c.manifest); err != nil {
-		return nil, err
+		return err
 	}
 	if c.manifest.SnapshotVersion == "" {
-		return nil, fmt.Errorf("data/manifest.json has no snapshot_version")
+		return fmt.Errorf("data/manifest.json has no snapshot_version")
 	}
-	if err := c.loadData(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.checkMonsters(); err != nil {
-		return nil, err
-	}
-	if err := c.checkMagicItems(); err != nil {
-		return nil, err
-	}
-	if err := c.loadTextsPT(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadRuleTextsPT(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.indexLevels(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.applyCorrections(fsys); err != nil {
-		return nil, err
-	}
+	return nil
+}
 
+// loadRevision reads effects/revision.json into the content's version.
+func (c *content) loadRevision(fsys fs.FS) error {
 	var rev effectsRevision
 	if err := readJSON(fsys, "effects/revision.json", &rev); err != nil {
-		return nil, err
+		return err
 	}
 	if rev.Revision < 1 {
-		return nil, fmt.Errorf("effects/revision.json: revision must be at least 1")
+		return fmt.Errorf("effects/revision.json: revision must be at least 1")
 	}
 	c.version = c.manifest.SnapshotVersion + "+fx." + strconv.Itoa(rev.Revision)
+	return nil
+}
 
+// freeNamePrefixes are the key prefixes names_pt.json may name that are not
+// keys of the data: the effects' own names, checked by their loaders.
+var freeNamePrefixes = []string{"sense:", "resource:", "trap:", "light:", "effect:", "attunement:", "creature-type:", "terrain:"}
+
+// loadNamesPT reads effects/names_pt.json, refusing a key the content does
+// not know.
+func (c *content) loadNamesPT(fsys fs.FS) error {
 	var names struct {
 		Names map[string]string `json:"names"`
 	}
 	if err := readJSON(fsys, "effects/names_pt.json", &names); err != nil {
-		return nil, err
+		return err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !strings.HasPrefix(k, "sense:") && !strings.HasPrefix(k, "resource:") && !strings.HasPrefix(k, "trap:") && !strings.HasPrefix(k, "light:") && !strings.HasPrefix(k, "effect:") && !strings.HasPrefix(k, "attunement:") && !strings.HasPrefix(k, "creature-type:") && !strings.HasPrefix(k, "terrain:") && !c.isAttackName(k) {
-			return nil, fmt.Errorf("effects/names_pt.json: unknown key %q", k)
+		if !c.exists(k) && !hasFreeNamePrefix(k) && !c.isAttackName(k) {
+			return fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
 	}
+	return nil
+}
 
+// hasFreeNamePrefix says whether key starts with one of freeNamePrefixes.
+func hasFreeNamePrefix(key string) bool {
+	return slices.ContainsFunc(freeNamePrefixes, func(p string) bool { return strings.HasPrefix(key, p) })
+}
+
+// classIndexes are the classes' indexes ("wizard"), sorted: what a formula's
+// classLevel may name.
+func (c *content) classIndexes() []string {
 	classIndexes := make([]string, 0, len(c.classes))
 	for k := range c.classes {
 		classIndexes = append(classIndexes, strings.TrimPrefix(k, "class:"))
 	}
 	slices.Sort(classIndexes)
-	c.compiler = formula.NewCompiler(classIndexes)
-	if err := c.loadEffects(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadChoiceData(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadStandardActions(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadAdvancement(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadSpellEffects(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadSpellTargets(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadDamageResistances(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadTraps(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadLights(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadCombatEffects(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadEncounterBudget(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.loadMagicItemEffects(fsys); err != nil {
-		return nil, err
-	}
-	if err := c.indexCasting(); err != nil {
-		return nil, err
-	}
-	c.multiclassTable = c.findMulticlassTable()
-	c.buildCatalog(nil)
-	c.buildCreatures()
-	c.buildMagicItems()
-	if err := c.loadTreasure(fsys); err != nil {
-		return nil, err
-	}
-	return c, nil
+	return classIndexes
+}
+
+// loadEffectFiles reads and checks every effects file, then indexes how
+// each class casts.
+func (c *content) loadEffectFiles(fsys fs.FS) error {
+	return runContentSteps(fsys, []contentStep{
+		c.loadEffects, c.loadChoiceData, c.loadStandardActions, c.loadAdvancement, c.loadSpellEffects,
+		c.loadSpellTargets, c.loadDamageResistances, c.loadTraps, c.loadLights, c.loadCombatEffects,
+		c.loadEncounterBudget, c.loadMagicItemEffects, noFiles(c.indexCasting),
+	})
 }
 
 func readJSON(fsys fs.FS, name string, v any) error {
@@ -354,7 +376,31 @@ func index[T any](fsys fs.FS, name string, key func(*T) string, into map[string]
 	return nil
 }
 
+// loadData reads the data files, checks the shapes the code relies on and
+// indexes the options' parents.
 func (c *content) loadData(fsys fs.FS) error {
+	if err := c.loadAbilities(fsys); err != nil {
+		return err
+	}
+	if err := c.indexDataFiles(fsys); err != nil {
+		return err
+	}
+	for _, b := range c.backgrounds {
+		c.namesEN[b.Feature.Key] = b.Feature.Name
+	}
+	if err := c.checkDataShapes(); err != nil {
+		return err
+	}
+	for k := range c.skills {
+		c.skillOrder = append(c.skillOrder, k)
+	}
+	slices.Sort(c.skillOrder)
+	c.indexOptionParents()
+	return nil
+}
+
+// loadAbilities reads data/abilities.json: the six abilities, no other.
+func (c *content) loadAbilities(fsys fs.FS) error {
 	var abilities []srd51.AbilityScore
 	if err := readJSON(fsys, "data/abilities.json", &abilities); err != nil {
 		return err
@@ -369,56 +415,105 @@ func (c *content) loadData(fsys fs.FS) error {
 	if len(c.abilities) != len(abilityIndex) {
 		return fmt.Errorf("data/abilities.json: want %d abilities, got %d", len(abilityIndex), len(c.abilities))
 	}
+	return nil
+}
 
-	errs := []error{
-		index(fsys, "skills.json", func(s *srd51.Skill) string { return s.Key }, c.skills, c.namesEN, func(s *srd51.Skill) string { return s.Name }),
-		index(fsys, "races.json", func(r *srd51.Race) string { return r.Key }, c.races, c.namesEN, func(r *srd51.Race) string { return r.Name }),
-		index(fsys, "subraces.json", func(r *srd51.Subrace) string { return r.Key }, c.subraces, c.namesEN, func(r *srd51.Subrace) string { return r.Name }),
-		index(fsys, "traits.json", func(r *srd51.Trait) string { return r.Key }, c.traits, c.namesEN, func(r *srd51.Trait) string { return r.Name }),
-		index(fsys, "classes.json", func(r *srd51.Class) string { return r.Key }, c.classes, c.namesEN, func(r *srd51.Class) string { return r.Name }),
-		index(fsys, "subclasses.json", func(r *srd51.Subclass) string { return r.Key }, c.subclasses, c.namesEN, func(r *srd51.Subclass) string { return r.Name }),
-		index(fsys, "features.json", func(r *srd51.Feature) string { return r.Key }, c.features, c.namesEN, func(r *srd51.Feature) string { return r.Name }),
-		index(fsys, "backgrounds.json", func(r *srd51.Background) string { return r.Key }, c.backgrounds, c.namesEN, func(r *srd51.Background) string { return r.Name }),
-		index(fsys, "feats.json", func(r *srd51.Feat) string { return r.Key }, c.feats, c.namesEN, func(r *srd51.Feat) string { return r.Name }),
-		index(fsys, "proficiencies.json", func(r *srd51.Proficiency) string { return r.Key }, c.proficiencies, c.namesEN, func(r *srd51.Proficiency) string { return r.Name }),
-		index(fsys, "equipment.json", func(r *srd51.Equipment) string { return r.Key }, c.equipment, c.namesEN, func(r *srd51.Equipment) string { return r.Name }),
-		index(fsys, "spells.json", func(r *srd51.Spell) string { return r.Key }, c.spells, c.namesEN, func(r *srd51.Spell) string { return r.Name }),
-		index(fsys, "monsters.json", func(r *srd51.Monster) string { return r.Key }, c.monsters, c.namesEN, func(r *srd51.Monster) string { return r.Name }),
-		index(fsys, "magic-items.json", func(r *srd51.MagicItem) string { return r.Key }, c.magicItems, c.namesEN, func(r *srd51.MagicItem) string { return r.Name }),
-		index(fsys, "languages.json", func(r *srd51.Language) string { return r.Key }, c.languages, c.namesEN, func(r *srd51.Language) string { return r.Name }),
+// indexDataFiles reads every keyed data file, in a fixed order: the first
+// one that fails is the error.
+func (c *content) indexDataFiles(fsys fs.FS) error {
+	steps := []contentStep{
+		func(fsys fs.FS) error {
+			return index(fsys, "skills.json", func(s *srd51.Skill) string { return s.Key }, c.skills, c.namesEN, func(s *srd51.Skill) string { return s.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "races.json", func(r *srd51.Race) string { return r.Key }, c.races, c.namesEN, func(r *srd51.Race) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "subraces.json", func(r *srd51.Subrace) string { return r.Key }, c.subraces, c.namesEN, func(r *srd51.Subrace) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "traits.json", func(r *srd51.Trait) string { return r.Key }, c.traits, c.namesEN, func(r *srd51.Trait) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "classes.json", func(r *srd51.Class) string { return r.Key }, c.classes, c.namesEN, func(r *srd51.Class) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "subclasses.json", func(r *srd51.Subclass) string { return r.Key }, c.subclasses, c.namesEN, func(r *srd51.Subclass) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "features.json", func(r *srd51.Feature) string { return r.Key }, c.features, c.namesEN, func(r *srd51.Feature) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "backgrounds.json", func(r *srd51.Background) string { return r.Key }, c.backgrounds, c.namesEN, func(r *srd51.Background) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "feats.json", func(r *srd51.Feat) string { return r.Key }, c.feats, c.namesEN, func(r *srd51.Feat) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "proficiencies.json", func(r *srd51.Proficiency) string { return r.Key }, c.proficiencies, c.namesEN, func(r *srd51.Proficiency) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "equipment.json", func(r *srd51.Equipment) string { return r.Key }, c.equipment, c.namesEN, func(r *srd51.Equipment) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "spells.json", func(r *srd51.Spell) string { return r.Key }, c.spells, c.namesEN, func(r *srd51.Spell) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "monsters.json", func(r *srd51.Monster) string { return r.Key }, c.monsters, c.namesEN, func(r *srd51.Monster) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "magic-items.json", func(r *srd51.MagicItem) string { return r.Key }, c.magicItems, c.namesEN, func(r *srd51.MagicItem) string { return r.Name })
+		},
+		func(fsys fs.FS) error {
+			return index(fsys, "languages.json", func(r *srd51.Language) string { return r.Key }, c.languages, c.namesEN, func(r *srd51.Language) string { return r.Name })
+		},
 	}
 	for _, name := range []string{"damage-types.json", "magic-schools.json", "weapon-properties.json", "conditions.json"} {
-		errs = append(errs, index(fsys, name, func(r *srd51.Named) string { return r.Key }, c.named, c.namesEN, func(r *srd51.Named) string { return r.Name }))
+		steps = append(steps, func(fsys fs.FS) error {
+			return index(fsys, name, func(r *srd51.Named) string { return r.Key }, c.named, c.namesEN, func(r *srd51.Named) string { return r.Name })
+		})
 	}
-	for _, err := range errs {
-		if err != nil {
-			return err
-		}
-	}
-	for _, b := range c.backgrounds {
-		c.namesEN[b.Feature.Key] = b.Feature.Name
-	}
+	return runContentSteps(fsys, steps)
+}
+
+// spellAreaStepFt is the step of a spell's area size: whole squares of 5 ft.
+const spellAreaStepFt = 5
+
+// checkDataShapes refuses a feat whose prerequisites the code cannot read,
+// and a spell whose area is not a shape of whole squares.
+func (c *content) checkDataShapes() error {
 	for _, k := range sortedKeys(c.feats) {
 		if field, msg := c.checkFeatShape(c.feats[k]); field != "" {
 			return fmt.Errorf("data/feats.json: %s: %s: %s", k, field, msg)
 		}
 	}
 	for _, k := range sortedKeys(c.spells) {
-		s := c.spells[k]
-		if (s.AreaType == "") != (s.AreaSizeFt == 0) ||
-			(s.AreaType != "" && (!slices.Contains([]string{ShapeCone, ShapeCube, ShapeCylinder, ShapeLine, ShapeSphere}, s.AreaType) || s.AreaSizeFt < 5 || s.AreaSizeFt%5 != 0)) {
+		if s := c.spells[k]; !validSpellArea(s) {
 			return fmt.Errorf("data/spells.json: %s has the area %q of %d ft", k, s.AreaType, s.AreaSizeFt)
 		}
 	}
-	for k := range c.skills {
-		c.skillOrder = append(c.skillOrder, k)
+	return nil
+}
+
+// validSpellArea says whether a spell has no area, or a shape with a size
+// of whole squares.
+func validSpellArea(s *srd51.Spell) bool {
+	if (s.AreaType == "") != (s.AreaSizeFt == 0) {
+		return false
 	}
-	slices.Sort(c.skillOrder)
+	return s.AreaType == "" || slices.Contains(targetShapesOfData, s.AreaType) && s.AreaSizeFt >= spellAreaStepFt && s.AreaSizeFt%spellAreaStepFt == 0
+}
+
+// targetShapesOfData are the area shapes data/spells.json may name.
+var targetShapesOfData = []string{ShapeCone, ShapeCube, ShapeCylinder, ShapeLine, ShapeSphere}
+
+// indexOptionParents gives each option feature its parent: the first one in
+// key order that offers it, which is the lowest level one (a feature listed
+// by metamagic-1, 2 and 3 belongs to metamagic-1, the one a level 3 sorcerer
+// has).
+func (c *content) indexOptionParents() {
 	for _, k := range sortedKeys(c.features) {
 		for _, o := range c.features[k].Options {
-			// The first parent in key order is the lowest level one: a feature listed
-			// by metamagic-1, 2 and 3 belongs to metamagic-1, the one a level 3
-			// sorcerer has.
 			if _, set := c.optionParents[o]; set {
 				continue
 			}
@@ -427,30 +522,19 @@ func (c *content) loadData(fsys fs.FS) error {
 			}
 		}
 	}
-	return nil
 }
 
+// indexLevels reads data/levels.json into the class and subclass rows, and
+// refuses a class without all its levels.
 func (c *content) indexLevels(fsys fs.FS) error {
 	var rows []srd51.Level
 	if err := readJSON(fsys, "data/levels.json", &rows); err != nil {
 		return err
 	}
 	for i := range rows {
-		r := &rows[i]
-		if r.Level < 1 || r.Level > MaxLevel {
-			return fmt.Errorf("data/levels.json: %s level %d out of range", r.Class, r.Level)
+		if err := c.placeLevelRow(&rows[i]); err != nil {
+			return err
 		}
-		if r.Subclass != "" {
-			if c.subclassLevels[r.Subclass] == nil {
-				c.subclassLevels[r.Subclass] = map[int]*srd51.Level{}
-			}
-			c.subclassLevels[r.Subclass][r.Level] = r
-			continue
-		}
-		if c.classLevels[r.Class] == nil {
-			c.classLevels[r.Class] = make([]*srd51.Level, MaxLevel)
-		}
-		c.classLevels[r.Class][r.Level-1] = r
 	}
 	for key := range c.classes {
 		rows := c.classLevels[key]
@@ -458,6 +542,25 @@ func (c *content) indexLevels(fsys fs.FS) error {
 			return fmt.Errorf("data/levels.json: class %s does not have all %d levels", key, MaxLevel)
 		}
 	}
+	return nil
+}
+
+// placeLevelRow puts a row in its subclass's map or its class's table.
+func (c *content) placeLevelRow(r *srd51.Level) error {
+	if r.Level < 1 || r.Level > MaxLevel {
+		return fmt.Errorf("data/levels.json: %s level %d out of range", r.Class, r.Level)
+	}
+	if r.Subclass != "" {
+		if c.subclassLevels[r.Subclass] == nil {
+			c.subclassLevels[r.Subclass] = map[int]*srd51.Level{}
+		}
+		c.subclassLevels[r.Subclass][r.Level] = r
+		return nil
+	}
+	if c.classLevels[r.Class] == nil {
+		c.classLevels[r.Class] = make([]*srd51.Level, MaxLevel)
+	}
+	c.classLevels[r.Class][r.Level-1] = r
 	return nil
 }
 
@@ -470,35 +573,49 @@ func (c *content) loadEffects(fsys fs.FS) error {
 		return err
 	}
 	for _, name := range files {
-		switch path.Base(name) {
-		case "names_pt.json", "revision.json", "standard_actions.json", "advancement.json", "spells.json", "spell_targets.json", "corrections.json", "damage_resistances.json", "traps.json", "lights.json", "combat_effects.json", "consumables.json", "encounter_budget.json", "magic_item_values.json", "treasure.json", "choices.json", "spells_pt.json", "magic_items_pt.json", "features_pt.json", "traits_pt.json", "backgrounds_pt.json", "feats_pt.json":
+		if notEffectFiles[path.Base(name)] {
 			continue
 		}
-		var f struct {
-			Effects map[string][]*Effect `json:"effects"`
-		}
-		if err := readJSON(fsys, name, &f); err != nil {
+		if err := c.loadEffectFile(fsys, name); err != nil {
 			return err
 		}
-		keys := make([]string, 0, len(f.Effects))
-		for k := range f.Effects {
-			keys = append(keys, k)
+	}
+	return nil
+}
+
+// notEffectFiles are the files of effects/ that hold tables and texts, not
+// effects: loadEffects leaves them to their own loaders.
+var notEffectFiles = map[string]bool{
+	"names_pt.json": true, "revision.json": true, "standard_actions.json": true, "advancement.json": true,
+	"spells.json": true, "spell_targets.json": true, "corrections.json": true, "damage_resistances.json": true,
+	"traps.json": true, "lights.json": true, "combat_effects.json": true, "consumables.json": true,
+	"encounter_budget.json": true, "magic_item_values.json": true, "treasure.json": true, "choices.json": true,
+	"spells_pt.json": true, "magic_items_pt.json": true, "features_pt.json": true, "traits_pt.json": true,
+	"backgrounds_pt.json": true, "feats_pt.json": true,
+}
+
+// loadEffectFile reads one effects file, and checks and compiles its effects
+// in key order.
+func (c *content) loadEffectFile(fsys fs.FS, name string) error {
+	var f struct {
+		Effects map[string][]*Effect `json:"effects"`
+	}
+	if err := readJSON(fsys, name, &f); err != nil {
+		return err
+	}
+	for _, key := range sortedKeys(f.Effects) {
+		if _, dup := c.effects[key]; dup {
+			return fmt.Errorf("%s: effects for %q are also in another file", name, key)
 		}
-		slices.Sort(keys)
-		for _, key := range keys {
-			if _, dup := c.effects[key]; dup {
-				return fmt.Errorf("%s: effects for %q are also in another file", name, key)
-			}
-			if !c.effectOwnerExists(key) {
-				return fmt.Errorf("%s: effects for unknown key %q", name, key)
-			}
-			for _, e := range f.Effects[key] {
-				if err := c.compileEffect(key, e); err != nil {
-					return fmt.Errorf("%s: %w", name, err)
-				}
-			}
-			c.effects[key] = f.Effects[key]
+		if !c.effectOwnerExists(key) {
+			return fmt.Errorf("%s: effects for unknown key %q", name, key)
 		}
+		for _, e := range f.Effects[key] {
+			if err := c.compileEffect(key, e); err != nil {
+				return fmt.Errorf("%s: %w", name, err)
+			}
+		}
+		c.effects[key] = f.Effects[key]
 	}
 	return nil
 }
@@ -613,6 +730,19 @@ func (c *content) namePT(key string) string {
 		return n
 	}
 	return c.namesEN[key]
+}
+
+// namesWithPrefix lists the keys of the Portuguese names that start with prefix, sorted, so a
+// loader that refuses a stray name always names the same one (a map's order is random).
+func (c *content) namesWithPrefix(prefix string) []string {
+	var keys []string
+	for k := range c.namesPT {
+		if strings.HasPrefix(k, prefix) {
+			keys = append(keys, k)
+		}
+	}
+	slices.Sort(keys)
+	return keys
 }
 
 // ability returns the Ability for an index such as "int", and whether it
@@ -995,44 +1125,63 @@ type spellListCorrection struct {
 func (c *content) correctSpellLists(name string, corrections []spellListCorrection) error {
 	seen := map[string]bool{}
 	for _, corr := range corrections {
-		if _, ok := c.classes[corr.Class]; !ok {
-			return fmt.Errorf("%s: unknown class %q", name, corr.Class)
+		if err := c.checkSpellListCorrection(name, corr, seen); err != nil {
+			return err
 		}
-		if corr.Source == "" {
-			return fmt.Errorf("%s: the spell list of %s needs a source", name, corr.Class)
+		if err := c.applySpellListCorrection(name, corr); err != nil {
+			return err
 		}
-		if seen[corr.Class] {
-			return fmt.Errorf("%s: the spell list of %s is corrected twice", name, corr.Class)
+	}
+	return nil
+}
+
+// checkSpellListCorrection refuses an unknown class, a correction without a
+// source, one of a class corrected before, one that changes nothing, and an
+// unknown spell or one named twice.
+func (c *content) checkSpellListCorrection(name string, corr spellListCorrection, seen map[string]bool) error {
+	if _, ok := c.classes[corr.Class]; !ok {
+		return fmt.Errorf("%s: unknown class %q", name, corr.Class)
+	}
+	if corr.Source == "" {
+		return fmt.Errorf("%s: the spell list of %s needs a source", name, corr.Class)
+	}
+	if seen[corr.Class] {
+		return fmt.Errorf("%s: the spell list of %s is corrected twice", name, corr.Class)
+	}
+	seen[corr.Class] = true
+	if len(corr.Add)+len(corr.Remove) == 0 {
+		return fmt.Errorf("%s: the spell list of %s corrects nothing", name, corr.Class)
+	}
+	named := map[string]bool{}
+	for _, key := range slices.Concat(corr.Add, corr.Remove) {
+		if _, ok := c.spells[key]; !ok {
+			return fmt.Errorf("%s: %s: unknown spell %q", name, corr.Class, key)
 		}
-		seen[corr.Class] = true
-		if len(corr.Add)+len(corr.Remove) == 0 {
-			return fmt.Errorf("%s: the spell list of %s corrects nothing", name, corr.Class)
+		if named[key] {
+			return fmt.Errorf("%s: %s: %s is named twice", name, corr.Class, key)
 		}
-		named := map[string]bool{}
-		for _, key := range slices.Concat(corr.Add, corr.Remove) {
-			if _, ok := c.spells[key]; !ok {
-				return fmt.Errorf("%s: %s: unknown spell %q", name, corr.Class, key)
-			}
-			if named[key] {
-				return fmt.Errorf("%s: %s: %s is named twice", name, corr.Class, key)
-			}
-			named[key] = true
+		named[key] = true
+	}
+	return nil
+}
+
+// applySpellListCorrection adds and removes the spells, refusing one added
+// that is already on the list or removed that is not.
+func (c *content) applySpellListCorrection(name string, corr spellListCorrection) error {
+	for _, key := range corr.Add {
+		s := c.spells[key]
+		if slices.Contains(s.Classes, corr.Class) {
+			return fmt.Errorf("%s: %s is already on the list of %s", name, key, corr.Class)
 		}
-		for _, key := range corr.Add {
-			s := c.spells[key]
-			if slices.Contains(s.Classes, corr.Class) {
-				return fmt.Errorf("%s: %s is already on the list of %s", name, key, corr.Class)
-			}
-			s.Classes = append(slices.Clone(s.Classes), corr.Class)
+		s.Classes = append(slices.Clone(s.Classes), corr.Class)
+	}
+	for _, key := range corr.Remove {
+		s := c.spells[key]
+		i := slices.Index(s.Classes, corr.Class)
+		if i < 0 {
+			return fmt.Errorf("%s: %s is not on the list of %s", name, key, corr.Class)
 		}
-		for _, key := range corr.Remove {
-			s := c.spells[key]
-			i := slices.Index(s.Classes, corr.Class)
-			if i < 0 {
-				return fmt.Errorf("%s: %s is not on the list of %s", name, key, corr.Class)
-			}
-			s.Classes = slices.Delete(slices.Clone(s.Classes), i, i+1)
-		}
+		s.Classes = slices.Delete(slices.Clone(s.Classes), i, i+1)
 	}
 	return nil
 }
@@ -1054,77 +1203,120 @@ type subclassRowCorrection struct {
 func (c *content) correctSubclassFeatures(name string, corrections []subclassRowCorrection) error {
 	seen := map[string]bool{}
 	for _, corr := range corrections {
-		sub, ok := c.subclasses[corr.Subclass]
-		if !ok {
-			return fmt.Errorf("%s: unknown subclass %q", name, corr.Subclass)
+		sub, err := c.checkSubclassRowCorrection(name, corr, seen)
+		if err != nil {
+			return err
 		}
-		if corr.Source == "" || len(corr.Add) == 0 {
-			return fmt.Errorf("%s: %s level %d needs features and a source", name, corr.Subclass, corr.Level)
-		}
-		if corr.Level < 1 || corr.Level > MaxLevel {
-			return fmt.Errorf("%s: %s: level %d is not 1 to %d", name, corr.Subclass, corr.Level, MaxLevel)
-		}
-		id := fmt.Sprintf("%s/%d", corr.Subclass, corr.Level)
-		if seen[id] {
-			return fmt.Errorf("%s: %s level %d is corrected twice", name, corr.Subclass, corr.Level)
-		}
-		seen[id] = true
-		row := c.subclassLevels[corr.Subclass][corr.Level]
-		if row == nil {
-			row = &srd51.Level{Class: sub.Class, Subclass: corr.Subclass, Level: corr.Level}
-			if c.subclassLevels[corr.Subclass] == nil {
-				c.subclassLevels[corr.Subclass] = map[int]*srd51.Level{}
-			}
-			c.subclassLevels[corr.Subclass][corr.Level] = row
-		}
-		for _, key := range corr.Add {
-			f, ok := c.features[key]
-			if !ok {
-				return fmt.Errorf("%s: %s: unknown feature %q", name, corr.Subclass, key)
-			}
-			if f.Subclass != corr.Subclass {
-				return fmt.Errorf("%s: %s: %s is not a feature of this subclass", name, corr.Subclass, key)
-			}
-			if slices.Contains(row.Features, key) {
-				return fmt.Errorf("%s: %s level %d already has %s", name, corr.Subclass, corr.Level, key)
-			}
-			row.Features = append(row.Features, key)
+		if err := c.addSubclassRowFeatures(name, corr, c.subclassRow(sub, corr)); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
+// checkSubclassRowCorrection refuses an unknown subclass, a correction
+// without features or a source, a level out of range and a row corrected
+// before; it returns the subclass.
+func (c *content) checkSubclassRowCorrection(name string, corr subclassRowCorrection, seen map[string]bool) (*srd51.Subclass, error) {
+	sub, ok := c.subclasses[corr.Subclass]
+	if !ok {
+		return nil, fmt.Errorf("%s: unknown subclass %q", name, corr.Subclass)
+	}
+	if corr.Source == "" || len(corr.Add) == 0 {
+		return nil, fmt.Errorf("%s: %s level %d needs features and a source", name, corr.Subclass, corr.Level)
+	}
+	if corr.Level < 1 || corr.Level > MaxLevel {
+		return nil, fmt.Errorf("%s: %s: level %d is not 1 to %d", name, corr.Subclass, corr.Level, MaxLevel)
+	}
+	id := fmt.Sprintf("%s/%d", corr.Subclass, corr.Level)
+	if seen[id] {
+		return nil, fmt.Errorf("%s: %s level %d is corrected twice", name, corr.Subclass, corr.Level)
+	}
+	seen[id] = true
+	return sub, nil
+}
+
+// subclassRow is the subclass's row at the correction's level, made when the
+// snapshot has none.
+func (c *content) subclassRow(sub *srd51.Subclass, corr subclassRowCorrection) *srd51.Level {
+	row := c.subclassLevels[corr.Subclass][corr.Level]
+	if row != nil {
+		return row
+	}
+	row = &srd51.Level{Class: sub.Class, Subclass: corr.Subclass, Level: corr.Level}
+	if c.subclassLevels[corr.Subclass] == nil {
+		c.subclassLevels[corr.Subclass] = map[int]*srd51.Level{}
+	}
+	c.subclassLevels[corr.Subclass][corr.Level] = row
+	return row
+}
+
+// addSubclassRowFeatures adds the features to the row, refusing an unknown
+// one, one of another subclass and one the row has.
+func (c *content) addSubclassRowFeatures(name string, corr subclassRowCorrection, row *srd51.Level) error {
+	for _, key := range corr.Add {
+		f, ok := c.features[key]
+		if !ok {
+			return fmt.Errorf("%s: %s: unknown feature %q", name, corr.Subclass, key)
+		}
+		if f.Subclass != corr.Subclass {
+			return fmt.Errorf("%s: %s: %s is not a feature of this subclass", name, corr.Subclass, key)
+		}
+		if slices.Contains(row.Features, key) {
+			return fmt.Errorf("%s: %s level %d already has %s", name, corr.Subclass, corr.Level, key)
+		}
+		row.Features = append(row.Features, key)
+	}
+	return nil
+}
+
+// The ranges of a creature's corrected numbers.
+const (
+	maxCreatureFeet     = 500
+	maxCreatureStat     = 100
+	maxCreatureHP       = 1 << 16
+	maxAttacksPerAction = 20
+)
+
+// creatureNumber is a field of a stat block that holds one number, with the
+// range it may take.
+type creatureNumber struct {
+	dst    *int
+	lo, hi int
+}
+
+// creatureNumbers are the fields of m that hold one number.
+func creatureNumbers(m *srd51.Monster) map[string]creatureNumber {
+	return map[string]creatureNumber{
+		"armor_class":        {&m.ArmorClass, 1, maxCreatureStat},
+		"hit_points":         {&m.HitPoints, 1, maxCreatureHP},
+		"speed_walk":         {&m.Speed.Walk, 0, maxCreatureFeet},
+		"speed_fly":          {&m.Speed.Fly, 0, maxCreatureFeet},
+		"speed_swim":         {&m.Speed.Swim, 0, maxCreatureFeet},
+		"speed_climb":        {&m.Speed.Climb, 0, maxCreatureFeet},
+		"speed_burrow":       {&m.Speed.Burrow, 0, maxCreatureFeet},
+		"darkvision":         {&m.Darkvision, 0, maxCreatureFeet},
+		"blindsight":         {&m.Blindsight, 0, maxCreatureFeet},
+		"tremorsense":        {&m.Tremorsense, 0, maxCreatureFeet},
+		"truesight":          {&m.Truesight, 0, maxCreatureFeet},
+		"passive_perception": {&m.PassivePerception, 1, maxCreatureStat},
+	}
+}
+
+// correctedNumber reads raw as a number from lo to hi.
+func correctedNumber(raw json.RawMessage, lo, hi int) (int, error) {
+	var v int
+	if err := json.Unmarshal(raw, &v); err != nil || v < lo || v > hi {
+		return 0, fmt.Errorf("needs a number of %d to %d", lo, hi)
+	}
+	return v, nil
+}
+
 // correctCreature writes one corrected field of a stat block. raw is the
 // field's JSON value: a number, a hit point roll, a skill map or a key list.
 func (c *content) correctCreature(key string, m *srd51.Monster, field string, raw json.RawMessage) error {
-	number := func(lo, hi int) (int, error) {
-		var v int
-		if err := json.Unmarshal(raw, &v); err != nil || v < lo || v > hi {
-			return 0, fmt.Errorf("needs a number of %d to %d", lo, hi)
-		}
-		return v, nil
-	}
-	const maxFeet, maxStat = 500, 100
-	// numbers are the fields that hold one number, with the range it may take.
-	numbers := map[string]struct {
-		dst    *int
-		lo, hi int
-	}{
-		"armor_class":        {&m.ArmorClass, 1, maxStat},
-		"hit_points":         {&m.HitPoints, 1, 1 << 16},
-		"speed_walk":         {&m.Speed.Walk, 0, maxFeet},
-		"speed_fly":          {&m.Speed.Fly, 0, maxFeet},
-		"speed_swim":         {&m.Speed.Swim, 0, maxFeet},
-		"speed_climb":        {&m.Speed.Climb, 0, maxFeet},
-		"speed_burrow":       {&m.Speed.Burrow, 0, maxFeet},
-		"darkvision":         {&m.Darkvision, 0, maxFeet},
-		"blindsight":         {&m.Blindsight, 0, maxFeet},
-		"tremorsense":        {&m.Tremorsense, 0, maxFeet},
-		"truesight":          {&m.Truesight, 0, maxFeet},
-		"passive_perception": {&m.PassivePerception, 1, maxStat},
-	}
-	if n, ok := numbers[field]; ok {
-		v, err := number(n.lo, n.hi)
+	if n, ok := creatureNumbers(m)[field]; ok {
+		v, err := correctedNumber(raw, n.lo, n.hi)
 		if err == nil {
 			*n.dst = v
 		}
@@ -1132,27 +1324,38 @@ func (c *content) correctCreature(key string, m *srd51.Monster, field string, ra
 	}
 	switch field {
 	case "attacks_per_action":
-		if !slices.ContainsFunc(m.Actions, func(a srd51.MonsterAction) bool { return len(a.Multiattack) > 0 }) {
-			return fmt.Errorf("%s has no Multiattack to correct", key)
-		}
-		v, err := number(1, 20)
-		if err != nil {
-			return err
-		}
-		c.attacksPerAction[key] = v
-		return nil
+		return c.correctAttacksPerAction(key, m, raw)
 	case "hit_points_roll":
-		var roll string
-		if err := json.Unmarshal(raw, &roll); err != nil {
-			return fmt.Errorf("needs a roll such as 6d8+6")
-		}
-		if match := hitPointsRollPattern.FindStringSubmatch(roll); len(match) == 0 || match[1] != m.HitDice {
-			return fmt.Errorf("%q is not a roll of %s", roll, m.HitDice)
-		}
-		m.HitPointsRoll = roll
-		return nil
+		return correctHitPointsRoll(m, raw)
 	}
 	return c.correctCreatureLists(key, m, field, raw)
+}
+
+// correctAttacksPerAction sets how many attacks a creature's Multiattack makes.
+func (c *content) correctAttacksPerAction(key string, m *srd51.Monster, raw json.RawMessage) error {
+	if !slices.ContainsFunc(m.Actions, func(a srd51.MonsterAction) bool { return len(a.Multiattack) > 0 }) {
+		return fmt.Errorf("%s has no Multiattack to correct", key)
+	}
+	v, err := correctedNumber(raw, 1, maxAttacksPerAction)
+	if err != nil {
+		return err
+	}
+	c.attacksPerAction[key] = v
+	return nil
+}
+
+// correctHitPointsRoll sets the hit point roll, which must roll the
+// creature's hit dice.
+func correctHitPointsRoll(m *srd51.Monster, raw json.RawMessage) error {
+	var roll string
+	if err := json.Unmarshal(raw, &roll); err != nil {
+		return fmt.Errorf("needs a roll such as 6d8+6")
+	}
+	if match := hitPointsRollPattern.FindStringSubmatch(roll); len(match) == 0 || match[1] != m.HitDice {
+		return fmt.Errorf("%q is not a roll of %s", roll, m.HitDice)
+	}
+	m.HitPointsRoll = roll
+	return nil
 }
 
 // correctCreatureLists writes the corrected fields of a stat block that hold a
@@ -1160,51 +1363,70 @@ func (c *content) correctCreature(key string, m *srd51.Monster, field string, ra
 func (c *content) correctCreatureLists(key string, m *srd51.Monster, field string, raw json.RawMessage) error {
 	switch field {
 	case "skills":
-		var skills map[string]int
-		if err := json.Unmarshal(raw, &skills); err != nil || len(skills) == 0 {
-			return fmt.Errorf("needs a map of skill keys to bonuses")
-		}
-		if m.Skills == nil {
-			m.Skills = map[string]int{}
-		}
-		for k, bonus := range skills {
-			if _, ok := c.skills[k]; !ok {
-				return fmt.Errorf("%q is not a skill", k)
-			}
-			m.Skills[k] = bonus
-		}
-		return nil
+		return c.correctCreatureSkills(m, raw)
 	case "damage_immunities", "condition_immunities":
-		var keys []string
-		if err := json.Unmarshal(raw, &keys); err != nil || len(keys) == 0 {
-			return fmt.Errorf("needs a list of keys")
-		}
-		prefix := "condition:"
-		if field == "damage_immunities" {
-			prefix = "damage-type:"
-		}
-		for i, k := range keys {
-			if n, ok := c.named[k]; !ok || n == nil || !strings.HasPrefix(k, prefix) {
-				return fmt.Errorf("%q is not a %s key", k, strings.TrimSuffix(prefix, ":"))
-			}
-			if slices.Contains(keys[:i], k) {
-				return fmt.Errorf("%q is listed twice", k)
-			}
-		}
-		if field == "condition_immunities" {
-			m.ConditionImmunities = keys
-			return nil
-		}
-		if slices.ContainsFunc(m.Immunities, func(d srd51.MonsterDamageMod) bool { return d.Note != "" }) {
-			return fmt.Errorf("%s has an immunity with a note, which a corrected list would lose", key)
-		}
-		m.Immunities = nil
-		for _, k := range keys {
-			m.Immunities = append(m.Immunities, srd51.MonsterDamageMod{Types: []string{k}})
-		}
-		return nil
+		return c.correctCreatureImmunities(key, m, field, raw)
 	}
 	return fmt.Errorf("field %q cannot be corrected", field)
+}
+
+// correctCreatureSkills sets the bonuses of the skills the map names.
+func (c *content) correctCreatureSkills(m *srd51.Monster, raw json.RawMessage) error {
+	var skills map[string]int
+	if err := json.Unmarshal(raw, &skills); err != nil || len(skills) == 0 {
+		return fmt.Errorf("needs a map of skill keys to bonuses")
+	}
+	if m.Skills == nil {
+		m.Skills = map[string]int{}
+	}
+	for k, bonus := range skills {
+		if _, ok := c.skills[k]; !ok {
+			return fmt.Errorf("%q is not a skill", k)
+		}
+		m.Skills[k] = bonus
+	}
+	return nil
+}
+
+// correctCreatureImmunities replaces the damage or the condition immunities.
+func (c *content) correctCreatureImmunities(key string, m *srd51.Monster, field string, raw json.RawMessage) error {
+	var keys []string
+	if err := json.Unmarshal(raw, &keys); err != nil || len(keys) == 0 {
+		return fmt.Errorf("needs a list of keys")
+	}
+	prefix := "condition:"
+	if field == "damage_immunities" {
+		prefix = "damage-type:"
+	}
+	if err := c.checkImmunityKeys(keys, prefix); err != nil {
+		return err
+	}
+	if field == "condition_immunities" {
+		m.ConditionImmunities = keys
+		return nil
+	}
+	if slices.ContainsFunc(m.Immunities, func(d srd51.MonsterDamageMod) bool { return d.Note != "" }) {
+		return fmt.Errorf("%s has an immunity with a note, which a corrected list would lose", key)
+	}
+	m.Immunities = nil
+	for _, k := range keys {
+		m.Immunities = append(m.Immunities, srd51.MonsterDamageMod{Types: []string{k}})
+	}
+	return nil
+}
+
+// checkImmunityKeys refuses a key that is not a named key of the prefix, and
+// one listed twice.
+func (c *content) checkImmunityKeys(keys []string, prefix string) error {
+	for i, k := range keys {
+		if n, ok := c.named[k]; !ok || n == nil || !strings.HasPrefix(k, prefix) {
+			return fmt.Errorf("%q is not a %s key", k, strings.TrimSuffix(prefix, ":"))
+		}
+		if slices.Contains(keys[:i], k) {
+			return fmt.Errorf("%q is listed twice", k)
+		}
+	}
+	return nil
 }
 
 // isAttackName reports whether key is "attack:<slug>" for the name of an attack

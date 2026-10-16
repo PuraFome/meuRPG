@@ -38,6 +38,7 @@ import {
   type SummonSheetData,
   type SummonSheetResult,
 } from '../../../shared/summon-sheet/summon-sheet';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 type ListState = 'loading' | 'hidden' | 'ready' | 'failed';
 
@@ -62,7 +63,7 @@ type ListState = 'loading' | 'hidden' | 'ready' | 'failed';
  */
 @Component({
   selector: 'app-creatures-panel',
-  imports: [CreatureCard, MatButtonModule, MatIconModule],
+  imports: [RelayEvents, CreatureCard, MatButtonModule, MatIconModule],
   templateUrl: './creatures-panel.html',
   styleUrl: './creatures-panel.scss',
 })
