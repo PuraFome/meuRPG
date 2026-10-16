@@ -1,0 +1,53 @@
+{
+ "effects": [
+  {
+   "characterId": "\u003cchar:bri\u003e",
+   "characterName": "Brisa",
+   "conditionNamesPt": [
+    "Enfeitiçado"
+   ],
+   "durationTextPt": "Dura 1 segundo",
+   "id": "\u003ccfx:condition:charmed@bri\u003e",
+   "secondsLeft": 1,
+   "sourceKey": "condition:charmed",
+   "sourceNamePt": "Enfeitiçado"
+  },
+  {
+   "characterId": "\u003cchar:bri\u003e",
+   "characterName": "Brisa",
+   "conditionNamesPt": [
+    "Derrubado"
+   ],
+   "durationTextPt": "Dura 1 hora e 1 minuto e 1 segundo",
+   "id": "\u003ccfx:condition:prone@bri\u003e",
+   "secondsLeft": 3661,
+   "sourceKey": "condition:prone",
+   "sourceNamePt": "Derrubado"
+  },
+  {
+   "characterId": "\u003cchar:bri\u003e",
+   "characterName": "Brisa",
+   "durationTextPt": "Dura 2 minutos",
+   "id": "\u003ccfx:spell:heroism@bri\u003e",
+   "secondsLeft": 120,
+   "sourceKey": "spell:heroism",
+   "sourceNamePt": "Heroísmo",
+   "tagsPt": [
+    "Imune a Amedrontado",
+    "PV temporários a cada turno seu"
+   ]
+  },
+  {
+   "characterId": "\u003cchar:pens\u003e",
+   "characterName": "Pensantus",
+   "durationTextPt": "Dura 8 horas",
+   "id": "\u003ccfx:spell:mage-armor@pens\u003e",
+   "secondsLeft": 28800,
+   "sourceKey": "spell:mage-armor",
+   "sourceNamePt": "Armadura Arcana",
+   "tagsPt": [
+    "CA base 13 + Destreza, sem armadura"
+   ]
+  }
+ ]
+}

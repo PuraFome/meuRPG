@@ -1,0 +1,5 @@
+## before: rows
+Brisa spell:guidance kind=spell conc=false dur=until_dismissed ends=r-/-/- visible=true audience=owner label=- caster=-
+Toren spell:longstrider kind=spell conc=false dur=long_rest ends=r-/-/- visible=true audience=owner label=- caster=-
+## after: rows
+Brisa spell:guidance kind=spell conc=false dur=until_dismissed ends=r-/-/- visible=true audience=owner label=- caster=-

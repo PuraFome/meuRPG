@@ -1,0 +1,351 @@
+## outside
+<char:pens> condition:prone kind=master conc=false dur=until_dismissed left=- visible=true audience=all label=- caster=<char:bri> conds=[]
+<char:bri> spell:bane kind=spell conc=false dur=rounds left=- visible=true audience=all label=- caster=- conds=[]
+<char:toren> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:pens> spell:enhance-ability kind=spell conc=false dur=until_dismissed left=- visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:faerie-fire kind=spell conc=false dur=rounds left=120 visible=true audience=all label=- caster=<char:capitao> conds=[]
+<char:bri> spell:guidance kind=spell conc=false dur=rounds left=5 visible=true audience=owner label=- caster=- conds=[]
+<char:pens> spell:heroism kind=spell conc=false dur=rounds left=60 visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
+## in the combat: rows
+Brisa spell:bane kind=spell conc=false dur=rounds ends=r-/-/- visible=true audience=all label=- caster=-
+Brisa spell:guidance kind=spell conc=false dur=rounds ends=r1/Brisa/start_of_turn visible=true audience=owner label=- caster=-
+Pensantus condition:prone kind=master conc=false dur=until_dismissed ends=r-/-/- visible=true audience=all label=- caster=Brisa
+Pensantus spell:enhance-ability kind=spell conc=false dur=until_dismissed ends=r-/-/- visible=true audience=owner label=- caster=-
+Pensantus spell:heroism kind=spell conc=false dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=-
+Toren spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
+Toren spell:faerie-fire kind=spell conc=false dur=rounds ends=r21/Toren/start_of_turn visible=true audience=all label=- caster=-
+Toren spell:longstrider kind=spell conc=false dur=long_rest ends=r-/-/- visible=true audience=owner label=- caster=-
+## in the combat: characters
+
+## in the combat: the table
+{
+ "concentrations": [
+  {
+   "casterId": "\u003cBrisa\u003e",
+   "casterLabel": "Brisa",
+   "effectIds": [
+    "\u003ccfx:spell:bless@toren\u003e"
+   ],
+   "spellKey": "spell:bless",
+   "spellNamePt": "Bênção"
+  }
+ ],
+ "currentCombatantId": "\u003cToren\u003e",
+ "effects": [
+  {
+   "audience": "EFFECT_AUDIENCE_OWNER",
+   "casterId": "\u003cBrisa\u003e",
+   "clockTextPt": "Restam 10 rodadas: acaba no turno de Brisa, na rodada 11.",
+   "concentration": true,
+   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
+   "encounterId": "\u003cuuid\u003e",
+   "endTextPt": "Restam 10 rodadas: acaba no turno de Brisa, rodada 11.",
+   "endsAt": {
+    "combatantId": "\u003cBrisa\u003e",
+    "phase": "EFFECT_PHASE_START",
+    "round": 11
+   },
+   "groupId": "\u003cgroup:spell:bless\u003e",
+   "id": "\u003ccfx:spell:bless@toren\u003e",
+   "modifiers": [
+    {
+     "appliesTo": [
+      "EFFECT_ROLL_KIND_ATTACK",
+      "EFFECT_ROLL_KIND_SAVE"
+     ],
+     "die": 4,
+     "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
+     "sign": 1
+    }
+   ],
+   "originPt": "De Brisa",
+   "playerVisible": true,
+   "roundsLeft": 10,
+   "sourceKey": "spell:bless",
+   "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+   "sourceNamePt": "Bênção",
+   "tagsPt": [
+    "+1d4 em ataques e resistências"
+   ],
+   "targetIds": [
+    "\u003cToren\u003e"
+   ],
+   "targetLabels": [
+    "Toren"
+   ]
+  },
+  {
+   "audience": "EFFECT_AUDIENCE_OWNER",
+   "clockTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, na rodada 11.",
+   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
+   "encounterId": "\u003cuuid\u003e",
+   "endTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, rodada 11.",
+   "endsAt": {
+    "combatantId": "\u003cPensantus\u003e",
+    "phase": "EFFECT_PHASE_START",
+    "round": 11
+   },
+   "groupId": "\u003cgroup:spell:heroism\u003e",
+   "id": "\u003ccfx:spell:heroism@pens\u003e",
+   "modifiers": [
+    {},
+    {}
+   ],
+   "originPt": "Do mestre",
+   "playerVisible": true,
+   "roundsLeft": 10,
+   "sourceKey": "spell:heroism",
+   "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+   "sourceNamePt": "Heroísmo",
+   "tagsPt": [
+    "Imune a Amedrontado",
+    "PV temporários a cada turno seu"
+   ],
+   "targetIds": [
+    "\u003cPensantus\u003e"
+   ],
+   "targetLabels": [
+    "Pensantus"
+   ]
+  },
+  {
+   "audience": "EFFECT_AUDIENCE_OWNER",
+   "clockTextPt": "Dura até um descanso longo.",
+   "durationKind": "EFFECT_DURATION_KIND_LONG_REST",
+   "encounterId": "\u003cuuid\u003e",
+   "endTextPt": "Até um descanso longo.",
+   "groupId": "\u003cgroup:spell:longstrider\u003e",
+   "id": "\u003ccfx:spell:longstrider@toren\u003e",
+   "modifiers": [
+    {
+     "value": 10
+    }
+   ],
+   "originPt": "Do mestre",
+   "playerVisible": true,
+   "sourceKey": "spell:longstrider",
+   "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+   "sourceNamePt": "Passos Longos",
+   "tagsPt": [
+    "Deslocamento +3 m"
+   ],
+   "targetIds": [
+    "\u003cToren\u003e"
+   ],
+   "targetLabels": [
+    "Toren"
+   ]
+  },
+  {
+   "audience": "EFFECT_AUDIENCE_OWNER",
+   "clockTextPt": "Dura até o mestre encerrar.",
+   "durationKind": "EFFECT_DURATION_KIND_UNTIL_DISMISSED",
+   "encounterId": "\u003cuuid\u003e",
+   "endTextPt": "Até o mestre encerrar.",
+   "groupId": "\u003cgroup:spell:enhance-ability\u003e",
+   "id": "\u003ccfx:spell:enhance-ability@pens\u003e",
+   "modifiers": [
+    {
+     "abilities": [
+      "wis"
+     ]
+    }
+   ],
+   "originPt": "Do mestre",
+   "playerVisible": true,
+   "sourceKey": "spell:enhance-ability",
+   "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+   "sourceNamePt": "Aprimorar Habilidade",
+   "tagsPt": [
+    "Vantagem em testes de Sabedoria"
+   ],
+   "targetIds": [
+    "\u003cPensantus\u003e"
+   ],
+   "targetLabels": [
+    "Pensantus"
+   ]
+  },
+  {
+   "audience": "EFFECT_AUDIENCE_OWNER",
+   "clockTextPt": "Restam 0 rodadas: acaba no turno de Brisa, na rodada 1.",
+   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
+   "encounterId": "\u003cuuid\u003e",
+   "endTextPt": "Restam 0 rodadas: acaba no turno de Brisa, rodada 1.",
+   "endsAt": {
+    "combatantId": "\u003cBrisa\u003e",
+    "phase": "EFFECT_PHASE_START",
+    "round": 1
+   },
+   "groupId": "\u003cgroup:spell:guidance\u003e",
+   "id": "\u003ccfx:spell:guidance@bri\u003e",
+   "modifiers": [
+    {
+     "die": 4,
+     "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
+     "sign": 1
+    }
+   ],
+   "originPt": "Do mestre",
+   "playerVisible": true,
+   "roundsLeft": 0,
+   "sourceKey": "spell:guidance",
+   "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+   "sourceNamePt": "Orientação",
+   "tagsPt": [
+    "+1d4 em um teste de habilidade, uma vez"
+   ],
+   "targetIds": [
+    "\u003cBrisa\u003e"
+   ],
+   "targetLabels": [
+    "Brisa"
+   ]
+  },
+  {
+   "audience": "EFFECT_AUDIENCE_ALL",
+   "clockTextPt": "Restam 0 rodadas: acaba no turno de quem a conjurou, na rodada 0.",
+   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
+   "encounterId": "\u003cuuid\u003e",
+   "endTextPt": "Restam 0 rodadas: acaba no turno de , rodada 0.",
+   "groupId": "\u003cgroup:spell:bane\u003e",
+   "id": "\u003ccfx:spell:bane@bri\u003e",
+   "originPt": "Do mestre",
+   "playerVisible": true,
+   "sourceKey": "spell:bane",
+   "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+   "sourceNamePt": "Perdição",
+   "tagsPt": [
+    "−1d4 em ataques e resistências"
+   ],
+   "targetIds": [
+    "\u003cBrisa\u003e"
+   ],
+   "targetLabels": [
+    "Brisa"
+   ]
+  },
+  {
+   "audience": "EFFECT_AUDIENCE_ALL",
+   "clockTextPt": "Restam 20 rodadas: acaba no turno de Toren, na rodada 21.",
+   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
+   "encounterId": "\u003cuuid\u003e",
+   "endTextPt": "Restam 20 rodadas: acaba no turno de Toren, rodada 21.",
+   "endsAt": {
+    "combatantId": "\u003cToren\u003e",
+    "phase": "EFFECT_PHASE_START",
+    "round": 21
+   },
+   "groupId": "\u003cgroup:spell:faerie-fire\u003e",
+   "id": "\u003ccfx:spell:faerie-fire@toren\u003e",
+   "originPt": "Do mestre",
+   "playerVisible": true,
+   "playersSeePt": "Delineado",
+   "roundsLeft": 20,
+   "sourceKey": "spell:faerie-fire",
+   "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
+   "sourceNamePt": "Fogo das Fadas",
+   "tagsPt": [
+    "Ataques contra você têm vantagem se quem ataca vê você",
+    "Você não se beneficia de invisibilidade"
+   ],
+   "targetIds": [
+    "\u003cToren\u003e"
+   ],
+   "targetLabels": [
+    "Toren"
+   ]
+  },
+  {
+   "audience": "EFFECT_AUDIENCE_ALL",
+   "casterId": "\u003cBrisa\u003e",
+   "clockTextPt": "Dura até o mestre encerrar.",
+   "durationKind": "EFFECT_DURATION_KIND_UNTIL_DISMISSED",
+   "encounterId": "\u003cuuid\u003e",
+   "endTextPt": "Até o mestre encerrar.",
+   "groupId": "\u003cgroup:condition:prone\u003e",
+   "id": "\u003ccfx:condition:prone@pens\u003e",
+   "originPt": "Do mestre",
+   "playerVisible": true,
+   "sourceKey": "condition:prone",
+   "sourceKind": "EFFECT_SOURCE_KIND_MASTER",
+   "sourceNamePt": "Derrubado",
+   "targetIds": [
+    "\u003cPensantus\u003e"
+   ],
+   "targetLabels": [
+    "Pensantus"
+   ]
+  }
+ ],
+ "round": 1,
+ "turnClock": [
+  {
+   "combatantId": "\u003cBrisa\u003e",
+   "combatantLabel": "Brisa",
+   "effectId": "\u003ccfx:spell:guidance@bri\u003e",
+   "phase": "EFFECT_PHASE_START",
+   "round": 1,
+   "textPt": "Orientação acaba."
+  },
+  {
+   "combatantId": "\u003cPensantus\u003e",
+   "combatantLabel": "Pensantus",
+   "effectId": "\u003ccfx:spell:heroism@pens\u003e",
+   "phase": "EFFECT_PHASE_START",
+   "round": 11,
+   "textPt": "Heroísmo acaba."
+  },
+  {
+   "combatantId": "\u003cBrisa\u003e",
+   "combatantLabel": "Brisa",
+   "effectId": "\u003ccfx:spell:bless@toren\u003e",
+   "phase": "EFFECT_PHASE_START",
+   "round": 11,
+   "textPt": "Bênção em Toren acaba."
+  },
+  {
+   "combatantId": "\u003cToren\u003e",
+   "combatantLabel": "Toren",
+   "effectId": "\u003ccfx:spell:faerie-fire@toren\u003e",
+   "phase": "EFFECT_PHASE_START",
+   "round": 21,
+   "textPt": "Fogo das Fadas acaba."
+  }
+ ]
+}
+## effects added: rows
+Brisa spell:bane kind=spell conc=false dur=rounds ends=r-/-/- visible=true audience=all label=- caster=-
+Brisa spell:guidance kind=spell conc=false dur=rounds ends=r1/Brisa/start_of_turn visible=true audience=owner label=- caster=-
+Brisa spell:hideous-laughter kind=spell conc=true dur=rounds ends=r11/Toren/start_of_turn visible=true audience=all label=- caster=Toren
+Goblin spell:bane kind=spell conc=true dur=rounds ends=r5/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+Pensantus condition:prone kind=master conc=false dur=until_dismissed ends=r-/-/- visible=true audience=all label=- caster=Brisa
+Pensantus condition:prone kind=master conc=false dur=until_end_of_turn_of ends=r2/Toren/end_of_turn visible=true audience=all label=- caster=-
+Pensantus spell:enhance-ability kind=spell conc=false dur=until_dismissed ends=r-/-/- visible=true audience=owner label=- caster=-
+Pensantus spell:heroism kind=spell conc=false dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=-
+Toren condition:blinded kind=master conc=false dur=rounds ends=r2/Toren/start_of_turn visible=true audience=all label=- caster=-
+Toren spell:faerie-fire kind=spell conc=false dur=rounds ends=r21/Toren/start_of_turn visible=true audience=all label=- caster=-
+Toren spell:longstrider kind=spell conc=false dur=long_rest ends=r-/-/- visible=true audience=owner label=- caster=-
+Toren spell:resistance kind=spell conc=false dur=until_start_of_turn_of ends=r1/Pensantus/start_of_turn visible=true audience=owner label=- caster=-
+## round two: rows
+Brisa spell:bane kind=spell conc=false dur=rounds ends=r-/-/- visible=true audience=all label=- caster=-
+Brisa spell:hideous-laughter kind=spell conc=true dur=rounds ends=r11/Toren/start_of_turn visible=true audience=all label=- caster=Toren
+Goblin spell:bane kind=spell conc=true dur=rounds ends=r5/Pensantus/start_of_turn visible=true audience=owner label=- caster=Pensantus
+Pensantus condition:prone kind=master conc=false dur=until_dismissed ends=r-/-/- visible=true audience=all label=- caster=Brisa
+Pensantus condition:prone kind=master conc=false dur=until_end_of_turn_of ends=r2/Toren/end_of_turn visible=true audience=all label=- caster=-
+Pensantus spell:enhance-ability kind=spell conc=false dur=until_dismissed ends=r-/-/- visible=true audience=owner label=- caster=-
+Pensantus spell:heroism kind=spell conc=false dur=rounds ends=r11/Pensantus/start_of_turn visible=true audience=owner label=- caster=-
+Toren spell:faerie-fire kind=spell conc=false dur=rounds ends=r21/Toren/start_of_turn visible=true audience=all label=- caster=-
+Toren spell:longstrider kind=spell conc=false dur=long_rest ends=r-/-/- visible=true audience=owner label=- caster=-
+## after the combat: characters
+<char:pens> condition:prone kind=master conc=false dur=until_dismissed left=- visible=true audience=all label=- caster=<char:bri> conds=[]
+<char:bri> spell:bane kind=spell conc=false dur=rounds left=- visible=true audience=all label=- caster=- conds=[]
+<char:goblin> spell:bane kind=spell conc=true dur=rounds left=18 visible=true audience=owner label=- caster=<char:pens> conds=[]
+<char:pens> spell:enhance-ability kind=spell conc=false dur=until_dismissed left=- visible=true audience=owner label=- caster=- conds=[]
+<char:toren> spell:faerie-fire kind=spell conc=false dur=rounds left=114 visible=true audience=all label=- caster=- conds=[]
+<char:pens> spell:heroism kind=spell conc=false dur=rounds left=54 visible=true audience=owner label=- caster=- conds=[]
+<char:bri> spell:hideous-laughter kind=spell conc=true dur=rounds left=54 visible=true audience=all label=- caster=<char:toren> conds=[condition:prone,condition:incapacitated]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
+## after the combat: rows
+Pensantus condition:prone kind=master conc=false dur=until_end_of_turn_of ends=r2/Toren/end_of_turn visible=true audience=all label=- caster=-
