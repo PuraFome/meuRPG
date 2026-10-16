@@ -197,8 +197,14 @@ type combatTx struct {
 	stamped *actionEvent
 	lines   []actionEvent
 	// endedEffects are the effects the change ended, kept in its event so that the undo puts
-	// them back (RN-22).
-	endedEffects []playdb.CombatantState
+	// them back (RN-22), and endedLines the IDs of the "ended" lines it wrote for them
+	// (endEffectRows), which the undo takes back with the change. followUps are what those
+	// effects left behind (Haste's lethargy) and followUpLines the IDs of their "added"
+	// lines (leaveFollowUp), which the undo takes away.
+	endedEffects  []playdb.CombatantState
+	endedLines    []string
+	followUps     []effectRef
+	followUpLines []string
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
@@ -385,7 +391,7 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 		ended = c
 		c.stamped = nil
 		if ev, ok := payload.(actionEvent); ok && len(c.endedEffects) > 0 && slices.Contains(undoableKinds, c.kind) {
-			ev.Restore = c.endedEffects
+			ev.Restore, ev.EndedLines, ev.FollowUps, ev.FollowUpLines = c.endedEffects, c.endedLines, c.followUps, c.followUpLines
 			payload = ev
 		}
 		if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, payload); err != nil {
@@ -460,10 +466,11 @@ func (s *Service) logCombatEvent(ctx context.Context, res combatResult) {
 	logging.Event(ctx, s.logger, name, attrs...)
 }
 
-// eventPayloadBudget is how many bytes of payload one event may take: the table
-// (session_events, migration 00024) refuses more than 4096, and an event that
-// lists every creature of a scene has to stay under it with room for the fog's
-// stamp. A list that does not fit is written as several events.
+// eventPayloadBudget is how many bytes of payload a trap's firing or a list of the
+// monsters put in a combat takes before it is written as several events: the table
+// (session_events) refused more than 4096 when it was made (migration 00024), with room
+// left for the fog's stamp. It allows 16 KiB since migration 00200; what keeps any other
+// event under that is undoHelpersBudget (combat_event_budget.go).
 const eventPayloadBudget = 3500
 
 // fitPrefix is how many of the first n items fit: the largest count from 1 to n
@@ -481,11 +488,18 @@ func fitPrefix(n int, fits func(count int) bool) int {
 // of a trap whose caught creatures do not fit one event is written as several
 // (insertFiringInParts).
 func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *string, payload any) error {
+	_, err := insertEventID(ctx, c, kind, actor, key, payload)
+	return err
+}
+
+// insertEventID is insertEvent that returns the event's ID (a firing written as
+// several events, the first one's), for a change whose own event names it.
+func insertEventID(ctx context.Context, c *combatTx, kind string, actor, key *string, payload any) (string, error) {
 	if ev, ok := payload.(actionEvent); ok {
 		var err error
 		if kind != eventActionUndone { // an undo keeps the stamp of the action it takes back
 			if ev, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
-				return err
+				return "", err
 			}
 		}
 		c.stamped = &ev
@@ -494,14 +508,18 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return "", fmt.Errorf("encode the event payload: %w", err)
 	}
 	if ev, ok := payload.(actionEvent); ok && len(body) > eventPayloadBudget && ev.Trap != nil && len(ev.Trap.Caught) > 1 {
-		_, err := insertFiringInParts(ctx, c, kind, actor, key, ev)
-		return err
+		return insertFiringInParts(ctx, c, kind, actor, key, ev)
 	}
-	_, err = insertRaw(ctx, c, kind, actor, key, body)
-	return err
+	// An action never fails because of what only its undo needs (combat_event_budget.go).
+	if ev, ok := payload.(actionEvent); ok && len(body) > undoHelpersBudget {
+		if body, err = c.fitBudget(ctx, kind, ev); err != nil {
+			return "", err
+		}
+	}
+	return insertRaw(ctx, c, kind, actor, key, body)
 }
 
 // requestHash is the request hash of a change whose handler builds its inputs apart from the

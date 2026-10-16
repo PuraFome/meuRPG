@@ -385,12 +385,15 @@ func (q *Queries) ClearPendingDamageApplied(ctx context.Context, id string) (Pen
 const clearPendingDamageRoll = `-- name: ClearPendingDamageRoll :one
 UPDATE pending_damages
 SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL,
-    part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL
+    part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL,
+    parts = COALESCE(NULLIF(parts, 'null'::JSONB), '[]'::JSONB)
 WHERE id = $1
 RETURNING id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice
 `
 
-// An undo of the damage roll: it waits to be rolled again.
+// An undo of the damage roll: it waits to be rolled again. A roll with no parts of its
+// own leaves `parts` as the hit left it (SetPendingDamageDetail); one made before that
+// wrote a JSON null over the empty list, which goes back to the empty list here.
 func (q *Queries) ClearPendingDamageRoll(ctx context.Context, id string) (PendingDamage, error) {
 	row := q.db.QueryRow(ctx, clearPendingDamageRoll, id)
 	var i PendingDamage
@@ -844,7 +847,7 @@ func (q *Queries) DeleteCombatantState(ctx context.Context, id string) error {
 const deleteCombatantStatesBySource = `-- name: DeleteCombatantStatesBySource :many
 DELETE FROM combatant_states
 WHERE source_id = $1 AND kind = $2
-RETURNING id, combatant_id
+RETURNING id, combatant_id, started_round, created_at
 `
 
 type DeleteCombatantStatesBySourceParams struct {
@@ -853,11 +856,14 @@ type DeleteCombatantStatesBySourceParams struct {
 }
 
 type DeleteCombatantStatesBySourceRow struct {
-	ID          string
-	CombatantID string
+	ID           string
+	CombatantID  string
+	StartedRound int32
+	CreatedAt    time.Time
 }
 
-// The states a source gave (the marks of a ranger who stopped concentrating).
+// The states a source gave (the marks of a ranger who stopped concentrating), with what
+// the undo of a cast that moved a mark needs to put it back (RestoreHuntersMark).
 func (q *Queries) DeleteCombatantStatesBySource(ctx context.Context, arg DeleteCombatantStatesBySourceParams) ([]DeleteCombatantStatesBySourceRow, error) {
 	rows, err := q.db.Query(ctx, deleteCombatantStatesBySource, arg.SourceID, arg.Kind)
 	if err != nil {
@@ -867,7 +873,12 @@ func (q *Queries) DeleteCombatantStatesBySource(ctx context.Context, arg DeleteC
 	var items []DeleteCombatantStatesBySourceRow
 	for rows.Next() {
 		var i DeleteCombatantStatesBySourceRow
-		if err := rows.Scan(&i.ID, &i.CombatantID); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.CombatantID,
+			&i.StartedRound,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -7542,6 +7553,34 @@ func (q *Queries) ResetDeathSavesOfCharacter(ctx context.Context, arg ResetDeath
 	return err
 }
 
+const restoreHuntersMark = `-- name: RestoreHuntersMark :exec
+INSERT INTO combatant_states (id, encounter_id, combatant_id, kind, source_id, started_round, amount, created_at)
+VALUES ($1, $2, $3, 'hunters_mark_target', $4, $5, 0, $6)
+`
+
+type RestoreHuntersMarkParams struct {
+	ID           string
+	EncounterID  string
+	CombatantID  string
+	SourceID     *string
+	StartedRound int32
+	CreatedAt    time.Time
+}
+
+// The undo of a cast that moved a Hunter's Mark: the mark it took off comes back with
+// its ID, its round and its time, as InsertCombatantState made it.
+func (q *Queries) RestoreHuntersMark(ctx context.Context, arg RestoreHuntersMarkParams) error {
+	_, err := q.db.Exec(ctx, restoreHuntersMark,
+		arg.ID,
+		arg.EncounterID,
+		arg.CombatantID,
+		arg.SourceID,
+		arg.StartedRound,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const reviveCombatant = `-- name: ReviveCombatant :exec
 UPDATE combatants
 SET defeated = false, death_successes = 0, death_failures = 0, death_save_rolled = false,
@@ -8205,7 +8244,8 @@ type SetCombatantMeleeHitTurnParams struct {
 	MeleeHitTurn *string
 }
 
-// The turn ("<round>:<combatant on turn>") of the combatant's last melee weapon hit.
+// The turn ("<round>:<combatant on turn>") of the combatant's last melee weapon hit; the
+// undo of a hit puts back the one before it (NULL: none).
 func (q *Queries) SetCombatantMeleeHitTurn(ctx context.Context, arg SetCombatantMeleeHitTurnParams) error {
 	_, err := q.db.Exec(ctx, setCombatantMeleeHitTurn, arg.ID, arg.MeleeHitTurn)
 	return err
@@ -8887,30 +8927,33 @@ func (q *Queries) SetPendingDamageApplied(ctx context.Context, arg SetPendingDam
 
 const setPendingDamageDetail = `-- name: SetPendingDamageDetail :exec
 UPDATE pending_damages
-SET parts = $2, part_rolls = $3, steps = $4, after_steps = $5, landed_before = $6
-WHERE id = $1
+SET parts = COALESCE($1::JSONB, parts), part_rolls = $2, steps = $3,
+    after_steps = $4, landed_before = $5
+WHERE id = $6
 `
 
 type SetPendingDamageDetailParams struct {
-	ID           string
 	Parts        []byte
 	PartRolls    []byte
 	Steps        []byte
 	AfterSteps   *int32
 	LandedBefore []byte
+	ID           string
 }
 
 // What a roll left: the parts as they were rolled, what each rolled, the steps of the
 // damage, the damage after them and, for an NPC that took it at once, how many hit
-// points it had before.
+// points it had before. A roll with no parts of its own (another target of a cast's
+// roll, a damage without parts) sends NULL parts and leaves the list the damage has,
+// so that the roll's undo finds it as it was.
 func (q *Queries) SetPendingDamageDetail(ctx context.Context, arg SetPendingDamageDetailParams) error {
 	_, err := q.db.Exec(ctx, setPendingDamageDetail,
-		arg.ID,
 		arg.Parts,
 		arg.PartRolls,
 		arg.Steps,
 		arg.AfterSteps,
 		arg.LandedBefore,
+		arg.ID,
 	)
 	return err
 }
