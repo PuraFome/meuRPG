@@ -18,7 +18,6 @@ cognitive internal/maps (*Service).DeleteGalleryImage 20
 cognitive internal/maps (*Service).DeleteMap 25
 cognitive internal/maps (*Service).DeleteMapPoint 24
 cognitive internal/maps (*Service).DisarmTrap 19
-cognitive internal/maps (*Service).GenerateMapImage 17
 cognitive internal/maps (*Service).GetDungeonRooms 20
 cognitive internal/maps (*Service).GetMap 40
 cognitive internal/maps (*Service).GetMapLayers 21
@@ -50,7 +49,6 @@ cognitive internal/maps (*Service).UseGeneratedImageAsMapImage 59
 cognitive internal/maps (*Service).applyPointChange 32
 cognitive internal/maps (*Service).applySpecChange 51
 cognitive internal/maps (*Service).attachPointDetails 21
-cognitive internal/maps (*Service).checkCharacters 31
 cognitive internal/maps (*Service).cleanTrap 16
 cognitive internal/maps (*Service).cluesToProto 16
 cognitive internal/maps (*Service).familiarEyes 30
@@ -58,10 +56,8 @@ cognitive internal/maps (*Service).lightSources 20
 cognitive internal/maps (*Service).loadTrapScene 19
 cognitive internal/maps (*Service).newSight 21
 cognitive internal/maps (*Service).playerCharacters 16
-cognitive internal/maps (*Service).playersSeenOf 30
 cognitive internal/maps (*Service).pointToProto 18
 cognitive internal/maps (*Service).prepare 20
-cognitive internal/maps (*Service).prepareMap 20
 cognitive internal/maps (*Service).publishTokenWritten 26
 cognitive internal/maps (*Service).reserve 76
 cognitive internal/maps (*Service).run 32
@@ -342,7 +338,6 @@ cyclomatic internal/maps (*Service).CreateMapPoint 26
 cyclomatic internal/maps (*Service).DeleteGalleryImage 16
 cyclomatic internal/maps (*Service).DeleteMap 18
 cyclomatic internal/maps (*Service).DeleteMapPoint 17
-cyclomatic internal/maps (*Service).GenerateMapImage 16
 cyclomatic internal/maps (*Service).GetDungeonRooms 16
 cyclomatic internal/maps (*Service).GetMap 31
 cyclomatic internal/maps (*Service).GetMapLayers 16
@@ -364,13 +359,11 @@ cyclomatic internal/maps (*Service).UpdateSceneAction 24
 cyclomatic internal/maps (*Service).UseGeneratedImageAsMapImage 49
 cyclomatic internal/maps (*Service).applyPointChange 31
 cyclomatic internal/maps (*Service).applySpecChange 30
-cyclomatic internal/maps (*Service).checkCharacters 21
 cyclomatic internal/maps (*Service).cleanSave 17
 cyclomatic internal/maps (*Service).cleanTrap 18
 cyclomatic internal/maps (*Service).lightSources 16
 cyclomatic internal/maps (*Service).loadTrapScene 16
 cyclomatic internal/maps (*Service).newSight 17
-cyclomatic internal/maps (*Service).playersSeenOf 20
 cyclomatic internal/maps (*Service).publishTokenWritten 21
 cyclomatic internal/maps (*Service).reserve 40
 cyclomatic internal/maps (*Service).run 30
