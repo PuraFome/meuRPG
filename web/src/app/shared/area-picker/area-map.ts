@@ -31,9 +31,7 @@ import {
   outOfRangeText,
   placedHint,
 } from '../../core/combat/area-text';
-import { type Square, arrowStep, squareAt, squareCenter } from '../../core/combat/combat-grid';
-import { combatantInitial, isPlayer } from '../../core/combat/combat-view';
-import { isCreature } from '../../core/combat/creature-names';
+import { type Square, arrowStep } from '../../core/combat/combat-grid';
 import {
   type AreaShape,
   areaSquares,
@@ -41,43 +39,31 @@ import {
   cellsPath,
   outlinePath,
   rangeFt,
-  rotate,
   toward,
 } from '../../core/combat/spell-area';
 import type { MapLayers } from '../../core/maps/layers';
 import type { Vision } from '../../core/maps/vision';
-import { metersFixed, metersText } from '../../core/units';
+import { metersText } from '../../core/units';
 import { CombatMap, type CombatMapImage } from '../combat-map/combat-map';
 import { CombatantToken } from '../combatant-token/combatant-token';
 import { MapLayersLegend } from '../map-layers/map-layers-legend';
+import { AreaAnnouncer } from './area-announcer';
+import {
+  BIG_MAP_COLUMNS,
+  ZOOM_CELLS,
+  areaLine,
+  clampSquare,
+  edgeMarkOf,
+  listMove,
+  movedPoint,
+  squareUnder,
+  turnedDirection,
+} from './area-moves';
+import { AreaPointer } from './area-pointer';
+import { type CenterOption, centerOptions } from './center-options';
 
-/** How far above the finger the template follows a touch, so the finger does not cover what is chosen (PM-02a). */
-const FINGER_LIFT_PX = 44;
-/** Sides of a square when a big map is zoomed in so that a finger hits one; the first step fits the map to the screen. */
-const CELL_PX_NEAR = 22;
-const CELL_PX_CLOSE = 30;
-const CELL_PX_CLOSEST = 40;
-const ZOOM_CELLS = [null, CELL_PX_NEAR, CELL_PX_CLOSE, CELL_PX_CLOSEST] as const;
-/** A map wider than this many squares gets the zoom: its squares are too small to tap at the screen's width. */
-const BIG_MAP_COLUMNS = 30;
-
-/** The pause before a move is announced, so holding an arrow key does not flood the screen reader. */
-const ANNOUNCE_DELAY_MS = 300;
 /** Shift and an arrow move five squares. */
 const SHIFT_STEP = 5;
-/** Half a square: from a square's corner to its center, or to its side. */
-const HALF = 0.5;
-
-/** An entry of "Centrar em…": a creature the caster sees, the caster itself, or the map's own arrows. */
-interface CenterOption {
-  readonly id: string;
-  readonly label: string;
-  readonly initial: string;
-  readonly npc: boolean;
-  readonly creature: boolean;
-  readonly detail: string;
-  readonly square: Square | null;
-}
 
 let nextId = 0;
 
@@ -157,16 +143,22 @@ export class AreaMap {
   protected readonly cell = computed(() => (this.zoomable() ? ZOOM_CELLS[this.zoom()] : null));
   /** The hover came from the keyboard, so the hint follows it (a mouse that only passes over does not rewrite it). */
   private readonly hoverByKey = signal(false);
+  private readonly pointer = new AreaPointer({
+    readOnly: () => this.readOnly(),
+    pickUnder: (event, lift) => this.pickAt(squareUnder(event, lift, this.columns(), this.rows())),
+    hover: this.hover,
+    setHover: (pick, byKey) => this.setHover(pick, byKey),
+    tap: (pick) => this.tap(pick),
+  });
   /** Where the finger is, in percent of the map, while it drags: the dotted line to the template above it. */
-  protected readonly finger = signal<{ x: number; y: number } | null>(null);
+  protected readonly finger = this.pointer.finger;
   /** "Fora do alcance." and why, after a tap outside the range. */
   protected readonly refusal = signal('');
   protected readonly listOpen = signal(false);
   protected readonly active = signal(0);
+  private readonly announcer = new AreaAnnouncer();
   /** What the live region says, a pause after the last move. */
-  protected readonly spoken = signal('');
-  private announceTimer: ReturnType<typeof setTimeout> | null = null;
-  private touching: number | null = null;
+  protected readonly spoken = this.announcer.spoken;
 
   protected readonly Placement = AreaPlacement;
   protected readonly isPoint = computed(() => this.placement() === AreaPlacement.POINT);
@@ -223,36 +215,13 @@ export class AreaMap {
     return this.filled() && this.preview()?.moved && pick?.kind === 'point' ? pick.square : null;
   });
   /** The diamond of a shape out of the caster: on the caster's side the area leaves from. */
-  protected readonly edgeMark = computed(() => {
-    const pick = this.shown();
-    const caster = this.caster();
-    if (pick?.kind !== 'direction' || !caster) {
-      return null;
-    }
-    return {
-      x: ((caster.col + HALF + pick.direction.dx * HALF) / this.columns()) * 100,
-      y: ((caster.row + HALF + pick.direction.dy * HALF) / this.rows()) * 100,
-    };
-  });
+  protected readonly edgeMark = computed(() =>
+    edgeMarkOf(this.shown(), this.caster(), this.columns(), this.rows()),
+  );
   /** The dashed line from the caster to the point, with its length ("7,5 m"). */
-  protected readonly line = computed(() => {
-    const caster = this.caster();
-    const origin = this.origin();
-    if (!caster || !origin) {
-      return null;
-    }
-    const a = squareCenter(caster, this.columns(), this.rows());
-    const b = squareCenter(origin, this.columns(), this.rows());
-    return {
-      x1: a.x,
-      y1: a.y,
-      x2: b.x,
-      y2: b.y,
-      label: metersFixed(rangeFt(caster, origin)),
-      mx: (a.x + b.x) / 2,
-      my: (a.y + b.y) / 2,
-    };
-  });
+  protected readonly line = computed(() =>
+    areaLine(this.caster(), this.origin(), this.columns(), this.rows()),
+  );
   /** The squares beyond the range, dimmed (a point spell with a range). */
   protected readonly dimPath = computed(() => {
     const caster = this.caster();
@@ -285,47 +254,9 @@ export class AreaMap {
   protected readonly centerText = computed(() => centerLabel(this.placement()));
 
   /** "Centrar em…": the creatures the caster sees, nearest list order as the server gave it, then the caster and the arrows. */
-  protected readonly options = computed<readonly CenterOption[]>(() => {
-    const byId = new Map(this.combatants().map((c) => [c.id, c]));
-    const out: CenterOption[] = [];
-    for (const t of this.seen()) {
-      const c = byId.get(t.combatantId);
-      if (!c?.placed || t.combatantId === this.casterId()) {
-        continue;
-      }
-      out.push({
-        id: t.combatantId,
-        label: t.label,
-        initial: combatantInitial(t.label),
-        npc: !isPlayer(c) && !isCreature(c),
-        creature: isCreature(c),
-        detail: t.distanceFt !== undefined ? `a ${metersFixed(t.distanceFt)}` : '',
-        square: { col: c.col, row: c.row },
-      });
-    }
-    const caster = byId.get(this.casterId());
-    if (caster?.placed && this.isPoint()) {
-      out.push({
-        id: caster.id,
-        label: `${caster.label} (você)`,
-        initial: combatantInitial(caster.label),
-        npc: !isPlayer(caster) && !isCreature(caster),
-        creature: isCreature(caster),
-        detail: 'aqui',
-        square: { col: caster.col, row: caster.row },
-      });
-    }
-    out.push({
-      id: 'grid',
-      label: 'Um quadrado do mapa (use as setas)',
-      initial: '',
-      npc: false,
-      creature: false,
-      detail: '',
-      square: null,
-    });
-    return out;
-  });
+  protected readonly options = computed<readonly CenterOption[]>(() =>
+    centerOptions(this.combatants(), this.seen(), this.casterId(), this.isPoint()),
+  );
 
   constructor() {
     afterNextRender(() => {
@@ -333,7 +264,7 @@ export class AreaMap {
         this.app()?.nativeElement.focus();
       }
     });
-    inject(DestroyRef).onDestroy(() => this.clearTimer());
+    inject(DestroyRef).onDestroy(() => this.announcer.clear());
     // The count of creatures is said once the server answered for the place on the map.
     effect(() => {
       const p = this.preview();
@@ -377,7 +308,7 @@ export class AreaMap {
       this.refusal.set(text);
       this.hover.set(null);
       this.place.emit(null);
-      this.speakNow(`Fora do alcance. ${text}`);
+      this.announcer.now(`Fora do alcance. ${text}`);
       return;
     }
     this.refusal.set('');
@@ -392,84 +323,24 @@ export class AreaMap {
 
   // ---- pointer ----
 
-  private squareUnder(event: PointerEvent, lift: number): Square {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    return squareAt(
-      (event.clientX - rect.left) / Math.max(rect.width, 1),
-      (event.clientY - lift - rect.top) / Math.max(rect.height, 1),
-      this.columns(),
-      this.rows(),
-    );
-  }
-
-  private fingerAt(event: PointerEvent): { x: number; y: number } {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    return {
-      x: ((event.clientX - rect.left) / Math.max(rect.width, 1)) * 100,
-      y: ((event.clientY - rect.top) / Math.max(rect.height, 1)) * 100,
-    };
-  }
-
-  private static touchLike(event: PointerEvent): boolean {
-    return event.pointerType === 'touch' || event.pointerType === 'pen';
-  }
-
   protected onPointerDown(event: PointerEvent): void {
-    if (this.readOnly() || !AreaMap.touchLike(event)) {
-      return;
-    }
-    this.touching = event.pointerId;
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
-    this.setHover(this.pickAt(this.squareUnder(event, FINGER_LIFT_PX)), false);
-    this.finger.set(this.fingerAt(event));
+    this.pointer.down(event);
   }
 
   protected onPointerMove(event: PointerEvent): void {
-    if (this.readOnly()) {
-      return;
-    }
-    if (AreaMap.touchLike(event)) {
-      if (this.touching === event.pointerId) {
-        this.setHover(this.pickAt(this.squareUnder(event, FINGER_LIFT_PX)), false);
-        this.finger.set(this.fingerAt(event));
-      }
-      return;
-    }
-    const pick = this.pickAt(this.squareUnder(event, 0));
-    if (!samePick(pick, this.hover())) {
-      this.setHover(pick, false);
-    }
+    this.pointer.move(event);
   }
 
   protected onPointerUp(event: PointerEvent): void {
-    if (this.readOnly()) {
-      return;
-    }
-    if (AreaMap.touchLike(event)) {
-      if (this.touching !== event.pointerId) {
-        return;
-      }
-      this.touching = null;
-      this.finger.set(null);
-      this.tap(this.pickAt(this.squareUnder(event, FINGER_LIFT_PX)));
-      return;
-    }
-    if (event.button > 0) {
-      return;
-    }
-    this.tap(this.pickAt(this.squareUnder(event, 0)));
+    this.pointer.up(event);
   }
 
   protected onPointerLeave(event: PointerEvent): void {
-    if (!AreaMap.touchLike(event)) {
-      this.hover.set(null);
-    }
+    this.pointer.leave(event);
   }
 
   protected onPointerCancel(): void {
-    this.touching = null;
-    this.finger.set(null);
-    this.hover.set(null);
+    this.pointer.cancel();
   }
 
   // ---- keyboard ----
@@ -500,9 +371,17 @@ export class AreaMap {
       return;
     }
     event.preventDefault();
+    const from = this.hover() ?? this.placed();
     const next = this.isPoint()
-      ? this.movedPoint(step, event.shiftKey ? SHIFT_STEP : 1)
-      : this.turned(step.dc + step.dr);
+      ? movedPoint(
+          from,
+          this.caster(),
+          step,
+          event.shiftKey ? SHIFT_STEP : 1,
+          this.columns(),
+          this.rows(),
+        )
+      : turnedDirection(from, step.dc + step.dr);
     if (next) {
       this.setHover(next, true);
       this.say(next);
@@ -518,39 +397,17 @@ export class AreaMap {
     this.hover.set(pick);
   }
 
-  /** The point the arrows move to: from the hover, the placed point or the caster, kept on the map. */
-  private movedPoint(step: { dc: number; dr: number }, n: number): AreaPick | null {
-    const from = this.hover() ?? this.placed();
-    const base = from?.kind === 'point' ? from.square : (this.caster() ?? { col: 0, row: 0 });
-    return {
-      kind: 'point',
-      square: {
-        col: Math.min(this.columns() - 1, Math.max(0, base.col + step.dc * n)),
-        row: Math.min(this.rows() - 1, Math.max(0, base.row + step.dr * n)),
-      },
-    };
-  }
-
-  /** The direction turned 45° (right and down clockwise, left and up the other way). */
-  private turned(turn: number): AreaPick {
-    const from = this.hover() ?? this.placed();
-    const base = from?.kind === 'direction' ? from.direction : null;
-    return {
-      kind: 'direction',
-      direction: base ? rotate(base, turn) : { dx: 1, dy: 0 },
-    };
-  }
-
   /** "Ajustar o ponto, um quadrado por toque": moves the placed point one square, as a tap there. */
   protected nudge(dc: number, dr: number): void {
     const pick = this.placed();
     if (pick?.kind !== 'point') {
       return;
     }
-    const square = {
-      col: Math.min(this.columns() - 1, Math.max(0, pick.square.col + dc)),
-      row: Math.min(this.rows() - 1, Math.max(0, pick.square.row + dr)),
-    };
+    const square = clampSquare(
+      { col: pick.square.col + dc, row: pick.square.row + dr },
+      this.columns(),
+      this.rows(),
+    );
     this.tap({ kind: 'point', square });
   }
 
@@ -582,35 +439,18 @@ export class AreaMap {
   }
 
   protected onListKeydown(event: KeyboardEvent): void {
-    const n = this.options().length;
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        this.active.set((this.active() + 1) % n);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        this.active.set((this.active() - 1 + n) % n);
-        break;
-      case 'Home':
-        event.preventDefault();
-        this.active.set(0);
-        break;
-      case 'End':
-        event.preventDefault();
-        this.active.set(n - 1);
-        break;
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        this.choose(this.options()[this.active()]);
-        break;
-      case 'Escape':
-        event.preventDefault();
-        event.stopPropagation();
-        this.closeList(true);
-        break;
-      default:
+    const move = listMove(event.key, this.active(), this.options().length);
+    if (move === null) {
+      return;
+    }
+    event.preventDefault();
+    if (move === 'choose') {
+      this.choose(this.options()[this.active()]);
+    } else if (move === 'close') {
+      event.stopPropagation();
+      this.closeList(true);
+    } else {
+      this.active.set(move);
     }
   }
 
@@ -639,26 +479,14 @@ export class AreaMap {
     }
     const p = this.preview();
     const seen = p && samePick(pick, this.placed()) ? p.targets.length : null;
-    this.clearTimer();
-    const text = announcement(
-      this.placement(),
-      this.distanceOf(pick),
-      pick.kind === 'direction' ? pick.direction : null,
-      seen,
+    this.announcer.say(
+      announcement(
+        this.placement(),
+        this.distanceOf(pick),
+        pick.kind === 'direction' ? pick.direction : null,
+        seen,
+      ),
     );
-    this.announceTimer = setTimeout(() => this.spoken.set(text), ANNOUNCE_DELAY_MS);
-  }
-
-  private speakNow(text: string): void {
-    this.clearTimer();
-    this.spoken.set(text);
-  }
-
-  private clearTimer(): void {
-    if (this.announceTimer !== null) {
-      clearTimeout(this.announceTimer);
-      this.announceTimer = null;
-    }
   }
 
   // ---- drawing ----
