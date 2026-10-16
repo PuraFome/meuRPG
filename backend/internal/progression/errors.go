@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
@@ -51,11 +50,4 @@ func blocked(detail *progressionv1.XPBlocked) error {
 // never the value.
 func invalidArgument(field string, err error) error {
 	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("%s %w", field, err))
-}
-
-// isUniqueViolation reports whether err is a unique-index violation (23505)
-// of the named index.
-func isUniqueViolation(err error, name string) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23505" && pgErr.ConstraintName == name
 }

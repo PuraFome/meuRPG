@@ -13,6 +13,8 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -314,7 +316,7 @@ func (s *Service) restEaseExhaustion(ctx context.Context, tx pgx.Tx, campaignID 
 // is kept as it was, except that a long rest clears every slot level.
 func (s *Service) writeVitals(ctx context.Context, q *charactersdb.Queries, row vitalsRow, after *playv1.CharacterVitals, clearSlots bool) (charactersdb.UpsertVitalsRow, error) {
 	used, created := restedSlots(row, after, clearSlots)
-	pactUsed := derefInt(row.PactSlotsUsed)
+	pactUsed := conv.OrZero(row.PactSlotsUsed)
 	if p := after.GetPactSlots(); p != nil {
 		pactUsed = p.GetUsed()
 	}
@@ -364,7 +366,7 @@ func restedSlots(row vitalsRow, after *playv1.CharacterVitals, clearSlots bool) 
 
 // vitalsOfRow reads one character's vitals and maximums inside tx, or `not_found`.
 func (s *Service) vitalsOfRow(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (restRow, *rules.Content, error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return restRow{}, nil, errCharacterNotFound()
 	}

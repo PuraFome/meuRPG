@@ -11,6 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -43,7 +44,7 @@ type sheetSave struct {
 // readSheetSave reads and checks an UpdateCharacter request, in the order the client
 // is answered: the character's ID, the revision, the name, then the sheet.
 func (s *Service) readSheetSave(ctx context.Context, m authz.Membership, msg *charactersv1.UpdateCharacterRequest) (*sheetSave, error) {
-	id, ok := parseUUID(msg.GetCharacterId())
+	id, ok := uid.Canonical(msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}

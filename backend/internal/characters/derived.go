@@ -1,11 +1,11 @@
 package characters
 
 import (
-	"math"
 	"strings"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -462,15 +462,7 @@ var namedKeyKindToProto = map[string]rulesv1.NamedKeyKind{
 // i32 converts a number from package rules for the API. Those numbers are
 // small (the SRD's tables, and sheets that passed rules.Validate), so the
 // clamp never changes a real value; it keeps the conversion provably safe.
-func i32(n int) int32 {
-	if n > math.MaxInt32 {
-		return math.MaxInt32
-	}
-	if n < math.MinInt32 {
-		return math.MinInt32
-	}
-	return int32(n)
-}
+func i32(n int) int32 { return conv.Int32(n) }
 
 // openChoiceKinds maps the engine's kinds of open choice to the API's.
 var openChoiceKinds = map[string]charactersv1.OpenChoiceKind{

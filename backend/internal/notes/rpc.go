@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"time"
-	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -19,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // requirePlayer is the start of every handler: the caller must be an active
@@ -48,15 +48,6 @@ func errNotFound() error {
 // undiscovered scene is there.
 func errBadScene() error {
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("scene_point_id must be a scene the group discovered"))
-}
-
-// parseID returns an ID in canonical form, or false when it is not a UUID.
-func parseID(raw string) (string, bool) {
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return "", false
-	}
-	return id.String(), true
 }
 
 // cleanNoteText checks a note: 1 to 2,000 characters, line breaks allowed. The
@@ -91,7 +82,7 @@ func checkTag(raw string, discovered map[string]string) (*string, error) {
 	if raw == "" {
 		return nil, nil
 	}
-	id, ok := parseID(raw)
+	id, ok := uid.Canonical(raw)
 	if !ok {
 		return nil, errBadScene()
 	}
@@ -309,7 +300,7 @@ func (s *Service) readNoteChange(ctx context.Context, msg *notesv1.UpdateNoteReq
 	if err != nil {
 		return noteChange{}, nil, err
 	}
-	noteID, ok := parseID(msg.GetNoteId())
+	noteID, ok := uid.Canonical(msg.GetNoteId())
 	if !ok {
 		return noteChange{}, nil, errNotFound()
 	}
@@ -373,7 +364,7 @@ func (s *Service) DeleteNote(
 	if err != nil {
 		return nil, err
 	}
-	noteID, ok := parseID(req.Msg.GetNoteId())
+	noteID, ok := uid.Canonical(req.Msg.GetNoteId())
 	if !ok {
 		return nil, errNotFound()
 	}

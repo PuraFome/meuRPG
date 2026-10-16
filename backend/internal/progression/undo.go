@@ -13,6 +13,7 @@ import (
 
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
@@ -118,7 +119,7 @@ func (s *Service) undoTx(ctx context.Context, tx pgx.Tx, m authz.Membership, key
 	}
 	payload := eventPayload{
 		AwardID: last.ID, Mode: last.Mode, TotalXP: last.TotalXp, CharacterIDs: ids, Treasures: treasures,
-		EncounterID: deref(last.EncounterID), MilestoneID: deref(last.MilestoneID),
+		EncounterID: conv.OrZero(last.EncounterID), MilestoneID: conv.OrZero(last.MilestoneID),
 	}
 	logged, err := s.appendEvent(ctx, tx, m, eventXPAwardUndone, payload, now)
 	return undoneAward{award: undone, logged: logged, freedMaps: freedMaps}, err

@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	identityv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/identity/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 )
@@ -268,12 +268,6 @@ func (s *Service) SignOut(
 	return res, nil
 }
 
-// clampInt32 narrows a row count to the response's int32; a user never has
-// billions of sessions, so the clamp only keeps the conversion honest.
-func clampInt32(n int64) int32 {
-	return int32(min(n, math.MaxInt32)) //nolint:gosec // G115: clamped on the left
-}
-
 // SignOutOtherSessions implements identityv1connect.IdentityServiceHandler.
 // It deletes the user's other session rows in one statement, so those tokens
 // stop working at once on every instance. The current session and its cookie
@@ -294,7 +288,7 @@ func (s *Service) SignOutOtherSessions(
 	}
 	// Counts in the audit trail, never tokens or hashes.
 	s.logger.InfoContext(ctx, "signed out of other devices", "ended", ended)
-	res := connect.NewResponse(&identityv1.SignOutOtherSessionsResponse{EndedCount: clampInt32(ended)})
+	res := connect.NewResponse(&identityv1.SignOutOtherSessionsResponse{EndedCount: conv.Int32(ended)})
 	res.Header().Set("Cache-Control", "no-store")
 	return res, nil
 }
@@ -313,7 +307,7 @@ func (s *Service) CountOtherSessions(
 	if err != nil {
 		return nil, s.storeError(ctx, "cannot count the other sessions", err)
 	}
-	res := connect.NewResponse(&identityv1.CountOtherSessionsResponse{OtherSessions: clampInt32(n)})
+	res := connect.NewResponse(&identityv1.CountOtherSessionsResponse{OtherSessions: conv.Int32(n)})
 	res.Header().Set("Cache-Control", "no-store")
 	return res, nil
 }

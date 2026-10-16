@@ -7,6 +7,7 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	playlink "github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
@@ -35,7 +36,7 @@ func (s *Service) PartyVision(ctx context.Context, tx pgx.Tx, campaignID string)
 	}
 	out := make([]link.PartyMember, 0, len(rows))
 	for _, row := range rows {
-		user := deref(row.PlayerUserID)
+		user := conv.OrZero(row.PlayerUserID)
 		if user == "" {
 			continue // its player deleted the account (RN-16): nobody sees through it
 		}

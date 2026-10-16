@@ -20,6 +20,7 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
@@ -500,9 +501,9 @@ func insertAward(ctx context.Context, q *progressiondb.Queries, m authz.Membersh
 	switch {
 	case err == nil:
 		return award, nil
-	case isUniqueViolation(err, oneAwardPerEncounterIndex):
+	case db.IsUniqueViolation(err, oneAwardPerEncounterIndex):
 		return award, errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_ALREADY_AWARDED, "", 0)
-	case isUniqueViolation(err, idempotencyKeyIndex):
+	case db.IsUniqueViolation(err, idempotencyKeyIndex):
 		return award, connect.NewError(connect.CodeAborted, errors.New("the same request is being handled, please try again"))
 	}
 	return award, fmt.Errorf("insert an award: %w", err)
@@ -633,7 +634,7 @@ func (s *Service) sameRequest(ctx context.Context, q *progressiondb.Queries, don
 // was kept, by what the award left: its mode, its milestone and "Dar a mais
 // alguém", its treasures (gold) and its characters (a planned milestone).
 func (s *Service) leftTheSame(ctx context.Context, q *progressiondb.Queries, done progressiondb.XpAward, g grant) (bool, error) {
-	if done.Mode != g.mode || deref(done.MilestoneID) != g.milestoneID || (g.milestoneID != "" && done.MilestoneAgain != g.again) {
+	if done.Mode != g.mode || conv.OrZero(done.MilestoneID) != g.milestoneID || (g.milestoneID != "" && done.MilestoneAgain != g.again) {
 		return false, nil
 	}
 	if g.mode == modeGold {

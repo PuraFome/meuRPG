@@ -11,6 +11,8 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -82,7 +84,7 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 	}
 	d := rules.Derive(buildOf(full), content)
 	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides}
-	if b, ok := content.MonsterDerived(deref(beast)); ok && beast != nil {
+	if b, ok := content.MonsterDerived(conv.OrZero(beast)); ok && beast != nil {
 		m.beast, m.beastNamePT, m.beastMax = *beast, content.NamePT(*beast), max(b.HitPointsMax, 1)
 	}
 	for i, n := range d.SpellSlots {
@@ -133,23 +135,23 @@ func (s *Service) liveFamiliar(ctx context.Context, q *charactersdb.Queries, cam
 // value to its maximum: a sheet that lost a level, or a class, never shows
 // more than it has now.
 func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
-	bonus := derefInt(row.HitPointsMaxBonus) // Aid's, on top of the sheet's maximum
+	bonus := conv.OrZero(row.HitPointsMaxBonus) // Aid's, on top of the sheet's maximum
 	// From level 4 of exhaustion the maximum is halved (SRD, Conditions).
-	level := min(max(derefInt(row.ExhaustionLevel), 0), combat.MaxExhaustion)
+	level := min(max(conv.OrZero(row.ExhaustionLevel), 0), combat.MaxExhaustion)
 	maxHP := i32(combat.ExhaustedMaxHP(m.hitPoints+int(bonus), int(level)))
 	v := &playv1.CharacterVitals{
 		CharacterId:             row.ID,
 		Name:                    row.Name,
-		PlayerUserId:            deref(row.PlayerUserID),
+		PlayerUserId:            conv.OrZero(row.PlayerUserID),
 		HitPointsCurrent:        maxHP, // fresh: full hit points
 		HitPointsMax:            maxHP,
 		ExhaustionLevel:         level,
-		ArmorClassBase:          derefInt(row.ArmorClassBase),
+		ArmorClassBase:          conv.OrZero(row.ArmorClassBase),
 		ArcaneRecoveryAllowance: i32(rules.ArcaneRecoveryAllowance(m.wizardLevel)),
 		HitPointsMaxBonus:       bonus,
-		HitPointsTemporary:      derefInt(row.HitPointsTemporary),
+		HitPointsTemporary:      conv.OrZero(row.HitPointsTemporary),
 		HitDiceTotal:            i32(m.hitDiceTotal),
-		Revision:                derefInt(row.Revision),
+		Revision:                conv.OrZero(row.Revision),
 		UpdatedAt:               timestamp(row.UpdatedAt),
 	}
 	if row.HitPointsCurrent != nil {
@@ -179,7 +181,7 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 		v.PactSlots = &playv1.PactSlotUsage{
 			SlotLevel: i32(m.pactLevel),
 			Total:     i32(m.pactSlots),
-			Used:      min(derefInt(row.PactSlotsUsed), i32(m.pactSlots)),
+			Used:      min(conv.OrZero(row.PactSlotsUsed), i32(m.pactSlots)),
 		}
 	}
 	v.HitDice = mapToProto(m.hitDice, derivedHitDiceToProto)
@@ -200,7 +202,7 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 	}
 	if row.FamiliarSightCreatureID != nil {
 		v.FamiliarSight = &playv1.FamiliarSightState{
-			CreatureId: *row.FamiliarSightCreatureID, InCombat: derefBool(row.FamiliarSightInCombat), ConditionsGiven: row.FamiliarSightConditions,
+			CreatureId: *row.FamiliarSightCreatureID, InCombat: conv.OrZero(row.FamiliarSightInCombat), ConditionsGiven: row.FamiliarSightConditions,
 		}
 	}
 	return v
@@ -251,7 +253,7 @@ func (s *Service) GetVitalsTx(ctx context.Context, tx pgx.Tx, campaignID, charac
 // player ask for it; anything that lets a character act or heals it does not.
 func (s *Service) getVitals(ctx context.Context, tx pgx.Tx, campaignID, characterID string, withDead bool) (*playv1.CharacterVitals, error) {
 	q := s.queriesIn(tx)
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -333,7 +335,7 @@ func correctedVitals(row vitalsRow, req *playv1.AdjustCharacterVitalsRequest, af
 	for _, change := range req.GetSpellSlotsUsed() {
 		used[change.GetLevel()-1] = change.GetUsed()
 	}
-	pactUsed := derefInt(row.PactSlotsUsed)
+	pactUsed := conv.OrZero(row.PactSlotsUsed)
 	if req.PactSlotsUsed != nil {
 		pactUsed = after.GetPactSlots().GetUsed()
 	}
@@ -439,15 +441,6 @@ func inRange(field string, value, maximum int32) error {
 		return fieldErr(field, "must be 0 to %d", maximum)
 	}
 	return nil
-}
-
-func derefBool(b *bool) bool { return b != nil && *b }
-
-func derefInt(n *int32) int32 {
-	if n == nil {
-		return 0
-	}
-	return *n
 }
 
 // carryHitPoints keeps a character's current hit points in step with a change

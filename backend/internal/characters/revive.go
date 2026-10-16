@@ -14,9 +14,11 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // Reviver (RN-03, SRD 5.1 "Dropping to 0 Hit Points").
@@ -44,7 +46,7 @@ func (s *Service) ReviveCharacter(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -138,13 +140,13 @@ func (s *Service) revivedRow(ctx context.Context, tx pgx.Tx, row charactersdb.Ch
 		}
 	}
 	revived, err := q.ReviveCharacter(ctx, charactersdb.ReviveCharacterParams{
-		CampaignID: deref(row.CampaignID), ID: row.ID, Now: at, ReviveKey: key, ReviveHash: hash,
+		CampaignID: conv.OrZero(row.CampaignID), ID: row.ID, Now: at, ReviveKey: key, ReviveHash: hash,
 	})
 	if err != nil {
 		return row, wrap("revive a character", err)
 	}
 	hp := int32(reviveHitPoints)
-	if _, _, err := s.AdjustVitals(ctx, tx, deref(revived.CampaignID), revived.ID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp}); err != nil {
+	if _, _, err := s.AdjustVitals(ctx, tx, conv.OrZero(revived.CampaignID), revived.ID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp}); err != nil {
 		return row, err
 	}
 	return revived, nil
@@ -213,7 +215,7 @@ const eventCharacterRevived = "character_revived"
 // package play does, in the same transaction. A character that is not dead is
 // `failed_precondition`.
 func (s *Service) ReviveDead(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time) (name string, err error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return "", errCharacterNotFound()
 	}

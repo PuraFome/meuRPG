@@ -8,6 +8,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -126,11 +127,11 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 	player := row.Kind == kindPlayer
 	c := &charactersv1.Character{
 		Id:                  row.ID,
-		CampaignId:          deref(row.CampaignID),
+		CampaignId:          conv.OrZero(row.CampaignID),
 		Kind:                kindFromDB[row.Kind],
 		State:               state,
 		Name:                row.Name,
-		PlayerUserId:        deref(row.PlayerUserID),
+		PlayerUserId:        conv.OrZero(row.PlayerUserID),
 		PlayerDisplayName:   playerDisplayName,
 		Sheet:               sheet,
 		Story:               story,
@@ -146,7 +147,7 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 	if player && mayReadReview(m, row) {
 		c.RevivedAt = timestamp(row.RevivedAt)
 		if state == charactersv1.CharacterState_CHARACTER_STATE_DEAD {
-			c.DeathRound, c.DeathEncounterId = row.DeathRound, deref(row.DeathEncounterID)
+			c.DeathRound, c.DeathEncounterId = row.DeathRound, conv.OrZero(row.DeathEncounterID)
 		}
 	}
 	if master && player && state == charactersv1.CharacterState_CHARACTER_STATE_DEAD {
@@ -178,13 +179,6 @@ func setPermissions(c *charactersv1.Character, row charactersdb.Character, state
 	c.CanSetStoryEditing = !row.Reserved
 	c.CanRequestChanges = pending
 	c.CanRevive = dead
-}
-
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }
 
 func timestamp(t *time.Time) *timestamppb.Timestamp {

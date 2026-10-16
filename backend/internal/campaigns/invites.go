@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
-	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -305,13 +304,4 @@ func inviteToProto(invite campaignsdb.CampaignInvite, now time.Time) *campaignsv
 		res.RevokedAt = timestamppb.New(*invite.RevokedAt)
 	}
 	return res
-}
-
-// parseUUID returns id in canonical form, or false if it is not a UUID.
-func parseUUID(id string) (string, bool) {
-	u, err := uuid.Parse(id)
-	if err != nil {
-		return "", false
-	}
-	return u.String(), true
 }

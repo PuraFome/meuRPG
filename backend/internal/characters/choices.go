@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -81,7 +82,7 @@ func (s *Service) PreviewChoices(
 // feature_choice_text) laid over it, so the page that completes the choices of a locked
 // sheet previews a pick without being able to read or change anything else.
 func (s *Service) sheetForChoices(ctx context.Context, m authz.Membership, content *rules.Content, characterID string, raw *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -342,7 +343,7 @@ type choicesCompleted struct {
 // readChoicesRequest checks what needs no database, in order: the id (an id that is no
 // UUID names nothing), the revision and the shape of the picks.
 func readChoicesRequest(msg *charactersv1.CompleteCharacterChoicesRequest) (choicesRequest, error) {
-	id, ok := parseUUID(msg.GetCharacterId())
+	id, ok := uid.Canonical(msg.GetCharacterId())
 	if !ok {
 		return choicesRequest{}, errCharacterNotFound()
 	}
