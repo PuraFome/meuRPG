@@ -293,45 +293,62 @@ func joinSentences(s []string) string {
 // Warlock, Eldritch Invocations): a warlock level, a cantrip the sheet knows, a
 // Pact Boon.
 func (cb *choiceBuilder) invocationPrerequisites(key string) []OptionPrerequisite {
-	c := cb.c
-	p, ok := c.choices.prerequisites[key]
+	p, ok := cb.c.choices.prerequisites[key]
 	if !ok {
 		return nil
 	}
 	var out []OptionPrerequisite
 	if p.Level > 0 {
-		have := 0
-		for _, oc := range cb.x.classes {
-			if oc.key == classWarlock {
-				have = oc.level
-			}
-		}
-		pre := OptionPrerequisite{Kind: PrerequisiteLevel, Level: p.Level, Met: have >= p.Level}
-		if !pre.Met {
-			pre.ReasonPT = fmt.Sprintf("Exige o nível %d de %s. Você está no %d.", p.Level, c.namePT(classWarlock), have)
-		}
-		out = append(out, pre)
+		out = append(out, cb.invocationLevel(p.Level))
 	}
 	if p.Spell != "" {
-		pre := OptionPrerequisite{Kind: PrerequisiteSpell, Key: p.Spell, NamePT: c.namePT(p.Spell), Met: cb.knowsCantrip(p.Spell)}
-		if !pre.Met {
-			pre.ReasonPT = fmt.Sprintf("Exige o truque %s, que você ainda não escolheu.", c.namePT(p.Spell))
-		}
-		out = append(out, pre)
+		out = append(out, cb.invocationCantrip(p.Spell))
 	}
 	if p.Feature != "" {
-		boon := cb.pactBoon()
-		pre := OptionPrerequisite{Kind: PrerequisiteFeature, Key: p.Feature, NamePT: c.namePT(p.Feature), Met: boon == p.Feature}
-		if !pre.Met {
-			status := "Você ainda não escolheu a Dádiva do Pacto."
-			if boon != "" {
-				status = fmt.Sprintf("Você tem o %s.", c.namePT(boon))
-			}
-			pre.ReasonPT = fmt.Sprintf("Exige o %s. %s", c.namePT(p.Feature), status)
-		}
-		out = append(out, pre)
+		out = append(out, cb.invocationBoon(p.Feature))
 	}
 	return out
+}
+
+// invocationLevel is the warlock level an invocation asks for.
+func (cb *choiceBuilder) invocationLevel(level int) OptionPrerequisite {
+	have := 0
+	for _, oc := range cb.x.classes {
+		if oc.key == classWarlock {
+			have = oc.level
+		}
+	}
+	pre := OptionPrerequisite{Kind: PrerequisiteLevel, Level: level, Met: have >= level}
+	if !pre.Met {
+		pre.ReasonPT = fmt.Sprintf("Exige o nível %d de %s. Você está no %d.", level, cb.c.namePT(classWarlock), have)
+	}
+	return pre
+}
+
+// invocationCantrip is the cantrip an invocation asks the sheet to know.
+func (cb *choiceBuilder) invocationCantrip(spell string) OptionPrerequisite {
+	c := cb.c
+	pre := OptionPrerequisite{Kind: PrerequisiteSpell, Key: spell, NamePT: c.namePT(spell), Met: cb.knowsCantrip(spell)}
+	if !pre.Met {
+		pre.ReasonPT = fmt.Sprintf("Exige o truque %s, que você ainda não escolheu.", c.namePT(spell))
+	}
+	return pre
+}
+
+// invocationBoon is the Pact Boon an invocation asks for, and the one the sheet
+// has when it is another.
+func (cb *choiceBuilder) invocationBoon(feature string) OptionPrerequisite {
+	c := cb.c
+	boon := cb.pactBoon()
+	pre := OptionPrerequisite{Kind: PrerequisiteFeature, Key: feature, NamePT: c.namePT(feature), Met: boon == feature}
+	if !pre.Met {
+		status := "Você ainda não escolheu a Dádiva do Pacto."
+		if boon != "" {
+			status = fmt.Sprintf("Você tem o %s.", c.namePT(boon))
+		}
+		pre.ReasonPT = fmt.Sprintf("Exige o %s. %s", c.namePT(feature), status)
+	}
+	return pre
 }
 
 // pactBoon is the Pact Boon the sheet has picked, or "".

@@ -45,69 +45,122 @@ func (s *Service) ListSpells(
 		return nil, err
 	}
 	msg := req.Msg
-	if utf8.RuneCountInString(msg.GetQuery()) > maxSpellQuery {
-		return nil, invalidArgument(fieldErr("query", "must have at most %d characters", maxSpellQuery))
-	}
-	if len(msg.GetLevels()) > maxSpellFilters {
-		return nil, invalidArgument(fieldErr("levels", "must have at most %d entries", maxSpellFilters))
-	}
-	if len(msg.GetSchoolKeys()) > maxSpellFilters {
-		return nil, invalidArgument(fieldErr("school_keys", "must have at most %d entries", maxSpellFilters))
-	}
-	filter := rules.SpellFilter{Query: msg.GetQuery(), Class: msg.GetClassKey(), Schools: msg.GetSchoolKeys()}
-	for _, l := range msg.GetLevels() {
-		if l < 0 || l > 9 {
-			return nil, invalidArgument(fieldErr("levels", "must be 0 to 9"))
-		}
-		filter.Levels = append(filter.Levels, int(l))
-	}
-	size := msg.GetPageSize()
-	switch {
-	case size == 0:
-		size = defaultSpellsPage
-	case size < 0 || size > maxSpellsPage:
-		return nil, invalidArgument(fieldErr("page_size", "must be 1 to %d", maxSpellsPage))
-	}
-	offset := 0
-	if token := msg.GetPageToken(); token != "" {
-		var ok bool
-		if offset, ok = parseSpellsToken(token, spellsFilterID(msg)); !ok {
-			return nil, invalidArgument(fieldErr("page_token", "is not a token of this list"))
-		}
+	page, err := readSpellsPage(msg)
+	if err != nil {
+		return nil, err
 	}
 	content, err := s.contentFor(ctx, nil, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
 	if msg.GetCharacterId() != "" {
-		if filter.Learnable, err = s.learnableLists(ctx, content, m, msg.GetCharacterId()); err != nil {
+		if page.filter.Learnable, err = s.learnableLists(ctx, content, m, msg.GetCharacterId()); err != nil {
 			return nil, err
 		}
 	}
 	master := isMaster(m)
-	if !master && filter.Class != "" && content.Hidden(filter.Class) {
-		// A class the player may not see answers as an unknown one (an empty list), so a
-		// guessed key is never confirmed; unless their own sheet uses the class.
-		uses, err := s.callerUses(ctx, m, filter.Class)
+	if !master {
+		unknown, err := s.spellClassUnknown(ctx, content, m, page.filter.Class)
 		if err != nil {
-			return nil, s.dbError(ctx, "read the caller's sheets", err)
+			return nil, err
 		}
-		if !uses {
+		if unknown {
 			return connect.NewResponse(&rulesv1.ListSpellsResponse{ContentVersion: content.Version()}), nil
 		}
-	}
-	if !master {
 		// A player never reads a spell the master retired or switched off ("Opções
 		// para os jogadores"): one test, Content.Hidden.
-		filter.Hidden = content.Hidden
+		page.filter.Hidden = content.Hidden
 	}
-	list := content.ListSpells(filter)
+	res, err := spellsPageOf(content, page, master, spellsFilterID(msg))
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
+}
+
+const (
+	// lowestSpellCircle and highestSpellCircle bound a circle in the filters: 0 for the
+	// cantrips, up to the 9th.
+	lowestSpellCircle  = 0
+	highestSpellCircle = 9
+)
+
+// spellsPage is a ListSpells request whose shape is checked: the filters, the page
+// size and the offset of its first row.
+type spellsPage struct {
+	filter rules.SpellFilter
+	size   int
+	offset int
+}
+
+// readSpellsPage checks what needs no database, in order: the query, the number of
+// circles and of schools, each circle, the page size and the token.
+func readSpellsPage(msg *rulesv1.ListSpellsRequest) (spellsPage, error) {
+	if utf8.RuneCountInString(msg.GetQuery()) > maxSpellQuery {
+		return spellsPage{}, invalidArgument(fieldErr("query", "must have at most %d characters", maxSpellQuery))
+	}
+	if len(msg.GetLevels()) > maxSpellFilters {
+		return spellsPage{}, invalidArgument(fieldErr("levels", "must have at most %d entries", maxSpellFilters))
+	}
+	if len(msg.GetSchoolKeys()) > maxSpellFilters {
+		return spellsPage{}, invalidArgument(fieldErr("school_keys", "must have at most %d entries", maxSpellFilters))
+	}
+	filter := rules.SpellFilter{Query: msg.GetQuery(), Class: msg.GetClassKey(), Schools: msg.GetSchoolKeys()}
+	for _, l := range msg.GetLevels() {
+		if l < lowestSpellCircle || l > highestSpellCircle {
+			return spellsPage{}, invalidArgument(fieldErr("levels", "must be 0 to 9"))
+		}
+		filter.Levels = append(filter.Levels, int(l))
+	}
+	size, err := spellsPageSize(msg.GetPageSize())
+	if err != nil {
+		return spellsPage{}, err
+	}
+	offset := 0
+	if token := msg.GetPageToken(); token != "" {
+		var ok bool
+		if offset, ok = parseSpellsToken(token, spellsFilterID(msg)); !ok {
+			return spellsPage{}, invalidArgument(fieldErr("page_token", "is not a token of this list"))
+		}
+	}
+	return spellsPage{filter: filter, size: size, offset: offset}, nil
+}
+
+// spellsPageSize is the page size asked for, the default for none.
+func spellsPageSize(size int32) (int, error) {
+	switch {
+	case size == 0:
+		return defaultSpellsPage, nil
+	case size < 0 || size > maxSpellsPage:
+		return 0, invalidArgument(fieldErr("page_size", "must be 1 to %d", maxSpellsPage))
+	}
+	return int(size), nil
+}
+
+// spellClassUnknown says whether a player's class filter names a class they may not
+// see: it answers as an unknown one (an empty list), so a guessed key is never
+// confirmed; unless their own sheet uses the class.
+func (s *Service) spellClassUnknown(ctx context.Context, content *rules.Content, m authz.Membership, class string) (bool, error) {
+	if class == "" || !content.Hidden(class) {
+		return false, nil
+	}
+	uses, err := s.callerUses(ctx, m, class)
+	if err != nil {
+		return false, s.dbError(ctx, "read the caller's sheets", err)
+	}
+	return !uses, nil
+}
+
+// spellsPageOf is the page of the list the filters find, and the token of the next one
+// (filters is their fingerprint). A token past the end of the list is refused.
+func spellsPageOf(content *rules.Content, page spellsPage, master bool, filters string) (*rulesv1.ListSpellsResponse, error) {
+	list := content.ListSpells(page.filter)
 	res := &rulesv1.ListSpellsResponse{Total: i32(len(list)), ContentVersion: content.Version()}
-	if offset > len(list) {
+	if page.offset > len(list) {
 		return nil, invalidArgument(fieldErr("page_token", "is not a token of this list"))
 	}
-	end := min(offset+int(size), len(list))
-	for _, e := range list[offset:end] {
+	end := min(page.offset+page.size, len(list))
+	for _, e := range list[page.offset:end] {
 		sp := spellToProto(e)
 		if !master {
 			// The classes whose list has the spell: a hidden one is not named to a player.
@@ -116,9 +169,9 @@ func (s *Service) ListSpells(
 		res.Spells = append(res.Spells, sp)
 	}
 	if end < len(list) {
-		res.NextPageToken = spellsToken(end, spellsFilterID(msg))
+		res.NextPageToken = spellsToken(end, filters)
 	}
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // learnableLists are the spell lists a character reads, each with the highest

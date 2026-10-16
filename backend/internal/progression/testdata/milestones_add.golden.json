@@ -1,0 +1,254 @@
+{
+  "01 anonymous": {
+    "refusal": "unauthenticated: sign in to continue",
+    "rows": null
+  },
+  "02 outsider": {
+    "refusal": "not_found: campaign not found",
+    "rows": null
+  },
+  "03 pending member": {
+    "refusal": "not_found: campaign not found",
+    "rows": null
+  },
+  "04 player": {
+    "refusal": "permission_denied: only the campaign's master can do this",
+    "rows": null
+  },
+  "05 malformed campaign": {
+    "refusal": "not_found: campaign not found",
+    "rows": null
+  },
+  "06 empty text": {
+    "refusal": "invalid_argument: text must not be empty",
+    "rows": null
+  },
+  "07 text too long": {
+    "refusal": "invalid_argument: text must be at most 120 characters, got 121",
+    "rows": null
+  },
+  "08 two lines": {
+    "refusal": "invalid_argument: text must not contain the character U+000A",
+    "rows": null
+  },
+  "09 key too long": {
+    "refusal": "invalid_argument: idempotency_key must be 1 to 64 characters",
+    "rows": null
+  },
+  "10 key with a control character": {
+    "refusal": "invalid_argument: idempotency_key must be 1 to 64 characters",
+    "rows": null
+  },
+  "11 empty text and a bad key": {
+    "refusal": "invalid_argument: text must not be empty",
+    "rows": null
+  },
+  "12 xp campaign, bad text": {
+    "refusal": "invalid_argument: text must be at most 120 characters, got 121",
+    "rows": null
+  },
+  "13 xp campaign, bad key": {
+    "refusal": "failed_precondition: this campaign's XP mode does not take this [reason=XP_BLOCKED_REASON_MODE_NOT_ALLOWED character= xp_mode=XP_MODE_ENEMIES treasure=]",
+    "rows": null
+  },
+  "14 xp campaign": {
+    "refusal": "failed_precondition: this campaign's XP mode does not take this [reason=XP_BLOCKED_REASON_MODE_NOT_ALLOWED character= xp_mode=XP_MODE_ENEMIES treasure=]",
+    "rows": null
+  },
+  "15 fails: the mode": {
+    "logs": [
+      "ERROR progression: cannot read the campaign's XP mode code=internal error=injected failure"
+    ],
+    "refusal": "internal: internal error",
+    "rows": null
+  },
+  "16 fails: the mode in the transaction": {
+    "logs": [
+      "ERROR progression: cannot read the campaign's XP mode code=internal error=injected failure"
+    ],
+    "refusal": "internal: internal error",
+    "rows": null
+  },
+  "17 fails: the list": {
+    "logs": [
+      "DEBUG progression: cannot add a milestone code=canceled error=list the milestones: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": null
+  },
+  "18 fails: the key": {
+    "logs": [
+      "DEBUG progression: cannot add a milestone code=canceled error=timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": null
+  },
+  "19 fails: the insert": {
+    "logs": [
+      "DEBUG progression: cannot add a milestone code=canceled error=insert a milestone: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": null
+  },
+  "20 fails: the read after": {
+    "logs": [
+      "DEBUG progression: cannot read the milestones code=canceled error=list the milestones: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": [
+      "0 Falha key=true hash=true"
+    ]
+  },
+  "21 first": {
+    "answer": {
+      "milestone": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true"
+    ]
+  },
+  "22 the same request again": {
+    "answer": {
+      "milestone": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true"
+    ]
+  },
+  "23 the same key, the text trimmed the same": {
+    "refusal": "invalid_argument: idempotency_key was used for another change",
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true"
+    ]
+  },
+  "24 the same key, another text": {
+    "refusal": "invalid_argument: idempotency_key was used for another change",
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true"
+    ]
+  },
+  "25 no key": {
+    "answer": {
+      "milestone": [
+        "<milestone-b> \"Derrotar a Sombra\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-b> \"Derrotar a Sombra\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true",
+      "1 Derrotar a Sombra key=false hash=true"
+    ]
+  },
+  "26 no key again": {
+    "answer": {
+      "milestone": [
+        "<milestone-c> \"Derrotar a Sombra\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-b> \"Derrotar a Sombra\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-c> \"Derrotar a Sombra\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true",
+      "1 Derrotar a Sombra key=false hash=true",
+      "2 Derrotar a Sombra key=false hash=true"
+    ]
+  },
+  "27 after the last was removed": {
+    "answer": {
+      "milestone": [
+        "<milestone-d> \"Fechar o portal\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-b> \"Derrotar a Sombra\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-d> \"Fechar o portal\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true",
+      "1 Derrotar a Sombra key=false hash=true",
+      "2 Fechar o portal key=true hash=true"
+    ]
+  },
+  "28 after a gap": {
+    "answer": {
+      "milestone": [
+        "<milestone-e> \"Voltar à cidade\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-d> \"Fechar o portal\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-e> \"Voltar à cidade\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true",
+      "2 Fechar o portal key=true hash=true",
+      "3 Voltar à cidade key=true hash=true"
+    ]
+  },
+  "29 the longest text": {
+    "answer": {
+      "milestone": [
+        "<milestone-long> \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-d> \"Fechar o portal\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-e> \"Voltar à cidade\" reached=false off_list=false has_history=false reached_at=false marks=0",
+        "<milestone-long> \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true",
+      "2 Fechar o portal key=true hash=true",
+      "3 Voltar à cidade key=true hash=true",
+      "4 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa key=false hash=true"
+    ]
+  },
+  "30 over the limit": {
+    "refusal": "resource_exhausted: the campaign already has 100 milestones",
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true",
+      "2 Fechar o portal key=true hash=true",
+      "3 Voltar à cidade key=true hash=true",
+      "4 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa key=false hash=true",
+      "10 Marco 10 key=false hash=false",
+      "11 Marco 11 key=false hash=false",
+      "... 100 rows in all, the last 105 Marco 105 key=false hash=false"
+    ]
+  },
+  "31 a retry at the limit": {
+    "answer": {
+      "count": 100,
+      "milestone": [
+        "<milestone-e> \"Voltar à cidade\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
+    "rows": [
+      "0 Chegar ao Vale Seco key=true hash=true",
+      "2 Fechar o portal key=true hash=true",
+      "3 Voltar à cidade key=true hash=true",
+      "4 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa key=false hash=true",
+      "10 Marco 10 key=false hash=false",
+      "11 Marco 11 key=false hash=false",
+      "... 100 rows in all, the last 105 Marco 105 key=false hash=false"
+    ]
+  }
+}

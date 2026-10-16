@@ -152,7 +152,7 @@ export class InviteAccept {
    * Signs in through the server, carrying the invite along so it gets
    * accepted right after (the backend contract: a same-origin POST to
    * `/auth/login` with `intent=campaign_invite` and `intent_payload=<token>`
-   * — see docs/architecture.md#web-app-web). A hidden form, not `fetch`:
+   * — see docs/architecture/web.md#web-app). A hidden form, not `fetch`:
    * signing in is a full-page OIDC redirect dance, exactly like
    * `AuthService.signIn`, and the CSP's `form-action 'self'` allows a
    * same-origin POST like this one.

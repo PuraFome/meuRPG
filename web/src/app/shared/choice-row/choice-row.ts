@@ -7,6 +7,7 @@ import {
   output,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { RelayEvents } from '../relay-events/relay-events';
 
 /** One choice of a `ChoiceRow`. */
 export interface Choice<T> {
@@ -22,10 +23,10 @@ export interface Choice<T> {
  */
 @Component({
   selector: 'app-choice-row',
-  imports: [MatIconModule],
+  imports: [RelayEvents, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="row" [class.row--strip]="variant() === 'strip'" [class.row--sym]="symmetric()" role="radiogroup" [attr.aria-label]="label()" [attr.aria-describedby]="describedBy()" (keydown)="onKey($event)">
+    <div appRelayEvents class="row" [class.row--strip]="variant() === 'strip'" [class.row--sym]="symmetric()" role="radiogroup" [attr.aria-label]="label()" [attr.aria-describedby]="describedBy()" (relayKeydown)="onKey($event)">
       @for (c of choices(); track c.label; let i = $index) {
         <button type="button" role="radio" class="row__item" [class.row__item--on]="isOn(c)" [attr.aria-checked]="isOn(c)" [tabindex]="isStop(i) ? 0 : -1" [disabled]="disabled()" (click)="pick(c)">
           <mat-icon class="chk" [class.chk--off]="!isOn(c)" aria-hidden="true">check</mat-icon>{{ c.label }}

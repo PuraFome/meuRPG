@@ -68,21 +68,22 @@ linters:
         # Copying a 100-byte struct in a range loop is not our bottleneck.
         - rangeValCopy
         - hugeParam
-    # Limits for new code (16/10/2026): cyclomatic complexity at most 15,
-    # cognitive complexity at most 20 and a maintainability index of at least
-    # 20 (0 to 100). The ratchet (--new-from-merge-base, --new-from-rev)
-    # reports an issue only when its line changed, and these three linters
-    # report on the line with `func`. So a new function, and an old one whose
-    # `func` line changes (its name, receiver or first parameters) or moves in
-    # the diff, must meet the limits; a change to the body of an old function
-    # does not trigger them. The bodies are held by the totals gate instead
-    # (.github/scripts/go-complexity.sh, same limits): no function over a
-    # limit may appear or get worse. The functions over them today are in
-    # .github/go-complexity-baseline.txt; `make lint-all` lists them too.
+    # Limits for new code: cyclomatic complexity at most 15 (NIST SP 500-235
+    # allows up to 15), cognitive complexity at most 15 (SonarQube's default)
+    # and a maintainability index of at least 20 (0 to 100). The ratchet
+    # (--new-from-merge-base, --new-from-rev) reports an issue only when its
+    # line changed, and these three linters report on the line with `func`. So a
+    # new function, and an old one whose `func` line changes (its name, receiver
+    # or first parameters) or moves in the diff, must meet the limits; a change
+    # to the body of an old function does not trigger them. The bodies are held
+    # by the totals gate instead (.github/scripts/go-complexity.sh, same
+    # limits): no function over a limit may appear or get worse. The functions
+    # over them today are in .github/go-complexity-baseline.txt; `make lint-all`
+    # lists them too.
     gocyclo:
       min-complexity: 15
     gocognit:
-      min-complexity: 20
+      min-complexity: 15
     maintidx:
       under: 20
     mnd:
