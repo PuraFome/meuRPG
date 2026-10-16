@@ -378,3 +378,52 @@ func TestNewValidatesItsConfig(t *testing.T) {
 		}
 	}
 }
+
+// Every refusal of New names what is wrong, and the first broken rule wins.
+func TestNewRefusalMessagesAreFrozen(t *testing.T) {
+	t.Parallel()
+	valid := func() Config {
+		return Config{Issuer: testIssuer, ClientID: testClient, ClientSecret: testSecret, RedirectURIs: []string{testCallback}, Users: TestUsers()}
+	}
+	tests := []struct {
+		name string
+		edit func(c *Config)
+		want string
+	}{
+		{"relative issuer", func(c *Config) { c.Issuer = "idp.localhost" }, `oidctest: the issuer must be an absolute http(s) URL, got "idp.localhost"`},
+		{"ftp issuer", func(c *Config) { c.Issuer = "ftp://idp.localhost" }, `oidctest: the issuer must be an absolute http(s) URL, got "ftp://idp.localhost"`},
+		{"issuer with a query", func(c *Config) { c.Issuer = testIssuer + "?x=1" }, `oidctest: the issuer must not have a query, fragment or user info, got "` + testIssuer + `?x=1"`},
+		{"no client id", func(c *Config) { c.ClientID = "" }, "oidctest: a client ID and a client secret are required"},
+		{"no client secret", func(c *Config) { c.ClientSecret = "" }, "oidctest: a client ID and a client secret are required"},
+		{"no redirect URI", func(c *Config) { c.RedirectURIs = nil }, "oidctest: at least one redirect URI is required"},
+		{"no users", func(c *Config) { c.Users = nil }, "oidctest: at least one user is required"},
+		{"relative redirect URI", func(c *Config) { c.RedirectURIs = []string{"/cb"} }, `oidctest: redirect URI "/cb" must be an absolute URL without a fragment`},
+		{"redirect URI with a fragment", func(c *Config) { c.RedirectURIs = []string{testCallback + "#x"} }, `oidctest: redirect URI "` + testCallback + `#x" must be an absolute URL without a fragment`},
+		{"empty subject", func(c *Config) { c.Users[0].Subject = "" }, `oidctest: every user needs a unique, non-empty subject (got "")`},
+		{"duplicate subject", func(c *Config) { c.Users = append(c.Users, c.Users[0]) }, `oidctest: every user needs a unique, non-empty subject (got "` + TestUsers()[0].Subject + `")`},
+		// The issuer rules come before the client rules.
+		{"issuer before client", func(c *Config) { c.Issuer = "x"; c.ClientID = "" }, `oidctest: the issuer must be an absolute http(s) URL, got "x"`},
+	}
+	for _, tt := range tests {
+		cfg := valid()
+		tt.edit(&cfg)
+		_, err := New(cfg)
+		if err == nil || err.Error() != tt.want {
+			t.Errorf("%s: New() error = %v, want %q", tt.name, err, tt.want)
+		}
+	}
+}
+
+// A provider built with no clock and no logger gets the real clock and a
+// logger that discards.
+func TestNewDefaultsTheClockAndTheLogger(t *testing.T) {
+	t.Parallel()
+	cfg := Config{Issuer: testIssuer, ClientID: testClient, ClientSecret: testSecret, RedirectURIs: []string{testCallback}, Users: TestUsers()}
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.now == nil || p.logger == nil || p.Issuer() != testIssuer {
+		t.Errorf("defaults: now set = %v, logger set = %v, issuer = %q", p.now != nil, p.logger != nil, p.Issuer())
+	}
+}
