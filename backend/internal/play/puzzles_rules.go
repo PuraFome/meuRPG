@@ -52,55 +52,82 @@ func (s *Service) checkOnWrong(ctx context.Context, tx pgx.Tx, campaignID string
 		return nil, nil //nolint:nilnil // nil means "nothing happens": the stored column is NULL
 	}
 	out := &playv1.PuzzleOnWrong{}
-	if n := on.GetAttemptsPerPlayer(); n != 0 {
-		if n < 1 || n > maxAttempts {
-			return nil, onWrongInvalid("on_wrong.attempts_per_player", fmt.Sprintf("attempts_per_player must be 1 to %d", maxAttempts))
-		}
-		if !kind.judges() {
-			return nil, onWrongInvalid("on_wrong.attempts_per_player", "this kind has no wrong move to spend an attempt")
-		}
-		out.AttemptsPerPlayer = n
-	}
-	if n := on.GetMaxMoves(); n != 0 {
-		if n < 1 || n > maxMovesLimit {
-			return nil, onWrongInvalid("on_wrong.max_moves", fmt.Sprintf("max_moves must be 1 to %d", maxMovesLimit))
-		}
-		out.MaxMoves = n
-	}
-	if n := on.GetTimeLimitSeconds(); n != 0 {
-		if n < minTimeLimit || n > maxTimeLimit {
-			return nil, onWrongInvalid("on_wrong.time_limit_seconds", fmt.Sprintf("time_limit_seconds must be %d to %d", minTimeLimit, maxTimeLimit))
-		}
-		out.TimeLimitSeconds = n
+	if err := checkOnWrongNumbers(kind, on, out); err != nil {
+		return nil, err
 	}
 	if t := on.GetTrap(); t != nil {
-		if !kind.judges() {
-			return nil, onWrongInvalid("on_wrong.trap", "this kind has no wrong move to fire a trap")
-		}
-		if s.traps == nil {
-			return nil, errNoTraps()
-		}
-		mapID, err1 := uuid.Parse(t.GetMapId())
-		pointID, err2 := uuid.Parse(t.GetPointId())
-		if err1 != nil || err2 != nil {
-			return nil, onWrongInvalid("on_wrong.trap", "on_wrong.trap must name a map and a trap point")
-		}
-		traps, err := s.traps.Traps(ctx, tx, campaignID, mapID.String())
-		if connect.CodeOf(err) == connect.CodeNotFound {
-			return nil, onWrongInvalid("on_wrong.trap", "on_wrong.trap is not a trap point of this campaign")
-		}
+		trap, err := s.checkOnWrongTrap(ctx, tx, campaignID, kind, t)
 		if err != nil {
 			return nil, err
 		}
-		if !slices.ContainsFunc(traps, func(tr maplink.Trap) bool { return tr.PointID == pointID.String() }) {
-			return nil, onWrongInvalid("on_wrong.trap", "on_wrong.trap is not a trap point of this campaign")
-		}
-		out.Trap = &playv1.PuzzleTrapTarget{MapId: mapID.String(), PointId: pointID.String()}
+		out.Trap = trap
 	}
 	if out.GetTrap() == nil && out.GetAttemptsPerPlayer() == 0 && out.GetMaxMoves() == 0 && out.GetTimeLimitSeconds() == 0 {
 		return nil, nil //nolint:nilnil // all zero is "nothing happens"
 	}
 	return out, nil
+}
+
+// onWrongRange refuses a number of "Ao errar" outside lo to hi, naming it.
+func onWrongRange(name string, n, lo, hi int32) error {
+	if n < lo || n > hi {
+		return onWrongInvalid("on_wrong."+name, fmt.Sprintf("%s must be %d to %d", name, lo, hi))
+	}
+	return nil
+}
+
+// checkOnWrongNumbers checks the attempts, the moves and the time limit, in that order,
+// and copies the ones that are set into out.
+func checkOnWrongNumbers(kind puzzleKind, on, out *playv1.PuzzleOnWrong) error {
+	if n := on.GetAttemptsPerPlayer(); n != 0 {
+		if err := onWrongRange("attempts_per_player", n, 1, maxAttempts); err != nil {
+			return err
+		}
+		if !kind.judges() {
+			return onWrongInvalid("on_wrong.attempts_per_player", "this kind has no wrong move to spend an attempt")
+		}
+		out.AttemptsPerPlayer = n
+	}
+	if n := on.GetMaxMoves(); n != 0 {
+		if err := onWrongRange("max_moves", n, 1, maxMovesLimit); err != nil {
+			return err
+		}
+		out.MaxMoves = n
+	}
+	if n := on.GetTimeLimitSeconds(); n != 0 {
+		if err := onWrongRange("time_limit_seconds", n, minTimeLimit, maxTimeLimit); err != nil {
+			return err
+		}
+		out.TimeLimitSeconds = n
+	}
+	return nil
+}
+
+// checkOnWrongTrap checks that the trap is a trap point of the campaign, for a kind that
+// judges, and returns it in its stored form.
+func (s *Service) checkOnWrongTrap(ctx context.Context, tx pgx.Tx, campaignID string, kind puzzleKind, t *playv1.PuzzleTrapTarget) (*playv1.PuzzleTrapTarget, error) {
+	if !kind.judges() {
+		return nil, onWrongInvalid("on_wrong.trap", "this kind has no wrong move to fire a trap")
+	}
+	if s.traps == nil {
+		return nil, errNoTraps()
+	}
+	mapID, err1 := uuid.Parse(t.GetMapId())
+	pointID, err2 := uuid.Parse(t.GetPointId())
+	if err1 != nil || err2 != nil {
+		return nil, onWrongInvalid("on_wrong.trap", "on_wrong.trap must name a map and a trap point")
+	}
+	traps, err := s.traps.Traps(ctx, tx, campaignID, mapID.String())
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil, onWrongInvalid("on_wrong.trap", "on_wrong.trap is not a trap point of this campaign")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !slices.ContainsFunc(traps, func(tr maplink.Trap) bool { return tr.PointID == pointID.String() }) {
+		return nil, onWrongInvalid("on_wrong.trap", "on_wrong.trap is not a trap point of this campaign")
+	}
+	return &playv1.PuzzleTrapTarget{MapId: mapID.String(), PointId: pointID.String()}, nil
 }
 
 // checkHintCheck normalizes the skill check that wins a hint: a skill the scene checks
@@ -129,11 +156,8 @@ func (s *Service) checkHintCheck(hc *playv1.PuzzleHintCheck, hints []string) (*p
 // characters, each for a living player character of the campaign (the party: a member
 // that is still pending has none) or for nobody yet, and no character twice.
 func (s *Service) checkParts(ctx context.Context, tx pgx.Tx, campaignID string, parts []*playv1.PuzzlePart) ([]*playv1.PuzzlePart, error) {
-	bad := func(field, msg string) error {
-		return puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_PARTS, field, msg)
-	}
 	if len(parts) > maxParts {
-		return nil, bad("parts", fmt.Sprintf("a puzzle has at most %d parts", maxParts))
+		return nil, partsInvalid("parts", fmt.Sprintf("a puzzle has at most %d parts", maxParts))
 	}
 	if len(parts) == 0 {
 		return nil, nil
@@ -145,25 +169,51 @@ func (s *Service) checkParts(ctx context.Context, tx pgx.Tx, campaignID string, 
 	out := make([]*playv1.PuzzlePart, 0, len(parts))
 	owners := map[string]bool{}
 	for i, p := range parts {
-		text := strings.TrimSpace(p.GetText())
-		if n := utf8.RuneCountInString(text); n < 1 || n > maxPartText {
-			return nil, bad(fmt.Sprintf("parts[%d].text", i), fmt.Sprintf("a part must have 1 to %d characters", maxPartText))
+		part, err := checkPart(i, p, party, owners)
+		if err != nil {
+			return nil, err
 		}
-		id := strings.TrimSpace(p.GetCharacterId())
-		if id != "" {
-			parsed, err := uuid.Parse(id)
-			if err != nil || !slices.ContainsFunc(party, func(c link.Character) bool { return c.ID == parsed.String() }) {
-				return nil, bad(fmt.Sprintf("parts[%d].character_id", i), "a part is for a living player character of the campaign")
-			}
-			id = parsed.String()
-			if owners[id] {
-				return nil, bad(fmt.Sprintf("parts[%d].character_id", i), "a character has one part")
-			}
-			owners[id] = true
-		}
-		out = append(out, &playv1.PuzzlePart{CharacterId: id, Text: text})
+		out = append(out, part)
 	}
 	return out, nil
+}
+
+// partsInvalid is a refusal of the split information.
+func partsInvalid(field, msg string) error {
+	return puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_PARTS, field, msg)
+}
+
+// checkPart normalizes the i-th part: its text first, then its owner, if it has one.
+// owners holds the characters that already have a part.
+func checkPart(i int, p *playv1.PuzzlePart, party []link.Character, owners map[string]bool) (*playv1.PuzzlePart, error) {
+	text := strings.TrimSpace(p.GetText())
+	if n := utf8.RuneCountInString(text); n < 1 || n > maxPartText {
+		return nil, partsInvalid(fmt.Sprintf("parts[%d].text", i), fmt.Sprintf("a part must have 1 to %d characters", maxPartText))
+	}
+	id := strings.TrimSpace(p.GetCharacterId())
+	if id != "" {
+		var err error
+		if id, err = checkPartOwner(i, id, party, owners); err != nil {
+			return nil, err
+		}
+	}
+	return &playv1.PuzzlePart{CharacterId: id, Text: text}, nil
+}
+
+// checkPartOwner checks that id is a living character of the party with no part yet,
+// marks it as having one and returns its canonical form.
+func checkPartOwner(i int, id string, party []link.Character, owners map[string]bool) (string, error) {
+	field := fmt.Sprintf("parts[%d].character_id", i)
+	parsed, err := uuid.Parse(id)
+	if err != nil || !slices.ContainsFunc(party, func(c link.Character) bool { return c.ID == parsed.String() }) {
+		return "", partsInvalid(field, "a part is for a living player character of the campaign")
+	}
+	id = parsed.String()
+	if owners[id] {
+		return "", partsInvalid(field, "a character has one part")
+	}
+	owners[id] = true
+	return id, nil
 }
 
 // checkCipherKeyClue checks that the clue a cipher's key lives in is a clue of the
