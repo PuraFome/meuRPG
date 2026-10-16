@@ -23,6 +23,7 @@ func (cleanRules) TrapPreset(key string) (rules.TrapPreset, bool) {
 }
 
 func (cleanRules) IsSkill(key string) bool { return key == "skill:arcana" || key == "skill:history" }
+
 func (cleanRules) NamePT(key string) string {
 	if key == "damage-type:fire" || key == "condition:poisoned" {
 		return "nome"
