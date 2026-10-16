@@ -1,3 +1,4 @@
+import { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type {
   SummonOption,
   SummonSlot,
@@ -5,6 +6,7 @@ import type {
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { Creature, CreatureSummary } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { effectivePreference } from '../../core/campaigns/dice-labels';
 import { type SlotRow, freeText } from '../../core/combat/cast-flow';
 import { circleLabel } from '../../core/combat/combat-grid';
 import { groupFeminine, pluralName } from '../../core/combat/creature-names';
@@ -261,4 +263,25 @@ export function resultLineOf(c: Combatant, ac: number | undefined): string {
       ? `PV ${c.hitPointsCurrent} de ${c.hitPointsMax}`
       : '';
   return tight(joinDotsOf([ac === undefined ? '' : `CA ${ac}`, hp, metersText(c.speedFt)]));
+}
+
+/** The kinds in the list's order, each as many times as it was chosen. */
+export function creatureKeysOf(
+  rows: readonly ChoiceRow[],
+  counts: Readonly<Record<string, number>>,
+): string[] {
+  return rows.flatMap((r) => Array.from({ length: counts[r.key] ?? 0 }, () => r.key));
+}
+
+/** How the group's initiative d20 is made in a combat: by the app, typed from a physical die, or either. */
+export function diceFlagsOf(
+  combat: { diceMode: DiceMode; preference: DicePreference } | undefined,
+) {
+  if (!combat) {
+    return { canApp: true, canType: false, typing: false };
+  }
+  const canApp = combat.diceMode !== DiceMode.PHYSICAL;
+  const canType = combat.diceMode !== DiceMode.APP;
+  const preferApp = effectivePreference(combat.diceMode, combat.preference) === DicePreference.APP;
+  return { canApp, canType, typing: !canApp || (canType && !preferApp) };
 }
