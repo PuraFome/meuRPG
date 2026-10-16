@@ -406,41 +406,43 @@ export class CombatMap {
 
   protected onKeydown(event: KeyboardEvent): void {
     // A door's own button (the master's sheet) keeps Enter and the arrows for itself.
-    if ((event.target as HTMLElement).closest('[data-door]')) {
-      return;
-    }
-    if (!this.canMove()) {
+    if ((event.target as HTMLElement).closest('[data-door]') || !this.canMove()) {
       return;
     }
     if (event.key === 'Enter') {
       event.preventDefault();
-      if (this.pickSquares()) {
-        this.confirm.emit();
-        return;
-      }
-      const cursor = this.cursor();
-      const id = this.picked() ?? this.ownMoveId();
-      if (cursor && id) {
-        this.tokenDrop.emit({ id, ...cursor });
-        this.cursor.set(null);
-      }
-      return;
-    }
-    if (event.key === 'Escape') {
+      this.onEnter();
+    } else if (event.key === 'Escape') {
       this.cursor.set(null);
+    } else if (event.key.startsWith('Arrow')) {
+      event.preventDefault();
+      this.onArrow(event.key);
+    }
+  }
+
+  /** Enter: confirms the chosen square (`pickSquares`), or drops the token the keyboard moves where the cursor is. */
+  private onEnter(): void {
+    if (this.pickSquares()) {
+      this.confirm.emit();
       return;
     }
-    if (!event.key.startsWith('Arrow')) {
-      return;
+    const cursor = this.cursor();
+    const id = this.picked() ?? this.ownMoveId();
+    if (cursor && id) {
+      this.tokenDrop.emit({ id, ...cursor });
+      this.cursor.set(null);
     }
-    event.preventDefault();
+  }
+
+  /** An arrow: the choice (`pickSquares`) or the cursor goes one square, from where it is, else from the token the keyboard moves. */
+  private onArrow(key: string): void {
     const base = this.pickSquares()
       ? (this.chosen()?.square ?? this.reach()?.origin ?? null)
       : (this.cursor() ?? this.tokenOf(this.picked() ?? this.ownMoveId() ?? this.currentId()));
     if (!base) {
       return;
     }
-    const next = stepSquare(base, event.key, this.columns(), this.rows());
+    const next = stepSquare(base, key, this.columns(), this.rows());
     if (this.pickSquares()) {
       this.choose.emit(next);
     } else {
