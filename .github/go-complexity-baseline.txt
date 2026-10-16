@@ -133,8 +133,6 @@ cognitive internal/maps/images readJPEGHeader 16
 cognitive internal/maps/images/gen (Request).Validate 18
 cognitive internal/maps/images/gen parseAnswer 44
 cognitive internal/maps/refimg Render 16
-cognitive internal/notes (*Service).CreateNote 16
-cognitive internal/notes (*Service).UpdateNote 22
 cognitive internal/platform/blob (*GCS).do 16
 cognitive internal/platform/config Load 25
 cognitive internal/platform/config loadLimits 18
@@ -532,7 +530,6 @@ cyclomatic internal/maps/images CropFit 19
 cyclomatic internal/maps/images Process 17
 cyclomatic internal/maps/images/gen (Request).Validate 18
 cyclomatic internal/maps/images/gen parseAnswer 27
-cyclomatic internal/notes (*Service).UpdateNote 16
 cyclomatic internal/platform/config Load 24
 cyclomatic internal/platform/config loadLimits 18
 cyclomatic internal/play (*Service).AddCombatants 16
