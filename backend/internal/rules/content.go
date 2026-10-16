@@ -732,6 +732,19 @@ func (c *content) namePT(key string) string {
 	return c.namesEN[key]
 }
 
+// namesWithPrefix lists the keys of the Portuguese names that start with prefix, sorted, so a
+// loader that refuses a stray name always names the same one (a map's order is random).
+func (c *content) namesWithPrefix(prefix string) []string {
+	var keys []string
+	for k := range c.namesPT {
+		if strings.HasPrefix(k, prefix) {
+			keys = append(keys, k)
+		}
+	}
+	slices.Sort(keys)
+	return keys
+}
+
 // ability returns the Ability for an index such as "int", and whether it
 // is one.
 func ability(index string) (Ability, bool) {

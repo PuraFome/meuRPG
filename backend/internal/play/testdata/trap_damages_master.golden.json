@@ -1,0 +1,48 @@
+{
+  "damages": [
+    {
+      "amount": 5,
+      "characterId": "toren",
+      "characterName": "Toren",
+      "combatantId": "combatant-toren",
+      "createdAt": "TIME",
+      "damageTypeKey": "damage-type:bludgeoning",
+      "damageTypePt": "concussão",
+      "encounterId": "encounter",
+      "id": "ID",
+      "roll": {
+        "diceCount": 1,
+        "diceSides": 6,
+        "faces": [
+          5
+        ],
+        "total": 5
+      },
+      "status": "PENDING_DAMAGE_STATUS_ROLLED",
+      "trapName": "Fosso Dentro",
+      "trapPointId": "pit-inside"
+    },
+    {
+      "amount": 3,
+      "characterId": "pens",
+      "characterName": "Pensantus",
+      "createdAt": "TIME",
+      "damageTypeKey": "damage-type:bludgeoning",
+      "damageTypePt": "concussão",
+      "id": "ID",
+      "roll": {
+        "diceCount": 1,
+        "diceSides": 6,
+        "faces": [
+          3
+        ],
+        "total": 3
+      },
+      "sessionNumber": 1,
+      "sessionStartedAt": "TIME",
+      "status": "PENDING_DAMAGE_STATUS_ROLLED",
+      "trapName": "Fosso Fora",
+      "trapPointId": "pit-outside"
+    }
+  ]
+}

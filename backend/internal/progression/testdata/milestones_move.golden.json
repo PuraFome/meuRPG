@@ -1,0 +1,283 @@
+{
+  "01 anonymous": {
+    "refusal": "unauthenticated: sign in to continue",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "02 outsider": {
+    "refusal": "not_found: campaign not found",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "03 pending member": {
+    "refusal": "not_found: campaign not found",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "04 player": {
+    "refusal": "permission_denied: only the campaign's master can do this",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "05 malformed campaign": {
+    "refusal": "not_found: campaign not found",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "06 malformed milestone, no direction": {
+    "refusal": "not_found: milestone not found",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "07 unknown milestone, no direction": {
+    "refusal": "invalid_argument: direction is required",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "08 a direction that does not exist": {
+    "refusal": "invalid_argument: direction is required",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "09 unknown milestone": {
+    "refusal": "not_found: milestone not found",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "10 xp campaign, malformed milestone, no direction": {
+    "refusal": "failed_precondition: this campaign's XP mode does not take this [reason=XP_BLOCKED_REASON_MODE_NOT_ALLOWED character= xp_mode=XP_MODE_ENEMIES treasure=]",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "11 fails: the mode": {
+    "logs": [
+      "ERROR progression: cannot read the campaign's XP mode code=internal error=injected failure"
+    ],
+    "refusal": "internal: internal error",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "12 fails: the mode in the transaction": {
+    "logs": [
+      "ERROR progression: cannot read the campaign's XP mode code=internal error=injected failure"
+    ],
+    "refusal": "internal: internal error",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "13 fails: the milestone": {
+    "logs": [
+      "DEBUG progression: cannot move a milestone code=canceled error=find the milestone: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "14 fails: the milestone's marks": {
+    "logs": [
+      "DEBUG progression: cannot move a milestone code=canceled error=list the milestone's marks: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "15 fails: the list": {
+    "logs": [
+      "DEBUG progression: cannot move a milestone code=canceled error=list the milestones: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "16 fails: the marks": {
+    "logs": [
+      "DEBUG progression: cannot move a milestone code=canceled error=list the marks: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "17 fails: the second position": {
+    "logs": [
+      "DEBUG progression: cannot move a milestone code=canceled error=set a milestone's position: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "18 the first up": {
+    "answer": [
+      "<milestone-a> \"Marco A\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-c> \"Marco C\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-e> \"Marco E\" reached=false off_list=false has_history=false reached_at=false marks=0"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "19 the last down": {
+    "answer": [
+      "<milestone-a> \"Marco A\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-c> \"Marco C\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-e> \"Marco E\" reached=false off_list=false has_history=false reached_at=false marks=0"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true",
+      "4 Marco E key=false hash=true"
+    ]
+  },
+  "20 D up": {
+    "answer": [
+      "<milestone-a> \"Marco A\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-c> \"Marco C\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-e> \"Marco E\" reached=false off_list=false has_history=false reached_at=false marks=0"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco D key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco E key=false hash=true"
+    ]
+  },
+  "21 E up, past the reached C": {
+    "answer": [
+      "<milestone-a> \"Marco A\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-e> \"Marco E\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-c> \"Marco C\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true"
+    ]
+  },
+  "22 the reached C": {
+    "refusal": "failed_precondition: the milestone was already reached [reason=XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED character= xp_mode=XP_MODE_UNSPECIFIED treasure=]",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true"
+    ]
+  },
+  "23 E up, only reached ones above": {
+    "answer": [
+      "<milestone-a> \"Marco A\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-e> \"Marco E\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-c> \"Marco C\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<off-list> \"Derrotaram o chefe\" reached=true off_list=true has_history=false reached_at=true marks=1"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true"
+    ]
+  },
+  "24 D up, past the reached C, with one off the list": {
+    "answer": [
+      "<milestone-a> \"Marco A\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-c> \"Marco C\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-e> \"Marco E\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<off-list> \"Derrotaram o chefe\" reached=true off_list=true has_history=false reached_at=true marks=1"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco D key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco E key=false hash=true"
+    ]
+  },
+  "25 fails: the read after": {
+    "logs": [
+      "DEBUG progression: cannot read the milestones code=canceled error=list the milestones: timeout: context already done: context canceled"
+    ],
+    "refusal": "canceled: the request was canceled",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco D key=false hash=true"
+    ]
+  }
+}
