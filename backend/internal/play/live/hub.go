@@ -181,28 +181,35 @@ func (h *Hub) Publish(campaignID string, ev Event) int {
 	defer h.mu.Unlock()
 	delivered := 0
 	for s := range h.subs[campaignID] {
-		if !ev.Audience.includes(s.who) {
-			continue
-		}
-		if ev.Coalesce != "" {
-			if _, queued := s.pending[ev.Coalesce]; queued {
-				continue // the one that waits will make the app read the latest state
-			}
-		}
-		select {
-		case s.events <- ev:
-			if ev.Coalesce != "" {
-				if s.pending == nil {
-					s.pending = map[string]struct{}{}
-				}
-				s.pending[ev.Coalesce] = struct{}{}
-			}
+		if ev.Audience.includes(s.who) && h.deliver(s, ev) {
 			delivered++
-		default:
-			h.remove(s, ErrSlow)
 		}
 	}
 	return delivered
+}
+
+// deliver queues ev for s without waiting, and reports whether it did: not when the one
+// that waits under the same Coalesce key will do, and a full buffer drops s (ErrSlow). The
+// caller holds h.mu.
+func (h *Hub) deliver(s *Subscription, ev Event) bool {
+	if ev.Coalesce != "" {
+		if _, queued := s.pending[ev.Coalesce]; queued {
+			return false // the one that waits will make the app read the latest state
+		}
+	}
+	select {
+	case s.events <- ev:
+		if ev.Coalesce != "" {
+			if s.pending == nil {
+				s.pending = map[string]struct{}{}
+			}
+			s.pending[ev.Coalesce] = struct{}{}
+		}
+		return true
+	default:
+		h.remove(s, ErrSlow)
+		return false
+	}
 }
 
 // Close ends every subscription (ErrClosed) and refuses new ones. The

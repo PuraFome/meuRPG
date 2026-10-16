@@ -107,6 +107,25 @@ func turnMembers(cs []playdb.Combatant) []playdb.Combatant {
 // one's turn starts at once (the economy resets, the Escudo bonus ends, a
 // death save is due again), and the combat's state points at the first.
 func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) error {
+	if err := closeOldTurn(ctx, c, ids); err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err := c.q.ResetCombatantTurn(ctx, id); err != nil {
+			return fmt.Errorf("reset the turn: %w", err)
+		}
+	}
+	if c.svc != nil {
+		if err := c.svc.startOfTurnEffects(ctx, c, ids, round); err != nil {
+			return err
+		}
+	}
+	return setCurrent(ctx, c, ids[0], round)
+}
+
+// closeOldTurn ends what the turn that is over leaves: its effects, then the marks of the
+// turn, then the Escudo bonus of the ones whose turn starts.
+func closeOldTurn(ctx context.Context, c *combatTx, ids []string) error {
 	// What ends at the end of the turn that is over ends first (RN-22).
 	if c.svc != nil {
 		if err := c.svc.effectsBeforeTurn(ctx, c); err != nil {
@@ -117,33 +136,27 @@ func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) erro
 		return fmt.Errorf("clear the turn: %w", err)
 	}
 	if c.svc != nil {
-		if err := c.svc.endShields(ctx, c, ids); err != nil {
-			return err
-		}
+		return c.svc.endShields(ctx, c, ids)
 	}
-	for _, id := range ids {
-		if err := c.q.ResetCombatantTurn(ctx, id); err != nil {
-			return fmt.Errorf("reset the turn: %w", err)
-		}
-	}
+	return nil
+}
+
+// startOfTurnEffects settles what the start of the turn of ids changes, after their
+// economy was reset.
+func (s *Service) startOfTurnEffects(ctx context.Context, c *combatTx, ids []string, round int32) error {
 	// A character looking through its familiar's eyes since its last turn looks
 	// through its own again (MR-036).
-	if c.svc != nil {
-		if err := c.svc.endFamiliarSights(ctx, c, ids); err != nil {
-			return err
-		}
-		// The dodge and the reckless attack of the ones whose turn starts end, and so do
-		// the states that end at the start of their turn.
-		if err := c.svc.endStatesAtStart(ctx, c, ids, round); err != nil {
-			return err
-		}
-		// The effects that last: what ends now, the damage a turn under them brings and
-		// the saving throws of the start of the turn (RN-22).
-		if err := c.svc.effectsAfterTurnStart(ctx, c, ids, round); err != nil {
-			return err
-		}
+	if err := s.endFamiliarSights(ctx, c, ids); err != nil {
+		return err
 	}
-	return setCurrent(ctx, c, ids[0], round)
+	// The dodge and the reckless attack of the ones whose turn starts end, and so do
+	// the states that end at the start of their turn.
+	if err := s.endStatesAtStart(ctx, c, ids, round); err != nil {
+		return err
+	}
+	// The effects that last: what ends now, the damage a turn under them brings and
+	// the saving throws of the start of the turn (RN-22).
+	return s.effectsAfterTurnStart(ctx, c, ids, round)
 }
 
 // setCurrent saves where the combat is: the round and the member that the

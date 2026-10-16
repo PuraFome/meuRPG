@@ -129,31 +129,8 @@ func (s *Service) publishReactions(ctx context.Context, campaignID string, res c
 	for _, x := range cs {
 		byID[x.ID] = x
 	}
-	var names func(string) string
 	for _, n := range res.notes {
-		w := n.window
-		reactor, hasReactor := byID[deref(w.ReactorID)]
-		audience := []live.Audience{{Master: true}}
-		if hasReactor && reactor.UserID != nil {
-			audience = append(audience, live.Audience{UserID: *reactor.UserID})
-		}
-		switch {
-		case n.opened:
-			for _, a := range audience {
-				s.hub.Publish(campaignID, live.Event{Audience: a, Message: windowOpenedMessage(res.encounterID, w.ID)})
-			}
-		default:
-			if names == nil {
-				names = s.namesFor(ctx, campaignID)
-			}
-			for i, a := range audience {
-				text := ""
-				if n.byItself {
-					text = closedText(n, reactor, hasReactor, i == 0)
-				}
-				s.hub.Publish(campaignID, live.Event{Audience: a, Message: windowClosedMessage(res.encounterID, w.ID, n.byItself, text)})
-			}
-		}
+		s.publishNote(campaignID, res.encounterID, n, byID)
 	}
 	for _, id := range res.tellIDs {
 		if x, ok := byID[id]; ok && x.Kind == kindPlayer {
@@ -161,6 +138,28 @@ func (s *Service) publishReactions(ctx context.Context, campaignID string, res c
 				s.publishVitals(campaignID, v)
 			}
 		}
+	}
+}
+
+// publishNote tells one window that opened or closed to its reactor's player and to the
+// master.
+func (s *Service) publishNote(campaignID, encounterID string, n reactionNote, byID map[string]playdb.Combatant) {
+	w := n.window
+	reactor, hasReactor := byID[deref(w.ReactorID)]
+	audience := []live.Audience{{Master: true}}
+	if hasReactor && reactor.UserID != nil {
+		audience = append(audience, live.Audience{UserID: *reactor.UserID})
+	}
+	for i, a := range audience {
+		if n.opened {
+			s.hub.Publish(campaignID, live.Event{Audience: a, Message: windowOpenedMessage(encounterID, w.ID)})
+			continue
+		}
+		text := ""
+		if n.byItself {
+			text = closedText(n, reactor, hasReactor, i == 0)
+		}
+		s.hub.Publish(campaignID, live.Event{Audience: a, Message: windowClosedMessage(encounterID, w.ID, n.byItself, text)})
 	}
 }
 

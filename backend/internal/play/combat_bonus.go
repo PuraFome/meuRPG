@@ -46,18 +46,9 @@ func lastAttack(sheet link.Sheet, c playdb.Combatant) (link.Attack, bool) {
 // frenzied rage that began in an earlier turn is on. It returns the rule that made
 // it a bonus action attack, or the error that says why it cannot be made.
 func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Attack, frenzy bool) (combat.BonusKind, error) {
-	actionUsed := errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
 	last, hasLast := lastAttack(sheet, attacker)
 	if attack.Spell {
-		// A cantrip takes the whole action, whatever the Attack action did; the
-		// beams of one cast (Eldritch Blast) are the exception.
-		switch {
-		case !attacker.ActionUsed:
-			return combat.BonusNone, nil
-		case attack.Beams > 1 && hasLast && last.Key == attack.Key && int(attacker.AttacksMade) < attack.Beams:
-			return combat.BonusNone, nil
-		}
-		return combat.BonusNone, actionUsed
+		return spellAttackEconomy(attacker, attack, last, hasLast)
 	}
 	perAction := max(sheet.AttacksPerAction, 1)
 	castCantrip := hasLast && last.Spell // the action went to a cantrip: no Attack action attacks left
@@ -70,6 +61,29 @@ func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Atta
 		FlurryLeft:   int(attacker.BonusAttacksLeft), Last: traitsOf(last),
 		NoSecondLight: combat.SecondLightWeaponMissing(lightMelee(sheet)), FrenzyReady: frenzy,
 	}, traitsOf(attack))
+	return bonusAttackEconomy(attacker, kind, castCantrip, perAction)
+}
+
+// errActionUsed is the refusal of an attack that finds the action of the turn spent.
+func errActionUsed() error {
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+}
+
+// spellAttackEconomy is what a cantrip attack costs: the whole action, whatever the Attack
+// action did; the beams of one cast (Eldritch Blast) are the exception.
+func spellAttackEconomy(attacker playdb.Combatant, attack, last link.Attack, hasLast bool) (combat.BonusKind, error) {
+	switch {
+	case !attacker.ActionUsed:
+		return combat.BonusNone, nil
+	case attack.Beams > 1 && hasLast && last.Key == attack.Key && int(attacker.AttacksMade) < attack.Beams:
+		return combat.BonusNone, nil
+	}
+	return combat.BonusNone, errActionUsed()
+}
+
+// bonusAttackEconomy settles an attack the action cannot make: the bonus action attack rule
+// kind that lets it, or the refusal that says why it cannot be made.
+func bonusAttackEconomy(attacker playdb.Combatant, kind combat.BonusKind, castCantrip bool, perAction int) (combat.BonusKind, error) {
 	switch {
 	case kind == combat.BonusFlurry:
 		return kind, nil
@@ -80,7 +94,7 @@ func attackEconomy(attacker playdb.Combatant, sheet link.Sheet, attack link.Atta
 	case !castCantrip && attacker.AttacksMade > 0 && perAction > 1:
 		return combat.BonusNone, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED, "the Attack action made all its attacks")
 	}
-	return combat.BonusNone, actionUsed
+	return combat.BonusNone, errActionUsed()
 }
 
 // lightMelee counts the light melee weapons the sheet carries, one per weapon.

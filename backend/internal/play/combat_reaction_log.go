@@ -210,16 +210,13 @@ func (f *reactionFacts) cuttingWords() (string, bool) {
 	if !re.Used || !f.seesReactor {
 		return "", false
 	}
+	if re.Ineffect {
+		return f.cuttingWordsIneffective(), true
+	}
 	target, kindText := cuttingWordsTarget(re.Roll)
 	actorText := ""
 	if f.seesOther && f.other.Label != "" {
 		actorText = " de " + f.other.Label
-	}
-	if re.Ineffect {
-		if f.v.master {
-			return fmt.Sprintf("%s usou Palavras de Interrupção: d%d (%d), sem efeito: %s não ouve o bardo ou é imune a enfeitiçar.", f.who, re.DieSides, re.Die, orSomeone(f.other.Label)), true
-		}
-		return fmt.Sprintf("%s usou Palavras de Interrupção: sem efeito.%s", f.who, f.by), true
 	}
 	if f.v.master {
 		tail := ""
@@ -236,6 +233,16 @@ func (f *reactionFacts) cuttingWords() (string, bool) {
 		}
 	}
 	return fmt.Sprintf("%s usou Palavras de Interrupção: %s%s %s.%s", f.who, target, actorText, verb, f.by), true
+}
+
+// cuttingWordsIneffective is the line of a Cutting Words that did nothing: the master reads
+// why.
+func (f *reactionFacts) cuttingWordsIneffective() string {
+	re := f.re
+	if f.v.master {
+		return fmt.Sprintf("%s usou Palavras de Interrupção: d%d (%d), sem efeito: %s não ouve o bardo ou é imune a enfeitiçar.", f.who, re.DieSides, re.Die, orSomeone(f.other.Label))
+	}
+	return fmt.Sprintf("%s usou Palavras de Interrupção: sem efeito.%s", f.who, f.by)
 }
 
 // cuttingWordsTarget names what the die came off: the attack (also when the roll is not
