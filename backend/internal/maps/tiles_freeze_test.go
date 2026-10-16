@@ -496,7 +496,7 @@ func pngWith16Bits(t *testing.T, w, h int) []byte {
 	img := image.NewRGBA64(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			img.SetRGBA64(x, y, color.RGBA64{R: uint16(x * 257), G: uint16(y * 257), B: 0x8000, A: 0xffff}) //nolint:gosec // G115: a test pattern
+			img.SetRGBA64(x, y, color.RGBA64{R: uint16(x * 257), G: uint16(y * 257), B: 0x8000, A: 0xffff})
 		}
 	}
 	var buf bytes.Buffer
@@ -512,7 +512,7 @@ func pngGray16(t *testing.T, w, h int) []byte {
 	img := image.NewGray16(image.Rect(0, 0, w, h))
 	for y := range h {
 		for x := range w {
-			img.SetGray16(x, y, color.Gray16{Y: uint16(x*300 + y)}) //nolint:gosec // G115: a test pattern
+			img.SetGray16(x, y, color.Gray16{Y: uint16(x*300 + y)})
 		}
 	}
 	var buf bytes.Buffer
