@@ -158,3 +158,8 @@ updates:
       # the line moves together in CI, the Makefile and the Homebrew formula.
       - dependency-name: "cockroachdb/cockroach"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # compose.ci.yaml pulls the same digest from Cockroach Labs' registry on
+      # Google Cloud, under this other name. It moves by hand in the PR for
+      # compose.yaml (with COCKROACH_IMAGE), so it never gets a PR of its own:
+      # #391 bumped it alone, to the 26.3 Innovation line.
+      - dependency-name: "cockroach-cloud-images/cockroachdb/cockroach"
