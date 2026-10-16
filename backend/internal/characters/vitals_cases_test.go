@@ -1,14 +1,11 @@
 package characters
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"testing"
 
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -20,60 +17,6 @@ import (
 // character's vitals: every refusal (its field and its message, in the order the checks
 // run) and, for every accepted change, the fields that moved. No database: the vitals come
 // from vitalsToProto on hand-made rows and maximums.
-
-// vitalsFlat is a message as a map from the path of each field in its protojson form
-// (spellSlots[1].used) to the value as JSON.
-func vitalsFlat(t *testing.T, m proto.Message) map[string]string {
-	t.Helper()
-	raw, err := protojson.Marshal(m)
-	if err != nil {
-		t.Fatalf("protojson.Marshal() error = %v", err)
-	}
-	var tree any
-	if err := json.Unmarshal(raw, &tree); err != nil {
-		t.Fatalf("json.Unmarshal() error = %v", err)
-	}
-	out := map[string]string{}
-	flattenJSON(out, "", tree)
-	return out
-}
-
-func flattenJSON(out map[string]string, path string, v any) {
-	switch x := v.(type) {
-	case map[string]any:
-		for k, e := range x {
-			flattenJSON(out, strings.TrimPrefix(path+"."+k, "."), e)
-		}
-	case []any:
-		for i, e := range x {
-			flattenJSON(out, fmt.Sprintf("%s[%d]", path, i), e)
-		}
-	default:
-		b, _ := json.Marshal(x)
-		out[path] = string(b)
-	}
-}
-
-// vitalsMoved lists, sorted, the fields of after that differ from before as
-// path=value, and the ones it no longer has as -path.
-func vitalsMoved(before, after map[string]string) string {
-	var moved []string
-	for k, v := range after {
-		if before[k] != v {
-			moved = append(moved, k+"="+v)
-		}
-	}
-	for k := range before {
-		if _, ok := after[k]; !ok {
-			moved = append(moved, "-"+k)
-		}
-	}
-	slices.Sort(moved)
-	if len(moved) == 0 {
-		return "unchanged"
-	}
-	return strings.Join(moved, " ")
-}
 
 // vitalsGoldenDiff is the first lines that differ between two texts, enough to see what
 // moved (the combat reads goldens use it too).
@@ -237,7 +180,7 @@ func TestApplyVitalsChangeCases(t *testing.T) {
 		if c.rich {
 			v = vitalsGoldenRichView()
 		}
-		before := vitalsFlat(t, v)
+		before := protoFlat(t, v)
 		var got string
 		err := applyVitalsChange(v, c.req)
 		switch fe, ok := errors.AsType[*fieldError](err); {
@@ -246,7 +189,7 @@ func TestApplyVitalsChangeCases(t *testing.T) {
 		case err != nil:
 			t.Fatalf("%s: applyVitalsChange() error = %v, want a fieldError or nil", c.name, err)
 		default:
-			got = vitalsMoved(before, vitalsFlat(t, v))
+			got = fieldsMoved(before, protoFlat(t, v))
 		}
 		if got != c.want {
 			t.Errorf("%s:\n got  %s\n want %s", c.name, got, c.want)
@@ -335,7 +278,7 @@ func TestPlanRestCases(t *testing.T) {
 			}
 			got = "error: " + err.Error()
 		} else {
-			got = "preview " + vitalsPreview(vitalsFlat(t, plan.preview)) + " / after " + vitalsMoved(vitalsFlat(t, was), vitalsFlat(t, plan.after))
+			got = "preview " + vitalsPreview(protoFlat(t, plan.preview)) + " / after " + fieldsMoved(protoFlat(t, was), protoFlat(t, plan.after))
 		}
 		if got != c.want {
 			t.Errorf("%s:\n got  %s\n want %s", c.name, got, c.want)
@@ -354,5 +297,5 @@ func vitalsPreview(flat map[string]string) string {
 	for _, k := range []string{"characterId", "name", "hitPointsCurrent", "hitPointsMax"} {
 		delete(flat, k)
 	}
-	return vitalsMoved(map[string]string{}, flat)
+	return fieldsMoved(map[string]string{}, flat)
 }
