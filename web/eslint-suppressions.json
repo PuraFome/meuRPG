@@ -1268,7 +1268,7 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 3
+      "count": 1
     }
   },
   "src/app/pages/live-session/combat/attack-sheet/attack-steps.ts": {

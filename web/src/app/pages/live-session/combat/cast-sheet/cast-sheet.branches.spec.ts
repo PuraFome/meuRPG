@@ -616,7 +616,7 @@ describe('CastSheet: the damage still to roll', () => {
   it('ignores a second roll while one is in the air', async () => {
     const { sheet } = await open({ data: { resume: [owed()] } });
     sheet.busy.set(true);
-    expect(await sheet.rollGroup([owed()], { inApp: true })).toBe(false);
+    expect(await sheet.damage.rollGroup([owed()], { inApp: true })).toBe(false);
   });
 });
 

@@ -246,7 +246,7 @@ describe('AttackSheet: the list of targets', () => {
   it('takes a request the combat closed as no request, and one it has not heard of as the one sent', async () => {
     const sent = { id: 'r1', status: RollModeRequestStatus.PENDING } as never;
     const { sheet, state } = await open({ noEncounter: true });
-    sheet.asked.set(sent);
+    sheet.modes.asked.set(sent);
     expect(sheet.request()).toBe(sent);
     state.apply(
       encounter({
@@ -374,10 +374,8 @@ describe('AttackSheet: the damage before it is rolled', () => {
           critical: true,
           bonus,
           criticalMax: 0,
-          extraCriticalDice: [{ count: 1, sides: 12, sourceNamePt: 'Crítico Brutal', level: 9 }],
           extraDiceCount: 1,
-          extraDiceSides: 12,
-          extraDiceSourcePt: 'Crítico Brutal',
+          extraDiceNamePt: 'Crítico Brutal',
         }),
         targetLabel: 'Goblin',
       },
@@ -385,13 +383,10 @@ describe('AttackSheet: the damage before it is rolled', () => {
     const plus = await open({ data: brutal(3) });
     const minus = await open({ data: brutal(-2) });
     const none = await open({ data: brutal(0) });
-    if (plus.sheet.brutal()) {
-      expect(plus.sheet.fixedText()).toBe('+ 3 de bônus');
-      expect(minus.sheet.fixedText()).toBe('− 2 de bônus');
-      expect(none.sheet.fixedText()).toBe('');
-    } else {
-      expect(plus.sheet.fixedText()).toBeDefined();
-    }
+    expect(plus.sheet.brutal()).not.toBeNull();
+    expect(plus.sheet.fixedText()).toBe('+ 3 de bônus');
+    expect(minus.sheet.fixedText()).toBe('− 2 de bônus');
+    expect(none.sheet.fixedText()).toBe('');
   });
 
   it('signs a negative attack bonus with a minus', async () => {
