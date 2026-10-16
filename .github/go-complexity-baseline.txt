@@ -387,8 +387,6 @@ cognitive internal/rules/dungeon connectionsAndNetworks 28
 cognitive internal/rules/dungeon normalize 25
 cognitive internal/rules/formula (*Compiler).check 25
 cognitive internal/rules/formula reach 34
-cognitive internal/rules/grid (Terrain).MoveUntil 38
-cognitive internal/rules/grid (Terrain).walk 26
 cognitive internal/rules/puzzle (Pillars).Minimum 28
 cognitive internal/rules/puzzle LightsMinimum 38
 cognitive internal/rules/puzzle cipherAlphabet 26
@@ -788,8 +786,6 @@ cyclomatic internal/rules/dungeon normalize 29
 cyclomatic internal/rules/encounter Generate 18
 cyclomatic internal/rules/formula (*Compiler).check 22
 cyclomatic internal/rules/formula reach 24
-cyclomatic internal/rules/grid (Terrain).MoveUntil 27
-cyclomatic internal/rules/grid (Terrain).walk 19
 cyclomatic internal/rules/puzzle (Pillars).Minimum 16
 cyclomatic internal/rules/puzzle LightsMinimum 23
 cyclomatic internal/rules/puzzle cipherAlphabet 19
