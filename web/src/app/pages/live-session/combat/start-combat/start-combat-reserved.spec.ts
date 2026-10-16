@@ -10,6 +10,7 @@ import { CombatClient, type JoinSpec } from '../../../../core/combat/combat-clie
 import { encounter } from '../../../../core/combat/combat-testing';
 import { RosterClient } from '../../../../core/maps/roster-client';
 import { StartCombatDialog, type StartCombatData } from './start-combat-dialog';
+import { nextTurn } from '../../../../../test-settle';
 
 const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
 
@@ -61,7 +62,7 @@ describe('"Iniciar combate": a reserved character (no player yet) cannot fight',
     const fixture = TestBed.createComponent(StartCombatDialog);
     fixture.detectChanges();
     await fixture.whenStable();
-    await new Promise((r) => setTimeout(r, 0));
+    await nextTurn();
     await fixture.whenStable();
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
