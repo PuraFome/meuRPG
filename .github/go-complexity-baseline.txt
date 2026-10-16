@@ -22,7 +22,6 @@ cognitive internal/maps (*Service).PlaceMapToken 17
 cognitive internal/maps (*Service).RemoveMapToken 17
 cognitive internal/maps (*Service).SetCarriedLight 28
 cognitive internal/maps (*Service).SetMapFog 40
-cognitive internal/maps (*Service).SetMapGrid 73
 cognitive internal/maps (*Service).SetMapPointRevealed 16
 cognitive internal/maps (*Service).SetMapRevealed 16
 cognitive internal/maps (*Service).UpdateMap 72
@@ -256,7 +255,6 @@ cyclomatic internal/maps (*Service).OpenDoors 16
 cyclomatic internal/maps (*Service).PaintMapCells 28
 cyclomatic internal/maps (*Service).SetCarriedLight 24
 cyclomatic internal/maps (*Service).SetMapFog 31
-cyclomatic internal/maps (*Service).SetMapGrid 49
 cyclomatic internal/maps (*Service).UpdateMap 40
 cyclomatic internal/maps (*Service).UpdateMapPoint 34
 cyclomatic internal/maps (*Service).UseGeneratedImageAsMapImage 49

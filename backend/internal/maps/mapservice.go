@@ -639,129 +639,30 @@ func (s *Service) SetMapGrid(
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	drawn, factor := req.Msg.GetColumns(), req.Msg.GetSquareFactor()
-	if drawn != 0 && (drawn < minGridColumns || drawn > maxGridColumns) {
-		return nil, connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("columns must be 0 (no grid) or %d to %d", minGridColumns, maxGridColumns))
+	drawn := req.Msg.GetColumns()
+	factor, err := checkGridRequest(drawn, req.Msg.GetSquareFactor())
+	if err != nil {
+		return nil, err
 	}
-	if factor < 0 || factor > grid.MaxFactor || (drawn == 0 && factor > 1) {
-		return nil, connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("square_factor must be 1 to %d (0 reads as 1), and only with columns", grid.MaxFactor))
-	}
-	factor = max(factor, 1)
 	current, err := s.currentMap(ctx, m.CampaignID)
 	if err != nil {
 		return nil, err
 	}
-	// The table's fog rule meets the map's first grid (RN-24): the fog comes on, and
-	// the raw image never reaches the players (RN-10), so an image that serves
-	// another use is copied first, as SetMapFog does.
-	var imageCopy *fogCopy
-	if drawn != 0 {
-		if pre, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: m.CampaignID, ID: mapID}); err == nil && pre.FogOnFirstGrid && pre.GridColumns == nil {
-			if imageCopy, err = s.prepareFogCopy(ctx, m.CampaignID, mapID, pre.ImageID); err != nil {
-				return nil, s.dbError(ctx, "copy the map's image for the fog", err)
-			}
-		}
+	imageCopy, err := s.gridFogCopy(ctx, m.CampaignID, mapID, drawn)
+	if err != nil {
+		return nil, err
 	}
-	var updated mapsdb.Map
-	changed, copied := false, false // whether the layers were cleared or scaled; whether the fog's image copy was used
+	var w gridWrite
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		changed, copied = false, false
-		before, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errMapNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find map: %w", err)
-		}
-		size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: m.CampaignID, ID: mapID})
-		if err != nil {
-			return fmt.Errorf("read the map's image size: %w", err)
-		}
-		var engine grid.Grid // the grid the rules will use; zero for none
-		if drawn != 0 {
-			if engine, err = grid.EngineGrid(int(drawn), int(factor), int(size.ImageWidth), int(size.ImageHeight)); err != nil {
-				return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(
-					"%d columns of %d squares each make a grid that passes the limit of %d x %d squares",
-					drawn, factor, grid.MaxColumns, grid.MaxRows))
-			}
-		}
-		engineColumns := int32(engine.Columns) //nolint:gosec // G115: at most 200
-		var gridColumns *int32                 // NULL clears the grid
-		if drawn != 0 {
-			gridColumns = &engineColumns
-		}
-		if drawn == 0 {
-			factor = 1
-		}
-		// What happens to the layers is decided from the row locked here, so a combat that
-		// starts meanwhile is seen. The same grid and factor again change nothing; the
-		// same drawing with a factor that is a multiple of the old one is scaled (D3);
-		// anything else clears the layers, which a fight standing on them cannot lose (D2).
-		// The grid is the same when the rules' columns and rows are: 24 drawn columns
-		// of 1,5 m and 12 of 3 m make the same grid (when the image's proportions
-		// agree), and nothing painted needs to change.
-		oldGrid := gridOf(before.GridColumns, before.GridFactor, size.ImageWidth, size.ImageHeight)
-		sameGrid := oldGrid == engine
-		step, scales := grid.ScaleStep(int(before.GridFactor), int(factor))
-		scales = scales && drawn != 0 && before.GridColumns != nil && drawn == *before.GridColumns/before.GridFactor
-		if !sameGrid {
-			if err := s.refuseWhileCombat(ctx, tx, m.CampaignID, mapID); err != nil {
-				return err
-			}
-		}
-		updated, err = q.SetMapGrid(ctx, mapsdb.SetMapGridParams{
-			CampaignID: m.CampaignID, ID: mapID, GridColumns: gridColumns, GridFactor: factor, Now: s.now(),
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errMapNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("set map grid: %w", err)
-		}
-		switch {
-		case sameGrid:
-		case scales:
-			changed = true
-			if err := scaleLayers(ctx, q, mapID, before.VisionEpoch, oldGrid, step, s.now()); err != nil {
-				return err
-			}
-		default:
-			changed = true
-			if err := clearLayers(ctx, q, mapID); err != nil {
-				return err
-			}
-		}
-		if gridColumns != nil && before.FogOnFirstGrid && before.GridColumns == nil && !before.FogEnabled {
-			if imageCopy != nil && before.ImageID == imageCopy.source.ID {
-				if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
-					return err
-				}
-				if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: m.CampaignID, ID: mapID, ImageID: imageCopy.id, Now: s.now()}); err != nil {
-					return fmt.Errorf("give the map its copy of the image: %w", err)
-				}
-				copied = true
-			}
-			if updated, err = q.ApplyFogRule(ctx, mapsdb.ApplyFogRuleParams{CampaignID: m.CampaignID, ID: mapID, Now: s.now()}); err != nil {
-				return fmt.Errorf("apply the table's fog rule: %w", err)
-			}
-		}
-		return nil
+		var err error
+		w, err = s.writeGrid(ctx, tx, gridChange{campaignID: m.CampaignID, userID: m.UserID, mapID: mapID, drawn: drawn, factor: factor, imageCopy: imageCopy})
+		return err
 	})
-	if imageCopy != nil && (err != nil || !copied) {
-		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
-	}
+	s.discardGridCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
 	if err != nil {
 		return nil, s.dbError(ctx, "set a map's grid", err)
 	}
-	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, updated.RevealedAt, current))
-	if changed {
-		s.lits.forget(mapID)
-		s.tiles.forget(mapID)
-		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers, or was scaled
-	}
+	s.announceGrid(ctx, m, mapID, current, w)
 	out, err := s.masterMap(ctx, m, mapID)
 	if err != nil {
 		return nil, err

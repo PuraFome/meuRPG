@@ -1,0 +1,225 @@
+package maps
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+)
+
+// SetMapGrid's phases (MR-013, MR-025, RN-24): the request is checked before
+// anything is read, the fog's image copy is made before the transaction, and
+// the transaction locks the map, works out what happens to the layers, writes
+// the grid and applies the table's fog rule.
+
+// checkGridRequest refuses the columns and the square factor a request may not
+// carry, columns first, and returns the factor with 0 read as 1.
+func checkGridRequest(drawn, factor int32) (int32, error) {
+	if drawn != 0 && (drawn < minGridColumns || drawn > maxGridColumns) {
+		return 0, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("columns must be 0 (no grid) or %d to %d", minGridColumns, maxGridColumns))
+	}
+	if factor < 0 || factor > grid.MaxFactor || (drawn == 0 && factor > 1) {
+		return 0, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("square_factor must be 1 to %d (0 reads as 1), and only with columns", grid.MaxFactor))
+	}
+	return max(factor, 1), nil
+}
+
+// gridFogCopy makes the copy of the image a map takes when its first grid brings
+// the table's fog (RN-24): the fog comes on, and the raw image never reaches the
+// players (RN-10), so an image that serves another use is copied first, as
+// SetMapFog does. It is nil when the call sets no grid, the map is not marked for
+// the rule or already has a grid, or nothing else uses the image.
+func (s *Service) gridFogCopy(ctx context.Context, campaignID, mapID string, drawn int32) (*fogCopy, error) {
+	if drawn == 0 {
+		return nil, nil
+	}
+	pre, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
+	if err == nil && pre.FogOnFirstGrid && pre.GridColumns == nil {
+		imageCopy, err := s.prepareFogCopy(ctx, campaignID, mapID, pre.ImageID)
+		if err != nil {
+			return nil, s.dbError(ctx, "copy the map's image for the fog", err)
+		}
+		return imageCopy, nil
+	}
+	return nil, nil // a map that cannot be read here is refused inside the transaction
+}
+
+// gridChange is one SetMapGrid call as its transaction sees it.
+type gridChange struct {
+	campaignID, userID, mapID string
+	drawn, factor             int32 // the drawn columns (0 for no grid) and the square factor, 0 already read as 1
+	imageCopy                 *fogCopy
+}
+
+// gridWrite is what the transaction did.
+type gridWrite struct {
+	updated mapsdb.Map
+	changed bool // the layers were cleared or scaled
+	copied  bool // the fog's image copy was used
+}
+
+// writeGrid is SetMapGrid's transaction: every decision is made from the row
+// locked here, so a combat that starts meanwhile is seen.
+func (s *Service) writeGrid(ctx context.Context, tx pgx.Tx, c gridChange) (gridWrite, error) {
+	q := s.queries.WithTx(tx)
+	before, size, err := lockForGrid(ctx, q, c.campaignID, c.mapID)
+	if err != nil {
+		return gridWrite{}, err
+	}
+	engine, err := engineGridFor(c.drawn, c.factor, size)
+	if err != nil {
+		return gridWrite{}, err
+	}
+	plan := planGridLayers(before, size, engine, c)
+	if !plan.same {
+		if err := s.refuseWhileCombat(ctx, tx, c.campaignID, c.mapID); err != nil {
+			return gridWrite{}, err
+		}
+	}
+	var w gridWrite
+	if w.updated, err = s.storeGrid(ctx, q, c, engine); err != nil {
+		return gridWrite{}, err
+	}
+	if w.changed, err = s.settleLayers(ctx, q, c.mapID, before, plan); err != nil {
+		return gridWrite{}, err
+	}
+	if c.drawn != 0 && before.FogOnFirstGrid && before.GridColumns == nil && !before.FogEnabled {
+		if w.updated, w.copied, err = s.applyFirstGridFog(ctx, q, c, before); err != nil {
+			return gridWrite{}, err
+		}
+	}
+	return w, nil
+}
+
+// lockForGrid locks the map's row and reads its image's size.
+func lockForGrid(ctx context.Context, q *mapsdb.Queries, campaignID, mapID string) (mapsdb.Map, mapsdb.GetMapGridRow, error) {
+	before, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: mapID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return before, mapsdb.GetMapGridRow{}, errMapNotFound()
+	}
+	if err != nil {
+		return before, mapsdb.GetMapGridRow{}, fmt.Errorf("find map: %w", err)
+	}
+	size, err := q.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
+	if err != nil {
+		return before, size, fmt.Errorf("read the map's image size: %w", err)
+	}
+	return before, size, nil
+}
+
+// engineGridFor is the grid the rules will use for a drawing of drawn columns
+// over the image: zero for no grid, an error for one past the limits.
+func engineGridFor(drawn, factor int32, size mapsdb.GetMapGridRow) (grid.Grid, error) {
+	if drawn == 0 {
+		return grid.Grid{}, nil
+	}
+	engine, err := grid.EngineGrid(int(drawn), int(factor), int(size.ImageWidth), int(size.ImageHeight))
+	if err != nil {
+		return grid.Grid{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf(
+			"%d columns of %d squares each make a grid that passes the limit of %d x %d squares",
+			drawn, factor, grid.MaxColumns, grid.MaxRows))
+	}
+	return engine, nil
+}
+
+// layerPlan is what happens to the painted layers when the grid changes.
+type layerPlan struct {
+	old    grid.Grid // the grid the layers are sized for now
+	same   bool      // the rules' grid does not change: nothing painted needs to change
+	scales bool      // the same drawing at a factor that is a multiple of the old one
+	step   int       // how many squares a square becomes, when it scales
+}
+
+// planGridLayers decides what happens to the layers (D2, D3). The same grid and
+// factor again change nothing; the same drawing with a factor that is a multiple
+// of the old one is scaled; anything else clears the layers, which a fight
+// standing on them cannot lose. The grid is the same when the rules' columns and
+// rows are: 24 drawn columns of 1,5 m and 12 of 3 m make the same grid (when the
+// image's proportions agree), and nothing painted needs to change.
+func planGridLayers(before mapsdb.Map, size mapsdb.GetMapGridRow, engine grid.Grid, c gridChange) layerPlan {
+	old := gridOf(before.GridColumns, before.GridFactor, size.ImageWidth, size.ImageHeight)
+	step, scales := grid.ScaleStep(int(before.GridFactor), int(c.factor))
+	scales = scales && c.drawn != 0 && before.GridColumns != nil && c.drawn == *before.GridColumns/before.GridFactor
+	return layerPlan{old: old, same: old == engine, scales: scales, step: step}
+}
+
+// storeGrid writes the grid, which is NULL when the call clears it.
+func (s *Service) storeGrid(ctx context.Context, q *mapsdb.Queries, c gridChange, engine grid.Grid) (mapsdb.Map, error) {
+	var gridColumns *int32 // NULL clears the grid
+	if c.drawn != 0 {
+		engineColumns := int32(engine.Columns) //nolint:gosec // G115: at most 200
+		gridColumns = &engineColumns
+	}
+	updated, err := q.SetMapGrid(ctx, mapsdb.SetMapGridParams{
+		CampaignID: c.campaignID, ID: c.mapID, GridColumns: gridColumns, GridFactor: c.factor, Now: s.now(),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return updated, errMapNotFound()
+	}
+	if err != nil {
+		return updated, fmt.Errorf("set map grid: %w", err)
+	}
+	return updated, nil
+}
+
+// settleLayers scales or clears the layers as the plan says, and tells whether it
+// touched them.
+func (s *Service) settleLayers(ctx context.Context, q *mapsdb.Queries, mapID string, before mapsdb.Map, plan layerPlan) (bool, error) {
+	switch {
+	case plan.same:
+		return false, nil
+	case plan.scales:
+		return true, scaleLayers(ctx, q, mapID, before.VisionEpoch, plan.old, plan.step, s.now())
+	default:
+		return true, clearLayers(ctx, q, mapID)
+	}
+}
+
+// applyFirstGridFog is the table's fog rule meeting the map's first grid (RN-24):
+// the map takes the image copy made for it, when that copy is still of the image
+// the map has, and the fog comes on. It returns the map as it is now and whether
+// the copy was used.
+func (s *Service) applyFirstGridFog(ctx context.Context, q *mapsdb.Queries, c gridChange, before mapsdb.Map) (mapsdb.Map, bool, error) {
+	copied := false
+	if c.imageCopy != nil && before.ImageID == c.imageCopy.source.ID {
+		if err := c.imageCopy.insert(ctx, q, s, c.campaignID, c.userID); err != nil {
+			return mapsdb.Map{}, false, err
+		}
+		if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: c.campaignID, ID: c.mapID, ImageID: c.imageCopy.id, Now: s.now()}); err != nil {
+			return mapsdb.Map{}, false, fmt.Errorf("give the map its copy of the image: %w", err)
+		}
+		copied = true
+	}
+	updated, err := q.ApplyFogRule(ctx, mapsdb.ApplyFogRuleParams{CampaignID: c.campaignID, ID: c.mapID, Now: s.now()})
+	if err != nil {
+		return updated, copied, fmt.Errorf("apply the table's fog rule: %w", err)
+	}
+	return updated, copied, nil
+}
+
+// announceGrid tells the watchers of a map whose grid was set, and forgets what
+// depended on the layers when they changed.
+func (s *Service) announceGrid(ctx context.Context, m authz.Membership, mapID, current string, w gridWrite) {
+	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, w.updated.RevealedAt, current))
+	if w.changed {
+		s.lits.forget(mapID)
+		s.tiles.forget(mapID)
+		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers, or was scaled
+	}
+}
+
+// discardGridCopy deletes the files of an image copy made for nothing: the
+// transaction failed, or the map did not take it.
+func (s *Service) discardGridCopy(ctx context.Context, campaignID string, imageCopy *fogCopy, unused bool) {
+	if imageCopy != nil && unused {
+		s.deleteFiles(ctx, campaignID, imageCopy.id)
+	}
+}
