@@ -47,7 +47,8 @@ func (l *runLog) Write(p []byte) (int, error) {
 }
 
 // lines is the log, one record per line, without the time and the static
-// attributes, with what changes between runs (the port, durations) masked.
+// attributes, with what depends on the machine (the port, the content
+// revision, the wrapped errors) masked.
 func (l *runLog) lines(t *testing.T) []string {
 	t.Helper()
 	l.mu.Lock()
@@ -73,10 +74,11 @@ func (l *runLog) lines(t *testing.T) []string {
 			switch key {
 			case "time", "service", "version", "logging.googleapis.com/sourceLocation":
 				continue
-			case "addr", "dir":
+			case "addr", "dir", "content_version", "error":
+				// The content revision moves with every content change, and the
+				// errors wrap what the OS, the driver or the database answered:
+				// the message is ours, those values are the environment's.
 				value = "*"
-			case "error":
-				value = maskRunError(fmt.Sprint(value))
 			}
 			parts = append(parts, fmt.Sprintf("%s=%v", key, value))
 		}

@@ -25,6 +25,10 @@ type heldKindDef struct {
 	// withFaces pins the d20 a roll was made with in the request the hold keeps (the weapon attack only: a
 	// roll with advantage or disadvantage keeps both dice).
 	withFaces func(req proto.Message, faces []int)
+	// ownRoll says the path rolls its own d20 when nothing is asked, so the gate gives it nothing back then.
+	// Today's behavior, pinned by the tests of the group check and of the trap search; they keep rollCheck
+	// and the second die of a Perception search.
+	ownRoll bool
 }
 
 // pinned is the request to keep with a roll: as the caller pinned it, with the dice of the roll.
@@ -49,8 +53,8 @@ func init() {
 		heldEffectSave:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollEffectSave)},
 		heldConcentrationSave: {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).ResolveConcentrationSave)},
 		heldSceneCheck:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollSceneCheck)},
-		heldGroupCheck:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollGroupCheck)},
-		heldTrapSearch:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).SearchForTraps)},
+		heldGroupCheck:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollGroupCheck), ownRoll: true},
+		heldTrapSearch:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
 		heldHintTry:           {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).TryPuzzleHint)},
 	}
 }

@@ -825,27 +825,28 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	var (
 		truth  modeResult
 		choice modeChoice
-		d20    d20Roll
-		bonus  *playv1.BonusDie
+		step   gateResult
 		err    error
 	)
 	if pre := modes.pre; pre != nil && pre.target == target.ID {
-		truth, choice, d20, bonus = pre.truth, pre.choice, pre.step.Roll, pre.step.Bonus
-		hit.Lucky = pre.step.Lucky // the d20 Lucky rolled again: the cast's line says "Sortudo: 1 → 14"
+		truth, choice, step = pre.truth, pre.choice, pre.step
 	} else {
 		truth = modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.v, modes.names)
 		if choice, err = s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, modes.ask); err != nil {
 			return err
 		}
-		if d20, err = s.d20With(in, sp.ToHit, choice.Mode); err != nil {
+		// This roll waits for nobody (MayAsk is false): the gate rolls the d20 and settles it.
+		if step, err = s.heldGate(ctx, combatGate(c), rollSpec{Kind: heldSpellAttack, In: in, Modifier: sp.ToHit, Mode: choice.Mode}); err != nil {
 			return err
 		}
 	}
+	hit.Lucky = step.Lucky // the d20 Lucky rolled again: the cast's line says "Sortudo: 1 → 14"
 	bonusFace := 0
-	if bonus != nil {
+	if bonus := step.Bonus; bonus != nil {
 		bonusFace = int(bonus.Face) // the die the player added after rolling
 		hit.BonusSides, hit.BonusFace = bonus.Sides, bonus.Face
 	}
+	d20 := step.Roll
 	face, roll := d20.Face(), d20
 	modes.attack[target.ID] = truth.Shown
 	used, err := s.consumeHelps(ctx, c, caster, target, modes.in.cs) // the Help aimed at the target is used (SRD 5.1, "Help")
