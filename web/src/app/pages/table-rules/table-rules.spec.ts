@@ -84,7 +84,11 @@ describe('TableRulesPage', () => {
   const setXpMode = vi.fn();
   const getCampaign = vi.fn();
 
-  async function setup(role: Role = Role.MASTER, over: Partial<RulesDraft> = {}) {
+  async function setup(
+    role: Role = Role.MASTER,
+    over: Partial<RulesDraft> = {},
+    tweak: () => void = () => undefined,
+  ) {
     get.mockReset().mockResolvedValue(vm(over));
     set.mockReset().mockImplementation(async (_id: string, d: RulesDraft) => ({
       saved: d,
@@ -115,6 +119,7 @@ describe('TableRulesPage', () => {
         { provide: TableRulesClient, useValue: { get, set, setXpMode } },
       ],
     });
+    tweak();
     const fixture = TestBed.createComponent(TableRulesPage);
     fixture.detectChanges();
     await settle(fixture, 3);
@@ -236,6 +241,51 @@ describe('TableRulesPage', () => {
     await settle(fixture, 3);
     expect(radio(el, 'Personalizado').checked).toBe(true);
     expect(text(el)).toContain('Personalizado. Suas escolhas não batem mais com nenhum estilo.');
+  });
+
+  it('says what a style left as it was and what it changed, with what each setting was', async () => {
+    const { fixture, el } = await setup();
+    radio(el, 'Mesa física').click();
+    await settle(fixture, 3);
+    const note = text(el);
+    expect(note).toContain('Mesa física: o estilo preencheu 3 escolhas abaixo');
+    expect(note).toContain('Combate: começar sem mapa.');
+    expect(note).toContain('Névoa de guerra nos mapas novos: desligada.');
+    expect(note).toContain('Dados: todos rolam os próprios dados.');
+    expect(note).toContain('Mudou Era: cada jogador escolhe');
+    expect(note).toContain('Mudou Era: com mapa');
+    expect(note).toContain('Mudou Era: ligada');
+    const other = await setup();
+    radio(other.el, 'Tudo no app').click();
+    await settle(other.fixture, 3);
+    expect(text(other.el)).toContain('Tudo no app: o estilo preencheu 1 escolha abaixo');
+    expect(text(other.el)).toContain('Combate: começar com mapa.');
+    expect(text(other.el)).toContain('Névoa de guerra nos mapas novos: ligada.');
+    expect(text(other.el)).toContain('Dados: todos rolam no app.');
+    expect(text(other.el)).not.toContain('Mudou Era: com mapa');
+  });
+
+  it('says the campaign was not found when it is missing or the person still waits for approval', async () => {
+    const { el } = await setup(Role.MASTER, {}, () =>
+      getCampaign.mockResolvedValue({ campaign: undefined }),
+    );
+    expect(text(el)).toContain('Campanha não encontrada');
+    const waiting = await setup(Role.MASTER, {}, () =>
+      getCampaign.mockResolvedValue({ campaign: { id: 'camp-1', awaitingApproval: true } }),
+    );
+    expect(text(waiting.el)).toContain('Campanha não encontrada');
+  });
+
+  it('says not found when the server does, and anything else as a failure to open with a retry', async () => {
+    const gone = await setup(Role.MASTER, {}, () =>
+      get.mockRejectedValue(new ConnectError('x', Code.NotFound)),
+    );
+    expect(text(gone.el)).toContain('Campanha não encontrada');
+    const down = await setup(Role.MASTER, {}, () =>
+      get.mockRejectedValue(new ConnectError('x', Code.Internal)),
+    );
+    expect(text(down.el)).toContain('Não foi possível abrir as regras');
+    expect(button(down.el, 'Tentar de novo')).toBeTruthy();
   });
 
   it('saves everything at once, with the dice mode, and goes back to "Tudo salvo"', async () => {

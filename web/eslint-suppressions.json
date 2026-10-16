@@ -753,9 +753,6 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 4
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -784,9 +781,6 @@
   },
   "src/app/pages/content/content-entry/content-entry.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -956,16 +950,8 @@
       "count": 1
     }
   },
-  "src/app/pages/level-up/level-up-session.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/pages/level-up/level-up.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -2020,9 +2006,6 @@
   "src/app/pages/spells/spells.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/pages/table-rules/fog-switch/fog-switch.ts": {
@@ -2045,9 +2028,6 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "max-lines": {
       "count": 1
     }
   },
