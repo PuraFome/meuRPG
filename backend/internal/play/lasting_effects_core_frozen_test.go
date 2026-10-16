@@ -33,6 +33,7 @@ func (a *armed) coreEndEffect(t *testing.T, e *playv1.Encounter, label, key stri
 }
 
 func withCaster(t *testing.T, a *armed, label string) func(*playv1.AddLastingEffectRequest) {
+	t.Helper()
 	return func(r *playv1.AddLastingEffectRequest) { r.CasterId = a.id(t, label) }
 }
 

@@ -155,6 +155,99 @@ func (s *Service) syncArmorBase(ctx context.Context, c *combatTx, characterIDs .
 	return nil
 }
 
+// gearBase works out, once, the base armor class Mage Armor gives a character from the gear it
+// carries now, and refits the modifiers of the records with it.
+type gearBase struct {
+	s                       *Service
+	tx                      pgx.Tx
+	campaignID, characterID string
+	mage                    *link.MageArmor
+}
+
+// worked is the base the roster says, read the first time it is asked.
+func (g *gearBase) worked(ctx context.Context) (link.MageArmor, error) {
+	if g.mage == nil {
+		m, err := g.s.roster.MageArmorAC(ctx, g.tx, g.campaignID, g.characterID)
+		if err != nil {
+			return m, err
+		}
+		g.mage = &m
+	}
+	return *g.mage, nil
+}
+
+// refit works the base out again in the modifiers of one record; it says whether it changed.
+func (g *gearBase) refit(ctx context.Context, body []byte) ([]byte, bool, error) {
+	mods := modifiersOf(body)
+	changed := false
+	for i, m := range mods {
+		if m.Kind != rules.ModifierBaseAC {
+			continue
+		}
+		now, err := g.worked(ctx)
+		if err != nil {
+			return nil, false, err
+		}
+		if now.AC < 1 || now.Wears || int(clamp32(now.AC, 1, 60)) == m.Value {
+			continue
+		}
+		mods[i].Value, changed = int(clamp32(now.AC, 1, 60)), true
+	}
+	if !changed {
+		return body, false, nil
+	}
+	enc, err := json.Marshal(mods)
+	if err != nil {
+		return nil, false, fmt.Errorf("encode the modifiers: %w", err)
+	}
+	return enc, true, nil
+}
+
+// refitEffects works the base out again in the effects of the character, out of a combat and in
+// the combats, and says whether any record changed.
+func (g *gearBase) refitEffects(ctx context.Context, q *playdb.Queries, out []playdb.CharacterEffect, in []playdb.CombatantState) (bool, error) {
+	touched := false
+	for _, r := range out {
+		body, changed, err := g.refit(ctx, r.Modifiers)
+		if err != nil {
+			return false, err
+		}
+		if !changed {
+			continue
+		}
+		if err := q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: r.ID, Modifiers: body}); err != nil {
+			return false, fmt.Errorf("work out the base armor class again: %w", err)
+		}
+		touched = true
+	}
+	for _, st := range in {
+		body, changed, err := g.refit(ctx, st.Modifiers)
+		if err != nil {
+			return false, err
+		}
+		if !changed {
+			continue
+		}
+		if err := q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: st.ID, Modifiers: body}); err != nil {
+			return false, fmt.Errorf("work out the base armor class again: %w", err)
+		}
+		touched = true
+	}
+	return touched, nil
+}
+
+// openArmorTx opens the change of the master's that the sheet's gear makes: in the open session,
+// or with none (only the campaign) when the session ended.
+func (s *Service) openArmorTx(ctx context.Context, tx pgx.Tx, q *playdb.Queries, campaignID string) (*combatTx, error) {
+	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		session = playdb.GameSession{CampaignID: campaignID}
+	} else if err != nil {
+		return nil, fmt.Errorf("lock the open session: %w", err)
+	}
+	return s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
+}
+
 // GearChanged implements characters.ReviewHost: the armor class Mage Armor gives is 13 + Dexterity
 // with the shield the character carries now (SRD 5.1, Armor Class), so it is worked out again
 // from the gear whenever the sheet's armor or shield changes, in a combat or out of it.
@@ -168,85 +261,19 @@ func (s *Service) GearChanged(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if err != nil {
 		return nil, fmt.Errorf("list the effects in the combats: %w", err)
 	}
-	var mage *link.MageArmor
-	worked := func() (link.MageArmor, error) {
-		if mage == nil {
-			m, err := s.roster.MageArmorAC(ctx, tx, campaignID, characterID)
-			if err != nil {
-				return m, err
-			}
-			mage = &m
-		}
-		return *mage, nil
+	g := &gearBase{s: s, tx: tx, campaignID: campaignID, characterID: characterID}
+	touched, err := g.refitEffects(ctx, q, out, in)
+	if err != nil || !touched {
+		return nil, err
 	}
-	// refit works the base out again in the modifiers of one record; it says whether it changed.
-	refit := func(body []byte) ([]byte, bool, error) {
-		mods := modifiersOf(body)
-		changed := false
-		for i, m := range mods {
-			if m.Kind != rules.ModifierBaseAC {
-				continue
-			}
-			now, err := worked()
-			if err != nil {
-				return nil, false, err
-			}
-			if now.AC < 1 || now.Wears || int(clamp32(now.AC, 1, 60)) == m.Value {
-				continue
-			}
-			mods[i].Value, changed = int(clamp32(now.AC, 1, 60)), true
-		}
-		if !changed {
-			return body, false, nil
-		}
-		enc, err := json.Marshal(mods)
-		if err != nil {
-			return nil, false, fmt.Errorf("encode the modifiers: %w", err)
-		}
-		return enc, true, nil
-	}
-	touched := false
-	for _, r := range out {
-		body, changed, err := refit(r.Modifiers)
-		if err != nil {
-			return nil, err
-		}
-		if changed {
-			if err := q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: r.ID, Modifiers: body}); err != nil {
-				return nil, fmt.Errorf("work out the base armor class again: %w", err)
-			}
-			touched = true
-		}
-	}
-	for _, st := range in {
-		body, changed, err := refit(st.Modifiers)
-		if err != nil {
-			return nil, err
-		}
-		if changed {
-			if err := q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: st.ID, Modifiers: body}); err != nil {
-				return nil, fmt.Errorf("work out the base armor class again: %w", err)
-			}
-			touched = true
-		}
-	}
-	if !touched {
-		return nil, nil
-	}
-	now, err := worked()
+	now, err := g.worked(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if err := q.SetMageArmorACOfCharacter(ctx, playdb.SetMageArmorACOfCharacterParams{CharacterID: characterID, MageArmorAc: new(clamp32(now.AC, 1, 60))}); err != nil {
 		return nil, fmt.Errorf("work out the base armor class of the combatants again: %w", err)
 	}
-	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		session = playdb.GameSession{CampaignID: campaignID}
-	} else if err != nil {
-		return nil, fmt.Errorf("lock the open session: %w", err)
-	}
-	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
+	c, err := s.openArmorTx(ctx, tx, q, campaignID)
 	if err != nil {
 		return nil, err
 	}
@@ -268,16 +295,42 @@ func (s *Service) GearChanged(ctx context.Context, tx pgx.Tx, campaignID, charac
 // told after the commit.
 func (s *Service) ArmorWorn(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (func(context.Context), error) {
 	q := s.queries.WithTx(tx)
-	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		session = playdb.GameSession{CampaignID: campaignID}
-	} else if err != nil {
-		return nil, fmt.Errorf("lock the open session: %w", err)
-	}
-	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), svc: s, master: true})
+	c, err := s.openArmorTx(ctx, tx, q, campaignID)
 	if err != nil {
 		return nil, err
 	}
+	casts, err := endArmorEffects(ctx, q, characterID)
+	if err != nil || len(casts) == 0 {
+		return nil, err
+	}
+	if err := q.ClearMageArmorACOfCharacter(ctx, characterID); err != nil {
+		return nil, fmt.Errorf("take the base armor class off the combatants: %w", err)
+	}
+	slices.Sort(casts)
+	for _, id := range slices.Compact(casts) {
+		cast, err := q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: id, CampaignID: campaignID})
+		if err == nil && cast.Status == castActive {
+			if _, _, _, err := s.closeCast(ctx, c, cast, castEnded, endDismissed); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if err := s.syncArmorBase(ctx, c, characterID); err != nil {
+		return nil, err
+	}
+	told := c.told
+	return func(ctx context.Context) {
+		s.publishVitalsOf(campaignID, told)
+		s.publishCastsChanged(campaignID, false)
+		if c.enc.ID != "" {
+			s.publishEncounterChanged(ctx, campaignID, c.enc)
+		}
+	}, nil
+}
+
+// endArmorEffects takes away the effects of a character, out of a combat and in the combats, that
+// set a base armor class; it returns the castings that held them.
+func endArmorEffects(ctx context.Context, q *playdb.Queries, characterID string) ([]string, error) {
 	var casts []string
 	out, err := q.ListCharacterEffects(ctx, []string{characterID})
 	if err != nil {
@@ -305,30 +358,5 @@ func (s *Service) ArmorWorn(ctx context.Context, tx pgx.Tx, campaignID, characte
 		}
 		casts = append(casts, deref(st.GroupID))
 	}
-	if len(casts) == 0 {
-		return nil, nil
-	}
-	if err := q.ClearMageArmorACOfCharacter(ctx, characterID); err != nil {
-		return nil, fmt.Errorf("take the base armor class off the combatants: %w", err)
-	}
-	slices.Sort(casts)
-	for _, id := range slices.Compact(casts) {
-		cast, err := q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: id, CampaignID: campaignID})
-		if err == nil && cast.Status == castActive {
-			if _, _, _, err := s.closeCast(ctx, c, cast, castEnded, endDismissed); err != nil {
-				return nil, err
-			}
-		}
-	}
-	if err := s.syncArmorBase(ctx, c, characterID); err != nil {
-		return nil, err
-	}
-	told := c.told
-	return func(ctx context.Context) {
-		s.publishVitalsOf(campaignID, told)
-		s.publishCastsChanged(campaignID, false)
-		if c.enc.ID != "" {
-			s.publishEncounterChanged(ctx, campaignID, c.enc)
-		}
-	}, nil
+	return casts, nil
 }

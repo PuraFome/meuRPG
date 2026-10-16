@@ -37,7 +37,7 @@ const (
 
 // applyLastingSpell puts the effect of a spell on the targets it took hold of. targs and
 // made.Hits are in the same order. A spell without an effect that lasts does nothing here.
-func (s *Service) applyLastingSpell( //nolint:gocyclo // the steps of putting a spell's effect on its targets
+func (s *Service) applyLastingSpell(
 	ctx context.Context, c *combatTx, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, ability string, made *actionEvent,
 ) error {
 	content, err := s.contentOf(ctx, c)
@@ -48,66 +48,19 @@ func (s *Service) applyLastingSpell( //nolint:gocyclo // the steps of putting a 
 	if !ok || len(targs) == 0 || len(made.Hits) != len(targs) {
 		return nil
 	}
-	// The kind of creature an NPC was made from, for the spells that pick a type.
-	kinds := map[string]string{}
-	var ids []string
-	for _, t := range targs {
-		if t.CharacterID != "" && t.MonsterKey == nil {
-			ids = append(ids, t.CharacterID)
-		}
-	}
-	if len(ids) > 0 {
-		chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, ids)
-		if err != nil {
-			return err
-		}
-		for _, ch := range chars {
-			kinds[ch.ID] = ch.MonsterKey
-		}
+	kinds, err := s.creatureKindsOf(ctx, c, targs)
+	if err != nil {
+		return err
 	}
 	states, err := s.readStates(ctx, c.tx, c.enc.ID)
 	if err != nil {
 		return err
 	}
-	var taken []playdb.Combatant
-	for i, t := range targs {
-		hit := &made.Hits[i]
-		key := deref(t.MonsterKey)
-		if key == "" {
-			key = kinds[t.CharacterID]
-		}
-		if why := s.noEffectWhy(content, def, key); why != "" {
-			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
-			continue
-		}
-		if slices.ContainsFunc(def.Conditions, func(k string) bool { return combat.ImmuneTo(effectModsOf(states, t.ID), k) }) {
-			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, whyImmune
-			continue
-		}
-		if def.Applies == "failed_save" {
-			// The spell asks a saving throw and holds the ones that failed it.
-			if hit.Save == nil || hit.Save.Saved {
-				continue
-			}
-		}
-		hit.Lasting = lastingApplied
-		taken = append(taken, t)
-	}
+	taken := s.markSpellHits(content, def, states, kinds, targs, made)
 	if len(taken) == 0 {
 		return nil
 	}
-	dur := durationSpec{Kind: rules.EffectDurationUntilDismissed}
-	switch rounds := content.SpellEffectRounds(sp.Key); {
-	case def.Duration != nil:
-		// The rider of an instantaneous spell keeps its own clock (Zombaria Viciosa: until the end
-		// of the target's next turn). With no anchor, endsOf anchors it on each target, at the
-		// target's next turn: this round when it has not acted yet, the next when it has.
-		dur = durationSpec{Kind: def.Duration.Kind}
-	case rounds > 0:
-		dur = durationSpec{Kind: rules.EffectDurationRounds, Rounds: int32(rounds), Anchor: caster.ID} //nolint:gosec // 10 rounds a minute
-	case def.Concentration:
-		dur = durationSpec{Kind: rules.EffectDurationConcentration}
-	}
+	dur := spellEffectDuration(content, def, sp.Key, caster)
 	var dc *int32
 	if sp.CasterDC > 0 {
 		dc = new(clamp32(sp.CasterDC, 1, 40))
@@ -119,23 +72,9 @@ func (s *Service) applyLastingSpell( //nolint:gocyclo // the steps of putting a 
 	if err != nil {
 		return err
 	}
-	groups := [][]playdb.Combatant{taken}
-	common, _, err := s.modifiersFor(ctx, c, def, "", opts)
+	groups, mods, err := s.spellEffectGroups(ctx, c, def, taken, opts)
 	if err != nil {
 		return err
-	}
-	mods := [][]rules.EffectModifier{common}
-	if hasBaseAC(def) {
-		groups, mods = nil, nil
-		for _, t := range taken {
-			m, ok, err := s.modifiersForTarget(ctx, c, def, t, opts)
-			if err != nil {
-				return err
-			}
-			if ok {
-				groups, mods = append(groups, []playdb.Combatant{t}), append(mods, m)
-			}
-		}
 	}
 	var rows []playdb.CombatantState
 	for i, g := range groups {
@@ -155,33 +94,124 @@ func (s *Service) applyLastingSpell( //nolint:gocyclo // the steps of putting a 
 	return nil
 }
 
+// creatureKindsOf is the kind of creature an NPC was made from, by character, for the spells
+// that pick a type.
+func (s *Service) creatureKindsOf(ctx context.Context, c *combatTx, targs []playdb.Combatant) (map[string]string, error) {
+	kinds := map[string]string{}
+	var ids []string
+	for _, t := range targs {
+		if t.CharacterID != "" && t.MonsterKey == nil {
+			ids = append(ids, t.CharacterID)
+		}
+	}
+	if len(ids) == 0 {
+		return kinds, nil
+	}
+	chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, ch := range chars {
+		kinds[ch.ID] = ch.MonsterKey
+	}
+	return kinds, nil
+}
+
+// markSpellHits says, on each hit, whether the effect took hold of its target, and returns the
+// targets it took hold of.
+func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, states map[string][]playdb.CombatantState, kinds map[string]string, targs []playdb.Combatant, made *actionEvent) []playdb.Combatant {
+	var taken []playdb.Combatant
+	for i, t := range targs {
+		hit := &made.Hits[i]
+		key := deref(t.MonsterKey)
+		if key == "" {
+			key = kinds[t.CharacterID]
+		}
+		if why := s.noEffectWhy(content, def, key); why != "" {
+			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
+			continue
+		}
+		if slices.ContainsFunc(def.Conditions, func(k string) bool { return combat.ImmuneTo(effectModsOf(states, t.ID), k) }) {
+			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, whyImmune
+			continue
+		}
+		// The spell asks a saving throw and holds the ones that failed it.
+		if def.Applies == "failed_save" && (hit.Save == nil || hit.Save.Saved) {
+			continue
+		}
+		hit.Lasting = lastingApplied
+		taken = append(taken, t)
+	}
+	return taken
+}
+
+// spellEffectDuration is how long the effect of a spell lasts.
+func spellEffectDuration(content *rules.Content, def *rules.EffectDef, spellKey string, caster playdb.Combatant) durationSpec {
+	rounds := content.SpellEffectRounds(spellKey)
+	switch {
+	case def.Duration != nil:
+		// The rider of an instantaneous spell keeps its own clock (Zombaria Viciosa: until the end
+		// of the target's next turn). With no anchor, endsOf anchors it on each target, at the
+		// target's next turn: this round when it has not acted yet, the next when it has.
+		return durationSpec{Kind: def.Duration.Kind}
+	case rounds > 0:
+		return durationSpec{Kind: rules.EffectDurationRounds, Rounds: int32(rounds), Anchor: caster.ID} //nolint:gosec // 10 rounds a minute
+	case def.Concentration:
+		return durationSpec{Kind: rules.EffectDurationConcentration}
+	}
+	return durationSpec{Kind: rules.EffectDurationUntilDismissed}
+}
+
+// spellEffectGroups are the targets that get the effect together, each group with the modifiers
+// it gets: all of them, or one by one for an effect that sets a base armor class.
+func (s *Service) spellEffectGroups(ctx context.Context, c *combatTx, def *rules.EffectDef, taken []playdb.Combatant, opts castOpts) ([][]playdb.Combatant, [][]rules.EffectModifier, error) {
+	common, _, err := s.modifiersFor(ctx, c, def, "", opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !hasBaseAC(def) {
+		return [][]playdb.Combatant{taken}, [][]rules.EffectModifier{common}, nil
+	}
+	var groups [][]playdb.Combatant
+	var mods [][]rules.EffectModifier
+	for _, t := range taken {
+		m, ok, err := s.modifiersForTarget(ctx, c, def, t, opts)
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			groups, mods = append(groups, []playdb.Combatant{t}), append(mods, m)
+		}
+	}
+	return groups, mods, nil
+}
+
 // noEffectWhy says why a spell takes no hold of a target, "" when it may: a spell that picks a
 // humanoid (Imobilizar Pessoa), a condition the creature is immune to, a creature too simple for
 // Riso Histérico (SRD 5.1: an Intelligence score of 4 or less).
 func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, monsterKey string) string {
-	var creature rules.Creature
-	known := false
-	if monsterKey != "" {
-		creature, known = content.CreatureByKey(monsterKey)
+	if monsterKey == "" {
+		return ""
 	}
-	if def.TargetType == "humanoid" && known && !combat.IsHumanoid(creature.Type) {
+	creature, known := content.CreatureByKey(monsterKey)
+	if !known {
+		return ""
+	}
+	if def.TargetType == "humanoid" && !combat.IsHumanoid(creature.Type) {
 		return whyNotHumanoid
 	}
-	if known {
-		for _, k := range def.Conditions {
-			if slices.ContainsFunc(creature.ConditionImmunities, func(n rules.NamedKey) bool { return n.Key == k }) {
-				return whyImmune
-			}
-		}
-		if def.Key == "spell:hideous-laughter" {
-			for _, a := range creature.Abilities {
-				if string(a.Ability) == "int" && a.Base <= 4 {
-					return whyTooSimple
-				}
-			}
-		}
+	if slices.ContainsFunc(def.Conditions, func(k string) bool { return immuneCreature(creature, k) }) {
+		return whyImmune
+	}
+	if def.Key == "spell:hideous-laughter" && slices.ContainsFunc(creature.Abilities, func(a rules.AbilityScore) bool { return string(a.Ability) == "int" && a.Base <= 4 }) {
+		return whyTooSimple
 	}
 	return ""
+}
+
+// immuneCreature says the creature is immune to the condition.
+func immuneCreature(creature rules.Creature, condition string) bool {
+	return slices.ContainsFunc(creature.ConditionImmunities, func(n rules.NamedKey) bool { return n.Key == condition })
 }
 
 // abilityChoiceOf checks the ability a spell is cast for: Enhance Ability needs one of the six
