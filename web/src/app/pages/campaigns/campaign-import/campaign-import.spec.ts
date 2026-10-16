@@ -168,6 +168,24 @@ describe('CampaignImportPage', () => {
       expect(pkg.callsOf('beginImport')).toEqual([]);
     });
 
+    it('keeps the refusal of a file chosen before the kept upload was read', async () => {
+      let answer: (value: never) => void = () => undefined;
+      pkg.getImportResult = () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        });
+      const fixture = TestBed.createComponent(CampaignImportPage);
+      fixture.detectChanges();
+      await chooseAndSettle(fixture, packageFile('notas.txt'));
+      answer({
+        upload: importUpload({ receivedParts: [1], partCount: 2 }),
+        fingerprint: 'x',
+      } as never);
+      await settle(fixture);
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain('não parece um pacote');
+    });
+
     it('refuses a file over 200 MiB before any byte is sent', async () => {
       const { el, fixture } = await render();
       const big = packageFile();
