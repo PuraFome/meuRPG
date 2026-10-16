@@ -1,0 +1,19 @@
+{
+  "bad: a class as race": "race: unknown race or subrace \"class:fighter\"",
+  "bad: any of 0": "any_of: the minimum score of dex is 1 to 30",
+  "bad: level over the max": "level: the level is 0 to 20",
+  "bad: minimum 0": "minimums: the minimum score of str is 1 to 30",
+  "bad: minimum over the max": "minimums: the minimum score of str is 1 to 30",
+  "bad: negative level": "level: the level is 0 to 20",
+  "bad: unknown any of": "any_of: unknown ability \"luck\"",
+  "bad: unknown minimum": "minimums: unknown ability \"luck\"",
+  "bad: unknown proficiency": "proficiency: unknown proficiency \"proficiency:nope\"",
+  "bad: unknown race": "race: unknown race or subrace \"race:nope\"",
+  "ok: a subrace": ": ",
+  "ok: everything": ": ",
+  "ok: nothing": ": ",
+  "order: any of before proficiency": "any_of: unknown ability \"luck\"",
+  "order: minimums before any of": "minimums: the minimum score of str is 1 to 30",
+  "order: proficiency before race": "proficiency: unknown proficiency \"proficiency:nope\"",
+  "order: race before level": "race: unknown race or subrace \"race:nope\""
+}

@@ -1,0 +1,111 @@
+{
+  "a tiefling below the 3rd level": {
+    "Spells": null,
+    "SlotsTotal": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PactLevel": 0,
+    "PactSlots": 0,
+    "CastingMod": 0,
+    "SaveDC": 0,
+    "InfernalLegacy": false,
+    "LegacyDC": 8,
+    "UncannyDodge": false,
+    "Deflect": false,
+    "MonkLevel": 0,
+    "DexMod": 0,
+    "Reduce": null,
+    "Proficiency": 0,
+    "CuttingWords": false,
+    "BardLevel": 0,
+    "CuttingAsk": "attacks",
+    "CharmImmune": false,
+    "StatBlock": false,
+    "ResourceMax": {}
+  },
+  "every branch, asking for every attack": {
+    "Spells": [
+      "spell:shield"
+    ],
+    "SlotsTotal": [
+      4,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PactLevel": 2,
+    "PactSlots": 2,
+    "CastingMod": 0,
+    "SaveDC": 14,
+    "InfernalLegacy": true,
+    "LegacyDC": 14,
+    "UncannyDodge": true,
+    "Deflect": true,
+    "MonkLevel": 2,
+    "DexMod": 3,
+    "Reduce": [
+      {
+        "Key": "feature:aparar@mesa",
+        "NamePT": "Aparar",
+        "Resource": "superiority",
+        "Sides": 8,
+        "Mod": 1
+      }
+    ],
+    "Proficiency": 2,
+    "CuttingWords": true,
+    "BardLevel": 1,
+    "CuttingAsk": "all",
+    "CharmImmune": false,
+    "StatBlock": false,
+    "ResourceMax": {
+      "ki": 3,
+      "superiority": 4
+    }
+  },
+  "nothing derived, no full sheet": {
+    "Spells": null,
+    "SlotsTotal": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "PactLevel": 0,
+    "PactSlots": 0,
+    "CastingMod": 0,
+    "SaveDC": 0,
+    "InfernalLegacy": false,
+    "LegacyDC": 8,
+    "UncannyDodge": false,
+    "Deflect": false,
+    "MonkLevel": 0,
+    "DexMod": 0,
+    "Reduce": null,
+    "Proficiency": 0,
+    "CuttingWords": false,
+    "BardLevel": 0,
+    "CuttingAsk": "attacks",
+    "CharmImmune": false,
+    "StatBlock": false,
+    "ResourceMax": {}
+  }
+}

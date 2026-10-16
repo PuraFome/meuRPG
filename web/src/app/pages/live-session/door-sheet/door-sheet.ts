@@ -23,6 +23,7 @@ import { MapsClient } from '../../../core/maps/maps-client';
 import { DoorMark } from '../../../shared/map-layers/door-mark';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 /** What the page hands the door sheet: the door and whether a wall is painted under it (a revealed secret door clears it, over the whole block of the drawing's square). */
 export interface DoorSheetData {
@@ -105,7 +106,7 @@ export function openDoorSheet(
 @Component({
   selector: 'app-door-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DoorMark, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [RelayEvents, DoorMark, MatButtonModule, MatIconModule, SheetFrame],
   template: `
     <app-sheet-frame
       [title]="stage() === 'ask' ? 'Revelar a porta secreta?' : door.state === 5 ? 'Porta secreta' : 'Porta'"
@@ -127,7 +128,7 @@ export function openDoorSheet(
           <p class="what">Só você vê esta porta: os jogadores veem uma parede. Revelada, ela vira uma porta fechada para todos.</p>
         }
       } @else {
-        <div class="opts" role="radiogroup" aria-label="Como a porta fica" (keydown)="onKey($event)">
+        <div appRelayEvents class="opts" role="radiogroup" aria-label="Como a porta fica" (relayKeydown)="onKey($event)">
           @for (c of choices(); track c.state) {
             <button
               type="button"

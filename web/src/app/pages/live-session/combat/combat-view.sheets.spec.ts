@@ -1149,7 +1149,7 @@ describe('CombatView sheets: the missile caught by Defletir Projéteis', () => {
 
   it('builds the thrown attack from the prompt and lists each target once, the first list winning', async () => {
     const m = await mount();
-    m.view.sheets.throwBack('w2');
+    m.view.sheets.reactions.throwBack('w2');
     expect(m.opened[0].component).toBe(AttackSheet);
     expect(m.opened[0].config.ariaLabel).toBe('Ataque de oportunidade com Arco curto');
     const d = data(m);
@@ -1185,7 +1185,7 @@ describe('CombatView sheets: the missile caught by Defletir Projéteis', () => {
 
   it('calls a missile with no name "Projétil"', async () => {
     const m = await mount(throwWindow({}, ''));
-    m.view.sheets.throwBack('w2');
+    m.view.sheets.reactions.throwBack('w2');
     expect(data(m)['attack']).toMatchObject({ name: 'Projétil', namePt: 'Projétil' });
     expect(m.opened[0].config.ariaLabel).toBe('Ataque de oportunidade com Projétil');
   });
@@ -1194,8 +1194,8 @@ describe('CombatView sheets: the missile caught by Defletir Projéteis', () => {
     const m = await mount(
       throwWindow({ id: 'w3', prompt: { case: 'masterCheck', value: {} } as never }),
     );
-    m.view.sheets.throwBack('w2');
-    m.view.sheets.throwBack('w3');
+    m.view.sheets.reactions.throwBack('w2');
+    m.view.sheets.reactions.throwBack('w3');
     expect(m.opened).toHaveLength(0);
   });
 
@@ -1204,14 +1204,14 @@ describe('CombatView sheets: the missile caught by Defletir Projéteis', () => {
       enc: theatre({ reactionWindows: [throwWindow()] }),
       matches: PHONE,
     });
-    m.view.sheets.throwBack('w2');
+    m.view.sheets.reactions.throwBack('w2');
     expect(data(m)['targets']).toEqual([]);
     expect(data(m)).toMatchObject({ attacksLeft: 0, attacksPerAction: 1, catchWindowId: 'w2' });
   });
 
   it('answers the window "Deixar passar" when the sheet closes without a roll, under a key of its own', async () => {
     const m = await mount();
-    m.view.sheets.throwBack('w2');
+    m.view.sheets.reactions.throwBack('w2');
     m.opened[0].close();
     await settle(m.fixture);
     expect(m.callsOf('answerReaction').map((c) => c.args)).toEqual([
@@ -1221,7 +1221,7 @@ describe('CombatView sheets: the missile caught by Defletir Projéteis', () => {
 
   it('keeps no missile for a window that was answered meanwhile', async () => {
     const m = await mount(throwWindow({ status: ReactionWindowStatus.ANSWERED }));
-    m.view.sheets.throwBack('w2');
+    m.view.sheets.reactions.throwBack('w2');
     m.opened[0].close();
     await settle(m.fixture);
     expect(m.callsOf('answerReaction')).toHaveLength(0);
@@ -1235,7 +1235,7 @@ describe('CombatView sheets: the missile caught by Defletir Projéteis', () => {
         },
       },
     });
-    m.view.sheets.throwBack('w2');
+    m.view.sheets.reactions.throwBack('w2');
     m.opened[0].close();
     await settle(m.fixture);
     expect(m.callsOf('answerReaction')).toHaveLength(1);
@@ -1282,7 +1282,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
       inputs: { vitals: [slots], armorClass: 15 },
     });
     const window = shield();
-    m.view.sheets.reaction(window);
+    m.view.sheets.reactions.reaction(window);
     expect(m.opened).toHaveLength(1);
     expect(m.opened[0].component).toBe(ReactionSheet);
     const d = data(m);
@@ -1302,13 +1302,13 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
 
   it('hands it no slots and no armor class when the sheet does not say', async () => {
     const m = await setup();
-    m.view.sheets.reaction(shield());
+    m.view.sheets.reactions.reaction(shield());
     expect(data(m)).toMatchObject({ usage: [], pact: null, armorClass: null });
   });
 
   it('is an alert that must be answered, labelled by its prompt', async () => {
     const m = await setup({ matches: PHONE });
-    m.view.sheets.reaction(shield());
+    m.view.sheets.reactions.reaction(shield());
     expect(m.opened[0].config.ariaLabel).toMatch(/\S/);
     expect(m.opened[0].config.ariaLabel).not.toBe('Reação');
     expect(m.opened[0].config.disableClose).toBe(true);
@@ -1317,7 +1317,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
 
   it('labels a window with no prompt of its own "Reação"', async () => {
     const m = await setup({ matches: PHONE });
-    m.view.sheets.reaction(
+    m.view.sheets.reactions.reaction(
       reactionWindow({ id: 'w7', prompt: { case: 'masterCheck', value: {} } as never } as never),
     );
     expect(m.opened[0].config.ariaLabel).toBe('Reação');
@@ -1325,7 +1325,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
 
   it('holds the reaction flag while the sheet is open', async () => {
     const m = await setup();
-    m.view.sheets.reaction(shield());
+    m.view.sheets.reactions.reaction(shield());
     expect(m.view.reactionOpen()).toBe(true);
     m.opened[0].close();
     expect(m.view.reactionOpen()).toBe(false);
@@ -1348,7 +1348,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
         ],
       }),
     });
-    m.view.sheets.reaction(shield());
+    m.view.sheets.reactions.reaction(shield());
     m.opened[0].close({ throwWindowId: 'w2' });
     expect(m.view.reactionHandled.has('w2')).toBe(true);
     expect(m.opened[1].component).toBe(AttackSheet);
@@ -1357,7 +1357,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
 
   it('opens nothing on a result that asks for no throw', async () => {
     const m = await setup();
-    m.view.sheets.reaction(shield());
+    m.view.sheets.reactions.reaction(shield());
     m.opened[0].close({});
     expect(m.opened).toHaveLength(1);
   });
@@ -1365,7 +1365,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
   it('sends a window with an effect saving throw to its own sheet', async () => {
     const m = await setup({ matches: PHONE });
     const window = effectSave();
-    m.view.sheets.reaction(window);
+    m.view.sheets.reactions.reaction(window);
     expect(m.opened).toHaveLength(1);
     expect(m.opened[0].component).toBe(EffectSaveSheet);
     expect(m.opened[0].config.ariaLabel).toBe('Teste de resistência do fim do turno');
@@ -1392,7 +1392,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
 
   it('opens no second sheet over one that is open', async () => {
     const m = await setup();
-    m.view.sheets.reaction(shield());
+    m.view.sheets.reactions.reaction(shield());
     m.view.openEffectSave(effectSave());
     expect(m.opened.map((o) => o.component)).toEqual([ReactionSheet]);
   });
@@ -2237,10 +2237,10 @@ describe('CombatView sheets: with no combat on screen', () => {
     m.view.adjustNpc('g');
     m.view.openSpend();
     m.view.openSpend('w');
-    m.view.sheets.reaction(window);
+    m.view.sheets.reactions.reaction(window);
     m.view.openEffectSave(window);
-    m.view.sheets.throwBack('w2');
-    m.view.sheets.keepMissile('w2');
+    m.view.sheets.reactions.throwBack('w2');
+    m.view.sheets.reactions.keepMissile('w2');
     m.view.sheets.revivify();
     m.view.sheets.summon('spell:conjure-animals', 'Conjurar Animais');
     m.view.openMasterArea('spell:fireball');

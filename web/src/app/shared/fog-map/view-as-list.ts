@@ -2,6 +2,7 @@ import { Component, ElementRef, computed, inject, input, output, signal } from '
 import { MatIconModule } from '@angular/material/icon';
 
 import { tight } from '../../core/format/text';
+import { RelayEvents } from '../relay-events/relay-events';
 
 /** One character of the "Ver como" list: who it is and whose it is. */
 export interface ViewAsPerson {
@@ -25,7 +26,7 @@ export interface ViewAsPerson {
  */
 @Component({
   selector: 'app-view-as-list',
-  imports: [MatIconModule],
+  imports: [RelayEvents, MatIconModule],
   templateUrl: './view-as-list.html',
   styleUrl: './view-as-list.scss',
 })
