@@ -161,11 +161,7 @@ cognitive internal/maps buildTiles 19
 cognitive internal/maps decodeWorkingCopy 25
 cognitive internal/maps renderTile 30
 cognitive internal/maps treasureDescription 25
-cognitive internal/maps/dungeonimg Render 29
 cognitive internal/maps/images readJPEGHeader 16
-cognitive internal/maps/images/gen (Request).Validate 18
-cognitive internal/maps/images/gen parseAnswer 44
-cognitive internal/maps/refimg Render 16
 cognitive internal/notes (*Service).CreateNote 16
 cognitive internal/notes (*Service).UpdateNote 22
 cognitive internal/platform/blob (*GCS).do 16
@@ -629,11 +625,6 @@ cyclomatic internal/maps (*mapsPart).stagePoint 27
 cyclomatic internal/maps (campaignMaps).mapToProto 19
 cyclomatic internal/maps decodeWorkingCopy 27
 cyclomatic internal/maps renderTile 21
-cyclomatic internal/maps/dungeonimg Render 33
-cyclomatic internal/maps/images CropFit 19
-cyclomatic internal/maps/images Process 17
-cyclomatic internal/maps/images/gen (Request).Validate 18
-cyclomatic internal/maps/images/gen parseAnswer 27
 cyclomatic internal/notes (*Service).UpdateNote 16
 cyclomatic internal/platform/config Load 24
 cyclomatic internal/platform/config loadLimits 18
