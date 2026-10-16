@@ -1,0 +1,696 @@
+{
+  "getMap_crypt": {
+    "map": {
+      "baseLight": "LIGHT_LEVEL_DARK",
+      "campaignId": "campaign",
+      "createdAt": "<time>",
+      "id": "crypt",
+      "image": {
+        "height": 30,
+        "id": "id1",
+        "name": "Mapa",
+        "thumbnailUrl": "/images/id1/thumb",
+        "url": "/images/id1",
+        "width": 40
+      },
+      "name": "Cripta",
+      "parentMaps": [
+        {
+          "id": "mirathel",
+          "name": "Estrada de Mirathel"
+        }
+      ],
+      "pointCount": 1,
+      "revision": 1,
+      "squareFactor": 1,
+      "updatedAt": "<time>"
+    },
+    "points": [
+      {
+        "createdAt": "<time>",
+        "id": "fromCrypt",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "crypt",
+        "name": "Saida da cripta",
+        "revealed": true,
+        "targetMap": {
+          "id": "mirathel",
+          "name": "Estrada de Mirathel"
+        },
+        "updatedAt": "<time>",
+        "xBp": 2000,
+        "yBp": 2000
+      }
+    ]
+  },
+  "getMap_lonely": {
+    "map": {
+      "baseLight": "LIGHT_LEVEL_DARK",
+      "campaignId": "campaign",
+      "createdAt": "<time>",
+      "id": "lonely",
+      "image": {
+        "height": 30,
+        "id": "id2",
+        "name": "Mapa",
+        "thumbnailUrl": "/images/id2/thumb",
+        "url": "/images/id2",
+        "width": 40
+      },
+      "name": "Sem grade",
+      "pointCount": 1,
+      "revealed": true,
+      "revision": 1,
+      "squareFactor": 1,
+      "updatedAt": "<time>"
+    },
+    "points": [
+      {
+        "createdAt": "<time>",
+        "id": "fromLonely",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "lonely",
+        "name": "Porta fechada",
+        "targetMap": {
+          "id": "mirathel",
+          "name": "Estrada de Mirathel"
+        },
+        "updatedAt": "<time>",
+        "xBp": 2000,
+        "yBp": 2000
+      }
+    ]
+  },
+  "getMap_mirathel": {
+    "map": {
+      "baseLight": "LIGHT_LEVEL_DIM",
+      "campaignId": "campaign",
+      "createdAt": "<time>",
+      "drawnColumns": 20,
+      "drawnRows": 15,
+      "gridColumns": 20,
+      "gridRows": 15,
+      "id": "mirathel",
+      "image": {
+        "height": 30,
+        "id": "id3",
+        "name": "Mapa",
+        "thumbnailUrl": "/images/id3/thumb",
+        "url": "/images/id3",
+        "width": 40
+      },
+      "layersRevision": 11,
+      "name": "Estrada de Mirathel",
+      "parentMaps": [
+        {
+          "id": "tower",
+          "name": "Torre"
+        },
+        {
+          "id": "crypt",
+          "name": "Cripta"
+        },
+        {
+          "id": "lonely",
+          "name": "Sem grade"
+        }
+      ],
+      "pointCount": 12,
+      "revealed": true,
+      "revision": 1,
+      "squareFactor": 1,
+      "updatedAt": "<time>"
+    },
+    "points": [
+      {
+        "createdAt": "<time>",
+        "description": "Uma carroça tombada bloqueia a estrada. Há marcas de garras na madeira.",
+        "id": "cart",
+        "kind": "MAP_POINT_KIND_SCENE",
+        "mapId": "mirathel",
+        "name": "A carroça tombada",
+        "updatedAt": "<time>",
+        "xBp": 3000,
+        "yBp": 4000
+      },
+      {
+        "createdAt": "<time>",
+        "description": "descrição de ARMADILHA-SECRETA-A",
+        "id": "trapA",
+        "kind": "MAP_POINT_KIND_TRAP",
+        "mapId": "mirathel",
+        "name": "ARMADILHA-SECRETA-A",
+        "trap": {
+          "areaSize": 2,
+          "effect": {
+            "attack": {
+              "bonus": 5,
+              "count": 2,
+              "damage": {
+                "damageTypeKey": "damage-type:piercing",
+                "damageTypePt": "perfurante",
+                "dice": "1d6"
+              }
+            },
+            "conditions": [
+              {
+                "conditionKey": "condition:restrained",
+                "conditionPt": "Impedido",
+                "durationPt": "1 hora"
+              }
+            ],
+            "damage": [
+              {
+                "damageTypeKey": "damage-type:bludgeoning",
+                "damageTypePt": "concussão",
+                "dice": "2d6"
+              }
+            ],
+            "save": {
+              "ability": "ABILITY_DEXTERITY",
+              "appliesTo": "TRAP_SAVE_APPLIES_CAUGHT",
+              "dc": 12,
+              "onFail": {
+                "condition": {
+                  "conditionKey": "condition:poisoned",
+                  "conditionPt": "Envenenado"
+                },
+                "damage": [
+                  {
+                    "damageTypeKey": "damage-type:fire",
+                    "damageTypePt": "fogo",
+                    "dice": "1d8"
+                  }
+                ]
+              },
+              "onPass": "TRAP_PASS_OUTCOME_HALF"
+            },
+            "targets": "TRAP_TARGETS_MANUAL"
+          },
+          "findDc": 15,
+          "noticeDc": 15,
+          "state": "TRAP_STATE_ARMED",
+          "trigger": "TRAP_TRIGGER_ENTER"
+        },
+        "updatedAt": "<time>",
+        "xBp": 1234,
+        "yBp": 2345
+      },
+      {
+        "createdAt": "<time>",
+        "description": "descrição de ARMADILHA-SECRETA-B",
+        "id": "trapB",
+        "kind": "MAP_POINT_KIND_TRAP",
+        "mapId": "mirathel",
+        "name": "ARMADILHA-SECRETA-B",
+        "trap": {
+          "areaSize": 2,
+          "effect": {
+            "attack": {
+              "bonus": 5,
+              "count": 2,
+              "damage": {
+                "damageTypeKey": "damage-type:piercing",
+                "damageTypePt": "perfurante",
+                "dice": "1d6"
+              }
+            },
+            "conditions": [
+              {
+                "conditionKey": "condition:restrained",
+                "conditionPt": "Impedido",
+                "durationPt": "1 hora"
+              }
+            ],
+            "damage": [
+              {
+                "damageTypeKey": "damage-type:bludgeoning",
+                "damageTypePt": "concussão",
+                "dice": "2d6"
+              }
+            ],
+            "save": {
+              "ability": "ABILITY_DEXTERITY",
+              "appliesTo": "TRAP_SAVE_APPLIES_CAUGHT",
+              "dc": 12,
+              "onFail": {
+                "condition": {
+                  "conditionKey": "condition:poisoned",
+                  "conditionPt": "Envenenado"
+                },
+                "damage": [
+                  {
+                    "damageTypeKey": "damage-type:fire",
+                    "damageTypePt": "fogo",
+                    "dice": "1d8"
+                  }
+                ]
+              },
+              "onPass": "TRAP_PASS_OUTCOME_HALF"
+            },
+            "targets": "TRAP_TARGETS_MANUAL"
+          },
+          "findDc": 15,
+          "noticeDc": 15,
+          "state": "TRAP_STATE_ARMED",
+          "trigger": "TRAP_TRIGGER_ENTER"
+        },
+        "trapRevealedTo": [
+          {
+            "at": "<time>",
+            "characterId": "toren",
+            "characterName": "Toren",
+            "how": "TRAP_REVEAL_HOW_MASTER"
+          }
+        ],
+        "updatedAt": "<time>",
+        "xBp": 3456,
+        "yBp": 4567
+      },
+      {
+        "createdAt": "<time>",
+        "description": "descrição de ARMADILHA-DISPARADA-C",
+        "id": "trapC",
+        "kind": "MAP_POINT_KIND_TRAP",
+        "mapId": "mirathel",
+        "name": "ARMADILHA-DISPARADA-C",
+        "trap": {
+          "areaSize": 2,
+          "effect": {
+            "attack": {
+              "bonus": 5,
+              "count": 2,
+              "damage": {
+                "damageTypeKey": "damage-type:piercing",
+                "damageTypePt": "perfurante",
+                "dice": "1d6"
+              }
+            },
+            "conditions": [
+              {
+                "conditionKey": "condition:restrained",
+                "conditionPt": "Impedido",
+                "durationPt": "1 hora"
+              }
+            ],
+            "damage": [
+              {
+                "damageTypeKey": "damage-type:bludgeoning",
+                "damageTypePt": "concussão",
+                "dice": "2d6"
+              }
+            ],
+            "save": {
+              "ability": "ABILITY_DEXTERITY",
+              "appliesTo": "TRAP_SAVE_APPLIES_CAUGHT",
+              "dc": 12,
+              "onFail": {
+                "condition": {
+                  "conditionKey": "condition:poisoned",
+                  "conditionPt": "Envenenado"
+                },
+                "damage": [
+                  {
+                    "damageTypeKey": "damage-type:fire",
+                    "damageTypePt": "fogo",
+                    "dice": "1d8"
+                  }
+                ]
+              },
+              "onPass": "TRAP_PASS_OUTCOME_HALF"
+            },
+            "targets": "TRAP_TARGETS_MANUAL"
+          },
+          "findDc": 15,
+          "noticeDc": 15,
+          "state": "TRAP_STATE_TRIGGERED",
+          "trigger": "TRAP_TRIGGER_ENTER"
+        },
+        "updatedAt": "<time>",
+        "xBp": 5678,
+        "yBp": 6789
+      },
+      {
+        "createdAt": "<time>",
+        "description": "descrição de ARMADILHA-REVELADA-D",
+        "id": "trapD",
+        "kind": "MAP_POINT_KIND_TRAP",
+        "mapId": "mirathel",
+        "name": "ARMADILHA-REVELADA-D",
+        "revealed": true,
+        "trap": {
+          "areaSize": 2,
+          "effect": {
+            "attack": {
+              "bonus": 5,
+              "count": 2,
+              "damage": {
+                "damageTypeKey": "damage-type:piercing",
+                "damageTypePt": "perfurante",
+                "dice": "1d6"
+              }
+            },
+            "conditions": [
+              {
+                "conditionKey": "condition:restrained",
+                "conditionPt": "Impedido",
+                "durationPt": "1 hora"
+              }
+            ],
+            "damage": [
+              {
+                "damageTypeKey": "damage-type:bludgeoning",
+                "damageTypePt": "concussão",
+                "dice": "2d6"
+              }
+            ],
+            "save": {
+              "ability": "ABILITY_DEXTERITY",
+              "appliesTo": "TRAP_SAVE_APPLIES_CAUGHT",
+              "dc": 12,
+              "onFail": {
+                "condition": {
+                  "conditionKey": "condition:poisoned",
+                  "conditionPt": "Envenenado"
+                },
+                "damage": [
+                  {
+                    "damageTypeKey": "damage-type:fire",
+                    "damageTypePt": "fogo",
+                    "dice": "1d8"
+                  }
+                ]
+              },
+              "onPass": "TRAP_PASS_OUTCOME_HALF"
+            },
+            "targets": "TRAP_TARGETS_MANUAL"
+          },
+          "findDc": 15,
+          "noticeDc": 15,
+          "state": "TRAP_STATE_ARMED",
+          "trigger": "TRAP_TRIGGER_ENTER"
+        },
+        "updatedAt": "<time>",
+        "xBp": 7890,
+        "yBp": 8901
+      },
+      {
+        "createdAt": "<time>",
+        "id": "light",
+        "kind": "MAP_POINT_KIND_LIGHT",
+        "light": {
+          "brightFt": 20,
+          "dimFt": 20,
+          "presetKey": "light:torch"
+        },
+        "mapId": "mirathel",
+        "name": "LUZ-SECRETA",
+        "updatedAt": "<time>",
+        "xBp": 2500,
+        "yBp": 2500
+      },
+      {
+        "createdAt": "<time>",
+        "description": "CONTEUDO-ESCONDIDO",
+        "id": "treasureHidden",
+        "kind": "MAP_POINT_KIND_TREASURE",
+        "mapId": "mirathel",
+        "name": "TESOURO-ESCONDIDO",
+        "treasureValuePo": 7777,
+        "updatedAt": "<time>",
+        "xBp": 1111,
+        "yBp": 9111
+      },
+      {
+        "createdAt": "<time>",
+        "description": "CONTEUDO-REVELADO",
+        "id": "treasureShown",
+        "kind": "MAP_POINT_KIND_TREASURE",
+        "mapId": "mirathel",
+        "name": "TESOURO-REVELADO",
+        "revealed": true,
+        "treasureValuePo": 8888,
+        "updatedAt": "<time>",
+        "xBp": 2222,
+        "yBp": 9222
+      },
+      {
+        "createdAt": "<time>",
+        "description": "CONTEUDO-ACHADO",
+        "id": "treasureFound",
+        "kind": "MAP_POINT_KIND_TREASURE",
+        "mapId": "mirathel",
+        "name": "TESOURO-ACHADO",
+        "treasureFoundAt": "<time>",
+        "treasureFoundBy": [
+          {
+            "characterId": "pens",
+            "characterName": "Pensantus"
+          }
+        ],
+        "treasureValuePo": 9999,
+        "updatedAt": "<time>",
+        "xBp": 3333,
+        "yBp": 9333
+      },
+      {
+        "createdAt": "<time>",
+        "id": "toTower",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "mirathel",
+        "name": "Para a torre",
+        "revealed": true,
+        "targetMap": {
+          "id": "tower",
+          "name": "Torre"
+        },
+        "updatedAt": "<time>",
+        "xBp": 6000,
+        "yBp": 1000
+      },
+      {
+        "createdAt": "<time>",
+        "id": "toCrypt",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "mirathel",
+        "name": "Para a cripta",
+        "revealed": true,
+        "targetMap": {
+          "id": "crypt",
+          "name": "Cripta"
+        },
+        "updatedAt": "<time>",
+        "xBp": 6500,
+        "yBp": 1500
+      },
+      {
+        "createdAt": "<time>",
+        "id": "secretStairs",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "mirathel",
+        "name": "Escada secreta",
+        "targetMap": {
+          "id": "tower",
+          "name": "Torre"
+        },
+        "updatedAt": "<time>",
+        "xBp": 6800,
+        "yBp": 1800
+      }
+    ],
+    "tokens": [
+      {
+        "carriedLight": "light:hooded-lantern",
+        "characterId": "pens",
+        "kind": "CHARACTER_KIND_PLAYER",
+        "mapId": "mirathel",
+        "name": "Pensantus",
+        "updatedAt": "<time>",
+        "xBp": 3000,
+        "yBp": 3000
+      },
+      {
+        "carriedLight": "light:torch",
+        "characterId": "toren",
+        "kind": "CHARACTER_KIND_PLAYER",
+        "mapId": "mirathel",
+        "name": "Toren",
+        "updatedAt": "<time>",
+        "xBp": 4000,
+        "yBp": 4000
+      }
+    ]
+  },
+  "getMap_tower": {
+    "map": {
+      "baseLight": "LIGHT_LEVEL_DARK",
+      "campaignId": "campaign",
+      "createdAt": "<time>",
+      "id": "tower",
+      "image": {
+        "height": 30,
+        "id": "id4",
+        "name": "Mapa",
+        "thumbnailUrl": "/images/id4/thumb",
+        "url": "/images/id4",
+        "width": 40
+      },
+      "name": "Torre",
+      "parentMaps": [
+        {
+          "id": "mirathel",
+          "name": "Estrada de Mirathel"
+        }
+      ],
+      "pointCount": 1,
+      "revealed": true,
+      "revision": 1,
+      "squareFactor": 1,
+      "updatedAt": "<time>"
+    },
+    "points": [
+      {
+        "createdAt": "<time>",
+        "id": "fromTower",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "tower",
+        "name": "De volta",
+        "revealed": true,
+        "targetMap": {
+          "id": "mirathel",
+          "name": "Estrada de Mirathel"
+        },
+        "updatedAt": "<time>",
+        "xBp": 1000,
+        "yBp": 1000
+      }
+    ]
+  },
+  "layers_crypt": {},
+  "layers_lonely": {},
+  "layers_mirathel": {
+    "cover": "AAAAAABAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "difficultTerrain": "AAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "doors": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAAAAAAAABAyVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "gridColumns": 20,
+    "gridRows": 15,
+    "layersRevision": 11,
+    "light": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "wall": "AAAgAAAAAIAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  },
+  "layers_tower": {},
+  "listMaps": {
+    "maps": [
+      {
+        "baseLight": "LIGHT_LEVEL_DIM",
+        "campaignId": "campaign",
+        "createdAt": "<time>",
+        "drawnColumns": 20,
+        "drawnRows": 15,
+        "gridColumns": 20,
+        "gridRows": 15,
+        "id": "mirathel",
+        "image": {
+          "height": 30,
+          "id": "id3",
+          "name": "Mapa",
+          "thumbnailUrl": "/images/id3/thumb",
+          "url": "/images/id3",
+          "width": 40
+        },
+        "layersRevision": 11,
+        "name": "Estrada de Mirathel",
+        "parentMaps": [
+          {
+            "id": "tower",
+            "name": "Torre"
+          },
+          {
+            "id": "crypt",
+            "name": "Cripta"
+          },
+          {
+            "id": "lonely",
+            "name": "Sem grade"
+          }
+        ],
+        "pointCount": 12,
+        "revealed": true,
+        "revision": 1,
+        "squareFactor": 1,
+        "updatedAt": "<time>"
+      },
+      {
+        "baseLight": "LIGHT_LEVEL_DARK",
+        "campaignId": "campaign",
+        "createdAt": "<time>",
+        "id": "tower",
+        "image": {
+          "height": 30,
+          "id": "id4",
+          "name": "Mapa",
+          "thumbnailUrl": "/images/id4/thumb",
+          "url": "/images/id4",
+          "width": 40
+        },
+        "name": "Torre",
+        "parentMaps": [
+          {
+            "id": "mirathel",
+            "name": "Estrada de Mirathel"
+          }
+        ],
+        "pointCount": 1,
+        "revealed": true,
+        "revision": 1,
+        "squareFactor": 1,
+        "updatedAt": "<time>"
+      },
+      {
+        "baseLight": "LIGHT_LEVEL_DARK",
+        "campaignId": "campaign",
+        "createdAt": "<time>",
+        "id": "crypt",
+        "image": {
+          "height": 30,
+          "id": "id1",
+          "name": "Mapa",
+          "thumbnailUrl": "/images/id1/thumb",
+          "url": "/images/id1",
+          "width": 40
+        },
+        "name": "Cripta",
+        "parentMaps": [
+          {
+            "id": "mirathel",
+            "name": "Estrada de Mirathel"
+          }
+        ],
+        "pointCount": 1,
+        "revision": 1,
+        "squareFactor": 1,
+        "updatedAt": "<time>"
+      },
+      {
+        "baseLight": "LIGHT_LEVEL_DARK",
+        "campaignId": "campaign",
+        "createdAt": "<time>",
+        "id": "lonely",
+        "image": {
+          "height": 30,
+          "id": "id2",
+          "name": "Mapa",
+          "thumbnailUrl": "/images/id2/thumb",
+          "url": "/images/id2",
+          "width": 40
+        },
+        "name": "Sem grade",
+        "pointCount": 1,
+        "revealed": true,
+        "revision": 1,
+        "squareFactor": 1,
+        "updatedAt": "<time>"
+      }
+    ]
+  }
+}

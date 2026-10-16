@@ -45,26 +45,49 @@ func (s *Service) OpenDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID st
 	if !g.Valid() {
 		return nil, nil
 	}
-	stored, err := q.GetMapLayers(ctx, id)
+	set, found, err := storedDoorLayers(ctx, q, id, g)
+	if err != nil || !found {
+		return nil, err
+	}
+	opened := openClosedDoors(set, squares, max(int(size.GridFactor), 1))
+	if len(opened) == 0 {
+		return nil, nil
+	}
+	if err := storeLayers(ctx, q, id, set, s.now()); err != nil {
+		return nil, err
+	}
+	if _, err := q.BumpMapLayersRevision(ctx, id); err != nil {
+		return nil, fmt.Errorf("bump the layers' revision: %w", err)
+	}
+	return opened, nil
+}
+
+// storedDoorLayers reads the layers a map has stored; found is false when nothing was
+// ever painted on it, so there is no door.
+func storedDoorLayers(ctx context.Context, q *mapsdb.Queries, mapID string, g grid.Grid) (set layerSet, found bool, err error) {
+	stored, err := q.GetMapLayers(ctx, mapID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil // nothing painted: no door
+		return layerSet{}, false, nil // nothing painted: no door
 	}
 	if err != nil {
-		return nil, fmt.Errorf("read the layers: %w", err)
+		return layerSet{}, false, fmt.Errorf("read the layers: %w", err)
 	}
-	set := loadLayers(stored, g)
-	// A door is a whole square of the drawing (MR-025): on a calibrated map it is a
-	// block of factor x factor squares, and crossing one opens every closed square of
-	// its block, once: one square comes back for the block, so play writes one event.
-	f := max(int(size.GridFactor), 1)
+	return loadLayers(stored, g), true, nil
+}
+
+// openClosedDoors opens the closed doors at the squares and returns the squares it
+// opened. A door is a whole square of the drawing (MR-025): on a calibrated map it is a
+// block of factor x factor squares, and crossing one opens every closed square of its
+// block, once: one square comes back for the block, so play writes one event.
+func openClosedDoors(set layerSet, squares []grid.Square, factor int) []grid.Square {
 	var opened []grid.Square
 	for _, sq := range squares {
 		if set.doors.At(sq) != grid.DoorClosed {
 			continue
 		}
-		bc, br := sq.Col/f*f, sq.Row/f*f
-		for r := br; r < br+f; r++ {
-			for c := bc; c < bc+f; c++ {
+		bc, br := sq.Col/factor*factor, sq.Row/factor*factor
+		for r := br; r < br+factor; r++ {
+			for c := bc; c < bc+factor; c++ {
 				if set.doors.Get(c, r) == grid.DoorClosed {
 					set.doors.Set(c, r, grid.DoorOpen)
 				}
@@ -72,20 +95,7 @@ func (s *Service) OpenDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID st
 		}
 		opened = append(opened, sq)
 	}
-	if len(opened) == 0 {
-		return nil, nil
-	}
-	err = q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
-		MapID: id, DifficultTerrain: nilIfBlank(set.terrain.Encode()), Walls: nilIfBlank(set.walls.Encode()),
-		Cover: nilIfBlank(set.cover.Encode()), Light: nilIfBlank(set.light.Encode()), Doors: nilIfBlank(set.doors.Encode()), Now: s.now(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("write the layers: %w", err)
-	}
-	if _, err := q.BumpMapLayersRevision(ctx, id); err != nil {
-		return nil, fmt.Errorf("bump the layers' revision: %w", err)
-	}
-	return opened, nil
+	return opened
 }
 
 // DoorsChanged tells the watchers that doors of the map were opened, after the
