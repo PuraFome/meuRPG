@@ -102,7 +102,7 @@ func TestAddCharacterEffectRefusals(t *testing.T) { //nolint:tparallel // the ca
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := a.giveRaw(t, tc.by, tc.edit)
-			wantRefusal(t, tc.name, err, tc.code, tc.msg)
+			wantEffectRefusal(t, tc.name, err, tc.code, tc.msg)
 		})
 	}
 	if rows := a.characterEffectRows(t); len(rows) != 0 {
@@ -123,7 +123,7 @@ func TestAddCharacterEffectNeedsAnOpenSession(t *testing.T) {
 		CampaignId: campaignID, IdempotencyKey: newKey(), CatalogKey: blessKey, CharacterIds: []string{hero.GetId()},
 	}))
 	wantBlocked(t, "AddCharacterEffect with no session", err, playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION)
-	wantRefusal(t, "AddCharacterEffect with no session", err, connect.CodeFailedPrecondition, "the campaign has no open game session")
+	wantEffectRefusal(t, "AddCharacterEffect with no session", err, connect.CodeFailedPrecondition, "the campaign has no open game session")
 }
 
 func TestAddCharacterEffectRefusesACharacterInACombatAndOnlyThatOne(t *testing.T) {
@@ -139,7 +139,7 @@ func TestAddCharacterEffectRefusesACharacterInACombatAndOnlyThatOne(t *testing.T
 	})
 	_ = e
 	_, err := a.giveRaw(t, a.master, onCharacters(a.pens.GetId(), a.toren.GetId()))
-	wantRefusal(t, "a character in the combat", err, connect.CodeFailedPrecondition, "the character is in a combat: add the effect there")
+	wantEffectRefusal(t, "a character in the combat", err, connect.CodeFailedPrecondition, "the character is in a combat: add the effect there")
 	if rows := a.characterEffectRows(t); len(rows) != 0 {
 		t.Errorf("the refusal left effects: %v", rows)
 	}
@@ -299,16 +299,16 @@ func TestAddCharacterEffectGroupsReplacesRetriesAndTellsTheStreams(t *testing.T)
 	_, err = a.giveRaw(t, a.master, func(r *playv1.AddCharacterEffectRequest) {
 		r.IdempotencyKey, r.CharacterIds, r.CatalogKey = key, all, "condition:blinded"
 	})
-	wantRefusal(t, "the key of another request", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
+	wantEffectRefusal(t, "the key of another request", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
 	_, err = a.giveRaw(t, a.master, func(r *playv1.AddCharacterEffectRequest) {
 		r.IdempotencyKey, r.CharacterIds = key, []string{a.pens.GetId()}
 	})
-	wantRefusal(t, "the key of the same kind with other characters", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
+	wantEffectRefusal(t, "the key of the same kind with other characters", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
 
 	spent := newKey()
 	a.advanceGameTimeKeyed(t, spent, 6)
 	_, err = a.giveRaw(t, a.master, func(r *playv1.AddCharacterEffectRequest) { r.IdempotencyKey = spent })
-	wantRefusal(t, "the key of another kind of change", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
+	wantEffectRefusal(t, "the key of another kind of change", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
 	step("refusals left", fmt.Sprintf("%d rows, %d events", len(a.characterEffectRows(t)), len(a.effectEvents(t, nil))))
 	step("refusals heard", a.heard(t, h))
 
@@ -369,7 +369,7 @@ func TestAddCharacterEffectOfAnEffectWithNoModifiersFailsInternally(t *testing.T
 	a := newEffectsParty(t)
 	for _, key := range []string{holdPerson, webSpell, "spell:faerie-fire", "effect:web-fire"} {
 		_, err := a.giveRaw(t, a.master, withKey(key))
-		wantRefusal(t, key, err, connect.CodeInternal, "internal error")
+		wantEffectRefusal(t, key, err, connect.CodeInternal, "internal error")
 	}
 	if rows := a.characterEffectRows(t); len(rows) != 0 {
 		t.Errorf("the failures left effects: %v", rows)

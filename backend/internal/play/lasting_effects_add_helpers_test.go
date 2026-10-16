@@ -37,8 +37,8 @@ func newEffectsParty(t *testing.T) *armed {
 	})
 }
 
-// wantRefusal checks that err is the connect error with the code and the exact message.
-func wantRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
+// wantEffectRefusal checks that err is the connect error with the code and the exact message.
+func wantEffectRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
 	t.Helper()
 	ce, ok := errors.AsType[*connect.Error](err)
 	if !ok {
