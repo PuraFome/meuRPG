@@ -1308,17 +1308,6 @@
       "count": 1
     }
   },
-  "src/app/pages/live-session/combat/attack-sheet/attack-sheet.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/live-session/combat/attack-sheet/attack-steps.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -1327,14 +1316,6 @@
   "src/app/pages/live-session/combat/cast-sheet/cast-result.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 2
-    }
-  },
-  "src/app/pages/live-session/combat/cast-sheet/cast-sheet.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/pages/live-session/combat/cast-sheet/cast-targets.ts": {
@@ -1548,41 +1529,8 @@
       "count": 1
     }
   },
-  "src/app/pages/live-session/combat/move-page/move-page.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 7
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/pages/live-session/combat/npc-card/attack-choice.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/combat/npc-card/npc-card.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/combat/npc-card/pending-damages.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "complexity": {
       "count": 1
     }
   },
@@ -2992,11 +2940,6 @@
     }
   },
   "src/app/pages/live-session/combat/combat-sheets.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/combat/contest-sheet/contest-sheet.ts": {
     "max-lines": {
       "count": 1
     }

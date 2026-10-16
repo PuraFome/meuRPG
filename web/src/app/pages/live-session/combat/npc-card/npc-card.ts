@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   computed,
   effect,
@@ -80,6 +81,7 @@ import { PendingDamages } from './pending-damages';
  * has none; the order list and the map keep their tokens.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-npc-card',
   imports: [
     AttackChoice,

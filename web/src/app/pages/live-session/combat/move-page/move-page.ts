@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   afterNextRender,
@@ -90,6 +91,7 @@ export type { JumpRequest } from './move-page-view';
  * the server's limit) or a high one (a height, in 0,3 m steps).
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-move-page',
   imports: [
     CombatMap,

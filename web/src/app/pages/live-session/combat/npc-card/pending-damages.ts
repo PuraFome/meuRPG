@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   Injector,
@@ -43,6 +44,7 @@ import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
  * The page's `CombatState` gets each answer's combat.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-pending-damages',
   imports: [
     DamageBreakdown,
