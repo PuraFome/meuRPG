@@ -42,6 +42,7 @@ func (a *armed) key(k string) lastEdit {
 }
 
 func (a *armed) on(t *testing.T, labels ...string) lastEdit {
+	t.Helper()
 	return func(r *playv1.AddLastingEffectRequest) {
 		r.TargetIds = nil
 		for _, l := range labels {
@@ -51,6 +52,7 @@ func (a *armed) on(t *testing.T, labels ...string) lastEdit {
 }
 
 func (a *armed) by(t *testing.T, label string) lastEdit {
+	t.Helper()
 	return func(r *playv1.AddLastingEffectRequest) { r.CasterId = a.id(t, label) }
 }
 
@@ -63,7 +65,7 @@ func all(edits ...lastEdit) lastEdit {
 	}
 }
 
-func TestAddLastingEffectRefusals(t *testing.T) {
+func TestAddLastingEffectRefusals(t *testing.T) { //nolint:tparallel // the cases share one combat, in order
 	t.Parallel()
 	a := newEffectsParty(t)
 	e := a.closeFight(t)
@@ -168,7 +170,7 @@ func TestAddLastingEffectRefusesAnEndedCombat(t *testing.T) {
 	}
 }
 
-func TestAddLastingEffectOutcomes(t *testing.T) {
+func TestAddLastingEffectOutcomes(t *testing.T) { //nolint:tparallel // the cases share one combat, in order
 	t.Parallel()
 	a := newEffectsParty(t)
 	e := a.closeFight(t)

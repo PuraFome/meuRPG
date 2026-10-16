@@ -42,7 +42,7 @@ func onCharacters(ids ...string) charEdit {
 	return func(r *playv1.AddCharacterEffectRequest) { r.CharacterIds = ids }
 }
 
-func TestAddCharacterEffectRefusals(t *testing.T) {
+func TestAddCharacterEffectRefusals(t *testing.T) { //nolint:tparallel // the cases share one party, in order
 	t.Parallel()
 	a := newEffectsParty(t)
 	outsider := a.h.newUser("Fora")
@@ -151,7 +151,7 @@ func TestAddCharacterEffectRefusesACharacterInACombatAndOnlyThatOne(t *testing.T
 	}
 }
 
-func TestAddCharacterEffectOutcomes(t *testing.T) {
+func TestAddCharacterEffectOutcomes(t *testing.T) { //nolint:tparallel // the cases share one party, in order
 	t.Parallel()
 	a := newEffectsParty(t)
 	rounds := playv1.EffectDurationKind_EFFECT_DURATION_KIND_ROUNDS
@@ -244,7 +244,7 @@ func TestAddCharacterEffectOutcomes(t *testing.T) {
 				t.Fatalf("error = %v, want it given", err)
 			}
 			rows := a.characterEffectRows(t)
-			got := strings.Join(rows, "\n") + "\nseen " + a.seenBy(t, a.ana, a.caio, target.GetId()) + "\nids " + string(rune('0'+len(res.GetEffectIds())))
+			got := strings.Join(rows, "\n") + "\nseen " + a.seenBy(t, a.ana, a.caio, target.GetId()) + "\nids " + fmt.Sprint(len(res.GetEffectIds()))
 			if got != tc.want {
 				t.Errorf("GOLDEN\t%s\t%q", tc.name, got)
 			}
