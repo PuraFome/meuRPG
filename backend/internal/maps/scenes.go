@@ -60,6 +60,44 @@ type SceneChecks interface {
 	SceneCheckName(key string) (string, bool)
 }
 
+// The offset a direction moves an item in a list by.
+const (
+	stepUp   = -1
+	stepDown = 1
+)
+
+// moveStep is the offset of a move's direction, or a refusal for no direction.
+func moveStep(direction mapsv1.SceneActionDirection) (int, error) {
+	switch direction {
+	case mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP:
+		return stepUp, nil
+	case mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_DOWN:
+		return stepDown, nil
+	default:
+		return 0, connect.NewError(connect.CodeInvalidArgument, errors.New("direction is required"))
+	}
+}
+
+// newAction is a checked AddSceneAction: its fields as they are stored.
+type newAction struct {
+	key      string
+	name     string
+	dc       *int32
+	attempts int32
+}
+
+// addActionCall is one AddSceneAction inside its transaction: the action to
+// add and its idempotency, and the rows and whether it was a replay out.
+type addActionCall struct {
+	pointID     string
+	action      newAction
+	scopedKey   *string
+	requestHash *string
+	added       mapsdb.SceneAction
+	actions     []mapsdb.SceneAction
+	replayed    bool
+}
+
 // AddSceneAction implements mapsv1connect.MapServiceHandler.
 func (s *Service) AddSceneAction(
 	ctx context.Context,
@@ -69,77 +107,105 @@ func (s *Service) AddSceneAction(
 	if err != nil {
 		return nil, err
 	}
-	key, err := s.checkKey(req.Msg.GetKey())
+	action, err := s.cleanNewAction(req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	name, err := cleanActionName(req.Msg.GetName())
-	if err != nil {
-		return nil, err
-	}
-	dc, err := cleanDC(req.Msg.GetDc())
-	if err != nil {
-		return nil, err
-	}
-	attempts := int32(defaultAttempts)
-	if req.Msg.MaxAttempts != nil {
-		if attempts, err = cleanAttempts(req.Msg.GetMaxAttempts()); err != nil {
-			return nil, err
-		}
-	}
-
 	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
 	// returns the first action only when it is the same request.
 	scopedKey, requestHash, err := keyOf(m.CampaignID, req.Msg.GetIdempotencyKey(), req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	var added mapsdb.SceneAction
-	var actions []mapsdb.SceneAction
-	replayed := false
+	call := &addActionCall{pointID: pointID, action: action, scopedKey: scopedKey, requestHash: requestHash}
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
-		// The point is locked by now, so two calls with the same key take turns.
-		current, err := q.ListSceneActions(ctx, pointID)
-		if err != nil {
-			return fmt.Errorf("list the actions: %w", err)
-		}
-		added, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetSceneActionByCreateKey,
-			func(a mapsdb.SceneAction) *string { return a.CreateHash },
-			func() (mapsdb.SceneAction, error) {
-				if len(current) >= maxSceneActions {
-					return added, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the scene already has %d actions", maxSceneActions))
-				}
-				position := int32(0)
-				if n := len(current); n > 0 {
-					position = current[n-1].Position + 1
-				}
-				a, err := q.InsertSceneAction(ctx, mapsdb.InsertSceneActionParams{
-					PointID: pointID, Position: position, Key: key, Name: name, Dc: dc, MaxAttempts: attempts,
-					CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
-				})
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					return a, fmt.Errorf("insert action: %w", err)
-				}
-				return a, err
-			})
-		if err != nil {
-			return err
-		}
-		actions = current
-		if !replayed {
-			actions = append(actions, added)
-		}
-		return nil
+		return s.addActionRows(ctx, q, call)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "add a scene action", err)
 	}
-	if !replayed {
+	if !call.replayed {
 		s.actionsChanged(ctx, m.CampaignID, ch)
 	}
 	return connect.NewResponse(&mapsv1.AddSceneActionResponse{
-		Action: s.actionToProto(added, true), Actions: s.actionsToProto(actions, true),
+		Action: s.actionToProto(call.added, true), Actions: s.actionsToProto(call.actions, true),
 	}), nil
+}
+
+// cleanNewAction checks the fields of an AddSceneAction in order: the key, the
+// name, the DC and the attempts (one when not given).
+func (s *Service) cleanNewAction(msg *mapsv1.AddSceneActionRequest) (newAction, error) {
+	key, err := s.checkKey(msg.GetKey())
+	if err != nil {
+		return newAction{}, err
+	}
+	name, err := cleanActionName(msg.GetName())
+	if err != nil {
+		return newAction{}, err
+	}
+	dc, err := cleanDC(msg.GetDc())
+	if err != nil {
+		return newAction{}, err
+	}
+	attempts := int32(defaultAttempts)
+	if msg.MaxAttempts != nil {
+		if attempts, err = cleanAttempts(msg.GetMaxAttempts()); err != nil {
+			return newAction{}, err
+		}
+	}
+	return newAction{key: key, name: name, dc: dc, attempts: attempts}, nil
+}
+
+// addActionRows reads the point's actions and adds the new one after them, or
+// finds the one an earlier call with the same key added, and leaves the list
+// as the caller answers it.
+func (s *Service) addActionRows(ctx context.Context, q *mapsdb.Queries, call *addActionCall) error {
+	// The point is locked by now, so two calls with the same key take turns.
+	current, err := q.ListSceneActions(ctx, call.pointID)
+	if err != nil {
+		return fmt.Errorf("list the actions: %w", err)
+	}
+	call.added, call.replayed, err = idem.Create(ctx, call.scopedKey, call.requestHash, q.GetSceneActionByCreateKey,
+		func(a mapsdb.SceneAction) *string { return a.CreateHash },
+		func() (mapsdb.SceneAction, error) { return s.insertAction(ctx, q, call, current) })
+	if err != nil {
+		return err
+	}
+	call.actions = current
+	if !call.replayed {
+		call.actions = append(call.actions, call.added)
+	}
+	return nil
+}
+
+// insertAction adds an action after the current ones, refusing the one over
+// the limit. A conflict on the key is pgx.ErrNoRows, for idem.Create to read.
+func (s *Service) insertAction(ctx context.Context, q *mapsdb.Queries, call *addActionCall, current []mapsdb.SceneAction) (mapsdb.SceneAction, error) {
+	if len(current) >= maxSceneActions {
+		return call.added, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the scene already has %d actions", maxSceneActions))
+	}
+	position := int32(0)
+	if n := len(current); n > 0 {
+		position = current[n-1].Position + 1
+	}
+	a, err := q.InsertSceneAction(ctx, mapsdb.InsertSceneActionParams{
+		PointID: call.pointID, Position: position, Key: call.action.key, Name: call.action.name, Dc: call.action.dc, MaxAttempts: call.action.attempts,
+		CreateKey: call.scopedKey, CreateHash: call.requestHash, Now: s.now(),
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return a, fmt.Errorf("insert action: %w", err)
+	}
+	return a, err
+}
+
+// actionEdit is a checked UpdateSceneAction: a nil field stays as it is. The
+// DC is nil to remove it, so dcSet says whether the request carried one.
+type actionEdit struct {
+	key      *string
+	name     *string
+	dc       *int32
+	dcSet    bool
+	attempts *int32
 }
 
 // UpdateSceneAction implements mapsv1connect.MapServiceHandler.
@@ -155,72 +221,17 @@ func (s *Service) UpdateSceneAction(
 	if !ok {
 		return nil, errActionNotFound()
 	}
-	msg := req.Msg
-	if msg.Key == nil && msg.Name == nil && msg.Dc == nil && msg.MaxAttempts == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
-	}
-	var key, name *string
-	var dc *int32
-	if msg.Key != nil {
-		k, err := s.checkKey(msg.GetKey())
-		if err != nil {
-			return nil, err
-		}
-		key = &k
-	}
-	if msg.Name != nil {
-		n, err := cleanActionName(msg.GetName())
-		if err != nil {
-			return nil, err
-		}
-		name = &n
-	}
-	if msg.Dc != nil {
-		d, err := cleanDC(msg.GetDc())
-		if err != nil {
-			return nil, err
-		}
-		dc = d // nil removes the DC
-	}
-	var attempts *int32
-	if msg.MaxAttempts != nil {
-		a, err := cleanAttempts(msg.GetMaxAttempts())
-		if err != nil {
-			return nil, err
-		}
-		attempts = &a
+	edit, err := s.cleanActionEdit(req.Msg)
+	if err != nil {
+		return nil, err
 	}
 
 	var changed mapsdb.SceneAction
 	var actions []mapsdb.SceneAction
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
-		a, err := q.GetSceneActionForUpdate(ctx, mapsdb.GetSceneActionForUpdateParams{PointID: pointID, ID: actionID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errActionNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find action: %w", err)
-		}
-		params := mapsdb.UpdateSceneActionParams{PointID: pointID, ID: actionID, Key: a.Key, Name: a.Name, Dc: a.Dc, MaxAttempts: a.MaxAttempts, Now: s.now()}
-		if key != nil {
-			params.Key = *key
-		}
-		if name != nil {
-			params.Name = *name
-		}
-		if msg.Dc != nil {
-			params.Dc = dc
-		}
-		if attempts != nil {
-			params.MaxAttempts = *attempts
-		}
-		if changed, err = q.UpdateSceneAction(ctx, params); err != nil {
-			return fmt.Errorf("update action: %w", err)
-		}
-		if actions, err = q.ListSceneActions(ctx, pointID); err != nil {
-			return fmt.Errorf("list the actions: %w", err)
-		}
-		return nil
+		var err error
+		changed, actions, err = s.updateActionRows(ctx, q, pointID, actionID, edit)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "update a scene action", err)
@@ -229,6 +240,82 @@ func (s *Service) UpdateSceneAction(
 	return connect.NewResponse(&mapsv1.UpdateSceneActionResponse{
 		Action: s.actionToProto(changed, true), Actions: s.actionsToProto(actions, true),
 	}), nil
+}
+
+// cleanOptional checks a field a request may leave out: nil stays nil.
+func cleanOptional[In, Out any](in *In, clean func(In) (Out, error)) (*Out, error) {
+	if in == nil {
+		return nil, nil
+	}
+	out, err := clean(*in)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// cleanActionEdit checks the fields of an UpdateSceneAction in order: at
+// least one must be there, then the key, the name, the DC and the attempts.
+func (s *Service) cleanActionEdit(msg *mapsv1.UpdateSceneActionRequest) (actionEdit, error) {
+	if msg.Key == nil && msg.Name == nil && msg.Dc == nil && msg.MaxAttempts == nil {
+		return actionEdit{}, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
+	}
+	var edit actionEdit
+	var err error
+	if edit.key, err = cleanOptional(msg.Key, s.checkKey); err != nil {
+		return actionEdit{}, err
+	}
+	if edit.name, err = cleanOptional(msg.Name, cleanActionName); err != nil {
+		return actionEdit{}, err
+	}
+	if edit.dcSet = msg.Dc != nil; edit.dcSet {
+		if edit.dc, err = cleanDC(msg.GetDc()); err != nil { // nil removes the DC
+			return actionEdit{}, err
+		}
+	}
+	if edit.attempts, err = cleanOptional(msg.MaxAttempts, cleanAttempts); err != nil {
+		return actionEdit{}, err
+	}
+	return edit, nil
+}
+
+// updateActionRows locks the action, applies the edit and reads the point's
+// actions as they are now.
+func (s *Service) updateActionRows(ctx context.Context, q *mapsdb.Queries, pointID, actionID string, edit actionEdit) (mapsdb.SceneAction, []mapsdb.SceneAction, error) {
+	a, err := q.GetSceneActionForUpdate(ctx, mapsdb.GetSceneActionForUpdateParams{PointID: pointID, ID: actionID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return mapsdb.SceneAction{}, nil, errActionNotFound()
+	}
+	if err != nil {
+		return mapsdb.SceneAction{}, nil, fmt.Errorf("find action: %w", err)
+	}
+	params := mapsdb.UpdateSceneActionParams{PointID: pointID, ID: actionID, Key: a.Key, Name: a.Name, Dc: a.Dc, MaxAttempts: a.MaxAttempts, Now: s.now()}
+	edit.applyTo(&params)
+	changed, err := q.UpdateSceneAction(ctx, params)
+	if err != nil {
+		return changed, nil, fmt.Errorf("update action: %w", err)
+	}
+	actions, err := q.ListSceneActions(ctx, pointID)
+	if err != nil {
+		return changed, actions, fmt.Errorf("list the actions: %w", err)
+	}
+	return changed, actions, nil
+}
+
+// applyTo overwrites the fields of the update that the edit carries.
+func (e actionEdit) applyTo(params *mapsdb.UpdateSceneActionParams) {
+	if e.key != nil {
+		params.Key = *e.key
+	}
+	if e.name != nil {
+		params.Name = *e.name
+	}
+	if e.dcSet {
+		params.Dc = e.dc
+	}
+	if e.attempts != nil {
+		params.MaxAttempts = *e.attempts
+	}
 }
 
 // MoveSceneAction implements mapsv1connect.MapServiceHandler.
@@ -244,47 +331,17 @@ func (s *Service) MoveSceneAction(
 	if !ok {
 		return nil, errActionNotFound()
 	}
-	var step int
-	switch req.Msg.GetDirection() {
-	case mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP:
-		step = -1
-	case mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_DOWN:
-		step = 1
-	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("direction is required"))
+	step, err := moveStep(req.Msg.GetDirection())
+	if err != nil {
+		return nil, err
 	}
 
 	var actions []mapsdb.SceneAction
 	moved := false
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
 		var err error
-		moved = false
-		if actions, err = q.ListSceneActions(ctx, pointID); err != nil {
-			return fmt.Errorf("list the actions: %w", err)
-		}
-		i := slices.IndexFunc(actions, func(a mapsdb.SceneAction) bool { return a.ID == actionID })
-		if i < 0 {
-			return errActionNotFound()
-		}
-		j := i + step
-		if j < 0 || j >= len(actions) {
-			return nil // already first or last: nothing changes
-		}
-		actions[i], actions[j] = actions[j], actions[i]
-		// Renumber the whole list from 0: positions may have gaps after a
-		// removal, and a swap of two values would leave equal ones.
-		for p := range actions {
-			want := int32(p)
-			if actions[p].Position == want {
-				continue
-			}
-			actions[p].Position = want
-			if err := q.SetSceneActionPosition(ctx, mapsdb.SetSceneActionPositionParams{ID: actions[p].ID, Position: want}); err != nil {
-				return fmt.Errorf("set an action's position: %w", err)
-			}
-		}
-		moved = true
-		return nil
+		actions, moved, err = moveActionRows(ctx, q, pointID, actionID, step)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "move a scene action", err)
@@ -293,6 +350,37 @@ func (s *Service) MoveSceneAction(
 		s.actionsChanged(ctx, m.CampaignID, ch)
 	}
 	return connect.NewResponse(&mapsv1.MoveSceneActionResponse{Actions: s.actionsToProto(actions, true)}), nil
+}
+
+// moveActionRows swaps an action with its neighbor and renumbers the list
+// from 0: positions may have gaps after a removal, and a swap of two values
+// would leave equal ones. It returns the list as it is and whether anything
+// changed: the first action moved up, or the last moved down, changes nothing.
+func moveActionRows(ctx context.Context, q *mapsdb.Queries, pointID, actionID string, step int) ([]mapsdb.SceneAction, bool, error) {
+	actions, err := q.ListSceneActions(ctx, pointID)
+	if err != nil {
+		return actions, false, fmt.Errorf("list the actions: %w", err)
+	}
+	i := slices.IndexFunc(actions, func(a mapsdb.SceneAction) bool { return a.ID == actionID })
+	if i < 0 {
+		return actions, false, errActionNotFound()
+	}
+	j := i + step
+	if j < 0 || j >= len(actions) {
+		return actions, false, nil // already first or last: nothing changes
+	}
+	actions[i], actions[j] = actions[j], actions[i]
+	for p := range actions {
+		want := int32(p)
+		if actions[p].Position == want {
+			continue
+		}
+		actions[p].Position = want
+		if err := q.SetSceneActionPosition(ctx, mapsdb.SetSceneActionPositionParams{ID: actions[p].ID, Position: want}); err != nil {
+			return actions, false, fmt.Errorf("set an action's position: %w", err)
+		}
+	}
+	return actions, true, nil
 }
 
 // RemoveSceneAction implements mapsv1connect.MapServiceHandler.
