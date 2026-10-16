@@ -38,58 +38,98 @@ func (s *Service) ListCreatures(
 	if _, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
-	if utf8.RuneCountInString(req.Msg.GetQuery()) > maxCreatureQuery {
-		return nil, invalidArgument(fieldErr("query", "must have at most %d characters", maxCreatureQuery))
-	}
-	size := req.Msg.GetPageSize()
-	switch {
-	case size == 0:
-		size = defaultCreaturesPage
-	case size < 0 || size > maxCreaturesPage:
-		return nil, invalidArgument(fieldErr("page_size", "must be 1 to %d", maxCreaturesPage))
-	}
-	sizeWord, ok := creatureSizeWord(req.Msg.GetSize())
-	if !ok {
-		return nil, invalidArgument(fieldErr("size", "must be a creature size"))
-	}
-	offset := 0
-	if token := req.Msg.GetPageToken(); token != "" {
-		var ok bool
-		if offset, ok = parseCreaturesToken(token, creaturesFilterID(req.Msg)); !ok {
-			return nil, invalidArgument(fieldErr("page_token", "is not a token of this list"))
-		}
+	page, err := readCreaturesPage(req.Msg)
+	if err != nil {
+		return nil, err
 	}
 	content, err := s.contentFor(ctx, nil, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
-	list, err := content.ListCreatures(rules.CreatureFilter{
-		Query: req.Msg.GetQuery(), Type: req.Msg.GetType(), Size: sizeWord, MinCR: req.Msg.GetMinCr(), MaxCR: req.Msg.GetMaxCr(),
-		NoFly: req.Msg.GetNoFly(), NoSwim: req.Msg.GetNoSwim(),
-	})
-	if fe, ok := errors.AsType[*rules.CreatureFilterError](err); ok {
-		switch {
-		case errors.Is(fe, rules.ErrChallengeRange):
-			return nil, invalidArgument(fieldErr(fe.Field, "must not be above max_cr"))
-		case errors.Is(fe, rules.ErrChallengeRating):
-			return nil, invalidArgument(fieldErr(fe.Field, "is not one of the SRD's challenge ratings"))
+	list, err := content.ListCreatures(page.filter)
+	if err != nil {
+		return nil, s.creatureListError(ctx, err)
+	}
+	res, err := page.of(list, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
+}
+
+// creaturesPage is the page of the bestiary a request asks for.
+type creaturesPage struct {
+	filter       rules.CreatureFilter
+	offset, size int
+}
+
+// readCreaturesPage checks a ListCreatures request in the order the client is
+// told about it: the query, the page size, the size filter, the page token.
+func readCreaturesPage(msg *rulesv1.ListCreaturesRequest) (creaturesPage, error) {
+	if utf8.RuneCountInString(msg.GetQuery()) > maxCreatureQuery {
+		return creaturesPage{}, invalidArgument(fieldErr("query", "must have at most %d characters", maxCreatureQuery))
+	}
+	size := msg.GetPageSize()
+	switch {
+	case size == 0:
+		size = defaultCreaturesPage
+	case size < 0 || size > maxCreaturesPage:
+		return creaturesPage{}, invalidArgument(fieldErr("page_size", "must be 1 to %d", maxCreaturesPage))
+	}
+	sizeWord, ok := creatureSizeWord(msg.GetSize())
+	if !ok {
+		return creaturesPage{}, invalidArgument(fieldErr("size", "must be a creature size"))
+	}
+	offset := 0
+	if token := msg.GetPageToken(); token != "" {
+		if offset, ok = parseCreaturesToken(token, creaturesFilterID(msg)); !ok {
+			return creaturesPage{}, errNotACreaturesToken()
 		}
-		return nil, invalidArgument(fieldErr(fe.Field, "is not valid"))
-	} else if err != nil {
-		return nil, s.dbError(ctx, "list creatures", err)
 	}
+	return creaturesPage{
+		filter: rules.CreatureFilter{
+			Query: msg.GetQuery(), Type: msg.GetType(), Size: sizeWord, MinCR: msg.GetMinCr(), MaxCR: msg.GetMaxCr(),
+			NoFly: msg.GetNoFly(), NoSwim: msg.GetNoSwim(),
+		},
+		offset: offset, size: int(size),
+	}, nil
+}
+
+func errNotACreaturesToken() error {
+	return invalidArgument(fieldErr("page_token", "is not a token of this list"))
+}
+
+// creatureListError is the answer to a filter the rules refuse, naming its
+// field, or to any other failure of the list.
+func (s *Service) creatureListError(ctx context.Context, err error) error {
+	fe, ok := errors.AsType[*rules.CreatureFilterError](err)
+	if !ok {
+		return s.dbError(ctx, "list creatures", err)
+	}
+	switch {
+	case errors.Is(fe, rules.ErrChallengeRange):
+		return invalidArgument(fieldErr(fe.Field, "must not be above max_cr"))
+	case errors.Is(fe, rules.ErrChallengeRating):
+		return invalidArgument(fieldErr(fe.Field, "is not one of the SRD's challenge ratings"))
+	}
+	return invalidArgument(fieldErr(fe.Field, "is not valid"))
+}
+
+// of cuts the page out of the whole list, with the token of the next one when
+// there is more.
+func (p creaturesPage) of(list []rules.CreatureEntry, msg *rulesv1.ListCreaturesRequest) (*rulesv1.ListCreaturesResponse, error) {
 	res := &rulesv1.ListCreaturesResponse{Total: i32(len(list))}
-	if offset > len(list) {
-		return nil, invalidArgument(fieldErr("page_token", "is not a token of this list"))
+	if p.offset > len(list) {
+		return nil, errNotACreaturesToken()
 	}
-	end := min(offset+int(size), len(list))
-	for _, e := range list[offset:end] {
+	end := min(p.offset+p.size, len(list))
+	for _, e := range list[p.offset:end] {
 		res.Creatures = append(res.Creatures, creatureSummaryToProto(e))
 	}
 	if end < len(list) {
-		res.NextPageToken = creaturesToken(end, creaturesFilterID(req.Msg))
+		res.NextPageToken = creaturesToken(end, creaturesFilterID(msg))
 	}
-	return connect.NewResponse(res), nil
+	return res, nil
 }
 
 // GetCreature implements rulesv1connect.ContentServiceHandler.

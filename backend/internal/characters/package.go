@@ -96,35 +96,39 @@ func (p *packagePart) exportCharacters(ctx context.Context, q *charactersdb.Quer
 		notes[n.CharacterID] = n.Notes
 	}
 	for _, c := range chars {
-		sheet, err := loadSheet(c.ID, c.Sheet)
-		if err != nil {
-			return err
-		}
-		story, err := loadStory(c.ID, c.Story)
-		if err != nil {
-			return err
-		}
-		switch {
-		case c.Kind == kindPlayer && c.Status != statusActive:
-			continue // a pending request or a dead character is not part of the table to come
-		case c.Kind != kindPlayer && sheet.GetBasic().GetCombatOnly():
-			continue // the app's own copy of a creature put in combat: it is made again on first use
-		}
-		if c.Kind == kindPlayer {
-			name := campaignpackage.EntryName("characters", snap.Next("characters"), ".json")
-			out := &pkgv1.PackageCharacter{Id: c.ID, Name: c.Name, Sheet: sheet, Story: story, MasterNotes: notes[c.ID]}
-			if err := snap.AddMessage(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_CHARACTER, name, out); err != nil {
-				return err
-			}
-			continue
-		}
-		name := campaignpackage.EntryName("npcs", snap.Next("npcs"), ".json")
-		out := &pkgv1.PackageNpc{Id: c.ID, Name: c.Name, Kind: kindFromDB[c.Kind], Sheet: sheet, Story: story, MasterNotes: notes[c.ID]}
-		if err := snap.AddMessage(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_NPC, name, out); err != nil {
+		if err := exportCharacter(snap, c, notes[c.ID]); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// exportCharacter adds one character to the snapshot, as a player's character
+// or an NPC, unless it is no part of the table to come. Its sheet and story are
+// read first, so a stored document that cannot be read stops the export even
+// for a character that would be left out.
+func exportCharacter(snap *campaignpackage.Snapshot, c charactersdb.ListCharactersForPackageRow, notes string) error {
+	sheet, err := loadSheet(c.ID, c.Sheet)
+	if err != nil {
+		return err
+	}
+	story, err := loadStory(c.ID, c.Story)
+	if err != nil {
+		return err
+	}
+	switch {
+	case c.Kind == kindPlayer && c.Status != statusActive:
+		return nil // a pending request or a dead character is not part of the table to come
+	case c.Kind != kindPlayer && sheet.GetBasic().GetCombatOnly():
+		return nil // the app's own copy of a creature put in combat: it is made again on first use
+	case c.Kind == kindPlayer:
+		name := campaignpackage.EntryName("characters", snap.Next("characters"), ".json")
+		out := &pkgv1.PackageCharacter{Id: c.ID, Name: c.Name, Sheet: sheet, Story: story, MasterNotes: notes}
+		return snap.AddMessage(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_CHARACTER, name, out)
+	}
+	name := campaignpackage.EntryName("npcs", snap.Next("npcs"), ".json")
+	out := &pkgv1.PackageNpc{Id: c.ID, Name: c.Name, Kind: kindFromDB[c.Kind], Sheet: sheet, Story: story, MasterNotes: notes}
+	return snap.AddMessage(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_NPC, name, out)
 }
 
 // --- stage ------------------------------------------------------------------
@@ -179,15 +183,33 @@ func (p *packagePart) Stage(_ context.Context, in *campaignpackage.Import) error
 // stageContent reads, checks and compiles the table content. A nil answer
 // means a problem was recorded.
 func (p *packagePart) stageContent(in *campaignpackage.Import) *stagedContent {
-	s := p.s
-	contentKind := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_CONTENT
 	files := in.Pkg.Entries(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_CONTENT)
-	sc := &stagedContent{names: map[string]string{}}
 	if len(files) > rules.MaxOverlayEntries {
-		in.Problem(contentKind, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_LIMIT, rules.MaxOverlayEntries)
+		in.Problem(packageContentKind, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_LIMIT, rules.MaxOverlayEntries)
 		return nil
 	}
-	now := s.now()
+	sc, entriesGood := p.stageEntries(in, files)
+	// The options are judged even when an entry was not, so one preview lists both.
+	options, optionsGood := stageOptionsEntry(in)
+	if !entriesGood || !optionsGood {
+		return nil
+	}
+	if !p.compileStagedContent(in, sc) || !stageSwitchedOff(in, sc, options) {
+		return nil
+	}
+	in.Counts.ContentEntries += int32(len(sc.entries)) //nolint:gosec // G115: at most 300
+	return sc
+}
+
+// packageContentKind is the kind of every problem of the table content.
+const packageContentKind = pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_CONTENT
+
+// stageEntries reads and checks every table entry of the package, in its order,
+// and says whether all of them were good. Each one is stamped orderStep after the
+// one before, so the lists keep the package's order.
+func (p *packagePart) stageEntries(in *campaignpackage.Import, files []*pkgv1.PackageEntry) (*stagedContent, bool) {
+	sc := &stagedContent{names: map[string]string{}}
+	now := p.s.now()
 	good := true
 	seen := map[string]bool{}
 	for i, f := range files {
@@ -204,45 +226,57 @@ func (p *packagePart) stageContent(in *campaignpackage.Import) *stagedContent {
 		sc.entries = append(sc.entries, e)
 		sc.names[e.row.ContentKey] = e.row.NamePt
 	}
+	return sc, good
+}
+
+// stageOptionsEntry reads the options switched off: at most one entry, at its
+// fixed path. It says false when a problem was recorded.
+func stageOptionsEntry(in *campaignpackage.Import) (*pkgv1.PackageContentOptions, bool) {
 	opts := in.Pkg.Entries(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_CONTENT_OPTIONS)
-	var options pkgv1.PackageContentOptions
+	options := &pkgv1.PackageContentOptions{}
 	if len(opts) > 1 || (len(opts) == 1 && opts[0].GetPath() != optionsEntry) {
-		in.Problem(contentKind, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY, 0)
-		good = false
-	} else if len(opts) == 1 && !in.Read(optionsEntry, &options) {
-		good = false
+		in.Problem(packageContentKind, "", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY, 0)
+		return options, false
 	}
-	if !good {
-		return nil
+	if len(opts) == 1 && !in.Read(optionsEntry, options) {
+		return options, false
 	}
-	// The whole content, compiled at once: an entry can depend on another (a
-	// subclass on its class, a spell list a class reuses).
+	return options, true
+}
+
+// compileStagedContent compiles the whole content at once, since an entry can
+// depend on another (a subclass on its class, a spell list a class reuses). It
+// says false when the rules refused it, with a problem for each violation.
+func (p *packagePart) compileStagedContent(in *campaignpackage.Import, sc *stagedContent) bool {
 	overlay, idx := overlayFromEntries(sc.entries, 1)
 	for _, e := range sc.entries {
 		overlay.Strict = append(overlay.Strict, e.row.ContentKey)
 	}
-	content, err := s.srd.With(overlay)
+	content, err := p.s.srd.With(overlay)
 	if err != nil {
 		for _, v := range violationsOf(err, idx, "") {
 			name := sc.names[v.GetKey()]
-			in.Problem(contentKind, name, contentReason(v.GetReason()), 0)
+			in.Problem(packageContentKind, name, contentReason(v.GetReason()), 0)
 		}
-		return nil
+		return false
 	}
 	sc.content = content
+	return true
+}
+
+// stageSwitchedOff checks each option the package switches off against the
+// compiled content: one it cannot switch, or one named twice, is a problem.
+func stageSwitchedOff(in *campaignpackage.Import, sc *stagedContent, options *pkgv1.PackageContentOptions) bool {
+	good := true
 	for _, key := range options.GetDisabled() {
-		if !content.Switchable(key) || slices.Contains(sc.off, key) {
-			in.Problem(contentKind, key, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT, 0)
+		if !sc.content.Switchable(key) || slices.Contains(sc.off, key) {
+			in.Problem(packageContentKind, key, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT, 0)
 			good = false
 			continue
 		}
 		sc.off = append(sc.off, key)
 	}
-	if !good {
-		return nil
-	}
-	in.Counts.ContentEntries += int32(len(sc.entries)) //nolint:gosec // G115: at most 300
-	return sc
+	return good
 }
 
 // stageEntry checks one entry of the table content the way a write of it does
@@ -367,67 +401,106 @@ type stageInput struct {
 }
 
 // stageOne checks one character or NPC and returns it ready to insert.
+//
+// The checks run in a fixed order and the first that fails is the problem
+// recorded: the name, the id and the sheet's presence, the master's notes, the
+// NPC's kind, the sheet as a hand-made one, the creature it was made from, the
+// story.
 func (p *packagePart) stageOne(in *campaignpackage.Import, content *rules.Content, master authz.Membership, c stageInput, at time.Time) *stagedCharacter {
-	s := p.s
-	bad := func(name string, reason pkgv1.PackageProblemReason) *stagedCharacter {
+	name, err := names.Clean(c.name, MaxNameLength)
+	if err != nil {
+		in.Problem(c.kind, "", packageInvalid, 0)
+		return nil
+	}
+	out, reason := p.stageChecked(in, content, master, c, name)
+	if reason != pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNSPECIFIED {
 		in.Problem(c.kind, name, reason, 0)
 		return nil
 	}
-	name, err := names.Clean(c.name, MaxNameLength)
-	if err != nil {
-		return bad("", pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
-	}
+	out.createdAt = at
+	return out
+}
+
+// packageInvalid is the problem of a thing of the package that is not what the
+// app would make.
+const packageInvalid = pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
+
+// stageChecked is stageOne after the name: the character ready to insert, or the
+// reason of the first check that failed.
+func (p *packagePart) stageChecked(in *campaignpackage.Import, content *rules.Content, master authz.Membership, c stageInput, name string) (*stagedCharacter, pkgv1.PackageProblemReason) {
 	id, ok := in.IDs.Define(nsCharacter, c.id)
 	if !ok || c.sheet == nil {
-		return bad(name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+		return nil, packageInvalid
 	}
 	notes, err := names.CleanText(c.notes, MaxMasterNotesLength)
 	if err != nil {
-		return bad(name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+		return nil, packageInvalid
 	}
-	kind := kindPlayer
 	sheet := proto.Clone(c.sheet).(*charactersv1.CharacterSheet) //nolint:forcetypeassert // Clone returns the same type
-	var creature *charactersv1.BasicSheet
-	if !c.player {
-		var known bool
-		if kind, known = kindToDB[c.npcKind]; !known || kind == kindPlayer {
-			return bad(name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
-		}
-		if sheet.GetBasic() != nil {
-			creature = &charactersv1.BasicSheet{MonsterKey: sheet.GetBasic().GetMonsterKey(), AbilityScores: sheet.GetBasic().GetAbilityScores()}
-			if sheet.GetBasic().GetCombatOnly() {
-				return bad(name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
-			}
-		}
-		// The portrait is a gallery image of the package: it gets the new id.
-		if old := portraitOf(sheet); old != "" {
-			setPortrait(sheet, in.IDs.Ref("image", old, c.kind, name))
-		}
+	kind, creature, ok := stageCharacterKind(in, c, sheet, name)
+	if !ok {
+		return nil, packageInvalid
 	}
 	checked, err := checkNewSheet(content, master, kind, sheet)
 	if err != nil {
-		return bad(name, sheetReason(err))
+		return nil, sheetReason(err)
 	}
-	if creature != nil && creature.GetMonsterKey() != "" {
-		// The link to the creature and its scores are the server's: only the NPC made
-		// from a creature has them, and the package keeps them as they were.
-		if _, known := s.srd.CreatureByKey(creature.GetMonsterKey()); !known || !validAbilityScores(creature.GetAbilityScores()) {
-			return bad(name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT)
-		}
-		checked.GetBasic().MonsterKey, checked.GetBasic().AbilityScores = creature.GetMonsterKey(), creature.GetAbilityScores()
+	if !p.keepCreatureLink(checked, creature) {
+		return nil, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT
 	}
 	story, err := checkStory(c.story)
 	if err != nil {
-		return bad(name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+		return nil, packageInvalid
 	}
-	out := &stagedCharacter{id: id, name: name, kind: kind, notes: notes, createdAt: at}
+	out := &stagedCharacter{id: id, name: name, kind: kind, notes: notes}
 	if out.sheet, err = storeJSON.Marshal(checked); err != nil {
-		return bad(name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+		return nil, packageInvalid
 	}
 	if out.story, err = storeJSON.Marshal(story); err != nil {
-		return bad(name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID)
+		return nil, packageInvalid
 	}
-	return out
+	return out, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNSPECIFIED
+}
+
+// stageCharacterKind is the stored kind of a character of the package and, for
+// an NPC with a basic sheet, what the sheet says of the creature it was made
+// from. It says false for an NPC of no NPC kind, or the app's own copy of a
+// creature put in combat. An NPC's portrait is a gallery image of the package,
+// so the sheet is given the image's new id.
+func stageCharacterKind(in *campaignpackage.Import, c stageInput, sheet *charactersv1.CharacterSheet, name string) (string, *charactersv1.BasicSheet, bool) {
+	if c.player {
+		return kindPlayer, nil, true
+	}
+	kind, known := kindToDB[c.npcKind]
+	if !known || kind == kindPlayer {
+		return "", nil, false
+	}
+	var creature *charactersv1.BasicSheet
+	if basic := sheet.GetBasic(); basic != nil {
+		if basic.GetCombatOnly() {
+			return "", nil, false
+		}
+		creature = &charactersv1.BasicSheet{MonsterKey: basic.GetMonsterKey(), AbilityScores: basic.GetAbilityScores()}
+	}
+	if old := portraitOf(sheet); old != "" {
+		setPortrait(sheet, in.IDs.Ref("image", old, c.kind, name))
+	}
+	return kind, creature, true
+}
+
+// keepCreatureLink puts back on the checked sheet the link to the creature and
+// its scores, which are the server's: only the NPC made from a creature has
+// them, and the package keeps them as they were. It says false for a creature
+// the bestiary does not have or scores out of the rules' range.
+func (p *packagePart) keepCreatureLink(checked *charactersv1.CharacterSheet, creature *charactersv1.BasicSheet) bool {
+	if creature.GetMonsterKey() == "" {
+		return true
+	}
+	if _, known := p.s.srd.CreatureByKey(creature.GetMonsterKey()); !known || !validAbilityScores(creature.GetAbilityScores()) {
+		return false
+	}
+	checked.GetBasic().MonsterKey, checked.GetBasic().AbilityScores = creature.GetMonsterKey(), creature.GetAbilityScores()
+	return true
 }
 
 // validAbilityScores says whether the six scores of a creature are in the
@@ -466,40 +539,60 @@ func sheetReason(err error) pkgv1.PackageProblemReason {
 func (p *packagePart) Apply(ctx context.Context, tx pgx.Tx, in *campaignpackage.Import) error {
 	q := p.s.queries.WithTx(tx)
 	if sc, _ := in.Get(stashContent).(*stagedContent); sc != nil && (len(sc.entries) > 0 || len(sc.off) > 0) {
-		now := p.s.now()
-		if _, err := q.BumpContentRevision(ctx, charactersdb.BumpContentRevisionParams{CampaignID: in.CampaignID, Now: now}); err != nil {
-			return fmt.Errorf("start the content revision: %w", err)
-		}
-		for _, e := range sc.entries {
-			r := e.row
-			if err := q.InsertImportedCampaignContent(ctx, charactersdb.InsertImportedCampaignContentParams{
-				CampaignID: in.CampaignID, ContentKey: r.ContentKey, Kind: r.Kind, NamePt: r.NamePt, Data: r.Data, Revision: r.Revision,
-				ArchivedAt: r.ArchivedAt, Now: r.CreatedAt,
-			}); err != nil {
-				return fmt.Errorf("insert a table entry: %w", err)
-			}
-		}
-		if len(sc.off) > 0 {
-			if err := q.InsertContentOff(ctx, charactersdb.InsertContentOffParams{CampaignID: in.CampaignID, ContentKeys: sc.off, Now: now}); err != nil {
-				return fmt.Errorf("switch options off: %w", err)
-			}
+		if err := p.applyContent(ctx, q, in.CampaignID, sc); err != nil {
+			return err
 		}
 	}
 	chars, _ := in.Get(stashCharacters).(*stagedCharacters)
 	if chars == nil {
 		return nil
 	}
-	for _, c := range chars.npcs {
+	if err := applyNpcs(ctx, q, in, chars.npcs); err != nil {
+		return err
+	}
+	return p.applyPlayers(ctx, tx, in, chars.players)
+}
+
+// applyContent writes the table content of the package under one new content
+// revision: the entries, then the options switched off.
+func (p *packagePart) applyContent(ctx context.Context, q *charactersdb.Queries, campaignID string, sc *stagedContent) error {
+	now := p.s.now()
+	if _, err := q.BumpContentRevision(ctx, charactersdb.BumpContentRevisionParams{CampaignID: campaignID, Now: now}); err != nil {
+		return fmt.Errorf("start the content revision: %w", err)
+	}
+	for _, e := range sc.entries {
+		r := e.row
+		if err := q.InsertImportedCampaignContent(ctx, charactersdb.InsertImportedCampaignContentParams{
+			CampaignID: campaignID, ContentKey: r.ContentKey, Kind: r.Kind, NamePt: r.NamePt, Data: r.Data, Revision: r.Revision,
+			ArchivedAt: r.ArchivedAt, Now: r.CreatedAt,
+		}); err != nil {
+			return fmt.Errorf("insert a table entry: %w", err)
+		}
+	}
+	if len(sc.off) == 0 {
+		return nil
+	}
+	if err := q.InsertContentOff(ctx, charactersdb.InsertContentOffParams{CampaignID: campaignID, ContentKeys: sc.off, Now: now}); err != nil {
+		return fmt.Errorf("switch options off: %w", err)
+	}
+	return nil
+}
+
+// applyNpcs creates the NPCs of a package, owned by the importing master, each
+// with the master's notes about it.
+func applyNpcs(ctx context.Context, q *charactersdb.Queries, in *campaignpackage.Import, npcs []*stagedCharacter) error {
+	for _, c := range npcs {
 		if err := q.InsertImportedNpc(ctx, charactersdb.InsertImportedNpcParams{
 			ID: c.id, CampaignID: in.CampaignID, Kind: c.kind, MasterUserID: &in.UserID, Name: c.name, Sheet: c.sheet, Story: c.story, Now: c.createdAt,
 		}); err != nil {
 			return fmt.Errorf("insert an imported NPC: %w", err)
 		}
-		if c.notes != "" {
-			if _, err := q.UpsertMasterNotes(ctx, charactersdb.UpsertMasterNotesParams{CampaignID: in.CampaignID, CharacterID: c.id, Notes: c.notes, UpdatedAt: c.createdAt}); err != nil {
-				return fmt.Errorf("save the master's notes: %w", err)
-			}
+		if c.notes == "" {
+			continue
+		}
+		if _, err := q.UpsertMasterNotes(ctx, charactersdb.UpsertMasterNotesParams{CampaignID: in.CampaignID, CharacterID: c.id, Notes: c.notes, UpdatedAt: c.createdAt}); err != nil {
+			return fmt.Errorf("save the master's notes: %w", err)
 		}
 	}
-	return p.applyPlayers(ctx, tx, in, chars.players)
+	return nil
 }

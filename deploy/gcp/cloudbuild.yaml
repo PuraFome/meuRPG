@@ -1,5 +1,5 @@
 # Builds the production image in Cloud Build. The steps and the variables are
-# in docs/operations.md ("Releasing a new version"). The source is a
+# in docs/operations/README.md ("Releasing a new version"). The source is a
 # `git archive` of the commit being released, so nothing local enters the image.
 #
 # The build runs as the dedicated `meurpg-build` service account

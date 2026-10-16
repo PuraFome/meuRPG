@@ -1,0 +1,217 @@
+{
+  "abilities": [
+    {
+      "abbreviationPt": "SAB",
+      "ability": "ABILITY_WISDOM",
+      "name": "Wisdom",
+      "namePt": "Sabedoria"
+    }
+  ],
+  "armor": [
+    {
+      "category": "ARMOR_CATEGORY_LIGHT",
+      "key": "equipment:leather",
+      "name": "Leather",
+      "namePt": "Couro"
+    },
+    {
+      "category": "ARMOR_CATEGORY_HEAVY",
+      "key": "equipment:plate",
+      "namePt": "Placas"
+    },
+    {
+      "key": "equipment:shield",
+      "namePt": "Escudo"
+    }
+  ],
+  "attribution": "CC-BY-4.0",
+  "backgrounds": [
+    {
+      "archived": true,
+      "equipmentPt": "Incenso",
+      "key": "background:acolyte",
+      "name": "Acolyte",
+      "namePt": "Acólito",
+      "off": true,
+      "skillKeys": [
+        "skill:religion"
+      ]
+    }
+  ],
+  "challengeRatings": [
+    {
+      "rating": "1/2",
+      "xp": 100
+    }
+  ],
+  "classes": [
+    {
+      "archived": true,
+      "hitDie": 6,
+      "key": "class:wizard",
+      "name": "Wizard",
+      "namePt": "Mago",
+      "off": true,
+      "savingThrows": [
+        "ABILITY_INTELLIGENCE",
+        "ABILITY_WISDOM"
+      ],
+      "skillChoice": {
+        "count": 2,
+        "skillKeys": [
+          "skill:arcana",
+          "skill:history"
+        ]
+      },
+      "spellcasting": {
+        "ability": "ABILITY_INTELLIGENCE",
+        "firstLevel": 1,
+        "listClassKey": "class:sorcerer",
+        "maxSpellLevelByLevel": [
+          1,
+          1,
+          2
+        ],
+        "preparation": "SPELL_PREPARATION_SPELLBOOK"
+      },
+      "subclassLevel": 2
+    },
+    {
+      "hitDie": 10,
+      "key": "class:fighter",
+      "namePt": "Guerreiro",
+      "skillChoice": {}
+    }
+  ],
+  "contentVersion": "srd-5.1+mesa.3",
+  "damageTypes": [
+    {
+      "key": "damage-type:fire",
+      "namePt": "Fogo"
+    }
+  ],
+  "languages": [
+    {
+      "key": "language:elvish",
+      "kind": "NAMED_KEY_KIND_LANGUAGE",
+      "namePt": "Élfico"
+    }
+  ],
+  "levelXp": [
+    0,
+    300,
+    900
+  ],
+  "proficiencies": [
+    {
+      "key": "tool:a",
+      "kind": "NAMED_KEY_KIND_TOOL",
+      "namePt": "A"
+    },
+    {
+      "key": "x",
+      "namePt": "X"
+    }
+  ],
+  "races": [
+    {
+      "abilityBonuses": {
+        "charisma": 2
+      },
+      "archived": true,
+      "choiceBonuses": [
+        1,
+        1
+      ],
+      "key": "race:half-elf",
+      "name": "Half-Elf",
+      "namePt": "Meio-Elfo",
+      "off": true,
+      "skillKeys": [
+        "skill:insight"
+      ],
+      "speedFt": 30
+    }
+  ],
+  "skills": [
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "key": "skill:arcana",
+      "name": "Arcana",
+      "namePt": "Arcanismo"
+    }
+  ],
+  "spells": [
+    {
+      "key": "spell:counterspell",
+      "level": 3,
+      "namePt": "Contramágica",
+      "reaction": true
+    }
+  ],
+  "subclasses": [
+    {
+      "alwaysPrepared": [
+        {
+          "classLevel": 3,
+          "spellKey": "spell:shield"
+        }
+      ],
+      "archived": true,
+      "classKey": "class:fighter",
+      "key": "subclass:eldritch-knight",
+      "name": "Eldritch Knight",
+      "namePt": "Cavaleiro Arcano",
+      "off": true,
+      "spellcasting": {
+        "ability": "ABILITY_INTELLIGENCE",
+        "firstLevel": 3,
+        "listClassKey": "class:wizard",
+        "maxSpellLevelByLevel": [
+          0,
+          0,
+          1
+        ],
+        "preparation": "SPELL_PREPARATION_KNOWN"
+      }
+    },
+    {
+      "classKey": "class:fighter",
+      "key": "subclass:champion",
+      "namePt": "Campeão"
+    }
+  ],
+  "subraces": [
+    {
+      "abilityBonuses": {
+        "wisdom": 1
+      },
+      "archived": true,
+      "key": "subrace:hill-dwarf",
+      "name": "Hill Dwarf",
+      "namePt": "Anão da Colina",
+      "off": true,
+      "raceKey": "race:dwarf",
+      "skillKeys": [
+        "skill:x"
+      ]
+    }
+  ],
+  "weapons": [
+    {
+      "category": "WEAPON_CATEGORY_MARTIAL",
+      "key": "equipment:longbow",
+      "name": "Longbow",
+      "namePt": "Arco longo",
+      "ranged": true
+    },
+    {
+      "category": "WEAPON_CATEGORY_SIMPLE",
+      "key": "equipment:club",
+      "namePt": "Clava"
+    },
+    {
+      "key": "equipment:odd"
+    }
+  ]
+}

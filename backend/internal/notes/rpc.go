@@ -185,54 +185,17 @@ func (s *Service) CreateNote(
 	ctx context.Context,
 	req *connect.Request[notesv1.CreateNoteRequest],
 ) (*connect.Response[notesv1.CreateNoteResponse], error) {
-	m, err := requirePlayer(ctx, req.Msg.GetCampaignId())
+	in, discovered, err := s.readNewNote(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	text, err := cleanNoteText(req.Msg.GetText())
-	if err != nil {
-		return nil, err
-	}
-	discovered, _, err := s.discovered(ctx, m.CampaignID)
-	if err != nil {
-		return nil, err
-	}
-	scene, err := checkTag(req.Msg.GetScenePointId(), discovered)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	// The key is unique for the author in the campaign, and kept with a hash of the whole request.
-	scopedKey, requestHash := idem.Scope(m.CampaignID+":"+m.UserID, key), idem.Hash(req.Msg)
-
 	var created notesdb.PlayerNote
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
-		created, _, err = idem.Create(ctx, scopedKey, requestHash, q.GetPlayerNoteByCreateKey,
+		created, _, err = idem.Create(ctx, in.scopedKey, in.requestHash, q.GetPlayerNoteByCreateKey,
 			func(n notesdb.PlayerNote) *string { return n.CreateHash },
-			func() (notesdb.PlayerNote, error) {
-				// A retry is answered before the cap, so it never fails at the 300th note.
-				count, err := q.CountPlayerNotes(ctx, notesdb.CountPlayerNotesParams{CampaignID: m.CampaignID, AuthorUserID: m.UserID})
-				if err != nil {
-					return created, fmt.Errorf("count the notes: %w", err)
-				}
-				if count >= MaxNotes {
-					return created, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("you already have %d notes in this campaign", MaxNotes))
-				}
-				n, err := q.InsertPlayerNote(ctx, notesdb.InsertPlayerNoteParams{
-					CampaignID: m.CampaignID, AuthorUserID: m.UserID, Text: text, ScenePointID: scene,
-					CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
-				})
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					return n, fmt.Errorf("insert note: %w", err)
-				}
-				return n, err
-			})
+			func() (notesdb.PlayerNote, error) { return s.insertNoteUnderCap(ctx, q, in) })
 		return err
 	})
 	if err != nil {
@@ -241,72 +204,164 @@ func (s *Service) CreateNote(
 	return connect.NewResponse(&notesv1.CreateNoteResponse{Note: noteToProto(created, discovered)}), nil
 }
 
+// newNote is a CreateNote request that passed every check.
+type newNote struct {
+	campaignID string
+	userID     string
+	text       string
+	scene      *string
+	// scopedKey is unique for the author in the campaign, and kept with
+	// requestHash, the hash of the whole request.
+	scopedKey   *string
+	requestHash *string
+}
+
+// readNewNote makes CreateNote's checks, in order: the player, the text, the
+// scene tag (against the scenes the group discovered, which it also returns)
+// and the idempotency key.
+func (s *Service) readNewNote(ctx context.Context, msg *notesv1.CreateNoteRequest) (newNote, map[string]string, error) {
+	m, err := requirePlayer(ctx, msg.GetCampaignId())
+	if err != nil {
+		return newNote{}, nil, err
+	}
+	text, err := cleanNoteText(msg.GetText())
+	if err != nil {
+		return newNote{}, nil, err
+	}
+	discovered, _, err := s.discovered(ctx, m.CampaignID)
+	if err != nil {
+		return newNote{}, nil, err
+	}
+	scene, err := checkTag(msg.GetScenePointId(), discovered)
+	if err != nil {
+		return newNote{}, nil, err
+	}
+	key, err := idem.Clean(msg.GetIdempotencyKey())
+	if err != nil {
+		return newNote{}, nil, err
+	}
+	return newNote{
+		campaignID: m.CampaignID, userID: m.UserID, text: text, scene: scene,
+		scopedKey: idem.Scope(m.CampaignID+":"+m.UserID, key), requestHash: idem.Hash(msg),
+	}, discovered, nil
+}
+
+// insertNoteUnderCap inserts a new note, unless the author already has
+// MaxNotes in the campaign. A retry is answered before it is called, so it
+// never fails at the 300th note.
+func (s *Service) insertNoteUnderCap(ctx context.Context, q *notesdb.Queries, in newNote) (notesdb.PlayerNote, error) {
+	count, err := q.CountPlayerNotes(ctx, notesdb.CountPlayerNotesParams{CampaignID: in.campaignID, AuthorUserID: in.userID})
+	if err != nil {
+		return notesdb.PlayerNote{}, fmt.Errorf("count the notes: %w", err)
+	}
+	if count >= MaxNotes {
+		return notesdb.PlayerNote{}, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("you already have %d notes in this campaign", MaxNotes))
+	}
+	n, err := q.InsertPlayerNote(ctx, notesdb.InsertPlayerNoteParams{
+		CampaignID: in.campaignID, AuthorUserID: in.userID, Text: in.text, ScenePointID: in.scene,
+		CreateKey: in.scopedKey, CreateHash: in.requestHash, Now: s.now(),
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return n, fmt.Errorf("insert note: %w", err)
+	}
+	return n, err
+}
+
 // UpdateNote implements notesv1connect.NotesServiceHandler.
 func (s *Service) UpdateNote(
 	ctx context.Context,
 	req *connect.Request[notesv1.UpdateNoteRequest],
 ) (*connect.Response[notesv1.UpdateNoteResponse], error) {
-	m, err := requirePlayer(ctx, req.Msg.GetCampaignId())
+	in, discovered, err := s.readNoteChange(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	noteID, ok := parseID(req.Msg.GetNoteId())
-	if !ok {
-		return nil, errNotFound()
-	}
-	msg := req.Msg
-	if msg.Text == nil && msg.ScenePointId == nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
-	}
-	var text *string
-	if msg.Text != nil {
-		t, err := cleanNoteText(msg.GetText())
-		if err != nil {
-			return nil, err
-		}
-		text = &t
-	}
-	discovered, _, err := s.discovered(ctx, m.CampaignID)
-	if err != nil {
-		return nil, err
-	}
-	var scene *string
-	if msg.ScenePointId != nil {
-		if scene, err = checkTag(msg.GetScenePointId(), discovered); err != nil {
-			return nil, err
-		}
-	}
-
 	var changed notesdb.PlayerNote
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		// The author is part of the lookup: another player's note, or a
-		// clue's ID, is "not found".
-		n, err := q.GetPlayerNoteForUpdate(ctx, notesdb.GetPlayerNoteForUpdateParams{CampaignID: m.CampaignID, AuthorUserID: m.UserID, ID: noteID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find note: %w", err)
-		}
-		params := notesdb.UpdatePlayerNoteParams{
-			CampaignID: m.CampaignID, AuthorUserID: m.UserID, ID: noteID, Text: n.Text, ScenePointID: n.ScenePointID, Now: s.now(),
-		}
-		if text != nil {
-			params.Text = *text
-		}
-		if msg.ScenePointId != nil {
-			params.ScenePointID = scene // nil removes the tag
-		}
-		if changed, err = q.UpdatePlayerNote(ctx, params); err != nil {
-			return fmt.Errorf("update note: %w", err)
-		}
-		return nil
+		var err error
+		changed, err = s.changeNote(ctx, s.queries.WithTx(tx), in)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "update a note", err)
 	}
 	return connect.NewResponse(&notesv1.UpdateNoteResponse{Note: noteToProto(changed, discovered)}), nil
+}
+
+// noteChange is an UpdateNote request that passed every check.
+type noteChange struct {
+	campaignID string
+	userID     string
+	noteID     string
+	// text is the new text; nil keeps it.
+	text *string
+	// setScene says whether the tag changes; scene is the new one, nil for
+	// none.
+	setScene bool
+	scene    *string
+}
+
+// readNoteChange makes UpdateNote's checks, in order: the player, the note's
+// ID, that something changes, the text, and the scene tag (against the
+// scenes the group discovered, which it also returns).
+func (s *Service) readNoteChange(ctx context.Context, msg *notesv1.UpdateNoteRequest) (noteChange, map[string]string, error) {
+	m, err := requirePlayer(ctx, msg.GetCampaignId())
+	if err != nil {
+		return noteChange{}, nil, err
+	}
+	noteID, ok := parseID(msg.GetNoteId())
+	if !ok {
+		return noteChange{}, nil, errNotFound()
+	}
+	if msg.Text == nil && msg.ScenePointId == nil {
+		return noteChange{}, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
+	}
+	in := noteChange{campaignID: m.CampaignID, userID: m.UserID, noteID: noteID, setScene: msg.ScenePointId != nil}
+	if msg.Text != nil {
+		t, err := cleanNoteText(msg.GetText())
+		if err != nil {
+			return noteChange{}, nil, err
+		}
+		in.text = &t
+	}
+	discovered, _, err := s.discovered(ctx, m.CampaignID)
+	if err != nil {
+		return noteChange{}, nil, err
+	}
+	if in.setScene {
+		if in.scene, err = checkTag(msg.GetScenePointId(), discovered); err != nil {
+			return noteChange{}, nil, err
+		}
+	}
+	return in, discovered, nil
+}
+
+// changeNote is UpdateNote's transaction: the caller's note, with what the
+// request changes.
+func (s *Service) changeNote(ctx context.Context, q *notesdb.Queries, in noteChange) (notesdb.PlayerNote, error) {
+	// The author is part of the lookup: another player's note, or a
+	// clue's ID, is "not found".
+	n, err := q.GetPlayerNoteForUpdate(ctx, notesdb.GetPlayerNoteForUpdateParams{CampaignID: in.campaignID, AuthorUserID: in.userID, ID: in.noteID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return notesdb.PlayerNote{}, errNotFound()
+	}
+	if err != nil {
+		return notesdb.PlayerNote{}, fmt.Errorf("find note: %w", err)
+	}
+	params := notesdb.UpdatePlayerNoteParams{
+		CampaignID: in.campaignID, AuthorUserID: in.userID, ID: in.noteID, Text: n.Text, ScenePointID: n.ScenePointID, Now: s.now(),
+	}
+	if in.text != nil {
+		params.Text = *in.text
+	}
+	if in.setScene {
+		params.ScenePointID = in.scene // nil removes the tag
+	}
+	changed, err := q.UpdatePlayerNote(ctx, params)
+	if err != nil {
+		return changed, fmt.Errorf("update note: %w", err)
+	}
+	return changed, nil
 }
 
 // DeleteNote implements notesv1connect.NotesServiceHandler.

@@ -41,7 +41,7 @@ import { UserMenu } from './shell/user-menu/user-menu';
  *
  * On a phone the bar shows only the name and a menu button; the button
  * opens the same links and the account controls in a panel under the bar
- * (docs/design.md#espaço-forma-e-layout). The panel is plain markup, not a
+ * (docs/design/tokens.md#space-and-shape). The panel is plain markup, not a
  * MatMenu: the CDK overlay would land in the initial bundle, which this
  * component always sits in. From 768px up, the links are simply inline and
  * the button is hidden.
