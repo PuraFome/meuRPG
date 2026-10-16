@@ -1,0 +1,102 @@
+{
+  "activity": [
+    {
+      "at": "2026-03-01T20:00:03Z",
+      "id": "search-bri-other",
+      "search": {
+        "characterId": "bri",
+        "characterName": "Brisa",
+        "foundNames": [
+          "Fosso B",
+          ""
+        ],
+        "foundPointIds": [
+          "pitB",
+          "lost"
+        ],
+        "otherSkillKey": "skill:stealth",
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            9
+          ],
+          "modifier": 1,
+          "physical": true,
+          "total": 11,
+          "treatedAs": 10,
+          "treatedAsSource": "feature:reliable-talent"
+        },
+        "secondRoll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            12
+          ],
+          "modifier": 1,
+          "physical": true,
+          "rerolled": [
+            {
+              "from": 1,
+              "sourceKey": "trait:lucky",
+              "to": 12
+            }
+          ],
+          "total": 13
+        },
+        "skill": "TRAP_SEARCH_SKILL_OTHER"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:07Z",
+      "id": "notice-bri-toren",
+      "notice": {
+        "characterIds": [
+          "bri"
+        ],
+        "characterNames": [
+          "Brisa"
+        ],
+        "pointId": "pitB",
+        "trapName": "Fosso B"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:08Z",
+      "id": "notice-lost-trap",
+      "notice": {
+        "characterIds": [
+          "bri"
+        ],
+        "characterNames": [
+          "Brisa"
+        ],
+        "pointId": "lost"
+      }
+    },
+    {
+      "at": "2026-03-01T20:00:14Z",
+      "firing": {
+        "caught": [
+          {
+            "characterId": "bri",
+            "targetId": "bri",
+            "targetLabel": "Brisa"
+          },
+          {
+            "characterId": "bri",
+            "conditionKeys": [
+              "condition:prone"
+            ],
+            "targetId": "bri",
+            "targetLabel": "Brisa"
+          }
+        ],
+        "id": "firing-one",
+        "name": "Fosso A",
+        "pointId": "pitA"
+      },
+      "id": "firing-one"
+    }
+  ]
+}

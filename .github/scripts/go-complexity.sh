@@ -8,7 +8,7 @@
 #
 # Three lists, with the limits of backend/.golangci.yml:
 #   cyclomatic       gocyclo v0.6.0: complexity above 15 (higher is worse)
-#   cognitive        gocognit v1.2.0: complexity above 20 (higher is worse)
+#   cognitive        gocognit v1.2.0: complexity above 15 (higher is worse)
 #   maintainability  golangci-lint v2.14.0's maintidx: index below 20 (lower
 #                    is worse)
 #
@@ -33,7 +33,7 @@ set -euo pipefail
 # gocognit.min-complexity in backend/.golangci.yml. maintidx's (under: 20)
 # is read from that file by golangci-lint itself.
 cyclo_over=15
-cognit_over=20
+cognit_over=15
 
 # Every tool pinned by its module version. gocognit v1.2.0 is the version the
 # baseline was measured with; golangci-lint v2.14.0 bundles v1.2.1, whose
@@ -144,7 +144,7 @@ if $update; then
     echo "# <metric> <package directory> <function> <score>. Written by"
     echo "# .github/scripts/go-complexity.sh --update; never edited by hand."
     echo "# cyclomatic (gocyclo): complexity above 15, higher is worse."
-    echo "# cognitive (gocognit): complexity above 20, higher is worse."
+    echo "# cognitive (gocognit): complexity above 15, higher is worse."
     echo "# maintainability (maintidx): index below 20, lower is worse."
     echo "# The list may only shrink: CI fails when a function enters it or gets"
     echo "# worse, and when one gets better until this file is written again."
