@@ -524,9 +524,13 @@ func safeReturnTo(raw string) (string, bool) {
 }
 
 // isSitePath is true for a bounded string that starts with one slash, not
-// two: "//host" is another site to a browser.
+// followed by another slash or a backslash: "//host" and "/\host" are another
+// site to a browser.
 func isSitePath(raw string) bool {
-	return raw != "" && len(raw) <= maxReturnToLength && raw[0] == '/' && !strings.HasPrefix(raw, "//")
+	if raw == "" || len(raw) > maxReturnToLength || raw[0] != '/' {
+		return false
+	}
+	return len(raw) == 1 || (raw[1] != '/' && raw[1] != '\\')
 }
 
 // isPlainPath is false when the string has a backslash (which a browser
