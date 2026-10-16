@@ -1,5 +1,5 @@
 // The class resource actions open their own dialogs (TakeAction refuses them), the die card shows, and a held roll
-// reopens its Bardic Inspiration question once.
+// reopens its question once (the halfling's Lucky first, else the Bardic Inspiration die).
 import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
@@ -15,6 +15,7 @@ import {
   EncounterMode,
   InspirationDieSchema,
   InspirationOfferSchema,
+  LuckyOfferSchema,
   ResourceTargetSchema,
   ResourceTargetsSchema,
   TargetInReachSchema,
@@ -279,6 +280,30 @@ describe('CombatView: the class resource dialogs', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(sheets()).toHaveLength(1);
+  });
+
+  it('opens the Lucky question of a held roll by itself (a halfling’s d20 of 1), and says in the page that it waits', async () => {
+    const lucky = create(LuckyOfferSchema, {
+      holdId: 'hold-2',
+      attackKey: 'attack:longsword',
+      targetId: 'g',
+      luckyIndex: 0,
+      d20: create(DiceRollSchema, {
+        diceCount: 1,
+        diceSides: 20,
+        faces: [1],
+        modifier: 5,
+        total: 6,
+      }),
+    });
+    const { el } = await render({ luckyOffer: lucky });
+    const sheets = open.mock.calls.filter((c) => c[0] === AttackSheet);
+    expect(sheets).toHaveLength(1);
+    expect(sheets[0][1].data.lucky.offer.holdId).toBe('hold-2');
+    expect(sheets[0][1].data.lucky.targetLabel).toBe('Goblin');
+    expect(sheets[0][1].data.inspiration).toBeUndefined();
+    expect(el.querySelector('[data-testid=lucky-pending]')).not.toBeNull();
+    expect(el.querySelector('[data-testid=inspiration-pending]')).toBeNull();
   });
 
   it('does not open a question for a character with no held roll', async () => {

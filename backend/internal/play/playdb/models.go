@@ -549,6 +549,9 @@ type RollHold struct {
 	Round          int32
 	AnswerKey      *string
 	CreatedAt      time.Time
+	LuckyIndex     *int32
+	LuckyAnswerKey *string
+	LuckyTo        *int32
 }
 
 type RollModeRequest struct {

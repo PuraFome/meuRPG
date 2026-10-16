@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { AttackRoll, PendingDamage } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../../../../core/combat/combat-log';
 import { coverBonusText, degreeWord, sourceWord } from '../../../../core/combat/cover';
+import { luckyText } from '../../../../core/combat/lucky';
 import { DamageBreakdown } from '../damage-parts/damage-breakdown';
 import { D20Faces } from '../roll-mode/d20-faces';
 
@@ -40,6 +41,9 @@ import { D20Faces } from '../roll-mode/d20-faces';
               }
             </span>
             <app-d20-faces [roll]="r.d20" [mode]="r.mode" [suggested]="r.suggestedMode" [reason]="r.modeReason" [sources]="r.sources" />
+            @if (luckyLine()) {
+              <span class="part__line">{{ luckyLine() }}</span>
+            }
             @if (r.criticalOnHit) {
               <span class="part__line">Acerto crítico automático (a 1,5 m de alvo paralisado ou inconsciente)</span>
             }
@@ -107,8 +111,11 @@ export class AttackResult {
     const d = this.damage();
     return !!d && ((d.partRolls ?? []).length > 0 || (d.steps ?? []).length > 0);
   });
-  /** The roll is held for the Bardic Inspiration question: the d20 is shown, the result is not (and there is no armor class). */
+  /** The roll is held for a question (Lucky, the Bardic Inspiration die): the d20 is shown, the result is not (and there
+   * is no armor class). */
   readonly asking = input(false);
+  /** "Sortudo: 1 → 14": the d20 the halfling's Lucky rolled again; the faces and the total are already the new ones. */
+  protected readonly luckyLine = computed(() => luckyText(this.roll()?.d20));
   /** "+ 6 no d8 da Inspiração de Bardo": the die the player added after the d20; the total already has it. */
   protected readonly bonusLine = computed(() =>
     (this.roll()?.bonusDice ?? [])

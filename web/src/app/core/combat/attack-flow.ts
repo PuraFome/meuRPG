@@ -17,9 +17,9 @@ import { stateWord } from './combat-view';
  * messages and the result lines are tested without a DOM.
  */
 
-/** Where the attack is: choosing a target, rolling the d20, answering the Bardic Inspiration question of a held roll,
- * rolling the damage, or finished (a miss, or the damage rolled). */
-export type AttackStage = 'target' | 'roll' | 'inspire' | 'damage' | 'done';
+/** Where the attack is: choosing a target, rolling the d20, answering the question of a held roll (the halfling's Lucky
+ * about a 1, then the Bardic Inspiration die), rolling the damage, or finished (a miss, or the damage rolled). */
+export type AttackStage = 'target' | 'roll' | 'lucky' | 'inspire' | 'damage' | 'done';
 
 export interface Step {
   readonly name: 'Alvo' | 'Rolar' | 'Dano';
@@ -27,7 +27,14 @@ export interface Step {
 }
 
 const ORDER: readonly Step['name'][] = ['Alvo', 'Rolar', 'Dano'];
-const AT: Record<AttackStage, number> = { target: 0, roll: 1, inspire: 1, damage: 2, done: 3 };
+const AT: Record<AttackStage, number> = {
+  target: 0,
+  roll: 1,
+  lucky: 1,
+  inspire: 1,
+  damage: 2,
+  done: 3,
+};
 
 /** The stepper: the steps before the stage are done (a check), the stage's
  * own is current (`aria-current="step"`), the rest wait. */
@@ -46,6 +53,23 @@ export function stageAfterRoll(
 ): AttackStage {
   const hit = outcome === AttackOutcome.HIT || outcome === AttackOutcome.CRITICAL_HIT;
   return hit && pending?.status === PendingDamageStatus.AWAITING_ROLL ? 'damage' : 'done';
+}
+
+/** Where the attack goes after the server answered a roll or a question: the Lucky question comes first, then the
+ * Bardic Inspiration one; a roll a reaction holds is finished on this sheet; else the d20's result. */
+export function stageOfAnswer(res: {
+  readonly roll: AttackRoll;
+  readonly pending?: PendingDamage;
+  readonly offer?: unknown;
+  readonly lucky?: unknown;
+}): AttackStage {
+  if (res.lucky) {
+    return 'lucky';
+  }
+  if (res.offer) {
+    return 'inspire';
+  }
+  return res.roll.heldForReaction ? 'done' : stageAfterRoll(res.roll.outcome, res.pending);
 }
 
 /** A hit whose damage waits for the target's reaction (Escudo): the attacker has nothing to roll yet,

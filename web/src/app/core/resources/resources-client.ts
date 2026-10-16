@@ -32,6 +32,9 @@ export type LayOnHandsEffect =
 /** How the die of a Bardic Inspiration comes when the player uses it: the app rolls it, or the typed face. */
 export type InspirationRoll = HitDieRoll;
 
+/** How the new d20 of the halfling's Lucky comes when the player rolls it again: the app rolls it, or the typed face. */
+export type LuckyRoll = { readonly inApp: true } | { readonly face: number };
+
 /** How many dice of each size come back to one character on a long rest (`HitDiceChoice`). */
 export interface HitDiceChoiceSpec {
   readonly characterId: string;
@@ -211,6 +214,37 @@ export class ResourceClient {
     });
     if (!res.attack) {
       throw new Error('AnswerBardicInspiration answered without its attack');
+    }
+    return attackResult(res.attack);
+  }
+
+  /** The answer to the Lucky question of a held attack roll ("Tirou 1: rolar de novo?"): roll the d20 that showed the 1
+   * again (in the app, or its typed face) or keep the 1. Answers the attack as `RollAttack` would have: resolved, or, when
+   * the attacker holds a Bardic Inspiration die, still held for the die's question on the new roll. `roll` is only for
+   * `reroll`. */
+  async answerLucky(
+    campaignId: string,
+    encounterId: string,
+    holdId: string,
+    reroll: boolean,
+    roll: LuckyRoll | null,
+    idempotencyKey: string,
+  ): Promise<AttackResult> {
+    const res = await this.client.answerLucky({
+      campaignId,
+      encounterId,
+      holdId,
+      reroll,
+      idempotencyKey,
+      roll:
+        reroll && roll
+          ? 'inApp' in roll
+            ? { case: 'rollInApp', value: true }
+            : { case: 'typedFace', value: roll.face }
+          : { case: undefined },
+    });
+    if (!res.attack) {
+      throw new Error('AnswerLucky answered without its attack');
     }
     return attackResult(res.attack);
   }

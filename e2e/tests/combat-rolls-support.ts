@@ -41,6 +41,16 @@ export const grog: CharacterBuild = {
   scores: { for: 16, des: 14, con: 15, int: 8, sab: 12, car: 10 },
 };
 
+/** Grog's build as a lightfoot halfling: the race's Lucky (Sortudo) asks before the result when a d20 shows a 1. */
+export const pipo: CharacterBuild = {
+  ...grog,
+  name: 'Pipo',
+  raceKey: 'race:halfling',
+  race: 'Halfling',
+  subraceKey: 'subrace:lightfoot-halfling',
+  subrace: 'Halfling Pés-Leves',
+};
+
 export interface RollsTable {
   m: Page;
   p: Page;

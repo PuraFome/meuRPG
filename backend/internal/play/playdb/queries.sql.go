@@ -194,6 +194,48 @@ func (q *Queries) AnswerRollHold(ctx context.Context, arg AnswerRollHoldParams) 
 	return err
 }
 
+const answerRollHoldLucky = `-- name: AnswerRollHoldLucky :one
+UPDATE roll_holds SET face = $2, request = $3, lucky_answer_key = $4, lucky_to = $5 WHERE id = $1
+RETURNING id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to
+`
+
+type AnswerRollHoldLuckyParams struct {
+	ID             string
+	Face           int32
+	Request        []byte
+	LuckyAnswerKey *string
+	LuckyTo        *int32
+}
+
+// The answer to the Lucky question of a held roll: the d20 that counts and the request with the
+// faces after it, the answer's key and the new face (NULL when the player kept the 1).
+func (q *Queries) AnswerRollHoldLucky(ctx context.Context, arg AnswerRollHoldLuckyParams) (RollHold, error) {
+	row := q.db.QueryRow(ctx, answerRollHoldLucky,
+		arg.ID,
+		arg.Face,
+		arg.Request,
+		arg.LuckyAnswerKey,
+		arg.LuckyTo,
+	)
+	var i RollHold
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Face,
+		&i.Modifier,
+		&i.Round,
+		&i.AnswerKey,
+		&i.CreatedAt,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
+	)
+	return i, err
+}
+
 const answerRollModeRequest = `-- name: AnswerRollModeRequest :one
 UPDATE roll_mode_requests
 SET status = 'answered', decided_mode = $2, answered_at = $3
@@ -1954,7 +1996,7 @@ func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID st
 }
 
 const getOpenRollHoldOf = `-- name: GetOpenRollHoldOf :one
-SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answer_key IS NULL
+SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answer_key IS NULL
 `
 
 type GetOpenRollHoldOfParams struct {
@@ -1977,6 +2019,9 @@ func (q *Queries) GetOpenRollHoldOf(ctx context.Context, arg GetOpenRollHoldOfPa
 		&i.Round,
 		&i.AnswerKey,
 		&i.CreatedAt,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
 	)
 	return i, err
 }
@@ -2610,7 +2655,7 @@ func (q *Queries) GetRevivifyRequestForUpdate(ctx context.Context, arg GetRevivi
 }
 
 const getRollHold = `-- name: GetRollHold :one
-SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at FROM roll_holds WHERE encounter_id = $1 AND id = $2
+SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to FROM roll_holds WHERE encounter_id = $1 AND id = $2
 `
 
 type GetRollHoldParams struct {
@@ -2632,12 +2677,15 @@ func (q *Queries) GetRollHold(ctx context.Context, arg GetRollHoldParams) (RollH
 		&i.Round,
 		&i.AnswerKey,
 		&i.CreatedAt,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
 	)
 	return i, err
 }
 
 const getRollHoldByKey = `-- name: GetRollHoldByKey :one
-SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at FROM roll_holds WHERE encounter_id = $1 AND idempotency_key = $2
+SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to FROM roll_holds WHERE encounter_id = $1 AND idempotency_key = $2
 `
 
 type GetRollHoldByKeyParams struct {
@@ -2660,6 +2708,9 @@ func (q *Queries) GetRollHoldByKey(ctx context.Context, arg GetRollHoldByKeyPara
 		&i.Round,
 		&i.AnswerKey,
 		&i.CreatedAt,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
 	)
 	return i, err
 }
@@ -4426,9 +4477,9 @@ func (q *Queries) InsertRevivifyRequest(ctx context.Context, arg InsertRevivifyR
 }
 
 const insertRollHold = `-- name: InsertRollHold :one
-INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at
+INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at, lucky_index)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to
 `
 
 type InsertRollHoldParams struct {
@@ -4440,9 +4491,11 @@ type InsertRollHoldParams struct {
 	Modifier       int32
 	Round          int32
 	CreatedAt      time.Time
+	LuckyIndex     *int32
 }
 
-// An attack roll that waits for the answer about a Bardic Inspiration die.
+// An attack roll that waits for the answer about a Bardic Inspiration die, or for the Lucky
+// question of a d20 that shows a 1 (lucky_index, NULL without one).
 func (q *Queries) InsertRollHold(ctx context.Context, arg InsertRollHoldParams) (RollHold, error) {
 	row := q.db.QueryRow(ctx, insertRollHold,
 		arg.EncounterID,
@@ -4453,6 +4506,7 @@ func (q *Queries) InsertRollHold(ctx context.Context, arg InsertRollHoldParams) 
 		arg.Modifier,
 		arg.Round,
 		arg.CreatedAt,
+		arg.LuckyIndex,
 	)
 	var i RollHold
 	err := row.Scan(
@@ -4466,6 +4520,9 @@ func (q *Queries) InsertRollHold(ctx context.Context, arg InsertRollHoldParams) 
 		&i.Round,
 		&i.AnswerKey,
 		&i.CreatedAt,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
 	)
 	return i, err
 }
@@ -6313,7 +6370,7 @@ func (q *Queries) ListOpenReactionWindows(ctx context.Context, encounterID strin
 }
 
 const listOpenRollHolds = `-- name: ListOpenRollHolds :many
-SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at FROM roll_holds WHERE encounter_id = $1 AND answer_key IS NULL
+SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to FROM roll_holds WHERE encounter_id = $1 AND answer_key IS NULL
 `
 
 // The rolls of the combat that wait for an answer, for the combatants' views.
@@ -6337,6 +6394,9 @@ func (q *Queries) ListOpenRollHolds(ctx context.Context, encounterID string) ([]
 			&i.Round,
 			&i.AnswerKey,
 			&i.CreatedAt,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
 		); err != nil {
 			return nil, err
 		}

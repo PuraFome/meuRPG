@@ -177,11 +177,16 @@ type Maneuver struct {
 	Sides                                                    int
 }
 
+// LuckyTrait is the content key of the halfling's Lucky (SRD 5.1, Halfling): the sheet that
+// has it sets Traits.Lucky, and a d20 it rolled again names it as the source of the reroll.
+const LuckyTrait = "trait:lucky"
+
 // Traits are what a sheet has that changes how its owner rolls and what its
 // damage carries: the barbarian's Rage, Reckless Attack and Danger Sense, the
 // rogue's Sneak Attack, the paladin's Divine Smite, the ranger's Hunter's Mark and
 // Colossus Slayer, the fighting style that rerolls low damage dice, a monster's
-// Pack Tactics, the armor that cancels Rage and the damage resistances.
+// Pack Tactics, the halfling's Lucky, the armor that cancels Rage and the damage
+// resistances.
 type Traits struct {
 	// BarbarianLevel and RogueLevel are the class levels, 0 without the class.
 	BarbarianLevel, RogueLevel int
@@ -205,6 +210,9 @@ type Traits struct {
 	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
+	// Lucky is the halfling's trait (LuckyTrait): a 1 on the d20 of an attack roll may be
+	// rolled again, and the new roll stands. The player is asked before the result.
+	Lucky bool
 	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.
 	HeavyArmor bool
 	// StealthDisadvantage says the armor worn gives disadvantage on Dexterity (Stealth).

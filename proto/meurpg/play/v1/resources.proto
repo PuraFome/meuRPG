@@ -4,7 +4,8 @@ syntax = "proto3";
 // "Resting"), the hit dice a player spends on a short rest, and the four
 // resource flows that need a dialog of their own: the paladin's Lay on Hands,
 // the sorcerer's Flexible Casting, and the bard's Bardic Inspiration (Metamagic
-// rides on CastSpell, in combat.proto).
+// rides on CastSpell, in combat.proto); and the halfling's Lucky, the other question a
+// held attack roll asks.
 package meurpg.play.v1;
 
 import "meurpg/play/v1/combat.proto";
@@ -133,6 +134,26 @@ service ResourceService {
   // face outside the die.
   rpc AnswerBardicInspiration(AnswerBardicInspirationRequest) returns (AnswerBardicInspirationResponse);
 
+  // AnswerLucky answers the question a held attack roll asks when a halfling's d20 shows a 1
+  // (SRD 5.1, Halfling, Lucky: the die may be rolled again, and the new roll stands): roll it
+  // again, or keep the 1. RollAttack holds the result of a halfling's weapon attack or attack
+  // cantrip whose d20 shows a 1 until this call (RollAttackResponse.lucky_offer); with advantage
+  // or disadvantage the question comes when either die shows a 1, even the one that does not
+  // count, and only that die is rolled again (one of them when both show a 1). The new die is
+  // rolled in the app or typed from a real die (RN-18, as for the d20); the new roll is never
+  // asked about again, even when it is a 1. When the attacker also holds a Bardic Inspiration
+  // die the roll stays held after the answer and the response carries the die's question on the
+  // new roll (RollAttackResponse.inspiration_offer, answered with AnswerBardicInspiration);
+  // otherwise the attack is resolved, as RollAttack would have resolved it with the new d20. The
+  // roll's owner or the master.
+  //
+  // Errors: `not_found` for a hold that is gone; `permission_denied` for another player's roll;
+  // `invalid_argument` without roll_in_app or typed_face when reroll is set, or a typed face
+  // outside 1 to 20; `failed_precondition` when the hold asks no Lucky question or it was
+  // answered already (by another answer); EncounterBlocked WRONG_DICE_MODE for a player's way of
+  // rolling the campaign does not allow.
+  rpc AnswerLucky(AnswerLuckyRequest) returns (AnswerLuckyResponse);
+
   // GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
   // die their character holds and, for a bard, the uses left and the party to give it to.
   // Only the caller's own character is described (the master gets every die held).
@@ -209,6 +230,10 @@ enum ResourceBlockedReason {
   // character has not had its extra die in this rest, so the face of that die
   // (`typed_song_face`) is needed too. `needed` is the die's size.
   RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED = 15;
+  // A roll is held, waiting for the player's answer to the halfling's Lucky question
+  // ("Tirou 1: rolar de novo?", AnswerLucky): the combatant does nothing else until it is
+  // answered.
+  RESOURCE_BLOCKED_REASON_LUCKY_PENDING = 16;
 }
 
 // RestKind is the kind of a rest.
@@ -451,6 +476,29 @@ message AnswerBardicInspirationRequest {
 
 message AnswerBardicInspirationResponse {
   // The attack, resolved, as RollAttack answers it.
+  RollAttackResponse attack = 1;
+}
+
+message AnswerLuckyRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The held roll (a UUID), from RollAttackResponse.lucky_offer.
+  string hold_id = 3;
+  // True: roll the die that shows the 1 again, and the new roll stands. False: keep the 1.
+  bool reroll = 4;
+  // How the new d20 comes (RN-18) when `reroll` is true: the app rolls it, or the player
+  // typed the face of a real die (1 to 20). Required then.
+  oneof roll {
+    bool roll_in_app = 5;
+    int32 typed_face = 6;
+  }
+  string idempotency_key = 7;
+}
+
+message AnswerLuckyResponse {
+  // The attack as RollAttack answers it: resolved, with the die rolled again in
+  // `roll.d20.rerolled`; or, when the attacker holds a Bardic Inspiration die, still held,
+  // with `inspiration_offer` on the new roll.
   RollAttackResponse attack = 1;
 }
 

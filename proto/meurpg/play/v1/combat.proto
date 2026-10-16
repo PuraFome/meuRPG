@@ -656,7 +656,13 @@ service CombatService {
   // because the master rules on what provoked it at the table. The server compares the total with the target's armor
   // class (plus the +5 of an active Escudo): a
   // natural 20 hits and is a critical hit, a natural 1 misses, any other
-  // roll hits when the total reaches the armor class. The answer carries the
+  // roll hits when the total reaches the armor class. A halfling (Lucky, SRD 5.1)
+  // whose d20 shows a 1 is asked first: the roll is held with `lucky_offer` and
+  // resolved by AnswerLucky, with the new d20 when the player rolls it again; an
+  // attacker that holds a Bardic Inspiration die is held the same way, with
+  // `inspiration_offer` (AnswerBardicInspiration). A second roll of the combatant while
+  // a question waits is refused with a ResourceBlocked detail (LUCKY_PENDING or
+  // INSPIRATION_PENDING). The answer carries the
   // roll as numbers and the outcome, never the armor class. A hit opens a
   // pending damage (stored, so a retry or a reload finds it) for RollDamage;
   // a miss ends the attack. When the hit lands on a player's character that
@@ -2392,6 +2398,11 @@ message Combatant {
   // (it is answered with AnswerBardicInspiration). Only the master and the combatant's
   // own player get it, so the question is still there when the screen is read again.
   InspirationOffer inspiration_offer = 71;
+  // The attack roll of this combatant that waits for the halfling's Lucky answer, if any
+  // (it is answered with AnswerLucky). Only the master and the combatant's own player get
+  // it, like `inspiration_offer`, which is unset while this question waits (one question at
+  // a time: the Lucky question comes first, then the die's, on the new roll).
+  LuckyOffer lucky_offer = 74;
   // The states the combatant is in (a rage, a dodge, Reckless Attack, a Hunter's
   // Mark on it), for everyone who sees it, except the mark, which only the master
   // and the ranger's player get. An NPC's states are the public chips alone.
@@ -2916,8 +2927,9 @@ message DiceRoll {
   // that counts (the higher with advantage, the lower with disadvantage). 0 for any
   // other roll.
   int32 counted_index = 9;
-  // The dice a fighting style rerolled (Great Weapon Fighting): `faces` holds the
-  // faces that count.
+  // The dice a feature rolled again: a fighting style's damage dice (Great Weapon
+  // Fighting), or the halfling's Lucky on an attack d20 that showed a 1 (`source_key`
+  // "trait:lucky", from 1 to the new face). `faces` holds the faces that count.
   repeated Reroll rerolled = 10;
   // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção and
   // Perdição's d4 on attack rolls and saving throws. `total` already has them. For a
@@ -3380,6 +3392,23 @@ message InspirationOffer {
   string target_id = 5;
 }
 
+// LuckyOffer asks the player of a held roll whether to roll again a d20 that shows a 1 (SRD
+// 5.1, Halfling, Lucky: the new roll must be used): RollAttack answered it instead of the
+// outcome. The attack is only resolved after AnswerLucky.
+message LuckyOffer {
+  // The held roll (a UUID).
+  string hold_id = 1;
+  // The d20 of the held roll, with the attack's bonus as the modifier: both dice with
+  // advantage or disadvantage, the one that counts marked (`counted_index`).
+  DiceRoll d20 = 2;
+  // The die that shows the 1, as an index into `d20.faces`: the one AnswerLucky rolls again
+  // (0 for a single d20; with both dice on 1, the first).
+  int32 lucky_index = 3;
+  // The attack and its target.
+  string attack_key = 4;
+  string target_id = 5;
+}
+
 // BonusDie is a die added to a roll after it was rolled (Bardic Inspiration).
 message BonusDie {
   // The feature it came from ("feature:bardic-inspiration-d6").
@@ -3422,8 +3451,13 @@ message RollAttackResponse {
   // Set instead of the outcome (`roll.outcome` is unspecified, no action is spent
   // and there is no pending damage) when the attacker holds a Bardic Inspiration
   // die: the d20 is rolled, and the player decides whether to add the die before the
-  // result is told (AnswerBardicInspiration).
+  // result is told (AnswerBardicInspiration). Unset while `lucky_offer` waits.
   InspirationOffer inspiration_offer = 30;
+  // Set instead of the outcome, like `inspiration_offer`, when the attacker is a
+  // halfling and a d20 shows a 1: the player decides whether to roll it again before
+  // the result is told (AnswerLucky). The Lucky question comes first; the die's, when
+  // the attacker holds one, comes after it, on the new roll.
+  LuckyOffer lucky_offer = 31;
 }
 
 // RollDamageRequest rolls the damage of a hit.

@@ -82,13 +82,30 @@ export function contestBlockedMessage(blocked: ContestBlocked): string {
  * combatant does nothing else until it is answered (`ResourceBlocked` INSPIRATION_PENDING, from any call). */
 export const INSPIRATION_PENDING_TEXT = 'Responda primeiro à pergunta da Inspiração de Bardo.';
 
-function inspirationPending(err: unknown): boolean {
+/** The same while a roll of a halfling waits for the Lucky answer, "Tirou 1: rolar de novo?" (`ResourceBlocked`
+ * LUCKY_PENDING): that question comes first. */
+export const LUCKY_PENDING_TEXT =
+  'Responda primeiro à pergunta do Sortudo (tirou 1: rolar de novo?).';
+
+/** The sentence of a refusal while a roll of the character waits for an answer (INSPIRATION_PENDING or LUCKY_PENDING),
+ * `''` for any other reason. */
+export function pendingQuestionReasonText(reason: ResourceBlockedReason | undefined): string {
+  switch (reason) {
+    case ResourceBlockedReason.INSPIRATION_PENDING:
+      return INSPIRATION_PENDING_TEXT;
+    case ResourceBlockedReason.LUCKY_PENDING:
+      return LUCKY_PENDING_TEXT;
+    default:
+      return '';
+  }
+}
+
+/** The same for any error: `''` unless it is such a refusal. */
+function pendingQuestionText(err: unknown): string {
   const connectErr = ConnectError.from(err, Code.Unavailable);
-  return (
-    connectErr.code === Code.FailedPrecondition &&
-    connectErr.findDetails(ResourceBlockedSchema)[0]?.reason ===
-      ResourceBlockedReason.INSPIRATION_PENDING
-  );
+  return connectErr.code === Code.FailedPrecondition
+    ? pendingQuestionReasonText(connectErr.findDetails(ResourceBlockedSchema)[0]?.reason)
+    : '';
 }
 
 /** Whether the campaign has no open session (`GameSessionBlocked`). */
@@ -303,8 +320,9 @@ export function combatErrorMessage(err: unknown, what = 'fazer isso'): string {
   if (contest) {
     return contestBlockedMessage(contest);
   }
-  if (inspirationPending(err)) {
-    return INSPIRATION_PENDING_TEXT;
+  const pending = pendingQuestionText(err);
+  if (pending) {
+    return pending;
   }
   if (sessionClosed(err)) {
     return 'A sessão acabou: o combate só muda durante a sessão.';
