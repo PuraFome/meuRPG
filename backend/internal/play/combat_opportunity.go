@@ -79,74 +79,6 @@ func meleeReachOf(sheet link.Sheet) int {
 	return reach
 }
 
-// opportunityReactors lists the combatants that could make an opportunity attack
-// on the mover if it left their reach. exact is the server's own list (who is
-// really offered the attack): hostile to the mover (the other side), placed, not
-// defeated, awake (no incapacitating condition, not down), with the reaction
-// unused, able to attack with it (a creature that may not, may not) and holding
-// a melee attack, whose longest reach is the reach. They all see the mover unless
-// it is hidden, and a Blinded one does not; on a map with the fog of war the
-// callers ask the sight (fogSight.reactorSees) of the reactors a move leaves, after
-// the reach filter, never of all of them. A reactor in the mover's own turn group
-// may react too (the SRD allows reactions on any turn). Not exact is a player's warning in GetMoveOptions: only what the viewer
-// sees (RN-20), so hostile, not defeated, visible, its visible conditions, and a
-// 5 ft reach, never the reaction, the stat block or the vitals of an NPC. tx is the
-// open transaction, or nil for a read.
-func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, mover playdb.Combatant, v *combatViewer, draggedID string) ([]candidate, error) {
-	if mover.Hidden || mover.Disengaged || !placed(mover) {
-		return nil, nil
-	}
-	exact := v == nil || v.master
-	var out []candidate
-	for _, r := range cs {
-		if r.ID == mover.ID || r.Defeated || !placed(r) || r.Side == mover.Side {
-			continue
-		}
-		// The creature the mover drags moves with it (SRD 5.1, "Moving a Grappled
-		// Creature"): it never leaves the mover's reach and takes no opportunity attack.
-		if r.ID == draggedID {
-			continue
-		}
-		if v != nil && !v.sees(r) {
-			continue
-		}
-		if slices.ContainsFunc(r.Conditions, func(k string) bool { return slices.Contains(cantReact, k) }) {
-			continue
-		}
-		if !exact {
-			out = append(out, candidate{who: r, reachFt: meleeReachFt})
-			continue
-		}
-		if r.ReactionUsed || r.EffectNoReaction || mayAttack(r, true) != nil { // no reactions: the Open Hand technique
-			continue
-		}
-		down, err := s.isDown(ctx, tx, campaignID, r)
-		if err != nil {
-			return nil, err
-		}
-		if down {
-			continue
-		}
-		// A surprised creature takes no reaction until its first turn ends (SRD 5.1, "Surprise").
-		if surprised, err := s.surprisedReactor(ctx, tx, r); err != nil {
-			return nil, err
-		} else if surprised {
-			continue
-		}
-		sheet, err := s.sheetOf(ctx, tx, campaignID, r)
-		if connect.CodeOf(err) == connect.CodeNotFound {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		if reach := meleeReachOf(sheet); reach > 0 {
-			out = append(out, candidate{who: r, reachFt: reach, sheet: sheet})
-		}
-	}
-	return out, nil
-}
-
 // meleeAttack says an attack can be an opportunity attack: a melee weapon, rolled
 // against the armor class.
 func meleeAttack(a link.Attack) bool { return a.Melee && !a.Save }
@@ -292,24 +224,29 @@ func (s *Service) pruneOffers(ctx context.Context, c *combatTx) error {
 		byID[m.ID] = m
 	}
 	for _, o := range pending {
-		mover, okM := byID[o.MoverID]
-		r, okR := byID[o.ReactorID]
-		dead := !okM || !okR || mover.Defeated || r.Defeated || r.ReactionUsed || r.EffectNoReaction ||
-			slices.ContainsFunc(r.Conditions, func(k string) bool { return slices.Contains(cantReact, k) })
-		if !dead {
-			down, err := s.isDown(ctx, c.tx, c.session.CampaignID, r)
-			if err != nil {
-				return err
-			}
-			dead = down
+		dead, err := s.nobodyCanAnswer(ctx, c, byID, o)
+		if err != nil {
+			return err
 		}
-		if dead {
-			if _, err := c.q.SetOpportunityOfferState(ctx, playdb.SetOpportunityOfferStateParams{ID: o.ID, State: offerSkipped, AnsweredAt: &c.now}); err != nil {
-				return fmt.Errorf("skip an offer nobody can answer: %w", err)
-			}
+		if !dead {
+			continue
+		}
+		if _, err := c.q.SetOpportunityOfferState(ctx, playdb.SetOpportunityOfferStateParams{ID: o.ID, State: offerSkipped, AnsweredAt: &c.now}); err != nil {
+			return fmt.Errorf("skip an offer nobody can answer: %w", err)
 		}
 	}
 	return nil
+}
+
+// nobodyCanAnswer says a pending offer is dead: its mover or reactor is gone or
+// defeated, the reactor has no reaction left or cannot react, or is down.
+func (s *Service) nobodyCanAnswer(ctx context.Context, c *combatTx, byID map[string]playdb.Combatant, o playdb.OpportunityOffer) (bool, error) {
+	mover, okM := byID[o.MoverID]
+	r, okR := byID[o.ReactorID]
+	if !okM || !okR || mover.Defeated || r.Defeated || r.ReactionUsed || r.EffectNoReaction || cannotReact(r) {
+		return true, nil
+	}
+	return s.isDown(ctx, c.tx, c.session.CampaignID, r)
 }
 
 // parseOfferID reads an offer's id: one that is not a UUID is invalid_argument.
@@ -374,170 +311,6 @@ func (s *Service) SkipOpportunity(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.SkipOpportunityResponse{Encounter: out}), nil
-}
-
-// answerOffer ends an offer without an attack: declined by its reactor's
-// controller (or the master), or skipped or withdrawn by the master (state). It
-// writes a reaction_declined event that the undo can take back.
-func (s *Service) answerOffer(ctx context.Context, m authz.Membership, rawEncounter, rawOffer, rawKey, state string) (*playv1.Encounter, error) {
-	key, err := parseKey(rawKey)
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(rawEncounter, "encounter")
-	if err != nil {
-		return nil, err
-	}
-	offerID, err := parseOfferID(rawOffer)
-	if err != nil {
-		return nil, err
-	}
-	v := viewerOf(m)
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: requestHash(state, rawEncounter, rawOffer), kind: eventReactionDeclined, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		o, err := c.q.GetOpportunityOffer(ctx, playdb.GetOpportunityOfferParams{EncounterID: c.enc.ID, ID: offerID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errOfferGone()
-		}
-		if err != nil {
-			return nil, fmt.Errorf("find the opportunity offer: %w", err)
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v = c.viewer(m, cs)                               // the fog: an NPC the player does not see is not found
-		reactor, err := findCombatant(cs, o.ReactorID, v) // not_found for a reactor the player does not see
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(reactor); err != nil {
-			return nil, err
-		}
-		if o.State != offerPending {
-			return nil, errOfferGone()
-		}
-		if state == offerWithdrawn && o.LeftCol != nil {
-			return nil, errTheatreOnly() // only the master's own offers are taken back: a move's offer is answered or skipped
-		}
-		if _, err := c.q.SetOpportunityOfferState(ctx, playdb.SetOpportunityOfferStateParams{ID: o.ID, State: state, AnsweredAt: &c.now}); err != nil {
-			return nil, fmt.Errorf("answer the opportunity offer: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &reactor.CharacterID
-		mover, _ := findCombatant(cs, o.MoverID, combatViewer{master: true})
-		return actionEvent{Round: c.enc.Round, Secret: secretOf(reactor, mover), Actor: reactor.ID, Target: o.MoverID, OfferID: o.ID, Skipped: state == offerSkipped, Withdrawn: state == offerWithdrawn}, nil
-	})
-	if err != nil {
-		return nil, s.dbError(ctx, "answer an opportunity offer", err)
-	}
-	return s.finish(ctx, m, res, s.changed(m.CampaignID))
-}
-
-// opportunityOffers lists the pending offers as the caller may see them (RN-10,
-// RN-20): the master all, with names; a player the offers of the reactors they
-// control (to answer) and the ones on a combatant of theirs, the reactor named
-// only when they see it. Nobody else gets any.
-func (s *Service) opportunityOffers(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer) ([]*playv1.OpportunityOffer, error) {
-	if d.enc.Status != statusActive {
-		return nil, nil
-	}
-	pending, err := s.queries.ListPendingOpportunityOffers(ctx, d.enc.ID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list the opportunity offers", err)
-	}
-	find := func(id string) (playdb.Combatant, bool) {
-		i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == id })
-		if i < 0 {
-			return playdb.Combatant{}, false
-		}
-		return d.cs[i], true
-	}
-	var out []*playv1.OpportunityOffer
-	for _, o := range pending {
-		mover, ok1 := find(o.MoverID)
-		reactor, ok2 := find(o.ReactorID)
-		// The mover is judged on the square it left: a retreating NPC the player saw
-		// leave still has the offer for their reactor, though they do not see it now.
-		if !ok1 || !ok2 || !v.seesAtOffer(mover, o) {
-			continue
-		}
-		answers := v.master || v.owns(reactor)
-		if !answers && !v.owns(mover) {
-			continue
-		}
-		offer := &playv1.OpportunityOffer{Id: o.ID, MoverId: mover.ID, MoverLabel: mover.Label, ForYou: answers}
-		if o.Jumped {
-			offer.Jump = playv1.JumpKind_JUMP_KIND_LONG
-		}
-		if v.sees(reactor) {
-			offer.ReactorId, offer.ReactorLabel = reactor.ID, reactor.Label
-		}
-		if answers {
-			offer.LeftCol, offer.LeftRow = valueOf(o.LeftCol), valueOf(o.LeftRow)
-			offer.ByHand = o.LeftCol == nil
-			if sheet, err := s.sheetOf(ctx, nil, m.CampaignID, reactor); err == nil {
-				for _, a := range sheet.Attacks {
-					if meleeAttack(a) {
-						offer.Attacks = append(offer.Attacks, &playv1.OpportunityAttack{Key: a.Key, NamePt: a.Name})
-					}
-				}
-			}
-		}
-		out = append(out, offer)
-	}
-	return out, nil
-}
-
-// markProvokes fills, on each square a move can reach, the reactors it would let
-// attack, for the squares the caller's screen warns about. Only reactors the
-// viewer sees (RN-10): a hidden one is never named. Nothing off the mover's turn
-// (a placement offers nothing) and nothing after Disengage.
-func (s *Service) markProvokes(ctx context.Context, m authz.Membership, enc playdb.Encounter, cs []playdb.Combatant, who playdb.Combatant, v combatViewer, f *fogSight, out *playv1.GetMoveOptionsResponse) error {
-	if !actsNow(enc, who) || len(out.Reachable) == 0 {
-		return nil
-	}
-	reactors, err := s.opportunityReactors(ctx, nil, m.CampaignID, cs, who, &v, out.DraggingCombatantId)
-	if err != nil || len(reactors) == 0 {
-		return err
-	}
-	from := squareOfCombatant(who)
-	// The fog's rule is the real offers' rule (a reactor must see the mover), asked once
-	// for each reactor a square would make provoke.
-	saw := map[string]bool{}
-	sees := func(p provoker) (bool, error) {
-		if f == nil {
-			return true, nil
-		}
-		if ok, done := saw[p.reactor.ID]; done {
-			return ok, nil
-		}
-		sheet := p.sheet
-		if len(sheet.Attacks) == 0 { // a player's warning never read the sheet
-			var err error
-			if sheet, err = s.sheetOf(ctx, nil, m.CampaignID, p.reactor); err != nil && connect.CodeOf(err) != connect.CodeNotFound {
-				return false, err
-			}
-		}
-		saw[p.reactor.ID] = f.reactorSees(p.reactor, sheet, from)
-		return saw[p.reactor.ID], nil
-	}
-	for _, r := range out.Reachable {
-		for _, p := range provokedBy(reactors, from, grid.Square{Col: int(r.Col), Row: int(r.Row)}) {
-			ok, err := sees(p)
-			if err != nil {
-				return err
-			}
-			if ok {
-				r.ProvokesReactorIds = append(r.ProvokesReactorIds, p.reactor.ID)
-			}
-		}
-	}
-	return nil
 }
 
 // returnToReach is the 0 hit points rule: an opportunity attack that drops the
