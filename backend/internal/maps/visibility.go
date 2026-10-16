@@ -21,7 +21,7 @@ import (
 //
 //	a map      when it is revealed, or it is the open session's current map
 //	a point    when it is revealed, on a map they see, with three kinds
-//	           the rule changes for (Etapa 9, pointVisible):
+//	           the rule changes for:
 //	             a LIGHT never, revealed or not: they see its light, not it;
 //	             a TRAP when it is revealed, or was triggered, or was
 //	             revealed to one of their characters (map_point_reveals), and
@@ -129,7 +129,7 @@ type campaignMaps struct {
 // loadMaps reads the campaign's maps. A campaign has at most 200, so
 // reading them all is cheap, and it gives every response the names and
 // states it needs (parents, submap targets) in two queries. The two run in one
-// read-only transaction, so the links always match the rows (audit D-03).
+// read-only transaction, so the links always match the rows.
 func (s *Service) loadMaps(ctx context.Context, campaignID string) (campaignMaps, error) {
 	var cm campaignMaps
 	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {

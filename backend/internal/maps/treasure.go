@@ -21,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// TreasureService (MR-044, RN-09, RN-10, Etapa 10, slice 10.10b): the master's
+// TreasureService (MR-044, RN-09, RN-10): the master's
 // treasure generator. The generator itself is package rules (pure: the same mode,
 // party level and seed give the same treasure); this file is what the server does
 // around it: the party's level, the answers, and "Pôr no mapa", which makes a hidden

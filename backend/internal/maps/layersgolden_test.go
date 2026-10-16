@@ -32,7 +32,7 @@ import (
 // (testdata/layers_*.golden.json, ids replaced by names and the times by <time>); run
 // with -update-layers-golden to write them again after a change of behavior that was
 // meant. The refusals of the calls that write the layers are frozen with their exact
-// words in TestLayersFrozen_Refusals.
+// words in TestLayers_Refusals.
 
 var updateLayersGolden = flag.Bool("update-layers-golden", false, "write the golden files of the layers again")
 
@@ -363,9 +363,9 @@ func checkLayersCalls(t *testing.T, calls []layersCall) {
 	}
 }
 
-// TestLayersFrozen_Refusals: every refusal of the calls that paint, set the fog, carry a
+// TestLayers_Refusals: every refusal of the calls that paint, set the fog, carry a
 // light and read the layers, in the order the checks run, with the exact words.
-func TestLayersFrozen_Refusals(t *testing.T) {
+func TestLayers_Refusals(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master
@@ -477,10 +477,10 @@ func TestLayersFrozen_Refusals(t *testing.T) {
 	}
 }
 
-// TestLayersFrozen_PaintingCountsAndRevisions: what PaintMapCells answers (the squares that
+// TestLayers_PaintingCountsAndRevisions: what PaintMapCells answers (the squares that
 // changed and the revision the caller reads), and the revisions the other readers see, for
 // each layer; a calibrated map paints a whole door and square by square the rest.
-func TestLayersFrozen_PaintingCountsAndRevisions(t *testing.T) {
+func TestLayers_PaintingCountsAndRevisions(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master
@@ -563,10 +563,10 @@ func TestLayersFrozen_PaintingCountsAndRevisions(t *testing.T) {
 	}
 }
 
-// TestLayersFrozen_FogSettingsAnswerAndHints: SetMapFog answers the master's map after the
+// TestLayers_FogSettingsAnswerAndHints: SetMapFog answers the master's map after the
 // change, tells the players only what they read (the switch and the party's vision, never the
 // base light) and only while they see the map; the master hears of every call.
-func TestLayersFrozen_FogSettingsAnswerAndHints(t *testing.T) {
+func TestLayers_FogSettingsAnswerAndHints(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master
@@ -622,10 +622,10 @@ func TestLayersFrozen_FogSettingsAnswerAndHints(t *testing.T) {
 	}
 }
 
-// TestLayersFrozen_OpenDoors: the doors a move opens, in the transaction of the move: the
+// TestLayers_OpenDoors: the doors a move opens, in the transaction of the move: the
 // refusals, a map with no grid or nothing painted, a calibrated map (one square comes back for
 // a block), repeated squares and squares outside the grid.
-func TestLayersFrozen_OpenDoors(t *testing.T) {
+func TestLayers_OpenDoors(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master
@@ -679,10 +679,10 @@ func TestLayersFrozen_OpenDoors(t *testing.T) {
 	}
 }
 
-// TestLayersFrozen_CarriedLightAnswers: the token SetCarriedLight answers to each caller, and the
+// TestLayers_CarriedLightAnswers: the token SetCarriedLight answers to each caller, and the
 // order of the checks that find the token: a hidden token is no token to a player on a map with no
 // fog, and is there on a fog map.
-func TestLayersFrozen_CarriedLightAnswers(t *testing.T) {
+func TestLayers_CarriedLightAnswers(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master

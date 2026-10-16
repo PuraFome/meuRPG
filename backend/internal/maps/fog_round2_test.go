@@ -402,7 +402,7 @@ func TestMR036_ThePlayerSetsTheLightOfAHiddenOwnToken(t *testing.T) {
 	}
 }
 
-// RN-10, D6: a fog map's image is its own. The image the session shows, an image
+// RN-10: a fog map's image is its own. The image the session shows, an image
 // left with the players, a portrait and a map without fog each get a copy when it is
 // the background of a fog map, and the route refuses only the fog map's own.
 func TestRN10_AFogMapsImageIsNeverReusedRaw(t *testing.T) {

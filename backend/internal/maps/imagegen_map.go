@@ -30,8 +30,8 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 )
 
-// The pictures made from a map (MR-039, RN-28, ADR-0019, slice 10.8b). Three kinds
-// share the 10.8a service (reserve, run, the generator, the cap, the long poll):
+// The pictures made from a map (MR-039, RN-28, ADR-0019). Three kinds
+// share the image service of imagegen.go (reserve, run, the generator, the cap, the long poll):
 //
 //   - the scene art and the isometric view start from the players' view of the map:
 //     what the players' characters see now (the union of their views, as the fog of

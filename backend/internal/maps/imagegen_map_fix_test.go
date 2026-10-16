@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
 
-// Fix round 1 of slice 10.8b (the review): the textured map takes no characters, the
+// The textured map takes no characters, the
 // portrait of a hidden NPC stays out, "Usar como imagem do mapa" keeps a fog map's image
 // its own and refuses a map whose walls changed, and the limits are said in advance.
 

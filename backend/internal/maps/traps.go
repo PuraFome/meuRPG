@@ -21,8 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 )
 
-// Traps, treasure and who knows about them (MR-035, MR-041; Etapa 9, D5, D8;
-// RN-10).
+// Traps, treasure and who knows about them (MR-035, MR-041, RN-10).
 //
 // A trap is hidden from a player until it was revealed to one of their
 // characters (a row in map_point_reveals), revealed to everyone (the point's

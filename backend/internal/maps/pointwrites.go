@@ -15,11 +15,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 )
 
-// The master's writes to points (CreateMapPoint, UpdateMapPoint, DeleteMapPoint and
-// SetMapPointRevealed): check the request, change the rows in one transaction, tell the
-// watchers after the commit. Who sees a change (RN-10) is decided by the publish helpers
-// in fogwrites.go. The tokens' writes are in tokenwrites.go.
-
 // CreateMapPoint implements mapsv1connect.MapServiceHandler.
 func (s *Service) CreateMapPoint(
 	ctx context.Context,
@@ -494,7 +489,7 @@ func discoverScene(ctx context.Context, q *mapsdb.Queries, campaignID string, p 
 	if params.Kind != scene || params.RevealedAt == nil || (p.RevealedAt != nil && p.Kind == scene) {
 		return nil
 	}
-	// Revealing a scene makes it "discovered" (MR-030, question 61): the
+	// Revealing a scene makes it "discovered" (MR-030): the
 	// group may tag notes with it from now on, even if it is hidden again.
 	if err := q.UpsertSceneDiscovery(ctx, mapsdb.UpsertSceneDiscoveryParams{CampaignID: campaignID, PointID: p.ID, DiscoveredAt: params.Now}); err != nil {
 		return fmt.Errorf("record the scene's discovery: %w", err)

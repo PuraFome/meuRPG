@@ -17,7 +17,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// The stage, "NPCs em cena" (MR-031, D7, RN-20; question 62 with its default),
+// The stage, "NPCs em cena" (MR-031, RN-20),
 // and the portraits that go with it. The tests live here because this harness
 // has the maps (the image route), the characters and play together.
 

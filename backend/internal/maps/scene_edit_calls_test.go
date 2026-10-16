@@ -12,13 +12,11 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 )
 
-// Characterization of the calls that edit a scene point's clues and actions
+// The calls that edit a scene point's clues and actions
 // (AddSceneClue, MoveSceneClue, RevealSceneClue, AddSceneAction,
 // UpdateSceneAction, MoveSceneAction): each refusal with its exact code and
 // message and the order the checks run in, what each success answers, and what
-// the master's, a chosen player's and another player's streams hear. They were
-// written on the code before it was split into phases, and must keep passing
-// unchanged.
+// the master's, a chosen player's and another player's streams hear.
 
 // sceneRefusal renders a refusal as "code: message", or "ok" for no error.
 func sceneRefusal(err error) string {
@@ -97,7 +95,7 @@ func (e *sceneEditTable) moveAction(actionID string, dir mapsv1.SceneActionDirec
 	return err
 }
 
-func TestSceneEditRefusalsAreFrozen(t *testing.T) {
+func TestSceneEditRefusals(t *testing.T) {
 	t.Parallel()
 	e := newSceneEditTable(t)
 	up := mapsv1.SceneActionDirection_SCENE_ACTION_DIRECTION_UP
@@ -318,9 +316,9 @@ func sceneEditView(e *sceneEditTable) string {
 	return strings.Join(out, "\n")
 }
 
-// TestSceneEditResultsAreFrozen freezes what each call answers (the clue or
+// TestSceneEditResults freezes what each call answers (the clue or
 // action and the whole list, in order) and what the master reads afterwards.
-func TestSceneEditResultsAreFrozen(t *testing.T) {
+func TestSceneEditResults(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, false)
 	e := &sceneEditTable{scenes: s, pid: s.point.GetId()}
@@ -483,10 +481,10 @@ func sceneEvents(w *watcher, probeMapID string) string {
 	return strings.Join(out, ",")
 }
 
-// TestSceneEditStreamsAreFrozen freezes who hears each change: with the point
+// TestSceneEditStreams freezes who hears each change: with the point
 // revealed on a map the players see and the scene open, and again with the
 // scene closed.
-func TestSceneEditStreamsAreFrozen(t *testing.T) {
+func TestSceneEditStreams(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	e := &sceneEditTable{scenes: s, pid: s.point.GetId()}

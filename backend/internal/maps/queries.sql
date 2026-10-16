@@ -756,7 +756,7 @@ SET image_id = sqlc.arg(image_id), revision = revision + 1, updated_at = sqlc.ar
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
 RETURNING *;
 
--- Gold (slice 9.11, MR-032): the session summary's "Mais tesouro encontrado".
+-- Gold (MR-032): the session summary's "Mais tesouro encontrado".
 
 -- name: ListTreasureFindsOfSession :many
 -- One row per treasure and finder of the treasures found while the game session
@@ -768,7 +768,7 @@ WHERE p.kind = 'treasure' AND p.treasure_found_at IS NOT NULL AND p.treasure_ses
 ORDER BY p.id, f.character_id;
 
 -- name: SetTrapState :one
--- The live game changes a trap's state (MR-035, slice 9.8): it fires (state
+-- The live game changes a trap's state (MR-035): it fires (state
 -- 'triggered', with when), the master disarms it, or an undo puts back what
 -- there was. The caller locked the point first.
 UPDATE map_points
@@ -958,7 +958,7 @@ JOIN gallery_images g ON g.id = t.id
 LEFT JOIN image_requests r ON r.image_id = g.id
 ORDER BY g.created_at, g.id;
 
--- Generated dungeons (MR-010, slice 10.6d): the record DungeonService keeps of a map
+-- Generated dungeons (MR-010): the record DungeonService keeps of a map
 -- it made. The master's alone: nothing here is ever sent to a player (RN-10).
 
 -- name: InsertGeneratedDungeon :exec

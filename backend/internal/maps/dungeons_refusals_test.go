@@ -28,7 +28,7 @@ func wantDungeonRefusal(t *testing.T, call string, err error, code connect.Code,
 	}
 }
 
-func TestDungeonCreateRefusalsAreFrozen(t *testing.T) {
+func TestDungeonCreateRefusals(t *testing.T) {
 	t.Parallel()
 	d := newDungeonTable(t)
 	seed, _ := testDungeonSeed(t)
@@ -67,7 +67,7 @@ func TestDungeonCreateRefusalsAreFrozen(t *testing.T) {
 	}
 }
 
-func TestDungeonRoomsRefusalsAndReadAreFrozen(t *testing.T) {
+func TestDungeonRoomsRefusalsAndRead(t *testing.T) {
 	t.Parallel()
 	d := newDungeonTable(t)
 	m := d.master
@@ -145,7 +145,7 @@ func TestDungeonRoomsRefusalsAndReadAreFrozen(t *testing.T) {
 	wantCode(t, "rooms that cannot be decoded", err, connect.CodeInternal)
 }
 
-func TestDungeonRedrawRefusalsAreFrozen(t *testing.T) {
+func TestDungeonRedrawRefusals(t *testing.T) {
 	t.Parallel()
 	d := newDungeonTable(t)
 	m := d.master
@@ -196,7 +196,7 @@ func TestDungeonRedrawRefusalsAreFrozen(t *testing.T) {
 
 // The window between the render and the transaction: what changes there is read again
 // under the map's lock, and the new image's files are deleted when the redraw is refused.
-func TestDungeonRedrawRefusalsInsideTheTransactionAreFrozen(t *testing.T) {
+func TestDungeonRedrawRefusalsInsideTheTransaction(t *testing.T) {
 	t.Parallel()
 	seed, _ := testDungeonSeed(t)
 	cases := []struct {

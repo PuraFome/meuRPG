@@ -30,7 +30,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The image of a fog map, as tiles per player (MR-036, RN-10, Etapa 9, D6, ADR-0016).
+// The image of a fog map, as tiles per player (MR-036, RN-10, ADR-0016).
 //
 // A player on a map with the fog on never receives the image: the server cuts it
 // into tiles of 16 x 16 squares and draws into each one only the squares that
@@ -54,7 +54,7 @@ import (
 //     more of each known square.
 //
 // The server has 512 MiB and one CPU, so the work is bounded (numbers in
-// CONTRIBUTING, "As medidas dos tiles da névoa"):
+// docs/performance.md):
 //   - one working copy of the image per map and grid, decoded once and capped at
 //     workingMaxSide pixels on the long side, in an LRU of workingCopies maps;
 //   - one render at a time (tileRenderer.gate): a request waits renderWait, then

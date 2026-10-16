@@ -20,8 +20,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
 
-// What each player sees of a map with the fog of war on (MR-036, RN-10, Etapa 9,
-// D6). Everything a player receives about such a map goes through here: this is
+// What each player sees of a map with the fog of war on (MR-036, RN-10).
+// Everything a player receives about such a map goes through here: this is
 // the one place that says which squares a player sees now, which they remember,
 // and so which points, tokens and layers they may be sent.
 //
@@ -215,7 +215,7 @@ type sight struct {
 	extra map[string][]vision.Viewer
 	group bool
 	// combat says a combat runs on the map: the NPC tokens are then left out of
-	// a player's reads (the combatants are slice 9.7's).
+	// a player's reads (fogcombat.go reads the combatants).
 	combat bool
 	// openPlan says the map's base light is "Claro": the players see the whole floor
 	// plan (see playerView.terrainAll). It never touches what is in sight.
@@ -851,7 +851,7 @@ func (s *Service) pointSeenNow(pv *playerView, p mapsdb.MapPoint) bool {
 // square seen now, and not at all while a combat runs on the map.
 func tokenSeen(pv *playerView, t mapsdb.MapToken, player bool) bool {
 	// While a combat runs, the token of an NPC is the square it had before the
-	// fight: it is left out, and the combatants are slice 9.7's.
+	// fight: it is left out, and fogcombat.go reads the combatants.
 	return player || (!pv.combat && pv.seenNow(pv.g.SquareOf(int(t.XBp), int(t.YBp))))
 }
 

@@ -26,9 +26,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 )
 
-// Characterization tests of BeginCampaignImport, StartCampaignExport, the
+// Tests of BeginCampaignImport, StartCampaignExport, the
 // export's writeZip and Sweep: every way they fail, with what they log, and
-// the order of their checks, frozen before they are split into phases.
+// the order of their checks.
 //
 // A database error is made by pkgQueryFaults, a pgx tracer on the package's
 // own pool that hands one named sqlc query an already canceled context: pgx

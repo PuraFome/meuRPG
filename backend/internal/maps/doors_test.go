@@ -14,7 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The doors layer (MR-010, RN-26, Etapa 10): the master paints it, and each
+// The doors layer (MR-010, RN-26): the master paints it, and each
 // player reads it as they know it. The table of the first tests is newScenes':
 // a revealed map of 20 x 15 squares; the fog tests use the cave of fog_test.go.
 

@@ -15,11 +15,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// UpdateMap's phases (MR-008, AIP-154, RN-10, MR-025): the request is checked
-// before anything is read, the fog's image copy is made before the transaction,
-// and the transaction locks the map, compares the revision, picks the image and
-// writes. The checks run in this order: something to change, the revision, the
-// name, the image's id; inside the transaction: the map, the revision, the image.
+// UpdateMap refuses in this order: something to change, the revision, the name, the
+// image's id; and, inside the transaction, the map, the revision and the image.
 
 // UpdateMap implements mapsv1connect.MapServiceHandler.
 func (s *Service) UpdateMap(

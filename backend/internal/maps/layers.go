@@ -21,8 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The painted layers of a map and its fog of war settings (MR-034, MR-036,
-// Etapa 9, D2 and D6).
+// The painted layers of a map and its fog of war settings (MR-034, MR-036).
 //
 // Five layers sit on a map's grid: difficult terrain and walls (one bit a
 // square), cover (two bits: none, half, three-quarters), light (two bits: not
@@ -564,7 +563,7 @@ func (s *Service) GetMapLayers(
 }
 
 // readLayersSnapshot reads the map the viewer asks for and its stored layers. The
-// revision in the answer and the layers it counts are one snapshot (audit D-03): read
+// revision in the answer and the layers it counts are one snapshot: read
 // apart, a paint between them gives layers newer than their revision, and the app would
 // not ask again.
 func (s *Service) readLayersSnapshot(ctx context.Context, campaignID, mapID string, v viewer) (mapsdb.ListMapDetailsRow, mapsdb.MapLayer, error) {

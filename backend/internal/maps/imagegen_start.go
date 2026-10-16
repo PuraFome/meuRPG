@@ -282,7 +282,7 @@ func errTooManyImageRequests() error {
 // reserve is step 1: in one short transaction it finds the request an earlier
 // try with the same key made, or checks the cap and the gallery and inserts the
 // row, which reserves the slot. It starts the goroutine of a new request after
-// the commit. Every read goes through the transaction (the #121 rule).
+// the commit. Every read goes through the transaction (see docs/architecture/transactions.md).
 func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) (mapsdb.ImageRequest, *mapsv1.ImageGenerationStatus, error) {
 	var res reservation
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {

@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
-// The actions of an RP scene (MR-015, D6, question 51): a skill check, an
+// The actions of an RP scene (MR-015): a skill check, an
 // ability check or a saving throw on a SCENE point, each with an optional
 // name and an optional DC. The master changes them one at a time, as the
 // artboard shows, so there is no "save all": every call below is one change,
@@ -30,7 +30,7 @@ import (
 // play's; this package keeps the actions, which belong to the map point, and
 // gives play the scene through SessionMaps.ScenePoint. A player gets the
 // actions of a point they see, with the DC only when the scene shows it
-// (show_dc, RN-20, question 52); the open
+// (show_dc, RN-20); the open
 // scene carries the actions of a hidden point too, but that is play's read.
 
 const (
@@ -44,7 +44,7 @@ const (
 	maxDC = 30
 	// defaultAttempts is how many times a player's character may roll a new
 	// action; maxAttempts is the most the master may allow, and 0 means
-	// unlimited (scene_actions_max_attempts_valid, question 55).
+	// unlimited (scene_actions_max_attempts_valid).
 	defaultAttempts = 1
 	maxAttempts     = 5
 )
@@ -302,7 +302,6 @@ func (s *Service) editAction(ctx context.Context, q *mapsdb.Queries, pointID, ac
 	return changed, actions, nil
 }
 
-// applyTo overwrites the fields of the update that the edit carries.
 func (e actionEdit) applyTo(params *mapsdb.UpdateSceneActionParams) {
 	if e.key != nil {
 		params.Key = *e.key

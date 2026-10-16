@@ -24,7 +24,7 @@ import (
 )
 
 // The clues of an RP scene, the discoveries and what a player's notes read
-// (MR-029, MR-030, Etapa 8; D5, D6; questions 59 to 61 with their defaults).
+// (MR-029, MR-030).
 //
 //   - The master prepares clues on a SCENE point, one at a time, like the
 //     actions (scene_clues), and reveals each to the players it picks
@@ -42,8 +42,8 @@ import (
 // the clues through SessionMaps.ScenePoint and gives them to the master only.
 
 const (
-	// maxSceneClues is how many clues a scene point may have (question 59's
-	// default; the master's list is short, and so is the dialog that reveals).
+	// maxSceneClues is how many clues a scene point may have (the
+	// master's list is short, and so is the dialog that reveals).
 	maxSceneClues = 30
 	// maxClueText is the longest clue, in characters (scene_clues_text_length).
 	maxClueText = 500
@@ -555,7 +555,7 @@ func clueByID(clues []*mapsv1.SceneClue, id string) *mapsv1.SceneClue {
 }
 
 // DiscoverScene records, inside tx, that the group discovered a scene: the
-// master opened its point in a session (MR-030, question 61), even while the
+// master opened its point in a session (MR-030), even while the
 // point is hidden on the map. A scene already discovered stays as it is. It
 // implements play.MapKeeper; the caller checked that the point is a SCENE
 // point of the campaign (ScenePoint).

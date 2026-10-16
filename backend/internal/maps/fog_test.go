@@ -24,7 +24,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The fog of war on the server (MR-036, RN-10, Etapa 9, D6): what each player
+// The fog of war on the server (MR-036, RN-10): what each player
 // receives on a map with the fog on. The map is "A caverna do Vale Seco" of the
 // design (design/etapa9/cave.py and cave-data.md): 24 x 16 squares, walls, the
 // guard room's torch, four characters and three goblins. Every player's response
@@ -544,7 +544,7 @@ func (c *cave) memoryRows() int {
 	return n
 }
 
-// D6: what was seen stays, darkened and without creatures; "Esquecer o que foi
+// What was seen stays, darkened and without creatures; "Esquecer o que foi
 // visto" clears it, for the master only; a new grid clears it too.
 func TestMR036_WhatWasSeenStays(t *testing.T) {
 	t.Parallel()
@@ -658,7 +658,7 @@ func TestMR036_WhatWasSeenStays(t *testing.T) {
 	}
 }
 
-// vision_changed (D6): sent to the players whose view changed, never with a
+// vision_changed: sent to the players whose view changed, never with a
 // square; an NPC moving in the dark sends a player nothing; a player character
 // moving is no secret.
 func TestMR036_VisionChangedReachesTheRightPlayers(t *testing.T) {
@@ -778,7 +778,7 @@ func TestMR036_VisionChangedReachesTheRightPlayers(t *testing.T) {
 	}
 }
 
-// RN-10, D6: a map's image is never one a player can fetch. An image the fog map
+// RN-10: a map's image is never one a player can fetch. An image the fog map
 // shares with a map without fog is copied when the fog goes on; the other map
 // keeps the old one.
 func TestRN10_FogMapImageIsCopiedWhenShared(t *testing.T) {

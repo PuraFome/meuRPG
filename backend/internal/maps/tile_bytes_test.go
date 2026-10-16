@@ -20,12 +20,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Characterization of what a player's tile carries (RN-10, MR-036): the bytes of
-// every tile of every kind of viewer, over PNG and JPEG images, shrunk and not,
-// are frozen as digests, written on the code before it was split into phases.
-// A refactor of renderTile, blackenBlocks, decodeWorkingCopy or buildTiles must
-// not move a single byte of a tile: the digests are the proof, and tiles_test.go
-// (TestRN10_TileOracle) is the proof that the bytes are the right ones.
+// What a player's tile carries (RN-10, MR-036): the bytes of every tile of every kind of
+// viewer, over PNG and JPEG images, shrunk and not, are pinned as digests. A change of
+// renderTile, blackenBlocks, decodeWorkingCopy or buildTiles that moves a byte of a tile
+// fails here; tiles_test.go (TestRN10_TileOracle) is the proof that the bytes are the
+// right ones, so a digest is rewritten only after that test passes.
 
 // digestOf is a short fingerprint of some bytes.
 func digestOf(parts ...[]byte) string {
@@ -139,7 +138,7 @@ func workingOf(t *testing.T, f tileFixture) *workingCopy {
 	return &workingCopy{img: img, srcW: sw, srcH: sh, cols: f.g.Columns, rows: f.g.Rows}
 }
 
-// frozenDigests are the digests recorded on the code before the refactor.
+// frozenDigests are the digest of each tile and mask, as the code makes them.
 var frozenDigests = map[string]string{
 	"decode|header just under the limit":                        "ccf04ea77bb3524ace1d",
 	"decode|header over the limit":                              "9c16a3c9d4a6d72b59ea",
@@ -390,7 +389,7 @@ func checkFrozen(t *testing.T, key, got string) {
 	}
 }
 
-func TestTilesAreByteForByteFrozen(t *testing.T) {
+func TestTileBytesPerViewer(t *testing.T) {
 	t.Parallel()
 	for _, f := range tileFixtures(t) {
 		for _, v := range tileViewers {
@@ -402,9 +401,9 @@ func TestTilesAreByteForByteFrozen(t *testing.T) {
 	}
 }
 
-// TestBlackenBlocksIsFrozen calls blackenBlocks on its own: the mask it leaves
+// TestBlackenBlocksMask calls blackenBlocks on its own: the mask it leaves
 // for a tile of a JPEG, for each viewer.
-func TestBlackenBlocksIsFrozen(t *testing.T) {
+func TestBlackenBlocksMask(t *testing.T) {
 	t.Parallel()
 	for _, f := range tileFixtures(t) {
 		if !f.jpeg {
@@ -446,9 +445,9 @@ func TestBlackenBlocksIsFrozen(t *testing.T) {
 	}
 }
 
-// TestBuildTilesIsFrozen lists the tiles each viewer has, with their revisions,
+// TestBuildTilesIndex lists the tiles each viewer has, with their revisions,
 // for a plan seen and for the whole plan ("Claro").
-func TestBuildTilesIsFrozen(t *testing.T) {
+func TestBuildTilesIndex(t *testing.T) {
 	t.Parallel()
 	for _, f := range tileFixtures(t) {
 		for _, v := range tileViewers {
@@ -535,7 +534,7 @@ func pngHeaderOnly(w, h int, colorType, interlace byte) []byte {
 	return binary.BigEndian.AppendUint32(out, crc32.ChecksumIEEE(chunk))
 }
 
-func TestDecodeWorkingCopyIsFrozen(t *testing.T) {
+func TestDecodeWorkingCopyShape(t *testing.T) {
 	t.Parallel()
 	small := grid.Grid{Columns: 8, Rows: 6}
 	big := grid.Grid{Columns: 48, Rows: 24}
@@ -597,10 +596,10 @@ func tileLine(r httpResult) string {
 		h.Get("Content-Security-Policy"), h.Get("Cross-Origin-Resource-Policy"), h.Get("Content-Length"), digestOf(r.body))
 }
 
-// TestTileServeIsFrozen freezes what each viewer of the cave is served, tile by
+// TestTileServeRefusals freezes what each viewer of the cave is served, tile by
 // tile, and the answer to each way of asking wrongly, in the order the checks
 // run in.
-func TestTileServeIsFrozen(t *testing.T) {
+func TestTileServeRefusals(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
 	etagOf := func(tile *mapsv1.MapTile) string { return `"t` + strconv.Itoa(int(tile.GetRevision())) + `"` }

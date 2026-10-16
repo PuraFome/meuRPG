@@ -15,10 +15,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 )
 
-// The master's writes to tokens (PlaceMapToken, SetMapTokenHidden and RemoveMapToken), in
-// the order of pointwrites.go: check the request, change the rows in one transaction, tell
-// the watchers after the commit (fogwrites.go decides who hears of it, RN-10).
-
 // PlaceMapToken implements mapsv1connect.MapServiceHandler.
 func (s *Service) PlaceMapToken(
 	ctx context.Context,

@@ -14,8 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// GetMap, CreateMap, DeleteMap and SetMapRevealed are frozen here before their
-// phases are split (MR-008, MR-009, RN-10, RN-24): the order of their refusals, what
+// GetMap, CreateMap, DeleteMap and SetMapRevealed (MR-008, MR-009, RN-10, RN-24): the order of their refusals, what
 // each viewer reads of a map, and who hears about each write, in which order.
 
 // crudRefusal is what a refused call of these four says.

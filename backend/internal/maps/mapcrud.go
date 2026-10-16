@@ -16,7 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 )
 
-// GetMap's phases (RN-10): the snapshot of the map, its points and its tokens is
+// GetMap (RN-10): the snapshot of the map, its points and its tokens is
 // read in one read-only transaction, and what a player may see of it is decided
 // from that snapshot, point by point and token by token.
 
@@ -60,7 +60,7 @@ func (s *Service) GetMap(
 
 // mapSnapshot is what GetMap reads in one transaction. The map's rows, its points
 // and its tokens are one snapshot: three autocommit reads could show a token moved
-// on a revision that does not count the move (audit D-03).
+// on a revision that does not count the move.
 type mapSnapshot struct {
 	cm      campaignMaps
 	row     mapsdb.ListMapDetailsRow

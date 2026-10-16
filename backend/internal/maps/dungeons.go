@@ -30,7 +30,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// DungeonService (MR-010, RN-26, Etapa 10, slice 10.6d): a generated dungeon
+// DungeonService (MR-010, RN-26): a generated dungeon
 // becomes a campaign map. The generator is package rules/dungeon (pure); this
 // file is what the server does around it: validate and run it under a deadline,
 // render the flat image (package dungeonimg) and store it as the gallery stores an
@@ -490,7 +490,6 @@ func placeRoomScenes(res *mapsv1.GetDungeonRoomsResponse, rec mapsdb.GeneratedDu
 	}
 }
 
-// floorHolds says whether the square is inside the rectangle.
 func floorHolds(f *mapsv1.DungeonRect, sq grid.Square) bool {
 	col, row := int32(sq.Col), int32(sq.Row) //nolint:gosec // G115: inside the grid
 	return col >= f.GetX() && col < f.GetX()+f.GetWidth() && row >= f.GetY() && row < f.GetY()+f.GetHeight()

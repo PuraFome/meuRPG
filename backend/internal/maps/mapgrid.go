@@ -15,11 +15,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// SetMapGrid's phases (MR-013, MR-025, RN-24): the request is checked before
-// anything is read, the fog's image copy is made before the transaction, and
-// the transaction locks the map, works out what happens to the layers, writes
-// the grid and applies the table's fog rule.
-
 // The battle grid's limits (MR-013): how many squares of the drawing fit across
 // the image's width. The maps_grid_columns_valid CHECK says the same of the
 // rules' columns, which are at most 200 as well (the calibration multiplies the

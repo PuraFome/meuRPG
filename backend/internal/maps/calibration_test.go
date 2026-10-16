@@ -13,7 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The calibration of a map's grid (MR-025, RN-25, Etapa 10): "each square of this
+// The calibration of a map's grid (MR-025, RN-25): "each square of this
 // drawing is 3 m". The table is newScenes': a revealed map whose image is 40 x 30,
 // so 8 drawn columns make 8 x 6 drawn squares (6 rows: round(8 * 30 / 40)), and a
 // factor f makes the rules' grid 8f x 6f.

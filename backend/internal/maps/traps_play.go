@@ -24,7 +24,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
 
-// Traps in play (MR-035, Etapa 9, D5, slice 9.8): who notices a trap by passing
+// Traps in play (MR-035): who notices a trap by passing
 // near it, who finds it by searching, and the state a firing or a disarm leaves
 // it in. The play module runs the game around it (the moves, the dice, the
 // damage) and asks this one, through play.TrapBook, for everything that is a
@@ -410,7 +410,7 @@ func (s *Service) tellUsers(ctx context.Context, campaignID, mapID string, row m
 }
 
 // tellNoticers sends each player who just noticed a trap the `trap_noticed` hint
-// (E9-08 G: "Você notou uma armadilha."), under the same rule as tellUsers: only when
+// ("Você notou uma armadilha."), under the same rule as tellUsers: only when
 // the map is one the players see, and only to that player (RN-10). The hint names the
 // map and the trap, which that player now knows; nobody else gets it.
 func (s *Service) tellNoticers(ctx context.Context, campaignID, mapID string, row mapsdb.Map, noticed []noticeKey) {
@@ -432,7 +432,7 @@ func (s *Service) tellNoticers(ctx context.Context, campaignID, mapID string, ro
 	}
 }
 
-// SearchTraps is "Procurar armadilhas" (MR-035, D5, question 71) as the maps
+// SearchTraps is "Procurar armadilhas" (MR-035) as the maps
 // module sees it: the observer's roll total, with the skill ("perception",
 // "investigation" or the key of another skill, "skill:arcana"), against every armed
 // trap within 3 m whose square it sees and that its character does not know.

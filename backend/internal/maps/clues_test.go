@@ -314,7 +314,7 @@ func TestMR029_ClueLimits(t *testing.T) {
 	s.master.addClue(s.campaign, s.mapID, other.GetId(), "pista")
 }
 
-// MR-029, question 59: the master reveals a clue to the players it picks. They
+// MR-029: the master reveals a clue to the players it picks. They
 // get it once, in their notes, whether they are online or not; the streams of
 // the others hear nothing; it is recorded as an event with ids only; there is
 // no way back; a clue removed or edited later changes nothing for them.
@@ -606,7 +606,7 @@ func TestMR030_NoteLimits(t *testing.T) {
 	s.caio.createNote(s.campaign, "a primeira do Caio", "")
 }
 
-// MR-030, question 61: a note may be tagged only with a scene the group
+// MR-030: a note may be tagged only with a scene the group
 // discovered: the point was revealed on the map (and stays discovered when
 // hidden again), or the master opened the scene in a session, even hidden. An
 // undiscovered scene is refused as one that does not exist, and its name is
