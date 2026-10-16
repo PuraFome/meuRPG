@@ -598,7 +598,8 @@ func packageFixture(t *testing.T) []pkgEntry {
 		{imageKind, "images/2", patternImage(t, 40, 30)},
 		{imageKind, "images/3", patternImage(t, 50, 20)},
 		{mapKind, "maps/1.json", jsonOf(t, mapOne)},
-		{mapKind, "maps/2.json", jsonOf(t, mapTwo)}, {mapKind, "maps/3.json", jsonOf(t, mapThree)},
+		{mapKind, "maps/2.json", jsonOf(t, mapTwo)},
+		{mapKind, "maps/3.json", jsonOf(t, mapThree)},
 	}
 }
 
