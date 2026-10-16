@@ -94,20 +94,33 @@ func (s *Service) SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon
 	if err != nil {
 		return res, wrap("read rules content", err)
 	}
+	if res.Replaced, err = s.replaceForSummon(ctx, q, content, sm); err != nil {
+		return res, err
+	}
+	if err := checkCreatureRoom(ctx, q, sm); err != nil {
+		return res, err
+	}
+	if res.Created, err = s.insertSummoned(ctx, q, content, sm); err != nil {
+		return res, err
+	}
+	return res, setSummonedOwner(ctx, q, sm.CampaignID, res.Created)
+}
+
+// replaceForSummon dismisses what the casting replaces and returns it: the old
+// familiar for a new one ("replaced"), and for a concentration spell the
+// creatures of the old concentration ("concentration").
+func (s *Service) replaceForSummon(ctx context.Context, q *charactersdb.Queries, content *rules.Content, sm link.Summon) ([]link.Creature, error) {
+	var out []link.Creature
 	if sm.Source == creatureSourceFamiliar {
 		old, err := q.ListLiveFamiliars(ctx, charactersdb.ListLiveFamiliarsParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID})
 		if err != nil {
-			return res, wrap("list the familiars", err)
+			return out, wrap("list the familiars", err)
 		}
-		if len(old) > 0 {
-			ids := make([]string, 0, len(old))
-			for _, o := range old {
-				ids = append(ids, o.CharacterCreature.ID)
-				res.Replaced = append(res.Replaced, creatureOf(content, creatureView{CharacterCreature: o.CharacterCreature, ownerUserID: o.PlayerUserID}))
-			}
-			if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: sm.CampaignID, Ids: ids, Reason: "replaced", At: s.now()}); err != nil {
-				return res, wrap("dismiss the old familiar", err)
-			}
+		replaced, err := s.dismissReplaced(ctx, q, content, sm.CampaignID, creatureViews(old, func(r charactersdb.ListLiveFamiliarsRow) (charactersdb.CharacterCreature, *string) {
+			return r.CharacterCreature, r.PlayerUserID
+		}), "replaced", "dismiss the old familiar")
+		if out = append(out, replaced...); err != nil {
+			return out, err
 		}
 	}
 	if sm.Concentration {
@@ -115,26 +128,53 @@ func (s *Service) SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon
 		// only while it did (RN-22), in or out of a combat.
 		old, err := q.ListLiveCreaturesOnConcentration(ctx, charactersdb.ListLiveCreaturesOnConcentrationParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID})
 		if err != nil {
-			return res, wrap("list the creatures that depend on a concentration", err)
+			return out, wrap("list the creatures that depend on a concentration", err)
 		}
-		if len(old) > 0 {
-			ids := make([]string, 0, len(old))
-			for _, o := range old {
-				ids = append(ids, o.CharacterCreature.ID)
-				res.Replaced = append(res.Replaced, creatureOf(content, creatureView{CharacterCreature: o.CharacterCreature, ownerUserID: o.PlayerUserID}))
-			}
-			if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: sm.CampaignID, Ids: ids, Reason: "concentration", At: s.now()}); err != nil {
-				return res, wrap("dismiss the old concentration's creatures", err)
-			}
+		replaced, err := s.dismissReplaced(ctx, q, content, sm.CampaignID, creatureViews(old, func(r charactersdb.ListLiveCreaturesOnConcentrationRow) (charactersdb.CharacterCreature, *string) {
+			return r.CharacterCreature, r.PlayerUserID
+		}), "concentration", "dismiss the old concentration's creatures")
+		if out = append(out, replaced...); err != nil {
+			return out, err
 		}
 	}
+	return out, nil
+}
+
+// dismissReplaced dismisses the creatures with the reason (what names the
+// write in an error) and returns them as they were; none is no write.
+func (s *Service) dismissReplaced(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID string, old []creatureView, reason, what string) ([]link.Creature, error) {
+	if len(old) == 0 {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(old))
+	out := make([]link.Creature, 0, len(old))
+	for _, o := range old {
+		ids = append(ids, o.ID)
+		out = append(out, creatureOf(content, o))
+	}
+	if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: ids, Reason: reason, At: s.now()}); err != nil {
+		return out, wrap(what, err)
+	}
+	return out, nil
+}
+
+// checkCreatureRoom blocks a casting that would leave the character with more
+// than maxCreaturesPerCharacter creatures.
+func checkCreatureRoom(ctx context.Context, q *charactersdb.Queries, sm link.Summon) error {
 	live, err := q.CountLiveCreaturesOfCharacter(ctx, charactersdb.CountLiveCreaturesOfCharacterParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID})
 	if err != nil {
-		return res, wrap("count the creatures", err)
+		return wrap("count the creatures", err)
 	}
 	if int(live)+len(sm.Creatures) > maxCreaturesPerCharacter {
-		return res, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CREATURE_LIMIT, sm.CharacterID)
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CREATURE_LIMIT, sm.CharacterID)
 	}
+	return nil
+}
+
+// insertSummoned writes the casting's creatures at full hit points, in the
+// casting's order.
+func (s *Service) insertSummoned(ctx context.Context, q *charactersdb.Queries, content *rules.Content, sm link.Summon) ([]link.Creature, error) {
+	var out []link.Creature
 	labels := creatureNames(content, sm.Creatures)
 	var cast *string
 	if sm.Concentration {
@@ -144,7 +184,7 @@ func (s *Service) SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon
 	for i, spec := range sm.Creatures {
 		d, ok := content.MonsterDerived(spec.MonsterKey)
 		if !ok {
-			return res, fmt.Errorf("%q is not a creature", spec.MonsterKey) // CheckSummon said it was
+			return out, fmt.Errorf("%q is not a creature", spec.MonsterKey) // CheckSummon said it was
 		}
 		hp := int32(max(d.HitPointsMax, 1)) //nolint:gosec // an SRD creature has at most 676 hit points
 		row, err := q.InsertCharacterCreature(ctx, charactersdb.InsertCharacterCreatureParams{
@@ -155,18 +195,24 @@ func (s *Service) SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon
 			CreatedAt: at.Add(time.Duration(i) * time.Microsecond),
 		})
 		if err != nil {
-			return res, wrap("insert a creature", err)
+			return out, wrap("insert a creature", err)
 		}
-		res.Created = append(res.Created, creatureOf(content, creatureView{CharacterCreature: row}))
+		out = append(out, creatureOf(content, creatureView{CharacterCreature: row}))
 	}
-	owner, err := q.GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: sm.CampaignID, ID: res.Created[0].ID})
+	return out, nil
+}
+
+// setSummonedOwner gives the new creatures their owner's player, read with the
+// first of them.
+func setSummonedOwner(ctx context.Context, q *charactersdb.Queries, campaignID string, created []link.Creature) error {
+	owner, err := q.GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: campaignID, ID: created[0].ID})
 	if err != nil {
-		return res, wrap("read the owner", err)
+		return wrap("read the owner", err)
 	}
-	for i := range res.Created {
-		res.Created[i].OwnerUserID = deref(owner.PlayerUserID)
+	for i := range created {
+		created[i].OwnerUserID = deref(owner.PlayerUserID)
 	}
-	return res, nil
+	return nil
 }
 
 // creatureNames gives each creature of a casting its name: the one the player
@@ -256,47 +302,73 @@ func (s *Service) SyncCreatures(ctx context.Context, tx pgx.Tx, campaignID strin
 		return out, nil
 	}
 	q := s.queries.WithTx(tx)
-	ids := make([]string, 0, len(states))
-	for _, st := range states {
-		ids = append(ids, st.ID)
-	}
-	rows, err := q.ListCreaturesByIDs(ctx, charactersdb.ListCreaturesByIDsParams{CampaignID: campaignID, Ids: ids})
+	byID, err := creaturesOfStates(ctx, q, campaignID, states)
 	if err != nil {
-		return out, wrap("read the creatures of a combat", err)
+		return out, err
 	}
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return out, wrap("read rules content", err)
-	}
-	byID := make(map[string]creatureView, len(rows))
-	for _, r := range rows {
-		byID[r.CharacterCreature.ID] = creatureView{CharacterCreature: r.CharacterCreature, ownerUserID: r.PlayerUserID}
 	}
 	for _, st := range states {
 		v, ok := byID[st.ID]
 		if !ok {
 			continue
 		}
-		hp := int32(min(max(st.HP, 0), int(v.HpMax))) //nolint:gosec // clamped to the creature's maximum
-		switch {
-		case st.Defeated && v.live():
-			if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: "defeated", At: at}); err != nil {
-				return out, wrap("dismiss a defeated creature", err)
-			}
-			v.HpCurrent = 0
-			out.Dismissed = append(out.Dismissed, creatureOf(content, v))
-		case !st.Defeated && !v.live() && v.DismissedReason != nil && *v.DismissedReason == "defeated":
-			if _, err := q.ReviveCreatures(ctx, charactersdb.ReviveCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: "defeated"}); err != nil {
-				return out, wrap("revive a creature", err)
-			}
-			if err := q.SetCharacterCreatureHitPoints(ctx, charactersdb.SetCharacterCreatureHitPointsParams{CampaignID: campaignID, ID: v.ID, HpCurrent: hp}); err != nil {
-				return out, wrap("restore a creature's hit points", err)
-			}
-			v.HpCurrent = hp
-			out.Revived = append(out.Revived, creatureOf(content, v))
+		if err := syncCreature(ctx, q, content, campaignID, v, st, at, &out); err != nil {
+			return out, err
 		}
 	}
 	return out, nil
+}
+
+// creaturesOfStates reads the creatures a combat names, live or not, by ID.
+func creaturesOfStates(ctx context.Context, q *charactersdb.Queries, campaignID string, states []link.CreatureState) (map[string]creatureView, error) {
+	ids := make([]string, 0, len(states))
+	for _, st := range states {
+		ids = append(ids, st.ID)
+	}
+	rows, err := q.ListCreaturesByIDs(ctx, charactersdb.ListCreaturesByIDsParams{CampaignID: campaignID, Ids: ids})
+	if err != nil {
+		return nil, wrap("read the creatures of a combat", err)
+	}
+	byID := make(map[string]creatureView, len(rows))
+	for _, r := range rows {
+		byID[r.CharacterCreature.ID] = creatureView{CharacterCreature: r.CharacterCreature, ownerUserID: r.PlayerUserID}
+	}
+	return byID, nil
+}
+
+// syncCreature puts one creature in step with its combatant, adding it to out
+// when it changed: a live one defeated is dismissed, one defeated before and up
+// again is revived; any other is left as it is.
+func syncCreature(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID string, v creatureView, st link.CreatureState, at time.Time, out *link.CreatureChanges) error {
+	switch {
+	case st.Defeated && v.live():
+		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: "defeated", At: at}); err != nil {
+			return wrap("dismiss a defeated creature", err)
+		}
+		v.HpCurrent = 0
+		out.Dismissed = append(out.Dismissed, creatureOf(content, v))
+	case !st.Defeated && !v.live() && v.DismissedReason != nil && *v.DismissedReason == "defeated":
+		return reviveCreature(ctx, q, content, campaignID, v, st, out)
+	}
+	return nil
+}
+
+// reviveCreature brings a defeated creature back with its combatant's hit
+// points, clamped to 0 and to its maximum.
+func reviveCreature(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID string, v creatureView, st link.CreatureState, out *link.CreatureChanges) error {
+	hp := int32(min(max(st.HP, 0), int(v.HpMax))) //nolint:gosec // clamped to the creature's maximum
+	if _, err := q.ReviveCreatures(ctx, charactersdb.ReviveCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: "defeated"}); err != nil {
+		return wrap("revive a creature", err)
+	}
+	if err := q.SetCharacterCreatureHitPoints(ctx, charactersdb.SetCharacterCreatureHitPointsParams{CampaignID: campaignID, ID: v.ID, HpCurrent: hp}); err != nil {
+		return wrap("restore a creature's hit points", err)
+	}
+	v.HpCurrent = hp
+	out.Revived = append(out.Revived, creatureOf(content, v))
+	return nil
 }
 
 // WriteBackCreatures implements play.CombatRoster: a combat's end (or a
