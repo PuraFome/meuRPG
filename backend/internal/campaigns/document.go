@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -92,52 +93,11 @@ func (s *Service) UpdateCampaignDocument(
 	now := s.now()
 	var saved campaignsdb.CampaignDocument
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
 		var err error
-		// Compare-and-swap in one statement: the first save inserts the
-		// row, every later one updates it only while the revision is
-		// still the one the master read. Either way, no row means the
-		// revision is stale.
-		if expected == 0 {
-			saved, err = q.InsertCampaignDocument(ctx, campaignsdb.InsertCampaignDocumentParams{
-				CampaignID: m.CampaignID,
-				Body:       body,
-				UpdatedAt:  now,
-				UpdatedBy:  &m.UserID,
-			})
-		} else {
-			saved, err = q.UpdateCampaignDocument(ctx, campaignsdb.UpdateCampaignDocumentParams{
-				CampaignID:       m.CampaignID,
-				ExpectedRevision: expected,
-				Body:             body,
-				UpdatedAt:        now,
-				UpdatedBy:        &m.UserID,
-			})
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			if err != nil {
-				return fmt.Errorf("save the campaign document: %w", err)
-			}
-			return nil
-		}
-
-		// The revision moved. If it moved because of this very save (the
-		// same text, by the same person, one revision up), a response got
-		// lost or the button was clicked twice: answer with the saved
-		// document instead of a conflict.
-		current, err := q.GetCampaignDocument(ctx, m.CampaignID)
-		switch {
-		case errors.Is(err, pgx.ErrNoRows):
-			return errStaleDocument() // expected > 0, but it was never saved
-		case err != nil:
-			return fmt.Errorf("read the campaign document: %w", err)
-		case current.Revision == expected+1 && current.Body == body &&
-			current.UpdatedBy != nil && *current.UpdatedBy == m.UserID:
-			saved = current
-			return nil
-		default:
-			return errStaleDocument()
-		}
+		saved, err = writeDocument(ctx, s.queries.WithTx(tx), documentSave{
+			campaignID: m.CampaignID, userID: m.UserID, expected: expected, body: body, now: now,
+		})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "save the campaign document", err)
@@ -147,6 +107,67 @@ func (s *Service) UpdateCampaignDocument(
 		return nil, s.dbError(ctx, "save the campaign document", err)
 	}
 	return connect.NewResponse(&campaignsv1.UpdateCampaignDocumentResponse{Document: res}), nil
+}
+
+// documentSave is one save of the campaign document, checked.
+type documentSave struct {
+	campaignID string
+	userID     string
+	// expected is the revision the master read: 0 for the first save.
+	expected int32
+	body     string
+	now      time.Time
+}
+
+// writeDocument is UpdateCampaignDocument's transaction. Compare-and-swap in
+// one statement: the first save inserts the row, every later one updates it
+// only while the revision is still the one the master read. Either way, no
+// row means the revision is stale.
+func writeDocument(ctx context.Context, q *campaignsdb.Queries, in documentSave) (campaignsdb.CampaignDocument, error) {
+	var saved campaignsdb.CampaignDocument
+	var err error
+	if in.expected == 0 {
+		saved, err = q.InsertCampaignDocument(ctx, campaignsdb.InsertCampaignDocumentParams{
+			CampaignID: in.campaignID,
+			Body:       in.body,
+			UpdatedAt:  in.now,
+			UpdatedBy:  &in.userID,
+		})
+	} else {
+		saved, err = q.UpdateCampaignDocument(ctx, campaignsdb.UpdateCampaignDocumentParams{
+			CampaignID:       in.campaignID,
+			ExpectedRevision: in.expected,
+			Body:             in.body,
+			UpdatedAt:        in.now,
+			UpdatedBy:        &in.userID,
+		})
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		if err != nil {
+			return saved, fmt.Errorf("save the campaign document: %w", err)
+		}
+		return saved, nil
+	}
+	return sameSaveAgain(ctx, q, in)
+}
+
+// sameSaveAgain answers a save whose revision moved. If it moved because of
+// this very save (the same text, by the same person, one revision up), a
+// response got lost or the button was clicked twice: it returns the saved
+// document instead of a conflict.
+func sameSaveAgain(ctx context.Context, q *campaignsdb.Queries, in documentSave) (campaignsdb.CampaignDocument, error) {
+	current, err := q.GetCampaignDocument(ctx, in.campaignID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return campaignsdb.CampaignDocument{}, errStaleDocument() // expected > 0, but it was never saved
+	case err != nil:
+		return campaignsdb.CampaignDocument{}, fmt.Errorf("read the campaign document: %w", err)
+	case current.Revision == in.expected+1 && current.Body == in.body &&
+		current.UpdatedBy != nil && *current.UpdatedBy == in.userID:
+		return current, nil
+	default:
+		return campaignsdb.CampaignDocument{}, errStaleDocument()
+	}
 }
 
 // documentToProto builds the CampaignDocument the master sees, with the

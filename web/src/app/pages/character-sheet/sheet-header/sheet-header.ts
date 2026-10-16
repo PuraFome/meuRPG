@@ -16,7 +16,7 @@ interface HeaderField {
 }
 
 /**
- * The top of the sheet, as on the paper sheet (docs/design.md): the name,
+ * The top of the sheet, as on the paper sheet (docs/design/README.md): the name,
  * the state tags, the lock or death line, and the identity fields as a
  * `<dl>` (value above a rule, label below; a field with no value is left
  * out). An NPC's portrait (MR-031) stands at the left, 112px wide, or its

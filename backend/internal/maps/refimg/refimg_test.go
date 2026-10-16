@@ -332,7 +332,7 @@ func BenchmarkRenderPaddedBiggestMap(b *testing.B) {
 }
 
 // MEURPG_MEASURE=1 go test -run TestMeasureTheBiggestMap -v ./internal/maps/refimg
-// prints what drawing the biggest map's references costs (docs/operations.md).
+// prints what drawing the biggest map's references costs (docs/operations/README.md).
 func TestMeasureTheBiggestMap(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {
 		t.Skip("set MEURPG_MEASURE=1 to measure")

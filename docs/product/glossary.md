@@ -230,4 +230,4 @@ Using the same words in conversations, documents and code avoids a lot of confus
 
 - [Product vision](vision.md)
 - [Business rules](rules.md)
-- [Data model](../data.md): where each term becomes a table.
+- [Data model](../data/README.md): where each term becomes a table.
