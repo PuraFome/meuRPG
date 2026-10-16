@@ -345,8 +345,8 @@ func (c *content) loadEffectEntries(f *combatEffectsFile, out *combatEffects) er
 
 // checkEffectNames refuses a Portuguese effect name with no effect behind it.
 func (c *content) checkEffectNames(_ *combatEffectsFile, out *combatEffects) error {
-	for k := range c.namesPT {
-		if strings.HasPrefix(k, "effect:") && out.effects[k] == nil {
+	for _, k := range c.namesWithPrefix("effect:") {
+		if out.effects[k] == nil {
 			return fmt.Errorf("effects/names_pt.json names %q, which is not in combat_effects.json", k)
 		}
 	}

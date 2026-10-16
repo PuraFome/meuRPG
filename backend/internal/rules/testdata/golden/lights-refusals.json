@@ -12,7 +12,7 @@
   "bad: no duration": "effects/lights.json: light:torch has no duration_pt",
   "bad: no radius": "effects/lights.json: light:torch needs a radius: bright_ft and dim_ft can't be negative, nor both 0",
   "bad: not json": "effects/lights.json: unexpected EOF",
-  "bad: nothing, a name left": "effects/names_pt.json names \"light:torch\", which is not in lights.json",
+  "bad: nothing, a name left": "effects/names_pt.json names \"light:candle\", which is not in lights.json",
   "bad: unknown field": "effects/lights.json: json: unknown field \"x\"",
   "bad: unknown light field": "effects/lights.json: json: unknown field \"cone\"",
   "ok: only bright": "accepted [{\"Key\":\"light:torch\",\"NamePT\":\"Tocha\",\"BrightFt\":20,\"DimFt\":20,\"DurationPT\":\"1 hora\"},{\"Key\":\"light:candle\",\"NamePT\":\"Vela\",\"BrightFt\":5,\"DimFt\":0,\"DurationPT\":\"x\"}]",
