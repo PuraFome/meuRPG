@@ -277,17 +277,20 @@ func (s *Service) SearchForTraps(
 		// player answers, before anything is spent or written (the Search action of a combat has
 		// spent the action by now, and rolls as always), and so has a halfling's d20 that shows a 1,
 		// for the Lucky question. The answer brings the d20 back.
-		var step outsideStep
+		var step gateResult
 		if !place.spent {
 			held := in
 			if len(in.typedFaces) > 0 && cm.Mode == combat.ModeNormal { // the second die of a Perception search is not the held one
 				held.typed, held.typedFaces = in.typedFaces[0], nil
 			}
-			if step, err = s.outsideRoll(ctx, tx, q, m, holdTrapSearch, who.ID, key, req.Msg, held, bonus, cm.Mode, reliable, options[0].Lucky); err != nil {
+			if step, err = s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
+				Kind: heldTrapSearch, Key: key, Request: req.Msg, Roller: heldRoller{CampaignID: m.CampaignID, CharacterID: who.ID, UserID: m.UserID},
+				In: held, Modifier: bonus, Mode: cm.Mode, Reliable: reliable, Lucky: options[0].Lucky, MayAsk: true,
+			}); err != nil {
 				return err
 			}
-			if step.Held {
-				offer, lucky = step.Offer, step.LuckyOffer
+			if step.Held != nil {
+				offer, lucky = s.outsideOffers(ctx, tx, step.Held)
 				return nil
 			}
 		}
