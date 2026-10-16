@@ -6,6 +6,7 @@ import {
   XPBlockedSchema,
 } from '../../../gen/meurpg/progression/v1/progression_pb';
 import {
+  milestoneHasHistoryText,
   townErrorMessage,
   xpAborted,
   xpBlocked,
@@ -144,5 +145,97 @@ describe('XPBlocked for "Voltar à cidade" (E9-09)', () => {
     expect(townErrorMessage(new ConnectError('x', Code.PermissionDenied))).toBe(
       'Só o mestre da campanha pode fazer isso.',
     );
+  });
+});
+
+describe('XPBlocked, every reason in turn', () => {
+  const REASONS: readonly (readonly [XPBlockedReason, string])[] = [
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED,
+      'O combate ainda não terminou. Encerre o combate para dar o XP dele.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_ALREADY_AWARDED,
+      'O XP desse combate já foi dado. Para dar de novo, desfaça esse prêmio em "Experiência", na página da campanha.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_GIVE,
+      'Não há XP para dar: o total é pequeno demais para cada um receber pelo menos 1 XP.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_NOTHING_TO_UNDO,
+      'Não há nenhum prêmio para desfazer. A tela foi atualizada.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE,
+      'Um dos personagens marcados não pode receber: ele morreu ou saiu da campanha. A lista foi atualizada.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED,
+      'Esse marco já foi alcançado. A lista foi atualizada.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_NOT_REACHED,
+      'Esse marco não está mais alcançado: ele foi desfeito. A lista foi atualizada.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED,
+      'Um dos personagens marcados já tem esse marco. A lista foi atualizada.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET,
+      'Um dos tesouros marcados não está mais como encontrado: o mestre desmarcou o achado. A lista foi atualizada; confira e tente de novo.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED,
+      'Um dos tesouros marcados já virou XP em outro prêmio. A lista foi atualizada; confira e tente de novo.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_TREASURES_OVER_LIMIT,
+      'Os tesouros marcados valem mais de 1.000.000 PO juntos, o máximo de um prêmio. Desmarque alguns e converta o resto depois.',
+    ],
+    [
+      XPBlockedReason.XP_BLOCKED_REASON_MILESTONE_HAS_HISTORY,
+      milestoneHasHistoryText('Esse marco'),
+    ],
+  ];
+  it.each(REASONS)('says reason %i in words', (reason, message) => {
+    expect(xpBlockedMessage({ reason, xpMode: XpMode.UNSPECIFIED } as never)).toBe(message);
+  });
+
+  it('has the words of every reason the server can name', () => {
+    const named: XPBlockedReason[] = REASONS.map(([reason]) => reason);
+    named.push(XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED);
+    const all = Object.values(XPBlockedReason).filter(
+      (v): v is XPBlockedReason =>
+        typeof v === 'number' && v !== XPBlockedReason.XP_BLOCKED_REASON_UNSPECIFIED,
+    );
+    expect(all.filter((v) => !named.includes(v))).toEqual([]);
+  });
+
+  it('says what the campaign takes, per mode, and a general sentence for another mode', () => {
+    const mode = (xpMode: XpMode) =>
+      xpBlockedMessage({
+        reason: XPBlockedReason.XP_BLOCKED_REASON_MODE_NOT_ALLOWED,
+        xpMode,
+      } as never);
+    expect(mode(XpMode.MILESTONES)).toBe(
+      'Esta campanha conta marcos, não XP. Use "Registrar marco".',
+    );
+    expect(mode(XpMode.GOLD)).toBe(
+      'Esta campanha conta XP por ouro: dê o ouro encontrado ou um valor avulso.',
+    );
+    expect(mode(XpMode.ENEMIES)).toBe(
+      'Esta campanha conta XP por inimigos derrotados: dê o XP de um combate ou um valor avulso.',
+    );
+    expect(mode(XpMode.UNSPECIFIED)).toBe('Esta campanha não aceita essa forma de dar XP.');
+  });
+
+  it('falls back to a general sentence for a reason it does not know', () => {
+    const fallback = 'Isso não pode ser feito agora. A tela foi atualizada.';
+    expect(
+      xpBlockedMessage({ reason: XPBlockedReason.XP_BLOCKED_REASON_UNSPECIFIED } as never),
+    ).toBe(fallback);
+    expect(xpBlockedMessage({ reason: 9999 } as never)).toBe(fallback);
   });
 });
