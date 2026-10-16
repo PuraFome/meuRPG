@@ -7,8 +7,6 @@
 # The list may only shrink: CI fails when a function enters it or gets
 # worse, and when one gets better until this file is written again.
 # See CONTRIBUTING.md, "Complexity totals".
-cognitive cmd/api run 24
-cognitive cmd/migrate run 22
 cognitive internal/campaignpackage (*Package).nameImages 16
 cognitive internal/campaignpackage (*Service).BeginCampaignImport 22
 cognitive internal/campaignpackage (*Service).StartCampaignExport 16
@@ -168,12 +166,6 @@ cognitive internal/maps/images/gen parseAnswer 44
 cognitive internal/maps/refimg Render 16
 cognitive internal/notes (*Service).CreateNote 16
 cognitive internal/notes (*Service).UpdateNote 22
-cognitive internal/platform/blob (*GCS).do 16
-cognitive internal/platform/config Load 25
-cognitive internal/platform/config loadLimits 18
-cognitive internal/platform/config loadOIDC 17
-cognitive internal/platform/dbtest buildTemplate 22
-cognitive internal/platform/dbtest schemaDDL 27
 cognitive internal/play (*Service).AddCombatants 25
 cognitive internal/play (*Service).AddMonsters 32
 cognitive internal/play (*Service).AdjustCharacterVitals 53
@@ -526,8 +518,6 @@ cognitive internal/rules/combat Options 18
 cognitive internal/rules/combat SaveMode 27
 cognitive internal/rules/combat spellOption 19
 cognitive internal/rules/vision (*Lit).seeWalls 20
-cyclomatic cmd/api run 21
-cyclomatic cmd/migrate run 17
 cyclomatic internal/campaignpackage (*Service).BeginCampaignImport 22
 cyclomatic internal/campaigns (*Service).CreateCampaign 16
 cyclomatic internal/campaigns (*Service).acceptInvite 20
@@ -635,8 +625,6 @@ cyclomatic internal/maps/images Process 17
 cyclomatic internal/maps/images/gen (Request).Validate 18
 cyclomatic internal/maps/images/gen parseAnswer 27
 cyclomatic internal/notes (*Service).UpdateNote 16
-cyclomatic internal/platform/config Load 24
-cyclomatic internal/platform/config loadLimits 18
 cyclomatic internal/play (*Service).AddCombatants 16
 cyclomatic internal/play (*Service).AddMonsters 27
 cyclomatic internal/play (*Service).AdjustCharacterVitals 34
