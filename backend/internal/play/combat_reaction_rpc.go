@@ -28,81 +28,59 @@ type answered struct {
 	fill func()
 }
 
+// answerInput is what AnswerReaction reads of its request before it touches anything.
+type answerInput struct {
+	key    string
+	encID  string
+	winID  string
+	choice playv1.ReactionChoice
+}
+
+// parseAnswerInput reads the caller and the request of AnswerReaction, in the order its
+// refusals have always come: the member, the key, the combat, the window, the answer.
+func parseAnswerInput(ctx context.Context, msg *playv1.AnswerReactionRequest) (authz.Membership, answerInput, error) {
+	m, err := authz.RequireCampaignMember(ctx, msg.GetCampaignId())
+	if err != nil {
+		return m, answerInput{}, err
+	}
+	key, err := parseKey(msg.GetIdempotencyKey())
+	if err != nil {
+		return m, answerInput{}, err
+	}
+	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	if err != nil {
+		return m, answerInput{}, err
+	}
+	winID, err := parseCombatID(msg.GetWindowId(), "window")
+	if err != nil {
+		return m, answerInput{}, err
+	}
+	choice := msg.GetAnswer()
+	if choice != playv1.ReactionChoice_REACTION_CHOICE_USE && choice != playv1.ReactionChoice_REACTION_CHOICE_PASS {
+		return m, answerInput{}, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be USE or PASS"))
+	}
+	return m, answerInput{key: key, encID: encID, winID: winID, choice: choice}, nil
+}
+
 // AnswerReaction implements playv1connect.CombatServiceHandler.
 func (s *Service) AnswerReaction(
 	ctx context.Context,
 	req *connect.Request[playv1.AnswerReactionRequest],
 ) (*connect.Response[playv1.AnswerReactionResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, in, err := parseAnswerInput(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	winID, err := parseCombatID(req.Msg.GetWindowId(), "window")
-	if err != nil {
-		return nil, err
-	}
-	choice := req.Msg.GetAnswer()
-	if choice != playv1.ReactionChoice_REACTION_CHOICE_USE && choice != playv1.ReactionChoice_REACTION_CHOICE_PASS {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be USE or PASS"))
-	}
-
 	// An opportunity attack's offer is a window too: "Deixar passar" turns it down; the
 	// attack itself is RollAttack's (opportunity_offer_id).
-	if _, err := s.queries.GetOpportunityOffer(ctx, playdb.GetOpportunityOfferParams{EncounterID: encID, ID: winID}); err == nil {
-		if choice == playv1.ReactionChoice_REACTION_CHOICE_USE {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made with RollAttack and opportunity_offer_id"))
-		}
-		out, err := s.answerOffer(ctx, m, req.Msg.GetEncounterId(), winID, req.Msg.GetIdempotencyKey(), offerDeclined)
-		if err != nil {
-			return nil, err
-		}
-		return connect.NewResponse(&playv1.AnswerReactionResponse{Encounter: out, Result: &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_OPPORTUNITY, ByMaster: m.Role == authz.RoleMaster}}), nil
+	if _, err := s.queries.GetOpportunityOffer(ctx, playdb.GetOpportunityOfferParams{EncounterID: in.encID, ID: in.winID}); err == nil {
+		return s.answerOpportunityOffer(ctx, m, in, req.Msg)
 	}
 
 	var got answered
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventReactionAnswered, altKind: eventReactionUsed, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: in.key, hash: idem.Hash(req.Msg), kind: eventReactionAnswered, altKind: eventReactionUsed, encounterID: in.encID}, func(c *combatTx) (any, error) {
 		got = answered{}
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		w, reactor, err := s.windowToAnswer(ctx, c, m, winID)
-		if err != nil {
-			return nil, err
-		}
-		use := choice == playv1.ReactionChoice_REACTION_CHOICE_USE
-		switch reaction.Kind(w.Kind) {
-		case reaction.Contest:
-			return nil, errContestWindow()
-		case reaction.Shield:
-			err = s.answerShield(ctx, c, w, reactor, use, req.Msg, &got)
-		case reaction.MasterCheck:
-			err = s.answerMasterCheck(ctx, c, m, w, use, &got)
-		case reaction.Concentration:
-			err = s.answerConcentration(ctx, c, m, w, reactor, use, &got)
-		case reaction.EffectSave:
-			err = errEffectSaveWindow()
-		default:
-			err = s.answerMore(ctx, c, m, w, reactor, use, req.Msg, &got)
-		}
-		if err != nil {
-			return nil, err
-		}
-		if got.kind != "" {
-			c.kind = got.kind
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		got.ev.Round = c.enc.Round
-		return got.ev, nil
+		return s.answerWindow(ctx, c, m, in, req.Msg, &got)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer a reaction", err)
@@ -127,6 +105,56 @@ func (s *Service) AnswerReaction(
 	return connect.NewResponse(&playv1.AnswerReactionResponse{Encounter: out, Result: got.result}), nil
 }
 
+// answerOpportunityOffer answers the window that is an opportunity-attack offer: only
+// "Deixar passar" is made here.
+func (s *Service) answerOpportunityOffer(ctx context.Context, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest) (*connect.Response[playv1.AnswerReactionResponse], error) {
+	if in.choice == playv1.ReactionChoice_REACTION_CHOICE_USE {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made with RollAttack and opportunity_offer_id"))
+	}
+	out, err := s.answerOffer(ctx, m, msg.GetEncounterId(), in.winID, msg.GetIdempotencyKey(), offerDeclined)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.AnswerReactionResponse{Encounter: out, Result: &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_OPPORTUNITY, ByMaster: m.Role == authz.RoleMaster}}), nil
+}
+
+// answerWindow is the write of AnswerReaction: the window's kind picks who answers it.
+func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest, got *answered) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	w, reactor, err := s.windowToAnswer(ctx, c, m, in.winID)
+	if err != nil {
+		return nil, err
+	}
+	use := in.choice == playv1.ReactionChoice_REACTION_CHOICE_USE
+	switch reaction.Kind(w.Kind) {
+	case reaction.Contest:
+		return nil, errContestWindow()
+	case reaction.Shield:
+		err = s.answerShield(ctx, c, w, reactor, use, msg, got)
+	case reaction.MasterCheck:
+		err = s.answerMasterCheck(ctx, c, m, w, use, got)
+	case reaction.Concentration:
+		err = s.answerConcentration(ctx, c, m, w, reactor, use, got)
+	case reaction.EffectSave:
+		err = errEffectSaveWindow()
+	default:
+		err = s.answerMore(ctx, c, m, w, reactor, use, msg, got)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if got.kind != "" {
+		c.kind = got.kind
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	got.ev.Round = c.enc.Round
+	return got.ev, nil
+}
+
 // MarkReactionRolling implements playv1connect.CombatServiceHandler. It sets the
 // window's `rolling` mark for the master's clock and writes nothing else: no session
 // event, no log line (the closure returns no payload), so a retry or a second tab
@@ -149,34 +177,7 @@ func (s *Service) MarkReactionRolling(
 	}
 	// The window's own id is the key: no event is written, so it is never looked up as one.
 	res, err := s.write(ctx, combatWrite{m: m, key: winID, kind: eventReactionAnswered, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		// The mark is the reactor player's own: the master reads it, never sets it.
-		if m.Role == authz.RoleMaster {
-			return nil, errWindowDenied()
-		}
-		w, _, err := s.windowToAnswer(ctx, c, m, winID)
-		if err != nil {
-			return nil, err
-		}
-		t := windowTriggerOf(w)
-		if t.Rolling {
-			return nil, nil
-		}
-		t.Rolling = true
-		body, err := json.Marshal(t)
-		if err != nil {
-			return nil, fmt.Errorf("encode the window's trigger: %w", err)
-		}
-		if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
-			return nil, fmt.Errorf("mark the window as being rolled: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		// An empty event: the change is kept and nothing is written to the log.
-		return nil, nil
+		return nil, s.markRolling(ctx, c, m, winID)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a reaction as being rolled", err)
@@ -188,6 +189,38 @@ func (s *Service) MarkReactionRolling(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.MarkReactionRollingResponse{Encounter: out}), nil
+}
+
+// markRolling is the write of MarkReactionRolling. The mark is the reactor player's own:
+// the master reads it, never sets it. It returns no payload: the change is kept and
+// nothing is written to the log.
+func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membership, winID string) error {
+	if err := notEnded(c.enc); err != nil {
+		return err
+	}
+	if m.Role == authz.RoleMaster {
+		return errWindowDenied()
+	}
+	w, _, err := s.windowToAnswer(ctx, c, m, winID)
+	if err != nil {
+		return err
+	}
+	t := windowTriggerOf(w)
+	if t.Rolling {
+		return nil
+	}
+	t.Rolling = true
+	body, err := json.Marshal(t)
+	if err != nil {
+		return fmt.Errorf("encode the window's trigger: %w", err)
+	}
+	if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
+		return fmt.Errorf("mark the window as being rolled: %w", err)
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("touch the encounter: %w", err)
+	}
+	return nil
 }
 
 // answerShield answers a Shield window: "Usar Escudo Arcano" casts it, "Deixar

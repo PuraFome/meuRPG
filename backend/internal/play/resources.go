@@ -225,139 +225,175 @@ func (s *Service) publishVitalsOf(campaignID string, vitals []*playv1.CharacterV
 	}
 }
 
+// restCall is what TakeRest reads from its request before the transaction.
+type restCall struct {
+	m       authz.Membership
+	kind    string
+	keyText string
+	hash    *string
+	msg     *playv1.TakeRestRequest
+}
+
+// restRun is what the transaction of TakeRest leaves for after the commit.
+type restRun struct {
+	after        []*playv1.CharacterVitals
+	repeated     []string
+	touched      []playdb.Encounter
+	castsChanged int // how much of the casts outside a combat the rest changed (casting_combat.go)
+	spellVitals  []*playv1.CharacterVitals
+}
+
+// readRestCall reads and checks the request, in the order the refusals have always come.
+func readRestCall(ctx context.Context, msg *playv1.TakeRestRequest) (restCall, error) {
+	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return restCall{}, err
+	}
+	kind, err := restKindName(msg.GetKind())
+	if err != nil {
+		return restCall{}, err
+	}
+	key, err := uuid.Parse(msg.GetIdempotencyKey())
+	if err != nil {
+		return restCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key must be a UUID"))
+	}
+	return restCall{m: m, kind: kind, keyText: key.String(), hash: idem.Hash(msg), msg: msg}, nil
+}
+
 // TakeRest implements playv1connect.ResourceServiceHandler: the master's short or
 // long rest.
 func (s *Service) TakeRest(
 	ctx context.Context,
 	req *connect.Request[playv1.TakeRestRequest],
 ) (*connect.Response[playv1.TakeRestResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	call, err := readRestCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	kind, err := restKindName(req.Msg.GetKind())
-	if err != nil {
-		return nil, err
-	}
-	key, err := uuid.Parse(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key must be a UUID"))
-	}
-	keyText := key.String()
-	hash := idem.Hash(req.Msg)
-
-	var after []*playv1.CharacterVitals
-	var repeated []string
-	var touched []playdb.Encounter
-	var castsChanged int // how much of the casts outside a combat the rest changed (casting_combat.go)
-	var spellVitals []*playv1.CharacterVitals
+	var run restRun
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		after, repeated, touched, spellVitals = nil, nil, nil, nil // a retry starts over
-		castsChanged = castsUnchanged
-		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
-		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
-		}
-		done, again, err := eventByKey(ctx, q, session.ID, keyText, eventRestTaken, hash)
-		if err != nil {
-			return err
-		}
-		if again { // a retry of a rest already taken
-			var ev restEvent
-			if err := json.Unmarshal(done.Payload, &ev); err != nil {
-				return fmt.Errorf("read the rest event: %w", err)
-			}
-			repeated = append([]string{}, ev.Characters...)
-			return nil
-		}
-		if err := activeCombatBlocks(ctx, q, session.ID); err != nil {
-			return err
-		}
-		if _, after, err = s.vitals.TakeRest(ctx, tx, m.CampaignID, req.Msg); err != nil {
-			return resourceError(err)
-		}
-		// The spells that last end with the rest when their whole duration fits it (SRD 5.1,
-		// "Resting"): 8 hours or less at a long rest, an hour or less at a short one. The same
-		// transaction, so a rest never leaves a spell running that it ended on the vitals.
-		minutes := rules.ShortRestMinutes
-		if kind == rules.RestLong {
-			minutes = rules.LongRestMinutes
-		}
-		ct, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), kind: eventRestTaken, actorUserID: m.UserID, svc: s, master: true})
-		if err != nil {
-			return err
-		}
-		if _, spellVitals, err = s.endSpellsAtRest(ctx, ct, minutes); err != nil {
-			return err
-		}
-		if kind == rules.RestLong {
-			if err := s.endLongRestEffects(ctx, ct); err != nil {
-				return err
-			}
-		}
-		// The rest is game time passing: what had a clock loses the hour or the eight hours.
-		if err := s.advanceGameTime(ctx, ct, clamp32(minutes*secondsPerMinute, 0, 1<<30)); err != nil {
-			return err
-		}
-		spellVitals = append(spellVitals, ct.told...)
-		castsChanged = ct.castsChanged
-		ids := make([]string, 0, len(after))
-		for _, v := range after {
-			ids = append(ids, v.GetCharacterId())
-			// A combat in setup shows the character's state from the vitals.
-			enc, err := s.touchCombatOf(ctx, q, session.ID, v.GetCharacterId(), nil)
-			if err != nil {
-				return err
-			}
-			if enc != nil && !slices.ContainsFunc(touched, func(e playdb.Encounter) bool { return e.ID == enc.ID }) {
-				touched = append(touched, *enc)
-			}
-		}
-		payload, err := json.Marshal(restEvent{Kind: kind, Characters: ids})
-		if err != nil {
-			return fmt.Errorf("encode the event payload: %w", err)
-		}
-		seq, err := q.NextSessionEventSeq(ctx, session.ID)
-		if err != nil {
-			return fmt.Errorf("next event number: %w", err)
-		}
-		if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-			GameSessionID: session.ID, Seq: seq, Kind: eventRestTaken, ActorUserID: &m.UserID,
-			Payload: payload, IdempotencyKey: &keyText, IdempotencyHash: hash, CreatedAt: s.now(),
-		}); err != nil {
-			return fmt.Errorf("insert session event: %w", err)
-		}
-		return nil
+		run = restRun{castsChanged: castsUnchanged} // a retry starts over
+		return s.takeRestTx(ctx, tx, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "take a rest", err)
 	}
-	if repeated != nil {
-		// Nothing changed and nothing goes out: answer with the vitals as they are now.
-		res := &playv1.TakeRestResponse{}
-		for _, id := range repeated {
-			if v, err := s.vitals.GetVitals(ctx, m.CampaignID, id); err == nil {
-				res.Vitals = append(res.Vitals, v)
-			}
-		}
-		return connect.NewResponse(res), nil
+	if run.repeated != nil {
+		return connect.NewResponse(s.repeatedRestAnswer(ctx, call.m.CampaignID, run.repeated)), nil
 	}
-	s.publishVitalsOf(m.CampaignID, after)
-	s.publishVitalsOf(m.CampaignID, spellVitals)
-	if castsChanged != castsUnchanged {
-		s.publishCastsChanged(m.CampaignID, castsChanged == castsMasterOnly)
+	s.publishRest(ctx, call.m.CampaignID, run)
+	logging.Event(ctx, s.logger, "rest.taken", slog.String("kind", call.kind), slog.Int("characters", len(run.after)))
+	return connect.NewResponse(&playv1.TakeRestResponse{Vitals: run.after}), nil
+}
+
+// takeRestTx is the transaction of TakeRest: lock, retry, the keeper's rest, the spells
+// and the clock, the combats that show the vitals, the event.
+func (s *Service) takeRestTx(ctx context.Context, tx pgx.Tx, call restCall, run *restRun) error {
+	q := s.queries.WithTx(tx)
+	session, err := lockOpenSessionOrNone(ctx, q, call.m.CampaignID)
+	if err != nil {
+		return err
+	}
+	done, again, err := eventByKey(ctx, q, session.ID, call.keyText, eventRestTaken, call.hash)
+	if err != nil {
+		return err
+	}
+	if again { // a retry of a rest already taken
+		var ev restEvent
+		if err := json.Unmarshal(done.Payload, &ev); err != nil {
+			return fmt.Errorf("read the rest event: %w", err)
+		}
+		run.repeated = append([]string{}, ev.Characters...)
+		return nil
+	}
+	if err := activeCombatBlocks(ctx, q, session.ID); err != nil {
+		return err
+	}
+	if _, run.after, err = s.vitals.TakeRest(ctx, tx, call.m.CampaignID, call.msg); err != nil {
+		return resourceError(err)
+	}
+	if err := s.restEndsSpells(ctx, tx, q, session, call, run); err != nil {
+		return err
+	}
+	ids, err := s.restTouchCombats(ctx, q, session.ID, run)
+	if err != nil {
+		return err
+	}
+	return s.appendKeyedEvent(ctx, q, keyedEvent{
+		sessionID: session.ID, kind: eventRestTaken, userID: call.m.UserID, key: call.keyText, hash: call.hash,
+	}, restEvent{Kind: call.kind, Characters: ids})
+}
+
+// restEndsSpells ends the spells that last end with the rest when their whole duration fits it
+// (SRD 5.1, "Resting"): 8 hours or less at a long rest, an hour or less at a short one. The
+// same transaction, so a rest never leaves a spell running that it ended on the vitals. The
+// rest is game time passing too: what had a clock loses the hour or the eight hours.
+func (s *Service) restEndsSpells(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call restCall, run *restRun) error {
+	minutes := rules.ShortRestMinutes
+	if call.kind == rules.RestLong {
+		minutes = rules.LongRestMinutes
+	}
+	ct, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), kind: eventRestTaken, actorUserID: call.m.UserID, svc: s, master: true})
+	if err != nil {
+		return err
+	}
+	if _, run.spellVitals, err = s.endSpellsAtRest(ctx, ct, minutes); err != nil {
+		return err
+	}
+	if call.kind == rules.RestLong {
+		if err := s.endLongRestEffects(ctx, ct); err != nil {
+			return err
+		}
+	}
+	if err := s.advanceGameTime(ctx, ct, clamp32(minutes*secondsPerMinute, 0, 1<<30)); err != nil {
+		return err
+	}
+	run.spellVitals = append(run.spellVitals, ct.told...)
+	run.castsChanged = ct.castsChanged
+	return nil
+}
+
+// restTouchCombats touches the combat that shows each changed character's state from the
+// vitals (one in setup), once for each combat, and returns the characters' IDs.
+func (s *Service) restTouchCombats(ctx context.Context, q *playdb.Queries, sessionID string, run *restRun) ([]string, error) {
+	ids := make([]string, 0, len(run.after))
+	for _, v := range run.after {
+		ids = append(ids, v.GetCharacterId())
+		enc, err := s.touchCombatOf(ctx, q, sessionID, v.GetCharacterId(), nil)
+		if err != nil {
+			return nil, err
+		}
+		if enc != nil && !slices.ContainsFunc(run.touched, func(e playdb.Encounter) bool { return e.ID == enc.ID }) {
+			run.touched = append(run.touched, *enc)
+		}
+	}
+	return ids, nil
+}
+
+// repeatedRestAnswer answers a retry: nothing changed and nothing goes out, so it is the
+// vitals as they are now.
+func (s *Service) repeatedRestAnswer(ctx context.Context, campaignID string, characterIDs []string) *playv1.TakeRestResponse {
+	res := &playv1.TakeRestResponse{}
+	for _, id := range characterIDs {
+		if v, err := s.vitals.GetVitals(ctx, campaignID, id); err == nil {
+			res.Vitals = append(res.Vitals, v)
+		}
+	}
+	return res
+}
+
+// publishRest tells the streams what the committed rest changed.
+func (s *Service) publishRest(ctx context.Context, campaignID string, run restRun) {
+	s.publishVitalsOf(campaignID, run.after)
+	s.publishVitalsOf(campaignID, run.spellVitals)
+	if run.castsChanged != castsUnchanged {
+		s.publishCastsChanged(campaignID, run.castsChanged == castsMasterOnly)
 	}
 	pctx, stop := afterCommit(ctx)
 	defer stop()
-	for _, enc := range touched {
-		s.publishEncounterChanged(pctx, m.CampaignID, enc)
+	for _, enc := range run.touched {
+		s.publishEncounterChanged(pctx, campaignID, enc)
 	}
-	logging.Event(ctx, s.logger, "rest.taken", slog.String("kind", kind), slog.Int("characters", len(after)))
-	return connect.NewResponse(&playv1.TakeRestResponse{Vitals: after}), nil
 }
 
 // hitDieRequest reads the size of the die to spend and how its face is given: rolled in the
@@ -384,123 +420,200 @@ func hitDieRequest(req *playv1.SpendHitDiceRequest) (faces int, in rollInput, er
 	return faces, in, nil
 }
 
+// hitDiceCall is what SpendHitDice reads from its request before the transaction.
+type hitDiceCall struct {
+	m         authz.Membership
+	charText  string
+	keyText   string
+	hash      *string
+	faces     int
+	in        rollInput
+	typedSong int
+}
+
+// hitDiceRun is what the transaction of SpendHitDice leaves for after the commit.
+type hitDiceRun struct {
+	ev       hitDieEvent
+	after    *playv1.CharacterVitals
+	repeated bool
+}
+
+// readHitDiceCall reads and checks the request, in the order the refusals have always come.
+func readHitDiceCall(ctx context.Context, req *playv1.SpendHitDiceRequest) (hitDiceCall, error) {
+	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
+	if err != nil {
+		return hitDiceCall{}, err
+	}
+	characterID, err := uuid.Parse(req.GetCharacterId())
+	if err != nil {
+		return hitDiceCall{}, connect.NewError(connect.CodeNotFound, errors.New("character not found"))
+	}
+	key, err := uuid.Parse(req.GetIdempotencyKey())
+	if err != nil {
+		return hitDiceCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key must be a UUID"))
+	}
+	faces, in, err := hitDieRequest(req)
+	if err != nil {
+		return hitDiceCall{}, err
+	}
+	return hitDiceCall{
+		m: m, charText: characterID.String(), keyText: key.String(), hash: idem.Hash(req),
+		faces: faces, in: in, typedSong: int(req.GetTypedSongFace()),
+	}, nil
+}
+
 // SpendHitDice implements playv1connect.ResourceServiceHandler: a player spends one
 // hit die on a short rest.
 func (s *Service) SpendHitDice(
 	ctx context.Context,
 	req *connect.Request[playv1.SpendHitDiceRequest],
 ) (*connect.Response[playv1.SpendHitDiceResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	call, err := readHitDiceCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	characterID, err := uuid.Parse(req.Msg.GetCharacterId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("character not found"))
-	}
-	key, err := uuid.Parse(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key must be a UUID"))
-	}
-	faces, in, err := hitDieRequest(req.Msg)
-	if err != nil {
-		return nil, err
-	}
-	keyText, charText := key.String(), characterID.String()
-	hash := idem.Hash(req.Msg)
-
-	var ev hitDieEvent
-	var after *playv1.CharacterVitals
-	var repeated bool
+	var run hitDiceRun
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		ev, after, repeated = hitDieEvent{}, nil, false // a retry starts over
-		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
-		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
-		}
-		done, again, err := eventByKey(ctx, q, session.ID, keyText, eventHitDiceSpent, hash)
-		if err != nil {
-			return err
-		}
-		if again {
-			if done.CharacterID == nil || *done.CharacterID != charText {
-				return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-			}
-			if err := json.Unmarshal(done.Payload, &ev); err != nil {
-				return fmt.Errorf("read the hit die event: %w", err)
-			}
-			repeated = true
-			return nil
-		}
-		// The character's player or the master. Another player's character is not theirs.
-		current, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, charText)
-		if err != nil {
-			return err
-		}
-		if m.Role != authz.RoleMaster && (current.GetPlayerUserId() == "" || current.GetPlayerUserId() != m.UserID) {
-			return connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may do this"))
-		}
-		if err := activeCombatBlocks(ctx, q, session.ID); err != nil {
-			return err
-		}
-		if err := s.mustRollThisWay(ctx, tx, m, in); err != nil {
-			return err
-		}
-		face := in.typed
-		if in.inApp {
-			rolled, err := dice.Roll(s.roller, dice.Expr{Count: 1, Sides: faces})
-			if err != nil {
-				return fmt.Errorf("roll the hit die: %w", err)
-			}
-			face = rolled.Faces[0]
-		}
-		songSides, songFace, err := s.songOfRestDie(ctx, tx, q, session.ID, m.CampaignID, charText, in, int(req.Msg.GetTypedSongFace()))
-		if err != nil {
-			return err
-		}
-		_, afterVitals, conMod, healed, err := s.vitals.SpendHitDie(ctx, tx, m.CampaignID, charText, faces, face, songFace)
-		if err != nil {
-			return resourceError(err)
-		}
-		after = afterVitals
-		ev = hitDieEvent{
-			Faces: clamp32(faces, 1, maxHitDie), Face: clamp32(face, 1, maxHitDie), Modifier: clamp32(conMod, -maxHitDie, maxHitDie),
-			Healed: clamp32(healed, 0, 1<<20), Physical: !in.inApp,
-			SongSides: clamp32(songSides, 0, maxHitDie), SongFace: clamp32(songFace, 0, maxHitDie),
-		}
-		payload, err := json.Marshal(ev)
-		if err != nil {
-			return fmt.Errorf("encode the event payload: %w", err)
-		}
-		seq, err := q.NextSessionEventSeq(ctx, session.ID)
-		if err != nil {
-			return fmt.Errorf("next event number: %w", err)
-		}
-		if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-			GameSessionID: session.ID, Seq: seq, Kind: eventHitDiceSpent, ActorUserID: &m.UserID, CharacterID: &charText,
-			Payload: payload, IdempotencyKey: &keyText, IdempotencyHash: hash, CreatedAt: s.now(),
-		}); err != nil {
-			return fmt.Errorf("insert session event: %w", err)
-		}
-		return nil
+		run = hitDiceRun{} // a retry starts over
+		return s.spendHitDiceTx(ctx, tx, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "spend a hit die", err)
 	}
-	if repeated {
-		current, err := s.vitals.GetVitals(ctx, m.CampaignID, charText)
+	if run.repeated {
+		current, err := s.vitals.GetVitals(ctx, call.m.CampaignID, call.charText)
 		if err != nil {
 			return nil, s.dbError(ctx, "get vitals", err)
 		}
-		return connect.NewResponse(spendResponse(current, ev)), nil
+		return connect.NewResponse(spendResponse(current, run.ev)), nil
 	}
-	s.publishVitals(m.CampaignID, after)
-	logging.Event(ctx, s.logger, "hit_dice.spent", slog.String("character_id", charText), slog.Int("faces", faces))
-	return connect.NewResponse(spendResponse(after, ev)), nil
+	s.publishVitals(call.m.CampaignID, run.after)
+	logging.Event(ctx, s.logger, "hit_dice.spent", slog.String("character_id", call.charText), slog.Int("faces", call.faces))
+	return connect.NewResponse(spendResponse(run.after, run.ev)), nil
+}
+
+// spendHitDiceTx is the transaction of SpendHitDice: lock, retry, who may, roll, spend, write.
+func (s *Service) spendHitDiceTx(ctx context.Context, tx pgx.Tx, call hitDiceCall, run *hitDiceRun) error {
+	q := s.queries.WithTx(tx)
+	session, err := lockOpenSessionOrNone(ctx, q, call.m.CampaignID)
+	if err != nil {
+		return err
+	}
+	done, again, err := eventByKey(ctx, q, session.ID, call.keyText, eventHitDiceSpent, call.hash)
+	if err != nil {
+		return err
+	}
+	if again {
+		run.repeated = true
+		return replayCharacterEvent(done, call.charText, "hit die", &run.ev)
+	}
+	if err := s.requireCharacterOwnerOrMaster(ctx, tx, call.m, call.charText); err != nil {
+		return err
+	}
+	if err := activeCombatBlocks(ctx, q, session.ID); err != nil {
+		return err
+	}
+	if err := s.mustRollThisWay(ctx, tx, call.m, call.in); err != nil {
+		return err
+	}
+	if err := s.spendHitDieRolled(ctx, tx, q, session.ID, call, run); err != nil {
+		return err
+	}
+	return s.appendKeyedEvent(ctx, q, keyedEvent{
+		sessionID: session.ID, kind: eventHitDiceSpent, userID: call.m.UserID, characterID: &call.charText, key: call.keyText, hash: call.hash,
+	}, run.ev)
+}
+
+// spendHitDieRolled rolls the die (or takes the typed face), asks for the Song of Rest's
+// die, spends the hit die and fills the event of the run.
+func (s *Service) spendHitDieRolled(ctx context.Context, tx pgx.Tx, q *playdb.Queries, sessionID string, call hitDiceCall, run *hitDiceRun) error {
+	face := call.in.typed
+	if call.in.inApp {
+		rolled, err := dice.Roll(s.roller, dice.Expr{Count: 1, Sides: call.faces})
+		if err != nil {
+			return fmt.Errorf("roll the hit die: %w", err)
+		}
+		face = rolled.Faces[0]
+	}
+	songSides, songFace, err := s.songOfRestDie(ctx, tx, q, sessionID, call.m.CampaignID, call.charText, call.in, call.typedSong)
+	if err != nil {
+		return err
+	}
+	_, afterVitals, conMod, healed, err := s.vitals.SpendHitDie(ctx, tx, call.m.CampaignID, call.charText, call.faces, face, songFace)
+	if err != nil {
+		return resourceError(err)
+	}
+	run.after = afterVitals
+	run.ev = hitDieEvent{
+		Faces: clamp32(call.faces, 1, maxHitDie), Face: clamp32(face, 1, maxHitDie), Modifier: clamp32(conMod, -maxHitDie, maxHitDie),
+		Healed: clamp32(healed, 0, 1<<20), Physical: !call.in.inApp,
+		SongSides: clamp32(songSides, 0, maxHitDie), SongFace: clamp32(songFace, 0, maxHitDie),
+	}
+	return nil
+}
+
+// lockOpenSessionOrNone locks the campaign's open session in the transaction of q, or
+// refuses with the answer of a table without one.
+func lockOpenSessionOrNone(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, error) {
+	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return playdb.GameSession{}, errNoOpenSession()
+	}
+	if err != nil {
+		return playdb.GameSession{}, fmt.Errorf("lock the open session: %w", err)
+	}
+	return session, nil
+}
+
+// requireCharacterOwnerOrMaster refuses a member who is neither the master nor the
+// character's player: another player's character is not theirs.
+func (s *Service) requireCharacterOwnerOrMaster(ctx context.Context, tx pgx.Tx, m authz.Membership, characterID string) error {
+	current, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, characterID)
+	if err != nil {
+		return err
+	}
+	if m.Role != authz.RoleMaster && (current.GetPlayerUserId() == "" || current.GetPlayerUserId() != m.UserID) {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may do this"))
+	}
+	return nil
+}
+
+// replayCharacterEvent reads the event a retry finds, which must be about the same
+// character; what names the event in the error of a payload that cannot be read.
+func replayCharacterEvent(done playdb.GetSessionEventByIdempotencyKeyRow, characterID, what string, into any) error {
+	if done.CharacterID == nil || *done.CharacterID != characterID {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+	}
+	if err := json.Unmarshal(done.Payload, into); err != nil {
+		return fmt.Errorf("read the %s event: %w", what, err)
+	}
+	return nil
+}
+
+// keyedEvent says whose session event a rest handler writes, under which key.
+type keyedEvent struct {
+	sessionID, kind, userID, key string
+	characterID                  *string
+	hash                         *string
+}
+
+// appendKeyedEvent encodes the payload, numbers the event and inserts it.
+func (s *Service) appendKeyedEvent(ctx context.Context, q *playdb.Queries, e keyedEvent, payload any) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encode the event payload: %w", err)
+	}
+	seq, err := q.NextSessionEventSeq(ctx, e.sessionID)
+	if err != nil {
+		return fmt.Errorf("next event number: %w", err)
+	}
+	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
+		GameSessionID: e.sessionID, Seq: seq, Kind: e.kind, ActorUserID: &e.userID, CharacterID: e.characterID,
+		Payload: body, IdempotencyKey: &e.key, IdempotencyHash: e.hash, CreatedAt: s.now(),
+	}); err != nil {
+		return fmt.Errorf("insert session event: %w", err)
+	}
+	return nil
 }
 
 // songOfRestDie says whether a bard's Song of Rest gives the character an extra die with

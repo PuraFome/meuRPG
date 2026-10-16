@@ -1,0 +1,76 @@
+{
+  "lastMove": {
+    "at": "<time>",
+    "characterName": "Brisa",
+    "move": {
+      "cipher": {
+        "text": "nada"
+      }
+    },
+    "wrong": true
+  },
+  "minimum": {
+    "moves": 1,
+    "solvable": true
+  },
+  "minimumFromStart": {
+    "moves": 1,
+    "solvable": true
+  },
+  "movesMade": 1,
+  "puzzle": {
+    "campaignId": "<uuid>",
+    "config": {
+      "cipher": {
+        "ciphertext": "R WHVRXUR HVWD VRE R DOWDU",
+        "keyClueId": "<clue>"
+      }
+    },
+    "createdAt": "<time>",
+    "id": "<cipher>",
+    "kind": "PUZZLE_KIND_CIPHER",
+    "minimum": {
+      "moves": 1,
+      "solvable": true
+    },
+    "name": "A carta do Capitão",
+    "onSolve": {
+      "action": "PUZZLE_SOLVE_ACTION_NOTIFY"
+    },
+    "shown": true,
+    "solution": {
+      "cipher": {
+        "message": "O tesouro está sob o altar",
+        "shift": 3
+      }
+    },
+    "start": {
+      "cipher": {}
+    },
+    "updatedAt": "<time>"
+  },
+  "run": {
+    "config": {
+      "cipher": {
+        "ciphertext": "R WHVRXUR HVWD VRE R DOWDU"
+      }
+    },
+    "hasKeyClue": true,
+    "kind": "PUZZLE_KIND_CIPHER",
+    "lastMove": {
+      "at": "<time>",
+      "characterName": "Brisa",
+      "wrong": true
+    },
+    "name": "A carta do Capitão",
+    "puzzleId": "<cipher>",
+    "revision": 2,
+    "state": {
+      "cipher": {}
+    }
+  },
+  "start": {
+    "cipher": {}
+  },
+  "status": "PUZZLE_RUN_STATUS_SHOWN"
+}

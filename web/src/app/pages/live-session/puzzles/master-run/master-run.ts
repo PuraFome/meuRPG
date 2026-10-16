@@ -56,6 +56,32 @@ import { DoorCrop } from '../../../../shared/door-crop/door-crop';
 type Ask = 'reset' | 'close';
 type Action = 'hint' | 'reseed' | 'reset' | 'close' | 'play';
 
+/** The call each button makes. All but "Fechar" send the revision of the run the card shows, so one that moved since is refused. */
+const CALLS: Record<
+  Action,
+  (api: PuzzlesClient, campaign: string, id: string, seen: number) => Promise<MasterPuzzleRun>
+> = {
+  hint: (api, campaign, id, seen) => api.releaseHint(campaign, id, seen),
+  play: (api, campaign, id, seen) => api.playSequence(campaign, id, seen),
+  reseed: (api, campaign, id, seen) => api.reseed(campaign, id, seen),
+  reset: (api, campaign, id, seen) => api.reset(campaign, id, seen),
+  close: (api, campaign, id) => api.close(campaign, id),
+};
+
+/** What the action was for, said when it fails ("... pedido de soltar a dica"). */
+const ACTION_WORDS: Record<Action, string> = {
+  hint: 'soltar a dica',
+  play: 'tocar a sequência',
+  close: 'fechar o quebra-cabeça',
+  reset: 'recomeçar o quebra-cabeça',
+  reseed: 'recomeçar o quebra-cabeça',
+};
+
+/** The actions whose button is gone when the answer comes (the question took its place): the focus goes back to it. */
+const REFOCUS_AFTER: readonly Action[] = ['reset', 'close'];
+/** The actions that start the puzzle over: the solution is hidden again. */
+const HIDES_SOLUTION: readonly Action[] = ['reset', 'reseed'];
+
 /**
  * The master's live view of one shown puzzle (MR-038, E10-06 states 3 to 5): the same board the players have, static, in the same
  * order for every kind: what it is, whether the players see it, the state, the last move and by whom, what only the master
@@ -351,25 +377,15 @@ export class MasterRun {
     this.busy.set(action);
     this.notice.set('');
     try {
-      const campaign = this.campaignId();
       // The revision of the run this card shows: a run that moved since (a player, another tab) refuses the action.
       const seen = this.player()?.revision ?? 0;
-      const next =
-        action === 'hint'
-          ? await this.api.releaseHint(campaign, id, seen)
-          : action === 'play'
-            ? await this.api.playSequence(campaign, id, seen)
-            : action === 'reseed'
-              ? await this.api.reseed(campaign, id, seen)
-              : action === 'reset'
-                ? await this.api.reset(campaign, id, seen)
-                : await this.api.close(campaign, id);
+      const next = await CALLS[action](this.api, this.campaignId(), id, seen);
       this.ask.set(null);
-      if (action === 'reset' || action === 'reseed') {
+      if (HIDES_SOLUTION.includes(action)) {
         this.solutionShown.set(false);
       }
       this.updated.emit(next);
-      if (action === 'reset' || action === 'close') {
+      if (REFOCUS_AFTER.includes(action)) {
         afterNextRender(
           () =>
             focusWithRing(
@@ -380,26 +396,23 @@ export class MasterRun {
       }
     } catch (err) {
       this.ask.set(null);
-      const what =
-        action === 'hint'
-          ? 'soltar a dica'
-          : action === 'play'
-            ? 'tocar a sequência'
-            : action === 'close'
-              ? 'fechar o quebra-cabeça'
-              : 'recomeçar o quebra-cabeça';
-      // A run that moved since the card was drawn: show it as it is now; the master chooses again, nothing is retried.
-      const stale = puzzleBlocked(err)?.reason === PuzzleBlockedReason.STALE_REVISION;
-      if (stale) {
-        await this.readAgain(id);
-      }
-      this.notice.set(
-        !stale && isTransient(err) && (await this.readAgain(id))
-          ? `O servidor não respondeu a tempo ao pedido de ${what}. O quebra-cabeça abaixo está como ele ficou: confira antes de tentar de novo.`
-          : puzzleErrorMessage(err, what),
-      );
+      await this.failed(err, id, ACTION_WORDS[action]);
     } finally {
       this.busy.set(null);
     }
+  }
+
+  /** What an action that failed tells the master, after the card is read again when that may help. */
+  private async failed(err: unknown, id: string, what: string): Promise<void> {
+    // A run that moved since the card was drawn: show it as it is now; the master chooses again, nothing is retried.
+    const stale = puzzleBlocked(err)?.reason === PuzzleBlockedReason.STALE_REVISION;
+    if (stale) {
+      await this.readAgain(id);
+    }
+    this.notice.set(
+      !stale && isTransient(err) && (await this.readAgain(id))
+        ? `O servidor não respondeu a tempo ao pedido de ${what}. O quebra-cabeça abaixo está como ele ficou: confira antes de tentar de novo.`
+        : puzzleErrorMessage(err, what),
+    );
   }
 }

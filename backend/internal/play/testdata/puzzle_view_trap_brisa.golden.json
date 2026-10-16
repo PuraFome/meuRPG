@@ -1,0 +1,21 @@
+{
+  "clue": "Procure no chão da Cripta.",
+  "config": {
+    "riddle": {
+      "text": "Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?"
+    }
+  },
+  "kind": "PUZZLE_KIND_RIDDLE",
+  "lastMove": {
+    "at": "<time>",
+    "characterName": "Toren",
+    "trapName": "Fosso",
+    "wrong": true
+  },
+  "name": "Enigma",
+  "puzzleId": "<riddle>",
+  "revision": 2,
+  "state": {
+    "riddle": {}
+  }
+}

@@ -16,7 +16,6 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { MapPointKind } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import type { SearchForTrapsResponse } from '../../../../../gen/meurpg/play/v1/traps_pb';
 import {
   ResourceClient,
@@ -29,16 +28,10 @@ import { LuckyOfferCard } from '../../inspiration/lucky-offer';
 import { luckyText } from '../../../../core/combat/lucky';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type {
-  DiceRoll,
   LuckyOffer,
   OutsideInspirationOffer,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import {
-  parseFace,
-  treatedFormula,
-  treatedPreview,
-  typedTotal,
-} from '../../../../core/combat/combat-dice';
+import { parseFace } from '../../../../core/combat/combat-dice';
 import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import type { MapState } from '../../../../core/maps/map-state';
@@ -61,6 +54,19 @@ import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../../shared/sheet/sheet-host';
 import { CheckMode } from '../../scene/check-mode/check-mode';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
+import {
+  type SearchResultView,
+  rollsOf,
+  SECOND_DIE_HINT,
+  TYPED_DIE_HINT,
+  chosenSkill,
+  foundNames,
+  listKeyMove,
+  rollLabel,
+  searchShow,
+  totalOf,
+  typedLineOf,
+} from './trap-search-view';
 
 /** What the page hands "Procurar armadilhas". */
 export interface TrapSearchData {
@@ -143,18 +149,9 @@ export class TrapSearchSheet {
   /** The cursor of the list (its index): the arrows move it, Enter picks. */
   protected readonly otherCursor = signal(0);
   protected readonly otherTitle = otherTitle;
-  protected readonly chosen = computed(() => {
-    const picked = this.otherPicked();
-    if (this.skill() === 'other') {
-      return {
-        skill: 'other' as const,
-        title: picked ? otherTitle(picked) : 'Outra perícia…',
-        detail: '',
-        bonus: picked?.bonus ?? 0,
-      };
-    }
-    return this.options.find((o) => o.skill === this.skill()) ?? this.options[0];
-  });
+  protected readonly chosen = computed(() =>
+    chosenSkill(this.skill(), this.options, this.otherPicked()),
+  );
   /** Under "Outra perícia…" nothing is rolled until a skill is picked. */
   protected readonly ready = computed(
     () => this.skill() !== 'other' || this.otherPicked() !== null,
@@ -175,13 +172,7 @@ export class TrapSearchSheet {
   private readonly dieKey = new ActionKey();
   /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
   private readonly luckyKey = new ActionKey();
-  protected readonly result = signal<{
-    res: SearchForTrapsResponse;
-    names: readonly string[];
-    skill: SearchSkill;
-    /** The skill's own name, for "(Arcanismo)" after the bonus. */
-    skillLabel: string;
-  } | null>(null);
+  protected readonly result = signal<SearchResultView | null>(null);
   /** The server said a trap was found, whether or not its name could be read. */
   protected readonly found = computed(() => (this.result()?.res.foundPointIds.length ?? 0) > 0);
   protected readonly step = computed(() => searchStep(this.result() !== null, this.typing()));
@@ -195,14 +186,7 @@ export class TrapSearchSheet {
     resultMessage(this.result()?.names ?? [], this.result()?.res.foundPointIds.length ?? 0),
   );
   /** What the server rolled, written as it counts: "1d20 (13) + 4 (Investigação) = 17". */
-  protected readonly rolls = computed(() => {
-    const r = this.result();
-    return r
-      ? [r.res.roll, r.res.secondRoll]
-          .filter((x) => x !== undefined)
-          .map((x) => this.formula(x, r.skillLabel))
-      : [];
-  });
+  protected readonly rolls = computed(() => rollsOf(this.result()));
   /** "Sortudo: 1 → 14": the held d20 the halfling's Lucky rolled again; the formula is already the new one. */
   protected readonly lucky = computed(() => luckyText(this.result()?.res.roll));
   /** Both dice of a search with advantage or disadvantage, the one that counts marked. */
@@ -214,25 +198,20 @@ export class TrapSearchSheet {
     const res = this.result()?.res;
     return !!res && hasModeInfo(res.mode, res.sources, this.faces());
   });
-  protected readonly total = computed(() => {
-    const r = this.result()?.res;
-    return [r?.roll, r?.secondRoll]
-      .filter((x) => x !== undefined)
-      .map((x) => x.total)
-      .join(' · ');
-  });
+  protected readonly total = computed(() => totalOf(this.result()?.res));
   protected readonly skillWord = computed(
     () => this.result()?.skillLabel ?? skillName(this.skill(), this.otherPicked()?.name),
   );
   protected readonly label = computed(() =>
     this.firstFace() !== null
       ? 'Digite o segundo dado'
-      : `Role 1d20 para ${skillName(this.skill(), this.otherPicked()?.name)}${this.data.skills ? ` (${this.chosen().title.replace(/^.*\s(?=[+−])/, '')})` : ''}`,
+      : rollLabel(
+          skillName(this.skill(), this.otherPicked()?.name),
+          this.data.skills ? this.chosen().title : null,
+        ),
   );
   protected readonly hint = computed(() =>
-    this.firstFace() !== null
-      ? 'Esta procura leva dois d20: há penumbra por perto, ou o seu personagem tem vantagem ou desvantagem. Role de novo e digite o segundo dado (1 a 20); o app diz qual vale.'
-      : 'Role o seu dado e digite o número que saiu (1 a 20).',
+    this.firstFace() !== null ? SECOND_DIE_HINT : TYPED_DIE_HINT,
   );
   /** What is typed in the field, and the face it makes (1 to 20) or `null`. */
   protected readonly text = signal('');
@@ -243,13 +222,8 @@ export class TrapSearchSheet {
     if (f === null) {
       return '';
     }
-    // Talento Confiável: the server owns the rule; the sheet knows the feature and the skill, so it shows the account (6 → 10).
     const picked = this.skill() === 'other' ? this.otherKey() : `skill:${this.skill()}`;
-    const raised =
-      picked && this.data.skills?.reliableTalent?.includes(picked)
-        ? treatedPreview(f, this.chosen().bonus, 'feature:reliable-talent')
-        : null;
-    return raised?.text ?? typedTotal(f, this.chosen().bonus);
+    return typedLineOf(f, this.chosen().bonus, picked, this.data.skills?.reliableTalent);
   });
   protected readonly confirmLabel = computed(() =>
     this.face() === null ? 'Confirmar' : `Confirmar ${this.face()}`,
@@ -269,16 +243,6 @@ export class TrapSearchSheet {
         this.frame()?.scrollToTop();
       }
     });
-  }
-
-  /** "1d20 (13) + 4 (Investigação) = 17" for the server's roll; with Talento Confiável "d20: 6 → 10 (Talento Confiável) + 9 (Acrobacia) = 19". */
-  private formula(roll: DiceRoll, skill: string): string {
-    const treated = treatedFormula(roll, skill);
-    if (treated) {
-      return treated;
-    }
-    const mod = roll.modifier < 0 ? `− ${Math.abs(roll.modifier)}` : `+ ${roll.modifier}`;
-    return `1d20 (${roll.faces.join(', ')}) ${mod} (${skill}) = ${roll.total}`;
   }
 
   protected startTyping(): void {
@@ -331,30 +295,17 @@ export class TrapSearchSheet {
 
   /** The list's keys: the arrows move, Enter (or Space) picks. */
   protected onListKey(event: KeyboardEvent): void {
-    const last = this.others.length - 1;
-    switch (event.key) {
-      case 'ArrowDown':
-        this.otherCursor.update((i) => Math.min(last, i + 1));
-        break;
-      case 'ArrowUp':
-        this.otherCursor.update((i) => Math.max(0, i - 1));
-        break;
-      case 'Home':
-        this.otherCursor.set(0);
-        break;
-      case 'End':
-        this.otherCursor.set(Math.max(0, last));
-        break;
-      case 'Enter':
-      case ' ': {
-        const at = this.others[this.otherCursor()];
-        if (at) {
-          this.pickOther(at.key);
-        }
-        break;
+    const move = listKeyMove(event.key, this.otherCursor(), this.others.length - 1);
+    if (move === null) {
+      return;
+    }
+    if (move === 'pick') {
+      const at = this.others[this.otherCursor()];
+      if (at) {
+        this.pickOther(at.key);
       }
-      default:
-        return;
+    } else {
+      this.otherCursor.set(move);
     }
     event.preventDefault();
   }
@@ -423,10 +374,7 @@ export class TrapSearchSheet {
   private async showResult(res: SearchForTrapsResponse): Promise<void> {
     // Read the map again: what was found now shows on it, and its name is the map's to give.
     await this.data.state.refresh();
-    const names = this.data.state
-      .points()
-      .filter((p) => p.kind === MapPointKind.TRAP && res.foundPointIds.includes(p.id))
-      .map((p) => p.name);
+    const names = foundNames(this.data.state.points(), res.foundPointIds);
     this.result.set({
       res,
       names,
@@ -502,11 +450,7 @@ export class TrapSearchSheet {
 
   /** The d20 of the search, with "Achou" or "Nada": exactly what the result card tells (the DC never comes). */
   private animate(res: SearchForTrapsResponse): void {
-    const found = res.foundPointIds.length > 0;
-    const show = showOfDice('Procurar armadilhas', res.roll, {
-      withTotal: true,
-      outcome: { word: found ? 'Achou' : 'Nada', good: found },
-    });
+    const show = searchShow(res);
     if (show) {
       this.animator.play(show);
     }

@@ -17,7 +17,13 @@ import {
 import { DAMAGE_TYPE_OPTIONS } from '../../../core/characters/character-labels';
 import { metersText } from '../../../core/units';
 import type { PointChanges } from '../../../core/maps/maps-client';
-import { POINT_DESCRIPTION_MAX, POINT_NAME_MAX } from '../point-panel/point-draft';
+import type {
+  AttackDraft,
+  ConditionDraft,
+  DamageDraft,
+  SaveDraft,
+  TrapDraft,
+} from './trap-draft-types';
 
 /**
  * What the trap form edits (E9-02, MR-035): the form's own text and choices, kept apart from the saved point
@@ -25,52 +31,14 @@ import { POINT_DESCRIPTION_MAX, POINT_NAME_MAX } from '../point-panel/point-draf
  * typed, so a half-typed number is not lost. The server's rules (maps.proto) are checked first so each field
  * can say what is wrong, and the server stays the authority. Pure functions: tested without a DOM.
  */
-export interface DamageDraft {
-  readonly dice: string;
-  readonly typeKey: string;
-}
-
-export interface ConditionDraft {
-  readonly key: string;
-  /** "1 hora": how long it lasts, for the master's table (0 to 60 characters). */
-  readonly duration: string;
-}
-
-export interface AttackDraft {
-  readonly bonus: string;
-  readonly count: string;
-  readonly damage: DamageDraft;
-}
-
-export interface SaveDraft {
-  readonly ability: Ability;
-  readonly dc: string;
-  readonly appliesTo: TrapSaveApplies;
-  readonly failDamage: readonly DamageDraft[];
-  readonly failCondition: ConditionDraft | null;
-  readonly onPass: TrapPassOutcome;
-}
-
-export interface TrapDraft {
-  readonly presetKey: string;
-  readonly name: string;
-  readonly description: string;
-  /** Empty: nobody notices it alone (the SRD's poison needle). */
-  readonly noticeDc: string;
-  readonly findDc: string;
-  /** "Também acham com": the skill keys (`skill:arcana`) besides Percepção and Investigação that find it, against `findDc`; none by default. */
-  readonly alsoFind: readonly string[];
-  readonly areaSize: 1 | 2 | 3 | 4;
-  readonly trigger: TrapTrigger;
-  readonly state: TrapState;
-  readonly targets: TrapTargets;
-  readonly attack: AttackDraft | null;
-  /** "Dano que sempre acontece": damage that lands on every creature caught. */
-  readonly damage: readonly DamageDraft[];
-  /** "Condição que sempre acontece". */
-  readonly conditions: readonly ConditionDraft[];
-  readonly save: SaveDraft | null;
-}
+export type {
+  AttackDraft,
+  ConditionDraft,
+  DamageDraft,
+  SaveDraft,
+  TrapDraft,
+} from './trap-draft-types';
+export { type TrapErrors, hasTrapErrors, trapErrors, validDice } from './trap-errors';
 
 export const MAX_DAMAGE_PARTS = 4;
 export const MAX_CONDITION_PARTS = 4;
@@ -166,44 +134,39 @@ function damageDraft(d: { dice: string; damageTypeKey: string }): DamageDraft {
   return { dice: d.dice, typeKey: d.damageTypeKey };
 }
 
+function conditionDraft(c: { conditionKey: string; durationPt: string }): ConditionDraft {
+  return { key: c.conditionKey, duration: c.durationPt };
+}
+
+function attackDraft(attack: NonNullable<TrapEffect['attack']>): AttackDraft {
+  return {
+    bonus: String(attack.bonus),
+    count: String(attack.count),
+    damage: attack.damage ? damageDraft(attack.damage) : blankDamage(),
+  };
+}
+
+function saveDraftOf(save: NonNullable<TrapEffect['save']>): SaveDraft {
+  return {
+    ability: save.ability,
+    dc: String(save.dc),
+    appliesTo:
+      save.appliesTo === TrapSaveApplies.HIT ? TrapSaveApplies.HIT : TrapSaveApplies.CAUGHT,
+    failDamage: (save.onFail?.damage ?? []).map(damageDraft),
+    failCondition: save.onFail?.condition ? conditionDraft(save.onFail.condition) : null,
+    onPass: save.onPass === TrapPassOutcome.HALF ? TrapPassOutcome.HALF : TrapPassOutcome.NONE,
+  };
+}
+
 function effectDraft(
   effect: TrapEffect | undefined,
 ): Pick<TrapDraft, 'targets' | 'attack' | 'damage' | 'conditions' | 'save'> {
   return {
     targets: effect?.targets === TrapTargets.MANUAL ? TrapTargets.MANUAL : TrapTargets.AREA,
-    attack: effect?.attack
-      ? {
-          bonus: String(effect.attack.bonus),
-          count: String(effect.attack.count),
-          damage: effect.attack.damage ? damageDraft(effect.attack.damage) : blankDamage(),
-        }
-      : null,
+    attack: effect?.attack ? attackDraft(effect.attack) : null,
     damage: (effect?.damage ?? []).map(damageDraft),
-    conditions: (effect?.conditions ?? []).map((c) => ({
-      key: c.conditionKey,
-      duration: c.durationPt,
-    })),
-    save: effect?.save
-      ? {
-          ability: effect.save.ability,
-          dc: String(effect.save.dc),
-          appliesTo:
-            effect.save.appliesTo === TrapSaveApplies.HIT
-              ? TrapSaveApplies.HIT
-              : TrapSaveApplies.CAUGHT,
-          failDamage: (effect.save.onFail?.damage ?? []).map(damageDraft),
-          failCondition: effect.save.onFail?.condition
-            ? {
-                key: effect.save.onFail.condition.conditionKey,
-                duration: effect.save.onFail.condition.durationPt,
-              }
-            : null,
-          onPass:
-            effect.save.onPass === TrapPassOutcome.HALF
-              ? TrapPassOutcome.HALF
-              : TrapPassOutcome.NONE,
-        }
-      : null,
+    conditions: (effect?.conditions ?? []).map(conditionDraft),
+    save: effect?.save ? saveDraftOf(effect.save) : null,
   };
 }
 
@@ -253,107 +216,6 @@ export function trapDraftOf(point: Pick<MapPoint, 'name' | 'description' | 'trap
     state: stateOf(t?.state),
     ...effectDraft(t?.effect),
   };
-}
-
-export interface TrapErrors {
-  readonly name?: string;
-  readonly description?: string;
-  readonly noticeDc?: string;
-  readonly findDc?: string;
-  readonly attackBonus?: string;
-  readonly attackCount?: string;
-  readonly attackDice?: string;
-  /** By part: `damage:0`, `fail:1`, `condition:0`, `saveDc`, `save` (the save as a whole). */
-  readonly parts: Readonly<Record<string, string>>;
-}
-
-const DICE = /^(\d{1,2})d(4|6|8|10|12)$/;
-const DICE_MESSAGE = 'Use dados como 2d6 (de d4 a d12) ou um número de 1 a 100.';
-
-/** Whether `text` is a die the server takes: 1 to 20 dice of d4 to d12, or a flat 1 to 100. */
-export function validDice(text: string): boolean {
-  const t = text.trim();
-  const m = DICE.exec(t);
-  if (m) {
-    const n = Number(m[1]);
-    return n >= 1 && n <= 20;
-  }
-  return /^\d{1,3}$/.test(t) && Number(t) >= 1 && Number(t) <= 100;
-}
-
-function wholeIn(text: string, min: number, max: number): boolean {
-  return /^\d{1,3}$/.test(text.trim()) && Number(text) >= min && Number(text) <= max;
-}
-
-/** The server's rules (maps.proto: the numbers are checked against the rules content), so a field can say what is wrong. */
-export function trapErrors(d: TrapDraft): TrapErrors {
-  const errors: { -readonly [K in keyof TrapErrors]: TrapErrors[K] } = { parts: {} };
-  const parts: Record<string, string> = {};
-  const name = d.name.trim();
-  if (name === '') {
-    errors.name = 'Dê um nome ao ponto.';
-  } else if ([...name].length > POINT_NAME_MAX) {
-    errors.name = `Use até ${POINT_NAME_MAX} caracteres.`;
-  } else if (/\p{Cc}/u.test(name)) {
-    errors.name = 'Use um nome numa linha só.';
-  }
-  if ([...d.description].length > POINT_DESCRIPTION_MAX) {
-    errors.description = 'Use até 2.000 caracteres.';
-  }
-  if (d.noticeDc.trim() !== '' && !wholeIn(d.noticeDc, 1, 30)) {
-    errors.noticeDc = 'Use uma CD de 1 a 30, ou deixe vazio.';
-  }
-  if (!wholeIn(d.findDc, 1, 30)) {
-    errors.findDc = 'Use uma CD de 1 a 30.';
-  }
-  if (d.attack) {
-    if (!wholeIn(d.attack.bonus, 0, 20)) {
-      errors.attackBonus = 'Use de 0 a 20.';
-    }
-    if (!wholeIn(d.attack.count, 1, 10)) {
-      errors.attackCount = 'Use de 1 a 10.';
-    }
-    if (!validDice(d.attack.damage.dice)) {
-      errors.attackDice = DICE_MESSAGE;
-    }
-  }
-  d.damage.forEach((x, i) => {
-    if (!validDice(x.dice)) {
-      parts[`damage:${i}`] = DICE_MESSAGE;
-    }
-  });
-  d.conditions.forEach((c, i) => {
-    if ([...c.duration].length > 60) {
-      parts[`condition:${i}`] = 'Use até 60 caracteres.';
-    }
-  });
-  if (d.save) {
-    if (!wholeIn(d.save.dc, 1, 30)) {
-      parts['saveDc'] = 'Use uma CD de 1 a 30.';
-    }
-    d.save.failDamage.forEach((x, i) => {
-      if (!validDice(x.dice)) {
-        parts[`fail:${i}`] = DICE_MESSAGE;
-      }
-    });
-    if (d.save.failCondition && [...d.save.failCondition.duration].length > 60) {
-      parts['failCondition'] = 'Use até 60 caracteres.';
-    }
-    if (d.save.failDamage.length === 0 && !d.save.failCondition) {
-      parts['save'] = 'Escolha o que acontece a quem falha: dano ou uma condição.';
-    } else if (d.save.onPass === TrapPassOutcome.HALF && d.save.failDamage.length === 0) {
-      parts['save'] = 'Metade do dano precisa de dano para quem falha.';
-    }
-    if (d.save.appliesTo === TrapSaveApplies.HIT && !d.attack) {
-      parts['save'] =
-        'Só quem foi atingido faz a resistência: acrescente um ataque ou escolha quem foi pego.';
-    }
-  }
-  return { ...errors, parts };
-}
-
-export function hasTrapErrors(e: TrapErrors): boolean {
-  return Object.keys(e).some((k) => k !== 'parts') || Object.keys(e.parts).length > 0;
 }
 
 function damageSpec(d: DamageDraft) {

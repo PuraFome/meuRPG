@@ -159,6 +159,24 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 	if err != nil {
 		return fmt.Errorf("list the windows of a held action: %w", err)
 	}
+	st := replayStateOf(h, windows)
+	if err := c.q.SetReactionHoldState(ctx, playdb.SetReactionHoldStateParams{ID: h.ID, State: "released"}); err != nil {
+		return fmt.Errorf("release a held action: %w", err)
+	}
+	m := authz.Membership{CampaignID: c.session.CampaignID, UserID: h.ActorUserID, Role: authz.RolePlayer}
+	if h.ActorIsMaster {
+		m.Role = authz.RoleMaster
+	}
+	c.replay = st
+	defer func() { c.replay = nil }()
+	err = s.replayHeld(withAmbient(ctx, c), m, h)
+	return s.settleReplay(ctx, c, h, windows, st, err)
+}
+
+// replayStateOf is what the answered windows of a held action change in its replay: a
+// Counterspell that took, the reduction of Cutting Words, the halving of Uncanny Dodge
+// and what Deflect Missiles or a maneuver took off.
+func replayStateOf(h playdb.ReactionHold, windows []playdb.ReactionWindow) *replayState {
 	st := &replayState{hold: h}
 	var data holdData
 	_ = json.Unmarshal(h.Data, &data)
@@ -183,38 +201,40 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 			st.deflected += out.Reduction
 		}
 	}
-	if err := c.q.SetReactionHoldState(ctx, playdb.SetReactionHoldStateParams{ID: h.ID, State: "released"}); err != nil {
-		return fmt.Errorf("release a held action: %w", err)
-	}
-	m := authz.Membership{CampaignID: c.session.CampaignID, UserID: h.ActorUserID, Role: authz.RolePlayer}
-	if h.ActorIsMaster {
-		m.Role = authz.RoleMaster
-	}
-	c.replay = st
-	defer func() { c.replay = nil }()
-	ctx = withAmbient(ctx, c)
+	return st
+}
+
+// replayHeld runs the held request again through the handler of its kind, as the actor.
+func (s *Service) replayHeld(ctx context.Context, m authz.Membership, h playdb.ReactionHold) error {
 	switch h.Kind {
 	case "cast":
 		var req playv1.CastSpellRequest
 		if err := proto.Unmarshal(h.Request, &req); err != nil {
 			return fmt.Errorf("read a held cast: %w", err)
 		}
-		_, err = s.castSpell(ctx, m, connect.NewRequest(&req))
+		_, err := s.castSpell(ctx, m, connect.NewRequest(&req))
+		return err
 	case "attack":
 		var req playv1.RollAttackRequest
 		if err := proto.Unmarshal(h.Request, &req); err != nil {
 			return fmt.Errorf("read a held attack: %w", err)
 		}
-		_, err = s.rollAttack(ctx, m, connect.NewRequest(&req))
+		_, err := s.rollAttack(ctx, m, connect.NewRequest(&req))
+		return err
 	case "damage":
 		var req playv1.RollDamageRequest
 		if err := proto.Unmarshal(h.Request, &req); err != nil {
 			return fmt.Errorf("read a held damage roll: %w", err)
 		}
-		_, err = s.rollDamage(ctx, m, connect.NewRequest(&req))
-	default:
-		return fmt.Errorf("a held action of kind %q", h.Kind)
+		_, err := s.rollDamage(ctx, m, connect.NewRequest(&req))
+		return err
 	}
+	return fmt.Errorf("a held action of kind %q", h.Kind)
+}
+
+// settleReplay reads how the replay of a held action ended: the event that stands for
+// it, a refusal that drops the hold, or a failure.
+func (s *Service) settleReplay(ctx context.Context, c *combatTx, h playdb.ReactionHold, windows []playdb.ReactionWindow, st *replayState, err error) error {
 	var done *ambientDoneError
 	switch {
 	case errors.As(err, &done) && done.asking:

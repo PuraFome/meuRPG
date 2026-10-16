@@ -1,7 +1,7 @@
-@switch (phase()) {
+@switch (state.phase()) {
   @case ('loading') {
     <h1 class="mr-page-title">Sessão</h1>
-    @if (connection() === 'reconnecting') {
+    @if (state.connection() === 'reconnecting') {
       <div class="mr-notice mr-notice--neutral page-notice" role="status">
         <mat-icon aria-hidden="true">cloud_off</mat-icon>
         <p><strong>Reconectando…</strong> O servidor não respondeu; o app tenta de novo sozinho.</p>
@@ -16,22 +16,22 @@
   @case ('no-session') {
     <app-session-blocked
       kind="no-session"
-      [campaignId]="campaignId()"
-      [campaignName]="campaign()?.name ?? ''"
+      [campaignId]="state.campaignId()"
+      [campaignName]="state.campaign()?.name ?? ''"
     />
   }
   @case ('ended') {
-    @if (session(); as s) {
+    @if (state.session(); as s) {
       <!-- The session just ended: the summary (MR-032), or the plain notice if it cannot be read. -->
       <app-session-ended
-        [campaignId]="campaignId()"
-        [campaignName]="campaign()?.name ?? ''"
+        [campaignId]="state.campaignId()"
+        [campaignName]="state.campaign()?.name ?? ''"
         [sessionId]="s.sessionId"
         [sessionNumber]="s.sessionNumber"
-        [isMaster]="isMaster()"
-        [players]="playerNames()"
-        [characterId]="ownCharacterId()"
-        [characterName]="ownCharacterName()"
+        [isMaster]="state.isMaster()"
+        [players]="state.playerNames()"
+        [characterId]="state.ownCharacterId()"
+        [characterName]="view.ownCharacterName()"
       />
     }
   }
@@ -47,394 +47,394 @@
     <button mat-flat-button type="button" class="retry" (click)="retry()">Tentar de novo</button>
   }
   @case ('live') {
-    @if (session(); as s) {
-      @if (!isMaster() && openPuzzle(); as puzzleId) {
+    @if (state.session(); as s) {
+      @if (!state.isMaster() && state.openPuzzle(); as puzzleId) {
         <!-- A shown puzzle, open (MR-038, E10-06 states 6 to 9): in the place of the board; the one stream stays here, and so do the
              session's notices (a trap noticed, a treasure found, a clue that arrived, a combat that needs the player). -->
         <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
-        <app-calling-notice [on]="calling()" (dismissed)="calling.set(false)" />
-        <app-clue-notice [clues]="notes.notice() ? notes.fresh() : []" (opened)="openNotes()" (dismissed)="notes.dismissNotice()" />
-        @if (combatRunning()) {
+        <app-calling-notice [on]="state.calling()" (dismissed)="state.calling.set(false)" />
+        <app-clue-notice [clues]="notes.notice() ? notes.fresh() : []" (opened)="sheets.openNotes()" (dismissed)="notes.dismissNotice()" />
+        @if (view.combatRunning()) {
           <div class="mr-notice mr-notice--warning page-notice puzzle-combat" role="status">
             <mat-icon aria-hidden="true">swords</mat-icon>
             <p>
-              <strong>{{ yourTurn() ? 'É a sua vez no combate.' : 'Há um combate em andamento.' }}</strong>
-              <a [routerLink]="['/campaigns', campaignId(), 'session']">Voltar para a sessão</a>
+              <strong>{{ view.yourTurn() ? 'É a sua vez no combate.' : 'Há um combate em andamento.' }}</strong>
+              <a [routerLink]="['/campaigns', state.campaignId(), 'session']">Voltar para a sessão</a>
             </p>
           </div>
         }
         <app-puzzle-play
-          [campaignId]="campaignId()"
+          [campaignId]="state.campaignId()"
           [puzzleId]="puzzleId"
           [session]="s"
           [state]="puzzles"
-          [ownName]="ownCharacterName()"
-          [diceMode]="campaign()?.diceMode ?? 1"
-          [dicePreference]="campaign()?.dicePreference ?? 1"
-          [reconnecting]="connection() === 'reconnecting' || connection() === 'paused'"
-          (openNotes)="openNotes()"
-          (diceModeStale)="refreshCampaign()"
+          [ownName]="view.ownCharacterName()"
+          [diceMode]="state.campaign()?.diceMode ?? 1"
+          [dicePreference]="state.campaign()?.dicePreference ?? 1"
+          [reconnecting]="state.connection() === 'reconnecting' || state.connection() === 'paused'"
+          (openNotes)="sheets.openNotes()"
+          (diceModeStale)="loader.refreshCampaign()"
         />
       } @else {
       @if (!combat.fullPage()) {
       <app-session-header
-        [campaignId]="campaignId()"
-        [campaignName]="campaign()?.name ?? ''"
+        [campaignId]="state.campaignId()"
+        [campaignName]="state.campaign()?.name ?? ''"
         [session]="s"
-        [isMaster]="isMaster()"
-        [connection]="connection()"
-        [lastUpdate]="lastUpdate()"
+        [isMaster]="state.isMaster()"
+        [connection]="state.connection()"
+        [lastUpdate]="state.lastUpdate()"
         (ended)="sessionEndedHere()"
       />
       }
 
-      @if (isMaster()) {
+      @if (state.isMaster()) {
         <!-- A Revivify cast outside a combat waits for the master to say whether the creature died in the last minute. -->
-        <app-revivify-ask [campaignId]="campaignId()" [reload]="revivifyTick()" />
+        <app-revivify-ask [campaignId]="state.campaignId()" [reload]="state.revivifyTick()" />
       }
 
-      @if (!isMaster()) {
+      @if (!state.isMaster()) {
         <!-- The master is calling this player ("Chamar a atenção"): a polite line, in and out of combat. -->
-        <app-calling-notice [on]="calling()" (dismissed)="calling.set(false)" />
+        <app-calling-notice [on]="state.calling()" (dismissed)="state.calling.set(false)" />
       }
 
-      @if (!isMaster()) {
+      @if (!state.isMaster()) {
         <!-- The player's own character lives again (Revivificar or "Reviver"): a polite status, the focus stays where it is. -->
         <app-revived-notice
-          [class.revived]="revivedId() !== ''"
-          [on]="revivedId() !== ''"
-          [caster]="revivedCaster()"
-          [place]="revivedPlace()"
-          (dismissed)="revivedId.set('')"
+          [class.revived]="state.revivedId() !== ''"
+          [on]="state.revivedId() !== ''"
+          [caster]="state.revivedCaster()"
+          [place]="view.revivedPlace()"
+          (dismissed)="state.revivedId.set('')"
         />
       }
 
-      @if (!isMaster()) {
+      @if (!state.isMaster()) {
         <!-- A trap noticed, a treasure found: over the page under the app bar, in a combat too (E9-08 G, E9-09 4). -->
         <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
       }
 
-      @if (highlightsFor(); as ended) {
+      @if (view.highlightsFor(); as ended) {
         <app-highlights-card
-          [campaignId]="campaignId()"
+          [campaignId]="state.campaignId()"
           [encounterId]="ended.id"
-          [subtitle]="highlightsSub()"
-          [characterId]="highlightsCharacterId()"
-          [characterName]="ownCharacterName()"
+          [subtitle]="view.highlightsSub()"
+          [characterId]="view.highlightsCharacterId()"
+          [characterName]="view.ownCharacterName()"
           (closed)="closeHighlights()"
         />
       }
 
-      @if (!isMaster()) {
+      @if (!state.isMaster()) {
         <!-- The puzzles the master shows (MR-038, E10-06 state 6): above the board, in a combat too. -->
-        <app-puzzle-notice [campaignId]="campaignId()" [puzzles]="puzzles.shown()" />
+        <app-puzzle-notice [campaignId]="state.campaignId()" [puzzles]="puzzles.shown()" />
       }
 
-      @if (!isMaster() && ownVitals(); as own) {
+      @if (!state.isMaster() && state.ownVitals(); as own) {
         @if (own.familiarSight; as sight) {
           <app-familiar-band
             class="familiar"
-            [campaignId]="campaignId()"
+            [campaignId]="state.campaignId()"
             [characterId]="own.characterId"
             [characterName]="own.name"
             [creatureId]="sight.creatureId"
             [inCombat]="sight.inCombat"
-            (stopped)="familiarStopped(own.characterId)"
+            (stopped)="events.familiarStopped(own.characterId)"
           />
         }
       }
 
-      @if (combatOnScreen()) {
+      @if (view.combatOnScreen()) {
         <app-combat-view
           class="combat"
-          [campaignId]="campaignId()"
-          [isMaster]="isMaster()"
+          [campaignId]="state.campaignId()"
+          [isMaster]="state.isMaster()"
           [state]="combat"
           [mapState]="mapState"
           [fog]="fog"
-          [vitals]="vitals()"
-          [partyInfo]="partyInfo()"
+          [vitals]="state.vitals()"
+          [partyInfo]="state.partyInfo()"
           [sessionNumber]="s.sessionNumber"
-          [cardAbove]="!!highlightsFor()"
-          [armorClass]="ownArmorClass()"
-          [casterClasses]="playerSheet()?.classes ?? ''"
-          [diceMode]="campaign()?.diceMode ?? 1"
-          [dicePreference]="campaign()?.dicePreference ?? 1"
-          [trapSkills]="trapSkills()"
-          [traps]="isMaster() ? trapBoard : null"
-          (adjust)="adjust($event)"
-          (changeDice)="changeDice()"
+          [cardAbove]="!!view.highlightsFor()"
+          [armorClass]="state.ownArmorClass()"
+          [casterClasses]="state.playerSheet()?.classes ?? ''"
+          [diceMode]="state.campaign()?.diceMode ?? 1"
+          [dicePreference]="state.campaign()?.dicePreference ?? 1"
+          [trapSkills]="state.trapSkills()"
+          [traps]="state.isMaster() ? trapBoard : null"
+          (adjust)="sheets.adjust($event)"
+          (changeDice)="sheets.changeDice()"
         >
-          @if (ownVitals(); as v) {
-            <app-player-vitals [vitals]="v" [sheet]="ownSheet()" [beastAc]="beastAc()" [campaignId]="campaignId()" [armorClassBonus]="ownArmorBonus()" [ownDeathSaves]="ownDeathSaves()" [onTurn]="ownTurn()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
+          @if (state.ownVitals(); as v) {
+            <app-player-vitals [vitals]="v" [sheet]="state.ownSheet()" [beastAc]="state.beastAc()" [campaignId]="state.campaignId()" [armorClassBonus]="view.ownArmorBonus()" [ownDeathSaves]="view.ownDeathSaves()" [onTurn]="view.ownTurn()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
           }
         </app-combat-view>
         <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. A combat without a map has no fog (RN-25). -->
-        @if (inTheatre()) {
+        @if (view.inTheatre()) {
           <!-- Nothing that depends on place exists here. -->
-        } @else if (fogMaster()) {
+        } @else if (view.fogMaster()) {
           <app-fog-master-panel
             class="fog-panel"
-            [campaignId]="campaignId()"
+            [campaignId]="state.campaignId()"
             [state]="mapState"
             [map]="mapState.map()"
-            [people]="viewAsPeople()"
-            [info]="partyInfo()"
-            [tick]="visionTick()"
-            [viewAs]="viewAs()"
-            [note]="viewNote()"
-            [goneNote]="viewGone()"
+            [people]="state.viewAsPeople()"
+            [info]="state.partyInfo()"
+            [tick]="state.visionTick()"
+            [viewAs]="state.viewAs()"
+            [note]="state.viewNote()"
+            [goneNote]="state.viewGone()"
             [inCombat]="true"
             (viewAsChange)="setViewAs($event)"
-            (noteChange)="viewNote.set($event)"
+            (noteChange)="state.viewNote.set($event)"
             (gone)="viewAsGone()"
           />
-        } @else if (fogPlayer() && ownToken(); as me) {
+        } @else if (view.fogPlayer() && view.ownToken(); as me) {
           <app-fog-player-tools
             class="fog-panel"
-            [campaignId]="campaignId()"
+            [campaignId]="state.campaignId()"
             [state]="mapState"
             [fog]="fog"
             [mapId]="mapState.map()!.id"
             [own]="me"
-            [characterId]="ownCharacterId()"
-            [characterName]="ownCharacterName()"
+            [characterId]="state.ownCharacterId()"
+            [characterName]="view.ownCharacterName()"
             [showFamiliar]="false"
-            [seeing]="seeingFamiliar()"
+            [seeing]="state.seeingFamiliar()"
           />
         }
-        @if (isMaster() && !inTheatre()) {
+        @if (state.isMaster() && !view.inTheatre()) {
           <!-- In a combat the master still reveals, fires and disarms (E9-08) and marks treasure (E9-09). -->
           <div class="board__traps">
             <app-trap-panel
-              [campaignId]="campaignId()"
+              [campaignId]="state.campaignId()"
               [state]="mapState"
               [board]="trapBoard"
-              [players]="cluePlayers()"
-              [vitals]="vitals()"
+              [players]="state.cluePlayers()"
+              [vitals]="state.vitals()"
               [combat]="combat"
               [withDamages]="false"
             />
-            <app-treasure-panel [campaignId]="campaignId()" [state]="mapState" [people]="finderRows()" />
+            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="state.finderRows()" />
           </div>
-          @if (puzzlesShown()) {
-            <app-master-puzzles class="board__traps" [campaignId]="campaignId()" [state]="puzzles" />
-            <app-master-live class="board__traps" [campaignId]="campaignId()" [state]="puzzles" />
+          @if (view.puzzlesShown()) {
+            <app-master-puzzles class="board__traps" [campaignId]="state.campaignId()" [state]="puzzles" />
+            <app-master-live class="board__traps" [campaignId]="state.campaignId()" [state]="puzzles" />
           }
         }
-      } @else if (isMaster()) {
+      } @else if (state.isMaster()) {
         <app-combat-launch
           class="launch"
-          [campaignId]="campaignId()"
+          [campaignId]="state.campaignId()"
           [state]="mapState"
           (started)="combatStarted($event)"
         />
         <!-- The encounters kept on the battle points of the current map, with "Começar este combate" (MR-043, E10-09 state 7). -->
-        <app-battle-encounters [campaignId]="campaignId()" [state]="mapState" (started)="combatStarted($event)" />
+        <app-battle-encounters [campaignId]="state.campaignId()" [state]="mapState" (started)="combatStarted($event)" />
         <div class="board board--master" [class.board--scene-open]="scene.scene()">
           @if (!scene.scene()) {
             <app-scene-panel
               class="board__scene"
-              [campaignId]="campaignId()"
+              [campaignId]="state.campaignId()"
               [state]="scene"
               [mapState]="mapState"
             />
           }
           <app-party-panel
             class="board__party"
-            [campaignId]="campaignId()"
-            [campaignName]="campaign()?.name ?? ''"
-            [party]="vitals()"
-            [info]="partyInfo()"
-            (adjust)="adjust($event)"
+            [campaignId]="state.campaignId()"
+            [campaignName]="state.campaign()?.name ?? ''"
+            [party]="state.vitals()"
+            [info]="state.partyInfo()"
+            (adjust)="sheets.adjust($event)"
           />
           <!-- The master's short and long rests (PM-07b 9). -->
           <app-rest-card
             class="board__rest"
-            [campaignId]="campaignId()"
-            [party]="vitals()"
+            [campaignId]="state.campaignId()"
+            [party]="state.vitals()"
             (restTaken)="takeVitals($event)"
           />
           <!-- The effects on the characters outside a combat, the exhaustion and "Passar o tempo" (W7-E). -->
           <app-character-effects-panel
             class="board__effects"
-            [campaignId]="campaignId()"
-            [party]="vitals()"
-            [tick]="effectsTick()"
+            [campaignId]="state.campaignId()"
+            [party]="state.vitals()"
+            [tick]="state.effectsTick()"
           />
           <app-casting-panel
             class="board__casting"
-            [campaignId]="campaignId()"
+            [campaignId]="state.campaignId()"
             [master]="true"
-            [tick]="castsTick()"
-            [diceMode]="campaign()?.diceMode ?? 1"
-            [preference]="campaign()?.dicePreference ?? 1"
+            [tick]="state.castsTick()"
+            [diceMode]="state.campaign()?.diceMode ?? 1"
+            [preference]="state.campaign()?.dicePreference ?? 1"
           />
           <app-bardic-block
-            [campaignId]="campaignId()"
-            [tick]="castsTick()"
+            [campaignId]="state.campaignId()"
+            [tick]="state.castsTick()"
           />
           <app-shown-image-panel
             class="board__image"
-            [campaignId]="campaignId()"
-            [shown]="shownImage()"
-            [maps]="campaignMaps()"
-            [keep]="shownKeep()"
-            [left]="leftImages()"
-            (changed)="shownImage.set($event); shownKeep.set(false)"
-            (keepChange)="shownKeep.set($event)"
-            (leftChanged)="reloadLeftImages()"
-            (taken)="takenBack($event)"
+            [campaignId]="state.campaignId()"
+            [shown]="state.shownImage()"
+            [maps]="state.campaignMaps()"
+            [keep]="state.shownKeep()"
+            [left]="state.leftImages()"
+            (changed)="state.shownImage.set($event); state.shownKeep.set(false)"
+            (keepChange)="state.shownKeep.set($event)"
+            (leftChanged)="loader.reloadLeftImages()"
+            (taken)="events.takenBack($event)"
           />
-          @if (puzzlesShown()) {
-            <app-master-puzzles class="board__puzzles" [campaignId]="campaignId()" [state]="puzzles" />
+          @if (view.puzzlesShown()) {
+            <app-master-puzzles class="board__puzzles" [campaignId]="state.campaignId()" [state]="puzzles" />
           }
           <div class="board__left">
             @if (scene.scene()) {
               <app-scene-open
                 class="board__open"
-                [campaignId]="campaignId()"
+                [campaignId]="state.campaignId()"
                 [state]="scene"
                 [mapState]="mapState"
-                [players]="cluePlayers()"
-                [shown]="shownImage()"
-                [keep]="shownKeep()"
-                (shownChange)="shownImage.set($event); shownKeep.set(false)"
-                (leftChanged)="reloadLeftImages()"
+                [players]="state.cluePlayers()"
+                [shown]="state.shownImage()"
+                [keep]="state.shownKeep()"
+                (shownChange)="state.shownImage.set($event); state.shownKeep.set(false)"
+                (leftChanged)="loader.reloadLeftImages()"
               />
             }
             <!-- The master's group check (W7-X): asking, who answered, rolling for one who did not, closing. -->
             <app-group-check-master
-              [campaignId]="campaignId()"
-              [tick]="groupCheckTick()"
-              [diceMode]="campaign()?.diceMode ?? 1"
-              [preference]="campaign()?.dicePreference ?? 1"
-              [people]="viewAsPeople()"
+              [campaignId]="state.campaignId()"
+              [tick]="state.groupCheckTick()"
+              [diceMode]="state.campaign()?.diceMode ?? 1"
+              [preference]="state.campaign()?.dicePreference ?? 1"
+              [people]="state.viewAsPeople()"
             />
             <!-- The master's open puzzle (MR-038, E10-06): the board needs the main column; the list stays in the rail. -->
-            <app-master-live class="board__live" [campaignId]="campaignId()" [state]="puzzles" />
+            <app-master-live class="board__live" [campaignId]="state.campaignId()" [state]="puzzles" />
             <app-session-map
               [isMaster]="true"
               [scene]="scene"
-              [campaignId]="campaignId()"
+              [campaignId]="state.campaignId()"
               [state]="mapState"
-              [mapId]="currentMapId()"
-              [maps]="campaignMaps()"
+              [mapId]="state.currentMapId()"
+              [maps]="state.campaignMaps()"
               [fog]="fog"
-              [people]="viewAsPeople()"
-              [viewAs]="viewAs()"
-              [tick]="visionTick()"
-              (viewNoteChange)="viewNote.set($event)"
+              [people]="state.viewAsPeople()"
+              [viewAs]="state.viewAs()"
+              [tick]="state.visionTick()"
+              (viewNoteChange)="state.viewNote.set($event)"
               (viewAsGone)="viewAsGone()"
               (viewAsBack)="setViewAs(null)"
-              (currentChanged)="showMap($event)"
+              (currentChanged)="events.showMap($event)"
             />
           </div>
           <!-- The master's trap and treasure panels: under the map on a phone, across the whole width below the page from 1024px (E9-08, E9-09). -->
           <div class="board__traps board__traps--row">
             <app-trap-panel
-              [campaignId]="campaignId()"
+              [campaignId]="state.campaignId()"
               [state]="mapState"
               [board]="trapBoard"
-              [players]="cluePlayers()"
-              [vitals]="vitals()"
+              [players]="state.cluePlayers()"
+              [vitals]="state.vitals()"
             />
-            <app-treasure-panel [campaignId]="campaignId()" [state]="mapState" [people]="finderRows()" />
+            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="state.finderRows()" />
           </div>
-          @if (fogMaster()) {
+          @if (view.fogMaster()) {
             <app-fog-master-panel
               class="board__fog"
-              [campaignId]="campaignId()"
+              [campaignId]="state.campaignId()"
               [state]="mapState"
               [map]="mapState.map()"
-              [people]="viewAsPeople()"
-              [info]="partyInfo()"
-              [tick]="visionTick()"
-              [viewAs]="viewAs()"
-              [note]="viewNote()"
-              [goneNote]="viewGone()"
+              [people]="state.viewAsPeople()"
+              [info]="state.partyInfo()"
+              [tick]="state.visionTick()"
+              [viewAs]="state.viewAs()"
+              [note]="state.viewNote()"
+              [goneNote]="state.viewGone()"
               (viewAsChange)="setViewAs($event)"
             />
           }
           <app-session-tokens
             class="board__tokens"
-            [campaignId]="campaignId()"
+            [campaignId]="state.campaignId()"
             [state]="mapState"
-            [info]="partyInfo()"
+            [info]="state.partyInfo()"
           />
         </div>
       } @else {
         <app-clue-notice
           [clues]="notes.notice() ? notes.fresh() : []"
-          (opened)="openNotes()"
+          (opened)="sheets.openNotes()"
           (dismissed)="notes.dismissNotice()"
         />
         <div class="board" [class.board--scene]="scene.scene()">
           <div class="board__main">
             <app-group-check-card
-              [campaignId]="campaignId()"
-              [tick]="groupCheckTick()"
-              [diceMode]="campaign()?.diceMode ?? 1"
-              [preference]="campaign()?.dicePreference ?? 1"
+              [campaignId]="state.campaignId()"
+              [tick]="state.groupCheckTick()"
+              [diceMode]="state.campaign()?.diceMode ?? 1"
+              [preference]="state.campaign()?.dicePreference ?? 1"
             />
             <app-scene-player
-              [campaignId]="campaignId()"
+              [campaignId]="state.campaignId()"
               [state]="scene"
-              [diceMode]="campaign()?.diceMode ?? 1"
-              [dicePreference]="campaign()?.dicePreference ?? 1"
-              [reliableTalent]="playerSheet()?.skills?.reliableTalent ?? []"
+              [diceMode]="state.campaign()?.diceMode ?? 1"
+              [dicePreference]="state.campaign()?.dicePreference ?? 1"
+              [reliableTalent]="state.playerSheet()?.skills?.reliableTalent ?? []"
             />
-            <app-shown-image-block [image]="shownImage()" [animate]="phase() === 'live'" />
-            <app-left-images-block [images]="leftImages()" />
+            <app-shown-image-block [image]="state.shownImage()" [animate]="state.phase() === 'live'" />
+            <app-left-images-block [images]="state.leftImages()" />
             <app-session-map
-              [campaignId]="campaignId()"
+              [campaignId]="state.campaignId()"
               [state]="mapState"
-              [mapId]="currentMapId()"
-              [searchable]="searchable()"
-              (searchTraps)="searchTraps()"
+              [mapId]="state.currentMapId()"
+              [searchable]="view.searchable()"
+              (searchTraps)="sheets.searchTraps()"
               [fog]="fog"
-              [characterName]="ownCharacterName()"
-              [ownCharacterId]="ownCharacterId()"
-              [senses]="playerSheet()?.senses ?? []"
-              [seeing]="seeingFamiliar()"
-              [seeingFamiliar]="familiarNameNow()"
-              [creaturesTick]="creaturesTick()"
+              [characterName]="view.ownCharacterName()"
+              [ownCharacterId]="state.ownCharacterId()"
+              [senses]="state.playerSheet()?.senses ?? []"
+              [seeing]="state.seeingFamiliar()"
+              [seeingFamiliar]="state.familiarNameNow()"
+              [creaturesTick]="state.creaturesTick()"
             />
             <app-found-treasures [points]="mapState.points()" [mapName]="mapState.map()?.name ?? ''" />
             <app-trap-activity [activity]="trapBoard.activity()" />
           </div>
           <div class="board__side">
-            @if (ownVitals(); as v) {
+            @if (state.ownVitals(); as v) {
               <app-player-vitals
                 [vitals]="v"
-                [sheet]="ownSheet()"
-                [beastAc]="beastAc()"
-                [campaignId]="campaignId()"
-                [armorClassBonus]="ownArmorBonus()"
-                [ownDeathSaves]="ownDeathSaves()"
+                [sheet]="state.ownSheet()"
+                [beastAc]="state.beastAc()"
+                [campaignId]="state.campaignId()"
+                [armorClassBonus]="view.ownArmorBonus()"
+                [ownDeathSaves]="view.ownDeathSaves()"
                 [effectCards]="ownEffects.cards()"
                 [conditionNames]="ownEffects.conditions()"
-                [diceMode]="campaign()?.diceMode ?? 1"
-                [dicePreference]="campaign()?.dicePreference ?? 1"
+                [diceMode]="state.campaign()?.diceMode ?? 1"
+                [dicePreference]="state.campaign()?.dicePreference ?? 1"
                 (vitalsChange)="takeVitals([$event])"
               />
-              @if (playerSheet()?.revivify) {
-                <button matButton="outlined" type="button" class="revivify" (click)="openRevivify()">
+              @if (state.playerSheet()?.revivify) {
+                <button matButton="outlined" type="button" class="revivify" (click)="sheets.openRevivify()">
                   <mat-icon aria-hidden="true">favorite</mat-icon>Revivificar
                 </button>
               }
               <app-casting-panel
-                [campaignId]="campaignId()"
+                [campaignId]="state.campaignId()"
                 [characterId]="v.characterId"
                 [characterName]="v.name"
-                [tick]="castsTick()"
-                [diceMode]="campaign()?.diceMode ?? 1"
-                [preference]="campaign()?.dicePreference ?? 1"
+                [tick]="state.castsTick()"
+                [diceMode]="state.campaign()?.diceMode ?? 1"
+                [preference]="state.campaign()?.dicePreference ?? 1"
               />
               <app-bardic-block
-                [campaignId]="campaignId()"
-                [diceMode]="campaign()?.diceMode ?? 1"
-                [tick]="castsTick()"
+                [campaignId]="state.campaignId()"
+                [diceMode]="state.campaign()?.diceMode ?? 1"
+                [tick]="state.castsTick()"
               />
             } @else {
               <div class="mr-notice mr-notice--neutral">
@@ -447,7 +447,7 @@
             }
           </div>
         </div>
-        <p class="mr-visually-hidden" role="status" aria-live="polite">{{ shownNotice() }}</p>
+        <p class="mr-visually-hidden" role="status" aria-live="polite">{{ state.shownNotice() }}</p>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ scene.notice() }}</p>
       }
       }
@@ -457,10 +457,10 @@
 
 <!-- The player's "Anotações" button: the app bar draws it (E8-06); it lives here so the shell stays small. -->
 <ng-template #notesBar let-where>
-  <button type="button" class="notes-bar" [class.notes-bar--phone]="where === 'phone'" [class.notes-bar--wide]="where === 'wide'" [attr.aria-label]="notesAria(freshCount())" (click)="openNotes()">
+  <button type="button" class="notes-bar" [class.notes-bar--phone]="where === 'phone'" [class.notes-bar--wide]="where === 'wide'" [attr.aria-label]="notesAria(view.freshCount())" (click)="sheets.openNotes()">
     <mat-icon aria-hidden="true">description</mat-icon>
-    <span>Anotações@if (freshCount() > 0) {
-      · {{ freshCount() }}<span class="notes-bar__more">&nbsp;{{ freshCount() === 1 ? 'nova' : 'novas' }}</span>
+    <span>Anotações@if (view.freshCount() > 0) {
+      · {{ view.freshCount() }}<span class="notes-bar__more">&nbsp;{{ view.freshCount() === 1 ? 'nova' : 'novas' }}</span>
     }</span>
   </button>
 </ng-template>

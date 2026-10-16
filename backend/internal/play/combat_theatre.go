@@ -122,228 +122,309 @@ func keySeen(ctx context.Context, q *playdb.Queries, sessionID, key string) (boo
 	return err == nil, err
 }
 
+// spendCall is what SpendMovement reads from its request before the change.
+type spendCall struct {
+	m                  authz.Membership
+	key, encID, combID string
+	ft                 int32
+	hash               *string
+}
+
+// spendRun is what the change of SpendMovement leaves for after the commit.
+type spendRun struct {
+	hidden, onTurn bool
+}
+
+// readSpendCall reads and checks the request, in the order the refusals have always come.
+func readSpendCall(ctx context.Context, req *playv1.SpendMovementRequest) (spendCall, error) {
+	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
+	if err != nil {
+		return spendCall{}, err
+	}
+	key, err := parseKey(req.GetIdempotencyKey())
+	if err != nil {
+		return spendCall{}, err
+	}
+	encID, err := parseCombatID(req.GetEncounterId(), "encounter")
+	if err != nil {
+		return spendCall{}, err
+	}
+	combID, err := parseCombatID(req.GetCombatantId(), "combatant")
+	if err != nil {
+		return spendCall{}, err
+	}
+	ft := req.GetDistanceFt()
+	if ft < 1 || ft > maxSpendFt {
+		return spendCall{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("distance_ft must be 1 to %d", maxSpendFt))
+	}
+	return spendCall{m: m, key: key, encID: encID, combID: combID, ft: ft, hash: idem.Hash(req)}, nil
+}
+
 // SpendMovement implements playv1connect.CombatServiceHandler.
 func (s *Service) SpendMovement(
 	ctx context.Context,
 	req *connect.Request[playv1.SpendMovementRequest],
 ) (*connect.Response[playv1.SpendMovementResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	call, err := readSpendCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	ft := req.Msg.GetDistanceFt()
-	if ft < 1 || ft > maxSpendFt {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("distance_ft must be 1 to %d", maxSpendFt))
-	}
-	v := viewerOf(m)
-
-	var made actionEvent
-	var hidden, onTurn bool
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventCombatantMoved, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v = c.viewer(m, cs)
-		target, err := findCombatant(cs, combID, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(target); err != nil {
-			return nil, err
-		}
-		if !isTheatre(c.enc) {
-			return nil, errTheatreOnly() // on a map, the movement is a move on it
-		}
-		if c.enc.Status != statusActive {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-		}
-		onTurn = actsNow(c.enc, target)
-		if !v.master {
-			// RN-21: a player moves only on their own turn, and not while an
-			// opportunity attack on them waits for its answer.
-			if !onTurn {
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
-			}
-			if err := s.mustNotHold(ctx, c); err != nil {
-				return nil, err
-			}
-			if err := s.mustNotWait(ctx, c, target); err != nil {
-				return nil, err
-			}
-		} else if onTurn {
-			if err := s.mustNotHold(ctx, c); err != nil {
-				return nil, err
-			}
-		}
-		// Never more than the movement the turn has (speed, Dash): the same limit a
-		// move on a map has, for the master too. The path is not judged.
-		cost := int(ft) * 10
-		if left := movementLeftDFt(target); cost > left {
-			return nil, tooFar(cost - left)
-		}
-		used := int(target.MovementUsedDft) + cost
-		if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
-			ID: target.ID, GridCol: nil, GridRow: nil,
-			MovementUsedFt: clamp32(used/10, 0, math.MaxInt32), MovementUsedDft: clamp32(used, 0, math.MaxInt32),
-			LastMoveDft: target.LastMoveDft, CoverMark: target.CoverMark, // nobody moved on a map: the master's cover mark stays
-		}); err != nil {
-			return nil, fmt.Errorf("spend the movement: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &target.CharacterID
-		hidden = target.Hidden
-		// A combatant_moved event, so the log, the undo and the combat's history
-		// treat the spent movement as the move it is: how far it went and what it
-		// had walked before, which the undo puts back. There is no square.
-		made = actionEvent{
-			Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, OnTurn: onTurn, From: moveStateOf(target),
-			CostFt: ft, CostDFt: clamp32(cost, 0, math.MaxInt32), DistanceFt: ft, DistanceDFt: clamp32(cost, 0, math.MaxInt32),
-		}
-		return made, nil
+	var run spendRun
+	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: call.hash, kind: eventCombatantMoved, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		return s.spendMovementIn(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "spend movement", err)
 	}
-	var left int32
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		if onTurn {
-			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !hidden)
+	out, err := s.finish(ctx, call.m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, call.m.CampaignID, d.enc)
+		if run.onTurn {
+			s.publishLogChanged(ctx, call.m.CampaignID, d.enc.ID, !run.hidden)
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
-	// What is left, from the combatant as the caller reads it: a replay answers with
-	// what is left now, as every read does.
-	if i := slices.IndexFunc(out.GetCombatants(), func(c *playv1.Combatant) bool { return c.GetId() == combID }); i >= 0 {
-		left = out.GetCombatants()[i].GetMovementLeftDft()
+	return connect.NewResponse(&playv1.SpendMovementResponse{Encounter: out, MovementLeftDft: movementLeftIn(out, call.combID)}), nil
+}
+
+// movementLeftIn is what is left, from the combatant as the caller reads it: a replay answers
+// with what is left now, as every read does.
+func movementLeftIn(out *playv1.Encounter, combatantID string) int32 {
+	if i := slices.IndexFunc(out.GetCombatants(), func(c *playv1.Combatant) bool { return c.GetId() == combatantID }); i >= 0 {
+		return out.GetCombatants()[i].GetMovementLeftDft()
 	}
-	return connect.NewResponse(&playv1.SpendMovementResponse{Encounter: out, MovementLeftDft: left}), nil
+	return 0
+}
+
+// spendMovementIn is the change of SpendMovement: find the combatant, check the turn, spend.
+func (s *Service) spendMovementIn(ctx context.Context, c *combatTx, call spendCall, run *spendRun) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	v := c.viewer(call.m, cs)
+	target, err := findCombatant(cs, call.combID, v)
+	if err != nil {
+		return nil, err
+	}
+	if err := v.mayAct(target); err != nil {
+		return nil, err
+	}
+	if !isTheatre(c.enc) {
+		return nil, errTheatreOnly() // on a map, the movement is a move on it
+	}
+	if c.enc.Status != statusActive {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
+	}
+	run.onTurn = actsNow(c.enc, target)
+	if err := s.mustBeFreeToMove(ctx, c, v, target, run.onTurn); err != nil {
+		return nil, err
+	}
+	return s.spendTheatreFeet(ctx, c, target, call.ft, run)
+}
+
+// mustBeFreeToMove refuses a player whose turn it is not, and anyone on turn while a held
+// action or an opportunity attack waits for its answer.
+func (s *Service) mustBeFreeToMove(ctx context.Context, c *combatTx, v combatViewer, target playdb.Combatant, onTurn bool) error {
+	if v.master {
+		if onTurn {
+			return s.mustNotHold(ctx, c)
+		}
+		return nil
+	}
+	// RN-21: a player moves only on their own turn, and not while an
+	// opportunity attack on them waits for its answer.
+	if !onTurn {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
+	}
+	if err := s.mustNotHold(ctx, c); err != nil {
+		return err
+	}
+	return s.mustNotWait(ctx, c, target)
+}
+
+// spendTheatreFeet takes the feet from the movement the turn has, writes the combatant's
+// movement and the combatant_moved event.
+func (s *Service) spendTheatreFeet(ctx context.Context, c *combatTx, target playdb.Combatant, ft int32, run *spendRun) (any, error) {
+	// Never more than the movement the turn has (speed, Dash): the same limit a
+	// move on a map has, for the master too. The path is not judged.
+	cost := int(ft) * 10
+	if left := movementLeftDFt(target); cost > left {
+		return nil, tooFar(cost - left)
+	}
+	used := int(target.MovementUsedDft) + cost
+	if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
+		ID: target.ID, GridCol: nil, GridRow: nil,
+		MovementUsedFt: clamp32(used/10, 0, math.MaxInt32), MovementUsedDft: clamp32(used, 0, math.MaxInt32),
+		LastMoveDft: target.LastMoveDft, CoverMark: target.CoverMark, // nobody moved on a map: the master's cover mark stays
+	}); err != nil {
+		return nil, fmt.Errorf("spend the movement: %w", err)
+	}
+	var err error
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &target.CharacterID
+	run.hidden = target.Hidden
+	// A combatant_moved event, so the log, the undo and the combat's history
+	// treat the spent movement as the move it is: how far it went and what it
+	// had walked before, which the undo puts back. There is no square.
+	return actionEvent{
+		Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, OnTurn: run.onTurn, From: moveStateOf(target),
+		CostFt: ft, CostDFt: clamp32(cost, 0, math.MaxInt32), DistanceFt: ft, DistanceDFt: clamp32(cost, 0, math.MaxInt32),
+	}, nil
 }
 
 // maxSpendFt is the most a call spends: 600 ft, twice the largest speed a
 // combatant has, so a typo cannot overflow the arithmetic.
 const maxSpendFt = 600
 
+// offerCall is what OfferOpportunity reads from its request before the change.
+type offerCall struct {
+	m                              authz.Membership
+	key, encID, moverID, reactorID string
+	hash                           *string
+}
+
+// offerRun is what the change of OfferOpportunity leaves for after the commit.
+type offerRun struct {
+	made  actionEvent
+	mover playdb.Combatant
+}
+
+// readOfferCall reads and checks the request, in the order the refusals have always come.
+func readOfferCall(ctx context.Context, req *playv1.OfferOpportunityRequest) (offerCall, error) {
+	m, err := authz.RequireCampaignRole(ctx, req.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return offerCall{}, err
+	}
+	key, err := parseKey(req.GetIdempotencyKey())
+	if err != nil {
+		return offerCall{}, err
+	}
+	encID, err := parseCombatID(req.GetEncounterId(), "encounter")
+	if err != nil {
+		return offerCall{}, err
+	}
+	moverID, err := parseCombatID(req.GetMoverId(), "combatant")
+	if err != nil {
+		return offerCall{}, err
+	}
+	reactorID, err := parseCombatID(req.GetReactorId(), "combatant")
+	if err != nil {
+		return offerCall{}, err
+	}
+	if moverID == reactorID {
+		return offerCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("a combatant cannot leave its own reach"))
+	}
+	return offerCall{m: m, key: key, encID: encID, moverID: moverID, reactorID: reactorID, hash: idem.Hash(req)}, nil
+}
+
 // OfferOpportunity implements playv1connect.CombatServiceHandler.
 func (s *Service) OfferOpportunity(
 	ctx context.Context,
 	req *connect.Request[playv1.OfferOpportunityRequest],
 ) (*connect.Response[playv1.OfferOpportunityResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	call, err := readOfferCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	moverID, err := parseCombatID(req.Msg.GetMoverId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	reactorID, err := parseCombatID(req.Msg.GetReactorId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	if moverID == reactorID {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a combatant cannot leave its own reach"))
-	}
-
-	var made actionEvent
-	var mover playdb.Combatant
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventOpportunityOffered, encounterID: encID}, func(c *combatTx) (any, error) {
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		if !isTheatre(c.enc) {
-			return nil, errTheatreOnly() // on a map, the server finds the opportunity attacks
-		}
-		if c.enc.Status != statusActive {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		master := combatViewer{master: true}
-		if mover, err = findCombatant(cs, moverID, master); err != nil {
-			return nil, err
-		}
-		reactor, err := findCombatant(cs, reactorID, master)
-		if err != nil {
-			return nil, err
-		}
-		// The offer is made on the mover's turn, like the offers a move makes.
-		if !actsNow(c.enc, mover) {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "the mover is not on turn")
-		}
-		if err := s.checkReactor(ctx, c, reactor, mover); err != nil {
-			return nil, err
-		}
-		pending, err := c.q.ListPendingOpportunityOffers(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the opportunity offers: %w", err)
-		}
-		if slices.ContainsFunc(pending, func(o playdb.OpportunityOffer) bool { return o.MoverID == mover.ID && o.ReactorID == reactor.ID }) {
-			return nil, errNoOpportunity("the same offer already waits")
-		}
-		moveID := uuid.New().String()
-		offer, err := c.q.InsertOpportunityOffer(ctx, playdb.InsertOpportunityOfferParams{
-			EncounterID: c.enc.ID, MoveID: moveID, MoverID: mover.ID, ReactorID: reactor.ID, CreatedAt: c.now, // no square: nobody left one
-		})
-		if err != nil {
-			return nil, fmt.Errorf("offer the opportunity attack: %w", err)
-		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
-		}
-		c.characterID = &reactor.CharacterID
-		// ByHand: an undo never takes the offer back (it is withdrawn), and it
-		// closes the chain of what can be undone, which a move's offers do not.
-		made = actionEvent{
-			Round: c.enc.Round, Secret: mover.Hidden || reactor.Hidden, Actor: mover.ID, Target: reactor.ID,
-			OfferID: offer.ID, MoveID: moveID, ByHand: true,
-		}
-		return made, nil
+	var run offerRun
+	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: call.hash, kind: eventOpportunityOffered, encounterID: call.encID}, func(c *combatTx) (any, error) {
+		return s.offerIn(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "offer an opportunity attack", err)
 	}
-	out, err := s.finish(ctx, m, res, func(_ context.Context, d *encounterData) {
-		s.publishOffersMade(m.CampaignID, d, mover, []string{reactorID})
+	out, err := s.finish(ctx, call.m, res, func(_ context.Context, d *encounterData) {
+		s.publishOffersMade(call.m.CampaignID, d, run.mover, []string{call.reactorID})
 	})
 	if err != nil {
 		return nil, err
 	}
-	ev, err := resultEvent(res, made)
+	ev, err := resultEvent(res, run.made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the offer", err)
 	}
 	return connect.NewResponse(&playv1.OfferOpportunityResponse{Encounter: out, OpportunityOfferId: ev.OfferID}), nil
+}
+
+// offerIn is the change of OfferOpportunity: the combat must be a running one without a
+// grid, the parties must be fit for the offer, and the offer is written.
+func (s *Service) offerIn(ctx context.Context, c *combatTx, call offerCall, run *offerRun) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	if !isTheatre(c.enc) {
+		return nil, errTheatreOnly() // on a map, the server finds the opportunity attacks
+	}
+	if c.enc.Status != statusActive {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
+	}
+	reactor, err := s.offerParties(ctx, c, call, run)
+	if err != nil {
+		return nil, err
+	}
+	pending, err := c.q.ListPendingOpportunityOffers(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the opportunity offers: %w", err)
+	}
+	mover := run.mover
+	if slices.ContainsFunc(pending, func(o playdb.OpportunityOffer) bool { return o.MoverID == mover.ID && o.ReactorID == reactor.ID }) {
+		return nil, errNoOpportunity("the same offer already waits")
+	}
+	return s.insertOffer(ctx, c, mover, reactor, run)
+}
+
+// offerParties finds the mover (kept in the run) and the reactor, as the master sees them,
+// and checks that the mover is on turn and the reactor may be offered the attack.
+func (s *Service) offerParties(ctx context.Context, c *combatTx, call offerCall, run *offerRun) (playdb.Combatant, error) {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return playdb.Combatant{}, fmt.Errorf("list the combatants: %w", err)
+	}
+	master := combatViewer{master: true}
+	if run.mover, err = findCombatant(cs, call.moverID, master); err != nil {
+		return playdb.Combatant{}, err
+	}
+	reactor, err := findCombatant(cs, call.reactorID, master)
+	if err != nil {
+		return playdb.Combatant{}, err
+	}
+	// The offer is made on the mover's turn, like the offers a move makes.
+	if !actsNow(c.enc, run.mover) {
+		return playdb.Combatant{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "the mover is not on turn")
+	}
+	if err := s.checkReactor(ctx, c, reactor, run.mover); err != nil {
+		return playdb.Combatant{}, err
+	}
+	return reactor, nil
+}
+
+// insertOffer writes the offer, touches the combat and fills the event of the run.
+func (s *Service) insertOffer(ctx context.Context, c *combatTx, mover, reactor playdb.Combatant, run *offerRun) (any, error) {
+	moveID := uuid.New().String()
+	offer, err := c.q.InsertOpportunityOffer(ctx, playdb.InsertOpportunityOfferParams{
+		EncounterID: c.enc.ID, MoveID: moveID, MoverID: mover.ID, ReactorID: reactor.ID, CreatedAt: c.now, // no square: nobody left one
+	})
+	if err != nil {
+		return nil, fmt.Errorf("offer the opportunity attack: %w", err)
+	}
+	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+		return nil, fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.characterID = &reactor.CharacterID
+	// ByHand: an undo never takes the offer back (it is withdrawn), and it
+	// closes the chain of what can be undone, which a move's offers do not.
+	run.made = actionEvent{
+		Round: c.enc.Round, Secret: mover.Hidden || reactor.Hidden, Actor: mover.ID, Target: reactor.ID,
+		OfferID: offer.ID, MoveID: moveID, ByHand: true,
+	}
+	return run.made, nil
 }
 
 // errNoOpportunity is the refusal of an offer that cannot be made now.

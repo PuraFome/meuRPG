@@ -167,6 +167,25 @@ func logPuzzleMove(ctx context.Context, l *slog.Logger, puzzleID string, res *mo
 	}
 }
 
+// announceMove tells the log and the watchers of a move that was committed (a replay
+// changed nothing, so it tells nothing).
+func (s *Service) announceMove(ctx context.Context, campaignID, puzzleID string, res *moveResult) {
+	if res.replayed {
+		return
+	}
+	logPuzzleMove(ctx, s.logger, puzzleID, res)
+	s.publishPuzzleChanged(campaignID, puzzleID)
+	for _, f := range res.after {
+		f(ctx)
+	}
+	if res.doorMap != "" && s.puzzles.maps != nil {
+		s.puzzles.maps.DoorsChanged(ctx, campaignID, res.doorMap)
+	}
+	if res.fired != nil {
+		s.afterFiring(ctx, campaignID, res.fired, res.firedEnc)
+	}
+}
+
 // MakePuzzleMove implements playv1connect.PuzzleServiceHandler.
 func (s *Service) MakePuzzleMove(
 	ctx context.Context,
@@ -201,19 +220,7 @@ func (s *Service) MakePuzzleMove(
 	if err != nil {
 		return nil, s.dbError(ctx, "make a puzzle move", err)
 	}
-	if !res.replayed {
-		logPuzzleMove(ctx, s.logger, id, res)
-		s.publishPuzzleChanged(m.CampaignID, id)
-		for _, f := range res.after {
-			f(ctx)
-		}
-		if res.doorMap != "" && s.puzzles.maps != nil {
-			s.puzzles.maps.DoorsChanged(ctx, m.CampaignID, res.doorMap)
-		}
-		if res.fired != nil {
-			s.afterFiring(ctx, m.CampaignID, res.fired, res.firedEnc)
-		}
-	}
+	s.announceMove(ctx, m.CampaignID, id, res)
 	view, err := s.viewerOf(ctx, nil, m, res.d, res.run)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the puzzle after a move", err)
@@ -247,77 +254,27 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	}
 	res.d, res.run = d, run
 
-	// A retry of a move already made answers as the first call did, and changes nothing.
-	done, err := q.GetPuzzleMoveByKey(ctx, playdb.GetPuzzleMoveByKeyParams{RunID: run.ID, IdempotencyKey: key})
-	switch {
-	case err == nil:
-		// The key stands for that move, of that player: another move, or another player, is
-		// not a retry.
-		made := &playv1.PuzzleMove{}
-		if done.UserID == nil || *done.UserID != m.UserID || fromJSON(done.Move, made) != nil || !proto.Equal(made, mv) {
-			return nil, errKeyReused()
-		}
-		res.replayed, res.solved, res.wrong = true, done.Solved, done.Wrong
+	replayed, err := s.checkMoveKey(ctx, q, m, run, key, mv, res)
+	if err != nil {
+		return nil, err
+	}
+	if replayed {
 		return s.namesOfRuns(ctx, tx, m.CampaignID, run)
-	case !errors.Is(err, pgx.ErrNoRows):
-		return nil, fmt.Errorf("find the move of this idempotency key: %w", err)
 	}
-	// A key spent on a hint try of the run is spent: a move is another change.
-	if _, err := q.GetPuzzleHintTryByKey(ctx, playdb.GetPuzzleHintTryByKeyParams{RunID: run.ID, IdempotencyKey: key}); err == nil {
-		return nil, errKeyReused()
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("find the try of this idempotency key: %w", err)
-	}
-
 	if run.SolvedAt != nil {
 		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED, "the puzzle is solved: nothing moves any more")
 	}
 	now := s.now()
-	if stopOf(d, run, now) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED {
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED, "a limit stopped the puzzle: the master restarts or closes it")
-	}
-	who, has, err := s.myCharacter(ctx, tx, m)
+	who, err := s.checkMayMove(ctx, tx, q, m, d, run, now)
 	if err != nil {
 		return nil, err
-	}
-	if !has {
-		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_CHARACTER, "you have no living character to play with")
 	}
 	res.who = who
-	if g, ok := d.kind.(gatedKind); ok {
-		if err := g.gate(d, run, now); err != nil {
-			return nil, err
-		}
-	}
-	// The player's attempts: every wrong move of theirs in this round spent one. The
-	// run is locked, so the count is exact when moves come at once.
-	if limit := int(d.onWrong.GetAttemptsPerPlayer()); limit > 0 {
-		rows, err := q.CountWrongPuzzleMoves(ctx, playdb.CountWrongPuzzleMovesParams{RunID: run.ID, Seq: run.RoundStartSeq})
-		if err != nil {
-			return nil, fmt.Errorf("count the player's wrong moves: %w", err)
-		}
-		for _, r := range rows {
-			if r.UserID != nil && *r.UserID == m.UserID && int(r.Wrong) >= limit {
-				return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_ATTEMPTS_LEFT, "you have no attempts left in this round")
-			}
-		}
-	}
 
-	state := &playv1.PuzzleState{}
-	if err := fromJSON(run.State, state); err != nil {
-		return nil, err
-	}
-	out, err := d.kind.move(d, state, mv)
+	out, solved, err := playMove(d, run, mv)
 	if err != nil {
 		return nil, err
 	}
-	solved := out.solved
-	if !solved {
-		if solved, err = d.kind.solved(d, out.state); err != nil {
-			return nil, err
-		}
-	}
-
 	last := &playv1.PuzzleLastMove{Move: mv, Changed: out.changed, Wrong: out.wrong, Step: out.step}
 	if d.solution.GetSequence() != nil {
 		last.PlaysAtMove = run.Plays // a later play of the sequence ends the note about a wrong bell
@@ -329,15 +286,117 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 			return nil, err
 		}
 	}
+	return s.savePuzzleMove(ctx, tx, q, session, m, who, key, mv, moveStep{puzzleID: puzzleID, out: out, last: last, solved: solved, now: now}, res)
+}
+
+// checkMoveKey says whether the move is a retry of one already made (it then fills res with
+// the first answer and changes nothing), or refuses a key that stands for another change.
+func (s *Service) checkMoveKey(ctx context.Context, q *playdb.Queries, m authz.Membership, run playdb.PuzzleRun, key string, mv *playv1.PuzzleMove, res *moveResult) (bool, error) {
+	done, err := q.GetPuzzleMoveByKey(ctx, playdb.GetPuzzleMoveByKeyParams{RunID: run.ID, IdempotencyKey: key})
+	switch {
+	case err == nil:
+		// The key stands for that move, of that player: another move, or another player, is
+		// not a retry.
+		made := &playv1.PuzzleMove{}
+		if done.UserID == nil || *done.UserID != m.UserID || fromJSON(done.Move, made) != nil || !proto.Equal(made, mv) {
+			return false, errKeyReused()
+		}
+		res.replayed, res.solved, res.wrong = true, done.Solved, done.Wrong
+		return true, nil
+	case !errors.Is(err, pgx.ErrNoRows):
+		return false, fmt.Errorf("find the move of this idempotency key: %w", err)
+	}
+	// A key spent on a hint try of the run is spent: a move is another change.
+	if _, err := q.GetPuzzleHintTryByKey(ctx, playdb.GetPuzzleHintTryByKeyParams{RunID: run.ID, IdempotencyKey: key}); err == nil {
+		return false, errKeyReused()
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return false, fmt.Errorf("find the try of this idempotency key: %w", err)
+	}
+	return false, nil
+}
+
+// checkMayMove refuses a move that the puzzle's state or limits do not allow (a limit stopped
+// it, the player has no character, the kind's gate, no attempts left) and returns the
+// character that makes it.
+func (s *Service) checkMayMove(ctx context.Context, tx pgx.Tx, q *playdb.Queries, m authz.Membership, d puzzleDef, run playdb.PuzzleRun, now time.Time) (link.Character, error) {
+	if stopOf(d, run, now) != playv1.PuzzleStopReason_PUZZLE_STOP_REASON_UNSPECIFIED {
+		return link.Character{}, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED, "a limit stopped the puzzle: the master restarts or closes it")
+	}
+	who, has, err := s.myCharacter(ctx, tx, m)
+	if err != nil {
+		return link.Character{}, err
+	}
+	if !has {
+		return link.Character{}, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_CHARACTER, "you have no living character to play with")
+	}
+	if g, ok := d.kind.(gatedKind); ok {
+		if err := g.gate(d, run, now); err != nil {
+			return link.Character{}, err
+		}
+	}
+	return who, checkAttemptsLeft(ctx, q, m, d, run)
+}
+
+// checkAttemptsLeft refuses a player that spent their attempts: every wrong move of theirs in
+// this round spent one. The run is locked, so the count is exact when moves come at once.
+func checkAttemptsLeft(ctx context.Context, q *playdb.Queries, m authz.Membership, d puzzleDef, run playdb.PuzzleRun) error {
+	limit := int(d.onWrong.GetAttemptsPerPlayer())
+	if limit <= 0 {
+		return nil
+	}
+	rows, err := q.CountWrongPuzzleMoves(ctx, playdb.CountWrongPuzzleMovesParams{RunID: run.ID, Seq: run.RoundStartSeq})
+	if err != nil {
+		return fmt.Errorf("count the player's wrong moves: %w", err)
+	}
+	for _, r := range rows {
+		if r.UserID != nil && *r.UserID == m.UserID && int(r.Wrong) >= limit {
+			return puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_ATTEMPTS_LEFT, "you have no attempts left in this round")
+		}
+	}
+	return nil
+}
+
+// playMove applies the move to the run's state and says whether it solved the puzzle.
+func playMove(d puzzleDef, run playdb.PuzzleRun, mv *playv1.PuzzleMove) (moveOutcome, bool, error) {
+	state := &playv1.PuzzleState{}
+	if err := fromJSON(run.State, state); err != nil {
+		return moveOutcome{}, false, err
+	}
+	out, err := d.kind.move(d, state, mv)
+	if err != nil {
+		return moveOutcome{}, false, err
+	}
+	solved := out.solved
+	if !solved {
+		if solved, err = d.kind.solved(d, out.state); err != nil {
+			return moveOutcome{}, false, err
+		}
+	}
+	return out, solved, nil
+}
+
+// moveStep is what a move did, ready to be written.
+type moveStep struct {
+	puzzleID string
+	out      moveOutcome
+	last     *playv1.PuzzleLastMove
+	solved   bool
+	now      time.Time
+}
+
+// savePuzzleMove writes the run after the move, runs "Ao resolver" when it solved the puzzle,
+// records the move and the solve's event, and leaves the outcome in res.
+func (s *Service) savePuzzleMove(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, who link.Character, key string, mv *playv1.PuzzleMove, st moveStep, res *moveResult) (runNames, error) {
+	run, d, now := res.run, res.d, st.now
 	p := playdb.SavePuzzleRunParams{
-		ID: run.ID, Seed: run.Seed, Start: run.Start, State: toJSON(out.state), ReleasedHints: run.ReleasedHints, ShownAt: run.ShownAt,
+		ID: run.ID, Seed: run.Seed, Start: run.Start, State: toJSON(st.out.state), ReleasedHints: run.ReleasedHints, ShownAt: run.ShownAt,
 		ClosedAt: run.ClosedAt, SolvedAt: run.SolvedAt, SolvedByCharacterID: run.SolvedByCharacterID, SolveOutcome: run.SolveOutcome,
-		LastMoverCharacterID: &who.ID, LastMove: toJSON(last), LastMovedAt: &now,
+		LastMoverCharacterID: &who.ID, LastMove: toJSON(st.last), LastMovedAt: &now,
 		MovesMade: run.MovesMade + 1, Revision: run.Revision + 1, UpdatedAt: now,
 		Plays: run.Plays, PlayStartedAt: run.PlayStartedAt, RoundStartSeq: run.RoundStartSeq, RoundStartedAt: run.RoundStartedAt,
 	}
 	// A solved run is never moved, so the message is empty here: it is written only by the solve below.
-	if solved {
+	if st.solved {
 		// "Ao resolver" runs here, in the transaction of the winning move: the door,
 		// the point or the clue changes if and only if the puzzle is solved.
 		outcome, line, err := s.solvePuzzle(ctx, tx, m, d, who, now, res)
@@ -356,17 +415,17 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	}
 	if _, err := q.InsertPuzzleMove(ctx, playdb.InsertPuzzleMoveParams{
 		RunID: run.ID, Seq: saved.MovesMade, UserID: &m.UserID, CharacterID: &who.ID, IdempotencyKey: key,
-		Move: toJSON(mv), Revision: saved.Revision, Solved: solved, Wrong: out.wrong, CreatedAt: now,
+		Move: toJSON(mv), Revision: saved.Revision, Solved: st.solved, Wrong: st.out.wrong, CreatedAt: now,
 	}); err != nil {
 		return nil, fmt.Errorf("record the move: %w", err)
 	}
-	if solved {
-		ev := puzzleEvent{PuzzleID: puzzleID, RunID: run.ID, Outcome: deref(saved.SolveOutcome)}
+	if st.solved {
+		ev := puzzleEvent{PuzzleID: st.puzzleID, RunID: run.ID, Outcome: deref(saved.SolveOutcome)}
 		if err := puzzleSessionEvent(ctx, q, session, eventPuzzleSolved, m.UserID, &who.ID, ev, now); err != nil {
 			return nil, err
 		}
 	}
-	res.run, res.solved, res.wrong = saved, solved, out.wrong
+	res.run, res.solved, res.wrong = saved, st.solved, st.out.wrong
 	return runNames{who.ID: who.Name}, nil
 }
 
@@ -392,27 +451,50 @@ func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 	if theatre, err := theatreRunning(ctx, q, session.ID); err != nil || theatre {
 		return "", err
 	}
-	traps, err := s.traps.Traps(ctx, tx, m.CampaignID, target.GetMapId())
-	if connect.CodeOf(err) == connect.CodeNotFound {
-		return "", nil // the map is gone
-	}
-	if err != nil {
+	trap, armed, err := s.armedWrongTrap(ctx, tx, m.CampaignID, target)
+	if err != nil || !armed {
 		return "", err
 	}
-	i := slices.IndexFunc(traps, func(t maplink.Trap) bool { return t.PointID == target.GetPointId() })
-	if i < 0 || traps[i].State == "triggered" || traps[i].State == "disarmed" {
-		return "", nil
-	}
-	trap := traps[i]
 	// openTx reads the table's rules in this transaction, so the trap's critical follows them (RN-24).
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: now, characterID: &who.ID, kind: eventTrapTriggered, actorUserID: m.UserID, svc: s})
 	if err != nil {
 		return "", err
 	}
-	// A combat running on the trap's map (read in this transaction, never through the pool).
-	enc, err := q.GetLatestEncounter(ctx, session.ID)
+	fired, err := s.fireAndRecordTrap(ctx, q, c, m, trap, res)
+	if errors.Is(err, maplink.ErrTrapNotArmed) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	res.fired = fired
+	return trap.Name, nil
+}
+
+// armedWrongTrap finds the puzzle's trap point and says whether it can still fire: a map
+// that is gone, a point that is gone, fired or disarmed answers false.
+func (s *Service) armedWrongTrap(ctx context.Context, tx pgx.Tx, campaignID string, target *playv1.PuzzleTrapTarget) (maplink.Trap, bool, error) {
+	traps, err := s.traps.Traps(ctx, tx, campaignID, target.GetMapId())
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return maplink.Trap{}, false, nil // the map is gone
+	}
+	if err != nil {
+		return maplink.Trap{}, false, err
+	}
+	i := slices.IndexFunc(traps, func(t maplink.Trap) bool { return t.PointID == target.GetPointId() })
+	if i < 0 || traps[i].State == "triggered" || traps[i].State == "disarmed" {
+		return maplink.Trap{}, false, nil
+	}
+	return traps[i], true, nil
+}
+
+// fireAndRecordTrap fires the trap, in the combat running on its map or outside a combat, and
+// writes the firing's event (a combat running on the trap's map is read in this transaction,
+// never through the pool). The combat it fired in is left in res.
+func (s *Service) fireAndRecordTrap(ctx context.Context, q *playdb.Queries, c *combatTx, m authz.Membership, trap maplink.Trap, res *moveResult) (*trapFireEvent, error) {
+	enc, err := q.GetLatestEncounter(ctx, c.session.ID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return "", fmt.Errorf("find the session's combat: %w", err)
+		return nil, fmt.Errorf("find the session's combat: %w", err)
 	}
 	inCombat := err == nil && enc.Status != statusEnded && enc.MapID != nil && *enc.MapID == trap.MapID
 	var fired *trapFireEvent
@@ -422,25 +504,21 @@ func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 	} else {
 		fired, err = s.fireOutside(ctx, c, trap, nil, nil, true, "")
 	}
-	if errors.Is(err, maplink.ErrTrapNotArmed) {
-		return "", nil
-	}
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	ev := actionEvent{Trap: fired}
 	if inCombat {
 		if c.enc, err = q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return "", fmt.Errorf("touch the encounter: %w", err)
+			return nil, fmt.Errorf("touch the encounter: %w", err)
 		}
 		ev.Round = c.enc.Round
 		res.firedEnc = c.enc
 	}
 	if err := insertEvent(ctx, c, eventTrapTriggered, &m.UserID, nil, ev); err != nil {
-		return "", err
+		return nil, err
 	}
-	res.fired = fired
-	return trap.Name, nil
+	return fired, nil
 }
 
 // solveLine is what the players read once the puzzle is solved: the master's own
@@ -476,62 +554,79 @@ func (s *Service) solvePuzzle(ctx context.Context, tx pgx.Tx, m authz.Membership
 	return outcome, solveLine(d.onSolve.GetMessage(), outcome, pointName), nil
 }
 
+// solveGone is the outcome of a target that cannot be reached any more.
+const solveGone = playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_TARGET_GONE
+
+// runSolveAction runs the one action of "Ao resolver" the puzzle has.
 func (s *Service) runSolveAction(ctx context.Context, tx pgx.Tx, m authz.Membership, d puzzleDef, who link.Character, now time.Time, res *moveResult) (playv1.PuzzleSolveOutcome, string, error) {
-	gone := playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_TARGET_GONE
-	on, maps := d.onSolve, s.puzzles.maps
-	switch on.GetAction() {
+	switch d.onSolve.GetAction() {
 	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR:
-		t := on.GetDoor()
-		if maps == nil {
-			return gone, "", nil
-		}
-		opened, err := maps.PuzzleOpenDoor(ctx, tx, m.CampaignID, t.GetMapId(), int(t.GetCol()), int(t.GetRow()))
-		switch {
-		case connect.CodeOf(err) == connect.CodeNotFound:
-			return gone, "", nil
-		case err != nil:
-			return 0, "", err
-		case !opened:
-			return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_DOOR_NOT_CLOSED, "", nil
-		}
-		res.doorMap = t.GetMapId()
-		return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_DOOR_OPENED, "", nil
+		return s.solveOpenDoor(ctx, tx, m, d.onSolve.GetDoor(), res)
 	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT:
-		t := on.GetPoint()
-		if maps == nil {
-			return gone, "", nil
-		}
-		onScreen, err := s.queries.WithTx(tx).GetOnScreen(ctx, m.CampaignID)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return 0, "", fmt.Errorf("read what the session shows: %w", err)
-		}
-		changed, name, after, err := maps.PuzzleRevealPoint(ctx, tx, m.CampaignID, t.GetMapId(), t.GetPointId(), deref(onScreen.CurrentMapID))
-		switch {
-		case connect.CodeOf(err) == connect.CodeNotFound:
-			return gone, "", nil
-		case err != nil:
-			return 0, "", err
-		case !changed:
-			return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_POINT_ALREADY_REVEALED, "", nil
-		}
-		res.after = append(res.after, after)
-		return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_POINT_REVEALED, name, nil
+		return s.solveRevealPoint(ctx, tx, m, d.onSolve.GetPoint(), res)
 	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE:
-		t := on.GetClue()
-		if maps == nil || who.PlayerUserID == "" {
-			return gone, "", nil
-		}
-		gave, after, err := maps.PuzzleRevealClue(ctx, tx, m.CampaignID, t.GetClueId(), who.ID, who.PlayerUserID, now)
-		switch {
-		case connect.CodeOf(err) == connect.CodeNotFound:
-			return gone, "", nil
-		case err != nil:
-			return 0, "", err
-		case !gave:
-			return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_CLUE_ALREADY_HAD, "", nil
-		}
-		res.after = append(res.after, after)
-		return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_CLUE_REVEALED, "", nil
+		return s.solveRevealClue(ctx, tx, m, d.onSolve.GetClue(), who, now, res)
 	}
 	return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_NOTIFIED, "", nil
+}
+
+// solveOpenDoor opens the door the puzzle points to.
+func (s *Service) solveOpenDoor(ctx context.Context, tx pgx.Tx, m authz.Membership, t *playv1.PuzzleDoorTarget, res *moveResult) (playv1.PuzzleSolveOutcome, string, error) {
+	maps := s.puzzles.maps
+	if maps == nil {
+		return solveGone, "", nil
+	}
+	opened, err := maps.PuzzleOpenDoor(ctx, tx, m.CampaignID, t.GetMapId(), int(t.GetCol()), int(t.GetRow()))
+	switch {
+	case connect.CodeOf(err) == connect.CodeNotFound:
+		return solveGone, "", nil
+	case err != nil:
+		return 0, "", err
+	case !opened:
+		return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_DOOR_NOT_CLOSED, "", nil
+	}
+	res.doorMap = t.GetMapId()
+	return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_DOOR_OPENED, "", nil
+}
+
+// solveRevealPoint reveals the hidden point the puzzle points to, and returns its name.
+func (s *Service) solveRevealPoint(ctx context.Context, tx pgx.Tx, m authz.Membership, t *playv1.PuzzlePointTarget, res *moveResult) (playv1.PuzzleSolveOutcome, string, error) {
+	maps := s.puzzles.maps
+	if maps == nil {
+		return solveGone, "", nil
+	}
+	onScreen, err := s.queries.WithTx(tx).GetOnScreen(ctx, m.CampaignID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return 0, "", fmt.Errorf("read what the session shows: %w", err)
+	}
+	changed, name, after, err := maps.PuzzleRevealPoint(ctx, tx, m.CampaignID, t.GetMapId(), t.GetPointId(), deref(onScreen.CurrentMapID))
+	switch {
+	case connect.CodeOf(err) == connect.CodeNotFound:
+		return solveGone, "", nil
+	case err != nil:
+		return 0, "", err
+	case !changed:
+		return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_POINT_ALREADY_REVEALED, "", nil
+	}
+	res.after = append(res.after, after)
+	return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_POINT_REVEALED, name, nil
+}
+
+// solveRevealClue gives the clue the puzzle points to, to the solver only.
+func (s *Service) solveRevealClue(ctx context.Context, tx pgx.Tx, m authz.Membership, t *playv1.PuzzleClueTarget, who link.Character, now time.Time, res *moveResult) (playv1.PuzzleSolveOutcome, string, error) {
+	maps := s.puzzles.maps
+	if maps == nil || who.PlayerUserID == "" {
+		return solveGone, "", nil
+	}
+	gave, after, err := maps.PuzzleRevealClue(ctx, tx, m.CampaignID, t.GetClueId(), who.ID, who.PlayerUserID, now)
+	switch {
+	case connect.CodeOf(err) == connect.CodeNotFound:
+		return solveGone, "", nil
+	case err != nil:
+		return 0, "", err
+	case !gave:
+		return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_CLUE_ALREADY_HAD, "", nil
+	}
+	res.after = append(res.after, after)
+	return playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_CLUE_REVEALED, "", nil
 }

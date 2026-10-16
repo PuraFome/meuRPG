@@ -1,0 +1,21 @@
+{
+  "config": {
+    "cipher": {
+      "ciphertext": "R WHVRXUR HVWD VRE R DOWDU"
+    }
+  },
+  "hasKeyClue": true,
+  "keyClueId": "<clue>",
+  "kind": "PUZZLE_KIND_CIPHER",
+  "lastMove": {
+    "at": "<time>",
+    "characterName": "Brisa",
+    "wrong": true
+  },
+  "name": "A carta do Capitão",
+  "puzzleId": "<cipher>",
+  "revision": 2,
+  "state": {
+    "cipher": {}
+  }
+}

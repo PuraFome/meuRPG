@@ -402,51 +402,80 @@ func (c textContext) conditionSentence(key, effect string) string {
 
 // sentence writes a source in Portuguese: an attack roll's here, the others in otherSentence.
 func (c textContext) sentence(src combat.Source) string {
+	if text, ok := c.attackerSentence(src); ok {
+		return text
+	}
+	if text, ok := c.targetSentence(src); ok {
+		return text
+	}
+	if text, ok := c.situationSentence(src); ok {
+		return text
+	}
+	return c.otherSentence(src)
+}
+
+// attackerSentence writes a source that comes from the one who attacks.
+func (c textContext) attackerSentence(src combat.Source) (string, bool) {
+	switch src.Kind {
+	case combat.SourceProneAttacker, combat.SourceRestrainedAttacker, combat.SourceBlindedAttacker, combat.SourcePoisonedAttacker:
+		return c.conditionSentence(src.Condition, "desvantagem"), true
+	case combat.SourceFrightenedAttacker:
+		return c.conditionSentence(src.Condition, "desvantagem enquanto a fonte do medo está à vista"), true
+	case combat.SourceInvisibleAttacker:
+		return c.conditionSentence(src.Condition, "vantagem"), true
+	case combat.SourceRecklessAttacker:
+		return fmt.Sprintf("%s: vantagem nos ataques corpo a corpo com Força neste turno", c.names("feature:reckless-attack")), true
+	}
+	return "", false
+}
+
+// targetSentence writes a source that comes from the one who is attacked.
+func (c textContext) targetSentence(src combat.Source) (string, bool) {
 	switch src.Kind {
 	case combat.SourceProneTarget:
 		if src.Effect == combat.ModeAdvantage {
-			return fmt.Sprintf("Alvo %s a 1,5 m: vantagem", c.cond(src.Condition))
+			return fmt.Sprintf("Alvo %s a 1,5 m: vantagem", c.cond(src.Condition)), true
 		}
-		return fmt.Sprintf("Alvo %s a mais de 1,5 m: desvantagem", c.cond(src.Condition))
-	case combat.SourceProneAttacker, combat.SourceRestrainedAttacker, combat.SourceBlindedAttacker, combat.SourcePoisonedAttacker:
-		return c.conditionSentence(src.Condition, "desvantagem")
-	case combat.SourceFrightenedAttacker:
-		return c.conditionSentence(src.Condition, "desvantagem enquanto a fonte do medo está à vista")
-	case combat.SourceInvisibleAttacker:
-		return c.conditionSentence(src.Condition, "vantagem")
+		return fmt.Sprintf("Alvo %s a mais de 1,5 m: desvantagem", c.cond(src.Condition)), true
 	case combat.SourceRestrainedTarget, combat.SourceBlindedTarget, combat.SourceStunnedTarget,
 		combat.SourceParalyzedTarget, combat.SourceUnconsciousTarget, combat.SourcePetrifiedTarget:
-		return fmt.Sprintf("Alvo %s: vantagem", c.cond(src.Condition))
+		return fmt.Sprintf("Alvo %s: vantagem", c.cond(src.Condition)), true
 	case combat.SourceInvisibleTarget:
-		return fmt.Sprintf("Alvo %s: desvantagem", c.cond(src.Condition))
-	case combat.SourceRecklessAttacker:
-		return fmt.Sprintf("%s: vantagem nos ataques corpo a corpo com Força neste turno", c.names("feature:reckless-attack"))
+		return fmt.Sprintf("Alvo %s: desvantagem", c.cond(src.Condition)), true
 	case combat.SourceRecklessTarget:
-		return fmt.Sprintf("Alvo em %s: vantagem nos ataques contra ele", c.names("feature:reckless-attack"))
+		return fmt.Sprintf("Alvo em %s: vantagem nos ataques contra ele", c.names("feature:reckless-attack")), true
 	case combat.SourceDodgingTarget:
-		return "Alvo Esquivando e vendo o atacante: desvantagem"
+		return "Alvo Esquivando e vendo o atacante: desvantagem", true
+	}
+	return "", false
+}
+
+// situationSentence writes a source that comes from the place of the attack: allies, sight,
+// range and enemies nearby.
+func (c textContext) situationSentence(src combat.Source) (string, bool) {
+	switch src.Kind {
 	case combat.SourcePackTactics:
 		if c.allyLabel != "" && !c.self {
-			return fmt.Sprintf("Táticas de Matilha: um aliado (%s) está a 1,5 m de %s e não está incapacitado", c.allyLabel, c.target)
+			return fmt.Sprintf("Táticas de Matilha: um aliado (%s) está a 1,5 m de %s e não está incapacitado", c.allyLabel, c.target), true
 		}
-		return "Táticas de Matilha: um aliado está a 1,5 m do alvo e não está incapacitado"
+		return "Táticas de Matilha: um aliado está a 1,5 m do alvo e não está incapacitado", true
 	case combat.SourceHelp:
 		if c.helper != "" {
-			return fmt.Sprintf("Ajuda de %s: vantagem", c.helper)
+			return fmt.Sprintf("Ajuda de %s: vantagem", c.helper), true
 		}
-		return "Ajuda de um aliado: vantagem"
+		return "Ajuda de um aliado: vantagem", true
 	case combat.SourceUnseenAttacker:
-		return "Atacante que o alvo não vê: vantagem"
+		return "Atacante que o alvo não vê: vantagem", true
 	case combat.SourceUnseenTarget:
-		return "Alvo que o atacante não vê: desvantagem"
+		return "Alvo que o atacante não vê: desvantagem", true
 	case combat.SourceLongRange:
-		return "Além do alcance normal: desvantagem"
+		return "Além do alcance normal: desvantagem", true
 	case combat.SourceHostileNearby:
-		return "Um inimigo a 1,5 m de quem ataca à distância: desvantagem"
+		return "Um inimigo a 1,5 m de quem ataca à distância: desvantagem", true
 	case combat.SourceEffectAttack:
-		return fmt.Sprintf("%s: desvantagem neste ataque", c.names(src.Condition))
+		return fmt.Sprintf("%s: desvantagem neste ataque", c.names(src.Condition)), true
 	}
-	return c.otherSentence(src)
+	return "", false
 }
 
 // otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an

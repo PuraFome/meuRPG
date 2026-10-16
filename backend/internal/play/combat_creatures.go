@@ -150,6 +150,9 @@ func concentrationSpellOf(source string) string {
 	return ""
 }
 
+// squareNearRings is how many squares around its owner a creature may appear.
+const squareNearRings = 4
+
 // squareNear finds the nearest free square to (col, row), within four squares,
 // where a creature appears next to its owner; false when there is none.
 func squareNear(e playdb.Encounter, all []playdb.Combatant, col, row int32) (int32, int32, bool) {
@@ -158,15 +161,24 @@ func squareNear(e playdb.Encounter, all []playdb.Combatant, col, row int32) (int
 			return !o.Defeated && placed(o) && *o.GridCol == c && *o.GridRow == r
 		})
 	}
-	for ring := int32(1); ring <= 4; ring++ {
-		for dr := -ring; dr <= ring; dr++ {
-			for dc := -ring; dc <= ring; dc++ {
-				if max(dr, -dr, dc, -dc) != ring {
-					continue
-				}
-				if c, r := col+dc, row+dr; inGrid(e, c, r) && !taken(c, r) {
-					return c, r, true
-				}
+	for ring := int32(1); ring <= squareNearRings; ring++ {
+		if c, r, ok := freeOnRing(e, col, row, ring, taken); ok {
+			return c, r, true
+		}
+	}
+	return 0, 0, false
+}
+
+// freeOnRing is the first free square, row by row, at exactly ring squares from
+// (col, row) and inside the grid.
+func freeOnRing(e playdb.Encounter, col, row, ring int32, taken func(c, r int32) bool) (int32, int32, bool) {
+	for dr := -ring; dr <= ring; dr++ {
+		for dc := -ring; dc <= ring; dc++ {
+			if max(dr, -dr, dc, -dc) != ring {
+				continue
+			}
+			if c, r := col+dc, row+dr; inGrid(e, c, r) && !taken(c, r) {
+				return c, r, true
 			}
 		}
 	}
@@ -192,36 +204,8 @@ func (s *Service) joinCreatures(ctx context.Context, c *combatTx, all []playdb.C
 		if len(all) >= maxCombatants {
 			break // a combat holds 40: the master leaves one out by dismissing
 		}
-		label := copyLabels(cr.Name, 1, taken)[0]
-		row := playdb.InsertCreatureCombatantParams{
-			EncounterID: c.enc.ID, CharacterID: cr.CharacterID, Label: label,
-			InitiativeBonus: clamp32(cr.InitiativeBonus, -20, 40), OrderIndex: clamp32(len(all), 0, math.MaxInt32),
-			SpeedFt: clamp32(cr.SpeedFt, 0, 600), CreatedAt: c.now,
-			HpCurrent: new(clamp32(max(cr.HitPointsCurrent, 1), 1, math.MaxInt32)), HpMax: new(clamp32(max(cr.HitPointsMax, 1), 1, math.MaxInt32)),
-			CreatureID: &cr.ID, MonsterKey: &cr.MonsterKey, SummonAttack: &cr.Attack, SummonGroupID: &cr.GroupID,
-			// A creature fights for the party (D7), with its stat block's size, fly speed and
-			// jump limits, as a character's are copied when it joins (slice 9.6).
-			Size: sizeKey(cr.Size), SpeedFlyFt: clamp32(cr.SpeedFlyFt, 0, 600),
-			JumpLongDft: clamp32(cr.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(cr.JumpHighDFt, 0, 6000),
-		}
-		if cr.OwnerUserID != "" {
-			row.UserID = &cr.OwnerUserID
-		}
-		// Whoever rolls for the group, the bonus is the first creature's of the casting.
-		if bonus, ok := groupBonus[cr.GroupID]; ok {
-			row.InitiativeBonus = bonus
-		} else {
-			groupBonus[cr.GroupID] = row.InitiativeBonus
-		}
-		if roll, ok := rolls[cr.GroupID]; ok {
-			row.Initiative, row.InitiativeFace, row.InitiativeBonus = new(roll.Total), new(roll.Face), roll.Bonus
-		}
-		var owner *playdb.Combatant
-		for i := range all {
-			if all[i].Kind == kindPlayer && all[i].CharacterID == cr.CharacterID {
-				owner = &all[i]
-			}
-		}
+		row := creatureRow(c, cr, len(all), taken, groupBonus, rolls)
+		owner := ownerOf(all, cr)
 		if owner != nil && placed(*owner) {
 			if col, r, ok := squareNear(c.enc, all, *owner.GridCol, *owner.GridRow); ok {
 				row.GridCol, row.GridRow = &col, &r
@@ -233,14 +217,67 @@ func (s *Service) joinCreatures(ctx context.Context, c *combatTx, all []playdb.C
 		}
 		all = append(all, inserted)
 		added = append(added, inserted)
-		if spell := concentrationSpellOf(cr.Source); spell != "" && cr.DependsOnConcentration && owner != nil && owner.ConcentrationSpell == nil {
-			if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: owner.ID, ConcentrationSpell: &spell}); err != nil {
-				return nil, nil, fmt.Errorf("seed the owner's concentration: %w", err)
-			}
-			owner.ConcentrationSpell = &spell
+		if err := s.seedConcentration(ctx, c, cr, owner); err != nil {
+			return nil, nil, err
 		}
 	}
 	return all, added, nil
+}
+
+// creatureRow is the row of a creature that joins as the n-th combatant: its label made
+// unique among the taken ones, its stat block, and the initiative of its group.
+func creatureRow(c *combatTx, cr link.Creature, n int, taken map[string]bool, groupBonus map[string]int32, rolls map[string]groupRoll) playdb.InsertCreatureCombatantParams {
+	label := copyLabels(cr.Name, 1, taken)[0]
+	row := playdb.InsertCreatureCombatantParams{
+		EncounterID: c.enc.ID, CharacterID: cr.CharacterID, Label: label,
+		InitiativeBonus: clamp32(cr.InitiativeBonus, -20, 40), OrderIndex: clamp32(n, 0, math.MaxInt32),
+		SpeedFt: clamp32(cr.SpeedFt, 0, 600), CreatedAt: c.now,
+		HpCurrent: new(clamp32(max(cr.HitPointsCurrent, 1), 1, math.MaxInt32)), HpMax: new(clamp32(max(cr.HitPointsMax, 1), 1, math.MaxInt32)),
+		CreatureID: &cr.ID, MonsterKey: &cr.MonsterKey, SummonAttack: &cr.Attack, SummonGroupID: &cr.GroupID,
+		// A creature fights for the party (D7), with its stat block's size, fly speed and
+		// jump limits, as a character's are copied when it joins (slice 9.6).
+		Size: sizeKey(cr.Size), SpeedFlyFt: clamp32(cr.SpeedFlyFt, 0, 600),
+		JumpLongDft: clamp32(cr.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(cr.JumpHighDFt, 0, 6000),
+	}
+	if cr.OwnerUserID != "" {
+		row.UserID = &cr.OwnerUserID
+	}
+	// Whoever rolls for the group, the bonus is the first creature's of the casting.
+	if bonus, ok := groupBonus[cr.GroupID]; ok {
+		row.InitiativeBonus = bonus
+	} else {
+		groupBonus[cr.GroupID] = row.InitiativeBonus
+	}
+	if roll, ok := rolls[cr.GroupID]; ok {
+		row.Initiative, row.InitiativeFace, row.InitiativeBonus = new(roll.Total), new(roll.Face), roll.Bonus
+	}
+	return row
+}
+
+// ownerOf is the combatant of the creature's owner in all, the last one when several
+// match; nil when there is none.
+func ownerOf(all []playdb.Combatant, cr link.Creature) *playdb.Combatant {
+	var owner *playdb.Combatant
+	for i := range all {
+		if all[i].Kind == kindPlayer && all[i].CharacterID == cr.CharacterID {
+			owner = &all[i]
+		}
+	}
+	return owner
+}
+
+// seedConcentration makes the creature's owner concentrate on the spell the creature
+// depends on, when the owner has no concentration yet.
+func (s *Service) seedConcentration(ctx context.Context, c *combatTx, cr link.Creature, owner *playdb.Combatant) error {
+	spell := concentrationSpellOf(cr.Source)
+	if spell == "" || !cr.DependsOnConcentration || owner == nil || owner.ConcentrationSpell != nil {
+		return nil
+	}
+	if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: owner.ID, ConcentrationSpell: &spell}); err != nil {
+		return fmt.Errorf("seed the owner's concentration: %w", err)
+	}
+	owner.ConcentrationSpell = &spell
+	return nil
 }
 
 // creatureStates are the hit points and the defeat of the creatures in cs, for

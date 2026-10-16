@@ -101,20 +101,7 @@ func (s *Service) addExhaustionLevel(ctx context.Context, c *combatTx, who playd
 		return nil
 	}
 	target := before + 1
-	if fresh.Kind == kindPlayer {
-		_, after, err := s.vitals.SetExhaustion(ctx, c.tx, c.session.CampaignID, fresh.CharacterID, target)
-		if err != nil {
-			return err
-		}
-		c.told = append(c.told, after)
-		if target == combat.MaxExhaustion {
-			// Level 6 is death: the character goes to the confirmation as the third failed death
-			// save does; only the master's ConfirmDeath says it died (RN-03).
-			if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{ID: fresh.ID, DeathSuccesses: 0, DeathFailures: deathFailuresToDie, DeathSaveRolled: fresh.DeathSaveRolled, Defeated: fresh.Defeated}); err != nil {
-				return fmt.Errorf("take the character to the death confirmation: %w", err)
-			}
-		}
-	} else if _, err := s.setNPCExhaustion(ctx, c, fresh, target); err != nil {
+	if err := s.raiseExhaustion(ctx, c, fresh, target); err != nil {
 		return err
 	}
 	if err := c.q.SetCombatantExhaustionLevel(ctx, playdb.SetCombatantExhaustionLevelParams{ID: fresh.ID, ExhaustionLevel: target}); err != nil {
@@ -127,6 +114,29 @@ func (s *Service) addExhaustionLevel(ctx context.Context, c *combatTx, who playd
 		Round: c.enc.Round, Secret: fresh.Hidden, Actor: fresh.ID,
 		Lasting: &lastingEvent{Key: conditionExhaustion, Change: "exhaustion", Level: target, Before: before, OwnerOnly: true, Targets: []string{fresh.ID}, Reason: frenzyReason},
 	})
+}
+
+// raiseExhaustion writes the new level where the combatant keeps it: a character's in its
+// vitals, an NPC's in its combatant.
+func (s *Service) raiseExhaustion(ctx context.Context, c *combatTx, fresh playdb.Combatant, target int32) error {
+	if fresh.Kind != kindPlayer {
+		_, err := s.setNPCExhaustion(ctx, c, fresh, target)
+		return err
+	}
+	_, after, err := s.vitals.SetExhaustion(ctx, c.tx, c.session.CampaignID, fresh.CharacterID, target)
+	if err != nil {
+		return err
+	}
+	c.told = append(c.told, after)
+	if target != combat.MaxExhaustion {
+		return nil
+	}
+	// Level 6 is death: the character goes to the confirmation as the third failed death
+	// save does; only the master's ConfirmDeath says it died (RN-03).
+	if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{ID: fresh.ID, DeathSuccesses: 0, DeathFailures: deathFailuresToDie, DeathSaveRolled: fresh.DeathSaveRolled, Defeated: fresh.Defeated}); err != nil {
+		return fmt.Errorf("take the character to the death confirmation: %w", err)
+	}
+	return nil
 }
 
 // endFrenziedRages ends the frenzied rages of a combat that is ending, with the line of why

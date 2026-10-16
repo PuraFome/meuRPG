@@ -30,6 +30,7 @@ import { GroupCheckState } from '../../../core/combat/group-check-state';
 import { HELP_TASKS } from '../../../core/combat/help-view';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { CheckRollForm } from '../combat/check-roll-form/check-roll-form';
+import { DC_MAX, DC_MIN, dcOf } from './group-check-dc';
 
 let nextId = 0;
 
@@ -38,20 +39,6 @@ export interface AskPerson {
   readonly id: string;
   readonly name: string;
   readonly sub?: string;
-}
-
-/** The lowest and the highest DC the server takes. */
-const DC_MIN = 1;
-const DC_MAX = 40;
-
-/** The DC typed, or `0` (none) when it is empty, or `null` when it is not a whole number the server takes. */
-function dcOf(text: string): number | null {
-  const t = text.trim();
-  if (t === '') {
-    return 0;
-  }
-  const n = Number(t);
-  return Number.isInteger(n) && n >= DC_MIN && n <= DC_MAX ? n : null;
 }
 
 /**

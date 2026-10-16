@@ -35,6 +35,9 @@ import { MapLive, MapLiveClient } from './map-live';
 
 type Phase = 'loading' | 'ready' | 'gone' | 'error';
 
+/** The phase a map state that is not ready lands the page on (a map that is open leaves it `undefined`). */
+const PHASE_OF_STATUS: Partial<Record<string, Phase>> = { gone: 'gone', error: 'error' };
+
 /**
  * `/campaigns/:id/maps/:mapId` (MR-008, MR-009): one map, in the form that
  * fits who is looking and where.
@@ -153,46 +156,54 @@ export class MapPage {
       this.phase.set('loading');
     }
     try {
-      if (campaignChanged || !this.isMaster()) {
-        const res = await this.campaigns.getCampaign(campaignId);
-        if (generation !== this.generation) {
-          return;
-        }
-        if (res.campaign?.awaitingApproval) {
-          this.phase.set('gone');
-          return;
-        }
-        this.isMaster.set(res.campaign?.myRole === Role.MASTER);
+      if ((campaignChanged || !this.isMaster()) && !(await this.readRole(campaignId, generation))) {
+        return;
       }
       await this.state.open(mapId);
       if (generation !== this.generation) {
         return;
       }
-      if (this.state.status() === 'gone') {
-        this.phase.set('gone');
-        return;
-      }
-      if (this.state.status() === 'error') {
-        this.phase.set('error');
+      const landed = PHASE_OF_STATUS[this.state.status()];
+      if (landed) {
+        this.phase.set(landed);
         return;
       }
       this.phase.set('ready');
-      // The players' view follows the table live; the master's page is the editor, whose own strokes echo back as
-      // map_changed: it keeps reading on its own actions and on focus (a live master page is a later step).
-      if (this.isMaster()) {
-        this.live.stop();
-      } else {
-        this.live.start(campaignId);
-      }
-      void this.reloadMaps();
-      if (this.isMaster()) {
-        void this.loadSession(mapId, generation);
-      }
+      this.followTable(campaignId, mapId, generation);
     } catch (err) {
       if (generation !== this.generation) {
         return;
       }
       this.phase.set(ConnectError.from(err).code === Code.NotFound ? 'gone' : 'error');
+    }
+  }
+
+  /** Reads the campaign for the role; `false` when the page must stop there (a newer load took over, or the campaign awaits approval). */
+  private async readRole(campaignId: string, generation: number): Promise<boolean> {
+    const res = await this.campaigns.getCampaign(campaignId);
+    if (generation !== this.generation) {
+      return false;
+    }
+    if (res.campaign?.awaitingApproval) {
+      this.phase.set('gone');
+      return false;
+    }
+    this.isMaster.set(res.campaign?.myRole === Role.MASTER);
+    return true;
+  }
+
+  /** What a ready page keeps up: the players' live stream, the maps list and, for the master, the open session. */
+  private followTable(campaignId: string, mapId: string, generation: number): void {
+    // The players' view follows the table live; the master's page is the editor, whose own strokes echo back as
+    // map_changed: it keeps reading on its own actions and on focus (a live master page is a later step).
+    if (this.isMaster()) {
+      this.live.stop();
+    } else {
+      this.live.start(campaignId);
+    }
+    void this.reloadMaps();
+    if (this.isMaster()) {
+      void this.loadSession(mapId, generation);
     }
   }
 
