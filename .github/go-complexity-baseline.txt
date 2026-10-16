@@ -146,7 +146,6 @@ cognitive internal/play (*Service).EndConcentration 26
 cognitive internal/play (*Service).EndGameSession 22
 cognitive internal/play (*Service).EndLastingEffect 40
 cognitive internal/play (*Service).EndRage 27
-cognitive internal/play (*Service).EndTurn 119
 cognitive internal/play (*Service).FireTrap 46
 cognitive internal/play (*Service).GearChanged 48
 cognitive internal/play (*Service).GetCastOptions 24
@@ -553,7 +552,6 @@ cyclomatic internal/play (*Service).EndCombatEffect 16
 cyclomatic internal/play (*Service).EndConcentration 18
 cyclomatic internal/play (*Service).EndLastingEffect 25
 cyclomatic internal/play (*Service).EndRage 18
-cyclomatic internal/play (*Service).EndTurn 64
 cyclomatic internal/play (*Service).FireTrap 42
 cyclomatic internal/play (*Service).GearChanged 29
 cyclomatic internal/play (*Service).GenerateEncounter 16
@@ -831,7 +829,6 @@ maintainability internal/maps (*Service).reserve 19
 maintainability internal/play (*Service).AddCharacterEffect 9
 maintainability internal/play (*Service).AddLastingEffect 12
 maintainability internal/play (*Service).ApplyPendingDamage 16
-maintainability internal/play (*Service).EndTurn 12
 maintainability internal/play (*Service).Help 19
 maintainability internal/play (*Service).ListTrapActivity 11
 maintainability internal/play (*Service).MoveCombatant 0
