@@ -150,7 +150,6 @@ cognitive internal/play (*Service).RemoveEffectTarget 21
 cognitive internal/play (*Service).RequestGroupCheck 44
 cognitive internal/play (*Service).RequestRollMode 42
 cognitive internal/play (*Service).ReseedPuzzle 19
-cognitive internal/play (*Service).ResolveConcentrationSave 74
 cognitive internal/play (*Service).ResolveHiddenReveal 36
 cognitive internal/play (*Service).ResolveHide 55
 cognitive internal/play (*Service).ResolveShove 52
@@ -158,7 +157,6 @@ cognitive internal/play (*Service).RespondContest 68
 cognitive internal/play (*Service).RevealHider 18
 cognitive internal/play (*Service).ReviveInCombat 16
 cognitive internal/play (*Service).RollDeathSave 45
-cognitive internal/play (*Service).RollEffectSave 98
 cognitive internal/play (*Service).RollGroupCheck 20
 cognitive internal/play (*Service).RollSceneCheck 87
 cognitive internal/play (*Service).SaveBattleEncounter 18
@@ -192,7 +190,6 @@ cognitive internal/play (*Service).WatchGameSession 35
 cognitive internal/play (*Service).addEffects 42
 cognitive internal/play (*Service).addExhaustionLevel 17
 cognitive internal/play (*Service).addParticipants 61
-cognitive internal/play (*Service).afterDamage 19
 cognitive internal/play (*Service).afterEffectEnded 36
 cognitive internal/play (*Service).answerCounterspell 19
 cognitive internal/play (*Service).answerFeatherFall 25
@@ -435,14 +432,12 @@ cyclomatic internal/play (*Service).RemoveCombatant 27
 cyclomatic internal/play (*Service).RemoveDamagePart 27
 cyclomatic internal/play (*Service).RequestGroupCheck 28
 cyclomatic internal/play (*Service).RequestRollMode 29
-cyclomatic internal/play (*Service).ResolveConcentrationSave 39
 cyclomatic internal/play (*Service).ResolveHiddenReveal 22
 cyclomatic internal/play (*Service).ResolveHide 33
 cyclomatic internal/play (*Service).ResolveShove 31
 cyclomatic internal/play (*Service).RespondContest 41
 cyclomatic internal/play (*Service).ReviveInCombat 17
 cyclomatic internal/play (*Service).RollDeathSave 29
-cyclomatic internal/play (*Service).RollEffectSave 50
 cyclomatic internal/play (*Service).RollSceneCheck 53
 cyclomatic internal/play (*Service).SearchForTraps 83
 cyclomatic internal/play (*Service).SetCombatantConditions 33
@@ -467,7 +462,6 @@ cyclomatic internal/play (*Service).UseReaction 16
 cyclomatic internal/play (*Service).WatchGameSession 24
 cyclomatic internal/play (*Service).addEffects 26
 cyclomatic internal/play (*Service).addParticipants 30
-cyclomatic internal/play (*Service).afterDamage 17
 cyclomatic internal/play (*Service).afterEffectEnded 19
 cyclomatic internal/play (*Service).answerCounterspell 17
 cyclomatic internal/play (*Service).answerCuttingWords 17
@@ -577,8 +571,6 @@ maintainability internal/maps (*Service).RedrawDungeonMap 16
 maintainability internal/maps (*Service).reserve 19
 maintainability internal/play (*Service).ApplyPendingDamage 16
 maintainability internal/play (*Service).Help 19
-maintainability internal/play (*Service).ResolveConcentrationSave 18
-maintainability internal/play (*Service).RollEffectSave 15
 maintainability internal/play (*Service).RollSceneCheck 13
 maintainability internal/play (*Service).SearchForTraps 5
 maintainability internal/play (*Service).StartEncounter 19
