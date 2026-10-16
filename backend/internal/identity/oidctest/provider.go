@@ -176,30 +176,9 @@ type browserSession struct {
 
 // New returns a Provider with a fresh 2048-bit RSA signing key.
 func New(cfg Config) (*Provider, error) {
-	issuer, err := url.Parse(cfg.Issuer)
-	switch {
-	case err != nil || issuer.Host == "" || (issuer.Scheme != "http" && issuer.Scheme != "https"):
-		return nil, fmt.Errorf("oidctest: the issuer must be an absolute http(s) URL, got %q", cfg.Issuer)
-	case issuer.RawQuery != "" || issuer.Fragment != "" || issuer.User != nil:
-		return nil, fmt.Errorf("oidctest: the issuer must not have a query, fragment or user info, got %q", cfg.Issuer)
-	case cfg.ClientID == "" || cfg.ClientSecret == "":
-		return nil, errors.New("oidctest: a client ID and a client secret are required")
-	case len(cfg.RedirectURIs) == 0:
-		return nil, errors.New("oidctest: at least one redirect URI is required")
-	case len(cfg.Users) == 0:
-		return nil, errors.New("oidctest: at least one user is required")
-	}
-	for _, uri := range cfg.RedirectURIs {
-		if u, err := url.Parse(uri); err != nil || !u.IsAbs() || u.Fragment != "" {
-			return nil, fmt.Errorf("oidctest: redirect URI %q must be an absolute URL without a fragment", uri)
-		}
-	}
-	seen := map[string]bool{}
-	for _, u := range cfg.Users {
-		if u.Subject == "" || seen[u.Subject] {
-			return nil, fmt.Errorf("oidctest: every user needs a unique, non-empty subject (got %q)", u.Subject)
-		}
-		seen[u.Subject] = true
+	issuer, err := checkConfig(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -231,7 +210,57 @@ func New(cfg Config) (*Provider, error) {
 	if p.logger == nil {
 		p.logger = slog.New(slog.DiscardHandler)
 	}
+	p.handler = p.routes()
+	return p, nil
+}
 
+// checkConfig returns the parsed issuer, or the first broken rule of the
+// configuration.
+func checkConfig(cfg Config) (*url.URL, error) {
+	issuer, err := url.Parse(cfg.Issuer)
+	switch {
+	case err != nil || issuer.Host == "" || (issuer.Scheme != "http" && issuer.Scheme != "https"):
+		return nil, fmt.Errorf("oidctest: the issuer must be an absolute http(s) URL, got %q", cfg.Issuer)
+	case issuer.RawQuery != "" || issuer.Fragment != "" || issuer.User != nil:
+		return nil, fmt.Errorf("oidctest: the issuer must not have a query, fragment or user info, got %q", cfg.Issuer)
+	case cfg.ClientID == "" || cfg.ClientSecret == "":
+		return nil, errors.New("oidctest: a client ID and a client secret are required")
+	case len(cfg.RedirectURIs) == 0:
+		return nil, errors.New("oidctest: at least one redirect URI is required")
+	case len(cfg.Users) == 0:
+		return nil, errors.New("oidctest: at least one user is required")
+	}
+	if err := checkRedirectURIs(cfg.RedirectURIs); err != nil {
+		return nil, err
+	}
+	if err := checkUsers(cfg.Users); err != nil {
+		return nil, err
+	}
+	return issuer, nil
+}
+
+func checkRedirectURIs(uris []string) error {
+	for _, uri := range uris {
+		if u, err := url.Parse(uri); err != nil || !u.IsAbs() || u.Fragment != "" {
+			return fmt.Errorf("oidctest: redirect URI %q must be an absolute URL without a fragment", uri)
+		}
+	}
+	return nil
+}
+
+func checkUsers(users []User) error {
+	seen := map[string]bool{}
+	for _, u := range users {
+		if u.Subject == "" || seen[u.Subject] {
+			return fmt.Errorf("oidctest: every user needs a unique, non-empty subject (got %q)", u.Subject)
+		}
+		seen[u.Subject] = true
+	}
+	return nil
+}
+
+// routes is the provider's endpoints behind the cross-origin protection.
+func (p *Provider) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET "+p.basePath+"/.well-known/openid-configuration", p.handleDiscovery)
 	mux.HandleFunc("GET "+p.basePath+"/jwks", p.handleJWKS)
@@ -241,8 +270,7 @@ func New(cfg Config) (*Provider, error) {
 	// The login form is a POST that signs a browser in, so it gets the same
 	// cross-origin protection as MeuRPG's own API. The token endpoint is
 	// called server to server, without the headers this checks.
-	p.handler = http.NewCrossOriginProtection().Handler(mux)
-	return p, nil
+	return http.NewCrossOriginProtection().Handler(mux)
 }
 
 // ServeHTTP implements http.Handler.
