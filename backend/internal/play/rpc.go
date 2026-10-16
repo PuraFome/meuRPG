@@ -46,45 +46,18 @@ func (s *Service) StartGameSession(
 	// returns the first session, open or ended by now, and starts no other.
 	scopedKey, requestHash := idem.Scope(m.CampaignID, key), idem.Hash(req.Msg)
 
-	now := s.now()
 	var session playdb.GameSession
 	var locked int64
 	var replayed bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
 		locked = 0
 		var err error
-		session, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetGameSessionByCreateKey,
+		session, replayed, err = idem.Create(ctx, scopedKey, requestHash, s.queries.WithTx(tx).GetGameSessionByCreateKey,
 			func(gs playdb.GameSession) *string { return gs.CreateHash },
 			func() (playdb.GameSession, error) {
-				// One open session per campaign. This check gives the clear error;
-				// the unique index makes it hold when two starts race (below).
-				_, err := q.GetOpenGameSession(ctx, m.CampaignID)
-				switch {
-				case err == nil:
-					return session, errSessionOpen()
-				case !errors.Is(err, pgx.ErrNoRows):
-					return session, fmt.Errorf("find the open session: %w", err)
-				}
-				number, err := q.NextSessionNumber(ctx, m.CampaignID)
-				if err != nil {
-					return session, fmt.Errorf("next session number: %w", err)
-				}
-				gs, err := q.InsertGameSession(ctx, playdb.InsertGameSessionParams{
-					CampaignID: m.CampaignID, SessionNumber: number, StartedAt: now, CreateKey: scopedKey, CreateHash: requestHash,
-				})
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					return gs, fmt.Errorf("insert game session: %w", err)
-				}
-				if err != nil {
-					return gs, err
-				}
-				// RN-01, in the same transaction: the session and the lock happen
-				// together, or not at all.
-				if locked, err = s.sheets.LockSheets(ctx, tx, m.CampaignID, now); err != nil {
-					return gs, fmt.Errorf("lock sheets: %w", err)
-				}
-				return gs, nil
+				gs, n, err := s.openGameSession(ctx, tx, m.CampaignID, scopedKey, requestHash)
+				locked = n
+				return gs, err
 			})
 		return err
 	})
@@ -114,6 +87,42 @@ func (s *Service) StartGameSession(
 	}), nil
 }
 
+// openGameSession inserts the campaign's next session and locks the player sheets, and
+// returns how many it locked.
+func (s *Service) openGameSession(ctx context.Context, tx pgx.Tx, campaignID string, scopedKey, requestHash *string) (playdb.GameSession, int64, error) {
+	q := s.queries.WithTx(tx)
+	// One open session per campaign. This check gives the clear error;
+	// the unique index makes it hold when two starts race (the caller).
+	_, err := q.GetOpenGameSession(ctx, campaignID)
+	switch {
+	case err == nil:
+		return playdb.GameSession{}, 0, errSessionOpen()
+	case !errors.Is(err, pgx.ErrNoRows):
+		return playdb.GameSession{}, 0, fmt.Errorf("find the open session: %w", err)
+	}
+	number, err := q.NextSessionNumber(ctx, campaignID)
+	if err != nil {
+		return playdb.GameSession{}, 0, fmt.Errorf("next session number: %w", err)
+	}
+	now := s.now()
+	gs, err := q.InsertGameSession(ctx, playdb.InsertGameSessionParams{
+		CampaignID: campaignID, SessionNumber: number, StartedAt: now, CreateKey: scopedKey, CreateHash: requestHash,
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return gs, 0, fmt.Errorf("insert game session: %w", err)
+	}
+	if err != nil {
+		return gs, 0, err
+	}
+	// RN-01, in the same transaction: the session and the lock happen
+	// together, or not at all.
+	locked, err := s.sheets.LockSheets(ctx, tx, campaignID, now)
+	if err != nil {
+		return gs, 0, fmt.Errorf("lock sheets: %w", err)
+	}
+	return gs, locked, nil
+}
+
 // EndGameSession implements playv1connect.PlayServiceHandler.
 func (s *Service) EndGameSession(
 	ctx context.Context,
@@ -128,56 +137,19 @@ func (s *Service) EndGameSession(
 		return nil, errSessionNotFound()
 	}
 
-	var session playdb.GameSession
-	var ended bool                     // this call ended an open session
-	var fought []playdb.Combatant      // the combatants of the combat the session ended, for the creatures' owners
-	var told []*playv1.CharacterVitals // the forms and sights the combat's end ended
+	var out sessionEnd
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		ended, fought, told = false, nil, nil
-		// Lock the row first: a vitals correction in progress finishes
-		// before the session ends, and this call learns whether the session
-		// was still open.
-		current, err := q.GetGameSessionForUpdate(ctx, playdb.GetGameSessionForUpdateParams{CampaignID: m.CampaignID, ID: id.String()})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errSessionNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("find game session: %w", err)
-		}
-		if current.EndedAt != nil {
-			session = current // ended before: nothing changes
-			return nil
-		}
-		// A combat ends with its session; the player characters' tokens move to
-		// where they stood (MR-013).
-		var err2 error
-		if fought, told, err2 = s.endOpenEncounter(ctx, tx, q, current, m.UserID); err2 != nil {
-			return err2
-		}
-		if current.ShownImageKeep && current.ShownImageID != nil {
-			// The image left with the players outlives the session (MR-028).
-			if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *current.ShownImageID, s.now()); err != nil {
-				return err
-			}
-		}
-		session, err = q.EndGameSession(ctx, playdb.EndGameSessionParams{
-			CampaignID: m.CampaignID, ID: id.String(), Now: s.now(),
-		})
-		if err != nil {
-			return fmt.Errorf("end game session: %w", err)
-		}
-		ended = true
-		return nil
+		out = sessionEnd{}
+		return s.endSessionIn(ctx, tx, m, id.String(), &out)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end a game session", err)
 	}
-	res := sessionToProto(session)
-	if ended {
-		logging.Event(ctx, s.logger, "session.ended", slog.String("session_id", session.ID))
-		s.publishCreaturesOfCombat(m.CampaignID, fought) // the combat wrote their hit points back
-		for _, v := range told {
+	res := sessionToProto(out.session)
+	if out.ended {
+		logging.Event(ctx, s.logger, "session.ended", slog.String("session_id", out.session.ID))
+		s.publishCreaturesOfCombat(m.CampaignID, out.fought) // the combat wrote their hit points back
+		for _, v := range out.told {
 			s.publishVitals(m.CampaignID, v)
 		}
 		// Every stream of the session ends (WatchGameSession).
@@ -189,6 +161,53 @@ func (s *Service) EndGameSession(
 		})
 	}
 	return connect.NewResponse(&playv1.EndGameSessionResponse{GameSession: res}), nil
+}
+
+// sessionEnd is what ending a session did.
+type sessionEnd struct {
+	session playdb.GameSession
+	ended   bool                      // this call ended an open session
+	fought  []playdb.Combatant        // the combatants of the combat the session ended, for the creatures' owners
+	told    []*playv1.CharacterVitals // the forms and sights the combat's end ended
+}
+
+// endSessionIn ends the session inside tx, with its combat and the image the master
+// left with the players. A session ended before is read back and nothing changes.
+func (s *Service) endSessionIn(ctx context.Context, tx pgx.Tx, m authz.Membership, sessionID string, out *sessionEnd) error {
+	q := s.queries.WithTx(tx)
+	// Lock the row first: a vitals correction in progress finishes
+	// before the session ends, and this call learns whether the session
+	// was still open.
+	current, err := q.GetGameSessionForUpdate(ctx, playdb.GetGameSessionForUpdateParams{CampaignID: m.CampaignID, ID: sessionID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errSessionNotFound()
+	}
+	if err != nil {
+		return fmt.Errorf("find game session: %w", err)
+	}
+	if current.EndedAt != nil {
+		out.session = current // ended before: nothing changes
+		return nil
+	}
+	// A combat ends with its session; the player characters' tokens move to
+	// where they stood (MR-013).
+	if out.fought, out.told, err = s.endOpenEncounter(ctx, tx, q, current, m.UserID); err != nil {
+		return err
+	}
+	if current.ShownImageKeep && current.ShownImageID != nil {
+		// The image left with the players outlives the session (MR-028).
+		if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *current.ShownImageID, s.now()); err != nil {
+			return err
+		}
+	}
+	out.session, err = q.EndGameSession(ctx, playdb.EndGameSessionParams{
+		CampaignID: m.CampaignID, ID: sessionID, Now: s.now(),
+	})
+	if err != nil {
+		return fmt.Errorf("end game session: %w", err)
+	}
+	out.ended = true
+	return nil
 }
 
 // ListGameSessions implements playv1connect.PlayServiceHandler.
