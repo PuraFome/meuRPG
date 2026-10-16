@@ -184,7 +184,7 @@ func (s *Service) SetCharacters(c Characters) { s.characters = c }
 // interceptor that finds the caller's session, and the authz.Caller that
 // reads it back. *identity.Service is the real one. Tests pass a fake, so
 // nothing here, or in package authz, can set the caller itself
-// (docs/architecture.md#who-is-calling).
+// (docs/architecture/identity.md#who-is-calling).
 type Sessions interface {
 	// Interceptor finds the caller's session (from the session cookie).
 	Interceptor() connect.Interceptor
@@ -326,7 +326,7 @@ func (s *Service) DeletePendingMember(ctx context.Context, tx pgx.Tx, campaignID
 // read made while the caller holds a transaction must use the transaction: a
 // read through the pool takes a second connection, and a few such requests
 // at once hold every connection of the pool, each waiting for another (see
-// docs/architecture.md#transactions-and-the-connection-pool).
+// docs/architecture/transactions.md#transactions-and-the-connection-pool).
 func (s *Service) queriesIn(tx pgx.Tx) *campaignsdb.Queries {
 	if tx == nil {
 		return s.queries

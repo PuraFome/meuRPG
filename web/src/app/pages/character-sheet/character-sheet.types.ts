@@ -219,7 +219,7 @@ export interface FullSheetVm {
   readonly hints: readonly HintVm[];
   /** A druid with Wild Shape: the "Criaturas" panel exists for it before a first creature (MR-037). Display only. */
   readonly hasWildShape: boolean;
-  /** Internal: never shown on the page (docs/design.md, "Nada interno na
+  /** Internal: never shown on the page (docs/design/README.md, "Nada interno na
    * tela"). */
   readonly contentVersion: string;
 }

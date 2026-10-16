@@ -438,33 +438,9 @@ func (s *Service) SetCampaignXpMode(
 	}
 	var changedAt *time.Time
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		// The campaign row is locked, so two changes of the mode wait for each other.
-		// An award that lands right after the check is fine: the mode changes only from
-		// now on, and nothing already awarded is converted.
-		campaign, err := q.GetCampaignForUpdate(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("lock the campaign: %w", err)
-		}
-		if campaign.XpMode == mode {
-			changedAt = campaign.XpModeChangedAt // already the mode: nothing to ask, nothing to change
-			return nil
-		}
-		if s.xpAwards != nil && !req.Msg.GetConfirm() {
-			awards, total, err := s.xpAwards.AwardedXP(ctx, tx, m.CampaignID)
-			if err != nil {
-				return err
-			}
-			if awards > 0 {
-				return errXPModeChangeBlocked(awards, total)
-			}
-		}
-		saved, err := q.SetCampaignXPMode(ctx, campaignsdb.SetCampaignXPModeParams{ID: m.CampaignID, XpMode: mode, Now: s.now()})
-		if err != nil {
-			return fmt.Errorf("set the xp mode: %w", err)
-		}
-		changedAt = saved.XpModeChangedAt
-		return nil
+		var err error
+		changedAt, err = s.changeXPMode(ctx, tx, m.CampaignID, mode, req.Msg.GetConfirm())
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "change the xp mode", err)
@@ -474,4 +450,43 @@ func (s *Service) SetCampaignXpMode(
 		res.ChangedAt = timestamppb.New(*changedAt)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// changeXPMode is SetCampaignXpMode's transaction. It returns when the mode
+// last changed, nil when it never did.
+func (s *Service) changeXPMode(ctx context.Context, tx pgx.Tx, campaignID, mode string, confirm bool) (*time.Time, error) {
+	q := s.queries.WithTx(tx)
+	// The campaign row is locked, so two changes of the mode wait for each other.
+	// An award that lands right after the check is fine: the mode changes only from
+	// now on, and nothing already awarded is converted.
+	campaign, err := q.GetCampaignForUpdate(ctx, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("lock the campaign: %w", err)
+	}
+	if campaign.XpMode == mode {
+		return campaign.XpModeChangedAt, nil // already the mode: nothing to ask, nothing to change
+	}
+	if s.xpAwards != nil && !confirm {
+		if err := s.refuseIfXPAwarded(ctx, tx, campaignID); err != nil {
+			return nil, err
+		}
+	}
+	saved, err := q.SetCampaignXPMode(ctx, campaignsdb.SetCampaignXPModeParams{ID: campaignID, XpMode: mode, Now: s.now()})
+	if err != nil {
+		return nil, fmt.Errorf("set the xp mode: %w", err)
+	}
+	return saved.XpModeChangedAt, nil
+}
+
+// refuseIfXPAwarded is errXPModeChangeBlocked when the campaign already
+// gave XP, so the master confirms the change first.
+func (s *Service) refuseIfXPAwarded(ctx context.Context, tx pgx.Tx, campaignID string) error {
+	awards, total, err := s.xpAwards.AwardedXP(ctx, tx, campaignID)
+	if err != nil {
+		return err
+	}
+	if awards > 0 {
+		return errXPModeChangeBlocked(awards, total)
+	}
+	return nil
 }

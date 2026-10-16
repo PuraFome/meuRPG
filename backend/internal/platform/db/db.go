@@ -29,7 +29,7 @@ const (
 
 	// How many connections the pool opens at most when the connection string
 	// has no pool_max_conns. pgx's own default is max(4, NumCPU), which is 4 on
-	// the 1-vCPU Cloud Run instance. Why 10 (docs/operations.md#the-connection-pool): production is one instance (max-instances = 1) and a table is
+	// the 1-vCPU Cloud Run instance. Why 10 (docs/operations/reference.md#database-connections): production is one instance (max-instances = 1) and a table is
 	// one master and up to six players, each request a short transaction, so a
 	// handful are in flight at once; 10 leaves room for the live streams'
 	// periodic reads and a burst, and is far under CockroachDB's guidance of
@@ -48,7 +48,7 @@ const (
 	// primary key, or a small scan); the slow work (drawing a dungeon, decoding an
 	// image, calling the model) is Go code between statements and never inside a
 	// transaction. The migrations run in cmd/migrate, which has its own connection
-	// and no timeout, because a backfill may take long (docs/operations.md#the-connection-pool).
+	// and no timeout, because a backfill may take long (docs/operations/reference.md#database-connections).
 	defaultStatementTimeout         = 30 * time.Second
 	defaultIdleInTransactionTimeout = 60 * time.Second
 

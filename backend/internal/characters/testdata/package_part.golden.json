@@ -1,0 +1,2646 @@
+{
+  "apply": {
+    "a content problem, so nothing is staged": {
+      "characters": null,
+      "content": null,
+      "content_revision": null,
+      "off": []
+    },
+    "nothing of the characters' part": {
+      "characters": null,
+      "content": null,
+      "content_revision": null,
+      "off": []
+    },
+    "only the options switched off": {
+      "characters": null,
+      "content": null,
+      "content_revision": 1,
+      "off": [
+        "spell:fireball"
+      ]
+    },
+    "the exported campaign": {
+      "characters": [
+        {
+          "id": "\u003cid-1\u003e",
+          "kind": "enemy",
+          "master_is_the_importer": true,
+          "name": "Capitão",
+          "no_player": true,
+          "notes": "Notas sobre Capitão.",
+          "reserved": false,
+          "sheet": {
+            "full": {
+              "armor_key": "equipment:chain-mail",
+              "base_scores": {
+                "charisma": 10,
+                "constitution": 14,
+                "dexterity": 12,
+                "intelligence": 8,
+                "strength": 16,
+                "wisdom": 10
+              },
+              "classes": [
+                {
+                  "class_key": "class:fighter",
+                  "level": 2
+                }
+              ],
+              "content_revision": 1,
+              "known_issues": [
+                "missing|full.background_key|Escolha um antecedente.",
+                "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+              ],
+              "race_key": "race:human",
+              "shield": true,
+              "weapon_keys": [
+                "equipment:longsword"
+              ]
+            }
+          },
+          "status": "active",
+          "story": {}
+        },
+        {
+          "id": "\u003cid-2\u003e",
+          "kind": "minion",
+          "master_is_the_importer": true,
+          "name": "Goblin",
+          "no_player": true,
+          "notes": "",
+          "reserved": false,
+          "sheet": {
+            "basic": {
+              "armor_class": 15,
+              "attacks": [
+                {
+                  "attack_bonus": 4,
+                  "damage_bonus": 2,
+                  "damage_dice_count": 1,
+                  "damage_dice_sides": 6,
+                  "damage_type": "DAMAGE_TYPE_SLASHING",
+                  "name": "Cimitarra"
+                }
+              ],
+              "description": "Um goblin nervoso.",
+              "hit_points_max": 7,
+              "initiative_bonus": 2,
+              "speed_ft": 30
+            }
+          },
+          "status": "active",
+          "story": {}
+        },
+        {
+          "id": "\u003cid-3\u003e",
+          "kind": "minion",
+          "master_is_the_importer": true,
+          "name": "Grak",
+          "no_player": true,
+          "notes": "",
+          "reserved": false,
+          "sheet": {
+            "basic": {
+              "ability_scores": {
+                "charisma": 7,
+                "constitution": 16,
+                "dexterity": 8,
+                "intelligence": 5,
+                "strength": 19,
+                "wisdom": 7
+              },
+              "armor_class": 11,
+              "attacks": [
+                {
+                  "attack_bonus": 6,
+                  "damage_bonus": 4,
+                  "damage_dice_count": 2,
+                  "damage_dice_sides": 8,
+                  "damage_type": "DAMAGE_TYPE_BLUDGEONING",
+                  "name": "Clava grande"
+                },
+                {
+                  "attack_bonus": 6,
+                  "damage_bonus": 4,
+                  "damage_dice_count": 2,
+                  "damage_dice_sides": 6,
+                  "damage_type": "DAMAGE_TYPE_PIERCING",
+                  "name": "Azagaia",
+                  "range_ft": 30
+                }
+              ],
+              "challenge_rating": "2",
+              "description": "Baseado em Ogro (SRD 5.1).",
+              "hit_points_max": 59,
+              "initiative_bonus": -1,
+              "monster_key": "monster:ogre",
+              "size": "CREATURE_SIZE_LARGE",
+              "speed_ft": 40,
+              "xp_value": 450
+            }
+          },
+          "status": "active",
+          "story": {}
+        },
+        {
+          "id": "\u003cid-4\u003e",
+          "kind": "player",
+          "master_is_the_importer": false,
+          "name": "Pensantus",
+          "no_player": true,
+          "notes": "Notas sobre Pensantus.",
+          "reserved": true,
+          "sheet": {
+            "full": {
+              "alignment": "ALIGNMENT_NEUTRAL_GOOD",
+              "base_scores": {
+                "charisma": 12,
+                "constitution": 15,
+                "dexterity": 16,
+                "intelligence": 16,
+                "strength": 12,
+                "wisdom": 13
+              },
+              "cantrip_keys": [
+                "spell:fire-bolt",
+                "spell:ray-of-frost",
+                "spell:minor-illusion"
+              ],
+              "classes": [
+                {
+                  "class_key": "class:wizard",
+                  "level": 3,
+                  "subclass_key": "subclass:evocation"
+                }
+              ],
+              "coins": {
+                "gold": 15,
+                "silver": 3
+              },
+              "content_revision": 1,
+              "custom_background": {
+                "equipment": "Um tinteiro, uma pena e roupas comuns.",
+                "feature_name": "Pesquisador",
+                "feature_text": "Quando você não sabe uma informação, sabe a quem perguntar.",
+                "name": "Sábio",
+                "proficiency_keys": [
+                  "language:draconic",
+                  "language:elvish"
+                ],
+                "skill_keys": [
+                  "skill:arcana",
+                  "skill:history"
+                ]
+              },
+              "equipment": [
+                {
+                  "name": "Grimório",
+                  "quantity": 1
+                },
+                {
+                  "name": "Corda de cânhamo",
+                  "quantity": 1
+                }
+              ],
+              "experience_points": 900,
+              "known_spell_keys": [
+                "spell:magic-missile",
+                "spell:burning-hands",
+                "spell:shield",
+                "spell:mage-armor",
+                "spell:sleep",
+                "spell:find-familiar",
+                "spell:detect-magic",
+                "spell:comprehend-languages",
+                "spell:scorching-ray",
+                "spell:web"
+              ],
+              "languages": [
+                "Dracônico"
+              ],
+              "prepared_spell_keys": [
+                "spell:magic-missile",
+                "spell:burning-hands",
+                "spell:shield",
+                "spell:mage-armor",
+                "spell:sleep",
+                "spell:scorching-ray",
+                "spell:web"
+              ],
+              "race_key": "race:gnome",
+              "skill_proficiency_keys": [
+                "skill:investigation",
+                "skill:insight"
+              ],
+              "subrace_key": "subrace:rock-gnome",
+              "weapon_keys": [
+                "equipment:quarterstaff"
+              ]
+            }
+          },
+          "status": "active",
+          "story": {}
+        }
+      ],
+      "content": [
+        {
+          "archived": false,
+          "key": "background:guarda-de-farol@mesa",
+          "kind": "background",
+          "name_pt": "Guarda de farol",
+          "revision": 1
+        },
+        {
+          "archived": false,
+          "key": "class:andarilho@mesa",
+          "kind": "class",
+          "name_pt": "Andarilho",
+          "revision": 1
+        },
+        {
+          "archived": false,
+          "key": "race:povo-do-vale@mesa",
+          "kind": "race",
+          "name_pt": "Povo do vale",
+          "revision": 1
+        },
+        {
+          "archived": false,
+          "key": "spell:raio-de-teste@mesa",
+          "kind": "spell",
+          "name_pt": "Raio de teste",
+          "revision": 1
+        }
+      ],
+      "content_revision": 1,
+      "off": [
+        "spell:fireball"
+      ]
+    }
+  },
+  "export": [
+    {
+      "body": {
+        "entry": {
+          "created_at": "\u003ctime\u003e",
+          "key": "background:guarda-de-farol@mesa",
+          "kind": "TABLE_CONTENT_KIND_BACKGROUND",
+          "name_pt": "Guarda de farol",
+          "revision": 3,
+          "table_background": {
+            "equipment_pt": "Uma lanterna e um apito.",
+            "feature": {
+              "desc_pt": [
+                "Texto de luz."
+              ],
+              "effects": [
+                {
+                  "text_pt": "Conhece a rota dos navios.",
+                  "type": "note"
+                }
+              ],
+              "key": "background-feature:background-guarda-de-farol-c2bc7e--luz-guia@mesa",
+              "name_pt": "Luz-guia"
+            },
+            "language_choices": 1,
+            "name_pt": "Guarda de farol",
+            "skills": [
+              "skill:insight",
+              "skill:religion"
+            ],
+            "tools": [
+              "proficiency:thieves-tools"
+            ]
+          },
+          "updated_at": "\u003ctime\u003e"
+        }
+      },
+      "kind": "PACKAGE_ENTRY_KIND_CONTENT",
+      "name": "content/1.json"
+    },
+    {
+      "body": {
+        "entry": {
+          "created_at": "\u003ctime\u003e",
+          "key": "class:andarilho@mesa",
+          "kind": "TABLE_CONTENT_KIND_CLASS",
+          "name_pt": "Andarilho",
+          "revision": 1,
+          "table_class": {
+            "hit_die": 8,
+            "levels": [
+              {
+                "features": [
+                  {
+                    "desc_pt": [
+                      "Mais iniciativa."
+                    ],
+                    "effects": [
+                      {
+                        "mode": "add",
+                        "target": "initiative",
+                        "type": "modifier",
+                        "value": "1"
+                      }
+                    ],
+                    "key": "feature:class-andarilho-099625--vigor@mesa",
+                    "name_pt": "Vigor"
+                  },
+                  {
+                    "effects": [
+                      {
+                        "proficiency": "skill:survival",
+                        "type": "proficiency"
+                      }
+                    ],
+                    "key": "feature:class-andarilho-099625--treino@mesa",
+                    "name_pt": "Treino"
+                  }
+                ]
+              },
+              {
+                "features": [
+                  {
+                    "effects": [
+                      {
+                        "max": "prof()",
+                        "recharge": "short_rest",
+                        "resource": "surto_teste",
+                        "type": "resource"
+                      }
+                    ],
+                    "key": "feature:class-andarilho-099625--surto@mesa",
+                    "name_pt": "Surto"
+                  }
+                ]
+              },
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {},
+              {}
+            ],
+            "minimums": {
+              "constitution": 11
+            },
+            "name_pt": "Andarilho",
+            "proficiencies": [
+              "proficiency:light-armor",
+              "proficiency:simple-weapons"
+            ],
+            "saving_throws": [
+              "ABILITY_CONSTITUTION",
+              "ABILITY_WISDOM"
+            ],
+            "skill_choose": 2,
+            "skill_from": [
+              "skill:arcana",
+              "skill:history",
+              "skill:medicine",
+              "skill:nature",
+              "skill:survival"
+            ],
+            "subclass_level": 3
+          },
+          "updated_at": "\u003ctime\u003e"
+        }
+      },
+      "kind": "PACKAGE_ENTRY_KIND_CONTENT",
+      "name": "content/2.json"
+    },
+    {
+      "body": {
+        "entry": {
+          "created_at": "\u003ctime\u003e",
+          "key": "race:povo-do-vale@mesa",
+          "kind": "TABLE_CONTENT_KIND_RACE",
+          "name_pt": "Povo do vale",
+          "revision": 4,
+          "table_race": {
+            "ability_bonuses": {
+              "constitution": 1
+            },
+            "choice_bonuses": [
+              2,
+              1
+            ],
+            "darkvision_ft": 60,
+            "language_choices": 1,
+            "languages": [
+              "language:common"
+            ],
+            "name_pt": "Povo do vale",
+            "size": "Medium",
+            "speed_ft": 25,
+            "traits": [
+              {
+                "effects": [
+                  {
+                    "roll": "advantage",
+                    "tags": [
+                      "against:poison"
+                    ],
+                    "targets": [
+                      "save.con"
+                    ],
+                    "type": "roll_mode"
+                  }
+                ],
+                "key": "trait:race-povo-do-vale-e24903--resistente@mesa",
+                "name_pt": "Resistente"
+              }
+            ]
+          },
+          "updated_at": "\u003ctime\u003e"
+        }
+      },
+      "kind": "PACKAGE_ENTRY_KIND_CONTENT",
+      "name": "content/3.json"
+    },
+    {
+      "body": {
+        "entry": {
+          "created_at": "\u003ctime\u003e",
+          "key": "spell:raio-de-teste@mesa",
+          "kind": "TABLE_CONTENT_KIND_SPELL",
+          "name_pt": "Raio de teste",
+          "revision": 2,
+          "table_spell": {
+            "attack": "ranged",
+            "casting_time": {
+              "amount": 1,
+              "unit": "CASTING_TIME_UNIT_ACTION"
+            },
+            "class_keys": [
+              "class:andarilho@mesa"
+            ],
+            "components": {
+              "somatic": true,
+              "verbal": true
+            },
+            "damage": [
+              {
+                "damage_type_key": "damage-type:force",
+                "dice": "3d6",
+                "per_slot_level": "1d6"
+              }
+            ],
+            "desc_pt": [
+              "Um raio de teste."
+            ],
+            "duration": {
+              "kind": "SPELL_DURATION_KIND_INSTANTANEOUS"
+            },
+            "level": 1,
+            "name_pt": "Raio de teste",
+            "range": {
+              "distance_ft": 60,
+              "kind": "SPELL_RANGE_KIND_RANGED"
+            },
+            "school_key": "school:evocation",
+            "target": {
+              "kind": "TABLE_SPELL_TARGET_KIND_CREATURE"
+            }
+          },
+          "updated_at": "\u003ctime\u003e"
+        }
+      },
+      "kind": "PACKAGE_ENTRY_KIND_CONTENT",
+      "name": "content/4.json"
+    },
+    {
+      "body": {
+        "disabled": [
+          "spell:fireball"
+        ]
+      },
+      "kind": "PACKAGE_ENTRY_KIND_CONTENT_OPTIONS",
+      "name": "content/options.json"
+    },
+    {
+      "body": {
+        "id": "\u003cid-5\u003e",
+        "master_notes": "Notas sobre Pensantus.",
+        "name": "Pensantus",
+        "sheet": {
+          "full": {
+            "alignment": "ALIGNMENT_NEUTRAL_GOOD",
+            "base_scores": {
+              "charisma": 12,
+              "constitution": 15,
+              "dexterity": 16,
+              "intelligence": 16,
+              "strength": 12,
+              "wisdom": 13
+            },
+            "cantrip_keys": [
+              "spell:fire-bolt",
+              "spell:ray-of-frost",
+              "spell:minor-illusion"
+            ],
+            "classes": [
+              {
+                "class_key": "class:wizard",
+                "level": 3,
+                "subclass_key": "subclass:evocation"
+              }
+            ],
+            "coins": {
+              "gold": 15,
+              "silver": 3
+            },
+            "content_revision": 5,
+            "custom_background": {
+              "equipment": "Um tinteiro, uma pena e roupas comuns.",
+              "feature_name": "Pesquisador",
+              "feature_text": "Quando você não sabe uma informação, sabe a quem perguntar.",
+              "name": "Sábio",
+              "proficiency_keys": [
+                "language:draconic",
+                "language:elvish"
+              ],
+              "skill_keys": [
+                "skill:arcana",
+                "skill:history"
+              ]
+            },
+            "equipment": [
+              {
+                "name": "Grimório",
+                "quantity": 1
+              },
+              {
+                "name": "Corda de cânhamo",
+                "quantity": 1
+              }
+            ],
+            "experience_points": 900,
+            "known_spell_keys": [
+              "spell:magic-missile",
+              "spell:burning-hands",
+              "spell:shield",
+              "spell:mage-armor",
+              "spell:sleep",
+              "spell:find-familiar",
+              "spell:detect-magic",
+              "spell:comprehend-languages",
+              "spell:scorching-ray",
+              "spell:web"
+            ],
+            "languages": [
+              "Dracônico"
+            ],
+            "prepared_spell_keys": [
+              "spell:magic-missile",
+              "spell:burning-hands",
+              "spell:shield",
+              "spell:mage-armor",
+              "spell:sleep",
+              "spell:scorching-ray",
+              "spell:web"
+            ],
+            "race_key": "race:gnome",
+            "skill_proficiency_keys": [
+              "skill:investigation",
+              "skill:insight"
+            ],
+            "subrace_key": "subrace:rock-gnome",
+            "weapon_keys": [
+              "equipment:quarterstaff"
+            ]
+          }
+        },
+        "story": {}
+      },
+      "kind": "PACKAGE_ENTRY_KIND_CHARACTER",
+      "name": "characters/1.json"
+    },
+    {
+      "body": {
+        "id": "\u003cid-6\u003e",
+        "kind": "CHARACTER_KIND_ENEMY",
+        "master_notes": "Notas sobre Capitão.",
+        "name": "Capitão",
+        "sheet": {
+          "full": {
+            "armor_key": "equipment:chain-mail",
+            "base_scores": {
+              "charisma": 10,
+              "constitution": 14,
+              "dexterity": 12,
+              "intelligence": 8,
+              "strength": 16,
+              "wisdom": 10
+            },
+            "classes": [
+              {
+                "class_key": "class:fighter",
+                "level": 2
+              }
+            ],
+            "content_revision": 5,
+            "known_issues": [
+              "missing|full.background_key|Escolha um antecedente.",
+              "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+            ],
+            "race_key": "race:human",
+            "shield": true,
+            "weapon_keys": [
+              "equipment:longsword"
+            ]
+          }
+        },
+        "story": {}
+      },
+      "kind": "PACKAGE_ENTRY_KIND_NPC",
+      "name": "npcs/1.json"
+    },
+    {
+      "body": {
+        "id": "\u003cid-7\u003e",
+        "kind": "CHARACTER_KIND_MINION",
+        "name": "Goblin",
+        "sheet": {
+          "basic": {
+            "armor_class": 15,
+            "attacks": [
+              {
+                "attack_bonus": 4,
+                "damage_bonus": 2,
+                "damage_dice_count": 1,
+                "damage_dice_sides": 6,
+                "damage_type": "DAMAGE_TYPE_SLASHING",
+                "name": "Cimitarra"
+              }
+            ],
+            "description": "Um goblin nervoso.",
+            "hit_points_max": 7,
+            "initiative_bonus": 2,
+            "speed_ft": 30
+          }
+        },
+        "story": {}
+      },
+      "kind": "PACKAGE_ENTRY_KIND_NPC",
+      "name": "npcs/2.json"
+    },
+    {
+      "body": {
+        "id": "\u003cid-8\u003e",
+        "kind": "CHARACTER_KIND_MINION",
+        "name": "Grak",
+        "sheet": {
+          "basic": {
+            "ability_scores": {
+              "charisma": 7,
+              "constitution": 16,
+              "dexterity": 8,
+              "intelligence": 5,
+              "strength": 19,
+              "wisdom": 7
+            },
+            "armor_class": 11,
+            "attacks": [
+              {
+                "attack_bonus": 6,
+                "damage_bonus": 4,
+                "damage_dice_count": 2,
+                "damage_dice_sides": 8,
+                "damage_type": "DAMAGE_TYPE_BLUDGEONING",
+                "name": "Clava grande"
+              },
+              {
+                "attack_bonus": 6,
+                "damage_bonus": 4,
+                "damage_dice_count": 2,
+                "damage_dice_sides": 6,
+                "damage_type": "DAMAGE_TYPE_PIERCING",
+                "name": "Azagaia",
+                "range_ft": 30
+              }
+            ],
+            "challenge_rating": "2",
+            "description": "Baseado em Ogro (SRD 5.1).",
+            "hit_points_max": 59,
+            "initiative_bonus": -1,
+            "monster_key": "monster:ogre",
+            "size": "CREATURE_SIZE_LARGE",
+            "speed_ft": 40,
+            "xp_value": 450
+          }
+        },
+        "story": {}
+      },
+      "kind": "PACKAGE_ENTRY_KIND_NPC",
+      "name": "npcs/3.json"
+    },
+    {
+      "export of a campaign with an unreadable sheet": "a stored character document cannot be read: the sheet of character \u003cid-9\u003e"
+    },
+    {
+      "export of a campaign with an unreadable story": "a stored character document cannot be read: the story of character \u003cid-10\u003e"
+    }
+  ],
+  "stage": {
+    "an archived table entry": {
+      "characters": {
+        "facts_players": 1,
+        "npcs": [
+          {
+            "created_after": "0s",
+            "id": "\u003cid-11\u003e",
+            "kind": "enemy",
+            "name": "Capitão",
+            "notes": "Notas sobre Capitão.",
+            "sheet": {
+              "full": {
+                "armor_key": "equipment:chain-mail",
+                "base_scores": {
+                  "charisma": 10,
+                  "constitution": 14,
+                  "dexterity": 12,
+                  "intelligence": 8,
+                  "strength": 16,
+                  "wisdom": 10
+                },
+                "classes": [
+                  {
+                    "class_key": "class:fighter",
+                    "level": 2
+                  }
+                ],
+                "content_revision": 1,
+                "known_issues": [
+                  "missing|full.background_key|Escolha um antecedente.",
+                  "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+                ],
+                "race_key": "race:human",
+                "shield": true,
+                "weapon_keys": [
+                  "equipment:longsword"
+                ]
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "1ms",
+            "id": "\u003cid-12\u003e",
+            "kind": "minion",
+            "name": "Goblin",
+            "notes": "",
+            "sheet": {
+              "basic": {
+                "armor_class": 15,
+                "attacks": [
+                  {
+                    "attack_bonus": 4,
+                    "damage_bonus": 2,
+                    "damage_dice_count": 1,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_SLASHING",
+                    "name": "Cimitarra"
+                  }
+                ],
+                "description": "Um goblin nervoso.",
+                "hit_points_max": 7,
+                "initiative_bonus": 2,
+                "speed_ft": 30
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "2ms",
+            "id": "\u003cid-13\u003e",
+            "kind": "minion",
+            "name": "Grak",
+            "notes": "",
+            "sheet": {
+              "basic": {
+                "ability_scores": {
+                  "charisma": 7,
+                  "constitution": 16,
+                  "dexterity": 8,
+                  "intelligence": 5,
+                  "strength": 19,
+                  "wisdom": 7
+                },
+                "armor_class": 11,
+                "attacks": [
+                  {
+                    "attack_bonus": 6,
+                    "damage_bonus": 4,
+                    "damage_dice_count": 2,
+                    "damage_dice_sides": 8,
+                    "damage_type": "DAMAGE_TYPE_BLUDGEONING",
+                    "name": "Clava grande"
+                  },
+                  {
+                    "attack_bonus": 6,
+                    "damage_bonus": 4,
+                    "damage_dice_count": 2,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_PIERCING",
+                    "name": "Azagaia",
+                    "range_ft": 30
+                  }
+                ],
+                "challenge_rating": "2",
+                "description": "Baseado em Ogro (SRD 5.1).",
+                "hit_points_max": 59,
+                "initiative_bonus": -1,
+                "monster_key": "monster:ogre",
+                "size": "CREATURE_SIZE_LARGE",
+                "speed_ft": 40,
+                "xp_value": 450
+              }
+            },
+            "story": {}
+          }
+        ],
+        "players": [
+          {
+            "created_after": "3ms",
+            "id": "\u003cid-14\u003e",
+            "kind": "player",
+            "name": "Pensantus",
+            "notes": "Notas sobre Pensantus.",
+            "sheet": {
+              "full": {
+                "alignment": "ALIGNMENT_NEUTRAL_GOOD",
+                "base_scores": {
+                  "charisma": 12,
+                  "constitution": 15,
+                  "dexterity": 16,
+                  "intelligence": 16,
+                  "strength": 12,
+                  "wisdom": 13
+                },
+                "cantrip_keys": [
+                  "spell:fire-bolt",
+                  "spell:ray-of-frost",
+                  "spell:minor-illusion"
+                ],
+                "classes": [
+                  {
+                    "class_key": "class:wizard",
+                    "level": 3,
+                    "subclass_key": "subclass:evocation"
+                  }
+                ],
+                "coins": {
+                  "gold": 15,
+                  "silver": 3
+                },
+                "content_revision": 1,
+                "custom_background": {
+                  "equipment": "Um tinteiro, uma pena e roupas comuns.",
+                  "feature_name": "Pesquisador",
+                  "feature_text": "Quando você não sabe uma informação, sabe a quem perguntar.",
+                  "name": "Sábio",
+                  "proficiency_keys": [
+                    "language:draconic",
+                    "language:elvish"
+                  ],
+                  "skill_keys": [
+                    "skill:arcana",
+                    "skill:history"
+                  ]
+                },
+                "equipment": [
+                  {
+                    "name": "Grimório",
+                    "quantity": 1
+                  },
+                  {
+                    "name": "Corda de cânhamo",
+                    "quantity": 1
+                  }
+                ],
+                "experience_points": 900,
+                "known_spell_keys": [
+                  "spell:magic-missile",
+                  "spell:burning-hands",
+                  "spell:shield",
+                  "spell:mage-armor",
+                  "spell:sleep",
+                  "spell:find-familiar",
+                  "spell:detect-magic",
+                  "spell:comprehend-languages",
+                  "spell:scorching-ray",
+                  "spell:web"
+                ],
+                "languages": [
+                  "Dracônico"
+                ],
+                "prepared_spell_keys": [
+                  "spell:magic-missile",
+                  "spell:burning-hands",
+                  "spell:shield",
+                  "spell:mage-armor",
+                  "spell:sleep",
+                  "spell:scorching-ray",
+                  "spell:web"
+                ],
+                "race_key": "race:gnome",
+                "skill_proficiency_keys": [
+                  "skill:investigation",
+                  "skill:insight"
+                ],
+                "subrace_key": "subrace:rock-gnome",
+                "weapon_keys": [
+                  "equipment:quarterstaff"
+                ]
+              }
+            },
+            "story": {}
+          }
+        ]
+      },
+      "content": {
+        "entries": [
+          {
+            "archived": false,
+            "created_after": "0s",
+            "key": "background:guarda-de-farol@mesa",
+            "kind": "background",
+            "name_pt": "Guarda de farol",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "1ms",
+            "key": "class:andarilho@mesa",
+            "kind": "class",
+            "name_pt": "Andarilho",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "2ms",
+            "key": "race:povo-do-vale@mesa",
+            "kind": "race",
+            "name_pt": "Povo do vale",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "3ms",
+            "key": "spell:raio-de-teste@mesa",
+            "kind": "spell",
+            "name_pt": "Raio de teste",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": true,
+            "created_after": "4ms",
+            "key": "background:arquivado@mesa",
+            "kind": "background",
+            "name_pt": "Arquivado",
+            "revision": 1,
+            "updated_is_created": true
+          }
+        ],
+        "off": [
+          "spell:fireball"
+        ]
+      },
+      "counts": {
+        "characters": 1,
+        "content_entries": 5,
+        "npcs": 3
+      },
+      "problems": null
+    },
+    "applied: a content problem, so nothing is staged": {
+      "counts": {},
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_PACKAGE",
+          "name": "content/0099.json",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        }
+      ]
+    },
+    "applied: nothing of the characters' part": {
+      "characters": {
+        "facts_players": 0,
+        "npcs": null,
+        "players": null
+      },
+      "content": {
+        "entries": null,
+        "off": null
+      },
+      "counts": {},
+      "problems": null
+    },
+    "applied: only the options switched off": {
+      "characters": {
+        "facts_players": 0,
+        "npcs": null,
+        "players": null
+      },
+      "content": {
+        "entries": null,
+        "off": [
+          "spell:fireball"
+        ]
+      },
+      "counts": {},
+      "problems": null
+    },
+    "applied: the exported campaign": {
+      "characters": {
+        "facts_players": 1,
+        "npcs": [
+          {
+            "created_after": "0s",
+            "id": "\u003cid-1\u003e",
+            "kind": "enemy",
+            "name": "Capitão",
+            "notes": "Notas sobre Capitão.",
+            "sheet": {
+              "full": {
+                "armor_key": "equipment:chain-mail",
+                "base_scores": {
+                  "charisma": 10,
+                  "constitution": 14,
+                  "dexterity": 12,
+                  "intelligence": 8,
+                  "strength": 16,
+                  "wisdom": 10
+                },
+                "classes": [
+                  {
+                    "class_key": "class:fighter",
+                    "level": 2
+                  }
+                ],
+                "content_revision": 1,
+                "known_issues": [
+                  "missing|full.background_key|Escolha um antecedente.",
+                  "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+                ],
+                "race_key": "race:human",
+                "shield": true,
+                "weapon_keys": [
+                  "equipment:longsword"
+                ]
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "1ms",
+            "id": "\u003cid-2\u003e",
+            "kind": "minion",
+            "name": "Goblin",
+            "notes": "",
+            "sheet": {
+              "basic": {
+                "armor_class": 15,
+                "attacks": [
+                  {
+                    "attack_bonus": 4,
+                    "damage_bonus": 2,
+                    "damage_dice_count": 1,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_SLASHING",
+                    "name": "Cimitarra"
+                  }
+                ],
+                "description": "Um goblin nervoso.",
+                "hit_points_max": 7,
+                "initiative_bonus": 2,
+                "speed_ft": 30
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "2ms",
+            "id": "\u003cid-3\u003e",
+            "kind": "minion",
+            "name": "Grak",
+            "notes": "",
+            "sheet": {
+              "basic": {
+                "ability_scores": {
+                  "charisma": 7,
+                  "constitution": 16,
+                  "dexterity": 8,
+                  "intelligence": 5,
+                  "strength": 19,
+                  "wisdom": 7
+                },
+                "armor_class": 11,
+                "attacks": [
+                  {
+                    "attack_bonus": 6,
+                    "damage_bonus": 4,
+                    "damage_dice_count": 2,
+                    "damage_dice_sides": 8,
+                    "damage_type": "DAMAGE_TYPE_BLUDGEONING",
+                    "name": "Clava grande"
+                  },
+                  {
+                    "attack_bonus": 6,
+                    "damage_bonus": 4,
+                    "damage_dice_count": 2,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_PIERCING",
+                    "name": "Azagaia",
+                    "range_ft": 30
+                  }
+                ],
+                "challenge_rating": "2",
+                "description": "Baseado em Ogro (SRD 5.1).",
+                "hit_points_max": 59,
+                "initiative_bonus": -1,
+                "monster_key": "monster:ogre",
+                "size": "CREATURE_SIZE_LARGE",
+                "speed_ft": 40,
+                "xp_value": 450
+              }
+            },
+            "story": {}
+          }
+        ],
+        "players": [
+          {
+            "created_after": "3ms",
+            "id": "\u003cid-4\u003e",
+            "kind": "player",
+            "name": "Pensantus",
+            "notes": "Notas sobre Pensantus.",
+            "sheet": {
+              "full": {
+                "alignment": "ALIGNMENT_NEUTRAL_GOOD",
+                "base_scores": {
+                  "charisma": 12,
+                  "constitution": 15,
+                  "dexterity": 16,
+                  "intelligence": 16,
+                  "strength": 12,
+                  "wisdom": 13
+                },
+                "cantrip_keys": [
+                  "spell:fire-bolt",
+                  "spell:ray-of-frost",
+                  "spell:minor-illusion"
+                ],
+                "classes": [
+                  {
+                    "class_key": "class:wizard",
+                    "level": 3,
+                    "subclass_key": "subclass:evocation"
+                  }
+                ],
+                "coins": {
+                  "gold": 15,
+                  "silver": 3
+                },
+                "content_revision": 1,
+                "custom_background": {
+                  "equipment": "Um tinteiro, uma pena e roupas comuns.",
+                  "feature_name": "Pesquisador",
+                  "feature_text": "Quando você não sabe uma informação, sabe a quem perguntar.",
+                  "name": "Sábio",
+                  "proficiency_keys": [
+                    "language:draconic",
+                    "language:elvish"
+                  ],
+                  "skill_keys": [
+                    "skill:arcana",
+                    "skill:history"
+                  ]
+                },
+                "equipment": [
+                  {
+                    "name": "Grimório",
+                    "quantity": 1
+                  },
+                  {
+                    "name": "Corda de cânhamo",
+                    "quantity": 1
+                  }
+                ],
+                "experience_points": 900,
+                "known_spell_keys": [
+                  "spell:magic-missile",
+                  "spell:burning-hands",
+                  "spell:shield",
+                  "spell:mage-armor",
+                  "spell:sleep",
+                  "spell:find-familiar",
+                  "spell:detect-magic",
+                  "spell:comprehend-languages",
+                  "spell:scorching-ray",
+                  "spell:web"
+                ],
+                "languages": [
+                  "Dracônico"
+                ],
+                "prepared_spell_keys": [
+                  "spell:magic-missile",
+                  "spell:burning-hands",
+                  "spell:shield",
+                  "spell:mage-armor",
+                  "spell:sleep",
+                  "spell:scorching-ray",
+                  "spell:web"
+                ],
+                "race_key": "race:gnome",
+                "skill_proficiency_keys": [
+                  "skill:investigation",
+                  "skill:insight"
+                ],
+                "subrace_key": "subrace:rock-gnome",
+                "weapon_keys": [
+                  "equipment:quarterstaff"
+                ]
+              }
+            },
+            "story": {}
+          }
+        ]
+      },
+      "content": {
+        "entries": [
+          {
+            "archived": false,
+            "created_after": "0s",
+            "data": {
+              "equipment_pt": "Uma lanterna e um apito.",
+              "feature": {
+                "desc_pt": [
+                  "Texto de luz."
+                ],
+                "effects": [
+                  {
+                    "text_pt": "Conhece a rota dos navios.",
+                    "type": "note"
+                  }
+                ],
+                "key": "background-feature:background-guarda-de-farol-c2bc7e--luz-guia@mesa",
+                "name_pt": "Luz-guia"
+              },
+              "language_choices": 1,
+              "name_pt": "Guarda de farol",
+              "skills": [
+                "skill:insight",
+                "skill:religion"
+              ],
+              "tools": [
+                "proficiency:thieves-tools"
+              ]
+            },
+            "key": "background:guarda-de-farol@mesa",
+            "kind": "background",
+            "name_pt": "Guarda de farol",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "1ms",
+            "data": {
+              "hit_die": 8,
+              "levels": [
+                {
+                  "features": [
+                    {
+                      "desc_pt": [
+                        "Mais iniciativa."
+                      ],
+                      "effects": [
+                        {
+                          "mode": "add",
+                          "target": "initiative",
+                          "type": "modifier",
+                          "value": "1"
+                        }
+                      ],
+                      "key": "feature:class-andarilho-099625--vigor@mesa",
+                      "name_pt": "Vigor"
+                    },
+                    {
+                      "effects": [
+                        {
+                          "proficiency": "skill:survival",
+                          "type": "proficiency"
+                        }
+                      ],
+                      "key": "feature:class-andarilho-099625--treino@mesa",
+                      "name_pt": "Treino"
+                    }
+                  ]
+                },
+                {
+                  "features": [
+                    {
+                      "effects": [
+                        {
+                          "max": "prof()",
+                          "recharge": "short_rest",
+                          "resource": "surto_teste",
+                          "type": "resource"
+                        }
+                      ],
+                      "key": "feature:class-andarilho-099625--surto@mesa",
+                      "name_pt": "Surto"
+                    }
+                  ]
+                },
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}
+              ],
+              "minimums": {
+                "constitution": 11
+              },
+              "name_pt": "Andarilho",
+              "proficiencies": [
+                "proficiency:light-armor",
+                "proficiency:simple-weapons"
+              ],
+              "saving_throws": [
+                "ABILITY_CONSTITUTION",
+                "ABILITY_WISDOM"
+              ],
+              "skill_choose": 2,
+              "skill_from": [
+                "skill:arcana",
+                "skill:history",
+                "skill:medicine",
+                "skill:nature",
+                "skill:survival"
+              ],
+              "subclass_level": 3
+            },
+            "key": "class:andarilho@mesa",
+            "kind": "class",
+            "name_pt": "Andarilho",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "2ms",
+            "data": {
+              "ability_bonuses": {
+                "constitution": 1
+              },
+              "choice_bonuses": [
+                2,
+                1
+              ],
+              "darkvision_ft": 60,
+              "language_choices": 1,
+              "languages": [
+                "language:common"
+              ],
+              "name_pt": "Povo do vale",
+              "size": "Medium",
+              "speed_ft": 25,
+              "traits": [
+                {
+                  "effects": [
+                    {
+                      "roll": "advantage",
+                      "tags": [
+                        "against:poison"
+                      ],
+                      "targets": [
+                        "save.con"
+                      ],
+                      "type": "roll_mode"
+                    }
+                  ],
+                  "key": "trait:race-povo-do-vale-e24903--resistente@mesa",
+                  "name_pt": "Resistente"
+                }
+              ]
+            },
+            "key": "race:povo-do-vale@mesa",
+            "kind": "race",
+            "name_pt": "Povo do vale",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "3ms",
+            "data": {
+              "attack": "ranged",
+              "casting_time": {
+                "amount": 1,
+                "unit": "CASTING_TIME_UNIT_ACTION"
+              },
+              "class_keys": [
+                "class:andarilho@mesa"
+              ],
+              "components": {
+                "somatic": true,
+                "verbal": true
+              },
+              "damage": [
+                {
+                  "damage_type_key": "damage-type:force",
+                  "dice": "3d6",
+                  "per_slot_level": "1d6"
+                }
+              ],
+              "desc_pt": [
+                "Um raio de teste."
+              ],
+              "duration": {
+                "kind": "SPELL_DURATION_KIND_INSTANTANEOUS"
+              },
+              "level": 1,
+              "name_pt": "Raio de teste",
+              "range": {
+                "distance_ft": 60,
+                "kind": "SPELL_RANGE_KIND_RANGED"
+              },
+              "school_key": "school:evocation",
+              "target": {
+                "kind": "TABLE_SPELL_TARGET_KIND_CREATURE"
+              }
+            },
+            "key": "spell:raio-de-teste@mesa",
+            "kind": "spell",
+            "name_pt": "Raio de teste",
+            "revision": 1,
+            "updated_is_created": true
+          }
+        ],
+        "off": [
+          "spell:fireball"
+        ]
+      },
+      "counts": {
+        "characters": 1,
+        "content_entries": 4,
+        "npcs": 3
+      },
+      "problems": null
+    },
+    "broken characters, first half": {
+      "characters": {
+        "facts_players": 0,
+        "npcs": [
+          {
+            "created_after": "0s",
+            "id": "\u003cid-15\u003e",
+            "kind": "enemy",
+            "name": "Capitão",
+            "notes": "Notas sobre Capitão.",
+            "sheet": {
+              "full": {
+                "armor_key": "equipment:chain-mail",
+                "base_scores": {
+                  "charisma": 10,
+                  "constitution": 14,
+                  "dexterity": 12,
+                  "intelligence": 8,
+                  "strength": 16,
+                  "wisdom": 10
+                },
+                "classes": [
+                  {
+                    "class_key": "class:fighter",
+                    "level": 2
+                  }
+                ],
+                "content_revision": 1,
+                "known_issues": [
+                  "missing|full.background_key|Escolha um antecedente.",
+                  "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+                ],
+                "race_key": "race:human",
+                "shield": true,
+                "weapon_keys": [
+                  "equipment:longsword"
+                ]
+              }
+            },
+            "story": {}
+          }
+        ],
+        "players": null
+      },
+      "content": {
+        "entries": [
+          {
+            "archived": false,
+            "created_after": "0s",
+            "key": "background:guarda-de-farol@mesa",
+            "kind": "background",
+            "name_pt": "Guarda de farol",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "1ms",
+            "key": "class:andarilho@mesa",
+            "kind": "class",
+            "name_pt": "Andarilho",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "2ms",
+            "key": "race:povo-do-vale@mesa",
+            "kind": "race",
+            "name_pt": "Povo do vale",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "3ms",
+            "key": "spell:raio-de-teste@mesa",
+            "kind": "spell",
+            "name_pt": "Raio de teste",
+            "revision": 1,
+            "updated_is_created": true
+          }
+        ],
+        "off": [
+          "spell:fireball"
+        ]
+      },
+      "counts": {
+        "content_entries": 4,
+        "npcs": 1
+      },
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_PACKAGE",
+          "name": "npcs/0100.json",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        }
+      ]
+    },
+    "broken characters, second half": {
+      "characters": {
+        "facts_players": 1,
+        "npcs": [
+          {
+            "created_after": "0s",
+            "id": "\u003cid-16\u003e",
+            "kind": "enemy",
+            "name": "Retratado",
+            "notes": "Notas sobre Capitão.",
+            "sheet": {
+              "full": {
+                "armor_key": "equipment:chain-mail",
+                "base_scores": {
+                  "charisma": 10,
+                  "constitution": 14,
+                  "dexterity": 12,
+                  "intelligence": 8,
+                  "strength": 16,
+                  "wisdom": 10
+                },
+                "classes": [
+                  {
+                    "class_key": "class:fighter",
+                    "level": 2
+                  }
+                ],
+                "content_revision": 1,
+                "known_issues": [
+                  "missing|full.background_key|Escolha um antecedente.",
+                  "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+                ],
+                "portrait_image_id": "\u003cid-17\u003e",
+                "race_key": "race:human",
+                "shield": true,
+                "weapon_keys": [
+                  "equipment:longsword"
+                ]
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "5ms",
+            "id": "\u003cid-18\u003e",
+            "kind": "minion",
+            "name": "Goblin do bestiário",
+            "notes": "Notas sobre Capitão.",
+            "sheet": {
+              "basic": {
+                "ability_scores": {
+                  "charisma": 8,
+                  "constitution": 10,
+                  "dexterity": 14,
+                  "intelligence": 10,
+                  "strength": 8,
+                  "wisdom": 8
+                },
+                "armor_class": 15,
+                "attacks": [
+                  {
+                    "attack_bonus": 4,
+                    "damage_bonus": 2,
+                    "damage_dice_count": 1,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_SLASHING",
+                    "name": "Cimitarra"
+                  }
+                ],
+                "description": "Um goblin nervoso.",
+                "hit_points_max": 7,
+                "initiative_bonus": 2,
+                "monster_key": "monster:goblin",
+                "speed_ft": 30
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "6ms",
+            "id": "\u003cid-19\u003e",
+            "kind": "story",
+            "name": "Goblin sem valores",
+            "notes": "Notas sobre Capitão.",
+            "sheet": {
+              "basic": {
+                "armor_class": 15,
+                "attacks": [
+                  {
+                    "attack_bonus": 4,
+                    "damage_bonus": 2,
+                    "damage_dice_count": 1,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_SLASHING",
+                    "name": "Cimitarra"
+                  }
+                ],
+                "description": "Um goblin nervoso.",
+                "hit_points_max": 7,
+                "initiative_bonus": 2,
+                "monster_key": "monster:goblin",
+                "speed_ft": 30
+              }
+            },
+            "story": {}
+          }
+        ],
+        "players": [
+          {
+            "created_after": "8ms",
+            "id": "\u003cid-20\u003e",
+            "kind": "player",
+            "name": "Andarilha",
+            "notes": "Notas sobre Pensantus.",
+            "sheet": {
+              "full": {
+                "alignment": "ALIGNMENT_NEUTRAL_GOOD",
+                "base_scores": {
+                  "charisma": 12,
+                  "constitution": 15,
+                  "dexterity": 16,
+                  "intelligence": 16,
+                  "strength": 12,
+                  "wisdom": 13
+                },
+                "classes": [
+                  {
+                    "class_key": "class:andarilho@mesa",
+                    "level": 1
+                  }
+                ],
+                "coins": {
+                  "gold": 15,
+                  "silver": 3
+                },
+                "content_revision": 1,
+                "custom_background": {
+                  "equipment": "Um tinteiro, uma pena e roupas comuns.",
+                  "feature_name": "Pesquisador",
+                  "feature_text": "Quando você não sabe uma informação, sabe a quem perguntar.",
+                  "name": "Sábio",
+                  "proficiency_keys": [
+                    "language:draconic",
+                    "language:elvish"
+                  ],
+                  "skill_keys": [
+                    "skill:arcana",
+                    "skill:history"
+                  ]
+                },
+                "equipment": [
+                  {
+                    "name": "Grimório",
+                    "quantity": 1
+                  },
+                  {
+                    "name": "Corda de cânhamo",
+                    "quantity": 1
+                  }
+                ],
+                "experience_points": 900,
+                "languages": [
+                  "Dracônico"
+                ],
+                "race_key": "race:gnome",
+                "skill_proficiency_keys": [
+                  "skill:investigation",
+                  "skill:insight"
+                ],
+                "subrace_key": "subrace:rock-gnome",
+                "weapon_keys": [
+                  "equipment:quarterstaff"
+                ]
+              }
+            },
+            "story": {}
+          }
+        ]
+      },
+      "content": {
+        "entries": [
+          {
+            "archived": false,
+            "created_after": "0s",
+            "key": "background:guarda-de-farol@mesa",
+            "kind": "background",
+            "name_pt": "Guarda de farol",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "1ms",
+            "key": "class:andarilho@mesa",
+            "kind": "class",
+            "name_pt": "Andarilho",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "2ms",
+            "key": "race:povo-do-vale@mesa",
+            "kind": "race",
+            "name_pt": "Povo do vale",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "3ms",
+            "key": "spell:raio-de-teste@mesa",
+            "kind": "spell",
+            "name_pt": "Raio de teste",
+            "revision": 1,
+            "updated_is_created": true
+          }
+        ],
+        "off": [
+          "spell:fireball"
+        ]
+      },
+      "counts": {
+        "characters": 1,
+        "content_entries": 4,
+        "npcs": 3
+      },
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "name": "Capitão",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CHARACTER",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_PACKAGE",
+          "name": "characters/0102.json",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        }
+      ]
+    },
+    "every kind of broken table entry": {
+      "counts": {},
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_PACKAGE",
+          "name": "content/0100.json",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Guarda de farol",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Guarda de farol",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Outro nome",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Guarda de farol",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Guarda de farol",
+          "reason": "PACKAGE_PROBLEM_REASON_DUPLICATE"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Raio de teste",
+          "reason": "PACKAGE_PROBLEM_REASON_LIMIT"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Vazio",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Andarilho",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Povo do vale",
+          "reason": "PACKAGE_PROBLEM_REASON_LIMIT"
+        }
+      ]
+    },
+    "more characters than the cap": {
+      "characters": {
+        "facts_players": 0,
+        "npcs": null,
+        "players": null
+      },
+      "content": {
+        "entries": [
+          {
+            "archived": false,
+            "created_after": "0s",
+            "key": "background:guarda-de-farol@mesa",
+            "kind": "background",
+            "name_pt": "Guarda de farol",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "1ms",
+            "key": "class:andarilho@mesa",
+            "kind": "class",
+            "name_pt": "Andarilho",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "2ms",
+            "key": "race:povo-do-vale@mesa",
+            "kind": "race",
+            "name_pt": "Povo do vale",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "3ms",
+            "key": "spell:raio-de-teste@mesa",
+            "kind": "spell",
+            "name_pt": "Raio de teste",
+            "revision": 1,
+            "updated_is_created": true
+          }
+        ],
+        "off": [
+          "spell:fireball"
+        ]
+      },
+      "counts": {
+        "content_entries": 4
+      },
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_NPC",
+          "limit": "12",
+          "reason": "PACKAGE_PROBLEM_REASON_LIMIT"
+        }
+      ]
+    },
+    "more table entries than the overlay takes": {
+      "counts": {},
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "limit": "300",
+          "reason": "PACKAGE_PROBLEM_REASON_LIMIT"
+        }
+      ]
+    },
+    "options with an unknown key and a repeat": {
+      "counts": {},
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "spell:nao-existe",
+          "reason": "PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "spell:fireball",
+          "reason": "PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT"
+        }
+      ]
+    },
+    "the class the spell needs left out": {
+      "counts": {},
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Raio de teste",
+          "reason": "PACKAGE_PROBLEM_REASON_UNKNOWN_CONTENT"
+        }
+      ]
+    },
+    "the exported campaign": {
+      "characters": {
+        "facts_players": 1,
+        "npcs": [
+          {
+            "created_after": "0s",
+            "id": "\u003cid-21\u003e",
+            "kind": "enemy",
+            "name": "Capitão",
+            "notes": "Notas sobre Capitão.",
+            "sheet": {
+              "full": {
+                "armor_key": "equipment:chain-mail",
+                "base_scores": {
+                  "charisma": 10,
+                  "constitution": 14,
+                  "dexterity": 12,
+                  "intelligence": 8,
+                  "strength": 16,
+                  "wisdom": 10
+                },
+                "classes": [
+                  {
+                    "class_key": "class:fighter",
+                    "level": 2
+                  }
+                ],
+                "content_revision": 1,
+                "known_issues": [
+                  "missing|full.background_key|Escolha um antecedente.",
+                  "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+                ],
+                "race_key": "race:human",
+                "shield": true,
+                "weapon_keys": [
+                  "equipment:longsword"
+                ]
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "1ms",
+            "id": "\u003cid-22\u003e",
+            "kind": "minion",
+            "name": "Goblin",
+            "notes": "",
+            "sheet": {
+              "basic": {
+                "armor_class": 15,
+                "attacks": [
+                  {
+                    "attack_bonus": 4,
+                    "damage_bonus": 2,
+                    "damage_dice_count": 1,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_SLASHING",
+                    "name": "Cimitarra"
+                  }
+                ],
+                "description": "Um goblin nervoso.",
+                "hit_points_max": 7,
+                "initiative_bonus": 2,
+                "speed_ft": 30
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "2ms",
+            "id": "\u003cid-23\u003e",
+            "kind": "minion",
+            "name": "Grak",
+            "notes": "",
+            "sheet": {
+              "basic": {
+                "ability_scores": {
+                  "charisma": 7,
+                  "constitution": 16,
+                  "dexterity": 8,
+                  "intelligence": 5,
+                  "strength": 19,
+                  "wisdom": 7
+                },
+                "armor_class": 11,
+                "attacks": [
+                  {
+                    "attack_bonus": 6,
+                    "damage_bonus": 4,
+                    "damage_dice_count": 2,
+                    "damage_dice_sides": 8,
+                    "damage_type": "DAMAGE_TYPE_BLUDGEONING",
+                    "name": "Clava grande"
+                  },
+                  {
+                    "attack_bonus": 6,
+                    "damage_bonus": 4,
+                    "damage_dice_count": 2,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_PIERCING",
+                    "name": "Azagaia",
+                    "range_ft": 30
+                  }
+                ],
+                "challenge_rating": "2",
+                "description": "Baseado em Ogro (SRD 5.1).",
+                "hit_points_max": 59,
+                "initiative_bonus": -1,
+                "monster_key": "monster:ogre",
+                "size": "CREATURE_SIZE_LARGE",
+                "speed_ft": 40,
+                "xp_value": 450
+              }
+            },
+            "story": {}
+          }
+        ],
+        "players": [
+          {
+            "created_after": "3ms",
+            "id": "\u003cid-24\u003e",
+            "kind": "player",
+            "name": "Pensantus",
+            "notes": "Notas sobre Pensantus.",
+            "sheet": {
+              "full": {
+                "alignment": "ALIGNMENT_NEUTRAL_GOOD",
+                "base_scores": {
+                  "charisma": 12,
+                  "constitution": 15,
+                  "dexterity": 16,
+                  "intelligence": 16,
+                  "strength": 12,
+                  "wisdom": 13
+                },
+                "cantrip_keys": [
+                  "spell:fire-bolt",
+                  "spell:ray-of-frost",
+                  "spell:minor-illusion"
+                ],
+                "classes": [
+                  {
+                    "class_key": "class:wizard",
+                    "level": 3,
+                    "subclass_key": "subclass:evocation"
+                  }
+                ],
+                "coins": {
+                  "gold": 15,
+                  "silver": 3
+                },
+                "content_revision": 1,
+                "custom_background": {
+                  "equipment": "Um tinteiro, uma pena e roupas comuns.",
+                  "feature_name": "Pesquisador",
+                  "feature_text": "Quando você não sabe uma informação, sabe a quem perguntar.",
+                  "name": "Sábio",
+                  "proficiency_keys": [
+                    "language:draconic",
+                    "language:elvish"
+                  ],
+                  "skill_keys": [
+                    "skill:arcana",
+                    "skill:history"
+                  ]
+                },
+                "equipment": [
+                  {
+                    "name": "Grimório",
+                    "quantity": 1
+                  },
+                  {
+                    "name": "Corda de cânhamo",
+                    "quantity": 1
+                  }
+                ],
+                "experience_points": 900,
+                "known_spell_keys": [
+                  "spell:magic-missile",
+                  "spell:burning-hands",
+                  "spell:shield",
+                  "spell:mage-armor",
+                  "spell:sleep",
+                  "spell:find-familiar",
+                  "spell:detect-magic",
+                  "spell:comprehend-languages",
+                  "spell:scorching-ray",
+                  "spell:web"
+                ],
+                "languages": [
+                  "Dracônico"
+                ],
+                "prepared_spell_keys": [
+                  "spell:magic-missile",
+                  "spell:burning-hands",
+                  "spell:shield",
+                  "spell:mage-armor",
+                  "spell:sleep",
+                  "spell:scorching-ray",
+                  "spell:web"
+                ],
+                "race_key": "race:gnome",
+                "skill_proficiency_keys": [
+                  "skill:investigation",
+                  "skill:insight"
+                ],
+                "subrace_key": "subrace:rock-gnome",
+                "weapon_keys": [
+                  "equipment:quarterstaff"
+                ]
+              }
+            },
+            "story": {}
+          }
+        ]
+      },
+      "content": {
+        "entries": [
+          {
+            "archived": false,
+            "created_after": "0s",
+            "key": "background:guarda-de-farol@mesa",
+            "kind": "background",
+            "name_pt": "Guarda de farol",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "1ms",
+            "key": "class:andarilho@mesa",
+            "kind": "class",
+            "name_pt": "Andarilho",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "2ms",
+            "key": "race:povo-do-vale@mesa",
+            "kind": "race",
+            "name_pt": "Povo do vale",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "3ms",
+            "key": "spell:raio-de-teste@mesa",
+            "kind": "spell",
+            "name_pt": "Raio de teste",
+            "revision": 1,
+            "updated_is_created": true
+          }
+        ],
+        "off": [
+          "spell:fireball"
+        ]
+      },
+      "counts": {
+        "characters": 1,
+        "content_entries": 4,
+        "npcs": 3
+      },
+      "problems": null
+    },
+    "the options under another path": {
+      "counts": {},
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "reason": "PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY"
+        }
+      ]
+    },
+    "two entries of one name": {
+      "characters": {
+        "facts_players": 1,
+        "npcs": [
+          {
+            "created_after": "0s",
+            "id": "\u003cid-25\u003e",
+            "kind": "enemy",
+            "name": "Capitão",
+            "notes": "Notas sobre Capitão.",
+            "sheet": {
+              "full": {
+                "armor_key": "equipment:chain-mail",
+                "base_scores": {
+                  "charisma": 10,
+                  "constitution": 14,
+                  "dexterity": 12,
+                  "intelligence": 8,
+                  "strength": 16,
+                  "wisdom": 10
+                },
+                "classes": [
+                  {
+                    "class_key": "class:fighter",
+                    "level": 2
+                  }
+                ],
+                "content_revision": 1,
+                "known_issues": [
+                  "missing|full.background_key|Escolha um antecedente.",
+                  "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+                ],
+                "race_key": "race:human",
+                "shield": true,
+                "weapon_keys": [
+                  "equipment:longsword"
+                ]
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "1ms",
+            "id": "\u003cid-26\u003e",
+            "kind": "minion",
+            "name": "Goblin",
+            "notes": "",
+            "sheet": {
+              "basic": {
+                "armor_class": 15,
+                "attacks": [
+                  {
+                    "attack_bonus": 4,
+                    "damage_bonus": 2,
+                    "damage_dice_count": 1,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_SLASHING",
+                    "name": "Cimitarra"
+                  }
+                ],
+                "description": "Um goblin nervoso.",
+                "hit_points_max": 7,
+                "initiative_bonus": 2,
+                "speed_ft": 30
+              }
+            },
+            "story": {}
+          },
+          {
+            "created_after": "2ms",
+            "id": "\u003cid-27\u003e",
+            "kind": "minion",
+            "name": "Grak",
+            "notes": "",
+            "sheet": {
+              "basic": {
+                "ability_scores": {
+                  "charisma": 7,
+                  "constitution": 16,
+                  "dexterity": 8,
+                  "intelligence": 5,
+                  "strength": 19,
+                  "wisdom": 7
+                },
+                "armor_class": 11,
+                "attacks": [
+                  {
+                    "attack_bonus": 6,
+                    "damage_bonus": 4,
+                    "damage_dice_count": 2,
+                    "damage_dice_sides": 8,
+                    "damage_type": "DAMAGE_TYPE_BLUDGEONING",
+                    "name": "Clava grande"
+                  },
+                  {
+                    "attack_bonus": 6,
+                    "damage_bonus": 4,
+                    "damage_dice_count": 2,
+                    "damage_dice_sides": 6,
+                    "damage_type": "DAMAGE_TYPE_PIERCING",
+                    "name": "Azagaia",
+                    "range_ft": 30
+                  }
+                ],
+                "challenge_rating": "2",
+                "description": "Baseado em Ogro (SRD 5.1).",
+                "hit_points_max": 59,
+                "initiative_bonus": -1,
+                "monster_key": "monster:ogre",
+                "size": "CREATURE_SIZE_LARGE",
+                "speed_ft": 40,
+                "xp_value": 450
+              }
+            },
+            "story": {}
+          }
+        ],
+        "players": [
+          {
+            "created_after": "3ms",
+            "id": "\u003cid-28\u003e",
+            "kind": "player",
+            "name": "Pensantus",
+            "notes": "Notas sobre Pensantus.",
+            "sheet": {
+              "full": {
+                "alignment": "ALIGNMENT_NEUTRAL_GOOD",
+                "base_scores": {
+                  "charisma": 12,
+                  "constitution": 15,
+                  "dexterity": 16,
+                  "intelligence": 16,
+                  "strength": 12,
+                  "wisdom": 13
+                },
+                "cantrip_keys": [
+                  "spell:fire-bolt",
+                  "spell:ray-of-frost",
+                  "spell:minor-illusion"
+                ],
+                "classes": [
+                  {
+                    "class_key": "class:wizard",
+                    "level": 3,
+                    "subclass_key": "subclass:evocation"
+                  }
+                ],
+                "coins": {
+                  "gold": 15,
+                  "silver": 3
+                },
+                "content_revision": 1,
+                "custom_background": {
+                  "equipment": "Um tinteiro, uma pena e roupas comuns.",
+                  "feature_name": "Pesquisador",
+                  "feature_text": "Quando você não sabe uma informação, sabe a quem perguntar.",
+                  "name": "Sábio",
+                  "proficiency_keys": [
+                    "language:draconic",
+                    "language:elvish"
+                  ],
+                  "skill_keys": [
+                    "skill:arcana",
+                    "skill:history"
+                  ]
+                },
+                "equipment": [
+                  {
+                    "name": "Grimório",
+                    "quantity": 1
+                  },
+                  {
+                    "name": "Corda de cânhamo",
+                    "quantity": 1
+                  }
+                ],
+                "experience_points": 900,
+                "known_spell_keys": [
+                  "spell:magic-missile",
+                  "spell:burning-hands",
+                  "spell:shield",
+                  "spell:mage-armor",
+                  "spell:sleep",
+                  "spell:find-familiar",
+                  "spell:detect-magic",
+                  "spell:comprehend-languages",
+                  "spell:scorching-ray",
+                  "spell:web"
+                ],
+                "languages": [
+                  "Dracônico"
+                ],
+                "prepared_spell_keys": [
+                  "spell:magic-missile",
+                  "spell:burning-hands",
+                  "spell:shield",
+                  "spell:mage-armor",
+                  "spell:sleep",
+                  "spell:scorching-ray",
+                  "spell:web"
+                ],
+                "race_key": "race:gnome",
+                "skill_proficiency_keys": [
+                  "skill:investigation",
+                  "skill:insight"
+                ],
+                "subrace_key": "subrace:rock-gnome",
+                "weapon_keys": [
+                  "equipment:quarterstaff"
+                ]
+              }
+            },
+            "story": {}
+          }
+        ]
+      },
+      "content": {
+        "entries": [
+          {
+            "archived": false,
+            "created_after": "0s",
+            "key": "background:guarda-de-farol@mesa",
+            "kind": "background",
+            "name_pt": "Guarda de farol",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "1ms",
+            "key": "class:andarilho@mesa",
+            "kind": "class",
+            "name_pt": "Andarilho",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "2ms",
+            "key": "race:povo-do-vale@mesa",
+            "kind": "race",
+            "name_pt": "Povo do vale",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "3ms",
+            "key": "spell:raio-de-teste@mesa",
+            "kind": "spell",
+            "name_pt": "Raio de teste",
+            "revision": 1,
+            "updated_is_created": true
+          },
+          {
+            "archived": false,
+            "created_after": "4ms",
+            "key": "background:outro-farol@mesa",
+            "kind": "background",
+            "name_pt": "Guarda de farol",
+            "revision": 1,
+            "updated_is_created": true
+          }
+        ],
+        "off": [
+          "spell:fireball"
+        ]
+      },
+      "counts": {
+        "characters": 1,
+        "content_entries": 5,
+        "npcs": 3
+      },
+      "problems": null
+    },
+    "two entries of options": {
+      "counts": {},
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "reason": "PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY"
+        }
+      ]
+    },
+    "unreadable options": {
+      "counts": {},
+      "problems": [
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_PACKAGE",
+          "name": "content/options.json",
+          "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        }
+      ]
+    }
+  }
+}

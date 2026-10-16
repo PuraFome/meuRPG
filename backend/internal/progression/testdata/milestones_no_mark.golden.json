@@ -1,0 +1,15 @@
+{
+  "master": {
+    "milestones": [
+      {
+        "id": "<milestone-a>",
+        "text": "Chegar ao Vale Seco"
+      },
+      {
+        "id": "<milestone-b>",
+        "text": "Derrotar a Sombra"
+      }
+    ]
+  },
+  "player": {}
+}

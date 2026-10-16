@@ -79,7 +79,7 @@ func (u *user) exportOnly(campaignID string) {
 }
 
 // TestMeasureExportAndImportOfALargeCampaign prints the time and the memory
-// of an export and an import of 20 maps of 3 MB and 50 NPCs (docs/operations.md).
+// of an export and an import of 20 maps of 3 MB and 50 NPCs (docs/operations/README.md).
 // It runs only with MEURPG_MEASURE=1.
 func TestMeasureExportAndImportOfALargeCampaign(t *testing.T) {
 	if os.Getenv("MEURPG_MEASURE") == "" {

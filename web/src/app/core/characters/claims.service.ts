@@ -9,7 +9,7 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
  * master's reserved characters and their links, and the page a player opens with a link.
  *
  * `token` is the link's secret: it only ever goes in a request body, never in a URL, a route
- * parameter or a log line (docs/architecture.md, "The claim flow"). An empty token means the link the
+ * parameter or a log line (docs/architecture/README.md, "The claim flow"). An empty token means the link the
  * person signed in with, which the server kept for ten minutes.
  */
 @Injectable({ providedIn: 'root' })

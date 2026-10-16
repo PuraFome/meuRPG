@@ -20,40 +20,46 @@ const (
 )
 
 func (cb *choiceBuilder) race() {
-	x, c := cb.x, cb.c
+	x := cb.x
 	if x.race == nil {
 		return
 	}
-	type source struct {
-		key    string
-		traits []string
-	}
-	sources := []source{{x.race.Key, x.race.Traits}}
+	cb.raceSource(x.race.Key, x.race.Traits)
 	if x.subrace != nil {
-		sources = append(sources, source{x.subrace.Key, x.subrace.Traits})
-	}
-	for _, s := range sources {
-		g := cb.group(ChoiceOriginRace, s.key, 0, 0)
-		cb.featChoice(g, s.key)
-		for _, tk := range s.traits {
-			tr := c.traits[tk]
-			if tr == nil {
-				continue
-			}
-			if len(tr.Options) > 0 {
-				choose := 1
-				if es := c.effectChoices(tk, "feature"); len(es) > 0 && es[0].Count > 0 {
-					choose = es[0].Count
-				}
-				cb.optionChoice(g, tk, choose, tr.Options)
-			}
-			for _, e := range c.effectChoices(tk, "cantrip") {
-				cb.cantripChoice(g, tk, e)
-			}
-			cb.featChoice(g, tk)
-		}
+		cb.raceSource(x.subrace.Key, x.subrace.Traits)
 	}
 	cb.abilityChoice(x.race)
+}
+
+// raceSource adds the choices of the race or the subrace key: a feat it grants,
+// and those of its traits.
+func (cb *choiceBuilder) raceSource(key string, traits []string) {
+	g := cb.group(ChoiceOriginRace, key, 0, 0)
+	cb.featChoice(g, key)
+	for _, tk := range traits {
+		cb.traitChoices(g, tk)
+	}
+}
+
+// traitChoices adds the choices of one trait: its options, its cantrips and a
+// feat it grants.
+func (cb *choiceBuilder) traitChoices(g *groupBuild, tk string) {
+	c := cb.c
+	tr := c.traits[tk]
+	if tr == nil {
+		return
+	}
+	if len(tr.Options) > 0 {
+		choose := 1
+		if es := c.effectChoices(tk, "feature"); len(es) > 0 && es[0].Count > 0 {
+			choose = es[0].Count
+		}
+		cb.optionChoice(g, tk, choose, tr.Options)
+	}
+	for _, e := range c.effectChoices(tk, "cantrip") {
+		cb.cantripChoice(g, tk, e)
+	}
+	cb.featChoice(g, tk)
 }
 
 // abilityChoice is the race's "+1 to two abilities" (SRD 5.1, Half-Elf, Ability
@@ -111,28 +117,42 @@ func (cb *choiceBuilder) features(_ ownedClass, idx int, origin ChoiceOrigin, so
 		if c.features[fk] == nil {
 			continue
 		}
-		for _, d := range c.featureGains([]string{fk}, subclass).choices {
-			cb.optionChoice(g, d.feature, d.choose, d.options)
-		}
-		for _, e := range c.effectChoices(fk, "cantrip") {
-			cb.cantripChoice(g, fk, e)
-		}
-		cb.featChoice(g, fk)
-		switch {
-		case strings.HasPrefix(fk, "feature:favored-enemy-") && !isTableKey(fk):
-			cb.favoredEnemy(g, fk)
-		case strings.HasPrefix(fk, "feature:natural-explorer-") && !isTableKey(fk):
-			cb.naturalExplorer(g, fk)
-		case strings.HasPrefix(fk, "feature:mystic-arcanum-") && !isTableKey(fk):
-			cb.arcanum(g, fk)
-		case fk == "feature:spell-mastery":
-			cb.spellMastery(g)
-		case fk == "feature:signature-spell":
-			cb.signatureSpells(g)
-		case fk == "feature:pact-boon":
-			if slices.Contains(cb.plain, "feature:pact-of-the-tome") {
-				cb.tomeCantrips(g)
-			}
+		cb.featureChoices(g, fk, subclass)
+		cb.featureSpecialChoice(g, fk)
+	}
+}
+
+// featureChoices adds the choices every feature may ask: its options, its
+// cantrips and a feat it grants.
+func (cb *choiceBuilder) featureChoices(g *groupBuild, fk, subclass string) {
+	c := cb.c
+	for _, d := range c.featureGains([]string{fk}, subclass).choices {
+		cb.optionChoice(g, d.feature, d.choose, d.options)
+	}
+	for _, e := range c.effectChoices(fk, "cantrip") {
+		cb.cantripChoice(g, fk, e)
+	}
+	cb.featChoice(g, fk)
+}
+
+// featureSpecialChoice adds the choice of the SRD features that ask their own:
+// the ranger's enemies and terrains, the warlock's arcanum and tome, the
+// wizard's mastery and signature spells.
+func (cb *choiceBuilder) featureSpecialChoice(g *groupBuild, fk string) {
+	switch {
+	case strings.HasPrefix(fk, "feature:favored-enemy-") && !isTableKey(fk):
+		cb.favoredEnemy(g, fk)
+	case strings.HasPrefix(fk, "feature:natural-explorer-") && !isTableKey(fk):
+		cb.naturalExplorer(g, fk)
+	case strings.HasPrefix(fk, "feature:mystic-arcanum-") && !isTableKey(fk):
+		cb.arcanum(g, fk)
+	case fk == "feature:spell-mastery":
+		cb.spellMastery(g)
+	case fk == "feature:signature-spell":
+		cb.signatureSpells(g)
+	case fk == "feature:pact-boon":
+		if slices.Contains(cb.plain, "feature:pact-of-the-tome") {
+			cb.tomeCantrips(g)
 		}
 	}
 }
