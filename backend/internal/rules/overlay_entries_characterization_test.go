@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"bytes"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -486,7 +487,7 @@ func TestOverlayEffectFieldsCharacterization(t *testing.T) {
 		stripped := all
 		stripped.Type = typ
 		stripUnused(&stripped)
-		if b2, _ := json.Marshal(stripped); string(b2) != string(b) {
+		if b2, _ := json.Marshal(stripped); !bytes.Equal(b2, b) {
 			t.Errorf("stripUnused(%s) = %s, want %s", typ, b2, b)
 		}
 	}

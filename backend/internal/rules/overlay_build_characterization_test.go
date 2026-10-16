@@ -49,7 +49,7 @@ func overlayBuildCases() map[string]func(o *Overlay) {
 		"subrace key bad character":   func(o *Overlay) { o.Subraces[0].Key = "subrace:Colina" + tableSuffix },
 		"subrace name two lines":      func(o *Overlay) { o.Subraces[0].NamePT = "Da\nColina" },
 		"background key spellcasting": func(o *Overlay) { o.Backgrounds[0].Key = "background:spellcasting" + tableSuffix },
-		"background name hidden":      func(o *Overlay) { o.Backgrounds[0].NamePT = "Guarda​" },
+		"background name hidden":      func(o *Overlay) { o.Backgrounds[0].NamePT = "Guarda\u200b" },
 		"spell key empty slug":        func(o *Overlay) { o.Spells[3].Key = "spell:" + tableSuffix },
 		"spell key twice":             func(o *Overlay) { o.Spells[3].Key = o.Spells[1].Key },
 		"spell name empty":            func(o *Overlay) { o.Spells[3].NamePT = "" },
