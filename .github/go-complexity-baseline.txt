@@ -299,10 +299,7 @@ cognitive internal/play planArea 31
 cognitive internal/play playerRunProto 21
 cognitive internal/play resolveTrap 92
 cognitive internal/play tallyHighlights 59
-cognitive internal/progression (*Service).AwardXP 32
 cognitive internal/progression (*Service).MoveMilestone 24
-cognitive internal/progression (*Service).UndoLastXPAward 52
-cognitive internal/progression (*Service).give 101
 cognitive internal/progression (*Service).milestoneViews 21
 cognitive internal/progression (*Service).viewsOf 40
 cognitive internal/rules (*Content).EffectMenu 32
@@ -694,11 +691,7 @@ cyclomatic internal/play playerRunProto 20
 cyclomatic internal/play resolveTrap 33
 cyclomatic internal/play resourceLogView 16
 cyclomatic internal/play tallyHighlights 38
-cyclomatic internal/progression (*Service).AwardXP 24
 cyclomatic internal/progression (*Service).MoveMilestone 17
-cyclomatic internal/progression (*Service).UndoLastXPAward 30
-cyclomatic internal/progression (*Service).give 48
-cyclomatic internal/progression (*Service).sameRequest 16
 cyclomatic internal/progression (*Service).viewsOf 28
 cyclomatic internal/rules (*Content).EffectMenu 27
 cyclomatic internal/rules (*Content).ListCreatures 24
@@ -790,4 +783,3 @@ maintainability internal/play (*Service).castSpell 0
 maintainability internal/play (*Service).rollAttack 0
 maintainability internal/play (*Service).rollDamage 4
 maintainability internal/play (*Service).settleTrapDamage 19
-maintainability internal/progression (*Service).give 17
