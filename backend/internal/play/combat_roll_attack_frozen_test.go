@@ -53,12 +53,12 @@ func (g *goldenBlocks) settle(t *testing.T, path string) {
 		sb.WriteString("== " + n + " ==\n" + g.blocks[n] + "\n")
 	}
 	if os.Getenv("UPDATE_GOLDEN") != "" {
-		if err := os.WriteFile(path, []byte(sb.String()), 0o644); err != nil { //nolint:gosec // a test's golden file
+		if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
 			t.Fatalf("write %s: %v", path, err)
 		}
 		return
 	}
-	want, err := os.ReadFile(path) //nolint:gosec // a test's golden file
+	want, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
 	}
@@ -94,12 +94,12 @@ func labelsOf(e *playv1.Encounter) map[string]string {
 }
 
 // jsonOfMessage is a message as sorted JSON, with the ids replaced by labels.
-func jsonOfMessage(m proto.Message, names map[string]string, clear ...string) string {
+func jsonOfMessage(m proto.Message, names map[string]string, skip ...string) string {
 	if m == nil || !m.ProtoReflect().IsValid() {
 		return ""
 	}
 	c := proto.Clone(m)
-	for _, f := range clear {
+	for _, f := range skip {
 		if fd := c.ProtoReflect().Descriptor().Fields().ByName(protoreflect.Name(f)); fd != nil {
 			c.ProtoReflect().Clear(fd)
 		}
@@ -201,6 +201,7 @@ func (a *armed) afterSetup(t *testing.T) int {
 // attackRefusal is a scenario that edits Toren's attack on the goblin and reads the refusal and what stayed.
 func attackRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) attackScenario {
 	return attackScenario{name: "refused " + name, run: func(t *testing.T) string {
+		t.Helper()
 		a := newArmed(t)
 		e := a.threeAndAGoblin(t)
 		before := a.afterSetup(t)
@@ -215,6 +216,7 @@ func asMaster(a *armed) *user { return a.master }
 // attackThrough is a scenario of an attack that goes through, on the usual fight: as plays it with edit.
 func attackThrough(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) attackScenario {
 	return attackScenario{name: name, run: func(t *testing.T) string {
+		t.Helper()
 		a := newArmed(t)
 		e := a.threeAndAGoblin(t)
 		before := a.afterSetup(t)
@@ -231,6 +233,7 @@ func typedD20(face int32) func(*playv1.RollAttackRequest) {
 // and the attack's answer.
 func attackOn(name string, play func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error)) attackScenario {
 	return attackScenario{name: name, run: func(t *testing.T) string {
+		t.Helper()
 		a, e, before, res, err := play(t)
 		return a.attackReport(t, e, before, res, err)
 	}}
@@ -240,6 +243,7 @@ func attackOn(name string, play func(t *testing.T) (*armed, *playv1.Encounter, i
 func customAttacks() []attackScenario {
 	return []attackScenario{
 		attackOn("an NPC attacks as the master", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Goblin")
@@ -248,6 +252,7 @@ func customAttacks() []attackScenario {
 			return a, e, before, res, err
 		}),
 		attackOn("an attack cantrip with the pair of dice", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Pensantus")
@@ -256,6 +261,7 @@ func customAttacks() []attackScenario {
 			return a, e, before, res, err
 		}),
 		attackOn("the extra action for a cantrip", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Pensantus")
@@ -266,6 +272,7 @@ func customAttacks() []attackScenario {
 			return a, e, before, res, err
 		}),
 		attackOn("an attack out of reach", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			before := a.afterSetup(t)
@@ -273,6 +280,7 @@ func customAttacks() []attackScenario {
 			return a, e, before, res, err
 		}),
 		attackOn("an attack by someone who is not on the map", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.start(t, plan{
 				npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
@@ -286,6 +294,7 @@ func customAttacks() []attackScenario {
 			return a, e, before, res, err
 		}),
 		attackOn("an attack in a combat without a map", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.start(t, plan{
 				npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
@@ -299,6 +308,7 @@ func customAttacks() []attackScenario {
 			return a, e, before, res, err
 		}),
 		attackOn("a second attack in the same turn", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(3))
@@ -307,6 +317,7 @@ func customAttacks() []attackScenario {
 			return a, e, before, res, err
 		}),
 		attackOn("an attack out of turn", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			before := a.afterSetup(t)
@@ -314,6 +325,7 @@ func customAttacks() []attackScenario {
 			return a, e, before, res, err
 		}),
 		attackOn("an attack on a defeated target", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			if _, err := a.adjustHP(t, e, "Goblin", func(r *playv1.AdjustCombatantHitPointsRequest) {
@@ -373,6 +385,8 @@ func attackScenarios() []attackScenario {
 }
 
 // TestRollAttackIsFrozen runs every scenario on a fight of its own and compares what each reads with the golden.
+//
+//nolint:tparallel // the group waits for its parallel scenarios, so that the golden is settled after them.
 func TestRollAttackIsFrozen(t *testing.T) {
 	t.Parallel()
 	g := &goldenBlocks{}
