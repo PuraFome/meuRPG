@@ -39,10 +39,7 @@ func (s *Service) spendReaction(ctx context.Context, c *combatTx, who playdb.Com
 // by no player (RN-10), a blind reactor sees nothing, and on a map with the fog each
 // reactor sees with its own eyes.
 func (s *Service) reactorSees(ctx context.Context, c *combatTx, cs []playdb.Combatant, reactor, actor playdb.Combatant) (dist int32, ok bool, err error) {
-	if slices.Contains(reactor.Conditions, "condition:blinded") || (actor.Kind == kindNPC && actor.Hidden && reactor.Kind == kindPlayer) {
-		return 0, false, nil
-	}
-	if slices.Contains(actor.Conditions, "condition:invisible") {
+	if eyesCannotSee(reactor, actor) {
 		return 0, false, nil
 	}
 	if !isTheatre(c.enc) {
@@ -52,18 +49,40 @@ func (s *Service) reactorSees(ctx context.Context, c *combatTx, cs []playdb.Comb
 		}
 		dist = d
 	}
-	if c.sight != nil && reactor.Kind == kindPlayer && reactor.UserID != nil {
-		v := c.viewer(authz.Membership{CampaignID: c.session.CampaignID, UserID: *reactor.UserID, Role: authz.RolePlayer}, cs)
-		return dist, v.sees(actor), nil
+	sees, err := s.fogSees(ctx, c, cs, reactor, actor)
+	if err != nil {
+		return 0, false, err
 	}
-	if c.sight != nil && reactor.Kind != kindPlayer && placed(reactor) && placed(actor) {
+	return dist, sees, nil
+}
+
+// eyesCannotSee says a blind reactor sees nothing, a hidden NPC is seen by no player (RN-10) and an
+// invisible actor is seen by no one.
+func eyesCannotSee(reactor, actor playdb.Combatant) bool {
+	if slices.Contains(reactor.Conditions, "condition:blinded") || (actor.Kind == kindNPC && actor.Hidden && reactor.Kind == kindPlayer) {
+		return true
+	}
+	return slices.Contains(actor.Conditions, "condition:invisible")
+}
+
+// fogSees says whether the reactor sees the actor on a map with the fog: a player with its own eyes, an
+// NPC with the senses of its sheet. Without the fog, or with a combatant that has no square, it does.
+func (s *Service) fogSees(ctx context.Context, c *combatTx, cs []playdb.Combatant, reactor, actor playdb.Combatant) (bool, error) {
+	if c.sight == nil {
+		return true, nil
+	}
+	if reactor.Kind == kindPlayer && reactor.UserID != nil {
+		v := c.viewer(authz.Membership{CampaignID: c.session.CampaignID, UserID: *reactor.UserID, Role: authz.RolePlayer}, cs)
+		return v.sees(actor), nil
+	}
+	if reactor.Kind != kindPlayer && placed(reactor) && placed(actor) {
 		sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
 		if err != nil {
-			return 0, false, err
+			return false, err
 		}
-		return dist, c.sight.reactorSees(reactor, sheet, squareOfCombatant(actor)), nil
+		return c.sight.reactorSees(reactor, sheet, squareOfCombatant(actor)), nil
 	}
-	return dist, true, nil
+	return true, nil
 }
 
 // counterspellWindows lists the windows a cast opens: one for each combatant of the
@@ -140,23 +159,32 @@ func (wv *windowView) counterspellPrompt(w playdb.ReactionWindow, reactor *playd
 		p.DistanceFt = &t.Distance
 	}
 	if reactor != nil {
-		k, ok, err := wv.s.kitOf(wv.ctx, nil, wv.m.CampaignID, *reactor)
-		if err != nil {
-			return wv.s.dbError(wv.ctx, "work out the reaction", err)
-		}
-		if ok {
-			p.SlotOptions = k.slotsFor(spellCounterspell)
-			if wv.v.master && out.Trigger != nil {
-				for _, sl := range p.SlotOptions {
-					auto, dc := reaction.Counterspell(int(sl.GetLevel()), int(t.Level))
-					out.Trigger.SlotEffects = append(out.Trigger.SlotEffects, &playv1.SlotEffect{
-						Slot: sl, NoCheck: auto, CheckDc: clamp32(dc, 0, math.MaxInt32), CheckBonus: clamp32(k.st.CastingMod, math.MinInt32, math.MaxInt32),
-					})
-				}
-			}
+		if err := wv.counterspellSlots(*reactor, t, p, out); err != nil {
+			return err
 		}
 	}
 	out.Prompt = &playv1.ReactionWindow_Counterspell{Counterspell: p}
+	return nil
+}
+
+// counterspellSlots gives the prompt the free slots of the reactor and, to the master, what each does.
+func (wv *windowView) counterspellSlots(reactor playdb.Combatant, t windowTrigger, p *playv1.CounterspellPrompt, out *playv1.ReactionWindow) error {
+	k, ok, err := wv.s.kitOf(wv.ctx, nil, wv.m.CampaignID, reactor)
+	if err != nil {
+		return wv.s.dbError(wv.ctx, "work out the reaction", err)
+	}
+	if !ok {
+		return nil
+	}
+	p.SlotOptions = k.slotsFor(spellCounterspell)
+	if wv.v.master && out.Trigger != nil {
+		for _, sl := range p.SlotOptions {
+			auto, dc := reaction.Counterspell(int(sl.GetLevel()), int(t.Level))
+			out.Trigger.SlotEffects = append(out.Trigger.SlotEffects, &playv1.SlotEffect{
+				Slot: sl, NoCheck: auto, CheckDc: clamp32(dc, 0, math.MaxInt32), CheckBonus: clamp32(k.st.CastingMod, math.MinInt32, math.MaxInt32),
+			})
+		}
+	}
 	return nil
 }
 
@@ -170,41 +198,13 @@ func (s *Service) answerCounterspell(ctx context.Context, c *combatTx, w playdb.
 		_, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master}, "")
 		return err
 	}
-	if reactor.ReactionUsed {
-		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is already used")
-	}
-	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, reactor)
+	k, slot, err := s.counterspellSlotOf(ctx, c, reactor, req)
 	if err != nil {
 		return err
 	}
-	var free []*rulesv1.SlotChoice
-	if ok && k.canReact() {
-		free = k.slotsFor(spellCounterspell)
-	}
-	if len(free) == 0 {
-		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for Contramágica",
-			func(b *playv1.EncounterBlocked) { b.MinLevel = reaction.CounterspellLevel })
-	}
-	slot, err := pickSlot(req.GetSlot(), free)
+	check, err := s.counterspellCheck(ctx, c, req, reactor, k, slot, t, re)
 	if err != nil {
 		return err
-	}
-	auto, dc := reaction.Counterspell(int(slot.Level), int(t.Level))
-	countered := auto
-	var check *playv1.DiceRoll
-	if !auto {
-		// The spell is above the slot: an ability check with the spellcasting ability.
-		in, err := s.reactionRoll(ctx, c, req, 20, reactor)
-		if err != nil {
-			return err
-		}
-		face, roll, err := s.d20(in, k.st.CastingMod)
-		if err != nil {
-			return err
-		}
-		countered = roll.Total >= dc
-		re.Check, re.CheckDC = clamp32(roll.Total, math.MinInt32, math.MaxInt32), clamp32(dc, 0, math.MaxInt32)
-		check = diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, clamp32(k.st.CastingMod, math.MinInt32, math.MaxInt32), re.Check, roll.Physical)
 	}
 	vitals, err := s.spendReactionSlot(ctx, c, reactor, slot)
 	if err != nil {
@@ -216,13 +216,13 @@ func (s *Service) answerCounterspell(ctx context.Context, c *combatTx, w playdb.
 	if err := s.spendReaction(ctx, c, reactor); err != nil {
 		return err
 	}
-	re.Used, re.Slot, re.Countered = true, &slot, countered
+	re.Used, re.Slot, re.Countered = true, &slot, check.countered
 	got.ev.Slot, got.ev.ReactionBefore = &slot, reactor.ReactionUsed
-	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Slot: &slot, Countered: countered}, ""); err != nil {
+	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Slot: &slot, Countered: check.countered}, ""); err != nil {
 		return err
 	}
 	c.lastAnswered = reaction.CounterspellKind
-	if countered {
+	if check.countered {
 		// The spell is gone: the other reactors have nothing left to counter.
 		if err := s.closeGroup(ctx, c, w, reaction.ReasonTriggerGone); err != nil {
 			return err
@@ -230,10 +230,63 @@ func (s *Service) answerCounterspell(ctx context.Context, c *combatTx, w playdb.
 	}
 	names := s.namesAt(ctx, c)
 	got.result.Result = &playv1.ReactionResult_Counterspell{Counterspell: &playv1.CounterspellResult{
-		Countered: countered, SpellKey: t.Spell, SpellNamePt: names(t.Spell), SpellLevel: t.Level, Check: check, CheckDc: clamp32(dc, 0, math.MaxInt32),
+		Countered: check.countered, SpellKey: t.Spell, SpellNamePt: names(t.Spell), SpellLevel: t.Level, Check: check.roll, CheckDc: clamp32(check.dc, 0, math.MaxInt32),
 	}}
 	c.characterID = &reactor.CharacterID
 	return nil
+}
+
+// counterspellSlotOf is the reactor's kit and the slot its answer spends: the reaction must be free,
+// and a free slot of the 3rd level or above must be the one chosen.
+func (s *Service) counterspellSlotOf(ctx context.Context, c *combatTx, reactor playdb.Combatant, req *playv1.AnswerReactionRequest) (kit, slotRef, error) {
+	if reactor.ReactionUsed {
+		return kit{}, slotRef{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is already used")
+	}
+	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, reactor)
+	if err != nil {
+		return kit{}, slotRef{}, err
+	}
+	var free []*rulesv1.SlotChoice
+	if ok && k.canReact() {
+		free = k.slotsFor(spellCounterspell)
+	}
+	if len(free) == 0 {
+		return kit{}, slotRef{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for Contramágica",
+			func(b *playv1.EncounterBlocked) { b.MinLevel = reaction.CounterspellLevel })
+	}
+	slot, err := pickSlot(req.GetSlot(), free)
+	return k, slot, err
+}
+
+// counterspellOutcome is whether the spell is countered, the DC it was up against and the ability check
+// that decided it (nil when the slot was enough).
+type counterspellOutcome struct {
+	countered bool
+	dc        int
+	roll      *playv1.DiceRoll
+}
+
+// counterspellCheck decides the counter: a slot at least as high as the spell counters it; above the
+// slot it is an ability check with the spellcasting ability, which the event keeps.
+func (s *Service) counterspellCheck(ctx context.Context, c *combatTx, req *playv1.AnswerReactionRequest, reactor playdb.Combatant, k kit, slot slotRef, t windowTrigger, re *reactionEvent) (counterspellOutcome, error) {
+	auto, dc := reaction.Counterspell(int(slot.Level), int(t.Level))
+	out := counterspellOutcome{countered: auto, dc: dc}
+	if auto {
+		return out, nil
+	}
+	// The spell is above the slot: an ability check with the spellcasting ability.
+	in, err := s.reactionRoll(ctx, c, req, 20, reactor)
+	if err != nil {
+		return out, err
+	}
+	face, roll, err := s.d20(in, k.st.CastingMod)
+	if err != nil {
+		return out, err
+	}
+	out.countered = roll.Total >= dc
+	re.Check, re.CheckDC = clamp32(roll.Total, math.MinInt32, math.MaxInt32), clamp32(dc, 0, math.MaxInt32)
+	out.roll = diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, clamp32(k.st.CastingMod, math.MinInt32, math.MaxInt32), re.Check, roll.Physical)
+	return out, nil
 }
 
 // closeGroup closes the other open windows of a window's group by themselves.
