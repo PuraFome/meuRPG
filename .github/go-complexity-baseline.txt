@@ -31,9 +31,6 @@ cognitive internal/play (*Service).RespondContest 68
 cognitive internal/play (*Service).RevealHider 18
 cognitive internal/play (*Service).answerCounterspell 19
 cognitive internal/play (*Service).castProto 34
-cognitive internal/play (*Service).checkOnSolve 18
-cognitive internal/play (*Service).checkOnWrong 31
-cognitive internal/play (*Service).checkParts 16
 cognitive internal/play (*Service).checkTargets 32
 cognitive internal/play (*Service).contestOptionsFor 50
 cognitive internal/play (*Service).dieToCharacters 22
@@ -55,7 +52,6 @@ cognitive internal/play (*contestReader).contestView 46
 cognitive internal/play (*contestReader).helpViews 17
 cognitive internal/play (*contestReader).state 16
 cognitive internal/play (*windowView).counterspellPrompt 17
-cognitive internal/play decodePuzzle 18
 cyclomatic internal/maps (*Service).GenerateMapImage 16
 cyclomatic internal/maps (*Service).checkCharacters 21
 cyclomatic internal/maps (*Service).playersSeenOf 20
@@ -73,8 +69,6 @@ cyclomatic internal/play (*Service).ResolveShove 31
 cyclomatic internal/play (*Service).RespondContest 41
 cyclomatic internal/play (*Service).answerCounterspell 17
 cyclomatic internal/play (*Service).castProto 21
-cyclomatic internal/play (*Service).checkOnSolve 16
-cyclomatic internal/play (*Service).checkOnWrong 24
 cyclomatic internal/play (*Service).checkSources 18
 cyclomatic internal/play (*Service).checkTargets 25
 cyclomatic internal/play (*Service).contestOptionsFor 43
