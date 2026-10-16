@@ -1,0 +1,301 @@
+{
+  "abilities": [
+    {
+      "ability": "ABILITY_STRENGTH",
+      "base": 15,
+      "bonus": 3,
+      "modifier": 4,
+      "namePt": "Força",
+      "score": 18
+    },
+    {
+      "ability": "ABILITY_CHARISMA",
+      "base": 8,
+      "modifier": -1,
+      "namePt": "Carisma",
+      "score": 8
+    }
+  ],
+  "actions": [
+    {
+      "economy": "ACTION_ECONOMY_BONUS_ACTION",
+      "key": "feature:second-wind",
+      "namePt": "Retomar o Fôlego",
+      "resourceKey": "second_wind",
+      "sourceKey": "class:fighter"
+    }
+  ],
+  "armorClass": 16,
+  "armorClassDescription": "Cota de malha",
+  "attacks": [
+    {
+      "attackBonus": 6,
+      "beams": 2,
+      "damage": "1d6+4",
+      "damageDice": {
+        "addsModifier": true,
+        "bonus": 4,
+        "count": 1,
+        "sides": 6
+      },
+      "damageNotePt": "nota",
+      "damageTypeKey": "damage-type:bludgeoning",
+      "damageTypePt": "concussão",
+      "key": "equipment:quarterstaff",
+      "kind": "ATTACK_KIND_WEAPON",
+      "longRangeFt": 10,
+      "melee": true,
+      "name": "Quarterstaff",
+      "namePt": "Bordão",
+      "notes": "duas mãos",
+      "rangeFt": 5,
+      "saveAbility": "ABILITY_WISDOM",
+      "saveDc": 14,
+      "spellDice": "2d10",
+      "versatileDamage": "1d8+4",
+      "versatileDamageDice": {
+        "count": 1,
+        "sides": 8
+      }
+    },
+    {
+      "key": "spell:eldritch-blast",
+      "kind": "ATTACK_KIND_SPELL"
+    },
+    {
+      "key": "x"
+    }
+  ],
+  "backgroundEquipmentPt": "Um símbolo sagrado",
+  "backgroundNamePt": "Acólito",
+  "breathWeapon": {
+    "ancestryKey": "trait:draconic-ancestry-red",
+    "damageType": "damage-type:fire",
+    "damageTypeNamePt": "fogo",
+    "dc": 13,
+    "dice": "2d6",
+    "saveAbility": "ABILITY_DEXTERITY",
+    "shape": "BREATH_SHAPE_CONE",
+    "sizeFt": 30,
+    "textPt": "sopro"
+  },
+  "classes": [
+    {
+      "classKey": "class:warlock",
+      "level": 5,
+      "namePt": "Bruxo",
+      "subclassNamePt": "Corruptor"
+    },
+    {
+      "classKey": "class:wizard",
+      "level": 2,
+      "namePt": "Mago"
+    }
+  ],
+  "contentVersion": "srd-5.1+mesa.7",
+  "features": [
+    {
+      "description": "um\n\ndois",
+      "descriptionPt": "primeiro\n\nsegundo\n\nterceiro",
+      "descriptionPtMissing": true,
+      "descriptionPtOnly": true,
+      "key": "feature:pact-boon",
+      "name": "Pact Boon",
+      "namePt": "Dádiva do Pacto",
+      "sourcePt": "Bruxo 3",
+      "summaryPt": "resumo"
+    }
+  ],
+  "hints": [
+    {
+      "sourceKey": "race:dwarf",
+      "text": "vantagem contra veneno"
+    }
+  ],
+  "hitDice": [
+    {
+      "count": 5,
+      "faces": 8
+    },
+    {
+      "count": 2,
+      "faces": 6
+    }
+  ],
+  "hitPointsFromEffects": -2,
+  "hitPointsMax": 9,
+  "hover": true,
+  "initiative": 2,
+  "issues": [
+    {
+      "code": "unknown_key",
+      "field": "full.race_key",
+      "message": "a key nobody knows"
+    }
+  ],
+  "languages": [
+    "Comum",
+    "Dracônico"
+  ],
+  "nextLevelXp": 34000,
+  "passiveInsight": 12,
+  "passiveInvestigation": 11,
+  "passivePerception": 13,
+  "proficiencies": {
+    "armor": [
+      "Armaduras leves"
+    ],
+    "tools": [
+      "Ferramentas de ladrão",
+      "Kit de herbalismo"
+    ],
+    "weapons": [
+      "Armas simples"
+    ]
+  },
+  "proficiencyBonus": 3,
+  "raceNamePt": "Draconato",
+  "resistances": [
+    {
+      "damageType": "damage-type:fire",
+      "damageTypeNamePt": "fogo",
+      "sourceKey": "trait:draconic-ancestry-red"
+    }
+  ],
+  "resources": [
+    {
+      "key": "pact_slots",
+      "max": 2,
+      "namePt": "Espaços de pacto",
+      "recharge": "RECHARGE_SHORT_REST",
+      "sourceKey": "class:warlock"
+    },
+    {
+      "key": "odd"
+    }
+  ],
+  "saveActions": [
+    {
+      "ability": "ABILITY_DEXTERITY",
+      "dc": 13,
+      "key": "breath",
+      "name": "Breath",
+      "onSuccess": "SPELL_SAVE_SUCCESS_HALF",
+      "text": "texto",
+      "usage": "1/descanso"
+    }
+  ],
+  "savingThrows": [
+    {
+      "ability": "ABILITY_DEXTERITY",
+      "bonus": 5,
+      "namePt": "Destreza",
+      "proficient": true
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "bonus": -1,
+      "namePt": "Inteligência"
+    }
+  ],
+  "senses": [
+    {
+      "key": "race:dragonborn",
+      "namePt": "Visão no escuro",
+      "rangeFt": 60,
+      "sense": "sense:darkvision"
+    }
+  ],
+  "skills": [
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "bonus": 7,
+      "key": "skill:arcana",
+      "namePt": "Arcanismo",
+      "proficiency": "PROFICIENCY_LEVEL_EXPERTISE"
+    },
+    {
+      "ability": "ABILITY_DEXTERITY",
+      "bonus": 3,
+      "key": "skill:stealth",
+      "namePt": "Furtividade",
+      "proficiency": "PROFICIENCY_LEVEL_HALF"
+    }
+  ],
+  "speedBurrowFt": 5,
+  "speedClimbFt": 20,
+  "speedFlyFt": 40,
+  "speedSwimFt": 15,
+  "speedWalkFt": 30,
+  "spellSlots": [
+    {
+      "count": 3,
+      "level": 1
+    },
+    {
+      "count": 1,
+      "level": 3
+    }
+  ],
+  "spellcasting": [
+    {
+      "ability": "ABILITY_CHARISMA",
+      "attackBonus": 5,
+      "cantripsKnown": 3,
+      "classKey": "class:warlock",
+      "classNamePt": "Bruxo",
+      "saveDc": 13,
+      "spellsKnown": 6
+    },
+    {
+      "ability": "ABILITY_INTELLIGENCE",
+      "attackBonus": 4,
+      "cantripsKnown": 3,
+      "classKey": "class:wizard",
+      "classNamePt": "Mago",
+      "preparedMax": 4,
+      "saveDc": 12,
+      "spellbook": true
+    }
+  ],
+  "spells": [
+    {
+      "prepared": true,
+      "spell": {
+        "classKeys": [
+          "class:wizard"
+        ],
+        "key": "spell:shield",
+        "level": 1,
+        "name": "Shield",
+        "namePt": "Escudo Arcano",
+        "reaction": true,
+        "schoolKey": "school:abjuration",
+        "schoolNamePt": "Abjuração"
+      }
+    },
+    {
+      "spell": {
+        "archived": true,
+        "concentration": true,
+        "key": "spell:detect-magic",
+        "level": 1,
+        "namePt": "Detectar Magia",
+        "off": true,
+        "ritual": true
+      }
+    }
+  ],
+  "standardActions": [
+    {
+      "economy": "ACTION_ECONOMY_ACTION",
+      "key": "action:dash",
+      "namePt": "Disparada"
+    },
+    {
+      "key": "action:odd"
+    }
+  ],
+  "subraceNamePt": "Sub",
+  "totalLevel": 7
+}

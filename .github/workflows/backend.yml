@@ -32,6 +32,11 @@ on:
       - ".github/scripts/go-complexity.sh"
       - ".github/go-complexity-baseline.txt"
       - ".node-version"
+  # The nightly run and a manual run test everything, with no path filter
+  # (03:00 in São Paulo).
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
 
 # Cancel a still-running run for the same PR when a new commit lands, so we
 # don't waste runners on outdated code. A push to main never cancels: every
@@ -46,6 +51,42 @@ permissions:
   contents: read
 
 jobs:
+  # Decides whether the Go jobs run. A pull request that touches no Go, proto
+  # or Go-CI file (a web-only change, which still reaches this workflow for
+  # the proto job's generated TypeScript) skips them; main, the nightly and
+  # manual runs always run them.
+  changes:
+    name: changes (do the Go jobs run)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      go: ${{ steps.changes.outputs.go }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history: the diff against the base branch needs it.
+          fetch-depth: 0
+
+      - name: Look at the changed files
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          go=true
+          if [ "$EVENT" = pull_request ]; then
+            changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+            if grep -Eq '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/go-(db-shard|coverage|complexity)\.sh$|\.github/go-complexity-baseline\.txt$)' <<<"$changed"; then
+              go=true
+            else
+              go=false
+            fi
+          fi
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+          echo "go=$go"
+
   proto:
     name: proto (lint, breaking, generate)
     timeout-minutes: 10
@@ -126,6 +167,8 @@ jobs:
     # it once and runs it. The module boundaries are a test
     # (internal/archtest), so go-db's "rest" group runs them.
     name: go (lint, vulncheck)
+    needs: changes
+    if: ${{ needs.changes.outputs.go == 'true' }}
     timeout-minutes: 15
     runs-on: ubuntu-26.04
     defaults:
@@ -205,6 +248,8 @@ jobs:
   # for four vCPUs. "rest" is still the catch-all for a new package.
   go-db-shard:
     name: go-db ${{ matrix.group }} (tests against CockroachDB)
+    needs: changes
+    if: ${{ needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     strategy:
@@ -313,17 +358,26 @@ jobs:
   # matrix jobs' own names carry the group.
   go-db:
     name: go (integration tests against CockroachDB)
-    needs: go-db-shard
+    needs: [changes, go-db-shard]
     if: ${{ always() }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: Every group passed
+        # The groups are skipped on purpose when the change has no Go in it;
+        # that is a pass. A failed `changes` job is not: nothing was judged.
         env:
+          CHANGES: ${{ needs.changes.result }}
+          GO: ${{ needs.changes.outputs.go }}
           RESULT: ${{ needs.go-db-shard.result }}
         run: |
-          echo "go-db groups: $RESULT"
-          [ "$RESULT" = success ]
+          echo "changes: $CHANGES, go: $GO, go-db groups: $RESULT"
+          [ "$CHANGES" = success ] || exit 1
+          if [ "$GO" = true ]; then
+            [ "$RESULT" = success ]
+          else
+            [ "$RESULT" = skipped ]
+          fi
 
   # Merges the groups' coverage profiles into one total and a per-package
   # table in the job summary (no upload to any outside service), and holds
@@ -331,7 +385,7 @@ jobs:
   # the floor is judged on a full set of profiles, never on a partial one.
   go-coverage:
     name: go (coverage)
-    needs: go-db-shard
+    needs: [changes, go-db-shard]
     if: ${{ needs.go-db-shard.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -360,3 +414,31 @@ jobs:
 
       - name: Merge, report and check the floor
         run: ../.github/scripts/go-coverage.sh cover/cover-*.out
+
+  # Opens (or adds to) a GitHub issue when a run outside a pull request fails,
+  # so a red main or nightly does not go unnoticed.
+  report:
+    name: report (issue when main is red)
+    needs: [proto, changes, go, go-db-shard, go-db, go-coverage]
+    if: ${{ always() && github.event_name != 'pull_request' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW: ${{ github.workflow }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body=$(printf 'O workflow %s falhou na main.\n\nCommit: %s\nExecução: %s' "$WORKFLOW" "$SHA" "$RUN_URL")
+          gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
+          number=$(gh issue list --label ci-red --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --label ci-red --title "CI vermelho: $WORKFLOW na main" --body "$body"
+          fi

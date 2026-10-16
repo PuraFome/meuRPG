@@ -142,85 +142,11 @@ func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID str
 
 	var result joinResult
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-
-		invite, err := q.GetInviteByTokenHashForUpdate(ctx, tokenHash)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoInvite
-		}
+		joined, err := s.joinWithInvite(ctx, tx, tokenHash, userID, now)
 		if err != nil {
-			return fmt.Errorf("get invite: %w", err)
+			return err
 		}
-		campaign, err := q.GetCampaign(ctx, invite.CampaignID)
-		if err != nil {
-			return fmt.Errorf("get campaign: %w", err)
-		}
-
-		member, err := q.GetMembership(ctx, campaignsdb.GetMembershipParams{CampaignID: invite.CampaignID, UserID: userID, Now: now})
-		switch {
-		case err == nil && member.Status == string(authz.StatusPending) && !invite.RequiresApproval &&
-			inviteState(invite, now) == campaignsv1.InviteState_INVITE_STATE_ACTIVE:
-			// An invite that does not need the master's approval was
-			// accepted by someone who is waiting for it: that is approval
-			// enough.
-			if err := s.promotePending(ctx, q, tx, invite, userID, now); err != nil {
-				return err
-			}
-			result = joinResult{campaign: campaign, role: authz.RolePlayer}
-			return nil
-		case err == nil:
-			result = joinResult{
-				campaign:      campaign,
-				role:          authz.Role(member.Role),
-				alreadyMember: true,
-				pending:       member.Status == string(authz.StatusPending),
-			}
-			return nil
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("get membership: %w", err)
-		}
-
-		if state := inviteState(invite, now); state != campaignsv1.InviteState_INVITE_STATE_ACTIVE {
-			return &unusableInviteError{state: state}
-		}
-		// A pending member past the deadline is no member, but the TTL job
-		// may not have deleted the row yet: it goes before the new one.
-		if _, err := q.DeleteExpiredPendingMember(ctx, campaignsdb.DeleteExpiredPendingMemberParams{CampaignID: invite.CampaignID, UserID: userID, Now: now}); err != nil {
-			return fmt.Errorf("delete expired pending member: %w", err)
-		}
-		spent, err := q.IncrementInviteUses(ctx, campaignsdb.IncrementInviteUsesParams{ID: invite.ID, Now: now})
-		if err != nil {
-			return fmt.Errorf("spend an invite use: %w", err)
-		}
-		if spent == 0 {
-			// Unreachable while the row is locked and checked above; kept
-			// so that a future change cannot turn into a free pass.
-			return &unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_USED_UP}
-		}
-		// An invite with approval makes a pending member (RN-15): they may
-		// only work on their character until the master approves it.
-		status := authz.StatusActive
-		if invite.RequiresApproval {
-			status = authz.StatusPending
-		}
-		// A pending member has no character yet, so the 30-day deadline
-		// starts now; creating the character clears it (RN-15).
-		var expires *time.Time
-		if invite.RequiresApproval {
-			deadline := now.Add(PendingMemberLifetime)
-			expires = &deadline
-		}
-		_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
-			CampaignID:       invite.CampaignID,
-			UserID:           userID,
-			Role:             string(authz.RolePlayer),
-			Status:           string(status),
-			PendingExpiresAt: expires,
-		})
-		if err != nil {
-			return fmt.Errorf("insert player: %w", err)
-		}
-		result = joinResult{campaign: campaign, role: authz.RolePlayer, pending: invite.RequiresApproval}
+		result = joined
 		return nil
 	})
 	if err == nil && !result.alreadyMember {
@@ -229,6 +155,113 @@ func (s *Service) acceptInvite(ctx context.Context, tokenHash []byte, userID str
 			slog.Bool("pending_approval", result.pending))
 	}
 	return result, err
+}
+
+// joinWithInvite is acceptInvite's transaction: the steps 1 to 4 of its
+// comment, in order.
+func (s *Service) joinWithInvite(ctx context.Context, tx pgx.Tx, tokenHash []byte, userID string, now time.Time) (joinResult, error) {
+	q := s.queries.WithTx(tx)
+	invite, campaign, err := lockInvite(ctx, q, tokenHash)
+	if err != nil {
+		return joinResult{}, err
+	}
+	member, err := q.GetMembership(ctx, campaignsdb.GetMembershipParams{CampaignID: invite.CampaignID, UserID: userID, Now: now})
+	switch {
+	case err == nil:
+		return s.rejoin(ctx, q, tx, invite, campaign, member, userID, now)
+	case !errors.Is(err, pgx.ErrNoRows):
+		return joinResult{}, fmt.Errorf("get membership: %w", err)
+	}
+
+	if state := inviteState(invite, now); state != campaignsv1.InviteState_INVITE_STATE_ACTIVE {
+		return joinResult{}, &unusableInviteError{state: state}
+	}
+	if err := addPlayer(ctx, q, invite, userID, now); err != nil {
+		return joinResult{}, err
+	}
+	return joinResult{campaign: campaign, role: authz.RolePlayer, pending: invite.RequiresApproval}, nil
+}
+
+// lockInvite finds the invite by the token's hash, locked FOR UPDATE, and
+// its campaign (step 1 of acceptInvite).
+func lockInvite(ctx context.Context, q *campaignsdb.Queries, tokenHash []byte) (campaignsdb.CampaignInvite, campaignsdb.Campaign, error) {
+	invite, err := q.GetInviteByTokenHashForUpdate(ctx, tokenHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return invite, campaignsdb.Campaign{}, errNoInvite
+	}
+	if err != nil {
+		return invite, campaignsdb.Campaign{}, fmt.Errorf("get invite: %w", err)
+	}
+	campaign, err := q.GetCampaign(ctx, invite.CampaignID)
+	if err != nil {
+		return invite, campaign, fmt.Errorf("get campaign: %w", err)
+	}
+	return invite, campaign, nil
+}
+
+// rejoin answers a caller who is already a member, or a pending member
+// (step 2 of acceptInvite): nothing changes, except the promotion of a
+// pending member by an invite that works and needs no approval (Q25).
+func (s *Service) rejoin(ctx context.Context, q *campaignsdb.Queries, tx pgx.Tx, invite campaignsdb.CampaignInvite,
+	campaign campaignsdb.Campaign, member campaignsdb.GetMembershipRow, userID string, now time.Time,
+) (joinResult, error) {
+	pending := member.Status == string(authz.StatusPending)
+	if pending && !invite.RequiresApproval && inviteState(invite, now) == campaignsv1.InviteState_INVITE_STATE_ACTIVE {
+		// An invite that does not need the master's approval was
+		// accepted by someone who is waiting for it: that is approval
+		// enough.
+		if err := s.promotePending(ctx, q, tx, invite, userID, now); err != nil {
+			return joinResult{}, err
+		}
+		return joinResult{campaign: campaign, role: authz.RolePlayer}, nil
+	}
+	return joinResult{
+		campaign:      campaign,
+		role:          authz.Role(member.Role),
+		alreadyMember: true,
+		pending:       pending,
+	}, nil
+}
+
+// addPlayer spends one use of a working invite and adds userID as a player,
+// active or pending (steps 3 and 4 of acceptInvite).
+func addPlayer(ctx context.Context, q *campaignsdb.Queries, invite campaignsdb.CampaignInvite, userID string, now time.Time) error {
+	// A pending member past the deadline is no member, but the TTL job
+	// may not have deleted the row yet: it goes before the new one.
+	if _, err := q.DeleteExpiredPendingMember(ctx, campaignsdb.DeleteExpiredPendingMemberParams{CampaignID: invite.CampaignID, UserID: userID, Now: now}); err != nil {
+		return fmt.Errorf("delete expired pending member: %w", err)
+	}
+	spent, err := q.IncrementInviteUses(ctx, campaignsdb.IncrementInviteUsesParams{ID: invite.ID, Now: now})
+	if err != nil {
+		return fmt.Errorf("spend an invite use: %w", err)
+	}
+	if spent == 0 {
+		// Unreachable while the row is locked and checked above; kept
+		// so that a future change cannot turn into a free pass.
+		return &unusableInviteError{state: campaignsv1.InviteState_INVITE_STATE_USED_UP}
+	}
+	// An invite with approval makes a pending member (RN-15): they may
+	// only work on their character until the master approves it.
+	status := authz.StatusActive
+	// A pending member has no character yet, so the 30-day deadline
+	// starts now; creating the character clears it (RN-15).
+	var expires *time.Time
+	if invite.RequiresApproval {
+		status = authz.StatusPending
+		deadline := now.Add(PendingMemberLifetime)
+		expires = &deadline
+	}
+	_, err = q.InsertMember(ctx, campaignsdb.InsertMemberParams{
+		CampaignID:       invite.CampaignID,
+		UserID:           userID,
+		Role:             string(authz.RolePlayer),
+		Status:           string(status),
+		PendingExpiresAt: expires,
+	})
+	if err != nil {
+		return fmt.Errorf("insert player: %w", err)
+	}
+	return nil
 }
 
 // promotePending turns userID's pending membership into an active one with

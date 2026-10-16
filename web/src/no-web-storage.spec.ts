@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
  * Vinicius's hard rule: nothing in this app may read or write Web Storage
  * (localStorage, sessionStorage, IndexedDB), set a cookie from JavaScript,
  * or use a Worker to hold a token or personal data (docs/privacy.md,
- * docs/architecture.md#web-app-web). The only place a session lives is the
+ * docs/architecture/web.md#web-app). The only place a session lives is the
  * httpOnly `__Host-meurpg_session` cookie, which this app's own code never
  * reads or writes — `AuthService` only ever calls `IdentityService`.
  *

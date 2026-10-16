@@ -2,14 +2,10 @@ package play
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"connectrpc.com/connect"
-	"github.com/jackc/pgx/v5"
-	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -72,21 +68,6 @@ func luckyNote(r *luckyReroll) string {
 	return fmt.Sprintf(" Sortudo: %d → %d.", r.From, r.To)
 }
 
-// luckyPending says the hold waits for its Lucky answer: a die showed a 1 and neither the Lucky
-// question nor the roll was answered.
-func luckyPending(h playdb.RollHold) bool {
-	return h.LuckyIndex != nil && h.LuckyAnswerKey == nil && h.AnswerKey == nil
-}
-
-// luckyOfHold is the die a hold's Lucky answer rolled again; nil before the answer, when the
-// player kept the 1, and for a hold that asked no Lucky question.
-func luckyOfHold(h playdb.RollHold) *luckyReroll {
-	if h.LuckyIndex == nil || h.LuckyTo == nil {
-		return nil
-	}
-	return &luckyReroll{Index: *h.LuckyIndex, From: 1, To: *h.LuckyTo}
-}
-
 // luckyIndexOf is the die of a lucky attacker's roll that shows a 1, the one Lucky would roll
 // again: nil when none does, or when the attacker is not lucky.
 func luckyIndexOf(faces []int, lucky bool) *int32 {
@@ -142,120 +123,37 @@ func (s *Service) luckySave(roll d20Roll, modifier int, mode combat.RollMode, lu
 	return d20Roll{Faces: faces, Index: idx, Total: faces[idx] + modifier, Physical: roll.Physical}, reroll, nil
 }
 
-// luckyOfferOf is the question a hold asks the player of a lucky attacker: the d20 with the
-// attack's bonus, the die that shows the 1, the attack and its target.
-func luckyOfferOf(hold playdb.RollHold, physical bool) *playv1.LuckyOffer {
-	var orig playv1.RollAttackRequest
-	_ = proto.Unmarshal(hold.Request, &orig) // a request this module wrote
-	return &playv1.LuckyOffer{
-		HoldId: hold.ID, D20: heldD20(hold, physical), LuckyIndex: derefInt32(hold.LuckyIndex),
-		AttackKey: orig.GetAttackKey(), TargetId: orig.GetTargetId(),
-	}
-}
-
 // luckyOfferView is the held roll of a combatant that waits for its Lucky answer, for its player
 // and the master, so the question is still there when the screen is read again.
 func luckyOfferView(d *encounterData, c playdb.Combatant, v combatViewer) *playv1.LuckyOffer {
 	if !v.master && !v.owns(c) {
 		return nil
 	}
-	for _, h := range d.holds {
-		if h.CombatantID == c.ID && h.Round == d.enc.Round && luckyPending(h) {
-			_, physical := rollOfHold(h)
-			return luckyOfferOf(h, physical)
+	for _, row := range d.holds {
+		if row.CombatantID != c.ID || row.Round != d.enc.Round {
+			continue
+		}
+		if h := heldOfRollHold(row); luckyAsks(h) {
+			return heldOffer{Hold: h, Asks: askLucky}.luckyOffer()
 		}
 	}
 	return nil
 }
 
-// mayHold says the attack's d20 may wait for a question in this call: the roll of an attacker
-// that holds a Bardic Inspiration die, or of a lucky one (held only when a die shows a 1), or the
-// Lucky answer of an attacker that holds a die (held again for the die's question). Its mode is
-// then worked out without writing (chooseMode's dry), and keepReason writes the reason of a
-// change of mode once the roll goes on after all.
-func mayHold(f *forcedRoll, attacker playdb.Combatant, round int32, lucky bool) bool {
-	die := holdsDie(attacker, round)
-	if f != nil {
-		return f.luckyKey != "" && die
-	}
-	return die || lucky
-}
-
-// answerLuckyHold writes the Lucky answer in the hold, inside the attack's transaction: the
-// answer's key and the new face, and, for a roll that stays held for the Bardic Inspiration
-// question (stays), the d20 after it (the face that counts and the request's pair of faces), which
-// the die's answer settles. A roll resolved now keeps its request as it was, the one its event is
-// written for. The question must still wait: an answer that got there first refuses this one. The
-// same answer again (a retry) finds the hold as it left it.
-func answerLuckyHold(ctx context.Context, c *combatTx, f *forcedRoll, faces []int, idx int, stays bool) (playdb.RollHold, error) {
-	hold, err := c.q.GetRollHold(ctx, playdb.GetRollHoldParams{EncounterID: c.enc.ID, ID: f.holdID})
-	if err != nil {
-		return playdb.RollHold{}, fmt.Errorf("find the held roll: %w", err)
-	}
-	if hold.LuckyAnswerKey != nil && *hold.LuckyAnswerKey == f.luckyKey {
-		return hold, nil
-	}
-	if !luckyPending(hold) {
-		return playdb.RollHold{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("the Lucky question was answered already"))
-	}
-	face, body := hold.Face, hold.Request
-	if stays {
-		var req playv1.RollAttackRequest
-		if err := proto.Unmarshal(hold.Request, &req); err != nil {
-			return playdb.RollHold{}, fmt.Errorf("read the held request: %w", err)
-		}
-		if len(faces) == pairDice {
-			req.D20Faces = faces32(faces)
-		}
-		if body, err = proto.Marshal(&req); err != nil {
-			return playdb.RollHold{}, fmt.Errorf("keep the request: %w", err)
-		}
-		face = clamp32(faces[idx], 1, d20Sides)
-	}
-	var to *int32
-	if f.lucky != nil {
-		to = new(f.lucky.To)
-	}
-	hold, err = c.q.AnswerRollHoldLucky(ctx, playdb.AnswerRollHoldLuckyParams{
-		ID: hold.ID, Face: face, Request: body, LuckyAnswerKey: &f.luckyKey, LuckyTo: to,
-	})
-	if err != nil {
-		return playdb.RollHold{}, fmt.Errorf("answer the Lucky question: %w", err)
-	}
-	return hold, nil
-}
-
-// heldFaces are the d20 of a hold in the order rolled: the request's pair for a roll with
-// advantage or disadvantage, else the one face.
-func heldFaces(hold playdb.RollHold, orig *playv1.RollAttackRequest) []int {
-	if faces := orig.GetD20Faces(); len(faces) == pairDice {
-		return intsOf(faces)
-	}
-	return []int{int(hold.Face)}
-}
-
 // luckyRollOf reads how the new d20 of AnswerLucky comes: none when the player keeps the 1; else
 // rolled in the app or typed from a real die, 1 to 20.
 func luckyRollOf(msg *playv1.AnswerLuckyRequest) (rollInput, error) {
-	var in rollInput
 	if !msg.GetReroll() {
-		return in, nil
+		return rollInput{}, nil
 	}
+	var p rollPick
 	switch roll := msg.GetRoll().(type) {
 	case *playv1.AnswerLuckyRequest_RollInApp:
-		if !roll.RollInApp {
-			return in, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
-		}
-		in.inApp = true
+		p.app = &roll.RollInApp
 	case *playv1.AnswerLuckyRequest_TypedFace:
-		if roll.TypedFace < 1 || roll.TypedFace > d20Sides {
-			return in, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_face must be 1 to 20"))
-		}
-		in.typed = int(roll.TypedFace)
-	default:
-		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_face to roll again"))
+		p.face = &roll.TypedFace
 	}
-	return in, nil
+	return rollOfAnswer(p, askLucky)
 }
 
 // AnswerLucky implements playv1connect.ResourceServiceHandler: the player of a held roll whose d20
@@ -285,96 +183,14 @@ func (s *Service) AnswerLucky(
 	if err != nil {
 		return nil, err
 	}
-	hold, err := s.queries.GetRollHold(ctx, playdb.GetRollHoldParams{EncounterID: encID, ID: holdID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("held roll not found"))
-	}
+	out, err := s.answerHeld(ctx, m, answerRequest{
+		ref: holdRef{Table: rollHolds, Campaign: m.CampaignID, Encounter: encID, ID: holdID}, key: key, question: askLucky, yes: req.Msg.GetReroll(), in: in,
+	})
 	if err != nil {
-		return nil, s.dbError(ctx, "find the held roll", err)
-	}
-	var orig playv1.RollAttackRequest
-	if err := proto.Unmarshal(hold.Request, &orig); err != nil || orig.GetCampaignId() != m.CampaignID {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("held roll not found"))
-	}
-	if hold.LuckyIndex == nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll asks no Lucky question"))
-	}
-	window := strings.HasSuffix(hold.IdempotencyKey, windowHoldSuffix) // the original key belongs to the event that stood for the held attack
-	if hold.AnswerKey != nil {
-		// Resolved already: the same Lucky answer again gives the attack as it was resolved,
-		// under the key it was resolved with.
-		if *hold.AnswerKey != key && deref(hold.LuckyAnswerKey) != key {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll was answered already"))
-		}
-		if window {
-			orig.IdempotencyKey = *hold.AnswerKey
-		}
-		return s.luckyAnswered(ctx, &orig, nil)
-	}
-	if window {
-		orig.IdempotencyKey = key
-	}
-	if hold.LuckyAnswerKey != nil {
-		// Answered, and held for the Bardic Inspiration question: the same answer again reads the
-		// hold as it is, and rolls nothing.
-		if *hold.LuckyAnswerKey != key {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the Lucky question was answered already"))
-		}
-		return s.luckyAnswered(ctx, &orig, forcedLucky(hold, &orig, key, luckyOfHold(hold)))
-	}
-	if err := s.mayAnswerLucky(ctx, m, hold, in, req.Msg.GetReroll()); err != nil {
 		return nil, err
 	}
-	var reroll *luckyReroll
-	if req.Msg.GetReroll() {
-		if reroll, err = s.rollLuckyDie(ctx, *hold.LuckyIndex, in); err != nil {
-			return nil, err
-		}
-	}
-	// The attack as it was asked, with the new d20 (or the 1 kept): it resolves against the combat
-	// as it is now, and spends the action in its own transaction, under the key the roll came with.
-	return s.luckyAnswered(ctx, &orig, forcedLucky(hold, &orig, key, reroll))
-}
-
-// forcedLucky is the held roll's d20 after the Lucky answer, for the RollAttack it calls: the die
-// that showed the 1 replaced by the new face when the player rolled again.
-func forcedLucky(hold playdb.RollHold, orig *playv1.RollAttackRequest, key string, reroll *luckyReroll) *forcedRoll {
-	faces := heldFaces(hold, orig)
-	if reroll != nil && hold.LuckyAnswerKey == nil && int(reroll.Index) < len(faces) {
-		faces[reroll.Index] = int(reroll.To)
-	}
-	f := &forcedRoll{
-		holdID: hold.ID, answerKey: key, luckyKey: key, toHit: int(hold.Modifier), lucky: reroll,
-		// The d20 was typed when the roll was: the attack knows it from the request.
-		physical: typedRoll(orig),
-	}
-	if len(faces) == pairDice {
-		f.faces = faces
-	} else {
-		f.face = faces[0]
-	}
-	return f
-}
-
-// mayAnswerLucky checks, before anything is rolled, that the caller answers for the attacker (its
-// player or the master) and, for a player who rolls again, rolls the way the campaign has them
-// roll (RN-18).
-func (s *Service) mayAnswerLucky(ctx context.Context, m authz.Membership, hold playdb.RollHold, in rollInput, reroll bool) error {
-	cs, err := s.queries.ListCombatants(ctx, hold.EncounterID)
-	if err != nil {
-		return s.dbError(ctx, "list the combatants", err)
-	}
-	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == hold.CombatantID })
-	if i < 0 {
-		return connect.NewError(connect.CodeNotFound, errors.New("held roll not found"))
-	}
-	if err := viewerOf(m).mayAct(cs[i]); err != nil {
-		return err
-	}
-	if !reroll || m.Role == authz.RoleMaster {
-		return nil
-	}
-	return s.mustRollThisWay(ctx, nil, m, in)
+	attack, _ := out.(*playv1.RollAttackResponse)
+	return connect.NewResponse(&playv1.AnswerLuckyResponse{Attack: attack}), nil
 }
 
 // rollLuckyDie rolls again the die of a hold that shows the 1, at index (or takes the face the
@@ -390,14 +206,4 @@ func (s *Service) rollLuckyDie(ctx context.Context, index int32, in rollInput) (
 		face = rolled.Faces[0]
 	}
 	return &luckyReroll{Index: index, From: 1, To: clamp32(face, 1, d20Sides)}, nil
-}
-
-// luckyAnswered runs RollAttack for the held request with the Lucky answer's d20 (forced), or, for
-// an answer already resolved (nil), reads the attack as it was resolved.
-func (s *Service) luckyAnswered(ctx context.Context, orig *playv1.RollAttackRequest, forced *forcedRoll) (*connect.Response[playv1.AnswerLuckyResponse], error) {
-	out, err := s.RollAttack(withForced(ctx, forced), connect.NewRequest(orig))
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(&playv1.AnswerLuckyResponse{Attack: out.Msg}), nil
 }

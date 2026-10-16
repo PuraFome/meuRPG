@@ -11,7 +11,7 @@ import {
 
 /**
  * Display helpers of the sheet page only (the "Ficha de papel" layout,
- * docs/design.md). Every one of them formats a number or a stable code the
+ * docs/design/README.md). Every one of them formats a number or a stable code the
  * server sent; none computes a rule (ADR-0008) or parses a display string.
  */
 
@@ -60,7 +60,7 @@ export function formatWhen(date: Date): string {
   return `${date.getDate()} de ${SHORT_MONTHS[date.getMonth()]}, ${date.getHours()}h${minutes}`;
 }
 
-/** The one-word state tag (docs/design.md, StatusTag): "Pendente", not the
+/** The one-word state tag (docs/design/README.md, StatusTag): "Pendente", not the
  * lifecycle's full "Pendente de aprovação", which the notice under the
  * header spells out. */
 export function stateTagLabel(state: CharacterState): string {

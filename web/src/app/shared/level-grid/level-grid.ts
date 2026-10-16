@@ -2,6 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { type GridColumns, type RowDraft, circleLabel } from '../../core/content/class-draft';
+import { RelayEvents } from '../relay-events/relay-events';
 
 /** A feature chip in a row of the grid: a name the master opens, or one the app puts there itself (locked). */
 export interface GridChip {
@@ -60,7 +61,7 @@ export interface GridProblem {
  */
 @Component({
   selector: 'app-level-grid',
-  imports: [MatIconModule],
+  imports: [RelayEvents, MatIconModule],
   templateUrl: './level-grid.html',
   styleUrl: './level-grid.scss',
 })

@@ -133,7 +133,7 @@ const DRAWINGS: Record<DieShape['shape'], DieDrawing> = {
 const TENS = 10;
 
 /**
- * The dice roll animation, mounted once in the shell (docs/design.md#roll-animation). It is not a dialog: focus never
+ * The dice roll animation, mounted once in the shell (docs/design/session.md#rolls). It is not a dialog: focus never
  * moves into it, the picture is hidden from assistive technology and the live region announces one sentence when the
  * dice land. It exists only while a roll plays (the landing takes under 2 s; the result stays up to 10 s), so it never blocks the page after that; a tap or Esc closes it.
  * Each die is drawn as the real polyhedron (`DRAWINGS`); a d100 is the two percentile d10, captioned "dezenas" and "unidades".
