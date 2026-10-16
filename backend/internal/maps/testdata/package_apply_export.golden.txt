@@ -1,0 +1,162 @@
+image old=66666666-6666-4666-8666-666666666661 name="Mapa" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=0ms
+image old=66666666-6666-4666-8666-666666666662 name="Cena" type=image/png 40x30 size>0=true generated=true kind="scene" parent=66666666-6666-4666-8666-666666666661 copy= olderBy=1ms
+image old=66666666-6666-4666-8666-666666666663 name="Cópia" type=image/png 50x20 size>0=true generated=false kind="" parent= copy=66666666-6666-4666-8666-666666666661 olderBy=2ms
+counts images=3 bytes>0=true maps=2 scenes=1
+no problems
+facts maps=true kinds=6 names=6
+fact 44444444-4444-4444-8444-444444444441 map=11111111-1111-4111-8111-111111111111 kind=scene name=A ponte
+fact 44444444-4444-4444-8444-444444444443 map=11111111-1111-4111-8111-111111111111 kind=submap name=Torre
+fact 44444444-4444-4444-8444-444444444445 map=11111111-1111-4111-8111-111111111111 kind=treasure name=Baú
+door at (2,2) of map A=true, (3,3)=false, of map B=false, of an unknown map=false, outside the grid=false
+image "Mapa" image/png 400x300 generated=false kind="" parent=- copy=-
+image "Mapa" image/png 40x30 generated=false kind="" parent=- copy=-
+image "Cena" image/png 40x30 generated=true kind="scene" parent=Mapa copy=-
+image "Cópia" image/png 50x20 generated=false kind="" parent=- copy=Mapa
+export {
+  "id": "11111111-1111-4111-8111-111111111111",
+  "name": "Vila",
+  "imageId": "66666666-6666-4666-8666-666666666661",
+  "gridColumns": 20,
+  "gridFactor": 1,
+  "revealed": true,
+  "fogEnabled": true,
+  "fogOnFirstGrid": true,
+  "groupVision": true,
+  "baseLight": "dim",
+  "layers": {
+    "difficultTerrain": "AAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "walls": "AAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "doors": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  },
+  "points": [
+    {
+      "id": "44444444-4444-4444-8444-444444444441",
+      "kind": "MAP_POINT_KIND_SCENE",
+      "name": "A ponte",
+      "description": "Uma ponte.",
+      "xBp": 100,
+      "yBp": 200,
+      "revealed": true,
+      "hooks": "ganchos",
+      "showDc": true,
+      "actions": [
+        {
+          "key": "skill:investigation",
+          "name": "Procurar",
+          "dc": 15,
+          "maxAttempts": 2
+        },
+        {
+          "key": "save:wis"
+        }
+      ],
+      "clues": [
+        {
+          "id": "55555555-5555-4555-8555-555555555551",
+          "text": "pista um"
+        },
+        {
+          "id": "55555555-5555-4555-8555-555555555552",
+          "text": "pista dois"
+        }
+      ]
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444443",
+      "kind": "MAP_POINT_KIND_SUBMAP",
+      "name": "Torre",
+      "xBp": 300,
+      "yBp": 300,
+      "targetMapId": "22222222-2222-4222-8222-222222222222",
+      "stairs": "up"
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "kind": "MAP_POINT_KIND_BATTLE",
+      "name": "Emboscada",
+      "xBp": 400,
+      "yBp": 400,
+      "targetMapId": "22222222-2222-4222-8222-222222222222"
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444445",
+      "kind": "MAP_POINT_KIND_TREASURE",
+      "name": "Baú",
+      "xBp": 500,
+      "yBp": 500,
+      "treasureValuePo": 250
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444446",
+      "kind": "MAP_POINT_KIND_TRAP",
+      "name": "Fosso",
+      "xBp": 600,
+      "yBp": 600,
+      "trap": {
+        "noticeDc": 15,
+        "findDc": 15,
+        "areaSize": 2,
+        "trigger": "TRAP_TRIGGER_ENTER",
+        "effect": {
+          "attack": {
+            "bonus": 5,
+            "count": 2,
+            "damage": {
+              "dice": "1d6",
+              "damageTypeKey": "damage-type:piercing"
+            }
+          },
+          "damage": [
+            {
+              "dice": "2d6",
+              "damageTypeKey": "damage-type:bludgeoning"
+            }
+          ],
+          "conditions": [
+            {
+              "conditionKey": "condition:restrained",
+              "durationPt": "1 hora"
+            }
+          ],
+          "save": {
+            "ability": "ABILITY_DEXTERITY",
+            "dc": 12,
+            "appliesTo": "TRAP_SAVE_APPLIES_CAUGHT",
+            "onFail": {
+              "damage": [
+                {
+                  "dice": "1d8",
+                  "damageTypeKey": "damage-type:fire"
+                }
+              ],
+              "condition": {
+                "conditionKey": "condition:poisoned"
+              }
+            },
+            "onPass": "TRAP_PASS_OUTCOME_HALF"
+          },
+          "targets": "TRAP_TARGETS_MANUAL"
+        }
+      }
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444447",
+      "kind": "MAP_POINT_KIND_LIGHT",
+      "name": "Tocha",
+      "xBp": 700,
+      "yBp": 700,
+      "light": {
+        "presetKey": "light:torch",
+        "brightFt": 20,
+        "dimFt": 20
+      }
+    }
+  ]
+}
+export {
+  "id": "22222222-2222-4222-8222-222222222222",
+  "name": "Subsolo",
+  "imageId": "66666666-6666-4666-8666-666666666662",
+  "gridFactor": 1,
+  "baseLight": "dark"
+}

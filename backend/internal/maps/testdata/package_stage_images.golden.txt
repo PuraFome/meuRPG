@@ -1,0 +1,121 @@
+== no images
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+no problems
+
+== files but no list
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_MISSING_ENTRY limit=0
+
+== a good list of three
+err=<nil>
+image old=66666666-6666-4666-8666-666666666661 name="Mapa" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=0ms
+image old=66666666-6666-4666-8666-666666666662 name="Cena" type=image/png 40x30 size>0=true generated=true kind="scene" parent=66666666-6666-4666-8666-666666666661 copy= olderBy=1ms
+image old=66666666-6666-4666-8666-666666666663 name="Cópia" type=image/png 50x20 size>0=true generated=false kind="" parent= copy=66666666-6666-4666-8666-666666666661 olderBy=2ms
+counts images=3 bytes>0=true maps=0 scenes=0
+no problems
+
+== two lists
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== a list under another name
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== a list that is not JSON
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_PACKAGE name="images.json" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+
+== a list with a field the server does not know
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_PACKAGE name="images.json" reason=PACKAGE_PROBLEM_REASON_UNKNOWN_FIELD limit=0
+
+== more images than the gallery holds
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_LIMIT limit=2
+
+== exactly the most images
+err=<nil>
+image old=66666666-6666-4666-8666-666666666661 name="a" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=0ms
+image old=66666666-6666-4666-8666-666666666662 name="b" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=1ms
+counts images=2 bytes>0=true maps=0 scenes=0
+no problems
+
+== a name that is empty
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== an id that is not a UUID
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="a" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== an id twice
+err=<nil>
+image old=66666666-6666-4666-8666-666666666661 name="a" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=0ms
+counts images=1 bytes>0=true maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="b" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== a kind that does not exist
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="a" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== a kind on an image that is not generated
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="a" reason=PACKAGE_PROBLEM_REASON_INVALID limit=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== a generated image with no kind
+err=<nil>
+image old=66666666-6666-4666-8666-666666666661 name="a" type=image/png 400x300 size>0=true generated=true kind="" parent= copy= olderBy=0ms
+counts images=1 bytes>0=true maps=0 scenes=0
+no problems
+
+== a file the package lacks
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="a" reason=PACKAGE_PROBLEM_REASON_MISSING_ENTRY limit=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== a file that is not an image file
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="a" reason=PACKAGE_PROBLEM_REASON_MISSING_ENTRY limit=0
+
+== a file two images use
+err=<nil>
+image old=66666666-6666-4666-8666-666666666661 name="a" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=0ms
+counts images=1 bytes>0=true maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="b" reason=PACKAGE_PROBLEM_REASON_DUPLICATE limit=0
+
+== a file that is not an image
+err=<nil>
+counts images=0 bytes>0=false maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="a" reason=PACKAGE_PROBLEM_REASON_IMAGE_UNREADABLE limit=10485760
+
+== a file nobody names
+err=<nil>
+image old=66666666-6666-4666-8666-666666666661 name="a" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=0ms
+counts images=1 bytes>0=true maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_UNEXPECTED_ENTRY limit=0
+
+== a gallery bigger than its bytes
+err=<nil>
+image old=66666666-6666-4666-8666-666666666661 name="a" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=0ms
+counts images=1 bytes>0=true maps=0 scenes=0
+problem kind=PACKAGE_PROBLEM_KIND_IMAGE name="" reason=PACKAGE_PROBLEM_REASON_LIMIT limit=100
+
