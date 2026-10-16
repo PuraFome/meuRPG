@@ -209,11 +209,15 @@ func TestCastingOutside_TheRequestAndThePlanAreRefusedWithTheirMessages(t *testi
 		}, connect.CodeNotFound, "character not found"},
 		"a spell the sheet does not know": {a.ana, a.pens, "spell:nonexistent", slotOfLevel(1), false, nil, nil, connect.CodeInvalidArgument, "spell_key is not one of the caster's spells"},
 		"a slot below the spell's level":  {a.bia, a.bri, aidSpell, slotOfLevel(1), false, tor, nil, connect.CodeInvalidArgument, "slot must be a spell slot of at least the spell's level"},
-		"no slot for a levelled spell":    {a.bia, a.bri, cureWounds, nil, false, tor, nil, connect.CodeInvalidArgument, "slot must be a spell slot of at least the spell's level"},
+		"no slot for a leveled spell":     {a.bia, a.bri, cureWounds, nil, false, tor, nil, connect.CodeInvalidArgument, "slot must be a spell slot of at least the spell's level"},
 		"a ritual with a slot":            {a.ana, a.pens, alarmKey, slotOfLevel(1), true, nil, nil, connect.CodeInvalidArgument, "a ritual is cast with no slot"},
 		"a spell that needs a target":     {a.bia, a.bri, cureWounds, slotOfLevel(1), false, nil, nil, connect.CodeInvalidArgument, "this spell needs a target"},
-		"more targets than the spell takes": {a.bia, a.bri, cureWounds, slotOfLevel(1), false, []*charactersv1.Character{a.toren, a.pens}, nil, connect.CodeInvalidArgument,
-			"this spell takes at most 1 targets with this slot"},
+		"more targets than the spell takes": {
+			a.bia, a.bri, cureWounds, slotOfLevel(1), false,
+			[]*charactersv1.Character{a.toren, a.pens},
+			nil, connect.CodeInvalidArgument,
+			"this spell takes at most 1 targets with this slot",
+		},
 		"a pick for a spell that is not a summon": {a.bia, a.bri, cureWounds, slotOfLevel(1), false, tor, func(r *playv1.CastSpellOutsideCombatRequest) {
 			r.Summon = &playv1.SummonChoice{CreatureKeys: []string{"monster:owl"}}
 		}, connect.CodeInvalidArgument, "summon is for a summoning spell, and a summoning spell needs it"},

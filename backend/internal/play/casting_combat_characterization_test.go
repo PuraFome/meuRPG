@@ -45,23 +45,55 @@ func TestMetamagicRefusalsSayWhy(t *testing.T) {
 	}{
 		"an option the sorcerer does not know": {fireballSpell, 3, []string{"Goblin"}, []*playv1.MetamagicChoice{choice(rules.MetamagicSubtle)}, unknown},
 		"an option that is not one":            {fireballSpell, 3, []string{"Goblin"}, []*playv1.MetamagicChoice{choice("feature:metamagic-nothing")}, unknown},
-		"two options that do not join": {fireballSpell, 3, []string{"Goblin"},
-			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}, {Key: rules.MetamagicTwinned, TargetIds: []string{captain}}}, unknown},
-		"the same option twice": {fireballSpell, 3, []string{"Goblin"},
-			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}, {Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}}, unknown},
-		"Twinned Spell on an area": {fireballSpell, 3, []string{"Goblin"},
-			[]*playv1.MetamagicChoice{{Key: rules.MetamagicTwinned, TargetIds: []string{captain}}}, "the spell does not take this Metamagic option"},
-		"Twinned Spell with no second target": {holdPerson, 2, []string{"Goblin"}, []*playv1.MetamagicChoice{choice(rules.MetamagicTwinned)},
-			"Twinned Spell takes the spell's target and one more"},
-		"Twinned Spell with the same target": {holdPerson, 2, []string{"Goblin"},
-			[]*playv1.MetamagicChoice{{Key: rules.MetamagicTwinned, TargetIds: []string{goblin}}}, "the second target must be another creature"},
+		"two options that do not join": {
+			fireballSpell, 3,
+			[]string{"Goblin"},
+			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}, {Key: rules.MetamagicTwinned, TargetIds: []string{captain}}},
+			unknown,
+		},
+		"the same option twice": {
+			fireballSpell, 3,
+			[]string{"Goblin"},
+			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}, {Key: rules.MetamagicCareful, CarefulIds: []string{goblin}}},
+			unknown,
+		},
+		"Twinned Spell on an area": {
+			fireballSpell, 3,
+			[]string{"Goblin"},
+			[]*playv1.MetamagicChoice{{Key: rules.MetamagicTwinned, TargetIds: []string{captain}}},
+			"the spell does not take this Metamagic option",
+		},
+		"Twinned Spell with no second target": {
+			holdPerson, 2,
+			[]string{"Goblin"},
+			[]*playv1.MetamagicChoice{choice(rules.MetamagicTwinned)},
+			"Twinned Spell takes the spell's target and one more",
+		},
+		"Twinned Spell with the same target": {
+			holdPerson, 2,
+			[]string{"Goblin"},
+			[]*playv1.MetamagicChoice{{Key: rules.MetamagicTwinned, TargetIds: []string{goblin}}},
+			"the second target must be another creature",
+		},
 		"Careful Spell with nobody": {fireballSpell, 3, []string{"Goblin"}, []*playv1.MetamagicChoice{choice(rules.MetamagicCareful)}, carefulCount},
-		"Careful Spell for more than Charisma": {fireballSpell, 3, []string{"Goblin"},
-			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{goblin, captain, tavo, a.id(t, "Orla")}}}, carefulCount},
-		"Careful Spell for a creature protected twice": {fireballSpell, 3, []string{"Goblin"},
-			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{goblin, goblin}}}, "a creature is protected twice"},
-		"Careful Spell for a creature not hit": {fireballSpell, 3, []string{"Goblin"},
-			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{tavo}}}, "a protected creature must be one of the spell's targets"},
+		"Careful Spell for more than Charisma": {
+			fireballSpell, 3,
+			[]string{"Goblin"},
+			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{goblin, captain, tavo, a.id(t, "Orla")}}},
+			carefulCount,
+		},
+		"Careful Spell for a creature protected twice": {
+			fireballSpell, 3,
+			[]string{"Goblin"},
+			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{goblin, goblin}}},
+			"a creature is protected twice",
+		},
+		"Careful Spell for a creature not hit": {
+			fireballSpell, 3,
+			[]string{"Goblin"},
+			[]*playv1.MetamagicChoice{{Key: rules.MetamagicCareful, CarefulIds: []string{tavo}}},
+			"a protected creature must be one of the spell's targets",
+		},
 	} {
 		_, err := a.castWith(t, a.ana, e, "Nael", tc.spell, slotOfLevel(tc.slot), a.at(t, tc.at...), tc.meta...)
 		wantCombatCastMessage(t, name, err, connect.CodeInvalidArgument, tc.msg)
@@ -101,7 +133,7 @@ func TestMetamagicHeightenedNeedsASpellTarget(t *testing.T) {
 }
 
 // TestMetamagicQuickenedNeedsAFreeBonusActionAndRespectsTheSpellLimit: the bonus action must be
-// free, and a levelled spell cast with the action leaves no levelled bonus action spell.
+// free, and a leveled spell cast with the action leaves no leveled bonus action spell.
 func TestMetamagicQuickenedNeedsAFreeBonusActionAndRespectsTheSpellLimit(t *testing.T) {
 	t.Parallel()
 	a := newResourceTableWith(t, []string{rules.MetamagicQuickened, rules.MetamagicSubtle})
