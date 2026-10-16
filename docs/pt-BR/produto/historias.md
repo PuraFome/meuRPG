@@ -117,7 +117,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 
 #### Relacionadas
 - RN-03: um jogador só cria um personagem novo nesta campanha quando o atual morre; o personagem morto continua no sistema (ver [Regras de negócio](regras.md)).
-- A RN-17 descreve a entrada de um jogador sem Google (ainda não construída; ver [ADR-0009](../../adr/0009-login-do-jogador-sem-google.md)).
+- A RN-17 descreve a entrada de um jogador sem Google (ainda não construída; ver [ADR-0009](../../adr/0009-table-accounts-for-players-without-google.md)).
 - Quando o convite exige aprovação (RN-15), o jogador entra como membro pendente, cria o personagem, e ele fica pendente até o mestre aprovar ou recusar. Ver [MR-024](#mr-024-aprovar-o-personagem-do-convite).
 
 ### MR-004: Ficha no formato do PDF
@@ -155,7 +155,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
   - Uma magia sem tradução mostra o inglês, marcado "(em inglês)".
 
 #### Relacionadas
-- O motor de regras calcula a ficha a partir de regras como dados. Ver [ADR-0008](../../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md) e [Arquitetura](../../architecture/characters.md).
+- O motor de regras calcula a ficha a partir de regras como dados. Ver [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md) e [Arquitetura](../../architecture/characters.md).
 
 ### MR-006: Ficha travada
 
@@ -295,7 +295,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 
 #### Relacionadas
 - Cada NPC rola a própria iniciativa (RN-19); o jogador vê o estado do inimigo por uma palavra, nunca pontos de vida nem classe de armadura (RN-20); cada quadrado da grade tem 1,5 m, diagonais incluídas (RN-21). Ver [Regras de negócio](regras.md).
-- A velocidade disponível vem do motor de regras. Ver [ADR-0008](../../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- A velocidade disponível vem do motor de regras. Ver [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md).
 
 ### MR-014: Sua vez
 
@@ -376,7 +376,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - RN-02: o mestre pode corrigir pontos de vida e espaços de magia à mão (ver [Regras de negócio](regras.md)).
 - Dados (RN-18): o mestre escolhe como a campanha rola (cada jogador escolhe, todos no app, ou todos com os próprios dados) e cada jogador mantém a própria preferência, na página da campanha. Com um dado físico o jogador digita a soma dos dados e o app soma o modificador. As rolagens de combate seguem essa regra.
 - O jogador vê se acertou ou errou e o dano, não a classe de armadura nem a rolagem do NPC (RN-20).
-- Quais ações, reações e recursos o sistema conhece vêm do motor de regras (regras como dados). Ver [ADR-0008](../../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- Quais ações, reações e recursos o sistema conhece vêm do motor de regras (regras como dados). Ver [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md).
 
 ### MR-015: Ações da cena de RP
 
@@ -404,7 +404,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - Ver [Cenas e palco](../../architecture/play/scenes-and-stage.md).
 
 #### Relacionadas
-- Numa cena de RP o mestre escolhe as ações possíveis e o jogador vê o que pode fazer com o próprio bônus; em combate o sistema decide. Ver [Regras de negócio](regras.md) e [ADR-0008](../../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- Numa cena de RP o mestre escolhe as ações possíveis e o jogador vê o que pode fazer com o próprio bônus; em combate o sistema decide. Ver [Regras de negócio](regras.md) e [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md).
 - As cenas têm testes de perícia, testes de habilidade e testes de resistência; magias e habilidades não fazem parte delas.
 
 ### MR-016: Dar XP
@@ -438,7 +438,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 
 #### Relacionadas
 - Como o XP é dado: o ND ou o XP digitado, o mestre decide quem recebe, o arredondamento para baixo, o aviso de subida de nível para mestre e jogador, e o histórico para todos. Ver [RN-09](regras.md) e [RN-12](regras.md).
-- O que cada personagem ganha ao subir de nível vem do motor de regras. Ver [ADR-0008](../../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- O que cada personagem ganha ao subir de nível vem do motor de regras. Ver [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md).
 
 ### MR-018: Documento de campanha
 
@@ -1386,7 +1386,7 @@ Propostas para depois do MVP, na ordem do [roadmap](../../roadmap.md).
 
 #### Relacionadas
 - A edição guiada da ficha já está no MVP: [MR-040](#mr-040-subir-de-nível-pela-ficha). Esta história é a tela completa de subir de nível.
-- Ver [ADR-0008](../../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- Ver [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md).
 
 ### MR-020: Consultar o livro de regras
 
@@ -1432,7 +1432,7 @@ As magias estão no MVP: [MR-045](#mr-045-consultar-as-magias).
 - Módulos: campaigns
 
 #### Consequência
-Excluir a conta de quem criou a campanha apaga a campanha inteira (ver [Privacidade](../privacidade.md#excluir-a-conta)). Com mais de um mestre, ou depois de uma passagem, a campanha só seria apagada quando o último mestre saísse. Ver [ADR-0011](../../adr/0011-autorizacao-papeis-por-campanha.md), como proposta.
+Excluir a conta de quem criou a campanha apaga a campanha inteira (ver [Privacidade](../privacidade.md#excluir-a-conta)). Com mais de um mestre, ou depois de uma passagem, a campanha só seria apagada quando o último mestre saísse. Ver [ADR-0011](../../adr/0011-authorization-roles-per-campaign-checked-per-request.md), como proposta.
 
 ### MR-026: Propor uma raça ou classe nova
 

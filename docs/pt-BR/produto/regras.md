@@ -276,7 +276,7 @@ Uma campanha pode ter mais de um mestre, e um mestre pode passar a campanha para
 **Não construída** ([MR-023](historias.md#mr-023-passar-ou-dividir-a-campanha), depois do MVP).
 Uma campanha tem um mestre, o criador dela.
 Quando construída, a campanha só é excluída quando o último mestre sai (veja [Privacidade](../privacidade.md#excluir-a-conta)).
-Veja a [ADR-0011](../../adr/0011-autorizacao-papeis-por-campanha.md).
+Veja a [ADR-0011](../../adr/0011-authorization-roles-per-campaign-checked-per-request.md).
 
 ## RN-14: Criar campanha exige conta de mestre completa
 
@@ -285,7 +285,7 @@ Para criar uma campanha, a conta precisa ser de mestre completa, o que hoje só 
 
 Toda conta vem do login OIDC (Google em produção), então toda conta é de mestre completa.
 O único portão é a lista opcional de e-mails autorizados a criar campanhas (RN-30).
-Quando outro jeito de entrar chegar (RN-17), criar uma campanha deverá recusar contas sem identidade Google, como a [ADR-0009](../../adr/0009-login-do-jogador-sem-google.md) propôs.
+Quando outro jeito de entrar chegar (RN-17), criar uma campanha deverá recusar contas sem identidade Google, como a [ADR-0009](../../adr/0009-table-accounts-for-players-without-google.md) propôs.
 
 ## RN-15: Convite com aprovação
 
@@ -319,7 +319,7 @@ Veja [Privacidade](../privacidade.md#excluir-a-conta) para o fluxo completo, inc
 **Não construída.**
 Toda conta entra pelo provedor OIDC (RN-14).
 Este é o comportamento pretendido: o jogador entra com um login anônimo, sem e-mail nem nome real.
-O apelido do mestre junto com o apelido do jogador identifica a conta de forma única (o apelido é por mesa, não por campanha, como a [ADR-0009](../../adr/0009-login-do-jogador-sem-google.md) propôs).
+O apelido do mestre junto com o apelido do jogador identifica a conta de forma única (o apelido é por mesa, não por campanha, como a [ADR-0009](../../adr/0009-table-accounts-for-players-without-google.md) propôs).
 O jogador entra sem senha; quando a primeira sessão de 30 dias expira, ele precisa definir uma senha ou vincular o Google para continuar.
 
 ## RN-18: Dados físicos ou do app

@@ -117,7 +117,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 
 #### Related
 - RN-03: a player creates a new character in this campaign only when the current one dies; the dead character stays in the system (see [Business rules](rules.md)).
-- RN-17 describes the sign-in of a player without Google (not built yet; see [ADR-0009](../adr/0009-login-do-jogador-sem-google.md)).
+- RN-17 describes the sign-in of a player without Google (not built yet; see [ADR-0009](../adr/0009-table-accounts-for-players-without-google.md)).
 - When the invite requires approval (RN-15), the player joins as a pending member, creates the character, and it stays pending until the master approves or refuses it. See [MR-024](#mr-024-approve-the-character-from-the-invite).
 
 ### MR-004: Character sheet in the PDF format
@@ -155,7 +155,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
   - A spell without a translation shows the English, marked "(em inglês)".
 
 #### Related
-- The rules engine calculates the sheet from rules as data. See [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md) and [Architecture](../architecture/characters.md).
+- The rules engine calculates the sheet from rules as data. See [ADR-0008](../adr/0008-rules-content-as-data-pure-engine.md) and [Architecture](../architecture/characters.md).
 
 ### MR-006: Locked sheet
 
@@ -295,7 +295,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 
 #### Related
 - Each NPC rolls its own initiative (RN-19); the player sees enemy state by a word, never hit points or armor class (RN-20); each grid square is 1,5 m, diagonals included (RN-21). See [Business rules](rules.md).
-- The available speed comes from the rules engine. See [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- The available speed comes from the rules engine. See [ADR-0008](../adr/0008-rules-content-as-data-pure-engine.md).
 
 ### MR-014: Your turn
 
@@ -376,7 +376,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - RN-02: the master can correct hit points and spell slots by hand (see [Business rules](rules.md)).
 - Dice (RN-18): the master chooses how the campaign rolls (each player chooses, everyone in the app, or everyone with their own dice) and each player keeps their own preference, on the campaign page. With a physical die the player types the sum of the dice and the app adds the modifier. Combat rolls follow this rule.
 - The player sees whether they hit or missed and the damage, not armor class or the NPC's roll (RN-20).
-- Which actions, reactions and resources the system knows come from the rules engine (rules as data). See [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- Which actions, reactions and resources the system knows come from the rules engine (rules as data). See [ADR-0008](../adr/0008-rules-content-as-data-pure-engine.md).
 
 ### MR-015: RP scene actions
 
@@ -404,7 +404,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - See [Scenes and stage](../architecture/play/scenes-and-stage.md).
 
 #### Related
-- In an RP scene the master chooses the possible actions and the player sees what they can do with their own bonus; in combat the system decides. See [Business rules](rules.md) and [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- In an RP scene the master chooses the possible actions and the player sees what they can do with their own bonus; in combat the system decides. See [Business rules](rules.md) and [ADR-0008](../adr/0008-rules-content-as-data-pure-engine.md).
 - Scenes have skill checks, ability checks and saving throws; spells and abilities are not part of them.
 
 ### MR-016: Award XP
@@ -438,7 +438,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 
 #### Related
 - How XP is awarded: the ND or typed XP, the master decides who receives, rounding down, the level-up notice for master and player, and the history for everyone. See [RN-09](rules.md) and [RN-12](rules.md).
-- What each character gains on leveling up comes from the rules engine. See [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- What each character gains on leveling up comes from the rules engine. See [ADR-0008](../adr/0008-rules-content-as-data-pure-engine.md).
 
 ### MR-018: Campaign document
 
@@ -1386,7 +1386,7 @@ Proposals for after the MVP, in the order of the [roadmap](../roadmap.md).
 
 #### Related
 - The guided sheet edit is already in the MVP: [MR-040](#mr-040-level-up-from-the-sheet). This story is the complete level-up screen.
-- See [ADR-0008](../adr/0008-regras-dnd-conteudo-como-dados-motor-puro.md).
+- See [ADR-0008](../adr/0008-rules-content-as-data-pure-engine.md).
 
 ### MR-020: Look up the rulebook
 
@@ -1432,7 +1432,7 @@ Spells are in the MVP: [MR-045](#mr-045-look-up-spells).
 - Modules: campaigns
 
 #### Consequence
-Deleting the account of whoever created the campaign deletes the whole campaign (see [Privacy](../privacy.md#delete-the-account)). With more than one master, or after a hand-over, the campaign would be deleted only when the last master leaves. See [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md), as a proposal.
+Deleting the account of whoever created the campaign deletes the whole campaign (see [Privacy](../privacy.md#delete-the-account)). With more than one master, or after a hand-over, the campaign would be deleted only when the last master leaves. See [ADR-0011](../adr/0011-authorization-roles-per-campaign-checked-per-request.md), as a proposal.
 
 ### MR-026: Propose a new race or class
 

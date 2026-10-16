@@ -276,7 +276,7 @@ A campaign can have more than one master, and a master can hand the campaign ove
 **Not built** ([MR-023](stories.md#mr-023-hand-over-or-share-the-campaign), after the MVP).
 A campaign has one master, its creator.
 Once built, the campaign is deleted only when the last master leaves (see [Privacy](../privacy.md#delete-the-account)).
-See [ADR-0011](../adr/0011-autorizacao-papeis-por-campanha.md).
+See [ADR-0011](../adr/0011-authorization-roles-per-campaign-checked-per-request.md).
 
 ## RN-14: Creating a campaign needs a full master account
 
@@ -285,7 +285,7 @@ To create a campaign, the account must be a full master account, which today exi
 
 Every account comes from the OIDC sign-in (Google in production), so every account is a full master account.
 The only gate is the optional list of e-mails allowed to create campaigns (RN-30).
-When another way to sign in arrives (RN-17), creating a campaign must refuse accounts without a Google identity, as [ADR-0009](../adr/0009-login-do-jogador-sem-google.md) proposed.
+When another way to sign in arrives (RN-17), creating a campaign must refuse accounts without a Google identity, as [ADR-0009](../adr/0009-table-accounts-for-players-without-google.md) proposed.
 
 ## RN-15: Invite with approval
 
@@ -319,7 +319,7 @@ See [Privacy](../privacy.md#delete-the-account) for the full flow, including the
 **Not built.**
 Every account signs in through the OIDC provider (RN-14).
 This is the intended behaviour: the player signs in with an anonymous login, with no e-mail or real name.
-The master's nickname together with the player's nickname identifies the account uniquely (the nickname is per table, not per campaign, as [ADR-0009](../adr/0009-login-do-jogador-sem-google.md) proposed).
+The master's nickname together with the player's nickname identifies the account uniquely (the nickname is per table, not per campaign, as [ADR-0009](../adr/0009-table-accounts-for-players-without-google.md) proposed).
 The player signs in without a password; when the first 30-day session expires, they must set a password or link Google to continue.
 
 ## RN-18: Physical or app dice
