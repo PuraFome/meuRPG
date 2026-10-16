@@ -454,11 +454,6 @@ cognitive internal/rules (ChoiceSet).ChoiceProblems 23
 cognitive internal/rules checkModifier 53
 cognitive internal/rules load 31
 cognitive internal/rules metamagicReason 18
-cognitive internal/rules/combat AttackMode 31
-cognitive internal/rules/combat Options 18
-cognitive internal/rules/combat SaveMode 27
-cognitive internal/rules/combat spellOption 19
-cognitive internal/rules/vision (*Lit).seeWalls 20
 cyclomatic cmd/api run 21
 cyclomatic cmd/migrate run 17
 cyclomatic internal/campaignpackage (*Service).BeginCampaignImport 22
@@ -774,9 +769,6 @@ cyclomatic internal/rules (*deriver).effectHints 17
 cyclomatic internal/rules checkModifier 43
 cyclomatic internal/rules load 39
 cyclomatic internal/rules metamagicReason 20
-cyclomatic internal/rules/combat AttackMode 30
-cyclomatic internal/rules/combat BonusAttack 19
-cyclomatic internal/rules/combat SaveMode 28
 maintainability internal/maps (*Service).RedrawDungeonMap 16
 maintainability internal/maps (*Service).reserve 19
 maintainability internal/play (*Service).ApplyPendingDamage 16
