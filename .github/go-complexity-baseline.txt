@@ -221,7 +221,6 @@ cognitive internal/play (*Service).afterEffectEnded 36
 cognitive internal/play (*Service).answerCounterspell 19
 cognitive internal/play (*Service).answerFeatherFall 25
 cognitive internal/play (*Service).answerHellishRebuke 28
-cognitive internal/play (*Service).answerOffer 25
 cognitive internal/play (*Service).answerRider 23
 cognitive internal/play (*Service).applyHintTry 27
 cognitive internal/play (*Service).applyLastingSpell 44
@@ -272,13 +271,10 @@ cognitive internal/play (*Service).healTargets 44
 cognitive internal/play (*Service).hideAndHelpActions 20
 cognitive internal/play (*Service).joinCreatures 31
 cognitive internal/play (*Service).markKnownTraps 16
-cognitive internal/play (*Service).markProvokes 23
 cognitive internal/play (*Service).masterExtras 22
 cognitive internal/play (*Service).modifiersOf 17
 cognitive internal/play (*Service).noEffectWhy 19
 cognitive internal/play (*Service).openRevivifyRequest 17
-cognitive internal/play (*Service).opportunityOffers 30
-cognitive internal/play (*Service).opportunityReactors 32
 cognitive internal/play (*Service).outsideModeOf 19
 cognitive internal/play (*Service).participants 37
 cognitive internal/play (*Service).pendingView 30
@@ -286,7 +282,6 @@ cognitive internal/play (*Service).planCast 16
 cognitive internal/play (*Service).prepareMetamagic 21
 cognitive internal/play (*Service).prepareSummon 18
 cognitive internal/play (*Service).pruneHolds 38
-cognitive internal/play (*Service).pruneOffers 19
 cognitive internal/play (*Service).publishReactions 31
 cognitive internal/play (*Service).raiseMaxHP 18
 cognitive internal/play (*Service).reactionPrompts 26
@@ -561,7 +556,6 @@ cyclomatic internal/play (*Service).answerCounterspell 17
 cyclomatic internal/play (*Service).answerCuttingWords 17
 cyclomatic internal/play (*Service).answerFeatherFall 20
 cyclomatic internal/play (*Service).answerHellishRebuke 20
-cyclomatic internal/play (*Service).answerOffer 16
 cyclomatic internal/play (*Service).answerRider 21
 cyclomatic internal/play (*Service).applyHintTry 28
 cyclomatic internal/play (*Service).applyLastingSpell 33
@@ -602,13 +596,10 @@ cyclomatic internal/play (*Service).healTargets 30
 cyclomatic internal/play (*Service).hellishWindow 19
 cyclomatic internal/play (*Service).joinCreatures 19
 cyclomatic internal/play (*Service).openRevivifyRequest 16
-cyclomatic internal/play (*Service).opportunityOffers 17
-cyclomatic internal/play (*Service).opportunityReactors 25
 cyclomatic internal/play (*Service).participants 28
 cyclomatic internal/play (*Service).pendingView 19
 cyclomatic internal/play (*Service).prepareMetamagic 18
 cyclomatic internal/play (*Service).pruneHolds 28
-cyclomatic internal/play (*Service).pruneOffers 18
 cyclomatic internal/play (*Service).publishReactions 18
 cyclomatic internal/play (*Service).reactionPrompts 17
 cyclomatic internal/play (*Service).reactionView 22
