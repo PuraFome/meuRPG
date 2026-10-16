@@ -175,256 +175,387 @@ func settleContest(ctx context.Context, c *combatTx, row playdb.CombatContest, w
 	return contestResolved, "", nil
 }
 
+// The escape DC a master may give a grapple that came from an attack (SRD 5.1: the
+// monsters' "escape DC" runs from the low teens to the low twenties; the table's ceiling is
+// the highest DC of any check).
+const (
+	minEscapeDC = 1
+	maxEscapeDC = 40
+)
+
+// contestStart is a StartContest request read and checked: everything the transaction needs
+// that does not come from the database.
+type contestStart struct {
+	m            authz.Membership
+	key, encID   string
+	initiatorID  string
+	targetID     string // empty for an escape
+	purpose      playv1.ContestPurpose
+	purposeKey   string
+	byAttack     bool // a grapple that came from an attack: the master says the DC, nobody rolls
+	escapeDC     int32
+	skill        playv1.ContestSkill
+	maneuverKey  string
+	maneuverFace int32
+	in           checkInput
+}
+
+// purposeKeyOf is a contest's purpose as the table stores it.
+func purposeKeyOf(purpose playv1.ContestPurpose) (string, error) {
+	switch purpose {
+	case playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE:
+		return purposeGrapple, nil
+	case playv1.ContestPurpose_CONTEST_PURPOSE_SHOVE:
+		return purposeShove, nil
+	case playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE:
+		return purposeEscape, nil
+	case playv1.ContestPurpose_CONTEST_PURPOSE_UNSPECIFIED:
+	}
+	return "", connect.NewError(connect.CodeInvalidArgument, errors.New("purpose must be GRAPPLE, SHOVE or ESCAPE"))
+}
+
+// checkContestKind says whether the request is a grapple that came from an attack (kind
+// ESCAPE_DC) and refuses the kinds and DCs that do not go together.
+func checkContestKind(st *contestStart, kind playv1.ContestKind) error {
+	st.byAttack = kind == playv1.ContestKind_CONTEST_KIND_ESCAPE_DC
+	if st.byAttack && (st.purpose != playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE || st.m.Role != authz.RoleMaster) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("kind ESCAPE_DC is the master's grapple that came from an attack"))
+	}
+	if st.byAttack && (st.escapeDC < minEscapeDC || st.escapeDC > maxEscapeDC) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("escape_dc must be 1 to 40"))
+	}
+	if !st.byAttack && st.escapeDC != 0 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("escape_dc is only for kind ESCAPE_DC"))
+	}
+	return nil
+}
+
+// checkContestSkill defaults the skill to Athletics and refuses what a purpose cannot use:
+// only an escape may roll Acrobatics, and only a rolled grapple starts a maneuver.
+func checkContestSkill(st *contestStart) error {
+	if st.skill == playv1.ContestSkill_CONTEST_SKILL_UNSPECIFIED {
+		st.skill = playv1.ContestSkill_CONTEST_SKILL_ATHLETICS
+	}
+	if st.skill == playv1.ContestSkill_CONTEST_SKILL_ACROBATICS && st.purpose != playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a grapple or a shove is a Strength (Athletics) check"))
+	}
+	if st.maneuverKey != "" && (st.purpose != playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE || st.byAttack) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a maneuver starts a GRAPPLE that is rolled"))
+	}
+	return nil
+}
+
+// parseContestStart is the first phase of StartContest: read and validate the request, in
+// the order the refusals have always come.
+func parseContestStart(ctx context.Context, msg *playv1.StartContestRequest) (contestStart, error) {
+	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	if err != nil {
+		return contestStart{}, err
+	}
+	st := contestStart{m: m, key: key, encID: encID, purpose: msg.GetPurpose(), escapeDC: msg.GetEscapeDc(), skill: msg.GetSkill(), maneuverKey: msg.GetManeuverKey(), maneuverFace: msg.GetManeuverFace()}
+	if st.initiatorID, err = parseCombatID(msg.GetInitiatorId(), "combatant"); err != nil {
+		return contestStart{}, err
+	}
+	kind := msg.GetKind()
+	if kind == playv1.ContestKind_CONTEST_KIND_UNSPECIFIED {
+		kind = playv1.ContestKind_CONTEST_KIND_CONTEST
+	}
+	if st.purposeKey, err = purposeKeyOf(st.purpose); err != nil {
+		return contestStart{}, err
+	}
+	if err := checkContestKind(&st, kind); err != nil {
+		return contestStart{}, err
+	}
+	if st.purpose != playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE {
+		if st.targetID, err = parseCombatID(msg.GetTargetId(), "combatant"); err != nil {
+			return contestStart{}, err
+		}
+	}
+	if err := checkContestSkill(&st); err != nil {
+		return contestStart{}, err
+	}
+	if !st.byAttack {
+		if st.in, err = parseCheckInput(msg.GetRoll()); err != nil {
+			return contestStart{}, err
+		}
+	}
+	return st, nil
+}
+
+// contestRun is what one StartContest transaction knows as it goes: the request, the combat
+// as read, the sides, the roll and the row it will write.
+type contestRun struct {
+	st        contestStart
+	c         *combatTx
+	cs        []playdb.Combatant
+	v         combatViewer
+	holds     []playdb.CombatHold
+	initiator playdb.Combatant
+	defender  playdb.Combatant
+	row       playdb.InsertContestParams
+	roll      *contestRoll
+	man       link.Maneuver
+	usedMan   bool
+}
+
+// readContestRun is the read-and-validate phase of the transaction: the combat runs, the
+// initiator is the caller's to move now, and it has no contest waiting.
+func (s *Service) readContestRun(ctx context.Context, c *combatTx, st contestStart) (*contestRun, error) {
+	if err := mustBeRunning(c); err != nil {
+		return nil, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	v := c.viewer(st.m, cs) // the fog: an NPC the player does not see is not found
+	initiator, err := findCombatant(cs, st.initiatorID, v)
+	if err != nil {
+		return nil, err
+	}
+	if err := v.mayAct(initiator); err != nil {
+		return nil, err
+	}
+	open, err := c.q.ListUnansweredContestsOf(ctx, playdb.ListUnansweredContestsOfParams{EncounterID: c.enc.ID, InitiatorID: initiator.ID})
+	if err != nil {
+		return nil, fmt.Errorf("list the open contests: %w", err)
+	}
+	if len(open) > 0 {
+		return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_CONTEST_OPEN, "a contest of this combatant waits already")
+	}
+	if err := s.mustActNow(ctx, c, initiator); err != nil {
+		return nil, err
+	}
+	holds, err := c.q.ListHolds(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the holds: %w", err)
+	}
+	return &contestRun{
+		st: st, c: c, cs: cs, v: v, holds: holds, initiator: initiator,
+		row: playdb.InsertContestParams{
+			EncounterID: c.enc.ID, InitiatorID: initiator.ID, Round: c.enc.Round, CreatedAt: c.now, Purpose: st.purposeKey, Kind: contestKindContest,
+		},
+	}, nil
+}
+
+// resolveEscape picks the grappler as the defender of an escape and spends the action; a
+// hold that came from an attack makes the contest a fixed DC.
+func (s *Service) resolveEscape(ctx context.Context, r *contestRun) error {
+	hold, ok := holdOn(holdsOf(r.holds), r.initiator)
+	if !ok {
+		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_GRAPPLED, "the combatant is not grappled")
+	}
+	grappler, ok := combatantByID(r.cs, hold.GrapplerID)
+	if !ok {
+		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_GRAPPLED, "the combatant is not grappled")
+	}
+	r.defender = grappler
+	if err := spendAction(ctx, r.c, r.initiator, r.v.master); err != nil {
+		return err
+	}
+	if hold.EscapeDc != nil {
+		r.row.Kind, r.row.EscapeDc = contestKindEscapeDC, hold.EscapeDc
+	}
+	return nil
+}
+
+// spendContestAttack pays for a grapple or a shove: one attack of the Attack action, or the
+// bonus action and a use when a table maneuver starts the grapple.
+func (s *Service) spendContestAttack(ctx context.Context, r *contestRun, sheet link.Sheet) error {
+	if r.st.maneuverKey == "" {
+		return spendAttack(ctx, r.c, r.initiator, sheet, r.v.master)
+	}
+	// A table maneuver after a melee hit: the bonus action and a use, not an attack.
+	man, err := s.useGrappleManeuver(ctx, r.c, r.st.m.CampaignID, r.initiator, sheet, r.st.maneuverKey, r.v.master)
+	if err != nil {
+		return err
+	}
+	r.man, r.usedMan = man, true
+	return nil
+}
+
+// noteContestAttack records that a grapple or a shove is an attack on the target: it keeps
+// a rage going (SRD 5.1, Rage: the rage ends if the turn ends without having "attacked a
+// hostile creature") and gives a hider's position away ("Unseen Attackers and Targets").
+func (s *Service) noteContestAttack(ctx context.Context, r *contestRun) error {
+	c, initiator := r.c, r.initiator
+	if oppositeSide(initiator, r.defender) {
+		states, err := s.readStates(ctx, c.tx, c.enc.ID)
+		if err != nil {
+			return err
+		}
+		if hasState(states, initiator.ID, stateRage) && (!initiator.AttackedHostile || initiator.RageEndPending) {
+			if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: initiator.ID, AttackedHostile: true, TookDamage: initiator.TookDamage}); err != nil {
+				return fmt.Errorf("note the attack on a hostile creature: %w", err)
+			}
+		}
+	}
+	_, err := s.endHiding(ctx, c, initiator)
+	return err
+}
+
+// resolveAttackContest picks the defender of a grapple or a shove and, unless the grapple
+// came from an attack that was rolled already, spends what it costs.
+func (s *Service) resolveAttackContest(ctx context.Context, r *contestRun) error {
+	defender, err := findCombatant(r.cs, r.st.targetID, r.v)
+	if err != nil {
+		return err
+	}
+	r.defender = defender
+	switch {
+	case defender.ID == r.initiator.ID:
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a combatant cannot contest itself"))
+	case defender.Defeated:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "the target is defeated")
+	}
+	if r.st.byAttack {
+		// A grapple that came from an attack: the attack was rolled already, so nothing is
+		// spent and nobody rolls.
+		escapeDC := r.st.escapeDC
+		r.row.Kind, r.row.EscapeDc = contestKindEscapeDC, &escapeDC
+		return nil
+	}
+	if err := s.mustBeInReach(r.c, r.v, r.initiator, defender); err != nil {
+		return err
+	}
+	sheet, err := s.sheetOf(ctx, r.c.tx, r.st.m.CampaignID, r.initiator)
+	if err != nil {
+		return err
+	}
+	if err := mayAttack(r.initiator, false); err != nil {
+		return err
+	}
+	if err := s.spendContestAttack(ctx, r, sheet); err != nil {
+		return err
+	}
+	return s.noteContestAttack(ctx, r)
+}
+
+// rollContestInitiator rolls (or reads the typed dice of) the initiator's side, adds the
+// maneuver die when one started the grapple, and keeps the roll on the row.
+func (s *Service) rollContestInitiator(ctx context.Context, r *contestRun) error {
+	if !r.v.master {
+		if err := s.mustRollThisWay(ctx, r.c.tx, r.st.m, r.st.in.rollInput()); err != nil {
+			return err
+		}
+	}
+	roll, err := s.rollFor(ctx, r.c, r.initiator, skillKeyOf(r.st.skill), r.st.in, r.cs)
+	if err != nil {
+		return err
+	}
+	roll.ByMaster = r.v.master && !initiatorIsNPC(r.initiator)
+	if r.usedMan {
+		face, err := s.rollManeuverDie(r.man, r.st.in.inApp, r.st.maneuverFace)
+		if err != nil {
+			return err
+		}
+		addManeuverDie(&roll, r.man, face)
+	}
+	r.roll = &roll
+	if r.row.InitiatorRoll, err = encodeRoll(roll); err != nil {
+		return err
+	}
+	return nil
+}
+
+// instantWinner says who won a contest that nothing waits for, or "" when the defender
+// still has to answer: a grapple that came from an attack is won by its initiator, and an
+// escape against a fixed DC by whoever the roll puts ahead.
+func (r *contestRun) instantWinner() string {
+	switch {
+	case r.st.byAttack:
+		return winnerInitiator
+	case r.row.Kind == contestKindEscapeDC:
+		if combat.MeetsEscapeDC(int(r.roll.Total), int(*r.row.EscapeDc)) {
+			return winnerInitiator
+		}
+		return winnerDefender
+	}
+	return ""
+}
+
+// writeContest is the write phase: the contest row and, when nothing waits, its effect (the
+// grapple or the release) and the settled state. It returns the contest, the log line and
+// who won ("" while the defender has to answer).
+func (s *Service) writeContest(ctx context.Context, r *contestRun) (contestID, line, winner string, err error) {
+	c := r.c
+	r.row.Status = contestAwaitingDefender
+	winner = r.instantWinner()
+	if winner != "" {
+		r.row.Winner = &winner
+		r.row.ResolvedAt = &c.now
+	}
+	inserted, err := c.q.InsertContest(ctx, r.row)
+	if err != nil {
+		return "", "", "", fmt.Errorf("open the contest: %w", err)
+	}
+	if winner != "" {
+		// A fixed DC settles a grapple or an escape: nothing waits, whatever settleContest says.
+		_, line, err = settleContest(ctx, c, inserted, winner, r.initiator, r.defender)
+		if err != nil {
+			return "", "", "", err
+		}
+		if inserted, err = c.q.SetContestState(ctx, playdb.SetContestStateParams{EncounterID: c.enc.ID, ID: inserted.ID, Status: contestResolved, ShoveOutcome: nil, ResolvedAt: &c.now}); err != nil {
+			return "", "", "", fmt.Errorf("settle the contest: %w", err)
+		}
+	}
+	if err := touch(ctx, c); err != nil {
+		return "", "", "", err
+	}
+	return inserted.ID, line, winner, nil
+}
+
+// startContestTx is the whole change of StartContest: read and validate, resolve the
+// sides and what they spend, roll, write.
+func (s *Service) startContestTx(ctx context.Context, c *combatTx, st contestStart) (actionEvent, error) {
+	r, err := s.readContestRun(ctx, c, st)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	if st.purpose == playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE {
+		err = s.resolveEscape(ctx, r)
+	} else {
+		err = s.resolveAttackContest(ctx, r)
+	}
+	if err != nil {
+		return actionEvent{}, err
+	}
+	r.row.DefenderID = r.defender.ID
+	if !st.byAttack {
+		if err := s.rollContestInitiator(ctx, r); err != nil {
+			return actionEvent{}, err
+		}
+	}
+	contestID, line, winner, err := s.writeContest(ctx, r)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	c.characterID = &r.initiator.CharacterID
+	made := actionEvent{
+		Round: c.enc.Round, Secret: secretOf(r.initiator, r.defender), Actor: r.initiator.ID, Target: r.defender.ID,
+		Contest: &contestEvent{ContestID: contestID, Purpose: st.purposeKey, Line: line, Waiting: winner == ""},
+	}
+	if r.usedMan {
+		made.ManeuverSpent = []string{r.man.Resource}
+	}
+	return made, nil
+}
+
 // StartContest implements playv1connect.ContestServiceHandler.
-//
-//nolint:gocognit,gocyclo // the steps of one change in one closure, as RollAttack's are; a helper would only pass the transaction around
 func (s *Service) StartContest(
 	ctx context.Context,
 	req *connect.Request[playv1.StartContestRequest],
 ) (*connect.Response[playv1.StartContestResponse], error) {
-	m, key, encID, err := contestCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	st, err := parseContestStart(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	initiatorID, err := parseCombatID(req.Msg.GetInitiatorId(), "combatant")
-	if err != nil {
-		return nil, err
-	}
-	purpose, kind := req.Msg.GetPurpose(), req.Msg.GetKind()
-	if kind == playv1.ContestKind_CONTEST_KIND_UNSPECIFIED {
-		kind = playv1.ContestKind_CONTEST_KIND_CONTEST
-	}
-	var purposeKey string
-	switch purpose {
-	case playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE:
-		purposeKey = purposeGrapple
-	case playv1.ContestPurpose_CONTEST_PURPOSE_SHOVE:
-		purposeKey = purposeShove
-	case playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE:
-		purposeKey = purposeEscape
-	case playv1.ContestPurpose_CONTEST_PURPOSE_UNSPECIFIED:
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("purpose must be GRAPPLE, SHOVE or ESCAPE"))
-	}
-	byAttack := kind == playv1.ContestKind_CONTEST_KIND_ESCAPE_DC
-	if byAttack && (purpose != playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE || m.Role != authz.RoleMaster) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("kind ESCAPE_DC is the master's grapple that came from an attack"))
-	}
-	escapeDC := req.Msg.GetEscapeDc()
-	if byAttack && (escapeDC < 1 || escapeDC > 40) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("escape_dc must be 1 to 40"))
-	}
-	if !byAttack && escapeDC != 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("escape_dc is only for kind ESCAPE_DC"))
-	}
-	var targetID string
-	if purpose != playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE {
-		if targetID, err = parseCombatID(req.Msg.GetTargetId(), "combatant"); err != nil {
-			return nil, err
-		}
-	}
-	skill := req.Msg.GetSkill()
-	if skill == playv1.ContestSkill_CONTEST_SKILL_UNSPECIFIED {
-		skill = playv1.ContestSkill_CONTEST_SKILL_ATHLETICS
-	}
-	if skill == playv1.ContestSkill_CONTEST_SKILL_ACROBATICS && purpose != playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a grapple or a shove is a Strength (Athletics) check"))
-	}
-	maneuverKey := req.Msg.GetManeuverKey()
-	if maneuverKey != "" && (purpose != playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE || byAttack) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a maneuver starts a GRAPPLE that is rolled"))
-	}
-	var in checkInput
-	if !byAttack {
-		if in, err = parseCheckInput(req.Msg.GetRoll()); err != nil {
-			return nil, err
-		}
-	}
-
 	var made actionEvent
-	v := viewerOf(m)
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventContestStarted, encounterID: encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: st.m, key: st.key, hash: idem.Hash(req.Msg), kind: eventContestStarted, encounterID: st.encID}, func(c *combatTx) (any, error) {
 		made = actionEvent{}
-		if err := mustBeRunning(c); err != nil {
+		var err error
+		if made, err = s.startContestTx(ctx, c, st); err != nil {
 			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		v = c.viewer(m, cs) // the fog: an NPC the player does not see is not found
-		initiator, err := findCombatant(cs, initiatorID, v)
-		if err != nil {
-			return nil, err
-		}
-		if err := v.mayAct(initiator); err != nil {
-			return nil, err
-		}
-		open, err := c.q.ListUnansweredContestsOf(ctx, playdb.ListUnansweredContestsOfParams{EncounterID: c.enc.ID, InitiatorID: initiator.ID})
-		if err != nil {
-			return nil, fmt.Errorf("list the open contests: %w", err)
-		}
-		if len(open) > 0 {
-			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_CONTEST_OPEN, "a contest of this combatant waits already")
-		}
-		if err := s.mustActNow(ctx, c, initiator); err != nil {
-			return nil, err
-		}
-		holds, err := c.q.ListHolds(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the holds: %w", err)
-		}
-
-		var defender playdb.Combatant
-		row := playdb.InsertContestParams{
-			EncounterID: c.enc.ID, InitiatorID: initiator.ID, Round: c.enc.Round, CreatedAt: c.now, Purpose: purposeKey, Kind: contestKindContest,
-		}
-		var roll *contestRoll
-		var man link.Maneuver
-		usedManeuver := false
-		switch purpose {
-		case playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE:
-			hold, ok := holdOn(holdsOf(holds), initiator)
-			if !ok {
-				return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_GRAPPLED, "the combatant is not grappled")
-			}
-			grappler, ok := combatantByID(cs, hold.GrapplerID)
-			if !ok {
-				return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_GRAPPLED, "the combatant is not grappled")
-			}
-			defender = grappler
-			if err := spendAction(ctx, c, initiator, v.master); err != nil {
-				return nil, err
-			}
-			if hold.EscapeDc != nil {
-				row.Kind, row.EscapeDc = contestKindEscapeDC, hold.EscapeDc
-			}
-		default:
-			if defender, err = findCombatant(cs, targetID, v); err != nil {
-				return nil, err
-			}
-			switch {
-			case defender.ID == initiator.ID:
-				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a combatant cannot contest itself"))
-			case defender.Defeated:
-				return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "the target is defeated")
-			}
-			if byAttack {
-				// A grapple that came from an attack: the attack was rolled already, so nothing is
-				// spent and nobody rolls.
-				row.Kind, row.EscapeDc = contestKindEscapeDC, &escapeDC
-				break
-			}
-			if err := s.mustBeInReach(c, v, initiator, defender); err != nil {
-				return nil, err
-			}
-			sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, initiator)
-			if err != nil {
-				return nil, err
-			}
-			if err := mayAttack(initiator, false); err != nil {
-				return nil, err
-			}
-			if maneuverKey == "" {
-				if err := spendAttack(ctx, c, initiator, sheet, v.master); err != nil {
-					return nil, err
-				}
-			} else {
-				// A table maneuver after a melee hit: the bonus action and a use, not an attack.
-				if man, err = s.useGrappleManeuver(ctx, c, m.CampaignID, initiator, sheet, maneuverKey, v.master); err != nil {
-					return nil, err
-				}
-				usedManeuver = true
-			}
-			// A grapple or a shove is an attack on the target: it keeps a rage going (SRD 5.1,
-			// Rage: the rage ends if the turn ends without having "attacked a hostile creature")
-			// and gives a hider's position away ("Unseen Attackers and Targets").
-			if oppositeSide(initiator, defender) {
-				states, err := s.readStates(ctx, c.tx, c.enc.ID)
-				if err != nil {
-					return nil, err
-				}
-				if hasState(states, initiator.ID, stateRage) && (!initiator.AttackedHostile || initiator.RageEndPending) {
-					if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: initiator.ID, AttackedHostile: true, TookDamage: initiator.TookDamage}); err != nil {
-						return nil, fmt.Errorf("note the attack on a hostile creature: %w", err)
-					}
-				}
-			}
-			if _, err := s.endHiding(ctx, c, initiator); err != nil {
-				return nil, err
-			}
-		}
-		row.DefenderID = defender.ID
-
-		if !byAttack {
-			if !v.master {
-				if err := s.mustRollThisWay(ctx, c.tx, m, in.rollInput()); err != nil {
-					return nil, err
-				}
-			}
-			r, err := s.rollFor(ctx, c, initiator, skillKeyOf(skill), in, cs)
-			if err != nil {
-				return nil, err
-			}
-			r.ByMaster = v.master && !initiatorIsNPC(initiator)
-			if usedManeuver {
-				face, err := s.rollManeuverDie(man, in.inApp, req.Msg.GetManeuverFace())
-				if err != nil {
-					return nil, err
-				}
-				addManeuverDie(&r, man, face)
-			}
-			roll = &r
-			if row.InitiatorRoll, err = encodeRoll(r); err != nil {
-				return nil, err
-			}
-		}
-
-		// Who won, when nothing waits: a grapple that came from an attack, and an escape
-		// against a fixed DC.
-		row.Status = contestAwaitingDefender
-		var winner string
-		switch {
-		case byAttack:
-			winner = winnerInitiator
-		case row.Kind == contestKindEscapeDC:
-			winner = winnerDefender
-			if combat.MeetsEscapeDC(int(roll.Total), int(*row.EscapeDc)) {
-				winner = winnerInitiator
-			}
-		}
-		line := ""
-		if winner != "" {
-			row.Winner = &winner
-			row.ResolvedAt = &c.now
-		}
-		inserted, err := c.q.InsertContest(ctx, row)
-		if err != nil {
-			return nil, fmt.Errorf("open the contest: %w", err)
-		}
-		if winner != "" {
-			status, l, err := settleContest(ctx, c, inserted, winner, initiator, defender)
-			if err != nil {
-				return nil, err
-			}
-			line = l
-			if status != contestResolved {
-				// A fixed DC settles a grapple or an escape: nothing waits.
-				status = contestResolved
-			}
-			if inserted, err = c.q.SetContestState(ctx, playdb.SetContestStateParams{EncounterID: c.enc.ID, ID: inserted.ID, Status: status, ShoveOutcome: nil, ResolvedAt: &c.now}); err != nil {
-				return nil, fmt.Errorf("settle the contest: %w", err)
-			}
-		}
-		if err := touch(ctx, c); err != nil {
-			return nil, err
-		}
-		c.characterID = &initiator.CharacterID
-		made = actionEvent{
-			Round: c.enc.Round, Secret: secretOf(initiator, defender), Actor: initiator.ID, Target: defender.ID,
-			Contest: &contestEvent{ContestID: inserted.ID, Purpose: purposeKey, Line: line, Waiting: winner == ""},
-		}
-		if usedManeuver {
-			made.ManeuverSpent = []string{man.Resource}
 		}
 		return made, nil
 	})
@@ -435,7 +566,7 @@ func (s *Service) StartContest(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the contest", err)
 	}
-	return contestResponse(ctx, s, m, res, ev, func(out *playv1.Encounter, view *playv1.ContestView) *playv1.StartContestResponse {
+	return contestResponse(ctx, s, st.m, res, ev, func(out *playv1.Encounter, view *playv1.ContestView) *playv1.StartContestResponse {
 		return &playv1.StartContestResponse{Encounter: out, Contest: view}
 	})
 }
