@@ -104,55 +104,92 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request, thumbnail bool) 
 	if _, err := authz.RequireSignedIn(ctx); err != nil {
 		return err
 	}
-	id, err := uuid.Parse(r.PathValue("id"))
+	row, master, err := s.viewableImage(ctx, r.PathValue("id"))
 	if err != nil {
-		return errImageNotFound()
+		return err
+	}
+	key, etag := imageFileKey(row, thumbnail)
+	obj, err := s.openImage(ctx, key)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = obj.Close() }()
+
+	setImageHeaders(w.Header(), obj.ContentType, etag, master)
+	// ServeContent sets Content-Length, answers If-None-Match with 304
+	// (from the ETag above), HEAD and range requests.
+	defer slowclient.WriteBody(w, downloadWriteTimeout)()
+	http.ServeContent(w, r, "", time.Time{}, obj.Content)
+	return nil
+}
+
+// viewableImage finds the image and checks that the caller may see it now: a
+// member of its campaign, and for a player an image the players see. It says
+// whether the caller is the master. Anyone else gets the same 404 as for an
+// image that does not exist.
+func (s *Service) viewableImage(ctx context.Context, rawID string) (mapsdb.GalleryImage, bool, error) {
+	id, err := uuid.Parse(rawID)
+	if err != nil {
+		return mapsdb.GalleryImage{}, false, errImageNotFound()
 	}
 	row, err := s.queries.GetGalleryImage(ctx, id.String())
 	if errors.Is(err, pgx.ErrNoRows) {
-		return errImageNotFound()
+		return mapsdb.GalleryImage{}, false, errImageNotFound()
 	}
 	if err != nil {
-		return s.dbError(ctx, "find an image", err)
+		return mapsdb.GalleryImage{}, false, s.dbError(ctx, "find an image", err)
 	}
 	m, err := authz.RequireCampaignMember(ctx, row.CampaignID)
 	if err != nil {
 		if connect.CodeOf(err) == connect.CodeUnavailable {
-			return err
+			return mapsdb.GalleryImage{}, false, err
 		}
-		return errImageNotFound()
+		return mapsdb.GalleryImage{}, false, errImageNotFound()
 	}
 	master := m.Role == authz.RoleMaster
 	if !master {
 		visible, err := s.playersSeeImage(ctx, row.CampaignID, row.ID)
 		if err != nil {
-			return s.dbError(ctx, "check whether the players see an image", err)
+			return mapsdb.GalleryImage{}, false, s.dbError(ctx, "check whether the players see an image", err)
 		}
 		if !visible {
-			return errImageNotFound()
+			return mapsdb.GalleryImage{}, false, errImageNotFound()
 		}
 	}
+	return row, master, nil
+}
 
+// imageFileKey is the blob key and the ETag of the image's file, or of its
+// thumbnail.
+func imageFileKey(row mapsdb.GalleryImage, thumbnail bool) (key, etag string) {
 	imageKey, thumbnailKey := blobKeys(row.CampaignID, row.ID)
-	key, etag := imageKey, `"`+row.ID+`"`
 	if thumbnail {
-		key, etag = thumbnailKey, `"`+row.ID+`.thumb"`
+		return thumbnailKey, `"` + row.ID + `.thumb"`
 	}
+	return imageKey, `"` + row.ID + `"`
+}
+
+// openImage opens an image's file. The row is written after its files and
+// deleted before them, so a missing file means the store lost it.
+func (s *Service) openImage(ctx context.Context, key string) (*blob.Object, error) {
 	obj, err := s.blobs.Open(ctx, key)
 	if err != nil {
-		// The row is written after its files and deleted before them, so a
-		// missing file means the store lost it.
 		if errors.Is(err, blob.ErrNotFound) {
 			s.logger.ErrorContext(ctx, "maps: an image's file is missing")
-			return errImageNotFound()
+			return nil, errImageNotFound()
 		}
 		s.logger.ErrorContext(ctx, "maps: cannot read an image file", "error", err)
-		return errStorage()
+		return nil, errStorage()
 	}
-	defer func() { _ = obj.Close() }()
+	return obj, nil
+}
 
-	header := w.Header()
-	header.Set("Content-Type", obj.ContentType)
+// setImageHeaders sets how an image is sent and cached. The master's copy may be
+// kept for a year (the bytes behind an ID never change), a player's must be
+// checked again on every use; the browser must take the file for what
+// Content-Type says and run nothing in it.
+func setImageHeaders(header http.Header, contentType, etag string, master bool) {
+	header.Set("Content-Type", contentType)
 	if master {
 		// The bytes behind an ID never change: a new upload gets a new ID.
 		// So the master's browser may keep the image for a year without
@@ -173,9 +210,4 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request, thumbnail bool) 
 	header.Set("Content-Security-Policy", "default-src 'none'")
 	// Only this site's pages may embed it.
 	header.Set("Cross-Origin-Resource-Policy", "same-origin")
-	// ServeContent sets Content-Length, answers If-None-Match with 304
-	// (from the ETag above), HEAD and range requests.
-	defer slowclient.WriteBody(w, downloadWriteTimeout)()
-	http.ServeContent(w, r, "", time.Time{}, obj.Content)
-	return nil
 }

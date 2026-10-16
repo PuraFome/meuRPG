@@ -41,38 +41,9 @@ func (s *Service) SetSceneImages(
 	var rows []mapsdb.ListPointImagesRow
 	changed := false
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
-		// The point is locked by now, so two calls take turns.
-		if len(ids) > 0 {
-			n, err := q.CountCampaignImagesIn(ctx, mapsdb.CountCampaignImagesInParams{CampaignID: m.CampaignID, Ids: ids})
-			if err != nil {
-				return fmt.Errorf("count the images: %w", err)
-			}
-			if int(n) != len(ids) {
-				return connect.NewError(connect.CodeNotFound, errors.New("image not found"))
-			}
-		}
-		before, err := q.ListPointImages(ctx, pointID)
-		if err != nil {
-			return fmt.Errorf("list the scene's images: %w", err)
-		}
-		if slices.Equal(imageIDsOf(before), ids) {
-			rows = before // the same list: nothing changes, nobody is told
-			return nil
-		}
-		if err := q.DeletePointImages(ctx, pointID); err != nil {
-			return fmt.Errorf("clear the scene's images: %w", err)
-		}
-		now := s.now()
-		for i, id := range ids {
-			if err := q.InsertPointImage(ctx, mapsdb.InsertPointImageParams{PointID: pointID, ImageID: id, Position: int32(i), CreatedAt: now}); err != nil {
-				return fmt.Errorf("attach an image: %w", err)
-			}
-		}
-		if rows, err = q.ListPointImages(ctx, pointID); err != nil {
-			return fmt.Errorf("list the scene's images: %w", err)
-		}
-		changed = true
-		return nil
+		var err error
+		rows, changed, err = s.replaceSceneImages(ctx, q, m.CampaignID, pointID, ids)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set a scene's images", err)
@@ -81,6 +52,52 @@ func (s *Service) SetSceneImages(
 		s.actionsChanged(ctx, m.CampaignID, ch)
 	}
 	return connect.NewResponse(&mapsv1.SetSceneImagesResponse{Images: sceneImagesToProto(rows)}), nil
+}
+
+// replaceSceneImages makes ids the point's list, if it is not already, and
+// returns the list as it is now and whether it changed. The point is locked by
+// now, so two calls take turns.
+func (s *Service) replaceSceneImages(ctx context.Context, q *mapsdb.Queries, campaignID, pointID string, ids []string) ([]mapsdb.ListPointImagesRow, bool, error) {
+	if err := checkImagesInCampaign(ctx, q, campaignID, ids); err != nil {
+		return nil, false, err
+	}
+	before, err := q.ListPointImages(ctx, pointID)
+	if err != nil {
+		return nil, false, fmt.Errorf("list the scene's images: %w", err)
+	}
+	if slices.Equal(imageIDsOf(before), ids) {
+		return before, false, nil // the same list: nothing changes, nobody is told
+	}
+	if err := q.DeletePointImages(ctx, pointID); err != nil {
+		return nil, false, fmt.Errorf("clear the scene's images: %w", err)
+	}
+	now := s.now()
+	for i, id := range ids {
+		if err := q.InsertPointImage(ctx, mapsdb.InsertPointImageParams{PointID: pointID, ImageID: id, Position: int32(i), CreatedAt: now}); err != nil {
+			return nil, false, fmt.Errorf("attach an image: %w", err)
+		}
+	}
+	rows, err := q.ListPointImages(ctx, pointID)
+	if err != nil {
+		return nil, false, fmt.Errorf("list the scene's images: %w", err)
+	}
+	return rows, true, nil
+}
+
+// checkImagesInCampaign refuses a list that names an image the campaign's
+// gallery does not hold.
+func checkImagesInCampaign(ctx context.Context, q *mapsdb.Queries, campaignID string, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	n, err := q.CountCampaignImagesIn(ctx, mapsdb.CountCampaignImagesInParams{CampaignID: campaignID, Ids: ids})
+	if err != nil {
+		return fmt.Errorf("count the images: %w", err)
+	}
+	if int(n) != len(ids) {
+		return connect.NewError(connect.CodeNotFound, errors.New("image not found"))
+	}
+	return nil
 }
 
 // cleanSceneImageIDs checks the list the master sends: at most maxSceneImages UUIDs,

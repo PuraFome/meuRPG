@@ -202,6 +202,18 @@ func tileRevision(imageID string, g grid.Grid, tx, ty int, nb nbhd) int32 {
 	return hashOf([]byte(imageID), []byte(strconv.Itoa(g.Columns)+"x"+strconv.Itoa(g.Rows)+":"+strconv.Itoa(tx)+","+strconv.Itoa(ty)), []byte(nb.bits))
 }
 
+// anyKnown says whether the viewer knows a square of tile (tx, ty).
+func anyKnown(known func(c, r int) bool, tx, ty int) bool {
+	for dr := range tileSquares {
+		for dc := range tileSquares {
+			if known(tx*tileSquares+dc, ty*tileSquares+dr) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // buildTiles lists the tiles that exist for the view: those with a known square.
 func buildTiles(p *playerView, src tileSource) *viewTiles {
 	cols, rows := tileGrid(p.g)
@@ -214,13 +226,7 @@ func buildTiles(p *playerView, src tileSource) *viewTiles {
 			if x0, x1, y0, y1 := tilePixels(p.g, W, H, tx, ty); x0 == x1 || y0 == y1 {
 				continue // no pixel to draw: nothing to list
 			}
-			seen := false
-			for dr := 0; dr < tileSquares && !seen; dr++ {
-				for dc := 0; dc < tileSquares && !seen; dc++ {
-					seen = known(tx*tileSquares+dc, ty*tileSquares+dr)
-				}
-			}
-			if !seen {
+			if !anyKnown(known, tx, ty) {
 				continue
 			}
 			nb := newNbhd(p.g, tx, ty, ring, known)
@@ -337,17 +343,30 @@ func tilePixels(g grid.Grid, width, height, tx, ty int) (x0, x1, y0, y1 int) {
 // errTooBig is the refusal of a stored image whose decode would need more than decodeLimit.
 var errTooBig = errors.New("the stored image needs too much memory to decode")
 
-// decodeWorkingCopy decodes the stored image (a PNG or a JPEG, by their names, never
-// whatever decoder is registered) and shrinks it so its long side is at most
-// workingMaxSide, one square at a time for the grid g: a square of the copy is
-// built from that square's source pixels alone. The stored image is already
-// clean (re-encoded from its pixels), and the working copy is only pixels.
-func decodeWorkingCopy(data []byte, g grid.Grid) (*image.RGBA, int, int, error) {
-	var (
-		cfg    image.Config
-		err    error
-		isJPEG = bytes.HasPrefix(data, []byte("\xff\xd8\xff"))
-	)
+// The bytes a decoded pixel takes, by the model its header names, for the budget
+// of a decode (decodeLimit).
+const (
+	// bytesPerPixel8Bit is an 8-bit NRGBA or RGBA pixel.
+	bytesPerPixel8Bit = 4.0
+	// bytesPerPixelJPEG is a JPEG's, which the decoder keeps as YCbCr 4:2:0.
+	bytesPerPixelJPEG = 1.5
+	// bytesPerPixel16Bit is an RGBA64 or NRGBA64 pixel, and a gray PNG that
+	// png.Decode returns as NRGBA64 because of its tRNS chunk.
+	bytesPerPixel16Bit = 8.0
+	// bytesPerPixelGray16 is a 16-bit gray pixel.
+	bytesPerPixelGray16 = 2.0
+	// interlaceByte is where a PNG's IHDR keeps its interlace method (8 bytes
+	// of signature, 8 of chunk header, 12 into the chunk's data), and
+	// pngInterlaced the value for Adam7.
+	interlaceByte = 28
+	pngInterlaced = 1
+)
+
+// readImageHeader reads the header of the stored image (a PNG or a JPEG, by
+// their names, never whatever decoder is registered): its size and whether it is
+// a JPEG.
+func readImageHeader(data []byte) (cfg image.Config, isJPEG bool, err error) {
+	isJPEG = bytes.HasPrefix(data, []byte("\xff\xd8\xff"))
 	switch {
 	case isJPEG:
 		cfg, err = jpeg.DecodeConfig(bytes.NewReader(data))
@@ -357,48 +376,88 @@ func decodeWorkingCopy(data []byte, g grid.Grid) (*image.RGBA, int, int, error) 
 		err = errors.New("not a PNG or a JPEG")
 	}
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("read the map's image header: %w", err)
+		return cfg, isJPEG, fmt.Errorf("read the map's image header: %w", err)
 	}
 	if cfg.Width < 1 || cfg.Height < 1 {
-		return nil, 0, 0, errors.New("the map's image is empty")
+		return cfg, isJPEG, errors.New("the map's image is empty")
 	}
-	per := 4.0 // NRGBA, RGBA, 8-bit
+	return cfg, isJPEG, nil
+}
+
+// decodeBytesPerPixel is what the decode of the image needs for each pixel, by
+// the color model of its header.
+func decodeBytesPerPixel(cfg image.Config, data []byte, isJPEG bool) float64 {
+	per := bytesPerPixel8Bit // NRGBA, RGBA, 8-bit
 	switch {
 	case isJPEG:
-		per = 1.5
+		per = bytesPerPixelJPEG
 	case cfg.ColorModel == color.RGBA64Model || cfg.ColorModel == color.NRGBA64Model:
-		per = 8
+		per = bytesPerPixel16Bit
 	case cfg.ColorModel == color.Gray16Model:
-		per = 2
+		per = bytesPerPixelGray16
 		if images.HasTransparencyChunk(data) {
-			per = 8 // png.Decode returns NRGBA64 for it
+			per = bytesPerPixel16Bit // png.Decode returns NRGBA64 for it
 		}
 	}
-	if len(data) > 28 && !isJPEG && data[28] == 1 {
+	if len(data) > interlaceByte && !isJPEG && data[interlaceByte] == pngInterlaced {
 		per *= 2 // interlaced: each pass has its own image before they merge
 	}
-	if int64(float64(cfg.Width)*float64(cfg.Height)*per) > decodeLimit {
-		return nil, 0, 0, errTooBig
-	}
+	return per
+}
+
+// decodeStored decodes the stored image after its header was checked.
+func decodeStored(data []byte, isJPEG bool) (image.Image, error) {
 	var src image.Image
+	var err error
 	if isJPEG {
 		src, err = jpeg.Decode(bytes.NewReader(data))
 	} else {
 		src, err = png.Decode(bytes.NewReader(data))
 	}
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("decode the map's image: %w", err)
+		return nil, fmt.Errorf("decode the map's image: %w", err)
 	}
+	return src, nil
+}
+
+// decodeWorkingCopy decodes the stored image (a PNG or a JPEG, by their names, never
+// whatever decoder is registered) and shrinks it so its long side is at most
+// workingMaxSide, one square at a time for the grid g: a square of the copy is
+// built from that square's source pixels alone. The stored image is already
+// clean (re-encoded from its pixels), and the working copy is only pixels.
+func decodeWorkingCopy(data []byte, g grid.Grid) (*image.RGBA, int, int, error) {
+	cfg, isJPEG, err := readImageHeader(data)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	if int64(float64(cfg.Width)*float64(cfg.Height)*decodeBytesPerPixel(cfg, data, isJPEG)) > decodeLimit {
+		return nil, 0, 0, errTooBig
+	}
+	src, err := decodeStored(data, isJPEG)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	dst, err := shrinkBySquares(src, g)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	b := src.Bounds()
+	return dst, b.Dx(), b.Dy(), nil
+}
+
+// shrinkBySquares copies src into a working copy: as it is when it fits
+// workingMaxSide, else shrunk one square of the grid at a time.
+func shrinkBySquares(src image.Image, g grid.Grid) (*image.RGBA, error) {
 	b := src.Bounds()
 	sw, sh := b.Dx(), b.Dy()
 	w, h := workingSize(sw, sh)
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
 	if w == sw && h == sh {
 		xdraw.Draw(dst, dst.Bounds(), src, b.Min, xdraw.Src)
-		return dst, sw, sh, nil
+		return dst, nil
 	}
 	if g.Columns < 1 || g.Rows < 1 {
-		return nil, 0, 0, errors.New("the map has no grid")
+		return nil, errors.New("the map has no grid")
 	}
 	// Square by square: Scale reads only inside the source rectangle it is given,
 	// so a pixel of one square never takes a neighbour's color.
@@ -415,7 +474,7 @@ func decodeWorkingCopy(data []byte, g grid.Grid) (*image.RGBA, int, int, error) 
 				image.Rect(b.Min.X+sx0, b.Min.Y+sy0, b.Min.X+sx1, b.Min.Y+sy1), xdraw.Src, nil)
 		}
 	}
-	return dst, sw, sh, nil
+	return dst, nil
 }
 
 // ---- the tile cache ----
@@ -685,34 +744,39 @@ func (s *Service) loadWorkingCopy(ctx context.Context, src tileSource) (*working
 	return &workingCopy{mapID: src.mapID, imageID: src.imageID, cols: src.g.Columns, rows: src.g.Rows, img: img, srcW: sw, srcH: sh}, nil
 }
 
-// renderTile draws tile (tx, ty): opaque black, then the working copy's pixels of
-// every square the viewer knows, except those that could carry something of a
-// square they do not (the edges described at the top of the file). Nothing else of
-// the working copy is read.
-func renderTile(wc *workingCopy, g grid.Grid, tx, ty int, nb nbhd, jpegImage bool) ([]byte, error) {
-	src := wc.img
-	W, H := src.Bounds().Dx(), src.Bounds().Dy()
+// tileRect is the rectangle of working-copy pixels of tile (tx, ty), or the
+// refusal for a tile outside the grid, or one with no pixel.
+func tileRect(g grid.Grid, width, height, tx, ty int) (x0, y0, w, h int, err error) {
 	c0, c1 := tx*tileSquares, min((tx+1)*tileSquares, g.Columns)
 	r0, r1 := ty*tileSquares, min((ty+1)*tileSquares, g.Rows)
 	if c0 >= c1 || r0 >= r1 {
-		return nil, errors.New("the tile is outside the grid")
+		return 0, 0, 0, 0, errors.New("the tile is outside the grid")
 	}
-	x0, x1, y0, y1 := tilePixels(g, W, H, tx, ty)
-	w, h := x1-x0, y1-y0
+	x0, x1, y0, y1 := tilePixels(g, width, height, tx, ty)
+	w, h = x1-x0, y1-y0
 	if w == 0 || h == 0 {
-		return nil, errMapNotFound() // the index never lists it
+		return 0, 0, 0, 0, errMapNotFound() // the index never lists it
 	}
+	return x0, y0, w, h, nil
+}
 
-	// Which pixel may be shown. First: its square is known, and so are the squares
-	// one pixel around it (the belt; for a JPEG the blocks below take over).
-	colSq := make([]int, w+2) // the square of pixel x0-1+i
-	rowSq := make([]int, h+2)
-	for i := range colSq {
-		colSq[i] = squareOf(min(max(x0-1+i, 0), W-1), g.Columns, W)
+// pixelSquares is the square (of n across size pixels) of each of the count
+// pixels from first-1 on, with the first and last one clamped into the image:
+// the pixel ring around a tile.
+func pixelSquares(first, count, size, n int) []int {
+	out := make([]int, count)
+	for i := range out {
+		out[i] = squareOf(min(max(first-1+i, 0), size-1), n, size)
 	}
-	for i := range rowSq {
-		rowSq[i] = squareOf(min(max(y0-1+i, 0), H-1), g.Rows, H)
-	}
+	return out
+}
+
+// showMask says which pixel of the w x h tile at (x0, y0) may be shown: its
+// square is known, and so are the squares one pixel around it (the belt; for a
+// JPEG the blocks of blackenBlocks take over).
+func showMask(nb nbhd, g grid.Grid, width, height, x0, y0, w, h int) []bool {
+	colSq := pixelSquares(x0, w+2, width, g.Columns) // the square of pixel x0-1+i
+	rowSq := pixelSquares(y0, h+2, height, g.Rows)
 	knownPx := make([]bool, (w+2)*(h+2))
 	for j := range h + 2 {
 		for i := range w + 2 {
@@ -722,20 +786,31 @@ func renderTile(wc *workingCopy, g grid.Grid, tx, ty int, nb nbhd, jpegImage boo
 	show := make([]bool, w*h)
 	for j := range h {
 		for i := range w {
-			ok := true
-			for dj := 0; dj < 3 && ok; dj++ {
-				for di := 0; di < 3 && ok; di++ {
-					ok = knownPx[(j+dj)*(w+2)+i+di]
-				}
-			}
-			show[j*w+i] = ok
+			show[j*w+i] = aroundKnown(knownPx, w+2, i, j)
 		}
 	}
+	return show
+}
 
-	if jpegImage {
-		blackenBlocks(show, wc, g, nb, x0, y0, w, h)
+// beltSide is the side, in pixels, of the block a pixel needs known: itself and the one around it.
+const beltSide = 3
+
+// aroundKnown says whether the 3 x 3 pixels centered on (i+1, j+1) of a map of
+// known pixels, width wide, are all known.
+func aroundKnown(knownPx []bool, width, i, j int) bool {
+	for dj := range beltSide {
+		for di := range beltSide {
+			if !knownPx[(j+dj)*width+i+di] {
+				return false
+			}
+		}
 	}
+	return true
+}
 
+// paintTile draws the w x h tile at (x0, y0): opaque black, then the working
+// copy's pixel wherever show says so.
+func paintTile(src *image.RGBA, show []bool, x0, y0, w, h int) *image.RGBA {
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
 	for i := 3; i < len(dst.Pix); i += 4 {
 		dst.Pix[i] = 0xff
@@ -747,6 +822,11 @@ func renderTile(wc *workingCopy, g grid.Grid, tx, ty int, nb nbhd, jpegImage boo
 			}
 		}
 	}
+	return dst
+}
+
+// encodeTile writes a tile as a PNG from its pixels alone.
+func encodeTile(dst *image.RGBA) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestSpeed}
 	if err := enc.Encode(&buf, dst); err != nil {
@@ -756,51 +836,102 @@ func renderTile(wc *workingCopy, g grid.Grid, tx, ty int, nb nbhd, jpegImage boo
 	return bytes.Clone(buf.Bytes()), nil
 }
 
+// renderTile draws tile (tx, ty): opaque black, then the working copy's pixels of
+// every square the viewer knows, except those that could carry something of a
+// square they do not (the edges described at the top of the file). Nothing else of
+// the working copy is read.
+func renderTile(wc *workingCopy, g grid.Grid, tx, ty int, nb nbhd, jpegImage bool) ([]byte, error) {
+	src := wc.img
+	W, H := src.Bounds().Dx(), src.Bounds().Dy()
+	x0, y0, w, h, err := tileRect(g, W, H, tx, ty)
+	if err != nil {
+		return nil, err
+	}
+	show := showMask(nb, g, W, H, x0, y0, w, h)
+	if jpegImage {
+		blackenBlocks(show, wc, g, nb, x0, y0, w, h)
+	}
+	return encodeTile(paintTile(src, show, x0, y0, w, h))
+}
+
+// blockMap says, for the 16 x 16 source blocks under a tile, which touch a square
+// the viewer does not know, and which blocks each pixel of the tile reaches.
+type blockMap struct {
+	bx0, bx1, by0, by1 int
+	bad                []bool
+	xlo, xhi, ylo, yhi []int // per pixel of the tile, the first and last block it reaches
+}
+
+// blockSpan is, for count working-copy pixels from first, the first and last
+// 16-pixel block of the source (ssize pixels across size) that each reaches,
+// widened by the shrink's pixel.
+func blockSpan(first, count, size, ssize int) (lo, hi []int) {
+	lo, hi = make([]int, count), make([]int, count)
+	for i := range count {
+		a := (first + i) * ssize / size
+		b := ((first+i+1)*ssize+size-1)/size - 1
+		lo[i], hi[i] = max(a-1, 0)/mcu, min(max(b, a)+1, ssize-1)/mcu
+	}
+	return lo, hi
+}
+
+// touchesUnknown says whether the source block (bx, by) holds a square the viewer
+// does not know.
+func touchesUnknown(wc *workingCopy, g grid.Grid, nb nbhd, bx, by int) bool {
+	sw, sh := wc.srcW, wc.srcH
+	ca, cb := squareOf(bx*mcu, g.Columns, sw), squareOf(min((bx+1)*mcu-1, sw-1), g.Columns, sw)
+	ra, rb := squareOf(by*mcu, g.Rows, sh), squareOf(min((by+1)*mcu-1, sh-1), g.Rows, sh)
+	for r := ra; r <= rb; r++ {
+		for c := ca; c <= cb; c++ {
+			if !nb.known(c, r) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// newBlockMap finds the blocks of the tile's source footprint and whether each
+// touches an unknown square.
+func newBlockMap(wc *workingCopy, g grid.Grid, nb nbhd, x0, y0, w, h int) blockMap {
+	W, H := wc.img.Bounds().Dx(), wc.img.Bounds().Dy()
+	var m blockMap
+	m.xlo, m.xhi = blockSpan(x0, w, W, wc.srcW)
+	m.ylo, m.yhi = blockSpan(y0, h, H, wc.srcH)
+	m.bx0, m.bx1, m.by0, m.by1 = m.xlo[0], m.xhi[w-1], m.ylo[0], m.yhi[h-1]
+	m.bad = make([]bool, (m.bx1-m.bx0+1)*(m.by1-m.by0+1))
+	for by := m.by0; by <= m.by1; by++ {
+		for bx := m.bx0; bx <= m.bx1; bx++ {
+			m.bad[m.index(bx, by)] = touchesUnknown(wc, g, nb, bx, by)
+		}
+	}
+	return m
+}
+
+func (m blockMap) index(bx, by int) int { return (by-m.by0)*(m.bx1-m.bx0+1) + bx - m.bx0 }
+
+// reachesBad says whether pixel (i, j) of the tile reaches a block that touches
+// an unknown square.
+func (m blockMap) reachesBad(i, j int) bool {
+	for by := m.ylo[j]; by <= m.yhi[j]; by++ {
+		for bx := m.xlo[i]; bx <= m.xhi[i]; bx++ {
+			if m.bad[m.index(bx, by)] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // blackenBlocks clears, in show, every pixel whose source footprint (widened by
 // the shrink's pixel) lies in a 16 x 16 source block that touches a square the
 // viewer does not know.
 func blackenBlocks(show []bool, wc *workingCopy, g grid.Grid, nb nbhd, x0, y0, w, h int) {
-	W, H := wc.img.Bounds().Dx(), wc.img.Bounds().Dy()
-	sw, sh := wc.srcW, wc.srcH
-	// The blocks of the tile's source footprint, and whether each touches an unknown square.
-	span := func(first, count, size, ssize int) (lo, hi []int) {
-		lo, hi = make([]int, count), make([]int, count)
-		for i := range count {
-			a := (first + i) * ssize / size
-			b := ((first+i+1)*ssize+size-1)/size - 1
-			lo[i], hi[i] = max(a-1, 0)/mcu, min(max(b, a)+1, ssize-1)/mcu
-		}
-		return lo, hi
-	}
-	xlo, xhi := span(x0, w, W, sw)
-	ylo, yhi := span(y0, h, H, sh)
-	bx0, bx1, by0, by1 := xlo[0], xhi[w-1], ylo[0], yhi[h-1]
-	bad := make([]bool, (bx1-bx0+1)*(by1-by0+1))
-	for by := by0; by <= by1; by++ {
-		for bx := bx0; bx <= bx1; bx++ {
-			ca, cb := squareOf(bx*mcu, g.Columns, sw), squareOf(min((bx+1)*mcu-1, sw-1), g.Columns, sw)
-			ra, rb := squareOf(by*mcu, g.Rows, sh), squareOf(min((by+1)*mcu-1, sh-1), g.Rows, sh)
-			isBad := false
-			for r := ra; r <= rb && !isBad; r++ {
-				for c := ca; c <= cb && !isBad; c++ {
-					isBad = !nb.known(c, r)
-				}
-			}
-			bad[(by-by0)*(bx1-bx0+1)+bx-bx0] = isBad
-		}
-	}
+	m := newBlockMap(wc, g, nb, x0, y0, w, h)
 	for j := range h {
 		for i := range w {
-			if !show[j*w+i] {
-				continue
-			}
-			for by := ylo[j]; by <= yhi[j] && show[j*w+i]; by++ {
-				for bx := xlo[i]; bx <= xhi[i]; bx++ {
-					if bad[(by-by0)*(bx1-bx0+1)+bx-bx0] {
-						show[j*w+i] = false
-						break
-					}
-				}
+			if show[j*w+i] && m.reachesBad(i, j) {
+				show[j*w+i] = false
 			}
 		}
 	}
@@ -831,82 +962,42 @@ func (s *Service) handleTile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// tileAccess is what a tile request is allowed to read: the map, who asks and,
+// for the master, the character they ask as.
+type tileAccess struct {
+	m      authz.Membership
+	master bool
+	as     string
+	viewer string
+	src    tileSource
+}
+
+// serveTile answers one tile request. Every refusal before the answer is the
+// same 404, whatever the reason (RN-10), and each check runs in the order that
+// keeps it so.
 func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	if _, err := authz.RequireSignedIn(ctx); err != nil {
 		return err
 	}
-	mapID, ok := parseID(r.PathValue("map"))
-	tx, errX := strconv.Atoi(r.PathValue("tx"))
-	ty, errY := strconv.Atoi(r.PathValue("ty"))
-	if !ok || errX != nil || errY != nil || tx < 0 || ty < 0 {
-		return errMapNotFound()
-	}
-	info, err := s.queries.GetMapTileInfo(ctx, mapID)
+	mapID, tx, ty, err := parseTilePath(r)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errMapNotFound()
-		}
-		return s.dbError(ctx, "find a map", err)
+		return err
 	}
-	m, err := authz.RequireCampaignMember(ctx, info.CampaignID)
+	acc, err := s.authorizeTile(ctx, mapID, r.URL.Query().Get("as"))
 	if err != nil {
-		if connect.CodeOf(err) == connect.CodeUnavailable {
-			return err
-		}
-		return errMapNotFound()
+		return err
 	}
-	as := r.URL.Query().Get("as")
-	master := m.Role == authz.RoleMaster
-	if master != (as != "") { // a player sends no `as`, and the master gets tiles only as a player
-		return errMapNotFound()
-	}
-	src := tileSourceOf(info.ID, info.CampaignID, info.ImageID, info.ImageContentType, info.GridColumns, info.GridFactor, info.ImageWidth, info.ImageHeight)
-	if !info.FogEnabled || !src.g.Valid() {
-		return errMapNotFound()
-	}
-	if !master { // the master "Ver como" sees every map; a player, the ones the players see
-		current, err := s.currentMap(ctx, info.CampaignID)
-		if err != nil {
-			return err
-		}
-		if !playersSee(info.ID, info.RevealedAt, current) {
-			return errMapNotFound()
-		}
-	}
-	viewer := "u:" + m.UserID
-	if master {
-		viewer = "as:" + as
-	}
-	vt := s.tiles.views.get(mapID, viewer, src)
-	if vt == nil {
-		gen := s.tiles.views.generation(mapID)
-		v, row, pv, err := s.visionOf(ctx, m, mapID, as)
-		if err != nil {
-			if connect.CodeOf(err) == connect.CodeUnavailable || connect.CodeOf(err) == connect.CodeInternal {
-				return err
-			}
-			return errMapNotFound()
-		}
-		if !foggedFor(v, row) {
-			return errMapNotFound()
-		}
-		src = tileSourceOf(row.ID, row.CampaignID, row.ImageID, row.ImageContentType, row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
-		vt = buildTiles(pv, src)
-		s.tiles.views.put(mapID, viewer, gen, vt)
+	vt, src, err := s.viewTilesOf(ctx, acc, mapID)
+	if err != nil {
+		return err
 	}
 	t, ok := vt.find(tx, ty)
 	if !ok {
 		return errMapNotFound()
 	}
 	etag := `"t` + strconv.Itoa(int(t.revision)) + `"`
-	header := w.Header()
-	header.Set("Cache-Control", "private, no-cache")
-	header.Set("Vary", "Cookie")
-	header.Set("ETag", etag)
-	header.Set("X-Content-Type-Options", "nosniff")
-	header.Set("Content-Security-Policy", "default-src 'none'")
-	header.Set("Cross-Origin-Resource-Policy", "same-origin")
+	setTileHeaders(w.Header(), etag)
 	if etagMatches(r.Header.Values("If-None-Match"), etag) {
 		w.WriteHeader(http.StatusNotModified)
 		return nil
@@ -914,14 +1005,102 @@ func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 	if s.blobs == nil {
 		return errImagesOff()
 	}
-	png, err := s.tile(ctx, m.UserID, src, t)
+	png, err := s.tile(ctx, acc.m.UserID, src, t)
 	if err != nil {
 		return err
 	}
-	header.Set("Content-Type", "image/png")
+	w.Header().Set("Content-Type", "image/png")
 	defer slowclient.WriteBody(w, downloadWriteTimeout)()
 	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(png))
 	return nil
+}
+
+// parseTilePath reads the map and the tile of the request's path; anything that
+// is not a map ID and two non-negative numbers is a map that is not found.
+func parseTilePath(r *http.Request) (mapID string, tx, ty int, err error) {
+	mapID, ok := parseID(r.PathValue("map"))
+	tx, errX := strconv.Atoi(r.PathValue("tx"))
+	ty, errY := strconv.Atoi(r.PathValue("ty"))
+	if !ok || errX != nil || errY != nil || tx < 0 || ty < 0 {
+		return "", 0, 0, errMapNotFound()
+	}
+	return mapID, tx, ty, nil
+}
+
+// authorizeTile checks that the caller may read tiles of the map: a member of its
+// campaign, a player (or the master reading `as` a player's character), on a
+// map with the fog on that the players see now.
+func (s *Service) authorizeTile(ctx context.Context, mapID, as string) (tileAccess, error) {
+	info, err := s.queries.GetMapTileInfo(ctx, mapID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return tileAccess{}, errMapNotFound()
+		}
+		return tileAccess{}, s.dbError(ctx, "find a map", err)
+	}
+	m, err := authz.RequireCampaignMember(ctx, info.CampaignID)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeUnavailable {
+			return tileAccess{}, err
+		}
+		return tileAccess{}, errMapNotFound()
+	}
+	master := m.Role == authz.RoleMaster
+	if master != (as != "") { // a player sends no `as`, and the master gets tiles only as a player
+		return tileAccess{}, errMapNotFound()
+	}
+	src := tileSourceOf(info.ID, info.CampaignID, info.ImageID, info.ImageContentType, info.GridColumns, info.GridFactor, info.ImageWidth, info.ImageHeight)
+	if !info.FogEnabled || !src.g.Valid() {
+		return tileAccess{}, errMapNotFound()
+	}
+	if !master { // the master "Ver como" sees every map; a player, the ones the players see
+		current, err := s.currentMap(ctx, info.CampaignID)
+		if err != nil {
+			return tileAccess{}, err
+		}
+		if !playersSee(info.ID, info.RevealedAt, current) {
+			return tileAccess{}, errMapNotFound()
+		}
+	}
+	viewer := "u:" + m.UserID
+	if master {
+		viewer = "as:" + as
+	}
+	return tileAccess{m: m, master: master, as: as, viewer: viewer, src: src}, nil
+}
+
+// viewTilesOf returns the tiles the viewer has on the map, from memory or built
+// from what they see now, and the source they were built for.
+func (s *Service) viewTilesOf(ctx context.Context, acc tileAccess, mapID string) (*viewTiles, tileSource, error) {
+	if vt := s.tiles.views.get(mapID, acc.viewer, acc.src); vt != nil {
+		return vt, acc.src, nil
+	}
+	gen := s.tiles.views.generation(mapID)
+	v, row, pv, err := s.visionOf(ctx, acc.m, mapID, acc.as)
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeUnavailable || connect.CodeOf(err) == connect.CodeInternal {
+			return nil, tileSource{}, err
+		}
+		return nil, tileSource{}, errMapNotFound()
+	}
+	if !foggedFor(v, row) {
+		return nil, tileSource{}, errMapNotFound()
+	}
+	src := tileSourceOf(row.ID, row.CampaignID, row.ImageID, row.ImageContentType, row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight)
+	vt := buildTiles(pv, src)
+	s.tiles.views.put(mapID, acc.viewer, gen, vt)
+	return vt, src, nil
+}
+
+// setTileHeaders sets what a player's tile is sent with: private, checked again
+// on every use, and never taken for anything but the PNG it is.
+func setTileHeaders(header http.Header, etag string) {
+	header.Set("Cache-Control", "private, no-cache")
+	header.Set("Vary", "Cookie")
+	header.Set("ETag", etag)
+	header.Set("X-Content-Type-Options", "nosniff")
+	header.Set("Content-Security-Policy", "default-src 'none'")
+	header.Set("Cross-Origin-Resource-Policy", "same-origin")
 }
 
 // etagMatches reports whether an If-None-Match header (RFC 9110, 13.1.2)
