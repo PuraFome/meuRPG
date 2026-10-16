@@ -760,21 +760,18 @@ func (s *Service) RollSceneCheck(
 		// A character that holds a Bardic Inspiration die has the d20 kept until the player
 		// answers whether to use it (SRD 5.1: before the GM says whether the roll succeeds), and so
 		// has a halfling's d20 that shows a 1, for the Lucky question.
-		step, err := s.outsideRoll(ctx, tx, q, m, holdSceneCheck, who.ID, key, req.Msg, in, bonus, cm.Mode, options[0].ReliableTalent, options[0].Lucky)
+		step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
+			Kind: heldSceneCheck, Key: key, Request: req.Msg, Roller: heldRoller{CampaignID: m.CampaignID, CharacterID: who.ID, UserID: m.UserID},
+			In: in, Modifier: bonus, Mode: cm.Mode, Reliable: options[0].ReliableTalent, Lucky: options[0].Lucky, MayAsk: true,
+		})
 		if err != nil {
 			return err
 		}
-		if step.Held {
-			offer, lucky = step.Offer, step.LuckyOffer
+		if step.Held != nil {
+			offer, lucky = s.outsideOffers(ctx, tx, step.Held)
 			return nil
 		}
 		d20 := step.Roll
-		if !step.Settled {
-			if d20, err = s.d20With(in, bonus, cm.Mode); err != nil {
-				return err
-			}
-			d20 = reliableD20(d20, bonus, options[0].ReliableTalent)
-		}
 		ev = sceneRollEvent{
 			PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 			D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
