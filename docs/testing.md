@@ -23,12 +23,13 @@ The `rules` packages are pure (no database, Docker or network) and are the fast 
 ```bash
 cd backend
 go test ./internal/rules/...                              # the engine, the SRD snapshot, the formulas
-go test ./internal/rules -run Golden -update              # rewrite testdata/golden/pensantus.json after an intentional change; review the diff
-go test ./internal/rules -run TableCharacterGolden -update
-go test ./internal/rules/dungeon -run Golden -update      # changing the generator's output also requires bumping Version in types.go
+go test ./internal/rules -update                          # rewrite every golden of the package (testdata/golden/*.json) after an intentional change; review the diff
+go test ./internal/rules/dungeon -update                  # changing the generator's output also requires bumping Version in types.go
 ```
 
-The `*_characterization_test.go` files in `internal/rules` pin the behaviour of the engine's large functions; a failing one means the output changed, which is not necessarily wrong, so review it.
+The golden and `*_characterization_test.go` tests in `internal/rules` compare the output of the engine's large functions (derive, choices, level-up, the overlay checks) with files in `testdata/`, byte for byte.
+A failing one means the output changed, which is not necessarily wrong: read the diff, and if the change is intended, refresh the files with the package's `-update` flag.
+The sweeps of `rules/grid`, `vision`, `puzzle`, `combat` and `encounter` compare `testdata/*.sha256` hashes and refresh the same way.
 Golden files outside `internal/rules` are compared by `backend/internal/platform/goldentest` (`Compare`, `JSON`, `Names` for IDs, `MaskTimes`), and `go test ./internal/<pkg> -update` rewrites them: one flag for every package that uses it; read the diff.
 `dbtest.QueryFaults` fails a sqlc query by name (`Arm`, or `ArmOnce(name, skip)` after skipping runs), so a test reaches a database-error path without a broken database; wrap the service pool's tracer with it.
 Other pure suites: `rules/grid` and `rules/vision` (geometry, movement, cover, sight), `rules/puzzle` (the puzzle maths), `rules/encounter` (the party budget and the generator) and `rules/dungeon` (properties over many options; `DUNGEON_SWEEP=1` adds a sweep of thousands of combinations).
