@@ -1,6 +1,6 @@
 // Global styles: the design tokens, Angular Material mapped onto them, and
 // the few base rules every page shares. The tokens are the ones in
-// docs/design.md (the "Ficha de papel" look); components use these custom
+// docs/design/README.md (the "Ficha de papel" look); components use these custom
 // properties and never a raw colour.
 //
 // The fonts are self-hosted from the @fontsource packages (OFL): font-src
@@ -231,7 +231,7 @@ html {
     )
   );
 
-  // On a phone the primary action is 48px tall (docs/design.md).
+  // On a phone the primary action is 48px tall (docs/design/README.md).
   @media (max-width: 767.98px) {
     @include mat.button-overrides(
       (
@@ -357,7 +357,7 @@ a:hover {
   color: var(--mr-accent-strong);
 }
 
-// One focus ring for everything that takes focus (docs/design.md#cor).
+// One focus ring for everything that takes focus (docs/design/tokens.md#colour).
 :focus-visible {
   outline: 2px solid var(--mr-focus);
   outline-offset: 2px;

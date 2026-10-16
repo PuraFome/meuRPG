@@ -12,7 +12,7 @@ let nextId = 0;
  * inside loads on open and the dialog opens itself after its first render.
  * Esc and a click on the scrim close it (`closed`); the page then takes it
  * out and gives focus back to what opened it. Together with the gallery's
- * lightbox, it is the only place with a shadow (docs/design.md).
+ * lightbox, it is the only place with a shadow (docs/design/README.md).
  */
 @Component({
   selector: 'app-doc-dialog',

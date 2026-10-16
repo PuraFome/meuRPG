@@ -72,7 +72,7 @@ export function newSignedInContext(browser: Browser, user: TestUser, options: Br
 /**
  * Calls a unary Connect RPC with the JSON codec, through the page's own
  * cookies. Every Connect call must carry Connect-Protocol-Version: 1 (the
- * server's CSRF protection, docs/architecture.md#csrf).
+ * server's CSRF protection, docs/architecture/identity.md#csrf).
  *
  * Use it for what the page does not show; ui.spec.ts asserts on the page.
  */

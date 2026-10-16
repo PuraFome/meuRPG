@@ -120,7 +120,7 @@ const (
 	maxRateMultiplier        = 1000
 )
 
-// Limits holds the abuse limits' settings (docs/operations.md#abuse-limits).
+// Limits holds the abuse limits' settings (docs/operations/reference.md#abuse-limits).
 type Limits struct {
 	// RateMultiplier (RATE_LIMIT_MULTIPLIER) scales every request-rate limit
 	// (platform/ratelimit.NewPolicy); zero means 1. Raise it only where many

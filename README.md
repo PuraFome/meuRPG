@@ -17,8 +17,8 @@
   <a href="backend/go.mod"><img alt="Go" src="https://img.shields.io/github/go-mod/go-version/PuraFome/meuRPG?filename=backend%2Fgo.mod&amp;logo=go&amp;logoColor=white&amp;label=Go"></a>
   <a href="web/package.json"><img alt="Angular" src="https://img.shields.io/github/package-json/dependency-version/PuraFome/meuRPG/%40angular%2Fcore?filename=web%2Fpackage.json&amp;logo=angular&amp;logoColor=white&amp;label=Angular&amp;color=DD0031"></a>
   <a href="proto/"><img alt="API: Connect + Protobuf" src="https://img.shields.io/badge/API-Connect%20%2B%20Protobuf-4B32C3"></a>
-  <a href="docs/data.md"><img alt="Database: CockroachDB" src="https://img.shields.io/badge/database-CockroachDB-6933FF?logo=cockroachlabs&amp;logoColor=white"></a>
-  <a href="docs/operations.md"><img alt="Infra: Cloud Run in São Paulo" src="https://img.shields.io/badge/infra-Cloud%20Run%20%C2%B7%20S%C3%A3o%20Paulo-4285F4?logo=googlecloud&amp;logoColor=white"></a>
+  <a href="docs/data/README.md"><img alt="Database: CockroachDB" src="https://img.shields.io/badge/database-CockroachDB-6933FF?logo=cockroachlabs&amp;logoColor=white"></a>
+  <a href="docs/operations/README.md"><img alt="Infra: Cloud Run in São Paulo" src="https://img.shields.io/badge/infra-Cloud%20Run%20%C2%B7%20S%C3%A3o%20Paulo-4285F4?logo=googlecloud&amp;logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -64,7 +64,7 @@ It is a Go server that serves the Angular app and the API from the same origin, 
 
 ## The look: the paper sheet
 
-The screens mimic the official D&D 5e sheet: ability medallions, the AC shield, proficiency dots. The game number is the most visible thing on screen. Light and dark themes follow the operating system with AA contrast, and every screen works on a phone at the table. Principles, tokens and how a screen is designed and reviewed: [Design](docs/design.md).
+The screens mimic the official D&D 5e sheet: ability medallions, the AC shield, proficiency dots. The game number is the most visible thing on screen. Light and dark themes follow the operating system with AA contrast, and every screen works on a phone at the table. Principles, tokens and how a screen is designed and reviewed: [Design](docs/design/README.md).
 
 <p align="center">
   <img alt="The Mirathel campaign on a phone, as the Game Master, light theme: the session in progress, Pensantus locked and the NPCs" src="docs/img/campanha-celular-claro.webp" width="300">
@@ -79,12 +79,12 @@ The screens mimic the official D&D 5e sheet: ability medallions, the AC shield, 
 | Backend | Go, a modular monolith (`identity`, `authz`, `campaigns`, `rules`, `characters`, `play`, `maps`, and more) that is also the app's BFF |
 | API | Protobuf + [Connect](https://connectrpc.com) in `proto/`; the TypeScript client in `web/` is generated from the same `.proto` files |
 | Database | CockroachDB, with queries in sqlc and migrations in goose |
-| Web | Angular 21 (standalone, zoneless) with Angular Material, in the [paper sheet](docs/design.md) look |
+| Web | Angular 21 (standalone, zoneless) with Angular Material, in the [paper sheet](docs/design/README.md) look |
 | Sign-in | OpenID Connect with PKCE; the browser only gets a `__Host-` cookie with an opaque session |
 | Rules | A pure engine over the SRD 5.1, with effects in JSON and formulas in a sandbox |
 | Infra | Cloud Run and CockroachDB on Google Cloud, in São Paulo |
 
-The full design, with diagrams, is in [Architecture](docs/architecture.md).
+The full design, with diagrams, is in [Architecture](docs/architecture/README.md).
 
 ## Running it locally
 
@@ -97,7 +97,7 @@ make e2e     # UI tests (Playwright) and accessibility tests (axe)
 make down    # tear everything down
 ```
 
-On a Mac you can run everything without Docker: `make db-native-start`, then `make up LOCAL_STACK=native` (see [All native](CONTRIBUTING.md#everything-native-mac-optional)).
+On a Mac you can run everything without Docker: `make db-native-start`, then `make up LOCAL_STACK=native` (see [All native](docs/development.md#everything-native-mac-optional)).
 
 Open `http://localhost:8080` in Chrome and click "Entrar": sign-in goes to **devidp**, a test provider that exists only on your machine and in CI, and one click on "Mestre Teste" signs you in. Safari does not accept `Secure` cookies on `http://localhost`.
 
@@ -125,7 +125,7 @@ All commands are in `make help` and in [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Quality
 
-All code goes in through a PR with green CI. What each CI job checks is in [CONTRIBUTING](CONTRIBUTING.md#what-ci-checks).
+All code goes in through a PR with green CI. What each CI job checks is in [CONTRIBUTING](docs/ci.md#workflows).
 
 - **Every acceptance criterion is a test:** `go test` for server-side rules, Playwright for what shows on screen, tagged with the story (`@MR-001`).
 - **Accessibility:** [axe](https://github.com/dequelabs/axe-core) runs on the main screens, in light and dark themes, on desktop and phone; CI fails on any serious or critical WCAG 2.1 A and AA violation.
@@ -144,9 +144,9 @@ All code goes in through a PR with green CI. What each CI job checks is in [CONT
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to run, test and open a PR |
 | [Vision](docs/product/vision.md), [Stories](docs/product/stories.md), [Rules](docs/product/rules.md), [Glossary](docs/product/glossary.md) | What the app does, for whom, and how the game behaves in it |
 | [Roadmap](docs/roadmap.md) | The stages, the MVP gate and what comes after |
-| [Architecture](docs/architecture.md), [Data](docs/data.md) | How the system is built, where it runs, the tables |
-| [Design](docs/design.md) | The app's look and how a screen is designed and reviewed |
-| [Privacy](docs/privacy.md), [Operations](docs/operations.md) | The personal data we keep; deploy, secrets and costs |
+| [Architecture](docs/architecture/README.md), [Data](docs/data/README.md) | How the system is built, where it runs, the tables |
+| [Design](docs/design/README.md) | The app's look and how a screen is designed and reviewed |
+| [Privacy](docs/privacy.md), [Operations](docs/operations/README.md) | The personal data we keep; deploy, secrets and costs |
 
 The product docs and privacy are also available in Portuguese under [`docs/pt-BR/`](docs/pt-BR/README.md).
 
@@ -160,7 +160,7 @@ The rules come from the System Reference Document 5.1 (SRD 5.1), under the Creat
 - Three tables come from the SRD 5.2.1 (the 2024 rules, also CC BY 4.0): the ability score methods, the encounter XP budget and the magic item values. The app labels each one "SRD 5.2.1 (regras de 2024)", and the NOTICE carries their attribution.
 - The Portuguese names and the structured effects are ours. The Portuguese texts of the spells and magic items are our own translation of the SRD 5.1 English, which stays one button away ("Ver em inglês").
 - No text from books outside the SRD enters the repository: what a table uses from other books, it registers in its own words.
-- How the engine works: [Architecture → rules module](docs/architecture.md#rules-module-rules-as-data). How to update the SRD: [CONTRIBUTING.md](CONTRIBUTING.md#rules-content-srd).
+- How the engine works: [Architecture → rules module](docs/architecture/rules.md). How to update the SRD: [CONTRIBUTING.md](docs/rules-content.md#rules-content-srd).
 
 The fonts (Alegreya and Alegreya Sans, OFL 1.1) and icons (Material Symbols, Apache 2.0) are also in the [NOTICE](NOTICE), with licenses in [`third_party/licenses/`](third_party/licenses/).
 

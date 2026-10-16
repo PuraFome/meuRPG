@@ -17,4 +17,4 @@
 
 ## Como manter estes documentos
 
-Quando uma versão em inglês muda, a versão em português muda no mesmo PR (a regra está em [CONTRIBUTING.md](../../CONTRIBUTING.md#how-to-keep-the-docs-current)). A estrutura, os títulos e os ids (RN-xx, MR-xx) são os mesmos nas duas línguas. O texto da interface continua em português até a internacionalização.
+Quando uma versão em inglês muda, a versão em português muda no mesmo PR (a regra está em [CONTRIBUTING.md](../../CONTRIBUTING.md#keeping-the-docs-current)). A estrutura, os títulos e os ids (RN-xx, MR-xx) são os mesmos nas duas línguas. O texto da interface continua em português até a internacionalização.
