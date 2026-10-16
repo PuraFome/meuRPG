@@ -1,50 +1,10 @@
-import {
-  LevelUpSpellsKind,
-  type LevelUpOptions,
-} from '../../../gen/meurpg/characters/v1/characters_pb';
-import type { Ability, FeatOption } from '../../../gen/meurpg/rules/v1/rules_pb';
-import type { AbilityKey } from '../characters/characters.types';
-import { type ChoiceDrafts, missingIn } from './levelup-choices';
-import type { HpCard, Rolled } from './levelup-draft-types';
-import { type Missing, type PickItem, type Totals, needText } from './levelup-flow';
-
-/** What the draft knows that the list of missing picks is made from: every member is a signal or a plain value of the draft. */
-export interface MissingSource {
-  readonly options: LevelUpOptions;
-  readonly effective: () => LevelUpOptions;
-  readonly totals: () => Totals;
-  readonly taking: () => boolean;
-  readonly feat: () => FeatOption | undefined;
-  readonly featAbilities: () => readonly Ability[];
-  readonly featAsked: () => number;
-  readonly abilityKeys: () => readonly AbilityKey[];
-  readonly abilityAsked: () => number;
-  readonly hpCard: () => HpCard;
-  readonly rolled: () => Rolled | null;
-  readonly lateDrafts: () => ChoiceDrafts;
-  readonly newDrafts: () => ChoiceDrafts;
-  readonly subclassKey: () => string;
-  readonly features: () => ReadonlySet<string>;
-  readonly skills: () => ReadonlySet<string>;
-  readonly skillsAsked: () => number;
-  readonly skillItems: () => readonly PickItem[];
-  readonly instrument: () => string;
-  readonly instrumentAsked: () => number;
-  readonly expertise: () => ReadonlySet<string>;
-  readonly expertiseAsked: () => number;
-  readonly expertiseItems: () => readonly PickItem[];
-  readonly cantrips: () => ReadonlySet<string>;
-  readonly cantripsAsked: () => number;
-  readonly cantripItems: () => readonly PickItem[];
-  readonly spells: () => ReadonlySet<string>;
-  readonly spellsAsked: () => number;
-  readonly spellItems: () => readonly PickItem[];
-  readonly prepared: () => ReadonlySet<string>;
-  readonly preparedAsked: () => number;
-}
+import { LevelUpSpellsKind } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { missingIn } from './levelup-choices';
+import type { LevelUpDraft } from './levelup-draft';
+import { type Missing, type PickItem, needText } from './levelup-flow';
 
 /** The ability step: the feat, or the abilities of the increase, that are still to pick. */
-function abilityMissing(d: MissingSource): Missing[] {
+function abilityMissing(d: LevelUpDraft): Missing[] {
   const miss = (text: string): Missing[] => [{ step: 'abilities', id: 'abilities', text }];
   if (d.taking()) {
     if (d.feat() === undefined) {
@@ -60,7 +20,7 @@ function abilityMissing(d: MissingSource): Missing[] {
 }
 
 /** The choices of earlier levels come first (the server refuses the level without them), then the new level's own. */
-function openChoicesMissing(d: MissingSource): Missing[] {
+function openChoicesMissing(d: LevelUpDraft): Missing[] {
   const out: Missing[] = [];
   const late = missingIn(d.options.lateChoices, d.lateDrafts());
   if (late.count > 0) {
@@ -82,7 +42,7 @@ function openChoicesMissing(d: MissingSource): Missing[] {
 }
 
 /** The options of each feature choice (a fighting style, the metamagic) that are still to pick. */
-function featureMissing(d: MissingSource): Missing[] {
+function featureMissing(d: LevelUpDraft): Missing[] {
   return d.totals().featureChoices.flatMap((f, i) => {
     const picked = f.options.filter((opt) => d.features().has(opt.key)).length;
     if (picked >= f.choose) {
@@ -120,7 +80,7 @@ function countedMissing(c: Counted): Missing[] {
   return n > 0 ? [{ step: c.step, id: c.id, text: c.text(n) }] : [];
 }
 
-function skillsMissing(d: MissingSource): Missing[] {
+function skillsMissing(d: LevelUpDraft): Missing[] {
   return countedMissing({
     step: 'picks',
     id: 'skills',
@@ -131,7 +91,7 @@ function skillsMissing(d: MissingSource): Missing[] {
   });
 }
 
-function expertiseMissing(d: MissingSource): Missing[] {
+function expertiseMissing(d: LevelUpDraft): Missing[] {
   return countedMissing({
     step: 'picks',
     id: 'expertise',
@@ -144,7 +104,7 @@ function expertiseMissing(d: MissingSource): Missing[] {
 }
 
 /** The spell step: the cantrips, the new spells (for the book or the known list) and the ones to prepare. */
-function spellsMissing(d: MissingSource): Missing[] {
+function spellsMissing(d: LevelUpDraft): Missing[] {
   const where =
     d.effective().spellsKind === LevelUpSpellsKind.SPELLBOOK
       ? 'para o livro'
@@ -178,7 +138,7 @@ function spellsMissing(d: MissingSource): Missing[] {
 }
 
 /** Every choice still to make, in step order, each with the picker that holds it. */
-export function missingChoices(d: MissingSource): Missing[] {
+export function missingChoices(d: LevelUpDraft): Missing[] {
   const o = d.options;
   return [
     ...abilityMissing(d),
