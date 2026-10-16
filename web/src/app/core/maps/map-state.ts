@@ -35,11 +35,13 @@ export class MapState {
   /** Moves with each in-place edit (a stream event, the answer of a call): a read that began before it may carry the
    * state from before the edit, so it is dropped and the map is read once more. */
   private edits = 0;
-  /** The newest read and its generation. A read that a newer one overtook waits for it, so `open()` and `refresh()`
-   * resolve only once the newest map is on screen: a caller that reads `points()` right after its own refresh (the trap
-   * search reading the names of what it found) never sees the map from before a refresh the stream started meanwhile. */
-  private latest: { generation: number; done: Promise<void> } = {
+  /** The newest read: its generation, its map and when it is done. A read of the same map that a newer one overtook
+   * waits for it, so `open()` and `refresh()` resolve only once the newest copy of that map is on screen: a caller that
+   * reads `points()` right after its own refresh (the trap search reading the names of what it found) never sees the
+   * map from before a refresh the stream started meanwhile. A read overtaken by another map's has nothing to wait for. */
+  private latest: { generation: number; mapId: string | null; done: Promise<void> } = {
     generation: 0,
+    mapId: null,
     done: Promise.resolve(),
   };
 
@@ -49,7 +51,7 @@ export class MapState {
   async open(mapId: string | null): Promise<void> {
     this.mapId = mapId;
     if (mapId === null) {
-      this.latest = { generation: ++this.generation, done: Promise.resolve() };
+      this.latest = { generation: ++this.generation, mapId: null, done: Promise.resolve() };
       this.clear('idle');
       return;
     }
@@ -71,7 +73,7 @@ export class MapState {
   private read(mapId: string): Promise<void> {
     const generation = ++this.generation;
     const done = this.readAs(mapId, generation);
-    this.latest = { generation, done };
+    this.latest = { generation, mapId, done };
     return done;
   }
 
@@ -80,7 +82,7 @@ export class MapState {
     try {
       const res = await this.load(mapId);
       if (generation !== this.generation) {
-        return await this.newer(generation);
+        return await this.newer(generation, mapId);
       }
       if (edits !== this.edits) {
         // Served before an edit that is already on screen: read again rather than undo it.
@@ -89,7 +91,7 @@ export class MapState {
       this.apply(res);
     } catch (err) {
       if (generation !== this.generation) {
-        return await this.newer(generation);
+        return await this.newer(generation, mapId);
       }
       if (edits !== this.edits) {
         return;
@@ -103,9 +105,10 @@ export class MapState {
     }
   }
 
-  /** Waits for the read that overtook the read of `generation`, when one did (not for a `open(null)`, which reads nothing). */
-  private async newer(generation: number): Promise<void> {
-    if (this.latest.generation > generation) {
+  /** Waits for the read of the same map that overtook the read of `generation`, when one did (not for another map's,
+   * nor for an `open(null)`, which reads nothing). */
+  private async newer(generation: number, mapId: string): Promise<void> {
+    if (this.latest.generation > generation && this.latest.mapId === mapId) {
       await this.latest.done;
     }
   }
