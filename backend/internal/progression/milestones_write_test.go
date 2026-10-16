@@ -71,7 +71,7 @@ func (s *milestoneSteps) record(t *testing.T, name string, answer any, err error
 	s.rig.wantNoPendingHistoryFault(t, name)
 }
 
-// TestAddMilestoneStepByStep freezes AddMilestone: who may call it, the text,
+// TestAddMilestoneStepByStep checks AddMilestone: who may call it, the text,
 // the mode before the key, the key, each failure, the position after the last
 // (gaps kept), the limit and the retry that is still answered at it.
 func TestAddMilestoneStepByStep(t *testing.T) {
@@ -197,7 +197,7 @@ func milestoneIDOf(t *testing.T, rig *faultRig, text string) string {
 	return id
 }
 
-// TestMoveMilestoneStepByStep freezes MoveMilestone: who may call it, the
+// TestMoveMilestoneStepByStep checks MoveMilestone: who may call it, the
 // milestone and the direction in the order of the checks, each failure, the
 // edges that change nothing (gaps kept), the reached ones skipped, and the
 // positions renumbered from 0 when something moves.
