@@ -89,35 +89,11 @@ func (s *Service) AddMilestone(
 	}
 	// The key is unique in the campaign, and kept with a hash of the whole request.
 	scopedKey, requestHash := idem.Scope(m.CampaignID, key), idem.Hash(req.Msg)
+	newMilestone := plannedInsert{campaignID: m.CampaignID, text: text, key: scopedKey, hash: requestHash}
 	var added progressiondb.PlannedMilestone
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		if err := s.requireMilestonesMode(ctx, tx, m.CampaignID); err != nil {
-			return err
-		}
-		// The list is locked first, so two calls with the same key take turns.
-		current, err := q.ListPlannedMilestonesForUpdate(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("list the milestones: %w", err)
-		}
-		added, _, err = idem.Create(ctx, scopedKey, requestHash, q.GetPlannedMilestoneByCreateKey,
-			func(p progressiondb.PlannedMilestone) *string { return p.CreateHash },
-			func() (progressiondb.PlannedMilestone, error) {
-				if len(current) >= maxMilestones {
-					return added, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d milestones", maxMilestones))
-				}
-				position := int32(0)
-				if n := len(current); n > 0 {
-					position = current[n-1].Position + 1
-				}
-				p, err := q.InsertPlannedMilestone(ctx, progressiondb.InsertPlannedMilestoneParams{
-					CampaignID: m.CampaignID, Position: position, Text: text, CreateKey: scopedKey, CreateHash: requestHash, Now: s.now(),
-				})
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					return p, fmt.Errorf("insert a milestone: %w", err)
-				}
-				return p, err
-			})
+		var err error
+		added, err = s.addPlanned(ctx, tx, newMilestone)
 		return err
 	})
 	if err != nil {
@@ -128,6 +104,52 @@ func (s *Service) AddMilestone(
 		return nil, s.dbError(ctx, "read the milestones", err)
 	}
 	return connect.NewResponse(&progressionv1.AddMilestoneResponse{Milestone: milestoneByID(views, added.ID), Milestones: views}), nil
+}
+
+// plannedInsert is the milestone AddMilestone writes: its campaign, its text
+// (already checked) and the request's scoped key and hash.
+type plannedInsert struct {
+	campaignID string
+	text       string
+	key, hash  *string
+}
+
+// addPlanned is AddMilestone's transaction: the mode asked again, the list
+// locked, then the milestone of the key or a new one after the last.
+func (s *Service) addPlanned(ctx context.Context, tx pgx.Tx, p plannedInsert) (progressiondb.PlannedMilestone, error) {
+	q := s.queries.WithTx(tx)
+	if err := s.requireMilestonesMode(ctx, tx, p.campaignID); err != nil {
+		return progressiondb.PlannedMilestone{}, err
+	}
+	// The list is locked first, so two calls with the same key take turns.
+	current, err := q.ListPlannedMilestonesForUpdate(ctx, p.campaignID)
+	if err != nil {
+		return progressiondb.PlannedMilestone{}, fmt.Errorf("list the milestones: %w", err)
+	}
+	added, _, err := idem.Create(ctx, p.key, p.hash, q.GetPlannedMilestoneByCreateKey,
+		func(row progressiondb.PlannedMilestone) *string { return row.CreateHash },
+		func() (progressiondb.PlannedMilestone, error) { return s.insertPlanned(ctx, q, p, current) })
+	return added, err
+}
+
+// insertPlanned writes the milestone after the last of current, unless the
+// list is full. It passes on pgx.ErrNoRows, the key another call took first,
+// for idem.Create.
+func (s *Service) insertPlanned(ctx context.Context, q *progressiondb.Queries, p plannedInsert, current []progressiondb.PlannedMilestone) (progressiondb.PlannedMilestone, error) {
+	if len(current) >= maxMilestones {
+		return progressiondb.PlannedMilestone{}, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the campaign already has %d milestones", maxMilestones))
+	}
+	position := int32(0)
+	if n := len(current); n > 0 {
+		position = current[n-1].Position + 1
+	}
+	row, err := q.InsertPlannedMilestone(ctx, progressiondb.InsertPlannedMilestoneParams{
+		CampaignID: p.campaignID, Position: position, Text: p.text, CreateKey: p.key, CreateHash: p.hash, Now: s.now(),
+	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return row, fmt.Errorf("insert a milestone: %w", err)
+	}
+	return row, err
 }
 
 // UpdateMilestone implements progressionv1connect.ProgressionServiceHandler.
@@ -165,51 +187,12 @@ func (s *Service) MoveMilestone(
 	if err != nil {
 		return nil, err
 	}
-	var step int
-	switch req.Msg.GetDirection() {
-	case progressionv1.MilestoneDirection_MILESTONE_DIRECTION_UP:
-		step = -1
-	case progressionv1.MilestoneDirection_MILESTONE_DIRECTION_DOWN:
-		step = 1
-	default:
+	step, ok := directionSteps[req.Msg.GetDirection()]
+	if !ok {
 		return nil, invalidArgument("direction", errors.New("is required"))
 	}
 	err = s.changePlanned(ctx, m, id, func(q *progressiondb.Queries) error {
-		list, err := q.ListPlannedMilestonesForUpdate(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("list the milestones: %w", err)
-		}
-		live, err := q.ListLiveMilestoneAwards(ctx, m.CampaignID)
-		if err != nil {
-			return fmt.Errorf("list the marks: %w", err)
-		}
-		reached := func(i int) bool {
-			return slices.ContainsFunc(live, func(a progressiondb.XpAward) bool { return deref(a.MilestoneID) == list[i].ID })
-		}
-		i := slices.IndexFunc(list, func(p progressiondb.PlannedMilestone) bool { return p.ID == id })
-		if i < 0 {
-			return errMilestoneNotFound()
-		}
-		// The nearest planned one in that direction: the reached ones are
-		// skipped, and keep their places.
-		j := i + step
-		for j >= 0 && j < len(list) && reached(j) {
-			j += step
-		}
-		if j < 0 || j >= len(list) {
-			return nil // already first or last: nothing changes
-		}
-		list[i], list[j] = list[j], list[i]
-		for p := range list {
-			want := int32(p)
-			if list[p].Position == want {
-				continue
-			}
-			if err := q.SetPlannedMilestonePosition(ctx, progressiondb.SetPlannedMilestonePositionParams{CampaignID: m.CampaignID, ID: list[p].ID, Position: want}); err != nil {
-				return fmt.Errorf("set a milestone's position: %w", err)
-			}
-		}
-		return nil
+		return movePlanned(ctx, q, m.CampaignID, id, step)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "move a milestone", err)
@@ -219,6 +202,66 @@ func (s *Service) MoveMilestone(
 		return nil, s.dbError(ctx, "read the milestones", err)
 	}
 	return connect.NewResponse(&progressionv1.MoveMilestoneResponse{Milestones: views}), nil
+}
+
+// directionSteps is how far a move goes in the list, by direction: up is
+// towards the first.
+var directionSteps = map[progressionv1.MilestoneDirection]int{
+	progressionv1.MilestoneDirection_MILESTONE_DIRECTION_UP:   -1,
+	progressionv1.MilestoneDirection_MILESTONE_DIRECTION_DOWN: 1,
+}
+
+// movePlanned is MoveMilestone's change, inside changePlanned's transaction:
+// the milestone swaps places with the nearest planned one in that direction,
+// and the list is numbered again from 0.
+func movePlanned(ctx context.Context, q *progressiondb.Queries, campaignID, id string, step int) error {
+	list, err := q.ListPlannedMilestonesForUpdate(ctx, campaignID)
+	if err != nil {
+		return fmt.Errorf("list the milestones: %w", err)
+	}
+	live, err := q.ListLiveMilestoneAwards(ctx, campaignID)
+	if err != nil {
+		return fmt.Errorf("list the marks: %w", err)
+	}
+	i := slices.IndexFunc(list, func(p progressiondb.PlannedMilestone) bool { return p.ID == id })
+	if i < 0 {
+		return errMilestoneNotFound()
+	}
+	j := nearestPlanned(list, live, i, step)
+	if j < 0 || j >= len(list) {
+		return nil // already first or last: nothing changes
+	}
+	list[i], list[j] = list[j], list[i]
+	return renumberPlanned(ctx, q, campaignID, list)
+}
+
+// nearestPlanned is the index of the nearest planned milestone from i in the
+// direction of step: the reached ones (with a live mark) are skipped, and keep
+// their places. It is out of the list when there is none.
+func nearestPlanned(list []progressiondb.PlannedMilestone, live []progressiondb.XpAward, i, step int) int {
+	reached := func(j int) bool {
+		return slices.ContainsFunc(live, func(a progressiondb.XpAward) bool { return deref(a.MilestoneID) == list[j].ID })
+	}
+	j := i + step
+	for j >= 0 && j < len(list) && reached(j) {
+		j += step
+	}
+	return j
+}
+
+// renumberPlanned writes each milestone's index in list as its position, where
+// it is not that already.
+func renumberPlanned(ctx context.Context, q *progressiondb.Queries, campaignID string, list []progressiondb.PlannedMilestone) error {
+	for p := range list {
+		want := int32(p)
+		if list[p].Position == want {
+			continue
+		}
+		if err := q.SetPlannedMilestonePosition(ctx, progressiondb.SetPlannedMilestonePositionParams{CampaignID: campaignID, ID: list[p].ID, Position: want}); err != nil {
+			return fmt.Errorf("set a milestone's position: %w", err)
+		}
+	}
+	return nil
 }
 
 // RemoveMilestone implements progressionv1connect.ProgressionServiceHandler.
@@ -417,66 +460,90 @@ func cleanMilestoneText(text string) (string, error) {
 // for a player; then the ones marked off the list, oldest first. The marks are
 // the awards that are not undone, as the history shows them.
 func (s *Service) milestoneViews(ctx context.Context, m authz.Membership) ([]*progressionv1.Milestone, error) {
-	// The planned milestones, the marks and what the marks show are one moment:
-	// an undo between them would show a mark that is live next to a "Desfazer" on
-	// another one.
-	var rows []progressiondb.PlannedMilestone
-	var live []progressiondb.XpAward
-	var withHistory []string
-	var data awardData
-	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		var err error
-		if rows, err = q.ListPlannedMilestones(ctx, m.CampaignID); err != nil {
-			return fmt.Errorf("list the milestones: %w", err)
-		}
-		if live, err = q.ListLiveMilestoneAwards(ctx, m.CampaignID); err != nil {
-			return fmt.Errorf("list the marks: %w", err)
-		}
-		if withHistory, err = q.ListMilestoneIDsWithAwards(ctx, m.CampaignID); err != nil {
-			return fmt.Errorf("list the milestones with history: %w", err)
-		}
-		if len(live) > 0 {
-			data, err = s.loadAwardData(ctx, q, m, live)
-		}
-		return err
-	})
+	snap, err := s.readMilestones(ctx, m)
 	if err != nil {
 		return nil, err
 	}
 	var marks []*progressionv1.XPAward
-	if len(live) > 0 {
-		if marks, err = s.viewsOf(ctx, m, data, live); err != nil {
+	if len(snap.live) > 0 {
+		if marks, err = s.viewsOf(ctx, m, snap.data, snap.live); err != nil {
 			return nil, err
 		}
 	}
-	byMilestone := map[string][]*progressionv1.XPAward{}
-	reachedAt := map[string]time.Time{}
-	var offList []*progressionv1.Milestone // marked off the list: one milestone per award
-	for i, a := range live {
-		id := deref(a.MilestoneID)
-		if id == "" {
-			offList = append(offList, &progressionv1.Milestone{
-				Id: a.ID, Text: a.Reason, Reached: true, ReachedAt: timestamppb.New(a.CreatedAt), Marks: []*progressionv1.XPAward{marks[i]}, OffList: true,
-			})
-			continue
-		}
-		byMilestone[id] = append(byMilestone[id], marks[i])
-		if _, ok := reachedAt[id]; !ok {
-			reachedAt[id] = a.CreatedAt // oldest first
-		}
-	}
-	out := make([]*progressionv1.Milestone, 0, len(rows))
-	for _, r := range rows {
-		v := &progressionv1.Milestone{Id: r.ID, Text: r.Text, Reached: len(byMilestone[r.ID]) > 0, Marks: byMilestone[r.ID], HasHistory: slices.Contains(withHistory, r.ID)}
+	g := groupMarks(snap.live, marks)
+	out := make([]*progressionv1.Milestone, 0, len(snap.rows))
+	for _, r := range snap.rows {
+		v := &progressionv1.Milestone{Id: r.ID, Text: r.Text, Reached: len(g.byMilestone[r.ID]) > 0, Marks: g.byMilestone[r.ID], HasHistory: slices.Contains(snap.withHistory, r.ID)}
 		if v.Reached {
-			v.ReachedAt = timestamppb.New(reachedAt[r.ID])
+			v.ReachedAt = timestamppb.New(g.reachedAt[r.ID])
 		} else if m.Role != authz.RoleMaster {
 			continue // a player never learns what is still planned
 		}
 		out = append(out, v)
 	}
-	return append(out, offList...), nil
+	return append(out, g.offList...), nil
+}
+
+// milestoneSnapshot is what milestoneViews reads in one read transaction.
+type milestoneSnapshot struct {
+	rows        []progressiondb.PlannedMilestone
+	live        []progressiondb.XpAward // the marks not undone, oldest first
+	withHistory []string                // the milestones that were ever marked
+	data        awardData               // what the marks show, when there are any
+}
+
+// readMilestones reads the planned milestones, the marks and what the marks
+// show as one moment: an undo between them would show a mark that is live
+// next to a "Desfazer" on another one.
+func (s *Service) readMilestones(ctx context.Context, m authz.Membership) (milestoneSnapshot, error) {
+	var snap milestoneSnapshot
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		var err error
+		if snap.rows, err = q.ListPlannedMilestones(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("list the milestones: %w", err)
+		}
+		if snap.live, err = q.ListLiveMilestoneAwards(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("list the marks: %w", err)
+		}
+		if snap.withHistory, err = q.ListMilestoneIDsWithAwards(ctx, m.CampaignID); err != nil {
+			return fmt.Errorf("list the milestones with history: %w", err)
+		}
+		if len(snap.live) > 0 {
+			snap.data, err = s.loadAwardData(ctx, q, m, snap.live)
+		}
+		return err
+	})
+	return snap, err
+}
+
+// markGroups is the live marks sorted out: by planned milestone with the
+// time of its oldest, and the ones marked off the list as milestones of their
+// own.
+type markGroups struct {
+	byMilestone map[string][]*progressionv1.XPAward
+	reachedAt   map[string]time.Time
+	offList     []*progressionv1.Milestone // one milestone per award
+}
+
+// groupMarks sorts out the live marks; marks holds their views, in the same
+// order.
+func groupMarks(live []progressiondb.XpAward, marks []*progressionv1.XPAward) markGroups {
+	g := markGroups{byMilestone: map[string][]*progressionv1.XPAward{}, reachedAt: map[string]time.Time{}}
+	for i, a := range live {
+		id := deref(a.MilestoneID)
+		if id == "" {
+			g.offList = append(g.offList, &progressionv1.Milestone{
+				Id: a.ID, Text: a.Reason, Reached: true, ReachedAt: timestamppb.New(a.CreatedAt), Marks: []*progressionv1.XPAward{marks[i]}, OffList: true,
+			})
+			continue
+		}
+		g.byMilestone[id] = append(g.byMilestone[id], marks[i])
+		if _, ok := g.reachedAt[id]; !ok {
+			g.reachedAt[id] = a.CreatedAt // oldest first
+		}
+	}
+	return g
 }
 
 // milestoneByID finds a milestone in a list of views.
