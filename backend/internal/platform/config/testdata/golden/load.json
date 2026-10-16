@@ -1,0 +1,1890 @@
+{
+  "blob both": {
+    "env": {
+      "BLOB_BUCKET": "b",
+      "BLOB_DIR": "/data"
+    },
+    "error": "invalid configuration: BLOB_DIR and BLOB_BUCKET are both set; choose one: BLOB_BUCKET for Cloud Storage, BLOB_DIR for a local folder"
+  },
+  "blob both cloud": {
+    "env": {
+      "BLOB_BUCKET": "b",
+      "BLOB_DIR": "/data",
+      "K_SERVICE": "api"
+    },
+    "error": "invalid configuration: BLOB_DIR and BLOB_BUCKET are both set; choose one: BLOB_BUCKET for Cloud Storage, BLOB_DIR for a local folder"
+  },
+  "blob bucket": {
+    "env": {
+      "BLOB_BUCKET": "meurpg-images"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "meurpg-images",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "blob bucket cloud": {
+    "env": {
+      "BLOB_BUCKET": "b",
+      "K_SERVICE": "api"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "b",
+      "CloudRun": true,
+      "TrustedProxyHops": 1,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "blob dir": {
+    "env": {
+      "BLOB_DIR": " /data/blobs "
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "/data/blobs",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "blob dir cloud": {
+    "env": {
+      "BLOB_DIR": "/data",
+      "K_SERVICE": "api"
+    },
+    "error": "invalid configuration: BLOB_DIR is not allowed on Cloud Run, whose disk is lost when the instance stops; use BLOB_BUCKET"
+  },
+  "cap off": {
+    "env": {
+      "MAX_CAMPAIGNS_PER_USER": "OFF"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": -1,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "cap off cloud": {
+    "env": {
+      "K_SERVICE": "api",
+      "MAX_CAMPAIGNS_PER_USER": "off"
+    },
+    "error": "invalid configuration: MAX_CAMPAIGNS_PER_USER=off is for the local and CI stacks only, never on Cloud Run"
+  },
+  "cap text": {
+    "env": {
+      "MAX_CAMPAIGNS_PER_USER": "many"
+    },
+    "error": "invalid configuration: MAX_CAMPAIGNS_PER_USER must be a number, got \"many\""
+  },
+  "cap too big": {
+    "env": {
+      "MAX_CAMPAIGNS_PER_USER": "1001"
+    },
+    "error": "invalid configuration: MAX_CAMPAIGNS_PER_USER must be between 1 and 1000, got 1001"
+  },
+  "cap zero": {
+    "env": {
+      "MAX_CAMPAIGNS_PER_USER": "0"
+    },
+    "error": "invalid configuration: MAX_CAMPAIGNS_PER_USER must be between 1 and 1000, got 0"
+  },
+  "cloud trace": {
+    "env": {
+      "GOOGLE_CLOUD_PROJECT": " proj ",
+      "K_SERVICE": "api"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": true,
+      "TrustedProxyHops": 1,
+      "TraceProject": "proj",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "creators bad entries": {
+    "env": {
+      "CAMPAIGN_CREATORS": "a@x.com, mestre ,, other"
+    },
+    "error": "invalid configuration: CAMPAIGN_CREATORS entry 2 is not an e-mail address\nCAMPAIGN_CREATORS entry 4 is not an e-mail address"
+  },
+  "creators separators": {
+    "env": {
+      "CAMPAIGN_CREATORS": " , ,"
+    },
+    "error": "invalid configuration: CAMPAIGN_CREATORS has no e-mail address; leave it empty to let anyone create"
+  },
+  "creators separators after a bad multiplier": {
+    "env": {
+      "CAMPAIGN_CREATORS": ",",
+      "RATE_LIMIT_MULTIPLIER": "x"
+    },
+    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be a number, got \"x\""
+  },
+  "database cloud broken": {
+    "env": {
+      "DATABASE_URL": "postgresql://u@db:99999999/meurpg",
+      "K_SERVICE": "api"
+    },
+    "error": "invalid configuration: DATABASE_URL is not a valid PostgreSQL connection string"
+  },
+  "database cloud plain": {
+    "env": {
+      "DATABASE_URL": "postgresql://u@db:26257/meurpg?sslmode=disable",
+      "K_SERVICE": "api"
+    },
+    "error": "invalid configuration: DATABASE_URL must use sslmode=verify-full (or verify-ca) on Cloud Run: the connection to the database must be encrypted and the server's certificate checked"
+  },
+  "database cloud require": {
+    "env": {
+      "DATABASE_URL": "postgresql://u@db:26257/meurpg?sslmode=require",
+      "K_SERVICE": "api"
+    },
+    "error": "invalid configuration: DATABASE_URL must use sslmode=verify-full (or verify-ca) on Cloud Run: the connection to the database must be encrypted and the server's certificate checked"
+  },
+  "database cloud verify": {
+    "env": {
+      "DATABASE_URL": "postgresql://u@db:26257/meurpg?sslmode=verify-full",
+      "K_SERVICE": "api"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "[REDACTED]",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": true,
+      "TrustedProxyHops": 1,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "postgresql://u@db:26257/meurpg?sslmode=verify-full",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "database cloud verify-ca": {
+    "env": {
+      "DATABASE_URL": "postgresql://u@db:26257/meurpg?sslmode=verify-ca",
+      "K_SERVICE": "api"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "[REDACTED]",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": true,
+      "TrustedProxyHops": 1,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "postgresql://u@db:26257/meurpg?sslmode=verify-ca",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "database local plain": {
+    "env": {
+      "DATABASE_URL": " postgresql://root@db:26257/meurpg?sslmode=disable "
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "[REDACTED]",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "postgresql://root@db:26257/meurpg?sslmode=disable",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "empty": {
+    "env": {},
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "everything set on cloud run": {
+    "env": {
+      "BLOB_BUCKET": "b",
+      "CAMPAIGN_CREATORS": "m@x.com",
+      "DATABASE_URL": "postgresql://u@db/x?sslmode=verify-full",
+      "GEMINI_API_KEY": "k",
+      "GOOGLE_CLOUD_PROJECT": "p",
+      "IMAGE_DAILY_LIMIT": "4",
+      "IMAGE_MONTHLY_LIMIT": "3",
+      "K_SERVICE": "api",
+      "LISTEN_HOST": "0.0.0.0",
+      "LOG_LEVEL": "debug",
+      "MAX_CAMPAIGNS_PER_USER": "5",
+      "OIDC_CLIENT_ID": "id",
+      "OIDC_CLIENT_SECRET": "s",
+      "OIDC_ISSUER": "https://accounts.google.com",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback",
+      "PORT": "9090",
+      "RATE_LIMIT_MULTIPLIER": "3",
+      "SESSION_IDLE_TIMEOUT": "48h",
+      "TRUSTED_PROXY_HOPS": "2",
+      "WEB_DIR": "/w"
+    },
+    "config": {
+      "Port": 9090,
+      "ListenHost": "0.0.0.0",
+      "DatabaseURL": "[REDACTED]",
+      "LogLevel": "DEBUG",
+      "WebDir": "/w",
+      "OIDC": {
+        "IssuerURL": "https://accounts.google.com",
+        "ClientID": "id",
+        "ClientSecret": "[REDACTED]",
+        "RedirectURL": "https://meurpg.example.com/auth/callback",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "b",
+      "CloudRun": true,
+      "TrustedProxyHops": 2,
+      "TraceProject": "p",
+      "Images": {
+        "GeminiAPIKey": "[REDACTED]",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 3,
+        "DailyLimit": 4
+      },
+      "SessionIdleTimeout": 172800000000000,
+      "Limits": {
+        "RateMultiplier": 3,
+        "MaxCampaignsPerUser": 5,
+        "CampaignCreators": [
+          "m@x.com"
+        ]
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "postgresql://u@db/x?sslmode=verify-full",
+      "Images.GeminiKey": "k",
+      "OIDC.ClientSecret": "s"
+    }
+  },
+  "everything wrong locally": {
+    "env": {
+      "BLOB_BUCKET": "b",
+      "BLOB_DIR": "/d",
+      "CAMPAIGN_CREATORS": "nobody",
+      "IMAGE_DAILY_LIMIT": "z",
+      "IMAGE_GENERATOR": "x",
+      "IMAGE_MONTHLY_LIMIT": "0",
+      "LOG_LEVEL": "loud",
+      "MAX_CAMPAIGNS_PER_USER": "0",
+      "OIDC_ISSUER": "https://idp.example.com?x",
+      "OIDC_MAX_AGE": "x",
+      "PORT": "-1",
+      "RATE_LIMIT_MULTIPLIER": "0",
+      "SESSION_IDLE_TIMEOUT": "1s",
+      "TRUSTED_PROXY_HOPS": "2"
+    },
+    "error": "invalid configuration: TRUSTED_PROXY_HOPS is for Cloud Run only; elsewhere the server is not behind a proxy, and trusting X-Forwarded-For would let any client choose its own rate-limit key\nPORT must be between 1 and 65535, got -1\nBLOB_DIR and BLOB_BUCKET are both set; choose one: BLOB_BUCKET for Cloud Storage, BLOB_DIR for a local folder\nIMAGE_GENERATOR must be gemini or fake, got \"x\"\nIMAGE_MONTHLY_LIMIT must be between 1 and 500, got 0\nIMAGE_DAILY_LIMIT must be a number, got \"z\"\nLOG_LEVEL must be one of debug, info, warn, error; got \"loud\"\nRATE_LIMIT_MULTIPLIER must be above 0 and at most 1000, got 0\nMAX_CAMPAIGNS_PER_USER must be between 1 and 1000, got 0\nCAMPAIGN_CREATORS entry 1 is not an e-mail address\nSESSION_IDLE_TIMEOUT must be between 1h and 720h, got \"1s\"\nOIDC_MAX_AGE must be a duration like 1h or 90m, got \"x\"\nsign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URL\nOIDC_ISSUER must not have a query or fragment, got \"https://idp.example.com\""
+  },
+  "everything wrong on cloud run": {
+    "env": {
+      "BLOB_DIR": "/d",
+      "DATABASE_URL": "postgresql://db/x?sslmode=prefer",
+      "IMAGE_GENERATOR": "fake",
+      "K_SERVICE": "api",
+      "LOG_LEVEL": "x",
+      "MAX_CAMPAIGNS_PER_USER": "off",
+      "OIDC_REDIRECT_URL": "x",
+      "PORT": "x",
+      "SESSION_IDLE_TIMEOUT": "x",
+      "TRUSTED_PROXY_HOPS": "9"
+    },
+    "error": "invalid configuration: TRUSTED_PROXY_HOPS must be 1 (Cloud Run alone) or 2 (behind an external load balancer), got \"9\"\nPORT must be a number, got \"x\"\nBLOB_DIR is not allowed on Cloud Run, whose disk is lost when the instance stops; use BLOB_BUCKET\nIMAGE_GENERATOR=fake is not allowed on Cloud Run\nLOG_LEVEL must be one of debug, info, warn, error; got \"x\"\nDATABASE_URL must use sslmode=verify-full (or verify-ca) on Cloud Run: the connection to the database must be encrypted and the server's certificate checked\nMAX_CAMPAIGNS_PER_USER=off is for the local and CI stacks only, never on Cloud Run\nSESSION_IDLE_TIMEOUT must be a duration like 336h, got \"x\"\nsign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET\nOIDC_REDIRECT_URL must be an absolute URL with no user name or password, such as https://meurpg.example.com/auth/callback"
+  },
+  "hops cloud bad": {
+    "env": {
+      "K_SERVICE": "api",
+      "TRUSTED_PROXY_HOPS": "3"
+    },
+    "error": "invalid configuration: TRUSTED_PROXY_HOPS must be 1 (Cloud Run alone) or 2 (behind an external load balancer), got \"3\""
+  },
+  "hops cloud two": {
+    "env": {
+      "K_SERVICE": "api",
+      "TRUSTED_PROXY_HOPS": "2"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": true,
+      "TrustedProxyHops": 2,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "hops error first": {
+    "env": {
+      "PORT": "x",
+      "TRUSTED_PROXY_HOPS": "1"
+    },
+    "error": "invalid configuration: TRUSTED_PROXY_HOPS is for Cloud Run only; elsewhere the server is not behind a proxy, and trusting X-Forwarded-For would let any client choose its own rate-limit key\nPORT must be a number, got \"x\""
+  },
+  "hops local": {
+    "env": {
+      "TRUSTED_PROXY_HOPS": "1"
+    },
+    "error": "invalid configuration: TRUSTED_PROXY_HOPS is for Cloud Run only; elsewhere the server is not behind a proxy, and trusting X-Forwarded-For would let any client choose its own rate-limit key"
+  },
+  "idle long": {
+    "env": {
+      "SESSION_IDLE_TIMEOUT": "721h"
+    },
+    "error": "invalid configuration: SESSION_IDLE_TIMEOUT must be between 1h and 720h, got \"721h\""
+  },
+  "idle longest": {
+    "env": {
+      "SESSION_IDLE_TIMEOUT": "720h"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 2592000000000000,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "idle short": {
+    "env": {
+      "SESSION_IDLE_TIMEOUT": "59m"
+    },
+    "error": "invalid configuration: SESSION_IDLE_TIMEOUT must be between 1h and 720h, got \"59m\""
+  },
+  "idle shortest": {
+    "env": {
+      "SESSION_IDLE_TIMEOUT": "1h"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 3600000000000,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "idle text": {
+    "env": {
+      "SESSION_IDLE_TIMEOUT": "two weeks"
+    },
+    "error": "invalid configuration: SESSION_IDLE_TIMEOUT must be a duration like 336h, got \"two weeks\""
+  },
+  "images fake": {
+    "env": {
+      "IMAGE_GENERATOR": "fake"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": true,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "images fake cloud": {
+    "env": {
+      "IMAGE_GENERATOR": "fake",
+      "K_SERVICE": "api"
+    },
+    "error": "invalid configuration: IMAGE_GENERATOR=fake is not allowed on Cloud Run"
+  },
+  "images key and model": {
+    "env": {
+      "GEMINI_API_KEY": "k3y",
+      "GEMINI_IMAGE_MODEL": "m",
+      "IMAGE_GENERATOR": "gemini"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "[REDACTED]",
+        "Model": "m",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "k3y",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "images limits": {
+    "env": {
+      "IMAGE_DAILY_LIMIT": "10000",
+      "IMAGE_MONTHLY_LIMIT": "500"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 500,
+        "DailyLimit": 10000
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "images limits bad": {
+    "env": {
+      "IMAGE_DAILY_LIMIT": "y",
+      "IMAGE_MONTHLY_LIMIT": "x"
+    },
+    "error": "invalid configuration: IMAGE_MONTHLY_LIMIT must be a number, got \"x\"\nIMAGE_DAILY_LIMIT must be a number, got \"y\""
+  },
+  "images limits range": {
+    "env": {
+      "IMAGE_DAILY_LIMIT": "0",
+      "IMAGE_MONTHLY_LIMIT": "501"
+    },
+    "error": "invalid configuration: IMAGE_MONTHLY_LIMIT must be between 1 and 500, got 501\nIMAGE_DAILY_LIMIT must be between 1 and 10000, got 0"
+  },
+  "images unknown": {
+    "env": {
+      "IMAGE_GENERATOR": "dalle"
+    },
+    "error": "invalid configuration: IMAGE_GENERATOR must be gemini or fake, got \"dalle\""
+  },
+  "limits all": {
+    "env": {
+      "CAMPAIGN_CREATORS": " A@x.com,b@x.com ,a@X.com,",
+      "MAX_CAMPAIGNS_PER_USER": "1000",
+      "RATE_LIMIT_MULTIPLIER": "2.5"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 2.5,
+        "MaxCampaignsPerUser": 1000,
+        "CampaignCreators": [
+          "a@x.com",
+          "b@x.com"
+        ]
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "limits every error": {
+    "env": {
+      "CAMPAIGN_CREATORS": "z",
+      "MAX_CAMPAIGNS_PER_USER": "y",
+      "RATE_LIMIT_MULTIPLIER": "x"
+    },
+    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be a number, got \"x\"\nMAX_CAMPAIGNS_PER_USER must be a number, got \"y\"\nCAMPAIGN_CREATORS entry 1 is not an e-mail address"
+  },
+  "limits inf": {
+    "env": {
+      "RATE_LIMIT_MULTIPLIER": "inf"
+    },
+    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be above 0 and at most 1000, got inf"
+  },
+  "limits max": {
+    "env": {
+      "RATE_LIMIT_MULTIPLIER": "1000"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 1000,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "limits nan": {
+    "env": {
+      "RATE_LIMIT_MULTIPLIER": "NaN"
+    },
+    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be a number, got \"NaN\""
+  },
+  "limits negative": {
+    "env": {
+      "RATE_LIMIT_MULTIPLIER": "-1"
+    },
+    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be above 0 and at most 1000, got -1"
+  },
+  "limits over max": {
+    "env": {
+      "RATE_LIMIT_MULTIPLIER": "1000.5"
+    },
+    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be above 0 and at most 1000, got 1000.5"
+  },
+  "limits zero": {
+    "env": {
+      "RATE_LIMIT_MULTIPLIER": "0"
+    },
+    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be above 0 and at most 1000, got 0"
+  },
+  "listen host": {
+    "env": {
+      "LISTEN_HOST": " 127.0.0.1 "
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "127.0.0.1",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "local trace ignored": {
+    "env": {
+      "GOOGLE_CLOUD_PROJECT": "proj"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "log bad": {
+    "env": {
+      "LOG_LEVEL": "trace"
+    },
+    "error": "invalid configuration: LOG_LEVEL must be one of debug, info, warn, error; got \"trace\""
+  },
+  "log debug": {
+    "env": {
+      "LOG_LEVEL": "debug"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "DEBUG",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "log error": {
+    "env": {
+      "LOG_LEVEL": "error"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "ERROR",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "log info": {
+    "env": {
+      "LOG_LEVEL": "Info"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "log warn up": {
+    "env": {
+      "LOG_LEVEL": "WARN"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "WARN",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "oidc ca alone": {
+    "env": {
+      "OIDC_CA_FILE": "/ca.pem"
+    },
+    "error": "invalid configuration: sign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URL"
+  },
+  "oidc client id alone": {
+    "env": {
+      "OIDC_CLIENT_ID": "x"
+    },
+    "error": "invalid configuration: sign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing OIDC_ISSUER, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URL"
+  },
+  "oidc every error": {
+    "env": {
+      "OIDC_ISSUER": "http://idp.example.com",
+      "OIDC_MAX_AGE": "0s",
+      "OIDC_REDIRECT_URL": "https://x/cb"
+    },
+    "error": "invalid configuration: OIDC_MAX_AGE must be between 1s and 720h, got \"0s\"\nsign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing OIDC_CLIENT_ID, OIDC_CLIENT_SECRET\nOIDC_ISSUER must use https (http only on localhost or *.localhost), got \"http://idp.example.com\"\nOIDC_REDIRECT_URL must end in /auth/callback with no query or fragment, got \"https://x/cb\""
+  },
+  "oidc full": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "https://idp.example.com",
+        "ClientID": "meurpg",
+        "ClientSecret": "[REDACTED]",
+        "RedirectURL": "https://meurpg.example.com/auth/callback",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": "s3cret"
+    }
+  },
+  "oidc full extras": {
+    "env": {
+      "OIDC_CA_FILE": " /ca.pem ",
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_MAX_AGE": "1.5s",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "https://idp.example.com",
+        "ClientID": "meurpg",
+        "ClientSecret": "[REDACTED]",
+        "RedirectURL": "https://meurpg.example.com/auth/callback",
+        "CAFile": "/ca.pem",
+        "MaxAge": 1000000000
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": "s3cret"
+    }
+  },
+  "oidc issuer fragment": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com/p#frag",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_ISSUER must not have a query or fragment, got \"https://idp.example.com/p\""
+  },
+  "oidc issuer ftp": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "ftp://idp.example.com",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_ISSUER must use https (http only on localhost or *.localhost), got \"ftp://idp.example.com\""
+  },
+  "oidc issuer http": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "http://idp.example.com/x?q=1",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_ISSUER must use https (http only on localhost or *.localhost), got \"http://idp.example.com/x\""
+  },
+  "oidc issuer loopback": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "http://127.0.0.1:9090",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "http://127.0.0.1:9090",
+        "ClientID": "meurpg",
+        "ClientSecret": "[REDACTED]",
+        "RedirectURL": "https://meurpg.example.com/auth/callback",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": "s3cret"
+    }
+  },
+  "oidc issuer not url": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "://x",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_ISSUER must be an absolute URL with no user name or password, such as https://idp.example.com"
+  },
+  "oidc issuer query": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com/p?token=t",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_ISSUER must not have a query or fragment, got \"https://idp.example.com/p\""
+  },
+  "oidc issuer relative": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "/idp",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_ISSUER must be an absolute URL with no user name or password, such as https://idp.example.com"
+  },
+  "oidc issuer user": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://me@idp.example.com",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_ISSUER must be an absolute URL with no user name or password, such as https://idp.example.com"
+  },
+  "oidc max age 1s": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_MAX_AGE": "1s",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "https://idp.example.com",
+        "ClientID": "meurpg",
+        "ClientSecret": "[REDACTED]",
+        "RedirectURL": "https://meurpg.example.com/auth/callback",
+        "CAFile": "",
+        "MaxAge": 1000000000
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": "s3cret"
+    }
+  },
+  "oidc max age 720h": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_MAX_AGE": "720h",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "https://idp.example.com",
+        "ClientID": "meurpg",
+        "ClientSecret": "[REDACTED]",
+        "RedirectURL": "https://meurpg.example.com/auth/callback",
+        "CAFile": "",
+        "MaxAge": 2592000000000000
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": "s3cret"
+    }
+  },
+  "oidc max age alone": {
+    "env": {
+      "OIDC_MAX_AGE": "1h"
+    },
+    "error": "invalid configuration: sign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_REDIRECT_URL"
+  },
+  "oidc max age long": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_MAX_AGE": "721h",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_MAX_AGE must be between 1s and 720h, got \"721h\""
+  },
+  "oidc max age short": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_MAX_AGE": "999ms",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_MAX_AGE must be between 1s and 720h, got \"999ms\""
+  },
+  "oidc max age text": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_MAX_AGE": "soon",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_MAX_AGE must be a duration like 1h or 90m, got \"soon\""
+  },
+  "oidc redirect bad": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_REDIRECT_URL": "meurpg"
+    },
+    "error": "invalid configuration: OIDC_REDIRECT_URL must be an absolute URL with no user name or password, such as https://meurpg.example.com/auth/callback"
+  },
+  "oidc redirect frag": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback#x"
+    },
+    "error": "invalid configuration: OIDC_REDIRECT_URL must end in /auth/callback with no query or fragment, got \"https://meurpg.example.com/auth/callback\""
+  },
+  "oidc redirect http": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_REDIRECT_URL": "http://meurpg.example.com/auth/callback"
+    },
+    "error": "invalid configuration: OIDC_REDIRECT_URL must use https (http only on localhost or *.localhost), got \"http://meurpg.example.com/auth/callback\""
+  },
+  "oidc redirect path": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/cb"
+    },
+    "error": "invalid configuration: OIDC_REDIRECT_URL must end in /auth/callback with no query or fragment, got \"https://meurpg.example.com/cb\""
+  },
+  "oidc redirect query": {
+    "env": {
+      "OIDC_CLIENT_ID": "meurpg",
+      "OIDC_CLIENT_SECRET": "s3cret",
+      "OIDC_ISSUER": "https://idp.example.com",
+      "OIDC_REDIRECT_URL": "https://meurpg.example.com/auth/callback?x=1"
+    },
+    "error": "invalid configuration: OIDC_REDIRECT_URL must end in /auth/callback with no query or fragment, got \"https://meurpg.example.com/auth/callback\""
+  },
+  "oidc secret alone": {
+    "env": {
+      "OIDC_CLIENT_SECRET": "x"
+    },
+    "error": "invalid configuration: sign-in needs all of OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_REDIRECT_URL; missing OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_REDIRECT_URL"
+  },
+  "port highest": {
+    "env": {
+      "PORT": " 65535 "
+    },
+    "config": {
+      "Port": 65535,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "port lowest": {
+    "env": {
+      "PORT": "1"
+    },
+    "config": {
+      "Port": 1,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "port text": {
+    "env": {
+      "PORT": "abc"
+    },
+    "error": "invalid configuration: PORT must be a number, got \"abc\""
+  },
+  "port too big": {
+    "env": {
+      "PORT": "65536"
+    },
+    "error": "invalid configuration: PORT must be between 1 and 65535, got 65536"
+  },
+  "port zero": {
+    "env": {
+      "PORT": "0"
+    },
+    "error": "invalid configuration: PORT must be between 1 and 65535, got 0"
+  },
+  "web dir": {
+    "env": {
+      "WEB_DIR": " /srv/web "
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/srv/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "web dir blank": {
+    "env": {
+      "WEB_DIR": "   "
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  }
+}

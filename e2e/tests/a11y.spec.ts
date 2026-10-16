@@ -77,7 +77,7 @@ import {
   lockAndMilestone,
 } from './table-sheet-support';
 
-// docs/design.md#como-uma-tela-é-feita: every screen passes axe with no
+// docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
 // dark theme (contrast is checked per theme), at desktop and phone widths.
 //
@@ -356,7 +356,7 @@ test('as telas de quem não entrou passam no axe, nos dois temas', { tag: '@a11y
   }
 });
 
-// docs/design.md#legal-pages and #footer: the two legal pages and the footer under them, signed out, in both
+// docs/design/README.md#logo-icons-and-footer and #footer: the two legal pages and the footer under them, signed out, in both
 // themes at desktop and phone widths. The contents list is open beside the text on a desktop and closed on a phone.
 test('os termos, a privacidade e o rodapé passam no axe nos dois temas, no desktop e no celular', { tag: ['@a11y', '@legal'] }, async ({ browser }) => {
   for (const [scheme, width] of [['light', 1280], ['dark', 1280], ['light', 390], ['dark', 390]] as const) {
@@ -380,7 +380,7 @@ test('os termos, a privacidade e o rodapé passam no axe nos dois temas, no desk
   }
 });
 
-// docs/design.md#cor: every control that takes focus shows the same 2px
+// docs/design/tokens.md#colour: every control that takes focus shows the same 2px
 // ring. Material's buttons remove their outline in their own styles, so
 // this checks them explicitly (axe does not check that a focus ring shows).
 test('os botões do Material mostram o anel de foco @a11y', async ({ page }) => {
@@ -396,7 +396,7 @@ test('os botões do Material mostram o anel de foco @a11y', async ({ page }) => 
   }
 });
 
-// docs/design.md#título-da-página-pular-para-o-conteúdo-e-foco-ao-navegar: every page has its own
+// docs/design/README.md#accessibility: every page has its own
 // title (WCAG 2.4.2), the first Tab stop is "Pular para o conteúdo" (2.4.1), and a
 // navigation to another page moves the focus to its heading (2.4.3).
 test('cada página tem o próprio título, o primeiro Tab pula para o conteúdo e navegar leva o foco ao título @a11y', async ({ page }) => {
@@ -2232,7 +2232,7 @@ test('pistas, ganchos e anotações passam no axe e nas conferências de layout 
 });
 
 /** The player's sheet: the game numbers first on a phone and a tablet (the combat block before the saves and the
- * skills, the notes last as one row), and the four-column paper sheet from 1200px (docs/design.md). */
+ * skills, the notes last as one row), and the four-column paper sheet from 1200px (docs/design/README.md). */
 async function scanSheetOrder(browser: Browser, width: number): Promise<{ combat: number; proficiencies: number; features: number; notes: number; notesX: number; combatX: number }> {
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), viewport: { width, height: 844 } });
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport: { width, height: 844 } });

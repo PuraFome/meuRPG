@@ -35,7 +35,7 @@ const APIRevision = "2026-05-20"
 
 // maxResponseBytes bounds what one answer may be: a 1K picture is about 2 MB
 // in base64, so 8 MiB leaves room for drafts, and a broken server cannot fill
-// the memory (docs/operations.md has the budget).
+// the memory (docs/operations/README.md has the budget).
 const maxResponseBytes = 8 << 20
 
 // Gemini is the Generator that calls the Gemini API with a key.

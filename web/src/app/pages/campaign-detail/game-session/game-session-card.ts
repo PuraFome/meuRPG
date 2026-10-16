@@ -63,7 +63,7 @@ const MASTER_ONLY_MESSAGES = {
  * sheet; ending never unlocks them) or, while one is open, "Sessão 4 em
  * andamento, desde qui., 8 de out., 19h05." with "Entrar na sessão" (the page's one
  * filled button), "Copiar link da sessão" (RN-07) and "Encerrar sessão",
- * which confirms in place (docs/design.md: what can't be undone confirms on
+ * which confirms in place (docs/design/README.md: what can't be undone confirms on
  * the screen itself).
  *
  * For a player: only while a session is open, the same sentence with

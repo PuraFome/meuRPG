@@ -1,0 +1,1296 @@
+{
+  "Pensantus, morto": {
+    "ArmorClass": 13,
+    "Attacks": [
+      {
+        "Key": "equipment:quarterstaff",
+        "Name": "Bordão",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 3,
+        "DiceCount": 1,
+        "DiceSides": 6,
+        "DiceBonus": 1,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": false,
+        "MartialArts": false,
+        "AbilityMod": 1,
+        "Ability": "str",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      },
+      {
+        "Key": "spell:fire-bolt",
+        "Name": "Raio de Fogo",
+        "Save": false,
+        "Spell": true,
+        "ToHit": 6,
+        "DiceCount": 1,
+        "DiceSides": 10,
+        "DiceBonus": 0,
+        "DamageType": "damage-type:fire",
+        "RangeFt": 120,
+        "LongRangeFt": 0,
+        "Melee": false,
+        "Beams": 1,
+        "Light": false,
+        "Unarmed": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
+        "Ability": "int",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": false
+      },
+      {
+        "Key": "spell:ray-of-frost",
+        "Name": "Raio de Gelo",
+        "Save": false,
+        "Spell": true,
+        "ToHit": 6,
+        "DiceCount": 1,
+        "DiceSides": 8,
+        "DiceBonus": 0,
+        "DamageType": "damage-type:cold",
+        "RangeFt": 60,
+        "LongRangeFt": 0,
+        "Melee": false,
+        "Beams": 1,
+        "Light": false,
+        "Unarmed": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
+        "Ability": "int",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": false
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Golpe desarmado",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 3,
+        "DiceCount": 0,
+        "DiceSides": 0,
+        "DiceBonus": 2,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": true,
+        "MartialArts": false,
+        "AbilityMod": 1,
+        "Ability": "str",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 1,
+    "CriticalRange": 20,
+    "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": 1,
+    "BardicDie": 0,
+    "TwoWeaponFighting": false,
+    "FeatureActions": null,
+    "FighterLevel": 0,
+    "MonkLevel": 0,
+    "Senses": {
+      "DarkvisionFt": 60,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 0,
+      "RogueLevel": 0,
+      "Rage": false,
+      "RecklessAttack": false,
+      "DangerSense": false,
+      "Frenzy": false,
+      "SculptSpells": true,
+      "SneakAttackDice": 0,
+      "DivineSmite": false,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": false,
+      "StunningStrike": false,
+      "KiSaveDC": 0,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": false,
+      "StealthDisadvantage": false,
+      "Resistances": null,
+      "Maneuvers": null,
+      "CreatureType": "",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "bardo do conhecimento 3": {
+    "ArmorClass": 12,
+    "Attacks": [
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Golpe desarmado",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 2,
+        "DiceCount": 0,
+        "DiceSides": 0,
+        "DiceBonus": 1,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": true,
+        "MartialArts": false,
+        "AbilityMod": 0,
+        "Ability": "str",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 1,
+    "CriticalRange": 20,
+    "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": 4,
+    "BardicDie": 6,
+    "TwoWeaponFighting": false,
+    "FeatureActions": [
+      {
+        "Key": "feature:bardic-inspiration-d6",
+        "Name": "Inspiração de Bardo",
+        "Economy": "bonus_action",
+        "Resource": "bardic_inspiration",
+        "Pool": false,
+        "Standard": ""
+      },
+      {
+        "Key": "feature:cutting-words",
+        "Name": "Palavras de Interrupção",
+        "Economy": "reaction",
+        "Resource": "bardic_inspiration",
+        "Pool": false,
+        "Standard": ""
+      }
+    ],
+    "FighterLevel": 0,
+    "MonkLevel": 0,
+    "Senses": {
+      "DarkvisionFt": 0,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 0,
+      "RogueLevel": 0,
+      "Rage": false,
+      "RecklessAttack": false,
+      "DangerSense": false,
+      "Frenzy": false,
+      "SculptSpells": false,
+      "SneakAttackDice": 0,
+      "DivineSmite": false,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": false,
+      "StunningStrike": false,
+      "KiSaveDC": 0,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": false,
+      "StealthDisadvantage": false,
+      "Resistances": null,
+      "Maneuvers": null,
+      "CreatureType": "",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "bárbaro berserker 9": {
+    "ArmorClass": 15,
+    "Attacks": [
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Golpe desarmado",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 8,
+        "DiceCount": 0,
+        "DiceSides": 0,
+        "DiceBonus": 5,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": true,
+        "MartialArts": false,
+        "AbilityMod": 4,
+        "Ability": "str",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 2,
+    "CriticalRange": 20,
+    "BrutalCriticalDice": 1,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": -1,
+    "BardicDie": 0,
+    "TwoWeaponFighting": false,
+    "FeatureActions": [
+      {
+        "Key": "feature:rage",
+        "Name": "Fúria",
+        "Economy": "bonus_action",
+        "Resource": "rage",
+        "Pool": false,
+        "Standard": ""
+      },
+      {
+        "Key": "feature:reckless-attack",
+        "Name": "Ataque Descuidado",
+        "Economy": "free",
+        "Resource": "",
+        "Pool": false,
+        "Standard": ""
+      }
+    ],
+    "FighterLevel": 0,
+    "MonkLevel": 0,
+    "Senses": {
+      "DarkvisionFt": 0,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 9,
+      "RogueLevel": 0,
+      "Rage": true,
+      "RecklessAttack": true,
+      "DangerSense": true,
+      "Frenzy": true,
+      "SculptSpells": false,
+      "SneakAttackDice": 0,
+      "DivineSmite": false,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": false,
+      "StunningStrike": false,
+      "KiSaveDC": 0,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": false,
+      "StealthDisadvantage": false,
+      "Resistances": [
+        {
+          "Source": "feature:rage",
+          "NamePT": "Fúria",
+          "DamageTypes": [
+            "damage-type:bludgeoning",
+            "damage-type:piercing",
+            "damage-type:slashing"
+          ],
+          "While": "rage"
+        }
+      ],
+      "Maneuvers": null,
+      "CreatureType": "",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "goblin de ficha básica": {
+    "ArmorClass": 15,
+    "Attacks": [
+      {
+        "Key": "basic:0",
+        "Name": "Cimitarra",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 4,
+        "DiceCount": 1,
+        "DiceSides": 6,
+        "DiceBonus": 2,
+        "DamageType": "damage-type:slashing",
+        "RangeFt": 0,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
+        "Ability": "",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 1,
+    "CriticalRange": 0,
+    "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": 0,
+    "BardicDie": 0,
+    "TwoWeaponFighting": false,
+    "FeatureActions": null,
+    "FighterLevel": 0,
+    "MonkLevel": 0,
+    "Senses": {
+      "DarkvisionFt": 0,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 0,
+      "RogueLevel": 0,
+      "Rage": false,
+      "RecklessAttack": false,
+      "DangerSense": false,
+      "Frenzy": false,
+      "SculptSpells": false,
+      "SneakAttackDice": 0,
+      "DivineSmite": false,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": false,
+      "StunningStrike": false,
+      "KiSaveDC": 0,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": false,
+      "StealthDisadvantage": false,
+      "Resistances": null,
+      "Maneuvers": null,
+      "CreatureType": "",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "guerreiro campeão 5": {
+    "ArmorClass": 11,
+    "Attacks": [
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Golpe desarmado",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 7,
+        "DiceCount": 0,
+        "DiceSides": 0,
+        "DiceBonus": 5,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": true,
+        "MartialArts": false,
+        "AbilityMod": 4,
+        "Ability": "str",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 2,
+    "CriticalRange": 19,
+    "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": -1,
+    "BardicDie": 0,
+    "TwoWeaponFighting": false,
+    "FeatureActions": [
+      {
+        "Key": "feature:second-wind",
+        "Name": "Retomar o Fôlego",
+        "Economy": "bonus_action",
+        "Resource": "second_wind",
+        "Pool": false,
+        "Standard": ""
+      },
+      {
+        "Key": "feature:action-surge-1-use",
+        "Name": "Surto de Ação",
+        "Economy": "free",
+        "Resource": "action_surge",
+        "Pool": false,
+        "Standard": ""
+      }
+    ],
+    "FighterLevel": 5,
+    "MonkLevel": 0,
+    "Senses": {
+      "DarkvisionFt": 0,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 0,
+      "RogueLevel": 0,
+      "Rage": false,
+      "RecklessAttack": false,
+      "DangerSense": false,
+      "Frenzy": false,
+      "SculptSpells": false,
+      "SneakAttackDice": 0,
+      "DivineSmite": false,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": false,
+      "StunningStrike": false,
+      "KiSaveDC": 0,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": false,
+      "StealthDisadvantage": false,
+      "Resistances": null,
+      "Maneuvers": null,
+      "CreatureType": "",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "guerreiro de cota de malha": {
+    "ArmorClass": 18,
+    "Attacks": [
+      {
+        "Key": "equipment:longsword",
+        "Name": "Espada longa",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 5,
+        "DiceCount": 1,
+        "DiceSides": 8,
+        "DiceBonus": 3,
+        "DamageType": "damage-type:slashing",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": false,
+        "MartialArts": false,
+        "AbilityMod": 3,
+        "Ability": "str",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Golpe desarmado",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 5,
+        "DiceCount": 0,
+        "DiceSides": 0,
+        "DiceBonus": 4,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": true,
+        "MartialArts": false,
+        "AbilityMod": 3,
+        "Ability": "str",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 1,
+    "CriticalRange": 20,
+    "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": 0,
+    "BardicDie": 0,
+    "TwoWeaponFighting": false,
+    "FeatureActions": [
+      {
+        "Key": "feature:second-wind",
+        "Name": "Retomar o Fôlego",
+        "Economy": "bonus_action",
+        "Resource": "second_wind",
+        "Pool": false,
+        "Standard": ""
+      },
+      {
+        "Key": "feature:action-surge-1-use",
+        "Name": "Surto de Ação",
+        "Economy": "free",
+        "Resource": "action_surge",
+        "Pool": false,
+        "Standard": ""
+      }
+    ],
+    "FighterLevel": 2,
+    "MonkLevel": 0,
+    "Senses": {
+      "DarkvisionFt": 0,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 0,
+      "RogueLevel": 0,
+      "Rage": false,
+      "RecklessAttack": false,
+      "DangerSense": false,
+      "Frenzy": false,
+      "SculptSpells": false,
+      "SneakAttackDice": 0,
+      "DivineSmite": false,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": false,
+      "StunningStrike": false,
+      "KiSaveDC": 0,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": true,
+      "StealthDisadvantage": true,
+      "Resistances": null,
+      "Maneuvers": null,
+      "CreatureType": "",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "monge da mão aberta 5": {
+    "ArmorClass": 17,
+    "Attacks": [
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Golpe desarmado",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 7,
+        "DiceCount": 1,
+        "DiceSides": 6,
+        "DiceBonus": 4,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": true,
+        "MartialArts": true,
+        "AbilityMod": 4,
+        "Ability": "dex",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 2,
+    "CriticalRange": 20,
+    "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": -1,
+    "BardicDie": 0,
+    "TwoWeaponFighting": false,
+    "FeatureActions": [
+      {
+        "Key": "feature:flurry-of-blows",
+        "Name": "Rajada de Golpes",
+        "Economy": "bonus_action",
+        "Resource": "ki",
+        "Pool": false,
+        "Standard": ""
+      },
+      {
+        "Key": "feature:patient-defense",
+        "Name": "Defesa Paciente",
+        "Economy": "bonus_action",
+        "Resource": "ki",
+        "Pool": false,
+        "Standard": "standard:dodge"
+      },
+      {
+        "Key": "feature:step-of-the-wind:disengage",
+        "Name": "Passo do Vento: Desengajar",
+        "Economy": "bonus_action",
+        "Resource": "ki",
+        "Pool": false,
+        "Standard": "standard:disengage"
+      },
+      {
+        "Key": "feature:step-of-the-wind:dash",
+        "Name": "Passo do Vento: Disparada",
+        "Economy": "bonus_action",
+        "Resource": "ki",
+        "Pool": false,
+        "Standard": "standard:dash"
+      },
+      {
+        "Key": "feature:deflect-missiles",
+        "Name": "Defletir Projéteis",
+        "Economy": "reaction",
+        "Resource": "",
+        "Pool": false,
+        "Standard": ""
+      },
+      {
+        "Key": "feature:slow-fall",
+        "Name": "Queda Lenta",
+        "Economy": "reaction",
+        "Resource": "",
+        "Pool": false,
+        "Standard": ""
+      }
+    ],
+    "FighterLevel": 0,
+    "MonkLevel": 5,
+    "Senses": {
+      "DarkvisionFt": 0,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 0,
+      "RogueLevel": 0,
+      "Rage": false,
+      "RecklessAttack": false,
+      "DangerSense": false,
+      "Frenzy": false,
+      "SculptSpells": false,
+      "SneakAttackDice": 0,
+      "DivineSmite": false,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": true,
+      "StunningStrike": true,
+      "KiSaveDC": 14,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": false,
+      "StealthDisadvantage": false,
+      "Resistances": null,
+      "Maneuvers": null,
+      "CreatureType": "",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "ogro do bestiário": {
+    "ArmorClass": 11,
+    "Attacks": [
+      {
+        "Key": "basic:0",
+        "Name": "Clava grande",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 6,
+        "DiceCount": 2,
+        "DiceSides": 8,
+        "DiceBonus": 4,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 0,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
+        "Ability": "",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      },
+      {
+        "Key": "basic:1",
+        "Name": "Azagaia",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 6,
+        "DiceCount": 2,
+        "DiceSides": 6,
+        "DiceBonus": 4,
+        "DamageType": "damage-type:piercing",
+        "RangeFt": 30,
+        "LongRangeFt": 120,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": false,
+        "MartialArts": false,
+        "AbilityMod": 0,
+        "Ability": "",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 1,
+    "CriticalRange": 0,
+    "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": -2,
+    "BardicDie": 0,
+    "TwoWeaponFighting": false,
+    "FeatureActions": null,
+    "FighterLevel": 0,
+    "MonkLevel": 0,
+    "Senses": {
+      "DarkvisionFt": 0,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 0,
+      "RogueLevel": 0,
+      "Rage": false,
+      "RecklessAttack": false,
+      "DangerSense": false,
+      "Frenzy": false,
+      "SculptSpells": false,
+      "SneakAttackDice": 0,
+      "DivineSmite": false,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": false,
+      "StunningStrike": false,
+      "KiSaveDC": 0,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": false,
+      "StealthDisadvantage": false,
+      "Resistances": null,
+      "Maneuvers": null,
+      "CreatureType": "giant",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "paladino 2": {
+    "ArmorClass": 10,
+    "Attacks": [
+      {
+        "Key": "attack:unarmed-strike",
+        "Name": "Golpe desarmado",
+        "Save": false,
+        "Spell": false,
+        "ToHit": 5,
+        "DiceCount": 0,
+        "DiceSides": 0,
+        "DiceBonus": 4,
+        "DamageType": "damage-type:bludgeoning",
+        "RangeFt": 5,
+        "LongRangeFt": 0,
+        "Melee": true,
+        "Beams": 0,
+        "Light": false,
+        "Unarmed": true,
+        "MartialArts": false,
+        "AbilityMod": 3,
+        "Ability": "str",
+        "Finesse": false,
+        "TwoHanded": false,
+        "Weapon": true
+      }
+    ],
+    "Actions": [
+      {
+        "Key": "standard:attack",
+        "Name": "Atacar"
+      },
+      {
+        "Key": "standard:cast-a-spell",
+        "Name": "Conjurar uma magia"
+      },
+      {
+        "Key": "standard:dash",
+        "Name": "Disparada"
+      },
+      {
+        "Key": "standard:disengage",
+        "Name": "Desengajar"
+      },
+      {
+        "Key": "standard:dodge",
+        "Name": "Esquivar"
+      },
+      {
+        "Key": "standard:help",
+        "Name": "Ajudar"
+      },
+      {
+        "Key": "standard:hide",
+        "Name": "Esconder"
+      },
+      {
+        "Key": "standard:ready",
+        "Name": "Preparar"
+      },
+      {
+        "Key": "standard:search",
+        "Name": "Procurar"
+      },
+      {
+        "Key": "standard:use-an-object",
+        "Name": "Usar um objeto"
+      }
+    ],
+    "AttacksPerAction": 1,
+    "CriticalRange": 20,
+    "BrutalCriticalDice": 0,
+    "SavageAttacks": false,
+    "Metamagic": null,
+    "ChaMod": 3,
+    "BardicDie": 0,
+    "TwoWeaponFighting": false,
+    "FeatureActions": [
+      {
+        "Key": "feature:divine-sense",
+        "Name": "Sentido Divino",
+        "Economy": "action",
+        "Resource": "divine_sense",
+        "Pool": false,
+        "Standard": ""
+      },
+      {
+        "Key": "feature:lay-on-hands",
+        "Name": "Cura pelas Mãos",
+        "Economy": "action",
+        "Resource": "lay_on_hands",
+        "Pool": true,
+        "Standard": ""
+      }
+    ],
+    "FighterLevel": 0,
+    "MonkLevel": 0,
+    "Senses": {
+      "DarkvisionFt": 0,
+      "BlindsightFt": 0,
+      "TruesightFt": 0
+    },
+    "Traits": {
+      "BarbarianLevel": 0,
+      "RogueLevel": 0,
+      "Rage": false,
+      "RecklessAttack": false,
+      "DangerSense": false,
+      "Frenzy": false,
+      "SculptSpells": false,
+      "SneakAttackDice": 0,
+      "DivineSmite": true,
+      "ImprovedDivineSmite": false,
+      "ColossusSlayer": false,
+      "HuntersMark": false,
+      "GreatWeaponFighting": false,
+      "OpenHand": false,
+      "StunningStrike": false,
+      "KiSaveDC": 0,
+      "PackTactics": false,
+      "Lucky": false,
+      "HeavyArmor": false,
+      "StealthDisadvantage": false,
+      "Resistances": null,
+      "Maneuvers": null,
+      "CreatureType": "",
+      "SpellAttackIgnoresCover": false,
+      "RangedWeaponIgnoresCover": false,
+      "RangedWeaponNoLongRangeDisadvantage": false
+    }
+  },
+  "refused: a character that is not there": {
+    "code": "not_found",
+    "message": "character not found"
+  },
+  "refused: an id that is no UUID": {
+    "code": "not_found",
+    "message": "character not found"
+  }
+}

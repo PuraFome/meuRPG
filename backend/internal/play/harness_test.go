@@ -43,7 +43,7 @@ var testRules = sync.OnceValues(rules.LoadSRD)
 
 // testUserHeader names the signed-in user in a test request. fakeSessions
 // trusts it; production code has no way to set a caller (see
-// docs/architecture.md#who-is-calling).
+// docs/architecture/identity.md#who-is-calling).
 const testUserHeader = "Test-User-Id"
 
 type fakeSessions struct{}

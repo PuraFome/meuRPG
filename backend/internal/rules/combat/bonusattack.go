@@ -84,6 +84,12 @@ func BonusAttack(turn BonusAttackTurn, next AttackTraits) BonusKind {
 	if turn.BonusUsed {
 		return BonusNone
 	}
+	return followUpAttack(turn, next)
+}
+
+// followUpAttack is the bonus action attack that follows the Attack action
+// with a free bonus action: the Martial Arts strike, then Two-Weapon Fighting.
+func followUpAttack(turn BonusAttackTurn, next AttackTraits) BonusKind {
 	switch {
 	case turn.Last.MartialArts && next.Unarmed:
 		return BonusMartialArts

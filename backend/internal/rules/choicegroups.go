@@ -278,32 +278,48 @@ const (
 // and (with missing set) a choice left open. They come in that order, so the first
 // is the most specific.
 func (s ChoiceSet) ChoiceProblems(missing bool) []ChoiceProblem {
-	var out []ChoiceProblem
-	for _, g := range s.Groups {
-		for _, ch := range g.Choices {
-			for _, k := range ch.Unmet {
-				out = append(out, ChoiceProblem{Code: ChoiceProblemPrerequisite, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: len(ch.Picked), Required: ch.Picks, OptionKey: k})
-			}
-		}
-	}
+	out := s.choiceProblems(nil, unmetProblems)
 	for _, k := range s.NotOffered {
 		out = append(out, ChoiceProblem{Code: ChoiceProblemNotOffered, Field: choiceKeysField, OptionKey: k})
 	}
+	out = s.choiceProblems(out, overflowProblems)
+	if missing {
+		out = s.choiceProblems(out, missingProblem)
+	}
+	return out
+}
+
+// choiceProblems appends the problems problemsOf finds in each choice of the
+// set, group by group.
+func (s ChoiceSet) choiceProblems(out []ChoiceProblem, problemsOf func([]ChoiceProblem, Choice) []ChoiceProblem) []ChoiceProblem {
 	for _, g := range s.Groups {
 		for _, ch := range g.Choices {
-			for _, k := range ch.Overflow {
-				out = append(out, ChoiceProblem{Code: ChoiceProblemNotOffered, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: len(ch.Picked), Required: ch.Picks, OptionKey: k})
-			}
+			out = problemsOf(out, ch)
 		}
 	}
-	if missing {
-		for _, g := range s.Groups {
-			for _, ch := range g.Choices {
-				if ch.Missing() > 0 {
-					out = append(out, ChoiceProblem{Code: ChoiceProblemMissing, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: ch.Done(), Required: ch.Picks})
-				}
-			}
-		}
+	return out
+}
+
+// unmetProblems are the picks of a choice whose prerequisite is not met.
+func unmetProblems(out []ChoiceProblem, ch Choice) []ChoiceProblem {
+	for _, k := range ch.Unmet {
+		out = append(out, ChoiceProblem{Code: ChoiceProblemPrerequisite, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: len(ch.Picked), Required: ch.Picks, OptionKey: k})
+	}
+	return out
+}
+
+// overflowProblems are the picks past the number a choice takes.
+func overflowProblems(out []ChoiceProblem, ch Choice) []ChoiceProblem {
+	for _, k := range ch.Overflow {
+		out = append(out, ChoiceProblem{Code: ChoiceProblemNotOffered, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: len(ch.Picked), Required: ch.Picks, OptionKey: k})
+	}
+	return out
+}
+
+// missingProblem is a choice left open.
+func missingProblem(out []ChoiceProblem, ch Choice) []ChoiceProblem {
+	if ch.Missing() > 0 {
+		out = append(out, ChoiceProblem{Code: ChoiceProblemMissing, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: ch.Done(), Required: ch.Picks})
 	}
 	return out
 }
@@ -516,20 +532,27 @@ func (cb *choiceBuilder) markFamilies() {
 		if ch.family == "" {
 			continue
 		}
-		for i := range ch.Options {
-			o := &ch.Options[i]
-			if slices.Contains(taken[ch.family], o.Key) {
-				o.Prerequisites = append(o.Prerequisites, takenPrerequisite("Você já escolheu esta opção."))
-				o.ReasonPT = prerequisitesReason(o.Prerequisites)
-				if slices.Contains(ch.Picked, o.Key) {
-					ch.Unmet = append(ch.Unmet, o.Key)
-				}
-			}
-		}
+		blockTaken(ch, taken[ch.family])
 		for _, k := range ch.Picked {
 			if !slices.Contains(taken[ch.family], k) {
 				taken[ch.family] = append(taken[ch.family], k)
 			}
+		}
+	}
+}
+
+// blockTaken blocks the options of a choice that an earlier choice of its family
+// took, and marks unmet the picks among them.
+func blockTaken(ch *Choice, taken []string) {
+	for i := range ch.Options {
+		o := &ch.Options[i]
+		if !slices.Contains(taken, o.Key) {
+			continue
+		}
+		o.Prerequisites = append(o.Prerequisites, takenPrerequisite("Você já escolheu esta opção."))
+		o.ReasonPT = prerequisitesReason(o.Prerequisites)
+		if slices.Contains(ch.Picked, o.Key) {
+			ch.Unmet = append(ch.Unmet, o.Key)
 		}
 	}
 }

@@ -71,7 +71,7 @@ const TENS = 10;
 export const MAX_DICE = 8;
 
 /**
- * The dice roll animation (docs/design.md#roll-animation): `play` shows the dice tumbling together, landing one after
+ * The dice roll animation (docs/design/session.md#rolls): `play` shows the dice tumbling together, landing one after
  * another on the real faces and the result, which stay on screen to be read and close by themselves after 10 s at most (the landing takes under 2 s even for eight dice). A new roll replaces
  * the one playing; a tap or Esc closes it. It does nothing when the browser asks for reduced motion (or cannot say) or
  * when no overlay is mounted, so a flow never waits for it, and it only ever shows what the caller passes: the screens

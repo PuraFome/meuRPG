@@ -58,6 +58,37 @@ func creatureReactionStats(content *rules.Content, monsterKey string) link.React
 // fullReactionStats reads a full sheet's reactions from what the rules derived.
 func fullReactionStats(d rules.Derived, full *charactersv1.FullSheet) link.ReactionStats {
 	out := link.ReactionStats{CuttingAsk: cuttingAskText(full.GetCuttingWordsAsk())}
+	reactionSpellcasting(&out, d)
+	for _, f := range d.Features {
+		switch f.Key {
+		case "feature:uncanny-dodge":
+			out.UncannyDodge = true
+		case "feature:deflect-missiles":
+			out.Deflect = true
+		case "feature:cutting-words":
+			out.CuttingWords = true
+		case "trait:infernal-legacy":
+			out.InfernalLegacy = d.TotalLevel >= infernalLegacyLevel
+		}
+	}
+	out.MonkLevel, _ = lastClassLevel(d, "class:monk")
+	out.BardLevel, _ = lastClassLevel(d, "class:bard")
+	out.DexMod = abilityMod(d, rules.DEX)
+	for _, m := range d.Maneuvers {
+		if m.Applies == rules.ManeuverReduceMelee {
+			out.Reduce = append(out.Reduce, link.ReduceManeuver{Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Sides: m.Sides, Mod: abilityMod(d, rules.Ability(m.Ability))})
+		}
+	}
+	out.Proficiency = d.ProficiencyBonus
+	// Charisma is the spellcasting ability of the Infernal Legacy.
+	out.LegacyDC = 8 + d.ProficiencyBonus + abilityMod(d, rules.CHA)
+	return out
+}
+
+// reactionSpellcasting sets what a full sheet casts a reaction spell with: the
+// prepared spells, the slots and pact slots, the uses of each resource, the best
+// save DC and the spellcasting modifier.
+func reactionSpellcasting(out *link.ReactionStats, d rules.Derived) {
 	for _, sp := range d.Spells {
 		if sp.Prepared {
 			out.Spells = append(out.Spells, sp.Spell.Key)
@@ -77,36 +108,6 @@ func fullReactionStats(d rules.Derived, full *charactersv1.FullSheet) link.React
 	if c := casterFor(d, nil); c != nil {
 		out.CastingMod = abilityMod(d, c.Ability)
 	}
-	for _, f := range d.Features {
-		switch f.Key {
-		case "feature:uncanny-dodge":
-			out.UncannyDodge = true
-		case "feature:deflect-missiles":
-			out.Deflect = true
-		case "feature:cutting-words":
-			out.CuttingWords = true
-		case "trait:infernal-legacy":
-			out.InfernalLegacy = d.TotalLevel >= infernalLegacyLevel
-		}
-	}
-	for _, cl := range d.Classes {
-		switch cl.ClassKey {
-		case "class:monk":
-			out.MonkLevel = cl.Level
-		case "class:bard":
-			out.BardLevel = cl.Level
-		}
-	}
-	out.DexMod = abilityMod(d, rules.DEX)
-	for _, m := range d.Maneuvers {
-		if m.Applies == rules.ManeuverReduceMelee {
-			out.Reduce = append(out.Reduce, link.ReduceManeuver{Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Sides: m.Sides, Mod: abilityMod(d, rules.Ability(m.Ability))})
-		}
-	}
-	out.Proficiency = d.ProficiencyBonus
-	// Charisma is the spellcasting ability of the Infernal Legacy.
-	out.LegacyDC = 8 + d.ProficiencyBonus + abilityMod(d, rules.CHA)
-	return out
 }
 
 // infernalLegacyLevel is the character level the tiefling casts Hellish Rebuke
