@@ -1,0 +1,295 @@
+{
+  "getMap_crypt": "error: not_found|not_found: map not found",
+  "getMap_lonely": {
+    "map": {
+      "campaignId": "campaign",
+      "createdAt": "<time>",
+      "id": "lonely",
+      "image": {
+        "height": 30,
+        "id": "id2",
+        "thumbnailUrl": "/images/id2/thumb",
+        "url": "/images/id2",
+        "width": 40
+      },
+      "name": "Sem grade",
+      "revealed": true,
+      "revision": 1,
+      "squareFactor": 1,
+      "updatedAt": "<time>"
+    }
+  },
+  "getMap_mirathel": {
+    "map": {
+      "campaignId": "campaign",
+      "createdAt": "<time>",
+      "drawnColumns": 20,
+      "drawnRows": 15,
+      "gridColumns": 20,
+      "gridRows": 15,
+      "id": "mirathel",
+      "image": {
+        "height": 30,
+        "id": "id3",
+        "thumbnailUrl": "/images/id3/thumb",
+        "url": "/images/id3",
+        "width": 40
+      },
+      "layersRevision": 9,
+      "name": "Estrada de Mirathel",
+      "parentMaps": [
+        {
+          "id": "tower",
+          "name": "Torre"
+        }
+      ],
+      "pointCount": 6,
+      "revealed": true,
+      "revision": 1,
+      "squareFactor": 1,
+      "updatedAt": "<time>"
+    },
+    "points": [
+      {
+        "createdAt": "<time>",
+        "description": "descrição de ARMADILHA-DISPARADA-C",
+        "id": "trapC",
+        "kind": "MAP_POINT_KIND_TRAP",
+        "mapId": "mirathel",
+        "name": "ARMADILHA-DISPARADA-C",
+        "revealed": true,
+        "trap": {
+          "areaSize": 2,
+          "state": "TRAP_STATE_TRIGGERED"
+        },
+        "updatedAt": "<time>",
+        "xBp": 5678,
+        "yBp": 6789
+      },
+      {
+        "createdAt": "<time>",
+        "description": "descrição de ARMADILHA-REVELADA-D",
+        "id": "trapD",
+        "kind": "MAP_POINT_KIND_TRAP",
+        "mapId": "mirathel",
+        "name": "ARMADILHA-REVELADA-D",
+        "revealed": true,
+        "trap": {
+          "areaSize": 2,
+          "state": "TRAP_STATE_ARMED"
+        },
+        "updatedAt": "<time>",
+        "xBp": 7890,
+        "yBp": 8901
+      },
+      {
+        "createdAt": "<time>",
+        "id": "treasureShown",
+        "kind": "MAP_POINT_KIND_TREASURE",
+        "mapId": "mirathel",
+        "name": "TESOURO-REVELADO",
+        "revealed": true,
+        "updatedAt": "<time>",
+        "xBp": 2222,
+        "yBp": 9222
+      },
+      {
+        "createdAt": "<time>",
+        "description": "CONTEUDO-ACHADO",
+        "id": "treasureFound",
+        "kind": "MAP_POINT_KIND_TREASURE",
+        "mapId": "mirathel",
+        "name": "TESOURO-ACHADO",
+        "revealed": true,
+        "treasureFoundAt": "<time>",
+        "treasureFoundBy": [
+          {
+            "characterId": "pens",
+            "characterName": "Pensantus"
+          }
+        ],
+        "treasureValuePo": 9999,
+        "updatedAt": "<time>",
+        "xBp": 3333,
+        "yBp": 9333
+      },
+      {
+        "createdAt": "<time>",
+        "id": "toTower",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "mirathel",
+        "name": "Para a torre",
+        "revealed": true,
+        "targetMap": {
+          "id": "tower",
+          "name": "Torre"
+        },
+        "updatedAt": "<time>",
+        "xBp": 6000,
+        "yBp": 1000
+      },
+      {
+        "createdAt": "<time>",
+        "id": "toCrypt",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "mirathel",
+        "name": "Para a cripta",
+        "revealed": true,
+        "updatedAt": "<time>",
+        "xBp": 6500,
+        "yBp": 1500
+      }
+    ],
+    "tokens": [
+      {
+        "carriedLight": "light:hooded-lantern",
+        "characterId": "pens",
+        "kind": "CHARACTER_KIND_PLAYER",
+        "mapId": "mirathel",
+        "mine": true,
+        "name": "Pensantus",
+        "updatedAt": "<time>",
+        "xBp": 3000,
+        "yBp": 3000
+      },
+      {
+        "characterId": "toren",
+        "kind": "CHARACTER_KIND_PLAYER",
+        "mapId": "mirathel",
+        "name": "Toren",
+        "updatedAt": "<time>",
+        "xBp": 4000,
+        "yBp": 4000
+      }
+    ]
+  },
+  "getMap_tower": {
+    "map": {
+      "campaignId": "campaign",
+      "createdAt": "<time>",
+      "id": "tower",
+      "image": {
+        "height": 30,
+        "id": "id4",
+        "thumbnailUrl": "/images/id4/thumb",
+        "url": "/images/id4",
+        "width": 40
+      },
+      "name": "Torre",
+      "parentMaps": [
+        {
+          "id": "mirathel",
+          "name": "Estrada de Mirathel"
+        }
+      ],
+      "pointCount": 1,
+      "revealed": true,
+      "revision": 1,
+      "squareFactor": 1,
+      "updatedAt": "<time>"
+    },
+    "points": [
+      {
+        "createdAt": "<time>",
+        "id": "fromTower",
+        "kind": "MAP_POINT_KIND_SUBMAP",
+        "mapId": "tower",
+        "name": "De volta",
+        "revealed": true,
+        "targetMap": {
+          "id": "mirathel",
+          "name": "Estrada de Mirathel"
+        },
+        "updatedAt": "<time>",
+        "xBp": 1000,
+        "yBp": 1000
+      }
+    ]
+  },
+  "layers_crypt": "error: not_found|not_found: map not found",
+  "layers_lonely": {},
+  "layers_mirathel": {
+    "cover": "AAAAAABAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "difficultTerrain": "AAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "doors": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAiBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "gridColumns": 20,
+    "gridRows": 15,
+    "layersRevision": 9,
+    "wall": "AAAgAAAAAIAAACAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  },
+  "layers_tower": {},
+  "listMaps": {
+    "maps": [
+      {
+        "campaignId": "campaign",
+        "createdAt": "<time>",
+        "drawnColumns": 20,
+        "drawnRows": 15,
+        "gridColumns": 20,
+        "gridRows": 15,
+        "id": "mirathel",
+        "image": {
+          "height": 30,
+          "id": "id3",
+          "thumbnailUrl": "/images/id3/thumb",
+          "url": "/images/id3",
+          "width": 40
+        },
+        "layersRevision": 9,
+        "name": "Estrada de Mirathel",
+        "parentMaps": [
+          {
+            "id": "tower",
+            "name": "Torre"
+          }
+        ],
+        "pointCount": 6,
+        "revealed": true,
+        "revision": 1,
+        "squareFactor": 1,
+        "updatedAt": "<time>"
+      },
+      {
+        "campaignId": "campaign",
+        "createdAt": "<time>",
+        "id": "tower",
+        "image": {
+          "height": 30,
+          "id": "id4",
+          "thumbnailUrl": "/images/id4/thumb",
+          "url": "/images/id4",
+          "width": 40
+        },
+        "name": "Torre",
+        "parentMaps": [
+          {
+            "id": "mirathel",
+            "name": "Estrada de Mirathel"
+          }
+        ],
+        "pointCount": 1,
+        "revealed": true,
+        "revision": 1,
+        "squareFactor": 1,
+        "updatedAt": "<time>"
+      },
+      {
+        "campaignId": "campaign",
+        "createdAt": "<time>",
+        "id": "lonely",
+        "image": {
+          "height": 30,
+          "id": "id2",
+          "thumbnailUrl": "/images/id2/thumb",
+          "url": "/images/id2",
+          "width": 40
+        },
+        "name": "Sem grade",
+        "revealed": true,
+        "revision": 1,
+        "squareFactor": 1,
+        "updatedAt": "<time>"
+      }
+    ]
+  }
+}
