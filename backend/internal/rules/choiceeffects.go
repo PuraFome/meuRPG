@@ -74,6 +74,17 @@ func (x *deriver) choiceEffects() {
 	for _, f := range x.d.Features {
 		owned[f.Key] = true
 	}
+	x.choiceResistances(owned)
+	if owned["feature:elemental-affinity"] {
+		x.elementalAffinityHints(owned)
+	}
+}
+
+// choiceResistances adds the breath weapon and the resistance of the picked
+// draconic ancestry, and the resistances of the traits that give one, each
+// damage type once.
+func (x *deriver) choiceResistances(owned map[string]bool) {
+	c := x.c
 	var resisted []string
 	addResistance := func(damageType, source string) {
 		if slices.Contains(resisted, damageType) {
@@ -82,21 +93,6 @@ func (x *deriver) choiceEffects() {
 		resisted = append(resisted, damageType)
 		x.d.Resistances = append(x.d.Resistances, ChoiceResistance{DamageType: damageType, DamageTypePT: c.namePT(damageType), SourceKey: source})
 	}
-	x.ancestryEffects(owned, addResistance)
-	for _, f := range x.d.Features {
-		if r, ok := c.choices.resistances[f.Key]; ok {
-			addResistance(r.DamageType, r.Trait)
-		}
-	}
-	if owned["feature:elemental-affinity"] {
-		x.elementalAffinityHints(owned)
-	}
-}
-
-// ancestryEffects gives the dragonborn's picked ancestry: the breath weapon (when
-// the sheet has the trait) and the resistance.
-func (x *deriver) ancestryEffects(owned map[string]bool, addResistance func(damageType, source string)) {
-	c := x.c
 	for _, k := range x.b.FeatureChoices {
 		a, ok := c.choices.ancestryByTrait[k]
 		if !ok || !owned[k] {
@@ -108,10 +104,15 @@ func (x *deriver) ancestryEffects(owned map[string]bool, addResistance func(dama
 		}
 		addResistance(a.DamageType, a.Trait)
 	}
+	for _, f := range x.d.Features {
+		if r, ok := c.choices.resistances[f.Key]; ok {
+			addResistance(r.DamageType, r.Trait)
+		}
+	}
 }
 
-// elementalAffinityHints is the reminder of the sorcerer's Elemental Affinity, for
-// each Dragon Ancestor picked.
+// elementalAffinityHints reminds a sorcerer with Elemental Affinity of what it
+// does for each dragon ancestor picked.
 func (x *deriver) elementalAffinityHints(owned map[string]bool) {
 	c := x.c
 	for _, k := range x.b.FeatureChoices {
