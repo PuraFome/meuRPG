@@ -76,7 +76,7 @@ describe('CombatView sheets, the edges', () => {
       enc: encounter({ combatants: [goblin()] }),
       master: true,
     });
-    view.sheets.familiarEyes('Nanquim');
+    view.sheets.actions.familiarEyes('Nanquim');
     expect(opened).toEqual([]);
   });
 });
