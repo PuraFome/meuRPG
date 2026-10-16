@@ -180,25 +180,13 @@ const shieldKey = "spell:shield"
 // they used this turn and what they spent since the last rest. It is
 // computed on every read and never stored.
 func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
-	speed := d.SpeedWalkFt
-	if turn.Dashed {
-		speed *= 2
-	}
-	out := TurnOptions{Economy: Economy{
-		Action:      Slot{Used: turn.ActionUsed, Available: !turn.ActionUsed},
-		BonusAction: Slot{Used: turn.BonusActionUsed, Available: !turn.BonusActionUsed},
-		Reaction:    Slot{Used: turn.ReactionUsed, Available: !turn.ReactionUsed},
-		Movement:    Movement{SpeedFt: speed, UsedFt: turn.MovementUsedFt, LeftFt: max(speed-turn.MovementUsedFt, 0)},
-	}}
-	out.Economy.AttacksPerAction = max(d.AttacksPerAction, 1)
-	out.Economy.AttacksLeft = AttacksLeft(out.Economy.AttacksPerAction, turn)
+	out := TurnOptions{Economy: economyOf(d, turn)}
 	// A cantrip cast with the action is no Attack action: Extra Attack has nothing
 	// left to give after it.
 	castCantrip := castWithCantrip(d, turn)
 	if castCantrip {
 		out.Economy.AttacksLeft = 0
 	}
-
 	// Attacks cost an action. The damaging cantrips are in Derived.Attacks
 	// already, so they are left out of the spells below.
 	cantripAttacks := map[string]bool{}
@@ -206,29 +194,8 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		if a.Kind == "spell" {
 			cantripAttacks[a.Key] = true
 		}
-		// Extra Attack belongs to the Attack action, that is, to weapon attacks: a
-		// cantrip is cast with the whole action (SRD 5.1).
-		opt := attackOption(out.Economy.AttacksPerAction, turn)
-		if a.Kind == "spell" {
-			opt = economyOption(rules.EconomyAction, turn)
-		}
-		ao := AttackOption{Option: opt, Attack: a}
-		switch {
-		case a.Kind == "spell":
-			// The beams of the cast that spent the action are still its own.
-			if left := beamsLeft(d, turn, a); left > 0 {
-				ao.Option, ao.BeamsLeft = Option{Enabled: true}, left
-			}
-		case castCantrip:
-			// The cantrip took the whole action: no attack of the Attack action is
-			// left, and no bonus action attack follows it.
-			ao.Option = Option{Reason: &Reason{Code: ReasonActionUsed}}
-		case out.Economy.AttacksLeft == 0:
-			ao = bonusAttackOption(d, turn, ao)
-		}
-		out.Attacks = append(out.Attacks, ao)
+		out.Attacks = append(out.Attacks, sheetAttackOption(d, turn, out.Economy, castCantrip, a))
 	}
-
 	for _, cs := range d.Spells {
 		if !cs.Prepared || cantripAttacks[cs.Spell.Key] {
 			continue
@@ -236,7 +203,6 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		out.Spells = append(out.Spells, spellOption(d, turn, u, cs.Spell))
 	}
 	sortSpells(out.Spells)
-
 	for _, a := range d.StandardActions {
 		out.StandardActions = append(out.StandardActions, actionOption(d, turn, u, a))
 	}
@@ -244,6 +210,51 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		out.FeatureActions = append(out.FeatureActions, flurryOption(d, turn, actionOption(d, turn, u, a)))
 	}
 	return out
+}
+
+// dashFactor is how many times the speed counts after the Dash action.
+const dashFactor = 2
+
+// economyOf is the turn's economy before a cantrip is taken into account.
+func economyOf(d rules.Derived, turn TurnState) Economy {
+	speed := d.SpeedWalkFt
+	if turn.Dashed {
+		speed *= dashFactor
+	}
+	e := Economy{
+		Action:      Slot{Used: turn.ActionUsed, Available: !turn.ActionUsed},
+		BonusAction: Slot{Used: turn.BonusActionUsed, Available: !turn.BonusActionUsed},
+		Reaction:    Slot{Used: turn.ReactionUsed, Available: !turn.ReactionUsed},
+		Movement:    Movement{SpeedFt: speed, UsedFt: turn.MovementUsedFt, LeftFt: max(speed-turn.MovementUsedFt, 0)},
+	}
+	e.AttacksPerAction = max(d.AttacksPerAction, 1)
+	e.AttacksLeft = AttacksLeft(e.AttacksPerAction, turn)
+	return e
+}
+
+// sheetAttackOption is the option of one sheet attack.
+func sheetAttackOption(d rules.Derived, turn TurnState, e Economy, castCantrip bool, a rules.Attack) AttackOption {
+	// Extra Attack belongs to the Attack action, that is, to weapon attacks: a
+	// cantrip is cast with the whole action (SRD 5.1).
+	opt := attackOption(e.AttacksPerAction, turn)
+	if a.Kind == "spell" {
+		opt = economyOption(rules.EconomyAction, turn)
+	}
+	ao := AttackOption{Option: opt, Attack: a}
+	switch {
+	case a.Kind == "spell":
+		// The beams of the cast that spent the action are still its own.
+		if left := beamsLeft(d, turn, a); left > 0 {
+			ao.Option, ao.BeamsLeft = Option{Enabled: true}, left
+		}
+	case castCantrip:
+		// The cantrip took the whole action: no attack of the Attack action is
+		// left, and no bonus action attack follows it.
+		ao.Option = Option{Reason: &Reason{Code: ReasonActionUsed}}
+	case e.AttacksLeft == 0:
+		ao = bonusAttackOption(d, turn, ao)
+	}
+	return ao
 }
 
 // FlurryOfBlowsKey is the monk's bonus action that spends 1 ki point for two
@@ -478,40 +489,55 @@ func IsFreeCantrip(economy string, level int) bool {
 
 func spellOption(d rules.Derived, turn TurnState, u Usage, sp rules.SpellEntry) SpellOption {
 	o := SpellOption{Spell: sp, Economy: spellEconomy(sp.CastingTime)}
-
 	if sp.Level > 0 {
-		for l := sp.Level; l <= 9; l++ {
-			if free := SlotsFree(d, u, l); free > 0 {
-				o.Slots = append(o.Slots, SlotChoice{Level: l, Free: free})
-			}
-		}
-		if p := d.PactMagic; p != nil && p.SlotLevel >= sp.Level {
-			if free := PactSlotsFree(d, u); free > 0 {
-				o.Slots = append(o.Slots, SlotChoice{Level: p.SlotLevel, Pact: true, Free: free})
-			}
-		}
+		o.Slots = castingSlots(d, u, sp.Level)
 	}
-
-	// The first reason that applies wins: what the spell is, then the
-	// economy, then the slots.
-	switch {
-	case o.Economy == "":
-		o.Reason = &Reason{Code: ReasonTooLong}
-	case o.Economy == rules.EconomyReaction && sp.Key == shieldKey:
-		o.Reason = &Reason{Code: ReasonReactionOnlyWhenHit}
-	case o.Economy == rules.EconomyReaction:
-		o.Reason = &Reason{Code: ReasonReactionOnly}
-	default:
-		if eo := economyOption(o.Economy, turn); !eo.Enabled {
-			o.Reason = eo.Reason
-		} else if SpellLimited(turn, o.Economy, sp.Level) {
-			o.Reason = &Reason{Code: ReasonBonusActionSpellLimit}
-		} else if sp.Level > 0 && len(o.Slots) == 0 {
-			o.Reason = &Reason{Code: ReasonNoSlot, MinLevel: sp.Level}
-		}
-	}
+	o.Reason = spellReason(turn, o, sp)
 	o.Enabled = o.Reason == nil
 	return o
+}
+
+// highestSlotLevel is the highest spell slot level.
+const highestSlotLevel = 9
+
+// castingSlots are the free slots of the level and above, then the pact slot
+// when it is high enough.
+func castingSlots(d rules.Derived, u Usage, level int) []SlotChoice {
+	var out []SlotChoice
+	for l := level; l <= highestSlotLevel; l++ {
+		if free := SlotsFree(d, u, l); free > 0 {
+			out = append(out, SlotChoice{Level: l, Free: free})
+		}
+	}
+	if p := d.PactMagic; p != nil && p.SlotLevel >= level {
+		if free := PactSlotsFree(d, u); free > 0 {
+			out = append(out, SlotChoice{Level: p.SlotLevel, Pact: true, Free: free})
+		}
+	}
+	return out
+}
+
+// spellReason is why the spell cannot be cast now, or nil. The first reason
+// that applies wins: what the spell is, then the economy, then the slots.
+func spellReason(turn TurnState, o SpellOption, sp rules.SpellEntry) *Reason {
+	switch {
+	case o.Economy == "":
+		return &Reason{Code: ReasonTooLong}
+	case o.Economy == rules.EconomyReaction && sp.Key == shieldKey:
+		return &Reason{Code: ReasonReactionOnlyWhenHit}
+	case o.Economy == rules.EconomyReaction:
+		return &Reason{Code: ReasonReactionOnly}
+	}
+	if eo := economyOption(o.Economy, turn); !eo.Enabled {
+		return eo.Reason
+	}
+	if SpellLimited(turn, o.Economy, sp.Level) {
+		return &Reason{Code: ReasonBonusActionSpellLimit}
+	}
+	if sp.Level > 0 && len(o.Slots) == 0 {
+		return &Reason{Code: ReasonNoSlot, MinLevel: sp.Level}
+	}
+	return nil
 }
 
 func actionOption(d rules.Derived, turn TurnState, u Usage, a rules.Action) ActionOption {

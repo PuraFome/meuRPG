@@ -303,8 +303,8 @@ func (c *content) loadTraps(fsys fs.FS) error {
 	}
 	// Every Portuguese name must be of a preset: a renamed or removed trap
 	// leaves no stray name behind.
-	for k := range c.namesPT {
-		if strings.HasPrefix(k, "trap:") && !seen[k] {
+	for _, k := range c.namesWithPrefix("trap:") {
+		if !seen[k] {
 			return l.fail("effects/names_pt.json names %q, which is not in traps.json", k)
 		}
 	}

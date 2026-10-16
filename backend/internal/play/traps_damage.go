@@ -36,58 +36,109 @@ func (s *Service) ListTrapDamages(
 	if err != nil {
 		return nil, err
 	}
-	// What waits in the open combat (a combat that ended turned it into the rows below),
-	// and what waits outside a combat, from any session of the campaign.
-	var inCombat []playdb.PendingDamage
-	if session, err := s.queries.GetOpenGameSession(ctx, m.CampaignID); err == nil {
-		if inCombat, err = s.queries.ListOpenTrapPendingDamages(ctx, session.ID); err != nil {
-			return nil, s.dbError(ctx, "list the trap damages in combat", err)
-		}
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, s.dbError(ctx, "find the open session", err)
+	waiting, err := s.readWaitingTrapDamages(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
 	}
-	outside, err := s.queries.ListCampaignTrapDamages(ctx, m.CampaignID)
+	trapNames, names, err := s.waitingTrapDamageNames(ctx, m.CampaignID, waiting)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.ListTrapDamagesResponse{Damages: waiting.protos(trapNames, names)}), nil
+}
+
+// waitingTrapDamages is what waits for the master: the pending damages of the open combat and
+// the trap damages from outside a combat, with the combatants of the first.
+type waitingTrapDamages struct {
+	inCombat   []playdb.PendingDamage
+	outside    []playdb.ListCampaignTrapDamagesRow
+	combatants map[string]playdb.Combatant
+}
+
+// readWaitingTrapDamages reads what waits in the open combat (a combat that ended turned it into
+// the rows outside), and what waits outside a combat, from any session of the campaign.
+func (s *Service) readWaitingTrapDamages(ctx context.Context, campaignID string) (*waitingTrapDamages, error) {
+	inCombat, err := s.openCombatTrapDamages(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	outside, err := s.queries.ListCampaignTrapDamages(ctx, campaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the trap damages", err)
 	}
-	var pointIDs, characterIDs []string
-	combatants := map[string]playdb.Combatant{}
+	w := &waitingTrapDamages{inCombat: inCombat, outside: outside, combatants: map[string]playdb.Combatant{}}
 	for _, p := range inCombat {
-		pointIDs = append(pointIDs, deref(p.TrapPointID))
-		if _, ok := combatants[p.TargetID]; !ok {
-			cs, err := s.queries.ListCombatantsWithDismissed(ctx, p.EncounterID)
-			if err != nil {
-				return nil, s.dbError(ctx, "list the combatants", err)
-			}
-			for _, c := range cs {
-				combatants[c.ID] = c
-			}
+		if _, ok := w.combatants[p.TargetID]; ok {
+			continue
 		}
-		characterIDs = append(characterIDs, combatants[p.TargetID].CharacterID)
+		cs, err := s.queries.ListCombatantsWithDismissed(ctx, p.EncounterID)
+		if err != nil {
+			return nil, s.dbError(ctx, "list the combatants", err)
+		}
+		for _, c := range cs {
+			w.combatants[c.ID] = c
+		}
 	}
-	for _, d := range outside {
+	return w, nil
+}
+
+// openCombatTrapDamages are the pending trap damages of the campaign's open session; none when
+// no session is open.
+func (s *Service) openCombatTrapDamages(ctx context.Context, campaignID string) ([]playdb.PendingDamage, error) {
+	session, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "find the open session", err)
+	}
+	rows, err := s.queries.ListOpenTrapPendingDamages(ctx, session.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the trap damages in combat", err)
+	}
+	return rows, nil
+}
+
+// ids are the traps and the characters the waiting damages name, in the order of the damages.
+func (w *waitingTrapDamages) ids() (pointIDs, characterIDs []string) {
+	for _, p := range w.inCombat {
+		pointIDs = append(pointIDs, deref(p.TrapPointID))
+		characterIDs = append(characterIDs, w.combatants[p.TargetID].CharacterID)
+	}
+	for _, d := range w.outside {
 		pointIDs = append(pointIDs, d.TrapPointID)
 		characterIDs = append(characterIDs, d.CharacterID)
 	}
-	trapNames, names := map[string]string{}, map[string]string{}
+	return pointIDs, characterIDs
+}
+
+// waitingTrapDamageNames reads the names of the traps and of the characters the damages name.
+func (s *Service) waitingTrapDamageNames(ctx context.Context, campaignID string, w *waitingTrapDamages) (trapNames, names map[string]string, err error) {
+	pointIDs, characterIDs := w.ids()
+	trapNames, names = map[string]string{}, map[string]string{}
 	if s.traps != nil && len(pointIDs) > 0 {
-		if trapNames, err = s.traps.TrapNames(ctx, m.CampaignID, slices.Compact(slices.Sorted(slices.Values(pointIDs)))); err != nil {
-			return nil, s.dbError(ctx, "read the traps' names", err)
+		if trapNames, err = s.traps.TrapNames(ctx, campaignID, slices.Compact(slices.Sorted(slices.Values(pointIDs)))); err != nil {
+			return nil, nil, s.dbError(ctx, "read the traps' names", err)
 		}
 	}
 	if len(characterIDs) > 0 {
-		chars, err := s.roster.SessionCharacters(ctx, nil, m.CampaignID, slices.Compact(slices.Sorted(slices.Values(characterIDs))))
+		chars, err := s.roster.SessionCharacters(ctx, nil, campaignID, slices.Compact(slices.Sorted(slices.Values(characterIDs))))
 		if err != nil {
-			return nil, s.dbError(ctx, "read the characters' names", err)
+			return nil, nil, s.dbError(ctx, "read the characters' names", err)
 		}
 		for _, c := range chars {
 			names[c.ID] = c.Name
 		}
 	}
-	res := &playv1.ListTrapDamagesResponse{}
-	for _, p := range inCombat {
-		who := combatants[p.TargetID]
-		res.Damages = append(res.Damages, &playv1.TrapDamage{
+	return trapNames, names, nil
+}
+
+// protos are the waiting damages as the API says them: the combat's first, then the ones from outside.
+func (w *waitingTrapDamages) protos(trapNames, names map[string]string) []*playv1.TrapDamage {
+	var out []*playv1.TrapDamage
+	for _, p := range w.inCombat {
+		who := w.combatants[p.TargetID]
+		out = append(out, &playv1.TrapDamage{
 			Id: p.ID, EncounterId: p.EncounterID, TrapPointId: deref(p.TrapPointID), TrapName: trapNames[deref(p.TrapPointID)],
 			CharacterId: who.CharacterID, CharacterName: names[who.CharacterID], CombatantId: p.TargetID,
 			Status: pendingStatusToProto[p.Status], Roll: diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, num(p.RollTotal), false),
@@ -95,12 +146,12 @@ func (s *Service) ListTrapDamages(
 			AppliedAmount: p.AppliedAmount, CreatedAt: timestamppb.New(p.CreatedAt),
 		})
 	}
-	for _, d := range outside {
-		out := trapDamageProto(trapDamageOf(d), trapNames[d.TrapPointID], names[d.CharacterID])
-		out.SessionNumber, out.SessionStartedAt = d.SessionNumber, timestamppb.New(d.SessionStartedAt)
-		res.Damages = append(res.Damages, out)
+	for _, d := range w.outside {
+		dmg := trapDamageProto(trapDamageOf(d), trapNames[d.TrapPointID], names[d.CharacterID])
+		dmg.SessionNumber, dmg.SessionStartedAt = d.SessionNumber, timestamppb.New(d.SessionStartedAt)
+		out = append(out, dmg)
 	}
-	return connect.NewResponse(res), nil
+	return out
 }
 
 // trapDamageOf is the row of a listing as the trap_damages row it is.
@@ -133,161 +184,257 @@ func (s *Service) settleTrapDamage(ctx context.Context, m authz.Membership, key,
 	if err != nil {
 		return playdb.TrapDamage{}, nil, connect.NewError(connect.CodeNotFound, errors.New("trap damage not found"))
 	}
+	st := newTrapSettle(m, key, id.String(), apply, override)
+	if err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return s.settleTrapDamageTx(ctx, tx, st) }); err != nil {
+		return playdb.TrapDamage{}, nil, err
+	}
+	if !st.repeated {
+		s.afterTrapSettled(ctx, st)
+	}
+	return st.row, st.after, nil
+}
+
+// trapSettle is one settling of a trap damage: what the master asked, and what the transaction
+// left for the streams once it is committed.
+type trapSettle struct {
+	m        authz.Membership
+	key      string
+	id       string
+	apply    bool
+	override *int32
+	kind     string
+	// scopedKey and hash stand for the request: the key of the campaign and a hash of what it
+	// asked, which damage, which action and which amount.
+	scopedKey *string
+	hash      *string
+
+	row          playdb.TrapDamage
+	after        *playv1.CharacterVitals
+	repeated     bool
+	shapeChanged bool
+	touched      *playdb.Encounter
+	visionMap    string
+}
+
+// newTrapSettle describes the request. The key is kept on the damage it settled, scoped to the
+// campaign: the damage outlives its session, so the key cannot rest on a session event alone.
+func newTrapSettle(m authz.Membership, key, id string, apply bool, override *int32) *trapSettle {
 	kind := eventDamageDiscarded
 	if apply {
 		kind = eventDamageApplied
 	}
-	// The key is kept on the damage it settled, scoped to the campaign, with a hash of what it
-	// asked: which damage, which action and which amount. The damage outlives its session, so
-	// the key cannot rest on a session event alone.
 	amountText := "-"
 	if override != nil {
 		amountText = strconv.Itoa(int(*override))
 	}
-	scopedKey, hash := idem.Scope(m.CampaignID, key), requestHash(id.String(), kind, amountText)
-	var row playdb.TrapDamage
-	var after *playv1.CharacterVitals
-	var repeated, shapeChanged bool
-	var touched *playdb.Encounter
-	var visionMap string
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		after, repeated, shapeChanged, touched, visionMap = nil, false, false, nil, ""
-		// The damage outlives its session, so it may be settled with none open (then there
-		// is no event to write; the damage keeps the key).
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		hasSession := err == nil
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("lock the open session: %w", err)
-		}
-		found, err := q.GetCampaignTrapDamageForUpdate(ctx, playdb.GetCampaignTrapDamageForUpdateParams{CampaignID: m.CampaignID, ID: id.String()})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return connect.NewError(connect.CodeNotFound, errors.New("trap damage not found"))
-		}
-		if err != nil {
-			return fmt.Errorf("find the trap damage: %w", err)
-		}
-		row = trapDamageOf(playdb.ListCampaignTrapDamagesRow(found))
-		prior, err := q.GetTrapDamageBySettleKey(ctx, scopedKey)
-		switch {
-		case err == nil:
-			if prior.ID != row.ID {
-				return idem.ErrReused()
-			}
-			if err := idem.SameRequest(prior.SettleHash, hash); err != nil {
-				return err
-			}
-			row, repeated = prior, true // a retry: the damage is as the first call left it
-			return nil
-		case !errors.Is(err, pgx.ErrNoRows):
-			return fmt.Errorf("find the damage of this idempotency key: %w", err)
-		}
-		if hasSession {
-			done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &key})
-			switch {
-			case err == nil:
-				var prior actionEvent
-				if done.Kind != kind || json.Unmarshal(done.Payload, &prior) != nil || prior.Pending != row.ID {
-					return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-				}
-				repeated = true // a retry: the damage is as the first call left it
-				return nil
-			case !errors.Is(err, pgx.ErrNoRows):
-				return fmt.Errorf("find the event of this idempotency key: %w", err)
-			}
-		}
-		if row.Status != "rolled" {
-			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied or discarded already")
-		}
-		c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &row.CharacterID, actorUserID: m.UserID})
-		if err != nil {
+	return &trapSettle{
+		m: m, key: key, id: id, apply: apply, override: override, kind: kind,
+		scopedKey: idem.Scope(m.CampaignID, key), hash: requestHash(id, kind, amountText),
+	}
+}
+
+// reset forgets what an attempt of the transaction left, for the next one.
+func (st *trapSettle) reset() {
+	st.after, st.repeated, st.shapeChanged, st.touched, st.visionMap = nil, false, false, nil, ""
+}
+
+// settleTrapDamageTx is the settling inside its transaction: the damage is found, a retry answers
+// with the damage as the first call left it, and a new settling changes the vitals, closes the
+// damage and writes the event.
+func (s *Service) settleTrapDamageTx(ctx context.Context, tx pgx.Tx, st *trapSettle) error {
+	q := s.queries.WithTx(tx)
+	st.reset()
+	// The damage outlives its session, so it may be settled with none open (then there
+	// is no event to write; the damage keeps the key).
+	session, hasSession, err := lockTrapSettleSession(ctx, q, st.m.CampaignID)
+	if err != nil {
+		return err
+	}
+	found, err := q.GetCampaignTrapDamageForUpdate(ctx, playdb.GetCampaignTrapDamageForUpdateParams{CampaignID: st.m.CampaignID, ID: st.id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return connect.NewError(connect.CodeNotFound, errors.New("trap damage not found"))
+	}
+	if err != nil {
+		return fmt.Errorf("find the trap damage: %w", err)
+	}
+	st.row = trapDamageOf(playdb.ListCampaignTrapDamagesRow(found))
+	if done, err := st.replay(ctx, q, session, hasSession); err != nil || done {
+		return err
+	}
+	if st.row.Status != "rolled" {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied or discarded already")
+	}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &st.row.CharacterID, actorUserID: st.m.UserID})
+	if err != nil {
+		return err
+	}
+	ev := actionEvent{Pending: st.row.ID, Target: st.row.CharacterID, Key: "trap", Amount: st.row.Amount, DamageType: st.row.DamageType}
+	final, applied := "discarded", (*int32)(nil)
+	if st.apply {
+		final = "applied"
+		if applied, err = s.landTrapDamageOnVitals(ctx, tx, q, st, session, hasSession, &ev); err != nil {
 			return err
 		}
-		ev := actionEvent{Pending: row.ID, Target: row.CharacterID, Key: "trap", Amount: row.Amount, DamageType: row.DamageType}
-		final, applied := "discarded", (*int32)(nil)
-		if apply {
-			final = "applied"
-			amount := row.Amount
-			if override != nil && *override != row.Amount {
-				amount, applied = *override, override
-			}
-			ev.Amount, ev.Overridden, ev.Rolled = amount, applied != nil, row.Amount
-			// RN-02: the damage goes through the character's vitals, temporary hit
-			// points first, never below 0; a druid in a beast form takes it on the
-			// beast, and what is left goes to the druid when the beast falls (MR-037).
-			// What changes is the open session's, even when the trap fired in an earlier one.
-			now, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, row.CharacterID)
-			if err != nil {
-				return err
-			}
-			sessionID := row.GameSessionID
-			if hasSession {
-				sessionID = session.ID
-			}
-			var req *playv1.AdjustCharacterVitalsRequest
-			var left, carried int32
-			if now.GetWildShape() != nil {
-				req, left, carried = beastDamageRequest(now, amount)
-			} else {
-				dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
-				req = &playv1.AdjustCharacterVitalsRequest{}
-				if relentlessEndurance(now, dmg) { // the half-orc stays on its feet with 1 hit point (SRD 5.1)
-					dmg.HP, ev.Relentless = 1, true
-					req.ResourcesUsed = []*playv1.ResourceUsed{{Key: resRelentlessEndurance, Used: usesSpentOf(now, resRelentlessEndurance) + 1}}
-				}
-				hp, temp := clamp32(dmg.HP, 0, maxHitPointChange), clamp32(dmg.TempHP, 0, maxHitPointChange)
-				req.HitPointsCurrent, req.HitPointsTemporary = &hp, &temp
-			}
-			before, vit, err := s.changeVitals(ctx, q, tx, sessionID, m.CampaignID, row.CharacterID, req)
-			if err != nil {
-				return err
-			}
-			if now.GetWildShape() != nil && left == 0 { // the beast fell: the keeper ended the form, its numbers and its event are ours
-				if vit, err = s.formEnds(ctx, q, tx, sessionID, m.CampaignID, row.CharacterID, now.GetWildShape().GetBeastKey(), endedByDamage, carried); err != nil {
-					return err
-				}
-			}
-			after = vit
-			shapeChanged = (before.GetWildShape() == nil) != (vit.GetWildShape() == nil)
-			ev.Carried = carried
-			ev.Before, ev.After = new(hpStateOf(before)), new(hpStateOf(vit))
-			if hasSession {
-				// A combat in progress with this character shows its state from the vitals.
-				if touched, err = s.touchCombatOf(ctx, q, session.ID, row.CharacterID, nil); err != nil {
-					return err
-				}
-				visionMap = deref(session.CurrentMapID)
-				if touched != nil {
-					visionMap = deref(touched.MapID)
-				}
-			}
+	}
+	resolved := c.now
+	if st.row, err = q.SetTrapDamageStatus(ctx, playdb.SetTrapDamageStatusParams{ID: st.row.ID, Status: final, ResolvedAt: &resolved, AppliedAmount: applied, SettleKey: st.scopedKey, SettleHash: st.hash}); err != nil {
+		return fmt.Errorf("settle the trap damage: %w", err)
+	}
+	if !hasSession {
+		return nil
+	}
+	_, err = insertSceneEvent(ctx, c, st.kind, &st.m.UserID, &st.key, ev)
+	return err
+}
+
+// lockTrapSettleSession locks the campaign's open session, and says whether there is one.
+func lockTrapSettleSession(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, bool, error) {
+	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return playdb.GameSession{}, false, fmt.Errorf("lock the open session: %w", err)
+	}
+	return session, err == nil, nil
+}
+
+// replay says whether the key settled this damage already (a retry): the damage's own row
+// remembers it, and so does an event of the open session. A retry leaves the damage as the first
+// call left it.
+func (st *trapSettle) replay(ctx context.Context, q *playdb.Queries, session playdb.GameSession, hasSession bool) (bool, error) {
+	if done, err := st.replayByDamage(ctx, q); err != nil || done {
+		return done, err
+	}
+	if !hasSession {
+		return false, nil
+	}
+	return st.replayByEvent(ctx, q, session)
+}
+
+// replayByDamage finds the damage the key settled: it must be this one, asked the same way.
+func (st *trapSettle) replayByDamage(ctx context.Context, q *playdb.Queries) (bool, error) {
+	prior, err := q.GetTrapDamageBySettleKey(ctx, st.scopedKey)
+	switch {
+	case err == nil:
+		if prior.ID != st.row.ID {
+			return false, idem.ErrReused()
 		}
-		resolved := c.now
-		if row, err = q.SetTrapDamageStatus(ctx, playdb.SetTrapDamageStatusParams{ID: row.ID, Status: final, ResolvedAt: &resolved, AppliedAmount: applied, SettleKey: scopedKey, SettleHash: hash}); err != nil {
-			return fmt.Errorf("settle the trap damage: %w", err)
+		if err := idem.SameRequest(prior.SettleHash, st.hash); err != nil {
+			return false, err
 		}
-		if !hasSession {
-			return nil
+		st.row, st.repeated = prior, true // a retry: the damage is as the first call left it
+		return true, nil
+	case !errors.Is(err, pgx.ErrNoRows):
+		return false, fmt.Errorf("find the damage of this idempotency key: %w", err)
+	}
+	return false, nil
+}
+
+// replayByEvent finds the event of the session the key wrote: it must be this damage's.
+func (st *trapSettle) replayByEvent(ctx context.Context, q *playdb.Queries, session playdb.GameSession) (bool, error) {
+	done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &st.key})
+	switch {
+	case err == nil:
+		var prior actionEvent
+		if done.Kind != st.kind || json.Unmarshal(done.Payload, &prior) != nil || prior.Pending != st.row.ID {
+			return false, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 		}
-		_, err = insertSceneEvent(ctx, c, kind, &m.UserID, &key, ev)
-		return err
-	})
+		st.repeated = true // a retry: the damage is as the first call left it
+		return true, nil
+	case !errors.Is(err, pgx.ErrNoRows):
+		return false, fmt.Errorf("find the event of this idempotency key: %w", err)
+	}
+	return false, nil
+}
+
+// landTrapDamageOnVitals puts the damage on the character's vitals and tells the event what
+// changed. It returns the master's amount when he changed it, nil when the rolled one was applied.
+// RN-02: the damage goes through the character's vitals, temporary hit points first, never below
+// 0; a druid in a beast form takes it on the beast, and what is left goes to the druid when the
+// beast falls (MR-037). What changes is the open session's, even when the trap fired in an
+// earlier one.
+func (s *Service) landTrapDamageOnVitals(ctx context.Context, tx pgx.Tx, q *playdb.Queries, st *trapSettle, session playdb.GameSession, hasSession bool, ev *actionEvent) (*int32, error) {
+	amount, applied := st.row.Amount, (*int32)(nil)
+	if st.override != nil && *st.override != st.row.Amount {
+		amount, applied = *st.override, st.override
+	}
+	ev.Amount, ev.Overridden, ev.Rolled = amount, applied != nil, st.row.Amount
+	campaignID, characterID := st.m.CampaignID, st.row.CharacterID
+	now, err := s.vitals.GetVitalsTx(ctx, tx, campaignID, characterID)
 	if err != nil {
-		return playdb.TrapDamage{}, nil, err
+		return nil, err
 	}
-	if !repeated {
-		pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the streams and the fog unheard
-		defer stop()
-		s.publishVitals(m.CampaignID, after)
-		s.Publish(m.CampaignID, false, mapChangedHint("")) // the trap card has one damage less
-		if touched != nil {
-			s.publishEncounterChanged(pctx, m.CampaignID, *touched)
-		}
-		if shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
-			s.maps.VisionChanged(pctx, m.CampaignID, visionMap)
+	sessionID := st.row.GameSessionID
+	if hasSession {
+		sessionID = session.ID
+	}
+	req, left, carried := trapDamageVitalsRequest(now, amount, ev)
+	before, vit, err := s.changeVitals(ctx, q, tx, sessionID, campaignID, characterID, req)
+	if err != nil {
+		return nil, err
+	}
+	if now.GetWildShape() != nil && left == 0 { // the beast fell: the keeper ended the form, its numbers and its event are ours
+		if vit, err = s.formEnds(ctx, q, tx, sessionID, campaignID, characterID, now.GetWildShape().GetBeastKey(), endedByDamage, carried); err != nil {
+			return nil, err
 		}
 	}
-	return row, after, nil
+	st.after = vit
+	st.shapeChanged = (before.GetWildShape() == nil) != (vit.GetWildShape() == nil)
+	ev.Carried = carried
+	ev.Before, ev.After = new(hpStateOf(before)), new(hpStateOf(vit))
+	if hasSession {
+		if err := s.followSettledCombat(ctx, q, st, session); err != nil {
+			return nil, err
+		}
+	}
+	return applied, nil
+}
+
+// trapDamageVitalsRequest is the change of the vitals a damage makes: on the beast for a druid in a
+// beast form (with what is left and what is carried over to the druid), else on the temporary hit
+// points first. The half-orc who would fall stays on its feet with 1 hit point (SRD 5.1), and the
+// event says so.
+func trapDamageVitalsRequest(now *playv1.CharacterVitals, amount int32, ev *actionEvent) (req *playv1.AdjustCharacterVitalsRequest, left, carried int32) {
+	if now.GetWildShape() != nil {
+		return beastDamageRequest(now, amount)
+	}
+	dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
+	req = &playv1.AdjustCharacterVitalsRequest{}
+	if relentlessEndurance(now, dmg) {
+		dmg.HP, ev.Relentless = 1, true
+		req.ResourcesUsed = []*playv1.ResourceUsed{{Key: resRelentlessEndurance, Used: usesSpentOf(now, resRelentlessEndurance) + 1}}
+	}
+	hp, temp := clamp32(dmg.HP, 0, maxHitPointChange), clamp32(dmg.TempHP, 0, maxHitPointChange)
+	req.HitPointsCurrent, req.HitPointsTemporary = &hp, &temp
+	return req, 0, 0
+}
+
+// followSettledCombat shows a combat in progress with the character its state from the vitals, and
+// keeps the map the fog is told about.
+func (s *Service) followSettledCombat(ctx context.Context, q *playdb.Queries, st *trapSettle, session playdb.GameSession) error {
+	touched, err := s.touchCombatOf(ctx, q, session.ID, st.row.CharacterID, nil)
+	if err != nil {
+		return err
+	}
+	st.touched = touched
+	st.visionMap = deref(session.CurrentMapID)
+	if touched != nil {
+		st.visionMap = deref(touched.MapID)
+	}
+	return nil
+}
+
+// afterTrapSettled tells the streams, after the commit, what the settling changed.
+func (s *Service) afterTrapSettled(ctx context.Context, st *trapSettle) {
+	campaignID := st.m.CampaignID
+	pctx, stop := afterCommit(ctx) // the change is committed: a caller that hangs up must not leave the streams and the fog unheard
+	defer stop()
+	s.publishVitals(campaignID, st.after)
+	s.Publish(campaignID, false, mapChangedHint("")) // the trap card has one damage less
+	if st.touched != nil {
+		s.publishEncounterChanged(pctx, campaignID, *st.touched)
+	}
+	if st.shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
+		s.maps.VisionChanged(pctx, campaignID, st.visionMap)
+	}
 }
 
 // trapDamageNames reads the names a trap damage's answer shows.
