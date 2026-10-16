@@ -101,15 +101,7 @@ func (s *Service) SetSurprised(
 	ctx context.Context,
 	req *connect.Request[playv1.SetSurprisedRequest],
 ) (*connect.Response[playv1.SetSurprisedResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -121,35 +113,7 @@ func (s *Service) SetSurprised(
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSurpriseSet, encounterID: encID}, func(c *combatTx) (any, error) {
 		made = actionEvent{}
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		who, ok := combatantByID(cs, combatantID)
-		if !ok {
-			return nil, errCombatantNotFound()
-		}
-		// Surprise is the start of the encounter: until the creature's first turn ends.
-		if !stillSurprised(c.enc, currentOrder(c.enc, cs), playdb.Combatant{OrderIndex: who.OrderIndex}) {
-			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_COMBAT_BEGUN, "the combatant's first turn has ended")
-		}
-		if surprised {
-			err = c.q.UpsertSurprised(ctx, playdb.UpsertSurprisedParams{CombatantID: who.ID, EncounterID: c.enc.ID, CreatedAt: c.now})
-		} else {
-			err = c.q.DeleteSurprised(ctx, who.ID)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("mark the surprise: %w", err)
-		}
-		if err := touch(ctx, c); err != nil {
-			return nil, err
-		}
-		c.characterID = &who.CharacterID
-		made = actionEvent{Round: c.enc.Round, Secret: true, Actor: who.ID, Contest: &contestEvent{Surprised: surprised}}
-		return made, nil
+		return s.surprisedWrite(ctx, c, combatantID, surprised, &made)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a surprise", err)
@@ -164,7 +128,59 @@ func (s *Service) SetSurprised(
 	if err != nil {
 		return nil, err
 	}
-	d, err := s.readContestData(ctx, m.CampaignID, res.encounterID)
+	view, err := s.surpriseViewOf(ctx, m, res.encounterID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.SetSurprisedResponse{Encounter: out, Surprise: view}), nil
+}
+
+// surprisedWrite is the transaction of SetSurprised: the mark is the master's until the
+// combatant's first turn has ended.
+func (s *Service) surprisedWrite(ctx context.Context, c *combatTx, combatantID string, surprised bool, made *actionEvent) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	who, ok := combatantByID(cs, combatantID)
+	if !ok {
+		return nil, errCombatantNotFound()
+	}
+	// Surprise is the start of the encounter: until the creature's first turn ends.
+	if !stillSurprised(c.enc, currentOrder(c.enc, cs), playdb.Combatant{OrderIndex: who.OrderIndex}) {
+		return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_COMBAT_BEGUN, "the combatant's first turn has ended")
+	}
+	if err := markSurprise(ctx, c, who, surprised); err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, c); err != nil {
+		return nil, err
+	}
+	c.characterID = &who.CharacterID
+	*made = actionEvent{Round: c.enc.Round, Secret: true, Actor: who.ID, Contest: &contestEvent{Surprised: surprised}}
+	return *made, nil
+}
+
+// markSurprise sets or takes off the mark of a surprised combatant.
+func markSurprise(ctx context.Context, c *combatTx, who playdb.Combatant, surprised bool) error {
+	var err error
+	if surprised {
+		err = c.q.UpsertSurprised(ctx, playdb.UpsertSurprisedParams{CombatantID: who.ID, EncounterID: c.enc.ID, CreatedAt: c.now})
+	} else {
+		err = c.q.DeleteSurprised(ctx, who.ID)
+	}
+	if err != nil {
+		return fmt.Errorf("mark the surprise: %w", err)
+	}
+	return nil
+}
+
+// surpriseViewOf reads who is surprised, as the caller may read it.
+func (s *Service) surpriseViewOf(ctx context.Context, m authz.Membership, encounterID string) (*playv1.SurpriseView, error) {
+	d, err := s.readContestData(ctx, m.CampaignID, encounterID)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +192,7 @@ func (s *Service) SetSurprised(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the surprise", err)
 	}
-	return connect.NewResponse(&playv1.SetSurprisedResponse{Encounter: out, Surprise: view}), nil
+	return view, nil
 }
 
 // stealthTotals are the Stealth totals of the hiders the suggestion compares: the latest
@@ -184,24 +200,8 @@ func (s *Service) SetSurprised(
 // actions the master applied in the combat, which are newer when there are both.
 func (s *Service) stealthTotals(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, cs []playdb.Combatant, attempts []playdb.CombatHideAttempt) (map[string]int, error) {
 	out := map[string]int{}
-	checks, err := q.ListGroupChecksOfSkill(ctx, playdb.ListGroupChecksOfSkillParams{GameSessionID: enc.GameSessionID, SkillKey: skillStealth, Limit: 1})
-	if err != nil {
-		return nil, fmt.Errorf("read the latest Stealth check: %w", err)
-	}
-	if len(checks) > 0 {
-		members, err := q.ListGroupCheckMembers(ctx, checks[0].ID)
-		if err != nil {
-			return nil, fmt.Errorf("read the members of the check: %w", err)
-		}
-		for _, mb := range members {
-			roll, err := decodeRoll(mb.Roll)
-			if err != nil || roll == nil {
-				continue
-			}
-			if c, ok := combatantOfCharacter(cs, mb.CharacterID); ok {
-				out[c.ID] = int(roll.Total)
-			}
-		}
+	if err := groupCheckTotals(ctx, q, enc, cs, out); err != nil {
+		return nil, err
 	}
 	seen := map[string]bool{}
 	for _, a := range attempts { // newest first
@@ -214,6 +214,31 @@ func (s *Service) stealthTotals(ctx context.Context, q *playdb.Queries, enc play
 		}
 	}
 	return out, nil
+}
+
+// groupCheckTotals adds to out the totals of the members of the latest group check of Stealth.
+func groupCheckTotals(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, cs []playdb.Combatant, out map[string]int) error {
+	checks, err := q.ListGroupChecksOfSkill(ctx, playdb.ListGroupChecksOfSkillParams{GameSessionID: enc.GameSessionID, SkillKey: skillStealth, Limit: 1})
+	if err != nil {
+		return fmt.Errorf("read the latest Stealth check: %w", err)
+	}
+	if len(checks) == 0 {
+		return nil
+	}
+	members, err := q.ListGroupCheckMembers(ctx, checks[0].ID)
+	if err != nil {
+		return fmt.Errorf("read the members of the check: %w", err)
+	}
+	for _, mb := range members {
+		roll, err := decodeRoll(mb.Roll)
+		if err != nil || roll == nil {
+			continue
+		}
+		if c, ok := combatantOfCharacter(cs, mb.CharacterID); ok {
+			out[c.ID] = int(roll.Total)
+		}
+	}
+	return nil
 }
 
 // GetSurpriseSuggestion implements playv1connect.ContestServiceHandler.
@@ -246,51 +271,67 @@ func (s *Service) GetSurpriseSuggestion(
 		if c.Defeated {
 			continue
 		}
-		n, err := s.numbersOf(ctx, nil, m.CampaignID, c, skillPercept)
+		sg, err := s.suggestionFor(ctx, m.CampaignID, d, c, totals, slices.Contains(marked, c.ID))
 		if err != nil {
-			return nil, s.dbError(ctx, "read the Perception of a combatant", err)
-		}
-		notes, err := s.checkSourcesRead(ctx, m.CampaignID, d.enc, c, skillPercept, d.cs)
-		if err != nil {
-			return nil, s.dbError(ctx, "read the Perception of a combatant", err)
-		}
-		passive := passivePerceptionOf(n, notesMode(notes))
-		sg := &playv1.SurpriseSuggestion{
-			CombatantId: c.ID, PassivePerception: clamp32(passive, math.MinInt32, math.MaxInt32), Surprised: slices.Contains(marked, c.ID),
-		}
-		var hiders []combat.HideTotals
-		notHiding := 0 // creatures of the other side with no Stealth total: they are in plain sight
-		for _, h := range d.cs {
-			if h.ID == c.ID || h.Defeated || h.Dismissed || !oppositeSide(h, c) {
-				continue
-			}
-			total, ok := totals[h.ID]
-			if !ok {
-				notHiding++
-				continue
-			}
-			// A creature the master said sees the hider clearly notices it, whatever the numbers.
-			seesClearly := slices.ContainsFunc(d.hiding, func(r playdb.CombatHiding) bool { return r.HiderID == h.ID && r.ObserverID == c.ID && r.Noticed })
-			beats := !combat.NoticesHider(total, passive) && !seesClearly
-			hiders = append(hiders, combat.HideTotals{ID: h.ID, Total: total})
-			sg.Hiders = append(sg.Hiders, &playv1.HiderTotal{CombatantId: h.ID, StealthTotal: clamp32(total, math.MinInt32, math.MaxInt32), Beats: beats})
-			if seesClearly {
-				hiders[len(hiders)-1].Total = passive // it notices this one
-			}
-		}
-		switch {
-		case len(hiders) == 0:
-			sg.Reason = playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_NO_HIDERS
-		case notHiding > 0: // a creature that is not hiding is noticed (SRD 5.1, "Surprise": a threat noticed)
-			sg.Reason = playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_NOTICES
-		case combat.NoticesNoThreat(passive, hiders):
-			sg.Suggested, sg.Reason = true, playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_HIDERS_BEAT
-		default:
-			sg.Reason = playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_NOTICES
+			return nil, err
 		}
 		out.Suggestions = append(out.Suggestions, sg)
 	}
 	return connect.NewResponse(out), nil
+}
+
+// suggestionFor says whether the combatant should be surprised: each hider's Stealth total
+// against its passive Perception.
+func (s *Service) suggestionFor(ctx context.Context, campaignID string, d *contestData, c playdb.Combatant, totals map[string]int, surprised bool) (*playv1.SurpriseSuggestion, error) {
+	n, err := s.numbersOf(ctx, nil, campaignID, c, skillPercept)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the Perception of a combatant", err)
+	}
+	notes, err := s.checkSourcesRead(ctx, campaignID, d.enc, c, skillPercept, d.cs)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the Perception of a combatant", err)
+	}
+	passive := passivePerceptionOf(n, notesMode(notes))
+	sg := &playv1.SurpriseSuggestion{
+		CombatantId: c.ID, PassivePerception: clamp32(passive, math.MinInt32, math.MaxInt32), Surprised: surprised,
+	}
+	hiders, notHiding := hidersAgainst(d, c, totals, passive, sg)
+	switch {
+	case len(hiders) == 0:
+		sg.Reason = playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_NO_HIDERS
+	case notHiding > 0: // a creature that is not hiding is noticed (SRD 5.1, "Surprise": a threat noticed)
+		sg.Reason = playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_NOTICES
+	case combat.NoticesNoThreat(passive, hiders):
+		sg.Suggested, sg.Reason = true, playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_HIDERS_BEAT
+	default:
+		sg.Reason = playv1.SurpriseSuggestionReason_SURPRISE_SUGGESTION_REASON_NOTICES
+	}
+	return sg, nil
+}
+
+// hidersAgainst compares the Stealth total of each creature of the other side with the
+// passive Perception of c, adds the totals to sg, and returns the hiders and how many
+// creatures of the other side have no total: they are in plain sight.
+func hidersAgainst(d *contestData, c playdb.Combatant, totals map[string]int, passive int, sg *playv1.SurpriseSuggestion) (hiders []combat.HideTotals, notHiding int) {
+	for _, h := range d.cs {
+		if h.ID == c.ID || h.Defeated || h.Dismissed || !oppositeSide(h, c) {
+			continue
+		}
+		total, ok := totals[h.ID]
+		if !ok {
+			notHiding++
+			continue
+		}
+		// A creature the master said sees the hider clearly notices it, whatever the numbers.
+		seesClearly := slices.ContainsFunc(d.hiding, func(r playdb.CombatHiding) bool { return r.HiderID == h.ID && r.ObserverID == c.ID && r.Noticed })
+		beats := !combat.NoticesHider(total, passive) && !seesClearly
+		hiders = append(hiders, combat.HideTotals{ID: h.ID, Total: total})
+		sg.Hiders = append(sg.Hiders, &playv1.HiderTotal{CombatantId: h.ID, StealthTotal: clamp32(total, math.MinInt32, math.MaxInt32), Beats: beats})
+		if seesClearly {
+			hiders[len(hiders)-1].Total = passive // it notices this one
+		}
+	}
+	return hiders, notHiding
 }
 
 // stealthTotalsRead is stealthTotals in a read-only transaction.

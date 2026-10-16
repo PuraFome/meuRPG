@@ -296,7 +296,7 @@ func TestStartEncounterRefusesABadRequestBeforeTheTransaction(t *testing.T) {
 		}, invalid, "participants[0].count must be 1 to 10"},
 		{"more combatants than a combat holds", f.master, func(r *playv1.StartEncounterRequest) {
 			r.Participants = []*playv1.Participant{{CharacterId: goblin, Count: maxNPCCopies}, {CharacterId: party}}
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				extra := f.master.createCharacter(t, f.campaignID, charactersv1.CharacterKind_CHARACTER_KIND_MINION, "Extra"+strings.Repeat("x", i+1))
 				r.Participants = append(r.Participants, &playv1.Participant{CharacterId: extra.GetId(), Count: maxNPCCopies})
 			}
