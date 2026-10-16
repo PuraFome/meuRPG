@@ -1,0 +1,243 @@
+== a hit ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[15],"modifier":5,"physical":true,"total":20},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
+pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
+event attack_rolled {"combatant_id": "Toren", "d20": 15, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 20}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+damage equipment:battleaxe | awaiting_roll | false | 1 | 8 | 3 | damage-type:slashing | 20 | 12
+== a miss ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[2],"modifier":5,"physical":true,"total":7},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_MISS","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
+pending 
+event attack_rolled {"combatant_id": "Toren", "d20": 2, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 7}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+== a natural 1 ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[1],"modifier":5,"physical":true,"total":6},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_MISS","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
+pending 
+event attack_rolled {"combatant_id": "Toren", "d20": 1, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 6}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+== a natural 20 ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[20],"modifier":5,"physical":true,"total":25},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_CRITICAL_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
+pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":2,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
+event attack_rolled {"combatant_id": "Toren", "d20": 20, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "critical", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 25}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+damage equipment:battleaxe | awaiting_roll | true | 2 | 8 | 3 | damage-type:slashing | 25 | 12
+== a second attack in the same turn ==
+refused failed_precondition: the action of this turn is used
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+== an NPC attacks as the master ==
+roll {"attackKey":"basic:0","attackerId":"Goblin","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[14],"modifier":4,"physical":true,"total":18},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetArmorClass":12,"targetId":"Toren"}
+pending {"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Toren"}
+event attack_rolled {"combatant_id": "Goblin", "d20": 14, "key": "basic:0", "modifier": 4, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Toren", "total": 18}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | true | false | false | 1 | basic:0 | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+damage basic:0 | awaiting_roll | false | 1 | 6 | 2 | damage-type:slashing | 18 | 12
+== an attack by someone who is not on the map ==
+refused failed_precondition: the attacker and the target must be on the map
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== an attack cantrip with the pair of dice ==
+refused invalid_argument: the roll takes 1 d20: type 1 face(s) in d20_faces
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== an attack in a combat without a map ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[16],"modifier":5,"physical":true,"total":21},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
+pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
+event attack_rolled {"combatant_id": "Toren", "d20": 16, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 21}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+damage equipment:battleaxe | awaiting_roll | false | 1 | 8 | 3 | damage-type:slashing | 21 | 12
+== an attack on a defeated target ==
+refused failed_precondition: the target is defeated
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== an attack out of reach ==
+refused failed_precondition: the target is beyond the attack's range
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== an attack out of turn ==
+refused failed_precondition: it is not this combatant's turn
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== as the master for the player's character ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[12],"modifier":5,"physical":true,"total":17},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetArmorClass":12,"targetId":"Goblin"}
+pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
+event attack_rolled {"combatant_id": "Toren", "d20": 12, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 17}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+damage equipment:battleaxe | awaiting_roll | false | 1 | 8 | 3 | damage-type:slashing | 17 | 12
+== refused a key that is not a UUID ==
+refused invalid_argument: idempotency_key must be a UUID
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused a target that is not a UUID ==
+refused not_found: combatant not found
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused a throw back with no window ==
+refused failed_precondition: this reaction window cannot be answered now
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused a typed face out of range ==
+refused invalid_argument: d20_faces must be 1 to 20 each
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused an attack key of 101 characters ==
+refused invalid_argument: attack_key must name one of the attacker's attacks
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused an attack the attacker does not have ==
+refused invalid_argument: attack_key is not one of the attacker's attacks
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused an attacker that is not a UUID ==
+refused not_found: combatant not found
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused an empty attack key ==
+refused invalid_argument: attack_key must name one of the attacker's attacks
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused an encounter that is not a UUID ==
+refused not_found: encounter not found
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused an offer that is not a UUID ==
+refused invalid_argument: opportunity_offer_id must be a UUID
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused an offer that is not there ==
+refused aborted: that opportunity offer was answered or is gone
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused d20_face of 0 ==
+refused invalid_argument: d20_face must be 1 to 20
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused d20_face of 21 ==
+refused invalid_argument: d20_face must be 1 to 20
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused d20_face with d20_faces ==
+refused invalid_argument: set d20_face or d20_faces, not both
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused no roll at all ==
+refused invalid_argument: set roll_in_app, d20_face or d20_faces
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused roll_in_app false ==
+refused invalid_argument: roll_in_app must be true
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused the extra action for a weapon attack without Haste ==
+refused failed_precondition: the combatant has no extra action
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== refused three typed faces ==
+refused invalid_argument: set roll_in_app, d20_face or d20_faces
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== the extra action for a cantrip ==
+refused failed_precondition: the extra action takes one weapon attack, not a spell
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== with a disadvantage asked for and a reason ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":2,"diceSides":20,"faces":[3,17],"modifier":5,"physical":true,"total":8},"mode":"ROLL_MODE_DISADVANTAGE","modeReason":"Toren está cansado","outcome":"ATTACK_OUTCOME_MISS","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
+pending 
+event attack_rolled {"combatant_id": "Toren", "d20": 3, "d20_b": 17, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "reason_id": "?", "roll_mode": "disadvantage", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 8}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+== with an advantage asked for and refused ==
+refused invalid_argument: the reason must be 1 to 120 characters on one line
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | false | false | false | 0 | - | false
+== with an extra die ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[15],"modifier":5,"physical":true,"total":20},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
+pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
+event attack_rolled {"combatant_id": "Toren", "d20": 15, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 20}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+damage equipment:battleaxe | awaiting_roll | false | 1 | 8 | 3 | damage-type:slashing | 20 | 12
+== with the roll made in the app ==
+roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[10],"modifier":5,"total":15},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
+pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
+event attack_rolled {"combatant_id": "Toren", "d20": 10, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 15}
+combatant Brisa | false | false | false | 0 | - | false
+combatant Goblin | false | false | false | 0 | - | false
+combatant Pensantus | false | false | false | 0 | - | false
+combatant Toren | true | false | false | 1 | equipment:battleaxe | false
+damage equipment:battleaxe | awaiting_roll | false | 1 | 8 | 3 | damage-type:slashing | 15 | 12

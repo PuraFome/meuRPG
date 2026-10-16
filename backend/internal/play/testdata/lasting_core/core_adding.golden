@@ -1,0 +1,30 @@
+add condition:exhaustion -> invalid_argument: catalog_key is not an effect the master may add
+add spell:enhance-ability -> invalid_argument: ability_key must be one of str, dex, con, int, wis or cha for this spell
+add effect:lethargy -> invalid_argument: catalog_key is not an effect the master may add
+add spell:unknown -> invalid_argument: catalog_key is not an effect the master may add
+effects:
+Brisa spell:bless kind=spell conc=false dur=until_start_of_turn_of ends=r2/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["attack", "save"], "die": 4, "kind": "roll_die", "sign": 1}] started=r1
+Brisa spell:heroism kind=spell conc=false dur=concentration ends=r-/-/- spent=false fired=0 follows=- caster=Brisa visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:frightened"], "kind": "condition_immunity"}, {"kind": "turn_temp_hp", "value": 3}] started=r1
+Goblin condition:poisoned kind=master conc=false dur=until_dismissed ends=r-/-/- spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[condition:poisoned] mods=[] started=r1
+Toren condition:frightened kind=master conc=false dur=until_end_of_turn_of ends=r1/Pensantus/end_of_turn spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[condition:frightened] mods=[] started=r1
+Toren effect:web-fire kind=master conc=false dur=rounds ends=r2/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[] mods=[] started=r1
+Toren spell:enhance-ability kind=spell conc=false dur=long_rest ends=r-/-/- spent=false fired=0 follows=- caster=- visible=true audience=owner label=- dc=- conds=[] mods=[{"abilities": ["dex"], "kind": "check_advantage"}] started=r1
+Toren spell:guidance kind=spell conc=true dur=rounds ends=r11/Pensantus/start_of_turn spent=false fired=0 follows=- caster=Pensantus visible=true audience=owner label=- dc=- conds=[] mods=[{"applies_to": ["check"], "die": 4, "kind": "roll_die", "once": true, "sign": 1}] started=r1
+
+combatants:
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Goblin hp 7/7 base - temp 0 defeated=false exh=0 fails=0 conds=[condition:poisoned] derived=[condition:poisoned] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:guidance turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[condition:frightened] derived=[condition:frightened] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+events:
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"condition:poisoned","targets":["<Goblin>"]},"round":1,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"condition:frightened","targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_added {"combatant_id":"<Pensantus>","lasting":{"caster":"<Pensantus>","change":"added","effects":["<uuid>"],"key":"spell:hold-person","rounds":10,"targets":["<Goblin>"]},"round":1,"secret":true,"target_id":"<Goblin>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:bless","rounds":1,"targets":["<Brisa>"]},"round":1,"secret":true,"target_id":"<Brisa>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:enhance-ability","targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_added {"combatant_id":"<Brisa>","lasting":{"caster":"<Brisa>","change":"added","effects":["<uuid>"],"key":"spell:heroism","targets":["<Brisa>"]},"round":1,"secret":true,"target_id":"<Brisa>"}
+conditions_set {"combatant_id":"<Pensantus>","conc_before":"spell:hold-person","conc_ended":"spell:hold-person","round":1}
+lasting_effect_added {"combatant_id":"<Pensantus>","lasting":{"caster":"<Pensantus>","change":"added","effects":["<uuid>"],"key":"spell:guidance","rounds":10,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"effect:web-fire","rounds":1,"targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
+

@@ -45,18 +45,7 @@ export function planDoor(
   const door = read(MapLayer.DOORS, col, row);
   const wall = read(MapLayer.WALL, col, row) === 1;
   if (kind === 0) {
-    // The wall first, then the door goes: the square is never a gap in between.
-    return {
-      ok: true,
-      kind,
-      writes:
-        door === 0
-          ? []
-          : [
-              ...(wall ? [] : [{ layer: MapLayer.WALL, value: 1 }]),
-              { layer: MapLayer.DOORS, value: 0 },
-            ],
-    };
+    return { ok: true, kind, writes: removalWrites(door, wall) };
   }
   if (door !== 0) {
     return {
@@ -65,33 +54,42 @@ export function planDoor(
       writes: door === kind ? [] : [{ layer: MapLayer.DOORS, value: kind }],
     };
   }
-  const open = (c: number, r: number) =>
-    c >= 0 && r >= 0 && c < columns && r < rows && read(MapLayer.WALL, c, r) === 0;
-  const closed = (c: number, r: number) =>
-    c >= 0 && r >= 0 && c < columns && r < rows && read(MapLayer.WALL, c, r) === 1;
+  const wallIs = (value: number) => (c: number, r: number) =>
+    c >= 0 && r >= 0 && c < columns && r < rows && read(MapLayer.WALL, c, r) === value;
   if (wall) {
-    if ((open(col - 1, row) && open(col + 1, row)) || (open(col, row - 1) && open(col, row + 1))) {
-      return {
-        ok: true,
-        kind,
-        // The door first, then the wall goes (a door on a wall still reads as a wall): a player never sees a gap, and the fog never
-        // remembers what lies behind a closed or secret door. If the second batch is refused the editor reads the layers again
-        // (`PaintSession.syncAfterRefusal`), and what is left is a door over a wall, never an open gap.
-        writes: [
-          { layer: MapLayer.DOORS, value: kind },
-          { layer: MapLayer.WALL, value: 0 },
-        ],
-      };
-    }
-    return { ok: false };
+    // The door first, then the wall goes (a door on a wall still reads as a wall): a player never sees a gap, and the fog never
+    // remembers what lies behind a closed or secret door. If the second batch is refused the editor reads the layers again
+    // (`PaintSession.syncAfterRefusal`), and what is left is a door over a wall, never an open gap.
+    return flankedBy(wallIs(0), col, row)
+      ? {
+          ok: true,
+          kind,
+          writes: [
+            { layer: MapLayer.DOORS, value: kind },
+            { layer: MapLayer.WALL, value: 0 },
+          ],
+        }
+      : { ok: false };
   }
-  if (
-    (closed(col - 1, row) && closed(col + 1, row)) ||
-    (closed(col, row - 1) && closed(col, row + 1))
-  ) {
-    return { ok: true, kind, writes: [{ layer: MapLayer.DOORS, value: kind }] };
+  return flankedBy(wallIs(1), col, row)
+    ? { ok: true, kind, writes: [{ layer: MapLayer.DOORS, value: kind }] }
+    : { ok: false };
+}
+
+/** What "Tirar a porta" writes: the wall first, then the door goes, so the square is never a gap in between. */
+function removalWrites(door: number, wall: boolean): readonly DoorWrite[] {
+  if (door === 0) {
+    return [];
   }
-  return { ok: false };
+  return [
+    ...(wall ? [] : [{ layer: MapLayer.WALL, value: 1 }]),
+    { layer: MapLayer.DOORS, value: 0 },
+  ];
+}
+
+/** Whether `is` holds on both sides of the square, to the left and right or above and below. */
+function flankedBy(is: (col: number, row: number) => boolean, col: number, row: number): boolean {
+  return (is(col - 1, row) && is(col + 1, row)) || (is(col, row - 1) && is(col, row + 1));
 }
 
 /**
@@ -171,7 +169,11 @@ export function wallUnderDoor(
   );
 }
 
+const CLOSED: DoorKind = 2;
+const LOCKED: DoorKind = 3;
+const SECRET: DoorKind = 5;
+
 /** Whether a door of this kind blocks the sight of a creature standing in its square (RN-26: closed, locked and secret). */
 export function hidesWhoStands(kind: DoorKind | 0): boolean {
-  return kind === 2 || kind === 3 || kind === 5;
+  return kind === CLOSED || kind === LOCKED || kind === SECRET;
 }

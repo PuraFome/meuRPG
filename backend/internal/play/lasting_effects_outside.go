@@ -35,39 +35,51 @@ func (s *Service) outsideModeOf(ctx context.Context, tx pgx.Tx, campaignID, char
 	if len(rows) == 0 && level == 0 {
 		return checkMode{}, nil
 	}
-	creature := combat.Creature{Exhaustion: level}
-	var hiddenConds []string
-	hiddenAny := false
+	of := outsideEffectsOf(rows, skillKey, check)
+	of.creature.Exhaustion = level
+	sources := combat.SaveMode(combat.SaveScene{Creature: of.creature, Ability: ability, Check: check, EffectVisible: true})
+	return checkMode{Mode: combat.Resolve(sources), Sources: sources, Dice: of.dice, Bonuses: of.bonuses, hide: hideFor(of.hiddenConds, of.hiddenAny)}, nil
+}
+
+// outsideEffects is what the effects on a character out of a combat give to a roll.
+type outsideEffects struct {
+	creature    combat.Creature
+	hiddenConds []string
+	hiddenAny   bool
+	dice        []effectDie
+	bonuses     []effectBonus
+}
+
+// outsideEffectsOf reads the effects on a character out of a combat for a check or a saving throw.
+func outsideEffectsOf(rows []playdb.CharacterEffect, skillKey string, check bool) outsideEffects {
+	var of outsideEffects
 	applies := rules.RollAppliesSave
 	if check {
 		applies = rules.RollAppliesCheck
 	}
-	var diceOf []effectDie
-	var bonuses []effectBonus
 	for _, r := range rows {
 		mods := modifiersOf(r.Modifiers)
 		if n := combat.CheckBonus(mods, skillKey); n != 0 && check {
-			bonuses = append(bonuses, effectBonus{Key: r.SourceKey, Value: n, Hidden: !r.PlayerVisible})
+			of.bonuses = append(of.bonuses, effectBonus{Key: r.SourceKey, Value: n, Hidden: !r.PlayerVisible})
 		}
-		creature.Conditions = append(creature.Conditions, r.ConditionKeys...)
+		of.creature.Conditions = append(of.creature.Conditions, r.ConditionKeys...)
 		for _, m := range mods {
 			switch m.Kind {
 			case rules.ModifierSaveAdvantage:
-				creature.SaveAdvantage = append(creature.SaveAdvantage, m.Abilities...)
+				of.creature.SaveAdvantage = append(of.creature.SaveAdvantage, m.Abilities...)
 			case rules.ModifierCheckAdvantage:
-				creature.CheckAdvantage = append(creature.CheckAdvantage, m.Abilities...)
+				of.creature.CheckAdvantage = append(of.creature.CheckAdvantage, m.Abilities...)
 			}
 		}
 		for _, d := range combat.EffectDice(r.SourceKey, mods, applies) {
-			diceOf = append(diceOf, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !r.PlayerVisible, Once: d.Once, EffectID: r.ID, CharacterID: r.CharacterID})
+			of.dice = append(of.dice, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !r.PlayerVisible, Once: d.Once, EffectID: r.ID, CharacterID: r.CharacterID})
 		}
 		if !r.PlayerVisible {
-			hiddenAny = true
-			hiddenConds = append(hiddenConds, r.ConditionKeys...)
+			of.hiddenAny = true
+			of.hiddenConds = append(of.hiddenConds, r.ConditionKeys...)
 		}
 	}
-	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, Check: check, EffectVisible: true})
-	return checkMode{Mode: combat.Resolve(sources), Sources: sources, Dice: diceOf, Bonuses: bonuses, hide: hideFor(hiddenConds, hiddenAny)}, nil
+	return of
 }
 
 // hideFor says which sources come from an effect the master hides.

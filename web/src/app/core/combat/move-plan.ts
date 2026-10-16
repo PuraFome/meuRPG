@@ -48,6 +48,11 @@ export function indexOptions(options: GetMoveOptionsResponse | null): MoveIndex 
   return { reachable, refused, known: options !== null };
 }
 
+/** The trap the character knows on a square the options reach, or `''`. */
+export function knownTrapAt(index: MoveIndex, to: Square): string {
+  return index.reachable.get(key(to.col, to.row))?.knownTrapName ?? '';
+}
+
 export function verdictFor(index: MoveIndex, origin: Square, to: Square): SquareVerdict {
   if (to.col === origin.col && to.row === origin.row) {
     return { kind: 'here' };

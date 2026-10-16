@@ -61,9 +61,7 @@ func (s *Service) effectsBeforeTurn(ctx context.Context, c *combatTx) error {
 }
 
 // effectsAfterTurnStart does what the start of the turn of ids does to the effects.
-func (s *Service) effectsAfterTurnStart( //nolint:gocyclo // the steps of the start of a turn, in the order the SRD and the board give
-	ctx context.Context, c *combatTx, ids []string, round int32,
-) error {
+func (s *Service) effectsAfterTurnStart(ctx context.Context, c *combatTx, ids []string, round int32) error {
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
@@ -72,17 +70,8 @@ func (s *Service) effectsAfterTurnStart( //nolint:gocyclo // the steps of the st
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)
 	}
-	// (1) What ends now: at the start of its anchor's turn, or a round past its end with
-	// an anchor that never had its turn (it left, or it is defeated).
-	var ending []playdb.CombatantState
-	for _, st := range rows {
-		e := endsAtOf(st)
-		anchorGone := !e.Timed() || e.CombatantID == "" || !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == e.CombatantID && !o.Defeated })
-		if e.ExpiresAtStart(ids, int(round)) || (e.Timed() && int(round) > e.Round && anchorGone) {
-			ending = append(ending, st)
-		}
-	}
-	if err := s.endEffectRows(ctx, c, cs, ending, endDuration); err != nil {
+	// (1) What ends now.
+	if err := s.endEffectRows(ctx, c, cs, effectsEndingAtStart(cs, rows, ids, round), endDuration); err != nil {
 		return err
 	}
 	if err := s.refreshCombatants(ctx, c, ids...); err != nil {
@@ -95,31 +84,81 @@ func (s *Service) effectsAfterTurnStart( //nolint:gocyclo // the steps of the st
 		return fmt.Errorf("list the combatants: %w", err)
 	}
 	// (1b) The temporary hit points an effect gives at the start of each turn (Heroísmo).
+	if err := s.giveTurnTempHPs(ctx, c, cs, rows, ids, round); err != nil {
+		return err
+	}
+	// (2) and (3) The damage of an effect, then (4) the saving throws of the start.
+	group := newGroup()
+	if err := s.rollTurnDamages(ctx, c, cs, rows, ids, round); err != nil {
+		return err
+	}
+	if rows, err = c.q.ListLastingEffects(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	return s.openStartSaves(ctx, c, group, cs, rows, ids)
+}
+
+// effectsEndingAtStart are the effects that end now: at the start of its anchor's turn, or a
+// round past its end with an anchor that never had its turn (it left, or it is defeated).
+func effectsEndingAtStart(cs []playdb.Combatant, rows []playdb.CombatantState, ids []string, round int32) []playdb.CombatantState {
+	var ending []playdb.CombatantState
+	for _, st := range rows {
+		e := endsAtOf(st)
+		anchorGone := !e.Timed() || e.CombatantID == "" || !slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.ID == e.CombatantID && !o.Defeated })
+		if e.ExpiresAtStart(ids, int(round)) || (e.Timed() && int(round) > e.Round && anchorGone) {
+			ending = append(ending, st)
+		}
+	}
+	return ending
+}
+
+// startingIndex is the place in cs of a combatant that starts its turn now and can still act: -1
+// for one that is not in ids or not in the combat, or is defeated.
+func startingIndex(cs []playdb.Combatant, ids []string, id string) int {
+	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
+	if i < 0 || !slices.Contains(ids, id) || cs[i].Defeated {
+		return -1
+	}
+	return i
+}
+
+// giveTurnTempHPs gives, to each combatant that starts its turn, the temporary hit points its effects give.
+func (s *Service) giveTurnTempHPs(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, ids []string, round int32) error {
 	for _, id := range ids {
-		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
-		if i < 0 || cs[i].Defeated {
+		i := startingIndex(cs, ids, id)
+		if i < 0 {
 			continue
 		}
-		var mods []rules.EffectModifier
-		var from *playdb.CombatantState
-		for k := range rows {
-			if rows[k].CombatantID == id {
-				if m := effectModifiers(rows[k]); combat.TurnTempHP(m) > 0 {
-					mods, from = append(mods, m...), &rows[k]
-				}
-			}
-		}
-		if amount := combat.TurnTempHP(mods); amount > 0 {
+		if amount, from := turnTempHPOn(rows, id); amount > 0 {
 			if err := s.turnTempHP(ctx, c, cs[i], *from, amount, round); err != nil {
 				return err
 			}
 		}
 	}
-	// (2) and (3) The damage of an effect, then (4) the saving throws of the start.
-	group := newGroup()
+	return nil
+}
+
+// turnTempHPOn are the temporary hit points the effects on a combatant give at the start of its
+// turn, and the last effect that gives some.
+func turnTempHPOn(rows []playdb.CombatantState, id string) (int, *playdb.CombatantState) {
+	var mods []rules.EffectModifier
+	var from *playdb.CombatantState
+	for k := range rows {
+		if rows[k].CombatantID != id {
+			continue
+		}
+		if m := effectModifiers(rows[k]); combat.TurnTempHP(m) > 0 {
+			mods, from = append(mods, m...), &rows[k]
+		}
+	}
+	return combat.TurnTempHP(mods), from
+}
+
+// rollTurnDamages rolls the damage of the effects that hit who starts the turn under them.
+func (s *Service) rollTurnDamages(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, ids []string, round int32) error {
 	for _, st := range rows {
-		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
-		if i < 0 || !slices.Contains(ids, st.CombatantID) || cs[i].Defeated {
+		i := startingIndex(cs, ids, st.CombatantID)
+		if i < 0 {
 			continue
 		}
 		if st.TriggerDice != nil && st.TriggersFired < derefInt32(st.TriggerMaxTriggers) {
@@ -128,12 +167,14 @@ func (s *Service) effectsAfterTurnStart( //nolint:gocyclo // the steps of the st
 			}
 		}
 	}
-	if rows, err = c.q.ListLastingEffects(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("list the effects: %w", err)
-	}
+	return nil
+}
+
+// openStartSaves opens the saving throws the effects ask at the start of the turn of ids.
+func (s *Service) openStartSaves(ctx context.Context, c *combatTx, group string, cs []playdb.Combatant, rows []playdb.CombatantState, ids []string) error {
 	for _, st := range rows {
-		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
-		if i < 0 || !slices.Contains(ids, st.CombatantID) || cs[i].Defeated || st.StartSaveAbility == nil {
+		i := startingIndex(cs, ids, st.CombatantID)
+		if i < 0 || st.StartSaveAbility == nil {
 			continue
 		}
 		if _, err := s.openEffectSave(ctx, c, group, st, cs[i], combat.PhaseStart, false); err != nil {

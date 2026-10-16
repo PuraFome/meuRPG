@@ -1,6 +1,6 @@
 import { FormBuilder, ValidatorFn, Validators } from '@angular/forms';
 
-import { MAX_TOTAL_LEVEL } from './class-blocks';
+import { type ClassBlock, MAX_TOTAL_LEVEL } from './class-blocks';
 import type {
   AlignmentKey,
   CharacterFormValue,
@@ -124,4 +124,14 @@ export function fullFormValueOf(full: CharacterFormValue): FullFormRaw {
     abilities: full.abilities,
     extraAbilityBonuses: full.extraAbilityBonuses,
   };
+}
+
+/** A change of the first class block lands in the form's own fields (the other blocks live in the picks). */
+export function patchFirstClass(form: FullForm, change: Partial<ClassBlock>): void {
+  const f = form.controls;
+  if (change.classKey !== undefined) f.className.setValue(change.classKey);
+  if (change.level !== undefined) f.level.setValue(change.level);
+  if (change.subclassKey !== undefined) f.subclassName.setValue(change.subclassKey);
+  if (change.customSubclassName !== undefined)
+    f.customSubclassName.setValue(change.customSubclassName);
 }

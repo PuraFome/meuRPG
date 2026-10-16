@@ -1,40 +1,20 @@
 import {
-  type CombatantState,
   type DartsAtSlot,
-  type DiceRoll,
-  type PendingDamage,
-  PendingDamageStatus,
-  type SpellCast,
-  type SpellTargetResult,
   type SpellTargets,
   type TargetInReach,
-  AttackOutcome,
-  SaveOutcome,
-  SpellEffectGain,
-  SpellEffectKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import type { AdvantageSource, RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import {
-  Ability,
-  ActionEconomy,
   type SlotChoice,
   type SpellDetails,
   SpellAttackType,
-  SpellDamageChoice,
-  SpellRangeKind,
-  SpellSaveSuccess,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { rollFormula } from './combat-dice';
-import { d20Formula } from './roll-mode';
 import { metersFixed, metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { circleLabel } from './combat-options';
-import { article } from './combat-log';
 import { listing } from './cover';
-import { aidChange, effectWords, gainLine, hpSpellKind, poolDice } from './hp-effects';
+import { hpSpellKind } from './hp-effects';
 import { stateWord } from './combat-view';
-import { diceNaturalMark } from './natural-mark';
-import { luckyText } from './lucky';
+import type { SpellKind } from './cast-flow-text';
 
 /**
  * The steps of the cast sheet (E6-09): the slot, the targets (and Magic
@@ -42,9 +22,6 @@ import { luckyText } from './lucky';
  * sheet's logic is kept here as small pure functions, so the choices, the
  * counters and the result lines are tested without a DOM.
  */
-
-/** What a spell does, which decides what the sheet asks and what it shows. */
-export type SpellKind = 'attack' | 'save' | 'darts' | 'heal' | 'plain' | 'pool' | 'hp';
 
 export function spellKind(key: string, details: SpellDetails | null): SpellKind {
   if (key === 'spell:magic-missile') {
@@ -70,6 +47,12 @@ export function spellKind(key: string, details: SpellDetails | null): SpellKind 
   }
   return Object.keys(details.healBySlotLevel).length > 0 ? 'heal' : 'plain';
 }
+
+// The wording of the sheet and the rows of its result live in `cast-flow-text` and `cast-flow-rows`; the sheets read them here.
+export { damageDice, damageText, castSubtitle, saveAbility } from './cast-flow-text';
+export type { SpellKind } from './cast-flow-text';
+export { castRows, dartLines, effectSentence, rollGroups, spentLine } from './cast-flow-rows';
+export type { CastD20, CastRow } from './cast-flow-rows';
 
 // ---- the slot ----
 
@@ -104,34 +87,78 @@ export function freeText(free: number, total: number | null): string {
 export function slotRows(
   level: number,
   choices: readonly SlotChoice[],
-  usage: readonly { readonly level: number; readonly total: number; readonly used: number }[],
-  pact: { readonly slotLevel: number; readonly total: number; readonly used: number } | null = null,
+  usage: readonly SlotUsage[],
+  pact: PactUsage | null = null,
 ): SlotRow[] {
   if (level < 1) {
     return [];
   }
-  const rows: SlotRow[] = [];
+  const rows = circleLevels(level, choices, usage).map((l) => circleRow(l, choices, usage));
+  const pactRow = pactSlotRow(level, choices, pact);
+  return pactRow ? [...rows, pactRow] : rows;
+}
+
+/** The slots a character has of one circle, as the usage reads them. */
+interface SlotUsage {
+  readonly level: number;
+  readonly total: number;
+  readonly used: number;
+}
+
+/** The pact slots, all of one level. */
+interface PactUsage {
+  readonly slotLevel: number;
+  readonly total: number;
+  readonly used: number;
+}
+
+/** The circles listed: the ones the server offers and the ones the character has, from the spell's own up. */
+function circleLevels(
+  level: number,
+  choices: readonly SlotChoice[],
+  usage: readonly SlotUsage[],
+): number[] {
   const levels = new Set<number>(choices.filter((c) => !c.pact).map((c) => c.level));
   for (const u of usage) {
     if (u.level >= level) {
       levels.add(u.level);
     }
   }
-  for (const l of [...levels].sort((a, b) => a - b)) {
-    const choice = choices.find((c) => c.level === l && !c.pact);
-    const u = usage.find((x) => x.level === l);
-    const free = choice?.free ?? (u ? u.total - u.used : 0);
-    rows.push(row(l, false, free, u?.total ?? null, u?.used ?? 0, !!choice && choice.free > 0));
-  }
-  const pactChoice = choices.find((c) => c.pact);
-  if (pactChoice || (pact && pact.slotLevel >= level)) {
-    const l = pactChoice?.level ?? pact?.slotLevel ?? 0;
-    const free = pactChoice?.free ?? (pact ? pact.total - pact.used : 0);
-    rows.push(
-      row(l, true, free, pact?.total ?? null, pact?.used ?? 0, !!pactChoice && pactChoice.free > 0),
+  return [...levels].sort((a, b) => a - b);
+}
+
+function circleRow(
+  l: number,
+  choices: readonly SlotChoice[],
+  usage: readonly SlotUsage[],
+): SlotRow {
+  const choice = choices.find((c) => c.level === l && !c.pact);
+  const u = usage.find((x) => x.level === l);
+  const free = choice?.free ?? (u ? u.total - u.used : 0);
+  return row(l, false, free, u?.total ?? null, u?.used ?? 0, !!choice && choice.free > 0);
+}
+
+/** The pact row: the server's own slot, or the character's pact slots when they reach the spell's level. */
+function pactSlotRow(
+  level: number,
+  choices: readonly SlotChoice[],
+  pact: PactUsage | null,
+): SlotRow | null {
+  const choice = choices.find((c) => c.pact);
+  if (choice) {
+    return row(
+      choice.level,
+      true,
+      choice.free,
+      pact?.total ?? null,
+      pact?.used ?? 0,
+      choice.free > 0,
     );
   }
-  return rows;
+  if (!pact || pact.slotLevel < level) {
+    return null;
+  }
+  return row(pact.slotLevel, true, pact.total - pact.used, pact.total, pact.used, false);
 }
 
 function row(
@@ -333,371 +360,4 @@ export function dartTargets(dealtNow: Dealt): { combatantId: string; darts: numb
   return [...dealtNow]
     .filter(([, n]) => n > 0)
     .map(([combatantId, darts]) => ({ combatantId, darts }));
-}
-
-// ---- what the sheet says ----
-
-const ABILITY_PT: Partial<Record<Ability, string>> = {
-  [Ability.STRENGTH]: 'Força',
-  [Ability.DEXTERITY]: 'Destreza',
-  [Ability.CONSTITUTION]: 'Constituição',
-  [Ability.INTELLIGENCE]: 'Inteligência',
-  [Ability.WISDOM]: 'Sabedoria',
-  [Ability.CHARISMA]: 'Carisma',
-};
-
-/** The ability of a spell's saving throw, in Portuguese ("Constituição"); `''` without a save. */
-export function saveAbility(details: SpellDetails | null): string {
-  return ABILITY_PT[details?.save?.ability ?? Ability.UNSPECIFIED] ?? '';
-}
-
-/**
- * The dice a spell makes at a slot level ("8d6"), from its details; `''` when there are none.
- * A cantrip grows with the caster's level, which the details do not know: the server sends the
- * caster's dice with the attack (`Attack.spellDice`), and without them a cantrip shows no dice
- * rather than the first row of its table.
- */
-export function damageDice(
-  details: SpellDetails | null,
-  slotLevel: number,
-  cantripDice = '',
-): string {
-  const d = details?.damage[0];
-  if (!d) {
-    return '';
-  }
-  const own = details?.spell?.level ?? 0;
-  if (own === 0 && Object.keys(d.byCharacterLevel).length > 0) {
-    return cantripDice;
-  }
-  return d.bySlotLevel[slotLevel] ?? d.bySlotLevel[own] ?? cantripDice;
-}
-
-/**
- * What a spell deals, in words, with each damage type's dice: "5d6 de fogo e 4d6 de radiante". For a spell
- * that scales by choice (Coluna de Chamas) every type is dealt and the dice a higher slot adds go to the
- * picked type (`pick`, a damage type key; the first when empty), the others staying at the spell's own
- * circle; for one that deals only the picked type (Guardiões Espirituais) only that one is said.
- */
-export function damageText(
-  details: SpellDetails | null,
-  slotLevel: number,
-  cantripDice = '',
-  pick = '',
-): string {
-  const all = details?.damage ?? [];
-  if (all.length === 0) {
-    return '';
-  }
-  const own = details?.spell?.level ?? 0;
-  const choice = details?.damageChoice ?? SpellDamageChoice.UNSPECIFIED;
-  const picked = all.find((d) => d.damageTypeKey === pick) ?? all[0];
-  const shown = choice === SpellDamageChoice.ALTERNATIVE ? [picked] : all;
-  return shown
-    .flatMap((d) => {
-      const level = choice === SpellDamageChoice.SCALE && d !== picked ? own : slotLevel;
-      const dice = damageDice(details ? { ...details, damage: [d] } : null, level, cantripDice);
-      return dice ? [`${dice}${d.damageTypePt ? ` de ${d.damageTypePt}` : ''}`] : [];
-    })
-    .join(' e ');
-}
-
-/** "Ação · alcance 36 m · 3 dardos de 1d4 + 1 de energia, sempre acertam". */
-export function castSubtitle(
-  economy: ActionEconomy,
-  kind: SpellKind,
-  details: SpellDetails | null,
-  slotLevel: number,
-  darts: number,
-  cantripDice = '',
-  damageType = '',
-  shape = '',
-): string {
-  const parts = [
-    economy === ActionEconomy.BONUS_ACTION
-      ? 'Ação bônus'
-      : economy === ActionEconomy.REACTION
-        ? 'Reação'
-        : 'Ação',
-  ];
-  const range = details?.range;
-  if (range?.kind === SpellRangeKind.RANGED && range.distanceFt > 0) {
-    parts.push(`alcance ${metersText(range.distanceFt)}`);
-  } else if (range?.kind === SpellRangeKind.TOUCH) {
-    parts.push('toque');
-  } else if (range?.kind === SpellRangeKind.SELF) {
-    parts.push('pessoal');
-  }
-  // An area placed on the map says its form and size ("esfera de 6 m de raio").
-  if (shape) {
-    parts.push(shape);
-  }
-  const type = details?.damage[0]?.damageTypePt ?? '';
-  const dice = damageText(details, slotLevel, cantripDice, damageType);
-  switch (kind) {
-    case 'darts':
-      parts.push(`${darts || 3} dardos de 1d4 + 1 de ${type || 'energia'}, sempre acertam`);
-      break;
-    case 'attack':
-      parts.push(`ataque de magia${dice ? ` · ${dice}` : ''}`);
-      break;
-    case 'save': {
-      const ability = ABILITY_PT[details?.save?.ability ?? Ability.UNSPECIFIED];
-      const half = details?.save?.onSuccess === SpellSaveSuccess.HALF ? ', metade se resistir' : '';
-      parts.push(`resistência${ability ? ` de ${ability}` : ''}${dice ? ` · ${dice}${half}` : ''}`);
-      break;
-    }
-    case 'heal':
-      parts.push('cura');
-      break;
-    case 'pool': {
-      const pool = poolDice(details, slotLevel);
-      parts.push(pool ? `${pool.count}d${pool.sides} de pontos de vida` : 'pontos de vida');
-      break;
-    }
-    default:
-  }
-  return tight(joinDots(parts));
-}
-
-// ---- what the cast did ----
-
-/** One target of the result: who, what the roll or the save said, and the damage. */
-export interface CastRow {
-  readonly id: string;
-  readonly label: string;
-  /** "Muito ferido", "Derrotado": how the target is now. */
-  readonly state: string;
-  /** "Acertou", "Errou", "Crítico", "Falhou", "Resistiu: metade". */
-  readonly word: string;
-  readonly tone: 'good' | 'bad' | 'plain';
-  /** "1 natural" beside "Errou": a natural 1 always misses an attack roll (SRD 5.1). Empty otherwise. */
-  readonly natural?: string;
-  /** The pill's icon when it is not the check or the cross: the moon of "Adormeceu". */
-  readonly icon?: string;
-  /** The formulas: the d20, "Dardo 1: 1d4 (3) + 1 = 4", the damage. */
-  readonly lines: readonly string[];
-  /** The big line: "7 de energia", "8 de cura", "Esperando o mestre aplicar o dano". */
-  readonly summary: string;
-  /** The damage of this target still waits to be rolled. */
-  readonly owed: boolean;
-  /** The d20 of the attack and of the save, with the mode each rolled in and why: two faces are drawn for advantage and disadvantage. */
-  readonly d20s?: readonly CastD20[];
-}
-
-/** A d20 of a cast result: "Ataque" or "Resistência", the roll and the circumstances behind its mode. */
-export interface CastD20 {
-  readonly caption: string;
-  readonly roll: DiceRoll;
-  readonly mode: RollMode;
-  readonly sources: readonly AdvantageSource[];
-}
-
-/** The darts of a rolled damage, one line each: "Dardo 1: 1d4 (3) + 1 = 4". A
- * typed roll has no faces, only the sum. */
-export function dartLines(roll: DiceRoll, darts: number): string[] {
-  if (roll.physical || roll.faces.length !== darts || darts === 0) {
-    return [`${darts} ${darts === 1 ? 'dardo' : 'dardos'}: ${rollFormula(roll)} · dado físico`];
-  }
-  const each = roll.modifier / darts;
-  return roll.faces.map(
-    (f, i) =>
-      `Dardo ${i + 1}: 1d${roll.diceSides} (${f}) ${each < 0 ? '−' : '+'} ${Math.abs(each)} = ${f + each}`,
-  );
-}
-
-function savedWord(saved: boolean, half: boolean): string {
-  return saved ? (half ? 'Resistiu: metade' : 'Resistiu') : 'Falhou';
-}
-
-/** The result of a cast, row by row. `pendings` is every damage or heal of the
- * cast as it is now (the rolled ones carry their dice); `states` the targets'
- * state words now. */
-export function castRows(
-  cast: SpellCast,
-  pendings: ReadonlyMap<string, PendingDamage>,
-  labels: ReadonlyMap<string, { label: string; state: CombatantState }>,
-): CastRow[] {
-  return cast.targets.map((t) =>
-    castRow(t, pendings.get(t.pendingDamageId), labels.get(t.combatantId), cast),
-  );
-}
-
-/** What a spell that reads hit points did, as one live sentence for the whole
- * cast, in the past: "O Goblin 1 adormeceu. O Capitão Goblin não foi afetado."
- * A player's character has no article ("Brisa ficou estável"). Empty for any
- * other spell. */
-export function effectSentence(
-  cast: SpellCast,
-  labels: ReadonlyMap<string, { label: string; state: CombatantState }>,
-  isNpc: (id: string) => boolean,
-): string {
-  const parts: string[] = [];
-  for (const t of cast.targets) {
-    if (!t.effect) {
-      continue;
-    }
-    const label = labels.get(t.combatantId)?.label ?? 'Alvo';
-    const w = effectWords(
-      cast.effectKind,
-      cast.effectConditionKey,
-      t.effect.outcome,
-      label,
-      t.effect.gain,
-    );
-    const who = isNpc(t.combatantId) ? `${article(label)} ${label}` : label;
-    const sentence = `${who} ${w.past.charAt(0).toLowerCase()}${w.past.slice(1)}.`;
-    parts.push(`${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}`);
-  }
-  return parts.join(' ');
-}
-
-function castRow(
-  t: SpellTargetResult,
-  p: PendingDamage | undefined,
-  who: { label: string; state: CombatantState } | undefined,
-  cast: SpellCast,
-): CastRow {
-  const label = who?.label ?? 'Alvo';
-  const lines: string[] = [];
-  let word = '';
-  let icon: string | undefined;
-  let tone: CastRow['tone'] = 'plain';
-  let natural = '';
-  if (t.effect) {
-    // A spell that reads hit points: the outcome in a word and an icon, never a number
-    // of the target's (a player has none), and the heal's amount only when it is sent.
-    const w = effectWords(
-      cast.effectKind,
-      cast.effectConditionKey,
-      t.effect.outcome,
-      label,
-      t.effect.gain,
-    );
-    word = w.past;
-    icon = w.icon;
-    tone = w.affected ? 'good' : 'plain';
-    // Ajuda: "PV 0 → 5 de 45" where the server sent the numbers (the master and the target's own player).
-    const change =
-      cast.effectKind === SpellEffectKind.MAX_HP
-        ? aidChange(
-            t.effect.hitPointsBefore,
-            t.effect.healed,
-            t.effect.hitPointsAfter,
-            t.effect.hitPointsMaxAfter,
-          )
-        : null;
-    // The one who woke up reads the change alone: "Acorda com 5 PV" would say it twice.
-    if (t.effect.healed !== undefined && !(change && t.effect.gain === SpellEffectGain.CURRENT)) {
-      lines.push(gainLine(cast.effectKind, t.effect.healed, t.effect.gain));
-    }
-    if (change) {
-      lines.push(change);
-    }
-  }
-  const d20s: CastD20[] = [];
-  if (t.attackRoll) {
-    lines.push(d20Formula(t.attackRoll));
-    // "Sortudo: 1 → 14": the d20 the halfling's Lucky rolled again; the formula already has the new face.
-    const lucky = luckyText(t.attackRoll);
-    if (lucky) {
-      lines.push(lucky);
-    }
-    d20s.push({
-      caption: 'Ataque',
-      roll: t.attackRoll,
-      mode: t.attackMode,
-      sources: t.attackSources,
-    });
-  }
-  if (t.outcome !== AttackOutcome.UNSPECIFIED) {
-    const hit = t.outcome !== AttackOutcome.MISS;
-    word = t.outcome === AttackOutcome.CRITICAL_HIT ? 'Crítico' : hit ? 'Acertou' : 'Errou';
-    tone = hit ? 'good' : 'bad';
-    natural =
-      !hit && t.attackRoll && diceNaturalMark(t.attackRoll) === '1 natural' ? '1 natural' : '';
-  }
-  if (t.save) {
-    const saved = t.save.outcome === SaveOutcome.SAVED;
-    word = savedWord(saved, !!p?.half);
-    tone = saved ? 'plain' : 'good';
-    if (t.save.roll) {
-      lines.push(
-        `${tight(`Resistência: ${d20Formula(t.save.roll)}`)}${t.save.dc > 0 ? `, CD ${t.save.dc}` : ''}`,
-      );
-      // "Sortudo: 1 → 14": a halfling player's 1 the app rolled again by itself; the formula already has the new face.
-      const saveLucky = luckyText(t.save.roll);
-      if (saveLucky) {
-        lines.push(saveLucky);
-      }
-      d20s.push({
-        caption: 'Resistência',
-        roll: t.save.roll,
-        mode: t.save.mode,
-        sources: t.save.sources,
-      });
-    } else if (t.save.sculpted) {
-      lines.push('Resistência: passa sem rolar (Esculpir Magias)');
-    } else if (t.save.autoFailed) {
-      lines.push(`Resistência: Falha automática${t.save.dc > 0 ? `, CD ${t.save.dc}` : ''}`);
-    } else if (t.save.dc > 0) {
-      lines.push(`CD ${t.save.dc}`);
-    }
-  }
-  let summary = '';
-  const owed = !!p && p.status === PendingDamageStatus.AWAITING_ROLL;
-  if (t.darts > 0 && p?.roll) {
-    lines.push(...dartLines(p.roll, t.darts));
-  } else if (t.darts > 0) {
-    lines.push(`${t.darts} ${t.darts === 1 ? 'dardo' : 'dardos'}`);
-  }
-  if (p && !owed && p.roll) {
-    if (t.darts === 0) {
-      lines.push(rollFormula(p.roll));
-    }
-    summary = p.healing
-      ? `${p.amount} de cura`
-      : p.status === PendingDamageStatus.ROLLED
-        ? `${p.amount} de ${p.damageTypePt || 'dano'}. Esperando o mestre aplicar`
-        : `${p.amount} de ${p.damageTypePt || 'dano'}`;
-  }
-  return {
-    id: t.combatantId,
-    label,
-    state: who ? stateWord(who.state, who.label) : '',
-    word,
-    tone,
-    ...(natural ? { natural } : {}),
-    icon,
-    lines,
-    summary,
-    owed,
-    ...(d20s.length ? { d20s } : {}),
-  };
-}
-
-/** The damage rolls a cast still owes, grouped as the server settles them:
- * the damages of one cast id are one roll (an area spell, a heal for many),
- * the ones with no cast id (Magic Missile's) one roll each. */
-export function rollGroups(pendings: readonly PendingDamage[]): PendingDamage[][] {
-  const groups: PendingDamage[][] = [];
-  for (const p of pendings) {
-    if (p.status !== PendingDamageStatus.AWAITING_ROLL) {
-      continue;
-    }
-    const same = p.castId ? groups.find((g) => g[0].castId === p.castId) : undefined;
-    if (same) {
-      same.push(p);
-    } else {
-      groups.push([p]);
-    }
-  }
-  return groups;
-}
-
-/** "Sua ação foi usada." for an action spell; "Sua ação bônus foi usada." */
-export function spentLine(economy: ActionEconomy): string {
-  return economy === ActionEconomy.BONUS_ACTION
-    ? 'Sua ação bônus foi usada.'
-    : 'Sua ação foi usada.';
 }

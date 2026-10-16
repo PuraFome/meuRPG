@@ -76,6 +76,22 @@ export function stateTagLabel(state: CharacterState): string {
   }
 }
 
+/** The title of each rules issue code that has one phrase whatever its field. */
+const ISSUE_TITLES = new Map<string, string>([
+  ['spell_count', 'Magias a revisar.'],
+  ['spell_level', 'Magias a revisar.'],
+  ['skill_count', 'Perícias a revisar.'],
+  ['expertise', 'Especialização a revisar.'],
+  ['missing', 'Falta uma escolha.'],
+  ['unknown_key', 'Escolha inválida.'],
+  ['subclass_level', 'Subclasse cedo demais.'],
+  ['multiclass_prerequisite', 'Pré-requisito de multiclasse.'],
+  ['hit_point_rolls', 'Rolagens de pontos de vida.'],
+  ['score_above_20', 'Habilidade acima de 20.'],
+  ['level', 'Nível acima do máximo.'],
+  ['formula', 'Efeito ignorado.'],
+]);
+
 /** The bold first phrase of a rules issue in the notice under the header:
  * what kind of problem it is, from the issue's stable `code`
  * (`rules.proto`'s `Issue.code`, lower_snake_case) and, for the armour, its
@@ -90,31 +106,8 @@ export function issueTitle(issue: IssueVm): string {
       return issue.field.startsWith('full.prepared_spell_keys')
         ? 'Magia fora do grimório.'
         : 'Magia fora da lista.';
-    case 'spell_count':
-    case 'spell_level':
-      return 'Magias a revisar.';
-    case 'skill_count':
-      return 'Perícias a revisar.';
-    case 'expertise':
-      return 'Especialização a revisar.';
-    case 'missing':
-      return 'Falta uma escolha.';
-    case 'unknown_key':
-      return 'Escolha inválida.';
-    case 'subclass_level':
-      return 'Subclasse cedo demais.';
-    case 'multiclass_prerequisite':
-      return 'Pré-requisito de multiclasse.';
-    case 'hit_point_rolls':
-      return 'Rolagens de pontos de vida.';
-    case 'score_above_20':
-      return 'Habilidade acima de 20.';
-    case 'level':
-      return 'Nível acima do máximo.';
-    case 'formula':
-      return 'Efeito ignorado.';
     default:
-      return 'Pendência de regra.';
+      return ISSUE_TITLES.get(issue.code) ?? 'Pendência de regra.';
   }
 }
 

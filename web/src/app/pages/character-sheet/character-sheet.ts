@@ -21,14 +21,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
-import {
-  describeCharacterError,
-  livingRefusal,
-  type LivingRefusal,
-} from '../../core/characters/character-errors';
+import { describeCharacterError } from '../../core/characters/character-errors';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
-import { ActionKey } from '../../core/connect/idempotency';
 import type { LevelUpDone } from '../../core/levelup/levelup-flow';
 import { takeLevelUpDone } from '../../core/levelup/levelup-done';
 import { ReviveBlocked } from '../../shared/revive/revive-blocked';
@@ -61,6 +56,7 @@ import { OwnerChanges } from './owner-changes/owner-changes';
 import { RejectConfirm } from './reject-confirm/reject-confirm';
 import { RequestChanges } from './request-changes/request-changes';
 import { formatWhen, issueTitle } from './sheet-format';
+import { type SavingState, SheetWrites, playerNameOf } from './character-sheet-writes';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from '../../core/play/xp-watcher';
 import { ResourceCounters } from './resource-counters/resource-counters';
@@ -71,8 +67,6 @@ type PageState =
   | { status: 'not-found' }
   | { status: 'error'; message: string }
   | { status: 'ready'; vm: CharacterSheetVm };
-
-type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
 /**
  * "/campaigns/:id/characters/:characterId" (MR-004): the sheet as the paper
@@ -157,37 +151,46 @@ export class CharacterSheetPage {
   /** The campaign from the route, for "Voltar para a campanha" in every
    * state, including the error one. */
   protected readonly campaignId = signal('');
-  protected readonly markDeadState = signal<SavingState>({ status: 'idle' });
-  /** A death can't be undone, so it takes a second click ("Confirmar
-   * morte") after "Marcar como morto". */
-  protected readonly confirmingDeath = signal(false);
-  protected readonly storyToggleState = signal<SavingState>({ status: 'idle' });
-  /** "Reviver" (master, a dead player character): the question is open in place of the button. */
-  protected readonly confirmingRevive = signal(false);
-  protected readonly reviveState = signal<SavingState>({ status: 'idle' });
-  /** The player's other living character that refused the revival: the card says so, with the way to it. */
-  protected readonly reviveRefused = signal<LivingRefusal | null>(null);
-  /** The words a screen reader gets once the character lives again. */
-  protected readonly reviveAnnouncement = signal('');
-  private readonly reviveKey = new ActionKey();
+  /** The master's and the owner's writes on the character (`SheetWrites`). */
+  private readonly writes = new SheetWrites({
+    source: this.source,
+    navigate: (commands) => this.router.navigate(commands),
+    stillOn: (characterId) => !this.destroyed && characterId === this.characterId,
+    apply: (characterId, vm) => this.applyWrite(characterId, vm),
+    reload: () => void this.reloadQuietly(),
+    focus: (selector) => this.focusAfterRender(selector),
+  });
+  protected readonly markDeadState = this.writes.markDeadState;
+  protected readonly confirmingDeath = this.writes.confirmingDeath;
+  protected readonly storyToggleState = this.writes.storyToggleState;
+  protected readonly confirmingRevive = this.writes.confirmingRevive;
+  protected readonly reviveState = this.writes.reviveState;
+  protected readonly reviveRefused = this.writes.reviveRefused;
+  protected readonly reviveAnnouncement = this.writes.reviveAnnouncement;
+  protected readonly approvalState = this.writes.approvalState;
+  protected readonly confirmingReject = this.writes.confirmingReject;
+  protected readonly requestingChanges = this.writes.requestingChanges;
+  protected readonly requestChangesState = this.writes.requestChangesState;
+  protected readonly resubmitState = this.writes.resubmitState;
+  protected readonly resubmitted = this.writes.resubmitted;
+  protected readonly announcement = this.writes.announcement;
+  protected readonly askToConfirmDeath = this.writes.askToConfirmDeath;
+  protected readonly cancelDeath = this.writes.cancelDeath;
+  protected readonly askToRevive = this.writes.askToRevive;
+  protected readonly cancelRevive = this.writes.cancelRevive;
+  protected readonly revive = this.writes.revive;
+  protected readonly askToConfirmReject = this.writes.askToConfirmReject;
+  protected readonly cancelReject = this.writes.cancelReject;
+  protected readonly askForChanges = this.writes.askForChanges;
+  protected readonly cancelRequestChanges = this.writes.cancelRequestChanges;
+  protected readonly requestChanges = this.writes.requestChanges;
+  protected readonly resubmit = this.writes.resubmit;
+  protected readonly markDead = this.writes.markDead;
+  protected readonly toggleStoryEditingAllowed = this.writes.toggleStoryEditingAllowed;
+  protected readonly approve = this.writes.approve;
+  protected readonly reject = this.writes.reject;
   /** Whether the owner of a dead character already has another living one: "E agora?" waits for the answer. */
   protected readonly ownerHasLiving = signal<boolean | null>(null);
-  /** "Aprovar personagem" / "Recusar personagem" (MR-024). */
-  protected readonly approvalState = signal<SavingState>({ status: 'idle' });
-  /** Rejecting deletes the character for good, so it takes a second click
-   * ("Confirmar recusa") after "Recusar personagem". */
-  protected readonly confirmingReject = signal(false);
-  /** "Pedir ajustes" (master): the form is open in place of the approval notice. */
-  protected readonly requestingChanges = signal(false);
-  protected readonly requestChangesState = signal<SavingState>({ status: 'idle' });
-  /** "Enviar de novo" (the owning player). */
-  protected readonly resubmitState = signal<SavingState>({ status: 'idle' });
-  /** The player just sent the sheet again: the waiting notice says so, until the page is left. */
-  protected readonly resubmitted = signal(false);
-  /** The words a screen reader gets once the master's request went out. */
-  protected readonly announcement = signal('');
-  private readonly requestKey = new ActionKey();
-  private readonly resubmitKey = new ActionKey();
 
   /** Bumped when the stream says the character's creatures changed (the panel reads its list again). */
   protected readonly creaturesTick = signal(0);
@@ -382,22 +385,9 @@ export class CharacterSheetPage {
     this.wasLive = null;
     this.state.set({ status: 'loading' });
     this.vitals.set(null);
-    this.confirmingDeath.set(false);
-    this.confirmingReject.set(false);
-    this.requestingChanges.set(false);
-    this.requestChangesState.set({ status: 'idle' });
-    this.resubmitState.set({ status: 'idle' });
-    this.resubmitted.set(false);
-    this.announcement.set('');
-    this.markDeadState.set({ status: 'idle' });
-    this.confirmingRevive.set(false);
-    this.reviveState.set({ status: 'idle' });
-    this.reviveRefused.set(null);
-    this.reviveAnnouncement.set('');
+    this.writes.reset();
     this.ownerHasLiving.set(null);
     this.livingCheckedFor = '';
-    this.storyToggleState.set({ status: 'idle' });
-    this.approvalState.set({ status: 'idle' });
     this.pendingChoices.set(0);
     this.source.getCharacterSheet(campaignId, characterId).then(
       (vm) => {
@@ -430,55 +420,6 @@ export class CharacterSheetPage {
     this.applyWrite(vm.id, vm);
   }
 
-  protected askToConfirmDeath(): void {
-    this.confirmingDeath.set(true);
-    this.focusAfterRender('.js-confirm-death');
-  }
-
-  protected cancelDeath(): void {
-    this.confirmingDeath.set(false);
-    this.focusAfterRender('.js-mark-dead');
-  }
-
-  protected askToRevive(): void {
-    this.reviveState.set({ status: 'idle' });
-    this.reviveRefused.set(null);
-    this.confirmingRevive.set(true);
-  }
-
-  protected cancelRevive(): void {
-    this.confirmingRevive.set(false);
-    this.reviveRefused.set(null);
-    this.focusAfterRender('.js-revive');
-  }
-
-  /** Master only: the character lives again; the page shows it as it was before the death. */
-  protected async revive(campaignId: string, characterId: string, name: string): Promise<void> {
-    this.reviveState.set({ status: 'saving' });
-    try {
-      const key = this.reviveKey.keyFor({ campaignId, characterId });
-      const vm = await this.source.reviveCharacter(campaignId, characterId, key);
-      if (!this.applyWrite(characterId, vm)) {
-        return;
-      }
-      this.reviveKey.renew();
-      this.confirmingRevive.set(false);
-      this.reviveState.set({ status: 'idle' });
-      this.reviveAnnouncement.set(`${name} voltou à vida`);
-    } catch (err) {
-      this.confirmingRevive.set(false);
-      const living = livingRefusal(err);
-      if (living) {
-        this.reviveRefused.set(living);
-        this.focusAfterRender('.js-open-living');
-        return;
-      }
-      this.reviveState.set({ status: 'error', message: describeCharacterError(err) });
-      // Someone else may have changed the character: read it again.
-      void this.reloadQuietly();
-    }
-  }
-
   private async checkOwnerLiving(characterId: string): Promise<void> {
     if (characterId === '' || characterId === this.livingCheckedFor) {
       return;
@@ -495,70 +436,8 @@ export class CharacterSheetPage {
     }
   }
 
-  protected askToConfirmReject(): void {
-    this.confirmingReject.set(true);
-    this.focusAfterRender('.js-cancel-reject');
-  }
-
-  protected cancelReject(): void {
-    this.confirmingReject.set(false);
-    this.focusAfterRender('.js-reject');
-  }
-
-  protected askForChanges(): void {
-    this.confirmingReject.set(false);
-    this.announcement.set('');
-    this.requestChangesState.set({ status: 'idle' });
-    this.requestingChanges.set(true);
-  }
-
-  protected cancelRequestChanges(): void {
-    this.requestingChanges.set(false);
-    this.focusAfterRender('.js-ask-changes');
-  }
-
-  /** Master only (RN-15): the character goes back to its player with the reason and stays pending. */
-  protected async requestChanges(
-    campaignId: string,
-    characterId: string,
-    reason: string,
-  ): Promise<void> {
-    this.requestChangesState.set({ status: 'saving' });
-    try {
-      const key = this.requestKey.keyFor({ campaignId, characterId, reason });
-      const vm = await this.source.requestCharacterChanges(campaignId, characterId, reason, key);
-      if (!this.applyWrite(characterId, vm)) {
-        return;
-      }
-      this.requestKey.renew();
-      this.requestChangesState.set({ status: 'idle' });
-      this.requestingChanges.set(false);
-      this.announcement.set(`Pedido de ajustes enviado a ${this.playerName(vm)}`);
-      this.focusAfterRender('.js-ask-changes');
-    } catch (err) {
-      this.requestChangesState.set({ status: 'error', message: describeCharacterError(err) });
-    }
-  }
-
-  /** Owning player only (RN-15): the sheet goes to the master again. */
-  protected async resubmit(campaignId: string, characterId: string): Promise<void> {
-    this.resubmitState.set({ status: 'saving' });
-    try {
-      const key = this.resubmitKey.keyFor({ campaignId, characterId });
-      const vm = await this.source.resubmitCharacter(campaignId, characterId, key);
-      if (!this.applyWrite(characterId, vm)) {
-        return;
-      }
-      this.resubmitKey.renew();
-      this.resubmitState.set({ status: 'idle' });
-      this.resubmitted.set(true);
-    } catch (err) {
-      this.resubmitState.set({ status: 'error', message: describeCharacterError(err) });
-    }
-  }
-
   protected playerName(vm: CharacterSheetVm): string {
-    return vm.playerDisplayName ?? 'o jogador';
+    return playerNameOf(vm);
   }
 
   protected playerNameCapital(vm: CharacterSheetVm): string {
@@ -580,80 +459,6 @@ export class CharacterSheetPage {
     afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(), {
       injector: this.injector,
     });
-  }
-
-  protected async markDead(campaignId: string, characterId: string): Promise<void> {
-    this.markDeadState.set({ status: 'saving' });
-    try {
-      const vm = await this.source.markCharacterDead(campaignId, characterId);
-      if (!this.applyWrite(characterId, vm)) {
-        return;
-      }
-      this.confirmingDeath.set(false);
-      this.markDeadState.set({ status: 'idle' });
-    } catch (err) {
-      this.confirmingDeath.set(false);
-      this.markDeadState.set({ status: 'error', message: describeCharacterError(err) });
-    }
-  }
-
-  /** Master only: flips whether the player may currently edit the story
-   * (integrator amendment to A3, 29/09/2026; `SetStoryEditing` takes no
-   * revision and never changes one; see `CharacterSheetSource`'s doc
-   * comment). Never changes `canEditStory` directly: the response is what
-   * updates it, same as every other server-computed flag. */
-  protected async toggleStoryEditingAllowed(
-    campaignId: string,
-    characterId: string,
-    currentlyAllowed: boolean,
-  ): Promise<void> {
-    this.storyToggleState.set({ status: 'saving' });
-    try {
-      const vm = await this.source.setStoryEditingAllowed(
-        campaignId,
-        characterId,
-        !currentlyAllowed,
-      );
-      if (!this.applyWrite(characterId, vm)) {
-        return;
-      }
-      this.storyToggleState.set({ status: 'idle' });
-    } catch (err) {
-      this.storyToggleState.set({ status: 'error', message: describeCharacterError(err) });
-    }
-  }
-
-  /** Master only (MR-024): the character joins the campaign as a draft, and
-   * its player as a member. The response is the approved character, so the
-   * page simply shows it. */
-  protected async approve(campaignId: string, characterId: string): Promise<void> {
-    this.approvalState.set({ status: 'saving' });
-    try {
-      const vm = await this.source.approveCharacter(campaignId, characterId);
-      if (!this.applyWrite(characterId, vm)) {
-        return;
-      }
-      this.approvalState.set({ status: 'idle' });
-    } catch (err) {
-      this.approvalState.set({ status: 'error', message: describeCharacterError(err) });
-    }
-  }
-
-  /** Master only (MR-024), after "Confirmar recusa": the character is gone,
-   * so the master goes back to the campaign's page. */
-  protected async reject(campaignId: string, characterId: string): Promise<void> {
-    this.approvalState.set({ status: 'saving' });
-    try {
-      await this.source.rejectCharacter(campaignId, characterId);
-      if (this.destroyed || characterId !== this.characterId) {
-        return;
-      }
-      this.approvalState.set({ status: 'idle' });
-      await this.router.navigate(['/campaigns', campaignId]);
-    } catch (err) {
-      this.confirmingReject.set(false);
-      this.approvalState.set({ status: 'error', message: describeCharacterError(err) });
-    }
   }
 
   /** Explicit casts for the template, which narrows `vm.sheet.kind` in an

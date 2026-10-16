@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   afterNextRender,
@@ -16,7 +17,6 @@ import { MatIconModule } from '@angular/material/icon';
 import {
   type Encounter,
   type GetMoveOptionsResponse,
-  MoveRefusal,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { JumpLimits } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import type { Vision } from '../../../../core/maps/vision';
@@ -29,57 +29,52 @@ import {
   maxHeight,
   stepHeight,
 } from '../../../../core/combat/jump-plan';
-import {
-  LANDS_OUT_OF_REACH,
-  afterText,
-  costTitle,
-  indexOptions,
-  jumpCardText,
-  leftLine,
-  provokeWarning,
-  provokedBy,
-  refusalText,
-  trapQuestion,
-  verdictFor,
-} from '../../../../core/combat/move-plan';
-import { combatantInitial, ownCombatant, roundLabel } from '../../../../core/combat/combat-view';
+import { indexOptions, trapQuestion, verdictFor } from '../../../../core/combat/move-plan';
+import { ownCombatant, roundLabel } from '../../../../core/combat/combat-view';
 import { type MapLayers, NO_LAYERS } from '../../../../core/maps/layers';
-import { metersFixed, reachSquares } from '../../../../core/units';
+import { metersFixed } from '../../../../core/units';
 import { tieNumbers } from '../../../../core/format/text';
 import {
   CombatMap,
   type CombatMapImage,
-  type DraggedMark,
   type Reach,
 } from '../../../../shared/combat-map/combat-map';
-import {
-  dragLegend,
-  dragMovementLine,
-  dragSentence,
-  dragged,
-  draggedTo,
-} from '../../../../core/combat/drag-plan';
 import { LivePill } from '../../../../shared/live-pill/live-pill';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
-import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
+import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { JumpPanel } from './jump-panel';
 import { MoveAdjust } from './move-adjust';
+import {
+  type JumpScene,
+  type ScrollBox,
+  centreScroll,
+  canMoveOf,
+  errorShown,
+  frameOf,
+  goLabelOf,
+  jumpSummary,
+  keepInViewScroll,
+  KINDS,
+  cappedMovement,
+  goIconOf,
+  type JumpRequest,
+  jumpRequestOf,
+  MODES,
+  leadOf,
+  trapNameOf,
+  reachOf,
+  walkSummary,
+} from './move-page-view';
+import { MoveDrag } from './move-drag';
 import { MoveStatus, type MoveSummary } from './move-status';
-import { type Segment, Segmented } from '../../../../shared/segmented/segmented';
+import { Segmented } from '../../../../shared/segmented/segmented';
 
 /** Sides of a square on this page, in pixels: the map is zoomed in so a thumb hits one (E9-05: 30 px). */
-const ZOOMS = [22, 30, 40, 52] as const;
+const ZOOM_PX = { far: 22, near: 30, closer: 40, closest: 52 } as const;
+const ZOOMS = [ZOOM_PX.far, ZOOM_PX.near, ZOOM_PX.closer, ZOOM_PX.closest] as const;
 const DEFAULT_ZOOM = 1;
 
-/** What "Saltar para cá" asks for. */
-export type JumpRequest =
-  | {
-      readonly kind: 'long';
-      readonly square: Square;
-      /** "Saltar e desengajar": the action is taken first, and then the jump leaves the reach with no attack. */
-      readonly disengage?: true;
-    }
-  | { readonly kind: 'high'; readonly heightDft: number };
+export type { JumpRequest } from './move-page-view';
 
 /**
  * "Mover" and "Saltar" (E6-10, E9-05, E9-06, E9-13; RN-21, MR-034): a full page
@@ -96,6 +91,7 @@ export type JumpRequest =
  * the server's limit) or a high one (a height, in 0,3 m steps).
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-move-page',
   imports: [
     CombatMap,
@@ -166,7 +162,6 @@ export class MovePage {
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
   private readonly goButton = viewChild('goButton', { read: ElementRef<HTMLButtonElement> });
 
-  protected readonly phone = mediaQuery(PHONE_QUERY);
   /** From 1024px the map fits the left column and the controls sit beside it. */
   protected readonly wide = mediaQuery('(min-width: 1024px)');
   protected readonly cell = computed(() => ZOOMS[this.zoom()]);
@@ -185,25 +180,14 @@ export class MovePage {
   });
   /** The server's answer for this origin, but never more than the combatant's live movement: after a move the options
    * are the old ones until they are fetched again, and the sheet would keep saying the distance from before. */
-  protected readonly leftDft = computed(() => {
-    const fetched = this.options()?.movementLeftDft;
-    const live = this.own()?.movementLeftDft;
-    if (fetched === undefined) {
-      return live ?? 0;
-    }
-    return live === undefined ? fetched : Math.min(fetched, live);
-  });
+  protected readonly leftDft = computed(() =>
+    cappedMovement(this.options()?.movementLeftDft, this.own()?.movementLeftDft),
+  );
   protected readonly totalDft = computed(() => this.own()?.speedDft ?? 0);
   protected readonly usedDft = computed(() => this.own()?.movementUsedDft ?? 0);
   protected readonly jumping = computed(() => this.mode() === 'jump' && !!this.jumps());
-  protected readonly modes: readonly Segment<'walk' | 'jump'>[] = [
-    { value: 'walk', label: 'Andar', icon: 'directions_walk' },
-    { value: 'jump', label: 'Saltar', icon: 'north_east' },
-  ];
-  protected readonly kinds: readonly Segment<JumpMode>[] = [
-    { value: 'long', label: 'Distância', icon: 'straighten' },
-    { value: 'high', label: 'Altura', icon: 'arrow_upward' },
-  ];
+  protected readonly modes = MODES;
+  protected readonly kinds = KINDS;
 
   protected readonly index = computed(() => indexOptions(this.options()));
   protected readonly verdict = computed(() => {
@@ -227,111 +211,60 @@ export class MovePage {
     return to ? lineLengthDft(this.origin(), to) : 0;
   });
 
-  /** The creature the mover drags (W7-X: it holds it grappled), with the speed halved unless it is much smaller. */
-  protected readonly dragging = computed(() =>
-    dragged(this.options(), this.encounter().combatants),
-  );
-  protected readonly dragLegend = computed(() => {
-    const who = this.dragging();
-    return who ? dragLegend(who) : '';
-  });
-  /** "Deslocamento: 4,5 m (metade, arrastando o Hobgoblin)": the movement left is the server's, already halved. */
-  protected readonly dragLine = computed(() => {
-    const who = this.dragging();
-    return who && !this.jumping()
-      ? dragMovementLine(this.leftDft(), this.options()?.draggingHalved ?? false, who)
-      : '';
-  });
-  /** Where the dragged creature ends if the mover goes to the chosen square (the server's square, never the page's). */
-  private readonly dragEnd = computed<Square | null>(() => {
-    const to = this.chosen();
-    const v = this.verdict();
-    return to && v?.kind === 'ok' && !this.jumping() ? draggedTo(v.square) : null;
-  });
-  protected readonly dragMark = computed<DraggedMark | null>(() => {
-    const who = this.dragging();
-    const square = this.dragEnd();
-    return who && square ? { square, initial: combatantInitial(who.label) } : null;
-  });
-  protected readonly dragText = computed(() => {
-    const who = this.dragging();
-    const to = this.chosen();
-    return who && to && this.dragEnd() ? dragSentence(this.origin(), to, who, this.leftDft()) : '';
+  protected readonly drag = new MoveDrag({
+    options: this.options,
+    encounter: this.encounter,
+    jumping: this.jumping,
+    chosen: this.chosen,
+    verdict: this.verdict,
+    origin: this.origin,
+    leftDft: this.leftDft,
   });
 
   /** The reach the map draws: the walk's squares, or the circle of the jump. */
-  protected readonly reach = computed<Reach | null>(() => {
-    if (this.readOnly()) {
-      return null;
-    }
-    if (this.jumping()) {
-      return this.kind() === 'long'
-        ? { origin: this.origin(), leftDft: this.cap(), squares: [] }
-        : null;
-    }
-    const options = this.options();
-    return {
-      origin: this.origin(),
-      leftDft: this.leftDft(),
-      squares: (options?.reachable ?? []).map((s) => ({ col: s.col, row: s.row })),
-    };
-  });
+  protected readonly reach = computed<Reach | null>(() =>
+    reachOf(
+      this.readOnly(),
+      this.jumping(),
+      this.kind(),
+      this.origin(),
+      this.cap(),
+      this.leftDft(),
+      this.options(),
+    ),
+  );
 
   /** The move in words, from the options' cost. */
-  protected readonly summary = computed<MoveSummary>(() => {
-    const none: MoveSummary = { kind: 'idle', title: '', detail: '', warning: '', trap: '' };
-    if (this.jumping()) {
-      return this.jumpSummary(none);
-    }
-    const to = this.chosen();
-    const v = this.verdict();
-    if (!to || !v) {
-      return none;
-    }
-    if (v.kind === 'ok') {
-      const names = provokedBy(v.square, this.encounter().combatants);
-      return {
-        kind: 'ok',
-        title: costTitle(v.square.costDft),
-        detail: afterText(this.leftDft(), v.square.costDft),
-        warning: names.length > 0 ? provokeWarning(names) : '',
-        trap: v.square.knownTrapName,
-      };
-    }
-    if (v.kind === 'unknown') {
-      return none;
-    }
-    const text = refusalText(v, this.leftDft());
-    return text ? { kind: 'refused', ...text, warning: '', trap: '' } : none;
-  });
+  protected readonly summary = computed<MoveSummary>(() =>
+    this.jumping()
+      ? jumpSummary(this.jumpScene())
+      : walkSummary(this.chosen(), this.verdict(), this.leftDft(), this.encounter().combatants),
+  );
+  private readonly jumpScene = computed<JumpScene>(() => ({
+    kind: this.kind(),
+    left: this.leftDft(),
+    height: this.height(),
+    chosen: this.chosen(),
+    origin: this.origin(),
+    verdict: this.verdict(),
+    cap: this.cap(),
+    limit: this.limit(),
+    cost: this.jumpCost(),
+    combatants: this.encounter().combatants,
+    trapName: this.trapName(),
+  }));
   /** The frame on the chosen square: the cost beside it when the move can be made, the
    * refusal's title ("Sem caminho") when it cannot. */
-  protected readonly frame = computed(() => {
-    const square = this.chosen();
-    if (!square || (this.jumping() && this.kind() === 'high')) {
-      return null;
-    }
-    const s = this.summary();
-    if (!this.jumping() && this.verdict()?.kind === 'unknown') {
-      return { square, refused: false, label: undefined };
-    }
-    if (s.kind !== 'ok') {
-      return {
-        square,
-        refused: true,
-        label: s.title ? s.title.replace('Sem caminho reto', 'Sem caminho') : undefined,
-      };
-    }
-    const v = this.verdict();
-    const dft = this.jumping() ? this.jumpCost() : v?.kind === 'ok' ? v.square.costDft : 0;
-    return {
-      square,
-      refused: false,
-      label: metersFixed(dft / 10),
-      // The square a jump lands on says it leaves the reach of someone who sees it (the same warning as the walk's).
-      note: this.jumping() && s.warning ? LANDS_OUT_OF_REACH : undefined,
-    };
-  });
+  protected readonly frame = computed(() =>
+    frameOf(
+      this.chosen(),
+      this.summary(),
+      this.jumping(),
+      this.kind(),
+      this.verdict(),
+      this.jumpCost(),
+    ),
+  );
   /** A long jump that leaves an enemy's reach: Desengajar can be chosen and spent with it. */
   protected readonly jumpProvokes = computed(
     () =>
@@ -343,68 +276,36 @@ export class MovePage {
   protected readonly disengaging = computed(
     () => this.disengageChoice() && this.jumpProvokes() && this.canDisengage(),
   );
-  protected readonly canMove = computed(() => {
-    if (this.busy()) {
-      return false;
-    }
-    if (this.jumping()) {
-      return this.kind() === 'high'
-        ? this.height() > 0
-        : this.chosen() !== null && this.summary().kind === 'ok';
-    }
-    // Without the reach (unread, or the read failed) the server decides and says why not.
-    const kind = this.verdict()?.kind;
-    return kind === 'ok' || kind === 'unknown';
-  });
-  protected readonly visibleError = computed(() => {
-    const at = this.errorFor();
-    const to = this.chosen();
-    return (
-      this.serverError() !== '' &&
-      ((!at && !to) || (!!at && !!to && at.col === to.col && at.row === to.row))
-    );
-  });
+  protected readonly canMove = computed(() =>
+    canMoveOf(
+      this.busy(),
+      this.jumping(),
+      this.kind(),
+      this.height(),
+      this.chosen(),
+      this.summary().kind,
+      this.verdict(),
+    ),
+  );
+  protected readonly visibleError = computed(() =>
+    errorShown(this.serverError(), this.errorFor(), this.chosen()),
+  );
   protected readonly title = computed(
     () => `${this.jumping() ? 'Saltar' : 'Mover'} ${this.own()?.label ?? ''}`,
   );
-  protected readonly lead = computed(() => {
-    const ask = this.jumping()
-      ? this.kind() === 'long'
-        ? 'Toque no quadrado onde quer cair.'
-        : ''
-      : 'Toque num quadrado destacado.';
-    const squares = this.jumping() ? null : reachSquares(this.leftDft() / 10);
-    return [leftLine(this.leftDft(), this.totalDft(), this.usedDft(), squares), ask]
-      .filter(Boolean)
-      .join(' ');
-  });
+  protected readonly lead = computed(() =>
+    leadOf(this.jumping(), this.kind(), this.leftDft(), this.totalDft(), this.usedDft()),
+  );
   protected readonly leftText = computed(() => metersFixed(this.leftDft() / 10));
   protected readonly limitText = computed(() => metersFixed(this.cap() / 10));
-  protected readonly goIcon = computed(() =>
-    !this.jumping() ? 'arrow_forward' : this.kind() === 'high' ? 'arrow_upward' : 'north_east',
+  protected readonly goIcon = computed(() => goIconOf(this.jumping(), this.kind()));
+  protected readonly goLabel = computed(() =>
+    goLabelOf(this.jumping(), this.kind(), this.disengaging(), this.height()),
   );
-  protected readonly goLabel = computed(() => {
-    if (!this.jumping()) {
-      return 'Mover para cá';
-    }
-    return this.kind() === 'long'
-      ? this.disengaging()
-        ? 'Saltar e desengajar'
-        : 'Saltar para cá'
-      : `Saltar ${metersFixed(this.height() / 10)} para cima`;
-  });
   /** What the footer's button says it is for when it cannot be pressed. */
-  protected readonly trapName = computed(() => {
-    if (this.jumping()) {
-      // The walk's reads know the trap squares the character knows: a jump that lands on one asks too.
-      const to = this.chosen();
-      return this.kind() === 'long' && to
-        ? (this.index().reachable.get(to.row * 1000 + to.col)?.knownTrapName ?? '')
-        : '';
-    }
-    const v = this.verdict();
-    return v?.kind === 'ok' ? v.square.knownTrapName : '';
-  });
+  protected readonly trapName = computed(() =>
+    trapNameOf(this.jumping(), this.kind(), this.chosen(), this.index(), this.verdict()),
+  );
   protected readonly trapText = computed(() => trapQuestion(this.trapName()));
 
   constructor() {
@@ -461,110 +362,36 @@ export class MovePage {
     });
   }
 
-  /** Scrolls the map so the square is in the middle of the visible part. */
-  private centreOn(sq: Square): void {
+  /** Scrolls the map to where `target` says, given the part of it the scroller shows (nothing in the wide layout). */
+  private scrollTo(target: (box: ScrollBox) => { left: number; top: number }): void {
     const el = this.scroller()?.nativeElement;
     if (!el || this.wide()) {
       return;
     }
-    const cell = this.cell();
-    el.scrollLeft = Math.max(0, (sq.col + 0.5) * cell - el.clientWidth / 2);
-    el.scrollTop = Math.max(0, (sq.row + 0.5) * cell - el.clientHeight / 2);
+    const to = target({
+      left: el.scrollLeft,
+      top: el.scrollTop,
+      width: el.clientWidth,
+      height: el.clientHeight,
+    });
+    el.scrollLeft = to.left;
+    el.scrollTop = to.top;
   }
 
-  /** Brings the square into view when it is not, with a square and a half of margin for its label. */
+  /** Scrolls the map so the square is in the middle of the visible part. */
+  private centreOn(sq: Square): void {
+    this.scrollTo((box) => centreScroll(sq, this.cell(), box));
+  }
+
+  /** Brings the square into view when it is not. */
   private keepInView(sq: Square): void {
-    const el = this.scroller()?.nativeElement;
-    if (!el || this.wide()) {
-      return;
-    }
-    const cell = this.cell();
-    const pad = cell * 1.5;
-    const left = sq.col * cell;
-    const top = sq.row * cell;
-    if (left - pad < el.scrollLeft) {
-      el.scrollLeft = Math.max(0, left - pad);
-    } else if (left + cell + pad > el.scrollLeft + el.clientWidth) {
-      el.scrollLeft = left + cell + pad - el.clientWidth;
-    }
-    if (top - pad < el.scrollTop) {
-      el.scrollTop = Math.max(0, top - pad);
-    } else if (top + cell + pad > el.scrollTop + el.clientHeight) {
-      el.scrollTop = top + cell + pad - el.clientHeight;
-    }
+    this.scrollTo((box) => keepInViewScroll(sq, this.cell(), box));
   }
 
   /** "Voltar" on the trap question: the focus goes back to the button that asked. */
   protected closeTrapAsk(): void {
     this.trapAsk.set(false);
     queueMicrotask(() => this.goButton()?.nativeElement.focus());
-  }
-
-  private jumpSummary(none: MoveSummary): MoveSummary {
-    const left = this.leftDft();
-    const refused = (title: string, detail: string): MoveSummary => ({
-      kind: 'refused',
-      title,
-      detail,
-      warning: '',
-      trap: '',
-    });
-    if (this.kind() === 'high') {
-      const h = this.height();
-      return h > 0
-        ? {
-            kind: 'ok',
-            title: `Saltar ${metersFixed(h / 10)}`,
-            detail: `Você sobe sem mudar de quadrado, para agarrar uma borda. ${afterText(left, h)}`,
-            warning: '',
-            trap: '',
-          }
-        : refused(
-            'Sem salto em altura',
-            'Com essa Força e esse movimento, não dá para subir nem um passo de 0,3 m.',
-          );
-    }
-    const to = this.chosen();
-    if (!to) {
-      return none;
-    }
-    if (to.col === this.origin().col && to.row === this.origin().row) {
-      return refused('Você já está aqui', 'Toque no quadrado onde quer cair.');
-    }
-    // A jump cannot cross a wall or land on a creature: what the reads show (a wall in the options'
-    // refusals, a creature on the square) is refused here, so the button never promises what the server refuses.
-    const read = this.verdict();
-    if (
-      read?.kind === 'refused' &&
-      (read.reason === MoveRefusal.WALL || read.reason === MoveRefusal.OCCUPIED)
-    ) {
-      return refused(
-        read.reason === MoveRefusal.WALL ? 'Sem caminho' : 'Ocupado',
-        read.reason === MoveRefusal.WALL
-          ? 'Um salto não atravessa parede. Escolha outro quadrado.'
-          : 'Há alguém nesse quadrado. Escolha onde cair.',
-      );
-    }
-    if (this.encounter().combatants.some((c) => c.placed && c.col === to.col && c.row === to.row)) {
-      return refused('Ocupado', 'Há alguém nesse quadrado. Escolha onde cair.');
-    }
-    const cost = this.jumpCost();
-    if (cost > this.cap()) {
-      return refused(
-        'Longe demais',
-        cost > this.limit()
-          ? `Seu salto vai até ${metersFixed(this.limit() / 10)}. Escolha um quadrado dentro do círculo.`
-          : `Você só tem ${metersFixed(left / 10)} de movimento. Escolha um quadrado dentro do círculo.`,
-      );
-    }
-    const names = read?.kind === 'ok' ? provokedBy(read.square, this.encounter().combatants) : [];
-    return {
-      kind: 'ok',
-      title: `Saltar ${metersFixed(cost / 10)}`,
-      detail: jumpCardText(cost, left, this.trapName()),
-      warning: names.length > 0 ? provokeWarning(names, 'salto') : '',
-      trap: this.trapName() ? this.trapName() : '',
-    };
   }
 
   protected choose(square: Square): void {
@@ -631,18 +458,15 @@ export class MovePage {
       return;
     }
     const to = this.chosen();
-    if (this.jumping()) {
-      if (this.kind() === 'high') {
-        this.jump.emit({ kind: 'high', heightDft: this.height() });
-      } else if (to) {
-        this.jump.emit(
-          this.disengaging()
-            ? { kind: 'long', square: to, disengage: true }
-            : { kind: 'long', square: to },
-        );
+    if (!this.jumping()) {
+      if (to) {
+        this.confirm.emit(to);
       }
-    } else if (to) {
-      this.confirm.emit(to);
+      return;
+    }
+    const request = jumpRequestOf(this.kind(), this.height(), to, this.disengaging());
+    if (request) {
+      this.jump.emit(request);
     }
   }
 }

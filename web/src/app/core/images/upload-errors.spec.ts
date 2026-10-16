@@ -128,3 +128,47 @@ describe('precheckImageFile', () => {
     );
   });
 });
+
+describe('uploadFailureMessage, every kind in turn', () => {
+  const KINDS: readonly (readonly [UploadFailureKind, string])[] = [
+    ['UNSUPPORTED_TYPE', 'Esse arquivo não é uma imagem JPEG, PNG ou WebP.'],
+    ['TOO_LARGE', 'A imagem passa de 10 MB.'],
+    ['DIMENSIONS', 'A imagem é grande demais (mais de 8192 pixels de lado ou 40 megapixels).'],
+    ['CORRUPT', 'Não deu para ler essa imagem. Ela pode estar corrompida.'],
+    ['QUOTA', 'A galeria está cheia: 300 imagens ou 500 MB.'],
+    ['RATE_LIMITED', 'Muitos envios em pouco tempo. Espere alguns segundos e tente de novo.'],
+    ['NETWORK', 'A conexão caiu durante o envio. Tente de novo.'],
+    ['UNAUTHENTICATED', 'Sua sessão terminou. Entre de novo e envie outra vez.'],
+    ['PERMISSION_DENIED', 'Só o mestre da campanha pode enviar imagens.'],
+    ['NOT_FOUND', 'Essa campanha não existe, ou você não é membro dela.'],
+    ['UNAVAILABLE', 'O servidor não está recebendo imagens agora. Tente de novo em instantes.'],
+    ['CANCELED', 'Envio cancelado.'],
+    ['MALFORMED_REQUEST', 'Algo deu errado no envio. Tente de novo em instantes.'],
+    ['UNKNOWN', 'Algo deu errado no envio. Tente de novo em instantes.'],
+  ];
+
+  it.each(KINDS)('says %s in Portuguese', (kind, message) => {
+    expect(plain(uploadFailureMessage(kind))).toBe(message);
+  });
+});
+
+describe('uploadFailureFromResponse, bodies that are not the usual JSON', () => {
+  it('falls back to the status for a body that is not an object', () => {
+    expect(uploadFailureFromResponse(403, 'forbidden')).toBe('PERMISSION_DENIED');
+    expect(uploadFailureFromResponse(404, 'null')).toBe('NOT_FOUND');
+    expect(uploadFailureFromResponse(503, '5')).toBe('UNAVAILABLE');
+    expect(uploadFailureFromResponse(418, '')).toBe('UNKNOWN');
+  });
+
+  it('reads the code when the reason is not one of ours, and the status when the code is not either', () => {
+    expect(uploadFailureFromResponse(500, '{"code":"unavailable","reason":"WHO_KNOWS"}')).toBe(
+      'UNAVAILABLE',
+    );
+    expect(uploadFailureFromResponse(500, '{"code":"unavailable","reason":7}')).toBe('UNAVAILABLE');
+    expect(uploadFailureFromResponse(401, '{"code":"mystery","reason":"WHO_KNOWS"}')).toBe(
+      'UNAUTHENTICATED',
+    );
+    expect(uploadFailureFromResponse(413, '{"code":5}')).toBe('TOO_LARGE');
+    expect(uploadFailureFromResponse(429, '{}')).toBe('QUOTA');
+  });
+});

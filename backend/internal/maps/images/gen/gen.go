@@ -177,30 +177,58 @@ func (r Request) Validate() error {
 	if !ValidRatio(r.AspectRatio) {
 		return fmt.Errorf("gen: aspect ratio %q is not one the model returns", r.AspectRatio)
 	}
-	if r.Edit == nil && strings.TrimSpace(r.Prompt) == "" {
-		return errors.New("gen: the prompt is empty")
+	if err := r.validateText(); err != nil {
+		return err
 	}
-	if r.Edit != nil && (strings.TrimSpace(r.Edit.Instruction) == "" || len(r.Edit.Previous.Data) == 0) {
-		return errors.New("gen: an edit needs an instruction and the previous image")
-	}
-	if !ValidLayout(r.Layout) || (r.Layout == "") != (r.Drawing == nil) || (r.Layout != "" && r.Edit != nil) {
+	if r.layoutMismatch() {
 		return errors.New("gen: a drawing goes with a layout, and a layout with a drawing, in a request that is not an edit")
 	}
-	if len(r.Rooms) > 0 && r.Layout != LayoutTexture || len(r.Rooms) > MaxRooms {
+	if r.roomsMismatch() {
 		return errors.New("gen: rooms go only with the textured map, and at most MaxRooms of them")
 	}
-	objects, characters := 0, 0
-	for _, ref := range r.References {
+	objects, characters := countReferences(r.References)
+	if objects > MaxObjectReferences || characters > MaxCharacterReferences {
+		return fmt.Errorf("gen: at most %d objects and %d characters as references", MaxObjectReferences, MaxCharacterReferences)
+	}
+	return nil
+}
+
+// validateText checks what the request says: a prompt, or for an edit an instruction and
+// the image it changes.
+func (r Request) validateText() error {
+	if r.Edit == nil {
+		if strings.TrimSpace(r.Prompt) == "" {
+			return errors.New("gen: the prompt is empty")
+		}
+		return nil
+	}
+	if strings.TrimSpace(r.Edit.Instruction) == "" || len(r.Edit.Previous.Data) == 0 {
+		return errors.New("gen: an edit needs an instruction and the previous image")
+	}
+	return nil
+}
+
+// layoutMismatch says the layout and the drawing do not go together: a known layout with
+// a drawing, both set or both empty, and neither in an edit.
+func (r Request) layoutMismatch() bool {
+	return !ValidLayout(r.Layout) || (r.Layout == "") != (r.Drawing == nil) || (r.Layout != "" && r.Edit != nil)
+}
+
+// roomsMismatch says the rooms do not fit: only the textured map has them, at most MaxRooms.
+func (r Request) roomsMismatch() bool {
+	return len(r.Rooms) > 0 && r.Layout != LayoutTexture || len(r.Rooms) > MaxRooms
+}
+
+// countReferences counts the references that are objects and the ones that are characters.
+func countReferences(refs []Reference) (objects, characters int) {
+	for _, ref := range refs {
 		if ref.Character {
 			characters++
 		} else {
 			objects++
 		}
 	}
-	if objects > MaxObjectReferences || characters > MaxCharacterReferences {
-		return fmt.Errorf("gen: at most %d objects and %d characters as references", MaxObjectReferences, MaxCharacterReferences)
-	}
-	return nil
+	return objects, characters
 }
 
 // creaturesRule is the scene art's and the isometric view's line on

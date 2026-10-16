@@ -124,6 +124,38 @@ describe('table rules', () => {
     expect(d.enemyReactions).toBe(EnemyReactionsRule.ONLY_WHEN_POSSIBLE);
   });
 
+  it('reads every saved value of a campaign over the defaults', () => {
+    const saved = {
+      diceMode: DiceMode.APP,
+      combatStartsWithMap: false,
+      fogOnNewMaps: true,
+      hitPoints: HitPointsRule.AVERAGE,
+      abilityMethods: { standardArray: false, pointBuy: false, rolled4d6: false, typed: false },
+      critical: CriticalRule.MAX_PLUS_ROLL,
+      deathSaves: DeathSaveVisibility.OWNER_AND_MASTER,
+      hiddenAreaHits: HiddenAreaHitRule.ASK,
+      featsAllowed: true,
+      enemyReactions: EnemyReactionsRule.ALWAYS,
+      houseRules: ['uma'],
+    };
+    expect(draftFromRules(saved as never)).toEqual({
+      diceMode: DiceMode.APP,
+      combatStartsWithMap: false,
+      fogOnNewMaps: true,
+      hitPoints: HitPointsRule.AVERAGE,
+      standardArray: false,
+      pointBuy: false,
+      rolled4d6: false,
+      typed: false,
+      critical: CriticalRule.MAX_PLUS_ROLL,
+      deathSaves: DeathSaveVisibility.OWNER_AND_MASTER,
+      hiddenAreaHits: HiddenAreaHitRule.ASK,
+      featsAllowed: true,
+      enemyReactions: EnemyReactionsRule.ALWAYS,
+      houseRules: ['uma'],
+    });
+  });
+
   it('reads an unspecified rule as the default and counts a change of it', () => {
     expect(
       draftFromRules({ enemyReactions: EnemyReactionsRule.UNSPECIFIED } as never).enemyReactions,

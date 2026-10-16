@@ -1,0 +1,13 @@
+mage armor on Brisa (armored), Pensantus and Toren: 1 effects
+Pensantus spell:mage-armor kind=spell conc=false dur=rounds ends=r4801/Pensantus/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[] mods=[{"kind": "base_ac", "value": 15}] started=r1
+Toren spell:heroism kind=spell conc=true dur=rounds ends=r11/Goblin/start_of_turn spent=false fired=0 follows=- caster=Goblin visible=true audience=owner label=- dc=- conds=[] mods=[{"conditions": ["condition:frightened"], "kind": "condition_immunity"}, {"kind": "turn_temp_hp"}] started=r1
+Toren spell:mage-armor kind=spell conc=false dur=rounds ends=r4801/Toren/start_of_turn spent=false fired=0 follows=- caster=- visible=true audience=all label=- dc=- conds=[] mods=[{"kind": "base_ac", "value": 15}] started=r1
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=15 conc=- turn=idle
+Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=15 conc=- turn=acting
+
+events:
+lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>","<uuid>"],"key":"spell:mage-armor","rounds":4800,"targets":["<Pensantus>","<Toren>"]},"round":1,"target_id":"<one of the targets>"}
+lasting_effect_added {"round":1}
+lasting_effect_added {"combatant_id":"<Goblin>","lasting":{"caster":"<Goblin>","change":"added","effects":["<uuid>"],"key":"spell:heroism","rounds":10,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
+

@@ -28,9 +28,7 @@ import { RosterClient } from '../../core/maps/roster-client';
 import { type SpellClass, SpellsClient } from '../../core/spells/spells-client';
 import { BASIC_SHEET_SENTENCE, spellsErrorMessage } from '../../core/spells/spells-errors';
 import {
-  NO_FILTER,
   type SpellFilter,
-  SCHOOLS,
   activeFilters,
   filterChips,
   isFiltered,
@@ -43,6 +41,7 @@ import { isTableSpellKey, spellDetailsFromGen } from '../../shared/spell-details
 import { type SpellCardState, SpellCard } from './spell-card';
 import { openSpellFilterSheet } from './spell-filter-sheet';
 import { type MineCharacter, SpellFilters } from './spell-filters';
+import { PARAMS, filterFromParams, filterParams, sameFilters } from './spells-params';
 
 type Access =
   | { readonly status: 'loading' }
@@ -50,16 +49,6 @@ type Access =
   | { readonly status: 'pending' }
   | { readonly status: 'not-found' }
   | { readonly status: 'error'; readonly message: string };
-
-/** The query parameters: the filters survive a reload, and the open spell is a step of the browser's history. */
-const PARAMS = {
-  query: 'q',
-  classKey: 'class',
-  levels: 'levels',
-  school: 'school',
-  mine: 'mine',
-  spell: 'spell',
-} as const;
 
 /** From this width the page has three columns (filters, list, description); under it, it is the phone's page. */
 const WIDE_QUERY = '(min-width: 1100px)';
@@ -217,7 +206,9 @@ export class Spells {
       const master = campaign.myRole === Role.MASTER;
       // The master has no character of their own: "Só as que posso aprender" is the player's.
       this.mine.set(master ? null : await this.ownCharacter());
-      this.state.filter.set(this.filterFromParams(this.route.snapshot.queryParamMap));
+      this.state.filter.set(
+        filterFromParams(this.route.snapshot.queryParamMap, this.mine() !== null),
+      );
       this.access.set({ status: 'ok', campaignName: campaign.name, master });
       void this.state.search();
     } catch (err) {
@@ -259,35 +250,6 @@ export class Spells {
     return this.classes().find((c) => c.key === key)?.namePt ?? '';
   }
 
-  /** The filters in the link, so a reload or a shared link brings the same search. */
-  private filterFromParams(q: ParamMap): SpellFilter {
-    const levels = (q.get(PARAMS.levels) ?? '')
-      .split(',')
-      .filter((x) => /^[0-9]$/.test(x))
-      .map(Number);
-    const school = q.get(PARAMS.school) ?? '';
-    return {
-      ...NO_FILTER,
-      query: (q.get(PARAMS.query) ?? '').slice(0, 100),
-      classKey: q.get(PARAMS.classKey) ?? '',
-      levels: [...new Set(levels)].sort((a, b) => a - b),
-      schoolKey: SCHOOLS.some((s) => s.key === school) ? school : '',
-      onlyMine: q.get(PARAMS.mine) === '1' && this.mine() !== null,
-    };
-  }
-
-  /** The link's words for the filters. */
-  private filterParams(): Record<string, string | null> {
-    const f = this.filter();
-    return {
-      [PARAMS.query]: f.query.trim() || null,
-      [PARAMS.classKey]: f.classKey || null,
-      [PARAMS.levels]: f.levels.length > 0 ? f.levels.join(',') : null,
-      [PARAMS.school]: f.schoolKey || null,
-      [PARAMS.mine]: f.onlyMine ? '1' : null,
-    };
-  }
-
   /** The filters go into the URL when a search starts, replacing the entry: Back leaves the page, not the last search. */
   private syncUrl(): void {
     if (this.access().status !== 'ok') {
@@ -297,7 +259,7 @@ export class Spells {
       relativeTo: this.route,
       replaceUrl: true,
       queryParamsHandling: 'merge',
-      queryParams: this.filterParams(),
+      queryParams: filterParams(this.filter()),
     });
   }
 
@@ -306,15 +268,8 @@ export class Spells {
     if (this.access().status !== 'ok') {
       return;
     }
-    const fromUrl = this.filterFromParams(params);
-    const now = this.filter();
-    const same =
-      fromUrl.query === now.query.trim() &&
-      fromUrl.classKey === now.classKey &&
-      fromUrl.schoolKey === now.schoolKey &&
-      fromUrl.onlyMine === now.onlyMine &&
-      fromUrl.levels.join(',') === now.levels.join(',');
-    if (!same) {
+    const fromUrl = filterFromParams(params, this.mine() !== null);
+    if (!sameFilters(fromUrl, this.filter())) {
       this.state.filter.set(fromUrl);
       void this.state.search();
     }
@@ -365,7 +320,7 @@ export class Spells {
     // The filters ride along, so the link names the whole page and Back never brings an older search.
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { ...this.filterParams(), [PARAMS.spell]: spell.key },
+      queryParams: { ...filterParams(this.filter()), [PARAMS.spell]: spell.key },
       queryParamsHandling: 'merge',
       replaceUrl: this.wide(),
     });

@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   Injector,
@@ -24,21 +25,12 @@ import {
   PendingDamageStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient, newKey } from '../../../../core/combat/combat-client';
-import {
-  damageFormula,
-  diceName,
-  extraDiceOf,
-  sumRange,
-} from '../../../../core/combat/combat-dice';
 import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
-import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
-import { hitPointsAfter, hitPointsLine } from '../../../../core/combat/attack-flow';
 import { article } from '../../../../core/combat/combat-log';
-import { isPlayer } from '../../../../core/combat/combat-view';
 import { DamageBreakdown } from '../damage-parts/damage-breakdown';
-import { heldReason } from '../../../../core/combat/reaction-master';
+import { pendingCard } from './pending-damage-card';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 
 /**
@@ -52,6 +44,7 @@ import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
  * The page's `CombatState` gets each answer's combat.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-pending-damages',
   imports: [
     DamageBreakdown,
@@ -120,111 +113,8 @@ export class PendingDamages {
           p.status === PendingDamageStatus.AWAITING_ROLL ||
           p.status === PendingDamageStatus.AWAITING_REACTION,
       )
-      .map((p) => this.describe(p)),
+      .map((p) => pendingCard(p, this.encounter(), this.pendings())),
   );
-
-  /**
-   * Which part of a trap's hit a card is: "Armadilha: perfurante (2 de 4)". A trap that fires several times (darts) opens
-   * one card per damage type per hit, all on the same target and trap point; the card carries no hit number, so the
-   * position among the cards of the same target, point and type, in the order they were opened, stands for it.
-   */
-  private trapLabel(p: PendingDamage): string {
-    if (!p.trapPointId) {
-      return '';
-    }
-    const same = this.pendings().filter(
-      (q) =>
-        q.trapPointId === p.trapPointId &&
-        q.targetId === p.targetId &&
-        q.damageTypeKey === p.damageTypeKey,
-    );
-    const word = `${p.trapName || 'Armadilha'}: ${p.damageTypePt || 'dano'}`;
-    return same.length > 1 ? `${word} (${same.indexOf(p) + 1} de ${same.length})` : word;
-  }
-
-  private describe(p: PendingDamage) {
-    const e = this.encounter();
-    const attacker = e.combatants.find((c) => c.id === p.attackerId);
-    const target = e.combatants.find((c) => c.id === p.targetId);
-    const rolled = p.status === PendingDamageStatus.ROLLED;
-    // What "Aplicar" applies: the damage after resistance, vulnerability and immunity when a step changed it.
-    const total = p.amountAfterSteps ?? p.amount;
-    const range = sumRange(p.diceCount, p.diceSides);
-    // A window the combat waits on holds the damage: "Rolar dano" is off, with the reason written (the answer is in
-    // the master's cards, `ReactionQueue`).
-    const held = p.status === PendingDamageStatus.AWAITING_REACTION || !rolled ? heldReason(e) : '';
-    return {
-      p,
-      total,
-      /** The extras the master may take out: the ones the player could choose, while they count. */
-      removable: new Set((p.parts ?? []).filter((x) => x.choosable).map((x) => x.key)),
-      rolls: p.partRolls ?? [],
-      steps: p.steps ?? [],
-      rolled,
-      awaiting: p.status === PendingDamageStatus.AWAITING_REACTION,
-      held:
-        held ||
-        (p.status === PendingDamageStatus.AWAITING_REACTION
-          ? `Espere a reação ${article(target?.label ?? '') === 'a' ? 'da' : 'do'} ${target?.label ?? 'alvo'}.`
-          : ''),
-      // A player rolls the damage of their own attack; the master waits.
-      waitsForPlayer: !rolled && !!attacker && isPlayer(attacker),
-      trapLabel: this.trapLabel(p),
-      attacker: attacker?.label ?? '',
-      target: target?.label ?? '',
-      dice: diceName(p.diceCount, p.diceSides),
-      range,
-      label:
-        p.diceCount > 1
-          ? `Role ${diceName(p.diceCount, p.diceSides)} para o dano: some os dois`
-          : `Role ${diceName(p.diceCount, p.diceSides)} para o dano`,
-      line: p.roll ? damageFormula(p.roll, p.damageTypePt, extraDiceOf(p), p.criticalMax) : '',
-      // A critical hit follows the table's rule: what to roll, said the way it asks, and what the typed sum is (RN-24).
-      crit: p.critical
-        ? (criticalHint(p.criticalRule, p.diceCount, p.diceSides, p.criticalMax)?.line ?? '')
-        : '',
-      typedHint: criticalTypedHint(
-        p.criticalRule,
-        diceName(p.diceCount, p.diceSides),
-        range.min,
-        range.max,
-        p.criticalMax,
-      ),
-      modifier: p.bonus + p.criticalMax,
-      fixedText: fixedParts(p.criticalMax, p.bonus),
-      effect: rolled && target ? this.effectLine(target, total) : '',
-    };
-  }
-
-  /** The target's hit points before and after the damage. A druid in Wild Shape loses the beast's points first
-   * ("Lobo: 11 de 11 PV, depois 4"); what the beast cannot take passes to the druid (SRD 5.1, "Wild Shape"). */
-  private effectLine(target: Encounter['combatants'][number], total: number): string {
-    const beastCurrent = target.wildShapeHitPointsCurrent;
-    const beastMax = target.wildShapeHitPointsMax;
-    if (target.wildShapeBeastKey !== '' && beastCurrent !== undefined && beastMax !== undefined) {
-      const beast = target.wildShapeBeastNamePt || 'Forma animal';
-      const line = hitPointsLine(
-        beast,
-        beastCurrent,
-        beastMax,
-        hitPointsAfter(beastCurrent, 0, total),
-      );
-      const over = total - beastCurrent;
-      if (over > 0 && target.hitPointsMax !== undefined) {
-        const own = target.hitPointsCurrent ?? 0;
-        return `${line}; o resto (${over}) passa para ${hitPointsLine(target.label, own, target.hitPointsMax, hitPointsAfter(own, target.hitPointsTemporary ?? 0, over))}`;
-      }
-      return line;
-    }
-    return target.hitPointsMax === undefined
-      ? ''
-      : hitPointsLine(
-          target.label,
-          target.hitPointsCurrent ?? 0,
-          target.hitPointsMax,
-          hitPointsAfter(target.hitPointsCurrent ?? 0, target.hitPointsTemporary ?? 0, total),
-        );
-  }
 
   private keyFor(id: string): string {
     let key = this.keys.get(id);

@@ -39,10 +39,50 @@ import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { InspirationQuestion } from '../../../../core/resources/bardic-inspiration';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { CastSheet, type CastSheetData } from './cast-sheet';
+import { resumedCastOf } from './cast-sheet-view';
 
 /** The sheet seen from a spec: protected members and all. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Sheet = any;
+
+/** The parts the sheet hands its members to: a name a spec reads that the sheet no longer holds is found in one of them. */
+const PARTS = ['s', 'ch', 'ar', 'md', 'tx', 'questions', 'damage', 'caller'];
+/** The members that changed their name on the way. */
+const RENAMED: Record<string, string> = {
+  castRolled: 'caller.cast',
+  castPooled: 'caller.cast',
+  setMode: 'md.set',
+  modeState: 'md.state',
+  areaRows: 'ar.rows',
+  areaCount: 'ar.count',
+  areaWarning: 'ar.warning',
+};
+
+/** The sheet as the specs below read it, the way it was before it handed its members to plain classes. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function seen(cmp: any): Sheet {
+  return new Proxy(cmp, {
+    get(target, key: string) {
+      if (key === 'castPair') {
+        return (faces: number[]) => target.caller.cast({ faces });
+      }
+      if (key === 'resumedCast') {
+        return () => resumedCastOf(target.damage.pendings().values());
+      }
+      const found = key in target ? '' : (PARTS.find((p) => key in target[p]) ?? '');
+      const path = RENAMED[key] ?? (found ? `${found}.${key}` : '');
+      if (!path) {
+        return target[key];
+      }
+      const steps = path.split('.');
+      const owner = steps.slice(0, -1).reduce((o, k) => o[k], target);
+      const name = steps[steps.length - 1];
+      const value = owner[name];
+      // A signal is a field of its owner and stays as it is; a method is bound to it.
+      return typeof value === 'function' && !Object.hasOwn(owner, name) ? value.bind(owner) : value;
+    },
+  });
+}
 
 /** The sheet writes circles with a non-breaking space. */
 const plain = (text: string) => text.replace(/\u00a0/g, ' ');
@@ -152,7 +192,7 @@ async function open(over: Over = {}) {
   fixture.detectChanges();
   return {
     fixture,
-    sheet: fixture.componentInstance as Sheet,
+    sheet: seen(fixture.componentInstance),
     el: fixture.nativeElement as HTMLElement,
     client,
     resources,
@@ -1282,5 +1322,5 @@ async function openWithDialog(
   const fixture = TestBed.createComponent(CastSheet);
   fixture.detectChanges();
   await fixture.whenStable();
-  return fixture.componentInstance as Sheet;
+  return seen(fixture.componentInstance);
 }

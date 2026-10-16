@@ -2983,3 +2983,166 @@ describe('CharacterSheetPage: Reviver and "E agora?"', () => {
     expect(el.textContent).not.toContain('E agora?');
   });
 });
+
+describe('CharacterSheetPage: a write that fails, or lands after the person left', () => {
+  let fake: FakeCharacterSheetSource;
+  let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+
+  function deferred<T>() {
+    let resolve!: (v: T) => void;
+    const promise = new Promise<T>((r) => (resolve = r));
+    return { promise, resolve };
+  }
+
+  beforeEach(() => {
+    params = new BehaviorSubject(convertToParamMap({ id: 'camp-1', characterId: 'char-1' }));
+    TestBed.configureTestingModule({
+      imports: [CharacterSheetPage],
+      providers: [
+        { provide: CharacterSheetSource, useClass: FakeCharacterSheetSource },
+        { provide: ActivatedRoute, useValue: { paramMap: params } },
+        ...xpProviders(),
+      ],
+    });
+    fake = TestBed.inject(CharacterSheetSource) as unknown as FakeCharacterSheetSource;
+  });
+
+  async function render() {
+    const fixture = TestBed.createComponent(CharacterSheetPage);
+    fixture.detectChanges();
+    await nextTurn();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  const click = (el: HTMLElement, text: string) =>
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes(text))!
+      .click();
+  const alert = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('[role="alert"]'))
+      .map((n) => n.textContent)
+      .join(' ');
+
+  const master = (over: Partial<CharacterSheetVm> = {}) =>
+    vm({ isMaster: true, canAccessMasterNotes: true, ...over });
+
+  it('shows the refusal of "Marcar como morto" and closes the question', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(master({ state: 'locked', canMarkDead: true }));
+    fake.markCharacterDeadFn = () => Promise.reject(new ConnectError('gone', Code.NotFound));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    click(el, 'Marcar como morto');
+    fixture.detectChanges();
+    click(el, 'Confirmar morte');
+    await nextTurn();
+    fixture.detectChanges();
+
+    expect(alert(el)).toContain('Personagem não encontrado');
+    expect(el.textContent).not.toContain('Confirmar morte');
+  });
+
+  it('shows the refusal of the story toggle', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(master({ canToggleStoryEditing: true, storyEditingAllowed: false }));
+    fake.setStoryEditingAllowedFn = () => Promise.reject(new ConnectError('gone', Code.NotFound));
+    const fixture = await render();
+    click(fixture.nativeElement, 'Permitir editar a história');
+    await nextTurn();
+    fixture.detectChanges();
+    expect(alert(fixture.nativeElement)).toContain('Personagem não encontrado');
+  });
+
+  it('shows the refusal of the approval', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(master({ state: 'pending', canApprove: true, canRequestChanges: true }));
+    fake.approveCharacterFn = () => Promise.reject(new ConnectError('gone', Code.NotFound));
+    const fixture = await render();
+    click(fixture.nativeElement, 'Aprovar personagem');
+    await nextTurn();
+    fixture.detectChanges();
+    expect(alert(fixture.nativeElement)).toContain('Personagem não encontrado');
+  });
+
+  it('shows the refusal of "Enviar de novo"', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          state: 'pending',
+          canResubmit: true,
+          review: {
+            status: 'changes_requested',
+            reason: 'Ajuste.',
+            requestedAt: new Date(2026, 9, 8, 21, 10),
+            resubmittedAt: null,
+          },
+        }),
+      );
+    fake.resubmitCharacterFn = () => Promise.reject(new ConnectError('gone', Code.NotFound));
+    const fixture = await render();
+    click(fixture.nativeElement, 'Enviar de novo');
+    await nextTurn();
+    fixture.detectChanges();
+    expect(alert(fixture.nativeElement)).toContain('Personagem não encontrado');
+  });
+
+  it('shows the error of a sheet that cannot be read, and the enemies layout when the XP mode cannot', async () => {
+    fake.getCharacterSheetFn = () => Promise.reject(new ConnectError('down', Code.Unavailable));
+    const fixture = await render();
+    expect(alert(fixture.nativeElement)).not.toBe('');
+    expect(fixture.nativeElement.textContent).not.toContain('Personagem não encontrado');
+  });
+
+  it('falls back to the XP campaign when the mode cannot be read', async () => {
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ nextLevelXp: 2700, experiencePoints: 10 }));
+    fake.getXpMode = () => Promise.reject(new Error('no'));
+    const fixture = await render();
+    expect(fixture.nativeElement.textContent).toContain('XP');
+  });
+
+  it('drops the answer of an approval and of a death for the sheet the person left', async () => {
+    const approve = deferred<CharacterSheetVm>();
+    const dead = deferred<CharacterSheetVm>();
+    fake.getCharacterSheetFn = (_c, id) =>
+      Promise.resolve(
+        id === 'char-A'
+          ? master({ id, name: 'Alfa', state: 'pending', canApprove: true, canMarkDead: true })
+          : vm({ id, name: 'Bravo' }),
+      );
+    fake.approveCharacterFn = () => approve.promise;
+    fake.markCharacterDeadFn = () => dead.promise;
+    params.next(convertToParamMap({ id: 'camp-1', characterId: 'char-A' }));
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    click(el, 'Aprovar personagem');
+    const component = fixture.componentInstance as unknown as {
+      markDead(c: string, id: string): Promise<void>;
+    };
+    const dying = component.markDead('camp-1', 'char-A');
+
+    params.next(convertToParamMap({ id: 'camp-1', characterId: 'char-B' }));
+    await nextTurn();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Bravo');
+    approve.resolve(master({ id: 'char-A', name: 'Alfa' }));
+    dead.resolve(master({ id: 'char-A', name: 'Alfa', state: 'dead' }));
+    await dying;
+    await nextTurn();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Bravo');
+    expect(el.textContent).not.toContain('Alfa');
+  });
+
+  it('opens no details for a spell the sheet does not list', async () => {
+    fake.getCharacterSheetFn = () => Promise.resolve(vm());
+    const fixture = await render();
+    (fixture.componentInstance as unknown as { describeSpell(key: string): void }).describeSpell(
+      'spell:none',
+    );
+    expect(fake.spellDetailsCalls).toEqual([]);
+  });
+});

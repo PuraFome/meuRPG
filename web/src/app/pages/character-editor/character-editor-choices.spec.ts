@@ -402,7 +402,7 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
     cmp.pickChoice({ choice: cmp.choiceGroupsOfDraft()[0].choices[0], optionKeys: ['defense'] });
     await wait(PAUSE);
     await settle(fixture);
-    expect(cmp.featureChoiceKeys()).toEqual(['feature:style-defense']);
+    expect(cmp.picks.featureChoiceKeys()).toEqual(['feature:style-defense']);
 
     fake.previewChoices = (input: PreviewCharacterInput) => {
       fake.previews.push(input);
@@ -412,7 +412,7 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
     await wait(PAUSE);
     await settle(fixture);
 
-    expect(cmp.featureChoiceKeys()).toEqual([]);
+    expect(cmp.picks.featureChoiceKeys()).toEqual([]);
   });
 
   it("lists the patron's spells as an extra source of the Magias step, from the class level they come at", async () => {
@@ -429,6 +429,6 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
 
     cmp.toggleSpellKnown('spell:burning-hands');
     await settle(fixture);
-    expect(cmp.buildFullValue().spellsKnown).toEqual(['spell:burning-hands']);
+    expect(cmp.draft.build().spellsKnown).toEqual(['spell:burning-hands']);
   });
 });
