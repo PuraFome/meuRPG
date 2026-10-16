@@ -17,8 +17,10 @@ import (
 	"strings"
 )
 
-// DefaultModel is the image model used when GEMINI_IMAGE_MODEL is not set.
-const DefaultModel = "gemini-3.1-flash-image"
+// DefaultModel is the image model used when GEMINI_IMAGE_MODEL is not set: Nano Banana 2.1,
+// the stable update of gemini-3.1-flash-image, at half its price per 1K image (Google's model
+// and pricing pages, 16/10/2026).
+const DefaultModel = "gemini-nano-banana-2.1"
 
 // The most reference images one request may carry: the model takes up to 10
 // objects and 4 characters (Google's image generation guide, 05/10/2026).
