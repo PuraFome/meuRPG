@@ -1,0 +1,86 @@
+{
+  "lastMove": {
+    "at": "<time>",
+    "characterName": "Toren",
+    "move": {
+      "riddle": {
+        "answer": "luz"
+      }
+    },
+    "trapName": "Fosso",
+    "wrong": true
+  },
+  "minimum": {
+    "moves": 1,
+    "solvable": true
+  },
+  "minimumFromStart": {
+    "moves": 1,
+    "solvable": true
+  },
+  "movesMade": 1,
+  "puzzle": {
+    "campaignId": "<uuid>",
+    "clue": "Procure no chão da Cripta.",
+    "config": {
+      "riddle": {
+        "text": "Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?"
+      }
+    },
+    "createdAt": "<time>",
+    "id": "<riddle>",
+    "kind": "PUZZLE_KIND_RIDDLE",
+    "minimum": {
+      "moves": 1,
+      "solvable": true
+    },
+    "name": "Enigma",
+    "onSolve": {
+      "action": "PUZZLE_SOLVE_ACTION_NOTIFY"
+    },
+    "onWrong": {
+      "trap": {
+        "mapId": "<map>",
+        "pointId": "<trap2>"
+      }
+    },
+    "shown": true,
+    "solution": {
+      "riddle": {
+        "answers": [
+          "sombra",
+          "a sombra"
+        ]
+      }
+    },
+    "start": {
+      "riddle": {}
+    },
+    "updatedAt": "<time>"
+  },
+  "run": {
+    "clue": "Procure no chão da Cripta.",
+    "config": {
+      "riddle": {
+        "text": "Moro embaixo de cada passo seu, mas nunca peso nada. O que sou?"
+      }
+    },
+    "kind": "PUZZLE_KIND_RIDDLE",
+    "lastMove": {
+      "at": "<time>",
+      "characterName": "Toren",
+      "trapName": "Fosso",
+      "wrong": true
+    },
+    "name": "Enigma",
+    "puzzleId": "<riddle>",
+    "revision": 2,
+    "state": {
+      "riddle": {}
+    }
+  },
+  "start": {
+    "riddle": {}
+  },
+  "status": "PUZZLE_RUN_STATUS_SHOWN"
+}
