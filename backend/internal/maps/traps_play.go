@@ -16,6 +16,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -91,6 +92,22 @@ func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapI
 	if !ts.g.Valid() {
 		return ts, nil
 	}
+	all, err := s.loadTraps(ctx, q, ts, mapID)
+	if err != nil {
+		return nil, err
+	}
+	if !withEyes {
+		return ts, nil // who sees what is not asked: the party's sheets are not derived
+	}
+	if err := s.loadEyes(ctx, tx, q, ts, campaignID, mapID, size, all); err != nil {
+		return nil, err
+	}
+	return ts, nil
+}
+
+// loadTraps reads the map's points into the scene: the traps with their specs, and who
+// knows each one. It returns every point of the map, for the fog.
+func (s *Service) loadTraps(ctx context.Context, q *mapsdb.Queries, ts *trapScene, mapID string) ([]mapsdb.MapPoint, error) {
 	all, err := q.ListMapPoints(ctx, mapID)
 	if err != nil {
 		return nil, fmt.Errorf("list the points: %w", err)
@@ -109,12 +126,14 @@ func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapI
 	for _, r := range revealed {
 		ts.reveals[r.PointID] = append(ts.reveals[r.PointID], r.CharacterID)
 	}
-	if !withEyes {
-		return ts, nil // who sees what is not asked: the party's sheets are not derived
-	}
+	return all, nil
+}
+
+// loadEyes reads the living party into the scene and, on a map with fog, what it sees.
+func (s *Service) loadEyes(ctx context.Context, tx pgx.Tx, q *mapsdb.Queries, ts *trapScene, campaignID, mapID string, size mapsdb.GetMapGridRow, all []mapsdb.MapPoint) error {
 	party, err := partyOf(ctx, tx, s, campaignID)
 	if err != nil {
-		return nil, fmt.Errorf("read the party: %w", err)
+		return fmt.Errorf("read the party: %w", err)
 	}
 	for _, m := range party {
 		if m.Dead {
@@ -123,16 +142,15 @@ func (s *Service) loadTrapScene(ctx context.Context, tx pgx.Tx, campaignID, mapI
 		ts.members[m.CharacterID] = m
 		ts.order = append(ts.order, m.CharacterID)
 	}
-	if fogged(row) {
-		tokens, err := q.ListMapTokens(ctx, mapID)
-		if err != nil {
-			return nil, fmt.Errorf("list the tokens: %w", err)
-		}
-		if ts.sg, err = s.newSight(ctx, tx, fogInputOfRow(row, size.ImageWidth, size.ImageHeight), all, tokens); err != nil {
-			return nil, err
-		}
+	if !fogged(ts.row) {
+		return nil
 	}
-	return ts, nil
+	tokens, err := q.ListMapTokens(ctx, mapID)
+	if err != nil {
+		return fmt.Errorf("list the tokens: %w", err)
+	}
+	ts.sg, err = s.newSight(ctx, tx, fogInputOfRow(ts.row, size.ImageWidth, size.ImageHeight), all, tokens)
+	return err
 }
 
 // stateAt is how the viewer sees a square: with the fog on, from the compiled
@@ -195,24 +213,32 @@ func (ts *trapScene) nearbyObscured(v vision.Viewer) bool {
 func (ts *trapScene) sightOf(v vision.Viewer, area []grid.Square) sighting {
 	var out sighting
 	for _, sq := range area {
-		near := grid.LengthDFt(v.At, sq) <= noticeRangeDFt
-		seen := seesSquare(ts.stateAt(v, sq))
-		out.inRange = out.inRange || near
-		if seen {
-			pen := ts.penaltyAt(v, sq)
-			if !out.sees || pen > out.seenPenalty {
-				out.seenPenalty = pen
-			}
-			out.sees = true
-			if near {
-				if !out.eligible || pen > out.penalty {
-					out.penalty, out.obscured = pen, pen < 0
-				}
-				out.eligible = true
-			}
-		}
+		out.addSquare(ts, v, sq)
 	}
 	return out
+}
+
+// addSquare adds what the viewer makes of one square of an area: whether it is near, seen,
+// and the best light penalty among the squares seen (and among the ones seen and near).
+func (out *sighting) addSquare(ts *trapScene, v vision.Viewer, sq grid.Square) {
+	near := grid.LengthDFt(v.At, sq) <= noticeRangeDFt
+	seen := seesSquare(ts.stateAt(v, sq))
+	out.inRange = out.inRange || near
+	if !seen {
+		return
+	}
+	pen := ts.penaltyAt(v, sq)
+	if !out.sees || pen > out.seenPenalty {
+		out.seenPenalty = pen
+	}
+	out.sees = true
+	if !near {
+		return
+	}
+	if !out.eligible || pen > out.penalty {
+		out.penalty, out.obscured = pen, pen < 0
+	}
+	out.eligible = true
 }
 
 // eyesOf is what an observer notices with, and the user who plays the
@@ -242,8 +268,8 @@ func armed(p mapsdb.MapPoint) bool { return p.TrapState != nil && *p.TrapState =
 // notice it, learns of the trap (map_point_reveals, how "noticed"), and only its
 // player hears of it (`map_changed`, per user). A trap with no DC to notice is
 // never noticed this way. The play module calls it after a combat move commits
-// and PlaceMapToken calls it after a token lands. It implements play.TrapBook; it
-// takes no caller, and failing leaves the move made.
+// and PlaceMapToken calls it after a token lands. It implements play.TrapBook;
+// it takes no caller, and failing leaves the move made.
 func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []link.Observer) error {
 	if len(who) == 0 {
 		return nil
@@ -252,66 +278,11 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 	if err != nil || len(ts.points) == 0 {
 		return err
 	}
-	type find struct{ point, character, user string }
-	var finds []find
-	for _, ob := range who {
-		eyes, user, ok := ts.eyesOf(ob)
-		if !ok {
-			continue
-		}
-		viewer := vision.Viewer{At: ob.At, Senses: eyes.Senses}
-		for _, p := range ts.points {
-			spec := ts.specs[p.ID]
-			if !armed(p) || spec == nil || spec.GetNoticeDc() == 0 || ts.knows(p, ob.CharacterID) ||
-				slices.ContainsFunc(finds, func(f find) bool { return f.point == p.ID && f.character == ob.CharacterID }) {
-				continue
-			}
-			if sg := ts.sightOf(viewer, s.pointSquares(ts.g, p)); sg.eligible && eyes.Passive+sg.penalty >= int(spec.GetNoticeDc()) {
-				finds = append(finds, find{point: p.ID, character: ob.CharacterID, user: user})
-			}
-		}
-	}
+	finds := s.noticeFinds(ts, who)
 	if len(finds) == 0 {
 		return nil
 	}
-	var told []string
-	var noticed []noticeKey // the (trap, player) pairs that are new, in order
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		told, noticed = nil, nil
-		now := s.now()
-		// One event for each trap and player: the actor is the one whose character noticed.
-		byKey := map[noticeKey][]string{}
-		var order []noticeKey
-		for _, f := range finds {
-			n, err := q.InsertPointReveal(ctx, mapsdb.InsertPointRevealParams{PointID: f.point, CharacterID: f.character, How: "noticed", At: now})
-			if err != nil {
-				return fmt.Errorf("reveal the trap: %w", err)
-			}
-			if n == 0 {
-				continue
-			}
-			k := noticeKey{f.point, f.user}
-			if _, seen := byKey[k]; !seen {
-				order = append(order, k)
-			}
-			byKey[k] = append(byKey[k], f.character)
-			if !slices.Contains(told, f.user) {
-				told = append(told, f.user)
-			}
-		}
-		for _, k := range order {
-			payload, err := json.Marshal(trapNoticedEvent{PointID: k.point, CharacterIDs: byKey[k]})
-			if err != nil {
-				return fmt.Errorf("encode the event payload: %w", err)
-			}
-			if _, err := s.live.AppendEvent(ctx, tx, campaignID, eventTrapNoticed, k.user, payload, now); err != nil {
-				return fmt.Errorf("record the notice: %w", err)
-			}
-			noticed = append(noticed, k)
-		}
-		return nil
-	})
+	told, noticed, err := s.recordNotices(ctx, campaignID, finds)
 	if err != nil {
 		return fmt.Errorf("notice a trap: %w", err)
 	}
@@ -320,6 +291,106 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 	// The master's trap card and log have news: a hint with no content.
 	s.live.Publish(campaignID, false, mapChangedEvent(mapID))
 	return nil
+}
+
+// noticeFind is one trap that one character, played by user, notices.
+type noticeFind struct{ point, character, user string }
+
+// noticeFinds works out, from what each observer sees, the traps each one notices: in
+// the order of the observers and then of the traps, once for each pair.
+func (s *Service) noticeFinds(ts *trapScene, who []link.Observer) []noticeFind {
+	var finds []noticeFind
+	for _, ob := range who {
+		eyes, user, ok := ts.eyesOf(ob)
+		if !ok {
+			continue
+		}
+		viewer := vision.Viewer{At: ob.At, Senses: eyes.Senses}
+		for _, p := range ts.points {
+			if slices.ContainsFunc(finds, func(f noticeFind) bool { return f.point == p.ID && f.character == ob.CharacterID }) {
+				continue
+			}
+			if s.noticesTrap(ts, p, ob.CharacterID, eyes, viewer) {
+				finds = append(finds, noticeFind{point: p.ID, character: ob.CharacterID, user: user})
+			}
+		}
+	}
+	return finds
+}
+
+// noticesTrap says the character notices the trap by passing: the trap is armed, has a DC
+// to notice, is not known to the character yet, and the character sees a square of its
+// area within 3 m with a passive Perception, less the light there, that reaches the DC.
+func (s *Service) noticesTrap(ts *trapScene, p mapsdb.MapPoint, characterID string, eyes link.Eyes, viewer vision.Viewer) bool {
+	spec := ts.specs[p.ID]
+	if !armed(p) || spec == nil || spec.GetNoticeDc() == 0 || ts.knows(p, characterID) {
+		return false
+	}
+	sg := ts.sightOf(viewer, s.pointSquares(ts.g, p))
+	return sg.eligible && eyes.Passive+sg.penalty >= int(spec.GetNoticeDc())
+}
+
+// recordNotices writes the reveals of the finds in one transaction, and one event for each
+// trap and player (the actor is the one whose character noticed). It returns the players
+// told, and the (trap, player) pairs that are new, in order.
+func (s *Service) recordNotices(ctx context.Context, campaignID string, finds []noticeFind) ([]string, []noticeKey, error) {
+	var told []string
+	var noticed []noticeKey
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		told, noticed = nil, nil
+		now := s.now()
+		var order []noticeKey
+		var byKey map[noticeKey][]string
+		var err error
+		if told, order, byKey, err = s.insertNotices(ctx, s.queries.WithTx(tx), finds, now); err != nil {
+			return err
+		}
+		noticed, err = s.appendNotices(ctx, tx, campaignID, order, byKey, now)
+		return err
+	})
+	return told, noticed, err
+}
+
+// insertNotices writes a "noticed" reveal for each find, and groups the new ones by trap
+// and player. It returns the players told, the keys in order and the characters of each.
+func (s *Service) insertNotices(ctx context.Context, q *mapsdb.Queries, finds []noticeFind, now time.Time) ([]string, []noticeKey, map[noticeKey][]string, error) {
+	var told []string
+	var order []noticeKey
+	byKey := map[noticeKey][]string{}
+	for _, f := range finds {
+		n, err := q.InsertPointReveal(ctx, mapsdb.InsertPointRevealParams{PointID: f.point, CharacterID: f.character, How: "noticed", At: now})
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("reveal the trap: %w", err)
+		}
+		if n == 0 {
+			continue
+		}
+		k := noticeKey{f.point, f.user}
+		if _, seen := byKey[k]; !seen {
+			order = append(order, k)
+		}
+		byKey[k] = append(byKey[k], f.character)
+		if !slices.Contains(told, f.user) {
+			told = append(told, f.user)
+		}
+	}
+	return told, order, byKey, nil
+}
+
+// appendNotices writes the session event of each (trap, player) pair, in order.
+func (s *Service) appendNotices(ctx context.Context, tx pgx.Tx, campaignID string, order []noticeKey, byKey map[noticeKey][]string, now time.Time) ([]noticeKey, error) {
+	var noticed []noticeKey
+	for _, k := range order {
+		payload, err := json.Marshal(trapNoticedEvent{PointID: k.point, CharacterIDs: byKey[k]})
+		if err != nil {
+			return nil, fmt.Errorf("encode the event payload: %w", err)
+		}
+		if _, err := s.live.AppendEvent(ctx, tx, campaignID, eventTrapNoticed, k.user, payload, now); err != nil {
+			return nil, fmt.Errorf("record the notice: %w", err)
+		}
+		noticed = append(noticed, k)
+	}
+	return noticed, nil
 }
 
 // tellUsers tells those players that the map changed (a trap they now know), when
@@ -388,32 +459,14 @@ func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID 
 		return link.SearchResult{}, link.ErrSearchNeedsTwoDice
 	}
 	q := s.queries.WithTx(tx)
+	search := trapSearch{who: who, viewer: viewer, skill: skill, totals: totals, at: at}
 	var out link.SearchResult
 	for _, p := range ts.points {
-		spec := ts.specs[p.ID]
-		if !armed(p) || spec == nil || ts.knows(p, who.CharacterID) {
-			continue
-		}
-		dc := int(spec.GetFindDc())
-		switch {
-		case skill == "perception":
-			dc = int(spec.GetNoticeDc())
-		case skill != "investigation" && !slices.Contains(spec.GetAlsoFindSkillKeys(), skill):
-			continue // another skill finds only the traps whose master allowed it, against the DC to find
-		}
-		sg := ts.sightOf(viewer, s.pointSquares(ts.g, p))
-		total := totals[0]
-		if skill == "perception" && sg.obscured && len(totals) > 1 {
-			total = min(totals[0], totals[1])
-		}
-		if dc == 0 || total < dc || !sg.eligible {
-			continue
-		}
-		n, err := q.InsertPointReveal(ctx, mapsdb.InsertPointRevealParams{PointID: p.ID, CharacterID: who.CharacterID, How: "searched", At: at})
+		found, err := s.searchTrap(ctx, q, ts, p, search)
 		if err != nil {
-			return link.SearchResult{}, fmt.Errorf("reveal the trap: %w", err)
+			return link.SearchResult{}, err
 		}
-		if n == 1 {
+		if found {
 			out.Found = append(out.Found, p.ID)
 		}
 	}
@@ -421,6 +474,55 @@ func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID 
 		out.Users = []string{user}
 	}
 	return out, nil
+}
+
+// trapSearch is one character's search: who, from where, with which skill and rolls.
+type trapSearch struct {
+	who    link.Observer
+	viewer vision.Viewer
+	skill  string
+	totals []int
+	at     time.Time
+}
+
+// searchDC is the DC the skill meets on the trap, and whether the skill searches this trap at
+// all: Perception meets the DC to notice, Investigation the DC to find, and another skill
+// the DC to find, only on the traps whose master listed it.
+func searchDC(skill string, spec *mapsv1.TrapSpec) (int, bool) {
+	switch {
+	case skill == "perception":
+		return int(spec.GetNoticeDc()), true
+	case skill != "investigation" && !slices.Contains(spec.GetAlsoFindSkillKeys(), skill):
+		return 0, false // another skill finds only the traps whose master allowed it, against the DC to find
+	}
+	return int(spec.GetFindDc()), true
+}
+
+// searchTrap tries the search on one trap, and says whether it revealed the trap to the
+// searcher's character just now: it must be armed, unknown to the character, within 3 m and
+// seen, and the total must reach the DC.
+func (s *Service) searchTrap(ctx context.Context, q *mapsdb.Queries, ts *trapScene, p mapsdb.MapPoint, c trapSearch) (bool, error) {
+	spec := ts.specs[p.ID]
+	if !armed(p) || spec == nil || ts.knows(p, c.who.CharacterID) {
+		return false, nil
+	}
+	dc, ok := searchDC(c.skill, spec)
+	if !ok {
+		return false, nil
+	}
+	sg := ts.sightOf(c.viewer, s.pointSquares(ts.g, p))
+	total := c.totals[0]
+	if c.skill == "perception" && sg.obscured && len(c.totals) > 1 {
+		total = min(c.totals[0], c.totals[1])
+	}
+	if dc == 0 || total < dc || !sg.eligible {
+		return false, nil
+	}
+	n, err := q.InsertPointReveal(ctx, mapsdb.InsertPointRevealParams{PointID: p.ID, CharacterID: c.who.CharacterID, How: "searched", At: c.at})
+	if err != nil {
+		return false, fmt.Errorf("reveal the trap: %w", err)
+	}
+	return n == 1, nil
 }
 
 // Told tells the players that the map changed, after a commit that revealed a
@@ -597,19 +699,7 @@ func (s *Service) GetTrapNoticers(
 	}
 	i := slices.IndexFunc(ts.points, func(p mapsdb.MapPoint) bool { return p.ID == pointID })
 	if i < 0 {
-		// Not a trap of a map with a grid: a point of another kind is the caller's
-		// mistake, a point that is not there is not found.
-		p, err := s.queries.GetMapPoint(ctx, mapsdb.GetMapPointParams{MapID: mapID, ID: pointID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errPointNotFound()
-		}
-		if err != nil {
-			return nil, s.dbError(ctx, "find the point", err)
-		}
-		if p.Kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TRAP] {
-			return nil, badSpec("the point is not a TRAP point")
-		}
-		return connect.NewResponse(&mapsv1.GetTrapNoticersResponse{}), nil // a map with no grid: no squares to notice from
+		return s.noNoticersOf(ctx, mapID, pointID)
 	}
 	p := ts.points[i]
 	spec := ts.specs[pointID]
@@ -629,23 +719,47 @@ func (s *Service) GetTrapNoticers(
 		if !ok {
 			continue
 		}
-		n := &mapsv1.TrapNoticer{CharacterId: id, CharacterName: names[id], PassivePerception: int32(member.PassivePerception), Knows: ts.knows(p, id)} //nolint:gosec // G115: a score
-		if at, on := stands[id]; on {
-			n.OnMap = true
-			sg := ts.sightOf(vision.Viewer{At: at, Senses: member.Senses}, area)
-			n.InRange, n.Sees = sg.inRange, sg.sees
-			n.LightPenalty = int32(sg.seenPenalty) //nolint:gosec // G115: 0 or -5
-			if sg.eligible {
-				n.LightPenalty = int32(sg.penalty) //nolint:gosec // G115: 0 or -5
-				n.WouldNotice = spec.GetNoticeDc() > 0 && member.PassivePerception+sg.penalty >= int(spec.GetNoticeDc())
-			}
-		}
-		// What the score would do at the DC with the penalty reported here, wherever the character
-		// stands and whether or not it sees the squares: the screen shows it for the ones out of range.
-		n.PassesDc = spec.GetNoticeDc() > 0 && member.PassivePerception+int(n.LightPenalty) >= int(spec.GetNoticeDc())
-		out.Noticers = append(out.Noticers, n)
+		at, on := stands[id]
+		out.Noticers = append(out.Noticers, noticerOf(ts, p, spec, area, member, names[id], at, on))
 	}
 	return connect.NewResponse(out), nil
+}
+
+// noNoticersOf answers for a point that is not among the traps of a map with a grid: a
+// point of another kind is the caller's mistake, a point that is not there is not found,
+// and a trap of a map with no grid has no squares to notice from.
+func (s *Service) noNoticersOf(ctx context.Context, mapID, pointID string) (*connect.Response[mapsv1.GetTrapNoticersResponse], error) {
+	p, err := s.queries.GetMapPoint(ctx, mapsdb.GetMapPointParams{MapID: mapID, ID: pointID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errPointNotFound()
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "find the point", err)
+	}
+	if p.Kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_TRAP] {
+		return nil, badSpec("the point is not a TRAP point")
+	}
+	return connect.NewResponse(&mapsv1.GetTrapNoticersResponse{}), nil // a map with no grid: no squares to notice from
+}
+
+// noticerOf is one character of the party as the master's "Quem notaria" shows it for a
+// trap: what it would notice from where it stands (at, when on the map).
+func noticerOf(ts *trapScene, p mapsdb.MapPoint, spec *mapsv1.TrapSpec, area []grid.Square, member link.PartyMember, name string, at grid.Square, on bool) *mapsv1.TrapNoticer {
+	n := &mapsv1.TrapNoticer{CharacterId: member.CharacterID, CharacterName: name, PassivePerception: int32(member.PassivePerception), Knows: ts.knows(p, member.CharacterID)} //nolint:gosec // G115: a score
+	if on {
+		n.OnMap = true
+		sg := ts.sightOf(vision.Viewer{At: at, Senses: member.Senses}, area)
+		n.InRange, n.Sees = sg.inRange, sg.sees
+		n.LightPenalty = int32(sg.seenPenalty) //nolint:gosec // G115: 0 or -5
+		if sg.eligible {
+			n.LightPenalty = int32(sg.penalty) //nolint:gosec // G115: 0 or -5
+			n.WouldNotice = spec.GetNoticeDc() > 0 && member.PassivePerception+sg.penalty >= int(spec.GetNoticeDc())
+		}
+	}
+	// What the score would do at the DC with the penalty reported here, wherever the character
+	// stands and whether or not it sees the squares: the screen shows it for the ones out of range.
+	n.PassesDc = spec.GetNoticeDc() > 0 && member.PassivePerception+int(n.LightPenalty) >= int(spec.GetNoticeDc())
+	return n
 }
 
 // standsOf is where each player character stands on the map: its combatant's
@@ -680,55 +794,67 @@ func (s *Service) DisarmTrap(
 	if err != nil {
 		return nil, err
 	}
-	var mapRow mapsdb.Map
-	var after mapsdb.MapPoint
-	var knowers []string
-	var changed bool
+	var res trapDisarm
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		changed = false
-		var before mapsdb.MapPoint
-		var err error
-		if mapRow, before, err = s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP); err != nil {
-			return err
-		}
-		after = before
-		if before.TrapState != nil && *before.TrapState == "disarmed" {
-			return nil // already disarmed: nothing changes, nothing is recorded
-		}
-		if knowers, err = s.trapKnowers(ctx, tx, q, m.CampaignID, before); err != nil {
-			return err
-		}
-		now := s.now()
-		disarmed := "disarmed"
-		if after, err = q.SetTrapState(ctx, mapsdb.SetTrapStateParams{MapID: mapID, ID: pointID, TrapState: &disarmed, TrapTriggeredAt: before.TrapTriggeredAt, Now: now}); err != nil {
-			return fmt.Errorf("disarm the trap: %w", err)
-		}
-		payload, err := json.Marshal(trapDisarmedEvent{PointID: pointID})
-		if err != nil {
-			return fmt.Errorf("encode the event payload: %w", err)
-		}
-		// With no open session nothing is written here: the trap is still disarmed.
-		if _, err := s.live.AppendEvent(ctx, tx, m.CampaignID, eventTrapDisarmed, m.UserID, payload, now); err != nil {
-			return fmt.Errorf("record the disarm: %w", err)
-		}
-		changed = true
-		return nil
+		res.changed = false
+		return s.disarmTrapIn(ctx, tx, m, mapID, pointID, &res)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "disarm a trap", err)
 	}
-	if changed {
+	if res.changed {
 		// Everyone who sees a public trap hears of it; one that is not public reaches
 		// the players whose characters know it, and nobody else (RN-10).
-		s.publishPointsChanged(ctx, m.CampaignID, mapRow, everyoneSees(after) && playersSee(mapID, mapRow.RevealedAt, current), after)
-		s.tellTrapKnowers(m.CampaignID, mapID, mapRow, current, knowers)
+		s.publishPointsChanged(ctx, m.CampaignID, res.mapRow, everyoneSees(res.after) && playersSee(mapID, res.mapRow.RevealedAt, current), res.after)
+		s.tellTrapKnowers(m.CampaignID, mapID, res.mapRow, current, res.knowers)
 	}
-	out, err := s.masterPoint(ctx, m, after)
+	out, err := s.masterPoint(ctx, m, res.after)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&mapsv1.DisarmTrapResponse{Point: out}), nil
+}
+
+// trapDisarm is what the DisarmTrap transaction ends with: the map and the trap as they are
+// now, the players whose characters know the trap, and whether this call disarmed it.
+type trapDisarm struct {
+	mapRow  mapsdb.Map
+	after   mapsdb.MapPoint
+	knowers []string
+	changed bool
+}
+
+// disarmTrapIn is the transaction of DisarmTrap: a trap already disarmed changes nothing;
+// otherwise the players who know it are read before the change, it is disarmed (its
+// firing time kept) and the disarm is recorded.
+func (s *Service) disarmTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string, res *trapDisarm) error {
+	q := s.queries.WithTx(tx)
+	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP)
+	if err != nil {
+		return err
+	}
+	res.mapRow, res.after = mapRow, before
+	if before.TrapState != nil && *before.TrapState == "disarmed" {
+		return nil // already disarmed: nothing changes, nothing is recorded
+	}
+	if res.knowers, err = s.trapKnowers(ctx, tx, q, m.CampaignID, before); err != nil {
+		return err
+	}
+	now := s.now()
+	disarmed := "disarmed"
+	if res.after, err = q.SetTrapState(ctx, mapsdb.SetTrapStateParams{MapID: mapID, ID: pointID, TrapState: &disarmed, TrapTriggeredAt: before.TrapTriggeredAt, Now: now}); err != nil {
+		return fmt.Errorf("disarm the trap: %w", err)
+	}
+	payload, err := json.Marshal(trapDisarmedEvent{PointID: pointID})
+	if err != nil {
+		return fmt.Errorf("encode the event payload: %w", err)
+	}
+	// With no open session nothing is written here: the trap is still disarmed.
+	if _, err := s.live.AppendEvent(ctx, tx, m.CampaignID, eventTrapDisarmed, m.UserID, payload, now); err != nil {
+		return fmt.Errorf("record the disarm: %w", err)
+	}
+	res.changed = true
+	return nil
 }
 
 // TrapFirer is what this package needs from the play module to fire a trap when
