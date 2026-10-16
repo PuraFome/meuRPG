@@ -138,7 +138,7 @@ func (q *Queries) AnswerInspirationHold(ctx context.Context, arg AnswerInspirati
 
 const answerInspirationHoldLucky = `-- name: AnswerInspirationHoldLucky :one
 UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, lucky_answer_key = $5, lucky_to = $6 WHERE id = $1
-RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold
 `
 
 type AnswerInspirationHoldLuckyParams struct {
@@ -181,6 +181,9 @@ func (q *Queries) AnswerInspirationHoldLucky(ctx context.Context, arg AnswerInsp
 		&i.LuckyIndex,
 		&i.LuckyAnswerKey,
 		&i.LuckyTo,
+		&i.CombatantID,
+		&i.EncounterID,
+		&i.WindowHold,
 	)
 	return i, err
 }
@@ -1787,7 +1790,7 @@ func (q *Queries) GetHitRider(ctx context.Context, arg GetHitRiderParams) (HitRi
 }
 
 const getInspirationHold = `-- name: GetInspirationHold :one
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
 `
 
 type GetInspirationHoldParams struct {
@@ -1817,12 +1820,15 @@ func (q *Queries) GetInspirationHold(ctx context.Context, arg GetInspirationHold
 		&i.LuckyIndex,
 		&i.LuckyAnswerKey,
 		&i.LuckyTo,
+		&i.CombatantID,
+		&i.EncounterID,
+		&i.WindowHold,
 	)
 	return i, err
 }
 
 const getInspirationHoldByKey = `-- name: GetInspirationHoldByKey :one
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
 `
 
 type GetInspirationHoldByKeyParams struct {
@@ -1852,6 +1858,9 @@ func (q *Queries) GetInspirationHoldByKey(ctx context.Context, arg GetInspiratio
 		&i.LuckyIndex,
 		&i.LuckyAnswerKey,
 		&i.LuckyTo,
+		&i.CombatantID,
+		&i.EncounterID,
+		&i.WindowHold,
 	)
 	return i, err
 }
@@ -3796,7 +3805,7 @@ func (q *Queries) InsertHitRider(ctx context.Context, arg InsertHitRiderParams) 
 const insertInspirationHold = `-- name: InsertInspirationHold :one
 INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold
 `
 
 type InsertInspirationHoldParams struct {
@@ -3855,6 +3864,9 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		&i.LuckyIndex,
 		&i.LuckyAnswerKey,
 		&i.LuckyTo,
+		&i.CombatantID,
+		&i.EncounterID,
+		&i.WindowHold,
 	)
 	return i, err
 }
@@ -6088,7 +6100,7 @@ func (q *Queries) ListHitRiders(ctx context.Context, encounterID string) ([]HitR
 }
 
 const listInspirationHoldsOfCharacter = `-- name: ListInspirationHoldsOfCharacter :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at
 `
 
 func (q *Queries) ListInspirationHoldsOfCharacter(ctx context.Context, characterID string) ([]InspirationHold, error) {
@@ -6119,6 +6131,9 @@ func (q *Queries) ListInspirationHoldsOfCharacter(ctx context.Context, character
 			&i.LuckyIndex,
 			&i.LuckyAnswerKey,
 			&i.LuckyTo,
+			&i.CombatantID,
+			&i.EncounterID,
+			&i.WindowHold,
 		); err != nil {
 			return nil, err
 		}

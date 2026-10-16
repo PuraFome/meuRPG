@@ -72,6 +72,8 @@ erDiagram
         uuid id PK
         uuid campaign_id FK
         uuid character_id FK
+        uuid combatant_id FK
+        uuid encounter_id FK
     }
     trap_damages {
         uuid id PK
@@ -85,6 +87,9 @@ erDiagram
         uuid id PK
     }
     encounters {
+        uuid id PK
+    }
+    combatants {
         uuid id PK
     }
     gallery_images {
@@ -117,6 +122,8 @@ erDiagram
     game_sessions ||--o{ group_checks : "game_session_id"
     campaigns ||--o{ inspiration_holds : "campaign_id"
     characters ||--o{ inspiration_holds : "character_id"
+    combatants |o--o{ inspiration_holds : "combatant_id"
+    encounters |o--o{ inspiration_holds : "encounter_id"
     campaigns ||--o{ revivify_requests : "campaign_id"
     characters ||--o{ revivify_requests : "caster_character_id"
     game_sessions ||--o{ revivify_requests : "game_session_id"
@@ -246,9 +253,13 @@ When a combat takes the character in, the row becomes a `combatant_states` row o
 In a combat the die is the combatant's (`combatants.inspiration_*`) and this row is gone.
 
 `inspiration_holds` keeps a roll that waits for the player's answer about the die, or about the halfling's Lucky.
-`kind` is `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save` or `concentration_save`.
+`kind` is `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save` or `concentration_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
 `request` is the request that made it (protobuf), `faces`, `modifier`, `total`, `counted` and `physical` the d20 it rolled, `answer_key` is set once answered, unique on `(campaign_id, idempotency_key)`.
 `round` is the combat's round for a roll held in a combat and `NULL` out of one.
+`combatant_id` (the roller in a combat, `CASCADE`) and `encounter_id` (the combat the roll was held in, `CASCADE`) are `NULL` out of a combat; when `combatant_id` is set it is the owner of the hold (the copies of an NPC and the creatures of a combat share a `character_id`).
+`window_hold` says the hold is the attack a reaction window kept (`roll_holds` marks it with a `#window` suffix of its key).
+Nothing reads or writes these three columns yet; the weapon attack still waits in `roll_holds`, until a later release moves its writes here.
+The partial index `inspiration_holds_open_combat_idx` on `(encounter_id, combatant_id)` where `answer_key IS NULL` serves the open questions of a combat.
 Lucky: `lucky_index` is the die that shows a 1 (0 for a single d20; 0 or 1 for a pair, in the order rolled; `NULL` with no Lucky question), `lucky_answer_key` the key of the answer and `lucky_to` the new face (1 to 20; `NULL` when the player kept the 1).
 The question waits while `lucky_index` is set and both keys are `NULL`; then `faces`, `counted` and `total` hold the d20 after the answer, which a die question (if the character holds one) is asked about next.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.

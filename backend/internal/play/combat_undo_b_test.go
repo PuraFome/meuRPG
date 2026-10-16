@@ -499,11 +499,13 @@ func TestUndoKindActionTakenDisengagedBefore(t *testing.T) {
 // listed, so nobody reads it.
 var deltaAnsweredInspirationHold = undoDelta{
 	"+ db/inspiration_holds[#].answer_key=#", "+ db/inspiration_holds[#].campaign_id=#", "+ db/inspiration_holds[#].character_id=#",
-	"+ db/inspiration_holds[#].counted=0", "+ db/inspiration_holds[#].faces[0]=4", "+ db/inspiration_holds[#].idempotency_key=#",
+	"+ db/inspiration_holds[#].combatant_id=<nil>", "+ db/inspiration_holds[#].counted=0", "+ db/inspiration_holds[#].encounter_id=<nil>",
+	"+ db/inspiration_holds[#].faces[0]=4", "+ db/inspiration_holds[#].idempotency_key=#",
 	"+ db/inspiration_holds[#].kind=spell_attack", "+ db/inspiration_holds[#].lucky_answer_key=<nil>",
 	"+ db/inspiration_holds[#].lucky_index=<nil>", "+ db/inspiration_holds[#].lucky_to=<nil>", "+ db/inspiration_holds[#].modifier=5",
 	"+ db/inspiration_holds[#].physical=true", "+ db/inspiration_holds[#].request=<blob>", "+ db/inspiration_holds[#].round=1",
 	"+ db/inspiration_holds[#].total=9", "+ db/inspiration_holds[#].user_id=#",
+	"+ db/inspiration_holds[#].window_hold=false",
 }
 
 // TestUndoKindSpellCastBardicDie: the spell attack that used a Bardic Inspiration die holds
