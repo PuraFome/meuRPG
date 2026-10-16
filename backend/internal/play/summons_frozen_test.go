@@ -89,7 +89,9 @@ func TestSummonsCastSummonRefusesEachBadRequest(t *testing.T) {
 		{"slot cast without a slot", func(r *playv1.CastSummonRequest) { r.Ritual = false }, invalid, "a ritual is cast with no slot, and any other casting needs one"},
 		{"unknown character", func(r *playv1.CastSummonRequest) { r.CharacterId = summonsNoSuchID }, connect.CodeNotFound, "character not found"},
 		{"an NPC", func(r *playv1.CastSummonRequest) { r.CharacterId = a.goblin.GetId() }, connect.CodeNotFound, "character not found"},
-		{"not the caster's spell", func(r *playv1.CastSummonRequest) { r.Ritual, r.Slot, r.SpellKey = false, slotOfLevel(3), "spell:fireball" }, invalid, "spell_key is not one of the caster's spells"},
+		{"not the caster's spell", func(r *playv1.CastSummonRequest) {
+			r.Ritual, r.Slot, r.SpellKey = false, slotOfLevel(3), "spell:fireball"
+		}, invalid, "spell_key is not one of the caster's spells"},
 	}
 	for _, tc := range cases {
 		req := a.summonRequest(newKey())
@@ -353,4 +355,3 @@ func TestSummonsWildShapeRefusesEachBadRequest(t *testing.T) {
 	err = a.shapeRaw(s.bia, true, salvia, wolfKey, newKey())
 	wantSummonsBlocked(t, "Assume(again)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_IN_WILD_SHAPE, "the character is in a beast form already")
 }
-
