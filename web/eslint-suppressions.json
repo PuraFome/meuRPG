@@ -19,17 +19,6 @@
       "count": 1
     }
   },
-  "src/app/core/combat/cast-flow.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 3
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/core/combat/combat-dice.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
@@ -40,27 +29,9 @@
       "count": 2
     }
   },
-  "src/app/core/combat/combat-log.ts": {
-    "complexity": {
-      "count": 2
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/combat/combat-notices.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
   "src/app/core/combat/combat-options.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    }
-  },
-  "src/app/core/combat/combat-view.ts": {
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/combat/creature-names.ts": {
@@ -71,11 +42,6 @@
   "src/app/core/combat/death-saves.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    }
-  },
-  "src/app/core/combat/spell-summary.ts": {
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/content/catalog.ts": {
@@ -2970,16 +2936,6 @@
   "src/test-settle.spec.ts": {
     "no-restricted-syntax": {
       "count": 2
-    }
-  },
-  "src/app/core/combat/combat-client.ts": {
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/combat/reactions.ts": {
-    "max-lines": {
-      "count": 1
     }
   },
   "src/app/core/content/class-draft.ts": {
