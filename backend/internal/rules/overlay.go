@@ -778,35 +778,66 @@ type pendingEffects struct {
 	path string
 }
 
-// byKey lists the indexes of a slice of entries in the order of their keys, so
+// overlayKind is one table of the Overlay: its name in the paths, the prefix of
+// its keys, and what the two passes do with each entry.
+type overlayKind struct {
+	list, prefix string
+	// claimRank is the place of the kind in claimKeys; the order of overlayKinds is
+	// the one addEntries adds in. The two differ on purpose: they fix which error
+	// the editor shows first.
+	claimRank int
+	n         int
+	entry     func(i int) TableEntry
+	add       func(i int, path string) error
+	// learn, when set, records what the later checks need of the entry once its
+	// key is claimed.
+	learn func(i int)
+}
+
+// overlayKinds lists the seven kinds in the order addEntries adds them.
+func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
+	return []overlayKind{
+		{list: "spells", prefix: "spell:", claimRank: 5, n: len(o.Spells),
+			entry: func(i int) TableEntry { return o.Spells[i].TableEntry },
+			add:   func(i int, path string) error { return b.addSpell(&o.Spells[i], path) }},
+		{list: "races", prefix: "race:", claimRank: 2, n: len(o.Races),
+			entry: func(i int) TableEntry { return o.Races[i].TableEntry },
+			add:   func(i int, path string) error { return b.addRace(&o.Races[i], path) }},
+		{list: "subraces", prefix: "subrace:", claimRank: 3, n: len(o.Subraces),
+			entry: func(i int) TableEntry { return o.Subraces[i].TableEntry },
+			add:   func(i int, path string) error { return b.addSubrace(&o.Subraces[i], path) }},
+		{list: "classes", prefix: "class:", claimRank: 0, n: len(o.Classes),
+			entry: func(i int) TableEntry { return o.Classes[i].TableEntry },
+			add:   func(i int, path string) error { return b.addClass(&o.Classes[i], path) },
+			learn: func(i int) {
+				e := &o.Classes[i]
+				b.classListFrom[e.Key] = e.Casting.ListFrom
+				b.classCasts[e.Key] = e.Casting.Kind
+				b.classSubLevel[e.Key] = e.SubclassLevel
+			}},
+		{list: "subclasses", prefix: "subclass:", claimRank: 1, n: len(o.Subclasses),
+			entry: func(i int) TableEntry { return o.Subclasses[i].TableEntry },
+			add:   func(i int, path string) error { return b.addSubclass(&o.Subclasses[i], path) }},
+		{list: "backgrounds", prefix: "background:", claimRank: 4, n: len(o.Backgrounds),
+			entry: func(i int) TableEntry { return o.Backgrounds[i].TableEntry },
+			add:   func(i int, path string) error { return b.addBackground(&o.Backgrounds[i], path) }},
+		{list: "feats", prefix: "feat:", claimRank: 6, n: len(o.Feats),
+			entry: func(i int) TableEntry { return o.Feats[i].TableEntry },
+			add:   func(i int, path string) error { return b.addFeat(&o.Feats[i], path) }},
+	}
+}
+
+// byKey lists the indexes of the kind's entries in the order of their keys, so
 // the result of With does not depend on the order the caller listed them in
 // (the order of a class's subclasses, of a race's subraces...). The indexes stay
 // the caller's, so an error's Field points at the entry as it was passed.
-func byKey[T any](items []T, key func(*T) string) []int {
-	idx := make([]int, len(items))
+func (k overlayKind) byKey() []int {
+	idx := make([]int, k.n)
 	for i := range idx {
 		idx[i] = i
 	}
-	slices.SortStableFunc(idx, func(a, b int) int { return strings.Compare(key(&items[a]), key(&items[b])) })
+	slices.SortStableFunc(idx, func(a, c int) int { return strings.Compare(k.entry(a).Key, k.entry(c).Key) })
 	return idx
-}
-
-// overlayOrder is the indexes of each kind of entry in the order of their keys
-// (byKey): the order build claims and adds them in.
-type overlayOrder struct {
-	spells, races, subraces, classes, subclasses, backgrounds, feats []int
-}
-
-func orderOf(o *Overlay) overlayOrder {
-	return overlayOrder{
-		spells:      byKey(o.Spells, func(e *TableSpell) string { return e.Key }),
-		races:       byKey(o.Races, func(e *TableRace) string { return e.Key }),
-		subraces:    byKey(o.Subraces, func(e *TableSubrace) string { return e.Key }),
-		classes:     byKey(o.Classes, func(e *TableClass) string { return e.Key }),
-		subclasses:  byKey(o.Subclasses, func(e *TableSubclass) string { return e.Key }),
-		backgrounds: byKey(o.Backgrounds, func(e *TableBackground) string { return e.Key }),
-		feats:       byKey(o.Feats, func(e *TableFeat) string { return e.Key }),
-	}
 }
 
 func (b *overlayBuilder) build(o Overlay) error {
@@ -819,14 +850,13 @@ func (b *overlayBuilder) build(o Overlay) error {
 		b.strict[k] = true
 	}
 	b.classListFrom, b.classCasts, b.classSubLevel = map[string]string{}, map[string]string{}, map[string]int{}
-	order := orderOf(&o)
-	if err := b.claimKeys(o, order); err != nil {
+	if err := b.claimKeys(&o); err != nil {
 		return err
 	}
 
 	n := b.startClone(&o)
 	defer func() { n.programs = nil }()
-	if err := b.addEntries(&o, order); err != nil {
+	if err := b.addEntries(&o); err != nil {
 		return err
 	}
 	if err := b.compileEffects(); err != nil {
@@ -855,7 +885,10 @@ func (b *overlayBuilder) checkOverlay(o *Overlay) error {
 	if o.Revision < 0 {
 		return ovErr("", "the revision cannot be negative").at("revision", ReasonOverlay)
 	}
-	total := len(o.Classes) + len(o.Subclasses) + len(o.Races) + len(o.Subraces) + len(o.Backgrounds) + len(o.Spells) + len(o.Feats)
+	total := 0
+	for _, k := range b.overlayKinds(o) {
+		total += k.n
+	}
 	if total > MaxOverlayEntries {
 		return ovErr("", "%d entries; the limit is %d per table", total, MaxOverlayEntries).at("", ReasonLimit)
 	}
@@ -883,29 +916,12 @@ func (b *overlayBuilder) startClone(o *Overlay) *content {
 	return n
 }
 
-// entryStep adds the entries of one kind, in key order; list is the kind's
-// name in the Overlay's paths.
-type entryStep struct {
-	list  string
-	order []int
-	add   func(i int, path string) error
-}
-
 // addEntries adds every entry, kind by kind, and stops at the first that fails.
-func (b *overlayBuilder) addEntries(o *Overlay, order overlayOrder) error {
-	steps := []entryStep{
-		{"spells", order.spells, func(i int, path string) error { return b.addSpell(&o.Spells[i], path) }},
-		{"races", order.races, func(i int, path string) error { return b.addRace(&o.Races[i], path) }},
-		{"subraces", order.subraces, func(i int, path string) error { return b.addSubrace(&o.Subraces[i], path) }},
-		{"classes", order.classes, func(i int, path string) error { return b.addClass(&o.Classes[i], path) }},
-		{"subclasses", order.subclasses, func(i int, path string) error { return b.addSubclass(&o.Subclasses[i], path) }},
-		{"backgrounds", order.backgrounds, func(i int, path string) error { return b.addBackground(&o.Backgrounds[i], path) }},
-		{"feats", order.feats, func(i int, path string) error { return b.addFeat(&o.Feats[i], path) }},
-	}
-	for _, s := range steps {
-		for _, i := range s.order {
-			path := fmt.Sprintf("%s[%d]", s.list, i)
-			if err := s.add(i, path); err != nil {
+func (b *overlayBuilder) addEntries(o *Overlay) error {
+	for _, k := range b.overlayKinds(o) {
+		for _, i := range k.byKey() {
+			path := fmt.Sprintf("%s[%d]", k.list, i)
+			if err := k.add(i, path); err != nil {
 				return b.failEntry(err, path)
 			}
 		}
@@ -927,39 +943,18 @@ func (b *overlayBuilder) failEntry(err error, path string) error {
 	return err
 }
 
-// claimStep claims the keys of one kind of entry; learn, when set, records
-// what the later checks need of the entry once its key is claimed.
-type claimStep struct {
-	prefix, list string
-	order        []int
-	entry        func(i int) TableEntry
-	learn        func(i int)
-}
-
 // claimKeys is the first pass: it checks the form of every entry key, that none
 // repeats or exists, and learns the facts the references need.
-func (b *overlayBuilder) claimKeys(o Overlay, order overlayOrder) error {
-	steps := []claimStep{
-		{"class:", "classes", order.classes, func(i int) TableEntry { return o.Classes[i].TableEntry }, func(i int) {
-			e := &o.Classes[i]
-			b.classListFrom[e.Key] = e.Casting.ListFrom
-			b.classCasts[e.Key] = e.Casting.Kind
-			b.classSubLevel[e.Key] = e.SubclassLevel
-		}},
-		{"subclass:", "subclasses", order.subclasses, func(i int) TableEntry { return o.Subclasses[i].TableEntry }, nil},
-		{"race:", "races", order.races, func(i int) TableEntry { return o.Races[i].TableEntry }, nil},
-		{"subrace:", "subraces", order.subraces, func(i int) TableEntry { return o.Subraces[i].TableEntry }, nil},
-		{"background:", "backgrounds", order.backgrounds, func(i int) TableEntry { return o.Backgrounds[i].TableEntry }, nil},
-		{"spell:", "spells", order.spells, func(i int) TableEntry { return o.Spells[i].TableEntry }, nil},
-		{"feat:", "feats", order.feats, func(i int) TableEntry { return o.Feats[i].TableEntry }, nil},
-	}
-	for _, s := range steps {
-		for _, i := range s.order {
-			if err := b.claimEntry(s.prefix, fmt.Sprintf("%s[%d]", s.list, i), s.entry(i)); err != nil {
+func (b *overlayBuilder) claimKeys(o *Overlay) error {
+	kinds := b.overlayKinds(o)
+	slices.SortFunc(kinds, func(x, y overlayKind) int { return x.claimRank - y.claimRank })
+	for _, k := range kinds {
+		for _, i := range k.byKey() {
+			if err := b.claimEntry(k.prefix, fmt.Sprintf("%s[%d]", k.list, i), k.entry(i)); err != nil {
 				return err
 			}
-			if s.learn != nil {
-				s.learn(i)
+			if k.learn != nil {
+				k.learn(i)
 			}
 		}
 	}
