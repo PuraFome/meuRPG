@@ -18,10 +18,8 @@ import {
   PreviewPuzzleStartResponseSchema,
   type TryPuzzleHintResponse,
   TryPuzzleHintResponseSchema,
-  type CipherSolutionSchema,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { alphabetFaces, bellFaces, pillarFaces } from './puzzle-symbols';
-import type { HintDie, MoveAnswer, PuzzleInit, PuzzlesClient } from './puzzles-client';
 
 /**
  * Builders and a stand-in for the puzzle specs (never imported by the app itself, so never bundled): the messages as the
@@ -33,8 +31,21 @@ export function symbolsOf(
   count: number,
   alphabet = PuzzleAlphabet.RUNES,
 ): MessageInitShape<typeof PuzzleSymbolSchema>[] {
-  const faces = kind === 'lock' ? alphabetFaces(alphabet).slice(0, 8) : pillarFaces(count);
+  const faces =
+    kind === 'lock' ? alphabetFaces(alphabet).slice(0, LOCK_SYMBOLS) : pillarFaces(count);
   return faces.map((f) => ({ key: f.key, namePt: f.namePt }));
+}
+
+const LOCK_SYMBOLS = 8;
+const LIT_EVERY = 3;
+const LOCK_WHEELS = 4;
+const PILLAR_COUNT = 4;
+const BELL_COUNT = 4;
+const HINT_BONUS = 3;
+
+/** The numbers of a fixture written as digits ("1035"), so a list of positions reads at a glance. */
+function digits(text: string): number[] {
+  return [...text].map(Number);
 }
 
 /** What a builder takes on top of its defaults: the message's own fields, as plain data (a nested message may be a plain object). */
@@ -49,7 +60,10 @@ export function lightsPuzzle(id: string, name: string, partial: Init = {}): Puzz
     name,
     config: { kind: { case: 'lights', value: { size: 5 } } },
     start: {
-      kind: { case: 'lights', value: { lit: Array.from({ length: 25 }, (_, i) => i % 3 === 0) } },
+      kind: {
+        case: 'lights',
+        value: { lit: Array.from({ length: 25 }, (_, i) => i % LIT_EVERY === 0) },
+      },
     },
     minimum: { solvable: true, moves: 4, path: [] },
     ...(partial as object),
@@ -63,9 +77,9 @@ export function lockPuzzle(id: string, name: string, partial: Init = {}): Puzzle
     kind: PuzzleKind.LOCK,
     name,
     config: { kind: { case: 'lock', value: { wheels: 4, alphabet: PuzzleAlphabet.RUNES } } },
-    solution: { kind: { case: 'lock', value: { wheels: [1, 0, 3, 5] } } },
-    start: { kind: { case: 'lock', value: { wheels: [0, 0, 2, 5] } } },
-    symbols: symbolsOf('lock', 4),
+    solution: { kind: { case: 'lock', value: { wheels: digits('1035') } } },
+    start: { kind: { case: 'lock', value: { wheels: digits('0025') } } },
+    symbols: symbolsOf('lock', LOCK_WHEELS),
     ...(partial as object),
   });
 }
@@ -83,18 +97,18 @@ export function pillarsPuzzle(id: string, name: string, partial: Init = {}): Puz
           pillars: 4,
           symbols: 4,
           links: [
-            { alsoTurns: [1] },
-            { alsoTurns: [0, 2] },
-            { alsoTurns: [1, 3] },
-            { alsoTurns: [2] },
+            { alsoTurns: digits('1') },
+            { alsoTurns: digits('02') },
+            { alsoTurns: digits('13') },
+            { alsoTurns: digits('2') },
           ],
         },
       },
     },
-    solution: { kind: { case: 'pillars', value: { pillars: [1, 0, 3, 2] } } },
-    start: { kind: { case: 'pillars', value: { pillars: [2, 3, 2, 1] } } },
+    solution: { kind: { case: 'pillars', value: { pillars: digits('1032') } } },
+    start: { kind: { case: 'pillars', value: { pillars: digits('2321') } } },
     minimum: { solvable: true, moves: 8, path: [] },
-    symbols: symbolsOf('pillars', 4),
+    symbols: symbolsOf('pillars', PILLAR_COUNT),
     ...(partial as object),
   });
 }
@@ -127,9 +141,9 @@ export function sequencePuzzle(id: string, name: string, partial: Init = {}): Pu
     kind: PuzzleKind.SEQUENCE,
     name,
     config: { kind: { case: 'sequence', value: { bells: 4, steps: 6 } } },
-    solution: { kind: { case: 'sequence', value: { steps: [0, 1, 3, 0, 2, 1] } } },
+    solution: { kind: { case: 'sequence', value: { steps: digits('013021') } } },
     start: { kind: { case: 'sequence', value: { progress: 0 } } },
-    symbols: bellFaces(4).map((f) => ({ key: f.key, namePt: f.namePt })),
+    symbols: bellFaces(BELL_COUNT).map((f) => ({ key: f.key, namePt: f.namePt })),
     minimum: { solvable: true, moves: 6, path: [] },
     ...(partial as object),
   });
@@ -207,7 +221,7 @@ export function hintAnswer(
   return create(TryPuzzleHintResponseSchema, {
     run,
     passed,
-    roll: { diceCount: 1, diceSides: 20, faces: [total - 3], modifier: 3, total },
+    roll: { diceCount: 1, diceSides: 20, faces: [total - HINT_BONUS], modifier: HINT_BONUS, total },
     ...(partial as object),
   });
 }
@@ -225,184 +239,14 @@ export function preview(
 }
 
 /** The time a spec's clock stands at. */
-export const NOW = new Date(2026, 9, 6, 21, 12, 40);
+export const NOW = new Date('2026-10-06T21:12:40');
 export const at = (secondsAgo: number) =>
   timestampFromDate(new Date(NOW.getTime() - secondsAgo * 1000));
 /** A moment `seconds` from the real clock, for a page that counts down by it. */
 export const fromNow = (seconds: number) =>
   timestampFromDate(new Date(Date.now() + seconds * 1000));
 
-type Call = readonly [string, ...unknown[]];
-
-/** A `PuzzlesClient` that remembers its calls and answers what a spec set. */
-export class FakePuzzlesClient {
-  calls: Call[] = [];
-  listResult: Puzzle[] = [];
-  getResult: Puzzle | undefined;
-  createResult: Puzzle | undefined;
-  previewResult: PreviewPuzzleStartResponse | undefined;
-  sessionResult: MasterPuzzleRun[] = [];
-  runResults = new Map<string, MasterPuzzleRun>();
-  shownResult: PuzzleSummary[] = [];
-  playerRunResult: PuzzleRun | undefined;
-  moveResult: ((n: number) => MoveAnswer | Promise<MoveAnswer>) | undefined;
-  hintResult: ((n: number) => TryPuzzleHintResponse | Promise<TryPuzzleHintResponse>) | undefined;
-  cipherResult = 'R WHVRXUR HVWD VRE R DOWDU';
-  hintCount = 0;
-  hintKeys: string[] = [];
-  failWith: unknown;
-  moveCount = 0;
-  moveKeys: string[] = [];
-
-  private async answer<T>(name: string, args: unknown[], value: T): Promise<T> {
-    this.calls.push([name, ...args]);
-    if (this.failWith !== undefined) {
-      const err = this.failWith;
-      throw err;
-    }
-    return value;
-  }
-
-  list(campaignId: string, includeArchived = false): Promise<Puzzle[]> {
-    return this.answer('list', [campaignId, includeArchived], this.listResult);
-  }
-  get(campaignId: string, puzzleId: string): Promise<Puzzle> {
-    return this.answer('get', [campaignId, puzzleId], this.getResult as Puzzle);
-  }
-  create(campaignId: string, init: PuzzleInit): Promise<Puzzle> {
-    return this.answer('create', [campaignId, init], this.createResult as Puzzle);
-  }
-  update(campaignId: string, puzzleId: string, init: PuzzleInit): Promise<Puzzle> {
-    return this.answer('update', [campaignId, puzzleId, init], this.getResult as Puzzle);
-  }
-  previewStart(
-    campaignId: string,
-    config: unknown,
-    solution: unknown,
-    seed: bigint,
-  ): Promise<PreviewPuzzleStartResponse> {
-    return this.answer(
-      'previewStart',
-      [campaignId, config, solution, seed],
-      this.previewResult as PreviewPuzzleStartResponse,
-    );
-  }
-  archive(campaignId: string, puzzleId: string): Promise<Puzzle> {
-    return this.answer(
-      'archive',
-      [campaignId, puzzleId],
-      create(PuzzleSchema, { id: puzzleId, archived: true }),
-    );
-  }
-  unarchive(campaignId: string, puzzleId: string): Promise<Puzzle> {
-    return this.answer('unarchive', [campaignId, puzzleId], create(PuzzleSchema, { id: puzzleId }));
-  }
-  listSession(campaignId: string): Promise<MasterPuzzleRun[]> {
-    return this.answer('listSession', [campaignId], this.sessionResult);
-  }
-  masterRun(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
-    return this.answer(
-      'masterRun',
-      [campaignId, puzzleId],
-      this.runResults.get(puzzleId) as MasterPuzzleRun,
-    );
-  }
-  show(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
-    return this.answer(
-      'show',
-      [campaignId, puzzleId],
-      this.runResults.get(puzzleId) as MasterPuzzleRun,
-    );
-  }
-  reset(campaignId: string, puzzleId: string, expectedRevision = 0): Promise<MasterPuzzleRun> {
-    return this.answer(
-      'reset',
-      [campaignId, puzzleId, expectedRevision],
-      this.runResults.get(puzzleId) as MasterPuzzleRun,
-    );
-  }
-  reseed(campaignId: string, puzzleId: string, expectedRevision = 0): Promise<MasterPuzzleRun> {
-    return this.answer(
-      'reseed',
-      [campaignId, puzzleId, expectedRevision],
-      this.runResults.get(puzzleId) as MasterPuzzleRun,
-    );
-  }
-  close(campaignId: string, puzzleId: string): Promise<MasterPuzzleRun> {
-    return this.answer(
-      'close',
-      [campaignId, puzzleId],
-      this.runResults.get(puzzleId) as MasterPuzzleRun,
-    );
-  }
-  releaseHint(
-    campaignId: string,
-    puzzleId: string,
-    expectedRevision = 0,
-  ): Promise<MasterPuzzleRun> {
-    return this.answer(
-      'releaseHint',
-      [campaignId, puzzleId, expectedRevision],
-      this.runResults.get(puzzleId) as MasterPuzzleRun,
-    );
-  }
-  listShown(campaignId: string): Promise<PuzzleSummary[]> {
-    return this.answer('listShown', [campaignId], this.shownResult);
-  }
-  run(campaignId: string, puzzleId: string): Promise<PuzzleRun> {
-    return this.answer('run', [campaignId, puzzleId], this.playerRunResult as PuzzleRun);
-  }
-  async previewCipher(
-    campaignId: string,
-    solution: MessageInitShape<typeof CipherSolutionSchema>,
-  ): Promise<string> {
-    return this.answer('previewCipher', [campaignId, solution], this.cipherResult);
-  }
-  playSequence(
-    campaignId: string,
-    puzzleId: string,
-    expectedRevision = 0,
-  ): Promise<MasterPuzzleRun> {
-    return this.answer(
-      'playSequence',
-      [campaignId, puzzleId, expectedRevision],
-      this.runResults.get(puzzleId) as MasterPuzzleRun,
-    );
-  }
-  async tryHint(
-    campaignId: string,
-    puzzleId: string,
-    die: HintDie,
-    key: string,
-  ): Promise<TryPuzzleHintResponse> {
-    this.calls.push(['tryHint', campaignId, puzzleId, die, key]);
-    this.hintKeys.push(key);
-    const n = ++this.hintCount;
-    if (!this.hintResult) {
-      throw new Error('no hintResult set');
-    }
-    return this.hintResult(n);
-  }
-  async move(
-    campaignId: string,
-    puzzleId: string,
-    move: unknown,
-    key: string,
-  ): Promise<MoveAnswer> {
-    this.calls.push(['move', campaignId, puzzleId, move, key]);
-    this.moveKeys.push(key);
-    const n = ++this.moveCount;
-    if (!this.moveResult) {
-      throw new Error('no moveResult set');
-    }
-    return this.moveResult(n);
-  }
-}
-
-/** The fake, typed as the client it stands in for. */
-export function asClient(fake: FakePuzzlesClient): PuzzlesClient {
-  return fake as unknown as PuzzlesClient;
-}
+export { FakePuzzlesClient, asClient } from './puzzles-fake';
 
 /** The 18 skills' names as the rules' content sends them (two of them are enough for a spec). */
 export const SKILLS = [

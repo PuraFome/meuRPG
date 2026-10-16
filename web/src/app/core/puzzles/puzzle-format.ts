@@ -151,25 +151,54 @@ export function moveWord(kind: PuzzleKind, n: number): string {
   }
 }
 
+const JUST_NOW_SECONDS = 5;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+
 /** "agora há pouco", "há 12 s", "há 3 min", "há 2 h": how long ago, from the two clocks. Never negative. */
 export function agoText(at: Date, now: Date): string {
   const seconds = Math.max(0, Math.round((now.getTime() - at.getTime()) / 1000));
-  if (seconds < 5) {
+  if (seconds < JUST_NOW_SECONDS) {
     return 'agora há pouco';
   }
-  if (seconds < 60) {
-    return `há ${seconds} s`;
+  if (seconds < SECONDS_PER_MINUTE) {
+    return `há ${seconds} s`;
   }
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) {
-    return `há ${minutes} min`;
+  const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+  if (minutes < MINUTES_PER_HOUR) {
+    return `há ${minutes} min`;
   }
-  return `há ${Math.floor(minutes / 60)} h`;
+  return `há ${Math.floor(minutes / MINUTES_PER_HOUR)} h`;
 }
 
 /** "3ª roda", "1º pilar" are written by the callers; this is the ordinal mark for a wheel. */
 function wheelOrdinal(n: number): string {
   return `${n}ª`;
+}
+
+/** What the last move did, in the words after the name; `null` for a move this screen does not know. */
+function lastMoveWhat(last: PuzzleLastMove): string | null {
+  const move = last.move?.kind;
+  const verdict = last.wrong ? 'errou' : 'acertou';
+  switch (move?.case) {
+    case 'lights':
+      return 'tocou numa luz';
+    case 'lock':
+      return `girou a ${wheelOrdinal(move.value.wheel + 1)} roda`;
+    case 'pillars':
+      return `girou o pilar ${move.value.pillar + 1}`;
+    // The master's own read keeps what was typed or struck; a player's never does (puzzles.proto, `PuzzleLastMove.move`).
+    case 'riddle':
+      return `${last.wrong ? 'tentou' : 'respondeu'} “${move.value.answer}”: ${verdict}`;
+    case 'cipher':
+      return `digitou “${move.value.text}”: ${verdict}`;
+    case 'sequence':
+      return last.wrong
+        ? `errou no passo ${last.step}. A tentativa recomeçou`
+        : `acertou o passo ${last.step}`;
+    default:
+      return null;
+  }
 }
 
 /** Who made the last move and what they did: "Lia" and "tocou numa luz". `own` is the reader's own character: "Você". */
@@ -180,35 +209,12 @@ export function lastMoveParts(
   if (!last) {
     return null;
   }
-  const who = own !== '' && last.characterName === own ? 'Você' : last.characterName;
-  switch (last.move?.kind.case) {
-    case 'lights':
-      return { who, what: 'tocou numa luz' };
-    case 'lock':
-      return { who, what: `girou a ${wheelOrdinal(last.move.kind.value.wheel + 1)} roda` };
-    case 'pillars':
-      return { who, what: `girou o pilar ${last.move.kind.value.pillar + 1}` };
-    // The master's own read keeps what was typed or struck; a player's never does (puzzles.proto, `PuzzleLastMove.move`).
-    case 'riddle':
-      return {
-        who,
-        what: `${last.wrong ? 'tentou' : 'respondeu'} “${last.move.kind.value.answer}”: ${last.wrong ? 'errou' : 'acertou'}`,
-      };
-    case 'cipher':
-      return {
-        who,
-        what: `digitou “${last.move.kind.value.text}”: ${last.wrong ? 'errou' : 'acertou'}`,
-      };
-    case 'sequence':
-      return {
-        who,
-        what: last.wrong
-          ? `errou no passo ${last.step}. A tentativa recomeçou`
-          : `acertou o passo ${last.step}`,
-      };
-    default:
-      return null;
+  const what = lastMoveWhat(last);
+  if (what === null) {
+    return null;
   }
+  const who = own !== '' && last.characterName === own ? 'Você' : last.characterName;
+  return { who, what };
 }
 
 /** The name the master gave the trap point that the last wrong move fired ("Dardos envenenados"), or `''`. */
@@ -219,7 +225,7 @@ export function trapFired(last: PuzzleLastMove | undefined): string {
 /** "4:48": seconds as minutes and seconds, for a clock that runs down. */
 export function clockSeconds(total: number): string {
   const seconds = Math.max(0, Math.round(total));
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  return `${Math.floor(seconds / SECONDS_PER_MINUTE)}:${String(seconds % SECONDS_PER_MINUTE).padStart(2, '0')}`;
 }
 
 /** The seconds left until `deadline`, never negative. */

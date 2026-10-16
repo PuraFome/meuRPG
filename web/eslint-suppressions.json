@@ -109,41 +109,9 @@
       "count": 9
     }
   },
-  "src/app/core/images/upload-errors.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 5
-    },
-    "complexity": {
-      "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/app/core/levelup/levelup-draft.ts": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/levelup/levelup-errors.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 2
-    }
-  },
   "src/app/core/levelup/levelup-feed.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 3
-    }
-  },
-  "src/app/core/levelup/levelup-summary.ts": {
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/levelup/levelup-testing.ts": {
@@ -154,14 +122,6 @@
   "src/app/core/maps/calibration.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 3
-    }
-  },
-  "src/app/core/maps/door-paint.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 2
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/maps/dungeon-layout.ts": {
@@ -247,56 +207,8 @@
       "count": 3
     }
   },
-  "src/app/core/progression/xp-errors.ts": {
-    "complexity": {
-      "count": 1
-    }
-  },
-  "src/app/core/puzzles/puzzle-draft.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 5
-    },
-    "complexity": {
-      "count": 2
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/core/puzzles/puzzle-errors.ts": {
-    "complexity": {
-      "count": 2
-    }
-  },
-  "src/app/core/puzzles/puzzle-format.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 7
-    },
-    "complexity": {
-      "count": 1
-    }
-  },
-  "src/app/core/puzzles/puzzle-play.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 3
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines": {
-      "count": 1
-    }
-  },
   "src/app/core/puzzles/puzzle-text.ts": {
     "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    }
-  },
-  "src/app/core/puzzles/puzzles-testing.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 19
-    },
-    "max-lines": {
       "count": 1
     }
   },
@@ -318,11 +230,6 @@
   "src/app/core/traps/trap-search.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    }
-  },
-  "src/app/core/traps/trap-text.ts": {
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/core/units.ts": {
