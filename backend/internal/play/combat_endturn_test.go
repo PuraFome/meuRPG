@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"regexp"
 	"slices"
 	"strings"
@@ -30,18 +29,6 @@ func (a *armed) endTurnAs(t *testing.T, u *user, e *playv1.Encounter, edit func(
 		return nil, err
 	}
 	return res.Msg.GetEncounter(), nil
-}
-
-// wantRefusal fails unless err has exactly this code and message.
-func wantRefusal(t *testing.T, call string, err error, code connect.Code, message string) {
-	t.Helper()
-	var ce *connect.Error
-	if !errors.As(err, &ce) {
-		t.Fatalf("%s error = %v, want %v %q", call, err, code, message)
-	}
-	if ce.Code() != code || ce.Message() != message {
-		t.Fatalf("%s error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, message)
-	}
 }
 
 var uuidPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
