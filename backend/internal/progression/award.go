@@ -345,13 +345,12 @@ type givenAward struct {
 }
 
 // awardPlan is an award checked inside its transaction, ready to write: the
-// grant (with the treasures' gold), the party as it is now, the reason (a
-// planned milestone's text), the locked treasures, the XP to split and each
-// character's share of it (0 for a milestone).
+// grant as it is to be written (the reason a planned milestone's text, the
+// amount the treasures' gold), the party as it is now, the locked treasures,
+// the XP to split and each character's share of it (0 for a milestone).
 type awardPlan struct {
 	g         grant
 	party     []link.Member
-	reason    string
 	treasures []link.Treasure
 	total     int32
 	each      int32
@@ -418,16 +417,16 @@ func (s *Service) planAward(ctx context.Context, tx pgx.Tx, q *progressiondb.Que
 	if !fits(txMode, g.mode) {
 		return awardPlan{}, errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MODE_NOT_ALLOWED, "", txMode)
 	}
-	p := awardPlan{g: g, reason: g.reason}
+	p := awardPlan{g: g}
 	if p.party, err = s.eligibleParty(ctx, tx, m.CampaignID, g.characters); err != nil {
 		return awardPlan{}, err
 	}
 	if g.milestoneID != "" {
-		if p.reason, err = s.checkMilestone(ctx, q, m.CampaignID, g); err != nil {
+		if p.g.reason, err = s.checkMilestone(ctx, q, m.CampaignID, g); err != nil {
 			return awardPlan{}, err
 		}
 	}
-	if err := s.treasureGold(ctx, tx, m.CampaignID, &p); err != nil {
+	if p.treasures, p.g.amount, err = s.treasureGold(ctx, tx, m.CampaignID, g); err != nil {
 		return awardPlan{}, err
 	}
 	if p.total, err = s.total(ctx, tx, q, m.CampaignID, p.g); err != nil {
@@ -458,24 +457,25 @@ func (s *Service) eligibleParty(ctx context.Context, tx pgx.Tx, campaignID strin
 }
 
 // treasureGold locks and checks the treasures of a "Voltar à cidade", and
-// makes their PO the plan's gold. The lock holds until the commit, so two
-// awards for one treasure take turns and the second finds it converted.
-func (s *Service) treasureGold(ctx context.Context, tx pgx.Tx, campaignID string, p *awardPlan) error {
-	if len(p.g.treasureIDs) == 0 {
-		return nil
+// returns them with their PO as the award's gold; any other grant keeps its
+// amount. The lock holds until the commit, so two awards for one treasure take
+// turns and the second finds it converted.
+func (s *Service) treasureGold(ctx context.Context, tx pgx.Tx, campaignID string, g grant) ([]link.Treasure, int32, error) {
+	if len(g.treasureIDs) == 0 {
+		return nil, g.amount, nil
 	}
-	treasures, err := s.lockTreasures(ctx, tx, campaignID, p.g.treasureIDs)
+	treasures, err := s.lockTreasures(ctx, tx, campaignID, g.treasureIDs)
 	if err != nil {
-		return err
+		return nil, 0, err
 	}
-	p.treasures, p.g.amount = treasures, 0
+	var gold int32
 	for _, tr := range treasures {
-		p.g.amount += tr.ValuePO
+		gold += tr.ValuePO
 	}
-	if p.g.amount > maxXPAmount {
-		return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_TREASURES_OVER_LIMIT, "", 0)
+	if gold > maxXPAmount {
+		return nil, 0, errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_TREASURES_OVER_LIMIT, "", 0)
 	}
-	return nil
+	return treasures, gold, nil
 }
 
 // insertAward writes the award's row. The unique indexes refuse what two
@@ -484,7 +484,7 @@ func (s *Service) treasureGold(ctx context.Context, tx pgx.Tx, campaignID string
 func insertAward(ctx context.Context, q *progressiondb.Queries, m authz.Membership, p awardPlan, now time.Time) (progressiondb.XpAward, error) {
 	g := p.g
 	params := progressiondb.InsertXPAwardParams{
-		CampaignID: m.CampaignID, GivenBy: m.UserID, CreatedAt: now, Mode: g.mode, Reason: p.reason,
+		CampaignID: m.CampaignID, GivenBy: m.UserID, CreatedAt: now, Mode: g.mode, Reason: g.reason,
 		TotalXp: p.total, IdempotencyKey: g.key, IdempotencyHash: &g.hash,
 	}
 	if g.milestoneID != "" {
