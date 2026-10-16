@@ -323,10 +323,10 @@ func hasProficiency(d Derived, key string) bool {
 // real, the keys it names exist and the numbers are in range. owner is the feat's
 // key, for the messages; it returns the first problem and the field it is at.
 func (c *content) checkFeatShape(f *srd51.Feat) (field, msg string) {
-	if field, msg = checkFeatScores("minimums", f.Minimums); field != "" {
+	if field, msg = checkPrerequisiteScores("minimums", f.Minimums); field != "" {
 		return field, msg
 	}
-	if field, msg = checkFeatScores("any_of", f.AnyOf); field != "" {
+	if field, msg = checkPrerequisiteScores("any_of", f.AnyOf); field != "" {
 		return field, msg
 	}
 	if field, msg = c.checkFeatKeys(f); field != "" {
@@ -338,9 +338,9 @@ func (c *content) checkFeatShape(f *srd51.Feat) (field, msg string) {
 	return "", ""
 }
 
-// checkFeatScores checks one set of minimum scores of a prerequisite, named
+// checkPrerequisiteScores checks one set of minimum scores of a prerequisite, named
 // name: real abilities, each 1 to MaxScore.
-func checkFeatScores(name string, set map[string]int) (field, msg string) {
+func checkPrerequisiteScores(name string, set map[string]int) (field, msg string) {
 	for k, v := range set {
 		if _, ok := abilityIndex[Ability(k)]; !ok {
 			return name, fmt.Sprintf("unknown ability %q", k)
