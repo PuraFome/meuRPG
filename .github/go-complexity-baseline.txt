@@ -165,7 +165,6 @@ cognitive internal/play (*Service).ListCombatLog 34
 cognitive internal/play (*Service).ListSpellCasts 22
 cognitive internal/play (*Service).ListTrapActivity 131
 cognitive internal/play (*Service).ListTrapDamages 27
-cognitive internal/play (*Service).MoveCombatant 198
 cognitive internal/play (*Service).OfferOpportunity 35
 cognitive internal/play (*Service).OpenScene 22
 cognitive internal/play (*Service).PreviewRevivify 25
@@ -573,7 +572,6 @@ cyclomatic internal/play (*Service).ListCombatLog 22
 cyclomatic internal/play (*Service).ListSpellCasts 18
 cyclomatic internal/play (*Service).ListTrapActivity 69
 cyclomatic internal/play (*Service).ListTrapDamages 19
-cyclomatic internal/play (*Service).MoveCombatant 123
 cyclomatic internal/play (*Service).OfferOpportunity 24
 cyclomatic internal/play (*Service).OpenScene 16
 cyclomatic internal/play (*Service).PreviewRevivify 22
@@ -834,7 +832,6 @@ maintainability internal/play (*Service).ApplyPendingDamage 16
 maintainability internal/play (*Service).EndTurn 12
 maintainability internal/play (*Service).Help 19
 maintainability internal/play (*Service).ListTrapActivity 11
-maintainability internal/play (*Service).MoveCombatant 0
 maintainability internal/play (*Service).ResolveConcentrationSave 18
 maintainability internal/play (*Service).RollEffectSave 14
 maintainability internal/play (*Service).RollSceneCheck 12
