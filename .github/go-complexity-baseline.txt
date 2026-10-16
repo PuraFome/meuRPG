@@ -105,7 +105,6 @@ cognitive internal/play (*Service).ChangeLastingEffectDuration 33
 cognitive internal/play (*Service).ClearHelp 19
 cognitive internal/play (*Service).CloseContest 19
 cognitive internal/play (*Service).CloseGroupCheck 27
-cognitive internal/play (*Service).CloseScene 18
 cognitive internal/play (*Service).ConfirmCastTimePassed 23
 cognitive internal/play (*Service).ConfirmDeath 31
 cognitive internal/play (*Service).ConfirmRevivifyTime 41
@@ -128,7 +127,6 @@ cognitive internal/play (*Service).GetSurpriseSuggestion 28
 cognitive internal/play (*Service).GetTurnOptions 29
 cognitive internal/play (*Service).GiveBardicInspiration 24
 cognitive internal/play (*Service).GiveBardicInspirationOutside 29
-cognitive internal/play (*Service).GrantSceneAttempt 33
 cognitive internal/play (*Service).Help 70
 cognitive internal/play (*Service).Hide 34
 cognitive internal/play (*Service).ListCharacterEffects 29
@@ -138,7 +136,6 @@ cognitive internal/play (*Service).ListSpellCasts 22
 cognitive internal/play (*Service).MakePuzzleMove 17
 cognitive internal/play (*Service).MarkReactionRolling 19
 cognitive internal/play (*Service).OfferOpportunity 35
-cognitive internal/play (*Service).OpenScene 22
 cognitive internal/play (*Service).PlayPuzzleSequence 18
 cognitive internal/play (*Service).PreviewRevivify 25
 cognitive internal/play (*Service).PreviewSpellArea 23
@@ -160,7 +157,6 @@ cognitive internal/play (*Service).ReviveInCombat 16
 cognitive internal/play (*Service).RollDeathSave 45
 cognitive internal/play (*Service).RollEffectSave 98
 cognitive internal/play (*Service).RollGroupCheck 20
-cognitive internal/play (*Service).RollSceneCheck 87
 cognitive internal/play (*Service).SaveBattleEncounter 18
 cognitive internal/play (*Service).SearchForTraps 134
 cognitive internal/play (*Service).SetCombatantConditions 53
@@ -272,8 +268,6 @@ cognitive internal/play (*Service).rollMember 30
 cognitive internal/play (*Service).rollPartDice 17
 cognitive internal/play (*Service).rollParts 54
 cognitive internal/play (*Service).runSolveAction 17
-cognitive internal/play (*Service).sceneInfo 27
-cognitive internal/play (*Service).sceneRolls 25
 cognitive internal/play (*Service).searcherPlace 33
 cognitive internal/play (*Service).selectionChecker 35
 cognitive internal/play (*Service).setArchived 16
@@ -421,14 +415,12 @@ cyclomatic internal/play (*Service).GetSurpriseSuggestion 23
 cyclomatic internal/play (*Service).GetTurnOptions 27
 cyclomatic internal/play (*Service).GiveBardicInspiration 16
 cyclomatic internal/play (*Service).GiveBardicInspirationOutside 19
-cyclomatic internal/play (*Service).GrantSceneAttempt 24
 cyclomatic internal/play (*Service).Help 45
 cyclomatic internal/play (*Service).Hide 22
 cyclomatic internal/play (*Service).ListCharacterEffects 21
 cyclomatic internal/play (*Service).ListCombatLog 22
 cyclomatic internal/play (*Service).ListSpellCasts 18
 cyclomatic internal/play (*Service).OfferOpportunity 24
-cyclomatic internal/play (*Service).OpenScene 16
 cyclomatic internal/play (*Service).PreviewRevivify 22
 cyclomatic internal/play (*Service).PreviewSpellArea 23
 cyclomatic internal/play (*Service).RemoveCombatant 27
@@ -443,7 +435,6 @@ cyclomatic internal/play (*Service).RespondContest 41
 cyclomatic internal/play (*Service).ReviveInCombat 17
 cyclomatic internal/play (*Service).RollDeathSave 29
 cyclomatic internal/play (*Service).RollEffectSave 50
-cyclomatic internal/play (*Service).RollSceneCheck 53
 cyclomatic internal/play (*Service).SearchForTraps 83
 cyclomatic internal/play (*Service).SetCombatantConditions 33
 cyclomatic internal/play (*Service).SetCombatantSide 16
@@ -529,8 +520,6 @@ cyclomatic internal/play (*Service).rollDamage 92
 cyclomatic internal/play (*Service).rollMember 25
 cyclomatic internal/play (*Service).rollParts 30
 cyclomatic internal/play (*Service).runSolveAction 19
-cyclomatic internal/play (*Service).sceneInfo 21
-cyclomatic internal/play (*Service).sceneRolls 18
 cyclomatic internal/play (*Service).searcherPlace 20
 cyclomatic internal/play (*Service).selectionChecker 19
 cyclomatic internal/play (*Service).settleOnce 25
@@ -579,7 +568,6 @@ maintainability internal/play (*Service).ApplyPendingDamage 16
 maintainability internal/play (*Service).Help 19
 maintainability internal/play (*Service).ResolveConcentrationSave 18
 maintainability internal/play (*Service).RollEffectSave 15
-maintainability internal/play (*Service).RollSceneCheck 13
 maintainability internal/play (*Service).SearchForTraps 5
 maintainability internal/play (*Service).StartEncounter 19
 maintainability internal/play (*Service).TakeAction 7
