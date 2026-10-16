@@ -57,16 +57,38 @@ export interface TableRulesVm {
 export const HOUSE_RULE_MAX_LENGTH = 200;
 export const HOUSE_RULE_MAX_COUNT = 20;
 
-export function draftFromRules(rules: GetTableRulesResponse['rules']): RulesDraft {
+type RulesMessage = GetTableRulesResponse['rules'];
+
+// The defaults of a campaign that never saved its rules, in three parts so each stays small to read and to test.
+function tableDraftPart(
+  rules: RulesMessage,
+): Pick<RulesDraft, 'diceMode' | 'combatStartsWithMap' | 'fogOnNewMaps' | 'hitPoints'> {
   return {
     diceMode: rules?.diceMode ?? DiceMode.PLAYERS_CHOOSE,
     combatStartsWithMap: rules?.combatStartsWithMap ?? true,
     fogOnNewMaps: rules?.fogOnNewMaps ?? false,
     hitPoints: rules?.hitPoints ?? HitPointsRule.PLAYER_CHOOSES,
-    standardArray: rules?.abilityMethods?.standardArray ?? true,
-    pointBuy: rules?.abilityMethods?.pointBuy ?? true,
-    rolled4d6: rules?.abilityMethods?.rolled4d6 ?? true,
-    typed: rules?.abilityMethods?.typed ?? true,
+  };
+}
+
+function abilityDraftPart(
+  methods: NonNullable<RulesMessage>['abilityMethods'],
+): Pick<RulesDraft, 'standardArray' | 'pointBuy' | 'rolled4d6' | 'typed'> {
+  return {
+    standardArray: methods?.standardArray ?? true,
+    pointBuy: methods?.pointBuy ?? true,
+    rolled4d6: methods?.rolled4d6 ?? true,
+    typed: methods?.typed ?? true,
+  };
+}
+
+function playDraftPart(
+  rules: RulesMessage,
+): Pick<
+  RulesDraft,
+  'critical' | 'deathSaves' | 'hiddenAreaHits' | 'featsAllowed' | 'enemyReactions' | 'houseRules'
+> {
+  return {
     critical: rules?.critical ?? CriticalRule.DOUBLED_DICE,
     deathSaves: rules?.deathSaves ?? DeathSaveVisibility.VISIBLE_TO_ALL,
     // A campaign that never saved its rules reveals (the server's default); the page always sends a real choice.
@@ -76,6 +98,14 @@ export function draftFromRules(rules: GetTableRulesResponse['rules']): RulesDraf
     // The server refuses UNSPECIFIED: an old reading is the default rule.
     enemyReactions: rules?.enemyReactions || EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
     houseRules: rules?.houseRules ?? [],
+  };
+}
+
+export function draftFromRules(rules: RulesMessage): RulesDraft {
+  return {
+    ...tableDraftPart(rules),
+    ...abilityDraftPart(rules?.abilityMethods),
+    ...playDraftPart(rules),
   };
 }
 
