@@ -15,7 +15,7 @@ import (
 // Characterization of Revivify outside a combat (revivify_requests.go) and of the master's
 // switch (SetRevivifyBlocked), written before the function split: each refusal with its exact
 // code and message, what each person reads, and the answer's replays. A "finding" comment marks a
-// behaviour that looks wrong and is kept on purpose. The helpers are in revivify_frozen_test.go.
+// behavior that looks wrong and is kept on purpose. The helpers are in revivify_frozen_test.go.
 
 const (
 	noCharacterMsg  = "character not found"

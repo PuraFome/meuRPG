@@ -17,7 +17,7 @@ import (
 // Characterization of Revivify inside a combat (revivify.go), written before the function split:
 // every refusal with its exact code and message, what each viewer reads from the preview and
 // from the list of deaths, and the master's casts. The tests freeze what the code does today;
-// a "finding" comment marks a behaviour that looks wrong and is kept on purpose.
+// a "finding" comment marks a behavior that looks wrong and is kept on purpose.
 
 // wantRevivifyRefusal checks the code and the exact message of a refusal.
 func wantRevivifyRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
@@ -497,7 +497,7 @@ func TestRevivifyFrozen_FogHidesAnNPCInTheDarkFromThePlayer(t *testing.T) {
 	pv, err = a.preview(t, a.master, e, "Ilaria")
 	wantRevivifyLine(t, "the master", pv, err, "slot=3/2 time=true targets=[Toren r1 s0] unavailable=[Goblin NOT_SEEN r1 s0]")
 
-	e = a.passTo(t, e, "Ilaria")
+	a.passTo(t, e, "Ilaria")
 	_, err = a.castRaw(t, a.ana, a.revivifyBase(t, "Goblin", nil))
 	wantRevivifyRefusal(t, "the player's cast on a creature in the dark", err, connect.CodeFailedPrecondition, revivifyTargetMsg)
 	if _, err := a.castRaw(t, a.master, a.revivifyBase(t, "Goblin", nil)); err != nil {
