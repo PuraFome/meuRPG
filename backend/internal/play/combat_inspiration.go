@@ -65,6 +65,9 @@ type bonusUse struct {
 type forcedKey struct{}
 
 func withForced(ctx context.Context, f *forcedRoll) context.Context {
+	if f != nil {
+		ctx = withHeldReply(ctx, replyOfForced(f))
+	}
 	return context.WithValue(ctx, forcedKey{}, f)
 }
 
@@ -305,6 +308,26 @@ func heldResponse(enc *playv1.Encounter, h *inspirationHold, attackerID, targetI
 	return out
 }
 
+// heldAttackOffer is what RollAttack answers for a held roll: the d20 and the question, the attack
+// not resolved (no outcome, no action spent, no damage). The Lucky question comes first; the
+// die's comes once it is answered.
+func heldAttackOffer(enc *playv1.Encounter, h *heldOffer, attackerID, targetID, attackKey string, cs []playdb.Combatant) *playv1.RollAttackResponse {
+	out := &playv1.RollAttackResponse{Encounter: enc}
+	var d20 *playv1.DiceRoll
+	switch {
+	case h.Asks == askLucky:
+		out.LuckyOffer = h.luckyOffer()
+		d20 = out.LuckyOffer.GetD20()
+	case h.State.Holds:
+		out.InspirationOffer = h.attackDieOffer(dieHeldBy(*h.State.Die.Combatant, h.State.Die.Round), cs)
+		d20 = out.InspirationOffer.GetD20()
+	default: // the die ran out before a retry read the hold: the d20 alone
+		d20 = heldD20Of(h.Hold)
+	}
+	out.Roll = &playv1.AttackRoll{AttackerId: attackerID, TargetId: targetID, AttackKey: attackKey, D20: d20}
+	return out
+}
+
 // inspirationOfferView is the held roll of a combatant, for its player and the master. A roll
 // that waits for its Lucky answer asks that first (luckyOfferView): one question at a time.
 func inspirationOfferView(d *encounterData, c playdb.Combatant, v combatViewer) *playv1.InspirationOffer {
@@ -474,6 +497,20 @@ func (s *Service) heldAnswer(ctx context.Context, m authz.Membership, res combat
 		return nil, s.dbError(ctx, "list the combatants", err)
 	}
 	return connect.NewResponse(heldResponse(out, h, req.GetAttackerId(), req.GetTargetId(), req.GetAttackKey(), cs)), nil
+}
+
+// heldAttackResponse is RollAttack's answer for a roll that waits: the combat as the caller sees it,
+// the d20 and the question about the die.
+func (s *Service) heldAttackResponse(ctx context.Context, m authz.Membership, res combatResult, h *heldOffer, req *playv1.RollAttackRequest) (*connect.Response[playv1.RollAttackResponse], error) {
+	out, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
+	if err != nil {
+		return nil, err
+	}
+	cs, err := s.queries.ListCombatants(ctx, res.encounterID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the combatants", err)
+	}
+	return connect.NewResponse(heldAttackOffer(out, h, req.GetAttackerId(), req.GetTargetId(), req.GetAttackKey(), cs)), nil
 }
 
 // typedRoll says the d20 of a request came from real dice: a typed face, or typed faces with

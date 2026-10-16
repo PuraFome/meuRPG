@@ -14,3 +14,12 @@ func replyOfOutside(f *forcedOutside) heldReply {
 	}
 	return a
 }
+
+// replyOfForced is the answer of AnswerLucky and AnswerBardicInspiration as the gate reads it.
+func replyOfForced(f *forcedRoll) heldReply {
+	a := heldReply{holdID: f.holdID, key: f.answerKey, question: askDie, die: f.bonus}
+	if f.luckyKey != "" {
+		a.key, a.question, a.reroll = f.luckyKey, askLucky, f.lucky
+	}
+	return a
+}
