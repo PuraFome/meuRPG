@@ -388,7 +388,15 @@ func (s *Service) rollInitiative(bonus int) (face, total int, err error) {
 	return res.Faces[0], res.Total, nil
 }
 
-// clamp32 converts n to an int32 inside [lo, hi].
+// clamp32 converts n to an int32 inside [lo, hi]. The int32 range is checked
+// explicitly, so the conversion is safe whatever lo and hi are.
 func clamp32(n, lo, hi int) int32 {
-	return int32(min(max(n, lo), hi, math.MaxInt32)) //nolint:gosec // clamped to the int32 range just above
+	n = min(max(n, lo), hi)
+	switch {
+	case n > math.MaxInt32:
+		return math.MaxInt32
+	case n < math.MinInt32:
+		return math.MinInt32
+	}
+	return int32(n)
 }
