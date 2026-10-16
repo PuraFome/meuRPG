@@ -1,0 +1,132 @@
+{
+  "bad CA file": {
+    "error": "read OIDC_CA_FILE: open /nonexistent/ca.pem: no such file or directory",
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=database is not reachable yet error=failed to connect to `user=root database=none`: 127.0.0.1:1 (127.0.0.1): dial error: dial tcp 127.0.0.1:1: connect: connection refused",
+      "severity=WARNING message=BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503",
+      "severity=WARNING message=GEMINI_API_KEY is not set; image generation is off"
+    ]
+  },
+  "bad form-action origin": {
+    "error": "form-action origin must be an absolute http(s) URL, got \"ftp://idp\"",
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=DATABASE_URL is not set; running without a database",
+      "severity=WARNING message=BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503",
+      "severity=WARNING message=GEMINI_API_KEY is not set; image generation is off",
+      "severity=WARNING message=sign-in is disabled: it needs DATABASE_URL",
+      "severity=WARNING message=campaigns, characters, game sessions, images and maps are disabled: they need sign-in"
+    ]
+  },
+  "blob dir under a file": {
+    "error": "blob: create $TMPDIR/TestRunCharacterization*/001/file/blobs: mkdir $TMPDIR/TestRunCharacterization*/001/file: not a directory",
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=DATABASE_URL is not set; running without a database"
+    ]
+  },
+  "broken database URL": {
+    "error": "DATABASE_URL is not a valid PostgreSQL connection string",
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43"
+    ]
+  },
+  "database with sign-in": {
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503",
+      "severity=WARNING message=GEMINI_API_KEY is not set; image generation is off",
+      "severity=WARNING message=OIDC discovery failed; retrying on the next sign-in issuer=http://localhost:1 error=discover http://localhost:1: Get \"http://localhost:1/.well-known/openid-configuration\": dial tcp 127.0.0.1:1: connect: connection refused",
+      "severity=INFO message=sign-in is enabled issuer=http://localhost:1 client_id=meurpg max_age=1h0m0s",
+      "severity=INFO message=no web build found; running API-only dir=*",
+      "severity=INFO message=http server started addr=*",
+      "severity=INFO message=shutting down timeout=8s",
+      "severity=INFO message=http server stopped"
+    ]
+  },
+  "invalid bucket": {
+    "error": "blob: BLOB_BUCKET is not a valid Cloud Storage bucket name",
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=DATABASE_URL is not set; running without a database"
+    ]
+  },
+  "nothing configured": {
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=DATABASE_URL is not set; running without a database",
+      "severity=WARNING message=BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503",
+      "severity=WARNING message=GEMINI_API_KEY is not set; image generation is off",
+      "severity=WARNING message=OIDC_ISSUER is not set; sign-in is disabled",
+      "severity=WARNING message=campaigns, characters, game sessions, images and maps are disabled: they need sign-in",
+      "severity=INFO message=no web build found; running API-only dir=*",
+      "severity=INFO message=http server started addr=*",
+      "severity=INFO message=shutting down timeout=8s",
+      "severity=INFO message=http server stopped"
+    ]
+  },
+  "sign-in without a database": {
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=1",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=DATABASE_URL is not set; running without a database",
+      "severity=INFO message=images are stored on disk dir=*",
+      "severity=WARNING message=IMAGE_GENERATOR=fake: images are made by the fake generator, not by a model",
+      "severity=WARNING message=sign-in is disabled: it needs DATABASE_URL",
+      "severity=WARNING message=campaigns, characters, game sessions, images and maps are disabled: they need sign-in",
+      "severity=INFO message=serving the web app dir=*",
+      "severity=INFO message=http server started addr=*",
+      "severity=INFO message=shutting down timeout=8s",
+      "severity=INFO message=http server stopped"
+    ]
+  },
+  "unreachable database": {
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=database is not reachable yet error=failed to connect to `user=root database=none`: 127.0.0.1:1 (127.0.0.1): dial error: dial tcp 127.0.0.1:1: connect: connection refused",
+      "severity=WARNING message=the images bucket could not be reached at start; images stay on and each call is tried on its own: check BLOB_BUCKET, the service account's role and the metadata server if uploads fail error=blob: cloud storage access token: *",
+      "severity=INFO message=images are stored in Cloud Storage",
+      "severity=INFO message=image generation is on model=some-model",
+      "severity=WARNING message=OIDC_ISSUER is not set; sign-in is disabled",
+      "severity=WARNING message=campaigns, characters, game sessions, images and maps are disabled: they need sign-in",
+      "severity=INFO message=no web build found; running API-only dir=*",
+      "severity=INFO message=http server started addr=*",
+      "severity=INFO message=shutting down timeout=8s",
+      "severity=INFO message=http server stopped"
+    ]
+  },
+  "unreachable database with sign-in": {
+    "log": [
+      "severity=INFO message=starting api commit=unknown",
+      "severity=INFO message=client ip source trusted_proxy_hops=0",
+      "severity=INFO message=rules content loaded content_version=srd51@a8abc93b235c+fx.43",
+      "severity=WARNING message=database is not reachable yet error=failed to connect to `user=root database=none`: 127.0.0.1:1 (127.0.0.1): dial error: dial tcp 127.0.0.1:1: connect: connection refused",
+      "severity=WARNING message=BLOB_DIR and BLOB_BUCKET are not set; images are off: uploads, image downloads and the gallery answer 503",
+      "severity=WARNING message=IMAGE_GENERATOR=fake: images are made by the fake generator, not by a model",
+      "severity=WARNING message=OIDC discovery failed; retrying on the next sign-in issuer=http://localhost:1 error=discover http://localhost:1: Get \"http://localhost:1/.well-known/openid-configuration\": dial tcp 127.0.0.1:1: connect: connection refused",
+      "severity=INFO message=sign-in is enabled issuer=http://localhost:1 client_id=meurpg max_age=1h0m0s",
+      "severity=INFO message=serving the web app dir=*",
+      "severity=INFO message=http server started addr=*",
+      "severity=INFO message=shutting down timeout=8s",
+      "severity=INFO message=http server stopped"
+    ]
+  }
+}

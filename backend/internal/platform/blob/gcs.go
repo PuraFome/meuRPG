@@ -240,32 +240,49 @@ func (g *GCS) do(ctx context.Context, op, method, target, contentType, byteRange
 	var lastErr error
 	for attempt := range attempts {
 		if attempt > 0 {
-			select {
-			case <-time.After(g.pause):
-			case <-ctx.Done():
-				return nil, fmt.Errorf("blob: cloud storage %s: %w", op, ctx.Err())
+			if err := g.pauseBeforeRetry(ctx, op); err != nil {
+				return nil, err
 			}
 		}
 		resp, err := g.send(ctx, op, method, target, contentType, byteRange, body)
-		switch {
-		case err != nil:
-			lastErr = err
-			if ctx.Err() != nil {
-				return nil, err
-			}
-		case resp.StatusCode >= http.StatusInternalServerError && attempt+1 < attempts:
-			drainAndClose(resp.Body)
-			lastErr = statusError(op, resp.StatusCode)
-		default:
-			if resp.StatusCode == http.StatusUnauthorized {
-				// The token was refused: forget it, so the next call asks
-				// the metadata server for a new one.
-				g.forgetToken()
-			}
-			return resp, nil
+		resp, done, err := g.judge(ctx, op, resp, err, attempt+1 < attempts)
+		if done {
+			return resp, err
 		}
+		lastErr = err
 	}
 	return nil, lastErr
+}
+
+// pauseBeforeRetry waits g.pause before the second attempt, unless ctx ends first.
+func (g *GCS) pauseBeforeRetry(ctx context.Context, op string) error {
+	select {
+	case <-time.After(g.pause):
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("blob: cloud storage %s: %w", op, ctx.Err())
+	}
+}
+
+// judge decides what one attempt's outcome means. done says do returns
+// (resp, err) now; otherwise err is why the attempt failed, and another one
+// may follow. A network error is retried unless ctx is over; a 5xx is retried
+// when another attempt is left (retryable), else handed back as it is.
+func (g *GCS) judge(ctx context.Context, op string, resp *http.Response, err error, retryable bool) (_ *http.Response, done bool, _ error) {
+	switch {
+	case err != nil:
+		return nil, ctx.Err() != nil, err
+	case resp.StatusCode >= http.StatusInternalServerError && retryable:
+		drainAndClose(resp.Body)
+		return nil, false, statusError(op, resp.StatusCode)
+	default:
+		if resp.StatusCode == http.StatusUnauthorized {
+			// The token was refused: forget it, so the next call asks
+			// the metadata server for a new one.
+			g.forgetToken()
+		}
+		return resp, true, nil
+	}
 }
 
 func (g *GCS) send(ctx context.Context, op, method, target, contentType, byteRange string, body io.Reader) (*http.Response, error) {
