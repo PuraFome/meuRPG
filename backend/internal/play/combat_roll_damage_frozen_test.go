@@ -127,7 +127,7 @@ func (a *armed) rolled(t *testing.T, u *user, e *playv1.Encounter, pendingID str
 	return damagePlay{a: a, before: before, res: res, err: err}
 }
 
-func asAna(a *armed) *user { return a.ana }
+func asDamageAna(a *armed) *user { return a.ana }
 
 // torenHits is Toren's hit on the goblin (a natural 20 for a critical one) in the usual fight; it answers the
 // pending damage.
@@ -207,7 +207,7 @@ func refusedDamages() []damageScenario {
 		damageRefusal("an encounter that is not there", asToren, func(r *playv1.RollDamageRequest) {
 			r.EncounterId = "00000000-0000-4000-8000-000000000002"
 		}),
-		damageRefusal("another player's attacker", asAna, inAppDamage),
+		damageRefusal("another player's attacker", asDamageAna, inAppDamage),
 		damageRefusal("a selected extra the hit does not offer", asToren, func(r *playv1.RollDamageRequest) {
 			r.ExtrasChosen = true
 			r.SelectedExtras = []*playv1.SelectedExtra{{Key: "sneak-attack"}}
