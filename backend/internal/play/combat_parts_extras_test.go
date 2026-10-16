@@ -7,8 +7,8 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // These tests freeze what the roll of a damage by parts refuses: an extra that does not
@@ -260,7 +260,8 @@ func partsFight(t *testing.T, toren func(a *armed), monster string) (*armed, *pl
 	if label == "" {
 		t.Fatalf("%s is not in the combat", monster)
 	}
-	return a, a.begin(t, a.get(t, a.master)), label
+	e = a.begin(t, a.get(t, a.master))
+	return a, e, label
 }
 
 // TestRollDamageRerollsTheLowFacesOfAGreatWeapon: Great Weapon Fighting rolls a die that

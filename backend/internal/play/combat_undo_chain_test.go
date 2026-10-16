@@ -93,7 +93,9 @@ func TestLastActionChain(t *testing.T) {
 		{"a kind an undo cannot take back closes the chain", []chainRow{{id: "x", kind: eventTurnEnded, enc: enc}, under}, ""},
 		{"an undo and its target are passed over, with the older parts it took", []chainRow{
 			{id: "u", kind: eventActionUndone, enc: enc, ev: actionEvent{Undone: "x", UndoneAlso: []string{"y"}}},
-			{id: "x", kind: eventDamageRolled, enc: enc}, {id: "y", kind: eventDamageRolled, enc: enc}, under,
+			{id: "x", kind: eventDamageRolled, enc: enc},
+			{id: "y", kind: eventDamageRolled, enc: enc},
+			under,
 		}, "act"},
 		{"an undo with a broken payload takes nothing back", []chainRow{{id: "u", kind: eventActionUndone, enc: enc, raw: badJSON}, under}, "act"},
 		{"a broken payload of an undoable action is still taken", []chainRow{{id: "x", kind: eventAttackRolled, enc: enc, raw: badJSON}, under}, "x"},
@@ -127,8 +129,10 @@ func TestFiringBeforeListsTheOlderPartsOfAFiring(t *testing.T) {
 	}{
 		{"a firing that is not a part", []chainRow{{id: "a", kind: eventTrapTriggered, enc: enc, ev: head}, {id: "b", kind: eventTrapTriggered, enc: enc, ev: part}}, nil},
 		{"two parts and the head", []chainRow{
-			{id: "a", kind: eventTrapTriggered, enc: enc, ev: part}, {id: "b", kind: eventTrapTriggered, enc: enc, ev: part},
-			{id: "c", kind: eventTrapTriggered, enc: enc, ev: head}, {id: "d", kind: eventTrapTriggered, enc: enc, ev: head},
+			{id: "a", kind: eventTrapTriggered, enc: enc, ev: part},
+			{id: "b", kind: eventTrapTriggered, enc: enc, ev: part},
+			{id: "c", kind: eventTrapTriggered, enc: enc, ev: head},
+			{id: "d", kind: eventTrapTriggered, enc: enc, ev: head},
 		}, []string{"b", "c"}},
 		{"a part with another event under it", []chainRow{
 			{id: "a", kind: eventTrapTriggered, enc: enc, ev: part}, {id: "b", kind: eventAttackRolled, enc: enc, ev: head},
