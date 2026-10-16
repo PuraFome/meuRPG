@@ -71,7 +71,6 @@ cognitive internal/maps (*Service).pointToProto 18
 cognitive internal/maps (*Service).prepare 20
 cognitive internal/maps (*Service).prepareMap 20
 cognitive internal/maps (*Service).publishTokenWritten 26
-cognitive internal/maps (*Service).reserve 76
 cognitive internal/maps (*Service).run 32
 cognitive internal/maps (*Service).serve 18
 cognitive internal/maps (*Service).serveTile 31
@@ -420,7 +419,6 @@ cyclomatic internal/maps (*Service).loadTrapScene 16
 cyclomatic internal/maps (*Service).newSight 17
 cyclomatic internal/maps (*Service).playersSeenOf 20
 cyclomatic internal/maps (*Service).publishTokenWritten 21
-cyclomatic internal/maps (*Service).reserve 40
 cyclomatic internal/maps (*Service).run 30
 cyclomatic internal/maps (*Service).serveTile 27
 cyclomatic internal/maps (*Service).updateVision 23
@@ -646,7 +644,6 @@ cyclomatic internal/rules/combat AttackMode 30
 cyclomatic internal/rules/combat BonusAttack 19
 cyclomatic internal/rules/combat SaveMode 28
 maintainability internal/maps (*Service).RedrawDungeonMap 16
-maintainability internal/maps (*Service).reserve 19
 maintainability internal/play (*Service).ApplyPendingDamage 16
 maintainability internal/play (*Service).Help 19
 maintainability internal/play (*Service).ResolveConcentrationSave 18
