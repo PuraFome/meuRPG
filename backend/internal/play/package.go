@@ -231,7 +231,6 @@ func (p *packagePart) stagePuzzle(in *campaignpackage.Import, pp *pkgv1.PackageP
 // a light, a clue of a scene. It rewrites the ids to the new ones.
 func (p *packagePart) stageOnSolve(in *campaignpackage.Import, name string, on *playv1.PuzzleOnSolve) (string, *playv1.PuzzleOnSolve, pkgv1.PackageProblemReason) {
 	invalid := pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
-	kind := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PUZZLE
 	action := on.GetAction()
 	if action == playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_UNSPECIFIED {
 		action = playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_NOTIFY
@@ -241,8 +240,7 @@ func (p *packagePart) stageOnSolve(in *campaignpackage.Import, name string, on *
 		return "", nil, invalid
 	}
 	out := &playv1.PuzzleOnSolve{Action: action, Message: message}
-	switch action {
-	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_NOTIFY:
+	if action == playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_NOTIFY {
 		if on.GetTarget() != nil {
 			return "", nil, invalid
 		}
@@ -250,10 +248,22 @@ func (p *packagePart) stageOnSolve(in *campaignpackage.Import, name string, on *
 			return solveNotify, nil, 0
 		}
 		return solveNotify, out, 0
+	}
+	if reason := stageSolveTarget(in, name, on, out); reason != 0 {
+		return "", nil, reason
+	}
+	return solveActionName(action), out, 0
+}
+
+// stageSolveTarget checks the target of an action that has one and writes it, with
+// the new ids, into out.
+func stageSolveTarget(in *campaignpackage.Import, name string, on, out *playv1.PuzzleOnSolve) pkgv1.PackageProblemReason {
+	kind := pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PUZZLE
+	switch out.GetAction() {
 	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR:
 		t := on.GetDoor()
 		if t == nil || in.Facts.DoorAt == nil || !in.Facts.DoorAt(t.GetMapId(), int(t.GetCol()), int(t.GetRow())) {
-			return "", nil, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE
+			return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE
 		}
 		out.Target = &playv1.PuzzleOnSolve_Door{Door: &playv1.PuzzleDoorTarget{
 			MapId: in.IDs.Ref("map", t.GetMapId(), kind, name), Col: t.GetCol(), Row: t.GetRow(),
@@ -261,7 +271,7 @@ func (p *packagePart) stageOnSolve(in *campaignpackage.Import, name string, on *
 	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT:
 		t := on.GetPoint()
 		if t == nil || in.Facts.PointMap[t.GetPointId()] != t.GetMapId() || in.Facts.PointKind[t.GetPointId()] == "light" {
-			return "", nil, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE
+			return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE
 		}
 		out.Target = &playv1.PuzzleOnSolve_Point{Point: &playv1.PuzzlePointTarget{
 			MapId: in.IDs.Ref("map", t.GetMapId(), kind, name), PointId: in.IDs.Ref("point", t.GetPointId(), kind, name),
@@ -269,13 +279,13 @@ func (p *packagePart) stageOnSolve(in *campaignpackage.Import, name string, on *
 	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE:
 		t := on.GetClue()
 		if t == nil {
-			return "", nil, invalid
+			return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
 		}
 		out.Target = &playv1.PuzzleOnSolve_Clue{Clue: &playv1.PuzzleClueTarget{ClueId: in.IDs.Ref("clue", t.GetClueId(), kind, name)}}
 	default:
-		return "", nil, invalid
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
 	}
-	return solveActionName(action), out, 0
+	return 0
 }
 
 // stageParts normalises the split information as checkParts does: up to 8
@@ -312,45 +322,65 @@ func (p *packagePart) stageParts(in *campaignpackage.Import, name string, parts 
 // stageOnWrong normalises "Ao errar" as checkOnWrong does, and checks its trap
 // against the package.
 func (p *packagePart) stageOnWrong(in *campaignpackage.Import, name string, kind puzzleKind, on *playv1.PuzzleOnWrong) (*playv1.PuzzleOnWrong, pkgv1.PackageProblemReason) {
-	invalid := pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
 	if on == nil {
 		return nil, 0
 	}
 	out := &playv1.PuzzleOnWrong{}
-	if n := on.GetAttemptsPerPlayer(); n != 0 {
-		if n < 1 || n > maxAttempts || !kind.judges() {
-			return nil, invalid
-		}
-		out.AttemptsPerPlayer = n
+	if reason := stageWrongLimits(kind, on, out); reason != 0 {
+		return nil, reason
 	}
-	if n := on.GetMaxMoves(); n != 0 {
-		if n < 1 || n > maxMovesLimit {
-			return nil, invalid
-		}
-		out.MaxMoves = n
-	}
-	if n := on.GetTimeLimitSeconds(); n != 0 {
-		if n < minTimeLimit || n > maxTimeLimit {
-			return nil, invalid
-		}
-		out.TimeLimitSeconds = n
-	}
-	if t := on.GetTrap(); t != nil {
-		if !kind.judges() {
-			return nil, invalid
-		}
-		if in.Facts.PointMap[t.GetPointId()] != t.GetMapId() || in.Facts.PointKind[t.GetPointId()] != "trap" {
-			return nil, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE
-		}
-		out.Trap = &playv1.PuzzleTrapTarget{
-			MapId:   in.IDs.Ref("map", t.GetMapId(), pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PUZZLE, name),
-			PointId: in.IDs.Ref("point", t.GetPointId(), pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PUZZLE, name),
-		}
+	if reason := stageWrongTrap(in, name, kind, on, out); reason != 0 {
+		return nil, reason
 	}
 	if out.GetTrap() == nil && out.GetAttemptsPerPlayer() == 0 && out.GetMaxMoves() == 0 && out.GetTimeLimitSeconds() == 0 {
 		return nil, 0
 	}
 	return out, 0
+}
+
+// stageWrongLimits checks the attempts, the moves and the time of "Ao errar" and
+// copies them into out.
+func stageWrongLimits(kind puzzleKind, on, out *playv1.PuzzleOnWrong) pkgv1.PackageProblemReason {
+	invalid := pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
+	if n := on.GetAttemptsPerPlayer(); n != 0 {
+		if n < 1 || n > maxAttempts || !kind.judges() {
+			return invalid
+		}
+		out.AttemptsPerPlayer = n
+	}
+	if n := on.GetMaxMoves(); n != 0 {
+		if n < 1 || n > maxMovesLimit {
+			return invalid
+		}
+		out.MaxMoves = n
+	}
+	if n := on.GetTimeLimitSeconds(); n != 0 {
+		if n < minTimeLimit || n > maxTimeLimit {
+			return invalid
+		}
+		out.TimeLimitSeconds = n
+	}
+	return 0
+}
+
+// stageWrongTrap checks the trap of "Ao errar" against the package and writes it,
+// with the new ids, into out.
+func stageWrongTrap(in *campaignpackage.Import, name string, kind puzzleKind, on, out *playv1.PuzzleOnWrong) pkgv1.PackageProblemReason {
+	t := on.GetTrap()
+	if t == nil {
+		return 0
+	}
+	if !kind.judges() {
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
+	}
+	if in.Facts.PointMap[t.GetPointId()] != t.GetMapId() || in.Facts.PointKind[t.GetPointId()] != "trap" {
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_IN_PACKAGE
+	}
+	out.Trap = &playv1.PuzzleTrapTarget{
+		MapId:   in.IDs.Ref("map", t.GetMapId(), pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PUZZLE, name),
+		PointId: in.IDs.Ref("point", t.GetPointId(), pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_PUZZLE, name),
+	}
+	return 0
 }
 
 // Apply implements campaignpackage.Part.

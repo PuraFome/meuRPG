@@ -103,66 +103,18 @@ func (s *Service) SetShownImage(
 		return nil, err
 	}
 	keep := req.Msg.GetKeep() && imageID != nil
-	var shown *playv1.ShownImage
-	var shownCopy ShownCopy // the files of a fog map's image copy, its row not yet made
-	if imageID != nil {
-		// The image must be the campaign's. The foreign key keeps it from
-		// disappearing before the commit (below).
-		if shown, shownCopy, err = s.maps.PrepareShow(ctx, m.CampaignID, *imageID); err != nil {
-			return nil, s.dbError(ctx, "find the image to show", err)
-		}
-		// What is shown is the image the maps module answered with: the copy, when
-		// the one asked for is a fog map's.
-		shownID := shown.GetId()
-		imageID = &shownID
+	shown, shownCopy, imageID, err := s.prepareShownImage(ctx, m.CampaignID, imageID)
+	if err != nil {
+		return nil, err
 	}
 
-	var moved bool       // an image went to the left list
-	var changed bool     // another image (or none) is shown now
-	var copyCreated bool // the shown copy's row is the one this call inserted
-	var showing string   // the image shown at the end of the transaction, "" for none
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
-		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
-		}
-		// An image kept leaves with the players when it stops being shown:
-		// replaced by another, or by nothing. The same image again only
-		// moves the switch.
-		moved = false
-		copyCreated = false
-		showID := imageID
-		if shownCopy != nil {
-			// The copy's row first: another show of the same image may have made it meanwhile.
-			id, created, err := shownCopy.Insert(ctx, tx)
-			if err != nil {
-				return err
-			}
-			showID, copyCreated = &id, created
-		}
-		showing = deref(showID)
-		changed = !equal(session.ShownImageID, showID)
-		if session.ShownImageKeep && session.ShownImageID != nil && !equal(session.ShownImageID, showID) {
-			if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *session.ShownImageID, s.now()); err != nil {
-				return err
-			}
-			moved = true
-		}
-		if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: showID, ShownImageKeep: keep}); err != nil {
-			return fmt.Errorf("set the shown image: %w", err)
-		}
-		return nil
-	})
-	if shownCopy != nil && (err != nil || !copyCreated) {
+	out, err := s.swapShownImage(ctx, m.CampaignID, imageID, keep, shownCopy)
+	if shownCopy != nil && (err != nil || !out.copyCreated) {
 		shownCopy.Discard(ctx) // no gallery row: the copy's files go
 	}
-	if err == nil && showing != shown.GetId() {
+	if err == nil && out.showing != shown.GetId() {
 		// Another show committed the copy first: its image is the one shown.
-		if shown, err = s.maps.ShownImage(ctx, m.CampaignID, showing); err != nil {
+		if shown, err = s.maps.ShownImage(ctx, m.CampaignID, out.showing); err != nil {
 			return nil, s.dbError(ctx, "find the shown image", err)
 		}
 	}
@@ -173,19 +125,94 @@ func (s *Service) SetShownImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "set the shown image", err)
 	}
+	s.publishShownImage(m.CampaignID, out, shown)
+	return connect.NewResponse(&playv1.SetShownImageResponse{ShownImage: shown, Keep: keep}), nil
+}
 
-	// Only the switch moved when the image is the same: nothing for the
-	// players, who never learn the switch, and the master's page already
-	// knows.
-	if changed {
-		s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
+// prepareShownImage asks the maps module for the image to show (none for nil). The
+// image must be the campaign's; the foreign key keeps it from disappearing before
+// the commit. It returns the image the maps module answered with, which is the
+// copy when the one asked for is a fog map's, the files of that copy (its row not
+// yet made) and the id to show.
+func (s *Service) prepareShownImage(ctx context.Context, campaignID string, imageID *string) (*playv1.ShownImage, ShownCopy, *string, error) {
+	if imageID == nil {
+		return nil, nil, nil, nil
+	}
+	shown, shownCopy, err := s.maps.PrepareShow(ctx, campaignID, *imageID)
+	if err != nil {
+		return nil, nil, nil, s.dbError(ctx, "find the image to show", err)
+	}
+	shownID := shown.GetId()
+	return shown, shownCopy, &shownID, nil
+}
+
+// publishShownImage tells the streams what a change of the shown image did.
+// Only the switch moved when the image is the same: nothing for the players,
+// who never learn the switch, and the master's page already knows.
+func (s *Service) publishShownImage(campaignID string, out shownOutcome, shown *playv1.ShownImage) {
+	if out.changed {
+		s.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
 			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{Image: shown},
 		}})
 	}
-	if moved {
-		s.publishLeftImagesChanged(m.CampaignID)
+	if out.moved {
+		s.publishLeftImagesChanged(campaignID)
 	}
-	return connect.NewResponse(&playv1.SetShownImageResponse{ShownImage: shown, Keep: keep}), nil
+}
+
+// shownOutcome is what a change of the shown image did.
+type shownOutcome struct {
+	moved       bool   // an image went to the left list
+	changed     bool   // another image (or none) is shown now
+	copyCreated bool   // the shown copy's row is the one this call inserted
+	showing     string // the image shown at the end of the transaction, "" for none
+}
+
+// swapShownImage shows the image (nil for none) in the open session, inside one
+// transaction.
+func (s *Service) swapShownImage(ctx context.Context, campaignID string, imageID *string, keep bool, shownCopy ShownCopy) (shownOutcome, error) {
+	var out shownOutcome
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		out.moved, out.copyCreated = false, false
+		return s.swapShownImageIn(ctx, tx, campaignID, imageID, keep, shownCopy, &out)
+	})
+	return out, err
+}
+
+// swapShownImageIn is swapShownImage's transaction.
+func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID string, imageID *string, keep bool, shownCopy ShownCopy, out *shownOutcome) error {
+	q := s.queries.WithTx(tx)
+	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errNoOpenSession()
+	}
+	if err != nil {
+		return fmt.Errorf("lock the open session: %w", err)
+	}
+	// An image kept leaves with the players when it stops being shown:
+	// replaced by another, or by nothing. The same image again only
+	// moves the switch.
+	showID := imageID
+	if shownCopy != nil {
+		// The copy's row first: another show of the same image may have made it meanwhile.
+		id, created, err := shownCopy.Insert(ctx, tx)
+		if err != nil {
+			return err
+		}
+		showID, out.copyCreated = &id, created
+	}
+	out.showing = deref(showID)
+	out.changed = !equal(session.ShownImageID, showID)
+	if session.ShownImageKeep && session.ShownImageID != nil && out.changed {
+		if err := s.maps.LeaveImage(ctx, tx, campaignID, *session.ShownImageID, s.now()); err != nil {
+			return err
+		}
+		out.moved = true
+	}
+	if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: showID, ShownImageKeep: keep}); err != nil {
+		return fmt.Errorf("set the shown image: %w", err)
+	}
+	return nil
 }
 
 // ListLeftImages implements playv1connect.PlayServiceHandler.

@@ -36,14 +36,18 @@ type fallCut struct {
 	Before  int32  `json:"before"`
 }
 
+// errNoFall is Slow Fall's refusal when nothing falls.
+func errNoFall() error {
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New("there is no fall damage to reduce"))
+}
+
 // slowFall takes five times the monk's level off the fall damage that still waits
 // for the monk, and returns what it changed and how many points it took off. Several
 // parts of one fall share the reduction in the order they were rolled. It refuses
 // when there is no fall damage to reduce, so the reaction is not spent for nothing.
 func (s *Service) slowFall(ctx context.Context, c *combatTx, who playdb.Combatant, monkLevel int) ([]fallCut, int32, error) {
-	noFall := connect.NewError(connect.CodeFailedPrecondition, errors.New("there is no fall damage to reduce"))
 	if s.traps == nil || c.enc.MapID == nil || monkLevel < 1 {
-		return nil, 0, noFall
+		return nil, 0, errNoFall()
 	}
 	traps, err := s.traps.Traps(ctx, c.tx, c.session.CampaignID, *c.enc.MapID)
 	if err != nil {
@@ -59,7 +63,17 @@ func (s *Service) slowFall(ctx context.Context, c *combatTx, who playdb.Combatan
 	if err != nil {
 		return nil, 0, fmt.Errorf("list the pending damage: %w", err)
 	}
-	var fall []playdb.PendingDamage // the damages of the monk's last fall
+	fall := lastFallOf(open, who, pits)
+	if len(fall) == 0 {
+		return nil, 0, errNoFall()
+	}
+	return reduceFall(ctx, c, fall, monkLevel)
+}
+
+// lastFallOf is the damages of the combatant's last fall: what still waits, from a
+// pit, of the fall damage type.
+func lastFallOf(open []playdb.PendingDamage, who playdb.Combatant, pits map[string]bool) []playdb.PendingDamage {
+	var fall []playdb.PendingDamage
 	for _, p := range open {
 		if p.TargetID != who.ID || p.TrapPointID == nil || !pits[*p.TrapPointID] || p.Amount == nil || *p.Amount < 1 || p.DamageType != fallDamageType {
 			continue
@@ -72,9 +86,11 @@ func (s *Service) slowFall(ctx context.Context, c *combatTx, who playdb.Combatan
 		}
 		fall = append(fall, p)
 	}
-	if len(fall) == 0 {
-		return nil, 0, noFall
-	}
+	return fall
+}
+
+// reduceFall takes the monk's reduction off the parts of the fall, in order.
+func reduceFall(ctx context.Context, c *combatTx, fall []playdb.PendingDamage, monkLevel int) ([]fallCut, int32, error) {
 	left := int32(min(monkLevel*slowFallPerLevel, math.MaxInt32))
 	var cuts []fallCut
 	var taken int32

@@ -91,14 +91,38 @@ func hitPool(s *hpState) int32 {
 	return n
 }
 
+// highlightTally is the state of one fold: a tally per player's character and the
+// party's side.
+type highlightTally struct {
+	byCombatant map[string]*characterTally
+	ally        map[string]bool // the party's side: a hit on it is friendly fire and counts nowhere
+}
+
 // tallyHighlights folds a combat's events, oldest first, into the numbers of
 // each player's character, in the order of the combatants.
 func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []playdb.Combatant) []*characterTally {
-	byCombatant := map[string]*characterTally{}
-	ally := map[string]bool{} // the party's side: a hit on it is friendly fire and counts nowhere
+	h, out := newHighlightTally(combatants)
+	undone := undoneHighlightIDs(events)
+	for _, e := range events {
+		if e.Kind == eventActionUndone || undone[e.ID] {
+			continue
+		}
+		var ev actionEvent
+		if err := json.Unmarshal(e.Payload, &ev); err != nil {
+			continue // a payload of this module never fails to decode; skip what does
+		}
+		h.fold(e.Kind, &ev)
+	}
+	return out
+}
+
+// newHighlightTally opens a tally for each player's character, listed in the
+// order of the combatants.
+func newHighlightTally(combatants []playdb.Combatant) (*highlightTally, []*characterTally) {
+	h := &highlightTally{byCombatant: map[string]*characterTally{}, ally: map[string]bool{}}
 	var out []*characterTally
 	for _, c := range combatants {
-		ally[c.ID] = inParty(c)
+		h.ally[c.ID] = inParty(c)
 		if c.Kind != kindPlayer {
 			continue
 		}
@@ -106,11 +130,14 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 		if c.UserID != nil {
 			t.userID = *c.UserID
 		}
-		byCombatant[c.ID] = t
+		h.byCombatant[c.ID] = t
 		out = append(out, t)
 	}
+	return h, out
+}
 
-	// An undo names the event it took back: the first pass finds them all.
+// undoneHighlightIDs is the ids the undos name: the first pass finds them all.
+func undoneHighlightIDs(events []playdb.ListEncounterCombatEventsRow) map[string]bool {
 	undone := map[string]bool{}
 	for _, e := range events {
 		if e.Kind != eventActionUndone {
@@ -120,67 +147,79 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 			undone[ev.Undone] = true
 		}
 	}
+	return undone
+}
 
-	for _, e := range events {
-		if e.Kind == eventActionUndone || undone[e.ID] {
-			continue
+// fold adds one event to the numbers.
+func (h *highlightTally) fold(kind string, ev *actionEvent) {
+	actor := h.byCombatant[ev.Actor] // nil: an NPC's action, or a combatant that left
+	switch kind {
+	case eventAttackRolled:
+		if actor != nil && ev.Outcome == outcomeCrit && !h.ally[ev.Target] {
+			actor.crits++
 		}
-		var ev actionEvent
-		if err := json.Unmarshal(e.Payload, &ev); err != nil {
-			continue // a payload of this module never fails to decode; skip what does
+	case eventSpellCast:
+		h.foldSpellCrits(actor, ev)
+	case eventActionTaken:
+		foldActionHealing(actor, ev)
+	case eventDamageRolled:
+		h.foldDamageRolled(actor, ev)
+	case eventDamageApplied:
+		// The master applied a damage to a player's character: it is the target
+		// that took it, whoever dealt it.
+		if t := h.byCombatant[ev.Target]; t != nil {
+			t.taken += hpLost(ev.Before, ev.After)
 		}
-		actor := byCombatant[ev.Actor] // nil: an NPC's action, or a combatant that left
-		switch e.Kind {
-		case eventAttackRolled:
-			if actor != nil && ev.Outcome == outcomeCrit && !ally[ev.Target] {
-				actor.crits++
-			}
-		case eventSpellCast:
-			for _, h := range ev.Hits {
-				if actor != nil && h.Outcome == outcomeCrit && !ally[h.Target] {
-					actor.crits++
-				}
-			}
-		case eventActionTaken:
-			// Retomar o fôlego and the like: a heal of the actor's own.
-			if actor != nil && ev.Heal {
-				actor.healing += ev.Amount
-			}
-			// Lay on Hands: the hit points the touch gave back.
-			if actor != nil && ev.Res != nil {
-				actor.healing += ev.Res.Healed
-			}
-		case eventDamageRolled:
-			hits := ev.Settled
-			if len(hits) == 0 {
-				hits = []damageHit{{Pending: ev.Pending, Target: ev.Target, Amount: ev.Amount, Applied: ev.Applied, Before: ev.Before, After: ev.After}}
-			}
-			for _, h := range hits {
-				switch {
-				case actor == nil || !h.Applied:
-					// Not a player's, or a player's character's damage still waiting
-					// for the master (damage_applied counts it).
-				case ev.Heal:
-					actor.healing += h.Amount // what was regained, up to the maximum
-				case ally[h.Target]:
-					// Friendly fire (a hit on a creature of the party) counts nowhere.
-				case h.Before != nil && h.After != nil:
-					// Only an NPC takes a damage at once: this is damage dealt to one.
-					actor.damage += hpLost(h.Before, h.After)
-					if h.After.Defeated && !h.Before.Defeated {
-						actor.finalBlows++
-					}
-				}
-			}
-		case eventDamageApplied:
-			// The master applied a damage to a player's character: it is the target
-			// that took it, whoever dealt it.
-			if t := byCombatant[ev.Target]; t != nil {
-				t.taken += hpLost(ev.Before, ev.After)
+	}
+}
+
+// foldSpellCrits counts the critical hits of a spell attack on the other side.
+func (h *highlightTally) foldSpellCrits(actor *characterTally, ev *actionEvent) {
+	for _, hit := range ev.Hits {
+		if actor != nil && hit.Outcome == outcomeCrit && !h.ally[hit.Target] {
+			actor.crits++
+		}
+	}
+}
+
+// foldActionHealing counts what an action gave back to the actor's side.
+func foldActionHealing(actor *characterTally, ev *actionEvent) {
+	if actor == nil {
+		return
+	}
+	// Retomar o fôlego and the like: a heal of the actor's own.
+	if ev.Heal {
+		actor.healing += ev.Amount
+	}
+	// Lay on Hands: the hit points the touch gave back.
+	if ev.Res != nil {
+		actor.healing += ev.Res.Healed
+	}
+}
+
+// foldDamageRolled counts each hit of a damage roll.
+func (h *highlightTally) foldDamageRolled(actor *characterTally, ev *actionEvent) {
+	hits := ev.Settled
+	if len(hits) == 0 {
+		hits = []damageHit{{Pending: ev.Pending, Target: ev.Target, Amount: ev.Amount, Applied: ev.Applied, Before: ev.Before, After: ev.After}}
+	}
+	for _, hit := range hits {
+		switch {
+		case actor == nil || !hit.Applied:
+			// Not a player's, or a player's character's damage still waiting
+			// for the master (damage_applied counts it).
+		case ev.Heal:
+			actor.healing += hit.Amount // what was regained, up to the maximum
+		case h.ally[hit.Target]:
+			// Friendly fire (a hit on a creature of the party) counts nowhere.
+		case hit.Before != nil && hit.After != nil:
+			// Only an NPC takes a damage at once: this is damage dealt to one.
+			actor.damage += hpLost(hit.Before, hit.After)
+			if hit.After.Defeated && !hit.Before.Defeated {
+				actor.finalBlows++
 			}
 		}
 	}
-	return out
 }
 
 // highlightCategories names the winner of each category of a combat: the most
@@ -224,14 +263,36 @@ func (s *Service) GetCombatHighlights(
 	if err != nil {
 		return nil, err
 	}
-	// The encounter, its events and its combatants are one snapshot (audit D-03).
+	events, cs, err := s.readHighlightInputs(ctx, m.CampaignID, encID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the combat's highlights", err)
+	}
+	tallies := tallyHighlights(events, cs)
+
+	res := &playv1.GetCombatHighlightsResponse{Categories: highlightCategories(tallies)}
+	for _, t := range tallies {
+		// The master gets every row; a player only their own character's (RN-20),
+		// zeros included, so "Seu resultado" is whole.
+		if m.Role == authz.RoleMaster || (t.userID != "" && t.userID == m.UserID) {
+			res.Characters = append(res.Characters, &playv1.CharacterHighlights{
+				CharacterId: t.characterID, Name: t.name,
+				DamageDealt: t.damage, HealingDone: t.healing, DamageTaken: t.taken, FinalBlows: t.finalBlows, CriticalHits: t.crits,
+			})
+		}
+	}
+	return connect.NewResponse(res), nil
+}
+
+// readHighlightInputs reads the events and combatants of an ended combat. The
+// encounter, its events and its combatants are one snapshot (audit D-03).
+func (s *Service) readHighlightInputs(ctx context.Context, campaignID, encID string) ([]playdb.ListEncounterCombatEventsRow, []playdb.Combatant, error) {
 	var (
 		events []playdb.ListEncounterCombatEventsRow
 		cs     []playdb.Combatant
 	)
-	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		session, err := openSessionWith(ctx, q, m.CampaignID)
+		session, err := openSessionWith(ctx, q, campaignID)
 		if err != nil {
 			return err
 		}
@@ -250,21 +311,5 @@ func (s *Service) GetCombatHighlights(
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, s.dbError(ctx, "read the combat's highlights", err)
-	}
-	tallies := tallyHighlights(events, cs)
-
-	res := &playv1.GetCombatHighlightsResponse{Categories: highlightCategories(tallies)}
-	for _, t := range tallies {
-		// The master gets every row; a player only their own character's (RN-20),
-		// zeros included, so "Seu resultado" is whole.
-		if m.Role == authz.RoleMaster || (t.userID != "" && t.userID == m.UserID) {
-			res.Characters = append(res.Characters, &playv1.CharacterHighlights{
-				CharacterId: t.characterID, Name: t.name,
-				DamageDealt: t.damage, HealingDone: t.healing, DamageTaken: t.taken, FinalBlows: t.finalBlows, CriticalHits: t.crits,
-			})
-		}
-	}
-	return connect.NewResponse(res), nil
+	return events, cs, err
 }

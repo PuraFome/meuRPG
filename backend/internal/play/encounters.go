@@ -92,45 +92,99 @@ type builderParty struct {
 // and the NPCs the master adds, with the level he gives them (question 86). It reads before any
 // transaction of the caller.
 func (s *Service) encounterParty(ctx context.Context, campaignID string, extra []*playv1.PartyNpc) (builderParty, error) {
-	if len(extra) > maxExtraParty {
-		return builderParty{}, invalid("extra_party has at most %d NPCs", maxExtraParty)
+	ids, err := checkExtraParty(extra)
+	if err != nil {
+		return builderParty{}, err
 	}
-	// What the master wrote, checked before the database is asked anything.
+	found, err := s.partyNpcNames(ctx, campaignID, ids)
+	if err != nil {
+		return builderParty{}, err
+	}
+	p, err := s.playersOfParty(ctx, campaignID)
+	if err != nil {
+		return builderParty{}, err
+	}
+	for i, e := range extra {
+		name := strings.TrimSpace(e.GetName())
+		if e.GetCharacterId() != "" {
+			id, _ := uuid.Parse(e.GetCharacterId())
+			npcName, ok := found[id.String()]
+			if !ok {
+				return builderParty{}, invalid("extra_party[%d].character_id is not an NPC of the campaign", i)
+			}
+			name = cmpName(name, npcName)
+		}
+		p.members = append(p.members, &playv1.EncounterPartyMember{CharacterId: e.GetCharacterId(), Name: name, Level: e.GetLevel(), Npc: true})
+		p.levels = append(p.levels, int(e.GetLevel()))
+	}
+	return p, nil
+}
+
+// checkExtraParty checks what the master wrote about the NPCs he adds, before the
+// database is asked anything. It returns the ids of the characters it names.
+func checkExtraParty(extra []*playv1.PartyNpc) ([]string, error) {
+	if len(extra) > maxExtraParty {
+		return nil, invalid("extra_party has at most %d NPCs", maxExtraParty)
+	}
 	ids := make([]string, 0, len(extra))
 	for i, e := range extra {
-		if e.GetLevel() < 1 || e.GetLevel() > maxCreatureLevel {
-			return builderParty{}, invalid("extra_party[%d].level must be 1 to %d", i, maxCreatureLevel)
+		id, err := checkPartyNpc(i, e)
+		if err != nil {
+			return nil, err
 		}
-		if strings.TrimSpace(e.GetName()) != "" || e.GetCharacterId() == "" {
-			if _, err := names.Clean(e.GetName(), maxPartyNpcName); err != nil {
-				return builderParty{}, invalid("extra_party[%d].name %v", i, err)
-			}
-		}
-		if e.GetCharacterId() == "" {
+		if id == "" {
 			continue
 		}
-		id, err := uuid.Parse(e.GetCharacterId())
-		if err != nil {
-			return builderParty{}, invalid("extra_party[%d].character_id is not a character of the campaign", i)
+		if slices.Contains(ids, id) {
+			return nil, invalid("extra_party[%d] repeats a character", i)
 		}
-		if slices.Contains(ids, id.String()) {
-			return builderParty{}, invalid("extra_party[%d] repeats a character", i)
-		}
-		ids = append(ids, id.String())
+		ids = append(ids, id)
 	}
-	var found map[string]string // the NPC's name by id
-	if len(ids) > 0 {
-		chars, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids)
-		if err != nil {
-			return builderParty{}, s.dbError(ctx, "read the NPCs of the party", err)
-		}
-		found = make(map[string]string, len(chars))
-		for _, c := range chars {
-			if !c.Player && !c.CombatOnly { // the NPC the app keeps for a creature is never a companion
-				found[c.ID] = c.Name
-			}
+	return ids, nil
+}
+
+// checkPartyNpc checks one NPC the master adds: its level, its name and the
+// character it names. It returns that character's id, empty for none.
+func checkPartyNpc(i int, e *playv1.PartyNpc) (string, error) {
+	if e.GetLevel() < 1 || e.GetLevel() > maxCreatureLevel {
+		return "", invalid("extra_party[%d].level must be 1 to %d", i, maxCreatureLevel)
+	}
+	if strings.TrimSpace(e.GetName()) != "" || e.GetCharacterId() == "" {
+		if _, err := names.Clean(e.GetName(), maxPartyNpcName); err != nil {
+			return "", invalid("extra_party[%d].name %v", i, err)
 		}
 	}
+	if e.GetCharacterId() == "" {
+		return "", nil
+	}
+	id, err := uuid.Parse(e.GetCharacterId())
+	if err != nil {
+		return "", invalid("extra_party[%d].character_id is not a character of the campaign", i)
+	}
+	return id.String(), nil
+}
+
+// partyNpcNames reads the names of the NPCs the master named by id (nil for none).
+func (s *Service) partyNpcNames(ctx context.Context, campaignID string, ids []string) (map[string]string, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	chars, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the NPCs of the party", err)
+	}
+	found := make(map[string]string, len(chars)) // the NPC's name by id
+	for _, c := range chars {
+		if !c.Player && !c.CombatOnly { // the NPC the app keeps for a creature is never a companion
+			found[c.ID] = c.Name
+		}
+	}
+	return found, nil
+}
+
+// playersOfParty is the party of the campaign's living player characters, with the
+// creatures that fight beside them.
+func (s *Service) playersOfParty(ctx context.Context, campaignID string) (builderParty, error) {
 	players, err := s.roster.PartyLevels(ctx, nil, campaignID)
 	if err != nil {
 		return builderParty{}, s.dbError(ctx, "read the party", err)
@@ -150,19 +204,6 @@ func (s *Service) encounterParty(ctx context.Context, campaignID string, extra [
 	for _, m := range players {
 		p.members = append(p.members, &playv1.EncounterPartyMember{CharacterId: m.ID, Name: m.Name, Level: n32(m.Level)})
 		p.levels = append(p.levels, m.Level)
-	}
-	for i, e := range extra {
-		name := strings.TrimSpace(e.GetName())
-		if e.GetCharacterId() != "" {
-			id, _ := uuid.Parse(e.GetCharacterId())
-			npcName, ok := found[id.String()]
-			if !ok {
-				return builderParty{}, invalid("extra_party[%d].character_id is not an NPC of the campaign", i)
-			}
-			name = cmpName(name, npcName)
-		}
-		p.members = append(p.members, &playv1.EncounterPartyMember{CharacterId: e.GetCharacterId(), Name: name, Level: e.GetLevel(), Npc: true})
-		p.levels = append(p.levels, int(e.GetLevel()))
 	}
 	return p, nil
 }
@@ -305,16 +346,9 @@ func (s *Service) GenerateEncounter(
 	if err != nil {
 		return nil, err
 	}
-	var band encounter.Band
-	switch req.Msg.GetBand() {
-	case playv1.EncounterBand_ENCOUNTER_BAND_UNSPECIFIED, playv1.EncounterBand_ENCOUNTER_BAND_MODERATE:
-		band = encounter.BandModerate
-	case playv1.EncounterBand_ENCOUNTER_BAND_LOW:
-		band = encounter.BandLow
-	case playv1.EncounterBand_ENCOUNTER_BAND_HIGH:
-		band = encounter.BandHigh
-	default:
-		return nil, invalid("band must be LOW, MODERATE or HIGH")
+	band, err := bandFromProto(req.Msg.GetBand())
+	if err != nil {
+		return nil, err
 	}
 	content, err := s.roster.RulesContent(ctx, nil, m.CampaignID)
 	if err != nil {
@@ -326,13 +360,9 @@ func (s *Service) GenerateEncounter(
 	}
 	seed := req.Msg.GetSeed()
 	if seed == 0 {
-		// "Gerar outro": the server draws one, from 1 to 10000, with two d100.
-		hi, err1 := s.roller.Roll(100)
-		lo, err2 := s.roller.Roll(100)
-		if err := errors.Join(err1, err2); err != nil {
-			return nil, s.dbError(ctx, "draw a seed", err)
+		if seed, err = s.drawSeed(ctx); err != nil {
+			return nil, err
 		}
-		seed = uint32(n32(max(hi-1, 0)*100 + max(lo, 1))) //nolint:gosec // 1 to 10000, never negative
 	}
 	// The party's own combatants take room in the combat of 40: the encounter never fills it.
 	room := min(encounter.DefaultMaxTotal, maxCombatants-p.fighters)
@@ -340,15 +370,8 @@ func (s *Service) GenerateEncounter(
 		return nil, errBuildBlocked(playv1.EncounterBuildBlockedReason_ENCOUNTER_BUILD_BLOCKED_REASON_NOTHING_FITS, "the party fills the combat: no room for a creature")
 	}
 	ev, err := content.GenerateEncounter(p.levels, band, req.Msg.GetCreatureType(), seed, room)
-	switch {
-	case errors.Is(err, rules.ErrEncounterNoParty):
-		return nil, errBuildBlocked(playv1.EncounterBuildBlockedReason_ENCOUNTER_BUILD_BLOCKED_REASON_NO_PARTY, "the party is empty: no living player character and no NPC added")
-	case errors.Is(err, rules.ErrEncounterNothingFits):
-		return nil, errBuildBlocked(playv1.EncounterBuildBlockedReason_ENCOUNTER_BUILD_BLOCKED_REASON_NOTHING_FITS, "no creature fits that difficulty")
-	case errors.Is(err, rules.ErrEncounterType):
-		return nil, invalid("creature_type is not an SRD creature type")
-	case err != nil:
-		return nil, s.dbError(ctx, "generate an encounter", err)
+	if err != nil {
+		return nil, s.generateFailure(ctx, err)
 	}
 	entries := make([]encounter.Entry, len(ev.Lines))
 	for i, l := range ev.Lines {
@@ -359,6 +382,44 @@ func (s *Service) GenerateEncounter(
 		return nil, s.dbError(ctx, "measure an encounter", err)
 	}
 	return connect.NewResponse(&playv1.GenerateEncounterResponse{Evaluation: out, Seed: seed}), nil
+}
+
+// bandFromProto is the difficulty band asked for: moderate when none.
+func bandFromProto(b playv1.EncounterBand) (encounter.Band, error) {
+	switch b {
+	case playv1.EncounterBand_ENCOUNTER_BAND_UNSPECIFIED, playv1.EncounterBand_ENCOUNTER_BAND_MODERATE:
+		return encounter.BandModerate, nil
+	case playv1.EncounterBand_ENCOUNTER_BAND_LOW:
+		return encounter.BandLow, nil
+	case playv1.EncounterBand_ENCOUNTER_BAND_HIGH:
+		return encounter.BandHigh, nil
+	default:
+		return 0, invalid("band must be LOW, MODERATE or HIGH")
+	}
+}
+
+// drawSeed is "Gerar outro": the server draws a seed, from 1 to 10000, with two d100.
+func (s *Service) drawSeed(ctx context.Context) (uint32, error) {
+	hi, err1 := s.roller.Roll(100)
+	lo, err2 := s.roller.Roll(100)
+	if err := errors.Join(err1, err2); err != nil {
+		return 0, s.dbError(ctx, "draw a seed", err)
+	}
+	return uint32(n32(max(hi-1, 0)*100 + max(lo, 1))), nil //nolint:gosec // 1 to 10000, never negative
+}
+
+// generateFailure is the refusal of a generator that failed.
+func (s *Service) generateFailure(ctx context.Context, err error) error {
+	switch {
+	case errors.Is(err, rules.ErrEncounterNoParty):
+		return errBuildBlocked(playv1.EncounterBuildBlockedReason_ENCOUNTER_BUILD_BLOCKED_REASON_NO_PARTY, "the party is empty: no living player character and no NPC added")
+	case errors.Is(err, rules.ErrEncounterNothingFits):
+		return errBuildBlocked(playv1.EncounterBuildBlockedReason_ENCOUNTER_BUILD_BLOCKED_REASON_NOTHING_FITS, "no creature fits that difficulty")
+	case errors.Is(err, rules.ErrEncounterType):
+		return invalid("creature_type is not an SRD creature type")
+	default:
+		return s.dbError(ctx, "generate an encounter", err)
+	}
 }
 
 // ListEncounterSwaps implements playv1connect.EncounterServiceHandler.
@@ -482,13 +543,22 @@ func (s *Service) SaveBattleEncounter(
 	if err != nil {
 		return nil, s.dbError(ctx, "measure an encounter", err)
 	}
-	body := toJSON(be)
+	row, err := s.keepBattleEncounter(ctx, m.CampaignID, pointID, mapID, be)
+	if err != nil {
+		return nil, s.dbError(ctx, "save an encounter", err)
+	}
+	return connect.NewResponse(&playv1.SaveBattleEncounterResponse{Encounter: be, Evaluation: ev, UpdatedAt: timestamppb.New(row.UpdatedAt)}), nil
+}
 
+// keepBattleEncounter writes the encounter of a battle point, unless the point
+// already keeps the same one (then not even the time changes). A point that went
+// away meanwhile is not found.
+func (s *Service) keepBattleEncounter(ctx context.Context, campaignID, pointID, mapID string, be *playv1.BattleEncounter) (playdb.BattleEncounter, error) {
+	body := toJSON(be)
 	var row playdb.BattleEncounter
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		// Saving what the point already keeps changes nothing (not even the time).
-		old, err := q.GetBattleEncounter(ctx, playdb.GetBattleEncounterParams{CampaignID: m.CampaignID, MapPointID: pointID})
+		old, err := q.GetBattleEncounter(ctx, playdb.GetBattleEncounterParams{CampaignID: campaignID, MapPointID: pointID})
 		if err == nil {
 			if prev, perr := battleEncounterOf(old.Encounter); perr == nil && proto.Equal(prev, be) {
 				row = old
@@ -498,7 +568,7 @@ func (s *Service) SaveBattleEncounter(
 			return fmt.Errorf("read the saved encounter: %w", err)
 		}
 		row, err = q.UpsertBattleEncounter(ctx, playdb.UpsertBattleEncounterParams{
-			MapPointID: pointID, CampaignID: m.CampaignID, MapID: mapID, Encounter: body, CreatedAt: s.now(),
+			MapPointID: pointID, CampaignID: campaignID, MapID: mapID, Encounter: body, CreatedAt: s.now(),
 		})
 		if err != nil {
 			return fmt.Errorf("save the encounter: %w", err)
@@ -508,10 +578,7 @@ func (s *Service) SaveBattleEncounter(
 	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23503" {
 		err = connect.NewError(connect.CodeNotFound, errors.New("point not found")) // the point went away meanwhile
 	}
-	if err != nil {
-		return nil, s.dbError(ctx, "save an encounter", err)
-	}
-	return connect.NewResponse(&playv1.SaveBattleEncounterResponse{Encounter: be, Evaluation: ev, UpdatedAt: timestamppb.New(row.UpdatedAt)}), nil
+	return row, err
 }
 
 // GetBattleEncounter implements playv1connect.EncounterServiceHandler.
