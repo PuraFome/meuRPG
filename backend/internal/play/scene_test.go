@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -24,7 +25,7 @@ func wantSceneRefusal(t *testing.T, call string, err error, code connect.Code, r
 	if err == nil {
 		t.Fatalf("%s error = nil, want %v %q", call, code, msg)
 	}
-	ce, ok := err.(*connect.Error)
+	ce, ok := errors.AsType[*connect.Error](err)
 	if !ok {
 		t.Fatalf("%s error = %T %v, want a connect error", call, err, err)
 	}
@@ -48,8 +49,8 @@ func wantSceneRefusal(t *testing.T, call string, err error, code connect.Code, r
 func wantSceneNoSession(t *testing.T, call string, err error) {
 	t.Helper()
 	wantBlocked(t, call, err, playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION)
-	if msg := err.(*connect.Error).Message(); msg != "the campaign has no open game session" {
-		t.Errorf("%s message = %q, want the no-open-session text", call, msg)
+	if ce, _ := errors.AsType[*connect.Error](err); ce.Message() != "the campaign has no open game session" {
+		t.Errorf("%s message = %q, want the no-open-session text", call, ce.Message())
 	}
 }
 
@@ -556,8 +557,7 @@ func TestSceneReadByEachViewer(t *testing.T) {
 	}{
 		{`INSERT INTO scene_clues (id, point_id, position, text, created_at, updated_at) VALUES ($1, $2, 0, 'Marcas de bota.', now(), now())`, []any{clue1, point}},
 		{`INSERT INTO scene_clues (id, point_id, position, text, created_at, updated_at) VALUES ($1, $2, 1, 'Uma moeda.', now(), now())`, []any{clue2, point}},
-		{`INSERT INTO scene_clue_reveals (campaign_id, clue_id, point_id, user_id, character_id, text, revealed_at) VALUES ($1, $2, $3, $4, $5, 'Marcas de bota.', now())`,
-			[]any{a.campaignID, clue1, point, a.caio.id, a.toren.GetId()}},
+		{`INSERT INTO scene_clue_reveals (campaign_id, clue_id, point_id, user_id, character_id, text, revealed_at) VALUES ($1, $2, $3, $4, $5, 'Marcas de bota.', now())`, []any{a.campaignID, clue1, point, a.caio.id, a.toren.GetId()}},
 		{`INSERT INTO gallery_images (id, campaign_id, name, content_type, width, height, byte_size, created_at) VALUES ($1, $2, 'Carroça.png', 'image/png', 100, 100, 100, now())`, []any{image, a.campaignID}},
 		{`INSERT INTO map_point_images (point_id, image_id, position, created_at) VALUES ($1, $2, 0, now())`, []any{point, image}},
 	} {
