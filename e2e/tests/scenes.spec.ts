@@ -555,41 +555,41 @@ test(
     const playerContext = await newSignedInContext(browser, 'Jogador Teste');
     const master = await masterContext.newPage();
     const player = await playerContext.newPage();
-    let campaignId = '';
     try {
       await master.goto('/');
       // Pensantus as a lightfoot halfling: the race's Lucky (Sortudo) asks before the result when a d20 shows a 1.
-      const table = await tableForScenes(master, player, `Sortudo na cena ${Date.now()}`, true, {
+      const { campaignId } = await tableForScenes(master, player, `Sortudo na cena ${Date.now()}`, true, {
         raceKey: 'race:halfling',
         subraceKey: 'subrace:lightfoot-halfling',
       });
-      campaignId = table.campaignId;
-      await openSessionPage(master, campaignId);
-      await openScene(master, 'A carroça tombada');
-      await openSessionPage(player, campaignId);
-      const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
-      await scene.getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
-      const sheet = player.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
-      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
-      await sheet.getByLabel(/Role 1d20 para Investigação/).fill('1');
-      await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
+      // The session opened below is always ended, and with no conditional in the test (playwright/no-conditional-in-test).
+      try {
+        await openSessionPage(master, campaignId);
+        await openScene(master, 'A carroça tombada');
+        await openSessionPage(player, campaignId);
+        const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
+        await scene.getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
+        const sheet = player.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
+        await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+        await sheet.getByLabel(/Role 1d20 para Investigação/).fill('1');
+        await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
 
-      // A 1 on the d20 (SRD 5.1, Halfling, Lucky): the question comes before the result, and nothing is written yet.
-      await expect(sheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeVisible();
-      await expect(sheet.getByRole('button', { name: 'Ficar com o 1' })).toBeVisible();
-      await expect(sheet.getByText('Seu total em Investigação')).toBeHidden();
-      await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
-      await sheet.getByLabel(/Role 1d20 de novo/).fill('15');
-      await sheet.getByRole('button', { name: 'Confirmar 15' }).click();
+        // A 1 on the d20 (SRD 5.1, Halfling, Lucky): the question comes before the result, and nothing is written yet.
+        await expect(sheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeVisible();
+        await expect(sheet.getByRole('button', { name: 'Ficar com o 1' })).toBeVisible();
+        await expect(sheet.getByText('Seu total em Investigação')).toBeHidden();
+        await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+        await sheet.getByLabel(/Role 1d20 de novo/).fill('15');
+        await sheet.getByRole('button', { name: 'Confirmar 15' }).click();
 
-      // The new roll stands: the total is told with it, and the sheet says what Lucky did.
-      await expect(sheet.getByText('Seu total em Investigação')).toBeVisible();
-      await expect(sheet.getByText('Sortudo: 1 → 15')).toBeVisible();
-      await expect(sheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeHidden();
-    } finally {
-      if (campaignId) {
+        // The new roll stands: the total is told with it, and the sheet says what Lucky did.
+        await expect(sheet.getByText('Seu total em Investigação')).toBeVisible();
+        await expect(sheet.getByText('Sortudo: 1 → 15')).toBeVisible();
+        await expect(sheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeHidden();
+      } finally {
         await endOpenSessionRPC(master, campaignId);
       }
+    } finally {
       await masterContext.close();
       await playerContext.close();
     }
