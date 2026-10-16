@@ -432,6 +432,72 @@ func TestMR044_PlaceTreasureRefusals(t *testing.T) {
 	wantCode(t, "a map of another campaign", err, connect.CodeNotFound)
 }
 
+// PlaceTreasure checks in a fixed order: the first fault is the one the caller reads, so
+// a call with two faults pins which check runs first.
+func TestMR044_PlaceTreasureRefusalOrder(t *testing.T) {
+	t.Parallel()
+	s := treasureTable(t)
+	type edit = func(*mapsv1.PlaceTreasureRequest)
+	badMode := func(r *mapsv1.PlaceTreasureRequest) { r.Mode = 0 }
+	badLevel := func(r *mapsv1.PlaceTreasureRequest) { r.PartyLevel = 0 }
+	noSeed := func(r *mapsv1.PlaceTreasureRequest) { r.Seed = nil }
+	badKey := func(r *mapsv1.PlaceTreasureRequest) { r.IdempotencyKey = "" }
+	noVersion := func(r *mapsv1.PlaceTreasureRequest) { r.ContentVersion = "" }
+	oldVersion := func(r *mapsv1.PlaceTreasureRequest) { r.ContentVersion = "srd51@old+fx.1" }
+	badName := func(r *mapsv1.PlaceTreasureRequest) { r.Name = new("  ") }
+	badColumn := func(r *mapsv1.PlaceTreasureRequest) { r.Column = 20 }
+	badRow := func(r *mapsv1.PlaceTreasureRequest) { r.Row = 15 }
+	noMap := func(r *mapsv1.PlaceTreasureRequest) { r.MapId = "" }
+	all := func(edits ...edit) edit {
+		return func(r *mapsv1.PlaceTreasureRequest) {
+			for _, e := range edits {
+				e(r)
+			}
+		}
+	}
+	cases := []struct {
+		name  string
+		edit  edit
+		code  connect.Code
+		field string
+	}{
+		{"a missing map before the mode", all(noMap, badMode), connect.CodeNotFound, ""},
+		{"the mode before the level", all(badMode, badLevel), connect.CodeInvalidArgument, "mode"},
+		{"the level before the seed", all(badLevel, noSeed), connect.CodeInvalidArgument, "party_level"},
+		{"the seed before the key", all(noSeed, badKey), connect.CodeInvalidArgument, "seed"},
+		{"the key before the version", all(badKey, noVersion), connect.CodeInvalidArgument, "idempotency_key"},
+		{"the empty version before the name", all(noVersion, badName), connect.CodeInvalidArgument, "content_version"},
+		{"an old version before the name", all(oldVersion, badName), connect.CodeFailedPrecondition, ""},
+		{"the name before the square", all(badName, badColumn), connect.CodeInvalidArgument, "name"},
+		{"the column before the row", all(badColumn, badRow), connect.CodeInvalidArgument, "column"},
+	}
+	for _, c := range cases {
+		_, err := s.place(c.edit)
+		wantCode(t, c.name, err, c.code)
+		if got := treasureInvalidField(err); got != c.field {
+			t.Errorf("%s: the refusal names the field %q, want %q", c.name, got, c.field)
+		}
+	}
+
+	// A player is refused as a stranger before anything else is read.
+	_, err := s.ana.placeTreasure(&mapsv1.PlaceTreasureRequest{CampaignId: s.campaign, MapId: "", Mode: 0})
+	wantCode(t, "a player with a bad request", err, connect.CodeNotFound)
+
+	// The grid is read before the square, and a replay comes before both the grid and the
+	// cap: a map with no grid refuses a square, and a bad square is refused before the cap.
+	bare := s.master.createMap(s.campaign, "Sem grade", s.master.newImage(s.campaign))
+	_, err = s.place(func(r *mapsv1.PlaceTreasureRequest) { r.MapId = bare.GetId(); badColumn(r) })
+	wantCode(t, "no grid before a square off the grid", err, connect.CodeFailedPrecondition)
+	s.h.svc.maxPoints = 1
+	_, err = s.place(badColumn)
+	wantCode(t, "a square off the grid at the cap", err, connect.CodeInvalidArgument)
+	if got := treasureInvalidField(err); got != "column" {
+		t.Errorf("a square off the grid at the cap names %q, want column", got)
+	}
+	_, err = s.place(nil)
+	wantCode(t, "a good square at the cap", err, connect.CodeResourceExhausted)
+}
+
 // treasureInvalidField is the field a TreasureInvalidField detail names, "" without one.
 func treasureInvalidField(err error) string {
 	ce, ok := errors.AsType[*connect.Error](err)
