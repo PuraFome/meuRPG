@@ -23,14 +23,9 @@ import {
   bpToPercent,
   centroid,
   clampTransform,
-  distance,
   focusTransform,
-  Box,
-  labelBounds,
   labelSide,
-  placeLabel,
   squareKey,
-  unionBox,
   nudge,
   screenToBp,
   stepScale,
@@ -41,6 +36,8 @@ import {
   zoomAround,
 } from './map-geometry';
 import { pointHidden } from './map-labels';
+import { MapGestures } from './map-gestures';
+import { placeLabels } from './map-label-placer';
 import { MapMarker } from './map-marker/map-marker';
 import { MapToken } from './map-token/map-token';
 import { RetryImage } from '../retry-image/retry-image';
@@ -82,8 +79,6 @@ interface LabelGroup {
 /** On a map narrower than 520 px the names show from this zoom (below it they would cover the map). */
 const COMPACT_LABELS_FROM_SCALE = 1.5;
 
-/** A pointer movement under this many pixels is a click, not a drag. */
-const DRAG_THRESHOLD = 4;
 /** The phone preview opens zoomed in on the party (README-A). */
 const PREVIEW_SCALE = 2;
 
@@ -223,18 +218,17 @@ export class MapView {
     return s ? `${s.kind}:${s.id}` : null;
   });
 
-  private readonly pointers = new Map<number, { x: number; y: number }>();
-  private gesture: {
-    id: number;
-    item: string | null;
-    startX: number;
-    startY: number;
-    origin: ViewTransform;
-    moved: boolean;
-    touch: boolean;
-  } | null = null;
-  private pinch: { dist: number; mid: { x: number; y: number }; origin: ViewTransform } | null =
-    null;
+  private readonly gestures = new MapGestures({
+    interactive: () => this.interactive(),
+    viewport: () => this.viewport().nativeElement,
+    transform: this.transform,
+    size: () => this.size(),
+    override: this.override,
+    movable: (item) => this.movable(item),
+    itemOf: (target) => this.itemOf(target),
+    report: (move) => this.report(move),
+    emptyClick: (at) => this.emptyClick.emit(at),
+  });
   private nudging = false;
   private startedAt = '';
 
@@ -270,7 +264,7 @@ export class MapView {
       this.settled();
       this.override();
       this.faded();
-      this.placeLabels();
+      placeLabels(this.viewport().nativeElement);
     });
 
     // New points or tokens from the parent replace what this view last
@@ -312,66 +306,6 @@ export class MapView {
         ),
       );
     });
-  }
-
-  private placeLabels(): void {
-    const el = this.viewport().nativeElement;
-    const img = el.querySelector('.mv__img')?.getBoundingClientRect();
-    if (!img || img.width === 0) {
-      return;
-    }
-    const view = el.getBoundingClientRect();
-    const { minLeft, maxRight } = labelBounds(img, view);
-    const bounds = {
-      minLeft,
-      maxRight,
-      minTop: Math.max(img.top, view.top) + 4,
-      maxBottom: Math.min(img.bottom, view.bottom) - 4,
-    };
-    const boxOf = (node: Element): Box | null => {
-      const r = node.getBoundingClientRect();
-      return r.width > 0 && r.height > 0
-        ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
-        : null;
-    };
-    const present = (list: (Box | null)[]): Box[] => list.filter((b): b is Box => b !== null);
-    // Everything a label must stay off: the drawn marks (not the hit areas), and then the labels placed so far.
-    const marks = Array.from(
-      el.querySelectorAll<HTMLElement>('.pt__shape:not(.pt__shape--pin), .tk__disc, .area, .pin'),
-    );
-    const placed: Box[] = [];
-    for (const label of Array.from(el.querySelectorAll<HTMLElement>('.lbl'))) {
-      const pill = label.querySelector<HTMLElement>('.lbl__pill');
-      const ids = (label.getAttribute('data-ids') ?? '').split(' ');
-      if (!pill || ids.length === 0) {
-        continue;
-      }
-      const own = (node: HTMLElement): boolean => {
-        const pin = node.getAttribute('data-pin-of');
-        const marker = node.closest('app-map-marker')?.getAttribute('data-point');
-        return (pin !== null && ids.includes(pin)) || (marker != null && ids.includes(marker));
-      };
-      const anchor = unionBox(present(marks.filter(own).map((m) => boxOf(m))));
-      const origin = label.getBoundingClientRect();
-      const size = pill.getBoundingClientRect();
-      const around = anchor ?? {
-        left: origin.left - 2,
-        top: origin.top - 2,
-        right: origin.left + 2,
-        bottom: origin.top + 2,
-      };
-      const others = [...present(marks.filter((m) => !own(m)).map((m) => boxOf(m))), ...placed];
-      const at = placeLabel(around, { width: size.width, height: size.height }, others, bounds);
-      pill.style.setProperty('--lbl-x', `${at.left - origin.left}px`);
-      pill.style.setProperty('--lbl-y', `${at.top - origin.top}px`);
-      label.setAttribute('data-placed', '');
-      placed.push({
-        left: at.left,
-        top: at.top,
-        right: at.left + size.width,
-        bottom: at.top + size.height,
-      });
-    }
   }
 
   // ---- the toolbar's calls ----
@@ -480,154 +414,19 @@ export class MapView {
   // ---- pointers ----
 
   protected onPointerDown(event: PointerEvent): void {
-    if (!this.interactive() || event.button > 0) {
-      return;
-    }
-    const item = this.itemOf(event.target);
-    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    if (this.pointers.size === 2) {
-      const [a, b] = [...this.pointers.values()];
-      this.pinch = { dist: distance(a, b), mid: midpoint(a, b), origin: this.transform() };
-      this.gesture = null;
-      this.override.set(null);
-      return;
-    }
-    if (this.pointers.size > 2) {
-      return;
-    }
-    this.gesture = {
-      id: event.pointerId,
-      item,
-      startX: event.clientX,
-      startY: event.clientY,
-      origin: this.transform(),
-      moved: false,
-      touch: event.pointerType === 'touch',
-    };
+    this.gestures.down(event);
   }
 
   protected onPointerMove(event: PointerEvent): void {
-    if (this.pointers.has(event.pointerId)) {
-      this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    }
-    if (this.pinch && this.pointers.size === 2) {
-      this.pinchMove();
-      return;
-    }
-    const g = this.gesture;
-    if (!g || g.id !== event.pointerId) {
-      return;
-    }
-    const dx = event.clientX - g.startX;
-    const dy = event.clientY - g.startY;
-    if (!g.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) {
-      return;
-    }
-    const target = this.movable(g.item);
-    if (!g.moved) {
-      g.moved = true;
-      if (target || !g.touch) {
-        this.viewport().nativeElement.setPointerCapture?.(event.pointerId);
-      }
-    }
-    if (target) {
-      const at = screenToBp(
-        event.clientX,
-        event.clientY,
-        this.viewport().nativeElement.getBoundingClientRect(),
-        this.transform(),
-      );
-      this.override.set({ ...target, ...at });
-    } else if (!g.touch) {
-      const { width, height } = this.size();
-      this.transform.set(
-        clampTransform({ ...g.origin, x: g.origin.x + dx, y: g.origin.y + dy }, width, height),
-      );
-    }
+    this.gestures.move(event);
   }
 
   protected onPointerUp(event: PointerEvent): void {
-    this.pointers.delete(event.pointerId);
-    if (this.pinch) {
-      if (this.pointers.size < 2) {
-        this.pinch = null;
-        this.gesture = null;
-      }
-      return;
-    }
-    const g = this.gesture;
-    if (!g || g.id !== event.pointerId) {
-      return;
-    }
-    this.gesture = null;
-    const dropped = this.override();
-    if (event.type === 'pointercancel') {
-      this.override.set(null);
-      return;
-    }
-    if (g.moved) {
-      if (dropped) {
-        this.override.set(null);
-        this.report(dropped);
-      }
-      return;
-    }
-    if (!g.item) {
-      this.emptyClick.emit(
-        screenToBp(
-          event.clientX,
-          event.clientY,
-          this.viewport().nativeElement.getBoundingClientRect(),
-          this.transform(),
-        ),
-      );
-    }
-  }
-
-  private pinchMove(): void {
-    const pinch = this.pinch;
-    if (!pinch) {
-      return;
-    }
-    const [a, b] = [...this.pointers.values()];
-    const rect = this.viewport().nativeElement.getBoundingClientRect();
-    const mid = midpoint(a, b);
-    const { width, height } = this.size();
-    const zoomed = zoomAround(
-      pinch.origin,
-      pinch.origin.scale * (distance(a, b) / Math.max(1, pinch.dist)),
-      pinch.mid.x - rect.left,
-      pinch.mid.y - rect.top,
-      width,
-      height,
-    );
-    this.transform.set(
-      clampTransform(
-        { ...zoomed, x: zoomed.x + (mid.x - pinch.mid.x), y: zoomed.y + (mid.y - pinch.mid.y) },
-        width,
-        height,
-      ),
-    );
+    this.gestures.up(event);
   }
 
   protected onWheel(event: WheelEvent): void {
-    if (!this.interactive()) {
-      return;
-    }
-    event.preventDefault();
-    const rect = this.viewport().nativeElement.getBoundingClientRect();
-    const t = this.transform();
-    const next = t.scale * (event.deltaY < 0 ? 1.12 : 1 / 1.12);
-    this.transform.set(
-      zoomAround(
-        t,
-        next,
-        event.clientX - rect.left,
-        event.clientY - rect.top,
-        rect.width,
-        rect.height,
-      ),
-    );
+    this.gestures.wheel(event);
   }
 
   // ---- clicks, keys, hover ----
@@ -717,8 +516,4 @@ export class MapView {
 function splitItem(item: string): ['point' | 'token', string] {
   const index = item.indexOf(':');
   return [item.slice(0, index) as 'point' | 'token', item.slice(index + 1)];
-}
-
-function midpoint(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }

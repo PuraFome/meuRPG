@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   HostListener,
-  DestroyRef,
   ElementRef,
   afterNextRender,
   computed,
@@ -17,8 +16,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { CharacterKind } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { MapPointKind, type TrapSpecSchema } from '../../../../gen/meurpg/maps/v1/maps_pb';
+import { MapPointKind } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import type {
   Map as MapMessage,
   MapPoint,
@@ -26,36 +24,25 @@ import type {
   SceneClue,
   SceneImage,
 } from '../../../../gen/meurpg/maps/v1/maps_pb';
-import { TrapTargets, TrapTrigger } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import type { MessageInitShape } from '@bufbuild/protobuf';
 import { TrapPresets } from '../../../core/traps/trap-presets';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { LightPresets } from '../../../core/maps/light-presets';
-import { editorErrorMessage, mapErrorMessage } from '../../../core/maps/map-errors';
-import { DungeonInfo } from '../../../core/maps/dungeon-info';
-import { DungeonsClient } from '../../../core/maps/dungeons-client';
-import { MapState, tokenKey } from '../../../core/maps/map-state';
+import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
-import { MoveSaves } from '../../../core/maps/move-saves';
 import { paintHint } from '../../../core/maps/paint-tools';
 import { mapTokenInitial } from '../../../core/maps/token-initial';
-import { tokenSpot } from '../../../core/maps/token-spot';
 import { RosterClient, RosterEntry } from '../../../core/maps/roster-client';
-import type { CluePlayer } from '../../../core/maps/scene-clues';
-import { ViewAsCounts } from '../../../core/maps/view-as';
 
 import { ViewAsList, type ViewAsPerson } from '../../../shared/fog-map/view-as-list';
 import { ViewAsMapView } from '../../../shared/fog-map/view-as-map';
 import { MapAsk } from '../../../shared/map-ask/map-ask';
 import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
-import type { PickRow } from '../../../shared/person-pick/person-pick';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
-import { BP_MAX } from '../../../shared/map-view/map-geometry';
 import { MapMove, MapSelection, MapView } from '../../../shared/map-view/map-view';
 import { CoverDegrees } from '../cover-degrees/cover-degrees';
 import { EditorBar, type EditorMode } from '../editor-bar/editor-bar';
-import { EditorOverlay, type LightReach } from '../../../shared/editor-overlay/editor-overlay';
+import { EditorOverlay } from '../../../shared/editor-overlay/editor-overlay';
 import { FogPanel } from '../fog-panel/fog-panel';
 import { GridPanel } from '../grid-panel/grid-panel';
 import { LayersPanel } from '../layers-panel/layers-panel';
@@ -63,7 +50,22 @@ import { PaintSurface } from '../paint-surface/paint-surface';
 import { DoorPanel } from '../door-panel/door-panel';
 import { DungeonImage } from '../dungeon-image/dungeon-image';
 import { DungeonRooms, type RoomOutline } from '../dungeon-rooms/dungeon-rooms';
-import { EditorPainting, type Occupant } from './editor-painting';
+import { EditorDungeon } from './editor-dungeon';
+import { EditorMoves } from './editor-moves';
+import { EditorSelection } from './editor-selection';
+import { EditorPointSaves } from './editor-point-saves';
+import { EditorPainting } from './editor-painting';
+import {
+  cluePlayers,
+  finderRows,
+  loadRoster,
+  notOnMap,
+  occupantsOf,
+  selectedPointOf,
+  selectedTokenOf,
+} from './editor-people';
+import { EditorTokens } from './editor-tokens';
+import { EditorViewAs } from './editor-view-as';
 import { LightPointPanel } from '../point-kinds/light-point-panel';
 import { TrapPointPanel } from '../point-kinds/trap-point-panel';
 import { TreasurePointPanel } from '../point-kinds/treasure-point-panel';
@@ -71,25 +73,6 @@ import { PointList } from '../point-list/point-list';
 import { PointPanel } from '../point-panel/point-panel';
 import type { PointChanges } from '../../../core/maps/maps-client';
 import { factorLabel } from '../../../core/maps/calibration';
-import { newKey } from '../../../core/connect/idempotency';
-
-/** The kinds the editor creates: the three it always had, and the new ones. */
-function defaultName(kind: MapPointKind): string {
-  switch (kind) {
-    case MapPointKind.BATTLE:
-      return 'Nova batalha';
-    case MapPointKind.SUBMAP:
-      return 'Novo submapa';
-    case MapPointKind.LIGHT:
-      return 'Nova luz';
-    case MapPointKind.TRAP:
-      return 'Nova armadilha';
-    case MapPointKind.TREASURE:
-      return 'Novo tesouro';
-    default:
-      return 'Nova cena';
-  }
-}
 
 /** What each point panel offers the page: the shape `PointPanel` always had. */
 interface PointPanelApi {
@@ -147,13 +130,23 @@ interface PointPanelApi {
 })
 export class MapEditor {
   private readonly api = inject(MapsClient);
-  /** Saves each point's and token's moves one at a time (see `MoveSaves`). */
-  private readonly moves = new MoveSaves();
+  /** What every controller below reads of the page. */
+  private readonly ctx = {
+    api: this.api,
+    state: () => this.state(),
+    campaignId: () => this.campaignId(),
+    mapId: () => this.mapId(),
+  };
   private readonly roster = inject(RosterClient);
+  private readonly dungeonCtl = new EditorDungeon({
+    campaignId: () => this.campaignId(),
+    map: () => this.map(),
+    view: () => this.view(),
+  });
   /** What the server says of a generated dungeon: its rooms list and whether the image is still the generator's (the master only; `null` on any other map). */
-  protected readonly dungeon = new DungeonInfo(inject(DungeonsClient));
+  protected readonly dungeon = this.dungeonCtl.info;
   /** The room outlined on the map (chosen in the rooms list). */
-  protected readonly roomOutline = signal<RoomOutline | null>(null);
+  protected readonly roomOutline = this.dungeonCtl.roomOutline;
   private readonly lightPresets = inject(LightPresets);
   private readonly trapPresets = inject(TrapPresets);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -193,20 +186,49 @@ export class MapEditor {
   // ---- the point editor ----
   protected readonly mode = signal<EditorMode>('points');
   protected readonly placing = signal<MapPointKind | null>(null);
-  protected readonly selection = signal<MapSelection | null>(null);
-  protected readonly pending = signal<MapSelection | null>(null);
+  private readonly sel = new EditorSelection({
+    applyMode: (mode) => this.applyMode(mode),
+    discardPanel: () => this.activePanel()?.discard(),
+    save: () => this.save(),
+  });
+  protected readonly selection = this.sel.selection;
+  protected readonly pending = this.sel.pending;
   /** The mode the master asked for while the point on the panel has unsaved changes: the same question as for another point. */
-  protected readonly pendingMode = signal<EditorMode | null>(null);
-  protected readonly dirty = signal(false);
+  protected readonly pendingMode = this.sel.pendingMode;
+  protected readonly dirty = this.sel.dirty;
   protected readonly saving = signal(false);
-  protected readonly panelError = signal<string | null>(null);
+  protected readonly panelError = this.sel.panelError;
   protected readonly message = signal('');
-  protected readonly justCreated = signal(false);
+  protected readonly justCreated = this.sel.justCreated;
   protected readonly everyone = signal<readonly RosterEntry[]>([]);
   /** The roster came back: before that (or if it failed), "nobody plays yet" would be a guess. */
   protected readonly rosterLoaded = signal(false);
-  protected readonly lightReach = signal<LightReach | null>(null);
+  protected readonly lightReach = this.sel.lightReach;
   protected readonly lightNames = signal<ReadonlyMap<string, string>>(new Map());
+
+  /** Saves each point's and token's moves one at a time (see `MoveSaves`). */
+  private readonly moves = new EditorMoves({
+    ...this.ctx,
+    message: this.message,
+  });
+  private readonly pointSaves = new EditorPointSaves({
+    ...this.ctx,
+    selectedPoint: () => this.selectedPoint(),
+    panelChanges: () => this.activePanel()?.changes(),
+    movePending: (id) => this.moves.pendingPoint(id),
+    sel: this.sel,
+    placing: this.placing,
+    saving: this.saving,
+    message: this.message,
+  });
+  private readonly tokens = new EditorTokens({
+    ...this.ctx,
+    selectedToken: () => this.selectedToken(),
+    centerBp: () => this.view()?.centerBp(),
+    layers: () => this.paint.painted.layers(),
+    selection: this.selection,
+    message: this.message,
+  });
 
   // ---- painting ----
   /** The tool, the layers, the queue that saves the strokes and the question on leaving (`EditorPainting`). */
@@ -219,92 +241,47 @@ export class MapEditor {
   );
 
   /** Who stands on which square (the tokens), for the question before a door goes over them. */
-  private readonly occupants = computed<readonly Occupant[]>(() => {
-    const cols = this.map()?.gridColumns ?? 0;
-    const rows = this.map()?.gridRows ?? 0;
-    if (cols === 0 || rows === 0) {
-      return [];
-    }
-    return this.state()
-      .tokens()
-      .map((t) => ({
-        col: Math.min(cols - 1, Math.floor((t.xBp / BP_MAX) * cols)),
-        row: Math.min(rows - 1, Math.floor((t.yBp / BP_MAX) * rows)),
-        name: t.name,
-      }));
-  });
+  private readonly occupants = computed(() => occupantsOf(this.map(), this.state().tokens()));
 
   // ---- "Ver como" ----
-  protected readonly viewAs = signal<string | null>(null);
-  protected readonly viewNote = signal('');
-  protected readonly viewGone = signal('');
-  protected readonly counts = new ViewAsCounts((mapId, characterId) =>
-    this.api.vision(this.campaignId(), mapId, characterId),
-  );
-  private countsTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly viewAsCtl = new EditorViewAs({
+    ...this.ctx,
+    map: () => this.map(),
+    people: () => this.viewAsPeople(),
+  });
+  protected readonly viewAs = this.viewAsCtl.viewAs;
+  protected readonly viewNote = this.viewAsCtl.viewNote;
+  protected readonly viewGone = this.viewAsCtl.viewGone;
+  protected readonly counts = this.viewAsCtl.counts;
 
   protected readonly mapId = computed(() => this.map()?.id ?? '');
-  private readonly imageId = computed(() => this.map()?.image?.id ?? '');
-  /** The server says (to the master only) whether the map is a generated dungeon: only then are its rooms asked for. */
-  private readonly isDungeon = computed(() => this.map()?.generatedDungeon ?? false);
   protected readonly image = computed(() => {
     const image = this.state().map()?.image;
     return image ? { url: image.url, width: image.width, height: image.height } : null;
   });
-  protected readonly selectedPoint = computed(() => {
-    const s = this.selection();
-    return s?.kind === 'point'
-      ? (this.state()
-          .points()
-          .find((p) => p.id === s.id) ?? null)
-      : null;
-  });
-  protected readonly selectedToken = computed(() => {
-    const s = this.selection();
-    return s?.kind === 'token'
-      ? (this.state()
-          .tokens()
-          .find((t) => tokenKey(t) === s.id) ?? null)
-      : null;
-  });
-  protected readonly pendingName = computed(() => {
-    const s = this.selection();
-    return (
+  protected readonly selectedPoint = computed(() =>
+    selectedPointOf(this.state().points(), this.selection()),
+  );
+  protected readonly selectedToken = computed(() =>
+    selectedTokenOf(this.state().tokens(), this.selection()),
+  );
+  protected readonly pendingName = computed(
+    () =>
       this.state()
         .points()
-        .find((p) => p.id === s?.id)?.name ?? ''
-    );
-  });
+        .find((p) => p.id === this.selection()?.id)?.name ?? '',
+  );
   /** The player characters, to say who has each clue ("Todos", "Só Brisa"). */
-  protected readonly players = computed<readonly CluePlayer[]>(() =>
-    this.everyone()
-      .filter((c) => c.kind === CharacterKind.PLAYER && c.playerUserId !== '')
-      .map((c) => ({ id: c.id, name: c.name, playerName: c.playerName ?? '' })),
-  );
+  protected readonly players = computed(() => cluePlayers(this.everyone()));
   /** Who found a treasure: the living player characters, with their class and player. */
-  protected readonly finders = computed<readonly PickRow[]>(() =>
-    this.everyone()
-      .filter((c) => c.kind === CharacterKind.PLAYER && c.playerUserId !== '')
-      .map((c) => ({
-        id: c.id,
-        name: c.name,
-        sub: [c.classSummary, c.playerName].filter(Boolean).join(' · '),
-      })),
-  );
+  protected readonly finders = computed(() => finderRows(this.everyone()));
   protected readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
     this.players().map((p) => ({ id: p.id, name: p.name, sub: p.playerName })),
   );
   protected readonly viewAsPerson = computed(
     () => this.viewAsPeople().find((p) => p.id === this.viewAs()) ?? null,
   );
-  protected readonly available = computed(() => {
-    const onMap = new Set(
-      this.state()
-        .tokens()
-        .map((t) => t.characterId),
-    );
-    return this.everyone().filter((c) => !onMap.has(c.id));
-  });
+  protected readonly available = computed(() => notOnMap(this.everyone(), this.state().tokens()));
   protected readonly hint = computed(() => {
     if (this.mode() === 'paint') {
       return this.paint.canPaint() ? paintHint(this.paint.settings()) : null;
@@ -320,38 +297,13 @@ export class MapEditor {
   protected readonly initialOf = mapTokenInitial;
 
   constructor() {
-    afterNextRender(() => {
-      this.roster.list(this.campaignId()).then(
-        (list) => {
-          this.everyone.set(list);
-          this.rosterLoaded.set(true);
-        },
-        () => undefined,
-      );
-      this.lightPresets.list(this.campaignId()).then(
-        (list) => this.lightNames.set(new Map(list.map((o) => [o.key, o.name]))),
-        () => undefined,
-      );
-    });
-    inject(DestroyRef).onDestroy(() => clearTimeout(this.countsTimer));
-
-    // A generated dungeon's rooms: read when a map opens and when its image changes ("Gerada pelo app" is about the image).
-    effect(() => {
-      const id = this.mapId();
-      void this.imageId();
-      const dungeon = this.isDungeon();
-      untracked(() => {
-        if (id === '' || !dungeon) {
-          this.dungeon.clear();
-          return;
-        }
-        void this.dungeon.load(this.campaignId(), id);
-      });
-    });
-    effect(() => {
-      void this.mapId();
-      untracked(() => this.roomOutline.set(null));
-    });
+    afterNextRender(() =>
+      loadRoster(this.roster, this.lightPresets, this.campaignId(), {
+        everyone: this.everyone,
+        rosterLoaded: this.rosterLoaded,
+        lightNames: this.lightNames,
+      }),
+    );
 
     // The light's rings go with the selection of a light.
     effect(() => {
@@ -360,25 +312,6 @@ export class MapEditor {
       }
     });
     effect(() => this.erasesChange.emit(this.paint.erases()));
-
-    // "Ver como" counts ("22 quadrados vistos"): read when the fog is on and the characters are known.
-    effect(() => {
-      const map = this.map();
-      const ids = this.viewAsPeople().map((p) => p.id);
-      if (!map?.fogEnabled || ids.length === 0) {
-        return;
-      }
-      untracked(() => {
-        clearTimeout(this.countsTimer);
-        this.countsTimer = setTimeout(() => void this.counts.read(map.id, ids), 250);
-      });
-    });
-    // The fog went off: nothing to look as.
-    effect(() => {
-      if (this.map()?.fogEnabled === false && this.viewAs() !== null) {
-        untracked(() => this.setViewAs(null));
-      }
-    });
   }
 
   // ---- the mode ----
@@ -387,7 +320,7 @@ export class MapEditor {
     if (mode === this.mode()) {
       return;
     }
-    if (mode === 'paint' && this.dirtyBlocks()) {
+    if (mode === 'paint' && this.sel.dirtyBlocks()) {
       this.pendingMode.set('paint');
       return;
     }
@@ -437,25 +370,8 @@ export class MapEditor {
     this.placing.update((current) => (current === kind ? null : kind));
   }
 
-  protected async addToken(entry: RosterEntry): Promise<void> {
-    const mapId = this.mapId();
-    if (!mapId) {
-      return;
-    }
-    // The nearest free floor square to the middle of the screen: tokens added one after the other never share a square.
-    const at = tokenSpot(
-      this.view()?.centerBp() ?? { xBp: 5000, yBp: 5000 },
-      this.paint.painted.layers(),
-      this.state().tokens(),
-    );
-    try {
-      const token = await this.api.placeToken(this.campaignId(), mapId, entry.id, at.xBp, at.yBp);
-      this.state().upsertToken(token);
-      this.selection.set({ kind: 'token', id: token.characterId });
-      this.message.set(`${entry.name} está no mapa.`);
-    } catch (err) {
-      this.message.set(mapErrorMessage(err, 'pôr o token'));
-    }
+  protected addToken(entry: RosterEntry): Promise<void> {
+    return this.tokens.add(entry);
   }
 
   // ---- the map ----
@@ -466,115 +382,23 @@ export class MapEditor {
       this.requestSelect(null);
       return;
     }
-    void this.createPoint(kind, at);
-  }
-
-  private async createPoint(kind: MapPointKind, at: { xBp: number; yBp: number }): Promise<void> {
-    const mapId = this.mapId();
-    if (!mapId) {
-      return;
-    }
-    if (this.dirtyBlocks()) {
-      this.message.set('Salve ou descarte as mudanças do ponto escolhido antes de pôr outro.');
-      return;
-    }
-    this.placing.set(null);
-    try {
-      // One key per tap on the map: the point is made once, whatever the network does with the answer.
-      const point = await this.api.createPoint(
-        this.campaignId(),
-        mapId,
-        {
-          kind,
-          name: defaultName(kind),
-          description: '',
-          xBp: at.xBp,
-          yBp: at.yBp,
-          ...(kind === MapPointKind.LIGHT ? { light: await this.newLight() } : {}),
-          ...(kind === MapPointKind.TRAP ? { trap: await this.newTrap() } : {}),
-          ...(kind === MapPointKind.TREASURE ? { treasureValuePo: 0 } : {}),
-        },
-        newKey(),
-      );
-      this.state().upsertPoint(point);
-      this.panelError.set(null);
-      this.justCreated.set(true);
-      this.selection.set({ kind: 'point', id: point.id });
-      this.message.set('Ponto criado, escondido dos jogadores. Dê um nome a ele.');
-    } catch (err) {
-      this.message.set(editorErrorMessage(err, 'pointNew', 'criar o ponto'));
-    }
-  }
-
-  /** A new light starts as the first source the server lists (the server fills the radii of a preset sent with none). */
-  private async newLight(): Promise<{ presetKey: string }> {
-    const first = (await this.lightPresets.list(this.campaignId()))[0];
-    return { presetKey: first?.key ?? '' };
-  }
-
-  /** A new trap starts with the numbers of the first sample trap the server lists, with no effect yet: the form edits the rest. */
-  private async newTrap(): Promise<MessageInitShape<typeof TrapSpecSchema>> {
-    const first = (await this.trapPresets.list(this.campaignId())).presets[0];
-    return {
-      findDc: first?.findDc ?? 10,
-      areaSize: 1,
-      trigger: TrapTrigger.ENTER,
-      effect: { targets: TrapTargets.AREA },
-    };
-  }
-
-  /** Unsaved changes: the page asks before moving on. */
-  private dirtyBlocks(): boolean {
-    return this.dirty() && this.selection()?.kind === 'point';
+    void this.pointSaves.create(kind, at, { lights: this.lightPresets, traps: this.trapPresets });
   }
 
   protected requestSelect(next: MapSelection | null): void {
-    const current = this.selection();
-    if (current?.kind === next?.kind && current?.id === next?.id) {
-      return;
-    }
-    if (this.dirtyBlocks()) {
-      this.pending.set(next ?? { kind: 'point', id: '' });
-      return;
-    }
-    this.moveSelection(next);
+    this.sel.request(next);
   }
 
-  private moveSelection(next: MapSelection | null): void {
-    this.pending.set(null);
-    this.justCreated.set(false);
-    this.panelError.set(null);
-    this.lightReach.set(null);
-    this.selection.set(next && next.id !== '' ? next : null);
-  }
-
-  protected async saveAndContinue(): Promise<void> {
-    if (await this.save()) {
-      this.continueAfterAsk();
-    }
+  protected saveAndContinue(): Promise<void> {
+    return this.sel.saveAndContinue();
   }
 
   protected discardAndContinue(): void {
-    this.activePanel()?.discard();
-    this.dirty.set(false);
-    this.continueAfterAsk();
-  }
-
-  /** What the master was going to do when the question came: another point, or the "Pintar" mode. */
-  private continueAfterAsk(): void {
-    const mode = this.pendingMode();
-    const next = this.pending();
-    this.pending.set(null);
-    this.pendingMode.set(null);
-    this.moveSelection(mode === null ? next : null);
-    if (mode !== null) {
-      this.applyMode(mode);
-    }
+    this.sel.discardAndContinue();
   }
 
   protected keepEditing(): void {
-    this.pending.set(null);
-    this.pendingMode.set(null);
+    this.sel.keepEditing();
   }
 
   /** Whichever point panel is open: they all answer `changes()` and `discard()`. */
@@ -582,193 +406,53 @@ export class MapEditor {
     return this.pointPanel() ?? this.lightPanel() ?? this.trapPanel() ?? this.treasurePanel();
   }
 
-  protected async onMoved(move: MapMove): Promise<void> {
-    const state = this.state();
-    const mapId = this.mapId();
-    if (!mapId) {
-      return;
-    }
-    if (move.kind === 'point') {
-      const before = state.points().find((p) => p.id === move.id);
-      if (!before) {
-        return;
-      }
-      state.upsertPoint({ ...before, xBp: move.xBp, yBp: move.yBp });
-      await this.moves.move(
-        `${mapId}/point/${move.id}`,
-        before,
-        { xBp: move.xBp, yBp: move.yBp },
-        {
-          save: (to) =>
-            this.api.updatePoint(this.campaignId(), mapId, move.id, { xBp: to.xBp, yBp: to.yBp }),
-          failed: (saved, err) => {
-            const now = state.points().find((p) => p.id === move.id);
-            if (now) {
-              state.upsertPoint({ ...now, xBp: saved.xBp, yBp: saved.yBp });
-            }
-            this.message.set(mapErrorMessage(err, 'mover o ponto'));
-          },
-        },
-      );
-      return;
-    }
-    const before = state.tokens().find((t) => tokenKey(t) === move.id);
-    if (!before) {
-      return;
-    }
-    state.upsertToken({ ...before, xBp: move.xBp, yBp: move.yBp });
-    await this.moves.move(
-      `${mapId}/token/${move.id}`,
-      before,
-      { xBp: move.xBp, yBp: move.yBp },
-      {
-        save: (to) =>
-          before.creatureId
-            ? this.api.placeToken(this.campaignId(), mapId, '', to.xBp, to.yBp, before.creatureId)
-            : this.api.placeToken(this.campaignId(), mapId, move.id, to.xBp, to.yBp),
-        failed: (saved, err) => {
-          const now = state.tokens().find((t) => tokenKey(t) === move.id);
-          if (now) {
-            state.upsertToken({ ...now, xBp: saved.xBp, yBp: saved.yBp });
-          }
-          this.message.set(mapErrorMessage(err, 'mover o token'));
-        },
-      },
-    );
+  protected onMoved(move: MapMove): Promise<void> {
+    return this.moves.move(move);
   }
 
   // ---- the point panels ----
 
-  protected async save(): Promise<boolean> {
-    const point = this.selectedPoint();
-    const mapId = this.mapId();
-    const changes = this.activePanel()?.changes();
-    if (!point || !mapId) {
-      return false;
-    }
-    if (changes === undefined) {
-      return false;
-    }
-    if (changes === null) {
-      // Nothing changed, or the draft breaks a rule (the fields say which).
-      return !this.dirty();
-    }
-    this.saving.set(true);
-    this.panelError.set(null);
-    try {
-      const saved = await this.api.updatePoint(this.campaignId(), mapId, point.id, changes);
-      this.setPoint(saved);
-      this.message.set(`${saved.name} salvo.`);
-      return true;
-    } catch (err) {
-      this.panelError.set(editorErrorMessage(err, 'point', 'salvar o ponto'));
-      return false;
-    } finally {
-      this.saving.set(false);
-    }
+  protected save(): Promise<boolean> {
+    return this.pointSaves.save();
   }
 
   /** The scene actions saved on their own: the point carries the new list. */
   protected setSceneActions(point: MapPoint, actions: readonly SceneAction[]): void {
-    const now =
-      this.state()
-        .points()
-        .find((p) => p.id === point.id) ?? point;
-    this.state().upsertPoint({ ...now, sceneActions: [...actions] });
+    this.pointSaves.patch(point, { sceneActions: [...actions] });
   }
 
   /** "Mostrar a CD aos jogadores" saved on its own: the point carries it. */
   protected setShowDc(point: MapPoint, showDc: boolean): void {
-    const now =
-      this.state()
-        .points()
-        .find((p) => p.id === point.id) ?? point;
-    this.state().upsertPoint({ ...now, showDc });
+    this.pointSaves.patch(point, { showDc });
   }
 
   /** The clues saved on their own: the point carries the new list. */
   protected setClues(point: MapPoint, clues: readonly SceneClue[]): void {
-    const now =
-      this.state()
-        .points()
-        .find((p) => p.id === point.id) ?? point;
-    this.state().upsertPoint({ ...now, clues: [...clues] });
+    this.pointSaves.patch(point, { clues: [...clues] });
   }
 
   /** The images saved on their own: the point carries the new list. */
   protected setImages(point: MapPoint, images: readonly SceneImage[]): void {
-    const now =
-      this.state()
-        .points()
-        .find((p) => p.id === point.id) ?? point;
-    this.state().upsertPoint({ ...now, images: [...images] });
+    this.pointSaves.patch(point, { images: [...images] });
   }
 
   /** A treasure marked or unmarked found (saved at once): the map carries the point the server answered. */
   protected setPoint(point: MapPoint): void {
-    const state = this.state();
-    // A move of this point still on its way: the answer was computed before it, so the screen keeps the place the master dragged to.
-    const shown = state.points().find((p) => p.id === point.id);
-    const ahead = shown && this.moves.isPending(`${this.mapId()}/point/${point.id}`);
-    state.upsertPoint(ahead ? { ...point, xBp: shown.xBp, yBp: shown.yBp } : point);
+    this.pointSaves.put(point);
   }
 
-  protected async remove(): Promise<void> {
-    const point = this.selectedPoint();
-    const mapId = this.mapId();
-    if (!point || !mapId) {
-      return;
-    }
-    try {
-      await this.api.deletePoint(this.campaignId(), mapId, point.id);
-      this.state().removePoint(point.id);
-      this.dirty.set(false);
-      this.moveSelection(null);
-      this.message.set(`${point.name} foi apagado.`);
-    } catch (err) {
-      this.panelError.set(editorErrorMessage(err, 'point', 'apagar o ponto'));
-    }
+  protected remove(): Promise<void> {
+    return this.pointSaves.remove();
   }
 
   // ---- the token panel ----
 
-  protected async toggleTokenHidden(): Promise<void> {
-    const token = this.selectedToken();
-    const mapId = this.mapId();
-    if (!token || !mapId) {
-      return;
-    }
-    try {
-      const saved = await this.api.setTokenHidden(
-        this.campaignId(),
-        mapId,
-        token.characterId,
-        !token.hidden,
-      );
-      this.state().upsertToken(saved);
-    } catch (err) {
-      this.message.set(mapErrorMessage(err, 'mudar o token'));
-    }
+  protected toggleTokenHidden(): Promise<void> {
+    return this.tokens.toggleHidden();
   }
 
-  protected async removeToken(): Promise<void> {
-    const token = this.selectedToken();
-    const mapId = this.mapId();
-    if (!token || !mapId) {
-      return;
-    }
-    try {
-      await this.api.removeToken(this.campaignId(), mapId, token.characterId, token.creatureId);
-      if (token.creatureId) {
-        this.state().removeCreatureToken(token.creatureId);
-      } else {
-        this.state().removeToken(token.characterId);
-      }
-      this.selection.set(null);
-      this.message.set(`${token.name} saiu do mapa.`);
-    } catch (err) {
-      this.message.set(mapErrorMessage(err, 'tirar o token'));
-    }
+  protected removeToken(): Promise<void> {
+    return this.tokens.remove();
   }
 
   // ---- the grid and the fog ----
@@ -788,46 +472,24 @@ export class MapEditor {
 
   /** A room chosen in the list is outlined, and the map goes to it (and back to the whole map when it is let go). */
   protected onRoomOutline(room: RoomOutline | null): void {
-    this.roomOutline.set(room);
-    const m = this.map();
-    if (!room || !m || m.gridColumns <= 0 || m.gridRows <= 0) {
-      this.view()?.fit();
-      return;
-    }
-    const scale = Math.min(3, Math.max(1.2, (0.55 * m.gridColumns) / room.width));
-    this.view()?.focusOn(
-      {
-        xBp: ((room.x + room.width / 2) / m.gridColumns) * 10000,
-        yBp: ((room.y + room.height / 2) / m.gridRows) * 10000,
-      },
-      scale,
-    );
+    this.dungeonCtl.outline(room);
   }
 
   protected reloadDungeon(): void {
-    void this.dungeon.load(this.campaignId(), this.mapId());
+    this.dungeonCtl.reload();
   }
 
   protected onForgotten(): void {
-    if (this.map()?.fogEnabled) {
-      void this.counts.read(
-        this.mapId(),
-        this.viewAsPeople().map((p) => p.id),
-      );
-    }
+    this.viewAsCtl.forgotten();
   }
 
   // ---- "Ver como" ----
 
   protected setViewAs(id: string | null): void {
-    this.viewAs.set(id);
-    this.viewNote.set('');
-    this.viewGone.set('');
+    this.viewAsCtl.set(id);
   }
 
   protected viewAsGone(): void {
-    this.viewAs.set(null);
-    this.viewNote.set('');
-    this.viewGone.set('Esse personagem morreu ou saiu da campanha. Voltamos para “Todos”.');
+    this.viewAsCtl.gone();
   }
 }

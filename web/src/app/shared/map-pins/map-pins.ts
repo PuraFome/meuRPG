@@ -1,27 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type MapPoint, MapPointKind, TrapState } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { type PinArea, trapArea } from '../../core/traps/trap-area';
+import type { MapPoint } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { ChestIcon } from '../chest-icon/chest-icon';
-import { pointHidden } from '../map-view/map-labels';
-import { bpToPercent } from '../map-view/map-geometry';
-
-interface Pin {
-  readonly id: string;
-  readonly kind: 'trap' | 'treasure' | 'light';
-  /** The mark's own state, for its look: `armed`, `fired`, `disarmed`; `hidden`, `found`; `''`. */
-  readonly state: string;
-  readonly area: PinArea | null;
-  readonly x: number;
-  readonly y: number;
-  /** The master sees it and the players do not: the crossed eye. */
-  readonly secret: boolean;
-  readonly remembered: boolean;
-  readonly icon: string;
-  /** How many marks share its square before it: side by side, not stacked (a trapped chest). */
-  readonly n: number;
-}
+import { type Pin, buildPins } from './map-pins-build';
 
 /**
  * The trap, treasure and light marks of a map (docs/design/README.md), drawn over the image
@@ -96,50 +78,11 @@ export class MapPins {
   /** The point the master has open: its mark gets the selection ring. */
   readonly selectedId = input<string | null>(null);
 
-  protected readonly pins = computed<readonly Pin[]>(() => {
-    const seen = new Map<string, number>();
-    const out: Pin[] = [];
-    for (const p of this.points()) {
-      // The second lock: a player never gets the pin of what is still hidden, even if it slipped in.
-      if (!this.isMaster() && pointHidden(p)) {
-        continue;
-      }
-      const x = bpToPercent(p.xBp);
-      const y = bpToPercent(p.yBp);
-      const square = `${Math.round(x * 4)}/${Math.round(y * 4)}`;
-      const n = seen.get(square) ?? 0;
-      const base = { id: p.id, x, y, n, remembered: p.remembered, secret: false, area: null };
-      switch (p.kind) {
-        case MapPointKind.TRAP: {
-          const state =
-            p.trap?.state === TrapState.TRIGGERED
-              ? 'fired'
-              : p.trap?.state === TrapState.DISARMED
-                ? 'disarmed'
-                : 'armed';
-          const area = trapArea(p.xBp, p.yBp, p.trap?.areaSize ?? 1, this.columns(), this.rows());
-          const secret = this.isMaster() && state === 'armed' && pointHidden(p);
-          out.push({ ...base, kind: 'trap', state, area, secret, icon: 'warning' });
-          break;
-        }
-        case MapPointKind.TREASURE:
-          out.push({
-            ...base,
-            kind: 'treasure',
-            state: p.treasureFoundAt !== undefined ? 'found' : 'hidden',
-            icon: 'inventory_2',
-          });
-          break;
-        case MapPointKind.LIGHT:
-          if (this.isMaster()) {
-            out.push({ ...base, kind: 'light', state: '', icon: 'lightbulb' });
-          }
-          break;
-        default:
-          continue;
-      }
-      seen.set(square, n + 1);
-    }
-    return out;
-  });
+  protected readonly pins = computed<readonly Pin[]>(() =>
+    buildPins(this.points(), {
+      isMaster: this.isMaster(),
+      columns: this.columns(),
+      rows: this.rows(),
+    }),
+  );
 }

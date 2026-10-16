@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import type { MessageInitShape } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
 import {
@@ -8,7 +7,6 @@ import {
   type GetTrapNoticersResponse,
   type GetMapVisionResponse,
   type LightLevel,
-  type LightSpecSchema,
   type MapLayer,
   type MapSquare,
   type Map as MapMessage,
@@ -20,31 +18,11 @@ import {
   SceneActionDirection,
   type SceneClue,
   type SceneImage,
-  type TrapSpecSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import type { PointChanges } from './point-changes';
 
-/** What a point's editor saves in one call (`UpdateMapPoint`). */
-export interface PointChanges {
-  readonly kind?: MapPointKind;
-  readonly name?: string;
-  readonly description?: string;
-  readonly xBp?: number;
-  readonly yBp?: number;
-  /** A SUBMAP point's target; `''` removes it. */
-  readonly targetMapId?: string;
-  readonly revealed?: boolean;
-  /** "Ganchos e anotações" of a SCENE point (MR-029); `''` clears them. */
-  readonly hooks?: string;
-  /** "Mostrar a CD aos jogadores" of a SCENE point (RN-20). */
-  readonly showDc?: boolean;
-  /** A TRAP point's whole spec (E9-02): every field, an unspecified state keeps the current one. */
-  readonly trap?: MessageInitShape<typeof TrapSpecSchema>;
-  /** A LIGHT point's whole spec: a preset's key and radii, or the custom radii. */
-  readonly light?: MessageInitShape<typeof LightSpecSchema>;
-  /** A TREASURE's value in PO, 0 to 1.000.000. */
-  readonly treasureValuePo?: number;
-}
+export type { PointChanges } from './point-changes';
 
 /**
  * Thin wrapper around the generated `MapService` client (MR-008, MR-009,
