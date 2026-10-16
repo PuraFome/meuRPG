@@ -10,6 +10,7 @@ import {
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { metamagicChoices } from '../../../../core/resources/metamagic';
 import type { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { CastArea } from './cast-area';
 import type { CastChoices } from './cast-choices';
 import type { CastDamage } from './cast-damage';
@@ -69,7 +70,9 @@ export class CastCaller {
       return;
     }
     const { data } = this.s;
-    await this.s.run(
+    await runBusy(
+      this.s.busy,
+      this.s.error,
       async () => {
         const slot = this.area.slotRef();
         const flow = this.area.flow;
