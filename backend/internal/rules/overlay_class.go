@@ -491,126 +491,191 @@ func minimums(c *entryErrors, key, field string, in map[Ability]int) map[string]
 // addSubclass registers a subclass, and puts it in its class's list on a copy of
 // the class.
 func (b *overlayBuilder) addSubclass(ts *TableSubclass, path string) error {
-	n := b.n
-	key := ts.Key
-	parent := ts.Class
+	n, key, parent := b.n, ts.Key, ts.Class
 	var c entryErrors
-	parentOK := b.isClass(parent)
-	if !parentOK {
-		c.at(key, path, ".class_key", ReasonReference, "the class %q does not exist", parent)
-	}
-	subLevel := b.classSubLevel[parent]
-	if subLevel == 0 {
-		if cl, ok := b.base.classes[parent]; ok {
-			subLevel = cl.SubclassLevel
-		}
-	}
-	if parentOK && ts.Level != 0 && ts.Level != subLevel {
-		c.at(key, path, ".level", ReasonValue, "the subclass is chosen at level %d, the class's; got %d", subLevel, ts.Level)
-	}
-	checkTextAt(&c, key, path, ".desc_pt", ts.DescPT)
-
-	var casting *classCasting
-	start := 0
-	beforeCasting := len(c.list)
-	if ts.Casting != nil {
-		if _, casts := b.base.casting[parent]; parentOK && (casts || b.classCasts[parent] != CastingNone) {
-			c.at(key, path, ".casting", ReasonCasting, "a third caster is a subclass of a class that does not cast")
-		}
-		start = b.checkCasting(&c, key, path, ts.Casting, true)
-		if start > 0 && start < subLevel {
-			c.at(key, path, ".casting.start_level", ReasonCasting, "casting cannot start before the subclass, at level %d", subLevel)
-			start = 0
-		}
-		casting = &classCasting{level: start, list: ts.Casting.ListFrom, sub: key}
-	}
-	castingKnown := casting == nil || start > 0
-	castingOK := len(c.list) == beforeCasting
-
-	rows := map[int]*srd51.Level{}
-	features, last := 0, 0
-	limited := false
-	for i := range ts.Levels {
-		tl := &ts.Levels[i]
-		if tl.Level < 1 || tl.Level > MaxLevel || tl.Level <= last {
-			c.at(key, path, fmt.Sprintf(".levels[%d].level", i), ReasonTable, "subclass levels go from 1 to %d, in ascending order", MaxLevel)
-			continue
-		}
-		last = tl.Level
-		if len(tl.Features) > 0 && tl.Level < subLevel {
-			c.at(key, path, fmt.Sprintf(".levels[%d].features", i), ReasonTable, "level %d: subclass features start at level %d", tl.Level, subLevel)
-		}
-		row := &srd51.Level{Class: parent, Subclass: key, Level: tl.Level}
-		for j := range tl.Features {
-			f := &tl.Features[j]
-			features++
-			if features > MaxTableFeatures && !limited {
-				limited = true
-				c.at(key, path, fmt.Sprintf(".levels[%d].features[%d]", i, j), ReasonLimit, "more than %d features; the limit is %d per subclass", MaxTableFeatures, MaxTableFeatures)
-			}
-			if err := b.addFeature(f, featureKind{prefix: "feature:", owner: key, class: parent, subclass: key, level: tl.Level}, fmt.Sprintf("%s.levels[%d].features[%d]", path, i, j)); err != nil {
-				c.add(err)
-				continue
-			}
-			row.Features = append(row.Features, f.Key)
-		}
-		rows[tl.Level] = row
-		checkRow(&c, key, fmt.Sprintf("%s.levels[%d]", path, i), tl.Level, tl.TableLevel, casting != nil && tl.Level >= start, false, castingKnown)
-		if casting != nil {
-			row.Spellcasting = &srd51.LevelSpellcasting{CantripsKnown: tl.CantripsKnown, SpellsKnown: tl.SpellsKnown, Slots: tl.Slots}
-		}
-	}
-	if casting != nil && start > 0 {
-		for lvl := start; lvl <= MaxLevel; lvl++ {
-			if rows[lvl] == nil {
-				c.at(key, path, ".levels", ReasonTable, "a third caster needs a table row for every level from %d to %d (missing %d)", start, MaxLevel, lvl)
-				break
-			}
-		}
-		castKey := "feature:subclass-" + slugOfKey(key) + "-spellcasting" + tableSuffix
-		if err := b.claim(castKey); err != nil {
-			c.add(err)
-		} else if castingOK && rows[start] != nil {
-			n.features[castKey] = &srd51.Feature{Key: castKey, Name: castingFeatureName, Class: parent, Subclass: key, Level: start, Desc: []string{"Esta subclasse conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
-			n.namesEN[castKey], n.namesPT[castKey] = castingFeatureName, castingFeatureName
-			eff := castingEffect(ts.Casting, parent)
-			if err := b.compileOwn(castKey, path, eff); err != nil {
-				c.add(err)
-			} else {
-				rows[start].Features = append([]string{castKey}, rows[start].Features...)
-				casting.effect = eff
-				n.subCasting[key] = *casting
-			}
-		}
-	}
+	sb := &subclassBuilder{b: b, c: &c, ts: ts, path: path, parent: parent, parentOK: b.isClass(parent), rows: map[int]*srd51.Level{}}
+	sb.checkParent()
+	sb.checkCasting()
+	sb.buildRows()
+	sb.castingFeature()
 
 	sub := &srd51.Subclass{Key: key, Name: ts.NamePT, Class: parent, Desc: slices.Clone(ts.DescPT)}
-	if _, parentCasts := b.base.casting[parent]; parentOK && len(ts.AlwaysPrepared) > 0 && ts.Casting == nil && !parentCasts && b.classCasts[parent] == CastingNone {
-		c.list = append(c.list, ovErr(key, "always-prepared spells need a class or subclass that casts").at(path+".always_prepared", ReasonCasting))
-	}
-	for i, ap := range ts.AlwaysPrepared {
-		at := fmt.Sprintf(".always_prepared[%d]", i)
-		if ap.ClassLevel < 1 || ap.ClassLevel > MaxLevel {
-			c.at(key, path, at+".class_level", ReasonValue, "an always-prepared spell comes at class level 1 to %d", MaxLevel)
-		}
-		if !b.isSpell(ap.Spell) {
-			c.at(key, path, at+".spell_key", ReasonReference, "the spell %q does not exist", ap.Spell)
-			continue
-		}
-		if sp, ok := b.n.spells[ap.Spell]; ok && sp.Level == 0 {
-			c.at(key, path, at+".spell_key", ReasonValue, "an always-prepared spell is a leveled spell, not a cantrip")
-			continue
-		}
-		sub.Spells = append(sub.Spells, srd51.SubclassSpell{Spell: ap.Spell, ClassLevel: ap.ClassLevel})
-	}
+	sb.alwaysPrepared(sub)
 	if err := c.err(); err != nil {
 		return err
 	}
 	b.register(ts.TableEntry)
 	n.subclasses[key] = sub
-	n.subclassLevels[key] = rows
+	n.subclassLevels[key] = sb.rows
 	cp := *n.classes[parent]
 	cp.Subclasses = append(slices.Clone(cp.Subclasses), key)
 	n.classes[parent] = &cp
 	return nil
+}
+
+// subclassBuilder is the state of addSubclass: the entry, the violations so far
+// and what the casting and the rows have learned.
+type subclassBuilder struct {
+	b        *overlayBuilder
+	c        *entryErrors
+	ts       *TableSubclass
+	path     string
+	parent   string
+	parentOK bool
+	// subLevel is the level at which the class chooses a subclass.
+	subLevel int
+
+	// casting is the third caster's casting, or nil; start the level it starts at
+	// (0 when it is wrong); castingKnown says the rows can be compared with it,
+	// and castingOK that it had no violation.
+	casting      *classCasting
+	start        int
+	castingKnown bool
+	castingOK    bool
+
+	rows map[int]*srd51.Level
+	// features counts the features of the table so far, and limited says the
+	// limit was reported already.
+	features int
+	limited  bool
+}
+
+// checkParent checks the class the subclass belongs to, the level it is chosen
+// at and its description.
+func (s *subclassBuilder) checkParent() {
+	ts, key := s.ts, s.ts.Key
+	if !s.parentOK {
+		s.c.at(key, s.path, ".class_key", ReasonReference, "the class %q does not exist", s.parent)
+	}
+	s.subLevel = s.b.classSubLevel[s.parent]
+	if s.subLevel == 0 {
+		if cl, ok := s.b.base.classes[s.parent]; ok {
+			s.subLevel = cl.SubclassLevel
+		}
+	}
+	if s.parentOK && ts.Level != 0 && ts.Level != s.subLevel {
+		s.c.at(key, s.path, ".level", ReasonValue, "the subclass is chosen at level %d, the class's; got %d", s.subLevel, ts.Level)
+	}
+	checkTextAt(s.c, key, s.path, ".desc_pt", ts.DescPT)
+}
+
+// checkCasting checks the casting of a third caster, a subclass of a class that
+// does not cast.
+func (s *subclassBuilder) checkCasting() {
+	ts, key := s.ts, s.ts.Key
+	beforeCasting := len(s.c.list)
+	if ts.Casting != nil {
+		if _, casts := s.b.base.casting[s.parent]; s.parentOK && (casts || s.b.classCasts[s.parent] != CastingNone) {
+			s.c.at(key, s.path, ".casting", ReasonCasting, "a third caster is a subclass of a class that does not cast")
+		}
+		s.start = s.b.checkCasting(s.c, key, s.path, ts.Casting, true)
+		if s.start > 0 && s.start < s.subLevel {
+			s.c.at(key, s.path, ".casting.start_level", ReasonCasting, "casting cannot start before the subclass, at level %d", s.subLevel)
+			s.start = 0
+		}
+		s.casting = &classCasting{level: s.start, list: ts.Casting.ListFrom, sub: key}
+	}
+	s.castingKnown = s.casting == nil || s.start > 0
+	s.castingOK = len(s.c.list) == beforeCasting
+}
+
+// buildRows checks the rows of the subclass table and builds them with their
+// features.
+func (s *subclassBuilder) buildRows() {
+	ts, key := s.ts, s.ts.Key
+	last := 0
+	for i := range ts.Levels {
+		tl := &ts.Levels[i]
+		if tl.Level < 1 || tl.Level > MaxLevel || tl.Level <= last {
+			s.c.at(key, s.path, fmt.Sprintf(".levels[%d].level", i), ReasonTable, "subclass levels go from 1 to %d, in ascending order", MaxLevel)
+			continue
+		}
+		last = tl.Level
+		if len(tl.Features) > 0 && tl.Level < s.subLevel {
+			s.c.at(key, s.path, fmt.Sprintf(".levels[%d].features", i), ReasonTable, "level %d: subclass features start at level %d", tl.Level, s.subLevel)
+		}
+		row := &srd51.Level{Class: s.parent, Subclass: key, Level: tl.Level}
+		s.registerFeatures(row, tl, i)
+		s.rows[tl.Level] = row
+		checkRow(s.c, key, fmt.Sprintf("%s.levels[%d]", s.path, i), tl.Level, tl.TableLevel, s.casting != nil && tl.Level >= s.start, false, s.castingKnown)
+		if s.casting != nil {
+			row.Spellcasting = &srd51.LevelSpellcasting{CantripsKnown: tl.CantripsKnown, SpellsKnown: tl.SpellsKnown, Slots: tl.Slots}
+		}
+	}
+}
+
+// registerFeatures registers the table's features of a level and lists them in the row.
+func (s *subclassBuilder) registerFeatures(row *srd51.Level, tl *TableSubclassLevel, i int) {
+	key := s.ts.Key
+	for j := range tl.Features {
+		f := &tl.Features[j]
+		s.features++
+		if s.features > MaxTableFeatures && !s.limited {
+			s.limited = true
+			s.c.at(key, s.path, fmt.Sprintf(".levels[%d].features[%d]", i, j), ReasonLimit, "more than %d features; the limit is %d per subclass", MaxTableFeatures, MaxTableFeatures)
+		}
+		kind := featureKind{prefix: "feature:", owner: key, class: s.parent, subclass: key, level: tl.Level}
+		if err := s.b.addFeature(f, kind, fmt.Sprintf("%s.levels[%d].features[%d]", s.path, i, j)); err != nil {
+			s.c.add(err)
+			continue
+		}
+		row.Features = append(row.Features, f.Key)
+	}
+}
+
+// castingFeature checks that a third caster has a row for every level from the
+// start, and registers the Spellcasting feature the engine writes for it.
+func (s *subclassBuilder) castingFeature() {
+	if s.casting == nil || s.start <= 0 {
+		return
+	}
+	ts, key, n := s.ts, s.ts.Key, s.b.n
+	for lvl := s.start; lvl <= MaxLevel; lvl++ {
+		if s.rows[lvl] == nil {
+			s.c.at(key, s.path, ".levels", ReasonTable, "a third caster needs a table row for every level from %d to %d (missing %d)", s.start, MaxLevel, lvl)
+			break
+		}
+	}
+	castKey := "feature:subclass-" + slugOfKey(key) + "-spellcasting" + tableSuffix
+	if err := s.b.claim(castKey); err != nil {
+		s.c.add(err)
+		return
+	}
+	if !s.castingOK || s.rows[s.start] == nil {
+		return
+	}
+	n.features[castKey] = &srd51.Feature{Key: castKey, Name: castingFeatureName, Class: s.parent, Subclass: key, Level: s.start, Desc: []string{"Esta subclasse conjura magias: a ficha mostra a habilidade de conjuração, a CD, os espaços de magia e as magias."}}
+	n.namesEN[castKey], n.namesPT[castKey] = castingFeatureName, castingFeatureName
+	eff := castingEffect(ts.Casting, s.parent)
+	if err := s.b.compileOwn(castKey, s.path, eff); err != nil {
+		s.c.add(err)
+		return
+	}
+	s.rows[s.start].Features = append([]string{castKey}, s.rows[s.start].Features...)
+	s.casting.effect = eff
+	n.subCasting[key] = *s.casting
+}
+
+// alwaysPrepared checks the spells the subclass always prepares and lists the
+// good ones on sub.
+func (s *subclassBuilder) alwaysPrepared(sub *srd51.Subclass) {
+	ts, key := s.ts, s.ts.Key
+	if _, parentCasts := s.b.base.casting[s.parent]; s.parentOK && len(ts.AlwaysPrepared) > 0 && ts.Casting == nil && !parentCasts && s.b.classCasts[s.parent] == CastingNone {
+		s.c.list = append(s.c.list, ovErr(key, "always-prepared spells need a class or subclass that casts").at(s.path+".always_prepared", ReasonCasting))
+	}
+	for i, ap := range ts.AlwaysPrepared {
+		at := fmt.Sprintf(".always_prepared[%d]", i)
+		if ap.ClassLevel < 1 || ap.ClassLevel > MaxLevel {
+			s.c.at(key, s.path, at+".class_level", ReasonValue, "an always-prepared spell comes at class level 1 to %d", MaxLevel)
+		}
+		if !s.b.isSpell(ap.Spell) {
+			s.c.at(key, s.path, at+".spell_key", ReasonReference, "the spell %q does not exist", ap.Spell)
+			continue
+		}
+		if sp, ok := s.b.n.spells[ap.Spell]; ok && sp.Level == 0 {
+			s.c.at(key, s.path, at+".spell_key", ReasonValue, "an always-prepared spell is a leveled spell, not a cantrip")
+			continue
+		}
+		sub.Spells = append(sub.Spells, srd51.SubclassSpell{Spell: ap.Spell, ClassLevel: ap.ClassLevel})
+	}
 }
