@@ -1,7 +1,7 @@
 # Layers, grid calibration and the map editor
 
 The server stores the layers painted on a map's grid and the grid's calibration; the master's map page paints them (MR-025, MR-034 to MR-036, MR-041, RN-25).
-The server code is in `layers.go`, `calibration.go` and `mapservice.go` (`backend/internal/maps`); the screen is `web/src/app/pages/maps/map-page` (computer) and `map-manage` (phone, no painting).
+The server code is in `backend/internal/maps`: `layers.go` (painting and the fog settings), `calibration.go` and `mapgrid.go` (`SetMapGrid`), and `mapupdate.go` (`UpdateMap`, whose new image clears the layers); the screen is `web/src/app/pages/maps/map-page` (computer) and `map-manage` (phone, no painting).
 No rule arithmetic lives in the browser: what a light reaches, who would notice a trap, the DCs and what each player sees come from the server.
 
 ## Layers

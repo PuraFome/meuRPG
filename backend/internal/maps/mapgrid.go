@@ -8,8 +8,10 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -17,6 +19,60 @@ import (
 // anything is read, the fog's image copy is made before the transaction, and
 // the transaction locks the map, works out what happens to the layers, writes
 // the grid and applies the table's fog rule.
+
+// The battle grid's limits (MR-013): how many squares of the drawing fit across
+// the image's width. The maps_grid_columns_valid CHECK says the same of the
+// rules' columns, which are at most 200 as well (the calibration multiplies the
+// drawn columns, and rules/grid.EngineGrid refuses what passes the limits).
+const (
+	minGridColumns = 4
+	maxGridColumns = grid.MaxColumns // 200, the rules' limit too
+)
+
+// SetMapGrid implements mapsv1connect.MapServiceHandler. calibration.go says
+// what it does to the painted layers.
+func (s *Service) SetMapGrid(
+	ctx context.Context,
+	req *connect.Request[mapsv1.SetMapGridRequest],
+) (*connect.Response[mapsv1.SetMapGridResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	drawn := req.Msg.GetColumns()
+	factor, err := checkGridRequest(drawn, req.Msg.GetSquareFactor())
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	imageCopy, err := s.gridFogCopy(ctx, m.CampaignID, mapID, drawn)
+	if err != nil {
+		return nil, err
+	}
+	var w gridWrite
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		w, err = s.writeGrid(ctx, tx, gridChange{campaignID: m.CampaignID, userID: m.UserID, mapID: mapID, drawn: drawn, factor: factor, imageCopy: imageCopy})
+		return err
+	})
+	s.discardFogCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
+	if err != nil {
+		return nil, s.dbError(ctx, "set a map's grid", err)
+	}
+	s.announceGrid(ctx, m, mapID, current, w)
+	out, err := s.masterMap(ctx, m, mapID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.SetMapGridResponse{Map: out}), nil
+}
 
 // checkGridRequest refuses the columns and the square factor a request may not
 // carry, columns first, and returns the factor with 0 read as 1.

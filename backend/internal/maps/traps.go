@@ -368,7 +368,8 @@ func (s *Service) revealTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	now := s.now()
 	res.after = before
 	if call.all {
-		if res.after, err = s.revealToAll(ctx, q, m.CampaignID, before); err != nil {
+		reveal := true // as the master's "revealed" switch does
+		if res.after, err = s.applyPointChange(ctx, q, m.CampaignID, before, pointChange{revealed: &reveal}); err != nil {
 			return err
 		}
 		res.changed = before.RevealedAt == nil
@@ -390,12 +391,6 @@ func (s *Service) revealTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return fmt.Errorf("record the reveal: %w", err)
 	}
 	return nil
-}
-
-// revealToAll makes the trap public, as the master's "revealed" switch does.
-func (s *Service) revealToAll(ctx context.Context, q *mapsdb.Queries, campaignID string, before mapsdb.MapPoint) (mapsdb.MapPoint, error) {
-	reveal := true
-	return s.applyPointChange(ctx, q, campaignID, before, pointChange{revealed: &reveal})
 }
 
 // revealToCharacters writes a reveal for each character of the call, and returns the ones

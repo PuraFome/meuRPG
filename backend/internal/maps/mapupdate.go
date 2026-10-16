@@ -11,6 +11,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -19,6 +20,52 @@ import (
 // and the transaction locks the map, compares the revision, picks the image and
 // writes. The checks run in this order: something to change, the revision, the
 // name, the image's id; inside the transaction: the map, the revision, the image.
+
+// UpdateMap implements mapsv1connect.MapServiceHandler.
+func (s *Service) UpdateMap(
+	ctx context.Context,
+	req *connect.Request[mapsv1.UpdateMapRequest],
+) (*connect.Response[mapsv1.UpdateMapResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	update, err := checkMapUpdate(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	var imageCopy *fogCopy
+	var fogSeen bool
+	if update.imageID != nil {
+		if imageCopy, fogSeen, err = s.imageCopyFor(ctx, m.CampaignID, mapID, *update.imageID); err != nil {
+			return nil, s.dbError(ctx, "copy the map's image", err)
+		}
+	}
+	var w mapUpdateWrite
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		w, err = s.writeMapUpdate(ctx, tx, mapUpdateTx{mapUpdate: update, campaignID: m.CampaignID, userID: m.UserID, mapID: mapID, imageCopy: imageCopy, fogSeen: fogSeen})
+		return err
+	})
+	s.discardFogCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
+	if err != nil {
+		return nil, s.dbError(ctx, "update a map", err)
+	}
+	s.announceMapUpdate(ctx, m, mapID, current, w)
+	out, err := s.masterMap(ctx, m, mapID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.UpdateMapResponse{Map: out}), nil
+}
 
 // mapUpdate is what an UpdateMap request asks for, checked. A nil field stays as
 // it is.
