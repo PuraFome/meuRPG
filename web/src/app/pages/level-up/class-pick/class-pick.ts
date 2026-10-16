@@ -16,8 +16,8 @@ import {
   type LevelUpClassChoice,
   type LevelUpPrerequisite,
 } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import { abilityKeyOf } from '../../../core/characters/ability-gen';
 import { abilityLabel } from '../../../core/characters/character-labels';
-import { ABILITY_FROM_GEN } from '../../../core/levelup/levelup-flow';
 
 const COUNT = [
   'Nenhuma',
@@ -38,7 +38,7 @@ const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
 const OR_LIST = new Intl.ListFormat('pt-BR', { type: 'disjunction' });
 
 function ability(p: LevelUpPrerequisite): string {
-  const key = ABILITY_FROM_GEN[p.ability];
+  const key = abilityKeyOf(p.ability);
   return key ? abilityLabel(key) : '';
 }
 

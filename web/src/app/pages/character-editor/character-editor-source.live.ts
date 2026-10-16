@@ -15,6 +15,7 @@ import {
   BasicSheet as GenBasicSheet,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ContentService } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { KIND_FROM_GEN } from '../../core/characters/character-kind-gen';
 import { CharacterKind } from '../../core/characters/characters.types';
 import {
   TableContentKind,
@@ -62,15 +63,6 @@ export {
   toFormFullSheet,
   toFullSheetInit,
 } from './character-editor-sheet-map';
-
-const KIND_FROM_GEN: Record<GenCharacterKind, CharacterKind> = {
-  [GenCharacterKind.UNSPECIFIED]: 'player',
-  [GenCharacterKind.PLAYER]: 'player',
-  [GenCharacterKind.ENEMY]: 'enemy',
-  [GenCharacterKind.BOSS]: 'boss',
-  [GenCharacterKind.MINION]: 'minion',
-  [GenCharacterKind.STORY]: 'story',
-};
 
 const KIND_TO_GEN: Record<CharacterKind, GenCharacterKind> = {
   player: GenCharacterKind.PLAYER,
