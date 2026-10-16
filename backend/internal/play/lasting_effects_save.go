@@ -311,11 +311,6 @@ func (s *Service) RollEffectSave( //nolint:gocognit,gocyclo // the steps of one 
 					return nil, nil
 				}
 				d20 := step.Roll
-				if !step.Settled {
-					if d20, err = s.d20With(in, save.Bonus, mode); err != nil {
-						return nil, err
-					}
-				}
 				if step.Bonus != nil {
 					result.InspirationSides, result.InspirationFace = step.Bonus.Sides, step.Bonus.Face
 				}

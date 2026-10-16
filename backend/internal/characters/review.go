@@ -131,27 +131,11 @@ func (s *Service) RequestCharacterChanges(
 	ctx context.Context,
 	req *connect.Request[charactersv1.RequestCharacterChangesRequest],
 ) (*connect.Response[charactersv1.RequestCharacterChangesResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	in, err := changeRequestOf(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
-	if !ok {
-		return nil, errCharacterNotFound()
-	}
-	key, err := requiredKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	reason, err := names.CleanText(req.Msg.GetReason(), MaxReviewReasonLength)
-	if err != nil {
-		return nil, invalidArgument(fieldErr("reason", "must be at most %d characters", MaxReviewReasonLength))
-	}
-	if reason == "" {
-		return nil, invalidArgument(fieldErr("reason", "is required"))
-	}
-	scoped, hash := keyOf(m, key), idem.Hash(req.Msg)
-
+	m := in.m
 	content, err := s.contentFor(ctx, nil, m.CampaignID) // before the write: a failure after the commit would make the client retry it
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
@@ -159,53 +143,107 @@ func (s *Service) RequestCharacterChanges(
 	var row charactersdb.Character
 	var replayed bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		replayed = false
-		q := s.queries.WithTx(tx)
 		var err error
-		row, err = visibleForUpdate(ctx, q, m, id)
-		if err != nil {
-			return err
-		}
-		if row.Kind != kindPlayer {
-			return invalidArgument(fieldErr("character_id", "is an NPC: only player characters wait for approval"))
-		}
-		if row.Status != statusPending {
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_PENDING, row.ID)
-		}
-		if row.PlayerUserID == nil {
-			return invalidArgument(fieldErr("character_id", "has no player to answer: approve or reject it"))
-		}
-		prior, err := q.GetCharacterReview(ctx, row.ID)
-		switch {
-		case err == nil && prior.RequestKey != nil && *prior.RequestKey == *scoped:
-			if err := idem.SameRequest(prior.RequestHash, hash); err != nil {
-				return err
-			}
-			replayed = true // the first call did it: nothing changes, nothing is published
-			return nil
-		case err != nil && !errors.Is(err, pgx.ErrNoRows):
-			return wrap("read the review", err)
-		}
-		if _, err := q.UpsertCharacterReviewRequest(ctx, charactersdb.UpsertCharacterReviewRequestParams{
-			CharacterID: row.ID, CampaignID: m.CampaignID, PlayerUserID: *row.PlayerUserID, Reason: reason,
-			Now: s.now(), RequestKey: scoped, RequestHash: hash,
-		}); err != nil {
-			return wrap("request changes", err)
-		}
-		return nil
+		row, replayed, err = s.requestChangesTx(ctx, s.queries.WithTx(tx), in)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "request changes of a character", err)
 	}
 	if !replayed {
-		logging.Event(ctx, s.logger, "character.changes_requested", slog.String("character_id", row.ID), slog.Int("reason_length", utf8.RuneCountInString(reason)))
+		logging.Event(ctx, s.logger, "character.changes_requested", slog.String("character_id", row.ID), slog.Int("reason_length", utf8.RuneCountInString(in.reason)))
 		s.publishCharacterEvent(ctx, m.CampaignID, row, hintChangesRequested)
 	}
-	c, err := s.character(ctx, content, row, m)
+	c, err := s.characterAfterWrite(ctx, content, row, m)
 	if err != nil {
-		return nil, s.dbError(ctx, "read a character", err)
+		return nil, err
 	}
 	return connect.NewResponse(&charactersv1.RequestCharacterChangesResponse{Character: c}), nil
+}
+
+// changeRequest is a RequestCharacterChanges request once checked: the master's
+// membership, the character's ID, the cleaned reason, and the scoped key and hash of
+// the request (idem).
+type changeRequest struct {
+	m            authz.Membership
+	id, reason   string
+	scoped, hash *string
+}
+
+// changeRequestOf checks a RequestCharacterChanges request before anything is read: the
+// caller, the character's ID, the key and the reason, in this order.
+func changeRequestOf(ctx context.Context, msg *charactersv1.RequestCharacterChangesRequest) (changeRequest, error) {
+	m, id, err := masterAndCharacter(ctx, msg.GetCampaignId(), msg.GetCharacterId())
+	if err != nil {
+		return changeRequest{}, err
+	}
+	key, err := requiredKey(msg.GetIdempotencyKey())
+	if err != nil {
+		return changeRequest{}, err
+	}
+	reason, err := names.CleanText(msg.GetReason(), MaxReviewReasonLength)
+	if err != nil {
+		return changeRequest{}, invalidArgument(fieldErr("reason", "must be at most %d characters", MaxReviewReasonLength))
+	}
+	if reason == "" {
+		return changeRequest{}, invalidArgument(fieldErr("reason", "is required"))
+	}
+	return changeRequest{m: m, id: id, reason: reason, scoped: keyOf(m, key), hash: idem.Hash(msg)}, nil
+}
+
+// requestChangesTx is RequestCharacterChanges's transaction: it locks the character and
+// writes the request, unless the key's first call did it already (replayed).
+func (s *Service) requestChangesTx(ctx context.Context, q *charactersdb.Queries, in changeRequest) (row charactersdb.Character, replayed bool, err error) {
+	row, err = visibleForUpdate(ctx, q, in.m, in.id)
+	if err != nil {
+		return row, false, err
+	}
+	if err := requireAnswerablePending(row); err != nil {
+		return row, false, err
+	}
+	replayed, err = requestReplayed(ctx, q, row.ID, in.scoped, in.hash)
+	if err != nil || replayed {
+		return row, replayed, err
+	}
+	if _, err := q.UpsertCharacterReviewRequest(ctx, charactersdb.UpsertCharacterReviewRequestParams{
+		CharacterID: row.ID, CampaignID: in.m.CampaignID, PlayerUserID: *row.PlayerUserID, Reason: in.reason,
+		Now: s.now(), RequestKey: in.scoped, RequestHash: in.hash,
+	}); err != nil {
+		return row, false, wrap("request changes", err)
+	}
+	return row, false, nil
+}
+
+// requireAnswerablePending refuses a character the master cannot send back: an NPC, one
+// that does not wait for approval, and one with no player left to answer.
+func requireAnswerablePending(row charactersdb.Character) error {
+	if row.Kind != kindPlayer {
+		return invalidArgument(fieldErr("character_id", "is an NPC: only player characters wait for approval"))
+	}
+	if row.Status != statusPending {
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_PENDING, row.ID)
+	}
+	if row.PlayerUserID == nil {
+		return invalidArgument(fieldErr("character_id", "has no player to answer: approve or reject it"))
+	}
+	return nil
+}
+
+// requestReplayed says whether the character's review was written by a call with this
+// key: the first call did it, so nothing changes and nothing is published. The same key
+// with another request is refused.
+func requestReplayed(ctx context.Context, q *charactersdb.Queries, characterID string, scoped, hash *string) (bool, error) {
+	prior, err := q.GetCharacterReview(ctx, characterID)
+	switch {
+	case err == nil && prior.RequestKey != nil && *prior.RequestKey == *scoped:
+		if err := idem.SameRequest(prior.RequestHash, hash); err != nil {
+			return false, err
+		}
+		return true, nil
+	case err != nil && !errors.Is(err, pgx.ErrNoRows):
+		return false, wrap("read the review", err)
+	}
+	return false, nil
 }
 
 // ResubmitCharacter implements charactersv1connect.CharacterServiceHandler.
@@ -213,20 +251,11 @@ func (s *Service) ResubmitCharacter(
 	ctx context.Context,
 	req *connect.Request[charactersv1.ResubmitCharacterRequest],
 ) (*connect.Response[charactersv1.ResubmitCharacterResponse], error) {
-	m, err := authz.RequireCampaignMemberOrPending(ctx, req.Msg.GetCampaignId())
+	in, err := resubmissionOf(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
-	if !ok {
-		return nil, errCharacterNotFound()
-	}
-	key, err := requiredKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	scoped, hash := keyOf(m, key), idem.Hash(req.Msg)
-
+	m := in.m
 	content, err := s.contentFor(ctx, nil, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
@@ -234,41 +263,9 @@ func (s *Service) ResubmitCharacter(
 	var row charactersdb.Character
 	var replayed bool
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		replayed = false
-		q := s.queries.WithTx(tx)
 		var err error
-		row, err = visibleForUpdate(ctx, q, m, id)
-		if err != nil {
-			return err
-		}
-		// Only the owner: the master and any other member get the answer of a character
-		// that is not there, so nobody probes an ID.
-		if isMaster(m) || row.PlayerUserID == nil || *row.PlayerUserID != m.UserID {
-			return errCharacterNotFound()
-		}
-		if row.Status != statusPending {
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_PENDING, row.ID)
-		}
-		prior, err := q.GetCharacterReview(ctx, row.ID)
-		switch {
-		case err == nil && prior.ResubmitKey != nil && *prior.ResubmitKey == *scoped:
-			if err := idem.SameRequest(prior.ResubmitHash, hash); err != nil {
-				return err
-			}
-			replayed = true
-			return nil
-		case errors.Is(err, pgx.ErrNoRows) || (err == nil && prior.Status != reviewChangesRequested):
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED, row.ID)
-		case err != nil:
-			return wrap("read the review", err)
-		}
-		now := s.now()
-		if _, err := q.MarkCharacterReviewResubmitted(ctx, charactersdb.MarkCharacterReviewResubmittedParams{
-			CharacterID: row.ID, Now: &now, ResubmitKey: scoped, ResubmitHash: hash,
-		}); err != nil {
-			return wrap("resubmit a character", err)
-		}
-		return nil
+		row, replayed, err = s.resubmitTx(ctx, s.queries.WithTx(tx), in)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "resubmit a character", err)
@@ -277,11 +274,85 @@ func (s *Service) ResubmitCharacter(
 		logging.Event(ctx, s.logger, "character.resubmitted", slog.String("character_id", row.ID))
 		s.publishCharacterEvent(ctx, m.CampaignID, row, hintResubmitted)
 	}
-	c, err := s.character(ctx, content, row, m)
+	c, err := s.characterAfterWrite(ctx, content, row, m)
 	if err != nil {
-		return nil, s.dbError(ctx, "read a character", err)
+		return nil, err
 	}
 	return connect.NewResponse(&charactersv1.ResubmitCharacterResponse{Character: c}), nil
+}
+
+// resubmission is a ResubmitCharacter request once checked: the caller's membership
+// (a pending one too), the character's ID, and the scoped key and hash of the request.
+type resubmission struct {
+	m            authz.Membership
+	id           string
+	scoped, hash *string
+}
+
+// resubmissionOf checks a ResubmitCharacter request before anything is read: the
+// caller, the character's ID and the key, in this order.
+func resubmissionOf(ctx context.Context, msg *charactersv1.ResubmitCharacterRequest) (resubmission, error) {
+	m, err := authz.RequireCampaignMemberOrPending(ctx, msg.GetCampaignId())
+	if err != nil {
+		return resubmission{}, err
+	}
+	id, ok := parseUUID(msg.GetCharacterId())
+	if !ok {
+		return resubmission{}, errCharacterNotFound()
+	}
+	key, err := requiredKey(msg.GetIdempotencyKey())
+	if err != nil {
+		return resubmission{}, err
+	}
+	return resubmission{m: m, id: id, scoped: keyOf(m, key), hash: idem.Hash(msg)}, nil
+}
+
+// resubmitTx is ResubmitCharacter's transaction: it locks the owner's pending character
+// and marks the master's request answered, unless the key's first call did it already
+// (replayed).
+func (s *Service) resubmitTx(ctx context.Context, q *charactersdb.Queries, in resubmission) (row charactersdb.Character, replayed bool, err error) {
+	row, err = visibleForUpdate(ctx, q, in.m, in.id)
+	if err != nil {
+		return row, false, err
+	}
+	// Only the owner: the master and any other member get the answer of a character
+	// that is not there, so nobody probes an ID.
+	if isMaster(in.m) || row.PlayerUserID == nil || *row.PlayerUserID != in.m.UserID {
+		return row, false, errCharacterNotFound()
+	}
+	if row.Status != statusPending {
+		return row, false, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_PENDING, row.ID)
+	}
+	replayed, err = resubmitReplayed(ctx, q, row.ID, in.scoped, in.hash)
+	if err != nil || replayed {
+		return row, replayed, err
+	}
+	now := s.now()
+	if _, err := q.MarkCharacterReviewResubmitted(ctx, charactersdb.MarkCharacterReviewResubmittedParams{
+		CharacterID: row.ID, Now: &now, ResubmitKey: in.scoped, ResubmitHash: in.hash,
+	}); err != nil {
+		return row, false, wrap("resubmit a character", err)
+	}
+	return row, false, nil
+}
+
+// resubmitReplayed says whether the character was resubmitted by a call with this key
+// (the same key with another request is refused), and refuses a character the master
+// asked nothing of: no review, or one answered already.
+func resubmitReplayed(ctx context.Context, q *charactersdb.Queries, characterID string, scoped, hash *string) (bool, error) {
+	prior, err := q.GetCharacterReview(ctx, characterID)
+	switch {
+	case err == nil && prior.ResubmitKey != nil && *prior.ResubmitKey == *scoped:
+		if err := idem.SameRequest(prior.ResubmitHash, hash); err != nil {
+			return false, err
+		}
+		return true, nil
+	case errors.Is(err, pgx.ErrNoRows) || (err == nil && prior.Status != reviewChangesRequested):
+		return false, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED, characterID)
+	case err != nil:
+		return false, wrap("read the review", err)
+	}
+	return false, nil
 }
 
 // ReviewHost is what the characters module needs from the play module for the

@@ -41,9 +41,6 @@
     }
   },
   "src/app/core/combat/combat-log.ts": {
-    "complexity": {
-      "count": 2
-    },
     "max-lines": {
       "count": 1
     }
@@ -1289,7 +1286,7 @@
       "count": 1
     },
     "@typescript-eslint/no-magic-numbers": {
-      "count": 3
+      "count": 1
     },
     "max-lines": {
       "count": 1
@@ -1788,9 +1785,6 @@
   "src/app/core/play/live-stream.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 3
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "src/app/pages/live-session/party-panel/party-panel.ts": {
