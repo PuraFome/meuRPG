@@ -1,7 +1,7 @@
 image old=66666666-6666-4666-8666-666666666661 name="Mapa" type=image/png 400x300 size>0=true generated=false kind="" parent= copy= olderBy=0ms
 image old=66666666-6666-4666-8666-666666666662 name="Cena" type=image/png 40x30 size>0=true generated=true kind="scene" parent=66666666-6666-4666-8666-666666666661 copy= olderBy=1ms
 image old=66666666-6666-4666-8666-666666666663 name="Cópia" type=image/png 50x20 size>0=true generated=false kind="" parent= copy=66666666-6666-4666-8666-666666666661 olderBy=2ms
-counts images=3 bytes>0=true maps=2 scenes=1
+counts images=3 bytes>0=true maps=3 scenes=1
 no problems
 facts maps=true kinds=6 names=6
 fact 44444444-4444-4444-8444-444444444441 map=11111111-1111-4111-8111-111111111111 kind=scene name=A ponte
@@ -159,4 +159,12 @@ export {
   "imageId": "66666666-6666-4666-8666-666666666662",
   "gridFactor": 1,
   "baseLight": "dark"
+}
+export {
+  "id": "77777777-7777-4777-8777-777777777777",
+  "name": "Grade vazia",
+  "imageId": "66666666-6666-4666-8666-666666666661",
+  "gridColumns": 20,
+  "gridFactor": 1,
+  "baseLight": "bright"
 }
