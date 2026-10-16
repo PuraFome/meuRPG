@@ -1,5 +1,6 @@
 import { Component, ElementRef, afterNextRender, input, output, viewChild } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 let nextId = 0;
 
@@ -16,7 +17,7 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-doc-dialog',
-  imports: [MatIconModule],
+  imports: [RelayEvents, MatIconModule],
   templateUrl: './doc-dialog.html',
   styleUrl: './doc-dialog.scss',
 })

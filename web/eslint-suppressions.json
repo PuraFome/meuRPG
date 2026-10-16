@@ -613,14 +613,6 @@
       "count": 1
     }
   },
-  "src/app/pages/campaign-document/doc-dialog/doc-dialog.html": {
-    "@angular-eslint/template/click-events-have-key-events": {
-      "count": 1
-    },
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
-    }
-  },
   "src/app/pages/campaign-document/doc-dialog/doc-dialog.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -878,14 +870,6 @@
       "count": 1
     }
   },
-  "src/app/pages/character-sheet/creatures-panel/creatures-panel.html": {
-    "@angular-eslint/template/click-events-have-key-events": {
-      "count": 1
-    },
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
-    }
-  },
   "src/app/pages/character-sheet/creatures-panel/creatures-panel.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -966,9 +950,6 @@
       "count": 1
     },
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@angular-eslint/template/interactive-supports-focus": {
       "count": 1
     }
   },
@@ -1089,9 +1070,6 @@
     "@angular-eslint/template/click-events-have-key-events": {
       "count": 1
     },
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
-    },
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
     }
@@ -1142,11 +1120,6 @@
   },
   "src/app/pages/gallery/gallery-card/gallery-card.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/pages/gallery/gallery-lightbox/gallery-lightbox.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
       "count": 1
     }
   },
@@ -1761,9 +1734,6 @@
     }
   },
   "src/app/pages/live-session/door-sheet/door-sheet.ts": {
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
-    },
     "@typescript-eslint/no-magic-numbers": {
       "count": 10
     }
@@ -2064,11 +2034,6 @@
       "count": 1
     }
   },
-  "src/app/shared/choice-row/choice-row.ts": {
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
-    }
-  },
   "src/app/pages/maps/dungeon-new/dungeon-new.spec.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2082,11 +2047,6 @@
       "count": 1
     }
   },
-  "src/app/pages/maps/editor-bar/editor-bar.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 4
-    }
-  },
   "src/app/pages/maps/editor-bar/editor-bar.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
@@ -2095,11 +2055,6 @@
   "src/app/shared/editor-overlay/editor-overlay.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 4
-    }
-  },
-  "src/app/pages/maps/fog-panel/fog-panel.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
     }
   },
   "src/app/pages/maps/grid-panel/calibrate-ask.ts": {
@@ -2225,11 +2180,6 @@
       "count": 5
     }
   },
-  "src/app/pages/maps/point-kinds/light-point-panel.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
-    }
-  },
   "src/app/pages/maps/point-kinds/trap-draft.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 15
@@ -2238,21 +2188,11 @@
       "count": 2
     }
   },
-  "src/app/pages/maps/point-kinds/trap-point-panel.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 6
-    }
-  },
   "src/app/pages/maps/point-kinds/trap-point-panel.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
     },
     "max-lines": {
-      "count": 1
-    }
-  },
-  "src/app/pages/maps/point-panel/point-panel.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
       "count": 1
     }
   },
@@ -2506,11 +2446,6 @@
       "count": 5
     }
   },
-  "src/app/shared/fog-map/view-as-list.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
-    }
-  },
   "src/app/shared/fog-map/view-as-list.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2631,11 +2566,6 @@
       "count": 1
     }
   },
-  "src/app/shared/image-generate/kind-strip.ts": {
-    "@angular-eslint/template/interactive-supports-focus": {
-      "count": 1
-    }
-  },
   "src/app/shared/image-generate/npc-picks.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
@@ -2643,11 +2573,6 @@
   },
   "src/app/shared/image-generate/reference-picks.ts": {
     "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    }
-  },
-  "src/app/shared/level-grid/level-grid.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
       "count": 1
     }
   },
@@ -2724,11 +2649,6 @@
   },
   "src/app/shared/map-view/map-token/map-token.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/map-view/map-view.html": {
-    "@angular-eslint/template/interactive-supports-focus": {
       "count": 1
     }
   },
