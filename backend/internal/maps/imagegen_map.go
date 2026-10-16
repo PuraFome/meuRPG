@@ -824,7 +824,7 @@ func (s *Service) UseGeneratedImageAsMapImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the image generation status", err)
 	}
-	if call.imageCopy, err = s.useImageCopy(ctx, m.CampaignID, call.mapID, imageID); err != nil {
+	if call.imageCopy, call.fogSeen, err = s.imageCopyFor(ctx, m.CampaignID, call.mapID, imageID); err != nil {
 		return nil, s.dbError(ctx, "copy the textured map", err)
 	}
 	var out useOutcome
@@ -832,9 +832,7 @@ func (s *Service) UseGeneratedImageAsMapImage(
 		out = useOutcome{}
 		return s.useInTx(ctx, s.queries.WithTx(tx), &call, &out)
 	})
-	if call.imageCopy != nil && (err != nil || !out.copied) {
-		s.deleteFiles(ctx, m.CampaignID, call.imageCopy.id) // made for nothing
-	}
+	s.discardFogCopy(ctx, m.CampaignID, call.imageCopy, err != nil || !out.copied)
 	if err != nil {
 		return nil, s.dbError(ctx, "use a generated image as the map's image", err)
 	}
@@ -859,6 +857,7 @@ type useCall struct {
 	// imageCopy is the copy of the picture the map gets when the picture is used
 	// another way too, or nil.
 	imageCopy *fogCopy
+	fogSeen   bool // the fog the copy was prepared for (imageCopyFor)
 }
 
 // useOutcome is what one attempt of the transaction decided.
@@ -895,22 +894,6 @@ func (s *Service) texturedMapRequest(ctx context.Context, campaignID, imageID st
 		return mapsdb.ImageRequest{}, errImageNotFound() // not a textured map, or its map is gone
 	}
 	return request, nil
-}
-
-// useImageCopy makes what can be made before the transaction of the copy a map
-// gets when the picture is also used another way: a fog map's image is always
-// its own, as UpdateMap gives (prepareFogCopy), and a map without fog gets a copy
-// too when the picture is used elsewhere. The copy's row goes in the transaction.
-// A map that cannot be read here gets none; the transaction refuses it.
-func (s *Service) useImageCopy(ctx context.Context, campaignID, mapID, imageID string) (*fogCopy, error) {
-	before, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
-	if err == nil && before.ImageID != imageID {
-		if before.FogEnabled {
-			return s.prepareFogCopy(ctx, campaignID, mapID, imageID)
-		}
-		return s.prepareReuseCopy(ctx, campaignID, imageID)
-	}
-	return nil, nil
 }
 
 // useInTx is one attempt of the transaction: it locks the map, answers a retry,
@@ -950,6 +933,9 @@ func (s *Service) useInTx(ctx context.Context, q *mapsdb.Queries, c *useCall, ou
 	}
 	if c.request.MapPlanHash == nil || planHash(solid) != *c.request.MapPlanHash {
 		return c.changed()
+	}
+	if c.fogSeen != locked.FogEnabled {
+		return c.changed() // the fog changed after the copy was prepared, and the revision did not
 	}
 	return s.swapMapImage(ctx, q, c, out, locked, old, fresh)
 }

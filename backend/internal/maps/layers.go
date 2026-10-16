@@ -642,9 +642,7 @@ func (s *Service) SetMapFog(
 		return nil, err
 	}
 	before, after, copied, err := s.writeFog(ctx, m, mapID, msg, baseLight, imageCopy)
-	if imageCopy != nil && (err != nil || !copied) {
-		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
-	}
+	s.discardFogCopy(ctx, m.CampaignID, imageCopy, err != nil || !copied)
 	if err != nil {
 		return nil, s.dbError(ctx, "set a map's fog", err)
 	}
@@ -688,15 +686,11 @@ func (s *Service) fogImageCopy(ctx context.Context, campaignID, mapID string, ms
 	if !msg.GetFogEnabled() {
 		return nil, nil
 	}
-	row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
-	if err == nil && !row.FogEnabled {
-		imageCopy, err := s.prepareFogCopy(ctx, campaignID, mapID, row.ImageID)
-		if err != nil {
-			return nil, s.dbError(ctx, "copy the map's image for the fog", err)
-		}
-		return imageCopy, nil
+	imageCopy, err := s.fogCopyOf(ctx, campaignID, mapID, func(m mapsdb.Map) bool { return !m.FogEnabled })
+	if err != nil {
+		return nil, s.dbError(ctx, "copy the map's image for the fog", err)
 	}
-	return nil, nil
+	return imageCopy, nil
 }
 
 // writeFog sets the fog's settings in one transaction and returns the map's row before
@@ -734,11 +728,8 @@ func (s *Service) useFogCopy(ctx context.Context, q *mapsdb.Queries, m authz.Mem
 	if imageCopy == nil || before.FogEnabled || before.ImageID != imageCopy.source.ID {
 		return false, nil
 	}
-	if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
+	if err := imageCopy.giveMapItsCopy(ctx, q, s, m.CampaignID, m.UserID, before.ID); err != nil {
 		return false, err
-	}
-	if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: m.CampaignID, ID: before.ID, ImageID: imageCopy.id, Now: s.now()}); err != nil {
-		return false, fmt.Errorf("give the map its copy of the image: %w", err)
 	}
 	return true, nil
 }

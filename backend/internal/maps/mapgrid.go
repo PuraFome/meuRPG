@@ -41,15 +41,11 @@ func (s *Service) gridFogCopy(ctx context.Context, campaignID, mapID string, dra
 	if drawn == 0 {
 		return nil, nil
 	}
-	pre, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
-	if err == nil && pre.FogOnFirstGrid && pre.GridColumns == nil {
-		imageCopy, err := s.prepareFogCopy(ctx, campaignID, mapID, pre.ImageID)
-		if err != nil {
-			return nil, s.dbError(ctx, "copy the map's image for the fog", err)
-		}
-		return imageCopy, nil
+	imageCopy, err := s.fogCopyOf(ctx, campaignID, mapID, func(m mapsdb.Map) bool { return m.FogOnFirstGrid && m.GridColumns == nil })
+	if err != nil {
+		return nil, s.dbError(ctx, "copy the map's image for the fog", err)
 	}
-	return nil, nil // a map that cannot be read here is refused inside the transaction
+	return imageCopy, nil
 }
 
 // gridChange is one SetMapGrid call as its transaction sees it.
@@ -190,11 +186,8 @@ func (s *Service) settleLayers(ctx context.Context, q *mapsdb.Queries, mapID str
 func (s *Service) applyFirstGridFog(ctx context.Context, q *mapsdb.Queries, c gridChange, before mapsdb.Map) (mapsdb.Map, bool, error) {
 	copied := false
 	if c.imageCopy != nil && before.ImageID == c.imageCopy.source.ID {
-		if err := c.imageCopy.insert(ctx, q, s, c.campaignID, c.userID); err != nil {
+		if err := c.imageCopy.giveMapItsCopy(ctx, q, s, c.campaignID, c.userID, c.mapID); err != nil {
 			return mapsdb.Map{}, false, err
-		}
-		if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: c.campaignID, ID: c.mapID, ImageID: c.imageCopy.id, Now: s.now()}); err != nil {
-			return mapsdb.Map{}, false, fmt.Errorf("give the map its copy of the image: %w", err)
 		}
 		copied = true
 	}
@@ -213,13 +206,5 @@ func (s *Service) announceGrid(ctx context.Context, m authz.Membership, mapID, c
 		s.lits.forget(mapID)
 		s.tiles.forget(mapID)
 		s.refreshVision(ctx, m.CampaignID, mapID) // the players' memory went with the layers, or was scaled
-	}
-}
-
-// discardGridCopy deletes the files of an image copy made for nothing: the
-// transaction failed, or the map did not take it.
-func (s *Service) discardGridCopy(ctx context.Context, campaignID string, imageCopy *fogCopy, unused bool) {
-	if imageCopy != nil && unused {
-		s.deleteFiles(ctx, campaignID, imageCopy.id)
 	}
 }

@@ -197,9 +197,7 @@ func (s *Service) CreateMap(
 		})
 		return err
 	})
-	if reuse != nil && (err != nil || !used) {
-		s.deleteFiles(ctx, m.CampaignID, reuse.id)
-	}
+	s.discardFogCopy(ctx, m.CampaignID, reuse, err != nil || !used)
 	if err != nil {
 		return nil, s.dbError(ctx, "create a map", err)
 	}
@@ -236,17 +234,20 @@ func (s *Service) UpdateMap(
 	if err != nil {
 		return nil, err
 	}
-	imageCopy, err := s.updateImageCopy(ctx, m.CampaignID, mapID, update.imageID)
-	if err != nil {
-		return nil, err
+	var imageCopy *fogCopy
+	var fogSeen bool
+	if update.imageID != nil {
+		if imageCopy, fogSeen, err = s.imageCopyFor(ctx, m.CampaignID, mapID, *update.imageID); err != nil {
+			return nil, s.dbError(ctx, "copy the map's image", err)
+		}
 	}
 	var w mapUpdateWrite
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		w, err = s.writeMapUpdate(ctx, tx, mapUpdateTx{mapUpdate: update, campaignID: m.CampaignID, userID: m.UserID, mapID: mapID, imageCopy: imageCopy})
+		w, err = s.writeMapUpdate(ctx, tx, mapUpdateTx{mapUpdate: update, campaignID: m.CampaignID, userID: m.UserID, mapID: mapID, imageCopy: imageCopy, fogSeen: fogSeen})
 		return err
 	})
-	s.discardUpdateCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
+	s.discardFogCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
 	if err != nil {
 		return nil, s.dbError(ctx, "update a map", err)
 	}
@@ -365,7 +366,7 @@ func (s *Service) SetMapGrid(
 		w, err = s.writeGrid(ctx, tx, gridChange{campaignID: m.CampaignID, userID: m.UserID, mapID: mapID, drawn: drawn, factor: factor, imageCopy: imageCopy})
 		return err
 	})
-	s.discardGridCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
+	s.discardFogCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
 	if err != nil {
 		return nil, s.dbError(ctx, "set a map's grid", err)
 	}
