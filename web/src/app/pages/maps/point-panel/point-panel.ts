@@ -51,6 +51,7 @@ import {
   draftOf,
   isDirty,
 } from './point-draft';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 /** The select's "Criar mapa novo…" option (never a map id). */
 const NEW_MAP = '__new__';
@@ -72,6 +73,7 @@ const KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCENE] as 
 @Component({
   selector: 'app-point-panel',
   imports: [
+    RelayEvents,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,

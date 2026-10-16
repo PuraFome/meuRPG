@@ -37,7 +37,14 @@ type itemTextsFile map[string]struct {
 func (c *content) loadTextsPT(fsys fs.FS) error {
 	c.spellTextsPT = map[string]*SpellTextPT{}
 	c.itemTextsPT = map[string][]string{}
+	if err := c.loadSpellTextsPT(fsys); err != nil {
+		return err
+	}
+	return c.loadItemTextsPT(fsys)
+}
 
+// loadSpellTextsPT reads effects/spells_pt.json.
+func (c *content) loadSpellTextsPT(fsys fs.FS) error {
 	const spellsName = "effects/spells_pt.json"
 	var spells spellTextsFile
 	if err := readJSON(fsys, spellsName, &spells); err != nil {
@@ -58,15 +65,28 @@ func (c *content) loadTextsPT(fsys fs.FS) error {
 		if err := checkParagraphs(t.HigherLevel, en.HigherLevel, "higher_level", fail); err != nil {
 			return err
 		}
-		switch {
-		case en.Material == "" && t.Material != "":
-			return fail("material, but the spell has no material component")
-		case en.Material != "" && strings.TrimSpace(t.Material) == "":
-			return fail("the spell has a material component, and material is empty or missing")
+		if err := checkMaterialPT(en.Material, t.Material, fail); err != nil {
+			return err
 		}
 		c.spellTextsPT[k] = &SpellTextPT{Description: t.Desc, HigherLevel: t.HigherLevel, Material: t.Material}
 	}
+	return nil
+}
 
+// checkMaterialPT refuses a material text for a spell with no material
+// component, and a missing one for a spell with one.
+func checkMaterialPT(en, pt string, fail func(string, ...any) error) error {
+	switch {
+	case en == "" && pt != "":
+		return fail("material, but the spell has no material component")
+	case en != "" && strings.TrimSpace(pt) == "":
+		return fail("the spell has a material component, and material is empty or missing")
+	}
+	return nil
+}
+
+// loadItemTextsPT reads effects/magic_items_pt.json.
+func (c *content) loadItemTextsPT(fsys fs.FS) error {
 	const itemsName = "effects/magic_items_pt.json"
 	var items itemTextsFile
 	if err := readJSON(fsys, itemsName, &items); err != nil {

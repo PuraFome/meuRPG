@@ -1,0 +1,81 @@
+[
+  {
+    "CharacterID": "Gnomo",
+    "Dead": false,
+    "Eyes": null,
+    "PassivePerception": 11,
+    "Senses": {
+      "BlindsightFt": 0,
+      "DarkvisionFt": 60,
+      "TruesightFt": 0
+    },
+    "UserID": "player of Gnomo"
+  },
+  {
+    "CharacterID": "Druida",
+    "Dead": false,
+    "Eyes": null,
+    "PassivePerception": 13,
+    "Senses": {
+      "BlindsightFt": 0,
+      "DarkvisionFt": 0,
+      "TruesightFt": 0
+    },
+    "UserID": "player of Druida"
+  },
+  {
+    "CharacterID": "Coruja",
+    "Dead": false,
+    "Eyes": {
+      "CreatureID": "familiar of Coruja",
+      "Senses": {
+        "BlindsightFt": 0,
+        "DarkvisionFt": 120,
+        "TruesightFt": 0
+      }
+    },
+    "PassivePerception": 11,
+    "Senses": {
+      "BlindsightFt": 0,
+      "DarkvisionFt": 60,
+      "TruesightFt": 0
+    },
+    "UserID": "player of Coruja"
+  },
+  {
+    "CharacterID": "Estranho",
+    "Dead": false,
+    "Eyes": null,
+    "PassivePerception": 11,
+    "Senses": {
+      "BlindsightFt": 0,
+      "DarkvisionFt": 60,
+      "TruesightFt": 0
+    },
+    "UserID": "player of Estranho"
+  },
+  {
+    "CharacterID": "Dispensado",
+    "Dead": false,
+    "Eyes": null,
+    "PassivePerception": 11,
+    "Senses": {
+      "BlindsightFt": 0,
+      "DarkvisionFt": 60,
+      "TruesightFt": 0
+    },
+    "UserID": "player of Dispensado"
+  },
+  {
+    "CharacterID": "Morto",
+    "Dead": true,
+    "Eyes": null,
+    "PassivePerception": 10,
+    "Senses": {
+      "BlindsightFt": 0,
+      "DarkvisionFt": 0,
+      "TruesightFt": 0
+    },
+    "UserID": "player of Morto"
+  }
+]

@@ -294,103 +294,141 @@ func (s *Service) CompleteCharacterChoices(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
-	if !ok {
-		return nil, errCharacterNotFound()
-	}
-	revision := req.Msg.GetExpectedRevision()
-	if revision < 1 {
-		return nil, invalidArgument(fieldErr("expected_revision", "must be at least 1"))
-	}
-	picks, err := cleanChoicePicks(req.Msg.GetPicks())
+	in, err := readChoicesRequest(req.Msg)
 	if err != nil {
-		return nil, invalidArgument(err)
+		return nil, err
 	}
-	content, err := s.contentFor(ctx, nil, m.CampaignID)
-	if err != nil {
+	// The content is read before the transaction too, so a campaign whose content
+	// cannot be read answers before any row is locked; the transaction reads its own.
+	if _, err := s.contentFor(ctx, nil, m.CampaignID); err != nil {
 		return nil, s.dbError(ctx, "read rules content", err)
 	}
-
-	var row charactersdb.Character
-	var completed []string
-	var done bool
+	var done choicesCompleted
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		completed, done = nil, false
-		q := s.queries.WithTx(tx)
-		current, err := visibleForUpdate(ctx, q, m, id)
-		if err != nil {
-			return err
-		}
-		if current.Status == statusDead {
-			return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD, current.ID)
-		}
-		if current.Revision != revision {
-			return errStaleRevision()
-		}
-		tc, err := s.contentFor(ctx, tx, m.CampaignID)
-		if err != nil {
-			return wrap("read rules content", err)
-		}
-		content = tc
-		stored, err := loadSheet(current.ID, current.Sheet)
-		if err != nil {
-			return err
-		}
-		full := stored.GetFull()
-		if full == nil {
-			return invalidArgument(fieldErr("character_id", "is a character with a basic sheet, which has no choices"))
-		}
-		next, labels, err := applyChoicePicks(tc, full, picks)
-		if err != nil {
-			return err
-		}
-		sheet, err := checkSheet(tc, &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: next}})
-		if err != nil {
-			return invalidArgument(err)
-		}
-		// The picks may not make the sheet worse: a prerequisite they unmeet, or a pick
-		// the sheet does not offer, that it did not have before.
-		if err := refuseNewChoiceProblems(tc, full, sheet.GetFull()); err != nil {
-			return err
-		}
-		carryFlags(tc, full, sheet.GetFull())
-		doc, err := storeJSON.Marshal(sheet)
-		if err != nil {
-			return wrap("encode a sheet", err)
-		}
-		row, err = q.UpdateCharacterSheet(ctx, charactersdb.UpdateCharacterSheetParams{
-			CampaignID: m.CampaignID, ID: id, Revision: revision, Name: current.Name, Sheet: doc, Now: s.now(),
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errStaleRevision()
-		}
-		if err != nil {
-			return wrap("update sheet", err)
-		}
-		// A pick can change the hit points (a +1 in Constitution): the current ones follow.
-		if err := s.carryHitPoints(ctx, q, tc, id, current.Sheet, doc); err != nil {
-			return err
-		}
-		if err := s.logChoicesCompleted(ctx, tx, m, id, labels); err != nil {
-			return err
-		}
-		completed, done = labels, true
-		return nil
+		var err error
+		done, err = s.completeChoicesInTx(ctx, tx, m, in)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "complete the choices of a character", err)
 	}
-	if done {
-		logging.Event(ctx, s.logger, "character.choices_completed", slog.String("character_id", id), slog.Int("choices", len(completed)))
-		if s.live != nil {
-			s.live.PublishXPChanged(m.CampaignID)
-		}
+	logging.Event(ctx, s.logger, "character.choices_completed", slog.String("character_id", in.id), slog.Int("choices", len(done.labels)))
+	if s.live != nil {
+		s.live.PublishXPChanged(m.CampaignID)
 	}
-	c, err := s.character(ctx, content, row, m)
+	c, err := s.character(ctx, done.content, done.row, m)
 	if err != nil {
 		return nil, s.dbError(ctx, "read a character with its choices made", err)
 	}
 	return connect.NewResponse(&charactersv1.CompleteCharacterChoicesResponse{Character: c}), nil
+}
+
+// choicesRequest is a CompleteCharacterChoices request whose shape is checked: the
+// character's canonical id, the revision the caller read and the cleaned picks.
+type choicesRequest struct {
+	id       string
+	revision int32
+	picks    []*charactersv1.ChoicePick
+}
+
+// choicesCompleted is what the transaction of CompleteCharacterChoices leaves: the row
+// written, the content it was checked with and the labels of the choices answered.
+type choicesCompleted struct {
+	row     charactersdb.Character
+	content *rules.Content
+	labels  []string
+}
+
+// readChoicesRequest checks what needs no database, in order: the id (an id that is no
+// UUID names nothing), the revision and the shape of the picks.
+func readChoicesRequest(msg *charactersv1.CompleteCharacterChoicesRequest) (choicesRequest, error) {
+	id, ok := parseUUID(msg.GetCharacterId())
+	if !ok {
+		return choicesRequest{}, errCharacterNotFound()
+	}
+	revision := msg.GetExpectedRevision()
+	if revision < 1 {
+		return choicesRequest{}, invalidArgument(fieldErr("expected_revision", "must be at least 1"))
+	}
+	picks, err := cleanChoicePicks(msg.GetPicks())
+	if err != nil {
+		return choicesRequest{}, invalidArgument(err)
+	}
+	return choicesRequest{id: id, revision: revision, picks: picks}, nil
+}
+
+// completeChoicesInTx is one attempt of the transaction: it reads and locks the
+// character, lays the picks over its sheet, writes it, and has the hit points and the
+// master's history follow.
+func (s *Service) completeChoicesInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, in choicesRequest) (choicesCompleted, error) {
+	q := s.queries.WithTx(tx)
+	current, err := visibleForUpdate(ctx, q, m, in.id)
+	if err != nil {
+		return choicesCompleted{}, err
+	}
+	if current.Status == statusDead {
+		return choicesCompleted{}, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD, current.ID)
+	}
+	if current.Revision != in.revision {
+		return choicesCompleted{}, errStaleRevision()
+	}
+	content, err := s.contentFor(ctx, tx, m.CampaignID)
+	if err != nil {
+		return choicesCompleted{}, wrap("read rules content", err)
+	}
+	sheet, labels, err := pickedSheet(content, current, in.picks)
+	if err != nil {
+		return choicesCompleted{}, err
+	}
+	doc, err := storeJSON.Marshal(sheet)
+	if err != nil {
+		return choicesCompleted{}, wrap("encode a sheet", err)
+	}
+	row, err := q.UpdateCharacterSheet(ctx, charactersdb.UpdateCharacterSheetParams{
+		CampaignID: m.CampaignID, ID: in.id, Revision: in.revision, Name: current.Name, Sheet: doc, Now: s.now(),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return choicesCompleted{}, errStaleRevision()
+	}
+	if err != nil {
+		return choicesCompleted{}, wrap("update sheet", err)
+	}
+	// A pick can change the hit points (a +1 in Constitution): the current ones follow.
+	if err := s.carryHitPoints(ctx, q, content, in.id, current.Sheet, doc); err != nil {
+		return choicesCompleted{}, err
+	}
+	if err := s.logChoicesCompleted(ctx, tx, m, in.id, labels); err != nil {
+		return choicesCompleted{}, err
+	}
+	return choicesCompleted{row: row, content: content, labels: labels}, nil
+}
+
+// pickedSheet is the stored sheet with the picks laid over it, checked as any sheet
+// is, and the labels of the choices answered.
+func pickedSheet(content *rules.Content, current charactersdb.Character, picks []*charactersv1.ChoicePick) (*charactersv1.CharacterSheet, []string, error) {
+	stored, err := loadSheet(current.ID, current.Sheet)
+	if err != nil {
+		return nil, nil, err
+	}
+	full := stored.GetFull()
+	if full == nil {
+		return nil, nil, invalidArgument(fieldErr("character_id", "is a character with a basic sheet, which has no choices"))
+	}
+	next, labels, err := applyChoicePicks(content, full, picks)
+	if err != nil {
+		return nil, nil, err
+	}
+	sheet, err := checkSheet(content, &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: next}})
+	if err != nil {
+		return nil, nil, invalidArgument(err)
+	}
+	// The picks may not make the sheet worse: a prerequisite they unmeet, or a pick
+	// the sheet does not offer, that it did not have before.
+	if err := refuseNewChoiceProblems(content, full, sheet.GetFull()); err != nil {
+		return nil, nil, err
+	}
+	carryFlags(content, full, sheet.GetFull())
+	return sheet, labels, nil
 }
 
 // cleanChoicePicks checks the shape of the picks and trims their texts.
@@ -403,32 +441,52 @@ func cleanChoicePicks(picks []*charactersv1.ChoicePick) ([]*charactersv1.ChoiceP
 	}
 	out := make([]*charactersv1.ChoicePick, 0, len(picks))
 	for _, p := range picks {
-		if p.GetChoiceKey() == "" || len(p.GetChoiceKey()) > maxChoiceKeyLength {
-			return nil, fieldErr("picks.choice_key", "must be 1 to %d characters", maxChoiceKeyLength)
-		}
-		if len(p.GetOptionKeys()) > rules.MaxListLength || len(p.GetTexts()) > rules.MaxChoiceTexts {
-			return nil, fieldErr("picks", "has too many option keys or texts")
-		}
-		clean := &charactersv1.ChoicePick{ChoiceKey: p.GetChoiceKey(), OptionKeys: slices.Compact(slices.Clone(p.GetOptionKeys()))}
-		for _, text := range p.GetTexts() {
-			if strings.TrimSpace(text) == "" {
-				clean.Texts = append(clean.Texts, "") // not written yet: the choice stays open
-				continue
-			}
-			t, err := names.Clean(strings.TrimSpace(text), rules.MaxChoiceTextLength)
-			if err != nil {
-				return nil, &fieldError{field: "picks.texts", err: err}
-			}
-			clean.Texts = append(clean.Texts, t)
+		clean, err := cleanChoicePick(p)
+		if err != nil {
+			return nil, err
 		}
 		out = append(out, clean)
 	}
 	return out, nil
 }
 
+// cleanChoicePick checks the shape of one pick and returns a copy with its texts
+// trimmed and the repeats of an option next to each other dropped.
+func cleanChoicePick(p *charactersv1.ChoicePick) (*charactersv1.ChoicePick, error) {
+	if p.GetChoiceKey() == "" || len(p.GetChoiceKey()) > maxChoiceKeyLength {
+		return nil, fieldErr("picks.choice_key", "must be 1 to %d characters", maxChoiceKeyLength)
+	}
+	if len(p.GetOptionKeys()) > rules.MaxListLength || len(p.GetTexts()) > rules.MaxChoiceTexts {
+		return nil, fieldErr("picks", "has too many option keys or texts")
+	}
+	clean := &charactersv1.ChoicePick{ChoiceKey: p.GetChoiceKey(), OptionKeys: slices.Compact(slices.Clone(p.GetOptionKeys()))}
+	for _, text := range p.GetTexts() {
+		t, err := cleanChoiceText(text)
+		if err != nil {
+			return nil, err
+		}
+		clean.Texts = append(clean.Texts, t)
+	}
+	return clean, nil
+}
+
+// cleanChoiceText trims a text of a pick. A blank one is not written yet, so it stays
+// empty and the choice stays open.
+func cleanChoiceText(text string) (string, error) {
+	if strings.TrimSpace(text) == "" {
+		return "", nil
+	}
+	t, err := names.Clean(strings.TrimSpace(text), rules.MaxChoiceTextLength)
+	if err != nil {
+		return "", &fieldError{field: "picks.texts", err: err}
+	}
+	return t, nil
+}
+
 // applyChoicePicks lays the picks over a stored sheet: only the choices that are open,
 // only options the choice offers and the sheet can take, and nothing already made
 // changes. It returns the new sheet (a copy) and the labels of the choices answered.
+// Every pick is checked against what the stored sheet offers.
 func applyChoicePicks(content *rules.Content, full *charactersv1.FullSheet, picks []*charactersv1.ChoicePick) (*charactersv1.FullSheet, []string, error) {
 	set := content.Choices(buildOf(full))
 	next := proto.CloneOf(full)
@@ -443,54 +501,83 @@ func applyChoicePicks(content *rules.Content, full *charactersv1.FullSheet, pick
 			return nil, nil, invalidArgument(fieldErr("picks.choice_key", "repeats a choice"))
 		}
 		seen[p.GetChoiceKey()] = true
-		choice, ok := findChoice(set, p.GetChoiceKey())
-		if !ok {
-			return nil, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_NOT_OPEN, &charactersv1.ChoiceIssue{Field: "picks.choice_key", ChoiceKey: p.GetChoiceKey()})
-		}
-		issue := &charactersv1.ChoiceIssue{Field: "picks", ChoiceKey: choice.Key, Picked: i32(choice.Done()), Required: i32(choice.Picks), LabelPt: choice.LabelPT}
-		if choice.Missing() == 0 {
-			return nil, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_ALREADY_MADE, issue)
-		}
-		var fresh []string
-		takesText := false
-		for _, key := range p.GetOptionKeys() {
-			opt, found := choiceOption(choice, key)
-			switch {
-			case !found:
-				issue.OptionKey = key
-				return nil, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED, issue)
-			case opt.NeedsText:
-				takesText = true
-			}
-			if slices.Contains(choice.Picked, key) {
-				continue // made already: it stays as it is
-			}
-			if opt.Blocked() {
-				issue.OptionKey = key
-				return nil, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET, issue)
-			}
-			fresh = append(fresh, opt.Stored)
-		}
-		if len(fresh) > choice.Missing() {
-			return nil, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED, issue)
-		}
-		if len(fresh) == 0 && !takesText {
-			return nil, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICES_MISSING, issue)
-		}
-		if takesText {
-			// The humanoid favored enemy names two races, both written.
-			if len(p.GetTexts()) != len(choiceTextSlots) || slices.Contains(p.GetTexts(), "") {
-				return nil, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICES_MISSING, issue)
-			}
-			for i, t := range p.GetTexts() {
-				texts[rules.ChoiceTextKey(choice.Key, i+1)] = t
-			}
+		choice, fresh, err := applyChoicePick(set, p, texts)
+		if err != nil {
+			return nil, nil, err
 		}
 		next.FeatureChoiceKeys = append(next.FeatureChoiceKeys, fresh...)
 		labels = append(labels, choice.LabelPT)
 	}
 	next.FeatureChoiceText = texts
 	return next, labels, nil
+}
+
+// applyChoicePick checks one pick against its open choice and returns the choice and
+// the stored keys of the options it adds. The texts of an option that takes them go
+// into texts.
+func applyChoicePick(set rules.ChoiceSet, p *charactersv1.ChoicePick, texts map[string]string) (rules.Choice, []string, error) {
+	choice, ok := findChoice(set, p.GetChoiceKey())
+	if !ok {
+		return rules.Choice{}, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_NOT_OPEN, &charactersv1.ChoiceIssue{Field: "picks.choice_key", ChoiceKey: p.GetChoiceKey()})
+	}
+	issue := &charactersv1.ChoiceIssue{Field: "picks", ChoiceKey: choice.Key, Picked: i32(choice.Done()), Required: i32(choice.Picks), LabelPt: choice.LabelPT}
+	if choice.Missing() == 0 {
+		return rules.Choice{}, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_ALREADY_MADE, issue)
+	}
+	fresh, takesText, err := freshChoiceOptions(choice, p.GetOptionKeys(), issue)
+	if err != nil {
+		return rules.Choice{}, nil, err
+	}
+	if len(fresh) > choice.Missing() {
+		return rules.Choice{}, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED, issue)
+	}
+	if len(fresh) == 0 && !takesText {
+		return rules.Choice{}, nil, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICES_MISSING, issue)
+	}
+	if takesText {
+		if err := writeChoiceTexts(choice, p.GetTexts(), texts, issue); err != nil {
+			return rules.Choice{}, nil, err
+		}
+	}
+	return choice, fresh, nil
+}
+
+// freshChoiceOptions walks the options of a pick in order: an option the choice does
+// not list, or one the sheet cannot take, refuses the pick (issue names it); one made
+// already stays as it is. It returns the stored keys of the new ones, and whether an
+// option of the pick takes texts.
+func freshChoiceOptions(choice rules.Choice, keys []string, issue *charactersv1.ChoiceIssue) ([]string, bool, error) {
+	var fresh []string
+	takesText := false
+	for _, key := range keys {
+		opt, found := choiceOption(choice, key)
+		if !found {
+			issue.OptionKey = key
+			return nil, false, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICE_NOT_OFFERED, issue)
+		}
+		takesText = takesText || opt.NeedsText
+		if slices.Contains(choice.Picked, key) {
+			continue // made already: it stays as it is
+		}
+		if opt.Blocked() {
+			issue.OptionKey = key
+			return nil, false, errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET, issue)
+		}
+		fresh = append(fresh, opt.Stored)
+	}
+	return fresh, takesText, nil
+}
+
+// writeChoiceTexts writes the texts of a pick whose option takes them: the humanoid
+// favored enemy names two races, both written.
+func writeChoiceTexts(choice rules.Choice, picked []string, texts map[string]string, issue *charactersv1.ChoiceIssue) error {
+	if len(picked) != len(choiceTextSlots) || slices.Contains(picked, "") {
+		return errChoices(charactersv1.ChoiceRefusalReason_CHOICE_REFUSAL_REASON_CHOICES_MISSING, issue)
+	}
+	for i, t := range picked {
+		texts[rules.ChoiceTextKey(choice.Key, i+1)] = t
+	}
+	return nil
 }
 
 // choiceTextSlots is the number of races the humanoid favored enemy names.
@@ -576,29 +663,41 @@ func (s *Service) GetCampaignOpenChoices(
 	}
 	res := &charactersv1.GetCampaignOpenChoicesResponse{}
 	for _, row := range rows {
-		if row.Kind != kindPlayer || row.Status != statusActive {
-			continue
-		}
-		sheet, err := loadSheet(row.ID, row.Sheet)
+		open, err := openChoicesOf(content, row)
 		if err != nil {
 			return nil, s.dbError(ctx, "read the open choices", err)
 		}
-		full := sheet.GetFull()
-		if full == nil {
-			continue
+		if open != nil {
+			res.Characters = append(res.Characters, open)
 		}
-		pending := content.Choices(buildOf(full)).Pending()
-		if len(pending) == 0 {
-			continue
-		}
-		open := &charactersv1.OpenChoicesCharacter{CharacterId: row.ID, Name: row.Name}
-		for _, p := range pending {
-			open.PendingCount += i32(p.Missing)
-			open.LabelsPt = append(open.LabelsPt, p.LabelPT)
-		}
-		res.Characters = append(res.Characters, open)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// openChoicesOf is a character's line in the master's list of open choices: nil for
+// one that is not a living player character with a full sheet and something open.
+func openChoicesOf(content *rules.Content, row charactersdb.ListCharactersRow) (*charactersv1.OpenChoicesCharacter, error) {
+	if row.Kind != kindPlayer || row.Status != statusActive {
+		return nil, nil
+	}
+	sheet, err := loadSheet(row.ID, row.Sheet)
+	if err != nil {
+		return nil, err
+	}
+	full := sheet.GetFull()
+	if full == nil {
+		return nil, nil
+	}
+	pending := content.Choices(buildOf(full)).Pending()
+	if len(pending) == 0 {
+		return nil, nil
+	}
+	open := &charactersv1.OpenChoicesCharacter{CharacterId: row.ID, Name: row.Name}
+	for _, p := range pending {
+		open.PendingCount += i32(p.Missing)
+		open.LabelsPt = append(open.LabelsPt, p.LabelPT)
+	}
+	return open, nil
 }
 
 // pendingChoiceCount is the count CharacterSummary.pending_choice_count shows, for the

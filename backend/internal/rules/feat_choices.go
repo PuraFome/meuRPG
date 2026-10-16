@@ -59,22 +59,8 @@ func (c *content) pickedChoiceFeats(b Build, owned func(string) bool) []choiceFe
 	var out []choiceFeat
 	var count map[string]int
 	for _, k := range b.FeatureChoices {
-		choiceKey, value, ok := SplitScopedChoice(k)
-		if !ok || !strings.HasPrefix(value, "feat:") {
-			continue
-		}
-		owner, isFeat := strings.CutSuffix(choiceKey, featChoiceSuffix)
-		if !isFeat || !owned(owner) {
-			continue
-		}
-		picks, from, granted := c.featChoiceSpec(owner)
-		if !granted || count[owner] >= picks || c.feats[value] == nil {
-			continue
-		}
-		if len(from) > 0 && !slices.Contains(from, value) {
-			continue
-		}
-		if slices.Contains(b.Feats, value) || slices.ContainsFunc(out, func(cf choiceFeat) bool { return cf.Feat == value }) {
+		owner, value, ok := featPickParts(k)
+		if !ok || !owned(owner) || !c.featPickFits(b, out, count[owner], owner, value) {
 			continue
 		}
 		if count == nil {
@@ -84,6 +70,31 @@ func (c *content) pickedChoiceFeats(b Build, owned func(string) bool) []choiceFe
 		out = append(out, choiceFeat{Feat: value, Owner: owner})
 	}
 	return out
+}
+
+// featPickParts reads a stored pick as the choice of a feat: the owner that
+// grants it and the feat, and whether it is one.
+func featPickParts(stored string) (owner, value string, ok bool) {
+	choiceKey, value, ok := SplitScopedChoice(stored)
+	if !ok || !strings.HasPrefix(value, "feat:") {
+		return "", "", false
+	}
+	owner, isFeat := strings.CutSuffix(choiceKey, featChoiceSuffix)
+	return owner, value, isFeat
+}
+
+// featPickFits says the owner grants a feat choice with room left (taken is
+// how many of its picks are kept already), the feat exists and is on the
+// owner's list, and neither the sheet nor an earlier pick has it.
+func (c *content) featPickFits(b Build, kept []choiceFeat, taken int, owner, value string) bool {
+	picks, from, granted := c.featChoiceSpec(owner)
+	if !granted || taken >= picks || c.feats[value] == nil {
+		return false
+	}
+	if len(from) > 0 && !slices.Contains(from, value) {
+		return false
+	}
+	return !slices.Contains(b.Feats, value) && !slices.ContainsFunc(kept, func(cf choiceFeat) bool { return cf.Feat == value })
 }
 
 // ownedBy says whether a key is on a derived sheet: a feature, trait or feat it
@@ -164,6 +175,7 @@ func (cb *choiceBuilder) featChoice(g *groupBuild, owner string) {
 		Key: key, FeatureKey: owner, Kind: ChoiceKindOptions, TitlePT: "Talento", Picks: picks, family: "feat",
 		HintPT: "Um talento à escolha. Um talento pede o que o texto dele diz; os que o personagem ainda não cumpre aparecem indisponíveis.",
 	})
+	// The label keeps the singular title: addChoice wrote it already.
 	if picks > 1 {
 		ch.TitlePT = "Talentos"
 		ch.HintPT = fmt.Sprintf("%d talentos à escolha. Um talento pede o que o texto dele diz; os que o personagem ainda não cumpre aparecem indisponíveis.", picks)
@@ -171,27 +183,46 @@ func (cb *choiceBuilder) featChoice(g *groupBuild, owner string) {
 	d := cb.derive()
 	pickedNow := cb.scoped[key]
 	for _, e := range (&Content{c: c}).Feats() {
-		if len(from) > 0 && !slices.Contains(from, e.Key) {
-			continue
+		if cb.offersFeat(e, from, pickedNow) {
+			ch.Options = append(ch.Options, cb.featOption(e, key, *d))
 		}
-		if slices.Contains(cb.b.Feats, e.Key) {
-			continue
-		}
-		if (e.Archived || e.Off) && !slices.Contains(pickedNow, e.Key) {
-			continue
-		}
-		o := ChoiceOption{Key: e.Key, Stored: ScopedChoice(key, e.Key), NamePT: e.NamePT, SummaryPT: featSummaryPT(c, e)}
-		if unmet := c.unmetPrerequisite(e, cb.b, *d); len(unmet) > 0 {
-			var reasons []string
-			for _, u := range unmet {
-				reasons = append(reasons, c.featUnmetPT(u))
-			}
-			o.ReasonPT = "Você ainda não cumpre o pré-requisito: " + strings.Join(reasons, " ")
-			o.Prerequisites = append(o.Prerequisites, OptionPrerequisite{Kind: PrerequisiteFeature, Met: false, ReasonPT: o.ReasonPT})
-		}
-		ch.Options = append(ch.Options, o)
 	}
 	cb.takeScoped(ch)
+	unmeetBlockedPicks(ch)
+}
+
+// offersFeat says a feat is an option of the choice: on its list (if it has
+// one), not on the sheet already, and live or picked already.
+func (cb *choiceBuilder) offersFeat(e FeatEntry, from, pickedNow []string) bool {
+	if len(from) > 0 && !slices.Contains(from, e.Key) {
+		return false
+	}
+	if slices.Contains(cb.b.Feats, e.Key) {
+		return false
+	}
+	return (!e.Archived && !e.Off) || slices.Contains(pickedNow, e.Key)
+}
+
+// featOption is a feat as an option of the choice key, blocked with its reason
+// when the sheet d does not meet its prerequisite.
+func (cb *choiceBuilder) featOption(e FeatEntry, key string, d Derived) ChoiceOption {
+	c := cb.c
+	o := ChoiceOption{Key: e.Key, Stored: ScopedChoice(key, e.Key), NamePT: e.NamePT, SummaryPT: featSummaryPT(c, e)}
+	unmet := c.unmetPrerequisite(e, cb.b, d)
+	if len(unmet) == 0 {
+		return o
+	}
+	var reasons []string
+	for _, u := range unmet {
+		reasons = append(reasons, c.featUnmetPT(u))
+	}
+	o.ReasonPT = "Você ainda não cumpre o pré-requisito: " + strings.Join(reasons, " ")
+	o.Prerequisites = append(o.Prerequisites, OptionPrerequisite{Kind: PrerequisiteFeature, Met: false, ReasonPT: o.ReasonPT})
+	return o
+}
+
+// unmeetBlockedPicks marks unmet each pick whose option is blocked.
+func unmeetBlockedPicks(ch *Choice) {
 	for _, k := range ch.Picked {
 		for _, o := range ch.Options {
 			if o.Key == k && o.Blocked() {

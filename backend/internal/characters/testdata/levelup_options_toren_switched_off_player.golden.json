@@ -1,0 +1,228 @@
+{
+  "classChoices": [
+    {
+      "available": true,
+      "classKey": "class:fighter",
+      "fromLevel": 2,
+      "namePt": "Guerreiro",
+      "prerequisiteAnyOf": true,
+      "prerequisiteMet": true,
+      "prerequisites": [
+        {
+          "ability": "ABILITY_STRENGTH",
+          "have": 16,
+          "met": true,
+          "minimum": 13
+        },
+        {
+          "ability": "ABILITY_DEXTERITY",
+          "have": 13,
+          "met": true,
+          "minimum": 13
+        }
+      ],
+      "subclassDue": true,
+      "toLevel": 3
+    },
+    {
+      "available": true,
+      "classKey": "class:barbarian",
+      "isNew": true,
+      "namePt": "Bárbaro",
+      "prerequisiteMet": true,
+      "prerequisites": [
+        {
+          "ability": "ABILITY_STRENGTH",
+          "have": 16,
+          "met": true,
+          "minimum": 13
+        }
+      ],
+      "toLevel": 1
+    },
+    {
+      "classKey": "class:bard",
+      "isNew": true,
+      "namePt": "Bardo",
+      "prerequisites": [
+        {
+          "ability": "ABILITY_CHARISMA",
+          "have": 11,
+          "minimum": 13
+        }
+      ],
+      "toLevel": 1,
+      "unavailable": "LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE"
+    },
+    {
+      "classKey": "class:warlock",
+      "isNew": true,
+      "namePt": "Bruxo",
+      "prerequisites": [
+        {
+          "ability": "ABILITY_CHARISMA",
+          "have": 11,
+          "minimum": 13
+        }
+      ],
+      "subclassDue": true,
+      "toLevel": 1,
+      "unavailable": "LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE"
+    },
+    {
+      "classKey": "class:cleric",
+      "isNew": true,
+      "namePt": "Clérigo",
+      "prerequisites": [
+        {
+          "ability": "ABILITY_WISDOM",
+          "have": 11,
+          "minimum": 13
+        }
+      ],
+      "subclassDue": true,
+      "toLevel": 1,
+      "unavailable": "LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE"
+    },
+    {
+      "classKey": "class:druid",
+      "isNew": true,
+      "namePt": "Druida",
+      "prerequisites": [
+        {
+          "ability": "ABILITY_WISDOM",
+          "have": 11,
+          "minimum": 13
+        }
+      ],
+      "toLevel": 1,
+      "unavailable": "LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE"
+    },
+    {
+      "classKey": "class:sorcerer",
+      "isNew": true,
+      "namePt": "Feiticeiro",
+      "prerequisites": [
+        {
+          "ability": "ABILITY_CHARISMA",
+          "have": 11,
+          "minimum": 13
+        }
+      ],
+      "subclassDue": true,
+      "toLevel": 1,
+      "unavailable": "LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE"
+    },
+    {
+      "classKey": "class:monk",
+      "isNew": true,
+      "namePt": "Monge",
+      "prerequisites": [
+        {
+          "ability": "ABILITY_DEXTERITY",
+          "have": 13,
+          "met": true,
+          "minimum": 13
+        },
+        {
+          "ability": "ABILITY_WISDOM",
+          "have": 11,
+          "minimum": 13
+        }
+      ],
+      "toLevel": 1,
+      "unavailable": "LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE"
+    },
+    {
+      "classKey": "class:paladin",
+      "isNew": true,
+      "namePt": "Paladino",
+      "prerequisites": [
+        {
+          "ability": "ABILITY_STRENGTH",
+          "have": 16,
+          "met": true,
+          "minimum": 13
+        },
+        {
+          "ability": "ABILITY_CHARISMA",
+          "have": 11,
+          "minimum": 13
+        }
+      ],
+      "toLevel": 1,
+      "unavailable": "LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE"
+    },
+    {
+      "classKey": "class:ranger",
+      "isNew": true,
+      "namePt": "Patrulheiro",
+      "prerequisites": [
+        {
+          "ability": "ABILITY_DEXTERITY",
+          "have": 13,
+          "met": true,
+          "minimum": 13
+        },
+        {
+          "ability": "ABILITY_WISDOM",
+          "have": 11,
+          "minimum": 13
+        }
+      ],
+      "toLevel": 1,
+      "unavailable": "LEVEL_UP_CLASS_UNAVAILABLE_PREREQUISITE"
+    }
+  ],
+  "classKey": "class:fighter",
+  "classNamePt": "Guerreiro",
+  "diceRule": "LEVEL_UP_DICE_RULE_PLAYER_CHOOSES",
+  "fromLevel": 2,
+  "hitDie": 10,
+  "hitPointAverage": 6,
+  "hitPointsRule": "LEVEL_UP_HIT_POINTS_RULE_PLAYER_CHOOSES",
+  "newFeatures": [
+    {
+      "key": "feature:martial-archetype",
+      "namePt": "Arquétipo Marcial"
+    }
+  ],
+  "proficiencyBonusAfter": 2,
+  "proficiencyBonusBefore": 2,
+  "spellSlotsAfter": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "spellSlotsBefore": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "subclassDue": true,
+  "subclasses": [
+    {
+      "cantrips": 2,
+      "key": "\u003cink-blade\u003e",
+      "maxSpellLevel": 1,
+      "namePt": "Lâmina de Tinta",
+      "spells": 3,
+      "spellsKind": "LEVEL_UP_SPELLS_KIND_KNOWN"
+    }
+  ],
+  "toLevel": 3,
+  "totalFromLevel": 2,
+  "totalToLevel": 3
+}

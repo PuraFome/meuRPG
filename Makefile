@@ -14,7 +14,7 @@ MIGRATE_ARGS ?= up
 
 COMPOSE_FILE := deploy/local/compose.yaml
 
-# The ELK stack that ships the API's logs (deploy/elk, docs/operations.md#logs-in-elk).
+# The ELK stack that ships the API's logs (deploy/elk, docs/operations/logs.md#locally-with-elk).
 ELK_COMPOSE := docker compose -f deploy/elk/compose.yaml
 
 # Where the local stack's database runs. `container` (the default, and what

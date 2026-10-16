@@ -1,0 +1,23 @@
+{
+  "bad: a condition as a type": "effects/damage_resistances.json: trait:hot: \"condition:prone\" is not a damage type",
+  "bad: a spell key": "effects/damage_resistances.json: spell:x: not a feature or a trait of the content",
+  "bad: an unknown damage type": "effects/damage_resistances.json: trait:hot: \"damage-type:fun\" is not a damage type",
+  "bad: an unknown feature": "effects/damage_resistances.json: feature:nope: not a feature or a trait of the content",
+  "bad: an unknown trait": "effects/damage_resistances.json: trait:nope: not a feature or a trait of the content",
+  "bad: blank source": "effects/damage_resistances.json: source must say where the rules come from",
+  "bad: missing": "open effects/damage_resistances.json: file does not exist",
+  "bad: no damage type": "effects/damage_resistances.json: trait:hot: no damage type",
+  "bad: no source": "effects/damage_resistances.json: source must say where the rules come from",
+  "bad: not json": "effects/damage_resistances.json: unexpected EOF",
+  "bad: unknown entry field": "effects/damage_resistances.json: json: unknown field \"x\"",
+  "bad: unknown field": "effects/damage_resistances.json: json: unknown field \"x\"",
+  "bad: while unknown": "effects/damage_resistances.json: trait:hot: while must be empty or \"rage\"",
+  "ok: a feature and a trait": "accepted {\"feature:rage\":{\"Source\":\"feature:rage\",\"NamePT\":\"Fúria\",\"DamageTypes\":[\"damage-type:fire\",\"damage-type:cold\"],\"While\":\"rage\"},\"trait:hot\":{\"Source\":\"trait:hot\",\"NamePT\":\"Hot\",\"DamageTypes\":[\"damage-type:fire\"],\"While\":\"\"}}",
+  "ok: nothing": "accepted {}",
+  "order: a good one then a bad 1": "effects/damage_resistances.json: trait:hot: no damage type",
+  "order: empty before while": "effects/damage_resistances.json: trait:hot: no damage type",
+  "order: key before types": "effects/damage_resistances.json: trait:nope: not a feature or a trait of the content",
+  "order: keys in order": "effects/damage_resistances.json: feature:rage: no damage type",
+  "order: source before entries": "effects/damage_resistances.json: source must say where the rules come from",
+  "order: types before while": "effects/damage_resistances.json: trait:hot: \"damage-type:fun\" is not a damage type"
+}

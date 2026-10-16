@@ -1,0 +1,339 @@
+    @for (card of cards(); track card.id) {
+      @switch (card.type) {
+        @case ('queue') {
+          <section class="card" [attr.aria-labelledby]="uid + card.id">
+            <h2 class="card__title" [id]="uid + card.id">{{ card.title }}</h2>
+            <p class="card__sub">{{ card.subtitle }}</p>
+            <ul class="rows">
+              @for (row of card.rows; track row.window.id) {
+                <li class="row" [class.row--wait]="!row.answerNow">
+                  <ng-container *ngTemplateOutlet="rowTpl; context: { row: row }" />
+                </li>
+              }
+            </ul>
+          </section>
+        }
+        @case ('single') {
+          <section class="card card--single" [attr.aria-label]="card.row.window.reactorLabel">
+            <div class="warn">
+              <mat-icon aria-hidden="true">shield</mat-icon>
+              <p>{{ card.text }}</p>
+            </div>
+            <ng-container *ngTemplateOutlet="slotsTpl; context: { row: card.row }" />
+            <div class="pair">
+              <button
+                mat-flat-button
+                type="button"
+                class="btn"
+                data-initial
+                [disabled]="busy() || !card.row.answerNow"
+                disabledInteractive
+                (click)="use(card.row)"
+              >
+                {{ singleUseLabel(card.row) }}
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                class="btn"
+                [disabled]="busy() || !card.row.answerNow"
+                disabledInteractive
+                (click)="pass(card.row.window)"
+              >
+                Deixar passar
+              </button>
+            </div>
+          </section>
+        }
+        @case ('check') {
+          <section class="card card--single" [attr.aria-label]="'Sem reação: ' + card.summary">
+            <h2 class="card__title">{{ card.summary }}</h2>
+            @if (card.canReact) {
+              <p class="card__text">Um inimigo pode usar uma reação para isto. Responda com um toque.</p>
+            } @else {
+              <p class="card__text">
+                Nenhum inimigo tem uma reação para isto. Responda com um toque; os jogadores veem só “Esperando o mestre”.
+              </p>
+            }
+            <div class="pair">
+              <button
+                mat-flat-button
+                type="button"
+                class="btn"
+                data-initial
+                [disabled]="busy()"
+                (click)="pass(card.window)"
+              >
+                Sem reação
+              </button>
+            </div>
+          </section>
+        }
+        @case ('rebukeSave') {
+          <section class="card card--single" [attr.aria-labelledby]="uid + card.id">
+            <h2 class="card__title" [id]="uid + card.id">{{ rebukeTitle(card.window) }}</h2>
+            <p class="card__text">{{ rebukeText(card.window) }}</p>
+            <p class="card__sub">{{ rebukeBonus(card.window) }}</p>
+            <div class="warn">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <p>
+                <strong>O teste do agressor é do mestre.</strong> O jogador lê só “falhou” ou “passou”.
+              </p>
+            </div>
+            <app-roll-picker
+              [outlined]="true"
+              [min]="1"
+              [max]="20"
+              [modifier]="rebukeModifier(card.window)"
+              [label]="'Role 1d20 para o teste de ' + rebukeAggressor(card.window)"
+              hint="Role o seu dado e digite o número que saiu (1 a 20)."
+              totalNote="Teste de Destreza"
+              [appLabel]="'Rolar o teste ' + ofTheLabel(rebukeAggressor(card.window))"
+              [busy]="busy()"
+              (app)="answer(card.window, { use: true, die: { inApp: true } })"
+              (typed)="answer(card.window, { use: true, die: { typed: $event } })"
+            />
+          </section>
+        }
+        @case ('concentration') {
+          <section class="card card--single" [attr.aria-labelledby]="uid + card.id">
+            <h2 class="card__title" [id]="uid + card.id">{{ concentrationTitle(card.window) }}</h2>
+            @if (card.player) {
+              <p class="card__text">
+                {{ concentrationLead(card.window) }} O ataque que deu o dano espera o teste (CD {{ concentrationDc(card.window) }}).
+              </p>
+              <p class="card__sub" role="status">
+                Esperando o teste de Constituição de {{ card.window.reactorLabel }}. O jogador está respondendo no celular.
+              </p>
+              <div class="pair">
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="btn"
+                  data-initial
+                  [disabled]="busy()"
+                  (click)="concentrate(card.window, { kind: 'app' })"
+                >
+                  Rolar o teste por {{ card.window.reactorLabel }}
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="btn"
+                  [disabled]="busy()"
+                  (click)="concentrate(card.window, { kind: 'keep' })"
+                >
+                  Manter a concentração por {{ card.window.reactorLabel }}
+                </button>
+              </div>
+            } @else {
+              <p class="card__text">{{ concentrationLead(card.window) }} O ataque que deu o dano espera este teste.</p>
+              <p class="card__sub">{{ concentrationRule(card.window) }}</p>
+              <div class="warn">
+                <mat-icon aria-hidden="true">info</mat-icon>
+                <p>
+                  <strong>O teste é seu.</strong> Rolar no app usa d20 {{ bonusWord(card.window) }}; você pode decidir o resultado à mão.
+                </p>
+              </div>
+              @if (extraWindow() === card.window.id && extra.fields().length > 0) {
+                <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
+              }
+              @if (concentrationModeLine(card.window)) {
+                <p class="card__sub" role="status">{{ concentrationModeLine(card.window) }}</p>
+              }
+              @if (concentrationDice(card.window) === 1) {
+                <app-roll-picker
+                  [outlined]="true"
+                  [min]="1"
+                  [max]="20"
+                  [modifier]="concentrationBonus(card.window)"
+                  [label]="'Role 1d20 para o teste de Constituição ' + ofTheLabel(card.window.reactorLabel)"
+                  hint="Role o seu dado e digite o número que saiu (1 a 20)."
+                  totalNote="Teste de Constituição"
+                  [appLabel]="'Rolar o teste ' + ofTheLabel(card.window.reactorLabel)"
+                  [busy]="busy()"
+                  (app)="concentrate(card.window, { kind: 'app' })"
+                  (typed)="concentrate(card.window, { kind: 'typed', face: $event })"
+                />
+              } @else {
+                <app-multi-roll
+                  [fields]="pair"
+                  [modifier]="concentrationBonus(card.window)"
+                  [combine]="concentrationMode(card.window) === 'advantage' ? 'higher' : 'lower'"
+                  totalNote="Teste de Constituição"
+                  [appLabel]="'Rolar o teste ' + ofTheLabel(card.window.reactorLabel)"
+                  hint="Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada)."
+                  [busy]="busy()"
+                  (app)="concentrate(card.window, { kind: 'app' })"
+                  (typed)="concentrate(card.window, { kind: 'typed', face: $event[0], second: $event[1] })"
+                />
+              }
+              <button
+                mat-stroked-button
+                type="button"
+                class="btn btn--one"
+                [disabled]="busy()"
+                (click)="concentrate(card.window, { kind: 'keep' })"
+              >
+                Manter a concentração
+              </button>
+            }
+          </section>
+        }
+        @case ('effectSave') {
+          <section class="card card--single" [attr.aria-labelledby]="uid + card.id">
+            <h2 class="card__title" [id]="uid + card.id">{{ effectSaveTitle(card.window) }}</h2>
+            <p class="card__text">{{ effectSaveText(card.window) }}</p>
+            <p class="card__sub">{{ effectSaveRule(card.window) }}</p>
+            <div class="warn">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <p>
+                <strong>O teste é seu.</strong>
+                {{ effectSaveWho(card.window) }} Rolar no app usa o d20; você pode decidir o resultado à mão.
+              </p>
+            </div>
+            @if (extraWindow() === card.window.id && extra.fields().length > 0) {
+              <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />
+            }
+            @if (effectSaveMode(card.window) === 'normal') {
+              <app-roll-picker
+                [outlined]="true"
+                [min]="1"
+                [max]="20"
+                [modifier]="effectSaveBonus(card.window)"
+                [label]="'Role 1d20 para o teste de ' + effectSaveAbility(card.window) + ' ' + ofTheLabel(card.window.reactorLabel)"
+                hint="Digite o número que saiu no dado (1 a 20), sem somar o bônus: o app soma."
+                [totalNote]="'Teste de ' + effectSaveAbility(card.window)"
+                [busy]="busy()"
+                (app)="effectSave(card.window, { kind: 'app' })"
+                (typed)="effectSave(card.window, { kind: 'typed', face: $event, extra: [] })"
+              />
+            } @else {
+              <app-multi-roll
+                [fields]="pair"
+                [combine]="effectSaveMode(card.window) === 'advantage' ? 'higher' : 'lower'"
+                [modifier]="effectSaveBonus(card.window)"
+                [totalNote]="'Teste de ' + effectSaveAbility(card.window)"
+                [hint]="effectSavePairHint(card.window)"
+                [busy]="busy()"
+                (app)="effectSave(card.window, { kind: 'app' })"
+                (typed)="effectSaveTyped(card.window, $event)"
+              />
+            }
+            @if (effectSaveSkippable(card.window)) {
+              @if (skipAsked() === card.window.id) {
+                <div class="warn">
+                  <mat-icon aria-hidden="true">warning</mat-icon>
+                  <p>Pular o teste dá o resultado sem rolar o dado. É uma opção da mesa. Confirmar?</p>
+                </div>
+                <div class="pair">
+                  <button
+                    mat-flat-button
+                    type="button"
+                    class="btn"
+                    [disabled]="busy()"
+                    (click)="effectSave(card.window, { kind: 'skip' })"
+                  >
+                    Sim, pular o teste
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="btn"
+                    [disabled]="busy()"
+                    (click)="skipAsked.set('')"
+                  >
+                    Não pular
+                  </button>
+                </div>
+              } @else {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="btn btn--one"
+                  [disabled]="busy()"
+                  (click)="skipAsked.set(card.window.id)"
+                >
+                  Pular o teste
+                </button>
+              }
+            }
+          </section>
+        }
+      }
+    }
+    <span class="mr-visually-hidden" role="status" aria-live="polite">{{ said() }}</span>
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+
+    <ng-template #rowTpl let-row="row">
+      <span class="avatar" aria-hidden="true">{{ row.label.charAt(0) }}</span>
+      <div class="row__main">
+        <p class="row__name">
+          <b>{{ row.label }}</b>
+          <span class="tag" [class.tag--player]="row.isPlayer">{{ row.tag }}</span>
+        </p>
+        <p class="row__desc">{{ row.description }}</p>
+        @if (row.status) {
+          <p class="row__status" [id]="uid + row.window.id + '-why'">{{ row.status }}</p>
+        }
+        @if (autoLeft()[row.window.id] !== undefined) {
+          <p class="row__status">
+            {{ row.window.rolling ? rollingText(autoLeft()[row.window.id]) : autoText(autoLeft()[row.window.id]) }}
+          </p>
+        }
+        <ng-container *ngTemplateOutlet="slotsTpl; context: { row: row }" />
+        <div class="btns">
+          <button
+            mat-stroked-button
+            type="button"
+            class="btn"
+            [class.btn--off]="!row.answerNow"
+            [attr.data-initial]="row.answerNow ? '' : null"
+            [disabled]="busy() || !row.answerNow"
+            disabledInteractive
+            [attr.aria-describedby]="row.status ? uid + row.window.id + '-why' : null"
+            (click)="use(row)"
+          >
+            {{ row.useLabel }}
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            class="btn"
+            [class.btn--off]="!row.answerNow"
+            [disabled]="busy() || !row.answerNow"
+            disabledInteractive
+            [attr.aria-describedby]="row.status ? uid + row.window.id + '-why' : null"
+            (click)="pass(row.window)"
+          >
+            {{ row.passLabel }}
+          </button>
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template #slotsTpl let-row="row">
+      @if (row.slots.length > 0) {
+        <fieldset class="slots" [disabled]="!row.answerNow">
+          <legend class="slots__cap">Espaço de magia</legend>
+          @for (o of row.slots; track o.title) {
+            <label class="slots__row">
+              <input
+                type="radio"
+                class="mr-visually-hidden"
+                [name]="uid + row.window.id"
+                [checked]="isSlot(row.window.id, o)"
+                (change)="pickSlot(row.window.id, o)"
+              />
+              <span class="slots__dot" aria-hidden="true"></span>
+              <span><b>{{ o.title }}</b> · {{ o.effect }}</span>
+            </label>
+          }
+        </fieldset>
+      }
+    </ng-template>

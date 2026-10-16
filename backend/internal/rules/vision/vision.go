@@ -305,21 +305,24 @@ func ownState(light grid.Light) State {
 func (l *Lit) seeWalls(v *View) {
 	for row := range l.g.Rows {
 		for col := range l.g.Columns {
-			n := row*l.g.Columns + col
-			if !l.sight.Wall(grid.Square{Col: col, Row: row}) {
-				continue
-			}
-		neighbors:
-			for r := max(row-1, 0); r <= min(row+1, l.g.Rows-1); r++ {
-				for c := max(col-1, 0); c <= min(col+1, l.g.Columns-1); c++ {
-					if s := v.states[r*l.g.Columns+c]; s != Unseen && s != SeenWall {
-						v.states[n] = SeenWall
-						break neighbors
-					}
-				}
+			if l.sight.Wall(grid.Square{Col: col, Row: row}) && l.touchesSeen(v, col, row) {
+				v.states[row*l.g.Columns+col] = SeenWall
 			}
 		}
 	}
+}
+
+// touchesSeen says whether a square next to the one at col, row (or that
+// square itself) is seen, a wall marked seen not counting.
+func (l *Lit) touchesSeen(v *View, col, row int) bool {
+	for r := max(row-1, 0); r <= min(row+1, l.g.Rows-1); r++ {
+		for c := max(col-1, 0); c <= min(col+1, l.g.Columns-1); c++ {
+			if s := v.states[r*l.g.Columns+c]; s != Unseen && s != SeenWall {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Union is what the viewers see together, a square at the best of their
