@@ -376,11 +376,6 @@ cognitive internal/rules/dungeon ASCII 24
 cognitive internal/rules/dungeon WallsMask 21
 cognitive internal/rules/dungeon connectionsAndNetworks 28
 cognitive internal/rules/dungeon normalize 25
-cognitive internal/rules/formula (*Compiler).check 25
-cognitive internal/rules/formula reach 34
-cognitive internal/rules/puzzle (Pillars).Minimum 28
-cognitive internal/rules/puzzle LightsMinimum 38
-cognitive internal/rules/puzzle cipherAlphabet 26
 cyclomatic cmd/api run 21
 cyclomatic cmd/migrate run 17
 cyclomatic internal/campaignpackage (*Service).BeginCampaignImport 22
@@ -768,12 +763,6 @@ cyclomatic internal/rules/dungeon (*gen).placeStairs 18
 cyclomatic internal/rules/dungeon (*gen).shortestPath 16
 cyclomatic internal/rules/dungeon connectionsAndNetworks 17
 cyclomatic internal/rules/dungeon normalize 29
-cyclomatic internal/rules/encounter Generate 18
-cyclomatic internal/rules/formula (*Compiler).check 22
-cyclomatic internal/rules/formula reach 24
-cyclomatic internal/rules/puzzle (Pillars).Minimum 16
-cyclomatic internal/rules/puzzle LightsMinimum 23
-cyclomatic internal/rules/puzzle cipherAlphabet 19
 maintainability internal/characters (*Service).CreateCharacter 16
 maintainability internal/characters (*Service).UpdateCharacter 18
 maintainability internal/maps (*Service).RedrawDungeonMap 16
