@@ -1,5 +1,5 @@
 <div class="mv-wrap" [style.--mv-ar]="ratio()">
-  <div
+  <div appRelayEvents
     #viewport
     class="mv"
     [class.mv--interactive]="interactive()"
@@ -16,9 +16,9 @@
     (pointerup)="onPointerUp($event)"
     (pointercancel)="onPointerUp($event)"
     (wheel)="onWheel($event)"
-    (click)="onClick($event)"
-    (keydown)="onKeydown($event)"
-    (keyup)="onKeyup($event)"
+    (relayClick)="onClick($event)"
+    (relayKeydown)="onKeydown($event)"
+    (relayKeyup)="onKeyup($event)"
     (pointerover)="raise($event)"
     (pointerout)="lower()"
     (focusin)="raise($event)"

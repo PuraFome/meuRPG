@@ -20,7 +20,7 @@
       <hr class="fp__rule" />
       <div class="fp__light">
         <span class="fp__label" id="fp-light">Luz de base</span>
-        <div class="seg" [class.seg--off]="!hasGrid()" role="radiogroup" aria-labelledby="fp-light" aria-describedby="fp-light-hint" (keydown)="onKey($event)">
+        <div appRelayEvents class="seg" [class.seg--off]="!hasGrid()" role="radiogroup" aria-labelledby="fp-light" aria-describedby="fp-light-hint" (relayKeydown)="onKey($event)">
           @for (l of levels; track l.level) {
             <button
               type="button"

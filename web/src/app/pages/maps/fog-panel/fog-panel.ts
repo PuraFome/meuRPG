@@ -20,6 +20,7 @@ import { editorErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { MapAsk } from '../../../shared/map-ask/map-ask';
 import { RevealSwitch } from '../../../shared/reveal-switch/reveal-switch';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 const LEVELS: readonly { level: LightLevel; label: string; icon: string }[] = [
   { level: LightLevel.BRIGHT, label: 'Claro', icon: 'light_mode' },
@@ -36,7 +37,7 @@ const LEVELS: readonly { level: LightLevel; label: string; icon: string }[] = [
  */
 @Component({
   selector: 'app-fog-panel',
-  imports: [MapAsk, MatButtonModule, MatIconModule, RevealSwitch],
+  imports: [RelayEvents, MapAsk, MatButtonModule, MatIconModule, RevealSwitch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './fog-panel.html',
   styleUrl: './fog-panel.scss',
