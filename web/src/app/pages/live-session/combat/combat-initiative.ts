@@ -9,7 +9,7 @@ const INITIATIVE_DIE = 20;
 
 /** What `CombatInitiative` reads from the screen it serves. */
 export interface CombatInitiativeContext {
-  readonly api: Pick<CombatClient, 'submitInitiative' | 'setOrder'>;
+  readonly api: Pick<CombatClient, 'turn'>;
   readonly animator: Pick<RollAnimator, 'play'>;
   readonly calls: Pick<CombatCalls, 'run'>;
   readonly campaignId: () => string;
@@ -22,13 +22,13 @@ export class CombatInitiative {
 
   submitFace(combatantId: string, face: number): Promise<boolean> {
     return this.ctx.calls.run((e) =>
-      this.ctx.api.submitInitiative(this.ctx.campaignId(), e.id, combatantId, { face }),
+      this.ctx.api.turn.submitInitiative(this.ctx.campaignId(), e.id, combatantId, { face }),
     );
   }
 
   async rollInApp(combatantId: string): Promise<boolean> {
     const done = await this.ctx.calls.run((e) =>
-      this.ctx.api.submitInitiative(this.ctx.campaignId(), e.id, combatantId, { inApp: true }),
+      this.ctx.api.turn.submitInitiative(this.ctx.campaignId(), e.id, combatantId, { inApp: true }),
     );
     if (done) {
       this.animate(combatantId);
@@ -48,6 +48,6 @@ export class CombatInitiative {
   }
 
   setOrder(ids: string[]): Promise<boolean> {
-    return this.ctx.calls.run((e) => this.ctx.api.setOrder(this.ctx.campaignId(), e.id, ids));
+    return this.ctx.calls.run((e) => this.ctx.api.turn.setOrder(this.ctx.campaignId(), e.id, ids));
   }
 }

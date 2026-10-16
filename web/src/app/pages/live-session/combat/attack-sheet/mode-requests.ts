@@ -14,7 +14,7 @@ import { currentRequest } from './attack-sheet-view';
 
 /** What `ModeRequests` reads from the sheet it asks for. */
 export interface ModeRequestsContext {
-  readonly api: Pick<CombatClient, 'requestRollMode' | 'cancelRollModeRequest'>;
+  readonly api: Pick<CombatClient, 'attacks'>;
   readonly campaignId: string;
   readonly encounterId: string;
   readonly attackerId: string;
@@ -55,7 +55,7 @@ export class ModeRequests {
     this.reason.set('');
     this.asked.set(null);
     if (sent && sent.status === RollModeRequestStatus.PENDING) {
-      void this.host.api
+      void this.host.api.attacks
         .cancelRollModeRequest(
           this.host.campaignId,
           this.host.encounterId,
@@ -79,7 +79,7 @@ export class ModeRequests {
       async () => {
         const mode = this.host.chosen();
         const reason = this.reason().trim();
-        const res = await this.host.api.requestRollMode(
+        const res = await this.host.api.attacks.requestRollMode(
           this.host.campaignId,
           this.host.encounterId,
           this.host.attackerId,
@@ -106,7 +106,7 @@ export class ModeRequests {
       this.host.busy,
       this.host.error,
       async () => {
-        const e = await this.host.api.cancelRollModeRequest(
+        const e = await this.host.api.attacks.cancelRollModeRequest(
           this.host.campaignId,
           this.host.encounterId,
           sent.id,

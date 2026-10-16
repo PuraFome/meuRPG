@@ -5,7 +5,8 @@ import type {
   OpportunityOffer,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { CombatCalls } from '../../../core/combat/combat-calls';
-import { type CombatClient, newKey } from '../../../core/combat/combat-client';
+import type { CombatClient } from '../../../core/combat/combat-client';
+import { newKey } from '../../../core/connect/idempotency';
 import { currentCombatant } from '../../../core/combat/combat-view';
 import { type ReactorAttack, reactorAttacks } from '../../../core/combat/opportunity';
 import { reactorRows } from '../../../core/combat/theatre';
@@ -14,14 +15,7 @@ import { type MasterAnswer } from './opportunity/opportunity-card';
 
 /** What `CombatOffers` reads from the screen it serves. */
 export interface CombatOffersContext {
-  readonly api: Pick<
-    CombatClient,
-    | 'declineOpportunity'
-    | 'skipOpportunity'
-    | 'withdrawOpportunity'
-    | 'offerOpportunity'
-    | 'turnOptions'
-  >;
+  readonly api: Pick<CombatClient, 'moves'>;
   readonly calls: Pick<CombatCalls, 'run' | 'error'>;
   readonly campaignId: () => string;
   readonly encounter: () => Encounter | null;
@@ -101,7 +95,11 @@ export class CombatOffers {
       return next;
     });
     try {
-      const res = await this.ctx.api.turnOptions(this.ctx.campaignId(), e.id, offer.reactorId);
+      const res = await this.ctx.api.moves.turnOptions(
+        this.ctx.campaignId(),
+        e.id,
+        offer.reactorId,
+      );
       this.reactorOptions.update((m) => new Map(m).set(offer.id, res));
     } catch {
       this.failed.update((s) => new Set(s).add(offer.id));
@@ -114,7 +112,7 @@ export class CombatOffers {
   answer(a: MasterAnswer): Promise<boolean> | void {
     if (!a.attack) {
       return this.ctx.calls.run((e) =>
-        this.ctx.api.declineOpportunity(this.ctx.campaignId(), e.id, a.offer.id),
+        this.ctx.api.moves.declineOpportunity(this.ctx.campaignId(), e.id, a.offer.id),
       );
     }
     this.ctx.attack(a.offer, a.attack.key, this.reactorOptions().get(a.offer.id));
@@ -123,14 +121,14 @@ export class CombatOffers {
   /** "Seguir sem esperar": the master passes over an offer the player does not answer. */
   skip(offer: OpportunityOffer): Promise<boolean> {
     return this.ctx.calls.run((e) =>
-      this.ctx.api.skipOpportunity(this.ctx.campaignId(), e.id, offer.id),
+      this.ctx.api.moves.skipOpportunity(this.ctx.campaignId(), e.id, offer.id),
     );
   }
 
   /** "Retirar a oferta": the master takes back an offer nobody answered; the reactor keeps its reaction. */
   withdraw(offer: OpportunityOffer): Promise<boolean> {
     return this.ctx.calls.run((e) =>
-      this.ctx.api.withdrawOpportunity(this.ctx.campaignId(), e.id, offer.id),
+      this.ctx.api.moves.withdrawOpportunity(this.ctx.campaignId(), e.id, offer.id),
     );
   }
 
@@ -148,7 +146,13 @@ export class CombatOffers {
       this.keys.set(reactorId, key);
     }
     const ok = await this.ctx.calls.run((current) =>
-      this.ctx.api.offerOpportunity(this.ctx.campaignId(), current.id, mover.id, reactorId, key),
+      this.ctx.api.moves.offerOpportunity(
+        this.ctx.campaignId(),
+        current.id,
+        mover.id,
+        reactorId,
+        key,
+      ),
     );
     if (ok) {
       this.offering.set(false);
