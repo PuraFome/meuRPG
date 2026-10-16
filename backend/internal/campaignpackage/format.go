@@ -91,23 +91,7 @@ func FileName(campaign string) string {
 	var b strings.Builder
 	lastUnderscore := true // no underscore at the start
 	for _, r := range norm.NFD.String(campaign) {
-		switch {
-		case unicode.Is(unicode.Mn, r):
-			continue // the accent the decomposition split off
-		case r < unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r)):
-			b.WriteRune(r)
-			lastUnderscore = false
-		case r == '-' || r == '_' || r == '.':
-			if !lastUnderscore || r != '.' {
-				b.WriteRune(r)
-			}
-			lastUnderscore = r == '_'
-		default:
-			if !lastUnderscore {
-				b.WriteByte('_')
-				lastUnderscore = true
-			}
-		}
+		lastUnderscore = writeFileNameRune(&b, r, lastUnderscore)
 		if b.Len() >= maxFileNameLetters {
 			break
 		}
@@ -117,6 +101,28 @@ func FileName(campaign string) string {
 		name = "campanha"
 	}
 	return name + FileSuffix
+}
+
+// writeFileNameRune writes what FileName keeps of r, given whether the last
+// thing written was an underscore, and returns that for the next rune.
+func writeFileNameRune(b *strings.Builder, r rune, lastUnderscore bool) bool {
+	switch {
+	case unicode.Is(unicode.Mn, r):
+		return lastUnderscore // the accent the decomposition split off
+	case r < unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r)):
+		b.WriteRune(r)
+		return false
+	case r == '-' || r == '_' || r == '.':
+		if !lastUnderscore || r != '.' {
+			b.WriteRune(r)
+		}
+		return r == '_'
+	default:
+		if !lastUnderscore {
+			b.WriteByte('_')
+		}
+		return true
+	}
 }
 
 // Problems collects what stops a package from being created, in the order it
