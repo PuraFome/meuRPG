@@ -267,67 +267,84 @@ export function usageSentence(name: string, n: number): string {
   return `${n} ${n === 1 ? 'ficha usa' : 'fichas usam'} ${name} agora.`;
 }
 
+type Body<K extends string> = Extract<TableEntry['body'], { case: K }>['value'];
+type NameOf = (key: string) => string;
+
+/** The level a class chooses its subclass at when the entry leaves it out. */
+export const DEFAULT_SUBCLASS_LEVEL = 3;
+
+function classSupport(c: Body<'tableClass'>): string[] {
+  const casting = c.casting
+    ? `conjuração ${CASTING_WORDS[c.casting.kind] ?? c.casting.kind}`
+    : 'sem conjuração';
+  return [
+    `d${c.hitDie}`,
+    casting,
+    `subclasse no nível ${c.subclassLevel || DEFAULT_SUBCLASS_LEVEL}`,
+  ];
+}
+
+function subclassSupport(
+  s: Body<'tableSubclass'>,
+  nameOf: NameOf,
+  subclassLevelOf: (classKey: string) => number,
+): string[] {
+  const parts = [`Subclasse de ${nameOf(s.classKey)}`];
+  // Level 0 is the class's own level of choosing; the catalog says it.
+  const level = s.level || subclassLevelOf(s.classKey);
+  if (level > 0) {
+    parts.push(`nível ${level}`);
+  }
+  return parts;
+}
+
+function raceSupport(r: Body<'tableRace'>): string[] {
+  const parts = [SIZE_WORDS[r.size] ?? r.size, metersText(r.speedFt)];
+  if (r.darkvisionFt > 0) {
+    parts.push(tight(`visão no escuro ${metersText(r.darkvisionFt)}`));
+  }
+  return parts;
+}
+
+function featSupport(f: Body<'tableFeat'>, nameOf: NameOf): string[] {
+  const says = prerequisiteSupport(f.prerequisite, nameOf);
+  return [says === '' ? 'Sem pré-requisito' : says];
+}
+
 /** The one-line support of a list row, from the body: "d10 · conjuração de metade, Sabedoria · subclasse no nível 3". */
 export function entrySupport(
   e: TableEntry,
-  nameOf: (key: string) => string,
+  nameOf: NameOf,
   subclassLevelOf: (classKey: string) => number = () => 0,
 ): string {
-  const parts: string[] = [];
-  switch (e.body.case) {
-    case 'tableClass': {
-      const c = e.body.value;
-      parts.push(`d${c.hitDie}`);
-      if (c.casting) {
-        parts.push(`conjuração ${CASTING_WORDS[c.casting.kind] ?? c.casting.kind}`);
-      } else {
-        parts.push('sem conjuração');
-      }
-      parts.push(`subclasse no nível ${c.subclassLevel || 3}`);
-      break;
-    }
-    case 'tableSubclass': {
-      const s = e.body.value;
-      parts.push(`Subclasse de ${nameOf(s.classKey)}`);
-      // Level 0 is the class's own level of choosing; the catalog says it.
-      const level = s.level || subclassLevelOf(s.classKey);
-      if (level > 0) {
-        parts.push(`nível ${level}`);
-      }
-      break;
-    }
-    case 'tableRace': {
-      const r = e.body.value;
-      parts.push(SIZE_WORDS[r.size] ?? r.size);
-      parts.push(metersText(r.speedFt));
-      if (r.darkvisionFt > 0) {
-        parts.push(tight(`visão no escuro ${metersText(r.darkvisionFt)}`));
-      }
-      break;
-    }
+  return joinDots(supportParts(e.body, nameOf, subclassLevelOf));
+}
+
+function supportParts(
+  body: TableEntry['body'],
+  nameOf: NameOf,
+  subclassLevelOf: (classKey: string) => number,
+): string[] {
+  switch (body.case) {
+    case 'tableClass':
+      return classSupport(body.value);
+    case 'tableSubclass':
+      return subclassSupport(body.value, nameOf, subclassLevelOf);
+    case 'tableRace':
+      return raceSupport(body.value);
     case 'tableSubrace':
-      parts.push(`Sub-raça de ${nameOf(e.body.value.raceKey)}`);
-      break;
+      return [`Sub-raça de ${nameOf(body.value.raceKey)}`];
     case 'tableBackground': {
-      const b = e.body.value;
-      parts.push(`${b.skills.length} ${b.skills.length === 1 ? 'perícia' : 'perícias'}`);
-      break;
+      const n = body.value.skills.length;
+      return [`${n} ${n === 1 ? 'perícia' : 'perícias'}`];
     }
-    case 'tableSpell': {
-      const s = e.body.value;
-      parts.push(s.level === 0 ? 'Truque' : `${s.level}º nível`);
-      break;
-    }
-    case 'tableFeat': {
-      const f = e.body.value;
-      const says = prerequisiteSupport(f.prerequisite, nameOf);
-      parts.push(says === '' ? 'Sem pré-requisito' : says);
-      break;
-    }
+    case 'tableSpell':
+      return [body.value.level === 0 ? 'Truque' : `${body.value.level}º nível`];
+    case 'tableFeat':
+      return featSupport(body.value, nameOf);
     default:
-      break;
+      return [];
   }
-  return joinDots(parts);
 }
 
 export const SIZE_WORDS: Readonly<Record<string, string>> = {

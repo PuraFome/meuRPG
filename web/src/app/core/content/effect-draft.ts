@@ -135,101 +135,91 @@ export function splitTags(text: string): string[] {
     .filter((t) => t !== '');
 }
 
+type EffectWriter = (d: EffectDraft) => EffectInit;
+
+/** A text the server reads trimmed; an empty one is not sent. */
+const trimmedText =
+  (key: 'value' | 'when' | 'resource' | 'max' | 'textPt'): EffectWriter =>
+  (d) => {
+    const text = d[key].trim();
+    return text ? ({ [key]: text } as EffectInit) : {};
+  };
+
+/** A choice that is sent when something is picked. */
+const pickedText =
+  (
+    key:
+      | 'target'
+      | 'mode'
+      | 'proficiency'
+      | 'level'
+      | 'roll'
+      | 'sense'
+      | 'recharge'
+      | 'choice'
+      | 'economy'
+      | 'applies'
+      | 'ability',
+  ): EffectWriter =>
+  (d) =>
+    d[key] ? ({ [key]: d[key] } as EffectInit) : {};
+
+/** A list that is sent (as a copy) when it has something in it. */
+const pickedList =
+  (key: 'targets' | 'from' | 'spells'): EffectWriter =>
+  (d) =>
+    d[key].length > 0 ? ({ [key]: [...d[key]] } as EffectInit) : {};
+
+/** How each field the menu names goes into the request, by the field's proto name. ranged_attack's switches and its multiplier
+ * are only sent when on (or set). A name the table does not know writes nothing. */
+const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, EffectWriter>([
+  ['target', pickedText('target')],
+  ['mode', pickedText('mode')],
+  ['value', trimmedText('value')],
+  ['when', trimmedText('when')],
+  [
+    'tags',
+    (d) => {
+      const tags = splitTags(d.tags);
+      return tags.length > 0 ? { tags } : {};
+    },
+  ],
+  ['proficiency', pickedText('proficiency')],
+  ['level', pickedText('level')],
+  ['roll', pickedText('roll')],
+  ['targets', pickedList('targets')],
+  ['sense', pickedText('sense')],
+  ['range_ft', (d) => (rangeFeet(d.rangeM) > 0 ? { rangeFt: rangeFeet(d.rangeM) } : {})],
+  ['resource', trimmedText('resource')],
+  ['max', trimmedText('max')],
+  ['recharge', pickedText('recharge')],
+  ['choice', pickedText('choice')],
+  ['count', (d) => (d.count > 0 ? { count: d.count } : {})],
+  ['from', pickedList('from')],
+  ['economy', pickedText('economy')],
+  ['applies', pickedText('applies')],
+  ['ability', pickedText('ability')],
+  ['spells', pickedList('spells')],
+  ['text_pt', trimmedText('textPt')],
+  ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
+  [
+    'range_multiplier',
+    (d) => (d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {}),
+  ],
+  [
+    'no_long_range_disadvantage',
+    (d) => (d.noLongRangeDisadvantage ? { noLongRangeDisadvantage: true } : {}),
+  ],
+]);
+
 /** The effect a request sends: `type` and the fields the menu says that type reads, and nothing else. An empty text or an empty
  * list is not sent: the server reads "not set" the same way. */
 export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
   const out: EffectInit = { type: d.type };
-  const fields = menu.fieldsOf(d.type);
-  for (const f of fields) {
-    switch (f.name) {
-      case 'target':
-        if (d.target) out.target = d.target;
-        break;
-      case 'mode':
-        if (d.mode) out.mode = d.mode;
-        break;
-      case 'value':
-        if (d.value.trim()) out.value = d.value.trim();
-        break;
-      case 'when':
-        if (d.when.trim()) out.when = d.when.trim();
-        break;
-      case 'tags': {
-        const tags = splitTags(d.tags);
-        if (tags.length > 0) out.tags = tags;
-        break;
-      }
-      case 'proficiency':
-        if (d.proficiency) out.proficiency = d.proficiency;
-        break;
-      case 'level':
-        if (d.level) out.level = d.level;
-        break;
-      case 'roll':
-        if (d.roll) out.roll = d.roll;
-        break;
-      case 'targets':
-        if (d.targets.length > 0) out.targets = [...d.targets];
-        break;
-      case 'sense':
-        if (d.sense) out.sense = d.sense;
-        break;
-      case 'range_ft':
-        if (rangeFeet(d.rangeM) > 0) out.rangeFt = rangeFeet(d.rangeM);
-        break;
-      case 'resource':
-        if (d.resource.trim()) out.resource = d.resource.trim();
-        break;
-      case 'max':
-        if (d.max.trim()) out.max = d.max.trim();
-        break;
-      case 'recharge':
-        if (d.recharge) out.recharge = d.recharge;
-        break;
-      case 'choice':
-        if (d.choice) out.choice = d.choice;
-        break;
-      case 'count':
-        if (d.count > 0) out.count = d.count;
-        break;
-      case 'from':
-        if (d.from.length > 0) out.from = [...d.from];
-        break;
-      case 'economy':
-        if (d.economy) out.economy = d.economy;
-        break;
-      case 'applies':
-        if (d.applies) out.applies = d.applies;
-        break;
-      case 'ability':
-        if (d.ability) out.ability = d.ability;
-        break;
-      case 'spells':
-        if (d.spells.length > 0) out.spells = [...d.spells];
-        break;
-      case 'text_pt':
-        if (d.textPt.trim()) out.textPt = d.textPt.trim();
-        break;
-      default:
-        Object.assign(out, switchField(d, f.name));
-        break;
-    }
+  for (const f of menu.fieldsOf(d.type)) {
+    Object.assign(out, EFFECT_WRITERS.get(f.name)?.(d));
   }
   return out;
-}
-
-/** ranged_attack's switches and its multiplier, when the type reads them: only what is on (or set) is sent. */
-function switchField(d: EffectDraft, name: string): EffectInit {
-  switch (name) {
-    case 'ignore_cover':
-      return d.ignoreCover ? { ignoreCover: true } : {};
-    case 'range_multiplier':
-      return d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {};
-    case 'no_long_range_disadvantage':
-      return d.noLongRangeDisadvantage ? { noLongRangeDisadvantage: true } : {};
-    default:
-      return {};
-  }
 }
 
 /** The labels of the effect fields, in our words (the menu names the fields by their proto name). */

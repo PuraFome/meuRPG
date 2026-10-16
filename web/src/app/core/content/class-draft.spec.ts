@@ -12,11 +12,8 @@ import {
   classFeaturePaths,
   classToDraft,
   draftToClass,
-  draftToSubclass,
   emptyCasting,
   emptyClass,
-  emptySubclass,
-  flattenAlwaysPrepared,
   gridColumns,
   newLevelFeatureId,
   rowsEdited,
@@ -24,12 +21,17 @@ import {
   sameRows,
   slotsText,
   sortedFeatures,
+  tableFor,
+} from './class-draft';
+import {
+  draftToSubclass,
+  emptySubclass,
+  flattenAlwaysPrepared,
   subclassFeatureBase,
   subclassLevels,
   subclassRowBase,
   subclassToDraft,
-  tableFor,
-} from './class-draft';
+} from './subclass-draft';
 import { classDefaults, menu } from './content-testing';
 import { emptyEffect } from './effect-draft';
 import { emptyFeature } from './feature-draft';
