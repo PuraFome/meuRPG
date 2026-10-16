@@ -41,7 +41,7 @@ type replayState struct {
 	// rolled is the damage roll made when the hold was written, so that the
 	// reactor decided with the number it would take (Uncanny Dodge, Deflect
 	// Missiles) and the replay lands that very roll.
-	rolled *heldRoll
+	rolled *rolledDamage
 	// parts and partRolls are the parts of a damage with extras as they were rolled when
 	// the hold was written: the replay lands those dice, not new ones.
 	parts     []partRecord
@@ -55,8 +55,8 @@ type answeredRef struct {
 	ev     *reactionEvent
 }
 
-// heldRoll is a damage roll made before the replay.
-type heldRoll struct {
+// rolledDamage is a damage roll made before the replay.
+type rolledDamage struct {
 	Faces    []int32 `json:"faces,omitempty"`
 	Total    int32   `json:"total"`
 	Physical bool    `json:"physical,omitempty"`
@@ -64,9 +64,9 @@ type heldRoll struct {
 
 // holdData is what a hold keeps besides the request.
 type holdData struct {
-	Rolled    *heldRoll    `json:"rolled,omitempty"`
-	Parts     []partRecord `json:"parts,omitempty"`
-	PartRolls []partRoll   `json:"part_rolls,omitempty"`
+	Rolled    *rolledDamage `json:"rolled,omitempty"`
+	Parts     []partRecord  `json:"parts,omitempty"`
+	PartRolls []partRoll    `json:"part_rolls,omitempty"`
 }
 
 // The ambient write: a replay runs the action's own handler inside the
