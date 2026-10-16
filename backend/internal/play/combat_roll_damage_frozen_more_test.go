@@ -598,7 +598,7 @@ func held(t *testing.T, a *armed, e *playv1.Encounter, u *user, id string, edit 
 	return p
 }
 
-func typedAnswer(n int32) func(*playv1.AnswerReactionRequest) {
+func typedDamageReactionAnswer(n int32) func(*playv1.AnswerReactionRequest) {
 	return func(r *playv1.AnswerReactionRequest) {
 		r.Answer, r.Roll = playv1.ReactionChoice_REACTION_CHOICE_USE, &playv1.AnswerReactionRequest_Typed{Typed: n}
 	}
@@ -686,10 +686,10 @@ func reactionDamages() []damageScenario {
 		uncanny("a damage held for Uncanny Dodge, then halved", useAnswer(0)),
 		uncanny("a damage held for Uncanny Dodge, then passed", passAnswer),
 		cutting("a damage held for Cutting Words", nil),
-		cutting("a damage held for Cutting Words, then cut", typedAnswer(3)),
+		cutting("a damage held for Cutting Words, then cut", typedDamageReactionAnswer(3)),
 		cutting("a damage held for Cutting Words, then passed", passAnswer),
 		deflect("a damage held for Deflect Missiles", nil),
-		deflect("a damage held for Deflect Missiles, then deflected", typedAnswer(8)),
+		deflect("a damage held for Deflect Missiles, then deflected", typedDamageReactionAnswer(8)),
 		deflect("a damage held for Deflect Missiles, then passed", passAnswer),
 		always("a damage held for the master's check", false, nil),
 		always("a damage held for the master's check, then passed", false, passAnswer),
