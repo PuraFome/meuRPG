@@ -1090,3 +1090,22 @@ func TestAnOfferStaysWhileItsReactorIsStillHostile(t *testing.T) {
 		t.Errorf("offers after keeping the goblin an enemy = %v, want 1", got)
 	}
 }
+
+// TestMR034_AnotherPlayerReadsNoOfferOfAMoveThatIsNotTheirs freezes the list's
+// filter: a player who neither answers an offer (its reactor is the master's) nor
+// is the mover (Toren's player) reads none of it, though they see both.
+func TestMR034_AnotherPlayerReadsNoOfferOfAMoveThatIsNotTheirs(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.oppFight(t)
+	c.leaveGoblin(t)
+	if got := c.offersOf(t, c.master); len(got) != 1 {
+		t.Fatalf("the master reads %d offers, want 1", len(got))
+	}
+	if got := c.offersOf(t, c.caio); len(got) != 1 {
+		t.Errorf("Toren's player reads %d offers, want 1 (the mover)", len(got))
+	}
+	if got := c.offersOf(t, c.ana); len(got) != 0 {
+		t.Errorf("Pensantus's player reads %v, want none", got)
+	}
+}
