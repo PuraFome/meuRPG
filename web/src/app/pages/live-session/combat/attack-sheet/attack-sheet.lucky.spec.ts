@@ -26,8 +26,7 @@ import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AttackSheet, type AttackSheetData } from './attack-sheet';
 
-const flat = (n: Element | null | undefined) =>
-  n?.textContent?.replace(/\s+/g, ' ').trim().replace(/ /g, ' ') ?? '';
+const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
 const battleaxe = {
   key: 'equipment:battleaxe',
