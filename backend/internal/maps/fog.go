@@ -333,18 +333,7 @@ func (s *Service) newSight(ctx context.Context, tx pgx.Tx, in fogInput, points [
 	if err != nil {
 		return nil, fmt.Errorf("read the combatants' squares: %w", err)
 	}
-	// where a character stands: its square in the combat, else its token's.
-	tokenAt := make(map[string]grid.Square, len(tokens))
-	for _, t := range tokens {
-		tokenAt[t.CharacterID] = in.g.SquareOf(int(t.XBp), int(t.YBp))
-	}
-	where := func(id string) (grid.Square, bool) {
-		if sq, ok := combat.Positions[id]; ok {
-			return sq, true
-		}
-		sq, ok := tokenAt[id]
-		return sq, ok
-	}
+	where := standingSquare(in.g, combat, tokens)
 
 	sources, err := s.lightSources(ctx, tx, in, points, tokens, where)
 	if err != nil {
@@ -360,44 +349,71 @@ func (s *Service) newSight(ctx context.Context, tx pgx.Tx, in fogInput, points [
 	if sg.extra, err = s.familiarEyes(ctx, tx, in, members, sg.stands, combat); err != nil {
 		return nil, err
 	}
-
-	compile := func(ctx context.Context, e *litEntry) {
-		stored, err := queriesIn(s.queries, tx).GetMapLayers(ctx, in.mapID)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			e.err = fmt.Errorf("read the layers: %w", err)
-			return
-		}
-		e.set = loadLayers(stored, in.g)
-		if e.lit, err = vision.Compile(vision.Scene{Grid: in.g, Walls: e.set.walls, Doors: e.set.doors, Base: in.base, Painted: e.set.light, Sources: sources}); err != nil {
-			e.err = fmt.Errorf("compile the map's light: %w", err)
-		}
+	if sg.entry, err = s.sceneEntry(ctx, tx, in, sources); err != nil {
+		return nil, err
 	}
+	return sg, nil
+}
+
+// standingSquare says where a character stands: its square in the combat, else its
+// token's.
+func standingSquare(g grid.Grid, combat link.CombatPositions, tokens []mapsdb.MapToken) func(string) (grid.Square, bool) {
+	tokenAt := make(map[string]grid.Square, len(tokens))
+	for _, t := range tokens {
+		tokenAt[t.CharacterID] = g.SquareOf(int(t.XBp), int(t.YBp))
+	}
+	return func(id string) (grid.Square, bool) {
+		if sq, ok := combat.Positions[id]; ok {
+			return sq, true
+		}
+		sq, ok := tokenAt[id]
+		return sq, ok
+	}
+}
+
+// compileScene compiles the scene of the map from its stored layers and the sources,
+// into the entry; the entry's err says why it could not.
+func (s *Service) compileScene(ctx context.Context, tx pgx.Tx, in fogInput, sources []source, e *litEntry) {
+	stored, err := queriesIn(s.queries, tx).GetMapLayers(ctx, in.mapID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		e.err = fmt.Errorf("read the layers: %w", err)
+		return
+	}
+	e.set = loadLayers(stored, in.g)
+	if e.lit, err = vision.Compile(vision.Scene{Grid: in.g, Walls: e.set.walls, Doors: e.set.doors, Base: in.base, Painted: e.set.light, Sources: sources}); err != nil {
+		e.err = fmt.Errorf("compile the map's light: %w", err)
+	}
+}
+
+// sceneEntry is the compiled scene of the map: compiled here on the transaction when
+// there is one, else the cache's, shared by everyone who asks for the same key.
+func (s *Service) sceneEntry(ctx context.Context, tx pgx.Tx, in fogInput, sources []source) (*litEntry, error) {
 	if tx != nil {
 		// Inside a transaction, the scene is compiled here, on the transaction, and
 		// kept out of the cache: joining the cache's single flight would make a
 		// request that holds a connection wait for another that may be waiting for one.
-		sg.entry = &litEntry{key: litKeyOf(in, sources), views: map[vision.Viewer]*vision.View{}}
-		compile(ctx, sg.entry)
-		if sg.entry.err != nil {
-			return nil, sg.entry.err
+		entry := &litEntry{key: litKeyOf(in, sources), views: map[vision.Viewer]*vision.View{}}
+		s.compileScene(ctx, tx, in, sources, entry)
+		if entry.err != nil {
+			return nil, entry.err
 		}
-		return sg, nil
+		return entry, nil
 	}
-	sg.entry = s.lits.entry(litKeyOf(in, sources))
+	entry := s.lits.entry(litKeyOf(in, sources))
 	// The compiled scene is shared by everyone who asks for the same key, so
 	// it must not depend on the first asker: if that request hangs up halfway,
 	// the others would all receive its cancellation. It runs to the end under
 	// a timeout of its own.
-	sg.entry.once.Do(func() {
+	entry.once.Do(func() {
 		shared, cancel := context.WithTimeout(context.WithoutCancel(ctx), litCompileTimeout)
 		defer cancel()
-		compile(shared, sg.entry)
+		s.compileScene(shared, tx, in, sources, entry)
 	})
-	if sg.entry.err != nil {
-		s.lits.drop(sg.entry)
-		return nil, sg.entry.err
+	if entry.err != nil {
+		s.lits.drop(entry)
+		return nil, entry.err
 	}
-	return sg, nil
+	return entry, nil
 }
 
 // familiarSightSquares is how far from the character the familiar may be for the
@@ -414,58 +430,94 @@ const familiarSightSquares = 20
 // the map too.
 func (s *Service) familiarEyes(ctx context.Context, tx pgx.Tx, in fogInput, members []link.PartyMember, stands map[string]grid.Square, combat link.CombatPositions) (map[string][]vision.Viewer, error) {
 	var out map[string][]vision.Viewer
-	var tokens map[string]grid.Square // the creatures' tokens, read once and only if needed
+	creatures := &creatureTokens{s: s, tx: tx, in: in}
 	for _, m := range members {
-		if m.Eyes == nil {
-			continue
+		eyes, ok, err := familiarViewer(ctx, creatures, stands, combat, m)
+		if err != nil {
+			return nil, err
 		}
-		mine, ok := stands[m.CharacterID]
 		if !ok {
-			continue
-		}
-		at, ok := combat.Creatures[m.Eyes.CreatureID]
-		if !ok {
-			if tokens == nil {
-				tokens = map[string]grid.Square{}
-				rows, err := queriesIn(s.queries, tx).ListMapCreatureTokens(ctx, in.mapID)
-				if err != nil {
-					if tx != nil {
-						// A failed statement aborts the transaction: carry the error up, so a
-						// retryable conflict (40001) is retried, not hidden behind 25P02.
-						return nil, fmt.Errorf("read the creatures' tokens: %w", err)
-					}
-					s.logger.ErrorContext(ctx, "maps: cannot read the creatures' tokens", "error", err)
-				}
-				for _, t := range rows {
-					tokens[t.CreatureID] = in.g.SquareOf(int(t.XBp), int(t.YBp))
-				}
-			}
-			if at, ok = tokens[m.Eyes.CreatureID]; !ok {
-				continue
-			}
-		}
-		dc, dr := at.Col-mine.Col, at.Row-mine.Row
-		if dc*dc+dr*dr > familiarSightSquares*familiarSightSquares {
 			continue
 		}
 		if out == nil {
 			out = map[string][]vision.Viewer{}
 		}
-		out[m.CharacterID] = append(out[m.CharacterID], vision.Viewer{At: at, Senses: m.Eyes.Senses})
+		out[m.CharacterID] = append(out[m.CharacterID], eyes)
 	}
 	return out, nil
+}
+
+// familiarViewer is the viewer the member's familiar is, if the member looks through
+// its eyes and it is in range of the character.
+func familiarViewer(ctx context.Context, creatures *creatureTokens, stands map[string]grid.Square, combat link.CombatPositions, m link.PartyMember) (vision.Viewer, bool, error) {
+	if m.Eyes == nil {
+		return vision.Viewer{}, false, nil
+	}
+	mine, ok := stands[m.CharacterID]
+	if !ok {
+		return vision.Viewer{}, false, nil
+	}
+	at, ok := combat.Creatures[m.Eyes.CreatureID]
+	if !ok {
+		var err error
+		if at, ok, err = creatures.squareOf(ctx, m.Eyes.CreatureID); err != nil || !ok {
+			return vision.Viewer{}, false, err
+		}
+	}
+	if !withinFamiliarSight(mine, at) {
+		return vision.Viewer{}, false, nil
+	}
+	return vision.Viewer{At: at, Senses: m.Eyes.Senses}, true, nil
+}
+
+// withinFamiliarSight says whether the familiar's square is within 30 m of the
+// character's: the straight line between the centers (RN-21).
+func withinFamiliarSight(character, familiar grid.Square) bool {
+	dc, dr := familiar.Col-character.Col, familiar.Row-character.Row
+	return dc*dc+dr*dr <= familiarSightSquares*familiarSightSquares
+}
+
+// creatureTokens are the squares of a map's creature tokens, read once and only if
+// a familiar needs them.
+type creatureTokens struct {
+	s       *Service
+	tx      pgx.Tx
+	in      fogInput
+	squares map[string]grid.Square // nil until read
+}
+
+// squareOf is the square of a creature's token on the map, if it has one.
+func (c *creatureTokens) squareOf(ctx context.Context, creatureID string) (grid.Square, bool, error) {
+	if c.squares == nil {
+		if err := c.load(ctx); err != nil {
+			return grid.Square{}, false, err
+		}
+	}
+	sq, ok := c.squares[creatureID]
+	return sq, ok, nil
+}
+
+func (c *creatureTokens) load(ctx context.Context) error {
+	c.squares = map[string]grid.Square{}
+	rows, err := queriesIn(c.s.queries, c.tx).ListMapCreatureTokens(ctx, c.in.mapID)
+	if err != nil {
+		if c.tx != nil {
+			// A failed statement aborts the transaction: carry the error up, so a
+			// retryable conflict (40001) is retried, not hidden behind 25P02.
+			return fmt.Errorf("read the creatures' tokens: %w", err)
+		}
+		c.s.logger.ErrorContext(ctx, "maps: cannot read the creatures' tokens", "error", err)
+	}
+	for _, t := range rows {
+		c.squares[t.CreatureID] = c.in.g.SquareOf(int(t.XBp), int(t.YBp))
+	}
+	return nil
 }
 
 // lightSources lists the lights of a scene: the map's Luz points, and the light
 // each living character's token carries, at the square the character stands on.
 func (s *Service) lightSources(ctx context.Context, tx pgx.Tx, in fogInput, points []mapsdb.MapPoint, tokens []mapsdb.MapToken, where func(string) (grid.Square, bool)) ([]source, error) {
-	var out []source
-	light := kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT]
-	for _, p := range points {
-		if p.Kind == light && p.LightBrightFt != nil && p.LightDimFt != nil {
-			out = append(out, source{At: in.g.SquareOf(int(p.XBp), int(p.YBp)), BrightFt: int(*p.LightBrightFt), DimFt: int(*p.LightDimFt)})
-		}
-	}
+	out := pointLights(in.g, points)
 	var carriers []string
 	for _, t := range tokens {
 		if t.CarriedLight != nil {
@@ -476,7 +528,7 @@ func (s *Service) lightSources(ctx context.Context, tx pgx.Tx, in fogInput, poin
 		return out, nil
 	}
 	// A dead character's token stays on the map but carries nothing.
-	living, err := s.characters.MapCharacters(ctx, tx, in.campaignID, carriers)
+	alive, err := s.livingCarriers(ctx, tx, in.campaignID, carriers)
 	if err != nil {
 		if tx != nil {
 			// A failed statement aborts the transaction: carry the error up, so a
@@ -486,10 +538,38 @@ func (s *Service) lightSources(ctx context.Context, tx pgx.Tx, in fogInput, poin
 		s.logger.ErrorContext(ctx, "maps: cannot tell which light carriers live", "error", err)
 		return out, nil
 	}
+	return append(out, s.carriedLights(tokens, alive, where)...), nil
+}
+
+// pointLights are the lights of the map's Luz points that have a radius.
+func pointLights(g grid.Grid, points []mapsdb.MapPoint) []source {
+	var out []source
+	light := kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_LIGHT]
+	for _, p := range points {
+		if p.Kind == light && p.LightBrightFt != nil && p.LightDimFt != nil {
+			out = append(out, source{At: g.SquareOf(int(p.XBp), int(p.YBp)), BrightFt: int(*p.LightBrightFt), DimFt: int(*p.LightDimFt)})
+		}
+	}
+	return out
+}
+
+// livingCarriers says which of the characters are alive, by ID.
+func (s *Service) livingCarriers(ctx context.Context, tx pgx.Tx, campaignID string, carriers []string) (map[string]bool, error) {
+	living, err := s.characters.MapCharacters(ctx, tx, campaignID, carriers)
+	if err != nil {
+		return nil, err
+	}
 	alive := make(map[string]bool, len(living))
 	for _, c := range living {
 		alive[c.GetId()] = true
 	}
+	return alive, nil
+}
+
+// carriedLights are the lights the living characters' tokens carry, at the squares
+// they stand on.
+func (s *Service) carriedLights(tokens []mapsdb.MapToken, alive map[string]bool, where func(string) (grid.Square, bool)) []source {
+	var out []source
 	for _, t := range tokens {
 		if t.CarriedLight == nil || !alive[t.CharacterID] {
 			continue
@@ -502,7 +582,7 @@ func (s *Service) lightSources(ctx context.Context, tx pgx.Tx, in fogInput, poin
 			out = append(out, source{At: sq, BrightFt: preset.BrightFt, DimFt: preset.DimFt})
 		}
 	}
-	return out, nil
+	return out
 }
 
 // litKeyOf hashes what a compiled scene depends on. The layers' revisions stand
@@ -928,49 +1008,90 @@ func (s *Service) updateVision(ctx context.Context, campaignID, mapID string, wa
 	lock := s.visionLocks.of(mapID)
 	lock.Lock()
 	defer lock.Unlock()
-	row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
+	row, ok, err := s.mapToRemember(ctx, campaignID, mapID)
+	if err != nil || !ok {
+		return err
+	}
+	in, sg, err := s.visionSight(ctx, row)
+	if err != nil {
+		return err
+	}
+	memories, rememberers, err := s.storedMemories(ctx, in)
+	if err != nil {
+		return err
+	}
+	var changed []string
+	for _, userID := range sg.users(rememberers...) {
+		seen, had := memories[userID]
+		told, err := s.refreshUser(ctx, in, sg, userID, seen, had, watch)
+		if err != nil {
+			return err
+		}
+		if told {
+			changed = append(changed, userID)
+		}
+	}
+	if len(changed) > 0 {
+		s.live.PublishToUsersCoalesced(campaignID, changed, visionKey(mapID), visionChangedEvent(mapID))
+	}
+	return nil
+}
+
+// mapToRemember is the row of the map whose vision is worked out again; ok is false
+// (and the server forgets what it kept of the map) when there is nothing to work out:
+// no such map, no fog, or a map the players do not see.
+func (s *Service) mapToRemember(ctx context.Context, campaignID, mapID string) (row mapsdb.Map, ok bool, err error) {
+	row, err = s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		s.seen.forget(mapID)
-		return nil
+		return row, false, nil
 	}
 	if err != nil {
-		return fmt.Errorf("find the map: %w", err)
+		return row, false, fmt.Errorf("find the map: %w", err)
 	}
 	if !fogged(row) {
 		s.seen.forget(mapID)
-		return nil
+		return row, false, nil
 	}
 	// What the players have not been shown cannot be remembered: a map the master
 	// prepares in private records nothing until the players see it (refreshVision
 	// is called when it becomes visible).
 	current, err := s.currentMap(ctx, campaignID)
 	if err != nil {
-		return err
+		return row, false, err
 	}
 	if !playersSee(mapID, row.RevealedAt, current) {
 		s.seen.forget(mapID)
-		return nil
+		return row, false, nil
 	}
-	size, err := s.queries.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: campaignID, ID: mapID})
+	return row, true, nil
+}
+
+// visionSight reads what the scene of the fog map is made of and builds it.
+func (s *Service) visionSight(ctx context.Context, row mapsdb.Map) (fogInput, *sight, error) {
+	size, err := s.queries.GetMapGrid(ctx, mapsdb.GetMapGridParams{CampaignID: row.CampaignID, ID: row.ID})
 	if err != nil {
-		return fmt.Errorf("read the map's grid: %w", err)
+		return fogInput{}, nil, fmt.Errorf("read the map's grid: %w", err)
 	}
 	in := fogInputOfRow(row, size.ImageWidth, size.ImageHeight)
-	points, err := s.queries.ListMapPoints(ctx, mapID)
+	points, err := s.queries.ListMapPoints(ctx, row.ID)
 	if err != nil {
-		return fmt.Errorf("list the points: %w", err)
+		return in, nil, fmt.Errorf("list the points: %w", err)
 	}
-	tokens, err := s.queries.ListMapTokens(ctx, mapID)
+	tokens, err := s.queries.ListMapTokens(ctx, row.ID)
 	if err != nil {
-		return fmt.Errorf("list the tokens: %w", err)
+		return in, nil, fmt.Errorf("list the tokens: %w", err)
 	}
 	sg, err := s.newSight(ctx, nil, in, points, tokens)
+	return in, sg, err
+}
+
+// storedMemories reads what the players saw of the map: the bitmaps of the map's
+// current epoch by user, and every user who has a memory, of any epoch.
+func (s *Service) storedMemories(ctx context.Context, in fogInput) (map[string][]byte, []string, error) {
+	stored, err := s.queries.ListMapVisionMemory(ctx, in.mapID)
 	if err != nil {
-		return err
-	}
-	stored, err := s.queries.ListMapVisionMemory(ctx, mapID)
-	if err != nil {
-		return fmt.Errorf("read what the players saw: %w", err)
+		return nil, nil, fmt.Errorf("read what the players saw: %w", err)
 	}
 	memories := make(map[string][]byte, len(stored))
 	var rememberers []string
@@ -980,32 +1101,29 @@ func (s *Service) updateVision(ctx context.Context, campaignID, mapID string, wa
 			memories[m.UserID] = m.Seen
 		}
 	}
-	var changed []string
-	for _, userID := range sg.users(rememberers...) {
-		memory := grid.NewLayer(in.g)
-		if seen, ok := memories[userID]; ok {
-			memory = decodeMemory(in.g, seen)
-		}
-		now, _ := sg.viewOf(userID)
-		grew := remember(in.g, memory, now)
-		if grew {
-			if _, err := s.rememberFor(ctx, in, userID, memory); err != nil {
-				return err
-			}
-		}
-		pv := sg.newView(userID, memory)
-		rev := pv.revision()
-		before, had := s.seen.swap(mapID, userID, rev)
-		// A player the server has no record of (a restart, or a map it let go) is
-		// told only if something is known to have changed for them.
-		if (had && before != rev) || (!had && grew) || slices.ContainsFunc(watch, pv.seenNow) {
-			changed = append(changed, userID)
+	return memories, rememberers, nil
+}
+
+// refreshUser adds what the user sees now to their memory (seen, when they had one in
+// this epoch) and says whether they are to be told that their view changed.
+func (s *Service) refreshUser(ctx context.Context, in fogInput, sg *sight, userID string, seen []byte, had bool, watch []grid.Square) (bool, error) {
+	memory := grid.NewLayer(in.g)
+	if had {
+		memory = decodeMemory(in.g, seen)
+	}
+	now, _ := sg.viewOf(userID)
+	grew := remember(in.g, memory, now)
+	if grew {
+		if _, err := s.rememberFor(ctx, in, userID, memory); err != nil {
+			return false, err
 		}
 	}
-	if len(changed) > 0 {
-		s.live.PublishToUsersCoalesced(campaignID, changed, visionKey(mapID), visionChangedEvent(mapID))
-	}
-	return nil
+	pv := sg.newView(userID, memory)
+	rev := pv.revision()
+	before, known := s.seen.swap(in.mapID, userID, rev)
+	// A player the server has no record of (a restart, or a map it let go) is
+	// told only if something is known to have changed for them.
+	return (known && before != rev) || (!known && grew) || slices.ContainsFunc(watch, pv.seenNow), nil
 }
 
 // rememberFor writes a player's memory of the map, built for the epoch in: it
