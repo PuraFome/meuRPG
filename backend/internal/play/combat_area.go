@@ -154,70 +154,95 @@ func planArea(in areaInput) (areaPlan, error) {
 		return areaPlan{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the caster must be on the map")
 	}
 	from := squareOfCombatant(in.caster)
-	area := areaOf(in.sp)
 	plan := areaPlan{asked: from, origin: from, corners: in.sp.SpreadsAroundCorners}
-	var raw []grid.Square
+	raw, err := plan.place(in, placement, from)
+	if err != nil {
+		return areaPlan{}, err
+	}
+	plan.squares = in.terrain.OpenArea(plan.origin, raw, plan.corners)
+	if err := plan.findTargets(in, from); err != nil {
+		return areaPlan{}, err
+	}
+	return plan, nil
+}
+
+// place sets where the area lands from the caster's choice and returns its squares before walls
+// are taken out: the choice must be the one the spell's placement takes.
+func (p *areaPlan) place(in areaInput, placement playv1.AreaPlacement, from grid.Square) ([]grid.Square, error) {
+	area := areaOf(in.sp)
 	switch placement {
 	case playv1.AreaPlacement_AREA_PLACEMENT_POINT:
 		if in.choice.origin == nil || in.choice.dir != nil {
-			return areaPlan{}, badArea("this spell is placed at a point: set origin")
+			return nil, badArea("this spell is placed at a point: set origin")
 		}
-		plan.asked = *in.choice.origin
-		if !in.v.master {
-			// The point must be within the spell's range, measured to the square they
-			// chose, even when a wall hides it (SRD, "Spell Range").
-			if dist := int32(grid.RangeFt(from, plan.asked)); dist > placedRangeFt(in.sp) { //nolint:gosec // a distance on a grid
-				return areaPlan{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the point is beyond the spell's range",
-					func(b *playv1.EncounterBlocked) { b.MissingFt = dist - placedRangeFt(in.sp) })
-			}
-			plan.origin = in.terrain.NearSide(from, plan.asked) // a point behind a wall comes into being on the near side
-		} else {
-			plan.origin = plan.asked
+		p.asked = *in.choice.origin
+		if err := p.settleOrigin(in, from); err != nil {
+			return nil, err
 		}
-		raw = area.FromPoint(plan.origin)
+		return area.FromPoint(p.origin), nil
 	case playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION:
 		if in.choice.dir == nil || in.choice.origin != nil {
-			return areaPlan{}, badArea("this spell comes out of the caster: set direction")
+			return nil, badArea("this spell comes out of the caster: set direction")
 		}
-		raw = area.FromCaster(from, *in.choice.dir)
+		return area.FromCaster(from, *in.choice.dir), nil
 	default: // centered on the caster
 		if in.choice.origin != nil || in.choice.dir != nil {
-			return areaPlan{}, badArea("this spell is centered on the caster: set neither origin nor direction")
+			return nil, badArea("this spell is centered on the caster: set neither origin nor direction")
 		}
-		raw = area.FromPoint(from)
+		return area.FromPoint(from), nil
 	}
-	plan.squares = in.terrain.OpenArea(plan.origin, raw, plan.corners)
+}
 
+// settleOrigin works out the origin of an area placed at a point: a player's point must be within
+// range, and one a wall hides comes into being on the near side; the master's is taken as asked.
+func (p *areaPlan) settleOrigin(in areaInput, from grid.Square) error {
+	if in.v.master {
+		p.origin = p.asked
+		return nil
+	}
+	// The point must be within the spell's range, measured to the square they
+	// chose, even when a wall hides it (SRD, "Spell Range").
+	if dist := int32(grid.RangeFt(from, p.asked)); dist > placedRangeFt(in.sp) { //nolint:gosec // a distance on a grid
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the point is beyond the spell's range",
+			func(b *playv1.EncounterBlocked) { b.MissingFt = dist - placedRangeFt(in.sp) })
+	}
+	p.origin = in.terrain.NearSide(from, p.asked) // a point behind a wall comes into being on the near side
+	return nil
+}
+
+// findTargets lists the creatures inside the squares of the area, each with its cover from the point
+// of origin.
+func (p *areaPlan) findTargets(in areaInput, from grid.Square) error {
 	// The creature that stands for the point of origin when the cover is measured.
 	// It is the caster when the area begins on the caster's square (nobody counts as
 	// cover there, and the caster has none from itself); a point elsewhere has no one
 	// on it, so the caster is a body like any other.
 	origin := playdb.Combatant{Kind: in.caster.Kind}
 	origin.GridCol, origin.GridRow = new(int32), new(int32)
-	*origin.GridCol, *origin.GridRow = clamp32(plan.origin.Col, 0, math.MaxInt32), clamp32(plan.origin.Row, 0, math.MaxInt32)
-	if plan.origin == from {
+	*origin.GridCol, *origin.GridRow = clamp32(p.origin.Col, 0, math.MaxInt32), clamp32(p.origin.Row, 0, math.MaxInt32)
+	if p.origin == from {
 		origin.ID = in.caster.ID
 	}
 	for _, o := range in.cs {
-		if o.Defeated || !placed(o) || !slices.Contains(plan.squares, squareOfCombatant(o)) {
+		if o.Defeated || !placed(o) || !slices.Contains(p.squares, squareOfCombatant(o)) {
 			continue
 		}
 		cp, err := in.cover(origin, o)
 		if err != nil {
-			return areaPlan{}, err
+			return err
 		}
 		if cp.real.total() {
 			// A straight line that crosses a wall means nothing to a spell that spreads
 			// around corners: the creature is inside, with no cover of the map's, and only
 			// the master's mark counts (SRD does not give a cover for a corner).
-			if !plan.corners || cp.real.source != playv1.CoverSource_COVER_SOURCE_MAP {
+			if !p.corners || cp.real.source != playv1.CoverSource_COVER_SOURCE_MAP {
 				continue
 			}
 			cp = markOnly(cp, o)
 		}
-		plan.targets = append(plan.targets, areaTarget{who: o, cp: cp})
+		p.targets = append(p.targets, areaTarget{who: o, cp: cp})
 	}
-	return plan, nil
+	return nil
 }
 
 // markOnly is the cover pair of a creature reached around a corner: no cover of the
@@ -315,51 +340,74 @@ func (s *Service) PreviewSpellArea(
 	if isTheatre(enc) {
 		return nil, badArea("a combat without a map has no area to place: the master decides who is inside")
 	}
+	sp, err := s.previewSpell(ctx, m, req.Msg, caster)
+	if err != nil {
+		return nil, err
+	}
+	plan, err := s.previewPlan(ctx, m, req.Msg, enc, d.cs, v, sight, caster, sp)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(previewResponse(plan, sp, caster, v)), nil
+}
+
+// previewSpell reads the spell of a preview at the slot the caster would use.
+func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *playv1.PreviewSpellAreaRequest, caster playdb.Combatant) (link.Spell, error) {
 	opts, err := s.optionsOf(ctx, nil, m.CampaignID, caster)
 	if err != nil {
-		return nil, s.dbError(ctx, "work out the turn options", err)
+		return link.Spell{}, s.dbError(ctx, "work out the turn options", err)
 	}
-	cast, err := castableOf(opts, spellKey)
+	cast, err := castableOf(opts, msg.GetSpellKey())
 	if err != nil {
-		return nil, err
+		return link.Spell{}, err
 	}
-	slot, err := slotOf(req.Msg.GetSlot(), cast)
+	slot, err := slotOf(msg.GetSlot(), cast)
 	if err != nil {
-		return nil, err
+		return link.Spell{}, err
 	}
 	slotLevel := int(cast.level)
 	if slot != nil {
 		slotLevel = int(slot.Level)
 	}
-	sp, err := s.roster.CombatSpell(ctx, nil, m.CampaignID, caster.CharacterID, spellKey, slotLevel, "")
+	sp, err := s.roster.CombatSpell(ctx, nil, m.CampaignID, caster.CharacterID, msg.GetSpellKey(), slotLevel, "")
 	if err != nil {
-		return nil, s.dbError(ctx, "read the spell", err)
+		return link.Spell{}, s.dbError(ctx, "read the spell", err)
 	}
-	choice, err := areaChoiceOf(req.Msg.GetOrigin(), req.Msg.GetDirection(), grid.Grid{Columns: int(enc.GridColumns), Rows: int(enc.GridRows)})
+	return sp, nil
+}
+
+// previewPlan places the area of a preview on the map as the viewer knows it.
+func (s *Service) previewPlan(
+	ctx context.Context, m authz.Membership, msg *playv1.PreviewSpellAreaRequest, enc playdb.Encounter, cs []playdb.Combatant,
+	v combatViewer, sight *fogSight, caster playdb.Combatant, sp link.Spell,
+) (areaPlan, error) {
+	choice, err := areaChoiceOf(msg.GetOrigin(), msg.GetDirection(), grid.Grid{Columns: int(enc.GridColumns), Rows: int(enc.GridRows)})
 	if err != nil {
-		return nil, err
+		return areaPlan{}, err
 	}
 	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, enc)
 	if err != nil {
-		return nil, s.dbError(ctx, "read the terrain", err)
+		return areaPlan{}, s.dbError(ctx, "read the terrain", err)
 	}
 	known, err := sight.knownTerrain(ctx, nil, v)
 	if err != nil {
-		return nil, s.dbError(ctx, "read the terrain the player knows", err)
+		return areaPlan{}, s.dbError(ctx, "read the terrain the player knows", err)
 	}
 	// The player is shown the map as they know it: a wall they have not seen is no
 	// edge of an area they are told about (RN-10).
 	terrain = planOn(v, terrain, known)
-	plan, err := planArea(areaInput{
-		v: v, terrain: terrain, cs: d.cs, caster: caster, sp: sp, choice: choice,
+	return planArea(areaInput{
+		v: v, terrain: terrain, cs: cs, caster: caster, sp: sp, choice: choice,
 		cover: func(origin, target playdb.Combatant) (coverPair, error) {
-			cv := coverAgainst(terrain, origin, target, coverPool(d.cs, v))
+			cv := coverAgainst(terrain, origin, target, coverPool(cs, v))
 			return coverPair{real: cv, shown: cv}, nil
 		},
 	})
-	if err != nil {
-		return nil, err
-	}
+}
+
+// previewResponse is what the viewer is told of the plan: where it landed and who is inside, leaving
+// out a creature they cannot see.
+func previewResponse(plan areaPlan, sp link.Spell, caster playdb.Combatant, v combatViewer) *playv1.PreviewSpellAreaResponse {
 	counts := coverCounts(sp)
 	out := &playv1.PreviewSpellAreaResponse{
 		Origin: originProto(plan.origin), Squares: squaresProto(plan.squares), CoverCounts: counts,
@@ -370,7 +418,7 @@ func (s *Service) PreviewSpellArea(
 			out.Targets = append(out.Targets, previewTarget(t, caster, plan.origin, counts, v))
 		}
 	}
-	return connect.NewResponse(out), nil
+	return out
 }
 
 // areaProto is where a cast's area landed, for the viewer: the master's is the real

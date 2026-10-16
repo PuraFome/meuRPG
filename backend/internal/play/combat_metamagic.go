@@ -95,6 +95,25 @@ func (s *Service) prepareMetamagic(
 	if err := rules.CheckMetamagicChoice(keys, sheet.Metamagic); err != nil {
 		return nil, metaRefusal("the Metamagic is not one the character knows, or it is more than one option (only Empowered Spell joins another)")
 	}
+	meta, err := s.takeMetamagic(ctx, c, m, v, sheet, choices, keys, spellKey, slotLevel, targs, cs)
+	if err != nil {
+		return nil, err
+	}
+	if err := meta.checkQuickened(v, caster, sp); err != nil {
+		return nil, err
+	}
+	if err := s.checkSorceryPoints(ctx, c, m, caster, meta); err != nil {
+		return nil, err
+	}
+	return meta, nil
+}
+
+// takeMetamagic checks each option against what the spell takes at the slot it is cast with, adds up
+// the sorcery points they cost and reads their parameters.
+func (s *Service) takeMetamagic(
+	ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, sheet link.Sheet,
+	choices []*playv1.MetamagicChoice, keys []string, spellKey string, slotLevel int, targs, cs []playdb.Combatant,
+) (*castMeta, error) {
 	content, err := s.roster.RulesContent(ctx, c.tx, m.CampaignID)
 	if err != nil {
 		return nil, err
@@ -114,26 +133,37 @@ func (s *Service) prepareMetamagic(
 			return nil, err
 		}
 	}
-	if meta.quickened && !v.master {
-		// The casting time becomes a bonus action: it must be free, and a bonus action
-		// spell leaves no other spell in the turn but a cantrip of 1 action (SRD 5.1).
-		if caster.BonusActionUsed {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
-		}
-		if combat.SpellLimited(combat.TurnState{SpellCast: caster.SpellCast, BonusSpellCast: caster.BonusSpellCast}, rules.EconomyBonusAction, sp.Level) {
-			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT,
-				"a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action")
-		}
+	return meta, nil
+}
+
+// checkQuickened checks the casting time Quickened Spell turns into a bonus action: it must be free, and
+// a bonus action spell leaves no other spell in the turn but a cantrip of 1 action (SRD 5.1). The master
+// is not held to it.
+func (m *castMeta) checkQuickened(v combatViewer, caster playdb.Combatant, sp link.Spell) error {
+	if !m.quickened || v.master {
+		return nil
 	}
+	if caster.BonusActionUsed {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
+	}
+	if combat.SpellLimited(combat.TurnState{SpellCast: caster.SpellCast, BonusSpellCast: caster.BonusSpellCast}, rules.EconomyBonusAction, sp.Level) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT,
+			"a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action")
+	}
+	return nil
+}
+
+// checkSorceryPoints checks the sorcerer has the points the options cost.
+func (s *Service) checkSorceryPoints(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, meta *castMeta) error {
 	vitals, err := s.vitals.GetVitalsTx(ctx, c.tx, m.CampaignID, caster.CharacterID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if left, _ := poolLeft(vitals, rules.SorceryPointsKey); int(left) < meta.cost {
-		return nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_ENOUGH_POINTS, "there are not enough sorcery points",
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_ENOUGH_POINTS, "there are not enough sorcery points",
 			func(b *playv1.ResourceBlocked) { b.Needed, b.Available = clamp32(meta.cost, 0, 1<<20), left })
 	}
-	return meta, nil
+	return nil
 }
 
 // take reads the parameters of one option: Twinned Spell's second target, the creatures
@@ -141,39 +171,9 @@ func (s *Service) prepareMetamagic(
 func (m *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewer, targs, cs []playdb.Combatant) error {
 	switch ch.GetKey() {
 	case rules.MetamagicTwinned:
-		if len(ch.GetTargetIds()) != 1 || len(targs) != 1 {
-			return metaRefusal("Twinned Spell takes the spell's target and one more")
-		}
-		id, err := parseCombatID(ch.GetTargetIds()[0], "combatant")
-		if err != nil {
-			return err
-		}
-		if id == targs[0].ID {
-			return metaRefusal("the second target must be another creature")
-		}
-		second, err := findCombatant(cs, id, v)
-		if err != nil {
-			return err
-		}
-		if second.Defeated {
-			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "a target is defeated")
-		}
-		m.second = second
+		return m.takeTwinned(ch, v, targs, cs)
 	case rules.MetamagicCareful:
-		ids := ch.GetCarefulIds()
-		if len(ids) < 1 || len(ids) > rules.CarefulCreatures(chaMod) {
-			return metaRefusal("Careful Spell protects from one creature up to the Charisma modifier")
-		}
-		for _, raw := range ids {
-			id, err := parseCombatID(raw, "combatant")
-			if err != nil {
-				return err
-			}
-			m.careful[id] = true
-		}
-		if len(m.careful) != len(ids) {
-			return metaRefusal("a creature is protected twice")
-		}
+		return m.takeCareful(ch, chaMod)
 	case rules.MetamagicHeightened:
 		id, err := parseCombatID(ch.GetHeightenedId(), "combatant")
 		if err != nil {
@@ -184,6 +184,48 @@ func (m *castMeta) take(ch *playv1.MetamagicChoice, chaMod int, v combatViewer, 
 		m.quickened = true
 	case rules.MetamagicDistant:
 		m.distant = true
+	}
+	return nil
+}
+
+// takeTwinned reads Twinned Spell's second target: another creature the caller sees, still standing.
+func (m *castMeta) takeTwinned(ch *playv1.MetamagicChoice, v combatViewer, targs, cs []playdb.Combatant) error {
+	if len(ch.GetTargetIds()) != 1 || len(targs) != 1 {
+		return metaRefusal("Twinned Spell takes the spell's target and one more")
+	}
+	id, err := parseCombatID(ch.GetTargetIds()[0], "combatant")
+	if err != nil {
+		return err
+	}
+	if id == targs[0].ID {
+		return metaRefusal("the second target must be another creature")
+	}
+	second, err := findCombatant(cs, id, v)
+	if err != nil {
+		return err
+	}
+	if second.Defeated {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED, "a target is defeated")
+	}
+	m.second = second
+	return nil
+}
+
+// takeCareful reads the creatures Careful Spell protects: one up to the Charisma modifier, each once.
+func (m *castMeta) takeCareful(ch *playv1.MetamagicChoice, chaMod int) error {
+	ids := ch.GetCarefulIds()
+	if len(ids) < 1 || len(ids) > rules.CarefulCreatures(chaMod) {
+		return metaRefusal("Careful Spell protects from one creature up to the Charisma modifier")
+	}
+	for _, raw := range ids {
+		id, err := parseCombatID(raw, "combatant")
+		if err != nil {
+			return err
+		}
+		m.careful[id] = true
+	}
+	if len(m.careful) != len(ids) {
+		return metaRefusal("a creature is protected twice")
 	}
 	return nil
 }
