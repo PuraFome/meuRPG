@@ -198,6 +198,7 @@ func (a *armed) coreCanonical(t *testing.T, payload string) string {
 			// The line of the change itself (the master ended an effect) names a row of the casting.
 			if _, listed := l["targets"]; !listed && l["change"] == "ended" && m["target_id"] != nil {
 				m["target_id"] = "<a row of the casting>"
+				delete(m, "secret") // read from that row too
 			}
 		}
 	}
@@ -300,7 +301,7 @@ func (a *armed) coreInTx(t *testing.T, encounterID string, fn func(ctx context.C
 func (a *armed) coreCharacterEffects(t *testing.T, characterID string) string {
 	t.Helper()
 	rows, err := a.h.pool.Query(t.Context(), `SELECT source_key, source_kind, duration_kind, COALESCE(seconds_left::STRING, '-'), modifiers::STRING, array_to_string(condition_keys, ','), player_visible
-		FROM character_effects WHERE character_id = $1 ORDER BY source_key, id`, characterID)
+		FROM character_effects WHERE character_id = $1 ORDER BY source_key, modifiers::STRING, id`, characterID)
 	if err != nil {
 		t.Fatalf("read the character's effects: %v", err)
 	}
