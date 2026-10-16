@@ -56,13 +56,28 @@ func limitNote(s string) string {
 	return s[:cut] + "\n(Lista de magias cortada: veja a ficha da criatura.)"
 }
 
+// spellcastingBlock is the note of one Spellcasting trait: its header and its
+// spell lists, or "" when the trait says nothing the note can use.
 func spellcastingBlock(content *rules.Content, t rules.CreatureAbility) string {
-	lines := strings.Split(t.Text, "\n")
-	var head []string
+	head := spellcastingHead(t)
+	var out []string
+	for _, line := range strings.Split(t.Text, "\n") {
+		if l, ok := spellListLine(content, line); ok {
+			out = append(out, l)
+		}
+	}
+	if len(out) == 0 && len(head) == 1 {
+		return ""
+	}
+	return strings.Join(head, ", ") + ".\n" + strings.Join(out, "\n")
+}
+
+// spellcastingHead is the note's header, in parts: the kind of spellcasting with
+// the caster's level, then the ability, the DC and the attack bonus it finds.
+func spellcastingHead(t rules.CreatureAbility) []string {
+	head := []string{"Conjuração"}
 	if t.Name == "Innate Spellcasting" {
-		head = append(head, "Conjuração inata")
-	} else {
-		head = append(head, "Conjuração")
+		head[0] = "Conjuração inata"
 	}
 	if m := spellLevelRe.FindStringSubmatch(t.Text); m != nil {
 		head[0] += " de " + m[1] + "º nível"
@@ -76,30 +91,29 @@ func spellcastingBlock(content *rules.Content, t rules.CreatureAbility) string {
 	if m := spellAttackRe.FindStringSubmatch(t.Text); m != nil {
 		head = append(head, "ataque de magia +"+m[1])
 	}
-	var out []string
-	for _, line := range lines {
-		label, list, ok := strings.Cut(strings.TrimPrefix(strings.TrimSpace(line), "- "), ": ")
-		if !ok {
-			continue
-		}
-		// An intro that ends with the first label ("... components. At will: a, b").
-		if i := strings.LastIndex(label, ". "); i >= 0 {
-			label = label[i+2:]
-		}
-		pt, ok := spellLabelPT(label)
-		if !ok {
-			continue
-		}
-		names := make([]string, 0, 4)
-		for _, n := range strings.Split(list, ", ") {
-			names = append(names, spellNamePT(content, n))
-		}
-		out = append(out, pt+": "+strings.Join(names, ", ")+".")
+	return head
+}
+
+// spellListLine translates a "label: spells" line of the trait; false for a line
+// that is no spell list, or whose label the note does not know.
+func spellListLine(content *rules.Content, line string) (string, bool) {
+	label, list, ok := strings.Cut(strings.TrimPrefix(strings.TrimSpace(line), "- "), ": ")
+	if !ok {
+		return "", false
 	}
-	if len(out) == 0 && len(head) == 1 {
-		return ""
+	// An intro that ends with the first label ("... components. At will: a, b").
+	if i := strings.LastIndex(label, ". "); i >= 0 {
+		label = label[i+2:]
 	}
-	return strings.Join(head, ", ") + ".\n" + strings.Join(out, "\n")
+	pt, ok := spellLabelPT(label)
+	if !ok {
+		return "", false
+	}
+	names := make([]string, 0, 4)
+	for _, n := range strings.Split(list, ", ") {
+		names = append(names, spellNamePT(content, n))
+	}
+	return pt + ": " + strings.Join(names, ", ") + ".", true
 }
 
 // spellLabelPT translates the label of a spell list line.
