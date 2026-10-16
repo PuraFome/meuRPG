@@ -271,7 +271,7 @@ describe('a table class, race and background in the editor (E10-02 state 5)', ()
       level: 1,
       background: 'background:cartografo@mesa',
     });
-    await cmp.submit();
+    await cmp.submitting.submit();
     const full = fake.created[0].full!;
     expect([full.race, full.className, full.background]).toEqual([
       'race:corujeiro@mesa',
@@ -333,9 +333,9 @@ describe('the "Outro" background (E10-02 state 5, question 82)', () => {
       customBackgroundFeatureText: 'Você sempre acha o ponto mais alto de um lugar.',
       customBackgroundEquipment: 'Uma luneta, um rolo de corda e 10 PO',
     });
-    cmp.toggleCustomBackgroundSkill('skill:perception');
-    cmp.toggleCustomBackgroundSkill('skill:survival');
-    cmp.setCustomProficiencies([
+    cmp.picks.toggleCustomBackgroundSkill('skill:perception');
+    cmp.picks.toggleCustomBackgroundSkill('skill:survival');
+    cmp.picks.setCustomProficiencies([
       'proficiency:cartographers-tools',
       'language:elvish',
       'language:dwarvish',
@@ -344,7 +344,7 @@ describe('the "Outro" background (E10-02 state 5, question 82)', () => {
     const text = (el.textContent ?? '').replace(/\s+/g, ' ');
     expect(text).toContain('Personalizar um antecedente');
     expect(text).toContain('2 de 2 escolhidas');
-    await cmp.submit();
+    await cmp.submitting.submit();
     expect(fake.created[0].full).toMatchObject({
       background: 'custom',
       customBackgroundName: 'Batedor de torre',
@@ -366,8 +366,8 @@ describe('the "Outro" background (E10-02 state 5, question 82)', () => {
       background: 'custom',
       customBackgroundName: 'Batedor',
     });
-    cmp.setCustomProficiencies(['language:elvish']);
-    await cmp.submit();
+    cmp.picks.setCustomProficiencies(['language:elvish']);
+    await cmp.submitting.submit();
     expect(fake.created[0].full).toMatchObject({
       customBackgroundProficiencies: ['language:elvish'],
       customBackgroundSkills: null,
@@ -402,9 +402,9 @@ describe('several classes at creation (E10-02 state 6)', () => {
     // The total is read, never typed: the first class's level and the second's.
     cmp.changeBlock(1, { classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa' });
     await settle(fixture);
-    expect(cmp.totalLevelValue()).toBe(4);
+    expect(cmp.views.totalLevelValue()).toBe(4);
     expect(el.querySelector('.xp-read__value')?.textContent?.trim()).toBe('4');
-    await cmp.submit();
+    await cmp.submitting.submit();
     expect(fake.created[0].full).toMatchObject({
       className: 'class:wizard',
       level: 3,
@@ -423,7 +423,7 @@ describe('several classes at creation (E10-02 state 6)', () => {
   it('keeps the subclass shut until the class level that chooses it', async () => {
     const { fixture, el, cmp } = await render();
     cmp.fullForm.patchValue({ className: 'class:wizard', level: 1 });
-    cmp.addClass();
+    cmp.picks.addClass();
     cmp.changeBlock(1, { classKey: 'class:fighter', level: 2 });
     await settle(fixture);
     const second = el.querySelectorAll('app-class-block')[1];
@@ -440,22 +440,22 @@ describe('several classes at creation (E10-02 state 6)', () => {
 
   it('removes a class and refuses a blank block or a total above 20 before saving', async () => {
     const { fixture, fake, el, cmp } = await maga();
-    cmp.addClass();
+    cmp.picks.addClass();
     await settle(fixture);
-    await cmp.submit();
+    await cmp.submitting.submit();
     expect(fake.created).toHaveLength(0);
-    expect(cmp.invalidSummary()).toContain('Classe 2');
+    expect(cmp.draft.invalidSummary()).toContain('Classe 2');
     cmp.changeBlock(1, { classKey: 'class:cleric', level: 19 });
     await settle(fixture);
-    expect(cmp.totalLevelProblem()).toBe('O nível total vai até 20.');
-    await cmp.submit();
+    expect(cmp.views.totalLevelProblem()).toBe('O nível total vai até 20.');
+    await cmp.submitting.submit();
     expect(fake.created).toHaveLength(0);
-    expect(cmp.invalidSummary()).toContain('o nível total vai até 20');
+    expect(cmp.draft.invalidSummary()).toContain('o nível total vai até 20');
     // "Remover" takes the block out, and the sheet is a one-class sheet again.
     button(el, 'Remover')!.click();
     await settle(fixture);
     expect(el.querySelectorAll('app-class-block').length).toBe(0);
-    await cmp.submit();
+    await cmp.submitting.submit();
     expect(fake.created).toHaveLength(1);
     expect(fake.created[0].full?.extraClasses).toEqual([]);
   });
@@ -463,19 +463,19 @@ describe('several classes at creation (E10-02 state 6)', () => {
   it('rolls the hit points level by level with the die of the class that gives it', async () => {
     const { fixture, cmp } = await maga();
     cmp.changeBlock(0, { level: 2 });
-    cmp.addClass();
+    cmp.picks.addClass();
     cmp.changeBlock(1, { classKey: 'class:cleric', level: 1 });
     cmp.fullForm.patchValue({ hitPointsMethod: 'rolled' });
     await settle(fixture);
     // Mago 2 (d6), Clérigo 1 (d8): the 2nd level of the wizard, then the cleric's first.
-    expect(cmp.levelDice()).toEqual([6, 8]);
-    expect(cmp.rollsNeeded()).toBe(2);
+    expect(cmp.views.levelDice()).toEqual([6, 8]);
+    expect(cmp.views.rollsNeeded()).toBe(2);
   });
 
   it('writes, rolls and checks each level of the hit points with the die of its own class', async () => {
     const { fixture, el, cmp } = await maga();
     cmp.changeBlock(0, { level: 1 });
-    cmp.addClass();
+    cmp.picks.addClass();
     cmp.changeBlock(1, { classKey: 'class:cleric', level: 2 });
     cmp.fullForm.patchValue({ hitPointsMethod: 'rolled' });
     await settle(fixture);
@@ -498,7 +498,7 @@ describe('the spell step per class (E10-11 state 4)', () => {
       level: 3,
       background: 'background:acolyte',
     });
-    r.cmp.addClass();
+    r.cmp.picks.addClass();
     r.cmp.changeBlock(1, { classKey: 'class:cleric', level: 1 });
     await settle(r.fixture);
     await openStep(r.fixture, 'Magias');
@@ -549,10 +549,10 @@ describe('the spell step per class (E10-11 state 4)', () => {
 
   it("sends only picks that are on a list of the sheet, from the table's spells too", async () => {
     const { fake, cmp } = await corvina();
-    cmp.toggleSpellKnown('spell:ink-blade@mesa');
-    cmp.toggleSpellPrepared('spell:bless');
-    cmp.toggleSpellPrepared('spell:animal-friendship');
-    await cmp.submit();
+    cmp.spellPicks.toggleKnown('spell:ink-blade@mesa');
+    cmp.spellPicks.togglePrepared('spell:bless');
+    cmp.spellPicks.togglePrepared('spell:animal-friendship');
+    await cmp.submitting.submit();
     expect(fake.created[0].full?.spellsKnown).toEqual(['spell:ink-blade@mesa']);
     expect(fake.created[0].full?.spellsPrepared).toEqual(['spell:bless']);
   });
@@ -676,7 +676,7 @@ describe('an edit of a sheet of several classes', () => {
     expect(granted.querySelector('mat-checkbox')).toBeNull();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (fixture.componentInstance as any).submit();
+    await (fixture.componentInstance as any).submitting.submit();
     expect(fake.updated[0].full?.extraClasses).toEqual([
       {
         classKey: 'class:cleric',
@@ -853,7 +853,7 @@ describe('the class blocks (10.12b fix round 1)', () => {
   it('does not offer a class another block already has, and says "Escolha a classe." for a blank one', async () => {
     const { fixture, el, cmp } = await render();
     cmp.fullForm.patchValue({ className: 'class:wizard', level: 3 });
-    cmp.addClass();
+    cmp.picks.addClass();
     await settle(fixture);
     const second = el.querySelectorAll('app-class-block')[1];
     second.querySelector<HTMLElement>('.mat-mdc-select-trigger')!.click();
@@ -865,7 +865,7 @@ describe('the class blocks (10.12b fix round 1)', () => {
     expect(options).toContain('Clérigo');
     document.body.click();
     // A save with the blank block touches it: the field's own error says so.
-    await cmp.submit();
+    await cmp.submitting.submit();
     await settle(fixture);
     expect(second.querySelector('mat-error')?.textContent).toContain('Escolha a classe.');
   });
@@ -879,9 +879,9 @@ describe('the class blocks (10.12b fix round 1)', () => {
       level: 2,
       background: 'background:acolyte',
     });
-    cmp.addClass();
+    cmp.picks.addClass();
     cmp.changeBlock(1, { classKey: 'class:cleric', level: 1 });
-    cmp.serverClassProblem.set(1);
+    cmp.saving.classProblem.set(1);
     await settle(fixture);
     await settle(fixture);
     expect(
@@ -920,7 +920,7 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
       (f) => (f.catalogOver = withDomain),
     );
     cmp.fullForm.patchValue({ className: 'class:wizard', level: 3 });
-    cmp.addClass();
+    cmp.picks.addClass();
     cmp.changeBlock(1, { classKey: 'class:cleric', level: 1, subclassKey: 'subclass:path@mesa' });
     await settle(fixture);
     await openStep(fixture, 'Magias');
@@ -947,7 +947,7 @@ describe('the always-prepared spells in a class section (E10-11 state 4)', () =>
     // Several classes, at creation: the cleric's section lists Bênção but not Detectar Magia (always prepared); the wizard's list still has it.
     const multi = await render({ id: 'camp-1' }, (f) => (f.catalogOver = withDomain));
     multi.cmp.fullForm.patchValue({ className: 'class:wizard', level: 3 });
-    multi.cmp.addClass();
+    multi.cmp.picks.addClass();
     multi.cmp.changeBlock(1, {
       classKey: 'class:cleric',
       level: 1,

@@ -45,14 +45,14 @@ import {
 } from './character-editor.types';
 import { ClassBlockFields } from './class-block/class-block';
 import { GrantedSpells } from './granted-spells/granted-spells';
-import type { CasterSection, ClassBlock } from './class-blocks';
+import type { ClassBlock } from './class-blocks';
 import { subclassWaits } from './catalog-views';
 import { CUTTING_WORDS_OPTIONS } from './editor-options';
 import { EditorLoader } from './editor-loader';
 import { type PageState, startingXp } from './editor-state';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
-import { EDITOR_STEP_LABELS, EditorStepKey } from './editor-labels';
+import { EDITOR_STEP_LABELS } from './editor-labels';
 import { createFullForm, patchFirstClass } from './full-form';
 import { EditorCatalog } from './editor-catalog';
 import { EditorDraft } from './editor-draft';
@@ -194,8 +194,8 @@ export class CharacterEditor {
   private readonly campaignIdSignal = signal('');
 
   /** What the person picked beside the form's controls (`EditorPicks`) and the spells of the "Magias" step. */
-  private readonly picks: EditorPicks = new EditorPicks(() => this.views.grantedSkills());
-  private readonly spellPicks: SpellPicks = new SpellPicks({
+  protected readonly picks: EditorPicks = new EditorPicks(() => this.views.grantedSkills());
+  protected readonly spellPicks: SpellPicks = new SpellPicks({
     sections: () => this.views.sections(),
   });
   /** What every plain class below reads: the state, the two forms and the picks. */
@@ -213,9 +213,9 @@ export class CharacterEditor {
     choices: () => this.server.choices.answer(),
   });
   /** The draft and what is wrong with it (`EditorDraft`). */
-  private readonly draft = new EditorDraft({ ...this.core, catalog: this.views });
+  protected readonly draft = new EditorDraft({ ...this.core, catalog: this.views });
   /** What the server says about the draft: its hit points and spell numbers, and its choices (`EditorServerDraft`). */
-  private readonly server = new EditorServerDraft({
+  protected readonly server = new EditorServerDraft({
     ...this.core,
     source: this.source,
     views: this.views,
@@ -223,7 +223,7 @@ export class CharacterEditor {
     build: () => this.draft.build(),
   });
   /** The save: the request, the navigation after it and what a refusal does (`SaveFlow`). */
-  private readonly saving: SaveFlow = new SaveFlow({
+  protected readonly saving: SaveFlow = new SaveFlow({
     source: this.source,
     navigate: (commands) => this.router.navigate(commands),
     full: () => this.draft.build(),
@@ -237,10 +237,8 @@ export class CharacterEditor {
     refreshCatalog: () => this.refreshCatalog(),
   });
   /** The class block a refusal points at (`full.classes[i]`), so the block says so. */
-  protected readonly serverClassProblem = this.saving.classProblem;
-  protected readonly saveState = this.saving.state;
   /** The save button and what it does before the request (`EditorSubmit`). */
-  private readonly submitting: EditorSubmit = new EditorSubmit({
+  protected readonly submitting: EditorSubmit = new EditorSubmit({
     ...this.core,
     draft: this.draft,
     views: this.views,
@@ -267,100 +265,12 @@ export class CharacterEditor {
     },
   });
   /** The "?" next to a spell (`EditorSpellDetails`). */
-  private readonly spellDetails = new EditorSpellDetails({
+  protected readonly spellDetails = new EditorSpellDetails({
     source: this.source,
     state: this.state,
     dialog: inject(MatDialog),
     bottomSheet: inject(MatBottomSheet),
   });
-  protected readonly describeSpell = (spell: SpellOptionVm) => this.spellDetails.describe(spell);
-  protected readonly submit = () => this.submitting.submit();
-  protected readonly switchedOff = (control: Parameters<EditorSubmit['switchedOff']>[0]) =>
-    this.submitting.switchedOff(control);
-
-  protected readonly customBackgroundSkills = this.picks.customBackgroundSkills;
-  protected readonly customBackgroundProficiencies = this.picks.customBackgroundProficiencies;
-  protected readonly expertiseSkills = this.picks.expertiseSkills;
-  protected readonly hitPointsRolls = this.picks.hitPointsRolls;
-  protected readonly featKeys = this.picks.featKeys;
-  protected readonly featSlots = this.picks.featSlots;
-  protected readonly otherGranted = this.picks.grantedSpells.asReadonly();
-  protected readonly hasCuttingWords = this.picks.hasCuttingWords;
-  protected readonly toggleSkill = this.picks.toggleSkill;
-  protected readonly toggleExpertise = this.picks.toggleExpertise;
-  protected readonly toggleCustomBackgroundSkill = this.picks.toggleCustomBackgroundSkill;
-  protected readonly setCustomProficiencies = this.picks.setCustomProficiencies;
-  protected readonly addClass = this.picks.addClass;
-  protected readonly removeClass = this.picks.removeClass;
-  protected readonly addFeat = this.picks.addFeat;
-  protected readonly removeFeat = this.picks.removeFeat;
-  protected readonly pickChoice = this.picks.pickChoice;
-  protected readonly editChoiceText = this.picks.editChoiceText;
-  protected readonly selectedCantrips = this.spellPicks.cantrips;
-  protected readonly selectedSpellsKnown = this.spellPicks.known;
-  protected readonly selectedSpellsPrepared = this.spellPicks.prepared;
-
-  protected readonly availableSubraces = this.views.availableSubraces;
-  protected readonly backgroundEquipment = this.views.backgroundEquipment;
-  protected readonly backgroundOptions = this.views.backgroundOptions;
-  protected readonly backgroundUnlisted = this.views.backgroundUnlisted;
-  protected readonly blocks = this.views.blocks;
-  protected readonly choiceBonusesHint = this.views.choiceBonusesHint;
-  protected readonly choicesSubtitle = this.views.choicesSubtitle;
-  protected readonly chosenSkills = this.views.chosenSkills;
-  protected readonly classOptions = this.views.classOptions;
-  protected readonly classUnlisted = this.views.classUnlisted;
-  protected readonly finalConstitution = this.views.finalConstitution;
-  protected readonly grantedSkills = this.views.grantedSkills;
-  protected readonly hitDie = this.views.hitDie;
-  protected readonly isCaster = this.views.isCaster;
-  protected readonly languageOptions = this.views.languageOptions;
-  protected readonly levelDice = this.views.levelDice;
-  protected readonly magiasLink = this.views.magiasLink;
-  protected readonly master = this.views.master;
-  protected readonly multiclass = this.views.multiclass;
-  protected readonly raceOptions = this.views.raceOptions;
-  protected readonly raceUnlisted = this.views.raceUnlisted;
-  protected readonly rollsNeeded = this.views.rollsNeeded;
-  protected readonly sectionViews = this.views.sectionViews;
-  protected readonly sections = this.views.sections;
-  protected readonly selectedBackground = this.views.selectedBackground;
-  protected readonly selectedBackgroundVm = this.views.selectedBackgroundVm;
-  protected readonly selectedClass = this.views.selectedClass;
-  protected readonly selectedClassKey = this.views.selectedClassKey;
-  protected readonly selectedHitPointsMethod = this.views.selectedHitPointsMethod;
-  protected readonly selectedRace = this.views.selectedRace;
-  protected readonly selectedRaceKey = this.views.selectedRaceKey;
-  protected readonly selectedSubclass = this.views.selectedSubclass;
-  protected readonly selectedSubrace = this.views.selectedSubrace;
-  protected readonly skillNote = this.views.skillNote;
-  protected readonly subclassHint = this.views.subclassHint;
-  protected readonly subclassOptions = this.views.subclassOptions;
-  protected readonly subraceOptions = this.views.subraceOptions;
-  protected readonly toolOptions = this.views.toolOptions;
-  protected readonly totalLevelProblem = this.views.totalLevelProblem;
-  protected readonly totalLevelValue = this.views.totalLevelValue;
-  protected readonly sectionHeading = (section: CasterSection) =>
-    this.views.sectionHeading(section);
-  protected readonly otherClassKeys = (index: number) => this.views.otherClassKeys(index);
-
-  protected readonly abilitiesIncomplete = this.draft.abilitiesIncomplete;
-  protected readonly abilitiesProblem = this.draft.abilitiesProblem;
-  protected readonly bonusesInUse = this.draft.bonusesInUse;
-  protected readonly invalidSummary = this.draft.invalidSummary;
-  /** A save was tried: the blocks that lack a class say so. */
-  protected readonly submitTried = this.draft.showErrors.asReadonly();
-  protected readonly stepHasError = (step: EditorStepKey) => this.draft.stepHasError(step);
-
-  protected readonly featIssues = this.server.featIssues;
-  protected readonly hitPointsFromEffects = this.server.hitPointsFromEffects;
-  protected readonly choicesAnswer = this.server.choicesAnswer;
-  protected readonly choiceGroupsOfDraft = this.server.choiceGroups;
-  protected readonly choicesStep = this.server.choicesStep;
-  protected readonly pendingSteps = this.server.pendingSteps;
-  protected readonly eagerSteps = this.server.eagerSteps;
-  protected readonly choicesBlocked = this.server.choicesBlocked;
-  protected readonly missingText = this.server.missingText;
 
   protected readonly cuttingWordsOptions = CUTTING_WORDS_OPTIONS;
   protected readonly isFullSheetKind = isFullSheetKind;
@@ -375,16 +285,6 @@ export class CharacterEditor {
       ? (this.abilityTable()?.hitPoints ?? 'player_chooses')
       : 'player_chooses';
   });
-
-  protected readonly experienceLabel = this.views.experienceLabel;
-  protected readonly backgroundSkillsCount = this.views.backgroundSkillsCount;
-  protected readonly backgroundProficienciesCount = this.views.backgroundProficienciesCount;
-  protected readonly lead = this.views.lead;
-  protected readonly pageTitle = this.views.pageTitle;
-  protected readonly createLabel = this.views.createLabel;
-  protected readonly reserved = this.views.reserved;
-  protected readonly cancelLink = this.views.cancelLink;
-  protected readonly actionsNote = this.views.actionsNote;
 
   /** What the page reads from the server to open, and the routes it drops the answers of (`EditorLoader`). */
   private readonly loader = new EditorLoader({
@@ -404,13 +304,13 @@ export class CharacterEditor {
     // Only a player's editor follows the hint: the master writes the content himself, and an open stream would keep the
     // page from ever being quiet (every NPC editor of a live campaign would hold one).
     this.watcher.whileLive(
-      () => (this.master() ? '' : this.campaignIdSignal()),
+      () => (this.views.master() ? '' : this.campaignIdSignal()),
       () => void this.refreshCatalog(),
     );
     // The subclass of a one-class sheet waits for the level the class chooses it at (as in a block), unless one is chosen.
     effect(() => {
       const waits = subclassWaits(
-        this.selectedClass(),
+        this.views.selectedClass(),
         this.views.selectedLevel(),
         this.views.selectedSubclassKey(),
       );
@@ -424,7 +324,7 @@ export class CharacterEditor {
     // A new player's sheet made above level 1 starts at its level's XP in a campaign that levels by XP, until the
     // person types in the field; a milestone campaign keeps the 0.
     effect(() => {
-      const xp = startingXp(this.state(), this.totalLevelValue());
+      const xp = startingXp(this.state(), this.views.totalLevelValue());
       const control = this.fullForm.controls.experiencePoints;
       if (xp !== null && !control.dirty) {
         untracked(() => control.setValue(xp));
@@ -472,9 +372,6 @@ export class CharacterEditor {
   }
 
   /** The search of an extra list ("0:patron"), and what it narrows. */
-  protected readonly spellFilterOf = (id: string) => this.spellPicks.filterOf(id);
-  protected readonly setExtraFilter = (id: string, value: string) =>
-    this.spellPicks.setFilter(id, value);
   protected readonly filterSpells = (spells: readonly SpellOptionVm[], id: string) =>
     filterByName(spells, this.spellPicks.filterOf(id));
   protected readonly setSpellFilter = (
@@ -482,11 +379,6 @@ export class CharacterEditor {
     list: 'cantrips' | 'known' | 'prepared',
     value: string,
   ) => this.spellPicks.setFilter(`${section}:${list}`, value);
-  /** "Escolher Rajada Mística agora": the spell becomes one of the sheet's cantrips (the "Magias" step), and the choices are read again. */
-  protected readonly addChoiceCantrip = (key: string) => this.spellPicks.addCantrip(key);
-  protected readonly toggleCantrip = (key: string) => this.spellPicks.toggleCantrip(key);
-  protected readonly toggleSpellKnown = (key: string) => this.spellPicks.toggleKnown(key);
-  protected readonly toggleSpellPrepared = (key: string) => this.spellPicks.togglePrepared(key);
 
   /** `content_changed` (RN-23): the lists are read again with this person's role; what was typed stays. Resolves when done. */
   private refreshCatalog(): Promise<void> {
