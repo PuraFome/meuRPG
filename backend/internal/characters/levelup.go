@@ -956,9 +956,7 @@ func applyLevelUp(full *charactersv1.FullSheet, after rules.Build, idx int) *cha
 		hp := &charactersv1.HitPoints{Method: charactersv1.HitPointsMethod_HIT_POINTS_METHOD_AVERAGE}
 		if after.HitPoints.Method == rules.HitPointsRolled {
 			hp.Method = charactersv1.HitPointsMethod_HIT_POINTS_METHOD_ROLLED
-			for _, r := range after.HitPoints.Rolls {
-				hp.Rolls = append(hp.Rolls, i32(r))
-			}
+			hp.Rolls = int32s(after.HitPoints.Rolls)
 		}
 		out.HitPoints = hp
 	}
@@ -1050,11 +1048,7 @@ func pactMagicToProto(p *rules.PactMagic) *rulesv1.PactMagic {
 
 // slotCountsToProto copies the slot count of each of the nine spell levels.
 func slotCountsToProto(s [9]int) []int32 {
-	out := make([]int32, len(s))
-	for i, n := range s {
-		out[i] = i32(n)
-	}
-	return out
+	return int32s(s[:])
 }
 
 // multiclassOfferToProto copies what a new class brings: the proficiencies it
@@ -1186,12 +1180,8 @@ func multiclassSummaryToProto(sum rules.MulticlassSummary, after rules.Derived) 
 		NewClassKey: sum.NewClass, CasterLevelBefore: i32(sum.CasterLevelBefore), CasterLevelAfter: i32(sum.CasterLevelAfter),
 		SlotsByTable: sum.SlotsByTable,
 	}
-	for _, n := range after.SpellSlots {
-		out.SlotsAfter = append(out.SlotsAfter, i32(n))
-	}
-	for _, h := range after.HitDice {
-		out.HitDiceAfter = append(out.HitDiceAfter, &rulesv1.HitDice{Faces: i32(h.Die), Count: i32(h.Count)})
-	}
+	out.SlotsAfter = int32s(after.SpellSlots[:])
+	out.HitDiceAfter = mapToProto(after.HitDice, derivedHitDiceToProto)
 	for _, p := range sum.ProficienciesGained {
 		out.ProficienciesGained = append(out.ProficienciesGained, &charactersv1.LevelUpNamedKey{Key: p.Key, NamePt: p.NamePT})
 	}
