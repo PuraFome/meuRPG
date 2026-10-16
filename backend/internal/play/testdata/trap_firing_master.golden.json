@@ -1,0 +1,369 @@
+{
+  "caught": [
+    {
+      "attacks": [
+        {
+          "mode": "ROLL_MODE_NORMAL",
+          "outcome": "ATTACK_OUTCOME_HIT",
+          "roll": {
+            "diceCount": 1,
+            "diceSides": 20,
+            "faces": [
+              14
+            ],
+            "modifier": 5,
+            "total": 19
+          },
+          "sources": [
+            {
+              "effect": "ROLL_MODE_ADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
+              "textPt": "Alvo nome: a 1,5 m: vantagem"
+            }
+          ],
+          "targetArmorClass": 16
+        },
+        {
+          "mode": "ROLL_MODE_ADVANTAGE",
+          "outcome": "ATTACK_OUTCOME_CRITICAL_HIT",
+          "roll": {
+            "diceCount": 2,
+            "diceSides": 20,
+            "faces": [
+              17,
+              3
+            ],
+            "modifier": 5,
+            "total": 22
+          },
+          "sources": [
+            {
+              "effect": "ROLL_MODE_ADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
+              "textPt": "Alvo nome: a 1,5 m: vantagem"
+            }
+          ],
+          "targetArmorClass": 16
+        },
+        {
+          "mode": "ROLL_MODE_DISADVANTAGE",
+          "outcome": "ATTACK_OUTCOME_MISS",
+          "roll": {
+            "countedIndex": 1,
+            "diceCount": 2,
+            "diceSides": 20,
+            "faces": [
+              12,
+              2
+            ],
+            "modifier": 5,
+            "total": 7
+          },
+          "targetArmorClass": 16
+        }
+      ],
+      "characterId": "char-toren",
+      "conditionKeys": [
+        "condition:prone"
+      ],
+      "damages": [
+        {
+          "amount": 7,
+          "critical": true,
+          "damageId": "p-1",
+          "damageTypeKey": "damage-type:piercing",
+          "damageTypePt": "perfurante",
+          "roll": {
+            "diceCount": 2,
+            "diceSides": 6,
+            "faces": [
+              3,
+              3
+            ],
+            "modifier": 7,
+            "total": 7
+          },
+          "status": "PENDING_DAMAGE_STATUS_ROLLED"
+        },
+        {
+          "amount": 2,
+          "damageId": "p-2",
+          "damageTypeKey": "damage-type:poison",
+          "damageTypePt": "veneno",
+          "half": true,
+          "roll": {
+            "diceCount": 1,
+            "diceSides": 8,
+            "faces": [
+              6
+            ],
+            "total": 6
+          },
+          "status": "PENDING_DAMAGE_STATUS_APPLIED"
+        },
+        {
+          "amount": 4,
+          "damageId": "p-3",
+          "damageTypeKey": "damage-type:fire",
+          "damageTypePt": "fogo",
+          "roll": {
+            "diceCount": 1,
+            "diceSides": 6,
+            "faces": [
+              4
+            ],
+            "total": 4
+          },
+          "status": "PENDING_DAMAGE_STATUS_DISCARDED"
+        }
+      ],
+      "save": {
+        "bonusKnown": true,
+        "dc": 12,
+        "mode": "ROLL_MODE_NORMAL",
+        "outcome": "SAVE_OUTCOME_SAVED",
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            9
+          ],
+          "modifier": 3,
+          "total": 12
+        },
+        "sources": [
+          {
+            "effect": "ROLL_MODE_ADVANTAGE",
+            "kind": "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
+            "textPt": "Alvo nome: a 1,5 m: vantagem"
+          },
+          {
+            "effect": "ROLL_MODE_DISADVANTAGE",
+            "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
+            "textPt": "Efeito ativo: vantagem no teste de resistência"
+          }
+        ]
+      },
+      "saves": [
+        {
+          "bonusKnown": true,
+          "dc": 12,
+          "mode": "ROLL_MODE_NORMAL",
+          "outcome": "SAVE_OUTCOME_SAVED",
+          "roll": {
+            "diceCount": 1,
+            "diceSides": 20,
+            "faces": [
+              9
+            ],
+            "modifier": 3,
+            "total": 12
+          },
+          "sources": [
+            {
+              "effect": "ROLL_MODE_ADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
+              "textPt": "Alvo nome: a 1,5 m: vantagem"
+            },
+            {
+              "effect": "ROLL_MODE_DISADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
+              "textPt": "Efeito ativo: vantagem no teste de resistência"
+            }
+          ]
+        },
+        {
+          "bonusKnown": true,
+          "dc": 15,
+          "mode": "ROLL_MODE_ADVANTAGE",
+          "outcome": "SAVE_OUTCOME_FAILED",
+          "roll": {
+            "countedIndex": 1,
+            "diceCount": 2,
+            "diceSides": 20,
+            "faces": [
+              4,
+              13
+            ],
+            "modifier": 3,
+            "rerolled": [
+              {
+                "from": 1,
+                "sourceKey": "trait:lucky",
+                "to": 13
+              }
+            ],
+            "total": 16
+          },
+          "sources": [
+            {
+              "effect": "ROLL_MODE_ADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
+              "textPt": "Alvo nome: a 1,5 m: vantagem"
+            },
+            {
+              "effect": "ROLL_MODE_DISADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
+              "textPt": "Efeito ativo: vantagem no teste de resistência"
+            },
+            {
+              "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_DIE",
+              "textPt": "nome:effect:bless +1d4: 2"
+            }
+          ]
+        },
+        {
+          "autoFailed": true,
+          "bonusKnown": true,
+          "dc": 15,
+          "mode": "ROLL_MODE_NORMAL",
+          "outcome": "SAVE_OUTCOME_FAILED",
+          "sources": [
+            {
+              "effect": "ROLL_MODE_ADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
+              "textPt": "Alvo nome: a 1,5 m: vantagem"
+            },
+            {
+              "effect": "ROLL_MODE_DISADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
+              "textPt": "Efeito ativo: vantagem no teste de resistência"
+            }
+          ]
+        },
+        {
+          "dc": 14,
+          "mode": "ROLL_MODE_NORMAL",
+          "outcome": "SAVE_OUTCOME_FAILED",
+          "roll": {
+            "diceCount": 1,
+            "diceSides": 20,
+            "faces": [
+              6
+            ],
+            "total": 6
+          },
+          "sources": [
+            {
+              "effect": "ROLL_MODE_ADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_PRONE_TARGET",
+              "textPt": "Alvo nome: a 1,5 m: vantagem"
+            },
+            {
+              "effect": "ROLL_MODE_DISADVANTAGE",
+              "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
+              "textPt": "Efeito ativo: vantagem no teste de resistência"
+            }
+          ]
+        }
+      ],
+      "targetId": "c-toren",
+      "targetLabel": "Toren"
+    },
+    {
+      "attacks": [
+        {
+          "mode": "ROLL_MODE_NORMAL",
+          "outcome": "ATTACK_OUTCOME_HIT",
+          "roll": {
+            "diceCount": 1,
+            "diceSides": 20,
+            "faces": [
+              11
+            ],
+            "modifier": 5,
+            "total": 16
+          },
+          "targetArmorClass": 15
+        }
+      ],
+      "characterId": "char-bri",
+      "conditionKeys": [
+        "condition:poisoned",
+        "condition:prone"
+      ],
+      "damages": [
+        {
+          "amount": 5,
+          "damageId": "p-4",
+          "damageTypeKey": "damage-type:piercing",
+          "damageTypePt": "perfurante",
+          "roll": {
+            "diceCount": 1,
+            "diceSides": 6,
+            "faces": [
+              5
+            ],
+            "total": 5
+          },
+          "status": "PENDING_DAMAGE_STATUS_APPLIED",
+          "targetDefeated": true
+        },
+        {
+          "amount": 2,
+          "damageId": "p-5",
+          "damageTypeKey": "damage-type:piercing",
+          "damageTypePt": "perfurante",
+          "roll": {
+            "total": 2
+          },
+          "status": "PENDING_DAMAGE_STATUS_APPLIED"
+        }
+      ],
+      "save": {
+        "bonusKnown": true,
+        "dc": 12,
+        "mode": "ROLL_MODE_NORMAL",
+        "outcome": "SAVE_OUTCOME_FAILED",
+        "roll": {
+          "diceCount": 1,
+          "diceSides": 20,
+          "faces": [
+            5
+          ],
+          "modifier": 2,
+          "total": 7
+        }
+      },
+      "saves": [
+        {
+          "bonusKnown": true,
+          "dc": 12,
+          "mode": "ROLL_MODE_NORMAL",
+          "outcome": "SAVE_OUTCOME_FAILED",
+          "roll": {
+            "diceCount": 1,
+            "diceSides": 20,
+            "faces": [
+              5
+            ],
+            "modifier": 2,
+            "total": 7
+          }
+        }
+      ],
+      "targetId": "c-goblin",
+      "targetLabel": "Goblin"
+    },
+    {
+      "characterId": "char-secret",
+      "damages": [
+        {
+          "amount": 9,
+          "damageId": "p-6",
+          "damageTypeKey": "damage-type:fire",
+          "damageTypePt": "fogo",
+          "roll": {
+            "total": 9
+          },
+          "status": "PENDING_DAMAGE_STATUS_APPLIED"
+        }
+      ],
+      "targetId": "c-secret",
+      "targetLabel": "Segredo"
+    }
+  ],
+  "id": "firing-1",
+  "name": "Fosso",
+  "pointId": "point-1"
+}

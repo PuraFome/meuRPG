@@ -2,6 +2,7 @@ import { Component, ElementRef, afterNextRender, input, output, viewChild } from
 import { MatIconModule } from '@angular/material/icon';
 
 import { PairFoot } from '../../../shared/pair-foot/pair-foot';
+import { RelayEvents } from '../../../shared/relay-events/relay-events';
 
 /**
  * "Arquivar Corujeiro?" in place (E10-01 state 8): the question opens in the editor's header, outlined in the accent, the focus
@@ -10,9 +11,9 @@ import { PairFoot } from '../../../shared/pair-foot/pair-foot';
  */
 @Component({
   selector: 'app-archive-question',
-  imports: [MatIconModule, PairFoot],
+  imports: [RelayEvents, MatIconModule, PairFoot],
   template: `
-    <section class="ask" aria-labelledby="ask-t" (keydown.escape)="cancel.emit()">
+    <section class="ask" aria-labelledby="ask-t" appRelayEvents (relayKeydown)="$event.key === 'Escape' && cancel.emit()">
       <h2 class="ask__title" id="ask-t" tabindex="-1" #title>Arquivar {{ name() }}?</h2>
       <div class="mr-notice mr-notice--warning">
         <mat-icon aria-hidden="true">warning</mat-icon>

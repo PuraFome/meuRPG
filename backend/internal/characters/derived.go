@@ -34,9 +34,52 @@ var attackKindToProto = map[string]rulesv1.AttackKind{
 	"spell":  rulesv1.AttackKind_ATTACK_KIND_SPELL,
 }
 
+// mapToProto converts each entry of a list in order; an empty list stays nil, as the
+// appends it replaces left it.
+func mapToProto[In, Out any](in []In, convert func(In) Out) []Out {
+	var out []Out
+	for _, v := range in {
+		out = append(out, convert(v))
+	}
+	return out
+}
+
 // derivedToProto turns rules.Derived into the DerivedSheet the app shows.
 func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
-	out := &rulesv1.DerivedSheet{
+	out := derivedNumbersToProto(d)
+	out.Classes = mapToProto(d.Classes, derivedClassToProto)
+	out.Abilities = mapToProto(d.Abilities, derivedAbilityToProto)
+	out.SavingThrows = mapToProto(d.SavingThrows, savingThrowToProto)
+	out.Skills = mapToProto(d.Skills, derivedSkillToProto)
+	out.HitDice = mapToProto(d.HitDice, derivedHitDiceToProto)
+	out.Senses = mapToProto(d.Senses, senseToProto)
+	out.Spellcasting = mapToProto(d.Spellcasting, spellcastingToProto)
+	out.SpellSlots = spellSlotsToProto(d.SpellSlots)
+	if d.PactMagic != nil {
+		out.PactMagic = &rulesv1.PactMagic{SlotLevel: i32(d.PactMagic.SlotLevel), Count: i32(d.PactMagic.Slots)}
+	}
+	out.Spells = mapToProto(d.Spells, characterSpellToProto)
+	out.Attacks = mapToProto(d.Attacks, attackToProto)
+	out.Resources = mapToProto(d.Resources, resourceToProto)
+	out.SaveActions = mapToProto(d.SaveActions, saveActionToProto)
+	out.Actions = mapToProto(d.Actions, actionToProto)
+	out.StandardActions = mapToProto(d.StandardActions, actionToProto)
+	out.Features = mapToProto(d.Features, featureToProto)
+	out.BreathWeapon = breathWeaponToProto(d.BreathWeapon)
+	out.Resistances = mapToProto(d.Resistances, resistanceToProto)
+	out.Languages = mapToProto(d.Languages, func(l rules.NamedKey) string { return l.NamePT })
+	out.Proficiencies = proficienciesToProto(d.Proficiencies)
+	out.Hints = mapToProto(d.Hints, func(h rules.Hint) *rulesv1.Hint { return &rulesv1.Hint{SourceKey: h.Source, Text: h.TextPT} })
+	out.Issues = mapToProto(d.Issues, func(is rules.Issue) *rulesv1.Issue {
+		return &rulesv1.Issue{Code: is.Code, Field: is.Field, Message: is.Message}
+	})
+	return out
+}
+
+// derivedNumbersToProto is the part of the DerivedSheet that is not a list: the names,
+// the numbers and the speeds. The hit points are at least 1.
+func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
+	return &rulesv1.DerivedSheet{
 		ContentVersion:        d.ContentVersion,
 		RaceNamePt:            d.RaceNamePT,
 		SubraceNamePt:         d.SubraceNamePT,
@@ -59,143 +102,133 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		SpeedClimbFt:          i32(d.SpeedClimbFt),
 		SpeedBurrowFt:         i32(d.SpeedBurrowFt),
 		Hover:                 d.Hover,
-		Proficiencies:         &rulesv1.Proficiencies{},
 	}
-	for _, c := range d.Classes {
-		out.Classes = append(out.Classes, &rulesv1.DerivedClass{
-			ClassKey:       c.ClassKey,
-			NamePt:         c.NamePT,
-			Level:          i32(c.Level),
-			SubclassNamePt: c.SubclassNamePT,
-		})
+}
+
+func derivedClassToProto(c rules.DerivedClass) *rulesv1.DerivedClass {
+	return &rulesv1.DerivedClass{ClassKey: c.ClassKey, NamePt: c.NamePT, Level: i32(c.Level), SubclassNamePt: c.SubclassNamePT}
+}
+
+func derivedAbilityToProto(a rules.AbilityScore) *rulesv1.DerivedAbility {
+	return &rulesv1.DerivedAbility{
+		Ability: abilityToProto[a.Ability], NamePt: a.NamePT, Base: i32(a.Base), Bonus: i32(a.Bonus), Score: i32(a.Score), Modifier: i32(a.Modifier),
 	}
-	for _, a := range d.Abilities {
-		out.Abilities = append(out.Abilities, &rulesv1.DerivedAbility{
-			Ability:  abilityToProto[a.Ability],
-			NamePt:   a.NamePT,
-			Base:     i32(a.Base),
-			Bonus:    i32(a.Bonus),
-			Score:    i32(a.Score),
-			Modifier: i32(a.Modifier),
-		})
+}
+
+func savingThrowToProto(st rules.SavingThrow) *rulesv1.SavingThrow {
+	return &rulesv1.SavingThrow{Ability: abilityToProto[st.Ability], NamePt: st.NamePT, Proficient: st.Proficient, Bonus: i32(st.Bonus)}
+}
+
+func derivedSkillToProto(sk rules.Skill) *rulesv1.DerivedSkill {
+	return &rulesv1.DerivedSkill{
+		Key: sk.Key, NamePt: sk.NamePT, Ability: abilityToProto[sk.Ability], Proficiency: proficiencyToProto[sk.Proficiency], Bonus: i32(sk.Bonus),
 	}
-	for _, st := range d.SavingThrows {
-		out.SavingThrows = append(out.SavingThrows, &rulesv1.SavingThrow{
-			Ability:    abilityToProto[st.Ability],
-			NamePt:     st.NamePT,
-			Proficient: st.Proficient,
-			Bonus:      i32(st.Bonus),
-		})
+}
+
+func derivedHitDiceToProto(hd rules.HitDice) *rulesv1.HitDice {
+	return &rulesv1.HitDice{Faces: i32(hd.Die), Count: i32(hd.Count)}
+}
+
+// senseToProto names the sense by what grants it: the proto's key is the source, as the
+// Hint's source_key.
+func senseToProto(se rules.Sense) *rulesv1.Sense {
+	return &rulesv1.Sense{Key: se.Source, NamePt: se.NamePT, RangeFt: i32(se.RangeFt), Sense: se.Key}
+}
+
+// spellcastingToProto sets only the limit that applies to the class (prepared or
+// known); the other stays 0.
+func spellcastingToProto(sc rules.Spellcasting) *rulesv1.Spellcasting {
+	p := &rulesv1.Spellcasting{
+		ClassKey:      sc.Class,
+		ClassNamePt:   sc.ClassNamePT,
+		Ability:       abilityToProto[sc.Ability],
+		SaveDc:        i32(sc.SaveDC),
+		AttackBonus:   i32(sc.AttackBonus),
+		CantripsKnown: i32(sc.CantripsKnown),
+		Spellbook:     sc.Spellbook,
 	}
-	for _, sk := range d.Skills {
-		out.Skills = append(out.Skills, &rulesv1.DerivedSkill{
-			Key:         sk.Key,
-			NamePt:      sk.NamePT,
-			Ability:     abilityToProto[sk.Ability],
-			Proficiency: proficiencyToProto[sk.Proficiency],
-			Bonus:       i32(sk.Bonus),
-		})
+	if sc.PreparesSpells {
+		p.PreparedMax = i32(sc.PreparedMax)
+	} else {
+		p.SpellsKnown = i32(sc.SpellsKnownMax)
 	}
-	for _, hd := range d.HitDice {
-		out.HitDice = append(out.HitDice, &rulesv1.HitDice{Faces: i32(hd.Die), Count: i32(hd.Count)})
-	}
-	for _, se := range d.Senses {
-		// The proto's key is what grants the sense, as the Hint's source_key.
-		out.Senses = append(out.Senses, &rulesv1.Sense{Key: se.Source, NamePt: se.NamePT, RangeFt: i32(se.RangeFt), Sense: se.Key})
-	}
-	for _, sc := range d.Spellcasting {
-		p := &rulesv1.Spellcasting{
-			ClassKey:      sc.Class,
-			ClassNamePt:   sc.ClassNamePT,
-			Ability:       abilityToProto[sc.Ability],
-			SaveDc:        i32(sc.SaveDC),
-			AttackBonus:   i32(sc.AttackBonus),
-			CantripsKnown: i32(sc.CantripsKnown),
-			Spellbook:     sc.Spellbook,
-		}
-		// Only one of the two limits applies, and the other stays 0.
-		if sc.PreparesSpells {
-			p.PreparedMax = i32(sc.PreparedMax)
-		} else {
-			p.SpellsKnown = i32(sc.SpellsKnownMax)
-		}
-		out.Spellcasting = append(out.Spellcasting, p)
-	}
-	for i, n := range d.SpellSlots {
+	return p
+}
+
+// spellSlotsToProto lists the circles that have slots; index 0 of the engine's list is
+// the 1st circle.
+func spellSlotsToProto(slots []int) []*rulesv1.SpellSlots {
+	var out []*rulesv1.SpellSlots
+	for i, n := range slots {
 		if n > 0 {
-			out.SpellSlots = append(out.SpellSlots, &rulesv1.SpellSlots{Level: i32(i + 1), Count: i32(n)})
+			out = append(out, &rulesv1.SpellSlots{Level: i32(i + 1), Count: i32(n)})
 		}
 	}
-	if d.PactMagic != nil {
-		out.PactMagic = &rulesv1.PactMagic{SlotLevel: i32(d.PactMagic.SlotLevel), Count: i32(d.PactMagic.Slots)}
+	return out
+}
+
+func characterSpellToProto(sp rules.CharacterSpell) *rulesv1.CharacterSpell {
+	return &rulesv1.CharacterSpell{Spell: spellToProto(sp.Spell), Prepared: sp.Prepared}
+}
+
+func resourceToProto(r rules.Resource) *rulesv1.Resource {
+	return &rulesv1.Resource{Key: r.Key, NamePt: r.NamePT, Max: i32(r.Max), Recharge: rechargeToProto[r.Recharge], SourceKey: r.Source}
+}
+
+func saveActionToProto(a rules.SaveAction) *rulesv1.SaveAction {
+	return &rulesv1.SaveAction{
+		Key: a.Key, Name: a.Name, Ability: abilityToProto[a.Ability], Dc: i32(a.DC),
+		OnSuccess: saveSuccessToProto[a.OnSuccess], Usage: a.Usage, Text: a.Text,
 	}
-	for _, sp := range d.Spells {
-		out.Spells = append(out.Spells, &rulesv1.CharacterSpell{Spell: spellToProto(sp.Spell), Prepared: sp.Prepared})
+}
+
+// featureToProto joins the paragraphs of the descriptions with a blank line.
+func featureToProto(f rules.Feature) *rulesv1.Feature {
+	return &rulesv1.Feature{
+		Key:                  f.Key,
+		Name:                 f.Name,
+		NamePt:               f.NamePT,
+		SourcePt:             f.SourcePT,
+		Description:          strings.Join(f.Description, "\n\n"),
+		SummaryPt:            f.SummaryPT,
+		DescriptionPt:        strings.Join(f.DescriptionPT, "\n\n"),
+		DescriptionPtMissing: f.DescriptionPTMissing,
+		DescriptionPtOnly:    f.DescriptionPTOnly,
 	}
-	for _, a := range d.Attacks {
-		out.Attacks = append(out.Attacks, attackToProto(a))
+}
+
+// breathWeaponToProto is nil for a sheet without a breath weapon.
+func breathWeaponToProto(bw *rules.BreathWeapon) *rulesv1.BreathWeapon {
+	if bw == nil {
+		return nil
 	}
-	for _, r := range d.Resources {
-		out.Resources = append(out.Resources, &rulesv1.Resource{
-			Key: r.Key, NamePt: r.NamePT, Max: i32(r.Max), Recharge: rechargeToProto[r.Recharge], SourceKey: r.Source,
-		})
+	return &rulesv1.BreathWeapon{
+		AncestryKey: bw.AncestryKey, DamageType: bw.DamageType, DamageTypeNamePt: bw.DamageTypePT, Dice: bw.Dice,
+		Shape: breathShapeToProto[bw.Shape], SizeFt: i32(bw.SizeFt), WidthFt: i32(bw.WidthFt),
+		SaveAbility: abilityToProto[bw.SaveAbility], Dc: i32(bw.DC), TextPt: bw.Text,
 	}
-	for _, a := range d.SaveActions {
-		out.SaveActions = append(out.SaveActions, &rulesv1.SaveAction{
-			Key: a.Key, Name: a.Name, Ability: abilityToProto[a.Ability], Dc: i32(a.DC),
-			OnSuccess: saveSuccessToProto[a.OnSuccess], Usage: a.Usage, Text: a.Text,
-		})
-	}
-	for _, a := range d.Actions {
-		out.Actions = append(out.Actions, actionToProto(a))
-	}
-	for _, a := range d.StandardActions {
-		out.StandardActions = append(out.StandardActions, actionToProto(a))
-	}
-	for _, f := range d.Features {
-		out.Features = append(out.Features, &rulesv1.Feature{
-			Key:                  f.Key,
-			Name:                 f.Name,
-			NamePt:               f.NamePT,
-			SourcePt:             f.SourcePT,
-			Description:          strings.Join(f.Description, "\n\n"),
-			SummaryPt:            f.SummaryPT,
-			DescriptionPt:        strings.Join(f.DescriptionPT, "\n\n"),
-			DescriptionPtMissing: f.DescriptionPTMissing,
-			DescriptionPtOnly:    f.DescriptionPTOnly,
-		})
-	}
-	if bw := d.BreathWeapon; bw != nil {
-		out.BreathWeapon = &rulesv1.BreathWeapon{
-			AncestryKey: bw.AncestryKey, DamageType: bw.DamageType, DamageTypeNamePt: bw.DamageTypePT, Dice: bw.Dice,
-			Shape: breathShapeToProto[bw.Shape], SizeFt: i32(bw.SizeFt), WidthFt: i32(bw.WidthFt),
-			SaveAbility: abilityToProto[bw.SaveAbility], Dc: i32(bw.DC), TextPt: bw.Text,
-		}
-	}
-	for _, r := range d.Resistances {
-		out.Resistances = append(out.Resistances, &rulesv1.Resistance{DamageType: r.DamageType, DamageTypeNamePt: r.DamageTypePT, SourceKey: r.SourceKey})
-	}
-	for _, l := range d.Languages {
-		out.Languages = append(out.Languages, l.NamePT)
-	}
-	for _, p := range d.Proficiencies {
+}
+
+func resistanceToProto(r rules.ChoiceResistance) *rulesv1.Resistance {
+	return &rulesv1.Resistance{DamageType: r.DamageType, DamageTypeNamePt: r.DamageTypePT, SourceKey: r.SourceKey}
+}
+
+// proficienciesToProto sorts the proficiencies by kind; the message is there even when
+// it is empty.
+func proficienciesToProto(list []rules.Proficiency) *rulesv1.Proficiencies {
+	out := &rulesv1.Proficiencies{}
+	for _, p := range list {
 		switch p.Kind {
 		case "armor":
-			out.Proficiencies.Armor = append(out.Proficiencies.Armor, p.NamePT)
+			out.Armor = append(out.Armor, p.NamePT)
 		case "weapon":
-			out.Proficiencies.Weapons = append(out.Proficiencies.Weapons, p.NamePT)
+			out.Weapons = append(out.Weapons, p.NamePT)
 		case "tool", "other":
 			// The SRD files the thieves' tools, the herbalism kit, the navigator's tools, the
 			// poisoner's kit and the vehicles under "other": they are tools too (saving
 			// throws and skills never get here, and are shown elsewhere on the sheet).
-			out.Proficiencies.Tools = append(out.Proficiencies.Tools, p.NamePT)
+			out.Tools = append(out.Tools, p.NamePT)
 		}
-	}
-	for _, h := range d.Hints {
-		out.Hints = append(out.Hints, &rulesv1.Hint{SourceKey: h.Source, Text: h.TextPT})
-	}
-	for _, is := range d.Issues {
-		out.Issues = append(out.Issues, &rulesv1.Issue{Code: is.Code, Field: is.Field, Message: is.Message})
 	}
 	return out
 }
@@ -313,98 +346,112 @@ var (
 
 // catalogToProto turns the rules catalog into ListContent's answer.
 func catalogToProto(c rules.Catalog) *rulesv1.Content {
-	out := &rulesv1.Content{ContentVersion: c.ContentVersion, Attribution: c.Attribution}
-	for _, a := range c.Abilities {
-		out.Abilities = append(out.Abilities, &rulesv1.AbilityInfo{
-			Ability: abilityToProto[a.Ability], Name: a.Name, NamePt: a.NamePT, AbbreviationPt: a.AbbreviationPT,
-		})
+	return &rulesv1.Content{
+		ContentVersion:   c.ContentVersion,
+		Attribution:      c.Attribution,
+		Abilities:        mapToProto(c.Abilities, abilityInfoToProto),
+		Races:            mapToProto(c.Races, raceToProto),
+		Subraces:         mapToProto(c.Subraces, subraceToProto),
+		Classes:          mapToProto(c.Classes, classToProto),
+		Subclasses:       mapToProto(c.Subclasses, subclassToProto),
+		Backgrounds:      mapToProto(c.Backgrounds, backgroundToProto),
+		Skills:           mapToProto(c.Skills, skillToProto),
+		Armor:            mapToProto(c.Armor, armorToProto),
+		Weapons:          mapToProto(c.Weapons, weaponToProto),
+		Spells:           mapToProto(c.Spells, spellToProto),
+		ChallengeRatings: mapToProto(c.ChallengeRatings, challengeRatingToProto),
+		LevelXp:          int32s(c.LevelXP),
+		Languages:        mapToProto(c.Languages, namedKeyToProto),
+		Proficiencies:    mapToProto(c.Proficiencies, namedKeyToProto),
+		DamageTypes:      mapToProto(c.DamageTypes, namedKeyToProto),
 	}
-	for _, r := range c.Races {
-		out.Races = append(out.Races, &rulesv1.Race{
-			Key: r.Key, Name: r.Name, NamePt: r.NamePT, SpeedFt: i32(r.SpeedFt), AbilityBonuses: abilityScores(r.AbilityBonuses),
-			Archived: r.Archived, Off: r.Off, ChoiceBonuses: int32s(r.ChoiceBonuses), SkillKeys: r.SkillProficiencies,
-		})
+}
+
+func abilityInfoToProto(a rules.AbilityEntry) *rulesv1.AbilityInfo {
+	return &rulesv1.AbilityInfo{Ability: abilityToProto[a.Ability], Name: a.Name, NamePt: a.NamePT, AbbreviationPt: a.AbbreviationPT}
+}
+
+func raceToProto(r rules.RaceEntry) *rulesv1.Race {
+	return &rulesv1.Race{
+		Key: r.Key, Name: r.Name, NamePt: r.NamePT, SpeedFt: i32(r.SpeedFt), AbilityBonuses: abilityScores(r.AbilityBonuses),
+		Archived: r.Archived, Off: r.Off, ChoiceBonuses: int32s(r.ChoiceBonuses), SkillKeys: r.SkillProficiencies,
 	}
-	for _, s := range c.Subraces {
-		out.Subraces = append(out.Subraces, &rulesv1.Subrace{
-			Key: s.Key, Name: s.Name, NamePt: s.NamePT, RaceKey: s.Race, AbilityBonuses: abilityScores(s.AbilityBonuses),
-			Archived: s.Archived, Off: s.Off, SkillKeys: s.SkillProficiencies,
-		})
+}
+
+func subraceToProto(s rules.SubraceEntry) *rulesv1.Subrace {
+	return &rulesv1.Subrace{
+		Key: s.Key, Name: s.Name, NamePt: s.NamePT, RaceKey: s.Race, AbilityBonuses: abilityScores(s.AbilityBonuses),
+		Archived: s.Archived, Off: s.Off, SkillKeys: s.SkillProficiencies,
 	}
-	for _, cl := range c.Classes {
-		p := &rulesv1.CharacterClass{
-			Key:           cl.Key,
-			Name:          cl.Name,
-			NamePt:        cl.NamePT,
-			HitDie:        i32(cl.HitDie),
-			SkillChoice:   &rulesv1.SkillChoice{Count: i32(cl.SkillChoices), SkillKeys: cl.SkillOptions},
-			SubclassLevel: i32(cl.SubclassLevel),
-			Archived:      cl.Archived,
-			Off:           cl.Off,
+}
+
+func classToProto(cl rules.ClassEntry) *rulesv1.CharacterClass {
+	return &rulesv1.CharacterClass{
+		Key:           cl.Key,
+		Name:          cl.Name,
+		NamePt:        cl.NamePT,
+		HitDie:        i32(cl.HitDie),
+		SkillChoice:   &rulesv1.SkillChoice{Count: i32(cl.SkillChoices), SkillKeys: cl.SkillOptions},
+		SubclassLevel: i32(cl.SubclassLevel),
+		Archived:      cl.Archived,
+		Off:           cl.Off,
+		SavingThrows:  mapToProto(cl.SavingThrows, func(a rules.Ability) rulesv1.Ability { return abilityToProto[a] }),
+		Spellcasting:  classSpellcastingToProto(cl),
+	}
+}
+
+// classSpellcastingToProto is nil for a class that casts nothing (no ability).
+func classSpellcastingToProto(cl rules.ClassEntry) *rulesv1.ClassSpellcasting {
+	if cl.SpellcastingAbility == "" {
+		return nil
+	}
+	return &rulesv1.ClassSpellcasting{
+		Ability:              abilityToProto[cl.SpellcastingAbility],
+		FirstLevel:           i32(cl.SpellcastingLevel),
+		Preparation:          preparationToProto[cl.SpellPreparation],
+		ListClassKey:         cl.SpellListFrom,
+		MaxSpellLevelByLevel: int32s(cl.MaxSpellLevelByLevel),
+	}
+}
+
+func subclassToProto(s rules.SubclassEntry) *rulesv1.Subclass {
+	p := &rulesv1.Subclass{Key: s.Key, Name: s.Name, NamePt: s.NamePT, ClassKey: s.Class, Archived: s.Archived, Off: s.Off}
+	if c := s.Casting; c != nil {
+		p.Spellcasting = &rulesv1.SubclassSpellcasting{
+			Ability: abilityToProto[c.Ability], Preparation: preparationToProto[c.Preparation],
+			ListClassKey: c.SpellList, FirstLevel: i32(c.StartLevel), MaxSpellLevelByLevel: int32s(c.MaxSpellLevelByLevel),
 		}
-		for _, a := range cl.SavingThrows {
-			p.SavingThrows = append(p.SavingThrows, abilityToProto[a])
-		}
-		if cl.SpellcastingAbility != "" {
-			p.Spellcasting = &rulesv1.ClassSpellcasting{
-				Ability:      abilityToProto[cl.SpellcastingAbility],
-				FirstLevel:   i32(cl.SpellcastingLevel),
-				Preparation:  preparationToProto[cl.SpellPreparation],
-				ListClassKey: cl.SpellListFrom,
-			}
-			for _, n := range cl.MaxSpellLevelByLevel {
-				p.Spellcasting.MaxSpellLevelByLevel = append(p.Spellcasting.MaxSpellLevelByLevel, i32(n))
-			}
-		}
-		out.Classes = append(out.Classes, p)
 	}
-	for _, s := range c.Subclasses {
-		p := &rulesv1.Subclass{Key: s.Key, Name: s.Name, NamePt: s.NamePT, ClassKey: s.Class, Archived: s.Archived, Off: s.Off}
-		if c := s.Casting; c != nil {
-			p.Spellcasting = &rulesv1.SubclassSpellcasting{
-				Ability: abilityToProto[c.Ability], Preparation: preparationToProto[c.Preparation],
-				ListClassKey: c.SpellList, FirstLevel: i32(c.StartLevel), MaxSpellLevelByLevel: int32s(c.MaxSpellLevelByLevel),
-			}
-		}
-		for _, ap := range s.AlwaysPrepared {
-			p.AlwaysPrepared = append(p.AlwaysPrepared, &rulesv1.SubclassAlwaysPrepared{SpellKey: ap.Spell, ClassLevel: i32(ap.ClassLevel)})
-		}
-		out.Subclasses = append(out.Subclasses, p)
+	p.AlwaysPrepared = mapToProto(s.AlwaysPrepared, func(ap rules.SubclassSpellRef) *rulesv1.SubclassAlwaysPrepared {
+		return &rulesv1.SubclassAlwaysPrepared{SpellKey: ap.Spell, ClassLevel: i32(ap.ClassLevel)}
+	})
+	return p
+}
+
+func backgroundToProto(b rules.BackgroundEntry) *rulesv1.Background {
+	return &rulesv1.Background{
+		Key: b.Key, Name: b.Name, NamePt: b.NamePT, SkillKeys: b.SkillProficiencies, Archived: b.Archived, Off: b.Off, EquipmentPt: b.EquipmentPT,
 	}
-	for _, b := range c.Backgrounds {
-		out.Backgrounds = append(out.Backgrounds, &rulesv1.Background{
-			Key: b.Key, Name: b.Name, NamePt: b.NamePT, SkillKeys: b.SkillProficiencies, Archived: b.Archived, Off: b.Off, EquipmentPt: b.EquipmentPT,
-		})
-	}
-	for _, s := range c.Skills {
-		out.Skills = append(out.Skills, &rulesv1.Skill{Key: s.Key, Name: s.Name, NamePt: s.NamePT, Ability: abilityToProto[s.Ability]})
-	}
-	for _, a := range c.Armor {
-		out.Armor = append(out.Armor, &rulesv1.Armor{Key: a.Key, Name: a.Name, NamePt: a.NamePT, Category: armorCategoryToProto[a.Category]})
-	}
-	for _, w := range c.Weapons {
-		out.Weapons = append(out.Weapons, &rulesv1.Weapon{
-			Key: w.Key, Name: w.Name, NamePt: w.NamePT, Category: weaponCategoryToProto[w.Category], Ranged: w.Range == "ranged",
-		})
-	}
-	for _, s := range c.Spells {
-		out.Spells = append(out.Spells, spellToProto(s))
-	}
-	for _, r := range c.ChallengeRatings {
-		out.ChallengeRatings = append(out.ChallengeRatings, &rulesv1.ChallengeRating{Rating: r.Rating, Xp: i32(r.XP)})
-	}
-	for _, xp := range c.LevelXP {
-		out.LevelXp = append(out.LevelXp, i32(xp))
-	}
-	named := func(in []rules.NamedEntry) []*rulesv1.NamedKey {
-		var list []*rulesv1.NamedKey
-		for _, n := range in {
-			list = append(list, &rulesv1.NamedKey{Key: n.Key, NamePt: n.NamePT, Kind: namedKeyKindToProto[n.Kind]})
-		}
-		return list
-	}
-	out.Languages, out.Proficiencies, out.DamageTypes = named(c.Languages), named(c.Proficiencies), named(c.DamageTypes)
-	return out
+}
+
+func skillToProto(s rules.SkillEntry) *rulesv1.Skill {
+	return &rulesv1.Skill{Key: s.Key, Name: s.Name, NamePt: s.NamePT, Ability: abilityToProto[s.Ability]}
+}
+
+func armorToProto(a rules.ArmorEntry) *rulesv1.Armor {
+	return &rulesv1.Armor{Key: a.Key, Name: a.Name, NamePt: a.NamePT, Category: armorCategoryToProto[a.Category]}
+}
+
+func weaponToProto(w rules.WeaponEntry) *rulesv1.Weapon {
+	return &rulesv1.Weapon{Key: w.Key, Name: w.Name, NamePt: w.NamePT, Category: weaponCategoryToProto[w.Category], Ranged: w.Range == "ranged"}
+}
+
+func challengeRatingToProto(r rules.ChallengeRating) *rulesv1.ChallengeRating {
+	return &rulesv1.ChallengeRating{Rating: r.Rating, Xp: i32(r.XP)}
+}
+
+func namedKeyToProto(n rules.NamedEntry) *rulesv1.NamedKey {
+	return &rulesv1.NamedKey{Key: n.Key, NamePt: n.NamePT, Kind: namedKeyKindToProto[n.Kind]}
 }
 
 // namedKeyKindToProto maps NamedEntry.Kind (the SRD's proficiency kinds and "language").

@@ -278,23 +278,9 @@ type CreatureFilter struct {
 // ratings (ErrChallengeRating), a MinCR above the MaxCR (ErrChallengeRange) and
 // a Size that is not one of the SRD's (ErrCreatureSize).
 func (c *Content) ListCreatures(f CreatureFilter) ([]CreatureEntry, error) {
-	limit, floor := -1, -1
-	if f.MaxCR != "" {
-		v, ok := crEighths(f.MaxCR)
-		if !ok {
-			return nil, &CreatureFilterError{Field: "max_cr", Err: ErrChallengeRating}
-		}
-		limit = v
-	}
-	if f.MinCR != "" {
-		v, ok := crEighths(f.MinCR)
-		if !ok {
-			return nil, &CreatureFilterError{Field: "min_cr", Err: ErrChallengeRating}
-		}
-		floor = v
-	}
-	if limit >= 0 && floor > limit {
-		return nil, &CreatureFilterError{Field: "min_cr", Err: ErrChallengeRange}
+	limit, floor, err := creatureCRRange(f)
+	if err != nil {
+		return nil, err
 	}
 	if _, ok := sizeNamePT[f.Size]; f.Size != "" && !ok {
 		return nil, &CreatureFilterError{Field: "size", Err: ErrCreatureSize}
@@ -302,24 +288,50 @@ func (c *Content) ListCreatures(f CreatureFilter) ([]CreatureEntry, error) {
 	query := foldPT(strings.TrimSpace(f.Query))
 	var out []CreatureEntry
 	for _, e := range c.c.monsterEntries {
-		if f.Type != "" && e.Type != f.Type {
-			continue
+		if creatureMatches(f, e, query, limit, floor) {
+			out = append(out, e)
 		}
-		if f.Size != "" && e.Size != f.Size {
-			continue
-		}
-		if v, _ := crEighths(e.ChallengeRating); (limit >= 0 && v > limit) || v < floor {
-			continue
-		}
-		if (f.NoFly && e.CanFly) || (f.NoSwim && e.CanSwim) {
-			continue
-		}
-		if query != "" && !strings.Contains(foldPT(e.NamePT), query) && !strings.Contains(foldPT(e.Name), query) {
-			continue
-		}
-		out = append(out, e)
 	}
 	return out, nil
+}
+
+// creatureCRRange reads the filter's MaxCR and MinCR in eighths, -1 for no
+// limit, refusing a rating that is not one and a minimum above the maximum.
+func creatureCRRange(f CreatureFilter) (limit, floor int, err error) {
+	limit, floor = -1, -1
+	if f.MaxCR != "" {
+		v, ok := crEighths(f.MaxCR)
+		if !ok {
+			return 0, 0, &CreatureFilterError{Field: "max_cr", Err: ErrChallengeRating}
+		}
+		limit = v
+	}
+	if f.MinCR != "" {
+		v, ok := crEighths(f.MinCR)
+		if !ok {
+			return 0, 0, &CreatureFilterError{Field: "min_cr", Err: ErrChallengeRating}
+		}
+		floor = v
+	}
+	if limit >= 0 && floor > limit {
+		return 0, 0, &CreatureFilterError{Field: "min_cr", Err: ErrChallengeRange}
+	}
+	return limit, floor, nil
+}
+
+// creatureMatches says whether an entry passes the filter; query is folded,
+// and limit and floor are in eighths (-1 for none).
+func creatureMatches(f CreatureFilter, e CreatureEntry, query string, limit, floor int) bool {
+	switch {
+	case f.Type != "" && e.Type != f.Type, f.Size != "" && e.Size != f.Size:
+		return false
+	case (f.NoFly && e.CanFly) || (f.NoSwim && e.CanSwim):
+		return false
+	}
+	if v, _ := crEighths(e.ChallengeRating); (limit >= 0 && v > limit) || v < floor {
+		return false
+	}
+	return query == "" || strings.Contains(foldPT(e.NamePT), query) || strings.Contains(foldPT(e.Name), query)
 }
 
 // Creature is a stat block with the Portuguese labels.
@@ -443,63 +455,88 @@ func (c *content) creature(m *srd51.Monster) Creature {
 		SpeedClimbFt: m.Speed.Climb, SpeedBurrowFt: m.Speed.Burrow, Hover: m.Speed.Hover,
 		PassivePerception: m.PassivePerception, Languages: LanguagesPT(m.Languages), ProficiencyBonus: m.ProficiencyBonus,
 	}
-	scores := monsterScores(m)
-	for _, a := range AllAbilities() {
-		out.Abilities = append(out.Abilities, AbilityScore{
-			Ability: a, NamePT: c.namePT(string(a)), Base: scores[a], Score: scores[a], Modifier: modifier(scores[a]),
-		})
-		if v, ok := m.Saves[string(a)]; ok {
-			out.Saves = append(out.Saves, SavingThrow{Ability: a, NamePT: c.namePT(string(a)), Proficient: true, Bonus: v})
-		}
-	}
-	for _, k := range sortedKeys(m.Skills) {
-		out.Skills = append(out.Skills, Skill{
-			Key: k, NamePT: c.namePT(k), Ability: Ability(c.skills[k].Ability), Proficiency: ProficiencyFull, Bonus: m.Skills[k],
-		})
-	}
-	sortPT(out.Skills, func(s Skill) string { return s.NamePT })
-	mods := func(list []srd51.MonsterDamageMod) []CreatureDamageMod {
-		var res []CreatureDamageMod
-		for _, d := range list {
-			e := CreatureDamageMod{Note: d.Note}
-			for _, t := range d.Types {
-				e.Types = append(e.Types, NamedKey{Key: t, NamePT: c.namePT(t)})
-			}
-			res = append(res, e)
-		}
-		return res
-	}
-	out.Vulnerabilities, out.Resistances, out.Immunities = mods(m.Vulnerabilities), mods(m.Resistances), mods(m.Immunities)
+	out.Abilities, out.Saves = c.creatureScores(m)
+	out.Skills = c.creatureSkills(m)
+	out.Vulnerabilities, out.Resistances, out.Immunities = c.creatureDamageMods(m.Vulnerabilities), c.creatureDamageMods(m.Resistances), c.creatureDamageMods(m.Immunities)
 	for _, k := range m.ConditionImmunities {
 		out.ConditionImmunities = append(out.ConditionImmunities, NamedKey{Key: k, NamePT: c.namePT(k)})
 	}
 	out.Senses = c.monsterSenses(m)
-	ability := func(list []srd51.MonsterAbility) []CreatureAbility {
-		var res []CreatureAbility
-		for _, a := range list {
-			res = append(res, CreatureAbility{Name: a.Name, Text: a.Desc, Usage: a.Usage})
-		}
-		return res
-	}
-	out.Traits, out.Reactions, out.LegendaryActions = ability(m.SpecialAbilities), ability(m.Reactions), ability(m.LegendaryActions)
+	out.Traits, out.Reactions, out.LegendaryActions = creatureAbilities(m.SpecialAbilities), creatureAbilities(m.Reactions), creatureAbilities(m.LegendaryActions)
 	for _, a := range m.Actions {
-		act := CreatureAction{Name: a.Name, NamePT: c.namesPT["attack:"+slugOf(a.Name)], Text: a.Desc, Usage: a.Usage, HasAttack: a.HasAttack, AttackBonus: a.AttackBonus}
-		for _, d := range a.Damage {
-			act.Damage = append(act.Damage, CreatureDamage{Dice: d.Dice, TypeKey: d.DamageType, TypeNamePT: c.namePT(d.DamageType)})
-		}
-		if a.Save != nil {
-			act.Save = &CreatureSave{Ability: Ability(a.Save.Ability), DC: a.Save.DC, OnSuccess: a.Save.OnSuccess}
-		}
-		for _, routine := range a.Multiattack {
-			var r []CreatureAttackCount
-			for _, x := range routine {
-				r = append(r, CreatureAttackCount{Name: x.Name, Count: x.Count, Kind: x.Kind, Text: x.Text})
-			}
-			act.Multiattack = append(act.Multiattack, r)
-		}
-		out.Actions = append(out.Actions, act)
+		out.Actions = append(out.Actions, c.creatureAction(a))
 	}
 	return out
+}
+
+// creatureScores are the six scores, and the saves the stat block lists.
+func (c *content) creatureScores(m *srd51.Monster) ([]AbilityScore, []SavingThrow) {
+	var abilities []AbilityScore
+	var saves []SavingThrow
+	scores := monsterScores(m)
+	for _, a := range AllAbilities() {
+		abilities = append(abilities, AbilityScore{
+			Ability: a, NamePT: c.namePT(string(a)), Base: scores[a], Score: scores[a], Modifier: modifier(scores[a]),
+		})
+		if v, ok := m.Saves[string(a)]; ok {
+			saves = append(saves, SavingThrow{Ability: a, NamePT: c.namePT(string(a)), Proficient: true, Bonus: v})
+		}
+	}
+	return abilities, saves
+}
+
+// creatureSkills are the skills the stat block lists, by Portuguese name.
+func (c *content) creatureSkills(m *srd51.Monster) []Skill {
+	var out []Skill
+	for _, k := range sortedKeys(m.Skills) {
+		out = append(out, Skill{
+			Key: k, NamePT: c.namePT(k), Ability: Ability(c.skills[k].Ability), Proficiency: ProficiencyFull, Bonus: m.Skills[k],
+		})
+	}
+	sortPT(out, func(s Skill) string { return s.NamePT })
+	return out
+}
+
+// creatureDamageMods are vulnerabilities, resistances or immunities with the
+// Portuguese names of their types.
+func (c *content) creatureDamageMods(list []srd51.MonsterDamageMod) []CreatureDamageMod {
+	var res []CreatureDamageMod
+	for _, d := range list {
+		e := CreatureDamageMod{Note: d.Note}
+		for _, t := range d.Types {
+			e.Types = append(e.Types, NamedKey{Key: t, NamePT: c.namePT(t)})
+		}
+		res = append(res, e)
+	}
+	return res
+}
+
+// creatureAbilities are traits, reactions or legendary actions.
+func creatureAbilities(list []srd51.MonsterAbility) []CreatureAbility {
+	var res []CreatureAbility
+	for _, a := range list {
+		res = append(res, CreatureAbility{Name: a.Name, Text: a.Desc, Usage: a.Usage})
+	}
+	return res
+}
+
+// creatureAction is an action with its damage, save and Multiattack routines.
+func (c *content) creatureAction(a srd51.MonsterAction) CreatureAction {
+	act := CreatureAction{Name: a.Name, NamePT: c.namesPT["attack:"+slugOf(a.Name)], Text: a.Desc, Usage: a.Usage, HasAttack: a.HasAttack, AttackBonus: a.AttackBonus}
+	for _, d := range a.Damage {
+		act.Damage = append(act.Damage, CreatureDamage{Dice: d.Dice, TypeKey: d.DamageType, TypeNamePT: c.namePT(d.DamageType)})
+	}
+	if a.Save != nil {
+		act.Save = &CreatureSave{Ability: Ability(a.Save.Ability), DC: a.Save.DC, OnSuccess: a.Save.OnSuccess}
+	}
+	for _, routine := range a.Multiattack {
+		var r []CreatureAttackCount
+		for _, x := range routine {
+			r = append(r, CreatureAttackCount{Name: x.Name, Count: x.Count, Kind: x.Kind, Text: x.Text})
+		}
+		act.Multiattack = append(act.Multiattack, r)
+	}
+	return act
 }
 
 // armorClassNote says in Portuguese what a creature wears and its other armor
@@ -567,6 +604,9 @@ func (c *Content) MonsterDerived(key string) (Derived, bool) {
 	return c.c.monsterDerived(m), true
 }
 
+// passiveBase is what a passive check adds the bonus to.
+const passiveBase = 10
+
 func (c *content) monsterDerived(m *srd51.Monster) Derived {
 	d := Derived{
 		ContentVersion: c.version, ProficiencyBonus: m.ProficiencyBonus,
@@ -575,7 +615,7 @@ func (c *content) monsterDerived(m *srd51.Monster) Derived {
 		SpeedWalkFt:  m.Speed.Walk, SpeedFlyFt: m.Speed.Fly, SpeedSwimFt: m.Speed.Swim,
 		SpeedClimbFt: m.Speed.Climb, SpeedBurrowFt: m.Speed.Burrow, Hover: m.Speed.Hover,
 		Senses: c.monsterSenses(m), PassivePerception: m.PassivePerception,
-		SpellSlots: make([]int, 9), AttacksPerAction: 1,
+		SpellSlots: make([]int, maxSpellSlotLevel), AttacksPerAction: 1,
 		StandardActions: slices.Clone(c.standardActions),
 	}
 	if note := c.armorClassNote(m); note != "" {
@@ -584,6 +624,28 @@ func (c *content) monsterDerived(m *srd51.Monster) Derived {
 	if count, faces, ok := parseDice(m.HitDice); ok {
 		d.HitDice = []HitDice{{Die: faces, Count: count}}
 	}
+	mods := c.monsterAbilities(m, &d)
+	d.Initiative = mods[DEX]
+	c.monsterSkills(m, mods, &d)
+	c.monsterActions(m, mods, &d)
+	// The snapshot's count, where the SRD's own text says another (corrections.json).
+	if n, ok := c.attacksPerAction[m.Key]; ok {
+		d.AttacksPerAction = n
+	}
+	for _, a := range m.SpecialAbilities {
+		d.Features = append(d.Features, Feature{
+			Key: m.Key + "#" + slugOf(a.Name), Name: a.Name, Source: m.Key, SourcePT: c.namePT(m.Key), Description: []string{a.Desc},
+		})
+	}
+	return d
+}
+
+// maxSpellSlotLevel is the number of spell slot levels.
+const maxSpellSlotLevel = 9
+
+// monsterAbilities writes the scores and the saves (the bonus the stat block
+// lists, the modifier for the rest), and returns the modifiers.
+func (c *content) monsterAbilities(m *srd51.Monster, d *Derived) map[Ability]int {
 	scores := monsterScores(m)
 	mods := map[Ability]int{}
 	for _, a := range AllAbilities() {
@@ -597,7 +659,12 @@ func (c *content) monsterDerived(m *srd51.Monster) Derived {
 		}
 		d.SavingThrows = append(d.SavingThrows, SavingThrow{Ability: a, NamePT: c.namePT(string(a)), Proficient: listed, Bonus: bonus})
 	}
-	d.Initiative = mods[DEX]
+	return mods
+}
+
+// monsterSkills writes every skill (the listed bonus, or the ability
+// modifier) by Portuguese name, and the passive Investigation and Insight.
+func (c *content) monsterSkills(m *srd51.Monster, mods map[Ability]int, d *Derived) {
 	skill := map[string]int{}
 	for _, key := range c.skillOrder {
 		s := c.skills[key]
@@ -610,13 +677,13 @@ func (c *content) monsterDerived(m *srd51.Monster) Derived {
 		d.Skills = append(d.Skills, Skill{Key: key, NamePT: c.namePT(key), Ability: Ability(s.Ability), Proficiency: level, Bonus: bonus})
 	}
 	slices.SortFunc(d.Skills, func(a, b Skill) int { return comparePT(a.NamePT, b.NamePT) })
-	d.PassiveInvestigation = 10 + skill["skill:investigation"]
-	d.PassiveInsight = 10 + skill["skill:insight"]
+	d.PassiveInvestigation = passiveBase + skill["skill:investigation"]
+	d.PassiveInsight = passiveBase + skill["skill:insight"]
+}
 
-	byName := map[string]srd51.MonsterAction{}
-	for _, a := range m.Actions {
-		byName[a.Name] = a
-	}
+// monsterActions writes the attacks, the actions with a save and the most
+// weapon attacks a Multiattack routine makes.
+func (c *content) monsterActions(m *srd51.Monster, mods map[Ability]int, d *Derived) {
 	for _, a := range m.Actions {
 		actionKey := m.Key + "#" + slugOf(a.Name)
 		if a.HasAttack {
@@ -629,25 +696,20 @@ func (c *content) monsterDerived(m *srd51.Monster) Derived {
 			})
 		}
 		for _, routine := range a.Multiattack {
-			n := 0
-			for _, x := range routine {
-				if x.Kind == "melee" || x.Kind == "ranged" {
-					n += x.Count
-				}
-			}
-			d.AttacksPerAction = max(d.AttacksPerAction, n)
+			d.AttacksPerAction = max(d.AttacksPerAction, routineWeaponAttacks(routine))
 		}
 	}
-	// The snapshot's count, where the SRD's own text says another (corrections.json).
-	if n, ok := c.attacksPerAction[m.Key]; ok {
-		d.AttacksPerAction = n
+}
+
+// routineWeaponAttacks counts the melee and ranged attacks of a routine.
+func routineWeaponAttacks(routine []srd51.MonsterAttackCount) int {
+	n := 0
+	for _, x := range routine {
+		if x.Kind == "melee" || x.Kind == "ranged" {
+			n += x.Count
+		}
 	}
-	for _, a := range m.SpecialAbilities {
-		d.Features = append(d.Features, Feature{
-			Key: m.Key + "#" + slugOf(a.Name), Name: a.Name, Source: m.Key, SourcePT: c.namePT(m.Key), Description: []string{a.Desc},
-		})
-	}
-	return d
+	return n
 }
 
 var (

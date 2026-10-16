@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { grog, rollsTable } from './combat-rolls-support';
 import { openSessionPage } from './live-session-support';
 
-// "Tela cheia" (docs/design.md, the map controls): the browser's full screen for the map and its controls, next to
+// "Tela cheia" (docs/design/README.md, the map controls): the browser's full screen for the map and its controls, next to
 // "Ajustar à tela", which only resets the zoom. The state follows the browser, so the button says how to leave.
 test('o mestre põe o mapa do combate em tela cheia e sai pelo mesmo botão', async ({ browser }) => {
   test.setTimeout(180_000);

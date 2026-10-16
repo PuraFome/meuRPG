@@ -28,7 +28,7 @@ type SaveState =
 
 /**
  * The "Sessões" section: how many other devices are signed in, and the
- * in-place confirmation of "Sair dos outros dispositivos" (docs/design.md:
+ * in-place confirmation of "Sair dos outros dispositivos" (docs/design/README.md:
  * what can't be undone is confirmed on the screen itself).
  */
 type SessionsState =

@@ -1,0 +1,16 @@
+{
+  "a bard 10": "[{\"Class\":\"class:bard\",\"Patron\":null,\"Secrets\":2,\"SecretsBeyondKnown\":0,\"SecretsMaxSpellLevel\":5}]",
+  "a bard 10 and a fiend 3": "[{\"Class\":\"class:bard\",\"Patron\":null,\"Secrets\":2,\"SecretsBeyondKnown\":0,\"SecretsMaxSpellLevel\":5},{\"Class\":\"class:warlock\",\"Patron\":[{\"Spell\":\"spell:burning-hands\",\"ClassLevel\":1},{\"Spell\":\"spell:command\",\"ClassLevel\":1},{\"Spell\":\"spell:blindness-deafness\",\"ClassLevel\":3},{\"Spell\":\"spell:scorching-ray\",\"ClassLevel\":3}],\"Secrets\":0,\"SecretsBeyondKnown\":0,\"SecretsMaxSpellLevel\":0}]",
+  "a bard 18": "[{\"Class\":\"class:bard\",\"Patron\":null,\"Secrets\":6,\"SecretsBeyondKnown\":0,\"SecretsMaxSpellLevel\":9}]",
+  "a bard 9": "null",
+  "a fiend 1": "[{\"Class\":\"class:warlock\",\"Patron\":[{\"Spell\":\"spell:burning-hands\",\"ClassLevel\":1},{\"Spell\":\"spell:command\",\"ClassLevel\":1}],\"Secrets\":0,\"SecretsBeyondKnown\":0,\"SecretsMaxSpellLevel\":0}]",
+  "a fiend 20": "[{\"Class\":\"class:warlock\",\"Patron\":[{\"Spell\":\"spell:burning-hands\",\"ClassLevel\":1},{\"Spell\":\"spell:command\",\"ClassLevel\":1},{\"Spell\":\"spell:blindness-deafness\",\"ClassLevel\":3},{\"Spell\":\"spell:scorching-ray\",\"ClassLevel\":3},{\"Spell\":\"spell:fireball\",\"ClassLevel\":5},{\"Spell\":\"spell:stinking-cloud\",\"ClassLevel\":5},{\"Spell\":\"spell:fire-shield\",\"ClassLevel\":7},{\"Spell\":\"spell:wall-of-fire\",\"ClassLevel\":7},{\"Spell\":\"spell:flame-strike\",\"ClassLevel\":9},{\"Spell\":\"spell:hallow\",\"ClassLevel\":9}],\"Secrets\":0,\"SecretsBeyondKnown\":0,\"SecretsMaxSpellLevel\":0}]",
+  "a fiend 5": "[{\"Class\":\"class:warlock\",\"Patron\":[{\"Spell\":\"spell:burning-hands\",\"ClassLevel\":1},{\"Spell\":\"spell:command\",\"ClassLevel\":1},{\"Spell\":\"spell:blindness-deafness\",\"ClassLevel\":3},{\"Spell\":\"spell:scorching-ray\",\"ClassLevel\":3},{\"Spell\":\"spell:fireball\",\"ClassLevel\":5},{\"Spell\":\"spell:stinking-cloud\",\"ClassLevel\":5}],\"Secrets\":0,\"SecretsBeyondKnown\":0,\"SecretsMaxSpellLevel\":0}]",
+  "a fighter": "null",
+  "a lore bard 14": "[{\"Class\":\"class:bard\",\"Patron\":null,\"Secrets\":6,\"SecretsBeyondKnown\":2,\"SecretsMaxSpellLevel\":7}]",
+  "a lore bard 6": "[{\"Class\":\"class:bard\",\"Patron\":null,\"Secrets\":2,\"SecretsBeyondKnown\":2,\"SecretsMaxSpellLevel\":3}]",
+  "a table key like Magical Secrets": "null",
+  "a warlock without a patron": "null",
+  "a wizard": "null",
+  "nothing": "null"
+}

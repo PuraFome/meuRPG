@@ -1149,7 +1149,7 @@ describe('CombatView calls: opportunity attacks', () => {
   it('openOpportunity does nothing without a combat', () => {
     const { view, state, opened } = mountCombatView({ enc: withOffer(), master: true });
     state.apply(null);
-    view.sheets.opportunity(offer());
+    view.sheets.reactions.opportunity(offer());
     expect(opened).toEqual([]);
   });
 });

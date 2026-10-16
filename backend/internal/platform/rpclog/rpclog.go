@@ -8,7 +8,7 @@
 // interceptors recorded on the request's log fields (platform/logging).
 //
 // It logs ids and codes, never messages: no request or response body, no
-// header. See docs/architecture.md#logs.
+// header. See docs/architecture/logs.md#logs.
 package rpclog
 
 import (

@@ -4,7 +4,7 @@
   }
 }
 <div class="scroll" role="region" tabindex="0" [attr.aria-label]="label()" [attr.data-field]="path() || null">
-  <table class="g" (keydown)="key($event)">
+  <table appRelayEvents class="g" (relayKeydown)="key($event)">
     <thead>
       <tr>
         <th scope="col" class="g__level">Nível</th>

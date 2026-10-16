@@ -12,7 +12,7 @@
 
   <div class="pk__group">
     <span class="pk__h" id="lp-kind">Tipo de luz</span>
-    <div class="pk__radios" role="radiogroup" aria-labelledby="lp-kind" (keydown)="onKey($event)">
+    <div appRelayEvents class="pk__radios" role="radiogroup" aria-labelledby="lp-kind" (relayKeydown)="onKey($event)">
       @for (p of presets(); track p.key) {
         <button type="button" role="radio" class="pk__radio" [class.pk__radio--on]="draft().presetKey === p.key" [attr.aria-checked]="draft().presetKey === p.key" [tabIndex]="draft().presetKey === p.key ? 0 : -1" (click)="choose(p.key)">
           <span class="pk__dot" aria-hidden="true"></span>
