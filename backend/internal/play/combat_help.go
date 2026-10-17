@@ -113,7 +113,7 @@ type helpPlan struct {
 }
 
 // parseHelpPlan reads the ids and the form of a Help, refusing a request whose form does not fit its
-// kind. A kind the app does not know passes, as it always has.
+// kind. A kind the app does not know passes.
 func parseHelpPlan(msg *playv1.HelpRequest) (helpPlan, error) {
 	var p helpPlan
 	var err error

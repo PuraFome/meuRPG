@@ -70,7 +70,7 @@ type holdData struct {
 }
 
 // The ambient write: a replay runs the action's own handler inside the
-// transaction of the answer that released it. The handler calls s.write as always;
+// transaction of the answer that released it. The handler calls s.write as in any other change;
 // write sees the ambient and runs the change in the open transaction instead of
 // opening one, writes the event, and returns errAmbientDone so that the handler
 // stops before it reads and publishes (the answer's handler does that, after the

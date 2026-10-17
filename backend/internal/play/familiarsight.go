@@ -17,7 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6): the player of a character
+// "Ver pelos olhos do familiar" (MR-036): the player of a character
 // with a familiar sees what the familiar sees, with the familiar's senses, while
 // the familiar is on the same map within 30 m. The vision is the maps module's
 // (a viewer of its own for the fog, link.PartyMember.Eyes); what is kept here is

@@ -280,7 +280,7 @@ func (s *Service) finishCastTx(ctx context.Context, c *combatTx, m authz.Members
 	return out, nil
 }
 
-// guardFinish reads the characters a started cast is about for FinishCast. The targets
+// guardFinish reads the characters a started cast is about for ConfirmCastTimePassed. The targets
 // were checked when the cast started, so one that left the stage meanwhile still
 // counts, and one that is not a living character any more is dropped.
 func (s *Service) guardFinish(ctx context.Context, c *combatTx, m authz.Membership, caster link.Character, row playdb.SpellCast) (castGuard, error) {

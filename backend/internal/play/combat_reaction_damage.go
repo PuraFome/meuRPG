@@ -61,7 +61,7 @@ func (s *Service) cuttingWindowOf(ctx context.Context, c *combatTx, cs []playdb.
 		return windowSpec{}, false, err
 	}
 	// A roller that cannot hear the bard or is immune to charm opens no window: the prompt would
-	// tell the bard what the creature is (decisions-batch2-A, item 4).
+	// tell the bard what the creature is.
 	cut, err := s.rollerCanBeCut(ctx, c, roller)
 	if err != nil || !cut {
 		return windowSpec{}, false, err

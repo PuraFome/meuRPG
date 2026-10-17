@@ -126,7 +126,7 @@ type spendRun struct {
 	hidden, onTurn bool
 }
 
-// readSpendCall reads and checks the request, in the order the refusals have always come.
+// readSpendCall reads and checks the request. The refusals come in the order of the checks below.
 func readSpendCall(ctx context.Context, req *playv1.SpendMovementRequest) (spendCall, error) {
 	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
@@ -278,7 +278,7 @@ type offerRun struct {
 	mover playdb.Combatant
 }
 
-// readOfferCall reads and checks the request, in the order the refusals have always come.
+// readOfferCall reads and checks the request. The refusals come in the order of the checks below.
 func readOfferCall(ctx context.Context, req *playv1.OfferOpportunityRequest) (offerCall, error) {
 	m, key, encID, err := masterCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {

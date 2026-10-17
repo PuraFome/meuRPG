@@ -46,7 +46,7 @@ The cast sheet draws the pick as radio cards (`damage-type-picker`) whenever `da
 **The bonus action spell limit.** `combatants.spell_cast` and `combatants.bonus_spell_cast` say which kinds of spell the combatant cast this turn (a cantrip with a casting time of 1 action counts as neither); `ResetCombatantTurn` clears both and the undo of a cast puts them back.
 A spell is refused with `BONUS_ACTION_SPELL_LIMIT` when a bonus action spell was cast and this is not that cantrip, or when this is a bonus action spell and another one was cast.
 Reactions (Shield) do not count.
-The disabled spell row says which side blocks it (`spellReasonText`).
+The disabled spell row carries a `DisabledReason` that says which side blocks it (`castError` turns it into the refusal).
 
 **Concentration.** A concentration spell puts its name in `concentration_spell`; casting another swaps it, and the log says which ended (see [Attacks and damage](attacks-and-damage.md#conditions-and-concentration)).
 The cast sheets show a damage cantrip's dice from `Attack.spell_dice`, never from the first row of the spell's table.

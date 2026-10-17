@@ -22,7 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// A druid's Wild Shape (MR-037, Etapa 9, D7). The form is part of the character's
+// A druid's Wild Shape (MR-037). The form is part of the character's
 // vitals for the API (CharacterVitals.wild_shape) and lives in the table
 // character_wild_shapes, kept by the characters module; this file is what a table
 // does with it:

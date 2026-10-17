@@ -524,7 +524,7 @@ func (s *Service) releaseOne(ctx context.Context, c *combatTx, p playdb.PendingD
 	}
 	cur, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: p.ID})
 	if err != nil || cur.Status != pendingAwaitingReaction {
-		return false, nil //nolint:nilerr // a hit that cannot be read, or that moved on already, is left alone, as the loop always did
+		return false, nil //nolint:nilerr // a hit that cannot be read, or that moved on already, is left alone
 	}
 	if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingAwaitingRoll}); err != nil {
 		return false, fmt.Errorf("let the hit go on: %w", err)
@@ -532,7 +532,7 @@ func (s *Service) releaseOne(ctx context.Context, c *combatTx, p playdb.PendingD
 	return true, nil
 }
 
-// errWindowGone is the not_found of a window that is not in the combat, the same
+// errWindowDenied is the refusal for a window the caller may not answer, the same
 // for a window that never existed: a player never learns which are real (RN-10).
 func errWindowDenied() error {
 	return connect.NewError(connect.CodePermissionDenied, errors.New("you cannot answer this reaction"))
