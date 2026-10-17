@@ -1,11 +1,29 @@
 import { Component, DestroyRef, effect, inject, untracked } from '@angular/core';
-import { CombatantState, EncounterStatus } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { actingTab, ownCreatures, validTab } from '../../../core/combat/mine';
+import {
+  CombatEffect,
+  CombatantSide,
+  CombatantState,
+  CoverDegree,
+  type Encounter,
+  EncounterStatus,
+} from '../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type MineTab,
+  actingTab,
+  membersToEnd,
+  ownCreatures,
+  validTab,
+} from '../../../core/combat/mine';
 import { offersToAnswer, reactorIsMasters } from '../../../core/combat/opportunity';
 import { sheetWindow } from '../../../core/combat/reactions';
 import { questions } from '../../../core/combat/hidden-reveal';
 import { COMBAT_VIEW_IMPORTS } from './combat-view-imports';
-import { CombatViewFlowsDirective } from './combat-view-flows';
+import { CombatViewPartsDirective } from './combat-view-parts';
+import { type RiderPick } from './hit-rider/hit-rider-card';
+import {
+  type StartCombatData,
+  StartCombatDialog,
+} from '../../../shared/start-combat/start-combat-dialog';
 
 /**
  * The combat on the session page (MR-013, E6-01 to E6-16): it picks the
@@ -28,7 +46,7 @@ import { CombatViewFlowsDirective } from './combat-view-flows';
   templateUrl: './combat-view.html',
   styleUrl: './combat-view.scss',
 })
-export class CombatView extends CombatViewFlowsDirective {
+export class CombatView extends CombatViewPartsDirective {
   /** Set the first time the combat is read: "Combate atualizado agora." only follows a reload. */
   private refreshChecked = false;
 
@@ -259,5 +277,152 @@ export class CombatView extends CombatViewFlowsDirective {
         }
       }
     });
+  }
+
+  /** "Técnica da Mão Aberta" and "Golpe Atordoante": the monk's answer to an offer after a hit. */
+  protected answerRider(pick: RiderPick): Promise<boolean> {
+    return this.calls.run((e) =>
+      this.api.useHitRider(this.campaignId(), e.id, pick.id, pick.choice),
+    );
+  }
+
+  /** "Encerrar a parte dos Lobos" / "Encerrar a vez do Nanquim": the part of every member of the tab that still acts, one call each (a joint turn ends part by part). */
+  protected async endTab(tab: MineTab): Promise<void> {
+    for (const member of tab.members) {
+      const e = this.encounter();
+      // Read again before each call: the answer to the one before may have moved the turn on.
+      if (!e || !membersToEnd(e, { ...tab, members: [member] }).length) {
+        continue;
+      }
+      if (
+        !(await this.calls.run((current) =>
+          this.api.endTurn(this.campaignId(), current.id, member.id, false, current.round),
+        ))
+      ) {
+        return;
+      }
+    }
+  }
+  /** A damage was settled: the master's card stays for its note. */
+  protected settled(): void {
+    this.settledTurn.set(this.subject()?.id ?? '');
+  }
+
+  protected endCombat(): Promise<boolean> {
+    return this.calls.run((e) => this.api.end(this.campaignId(), e.id));
+  }
+
+  protected reveal(change: { id: string; hidden: boolean }): Promise<boolean> {
+    return this.calls.run((e) =>
+      this.api.setHidden(this.campaignId(), e.id, change.id, change.hidden),
+    );
+  }
+
+  /** The master: "Perdeu a concentração" (the app does not roll the save; the damage card reminds the DC). */
+  protected loseConcentration(id: string): Promise<boolean> {
+    return this.calls.run((e) =>
+      this.api.setConditions(this.campaignId(), e.id, id, { endConcentration: true }),
+    );
+  }
+
+  /** The master: "Encerrar Ajuda": the bonus goes, and the hit points lose only what passes the new maximum. */
+  protected endAid(id: string): Promise<boolean> {
+    return this.calls.run((e) =>
+      this.api.endCombatEffect(this.campaignId(), e.id, id, CombatEffect.AID),
+    );
+  }
+
+  protected remove(id: string): Promise<boolean> {
+    return this.calls.run((e) => this.api.remove(this.campaignId(), e.id, id));
+  }
+
+  protected adjustFor(characterId: string): void {
+    const v = this.vitals().find((x) => x.characterId === characterId);
+    if (v) {
+      this.adjust.emit(v);
+    }
+  }
+
+  /** "Adicionar combatente": the start dialog, with the NPCs only. */
+  protected addCombatants(): void {
+    const e = this.encounter();
+    if (!e) {
+      return;
+    }
+    const phone = this.phone();
+    this.dialog
+      .open<StartCombatDialog, StartCombatData, Encounter>(StartCombatDialog, {
+        data: {
+          campaignId: this.campaignId(),
+          mode: 'add',
+          map: null,
+          encounterId: e.id,
+          existing: e.combatants.length,
+        },
+        width: phone ? '100vw' : '760px',
+        maxWidth: phone ? '100vw' : 'calc(100vw - 32px)',
+        height: phone ? '100dvh' : undefined,
+        maxHeight: phone ? '100dvh' : '92dvh',
+        ariaLabelledBy: 'start-title',
+        autoFocus: 'first-tabbable',
+      })
+      .afterClosed()
+      .subscribe((added) => added && this.state().apply(added));
+  }
+  // ---- opportunity attacks (E9-13) ----
+
+  /** "Desfazer o movimento": the master takes back his last action when it is the move that made the offers. */
+  protected undoMove(): Promise<boolean> {
+    const entry = this.log.undoable();
+    if (!entry) {
+      return Promise.resolve(false);
+    }
+    return this.calls.run(async (e) => {
+      const undone = await this.api.undo(this.campaignId(), e.id, entry.id);
+      this.undone.mark();
+      return undone;
+    });
+  }
+
+  /** The master's "Marcar como aliado" / "Voltar a ser inimigo". */
+  protected setSide(change: { id: string; side: CombatantSide }): Promise<boolean> {
+    return this.calls.run((e) => this.api.setSide(this.campaignId(), e.id, change.id, change.side));
+  }
+
+  /** The master's cover mark, applied at once. */
+  protected setCover(change: { id: string; cover: CoverDegree }): Promise<boolean> {
+    return this.calls.run((e) =>
+      this.api.setCover(this.campaignId(), e.id, change.id, change.cover),
+    );
+  }
+
+  // ---- moving ----
+
+  /** "Levantar-se": the combatant (the player's own, a creature of theirs, or the one on the master's card) stands up from Prone. */
+  protected standUp(id?: string): Promise<boolean> {
+    const who = id ?? this.own()?.id;
+    return who
+      ? this.calls.run((e) => this.api.standUp(this.campaignId(), e.id, who))
+      : Promise.resolve(false);
+  }
+
+  /** "Colocar no mapa": the server picks the square, by the rule that places the
+   * NPCs when the combat begins (free floor, away from the players). */
+  protected async place(id: string): Promise<void> {
+    await this.calls.run((current) => this.api.place(this.campaignId(), current.id, id));
+  }
+
+  // ---- the sheets and moving are bound by the template through `sheets` and `moves` ----
+
+  /** "Ver pelos olhos do familiar": only with a familiar to look through. */
+  protected askFamiliarEyes(): void {
+    const name = this.familiar();
+    if (name) {
+      this.sheets.actions.familiarEyes(name);
+    }
+  }
+
+  protected leave(): void {
+    this.state().dismissEnded();
   }
 }

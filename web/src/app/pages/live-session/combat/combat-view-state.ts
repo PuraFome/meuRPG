@@ -45,7 +45,7 @@ import { CombatReads } from './combat-reads';
  * What the combat screen is handed (its inputs and outputs), the services it builds on and the core of what it shows: the
  * combat, who the player is in it, whose turn it is and the services' state the parts read (`CombatCalls`, `CombatReads`,
  * `MasterAutoPass`). The base of the layers that make up `CombatView` (`combat-view-derived.ts`, `combat-view-parts.ts`,
- * `combat-view-flows.ts`), so the template and the specs keep reading every member from the one component.
+ * `combat-view.ts`), so the template and the specs keep reading every member from the one component.
  */
 @Directive()
 export abstract class CombatViewStateDirective {
