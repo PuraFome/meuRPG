@@ -68,6 +68,10 @@ type world struct {
 
 	// The gallery.
 	imgSceneA, imgSceneB, imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgGenerated, generation string
+	// The scene's conversation (MR-051, RN-36): a picture on a line for Ana alone, and the lines
+	// the audio test asks for.
+	imgLine string
+	lines   []conversationLine
 	// ids of things the probe aims at
 	imgHiddenMap, imgDungeon                     string
 	streamSeen                                   map[string]map[string]int // the kinds of event the stream test received

@@ -486,6 +486,10 @@ func (noLive) ImageOnStage(context.Context, string, string) (bool, error) {
 	return false, errors.New("not in this test")
 }
 
+func (noLive) ImageInConversation(context.Context, string, string, string) (bool, error) {
+	return false, nil
+}
+
 func (noLive) ImageShown(context.Context, pgx.Tx, string, string) (bool, error) {
 	return false, errors.New("not in this test")
 }

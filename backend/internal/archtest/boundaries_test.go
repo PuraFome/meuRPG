@@ -46,6 +46,7 @@ var testHelpers = []string{
 	"characters/contenttest", // the live content source the other suites build characters with
 	"identity/oidctest",      // the OIDC provider for tests
 	"maps/images/gen",        // the image generator, for its fake
+	"play/voice",             // the voice generator, for its fake
 }
 
 // prodEdges is every module-level dependency of the production code: each

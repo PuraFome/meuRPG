@@ -69,6 +69,15 @@ const (
 	PlayServiceAdjustCharacterVitalsProcedure = "/meurpg.play.v1.PlayService/AdjustCharacterVitals"
 	// PlayServiceNudgePlayerProcedure is the fully-qualified name of the PlayService's NudgePlayer RPC.
 	PlayServiceNudgePlayerProcedure = "/meurpg.play.v1.PlayService/NudgePlayer"
+	// PlayServiceSendSessionMessageProcedure is the fully-qualified name of the PlayService's
+	// SendSessionMessage RPC.
+	PlayServiceSendSessionMessageProcedure = "/meurpg.play.v1.PlayService/SendSessionMessage"
+	// PlayServiceListSessionMessagesProcedure is the fully-qualified name of the PlayService's
+	// ListSessionMessages RPC.
+	PlayServiceListSessionMessagesProcedure = "/meurpg.play.v1.PlayService/ListSessionMessages"
+	// PlayServiceSignalMasterTypingProcedure is the fully-qualified name of the PlayService's
+	// SignalMasterTyping RPC.
+	PlayServiceSignalMasterTypingProcedure = "/meurpg.play.v1.PlayService/SignalMasterTyping"
 	// PlayServiceSetCurrentMapProcedure is the fully-qualified name of the PlayService's SetCurrentMap
 	// RPC.
 	PlayServiceSetCurrentMapProcedure = "/meurpg.play.v1.PlayService/SetCurrentMap"
@@ -394,6 +403,54 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION).
 	//   - `resource_exhausted`: the character was nudged in the last 10 seconds.
 	NudgePlayer(context.Context, *connect.Request[v1.NudgePlayerRequest]) (*connect.Response[v1.NudgePlayerResponse], error)
+	// SendSessionMessage sends a line to the conversation of the open session
+	// (MR-051, RN-36). The master speaks as the narrator or as an NPC of the
+	// campaign, and may attach a gallery image and choose any set of the
+	// campaign's players as readers (empty: the whole table). A player speaks
+	// as their own living character (RN-18) or out of character, and chooses
+	// everyone or only the master. The master and the author always read the
+	// line.
+	//
+	// The line is stored, then `session_message_added` goes to each reader's
+	// streams and the master's, and to nobody else: whoever is not a reader
+	// gets no event, no count and no trace of it (RN-10). An image that is a
+	// fog map's background is attached as its copy, as "mostrar imagem" does.
+	// The idempotency key is required: the same key and request returns the
+	// first line and sends nothing again.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not an
+	//     active member; also an NPC or character that is not the caller's to
+	//     speak as, a reader who is not a player of the campaign, an image that
+	//     is not in the campaign's gallery.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	//   - `permission_denied`: a player tried a master's kind, an image or
+	//     readers; the master tried only_master.
+	//   - `invalid_argument`: empty or over-long text, a missing key or kind.
+	//   - `resource_exhausted`: too many lines in a short time, per user.
+	SendSessionMessage(context.Context, *connect.Request[v1.SendSessionMessageRequest]) (*connect.Response[v1.SendSessionMessageResponse], error)
+	// ListSessionMessages reads a session's lines the caller may read (MR-051,
+	// RN-36), oldest first within the page, the newest page by default.
+	// Opening the live session reads it, and a reconnection reads the gap. The
+	// lines of a session the caller may not read at all are never counted or
+	// hinted at.
+	//
+	// Errors:
+	//   - `not_found`: the campaign, the session or `before_id` does not exist
+	//     for the caller (a line the caller may not read included).
+	//   - `failed_precondition`: no game_session_id and no open session.
+	ListSessionMessages(context.Context, *connect.Request[v1.ListSessionMessagesRequest]) (*connect.Response[v1.ListSessionMessagesResponse], error)
+	// SignalMasterTyping tells the players the master is writing (MR-051): a
+	// content-free `master_typing` event to the players' streams, which the app
+	// shows as "O mestre está escrevendo…" for a few seconds. Only the master,
+	// only with a session open. Calls closer than two seconds from the last of
+	// the campaign are answered and send nothing. Nothing is stored.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session.
+	SignalMasterTyping(context.Context, *connect.Request[v1.SignalMasterTypingRequest]) (*connect.Response[v1.SignalMasterTypingResponse], error)
 	// SetCurrentMap chooses the map the session shows at the table, or clears
 	// it. Only the campaign's master may call it, and only while the campaign
 	// has an open session. The map must be one of the campaign's
@@ -883,6 +940,25 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("NudgePlayer")),
 			connect.WithClientOptions(opts...),
 		),
+		sendSessionMessage: connect.NewClient[v1.SendSessionMessageRequest, v1.SendSessionMessageResponse](
+			httpClient,
+			baseURL+PlayServiceSendSessionMessageProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SendSessionMessage")),
+			connect.WithClientOptions(opts...),
+		),
+		listSessionMessages: connect.NewClient[v1.ListSessionMessagesRequest, v1.ListSessionMessagesResponse](
+			httpClient,
+			baseURL+PlayServiceListSessionMessagesProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListSessionMessages")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
+		signalMasterTyping: connect.NewClient[v1.SignalMasterTypingRequest, v1.SignalMasterTypingResponse](
+			httpClient,
+			baseURL+PlayServiceSignalMasterTypingProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SignalMasterTyping")),
+			connect.WithClientOptions(opts...),
+		),
 		setCurrentMap: connect.NewClient[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse](
 			httpClient,
 			baseURL+PlayServiceSetCurrentMapProcedure,
@@ -1039,6 +1115,9 @@ type playServiceClient struct {
 	watchGameSession      *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
 	adjustCharacterVitals *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
 	nudgePlayer           *connect.Client[v1.NudgePlayerRequest, v1.NudgePlayerResponse]
+	sendSessionMessage    *connect.Client[v1.SendSessionMessageRequest, v1.SendSessionMessageResponse]
+	listSessionMessages   *connect.Client[v1.ListSessionMessagesRequest, v1.ListSessionMessagesResponse]
+	signalMasterTyping    *connect.Client[v1.SignalMasterTypingRequest, v1.SignalMasterTypingResponse]
 	setCurrentMap         *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
 	setShownImage         *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
 	listLeftImages        *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
@@ -1107,6 +1186,21 @@ func (c *playServiceClient) AdjustCharacterVitals(ctx context.Context, req *conn
 // NudgePlayer calls meurpg.play.v1.PlayService.NudgePlayer.
 func (c *playServiceClient) NudgePlayer(ctx context.Context, req *connect.Request[v1.NudgePlayerRequest]) (*connect.Response[v1.NudgePlayerResponse], error) {
 	return c.nudgePlayer.CallUnary(ctx, req)
+}
+
+// SendSessionMessage calls meurpg.play.v1.PlayService.SendSessionMessage.
+func (c *playServiceClient) SendSessionMessage(ctx context.Context, req *connect.Request[v1.SendSessionMessageRequest]) (*connect.Response[v1.SendSessionMessageResponse], error) {
+	return c.sendSessionMessage.CallUnary(ctx, req)
+}
+
+// ListSessionMessages calls meurpg.play.v1.PlayService.ListSessionMessages.
+func (c *playServiceClient) ListSessionMessages(ctx context.Context, req *connect.Request[v1.ListSessionMessagesRequest]) (*connect.Response[v1.ListSessionMessagesResponse], error) {
+	return c.listSessionMessages.CallUnary(ctx, req)
+}
+
+// SignalMasterTyping calls meurpg.play.v1.PlayService.SignalMasterTyping.
+func (c *playServiceClient) SignalMasterTyping(ctx context.Context, req *connect.Request[v1.SignalMasterTypingRequest]) (*connect.Response[v1.SignalMasterTypingResponse], error) {
+	return c.signalMasterTyping.CallUnary(ctx, req)
 }
 
 // SetCurrentMap calls meurpg.play.v1.PlayService.SetCurrentMap.
@@ -1484,6 +1578,54 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION).
 	//   - `resource_exhausted`: the character was nudged in the last 10 seconds.
 	NudgePlayer(context.Context, *connect.Request[v1.NudgePlayerRequest]) (*connect.Response[v1.NudgePlayerResponse], error)
+	// SendSessionMessage sends a line to the conversation of the open session
+	// (MR-051, RN-36). The master speaks as the narrator or as an NPC of the
+	// campaign, and may attach a gallery image and choose any set of the
+	// campaign's players as readers (empty: the whole table). A player speaks
+	// as their own living character (RN-18) or out of character, and chooses
+	// everyone or only the master. The master and the author always read the
+	// line.
+	//
+	// The line is stored, then `session_message_added` goes to each reader's
+	// streams and the master's, and to nobody else: whoever is not a reader
+	// gets no event, no count and no trace of it (RN-10). An image that is a
+	// fog map's background is attached as its copy, as "mostrar imagem" does.
+	// The idempotency key is required: the same key and request returns the
+	// first line and sends nothing again.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not an
+	//     active member; also an NPC or character that is not the caller's to
+	//     speak as, a reader who is not a player of the campaign, an image that
+	//     is not in the campaign's gallery.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	//   - `permission_denied`: a player tried a master's kind, an image or
+	//     readers; the master tried only_master.
+	//   - `invalid_argument`: empty or over-long text, a missing key or kind.
+	//   - `resource_exhausted`: too many lines in a short time, per user.
+	SendSessionMessage(context.Context, *connect.Request[v1.SendSessionMessageRequest]) (*connect.Response[v1.SendSessionMessageResponse], error)
+	// ListSessionMessages reads a session's lines the caller may read (MR-051,
+	// RN-36), oldest first within the page, the newest page by default.
+	// Opening the live session reads it, and a reconnection reads the gap. The
+	// lines of a session the caller may not read at all are never counted or
+	// hinted at.
+	//
+	// Errors:
+	//   - `not_found`: the campaign, the session or `before_id` does not exist
+	//     for the caller (a line the caller may not read included).
+	//   - `failed_precondition`: no game_session_id and no open session.
+	ListSessionMessages(context.Context, *connect.Request[v1.ListSessionMessagesRequest]) (*connect.Response[v1.ListSessionMessagesResponse], error)
+	// SignalMasterTyping tells the players the master is writing (MR-051): a
+	// content-free `master_typing` event to the players' streams, which the app
+	// shows as "O mestre está escrevendo…" for a few seconds. Only the master,
+	// only with a session open. Calls closer than two seconds from the last of
+	// the campaign are answered and send nothing. Nothing is stored.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session.
+	SignalMasterTyping(context.Context, *connect.Request[v1.SignalMasterTypingRequest]) (*connect.Response[v1.SignalMasterTypingResponse], error)
 	// SetCurrentMap chooses the map the session shows at the table, or clears
 	// it. Only the campaign's master may call it, and only while the campaign
 	// has an open session. The map must be one of the campaign's
@@ -1969,6 +2111,25 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("NudgePlayer")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceSendSessionMessageHandler := connect.NewUnaryHandler(
+		PlayServiceSendSessionMessageProcedure,
+		svc.SendSessionMessage,
+		connect.WithSchema(playServiceMethods.ByName("SendSessionMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceListSessionMessagesHandler := connect.NewUnaryHandler(
+		PlayServiceListSessionMessagesProcedure,
+		svc.ListSessionMessages,
+		connect.WithSchema(playServiceMethods.ByName("ListSessionMessages")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceSignalMasterTypingHandler := connect.NewUnaryHandler(
+		PlayServiceSignalMasterTypingProcedure,
+		svc.SignalMasterTyping,
+		connect.WithSchema(playServiceMethods.ByName("SignalMasterTyping")),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceSetCurrentMapHandler := connect.NewUnaryHandler(
 		PlayServiceSetCurrentMapProcedure,
 		svc.SetCurrentMap,
@@ -2131,6 +2292,12 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceAdjustCharacterVitalsHandler.ServeHTTP(w, r)
 		case PlayServiceNudgePlayerProcedure:
 			playServiceNudgePlayerHandler.ServeHTTP(w, r)
+		case PlayServiceSendSessionMessageProcedure:
+			playServiceSendSessionMessageHandler.ServeHTTP(w, r)
+		case PlayServiceListSessionMessagesProcedure:
+			playServiceListSessionMessagesHandler.ServeHTTP(w, r)
+		case PlayServiceSignalMasterTypingProcedure:
+			playServiceSignalMasterTypingHandler.ServeHTTP(w, r)
 		case PlayServiceSetCurrentMapProcedure:
 			playServiceSetCurrentMapHandler.ServeHTTP(w, r)
 		case PlayServiceSetShownImageProcedure:
@@ -2220,6 +2387,18 @@ func (UnimplementedPlayServiceHandler) AdjustCharacterVitals(context.Context, *c
 
 func (UnimplementedPlayServiceHandler) NudgePlayer(context.Context, *connect.Request[v1.NudgePlayerRequest]) (*connect.Response[v1.NudgePlayerResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.NudgePlayer is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SendSessionMessage(context.Context, *connect.Request[v1.SendSessionMessageRequest]) (*connect.Response[v1.SendSessionMessageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SendSessionMessage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListSessionMessages(context.Context, *connect.Request[v1.ListSessionMessagesRequest]) (*connect.Response[v1.ListSessionMessagesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListSessionMessages is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SignalMasterTyping(context.Context, *connect.Request[v1.SignalMasterTypingRequest]) (*connect.Response[v1.SignalMasterTypingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SignalMasterTyping is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) SetCurrentMap(context.Context, *connect.Request[v1.SetCurrentMapRequest]) (*connect.Response[v1.SetCurrentMapResponse], error) {
