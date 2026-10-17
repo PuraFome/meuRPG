@@ -167,11 +167,29 @@ describe('the prompt of each reaction', () => {
       win('cuttingWords', { rollerLabel: 'Hobgoblin', dieSides: 8, usesLeft: 1 }),
       win('deflectMissiles', { attackerLabel: 'Arqueiro', dieSides: 10, dexMod: 3, monkLevel: 5 }),
       win('maneuverReduce', { attackerLabel: 'Ogro', options: [] }),
+      win('protection', { attackerLabel: 'Goblin', allyLabel: 'Toren' }),
       win('featherFall', { falling: [], fallFt: 30 }),
     ];
     for (const w of prompts) {
       expect(promptView(w, 2)!.question).toContain(spent);
     }
+  });
+
+  it('Proteção: who attacks whom, and that the roll is not rolled yet', () => {
+    const v = promptView(win('protection', { attackerLabel: 'Goblin', allyLabel: 'Toren' }), 2)!;
+    expect(v.title).toBe('O Goblin vai atacar');
+    expect(plain(v.subtitle)).toBe('Goblin ataca o Toren · Rodada 2');
+    expect(v.question).toContain('tem desvantagem');
+    expect(v.question).toContain('escudo em mãos');
+    expect(v.useLabel).toBe('Usar Proteção');
+    expect(v.note).toContain('ainda não foi rolado');
+  });
+
+  it('Proteção: an attacker or an ally the reader does not see is not named', () => {
+    const v = promptView(win('protection', { attackerLabel: '', allyLabel: '' }), 2)!;
+    expect(v.title).toBe('Uma criatura que você vê vai atacar');
+    expect(v.title).not.toContain('Goblin');
+    expect(plain(v.subtitle)).toContain('um aliado ao seu lado');
   });
 
   it('Contramágica: the caster and the reach, never the spell or its level', () => {

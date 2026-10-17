@@ -178,6 +178,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     armorClassDescription: 'Sem armadura',
     wearsArmor: false,
     hasShield: false,
+    shieldIdle: false,
     hitPointsMax: 10,
     hitDice: '1d6',
     speedWalkFt: 25,
@@ -1123,6 +1124,43 @@ describe('CharacterSheetPage', () => {
     expect(section.textContent).not.toContain('Nenhum item cadastrado');
     // No coins: said once, in words.
     expect(section.textContent).toContain('Sem moedas');
+  });
+
+  it('says why an idle shield adds nothing to the armor class, in the combat numbers and in "Equipamento"', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            armorClass: 16,
+            armorClassDescription: 'Cota de malha',
+            wearsArmor: true,
+            hasShield: true,
+            shieldIdle: true,
+          }),
+        }),
+      );
+    const el = await render();
+    expect(el.textContent).toContain('O escudo não soma na CA');
+    expect(sectionTitled(el, 'Equipamento').textContent).toContain('sem efeito: arma de duas mãos');
+  });
+
+  it('says nothing about the shield when it counts', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            armorClass: 18,
+            armorClassDescription: 'Cota de malha + escudo',
+            wearsArmor: true,
+            hasShield: true,
+          }),
+        }),
+      );
+    const el = await render();
+    expect(el.textContent).not.toContain('O escudo não soma na CA');
+    expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('sem efeito');
   });
 
   it('shows the background equipment text in "Equipamento", and nothing when there is none', async () => {
