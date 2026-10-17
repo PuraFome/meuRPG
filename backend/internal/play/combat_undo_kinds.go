@@ -366,25 +366,13 @@ func (u *undoer) partsSpentBack(ctx context.Context, ev actionEvent) error {
 			}
 		}
 	}
-	return u.onceMarksBack(ctx, who, ev.OnceBefore)
-}
-
-// onceMarksBack puts the once-per-turn marks of the roll's attacker back: Sneak Attack's and Colossus
-// Slayer's, and the table's when the roll changed them.
-func (u *undoer) onceMarksBack(ctx context.Context, who playdb.Combatant, before *onceMarks) error {
-	if before == nil {
+	if ev.OnceBefore == nil {
 		return nil
 	}
 	if err := u.c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{
-		ID: who.ID, SneakAttackTurn: nilIfEmpty(before.Sneak), ColossusSlayerTurn: nilIfEmpty(before.Colossus),
+		ID: who.ID, SneakAttackTurn: nilIfEmpty(ev.OnceBefore.Sneak), ColossusSlayerTurn: nilIfEmpty(ev.OnceBefore.Colossus),
 	}); err != nil {
 		return fmt.Errorf("put back the once-per-turn marks: %w", err)
-	}
-	if !before.TableChanged {
-		return nil
-	}
-	if err := u.c.q.SetCombatantTableOnceTurns(ctx, playdb.SetCombatantTableOnceTurnsParams{ID: who.ID, TableOnceTurns: writeTableOnce(before.Table)}); err != nil {
-		return fmt.Errorf("put back the table's once-per-turn marks: %w", err)
 	}
 	return nil
 }

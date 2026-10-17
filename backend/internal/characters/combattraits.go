@@ -102,10 +102,5 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides,
 		})
 	}
-	for _, x := range d.ExtraDamages {
-		t.ExtraDamages = append(t.ExtraDamages, link.ExtraDamage{
-			Key: x.Key, NamePT: x.NamePT, Applies: x.Applies, Resource: x.Resource, TextPT: x.TextPT, Amount: x.Amount,
-		})
-	}
 	return t
 }

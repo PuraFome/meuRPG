@@ -104,9 +104,7 @@ type Effect struct {
 	// Economy what it costs when it costs one (bonus_action or reaction; empty is
 	// free) and Ability, for reduce_melee_damage, the modifier added to the die. The
 	// text_pt is the rider the master reads.
-	// ranged_attack uses Applies too: RangedAttackSpell or RangedAttackWeapon. So does
-	// extra_damage (ExtraDamageLargerTarget or ExtraDamageAnyTarget), with Value the damage
-	// added to a weapon hit (an Int formula) and Resource, when set, the uses it spends.
+	// ranged_attack uses Applies too: RangedAttackSpell or RangedAttackWeapon.
 	Applies string `json:"applies,omitempty"`
 
 	// ranged_attack (rangedattack.go): what the character's attacks at a distance get,
@@ -163,7 +161,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -250,7 +248,6 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"ability_increase": effectCompiler.abilityIncrease,
 	"grant_action":     effectCompiler.grantAction,
 	"superiority_die":  effectCompiler.superiorityDie,
-	"extra_damage":     effectCompiler.extraDamage,
 	"extra_attack":     effectCompiler.extraAttack,
 	"wild_shape":       effectCompiler.wildShape,
 	"song_of_rest":     effectCompiler.songOfRest,

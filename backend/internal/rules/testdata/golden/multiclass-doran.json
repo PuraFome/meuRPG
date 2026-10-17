@@ -767,7 +767,6 @@
       }
     ],
     "Maneuvers": null,
-    "ExtraDamages": null,
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,
@@ -1427,7 +1426,6 @@
       }
     ],
     "Maneuvers": null,
-    "ExtraDamages": null,
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,
