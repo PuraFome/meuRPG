@@ -64,7 +64,8 @@ func protectionFight(t *testing.T, o protectorOpts) (*armed, *playv1.Encounter) 
 		reveal:   reveal,
 		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Reator": o.at, "Brisa": {8, 8}},
 	})
-	return a, a.passTo(t, e, "Goblin")
+	e = a.passTo(t, e, "Goblin")
+	return a, e
 }
 
 // protector is the usual Reator: the style, a shield and a one-handed weapon, next to Toren.
@@ -171,9 +172,11 @@ func TestProtectionIsOfferedOnlyWhenTheRuleHolds(t *testing.T) {
 		{name: "the target is the reactor", target: "Reator"},
 		{name: "an attacker hidden from the players", mutate: func(o *protectorOpts) { o.hideGoblin = true }},
 		{name: "a blinded reactor", setup: func(t *testing.T, a *armed, e *playv1.Encounter) {
+			t.Helper()
 			a.setConditions(t, e, "Reator", "condition:blinded")
 		}},
 		{name: "an incapacitated reactor", setup: func(t *testing.T, a *armed, e *playv1.Encounter) {
+			t.Helper()
 			a.setConditions(t, e, "Reator", "condition:incapacitated")
 		}},
 	}
@@ -243,5 +246,25 @@ func TestUndoTakesProtectionBackWithTheAttack(t *testing.T) {
 	again := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", d20(15))
 	if !again.GetRoll().GetHeldForReaction() || a.protectionWindow(t) == nil {
 		t.Errorf("the attack made again = %v, want it held for Reator again", again.GetRoll())
+	}
+}
+
+// TestProtectionBeatsTheModeTheScreenShowedAndTheAppRollsBothDice: a client sends the mode it showed
+// when the attack was made (normal), and rolls in the app; the used Protection still gives
+// disadvantage, and the app rolls the pair.
+func TestProtectionBeatsTheModeTheScreenShowedAndTheAppRollsBothDice(t *testing.T) {
+	t.Parallel()
+	a, e := protectionFight(t, protector())
+	held := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", func(r *playv1.RollAttackRequest) {
+		r.Roll, r.RollMode = &playv1.RollAttackRequest_RollInApp{RollInApp: true}, playv1.RollMode_ROLL_MODE_NORMAL
+	})
+	if !held.GetRoll().GetHeldForReaction() {
+		t.Fatalf("the attack = %v, want it held", held.GetRoll())
+	}
+	a.h.roller.queue(17, 6)
+	a.mustAnswer(t, a.ana, e, a.protectionWindow(t).GetId(), useAnswer(0))
+	en := a.lastAttackEntry(t, e)
+	if f := en.GetAttackRoll().GetFaces(); len(f) != 2 || f[0] != 17 || f[1] != 6 || en.GetAttackRoll().GetCountedIndex() != 1 {
+		t.Errorf("the attack = faces %v counting #%d, want 17 and 6 with the 6 counted", f, en.GetAttackRoll().GetCountedIndex())
 	}
 }

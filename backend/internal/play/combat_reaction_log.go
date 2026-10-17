@@ -75,6 +75,7 @@ var reactionLiners = map[reaction.Kind]reactionLiner{
 	reaction.CounterspellKind:   (*reactionFacts).counterspell,
 	reaction.UncannyDodgeKind:   (*reactionFacts).uncannyDodge,
 	reaction.ManeuverReduceKind: (*reactionFacts).maneuverReduce,
+	reaction.ProtectionKind:     (*reactionFacts).protection,
 	reaction.DeflectKind:        (*reactionFacts).deflect,
 	reaction.CuttingWords:       (*reactionFacts).cuttingWords,
 	reaction.HellishRebukeKind:  (*reactionFacts).hellishRebuke,
@@ -177,6 +178,15 @@ func (f *reactionFacts) uncannyDodge() (string, bool) {
 		return fmt.Sprintf("%s usou Esquiva Sobrenatural: o dano de %s caiu de %d para %d.%s", f.who, f.other.Label, re.Before, re.After, f.by), true
 	}
 	return fmt.Sprintf("%s usou Esquiva Sobrenatural: o dano caiu pela metade.%s", f.who, f.by), true
+}
+
+// protection is the line of a used Protection: who protected whom, with no number (the roll it
+// changed is rolled after, and has its own line).
+func (f *reactionFacts) protection() (string, bool) {
+	if !f.re.Used || !f.seesReactor {
+		return "", false
+	}
+	return fmt.Sprintf("%s usou Proteção: o ataque tem desvantagem.%s", f.who, f.by), true
 }
 
 func (f *reactionFacts) maneuverReduce() (string, bool) {

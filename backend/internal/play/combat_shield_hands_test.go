@@ -49,6 +49,7 @@ func TestTheCombatReadsNoShieldBonusBesideATwoHandedWeapon(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			a, e := reactorFight(t, func(t *testing.T, a *armed) *charactersv1.Character {
+				t.Helper()
 				return a.shieldBearer(t, "Reator", nil, tt.weapons)
 			})
 			if got := byLabel(t, e, "Reator").GetArmorClass(); got != tt.want {

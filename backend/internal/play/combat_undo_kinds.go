@@ -221,6 +221,9 @@ func (u *undoer) spendResourceBack(ctx context.Context, who playdb.Combatant, ke
 // opened goes away. A Bardic Inspiration die the roll used is held again, and the
 // turn's melee hit mark is the one before the hit.
 func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
+	if err := u.protectionBack(ctx, ev); err != nil {
+		return err
+	}
 	if who, ok := u.find(ev.Actor); ok {
 		if err := u.attackerBack(ctx, who, ev); err != nil {
 			return err
