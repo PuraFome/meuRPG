@@ -719,7 +719,7 @@ func (u *undoer) castRevealBack(ctx context.Context, _ playdb.Combatant, ev acti
 			return fmt.Errorf("drop the hidden reveal: %w", err)
 		}
 	}
-	for _, id := range ev.Revealed {
+	for _, id := range ev.revealedIDs() {
 		if target, ok := u.find(id); ok {
 			if err := u.c.q.SetCombatantHidden(ctx, playdb.SetCombatantHiddenParams{ID: target.ID, Hidden: true}); err != nil {
 				return fmt.Errorf("hide the combatant again: %w", err)
