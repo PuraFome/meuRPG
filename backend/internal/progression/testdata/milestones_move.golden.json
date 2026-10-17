@@ -288,7 +288,7 @@
       "<milestone-f> \"Marco F\" reached=false off_list=false has_history=false reached_at=false marks=0",
       "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
       "<milestone-g> \"Marco G\" reached=false off_list=false has_history=false reached_at=false marks=0",
-      "<off-list> \"Derrotaram o chefe\" reached=true off_list=true has_history=true reached_at=true marks=1"
+      "<off-list> \"Derrotaram o chefe\" reached=true off_list=true has_history=false reached_at=true marks=1"
     ],
     "rows": [
       "0 Marco A key=false hash=true",
@@ -307,7 +307,7 @@
       "<milestone-f> \"Marco F\" reached=false off_list=false has_history=false reached_at=false marks=0",
       "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
       "<milestone-g> \"Marco G\" reached=false off_list=false has_history=false reached_at=false marks=0",
-      "<off-list> \"Derrotaram o chefe\" reached=true off_list=true has_history=true reached_at=true marks=1"
+      "<off-list> \"Derrotaram o chefe\" reached=true off_list=true has_history=false reached_at=true marks=1"
     ],
     "rows": [
       "0 Marco A key=false hash=true",
