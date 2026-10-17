@@ -14,7 +14,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
-	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 const eventGameTimeAdvanced = "game_time_advanced"
@@ -71,12 +70,9 @@ type gameTimeDone struct {
 // the first call did; a combat that runs stops it.
 func (s *Service) advanceGameTimeIn(ctx context.Context, tx pgx.Tx, m authz.Membership, keyText string, hash *string, seconds int32, done *gameTimeDone) error {
 	q := s.queries.WithTx(tx)
-	session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	if err != nil {
-		return fmt.Errorf("lock the open session: %w", err)
+		return err
 	}
 	first, again, err := eventByKey(ctx, q, session.ID, keyText, eventGameTimeAdvanced, hash)
 	if err != nil {
@@ -108,28 +104,9 @@ func (s *Service) advanceGameTimeIn(ctx context.Context, tx pgx.Tx, m authz.Memb
 		return fmt.Errorf("list the effects: %w", err)
 	}
 	done.ended = int32(len(before) - len(after)) //nolint:gosec // a handful of effects
-	if err := s.insertGameTimeEvent(ctx, q, session.ID, m.UserID, keyText, hash, gameTimeEvent{Seconds: seconds, Ended: done.ended}); err != nil {
+	if err := s.appendKeyedEvent(ctx, q, keyedEvent{sessionID: session.ID, kind: eventGameTimeAdvanced, userID: m.UserID, key: keyText, hash: hash}, gameTimeEvent{Seconds: seconds, Ended: done.ended}); err != nil {
 		return err
 	}
 	done.told = true
-	return nil
-}
-
-// insertGameTimeEvent writes the event that carries the key of the call.
-func (s *Service) insertGameTimeEvent(ctx context.Context, q *playdb.Queries, sessionID, userID, keyText string, hash *string, ev gameTimeEvent) error {
-	payload, err := json.Marshal(ev)
-	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
-	}
-	seq, err := q.NextSessionEventSeq(ctx, sessionID)
-	if err != nil {
-		return fmt.Errorf("next event number: %w", err)
-	}
-	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-		GameSessionID: sessionID, Seq: seq, Kind: eventGameTimeAdvanced, ActorUserID: &userID,
-		Payload: payload, IdempotencyKey: &keyText, IdempotencyHash: hash, CreatedAt: s.now(),
-	}); err != nil {
-		return fmt.Errorf("insert session event: %w", err)
-	}
 	return nil
 }

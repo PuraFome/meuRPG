@@ -286,9 +286,9 @@ func (s *Service) trapFallWindows(ctx context.Context, c *combatTx, prev maplink
 	if fall <= 0 || len(caught) == 0 {
 		return nil, nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	return s.fallWindows(ctx, c, cs, caught, pointID, fall)
 }

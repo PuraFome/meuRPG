@@ -8,6 +8,5 @@ Toren hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0
 
 events:
 lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>","<uuid>"],"key":"spell:mage-armor","rounds":4800,"targets":["<Pensantus>","<Toren>"]},"round":1,"target_id":"<one of the targets>"}
-lasting_effect_added {"round":1}
 lasting_effect_added {"combatant_id":"<Goblin>","lasting":{"caster":"<Goblin>","change":"added","effects":["<uuid>"],"key":"spell:heroism","rounds":10,"targets":["<Toren>"]},"round":1,"secret":true,"target_id":"<Toren>"}
 

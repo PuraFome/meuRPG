@@ -18,7 +18,7 @@ import (
 // how to check what the master wrote, how to start it, what a move does, when it is
 // solved and what the fewest moves are. The rest of the service (storage, runs,
 // idempotency, "Ao resolver", the hints, who sees what) never looks inside a kind.
-// The riddle, the sequence and the cipher (slice 10.7b) are three more types here and
+// The riddle, the sequence and the cipher are three more types here and
 // three more cases in kindOf and kindByStored: what makes them different from the
 // first three is only that a move can be wrong (judges), which the rest of the service
 // handles for all kinds at once ("Ao errar").

@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The encounter builder (MR-043, RN-29; Etapa 10, slice 10.9c). These tests need the database
+// The encounter builder (MR-043, RN-29). These tests need the database
 // (MEURPG_TEST_DATABASE_URL). The party is Mirathel of the artboard E10-09: Toren, Pensantus and
 // Brisa at level 4 and Sálvia at level 5, so the budgets are 1.250 / 1.875 / 2.600 XP.
 

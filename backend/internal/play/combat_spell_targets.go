@@ -103,3 +103,38 @@ func dartsOfSlots(sp link.Spell, slots []*rulesv1.SlotChoice) []*playv1.DartsAtS
 	}
 	return out
 }
+
+// spellTargetList lists who a spell can target as the viewer sees them: the
+// caster itself and every combatant that is not defeated (one at 0 hit points
+// can be healed), in turn order, with the distance and whether the spell's range
+// cannot reach it. A spell that stays on the caster lists only the caster. In a
+// combat without a grid (theatre) there is no distance and nothing is too far: the
+// master judges the range (RN-25).
+func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell, theatre bool) []*playv1.TargetInReach {
+	reach, limited := reachOf(sp)
+	pool := coverPool(cs, v)
+	var out []*playv1.TargetInReach
+	for _, t := range cs {
+		if t.Defeated || !v.sees(t) || (selfOnly(sp) && t.ID != caster.ID) {
+			continue
+		}
+		cover := coverAgainst(terrain, caster, t, pool)
+		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
+		target.Untargetable = cover.total() && !v.master && !sp.Area && t.ID != caster.ID
+		if theatre {
+			out = append(out, target)
+			continue
+		}
+		if dist, ok := distanceFt(caster, t); ok {
+			target.DistanceFt = &dist
+			target.TooFar = limited && t.ID != caster.ID && dist > reach
+		} else if t.ID == caster.ID {
+			dist := int32(0)
+			target.DistanceFt = &dist
+		} else {
+			target.TooFar = limited && !v.master // a player cannot cast at what has no square (CastSpell)
+		}
+		out = append(out, target)
+	}
+	return out
+}

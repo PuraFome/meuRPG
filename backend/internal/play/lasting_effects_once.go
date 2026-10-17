@@ -86,9 +86,9 @@ func (s *Service) endSpentState(ctx context.Context, c *combatTx, st playdb.Comb
 	}
 	cc := *c
 	cc.enc = enc
-	cs, err := cc.q.ListCombatants(ctx, enc.ID)
+	cs, err := listCombatants(ctx, &cc)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	stopped, err := s.stopHeldConcentration(ctx, &cc, cs, st)
 	if err != nil {
@@ -115,11 +115,10 @@ func (s *Service) stopHeldConcentration(ctx context.Context, cc *combatTx, cs []
 	if j < 0 {
 		return false, nil
 	}
-	ev := actionEvent{Round: cc.enc.Round, Secret: cs[j].Hidden, Actor: cs[j].ID}
-	if err := s.stopConcentrating(ctx, cc, cs[j], &ev); err != nil {
+	if err := s.loseConcentration(ctx, cc, cs[j]); err != nil {
 		return false, err
 	}
-	return true, insertEvent(ctx, cc, eventConditionsSet, &cc.actorUserID, nil, ev)
+	return true, nil
 }
 
 // spendAttackEffects spends the effects on the attacker whose disadvantage its attack roll used

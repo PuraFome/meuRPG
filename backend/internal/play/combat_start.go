@@ -56,7 +56,7 @@ func (s *Service) StartEncounter(
 	ctx context.Context,
 	req *connect.Request[playv1.StartEncounterRequest],
 ) (*connect.Response[playv1.StartEncounterResponse], error) {
-	call, err := readStartRequest(ctx, req.Msg)
+	call, err := readStartCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -84,9 +84,9 @@ func (s *Service) StartEncounter(
 	return connect.NewResponse(&playv1.StartEncounterResponse{Encounter: enc}), nil
 }
 
-// readStartRequest reads and checks the request in the order the answers are given: who may
+// readStartCall reads and checks the request in the order the answers are given: who may
 // call, the key, the name, the battle point, then the mode.
-func readStartRequest(ctx context.Context, req *playv1.StartEncounterRequest) (startCall, error) {
+func readStartCall(ctx context.Context, req *playv1.StartEncounterRequest) (startCall, error) {
 	m, err := authz.RequireCampaignRole(ctx, req.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
 		return startCall{}, err

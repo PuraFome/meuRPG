@@ -14,8 +14,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// The combat without a grid, the "teatro da mente" (MR-025, RN-25, ADR-0017;
-// Etapa 10, slice 10.5b). These tests need the database
+// The combat without a grid, the "teatro da mente" (MR-025, RN-25, ADR-0017). These tests need the database
 // (MEURPG_TEST_DATABASE_URL). The fixtures are the ones of the combat tests on a
 // map (newArmed, newCasters, newSummoners), started without a map: nobody has a
 // square, and what the server would have checked about places is the master's word.
@@ -174,7 +173,7 @@ func (a *armed) startPlain(t *testing.T, mode playv1.EncounterMode, point string
 
 // TestRN25_ACombatStartsInOneModeForGood: the mode is the request's, or, when it
 // says none, the table's rule "combate com mapa" read when the combat starts; a
-// combat on a map is what a client that does not know the field has always got. A
+// combat on a map is what a client that does not know the field gets. A
 // combat without a map needs no map and takes none, and leaves the session's
 // current map alone; no call changes the mode afterwards.
 func TestRN25_ACombatStartsInOneModeForGood(t *testing.T) {
@@ -188,7 +187,7 @@ func TestRN25_ACombatStartsInOneModeForGood(t *testing.T) {
 	}
 
 	// A client that never heard of the field, and the table's default ("com mapa"): a
-	// combat on the map, as it has always been.
+	// combat on the map.
 	res, err := a.startPlain(t, playv1.EncounterMode_ENCOUNTER_MODE_UNSPECIFIED, "")
 	if err != nil {
 		t.Fatalf("StartEncounter(no mode) error = %v", err)

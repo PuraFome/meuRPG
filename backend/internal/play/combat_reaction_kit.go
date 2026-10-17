@@ -19,7 +19,7 @@ import (
 
 // The reactions of the window (PM-04) and what each one needs from a combatant:
 // this file reads who can react with what. A player's character spends from its
-// vitals, as a cast always did; an NPC's slots and uses are counted on the
+// vitals, as a cast does; an NPC's slots and uses are counted on the
 // combatant (combatants.slots_used) because its sheet keeps no vitals.
 
 // The spells and resources the reactions use.
