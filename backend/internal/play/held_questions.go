@@ -206,23 +206,25 @@ func (s *Service) outsideDieOffer(ctx context.Context, tx pgx.Tx, o heldOffer) *
 
 // outsideOffers is a roll that is not a weapon attack answering with its question: the Lucky one while it
 // waits (it comes first), else the die's.
-func (s *Service) outsideOffers(ctx context.Context, tx pgx.Tx, o *heldOffer) (*playv1.OutsideInspirationOffer, *playv1.LuckyOffer) {
+func (s *Service) outsideOffers(ctx context.Context, tx pgx.Tx, o *heldOffer) (*playv1.OutsideInspirationOffer, *playv1.LuckyOffer, *playv1.HeldRollOffer) {
+	held := s.outsideHeldRollOffer(ctx, tx, *o)
 	if o.Asks == askLucky {
-		return nil, o.luckyOffer()
+		return nil, o.luckyOffer(), held
 	}
-	return s.outsideDieOffer(ctx, tx, *o), nil
+	return s.outsideDieOffer(ctx, tx, *o), nil, held
 }
 
 // outsideAsk is the question a path of a player's own character answers with instead of its result.
 type outsideAsk struct {
 	Offer *playv1.OutsideInspirationOffer
 	Lucky *playv1.LuckyOffer
+	Held  *playv1.HeldRollOffer
 }
 
 // outsideAskOf is the question a roll that is not a weapon attack asks, as the paths put it in their answers.
 func (s *Service) outsideAskOf(ctx context.Context, tx pgx.Tx, o *heldOffer) *outsideAsk {
-	offer, lucky := s.outsideOffers(ctx, tx, o)
-	return &outsideAsk{Offer: offer, Lucky: lucky}
+	offer, lucky, held := s.outsideOffers(ctx, tx, o)
+	return &outsideAsk{Offer: offer, Lucky: lucky, Held: held}
 }
 
 // attackOfHold is the attack and the target a weapon attack's question names; "" for any other roll.

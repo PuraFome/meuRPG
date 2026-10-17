@@ -6443,6 +6443,100 @@ func (q *Queries) ListOpenInspirationHolds(ctx context.Context, arg ListOpenInsp
 	return items, nil
 }
 
+const listOpenInspirationHoldsOfCampaign = `-- name: ListOpenInspirationHoldsOfCampaign :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold FROM inspiration_holds WHERE campaign_id = $1 AND answer_key IS NULL ORDER BY created_at, id
+`
+
+// Every roll of the campaign that waits for an answer, for the master's list and the players' own.
+func (q *Queries) ListOpenInspirationHoldsOfCampaign(ctx context.Context, campaignID string) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listOpenInspirationHoldsOfCampaign, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
+			&i.CreatedAt,
+			&i.Round,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
+			&i.CombatantID,
+			&i.EncounterID,
+			&i.WindowHold,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenInspirationHoldsOfEncounter = `-- name: ListOpenInspirationHoldsOfEncounter :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold FROM inspiration_holds WHERE encounter_id = $1 AND answer_key IS NULL ORDER BY created_at, id
+`
+
+// Every roll held in the combat that waits for an answer, whichever roll it is, for the combatants' views.
+func (q *Queries) ListOpenInspirationHoldsOfEncounter(ctx context.Context, encounterID *string) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listOpenInspirationHoldsOfEncounter, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
+			&i.CreatedAt,
+			&i.Round,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
+			&i.CombatantID,
+			&i.EncounterID,
+			&i.WindowHold,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenPendingDamages = `-- name: ListOpenPendingDamages :many
 SELECT id, encounter_id, attacker_id, target_id, attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces, physical, amount, created_at, resolved_at, cast_id, healing, half, applied_amount, attack_total, roll_total, attack_armor_class, trap_point_id, critical_max, critical_max_rule, taken, extra_dice, parts, part_rolls, steps, landed_before, after_steps, effect_source_key, savage_dice FROM pending_damages
 WHERE encounter_id = $1 AND status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')

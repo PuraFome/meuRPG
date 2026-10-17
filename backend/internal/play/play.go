@@ -653,6 +653,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		nostore.Interceptor(),                          // no response is cacheable
 		sessions.Interceptor(),                         // who is calling
 		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
+		heldHintInterceptor(s),                         // a roll that asks tells the master and its roller
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))

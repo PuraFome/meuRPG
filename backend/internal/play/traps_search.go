@@ -55,6 +55,7 @@ type trapSearch struct {
 	place    searchPlace
 	offer    *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
 	lucky    *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
+	held     *playv1.HeldRollOffer           // the same question, in the one shape every held roll has
 }
 
 // searchTurn is what the transaction of a search works out before the dice: the character's numbers
@@ -91,7 +92,7 @@ func (s *Service) SearchForTraps(
 		return nil, s.dbError(ctx, "search for traps", err)
 	}
 	if ts.offer != nil || ts.lucky != nil { // nothing was written: the question is the whole answer
-		return connect.NewResponse(&playv1.SearchForTrapsResponse{InspirationOffer: ts.offer, LuckyOffer: ts.lucky}), nil
+		return connect.NewResponse(&playv1.SearchForTrapsResponse{InspirationOffer: ts.offer, LuckyOffer: ts.lucky, HeldRollOffer: ts.held}), nil
 	}
 	if !ts.repeated {
 		s.tellTrapSearch(ctx, ts)
@@ -101,7 +102,7 @@ func (s *Service) SearchForTraps(
 
 // readTrapSearch checks who calls and the request, and finds the caller's character.
 func (s *Service) readTrapSearch(ctx context.Context, msg *playv1.SearchForTrapsRequest) (*trapSearch, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RolePlayer)
+	m, err := heldRole(ctx, msg.GetCampaignId(), authz.RolePlayer)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +336,7 @@ func (s *Service) askSearchGate(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 	if step.Held == nil {
 		return false, nil
 	}
-	ts.offer, ts.lucky = s.outsideOffers(ctx, tx, step.Held)
+	ts.offer, ts.lucky, ts.held = s.outsideOffers(ctx, tx, step.Held)
 	return true, nil
 }
 

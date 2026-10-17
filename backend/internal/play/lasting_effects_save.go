@@ -200,7 +200,7 @@ type effectSaveCall struct {
 func readEffectSaveCall(ctx context.Context, msg *playv1.RollEffectSaveRequest) (effectSaveCall, error) {
 	var call effectSaveCall
 	var err error
-	if call.m, err = authz.RequireCampaignMember(ctx, msg.GetCampaignId()); err != nil {
+	if call.m, err = heldMember(ctx, msg.GetCampaignId()); err != nil {
 		return call, err
 	}
 	if call.key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
@@ -225,6 +225,7 @@ type effectSaveRun struct {
 	result *playv1.EffectSaveResult
 	offer  *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
 	lucky  *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
+	held   *playv1.HeldRollOffer           // the same question, in the one shape every held roll has
 }
 
 // RollEffectSave implements playv1connect.LastingEffectServiceHandler.
@@ -256,7 +257,7 @@ func (s *Service) effectSaveAnswer(ctx context.Context, m authz.Membership, res 
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, InspirationOffer: run.offer, LuckyOffer: run.lucky}), nil
+		return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, InspirationOffer: run.offer, LuckyOffer: run.lucky, HeldRollOffer: run.held}), nil
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
@@ -421,7 +422,7 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 		return false, false, err
 	}
 	if step.Held != nil {
-		x.run.offer, x.run.lucky = s.outsideOffers(ctx, c.tx, step.Held)
+		x.run.offer, x.run.lucky, x.run.held = s.outsideOffers(ctx, c.tx, step.Held)
 		return false, true, nil
 	}
 	extra, delta, err := s.rollEffectDice(x.call.in, effectDiceFor(f.states, x.reactor.ID, rules.RollAppliesSave), x.call.typedExtra)
