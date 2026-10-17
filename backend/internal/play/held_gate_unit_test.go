@@ -9,6 +9,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The pure parts of the held-roll gate: how a row of either table becomes a heldRoll, which questions
@@ -73,7 +74,10 @@ func TestAHeldRollIsStaleByItsTable(t *testing.T) {
 		return rollerState{Die: heldDie{Combatant: &playdb.Combatant{}, Round: round}, Holds: holds}
 	}
 	attack := heldRoll{table: rollHolds, Round: &round}
+	movedAttack := heldRoll{table: inspirationHolds, Kind: heldWeaponAttack, Round: &round}
 	spell := heldRoll{table: inspirationHolds, Round: &round}
+	waiting := heldRoll{table: inspirationHolds, Round: &round, LuckyIndex: new(int32(0))}
+	answered := heldRoll{table: inspirationHolds, Round: &round, LuckyIndex: new(int32(0)), LuckyAnswerKey: new("k")}
 	cases := []struct {
 		name string
 		h    heldRoll
@@ -83,15 +87,55 @@ func TestAHeldRollIsStaleByItsTable(t *testing.T) {
 		{"an attack in its round with its die", attack, st(3, true), false},
 		{"an attack in its round whose die ran out", attack, st(3, false), false},
 		{"an attack of an earlier round", attack, st(4, true), true},
+		{"an attack kept in inspiration_holds, in its round whose die ran out", movedAttack, st(3, false), false},
+		{"an attack kept in inspiration_holds, of an earlier round", movedAttack, st(4, true), true},
 		{"a spell attack in its round with its die", spell, st(3, true), false},
 		{"a spell attack in its round whose die ran out", spell, st(3, false), true},
 		{"a spell attack of an earlier round", spell, st(4, true), true},
 		{"a roll out of a combat", heldRoll{table: inspirationHolds}, rollerState{}, false},
 		{"an attack whose combat is over", attack, rollerState{}, true},
+		{"a spell attack whose combat is over", spell, rollerState{Die: heldDie{Sides: 8}, Holds: true}, true},
+		{"Lucky waits in its round, no die", waiting, st(3, false), false},
+		{"Lucky waits, a later round", waiting, st(4, false), true},
+		{"Lucky waits, the combat ended", waiting, rollerState{}, true},
+		{"Lucky answered, the die is gone", answered, st(3, false), true},
+		{"Lucky answered, the die is held", answered, st(3, true), false},
+		{"Lucky waits out of a combat", heldRoll{table: inspirationHolds, LuckyIndex: new(int32(0))}, rollerState{}, false},
 	}
 	for _, tc := range cases {
 		if got := tc.h.stale(tc.st); got != tc.want {
 			t.Errorf("%s: stale = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+	if !luckyAsks(waiting) || luckyAsks(answered) {
+		t.Error("luckyAsks: want the waiting hold asking and the answered one not")
+	}
+}
+
+// The die that counts after Lucky changed a face: the mode's pick for a pair (the SRD's example: the 1 of "a 1
+// and a 13" rolled again under advantage), and, when the path no longer rolls two dice, the pair's own mode read
+// from the hold.
+func TestCountedAfterLucky(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		before  []int
+		counted int
+		faces   []int
+		mode    combat.RollMode
+		want    int
+	}{
+		{"one d20", []int{1}, 0, []int{14}, combat.ModeNormal, 0},
+		{"advantage, the dropped 1 rolled again higher", []int{1, 13}, 1, []int{15, 13}, combat.ModeAdvantage, 0},
+		{"advantage, rolled again lower", []int{1, 13}, 1, []int{4, 13}, combat.ModeAdvantage, 1},
+		{"disadvantage, the counted 1 rolled again", []int{1, 13}, 0, []int{15, 13}, combat.ModeDisadvantage, 1},
+		{"disadvantage, both 1, the first rolled again", []int{1, 1}, 0, []int{9, 1}, combat.ModeDisadvantage, 1},
+		{"the mode changed: advantage read from the hold", []int{1, 13}, 1, []int{15, 13}, combat.ModeNormal, 0},
+		{"the mode changed: disadvantage read from the hold", []int{1, 13}, 0, []int{15, 13}, combat.ModeNormal, 1},
+	}
+	for _, tc := range cases {
+		if got := countedAfter(tc.before, tc.counted, tc.faces, tc.mode); got != tc.want {
+			t.Errorf("%s: countedAfter = %d, want %d", tc.name, got, tc.want)
 		}
 	}
 }

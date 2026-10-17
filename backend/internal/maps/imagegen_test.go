@@ -91,6 +91,24 @@ func (u *user) waitGeneration(campaign, id string) *mapsv1.GetImageGenerationRes
 	}
 }
 
+// waitForGenerationWaiter returns once a long poll of the request has registered.
+func waitForGenerationWaiter(t *testing.T, svc *Service, id string) {
+	t.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		svc.waiters.mu.Lock()
+		n := len(svc.waiters.m[id])
+		svc.waiters.mu.Unlock()
+		if n > 0 {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the long poll of %s never registered", id)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func (u *user) imageStatus(campaign string) *mapsv1.ImageGenerationStatus {
 	u.h.t.Helper()
 	res, err := u.imagegen.GetImageGenerationStatus(u.h.t.Context(), connect.NewRequest(&mapsv1.GetImageGenerationStatusRequest{CampaignId: campaign}))
@@ -989,7 +1007,10 @@ func TestMR039_Shutdown(t *testing.T) {
 		got, _ := master.getGeneration(campaign, queued.GetGeneration().GetId(), 25)
 		polled <- got
 	}()
-	time.Sleep(200 * time.Millisecond)
+	// The long poll is in flight once it has registered with the waiters (it does so before
+	// its first read); wait for that, not for a guessed time. Shutdown must answer it
+	// whichever side of the wait it is on.
+	waitForGenerationWaiter(t, h.svc, queued.GetGeneration().GetId())
 
 	h.svc.CancelGenerations()
 	// The wait ends when the generations have stopped, not when its patience does.

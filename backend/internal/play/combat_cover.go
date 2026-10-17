@@ -9,7 +9,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Cover (MR-034, RN-20, Etapa 9 D4, Q70). For a weapon attack, a spell attack
+// Cover (MR-034, RN-20). For a weapon attack, a spell attack
 // and a spell that asks for a Dexterity save, the target's cover against the
 // attacker is the larger of two things: what the map gives along the straight
 // line between the two squares (a wall is total, a painted cover square its

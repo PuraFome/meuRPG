@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// What the master sets in a puzzle whatever its kind (slice 10.7b), and the limits
+// What the master sets in a puzzle whatever its kind, and the limits
 // worked out from a run: "Ao errar" (a trap, the attempts, the limits), the skill check
 // that wins a hint and the split information. The checks run when the master makes
 // or edits the puzzle, inside its transaction.

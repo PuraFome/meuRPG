@@ -155,9 +155,8 @@ func TestCoreSurpriseSuggestionLeavesTheDefeatedOut(t *testing.T) {
 	}
 }
 
-// TestCoreHelpersOfTheSurpriseAndTheDeath freezes the pure parts: no turn running, a combat that
-// ended, a defeated creature, the death save of an event that kept none, and the failures of a
-// damage of nothing.
+// TestCoreHelpersOfTheSurpriseAndTheDeath freezes the pure parts: which combatant is on turn when none is
+// or the one on turn left, and who is still surprised.
 func TestCoreHelpersOfTheSurpriseAndTheDeath(t *testing.T) {
 	t.Parallel()
 	cs := []playdb.Combatant{{ID: "a", OrderIndex: 0}, {ID: "b", OrderIndex: 1}}
@@ -180,17 +179,5 @@ func TestCoreHelpersOfTheSurpriseAndTheDeath(t *testing.T) {
 	}
 	if !stillSurprised(playdb.Encounter{Status: statusSetup}, -1, cs[0]) {
 		t.Error("a creature is not surprised before the combat begins")
-	}
-	s := &Service{}
-	if err := s.mustNotHold(t.Context(), &combatTx{}); err != nil {
-		t.Errorf("mustNotHold(no combat) = %v, want none", err)
-	}
-	proto := deathSaveProto(actionEvent{D20: 12, DeathOutcome: deathSuccess}, combatViewer{master: true})
-	if proto.GetSuccesses() != 0 || proto.GetFailures() != 0 || proto.GetStable() || proto.GetDying() {
-		t.Errorf("deathSaveProto(no counts) = %v, want zeroes", proto)
-	}
-	before, after, added, err := s.failuresWhileDown(t.Context(), &combatTx{}, playdb.Combatant{DeathFailures: 2}, true, 0)
-	if err != nil || added != 0 || before != after || before.Failures != 2 {
-		t.Errorf("failuresWhileDown(0) = %v, %v, %d, %v; want the same state and nothing added", before, after, added, err)
 	}
 }

@@ -120,7 +120,7 @@ func TestAHeldAttackOfOneNPCCopyDoesNotBlockTheOther(t *testing.T) {
 	if first.GetInspirationOffer() == nil || second.GetInspirationOffer() == nil || first.GetInspirationOffer().GetHoldId() == second.GetInspirationOffer().GetHoldId() {
 		t.Fatalf("the questions = %v and %v, want one for each copy", first.GetInspirationOffer(), second.GetInspirationOffer())
 	}
-	if n := countRows(t, a.h, countRollHolds, e.GetId()); n != 2 {
+	if n := countRows(t, a.h, countHeldAttacksInInspirationHolds, e.GetId()); n != 2 {
 		t.Errorf("%d held rolls, want 2", n)
 	}
 	view := a.get(t, a.master)
@@ -168,7 +168,7 @@ func halflingRaider(t *testing.T, a *armed) *charactersv1.Character {
 
 // TestLuckyAfterACuttingWordsWindow: the halfling raider's attack on Toren waits for the lore bard's
 // Cutting Words window first (nothing is rolled until it is answered); then its typed 1 is held, under
-// a key of its own (the request's, with "#window"), with the Lucky question, on the d20 already minus
+// the request's key, marked as the window's own (window_hold), with the Lucky question, on the d20 already minus
 // the bard's die. Lucky rolls again, the new roll keeps the bard's die and the attack is resolved
 // once: the retries of the request, the window's answer and Lucky's answer find what they made.
 func TestLuckyAfterACuttingWordsWindow(t *testing.T) {
@@ -206,8 +206,9 @@ func TestLuckyAfterACuttingWordsWindow(t *testing.T) {
 		t.Fatalf("the raider's question = %v, want Lucky's, about the 1", offer)
 	}
 	var holdKey string
-	if err := a.h.pool.QueryRow(t.Context(), `SELECT idempotency_key FROM roll_holds WHERE encounter_id = $1`, e.GetId()).Scan(&holdKey); err != nil || holdKey != key+windowHoldSuffix {
-		t.Errorf("the hold's key = %q (%v), want the request's with %q", holdKey, err, windowHoldSuffix)
+	var window bool
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT idempotency_key::TEXT, window_hold FROM inspiration_holds WHERE encounter_id = $1`, e.GetId()).Scan(&holdKey, &window); err != nil || holdKey != key || !window {
+		t.Errorf("the hold's key = %q, window_hold = %v (%v), want the request's and a window's", holdKey, window, err)
 	}
 	// Another attack waits for Lucky's answer, and no second window opens.
 	_, err := a.attack(t, a.master, e, "Salteador", battleaxe, "Toren", d20(19))

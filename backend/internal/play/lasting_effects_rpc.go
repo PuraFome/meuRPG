@@ -158,7 +158,7 @@ func (s *Service) AddLastingEffect(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.AddLastingEffectResponse{Encounter: out, Effects: s.addedCards(ctx, m, res, made)}), nil
+	return connect.NewResponse(&playv1.AddLastingEffectResponse{Encounter: out, Effects: s.addedCards(ctx, m, res, addedIDs(res, made))}), nil
 }
 
 // addLastingEffectTx is the change AddLastingEffect makes inside the combat's transaction: read
@@ -341,7 +341,8 @@ func (s *Service) holdConcentration(ctx context.Context, c *combatTx, spec effec
 }
 
 // putLastingEffects writes the effect on the targets. An effect that sets a base armor class is a
-// record for each target, with the class worked out for it, and none for a target that wears armor.
+// record for each target, with the class worked out for it, and none for a target that wears armor;
+// when it takes no hold of any, the master is told.
 func (s *Service) putLastingEffects(ctx context.Context, c *combatTx, cs []playdb.Combatant, spec effectSpec, opts castOpts) ([]playdb.CombatantState, error) {
 	if !hasBaseAC(spec.def) {
 		return s.addEffects(ctx, c, cs, spec)
@@ -365,12 +366,32 @@ func (s *Service) putLastingEffects(ctx context.Context, c *combatTx, cs []playd
 		}
 		rows = append(rows, made...)
 	}
+	if len(rows) == 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the effect takes no hold of these targets"))
+	}
 	return rows, nil
 }
 
-// addedCards are the cards of the effects the call made, as the master reads them; read after the
-// commit, and none when the read fails or the call made nothing.
-func (s *Service) addedCards(ctx context.Context, m authz.Membership, res combatResult, made []playdb.CombatantState) []*playv1.LastingEffect {
+// addedIDs are the ids of the effect rows an AddLastingEffect call answers for: the ones it made,
+// or, for a retry that made nothing, the ones its first answer named in the event it wrote.
+func addedIDs(res combatResult, made []playdb.CombatantState) []string {
+	if !res.repeated {
+		var ids []string
+		for _, st := range made {
+			ids = append(ids, st.ID)
+		}
+		return ids
+	}
+	ev, err := readEvent(res.payload)
+	if err != nil || ev.Lasting == nil {
+		return nil
+	}
+	return ev.Lasting.Effects
+}
+
+// addedCards are the cards of the effects the call answers for (their row ids), as the master
+// reads them; read after the commit, and none when the read fails or there are none.
+func (s *Service) addedCards(ctx context.Context, m authz.Membership, res combatResult, made []string) []*playv1.LastingEffect {
 	if len(made) == 0 {
 		return nil
 	}
@@ -385,7 +406,7 @@ func (s *Service) addedCards(ctx context.Context, m authz.Membership, res combat
 	var cards []*playv1.LastingEffect
 	for _, g := range groupsOf(d.states) {
 		if slices.ContainsFunc(g.rows, func(st playdb.CombatantState) bool {
-			return slices.ContainsFunc(made, func(o playdb.CombatantState) bool { return o.ID == st.ID })
+			return slices.Contains(made, st.ID)
 		}) {
 			cards = append(cards, ev.card(g, ""))
 		}
@@ -409,7 +430,7 @@ func addedPayload(c *combatTx, rows []playdb.CombatantState, key string) actionE
 		rounds = max(*first.EndsRound-max(c.enc.Round, 1), 0)
 	}
 	ev.Actor, ev.Target = conv.OrZero(first.SourceID), targets[0]
-	ev.Secret = !first.PlayerVisible || first.Audience == "owner"
+	ev.Secret = !first.PlayerVisible || first.Audience != audienceAll
 	ev.Lasting = &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: conv.OrZero(first.SourceID), Rounds: rounds, Effects: ids}
 	return ev
 }
@@ -605,12 +626,16 @@ type visibilityInput struct {
 
 // readVisibilityInput checks the label and reads the audience.
 func readVisibilityInput(msg *playv1.SetLastingEffectVisibilityRequest) (visibilityInput, error) {
-	in := visibilityInput{label: strings.TrimSpace(msg.GetPlayerLabel()), audience: "all"}
+	in := visibilityInput{label: strings.TrimSpace(msg.GetPlayerLabel()), audience: audienceAll}
 	if utf8.RuneCountInString(in.label) > maxEffectLabel {
 		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("player_label must have at most 30 characters"))
 	}
-	if msg.GetAudience() == playv1.EffectAudience_EFFECT_AUDIENCE_OWNER {
-		in.audience = "owner"
+	switch msg.GetAudience() {
+	case playv1.EffectAudience_EFFECT_AUDIENCE_UNSPECIFIED, playv1.EffectAudience_EFFECT_AUDIENCE_ALL:
+	case playv1.EffectAudience_EFFECT_AUDIENCE_OWNER:
+		in.audience = audienceOwner
+	default: // a value the server does not know: the master's alone
+		in.audience = audienceMaster
 	}
 	return in, nil
 }
@@ -656,8 +681,9 @@ func (s *Service) setVisibilityTx(ctx context.Context, c *combatTx, effID string
 	if in.label != "" {
 		lbl = &in.label
 	}
+	masterOnly, stored := storedAudience(in.audience)
 	for _, st := range rows {
-		if _, err := c.q.SetLastingEffectVisibility(ctx, playdb.SetLastingEffectVisibilityParams{ID: st.ID, PlayerVisible: visible, Audience: in.audience, PlayerLabel: lbl}); err != nil {
+		if _, err := c.q.SetLastingEffectVisibility(ctx, playdb.SetLastingEffectVisibilityParams{ID: st.ID, PlayerVisible: visible && !masterOnly, Audience: stored, PlayerLabel: lbl}); err != nil {
 			return nil, fmt.Errorf("set the visibility: %w", err)
 		}
 	}

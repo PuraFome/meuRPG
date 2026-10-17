@@ -11,15 +11,18 @@ import (
 
 // heldKindDef is what a kind of held roll does that the gate cannot know.
 type heldKindDef struct {
-	// write is the table the kind's holds are written to. E4-6 moves the weapon attack to inspirationHolds.
+	// write is the table the kind's holds are written to.
 	write heldTable
-	// alsoRead is the table a later release writes this kind to, which this one only reads: a roll found there
-	// is answered by the same path (E4-5 reads the weapon attacks of inspiration_holds, E4-6 writes them).
+	// alsoRead is the table the kind was written to by an older release, which is only read: the holds left
+	// open there are answered by the same path (the weapon attacks of roll_holds, until the contract).
 	alsoRead heldTable
 	// refusedBy are the tables whose open question refuses a new roll of this kind in the gate, own table
-	// first. The weapon attack reads its own only: heldBlocked, which its path calls first, reads the other
-	// (and does not when a reaction window replays the attack, a case the gate keeps as it was).
+	// first.
 	refusedBy []heldTable
+	// ownKindOnly says only the holds of this very kind refuse it, and are forgotten when stale: the weapon attack
+	// shares its table with the combatant's other rolls, which heldBlocked, called first by its path, refuses it
+	// for (and does not when a reaction window replays the attack, a case the gate keeps as it was).
+	ownKindOnly bool
 	// rerun runs the request the hold kept again, with the answer in the context, by the very path that
 	// held it, and gives the path's own response; key is the key the roll settles under.
 	rerun func(ctx context.Context, s *Service, h heldRoll, key string) (proto.Message, error)
@@ -50,7 +53,8 @@ func init() {
 	outside := []heldTable{inspirationHolds, rollHolds}
 	heldRegistry = map[heldKind]heldKindDef{
 		heldWeaponAttack: {
-			write: rollHolds, alsoRead: inspirationHolds, refusedBy: []heldTable{rollHolds}, rerun: rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
+			write: inspirationHolds, alsoRead: rollHolds, refusedBy: outside, ownKindOnly: true,
+			rerun: rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
 		},
 		heldSpellAttack:       {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).CastSpell)},
 		heldEffectSave:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollEffectSave)},
@@ -114,8 +118,9 @@ func pinAttackFaces(req proto.Message, faces []int) {
 	if !ok {
 		return
 	}
+	sent := len(r.D20Faces) > 0 // a die typed as a list of one is kept as such: the answer asks for the roll again
 	r.D20Faces = nil
-	if len(faces) > 1 {
+	if len(faces) > 1 || sent {
 		r.D20Faces = faces32(faces)
 	}
 }

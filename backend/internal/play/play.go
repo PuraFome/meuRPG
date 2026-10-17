@@ -4,7 +4,7 @@
 // session's live stream (ADR-0005), the master's correction of the
 // characters' vitals (RN-02), each one recorded in session_events
 // (ADR-0007), and what the session shows at the table: the current map and
-// a gallery image (onscreen.go). Turns and actions come with combat
+// a gallery image (onscreen.go). Turns and actions are in the combat files
 // (combat.go).
 //
 // Starting a session locks the sheets in the same transaction that opens
@@ -448,6 +448,10 @@ type LiveConfig struct {
 	// Buffer is how many events a stream may fall behind before it is
 	// dropped (live.DefaultBuffer).
 	Buffer int
+	// HintAfter schedules the send that ends a hint gate's interval (the puzzles'
+	// and the content hint's): after d, run f. Nil is time.AfterFunc. A test uses it
+	// to know when no trailing hint is still waiting.
+	HintAfter func(d time.Duration, f func())
 }
 
 // Config holds what the play service needs.
@@ -468,7 +472,7 @@ type Config struct {
 	// Dice says where a player rolls (RN-18). Required.
 	Dice DiceModes
 	// Defaults gives the mode of a combat started without one (RN-24, RN-25).
-	// Optional: nil means every such combat is on a map, as before the modes.
+	// Optional: nil means every such combat is on a map.
 	Defaults CombatDefaults
 	// Terrain gives a combat the walls, difficult terrain and cover of its map
 	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module
@@ -607,6 +611,7 @@ func New(cfg Config) (*Service, error) {
 		s.now = time.Now
 	}
 	s.puzzles.hints.logger = s.logger
+	s.puzzles.hints.after = cfg.Live.HintAfter
 	if s.roller == nil {
 		s.roller = dice.Crypto{}
 	}
@@ -653,6 +658,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		nostore.Interceptor(),                          // no response is cacheable
 		sessions.Interceptor(),                         // who is calling
 		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
+		heldHintInterceptor(s),                         // a roll that asks tells the master and its roller
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))

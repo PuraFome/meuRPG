@@ -289,7 +289,11 @@ type SearchForTrapsResponse struct {
 	// Set instead of the rest, like `inspiration_offer`, when the character is a halfling and the
 	// held d20 shows a 1 (Lucky): ResourceService.AnswerOutsideLucky rolls it again or keeps the 1,
 	// before the die's question. The second d20 of a Perception search is not asked about.
-	LuckyOffer    *LuckyOffer `protobuf:"bytes,9,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	LuckyOffer *LuckyOffer `protobuf:"bytes,9,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+	// `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+	HeldRollOffer *HeldRollOffer `protobuf:"bytes,10,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -383,6 +387,13 @@ func (x *SearchForTrapsResponse) GetBonusDice() []*BonusDie {
 func (x *SearchForTrapsResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
+	}
+	return nil
+}
+
+func (x *SearchForTrapsResponse) GetHeldRollOffer() *HeldRollOffer {
+	if x != nil {
+		return x.HeldRollOffer
 	}
 	return nil
 }
@@ -1411,7 +1422,7 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\td20_faces\x18\b \x03(\x05R\bd20Faces\x12&\n" +
 	"\x0fextra_die_faces\x18\t \x03(\x05R\rextraDieFacesB\x06\n" +
 	"\x04rollB\r\n" +
-	"\v_d20_face_2\"\x81\x04\n" +
+	"\v_d20_face_2\"\xc8\x04\n" +
 	"\x16SearchForTrapsResponse\x12,\n" +
 	"\x04roll\x18\x01 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12&\n" +
 	"\x0ffound_point_ids\x18\x02 \x03(\tR\rfoundPointIds\x12!\n" +
@@ -1424,7 +1435,9 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\n" +
 	"bonus_dice\x18\b \x03(\v2\x18.meurpg.play.v1.BonusDieR\tbonusDice\x12;\n" +
 	"\vlucky_offer\x18\t \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
-	"luckyOffer\"\xd6\x01\n" +
+	"luckyOffer\x12E\n" +
+	"\x0fheld_roll_offer\x18\n" +
+	" \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xd6\x01\n" +
 	"\x0fFireTrapRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -1554,9 +1567,10 @@ var file_meurpg_play_v1_traps_proto_goTypes = []any{
 	(*OutsideInspirationOffer)(nil),   // 20: meurpg.play.v1.OutsideInspirationOffer
 	(*BonusDie)(nil),                  // 21: meurpg.play.v1.BonusDie
 	(*LuckyOffer)(nil),                // 22: meurpg.play.v1.LuckyOffer
-	(*TrapFiring)(nil),                // 23: meurpg.play.v1.TrapFiring
-	(PendingDamageStatus)(0),          // 24: meurpg.play.v1.PendingDamageStatus
-	(*timestamppb.Timestamp)(nil),     // 25: google.protobuf.Timestamp
+	(*HeldRollOffer)(nil),             // 23: meurpg.play.v1.HeldRollOffer
+	(*TrapFiring)(nil),                // 24: meurpg.play.v1.TrapFiring
+	(PendingDamageStatus)(0),          // 25: meurpg.play.v1.PendingDamageStatus
+	(*timestamppb.Timestamp)(nil),     // 26: google.protobuf.Timestamp
 }
 var file_meurpg_play_v1_traps_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SearchForTrapsRequest.skill:type_name -> meurpg.play.v1.TrapSearchSkill
@@ -1567,27 +1581,28 @@ var file_meurpg_play_v1_traps_proto_depIdxs = []int32{
 	20, // 5: meurpg.play.v1.SearchForTrapsResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
 	21, // 6: meurpg.play.v1.SearchForTrapsResponse.bonus_dice:type_name -> meurpg.play.v1.BonusDie
 	22, // 7: meurpg.play.v1.SearchForTrapsResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	23, // 8: meurpg.play.v1.FireTrapResponse.firing:type_name -> meurpg.play.v1.TrapFiring
-	24, // 9: meurpg.play.v1.TrapDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
-	17, // 10: meurpg.play.v1.TrapDamage.roll:type_name -> meurpg.play.v1.DiceRoll
-	25, // 11: meurpg.play.v1.TrapDamage.created_at:type_name -> google.protobuf.Timestamp
-	25, // 12: meurpg.play.v1.TrapDamage.session_started_at:type_name -> google.protobuf.Timestamp
-	5,  // 13: meurpg.play.v1.ListTrapDamagesResponse.damages:type_name -> meurpg.play.v1.TrapDamage
-	5,  // 14: meurpg.play.v1.ApplyTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
-	5,  // 15: meurpg.play.v1.DiscardTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
-	14, // 16: meurpg.play.v1.ListTrapActivityResponse.activity:type_name -> meurpg.play.v1.TrapActivity
-	25, // 17: meurpg.play.v1.TrapActivity.at:type_name -> google.protobuf.Timestamp
-	23, // 18: meurpg.play.v1.TrapActivity.firing:type_name -> meurpg.play.v1.TrapFiring
-	16, // 19: meurpg.play.v1.TrapActivity.search:type_name -> meurpg.play.v1.TrapSearchResult
-	15, // 20: meurpg.play.v1.TrapActivity.notice:type_name -> meurpg.play.v1.TrapNotice
-	0,  // 21: meurpg.play.v1.TrapSearchResult.skill:type_name -> meurpg.play.v1.TrapSearchSkill
-	17, // 22: meurpg.play.v1.TrapSearchResult.roll:type_name -> meurpg.play.v1.DiceRoll
-	17, // 23: meurpg.play.v1.TrapSearchResult.second_roll:type_name -> meurpg.play.v1.DiceRoll
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	23, // 8: meurpg.play.v1.SearchForTrapsResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	24, // 9: meurpg.play.v1.FireTrapResponse.firing:type_name -> meurpg.play.v1.TrapFiring
+	25, // 10: meurpg.play.v1.TrapDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
+	17, // 11: meurpg.play.v1.TrapDamage.roll:type_name -> meurpg.play.v1.DiceRoll
+	26, // 12: meurpg.play.v1.TrapDamage.created_at:type_name -> google.protobuf.Timestamp
+	26, // 13: meurpg.play.v1.TrapDamage.session_started_at:type_name -> google.protobuf.Timestamp
+	5,  // 14: meurpg.play.v1.ListTrapDamagesResponse.damages:type_name -> meurpg.play.v1.TrapDamage
+	5,  // 15: meurpg.play.v1.ApplyTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
+	5,  // 16: meurpg.play.v1.DiscardTrapDamageResponse.damage:type_name -> meurpg.play.v1.TrapDamage
+	14, // 17: meurpg.play.v1.ListTrapActivityResponse.activity:type_name -> meurpg.play.v1.TrapActivity
+	26, // 18: meurpg.play.v1.TrapActivity.at:type_name -> google.protobuf.Timestamp
+	24, // 19: meurpg.play.v1.TrapActivity.firing:type_name -> meurpg.play.v1.TrapFiring
+	16, // 20: meurpg.play.v1.TrapActivity.search:type_name -> meurpg.play.v1.TrapSearchResult
+	15, // 21: meurpg.play.v1.TrapActivity.notice:type_name -> meurpg.play.v1.TrapNotice
+	0,  // 22: meurpg.play.v1.TrapSearchResult.skill:type_name -> meurpg.play.v1.TrapSearchSkill
+	17, // 23: meurpg.play.v1.TrapSearchResult.roll:type_name -> meurpg.play.v1.DiceRoll
+	17, // 24: meurpg.play.v1.TrapSearchResult.second_roll:type_name -> meurpg.play.v1.DiceRoll
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_traps_proto_init() }

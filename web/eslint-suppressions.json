@@ -39,11 +39,6 @@
       "count": 2
     }
   },
-  "src/app/core/content/option-switches.spec.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/app/core/content/spell-draft.spec.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 10
@@ -189,6 +184,11 @@
       "count": 5
     }
   },
+  "src/app/core/play/live-stream.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 3
+    }
+  },
   "src/app/core/play/scene-testing.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 15
@@ -287,11 +287,6 @@
       "count": 1
     }
   },
-  "src/app/pages/campaign-detail/creatures/give-creature-sheet.spec.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/app/pages/campaign-detail/creatures/give-creature-sheet.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -301,11 +296,6 @@
     }
   },
   "src/app/pages/campaign-detail/dice-panel/dice-panel.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/dice-preference-panel/dice-preference-panel.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
     }
@@ -435,11 +425,6 @@
       "count": 1
     }
   },
-  "src/app/shared/campaign-document/document-format.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    }
-  },
   "src/app/pages/campaign-document/document-read/document-read.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -508,11 +493,6 @@
   },
   "src/app/pages/character-editor/ability-scores/dice-result/dice-result.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/pages/character-editor/character-editor-choices.spec.ts": {
-    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -652,21 +632,8 @@
       "count": 1
     }
   },
-  "src/app/shared/creatures/creature-edit.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
   "src/app/pages/character-sheet/creatures-panel/creatures-panel.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/summon-sheet/summon-sheet.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
       "count": 1
     }
   },
@@ -834,17 +801,6 @@
   "src/app/pages/encounters/budget-bar/budget-bar.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 2
-    }
-  },
-  "src/app/shared/creature-pick/creature-pick.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@angular-eslint/template/click-events-have-key-events": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
     }
   },
   "src/app/pages/encounters/encounter-builder/encounter-builder.ts": {
@@ -1063,11 +1019,6 @@
     "@angular-eslint/no-output-native": {
       "count": 1
     },
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/slot-picker/slot-picker.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
     }
@@ -1313,50 +1264,6 @@
       "count": 1
     }
   },
-  "src/app/pages/live-session/combat/reaction-queue/reaction-queue.spec.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "src/app/shared/roll-picker/roll-picker.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 2
-    }
-  },
-  "src/app/shared/start-combat/npc-row.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/start-combat/player-row.ts": {
-    "@angular-eslint/no-output-native": {
-      "count": 1
-    },
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/start-combat/saved-monsters.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/start-combat/start-combat-dialog.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    }
-  },
-  "src/app/shared/start-combat/start-combat-saved.spec.ts": {
-    "@typescript-eslint/no-non-null-asserted-optional-chain": {
-      "count": 1
-    }
-  },
   "src/app/pages/live-session/combat/theatre/cover-panel.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -1476,11 +1383,6 @@
   "src/app/pages/live-session/live-session.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
-    }
-  },
-  "src/app/core/play/live-stream.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 3
     }
   },
   "src/app/pages/live-session/party-panel/party-panel.ts": {
@@ -1650,14 +1552,6 @@
       "count": 1
     }
   },
-  "src/app/shared/slot-dots/slot-dots.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    },
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 2
-    }
-  },
   "src/app/pages/live-session/traps/trap-card/trap-card.ts": {
     "@angular-eslint/no-output-native": {
       "count": 1
@@ -1736,11 +1630,6 @@
       "count": 1
     }
   },
-  "src/app/shared/editor-overlay/editor-overlay.ts": {
-    "@typescript-eslint/no-magic-numbers": {
-      "count": 4
-    }
-  },
   "src/app/pages/maps/grid-panel/calibrate-ask.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 1
@@ -1753,16 +1642,6 @@
   },
   "src/app/pages/maps/layers-panel/layers-panel.ts": {
     "@typescript-eslint/no-magic-numbers": {
-      "count": 1
-    }
-  },
-  "src/app/shared/map-ask/map-ask.spec.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/map-ask/map-ask.ts": {
-    "@angular-eslint/no-output-native": {
       "count": 1
     }
   },
@@ -1865,11 +1744,6 @@
       "count": 1
     }
   },
-  "src/app/shared/reveal-switch/reveal-switch.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
   "src/app/pages/maps/scene-actions/scene-action-form.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -1946,22 +1820,12 @@
       "count": 1
     }
   },
-  "src/app/pages/spells/spells.spec.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "src/app/pages/spells/spells.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
     }
   },
   "src/app/pages/table-rules/fog-switch/fog-switch.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/shared/method-cards/method-cards.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
     }
@@ -2007,6 +1871,11 @@
       "count": 1
     }
   },
+  "src/app/shared/campaign-document/document-format.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
   "src/app/shared/check-box/check-box.ts": {
     "@angular-eslint/no-output-native": {
       "count": 1
@@ -2031,6 +1900,17 @@
       "count": 1
     }
   },
+  "src/app/shared/creature-pick/creature-pick.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@angular-eslint/template/click-events-have-key-events": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
   "src/app/shared/creatures/creature-art.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2047,6 +1927,11 @@
       "count": 1
     }
   },
+  "src/app/shared/creatures/creature-edit.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
   "src/app/shared/creatures/stat-block.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2055,6 +1940,16 @@
   "src/app/shared/dice-choice/dice-choice.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
+    }
+  },
+  "src/app/shared/dice-preference-panel/dice-preference-panel.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/editor-overlay/editor-overlay.ts": {
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 4
     }
   },
   "src/app/shared/effect-picker/effect-picker.ts": {
@@ -2230,6 +2125,16 @@
       "count": 1
     }
   },
+  "src/app/shared/map-ask/map-ask.spec.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/map-ask/map-ask.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    }
+  },
   "src/app/shared/map-layers/map-layers-legend.ts": {
     "@typescript-eslint/no-magic-numbers": {
       "count": 3
@@ -2303,6 +2208,11 @@
       "count": 3
     }
   },
+  "src/app/shared/method-cards/method-cards.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
   "src/app/shared/monsters/put-sheet/put-sheet.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2367,6 +2277,19 @@
       "count": 1
     }
   },
+  "src/app/shared/reveal-switch/reveal-switch.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/roll-picker/roll-picker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
   "src/app/shared/sheet/sheet-frame/sheet-frame.spec.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
@@ -2377,8 +2300,16 @@
       "count": 1
     }
   },
-  "src/app/shared/spell-details/open-spell-details.spec.ts": {
-    "no-restricted-syntax": {
+  "src/app/shared/slot-dots/slot-dots.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 2
+    }
+  },
+  "src/app/shared/slot-picker/slot-picker.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
     }
   },
@@ -2394,6 +2325,45 @@
   },
   "src/app/shared/spell-details/spell-help.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/start-combat/npc-row.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/start-combat/player-row.ts": {
+    "@angular-eslint/no-output-native": {
+      "count": 1
+    },
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/start-combat/saved-monsters.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    }
+  },
+  "src/app/shared/start-combat/start-combat-dialog.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
+      "count": 1
+    }
+  },
+  "src/app/shared/start-combat/start-combat-saved.spec.ts": {
+    "@typescript-eslint/no-non-null-asserted-optional-chain": {
+      "count": 1
+    }
+  },
+  "src/app/shared/summon-sheet/summon-sheet.ts": {
+    "@angular-eslint/prefer-on-push-component-change-detection": {
+      "count": 1
+    },
+    "@typescript-eslint/no-magic-numbers": {
       "count": 1
     }
   },
@@ -2504,11 +2474,6 @@
   "src/app/shell/user-menu/user-menu.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
-    }
-  },
-  "src/test-settle.spec.ts": {
-    "no-restricted-syntax": {
-      "count": 2
     }
   }
 }
