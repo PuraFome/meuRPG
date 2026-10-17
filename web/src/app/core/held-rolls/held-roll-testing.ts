@@ -1,11 +1,16 @@
 import { type MessageInitShape, create } from '@bufbuild/protobuf';
 import { timestampFromMs } from '@bufbuild/protobuf/wkt';
 
-import { type HeldRollOffer, HeldRollOfferSchema } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type HeldRollOffer,
+  HeldRollOfferSchema,
+  RollAttackResponseSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   type AnswerHeldRollResponse,
   AnswerHeldRollResponseSchema,
 } from '../../../gen/meurpg/play/v1/resources_pb';
+import type { AttackResult } from '../combat/combat-client-types';
 import { LUCKY_TRAIT } from '../combat/lucky';
 
 /** What a spec may set on a question besides the d20 and what it asks. */
@@ -90,4 +95,21 @@ export function heldAnswer(
   over: MessageInitShape<typeof AnswerHeldRollResponseSchema> = {},
 ): AnswerHeldRollResponse {
   return create(AnswerHeldRollResponseSchema, over);
+}
+
+/** What `AnswerHeldRoll` answers for a weapon attack: the attack as the path answers it, resolved, or still held with its
+ * next question (copied out into `next`, as the server does). */
+export function heldAttackAnswer(res: AttackResult): AnswerHeldRollResponse {
+  return heldAnswer({
+    result: {
+      case: 'attack',
+      value: create(RollAttackResponseSchema, {
+        encounter: res.encounter,
+        roll: res.roll,
+        pendingDamage: res.pending,
+        heldRollOffer: res.held,
+      }),
+    },
+    next: res.held,
+  });
 }

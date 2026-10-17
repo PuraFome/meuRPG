@@ -3,14 +3,15 @@ import { signal } from '@angular/core';
 import {
   AttackOutcome,
   type AttackRoll,
-  type InspirationOffer,
-  type LuckyOffer,
+  type HeldRollOffer,
   type PendingDamage,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import { EffectRollKind } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { awaitsReaction, stageAfterRoll, stageOfAnswer } from '../../../../core/combat/attack-flow';
 import type { CombatClient } from '../../../../core/combat/combat-client';
+import { attackResult } from '../../../../core/combat/combat-client-wire';
 import type {
   AttackDie,
   DamageDie,
@@ -18,6 +19,8 @@ import type {
   PairDie,
 } from '../../../../core/combat/combat-client-types';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import type { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import { type HeldAnswer, asksLucky } from '../../../../core/held-rolls/held-roll-offer';
 import {
   type ExtraDieField,
   dieFields,
@@ -27,12 +30,13 @@ import {
 import type { RollAnimator, RollShow } from '../../../../shared/roll-overlay/roll-animator';
 import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { AttackDamage } from './attack-damage';
-import type { AttackQuestions } from './attack-questions';
 import {
   EFFECT_DIE_FACES,
   attackShow,
   damageShow,
   extraDiceProblem,
+  inspirationShow,
+  luckyRerollShow,
   rollRefusal,
 } from './attack-sheet-view';
 import type { AttackState } from './attack-state';
@@ -51,7 +55,7 @@ export class AttackRolls {
   constructor(
     private readonly s: AttackState,
     private readonly damage: AttackDamage,
-    private readonly questions: AttackQuestions,
+    private readonly question: HeldRollController,
     private readonly host: {
       readonly api: CombatClient;
       readonly animator: Pick<RollAnimator, 'play'>;
@@ -156,19 +160,43 @@ export class AttackRolls {
   settle(res: {
     readonly roll: AttackRoll;
     readonly pending: PendingDamage | undefined;
-    readonly offer?: InspirationOffer;
-    readonly lucky?: LuckyOffer;
+    readonly held?: HeldRollOffer;
   }): void {
     this.s.roll.set(res.roll);
     this.s.pending.set(res.pending ?? null);
-    this.questions.offer.set(res.offer ?? null);
-    this.questions.luckyOffer.set(res.lucky ?? null);
-    const held = res.lucky ?? res.offer;
-    if (held) {
-      this.s.data.onHeld?.(held.holdId);
+    this.question.ask(res.held);
+    if (res.held) {
+      this.s.data.onHeld?.(res.held.holdId);
     }
     this.s.typing.set(false);
     this.s.stage.set(stageOfAnswer(res));
+  }
+
+  /** The answer to the question of the held roll: the attack the path brought, resolved or still held for the next
+   * question on the new roll; the d20 or the die the app rolled tumbles. */
+  answered(res: AnswerHeldRollResponse, done: { readonly answer: HeldAnswer }): void {
+    if (res.result.case !== 'attack') {
+      throw new Error('AnswerHeldRoll answered without its attack');
+    }
+    const attack = attackResult(res.result.value);
+    this.s.data.state.apply(attack.encounter);
+    this.settle(attack);
+    const { answer } = done;
+    this.play(
+      answer.kind === 'lucky'
+        ? luckyRerollShow(attack.roll, answer.roll)
+        : inspirationShow(attack.roll, answer.use, answer.roll),
+    );
+  }
+
+  /** A roll a reaction window held is now a question of the combat: the sheet that waited for the window asks it. */
+  askAfterWindow(held: HeldRollOffer | undefined): void {
+    if (!held) {
+      return;
+    }
+    this.question.ask(held);
+    this.s.data.onHeld?.(held.holdId);
+    this.s.stage.set(asksLucky(held) ? 'lucky' : 'inspire');
   }
 
   /** Reads the attacker's pending damages again: the hit that waited for a reaction is now a damage to roll, or gone

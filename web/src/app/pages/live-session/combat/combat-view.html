@@ -340,7 +340,7 @@
                   <button mat-button type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
                 </div>
               }
-              @if (ownOffer(); as offer) {
+              @if (ownDieAsked()) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
                   <mat-icon aria-hidden="true">music_note</mat-icon>
                   <p>A sua rolagem espera a sua resposta: usar a Inspiração de Bardo?</p>

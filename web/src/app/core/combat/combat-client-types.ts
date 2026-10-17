@@ -6,7 +6,7 @@ import {
   type DiceRoll,
   type Encounter,
   EncounterMode,
-  type InspirationOffer,
+  type HeldRollOffer,
   type LuckyOffer,
   type PendingDamage,
   type SpellCast,
@@ -92,12 +92,10 @@ export interface AttackResult {
   readonly encounter: Encounter;
   readonly roll: AttackRoll;
   readonly pending: PendingDamage | undefined;
-  /** The attacker holds a Bardic Inspiration die: the d20 is rolled and the result is held until the player answers
-   * (`AnswerBardicInspiration`). `roll` then carries only the d20, with no outcome. */
-  readonly offer?: InspirationOffer;
-  /** The attacker is a halfling and a d20 shows a 1 (Sortudo): the result is held until the player rolls it again or
-   * keeps the 1 (`AnswerLucky`). It comes before `offer`, which is unset meanwhile. */
-  readonly lucky?: LuckyOffer;
+  /** The roll waits for a question (the halfling's Lucky about a 1, which comes first, or the attacker's Bardic
+   * Inspiration die): the d20 is rolled and the result is held until the player answers (`AnswerHeldRoll`). `roll`
+   * then carries only the d20, with no outcome. */
+  readonly held?: HeldRollOffer;
 }
 
 /** What a move answers: the combat, and whether it stopped short or provoked. */

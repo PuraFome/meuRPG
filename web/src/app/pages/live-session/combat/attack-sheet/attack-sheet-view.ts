@@ -6,7 +6,7 @@ import {
   type Combatant,
   CombatantSide,
   type Encounter,
-  type InspirationOffer,
+  type HeldRollOffer,
   type PendingDamage,
   PendingDamageStatus,
   type TargetInReach,
@@ -40,7 +40,7 @@ import { reactionWait } from '../../../../core/combat/reactions';
 import { liveRequest } from '../../../../core/combat/roll-mode';
 import { type ExtraDieField, missingDice } from '../../../../core/effects/effects';
 import { joinDots, tight } from '../../../../core/format/text';
-import type { InspirationRoll, LuckyRoll } from '../../../../core/resources/resources-client';
+import type { HeldRolled } from '../../../../core/held-rolls/held-roll-offer';
 import {
   type RollShow,
   showOfDice,
@@ -324,10 +324,10 @@ export function afterDamageText(
  */
 export function attackShow(
   name: string,
-  res: { readonly roll: AttackRoll; readonly offer?: InspirationOffer },
+  res: { readonly roll: AttackRoll; readonly held?: HeldRollOffer },
 ): RollShow | null {
   const r = res.roll;
-  const told = !res.offer && !r.heldForReaction && r.outcome !== AttackOutcome.UNSPECIFIED;
+  const told = !res.held && !r.heldForReaction && r.outcome !== AttackOutcome.UNSPECIFIED;
   const hit = isHit(r.outcome);
   return showOfDice(`Ataque com ${name}`, r.d20, {
     withTotal: !r.heldForReaction,
@@ -346,7 +346,7 @@ export function damageShow(p: PendingDamage | undefined): RollShow | null {
 }
 
 /** The d20 the app rolled again for Lucky, tumbling: the new face alone, "1 → 14" (the sheet tells the result). */
-export function luckyRerollShow(roll: AttackRoll, die: LuckyRoll | null): RollShow | null {
+export function luckyRerollShow(roll: AttackRoll, die: HeldRolled | null): RollShow | null {
   if (!die || !('inApp' in die)) {
     return null;
   }
@@ -360,7 +360,7 @@ export function luckyRerollShow(roll: AttackRoll, die: LuckyRoll | null): RollSh
 export function inspirationShow(
   roll: AttackRoll,
   use: boolean,
-  die: InspirationRoll | null,
+  die: HeldRolled | null,
 ): RollShow | null {
   const bonus = use && die && 'inApp' in die ? roll.bonusDice.find((b) => b.used) : undefined;
   return bonus ? showOfDie('Inspiração de Bardo', bonus.sides, bonus.face, `+${bonus.face}`) : null;

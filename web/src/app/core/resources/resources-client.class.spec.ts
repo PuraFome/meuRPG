@@ -118,7 +118,7 @@ describe('ResourceClient: the class resource calls', () => {
       null,
       'k',
     );
-    expect(res.offer?.holdId).toBe('h');
+    expect(res.held?.holdId).toBe('h');
     expect(res.roll.d20?.total).toBe(14);
   });
 

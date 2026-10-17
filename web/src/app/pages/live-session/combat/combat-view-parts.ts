@@ -1,7 +1,5 @@
 import { afterNextRender, computed, inject, Directive } from '@angular/core';
 import {
-  type InspirationOffer,
-  type LuckyOffer,
   EncounterStatus,
   type PendingDamage,
   PendingDamageStatus,
@@ -19,12 +17,6 @@ import { openWindows } from '../../../core/combat/reactions';
 import { type RevealAnswer } from './hidden-reveal/hidden-reveal-card';
 import { CombatViewDerivedDirective } from './combat-view-derived';
 
-/** The questions of a held attack roll the page reopens the attack sheet at: the halfling's Lucky about a 1 (asked
- * first) and the Bardic Inspiration die. */
-interface HeldRoll {
-  readonly offer?: InspirationOffer;
-  readonly lucky?: LuckyOffer;
-}
 /** The parts the screen is composed of (`CombatSheets`, `MoveFlow`, `ContestHost`) and the calls of the turn, the
  * actions and the attacks. */
 @Directive()
@@ -263,13 +255,10 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
   /** "Responder": the question of a held roll (Lucky first, then the die's), at the d20 that was rolled. `false` while
    * the attack is not in the options. */
   protected openHeldRoll(): boolean {
-    const held: HeldRoll = {
-      offer: this.ownOffer() ?? undefined,
-      lucky: this.ownLucky() ?? undefined,
-    };
-    const key = (held.lucky ?? held.offer)?.attackKey;
+    const held = this.ownHeld();
+    const key = held?.attackKey;
     const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === key);
-    if (!key || !attack) {
+    if (!held || !key || !attack) {
       return false;
     }
     this.sheets.attack({ key, held });

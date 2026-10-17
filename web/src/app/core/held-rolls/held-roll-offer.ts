@@ -67,7 +67,7 @@ export function heldOfferOf(source: HeldOfferSource): HeldRollOffer | undefined 
   }
   const die = source.inspirationOffer;
   if (die) {
-    const combat = die.$typeName === 'meurpg.play.v1.InspirationOffer';
+    const combat = isCombatDie(die);
     return create(HeldRollOfferSchema, {
       holdId: die.holdId,
       d20: die.d20,
@@ -83,11 +83,23 @@ export function heldOfferOf(source: HeldOfferSource): HeldRollOffer | undefined 
   return undefined;
 }
 
+/** The die's offer of a weapon attack in a combat (it names the die as a message), not the one of a roll outside it. */
+function isCombatDie(offer: InspirationOffer | OutsideInspirationOffer): offer is InspirationOffer {
+  return 'die' in offer;
+}
+
 /** The weapon attack an old offer names (empty for a roll that is not one). */
 function attackOf(offer: { readonly attackKey: string; readonly targetId: string }) {
   return offer.attackKey
     ? { kind: HeldRollKind.WEAPON_ATTACK, attackKey: offer.attackKey, targetId: offer.targetId }
     : {};
+}
+
+/** The question when it is a weapon attack's (the combat view reopens the attack sheet at it), else `null`. */
+export function weaponHold(offer: HeldRollOffer | null | undefined): HeldRollOffer | null {
+  return offer && (offer.kind === HeldRollKind.WEAPON_ATTACK || offer.attackKey !== '')
+    ? offer
+    : null;
 }
 
 /** Whether the question is the halfling's Lucky (otherwise it is the die's). */

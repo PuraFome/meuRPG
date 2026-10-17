@@ -6,7 +6,7 @@ import {
   AttackRollSchema,
   CombatantSide,
   DiceRollSchema,
-  InspirationOfferSchema,
+  HeldRollOfferSchema,
   PendingDamageSchema,
   PendingDamageStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -388,7 +388,7 @@ describe('the dice animated', () => {
     expect(held?.line).toBeUndefined();
     const asked = attackShow('Espada', {
       roll: create(AttackRollSchema, { outcome: AttackOutcome.HIT, d20: d20(9) }),
-      offer: create(InspirationOfferSchema, { holdId: 'h' }),
+      held: create(HeldRollOfferSchema, { holdId: 'h' }),
     });
     expect(asked?.outcome).toBeUndefined();
     expect(attackShow('Espada', { roll: create(AttackRollSchema, {}) })).toBeNull();

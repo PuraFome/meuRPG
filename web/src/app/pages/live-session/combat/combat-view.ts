@@ -150,7 +150,7 @@ export class CombatView extends CombatViewPartsDirective {
     // question opens by itself, once.
     effect(() => {
       const e = this.encounter();
-      const offer = this.ownLucky() ?? this.ownOffer();
+      const offer = this.ownHeld();
       // The turn options arrive after the combat: the question opens when its attack is in them.
       const ready = this.options() !== null;
       // While an attack sheet is open it is the one that gets the answer of its own roll.
