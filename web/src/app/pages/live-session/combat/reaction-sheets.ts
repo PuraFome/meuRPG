@@ -140,7 +140,7 @@ export class ReactionSheets {
       return;
     }
     const answer = { use: false };
-    void this.ctx.api
+    void this.ctx.api.attacks
       .answerReaction(this.ctx.campaignId(), e.id, windowId, answer, `keep-${windowId}`)
       .then((r) => this.ctx.state().apply(r.encounter))
       .catch(() => undefined);
@@ -159,7 +159,7 @@ export class ReactionSheets {
       offer,
       round: e.round,
       load: async () => {
-        const options = await this.ctx.api.turnOptions(
+        const options = await this.ctx.api.moves.turnOptions(
           this.ctx.campaignId(),
           e.id,
           offer.reactorId,

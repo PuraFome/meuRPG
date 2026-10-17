@@ -10,12 +10,13 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The combat (MR-013, Etapa 6): CombatService, in the same Service as
+// The combat (MR-013): CombatService, in the same Service as
 // PlayService because a combat lives inside the open game session and its
 // events travel on the same stream. The handlers that start and set a combat up are
 // in combat_start.go and combat_setup.go (who joins: combat_join.go); this file has
@@ -77,9 +78,9 @@ func (s *Service) EndEncounter(
 		if c.enc.Status == statusEnded {
 			return nil, nil // ended before: nothing changes, and no event
 		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+		cs, err := listCombatants(ctx, c)
 		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
+			return nil, err
 		}
 		if err := s.endEncounter(ctx, c, cs); err != nil {
 			return nil, err
@@ -190,7 +191,7 @@ func (s *Service) moveTokensToTheirSquares(ctx context.Context, c *combatTx, cs 
 		// never makes a token for it.
 		if isCreature(cb) && !cb.Dismissed && placed(cb) {
 			x, y := centerOf(grid, *cb.GridCol, *cb.GridRow)
-			positions = append(positions, link.TokenPosition{CreatureID: deref(cb.CreatureID), XBP: x, YBP: y})
+			positions = append(positions, link.TokenPosition{CreatureID: conv.OrZero(cb.CreatureID), XBP: x, YBP: y})
 		}
 	}
 	if err := s.maps.SetTokenPositions(ctx, c.tx, *c.enc.MapID, positions, c.now); err != nil {

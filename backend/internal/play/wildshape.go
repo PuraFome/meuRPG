@@ -15,12 +15,14 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// A druid's Wild Shape (MR-037, Etapa 9, D7). The form is part of the character's
+// A druid's Wild Shape (MR-037). The form is part of the character's
 // vitals for the API (CharacterVitals.wild_shape) and lives in the table
 // character_wild_shapes, kept by the characters module; this file is what a table
 // does with it:
@@ -404,7 +406,7 @@ func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, raw
 	if err != nil {
 		return nil, nil, err
 	}
-	characterID, ok := parseID(rawCharacter)
+	characterID, ok := uid.Canonical(rawCharacter)
 	if !ok {
 		return nil, nil, errCharacterNotFound()
 	}
@@ -439,7 +441,7 @@ func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, raw
 // shapeTx is the Wild Shape transaction: the form is checked, the turn's cost is
 // paid, the form changes and the event gets its fields.
 func (s *Service) shapeTx(ctx context.Context, c *combatTx, r *shapeRun) (any, error) {
-	r.made, r.vitals, r.mapID = actionEvent{}, nil, deref(c.session.CurrentMapID)
+	r.made, r.vitals, r.mapID = actionEvent{}, nil, conv.OrZero(c.session.CurrentMapID)
 	_, who, _, err := s.playerCharacterOf(ctx, c, r.m, r.characterID)
 	if err != nil {
 		return nil, err
@@ -448,7 +450,7 @@ func (s *Service) shapeTx(ctx context.Context, c *combatTx, r *shapeRun) (any, e
 	r.inCombat = who != nil
 	r.turns = r.inCombat && c.enc.Status == statusActive // in SETUP nobody has a turn to spend
 	if r.inCombat {
-		r.mapID = deref(c.enc.MapID)
+		r.mapID = conv.OrZero(c.enc.MapID)
 	}
 	if err := s.shapeCheck(ctx, c, r); err != nil {
 		return nil, err

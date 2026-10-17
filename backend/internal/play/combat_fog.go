@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -145,7 +146,7 @@ func (s *Service) encounterMapOf(ctx context.Context, campaignID, encounterID st
 	if err != nil {
 		return "", 0, fmt.Errorf("read the combat's map: %w", err)
 	}
-	return deref(id), rev, nil
+	return conv.OrZero(id), rev, nil
 }
 
 // sightForWrite reads the sight a change needs, with the revision it was read at: nil

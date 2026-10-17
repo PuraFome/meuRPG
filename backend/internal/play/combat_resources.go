@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -91,9 +92,9 @@ type resourceFlow struct {
 // is held to nothing of the economy), and the action is spent. It returns the event
 // to fill in.
 func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership, actorID, actionKey string) (*resourceFlow, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 	who, err := findCombatant(cs, actorID, v)
@@ -132,7 +133,7 @@ func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership
 		Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey, RunBefore: run,
 		ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
 		AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged, SurgedBefore: who.ActionSurged,
-		AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft,
+		AttackKeyBefore: conv.OrZero(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft,
 	}
 	after := who
 	switch action.GetAction().GetEconomy() {
@@ -156,9 +157,8 @@ func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership
 
 // finishFlow touches the combat's revision, which every change does.
 func (s *Service) finishFlow(ctx context.Context, c *combatTx, f *resourceFlow) (actionEvent, error) {
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
 	}
 	return f.made, nil
 }
@@ -216,7 +216,7 @@ func touchReach(c *combatTx, v combatViewer, who, target playdb.Combatant, reach
 
 // creatureTypeOf is the SRD type ("undead") of a monster combatant, "" for anyone else.
 func (s *Service) creatureTypeOf(ctx context.Context, c *combatTx, target playdb.Combatant) (string, error) {
-	key := deref(target.MonsterKey)
+	key := conv.OrZero(target.MonsterKey)
 	if key == "" && target.Kind == kindNPC {
 		// A monster the master added is an NPC made from a creature: its sheet knows which.
 		chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, []string{target.CharacterID})
@@ -266,7 +266,7 @@ type layRun struct {
 	v    combatViewer
 }
 
-// readLayCall reads and checks the request, in the order the refusals have always come.
+// readLayCall reads and checks the request. The refusals come in the order of the checks below.
 func (s *Service) readLayCall(ctx context.Context, req *playv1.UseLayOnHandsRequest) (layCall, error) {
 	fr, err := s.flowRequest(ctx, req.GetCampaignId(), req.GetEncounterId(), req.GetActorId(), req.GetTargetId(), req.GetIdempotencyKey())
 	if err != nil {
@@ -853,7 +853,7 @@ func inspirationDieView(cs []playdb.Combatant, c playdb.Combatant, round int32, 
 	if !holdsDie(c, round) || (!v.master && !v.owns(c)) {
 		return nil
 	}
-	out := &playv1.InspirationDie{Sides: *c.InspirationSides, ExpiresAtRound: *c.InspirationExpiresRound, FromCombatantId: deref(c.InspirationFrom)}
+	out := &playv1.InspirationDie{Sides: *c.InspirationSides, ExpiresAtRound: *c.InspirationExpiresRound, FromCombatantId: conv.OrZero(c.InspirationFrom)}
 	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == out.FromCombatantId }); i >= 0 {
 		out.FromLabel = cs[i].Label
 	}

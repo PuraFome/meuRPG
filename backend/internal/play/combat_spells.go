@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -20,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Casting a spell (MR-014, RN-02, RN-18, RN-22, Etapa 6, slice 6.4b). The cast
+// Casting a spell (MR-014, RN-02, RN-18, RN-22). The cast
 // spends the slot and the economy at once; what it does to the targets depends
 // on the spell: a spell attack compares a d20 with the armor class, a saving
 // throw spell has the server roll each target's save, Magic Missile's darts
@@ -425,7 +426,7 @@ func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.M
 		result.Critical = true
 	}
 	hit.TargetAC = clamp32(targetAC, 0, math.MaxInt32)
-	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), clamp32(sp.ToHit+bonusFace, math.MinInt32, math.MaxInt32), clamp32(result.Total, math.MinInt32, math.MaxInt32), d20.Physical
+	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), conv.Int32(sp.ToHit+bonusFace), conv.Int32(result.Total), d20.Physical
 	return result, targetAC, nil
 }
 
@@ -539,7 +540,7 @@ func (s *Service) rollSpellSave(ctx context.Context, c *combatTx, sp link.Spell,
 	saved := combat.SaveSucceeded(d20.Total+extraTotal, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
 	hit.Save = &saveRoll{
 		Extra: extra,
-		D20:   clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total+extraTotal, math.MinInt32, math.MaxInt32),
+		D20:   clamp32(d20.Face(), 1, 20), Bonus: conv.Int32(save.Bonus), Total: conv.Int32(d20.Total + extraTotal),
 		DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode), Lucky: lucky,
 	}

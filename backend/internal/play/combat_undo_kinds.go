@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -51,13 +51,9 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventFamiliarSight:     (*undoer).familiarSight,
 }
 
-// find is the combatant of that ID, as the undo found them.
+// find is the combatant of that ID among the ones the undo found.
 func (u *undoer) find(id string) (playdb.Combatant, bool) {
-	i := slices.IndexFunc(u.cs, func(o playdb.Combatant) bool { return o.ID == id })
-	if i < 0 {
-		return playdb.Combatant{}, false
-	}
-	return u.cs[i], true
+	return combatantByID(u.cs, id)
 }
 
 // keep remembers the vitals of a character the undo restored, to tell the table.
@@ -435,7 +431,7 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 	// The creature the mover dragged along goes back to where it stood (combat_drag.go).
 	if ev.Dragged != "" && ev.DraggedFrom != nil && ev.DraggedFrom.Placed {
 		if err := u.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{
-			ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: "none",
+			ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: coverOrNone(ev.DraggedFrom.Cover),
 		}); err != nil {
 			return fmt.Errorf("put back the dragged creature: %w", err)
 		}
@@ -747,7 +743,7 @@ func (u *undoer) castTargetBack(ctx context.Context, target playdb.Combatant, h 
 		}
 	}
 	if h.MaxBefore != nil && holdsHP(target) { // after the hit points, which are the lower ones
-		if err := u.c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore, HpMaxBonus: num(h.BonusBefore)}); err != nil {
+		if err := u.c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore, HpMaxBonus: conv.OrZero(h.BonusBefore)}); err != nil {
 			return fmt.Errorf("put back the maximum hit points: %w", err)
 		}
 	}

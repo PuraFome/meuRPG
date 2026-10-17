@@ -101,6 +101,7 @@ Sneak Attack and Colossus Slayer are once per turn (`sneak_attack_turn`, `coloss
 Great Weapon Fighting rerolls 1s and 2s once, shown on the part.
 The master sees the damage by part and takes an extra out with a reason (`RemoveDamagePart`); the weapon and automatic lines stay.
 Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls.
+An area spell's damage is one roll for the whole cast: it settles every pending damage of the cast still waiting for a roll with the same damage type, in the combat's order (`sortByCombatOrder`), so `settled` in the event and `cast_pending_damages` in the answer read the same way on every run.
 
 ## Roll modes
 

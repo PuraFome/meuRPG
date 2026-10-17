@@ -1,7 +1,6 @@
 package maps
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -19,19 +18,6 @@ import (
 
 // missingUUID is a well-formed ID that names nothing.
 const missingUUID = "00000000-0000-4000-8000-0000000000aa"
-
-// wantPointRefusal checks a refusal's code and its exact message.
-func wantPointRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	ce, ok := errors.AsType[*connect.Error](err)
-	if !ok {
-		t.Errorf("%s error = %v, want %v %q", call, err, code, msg)
-		return
-	}
-	if ce.Code() != code || ce.Message() != msg {
-		t.Errorf("%s error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
-	}
-}
 
 func (s *scenes) tryCreate(req *mapsv1.CreateMapPointRequest) error {
 	s.h.t.Helper()
@@ -103,7 +89,7 @@ func TestPointWrites_CreateMapPointRefusals(t *testing.T) {
 		{"the unknown map before an unknown target", &mapsv1.CreateMapPointRequest{MapId: missingUUID, Kind: battle, Name: "P", TargetMapId: "00000000-0000-4000-8000-0000000000bb"}, notFound, "map not found"},
 	}
 	for _, c := range cases {
-		wantPointRefusal(t, "CreateMapPoint with "+c.name, s.tryCreate(c.req), c.code, c.msg)
+		wantRefusal(t, "CreateMapPoint with "+c.name, s.tryCreate(c.req), c.code, c.msg)
 	}
 	if got := len(s.master.mustGetMap(s.campaign, s.mapID).GetPoints()); got != 1 {
 		t.Errorf("the map has %d points after the refusals, want only the fixture's", got)
@@ -223,7 +209,7 @@ func TestPointWrites_UpdateMapPointRefusals(t *testing.T) {
 	}
 	for _, c := range cases {
 		_, err := s.tryUpdate(c.point, c.edit)
-		wantPointRefusal(t, "UpdateMapPoint with "+c.name, err, c.code, c.msg)
+		wantRefusal(t, "UpdateMapPoint with "+c.name, err, c.code, c.msg)
 	}
 	// A refused change writes nothing.
 	got := s.master.mustGetMap(s.campaign, s.mapID)
@@ -328,7 +314,7 @@ func TestPointWrites_DeleteMapPointRefusals(t *testing.T) {
 	}
 	for _, c := range cases {
 		_, err := s.master.maps.DeleteMapPoint(t.Context(), connect.NewRequest(&mapsv1.DeleteMapPointRequest{CampaignId: s.campaign, MapId: c.mapID, PointId: c.point}))
-		wantPointRefusal(t, "DeleteMapPoint with "+c.name, err, connect.CodeNotFound, c.msg)
+		wantRefusal(t, "DeleteMapPoint with "+c.name, err, connect.CodeNotFound, c.msg)
 	}
 	// Deleting twice: the second finds nothing.
 	del := &mapsv1.DeleteMapPointRequest{CampaignId: s.campaign, MapId: s.mapID, PointId: s.point.GetId()}
@@ -336,7 +322,7 @@ func TestPointWrites_DeleteMapPointRefusals(t *testing.T) {
 		t.Fatalf("DeleteMapPoint() error = %v", err)
 	}
 	_, err := s.master.maps.DeleteMapPoint(t.Context(), connect.NewRequest(del))
-	wantPointRefusal(t, "DeleteMapPoint again", err, connect.CodeNotFound, "point not found")
+	wantRefusal(t, "DeleteMapPoint again", err, connect.CodeNotFound, "point not found")
 }
 
 func TestPointWrites_SetMapPointRevealedRefusals(t *testing.T) {
@@ -361,7 +347,7 @@ func TestPointWrites_SetMapPointRevealedRefusals(t *testing.T) {
 	}
 	for _, c := range cases {
 		_, err := s.master.maps.SetMapPointRevealed(t.Context(), connect.NewRequest(&mapsv1.SetMapPointRevealedRequest{CampaignId: s.campaign, MapId: c.mapID, PointId: c.point, Revealed: true}))
-		wantPointRefusal(t, "SetMapPointRevealed with "+c.name, err, c.code, c.msg)
+		wantRefusal(t, "SetMapPointRevealed with "+c.name, err, c.code, c.msg)
 	}
 	// Hiding a light is valid (it stays hidden), as is hiding what is hidden.
 	if p := s.master.setPointRevealed(s.campaign, light, false); p.GetRevealed() {
@@ -407,7 +393,7 @@ func TestPointWrites_TokenRefusals(t *testing.T) {
 		{"the subject before an unknown character", func(r *mapsv1.PlaceMapTokenRequest) { r.CreatureId = missingUUID; r.CharacterId = missingUUID }, invalid, subject},
 		{"an unknown character before an unknown map", func(r *mapsv1.PlaceMapTokenRequest) { r.CharacterId = missingUUID; r.MapId = missingUUID }, connect.CodeNotFound, "character not found"},
 	} {
-		wantPointRefusal(t, "PlaceMapToken with "+c.name, place(c.edit), c.code, c.msg)
+		wantRefusal(t, "PlaceMapToken with "+c.name, place(c.edit), c.code, c.msg)
 	}
 
 	remove := func(edit func(*mapsv1.RemoveMapTokenRequest)) error {
@@ -433,7 +419,7 @@ func TestPointWrites_TokenRefusals(t *testing.T) {
 		{"a malformed character before an unknown map", func(r *mapsv1.RemoveMapTokenRequest) { r.CharacterId = "nope"; r.MapId = missingUUID }, connect.CodeNotFound, "token not found"},
 		{"an unknown map before a missing token", func(r *mapsv1.RemoveMapTokenRequest) { r.MapId = missingUUID }, connect.CodeNotFound, "map not found"},
 	} {
-		wantPointRefusal(t, "RemoveMapToken with "+c.name, remove(c.edit), c.code, c.msg)
+		wantRefusal(t, "RemoveMapToken with "+c.name, remove(c.edit), c.code, c.msg)
 	}
 }
 

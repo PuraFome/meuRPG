@@ -8,6 +8,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -377,7 +378,7 @@ func (wv *windowView) attackerOf(t windowTrigger) (label, attack string) {
 
 func (wv *windowView) shieldPrompt(w playdb.ReactionWindow, reactor *playdb.Combatant, out *playv1.ReactionWindow) error {
 	t := windowTriggerOf(w)
-	p := &playv1.ShieldPrompt{PendingDamageId: deref(w.PendingDamageID), MagicMissile: t.Magic, SpellNamePt: wv.names(shield)}
+	p := &playv1.ShieldPrompt{PendingDamageId: conv.OrZero(w.PendingDamageID), MagicMissile: t.Magic, SpellNamePt: wv.names(shield)}
 	p.AttackerLabel, p.AttackNamePt = wv.attackerOf(t)
 	if reactor != nil {
 		k, ok, err := wv.s.kitOf(wv.ctx, nil, wv.m.CampaignID, *reactor)
@@ -434,7 +435,7 @@ func (wv *windowView) concentrationPrompt(w playdb.ReactionWindow, reactor *play
 		if err != nil {
 			return wv.s.dbError(wv.ctx, "read a saving throw", err)
 		}
-		p.SaveBonus, p.BonusKnown = clamp32(save.Bonus, math.MinInt32, math.MaxInt32), save.Known
+		p.SaveBonus, p.BonusKnown = conv.Int32(save.Bonus), save.Known
 		sheet, err := wv.s.sheetOf(wv.ctx, nil, wv.m.CampaignID, *reactor)
 		if err != nil {
 			return wv.s.dbError(wv.ctx, "read a sheet", err)

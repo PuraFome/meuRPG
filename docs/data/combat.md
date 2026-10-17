@@ -250,7 +250,7 @@ The damage of a strike that hit, from the d20 to the end (MR-012, MR-014).
 - Result: `faces`, `physical` and `amount` are what was rolled (or the typed sum), `NULL` until rolled; `damage_type` is the content key (`damage-type:fire`); `parts`, `part_rolls`, `steps` (the resistance, vulnerability and immunity steps per damage type) and `after_steps` hold the breakdown; `landed_before` is an NPC's HP before the damage, to give back what a removed extra took; `taken` is what landed after temporary HP absorbed its share (a cast's rows for one target add up to the concentration save's damage, RN-22; an undo clears it); `applied_amount` is what the master applied when it was not `amount`.
 - Spells: rows of one cast share `cast_id` (a label, no foreign key; an area rolls the damage once for all); `healing` marks a heal, `half` a target that passed the save (`amount` is half, rounded down, `roll_total` the whole roll); `attack_total` is the strike total while waiting for Shield; `attack_armor_class` is the AC the strike was compared with (sheet, `ac_bonus` and cover, MR-034), `NULL` on damage opened before the column existed; `effect_source_key` is the key of the lasting effect that dealt the damage when a turn starts under it (the web that burns).
 - **Trap damage in a combat:** `attacker_id` is `NULL`, `trap_point_id` names the trap, `attack_key` is `trap`, and the row is born already rolled: `rolled` for a player character and `applied` for an NPC or creature.
-  A `CHECK` requires an attacker or a trap.
+  A `CHECK` requires an attacker, a trap or an effect source (`effect_source_key`).
 - Never sent to a player: `attack_armor_class` and the NPC-side numbers (RN-20).
 - Indexes by `target_id` and by `attacker_id` (partial) serve the cascade.
 

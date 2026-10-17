@@ -15,6 +15,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
 )
@@ -125,7 +126,7 @@ func (p *puzzleTable) trapState(t *testing.T, pointID string) string {
 	if err := p.h.pool.QueryRow(t.Context(), `SELECT trap_state FROM map_points WHERE id = $1`, pointID).Scan(&state); err != nil {
 		t.Fatal(err)
 	}
-	return deref(state)
+	return conv.OrZero(state)
 }
 
 func (p *puzzleTable) eventCount(t *testing.T, kind string) int {

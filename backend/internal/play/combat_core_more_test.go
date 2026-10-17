@@ -61,7 +61,7 @@ func TestCoreAStartCountsThePartysCreatures(t *testing.T) {
 	// Three heroes and the owl are four combatants: 37 monsters make 41.
 	_, err := start(37)
 	wantBlockedBy(t, "37 monsters and four of the party", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS)
-	wantCoreRefusal(t, "37 monsters and four of the party", err, connect.CodeFailedPrecondition, "a combat has at most 40 combatants")
+	wantRefusal(t, "37 monsters and four of the party", err, connect.CodeFailedPrecondition, "a combat has at most 40 combatants")
 	res, err := start(36)
 	if err != nil {
 		t.Fatalf("StartEncounter(36 monsters) error = %v", err)

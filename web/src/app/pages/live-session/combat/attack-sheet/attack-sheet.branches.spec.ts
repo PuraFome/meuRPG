@@ -1,8 +1,6 @@
-// The branches of `attack-sheet.ts` the other specs of the attack sheet never took (found with the coverage report): the
-// target list of a reaction or a throw, what the attack spent, the damage before it is rolled, the requests to the master
-// that are taken back, a hit that waits for a reaction, and the questions a roll can answer with. They read the sheet
-// through its protected members, as the specs next to this one do, and were written green on the code as it was before
-// it was split.
+// `attack-sheet.ts` off the happy path: the target list of a reaction or a throw, what the attack spent, the damage
+// before it is rolled, the requests to the master that are taken back, a hit that waits for a reaction, and the
+// questions a roll can answer with. It reads the sheet through its protected members, as the specs next to this one do.
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { create } from '@bufbuild/protobuf';
@@ -33,6 +31,7 @@ import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AttackSheet, type AttackSheetData } from './attack-sheet';
 import { nextTurn } from '../../../../../test-settle';
+import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
 
 /** The sheet seen from a spec: protected members and all. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -199,7 +198,7 @@ async function open(over: Over = {}) {
     providers: [
       { provide: MAT_DIALOG_DATA, useValue: data },
       { provide: MatDialogRef, useValue: { close } },
-      { provide: CombatClient, useValue: api },
+      { provide: CombatClient, useValue: fakeCombatClient(api) },
       { provide: ResourceClient, useValue: resources },
     ],
   });
