@@ -334,11 +334,19 @@ func readRageCall(ctx context.Context, campaignID, rawKey, encounterID, combatan
 	return rageCall{m: m, key: key, encID: encID, combID: combID}, nil
 }
 
-// publishRageChanged tells the streams that the combat and its log changed.
-func (s *Service) publishRageChanged(campaignID string) func(ctx context.Context, d *encounterData) {
+// rageRun is what the change of a rage call leaves for after the commit.
+type rageRun struct {
+	// hidden is set when the combatant is hidden from the players: the line it
+	// writes is theirs to see only when it is not.
+	hidden bool
+}
+
+// publishRageChanged tells the streams that the combat and its log changed, and
+// the players only when the line the call wrote is one they may read.
+func (s *Service) publishRageChanged(campaignID string, run *rageRun) func(ctx context.Context, d *encounterData) {
 	return func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, campaignID, d.enc)
-		s.publishLogChanged(ctx, campaignID, d.enc.ID, true)
+		s.publishLogChanged(ctx, campaignID, d.enc.ID, !run.hidden)
 	}
 }
 
@@ -369,13 +377,14 @@ func (s *Service) AnswerRageEnd(
 		return nil, err
 	}
 	endRage := req.Msg.GetEndRage()
+	var run rageRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.answerRageIn(ctx, c, call, endRage)
+		return s.answerRageIn(ctx, c, call, endRage, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer the rage question", err)
 	}
-	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID))
+	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID, &run))
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +393,7 @@ func (s *Service) AnswerRageEnd(
 
 // answerRageIn is the change of AnswerRageEnd: the question is dropped, and the rage ends when
 // the player lets it. It writes no event when the turn simply goes on.
-func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, endRage bool) (any, error) {
+func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, endRage bool, run *rageRun) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
@@ -392,6 +401,7 @@ func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, 
 	if err != nil {
 		return nil, err
 	}
+	run.hidden = who.Hidden
 	if !who.RageEndPending {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING, "no question waits")
 	}
@@ -423,13 +433,14 @@ func (s *Service) EndRage(
 	if err != nil {
 		return nil, err
 	}
+	var run rageRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.endRageIn(ctx, c, call)
+		return s.endRageIn(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end the rage", err)
 	}
-	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID))
+	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID, &run))
 	if err != nil {
 		return nil, err
 	}
@@ -438,11 +449,12 @@ func (s *Service) EndRage(
 
 // endRageIn is the change of EndRage: the combatant must be raging and, but for the master,
 // have its bonus action; the bonus action is spent and the rage ends by choice.
-func (s *Service) endRageIn(ctx context.Context, c *combatTx, call rageCall) (any, error) {
+func (s *Service) endRageIn(ctx context.Context, c *combatTx, call rageCall, run *rageRun) (any, error) {
 	who, v, err := s.actorOf(ctx, c, call)
 	if err != nil {
 		return nil, err
 	}
+	run.hidden = who.Hidden
 	if err := s.mustActNow(ctx, c, who); err != nil {
 		return nil, err
 	}
