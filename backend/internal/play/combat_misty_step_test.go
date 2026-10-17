@@ -47,6 +47,9 @@ func TestMistyStepThePlayerPicksTheSquareAndNobodyGetsAnOpportunityAttack(t *tes
 	c.areaFight(t)
 	c.mustMove(t, c.master, "Goblin 1", 13, 7) // next to the caster: walking away would provoke
 	before := c.who(t, c.ana, "Pensantus")
+	if got := spellTargetsOf(c.mustOptions(t, c.ana, c.get(t, c.master), "Pensantus"), mistyStep).GetTeleportRangeFt(); got != 30 {
+		t.Errorf("the turn options give a teleport reach of %d ft, want 30", got)
+	}
 
 	res, err := c.misty(t, c.ana, at(8, 7))
 	if err != nil {

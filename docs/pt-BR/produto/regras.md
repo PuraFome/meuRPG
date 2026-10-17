@@ -438,7 +438,7 @@ O mestre move qualquer um para qualquer lugar, mas não para dentro de uma pared
 | Alcance | O alcance de ataques e magias conta quadrados entre os centros, arredondado para baixo, então um alcance de 1,5 m vale nos oito lados. Uma arma com a propriedade alcance chega a 3 m, também para o ataque de oportunidade |
 | Salto | O salto em distância é igual ao valor de Força em pés com corrida (pelo menos 3 m a pé logo antes, neste turno) e metade parado. O salto em altura é 3 pés mais o modificador de Força com corrida e metade parado. Um salto em distância custa só o comprimento dele e não atravessa uma parede |
 | Colocação | Uma criatura que chega ao mapa sem quadrado é colocada em piso livre a pelo menos 3 quadrados de todo personagem de jogador, o mais perto possível do ponto de batalha do encontro (ou do meio do mapa) |
-| Teletransporte e movimentos forçados | O movimento forçado do mestre nunca provoca |
+| Teletransporte e movimentos forçados | O movimento forçado do mestre nunca provoca. Um teletransporte lançado (Passo Nebuloso) leva o conjurador ao espaço que o jogador escolheu, e também não provoca nada |
 
 - **O navegador não faz conta de movimento.** O servidor envia o alcance (cada quadrado e o custo dele) e a tela o desenha: um círculo tracejado do movimento restante, cada quadrado alcançável tingido, o custo em metros ao lado do quadrado escolhido. Um quadrado recusado dentro do círculo diz por quê (parede, inimigo, ocupado, custo extra) sem nomear o que está no caminho, e um fora dele diz só "Longe demais". O movimento restante passa para a parte seguinte ("Você já andou 3,0 m").
 - **Obstáculos não vistos.** O servidor para um movimento antes de uma parede, antes de uma criatura que não pode ser atravessada, antes do primeiro quadrado que o movimento restante não paga, ou no primeiro quadrado da área de uma armadilha. Se a causa é algo que o jogador não conhece, a tela diz só "Você parou antes: algo bloqueou o caminho." (RN-10).
@@ -532,6 +532,16 @@ Num mapa com grade, quem conjura não lista quem a magia atinge: coloca a área,
 - **Quem é atingido.** Todos lá dentro: aliados, quem conjura quando está dentro, criaturas escondidas. O dano é uma só rolagem para todos. A cobertura é medida a partir do ponto de origem e soma +2 (metade) ou +5 (três quartos) apenas a um teste de resistência de Destreza. Uma criatura alcançada só por um canto não ganha cobertura automática; o mestre a marca à mão.
 - **Uma área vazia** ainda é conjurada e gasta o espaço de magia e a ação. O app pergunta antes: "Ninguém que você vê está na área".
 - **Sem grade** (combate sem mapa, RN-25) nada disso existe: quem conjura lista quem é atingido, e o mestre julga quem está dentro e a cobertura.
+
+### Magias de teletransporte na grade
+
+Passo Nebuloso é uma ação bônus que leva quem conjura até 9 m para um espaço livre que essa pessoa enxergue (SRD 5.1, Misty Step).
+Num mapa com grade o jogador escolhe o espaço na própria conjuração, e o servidor confere antes de gastar o espaço de magia ou a ação bônus.
+
+- **Alcance.** Até 6 quadrados pela regra de alcance da mesa (quadrados entre os centros, arredondado para baixo). Um espaço mais longe é recusado com "Longe demais".
+- **Livre e visto.** Não dá para escolher uma parede, uma criatura ou um espaço que quem conjura não vê. O jogador só ouve "Esse espaço não está disponível", seja qual for o motivo, então a resposta nunca revela uma criatura escondida (RN-10). O mestre ouve o motivo, não é preso à visão, e pode escolher por um NPC ou por um jogador.
+- **Sem andar.** O teletransporte não gasta movimento e não provoca ataque de oportunidade. Ele limpa a marca de cobertura do mestre, mostra o novo espaço a quem o enxerga, e desfazer a conjuração devolve quem conjurou ao lugar.
+- **Sem espaço** (nenhuma escolha enviada, ou combate sem mapa, RN-25) a conjuração só gasta o espaço de magia e a ação bônus, e o mestre move a ficha.
 
 ### Criaturas escondidas atingidas por uma área
 

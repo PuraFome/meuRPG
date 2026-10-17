@@ -3206,6 +3206,10 @@ message SpellTargets {
   // How far the point of origin may be from the caster, in feet, for POINT; 0 for
   // the others. The master is not held to it.
   int32 range_ft = 11;
+  // A teleport spell (Passo Nebuloso) on a map with a grid: how far it takes the
+  // caster, in feet. The screen asks the player for the square (CastSpellRequest.
+  // destination) within it. 0 for any other spell, and in a combat without a map.
+  int32 teleport_range_ft = 12;
 }
 
 // AreaPlacement is how a spell's area is set on a map with a grid (SRD 5.1,

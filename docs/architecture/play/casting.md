@@ -32,7 +32,16 @@ What the casting does depends on what the spell is:
 | Healing | A pending damage that is a heal | The roll with the casting modifier heals at once, up to the maximum, per NPC and per character (through `character_vitals`); whoever was at 0 HP rises and the death saves reset |
 | Reads HP (Sleep, Colour Spray, Power Word, Spare the Dying, Heal, False Life, Aid) | The server reads each target's HP and applies the effect at once, in the same transaction | None |
 | Revivify | See [Death and revival](death-and-revival.md) | None |
-| The rest (Web, Misty Step) | Spends and logs; the effect is the table's, and the master marks conditions afterwards | None |
+| Teleport (Misty Step, with `destination`) | Spends the slot and the bonus action, then puts the caster on the chosen square; see below | None |
+| The rest (Web, and Misty Step without a square) | Spends and logs; the effect is the table's, and the master marks conditions afterwards | None |
+
+**A teleport on a map.** `CastSpellRequest.destination` is the square the caster lands on (`teleportReachFt` has the spells and their reach: Misty Step, 30 ft).
+`checkTeleport` runs with the other checks, before anything is spent: a square outside the grid or sent for another spell or in a combat without a map is `invalid_argument`; a square farther than the reach by `grid.RangeFt` is `TELEPORT_TOO_FAR`.
+A wall, a creature (hidden ones too) and, for a player on a map with the fog, a square the caster does not see are all `DESTINATION_UNAVAILABLE` with the same message, so the answer never says that an unseen creature stands there (RN-10); the master is held to the reach and the free square, not to sight, and is told `WALL_ON_SQUARE` or `SQUARE_OCCUPIED`.
+The cast then writes the square with no movement spent, no opportunity offer and the master's cover mark cleared, keeps where the caster stood in the event (`teleport`), and publishes the move and the fog as a move does.
+A cast held by a reaction window checks the square again when it replays, and a countered one moves nobody.
+The turn options tell the screen which spell teleports (`SpellTargets.teleport_range_ft`, 0 without a map).
+Without `destination` the cast changes nothing on the map and the master moves the token with a forced move.
 
 **What a casting rolls at once and what stays with the master (RN-22).** A casting opens the saving throw and damage the spell asks for when it is cast.
 Saves that come later, when a creature enters the area or ends its turn in it (Flaming Sphere, Web, Sleet Storm, Earthquake), are not automated: the data records their dice without a saving throw, so a casting spends the slot, logs and rolls nothing, and the master calls for each save as creatures move.

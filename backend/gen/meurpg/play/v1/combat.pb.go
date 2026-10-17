@@ -8904,9 +8904,13 @@ type SpellTargets struct {
 	AreaWidthFt int32             `protobuf:"varint,10,opt,name=area_width_ft,json=areaWidthFt,proto3" json:"area_width_ft,omitempty"`
 	// How far the point of origin may be from the caster, in feet, for POINT; 0 for
 	// the others. The master is not held to it.
-	RangeFt       int32 `protobuf:"varint,11,opt,name=range_ft,json=rangeFt,proto3" json:"range_ft,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RangeFt int32 `protobuf:"varint,11,opt,name=range_ft,json=rangeFt,proto3" json:"range_ft,omitempty"`
+	// A teleport spell (Passo Nebuloso) on a map with a grid: how far it takes the
+	// caster, in feet. The screen asks the player for the square (CastSpellRequest.
+	// destination) within it. 0 for any other spell, and in a combat without a map.
+	TeleportRangeFt int32 `protobuf:"varint,12,opt,name=teleport_range_ft,json=teleportRangeFt,proto3" json:"teleport_range_ft,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SpellTargets) Reset() {
@@ -9012,6 +9016,13 @@ func (x *SpellTargets) GetAreaWidthFt() int32 {
 func (x *SpellTargets) GetRangeFt() int32 {
 	if x != nil {
 		return x.RangeFt
+	}
+	return 0
+}
+
+func (x *SpellTargets) GetTeleportRangeFt() int32 {
+	if x != nil {
+		return x.TeleportRangeFt
 	}
 	return 0
 }
@@ -22344,7 +22355,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\atargets\x18\x02 \x03(\v2\x1e.meurpg.play.v1.ResourceTargetR\atargets\"u\n" +
 	"\x0eResourceTarget\x125\n" +
 	"\x06target\x18\x01 \x01(\v2\x1d.meurpg.play.v1.TargetInReachR\x06target\x12,\n" +
-	"\x12disabled_reason_pt\x18\x02 \x01(\tR\x10disabledReasonPt\"\xf7\x03\n" +
+	"\x12disabled_reason_pt\x18\x02 \x01(\tR\x10disabledReasonPt\"\xa3\x04\n" +
 	"\fSpellTargets\x12\x1b\n" +
 	"\tspell_key\x18\x01 \x01(\tR\bspellKey\x127\n" +
 	"\atargets\x18\x02 \x03(\v2\x1d.meurpg.play.v1.TargetInReachR\atargets\x12\x1f\n" +
@@ -22360,7 +22371,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"areaSizeFt\x12\"\n" +
 	"\rarea_width_ft\x18\n" +
 	" \x01(\x05R\vareaWidthFt\x12\x19\n" +
-	"\brange_ft\x18\v \x01(\x05R\arangeFt\"B\n" +
+	"\brange_ft\x18\v \x01(\x05R\arangeFt\x12*\n" +
+	"\x11teleport_range_ft\x18\f \x01(\x05R\x0fteleportRangeFt\"B\n" +
 	"\vDartsAtSlot\x12\x1d\n" +
 	"\n" +
 	"slot_level\x18\x01 \x01(\x05R\tslotLevel\x12\x14\n" +

@@ -7,7 +7,7 @@ The code is `combat_undo.go` and `combat_undo_kinds.go`.
 ## What can be undone
 
 The last action is the session's latest `session_events` row that an undo has not yet undone (`lastAction`, looking at the latest 100 events).
-It can be undone if it is one of `undoableKinds`: an attack, a damage, an "Aplicar" or "Não aplicar", a standard or feature action, an NPC's HP adjustment, a cast spell, a Shield used or declined, a death save, the conditions or concentration, a move (including a jump), a trap triggered in the combat, the start of Wild Shape or of the familiar's sight, and the master's reveal of a hider.
+It can be undone if it is one of `undoableKinds`: an attack, a damage, an "Aplicar" or "Não aplicar", a standard or feature action, an NPC's HP adjustment, a cast spell (a teleport puts the caster back on the square it left), a Shield used or declined, a death save, the conditions or concentration, a move (including a jump), a trap triggered in the combat, the start of Wild Shape or of the familiar's sight, and the master's reveal of a hider.
 The death confirmation cannot be undone, and neither can a contest, a hit rider or a turn passing.
 Any later event that is not undoable leaves `NOTHING_TO_UNDO`, because undoing over it would stop being a restoration of what was before.
 
