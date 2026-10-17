@@ -210,10 +210,10 @@ func TestHistoryAndMilestonesWhatEachViewerReads(t *testing.T) {
 	// The milestones' marks have no combat, so the combats are not asked: a failing
 	// read of their names does not matter, and the fault is still armed afterwards.
 	rig.faults.arm("encounter_names")
-	if got := historyRefusal(listMilestones(rig.master)); got != "ok" {
+	if got := refusal(listMilestones(rig.master)); got != "ok" {
 		t.Errorf("milestones with no combat award, the combats failing: error = %s, want ok", got)
 	}
-	wantHistoryLines(t, "milestones with no combat award: logs", rig.takeLogs(t), nil)
+	wantLines(t, "milestones with no combat award: logs", rig.takeLogs(t), nil)
 	if p := rig.faults.pending(); !slices.Equal(p, []string{"encounter_names"}) {
 		t.Errorf("milestones with no combat award: pending faults = %v, want the combats' names untouched", p)
 	}
