@@ -74,8 +74,8 @@ import type { EditorCore } from './editor-core';
 import { EditorSpellDetails } from './editor-spell-details';
 /**
  * The character editor (MR-003, MR-005, MR-006): a stepper for a full
- * sheet (player, enemy, boss) — Básico, Habilidades, Perícias, Magias (only
- * for a caster class), Equipamento, `EditorStepper` over the CDK stepper —
+ * sheet (player, enemy, boss) — Básico, Habilidades, Perícias, Escolhas, Magias
+ * (only for a caster class), Equipamento, `EditorStepper` over the CDK stepper —
  * or a single short form for a basic sheet (minion, story, `NpcShortForm`),
  * routed from three places (plan §5):
  *
@@ -94,36 +94,23 @@ import { EditorSpellDetails } from './editor-spell-details';
  * while the form was open. No D&D rule runs here: the page never shows a
  * modifier, CA or PV it computed itself.
  *
- * A custom background's two granted skills (`CustomBackground.skill_keys`)
- * are collected separately from the player's own skill proficiencies —
- * `customBackgroundSkills`, capped at 2 (`toggleCustomBackgroundSkill`) —
- * and sent only once exactly two are chosen; the server's advisory check
- * (`DerivedSheet.issues`) covers 0 or 1. Expertise (`expertiseSkillKeys`)
- * is a further, separate selection: always a subset of the proficient
- * skills (`toggleExpertise`, disabled on a skill that is not proficient).
- * `feature_choice_keys` has no field at all: see
- * `character-editor.types.ts`'s doc comment on `CharacterFormValue` for
- * why — everything else `FullSheet` has, this form now covers.
+ * The page owns the two forms, the page state and the signals the plain
+ * classes share, and builds the plain classes that hold the rest:
+ * `EditorPicks` and `SpellPicks` (what is picked beside the form's controls),
+ * `EditorCatalog` (the lists and the views over catalog and form),
+ * `EditorDraft` (the draft and what is wrong with it), `EditorServerDraft`
+ * (what the server derives from the draft), `SaveFlow` and `EditorSubmit`
+ * (the save), `EditorLoader` (opening a route) and `EditorSpellDetails`.
+ * The template binds those members directly (`views.blocks()`,
+ * `picks.toggleSkill($event)`, `server.pendingSteps()`), so a member is
+ * documented on the class that owns it; the page keeps only what needs the
+ * component itself: the route, the step and choice-group view children, the
+ * subclass and XP effects and the block and class-change handlers.
  *
- * **No data loss on save** (integrator fix, phase 2b): on an edit,
- * `CharacterEditorSourceLive.updateCharacter` starts from the `FullSheet`
- * it loaded and overwrites only the fields this form actually edits —
- * `coins` and `feature_choice_keys` (which this form has no UI for) and
- * any class beyond the first (multiclassing; this form only ever edits
- * one) survive a save unchanged instead of being silently wiped. See
- * `character-editor-source.live.spec.ts`'s round-trip test.
- *
- * **Never a typed content key** (integrator fix): race, subrace, class,
- * subclass, background, skills, armor, weapons, cantrips and spells are
- * all picked from `RulesCatalogVm` (`ContentService.ListContent`) —
- * `namePt` shown, `key` sent — never typed as free text, since a typed
- * name almost never matches the real key and the server rejects it with
- * `invalid_argument`. Cantrips and the known/prepared spell lists are
- * filterable checkbox pickers (`availableCantrips`/`availableSpells`,
- * `filteredCantrips`/`filteredSpellsKnown`/`filteredSpellsPrepared`),
- * narrowed to the chosen class's spell list; armor is a select (with "Sem
- * armadura"); weapons is a `<mat-select multiple>`. Only genuinely free
- * text stays free text — see `CharacterFormValue`'s doc comment.
+ * Race, subrace, class, subclass, background, skills, armor, weapons,
+ * cantrips and spells are picked from `RulesCatalogVm`
+ * (`ContentService.ListContent`): `namePt` shown, `key` sent, never typed as
+ * free text, since a typed name almost never matches the real key.
  */
 @Component({
   selector: 'app-character-editor',
