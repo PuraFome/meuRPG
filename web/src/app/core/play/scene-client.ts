@@ -1,10 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
-import type { LuckyOffer, OutsideInspirationOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import { PlayService } from '../../../gen/meurpg/play/v1/play_pb';
 import type { OpenSceneInfo, SceneRoll, StageNpc } from '../../../gen/meurpg/play/v1/scene_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import { heldOfferOf } from '../held-rolls/held-roll-offer';
 
 /** How a scene check's d20 comes (RN-18): the app rolls it, or the player's
  * typed face of a real die. */
@@ -58,14 +59,14 @@ export class SceneClient {
   /** `RollSceneCheck`. The key is made once per roll and sent again on a retry:
    * the server then answers with the first roll and changes nothing. A held d20 answers its
    * question instead of the roll: the halfling's Lucky about a 1 first, else the Bardic
-   * Inspiration die's. */
+   * Inspiration die's (`AnswerHeldRoll` answers it). */
   async roll(
     campaignId: string,
     actionId: string,
     die: SceneDie,
     idempotencyKey: string,
     extraDieFaces: readonly number[] = [],
-  ): Promise<SceneRoll | OutsideInspirationOffer | LuckyOffer> {
+  ): Promise<SceneRoll | HeldRollOffer> {
     const res = await this.client.rollSceneCheck({
       campaignId,
       actionId,
@@ -81,7 +82,7 @@ export class SceneClient {
     });
     // A halfling's d20 of 1 asks the Lucky question, and a character that holds a Bardic Inspiration die is asked about
     // it, before the result is written: Lucky first.
-    return res.luckyOffer ?? res.inspirationOffer ?? need(res.roll, 'RollSceneCheck');
+    return heldOfferOf(res) ?? need(res.roll, 'RollSceneCheck');
   }
 
   /** `GrantSceneAttempt` (MR-015): one more attempt for one character at one

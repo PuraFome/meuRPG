@@ -165,6 +165,13 @@ func (c *fakeClock) Now() time.Time {
 	return c.now
 }
 
+// advance moves the clock on: a test waits by this, never by sleeping.
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
 type harness struct {
 	t      *testing.T
 	pool   *pgxpool.Pool
@@ -176,6 +183,7 @@ type harness struct {
 	chars  *characters.Service
 	camps  *campaigns.Service
 	vision *visionCounter // how many times the fog was told that what the players see changed
+	clock  *fakeClock     // the service's clock, which a test moves on instead of waiting
 	voice  *voice.Fake    // makes the lines' audio; counts the voices it made
 }
 
@@ -187,6 +195,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	pool := dbtest.NewPool(t, "meurpg_play_test")
 	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool), roller: &scriptedRoller{}}
 	clock := &fakeClock{now: time.Now().Truncate(time.Microsecond)}
+	h.clock = clock
 	logger := slog.New(slog.DiscardHandler)
 	var liveConfig LiveConfig
 	if len(live) > 0 {
@@ -450,6 +459,10 @@ func (v *visionCounter) VisionChanged(ctx context.Context, campaignID, mapID str
 	v.n.Add(1)
 	v.SessionMaps.VisionChanged(ctx, campaignID, mapID)
 }
+
+// afterThePlayersChance moves the clock past the time a player has to answer a question before the master may (the
+// test clock: nothing waits).
+func (h *harness) afterThePlayersChance() { h.clock.advance(heldPlayerFirst + time.Second) }
 
 // goldenBlocks collects what the scenarios of a test read, by name.
 type goldenBlocks struct {

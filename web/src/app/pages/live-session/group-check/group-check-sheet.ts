@@ -16,17 +16,12 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type { LuckyOffer, OutsideInspirationOffer } from '../../../../gen/meurpg/play/v1/combat_pb';
+import type { AnswerHeldRollResponse } from '../../../../gen/meurpg/play/v1/resources_pb';
 import { type GroupCheckView, RollModeKind } from '../../../../gen/meurpg/play/v1/contest_types_pb';
-import type { RollGroupCheckResponse } from '../../../../gen/meurpg/play/v1/contests_pb';
 import { effectivePreference } from '../../../core/campaigns/dice-labels';
 import { ActionKey } from '../../../core/connect/idempotency';
-import {
-  type InspirationRoll,
-  type LuckyRoll,
-  ResourceClient,
-} from '../../../core/resources/resources-client';
-import { classResourceErrorMessage } from '../../../core/resources/resources-errors';
+import { HeldRollController } from '../../../core/held-rolls/held-roll-controller';
+import { ResourceClient } from '../../../core/resources/resources-client';
 import { RollAnimator, showOfCheck, showOfDice } from '../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import {
@@ -42,8 +37,7 @@ import { CheckRollForm } from '../combat/check-roll-form/check-roll-form';
 import { ContestRoll } from '../combat/contest-roll/contest-roll';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
-import { InspirationOffer } from '../inspiration/inspiration-offer';
-import { LuckyOfferCard } from '../inspiration/lucky-offer';
+import { HeldRollPrompt } from '../../../shared/held-roll-prompt/held-roll-prompt';
 
 /** What the card hands the group check's sheet. */
 export interface GroupCheckSheetData {
@@ -91,8 +85,7 @@ export function openGroupCheckSheet(
     AttackSteps,
     CheckRollForm,
     ContestRoll,
-    InspirationOffer,
-    LuckyOfferCard,
+    HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
     SheetFrame,
@@ -114,13 +107,15 @@ export class GroupCheckSheet {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   private readonly keys = new ActionKey();
-  /** One key per answer to a question of the held roll (Lucky's, the die's): the same answer again is a retry. */
-  private readonly luckyKeys = new ActionKey();
-  private readonly dieKeys = new ActionKey();
-  /** The d20 is held because a halfling's d20 shows a 1: the Lucky question, before anything is written. */
-  protected readonly luckyOffer = signal<LuckyOffer | null>(null);
-  /** After the Lucky answer, the Bardic Inspiration question on the new roll, when the character holds a die. */
-  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
+  /** The d20 is held because a halfling's d20 shows a 1: the Lucky question, before anything is written; after the answer,
+   * the Bardic Inspiration question on the new roll, when the character holds a die. */
+  protected readonly held = new HeldRollController({
+    send: (holdId, answer, key) =>
+      this.resources.answerHeldRoll(this.data.campaignId, holdId, answer, key),
+    settle: (res) => this.answeredHeld(res),
+    busy: this.busy,
+    error: this.error,
+  });
   protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
   protected readonly canType = this.data.diceMode !== DiceMode.APP;
   protected readonly preferApp =
@@ -190,9 +185,9 @@ export class GroupCheckSheet {
         die,
         this.keys.keyFor({ check: check.id, die }),
       );
-      if (made.$typeName === 'meurpg.play.v1.LuckyOffer') {
+      if (made.$typeName === 'meurpg.play.v1.HeldRollOffer') {
         // Held for the Lucky question: the d20 alone tumbles, nothing is written yet.
-        this.luckyOffer.set(made);
+        this.held.ask(made);
         const held = showOfDice(`Teste de ${this.skill()}`, made.d20);
         if (held) {
           this.animator.play(held);
@@ -217,8 +212,7 @@ export class GroupCheckSheet {
 
   /** The check written: the player's own d20, as the result step shows it; "passou" only comes when the master closes it. */
   private settle(view: GroupCheckView): void {
-    this.luckyOffer.set(null);
-    this.offer.set(null);
+    this.held.ask(null);
     this.data.state.apply(view);
     const show = showOfCheck(`Teste de ${this.skill()}`, this.own()?.roll, { withTotal: true });
     if (show) {
@@ -226,73 +220,17 @@ export class GroupCheckSheet {
     }
   }
 
-  /** What a question's answer came to: the die's question on the new roll, or the check written. */
-  private afterAnswer(res: RollGroupCheckResponse): void {
-    if (res.inspirationOffer) {
-      this.luckyOffer.set(null);
-      this.offer.set(res.inspirationOffer);
+  /** What the answer to the question brought: the die's question on the new roll (already the controller's), or the check
+   * written. */
+  private answeredHeld(res: AnswerHeldRollResponse): void {
+    const settled = res.result.case === 'groupCheck' ? res.result.value : null;
+    if (res.next) {
       return;
     }
-    if (!res.groupCheck) {
-      throw new Error('The answer came without its group check');
+    if (!settled?.groupCheck) {
+      throw new Error('AnswerHeldRoll answered without its group check');
     }
-    this.settle(res.groupCheck);
-  }
-
-  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the check is written with the new d20, or the
-   * Bardic Inspiration question comes next, on the new roll. */
-  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    const offer = this.luckyOffer();
-    if (!offer || this.busy()) {
-      return;
-    }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.resources.answerOutsideLucky(
-        this.data.campaignId,
-        offer.holdId,
-        reroll,
-        die,
-        this.luckyKeys.keyFor({ hold: offer.holdId, reroll, die }),
-      );
-      if (res.result.case !== 'groupCheck') {
-        throw new Error('AnswerOutsideLucky answered without its group check');
-      }
-      this.luckyKeys.renew();
-      this.afterAnswer(res.result.value);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** The Bardic Inspiration question that came after Lucky's: the check is written, with the die when it was used. */
-  protected async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
-    const offer = this.offer();
-    if (!offer || this.busy()) {
-      return;
-    }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.resources.answerOutsideInspiration(
-        this.data.campaignId,
-        offer.holdId,
-        use,
-        die,
-        this.dieKeys.keyFor({ hold: offer.holdId, use, die }),
-      );
-      if (res.result.case !== 'groupCheck') {
-        throw new Error('AnswerOutsideInspiration answered without its group check');
-      }
-      this.afterAnswer(res.result.value);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
-    } finally {
-      this.busy.set(false);
-    }
+    this.settle(settled.groupCheck);
   }
 
   protected close(): void {

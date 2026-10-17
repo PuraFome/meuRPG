@@ -14,8 +14,6 @@ import {
   AttackOutcome,
   CombatantKind,
   DiceRollSchema,
-  LuckyOfferSchema,
-  OutsideInspirationOfferSchema,
   PendingDamageSchema,
   PendingDamageStatus,
   PreviewSpellAreaResponseSchema,
@@ -33,9 +31,9 @@ import {
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
-import { LuckyQuestion } from '../../../../core/combat/lucky-question';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
-import { InspirationQuestion } from '../../../../core/resources/bardic-inspiration';
+import { HeldRollAsked } from '../../../../core/held-rolls/held-roll-offer';
+import { heldAnswer, heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { CastSheet, type CastSheetData } from './cast-sheet';
 import { resumedCastOf } from './cast-sheet-view';
@@ -169,8 +167,7 @@ async function open(over: Over = {}) {
   const close = vi.fn();
   const client = { castSpell: vi.fn(), rollDamage: vi.fn(), ...over.client };
   const resources = {
-    answerOutsideLucky: vi.fn(),
-    answerOutsideInspiration: vi.fn(),
+    answerHeldRoll: vi.fn(),
     ...over.resources,
   };
   const details =
@@ -714,26 +711,21 @@ describe('CastSheet: casting', () => {
 });
 
 describe('CastSheet: the d20 of a spell attack held for a question', () => {
-  const d20 = (face: number) =>
-    create(DiceRollSchema, {
-      diceCount: 1,
-      diceSides: 20,
-      faces: [face],
-      modifier: 5,
-      total: face + 5,
-    });
-  const luckyOffer = create(LuckyOfferSchema, { holdId: 'h1', d20: d20(1), luckyIndex: 0 });
-  const dieOffer = create(OutsideInspirationOfferSchema, { holdId: 'h2', d20: d20(9) });
+  const luckyOffer = heldLucky([1], 5, { holdId: 'h1' });
+  const dieOffer = heldDie(9, 5, 8, { holdId: 'h2' });
   const enc = () => encounter({ combatants: [salvia()] });
+  const reroll = (roll: { inApp: true } | { face: number } | null, rerolled = true) =>
+    ({ kind: 'lucky', reroll: rerolled, roll }) as const;
+  const die = (use: boolean) => ({ kind: 'die', use, roll: null }) as const;
 
-  it('shows the Lucky question when a cast answers with it, and the Bardic Inspiration one the same way', async () => {
+  it('shows the question when a cast answers with it, Lucky’s or the Bardic Inspiration one', async () => {
     const castSpell = vi
       .fn()
-      .mockRejectedValueOnce(new LuckyQuestion(luckyOffer, enc()))
-      .mockRejectedValueOnce(new InspirationQuestion(dieOffer, enc()));
+      .mockRejectedValueOnce(new HeldRollAsked(luckyOffer, enc()))
+      .mockRejectedValueOnce(new HeldRollAsked(dieOffer, enc()));
     const { sheet, apply } = await open({ client: { castSpell } });
     await sheet.castAnyway();
-    expect(sheet.luckyOffer()).toBe(luckyOffer);
+    expect(sheet.offer()).toBe(luckyOffer);
     expect(sheet.error()).toBe('');
     await sheet.castAnyway();
     expect(sheet.offer()).toBe(dieOffer);
@@ -741,81 +733,84 @@ describe('CastSheet: the d20 of a spell attack held for a question', () => {
   });
 
   it('shows a question whose d20 cannot be animated, without a roll to tumble', async () => {
-    const castSpell = vi
-      .fn()
-      .mockRejectedValue(new LuckyQuestion(create(LuckyOfferSchema, { holdId: 'h' }), enc()));
+    const bare = heldLucky([1], 5, { holdId: 'h' });
+    bare.d20 = undefined;
+    const castSpell = vi.fn().mockRejectedValue(new HeldRollAsked(bare, enc()));
     const { sheet } = await open({ client: { castSpell } });
     await sheet.castAnyway();
-    expect(sheet.luckyOffer()).not.toBeNull();
+    expect(sheet.offer()).not.toBeNull();
   });
 
   it('answers Lucky with the cast, or with the next question on the new roll', async () => {
     const answered = create(SpellCastSchema, { targets: [] });
-    const answerOutsideLucky = vi
+    const answerHeldRoll = vi
       .fn()
-      .mockResolvedValueOnce({
-        result: { case: 'spellCast', value: { encounter: enc(), cast: answered } },
-      })
-      .mockResolvedValueOnce({
-        result: { case: 'spellCast', value: { encounter: enc(), inspirationOffer: dieOffer } },
-      });
-    const { sheet } = await open({ resources: { answerOutsideLucky } });
-    sheet.luckyOffer.set(luckyOffer);
-    await sheet.answerLucky(true, { inApp: true });
+      .mockResolvedValueOnce(
+        heldAnswer({ result: { case: 'spellCast', value: { encounter: enc(), cast: answered } } }),
+      )
+      .mockResolvedValueOnce(
+        heldAnswer({
+          result: { case: 'spellCast', value: { encounter: enc(), heldRollOffer: dieOffer } },
+          next: dieOffer,
+        }),
+      );
+    const { sheet } = await open({ resources: { answerHeldRoll } });
+    sheet.offer.set(luckyOffer);
+    await sheet.questions.held.answer(reroll({ inApp: true }));
     expect(sheet.cast()).toBe(answered);
-    sheet.luckyOffer.set(luckyOffer);
-    await sheet.answerLucky(true, { inApp: true });
+    expect(sheet.offer()).toBeNull();
+    sheet.offer.set(luckyOffer);
+    await sheet.questions.held.answer(reroll({ inApp: true }));
     expect(sheet.offer()).toBe(dieOffer);
-    expect(sheet.luckyOffer()).toBeNull();
   });
 
-  it('ignores a Lucky answer without a question, or while busy', async () => {
-    const answerOutsideLucky = vi.fn();
-    const { sheet } = await open({ resources: { answerOutsideLucky } });
-    await sheet.answerLucky(false, null);
-    sheet.luckyOffer.set(luckyOffer);
+  it('ignores an answer without a question, or while busy', async () => {
+    const answerHeldRoll = vi.fn();
+    const { sheet } = await open({ resources: { answerHeldRoll } });
+    await sheet.questions.held.answer(reroll(null, false));
+    sheet.offer.set(luckyOffer);
     sheet.busy.set(true);
-    await sheet.answerLucky(false, null);
-    expect(answerOutsideLucky).not.toHaveBeenCalled();
+    await sheet.questions.held.answer(reroll(null, false));
+    expect(answerHeldRoll).not.toHaveBeenCalled();
   });
 
   it("says so when Lucky's answer brings no cast, or fails", async () => {
-    const answerOutsideLucky = vi
+    const answerHeldRoll = vi
       .fn()
-      .mockResolvedValueOnce({ result: { case: undefined } })
+      .mockResolvedValueOnce(heldAnswer())
       .mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
-    const { sheet } = await open({ resources: { answerOutsideLucky } });
-    sheet.luckyOffer.set(luckyOffer);
-    await sheet.answerLucky(true, { face: 4 });
+    const { sheet } = await open({ resources: { answerHeldRoll } });
+    sheet.offer.set(luckyOffer);
+    await sheet.questions.held.answer(reroll({ face: 4 }));
     expect(sheet.error()).not.toBe('');
     sheet.error.set('');
-    await sheet.answerLucky(true, { face: 4 });
+    await sheet.questions.held.answer(reroll({ face: 4 }));
     expect(sheet.error()).not.toBe('');
   });
 
   it('answers the die with the cast, ignores an answer without a question, and says when it fails', async () => {
     const answered = create(SpellCastSchema, {});
-    const answerOutsideInspiration = vi
+    const answerHeldRoll = vi
       .fn()
-      .mockResolvedValueOnce({
-        result: { case: 'spellCast', value: { encounter: enc(), cast: answered } },
-      })
-      .mockResolvedValueOnce({ result: { case: undefined } })
+      .mockResolvedValueOnce(
+        heldAnswer({ result: { case: 'spellCast', value: { encounter: enc(), cast: answered } } }),
+      )
+      .mockResolvedValueOnce(heldAnswer())
       .mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
-    const { sheet } = await open({ resources: { answerOutsideInspiration } });
-    await sheet.answerDie(true, null);
-    expect(answerOutsideInspiration).not.toHaveBeenCalled();
+    const { sheet } = await open({ resources: { answerHeldRoll } });
+    await sheet.questions.held.answer(die(true));
+    expect(answerHeldRoll).not.toHaveBeenCalled();
     sheet.offer.set(dieOffer);
-    await sheet.answerDie(true, null);
+    await sheet.questions.held.answer(die(true));
     expect(sheet.cast()).toBe(answered);
     sheet.offer.set(dieOffer);
-    await sheet.answerDie(false, null);
+    await sheet.questions.held.answer(die(false));
     expect(sheet.error()).not.toBe('');
     sheet.error.set('');
-    await sheet.answerDie(false, null);
+    await sheet.questions.held.answer(die(false));
     expect(sheet.error()).not.toBe('');
     sheet.busy.set(true);
-    await sheet.answerDie(false, null);
+    await sheet.questions.held.answer(die(false));
   });
 });
 
@@ -1171,42 +1166,39 @@ describe('CastSheet: darts cast', () => {
 
 describe('CastSheet: the die Lucky rolled again', () => {
   it("tumbles the new face alone when the die's question comes next", async () => {
-    const lucky = (face: number) =>
-      create(DiceRollSchema, {
-        diceCount: 1,
-        diceSides: 20,
-        faces: [face],
-        modifier: 5,
-        total: face + 5,
-        rerolled: [{ index: 0, from: 1, to: face, sourceKey: 'trait:lucky' }],
-      });
-    const offer = create(OutsideInspirationOfferSchema, { holdId: 'h', d20: lucky(14) });
-    const answerOutsideLucky = vi.fn().mockResolvedValue({
-      result: {
-        case: 'spellCast',
-        value: { encounter: encounter({ combatants: [salvia()] }), inspirationOffer: offer },
-      },
-    });
-    const { sheet } = await open({ resources: { answerOutsideLucky } });
+    const offer = heldDie(14, 5, 8, { holdId: 'h' }, 1);
+    const answerHeldRoll = vi.fn().mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'spellCast',
+          value: { encounter: encounter({ combatants: [salvia()] }), heldRollOffer: offer },
+        },
+        next: offer,
+      }),
+    );
+    const { sheet } = await open({ resources: { answerHeldRoll } });
     const play = vi.spyOn(sheet.animator, 'play');
-    sheet.luckyOffer.set(create(LuckyOfferSchema, { holdId: 'h', d20: lucky(1), luckyIndex: 0 }));
-    await sheet.answerLucky(true, { inApp: true });
+    sheet.offer.set(heldLucky([1], 5, { holdId: 'h' }));
+    await sheet.questions.held.answer({ kind: 'lucky', reroll: true, roll: { inApp: true } });
     expect(sheet.offer()).toBe(offer);
     expect(play).toHaveBeenCalled();
   });
 
   it('tumbles nothing for a face the player typed', async () => {
-    const offer = create(OutsideInspirationOfferSchema, { holdId: 'h' });
-    const answerOutsideLucky = vi.fn().mockResolvedValue({
-      result: {
-        case: 'spellCast',
-        value: { encounter: encounter({ combatants: [salvia()] }), inspirationOffer: offer },
-      },
-    });
-    const { sheet } = await open({ resources: { answerOutsideLucky } });
+    const offer = heldDie(14, 5, 8, { holdId: 'h' }, 1);
+    const answerHeldRoll = vi.fn().mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'spellCast',
+          value: { encounter: encounter({ combatants: [salvia()] }), heldRollOffer: offer },
+        },
+        next: offer,
+      }),
+    );
+    const { sheet } = await open({ resources: { answerHeldRoll } });
     const play = vi.spyOn(sheet.animator, 'play');
-    sheet.luckyOffer.set(create(LuckyOfferSchema, { holdId: 'h', luckyIndex: 0 }));
-    await sheet.answerLucky(true, { face: 14 });
+    sheet.offer.set(heldLucky([1], 5, { holdId: 'h' }));
+    await sheet.questions.held.answer({ kind: 'lucky', reroll: true, roll: { face: 14 } });
     expect(sheet.offer()).toBe(offer);
     expect(play).not.toHaveBeenCalled();
   });

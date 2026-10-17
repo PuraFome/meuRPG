@@ -354,8 +354,13 @@ type actionEvent struct {
 	AreaRow int32 `json:"area_row,omitempty"`
 	Dx      int32 `json:"dx,omitempty"`
 	Dy      int32 `json:"dy,omitempty"`
-	// Revealed are the hidden creatures the cast made appear, and PendingReveal the
-	// question it opened for the master: what an undo of the cast puts back.
+	// RevealedHits says the cast made appear the hidden creatures its hits name
+	// (HiddenAtCast), without listing them again: a cast of forty hits would carry their ids
+	// twice and pass the table's 16 KiB. Revealed is the list of an answer to the master's
+	// question (ResolveHiddenReveal), which has no hits, and of an event written before
+	// RevealedHits. PendingReveal is the question the cast opened for the master. They are
+	// what an undo of the cast puts back (revealedIDs).
+	RevealedHits  bool     `json:"revealed_hits,omitempty"`
 	Revealed      []string `json:"revealed,omitempty"`
 	PendingReveal string   `json:"pending_reveal,omitempty"`
 	// RevealLines are the IDs of the "revealed" lines (combatant_hidden_set) the cast
@@ -663,6 +668,8 @@ type actionEvent struct {
 	// move's undo puts it back).
 	Dragged     string     `json:"dragged_id,omitempty"`
 	DraggedFrom *moveState `json:"dragged_from,omitempty"`
+	// Teleport is where a teleport spell put the caster, and where it stood: the undo puts it back.
+	Teleport *teleportEvent `json:"teleport,omitempty"`
 	// Contest is what a contest or a special action says of the event: grapple, shove,
 	// escape, Hide, Help, surprise (combat_contests_core.go).
 	Contest *contestEvent `json:"contest,omitempty"`
@@ -709,6 +716,21 @@ type effectRef struct {
 // undo chain.
 func (ev actionEvent) linesBefore() []string {
 	return slices.Concat(ev.EndedLines, ev.FollowUpLines, ev.RevealLines)
+}
+
+// revealedIDs are the hidden creatures the event made appear: its list, and the targets of
+// its hits that were hidden when the cast was made when RevealedHits says they were revealed.
+func (ev actionEvent) revealedIDs() []string {
+	ids := slices.Clone(ev.Revealed)
+	if !ev.RevealedHits {
+		return ids
+	}
+	for _, h := range ev.Hits {
+		if h.HiddenAtCast {
+			ids = append(ids, h.Target)
+		}
+	}
+	return ids
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails

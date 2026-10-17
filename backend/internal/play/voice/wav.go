@@ -2,10 +2,12 @@ package voice
 
 import "encoding/binary"
 
+// wavHeaderSize is the size of the header wav writes: a WAV file of fewer bytes holds no sound.
+const wavHeaderSize = 44
+
 // wav wraps 16-bit mono PCM samples in a WAV file.
 func wav(pcm []byte, sampleRate uint32) []byte {
-	const headerSize = 44
-	out := make([]byte, headerSize, headerSize+len(pcm))
+	out := make([]byte, wavHeaderSize, wavHeaderSize+len(pcm))
 	copy(out[0:], "RIFF")
 	binary.LittleEndian.PutUint32(out[4:], uint32(36+len(pcm))) //nolint:gosec // G115: bounded by the answer limit
 	copy(out[8:], "WAVEfmt ")

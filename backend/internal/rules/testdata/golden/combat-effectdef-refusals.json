@@ -1,7 +1,7 @@
 {
   "bad: a count without rounds": "f.json: effect:x: rounds go with the rounds duration, and only with it",
   "bad: a label of 31 characters": "f.json: effect:x: player_label_pt is over 30 characters",
-  "bad: applies": "f.json: effect:x: applies must be all or failed_save",
+  "bad: applies": "f.json: effect:x: applies must be all, failed_save or hit",
   "bad: break_free": "f.json: effect:x: break_free needs an ability",
   "bad: condition": "f.json: effect:x: \"condition:bored\" is not an SRD condition",
   "bad: empty kind": "f.json: effect:x: kind must be spell, feature or master",
@@ -30,7 +30,7 @@
   "ok: nothing but a kind": "accepted",
   "ok: on_end names a spell": "accepted",
   "ok: owner visibility": "accepted",
-  "order: applies before visibility": "f.json: effect:x: applies must be all or failed_save",
+  "order: applies before visibility": "f.json: effect:x: applies must be all, failed_save or hit",
   "order: break_free before label": "f.json: effect:x: break_free needs an ability",
   "order: conditions before modifiers": "f.json: effect:x: \"condition:bored\" is not an SRD condition",
   "order: duration before applies": "f.json: effect:x: rounds go with the rounds duration, and only with it",

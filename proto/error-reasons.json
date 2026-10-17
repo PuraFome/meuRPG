@@ -1,0 +1,853 @@
+{
+  "about": "Every reason the server can send a client, as data. The Go tests in backend/internal/archtest and the web spec in web/src/app/core/errors check this file against the code and against the Portuguese sentences. See docs/architecture/api.md#error-reasons.",
+  "details": [
+    {
+      "module": "characters",
+      "message": "meurpg.characters.v1.CharacterBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "CharacterBlockedReason",
+          "reasons": [
+            "SHEET_LOCKED",
+            "CHARACTER_DEAD",
+            "LIVING_CHARACTER_EXISTS",
+            "STORY_LOCKED",
+            "NOT_PENDING",
+            "AWAITING_APPROVAL",
+            "CANNOT_LEVEL_UP",
+            "DICE_FORCED_PHYSICAL",
+            "DICE_FORCED_IN_APP",
+            "CREATURE_IN_COMBAT",
+            "CREATURE_LIMIT",
+            "HIT_POINTS_AVERAGE_ONLY",
+            "ARCHIVED_CONTENT",
+            "TABLE_CONTENT_STAYS",
+            "SWITCHED_OFF_CONTENT",
+            "NOT_RESERVED",
+            "CLAIM_LINK_USED",
+            "NOT_CLAIMED",
+            "CHARACTER_IN_COMBAT",
+            "CLAIM_OWN_LINK",
+            "RESERVED",
+            "NO_CHANGES_REQUESTED",
+            "NOT_DEAD"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "characters",
+      "message": "meurpg.characters.v1.InvalidField",
+      "fields": []
+    },
+    {
+      "module": "characters",
+      "message": "meurpg.characters.v1.ChoiceRefusal",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "ChoiceRefusalReason",
+          "reasons": [
+            "CHOICES_MISSING",
+            "PREREQUISITE_UNMET",
+            "CHOICE_NOT_OFFERED",
+            "CHOICE_ALREADY_MADE",
+            "CHOICE_NOT_OPEN"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "characters",
+      "message": "meurpg.characters.v1.AbilityScoresRefusal",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "AbilityScoresRefusalReason",
+          "reasons": [
+            "METHOD_NOT_ALLOWED",
+            "NOT_STANDARD_ARRAY",
+            "BAD_POINT_BUY",
+            "NO_ROLLS_STORED",
+            "NOT_THE_ROLLS",
+            "TYPED_OUT_OF_RANGE",
+            "DICE_FORCED_IN_APP",
+            "DICE_FORCED_PHYSICAL",
+            "ROLLS_ALREADY_STORED",
+            "EXTRA_BONUSES"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "characters",
+      "message": "meurpg.characters.v1.LevelUpRefusal",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "LevelUpRefusalReason",
+          "reasons": [
+            "CLASS",
+            "MAX_LEVEL",
+            "LOCKED_FIELD",
+            "ABILITY_NOT_DUE",
+            "ABILITY_SHAPE",
+            "ABILITY_ABOVE_20",
+            "HIT_POINTS",
+            "SUBCLASS",
+            "CANTRIPS",
+            "SPELLS",
+            "PREPARED",
+            "FEATURE_CHOICE",
+            "SKILLS",
+            "EXPERTISE",
+            "SHEET_ISSUE",
+            "HIT_POINT_ROLL_MISSING",
+            "HIT_POINT_ROLL_OTHER_CLASS",
+            "SHEET_NEEDS_MASTER",
+            "HIT_POINTS_RULE",
+            "ARCHIVED_CHOICE",
+            "SWITCHED_OFF_CHOICE",
+            "FEAT",
+            "FEAT_PREREQUISITE",
+            "FEATS_NOT_ALLOWED",
+            "MULTICLASS_PREREQUISITE",
+            "MULTICLASS_PREREQUISITE_CURRENT",
+            "PROFICIENCY_CHOICE",
+            "INSTRUMENT_CHOICE",
+            "LATE_CHOICE_MISSING"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "campaigns",
+      "message": "meurpg.campaigns.v1.XpModeChangeBlocked",
+      "fields": []
+    },
+    {
+      "module": "campaigns",
+      "message": "meurpg.campaigns.v1.InviteUnusable",
+      "fields": [
+        {
+          "field": "state",
+          "enum": "InviteState",
+          "reasons": [
+            "EXPIRED",
+            "REVOKED",
+            "USED_UP"
+          ],
+          "unsent": [
+            "ACTIVE"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "campaigns",
+      "message": "meurpg.campaigns.v1.CampaignCreationRefused",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "CampaignCreationRefusedReason",
+          "reasons": [
+            "LIMIT_REACHED",
+            "NOT_ALLOWED"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "campaignpackage",
+      "message": "meurpg.campaignpackage.v1.CampaignPackageBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "CampaignPackageBlockedReason",
+          "reasons": [
+            "IMAGES_OFF",
+            "INCOMPLETE",
+            "HAS_PROBLEMS"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "campaignpackage",
+      "message": "meurpg.campaignpackage.v1.PackageProblem",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "PackageProblemReason",
+          "reasons": [
+            "NOT_A_PACKAGE",
+            "NEWER_VERSION",
+            "PACKAGE_TOO_BIG",
+            "TOO_MANY_ENTRIES",
+            "ENTRY_TOO_BIG",
+            "COMPRESSION_RATIO",
+            "BAD_ENTRY_NAME",
+            "UNKNOWN_FIELD",
+            "HASH_MISMATCH",
+            "MISSING_ENTRY",
+            "UNEXPECTED_ENTRY",
+            "INVALID",
+            "UNKNOWN_CONTENT",
+            "NOT_IN_PACKAGE",
+            "LIMIT",
+            "IMAGE_UNREADABLE",
+            "IMAGE_DIMENSIONS",
+            "DUPLICATE"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "maps",
+      "message": "meurpg.maps.v1.TreasureBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "TreasureBlockedReason",
+          "reasons": [
+            "NO_PARTY",
+            "CONTENT_CHANGED"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "maps",
+      "message": "meurpg.maps.v1.TreasureInvalidField",
+      "fields": []
+    },
+    {
+      "module": "maps",
+      "message": "meurpg.maps.v1.MapBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "MapBlockedReason",
+          "reasons": [
+            "NO_GRID",
+            "COMBAT_RUNNING",
+            "TREASURE_CONVERTED",
+            "TREASURE_FOUND",
+            "IMAGE_CHANGED"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "maps",
+      "message": "meurpg.maps.v1.ImageInUse",
+      "fields": []
+    },
+    {
+      "module": "maps",
+      "message": "meurpg.maps.v1.ImageGenerationBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "ImageGenerationBlockedReason",
+          "reasons": [
+            "OFF",
+            "LIMIT_REACHED",
+            "GALLERY_FULL",
+            "REQUEST_TOO_LARGE",
+            "PLAYERS_SEE_NOTHING",
+            "MAP_HAS_NO_GRID",
+            "MAP_IMAGE_TOO_LARGE",
+            "MAP_CHANGED",
+            "DAILY_LIMIT_REACHED"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "maps",
+      "message": "meurpg.maps.v1.ImageGenerationInvalidField",
+      "fields": []
+    },
+    {
+      "module": "maps",
+      "message": "meurpg.maps.v1.DungeonOptionRefused",
+      "fields": []
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.EncounterBuildBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "EncounterBuildBlockedReason",
+          "reasons": [
+            "NO_PARTY",
+            "NOTHING_FITS",
+            "UNKNOWN_CREATURE"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.EncounterBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "EncounterBlockedReason",
+          "reasons": [
+            "ENCOUNTER_ALREADY_OPEN",
+            "NO_CURRENT_MAP",
+            "MAP_HAS_NO_GRID",
+            "NOT_IN_SETUP",
+            "NOT_ACTIVE",
+            "ENCOUNTER_ENDED",
+            "INITIATIVE_MISSING",
+            "INITIATIVE_ALREADY_SET",
+            "WRONG_DICE_MODE",
+            "NOT_YOUR_TURN",
+            "NOT_PLACED",
+            "TOO_FAR",
+            "SQUARE_OCCUPIED",
+            "PLAYER_IN_COMBAT",
+            "ACTION_USED",
+            "TARGET_OUT_OF_REACH",
+            "TARGET_DEFEATED",
+            "PENDING_DAMAGE",
+            "DAMAGE_ALREADY_ROLLED",
+            "DAMAGE_NOT_ROLLED",
+            "DAMAGE_RESOLVED",
+            "NOTHING_TO_UNDO",
+            "COMBATANT_DOWN",
+            "REACTION_PENDING",
+            "NO_SLOT",
+            "BONUS_ACTION_USED",
+            "REACTION_USED",
+            "ATTACKS_USED",
+            "DEATH_SAVE_DUE",
+            "DEATH_SAVE_NOT_DUE",
+            "NOT_DYING",
+            "NOT_AWAITING_REACTION",
+            "NO_USES",
+            "NOT_ENDED",
+            "MOVE_BLOCKED",
+            "ENEMY_IN_THE_WAY",
+            "TARGET_COVER_TOTAL",
+            "CASTING_TIME_TOO_LONG",
+            "SUMMON_CHOICE_INVALID",
+            "SUMMON_NEEDS_INITIATIVE",
+            "CREATURE_CANNOT_ATTACK",
+            "SUMMON_IN_COMBAT",
+            "TOO_MANY_COMBATANTS",
+            "OPPORTUNITY_PENDING",
+            "HIDDEN_REVEAL_PENDING",
+            "TRAP_NOT_ON_MAP",
+            "TRAP_NOT_ARMED",
+            "TRAP_SEARCH_NOT_NOW",
+            "SEARCH_NEEDS_TWO_DICE",
+            "WILD_SHAPE_BEAST_NOT_ALLOWED",
+            "ALREADY_IN_WILD_SHAPE",
+            "NOT_IN_WILD_SHAPE",
+            "WILD_SHAPE_NO_SPELLS",
+            "FAMILIAR_SIGHT_BLOCKED",
+            "DOOR_LOCKED",
+            "THEATRE_ONLY",
+            "NEEDS_A_MAP",
+            "THEATRE_HAS_NO_MAP",
+            "NO_OPPORTUNITY",
+            "ALREADY_USED_THIS_TURN",
+            "BONUS_ACTION_SPELL_LIMIT",
+            "ATTACK_ACTION_FIRST",
+            "WALL_ON_SQUARE",
+            "TARGET_DEAD",
+            "NO_FREE_SQUARE",
+            "CONCENTRATION_SAVE_PENDING",
+            "NOT_YOUR_TURN_TO_ANSWER",
+            "REACTION_NEEDS_ROLL",
+            "ROLL_MODE_NEEDS_APPROVAL",
+            "ROLL_MODE_REQUEST_PENDING",
+            "ROLL_MODE_REQUEST_CLOSED",
+            "RAGE_END_NOT_PENDING",
+            "RAGING_CANNOT_CAST",
+            "NOT_RAGING",
+            "EXTRA_NOT_AVAILABLE",
+            "DAMAGE_PART_NOT_REMOVABLE",
+            "RECKLESS_TOO_LATE",
+            "CHARACTER_RESERVED",
+            "CANNOT_ACT",
+            "EXTRA_ACTION_UNAVAILABLE",
+            "NOT_PRONE",
+            "CANNOT_STAND_UP",
+            "FRENZY_UNAVAILABLE",
+            "NO_MELEE_HIT", "DESTINATION_REQUIRED", "DESTINATION_UNAVAILABLE", "TELEPORT_TOO_FAR"
+          ],
+          "unsent": [
+            "RAGE_END_PENDING"
+          ]
+        },
+        {
+          "field": "familiar_sight_reason",
+          "enum": "FamiliarSightBlockedReason",
+          "reasons": [
+            "NO_FAMILIAR",
+            "NOT_ON_MAP",
+            "TOO_FAR",
+            "ALREADY_SEEING",
+            "NOT_SEEING",
+            "COMBAT_NOT_BEGUN",
+            "NO_MAP"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.SceneBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "SceneBlockedReason",
+          "reasons": [
+            "NO_OPEN_SCENE",
+            "ALREADY_ROLLED",
+            "WRONG_DICE_MODE",
+            "NO_CHARACTER",
+            "STAGE_FULL"
+          ],
+          "unsent": [
+            "NO_ACTIONS"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.PuzzleInvalid",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "PuzzleInvalidReason",
+          "reasons": [
+            "NAME",
+            "TEXT",
+            "KIND",
+            "SIZE",
+            "SYMBOLS",
+            "LINKS",
+            "START_SOLVED",
+            "UNSOLVABLE",
+            "TARGET",
+            "MOVE",
+            "ANSWERS",
+            "CIPHER",
+            "HINT_CHECK",
+            "PARTS",
+            "ON_WRONG"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.PuzzleBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "PuzzleBlockedReason",
+          "reasons": [
+            "NO_OPEN_SESSION",
+            "SOLVED",
+            "ALREADY_SHOWN",
+            "ARCHIVED",
+            "NOT_SHOWN",
+            "NO_CHARACTER",
+            "NO_MORE_HINTS",
+            "NO_GENERATED_START",
+            "NO_ATTEMPTS_LEFT",
+            "STOPPED",
+            "SEQUENCE_NOT_PLAYED",
+            "SEQUENCE_PLAYING",
+            "NOT_A_SEQUENCE",
+            "NO_HINT_CHECK",
+            "HINT_ALREADY_TRIED",
+            "WRONG_DICE_MODE",
+            "NO_SKILL",
+            "STALE_REVISION"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.GameSessionBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "GameSessionBlockedReason",
+          "reasons": [
+            "NO_OPEN_SESSION",
+            "SESSION_ALREADY_OPEN",
+            "SESSION_NOT_ENDED"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.ResourceBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "ResourceBlockedReason",
+          "reasons": [
+            "COMBAT_OPEN",
+            "NO_HIT_DICE_LEFT",
+            "NOT_ENOUGH_POINTS",
+            "SLOT_LEVEL_TOO_HIGH",
+            "NO_FREE_SLOT",
+            "SORCERY_POINTS_FULL",
+            "SORCERY_POINTS_OVER",
+            "NO_USES_LEFT",
+            "TARGET_REFUSED",
+            "NOT_AVAILABLE",
+            "INSPIRATION_PENDING",
+            "NO_SHORT_REST",
+            "SLOT_NOT_EXPENDED",
+            "OVER_ALLOWANCE",
+            "SONG_OF_REST_FACE_NEEDED",
+            "LUCKY_PENDING", "PLAYER_FIRST"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.ContestBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "ContestBlockedReason",
+          "reasons": [
+            "TARGET_TOO_BIG",
+            "NOT_AWAITING",
+            "CONTEST_OPEN",
+            "NOT_GRAPPLED",
+            "PUSH_BLOCKED",
+            "NO_ROOM_TO_DRAG",
+            "SURPRISED",
+            "NOT_AVAILABLE",
+            "NOT_AN_ALLY",
+            "TASK_NOT_AVAILABLE",
+            "HIDE_NOT_PENDING",
+            "GROUP_CHECK_OPEN",
+            "GROUP_CHECK_CLOSED",
+            "NOT_IN_GROUP_CHECK",
+            "ALREADY_ANSWERED",
+            "COMBAT_BEGUN",
+            "NOT_HIDDEN"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.CastingBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "CastingBlockedReason",
+          "reasons": [
+            "IN_COMBAT",
+            "CAST_IN_PROGRESS",
+            "NO_SLOT",
+            "TARGET_WEARS_ARMOR",
+            "CAST_NOT_GOING",
+            "CAST_NOT_ACTIVE",
+            "TARGET_OUT_OF_REACH",
+            "CLASS_CANNOT_RITUAL",
+            "NOT_A_RITUAL"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "progression",
+      "message": "meurpg.progression.v1.XPBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "XPBlockedReason",
+          "reasons": [
+            "MODE_NOT_ALLOWED",
+            "ENCOUNTER_NOT_ENDED",
+            "ALREADY_AWARDED",
+            "NOTHING_TO_GIVE",
+            "NOTHING_TO_UNDO",
+            "CHARACTER_NOT_ELIGIBLE",
+            "MILESTONE_ALREADY_REACHED",
+            "MILESTONE_NOT_REACHED",
+            "CHARACTER_ALREADY_MARKED",
+            "MILESTONE_HAS_HISTORY",
+            "TREASURE_NOT_FOUND_YET",
+            "TREASURE_ALREADY_CONVERTED",
+            "TREASURES_OVER_LIMIT"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "rules",
+      "message": "meurpg.rules.v1.TableContentRefusal",
+      "fields": []
+    },
+    {
+      "module": "rules",
+      "message": "meurpg.rules.v1.TableContentBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "TableContentBlockedReason",
+          "reasons": [
+            "STALE",
+            "ARCHIVED",
+            "NOT_ARCHIVED"
+          ],
+          "unsent": []
+        }
+      ]
+    }
+  ],
+  "body": [
+    {
+      "module": "platform",
+      "route": "every API route",
+      "reason": "RATE_LIMITED",
+      "code": "resource_exhausted"
+    },
+    {
+      "module": "maps",
+      "route": "image upload",
+      "reason": "UNSUPPORTED_TYPE",
+      "code": "invalid_argument"
+    },
+    {
+      "module": "maps",
+      "route": "image upload",
+      "reason": "TOO_LARGE",
+      "code": "invalid_argument"
+    },
+    {
+      "module": "maps",
+      "route": "image upload",
+      "reason": "DIMENSIONS",
+      "code": "invalid_argument"
+    },
+    {
+      "module": "maps",
+      "route": "image upload",
+      "reason": "CORRUPT",
+      "code": "invalid_argument"
+    },
+    {
+      "module": "maps",
+      "route": "image upload",
+      "reason": "MALFORMED_REQUEST",
+      "code": "invalid_argument"
+    },
+    {
+      "module": "maps",
+      "route": "image upload",
+      "reason": "QUOTA",
+      "code": "resource_exhausted"
+    },
+    {
+      "module": "maps",
+      "route": "image upload",
+      "reason": "RATE_LIMITED",
+      "code": "resource_exhausted"
+    },
+    {
+      "module": "maps",
+      "route": "image and tile downloads",
+      "reason": "BUSY",
+      "code": "unavailable"
+    },
+    {
+      "module": "maps",
+      "route": "image and tile downloads",
+      "reason": "RATE_LIMITED",
+      "code": "resource_exhausted"
+    },
+    {
+      "module": "campaignpackage",
+      "route": "package upload",
+      "reason": "IMAGES_OFF",
+      "code": "unavailable"
+    },
+    {
+      "module": "campaignpackage",
+      "route": "package upload",
+      "reason": "WRONG_LENGTH",
+      "code": "invalid_argument"
+    },
+    {
+      "module": "campaignpackage",
+      "route": "package upload",
+      "reason": "RATE_LIMITED",
+      "code": "resource_exhausted"
+    },
+    {
+      "module": "play",
+      "route": "voice of a line",
+      "reason": "OFF",
+      "code": "failed_precondition"
+    },
+    {
+      "module": "play",
+      "route": "voice of a line",
+      "reason": "DAILY_LIMIT_REACHED",
+      "code": "resource_exhausted"
+    },
+    {
+      "module": "play",
+      "route": "voice of a line",
+      "reason": "UNAVAILABLE",
+      "code": "unavailable"
+    },
+    {
+      "module": "play",
+      "route": "voice of a line",
+      "reason": "REFUSED",
+      "code": "failed_precondition"
+    },
+    {
+      "module": "play",
+      "route": "voice of a line",
+      "reason": "RATE_LIMITED",
+      "code": "resource_exhausted"
+    }
+  ],
+  "violations": [
+    {
+      "module": "rules",
+      "reason": "limit"
+    },
+    {
+      "module": "rules",
+      "reason": "bad_key"
+    },
+    {
+      "module": "rules",
+      "reason": "duplicate_key"
+    },
+    {
+      "module": "rules",
+      "reason": "reserved_key"
+    },
+    {
+      "module": "rules",
+      "reason": "bad_name"
+    },
+    {
+      "module": "rules",
+      "reason": "bad_text"
+    },
+    {
+      "module": "rules",
+      "reason": "dangling_reference"
+    },
+    {
+      "module": "rules",
+      "reason": "forbidden_effect"
+    },
+    {
+      "module": "rules",
+      "reason": "bad_formula"
+    },
+    {
+      "module": "rules",
+      "reason": "bad_table"
+    },
+    {
+      "module": "rules",
+      "reason": "bad_casting"
+    },
+    {
+      "module": "rules",
+      "reason": "bad_value"
+    },
+    {
+      "module": "rules",
+      "reason": "overlay"
+    },
+    {
+      "module": "characters",
+      "reason": "immutable"
+    },
+    {
+      "module": "characters",
+      "reason": "size_limit"
+    },
+    {
+      "module": "characters",
+      "reason": "duplicate_name"
+    },
+    {
+      "module": "characters",
+      "reason": "unknown_field"
+    }
+  ],
+  "redirects": [
+    {
+      "module": "campaigns",
+      "route": "/invite/error",
+      "reason": "expired"
+    },
+    {
+      "module": "campaigns",
+      "route": "/invite/error",
+      "reason": "revoked"
+    },
+    {
+      "module": "campaigns",
+      "route": "/invite/error",
+      "reason": "used_up"
+    },
+    {
+      "module": "campaigns",
+      "route": "/invite/error",
+      "reason": "not_found"
+    },
+    {
+      "module": "campaigns",
+      "route": "/invite/error",
+      "reason": "invalid"
+    },
+    {
+      "module": "campaigns",
+      "route": "/invite/error",
+      "reason": "unavailable"
+    }
+  ]
+}

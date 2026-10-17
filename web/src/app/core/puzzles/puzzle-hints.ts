@@ -1,16 +1,16 @@
-import { type WritableSignal, signal } from '@angular/core';
+import { type WritableSignal, computed, signal } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import type { LuckyOffer, OutsideInspirationOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { AnswerHeldRollResponse } from '../../../gen/meurpg/play/v1/resources_pb';
 import {
   PuzzleBlockedReason,
   type PuzzleRun,
   type TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
-import { ActionKey } from '../connect/idempotency';
 import { ExtraDiceState } from '../effects/extra-dice-state';
+import { HeldRollController } from '../held-rolls/held-roll-controller';
+import { type HeldAnswer, heldOfferOf } from '../held-rolls/held-roll-offer';
 import { needsTwoD20, takesTwo } from '../play/check-roll';
-import type { InspirationRoll, LuckyRoll } from '../resources/resources-client';
 import { puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
 import { withRetry } from './puzzle-play-support';
 import type { HintTry, PlayApi } from './puzzle-play-api';
@@ -37,27 +37,44 @@ export interface HintHost {
  */
 export class PuzzleHints {
   /** A try for a hint is in flight. */
-  readonly busy = signal(false);
+  private readonly trying = signal(false);
+  /** A try, or the answer to the question it waits on, is in flight. */
+  readonly busy = computed(() => this.trying() || this.held.busy());
   /** The last try for a hint, until the next one or the next change of the puzzle. */
   readonly last = signal<HintTry | null>(null);
-  /** The try's d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
-  readonly offer = signal<OutsideInspirationOffer | null>(null);
-  /** The try's d20 was rolled and kept because a halfling's d20 shows a 1: the Lucky question, asked before the die's. */
-  readonly lucky = signal<LuckyOffer | null>(null);
+  /** The try's d20 was rolled and kept and the try waits for a question: the halfling's Lucky about a 1 first, then the
+   * Bardic Inspiration die's. The player decides before the result. */
+  readonly held: HeldRollController;
   /** The next try with a real die takes two d20: the server said so, or the last result had advantage or disadvantage. */
   readonly pair = signal(false);
   /** The d4 an effect adds to a try with a real die (Orientação): asked when the server says the roll takes them. */
   readonly extraDice = new ExtraDiceState();
   /** The server refused a try because the table rolls its dice the other way: the page reads the campaign's dice mode again. */
   readonly diceModeStale = signal(0);
-  /** One key per Lucky answer (roll again this way, or keep the 1): a retry of a lost answer never rolls the d20 twice. */
-  private readonly luckyKeys = new ActionKey();
+  /** The puzzle and the run an answer began for: an answer that comes after another puzzle was opened touches nothing. */
+  private answering: { readonly seq: number; readonly run: PuzzleRun } | null = null;
 
-  constructor(private readonly host: HintHost) {}
+  constructor(private readonly host: HintHost) {
+    this.held = new HeldRollController({
+      send: (holdId, answer, key) =>
+        host.api.answerHeldRoll!(host.campaignId(), holdId, answer, key),
+      settle: (res) => this.answeredHeld(res),
+      newKey: host.makeKey,
+      describeError: (err, answer) =>
+        puzzleErrorMessage(
+          err,
+          answer.kind === 'lucky'
+            ? 'responder ao Sortudo'
+            : 'responder sobre a Inspiração de Bardo',
+          'player',
+        ),
+    });
+  }
 
   /** A puzzle was opened: nothing of the one before stays on the form. */
   reset(): void {
-    this.busy.set(false);
+    this.trying.set(false);
+    this.held.ask(null);
     this.last.set(null);
     this.pair.set(false);
     this.extraDice.fields.set([]);
@@ -81,7 +98,7 @@ export class PuzzleHints {
     }
     const seq = host.openSeq();
     const key = host.makeKey();
-    this.busy.set(true);
+    this.trying.set(true);
     host.message.set('');
     try {
       const answer = await withRetry(
@@ -97,7 +114,7 @@ export class PuzzleHints {
       }
     } finally {
       if (seq === host.openSeq()) {
-        this.busy.set(false);
+        this.trying.set(false);
       }
     }
   }
@@ -117,16 +134,16 @@ export class PuzzleHints {
     }
   }
 
-  /** What a try came to: the run as this player reads it, their roll and the form for the next one. */
+  /** What a try came to: the question it waits on, or the run as this player reads it, their roll and the form for the
+   * next one. */
   private settle(answer: TryPuzzleHintResponse, run: PuzzleRun): void {
-    if (answer.luckyOffer || answer.inspirationOffer) {
+    const asked = heldOfferOf(answer);
+    if (asked) {
       // Nothing was written: the question is the whole answer, the Lucky one first, then the die's.
-      this.lucky.set(answer.luckyOffer ?? null);
-      this.offer.set(answer.luckyOffer ? null : (answer.inspirationOffer ?? null));
+      this.held.ask(asked);
       return;
     }
-    this.offer.set(null);
-    this.lucky.set(null);
+    this.held.ask(null);
     this.host.apply(answer.run ?? run);
     this.last.set({
       passed: answer.passed,
@@ -138,74 +155,39 @@ export class PuzzleHints {
     this.extraDice.fields.set([]);
   }
 
-  /** The answer about the die: the try is made now, with the d20 it rolled and the die when it was used. */
-  async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
+  /**
+   * The player's answer to the question the try waits on: the try is made now with the new d20 (and the die when it was
+   * used), or the die's question comes next, on the new roll. An answer that began for a puzzle closed since is not told.
+   */
+  async answer(answer: HeldAnswer): Promise<void> {
     const host = this.host;
-    const offer = this.offer();
     const run = host.run();
-    if (!offer || !run || this.busy() || !host.api.answerHintDie) {
+    const asked = this.held.offer();
+    if (!asked || !run || this.busy() || !host.api.answerHeldRoll) {
       return;
     }
     const seq = host.openSeq();
-    this.busy.set(true);
+    this.answering = { seq, run };
     host.message.set('');
-    try {
-      const answer = await host.api.answerHintDie(
-        host.campaignId(),
-        offer.holdId,
-        use,
-        die,
-        host.makeKey(),
-      );
-      if (seq === host.openSeq()) {
-        this.settle(answer, run);
-      }
-    } catch (err) {
-      if (seq === host.openSeq()) {
-        host.message.set(
-          puzzleErrorMessage(err, 'responder sobre a Inspiração de Bardo', 'player'),
-        );
-      }
-    } finally {
-      if (seq === host.openSeq()) {
-        this.busy.set(false);
-      }
+    await this.held.answer(answer);
+    if (seq === host.openSeq()) {
+      host.message.set(this.held.error());
+    } else if (this.held.offer()?.holdId === asked.holdId) {
+      // The question of the puzzle left behind: the one on screen has none.
+      this.held.ask(null);
     }
   }
 
-  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the try is made now with the new d20, or the
-   * Bardic Inspiration question comes next, on the new roll. The key stays the same until the answer gets through. */
-  async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    const host = this.host;
-    const offer = this.lucky();
-    const run = host.run();
-    if (!offer || !run || this.busy() || !host.api.answerHintLucky) {
+  /** The answer came back: the try written, or the next question (already the controller's). */
+  private answeredHeld(res: AnswerHeldRollResponse): void {
+    if (res.result.case !== 'hintTry') {
+      throw new Error('AnswerHeldRoll answered without its hint try');
+    }
+    const began = this.answering;
+    if (!began || began.seq !== this.host.openSeq() || res.next) {
       return;
     }
-    const seq = host.openSeq();
-    this.busy.set(true);
-    host.message.set('');
-    try {
-      const answer = await host.api.answerHintLucky(
-        host.campaignId(),
-        offer.holdId,
-        reroll,
-        die,
-        this.luckyKeys.keyFor({ hold: offer.holdId, reroll, die }),
-      );
-      this.luckyKeys.renew();
-      if (seq === host.openSeq()) {
-        this.settle(answer, run);
-      }
-    } catch (err) {
-      if (seq === host.openSeq()) {
-        host.message.set(puzzleErrorMessage(err, 'responder ao Sortudo', 'player'));
-      }
-    } finally {
-      if (seq === host.openSeq()) {
-        this.busy.set(false);
-      }
-    }
+    this.settle(res.result.value, began.run);
   }
 
   /** A real die refused because the roll takes more dice (the second d20, or the d4 of an effect): the form asks for them. */

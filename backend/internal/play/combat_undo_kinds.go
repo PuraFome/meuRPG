@@ -583,7 +583,7 @@ func (u *undoer) spellCast(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	steps := []func(context.Context, playdb.Combatant, actionEvent) error{
-		u.castCounters, u.castDieBack, u.castEffectsBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
+		u.castCounters, u.castDieBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
 	}
 	for _, step := range steps {
 		if err := step(ctx, who, ev); err != nil {
@@ -719,7 +719,7 @@ func (u *undoer) castRevealBack(ctx context.Context, _ playdb.Combatant, ev acti
 			return fmt.Errorf("drop the hidden reveal: %w", err)
 		}
 	}
-	for _, id := range ev.Revealed {
+	for _, id := range ev.revealedIDs() {
 		if target, ok := u.find(id); ok {
 			if err := u.c.q.SetCombatantHidden(ctx, playdb.SetCombatantHiddenParams{ID: target.ID, Hidden: true}); err != nil {
 				return fmt.Errorf("hide the combatant again: %w", err)

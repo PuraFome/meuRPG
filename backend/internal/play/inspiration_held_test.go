@@ -99,15 +99,48 @@ func TestNoQuestionOnAConcentrationSaveWithoutADie(t *testing.T) {
 	}
 }
 
-// The master's own roll for a character never asks, even if the character holds a die.
-func TestTheMastersConcentrationRollNeverAsksForTheDie(t *testing.T) {
+// The master's own roll for a player's character asks, and no longer settles at once (MR-014, decided by Vinicius on
+// 16/10/2026, E4-10): the master is asked in his own sheet, the player reads the same question, the master's answer waits
+// for the player's first 10 s (PLAYER_FIRST), and the first answer wins. Before this the master's roll never asked.
+func TestTheMastersConcentrationRollForAPlayerAsksForTheDie(t *testing.T) {
 	t.Parallel()
 	a, e := concentratingHit(t, 6)
 	a.giveCombatantDie(t, "Pensantus", e)
 	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
 	res, err := a.resolveConcentration(t, a.master, e, w.GetId(), concentrationFace(15))
-	if err != nil || res.GetInspirationOffer() != nil || res.GetResult() == nil {
-		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the result and no question", res, err)
+	if err != nil || res.GetInspirationOffer() == nil || res.GetHeldRollOffer() == nil || res.GetResult() != nil {
+		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the die's question alone", res, err)
+	}
+	if got := byLabel(t, a.get(t, a.ana), "Pensantus").GetHeldRollOffer(); got.GetHoldId() != res.GetHeldRollOffer().GetHoldId() {
+		t.Errorf("the player reads %v, want the master's question about her roll", got)
+	}
+	hold := res.GetInspirationOffer().GetHoldId()
+	_, err = a.answerHeldRoll(t, a.master, hold, dieAnswer(false))
+	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_PLAYER_FIRST)
+	// The player answers first: the roll is settled as the master's roll, with her answer.
+	out, err := a.answerOutside(t, a.ana, hold, false, false, 0)
+	if err != nil {
+		t.Fatalf("the player's answer: error = %v", err)
+	}
+	if r := out.GetConcentrationSave().GetResult(); !r.GetKept() || r.GetSave().GetFaces()[0] != 15 {
+		t.Errorf("the result = %v, want the master's d20 of 15, kept", r)
+	}
+}
+
+// After the player's first chance the master's answer settles it, and it is the first answer.
+func TestTheMastersConcentrationRollForAPlayerIsAnsweredByTheMasterAfterTheTime(t *testing.T) {
+	t.Parallel()
+	a, e := concentratingHit(t, 6)
+	a.giveCombatantDie(t, "Pensantus", e)
+	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	res, err := a.resolveConcentration(t, a.master, e, w.GetId(), concentrationFace(15))
+	if err != nil || res.GetInspirationOffer() == nil {
+		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the question", res, err)
+	}
+	a.h.afterThePlayersChance()
+	out, err := a.answerHeldRoll(t, a.master, res.GetInspirationOffer().GetHoldId(), dieAnswer(false))
+	if err != nil || !out.GetConcentrationSave().GetResult().GetKept() {
+		t.Fatalf("the master's answer = %v, %v; want the settled save", out, err)
 	}
 }
 

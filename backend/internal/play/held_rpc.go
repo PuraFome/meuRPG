@@ -199,6 +199,9 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_SceneCheck{SceneCheck: o}, o.GetHeldRollOffer()
 	case *playv1.RollGroupCheckResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_GroupCheck{GroupCheck: o}, o.GetHeldRollOffer()
+	case *playv1.RollForPlayerResponse: // the master's roll for a player is a group check's, in the same arm
+		g := &playv1.RollGroupCheckResponse{GroupCheck: o.GetGroupCheck(), InspirationOffer: o.GetInspirationOffer(), LuckyOffer: o.GetLuckyOffer(), HeldRollOffer: o.GetHeldRollOffer()}
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_GroupCheck{GroupCheck: g}, g.GetHeldRollOffer()
 	case *playv1.SearchForTrapsResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_TrapSearch{TrapSearch: o}, o.GetHeldRollOffer()
 	case *playv1.TryPuzzleHintResponse:

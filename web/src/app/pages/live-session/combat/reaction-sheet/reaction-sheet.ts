@@ -20,7 +20,6 @@ import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { type SlotRow, defaultSlot, lastSlotWarning } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { type ReactionAnswer } from '../../../../core/combat/combat-client-types';
-import { luckyHeldLine } from '../../../../core/combat/lucky-question';
 import {
   type ConcentrationMode,
   type PromptView,
@@ -42,8 +41,7 @@ import {
   playerSecondsLeft,
 } from '../../../../core/combat/reaction-autopass';
 import { ResourceClient } from '../../../../core/resources/resources-client';
-import { InspirationOffer } from '../../inspiration/inspiration-offer';
-import { LuckyPrompt } from '../lucky-prompt/lucky-prompt';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { SlotPicker } from '../../../../shared/slot-picker/slot-picker';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
@@ -94,8 +92,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ExtraDice,
-    InspirationOffer,
-    LuckyPrompt,
+    HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -130,15 +127,12 @@ export class ReactionSheet {
   protected readonly busy = this.flow.busy;
   protected readonly error = this.flow.error;
   protected readonly typingSave = this.flow.typingSave;
-  protected readonly offer = this.flow.offer;
-  protected readonly luckyOffer = this.flow.luckyOffer;
+  protected readonly held = this.flow.held;
   protected readonly extra = this.flow.extra;
   protected readonly rollingAt = this.flow.rollingAt;
   private readonly step = this.flow.step;
   /** A request in the air: Esc and the backdrop do not close the sheet under it. */
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
-  /** The held d20, above the Lucky question. */
-  protected readonly luckyHeld = computed(() => luckyHeldLine(this.luckyOffer()));
   protected readonly picked = signal<ReadonlySet<string>>(initialPicked(this.data.window));
 
   /** The window came with a read, after a reload: the prompt is back and says so. */
@@ -353,8 +347,6 @@ export class ReactionSheet {
   }
 
   protected readonly concentrate = this.flow.concentrate.bind(this.flow);
-  protected readonly answerLucky = this.flow.answerLucky.bind(this.flow);
-  protected readonly answerDie = this.flow.answerDie.bind(this.flow);
   protected readonly back = this.flow.back.bind(this.flow);
   protected readonly throwBack = this.flow.throwBack.bind(this.flow);
   protected readonly keepMissile = this.flow.keepMissile.bind(this.flow);

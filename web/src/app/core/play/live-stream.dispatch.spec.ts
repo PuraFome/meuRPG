@@ -87,6 +87,7 @@ describe('LiveStream: what each message hands the page', () => {
       onCharacterRevived: vi.fn(),
       onRevivifyChanged: vi.fn(),
       onPuzzleChanged: vi.fn(),
+      onHeldRollsChanged: vi.fn(),
       onCallingYou: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
@@ -210,6 +211,7 @@ describe('LiveStream: what each message hands the page', () => {
     ],
     ['revivifyChanged', { kind: 'revivifyChanged' }, 'onRevivifyChanged', []],
     ['callingYou', { kind: 'callingYou' }, 'onCallingYou', []],
+    ['heldRollsChanged', { kind: 'heldRollsChanged' }, 'onHeldRollsChanged', []],
     ['puzzleChanged', { kind: 'puzzleChanged', puzzleId: 'pz' }, 'onPuzzleChanged', ['pz']],
   ];
 

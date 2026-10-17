@@ -428,6 +428,9 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 	if last.Kind == eventCombatantMoved {
 		run.undoneMove = &ev
 	}
+	if last.Kind == eventSpellCast && ev.Teleport != nil { // the caster is back where it was: the fog follows it
+		run.undoneMove = &actionEvent{Actor: ev.Actor, Col: ev.Teleport.Col, Row: ev.Teleport.Row}
+	}
 	switch last.Kind {
 	case eventDamageRolled, eventDamageApplied:
 		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev.Pending); err != nil {

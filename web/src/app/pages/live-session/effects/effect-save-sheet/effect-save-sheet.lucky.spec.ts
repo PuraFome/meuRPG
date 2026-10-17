@@ -7,11 +7,7 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import {
-  LuckyOfferSchema,
-  OutsideInspirationOfferSchema,
-  ReactionKind,
-} from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { ReactionKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   EffectPhase,
   EffectSaveResultSchema,
@@ -19,6 +15,7 @@ import {
 import { CombatState } from '../../../../core/combat/combat-state';
 import { encounter, reactionWindow } from '../../../../core/combat/combat-testing';
 import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
+import { heldAnswer, heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { EffectsClient } from '../../../../core/effects/effects-client';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { EffectSaveSheet, type EffectSaveSheetData } from './effect-save-sheet';
@@ -52,11 +49,7 @@ const save = () =>
     } as never,
   } as never);
 
-const lucky = create(LuckyOfferSchema, {
-  holdId: 'h1',
-  luckyIndex: 0,
-  d20: { diceCount: 1, diceSides: 20, faces: [1], modifier: 1, total: 2 },
-});
+const lucky = heldLucky([1], 1);
 
 /** What the answer settles: the save with the new d20 (or the 1 kept). */
 const settled = (d20: number, again?: number) =>
@@ -71,7 +64,7 @@ const settled = (d20: number, again?: number) =>
 
 describe('EffectSaveSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?"', () => {
   const api = { rollEffectSave: vi.fn() };
-  const resources = { answerOutsideLucky: vi.fn(), answerOutsideInspiration: vi.fn() };
+  const resources = { answerHeldRoll: vi.fn() };
 
   function setup(diceMode = DiceMode.PLAYERS_CHOOSE) {
     const window = save();
@@ -113,7 +106,7 @@ describe('EffectSaveSheet: the halfling’s Lucky question, "Tirou 1: rolar de n
     api.rollEffectSave.mockResolvedValue({
       encounter: encounter({ reactionWindows: [save()] } as never),
       result: undefined,
-      lucky,
+      held: lucky,
     });
     s.button('Rolar no app')!.click();
     await s.flush();
@@ -121,8 +114,7 @@ describe('EffectSaveSheet: the halfling’s Lucky question, "Tirou 1: rolar de n
 
   beforeEach(() => {
     api.rollEffectSave.mockReset();
-    resources.answerOutsideLucky.mockReset();
-    resources.answerOutsideInspiration.mockReset();
+    resources.answerHeldRoll.mockReset();
   });
 
   it('asks after a d20 of 1 and before the result, with the d20 and no "Passou" or "Falhou"', async () => {
@@ -142,19 +134,23 @@ describe('EffectSaveSheet: the halfling’s Lucky question, "Tirou 1: rolar de n
   it('"Rolar de novo" settles the save with the new d20 and says "Sortudo: 1 → 14"', async () => {
     const s = setup();
     await asked(s);
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: {
-        case: 'effectSave',
-        value: { encounter: encounter({ reactionWindows: [] } as never), result: settled(14, 14) },
-      },
-    });
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'effectSave',
+          value: {
+            encounter: encounter({ reactionWindows: [] } as never),
+            result: settled(14, 14),
+          },
+        },
+      }),
+    );
     s.button('Rolar de novo')!.click();
     await s.flush();
-    expect(resources.answerOutsideLucky.mock.calls[0].slice(0, 4)).toEqual([
+    expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
       'camp',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
     ]);
     const text = plain(s.el.textContent);
     expect(text).not.toContain('Tirou 1: rolar de novo?');
@@ -165,19 +161,20 @@ describe('EffectSaveSheet: the halfling’s Lucky question, "Tirou 1: rolar de n
   it('"Ficar com o 1" keeps it: the save fails, and nothing says Lucky rolled', async () => {
     const s = setup();
     await asked(s);
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: {
-        case: 'effectSave',
-        value: { encounter: encounter({ reactionWindows: [] } as never), result: settled(1) },
-      },
-    });
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'effectSave',
+          value: { encounter: encounter({ reactionWindows: [] } as never), result: settled(1) },
+        },
+      }),
+    );
     s.button('Ficar com o 1')!.click();
     await s.flush();
-    expect(resources.answerOutsideLucky.mock.calls[0].slice(0, 4)).toEqual([
+    expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
       'camp',
       'h1',
-      false,
-      null,
+      { kind: 'lucky', reroll: false, roll: null },
     ]);
     const text = plain(s.el.textContent);
     expect(text).toContain('Falhou');
@@ -187,20 +184,17 @@ describe('EffectSaveSheet: the halfling’s Lucky question, "Tirou 1: rolar de n
   it('after the new d20, a Bardic Inspiration die the character holds is asked about, on the new roll', async () => {
     const s = setup();
     await asked(s);
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: {
-        case: 'effectSave',
-        value: {
-          encounter: encounter({ reactionWindows: [save()] } as never),
-          inspirationOffer: create(OutsideInspirationOfferSchema, {
-            holdId: 'h1',
-            sides: 8,
-            fromName: 'Orla',
-            d20: { diceCount: 1, diceSides: 20, faces: [9], modifier: 1, total: 10 },
-          }),
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'effectSave',
+          value: {
+            encounter: encounter({ reactionWindows: [save()] } as never),
+            heldRollOffer: heldDie(9, 1, 8, { holdId: 'h1' }),
+          },
         },
-      },
-    });
+      }),
+    );
     s.button('Rolar de novo')!.click();
     await s.flush();
     const text = plain(s.el.textContent);
@@ -212,12 +206,12 @@ describe('EffectSaveSheet: the halfling’s Lucky question, "Tirou 1: rolar de n
   it('keeps the key of an answer that failed, so a retry never rolls the d20 twice', async () => {
     const s = setup();
     await asked(s);
-    resources.answerOutsideLucky.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    resources.answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     s.button('Rolar de novo')!.click();
     await s.flush();
     s.button('Rolar de novo')!.click();
     await s.flush();
-    const keys = resources.answerOutsideLucky.mock.calls.map((c) => c[4] as string);
+    const keys = resources.answerHeldRoll.mock.calls.map((c) => c[3] as string);
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBe(keys[1]);
     expect(plain(s.el.querySelector('[role=alert] p')?.textContent)).toContain(

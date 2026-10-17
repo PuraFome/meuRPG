@@ -1,8 +1,4 @@
-import type {
-  Encounter,
-  InspirationDie,
-  OutsideInspirationOffer,
-} from '../../../gen/meurpg/play/v1/combat_pb';
+import type { InspirationDie } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type Pool } from './pools';
 
 /** The bard's voice reaches 60 feet (SRD 5.1, Bard): the server lists who is within it; this is for the words. */
@@ -36,33 +32,17 @@ export function dieCard(die: InspirationDie, round: number): { title: string; su
 }
 
 /** "Usar a Inspiração de Bardo (d8)?" */
-export function promptTitle(die: InspirationDie | undefined): string {
-  return `Usar a Inspiração de Bardo (${inspirationDieName(die?.sides ?? 0)})?`;
+export function promptTitle(sides: number): string {
+  return `Usar a Inspiração de Bardo (${inspirationDieName(sides)})?`;
 }
 
 /** The label of the "use" button: "Somar o d8 (Inspiração de Orla)". */
-export function useLabel(die: InspirationDie | undefined): string {
-  const name = inspirationDieName(die?.sides ?? 0);
-  return die?.fromLabel ? `Somar o ${name} (Inspiração de ${die.fromLabel})` : `Somar o ${name}`;
+export function useLabel(sides: number, giver: string): string {
+  const name = inspirationDieName(sides);
+  return giver ? `Somar o ${name} (Inspiração de ${giver})` : `Somar o ${name}`;
 }
 
 /** "1 uso: restam 2 de 3", for the cost tile of the give dialog. */
 export function useCost(uses: Pool): string {
   return `1 uso: restam ${Math.max(0, uses.left - 1)} de ${uses.total}`;
-}
-
-/**
- * What a cast answers instead of a cast when the caster's character holds a Bardic Inspiration die and the spell is an
- * attack roll (SRD 5.1: the player may wait for the d20, and decides before the result is told): nothing was spent, the
- * d20 is kept on the server and the offer is the question. The cast sheet catches it and shows the question; the answer
- * brings the cast.
- */
-export class InspirationQuestion extends Error {
-  constructor(
-    readonly offer: OutsideInspirationOffer,
-    readonly encounter: Encounter,
-  ) {
-    super('A cast waits for the answer about the Bardic Inspiration die');
-    this.name = 'InspirationQuestion';
-  }
 }

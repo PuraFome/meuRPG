@@ -210,6 +210,9 @@ type Traits struct {
 	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
+	// Evasion says the sheet has Evasion: the monk's, the rogue's, the ranger's Superior
+	// Hunter's Defense choice, or a stat block's trait (combat.HalfSaveShare).
+	Evasion bool
 	// Lucky is the halfling's trait (LuckyTrait): a 1 on the d20 of an attack roll or a saving
 	// throw may be rolled again, and the new roll stands. The player is asked before the result.
 	Lucky bool
@@ -392,6 +395,8 @@ type Spell struct {
 	// IgnoresCover says the spell's saving throw gets no benefit from cover (Chama
 	// Sagrada, SRD 5.1); the total-cover targeting refusal stays.
 	IgnoresCover bool
+	// HalfOnMiss says a spell attack that misses still deals half its damage (Acid Arrow).
+	HalfOnMiss bool
 	// AreaShape is the form of the spell's area ("sphere", "cylinder", "cone", "line"
 	// or "cube"), AreaSizeFt its radius (sphere, cylinder), length (cone, line) or
 	// side (cube) in feet, and AreaWidthFt a line's width: empty and 0 for a spell

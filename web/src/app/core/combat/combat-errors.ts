@@ -20,6 +20,7 @@ import {
 } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { CLASS_BLOCKED_TEXT } from './combat-errors-class';
 import { circleLabel } from './combat-grid';
 import { metersFixed, metersText } from '../units';
 
@@ -163,6 +164,9 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [EncounterBlockedReason.ENEMY_IN_THE_WAY, 'Um inimigo está no caminho.'],
   [EncounterBlockedReason.TARGET_COVER_TOTAL, 'O alvo está atrás de cobertura total.'],
   [EncounterBlockedReason.SQUARE_OCCUPIED, 'Ocupado: escolha outro quadrado.'],
+  [EncounterBlockedReason.TELEPORT_TOO_FAR, 'Longe demais'],
+  [EncounterBlockedReason.DESTINATION_UNAVAILABLE, 'Esse espaço não está disponível'],
+  [EncounterBlockedReason.DESTINATION_REQUIRED, 'Escolha no mapa o espaço para onde você vai.'],
   [EncounterBlockedReason.PLAYER_IN_COMBAT, 'Um jogador só sai do combate antes de ele começar.'],
   [EncounterBlockedReason.ACTION_USED, 'Sua ação já foi usada neste turno.'],
   [EncounterBlockedReason.BONUS_ACTION_USED, 'Sua ação bônus já foi usada neste turno.'],
@@ -360,6 +364,7 @@ function tooFarText(blocked: EncounterBlocked): string {
 export function blockedMessage(blocked: EncounterBlocked): string {
   return (
     BLOCKED_TEXT.get(blocked.reason) ??
+    CLASS_BLOCKED_TEXT.get(blocked.reason) ??
     BLOCKED_TEXT_WITH_NUMBERS.get(blocked.reason)?.(blocked) ??
     'O combate não está num estado que aceite isso. A tela foi atualizada.'
   );

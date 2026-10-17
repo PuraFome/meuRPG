@@ -9,8 +9,6 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   ConcentrationSaveResultSchema,
-  LuckyOfferSchema,
-  OutsideInspirationOfferSchema,
   ReactionKind,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -21,6 +19,7 @@ import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { encounter, reactionWindow } from '../../../../core/combat/combat-testing';
 import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
+import { heldAnswer, heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { ReactionSheet, type ReactionSheetData } from './reaction-sheet';
 import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
@@ -47,11 +46,7 @@ const save = () =>
     } as never,
   } as never);
 
-const lucky = create(LuckyOfferSchema, {
-  holdId: 'h1',
-  luckyIndex: 0,
-  d20: { diceCount: 1, diceSides: 20, faces: [1], modifier: 2, total: 3 },
-});
+const lucky = heldLucky([1], 2);
 
 /** What the answer settles: the save with the new d20 (or the 1 kept). */
 const settled = (face: number, again?: number) => ({
@@ -73,7 +68,7 @@ const settled = (face: number, again?: number) => ({
 });
 
 describe('ReactionSheet: the halfling’s Lucky question on a concentration save', () => {
-  const resources = { answerOutsideLucky: vi.fn(), answerOutsideInspiration: vi.fn() };
+  const resources = { answerHeldRoll: vi.fn() };
   const api = {
     answerReaction: vi.fn(),
     resolveConcentrationSave: vi.fn(),
@@ -125,7 +120,7 @@ describe('ReactionSheet: the halfling’s Lucky question on a concentration save
     api.resolveConcentrationSave.mockResolvedValue({
       encounter: encounter({ reactionWindows: [save()] } as never),
       result: undefined,
-      lucky,
+      held: lucky,
     });
     s.button('Rolar no app')!.click();
     await s.flush();
@@ -153,16 +148,15 @@ describe('ReactionSheet: the halfling’s Lucky question on a concentration save
   it('"Rolar de novo" settles the save with the new d20 and says "Sortudo: 1 → 14"', async () => {
     const s = setup();
     await asked(s);
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: { case: 'concentrationSave', value: settled(14, 14) },
-    });
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({ result: { case: 'concentrationSave', value: settled(14, 14) } }),
+    );
     s.button('Rolar de novo')!.click();
     await s.flush();
-    expect(resources.answerOutsideLucky.mock.calls[0].slice(0, 4)).toEqual([
+    expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
       'camp',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
     ]);
     const text = plain(s.el.textContent);
     expect(text).not.toContain('Tirou 1: rolar de novo?');
@@ -173,16 +167,15 @@ describe('ReactionSheet: the halfling’s Lucky question on a concentration save
   it('"Ficar com o 1" keeps it: the concentration is lost, and nothing says Lucky rolled', async () => {
     const s = setup();
     await asked(s);
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: { case: 'concentrationSave', value: settled(1) },
-    });
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({ result: { case: 'concentrationSave', value: settled(1) } }),
+    );
     s.button('Ficar com o 1')!.click();
     await s.flush();
-    expect(resources.answerOutsideLucky.mock.calls[0].slice(0, 4)).toEqual([
+    expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
       'camp',
       'h1',
-      false,
-      null,
+      { kind: 'lucky', reroll: false, roll: null },
     ]);
     const text = plain(s.el.textContent);
     expect(text).toContain('Concentração perdida');
@@ -192,20 +185,17 @@ describe('ReactionSheet: the halfling’s Lucky question on a concentration save
   it('after the new d20, a Bardic Inspiration die the character holds is asked about, on the new roll', async () => {
     const s = setup();
     await asked(s);
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: {
-        case: 'concentrationSave',
-        value: {
-          encounter: encounter({ reactionWindows: [save()] } as never),
-          inspirationOffer: create(OutsideInspirationOfferSchema, {
-            holdId: 'h1',
-            sides: 8,
-            fromName: 'Orla',
-            d20: { diceCount: 1, diceSides: 20, faces: [6], modifier: 2, total: 8 },
-          }),
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'concentrationSave',
+          value: {
+            encounter: encounter({ reactionWindows: [save()] } as never),
+            heldRollOffer: heldDie(6, 2, 8, { holdId: 'h1' }),
+          },
         },
-      },
-    });
+      }),
+    );
     s.button('Rolar de novo')!.click();
     await s.flush();
     const text = plain(s.el.textContent);
@@ -217,12 +207,12 @@ describe('ReactionSheet: the halfling’s Lucky question on a concentration save
   it('keeps the key of an answer that failed, so a retry never rolls the d20 twice', async () => {
     const s = setup();
     await asked(s);
-    resources.answerOutsideLucky.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    resources.answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     s.button('Rolar de novo')!.click();
     await s.flush();
     s.button('Rolar de novo')!.click();
     await s.flush();
-    const keys = resources.answerOutsideLucky.mock.calls.map((c) => c[4] as string);
+    const keys = resources.answerHeldRoll.mock.calls.map((c) => c[3] as string);
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBe(keys[1]);
     expect(plain(s.el.textContent)).toContain('Tirou 1: rolar de novo?');

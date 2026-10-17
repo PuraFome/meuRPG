@@ -46,26 +46,17 @@
       </span>
     </div>
     <p class="note"><mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê o resultado.</p>
-  } @else if (luckyOffer(); as l) {
-    <!-- The d20 shows a 1 and the character is a halfling: Lucky is asked before anything else (SRD 5.1). -->
-    <app-lucky-offer
-      [offer]="l"
+  } @else if (held.offer(); as o) {
+    <!-- The d20 is rolled and kept: a halfling's 1 asks Lucky first, then a Bardic Inspiration die (SRD 5.1). -->
+    <app-held-roll-prompt
+      [offer]="o"
+      look="card"
       [canApp]="canApp"
       [canType]="canType"
       [preferApp]="preferApp"
       [busy]="busy()"
       [(typing)]="typing"
-      (reroll)="answerLucky(true, $event)"
-      (keep)="answerLucky(false, null)"
-    />
-  } @else if (offer(); as o) {
-    <app-inspiration-offer
-      [offer]="o"
-      [canApp]="canApp"
-      [canType]="canType"
-      [busy]="busy()"
-      (use)="answer(true, $event)"
-      (keep)="answer(false, null)"
+      (answer)="held.answer($event)"
     />
   } @else {
     @if (!typing()) {

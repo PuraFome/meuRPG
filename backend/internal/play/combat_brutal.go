@@ -29,7 +29,8 @@ const brutalCriticalNamePT = "Crítico Brutal"
 
 // brutalCriticalDice says how many extra weapon dice the hit rolls: the attacker
 // must be a player's character with the feature, the hit a critical one and the attack
-// a melee weapon attack with dice of its own. A ranged attack, a spell, a creature
+// a melee weapon (thrown or not: a thrown javelin or handaxe stays a melee weapon) with dice
+// of its own. A ranged weapon (a dart, a bow), a spell, a creature
 // and an NPC never have them.
 func brutalCriticalDice(attacker playdb.Combatant, attack link.Attack, sheet link.Sheet, critical bool) int {
 	if !critical || attacker.Kind != kindPlayer || !attack.Melee || attack.Spell || attack.DiceCount < 1 {
@@ -40,24 +41,13 @@ func brutalCriticalDice(attacker playdb.Combatant, attack link.Attack, sheet lin
 
 // savageAttacksDice says whether the hit rolls the half-orc's extra die (1) or not (0):
 // the attacker must be a player's character with Savage Attacks, the hit a critical
-// one and the attack a melee weapon attack with a die of its own (not a spell, not
+// one and the attack a melee weapon, thrown or not, with a die of its own (not a spell, not
 // an unarmed strike, not a ranged attack).
 func savageAttacksDice(attacker playdb.Combatant, attack link.Attack, sheet link.Sheet, critical bool) int {
 	if !critical || attacker.Kind != kindPlayer || !sheet.SavageAttacks || !attack.Melee || attack.Spell || !attack.Weapon || attack.Unarmed || attack.DiceCount < 1 {
 		return 0
 	}
 	return 1
-}
-
-// extraDiceAttack is the attack as the extra dice read it: a melee weapon thrown at a target
-// beyond melee reach is a ranged weapon attack (SRD 5.1, "Ranged Attacks"), so neither Savage
-// Attacks nor Brutal Critical adds a die to it; used within reach (or as an opportunity attack)
-// it is still a melee attack.
-func extraDiceAttack(enc playdb.Encounter, attack link.Attack, attacker, target playdb.Combatant, opportunity bool) link.Attack {
-	if thrownAtRange(enc, attack, attacker, target, opportunity) {
-		attack.Melee = false
-	}
-	return attack
 }
 
 // extraDiceName is the Portuguese name of the feature that adds the extra dice,
