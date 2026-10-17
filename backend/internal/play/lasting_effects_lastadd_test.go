@@ -214,8 +214,6 @@ func TestAddLastingEffectOutcomes(t *testing.T) { //nolint:tparallel // the case
 		{name: "the master's own effect", want: "{\"audience\": \"all\", \"concentration\": false, \"condition_keys\": [], \"duration_kind\": \"rounds\", \"ends_on\": \"Toren\", \"ends_phase\": \"start_of_turn\", \"ends_round\": 2, \"player_visible\": true, \"source_key\": \"effect:web-fire\", \"source_kind\": \"master\", \"started_round\": 1, \"target\": \"Toren\"}\nconc \nseen 1/1/0\ncards 1", edit: a.key("effect:web-fire")},
 		{name: "the master's own effect with a caster", want: "{\"audience\": \"all\", \"caster\": \"Pensantus\", \"concentration\": false, \"condition_keys\": [], \"duration_kind\": \"rounds\", \"ends_on\": \"Pensantus\", \"ends_phase\": \"start_of_turn\", \"ends_round\": 2, \"player_visible\": true, \"source_key\": \"effect:web-fire\", \"source_kind\": \"master\", \"started_round\": 1, \"target\": \"Toren\"}\nconc \nseen 1/1/0\ncards 1", edit: all(a.key("effect:web-fire"), caster, func(r *playv1.AddLastingEffectRequest) { r.Concentration = new(true) })},
 		{name: "Mage Armor on three: the armored one is left out", want: "{\"audience\": \"all\", \"caster\": \"Pensantus\", \"concentration\": false, \"condition_keys\": [], \"duration_kind\": \"rounds\", \"ends_on\": \"Pensantus\", \"ends_phase\": \"start_of_turn\", \"ends_round\": 4801, \"mods\": \"base_ac:16\", \"player_visible\": true, \"source_key\": \"spell:mage-armor\", \"source_kind\": \"spell\", \"started_round\": 1, \"target\": \"Brisa\"}\n{\"audience\": \"all\", \"caster\": \"Pensantus\", \"concentration\": false, \"condition_keys\": [], \"duration_kind\": \"rounds\", \"ends_on\": \"Pensantus\", \"ends_phase\": \"start_of_turn\", \"ends_round\": 4801, \"mods\": \"base_ac:15\", \"player_visible\": true, \"source_key\": \"spell:mage-armor\", \"source_kind\": \"spell\", \"started_round\": 1, \"target\": \"Pensantus\"}\nconc \nseen 0/0/0\ncards 1", edit: all(a.key(mageArmorKey), a.on(t, "Toren", "Pensantus", "Brisa"), caster)},
-		{name: "Mage Armor on an NPC", want: "\nconc \nseen 0/0/0\ncards 0", edit: all(a.key(mageArmorKey), a.on(t, "Goblin"))},
-		{name: "Mage Armor on the armored one alone takes no hold (frozen: looks wrong because AddCharacterEffect refuses the same case, and here the master gets a success that wrote an event for nothing)", want: "\nconc \nseen 0/0/0\ncards 0", edit: all(a.key(mageArmorKey), caster)},
 		{name: "Heroism takes the caster's modifier", want: "{\"audience\": \"owner\", \"caster\": \"Brisa\", \"concentration\": true, \"condition_keys\": [], \"duration_kind\": \"rounds\", \"ends_on\": \"Brisa\", \"ends_phase\": \"start_of_turn\", \"ends_round\": 11, \"mods\": \"condition_immunity,turn_temp_hp:3\", \"player_visible\": true, \"source_key\": \"spell:heroism\", \"source_kind\": \"spell\", \"started_round\": 1, \"target\": \"Toren\"}\nconc Brisa=spell:heroism\nseen 1/1/0\ncards 1", edit: all(a.key(heroismKey), a.by(t, "Brisa"))},
 		{name: "Heroism with no caster", want: "{\"audience\": \"owner\", \"concentration\": false, \"condition_keys\": [], \"duration_kind\": \"rounds\", \"ends_on\": \"Toren\", \"ends_phase\": \"start_of_turn\", \"ends_round\": 11, \"mods\": \"condition_immunity,turn_temp_hp\", \"player_visible\": true, \"source_key\": \"spell:heroism\", \"source_kind\": \"spell\", \"started_round\": 1, \"target\": \"Toren\"}\nconc \nseen 1/1/0\ncards 1", edit: a.key(heroismKey)},
 		{name: "Enhance Ability for dexterity", want: "{\"audience\": \"owner\", \"caster\": \"Pensantus\", \"concentration\": true, \"condition_keys\": [], \"duration_kind\": \"rounds\", \"ends_on\": \"Pensantus\", \"ends_phase\": \"start_of_turn\", \"ends_round\": 601, \"mods\": \"check_advantage[\\\"dex\\\"]\", \"player_visible\": true, \"source_key\": \"spell:enhance-ability\", \"source_kind\": \"spell\", \"started_round\": 1, \"target\": \"Toren\"}\nconc Pensantus=spell:enhance-ability\nseen 1/1/0\ncards 1", edit: all(caster, func(r *playv1.AddLastingEffectRequest) { r.CatalogKey, r.AbilityKey = enhanceAbilityKey, "dex" })},
@@ -264,6 +262,31 @@ func TestAddLastingEffectOutcomes(t *testing.T) { //nolint:tparallel // the case
 	}
 }
 
+// Mage Armor asks for a willing creature that wears no armor (SRD 5.1). When no target can have
+// it (the one in armor alone, an NPC with a basic sheet) the master is refused as AddCharacterEffect
+// refuses the same case, and nothing is written.
+// Finding fix/lasting-effects-outside-combat (d): the master used to get a success that wrote an
+// event for nothing.
+func TestAddLastingEffectMageArmorOnNoOneWhoCanHaveItIsRefused(t *testing.T) {
+	t.Parallel()
+	a := newEffectsParty(t)
+	e := a.closeFight(t)
+	caster := a.by(t, "Pensantus")
+	for name, edit := range map[string]lastEdit{
+		"the armored one alone": all(a.key(mageArmorKey), caster),
+		"an NPC":                all(a.key(mageArmorKey), a.on(t, "Goblin")),
+	} {
+		_, err := a.addRaw(t, a.master, e, edit)
+		wantRefusal(t, name, err, connect.CodeFailedPrecondition, "the effect takes no hold of these targets")
+	}
+	if rows := a.combatEffectRows(t, e); len(rows) != 0 {
+		t.Errorf("the refusals left effects: %v", rows)
+	}
+	if events := a.effectEvents(t, e); len(events) != 0 {
+		t.Errorf("the refusals left events: %v", events)
+	}
+}
+
 // labelOf is the label of the combatant of the encounter.
 func labelOf(t *testing.T, e *playv1.Encounter, id string) string {
 	t.Helper()
@@ -280,7 +303,7 @@ func labelOf(t *testing.T, e *playv1.Encounter, id string) string {
 // the line for it; the same spell again does not. What the players read and hear depends on the
 // effect: the owner-only and the hidden ones are the master's line and hint alone, the public
 // one is everyone's; a hidden caster makes the line the master's. A retry of the request gives
-// the encounter back without the cards and writes nothing.
+// the encounter back with the cards of the first answer and writes nothing.
 func TestAddLastingEffectConcentrationLogAndStreams(t *testing.T) {
 	t.Parallel()
 	a := newEffectsParty(t)
