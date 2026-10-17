@@ -100,11 +100,8 @@ func (s *Service) AddMilestone(
 	if err != nil {
 		return nil, s.dbError(ctx, "add a milestone", err)
 	}
-	views, err := s.milestoneViews(ctx, m)
-	if err != nil {
-		return nil, s.dbError(ctx, "read the milestones", err)
-	}
-	return connect.NewResponse(&progressionv1.AddMilestoneResponse{Milestone: milestoneByID(views, added.ID), Milestones: views}), nil
+	views := s.listAfterWrite(ctx, m, "add a milestone")
+	return connect.NewResponse(&progressionv1.AddMilestoneResponse{Milestone: writtenMilestone(views, added), Milestones: views}), nil
 }
 
 // addMilestoneHash is the hash AddMilestone keeps with its key: the request's,
@@ -181,11 +178,9 @@ func (s *Service) UpdateMilestone(
 	if err != nil {
 		return nil, s.dbError(ctx, "update a milestone", err)
 	}
-	views, err := s.milestoneViews(ctx, m)
-	if err != nil {
-		return nil, s.dbError(ctx, "read the milestones", err)
-	}
-	return connect.NewResponse(&progressionv1.UpdateMilestoneResponse{Milestone: milestoneByID(views, id), Milestones: views}), nil
+	views := s.listAfterWrite(ctx, m, "update a milestone")
+	written := progressiondb.PlannedMilestone{ID: id, Text: text}
+	return connect.NewResponse(&progressionv1.UpdateMilestoneResponse{Milestone: writtenMilestone(views, written), Milestones: views}), nil
 }
 
 // MoveMilestone implements progressionv1connect.ProgressionServiceHandler.
@@ -207,11 +202,7 @@ func (s *Service) MoveMilestone(
 	if err != nil {
 		return nil, s.dbError(ctx, "move a milestone", err)
 	}
-	views, err := s.milestoneViews(ctx, m)
-	if err != nil {
-		return nil, s.dbError(ctx, "read the milestones", err)
-	}
-	return connect.NewResponse(&progressionv1.MoveMilestoneResponse{Milestones: views}), nil
+	return connect.NewResponse(&progressionv1.MoveMilestoneResponse{Milestones: s.listAfterWrite(ctx, m, "move a milestone")}), nil
 }
 
 // directionSteps is how far a move goes in the list, by direction: up is
@@ -296,11 +287,7 @@ func (s *Service) RemoveMilestone(
 	if err != nil {
 		return nil, s.dbError(ctx, "remove a milestone", err)
 	}
-	views, err := s.milestoneViews(ctx, m)
-	if err != nil {
-		return nil, s.dbError(ctx, "read the milestones", err)
-	}
-	return connect.NewResponse(&progressionv1.RemoveMilestoneResponse{Milestones: views}), nil
+	return connect.NewResponse(&progressionv1.RemoveMilestoneResponse{Milestones: s.listAfterWrite(ctx, m, "remove a milestone")}), nil
 }
 
 // MarkMilestoneReached implements progressionv1connect.ProgressionServiceHandler.
@@ -566,15 +553,31 @@ func milestoneByID(views []*progressionv1.Milestone, id string) *progressionv1.M
 	return nil
 }
 
+// listAfterWrite reads the campaign's milestones for the answer of a write
+// that is committed (see committedViews).
+func (s *Service) listAfterWrite(ctx context.Context, m authz.Membership, what string) []*progressionv1.Milestone {
+	return s.committedViews(ctx, what, func() ([]*progressionv1.Milestone, error) { return s.milestoneViews(ctx, m) })
+}
+
 // committedViews reads the milestones for the answer of a write that is
-// committed.
+// committed. When the read fails it logs the failure and gives no list: the
+// write is there, and an error would make the app send it again. The answer
+// then carries an empty list, which the app takes as "read it again".
 func (s *Service) committedViews(ctx context.Context, what string, read func() ([]*progressionv1.Milestone, error)) []*progressionv1.Milestone {
-	views, _ := read()
+	views, err := read()
+	if err != nil {
+		s.logger.ErrorContext(ctx, "read the milestones after a committed write", "action", what, "error", err)
+		return nil
+	}
 	return views
 }
 
 // writtenMilestone is the milestone a write made or changed, as the answer
-// shows it.
+// shows it: the one in views, or, when the list could not be read, the row the
+// write left, as a planned milestone.
 func writtenMilestone(views []*progressionv1.Milestone, row progressiondb.PlannedMilestone) *progressionv1.Milestone {
-	return milestoneByID(views, row.ID)
+	if v := milestoneByID(views, row.ID); v != nil {
+		return v
+	}
+	return &progressionv1.Milestone{Id: row.ID, Text: row.Text}
 }
