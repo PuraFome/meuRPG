@@ -1,6 +1,7 @@
 package play
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -115,5 +116,5 @@ func sameJSON(t *testing.T, a, b string) bool {
 	}
 	xa, _ := json.Marshal(x)
 	ya, _ := json.Marshal(y)
-	return string(xa) == string(ya)
+	return bytes.Equal(xa, ya)
 }
