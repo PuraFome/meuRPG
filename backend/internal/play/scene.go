@@ -26,7 +26,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The RP scene during a session (MR-015, Etapa 7, D7; questions 51 to 55 of
+// The RP scene during a session (MR-015; questions 51 to 55 of
 // the progress doc, with their defaults).
 //
 //   - The scene is a map point of kind SCENE with the master's actions on it

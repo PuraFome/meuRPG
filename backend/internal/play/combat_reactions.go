@@ -22,7 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
-// Reactions (MR-014, timeline decision 5, Etapa 6, slice 6.4b). Escudo is the
+// Reactions (MR-014, timeline decision 5). Escudo is the
 // one reaction spell the combat runs: it is cast when an attack hits a player's
 // character, so the hit waits (AWAITING_REACTION) until the target's player, or
 // the master, answers. The opportunity attack is RollAttack's as_reaction
@@ -365,8 +365,8 @@ func (s *Service) UseReaction(
 	return connect.NewResponse(resp), nil
 }
 
-// parseReactionCall reads the caller's membership and the ids of a Shield answer, in the order the
-// handlers always checked them.
+// parseReactionCall reads the caller's membership and the ids of a Shield answer. The member comes
+// first, so a stranger gets permission_denied before any id is parsed.
 func parseReactionCall(ctx context.Context, campaignID, keyRaw, encounterRaw, pendingRaw string) (m authz.Membership, key string, encID, pendingID string, err error) {
 	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
 		return m, key, "", "", err

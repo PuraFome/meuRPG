@@ -242,7 +242,7 @@ func (s *Service) castAnswer(
 	return connect.NewResponse(build(cast, filterVitals(m, made.vitals), ev)), nil
 }
 
-// castAnswerFinish is the answer of FinishCast.
+// castAnswerFinish is the answer of ConfirmCastTimePassed.
 func (s *Service) castAnswerFinish(ctx context.Context, m authz.Membership, res combatResult, made castOutcome) (*connect.Response[playv1.ConfirmCastTimePassedResponse], error) {
 	cast, err := s.afterCastChange(ctx, m, res, made, "")
 	if err != nil {

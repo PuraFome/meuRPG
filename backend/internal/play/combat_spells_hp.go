@@ -19,7 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// Spells that read hit points (MR-014, RN-20, Etapa 8): Sono, Leque Cromático,
+// Spells that read hit points (MR-014, RN-20): Sono, Leque Cromático,
 // the Palavras de Poder, Estabilizar and Cura Completa. The rules say
 // what each one does (effects/spells.json, rules.SpellEffect) and do the
 // arithmetic (combat.ResolvePool and the others, pure); this file reads the

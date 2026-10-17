@@ -43,7 +43,7 @@ type adjustRun struct {
 	shapeChanged bool
 }
 
-// readAdjustCall reads and checks the request, in the order the refusals have always come.
+// readAdjustCall reads and checks the request. The refusals come in the order of the checks below.
 func readAdjustCall(ctx context.Context, msg *playv1.AdjustCharacterVitalsRequest) (adjustCall, error) {
 	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {

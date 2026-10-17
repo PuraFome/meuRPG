@@ -313,7 +313,7 @@ type rageCall struct {
 	key, encID, combID string
 }
 
-// readRageCall reads and checks the call, in the order the refusals have always come.
+// readRageCall reads and checks the call. The refusals come in the order of the checks below.
 func readRageCall(ctx context.Context, campaignID, rawKey, encounterID, combatantID string) (rageCall, error) {
 	m, err := authz.RequireCampaignMember(ctx, campaignID)
 	if err != nil {

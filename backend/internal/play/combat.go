@@ -15,7 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The combat (MR-013, Etapa 6): CombatService, in the same Service as
+// The combat (MR-013): CombatService, in the same Service as
 // PlayService because a combat lives inside the open game session and its
 // events travel on the same stream. The handlers that start and set a combat up are
 // in combat_start.go and combat_setup.go (who joins: combat_join.go); this file has

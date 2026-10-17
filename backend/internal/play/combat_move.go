@@ -1167,8 +1167,8 @@ type masterTargetCall struct {
 	key, encID, combID string
 }
 
-// readMasterTargetCall reads and checks the master's call, in the order the refusals have
-// always come.
+// readMasterTargetCall reads and checks the master's call. The refusals come in the order of
+// the checks below.
 func readMasterTargetCall(ctx context.Context, campaignID, rawKey, encounterID, combatantID string) (masterTargetCall, error) {
 	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster)
 	if err != nil {

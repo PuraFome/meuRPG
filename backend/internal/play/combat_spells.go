@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Casting a spell (MR-014, RN-02, RN-18, RN-22, Etapa 6, slice 6.4b). The cast
+// Casting a spell (MR-014, RN-02, RN-18, RN-22). The cast
 // spends the slot and the economy at once; what it does to the targets depends
 // on the spell: a spell attack compares a d20 with the armor class, a saving
 // throw spell has the server roll each target's save, Magic Missile's darts

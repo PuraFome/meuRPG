@@ -22,7 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// What a turn can do (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
+// What a turn can do (MR-012, MR-014): the options of a
 // combatant, the attack in two steps (the roll to hit, then the damage), the
 // standard actions that only spend the economy, and the master's hand on an
 // NPC's hit points. The helpers are in combat_write.go, the visibility in

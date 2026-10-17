@@ -396,11 +396,11 @@ func (s *Service) insertCast(ctx context.Context, c *combatTx, m authz.Membershi
 	return row, nil
 }
 
-// startLongCast starts a casting that takes time: it keeps the chosen targets for FinishCast and
+// startLongCast starts a casting that takes time: it keeps the chosen targets for ConfirmCastTimePassed and
 // takes the caster's concentration from the start.
 func (s *Service) startLongCast(ctx context.Context, c *combatTx, plan castPlan) (castOutcome, error) {
 	g, row := plan.g, plan.row
-	// The targets chosen now are the ones FinishCast takes effect on.
+	// The targets chosen now are the ones ConfirmCastTimePassed takes effect on.
 	chosen := make([]castTarget, 0, len(g.targets))
 	for _, t := range g.targets {
 		chosen = append(chosen, castTarget{ID: t.ID})

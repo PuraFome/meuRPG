@@ -599,7 +599,7 @@ func holdOn(holds map[string]playdb.CombatHold, c playdb.Combatant) (playdb.Comb
 // oppositeSide says whether two combatants are on different sides.
 func oppositeSide(a, b playdb.Combatant) bool { return a.Side != b.Side }
 
-// eventTouch bumps the encounter's revision, as every change of a combat does.
+// touch bumps the encounter's revision, as every change of a combat does.
 func touch(ctx context.Context, c *combatTx) error {
 	enc, err := c.q.TouchEncounter(ctx, c.enc.ID)
 	if err != nil {
