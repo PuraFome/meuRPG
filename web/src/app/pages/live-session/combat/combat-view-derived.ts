@@ -8,15 +8,7 @@ import {
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
-import {
-  type FormEnded,
-  ConcentrationWatch,
-  FormNotices,
-  type LostConcentration,
-  formNoticeText,
-  lostNoticeText,
-  wildActionLine,
-} from '../../../core/combat/combat-notices';
+import { wildActionLine } from '../../../core/combat/combat-notices';
 import { coverTargets, everyoneStanding, reactorRows } from '../../../core/combat/theatre';
 import {
   type ReactorAttack,
@@ -42,6 +34,7 @@ import {
 import { reactionWait } from '../../../core/combat/reactions';
 import type { CombatantInfo } from './combat-info';
 import { heldWait, revealWhy } from '../../../core/combat/hidden-reveal';
+import { CombatNotices } from './combat-notices';
 import { CombatViewStateDirective } from './combat-view-state';
 
 /** What the screen derives from the combat for the template: notes, marks, cards and who waits for what. */
@@ -140,22 +133,13 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
       : undefined;
     return own ? wildActionLine(feature, !!own.wildShapeBeastKey, resource) : null;
   });
-  /** What the form's end said, from the combat log's line (the server's number and reason): until it is touched. */
-  protected readonly formEnded = signal<FormEnded | null>(null);
-  protected readonly formNotice = computed(() => {
-    const ended = this.formEnded();
-    return ended ? formNoticeText(ended) : '';
+  /** The notices of a form or a concentration that ended on its own (`CombatNotices`). */
+  protected readonly notices = new CombatNotices({
+    api: this.api,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    ownId: () => this.own()?.id,
   });
-  protected readonly formNotices = new FormNotices();
-  // ---- losing the concentration that holds the creatures (MR-037, E9-12 state 5) ----
-
-  /** What the player's own concentration ending took with it: the spell and the creatures that left, until it is touched. */
-  protected readonly lostConcentration = signal<LostConcentration | null>(null);
-  protected readonly lostNotice = computed(() => {
-    const lost = this.lostConcentration();
-    return lost ? lostNoticeText(lost) : '';
-  });
-  protected readonly concentration = new ConcentrationWatch();
   /** On a phone, on the player's own turn, the order strip goes under the actions instead of between the title and them. */
   protected readonly orderBelow = computed(
     () => !this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),

@@ -136,24 +136,6 @@ export abstract class CombatViewFlowsDirective extends CombatViewPartsDirective 
     });
   }
 
-  /** The player ends their own concentration (the conditions are the master's). */
-  protected endOwnConcentration(): Promise<boolean> {
-    const own = this.own();
-    this.concentration.endedByMe = true;
-    return own
-      ? this.calls
-          .run((e) =>
-            this.api.setConditions(this.campaignId(), e.id, own.id, { endConcentration: true }),
-          )
-          .then((ok) => {
-            if (!ok) {
-              this.concentration.endedByMe = false;
-            }
-            return ok;
-          })
-      : Promise.resolve(false);
-  }
-
   /** "Encerrar a parte dos Lobos" / "Encerrar a vez do Nanquim": the part of every member of the tab that still acts, one call each (a joint turn ends part by part). */
   protected async endTab(tab: MineTab): Promise<void> {
     for (const member of tab.members) {

@@ -222,19 +222,12 @@ export class CombatView extends CombatViewFlowsDirective {
       const rounds = this.log.rounds();
       const loaded = this.log.loaded();
       untracked(() => {
-        const { reset, notice } = this.formNotices.read(
+        this.notices.readForm(
           id,
           own?.id ?? '',
           loaded,
           rounds.flatMap((r) => r.entries),
         );
-        if (reset) {
-          this.formEnded.set(null);
-          this.lostConcentration.set(null);
-        }
-        if (notice) {
-          this.formEnded.set(notice);
-        }
       });
     });
     // When the concentration that held creatures ends (a lost save, another spell, the master), the player is told too. It reads the
@@ -246,15 +239,7 @@ export class CombatView extends CombatViewFlowsDirective {
       const creatures =
         e && !this.isMaster() ? ownCreatures(e).filter((c) => !!c.summonGroupId) : [];
       untracked(() => {
-        const out = this.concentration.read(
-          e?.id ?? '',
-          spell,
-          creatures,
-          this.lostConcentration(),
-        );
-        if (out !== undefined) {
-          this.lostConcentration.set(out);
-        }
+        this.notices.readConcentration(e?.id ?? '', spell, creatures);
       });
     });
     // The master's prompts need each NPC reactor's attacks with their numbers.

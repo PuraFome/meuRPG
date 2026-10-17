@@ -700,9 +700,9 @@ describe('CombatView calls: ending the concentration', () => {
       enc: grid('t', toren()),
       api: answers(grid('t', toren()), 'setConditions'),
     });
-    expect(await view.endOwnConcentration()).toBe(true);
+    expect(await view.notices.endOwnConcentration()).toBe(true);
     expect(callsOf('setConditions')[0].args).toEqual(['c', 'enc', 't', { endConcentration: true }]);
-    expect(view.concentration.endedByMe).toBe(true);
+    expect(view.notices.concentration.endedByMe).toBe(true);
   });
 
   it('takes the mark back when the server refuses', async () => {
@@ -710,16 +710,16 @@ describe('CombatView calls: ending the concentration', () => {
       enc: grid('t', toren()),
       api: { setConditions: refuse(Code.PermissionDenied) },
     });
-    expect(await view.endOwnConcentration()).toBe(false);
-    expect(view.concentration.endedByMe).toBe(false);
+    expect(await view.notices.endOwnConcentration()).toBe(false);
+    expect(view.notices.concentration.endedByMe).toBe(false);
   });
 
   it('without a character of the player it sends nothing (the mark is still set)', async () => {
     const { view, callsOf } = mountCombatView({ enc: grid('g', goblin()), master: true });
-    expect(await view.endOwnConcentration()).toBe(false);
+    expect(await view.notices.endOwnConcentration()).toBe(false);
     expect(callsOf('setConditions')).toEqual([]);
     // Pinned as it is today: the mark is set before the character is looked up.
-    expect(view.concentration.endedByMe).toBe(true);
+    expect(view.notices.concentration.endedByMe).toBe(true);
   });
 });
 

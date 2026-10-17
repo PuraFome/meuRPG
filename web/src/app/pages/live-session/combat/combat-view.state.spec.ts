@@ -1653,14 +1653,14 @@ describe('CombatView state: what the log tells the player about the form and the
 
   it('tells the end of the form that the log brings after the first read, with the carried damage', async () => {
     const { view, read } = await mountWithLog();
-    expect(view.formNotice()).toBe('');
+    expect(view.notices.formNotice()).toBe('');
     await read(form('l1', WildShapeEndReason.DAMAGE));
-    expect(view.formNotice()).toBe(
+    expect(view.notices.formNotice()).toBe(
       'O Lobo caiu a\u00a00 PV e você voltou à forma normal. 6 de dano passaram para você.',
     );
     // A re-read of the same line says nothing new, and the notice stays until it is touched.
     await read(form('l1', WildShapeEndReason.DAMAGE));
-    expect(view.formNotice()).not.toBe('');
+    expect(view.notices.formNotice()).not.toBe('');
   });
 
   it('does not repeat as news a line the first read already held', async () => {
@@ -1670,28 +1670,28 @@ describe('CombatView state: what the log tells the player about the form and the
       api: { log: () => ({ rounds, undoableEventId: '' }) },
     });
     await settle(m.fixture);
-    expect(m.view.formNotice()).toBe('');
+    expect(m.view.notices.formNotice()).toBe('');
     rounds = round(form('old', WildShapeEndReason.MASTER), form('new', WildShapeEndReason.ZERO_HP));
     m.state.touchLog();
     await settle(m.fixture);
-    expect(m.view.formNotice()).toBe('Você caiu a 0 PV e voltou à forma normal.');
+    expect(m.view.notices.formNotice()).toBe('Você caiu a 0 PV e voltou à forma normal.');
   });
 
   it('says nothing of a form the druid left by choice, or of a line of someone else', async () => {
     const { view, read } = await mountWithLog();
     await read(form('l1', WildShapeEndReason.LEFT));
-    expect(view.formNotice()).toBe('');
+    expect(view.notices.formNotice()).toBe('');
     await read({ ...form('l2', WildShapeEndReason.DAMAGE), actorId: 'g' });
-    expect(view.formNotice()).toBe('');
+    expect(view.notices.formNotice()).toBe('');
   });
 
   it('puts the notice away when the combat changes', async () => {
     const { view, read, state, fixture, enc } = await mountWithLog();
     await read(form('l1', WildShapeEndReason.UNCONSCIOUS));
-    expect(view.formNotice()).toBe('Você ficou inconsciente e voltou à forma normal.');
+    expect(view.notices.formNotice()).toBe('Você ficou inconsciente e voltou à forma normal.');
     state.apply({ ...next(enc), id: 'outro' } as Encounter);
     await settle(fixture);
-    expect(view.formNotice()).toBe('');
+    expect(view.notices.formNotice()).toBe('');
   });
 
   it('tells the player the concentration that held creatures ended, and takes it away when they are back', async () => {
@@ -1700,16 +1700,16 @@ describe('CombatView state: what the log tells the player about the form and the
     const enc = encounter({ currentCombatantId: 't', combatants: [concentrating, lobo, goblin] });
     const { view, fixture, state } = mountCombatView({ enc });
     await settle(fixture);
-    expect(view.lostNotice()).toBe('');
+    expect(view.notices.lostNotice()).toBe('');
     state.apply(next(enc, { combatants: [toren, goblin] }));
     await settle(fixture);
-    expect(view.lostNotice()).toBe(
+    expect(view.notices.lostNotice()).toBe(
       'Você perdeu a concentração em Conjurar Animais. Lobo atroz 1 sumiu.',
     );
     // An undo that brings the creature back takes the notice away.
     state.apply(next(enc, { revision: 3 }));
     await settle(fixture);
-    expect(view.lostNotice()).toBe('');
+    expect(view.notices.lostNotice()).toBe('');
   });
 
   it('starts clean in another combat', async () => {
@@ -1719,14 +1719,14 @@ describe('CombatView state: what the log tells the player about the form and the
     await settle(fixture);
     state.apply(next(enc, { combatants: [toren, goblin] }));
     await settle(fixture);
-    expect(view.lostNotice()).not.toBe('');
+    expect(view.notices.lostNotice()).not.toBe('');
     state.apply({
       ...next(enc, { revision: 5 }),
       id: 'outro',
       combatants: [toren, goblin],
     } as Encounter);
     await settle(fixture);
-    expect(view.lostNotice()).toBe('');
+    expect(view.notices.lostNotice()).toBe('');
   });
 });
 

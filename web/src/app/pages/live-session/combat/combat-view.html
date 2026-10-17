@@ -251,18 +251,18 @@
             }
             <!-- What ended without the player asking (the beast fell, the concentration was lost): stays until it is touched. -->
             <div class="notices" role="status" aria-live="polite">
-              @if (formNotice(); as text) {
+              @if (notices.formNotice(); as text) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="form-ended">
                   <mat-icon aria-hidden="true">pets</mat-icon>
                   <p>{{ text }}</p>
-                  <button mat-button type="button" class="notice__ok" (click)="formEnded.set(null)">Entendi</button>
+                  <button mat-button type="button" class="notice__ok" (click)="notices.formEnded.set(null)">Entendi</button>
                 </div>
               }
-              @if (lostNotice(); as text) {
+              @if (notices.lostNotice(); as text) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="concentration-lost">
                   <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
                   <p>{{ text }}</p>
-                  <button mat-button type="button" class="notice__ok" (click)="lostConcentration.set(null)">Entendi</button>
+                  <button mat-button type="button" class="notice__ok" (click)="notices.lostConcentration.set(null)">Entendi</button>
                 </div>
               }
             </div>
@@ -313,7 +313,7 @@
                   (endTurn)="nextTurn()"
                   (endRage)="endRageOf($event)"
                   (opportunity)="openAttack($event, true)"
-                  (endConcentration)="endOwnConcentration()"
+                  (endConcentration)="notices.endOwnConcentration()"
                 />
               }
               <!-- The per-device switch of the turn alert: sound and vibration only; the shake and the title stay. -->
