@@ -1833,6 +1833,10 @@ enum EncounterBlockedReason {
   // A table maneuver that starts a grapple after a hit: the character made no melee
   // weapon hit this turn.
   ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT = 105;
+  // CastSpell, CastSummon, RollAttack (a spell attack): the character wears armor or a
+  // shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
+  // is spent.
+  ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 106;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

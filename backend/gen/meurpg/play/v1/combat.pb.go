@@ -920,6 +920,10 @@ const (
 	// A table maneuver that starts a grapple after a hit: the character made no melee
 	// weapon hit this turn.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT EncounterBlockedReason = 105
+	// CastSpell, CastSummon, RollAttack (a spell attack): the character wears armor or a
+	// shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
+	// is spent.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT EncounterBlockedReason = 106
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1011,6 +1015,7 @@ var (
 		103: "ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP",
 		104: "ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE",
 		105: "ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT",
+		106: "ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
@@ -1099,6 +1104,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP":              103,
 		"ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE":           104,
 		"ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT":                 105,
+		"ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT":         106,
 	}
 )
 
@@ -23518,7 +23524,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\x94 \n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xc7 \n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -23606,7 +23612,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\"ENCOUNTER_BLOCKED_REASON_NOT_PRONE\x10f\x12,\n" +
 	"(ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP\x10g\x12/\n" +
 	"+ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE\x10h\x12)\n" +
-	"%ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT\x10i*\x91\x03\n" +
+	"%ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT\x10i\x121\n" +
+	"-ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT\x10j*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +
