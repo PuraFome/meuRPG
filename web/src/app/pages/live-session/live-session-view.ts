@@ -1,14 +1,32 @@
 import { computed } from '@angular/core';
 
-import { CombatantKind, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  type Encounter,
+  EncounterStatus,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { acts } from '../../core/combat/joint-turn';
 import { mineTabs } from '../../core/combat/mine';
 import { isTheatre } from '../../core/combat/theatre';
+import type { CluePlayer } from '../../core/maps/scene-clues';
 import { returnPlace } from '../../core/revivify/revivify-flow';
+import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
+import type { PickRow } from '../../shared/person-pick/person-pick';
 import { OwnEffects } from './effects/own-effects';
-import type { LiveSessionParts } from './live-session-parts';
-import { highlightsSubOf } from './live-session-pure';
+import type { LiveSessionParts } from './live-session-deps';
 import type { LiveSessionState } from './live-session-state';
+
+/** The line under the players' "O combate acabou" title: the name, the rounds and how many enemies fell. */
+function highlightsSubOf(e: Encounter | null): string {
+  if (!e) {
+    return '';
+  }
+  const rounds = Math.max(1, e.round ?? 1);
+  const npcs = e.combatants.filter((c) => c.kind !== CombatantKind.PLAYER);
+  const defeated = npcs.filter((c) => c.defeated).length;
+  const beaten = npcs.length > 0 ? ` · ${defeated} de ${npcs.length} derrotados` : '';
+  return `${e.name} · ${rounds} ${rounds === 1 ? 'rodada' : 'rodadas'}${beaten}`;
+}
 
 /** What the session page derives from its state and the combat, the map and the notes it holds. */
 export class LiveSessionView {
@@ -102,6 +120,52 @@ export class LiveSessionView {
     const own = e.combatants.find((c) => c.mine);
     return own ? { successes: own.deathSuccesses, failures: own.deathFailures } : null;
   });
+  /** The player's bonuses for "Procurar armadilhas" (the derived sheet). */
+  readonly trapSkills = computed(() => this.state.playerSheet()?.skills ?? null);
+  /** The players' names by character, for "de Caio" on the session's highlights (master only). */
+  readonly playerNames = computed(
+    () =>
+      new Map(
+        [...this.state.partyInfo()].flatMap(([id, p]) =>
+          p.playerName ? [[id, p.playerName] as const] : [],
+        ),
+      ),
+  );
+  /** The master's "Ver como" list: the living player characters, with their players. */
+  readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
+    this.state.vitals().map((v) => ({
+      id: v.characterId,
+      name: v.name,
+      sub: this.state.partyInfo().get(v.characterId)?.playerName ?? '',
+    })),
+  );
+  /** The master's player characters, for who gets a clue (a deleted account has no player). */
+  readonly cluePlayers = computed<readonly CluePlayer[]>(() =>
+    this.state
+      .vitals()
+      .filter((v) => v.playerUserId !== '')
+      .map((v) => ({
+        id: v.characterId,
+        name: v.name,
+        playerName: this.state.partyInfo().get(v.characterId)?.playerName ?? '',
+      })),
+  );
+  /** The living player characters as rows to pick from ("Quem encontrou"): the class and the player under the name. */
+  readonly finderRows = computed<readonly PickRow[]>(() =>
+    this.state
+      .vitals()
+      .filter((v) => v.playerUserId !== '')
+      .map((v) => {
+        const info = this.state.partyInfo().get(v.characterId);
+        return {
+          id: v.characterId,
+          name: v.name,
+          sub: [info?.classSummary ?? '', info?.playerName ? `de ${info.playerName}` : '']
+            .filter(Boolean)
+            .join(', '),
+        };
+      }),
+  );
   /** "Seus efeitos" and the labels of the conditions they hold, for the player's own sheet (RN-22). */
   readonly ownEffects: OwnEffects;
   /** The player may search the map for traps: a character of theirs, on a map with a grid. */

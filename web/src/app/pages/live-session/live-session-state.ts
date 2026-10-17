@@ -1,7 +1,6 @@
 import { computed, signal } from '@angular/core';
 
 import type { Map as MapMessage } from '../../../gen/meurpg/maps/v1/maps_pb';
-import type { CluePlayer } from '../../core/maps/scene-clues';
 import type {
   CampaignInfoVm,
   LiveSessionVm,
@@ -12,8 +11,6 @@ import type {
 } from '../../core/play/live-session.types';
 import type { LiveStream } from '../../core/play/live-stream';
 import { betterArmorClass } from '../../core/play/vitals';
-import type { PickRow } from '../../shared/person-pick/person-pick';
-import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
 
 /**
  * Where the page stands. `live` covers reconnecting too: the numbers stay
@@ -21,7 +18,7 @@ import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
  */
 export type Phase = 'loading' | 'live' | 'no-access' | 'no-session' | 'ended' | 'error';
 
-/** What the session page holds in signals, and the counters of its reads (the page's own state, with no service in it). */
+/** What the session page holds in signals (the page's own state, with no service in it). */
 export class LiveSessionState {
   readonly campaignId = signal('');
   readonly phase = signal<Phase>('loading');
@@ -95,65 +92,4 @@ export class LiveSessionState {
   readonly ownArmorClass = computed(() =>
     betterArmorClass(this.playerSheet()?.armorClass ?? null, this.ownVitals()?.armorClassBase),
   );
-  /** The player's bonuses for "Procurar armadilhas" (the derived sheet). */
-  readonly trapSkills = computed(() => this.playerSheet()?.skills ?? null);
-  /** The players' names by character, for "de Caio" on the session's highlights (master only). */
-  readonly playerNames = computed(
-    () =>
-      new Map(
-        [...this.partyInfo()].flatMap(([id, p]) =>
-          p.playerName ? [[id, p.playerName] as const] : [],
-        ),
-      ),
-  );
-  /** The master's "Ver como" list: the living player characters, with their players. */
-  readonly viewAsPeople = computed<readonly ViewAsPerson[]>(() =>
-    this.vitals().map((v) => ({
-      id: v.characterId,
-      name: v.name,
-      sub: this.partyInfo().get(v.characterId)?.playerName ?? '',
-    })),
-  );
-  /** The master's player characters, for who gets a clue (a deleted account has no player). */
-  readonly cluePlayers = computed<readonly CluePlayer[]>(() =>
-    this.vitals()
-      .filter((v) => v.playerUserId !== '')
-      .map((v) => ({
-        id: v.characterId,
-        name: v.name,
-        playerName: this.partyInfo().get(v.characterId)?.playerName ?? '',
-      })),
-  );
-  /** The living player characters as rows to pick from ("Quem encontrou"): the class and the player under the name. */
-  readonly finderRows = computed<readonly PickRow[]>(() =>
-    this.vitals()
-      .filter((v) => v.playerUserId !== '')
-      .map((v) => {
-        const info = this.partyInfo().get(v.characterId);
-        return {
-          id: v.characterId,
-          name: v.name,
-          sub: [info?.classSummary ?? '', info?.playerName ? `de ${info.playerName}` : '']
-            .filter(Boolean)
-            .join(', '),
-        };
-      }),
-  );
-
-  /** The campaign of the current load; `null` once it turned out the page can't show it (no access, a pending member, an error). */
-  campaignLoad: Promise<CampaignInfoVm | null> = Promise.resolve(null);
-  loadedSheetFor: string | null = null;
-  partyInfoIds = new Set<string>();
-  /** Moves with each load: an answer that comes for an older one is dropped. */
-  generation = 0;
-  /** Moves with each read of the images left with the players, and with each one taken back here. */
-  leftSeq = 0;
-  /** Counts the stream's news of the current map and of the shown image: a snapshot that began before one of them
-   * does not overwrite it. */
-  mapEvents = 0;
-  imageEvents = 0;
-  callingTimer: ReturnType<typeof setTimeout> | undefined;
-  visionTimer: ReturnType<typeof setTimeout> | undefined;
-  /** Whether the open-sessions list named the campaign the last time the waiting effect looked. */
-  listedCampaign: { id: string; listed: boolean } = { id: '', listed: false };
 }

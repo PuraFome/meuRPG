@@ -29,7 +29,7 @@
         [sessionId]="s.sessionId"
         [sessionNumber]="s.sessionNumber"
         [isMaster]="state.isMaster()"
-        [players]="state.playerNames()"
+        [players]="view.playerNames()"
         [characterId]="state.ownCharacterId()"
         [characterName]="view.ownCharacterName()"
       />
@@ -139,7 +139,7 @@
             [characterName]="own.name"
             [creatureId]="sight.creatureId"
             [inCombat]="sight.inCombat"
-            (stopped)="events.familiarStopped(own.characterId)"
+            (stopped)="loader.familiarStopped(own.characterId)"
           />
         }
       }
@@ -160,7 +160,7 @@
           [casterClasses]="state.playerSheet()?.classes ?? ''"
           [diceMode]="state.campaign()?.diceMode ?? 1"
           [dicePreference]="state.campaign()?.dicePreference ?? 1"
-          [trapSkills]="state.trapSkills()"
+          [trapSkills]="view.trapSkills()"
           [traps]="state.isMaster() ? trapBoard : null"
           (adjust)="sheets.adjust($event)"
           (changeDice)="sheets.changeDice()"
@@ -178,7 +178,7 @@
             [campaignId]="state.campaignId()"
             [state]="mapState"
             [map]="mapState.map()"
-            [people]="state.viewAsPeople()"
+            [people]="view.viewAsPeople()"
             [info]="state.partyInfo()"
             [tick]="state.visionTick()"
             [viewAs]="state.viewAs()"
@@ -210,12 +210,12 @@
               [campaignId]="state.campaignId()"
               [state]="mapState"
               [board]="trapBoard"
-              [players]="state.cluePlayers()"
+              [players]="view.cluePlayers()"
               [vitals]="state.vitals()"
               [combat]="combat"
               [withDamages]="false"
             />
-            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="state.finderRows()" />
+            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="view.finderRows()" />
           </div>
           @if (view.puzzlesShown()) {
             <app-master-puzzles class="board__traps" [campaignId]="state.campaignId()" [state]="puzzles" />
@@ -284,7 +284,7 @@
             (changed)="state.shownImage.set($event); state.shownKeep.set(false)"
             (keepChange)="state.shownKeep.set($event)"
             (leftChanged)="loader.reloadLeftImages()"
-            (taken)="events.takenBack($event)"
+            (taken)="loader.takenBack($event)"
           />
           @if (view.puzzlesShown()) {
             <app-master-puzzles class="board__puzzles" [campaignId]="state.campaignId()" [state]="puzzles" />
@@ -296,7 +296,7 @@
                 [campaignId]="state.campaignId()"
                 [state]="scene"
                 [mapState]="mapState"
-                [players]="state.cluePlayers()"
+                [players]="view.cluePlayers()"
                 [shown]="state.shownImage()"
                 [keep]="state.shownKeep()"
                 (shownChange)="state.shownImage.set($event); state.shownKeep.set(false)"
@@ -309,7 +309,7 @@
               [tick]="state.groupCheckTick()"
               [diceMode]="state.campaign()?.diceMode ?? 1"
               [preference]="state.campaign()?.dicePreference ?? 1"
-              [people]="state.viewAsPeople()"
+              [people]="view.viewAsPeople()"
             />
             <!-- The master's open puzzle (MR-038, E10-06): the board needs the main column; the list stays in the rail. -->
             <app-master-live class="board__live" [campaignId]="state.campaignId()" [state]="puzzles" />
@@ -321,7 +321,7 @@
               [mapId]="state.currentMapId()"
               [maps]="state.campaignMaps()"
               [fog]="fog"
-              [people]="state.viewAsPeople()"
+              [people]="view.viewAsPeople()"
               [viewAs]="state.viewAs()"
               [tick]="state.visionTick()"
               (viewNoteChange)="state.viewNote.set($event)"
@@ -336,10 +336,10 @@
               [campaignId]="state.campaignId()"
               [state]="mapState"
               [board]="trapBoard"
-              [players]="state.cluePlayers()"
+              [players]="view.cluePlayers()"
               [vitals]="state.vitals()"
             />
-            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="state.finderRows()" />
+            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="view.finderRows()" />
           </div>
           @if (view.fogMaster()) {
             <app-fog-master-panel
@@ -347,7 +347,7 @@
               [campaignId]="state.campaignId()"
               [state]="mapState"
               [map]="mapState.map()"
-              [people]="state.viewAsPeople()"
+              [people]="view.viewAsPeople()"
               [info]="state.partyInfo()"
               [tick]="state.visionTick()"
               [viewAs]="state.viewAs()"

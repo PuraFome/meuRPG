@@ -85,7 +85,8 @@ import {
   TreasureFinderSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { OpenSessions } from '../../core/play/open-sessions';
-import { CALLING_NOTICE_MS, LiveSession, mageArmorClassOf } from './live-session';
+import { CALLING_NOTICE_MS, LiveSession } from './live-session';
+import { mageArmorClassOf } from './live-session-loader';
 import {
   CampaignInfoVm,
   LiveErrorKind,
