@@ -552,19 +552,6 @@ func (s *Service) spendHitDieRolled(ctx context.Context, tx pgx.Tx, q *playdb.Qu
 	return nil
 }
 
-// lockOpenSessionOrNone locks the campaign's open session in the transaction of q, or
-// refuses with the answer of a table without one.
-func lockOpenSessionOrNone(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, error) {
-	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return playdb.GameSession{}, errNoOpenSession()
-	}
-	if err != nil {
-		return playdb.GameSession{}, fmt.Errorf("lock the open session: %w", err)
-	}
-	return session, nil
-}
-
 // requireCharacterOwnerOrMaster refuses a member who is neither the master nor the
 // character's player: another player's character is not theirs.
 func (s *Service) requireCharacterOwnerOrMaster(ctx context.Context, tx pgx.Tx, m authz.Membership, characterID string) error {
