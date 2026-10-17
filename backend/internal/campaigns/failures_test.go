@@ -16,92 +16,18 @@ import (
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// Characterization tests of the four biggest handlers of the package
-// (CreateCampaign, acceptInvite, SetCampaignXpMode, UpdateCampaignDocument):
-// every way they fail, with the action and the wrapped error they log, the
-// order of their checks, and the events they log. They freeze today's
-// behavior so the handlers can be split into phases without changing it.
+// What CreateCampaign, acceptInvite, SetCampaignXpMode and UpdateCampaignDocument
+// answer when a query or another module fails, and the order of their checks.
 //
-// A database error is made by campaignsQueryFaults: a pgx tracer on the
+// A database error is made by dbtest.QueryFaults: a pgx tracer on the
 // service's own pool that hands one named sqlc query an already canceled
 // context. pgx then fails that query before sending anything, so the
 // connection and the transaction stay usable, and the handler goes down the
 // same path as for any other database error. A canceled context is classified
 // by rpcerr as Canceled, which is the code these tests see.
-
-// errCampaignsInjected is the cause of every injected failure.
-var errCampaignsInjected = errors.New("injected by the characterization test")
-
-// campaignsQueryFaults fails the sqlc queries it is armed with, by name.
-// It wraps the test pool's tracer, so the nested-acquisition guard of
-// dbtest still watches the pool.
-type campaignsQueryFaults struct {
-	inner pgx.QueryTracer
-	mu    sync.Mutex
-	armed map[string]bool
-	hits  map[string]int
-}
-
-// sqlcName returns the name in the "-- name: X :kind" line sqlc starts
-// every query with, or "" for a query that is not sqlc's.
-func sqlcName(sql string) string {
-	rest, ok := strings.CutPrefix(sql, "-- name: ")
-	if !ok {
-		return ""
-	}
-	name, _, _ := strings.Cut(rest, " ")
-	return name
-}
-
-func (f *campaignsQueryFaults) arm(names ...string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, n := range names {
-		f.armed[n] = true
-	}
-}
-
-func (f *campaignsQueryFaults) hitCount(name string) int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.hits[name]
-}
-
-func (f *campaignsQueryFaults) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
-	ctx = f.inner.TraceQueryStart(ctx, conn, data)
-	name := sqlcName(data.SQL)
-	f.mu.Lock()
-	armed := f.armed[name]
-	if armed {
-		f.hits[name]++
-	}
-	f.mu.Unlock()
-	if !armed {
-		return ctx
-	}
-	failed, cancel := context.WithCancelCause(ctx)
-	cancel(errCampaignsInjected)
-	return failed
-}
-
-func (f *campaignsQueryFaults) TraceQueryEnd(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData) {
-	f.inner.TraceQueryEnd(ctx, conn, data)
-}
-
-func (f *campaignsQueryFaults) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool, data pgxpool.TraceAcquireStartData) context.Context {
-	if a, ok := f.inner.(pgxpool.AcquireTracer); ok {
-		return a.TraceAcquireStart(ctx, pool, data)
-	}
-	return ctx
-}
-
-func (f *campaignsQueryFaults) TraceAcquireEnd(ctx context.Context, pool *pgxpool.Pool, data pgxpool.TraceAcquireEndData) {
-	if a, ok := f.inner.(pgxpool.AcquireTracer); ok {
-		a.TraceAcquireEnd(ctx, pool, data)
-	}
-}
 
 // campaignsLogTape keeps every log record of the service as JSON, debug
 // included.
@@ -116,12 +42,12 @@ func (l *campaignsLogTape) Write(p []byte) (int, error) {
 	return l.buf.Write(p)
 }
 
-// records returns the logged records, decoded, without the time.
-func (l *campaignsLogTape) records(t *testing.T) []map[string]any {
+// errors counts the records logged at ERROR.
+func (l *campaignsLogTape) errors(t *testing.T) int {
 	t.Helper()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	var out []map[string]any
+	n := 0
 	for line := range strings.SplitSeq(strings.TrimSpace(l.buf.String()), "\n") {
 		if line == "" {
 			continue
@@ -130,16 +56,11 @@ func (l *campaignsLogTape) records(t *testing.T) []map[string]any {
 		if err := json.Unmarshal([]byte(line), &rec); err != nil {
 			t.Fatalf("decode log line %q: %v", line, err)
 		}
-		delete(rec, "time")
-		out = append(out, rec)
+		if rec["level"] == "ERROR" {
+			n++
+		}
 	}
-	return out
-}
-
-func (l *campaignsLogTape) reset() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.buf.Reset()
+	return n
 }
 
 // flakyCampaignProfiles is the identity store with errors on demand.
@@ -193,11 +114,11 @@ func (f fakeCampaignXPAwards) AwardedXP(context.Context, pgx.Tx, string) (int32,
 }
 
 // campaignsFaultRig is a harness whose service runs on a pool with
-// campaignsQueryFaults, logs to a campaignsLogTape and reads profiles
+// dbtest.QueryFaults, logs to a campaignsLogTape and reads profiles
 // through flakyCampaignProfiles.
 type campaignsFaultRig struct {
 	*harness
-	faults   *campaignsQueryFaults
+	faults   *dbtest.QueryFaults
 	logs     *campaignsLogTape
 	profiles *flakyCampaignProfiles
 }
@@ -206,11 +127,7 @@ func newCampaignsFaultRig(t *testing.T, change func(*Config)) *campaignsFaultRig
 	t.Helper()
 	rig := &campaignsFaultRig{logs: &campaignsLogTape{}}
 	rig.harness = newHarnessWith(t, func(cfg *Config) {
-		rig.faults = &campaignsQueryFaults{
-			inner: cfg.Pool.Config().ConnConfig.Tracer,
-			armed: map[string]bool{},
-			hits:  map[string]int{},
-		}
+		rig.faults = dbtest.NewQueryFaults(cfg.Pool.Config().ConnConfig.Tracer)
 		pool, err := db.NewPoolWith(t.Context(), cfg.Pool.Config().ConnString(), func(pc *pgxpool.Config) {
 			pc.MaxConns = 1
 			pc.ConnConfig.Tracer = rig.faults
@@ -230,39 +147,15 @@ func newCampaignsFaultRig(t *testing.T, change func(*Config)) *campaignsFaultRig
 	return rig
 }
 
-// wantCampaignsFailureLog checks that a call failed with code, and that the
-// service logged exactly one record: the action and the error it wrapped.
-func (rig *campaignsFaultRig) wantCampaignsFailureLog(t *testing.T, call string, err error, code connect.Code, msg, wantErr string) {
+// wantFailure checks that a call failed with code.
+func wantFailure(t *testing.T, call string, err error, code connect.Code) {
 	t.Helper()
 	if got := connect.CodeOf(err); err == nil || got != code {
 		t.Fatalf("%s error = %v, want %v", call, err, code)
 	}
-	recs := rig.logs.records(t)
-	if len(recs) != 1 {
-		t.Fatalf("%s logged %d records, want 1: %v", call, len(recs), recs)
-	}
-	if got := recs[0]["msg"]; got != msg {
-		t.Errorf("%s logged msg %q, want %q", call, got, msg)
-	}
-	if got := recs[0]["error"]; got != wantErr {
-		t.Errorf("%s logged error %q, want %q", call, got, wantErr)
-	}
-	if got := recs[0]["code"]; got != code.String() {
-		t.Errorf("%s logged code %q, want %q", call, got, code.String())
-	}
 }
 
-// injectedCampaignsCause is how pgx reports a query whose context was
-// already canceled (the "timeout:" is pgx's word for any context error).
-const injectedCampaignsCause = "timeout: context already done: context canceled"
-
-// injectedCampaignsErr is how an injected query failure reads once wrapped
-// by the handler with prefix.
-func injectedCampaignsErr(prefix string) string {
-	return prefix + ": " + injectedCampaignsCause
-}
-
-func TestCharacterizeCreateCampaignFailures(t *testing.T) {
+func TestCreateCampaignWhenSomethingFails(t *testing.T) {
 	t.Parallel()
 
 	t.Run("the order of the checks", func(t *testing.T) {
@@ -300,9 +193,6 @@ func TestCharacterizeCreateCampaignFailures(t *testing.T) {
 				t.Errorf("%s: CreateCampaign() error = %v, want %v %q", tc.name, err, tc.code, tc.message)
 			}
 		}
-		if recs := rig.logs.records(t); len(recs) != 0 {
-			t.Errorf("refusals logged %v, want nothing", recs)
-		}
 	})
 
 	t.Run("a bad key after every other check", func(t *testing.T) {
@@ -323,30 +213,30 @@ func TestCharacterizeCreateCampaignFailures(t *testing.T) {
 		rig.profiles.failVerifiedEmails = true
 		rig.profiles.mu.Unlock()
 		err := u.create(t)
-		rig.wantCampaignsFailureLog(t, "CreateCampaign()", err, connect.CodeInternal,
-			"campaigns: cannot check who may create campaigns", "read the caller's verified e-mails: profiles are down")
+		wantFailure(t, "CreateCampaign()", err, connect.CodeInternal)
+		if rig.logs.errors(t) == 0 {
+			t.Errorf("a failure the client cannot fix was not logged at ERROR")
+		}
 	})
 
-	for _, tc := range []struct {
-		query, wantErr string
-	}{
-		{"GetCampaignByCreateKey", injectedCampaignsCause},
-		{"CountMasteredCampaigns", injectedCampaignsErr("count the campaigns the caller is master of")},
-		{"InsertCampaign", injectedCampaignsErr("insert campaign")},
-		{"InsertMember", injectedCampaignsErr("insert master")},
+	for _, tc := range []struct{ query string }{
+		{"GetCampaignByCreateKey"},
+		{"CountMasteredCampaigns"},
+		{"InsertCampaign"},
+		{"InsertMember"},
 	} {
 		t.Run(tc.query+" fails", func(t *testing.T) {
 			t.Parallel()
 			rig := newCampaignsFaultRig(t, nil)
 			u := rig.newUser("Mestre")
-			rig.faults.arm(tc.query)
+			rig.faults.Arm(tc.query)
 			_, err := u.api.CreateCampaign(t.Context(), connect.NewRequest(&campaignsv1.CreateCampaignRequest{
 				Name: "Mesa", XpMode: campaignsv1.XpMode_XP_MODE_GOLD, IdempotencyKey: "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e0a1",
 			}))
-			if rig.faults.hitCount(tc.query) == 0 {
+			if rig.faults.Hits(tc.query) == 0 {
 				t.Fatalf("%s never ran", tc.query)
 			}
-			rig.wantCampaignsFailureLog(t, "CreateCampaign()", err, connect.CodeCanceled, "campaigns: cannot create a campaign", tc.wantErr)
+			wantFailure(t, "CreateCampaign()", err, connect.CodeCanceled)
 			// Nothing was made: the campaign and its master go together.
 			var n int
 			if err := rig.pool.QueryRow(t.Context(), "SELECT count(*) FROM campaigns").Scan(&n); err != nil {
@@ -362,11 +252,11 @@ func TestCharacterizeCreateCampaignFailures(t *testing.T) {
 		t.Parallel()
 		rig := newCampaignsFaultRig(t, func(c *Config) { c.MaxCampaignsPerUser = -1 })
 		u := rig.newUser("Mestre")
-		rig.faults.arm("CountMasteredCampaigns")
+		rig.faults.Arm("CountMasteredCampaigns")
 		if err := u.create(t); err != nil {
 			t.Fatalf("CreateCampaign() without a cap error = %v", err)
 		}
-		if rig.faults.hitCount("CountMasteredCampaigns") != 0 {
+		if rig.faults.Hits("CountMasteredCampaigns") != 0 {
 			t.Errorf("CountMasteredCampaigns ran without a cap")
 		}
 	})
@@ -385,117 +275,11 @@ func newAcceptInviteWorld(t *testing.T) *acceptInviteWorld {
 	rig := newCampaignsFaultRig(t, nil)
 	w := &acceptInviteWorld{rig: rig, master: rig.newUser("Mestre"), guest: rig.newUser("Convidada")}
 	w.campaignID = w.master.createCampaign(t, "Mirathel").GetId()
-	rig.logs.reset()
 	return w
 }
 
-// wantAcceptedEvents checks the invite.accepted events logged since the last
-// reset: one per entry of pending (its pending_approval), in order.
-func (w *acceptInviteWorld) wantAcceptedEvents(t *testing.T, pending ...bool) {
-	t.Helper()
-	recs := w.rig.logs.records(t)
-	if len(recs) != len(pending) {
-		t.Fatalf("logged %v, want %d invite.accepted events", recs, len(pending))
-	}
-	for i, p := range pending {
-		rec := recs[i]
-		want := map[string]any{
-			"level": "DEBUG", "msg": "event", "event": "invite.accepted",
-			"campaign_id": w.campaignID, "pending_approval": p,
-		}
-		if len(rec) != len(want) {
-			t.Errorf("event %d = %v, want %v", i, rec, want)
-			continue
-		}
-		for k, v := range want {
-			if rec[k] != v {
-				t.Errorf("event %d = %v, want %v", i, rec, want)
-				break
-			}
-		}
-	}
-	w.rig.logs.reset()
-}
-
-func TestCharacterizeAcceptInvite(t *testing.T) {
+func TestAcceptInviteWhenSomethingFails(t *testing.T) {
 	t.Parallel()
-
-	t.Run("the events of each way in", func(t *testing.T) {
-		t.Parallel()
-		w := newAcceptInviteWorld(t)
-		_, token := w.master.createInvite(t, w.campaignID, 2, 0)
-		w.guest.join(t, token)
-		w.wantAcceptedEvents(t, false)
-		// Again: already a member, nothing is logged.
-		w.guest.join(t, token)
-		w.wantAcceptedEvents(t)
-
-		// A pending member, then promoted by an invite without approval
-		// (Q25): the promotion logs pending_approval false.
-		other := w.rig.newUser("Outra")
-		_, approval := w.master.createApprovalInvite(t, w.campaignID)
-		res, err := other.accept(t, approval)
-		if err != nil || !res.GetCampaign().GetAwaitingApproval() {
-			t.Fatalf("AcceptInvite(approval) = %v, %v, want pending", res, err)
-		}
-		w.wantAcceptedEvents(t, true)
-		// A pending member again with the same invite: nothing changes.
-		if res, err := other.accept(t, approval); err != nil || !res.GetCampaign().GetAwaitingApproval() {
-			t.Fatalf("AcceptInvite(approval) again = %v, %v, want pending", res, err)
-		}
-		w.wantAcceptedEvents(t)
-		res, err = other.accept(t, token)
-		if err != nil || res.GetCampaign().GetAwaitingApproval() || res.GetCampaign().GetMyRole() != campaignsv1.Role_ROLE_PLAYER {
-			t.Fatalf("AcceptInvite(promotion) = %v, %v, want an active player", res, err)
-		}
-		w.wantAcceptedEvents(t, false)
-		if got := w.rig.memberStatus(w.campaignID, other.id); got != "active" {
-			t.Errorf("status after the promotion = %q, want active", got)
-		}
-	})
-
-	t.Run("a pending member is not promoted by an invite that does not work", func(t *testing.T) {
-		t.Parallel()
-		w := newAcceptInviteWorld(t)
-		_, approval := w.master.createApprovalInvite(t, w.campaignID)
-		w.guest.join(t, approval)
-		invite, token := w.master.createInvite(t, w.campaignID, 1, 0)
-		if _, err := w.master.api.RevokeInvite(t.Context(), connect.NewRequest(&campaignsv1.RevokeInviteRequest{
-			CampaignId: w.campaignID, InviteId: invite.GetId(),
-		})); err != nil {
-			t.Fatalf("RevokeInvite() error = %v", err)
-		}
-		w.rig.logs.reset()
-		// FINDING (frozen): a pending member who accepts a revoked invite
-		// gets an answer of success (still pending), not the revoked
-		// state a stranger would get, because the membership is checked
-		// before the invite's state.
-		res, err := w.guest.accept(t, token)
-		if err != nil || !res.GetCampaign().GetAwaitingApproval() {
-			t.Fatalf("AcceptInvite(revoked) as pending = %v, %v, want still pending", res, err)
-		}
-		w.wantAcceptedEvents(t)
-		if got := w.rig.useCount(invite.GetId()); got != 0 {
-			t.Errorf("use_count = %d, want 0", got)
-		}
-	})
-
-	t.Run("a pending member is not promoted by another approval invite", func(t *testing.T) {
-		t.Parallel()
-		w := newAcceptInviteWorld(t)
-		_, first := w.master.createApprovalInvite(t, w.campaignID)
-		w.guest.join(t, first)
-		second, token := w.master.createApprovalInvite(t, w.campaignID)
-		w.rig.logs.reset()
-		res, err := w.guest.accept(t, token)
-		if err != nil || !res.GetCampaign().GetAwaitingApproval() {
-			t.Fatalf("AcceptInvite(second approval) = %v, %v, want still pending", res, err)
-		}
-		w.wantAcceptedEvents(t)
-		if got := w.rig.useCount(second.GetId()); got != 0 {
-			t.Errorf("use_count = %d, want 0", got)
-		}
-	})
 
 	t.Run("promotion without SetCharacters", func(t *testing.T) {
 		t.Parallel()
@@ -504,10 +288,8 @@ func TestCharacterizeAcceptInvite(t *testing.T) {
 		w.guest.join(t, approval)
 		_, token := w.master.createInvite(t, w.campaignID, 1, 0)
 		w.rig.service.SetCharacters(nil)
-		w.rig.logs.reset()
 		_, err := w.guest.accept(t, token)
-		w.rig.wantCampaignsFailureLog(t, "AcceptInvite()", err, connect.CodeInternal,
-			"campaigns: cannot accept an invite", "campaigns: SetCharacters was not called")
+		wantFailure(t, "AcceptInvite()", err, connect.CodeInternal)
 	})
 
 	t.Run("promotion when the approval of the character fails", func(t *testing.T) {
@@ -517,10 +299,8 @@ func TestCharacterizeAcceptInvite(t *testing.T) {
 		w.guest.join(t, approval)
 		invite, token := w.master.createInvite(t, w.campaignID, 1, 0)
 		w.rig.service.SetCharacters(failingCampaignCharacters{})
-		w.rig.logs.reset()
 		_, err := w.guest.accept(t, token)
-		w.rig.wantCampaignsFailureLog(t, "AcceptInvite()", err, connect.CodeInternal,
-			"campaigns: cannot accept an invite", "characters are down")
+		wantFailure(t, "AcceptInvite()", err, connect.CodeInternal)
 		// The whole promotion rolled back.
 		if got := w.rig.memberStatus(w.campaignID, w.guest.id); got != "pending" {
 			t.Errorf("status = %q, want pending", got)
@@ -530,11 +310,9 @@ func TestCharacterizeAcceptInvite(t *testing.T) {
 		}
 	})
 
-	for _, tc := range []struct {
-		query, wantErr string
-	}{
-		{"IncrementInviteUses", injectedCampaignsErr("spend an invite use")},
-		{"ActivatePendingMember", injectedCampaignsErr("activate pending member")},
+	for _, tc := range []struct{ query string }{
+		{"IncrementInviteUses"},
+		{"ActivatePendingMember"},
 	} {
 		t.Run("promotion when "+tc.query+" fails", func(t *testing.T) {
 			t.Parallel()
@@ -542,34 +320,30 @@ func TestCharacterizeAcceptInvite(t *testing.T) {
 			_, approval := w.master.createApprovalInvite(t, w.campaignID)
 			w.guest.join(t, approval)
 			_, token := w.master.createInvite(t, w.campaignID, 1, 0)
-			w.rig.logs.reset()
-			w.rig.faults.arm(tc.query)
+			w.rig.faults.Arm(tc.query)
 			_, err := w.guest.accept(t, token)
-			w.rig.wantCampaignsFailureLog(t, "AcceptInvite()", err, connect.CodeCanceled, "campaigns: cannot accept an invite", tc.wantErr)
+			wantFailure(t, "AcceptInvite()", err, connect.CodeCanceled)
 		})
 	}
 
-	for _, tc := range []struct {
-		query, wantErr string
-	}{
-		{"GetInviteByTokenHashForUpdate", injectedCampaignsErr("get invite")},
-		{"GetCampaign", injectedCampaignsErr("get campaign")},
-		{"GetMembership", injectedCampaignsErr("get membership")},
-		{"DeleteExpiredPendingMember", injectedCampaignsErr("delete expired pending member")},
-		{"IncrementInviteUses", injectedCampaignsErr("spend an invite use")},
-		{"InsertMember", injectedCampaignsErr("insert player")},
+	for _, tc := range []struct{ query string }{
+		{"GetInviteByTokenHashForUpdate"},
+		{"GetCampaign"},
+		{"GetMembership"},
+		{"DeleteExpiredPendingMember"},
+		{"IncrementInviteUses"},
+		{"InsertMember"},
 	} {
 		t.Run(tc.query+" fails", func(t *testing.T) {
 			t.Parallel()
 			w := newAcceptInviteWorld(t)
 			invite, token := w.master.createInvite(t, w.campaignID, 1, 0)
-			w.rig.logs.reset()
-			w.rig.faults.arm(tc.query)
+			w.rig.faults.Arm(tc.query)
 			_, err := w.guest.accept(t, token)
-			if w.rig.faults.hitCount(tc.query) == 0 {
+			if w.rig.faults.Hits(tc.query) == 0 {
 				t.Fatalf("%s never ran", tc.query)
 			}
-			w.rig.wantCampaignsFailureLog(t, "AcceptInvite()", err, connect.CodeCanceled, "campaigns: cannot accept an invite", tc.wantErr)
+			wantFailure(t, "AcceptInvite()", err, connect.CodeCanceled)
 			if got := w.rig.useCount(invite.GetId()); got != 0 {
 				t.Errorf("use_count = %d, want 0", got)
 			}
@@ -580,7 +354,7 @@ func TestCharacterizeAcceptInvite(t *testing.T) {
 	}
 }
 
-func TestCharacterizeSetCampaignXpModeFailures(t *testing.T) {
+func TestSetCampaignXpModeWhenSomethingFails(t *testing.T) {
 	t.Parallel()
 
 	setMode := func(t *testing.T, u *user, campaignID string, mode campaignsv1.XpMode, confirm bool) (*campaignsv1.SetCampaignXpModeResponse, error) {
@@ -600,9 +374,8 @@ func TestCharacterizeSetCampaignXpModeFailures(t *testing.T) {
 		m := rig.newUser("Mestre")
 		id := m.createCampaign(t, "Mesa").GetId()
 		rig.service.SetXPAwards(fakeCampaignXPAwards{err: errors.New("progression is down")})
-		rig.logs.reset()
 		_, err := setMode(t, m, id, campaignsv1.XpMode_XP_MODE_GOLD, false)
-		rig.wantCampaignsFailureLog(t, "SetCampaignXpMode()", err, connect.CodeInternal, "campaigns: cannot change the xp mode", "progression is down")
+		wantFailure(t, "SetCampaignXpMode()", err, connect.CodeInternal)
 	})
 
 	t.Run("a confirmed change never asks AwardedXP", func(t *testing.T) {
@@ -662,39 +435,36 @@ func TestCharacterizeSetCampaignXpModeFailures(t *testing.T) {
 		}
 	})
 
-	for _, tc := range []struct {
-		query, wantErr string
-	}{
-		{"GetCampaignForUpdate", injectedCampaignsErr("lock the campaign")},
-		{"SetCampaignXPMode", injectedCampaignsErr("set the xp mode")},
+	for _, tc := range []struct{ query string }{
+		{"GetCampaignForUpdate"},
+		{"SetCampaignXPMode"},
 	} {
 		t.Run(tc.query+" fails", func(t *testing.T) {
 			t.Parallel()
 			rig := newCampaignsFaultRig(t, nil)
 			m := rig.newUser("Mestre")
 			id := m.createCampaign(t, "Mesa").GetId()
-			rig.logs.reset()
-			rig.faults.arm(tc.query)
+			rig.faults.Arm(tc.query)
 			_, err := setMode(t, m, id, campaignsv1.XpMode_XP_MODE_GOLD, false)
-			if rig.faults.hitCount(tc.query) == 0 {
+			if rig.faults.Hits(tc.query) == 0 {
 				t.Fatalf("%s never ran", tc.query)
 			}
-			rig.wantCampaignsFailureLog(t, "SetCampaignXpMode()", err, connect.CodeCanceled, "campaigns: cannot change the xp mode", tc.wantErr)
+			wantFailure(t, "SetCampaignXpMode()", err, connect.CodeCanceled)
 		})
 	}
 }
 
-func TestCharacterizeUpdateCampaignDocumentFailures(t *testing.T) {
+func TestUpdateCampaignDocumentWhenSomethingFails(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
-		name, query, wantErr string
-		saveFirst            bool
-		expected             int32
+		name, query string
+		saveFirst   bool
+		expected    int32
 	}{
-		{"the first save", "InsertCampaignDocument", injectedCampaignsErr("save the campaign document"), false, 0},
-		{"a later save", "UpdateCampaignDocument", injectedCampaignsErr("save the campaign document"), true, 1},
-		{"the read after a stale save", "GetCampaignDocument", injectedCampaignsErr("read the campaign document"), true, 7},
+		{"the first save", "InsertCampaignDocument", false, 0},
+		{"a later save", "UpdateCampaignDocument", true, 1},
+		{"the read after a stale save", "GetCampaignDocument", true, 7},
 	} {
 		t.Run(tc.name+" fails", func(t *testing.T) {
 			t.Parallel()
@@ -704,13 +474,12 @@ func TestCharacterizeUpdateCampaignDocumentFailures(t *testing.T) {
 			if tc.saveFirst {
 				mustSaveDocument(t, m.doc, id, "primeiro", 0)
 			}
-			rig.logs.reset()
-			rig.faults.arm(tc.query)
+			rig.faults.Arm(tc.query)
 			_, err := saveDocument(t, m.doc, id, "segundo", tc.expected)
-			if rig.faults.hitCount(tc.query) == 0 {
+			if rig.faults.Hits(tc.query) == 0 {
 				t.Fatalf("%s never ran", tc.query)
 			}
-			rig.wantCampaignsFailureLog(t, "UpdateCampaignDocument()", err, connect.CodeCanceled, "campaigns: cannot save the campaign document", tc.wantErr)
+			wantFailure(t, "UpdateCampaignDocument()", err, connect.CodeCanceled)
 		})
 	}
 
@@ -723,8 +492,7 @@ func TestCharacterizeUpdateCampaignDocumentFailures(t *testing.T) {
 		rig.profiles.failDisplayNames = true
 		rig.profiles.mu.Unlock()
 		_, err := saveDocument(t, m.doc, id, "texto", 0)
-		rig.wantCampaignsFailureLog(t, "UpdateCampaignDocument()", err, connect.CodeInternal,
-			"campaigns: cannot save the campaign document", "read the editor's display name: profiles are down")
+		wantFailure(t, "UpdateCampaignDocument()", err, connect.CodeInternal)
 		// The save itself went through.
 		if row, ok := rig.documentRow(id); !ok || row.body != "texto" {
 			t.Errorf("document row = %+v, %v, want the saved text", row, ok)

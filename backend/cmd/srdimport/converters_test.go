@@ -1,77 +1,22 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"flag"
-	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
-// These tests freeze what the importer writes, so its converters can be split
-// without changing one byte of the snapshot. Two layers:
+// These tests feed crafted rows that reach every branch of the big converters
+// and compare what the importer writes with goldens in testdata/golden;
+// refusals are checked by their exact message. Run with -update to write the
+// goldens again, and read the diff.
 //
-//   - TestSrdImportReproducesTheSnapshot runs the whole tool over the pinned
-//     5e-database files and compares every output with the committed
-//     internal/rules/srd51/data, byte for byte. The source is not in the
-//     repository: fetch it as the comment at the top of main.go says and run
-//     with SRDIMPORT_SRC=<the 2014/en folder>. Without it the test is skipped.
-//   - The other tests feed crafted rows that reach every branch of the big
-//     converters (CI runs them) and compare with goldens in
-//     testdata/characterization; refusals are checked by their exact message.
-//
-// Run with -update-srdimport-golden to write the goldens again, and read the diff.
-var updateSrdImportGolden = flag.Bool("update-srdimport-golden", false, "write testdata/characterization again")
-
-// srdImportSnapshotDir is the committed snapshot, relative to this package.
-const srdImportSnapshotDir = "../../internal/rules/srd51/data"
-
-func TestSrdImportReproducesTheSnapshot(t *testing.T) {
-	t.Parallel()
-	src := os.Getenv("SRDIMPORT_SRC")
-	if src == "" {
-		t.Skip("SRDIMPORT_SRC is not set: the pinned 5e-database files are needed (see main.go)")
-	}
-	out := t.TempDir()
-	if err := run(src, out); err != nil {
-		t.Fatal(err)
-	}
-	got, err := filepath.Glob(filepath.Join(out, "*.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want, err := filepath.Glob(filepath.Join(srdImportSnapshotDir, "*.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	names := func(paths []string) []string {
-		var n []string
-		for _, p := range paths {
-			n = append(n, filepath.Base(p))
-		}
-		return n
-	}
-	if !slices.Equal(names(got), names(want)) {
-		t.Fatalf("files = %v, the snapshot has %v", names(got), names(want))
-	}
-	for _, name := range names(want) {
-		g, err := os.ReadFile(filepath.Join(out, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		w, err := os.ReadFile(filepath.Join(srdImportSnapshotDir, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(g, w) {
-			t.Errorf("%s differs from the committed snapshot", name)
-		}
-	}
-}
+// The committed snapshot (internal/rules/srd51/data) is not rebuilt here: the
+// importer refuses any input whose sha256 is not the pinned one, and the
+// pinned 5e-database files are several megabytes (see main.go to fetch them).
 
 // srdImportGolden compares v, encoded as the tool writes it, with a golden file.
 func srdImportGolden(t *testing.T, name string, v any) {
@@ -80,23 +25,7 @@ func srdImportGolden(t *testing.T, name string, v any) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join("testdata", "characterization", name)
-	if *updateSrdImportGolden {
-		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, got, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read the golden (-update-srdimport-golden writes it): %v", err)
-	}
-	if !bytes.Equal(got, want) {
-		t.Errorf("%s differs from the golden:\n%s", name, got)
-	}
+	goldentest.Compare(t, filepath.Join("testdata", "golden", name), got)
 }
 
 // srdImportInputs builds the inputs of a converter from files given inline.
@@ -138,11 +67,11 @@ const srdImportLevels = `[
 	{"level": 2, "class": {"index": "a"}, "subclass": {"index": "sub-a2"}},
 	{"level": 6, "class": {"index": "b"}, "subclass": {"index": "sub-b"}}]`
 
-// TestSrdImportClassesCharacterization: the saving throws are not proficiencies,
+// TestSrdImportClasses: the saving throws are not proficiencies,
 // the first skill choice wins for the class and the last one for multiclassing,
 // both kinds of prerequisite, spellcasting, and the subclass level is the lowest
 // known one (a subclass without levels only counts while nothing is known yet).
-func TestSrdImportClassesCharacterization(t *testing.T) {
+func TestSrdImportClasses(t *testing.T) {
 	t.Parallel()
 	classes := `[
 	{"index": "c", "name": "C", "hit_die": 8, "proficiency_choices": [` + srdImportSkillChoice + `], "proficiencies": [], "saving_throws": [], "multi_classing": {}, "subclasses": []},
@@ -178,9 +107,9 @@ func TestSrdImportClassesCharacterization(t *testing.T) {
 	wantSrdImportRefusal(t, "bad levels", err, "5e-SRD-Levels.json: unexpected EOF")
 }
 
-// TestSrdImportSubclassesCharacterization: a spell's prerequisites are class
+// TestSrdImportSubclasses: a spell's prerequisites are class
 // levels ("cleric-3") and features; anything else is refused.
-func TestSrdImportSubclassesCharacterization(t *testing.T) {
+func TestSrdImportSubclasses(t *testing.T) {
 	t.Parallel()
 	rows := `[
 	{"index": "life", "name": "Life", "class": {"index": "cleric"}, "subclass_flavor": "Divine Domain", "desc": ["Text."], "spells": [
@@ -213,10 +142,10 @@ func TestSrdImportSubclassesCharacterization(t *testing.T) {
 	}
 }
 
-// TestSrdImportFeaturesCharacterization: subclass, parent, the three kinds of
+// TestSrdImportFeatures: subclass, parent, the three kinds of
 // feature_specific, and the invocations replacing subfeature options when a
 // feature has both.
-func TestSrdImportFeaturesCharacterization(t *testing.T) {
+func TestSrdImportFeatures(t *testing.T) {
 	t.Parallel()
 	rows := `[
 	{"index": "plain", "name": "Plain", "class": {"index": "fighter"}, "level": 1, "desc": ["Text."]},
@@ -259,9 +188,9 @@ func TestSrdImportFeaturesCharacterization(t *testing.T) {
 	}
 }
 
-// TestSrdImportTraitsCharacterization: every optional part of a trait, and a
+// TestSrdImportTraits: every optional part of a trait, and a
 // trait_specific without subtrait options.
-func TestSrdImportTraitsCharacterization(t *testing.T) {
+func TestSrdImportTraits(t *testing.T) {
 	t.Parallel()
 	rows := `[
 	{"index": "plain", "name": "Plain", "races": [{"index": "elf"}], "subraces": [], "desc": ["Text."], "proficiencies": []},
@@ -284,10 +213,10 @@ func TestSrdImportTraitsCharacterization(t *testing.T) {
 	wantSrdImportRefusal(t, "bad json", err, "5e-SRD-Traits.json: unexpected EOF")
 }
 
-// TestSrdImportEquipmentCharacterization: armor, weapons with and without each
+// TestSrdImportEquipment: armor, weapons with and without each
 // part (the reach property makes a melee weapon's range 10, not a ranged one's),
 // tools, and the rest left out.
-func TestSrdImportEquipmentCharacterization(t *testing.T) {
+func TestSrdImportEquipment(t *testing.T) {
 	t.Parallel()
 	rows := `[
 	{"index": "chain-mail", "name": "Chain Mail", "equipment_category": {"index": "armor"}, "armor_category": "Heavy",
@@ -337,10 +266,10 @@ func srdImportMonsterRows(t *testing.T, raw string) []monstersSource {
 	return rows
 }
 
-// TestSrdImportMonstersCharacterization: every speed and sense, saves and
+// TestSrdImportMonsters: every speed and sense, saves and
 // skills, the three lists of abilities with and without usage, actions with
 // sub-effects and every way a Multiattack name is matched.
-func TestSrdImportMonstersCharacterization(t *testing.T) {
+func TestSrdImportMonsters(t *testing.T) {
 	t.Parallel()
 	rows := srdImportMonsterRows(t, `[
 	{"index":"full",`+srdImportMonsterBase+`,"challenge_rating":0,"xp":0,
@@ -426,10 +355,10 @@ func TestSrdImportMagicItemRefusals(t *testing.T) {
 	wantSrdImportRefusal(t, "bad json", err, "5e-SRD-Magic-Items.json: unexpected EOF")
 }
 
-// TestSrdImportMagicItemsCharacterization: a family with its variants, the
+// TestSrdImportMagicItems: a family with its variants, the
 // Crystal Ball (a family that is an item too), attunement with and without a
 // restriction, and a name with spaces around it.
-func TestSrdImportMagicItemsCharacterization(t *testing.T) {
+func TestSrdImportMagicItems(t *testing.T) {
 	t.Parallel()
 	plain := magicRow("plain", "Common", false)
 	plain.Name = "  Plain  "

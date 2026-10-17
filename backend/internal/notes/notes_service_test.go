@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	notesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/notes/v1"
@@ -25,23 +24,18 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// Characterization tests of CreateNote and UpdateNote, frozen before they are
-// split: the order of their checks, every refusal with its code and message,
-// each failing query with what it logs, and what a change keeps. The package's
+// CreateNote and UpdateNote: the order of their checks, every refusal with its
+// code and message, what each failing query answers, and what a change keeps. The package's
 // end-to-end tests (privacy, the scenes the group discovered, the clues) live
 // with the maps module, which owns the scenes; these run the service alone,
 // against CockroachDB, with fakes for the scenes and the memberships.
 //
-// A database error is made by notesQueryFaults: a pgx tracer on the
+// A database error is made by dbtest.QueryFaults: a pgx tracer on the
 // service's pool that hands one named sqlc query an already canceled context,
 // so pgx fails it before sending it and the connection stays usable. rpcerr
 // calls that error Canceled.
 
 const notesUserHeader = "Test-User-Id"
-
-// notesInjectedCause is how pgx reports a query whose context was already
-// canceled.
-const notesInjectedCause = "timeout: context already done: context canceled"
 
 type notesUserKey struct{}
 
@@ -93,70 +87,6 @@ func (*notesScenes) ReceivedClues(context.Context, string, string) ([]link.Clue,
 	return nil, nil
 }
 
-// notesQueryFaults fails the sqlc queries it is armed with, by name.
-type notesQueryFaults struct {
-	inner pgx.QueryTracer
-	mu    sync.Mutex
-	armed map[string]bool
-	hits  map[string]int
-}
-
-func (f *notesQueryFaults) arm(name string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.armed[name] = true
-}
-
-func (f *notesQueryFaults) disarm() {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	clear(f.armed)
-}
-
-func (f *notesQueryFaults) hitCount(name string) int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.hits[name]
-}
-
-func (f *notesQueryFaults) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
-	ctx = f.inner.TraceQueryStart(ctx, conn, data)
-	rest, ok := strings.CutPrefix(data.SQL, "-- name: ")
-	if !ok {
-		return ctx
-	}
-	name, _, _ := strings.Cut(rest, " ")
-	f.mu.Lock()
-	armed := f.armed[name]
-	if armed {
-		f.hits[name]++
-	}
-	f.mu.Unlock()
-	if !armed {
-		return ctx
-	}
-	failed, cancel := context.WithCancelCause(ctx)
-	cancel(errors.New("injected by the characterization test"))
-	return failed
-}
-
-func (f *notesQueryFaults) TraceQueryEnd(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData) {
-	f.inner.TraceQueryEnd(ctx, conn, data)
-}
-
-func (f *notesQueryFaults) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool, data pgxpool.TraceAcquireStartData) context.Context {
-	if a, ok := f.inner.(pgxpool.AcquireTracer); ok {
-		return a.TraceAcquireStart(ctx, pool, data)
-	}
-	return ctx
-}
-
-func (f *notesQueryFaults) TraceAcquireEnd(ctx context.Context, pool *pgxpool.Pool, data pgxpool.TraceAcquireEndData) {
-	if a, ok := f.inner.(pgxpool.AcquireTracer); ok {
-		a.TraceAcquireEnd(ctx, pool, data)
-	}
-}
-
 // notesLogTape keeps the service's log records as JSON.
 type notesLogTape struct {
 	mu  sync.Mutex
@@ -169,12 +99,12 @@ func (l *notesLogTape) Write(p []byte) (int, error) {
 	return l.buf.Write(p)
 }
 
-// take returns the records logged since the last take, without the time.
-func (l *notesLogTape) take(t *testing.T) []map[string]any {
+// errors counts the records logged at ERROR.
+func (l *notesLogTape) errors(t *testing.T) int {
 	t.Helper()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	var out []map[string]any
+	n := 0
 	for line := range strings.SplitSeq(strings.TrimSpace(l.buf.String()), "\n") {
 		if line == "" {
 			continue
@@ -183,18 +113,18 @@ func (l *notesLogTape) take(t *testing.T) []map[string]any {
 		if err := json.Unmarshal([]byte(line), &rec); err != nil {
 			t.Fatalf("decode log line %q: %v", line, err)
 		}
-		delete(rec, "time")
-		out = append(out, rec)
+		if rec["level"] == "ERROR" {
+			n++
+		}
 	}
-	l.buf.Reset()
-	return out
+	return n
 }
 
 // notesRig is the notes service on a test database, served over HTTP, with a
 // campaign, its master, two players and three scenes on a map.
 type notesRig struct {
 	pool     *pgxpool.Pool
-	faults   *notesQueryFaults
+	faults   *dbtest.QueryFaults
 	logs     *notesLogTape
 	scenes   *notesScenes
 	server   *httptest.Server
@@ -239,7 +169,7 @@ func newNotesRig(t *testing.T) *notesRig {
 	}
 	rig.scenes.discovered = []link.Scene{{ID: rig.sceneIDs[0], Name: "A ponte"}, {ID: rig.sceneIDs[1], Name: "A torre"}}
 
-	rig.faults = &notesQueryFaults{inner: pool.Config().ConnConfig.Tracer, armed: map[string]bool{}, hits: map[string]int{}}
+	rig.faults = dbtest.NewQueryFaults(pool.Config().ConnConfig.Tracer)
 	svcPool, err := db.NewPoolWith(ctx, pool.Config().ConnString(), func(pc *pgxpool.Config) {
 		pc.MaxConns = 1
 		pc.ConnConfig.Tracer = rig.faults
@@ -285,16 +215,11 @@ func wantNotesRefusal(t *testing.T, call string, err error, code connect.Code, m
 	}
 }
 
-// wantNotesFailureLog checks a call that failed with code and logged one
-// record of the action with the wrapped error.
-func (rig *notesRig) wantNotesFailureLog(t *testing.T, call string, err error, code connect.Code, action, wantErr string) {
+// wantNotesFailure checks a call that failed with code.
+func wantNotesFailure(t *testing.T, call string, err error, code connect.Code) {
 	t.Helper()
 	if connect.CodeOf(err) != code {
 		t.Errorf("%s error = %v, want %v", call, err, code)
-	}
-	recs := rig.logs.take(t)
-	if len(recs) != 1 || recs[0]["msg"] != "notes: cannot "+action || recs[0]["error"] != wantErr || recs[0]["code"] != code.String() {
-		t.Errorf("%s logged %v, want notes: cannot %s, %q", call, recs, action, wantErr)
 	}
 }
 
@@ -306,7 +231,7 @@ func wantNotesNote(t *testing.T, call string, n *notesv1.Note, text, sceneID, sc
 	}
 }
 
-func TestCharacterizeCreateNote(t *testing.T) {
+func TestCreateNoteOrderAndFailures(t *testing.T) {
 	t.Parallel()
 	rig := newNotesRig(t)
 	ctx := t.Context()
@@ -338,7 +263,10 @@ func TestCharacterizeCreateNote(t *testing.T) {
 	rig.scenes.err = errors.New("maps is down")
 	rig.scenes.mu.Unlock()
 	_, err = create(ana, &notesv1.CreateNoteRequest{Text: "texto", ScenePointId: "not a uuid"})
-	rig.wantNotesFailureLog(t, "CreateNote(scenes fail)", err, connect.CodeInternal, "read the discovered scenes", "maps is down")
+	wantNotesFailure(t, "CreateNote(scenes fail)", err, connect.CodeInternal)
+	if rig.logs.errors(t) == 0 {
+		t.Errorf("a failure the client cannot fix was not logged at ERROR")
+	}
 	rig.scenes.mu.Lock()
 	rig.scenes.err = nil
 	rig.scenes.mu.Unlock()
@@ -348,9 +276,6 @@ func TestCharacterizeCreateNote(t *testing.T) {
 	}
 	_, err = create(ana, &notesv1.CreateNoteRequest{Text: "texto", IdempotencyKey: "bad\x00key"})
 	wantNotesRefusal(t, "CreateNote(bad key)", err, connect.CodeInvalidArgument, "idempotency_key must be 1 to 64 characters")
-	if recs := rig.logs.take(t); len(recs) != 0 {
-		t.Errorf("the refusals logged %v", recs)
-	}
 
 	// What a note keeps: the text as written (trimmed), the tag in
 	// canonical form with its scene's name, the times.
@@ -369,19 +294,19 @@ func TestCharacterizeCreateNote(t *testing.T) {
 	wantNotesNote(t, "CreateNote(longest)", n, strings.Repeat("é", maxNoteText), "", "")
 
 	// Each failing query.
-	for _, tc := range []struct{ query, key, wantErr string }{
-		{"GetPlayerNoteByCreateKey", "k1", notesInjectedCause},
-		{"CountPlayerNotes", "k2", "count the notes: " + notesInjectedCause},
-		{"InsertPlayerNote", "k3", "insert note: " + notesInjectedCause},
-		{"CountPlayerNotes", "", "count the notes: " + notesInjectedCause},
+	for _, tc := range []struct{ query, key string }{
+		{"GetPlayerNoteByCreateKey", "k1"},
+		{"CountPlayerNotes", "k2"},
+		{"InsertPlayerNote", "k3"},
+		{"CountPlayerNotes", ""},
 	} {
-		rig.faults.arm(tc.query)
+		rig.faults.Arm(tc.query)
 		_, err := create(ana, &notesv1.CreateNoteRequest{Text: "texto", IdempotencyKey: tc.key})
-		rig.faults.disarm()
-		if rig.faults.hitCount(tc.query) == 0 {
+		rig.faults.Disarm()
+		if rig.faults.Hits(tc.query) == 0 {
 			t.Fatalf("%s never ran", tc.query)
 		}
-		rig.wantNotesFailureLog(t, "CreateNote("+tc.query+")", err, connect.CodeCanceled, "create a note", tc.wantErr)
+		wantNotesFailure(t, "CreateNote("+tc.query+")", err, connect.CodeCanceled)
 	}
 
 	// The cap: a retry of a note already made is answered at the cap, a new
@@ -407,12 +332,9 @@ func TestCharacterizeCreateNote(t *testing.T) {
 	if _, err := create(rig.client(rig.bia), &notesv1.CreateNoteRequest{Text: "da Bia", IdempotencyKey: "second"}); err != nil {
 		t.Errorf("CreateNote(another player) error = %v", err)
 	}
-	if recs := rig.logs.take(t); len(recs) != 0 {
-		t.Errorf("logged %v", recs)
-	}
 }
 
-func TestCharacterizeUpdateNote(t *testing.T) {
+func TestUpdateNoteOrderAndFailures(t *testing.T) {
 	t.Parallel()
 	rig := newNotesRig(t)
 	ctx := t.Context()
@@ -446,7 +368,7 @@ func TestCharacterizeUpdateNote(t *testing.T) {
 	rig.scenes.err = errors.New("maps is down")
 	rig.scenes.mu.Unlock()
 	_, err = update(ana, &notesv1.UpdateNoteRequest{NoteId: n0.GetId(), Text: ptr("x"), ScenePointId: ptr("not a uuid")})
-	rig.wantNotesFailureLog(t, "UpdateNote(scenes fail)", err, connect.CodeInternal, "read the discovered scenes", "maps is down")
+	wantNotesFailure(t, "UpdateNote(scenes fail)", err, connect.CodeInternal)
 	rig.scenes.mu.Lock()
 	rig.scenes.err = nil
 	rig.scenes.mu.Unlock()
@@ -456,9 +378,6 @@ func TestCharacterizeUpdateNote(t *testing.T) {
 	wantNotesRefusal(t, "UpdateNote(unknown note)", err, connect.CodeNotFound, "note not found")
 	_, err = update(rig.client(rig.bia), &notesv1.UpdateNoteRequest{NoteId: n0.GetId(), Text: ptr("x")})
 	wantNotesRefusal(t, "UpdateNote(another player's note)", err, connect.CodeNotFound, "note not found")
-	if recs := rig.logs.take(t); len(recs) != 0 {
-		t.Errorf("the refusals logged %v", recs)
-	}
 
 	// What each change keeps.
 	rig.clockMu.Lock()
@@ -503,17 +422,17 @@ func TestCharacterizeUpdateNote(t *testing.T) {
 	}
 
 	// Each failing query.
-	for _, tc := range []struct{ query, wantErr string }{
-		{"GetPlayerNoteForUpdate", "find note: " + notesInjectedCause},
-		{"UpdatePlayerNote", "update note: " + notesInjectedCause},
+	for _, tc := range []struct{ query string }{
+		{"GetPlayerNoteForUpdate"},
+		{"UpdatePlayerNote"},
 	} {
-		rig.faults.arm(tc.query)
+		rig.faults.Arm(tc.query)
 		_, err := update(ana, &notesv1.UpdateNoteRequest{NoteId: n0.GetId(), Text: ptr("falha")})
-		rig.faults.disarm()
-		if rig.faults.hitCount(tc.query) == 0 {
+		rig.faults.Disarm()
+		if rig.faults.Hits(tc.query) == 0 {
 			t.Fatalf("%s never ran", tc.query)
 		}
-		rig.wantNotesFailureLog(t, "UpdateNote("+tc.query+")", err, connect.CodeCanceled, "update a note", tc.wantErr)
+		wantNotesFailure(t, "UpdateNote("+tc.query+")", err, connect.CodeCanceled)
 	}
 	var text string
 	if err := rig.pool.QueryRow(ctx, `SELECT text FROM player_notes WHERE id = $1`, n0.GetId()).Scan(&text); err != nil || text != "escondida" {

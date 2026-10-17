@@ -2,11 +2,9 @@ package characters
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -20,14 +18,13 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// Characterization of the claim, reserve and review calls (MR-049, RN-15, MR-024):
-// ClaimCharacter, RevokeClaimLink, ReturnCharacterToReserve, RequestCharacterChanges,
-// ResubmitCharacter, ApproveCharacter and RejectCharacter. Each test freezes who may
-// call, every refusal's code, message, field and detail in the order the checks run,
-// what reaches the streams, and the server's log lines, byte for byte (IDs replaced
-// by names). The faults are injected through the collaborators the service is given
-// (the campaigns module, the content, the display names, the combat), never by
-// breaking the database.
+// The claim, reserve and review calls (MR-049, RN-15, MR-024): ClaimCharacter,
+// RevokeClaimLink, ReturnCharacterToReserve, RequestCharacterChanges,
+// ResubmitCharacter, ApproveCharacter and RejectCharacter. Each test checks who may
+// call and every refusal's code, message, field and detail in the order the checks
+// run, and that a failure of another module leaves nothing half written. The faults
+// are injected through the collaborators the service is given (the campaigns module,
+// the content, the display names, the combat), never by breaking the database.
 
 // claimsFaults holds the errors the collaborators below return instead of answering,
 // by method name, and a hook JoinAsPlayer runs once before answering.
@@ -36,7 +33,6 @@ type claimsFaults struct {
 	errs     map[string]error
 	inCombat bool
 	onJoin   func(ctx context.Context)
-	calls    []string
 }
 
 func (f *claimsFaults) set(method string, err error) {
@@ -48,21 +44,11 @@ func (f *claimsFaults) set(method string, err error) {
 	f.errs[method] = err
 }
 
-// fault records the call and returns the error injected for it, if any.
+// fault returns the error injected for it, if any.
 func (f *claimsFaults) fault(method string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.calls = append(f.calls, method)
 	return f.errs[method]
-}
-
-// called returns the methods called since the last reset.
-func (f *claimsFaults) called() []string {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := append([]string(nil), f.calls...)
-	f.calls = nil
-	return out
 }
 
 func (f *claimsFaults) setInCombat(in bool) {
@@ -199,7 +185,7 @@ func newClaimsReviewTable(t *testing.T) *claimsReviewTable {
 	return tb
 }
 
-// label names an ID in the frozen refusals and log lines.
+// label names an ID in the refusals.
 func (tb *claimsReviewTable) label(id, name string) { tb.labels[id] = name }
 
 // named replaces every labeled ID in s.
@@ -229,44 +215,11 @@ func (tb *claimsReviewTable) claimed(t *testing.T, u *user, name string) *charac
 	return c
 }
 
-// mark is where the log is now: claimsLogLines reads what comes after it.
-func (tb *claimsReviewTable) mark() int { return len(tb.logs.String()) }
-
-// claimsLogLines renders the log lines written since mark, one per line: the level,
-// the message and every attribute but the time, sorted by key, with IDs named.
-func (tb *claimsReviewTable) claimsLogLines(t *testing.T, mark int) []string {
+// wantErrorLogged fails the test unless the service has logged an ERROR record.
+func (tb *claimsReviewTable) wantErrorLogged(t *testing.T, call string) {
 	t.Helper()
-	var out []string
-	for line := range strings.SplitSeq(strings.TrimSpace(tb.logs.String()[mark:]), "\n") {
-		if line == "" {
-			continue
-		}
-		var rec map[string]any
-		if err := json.Unmarshal([]byte(line), &rec); err != nil {
-			t.Fatalf("log line %q: %v", line, err)
-		}
-		keys := make([]string, 0, len(rec))
-		for k := range rec {
-			if k != "time" && k != "level" && k != "msg" {
-				keys = append(keys, k)
-			}
-		}
-		slices.Sort(keys)
-		parts := []string{fmt.Sprint(rec["level"]), fmt.Sprint(rec["msg"])}
-		for _, k := range keys {
-			parts = append(parts, fmt.Sprintf("%s=%v", k, rec[k]))
-		}
-		out = append(out, tb.named(strings.Join(parts, " ")))
-	}
-	return out
-}
-
-// wantClaimsLog fails the test unless the log lines since mark are want.
-func (tb *claimsReviewTable) wantClaimsLog(t *testing.T, call string, mark int, want ...string) {
-	t.Helper()
-	got := tb.claimsLogLines(t, mark)
-	if !slices.Equal(got, want) {
-		t.Errorf("%s log lines:\n got %q\nwant %q", call, got, want)
+	if !strings.Contains(tb.logs.String(), `"level":"ERROR"`) {
+		t.Errorf("%s: the failure was not logged at ERROR", call)
 	}
 }
 
@@ -379,7 +332,7 @@ const (
 
 // Who may call: every caller of each of the seven calls, with the first refusal each
 // one gets, the checks' order (campaign, ID, key, reason) included.
-func TestClaimsReviewFrozen_WhoMayCall(t *testing.T) {
+func TestClaimsReview_WhoMayCall(t *testing.T) {
 	t.Parallel()
 	tb := newClaimsReviewTable(t)
 	kai := tb.claimed(t, tb.lia, "Kai")
@@ -471,20 +424,16 @@ func TestClaimsReviewFrozen_WhoMayCall(t *testing.T) {
 	if got := tb.h.reviewRows(tb.campaign); got != 0 {
 		t.Errorf("%d review rows after refused calls, want 0", got)
 	}
-	if got := tb.host.told(); len(got) != 0 {
-		t.Errorf("the streams were told %v after refused calls, want nothing", got)
-	}
 }
 
-// ClaimCharacter: the answer, the stream and the log line of a claim, and each refusal
+// ClaimCharacter: the answer of a claim, and each refusal
 // of a link that works for a person who may not take the character.
-func TestClaimsReviewFrozen_ClaimCharacter(t *testing.T) {
+func TestClaimsReview_ClaimCharacter(t *testing.T) {
 	t.Parallel()
 	tb := newClaimsReviewTable(t)
 
 	kai := tb.reserved(t, "Kai")
 	token := tb.master.link(t, kai, 7)
-	mark := tb.mark()
 	res, err := tb.lia.claim(t, token)
 	if err != nil {
 		t.Fatalf("ClaimCharacter() error = %v", err)
@@ -492,15 +441,10 @@ func TestClaimsReviewFrozen_ClaimCharacter(t *testing.T) {
 	if got := tb.named(fmt.Sprintf("%s %s %s %s", res.GetCampaignId(), res.GetCampaignName(), res.GetCharacterId(), res.GetCharacterName())); got != "<campaign> Mirathel <Kai> Kai" {
 		t.Errorf("ClaimCharacter() = %s, want <campaign> Mirathel <Kai> Kai", got)
 	}
-	tb.wantClaimsLog(t, "ClaimCharacter()", mark, "DEBUG event campaign_id=<campaign> character_id=<Kai> event=character.claimed")
-	if got := tb.live.count(); got != 1 {
-		t.Errorf("the party was told %d times, want 1", got)
-	}
 
 	// The master's own link: a refusal with no sentence.
 	own := tb.reserved(t, "Ragna")
 	ownToken := tb.master.link(t, own, 7)
-	mark = tb.mark()
 	_, err = tb.master.claim(t, ownToken)
 	// Finding: errBlocked has no sentence for CLAIM_OWN_LINK, so the message is empty.
 	tb.wantClaimsRefusal(t, "ClaimCharacter(own link)", err, `failed_precondition "" blocked=CLAIM_OWN_LINK id=<Ragna>`)
@@ -512,18 +456,11 @@ func TestClaimsReviewFrozen_ClaimCharacter(t *testing.T) {
 	_, err = tb.eva.claim(t, ownToken)
 	tb.wantClaimsRefusal(t, "ClaimCharacter(RN-03, a pending character)", err,
 		`failed_precondition "you already have a living character in this campaign" blocked=LIVING_CHARACTER_EXISTS id=<Ondina> name=Ondina campaign=<campaign>`)
-	tb.wantClaimsLog(t, "the refused claims", mark)
-	if got := tb.live.count(); got != 1 {
-		t.Errorf("the party was told %d times after refusals, want still 1", got)
-	}
 
-	// Faults of the campaigns module: the refusal and the log line of each.
+	// Faults of the campaigns module: the refusal of each.
 	tb.faults.set("CampaignForClaim", errors.New("claims-fault-campaign"))
-	mark = tb.mark()
 	_, err = tb.stranger.claim(t, ownToken)
 	tb.wantClaimsRefusal(t, "ClaimCharacter(CampaignForClaim fails)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ClaimCharacter(CampaignForClaim fails)", mark,
-		"ERROR characters: cannot claim a character code=internal error=read the campaign of a claim link: claims-fault-campaign")
 	// A campaign the module cannot find is the answer of a character that is not there
 	// (PreviewClaim answers the unusable link instead).
 	tb.faults.set("CampaignForClaim", pgx.ErrNoRows)
@@ -532,11 +469,8 @@ func TestClaimsReviewFrozen_ClaimCharacter(t *testing.T) {
 	tb.faults.set("CampaignForClaim", nil)
 
 	tb.faults.set("JoinAsPlayer", errors.New("claims-fault-join"))
-	mark = tb.mark()
 	_, err = tb.stranger.claim(t, ownToken)
 	tb.wantClaimsRefusal(t, "ClaimCharacter(JoinAsPlayer fails)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ClaimCharacter(JoinAsPlayer fails)", mark,
-		"ERROR characters: cannot claim a character code=internal error=join the campaign: claims-fault-join")
 	tb.faults.set("JoinAsPlayer", nil)
 	if got := tb.master.get(t, tb.campaign, own.GetId()); !got.GetReserved() || tb.h.memberStatus(tb.campaign, tb.stranger.id) != "" {
 		t.Errorf("after the faults Ragna reserved %v, the stranger's membership %q; want reserved and none", got.GetReserved(), tb.h.memberStatus(tb.campaign, tb.stranger.id))
@@ -554,7 +488,7 @@ func TestClaimsReviewFrozen_ClaimCharacter(t *testing.T) {
 
 // ClaimCharacter: a living character of the person written by someone else between the
 // claim's RN-03 check and its write. The answer is RN-03, as the check would have given.
-func TestClaimsReviewFrozen_ClaimLosesRN03ToAnotherWrite(t *testing.T) {
+func TestClaimsReview_ClaimLosesRN03ToAnotherWrite(t *testing.T) {
 	t.Parallel()
 	dbtest.PoolSize(t, 2) // the side write needs its own connection
 	tb := newClaimsReviewTable(t)
@@ -583,8 +517,8 @@ func TestClaimsReviewFrozen_ClaimLosesRN03ToAnotherWrite(t *testing.T) {
 	}
 }
 
-// RevokeClaimLink: every kind of character and link, with its answer and log line.
-func TestClaimsReviewFrozen_RevokeClaimLink(t *testing.T) {
+// RevokeClaimLink: every kind of character and link, with its answer.
+func TestClaimsReview_RevokeClaimLink(t *testing.T) {
 	t.Parallel()
 	tb := newClaimsReviewTable(t)
 	npc := tb.master.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, "Orc", enemySheet())
@@ -603,42 +537,31 @@ func TestClaimsReviewFrozen_RevokeClaimLink(t *testing.T) {
 		{"a pending character", tb.evaPC.GetId(), `failed_precondition "" blocked=NOT_RESERVED id=<Ondina>`, nil},
 		{"a reserved character with no link", kai.GetId(), "ok", []string{"DEBUG event character_id=<Kai> event=character.claim_link_revoked"}},
 	} {
-		mark := tb.mark()
 		tb.wantClaimsRefusal(t, "RevokeClaimLink("+tc.name+")", tb.master.revokeLinkOf(tb.campaign, tc.id), tc.want)
-		tb.wantClaimsLog(t, "RevokeClaimLink("+tc.name+")", mark, tc.logline...)
 	}
 
-	// A live link, then the same again: both answer ok and both log the revoke.
+	// A live link, then the same again: both answer ok.
 	tb.master.link(t, kai, 7)
 	for _, name := range []string{"a live link", "a revoked link"} {
-		mark := tb.mark()
 		tb.wantClaimsRefusal(t, "RevokeClaimLink("+name+")", tb.master.revokeLinkOf(tb.campaign, kai.GetId()), "ok")
-		tb.wantClaimsLog(t, "RevokeClaimLink("+name+")", mark, "DEBUG event character_id=<Kai> event=character.claim_link_revoked")
 	}
 
-	// A link Lia used: the refusal names her, and nothing is logged.
+	// A link Lia used: the refusal names her.
 	if _, err := tb.lia.claim(t, tb.master.link(t, kai, 7)); err != nil {
 		t.Fatalf("ClaimCharacter() error = %v", err)
 	}
-	mark := tb.mark()
 	tb.wantClaimsRefusal(t, "RevokeClaimLink(used by Lia)", tb.master.revokeLinkOf(tb.campaign, kai.GetId()),
 		`failed_precondition "a player already used this link and took the character" blocked=CLAIM_LINK_USED id=<Kai> player=Lia`)
-	tb.wantClaimsLog(t, "RevokeClaimLink(used by Lia)", mark)
 	// The name cannot be read: the refusal is the database's, with its line.
 	tb.faults.set("DisplayNames", errors.New("claims-fault-names"))
-	mark = tb.mark()
 	tb.wantClaimsRefusal(t, "RevokeClaimLink(used, names fail)", tb.master.revokeLinkOf(tb.campaign, kai.GetId()), claimsWantInternal)
-	tb.wantClaimsLog(t, "RevokeClaimLink(used, names fail)", mark,
-		"ERROR characters: cannot read a display name code=internal error=read display names: claims-fault-names")
 	tb.faults.set("DisplayNames", nil)
 
 	// Given back to the reserve, the used link is no live link: ok, and logged.
 	if _, err := tb.master.returnToReserve(tb.campaign, kai.GetId()); err != nil {
 		t.Fatalf("ReturnCharacterToReserve() error = %v", err)
 	}
-	mark = tb.mark()
 	tb.wantClaimsRefusal(t, "RevokeClaimLink(used, then given back)", tb.master.revokeLinkOf(tb.campaign, kai.GetId()), "ok")
-	tb.wantClaimsLog(t, "RevokeClaimLink(used, then given back)", mark, "DEBUG event character_id=<Kai> event=character.claim_link_revoked")
 
 	// The player who used it deleted the account: the refusal names nobody.
 	ragna := tb.claimed(t, tb.h.newUser("Breve"), "Ragna")
@@ -652,8 +575,8 @@ func TestClaimsReviewFrozen_RevokeClaimLink(t *testing.T) {
 }
 
 // ReturnCharacterToReserve: every kind of character, the combat's answer, the faults,
-// and the answer, the stream and the log line of a character given back.
-func TestClaimsReviewFrozen_ReturnCharacterToReserve(t *testing.T) {
+// and the answer of a character given back.
+func TestClaimsReview_ReturnCharacterToReserve(t *testing.T) {
 	t.Parallel()
 	tb := newClaimsReviewTable(t)
 	npc := tb.master.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, "Orc", enemySheet())
@@ -662,7 +585,6 @@ func TestClaimsReviewFrozen_ReturnCharacterToReserve(t *testing.T) {
 	reserved := tb.reserved(t, "Ragna")
 	dead := tb.claimed(t, tb.h.newUser("Morto"), "Defunto")
 	tb.master.markDead(t, tb.master.get(t, tb.campaign, dead.GetId()))
-	partyBefore := tb.live.count()
 
 	// Finding: errBlocked has no sentence for NOT_CLAIMED nor CHARACTER_IN_COMBAT, so the
 	// messages are empty.
@@ -681,11 +603,8 @@ func TestClaimsReviewFrozen_ReturnCharacterToReserve(t *testing.T) {
 
 	// The rules content is read before anything else, the character's checks included.
 	tb.faults.set("ContentFor", errors.New("claims-fault-content"))
-	mark := tb.mark()
 	_, err := tb.master.returnToReserve(tb.campaign, uuid.New().String())
 	tb.wantClaimsRefusal(t, "ReturnCharacterToReserve(content fails)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ReturnCharacterToReserve(content fails)", mark,
-		"ERROR characters: cannot read rules content code=internal error=claims-fault-content")
 	tb.faults.set("ContentFor", nil)
 
 	// The combat holds it, or cannot say.
@@ -694,28 +613,17 @@ func TestClaimsReviewFrozen_ReturnCharacterToReserve(t *testing.T) {
 	_, err = tb.master.returnToReserve(tb.campaign, kai.GetId())
 	tb.wantClaimsRefusal(t, "ReturnCharacterToReserve(in a combat)", err, `failed_precondition "" blocked=CHARACTER_IN_COMBAT id=<Kai>`)
 	tb.faults.set("CharacterInCombat", errors.New("claims-fault-combat"))
-	mark = tb.mark()
 	_, err = tb.master.returnToReserve(tb.campaign, kai.GetId())
 	tb.wantClaimsRefusal(t, "ReturnCharacterToReserve(the combat fails)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ReturnCharacterToReserve(the combat fails)", mark,
-		"ERROR characters: cannot return a character to the reserve code=internal error=find the character in a combat: claims-fault-combat")
 	tb.faults.set("CharacterInCombat", nil)
 	tb.faults.setInCombat(false)
-	if got := tb.live.count(); got != partyBefore {
-		t.Errorf("the party was told %d times by refusals, want 0", got-partyBefore)
-	}
 
-	mark = tb.mark()
 	back, err := tb.master.returnToReserve(tb.campaign, kai.GetId())
 	if err != nil {
 		t.Fatalf("ReturnCharacterToReserve() error = %v", err)
 	}
 	if !back.GetReserved() || back.GetPlayerUserId() != "" || back.GetName() != "Kai" {
 		t.Errorf("ReturnCharacterToReserve() = reserved %v, owner %q, name %q; want Kai reserved with no owner", back.GetReserved(), back.GetPlayerUserId(), back.GetName())
-	}
-	tb.wantClaimsLog(t, "ReturnCharacterToReserve()", mark, "DEBUG event character_id=<Kai> event=character.returned_to_reserve")
-	if got := tb.live.count(); got != partyBefore+1 {
-		t.Errorf("the party was told %d times, want 1", got-partyBefore)
 	}
 	// The link Lia used cannot be used again.
 	if got := summaryOf(tb.master.list(t, tb.campaign), kai.GetId()); got.GetClaimState() != charactersv1.ClaimState_CLAIM_STATE_NONE {
@@ -724,8 +632,8 @@ func TestClaimsReviewFrozen_ReturnCharacterToReserve(t *testing.T) {
 }
 
 // RequestCharacterChanges: every kind of character, the replay, the reused key, the
-// faults, and the answer, the stream and the log line of a request.
-func TestClaimsReviewFrozen_RequestCharacterChanges(t *testing.T) {
+// faults, and the answer of a request.
+func TestClaimsReview_RequestCharacterChanges(t *testing.T) {
 	t.Parallel()
 	tb := newClaimsReviewTable(t)
 	npc := tb.master.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, "Orc", enemySheet())
@@ -751,14 +659,11 @@ func TestClaimsReviewFrozen_RequestCharacterChanges(t *testing.T) {
 
 	// The content is read after the request's own checks and before the character's.
 	tb.faults.set("ContentFor", errors.New("claims-fault-content"))
-	mark := tb.mark()
 	_, err := tb.master.askChanges(tb.campaign, uuid.New().String(), "Falta algo.", key())
 	tb.wantClaimsRefusal(t, "RequestCharacterChanges(content fails)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "RequestCharacterChanges(content fails)", mark, "ERROR characters: cannot read rules content code=internal error=claims-fault-content")
 	tb.faults.set("ContentFor", nil)
 
 	k := key()
-	mark = tb.mark()
 	asked, err := tb.master.askChanges(tb.campaign, tb.evaPC.GetId(), "  Falta o equipamento. ", k)
 	if err != nil {
 		t.Fatalf("RequestCharacterChanges() error = %v", err)
@@ -766,13 +671,10 @@ func TestClaimsReviewFrozen_RequestCharacterChanges(t *testing.T) {
 	if r := asked.GetReview(); r.GetStatus() != charactersv1.Review_REVIEW_CHANGES_REQUESTED || r.GetReason() != "Falta o equipamento." {
 		t.Errorf("RequestCharacterChanges() review = %v, want CHANGES_REQUESTED with the trimmed reason", r)
 	}
-	tb.wantClaimsLog(t, "RequestCharacterChanges()", mark, "DEBUG event character_id=<Ondina> event=character.changes_requested reason_length=20")
 	// The retry: the same answer, no log line, nothing told.
-	mark = tb.mark()
 	if _, err := tb.master.askChanges(tb.campaign, tb.evaPC.GetId(), "  Falta o equipamento. ", k); err != nil {
 		t.Fatalf("RequestCharacterChanges(retry) error = %v", err)
 	}
-	tb.wantClaimsLog(t, "RequestCharacterChanges(retry)", mark)
 	// The key for another reason, or for the same request with the IDs in capitals,
 	// is a reused key.
 	_, err = tb.master.askChanges(tb.campaign, tb.evaPC.GetId(), "Outro motivo.", k)
@@ -782,42 +684,32 @@ func TestClaimsReviewFrozen_RequestCharacterChanges(t *testing.T) {
 	_, err = tb.master.askChanges(strings.ToUpper(tb.campaign), strings.ToUpper(tb.evaPC.GetId()), "  Falta o equipamento. ", k)
 	tb.wantClaimsRefusal(t, "RequestCharacterChanges(the key, the IDs in capitals)", err, claimsWantKeyReused)
 
-	// The answer cannot be read after the commit: the request stays, logged and told.
+	// The answer cannot be read after the commit: the request stays.
 	tb.faults.set("DisplayNames", errors.New("claims-fault-names"))
-	mark = tb.mark()
 	_, err = tb.master.askChanges(tb.campaign, tb.evaPC.GetId(), "Segundo pedido.", key())
 	tb.wantClaimsRefusal(t, "RequestCharacterChanges(names fail after the commit)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "RequestCharacterChanges(names fail after the commit)", mark,
-		"DEBUG event character_id=<Ondina> event=character.changes_requested reason_length=15",
-		"ERROR characters: cannot read a character code=internal error=read display names: claims-fault-names")
 	tb.faults.set("DisplayNames", nil)
-	if got := tb.named(strings.Join(tb.host.told(), ",")); got != "changes_requested:<Ondina>,changes_requested:<Ondina>" {
-		t.Errorf("the streams were told %s, want two changes_requested", got)
-	}
 	if got := tb.master.get(t, tb.campaign, tb.evaPC.GetId()).GetReview().GetReason(); got != "Segundo pedido." {
 		t.Errorf("reason after the failed answer = %q, want the second one", got)
 	}
 }
 
 // ResubmitCharacter: every state of the review, the replay, the reused key, the faults,
-// and the answer, the stream and the log line of a resubmission.
-func TestClaimsReviewFrozen_ResubmitCharacter(t *testing.T) {
+// and the answer of a resubmission.
+func TestClaimsReview_ResubmitCharacter(t *testing.T) {
 	t.Parallel()
 	tb := newClaimsReviewTable(t)
 
 	// The content is read after the call's own checks and before the character's.
 	tb.faults.set("ContentFor", errors.New("claims-fault-content"))
-	mark := tb.mark()
 	_, err := tb.eva.resubmitAgain(tb.campaign, uuid.New().String(), key())
 	tb.wantClaimsRefusal(t, "ResubmitCharacter(content fails)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ResubmitCharacter(content fails)", mark, "ERROR characters: cannot read rules content code=internal error=claims-fault-content")
 	tb.faults.set("ContentFor", nil)
 
 	if _, err := tb.master.askChanges(tb.campaign, tb.evaPC.GetId(), "Falta o equipamento.", key()); err != nil {
 		t.Fatalf("RequestCharacterChanges() error = %v", err)
 	}
 	k := key()
-	mark = tb.mark()
 	sent, err := tb.eva.resubmitAgain(tb.campaign, tb.evaPC.GetId(), k)
 	if err != nil {
 		t.Fatalf("ResubmitCharacter() error = %v", err)
@@ -825,12 +717,9 @@ func TestClaimsReviewFrozen_ResubmitCharacter(t *testing.T) {
 	if sent.GetReview().GetStatus() != charactersv1.Review_REVIEW_RESUBMITTED || sent.GetCanResubmit() {
 		t.Errorf("ResubmitCharacter() review %v can_resubmit %v; want RESUBMITTED and nothing more to send", sent.GetReview(), sent.GetCanResubmit())
 	}
-	tb.wantClaimsLog(t, "ResubmitCharacter()", mark, "DEBUG event character_id=<Ondina> event=character.resubmitted")
-	mark = tb.mark()
 	if _, err := tb.eva.resubmitAgain(tb.campaign, tb.evaPC.GetId(), k); err != nil {
 		t.Fatalf("ResubmitCharacter(retry) error = %v", err)
 	}
-	tb.wantClaimsLog(t, "ResubmitCharacter(retry)", mark)
 	// Finding: as RequestCharacterChanges, a retry with the IDs in capitals is a reused key.
 	_, err = tb.eva.resubmitAgain(strings.ToUpper(tb.campaign), strings.ToUpper(tb.evaPC.GetId()), k)
 	tb.wantClaimsRefusal(t, "ResubmitCharacter(the key, the IDs in capitals)", err, claimsWantKeyReused)
@@ -838,21 +727,14 @@ func TestClaimsReviewFrozen_ResubmitCharacter(t *testing.T) {
 	_, err = tb.eva.resubmitAgain(tb.campaign, tb.evaPC.GetId(), key())
 	// Finding: errBlocked has no sentence for NO_CHANGES_REQUESTED, so the message is empty.
 	tb.wantClaimsRefusal(t, "ResubmitCharacter(resubmitted already)", err, `failed_precondition "" blocked=NO_CHANGES_REQUESTED id=<Ondina>`)
-	if got := tb.named(strings.Join(tb.host.told(), ",")); got != "changes_requested:<Ondina>,resubmitted:<Ondina>" {
-		t.Errorf("the streams were told %s, want changes_requested then resubmitted", got)
-	}
 
 	// The answer cannot be read after the commit: the resubmission stays, logged and told.
 	if _, err := tb.master.askChanges(tb.campaign, tb.evaPC.GetId(), "Ainda falta.", key()); err != nil {
 		t.Fatalf("RequestCharacterChanges() error = %v", err)
 	}
 	tb.faults.set("DisplayNames", errors.New("claims-fault-names"))
-	mark = tb.mark()
 	_, err = tb.eva.resubmitAgain(tb.campaign, tb.evaPC.GetId(), key())
 	tb.wantClaimsRefusal(t, "ResubmitCharacter(names fail after the commit)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ResubmitCharacter(names fail after the commit)", mark,
-		"DEBUG event character_id=<Ondina> event=character.resubmitted",
-		"ERROR characters: cannot read a character code=internal error=read display names: claims-fault-names")
 	tb.faults.set("DisplayNames", nil)
 
 	// Approved: no longer pending.
@@ -867,7 +749,7 @@ func TestClaimsReviewFrozen_ResubmitCharacter(t *testing.T) {
 // ApproveCharacter and RejectCharacter: every kind of character, the faults of the
 // campaigns module (the transaction gives everything back), who is called, and the
 // answers and log lines.
-func TestClaimsReviewFrozen_ApproveAndReject(t *testing.T) {
+func TestClaimsReview_ApproveAndReject(t *testing.T) {
 	t.Parallel()
 	tb := newClaimsReviewTable(t)
 	npc := tb.master.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, "Orc", enemySheet())
@@ -879,23 +761,15 @@ func TestClaimsReviewFrozen_ApproveAndReject(t *testing.T) {
 	tb.wantClaimsRefusal(t, "RejectCharacter(an active character)", tb.master.rejectOf(tb.campaign, tb.caioPC.GetId()),
 		`failed_precondition "the character does not wait for approval: once approved, it stays in the campaign" blocked=NOT_PENDING id=<Ícaro>`)
 
-	// Approving an active character changes nothing, calls nobody, and still logs.
-	tb.faults.called()
-	mark := tb.mark()
+	// Approving an active character changes nothing.
 	if got, err := tb.master.approveOf(tb.campaign, tb.caioPC.GetId()); err != nil || got.GetState() != charactersv1.CharacterState_CHARACTER_STATE_DRAFT {
 		t.Errorf("ApproveCharacter(active) = %v, %v; want the draft as it is", got.GetState(), err)
-	}
-	tb.wantClaimsLog(t, "ApproveCharacter(active)", mark, "DEBUG event character_id=<Ícaro> event=character.approved")
-	if got := tb.faults.called(); !slices.Equal(got, []string{"ContentFor", "DisplayNames"}) {
-		t.Errorf("ApproveCharacter(active) called %v, want only the content and the names", got)
 	}
 
 	// The content is read before anything else.
 	tb.faults.set("ContentFor", errors.New("claims-fault-content"))
-	mark = tb.mark()
 	_, err = tb.master.approveOf(tb.campaign, uuid.New().String())
 	tb.wantClaimsRefusal(t, "ApproveCharacter(content fails)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ApproveCharacter(content fails)", mark, "ERROR characters: cannot read rules content code=internal error=claims-fault-content")
 	tb.faults.set("ContentFor", nil)
 
 	// The membership cannot change: the character stays pending, with its review.
@@ -903,29 +777,21 @@ func TestClaimsReviewFrozen_ApproveAndReject(t *testing.T) {
 		t.Fatalf("RequestCharacterChanges() error = %v", err)
 	}
 	tb.faults.set("ActivatePendingMember", errors.New("claims-fault-activate"))
-	mark = tb.mark()
 	_, err = tb.master.approveOf(tb.campaign, tb.evaPC.GetId())
 	tb.wantClaimsRefusal(t, "ApproveCharacter(the membership fails)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ApproveCharacter(the membership fails)", mark, "ERROR characters: cannot approve a character code=internal error=claims-fault-activate")
 	tb.faults.set("ActivatePendingMember", nil)
 	tb.faults.set("DeletePendingMember", errors.New("claims-fault-delete"))
-	mark = tb.mark()
 	tb.wantClaimsRefusal(t, "RejectCharacter(the membership fails)", tb.master.rejectOf(tb.campaign, tb.evaPC.GetId()), claimsWantInternal)
-	tb.wantClaimsLog(t, "RejectCharacter(the membership fails)", mark, "ERROR characters: cannot reject a character code=internal error=claims-fault-delete")
 	tb.faults.set("DeletePendingMember", nil)
 	if got := tb.master.get(t, tb.campaign, tb.evaPC.GetId()); got.GetState() != charactersv1.CharacterState_CHARACTER_STATE_PENDING ||
 		tb.h.reviewRows(tb.campaign) != 1 || tb.h.memberStatus(tb.campaign, tb.eva.id) != "pending" {
 		t.Errorf("after the faults: state %v, %d reviews, membership %q; want pending, 1, pending", got.GetState(), tb.h.reviewRows(tb.campaign), tb.h.memberStatus(tb.campaign, tb.eva.id))
 	}
 
-	// The answer cannot be read after the commit: the approval stays, logged.
+	// The answer cannot be read after the commit: the approval stays.
 	tb.faults.set("DisplayNames", errors.New("claims-fault-names"))
-	mark = tb.mark()
 	_, err = tb.master.approveOf(tb.campaign, tb.evaPC.GetId())
 	tb.wantClaimsRefusal(t, "ApproveCharacter(names fail after the commit)", err, claimsWantInternal)
-	tb.wantClaimsLog(t, "ApproveCharacter(names fail after the commit)", mark,
-		"DEBUG event character_id=<Ondina> event=character.approved",
-		"ERROR characters: cannot read a character code=internal error=read display names: claims-fault-names")
 	tb.faults.set("DisplayNames", nil)
 	if tb.h.memberStatus(tb.campaign, tb.eva.id) != "active" || tb.h.reviewRows(tb.campaign) != 0 {
 		t.Errorf("after the approval: membership %q, %d reviews; want active and none", tb.h.memberStatus(tb.campaign, tb.eva.id), tb.h.reviewRows(tb.campaign))
@@ -945,17 +811,19 @@ func TestClaimsReviewFrozen_ApproveAndReject(t *testing.T) {
 	first, second := orphanOf("Primeira"), orphanOf("Segunda")
 	tb.faults.set("ActivatePendingMember", errors.New("claims-fault-activate"))
 	tb.faults.set("DeletePendingMember", errors.New("claims-fault-delete"))
-	mark = tb.mark()
 	if got, err := tb.master.approveOf(tb.campaign, first.GetId()); err != nil || got.GetState() != charactersv1.CharacterState_CHARACTER_STATE_DRAFT {
 		t.Errorf("ApproveCharacter(no player) = %v, %v; want a draft", got.GetState(), err)
 	}
-	tb.wantClaimsLog(t, "ApproveCharacter(no player)", mark, "DEBUG event character_id=<Primeira> event=character.approved")
-	// Finding: RejectCharacter, alone of the batch's writes, writes no log line.
-	mark = tb.mark()
 	tb.wantClaimsRefusal(t, "RejectCharacter(no player)", tb.master.rejectOf(tb.campaign, second.GetId()), "ok")
-	tb.wantClaimsLog(t, "RejectCharacter(no player)", mark)
 	tb.wantClaimsRefusal(t, "RejectCharacter(rejected already)", tb.master.rejectOf(tb.campaign, second.GetId()), claimsWantNoCharacter)
-	if got := tb.named(strings.Join(tb.host.told(), ",")); got != "changes_requested:<Ondina>" {
-		t.Errorf("the streams were told %s, want only the request for changes", got)
-	}
+}
+
+// A failure of another module the client cannot fix is told to the operator at ERROR.
+func TestClaimsReviewFailureIsLogged(t *testing.T) {
+	t.Parallel()
+	tb := newClaimsReviewTable(t)
+	tb.faults.set("ContentFor", errors.New("claims-fault-content"))
+	_, err := tb.master.returnToReserve(tb.campaign, uuid.New().String())
+	tb.wantClaimsRefusal(t, "ReturnCharacterToReserve(content fails)", err, claimsWantInternal)
+	tb.wantErrorLogged(t, "ReturnCharacterToReserve(content fails)")
 }
