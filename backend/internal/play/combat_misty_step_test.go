@@ -22,6 +22,7 @@ var (
 	blockedUnavailable    = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DESTINATION_UNAVAILABLE
 	blockedOccupied       = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SQUARE_OCCUPIED
 	blockedWall           = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE
+	blockedRequired       = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED
 )
 
 func newMistyCave(t *testing.T) *cave {
@@ -82,11 +83,58 @@ func TestMistyStepWithoutASquareLeavesTheTokenToTheMaster(t *testing.T) {
 	t.Parallel()
 	c := newMistyCave(t)
 	c.areaFight(t)
-	if _, err := c.misty(t, c.ana, nil); err != nil {
+	if _, err := c.misty(t, c.master, nil); err != nil {
+		t.Fatalf("CastSpell(Misty Step) as the master error = %v", err)
+	}
+	if got := c.squareOf(t, c.master, "Pensantus"); got != [2]int32{12, 7} {
+		t.Errorf("Pensantus is at %v, want [12 7]: no square, no move", got)
+	}
+}
+
+// A player's character picks the square: a cast without one is refused before anything is spent.
+func TestMistyStepAPlayerMustPickTheSquare(t *testing.T) {
+	t.Parallel()
+	c := newMistyCave(t)
+	c.areaFight(t)
+	_, err := c.misty(t, c.ana, nil)
+	wantBlockedBy(t, "a player without a square", err, blockedRequired)
+	if p := c.who(t, c.ana, "Pensantus"); p.GetBonusActionUsed() {
+		t.Error("a refused cast spent the bonus action")
+	}
+}
+
+// A trap on the landing square fires for the caster as a move into it does, and the undo takes the firing
+// back first, then the teleport.
+func TestMistyStepOntoATrapFiresIt(t *testing.T) {
+	t.Parallel()
+	r := newTrapRigOn(t, newMistyCave(t))
+	r.trap(t, "Fosso Dourado", 9, 7, pit("1d6"))
+	r.areaFight(t)
+
+	r.h.roller.queue(4)
+	if _, err := r.misty(t, r.ana, at(9, 7)); err != nil {
 		t.Fatalf("CastSpell(Misty Step) error = %v", err)
 	}
-	if got := c.squareOf(t, c.ana, "Pensantus"); got != [2]int32{12, 7} {
-		t.Errorf("Pensantus is at %v, want [12 7]: no square, no move", got)
+	if got := r.squareOf(t, r.ana, "Pensantus"); got != [2]int32{9, 7} {
+		t.Fatalf("Pensantus is at %v, want [9 7]", got)
+	}
+	if n := len(r.trapDamages(t)); n != 1 {
+		t.Fatalf("the trap damages = %d, want the pit to have fired for the caster", n)
+	}
+
+	r.undoLast(t) // the firing
+	if n := len(r.trapDamages(t)); n != 0 {
+		t.Errorf("after undoing the firing %d trap damages remain", n)
+	}
+	if got := r.squareOf(t, r.master, "Pensantus"); got != [2]int32{9, 7} {
+		t.Errorf("undoing the firing moved Pensantus to %v, want her still on the square", got)
+	}
+	r.undoLast(t) // the teleport
+	if got := r.squareOf(t, r.master, "Pensantus"); got != [2]int32{12, 7} {
+		t.Errorf("after the second undo Pensantus is at %v, want [12 7]", got)
+	}
+	if p := r.who(t, r.master, "Pensantus"); p.GetBonusActionUsed() {
+		t.Error("the undo left the bonus action spent")
 	}
 }
 
