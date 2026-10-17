@@ -28,6 +28,8 @@ export interface AudienceData {
       titleId="audience-title"
       subtitle="Você sempre lê. Quem não for escolhido não vê a mensagem nem sabe que ela existe."
       [phone]="sheet.inSheet"
+      [handle]="false"
+      [small]="sheet.inSheet"
       (closed)="cancel()"
     >
       <fieldset class="group">
