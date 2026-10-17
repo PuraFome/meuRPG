@@ -132,17 +132,15 @@ func TestTrimUndoHelpers(t *testing.T) {
 // creatures. It is built as settleHidden builds it.
 func biggestRevealCast() actionEvent {
 	ev := actionEvent{Round: 99, Actor: newKey(), Key: fireball, CastID: newKey(), Placed: true, AreaCol: 23, AreaRow: 15, Slot: &slotRef{Level: 9}}
-	var hit, lines []string
+	var lines []string
 	for range maxCombatants {
-		id := newKey()
 		ev.Hits = append(ev.Hits, castHit{
-			Target: id, Save: &saveRoll{D20: 20, Bonus: -5, Total: 15, DC: 20, Saved: true}, Pending: newKey(), More: []string{newKey()},
+			Target: newKey(), Save: &saveRoll{D20: 20, Bonus: -5, Total: 15, DC: 20, Saved: true}, Pending: newKey(), More: []string{newKey()},
 			Cover: "three_quarters", CoverSource: "map", CoverBonus: 5, CoverSeenMask: 1<<5 | 1, HiddenAtCast: true,
 		})
-		hit = append(hit, id)
 		lines = append(lines, newKey())
 	}
-	ev.Revealed, ev.RevealLines = hit, lines
+	ev.RevealedHits, ev.RevealLines = true, lines
 	return ev
 }
 
@@ -158,5 +156,24 @@ func TestTheBiggestRevealCastFitsTheEventBudget(t *testing.T) {
 	if len(body) > undoHelpersBudget {
 		t.Errorf("the event of a cast that reveals %d creatures takes %d bytes after dropping %v, over the %d the budget allows",
 			maxCombatants, len(body), dropped, undoHelpersBudget)
+	}
+}
+
+// TestRevealedIDsReadsTheHitsAndTheList: a cast that flags RevealedHits reveals the hits made
+// on hidden creatures and no other; an answer or an older event lists its creatures.
+func TestRevealedIDsReadsTheHitsAndTheList(t *testing.T) {
+	t.Parallel()
+	hits := []castHit{{Target: "a", HiddenAtCast: true}, {Target: "b"}, {Target: "c", HiddenAtCast: true}}
+	for name, tc := range map[string]struct {
+		ev   actionEvent
+		want []string
+	}{
+		"hits of hidden creatures":     {actionEvent{Hits: hits, RevealedHits: true}, []string{"a", "c"}},
+		"hidden but kept hidden":       {actionEvent{Hits: hits}, []string{}},
+		"the list of an answer or old": {actionEvent{Hits: hits, Revealed: []string{"x"}}, []string{"x"}},
+	} {
+		if got := tc.ev.revealedIDs(); !slices.Equal(got, tc.want) && (len(got) != 0 || len(tc.want) != 0) {
+			t.Errorf("%s: revealedIDs = %v, want %v", name, got, tc.want)
+		}
 	}
 }
