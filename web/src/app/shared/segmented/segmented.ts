@@ -17,11 +17,15 @@ let nextId = 0;
  * segments, 48 px tall on a phone and 44 px from the tablet up, the same width
  * each. Real radio buttons under the labels, so the arrow keys move the choice
  * and a screen reader hears "Andar, selecionado, 1 de 2"; the chosen one has a
- * check as well as the filled look (never colour alone).
+ * check as well as the filled look (never colour alone). `appearance="track"` is the
+ * compact switch of the conversation's composer: the options sit in one rounded,
+ * ground-tinted track, 36 px (40 on a phone) high, and the chosen one is a raised
+ * bold chip (bold and a border, so never colour alone).
  */
 @Component({
   selector: 'app-segmented',
   imports: [MatIconModule],
+  host: { '[class.seg--track]': "appearance() === 'track'" },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="seg" role="radiogroup" [attr.aria-label]="label()">
@@ -36,10 +40,12 @@ let nextId = 0;
             [disabled]="s.disabled ?? false"
             (change)="choose.emit(s.value)"
           />
-          @if (s.value === value()) {
-            <mat-icon aria-hidden="true">check</mat-icon>
-          } @else if (s.icon) {
-            <mat-icon aria-hidden="true">{{ s.icon }}</mat-icon>
+          @if (appearance() === 'buttons') {
+            @if (s.value === value()) {
+              <mat-icon aria-hidden="true">check</mat-icon>
+            } @else if (s.icon) {
+              <mat-icon aria-hidden="true">{{ s.icon }}</mat-icon>
+            }
           }
           {{ s.label }}
         </label>
@@ -52,6 +58,8 @@ export class Segmented<T extends string> {
   readonly label = input.required<string>();
   readonly segments = input.required<readonly Segment<T>[]>();
   readonly value = input.required<T>();
+  /** `buttons`: separate bordered segments; `track`: one compact rounded track. */
+  readonly appearance = input<'buttons' | 'track'>('buttons');
   readonly choose = output<T>();
   protected readonly name = `seg-${nextId++}`;
 }
