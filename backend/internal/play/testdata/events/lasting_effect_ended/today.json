@@ -119,6 +119,22 @@
         },
         "bonus_unknown": true
       },
+      "pushed": {
+        "target_id": "x",
+        "from": {
+          "placed": true,
+          "col": 1,
+          "row": 1,
+          "used_dft": 1,
+          "last_dft": 1,
+          "cover": "x"
+        },
+        "col": 1,
+        "row": 1,
+        "distance_ft": 1,
+        "short": true,
+        "no_map": true
+      },
       "bonus_sides": 1,
       "bonus_face": 1,
       "lucky": {
@@ -677,7 +693,23 @@
     "result": "x",
     "d20": 1,
     "total": 1,
-    "dc": 1
+    "dc": 1,
+    "pushed": {
+      "target_id": "x",
+      "from": {
+        "placed": true,
+        "col": 1,
+        "row": 1,
+        "used_dft": 1,
+        "last_dft": 1,
+        "cover": "x"
+      },
+      "col": 1,
+      "row": 1,
+      "distance_ft": 1,
+      "short": true,
+      "no_map": true
+    }
   },
   "hid_before": [
     {
