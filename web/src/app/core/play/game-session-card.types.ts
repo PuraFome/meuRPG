@@ -21,7 +21,14 @@ export interface StartGameSessionResultVm {
 }
 
 /** The kinds of choice a sheet can still lack. */
-export type OpenChoiceKindVm = 'skills' | 'cantrips' | 'spellsKnown' | 'spellsPrepared';
+export type OpenChoiceKindVm =
+  | 'skills'
+  | 'cantrips'
+  | 'spellsKnown'
+  | 'spellsPrepared'
+  | 'expertise'
+  | 'tools'
+  | 'languages';
 
 /** A living player character whose sheet has choices open: starting a session locks it as it is. */
 export interface OpenChoicesVm {

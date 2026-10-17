@@ -165,6 +165,9 @@ type Build struct {
 	// Derive does not read them; the guided level-up adds the musical instrument
 	// that taking a Bard level as a later class gives.
 	ToolProficiencies []string
+	// Languages are the languages the player adds, as free text. Derive counts them against the languages the
+	// race, its traits and the background let the player pick, to say how many picks are open.
+	Languages []string
 	// Feats are the feats the character took (an optional rule of the game, MR-025):
 	// "feat:grappler" or a table's "feat:<slug>@mesa". Derive treats each like a
 	// feature: its effects apply and the sheet lists it. The abilities a feat
@@ -981,6 +984,12 @@ const (
 	OpenChoiceCantrips       = "cantrips"
 	OpenChoiceSpellsKnown    = "spells_known"
 	OpenChoiceSpellsPrepared = "spells_prepared"
+	// OpenChoiceExpertise is a skill still to double (the rogue's and the bard's Expertise), OpenChoiceTools a tool
+	// proficiency a trait lets the player pick and the sheet does not list, OpenChoiceLanguages a language the race, a
+	// trait or the background lets the player pick and the sheet does not list.
+	OpenChoiceExpertise = "expertise"
+	OpenChoiceTools     = "tools"
+	OpenChoiceLanguages = "languages"
 )
 
 // OpenChoice is a choice the character's class gives and the sheet has not
