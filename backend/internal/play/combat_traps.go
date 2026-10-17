@@ -849,6 +849,7 @@ func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string,
 		return err
 	}
 	creature := creatureFacts(c, states, sheet.Traits)
+	out.facts = creature
 	attack := combat.AttackMode(combat.AttackScene{Target: creature, Ranged: true})
 	out.attackSources = attack.Sources
 	out.attackMode = combat.Resolve(attack.Sources)

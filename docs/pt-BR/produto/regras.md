@@ -460,6 +460,11 @@ Sair do alcance de um inimigo provoca um ataque de oportunidade, que o app ofere
 Um mago de evocação a partir do nível 2, ao conjurar uma magia de evocação que afeta outras criaturas que ele vê, poupa até 1 + o nível da magia delas (o nível em que é conjurada). Uma criatura poupada passa no teste de resistência sem rolar e não sofre dano quando a magia causaria metade; a linha do teste diz "Esculpir Magias".
 O conjurador nunca está entre elas, e só podem ser nomeadas criaturas que a magia alcança e que o conjurador vê.
 
+**Evasão** (SRD 5.1, Monge 7 e Ladino 7; também a escolha Defesa de Caçador Superior do patrulheiro e a característica Evasão de uma criatura).
+Num teste de resistência de Destreza que causa metade do dano em caso de sucesso, uma criatura com Evasão não sofre dano se passa e sofre metade se falha.
+Vale para o teste de uma magia, o de uma armadilha e o do agressor contra Repreensão Infernal, e não enquanto a criatura está incapacitada (Incapacitado, Paralisado, Petrificado, Atordoado ou Inconsciente).
+Outra habilidade, ou um teste que não reduz o dano à metade, não muda.
+
 Veja [Movimento em combate](../../architecture/play/movement.md), [Mapas e a grade](../../architecture/rules-maps.md#grid) e [Desenho do combate](../../design/combat.md).
 
 ## RN-22: Condições e concentração
