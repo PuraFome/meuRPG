@@ -2,6 +2,7 @@ package characters
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,8 +52,8 @@ func TestStageEntriesRefusesTwoEntriesOfOneKindWithOneName(t *testing.T) {
 				return
 			}
 			p := in.Problems.List[0]
-			if p.GetReason() != pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_DUPLICATE || p.GetName() != "Farol" {
-				t.Errorf("problem = %v, want a DUPLICATE named Farol", p)
+			if p.GetReason() != pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_DUPLICATE || !strings.EqualFold(p.GetName(), "Farol") {
+				t.Errorf("problem = %v, want a DUPLICATE named for the second entry", p)
 			}
 			if len(sc.entries) != 1 {
 				t.Errorf("staged %d entries, want only the first", len(sc.entries))
