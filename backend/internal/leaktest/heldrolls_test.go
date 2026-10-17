@@ -87,7 +87,9 @@ func TestHeldRollsReachOnlyWhoMayReadThem(t *testing.T) {
 	}
 	rt.ask(t, "Ana tried to answer")
 
-	// 2. The master answers Toren's question for him, on his turn: the attack is settled, and nothing of it reaches Ana.
+	// 2. The master answers Toren's question for him, on his turn, once the player's own chance has passed: the attack is
+	// settled, and nothing of it reaches Ana.
+	rt.clock.advance(11 * time.Second)
 	res := must(m.resources.AnswerHeldRoll(t.Context(), rq(&playv1.AnswerHeldRollRequest{
 		CampaignId: w.campaign, HoldId: toren, IdempotencyKey: newKey(),
 		Answer: &playv1.AnswerHeldRollRequest_Die{Die: &playv1.DieAnswer{Use: false}},

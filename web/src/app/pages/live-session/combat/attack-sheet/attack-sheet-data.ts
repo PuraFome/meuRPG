@@ -5,8 +5,7 @@ import type {
   Combatant,
   Encounter,
   GetTurnOptionsResponse,
-  InspirationOffer,
-  LuckyOffer,
+  HeldRollOffer,
   PendingDamage,
   ReactionWindow,
   TargetInReach,
@@ -22,13 +21,6 @@ import type { AttackSheetData } from './attack-sheet';
 
 /** The key the throw-back sheet gives its made-up attack: the server builds the real one from the window and ignores it. */
 export const THROW_BACK_KEY = 'deflect-missiles:throw';
-
-/** The questions of a held attack roll the page reopens the attack sheet at: the halfling's Lucky about a 1 (asked
- * first) and the Bardic Inspiration die. */
-export interface HeldRoll {
-  readonly offer?: InspirationOffer;
-  readonly lucky?: LuckyOffer;
-}
 
 /** An attack that is not in the options: the monk's throw-back of a caught missile, with its own targets. */
 export interface ThrownAttack {
@@ -53,7 +45,7 @@ export interface AttackSheetRequest {
   readonly useExtraAction: boolean;
   readonly catchWindowId: string;
   readonly resume?: PendingDamage;
-  readonly held?: HeldRoll;
+  readonly held?: HeldRollOffer;
   readonly thrown?: ThrownAttack;
   /** A roll of the sheet was held for a question: the page learns the hold. */
   readonly onHeld: (holdId: string) => void;
@@ -91,16 +83,9 @@ function economyOf(
   };
 }
 
-/** The held roll the sheet reopens at: Lucky's question and the Bardic Inspiration die, each with the target's name. */
-function heldOf(e: Encounter, held: HeldRoll | undefined) {
-  return {
-    inspiration: held?.offer
-      ? { offer: held.offer, targetLabel: labelOf(e, held.offer.targetId) }
-      : undefined,
-    lucky: held?.lucky
-      ? { offer: held.lucky, targetLabel: labelOf(e, held.lucky.targetId) }
-      : undefined,
-  };
+/** The held roll the sheet reopens at: its question (Lucky's, or the Bardic Inspiration die's) with the target's name. */
+function heldOf(e: Encounter, held: HeldRollOffer | undefined) {
+  return { held: held ? { offer: held, targetLabel: labelOf(e, held.targetId) } : undefined };
 }
 
 /** What the attack sheet is handed, or `null` when the attack is not among the options (nothing to open). */

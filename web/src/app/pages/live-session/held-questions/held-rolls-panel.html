@@ -1,0 +1,31 @@
+<p class="mr-visually-hidden" role="status" aria-live="polite" data-testid="held-count">{{ countText() }}</p>
+@if (questions.entries().length > 0) {
+  <section class="mr-panel panel" aria-labelledby="held-panel-t">
+    <div class="panel__head">
+      <h2 class="panel__title" id="held-panel-t">Perguntas pendentes</h2>
+      <span class="panel__sub">O jogador responde primeiro; depois de 10 s você também pode responder por ele.</span>
+    </div>
+    @if (phone()) {
+      @for (q of ended(); track q.holdId) {
+        <app-held-question [question]="q" />
+      }
+      @if (open(); as q) {
+        <app-held-question [question]="q" [canType]="canType()" />
+      }
+      @for (q of rows(); track q.holdId) {
+        <button type="button" class="fold" aria-expanded="false" (click)="choose(q)">
+          <mat-icon class="fold__icon" aria-hidden="true">{{ q.phase() === 'ready' ? 'warning' : 'schedule' }}</mat-icon>
+          <span class="fold__title">{{ rowTitle(q) }}</span>
+          <span class="fold__status">{{ q.countdown() || q.lead() }}</span>
+          <mat-icon class="fold__icon" aria-hidden="true">expand_more</mat-icon>
+        </button>
+      }
+    } @else {
+      <div class="panel__grid">
+        @for (q of questions.entries(); track q.holdId) {
+          <app-held-question [question]="q" [canType]="canType()" />
+        }
+      </div>
+    }
+  </section>
+}

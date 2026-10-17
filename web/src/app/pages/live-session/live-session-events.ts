@@ -90,6 +90,7 @@ export class LiveSessionEvents {
         loader.loadMageArmor(campaignId, generation);
       },
       onGroupCheckChanged: () => state.groupCheckTick.update((n) => n + 1),
+      onHeldRollsChanged: () => state.heldRollsTick.update((n) => n + 1),
       onEnded: () => loader.ended(),
       onFatal: (kind) => {
         if (kind === 'signed-out') {

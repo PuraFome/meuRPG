@@ -1,0 +1,89 @@
+:host {
+  display: block;
+}
+
+.offer {
+  display: grid;
+  gap: 12px;
+}
+
+.held {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.d20 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+
+.d20__face {
+  font: var(--mr-type-title, 600 28px/1 system-ui);
+  min-width: 2.2ch;
+  text-align: center;
+}
+
+.q {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.small {
+  margin: 0;
+  color: var(--mr-text-muted, inherit);
+  font-size: 0.875rem;
+}
+
+.typed {
+  display: grid;
+  gap: 4px;
+}
+
+.typed input {
+  min-height: 44px;
+  font-size: 1rem;
+  padding: 0 12px;
+}
+
+.btns {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 600px) {
+  .btns {
+    grid-auto-flow: column;
+    justify-content: start;
+  }
+}
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-md);
+}
+
+.ask__title {
+  margin: 0;
+  font-size: 17px;
+  line-height: 23px;
+  font-weight: 800;
+}
+
+.ask__what {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.ask__keep {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  width: 100%;
+}

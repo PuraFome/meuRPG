@@ -6,7 +6,7 @@ import {
   AttackRollSchema,
   CombatantSide,
   DiceRollSchema,
-  InspirationOfferSchema,
+  HeldRollOfferSchema,
   PendingDamageSchema,
   PendingDamageStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -34,7 +34,6 @@ import {
   fixedTextOf,
   heldWait,
   inspirationShow,
-  luckyRerollShow,
   modeChoiceOf,
   outcomeOf,
   rollRefusal,
@@ -388,7 +387,7 @@ describe('the dice animated', () => {
     expect(held?.line).toBeUndefined();
     const asked = attackShow('Espada', {
       roll: create(AttackRollSchema, { outcome: AttackOutcome.HIT, d20: d20(9) }),
-      offer: create(InspirationOfferSchema, { holdId: 'h' }),
+      held: create(HeldRollOfferSchema, { holdId: 'h' }),
     });
     expect(asked?.outcome).toBeUndefined();
     expect(attackShow('Espada', { roll: create(AttackRollSchema, {}) })).toBeNull();
@@ -404,17 +403,6 @@ describe('the dice animated', () => {
     expect(damageShow(undefined)).toBeNull();
     expect(damageShow(pending({ status: PendingDamageStatus.AWAITING_REACTION }))).toBeNull();
     expect(damageShow(pending({ status: PendingDamageStatus.ROLLED }))).toBeNull();
-  });
-
-  it('shows the new face Lucky rolled in the app, and nothing for a typed one, a plain roll or none', () => {
-    const rerolled = create(AttackRollSchema, {
-      d20: d20(14, { rerolled: [{ index: 0, from: 1, to: 14, sourceKey: 'trait:lucky' }] }),
-    });
-    expect(luckyRerollShow(rerolled, { inApp: true })).not.toBeNull();
-    expect(luckyRerollShow(rerolled, { face: 14 })).toBeNull();
-    expect(luckyRerollShow(rerolled, null)).toBeNull();
-    expect(luckyRerollShow(create(AttackRollSchema, { d20: d20(14) }), { inApp: true })).toBeNull();
-    expect(luckyRerollShow(create(AttackRollSchema, {}), { inApp: true })).toBeNull();
   });
 
   it('shows the Bardic Inspiration die the player added in the app', () => {
