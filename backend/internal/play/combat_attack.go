@@ -533,6 +533,9 @@ func (f *attackFlow) rollD20(ctx context.Context) error {
 	}
 	f.modeIn = modeIn
 	f.truth = modeIn.facts(f.c.enc, f.c.sight).attackMode(f.attacker, f.coverTarget, f.sheet.Traits, f.modeShape(), actsNow(f.c.enc, f.attacker) && !f.call.asReaction, f.v, names)
+	if err := f.applyProtection(); err != nil {
+		return err
+	}
 	f.rolled, err = f.s.rollHeldAttack(ctx, f.c, f.v, f.req, f.spec, f.attacker, f.target, f.attackKey, f.truth.Mode, f.call.in, f.attack.ToHit)
 	if err != nil || f.rolled.Held != nil {
 		return err
@@ -627,6 +630,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 		made.Res = &resourceEvent{Kind: resBardicUse, Sides: b.Sides, Face: b.Face, FromID: b.From, ExpiresRound: b.ExpiresRound}
 	}
 	made.Lucky = f.rolled.Lucky // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
+	made.ProtectedBy = f.protectedBy()
 	return made
 }
 

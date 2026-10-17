@@ -618,6 +618,9 @@ type Derived struct {
 	// "Sem armadura" or "Armadura de couro + escudo".
 	ArmorClass            int
 	ArmorClassDescription string
+	// ShieldIdle says the build carries a shield that adds nothing to ArmorClass
+	// because a two-handed weapon is on the sheet.
+	ShieldIdle bool
 	// ArmorCategory is the worn armor's category: "none", "light", "medium" or
 	// "heavy" (a shield is separate). Rage gives its benefits only without heavy armor.
 	ArmorCategory string

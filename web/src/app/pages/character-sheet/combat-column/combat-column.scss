@@ -5,6 +5,12 @@
   min-width: 0;
 }
 
+.shield-note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+
 .attacks {
   width: 100%;
   border-collapse: collapse;
