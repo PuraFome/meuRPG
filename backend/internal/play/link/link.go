@@ -467,6 +467,9 @@ type ReactionStats struct {
 	Reduce []ReduceManeuver
 	// Proficiency is the proficiency bonus (the Deflect Missiles throw back adds it).
 	Proficiency int
+	// Protection says it has the Protection fighting style and wields a shield (a
+	// two-handed weapon on the sheet takes the shield out of its hand).
+	Protection bool
 	// CuttingWords says it has the bard's feature, with its bard level (the die)
 	// and the bard's "Perguntar" setting: "all", "attacks" (the default) or "never".
 	CuttingWords bool

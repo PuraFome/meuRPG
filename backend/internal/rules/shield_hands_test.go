@@ -39,3 +39,24 @@ func TestAShieldAddsNothingBesideATwoHandedWeapon(t *testing.T) {
 		})
 	}
 }
+
+// TestAnIdleShieldIsOnTheSheet: the sheet says why the shield adds nothing, with a hint
+// and the flag, and the description names no shield.
+func TestAnIdleShieldIsOnTheSheet(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	d := Derive(shieldFighter("equipment:greatsword"), c)
+	if !d.ShieldIdle || d.ArmorClassDescription != "Cota de malha" {
+		t.Errorf("ShieldIdle = %v, description %q, want an idle shield on a description without it", d.ShieldIdle, d.ArmorClassDescription)
+	}
+	if _, ok := hintFrom(d, shieldKey); !ok {
+		t.Error("no hint says why the shield adds nothing")
+	}
+	d = Derive(shieldFighter("equipment:longsword"), c)
+	if d.ShieldIdle || d.ArmorClassDescription != "Cota de malha + escudo" {
+		t.Errorf("ShieldIdle = %v, description %q, want a shield that counts", d.ShieldIdle, d.ArmorClassDescription)
+	}
+	if _, ok := hintFrom(d, shieldKey); ok {
+		t.Error("a shield that counts has a hint")
+	}
+}
