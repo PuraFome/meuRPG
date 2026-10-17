@@ -74,11 +74,10 @@ func inspirationOfferView(d *encounterData, c playdb.Combatant, v combatViewer) 
 	if (!v.master && !v.owns(c)) || die == nil {
 		return nil
 	}
-	for _, row := range d.holds {
-		if row.CombatantID != c.ID || row.Round != d.enc.Round {
+	for _, h := range d.holds {
+		if h.CombatantID != c.ID || derefInt32(h.Round) != d.enc.Round {
 			continue
 		}
-		h := heldOfRollHold(row)
 		if luckyAsks(h) {
 			return nil
 		}
@@ -130,7 +129,7 @@ func (s *Service) AnswerBardicInspiration(
 		return nil, err
 	}
 	out, err := s.answerHeld(ctx, m, answerRequest{
-		ref: holdRef{Table: rollHolds, Campaign: m.CampaignID, Encounter: encID, ID: holdID}, key: key, question: askDie, yes: req.Msg.GetUse(), in: in,
+		ref: holdRef{Class: attackHold, Campaign: m.CampaignID, Encounter: encID, ID: holdID}, key: key, question: askDie, yes: req.Msg.GetUse(), in: in,
 	})
 	if err != nil {
 		return nil, err

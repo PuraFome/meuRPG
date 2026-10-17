@@ -1655,9 +1655,11 @@ DELETE FROM character_inspiration WHERE campaign_id = $1;
 
 -- name: InsertInspirationHold :one
 -- A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
--- of a d20 that shows a 1 (lucky_index, NULL without one).
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+-- of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
+-- combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
+-- window kept.
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15)
 RETURNING *;
 
 -- name: GetInspirationHoldByKey :one
@@ -1666,14 +1668,31 @@ SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2;
 -- name: GetInspirationHold :one
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND id = $2;
 
--- name: ListInspirationHoldsOfCharacter :many
-SELECT * FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at;
+-- name: ListOpenInspirationHolds :many
+-- The holds that wait for an answer and a roller owns. A combatant owns the holds made for it
+-- (combatant_id), and, when a character backs it, the holds made before the column was written
+-- (combatant_id NULL, found by the character); a roller out of a combat owns the holds that name
+-- no combatant. The creatures and the copies of an NPC share a character_id with the one they
+-- came from, so they pass no character: only the combatant owns. A NULL parameter matches nothing.
+SELECT * FROM inspiration_holds
+WHERE answer_key IS NULL
+  AND ((encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
+    OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id)))
+ORDER BY created_at;
+
+-- name: ListOpenAttackHolds :many
+-- The weapon attacks of the combat that wait for an answer and are kept in inspiration_holds, for
+-- the combatants' views. The rolls of the other kinds held in a combat are not part of the view.
+SELECT * FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL;
 
 -- name: DeleteInspirationHold :exec
 DELETE FROM inspiration_holds WHERE id = $1;
 
--- name: DeleteInspirationHoldsOfCharacter :exec
-DELETE FROM inspiration_holds WHERE character_id = $1;
+-- name: DeleteInspirationHoldsOf :exec
+-- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what).
+DELETE FROM inspiration_holds
+WHERE (encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
+   OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id));
 
 -- name: AnswerInspirationHold :exec
 UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;

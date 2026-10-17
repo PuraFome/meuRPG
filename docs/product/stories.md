@@ -1068,7 +1068,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 #### Acceptance criteria
 - **Given** a generated dungeon ([MR-010](#mr-010-generate-dungeons)) or a scene description, **when** the GM asks for an image with their own text and style, **then** the app generates the image and stores it in the campaign gallery, hidden from the players. Only the master generates.
 - **Given** a generated image, **when** the GM writes a new request ("darker", "with a bridge"), **then** the app edits it with knowledge of the scene, without starting over, **and** stores the new one next to the previous one.
-- **Given** the campaign's monthly limit (20 images) has been reached, **when** the GM asks for another image, **then** the app refuses and says why and when the limit resets. The server has a daily limit of its own.
+- **Given** the campaign's monthly limit (200 images in production) has been reached, **when** the GM asks for another image, **then** the app refuses and says why and when the limit resets. The server has a daily limit of its own.
 - **Given** the service refuses a request, returns no image or fails, **when** the GM waits for the image, **then** the app says so in Portuguese ("O serviço não gerou esta imagem") without spending the month's slot.
 - **Given** a map with a grid (generated or drawn), **when** the GM asks for "O mapa com textura" (the textured map), **then** the app generates the map itself seen from above, with floor and walls in place, cropped and fitted to match the grid, **and** the GM can set it as the map image ("Usar como imagem do mapa") without erasing the layers or what the players have already seen. A map whose image is over 16 megapixels cannot become a textured map, and the screen says so before asking.
 - **Given** a map, **when** the GM asks for "Vista isométrica" (isometric view), **then** the app generates the map art in isometric perspective from what the players see now, **and** it goes to the gallery as scene art.
@@ -1084,9 +1084,6 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Layers stay the truth.** The model returns one of 10 fixed proportions, so the server pads the map drawing with rock, crops the map back and fits it to the grid. If the image drifts a little from a wall, the GM generates again.
 - The session's image picker ("Mostrar uma imagem aos jogadores") marks "Mapa inteiro".
 - See [Architecture](../architecture/maps/image-generation.md), [images made from a map](../architecture/maps/image-generation.md#images-made-from-a-map), [Design](../design/session.md#generated-images), [Privacy](../privacy.md#what-generated-images-send-to-google-mr-039-rn-28) and [Operations](../operations/reference.md#generated-images-the-gemini-api).
-
-#### Doubts
-- Is the monthly limit of 20 images per campaign the right number for Samuel, once the cost per image (about US$ 0.034 for a 1K image) is known?
 
 ### MR-040: Level up from the sheet
 

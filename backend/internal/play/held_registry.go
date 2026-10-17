@@ -13,6 +13,9 @@ import (
 type heldKindDef struct {
 	// write is the table the kind's holds are written to. E4-6 moves the weapon attack to inspirationHolds.
 	write heldTable
+	// alsoRead is the table a later release writes this kind to, which this one only reads: a roll found there
+	// is answered by the same path (E4-5 reads the weapon attacks of inspiration_holds, E4-6 writes them).
+	alsoRead heldTable
 	// refusedBy are the tables whose open question refuses a new roll of this kind in the gate, own table
 	// first. The weapon attack reads its own only: heldBlocked, which its path calls first, reads the other
 	// (and does not when a reaction window replays the attack, a case the gate keeps as it was).
@@ -47,7 +50,7 @@ func init() {
 	outside := []heldTable{inspirationHolds, rollHolds}
 	heldRegistry = map[heldKind]heldKindDef{
 		heldWeaponAttack: {
-			write: rollHolds, refusedBy: []heldTable{rollHolds}, rerun: rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
+			write: rollHolds, alsoRead: inspirationHolds, refusedBy: []heldTable{rollHolds}, rerun: rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
 		},
 		heldSpellAttack:       {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).CastSpell)},
 		heldEffectSave:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollEffectSave)},

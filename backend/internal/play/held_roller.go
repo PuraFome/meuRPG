@@ -165,8 +165,8 @@ func errDieGone() error {
 
 // stale says a hold made in a combat no longer has anything to answer: its round is over (or the
 // combat ended), or, in inspiration_holds, the die is not the combatant's any more (used or expired) and
-// no Lucky question waits, which needs no die. A roll_holds row is stale only by its round, as it always
-// was.
+// no Lucky question waits, which needs no die. A weapon attack is stale only by its round, as it always
+// was in roll_holds, wherever it is kept.
 func (h heldRoll) stale(st rollerState) bool {
 	if h.Round == nil {
 		return false
@@ -174,7 +174,7 @@ func (h heldRoll) stale(st rollerState) bool {
 	if st.Die.Combatant == nil || st.Die.Round != *h.Round {
 		return true
 	}
-	return h.table == inspirationHolds && !st.Holds && !luckyAsks(h)
+	return h.checksTheAnswer() && !st.Holds && !luckyAsks(h)
 }
 
 // staleHold is stale for a row of inspiration_holds and the die its character holds (found).

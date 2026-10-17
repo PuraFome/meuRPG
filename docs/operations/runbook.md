@@ -321,7 +321,7 @@ gcloud run deploy $SERVICE --image=$IMAGE --service-account=$SA \
   --allow-unauthenticated --cpu=2 --memory=1Gi \
   --min-instances=0 --max-instances=1 --concurrency=50 --timeout=2100 \
   --set-secrets="$SECRETS" \
-  --set-env-vars="^#^GOMEMLIMIT=400MiB#GOOGLE_CLOUD_PROJECT=$PROJECT_ID#BLOB_BUCKET=$BUCKET#OIDC_ISSUER=https://accounts.google.com#OIDC_CLIENT_ID=$OIDC_CLIENT_ID#OIDC_REDIRECT_URL=$APP_URL/auth/callback#CAMPAIGN_CREATORS=$MASTER_EMAIL#MAX_CAMPAIGNS_PER_USER=10#IMAGE_DAILY_LIMIT=100#IMAGE_MONTHLY_LIMIT=20#RATE_LIMIT_MULTIPLIER=1"
+  --set-env-vars="^#^GOMEMLIMIT=400MiB#GOOGLE_CLOUD_PROJECT=$PROJECT_ID#BLOB_BUCKET=$BUCKET#OIDC_ISSUER=https://accounts.google.com#OIDC_CLIENT_ID=$OIDC_CLIENT_ID#OIDC_REDIRECT_URL=$APP_URL/auth/callback#CAMPAIGN_CREATORS=$MASTER_EMAIL#MAX_CAMPAIGNS_PER_USER=10#IMAGE_DAILY_LIMIT=100#IMAGE_MONTHLY_LIMIT=200#RATE_LIMIT_MULTIPLIER=1"
 ```
 
 The start-up log must say `images are stored in Cloud Storage`. If it also says `the images bucket could not be reached at start`, read the reason: unless it is a passing network error, uploads and downloads fail with `503` until the bucket name, the role of step 4 or the service account is fixed and a new revision is deployed.
