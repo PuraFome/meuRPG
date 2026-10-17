@@ -351,7 +351,7 @@ func TestMR015_NothingCombatOnlyInAScene(t *testing.T) {
 	}
 }
 
-// RN-20, question 52: a player never gets a DC, a pass or fail, or another
+// RN-20: a player never gets a DC, a pass or fail, or another
 // player's roll, in any answer or any event of the stream, and the session
 // history keeps ids and numbers only.
 func TestRN20_APlayerNeverGetsADCOrAnotherPlayersRoll(t *testing.T) {
@@ -585,7 +585,7 @@ func TestRN18_SceneRollsFollowTheDiceMode(t *testing.T) {
 	}
 }
 
-// RN-10, question 53: the master may open a hidden point, and it stays hidden
+// RN-10: the master may open a hidden point, and it stays hidden
 // on the map: the players read the scene, never the point.
 func TestMR015_AHiddenPointCanBeOpenedAndStaysHidden(t *testing.T) {
 	t.Parallel()

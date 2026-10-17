@@ -189,8 +189,10 @@ func (p *imagesPart) stageListed(ctx context.Context, in *campaignpackage.Import
 		oldID: img.GetId(), id: id, name: name, generated: img.GetGenerated(), generatedKind: img.GetGeneratedKind(),
 		createdAt: createdAt,
 	}
-	si.parentOld = in.IDs.Ref(nsImage, img.GetParentImageId(), image, name)
-	si.copyOld = in.IDs.Ref(nsImage, img.GetCopyOfImageId(), image, name)
+	// Ref records that the package must define the two images; their new ids are looked
+	// up by the old ones when the links are written (linkStagedImages).
+	in.IDs.Ref(nsImage, img.GetParentImageId(), image, name)
+	in.IDs.Ref(nsImage, img.GetCopyOfImageId(), image, name)
 	si.parentOld, si.copyOld = img.GetParentImageId(), img.GetCopyOfImageId()
 	if !p.stageFile(ctx, in, si, img.GetFile()) {
 		return 0
@@ -708,8 +710,12 @@ func (p *mapsPart) stagePoint(in *campaignpackage.Import, pm *pkgv1.PackageMap, 
 	if ok && pp.GetKind() == mapsv1.MapPointKind_MAP_POINT_KIND_SCENE {
 		problemKind = pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_SCENE
 	}
+	if !ok {
+		in.Problem(problemKind, name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
+		return nil
+	}
 	pt := &stagedPoint{oldID: pp.GetId(), kind: kind, name: name, x: pp.GetXBp(), y: pp.GetYBp(), showDC: pp.GetShowDc(), revealed: pp.GetRevealed(), createdAt: createdAt, mapID: sm.id}
-	if reason := p.checkPoint(in, pm, pt, pp, ok, problemKind); reason != reasonNone {
+	if reason := p.checkPoint(in, pm, pt, pp, problemKind); reason != reasonNone {
 		in.Problem(problemKind, name, reason, 0)
 		return nil
 	}
@@ -720,28 +726,24 @@ func (p *mapsPart) stagePoint(in *campaignpackage.Import, pm *pkgv1.PackageMap, 
 	return pt
 }
 
-// checkPoint fills the checked fields of a point and returns the first thing
-// wrong with it. knownKind says the kind is one a point may have.
-func (p *mapsPart) checkPoint(in *campaignpackage.Import, pm *pkgv1.PackageMap, pt *stagedPoint, pp *pkgv1.PackagePoint, knownKind bool, problemKind pkgv1.PackageProblemKind) pkgv1.PackageProblemReason {
+// checkPoint fills the checked fields of a point and returns the first thing wrong with it.
+func (p *mapsPart) checkPoint(in *campaignpackage.Import, pm *pkgv1.PackageMap, pt *stagedPoint, pp *pkgv1.PackagePoint, problemKind pkgv1.PackageProblemKind) pkgv1.PackageProblemReason {
 	invalid := pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
-	if !knownKind {
-		return invalid
-	}
 	var ok bool
 	if pt.id, ok = in.IDs.Define(nsPoint, pp.GetId()); !ok {
 		return invalid
 	}
-	if !p.fillPointText(pt, pp) {
-		return invalid
+	if reason := checkPointText(pt, pp); reason != reasonNone {
+		return reason
 	}
 	if reason := stagePointTarget(in, pm, pt, pp, problemKind); reason != reasonNone {
 		return reason
 	}
-	if reason := p.fillPointSpec(pt, pp); reason != reasonNone {
+	if reason := p.checkPointSpec(pt, pp); reason != reasonNone {
 		return reason
 	}
-	if !fillPointStairs(pt, pp) {
-		return invalid
+	if reason := checkPointStairs(pt, pp); reason != reasonNone {
+		return reason
 	}
 	if pp.GetKind() != mapsv1.MapPointKind_MAP_POINT_KIND_SCENE && (len(pp.GetActions()) > 0 || len(pp.GetClues()) > 0) {
 		return invalid
@@ -749,9 +751,9 @@ func (p *mapsPart) checkPoint(in *campaignpackage.Import, pm *pkgv1.PackageMap, 
 	return reasonNone
 }
 
-// fillPointText checks the point's description, hooks and position, and that
-// only a scene has hooks or shows its DCs. It says whether they are all good.
-func (p *mapsPart) fillPointText(pt *stagedPoint, pp *pkgv1.PackagePoint) bool {
+// checkPointText checks the point's description, hooks and position, and that only a scene
+// has hooks or shows its DCs.
+func checkPointText(pt *stagedPoint, pp *pkgv1.PackagePoint) pkgv1.PackageProblemReason {
 	var errs [4]error
 	pt.desc, errs[0] = cleanDescription(pp.GetDescription())
 	pt.hooks, errs[1] = cleanHooks(pp.GetHooks())
@@ -759,7 +761,10 @@ func (p *mapsPart) fillPointText(pt *stagedPoint, pp *pkgv1.PackagePoint) bool {
 	if (pt.hooks != "" || pt.showDC) && pp.GetKind() != mapsv1.MapPointKind_MAP_POINT_KIND_SCENE {
 		errs[3] = errOnlyScenesHaveHooks()
 	}
-	return errors.Join(errs[:]...) == nil
+	if errors.Join(errs[:]...) != nil {
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
+	}
+	return reasonNone
 }
 
 // stagePointTarget checks the map a point leads to, and notes it for the new id.
@@ -777,9 +782,9 @@ func stagePointTarget(in *campaignpackage.Import, pm *pkgv1.PackageMap, pt *stag
 	return reasonNone
 }
 
-// fillPointSpec checks the point's trap, treasure or light as the master's own
+// checkPointSpec checks the point's trap, treasure or light as the master's own
 // calls do. A trap comes back armed, whatever state it was left in.
-func (p *mapsPart) fillPointSpec(pt *stagedPoint, pp *pkgv1.PackagePoint) pkgv1.PackageProblemReason {
+func (p *mapsPart) checkPointSpec(pt *stagedPoint, pp *pkgv1.PackagePoint) pkgv1.PackageProblemReason {
 	trap := pp.GetTrap()
 	if trap != nil {
 		trap = proto.Clone(trap).(*mapsv1.TrapSpec) //nolint:forcetypeassert // Clone returns the same type
@@ -792,17 +797,17 @@ func (p *mapsPart) fillPointSpec(pt *stagedPoint, pp *pkgv1.PackagePoint) pkgv1.
 	return reasonNone
 }
 
-// fillPointStairs checks a submap point's stairs. It says whether they are good.
-func fillPointStairs(pt *stagedPoint, pp *pkgv1.PackagePoint) bool {
+// checkPointStairs checks a submap point's stairs.
+func checkPointStairs(pt *stagedPoint, pp *pkgv1.PackagePoint) pkgv1.PackageProblemReason {
 	if pp.GetStairs() == "" {
-		return true
+		return reasonNone
 	}
 	if pt.kind != kindToDB[mapsv1.MapPointKind_MAP_POINT_KIND_SUBMAP] || (pp.GetStairs() != "up" && pp.GetStairs() != "down") {
-		return false
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID
 	}
 	stairs := pp.GetStairs()
 	pt.stairs = &stairs
-	return true
+	return reasonNone
 }
 
 // countPoint counts a staged point for the preview, by its kind.

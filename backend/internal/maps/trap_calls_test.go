@@ -11,7 +11,7 @@ import (
 )
 
 // The master's calls on a trap or a treasure (RevealTrap, MarkTreasureFound and
-// UnmarkTreasureFound), frozen before they were split into phases: which fault a caller
+// UnmarkTreasureFound): which fault a caller
 // reads first, who hears of each change and what is written. The happy paths and the
 // leaks of RN-10 are in kinds_test.go and fixround_test.go.
 

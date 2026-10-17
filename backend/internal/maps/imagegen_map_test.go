@@ -27,7 +27,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// MR-039, RN-28, RN-10 (slice 10.8b): pictures made from a map. The tests use the
+// MR-039, RN-28, RN-10: pictures made from a map. The tests use the
 // fake generator (package gen), so they need no key and no network. The cave of
 // fog_test.go is the table: four player characters, Goblin 2 in the corridor's light
 // (the one NPC the party sees), Goblin 1 and the captain in the guard room (not

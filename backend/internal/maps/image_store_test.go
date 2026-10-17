@@ -19,10 +19,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 )
 
-// Characterization of storeImage (every way an image is stored or refused, and
-// what is left behind) and of serve (who is served which image and with which
-// headers). Written on the code before it was split into phases; it must keep
-// passing unchanged.
+// storeImage (every way an image is stored or refused, and what is left behind) and
+// serve (who is served which image and with which headers).
 
 // putFailer is a blob store whose nth Put fails (n from 1), and whose Open
 // fails when openErr is set.
@@ -79,7 +77,7 @@ func checkImageGolden(t *testing.T, name, got string) {
 	}
 }
 
-func TestStoreImageIsFrozen(t *testing.T) {
+func TestStoreImageEveryOutcome(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	master := h.newUser("Mestre")
@@ -98,7 +96,7 @@ func TestStoreImageIsFrozen(t *testing.T) {
 
 	type finisher = func(ctx context.Context, q *mapsdb.Queries, imageID string) error
 	store := func(res *images.Result, generated bool, kind string, parent *string, finish finisher) (mapsdb.GalleryImage, error) {
-		return svc.storeImage(ctx, campaign, &user, "Nome", res, generated, kind, parent, finish)
+		return svc.storeImage(ctx, imageStore{campaignID: campaign, uploadedBy: &user, name: "Nome", res: res, generated: generated, generatedKind: kind, parent: parent, finish: finish})
 	}
 	count := func() int {
 		var n int
@@ -208,7 +206,7 @@ func TestStoreImageIsFrozen(t *testing.T) {
 	checkImageGolden(t, "image_store", out.String())
 }
 
-func TestServeImageIsFrozen(t *testing.T) {
+func TestServeImageWhoGetsWhichImage(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	master, ana := h.newUser("Mestre"), h.newUser("Ana")

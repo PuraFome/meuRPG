@@ -15,7 +15,7 @@ import (
 )
 
 // What the play module asks of the fog of war while a combat runs on a map
-// (MR-036, RN-10, slice 9.7): who sees which square now, and the terrain a
+// (MR-036, RN-10): who sees which square now, and the terrain a
 // player knows. Like Terrain and the other seams between modules they take no
 // caller and check nobody: they run after play's own authorization, and play only
 // uses them to decide which combatants and which squares a player may be told.

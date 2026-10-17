@@ -425,8 +425,8 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			_, err := u.maps.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: campaign, MapId: shown.GetId(), CharacterId: npc.GetId()}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
-		// Etapa 9: the layers, the fog, the traps, the treasure and the carried
-		// light. The map has a grid for these.
+		// The layers, the fog, the traps, the treasure and the carried light. The
+		// map has a grid for these.
 		{"PaintMapCells", func(ctx context.Context, u *user) error {
 			_, err := u.maps.PaintMapCells(ctx, connect.NewRequest(&mapsv1.PaintMapCellsRequest{
 				CampaignId: campaign, MapId: gridMap.GetId(), Layer: mapsv1.MapLayer_MAP_LAYER_WALL, Value: 1, Squares: []*mapsv1.MapSquare{{Col: 1, Row: 1}},
@@ -897,8 +897,8 @@ func TestMapInputRules(t *testing.T) {
 	wantCode(t, "CreateMapPoint over the limit", err, connect.CodeResourceExhausted)
 }
 
-// A new token of a player's character is visible, an NPC's hidden
-// (question 31). Moving keeps the state; hiding and showing work; the
+// A new token of a player's character is visible, an NPC's hidden.
+// Moving keeps the state; hiding and showing work; the
 // player sees only visible tokens; removing takes the token off.
 func TestTokensDefaults(t *testing.T) {
 	t.Parallel()

@@ -1,5 +1,5 @@
 // Package link holds the small plain types that cross the border between the
-// maps module and the modules it reads for the fog of war (MR-036, Etapa 9):
+// maps module and the modules it reads for the fog of war (MR-036):
 // the characters module (who sees, and with which senses) and the play module
 // (where the combatants stand while a fight runs).
 //
@@ -81,7 +81,7 @@ type CombatPositions struct {
 }
 
 // CombatSight is what the players of a map with the fog of war on see at one
-// moment, for the combat that runs on it (MR-036, slice 9.7): the play module asks
+// moment, for the combat that runs on it (MR-036): the play module asks
 // for it once, then asks it about each NPC combatant's square, and shows each
 // player only the NPCs their character sees. It holds squares and user IDs, never a
 // creature: where the combatants stand is the play module's.

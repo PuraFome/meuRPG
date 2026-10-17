@@ -21,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// TreasureService (MR-044, RN-09, RN-10, Etapa 10, slice 10.10b): the master's
+// TreasureService (MR-044, RN-09, RN-10): the master's
 // treasure generator. The generator itself is package rules (pure: the same mode,
 // party level and seed give the same treasure); this file is what the server does
 // around it: the party's level, the answers, and "Pôr no mapa", which makes a hidden
@@ -239,8 +239,9 @@ func (s *Service) PlaceTreasure(
 
 	var placed treasurePlacement
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		placed = treasurePlacement{}
-		return s.placeTreasureIn(ctx, s.queries.WithTx(tx), m.CampaignID, plan, scopedKey, requestHash, &placed)
+		var err error
+		placed, err = s.placeTreasureTx(ctx, s.queries.WithTx(tx), m.CampaignID, plan, scopedKey, requestHash)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "place a treasure", err)
@@ -352,26 +353,28 @@ func treasureName(msg *mapsv1.PlaceTreasureRequest, mode string) (string, error)
 	return name, nil
 }
 
-// placeTreasureIn is the transaction of PlaceTreasure: the map, the replay of the key, the
+// placeTreasureTx is the transaction of PlaceTreasure: the map, the replay of the key, the
 // square, the cap and the insert.
-func (s *Service) placeTreasureIn(ctx context.Context, q *mapsdb.Queries, campaignID string, plan treasurePlan, scopedKey, requestHash string, placed *treasurePlacement) error {
-	var err error
-	if placed.mapRow, err = s.campaignMap(ctx, q, campaignID, plan.mapID); err != nil {
-		return err
+func (s *Service) placeTreasureTx(ctx context.Context, q *mapsdb.Queries, campaignID string, plan treasurePlan, scopedKey, requestHash string) (treasurePlacement, error) {
+	mapRow, err := s.campaignMap(ctx, q, campaignID, plan.mapID)
+	if err != nil {
+		return treasurePlacement{}, err
 	}
 	// A retry finds the point the first call made.
 	prior, err := q.GetMapPointByCreateKey(ctx, &scopedKey)
 	if err == nil {
-		return replayOf(prior, requestHash, &placed.point, &placed.replayed)
+		point, err := replayOf(prior, requestHash)
+		return treasurePlacement{point: point, mapRow: mapRow, replayed: err == nil}, err
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("find the point of the key: %w", err)
+		return treasurePlacement{}, fmt.Errorf("find the point of the key: %w", err)
 	}
 	x, y, err := s.treasureSquareCenter(ctx, q, campaignID, plan)
 	if err != nil {
-		return err
+		return treasurePlacement{}, err
 	}
-	return s.insertTreasurePoint(ctx, q, plan, [2]int{x, y}, scopedKey, requestHash, placed)
+	point, replayed, err := s.insertTreasurePoint(ctx, q, plan, x, y, scopedKey, requestHash)
+	return treasurePlacement{point: point, mapRow: mapRow, replayed: replayed}, err
 }
 
 // treasureSquareCenter is the middle of the square asked, in basis points of the map.
@@ -397,41 +400,41 @@ func (s *Service) treasureSquareCenter(ctx context.Context, q *mapsdb.Queries, c
 
 // insertTreasurePoint counts the map's points against the cap and inserts the hidden
 // point; when another call with the same key won the race, its point is ours.
-func (s *Service) insertTreasurePoint(ctx context.Context, q *mapsdb.Queries, plan treasurePlan, center [2]int, scopedKey, requestHash string, placed *treasurePlacement) error {
+func (s *Service) insertTreasurePoint(ctx context.Context, q *mapsdb.Queries, plan treasurePlan, x, y int, scopedKey, requestHash string) (point mapsdb.MapPoint, replayed bool, err error) {
 	value := int32(plan.treasure.GoldPO) //nolint:gosec // G115: at most 1,000,000
 	count, err := q.CountMapPoints(ctx, plan.mapID)
 	if err != nil {
-		return fmt.Errorf("count points: %w", err)
+		return point, false, fmt.Errorf("count points: %w", err)
 	}
 	if count >= s.maxPoints {
-		return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the map already has %d points", s.maxPoints))
+		return point, false, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("the map already has %d points", s.maxPoints))
 	}
-	placed.point, err = q.InsertTreasurePoint(ctx, mapsdb.InsertTreasurePointParams{
-		MapID: plan.mapID, Name: plan.name, Description: plan.description, XBp: int32(center[0]), YBp: int32(center[1]), //nolint:gosec // G115: 0 to 10000
+	point, err = q.InsertTreasurePoint(ctx, mapsdb.InsertTreasurePointParams{
+		MapID: plan.mapID, Name: plan.name, Description: plan.description, XBp: int32(x), YBp: int32(y), //nolint:gosec // G115: 0 to 10000
 		TreasureValuePo: &value, CreateKey: &scopedKey, CreateHash: &requestHash, Now: s.now(),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Another call with the same key won the race: its point is ours.
 		prior, err := q.GetMapPointByCreateKey(ctx, &scopedKey)
 		if err != nil {
-			return fmt.Errorf("find the point of the key: %w", err)
+			return point, false, fmt.Errorf("find the point of the key: %w", err)
 		}
-		return replayOf(prior, requestHash, &placed.point, &placed.replayed)
+		point, err = replayOf(prior, requestHash)
+		return point, err == nil, err
 	}
 	if err != nil {
-		return fmt.Errorf("insert point: %w", err)
+		return point, false, fmt.Errorf("insert point: %w", err)
 	}
-	return nil
+	return point, false, nil
 }
 
-// replayOf takes the point an earlier call with the same key made, once it is the same
+// replayOf is the point an earlier call with the same key made, once it is the same
 // request (the same hash): a key reused for another change is a mistake of the app.
-func replayOf(prior mapsdb.MapPoint, hash string, into *mapsdb.MapPoint, replayed *bool) error {
+func replayOf(prior mapsdb.MapPoint, hash string) (mapsdb.MapPoint, error) {
 	if prior.CreateHash == nil || *prior.CreateHash != hash {
-		return errKeyUsedForAnotherChange()
+		return mapsdb.MapPoint{}, errKeyUsedForAnotherChange()
 	}
-	*into, *replayed = prior, true
-	return nil
+	return prior, nil
 }
 
 // hashTreasureRequest is the hash of everything that makes a PlaceTreasure what it is.

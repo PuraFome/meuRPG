@@ -22,7 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The new kinds of point (Etapa 9): the trap (MR-035), the treasure (MR-041)
+// The new kinds of point the trap (MR-035), the treasure (MR-041)
 // and the light (MR-036), who sees each of them (RN-10), the treasure found, and
 // the light a character carries.
 
@@ -85,7 +85,7 @@ func (s *scenes) newLight(name, preset string) *mapsv1.MapPoint {
 	})
 }
 
-// MR-035, D5: a trap is created from each of the SRD's presets, copying it
+// MR-035: a trap is created from each of the SRD's presets, copying it
 // whole, and a light from each of the light presets, with the radii of the
 // preset when none are sent; everything stays editable.
 func TestMR035_PresetsFillTrapsAndLights(t *testing.T) {
@@ -364,7 +364,7 @@ func TestMR035_UpdatingPointsOfTheNewKinds(t *testing.T) {
 	wantCode(t, "a treasure worth too much", err, connect.CodeInvalidArgument)
 }
 
-// RN-10, D5, D6, D8: no player response, in any read or on the stream, carries a
+// RN-10: no player response, in any read or on the stream, carries a
 // trap that was not revealed to their character (not even its ID or position), a
 // DC or an effect, a light point, the light layer, or a hidden treasure. A trap
 // revealed to Toren reaches only Toren's player; a triggered trap reaches everyone.
@@ -583,7 +583,7 @@ func (h *harness) eventsOf(kinds ...string) []string {
 	return out
 }
 
-// MR-035, D5: RevealTrap shows a trap to the characters the master picks or to
+// MR-035: RevealTrap shows a trap to the characters the master picks or to
 // everyone, once; the master sees who knows it; the event holds ids only; with no
 // session nothing is written.
 func TestMR035_RevealTrap(t *testing.T) {
@@ -675,7 +675,7 @@ func TestMR035_RevealTrap(t *testing.T) {
 	}
 }
 
-// MR-041, D8: found by one or more characters, visible to everyone with its
+// MR-041: found by one or more characters, visible to everyone with its
 // contents, the session it was found in, the events (ids and the PO only),
 // unmarking, and the converted lock.
 func TestMR041_TreasureFound(t *testing.T) {
@@ -797,8 +797,8 @@ func TestMR041_TreasureFound(t *testing.T) {
 		}
 	}
 
-	// Converted (slice 9.11 sets the link inside the XP award's transaction): the
-	// value and the found mark are frozen.
+	// Converted (the XP award sets the link inside its own transaction): the value and
+	// the found mark are frozen.
 	if _, err := mark(m, s.pens.GetId()); err != nil {
 		t.Fatal(err)
 	}
@@ -837,7 +837,7 @@ func pointByID(res *mapsv1.GetMapResponse, id string) *mapsv1.MapPoint {
 	return nil
 }
 
-// MR-036, D6: a player carries a light for their own character, the master for
+// MR-036: a player carries a light for their own character, the master for
 // anyone; the key is checked against the presets; the master and the owner read it
 // on the token, another player does not.
 func TestMR036_CarriedLight(t *testing.T) {

@@ -77,6 +77,68 @@ func (s *Service) prepareReuseCopy(ctx context.Context, campaignID, imageID stri
 	return s.copyFiles(ctx, campaignID, imageID)
 }
 
+// mapBeforeTx reads a map outside the transaction, to know which copy of an image to
+// prepare. A map that is not there is ok=false: the transaction refuses it. Any other
+// error is the call's, so a failed read never goes on as "no copy needed".
+func (s *Service) mapBeforeTx(ctx context.Context, campaignID, mapID string) (m mapsdb.Map, ok bool, err error) {
+	m, err = s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return m, false, nil
+	}
+	if err != nil {
+		return m, false, fmt.Errorf("read the map before copying its image: %w", err)
+	}
+	return m, true, nil
+}
+
+// imageCopyFor prepares the copy that giving the map imageID needs: a fog map's image
+// is its own, and a map without fog never takes a fog map's. It is nil when the map
+// has the image already, nothing else uses it, or the map is not there. fogSeen is the
+// fog the copy was prepared for: the transaction refuses the call when the fog changed
+// meanwhile (the revision does not move with it), because the copy would be the wrong one.
+func (s *Service) imageCopyFor(ctx context.Context, campaignID, mapID, imageID string) (c *fogCopy, fogSeen bool, err error) {
+	before, ok, err := s.mapBeforeTx(ctx, campaignID, mapID)
+	if err != nil || !ok || before.ImageID == imageID {
+		return nil, before.FogEnabled, err
+	}
+	if before.FogEnabled {
+		c, err = s.prepareFogCopy(ctx, campaignID, mapID, imageID)
+	} else {
+		c, err = s.prepareReuseCopy(ctx, campaignID, imageID)
+	}
+	return c, before.FogEnabled, err
+}
+
+// fogCopyOf prepares the copy of the map's own image that turning its fog on needs,
+// when needed says that the map as it is now is about to get the fog.
+func (s *Service) fogCopyOf(ctx context.Context, campaignID, mapID string, needed func(mapsdb.Map) bool) (*fogCopy, error) {
+	before, ok, err := s.mapBeforeTx(ctx, campaignID, mapID)
+	if err != nil || !ok || !needed(before) {
+		return nil, err
+	}
+	return s.prepareFogCopy(ctx, campaignID, mapID, before.ImageID)
+}
+
+// discardFogCopy deletes the files of a copy made for nothing: the transaction failed,
+// or the map did not take it.
+func (s *Service) discardFogCopy(ctx context.Context, campaignID string, c *fogCopy, unused bool) {
+	if c != nil && unused {
+		s.deleteFiles(ctx, campaignID, c.id)
+	}
+}
+
+// giveMapItsCopy adds the copy to the gallery and makes it the map's image, inside the
+// transaction.
+func (c *fogCopy) giveMapItsCopy(ctx context.Context, q *mapsdb.Queries, s *Service, campaignID, userID, mapID string) error {
+	if err := c.insert(ctx, q, s, campaignID, userID); err != nil {
+		return err
+	}
+	if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: campaignID, ID: mapID, ImageID: c.id, Now: s.now()}); err != nil {
+		return fmt.Errorf("give the map its copy of the image: %w", err)
+	}
+	return nil
+}
+
 // copyFiles copies the files of a gallery image to a new image ID.
 func (s *Service) copyFiles(ctx context.Context, campaignID, imageID string) (*fogCopy, error) {
 	src, err := s.queries.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: campaignID, ID: imageID})

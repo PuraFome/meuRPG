@@ -1,5 +1,5 @@
 // Package dungeonimg draws the flat image of a generated dungeon's map
-// (MR-010, Etapa 10): floors and walls, nothing else.
+// (MR-010): floors and walls, nothing else.
 //
 // The image is a pure function of a floor plan (which squares are solid), so the
 // same plan always gives the same pixels, and "Redesenhar" can draw it again from

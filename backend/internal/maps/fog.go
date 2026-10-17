@@ -20,8 +20,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
 
-// What each player sees of a map with the fog of war on (MR-036, RN-10, Etapa 9,
-// D6). Everything a player receives about such a map goes through here: this is
+// What each player sees of a map with the fog of war on (MR-036, RN-10).
+// Everything a player receives about such a map goes through here: this is
 // the one place that says which squares a player sees now, which they remember,
 // and so which points, tokens and layers they may be sent.
 //
@@ -215,7 +215,7 @@ type sight struct {
 	extra map[string][]vision.Viewer
 	group bool
 	// combat says a combat runs on the map: the NPC tokens are then left out of
-	// a player's reads (the combatants are slice 9.7's).
+	// a player's reads (fogcombat.go reads the combatants).
 	combat bool
 	// openPlan says the map's base light is "Claro": the players see the whole floor
 	// plan (see playerView.terrainAll). It never touches what is in sight.
@@ -430,7 +430,7 @@ const familiarSightSquares = 20
 // the map too.
 func (s *Service) familiarEyes(ctx context.Context, tx pgx.Tx, in fogInput, members []link.PartyMember, stands map[string]grid.Square, combat link.CombatPositions) (map[string][]vision.Viewer, error) {
 	var out map[string][]vision.Viewer
-	creatures := &creatureTokens{s: s, tx: tx, in: in}
+	creatures := &creatureSquares{s: s, tx: tx, in: in}
 	for _, m := range members {
 		eyes, ok, err := familiarViewer(ctx, creatures, stands, combat, m)
 		if err != nil {
@@ -449,7 +449,7 @@ func (s *Service) familiarEyes(ctx context.Context, tx pgx.Tx, in fogInput, memb
 
 // familiarViewer is the viewer the member's familiar is, if the member looks through
 // its eyes and it is in range of the character.
-func familiarViewer(ctx context.Context, creatures *creatureTokens, stands map[string]grid.Square, combat link.CombatPositions, m link.PartyMember) (vision.Viewer, bool, error) {
+func familiarViewer(ctx context.Context, creatures *creatureSquares, stands map[string]grid.Square, combat link.CombatPositions, m link.PartyMember) (vision.Viewer, bool, error) {
 	if m.Eyes == nil {
 		return vision.Viewer{}, false, nil
 	}
@@ -477,9 +477,9 @@ func withinFamiliarSight(character, familiar grid.Square) bool {
 	return dc*dc+dr*dr <= familiarSightSquares*familiarSightSquares
 }
 
-// creatureTokens are the squares of a map's creature tokens, read once and only if
+// creatureSquares are the squares of a map's creature tokens, read once and only if
 // a familiar needs them.
-type creatureTokens struct {
+type creatureSquares struct {
 	s       *Service
 	tx      pgx.Tx
 	in      fogInput
@@ -487,7 +487,7 @@ type creatureTokens struct {
 }
 
 // squareOf is the square of a creature's token on the map, if it has one.
-func (c *creatureTokens) squareOf(ctx context.Context, creatureID string) (grid.Square, bool, error) {
+func (c *creatureSquares) squareOf(ctx context.Context, creatureID string) (grid.Square, bool, error) {
 	if c.squares == nil {
 		if err := c.load(ctx); err != nil {
 			return grid.Square{}, false, err
@@ -497,7 +497,7 @@ func (c *creatureTokens) squareOf(ctx context.Context, creatureID string) (grid.
 	return sq, ok, nil
 }
 
-func (c *creatureTokens) load(ctx context.Context) error {
+func (c *creatureSquares) load(ctx context.Context) error {
 	c.squares = map[string]grid.Square{}
 	rows, err := queriesIn(c.s.queries, c.tx).ListMapCreatureTokens(ctx, c.in.mapID)
 	if err != nil {
@@ -851,7 +851,7 @@ func (s *Service) pointSeenNow(pv *playerView, p mapsdb.MapPoint) bool {
 // square seen now, and not at all while a combat runs on the map.
 func tokenSeen(pv *playerView, t mapsdb.MapToken, player bool) bool {
 	// While a combat runs, the token of an NPC is the square it had before the
-	// fight: it is left out, and the combatants are slice 9.7's.
+	// fight: it is left out, and fogcombat.go reads the combatants.
 	return player || (!pv.combat && pv.seenNow(pv.g.SquareOf(int(t.XBp), int(t.YBp))))
 }
 

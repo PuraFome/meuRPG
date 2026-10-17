@@ -11,10 +11,8 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// Characterization of SetSceneImages and DeleteGalleryImage: each refusal with
-// its exact code and message in the order the checks run, and who hears each
-// change. Written on the code before it was split into phases; it must keep
-// passing unchanged.
+// SetSceneImages and DeleteGalleryImage: each refusal with its exact code and
+// message in the order the checks run, and who hears each change.
 
 // imageRefusal renders a refusal as "code: message", or "ok" for no error.
 func imageRefusal(err error) string {
@@ -50,7 +48,7 @@ func imageEvents(w *watcher, probeMapID string) string {
 	return strings.Join(out, ",")
 }
 
-func TestSetSceneImagesIsFrozen(t *testing.T) {
+func TestSetSceneImagesRefusalsAndWhoHears(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	pid := s.point.GetId()
@@ -127,7 +125,7 @@ func TestSetSceneImagesIsFrozen(t *testing.T) {
 	}
 }
 
-func TestDeleteGalleryImageIsFrozen(t *testing.T) {
+func TestDeleteGalleryImageRefusalsAndWhoHears(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	del := func(u *user, campaign, image string) error {

@@ -67,7 +67,7 @@ func (s *Service) StartCampaignExport(
 	ctx context.Context,
 	req *connect.Request[pkgv1.StartCampaignExportRequest],
 ) (*connect.Response[pkgv1.StartCampaignExportResponse], error) {
-	in, err := s.readExportStart(ctx, req.Msg)
+	in, err := s.checkExportStart(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -98,9 +98,9 @@ type exportStart struct {
 	id           string
 }
 
-// readExportStart makes StartCampaignExport's checks, in order: the master,
+// checkExportStart makes StartCampaignExport's checks, in order: the master,
 // the store, the idempotency key and the rate limit.
-func (s *Service) readExportStart(ctx context.Context, msg *pkgv1.StartCampaignExportRequest) (exportStart, error) {
+func (s *Service) checkExportStart(ctx context.Context, msg *pkgv1.StartCampaignExportRequest) (exportStart, error) {
 	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
 		return exportStart{}, err
