@@ -3715,10 +3715,16 @@ type CombatLogHitRider struct {
 	// The target's roll and the DC: the master's line, and the target's player's when the target
 	// is a player's character. The monk's player reads only the result: an NPC's roll never
 	// reaches a player (RN-20).
-	D20           int32 `protobuf:"varint,3,opt,name=d20,proto3" json:"d20,omitempty"`
-	SaveTotal     int32 `protobuf:"varint,4,opt,name=save_total,json=saveTotal,proto3" json:"save_total,omitempty"`
-	Dc            int32 `protobuf:"varint,5,opt,name=dc,proto3" json:"dc,omitempty"`
-	Numbers       bool  `protobuf:"varint,6,opt,name=numbers,proto3" json:"numbers,omitempty"`
+	D20       int32 `protobuf:"varint,3,opt,name=d20,proto3" json:"d20,omitempty"`
+	SaveTotal int32 `protobuf:"varint,4,opt,name=save_total,json=saveTotal,proto3" json:"save_total,omitempty"`
+	Dc        int32 `protobuf:"varint,5,opt,name=dc,proto3" json:"dc,omitempty"`
+	Numbers   bool  `protobuf:"varint,6,opt,name=numbers,proto3" json:"numbers,omitempty"`
+	// A failed Strength save pushed the target this many feet away from the monk. 0 when
+	// it was not pushed, or could not move.
+	PushedFt int32 `protobuf:"varint,7,opt,name=pushed_ft,json=pushedFt,proto3" json:"pushed_ft,omitempty"`
+	// The save was failed but the combat has no map (theatre of the mind), so the push is
+	// the table's to imagine.
+	PushNoMap     bool `protobuf:"varint,8,opt,name=push_no_map,json=pushNoMap,proto3" json:"push_no_map,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3791,6 +3797,20 @@ func (x *CombatLogHitRider) GetDc() int32 {
 func (x *CombatLogHitRider) GetNumbers() bool {
 	if x != nil {
 		return x.Numbers
+	}
+	return false
+}
+
+func (x *CombatLogHitRider) GetPushedFt() int32 {
+	if x != nil {
+		return x.PushedFt
+	}
+	return 0
+}
+
+func (x *CombatLogHitRider) GetPushNoMap() bool {
+	if x != nil {
+		return x.PushNoMap
 	}
 	return false
 }
@@ -16405,7 +16425,13 @@ type CombatLogSpellTarget struct {
 	MoreDamages []*CombatLogDamage `protobuf:"bytes,13,rep,name=more_damages,json=moreDamages,proto3" json:"more_damages,omitempty"`
 	// Only the master: the creature was hidden from the players when the spell hit
 	// it. A player's entry never has such a target (RN-10).
-	Hidden        bool `protobuf:"varint,14,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	Hidden bool `protobuf:"varint,14,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	// A failed save pushed the creature this many feet away from the caster (5 ft a
+	// square). 0 when it was not pushed, or could not move.
+	PushedFt int32 `protobuf:"varint,15,opt,name=pushed_ft,json=pushedFt,proto3" json:"pushed_ft,omitempty"`
+	// The save was failed but the combat has no map (theatre of the mind), so the push is
+	// the table's to imagine.
+	PushNoMap     bool `protobuf:"varint,16,opt,name=push_no_map,json=pushNoMap,proto3" json:"push_no_map,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -16534,6 +16560,20 @@ func (x *CombatLogSpellTarget) GetMoreDamages() []*CombatLogDamage {
 func (x *CombatLogSpellTarget) GetHidden() bool {
 	if x != nil {
 		return x.Hidden
+	}
+	return false
+}
+
+func (x *CombatLogSpellTarget) GetPushedFt() int32 {
+	if x != nil {
+		return x.PushedFt
+	}
+	return 0
+}
+
+func (x *CombatLogSpellTarget) GetPushNoMap() bool {
+	if x != nil {
+		return x.PushNoMap
 	}
 	return false
 }
@@ -21902,7 +21942,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06choice\x18\x04 \x01(\x0e2\x1e.meurpg.play.v1.HitRiderChoiceR\x06choice\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"N\n" +
 	"\x13UseHitRiderResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xe1\x01\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x9e\x02\n" +
 	"\x11CombatLogHitRider\x126\n" +
 	"\x06choice\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.HitRiderChoiceR\x06choice\x129\n" +
 	"\x06result\x18\x02 \x01(\x0e2!.meurpg.play.v1.HitRiderLogResultR\x06result\x12\x10\n" +
@@ -21910,7 +21950,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"save_total\x18\x04 \x01(\x05R\tsaveTotal\x12\x0e\n" +
 	"\x02dc\x18\x05 \x01(\x05R\x02dc\x12\x18\n" +
-	"\anumbers\x18\x06 \x01(\bR\anumbers\"\xb4\x01\n" +
+	"\anumbers\x18\x06 \x01(\bR\anumbers\x12\x1b\n" +
+	"\tpushed_ft\x18\a \x01(\x05R\bpushedFt\x12\x1e\n" +
+	"\vpush_no_map\x18\b \x01(\bR\tpushNoMap\"\xb4\x01\n" +
 	"\x14HiddenRevealQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tcaster_id\x18\x02 \x01(\tR\bcasterId\x12\x1b\n" +
@@ -23029,7 +23071,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0emetamagic_keys\x18\x1e \x03(\tR\rmetamagicKeys\x120\n" +
 	"\x14sorcery_points_spent\x18\x1f \x01(\x05R\x12sorceryPointsSpentB\x13\n" +
 	"\x11_effect_thresholdB\x16\n" +
-	"\x14_revived_death_round\"\xbe\x05\n" +
+	"\x14_revived_death_round\"\xfb\x05\n" +
 	"\x14CombatLogSpellTarget\x12\x1b\n" +
 	"\ttarget_id\x18\x01 \x01(\tR\btargetId\x12!\n" +
 	"\ftarget_label\x18\x02 \x01(\tR\vtargetLabel\x12\x14\n" +
@@ -23047,7 +23089,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vcover_bonus\x18\f \x01(\x05R\n" +
 	"coverBonus\x12B\n" +
 	"\fmore_damages\x18\r \x03(\v2\x1f.meurpg.play.v1.CombatLogDamageR\vmoreDamages\x12\x16\n" +
-	"\x06hidden\x18\x0e \x01(\bR\x06hiddenB\x15\n" +
+	"\x06hidden\x18\x0e \x01(\bR\x06hidden\x12\x1b\n" +
+	"\tpushed_ft\x18\x0f \x01(\x05R\bpushedFt\x12\x1e\n" +
+	"\vpush_no_map\x18\x10 \x01(\bR\tpushNoMapB\x15\n" +
 	"\x13_target_armor_class\"\xe6\x01\n" +
 	"\x12CombatLogDeathSave\x12,\n" +
 	"\x04roll\x18\x01 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12:\n" +

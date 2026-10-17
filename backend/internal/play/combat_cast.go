@@ -705,6 +705,9 @@ func (f *castFlow) affect(ctx context.Context) error {
 			return err
 		}
 	}
+	if err := f.pushFailedSaves(ctx); err != nil { // the forced move of a failed save (combat_forced.go)
+		return err
+	}
 	// What a spell that lasts leaves on the targets it took hold of (RN-22).
 	return f.s.applyLastingSpell(ctx, f.c, f.cs, f.sp, f.caster, f.targs, f.abilityKey, &f.out.made)
 }
@@ -820,6 +823,7 @@ func (s *Service) castPublisher(m authz.Membership, ev actionEvent, vitals []*pl
 		s.publishTeleport(ctx, m.CampaignID, d, ev)
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
+		s.publishPushed(ctx, m.CampaignID, d, pushesOf(ev.Hits))
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
