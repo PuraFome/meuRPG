@@ -89,11 +89,11 @@ func (a *armed) answerBolt(t *testing.T, bolt *playv1.CastSpellResponse) {
 // own combatant's turn.
 func (a *armed) wantTwoQuestions(t *testing.T, e *playv1.Encounter) {
 	t.Helper()
-	if n := countRows(t, a.h, countRollHolds, e.GetId()); n != 1 {
+	if n := countRows(t, a.h, countHeldAttacksInInspirationHolds, e.GetId()); n != 1 {
 		t.Errorf("%d held attacks, want the wolf's", n)
 	}
-	if n := countRows(t, a.h, countInspirationHold, a.campaignID); n != 1 {
-		t.Errorf("%d held rolls of the owner, want her cast", n)
+	if n := countRows(t, a.h, countInspirationHold, a.campaignID); n != 2 {
+		t.Errorf("%d held rolls in the table, want the wolf's attack and her cast", n)
 	}
 	if got := a.outsideState(t, a.bia).GetOffers(); len(got) != 1 {
 		t.Errorf("Brisa's player reads %d questions of hers, want 1", len(got))
