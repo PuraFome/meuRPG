@@ -334,7 +334,7 @@ type InsertPlannedMilestoneMoveParams struct {
 	Now        time.Time
 }
 
-// Keeps the idempotency key of a MoveMilestone (00257): move_key carries the campaign's ID and
+// Keeps the idempotency key of a MoveMilestone (00258): move_key carries the campaign's ID and
 // move_hash is the hash of the request. No row back means another call took the key first.
 func (q *Queries) InsertPlannedMilestoneMove(ctx context.Context, arg InsertPlannedMilestoneMoveParams) (PlannedMilestoneMove, error) {
 	row := q.db.QueryRow(ctx, insertPlannedMilestoneMove,

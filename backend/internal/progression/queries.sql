@@ -130,7 +130,7 @@ RETURNING *;
 SELECT * FROM planned_milestones WHERE create_key = $1;
 
 -- name: InsertPlannedMilestoneMove :one
--- Keeps the idempotency key of a MoveMilestone (00257): move_key carries the campaign's ID and
+-- Keeps the idempotency key of a MoveMilestone (00258): move_key carries the campaign's ID and
 -- move_hash is the hash of the request. No row back means another call took the key first.
 INSERT INTO planned_milestone_moves (campaign_id, move_key, move_hash, created_at)
 VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(move_key), sqlc.arg(move_hash), sqlc.arg(now))
