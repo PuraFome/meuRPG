@@ -444,9 +444,11 @@ func (s *Service) tellNoticers(ctx context.Context, campaignID, mapID string, ro
 // is said: who found what is the play module's event. It implements play.TrapBook.
 func (s *Service) SearchTraps(ctx context.Context, tx pgx.Tx, campaignID, mapID string, who link.Observer, skill string, totals []int, at time.Time) (link.SearchResult, error) {
 	ts, err := s.loadTrapScene(ctx, tx, campaignID, mapID, true)
-	if err != nil || len(ts.points) == 0 {
+	if err != nil {
 		return link.SearchResult{}, err
 	}
+	// No return for a map without traps: the refusal below depends on the light around the
+	// searcher alone, so it comes the same on a map that has traps and on one that has none.
 	eyes, user, ok := ts.eyesOf(who)
 	if !ok {
 		return link.SearchResult{}, nil
