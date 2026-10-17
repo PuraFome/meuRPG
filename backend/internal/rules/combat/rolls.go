@@ -138,3 +138,32 @@ func SaveSucceeded(total, dc int) bool {
 func HalfDamage(damage int) int {
 	return max(damage, 0) / 2
 }
+
+// SaveShare is how much of a damage a creature takes after the saving throw of a
+// spell or effect that deals half on a success.
+type SaveShare int
+
+// The shares of a damage.
+const (
+	ShareFull SaveShare = iota
+	ShareHalf
+	ShareNone
+)
+
+// HalfSaveShare is the share of the damage a creature takes from an effect whose
+// saving throw halves the damage on a success. Evasion (SRD 5.1, Monk and Rogue) turns
+// a Dexterity save into no damage on a success and half on a failure; an incapacitated
+// creature cannot use it. Any other ability, or a creature without Evasion, takes half
+// on a success and all on a failure.
+func HalfSaveShare(c Creature, ability string, saved bool) SaveShare {
+	if c.Evasion && ability == dexterityAbility && !c.Incapacitated() {
+		if saved {
+			return ShareNone
+		}
+		return ShareHalf
+	}
+	if saved {
+		return ShareHalf
+	}
+	return ShareFull
+}

@@ -192,6 +192,9 @@ type Creature struct {
 	PackTactics bool
 	// DangerSense says it has the barbarian's Danger Sense.
 	DangerSense bool
+	// Evasion says it has the feature of that name (monk or rogue level 7, or a
+	// stat block's Evasion): see HalfSaveShare.
+	Evasion bool
 	// Raging says it is in a rage whose benefits hold (no heavy armor).
 	Raging bool
 	// Exhaustion is its level of exhaustion, 0 to 6 (SRD, Conditions).

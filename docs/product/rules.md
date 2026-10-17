@@ -460,6 +460,11 @@ Leaving an enemy's reach provokes an opportunity attack, which the app offers to
 An evocation wizard from level 2, casting an evocation spell that affects other creatures it can see, spares up to 1 + the spell's level of them (the level it is cast at). A spared creature succeeds on its saving throw with no roll and takes no damage when the spell would deal half; the save line says "Esculpir Magias".
 The caster is never among them, and only creatures the spell reaches and the caster sees can be named.
 
+**Evasion** (SRD 5.1, Monk 7 and Rogue 7; also the ranger's Superior Hunter's Defense choice and a stat block's Evasion trait).
+On a Dexterity saving throw that deals half damage on a success, a creature with Evasion takes no damage when it succeeds and half when it fails.
+It applies to a spell's save, a trap's save and the aggressor's save against Hellish Rebuke, and not while the creature is incapacitated (Incapacitated, Paralyzed, Petrified, Stunned or Unconscious).
+Any other ability, or a save that does not halve, is unchanged.
+
 See [Movement in combat](../architecture/play/movement.md), [Maps and the grid](../architecture/rules-maps.md#grid) and [Combat design](../design/combat.md).
 
 ## RN-22: Conditions and concentration
