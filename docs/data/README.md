@@ -111,7 +111,7 @@ Keys and hashes are opaque values with no personal data.
 | `xp_awards` | `idempotency_key` (UUID), `idempotency_hash`, `undo_key`, `milestone_again` | `UNIQUE (campaign_id, idempotency_key)`. The undo has its own key. `milestone_again` lets the server refuse a key reused for another kind of request. |
 | `image_requests` | `idempotency_key`, `idempotency_hash` | Unique per campaign. |
 | `puzzle_moves`, `puzzle_hint_tries` | `idempotency_key` (UUID) | `UNIQUE (run_id, idempotency_key)`: a repeated move returns the round as it is now. |
-| `roll_holds`, `inspiration_holds` | `idempotency_key`, `answer_key` | Unique per encounter (`roll_holds`) or campaign (`inspiration_holds`); the answer key lets a retry find the hold answered. |
+| `roll_holds` (retired), `inspiration_holds` | `idempotency_key`, `answer_key` | Unique per encounter (`roll_holds`) or campaign (`inspiration_holds`); the answer key lets a retry find the hold answered. |
 | `trap_damages` | `settle_key`, `settle_hash` | Unique where set: settling a trap damage works with no session open, where no event can hold the key. |
 | `character_reviews`, `revivify_requests`, `characters` (revive) | `request_key`/`request_hash`, `resubmit_key`/`resubmit_hash`; `create_key`/`create_hash`, `answer_key`/`answer_hash`; `revive_key`/`revive_hash` | Only the latest key of each kind is kept. |
 | `campaign_content_imports` | `create_key`, `create_hash`, `response` | Primary key `(campaign_id, create_key)`; a retry returns the stored `response`. |

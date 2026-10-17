@@ -37,24 +37,26 @@ func (a *armed) damageReport(t *testing.T, after int, res *playv1.RollDamageResp
 	for _, l := range a.eventTrace(t, a.get(t, a.master), after) {
 		lines = append(lines, "event "+l)
 	}
+	var state []string
 	for _, r := range a.rowsOf(t, `SELECT label, hp_current, hp_temp, defeated, death_successes, death_failures, COALESCE(concentration_spell, '-'), took_damage, COALESCE(sneak_attack_turn, '-'), COALESCE(colossus_slayer_turn, '-'), reaction_used, grid_col, grid_row, hidden, rage_end_pending FROM combatants ORDER BY label`) {
-		lines = append(lines, "combatant "+r)
+		state = append(state, "combatant "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT c.name, v.hit_points_current, v.hit_points_temporary, v.spell_slots_used::TEXT, v.pact_slots_used, v.resources_used::TEXT FROM character_vitals v JOIN characters c ON c.id = v.character_id`) {
-		lines = append(lines, "vitals "+r)
+		state = append(state, "vitals "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces::TEXT, physical, COALESCE(amount, -1), COALESCE(applied_amount, -1), COALESCE(roll_total, -1), half, healing, COALESCE(taken, -1), critical_max, critical_max_rule, savage_dice, parts::TEXT, part_rolls::TEXT, steps::TEXT, COALESCE(after_steps, -1), COALESCE(landed_before::TEXT, '-'), resolved_at IS NOT NULL FROM pending_damages`) {
-		lines = append(lines, "damage "+r)
+		state = append(state, "damage "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT kind, status, COALESCE(closed_reason, '-'), step, trigger::TEXT, COALESCE(outcome::TEXT, '-') FROM reaction_windows`) {
-		lines = append(lines, "window "+r)
+		state = append(state, "window "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT kind, state, data::TEXT FROM reaction_holds`) {
-		lines = append(lines, "hold "+r)
+		state = append(state, "hold "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT kind, used, COALESCE(choice, '-') FROM hit_riders`) {
-		lines = append(lines, "rider "+r)
+		state = append(state, "rider "+r)
 	}
+	lines = append(lines, a.printedState(t, err != nil, state)...)
 	out := strings.Join(lines, "\n")
 	return uuidPattern.ReplaceAllStringFunc(out, func(id string) string {
 		if l, ok := names[id]; ok {
@@ -105,14 +107,9 @@ type damagePlay struct {
 	err    error
 }
 
-type damageScenario struct {
-	name string
-	run  func(t *testing.T) string
-}
-
 // damageOn is a scenario that plays its own fight.
-func damageOn(name string, play func(t *testing.T) damagePlay) damageScenario {
-	return damageScenario{name: name, run: func(t *testing.T) string {
+func damageOn(name string, play func(t *testing.T) damagePlay) goldenScenario {
+	return goldenScenario{name: name, run: func(t *testing.T) string {
 		t.Helper()
 		p := play(t)
 		return p.a.damageReport(t, p.before, p.res, p.err)
@@ -122,7 +119,7 @@ func damageOn(name string, play func(t *testing.T) damagePlay) damageScenario {
 // rolled is the damage roll of u on a pending damage, with the events counted just before it.
 func (a *armed) rolled(t *testing.T, u *user, e *playv1.Encounter, pendingID string, edit func(*playv1.RollDamageRequest)) damagePlay {
 	t.Helper()
-	before := a.afterSetup(t)
+	before := a.markCall(t)
 	res, err := a.rawDamage(t, u, e, pendingID, edit)
 	return damagePlay{a: a, before: before, res: res, err: err}
 }
@@ -152,7 +149,7 @@ func goblinHitsToren(t *testing.T, a *armed, e *playv1.Encounter, face int32) (*
 }
 
 // damageRefusal is a scenario of a damage roll on Toren's hit that edits the request and reads the refusal.
-func damageRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollDamageRequest)) damageScenario {
+func damageRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollDamageRequest)) goldenScenario {
 	return damageOn("refused "+name, func(t *testing.T) damagePlay {
 		t.Helper()
 		a := newArmed(t)
@@ -163,7 +160,7 @@ func damageRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollD
 }
 
 // damageThrough is a scenario of a damage roll on Toren's hit (a critical one when crit is set).
-func damageThrough(name string, crit bool, as func(a *armed) *user, edit func(*playv1.RollDamageRequest)) damageScenario {
+func damageThrough(name string, crit bool, as func(a *armed) *user, edit func(*playv1.RollDamageRequest)) goldenScenario {
 	return damageOn(name, func(t *testing.T) damagePlay {
 		t.Helper()
 		a := newArmed(t)
@@ -186,27 +183,8 @@ func typedParts(parts ...*playv1.TypedPart) func(*playv1.RollDamageRequest) {
 }
 
 // refusedDamages are the requests the damage roll refuses before it writes anything.
-func refusedDamages() []damageScenario {
-	return []damageScenario{
-		damageRefusal("a key that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.IdempotencyKey = "not-a-key" }),
-		damageRefusal("an encounter that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.EncounterId = "nope" }),
-		damageRefusal("a pending damage that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.PendingDamageId = "nope" }),
-		damageRefusal("roll_in_app false", asToren, func(r *playv1.RollDamageRequest) {
-			r.Roll = &playv1.RollDamageRequest_RollInApp{RollInApp: false}
-		}),
-		damageRefusal("no roll at all", asToren, func(r *playv1.RollDamageRequest) { r.Roll = nil }),
-		damageRefusal("a typed sum of 0", asToren, typedSum(0)),
-		damageRefusal("a typed sum of 9 for 1d8", asToren, typedSum(9)),
-		damageRefusal("a typed part named twice", asToren, typedParts(&playv1.TypedPart{PartKey: "weapon", Sum: 3}, &playv1.TypedPart{PartKey: "weapon", Sum: 4})),
-		damageRefusal("a typed part with no name", asToren, typedParts(&playv1.TypedPart{Sum: 3})),
-		damageRefusal("a typed part of another key", asToren, typedParts(&playv1.TypedPart{PartKey: "sneak-attack", Sum: 3})),
-		damageRefusal("a typed part out of range", asToren, typedParts(&playv1.TypedPart{PartKey: "weapon", Sum: 99})),
-		damageRefusal("a pending damage that is not there", asToren, func(r *playv1.RollDamageRequest) {
-			r.PendingDamageId = "00000000-0000-4000-8000-000000000001"
-		}),
-		damageRefusal("an encounter that is not there", asToren, func(r *playv1.RollDamageRequest) {
-			r.EncounterId = "00000000-0000-4000-8000-000000000002"
-		}),
+func refusedDamages() []goldenScenario {
+	return []goldenScenario{
 		damageRefusal("another player's attacker", asDamageAna, inAppDamage),
 		damageRefusal("a selected extra the hit does not offer", asToren, func(r *playv1.RollDamageRequest) {
 			r.ExtrasChosen = true
@@ -216,7 +194,7 @@ func refusedDamages() []damageScenario {
 }
 
 // damageScenarios are the scenarios of the golden, in the order they are listed.
-func damageScenarios() []damageScenario {
+func damageScenarios() []goldenScenario {
 	out := refusedDamages()
 	out = append(out, plainDamages()...)
 	out = append(out, rogueAndBarbarianDamages()...)
@@ -244,7 +222,7 @@ type usualDamage struct {
 	edit    func(*playv1.RollDamageRequest)
 }
 
-func (u usualDamage) scenario() damageScenario {
+func (u usualDamage) scenario() goldenScenario {
 	return damageOn(u.name, func(t *testing.T) damagePlay {
 		t.Helper()
 		a := newArmed(t)
@@ -288,8 +266,8 @@ func scriptedFaces(fs ...int) func(t *testing.T, a *armed, e *playv1.Encounter) 
 }
 
 // plainDamages are the hits of the usual fight that go through.
-func plainDamages() []damageScenario {
-	var out []damageScenario
+func plainDamages() []goldenScenario {
+	var out []goldenScenario
 	for _, u := range usualDamages() {
 		out = append(out, u.scenario())
 	}
@@ -305,18 +283,7 @@ func plainDamages() []damageScenario {
 }
 
 // TestRollDamageIsFrozen runs every scenario on a fight of its own and compares what each reads with the golden.
-//
-//nolint:tparallel // the group waits for its parallel scenarios, so that the golden is settled after them.
 func TestRollDamageIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &goldenBlocks{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range damageScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, rollDamageGolden)
+	runGolden(t, rollDamageGolden, damageScenarios())
 }

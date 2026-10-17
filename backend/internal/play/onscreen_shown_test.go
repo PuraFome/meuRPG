@@ -135,11 +135,11 @@ func TestSetShownImage_RefusalsBeforeAndWithoutASession(t *testing.T) {
 	foreignImage := st.image(t, foreign)
 
 	_, err := st.show(t, "nope", false)
-	rmWant(t, "image not a UUID", err, connect.CodeNotFound, "image not found")
+	wantRefusal(t, "image not a UUID", err, connect.CodeNotFound, "image not found")
 	_, err = st.show(t, newKey(), false)
-	rmWant(t, "unknown image", err, connect.CodeNotFound, "")
+	wantRefusal(t, "unknown image", err, connect.CodeNotFound, "")
 	_, err = st.show(t, foreignImage, false)
-	rmWant(t, "image of another campaign", err, connect.CodeNotFound, "")
+	wantRefusal(t, "image of another campaign", err, connect.CodeNotFound, "")
 	_, err = st.show(t, other, false)
 	wantBlocked(t, "show with no session", err, playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION)
 	_, err = st.show(t, "", false)
@@ -147,7 +147,7 @@ func TestSetShownImage_RefusalsBeforeAndWithoutASession(t *testing.T) {
 	// A player may not.
 	st.master.start(t, st.campaign)
 	_, err = st.ana.play.SetShownImage(t.Context(), connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: st.campaign, ImageId: other}))
-	rmWant(t, "a player", err, connect.CodePermissionDenied, "")
+	wantRefusal(t, "a player", err, connect.CodePermissionDenied, "")
 }
 
 func TestSetShownImage_ShowKeepReplaceAndStop(t *testing.T) {
@@ -212,7 +212,7 @@ func TestSetShownImage_AnImageDeletedMeanwhileIsNotFound(t *testing.T) {
 		return &playv1.ShownImage{Id: ghost}, nil, nil // the image was deleted after the check
 	}
 	_, err := st.show(t, st.image(t, st.campaign), false)
-	rmWant(t, "image deleted meanwhile", err, connect.CodeNotFound, "image not found")
+	wantRefusal(t, "image deleted meanwhile", err, connect.CodeNotFound, "image not found")
 }
 
 func TestSetShownImage_PrepareAndLeaveFailures(t *testing.T) {
@@ -225,7 +225,7 @@ func TestSetShownImage_PrepareAndLeaveFailures(t *testing.T) {
 		return nil, nil, boom
 	}
 	_, err := st.show(t, a, false)
-	rmWant(t, "prepare fails", err, connect.CodeInternal, "")
+	wantRefusal(t, "prepare fails", err, connect.CodeInternal, "")
 	st.maps.prepare = nil
 
 	if _, err := st.show(t, a, true); err != nil {
@@ -233,7 +233,7 @@ func TestSetShownImage_PrepareAndLeaveFailures(t *testing.T) {
 	}
 	st.maps.leave = func(context.Context, pgx.Tx, string, string, time.Time) error { return boom }
 	_, err = st.show(t, b, false)
-	rmWant(t, "leave fails", err, connect.CodeInternal, "")
+	wantRefusal(t, "leave fails", err, connect.CodeInternal, "")
 	if id, keep := st.dbShown(t); id != a || !keep {
 		t.Errorf("session shows %q keep %v after a failed replace, want A kept", id, keep)
 	}
@@ -274,7 +274,7 @@ func TestSetShownImage_TheCopyOfAFogMapsImage(t *testing.T) {
 	full := &fakeCopy{insertErr: connect.NewError(connect.CodeResourceExhausted, errors.New("gallery full"))}
 	prep(full)
 	_, err = st.show(t, original, false)
-	rmWant(t, "gallery full", err, connect.CodeResourceExhausted, "")
+	wantRefusal(t, "gallery full", err, connect.CodeResourceExhausted, "")
 	if !full.discarded {
 		t.Error("the files of a copy that could not be inserted were kept")
 	}

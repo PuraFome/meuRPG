@@ -299,17 +299,17 @@ func (s *Service) fireByHandChange(ctx context.Context, c *combatTx, trap maplin
 	if err != nil {
 		return actionEvent{}, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
 	}
 	return actionEvent{Round: c.enc.Round, Trap: fired}, nil
 }
 
 // caughtByHand are the combatants the master picked, or, with none picked, the ones in the area.
 func (s *Service) caughtByHand(ctx context.Context, c *combatTx, trap maplink.Trap, targetIDs []string) ([]playdb.Combatant, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	var caught []playdb.Combatant
 	if len(targetIDs) == 0 {
@@ -585,12 +585,9 @@ func charactersCaught(living []link.Character, at map[string]grid.Square, trap m
 func (s *Service) fireOutsideTx(ctx context.Context, tx pgx.Tx, f *outsideFiring) error {
 	q := s.queries.WithTx(tx)
 	f.fired, f.firingID, f.repeated = nil, "", false
-	session, err := q.GetOpenGameSessionForUpdate(ctx, f.campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, f.campaignID)
 	if err != nil {
-		return fmt.Errorf("lock the open session: %w", err)
+		return err
 	}
 	if done, err := f.replay(ctx, q, session.ID); err != nil || done {
 		return err
@@ -622,7 +619,7 @@ func (f *outsideFiring) replay(ctx context.Context, q *playdb.Queries, sessionID
 	switch {
 	case err == nil:
 		if done.Kind != eventTrapTriggered || hashDiffers(done.IdempotencyHash, f.hash) {
-			return false, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			return false, errKeyReused()
 		}
 		var ev actionEvent
 		if err := json.Unmarshal(done.Payload, &ev); err != nil {

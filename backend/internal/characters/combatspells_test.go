@@ -6,6 +6,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -132,5 +133,32 @@ func TestCasterForThirdCasterSubclass(t *testing.T) {
 	cure, _ := c.SpellDetails("spell:cure-wounds")
 	if sc := casterFor(d, cure.Spell.Classes); sc == nil || sc.Class != "class:cleric" {
 		t.Errorf("cure wounds caster = %+v", sc)
+	}
+}
+
+// TestSpellCasterNumbersWithoutADCCarriesNoSave: a sheet that casts nothing has no
+// spell save DC, so a spell that asks for a saving throw must not reach the table
+// with a save ability and DC 0 (every roll would pass); a caster keeps both.
+func TestSpellCasterNumbersWithoutADCCarriesNoSave(t *testing.T) {
+	t.Parallel()
+	det := &rules.SpellDetails{Save: &rules.SpellSave{Ability: rules.DEX, OnSuccess: "half"}}
+	caster := rules.Derived{Spellcasting: []rules.Spellcasting{{Class: "class:wizard", Ability: rules.INT, SaveDC: 13}}}
+	for _, tc := range []struct {
+		name        string
+		d           rules.Derived
+		wantAbility string
+		wantDC      int
+	}{
+		{"no spellcasting", rules.Derived{}, "", 0},
+		{"caster", caster, "dex", 13},
+	} {
+		var out link.Spell
+		spellCasterNumbers(&out, tc.d, det)
+		if out.SaveAbility != tc.wantAbility || out.SaveDC != tc.wantDC {
+			t.Errorf("%s: save = %q DC %d, want %q DC %d", tc.name, out.SaveAbility, out.SaveDC, tc.wantAbility, tc.wantDC)
+		}
+		if tc.wantAbility == "" && out.SaveOnSuccess != "" {
+			t.Errorf("%s: SaveOnSuccess = %q, want empty", tc.name, out.SaveOnSuccess)
+		}
 	}
 }

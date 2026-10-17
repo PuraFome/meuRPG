@@ -27,7 +27,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Puzzles (MR-038, RN-27, RN-10, Etapa 10, slice 10.7a). The fixture is the armed
+// Puzzles (MR-038, RN-27, RN-10). The fixture is the armed
 // campaign (a master and three players with a character each, the session open,
 // a map with a grid) with the real maps service behind it, so "Ao resolver" runs
 // for real: the doors layer, the points and the clues. Every answer a player gets
@@ -53,7 +53,7 @@ func newPuzzleTable(t *testing.T) *puzzleTable {
 	}
 	a.h.svc.SetTerrain(msvc)
 	a.h.svc.SetPuzzleMaps(msvc)
-	a.h.svc.SetTraps(msvc) // a wrong move may fire a trap point ("Ao errar", slice 10.7b)
+	a.h.svc.SetTraps(msvc) // a wrong move may fire a trap point ("Ao errar")
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
 	msvc.Mount(srv.Handle, mapsSessions{testSessions}, a.h.camps, connect.WithRequireConnectProtocolHeader())
 	server := httptest.NewServer(srv.Handler())

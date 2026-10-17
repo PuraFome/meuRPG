@@ -252,16 +252,16 @@ func (s *Service) reconcileConditions(ctx context.Context, c *combatTx, target p
 	rows = slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
 		return st.CombatantID != target.ID || !slices.ContainsFunc(st.ConditionKeys, func(k string) bool { return slices.Contains(gone, k) })
 	})
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, target, fmt.Errorf("list the combatants: %w", err)
+		return nil, target, err
 	}
 	if err := s.endEffectRows(ctx, c, cs, rows, endByMaster); err != nil {
 		return nil, target, err
 	}
-	cs, err = c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err = listCombatants(ctx, c)
 	if err != nil {
-		return nil, target, fmt.Errorf("list the combatants: %w", err)
+		return nil, target, err
 	}
 	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == target.ID }); i >= 0 {
 		target = cs[i]

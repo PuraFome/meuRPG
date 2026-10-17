@@ -11,8 +11,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// A table class's third caster in combat, end to end (MR-025, RN-23, Etapa 10, slice
-// 10.3, E10-02 state 7): a Fighter with the table's subclass "Lâmina de Tinta" casts
+// A table class's third caster in combat, end to end (MR-025, RN-23, E10-02 state 7): a Fighter with the table's subclass "Lâmina de Tinta" casts
 // the table's spell "Lâmina de Nanquim", which is on the wizard's list, with the
 // subclass's ability (Intelligence) and its save DC, from the slots of its own table.
 // These tests need the database (MEURPG_TEST_DATABASE_URL).
