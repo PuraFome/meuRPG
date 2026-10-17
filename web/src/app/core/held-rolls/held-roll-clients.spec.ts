@@ -70,7 +70,7 @@ describe('the clients carry the question of a held roll', () => {
       rollEffectSave: () => Promise.resolve({ encounter: { id: 'enc' }, luckyOffer: offer() }),
     };
     const res = await client.rollEffectSave('c', 'e', 'w', { kind: 'app' }, 'k');
-    expect(res.lucky?.holdId).toBe('h1');
+    expect(res.held?.holdId).toBe('h1');
     expect(res.result).toBeUndefined();
   });
 });
