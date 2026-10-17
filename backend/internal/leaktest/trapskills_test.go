@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -224,7 +225,7 @@ func TestADimLightSearchOnOneDieAnswersTheSameWhateverTheTrapsOnTheMap(t *testin
 	if trapped.ok() {
 		t.Fatalf("premise: a Perception search on one die in dim light was answered %d %s, want the refusal that asks for a second die", trapped.status, trapped.body)
 	}
-	if trapped.status != empty.status || string(trapped.body) != string(empty.body) {
+	if trapped.status != empty.status || !bytes.Equal(trapped.body, empty.body) {
 		t.Errorf("with a trap on the map the answer is %d %s, with none %d %s; want the same", trapped.status, trapped.body, empty.status, empty.body)
 	}
 }
