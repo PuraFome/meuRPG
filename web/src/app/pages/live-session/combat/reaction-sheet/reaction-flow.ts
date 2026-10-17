@@ -3,11 +3,10 @@ import { type WritableSignal, signal } from '@angular/core';
 import {
   type ConcentrationSaveResult,
   EncounterBlockedReason,
-  type LuckyOffer,
-  type OutsideInspirationOffer,
   type ReactionResult,
   type ReactionWindow,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import type { SlotRow } from '../../../../core/combat/cast-flow';
 import { type CombatClient } from '../../../../core/combat/combat-client';
 import {
@@ -15,22 +14,18 @@ import {
   type ReactionAnswer,
 } from '../../../../core/combat/combat-client-types';
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
-import { luckyReroll } from '../../../../core/combat/lucky-question';
 import { isOptionalReaction } from '../../../../core/combat/reaction-autopass';
 import type { SlotAfter } from '../../../../core/combat/reactions';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
-import type {
-  InspirationRoll,
-  LuckyRoll,
-  ResourceClient,
-} from '../../../../core/resources/resources-client';
-import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
+import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
+import type { ResourceClient } from '../../../../core/resources/resources-client';
+import { rerollShow } from '../../../../shared/held-roll-prompt/held-roll-shows';
 import {
   type RollAnimator,
   type RollShow,
   showOfConcentration,
-  showOfDie,
   showOfReaction,
 } from '../../../../shared/roll-overlay/roll-animator';
 import { runBusy } from '../../../../shared/sheet/run-busy';
@@ -70,12 +65,9 @@ export class ReactionFlow {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly typingSave = signal(false);
-  /** The concentration save's d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player
-   * decides before the result is told. The window stays open. */
-  readonly offer = signal<OutsideInspirationOffer | null>(null);
-  /** The concentration save's d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky
-   * question ("Tirou 1: rolar de novo?") comes first, before the die's. The window stays open. */
-  readonly luckyOffer = signal<LuckyOffer | null>(null);
+  /** The concentration save's d20 was rolled and kept and the save waits for a question: the halfling's Lucky ("Tirou 1:
+   * rolar de novo?") first, then the Bardic Inspiration die's. The window stays open. */
+  readonly held: HeldRollController;
   /** The d4 an effect adds to the typed saving throw (Bênção, Perdição): asked when the server says the roll takes them. */
   readonly extra = new ExtraDiceState();
   /** What the answer did, once the server told it. */
@@ -87,11 +79,15 @@ export class ReactionFlow {
   readonly rollingAt = signal<number | null>(null);
   /** One key per answer (its slot, its die): a repeated tap is a retry, another answer is a new request. */
   private readonly keys = new ActionKey();
-  private readonly dieKey = new ActionKey();
-  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
-  private readonly luckyKey = new ActionKey();
 
   constructor(private readonly host: ReactionFlowHost) {
+    this.held = new HeldRollController({
+      send: (holdId, answer, key) =>
+        host.resources().answerHeldRoll(host.data.campaignId, holdId, answer, key),
+      settle: (res, done) => this.answeredHeld(res, done.answer),
+      busy: this.busy,
+      error: this.error,
+    });
     this.secondStep = host.data.window.prompt.case === 'deflectThrow';
     this.step = signal<Step>(this.secondStep ? 'result' : 'ask');
     this.nextWindowId = signal(this.secondStep ? host.data.window.id : '');
@@ -184,10 +180,9 @@ export class ReactionFlow {
           this.keys.keyFor({ window: w.id, how: sent }),
         );
         this.host.data.state.apply(res.encounter);
-        if (res.lucky || res.offer) {
+        if (res.held) {
           // Nothing was written: the window stays open and the question comes (Lucky's first).
-          this.luckyOffer.set(res.lucky ?? null);
-          this.offer.set(res.offer ?? null);
+          this.held.ask(res.held);
           this.typingSave.set(false);
           return;
         }
@@ -216,87 +211,22 @@ export class ReactionFlow {
     this.typingSave.set(false);
   }
 
-  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the save is settled now with the new d20
-   * (or the 1), or, when the character holds a Bardic Inspiration die, the die's question comes next, on the new roll. */
-  async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    const offer = this.luckyOffer();
-    if (!offer || this.busy()) {
+  /** What the answer to the question brought: the save settled now with the new d20 (or the 1), or, when the character
+   * holds a Bardic Inspiration die, the die's question next, on the new roll (the d20 the app rolled again tumbles). */
+  private answeredHeld(res: AnswerHeldRollResponse, answer: HeldAnswer): void {
+    const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
+    if (!settled?.encounter || (!settled.result && !res.next)) {
+      throw new Error('AnswerHeldRoll answered without its concentration save');
+    }
+    this.host.data.state.apply(settled.encounter);
+    if (res.next) {
+      const next = res.next;
+      if (answer.kind === 'lucky') {
+        this.play(() => rerollShow(next.d20, answer.roll));
+      }
       return;
     }
-    await runBusy(
-      this.busy,
-      this.error,
-      async () => {
-        const res = await this.host
-          .resources()
-          .answerOutsideLucky(
-            this.host.data.campaignId,
-            offer.holdId,
-            reroll,
-            die,
-            this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
-          );
-        const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
-        if (!settled?.encounter || (!settled.result && !settled.inspirationOffer)) {
-          throw new Error('AnswerOutsideLucky answered without its concentration save');
-        }
-        this.host.data.state.apply(settled.encounter);
-        this.luckyKey.renew();
-        this.luckyOffer.set(null);
-        if (settled.inspirationOffer) {
-          this.offer.set(settled.inspirationOffer);
-          this.tumbleReroll(die, settled.inspirationOffer);
-          return;
-        }
-        this.showSave(settled.result!);
-      },
-      (err) => {
-        this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-      },
-    );
-  }
-
-  /** The d20 the app rolled again, tumbling: the new face alone, "1 → 14" (the die's question shows the rest). */
-  private tumbleReroll(die: LuckyRoll | null, offer: OutsideInspirationOffer): void {
-    const again = die && 'inApp' in die ? luckyReroll(offer.d20) : undefined;
-    if (again) {
-      this.play(() =>
-        showOfDie('Sortudo', offer.d20?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`),
-      );
-    }
-  }
-
-  /** The answer about the die: the save is settled now, with the d20 it rolled and the die when it was used. */
-  async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
-    const offer = this.offer();
-    if (!offer || this.busy()) {
-      return;
-    }
-    await runBusy(
-      this.busy,
-      this.error,
-      async () => {
-        const res = await this.host
-          .resources()
-          .answerOutsideInspiration(
-            this.host.data.campaignId,
-            offer.holdId,
-            use,
-            die,
-            this.dieKey.keyFor({ hold: offer.holdId, use, die }),
-          );
-        const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
-        if (!settled?.encounter || !settled.result) {
-          throw new Error('AnswerOutsideInspiration answered without its concentration save');
-        }
-        this.host.data.state.apply(settled.encounter);
-        this.offer.set(null);
-        this.showSave(settled.result);
-      },
-      (err) => {
-        this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
-      },
-    );
+    this.showSave(settled.result!);
   }
 
   /** The dice tumble; whatever happens here never turns an answered reaction into an error. */

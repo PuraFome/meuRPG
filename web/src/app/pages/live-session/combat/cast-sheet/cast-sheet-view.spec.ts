@@ -36,7 +36,6 @@ import {
   idsWhere,
   isPlainCast,
   keptTargets,
-  luckyShow,
   nextRollOf,
   picksAfterTargets,
   reachFtOf,
@@ -693,16 +692,6 @@ describe('the dice animated', () => {
     expect(
       castShow('Raio', create(SpellCastSchema, { targets: [bad, { ...bad, combatantId: 'h' }] })),
     ).toBeNull();
-  });
-
-  it('shows the new face Lucky rolled, and nothing for a typed one', () => {
-    const rolled = d20(14, { rerolled: [{ index: 0, from: 1, to: 14, sourceKey: 'trait:lucky' }] });
-    expect(luckyShow(rolled, { inApp: true })?.line).toBe('1 → 14');
-    expect(luckyShow(rolled, { inApp: true })).not.toBeNull();
-    expect(luckyShow(rolled, { face: 14 })).toBeNull();
-    expect(luckyShow(rolled, null)).toBeNull();
-    expect(luckyShow(d20(14), { inApp: true })).toBeNull();
-    expect(luckyShow(undefined, { inApp: true })).toBeNull();
   });
 });
 

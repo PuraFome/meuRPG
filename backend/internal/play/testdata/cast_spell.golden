@@ -1,20 +1,19 @@
 == a bardic die and the master casting ==
-cast {"slot":{"level":1},"spellKey":"spell:guiding-bolt","targets":[{"attackMode":"ROLL_MODE_NORMAL","attackRoll":{"diceCount":1,"diceSides":20,"faces":[5],"modifier":5,"physical":true,"total":10},"combatantId":"Goblin","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_MISS"}]}
+cast 
 area 
-inspiration 
+inspiration {"d20":{"diceCount":1,"diceSides":20,"faces":[5],"modifier":5,"physical":true,"total":10},"fromName":"Orla","sides":8}
 lucky 
 summoned 0
 hidden hits {}
 pending reveal false
 held false
-event spell_cast {"cast_id": "?", "combatant_id": "Brisa", "hits": [{"d20": 5, "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "normal", "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 10}], "key": "spell:guiding-bolt", "round": 1, "slot": {"level": 1}}
-combatant Brisa | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Orla | false | true | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 vitals Orla | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0
+inspiration hold spell_attack | {5} | 5 | 10 | 0 | true | -1
 == a bardic die asked for a spell attack with disadvantage ==
 cast 
 area 

@@ -262,9 +262,9 @@ func TestLuckyThenTheDieOnASceneCheck(t *testing.T) {
 	}
 }
 
-// A group check: the player's own roll asks (in the app, a 1, rolled again in the app to 14); the
-// roll the master makes for a halfling never does (it waits for a decision, MR-014).
-func TestLuckyOnAGroupCheckAndNotOnTheMastersRoll(t *testing.T) {
+// A group check: the player's own roll asks (in the app, a 1, rolled again in the app to 14); so does the
+// roll the master makes for a halfling (MR-014, E4-10).
+func TestLuckyOnAGroupCheckAndOnTheMastersRollForAPlayer(t *testing.T) {
 	t.Parallel()
 	a := newResourceTable(t)
 	dalila, dalilaID := joinDalila(t, a.h, a.master, a.campaignID)
@@ -298,12 +298,28 @@ func TestLuckyOnAGroupCheckAndNotOnTheMastersRoll(t *testing.T) {
 	}
 	a.mustCloseGroup(t, view.GetId())
 
+	// The master's roll for Dalila asks too (MR-014, decided by Vinicius on 16/10/2026, E4-10): she reads the question,
+	// the master's own answer waits for her first 10 s, and her answer settles it as his roll.
 	second := a.mustRequestGroup(t, nil)
-	if _, err := a.rollForPlayer(t, a.master, second.GetId(), dalilaID, 1); err != nil {
-		t.Fatalf("RollForPlayer() error = %v", err)
+	res, err := a.rollForPlayer(t, a.master, second.GetId(), dalilaID, 1)
+	if err != nil || res.GetGroupCheck() != nil || res.GetLuckyOffer() == nil {
+		t.Fatalf("RollForPlayer() = %v, %v; want Lucky's question alone", res, err)
 	}
-	if r := memberOf(a.groupView(t, a.master), dalilaID).GetRoll(); r.GetFaces()[0] != 1 || len(r.GetRerolled()) != 0 || !r.GetRolledByMaster() {
-		t.Errorf("the master's roll for Dalila = %v, want the 1 written as it came up", r)
+	if m := memberOf(a.groupView(t, a.master), dalilaID); m.GetAnswered() {
+		t.Error("the master reads Dalila's roll as answered while it waits")
+	}
+	if got := a.outsideState(t, dalila); len(got.GetLuckyOffers()) != 1 {
+		t.Fatalf("Dalila reads %v after the master's roll, want the same question", got.GetLuckyOffers())
+	}
+	hold := res.GetLuckyOffer().GetHoldId()
+	_, err = a.answerHeldRoll(t, a.master, hold, luckyAnswer(14))
+	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_PLAYER_FIRST)
+	a.h.roller.queue(14)
+	if _, err := answerOutsideLucky(t, dalila, a.campaignID, hold, outsideRerollInApp); err != nil {
+		t.Fatalf("Dalila's answer: error = %v", err)
+	}
+	if r := memberOf(a.groupView(t, a.master), dalilaID).GetRoll(); r.GetFaces()[0] != 14 || len(r.GetRerolled()) != 1 || !r.GetRolledByMaster() {
+		t.Errorf("the roll for Dalila = %v, want the 1 rolled again to 14, still the master's roll", r)
 	}
 	if got := a.outsideState(t, dalila); len(got.GetLuckyOffers()) != 0 {
 		t.Errorf("Dalila reads %v after the master's roll, want no question", got.GetLuckyOffers())
@@ -496,18 +512,30 @@ func TestLuckyOnAConcentrationSave(t *testing.T) {
 	}
 }
 
-// The master's roll of a halfling's concentration save never asks: the 1 stands (a decision waits
-// for these, MR-014).
-func TestTheMastersSaveForAHalflingNeverAsksLucky(t *testing.T) {
+// The master's roll of a halfling's concentration save asks the Lucky question (MR-014, decided by Vinicius on
+// 16/10/2026, E4-10): the 1 no longer stands. The player reads it too; the master's answer waits for her first 10 s.
+func TestTheMastersSaveForAHalflingAsksLucky(t *testing.T) {
 	t.Parallel()
 	a, e := concentratingHitOn(t, newCastersOf(t, 3, "race:halfling"), 6)
 	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
 	res, err := a.resolveConcentration(t, a.master, e, w.GetId(), concentrationFace(1))
-	if err != nil || res.GetLuckyOffer() != nil || res.GetResult() == nil {
-		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the result and no question", res, err)
+	if err != nil || res.GetResult() != nil {
+		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the Lucky question alone", res, err)
 	}
-	if r := res.GetResult(); r.GetKept() || r.GetSave().GetFaces()[0] != 1 || len(r.GetSave().GetRerolled()) != 0 {
-		t.Errorf("the result = %v, want the failed 1, nothing rolled again", r)
+	wantLuckyOffer(t, "the master's concentration save", res.GetLuckyOffer(), []int32{1}, 0)
+	hold := res.GetLuckyOffer().GetHoldId()
+	if got := byLabel(t, a.get(t, a.ana), "Pensantus").GetHeldRollOffer(); got.GetHoldId() != hold {
+		t.Errorf("the player reads %v, want the same question", got)
+	}
+	_, err = a.answerHeldRoll(t, a.master, hold, luckyAnswer(12))
+	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_PLAYER_FIRST)
+	a.h.afterThePlayersChance()
+	out, err := a.answerHeldRoll(t, a.master, hold, luckyAnswer(12))
+	if err != nil {
+		t.Fatalf("the master's answer after the time: error = %v", err)
+	}
+	if r := out.GetConcentrationSave().GetResult(); !r.GetKept() || r.GetSave().GetFaces()[0] != 12 || len(r.GetSave().GetRerolled()) != 1 {
+		t.Errorf("the result = %v, want the 1 rolled again to 12 and kept", r)
 	}
 }
 

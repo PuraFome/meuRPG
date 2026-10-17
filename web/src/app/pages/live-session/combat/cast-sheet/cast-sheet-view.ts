@@ -36,7 +36,6 @@ export {
   nextRollOf,
   resumedCastOf,
   castShow,
-  luckyShow,
   castTargetsOf,
 } from './cast-result-view';
 

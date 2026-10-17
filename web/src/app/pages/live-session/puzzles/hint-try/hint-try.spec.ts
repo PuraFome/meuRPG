@@ -8,7 +8,7 @@ import { dieFields } from '../../../../core/effects/effects';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
 import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
-import { inspirationOffer, luckyOffer } from '../../../../core/play/scene-testing';
+import { heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { HintTryControl } from './hint-try';
 
 describe('HintTryControl: the d20 pair', () => {
@@ -115,7 +115,7 @@ describe('HintTryControl: the Bardic Inspiration question', () => {
     const fixture = TestBed.createComponent(HintTryControl);
     fixture.componentRef.setInput('skill', 'Investigação');
     fixture.componentRef.setInput('canTry', true);
-    fixture.componentRef.setInput('offer', inspirationOffer(9, 3));
+    fixture.componentRef.setInput('held', heldDie(9, 3));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const answers: unknown[] = [];
@@ -126,7 +126,7 @@ describe('HintTryControl: the Bardic Inspiration question', () => {
     Array.from(el.querySelectorAll('button'))
       .find((b) => b.textContent?.includes('Usar e rolar o d8'))!
       .click();
-    expect(answers).toEqual([{ use: true, die: { inApp: true } }]);
+    expect(answers).toEqual([{ kind: 'die', use: true, roll: { inApp: true } }]);
   });
 });
 
@@ -141,7 +141,7 @@ describe('HintTryControl: the halfling’s Lucky question', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const answers: unknown[] = [];
-    fixture.componentInstance.luckyAnswered.subscribe((a) => answers.push(a));
+    fixture.componentInstance.answered.subscribe((a) => answers.push(a));
     const button = (text: string) =>
       Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
         b.textContent?.includes(text),
@@ -150,10 +150,7 @@ describe('HintTryControl: the halfling’s Lucky question', () => {
   }
 
   it('asks it first, in place of the roll form and of the die’s question, and never says the DC', () => {
-    const { el, answers, button } = setup({
-      luckyOffer: luckyOffer([1], 3),
-      offer: inspirationOffer(9, 3),
-    });
+    const { el, answers, button } = setup({ held: heldLucky([1], 3) });
     expect(el.textContent).toContain('Tirou 1: rolar de novo?');
     expect(el.textContent).not.toContain('Usar a Inspiração de Bardo');
     expect(el.textContent).not.toContain('Tentar uma dica');
@@ -161,8 +158,8 @@ describe('HintTryControl: the halfling’s Lucky question', () => {
     button('Rolar de novo')!.click();
     button('Ficar com o 1')!.click();
     expect(answers).toEqual([
-      { reroll: true, die: { inApp: true } },
-      { reroll: false, die: null },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
+      { kind: 'lucky', reroll: false, roll: null },
     ]);
   });
 

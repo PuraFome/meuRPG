@@ -1,7 +1,6 @@
 import {
   AttackOutcome,
   type CombatantState,
-  type DiceRoll,
   type PendingDamage,
   type SpellCast,
   type SpellTargetResult,
@@ -26,13 +25,7 @@ import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { metamagicSpentLine } from '../../../../core/resources/metamagic';
 import type { Pool } from '../../../../core/resources/pools';
-import type { LuckyRoll } from '../../../../core/resources/resources-client';
-import { luckyReroll } from '../../../../core/combat/lucky-question';
-import {
-  type RollShow,
-  showOfDice,
-  showOfDie,
-} from '../../../../shared/roll-overlay/roll-animator';
+import { type RollShow, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import type { SlotAfter } from './cast-result';
 
 /** What the cast sheet shows once a spell is cast: the result lines, the titles, the notes and the dice to show. */
@@ -239,15 +232,6 @@ function singleAttackShow(name: string, t: SpellTargetResult): RollShow | null {
     critical: t.outcome === AttackOutcome.CRITICAL_HIT,
     fumble: told && !hit,
   });
-}
-
-/** The d20 the app rolled again for Lucky, tumbling, when the die's question comes next (a cast that is told animates
- * its own d20): the new face alone, "1 → 14". */
-export function luckyShow(roll: DiceRoll | undefined, die: LuckyRoll | null): RollShow | null {
-  const again = die && 'inApp' in die ? luckyReroll(roll) : undefined;
-  return again
-    ? showOfDie('Sortudo', roll?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`)
-    : null;
 }
 
 /** Who the cast names: nobody for a placed area (the server works it out), the darts, or the targets ticked. */

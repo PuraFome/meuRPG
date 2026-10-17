@@ -14,10 +14,9 @@ import {
 import {
   BonusDieSchema,
   DiceRollSchema,
+  type HeldRollOffer,
   type LuckyOffer,
   LuckyOfferSchema,
-  type OutsideInspirationOffer,
-  OutsideInspirationOfferSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { SceneDie } from './scene-client';
 
@@ -172,10 +171,8 @@ export class FakeSceneClient {
   scene: OpenSceneInfo | null = null;
   calls: string[] = [];
   failWith: unknown = null;
-  /** The question `roll` answers with instead, when the character holds a Bardic Inspiration die. */
-  offer: OutsideInspirationOffer | null = null;
-  /** The Lucky question `roll` answers with instead (it comes first), when a halfling's d20 shows a 1. */
-  lucky: LuckyOffer | null = null;
+  /** The question `roll` answers with instead: the halfling's Lucky about a 1, or the Bardic Inspiration die's. */
+  held: HeldRollOffer | null = null;
   /** The roll `roll` answers with. */
   made: SceneRoll = sceneRoll('r1', 'a1', 'Pensantus', 17, {
     roll: { diceCount: 1, diceSides: 20, faces: [11], modifier: 6, total: 17 },
@@ -242,11 +239,11 @@ export class FakeSceneClient {
     actionId: string,
     die: SceneDie,
     key: string,
-  ): Promise<SceneRoll | OutsideInspirationOffer | LuckyOffer> {
+  ): Promise<SceneRoll | HeldRollOffer> {
     this.record(
       `roll ${actionId} ${'inApp' in die ? 'app' : 'face' in die ? die.face : die.faces.join(',')} ${key}`,
     );
-    return this.lucky ?? this.offer ?? this.made;
+    return this.held ?? this.made;
   }
 
   /** The scene `grantAttempt` answers with. */
@@ -261,16 +258,6 @@ export class FakeSceneClient {
     this.record(`grant ${actionId} ${characterId} ${key}`);
     return this.granted ?? masterScene();
   }
-}
-
-/** The question a roll asks when its character holds a Bardic Inspiration die: the d20 rolled, the result not yet told. */
-export function inspirationOffer(face = 11, modifier = 6, sides = 8): OutsideInspirationOffer {
-  return create(OutsideInspirationOfferSchema, {
-    holdId: 'h1',
-    sides,
-    fromName: 'Orla',
-    d20: { diceCount: 1, diceSides: 20, faces: [face], modifier, total: face + modifier },
-  });
 }
 
 /** The question a roll asks when a halfling's d20 shows a 1 (Sortudo): the d20 rolled (both faces with advantage or

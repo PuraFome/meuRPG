@@ -15,6 +15,7 @@ import {
   type AreaChoice,
   type CastExtras,
 } from './combat-client-types';
+import { heldOfferOf } from '../held-rolls/held-roll-offer';
 
 /** The optional fields of a cast request; each is left out unless it was set. */
 export function castExtrasBody(extras: CastExtras) {
@@ -61,18 +62,15 @@ export function toParticipant(spec: JoinSpec): MessageInitShape<typeof Participa
   return { characterId: spec.characterId, count: spec.count ?? 1, hidden: spec.hidden };
 }
 
-/** The answer of `RollAttack`, `AnswerBardicInspiration` and `AnswerLucky`: a held roll has the d20 in its question
- * and no outcome yet. */
+/** The answer of `RollAttack`, and the attack of `AnswerHeldRoll`: a held roll has the d20 in its question and no
+ * outcome yet. */
 export function attackResult(res: RollAttackResponse): AttackResult {
-  const offer = res.inspirationOffer;
-  const lucky = res.luckyOffer;
+  const held = heldOfferOf(res);
   return {
     encounter: need(res.encounter, 'RollAttack'),
-    roll:
-      res.roll ?? create(AttackRollSchema, { d20: need(offer?.d20 ?? lucky?.d20, 'RollAttack') }),
+    roll: res.roll ?? create(AttackRollSchema, { d20: need(held?.d20, 'RollAttack') }),
     pending: res.pendingDamage,
-    offer,
-    lucky,
+    held,
   };
 }
 
