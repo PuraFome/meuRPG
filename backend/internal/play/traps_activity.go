@@ -339,6 +339,16 @@ func noticeActivity(nl *noticeLine, v activityViewer, f activityFacts) (*playv1.
 	return notice, len(notice.CharacterIds) > 0
 }
 
+// caughtShownTo says whether the viewer reads the line of a caught target: the master all of
+// them, a player the ones of their characters and of their characters' creatures, and never one
+// the master hid.
+func caughtShownTo(v activityViewer, cc trapCaughtEvent) bool {
+	if v.master {
+		return true
+	}
+	return !cc.Hidden && (v.owned[cc.Target] || (creatureOf(cc) && v.owned[cc.Character]))
+}
+
 // firingActivity is a firing as the viewer reads it: the master all of it, a player only what
 // caught their characters and their characters' creatures, and never a line the master had hidden (RN-10, as
 // the combat log does).
@@ -353,7 +363,7 @@ func (s *Service) firingActivity(ctx context.Context, l *activityLine, v activit
 		}
 	}
 	for _, cc := range tr.Caught {
-		if v.master || (!cc.Hidden && (v.owned[cc.Target] || (creatureOf(cc) && v.owned[cc.Character]))) {
+		if caughtShownTo(v, cc) {
 			shown.Caught = append(shown.Caught, cc)
 		}
 	}
