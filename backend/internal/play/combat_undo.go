@@ -318,6 +318,7 @@ type undoRun struct {
 	undoneMove *actionEvent              // the move that was taken back, for the fog
 	snapBack   *grid.Square              // where a creature stood before the undo put it back: the mover of the 0 hit points rule, or the creature a move dragged
 	snapped    string                    // and who it is
+	unpushed   []*forcedMove             // the creatures a cast pushed that the undo put back
 	rearmed    *trapFireEvent            // the trap an undone firing armed again
 	alsoUndone []string                  // the older parts of a firing that went with it
 }
@@ -373,6 +374,7 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err != nil {
 		return nil, err
 	}
+	run.unpushed = pushesOf(ev.Hits)
 	if id := creatureToPutBack(ev); id != "" {
 		if err := run.noteSnapBack(ctx, c, id); err != nil {
 			return nil, err
@@ -500,6 +502,12 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 	}
 	if run.snapped != "" { // the mover is back where it was: the fog follows it
 		s.followToSquare(ctx, campaignID, d, run.snapped, run.snapBack)
+	}
+	for _, m := range run.unpushed { // the pushed creatures are back where they were: the fog follows them
+		if m.NoMap {
+			continue
+		}
+		s.followToSquare(ctx, campaignID, d, m.Target, &grid.Square{Col: int(m.Col), Row: int(m.Row)})
 	}
 	for _, vit := range run.vitals {
 		s.publishVitals(campaignID, vit)

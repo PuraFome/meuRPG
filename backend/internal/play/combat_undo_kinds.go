@@ -733,13 +733,11 @@ func (u *undoer) castRevealBack(ctx context.Context, _ playdb.Combatant, ev acti
 // spell that read hit points changed at once.
 func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev actionEvent) error {
 	for _, h := range ev.Hits {
-		for _, id := range append([]string{h.Pending}, h.More...) {
-			if id == "" {
-				continue
-			}
-			if err := u.c.q.DeletePendingDamage(ctx, id); err != nil {
-				return fmt.Errorf("delete the pending damage: %w", err)
-			}
+		if err := putPushedBack(ctx, u.c, h.Pushed); err != nil {
+			return err
+		}
+		if err := u.deleteHitPendings(ctx, h); err != nil {
+			return err
 		}
 		// A spell that read hit points changed the targets at once: their hit
 		// points, death saves and conditions come back.
@@ -747,6 +745,19 @@ func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev action
 			if err := u.castTargetBack(ctx, target, h); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// deleteHitPendings deletes the pending damages the cast opened for a target.
+func (u *undoer) deleteHitPendings(ctx context.Context, h castHit) error {
+	for _, id := range append([]string{h.Pending}, h.More...) {
+		if id == "" {
+			continue
+		}
+		if err := u.c.q.DeletePendingDamage(ctx, id); err != nil {
+			return fmt.Errorf("delete the pending damage: %w", err)
 		}
 	}
 	return nil
