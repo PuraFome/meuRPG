@@ -1949,7 +1949,22 @@
         {
           "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
           "name": "Guarda de farol",
+          "reason": "PACKAGE_PROBLEM_REASON_DUPLICATE"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Guarda de farol",
           "reason": "PACKAGE_PROBLEM_REASON_INVALID"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Guarda de farol",
+          "reason": "PACKAGE_PROBLEM_REASON_DUPLICATE"
+        },
+        {
+          "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
+          "name": "Raio de teste",
+          "reason": "PACKAGE_PROBLEM_REASON_DUPLICATE"
         },
         {
           "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
