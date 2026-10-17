@@ -170,8 +170,9 @@ func (s *Service) markHuntersMark(ctx context.Context, c *combatTx, caster, targ
 }
 
 // clearHuntersMark takes the caster's marks off: its concentration ended. ev, when not nil,
-// is the event of a cast, which keeps the marks taken off (MarksBefore) so that its undo
-// puts them back (marksBack, combat_undo_kinds.go).
+// is the event of the action that ended it (a cast, a rage, a damage to 0), which keeps the
+// marks taken off (MarksBefore) so that its undo puts them back (marksBack,
+// combat_undo_kinds.go).
 func (s *Service) clearHuntersMark(ctx context.Context, c *combatTx, caster playdb.Combatant, ev *actionEvent) error {
 	rows, err := c.q.DeleteCombatantStatesBySource(ctx, playdb.DeleteCombatantStatesBySourceParams{SourceID: &caster.ID, Kind: stateMark})
 	if err != nil {
