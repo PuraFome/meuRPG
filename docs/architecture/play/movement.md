@@ -95,6 +95,20 @@ The geometry is pure and in `rules/grid/area.go` (`Area.FromPoint`, `Area.FromCa
 | Sculpt Spells | `CastSpellRequest.sculpted_ids` (the evocation wizard): `sculptedOf` (`combat_metamagic.go`) checks it before the slot is spent (the caster has the feature, the spell is of evocation, at most 1 + the cast level, each among the targets, seen by the caller, not the caster, no repeats); `spellSave` gives each spared creature a save with `sculpted` and no roll, and opens no damage when the spell halves on a success. A held cast (Counterspell) replays it with the stored request |
 | Hidden hits | `settleHidden` (`combat_reveal.go`): the table rule read in the transaction, the master's `reveal_hidden` over it, then reveal (`combatant_hidden_set` with `by_area`), keep, or open a `hidden_reveals` question. `mustNotHold` refuses with `HIDDEN_REVEAL_PENDING` while one is pending; `Encounter.turn_held` says it to everyone and `pending_hidden_reveals` to the master. `ResolveHiddenReveal` answers a player `permission_denied` before it reads the id |
 
+## Forced movement
+
+`combat_forced.go` moves a creature that failed a save, away from the source in a straight line. The table `forcedRiders` says how far (`PushFeet`, and an optional `MaxSize`) for each rider key: `spell:thunderwave` pushes 10 ft and `feature:open-hand-technique` 15 ft; another pusher is another row. The spell's SRD text and the technique's name no size limit, so `MaxSize` is empty for both.
+
+| Aspect | Rule |
+|---|---|
+| Path | `planPush` takes the squares of `grid.Line` from the target outwards whose distance (`grid.LengthDFt`, 5 ft a square) is within the feet, and enters them one at a time with `Terrain.Move`. A wall, a three-quarters cover square, a locked or barred door, a closed door (a push opens none), the edge of the grid or any other creature (all as large as the pushed one, so none can be passed or shared) ends the push in the last free square |
+| Effects | One `SetCombatantPlace` write: no movement spent, no opportunity offer, no damage, the master's cover mark cleared. Cover and fog follow the new square because both read the combatant's square |
+| Casts | `castFlow.pushFailedSaves` runs after the hits, for the hits whose save failed (an automatic failure included), the farthest from the caster first; each hit keeps `pushed` in the event (`forcedMove`: target, `from` as a `moveState`, end square, feet, `short`) |
+| Monk | `riderConsequence` calls `pushByRider` for the Open Hand push; the rider event keeps `pushed` |
+| No map | A combat in theatre mode (or a source with no square) moves nobody; the event keeps `no_map` and the log line (`CombatLogSpellTarget.push_no_map`, `CombatLogHitRider.push_no_map`) says the push is the table's to imagine |
+| Log and streams | `pushed_ft` on the same two log messages; after the commit `publishPushed` sends `combatant_moved` to who may see the creature and `positionChanged` to the fog, as a move does |
+| Undo | The undo of the cast puts each pushed creature back (`putPushedBack`) and the fog follows it. A rider answer is not undoable, so its push is not either |
+
 ## On screen
 
 The browser only draws what the server sends (RN-21, RN-20).

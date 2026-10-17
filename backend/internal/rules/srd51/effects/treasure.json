@@ -1,5 +1,5 @@
 {
- "source": "Tabelas nossas (MR-044, fatia 10.10b), feitas por critérios nossos descritos em docs/arquitetura.md: o ouro médio de cada faixa e modo vem de uma fração do valor de um item da raridade típica da faixa (tabela do SRD 5.2.1 em magic_item_values.json); os valores de gemas e arte seguem duas escalas nossas (razão 3 a partir de 6 PO nas gemas e a mesma escala deslocada meio degrau, a partir de 9 PO, na arte); os nomes são nossos. Nenhuma tabela, valor ou nome de livro ou de outro site.",
+ "source": "Tabelas nossas (MR-044), feitas por critérios nossos descritos em docs/architecture/maps/treasure.md: o ouro médio de cada faixa e modo vem de uma fração do valor de um item da raridade típica da faixa (tabela do SRD 5.2.1 em magic_item_values.json); os valores de gemas e arte seguem duas escalas nossas (razão 3 a partir de 6 PO nas gemas e a mesma escala deslocada meio degrau, a partir de 9 PO, na arte); os nomes são nossos. Nenhuma tabela, valor ou nome de livro ou de outro site.",
  "gems": [
   {"value_po": 6, "names_pt": ["Quartzo-fumê", "Quartzo-leitoso", "Calcedônia", "Sodalita", "Jaspe-sanguíneo"]},
   {"value_po": 18, "names_pt": ["Ágata-de-fogo", "Rodonita", "Olho-de-gato", "Ametista clara", "Citrino pálido"]},
