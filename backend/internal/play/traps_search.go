@@ -201,12 +201,9 @@ func searchSecondFace(msg *playv1.SearchForTrapsRequest, in rollInput, skill str
 func (s *Service) searchInTx(ctx context.Context, tx pgx.Tx, ts *trapSearch) error {
 	q := s.queries.WithTx(tx)
 	ts.repeated, ts.told, ts.place, ts.offer, ts.lucky = false, nil, searchPlace{}, nil, nil
-	session, err := q.GetOpenGameSessionForUpdate(ctx, ts.m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, ts.m.CampaignID)
 	if err != nil {
-		return fmt.Errorf("lock the open session: %w", err)
+		return err
 	}
 	if done, err := s.searchRetried(ctx, q, session, ts); done || err != nil {
 		return err
@@ -223,11 +220,15 @@ func (s *Service) searchInTx(ctx context.Context, tx pgx.Tx, ts *trapSearch) err
 		return err
 	}
 	r := &searchTurn{c: c, opt: opt, reliable: opt.ReliableTalent}
-	held, err := s.prepareSearchRoll(ctx, tx, q, ts, r)
+	held, err := s.prepareSearchRoll(ctx, ts, r)
 	if err != nil || held {
 		return err
 	}
-	d, err := s.rollSearch(ts, r)
+	rollSearch := s.rollSearchNormal
+	if r.cm.Mode != combat.ModeNormal {
+		rollSearch = s.rollSearchWithMode
+	}
+	d, err := rollSearch(ts, r)
 	if err != nil {
 		return err
 	}
@@ -241,7 +242,7 @@ func (s *Service) searchRetried(ctx context.Context, q *playdb.Queries, session 
 	switch {
 	case err == nil:
 		if done.Kind != eventTrapSearched || done.ActorUserID == nil || *done.ActorUserID != ts.m.UserID || hashDiffers(done.IdempotencyHash, ts.hash) {
-			return true, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			return true, errKeyReused()
 		}
 		ts.repeated = true
 		return true, json.Unmarshal(done.Payload, &ts.ev)
@@ -280,9 +281,9 @@ func (s *Service) searchGuards(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 // prepareSearchRoll works out the mode and the bonus of the check, asks the held-roll gate and spends
 // what the roll uses up. It says whether the d20 was kept for a question: then nothing else is
 // written.
-func (s *Service) prepareSearchRoll(ctx context.Context, tx pgx.Tx, q *playdb.Queries, ts *trapSearch, r *searchTurn) (bool, error) {
+func (s *Service) prepareSearchRoll(ctx context.Context, ts *trapSearch, r *searchTurn) (bool, error) {
 	ability, isCheck := checkKey(searchCheckKey[ts.skill])
-	cm, err := s.checkModeOf(ctx, tx, ts.m.CampaignID, r.c.session.ID, ts.who.ID, searchCheckKey[ts.skill], ability, isCheck)
+	cm, err := s.checkModeOf(ctx, r.c.tx, ts.m.CampaignID, r.c.session.ID, ts.who.ID, searchCheckKey[ts.skill], ability, isCheck)
 	// Reliable Talent: a d20 of 9 or lower counts as 10 for a skill the character is
 	// proficient in, each die of a search with disadvantage before the lower is
 	// chosen. Not for the light's penalty: that is the second die, as before.
@@ -290,14 +291,14 @@ func (s *Service) prepareSearchRoll(ctx context.Context, tx pgx.Tx, q *playdb.Qu
 		return false, err
 	}
 	r.cm = cm
-	if r.names, err = s.namerFor(ctx, tx, ts.m.CampaignID); err != nil {
+	if r.names, err = s.namerFor(ctx, r.c.tx, ts.m.CampaignID); err != nil {
 		return false, err
 	}
 	ts.shown = shownSources(r.cm.Sources, r.names)
 	if r.bonus, err = s.withEffectDice(ts.in, ts.in.extraFaces, &r.cm, r.opt.Bonus); err != nil {
 		return false, err
 	}
-	if held, err := s.askSearchGate(ctx, tx, q, ts, r); held || err != nil {
+	if held, err := s.askSearchGate(ctx, ts, r); held || err != nil {
 		return held, err
 	}
 	if r.step.Bonus != nil {
@@ -317,7 +318,7 @@ func (s *Service) prepareSearchRoll(ctx context.Context, tx pgx.Tx, q *playdb.Qu
 // Bardic Inspiration die, before anything is spent or written (the Search action of a combat has spent
 // the action by now, and rolls as always), and so for a halfling's d20 that shows a 1, for the Lucky
 // question. The answer brings the d20 back. It says whether a question is open.
-func (s *Service) askSearchGate(ctx context.Context, tx pgx.Tx, q *playdb.Queries, ts *trapSearch, r *searchTurn) (bool, error) {
+func (s *Service) askSearchGate(ctx context.Context, ts *trapSearch, r *searchTurn) (bool, error) {
 	if ts.place.spent {
 		return false, nil
 	}
@@ -325,7 +326,7 @@ func (s *Service) askSearchGate(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 	if len(ts.in.typedFaces) > 0 && r.cm.Mode == combat.ModeNormal { // the second die of a Perception search is not the held one
 		held.typed, held.typedFaces = ts.in.typedFaces[0], nil
 	}
-	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
+	step, err := s.heldGate(ctx, s.outsideGate(r.c.tx, r.c.q), rollSpec{
 		Kind: heldTrapSearch, Key: ts.key, Request: ts.req, Roller: heldRoller{CampaignID: ts.m.CampaignID, CharacterID: ts.who.ID, UserID: ts.m.UserID},
 		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Reliable: r.reliable, Lucky: r.opt.Lucky, MayAsk: true,
 	})
@@ -336,16 +337,8 @@ func (s *Service) askSearchGate(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 	if step.Held == nil {
 		return false, nil
 	}
-	ts.offer, ts.lucky, ts.held = s.outsideOffers(ctx, tx, step.Held)
+	ts.offer, ts.lucky, ts.held = s.outsideOffers(ctx, r.c.tx, step.Held)
 	return true, nil
-}
-
-// rollSearch rolls the d20 of the search, or takes the one the gate decided.
-func (s *Service) rollSearch(ts *trapSearch, r *searchTurn) (searchDice, error) {
-	if r.cm.Mode != combat.ModeNormal {
-		return s.rollSearchWithMode(ts, r)
-	}
-	return s.rollSearchNormal(ts, r)
 }
 
 // rollSearchWithMode is a roll under advantage or disadvantage: two dice, the better or the worse
@@ -426,8 +419,8 @@ func (s *Service) writeTrapSearch(ctx context.Context, ts *trapSearch, r *search
 	ts.told = found.Users
 	ts.ev = trapSearchEvent(ts, r, d, found)
 	if ts.place.spent {
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return err
 		}
 		ts.place.enc = c.enc
 	}

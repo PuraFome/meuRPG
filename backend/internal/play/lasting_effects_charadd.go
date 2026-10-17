@@ -128,12 +128,9 @@ func (s *Service) AddCharacterEffect(
 // answers what was made and the vitals the streams are told after the commit.
 func (s *Service) giveCharacterEffect(ctx context.Context, tx pgx.Tx, m authz.Membership, in charEffectInput, hash *string, msg *playv1.AddCharacterEffectRequest) (charEffectEvent, []*playv1.CharacterVitals, error) {
 	q := s.queries.WithTx(tx)
-	session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return charEffectEvent{}, nil, errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	if err != nil {
-		return charEffectEvent{}, nil, fmt.Errorf("lock the open session: %w", err)
+		return charEffectEvent{}, nil, err
 	}
 	done, again, err := eventByKey(ctx, q, session.ID, in.key, eventLastingAdded, hash)
 	if err != nil {
@@ -162,7 +159,7 @@ func (s *Service) giveCharacterEffect(ctx context.Context, tx pgx.Tx, m authz.Me
 	if err := s.syncArmorBase(ctx, c, slices.Clone(made.Targets)...); err != nil { // it sorts what it is given: the event keeps the order of the request
 		return charEffectEvent{}, nil, err
 	}
-	if err := s.writeCharEffectEvent(ctx, q, session.ID, m.UserID, in.key, hash, made); err != nil {
+	if err := s.appendKeyedEvent(ctx, q, keyedEvent{sessionID: session.ID, kind: eventLastingAdded, userID: m.UserID, key: in.key, hash: hash}, made); err != nil {
 		return charEffectEvent{}, nil, err
 	}
 	return made, c.told, nil
@@ -180,16 +177,9 @@ func (s *Service) requireOutsideCombat(ctx context.Context, tx pgx.Tx, q *playdb
 			return connect.NewError(connect.CodeNotFound, errors.New("character not found"))
 		}
 	}
-	enc, err := q.GetOpenEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("find the open encounter: %w", err)
-	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+	_, cs, fighting, err := openCombatants(ctx, q, sessionID)
+	if err != nil || !fighting {
+		return err
 	}
 	if slices.ContainsFunc(cs, func(o playdb.Combatant) bool {
 		return slices.Contains(characterIDs, o.CharacterID) && backedByCharacter(o)
@@ -410,23 +400,4 @@ func withCharEffectDef(p *playdb.InsertCharacterEffectParams, def *rules.EffectD
 	if t := def.Trigger; t != nil {
 		p.TriggerDice, p.TriggerDamageType, p.TriggerMaxTriggers = &t.Dice, &t.DamageType, new(int32(t.MaxTriggers)) //nolint:gosec // a small number of the file
 	}
-}
-
-// writeCharEffectEvent appends the session event that keeps the key and what was made.
-func (s *Service) writeCharEffectEvent(ctx context.Context, q *playdb.Queries, sessionID, userID, key string, hash *string, made charEffectEvent) error {
-	payload, err := json.Marshal(made)
-	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
-	}
-	seq, err := q.NextSessionEventSeq(ctx, sessionID)
-	if err != nil {
-		return fmt.Errorf("next event number: %w", err)
-	}
-	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-		GameSessionID: sessionID, Seq: seq, Kind: eventLastingAdded, ActorUserID: &userID,
-		Payload: payload, IdempotencyKey: &key, IdempotencyHash: hash, CreatedAt: s.now(),
-	}); err != nil {
-		return fmt.Errorf("insert session event: %w", err)
-	}
-	return nil
 }

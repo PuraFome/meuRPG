@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -182,12 +181,9 @@ func (s *Service) endCharacterEffect(
 // retry from the event it wrote, end the effect or its casting, and write the event.
 func (s *Service) endCharacterEffectTx(ctx context.Context, tx pgx.Tx, m authz.Membership, msg *playv1.EndLastingEffectRequest, id, key string, hash *string, out *endCharacterEnd) error {
 	q := s.queries.WithTx(tx)
-	session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	if err != nil {
-		return fmt.Errorf("lock the open session: %w", err)
+		return err
 	}
 	done, again, err := eventByKey(ctx, q, session.ID, key, eventLastingEnded, hash)
 	if err != nil {
@@ -219,7 +215,7 @@ func (s *Service) endCharacterEffectTx(ctx context.Context, tx pgx.Tx, m authz.M
 		return err
 	}
 	out.told = c.told
-	return writeCharacterEndEvent(ctx, q, session.ID, m.UserID, key, hash, out.ended, s.now())
+	return s.appendKeyedEvent(ctx, q, keyedEvent{sessionID: session.ID, kind: eventLastingEnded, userID: m.UserID, key: key, hash: hash}, gameTimeEvent{Ended: out.ended})
 }
 
 // endCharacterCasting ends every effect of a casting on the characters, and the cast that held
@@ -260,24 +256,4 @@ func (s *Service) endOneCharacterEffect(ctx context.Context, c *combatTx, row pl
 		return 0, err
 	}
 	return 1, nil
-}
-
-// writeCharacterEndEvent writes the event of an effect on a character that ended, with the key
-// that makes a retry answer the same.
-func writeCharacterEndEvent(ctx context.Context, q *playdb.Queries, sessionID, userID, key string, hash *string, ended int32, now time.Time) error {
-	payload, err := json.Marshal(gameTimeEvent{Ended: ended})
-	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
-	}
-	seq, err := q.NextSessionEventSeq(ctx, sessionID)
-	if err != nil {
-		return fmt.Errorf("next event number: %w", err)
-	}
-	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-		GameSessionID: sessionID, Seq: seq, Kind: eventLastingEnded, ActorUserID: &userID,
-		Payload: payload, IdempotencyKey: &key, IdempotencyHash: hash, CreatedAt: now,
-	}); err != nil {
-		return fmt.Errorf("insert session event: %w", err)
-	}
-	return nil
 }
