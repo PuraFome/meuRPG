@@ -85,7 +85,7 @@ func (s *Service) settleHidden(ctx context.Context, c *combatTx, m authz.Members
 			return err
 		}
 		// The cast's undo hides them again and takes these lines back with it.
-		made.RevealedHits, made.RevealLines = true, lines
+		made.Revealed, made.RevealLines = hit, lines
 	}
 	return nil
 }

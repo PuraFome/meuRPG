@@ -44,7 +44,6 @@ A new kind is a row in `session_event_kinds` (a migration) and an `event...` con
 A payload is at most 16 KiB of the database's text of the JSON (a `CHECK` of `session_events`).
 An event that lists one record per creature is written as several events past 3,500 bytes (`eventPayloadBudget`, `fitPrefix`, `combat_write.go`): the master's lines of a start's monsters (`combatants_added`, each with its dice and faces) and a trap's firing.
 Any other event over `undoHelpersBudget` drops the lists only its undo needs (see [Undo](undo.md)).
-An area cast that reveals the hidden creatures it hit does not list them a second time: the event says `revealed_hits`, and the creatures are the targets of its hits marked `HiddenAtCast` (`revealedIDs`), so a cast on forty hidden creatures stays under the budget. The answer to the master's question (`hidden_reveal_answered`) lists its creatures in `revealed`.
 
 ## Stream events
 

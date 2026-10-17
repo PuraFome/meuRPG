@@ -54,7 +54,7 @@ The undone line disappears from the log.
 - **A Hunter's Mark a concentration ended.** A rage, a damage to 0 HP, a failed concentration save and the master's end of the concentration end the Hunter's Mark with `stopConcentrating`, which takes the mark off its target; the event keeps it (`marks_before`) and `endedConcentrationBack` writes it back with the concentration, for every undo that gives a concentration back.
   A mark whose target or caster left the combat stays off.
 - **The "revealed" lines of an area spell.** Under the table rule that reveals the hidden creatures an area hits, the cast writes a `combatant_hidden_set` line (`by_area`) for each before its own event (`revealCombatants`).
-  The event says it revealed the creatures its hits name (`revealed_hits`, read by `revealedIDs`, so that the ids are not written twice) and keeps the lines' ids (`reveal_lines`), and its undo takes the lines back in `undone_also`: the master's log keeps no "revealed" line for a creature hidden again.
+  The event keeps their ids (`reveal_lines`), and its undo takes the lines back in `undone_also`: the master's log keeps no "revealed" line for a creature hidden again.
   A player's log never listed them once the creature was hidden again, so nothing appears or disappears for a player (RN-10).
 - **Wild Shape, a trap, a creature.** See [Creatures](creatures.md) and [Traps](traps.md).
 
