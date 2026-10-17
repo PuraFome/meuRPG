@@ -565,6 +565,9 @@ func featureError(r *rulesv1.DisabledReason, master bool) error {
 	return nil
 }
 
+// secondWindDieSides is the die Second Wind rolls: a d10.
+const secondWindDieSides = 10
+
 // secondWind is Retomar o fôlego: 1d10 plus the fighter's level of hit points,
 // rolled like a damage (RN-18) and healed through the vitals (or the NPC's hit
 // points). It fills the event with the roll and what changed, and returns the
@@ -578,7 +581,7 @@ func (s *Service) secondWind(ctx context.Context, c *combatTx, m authz.Membershi
 			return nil, err
 		}
 	}
-	expr := dice.Expr{Count: 1, Sides: 10, Modifier: fighterLevel}
+	expr := dice.Expr{Count: 1, Sides: secondWindDieSides, Modifier: fighterLevel}
 	var roll dice.Result
 	var err error
 	if in.inApp {

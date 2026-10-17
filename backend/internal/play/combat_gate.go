@@ -126,10 +126,14 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 	return s.mustNotWait(ctx, c, who)
 }
 
+// dftPerFt is how many tenths of a foot make a foot: the movement is stored in tenths.
+const dftPerFt = 10
+
+// turnOf is the economy and the movement a combatant has used this turn, as the rules read them.
 func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
 		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), AttackKey: conv.OrZero(c.ActionAttackKey), FlurryLeft: int(c.BonusAttacksLeft), ActionSurged: c.ActionSurged, SpellCast: c.SpellCast, BonusSpellCast: c.BonusSpellCast,
-		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / 10,
+		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / dftPerFt,
 		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
 		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
 		JumpLongBonusDFt: int(c.JumpLongBonusDft), JumpDoubled: c.JumpDoubled,
