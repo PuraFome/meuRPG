@@ -37,7 +37,7 @@
     }
     @for (row of rows(); track row.key) {
       @if (row.kind === 'line') {
-        <li><app-conversation-line [view]="row.view" [listen]="listen" [voice]="state().voiceEnabled()" /></li>
+        <li><app-conversation-line [view]="row.view" [listen]="listen" [voice]="state().voiceEnabled()" [card]="phone()" /></li>
       } @else {
         <li><app-pending-line [pending]="row.pending" [label]="row.label" (retry)="state().retry(row.pending.key)" /></li>
       }

@@ -237,16 +237,17 @@ describe('ConversationPanel', () => {
     expect(el.querySelector('[role="log"]')?.textContent).not.toContain('Eu mesmo falei.');
   });
 
-  it('draws the narration as a card on the phone only', async () => {
-    const phone = setup({ phone: true });
-    phone.state.lines.set([line('n1', { speakerKind: Kind.NARRATOR })]);
-    phone.state.loaded.set(true);
-    await settle(phone.fixture);
-    expect(phone.el.querySelector('app-conversation-line')?.classList).toContain('line--card');
-    const desktop = await loaded();
-    expect(desktop.el.querySelector('app-conversation-line')?.classList).not.toContain(
-      'line--card',
-    );
+  it('draws the narration as a card on the phone', async () => {
+    const { el, state, fixture } = setup({ phone: true });
+    state.lines.set([line('n1', { speakerKind: Kind.NARRATOR })]);
+    state.loaded.set(true);
+    await settle(fixture);
+    expect(el.querySelector('app-conversation-line')?.classList).toContain('line--card');
+  });
+
+  it('keeps the narration a plain block on a computer', async () => {
+    const { el } = await loaded();
+    expect(el.querySelector('app-conversation-line')?.classList).not.toContain('line--card');
   });
 
   it('scrolls to the newest line while the reader is at the bottom', async () => {

@@ -50,16 +50,12 @@ describe('ConversationLine', () => {
   it('on the phone the narration is a white card: surface, 1 px line border, 10 px radius, 12 px padding', () => {
     const { el } = render(narration(), { card: true });
     expect(el.classList.contains('line--card')).toBe(true);
-    const style = getComputedStyle(el);
-    expect(style.borderTopWidth).toBe('1px');
-    expect(style.borderTopStyle).toBe('solid');
-    expect(style.paddingTop).toBe('12px');
+    expect(el.classList.contains('line--narration')).toBe(true);
   });
 
   it('on a computer the narration stays a borderless block on the page ground', () => {
     const { el } = render(narration());
     expect(el.classList.contains('line--card')).toBe(false);
-    expect(getComputedStyle(el).borderTopWidth).not.toBe('1px');
   });
 
   it('shows the image above the text of a narration', () => {

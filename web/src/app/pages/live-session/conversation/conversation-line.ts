@@ -19,6 +19,7 @@ import { ListenButton } from './listen-button';
   host: {
     class: 'line',
     '[class.line--narration]': "view().look === 'narration'",
+    '[class.line--card]': "card() && view().look === 'narration'",
     '[class.line--npc]': "view().look === 'npc'",
     '[class.line--own]': "view().look === 'own'",
     '[class.line--ooc]': "view().look === 'out-of-character'",
@@ -65,6 +66,8 @@ export class ConversationLine {
   readonly listen = input.required<ListenController>();
   /** The server can make the voice of a line (`voice_enabled`). */
   readonly voice = input(false);
+  /** The phone's full-screen feed is on the page ground, so the narration is a white card there. */
+  readonly card = input(false);
 
   protected readonly hearable = computed(
     () => this.voice() && this.view().canHear && this.view().audioUrl !== '',

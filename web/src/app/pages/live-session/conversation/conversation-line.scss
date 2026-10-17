@@ -58,6 +58,12 @@ app-listen-button {
   }
 }
 
+// On the phone the feed is the page ground itself: the narration lifts off it as a white card.
+:host(.line--card) {
+  border: 1px solid var(--mr-line);
+  background: var(--mr-surface);
+}
+
 .line__image {
   display: block;
   width: 100%;
