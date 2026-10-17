@@ -830,7 +830,7 @@ func (s *Service) castPublisher(m authz.Membership, ev actionEvent, vitals []*pl
 		if ev.PendingReveal != "" { // the master alone is told a question waits
 			s.publishHiddenHitPending(m.CampaignID, d.enc.ID, ev.PendingReveal)
 		}
-		if anyInTurn(d, ev.Revealed) { // a creature of the turn that appeared changes the players' copy of it
+		if anyInTurn(d, ev.revealedIDs()) { // a creature of the turn that appeared changes the players' copy of it
 			s.publishTurnChanged(ctx, m.CampaignID, d)
 		}
 	}
