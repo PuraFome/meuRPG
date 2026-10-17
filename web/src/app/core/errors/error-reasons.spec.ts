@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { cwd } from 'node:process';
 
 import { describeInviteErrorCode } from '../campaigns/invite-errors';
 import { violationText } from '../content/content-violations';
@@ -27,10 +27,11 @@ interface ReasonList {
   redirects: { reason: string }[];
 }
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const APP = join(HERE, '..', '..');
+// The tests run from web/ (plain and under coverage); import.meta.url points elsewhere once coverage bundles the specs.
+const WEB = cwd();
+const APP = join(WEB, 'src', 'app');
 const LIST: ReasonList = JSON.parse(
-  readFileSync(join(APP, '..', '..', '..', 'proto', 'error-reasons.json'), 'utf8'),
+  readFileSync(join(WEB, '..', 'proto', 'error-reasons.json'), 'utf8'),
 );
 
 function sources(dir: string): string[] {
