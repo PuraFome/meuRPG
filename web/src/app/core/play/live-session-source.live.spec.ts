@@ -297,6 +297,25 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'callingYou']);
   });
 
+  it('maps the conversation: a line with its content, and a typing hint with only its seconds', async () => {
+    const got = await eventsOf(
+      {
+        case: 'sessionMessageAdded',
+        value: { message: { id: 'm1', text: 'Oi', forEveryone: true } },
+      },
+      { case: 'sessionMessageAdded', value: {} },
+      { case: 'masterTyping', value: { expiresInSeconds: 6 } },
+    );
+    expect(got).toEqual([
+      expect.objectContaining({
+        kind: 'sessionMessage',
+        message: expect.objectContaining({ id: 'm1', text: 'Oi' }),
+      }),
+      // A line with no body says nothing.
+      { kind: 'masterTyping', expiresInSeconds: 6 },
+    ]);
+  });
+
   it('maps `revivify_changed` to its own event, with no content (RN-10)', async () => {
     expect(
       await events([

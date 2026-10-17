@@ -1,6 +1,7 @@
 // What `LiveStream` hands each handler for each kind of message, plus the corners of its lifecycle that
 // `live-stream.spec.ts` leaves out: a tab opened hidden, a closed stream under a timer, a message of an unknown kind and
 // a replaced connection that keeps sending. It uses the same fake call and fake clock as `live-stream.spec.ts`.
+import { line as aLine } from '../conversation/conversation-testing';
 import { LiveStream, LiveStreamHandlers } from './live-stream';
 import { LiveEventVm } from './live-session.types';
 
@@ -88,6 +89,8 @@ describe('LiveStream: what each message hands the page', () => {
       onRevivifyChanged: vi.fn(),
       onPuzzleChanged: vi.fn(),
       onCallingYou: vi.fn(),
+      onSessionMessage: vi.fn(),
+      onMasterTyping: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
       ...over,
@@ -211,6 +214,18 @@ describe('LiveStream: what each message hands the page', () => {
     ['revivifyChanged', { kind: 'revivifyChanged' }, 'onRevivifyChanged', []],
     ['callingYou', { kind: 'callingYou' }, 'onCallingYou', []],
     ['puzzleChanged', { kind: 'puzzleChanged', puzzleId: 'pz' }, 'onPuzzleChanged', ['pz']],
+    [
+      'sessionMessage',
+      { kind: 'sessionMessage', message: aLine },
+      'onSessionMessage',
+      [aLine],
+    ],
+    [
+      'masterTyping',
+      { kind: 'masterTyping', expiresInSeconds: 6 },
+      'onMasterTyping',
+      [6],
+    ],
   ];
 
   it.each(table)('hands %s to its handler, and only to it', async (_name, event, handler, args) => {
