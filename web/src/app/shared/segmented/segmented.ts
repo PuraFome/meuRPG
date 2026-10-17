@@ -6,6 +6,8 @@ export interface Segment<T extends string> {
   readonly value: T;
   readonly label: string;
   readonly icon?: string;
+  /** The choice exists but cannot be taken now (the radio is disabled). */
+  readonly disabled?: boolean;
 }
 
 let nextId = 0;
@@ -24,13 +26,14 @@ let nextId = 0;
   template: `
     <div class="seg" role="radiogroup" [attr.aria-label]="label()">
       @for (s of segments(); track s.value) {
-        <label class="seg__item" [class.seg__item--on]="s.value === value()">
+        <label class="seg__item" [class.seg__item--on]="s.value === value()" [class.seg__item--off]="s.disabled">
           <input
             type="radio"
             class="mr-visually-hidden"
             [name]="name"
             [value]="s.value"
             [checked]="s.value === value()"
+            [disabled]="s.disabled ?? false"
             (change)="choose.emit(s.value)"
           />
           @if (s.value === value()) {

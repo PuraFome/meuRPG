@@ -1,0 +1,206 @@
+:host {
+  display: block;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.composer__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+}
+
+.composer__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  min-width: 0;
+}
+
+.composer__label {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+}
+
+// The two controls look alike: 44 px, a thin control line, the chevron or icon inset on the right.
+.composer__select,
+.composer__to {
+  box-sizing: border-box;
+  height: 44px;
+  width: 100%;
+  padding: 0 40px 0 var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.composer__select {
+  display: flex;
+  align-items: center;
+
+  // The select's own arrow sits inside the field, 12 px from the edge.
+  ::ng-deep .mat-mdc-select-arrow-wrapper {
+    position: absolute;
+    right: var(--mr-space-3);
+  }
+}
+
+.composer__to {
+  position: relative;
+  display: block;
+  text-align: left;
+  cursor: pointer;
+
+  .mat-icon {
+    position: absolute;
+    right: var(--mr-space-3);
+    top: 12px;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    pointer-events: none;
+  }
+}
+
+.composer__to-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer__to:focus-visible,
+.composer__select:focus-within {
+  outline: 2px solid var(--mr-focus);
+  outline-offset: 1px;
+}
+
+.speaker__stage {
+  color: var(--mr-ink-muted);
+}
+
+.composer__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  align-self: flex-start;
+  max-width: 100%;
+  margin: 0;
+  padding-left: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ground);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.composer__chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer__chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--mr-radius-pill);
+  background: transparent;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+.composer__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.composer__image,
+.composer__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 var(--mr-space-3);
+  border-radius: var(--mr-radius-sm);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.composer__image {
+  border: 1px solid var(--mr-control-line);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}
+
+.composer__send {
+  margin-left: auto;
+  border: 0;
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+
+  .mat-icon {
+    display: none;
+  }
+}
+
+// On a phone both are 48 px squares with the icon alone; the words stay for a screen reader.
+@media (max-width: 767.98px) {
+  .composer__image,
+  .composer__send {
+    width: 48px;
+    padding: 0;
+
+    .mat-icon {
+      display: inline-block;
+    }
+  }
+
+  .composer__image-text,
+  .composer__send-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+}

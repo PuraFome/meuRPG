@@ -47,9 +47,9 @@ describe('PlayerComposer', () => {
     const { el } = setup();
     const group = el.querySelector('[role="radiogroup"]');
     expect(group).not.toBeNull();
-    const labels = Array.from(el.querySelectorAll('.seg__item'), (l) => l.textContent?.trim());
-    expect(labels).toContain('Como Pensantus');
-    expect(labels).toContain('Fora do personagem');
+    const labels = Array.from(el.querySelectorAll('.seg__item'), (l) => l.textContent ?? '');
+    expect(labels.some((l) => l.includes('Como Pensantus'))).toBe(true);
+    expect(labels.some((l) => l.includes('Fora do personagem'))).toBe(true);
   });
 
   it('sends the line as the character, to everyone, and empties the field', () => {

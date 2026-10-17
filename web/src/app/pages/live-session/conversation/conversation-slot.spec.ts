@@ -16,7 +16,6 @@ describe('ConversationSlot', () => {
       campaignId: signal('c1'),
       ownCharacterId: signal(over.ownId ?? 'pc1'),
       stageCharacterIds: stage,
-      sceneName: signal('A taverna'),
     });
     return { slot, live, phone, pageVisible, stage };
   }

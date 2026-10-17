@@ -1,0 +1,50 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.listen {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-1);
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 var(--mr-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--mr-radius-sm);
+  background: transparent;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.listen--on {
+  border-color: var(--mr-control-line);
+  background: var(--mr-accent-soft);
+  color: var(--mr-ink);
+}
+
+.listen__error {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  &:empty {
+    display: none;
+  }
+}

@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 
+import { settle } from '../../../../test-settle';
+
 import { SessionMessageSpeakerKind as Kind } from '../../../../gen/meurpg/play/v1/session_messages_pb';
 import { ConversationState } from '../../../core/conversation/conversation-state';
 import { FakeConversationApi } from '../../../core/conversation/conversation-testing';
@@ -65,16 +67,18 @@ describe('MasterComposer', () => {
     expect(words).toEqual(expect.arrayContaining(['Falar como', 'Para', 'Mensagem']));
   });
 
-  it('starts as the narrator, to everyone', () => {
-    const { el, buttonWith } = setup();
+  it('starts as the narrator, to everyone', async () => {
+    const { el, buttonWith, fixture } = setup();
+    await settle(fixture);
     expect(el.querySelector('mat-select')?.textContent).toContain('Narrador');
     expect(buttonWith('Todos')).toBeDefined();
   });
 
   it('lists the narrator, then the NPCs on stage, in the select', async () => {
     const { el, fixture } = setup();
-    (el.querySelector('mat-select') as HTMLElement).click();
-    fixture.detectChanges();
+    await settle(fixture);
+    (el.querySelector('.mat-mdc-select-trigger') as HTMLElement).click();
+    await settle(fixture);
     const options = Array.from(document.querySelectorAll('.mr-speaker-panel mat-option'), (o) =>
       o.textContent?.replace(/\s+/g, ' ').trim(),
     );
@@ -93,12 +97,13 @@ describe('MasterComposer', () => {
     });
   });
 
-  it('speaks as the chosen NPC', () => {
+  it('speaks as the chosen NPC', async () => {
     const { api, type, send, el, fixture } = setup();
-    (el.querySelector('mat-select') as HTMLElement).click();
-    fixture.detectChanges();
+    await settle(fixture);
+    (el.querySelector('.mat-mdc-select-trigger') as HTMLElement).click();
+    await settle(fixture);
     (document.querySelectorAll('.mr-speaker-panel mat-option')[1] as HTMLElement).click();
-    fixture.detectChanges();
+    await settle(fixture);
     type('Quartos, só amanhã.');
     send();
     expect(api.sent[0]).toMatchObject({ speakerKind: Kind.NPC, speakerId: 'npc1' });

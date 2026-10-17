@@ -1,0 +1,148 @@
+// One line of the conversation, per the board: the five looks share the label (13px bold) and differ in what
+// surrounds the text.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  min-width: 0;
+  color: var(--mr-ink);
+  overflow-wrap: anywhere;
+}
+
+.line__head {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  min-height: 16px;
+}
+
+.line__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+p {
+  margin: 0;
+}
+
+app-listen-button {
+  margin-left: auto;
+}
+
+// Narration: the display serif on the page ground, with the picture above the text.
+:host(.line--narration) {
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+
+  .line__label {
+    color: var(--mr-accent-text);
+  }
+
+  .line__text {
+    font-family: var(--mr-font-display);
+    font-size: 18px;
+    line-height: 26px;
+  }
+}
+
+.line__image {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--mr-radius-sm);
+}
+
+// A spoken line: the round portrait (the initial when there is no picture), the name, the bubble.
+:host(.line--npc) {
+  flex-direction: row;
+  gap: var(--mr-space-3);
+}
+
+.line__portrait {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--mr-ink);
+  border-radius: var(--mr-radius-pill);
+  object-fit: cover;
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+}
+
+.line__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.line__bubble {
+  align-self: flex-start;
+  padding: var(--mr-space-2) var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  max-width: 100%;
+}
+
+// The reader's own line: to the right, tinted.
+:host(.line--own) {
+  align-items: flex-end;
+
+  .line__bubble {
+    align-self: flex-end;
+    max-width: 85%;
+    border-color: transparent;
+    background: var(--mr-accent-soft);
+  }
+}
+
+// An out-of-character remark: small and muted, no bubble.
+:host(.line--ooc) {
+  gap: 2px;
+
+  .line__label {
+    font-weight: 400;
+    color: var(--mr-ink-muted);
+  }
+
+  .line__bubble {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+// A line for chosen readers: dashed accent border and a lock.
+:host(.line--restricted) {
+  gap: 6px;
+  padding: var(--mr-space-3);
+  border: 1px dashed var(--mr-accent);
+  border-radius: var(--mr-radius-md);
+
+  .line__label {
+    color: var(--mr-accent-text);
+  }
+}

@@ -1,0 +1,70 @@
+<section class="panel" [class.panel--full]="phone()" [attr.aria-labelledby]="titleId">
+  <header class="panel__head">
+    @if (phone()) {
+      <button type="button" class="panel__back" aria-label="Voltar à sessão" (click)="back.emit()">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      </button>
+      <div class="panel__titles">
+        <h2 class="panel__title" [id]="titleId">Conversa</h2>
+        <span class="panel__scene">{{ subtitle() }}</span>
+      </div>
+    } @else {
+      <h2 class="panel__title" [id]="titleId">Conversa</h2>
+      @if (roster.tableSize(); as size) {
+        <span class="panel__count">{{ size }} na mesa</span>
+      }
+    }
+  </header>
+
+  @if (connection() === 'reconnecting') {
+    <div class="mr-notice mr-notice--warning panel__notice" role="status">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <p><strong>Reconectando.</strong> As mensagens que chegaram enquanto isso aparecem assim que a conexão voltar.</p>
+    </div>
+  }
+  @if (state().error(); as problem) {
+    <div class="mr-notice mr-notice--danger panel__notice" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ problem }}</p>
+    </div>
+  }
+
+  <ol #feed class="panel__feed" [class.panel__feed--empty]="rows().length === 0 && !state().hasOlder()" aria-label="Mensagens da cena" (scroll)="onScroll()">
+    @if (state().hasOlder()) {
+      <li class="panel__older">
+        <button type="button" (click)="state().loadOlder()">Carregar anteriores</button>
+      </li>
+    }
+    @for (row of rows(); track row.key) {
+      @if (row.kind === 'line') {
+        <li app-conversation-line [view]="row.view" [listen]="listen" [voice]="state().voiceEnabled()"></li>
+      } @else {
+        <li app-pending-line [pending]="row.pending" [label]="row.label" (retry)="state().retry(row.pending.key)"></li>
+      }
+    }
+  </ol>
+  @if (state().loaded() && rows().length === 0 && !state().hasOlder()) {
+    <p class="panel__empty">A conversa começa quando o mestre narrar a cena. Você pode escrever antes, se quiser.</p>
+  }
+
+  <p class="panel__typing" role="status">{{ state().typing() ? 'O mestre está escrevendo…' : '' }}</p>
+  <div class="mr-visually-hidden" role="log" aria-live="polite" aria-relevant="additions">
+    @for (item of announced(); track item.id) {
+      <p>{{ item.text }}</p>
+    }
+  </div>
+
+  <div class="panel__compose">
+    @if (isMaster()) {
+      <app-master-composer
+        [state]="state()"
+        [campaignId]="campaignId()"
+        [speakers]="roster.speakers()"
+        [players]="roster.players()"
+        [directory]="roster.directory()"
+      />
+    } @else {
+      <app-player-composer [state]="state()" [characterId]="ownCharacterId()" [characterName]="ownCharacterName()" />
+    }
+  </div>
+</section>

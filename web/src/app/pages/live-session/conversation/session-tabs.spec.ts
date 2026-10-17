@@ -4,8 +4,9 @@ import { provideRouter } from '@angular/router';
 import { SessionTabs } from './session-tabs';
 
 describe('SessionTabs', () => {
+  beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter([])] }));
+
   function setup(tab: 'scene' | 'chat' = 'scene', unread = 0) {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(SessionTabs);
     fixture.componentRef.setInput('tab', tab);
     fixture.componentRef.setInput('unread', unread);
@@ -59,10 +60,12 @@ describe('SessionTabs', () => {
   });
 
   it('says "1 mensagem nova" in the singular and caps the badge at 99+', () => {
-    expect(
-      setup('scene', 1).el.querySelectorAll('button.tab')[1].getAttribute('aria-label'),
-    ).toBe('Conversa, 1 mensagem nova');
-    const big = setup('scene', 120).el.querySelector('.tab__badge');
-    expect(big?.textContent?.trim()).toBe('99+');
+    const one = setup('scene', 1);
+    expect(one.el.querySelectorAll('button.tab')[1].getAttribute('aria-label')).toBe(
+      'Conversa, 1 mensagem nova',
+    );
+    one.fixture.componentRef.setInput('unread', 120);
+    one.fixture.detectChanges();
+    expect(one.el.querySelector('.tab__badge')?.textContent?.trim()).toBe('99+');
   });
 });

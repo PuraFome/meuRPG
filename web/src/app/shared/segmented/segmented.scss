@@ -46,3 +46,10 @@
   background: var(--mr-accent-soft);
   color: var(--mr-accent-strong);
 }
+
+// A choice that cannot be taken now: quiet, and not a pointer.
+.seg__item--off {
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+  cursor: default;
+}

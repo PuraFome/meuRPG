@@ -1,0 +1,78 @@
+:host {
+  display: block;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.composer__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  app-segmented {
+    flex: 1 1 200px;
+  }
+}
+
+.composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--mr-space-2);
+}
+
+.composer__field {
+  flex: 1;
+}
+
+.composer__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mr-space-2);
+  flex: none;
+  box-sizing: border-box;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 var(--mr-space-4);
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  .mat-icon {
+    display: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  // On a phone the button is the paper plane alone, 48 px square.
+  @media (max-width: 767.98px) {
+    width: 48px;
+    padding: 0;
+
+    .mat-icon {
+      display: inline-block;
+    }
+
+    .composer__send-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+  }
+}
