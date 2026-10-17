@@ -567,7 +567,20 @@ func (s *Service) startMove(ctx context.Context, a *moveAttempt) error {
 	if placed(a.target) && a.req.jump != playv1.JumpKind_JUMP_KIND_HIGH {
 		a.length = grid.LengthDFt(squareOfCombatant(a.target), a.to)
 	}
-	return nil
+	return a.mustGoSomewhere()
+}
+
+// mustGoSomewhere refuses a player's walk to the square the mover already stands
+// on: it travels nothing, so there is no movement to spend and no step to log,
+// and an event for it would only be an undo entry that undoes nothing. A jump has
+// its own refusal and a high jump stays where it is by design. The master moves
+// tokens for free, as administration (a token put right, a setup step), and is let
+// through.
+func (a *moveAttempt) mustGoSomewhere() error {
+	if a.v.master || !a.req.walking() || !placed(a.target) || a.length > 0 {
+		return nil
+	}
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("a move needs another square"))
 }
 
 // planPlayerMove works out the move of a player. They plan on what they see

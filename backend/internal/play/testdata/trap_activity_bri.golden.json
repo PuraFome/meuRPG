@@ -80,11 +80,6 @@
         "caught": [
           {
             "characterId": "bri",
-            "targetId": "bri",
-            "targetLabel": "Brisa"
-          },
-          {
-            "characterId": "bri",
             "conditionKeys": [
               "condition:prone"
             ],

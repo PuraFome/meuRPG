@@ -17,6 +17,8 @@ on:
       - ".github/scripts/go-db-shard.sh"
       - ".github/scripts/go-coverage.sh"
       - ".github/scripts/go-complexity.sh"
+      - ".github/scripts/nolint-cap.sh"
+      - ".github/nolint-cap"
       - ".node-version"
   push:
     branches: [main]
@@ -29,6 +31,8 @@ on:
       - ".github/scripts/go-db-shard.sh"
       - ".github/scripts/go-coverage.sh"
       - ".github/scripts/go-complexity.sh"
+      - ".github/scripts/nolint-cap.sh"
+      - ".github/nolint-cap"
       - ".node-version"
   # The nightly run and a manual run test everything, with no path filter
   # (03:00 in São Paulo).
@@ -76,7 +80,7 @@ jobs:
           go=true
           if [ "$EVENT" = pull_request ]; then
             changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
-            if grep -Eq '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/go-(db-shard|coverage|complexity)\.sh$)' <<<"$changed"; then
+            if grep -Eq '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap)\.sh$|\.github/nolint-cap$)' <<<"$changed"; then
               go=true
             else
               go=false
@@ -225,6 +229,14 @@ jobs:
         # `go run` of gocyclo and gocognit downloads and builds them.
         if: ${{ !cancelled() }}
         run: ../.github/scripts/go-complexity.sh
+
+      - name: No more //nolint directives than the committed cap
+        # A suppression is a debt that only goes down: the count of //nolint
+        # in backend/ (tests included, generated files left out) may not pass
+        # the number in .github/nolint-cap. A lower count passes; raising the
+        # number is an edit the reviewer sees.
+        if: ${{ !cancelled() }}
+        run: ../.github/scripts/nolint-cap.sh
 
       - name: govulncheck
         # Invoked directly (rather than golang/govulncheck-action) so the
