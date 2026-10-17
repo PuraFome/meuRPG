@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -156,8 +158,9 @@ func TestAcidArrowUpcastAddsADieToBothParts(t *testing.T) {
 	}
 }
 
-// The master ending the effect, or the target going down, leaves nothing to land.
-func TestAcidArrowLaterDamageDoesNotLandOnAnEndedEffect(t *testing.T) {
+// A target that goes down before its turn ends takes no later damage, and neither does one whose
+// effect the master ended.
+func TestAcidArrowLaterDamageDoesNotLandOnAFallenTargetOrAnEndedEffect(t *testing.T) {
 	t.Parallel()
 	a, ogre := newAcidWizards(t)
 	e := a.acidFight(t, ogre)
@@ -165,15 +168,37 @@ func TestAcidArrowLaterDamageDoesNotLandOnAnEndedEffect(t *testing.T) {
 	if _, err := a.adjustHP(t, e, "Ogre", damageHP(60)); err != nil {
 		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 	}
-	if card := a.ogreArrow(t); card != nil {
-		t.Fatalf("the card on a defeated ogre = %v, want it gone", card)
-	}
 	before := a.events(t)
 	a.passTo(t, a.get(t, a.master), "Pensantus")
 	for _, line := range a.eventTrace(t, a.get(t, a.master), before) {
 		if strings.Contains(line, eventLastingTriggered) {
 			t.Errorf("event after the ogre went down = %v, want no later damage", line)
 		}
+	}
+	if cur, _, defeated := a.hp(t, "Ogre"); cur != 0 || !defeated {
+		t.Errorf("the ogre = %d hit points, defeated %v; want 0 and defeated", cur, defeated)
+	}
+}
+
+// The master ending the effect by hand before the target's turn leaves nothing to land.
+func TestAcidArrowLaterDamageDoesNotLandOnAnEffectTheMasterEnded(t *testing.T) {
+	t.Parallel()
+	a, ogre := newAcidWizards(t)
+	e := a.acidFight(t, ogre)
+	a.arrow(t, e, acidArrowSlot, acidArrowHitFace)
+	card := a.ogreArrow(t)
+	if card == nil {
+		t.Fatal("the ogre has no card after a hit")
+	}
+	if _, err := a.master.lasting.EndLastingEffect(t.Context(), connect.NewRequest(&playv1.EndLastingEffectRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), EffectId: card.GetId(), Scope: playv1.EffectEndScope_EFFECT_END_SCOPE_THIS, IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("EndLastingEffect() error = %v", err)
+	}
+	e = a.passTo(t, a.get(t, a.master), "Ogre")
+	a.mustEndTurn(t, a.master, e)
+	if cur, _, _ := a.hp(t, "Ogre"); cur != 60 {
+		t.Errorf("the ogre's hit points = %d, want 60", cur)
 	}
 }
 
