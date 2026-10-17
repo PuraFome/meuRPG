@@ -564,7 +564,30 @@ func (u *undoer) actionSpentBack(ctx context.Context, who playdb.Combatant, ev a
 	if ev.Heal && ev.Before != nil {
 		return u.putCreatureOrVitals(ctx, who, *ev.Before, ev.DeathBefore)
 	}
-	return nil
+	return u.channelBack(ctx, ev.Channel)
+}
+
+// channelBack takes back what a Channel Divinity action did: the hit points Preserve Life gave and the effect
+// Turn Undead put on the undead.
+func (u *undoer) channelBack(ctx context.Context, ch *channelEvent) error {
+	if ch == nil {
+		return nil
+	}
+	for _, h := range ch.Heals {
+		target, ok := u.find(h.Target)
+		if !ok || h.Before == nil {
+			continue
+		}
+		if err := u.putCreatureOrVitals(ctx, target, *h.Before, h.DeathBefore); err != nil {
+			return err
+		}
+	}
+	for _, id := range ch.Effects {
+		if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
+			return fmt.Errorf("take the turned effect away: %w", err)
+		}
+	}
+	return u.s.refreshCombatants(ctx, u.c, ch.Targets...)
 }
 
 // hitPointsAdjusted: the master's correction of a combatant's hit points.

@@ -1833,6 +1833,11 @@ enum EncounterBlockedReason {
   // A table maneuver that starts a grapple after a hit: the character made no melee
   // weapon hit this turn.
   ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT = 105;
+  // Preserve Life (TakeActionRequest.preserve_life): a creature that is not in the combat, is more than
+  // 30 ft from the cleric, or is an undead or a construct.
+  ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET = 106;
+  // Preserve Life: the hit points asked add up to more than five times the cleric's level.
+  ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH = 107;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -3652,6 +3657,21 @@ message TakeActionRequest {
   // refused with `failed_precondition` (EncounterBlocked FRENZY_UNAVAILABLE). Ignored by an
   // action that is not "feature:rage"; false is a plain rage.
   bool frenzy = 101;
+  // "feature:channel-divinity-preserve-life" (Canalizar Divindade: Preservar a Vida, SRD 5.1, Life Domain): the
+  // hit points to restore to each creature within 30 ft of the cleric. Their total is at most five times the
+  // cleric's level; each creature is restored to no more than half of its hit point maximum (what would pass it is
+  // not spent), and an undead or a construct cannot be restored. A creature more than 30 ft away or an undead or
+  // construct is refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total
+  // above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
+  // hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
+  repeated PreserveLifeHeal preserve_life = 102;
+}
+
+// PreserveLifeHeal is the hit points the cleric gives one creature with Preserve Life.
+message PreserveLifeHeal {
+  string combatant_id = 1;
+  // 1 to 9,999 (the total is checked against five times the cleric's level).
+  int32 hit_points = 2;
 }
 
 // TakeActionResponse returns the combat after the action.
@@ -3663,6 +3683,42 @@ message TakeActionResponse {
   // Retomar o fôlego: the hit points healed (up to the maximum). Unset for the
   // others.
   optional int32 healed = 3;
+  // What Canalizar Divindade did, for the master and the combatant's player: the hit points each creature got
+  // (Preserve Life) or each undead's saving throw and whether it was turned (Turn Undead). Unset for any other
+  // action.
+  ChannelDivinityResult channel_divinity = 4;
+}
+
+// ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
+message ChannelDivinityResult {
+  // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+  repeated ChannelDivinityHeal heals = 1;
+  // Turn Undead: each undead that had to save, in the order of the combat.
+  repeated ChannelDivinityTurn turns = 2;
+  // Turn Undead: the cleric's save DC.
+  int32 save_dc = 3;
+}
+
+// ChannelDivinityHeal is what Preserve Life gave one creature.
+message ChannelDivinityHeal {
+  string combatant_id = 1;
+  string label = 2;
+  // Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
+  int32 asked = 3;
+  int32 healed = 4;
+  int32 hit_points_after = 5;
+}
+
+// ChannelDivinityTurn is the Wisdom saving throw of one undead against Turn Undead.
+message ChannelDivinityTurn {
+  string combatant_id = 1;
+  string label = 2;
+  // The d20 that counted, the bonus, the total and the DC it was compared with.
+  int32 d20 = 3;
+  int32 modifier = 4;
+  int32 total = 5;
+  // True: it failed and is turned for one minute (a lasting effect on it).
+  bool turned = 6;
 }
 
 // AdjustCombatantHitPointsRequest is the master's correction of an NPC.
@@ -4687,6 +4743,8 @@ message CombatLogEntry {
   CombatLogEffect effect = 100;
   // HIT_RIDER: how the rider ended.
   CombatLogHitRider hit_rider = 110;
+  // What a Channel Divinity action did (Preserve Life, Turn Undead): for the master and the cleric's player.
+  ChannelDivinityResult channel_divinity = 111;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.

@@ -321,6 +321,9 @@ type actionEvent struct {
 	// FallCuts are the fall damages a monk's Slow Fall took points off, with their
 	// amounts before: an undo puts them back. Amount is how many points it took off.
 	FallCuts []fallCut `json:"fall_cuts,omitempty"`
+	// Channel is what a Channel Divinity action did: the hit points Preserve Life gave each creature, or the saving
+	// throw of each undead against Turn Undead (combat_channel.go).
+	Channel *channelEvent `json:"channel,omitempty"`
 	// Relentless says the half-orc's Relentless Endurance turned the damage that would
 	// have dropped the target to 0 into 1 hit point, and spent the use: an undo gives
 	// it back.
