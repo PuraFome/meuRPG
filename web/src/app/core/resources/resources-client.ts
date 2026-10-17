@@ -4,8 +4,6 @@ import { createClient } from '@connectrpc/connect';
 import type { CharacterVitals } from '../../../gen/meurpg/play/v1/play_pb';
 import {
   type AnswerHeldRollResponse,
-  type AnswerOutsideInspirationResponse,
-  type AnswerOutsideLuckyResponse,
   type ConvertSpellSlotResponse,
   type CreateSpellSlotResponse,
   type GetOutsideInspirationResponse,
@@ -20,8 +18,6 @@ import {
   type SpendHitDiceResponse,
   type UseArcaneRecoveryResponse,
 } from '../../../gen/meurpg/play/v1/resources_pb';
-import { type AttackResult } from '../combat/combat-client-types';
-import { attackResult } from '../combat/combat-client-wire';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import type { HeldAnswer, HeldRolled } from '../held-rolls/held-roll-offer';
 
@@ -33,12 +29,6 @@ export type HitDieRoll =
  * neutralize one poison (5 points). */
 export type LayOnHandsEffect =
   { readonly amount: number } | { readonly cure: 'disease' | 'poison' };
-
-/** How the die of a Bardic Inspiration comes when the player uses it: the app rolls it, or the typed face. */
-export type InspirationRoll = HitDieRoll;
-
-/** How the new d20 of the halfling's Lucky comes when the player rolls it again: the app rolls it, or the typed face. */
-export type LuckyRoll = { readonly inApp: true } | { readonly face: number };
 
 /** The roll of an answer that says how it comes: the app's or the typed face; nothing when the die is kept. */
 function rollOf(
@@ -210,66 +200,6 @@ export class ResourceClient {
     });
   }
 
-  /** The answer to a held attack roll: use the die (rolled in the app, or its typed face) or keep it. Resolves the
-   * attack as `RollAttack` would have. `roll` is only for `use`. */
-  async answerBardicInspiration(
-    campaignId: string,
-    encounterId: string,
-    holdId: string,
-    use: boolean,
-    roll: InspirationRoll | null,
-    idempotencyKey: string,
-  ): Promise<AttackResult> {
-    const res = await this.client.answerBardicInspiration({
-      campaignId,
-      encounterId,
-      holdId,
-      use,
-      idempotencyKey,
-      roll:
-        use && roll
-          ? 'inApp' in roll
-            ? { case: 'rollInApp', value: true }
-            : { case: 'typedFace', value: roll.face }
-          : { case: undefined },
-    });
-    if (!res.attack) {
-      throw new Error('AnswerBardicInspiration answered without its attack');
-    }
-    return attackResult(res.attack);
-  }
-
-  /** The answer to the Lucky question of a held attack roll ("Tirou 1: rolar de novo?"): roll the d20 that showed the 1
-   * again (in the app, or its typed face) or keep the 1. Answers the attack as `RollAttack` would have: resolved, or, when
-   * the attacker holds a Bardic Inspiration die, still held for the die's question on the new roll. `roll` is only for
-   * `reroll`. */
-  async answerLucky(
-    campaignId: string,
-    encounterId: string,
-    holdId: string,
-    reroll: boolean,
-    roll: LuckyRoll | null,
-    idempotencyKey: string,
-  ): Promise<AttackResult> {
-    const res = await this.client.answerLucky({
-      campaignId,
-      encounterId,
-      holdId,
-      reroll,
-      idempotencyKey,
-      roll:
-        reroll && roll
-          ? 'inApp' in roll
-            ? { case: 'rollInApp', value: true }
-            : { case: 'typedFace', value: roll.face }
-          : { case: undefined },
-    });
-    if (!res.attack) {
-      throw new Error('AnswerLucky answered without its attack');
-    }
-    return attackResult(res.attack);
-  }
-
   /** The Bardic Inspiration of the caller outside a combat: the die their character holds, the party a bard can give it
    * to, and the rolls that wait for an answer about it. The master reads every die held. */
   outsideInspiration(campaignId: string): Promise<GetOutsideInspirationResponse> {
@@ -289,54 +219,6 @@ export class ResourceClient {
     });
   }
 
-  /** The answer to a roll outside a combat that waits for the die: use it (rolled in the app, or its typed face) or keep
-   * it. The roll is then written as the scene check or the group check would have written it. */
-  answerOutsideInspiration(
-    campaignId: string,
-    holdId: string,
-    use: boolean,
-    roll: InspirationRoll | null,
-    idempotencyKey: string,
-  ): Promise<AnswerOutsideInspirationResponse> {
-    return this.client.answerOutsideInspiration({
-      campaignId,
-      holdId,
-      use,
-      idempotencyKey,
-      roll:
-        use && roll
-          ? 'inApp' in roll
-            ? { case: 'rollInApp', value: true }
-            : { case: 'typedFace', value: roll.face }
-          : { case: undefined },
-    });
-  }
-
-  /** The answer to the Lucky question of a held roll that is not a weapon attack (a scene check, a group check, a trap
-   * search, a puzzle hint try, a spell attack, an effect's saving throw or a concentration save): roll the d20 that
-   * showed the 1 again (in the app, or its typed face) or keep the 1. Answers the held path's own response, in the same
-   * oneof as `answerOutsideInspiration`: written, with the d20 rolled again in its `rerolled`; or, when the character
-   * holds a Bardic Inspiration die, still held, with the die's question on the new roll. `roll` is only for `reroll`. */
-  answerOutsideLucky(
-    campaignId: string,
-    holdId: string,
-    reroll: boolean,
-    roll: LuckyRoll | null,
-    idempotencyKey: string,
-  ): Promise<AnswerOutsideLuckyResponse> {
-    return this.client.answerOutsideLucky({
-      campaignId,
-      holdId,
-      reroll,
-      idempotencyKey,
-      roll:
-        reroll && roll
-          ? 'inApp' in roll
-            ? { case: 'rollInApp', value: true }
-            : { case: 'typedFace', value: roll.face }
-          : { case: undefined },
-    });
-  }
   /** The answer to the question of any roll that waits (`AnswerHeldRoll`), whichever roll it is and whichever question it
    * asks: the halfling's Lucky about a 1, or the Bardic Inspiration die. Answers the held path's own response (`result`)
    * and the roll's next question (`next`); the roller's player and the master both may answer. */

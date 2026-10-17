@@ -3,9 +3,9 @@ import type { Reroll } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 
 /**
  * The halfling's Lucky, "Sortudo" (SRD 5.1, Halfling): a 1 on the d20 of an attack roll, an ability check or a saving
- * throw may be rolled again, and the new roll stands. The server holds the roll and asks (`lucky_offer` on the roll's
- * response: `RollAttackResponse`, and the scene check, group check, trap search, hint try, spell attack, effect save and
- * concentration save); these are the words the sheets and the combat log use for it.
+ * throw may be rolled again, and the new roll stands. The server holds the roll and asks (`held_roll_offer` on the roll's
+ * response: the weapon attack, and the scene check, group check, trap search, hint try, spell attack, effect save and
+ * concentration save; `HeldRollController` answers it); these are the words the sheets and the combat log use for it.
  */
 
 /** Whatever tells the dice a feature rolled again: a `DiceRoll`, a group check's `CheckRoll`, an effect's

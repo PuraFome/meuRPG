@@ -17,8 +17,6 @@ import {
   type HeldRollOffer,
   type LuckyOffer,
   LuckyOfferSchema,
-  type OutsideInspirationOffer,
-  OutsideInspirationOfferSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { SceneDie } from './scene-client';
 
@@ -260,16 +258,6 @@ export class FakeSceneClient {
     this.record(`grant ${actionId} ${characterId} ${key}`);
     return this.granted ?? masterScene();
   }
-}
-
-/** The question a roll asks when its character holds a Bardic Inspiration die: the d20 rolled, the result not yet told. */
-export function inspirationOffer(face = 11, modifier = 6, sides = 8): OutsideInspirationOffer {
-  return create(OutsideInspirationOfferSchema, {
-    holdId: 'h1',
-    sides,
-    fromName: 'Orla',
-    d20: { diceCount: 1, diceSides: 20, faces: [face], modifier, total: face + modifier },
-  });
 }
 
 /** The question a roll asks when a halfling's d20 shows a 1 (Sortudo): the d20 rolled (both faces with advantage or

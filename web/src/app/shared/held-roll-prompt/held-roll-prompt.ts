@@ -20,6 +20,7 @@ import {
   dieOf,
   luckyHeldLine,
 } from '../../core/held-rolls/held-roll-offer';
+import { inspirationDieName, promptTitle, useLabel } from '../../core/resources/bardic-inspiration';
 import { RollPicker } from '../roll-picker/roll-picker';
 
 /** Each prompt's own heading id: a sheet and the session panel may both ask on the page. */
@@ -70,15 +71,10 @@ export class HeldRollPrompt {
   /** Which question of which roll: it changes when Lucky's answer brings the die's. */
   private readonly question = computed(() => `${this.offer().holdId}:${this.lucky()}`);
   protected readonly die = computed(() => dieOf(this.offer()) ?? { sides: 0, fromName: '' });
-  protected readonly dieName = computed(() => `d${this.die().sides}`);
-  protected readonly dieTitle = computed(() => `Usar a Inspiração de Bardo (${this.dieName()})?`);
+  protected readonly dieName = computed(() => inspirationDieName(this.die().sides));
+  protected readonly dieTitle = computed(() => promptTitle(this.die().sides));
   /** "Somar o d8 (Inspiração de Orla)". */
-  protected readonly useLabel = computed(() => {
-    const { fromName } = this.die();
-    return fromName
-      ? `Somar o ${this.dieName()} (Inspiração de ${fromName})`
-      : `Somar o ${this.dieName()}`;
-  });
+  protected readonly useButton = computed(() => useLabel(this.die().sides, this.die().fromName));
   /** The face typed for the die in the card look. */
   protected readonly face = signal(Number.NaN);
   protected readonly faceOk = computed(() => {
