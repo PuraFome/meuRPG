@@ -323,7 +323,7 @@ func TestEveryChallengeRatingHasXP(t *testing.T) {
 			t.Errorf("challenge rating %q has no XP", cr)
 		}
 	}
-	for i := 0; i <= 30; i++ {
+	for i := range 31 {
 		cr, err := challengeRating(float64(i))
 		if err != nil {
 			t.Fatal(err)
