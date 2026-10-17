@@ -116,6 +116,23 @@ describe('ConversationLine', () => {
     expect(label).toBe('Pensantus · você');
   });
 
+  it("draws the master's own NPC line as an NPC (portrait, bubble, left), labelled '<name> · você'", () => {
+    const { el, label } = render(
+      line('b2', {
+        speakerKind: Kind.NPC,
+        speakerName: 'Bartolo, o taverneiro',
+        authorUserId: 'u-p',
+        text: 'Quartos, só amanhã.',
+      }),
+      { master: true },
+    );
+    expect(el.classList.contains('line--npc')).toBe(true);
+    expect(el.classList.contains('line--own')).toBe(false);
+    expect(label).toBe('Bartolo, o taverneiro · você');
+    expect(el.querySelector('.line__portrait')?.textContent?.trim()).toBe('B');
+    expect(el.querySelector('.line__bubble')?.textContent).toBe('Quartos, só amanhã.');
+  });
+
   it('draws another player as a bubble without portrait ring text of "você"', () => {
     const { label, el } = render(
       line('o2', {

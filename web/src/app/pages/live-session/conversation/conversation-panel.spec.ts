@@ -79,8 +79,11 @@ describe('ConversationPanel', () => {
     return { api, state, fixture, el, feed, set };
   }
 
-  async function loaded(messages = [line('n1', { speakerKind: Kind.NARRATOR })]) {
-    const s = setup();
+  async function loaded(
+    messages = [line('n1', { speakerKind: Kind.NARRATOR })],
+    opts: { master?: boolean } = {},
+  ) {
+    const s = setup(opts);
     s.state.lines.set(messages);
     s.state.loaded.set(true);
     await settle(s.fixture);
@@ -217,6 +220,21 @@ describe('ConversationPanel', () => {
     );
     await settle(fixture);
     expect(el.querySelector('[role="log"]')?.textContent).not.toContain('Eu falei.');
+  });
+
+  it("does not announce the master's own NPC line either", async () => {
+    const { el, state, fixture } = await loaded([line('n1', {})], { master: true });
+    state.receive(
+      line('o2', {
+        speakerKind: Kind.NPC,
+        speakerName: 'Bartolo',
+        authorUserId: 'u-p',
+        text: 'Eu mesmo falei.',
+        at: 10,
+      }),
+    );
+    await settle(fixture);
+    expect(el.querySelector('[role="log"]')?.textContent).not.toContain('Eu mesmo falei.');
   });
 
   it('scrolls to the newest line while the reader is at the bottom', async () => {
