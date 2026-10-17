@@ -240,9 +240,6 @@ func (s *Service) readHistoryNames(ctx context.Context, campaignID string, award
 	if n.users, err = s.profiles.DisplayNames(ctx, userIDs); err != nil {
 		return n, fmt.Errorf("read display names: %w", err)
 	}
-	if len(encounterIDs) == 0 {
-		return n, nil // no award has a combat: the combats are not asked
-	}
 	if n.encounters, err = s.combats.EncounterNames(ctx, campaignID, encounterIDs); err != nil {
 		return n, fmt.Errorf("read the combats' names: %w", err)
 	}

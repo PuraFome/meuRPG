@@ -87,10 +87,7 @@ func spellCasterNumbers(out *link.Spell, d rules.Derived, det *rules.SpellDetail
 		out.SaveDC = sc.SaveDC
 		out.CasterDC = sc.SaveDC
 	}
-	// A sheet without a DC (it casts nothing) leaves the saving throw out: the
-	// engine rolls no save for the spell (the master decides) instead of one
-	// against DC 0, which every roll passes.
-	if det.Save != nil && out.SaveDC > 0 {
+	if det.Save != nil {
 		out.SaveAbility, out.SaveOnSuccess = string(det.Save.Ability), det.Save.OnSuccess
 	} else {
 		out.SaveDC = 0
