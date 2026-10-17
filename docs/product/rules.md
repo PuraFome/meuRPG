@@ -44,6 +44,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-33 | **Class and race choices.** A class or a race can ask the player to pick something (a Fighting Style, a Draconic Ancestry, Pact Boon and invocations, Metamagic, a Favored Enemy, a terrain, the Half-Elf's +1s...). A character is not created with a choice open; a locked sheet that has one keeps working and completes it later, and a level-up also asks the choices that were left behind. | [Detail](#rn-33-class-and-race-choices) |
 | RN-34 | **Contests and special actions.** Grapple, shove and escape are contests of Strength (Athletics) against Strength (Athletics) or Dexterity (Acrobatics); a tie changes nothing. Dragging a grappled creature halves the speed. Hide compares the Stealth total with each creature's passive Perception (a tie keeps the hider noticed); Help gives advantage; a group check passes when at least half pass; a surprised creature does nothing on its first turn. A player never reads an NPC's numbers, the escape DC, who noticed a hider or another player's total. | [Detail](#rn-34-contests-and-special-actions) |
 | RN-35 | **Race traits and the monk's Slow Fall in combat.** A half-orc dropped to 0 hit points but not killed outright stays at 1 (Relentless Endurance, once per long rest, used by the app by itself); its critical hit with a melee weapon attack rolls one more weapon die (Savage Attacks); a monk's reaction takes 5 times its level off a pit's fall damage (Slow Fall); a goblin's Fuga Ágil is Disengage or Hide as a bonus action; a halfling whose d20 shows a 1 (an attack, or a check or saving throw the player rolls) is asked "Tirou 1: rolar de novo?" before the result, and the new roll stands; on a saving throw the app rolls for a player's halfling in someone else's action, the app rolls the 1 again by itself (Lucky). | [Detail](#rn-35-race-traits-and-the-monks-slow-fall-in-combat) |
+| RN-36 | **Who reads a line of the scene's conversation.** A line is for the whole table or for chosen readers; the master always reads every line, can choose any set of players, and a player chooses everyone or "só o mestre". Whoever is not chosen never receives the line: not its text, its image, its existence, its count or a notice that it was sent, in a read, on the stream, in the summary or in the voice. The master speaks as the narrator or as an NPC of the campaign; a player as their own character (RN-18) or out of character. | [Detail](#rn-36-who-reads-a-line-of-the-scenes-conversation) |
 
 ## RN-01: Sheet lock
 
@@ -799,13 +800,29 @@ These SRD 5.1 traits change the numbers of a combat (Half-Orc, Halfling, Monk, R
 - **Lucky (halfling).** A halfling who rolls a 1 on the d20 of an attack roll, an ability check or a saving throw may roll that die again and must use the new roll (SRD 5.1).
   - **The app asks** "Tirou 1: rolar de novo?" after the d20 and before it says whether the roll succeeds. "Rolar de novo" rolls in the app or takes a real die (RN-18); "Ficar com o 1" keeps it. The new roll stands, even another 1, and is never asked about again. The result and the log say "Sortudo: 1 → 14".
   - **With advantage or disadvantage** the question comes when either d20 shows a 1, only that die is rolled again (the first when both show a 1), and the die that counts is picked again. A halfling who also holds a Bardic Inspiration die answers Lucky first. Reliable Talent counts the new d20.
-  - **Privacy.** Only the roller's player (and, on an attack, the master) sees the question. Nothing is resolved while it waits, and the character makes no other roll that could ask until it is answered.
+  - **Privacy.** Only the roller's player and the master see the question; another player reads nothing of it, not even that a roll waits. Nothing is resolved while it waits, and the character makes no other roll that could ask until it is answered.
+  - **Who answers.** The roller's player answers the question, and so does the master, for every roll that waits, in a combat or out of one (it unblocks a player who left the table). Both may try at once: the first answer wins and the other is told the roll was answered already, the die spent once. Another player cannot answer and is told the roll does not exist. The master reads every pending question of the table in one list; a player reads their own.
   - **Where it asks:** weapon attacks and attack cantrips (the master rolling for the character gets the question too), a scene check, a group check, a trap search out of a combat, a puzzle hint try, and in a combat a spell attack against one target, an effect's saving throw and a concentration save. A roll the master makes for the character on these does not ask.
   - **Where nobody can be asked** (a spell's save, a trap's save, the Dexterity save against Hellish Rebuke, rolled by the app inside someone else's action), the app rolls the 1 again by itself, since a reroll of a 1 never lowers the result. The line says "Sortudo: 1 → 14" to whoever sees that save's dice.
   - **Not covered:** an NPC never gets it, even with a halfling's sheet. The death save, initiative, contests, Hide, the Counterspell check and the Search action of a combat do not ask.
 
 How it is built: [Architecture](../architecture/play/held-rolls.md) and [attacks and damage](../architecture/play/attacks-and-damage.md).
 Tests: `combat-rolls.spec.ts` and `scenes.spec.ts` (`@RN-35`).
+
+## RN-36: Who reads a line of the scene's conversation
+
+The conversation of a game session (MR-051) is a text feed. Each line has an author, a speaker and its readers, and the server decides all three.
+
+- **Who speaks as whom.** The master speaks as the narrator, or as any NPC of the campaign (the line shows the NPC's name and its stage portrait when it has one). A player speaks as their own living character, never another's (RN-18), or out of character, which shows the player's display name. A line is 1 to 2,000 characters.
+- **Who reads.** A line is for the whole table or for chosen readers. The master always reads every line. The master can choose any set of players. A player can choose everyone or "só o mestre". The author always sees their own line.
+- **What a non-reader never gets** (RN-10): the text, the image, the line's existence, the count of lines, a notice that it was sent, and its audio. This holds for the session's read, the live stream, the session summary and the voice route; a non-reader asking for the line's audio or image gets `404`, as for something that does not exist.
+- **An image** (master only, from the campaign's gallery) lets the line's readers open that image, as "mostrar imagem" does (MR-028), and nothing more: an image that is a fog map's background is shown as its copy (RN-10).
+- **The voice.** Narration and NPC lines can be heard; players' lines are text only. The audio is made the first time a reader asks, kept with the line, and served only to the line's readers.
+- **The master's typing** is a content-free hint to the players ("O mestre está escrevendo…"); players' typing is not shown.
+- **When an account is erased,** its lines stay and the author reads "Jogador removido".
+
+How it is built: [Architecture](../architecture/play/live-session.md#the-conversation-of-the-scene).
+Tests: `conversa.spec.ts` (`@RN-36`) and `internal/leaktest`.
 
 ## Flows and states
 

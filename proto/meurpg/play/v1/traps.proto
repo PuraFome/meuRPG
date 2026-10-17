@@ -102,6 +102,11 @@ message SearchForTrapsResponse {
   // held d20 shows a 1 (Lucky): ResourceService.AnswerOutsideLucky rolls it again or keeps the 1,
   // before the die's question. The second d20 of a Perception search is not asked about.
   LuckyOffer lucky_offer = 9;
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 10;
 }
 
 // FireTrapRequest is the master firing a trap by hand.

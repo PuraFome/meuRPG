@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
@@ -78,7 +79,9 @@ type heldRoll struct {
 	Round                     *int32
 	LuckyIndex, LuckyTo       *int32
 	LuckyAnswerKey, AnswerKey *string
-	table                     heldTable
+	// CreatedAt is when the roll was held.
+	CreatedAt time.Time
+	table     heldTable
 }
 
 // heldRoller is who rolls: the character, and its combatant in a combat. Combatant is nil out of
@@ -249,7 +252,7 @@ func heldOfRollHold(row playdb.RollHold) heldRoll {
 		Window: strings.HasSuffix(row.IdempotencyKey, windowHoldSuffix), Physical: typedRoll(&orig), Request: row.Request,
 		Faces: faces, Counted: mode.Pick(faces), Modifier: int(row.Modifier), Total: int(row.Face) + int(row.Modifier),
 		Round: &round, LuckyIndex: row.LuckyIndex, LuckyTo: row.LuckyTo, LuckyAnswerKey: row.LuckyAnswerKey,
-		AnswerKey: row.AnswerKey, table: rollHolds,
+		AnswerKey: row.AnswerKey, CreatedAt: row.CreatedAt, table: rollHolds,
 	}
 }
 
@@ -261,7 +264,7 @@ func heldOfInspirationHold(row playdb.InspirationHold) heldRoll {
 		Key: row.IdempotencyKey, Kind: heldKind(row.Kind), Physical: row.Physical, Request: row.Request,
 		Faces: intsOf(row.Faces), Counted: int(row.Counted), Modifier: int(row.Modifier), Total: int(row.Total),
 		Round: row.Round, LuckyIndex: row.LuckyIndex, LuckyTo: row.LuckyTo, LuckyAnswerKey: row.LuckyAnswerKey,
-		AnswerKey: row.AnswerKey, table: inspirationHolds,
+		AnswerKey: row.AnswerKey, CreatedAt: row.CreatedAt, table: inspirationHolds,
 	}
 }
 
@@ -482,12 +485,8 @@ func (st inspirationHoldStore) forget(ctx context.Context, h heldRoll) error {
 	return st.q.DeleteInspirationHold(ctx, h.ID) //nolint:wrapcheck // the gate wraps it
 }
 
-// asked moves the combat's revision for a weapon attack, whose question is part of the combat the master and the
-// player read; the question of another roll does not today
-// (TestAnOutsideHoldInACombatDoesNotTouchTheEncounterToday); E4-7 changes it for every question.
+// asked moves the combat's revision for the question of any roll held in a combat: the master and the roller's player
+// read the combat again to see it (the combatant carries its question). A roll out of a combat has no combat to move.
 func (inspirationHoldStore) asked(ctx context.Context, env gateEnv, h heldRoll) error {
-	if h.Kind != heldWeaponAttack {
-		return nil
-	}
 	return rollHoldStore{}.asked(ctx, env, h)
 }

@@ -40,7 +40,7 @@ func IsRateLimited(err error) bool {
 // may carry no valid session. /auth/ has its own, stricter limit
 // (identity/login.go); the static app and /healthz touch none, and /readyz
 // shares one database ping per window (httpserver/health.go).
-var limitedPrefixes = []string{"/meurpg.", "/images/", "/uploads/"}
+var limitedPrefixes = []string{"/meurpg.", "/images/", "/uploads/", "/session-messages/"}
 
 // Middleware limits the API routes by client IP, before anything else
 // reads the session: the cheapest place to stop a script that sends

@@ -37,6 +37,7 @@ type hintTryResult struct {
 	offer *playv1.OutsideInspirationOffer
 	bonus *playv1.BonusDie
 	lucky *playv1.LuckyOffer
+	held  *playv1.HeldRollOffer
 }
 
 // TryPuzzleHint implements playv1connect.PuzzleServiceHandler.
@@ -44,7 +45,7 @@ func (s *Service) TryPuzzleHint(
 	ctx context.Context,
 	req *connect.Request[playv1.TryPuzzleHintRequest],
 ) (*connect.Response[playv1.TryPuzzleHintResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RolePlayer)
+	m, err := heldRole(ctx, req.Msg.GetCampaignId(), authz.RolePlayer)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func (s *Service) TryPuzzleHint(
 		return nil, s.dbError(ctx, "try for a puzzle hint", err)
 	}
 	if res.offer != nil || res.lucky != nil { // nothing was written: the question is the whole answer
-		return connect.NewResponse(&playv1.TryPuzzleHintResponse{InspirationOffer: res.offer, LuckyOffer: res.lucky}), nil
+		return connect.NewResponse(&playv1.TryPuzzleHintResponse{InspirationOffer: res.offer, LuckyOffer: res.lucky, HeldRollOffer: res.held}), nil
 	}
 	if !res.replayed {
 		s.publishPuzzleChanged(m.CampaignID, id) // the master reads the try; the revision moved
@@ -241,7 +242,7 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return nil, err
 	}
 	if step.Held != nil {
-		res.offer, res.lucky = s.outsideOffers(ctx, tx, step.Held)
+		res.offer, res.lucky, res.held = s.outsideOffers(ctx, tx, step.Held)
 		return nil, nil
 	}
 	return h.write(ctx, plan, step, now)

@@ -98,14 +98,22 @@ A later question, such as a master's reroll or Cutting Words on a check, would b
 ## The registry and the one answer
 
 `heldRegistry` has one `heldKindDef` per kind: the table it writes, the tables whose open question refuses it, how the pinned request runs again (`rerun`, one per path), the attack and target a question names (the weapon attack only) and how the dice of a pair are pinned in the request.
-`answerHeld` is what the four answer RPCs call: `AnswerLucky`, `AnswerBardicInspiration`, `AnswerOutsideLucky` and `AnswerOutsideInspiration`.
+`answerHeld` is what the five answer RPCs call: `AnswerHeldRoll`, which answers any hold, and `AnswerLucky`, `AnswerBardicInspiration`, `AnswerOutsideLucky` and `AnswerOutsideInspiration`, the older forms, kept as adapters until the contract. Each older RPC admits one class of roll (`holdRef.Class`: the attack's or the others'), as it always did, and has its own refusals; `AnswerHeldRoll` conceals any hold the caller may not answer as not found.
 It:
 
 1. finds the hold in either store;
-2. checks who may answer (`mayAnswerHeld`): a weapon attack's by whoever may act for its combatant, its player or the master; every other roll's by its player alone (the master cannot);
+2. checks who may answer (`mayAnswerHeld`), before anything about the roll's state is said: a combatant's roll by whoever may act for the combatant, its player or the master; a character's roll out of a combat by its player or the master. Another player is refused: `permission_denied` for a combat's roll through the older attack RPCs, `not_found` everywhere else;
 3. checks the answer against the roll as it stands (the question must be open, Lucky's first; an answer already given is answered again, never twice with another key);
 4. rolls the reroll or the die the way the campaign has the player roll (RN-18; the master is exempt);
-5. runs the pinned request again through the registry with the answer in the context (`heldReply`): the path answers with its own response, still held with the next question, or resolved and written under the roll's key.
+5. runs the pinned request again through the registry with the answer in the context (`heldReply`): the path answers with its own response, still held with the next question, or resolved and written under the roll's key. When the master answers a player's roll, the path runs **as the roller** (`heldReply.as`, read by `heldMember` and `heldRole`, which stand in for the authz lookups at the top of the paths a hold runs again): it finds the roller's character and combatant as the first time, and nobody gets a power they did not have. The answer is the roller's view of the result. A weapon attack's path takes the answerer as it is: the master may act for any combatant.
+
+When the owner and the master answer at once, the first answer wins; the other, whose write meets the first one's, is told the roll was answered already (`lostTheRace`), and the die is spent once.
+
+## The wire
+
+Every roll that waits asks one question in one shape, `HeldRollOffer`: the hold, the kind, who rolls (the combatant, the character of a player, the name as the viewer reads it), the d20 with its bonus, the question that waits (`LuckyQuestion` first, `DieQuestion` after it) and when the roll was held. The eight answers of the paths carry it as `held_roll_offer` beside the older `inspiration_offer` and `lucky_offer`, and so does the `Combatant` of a roll held in a combat, for the master and the roller's player only (`heldOfferOfCombatant`). `ListHeldRolls` lists the questions the caller may answer, oldest first: a player's own, the master's every one of the table, in a combat or out of one, leaving out the stale (`heldList`). `AnswerHeldRoll` answers with the path's own response in a `oneof` and the next question of the same roll in `next`.
+
+The question of any roll held in a combat moves the combat's revision (`inspirationHoldStore.asked`), as the weapon attack's always did, so the master and the roller read the combat again. `HeldRollsChanged` is a content-free hint on the stream for the master and the roller's user: the interceptor `heldHintInterceptor` sends it when a path answers with a question, and `answerHeld` when an answer changed one.
 
 ## Lucky (halfling, RN-35)
 

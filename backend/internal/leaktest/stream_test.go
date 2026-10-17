@@ -96,6 +96,7 @@ var notTriggered = map[string]string{
 	"hidden_hit_pending":     "needs a player's area spell that hits a hidden creature, which has a world of its own: TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal (the master hears it, no player does)",
 	"reaction_window_opened": "TestAnNPCsReactionWindowIsHeardByTheMasterAlone needs its own combat state and checks the events of both kinds",
 	"reaction_window_closed": "same test",
+	"held_rolls_changed":     "needs a player's roll that waits for a question, which has a world of its own: TestHeldRollsReachOnlyWhoMayReadThem (the master and the roller hear it, no other player does)",
 }
 
 func checkStream(t *testing.T, w *world, got *answers) {
@@ -285,6 +286,12 @@ func (w *world) streamScript() {
 
 	// -- the nudge: the master calls Ana's character; only Ana's stream hears it, an event with no content
 	must(m.play.NudgePlayer(ctx, rq(&playv1.NudgePlayerRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()})))
+
+	// -- the conversation: a line for Ana alone reaches her stream and the master's, not Caio's (RN-36); a hint
+	// that the master is typing goes to the players, with no content
+	line := w.secrets.marker("line-live", w.ana)
+	must(m.play.SendSessionMessage(ctx, rq(&playv1.SendSessionMessageRequest{CampaignId: w.campaign, SpeakerKind: playv1.SessionMessageSpeakerKind_SESSION_MESSAGE_SPEAKER_KIND_NARRATOR, Text: line, ReaderUserIds: []string{w.ana.id}, IdempotencyKey: newKey()})))
+	must(m.play.SignalMasterTyping(ctx, rq(&playv1.SignalMasterTypingRequest{CampaignId: w.campaign})))
 
 	// -- images: the master shows another image, and takes one back from the players
 	must(m.play.SetShownImage(ctx, rq(&playv1.SetShownImageRequest{CampaignId: w.campaign, ImageId: w.imgLeft})))

@@ -164,7 +164,10 @@ type concentrationCall struct {
 func readConcentrationCall(ctx context.Context, msg *playv1.ResolveConcentrationSaveRequest) (concentrationCall, error) {
 	call := concentrationCall{msg: msg}
 	var err error
-	if call.m, call.key, call.encID, err = memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
+	if call.m, err = heldMember(ctx, msg.GetCampaignId()); err != nil {
+		return call, err
+	}
+	if call.key, call.encID, err = parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.winID, err = parseCombatID(msg.GetWindowId(), "window"); err != nil {
@@ -180,6 +183,7 @@ type concentrationRun struct {
 	result *playv1.ConcentrationSaveResult
 	offer  *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
 	lucky  *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
+	held   *playv1.HeldRollOffer           // the same question, in the one shape every held roll has
 }
 
 // ResolveConcentrationSave implements playv1connect.CombatServiceHandler.
@@ -210,7 +214,7 @@ func (s *Service) concentrationAnswer(ctx context.Context, m authz.Membership, r
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&playv1.ResolveConcentrationSaveResponse{Encounter: out, InspirationOffer: run.offer, LuckyOffer: run.lucky}), nil
+		return connect.NewResponse(&playv1.ResolveConcentrationSaveResponse{Encounter: out, InspirationOffer: run.offer, LuckyOffer: run.lucky, HeldRollOffer: run.held}), nil
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
@@ -325,7 +329,7 @@ func (s *Service) rollConcentration(
 		return false, err
 	}
 	if gate.Held != nil {
-		run.offer, run.lucky = s.outsideOffers(ctx, c.tx, gate.Held)
+		run.offer, run.lucky, run.held = s.outsideOffers(ctx, c.tx, gate.Held)
 		return false, nil
 	}
 	// Bênção and Perdição add their die to the saving throw (SRD 5.1).

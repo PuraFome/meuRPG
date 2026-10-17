@@ -483,6 +483,9 @@ type Config struct {
 	Roller dice.Roller
 	// Live sets the live stream's timing; the zero value is the defaults.
 	Live LiveConfig
+	// Messages configures the scene's conversation (MR-051): its display names,
+	// its voice and its rate limits. The zero value works: no names, no voice, no limit.
+	Messages MessagesConfig
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -525,6 +528,8 @@ type Service struct {
 	live LiveConfig
 	// nudges remembers when each character was last nudged (nudge.go), in memory.
 	nudges nudgeBook
+	// msgs is what the scene's conversation needs besides the database (messages.go).
+	msgs *messageDeps
 }
 
 // namerFor is the Portuguese name of a content key the combat shows, bound to one
@@ -600,6 +605,7 @@ func New(cfg Config) (*Service, error) {
 		hub:       live.New(cfg.Live.Buffer),
 		live:      cfg.Live,
 	}
+	s.msgs = newMessageDeps(cfg.Messages)
 	s.conditionNames = map[string]string{}
 	for _, c := range cfg.Roster.Conditions() {
 		s.conditionNames[c.Key] = c.NamePT
@@ -658,6 +664,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		nostore.Interceptor(),                          // no response is cacheable
 		sessions.Interceptor(),                         // who is calling
 		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
+		heldHintInterceptor(s),                         // a roll that asks tells the master and its roller
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
@@ -668,6 +675,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 	handle(playv1connect.NewLastingEffectServiceHandler(s, opts...))
 	handle(playv1connect.NewRevivifyServiceHandler(s, opts...))
+	s.mountVoice(handle, sessions, members)
 }
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A

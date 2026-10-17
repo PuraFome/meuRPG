@@ -140,6 +140,7 @@ Image generation (MR-039, RN-28) calls the Gemini API; without a key it is off a
 | `GEMINI_API_KEY` | The Google AI Studio key. A secret: never in the repository, a test, a log or an error. Without it the calls answer `failed_precondition` with the reason `OFF`. |
 | `GEMINI_IMAGE_MODEL` | The model; the default is in `backend/internal/maps/images/gen`. |
 | `IMAGE_GENERATOR` | `fake` uses the deterministic fake generator (`backend/internal/maps/images/gen`): no key, no network, a PNG of the requested aspect ratio. `make up` (both stacks) uses it; the server refuses it on Cloud Run. `[recusa]`, `[vazio]`, `[erro]` or `[lento]` in the request text makes the fake refuse, return no image, fail or take long. |
+| `TTS_GENERATOR` | `fake` makes the voice of the conversation a short silent audio (`backend/internal/play/voice`): no key, no network. `make up` uses it; refused on Cloud Run. Real voices need `GEMINI_API_KEY` and `GEMINI_TTS_MODEL`. |
 | `IMAGE_MONTHLY_LIMIT` | Images per campaign per month (default in `config.go`). |
 | `IMAGE_DAILY_LIMIT` | Images for the whole server per Brasília day: the ceiling of the Gemini account. `make up` raises it so repeated e2e runs are not capped. |
 

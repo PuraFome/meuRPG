@@ -42,6 +42,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -245,6 +246,7 @@ func newStack(t *testing.T) *stack {
 	live, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: sessionMaps, Roster: chars,
 		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat, HintAfter: s.hints.after}, Logger: logger, Now: clock.Now,
+		Messages: play.MessagesConfig{Profiles: s.users, Voice: &voice.Fake{}, Blobs: blobs},
 	})
 	if err != nil {
 		t.Fatalf("play.New() error = %v", err)
@@ -344,6 +346,7 @@ type person struct {
 	treasure   mapsv1connect.TreasureServiceClient
 	xp         progressionv1connect.ProgressionServiceClient
 	notes      notesv1connect.NotesServiceClient
+	resources  playv1connect.ResourceServiceClient
 }
 
 func (s *stack) newPerson(name string) *person {
@@ -383,6 +386,7 @@ func (s *stack) personWith(name, id string) *person {
 		treasure:   mapsv1connect.NewTreasureServiceClient(c, url),
 		xp:         progressionv1connect.NewProgressionServiceClient(c, url),
 		notes:      notesv1connect.NewNotesServiceClient(c, url),
+		resources:  playv1connect.NewResourceServiceClient(c, url),
 	}
 }
 
