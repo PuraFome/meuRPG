@@ -12,7 +12,8 @@ import {
   TableSubraceSchema,
   type TableEntry,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { effectLine, readEntry } from './content-read';
+import { readEntry } from './content-read';
+import { effectLine } from './content-read-parts';
 import { catalog, feature } from './content-testing';
 
 const cat = catalog();

@@ -17,7 +17,8 @@ import {
   SpellcastingSchema,
   type DerivedSheet,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { changeRows, type SummaryContext } from './levelup-summary';
+import { changeRows } from './levelup-summary';
+import { type SummaryContext } from './levelup-summary-rows';
 import { pensantus } from './levelup-testing';
 
 const plain = (s: string) => s.replace(/\u00a0/g, ' ');

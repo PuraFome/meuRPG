@@ -11,7 +11,8 @@ import {
   TableSubclassSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { TableContentClient } from '../../../core/content/content-client';
-import { catalog, classDefaults, entry, menu } from '../../../core/content/content-testing';
+import { catalog, classDefaults, entry } from '../../../core/content/content-testing';
+import { menu } from '../../../core/content/content-testing-menu';
 import { SubclassEditor } from './subclass-editor';
 import { settle } from '../../../../test-settle';
 

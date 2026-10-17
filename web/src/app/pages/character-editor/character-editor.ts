@@ -45,14 +45,14 @@ import {
 } from './character-editor.types';
 import { ClassBlockFields } from './class-block/class-block';
 import { GrantedSpells } from './granted-spells/granted-spells';
-import type { CasterSection, ClassBlock } from './class-blocks';
+import type { ClassBlock } from './class-blocks';
 import { subclassWaits } from './catalog-views';
 import { CUTTING_WORDS_OPTIONS } from './editor-options';
 import { EditorLoader } from './editor-loader';
 import { type PageState, startingXp } from './editor-state';
 import { EditorStepper } from './editor-stepper/editor-stepper';
 import { HitPointsRolls } from './hit-points-rolls/hit-points-rolls';
-import { EDITOR_STEP_LABELS, EditorStepKey } from './editor-labels';
+import { EDITOR_STEP_LABELS } from './editor-labels';
 import { createFullForm, patchFirstClass } from './full-form';
 import { EditorCatalog } from './editor-catalog';
 import { EditorDraft } from './editor-draft';
@@ -68,15 +68,14 @@ import { NpcShortForm } from './npc-short-form/npc-short-form';
 import { SkillPicker } from './skill-picker/skill-picker';
 import { SpellPicker } from './spell-picker/spell-picker';
 
-import { EditorOpening } from './editor-opening';
 import { EditorServerDraft } from './editor-server-draft';
 import { EditorSubmit } from './editor-submit';
 import type { EditorCore } from './editor-core';
 import { EditorSpellDetails } from './editor-spell-details';
 /**
  * The character editor (MR-003, MR-005, MR-006): a stepper for a full
- * sheet (player, enemy, boss) — Básico, Habilidades, Perícias, Magias (only
- * for a caster class), Equipamento, `EditorStepper` over the CDK stepper —
+ * sheet (player, enemy, boss) — Básico, Habilidades, Perícias, Escolhas, Magias
+ * (only for a caster class), Equipamento, `EditorStepper` over the CDK stepper —
  * or a single short form for a basic sheet (minion, story, `NpcShortForm`),
  * routed from three places (plan §5):
  *
@@ -95,36 +94,23 @@ import { EditorSpellDetails } from './editor-spell-details';
  * while the form was open. No D&D rule runs here: the page never shows a
  * modifier, CA or PV it computed itself.
  *
- * A custom background's two granted skills (`CustomBackground.skill_keys`)
- * are collected separately from the player's own skill proficiencies —
- * `customBackgroundSkills`, capped at 2 (`toggleCustomBackgroundSkill`) —
- * and sent only once exactly two are chosen; the server's advisory check
- * (`DerivedSheet.issues`) covers 0 or 1. Expertise (`expertiseSkillKeys`)
- * is a further, separate selection: always a subset of the proficient
- * skills (`toggleExpertise`, disabled on a skill that is not proficient).
- * `feature_choice_keys` has no field at all: see
- * `character-editor.types.ts`'s doc comment on `CharacterFormValue` for
- * why — everything else `FullSheet` has, this form now covers.
+ * The page owns the two forms, the page state and the signals the plain
+ * classes share, and builds the plain classes that hold the rest:
+ * `EditorPicks` and `SpellPicks` (what is picked beside the form's controls),
+ * `EditorCatalog` (the lists and the views over catalog and form),
+ * `EditorDraft` (the draft and what is wrong with it), `EditorServerDraft`
+ * (what the server derives from the draft), `SaveFlow` and `EditorSubmit`
+ * (the save), `EditorLoader` (opening a route) and `EditorSpellDetails`.
+ * The template binds those members directly (`views.blocks()`,
+ * `picks.toggleSkill($event)`, `server.pendingSteps()`), so a member is
+ * documented on the class that owns it; the page keeps only what needs the
+ * component itself: the route, the step and choice-group view children, the
+ * subclass and XP effects and the block and class-change handlers.
  *
- * **No data loss on save** (integrator fix, phase 2b): on an edit,
- * `CharacterEditorSourceLive.updateCharacter` starts from the `FullSheet`
- * it loaded and overwrites only the fields this form actually edits —
- * `coins` and `feature_choice_keys` (which this form has no UI for) and
- * any class beyond the first (multiclassing; this form only ever edits
- * one) survive a save unchanged instead of being silently wiped. See
- * `character-editor-source.live.spec.ts`'s round-trip test.
- *
- * **Never a typed content key** (integrator fix): race, subrace, class,
- * subclass, background, skills, armor, weapons, cantrips and spells are
- * all picked from `RulesCatalogVm` (`ContentService.ListContent`) —
- * `namePt` shown, `key` sent — never typed as free text, since a typed
- * name almost never matches the real key and the server rejects it with
- * `invalid_argument`. Cantrips and the known/prepared spell lists are
- * filterable checkbox pickers (`availableCantrips`/`availableSpells`,
- * `filteredCantrips`/`filteredSpellsKnown`/`filteredSpellsPrepared`),
- * narrowed to the chosen class's spell list; armor is a select (with "Sem
- * armadura"); weapons is a `<mat-select multiple>`. Only genuinely free
- * text stays free text — see `CharacterFormValue`'s doc comment.
+ * Race, subrace, class, subclass, background, skills, armor, weapons,
+ * cantrips and spells are picked from `RulesCatalogVm`
+ * (`ContentService.ListContent`): `namePt` shown, `key` sent, never typed as
+ * free text, since a typed name almost never matches the real key.
  */
 @Component({
   selector: 'app-character-editor',
@@ -194,8 +180,8 @@ export class CharacterEditor {
   private readonly campaignIdSignal = signal('');
 
   /** What the person picked beside the form's controls (`EditorPicks`) and the spells of the "Magias" step. */
-  private readonly picks: EditorPicks = new EditorPicks(() => this.views.grantedSkills());
-  private readonly spellPicks: SpellPicks = new SpellPicks({
+  protected readonly picks: EditorPicks = new EditorPicks(() => this.views.grantedSkills());
+  protected readonly spellPicks: SpellPicks = new SpellPicks({
     sections: () => this.views.sections(),
   });
   /** What every plain class below reads: the state, the two forms and the picks. */
@@ -213,9 +199,9 @@ export class CharacterEditor {
     choices: () => this.server.choices.answer(),
   });
   /** The draft and what is wrong with it (`EditorDraft`). */
-  private readonly draft = new EditorDraft({ ...this.core, catalog: this.views });
+  protected readonly draft = new EditorDraft({ ...this.core, catalog: this.views });
   /** What the server says about the draft: its hit points and spell numbers, and its choices (`EditorServerDraft`). */
-  private readonly server = new EditorServerDraft({
+  protected readonly server = new EditorServerDraft({
     ...this.core,
     source: this.source,
     views: this.views,
@@ -223,7 +209,7 @@ export class CharacterEditor {
     build: () => this.draft.build(),
   });
   /** The save: the request, the navigation after it and what a refusal does (`SaveFlow`). */
-  private readonly saving: SaveFlow = new SaveFlow({
+  protected readonly saving: SaveFlow = new SaveFlow({
     source: this.source,
     navigate: (commands) => this.router.navigate(commands),
     full: () => this.draft.build(),
@@ -237,10 +223,8 @@ export class CharacterEditor {
     refreshCatalog: () => this.refreshCatalog(),
   });
   /** The class block a refusal points at (`full.classes[i]`), so the block says so. */
-  protected readonly serverClassProblem = this.saving.classProblem;
-  protected readonly saveState = this.saving.state;
   /** The save button and what it does before the request (`EditorSubmit`). */
-  private readonly submitting: EditorSubmit = new EditorSubmit({
+  protected readonly submitting: EditorSubmit = new EditorSubmit({
     ...this.core,
     draft: this.draft,
     views: this.views,
@@ -252,115 +236,13 @@ export class CharacterEditor {
     element: this.host.nativeElement,
     injector: this.injector,
   });
-  /** What the page does with the lists once they are read (`EditorOpening`). */
-  private readonly opening = new EditorOpening({
-    ...this.core,
-    fb: this.fb,
-    views: this.views,
-    abilityTable: this.abilityTable,
-    abilityMethod: this.abilityMethod,
-    lockedOrigin: this.lockedOrigin,
-    contentNote: this.contentNote,
-    forget: () => {
-      this.server.choices.stop();
-      this.saving.reset();
-    },
-  });
   /** The "?" next to a spell (`EditorSpellDetails`). */
-  private readonly spellDetails = new EditorSpellDetails({
+  protected readonly spellDetails = new EditorSpellDetails({
     source: this.source,
     state: this.state,
     dialog: inject(MatDialog),
     bottomSheet: inject(MatBottomSheet),
   });
-  protected readonly describeSpell = (spell: SpellOptionVm) => this.spellDetails.describe(spell);
-  protected readonly submit = () => this.submitting.submit();
-  protected readonly switchedOff = (control: Parameters<EditorSubmit['switchedOff']>[0]) =>
-    this.submitting.switchedOff(control);
-
-  protected readonly customBackgroundSkills = this.picks.customBackgroundSkills;
-  protected readonly customBackgroundProficiencies = this.picks.customBackgroundProficiencies;
-  protected readonly expertiseSkills = this.picks.expertiseSkills;
-  protected readonly hitPointsRolls = this.picks.hitPointsRolls;
-  protected readonly featKeys = this.picks.featKeys;
-  protected readonly featSlots = this.picks.featSlots;
-  protected readonly otherGranted = this.picks.grantedSpells.asReadonly();
-  protected readonly hasCuttingWords = this.picks.hasCuttingWords;
-  protected readonly toggleSkill = this.picks.toggleSkill;
-  protected readonly toggleExpertise = this.picks.toggleExpertise;
-  protected readonly toggleCustomBackgroundSkill = this.picks.toggleCustomBackgroundSkill;
-  protected readonly setCustomProficiencies = this.picks.setCustomProficiencies;
-  protected readonly addClass = this.picks.addClass;
-  protected readonly removeClass = this.picks.removeClass;
-  protected readonly addFeat = this.picks.addFeat;
-  protected readonly removeFeat = this.picks.removeFeat;
-  protected readonly pickChoice = this.picks.pickChoice;
-  protected readonly editChoiceText = this.picks.editChoiceText;
-  protected readonly selectedCantrips = this.spellPicks.cantrips;
-  protected readonly selectedSpellsKnown = this.spellPicks.known;
-  protected readonly selectedSpellsPrepared = this.spellPicks.prepared;
-
-  protected readonly availableSubraces = this.views.availableSubraces;
-  protected readonly backgroundEquipment = this.views.backgroundEquipment;
-  protected readonly backgroundOptions = this.views.backgroundOptions;
-  protected readonly backgroundUnlisted = this.views.backgroundUnlisted;
-  protected readonly blocks = this.views.blocks;
-  protected readonly choiceBonusesHint = this.views.choiceBonusesHint;
-  protected readonly choicesSubtitle = this.views.choicesSubtitle;
-  protected readonly chosenSkills = this.views.chosenSkills;
-  protected readonly classOptions = this.views.classOptions;
-  protected readonly classUnlisted = this.views.classUnlisted;
-  protected readonly finalConstitution = this.views.finalConstitution;
-  protected readonly grantedSkills = this.views.grantedSkills;
-  protected readonly hitDie = this.views.hitDie;
-  protected readonly isCaster = this.views.isCaster;
-  protected readonly languageOptions = this.views.languageOptions;
-  protected readonly levelDice = this.views.levelDice;
-  protected readonly magiasLink = this.views.magiasLink;
-  protected readonly master = this.views.master;
-  protected readonly multiclass = this.views.multiclass;
-  protected readonly raceOptions = this.views.raceOptions;
-  protected readonly raceUnlisted = this.views.raceUnlisted;
-  protected readonly rollsNeeded = this.views.rollsNeeded;
-  protected readonly sectionViews = this.views.sectionViews;
-  protected readonly sections = this.views.sections;
-  protected readonly selectedBackground = this.views.selectedBackground;
-  protected readonly selectedBackgroundVm = this.views.selectedBackgroundVm;
-  protected readonly selectedClass = this.views.selectedClass;
-  protected readonly selectedClassKey = this.views.selectedClassKey;
-  protected readonly selectedHitPointsMethod = this.views.selectedHitPointsMethod;
-  protected readonly selectedRace = this.views.selectedRace;
-  protected readonly selectedRaceKey = this.views.selectedRaceKey;
-  protected readonly selectedSubclass = this.views.selectedSubclass;
-  protected readonly selectedSubrace = this.views.selectedSubrace;
-  protected readonly skillNote = this.views.skillNote;
-  protected readonly subclassHint = this.views.subclassHint;
-  protected readonly subclassOptions = this.views.subclassOptions;
-  protected readonly subraceOptions = this.views.subraceOptions;
-  protected readonly toolOptions = this.views.toolOptions;
-  protected readonly totalLevelProblem = this.views.totalLevelProblem;
-  protected readonly totalLevelValue = this.views.totalLevelValue;
-  protected readonly sectionHeading = (section: CasterSection) =>
-    this.views.sectionHeading(section);
-  protected readonly otherClassKeys = (index: number) => this.views.otherClassKeys(index);
-
-  protected readonly abilitiesIncomplete = this.draft.abilitiesIncomplete;
-  protected readonly abilitiesProblem = this.draft.abilitiesProblem;
-  protected readonly bonusesInUse = this.draft.bonusesInUse;
-  protected readonly invalidSummary = this.draft.invalidSummary;
-  /** A save was tried: the blocks that lack a class say so. */
-  protected readonly submitTried = this.draft.showErrors.asReadonly();
-  protected readonly stepHasError = (step: EditorStepKey) => this.draft.stepHasError(step);
-
-  protected readonly featIssues = this.server.featIssues;
-  protected readonly hitPointsFromEffects = this.server.hitPointsFromEffects;
-  protected readonly choicesAnswer = this.server.choicesAnswer;
-  protected readonly choiceGroupsOfDraft = this.server.choiceGroups;
-  protected readonly choicesStep = this.server.choicesStep;
-  protected readonly pendingSteps = this.server.pendingSteps;
-  protected readonly eagerSteps = this.server.eagerSteps;
-  protected readonly choicesBlocked = this.server.choicesBlocked;
-  protected readonly missingText = this.server.missingText;
 
   protected readonly cuttingWordsOptions = CUTTING_WORDS_OPTIONS;
   protected readonly isFullSheetKind = isFullSheetKind;
@@ -376,41 +258,35 @@ export class CharacterEditor {
       : 'player_chooses';
   });
 
-  protected readonly experienceLabel = this.views.experienceLabel;
-  protected readonly backgroundSkillsCount = this.views.backgroundSkillsCount;
-  protected readonly backgroundProficienciesCount = this.views.backgroundProficienciesCount;
-  protected readonly lead = this.views.lead;
-  protected readonly pageTitle = this.views.pageTitle;
-  protected readonly createLabel = this.views.createLabel;
-  protected readonly reserved = this.views.reserved;
-  protected readonly cancelLink = this.views.cancelLink;
-  protected readonly actionsNote = this.views.actionsNote;
-
-  /** What the page reads from the server to open, and the routes it drops the answers of (`EditorLoader`). */
+  /** What the page reads from the server to open, what it does with the answer, and the routes it drops the answers of (`EditorLoader`). */
   private readonly loader = new EditorLoader({
+    ...this.core,
     source: this.source,
-    state: this.state,
+    fb: this.fb,
+    views: this.views,
     abilityTable: this.abilityTable,
+    abilityMethod: this.abilityMethod,
     lockedOrigin: this.lockedOrigin,
     contentNote: this.contentNote,
     campaignId: this.campaignIdSignal,
     reservedRoute: () => this.isReservedRoute(),
-    reset: () => this.opening.reset(),
-    created: (ready, table) => this.opening.created(ready, table),
-    edited: (ready, existing, catalog) => this.opening.edited(ready, existing, catalog),
+    forget: () => {
+      this.server.choices.stop();
+      this.saving.reset();
+    },
   });
 
   constructor() {
     // Only a player's editor follows the hint: the master writes the content himself, and an open stream would keep the
     // page from ever being quiet (every NPC editor of a live campaign would hold one).
     this.watcher.whileLive(
-      () => (this.master() ? '' : this.campaignIdSignal()),
+      () => (this.views.master() ? '' : this.campaignIdSignal()),
       () => void this.refreshCatalog(),
     );
     // The subclass of a one-class sheet waits for the level the class chooses it at (as in a block), unless one is chosen.
     effect(() => {
       const waits = subclassWaits(
-        this.selectedClass(),
+        this.views.selectedClass(),
         this.views.selectedLevel(),
         this.views.selectedSubclassKey(),
       );
@@ -424,7 +300,7 @@ export class CharacterEditor {
     // A new player's sheet made above level 1 starts at its level's XP in a campaign that levels by XP, until the
     // person types in the field; a milestone campaign keeps the 0.
     effect(() => {
-      const xp = startingXp(this.state(), this.totalLevelValue());
+      const xp = startingXp(this.state(), this.views.totalLevelValue());
       const control = this.fullForm.controls.experiencePoints;
       if (xp !== null && !control.dirty) {
         untracked(() => control.setValue(xp));
@@ -472,9 +348,6 @@ export class CharacterEditor {
   }
 
   /** The search of an extra list ("0:patron"), and what it narrows. */
-  protected readonly spellFilterOf = (id: string) => this.spellPicks.filterOf(id);
-  protected readonly setExtraFilter = (id: string, value: string) =>
-    this.spellPicks.setFilter(id, value);
   protected readonly filterSpells = (spells: readonly SpellOptionVm[], id: string) =>
     filterByName(spells, this.spellPicks.filterOf(id));
   protected readonly setSpellFilter = (
@@ -482,11 +355,6 @@ export class CharacterEditor {
     list: 'cantrips' | 'known' | 'prepared',
     value: string,
   ) => this.spellPicks.setFilter(`${section}:${list}`, value);
-  /** "Escolher Rajada Mística agora": the spell becomes one of the sheet's cantrips (the "Magias" step), and the choices are read again. */
-  protected readonly addChoiceCantrip = (key: string) => this.spellPicks.addCantrip(key);
-  protected readonly toggleCantrip = (key: string) => this.spellPicks.toggleCantrip(key);
-  protected readonly toggleSpellKnown = (key: string) => this.spellPicks.toggleKnown(key);
-  protected readonly toggleSpellPrepared = (key: string) => this.spellPicks.togglePrepared(key);
 
   /** `content_changed` (RN-23): the lists are read again with this person's role; what was typed stays. Resolves when done. */
   private refreshCatalog(): Promise<void> {

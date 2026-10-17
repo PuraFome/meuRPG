@@ -1,13 +1,13 @@
 <div class="editor">
   @if (state(); as s) {
     <header>
-      <h1 class="mr-page-title">{{ pageTitle() }}</h1>
-      @if (lead()) {
-        <p class="mr-page-lead">{{ lead() }}</p>
+      <h1 class="mr-page-title">{{ views.pageTitle() }}</h1>
+      @if (views.lead()) {
+        <p class="mr-page-lead">{{ views.lead() }}</p>
       }
     </header>
 
-    @if (reserved()) {
+    @if (views.reserved()) {
       <div class="mr-notice mr-notice--neutral editor__reserved" role="note">
         <mat-icon aria-hidden="true">visibility_off</mat-icon>
         <p>
@@ -47,8 +47,8 @@
         }
         @if (isFullSheetKind(s.kind)) {
           <form [formGroup]="fullForm">
-            <app-editor-stepper [eager]="eagerSteps()" [pending]="pendingSteps()">
-              <cdk-step [label]="stepLabels.basico" [hasError]="stepHasError('basico')">
+            <app-editor-stepper [eager]="server.eagerSteps()" [pending]="server.pendingSteps()">
+              <cdk-step [label]="stepLabels.basico" [hasError]="draft.stepHasError('basico')">
                 <p class="step-lead">
                   Quem é o personagem, na ordem do cabeçalho da ficha. Os campos com * são
                   obrigatórios.
@@ -68,13 +68,13 @@
                     <mat-error>Escreva o nome do personagem.</mat-error>
                   </mat-form-field>
 
-                  @if (multiclass()) {
+                  @if (views.multiclass()) {
                     <!-- Several classes: the level of each is in its own block, and this is their sum (read, never typed). -->
                     <div class="xp-read">
                       <span class="group-label" id="total-level-label">Nível total</span>
-                      <span class="xp-read__value" aria-labelledby="total-level-label">{{ totalLevelValue() }}</span>
-                      @if (totalLevelProblem()) {
-                        <span class="group-hint" role="status">{{ totalLevelProblem() }}</span>
+                      <span class="xp-read__value" aria-labelledby="total-level-label">{{ views.totalLevelValue() }}</span>
+                      @if (views.totalLevelProblem()) {
+                        <span class="group-hint" role="status">{{ views.totalLevelProblem() }}</span>
                       }
                     </div>
                   } @else {
@@ -97,7 +97,7 @@
                       <!-- RN-01 locked the sheet: the XP is a number to read; only the master's awards change it. -->
                       <div class="xp-read">
                         <span class="group-label">Pontos de experiência</span>
-                        <span class="xp-read__value">{{ experienceLabel() }}</span>
+                        <span class="xp-read__value">{{ views.experienceLabel() }}</span>
                         <span class="group-hint">Só os prêmios do mestre mudam o XP.</span>
                       </div>
                     } @else {
@@ -116,26 +116,26 @@
                     }
                   }
 
-                  @if (multiclass()) {
+                  @if (views.multiclass()) {
                     <div class="span-all class-blocks">
-                      @for (block of blocks(); track $index) {
+                      @for (block of views.blocks(); track $index) {
                         <app-class-block
                           [catalog]="s.catalog"
                           [block]="block"
                           [index]="$index"
                           [removable]="$index > 0"
-                          [others]="otherClassKeys($index)"
-                          [touch]="submitTried()"
-                          [problem]="serverClassProblem() === $index ? 'Essa classe se repete ou não existe. Escolha outra.' : ''"
-                          [master]="master()"
+                          [others]="views.otherClassKeys($index)"
+                          [touch]="draft.showErrors()"
+                          [problem]="saving.classProblem() === $index ? 'Essa classe se repete ou não existe. Escolha outra.' : ''"
+                          [master]="views.master()"
                           (changed)="changeBlock($index, $event)"
-                          (removed)="removeClass($index)"
+                          (removed)="picks.removeClass($index)"
                         />
                       }
                       <p class="group-hint class-blocks__note">
                         Os pré-requisitos de cada classe aparecem na ficha, se faltar algum.
                       </p>
-                      <button matButton="outlined" type="button" class="class-blocks__add" (click)="addClass()">
+                      <button matButton="outlined" type="button" class="class-blocks__add" (click)="picks.addClass()">
                         <mat-icon aria-hidden="true">add</mat-icon>Adicionar classe
                       </button>
                     </div>
@@ -144,54 +144,54 @@
                     <mat-label>Classe</mat-label>
                     <mat-select formControlName="className" panelWidth="" (selectionChange)="onClassChange()">
                       <mat-select-trigger>
-                        {{ selectedClass()?.namePt }}
-                        <app-table-mark [fromTable]="selectedClass()?.fromTable ?? false" [archived]="selectedClass()?.archived ?? false" [off]="selectedClass()?.off ?? false" />
+                        {{ views.selectedClass()?.namePt }}
+                        <app-table-mark [fromTable]="views.selectedClass()?.fromTable ?? false" [archived]="views.selectedClass()?.archived ?? false" [off]="views.selectedClass()?.off ?? false" />
                       </mat-select-trigger>
-                      @if (classUnlisted()) {
-                        <mat-option [value]="selectedClassKey()">Classe que saiu da lista</mat-option>
+                      @if (views.classUnlisted()) {
+                        <mat-option [value]="views.selectedClassKey()">Classe que saiu da lista</mat-option>
                       }
-                      @for (c of classOptions(); track c.key) {
+                      @for (c of views.classOptions(); track c.key) {
                         <mat-option [value]="c.key">
                           {{ c.namePt }}
                           <app-table-mark [fromTable]="c.fromTable" [archived]="c.archived" [off]="c.off" />
                         </mat-option>
                       }
                     </mat-select>
-                    <mat-error>{{ switchedOff('className') || 'Escolha a classe.' }}</mat-error>
+                    <mat-error>{{ submitting.switchedOff('className') || 'Escolha a classe.' }}</mat-error>
                   </mat-form-field>
 
-                  @if (!selectedClass()) {
+                  @if (!views.selectedClass()) {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Subclasse</mat-label>
                       <mat-select disabled />
                       <mat-hint>Escolha a classe antes.</mat-hint>
                     </mat-form-field>
-                  } @else if ((selectedClass()?.subclasses?.length ?? 0) > 0) {
+                  } @else if ((views.selectedClass()?.subclasses?.length ?? 0) > 0) {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Subclasse</mat-label>
                       <mat-select formControlName="subclassName" panelWidth="">
                         <mat-select-trigger>
-                          {{ selectedSubclass()?.namePt ?? 'Nenhuma' }}
-                          <app-table-mark [fromTable]="selectedSubclass()?.fromTable ?? false" [archived]="selectedSubclass()?.archived ?? false" [off]="selectedSubclass()?.off ?? false" />
+                          {{ views.selectedSubclass()?.namePt ?? 'Nenhuma' }}
+                          <app-table-mark [fromTable]="views.selectedSubclass()?.fromTable ?? false" [archived]="views.selectedSubclass()?.archived ?? false" [off]="views.selectedSubclass()?.off ?? false" />
                         </mat-select-trigger>
                         <mat-option value="">Nenhuma</mat-option>
-                        @for (sc of subclassOptions(); track sc.key) {
+                        @for (sc of views.subclassOptions(); track sc.key) {
                           <mat-option [value]="sc.key">
                             {{ sc.namePt }}
                             <app-table-mark [fromTable]="sc.fromTable" [archived]="sc.archived" [off]="sc.off" />
                           </mat-option>
                         }
                       </mat-select>
-                      @if (subclassHint()) {
-                        <mat-hint>{{ subclassHint() }}</mat-hint>
+                      @if (views.subclassHint()) {
+                        <mat-hint>{{ views.subclassHint() }}</mat-hint>
                       }
-                      <mat-error>{{ switchedOff('subclassName') }}</mat-error>
+                      <mat-error>{{ submitting.switchedOff('subclassName') }}</mat-error>
                     </mat-form-field>
                   } @else {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Subclasse</mat-label>
                       <input matInput formControlName="customSubclassName" autocomplete="off" />
-                      <mat-hint>{{ subclassHint() || 'Escreva o nome, se houver.' }}</mat-hint>
+                      <mat-hint>{{ views.subclassHint() || 'Escreva o nome, se houver.' }}</mat-hint>
                     </mat-form-field>
                   }
 
@@ -201,41 +201,41 @@
                     <mat-label>Raça</mat-label>
                     <mat-select formControlName="race" panelWidth="">
                       <mat-select-trigger>
-                        {{ selectedRace()?.namePt }}
-                        <app-table-mark [fromTable]="selectedRace()?.fromTable ?? false" [archived]="selectedRace()?.archived ?? false" [off]="selectedRace()?.off ?? false" />
+                        {{ views.selectedRace()?.namePt }}
+                        <app-table-mark [fromTable]="views.selectedRace()?.fromTable ?? false" [archived]="views.selectedRace()?.archived ?? false" [off]="views.selectedRace()?.off ?? false" />
                       </mat-select-trigger>
-                      @if (raceUnlisted()) {
-                        <mat-option [value]="selectedRaceKey()">Raça que saiu da lista</mat-option>
+                      @if (views.raceUnlisted()) {
+                        <mat-option [value]="views.selectedRaceKey()">Raça que saiu da lista</mat-option>
                       }
-                      @for (r of raceOptions(); track r.key) {
+                      @for (r of views.raceOptions(); track r.key) {
                         <mat-option [value]="r.key">
                           {{ r.namePt }}
                           <app-table-mark [fromTable]="r.fromTable" [archived]="r.archived" [off]="r.off" />
                         </mat-option>
                       }
                     </mat-select>
-                    @if (choiceBonusesHint()) {
-                      <mat-hint>{{ choiceBonusesHint() }}</mat-hint>
+                    @if (views.choiceBonusesHint()) {
+                      <mat-hint>{{ views.choiceBonusesHint() }}</mat-hint>
                     }
-                    <mat-error>{{ switchedOff('race') || 'Escolha a raça.' }}</mat-error>
+                    <mat-error>{{ submitting.switchedOff('race') || 'Escolha a raça.' }}</mat-error>
                   </mat-form-field>
 
-                  @if (availableSubraces().length > 0) {
+                  @if (views.availableSubraces().length > 0) {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Sub-raça</mat-label>
                       <mat-select formControlName="subrace" panelWidth="">
                         <mat-select-trigger>
-                          {{ selectedSubrace()?.namePt }}
-                          <app-table-mark [fromTable]="selectedSubrace()?.fromTable ?? false" [archived]="selectedSubrace()?.archived ?? false" [off]="selectedSubrace()?.off ?? false" />
+                          {{ views.selectedSubrace()?.namePt }}
+                          <app-table-mark [fromTable]="views.selectedSubrace()?.fromTable ?? false" [archived]="views.selectedSubrace()?.archived ?? false" [off]="views.selectedSubrace()?.off ?? false" />
                         </mat-select-trigger>
-                        @for (sr of subraceOptions(); track sr.key) {
+                        @for (sr of views.subraceOptions(); track sr.key) {
                           <mat-option [value]="sr.key">
                             {{ sr.namePt }}
                             <app-table-mark [fromTable]="sr.fromTable" [archived]="sr.archived" [off]="sr.off" />
                           </mat-option>
                         }
                       </mat-select>
-                      <mat-error>{{ switchedOff('subrace') }}</mat-error>
+                      <mat-error>{{ submitting.switchedOff('subrace') }}</mat-error>
                     </mat-form-field>
                   }
 
@@ -243,13 +243,13 @@
                     <mat-label>Antecedente</mat-label>
                     <mat-select formControlName="background" panelWidth="">
                       <mat-select-trigger>
-                        {{ selectedBackgroundVm()?.namePt ?? 'Outro (personalizado)' }}
-                        <app-table-mark [fromTable]="selectedBackgroundVm()?.fromTable ?? false" [archived]="selectedBackgroundVm()?.archived ?? false" [off]="selectedBackgroundVm()?.off ?? false" [masculine]="true" />
+                        {{ views.selectedBackgroundVm()?.namePt ?? 'Outro (personalizado)' }}
+                        <app-table-mark [fromTable]="views.selectedBackgroundVm()?.fromTable ?? false" [archived]="views.selectedBackgroundVm()?.archived ?? false" [off]="views.selectedBackgroundVm()?.off ?? false" [masculine]="true" />
                       </mat-select-trigger>
-                      @if (backgroundUnlisted()) {
-                        <mat-option [value]="selectedBackground()">Antecedente que saiu da lista</mat-option>
+                      @if (views.backgroundUnlisted()) {
+                        <mat-option [value]="views.selectedBackground()">Antecedente que saiu da lista</mat-option>
                       }
-                      @for (bg of backgroundOptions(); track bg.key) {
+                      @for (bg of views.backgroundOptions(); track bg.key) {
                         <mat-option [value]="bg.key">
                           {{ bg.namePt }}
                           <app-table-mark [fromTable]="bg.fromTable" [archived]="bg.archived" [off]="bg.off" [masculine]="true" />
@@ -257,10 +257,10 @@
                       }
                       <mat-option value="custom">Outro (personalizado)</mat-option>
                     </mat-select>
-                    @if (backgroundEquipment()) {
-                      <mat-hint>Equipamento: {{ backgroundEquipment() }}</mat-hint>
+                    @if (views.backgroundEquipment()) {
+                      <mat-hint>Equipamento: {{ views.backgroundEquipment() }}</mat-hint>
                     }
-                    <mat-error>{{ switchedOff('background') || 'Escolha o antecedente.' }}</mat-error>
+                    <mat-error>{{ submitting.switchedOff('background') || 'Escolha o antecedente.' }}</mat-error>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -273,9 +273,9 @@
                   </mat-form-field>
                 </div>
 
-                @if (!multiclass() && s.kind !== 'minion' && s.kind !== 'story') {
+                @if (!views.multiclass() && s.kind !== 'minion' && s.kind !== 'story') {
                   <div class="add-class">
-                    <button matButton="outlined" type="button" (click)="addClass()">
+                    <button matButton="outlined" type="button" (click)="picks.addClass()">
                       <mat-icon aria-hidden="true">add</mat-icon>Adicionar classe
                     </button>
                     <p class="group-hint">Para uma ficha que já começa com mais de uma classe, como a de quem entra na campanha em nível alto.</p>
@@ -297,7 +297,7 @@
                   </section>
                 }
 
-                @if (selectedBackground() === 'custom') {
+                @if (views.selectedBackground() === 'custom') {
                   <section class="subsection" aria-labelledby="custom-background-title">
                     <h3 class="subsection__title" id="custom-background-title">
                       Personalizar um antecedente
@@ -325,20 +325,20 @@
                       Perícias do antecedente (escolha 2)
                     </p>
                     <p class="group-hint" aria-live="polite">
-                      {{ backgroundSkillsCount() }}.
-                      @if (customBackgroundSkills().size >= 2) {
+                      {{ views.backgroundSkillsCount() }}.
+                      @if (picks.customBackgroundSkills().size >= 2) {
                         Para trocar, desmarque uma.
                       }
                     </p>
                     <div class="check-grid" role="group" aria-labelledby="background-skills-label">
                       @for (skill of s.catalog.skills; track skill.key) {
                         <mat-checkbox
-                          [checked]="customBackgroundSkills().has(skill.key)"
+                          [checked]="picks.customBackgroundSkills().has(skill.key)"
                           [disabled]="
-                            !customBackgroundSkills().has(skill.key) &&
-                            customBackgroundSkills().size >= 2
+                            !picks.customBackgroundSkills().has(skill.key) &&
+                            picks.customBackgroundSkills().size >= 2
                           "
-                          (change)="toggleCustomBackgroundSkill(skill.key)"
+                          (change)="picks.toggleCustomBackgroundSkill(skill.key)"
                         >
                           {{ skill.namePt }}
                         </mat-checkbox>
@@ -349,28 +349,28 @@
                       <mat-label>Ferramentas ou idiomas (escolha 2)</mat-label>
                       <mat-select
                         multiple
-                        [value]="customBackgroundProficiencies()"
-                        (selectionChange)="setCustomProficiencies($event.value)"
+                        [value]="picks.customBackgroundProficiencies()"
+                        (selectionChange)="picks.setCustomProficiencies($event.value)"
                       >
                         <mat-optgroup label="Ferramentas">
-                          @for (t of toolOptions(); track t.key) {
+                          @for (t of views.toolOptions(); track t.key) {
                             <mat-option
                               [value]="t.key"
-                              [disabled]="customBackgroundProficiencies().length >= 2 && !customBackgroundProficiencies().includes(t.key)"
+                              [disabled]="picks.customBackgroundProficiencies().length >= 2 && !picks.customBackgroundProficiencies().includes(t.key)"
                             >{{ t.namePt }}</mat-option>
                           }
                         </mat-optgroup>
                         <mat-optgroup label="Idiomas">
-                          @for (t of languageOptions(); track t.key) {
+                          @for (t of views.languageOptions(); track t.key) {
                             <mat-option
                               [value]="t.key"
-                              [disabled]="customBackgroundProficiencies().length >= 2 && !customBackgroundProficiencies().includes(t.key)"
+                              [disabled]="picks.customBackgroundProficiencies().length >= 2 && !picks.customBackgroundProficiencies().includes(t.key)"
                             >{{ t.namePt }}</mat-option>
                           }
                         </mat-optgroup>
                       </mat-select>
                       <mat-hint aria-live="polite">
-                        {{ backgroundProficienciesCount() }}. Escolha dois, entre ferramentas e idiomas, em qualquer mistura.
+                        {{ views.backgroundProficienciesCount() }}. Escolha dois, entre ferramentas e idiomas, em qualquer mistura.
                       </mat-hint>
                     </mat-form-field>
 
@@ -391,7 +391,7 @@
                   </section>
                 }
 
-                @if (hasCuttingWords()) {
+                @if (picks.hasCuttingWords()) {
                   <section class="subsection" aria-labelledby="cutting-words-title">
                     <h3 class="subsection__title" id="cutting-words-title">Palavras de Interrupção</h3>
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
@@ -409,7 +409,7 @@
                 }
               </cdk-step>
 
-              <cdk-step [label]="stepLabels.atributos" [hasError]="stepHasError('atributos')">
+              <cdk-step [label]="stepLabels.atributos" [hasError]="draft.stepHasError('atributos')">
                 @if (abilityTable(); as table) {
                   <p class="step-lead">
                     Escolha como fazer os seis valores, antes dos bônus de raça. Os modificadores aparecem
@@ -421,8 +421,8 @@
                     [table]="table"
                     [locked]="lockedOrigin()"
                     [(method)]="abilityMethod"
-                    [(incomplete)]="abilitiesIncomplete"
-                    [(problem)]="abilitiesProblem"
+                    [(incomplete)]="draft.abilitiesIncomplete"
+                    [(problem)]="draft.abilitiesProblem"
                     (staleTable)="rereadAbilityTable()"
                   />
                 } @else {
@@ -432,7 +432,7 @@
                   </p>
                   <app-ability-scores
                     [group]="fullForm.controls.abilities"
-                    [(incomplete)]="abilitiesIncomplete"
+                    [(incomplete)]="draft.abilitiesIncomplete"
                   />
                 }
 
@@ -449,7 +449,7 @@
                         Incremento no Valor de Habilidade, item mágico.
                       </span>
                       <span class="bonuses__sub bonuses__state">
-                        {{ bonusesInUse() ? 'Em uso: ' + bonusesInUse() + '.' : 'Nenhum em uso.' }}
+                        {{ draft.bonusesInUse() ? 'Em uso: ' + draft.bonusesInUse() + '.' : 'Nenhum em uso.' }}
                       </span>
                     </span>
                   </summary>
@@ -495,43 +495,43 @@
                     </p>
                   }
 
-                  @if (selectedHitPointsMethod() === 'rolled') {
-                    @if (rollsNeeded() === 0) {
+                  @if (views.selectedHitPointsMethod() === 'rolled') {
+                    @if (views.rollsNeeded() === 0) {
                       <p class="group-hint">
                         No 1º nível não há rolagem. Os campos aparecem quando o nível passar de 1.
                       </p>
-                    } @else if (hitDie() === 0) {
+                    } @else if (views.hitDie() === 0) {
                       <p class="group-hint">
                         Escolha a classe no passo Básico: ela define o dado de vida.
                       </p>
                     } @else {
                       <app-hit-points-rolls
-                        [hitDie]="hitDie()"
-                        [levelDice]="levelDice()"
-                        [level]="rollsNeeded() + 1"
-                        [constitution]="finalConstitution()"
-                        [fromEffects]="hitPointsFromEffects()"
-                        [(rolls)]="hitPointsRolls"
+                        [hitDie]="views.hitDie()"
+                        [levelDice]="views.levelDice()"
+                        [level]="views.rollsNeeded() + 1"
+                        [constitution]="views.finalConstitution()"
+                        [fromEffects]="server.hitPointsFromEffects()"
+                        [(rolls)]="picks.hitPointsRolls"
                       />
                     }
                   }
                 </section>
               </cdk-step>
 
-              @if (choicesStep()) {
+              @if (server.choicesStep()) {
                 <cdk-step [label]="stepLabels.escolhas">
                   <p class="step-lead">
                     O que a raça e a classe deixam você escolher, como estilo de luta, ancestral
                     dracônico ou invocações. Cada escolha mostra o que ela dá.
                   </p>
                   <app-choice-groups
-                    [groups]="choiceGroupsOfDraft()"
-                    [done]="choicesAnswer()?.done ?? null"
-                    [total]="choicesAnswer()?.total ?? null"
-                    [subtitle]="choicesSubtitle()"
-                    (selected)="pickChoice($event)"
-                    (textEdited)="editChoiceText($event)"
-                    (addCantrip)="addChoiceCantrip($event)"
+                    [groups]="server.choiceGroups()"
+                    [done]="server.choicesAnswer()?.done ?? null"
+                    [total]="server.choicesAnswer()?.total ?? null"
+                    [subtitle]="views.choicesSubtitle()"
+                    (selected)="picks.pickChoice($event)"
+                    (textEdited)="picks.editChoiceText($event)"
+                    (addCantrip)="spellPicks.addCantrip($event)"
                   />
                 </cdk-step>
               }
@@ -540,27 +540,27 @@
                 <p class="step-lead">
                   Marque as perícias em que o personagem é proficiente. Especialização dobra o bônus
                   de proficiência e só vale numa perícia marcada.
-                  @if (selectedBackground() === 'custom') {
+                  @if (views.selectedBackground() === 'custom') {
                     As duas do antecedente personalizado ficam no passo Básico.
                   }
                 </p>
-                @if (skillNote()) {
-                  <p class="step-lead skill-note">{{ skillNote() }}</p>
+                @if (views.skillNote()) {
+                  <p class="step-lead skill-note">{{ views.skillNote() }}</p>
                 }
                 <app-skill-picker
                   [skills]="s.catalog.skills"
-                  [proficient]="chosenSkills()"
-                  [granted]="grantedSkills()"
-                  [expertise]="expertiseSkills()"
-                  (toggleSkill)="toggleSkill($event)"
-                  (toggleExpertise)="toggleExpertise($event)"
+                  [proficient]="views.chosenSkills()"
+                  [granted]="views.grantedSkills()"
+                  [expertise]="picks.expertiseSkills()"
+                  (toggleSkill)="picks.toggleSkill($event)"
+                  (toggleExpertise)="picks.toggleExpertise($event)"
                 />
               </cdk-step>
 
-              @if (isCaster()) {
+              @if (views.isCaster()) {
                 <cdk-step [label]="stepLabels.magias">
                   <p class="step-lead">
-                    @if (sections().length > 1) {
+                    @if (views.sections().length > 1) {
                       Da lista de cada classe, pelo nível nela. As sempre preparadas vêm da subclasse e não gastam o
                       limite.
                     } @else {
@@ -568,23 +568,23 @@
                     }
                   </p>
                   <app-fiction-notice />
-                  @if (otherGranted().length > 0) {
+                  @if (picks.grantedSpells().length > 0) {
                     <app-granted-spells
                       title="Já na ficha"
                       hint="Vêm da raça, da classe ou de uma característica, já estão na ficha e não contam no limite de preparadas."
-                      [spells]="otherGranted()"
-                      (describe)="describeSpell($event)"
+                      [spells]="picks.grantedSpells()"
+                      (describe)="spellDetails.describe($event)"
                     />
                   }
-                  @for (view of sectionViews(); track view.id) {
+                  @for (view of views.sectionViews(); track view.id) {
                     <section
                       class="spell-section"
-                      [class.spell-section--multi]="sections().length > 1"
-                      [attr.aria-labelledby]="sections().length > 1 ? 'spell-section-' + view.id : null"
+                      [class.spell-section--multi]="views.sections().length > 1"
+                      [attr.aria-labelledby]="views.sections().length > 1 ? 'spell-section-' + view.id : null"
                     >
-                      @if (sections().length > 1) {
+                      @if (views.sections().length > 1) {
                         <h3 class="spell-section__title" [id]="'spell-section-' + view.id">
-                          {{ sectionHeading(view.section) }}
+                          {{ views.sectionHeading(view.section) }}
                         </h3>
                         <p class="group-hint">
                           {{ view.section.namePt }} {{ view.section.level }}@if (view.preparedCount.text) {
@@ -600,7 +600,7 @@
                           [spells]="view.always"
                           [source]="view.alwaysSourcePt"
                           [headed]="false"
-                          (describe)="describeSpell($event)"
+                          (describe)="spellDetails.describe($event)"
                         />
                       }
                       <div class="spell-grid">
@@ -613,12 +613,12 @@
                             [limit]="view.cantripsLimit"
                             [options]="view.cantrips.all"
                             [filtered]="view.cantrips.shown"
-                            [selected]="selectedCantrips()"
+                            [selected]="spellPicks.cantrips()"
                             [filter]="view.cantrips.filter"
                             [outside]="view.cantrips.outside"
-                            [magiasLink]="magiasLink()"
-                            (toggle)="toggleCantrip($event)"
-                            (describe)="describeSpell($event)"
+                            [magiasLink]="views.magiasLink()"
+                            (toggle)="spellPicks.toggleCantrip($event)"
+                            (describe)="spellDetails.describe($event)"
                             (filterChange)="setSpellFilter(view.section.index, 'cantrips', $event)"
                           />
                         }
@@ -636,12 +636,12 @@
                             [maxSpellLevel]="view.section.maxCircle"
                             [options]="view.known.all"
                             [filtered]="view.known.shown"
-                            [selected]="selectedSpellsKnown()"
+                            [selected]="spellPicks.known()"
                             [filter]="view.known.filter"
                             [outside]="view.known.outside"
-                            [magiasLink]="magiasLink()"
-                            (toggle)="toggleSpellKnown($event)"
-                            (describe)="describeSpell($event)"
+                            [magiasLink]="views.magiasLink()"
+                            (toggle)="spellPicks.toggleKnown($event)"
+                            (describe)="spellDetails.describe($event)"
                             (filterChange)="setSpellFilter(view.section.index, 'known', $event)"
                           />
                         }
@@ -657,12 +657,12 @@
                             [maxSpellLevel]="view.section.maxCircle"
                             [options]="view.prepared.all"
                             [filtered]="view.prepared.shown"
-                            [selected]="selectedSpellsPrepared()"
+                            [selected]="spellPicks.prepared()"
                             [filter]="view.prepared.filter"
                             [outside]="view.prepared.outside"
-                            [magiasLink]="magiasLink()"
-                            (toggle)="toggleSpellPrepared($event)"
-                            (describe)="describeSpell($event)"
+                            [magiasLink]="views.magiasLink()"
+                            (toggle)="spellPicks.togglePrepared($event)"
+                            (describe)="spellDetails.describe($event)"
                             (filterChange)="setSpellFilter(view.section.index, 'prepared', $event)"
                           />
                         }
@@ -678,11 +678,11 @@
                               [filtered]="
                                 filterSpells(extra.spells, view.section.index + ':' + extra.id)
                               "
-                              [selected]="view.extrasToKnown ? selectedSpellsKnown() : selectedSpellsPrepared()"
-                              [filter]="spellFilterOf(view.section.index + ':' + extra.id)"
-                              (toggle)="view.extrasToKnown ? toggleSpellKnown($event) : toggleSpellPrepared($event)"
-                              (describe)="describeSpell($event)"
-                              (filterChange)="setExtraFilter(view.section.index + ':' + extra.id, $event)"
+                              [selected]="view.extrasToKnown ? spellPicks.known() : spellPicks.prepared()"
+                              [filter]="spellPicks.filterOf(view.section.index + ':' + extra.id)"
+                              (toggle)="view.extrasToKnown ? spellPicks.toggleKnown($event) : spellPicks.togglePrepared($event)"
+                              (describe)="spellDetails.describe($event)"
+                              (filterChange)="spellPicks.setFilter(view.section.index + ':' + extra.id, $event)"
                             />
                             <p class="group-hint">{{ extra.hint }}</p>
                           </div>
@@ -693,7 +693,7 @@
                 </cdk-step>
               }
 
-              <cdk-step [label]="stepLabels.equipamento" [hasError]="stepHasError('equipamento')">
+              <cdk-step [label]="stepLabels.equipamento" [hasError]="draft.stepHasError('equipamento')">
                 <p class="step-lead">
                   Armadura, escudo e armas vêm da lista do livro. O resto é texto livre.
                 </p>
@@ -761,16 +761,16 @@
                       >
                     </mat-form-field>
                   </div>
-                  @if (master()) {
+                  @if (views.master()) {
                     <section class="subsection" aria-labelledby="feats-title">
                       <h3 class="subsection__title" id="feats-title">Talentos</h3>
                       <app-feats-field
-                        [featKeys]="featKeys()"
-                        [featSlots]="featSlots()"
+                        [featKeys]="picks.featKeys()"
+                        [featSlots]="picks.featSlots()"
                         [catalog]="s.catalog.feats"
-                        [issues]="featIssues()"
-                        (added)="addFeat($event)"
-                        (removed)="removeFeat($event)"
+                        [issues]="server.featIssues()"
+                        (added)="picks.addFeat($event)"
+                        (removed)="picks.removeFeat($event)"
                       />
                     </section>
                   }
@@ -789,7 +789,7 @@
           </form>
         }
 
-        @if (invalidSummary(); as summary) {
+        @if (draft.invalidSummary(); as summary) {
           <div class="mr-notice mr-notice--danger editor__notice" role="alert">
             <mat-icon aria-hidden="true">error</mat-icon>
             <p>
@@ -802,7 +802,7 @@
             </p>
           </div>
         }
-        @if (saveState(); as sv) {
+        @if (saving.state(); as sv) {
           @if (sv.status === 'error') {
             <div class="mr-notice mr-notice--danger editor__notice" role="alert">
               <mat-icon aria-hidden="true">error</mat-icon>
@@ -821,24 +821,24 @@
             mat-flat-button
             type="button"
             class="editor__primary"
-            [disabled]="saveState().status === 'saving'"
-            [aria-disabled]="choicesBlocked()"
-            [attr.aria-describedby]="choicesBlocked() ? 'choices-missing' : null"
-            (click)="submit()"
+            [disabled]="saving.state().status === 'saving'"
+            [aria-disabled]="server.choicesBlocked()"
+            [attr.aria-describedby]="server.choicesBlocked() ? 'choices-missing' : null"
+            (click)="submitting.submit()"
           >
-            @if (saveState().status === 'saving') {
+            @if (saving.state().status === 'saving') {
               {{ s.mode === 'create' ? 'Criando…' : 'Salvando…' }}
             } @else {
-              {{ s.mode === 'create' ? createLabel() : 'Salvar ficha' }}
+              {{ s.mode === 'create' ? views.createLabel() : 'Salvar ficha' }}
             }
           </button>
-          <a mat-button class="editor__cancel" [routerLink]="cancelLink()">Cancelar</a>
-          @if (choicesBlocked()) {
+          <a mat-button class="editor__cancel" [routerLink]="views.cancelLink()">Cancelar</a>
+          @if (server.choicesBlocked()) {
             <p class="editor__note editor__missing" id="choices-missing">
-              {{ missingText() }}
+              {{ server.missingText() }}
             </p>
           }
-          <p class="editor__note">{{ actionsNote() }}</p>
+          <p class="editor__note">{{ views.actionsNote() }}</p>
         </div>
       }
     }

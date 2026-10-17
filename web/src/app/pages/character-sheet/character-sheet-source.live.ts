@@ -19,9 +19,6 @@ import {
 } from './character-sheet.types';
 import { toCharacterSheetVm, toCharacterStoryInit } from './character-sheet-map';
 
-// The mappers live next to this file; the specs import them from here.
-export { toCharacterSheetVm, toCharacterStoryInit, toStoryVm } from './character-sheet-map';
-
 /**
  * `CharacterSheetSource` over the generated `CharacterService` client
  * (`meurpg.characters.v1`, phase 2). Provided at the route level for

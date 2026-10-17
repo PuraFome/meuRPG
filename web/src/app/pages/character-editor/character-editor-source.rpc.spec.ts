@@ -22,7 +22,8 @@ import { DerivedSheetSchema, SpellDetailsSchema } from '../../../gen/meurpg/rule
 import { TableContentKind } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import type { CharacterFormValue } from './character-editor.types';
-import { CharacterEditorSourceLive, toFormFullSheet } from './character-editor-source.live';
+import { CharacterEditorSourceLive } from './character-editor-source.live';
+import { toFormFullSheet } from './character-editor-sheet-map';
 
 /** The source with its generated clients swapped for the server's answers a spec gives. */
 interface Clients {

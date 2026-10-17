@@ -14,12 +14,11 @@ import {
   FullSheet as GenFullSheet,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
-  Ability as GenAbility,
   type Content,
   NamedKeyKind,
   SpellPreparation as GenSpellPreparation,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { AbilityKey } from '../../core/characters/characters.types';
+import { ABILITY_FROM_GEN } from '../../core/characters/ability-gen';
 import { isTableKey } from '../../core/content/catalog';
 import {
   AbilityMethodKey,
@@ -83,16 +82,6 @@ export function rollsFromGen(rolls: GenAbilityRolls): AbilityRollsVm {
     rolledAt: rolls.rolledAt ? timestampDate(rolls.rolledAt) : null,
   };
 }
-
-const ABILITY_FROM_GEN: Record<GenAbility, AbilityKey> = {
-  [GenAbility.UNSPECIFIED]: 'str',
-  [GenAbility.STRENGTH]: 'str',
-  [GenAbility.DEXTERITY]: 'dex',
-  [GenAbility.CONSTITUTION]: 'con',
-  [GenAbility.INTELLIGENCE]: 'int',
-  [GenAbility.WISDOM]: 'wis',
-  [GenAbility.CHARISMA]: 'cha',
-};
 
 const PREPARATION_FROM_GEN: Record<GenSpellPreparation, SpellPreparation | null> = {
   [GenSpellPreparation.UNSPECIFIED]: null,

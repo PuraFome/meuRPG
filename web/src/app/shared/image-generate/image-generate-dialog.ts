@@ -52,8 +52,6 @@ import { RunFlow, guardClose } from './run-flow';
 import { GeneratedResult } from './image-result';
 import { referencePickerOptions } from './reference-picker';
 
-export type { GenerateOutcome, ImageGenerateData } from './image-generate.types';
-
 /**
  * "Gerar imagem" (MR-039, RN-28; E10-07): the master asks the image service for a picture from a map, a scene or nothing, waits for it, sees
  * it, shows it to the players or adjusts it. A dialog on a computer (580 px) and a bottom sheet with a fixed footer on a phone; one filled

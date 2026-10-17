@@ -4,7 +4,8 @@ import {
   TableBackgroundSchema,
   TableSubraceSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { abilities, menu, feature } from './content-testing';
+import { abilities, feature } from './content-testing';
+import { menu } from './content-testing-menu';
 import {
   backgroundToDraft,
   bonusText,

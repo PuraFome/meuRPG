@@ -20,7 +20,7 @@ import {
   DerivedSheet,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { BasicSheetVm, FullSheetVm } from './character-sheet.types';
-import { toCharacterSheetVm, toCharacterStoryInit, toStoryVm } from './character-sheet-source.live';
+import { toCharacterSheetVm, toCharacterStoryInit, toStoryVm } from './character-sheet-map';
 
 describe('story round-trips load → save unchanged (integrator fix, phase 2b)', () => {
   it('a fully populated CharacterStory survives toStoryVm → toCharacterStoryInit', () => {

@@ -32,11 +32,8 @@ import { MapsClient } from '../../core/maps/maps-client';
 import { RosterClient, type RosterEntry } from '../../core/maps/roster-client';
 import { OpenSessionLookup } from '../../core/play/open-session';
 import { mapMessage } from '../../core/maps/maps-testing';
-import {
-  type GenerateOutcome,
-  type ImageGenerateData,
-  ImageGenerateDialog,
-} from './image-generate-dialog';
+import { ImageGenerateDialog } from './image-generate-dialog';
+import { type GenerateOutcome, type ImageGenerateData } from './image-generate.types';
 import { nextTurn } from '../../../test-settle';
 
 const plain = (t: string | null | undefined) =>

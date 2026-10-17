@@ -1,6 +1,6 @@
 import { EffectMenuVm, draftToEffect, emptyEffect } from './effect-draft';
 import type { EffectDraft } from './effect-draft';
-import { menuResponse } from './content-testing';
+import { menuResponse } from './content-testing-menu';
 
 /** A menu that reads exactly the fields it is given, so a case can ask for any of them. */
 function menuReading(names: readonly string[]): EffectMenuVm {
