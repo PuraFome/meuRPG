@@ -83,7 +83,7 @@ The rate limits are in process memory ([architecture](../architecture/api.md#abu
 | Every request rate | Multiplied by `RATE_LIMIT_MULTIPLIER` | Variable |
 | Campaigns per master | 10 | `MAX_CAMPAIGNS_PER_USER` |
 | Who may create campaigns | Anyone, or the `CAMPAIGN_CREATORS` list | Variable |
-| Generated images | 20 per campaign per month, 100 per server per day | `IMAGE_MONTHLY_LIMIT`, `IMAGE_DAILY_LIMIT` |
+| Generated images | 200 per campaign per month and 100 per server per day in production (the code's defaults are 20 and 100) | `IMAGE_MONTHLY_LIMIT`, `IMAGE_DAILY_LIMIT` |
 | Active invites per campaign | 50 | `campaigns.MaxActiveInvites` (code) |
 | Characters and NPCs per campaign | 1,000 | `characters.DefaultMaxCharactersPerCampaign` (code) |
 | Sign-in attempts | A per-IP and a global limit shared by `/auth/login` and `/auth/callback` | `identity` (`loginRateLimit`) |

@@ -6,7 +6,7 @@ Configuration (`GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`, `IMAGE_GENERATOR`, the mo
 
 | `ImageGenerationService` call | What it does |
 | --- | --- |
-| `GetImageGenerationStatus` | Whether generation is on and the month's tally ("Restam 17 de 20 imagens em outubro"): the limit, the spend, when it restarts (the first instant of the next month, Brasília time) and a request's limits (500 characters, 10 object images, 4 character images). Works with generation off |
+| `GetImageGenerationStatus` | Whether generation is on and the month's tally ("Restam 187 de 200 imagens em outubro"): the limit, the spend, when it restarts (the first instant of the next month, Brasília time) and a request's limits (500 characters, 10 object images, 4 character images). Works with generation off |
 | `GenerateSceneImage` | The scene art: the master's text, the style, the aspect ratio (one of 10, default 16:9) and gallery images as references. Answers at once with the `PENDING` request |
 | `EditGeneratedImage` | An adjustment of a generated image: a new request that spends a slot |
 | `GetImageGeneration` | The request's state (`PENDING`, `DONE` with the image, `REFUSED` or `FAILED` with a Portuguese sentence, `CANCELED`). With `wait_seconds` (up to 25) it is a **long poll** ([below](#shutdown-and-the-long-poll)). There is no stream hint: a player never knows a request exists |

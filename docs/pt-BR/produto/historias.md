@@ -1068,7 +1068,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 #### Critérios de aceite
 - **Dado** uma masmorra gerada ([MR-010](#mr-010-gerar-masmorras)) ou a descrição de uma cena, **quando** o mestre pede uma imagem com o próprio texto e estilo, **então** o app gera a imagem e a guarda na galeria da campanha, escondida dos jogadores. Só o mestre gera.
 - **Dado** uma imagem gerada, **quando** o mestre escreve um novo pedido ("mais escura", "com uma ponte"), **então** o app a edita conhecendo a cena, sem recomeçar, **e** guarda a nova ao lado da anterior.
-- **Dado** que o limite mensal da campanha (20 imagens) foi atingido, **quando** o mestre pede outra imagem, **então** o app recusa e diz por quê e quando o limite zera. O servidor tem um limite diário próprio.
+- **Dado** que o limite mensal da campanha (200 imagens em produção) foi atingido, **quando** o mestre pede outra imagem, **então** o app recusa e diz por quê e quando o limite zera. O servidor tem um limite diário próprio.
 - **Dado** que o serviço recusa um pedido, não devolve imagem ou falha, **quando** o mestre espera a imagem, **então** o app avisa em português ("O serviço não gerou esta imagem") sem gastar a vaga do mês.
 - **Dado** um mapa com grade (gerado ou desenhado), **quando** o mestre pede "O mapa com textura", **então** o app gera o próprio mapa visto de cima, com piso e paredes no lugar, recortado e ajustado para combinar com a grade, **e** o mestre pode defini-lo como imagem do mapa ("Usar como imagem do mapa") sem apagar as camadas nem o que os jogadores já viram. Um mapa cuja imagem passa de 16 megapixels não pode virar mapa com textura, e a tela avisa antes de pedir.
 - **Dado** um mapa, **quando** o mestre pede "Vista isométrica", **então** o app gera a arte do mapa em perspectiva isométrica a partir do que os jogadores veem agora, **e** ela vai para a galeria como arte da cena.
@@ -1084,9 +1084,6 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **As camadas continuam sendo a verdade.** O modelo devolve uma de 10 proporções fixas, então o servidor completa o desenho do mapa com rocha, recorta o mapa de volta e o ajusta à grade. Se a imagem se afastar um pouco de uma parede, o mestre gera de novo.
 - O seletor de imagens da sessão ("Mostrar uma imagem aos jogadores") marca "Mapa inteiro".
 - Ver [Arquitetura](../../architecture/maps/image-generation.md), [imagens feitas a partir de um mapa](../../architecture/maps/image-generation.md#images-made-from-a-map), [Design](../../design/session.md#generated-images), [Privacidade](../privacidade.md#o-que-as-imagens-geradas-mandam-ao-google-mr-039-rn-28) e [Operação](../../operations/reference.md#generated-images-the-gemini-api).
-
-#### Dúvidas
-- O limite mensal de 20 imagens por campanha é o número certo para o Samuel, depois que se souber o custo por imagem (cerca de US$ 0,034 por uma imagem 1K)?
 
 ### MR-040: Subir de nível pela ficha
 
