@@ -340,7 +340,8 @@ func noticeActivity(nl *noticeLine, v activityViewer, f activityFacts) (*playv1.
 }
 
 // firingActivity is a firing as the viewer reads it: the master all of it, a player only what
-// caught their characters and their characters' creatures.
+// caught their characters and their characters' creatures, and never a line the master had hidden (RN-10, as
+// the combat log does).
 func (s *Service) firingActivity(ctx context.Context, l *activityLine, v activityViewer, f activityFacts) (*playv1.TrapFiring, bool) {
 	tr := l.ev.Trap
 	shown := *tr
@@ -352,7 +353,7 @@ func (s *Service) firingActivity(ctx context.Context, l *activityLine, v activit
 		}
 	}
 	for _, cc := range tr.Caught {
-		if v.master || v.owned[cc.Target] || (creatureOf(cc) && v.owned[cc.Character]) {
+		if v.master || (!cc.Hidden && (v.owned[cc.Target] || (creatureOf(cc) && v.owned[cc.Character]))) {
 			shown.Caught = append(shown.Caught, cc)
 		}
 	}
