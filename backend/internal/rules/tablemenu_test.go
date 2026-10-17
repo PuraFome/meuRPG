@@ -254,6 +254,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"note":            {Type: "note"},
 		"superiority_die": {Type: "superiority_die", Applies: ManeuverDamage, Resource: "dados_de_teste", Value: "8"},
 		"ranged_attack":   {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
+		"extra_damage":    {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
@@ -301,7 +302,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			return err
 		}
 		effects := []Effect{e}
-		if e.Type == "superiority_die" && e.Resource != "" {
+		if (e.Type == "superiority_die" || e.Type == "extra_damage") && e.Resource != "" {
 			// The die spends a resource the same class defines.
 			effects = []Effect{{Type: "resource", Resource: "dados_de_teste", Max: "4", Recharge: "short_rest"}, e}
 		}
