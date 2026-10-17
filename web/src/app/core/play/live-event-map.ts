@@ -83,6 +83,9 @@ const TRANSLATORS: Translators = {
   revivifyChanged: () => ({ kind: 'revivifyChanged' }),
   callingYou: () => ({ kind: 'callingYou' }),
   puzzleChanged: (v) => ({ kind: 'puzzleChanged', puzzleId: v.puzzleId }),
+  // A line with no body says nothing.
+  sessionMessageAdded: (v) => (v.message ? { kind: 'sessionMessage', message: v.message } : null),
+  masterTyping: (v) => ({ kind: 'masterTyping', expiresInSeconds: v.expiresInSeconds }),
 };
 
 /** The view-model event for a wire event; `null` when it carries nothing to tell. */

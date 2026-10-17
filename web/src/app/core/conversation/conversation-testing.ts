@@ -15,9 +15,14 @@ import type { ConversationApi, MessagesPage } from './conversation-state';
  * `ConversationApi` whose answers the spec settles by hand, so it decides
  * which of two calls answers first.
  */
+const START = new Date('2026-10-03T21:00:00Z').getTime();
+
 export function line(
   id: string,
-  partial: Omit<MessageInitShape<typeof SessionMessageSchema>, 'id' | 'createdAt'> & {
+  partial: Omit<
+    Exclude<MessageInitShape<typeof SessionMessageSchema>, SessionMessage>,
+    'id' | 'createdAt'
+  > & {
     at?: number;
   } = {},
 ): SessionMessage {
@@ -28,7 +33,7 @@ export function line(
     text: `texto ${id}`,
     forEveryone: true,
     ...rest,
-    createdAt: timestampFromDate(new Date(Date.UTC(2026, 9, 3, 21, 0, at))),
+    createdAt: timestampFromDate(new Date(START + at * 1000)),
   });
 }
 
@@ -86,5 +91,20 @@ export class FakeConversationApi implements ConversationApi {
 
   failList(error: unknown): void {
     this.lists.shift()?.reject(error);
+  }
+}
+
+/** A conversation with nothing in it, for page specs that do not look at it. */
+export class QuietConversationApi implements ConversationApi {
+  send(): Promise<SessionMessage> {
+    return Promise.reject(new Error('not used'));
+  }
+
+  list(): Promise<MessagesPage> {
+    return Promise.resolve({ messages: [], hasOlder: false, voiceEnabled: false });
+  }
+
+  signalTyping(): Promise<void> {
+    return Promise.resolve();
   }
 }

@@ -173,9 +173,7 @@ describe('the readers texts', () => {
 
   it("the master's 'Para' button says 'Todos' or the names", () => {
     expect(readersSummary([], directory)).toBe('Todos');
-    expect(readersSummary(['u-pen', 'u-bri', 'u-tor'], directory)).toBe(
-      'Pensantus, Brisa e Toren',
-    );
+    expect(readersSummary(['u-pen', 'u-bri', 'u-tor'], directory)).toBe('Pensantus, Brisa e Toren');
   });
 
   it("the chooser's live line follows the choice", () => {

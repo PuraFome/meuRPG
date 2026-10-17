@@ -61,6 +61,10 @@ import {
   mapResponse,
   mapToken,
 } from '../../core/maps/maps-testing';
+import { ConversationClient } from '../../core/conversation/conversation-client';
+import { QuietConversationApi, line } from '../../core/conversation/conversation-testing';
+import { SessionMessageSpeakerKind } from '../../../gen/meurpg/play/v1/session_messages_pb';
+import type { LiveSessionParts } from './live-session-deps';
 import { SceneClient } from '../../core/play/scene-client';
 import { ResourceClient } from '../../core/resources/resources-client';
 import { restPreview, restPreviewResponse } from '../../core/resources/resources-testing';
@@ -225,6 +229,7 @@ describe('LiveSession', () => {
   /** What the master's "Dar XP" reads (MR-016): the party's XP and how the campaign levels. */
   const xpExperience = vi.fn();
   let scenes: FakeSceneClient;
+  let conversation: QuietConversationApi;
   let puzzles: FakePuzzlesClient;
   /** The group check of the player's page (W7-X). */
   let contests: FakeContestClient;
@@ -267,6 +272,7 @@ describe('LiveSession', () => {
     liveCampaignIds.set(new Set());
     summary.mockReset().mockRejectedValue(new Error('no summary'));
     scenes = new FakeSceneClient();
+    conversation = new QuietConversationApi();
     casting = new FakeCastingClient();
     puzzles = new FakePuzzlesClient();
     contests = new FakeContestClient();
@@ -295,6 +301,7 @@ describe('LiveSession', () => {
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: CastingClient, useValue: casting },
         { provide: SceneClient, useValue: scenes },
+        { provide: ConversationClient, useValue: conversation },
         { provide: ContestClient, useValue: contests.as() },
         { provide: RevivifyClient, useValue: { list: revivifyList, confirmTime: vi.fn() } },
         { provide: ResourceClient, useValue: resources },
@@ -1808,6 +1815,38 @@ describe('LiveSession', () => {
       await settle();
       expect(nudge).not.toHaveBeenCalled();
       expect(el.querySelector('app-calling-notice')).toBeNull();
+    });
+  });
+
+  describe('the conversation of the scene', () => {
+    function parts(fixture: ComponentFixture<LiveSession>): LiveSessionParts {
+      return (fixture.componentInstance as unknown as { parts: LiveSessionParts }).parts;
+    }
+
+    it('reads the lines on the first ready and the gap on every reconnection', async () => {
+      const list = vi.spyOn(conversation, 'list');
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      expect(list).toHaveBeenCalledTimes(1);
+      source.push({ kind: 'ready' });
+      await settle(fixture);
+      expect(list).toHaveBeenCalledTimes(2);
+      expect(list).toHaveBeenLastCalledWith('mirathel');
+    });
+
+    it('keeps the lines of the stream once, and the typing hint goes away with the master line', async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const { conversation: state } = parts(fixture);
+      source.push({ kind: 'masterTyping', expiresInSeconds: 6 });
+      await settle(fixture);
+      expect(state.typing()).toBe(true);
+      const message = line('m1', { speakerKind: SessionMessageSpeakerKind.NARRATOR });
+      source.push({ kind: 'sessionMessage', message });
+      source.push({ kind: 'sessionMessage', message });
+      await settle(fixture);
+      expect(state.lines().map((l) => l.id)).toEqual(['m1']);
+      expect(state.typing()).toBe(false);
     });
   });
 
