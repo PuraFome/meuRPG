@@ -76,13 +76,23 @@ describe('PlayerComposer', () => {
     expect(api.sent[0]).toMatchObject({ speakerKind: Kind.OUT_OF_CHARACTER, speakerId: '' });
   });
 
-  it('sends only to the master when "Só o mestre" is chosen', () => {
-    const { api, type, send, radio, fixture } = setup();
-    radio('Só o mestre').click();
+  it('sends only to the master when "Só o mestre lê" is pressed', () => {
+    const { api, type, send, el, fixture } = setup();
+    const toggle = el.querySelector('.composer__private') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    toggle.click();
     fixture.detectChanges();
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
     type('Quero ver o anel de perto.');
     send();
     expect(api.sent[0].onlyMaster).toBe(true);
+  });
+
+  it('is ONE compact segmented switch (a rounded track), not two rows of toggles', () => {
+    const { el } = setup();
+    expect(el.querySelectorAll('[role="radiogroup"]')).toHaveLength(1);
+    expect(el.querySelectorAll('input[type="radio"]')).toHaveLength(2);
+    expect(el.querySelector('app-segmented')?.classList.contains('seg--track')).toBe(true);
   });
 
   it('tells an empty message, keeps what was typed and points the field at the error', () => {
