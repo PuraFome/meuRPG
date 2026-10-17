@@ -694,6 +694,32 @@ describe('ReactionSheet', () => {
       expect(plain(el.textContent)).toContain('Concentração perdida');
     });
 
+    it('uses the Bardic Inspiration die rolled in the app, and the answer settles the save', async () => {
+      resources.answerOutsideInspiration.mockClear();
+      const held = save();
+      api.resolveConcentrationSave.mockResolvedValue({
+        encounter: encounter({ reactionWindows: [held] } as never),
+        result: undefined,
+        offer: inspirationOffer(7, 2),
+      });
+      const { fixture, el } = setup(held);
+      button(el, 'Rolar no app').click();
+      await flush(fixture);
+      resources.answerOutsideInspiration.mockResolvedValue({
+        result: { case: 'concentrationSave', value: lost },
+      });
+      button(el, 'Usar e rolar o d8').click();
+      await flush(fixture);
+      expect(resources.answerOutsideInspiration.mock.calls[0].slice(0, 4)).toEqual([
+        'camp',
+        'h1',
+        true,
+        { inApp: true },
+      ]);
+      expect(plain(el.textContent)).toContain('Concentração perdida');
+      expect(plain(el.textContent)).not.toContain('Usar a Inspiração de Bardo (d8)?');
+    });
+
     it('rolls in the app and shows what was lost', async () => {
       api.resolveConcentrationSave.mockResolvedValue(lost);
       const { fixture, el } = setup(save());

@@ -96,4 +96,32 @@ describe('the cast sheet and the Bardic Inspiration question', () => {
     expect(apply).toHaveBeenCalledWith(enc);
     expect(sheet.cast()).not.toBeNull();
   });
+
+  it('keeps the die: the answer sends no roll, and the cast is told without it', async () => {
+    const { fixture, el, sheet, resources } = setup();
+    sheet.offer.set(inspirationOffer(4, 5));
+    fixture.detectChanges();
+    resources.answerOutsideInspiration.mockResolvedValue({
+      result: {
+        case: 'spellCast',
+        value: {
+          encounter: encounter({}),
+          cast: create(SpellCastSchema, { spellKey: 'spell:guiding-bolt' }),
+        },
+      },
+    });
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Guardar o dado'))!
+      .click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(resources.answerOutsideInspiration.mock.calls[0].slice(0, 4)).toEqual([
+      'c',
+      'h1',
+      false,
+      null,
+    ]);
+    expect(sheet.cast()).not.toBeNull();
+    expect(el.textContent).not.toContain('Usar a Inspiração de Bardo (d8)?');
+  });
 });

@@ -27,6 +27,9 @@ function clientWith(sent: unknown[], answer: unknown = {}): ResourceClient {
     convertSpellSlot: call,
     giveBardicInspiration: call,
     answerBardicInspiration: call,
+    answerLucky: call,
+    answerOutsideInspiration: call,
+    answerOutsideLucky: call,
   };
   return client;
 }
@@ -115,6 +118,77 @@ describe('ResourceClient: the class resource calls', () => {
     );
     expect(res.offer?.holdId).toBe('h');
     expect(res.roll.d20?.total).toBe(14);
+  });
+
+  it('answers the Lucky question of a held attack: rolled again in the app, with a typed face, or the 1 kept', async () => {
+    const sent: unknown[] = [];
+    const attack = create(RollAttackResponseSchema, {
+      encounter: create(EncounterSchema, { id: 'e' }),
+      roll: create(AttackRollSchema, { attackKey: 'x' }),
+    });
+    const client = clientWith(sent, { attack });
+    const res = await client.answerLucky('c', 'e', 'h', true, { inApp: true }, 'k1');
+    await client.answerLucky('c', 'e', 'h', true, { face: 14 }, 'k2');
+    await client.answerLucky('c', 'e', 'h', false, { inApp: true }, 'k3');
+    expect(res.roll.attackKey).toBe('x');
+    expect(sent).toEqual([
+      expect.objectContaining({
+        holdId: 'h',
+        reroll: true,
+        idempotencyKey: 'k1',
+        roll: { case: 'rollInApp', value: true },
+      }),
+      expect.objectContaining({ reroll: true, roll: { case: 'typedFace', value: 14 } }),
+      // Keeping the 1 sends no roll at all.
+      expect.objectContaining({ reroll: false, roll: { case: undefined } }),
+    ]);
+  });
+
+  it('fails when the answer to the Lucky question carries no attack', async () => {
+    await expect(clientWith([], {}).answerLucky('c', 'e', 'h', false, null, 'k')).rejects.toThrow(
+      'without its attack',
+    );
+  });
+
+  it('answers the die of a roll outside the attack: used in the app, typed, or kept, with the path’s own result', async () => {
+    const sent: unknown[] = [];
+    const answer = { result: { case: 'sceneCheck', value: {} } };
+    const client = clientWith(sent, answer);
+    expect(await client.answerOutsideInspiration('c', 'h', true, { inApp: true }, 'k1')).toBe(
+      answer,
+    );
+    await client.answerOutsideInspiration('c', 'h', true, { face: 5 }, 'k2');
+    await client.answerOutsideInspiration('c', 'h', false, null, 'k3');
+    expect(sent).toEqual([
+      {
+        campaignId: 'c',
+        holdId: 'h',
+        use: true,
+        idempotencyKey: 'k1',
+        roll: { case: 'rollInApp', value: true },
+      },
+      expect.objectContaining({ use: true, roll: { case: 'typedFace', value: 5 } }),
+      expect.objectContaining({ use: false, roll: { case: undefined } }),
+    ]);
+  });
+
+  it('answers the Lucky question of a roll outside the attack: rolled again in the app, typed, or the 1 kept', async () => {
+    const sent: unknown[] = [];
+    const client = clientWith(sent, { result: { case: 'trapSearch', value: {} } });
+    await client.answerOutsideLucky('c', 'h', true, { inApp: true }, 'k1');
+    await client.answerOutsideLucky('c', 'h', true, { face: 14 }, 'k2');
+    await client.answerOutsideLucky('c', 'h', false, null, 'k3');
+    expect(sent).toEqual([
+      {
+        campaignId: 'c',
+        holdId: 'h',
+        reroll: true,
+        idempotencyKey: 'k1',
+        roll: { case: 'rollInApp', value: true },
+      },
+      expect.objectContaining({ reroll: true, roll: { case: 'typedFace', value: 14 } }),
+      expect.objectContaining({ reroll: false, roll: { case: undefined } }),
+    ]);
   });
 
   it('fails when the answer carries no attack', async () => {

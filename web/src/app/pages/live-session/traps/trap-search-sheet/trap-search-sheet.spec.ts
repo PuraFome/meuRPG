@@ -451,5 +451,67 @@ describe('TrapSearchSheet', () => {
       expect(resources.answerOutsideInspiration.mock.calls[0].slice(1, 3)).toEqual(['h1', false]);
       expect(el.textContent).toContain('Achou');
     });
+
+    it('uses the die rolled in the app and tells what the search found', async () => {
+      resources.answerOutsideInspiration.mockClear();
+      const { fixture, el, roller } = setup([
+        create(SearchForTrapsResponseSchema, { inspirationOffer: inspirationOffer(5, 4) }),
+      ]);
+      await roller.rollWith({ inApp: true });
+      fixture.detectChanges();
+      resources.answerOutsideInspiration.mockResolvedValue({
+        result: {
+          case: 'trapSearch',
+          value: create(SearchForTrapsResponseSchema, { roll: roll(5, 21), foundPointIds: ['x'] }),
+        },
+      });
+      const press = async (text: string) => {
+        Array.from(el.querySelectorAll('button'))
+          .find((b) => b.textContent?.includes(text))!
+          .click();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      };
+      await press('Usar e rolar o d8');
+      expect(resources.answerOutsideInspiration.mock.calls[0].slice(1, 4)).toEqual([
+        'h1',
+        true,
+        { inApp: true },
+      ]);
+      expect(el.textContent).toContain('Achou');
+    });
+
+    it('sends the typed face of the die, 1 to 8', async () => {
+      resources.answerOutsideInspiration.mockClear();
+      const { fixture, el, roller } = setup([
+        create(SearchForTrapsResponseSchema, { inspirationOffer: inspirationOffer(5, 4) }),
+      ]);
+      await roller.rollWith({ inApp: true });
+      fixture.detectChanges();
+      resources.answerOutsideInspiration.mockResolvedValue({
+        result: {
+          case: 'trapSearch',
+          value: create(SearchForTrapsResponseSchema, { roll: roll(5, 21), foundPointIds: [] }),
+        },
+      });
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Digitar o dado'))!
+        .click();
+      fixture.detectChanges();
+      const input = el.querySelector<HTMLInputElement>('input[type="number"]')!;
+      expect(input.max).toBe('8');
+      input.value = '6';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Usar o dado digitado'))!
+        .click();
+      await fixture.whenStable();
+      expect(resources.answerOutsideInspiration.mock.calls[0].slice(1, 4)).toEqual([
+        'h1',
+        true,
+        { face: 6 },
+      ]);
+    });
   });
 });

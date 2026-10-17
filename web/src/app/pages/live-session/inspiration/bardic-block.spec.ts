@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import { OutsideInspirationOfferSchema } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -183,6 +184,52 @@ describe('BardicBlock', () => {
     );
     expect(api.outsideInspiration).toHaveBeenCalledTimes(2);
     expect(el.textContent).toContain('Sortudo: 1 → 14. Seu total: 18.');
+  });
+
+  it('answers the question of the die: used in the app, typed or kept, once per answer, then reads the state again', async () => {
+    const { api, el, button, settle } = setup({
+      offers: [create(OutsideInspirationOfferSchema, { holdId: 'h2', sides: 6, fromName: 'Orla' })],
+    });
+    api.answerOutsideInspiration.mockResolvedValue({
+      result: {
+        case: 'sceneCheck',
+        value: create(RollSceneCheckResponseSchema, {
+          roll: sceneRoll('r1', 'a1', 'Pipo', 21, {
+            roll: { diceCount: 1, diceSides: 20, faces: [14], modifier: 3, total: 21 },
+          }),
+        }),
+      },
+    });
+    await settle();
+    expect(el.textContent).toContain('Usar a Inspiração de Bardo (d6)?');
+    button('Usar e rolar o d6')!.click();
+    await settle();
+    expect(api.answerOutsideInspiration).toHaveBeenCalledWith(
+      'c1',
+      'h2',
+      true,
+      { inApp: true },
+      expect.any(String),
+    );
+    expect(api.outsideInspiration).toHaveBeenCalledTimes(2);
+    expect(el.textContent).toContain('Dado somado. Seu total: 21.');
+    button('Guardar o dado')!.click();
+    await settle();
+    expect(api.answerOutsideInspiration.mock.calls[1].slice(1, 4)).toEqual(['h2', false, null]);
+    const keys = api.answerOutsideInspiration.mock.calls.map((c) => c[4] as string);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  it('says why an answer about the die failed, and keeps the question', async () => {
+    const { api, el, button, settle } = setup({
+      offers: [create(OutsideInspirationOfferSchema, { holdId: 'h2', sides: 6 })],
+    });
+    api.answerOutsideInspiration.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    await settle();
+    button('Guardar o dado')!.click();
+    await settle();
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não deu para responder');
+    expect(el.textContent).toContain('Usar a Inspiração de Bardo (d6)?');
   });
 
   it('words what a Lucky answer came to: the 1 kept, the die’s question next, or the master sees it', () => {
