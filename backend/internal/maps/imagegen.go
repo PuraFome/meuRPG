@@ -49,7 +49,8 @@ const (
 	// maxPendingRequests is how many image requests may be alive at once on this
 	// server, the one calling the model and the ones waiting for its slot. Each
 	// keeps its shrunk references in memory (up to about 6 MiB) until its call goes
-	// out, so the wait is bounded to what the 512 MiB instance has room for.
+	// out, so the wait is bounded to what the instance has room for
+	// (docs/operations/reference.md#memory-budgets).
 	maxPendingRequests = 5
 	// maxLongPoll is the longest wait_seconds of GetImageGeneration.
 	maxLongPoll = 25

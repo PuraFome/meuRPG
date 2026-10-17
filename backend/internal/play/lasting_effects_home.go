@@ -311,6 +311,13 @@ func (s *Service) effectsToCharacters(ctx context.Context, c *combatTx, cs, only
 	if err := s.dieToCharacters(ctx, c, cs, only); err != nil {
 		return err
 	}
+	return s.effectRowsToCharacters(ctx, c, cs, only)
+}
+
+// effectRowsToCharacters is the effects half of effectsToCharacters: the rows of the combatants
+// backed by a character (only limits it to some) go back to game time. A character taken out of
+// a combat in setup takes this path without its die, which stays with the inspiration rules.
+func (s *Service) effectRowsToCharacters(ctx context.Context, c *combatTx, cs, only []playdb.Combatant) error {
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)
