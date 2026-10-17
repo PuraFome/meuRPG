@@ -14,7 +14,7 @@
 -- author reads "Jogador removido" (docs/privacy.md).
 --
 -- for_everyone says every member of the campaign reads the line. When it is false the readers are the
--- rows of session_message_readers (00258), plus the master and the author, who always read it. It is a
+-- rows of session_message_readers (00259), plus the master and the author, who always read it. It is a
 -- column, not "no rows in session_message_readers", because erasing the account of the last reader
 -- must not turn a line for chosen readers into a line for everyone.
 --
