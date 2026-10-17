@@ -62,6 +62,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-045](#mr-045-look-up-spells) | Rules | MVP |
 | [MR-048](#mr-048-cast-spells-outside-combat) | Combat | MVP |
 | [MR-050](#mr-050-campaign-package-export-and-import) | Campaign | MVP |
+| [MR-051](#mr-051-the-scenes-conversation) | Session | MVP |
 | [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
@@ -1293,6 +1294,34 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - The players' characters arrive reserved (MR-049): invisible to the players until one claims it with the master's link.
 
 See [Architecture](../architecture/campaign-package.md).
+
+### MR-051: The scene's conversation
+
+**As a** master, **I want** a live text feed in the session where I narrate, speak as my NPCs and whisper to some players, and where the players answer in character or out of it, **so that** a table with a remote master plays without a call, and nobody reads what was not for them.
+
+- Priority: MVP
+- Rules: RN-10, RN-18, RN-36
+- Modules: play, maps
+
+#### Acceptance criteria
+- **Given** an open session, **when** the master sends a line as the narrator, **then** every member reads it, in the order sent, in the session screen and in the session summary.
+- **Given** the master speaks as an NPC of the campaign, **then** the line shows the NPC's name and its stage portrait when it has one; an id that is not an NPC of the campaign is refused.
+- **Given** a player, **when** they send a line as their own character, **then** it shows the character's name; as another player's character, **then** it is refused (RN-18); out of character, **then** it shows their display name.
+- **Given** the master chooses two players, **when** the line is sent, **then** only those two and the master receive its text, image, existence and notice; the third player gets nothing in the read, the stream, the summary or the voice (RN-36).
+- **Given** a player chooses "só o mestre", **then** only they and the master read the line; a player cannot choose other players.
+- **Given** a line, **when** it is longer than 2,000 characters or empty, **then** it is refused.
+- **Given** the master attaches an image of the gallery, **then** the line's readers can open that image and nobody else can through that line; a player cannot attach an image.
+- **Given** the master is typing, **then** the players see "O mestre está escrevendo…" for a few seconds; the hint carries no text and expires by itself.
+- **Given** a line of the narrator or of an NPC, **when** a reader asks to hear it, **then** the first request makes the voice and keeps it with the line, the next ones are served from the stored file, and a non-reader gets `404`.
+- **Given** the voice is not configured, **then** the audio route answers `failed_precondition` `OFF` and the app hides "Ouvir".
+- **Given** the same send is repeated with its key, **then** one line exists; too many lines in a short time are refused (`resource_exhausted`).
+- **Given** a player is erased, **then** their lines stay and the author reads "Jogador removido".
+
+#### In the app
+- The "Conversa" panel beside the stage and the map, and a tab on the phone; the master's composer has "Falar como", "Para", "Imagem da galeria" and "Enviar"; the player's has "Como <personagem>" and "Fora do personagem".
+
+#### Related
+- [RN-36](rules.md#rn-36-who-reads-a-line-of-the-scenes-conversation), [RN-10](rules.md), [RN-18](rules.md), [MR-028](#mr-028-show-an-image-to-the-players), [MR-039](#mr-039-ai-generated-images-for-dungeons-and-scenes). See [Architecture](../architecture/play/live-session.md#the-conversation-of-the-scene) and [Privacy](../privacy.md#what-the-voice-sends-to-google-mr-051).
 
 ### MR-049: Reserved characters and claim links
 

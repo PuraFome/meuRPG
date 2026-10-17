@@ -68,6 +68,8 @@ Events, after `ready`:
 | `creatures_changed`, `revivify_changed`, `character_changes_requested`, `character_resubmitted`, `character_revived`, `content_changed` | Contentless hints; the app reads again |
 | `puzzle_changed` | A puzzle changed; only its id |
 | `calling_you` | The master's nudge, to one player's streams only |
+| `session_message_added` | A line of the scene's conversation, carried whole, to its readers' streams only ([The conversation](#the-conversation-of-the-scene)) |
+| `master_typing` | The master is typing: content-free, to the players |
 | `session_ended` | The session ended; the event carries the session id |
 
 ```mermaid
@@ -161,6 +163,45 @@ A correction during a combat with that character raises the encounter's revision
 After the master and the open session are checked, and the character is found among the campaign's living player characters with a player, it publishes `calling_you` (an empty message) to that player's streams alone (`live.Audience{UserID}`); not even the master's stream hears it (RN-10).
 A player who is not connected misses it.
 One nudge per character every 10 seconds (`nudgeCooldown`, kept in memory in `nudgeBook`); a second is `resource_exhausted`.
+
+## The conversation of the scene
+
+The scene has a live text feed (MR-051, RN-36): the master narrates and speaks as the campaign's NPCs, the players speak as their own character or out of character.
+It belongs to the game session; the app opens it with `ListSessionMessages` and then follows `session_message_added`.
+The tables are in [Data](../../data/play.md#session_messages-and-session_message_readers).
+
+**Who may read a line** is one rule, in one query shape (`GetSessionMessageForReader`, `ListSessionMessages`, `ImageInReadableMessage`): the master, or `for_everyone`, or the author, or a row of `session_message_readers`.
+Every path asks it: the page, the cursor, the summary, the stream event, the image route and the audio route.
+A line the caller may not read is answered exactly like one that does not exist (`not_found`, or `404` on the audio route), so nothing tells it exists (RN-10).
+
+| Call | Who | What it does |
+| --- | --- | --- |
+| `SendSessionMessage` | A member | Speaker kind and rules by role; text 1 to 2,000 characters; the key is required (`idem`). Per-user rate limit ([Abuse limits](../api.md#abuse-limits)). The master may name readers (players of the campaign) and attach one gallery image; a player writes to everyone or to the master alone (`only_master`) and as their own living character only (RN-18) |
+| `ListSessionMessages` | A member | The readable lines of a session (the open one by default), newest last, paged with `before_id`; `voice_enabled` says the app may show "Ouvir" |
+| `SignalMasterTyping` | The master | A content-free hint that expires on its own (6 s); one per campaign every 2 s, the rest are answered and sent to nobody |
+
+- **The stream.** After `COMMIT`, `session_message_added` carries the line itself.
+  The hub's audience names one user, so the line is published once per reader (`live.Audience{UserID}`) and once to the master; a line for everyone goes to the master and the players (`Audience{Master}` plus `Audience{Players}`), never twice to the same stream.
+  `master_typing` goes to `Audience{Players}` and says nothing but how long to show it.
+  A retry with the same key stores and publishes nothing.
+- **The image.** A fog map's image is copied first (`PrepareShow`, as "mostrar imagem"), so the raw image of a fog map never leaves through a line.
+  `GET /images/{id}` lets a player open an image when a line they may read carries it or an NPC with it as its portrait speaks (`LiveSession.ImageInConversation`); the fog map's own image stays refused (MR-036).
+- **The speaker** is kept with the line (`speaker_name`, `speaker_image_id`), so a renamed or deleted NPC does not change what was said.
+  A line of an erased account stays and reads "Jogador removido" (`author_removed`).
+- **The summary** (`GetSessionSummary.conversation`) holds the last 200 lines the caller may read, with `conversation_truncated` when there are more.
+
+### The voice ("Ouvir")
+
+Narrator and NPC lines can be heard; players' lines are text only.
+`GET /session-messages/{id}/audio` serves the voice to the readers of the line: the same session, membership and readers rule as the line (`404` for everything else, no oracle), then:
+
+1. The stored file `campaigns/<campaign>/voice/<line>` is served (`Cache-Control: private, no-cache`, `Vary: Cookie`, the line's id as ETag; ranges work).
+2. If none exists, one voice is made at a time per line (`singleflight`; a second request waits for the first and does not pay again), under a server-wide gate that counts the day's voices (`audio_made_at`, Brasília days) against `TTS_DAILY_LIMIT` (`429`, reason `DAILY_LIMIT_REACHED`).
+3. `voice.Generator.Speak` calls Gemini (`GEMINI_TTS_MODEL`) with the narrator's voice or the NPC's (`voice.ForNPC`: a hash of the NPC's id over a short list of voices that speak Portuguese well) and answers a WAV; it is stored like an image and served from then on.
+
+Without a key and a model (and without `TTS_GENERATOR=fake`) the route answers `412` with `failed_precondition`, reason `OFF`, after the readers check, and `ListSessionMessages.voice_enabled` is false.
+The file is never autoplayed by the server's answers: the app plays it only when the reader taps.
+The model's text is the line's text, sent to Google as the images' prompts are ([Privacy](../../privacy.md)).
 
 ## What the session shows
 

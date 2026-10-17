@@ -141,8 +141,14 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Ações da cena | Scene action | Um teste que o mestre põe numa cena: uma perícia, um teste de habilidade ou um teste de resistência, com nome e CD opcionais. O jogador vê o próprio bônus; a CD só se "Mostrar a CD aos jogadores" está ligado. |
 | Cena de RP | RP scene | Um momento fora do combate: um ponto de interesse do tipo cena, aberto na sessão para todos verem. |
 | Cena descoberta | Discovered scene | Uma cena de RP que o grupo já viu. Só uma cena descoberta pode etiquetar uma anotação. |
+| Conversa da cena | The scene's conversation | O feed de texto ao vivo da sessão (MR-051): o mestre narra e fala como NPC, os jogadores falam como o personagem ou fora do personagem. Cada linha é para a mesa toda ou para leitores escolhidos (RN-36). |
 | Em cena (o palco) | On stage | Os NPCs que o mestre põe na cena aberta, até 4 por vez, com um falando. O jogador vê só o nome e o retrato (MR-031). |
+| Falar como | Speak as | De quem é a linha: o mestre escolhe o narrador ou um NPC da campanha; um jogador escolhe o próprio personagem ou fora do personagem. |
+| Fora do personagem | Out of character | A linha de um jogador que não é o personagem falando; mostra o nome de exibição do jogador. |
 | Ganchos, anotações e pistas | Hooks, notes and clues | O texto particular do mestre numa cena de RP. Uma pista é uma frase curta que o mestre revela a jogadores escolhidos, que a guardam como "Pista do mestre" (MR-029). |
+| Jogador removido | Removed player | O que o feed mostra como autor de uma linha quando a conta do autor foi apagada. A linha fica. |
+| Narrador | Narrator | A voz do mestre quando nenhum NPC está falando. Tem uma voz própria quando uma linha é ouvida. |
+| Ouvir | Hear | O botão que toca uma linha do narrador ou de um NPC com uma voz gerada. O áudio é feito na primeira vez que um leitor pede e guardado com a linha (RN-36). |
 | Retrato do NPC | NPC portrait | Uma imagem da galeria na ficha de um NPC, mostrada no cartão dele (só para o mestre) e na cena enquanto ele está em cena. |
 | Rolagem da cena | Scene roll | O d20 de uma ação da cena mais o bônus (RN-18). O jogador vê só os próprios totais, e "Passou" ou "Não passou" só se o mestre mostra a CD. As rolagens param no limite de tentativas ("Sem mais tentativas"). |
 | Tentativas | Attempts | Quantas vezes cada jogador pode rolar uma ação da cena enquanto ela está aberta (1 por padrão, de 1 a 5, ou sem limite). Reabrir a cena zera as contas (MR-015). |

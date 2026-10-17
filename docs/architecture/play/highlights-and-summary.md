@@ -62,3 +62,5 @@ Both the page and the ending screen draw `SessionSummaryBody` (`shared/session-s
 The server answers `not_found` both for a number that does not exist and for a non-member, so the app separates them by what it knows: a list that answered without the number is "Não há Sessão N", and a `not_found` from the list or the campaign is one generic page with no campaign name.
 
 **Tests.** `TestMR032_SessionSummary` (a combat and three scenes, one with the DC hidden), `TestRN20_SessionSummaryHidesWhatTheSceneHid`, and the `GetSessionSummary` and `GrantSceneAttempt` rows in the authorization matrices.
+
+The summary also carries the conversation of the session (`conversation`, the last 200 lines, `conversation_truncated`) under the same reading rule as the live feed: a player reads only the lines meant for them (RN-36; [live session](live-session.md#the-conversation-of-the-scene)).

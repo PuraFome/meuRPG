@@ -42,6 +42,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -195,6 +196,7 @@ func newStack(t *testing.T) *stack {
 	live, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: sessionMaps, Roster: chars,
 		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat}, Logger: logger, Now: clock.Now,
+		Messages: play.MessagesConfig{Profiles: s.users, Voice: &voice.Fake{}, Blobs: blobs},
 	})
 	if err != nil {
 		t.Fatalf("play.New() error = %v", err)

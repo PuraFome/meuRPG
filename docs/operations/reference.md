@@ -29,6 +29,9 @@ The process reads them in `backend/internal/platform/config/config.go` (`config.
 | `IMAGE_GENERATOR` | No | `gemini` | `gemini` or `fake`. `fake` is for local stacks and CI and is refused on Cloud Run |
 | `IMAGE_MONTHLY_LIMIT` | No | `20` | Images per campaign per Brasília month, 1 to 500 (`maps.DefaultMonthlyImages`) |
 | `IMAGE_DAILY_LIMIT` | No | `100` | Images for the whole server per Brasília day, 1 to 10,000 (`maps.DefaultDailyImages`) |
+| `GEMINI_TTS_MODEL` | No | empty | The text-to-speech model of the conversation's "Ouvir" (MR-051), from Google's current documentation. It has no default: without it (and without the fake) the voice is off and the audio route answers `failed_precondition` with reason `OFF` |
+| `TTS_GENERATOR` | No | `gemini` | `gemini` or `fake`. `fake` makes a short silent audio with no network, for local stacks and CI, and is refused on Cloud Run |
+| `TTS_DAILY_LIMIT` | No | `300` | Voices for the whole server per Brasília day, 1 to 5,000 (`play.DefaultVoiceDailyLimit`) |
 | `MAX_CAMPAIGNS_PER_USER` | No | `10` | Campaigns one account may be master of, 1 to 1,000. `off` removes the cap and is refused on Cloud Run |
 | `CAMPAIGN_CREATORS` | No (personal data) | empty | Verified e-mails, comma-separated and case-insensitive, that may create campaigns. Empty: anyone. Only separators, or an entry without `@`, stops the server (the error gives the position, never the text) |
 | `RATE_LIMIT_MULTIPLIER` | No | `1` | Multiplies every request-rate limit; above 0 and at most 1,000. The local stacks and the e2e CI run with `10` |

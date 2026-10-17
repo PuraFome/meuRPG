@@ -44,6 +44,7 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-33 | **Escolhas de classe e raça.** Uma classe ou uma raça pode pedir que o jogador escolha algo (um Estilo de Luta, uma Ancestralidade Dracônica, Pacto e invocações, Metamagia, um Inimigo Favorito, um terreno, os +1 do Meio-elfo...). Um personagem não é criado com uma escolha em aberto; uma ficha travada que tem uma continua funcionando e a completa depois, e a subida de nível também pede as escolhas que ficaram para trás. | [Detalhes](#rn-33-escolhas-de-classe-e-raça) |
 | RN-34 | **Testes de disputa e ações especiais.** Agarrar, empurrar e escapar são disputas de Força (Atletismo) contra Força (Atletismo) ou Destreza (Acrobacia); um empate não muda nada. Arrastar uma criatura agarrada reduz o deslocamento à metade. Esconder-se compara o total de Furtividade com a Percepção passiva de cada criatura (um empate mantém o escondido notado); Ajudar dá vantagem; um teste em grupo passa quando pelo menos metade passa; uma criatura surpresa não faz nada no primeiro turno. O jogador nunca lê os números de um NPC, a CD de escapar, quem notou um escondido nem o total de outro jogador. | [Detalhes](#rn-34-testes-de-disputa-e-ações-especiais) |
 | RN-35 | **Traços de raça e a Queda Lenta do monge em combate.** Um meio-orc levado a 0 PV mas não morto de vez fica com 1 (Relentless Endurance, uma vez por descanso longo, usado pelo app sozinho); o acerto crítico dele com um ataque de arma corpo a corpo rola mais um dado de arma (Savage Attacks); a reação de um monge tira 5 vezes o nível dele do dano de queda de um fosso (Queda Lenta); a Fuga Ágil do goblin é Desengajar ou Esconder-se como ação bônus; um halfling cujo d20 mostra 1 (um ataque, ou um teste de perícia ou de resistência que o jogador rola) recebe "Tirou 1: rolar de novo?" antes do resultado, e a nova rolagem vale; num teste de resistência em que o app rola pelo halfling de um jogador na ação de outra pessoa, o app rola o 1 de novo sozinho (Sortudo). | [Detalhes](#rn-35-traços-de-raça-e-a-queda-lenta-do-monge-em-combate) |
+| RN-36 | **Quem lê uma linha da conversa da cena.** Uma linha é para a mesa toda ou para leitores escolhidos; o mestre sempre lê todas as linhas, pode escolher qualquer conjunto de jogadores, e um jogador escolhe todos ou "só o mestre". Quem não foi escolhido nunca recebe a linha: nem o texto, nem a imagem, nem a existência, nem a contagem, nem um aviso de que foi enviada, numa leitura, no stream, no resumo ou na voz. O mestre fala como narrador ou como um NPC da campanha; um jogador, como o próprio personagem (RN-18) ou fora do personagem. | [Detalhes](#rn-36-quem-lê-uma-linha-da-conversa-da-cena) |
 
 ## RN-01: Trava da ficha
 
@@ -806,6 +807,21 @@ Esses traços do SRD 5.1 mudam os números de um combate (Meio-orc, Halfling, Mo
 
 Como é construído: [Arquitetura](../../architecture/play/held-rolls.md) e [ataques e dano](../../architecture/play/attacks-and-damage.md).
 Testes: `combat-rolls.spec.ts` e `scenes.spec.ts` (`@RN-35`).
+
+## RN-36: Quem lê uma linha da conversa da cena
+
+A conversa de uma sessão de jogo (MR-051) é um feed de texto. Cada linha tem um autor, um falante e seus leitores, e o servidor decide os três.
+
+- **Quem fala como quem.** O mestre fala como o narrador ou como qualquer NPC da campanha (a linha mostra o nome do NPC e o retrato de cena dele, quando tem). Um jogador fala como o próprio personagem vivo, nunca o de outro (RN-18), ou fora do personagem, o que mostra o nome de exibição do jogador. Uma linha tem de 1 a 2.000 caracteres.
+- **Quem lê.** Uma linha é para a mesa toda ou para leitores escolhidos. O mestre sempre lê todas as linhas. O mestre pode escolher qualquer conjunto de jogadores. Um jogador pode escolher todos ou "só o mestre". O autor sempre vê a própria linha.
+- **O que quem não lê nunca recebe** (RN-10): o texto, a imagem, a existência da linha, a contagem de linhas, um aviso de que foi enviada e o áudio dela. Vale para a leitura da sessão, o stream ao vivo, o resumo da sessão e a rota da voz; quem não lê e pede o áudio ou a imagem da linha recebe `404`, como para algo que não existe.
+- **Uma imagem** (só o mestre, da galeria da campanha) deixa os leitores da linha abrirem essa imagem, como "mostrar imagem" faz (MR-028), e nada além: uma imagem que é o fundo de um mapa com névoa é mostrada como a cópia dela (RN-10).
+- **A voz.** A narração e as falas de NPC podem ser ouvidas; as linhas dos jogadores são só texto. O áudio é feito na primeira vez que um leitor pede, guardado com a linha e entregue só aos leitores dela.
+- **A digitação do mestre** é um aviso sem conteúdo para os jogadores ("O mestre está escrevendo…"); a digitação dos jogadores não aparece.
+- **Quando uma conta é apagada,** as linhas dela ficam e o autor aparece como "Jogador removido".
+
+Como é feito: [Arquitetura](../../architecture/play/live-session.md#the-conversation-of-the-scene).
+Testes: `conversa.spec.ts` (`@RN-36`) e `internal/leaktest`.
 
 ## Fluxos e estados
 

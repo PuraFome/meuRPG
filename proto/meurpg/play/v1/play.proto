@@ -16,6 +16,7 @@ import "google/protobuf/timestamp.proto";
 import "meurpg/campaigns/v1/campaigns.proto";
 import "meurpg/play/v1/combat.proto";
 import "meurpg/play/v1/scene.proto";
+import "meurpg/play/v1/session_messages.proto";
 import "meurpg/play/v1/summary.proto";
 import "meurpg/play/v1/traps.proto";
 import "meurpg/rules/v1/rules.proto";
@@ -321,6 +322,59 @@ service PlayService {
   //     NO_OPEN_SESSION).
   //   - `resource_exhausted`: the character was nudged in the last 10 seconds.
   rpc NudgePlayer(NudgePlayerRequest) returns (NudgePlayerResponse);
+
+  // SendSessionMessage sends a line to the conversation of the open session
+  // (MR-051, RN-36). The master speaks as the narrator or as an NPC of the
+  // campaign, and may attach a gallery image and choose any set of the
+  // campaign's players as readers (empty: the whole table). A player speaks
+  // as their own living character (RN-18) or out of character, and chooses
+  // everyone or only the master. The master and the author always read the
+  // line.
+  //
+  // The line is stored, then `session_message_added` goes to each reader's
+  // streams and the master's, and to nobody else: whoever is not a reader
+  // gets no event, no count and no trace of it (RN-10). An image that is a
+  // fog map's background is attached as its copy, as "mostrar imagem" does.
+  // The idempotency key is required: the same key and request returns the
+  // first line and sends nothing again.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not an
+  //     active member; also an NPC or character that is not the caller's to
+  //     speak as, a reader who is not a player of the campaign, an image that
+  //     is not in the campaign's gallery.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  //   - `permission_denied`: a player tried a master's kind, an image or
+  //     readers; the master tried only_master.
+  //   - `invalid_argument`: empty or over-long text, a missing key or kind.
+  //   - `resource_exhausted`: too many lines in a short time, per user.
+  rpc SendSessionMessage(SendSessionMessageRequest) returns (SendSessionMessageResponse);
+
+  // ListSessionMessages reads a session's lines the caller may read (MR-051,
+  // RN-36), oldest first within the page, the newest page by default.
+  // Opening the live session reads it, and a reconnection reads the gap. The
+  // lines of a session the caller may not read at all are never counted or
+  // hinted at.
+  //
+  // Errors:
+  //   - `not_found`: the campaign, the session or `before_id` does not exist
+  //     for the caller (a line the caller may not read included).
+  //   - `failed_precondition`: no game_session_id and no open session.
+  rpc ListSessionMessages(ListSessionMessagesRequest) returns (ListSessionMessagesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // SignalMasterTyping tells the players the master is writing (MR-051): a
+  // content-free `master_typing` event to the players' streams, which the app
+  // shows as "O mestre está escrevendo…" for a few seconds. Only the master,
+  // only with a session open. Calls closer than two seconds from the last of
+  // the campaign are answered and send nothing. Nothing is stored.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session.
+  rpc SignalMasterTyping(SignalMasterTypingRequest) returns (SignalMasterTypingResponse);
 
   // SetCurrentMap chooses the map the session shows at the table, or clears
   // it. Only the campaign's master may call it, and only while the campaign
@@ -1281,6 +1335,22 @@ message WatchGameSessionResponse {
     // The master is calling the player (NudgePlayer): shake, chime and say it. Sent only to
     // the character's player, never stored.
     CallingYou calling_you = 41;
+    // A line of the conversation was added (MR-051, RN-36). Sent to the line's
+    // readers' streams and the master's, and to nobody else.
+    SessionMessageAdded session_message_added = 42;
+    // The master is writing (MR-051). Content-free, to the players only.
+    MasterTyping master_typing = 43;
+  }
+
+  // SessionMessageAdded carries the line itself to its readers.
+  message SessionMessageAdded {
+    SessionMessage message = 1;
+  }
+
+  // MasterTyping says the master is writing. It carries no text.
+  message MasterTyping {
+    // How long the app shows the hint without another one, in seconds.
+    int32 expires_in_seconds = 1;
   }
 
   // CallingYou is the master's nudge. It carries nothing: the app writes the line.
