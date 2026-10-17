@@ -1906,7 +1906,7 @@ type InsertGeneratedDungeonParams struct {
 	CreatedAt        time.Time
 }
 
-// Generated dungeons (MR-010, slice 10.6d): the record DungeonService keeps of a map
+// Generated dungeons (MR-010): the record DungeonService keeps of a map
 // it made. The master's alone: nothing here is ever sent to a player (RN-10).
 func (q *Queries) InsertGeneratedDungeon(ctx context.Context, arg InsertGeneratedDungeonParams) error {
 	_, err := q.db.Exec(ctx, insertGeneratedDungeon,
@@ -3850,7 +3850,7 @@ type ListTreasureFindsOfSessionRow struct {
 	CharacterID string
 }
 
-// Gold (slice 9.11, MR-032): the session summary's "Mais tesouro encontrado".
+// Gold (MR-032): the session summary's "Mais tesouro encontrado".
 // One row per treasure and finder of the treasures found while the game session
 // was open. A treasure unmarked later has no session and no finders.
 func (q *Queries) ListTreasureFindsOfSession(ctx context.Context, sessionID string) ([]ListTreasureFindsOfSessionRow, error) {
@@ -4415,7 +4415,7 @@ type SetTrapStateParams struct {
 	ID              string
 }
 
-// The live game changes a trap's state (MR-035, slice 9.8): it fires (state
+// The live game changes a trap's state (MR-035): it fires (state
 // 'triggered', with when), the master disarms it, or an undo puts back what
 // there was. The caller locked the point first.
 func (q *Queries) SetTrapState(ctx context.Context, arg SetTrapStateParams) (MapPoint, error) {

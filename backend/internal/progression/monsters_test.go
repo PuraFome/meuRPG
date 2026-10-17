@@ -11,7 +11,7 @@ import (
 // TestMR042_ThreeBanditsGiveTheirXPToTheParty: three Bandidos put in the combat with
 // "Pôr no combate" (ND 1/8, 25 XP each) and defeated give 75 XP at the end, which
 // the enemies award splits among the four players: 18 each and 3 left over
-// (question 46; artboard E10-08, state 9).
+// (the remainder of the split is lost).
 func TestMR042_ThreeBanditsGiveTheirXPToTheParty(t *testing.T) {
 	t.Parallel()
 	tb := newTable(t, enemies, 4)

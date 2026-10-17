@@ -11,7 +11,8 @@ import {
   TableSubclassSchema,
   TableSpellSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { ensureStop, readEntry } from './content-read';
+import { readEntry } from './content-read';
+import { ensureStop } from './content-read-parts';
 import { catalog, entry, feature } from './content-testing';
 
 // The names are the server's (`Content`): a player has no effect menu, so languages, tools, armor and the abilities come named.

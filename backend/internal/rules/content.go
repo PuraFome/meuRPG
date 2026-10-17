@@ -358,22 +358,26 @@ func readJSON(fsys fs.FS, name string, v any) error {
 	return nil
 }
 
-// index reads a data file into a map by key, refusing duplicate keys.
-func index[T any](fsys fs.FS, name string, key func(*T) string, into map[string]*T, namesEN map[string]string, nameOf func(*T) string) error {
-	var rows []T
-	if err := readJSON(fsys, "data/"+name, &rows); err != nil {
-		return err
-	}
-	for i := range rows {
-		r := &rows[i]
-		k := key(r)
-		if _, dup := into[k]; dup {
-			return fmt.Errorf("data/%s: duplicate key %q", name, k)
+// indexStep is the step that reads a data file into a map by key, refusing
+// duplicate keys, and records each row's English name; keyName gives a row's key
+// and name.
+func indexStep[T any](c *content, name string, into map[string]*T, keyName func(*T) (key, name string)) contentStep {
+	return func(fsys fs.FS) error {
+		var rows []T
+		if err := readJSON(fsys, "data/"+name, &rows); err != nil {
+			return err
 		}
-		into[k] = r
-		namesEN[k] = nameOf(r)
+		for i := range rows {
+			r := &rows[i]
+			k, en := keyName(r)
+			if _, dup := into[k]; dup {
+				return fmt.Errorf("data/%s: duplicate key %q", name, k)
+			}
+			into[k] = r
+			c.namesEN[k] = en
+		}
+		return nil
 	}
-	return nil
 }
 
 // loadData reads the data files, checks the shapes the code relies on and
@@ -422,56 +426,24 @@ func (c *content) loadAbilities(fsys fs.FS) error {
 // one that fails is the error.
 func (c *content) indexDataFiles(fsys fs.FS) error {
 	steps := []contentStep{
-		func(fsys fs.FS) error {
-			return index(fsys, "skills.json", func(s *srd51.Skill) string { return s.Key }, c.skills, c.namesEN, func(s *srd51.Skill) string { return s.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "races.json", func(r *srd51.Race) string { return r.Key }, c.races, c.namesEN, func(r *srd51.Race) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "subraces.json", func(r *srd51.Subrace) string { return r.Key }, c.subraces, c.namesEN, func(r *srd51.Subrace) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "traits.json", func(r *srd51.Trait) string { return r.Key }, c.traits, c.namesEN, func(r *srd51.Trait) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "classes.json", func(r *srd51.Class) string { return r.Key }, c.classes, c.namesEN, func(r *srd51.Class) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "subclasses.json", func(r *srd51.Subclass) string { return r.Key }, c.subclasses, c.namesEN, func(r *srd51.Subclass) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "features.json", func(r *srd51.Feature) string { return r.Key }, c.features, c.namesEN, func(r *srd51.Feature) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "backgrounds.json", func(r *srd51.Background) string { return r.Key }, c.backgrounds, c.namesEN, func(r *srd51.Background) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "feats.json", func(r *srd51.Feat) string { return r.Key }, c.feats, c.namesEN, func(r *srd51.Feat) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "proficiencies.json", func(r *srd51.Proficiency) string { return r.Key }, c.proficiencies, c.namesEN, func(r *srd51.Proficiency) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "equipment.json", func(r *srd51.Equipment) string { return r.Key }, c.equipment, c.namesEN, func(r *srd51.Equipment) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "spells.json", func(r *srd51.Spell) string { return r.Key }, c.spells, c.namesEN, func(r *srd51.Spell) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "monsters.json", func(r *srd51.Monster) string { return r.Key }, c.monsters, c.namesEN, func(r *srd51.Monster) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "magic-items.json", func(r *srd51.MagicItem) string { return r.Key }, c.magicItems, c.namesEN, func(r *srd51.MagicItem) string { return r.Name })
-		},
-		func(fsys fs.FS) error {
-			return index(fsys, "languages.json", func(r *srd51.Language) string { return r.Key }, c.languages, c.namesEN, func(r *srd51.Language) string { return r.Name })
-		},
+		indexStep(c, "skills.json", c.skills, func(r *srd51.Skill) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "races.json", c.races, func(r *srd51.Race) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "subraces.json", c.subraces, func(r *srd51.Subrace) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "traits.json", c.traits, func(r *srd51.Trait) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "classes.json", c.classes, func(r *srd51.Class) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "subclasses.json", c.subclasses, func(r *srd51.Subclass) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "features.json", c.features, func(r *srd51.Feature) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "backgrounds.json", c.backgrounds, func(r *srd51.Background) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "feats.json", c.feats, func(r *srd51.Feat) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "proficiencies.json", c.proficiencies, func(r *srd51.Proficiency) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "equipment.json", c.equipment, func(r *srd51.Equipment) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "spells.json", c.spells, func(r *srd51.Spell) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "monsters.json", c.monsters, func(r *srd51.Monster) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "magic-items.json", c.magicItems, func(r *srd51.MagicItem) (string, string) { return r.Key, r.Name }),
+		indexStep(c, "languages.json", c.languages, func(r *srd51.Language) (string, string) { return r.Key, r.Name }),
 	}
 	for _, name := range []string{"damage-types.json", "magic-schools.json", "weapon-properties.json", "conditions.json"} {
-		steps = append(steps, func(fsys fs.FS) error {
-			return index(fsys, name, func(r *srd51.Named) string { return r.Key }, c.named, c.namesEN, func(r *srd51.Named) string { return r.Name })
-		})
+		steps = append(steps, indexStep(c, name, c.named, func(r *srd51.Named) (string, string) { return r.Key, r.Name }))
 	}
 	return runContentSteps(fsys, steps)
 }
@@ -1102,9 +1074,6 @@ const (
 // minChoiceDamageTypes is how many damage types a spell needs for the caster to
 // have one to pick.
 const minChoiceDamageTypes = 2
-
-// maxCorrectedSlot is the highest spell slot level a damage table may list.
-const maxCorrectedSlot = 9
 
 // hitPointsRollPattern is a creature's hit point roll, "6d8+6" or "3d8".
 var hitPointsRollPattern = regexp.MustCompile(`^(\d+d\d+)([+-]\d+)?$`)

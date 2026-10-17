@@ -16,6 +16,7 @@ import type {
 } from '../../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import type { RollAnimator, RollShow } from '../../../../shared/roll-overlay/roll-animator';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import { inspirationShow, luckyRerollShow } from './attack-sheet-view';
 
 /** What `AttackQuestions` reads from the sheet it asks for. */
@@ -81,26 +82,25 @@ export class AttackQuestions {
     if (!offer || this.host.busy()) {
       return;
     }
-    this.host.busy.set(true);
-    this.host.error.set('');
-    try {
-      const res = await this.host.resources.answerLucky(
-        this.host.campaignId,
-        this.host.encounterId,
-        offer.holdId,
-        reroll,
-        die,
-        this.luckyKeys.keyFor({ holdId: offer.holdId, reroll, die }),
-      );
-      this.luckyKeys.renew();
-      this.host.state.apply(res.encounter);
-      this.host.settle(res);
-      this.play(luckyRerollShow(res.roll, die));
-    } catch (err) {
-      this.host.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-    } finally {
-      this.host.busy.set(false);
-    }
+    await runBusy(
+      this.host.busy,
+      this.host.error,
+      async () => {
+        const res = await this.host.resources.answerLucky(
+          this.host.campaignId,
+          this.host.encounterId,
+          offer.holdId,
+          reroll,
+          die,
+          this.luckyKeys.keyFor({ holdId: offer.holdId, reroll, die }),
+        );
+        this.luckyKeys.renew();
+        this.host.state.apply(res.encounter);
+        this.host.settle(res);
+        this.play(luckyRerollShow(res.roll, die));
+      },
+      (err) => this.host.error.set(classResourceErrorMessage(err, 'responder ao Sortudo')),
+    );
   }
 
   /** "Somar o d8" (rolled in the app, or the typed face) or "Guardar o dado": the answer finishes the held attack. */
@@ -109,26 +109,26 @@ export class AttackQuestions {
     if (!offer || this.host.busy()) {
       return;
     }
-    this.host.busy.set(true);
-    this.host.error.set('');
-    try {
-      const res = await this.host.resources.answerBardicInspiration(
-        this.host.campaignId,
-        this.host.encounterId,
-        offer.holdId,
-        use,
-        die,
-        this.answerKeys.keyFor({ holdId: offer.holdId, use, die }),
-      );
-      this.answerKeys.renew();
-      this.host.state.apply(res.encounter);
-      this.host.settle(res);
-      this.play(inspirationShow(res.roll, use, die));
-    } catch (err) {
-      this.host.error.set(classResourceErrorMessage(err, 'responder à Inspiração de Bardo'));
-    } finally {
-      this.host.busy.set(false);
-    }
+    await runBusy(
+      this.host.busy,
+      this.host.error,
+      async () => {
+        const res = await this.host.resources.answerBardicInspiration(
+          this.host.campaignId,
+          this.host.encounterId,
+          offer.holdId,
+          use,
+          die,
+          this.answerKeys.keyFor({ holdId: offer.holdId, use, die }),
+        );
+        this.answerKeys.renew();
+        this.host.state.apply(res.encounter);
+        this.host.settle(res);
+        this.play(inspirationShow(res.roll, use, die));
+      },
+      (err) =>
+        this.host.error.set(classResourceErrorMessage(err, 'responder à Inspiração de Bardo')),
+    );
   }
 
   private play(show: RollShow | null): void {

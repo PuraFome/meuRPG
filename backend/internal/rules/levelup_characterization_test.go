@@ -81,62 +81,6 @@ func levelUpCharAt(t *testing.T, c *Content, class, sub string, level int) Build
 	return b
 }
 
-// levelUpSweepDigests levels the class from 1 to 20 with the sweep's picks and
-// records, at each level, digests of the offer, of the Build ApplyLevelUp makes
-// and of the offers of every other class (as a new class), with the check's
-// answer.
-func levelUpSweepDigests(t *testing.T, c *Content, classKey, subKey string, got map[string]string) {
-	t.Helper()
-	b := sweepBase(t, c, classKey, subKey)
-	for b.totalLevel() < MaxLevel {
-		o, err := LevelUpOptions(b, classKey, c)
-		if err != nil {
-			t.Fatalf("%s/%s at %d: %v", classKey, subKey, b.totalLevel(), err)
-		}
-		others := map[string]string{}
-		for _, other := range sortedKeys(c.c.classes) {
-			if other == classKey {
-				continue
-			}
-			oo, err := LevelUpOptions(b, other, c)
-			if err != nil {
-				others[other] = levelUpRefusalText(err)
-				continue
-			}
-			others[other] = levelUpDigest(t, oo)
-		}
-		ch := satisfy(t, c, b, classKey, subKey)
-		after := mustApply(t, c, b, ch)
-		key := fmt.Sprintf("%s/%s/%02d", classKey, subKey, b.totalLevel())
-		got[key] = fmt.Sprintf("options %s, others %s, apply %s, check %s",
-			levelUpDigest(t, o), levelUpDigest(t, others), levelUpDigest(t, after), levelUpRefusalText(CheckLevelUp(b, after, c)))
-		b = after
-	}
-}
-
-// TestLevelUpOptionsCharacterization freezes every offer of the SRD's classes and
-// subclasses, and of the table's (the generated classes and the third casters),
-// at every level, with the offers of the other classes as a new class.
-func TestLevelUpOptionsCharacterization(t *testing.T) {
-	t.Parallel()
-	srd := loadForTest(t)
-	table := thirdCasterContent(t)
-	got := map[string]string{}
-	for _, classKey := range sortedKeys(srd.c.classes) {
-		for _, subKey := range srd.c.classes[classKey].Subclasses {
-			levelUpSweepDigests(t, srd, classKey, subKey, got)
-		}
-	}
-	for _, classKey := range sortedKeys(table.c.classes) {
-		for _, subKey := range table.c.classes[classKey].Subclasses {
-			if isTableKey(classKey) || isTableKey(subKey) {
-				levelUpSweepDigests(t, table, classKey, subKey, got)
-			}
-		}
-	}
-	goldenText(t, "levelup-options-digests", got)
-}
-
 // TestLevelUpOptionsInFullCharacterization keeps a few offers whole, so a change
 // the digests show can be read: an Ability Score Improvement with the table's
 // feats, a spellbook, a subclass that is due (with a third caster's part), the

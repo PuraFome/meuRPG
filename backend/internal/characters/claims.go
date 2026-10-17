@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -154,7 +155,7 @@ func (s *Service) CreateClaimLink(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -207,7 +208,7 @@ func masterAndCharacter(ctx context.Context, campaignID, characterID string) (au
 	if err != nil {
 		return authz.Membership{}, "", err
 	}
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return authz.Membership{}, "", errCharacterNotFound()
 	}
@@ -404,7 +405,7 @@ func (s *Service) DeleteReservedCharacter(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -701,7 +702,7 @@ func (s *Service) claimFailure(ctx context.Context, err error, userID, linkCampa
 	if living, ok := errors.AsType[*livingForClaimError](err); ok {
 		return living.connectError()
 	}
-	if isUniqueViolation(err, "characters_one_living_player_character") {
+	if db.IsUniqueViolation(err, "characters_one_living_player_character") {
 		// Another claim or another character of this person won the race: answer as the
 		// check above would have.
 		living, lookupErr := s.queries.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{CampaignID: linkCampaign, PlayerUserID: userID})

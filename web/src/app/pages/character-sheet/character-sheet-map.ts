@@ -5,7 +5,6 @@ import {
   type Appearance as GenAppearance,
   BasicSheet as GenBasicSheet,
   Character,
-  CharacterKind as GenCharacterKind,
   CharacterReview as GenCharacterReview,
   CharacterState as GenCharacterState,
   CharacterStory as GenCharacterStory,
@@ -15,20 +14,16 @@ import {
   Review as GenReview,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
-  Ability as GenAbility,
   Attack as GenAttack,
   AttackKind as GenAttackKind,
   DerivedSheet as GenDerivedSheet,
   ProficiencyLevel as GenProficiencyLevel,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { KIND_FROM_GEN } from '../../core/characters/character-kind-gen';
+import { ABILITY_FROM_GEN } from '../../core/characters/ability-gen';
 import { SkillProficiency } from '../../core/characters/character-labels';
 import { metersWithFeet } from '../../core/units';
-import {
-  AbilityKey,
-  CharacterKind,
-  CharacterState,
-  ReviewStatus,
-} from '../../core/characters/characters.types';
+import { CharacterState, ReviewStatus } from '../../core/characters/characters.types';
 import { damageTypeFromGen } from '../../core/characters/damage-type-gen';
 import {
   AttackVm,
@@ -39,15 +34,6 @@ import {
   ReviewVm,
 } from './character-sheet.types';
 import { hitDiceWords } from '../../core/resources/hit-dice-text';
-
-const KIND_FROM_GEN: Record<GenCharacterKind, CharacterKind> = {
-  [GenCharacterKind.UNSPECIFIED]: 'player',
-  [GenCharacterKind.PLAYER]: 'player',
-  [GenCharacterKind.ENEMY]: 'enemy',
-  [GenCharacterKind.BOSS]: 'boss',
-  [GenCharacterKind.MINION]: 'minion',
-  [GenCharacterKind.STORY]: 'story',
-};
 
 const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   [GenCharacterState.UNSPECIFIED]: 'draft',
@@ -86,16 +72,6 @@ const LEVEL_UP_REASON: Record<GenLevelUpReason, 'xp' | 'milestone' | null> = {
   [GenLevelUpReason.UNSPECIFIED]: null,
   [GenLevelUpReason.XP]: 'xp',
   [GenLevelUpReason.MILESTONE]: 'milestone',
-};
-
-const ABILITY_FROM_GEN: Record<GenAbility, AbilityKey> = {
-  [GenAbility.UNSPECIFIED]: 'str',
-  [GenAbility.STRENGTH]: 'str',
-  [GenAbility.DEXTERITY]: 'dex',
-  [GenAbility.CONSTITUTION]: 'con',
-  [GenAbility.INTELLIGENCE]: 'int',
-  [GenAbility.WISDOM]: 'wis',
-  [GenAbility.CHARISMA]: 'cha',
 };
 
 const PROFICIENCY_FROM_GEN: Record<GenProficiencyLevel, SkillProficiency> = {

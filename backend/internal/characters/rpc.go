@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -76,7 +77,7 @@ func (s *Service) GetCharacter(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -192,7 +193,7 @@ func (s *Service) UpdateCharacterStory(
 // client is answered: the character's ID, the revision, then the story, which it
 // returns encoded.
 func (s *Service) readStorySave(ctx context.Context, msg *charactersv1.UpdateCharacterStoryRequest) (id string, revision int32, storyDoc []byte, err error) {
-	id, ok := parseUUID(msg.GetCharacterId())
+	id, ok := uid.Canonical(msg.GetCharacterId())
 	if !ok {
 		return "", 0, nil, errCharacterNotFound()
 	}
@@ -248,7 +249,7 @@ func (s *Service) SetStoryEditing(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -300,7 +301,7 @@ func (s *Service) MarkCharacterDead(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -355,7 +356,7 @@ func (s *Service) GetMasterNotes(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -388,7 +389,7 @@ func (s *Service) UpdateMasterNotes(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}

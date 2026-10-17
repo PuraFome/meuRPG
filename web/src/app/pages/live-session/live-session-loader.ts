@@ -1,28 +1,107 @@
+import {
+  CastEffect,
+  type OutsideCast,
+  OutsideCastStatus,
+} from '../../../gen/meurpg/play/v1/casting_pb';
 import { casterOfRevival } from '../../core/revivify/revivify-flow';
 import { applySnapshot } from '../../core/play/vitals';
-import type { CampaignInfoVm } from '../../core/play/live-session.types';
-import type { LiveSessionParts } from './live-session-parts';
-import { COMBAT_REREADS, COMBAT_RETRY_MS, mageArmorClassOf } from './live-session-pure';
-import type { LiveSessionServices } from './live-session-services';
+import type { CampaignInfoVm, ShownImageVm } from '../../core/play/live-session.types';
+import type { LiveSessionParts, LiveSessionServices } from './live-session-deps';
 import type { LiveSessionState } from './live-session-state';
+
+const MAGE_ARMOR_KEY = 'spell:mage-armor';
+
+/** How many times the combat is read again when a read was dropped for a change that came while it was out. */
+const COMBAT_REREADS = 3;
+
+/** How long the page waits before trying a failed combat read once more, in milliseconds. */
+const COMBAT_RETRY_MS = 1500;
+
+/** How long a burst of vision hints waits to become one read, in milliseconds. */
+const VISION_DEBOUNCE_MS = 120;
+
+/** The armor class the character's lasting Armadura Arcana gives, the best one; 0 without it. */
+export function mageArmorClassOf(casts: readonly OutsideCast[], characterId: string): number {
+  let best = 0;
+  for (const cast of casts) {
+    if (cast.spellKey !== MAGE_ARMOR_KEY || cast.status !== OutsideCastStatus.ACTIVE) {
+      continue;
+    }
+    for (const t of cast.targets) {
+      if (t.characterId === characterId && t.effect === CastEffect.ARMOR_CLASS) {
+        best = Math.max(best, t.armorClass);
+      }
+    }
+  }
+  return best;
+}
+
+/** How many of the stream's news of the current map and of the shown image have come: a snapshot that began before one
+ * of them does not overwrite it. */
+export interface NewsCounts {
+  readonly map: number;
+  readonly image: number;
+}
 
 /**
  * The reads of the session page: the campaign, the snapshot, the combat, the sheet and the lists. Each answer carries the
  * generation it was asked in, and is dropped when the page has loaded another campaign since.
  */
 export class LiveSessionLoader {
+  /** The campaign of the current load; `null` once it turned out the page can't show it (no access, a pending member, an error). */
+  private campaignLoad: Promise<CampaignInfoVm | null> = Promise.resolve(null);
+  private loadedSheetFor: string | null = null;
+  private partyInfoIds = new Set<string>();
+  /** Moves with each load: an answer that comes for an older one is dropped. */
+  private generation = 0;
+  /** Moves with each read of the images left with the players, and with each one taken back here. */
+  private leftSeq = 0;
+  private visionTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor(
     private readonly services: LiveSessionServices,
     private readonly state: LiveSessionState,
     private readonly parts: LiveSessionParts,
-    /** The stream's news the snapshot waits on: it sets the vision's read going. */
-    private readonly scheduleVision: () => void,
   ) {}
+
+  /** Stops what the page left waiting: the stream and the vision's debounce. */
+  dispose(): void {
+    clearTimeout(this.visionTimer);
+    this.closeStream();
+  }
+
+  /** What a player sees may have changed (a hint, a move, a turn): one read of the vision and its layers for a burst of them. The master's "Ver como" reads again too. */
+  scheduleVision(): void {
+    if (this.visionTimer !== undefined) {
+      return;
+    }
+    this.visionTimer = setTimeout(() => {
+      this.visionTimer = undefined;
+      void this.parts.fog.refresh();
+      this.state.visionTick.update((n) => n + 1);
+    }, VISION_DEBOUNCE_MS);
+  }
+
+  /** The master took an image back: it leaves the list now, and a read that began before this answer is dropped
+   * (it may still carry the image). */
+  takenBack(image: ShownImageVm): void {
+    this.leftSeq++;
+    this.state.leftImages.update((list) => list.filter((i) => i.id !== image.id));
+  }
+
+  /** "Voltar aos seus olhos" worked: the band goes at once; the stream's newer vitals confirm it. */
+  familiarStopped(characterId: string): void {
+    this.state.vitals.update((list) =>
+      list.map((v) => (v.characterId === characterId ? { ...v, familiarSight: null } : v)),
+    );
+    void this.parts.mapState.refresh();
+    this.scheduleVision();
+  }
 
   /** Starts over for a campaign: clears what the page shows, starts the campaign's read, and returns the new generation. */
   begin(campaignId: string): number {
     const { state, parts } = this;
-    const generation = ++state.generation;
+    const generation = ++this.generation;
     this.closeStream();
     state.campaignId.set(campaignId);
     state.phase.set('loading');
@@ -46,15 +125,15 @@ export class LiveSessionLoader {
     parts.trapBoard.clear();
     parts.puzzles.clear();
     parts.toasts.clear();
-    state.loadedSheetFor = null;
-    state.partyInfoIds = new Set();
+    this.loadedSheetFor = null;
+    this.partyInfoIds = new Set();
 
     // The campaign (its name, and whether the person is its master) and the
     // stream start together: at the table, every round trip is a wait.
-    state.campaignLoad = this.services.source.getCampaign(campaignId).then(
+    this.campaignLoad = this.services.source.getCampaign(campaignId).then(
       (campaign) => this.campaignRead(campaign, generation),
       (err: unknown) => {
-        if (generation === state.generation) {
+        if (generation === this.generation) {
           this.closeStream();
           this.fail(err);
         }
@@ -65,7 +144,7 @@ export class LiveSessionLoader {
   }
 
   private campaignRead(campaign: CampaignInfoVm, generation: number): CampaignInfoVm | null {
-    if (generation !== this.state.generation) {
+    if (generation !== this.generation) {
       return null;
     }
     if (campaign.awaitingApproval) {
@@ -84,26 +163,30 @@ export class LiveSessionLoader {
     this.state.stream.set(null);
   }
 
-  async readSnapshot(campaignId: string, generation: number): Promise<void> {
+  async readSnapshot(
+    campaignId: string,
+    generation: number,
+    news: () => NewsCounts,
+  ): Promise<void> {
     const { state, parts } = this;
-    const mapEvents = state.mapEvents;
-    const imageEvents = state.imageEvents;
+    const before = news();
     try {
       const [snapshot, campaign] = await Promise.all([
         this.services.source.getLiveSession(campaignId),
-        state.campaignLoad,
+        this.campaignLoad,
       ]);
-      if (generation !== state.generation || !campaign) {
+      if (generation !== this.generation || !campaign) {
         return;
       }
       state.session.set(snapshot.session);
       state.vitals.update((list) => applySnapshot(list, snapshot.vitals));
       // News that came while the snapshot was on its way is newer than it: the snapshot only fills in what no event told.
-      const mapIsNews = mapEvents === state.mapEvents;
+      const after = news();
+      const mapIsNews = before.map === after.map;
       if (mapIsNews) {
         state.currentMapId.set(snapshot.currentMapId);
       }
-      if (imageEvents === state.imageEvents) {
+      if (before.image === after.image) {
         state.shownImage.set(snapshot.shownImage);
         state.shownKeep.set(snapshot.shownImageKeep);
       }
@@ -132,7 +215,7 @@ export class LiveSessionLoader {
       this.services.openSessions.dismiss(snapshot.session.sessionId);
       this.loadDetails(campaignId, generation);
     } catch (err) {
-      if (generation !== state.generation) {
+      if (generation !== this.generation) {
         return;
       }
       this.snapshotFailed(err);
@@ -166,7 +249,7 @@ export class LiveSessionLoader {
     }
     try {
       const log = await this.services.combatApi.log(campaignId, e.id);
-      if (generation === state.generation) {
+      if (generation === this.generation) {
         state.revivedCaster.set(casterOfRevival(log.rounds, characterId));
       }
     } catch {
@@ -178,7 +261,7 @@ export class LiveSessionLoader {
   async readVitals(campaignId: string, generation: number): Promise<void> {
     try {
       const snapshot = await this.services.source.getLiveSession(campaignId);
-      if (generation === this.state.generation) {
+      if (generation === this.generation) {
         this.state.vitals.update((list) => applySnapshot(list, snapshot.vitals));
       }
     } catch {
@@ -223,7 +306,7 @@ export class LiveSessionLoader {
       // Dropped for something that replaced the combat while it was out (an event, an answer to a call): that may be
       // older than what this read was asked for, so read again. Bounded: a busy table never loops.
       if (
-        generation === state.generation &&
+        generation === this.generation &&
         !parts.combat.applyRead(ticket, encounter) &&
         parts.combat.changedSince(ticket) &&
         attempt < COMBAT_REREADS
@@ -232,9 +315,9 @@ export class LiveSessionLoader {
       }
     } catch {
       // One more try a moment later; after that the stream's next event, or reconnection, reads it again.
-      if (generation === state.generation && attempt === 0) {
+      if (generation === this.generation && attempt === 0) {
         setTimeout(() => {
-          if (generation === state.generation) {
+          if (generation === this.generation) {
             void this.loadCombat(generation, COMBAT_REREADS);
           }
         }, COMBAT_RETRY_MS);
@@ -244,10 +327,10 @@ export class LiveSessionLoader {
 
   /** The campaign again, to pick up the dice choice the player just saved. */
   async refreshCampaign(): Promise<void> {
-    const generation = this.state.generation;
+    const generation = this.generation;
     try {
       const campaign = await this.services.source.getCampaign(this.state.campaignId());
-      if (generation === this.state.generation) {
+      if (generation === this.generation) {
         this.state.campaign.set(campaign);
       }
     } catch {
@@ -262,21 +345,21 @@ export class LiveSessionLoader {
     const { state } = this;
     if (state.isMaster()) {
       const ids = state.vitals().map((v) => v.characterId);
-      if (ids.every((id) => state.partyInfoIds.has(id))) {
+      if (ids.every((id) => this.partyInfoIds.has(id))) {
         return;
       }
-      ids.forEach((id) => state.partyInfoIds.add(id));
+      ids.forEach((id) => this.partyInfoIds.add(id));
       this.services.source.getPartyInfo(campaignId).then(
-        (info) => generation === state.generation && state.partyInfo.set(info),
+        (info) => generation === this.generation && state.partyInfo.set(info),
         () => undefined,
       );
       return;
     }
     const own = state.ownVitals();
-    if (!own || state.loadedSheetFor === own.characterId) {
+    if (!own || this.loadedSheetFor === own.characterId) {
       return;
     }
-    state.loadedSheetFor = own.characterId;
+    this.loadedSheetFor = own.characterId;
     this.loadPlayerSheet(campaignId, generation);
   }
 
@@ -288,7 +371,7 @@ export class LiveSessionLoader {
       return;
     }
     this.services.source.getPlayerSheet(campaignId, own.characterId).then(
-      (sheet) => generation === state.generation && state.playerSheet.set(sheet),
+      (sheet) => generation === this.generation && state.playerSheet.set(sheet),
       () => undefined,
     );
     this.loadMageArmor(campaignId, generation);
@@ -303,7 +386,7 @@ export class LiveSessionLoader {
     }
     this.services.castingApi.list(campaignId, own.characterId).then(
       (res) => {
-        if (generation === state.generation) {
+        if (generation === this.generation) {
           state.mageArmorAc.set(mageArmorClassOf(res.active, own.characterId));
         }
       },
@@ -315,12 +398,12 @@ export class LiveSessionLoader {
    * keeps what it had). */
   async reloadLeftImages(): Promise<void> {
     const { state } = this;
-    const generation = state.generation;
+    const generation = this.generation;
     // Only the latest read lands: replies come in any order, and an older one holds an older list.
-    const seq = ++state.leftSeq;
+    const seq = ++this.leftSeq;
     try {
       const images = await this.services.source.listLeftImages(state.campaignId());
-      if (generation === state.generation && seq === state.leftSeq) {
+      if (generation === this.generation && seq === this.leftSeq) {
         state.leftImages.set(images);
       }
     } catch {
@@ -330,10 +413,10 @@ export class LiveSessionLoader {
 
   /** The master's select and the "Fundo de mapa escondido" tags read the list. */
   async reloadMaps(): Promise<void> {
-    const generation = this.state.generation;
+    const generation = this.generation;
     try {
       const maps = await this.services.mapsApi.list(this.state.campaignId());
-      if (generation === this.state.generation) {
+      if (generation === this.generation) {
         this.state.campaignMaps.set(maps);
       }
     } catch {

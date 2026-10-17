@@ -8,9 +8,10 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
-// The NPC's portrait (MR-031, D7, question 62): an image of the campaign's
+// The NPC's portrait (MR-031): an image of the campaign's
 // gallery, kept on the NPC's sheet as `portrait_image_id`. The sheet is JSON,
 // so the field needs no migration.
 //
@@ -83,7 +84,7 @@ func (s *Service) portraitToCheck(kind string, sheet *charactersv1.CharacterShee
 	if kind == kindPlayer {
 		return "", field, fieldErr(field, "must be empty for a player's character")
 	}
-	id, ok := parseUUID(id)
+	id, ok := uid.Canonical(id)
 	if !ok {
 		return "", field, fieldErr(field, "must be an image of the campaign's gallery")
 	}

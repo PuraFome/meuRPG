@@ -1,4 +1,4 @@
-// Package dungeon is the dungeon generator (MR-010, Etapa 10): it turns
+// Package dungeon is the dungeon generator (MR-010): it turns
 // (Options, seed) into a level, a rectangular grid of squares with rooms,
 // 1-square corridors, doors and stairs, plus the metadata of a map.
 //
@@ -13,8 +13,8 @@
 // # Clean room
 //
 // The package was written from a behavioral specification alone, in a clean
-// room (ADR-0015). The specification and the audit that preceded it live with
-// the PR, not in the code; nothing here comes from another generator.
+// room (ADR-0015). The specification lives outside the code; nothing here comes
+// from another generator.
 //
 // # Algorithm and draw order (the contract of Version 1)
 //

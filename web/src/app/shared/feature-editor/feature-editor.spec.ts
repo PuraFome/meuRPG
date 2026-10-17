@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { emptyEffect } from '../../core/content/effect-draft';
 import { emptyFeature, type FeatureDraft } from '../../core/content/feature-draft';
-import { menu } from '../../core/content/content-testing';
+import { menu } from '../../core/content/content-testing-menu';
 import { FeatureEditor } from './feature-editor';
 
 describe('FeatureEditor (a trait, a feature)', () => {

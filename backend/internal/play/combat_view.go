@@ -112,8 +112,9 @@ type encounterData struct {
 	// roll mode requests that wait or have an answer to use.
 	states   []playdb.CombatantState
 	requests []playdb.RollModeRequest
-	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die.
-	holds  []playdb.RollHold
+	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die or a Lucky 1,
+	// kept in either table.
+	holds  []heldRoll
 	riders []playdb.HitRider
 }
 
@@ -131,15 +132,36 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the roll mode requests: %w", err)
 	}
-	holds, err := q.ListOpenRollHolds(ctx, enc.ID) // the rolls that wait for the answer about a die
+	holds, err := openAttackHolds(ctx, q, enc.ID)
 	if err != nil {
-		return nil, fmt.Errorf("list the held rolls: %w", err)
+		return nil, err
 	}
 	riders, err := q.ListHitRiders(ctx, enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the riders: %w", err)
 	}
 	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, riders: riders}, nil
+}
+
+// openAttackHolds are the weapon attacks of a combat that wait for an answer: the ones roll_holds keeps and the ones a
+// later release keeps in inspiration_holds, in the shape of the gate.
+func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
+	rolls, err := q.ListOpenRollHolds(ctx, encounterID) // the rolls that wait for the answer about a die
+	if err != nil {
+		return nil, fmt.Errorf("list the held rolls: %w", err)
+	}
+	inspirations, err := q.ListOpenAttackHolds(ctx, &encounterID)
+	if err != nil {
+		return nil, fmt.Errorf("list the held attacks: %w", err)
+	}
+	out := make([]heldRoll, 0, len(rolls)+len(inspirations))
+	for _, row := range rolls {
+		out = append(out, heldOfRollHold(row))
+	}
+	for _, row := range inspirations {
+		out = append(out, heldOfInspirationHold(row))
+	}
+	return out, nil
 }
 
 // turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,

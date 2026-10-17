@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import type { PendingDamage } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { currentCombatant } from '../../../core/combat/combat-view';
 import { isRevivify } from '../../../core/revivify/revivify-flow';
-import { openSheet } from '../../../shared/sheet/sheet-host';
+import { openSheet, trackOpen } from '../../../shared/sheet/sheet-host';
 import { SummonSheet, type SummonSheetData } from '../../../shared/summon-sheet/summon-sheet';
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
 import { attackAriaLabel, attackSheetData } from './attack-sheet/attack-sheet-data';
@@ -75,25 +75,26 @@ export class CombatSheets {
     if (!data) {
       return;
     }
-    this.attackOpen.set(true);
-    openSheet<AttackSheet, AttackSheetData, boolean>(
-      this.ctx.dialog,
-      this.ctx.bottomSheet,
-      AttackSheet,
+    trackOpen(
+      this.attackOpen,
+      openSheet<AttackSheet, AttackSheetData, boolean>(
+        this.ctx.dialog,
+        this.ctx.bottomSheet,
+        AttackSheet,
+        {
+          data,
+          ariaLabel: attackAriaLabel(data.attack, req.asReaction ?? false, req.who),
+          labelledBy: 'sheet-t',
+        },
+      ),
       {
-        data,
-        ariaLabel: attackAriaLabel(data.attack, req.asReaction ?? false, req.who),
-        labelledBy: 'sheet-t',
+        complete: () => {
+          if (req.catchWindowId) {
+            this.reactions.keepMissile(req.catchWindowId);
+          }
+        },
       },
-    ).subscribe({
-      complete: () => {
-        this.attackOpen.set(false);
-        if (req.catchWindowId) {
-          this.reactions.keepMissile(req.catchWindowId);
-        }
-      },
-      error: () => this.attackOpen.set(false),
-    });
+    );
   }
 
   /** "Conjurar": the cast sheet (the slot, the targets, the roll, the damage); a summoning spell asks for the creatures instead. */

@@ -1,5 +1,5 @@
 import type { CasterSection } from './class-blocks';
-import { SpellPicks, toggledIn } from './spell-picks';
+import { SpellPicks } from './spell-picks';
 
 const section = (preparation: CasterSection['preparation']): CasterSection => ({
   index: 0,
@@ -13,15 +13,6 @@ const section = (preparation: CasterSection['preparation']): CasterSection => ({
   firstLevel: 1,
   alwaysPrepared: [],
   alwaysSourcePt: '',
-});
-
-describe('toggledIn', () => {
-  it('copies the set with the key put in or taken out', () => {
-    const base = new Set(['a']);
-    expect([...toggledIn(base, 'b')]).toEqual(['a', 'b']);
-    expect([...toggledIn(base, 'a')]).toEqual([]);
-    expect([...base]).toEqual(['a']);
-  });
 });
 
 describe('SpellPicks', () => {

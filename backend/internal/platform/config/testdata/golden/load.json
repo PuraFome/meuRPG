@@ -280,7 +280,7 @@
       "CAMPAIGN_CREATORS": ",",
       "RATE_LIMIT_MULTIPLIER": "x"
     },
-    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be a number, got \"x\""
+    "error": "invalid configuration: RATE_LIMIT_MULTIPLIER must be a number, got \"x\"\nCAMPAIGN_CREATORS has no e-mail address; leave it empty to let anyone create"
   },
   "database cloud broken": {
     "env": {

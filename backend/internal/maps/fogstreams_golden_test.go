@@ -21,7 +21,7 @@ import (
 )
 
 // Characterization of who is told of each write to a token and of what each player sees
-// afterwards (MR-036, RN-10, D6): the live events every viewer of the table receives after
+// afterwards (MR-036, RN-10): the live events every viewer of the table receives after
 // each step of a script, on the cave with the fog on and on a map without fog, and the views
 // (GetMapVision) the script leaves each player with, memory included. Each answer is a golden
 // file (testdata/fog_*.golden.*); run with -update-fog-golden to write them again after a

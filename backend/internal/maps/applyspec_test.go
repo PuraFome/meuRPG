@@ -13,8 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 )
 
-// applySpecChange is frozen here before it is split by kind (MR-035, MR-036,
-// MR-041): UpdateMapPoint's trap, treasure and light data for the point after the
+// applySpecChange (MR-035, MR-036, MR-041): UpdateMapPoint's trap, treasure and light data for the point after the
 // change, what a point that changes kind leaves behind, and the order in which the
 // three kinds are checked (trap, then treasure, then light, all inside the
 // transaction that rolls back every write when one refuses).

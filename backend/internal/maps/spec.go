@@ -17,7 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// What the three new kinds of point carry (Etapa 9): a trap's spec (MR-035), a
+// What the trap, treasure and light kinds of point carry: a trap's spec (MR-035), a
 // treasure's value (MR-041) and a light's source (MR-036). The master writes
 // them as API messages; this file checks them against the rules content and
 // turns them into what the table keeps, and back.

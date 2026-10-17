@@ -16,13 +16,51 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 )
 
-// GetMap's phases (RN-10): the snapshot of the map, its points and its tokens is
+// GetMap (RN-10): the snapshot of the map, its points and its tokens is
 // read in one read-only transaction, and what a player may see of it is decided
 // from that snapshot, point by point and token by token.
 
+// GetMap implements mapsv1connect.MapServiceHandler.
+func (s *Service) GetMap(
+	ctx context.Context,
+	req *connect.Request[mapsv1.GetMapRequest],
+) (*connect.Response[mapsv1.GetMapResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	v, err := s.readerOf(ctx, m, req.Msg.GetAsCharacterId())
+	if err != nil {
+		return nil, err
+	}
+	snap, err := s.readMapSnapshot(ctx, m.CampaignID, mapID, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "get a map", err)
+	}
+	if !v.master {
+		v.parentKnows = s.parentKnows(ctx, snap.cm, v)
+	}
+	res := &mapsv1.GetMapResponse{Map: snap.cm.mapToProto(snap.row, v)}
+	pv, err := s.mapFogView(ctx, snap, v)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.fillMapPoints(ctx, m.CampaignID, mapID, res, snap, v, pv); err != nil {
+		return nil, err
+	}
+	if res.Tokens, err = s.mapTokensFor(ctx, m.CampaignID, mapID, snap, v, pv); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
+}
+
 // mapSnapshot is what GetMap reads in one transaction. The map's rows, its points
 // and its tokens are one snapshot: three autocommit reads could show a token moved
-// on a revision that does not count the move (audit D-03).
+// on a revision that does not count the move.
 type mapSnapshot struct {
 	cm      campaignMaps
 	row     mapsdb.ListMapDetailsRow
@@ -167,6 +205,63 @@ func fogTokenOf(pv *playerView, t mapsdb.MapToken, c *charactersv1.CharacterSumm
 // are read before the transaction; inside it the key is checked, the campaign's cap
 // counted and the map inserted.
 
+// CreateMap implements mapsv1connect.MapServiceHandler.
+func (s *Service) CreateMap(
+	ctx context.Context,
+	req *connect.Request[mapsv1.CreateMapRequest],
+) (*connect.Response[mapsv1.CreateMapResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	name, err := cleanName("name", req.Msg.GetName())
+	if err != nil {
+		return nil, err
+	}
+	imageID, ok := parseID(req.Msg.GetImageId())
+	if !ok {
+		return nil, errNotAGalleryImage()
+	}
+	fogOn, err := s.fogOnNewMaps(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	reuse, err := s.prepareReuseCopy(ctx, m.CampaignID, imageID)
+	if err != nil {
+		return nil, s.dbError(ctx, "copy the image of a fog map", err)
+	}
+	// The key is unique in the campaign, and kept with a hash of the whole request: a retry
+	// returns the first map only when it is the same request.
+	scopedKey, requestHash, err := keyOf(m.CampaignID, req.Msg.GetIdempotencyKey(), req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	var created mapsdb.Map
+	var used, replayed bool
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		created, replayed, used, err = s.createMapTx(ctx, tx, newMap{
+			campaignID: m.CampaignID, userID: m.UserID, name: name, imageID: imageID,
+			fogOn: fogOn, reuse: reuse, key: scopedKey, hash: requestHash,
+		})
+		return err
+	})
+	s.discardFogCopy(ctx, m.CampaignID, reuse, err != nil || !used)
+	if err != nil {
+		return nil, s.dbError(ctx, "create a map", err)
+	}
+	// A new map is hidden: only the master hears about it. A retry announces nothing: the
+	// first call did.
+	if !replayed {
+		s.publishMapChanged(m.CampaignID, created.ID, false)
+	}
+	out, err := s.masterMap(ctx, m, created.ID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.CreateMapResponse{Map: out}), nil
+}
+
 // fogOnNewMaps says whether the table's rules want the fog on new maps (RN-24; none
 // by default). A new map has no grid, so it cannot have fog yet: the map is marked,
 // and the fog comes on with its first grid (SetMapGrid).
@@ -239,6 +334,36 @@ func (s *Service) insertNewMap(ctx context.Context, q *mapsdb.Queries, c newMap)
 // DeleteMap's phases (MR-008): what the announcements need is read before the
 // transaction; inside it the map is checked, the combat and the treasures that
 // forbid the delete are refused and the map goes.
+
+// DeleteMap implements mapsv1connect.MapServiceHandler.
+func (s *Service) DeleteMap(
+	ctx context.Context,
+	req *connect.Request[mapsv1.DeleteMapRequest],
+) (*connect.Response[mapsv1.DeleteMapResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	pre, err := s.readDeleteContext(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	var deleted mapsdb.Map
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		deleted, err = s.deleteMapRow(ctx, tx, m.CampaignID, mapID)
+		return err
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "delete a map", err)
+	}
+	s.announceDeletedMap(ctx, m.CampaignID, mapID, pre, deleted)
+	return connect.NewResponse(&mapsv1.DeleteMapResponse{}), nil
+}
 
 // deleteContext is what DeleteMap reads before it deletes.
 type deleteContext struct {
@@ -318,16 +443,47 @@ func (s *Service) announceDeletedMap(ctx context.Context, campaignID, mapID stri
 	}
 }
 
+// SetMapRevealed implements mapsv1connect.MapServiceHandler.
+func (s *Service) SetMapRevealed(
+	ctx context.Context,
+	req *connect.Request[mapsv1.SetMapRevealedRequest],
+) (*connect.Response[mapsv1.SetMapRevealedResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+
+	var before, after mapsdb.Map
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		before, after, err = s.revealMapRow(ctx, tx, m, mapID, req.Msg.GetRevealed())
+		return err
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "reveal or hide a map", err)
+	}
+	s.announceRevealedMap(ctx, m.CampaignID, mapID, current, before, after)
+	out, err := s.masterMap(ctx, m, mapID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.SetMapRevealedResponse{Map: out}), nil
+}
+
 // revealMapRow is SetMapRevealed's transaction: it locks the map, and returns the
 // row as it was and as it is.
 func (s *Service) revealMapRow(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID string, revealed bool) (before, after mapsdb.Map, err error) {
 	q := s.queries.WithTx(tx)
-	before, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return before, after, errMapNotFound()
-	}
-	if err != nil {
-		return before, after, fmt.Errorf("find map: %w", err)
+	if before, err = lockMap(ctx, q, m.CampaignID, mapID); err != nil {
+		return before, after, err
 	}
 	after, err = q.SetMapRevealed(ctx, mapsdb.SetMapRevealedParams{CampaignID: m.CampaignID, ID: mapID, Revealed: revealed, Now: s.now()})
 	if err != nil {

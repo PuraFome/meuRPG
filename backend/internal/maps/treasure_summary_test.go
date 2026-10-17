@@ -30,7 +30,7 @@ func (s *scenes) markFound(p *mapsv1.MapPoint, ids ...string) {
 	}
 }
 
-// MR-032, MR-041, D8: "Mais tesouro encontrado" is the PO each character found in
+// MR-032, MR-041: "Mais tesouro encontrado" is the PO each character found in
 // that session, as the treasures stand now. A treasure found by two splits its
 // value (rounded down); one found outside a session, one unmarked (through
 // UnmarkTreasureFound) and one found in another session count for nothing; one

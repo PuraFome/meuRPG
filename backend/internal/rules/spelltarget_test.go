@@ -264,7 +264,7 @@ func TestSpellTargetLabels(t *testing.T) {
 }
 
 // TestTableSpellTargetsAreTheMasters: a table spell keeps the target the master wrote,
-// and the range Pessoal and Toque are accepted (E10-01 state 4b).
+// and the range Pessoal and Toque are accepted.
 func TestTableSpellTargetsAreTheMasters(t *testing.T) {
 	t.Parallel()
 	base := loadForTest(t)

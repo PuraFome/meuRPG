@@ -15,21 +15,23 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// What the play module reads and writes of a character's creatures (MR-037,
-// Etapa 9), through play.CombatRoster: recording a casting, checking what a
+// What the play module reads and writes of a character's creatures (MR-037),
+// through play.CombatRoster: recording a casting, checking what a
 // spell may summon, joining a combat, concentration ending, the combat writing
 // hit points back, and the numbers a creature's turn is worked out from. The
 // methods that write take the caller's transaction and no caller: they run
 // after play's own authorization check. The rules do every number; this file
 // reads and copies them.
 
-// creatureRows turns the rows of a list into creature views.
+// creatureViews turns the rows of a list into creature views.
 func creatureViews[T any](rows []T, pick func(T) (charactersdb.CharacterCreature, *string)) []creatureView {
 	out := make([]creatureView, 0, len(rows))
 	for _, r := range rows {
@@ -210,7 +212,7 @@ func setSummonedOwner(ctx context.Context, q *charactersdb.Queries, campaignID s
 		return wrap("read the owner", err)
 	}
 	for i := range created {
-		created[i].OwnerUserID = deref(owner.PlayerUserID)
+		created[i].OwnerUserID = conv.OrZero(owner.PlayerUserID)
 	}
 	return nil
 }
@@ -380,7 +382,7 @@ func (s *Service) WriteBackCreatures(ctx context.Context, tx pgx.Tx, campaignID 
 	}
 	q := s.queries.WithTx(tx)
 	for _, st := range states {
-		id, ok := parseUUID(st.ID)
+		id, ok := uid.Canonical(st.ID)
 		if !ok {
 			continue
 		}
@@ -408,7 +410,7 @@ func (s *Service) WriteBackCreatures(ctx context.Context, tx pgx.Tx, campaignID 
 // summonCharacter reads the living player's character that casts and its
 // build; `not_found` for any other.
 func (s *Service) summonCharacter(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (rules.Build, error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return rules.Build{}, errCharacterNotFound()
 	}
@@ -629,7 +631,7 @@ func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, mons
 // master, who changes the amount that lands.
 func (s *Service) DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, characterID, monsterKey string) (combat.TypeModifiers, error) {
 	if monsterKey == "" {
-		id, ok := parseUUID(characterID)
+		id, ok := uid.Canonical(characterID)
 		if !ok {
 			return combat.TypeModifiers{}, nil
 		}

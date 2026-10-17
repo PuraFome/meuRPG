@@ -3,7 +3,7 @@
 // them (campaign_table_rules), characters reads them through its ContentSource
 // (the hit points of a level-up, the ability scores of a new sheet), maps reads
 // FogOnNewMaps when it creates a map, and the combat reads the critical and the
-// death saves (slice 10.4b). It is a plain value with no behavior, so the
+// death saves. It is a plain value with no behavior, so the
 // modules share a type without importing each other.
 //
 // The zero value is the SRD's defaults, which are what the app did before the

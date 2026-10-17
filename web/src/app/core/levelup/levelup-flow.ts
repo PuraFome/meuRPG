@@ -4,13 +4,9 @@ import {
   type LevelUpFeatureChoice,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import {
-  Ability as GenAbility,
-  type Skill,
-  type Spell,
-} from '../../../gen/meurpg/rules/v1/rules_pb';
+import { type Skill, type Spell } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { abilityKeyOf } from '../characters/ability-gen';
 import { abilityLabel, spellLevelLabel } from '../characters/character-labels';
-import type { AbilityKey } from '../characters/characters.types';
 import { isTableKey } from '../content/catalog';
 import { joinDots } from '../format/text';
 
@@ -228,17 +224,8 @@ export function preparedOptions(
     );
 }
 
-export const ABILITY_FROM_GEN: Record<number, AbilityKey> = {
-  [GenAbility.STRENGTH]: 'str',
-  [GenAbility.DEXTERITY]: 'dex',
-  [GenAbility.CONSTITUTION]: 'con',
-  [GenAbility.INTELLIGENCE]: 'int',
-  [GenAbility.WISDOM]: 'wis',
-  [GenAbility.CHARISMA]: 'cha',
-};
-
 function skillItem(skill: Skill): PickItem {
-  const key = ABILITY_FROM_GEN[skill.ability];
+  const key = abilityKeyOf(skill.ability);
   return { key: skill.key, name: skill.namePt, sub: key ? abilityLabel(key) : '' };
 }
 

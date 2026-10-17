@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The painted layers and the fog's settings (MR-034, MR-036; Etapa 9, D2, D6).
+// The painted layers and the fog's settings (MR-034, MR-036).
 // The table is newScenes': a revealed map whose image is 40 x 30, so 20 columns
 // make a grid of 20 x 15 squares.
 
@@ -133,7 +133,7 @@ func decode(t *testing.T, res *mapsv1.GetMapLayersResponse) decoded {
 	return d
 }
 
-// MR-034, D2: the master paints the four layers in batches, the last write wins,
+// MR-034: the master paints the four layers in batches, the last write wins,
 // the bytes are package rules/grid's, and painting what is already there changes
 // nothing.
 func TestMR034_PaintingTheLayers(t *testing.T) {
@@ -267,7 +267,7 @@ func TestMR034_PaintingRefusals(t *testing.T) {
 	wantCode(t, "paint on a map that is not there", err, connect.CodeNotFound)
 }
 
-// D2: other columns and a new image clear all four layers (and bump their
+// Other columns and a new image clear all four layers (and bump their
 // revision); the same columns, the same image and a rename keep them. Turning the
 // grid off turns the fog off.
 func TestMR034_AGridOrImageChangeClearsTheLayers(t *testing.T) {
@@ -335,7 +335,7 @@ func TestMR034_AGridOrImageChangeClearsTheLayers(t *testing.T) {
 	}
 }
 
-// D2: both changes are refused while a combat runs on the map, with the typed
+// Both changes are refused while a combat runs on the map, with the typed
 // reason, and the layers stay; the same values and a rename are fine, and once the
 // combat ends the change goes through.
 func TestMR034_NoGridOrImageChangeDuringACombat(t *testing.T) {
@@ -391,7 +391,7 @@ func TestMR034_NoGridOrImageChangeDuringACombat(t *testing.T) {
 	}
 }
 
-// D6: the fog's settings: off by default; the fog needs a grid; the master
+// The fog's settings: off by default; the fog needs a grid; the master
 // changes each one alone; turning it off keeps the layers; a player learns that
 // the map has fog and what "Visão do grupo" says, but not the base light.
 func TestMR036_FogSettings(t *testing.T) {
@@ -454,7 +454,7 @@ func TestMR036_FogSettings(t *testing.T) {
 	wantCode(t, "a player sets the fog", err, connect.CodePermissionDenied)
 }
 
-// D2, D6: what a player reads of the layers. The master reads all four. A player
+// What a player reads of the layers. The master reads all four. A player
 // of a map they see, with no fog, reads the walls, the terrain and the cover, never
 // the light; with the fog on, nothing (their reads come with the fog's slice). A
 // hidden map is not found.
@@ -506,7 +506,7 @@ func TestMR034_PlayersReadOnlyWhatTheyMay(t *testing.T) {
 	wantCode(t, "a player reads the layers of a hidden map", err, connect.CodeNotFound)
 }
 
-// D2: painting tells the watchers with `map_changed`: the master always, the
+// Painting tells the watchers with `map_changed`: the master always, the
 // players only for a layer they read, on a map with no fog. (The once-a-second
 // limit is TestHintGateMergesTheHintsOfAnInterval.)
 func TestMR034_LayerChangesReachTheRightStreams(t *testing.T) {

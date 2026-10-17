@@ -59,7 +59,7 @@
 // member's membership through campaigns when the master approves or rejects
 // their character (characters.PendingMembers, RN-15), and campaigns approves
 // a pending member's character through characters when an invite without
-// approval promotes them (campaigns.Characters, Q25). No package imports
+// approval promotes them (campaigns.Characters). No package imports
 // another's internals.
 package main
 
@@ -338,7 +338,7 @@ func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, poo
 		// from X-Forwarded-For; anywhere else, from the connection.
 		TrustedProxyHops: cfg.TrustedProxyHops,
 		// What a user may ask to finish right after signing in
-		// (POST /auth/login): today, accepting a campaign invite.
+		// (POST /auth/login): accepting a campaign invite.
 		Intents: map[string]identity.IntentHandler{
 			campaigns.InviteIntentKind: m.campaigns.InviteIntent(),
 			// A claim link only brings the person back to its card; signing in never claims.

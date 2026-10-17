@@ -11,6 +11,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -169,7 +170,7 @@ func (s *Service) OutsideSpell(ctx context.Context, tx pgx.Tx, campaignID, chara
 // armor), and whether it wears armor. The sheet's own armor class stays what it is:
 // the spell lasts hours and belongs to the game session.
 func (s *Service) MageArmorAC(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.MageArmor, error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return link.MageArmor{}, errCharacterNotFound()
 	}

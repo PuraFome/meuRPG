@@ -1,4 +1,4 @@
-import { toggledCapped, toggledExpertise, toggledSkill } from './skill-picks';
+import { toggledExpertise, toggledSkill } from './skill-picks';
 
 const granted = new Map([['skill:arcana', 'da raça']]);
 
@@ -37,13 +37,5 @@ describe('toggledExpertise', () => {
       'skill:arcana',
     ]);
     expect(toggledExpertise(new Set(['a']), granted, new Set(['a']), 'a')!.size).toBe(0);
-  });
-});
-
-describe('toggledCapped', () => {
-  it('adds up to the cap, takes out at any time and ignores a click past the cap', () => {
-    expect([...toggledCapped(new Set(['a']), 'b', 2)]).toEqual(['a', 'b']);
-    expect([...toggledCapped(new Set(['a', 'b']), 'c', 2)]).toEqual(['a', 'b']);
-    expect([...toggledCapped(new Set(['a', 'b']), 'a', 2)]).toEqual(['b']);
   });
 });

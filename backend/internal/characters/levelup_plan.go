@@ -131,13 +131,13 @@ type levelUpPlan struct {
 	toLevel int
 }
 
-// planLevelUpIn builds the new sheet from the stored one and the choices, and
+// planLevelUp builds the new sheet from the stored one and the choices, and
 // checks it with the rules. The error is a Connect error for what the client
 // got wrong (`invalid_argument`, the dice setting); a rule of the level that
 // the choices break is plan.refusal. A choice that is not ready (a preview
 // without a hit points method, an in-app roll that was never made) takes the
 // average, and the plan still carries the sheet as far as the choices go.
-func (s *Service) planLevelUpIn(ctx context.Context, tx pgx.Tx, q *charactersdb.Queries, m authz.Membership, t levelUpTarget, choices *charactersv1.LevelUpChoices) (levelUpPlan, error) {
+func (s *Service) planLevelUp(ctx context.Context, tx pgx.Tx, q *charactersdb.Queries, m authz.Membership, t levelUpTarget, choices *charactersv1.LevelUpChoices) (levelUpPlan, error) {
 	if err := checkLevelUpChoices(choices); err != nil {
 		return levelUpPlan{}, invalidArgument(err)
 	}

@@ -18,7 +18,8 @@ import {
   wizardOptions,
 } from '../../core/levelup/levelup-testing';
 import type { LevelUpClient } from '../../core/levelup/levelup-client';
-import { LevelUpSession, newSpellsTitle } from './level-up-session';
+import { LevelUpSession } from './level-up-session';
+import { newSpellsTitle } from './level-up-gives';
 
 describe('LevelUpSession', () => {
   const client = { rollHitPoints: vi.fn(), preview: vi.fn() };

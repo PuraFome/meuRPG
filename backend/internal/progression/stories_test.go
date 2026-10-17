@@ -268,7 +268,7 @@ func TestMR016_ManualAwardIsInTheHistory(t *testing.T) {
 		t.Errorf("XP = %d each, sheets %d and %d; want 20, 30 and 20", first.GetXpEach(), tb.master.xpOf(t, tb.pcs[0]), tb.master.xpOf(t, tb.pcs[1]))
 	}
 
-	// A player reads it too (question 50).
+	// A player reads it too.
 	got := tb.players[1].history(t, tb.campaign)
 	if len(got) != 2 || got[0].GetId() != second.GetAward().GetId() || got[1].GetId() != first.GetAward().GetId() {
 		t.Fatalf("history = %v; want the two awards, newest first", got)
@@ -311,8 +311,7 @@ func TestGoldAwardGivesOneXPPerGoldPiece(t *testing.T) {
 	}
 }
 
-// TestRemainderIsLostAndReported: 100 XP among three is 33 each and 1 is lost
-// (question 46).
+// TestRemainderIsLostAndReported: 100 XP among three is 33 each and 1 is lost.
 func TestRemainderIsLostAndReported(t *testing.T) {
 	t.Parallel()
 	tb := newTable(t, enemies, 3)
@@ -740,7 +739,7 @@ func TestXPCanLevelUpInAnXPCampaign(t *testing.T) {
 	tb := newTable(t, enemies, 2)
 	tb.master.manual(t, tb.campaign, 299, tb.pcs[0].GetId())
 	tb.master.manual(t, tb.campaign, 600, tb.pcs[1].GetId())
-	exp := tb.players[1].experience(t, tb.campaign) // a player reads everyone's (question 50)
+	exp := tb.players[1].experience(t, tb.campaign) // a player reads everyone's
 	pens, toren := exp.GetCharacters()[0], exp.GetCharacters()[1]
 	if pens.GetCanLevelUp() || pens.GetNextLevelXp() != 300 || pens.GetExperiencePoints() != 299 || pens.GetLevel() != 1 {
 		t.Errorf("Pensantus = %v; want 299 of 300 at level 1, no level up", pens)

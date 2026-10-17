@@ -11,14 +11,58 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// UpdateMap's phases (MR-008, AIP-154, RN-10, MR-025): the request is checked
-// before anything is read, the fog's image copy is made before the transaction,
-// and the transaction locks the map, compares the revision, picks the image and
-// writes. The checks run in this order: something to change, the revision, the
-// name, the image's id; inside the transaction: the map, the revision, the image.
+// UpdateMap refuses in this order: something to change, the revision, the name, the
+// image's id; and, inside the transaction, the map, the revision and the image.
+
+// UpdateMap implements mapsv1connect.MapServiceHandler.
+func (s *Service) UpdateMap(
+	ctx context.Context,
+	req *connect.Request[mapsv1.UpdateMapRequest],
+) (*connect.Response[mapsv1.UpdateMapResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	update, err := checkMapUpdate(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	var imageCopy *fogCopy
+	var fogSeen bool
+	if update.imageID != nil {
+		if imageCopy, fogSeen, err = s.imageCopyFor(ctx, m.CampaignID, mapID, *update.imageID); err != nil {
+			return nil, s.dbError(ctx, "copy the map's image", err)
+		}
+	}
+	var w mapUpdateWrite
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		w, err = s.writeMapUpdate(ctx, tx, mapUpdateTx{mapUpdate: update, campaignID: m.CampaignID, userID: m.UserID, mapID: mapID, imageCopy: imageCopy, fogSeen: fogSeen})
+		return err
+	})
+	s.discardFogCopy(ctx, m.CampaignID, imageCopy, err != nil || !w.copied)
+	if err != nil {
+		return nil, s.dbError(ctx, "update a map", err)
+	}
+	s.announceMapUpdate(ctx, m, mapID, current, w)
+	out, err := s.masterMap(ctx, m, mapID)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.UpdateMapResponse{Map: out}), nil
+}
 
 // mapUpdate is what an UpdateMap request asks for, checked. A nil field stays as
 // it is.
@@ -54,43 +98,12 @@ func checkMapUpdate(msg *mapsv1.UpdateMapRequest) (mapUpdate, error) {
 	return u, nil
 }
 
-// updateImageCopy makes the copy of the new image the map takes, when it needs
-// one. A map with the fog on never has an image a player can fetch (RN-10): a new
-// image that is also used another way is copied, and the map gets the copy. A map
-// without fog never takes a fog map's own image either. It is nil when the image
-// stays, the map is not found, or nothing else uses the new image.
-func (s *Service) updateImageCopy(ctx context.Context, campaignID, mapID string, imageID *string) (*fogCopy, error) {
-	if imageID == nil {
-		return nil, nil
-	}
-	old, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
-	if err == nil && *imageID != old.ImageID {
-		return s.prepareNewImageCopy(ctx, campaignID, mapID, *imageID, old.FogEnabled)
-	}
-	return nil, nil // a map that cannot be read here is refused inside the transaction
-}
-
-// prepareNewImageCopy copies the new image for a fog map, or for a map without
-// fog when a fog map has it.
-func (s *Service) prepareNewImageCopy(ctx context.Context, campaignID, mapID, imageID string, fog bool) (*fogCopy, error) {
-	var imageCopy *fogCopy
-	var err error
-	if fog {
-		imageCopy, err = s.prepareFogCopy(ctx, campaignID, mapID, imageID)
-	} else {
-		imageCopy, err = s.prepareReuseCopy(ctx, campaignID, imageID)
-	}
-	if err != nil {
-		return nil, s.dbError(ctx, "copy the map's image", err)
-	}
-	return imageCopy, nil
-}
-
 // mapUpdateTx is one UpdateMap call as its transaction sees it.
 type mapUpdateTx struct {
 	mapUpdate
 	campaignID, userID, mapID string
 	imageCopy                 *fogCopy
+	fogSeen                   bool // the fog the copy was prepared for (imageCopyFor)
 }
 
 // mapUpdateWrite is what the transaction did.
@@ -104,7 +117,7 @@ type mapUpdateWrite struct {
 // decided from the row locked here, so a combat that starts meanwhile is seen.
 func (s *Service) writeMapUpdate(ctx context.Context, tx pgx.Tx, c mapUpdateTx) (mapUpdateWrite, error) {
 	q := s.queries.WithTx(tx)
-	row, err := lockMapToUpdate(ctx, q, c.campaignID, c.mapID)
+	row, err := lockMap(ctx, q, c.campaignID, c.mapID)
 	if err != nil {
 		return mapUpdateWrite{}, err
 	}
@@ -117,7 +130,7 @@ func (s *Service) writeMapUpdate(ctx context.Context, tx pgx.Tx, c mapUpdateTx) 
 	}
 	var w mapUpdateWrite
 	if c.imageID != nil {
-		if w.copied, err = s.pickMapImage(ctx, q, c, row, &params); err != nil {
+		if params.ImageID, w.copied, err = s.pickMapImage(ctx, q, c, row); err != nil {
 			return mapUpdateWrite{}, err
 		}
 	}
@@ -141,41 +154,30 @@ func (s *Service) writeMapUpdate(ctx context.Context, tx pgx.Tx, c mapUpdateTx) 
 	return w, nil
 }
 
-// lockMapToUpdate locks the map's row.
-func lockMapToUpdate(ctx context.Context, q *mapsdb.Queries, campaignID, mapID string) (mapsdb.Map, error) {
-	row, err := q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: campaignID, ID: mapID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return row, errMapNotFound()
-	}
-	if err != nil {
-		return row, fmt.Errorf("find map: %w", err)
-	}
-	return row, nil
-}
-
-// pickMapImage checks that the new image is in the campaign's gallery and fits
-// the map's grid, and puts it (or the copy made for it) into the update. It tells
-// whether the copy was used.
-func (s *Service) pickMapImage(ctx context.Context, q *mapsdb.Queries, c mapUpdateTx, row mapsdb.Map, params *mapsdb.UpdateMapParams) (bool, error) {
+// pickMapImage checks that the new image is in the campaign's gallery and fits the map's
+// grid, and returns the image the map takes: the new one, or the copy made for it, which
+// is then added to the gallery.
+func (s *Service) pickMapImage(ctx context.Context, q *mapsdb.Queries, c mapUpdateTx, row mapsdb.Map) (imageID string, copied bool, err error) {
 	img, err := q.GetGalleryImageInCampaign(ctx, mapsdb.GetGalleryImageInCampaignParams{CampaignID: c.campaignID, ID: *c.imageID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, errNotAGalleryImage()
+		return "", false, errNotAGalleryImage()
 	}
 	if err != nil {
-		return false, fmt.Errorf("find image: %w", err)
+		return "", false, fmt.Errorf("find image: %w", err)
 	}
 	if err := checkImageFitsGrid(row, *c.imageID, img); err != nil {
-		return false, err
+		return "", false, err
 	}
-	params.ImageID = *c.imageID
+	if *c.imageID != row.ImageID && c.fogSeen != row.FogEnabled {
+		return "", false, errStaleMap() // the fog changed after the copy was prepared, and the revision did not
+	}
 	if c.imageCopy == nil || *c.imageID != c.imageCopy.source.ID {
-		return false, nil
+		return *c.imageID, false, nil
 	}
 	if err := c.imageCopy.insert(ctx, q, s, c.campaignID, c.userID); err != nil {
-		return false, err
+		return "", false, err
 	}
-	params.ImageID = c.imageCopy.id
-	return true, nil
+	return c.imageCopy.id, true, nil
 }
 
 // checkImageFitsGrid refuses an image that would make a calibrated map's grid
@@ -191,14 +193,6 @@ func checkImageFitsGrid(row mapsdb.Map, imageID string, img mapsdb.GalleryImage)
 			"this image would make the map's grid pass the limit of %d x %d squares: lower the calibration first", grid.MaxColumns, grid.MaxRows))
 	}
 	return nil
-}
-
-// discardUpdateCopy deletes the files of an image copy made for nothing: the
-// transaction failed, or the map did not take it.
-func (s *Service) discardUpdateCopy(ctx context.Context, campaignID string, imageCopy *fogCopy, unused bool) {
-	if imageCopy != nil && unused {
-		s.deleteFiles(ctx, campaignID, imageCopy.id)
-	}
 }
 
 // announceMapUpdate tells the watchers of an updated map, and forgets what

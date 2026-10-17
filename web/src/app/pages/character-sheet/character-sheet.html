@@ -55,36 +55,36 @@
         <button
           matButton="outlined"
           type="button"
-          [disabled]="storyToggleState().status === 'saving'"
-          (click)="toggleStoryEditingAllowed(vm.campaignId, vm.id, vm.storyEditingAllowed)"
+          [disabled]="writes.storyToggleState().status === 'saving'"
+          (click)="writes.toggleStoryEditingAllowed(vm.campaignId, vm.id, vm.storyEditingAllowed)"
         >
           {{ vm.storyEditingAllowed ? 'Travar a história' : 'Permitir editar a história' }}
         </button>
       }
       @if (vm.canRevive) {
-        @if (reviveRefused(); as living) {
+        @if (writes.reviveRefused(); as living) {
           <app-revive-blocked
             [deadName]="vm.name"
             [playerName]="playerName(vm)"
             [livingName]="living.name"
             [livingLink]="['/campaigns', vm.campaignId, 'characters', living.characterId]"
-            (cancelled)="cancelRevive()"
+            (cancelled)="writes.cancelRevive()"
           />
-        } @else if (confirmingRevive()) {
+        } @else if (writes.confirmingRevive()) {
           <app-revive-confirm
             [characterName]="vm.name"
-            [busy]="reviveState().status === 'saving'"
-            (confirmed)="revive(vm.campaignId, vm.id, vm.name)"
-            (cancelled)="cancelRevive()"
+            [busy]="writes.reviveState().status === 'saving'"
+            (confirmed)="writes.revive(vm.campaignId, vm.id, vm.name)"
+            (cancelled)="writes.cancelRevive()"
           />
         } @else {
-          <button matButton="outlined" type="button" class="js-revive" (click)="askToRevive()">
+          <button matButton="outlined" type="button" class="js-revive" (click)="writes.askToRevive()">
             Reviver
           </button>
         }
       }
       @if (vm.canMarkDead) {
-        @if (confirmingDeath()) {
+        @if (writes.confirmingDeath()) {
           <div class="confirm" role="group" aria-labelledby="confirm-death-text">
             <p id="confirm-death-text" class="confirm__text">
               A morte não se desfaz. Marcar {{ vm.name }} como morto?
@@ -93,15 +93,15 @@
               matButton="filled"
               type="button"
               class="danger js-confirm-death"
-              [disabled]="markDeadState().status === 'saving'"
-              (click)="markDead(vm.campaignId, vm.id)"
+              [disabled]="writes.markDeadState().status === 'saving'"
+              (click)="writes.markDead(vm.campaignId, vm.id)"
             >
               Confirmar morte
             </button>
-            <button matButton type="button" (click)="cancelDeath()">Cancelar</button>
+            <button matButton type="button" (click)="writes.cancelDeath()">Cancelar</button>
           </div>
         } @else {
-          <button matButton type="button" class="end js-mark-dead" (click)="askToConfirmDeath()">
+          <button matButton type="button" class="end js-mark-dead" (click)="writes.askToConfirmDeath()">
             Marcar como morto
           </button>
         }
@@ -113,7 +113,7 @@
     <!-- PM-05: a class or race choice the sheet never made. The server counts them. -->
     <app-pending-choices-banner [campaignId]="vm.campaignId" [characterId]="vm.id" [count]="pendingChoices()" />
 
-    @if (markDeadState(); as md) {
+    @if (writes.markDeadState(); as md) {
       @if (md.status === 'error') {
         <div class="mr-notice mr-notice--danger" role="alert">
           <mat-icon aria-hidden="true">error</mat-icon>
@@ -121,7 +121,7 @@
         </div>
       }
     }
-    @if (reviveState(); as rs) {
+    @if (writes.reviveState(); as rs) {
       @if (rs.status === 'error') {
         <div class="mr-notice mr-notice--danger" role="alert">
           <mat-icon aria-hidden="true">error</mat-icon>
@@ -129,11 +129,11 @@
         </div>
       }
     }
-    <div class="mr-visually-hidden" role="status">{{ reviveAnnouncement() }}</div>
+    <div class="mr-visually-hidden" role="status">{{ writes.reviveAnnouncement() }}</div>
     @if (ownerHasLiving() === false && vm.state === 'dead' && !vm.isMaster) {
       <app-after-death [characterName]="vm.name" [campaignId]="vm.campaignId" />
     }
-    @if (storyToggleState(); as ts) {
+    @if (writes.storyToggleState(); as ts) {
       @if (ts.status === 'error') {
         <div class="mr-notice mr-notice--danger" role="alert">
           <mat-icon aria-hidden="true">error</mat-icon>
@@ -146,15 +146,15 @@
     @if (vm.state === 'pending') {
       @if (vm.canApprove) {
         <!-- The announcements of the master's actions: in the page before they have anything to say. -->
-        <div class="mr-visually-hidden" role="status">{{ announcement() }}</div>
-        @if (requestingChanges()) {
+        <div class="mr-visually-hidden" role="status">{{ writes.announcement() }}</div>
+        @if (writes.requestingChanges()) {
           <app-request-changes
             [characterName]="vm.name"
             [playerName]="playerName(vm)"
-            [busy]="requestChangesState().status === 'saving'"
-            [error]="errorOf(requestChangesState())"
-            (requested)="requestChanges(vm.campaignId, vm.id, $event)"
-            (cancelled)="cancelRequestChanges()"
+            [busy]="writes.requestChangesState().status === 'saving'"
+            [error]="errorOf(writes.requestChangesState())"
+            (requested)="writes.requestChanges(vm.campaignId, vm.id, $event)"
+            (cancelled)="writes.cancelRequestChanges()"
           />
         } @else {
           <section class="mr-notice mr-notice--warning" aria-label="Aprovação do personagem">
@@ -189,8 +189,8 @@
                 <button
                   matButton="filled"
                   type="button"
-                  [disabled]="approvalState().status === 'saving'"
-                  (click)="approve(vm.campaignId, vm.id)"
+                  [disabled]="writes.approvalState().status === 'saving'"
+                  (click)="writes.approve(vm.campaignId, vm.id)"
                 >
                   Aprovar personagem
                 </button>
@@ -199,8 +199,8 @@
                     matButton="outlined"
                     type="button"
                     class="js-ask-changes"
-                    [disabled]="approvalState().status === 'saving'"
-                    (click)="askForChanges()"
+                    [disabled]="writes.approvalState().status === 'saving'"
+                    (click)="writes.askForChanges()"
                   >
                     {{ vm.review && vm.review.status !== 'awaiting' ? 'Pedir ajustes de novo' : 'Pedir ajustes' }}
                   </button>
@@ -209,26 +209,26 @@
                   matButton="outlined"
                   type="button"
                   class="js-reject"
-                  [disabled]="approvalState().status === 'saving'"
-                  (click)="askToConfirmReject()"
+                  [disabled]="writes.approvalState().status === 'saving'"
+                  (click)="writes.askToConfirmReject()"
                 >
                   Recusar personagem
                 </button>
               </div>
-              @if (approvalState(); as a) {
+              @if (writes.approvalState(); as a) {
                 @if (a.status === 'error') {
                   <p class="approval__error" role="alert">{{ a.message }}</p>
                 }
               }
             </div>
           </section>
-          @if (confirmingReject()) {
+          @if (writes.confirmingReject()) {
             <app-reject-confirm
               [characterName]="vm.name"
               [playerName]="playerName(vm)"
-              [busy]="approvalState().status === 'saving'"
-              (confirmed)="reject(vm.campaignId, vm.id)"
-              (cancelled)="cancelReject()"
+              [busy]="writes.approvalState().status === 'saving'"
+              (confirmed)="writes.reject(vm.campaignId, vm.id)"
+              (cancelled)="writes.cancelReject()"
             />
           }
         }
@@ -236,12 +236,12 @@
         <app-owner-changes
           [reason]="vm.review?.reason ?? ''"
           [when]="whenOf(vm.review?.requestedAt)"
-          [busy]="resubmitState().status === 'saving'"
-          [error]="errorOf(resubmitState())"
+          [busy]="writes.resubmitState().status === 'saving'"
+          [error]="errorOf(writes.resubmitState())"
           [editLink]="vm.canEdit ? ['/campaigns', vm.campaignId, 'characters', vm.id, 'edit'] : null"
-          (resubmit)="resubmit(vm.campaignId, vm.id)"
+          (resubmit)="writes.resubmit(vm.campaignId, vm.id)"
         />
-      } @else if (resubmitted()) {
+      } @else if (writes.resubmitted()) {
         <div class="mr-notice mr-notice--success" role="status">
           <mat-icon aria-hidden="true">check_circle</mat-icon>
           <p>

@@ -18,6 +18,7 @@ import type {
 } from '../../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
 import { showOfDice, type RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import { luckyShow } from './cast-sheet-view';
 
 /** What `CastQuestions` reads from the sheet it asks for. */
@@ -85,37 +86,38 @@ export class CastQuestions {
     if (!offer || this.host.busy()) {
       return;
     }
-    this.host.busy.set(true);
-    this.host.error.set('');
-    try {
-      const res = await this.host
-        .resources()
-        .answerOutsideLucky(
-          this.host.campaignId,
-          offer.holdId,
-          reroll,
-          die,
-          this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
-        );
-      const settled = res.result.case === 'spellCast' ? res.result.value : null;
-      if (!settled?.encounter || (!settled.cast && !settled.inspirationOffer)) {
-        throw new Error('AnswerOutsideLucky answered without its cast');
-      }
-      this.luckyKey.renew();
-      this.luckyOffer.set(null);
-      this.host.typing.set(false);
-      if (settled.inspirationOffer) {
-        this.host.state.apply(settled.encounter);
-        this.offer.set(settled.inspirationOffer);
-        this.animateLucky(settled.inspirationOffer.d20, die);
-        return;
-      }
-      this.host.showCast(settled.encounter, settled.cast!);
-    } catch (err) {
-      this.host.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-    } finally {
-      this.host.busy.set(false);
-    }
+    await runBusy(
+      this.host.busy,
+      this.host.error,
+      async () => {
+        const res = await this.host
+          .resources()
+          .answerOutsideLucky(
+            this.host.campaignId,
+            offer.holdId,
+            reroll,
+            die,
+            this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
+          );
+        const settled = res.result.case === 'spellCast' ? res.result.value : null;
+        if (!settled?.encounter || (!settled.cast && !settled.inspirationOffer)) {
+          throw new Error('AnswerOutsideLucky answered without its cast');
+        }
+        this.luckyKey.renew();
+        this.luckyOffer.set(null);
+        this.host.typing.set(false);
+        if (settled.inspirationOffer) {
+          this.host.state.apply(settled.encounter);
+          this.offer.set(settled.inspirationOffer);
+          this.animateLucky(settled.inspirationOffer.d20, die);
+          return;
+        }
+        this.host.showCast(settled.encounter, settled.cast!);
+      },
+      (err) => {
+        this.host.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
+      },
+    );
   }
 
   private animateLucky(roll: DiceRoll | undefined, die: LuckyRoll | null): void {
@@ -131,31 +133,34 @@ export class CastQuestions {
     if (!offer || this.host.busy()) {
       return;
     }
-    this.host.busy.set(true);
-    this.host.error.set('');
-    try {
-      const res = await this.host
-        .resources()
-        .answerOutsideInspiration(
-          this.host.campaignId,
-          offer.holdId,
-          use,
-          die,
-          this.answerKey.keyFor({ hold: offer.holdId, use, die }),
+    await runBusy(
+      this.host.busy,
+      this.host.error,
+      async () => {
+        const res = await this.host
+          .resources()
+          .answerOutsideInspiration(
+            this.host.campaignId,
+            offer.holdId,
+            use,
+            die,
+            this.answerKey.keyFor({ hold: offer.holdId, use, die }),
+          );
+        if (
+          res.result.case !== 'spellCast' ||
+          !res.result.value.encounter ||
+          !res.result.value.cast
+        ) {
+          throw new Error('AnswerOutsideInspiration answered without its cast');
+        }
+        this.offer.set(null);
+        this.host.showCast(res.result.value.encounter, res.result.value.cast);
+      },
+      (err) => {
+        this.host.error.set(
+          classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'),
         );
-      if (
-        res.result.case !== 'spellCast' ||
-        !res.result.value.encounter ||
-        !res.result.value.cast
-      ) {
-        throw new Error('AnswerOutsideInspiration answered without its cast');
-      }
-      this.offer.set(null);
-      this.host.showCast(res.result.value.encounter, res.result.value.cast);
-    } catch (err) {
-      this.host.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
-    } finally {
-      this.host.busy.set(false);
-    }
+      },
+    );
   }
 }

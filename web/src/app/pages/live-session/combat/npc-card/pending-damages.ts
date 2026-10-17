@@ -32,6 +32,7 @@ import { article } from '../../../../core/combat/combat-log';
 import { DamageBreakdown } from '../damage-parts/damage-breakdown';
 import { pendingCard } from './pending-damage-card';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 
 /**
  * The damage the master owes a hit (E6-11, E6-12, RN-02): "Rolar dano" for
@@ -136,15 +137,9 @@ export class PendingDamages {
     if (this.busy()) {
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      await work();
-    } catch (err) {
-      this.error.set(combatErrorMessage(err, 'resolver o dano'));
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(this.busy, this.error, work, (err) =>
+      this.error.set(combatErrorMessage(err, 'resolver o dano')),
+    );
   }
 
   protected rollInApp(p: PendingDamage): Promise<void> {

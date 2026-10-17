@@ -9,8 +9,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 )
 
-// DisarmTrap and GetTrapNoticers (the master's calls on a trap in play), frozen before they
-// were split into phases: the order of their refusals, who is told of a disarm, what is
+// DisarmTrap and GetTrapNoticers (the master's calls on a trap in play): the order of their refusals, who is told of a disarm, what is
 // written, and the answer of "Quem notaria" for characters in range, out of range and off the map.
 
 // trapPlayTable is newScenes with a grid, a second map the players do not see, and the

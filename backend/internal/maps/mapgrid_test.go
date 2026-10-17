@@ -14,10 +14,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// SetMapGrid is frozen here before its phases are split (MR-013, MR-025, RN-24):
+// SetMapGrid (MR-013, MR-025, RN-24):
 // the order of its refusals, the fog rule that meets a map's first grid, and the
 // copy of the image that rule makes for nothing when the map changed meanwhile.
-// The calibration itself (same grid, scale, clear) is frozen by TestMR025_*.
+// The calibration itself (same grid, scale, clear) is in TestMR025_*.
 
 // gridRefusal is what a refused SetMapGrid says.
 type gridRefusal struct {

@@ -158,7 +158,7 @@ func (s *Service) rejectTx(ctx context.Context, tx pgx.Tx, m authz.Membership, i
 // in campaignID, if there is one, inside tx. Without one, nothing changes.
 //
 // Package campaigns calls it when an ordinary invite promotes a pending
-// member (RN-15, Q25): an invite without approval counts as the master's
+// member (RN-15): an invite without approval counts as the master's
 // approval. It does what ApproveCharacter does to the character (the same
 // UPDATE, by player instead of by ID); the membership is the caller's to
 // settle, because campaign_members is its table. It takes no caller on

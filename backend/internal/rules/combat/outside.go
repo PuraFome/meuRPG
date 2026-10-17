@@ -88,7 +88,7 @@ func slotChoices(d rules.Derived, u Usage, level int) []SlotChoice {
 		return nil
 	}
 	var out []SlotChoice
-	for l := level; l <= 9; l++ {
+	for l := level; l <= rules.MaxSlotLevel; l++ {
 		if free := SlotsFree(d, u, l); free > 0 {
 			out = append(out, SlotChoice{Level: l, Free: free})
 		}

@@ -28,8 +28,7 @@ import (
 	"golang.org/x/image/webp"
 )
 
-// Limits (a proposal, question 30 of the progress doc; see
-// docs/product/stories.md, MR-019).
+// Limits (a proposal; see docs/product/stories.md, MR-019).
 const (
 	// MaxBytes is the largest file accepted, and the largest file stored
 	// after re-encoding: 10 MiB.

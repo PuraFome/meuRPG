@@ -16,7 +16,7 @@ import (
 
 // ContentSource gives the rules content and the table rules a campaign plays
 // with (MR-025, RN-23, RN-24; ADR-0018). Every read of the content in this
-// package goes through it, so the table's own content (slice 10.1c) can differ
+// package goes through it, so the table's own content can differ
 // per campaign without touching the call sites again.
 type ContentSource interface {
 	// For returns the rules content and the table rules of a campaign. tx is
@@ -87,7 +87,7 @@ func (s *Service) contentFor(ctx context.Context, tx pgx.Tx, campaignID string) 
 }
 
 // TableRulesFor is the table rules of a campaign, read in tx (nil outside one).
-// Package play reads the critical and the death saves through it in slice 10.4b
+// Package play reads the critical and the death saves through it
 // (cmd/api connects them), and nothing else needs the content with it.
 func (s *Service) TableRulesFor(ctx context.Context, tx pgx.Tx, campaignID string) (TableRules, error) {
 	_, r, err := s.content.For(ctx, tx, campaignID)
@@ -95,7 +95,7 @@ func (s *Service) TableRulesFor(ctx context.Context, tx pgx.Tx, campaignID strin
 }
 
 // maxCatalogs is how many contents' catalogs are kept: the plan's budget of
-// cached contents (D1). The oldest is dropped first, so the catalogs of the
+// cached contents. The oldest is dropped first, so the catalogs of the
 // contents a table edited away do not pile up.
 const maxCatalogs = 8
 

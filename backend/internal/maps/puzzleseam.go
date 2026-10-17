@@ -79,12 +79,8 @@ func (s *Service) PuzzleOpenDoor(ctx context.Context, tx pgx.Tx, campaignID, map
 		}
 	}
 	q := queriesIn(s.queries, tx)
-	err = q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
-		MapID: id, DifficultTerrain: nilIfBlank(set.terrain.Encode()), Walls: nilIfBlank(set.walls.Encode()),
-		Cover: nilIfBlank(set.cover.Encode()), Light: nilIfBlank(set.light.Encode()), Doors: nilIfBlank(set.doors.Encode()), Now: s.now(),
-	})
-	if err != nil {
-		return false, fmt.Errorf("write the layers: %w", err)
+	if err := storeLayers(ctx, q, id, set, s.now()); err != nil {
+		return false, err
 	}
 	if _, err := q.BumpMapLayersRevision(ctx, id); err != nil {
 		return false, fmt.Errorf("bump the layers' revision: %w", err)

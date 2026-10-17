@@ -19,6 +19,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import type { SavingState } from '../../core/connect/saving-state';
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
@@ -56,7 +57,7 @@ import { OwnerChanges } from './owner-changes/owner-changes';
 import { RejectConfirm } from './reject-confirm/reject-confirm';
 import { RequestChanges } from './request-changes/request-changes';
 import { formatWhen, issueTitle } from './sheet-format';
-import { type SavingState, SheetWrites, playerNameOf } from './character-sheet-writes';
+import { SheetWrites, playerNameOf } from './character-sheet-writes';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from '../../core/play/xp-watcher';
 import { ResourceCounters } from './resource-counters/resource-counters';
@@ -152,7 +153,7 @@ export class CharacterSheetPage {
    * state, including the error one. */
   protected readonly campaignId = signal('');
   /** The master's and the owner's writes on the character (`SheetWrites`). */
-  private readonly writes = new SheetWrites({
+  protected readonly writes = new SheetWrites({
     source: this.source,
     navigate: (commands) => this.router.navigate(commands),
     stillOn: (characterId) => !this.destroyed && characterId === this.characterId,
@@ -160,35 +161,6 @@ export class CharacterSheetPage {
     reload: () => void this.reloadQuietly(),
     focus: (selector) => this.focusAfterRender(selector),
   });
-  protected readonly markDeadState = this.writes.markDeadState;
-  protected readonly confirmingDeath = this.writes.confirmingDeath;
-  protected readonly storyToggleState = this.writes.storyToggleState;
-  protected readonly confirmingRevive = this.writes.confirmingRevive;
-  protected readonly reviveState = this.writes.reviveState;
-  protected readonly reviveRefused = this.writes.reviveRefused;
-  protected readonly reviveAnnouncement = this.writes.reviveAnnouncement;
-  protected readonly approvalState = this.writes.approvalState;
-  protected readonly confirmingReject = this.writes.confirmingReject;
-  protected readonly requestingChanges = this.writes.requestingChanges;
-  protected readonly requestChangesState = this.writes.requestChangesState;
-  protected readonly resubmitState = this.writes.resubmitState;
-  protected readonly resubmitted = this.writes.resubmitted;
-  protected readonly announcement = this.writes.announcement;
-  protected readonly askToConfirmDeath = this.writes.askToConfirmDeath;
-  protected readonly cancelDeath = this.writes.cancelDeath;
-  protected readonly askToRevive = this.writes.askToRevive;
-  protected readonly cancelRevive = this.writes.cancelRevive;
-  protected readonly revive = this.writes.revive;
-  protected readonly askToConfirmReject = this.writes.askToConfirmReject;
-  protected readonly cancelReject = this.writes.cancelReject;
-  protected readonly askForChanges = this.writes.askForChanges;
-  protected readonly cancelRequestChanges = this.writes.cancelRequestChanges;
-  protected readonly requestChanges = this.writes.requestChanges;
-  protected readonly resubmit = this.writes.resubmit;
-  protected readonly markDead = this.writes.markDead;
-  protected readonly toggleStoryEditingAllowed = this.writes.toggleStoryEditingAllowed;
-  protected readonly approve = this.writes.approve;
-  protected readonly reject = this.writes.reject;
   /** Whether the owner of a dead character already has another living one: "E agora?" waits for the answer. */
   protected readonly ownerHasLiving = signal<boolean | null>(null);
 

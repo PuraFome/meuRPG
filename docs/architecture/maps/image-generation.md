@@ -1,12 +1,12 @@
 # AI-generated images
 
 The master asks a model (the Gemini API) for an image, and the server stores it in the gallery like any image: hidden from the players until the master shows it (MR-039, RN-28, ADR-0019).
-The code is in `backend/internal/maps` (`imagegen.go`, `imagegen_map.go`; contract `ImageGenerationService` in `proto/meurpg/maps/v1/imagegen.proto`) and in `backend/internal/maps/images/gen`, a small package that only talks to the model and knows no campaign, person or database.
+The code is in `backend/internal/maps` (`imagegen.go` for the calls, `imagegen_start.go`, `imagegen_read.go`, `imagegen_clean.go` and `imagegen_run.go` for a request's life, `imagegen_map.go` for the map pictures; contract `ImageGenerationService` in `proto/meurpg/maps/v1/imagegen.proto`) and in `backend/internal/maps/images/gen`, a small package that only talks to the model and knows no campaign, person or database.
 Configuration (`GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`, `IMAGE_GENERATOR`, the monthly and daily limits) is in [CONTRIBUTING](../../development.md#ai-generated-images); costs and memory are in [Operations](../../operations/reference.md#generated-images-the-gemini-api).
 
 | `ImageGenerationService` call | What it does |
 | --- | --- |
-| `GetImageGenerationStatus` | Whether generation is on and the month's tally ("Restam 17 de 20 imagens em outubro"): the limit, the spend, when it restarts (the first instant of the next month, Brasília time) and a request's limits (500 characters, 10 object images, 4 character images). Works with generation off |
+| `GetImageGenerationStatus` | Whether generation is on and the month's tally ("Restam 187 de 200 imagens em outubro"): the limit, the spend, when it restarts (the first instant of the next month, Brasília time) and a request's limits (500 characters, 10 object images, 4 character images). Works with generation off |
 | `GenerateSceneImage` | The scene art: the master's text, the style, the aspect ratio (one of 10, default 16:9) and gallery images as references. Answers at once with the `PENDING` request |
 | `EditGeneratedImage` | An adjustment of a generated image: a new request that spends a slot |
 | `GetImageGeneration` | The request's state (`PENDING`, `DONE` with the image, `REFUSED` or `FAILED` with a Portuguese sentence, `CANCELED`). With `wait_seconds` (up to 25) it is a **long poll** ([below](#shutdown-and-the-long-poll)). There is no stream hint: a player never knows a request exists |

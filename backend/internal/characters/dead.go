@@ -8,6 +8,8 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -23,14 +25,14 @@ func (s *Service) DeadCharacters(ctx context.Context, tx pgx.Tx, campaignID stri
 	}
 	out := make([]link.DeadCharacter, len(rows))
 	for i, r := range rows {
-		out[i] = link.DeadCharacter{ID: r.ID, Name: r.Name, PlayerUserID: deref(r.PlayerUserID), RevivifyBlocked: r.RevivifyBlocked}
+		out[i] = link.DeadCharacter{ID: r.ID, Name: r.Name, PlayerUserID: conv.OrZero(r.PlayerUserID), RevivifyBlocked: r.RevivifyBlocked}
 	}
 	return out, nil
 }
 
 // SetRevivifyBlocked implements play.CombatRoster: the master's switch on a dead character.
 func (s *Service) SetRevivifyBlocked(ctx context.Context, tx pgx.Tx, campaignID, characterID string, blocked bool) error {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return errCharacterNotFound()
 	}

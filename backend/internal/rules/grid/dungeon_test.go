@@ -7,7 +7,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The dungeon of the Etapa 10 artboards (E10-05), 31 x 21 squares. # rock, . a
+// The dungeon of the dungeon design, 31 x 21 squares. # rock, . a
 // room, , a corridor, o an opening (a doorway, no door), D a closed door, T a
 // closed door with a trap, L a locked door, B a barred one (a portcullis), S a
 // secret door, < the entrance, > the stairs down. The expected rooms come from

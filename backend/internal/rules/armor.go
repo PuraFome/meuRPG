@@ -91,7 +91,7 @@ func (x *deriver) wornArmor(name string) int {
 func (x *deriver) effectBases(base int, name string) (int, string) {
 	unarmored := ""
 	for _, a := range x.active {
-		if !isBaseEffect(a, &unarmored) || !x.applies(a) {
+		if !takesBase(a, &unarmored) || !x.applies(a) {
 			continue
 		}
 		v, ok := x.value(a)
@@ -109,10 +109,11 @@ func (x *deriver) effectBases(base int, name string) (int, string) {
 	return base, name
 }
 
-// isBaseEffect says whether a offers a base AC: an untagged "ac.base"
-// modifier, and, among the Unarmored Defense features, only the first one met
-// (unarmored holds its key once one is met).
-func isBaseEffect(a activeEffect, unarmored *string) bool {
+// takesBase says whether a offers a base AC: an untagged "ac.base" modifier,
+// and, among the Unarmored Defense features, only the first one met. It writes
+// *unarmored: the first Unarmored Defense feature met stores its key there, so
+// the order of the calls decides which one wins.
+func takesBase(a activeEffect, unarmored *string) bool {
 	e := a.effect
 	if e.Type != "modifier" || e.Target != "ac.base" || len(e.Tags) > 0 {
 		return false

@@ -18,7 +18,6 @@ import {
 import { Ability, ContentSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { type CatalogAbility, type CatalogVm, catalogVm } from './catalog';
 import { ContentWatcher } from './content-watcher';
-export { menu, menuResponse, rangedAttackMenu } from './content-testing-menu';
 
 /** Test builders: an entry as the server sends it, and a small effect menu with the shape of the real one. */
 

@@ -12,10 +12,9 @@ import (
 )
 
 // The master's writes to points and tokens (CreateMapPoint, UpdateMapPoint,
-// DeleteMapPoint, SetMapPointRevealed, PlaceMapToken, RemoveMapToken), frozen
-// before the refactor that splits them into phases: each refusal with its code
+// DeleteMapPoint, SetMapPointRevealed, PlaceMapToken, RemoveMapToken): each refusal with its code
 // and message, which check wins when two apply, and what a successful write
-// leaves in the point. Who sees what (RN-10) is frozen by the fog, kinds and
+// leaves in the point. Who sees what (RN-10) is in the fog, kinds and
 // scenes tests; these add the refusals and the order.
 
 // missingUUID is a well-formed ID that names nothing.

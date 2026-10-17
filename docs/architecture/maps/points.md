@@ -2,7 +2,7 @@
 
 `map_points.kind` accepts battle, sub-map, RP scene, `trap`, `treasure` and `light`.
 This page covers the last three and the light a character carries (MR-034 to MR-036, MR-041, RN-10).
-The code is in `spec.go` (the kinds' data), `traps.go` (revealing a trap, treasure found), `traps_play.go` (traps in play) and `carriedlight.go`.
+The code is in `spec.go` (the kinds' data), `pointwrites.go` (the master's writes to points, with `applyspec.go` for a kind's data), `traps.go` (revealing a trap, treasure found), `traps_play.go` (traps in play) and `carriedlight.go`.
 
 ## Storage
 

@@ -25,8 +25,12 @@ export class EditorSelection {
   /** The mode the master asked for in the same situation. */
   readonly pendingMode = signal<EditorMode | null>(null);
   readonly dirty = signal(false);
-  readonly panelError = signal<string | null>(null);
-  readonly justCreated = signal(false);
+  private readonly panelErrorState = signal<string | null>(null);
+  private readonly justCreatedState = signal(false);
+  /** What the open point panel could not do ("Salvar ponto", "Apagar"). */
+  readonly panelError = this.panelErrorState.asReadonly();
+  /** The chosen point was just made: its panel puts the focus on the name. */
+  readonly justCreated = this.justCreatedState.asReadonly();
   readonly lightReach = signal<LightReach | null>(null);
 
   constructor(private readonly host: EditorSelectionHost) {}
@@ -48,10 +52,28 @@ export class EditorSelection {
     this.move(next);
   }
 
+  /** Sets or clears the panel's error. */
+  setPanelError(message: string | null): void {
+    this.panelErrorState.set(message);
+  }
+
+  /** Chooses the point just made, and the panel asks for its name. */
+  created(pointId: string): void {
+    this.panelErrorState.set(null);
+    this.justCreatedState.set(true);
+    this.selection.set({ kind: 'point', id: pointId });
+  }
+
+  /** The chosen point is gone: nothing is chosen and nothing is left unsaved. */
+  removed(): void {
+    this.dirty.set(false);
+    this.move(null);
+  }
+
   move(next: MapSelection | null): void {
     this.pending.set(null);
-    this.justCreated.set(false);
-    this.panelError.set(null);
+    this.justCreatedState.set(false);
+    this.panelErrorState.set(null);
     this.lightReach.set(null);
     this.selection.set(next && next.id !== '' ? next : null);
   }

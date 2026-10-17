@@ -50,7 +50,7 @@ func (s *Service) BeginCampaignImport(
 	ctx context.Context,
 	req *connect.Request[pkgv1.BeginCampaignImportRequest],
 ) (*connect.Response[pkgv1.BeginCampaignImportResponse], error) {
-	in, err := s.readImportStart(ctx, req.Msg)
+	in, err := s.checkImportStart(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -78,10 +78,10 @@ type importStart struct {
 	total       int64
 }
 
-// readImportStart makes BeginCampaignImport's checks, in order: the session,
+// checkImportStart makes BeginCampaignImport's checks, in order: the session,
 // the store, the file's name, fingerprint and size, the rate limit, and who
 // may create a campaign.
-func (s *Service) readImportStart(ctx context.Context, msg *pkgv1.BeginCampaignImportRequest) (importStart, error) {
+func (s *Service) checkImportStart(ctx context.Context, msg *pkgv1.BeginCampaignImportRequest) (importStart, error) {
 	userID, err := authz.RequireSignedIn(ctx)
 	if err != nil {
 		return importStart{}, err
@@ -148,8 +148,8 @@ func beginImport(ctx context.Context, q *packagedb.Queries, in importStart, now 
 	return begun, nil
 }
 
-// resumeImport keeps an upload of the same file going: its parts, and an
-// hour more.
+// resumeImport keeps an upload of the same file going: its parts, and the upload's
+// time to live (UploadTTL) from now.
 func resumeImport(ctx context.Context, q *packagedb.Queries, cur packagedb.CampaignImport, now time.Time) (begunImport, error) {
 	parts, err := q.ListCampaignImportParts(ctx, cur.ID)
 	if err != nil {

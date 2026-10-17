@@ -62,8 +62,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// A campaign's gallery limits (a proposal, question 30 of the progress
-// doc). The per-image limits are in package images.
+// A campaign's gallery limits (a proposal). The per-image limits are in package images.
 const (
 	// DefaultMaxImages is how many images a campaign may have.
 	DefaultMaxImages = 300

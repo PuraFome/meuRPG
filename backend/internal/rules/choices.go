@@ -227,7 +227,7 @@ func (x *deriver) checkCustomBackground() {
 }
 
 // checkCustomBackgroundParts: SRD 5.1 "Customizing a Background": two tools or
-// languages, a feature and the equipment too (question 82). A sheet written
+// languages, a feature and the equipment too. A sheet written
 // before these fields existed shows nothing new: the three warnings come only
 // once the sheet has any of them, that is, once the editor that writes them
 // saved it.
