@@ -2,7 +2,10 @@ package play
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math"
+	"slices"
 
 	"connectrpc.com/connect"
 
@@ -117,6 +120,20 @@ func (s *Service) takeBackMaxHP(ctx context.Context, c *combatTx, r playdb.Spell
 		}
 	}
 	return vitals, nil
+}
+
+// otherCastsOn lists the casts of the same spell, other than r, that still last and name the
+// character as a target with the effect.
+func (s *Service) otherCastsOn(ctx context.Context, c *combatTx, r playdb.SpellCast, characterID, effect string) ([]playdb.SpellCast, error) {
+	probe, err := json.Marshal([]map[string]string{{"id": characterID, "effect": effect}})
+	if err != nil {
+		return nil, fmt.Errorf("encode the target: %w", err)
+	}
+	rows, err := c.q.ListLiveSpellCastsOnTarget(ctx, playdb.ListLiveSpellCastsOnTargetParams{CampaignID: r.CampaignID, Target: probe})
+	if err != nil {
+		return nil, fmt.Errorf("list the casts on a target: %w", err)
+	}
+	return slices.DeleteFunc(rows, func(o playdb.SpellCast) bool { return o.ID == r.ID || o.SpellKey != r.SpellKey }), nil
 }
 
 // otherAidOn is the bonus each other Aid that still lasts gives the character.

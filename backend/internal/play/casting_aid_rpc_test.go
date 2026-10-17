@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // TestCastAidOutsideCombatRaisesTheMaximumAndEndingGivesItBack: Aid cast outside a combat raises the
@@ -13,7 +14,14 @@ import (
 // weaker. Finding: the outside path recorded Aid and never applied it (takeBackMaxHP was a stub).
 func TestCastAidOutsideCombatRaisesTheMaximumAndEndingGivesItBack(t *testing.T) {
 	t.Parallel()
-	a := newCastingParty(t)
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		// A 5th-level cleric has 3rd-level slots, so the stronger Aid can be cast.
+		a.bri = a.bia.castingHero(t, a.campaignID, "Brisa", classLevel("class:cleric", 5, "subclass:life"),
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{sacredFlame}, nil,
+			[]string{aidSpell}, "")
+	})
 	targets := []*charactersv1.Character{a.toren, a.bri}
 	max0 := map[string]int32{}
 	hp0 := map[string]int32{}

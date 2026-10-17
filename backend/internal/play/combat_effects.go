@@ -17,9 +17,9 @@ import (
 
 // Lasting effects on a combatant that end (SRD 5.1): Escudo's +5 armor class
 // "until the start of your next turn" ends by itself when the caster's turn
-// starts, and Ajuda's hit point bonus ends when the master ends it (the app does
-// not count the spell's 8 hours) or at a long rest. Each ending is a line of the
-// combat log.
+// starts, and Ajuda's hit point bonus ends when the master ends it or at a long rest
+// (a combat does not count the spell's 8 hours; Ajuda cast outside a combat ends with
+// its cast, casting_aid.go). Each ending is a line of the combat log.
 
 // The effects an effect_end event names.
 const (
