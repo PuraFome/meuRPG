@@ -93,7 +93,7 @@ Each says when it waits (`pending`), what it asks (`offer`) and what its answer 
 - **The die** waits while the roller holds one and nothing is answered.
   Its answer is final: it spends the die when the player used it and closes the row under the answer's key.
 
-A later question, such as a master's reroll or Cutting Words on a check, would be one more link with its own columns and rule for who answers.
+A later question, such as a master's reroll, would be one more link with its own columns and rule for who answers. Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
 
 ## The registry and the one answer
 

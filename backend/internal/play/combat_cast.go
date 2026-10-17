@@ -358,6 +358,9 @@ func (f *castFlow) pickSlot(ctx context.Context) error {
 	if f.abilityKey, err = f.s.abilityChoiceOf(ctx, f.c, f.call.spellKey, f.req.GetAbilityKey()); err != nil {
 		return err
 	}
+	if f.c.replay != nil { // the die a Cutting Words took off the spell attack roll (PM-04)
+		f.sp.ToHit -= int(f.c.replay.reduction)
+	}
 	if pick := f.req.GetDamageTypeKey(); pick != "" && !slices.Contains(f.sp.DamageTypes, pick) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
 	}
@@ -531,7 +534,7 @@ func (f *castFlow) checkSpellAttack(ctx context.Context) error {
 // holdForWindow lets the cast wait for a reaction window: it answers true, with the event that holds it, when
 // it does.
 func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
-	held, ok, err := f.s.holdCast(ctx, f.c, f.m, f.req, f.cs, f.caster, f.call.spellKey, int32(f.slotLevel), f.targs) //nolint:gosec // a slot level, 0 to 9
+	held, ok, err := f.s.holdCast(ctx, f.c, f.m, f.req, f.cs, f.caster, f.call.spellKey, int32(f.slotLevel), f.targs, f.sp.AttackType != "") //nolint:gosec // a slot level, 0 to 9
 	if err != nil {
 		return false, err
 	}
@@ -703,6 +706,9 @@ func (f *castFlow) affect(ctx context.Context) error {
 			return err
 		}
 	}
+	if err := f.pushFailedSaves(ctx); err != nil { // the forced move of a failed save (combat_forced.go)
+		return err
+	}
 	// What a spell that lasts leaves on the targets it took hold of (RN-22).
 	return f.s.applyLastingSpell(ctx, f.c, f.cs, f.sp, f.caster, f.targs, f.abilityKey, &f.out.made)
 }
@@ -817,6 +823,7 @@ func (s *Service) castPublisher(m authz.Membership, ev actionEvent, vitals []*pl
 	return func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
+		s.publishPushed(ctx, m.CampaignID, d, pushesOf(ev.Hits))
 		for _, vit := range vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
