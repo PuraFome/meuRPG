@@ -10,7 +10,7 @@ import (
 )
 
 // A spell the master wrote for the table in combat, end to end (MR-025, MR-045, RN-23,
-// RN-22, Etapa 10, slice 10.2): an attack, a saving throw with half on a pass, healing, an
+// RN-22): an attack, a saving throw with half on a pass, healing, an
 // area against three targets, several creatures, a cantrip, and one that only reaches the
 // caster, cast through the same CombatSpell seam as the SRD's, with the campaign's content.
 // These tests need the database (MEURPG_TEST_DATABASE_URL). The fixture is newCasters'

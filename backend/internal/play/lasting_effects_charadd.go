@@ -53,8 +53,18 @@ func parseCharEffectInput(msg *playv1.AddCharacterEffectRequest) (charEffectInpu
 	if err := checkEffectLabel(msg.GetPlayerLabel()); err != nil {
 		return in, err
 	}
-	in.kind, in.seconds, err = charDurationOf(durationKindOf(msg.GetDurationKind()), msg.GetSeconds())
+	in.kind, in.seconds, err = charDurationOf(charKindOf(msg), msg.GetSeconds())
 	return in, err
+}
+
+// charKindOf is the duration kind the request asks for: seconds with no kind at all read as the
+// clock of game time, the only kind that has seconds. A kind the server does not know stays no
+// kind.
+func charKindOf(msg *playv1.AddCharacterEffectRequest) string {
+	if msg.GetDurationKind() == playv1.EffectDurationKind_EFFECT_DURATION_KIND_UNSPECIFIED && msg.GetSeconds() != 0 {
+		return rules.EffectDurationRounds
+	}
+	return durationKindOf(msg.GetDurationKind())
 }
 
 // parseCharacterIDs reads the characters: one to ten, all UUIDs, none twice.
@@ -358,6 +368,9 @@ func (s *Service) charEffectModifiers(ctx context.Context, c *combatTx, plan cha
 // insertCharEffect writes one character's record (replacing the same spell's older one) and
 // answers its id.
 func (s *Service) insertCharEffect(ctx context.Context, c *combatTx, campaignID string, plan charEffectPlan, characterID, group string, mods []rules.EffectModifier) (string, error) {
+	if mods == nil {
+		mods = []rules.EffectModifier{} // the table holds an array: an effect of conditions only writes [], never null
+	}
 	body, err := json.Marshal(mods)
 	if err != nil {
 		return "", fmt.Errorf("encode the modifiers: %w", err)

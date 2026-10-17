@@ -359,6 +359,30 @@ func TestLoadImages(t *testing.T) {
 	}
 }
 
+func TestVoiceSettings(t *testing.T) {
+	def, err := Load(env(nil))
+	if err != nil || def.Voice != (Voice{}) {
+		t.Errorf("defaults: %#v, %v", def.Voice, err)
+	}
+	cfg, err := Load(env(map[string]string{"GEMINI_TTS_MODEL": " m ", "TTS_DAILY_LIMIT": "40"}))
+	if err != nil || cfg.Voice.Model != "m" || cfg.Voice.DailyLimit != 40 || cfg.Voice.Fake {
+		t.Errorf("settings: %#v, %v", cfg.Voice, err)
+	}
+	for name, vars := range map[string]map[string]string{
+		"a bad limit":         {"TTS_DAILY_LIMIT": "0"},
+		"a huge limit":        {"TTS_DAILY_LIMIT": "100000"},
+		"a bad generator":     {"TTS_GENERATOR": "polly"},
+		"the fake on a cloud": {"TTS_GENERATOR": "fake", "K_SERVICE": "api"},
+	} {
+		if _, err := Load(env(vars)); err == nil {
+			t.Errorf("%s: Load() error = nil", name)
+		}
+	}
+	if fake, err := Load(env(map[string]string{"TTS_GENERATOR": "fake"})); err != nil || !fake.Voice.Fake {
+		t.Errorf("the fake: %v, %v", fake.Voice, err)
+	}
+}
+
 func TestTrustedProxyHops(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

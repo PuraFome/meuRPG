@@ -16,7 +16,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// The combat (MR-013, Etapa 6, slice 6.3): the encounter, who fights, the
+// The combat (MR-013): the encounter, who fights, the
 // initiative, the turns, the grid and what each person sees. These tests need
 // the database (MEURPG_TEST_DATABASE_URL).
 
@@ -1102,7 +1102,7 @@ func TestMR013_CombatEventsPerAudience(t *testing.T) {
 
 // TestSessionEventKindsMatchTheTable: session_event_kinds, the table that
 // session_events.kind points at, holds exactly the kinds the module writes. A
-// new kind is an INSERT in a migration (it used to rewrite a CHECK); add it both
+// new kind is an INSERT in a migration (no CHECK to rewrite); add it both
 // here and there. (migrations.TestEveryEventKindOfTheCodeIsInTheTable also scans
 // every package's `event...` constants.)
 func TestSessionEventKindsMatchTheTable(t *testing.T) {

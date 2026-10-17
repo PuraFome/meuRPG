@@ -25,7 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The live session (Etapa 5): the notice (RN-06), the vitals and the
+// The live session: the notice (RN-06), the vitals and the
 // master's correction (RN-02), session_events (ADR-0007), and the stream
 // (ADR-0005). These tests need the database (MEURPG_TEST_DATABASE_URL).
 

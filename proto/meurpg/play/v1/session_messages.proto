@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+// The conversation of a game session, "Conversa da cena" (MR-051, RN-36): a
+// live text feed where the master narrates and speaks as NPCs, and the
+// players speak as their character or out of character. The RPCs are
+// PlayService's (play.proto: SendSessionMessage, ListSessionMessages,
+// SignalMasterTyping); the stream events are WatchGameSessionResponse's
+// (session_message_added, master_typing); the messages are here.
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// SessionMessageSpeakerKind says who a line is from.
+enum SessionMessageSpeakerKind {
+  SESSION_MESSAGE_SPEAKER_KIND_UNSPECIFIED = 0;
+  // The master, as the narrator. No speaker_id.
+  SESSION_MESSAGE_SPEAKER_KIND_NARRATOR = 1;
+  // The master, as an NPC of the campaign (speaker_id is the NPC).
+  SESSION_MESSAGE_SPEAKER_KIND_NPC = 2;
+  // A player, as their own living character (speaker_id is the character).
+  SESSION_MESSAGE_SPEAKER_KIND_CHARACTER = 3;
+  // A player, as themselves: the line shows the player's display name.
+  SESSION_MESSAGE_SPEAKER_KIND_OUT_OF_CHARACTER = 4;
+}
+
+// SessionMessageImage is a gallery image carried by a line, or the portrait of
+// the NPC that speaks it. Its readers may open it at `url`, and nobody else
+// may through that line.
+message SessionMessageImage {
+  // The gallery image (a UUID).
+  string id = 1;
+  // The image's name in the gallery.
+  string name = 2;
+  // Its size in pixels.
+  int32 width = 3;
+  int32 height = 4;
+  // Where to fetch it: "/images/{id}".
+  string url = 5;
+  // Where to fetch its thumbnail: "/images/{id}/thumb".
+  string thumbnail_url = 6;
+}
+
+// SessionMessage is one line of the conversation, as its reader gets it.
+message SessionMessage {
+  // The line (a UUID).
+  string id = 1;
+  // The game session it belongs to (a UUID).
+  string game_session_id = 2;
+  SessionMessageSpeakerKind speaker_kind = 3;
+  // The NPC or the character that speaks. Empty for the narrator and for an
+  // out-of-character line.
+  string speaker_id = 4;
+  // The name to show: the NPC's or the character's name as it was when the
+  // line was sent, or the author's display name for an out-of-character
+  // line. Empty for the narrator, and for an out-of-character line whose
+  // author's account was erased (author_removed).
+  string speaker_name = 5;
+  // The portrait of the NPC that speaks, when it has one. Unset otherwise.
+  SessionMessageImage speaker_portrait = 6;
+  // The account that sent the line (a UUID). Empty when that account was
+  // erased: the line stays and the app shows "Jogador removido".
+  string author_user_id = 7;
+  bool author_removed = 8;
+  // The text, 1 to 2,000 characters.
+  string text = 9;
+  // The gallery image the master put in the line. Unset for none.
+  SessionMessageImage image = 10;
+  // True when the whole table reads the line. False when only chosen readers
+  // do (and the master, always).
+  bool for_everyone = 11;
+  // The accounts chosen as readers of a line that is not for everyone. Only
+  // the master gets it, and the author of a player's line gets it too (the
+  // master only); everyone else gets it empty. A line for everyone has none.
+  repeated string reader_user_ids = 12;
+  // Whether the line can be heard ("Ouvir"): a narrator or NPC line. Players'
+  // lines are text only.
+  bool can_hear = 13;
+  // Where to fetch the audio of a line that can be heard:
+  // "/session-messages/{id}/audio". Only the line's readers get an answer
+  // there; anyone else gets 404.
+  string audio_url = 14;
+  google.protobuf.Timestamp created_at = 15;
+}
+
+// SendSessionMessageRequest is one line to send.
+message SendSessionMessageRequest {
+  string campaign_id = 1;
+  // Who speaks. The master may send NARRATOR or NPC; a player CHARACTER or
+  // OUT_OF_CHARACTER. UNSPECIFIED is refused.
+  SessionMessageSpeakerKind speaker_kind = 2;
+  // The NPC (for NPC) or the player's own living character (for CHARACTER).
+  // Empty for the other kinds.
+  string speaker_id = 3;
+  // 1 to 2,000 characters, after trimming spaces.
+  string text = 4;
+  // A gallery image of the campaign. Only the master may attach one.
+  string image_id = 5;
+  // The readers. Empty means the whole table. The master may name any set of
+  // the campaign's players (accounts); a player may not name anybody: a
+  // player's line is for everyone, or only the master (only_master).
+  repeated string reader_user_ids = 6;
+  // A player's line for the master alone ("só o mestre"). Refused for the
+  // master, who names readers instead.
+  bool only_master = 7;
+  // Required, 1 to 64 characters: the same key with the same request
+  // returns the first line and sends nothing again; the same key with
+  // another request is refused.
+  string idempotency_key = 8;
+}
+
+// SendSessionMessageResponse returns the line as the sender reads it.
+message SendSessionMessageResponse {
+  SessionMessage message = 1;
+}
+
+// ListSessionMessagesRequest asks for a page of a session's lines.
+message ListSessionMessagesRequest {
+  string campaign_id = 1;
+  // A session of the campaign (a UUID). Empty means the open session.
+  string game_session_id = 2;
+  // How many lines, 1 to 200. Zero means 50.
+  int32 page_size = 3;
+  // Empty for the newest lines; or the oldest line of the page already read
+  // (SessionMessage.id): the page that comes before it. A line the caller may
+  // not read is answered like one that does not exist.
+  string before_id = 4;
+}
+
+// ListSessionMessagesResponse is a page of lines the caller may read.
+message ListSessionMessagesResponse {
+  // Oldest first (the newest last), only the lines the caller may read.
+  repeated SessionMessage messages = 1;
+  // True when older lines the caller may read are left.
+  bool has_older = 2;
+  // True when the server can make the voice of a line ("Ouvir"). False hides
+  // the button.
+  bool voice_enabled = 3;
+}
+
+// SignalMasterTypingRequest names the campaign.
+message SignalMasterTypingRequest {
+  string campaign_id = 1;
+}
+
+// SignalMasterTypingResponse is empty.
+message SignalMasterTypingResponse {}

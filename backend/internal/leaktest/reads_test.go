@@ -324,6 +324,12 @@ var reads = []read{
 
 	// ===== PlayService
 	{
+		procedure: playv1connect.PlayServiceListSessionMessagesProcedure, allow: members, why: "each reads the lines meant for them (RN-36): the table's, their own, the ones that name them",
+		req: func(w *world) proto.Message {
+			return &playv1.ListSessionMessagesRequest{CampaignId: w.campaign}
+		},
+	},
+	{
 		procedure: playv1connect.PlayServiceGetLiveSessionProcedure, allow: members,
 		req: func(w *world) proto.Message { return &playv1.GetLiveSessionRequest{CampaignId: w.campaign} },
 	},
@@ -367,6 +373,10 @@ var reads = []read{
 	{
 		procedure: playv1connect.ResourceServiceGetOutsideInspirationProcedure, allow: members, why: "a player reads the die of their own character and, as a bard, the party's names; the master reads every die held",
 		req: func(w *world) proto.Message { return &playv1.GetOutsideInspirationRequest{CampaignId: w.campaign} },
+	},
+	{
+		procedure: playv1connect.ResourceServiceListHeldRollsProcedure, allow: members, why: "a player reads the questions of their own rolls that wait; the master reads every one of the campaign",
+		req: func(w *world) proto.Message { return &playv1.ListHeldRollsRequest{CampaignId: w.campaign} },
 	},
 
 	// ===== CombatService

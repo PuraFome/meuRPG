@@ -177,16 +177,6 @@ func (h heldRoll) stale(st rollerState) bool {
 	return h.checksTheAnswer() && !st.Holds && !luckyAsks(h)
 }
 
-// staleHold is stale for a row of inspiration_holds and the die its character holds (found).
-func staleHold(h playdb.InspirationHold, die heldDie, found bool) bool {
-	return heldOfInspirationHold(h).stale(rollerState{Die: die, Holds: found})
-}
-
-// outsideLuckyPending is luckyAsks for a row of inspiration_holds.
-func outsideLuckyPending(h playdb.InspirationHold) bool {
-	return luckyAsks(heldOfInspirationHold(h))
-}
-
 // fromSameRequest says the roll was made by the request with this key (a retry of it), which a reaction
 // window's replay did not: its question is under a key of its own.
 func (h heldRoll) fromSameRequest(key string) bool { return !h.Window && h.Key == key }

@@ -30,6 +30,9 @@ type Policy struct {
 	// an export, begin, preview and create an import, download an export), and
 	// PackageParts the parts of an upload.
 	Package, PackageParts *Limiter
+	// Message limits a user's lines in the scene's conversation (MR-051), and Audio their requests
+	// for the voice of a line.
+	Message, Audio *Limiter
 }
 
 // NewPolicy builds the limiters. multiplier is 1 in production; it must be
@@ -73,6 +76,19 @@ func NewPolicy(multiplier float64) Policy {
 			PerClient:  Rate{Burst: 60, Every: 500 * time.Millisecond},  //nolint:mnd // the policy\'s numbers
 			Global:     Rate{Burst: 200, Every: 100 * time.Millisecond}, //nolint:mnd // the policy\'s numbers
 			MaxClients: 10000,                                           //nolint:mnd // as the other limiters
+		}, multiplier)),
+		// A table talks in short bursts; thirty lines a minute is more than anyone types.
+		Message: New(scaled(Config{
+			PerClient:  Rate{Burst: 10, Every: 2 * time.Second},         //nolint:mnd // the policy's numbers
+			Global:     Rate{Burst: 100, Every: 100 * time.Millisecond}, //nolint:mnd // the policy's numbers
+			MaxClients: 10000,                                           //nolint:mnd // as the other limiters
+		}, multiplier)),
+		// Each request for a voice may call the model once for its line, so this stays low; a
+		// voice already made is cheap, but a reader taps "Ouvir" a few times, not dozens.
+		Audio: New(scaled(Config{
+			PerClient:  Rate{Burst: 10, Every: 3 * time.Second},        //nolint:mnd // the policy's numbers
+			Global:     Rate{Burst: 60, Every: 200 * time.Millisecond}, //nolint:mnd // the policy's numbers
+			MaxClients: 10000,                                          //nolint:mnd // as the other limiters
 		}, multiplier)),
 	}
 }

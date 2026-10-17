@@ -118,8 +118,9 @@ func pinAttackFaces(req proto.Message, faces []int) {
 	if !ok {
 		return
 	}
+	sent := len(r.D20Faces) > 0 // a die typed as a list of one is kept as such: the answer asks for the roll again
 	r.D20Faces = nil
-	if len(faces) > 1 {
+	if len(faces) > 1 || sent {
 		r.D20Faces = faces32(faces)
 	}
 }

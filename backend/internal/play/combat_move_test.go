@@ -24,9 +24,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Combat movement, reach and cover (MR-034, RN-21, RN-20, Etapa 9, slice 9.6).
+// Combat movement, reach and cover (MR-034, RN-21, RN-20).
 // These tests need the database (MEURPG_TEST_DATABASE_URL). The fixture is the
-// cave "A caverna do Vale Seco" of the Etapa 9 artboards (24 x 16 squares; the
+// cave "A caverna do Vale Seco" of the design artboards (24 x 16 squares; the
 // numbers come from the artboards' cave.py): the party in the entrance cave,
 // the goblins in the torch-lit guard room, rubble, crates and a column.
 
@@ -249,7 +249,7 @@ func (c *cave) move(t *testing.T, u *user, label string, col, row int32, edit ..
 
 // mustMove is a move that must work. The master's moves here are setup, not
 // play: the master's move of someone on turn that leaves an enemy's reach is a
-// move like any, which offers the enemy an opportunity attack (slice 9.6b), so
+// move like any, which offers the enemy an opportunity attack, so
 // the setup is a forced move, which never provokes. The tests of the offers
 // themselves move with moveOffering.
 func (c *cave) mustMove(t *testing.T, u *user, label string, col, row int32, edit ...func(*playv1.MoveCombatantRequest)) *playv1.Encounter {
@@ -487,7 +487,7 @@ func TestRN21_DifficultTerrainAndOtherCreaturesCostMore(t *testing.T) {
 	wantEncounterBlocked(t, err, reasonOccupied)
 
 	// An enemy of the same size, or one size apart, cannot be passed; the master's
-	// "Aliado" can (Q69). The side is a master's call.
+	// "Aliado" can. The side is a master's call.
 	c.mustMove(t, c.master, "Goblin 1", 8, 7)
 	_, err = c.move(t, c.caio, "Toren", 10, 7)
 	wantEncounterBlocked(t, err, reasonEnemy)
@@ -1073,7 +1073,7 @@ func TestMR034_SidesAndTheMastersMarks(t *testing.T) {
 }
 
 // TestRN21_DisengageSetsAFlagForTheTurn: taking Desengajar marks the combatant
-// for the rest of its turn (slice 9.6b reads it); the undo takes it back and the
+// for the rest of its turn (the opportunity attack reads it); the undo takes it back and the
 // next turn starts without it.
 func TestRN21_DisengageSetsAFlagForTheTurn(t *testing.T) {
 	t.Parallel()

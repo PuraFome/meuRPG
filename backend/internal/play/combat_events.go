@@ -443,8 +443,11 @@ type actionEvent struct {
 	// FollowUps are the effects the ended ones left behind (Haste's lethargy), and
 	// FollowUpLines the IDs of their "added" lines, written before the action's own event:
 	// its undo, which puts the ended effects back, takes these away, rows and lines.
-	FollowUps     []effectRef `json:"follow_ups,omitempty"`
-	FollowUpLines []string    `json:"follow_up_lines,omitempty"`
+	FollowUps []effectRef `json:"follow_ups,omitempty"`
+	// TempCleared are the temporary hit points the ended effects took off their targets
+	// (Heroism's): the undo gives them back.
+	TempCleared   []tempCleared `json:"temp_cleared,omitempty"`
+	FollowUpLines []string      `json:"follow_up_lines,omitempty"`
 	// ExtraUsed says the action spent the extra action of an effect (Velocidade).
 	ExtraUsed bool `json:"extra_used,omitempty"`
 
@@ -471,7 +474,7 @@ type actionEvent struct {
 
 	// A move: the square, what it cost the combatant and how far it went, in feet
 	// (rounded down) and in tenths of a foot, which is the exact number (RN-21;
-	// events written before Etapa 9 have only the feet).
+	// older events have only the feet).
 	Col         int32 `json:"col,omitempty"`
 	Row         int32 `json:"row,omitempty"`
 	CostFt      int32 `json:"cost_ft,omitempty"`
@@ -628,6 +631,9 @@ type actionEvent struct {
 	// marks of the attacker before the roll (an undo puts them back) and the steps
 	// that resistance took the damage through.
 	Parts []partRoll `json:"parts,omitempty"`
+	// PartsBefore is the list of parts the hit offered, which the roll rewrote with the choice
+	// made: the undo of the roll puts it back, so the damage is offered as it was.
+	PartsBefore json.RawMessage `json:"parts_before,omitempty"`
 	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
 	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
 	OnceBefore    *onceMarks  `json:"once_before,omitempty"`
@@ -683,6 +689,12 @@ type markState struct {
 	Target    string    `json:"target"`
 	Round     int32     `json:"round"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// tempCleared is the temporary hit points an ended effect took off a combatant.
+type tempCleared struct {
+	Combatant string `json:"combatant"`
+	Temp      int32  `json:"temp"`
 }
 
 // effectRef is an effect that lasts (a combatant_states row of the kind 'effect') and

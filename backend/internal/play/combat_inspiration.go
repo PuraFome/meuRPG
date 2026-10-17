@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"slices"
 
 	"connectrpc.com/connect"
 
@@ -157,7 +158,11 @@ func (s *Service) heldAttackResponse(ctx context.Context, m authz.Membership, re
 	if err != nil {
 		return nil, s.dbError(ctx, "list the combatants", err)
 	}
-	return connect.NewResponse(heldAttackOffer(out, h, req.GetAttackerId(), req.GetTargetId(), req.GetAttackKey(), cs)), nil
+	resp := heldAttackOffer(out, h, req.GetAttackerId(), req.GetTargetId(), req.GetAttackKey(), cs)
+	if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == req.GetAttackerId() }); i >= 0 {
+		resp.HeldRollOffer = combatantOffer(*h, cs[i], cs)
+	}
+	return connect.NewResponse(resp), nil
 }
 
 // typedRoll says the d20 of a request came from real dice: a typed face, or typed faces with

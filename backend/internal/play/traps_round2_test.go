@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The fix round of slice 9.8 (review of the first build): what the undo skips, a save for
+// The fixes found by the review of the traps: what the undo skips, a save for
 // each hit, an extended firing, the activity read outside a combat, the maps the players
 // see, the reads inside the move's transaction, the rules of the SRD's search, and the
 // damage that must never vanish.
