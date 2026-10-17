@@ -115,6 +115,26 @@ Every roll that waits asks one question in one shape, `HeldRollOffer`: the hold,
 
 The question of any roll held in a combat moves the combat's revision (`inspirationHoldStore.asked`), as the weapon attack's always did, so the master and the roller read the combat again. `HeldRollsChanged` is a content-free hint on the stream for the master and the roller's user: the interceptor `heldHintInterceptor` sends it when a path answers with a question, and `answerHeld` when an answer changed one.
 
+## The web
+
+One class asks every question of a held roll: `HeldRollController` (`web/src/app/core/held-rolls`).
+A place that rolls builds one in its own field, shows a question with `ask`, and the player's answer goes through `answer`; nothing else in the web calls `AnswerHeldRoll`.
+
+- **The question** is a `HeldRollOffer`. `heldOfferOf` reads `held_roll_offer` and falls back on the older `lucky_offer` and `inspiration_offer` of a response that carries only those (Lucky's first), so one answer path serves both.
+- **One key per answer.** The controller sends the answer under an idempotency key that stays while the same answer is repeated (a retry after a lost answer never rolls twice) and is renewed once an answer got through.
+  A second tap while one is on the way does nothing.
+- **The chain.** `AnswerHeldRollResponse.next` becomes the controller's next question (Lucky's, then the die's, on the new roll); no `next` means the roll was written.
+  The place gets the response to finish its own way (`settle`): the attack sheet reads `result.attack`, the cast sheet `result.spell_cast`, and so on. A response that is not the path's own is an error and the question stays.
+- **Refusals.** A `failed_precondition` with no detail of the rules is the lost race ("Essa pergunta já foi respondida"), kept apart from a failure in `refusal`; the master's answer inside the roller's first seconds (`MASTER_TOO_EARLY_REASON`, a `ResourceBlockedReason` name) reads as a wait. Everything else is worded by the place, or by `classResourceErrorMessage`.
+- **Two answerers, one type.** The roller's player and the master answer the same way. With `master` set, `waitSeconds(now)` counts the seconds left from the offer's `created_at` (`MASTER_WAIT_SECONDS`) on an injectable clock.
+
+`<app-held-roll-prompt>` (`web/src/app/shared/held-roll-prompt`) draws the question for every place and emits the answer: Lucky's "Tirou 1: rolar de novo?" with "Rolar de novo", "Digitar o resultado" and "Ficar com o 1"; the die's "Usar a Inspiração de Bardo (d8)?" with "Somar o d8 (Inspiração de Orla)", "Digitar o resultado" and "Guardar o dado".
+The typed face takes 1 to the die's size, and the ways to roll follow the table's dice mode (RN-18).
+Its `look` keeps what each place showed: `attack` (the attack sheet shows the d20 in its own result card), `sheet` (the held d20 in a line above the question) and `card` (the d20 and its bonus over the question).
+
+The places: the attack, cast, reaction (concentration save), effect-save, scene-roll, trap-search and group-check sheets, the hint try of a puzzle, and the session panel's Bardic block.
+A group check that holds only a Bardic die, with no 1, closes its sheet and leaves the question to the session panel.
+
 ## Lucky (halfling, RN-35)
 
 SRD 5.1: a 1 on the d20 of an attack roll, ability check or saving throw may be rolled again, and the new roll stands.
