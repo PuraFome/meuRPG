@@ -1321,9 +1321,10 @@ func TestMR034_TheRunningStartAddsUpOnFootAndAnythingBreaksIt(t *testing.T) {
 	}
 }
 
-// TestMR034_NothingMovedKeepsTheMarkAndTheRun: a high jump, a master's move to the
-// square the combatant stands on, and a move of no length change neither the
-// master's cover mark nor (but for the high jump, a jump) the running start.
+// TestMR034_NothingMovedKeepsTheMarkAndTheRun: a high jump and a master's forced move
+// to the square the combatant stands on change neither the master's cover mark nor
+// (but for the high jump, a jump) the running start. A player's walk to that square
+// is refused (Finding play-a-movement-1) and changes nothing either.
 func TestMR034_NothingMovedKeepsTheMarkAndTheRun(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
@@ -1331,8 +1332,10 @@ func TestMR034_NothingMovedKeepsTheMarkAndTheRun(t *testing.T) {
 	c.aim(t, map[string][2]int32{"Toren": {1, 9}})
 	c.mustMove(t, c.caio, "Toren", 3, 9)
 	c.mark(t, "Toren", playv1.CoverDegree_COVER_DEGREE_HALF)
-	c.mustMove(t, c.master, "Toren", 3, 9) // where he stands
-	c.mustMove(t, c.caio, "Toren", 3, 9)   // no length
+	c.mustMove(t, c.master, "Toren", 3, 9)                      // where he stands
+	if _, err := c.move(t, c.caio, "Toren", 3, 9); err == nil { // no length
+		t.Errorf("a player's move of no length worked, want it refused")
+	}
 	if got := c.who(t, c.caio, "Toren"); got.GetCoverMark() != playv1.CoverDegree_COVER_DEGREE_HALF {
 		t.Errorf("after moves that moved nobody the mark = %v, want it kept", got.GetCoverMark())
 	}

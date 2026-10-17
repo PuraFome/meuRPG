@@ -157,7 +157,8 @@ func TestMoveCombatantFrozen_OnFoot(t *testing.T) {
 		{name: "a diagonal of three squares costs the exact line, rounded down", col: 9, row: 10, want: moveWant{col: 9, row: 10, usedDft: 212, lastDft: 212, event: `{"col": 9, "combatant_id": "<Toren>", "cost_dft": 212, "cost_ft": 21, "distance_dft": 212, "distance_ft": 21, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 10, "spent_dft": 212}`}},
 		// Finding play-a-movement-1: a move to the square the mover stands on travels nothing, so
 		// it is refused like the jump to the same square rather than written as a step that spends
-		// nothing and leaves an undo entry that undoes nothing.
+		// nothing and leaves an undo entry that undoes nothing. The master's moves stay free of it:
+		// they put a token right, and setups repeat squares.
 		{name: "to where it stands", col: 6, row: 7, refused: new(refuse(connect.CodeInvalidArgument, "a move needs another square"))},
 		{
 			name: "through rubble", setup: standAt(map[string][2]int32{"Toren": {3, 9}}), col: 6, row: 9,
@@ -197,7 +198,7 @@ func TestMoveCombatantFrozen_AnUnseenCreatureInTheWay(t *testing.T) {
 		},
 		{
 			// Finding play-a-movement-2, kept: a jump that a creature the player cannot see holds at the
-			// landing is stopped at take-off, like a walk whose first step is held: nothing was travelled,
+			// landing is stopped at take-off, like a walk whose first step is held: nothing was traveled,
 			// so nothing is spent and the running start stands. It is still written as a long jump of
 			// distance 0 so the answer says it was cut short.
 			name: "holding the landing of a long jump", setup: hiddenAt(7, 7), col: 7, row: 7, edit: []func(*playv1.MoveCombatantRequest){jumpTo(playv1.JumpKind_JUMP_KIND_LONG)},
@@ -365,9 +366,11 @@ func TestMoveCombatantFrozen_Provoking(t *testing.T) {
 			as: "master", label: "Goblin 1", col: 17, row: 5,
 			want: moveWant{col: 17, row: 5, usedDft: 0, lastDft: 0, cover: "none", event: `{"col": 17, "combatant_id": "<Goblin 1>", "distance_dft": 50, "distance_ft": 5, "from": {"col": 18, "cover": "half", "placed": true, "row": 5}, "round": 1, "row": 5, "secret": true}`},
 		},
+		// Finding play-a-movement-1: a player's walk to where it stands is refused, and a refusal
+		// changes nothing, so the master's mark stays.
 		{
 			name: "a move that goes nowhere keeps it", setup: marked("Toren", playv1.CoverDegree_COVER_DEGREE_HALF), col: 6, row: 7,
-			want: moveWant{col: 6, row: 7, usedDft: 0, lastDft: 0, cover: "half", event: `{"col": 6, "combatant_id": "<Toren>", "from": {"col": 6, "cover": "half", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 7}`},
+			refused: new(refuse(connect.CodeInvalidArgument, "a move needs another square")),
 		},
 	})
 }
