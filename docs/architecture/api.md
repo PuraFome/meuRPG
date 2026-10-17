@@ -81,6 +81,64 @@ A module handles its own special cases first (the row that vanished between the 
 - **Connect handlers** have `connect.WithRecover` right after `rpclog`: the panic becomes `internal` with a fixed sentence, the stack goes to the log (`rpc handler panicked`, with the request id, user and campaign), and `rpclog` still writes the `rpc` line with `code=internal`.
 - **Background goroutines** (the image generation request, the live-hint timers) start with `defer safego.Recover(logger, "...")` (`platform/safego`): the work that broke is lost, the stack goes to the log and the server keeps going.
 
+## Error reasons
+
+Every reason the server can send a client for a refusal is in one closed list, `proto/error-reasons.json`, and the web has a Portuguese sentence for each.
+The API does not use `google.rpc.ErrorInfo`: the reason is an enum in a typed detail where the call is a Connect call, and a word in a JSON body or a query where it is not.
+A test fails when the server can send a reason that is not listed, and another when a listed reason has no sentence in the web.
+
+### Where a reason travels
+
+| Carrier | Used by | Closed by | The sentence is in |
+| --- | --- | --- | --- |
+| An enum field of a typed error detail (`CharacterBlocked.reason`) | The Connect calls that refuse a rule | The `.proto` enum, mirrored by the list's `details` | The module's `web/src/app/core/<module>/*-errors.ts`, one `Enum.VALUE` per reason |
+| `reason` in the JSON body `{"code", "reason", "message"}` of a plain HTTP route | Image upload and downloads, package upload, the voice of a line, the rate limit of every API route | The `rpcerr.Reason` constants (`platform/rpcerr/reasons.go`), mirrored by the list's `body` | `core/errors/body-reasons.ts` |
+| `TableContentViolation.reason`, a string | The writes and the import of `TableContentService` | The constants `rules.Reason*` and the characters package's `reason*`, mirrored by the list's `violations` | `core/content/content-violations.ts` |
+| `?reason=` of the redirect to `/invite/error` | Accepting an invite at sign-in | The constants `campaigns.InviteFailure*`, mirrored by the list's `redirects` | `describeInviteErrorCode` in `core/campaigns/invite-errors.ts` |
+
+Identity and notes answer with a Connect code alone.
+The `reason` in identity's sign-in log line is for the log and never reaches the client.
+
+### By module
+
+| Module | Typed details with a reason | Plain routes with a reason | Registered in `rpcerr` |
+| --- | --- | --- | --- |
+| `characters` | `CharacterBlocked`, `ChoiceRefusal`, `AbilityScoresRefusal`, `LevelUpRefusal`; `InvalidField` names a field | none | n/a |
+| `campaigns` | `InviteUnusable` (its `state`), `CampaignCreationRefused`; `XpModeChangeBlocked` carries counts | the redirect to `/invite/error` | n/a |
+| `campaignpackage` | `CampaignPackageBlocked`; `PackageProblem` in a response | package upload | yes |
+| `maps` | `TreasureBlocked`, `MapBlocked`, `ImageGenerationBlocked`; `ImageInUse`, `DungeonOptionRefused` and the invalid-field details name what they refuse | image upload, image and tile downloads | no: spelled as constants and literals, named in `unmigratedBodyReasons` |
+| `play` | `EncounterBlocked` (and its familiar-sight reason), `EncounterBuildBlocked`, `SceneBlocked`, `PuzzleBlocked`, `PuzzleInvalid`, `GameSessionBlocked`, `ResourceBlocked`, `ContestBlocked`, `CastingBlocked` | the voice of a line | no: literals, named in `unmigratedBodyReasons` |
+| `progression` | `XPBlocked` | none | n/a |
+| `rules` | `TableContentBlocked`; the violations of `TableContentRefusal` | none | n/a |
+| `platform` | none | the rate limit of every API route | yes |
+
+### The two checks
+
+- **Go** (`backend/internal/archtest`, `errorreasons_*_test.go`, no database):
+  - every value of the enum a listed detail carries is in the list, as sent or as unsent, and the list has no value the enum lacks;
+  - every value listed as sent is used by some non-test Go file;
+  - every `connect.NewErrorDetail` builds a message the list has;
+  - every `reason` of an HTTP error body is an `rpcerr.Reason` constant, or a pass-through, or a listed value spelled in a place `unmigratedBodyReasons` names with its package;
+  - the `rpcerr.Reason` constants, the violation constants and the redirect constants equal their parts of the list.
+- **Web** (`web/src/app/core/errors/error-reasons.spec.ts`): every listed detail reason is named in the web code, every body reason has a sentence in `BODY_REASON_TEXT` and no other key does, every violation and redirect reason has a sentence of its own.
+  A typed detail is checked by the reference to its enum value (a `case` or a map key), not by reading the sentence; `character-blocked-reasons.spec.ts` also walks the whole `CharacterBlockedReason` enum.
+
+### Adding a reason
+
+1. A detail reason: add the enum value to the `.proto`, run the generator, add the value to its `reasons` in `proto/error-reasons.json`, and add the sentence where the module's `*-errors.ts` words its other reasons.
+   A new detail message goes in `details` with its enum field.
+2. A body reason: add the `rpcerr.Reason` constant, its entry in `body`, and its key in `BODY_REASON_TEXT`.
+   Set it with `reason: rpcerr.ReasonX`, never a literal.
+3. A violation or redirect reason: add the constant, its entry in `violations` or `redirects`, and its sentence in the web.
+
+The sentence says what happened and how to fix it, in the words the screen already uses, with no apology.
+Both checks run in CI: `go test ./internal/archtest` and the web unit tests.
+
+### What is not yet registered
+
+The body reasons of `maps` and `play` are spelled where those modules define them, so `unmigratedBodyReasons` lists each by package and reason.
+The value must still be in the list; only the spelling is excused, and an entry that excuses nothing fails the test, so moving a call site to `rpcerr` removes its entry.
+
 ## Idempotency keys
 
 A call that creates something carries an `idempotency_key`, so a second tap, or a retry after a lost response, does not create a second resource (AIP-155).
