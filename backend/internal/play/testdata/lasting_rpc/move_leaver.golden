@@ -11,4 +11,6 @@ Toren spell:longstrider kind=spell conc=false dur=long_rest ends=r-/-/- visible=
 Pensantus spell:bless kind=spell conc=true dur=rounds ends=r11/Brisa/start_of_turn visible=true audience=owner label=- caster=Brisa
 Pensantus spell:guidance kind=spell conc=false dur=rounds ends=r9/Pensantus/start_of_turn visible=true audience=owner label=- caster=-
 ## Toren left: characters
-
+<char:toren> spell:bless kind=spell conc=true dur=rounds left=60 visible=true audience=owner label=- caster=<char:bri> conds=[]
+<char:toren> spell:faerie-fire kind=spell conc=false dur=rounds left=120 visible=true audience=all label=- caster=<char:bri> conds=[]
+<char:toren> spell:longstrider kind=spell conc=false dur=long_rest left=- visible=true audience=owner label=- caster=- conds=[]
