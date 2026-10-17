@@ -11,6 +11,7 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -76,7 +77,7 @@ func NewTableSource(pool *pgxpool.Pool, srd *rules.Content, tables TableRulesRea
 
 // For implements ContentSource.
 func (s *TableSource) For(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, TableRules, error) {
-	if _, ok := parseUUID(campaignID); !ok {
+	if _, ok := uid.Canonical(campaignID); !ok {
 		return s.srd, DefaultTableRules(), nil // an ID that is no campaign has nothing of its own
 	}
 	c, err := s.ContentFor(ctx, tx, campaignID)
@@ -95,7 +96,7 @@ func (s *TableSource) For(ctx context.Context, tx pgx.Tx, campaignID string) (*r
 
 // ContentFor implements ContentSource: the content, without the table rules.
 func (s *TableSource) ContentFor(ctx context.Context, tx pgx.Tx, campaignID string) (*rules.Content, error) {
-	id, ok := parseUUID(campaignID)
+	id, ok := uid.Canonical(campaignID)
 	if !ok {
 		return s.srd, nil // an ID that is no campaign has no content of its own
 	}

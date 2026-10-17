@@ -81,7 +81,7 @@ type Env struct {
 // Abilities are the arguments mod and score accept.
 var abilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 
-// ArmorCategories are the values armor() returns, and the only strings a
+// armorCategories are the values armor() returns, and the only strings a
 // formula may compare it with.
 var armorCategories = []string{"none", "light", "medium", "heavy"}
 

@@ -18,7 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The acceptance criteria of MR-016's planned milestones (question 45): the
+// The acceptance criteria of MR-016's planned milestones: the
 // master writes the campaign's milestones ahead of time, marks one reached
 // and picks who levels up, gives it to someone who was left out, and the
 // players read only the reached ones. Each test starts its own database.

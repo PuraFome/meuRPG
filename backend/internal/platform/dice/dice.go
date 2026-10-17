@@ -129,8 +129,8 @@ func Roll(r Roller, e Expr) (Result, error) {
 	return res, nil
 }
 
-// Physical checks the sum a player typed after rolling real dice (RN-18,
-// Q38): the player types the sum of the dice, without the modifier, and the
+// Physical checks the sum a player typed after rolling real dice (RN-18):
+// the player types the sum of the dice, without the modifier, and the
 // app adds the modifier. The sum must be reachable with these dice, between
 // Count and Count*Sides. The faces are unknown, so Faces is empty.
 func Physical(e Expr, typedSum int) (Result, error) {

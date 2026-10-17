@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
-import { menu, rangedAttackMenu } from '../../core/content/content-testing';
+import { menu, rangedAttackMenu } from '../../core/content/content-testing-menu';
 import { EffectPicker } from './effect-picker';
 
 describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {

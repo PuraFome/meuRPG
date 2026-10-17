@@ -212,7 +212,7 @@ func TestMR018_MasterWritesTheCampaignDocument(t *testing.T) {
 	}
 }
 
-// TestMR018_PlayersCannotReadTheDocument: while question 27's default holds,
+// TestMR018_PlayersCannotReadTheDocument: while the master-only default holds,
 // only the master sees the document. A player gets permission_denied on
 // both calls; a non-member and a pending member get not_found, as for a
 // campaign that does not exist. Nothing they try changes it.
@@ -503,7 +503,7 @@ func TestCampaignDocumentGoesWithTheCampaign(t *testing.T) {
 
 // TestCampaignDocumentAuthorizationMatrix calls every
 // CampaignDocumentService method as each kind of caller, like
-// TestAuthorizationMatrix: only the master gets in (question 27's
+// TestAuthorizationMatrix: only the master gets in (the
 // default); a player gets permission_denied; a non-member and a pending
 // member (RN-15) get not_found; a caller with no session, unauthenticated.
 func TestCampaignDocumentAuthorizationMatrix(t *testing.T) {

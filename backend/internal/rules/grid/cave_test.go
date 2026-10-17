@@ -7,10 +7,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The cave "A caverna do Vale Seco" of the Etapa 9 artboards (24 x 16 squares):
+// The cave "A caverna do Vale Seco" of the cave design (24 x 16 squares):
 // # wall, . floor, : rubble (difficult terrain), h crates (half cover, can be
 // crossed), q a stone column (three-quarters cover, blocks movement). The
-// expected numbers in the tests come from cave.py (the Etapa 9 artboards),
+// expected numbers in the tests come from cave.py (the cave design),
 // whose lines are sampled; the functions here walk the line exactly.
 var caveRows = []string{
 	"########################",

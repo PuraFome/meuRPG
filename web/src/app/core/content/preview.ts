@@ -9,10 +9,11 @@ import {
   TableSpellSchema,
   TableSubraceSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { type EntryRead, type NameOf, readEntry } from './content-read';
+import { readEntry } from './content-read';
+import { type EntryRead, type NameOf } from './content-read-parts';
 import type { FeatInit } from './feat-draft';
 import type { BackgroundInit, RaceInit, SubraceInit } from './feature-draft';
-import type { SpellInit } from './spell-draft';
+import type { SpellInit } from './spell-types';
 
 /**
  * "Como os jogadores veem" (E10-01): the editor's preview is what a player will read, so it is written by the same function

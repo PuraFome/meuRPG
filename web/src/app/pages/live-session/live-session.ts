@@ -7,16 +7,13 @@ import { applyVitals } from '../../core/play/vitals';
 import { setPageSubject } from '../../core/title/page-title';
 import { wireLiveSessionEffects } from './live-session-effects';
 import { CALLING_NOTICE_MS, LiveSessionEvents } from './live-session-events';
+import { LiveSessionParts, injectLiveSessionServices } from './live-session-deps';
 import { LIVE_SESSION_IMPORTS } from './live-session-imports';
 import { LiveSessionLoader } from './live-session-loader';
-import { LiveSessionParts } from './live-session-parts';
-import { notesAria } from './live-session-pure';
-import { injectLiveSessionServices } from './live-session-services';
 import { LiveSessionSheets } from './live-session-sheets';
 import { LiveSessionState } from './live-session-state';
 import { LiveSessionView } from './live-session-view';
 
-export { mageArmorClassOf } from './live-session-pure';
 export { CALLING_NOTICE_MS };
 
 /**
@@ -58,9 +55,7 @@ export class LiveSession {
   protected readonly notes = this.parts.notes;
   protected readonly view = new LiveSessionView(this.state, this.parts);
   protected readonly ownEffects = this.view.ownEffects;
-  protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts, () =>
-    this.events.scheduleVision(),
-  );
+  protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts);
   protected readonly events: LiveSessionEvents = new LiveSessionEvents(
     this.services,
     this.state,
@@ -72,13 +67,12 @@ export class LiveSession {
     this.services,
     this.state,
     this.parts,
+    this.view,
     this.loader,
   );
 
   /** The app bar's "Anotações" button, drawn by the bar (see `SessionNotes`). */
   protected readonly notesBar = viewChild<TemplateRef<unknown>>('notesBar');
-  /** What a screen reader hears when the visible words are cut short on a narrow phone. */
-  protected readonly notesAria = notesAria;
 
   constructor() {
     // The tab's title carries the campaign's name once it is loaded.
@@ -95,20 +89,18 @@ export class LiveSession {
       .subscribe((params) => this.state.openPuzzle.set(params.get('puzzle')));
     this.services.destroyRef.onDestroy(() => {
       this.parts.toasts.clear();
-      clearTimeout(this.state.visionTimer);
-      clearTimeout(this.state.callingTimer);
-      this.loader.closeStream();
+      this.events.dispose();
+      this.loader.dispose();
       this.services.sessionNotes.bar.set(null);
     });
-    wireLiveSessionEffects({
-      services: this.services,
-      state: this.state,
-      parts: this.parts,
-      view: this.view,
-      loader: this.loader,
-      notesBar: this.notesBar,
-      load: (id) => this.load(id),
-    });
+    wireLiveSessionEffects(this.services, this.state, this.parts, this.view, this.notesBar, (id) =>
+      this.load(id),
+    );
+  }
+
+  /** What a screen reader hears of the "Anotações" button when the visible words are cut short on a narrow phone: how many clues are new. */
+  protected notesAria(fresh: number): string {
+    return fresh > 0 ? `Anotações, ${fresh} ${fresh === 1 ? 'nova' : 'novas'}` : 'Anotações';
   }
 
   private load(campaignId: string): void {

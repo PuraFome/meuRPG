@@ -15,7 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
 )
 
-// Pending members (RN-15, MR-024), Q24 and Q25: what happens to someone who
+// Pending members (RN-15, MR-024): what happens to someone who
 // accepted an invite with approval. The character side (a real pending
 // character approved by an ordinary invite, the deadline cleared when the
 // character is created) is in package characters' tests.
@@ -60,7 +60,7 @@ func (h *harness) pendingExpiresAt(campaignID, userID string) *time.Time {
 	return at
 }
 
-// Q25: Dado um membro pendente, quando ele aceita um convite sem aprovação
+// Dado um membro pendente, quando ele aceita um convite sem aprovação
 // que vale agora, então ele vira jogador (um uso do convite é gasto) e o
 // personagem dele, se esperava aprovação, é aprovado.
 func TestQ25_PlainInvitePromotesPendingMember(t *testing.T) {
@@ -113,7 +113,7 @@ func TestQ25_PlainInvitePromotesPendingMember(t *testing.T) {
 	}
 }
 
-// Q25: the promotion needs an invite that works now and has no approval;
+// the promotion needs an invite that works now and has no approval;
 // nothing else moves a pending member.
 func TestQ25_OnlyAWorkingPlainInvitePromotes(t *testing.T) {
 	t.Parallel()
@@ -159,7 +159,7 @@ func TestQ25_OnlyAWorkingPlainInvitePromotes(t *testing.T) {
 	}
 }
 
-// Q24: Dado um membro pendente sem personagem, quando o mestre abre a lista,
+// Dado um membro pendente sem personagem, quando o mestre abre a lista,
 // então vê quem é, quando entrou e quando sai sozinho; e pode removê-lo.
 func TestQ24_MasterSeesAndRemovesPendingMemberWithoutCharacter(t *testing.T) {
 	t.Parallel()
@@ -232,7 +232,7 @@ func TestQ24_MasterSeesAndRemovesPendingMemberWithoutCharacter(t *testing.T) {
 	}
 }
 
-// Q24: the master's own campaign only: another campaign's master cannot
+// the master's own campaign only: another campaign's master cannot
 // list or remove.
 func TestQ24_OnlyTheCampaignsMasterManagesPendingMembers(t *testing.T) {
 	t.Parallel()
@@ -251,7 +251,7 @@ func TestQ24_OnlyTheCampaignsMasterManagesPendingMembers(t *testing.T) {
 	}
 }
 
-// Q24: um membro pendente sem personagem sai sozinho 30 dias depois de
+// um membro pendente sem personagem sai sozinho 30 dias depois de
 // entrar. The job runs in the database once a day, so this test checks what
 // feeds it: the deadline is set when the pending membership is created and
 // absent otherwise, and the table's TTL expression turns it into an

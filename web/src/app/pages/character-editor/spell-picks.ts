@@ -1,17 +1,7 @@
 import { signal } from '@angular/core';
 
+import { toggledIn } from '../../core/format/sets';
 import type { CasterSection } from './class-blocks';
-
-/** A copy of the set with the key in it if it was out and out of it if it was in. */
-export function toggledIn(current: ReadonlySet<string>, key: string): Set<string> {
-  const next = new Set(current);
-  if (next.has(key)) {
-    next.delete(key);
-  } else {
-    next.add(key);
-  }
-  return next;
-}
 
 /** What `SpellPicks` reads from the page. */
 export interface SpellPicksContext {

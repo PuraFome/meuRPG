@@ -883,3 +883,122 @@ func TestSweep(t *testing.T) {
 	}
 	t.Logf("20000 combos: %d ErrNoSpace, %d of %d rooms discarded", noSpace, disc, rooms)
 }
+
+// bareGen is an empty 15 by 15 working state, for the white-box cases.
+func bareGen(t *testing.T) *gen {
+	t.Helper()
+	o, err := normalize(opts(1, 15, 15))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return newGen(o)
+}
+
+// Branches no generated level reaches: a threshold whose beyond is the same
+// room, a stair site at the grid's edge, beside a door or between two
+// corridors, and open squares on the border for the component labels.
+func TestWhiteBoxBranches(t *testing.T) {
+	t.Run("a threshold beyond the same room is refused", func(t *testing.T) {
+		g := bareGen(t)
+		a := g.addRoom(1, 1, 3, 3)
+		same := &room{id: a.id, x: 5, y: 1, w: 3, h: 3}
+		if _, ok := g.candidateOK(same, West, 0); ok {
+			t.Error("a candidate whose beyond is the same room was accepted")
+		}
+	})
+	t.Run("stair sites", func(t *testing.T) {
+		g := bareGen(t)
+		g.kind[g.idx(5, 0)], g.kind[g.idx(5, 1)] = KindCorridor, KindCorridor
+		if behind, ok := g.stairSite(g.idx(5, 0)); !ok || behind != 2 {
+			t.Errorf("top edge: behind %d, ok %v; want 2, true", behind, ok)
+		}
+		g.kind[g.idx(7, 7)], g.kind[g.idx(7, 8)], g.kind[g.idx(8, 7)] = KindCorridor, KindCorridor, KindDoor
+		if _, ok := g.stairSite(g.idx(7, 7)); ok {
+			t.Error("a square beside a door was taken as a stair site")
+		}
+		g.kind[g.idx(3, 9)], g.kind[g.idx(3, 10)], g.kind[g.idx(3, 8)] = KindCorridor, KindCorridor, KindCorridor
+		if _, ok := g.stairSite(g.idx(3, 9)); ok {
+			t.Error("a square with two corridors was taken as a stair site")
+		}
+	})
+	t.Run("components touching the border", func(t *testing.T) {
+		g := bareGen(t)
+		for _, p := range [][2]int{{0, 3}, {1, 3}, {14, 14}, {13, 14}, {6, 6}} {
+			g.kind[g.idx(p[0], p[1])] = KindCorridor
+		}
+		c := g.labelComponents()
+		var comps []string
+		for id := range int32(len(c.starts) - 1) { //nolint:gosec // G115: a handful of components
+			comps = append(comps, fmt.Sprint(c.squares(id)))
+		}
+		if got, want := strings.Join(comps, " "), "[45 46] [96] [223 224]"; got != want {
+			t.Errorf("components = %s, want %s", got, want)
+		}
+	})
+}
+
+// sealedRoomLevel finds a level with at least three stairs, one in a room, and
+// that room's ID; the test takes every door off that room before the final
+// phase, as if dead-end removal had cut them all.
+func sealedRoomLevel(t *testing.T) (Options, int) {
+	t.Helper()
+	for seed := uint64(1); seed <= 500; seed++ {
+		o := opts(seed, 31, 31)
+		o.DeadendRemoval, o.Stairs = 100, 8
+		o.Placement, o.RoomDensity = PlacementTiled, 200
+		d, err := Generate(o)
+		if err != nil || len(d.Rooms) < 3 || len(d.Stairs) < 3 {
+			continue
+		}
+		for _, s := range d.Stairs {
+			if s.InRoom != 0 {
+				return o, s.InRoom
+			}
+		}
+	}
+	t.Fatal("no level with a room stair")
+	return Options{}, 0
+}
+
+func sealRoom(g *gen, id int) {
+	rm := g.roomByID[id]
+	for side := North; side <= West; side++ {
+		for p := range rm.sideLen(side) {
+			t := rm.thresholdAt(side, p)
+			if di := g.idx(t.doorX, t.doorY); g.kind[di] == KindDoor {
+				g.kind[di] = KindRock
+			}
+		}
+	}
+}
+
+// A room that lost every door is an error under SelfCheck; otherwise it is
+// erased and takes its stairs with it.
+func TestRoomWithoutDoorsIsErasedOrRefused(t *testing.T) {
+	o, id := sealedRoomLevel(t)
+	seal := func(stage string, g *gen) {
+		if stage == "deadends" {
+			sealRoom(g, id)
+		}
+	}
+	o.SelfCheck = true
+	if _, err := generate(o, seal); err == nil || !strings.Contains(err.Error(), "has no exit") {
+		t.Fatalf("SelfCheck: err = %v, want a room with no exit", err)
+	}
+	o.SelfCheck = false
+	d, err := generate(o, seal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(d.DiscardedRooms, id) {
+		t.Errorf("discarded %v, want room %d among them", d.DiscardedRooms, id)
+	}
+	for _, s := range d.Stairs {
+		if s.InRoom == id {
+			t.Errorf("stair %+v still in the erased room", s)
+		}
+	}
+	if d.Entrance.Room == id {
+		t.Errorf("entrance %+v is in the erased room", d.Entrance)
+	}
+}

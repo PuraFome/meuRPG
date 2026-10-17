@@ -175,7 +175,7 @@ func (cb *choiceBuilder) featChoice(g *groupBuild, owner string) {
 		Key: key, FeatureKey: owner, Kind: ChoiceKindOptions, TitlePT: "Talento", Picks: picks, family: "feat",
 		HintPT: "Um talento à escolha. Um talento pede o que o texto dele diz; os que o personagem ainda não cumpre aparecem indisponíveis.",
 	})
-	// The label keeps the singular title: addChoice wrote it already.
+	// addChoice wrote the singular title; several picks take the plural.
 	if picks > 1 {
 		ch.TitlePT = "Talentos"
 		ch.HintPT = fmt.Sprintf("%d talentos à escolha. Um talento pede o que o texto dele diz; os que o personagem ainda não cumpre aparecem indisponíveis.", picks)

@@ -4,7 +4,7 @@ import (
 	"slices"
 )
 
-// Spells that read hit points (MR-014, Etapa 8). The kinds are in
+// Spells that read hit points (MR-014). The kinds are in
 // rules/spelleffects.go and effects/spells.json; here is the arithmetic, pure:
 // the creatures' current hit points and the rolled dice come in, who is
 // affected comes out. Nothing here reads a database or rolls a die.
@@ -18,7 +18,7 @@ type HPCreature struct {
 	Unconscious bool
 }
 
-// PoolReason says why a creature of a pool was not affected.
+// The Pool* constants say why a creature of a pool was not affected.
 const (
 	// PoolAffected: it was affected.
 	PoolAffected = ""

@@ -23,6 +23,7 @@ import { type EntryBody, TableContentClient } from '../../../core/content/conten
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';
 import { navOfKind } from '../../../core/content/content-kinds';
 import { TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
+import { draftToSpell, spellToDraft, withTarget } from '../../../core/content/spell-draft';
 import {
   ATTACK_OPTIONS,
   DURATION_OPTIONS,
@@ -31,19 +32,15 @@ import {
   RANGE_OPTIONS,
   SAVE_SUCCESS_OPTIONS,
   SHAPE_OPTIONS,
-  type SpellDraft,
   TARGET_OPTIONS,
   TIME_OPTIONS,
   circleLabel,
-  draftToSpell,
-  emptySpell,
   moreHint,
   moreLabel,
   sizeLabel,
-  spellFieldPaths,
-  spellToDraft,
-  withTarget,
-} from '../../../core/content/spell-draft';
+} from '../../../core/content/spell-options';
+import { type SpellDraft, emptySpell } from '../../../core/content/spell-types';
+import { spellFieldPaths } from '../../../core/content/spell-preview';
 import { CheckRow } from '../../../shared/form-fields/check-row';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { SwitchField } from '../../../shared/form-fields/switch-field';

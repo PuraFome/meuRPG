@@ -20,7 +20,7 @@ import type { GenerateOrigin } from '../../../core/images/imagegen-copy';
 import { sceneImagesErrorMessage } from '../../../core/maps/map-errors';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { openImagePicker } from '../../../shared/gallery-picker/image-picker-dialog/image-picker-dialog';
-import type { GenerateOutcome } from '../../../shared/image-generate/image-generate-dialog';
+import type { GenerateOutcome } from '../../../shared/image-generate/image-generate.types';
 import { GenerateImageButton } from '../../../shared/image-generate/generate-image-button';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { RetryImage } from '../../../shared/retry-image/retry-image';

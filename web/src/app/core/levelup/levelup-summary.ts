@@ -20,8 +20,6 @@ import {
 } from './levelup-summary-rows';
 import { spellRows } from './levelup-summary-spells';
 
-export type { ChangeRow, MulticlassContext, SummaryContext };
-
 const EXCEPTION_TEXT: Record<number, string> = {
   [LevelUpMulticlassException.EXTRA_ATTACK]:
     'Ataque Extra não se soma ao que o personagem já tinha: o número de ataques é o maior.',

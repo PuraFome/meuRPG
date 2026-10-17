@@ -1,4 +1,4 @@
-// Package grid is the geometry of a map's grid (MR-034, RN-21, Etapa 9): the
+// Package grid is the geometry of a map's grid (MR-034, RN-21): the
 // squares and their size, the painted layers (walls, difficult terrain,
 // light, cover, doors), the straight line between two squares, what a move costs, which
 // squares a mover reaches, and the range of attacks and spells.

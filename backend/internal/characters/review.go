@@ -14,10 +14,12 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // "Pedir ajustes" (RN-15, MR-024).
@@ -296,7 +298,7 @@ func resubmissionOf(ctx context.Context, msg *charactersv1.ResubmitCharacterRequ
 	if err != nil {
 		return resubmission{}, err
 	}
-	id, ok := parseUUID(msg.GetCharacterId())
+	id, ok := uid.Canonical(msg.GetCharacterId())
 	if !ok {
 		return resubmission{}, errCharacterNotFound()
 	}
@@ -392,7 +394,7 @@ func (s *Service) publishCharacterEvent(ctx context.Context, campaignID string, 
 	if s.reviewHost == nil {
 		return
 	}
-	s.reviewHost.PublishCharacterEvent(ctx, campaignID, deref(row.PlayerUserID), row.ID, event)
+	s.reviewHost.PublishCharacterEvent(ctx, campaignID, conv.OrZero(row.PlayerUserID), row.ID, event)
 }
 
 // reviewStatuses reads the status of each open review of the campaign, by character ID.

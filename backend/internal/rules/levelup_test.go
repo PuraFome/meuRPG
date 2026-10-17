@@ -208,7 +208,7 @@ func TestLevelUpToren(t *testing.T) {
 	}
 }
 
-// TestLevelUpClerics: a class that prepares from its whole list, no book.
+// TestLevelUpCleric: a class that prepares from its whole list, no book.
 func TestLevelUpCleric(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)

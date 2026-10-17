@@ -99,7 +99,7 @@ const (
 type LevelUpError struct {
 	Field  string
 	Reason string
-	// Code is the Issue code, for LevelUpSheetIssue only.
+	// Code is the Issue code, for LevelUpReasonSheetIssue only.
 	Code string
 	// Message is English text for logs and tests, never for the app.
 	Message string
@@ -371,8 +371,8 @@ func levelUpClass(b Build, classKey string, c *content) (int, *LevelUpError) {
 // LevelUpOptions says what the next level of class classKey gives a
 // character built as before. A class the character does not have is a new
 // class at its level 1, if the character meets the prerequisites (the
-// LevelUpMulticlassPrerequisite refusals); it refuses a class the content does
-// not have (LevelUpClass) and a character at level 20 (LevelUpMaxLevel).
+// LevelUpReasonMulticlassPrerequisite refusals); it refuses a class the content does
+// not have (LevelUpReasonClass) and a character at level 20 (LevelUpReasonMaxLevel).
 func LevelUpOptions(before Build, classKey string, c *Content) (LevelUpOffer, error) {
 	o, err := levelUpOptions(before, classKey, c.c)
 	if err != nil {
@@ -499,10 +499,6 @@ func newClassFeatures(dBefore, dBare Derived, classKey string) []NamedKey {
 	return out
 }
 
-// magicalSecretsSpells is how many spells of any class one Magical Secrets
-// feature of the Bard lets the player learn (SRD 5.1, Bard).
-const magicalSecretsSpells = 2
-
 // addFeatureNotes reads the features of the new level: the ones the master adds in
 // the editor, and the Bard's Magical Secrets of the SRD.
 func (o *LevelUpOffer) addFeatureNotes(c *content, features []string) {
@@ -510,8 +506,10 @@ func (o *LevelUpOffer) addFeatureNotes(c *content, features []string) {
 		if masterAdds[fk] {
 			o.MasterAdds = append(o.MasterAdds, NamedKey{Key: fk, NamePT: c.namePT(fk)})
 		}
-		if strings.HasPrefix(fk, "feature:magical-secrets-") && !isTableKey(fk) {
-			o.AnyClassSpells = magicalSecretsSpells
+		// Only the Bard's own feature counts here; the Lore feature is added by
+		// addMagicalSecrets.
+		if s, beyondKnown := magicalSecretsOf(fk); s > 0 && beyondKnown == 0 {
+			o.AnyClassSpells = s
 		}
 	}
 }
@@ -599,9 +597,9 @@ func newSpellsOf(kind string, newClass, casts bool, knownGain int) (int, string)
 // spells of any class never exceed the spells the level gives.
 func (o *LevelUpOffer) addMagicalSecrets(sub *srd51.Subclass, subFeatures []string) {
 	if sub != nil && slices.Contains(subFeatures, "feature:additional-magical-secrets") {
-		o.Spells += magicalSecretsSpells
+		o.Spells += secretsPerFeature
 		o.SpellsKind = PreparationKnown
-		o.AnyClassSpells += magicalSecretsSpells
+		o.AnyClassSpells += secretsPerFeature
 	}
 	o.AnyClassSpells = min(o.AnyClassSpells, o.Spells)
 }
@@ -758,7 +756,7 @@ func isASILevel(row *srd51.Level) bool {
 
 // masterAdds are the features that ask the player for a choice the guided
 // level-up cannot ask for. It lists them (LevelUpOffer.MasterAdds) and the
-// master adds them in the editor (RN-12). None today: the choice engine asks
+// master adds them in the editor (RN-12). The set is empty: the choice engine asks
 // for them all (choicegroups.go).
 var masterAdds = map[string]bool{}
 
@@ -976,8 +974,8 @@ func rollIndex(b Build, classIdx int) int {
 // class one level higher, or a class the character does not have at level 1
 // (last in the list), and the choices added to it. It never judges the
 // choices (CheckLevelUp does); it only refuses a class the content does not
-// have (LevelUpClass), the prerequisites of a new class and level 20
-// (LevelUpMaxLevel).
+// have (LevelUpReasonClass), the prerequisites of a new class and level 20
+// (LevelUpReasonMaxLevel).
 //
 // The hit points follow the sheet's method. With the fixed average the Build
 // stays as it is; a rolled value switches a fixed sheet to rolled, filling
@@ -1097,7 +1095,7 @@ func applyHitPoints(after, before Build, ch LevelUpChoices, idx int, c *content)
 // Anything else differs is refused: name, race, base scores, equipment,
 // weapons, the other classes... (RN-01: the rest stays locked). A sheet that
 // ends with a problem the old one did not have (a spell off the class list,
-// too many prepared spells) is refused as LevelUpSheetIssue.
+// too many prepared spells) is refused as LevelUpReasonSheetIssue.
 func CheckLevelUp(before, after Build, c *Content) error {
 	if err := checkLevelUp(before, after, c.c); err != nil {
 		return err

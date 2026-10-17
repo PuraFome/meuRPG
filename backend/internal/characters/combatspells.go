@@ -10,11 +10,12 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// What a cast reads from a spell and the caster's sheet (MR-014, Etapa 6): the
+// What a cast reads from a spell and the caster's sheet (MR-014): the
 // numbers of the spell at the slot level, the caster's attack bonus and save
 // DC, the target's saving throw bonus, and the death the master confirms. Like
 // the rest of the combat's reads (combatturn.go), package play declares the
@@ -212,7 +213,7 @@ func (s *Service) CombatSave(ctx context.Context, tx pgx.Tx, campaignID, charact
 // transaction: the character changes status, never row, and its player may
 // create another. It is idempotent, as MarkCharacterDead is.
 func (s *Service) MarkDead(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time) error {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return errCharacterNotFound()
 	}
@@ -226,7 +227,7 @@ func (s *Service) MarkDead(ctx context.Context, tx pgx.Tx, campaignID, character
 // round and the combat, which the master reads on the character's page (death_round) and
 // Revivify counts its minute from. A character already dead keeps what it had.
 func (s *Service) MarkDeadInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time, round int32, encounterID string) error {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return errCharacterNotFound()
 	}
@@ -240,7 +241,7 @@ func (s *Service) MarkDeadInCombat(ctx context.Context, tx pgx.Tx, campaignID, c
 
 // Conditions implements play.CombatRoster: the SRD's conditions the master may
 // mark as labels (RN-22), with their Portuguese names. They are the SRD's: no
-// table content adds one (plan D1), so this needs no campaign.
+// table content adds one, so this needs no campaign.
 func (s *Service) Conditions() []link.Named {
 	var out []link.Named
 	for _, c := range s.srd.Conditions() {

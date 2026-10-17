@@ -276,7 +276,9 @@ describe('MapEditor', () => {
     it('says so, with a way to try again, when the rooms cannot be read', async () => {
       await setup(undefined, {}, {}, roomsResponse());
       dungeons.failWith.set('rooms', new ConnectError('down', Code.Unavailable));
-      (fixture.componentInstance as unknown as { reloadDungeon(): void }).reloadDungeon();
+      (
+        fixture.componentInstance as unknown as { dungeonCtl: { reload(): void } }
+      ).dungeonCtl.reload();
       await settle();
       expect(el.querySelector('[role="alert"]')?.textContent).toContain(
         'Não deu para ler as salas da masmorra.',
@@ -1158,16 +1160,16 @@ describe('MapEditor', () => {
       field.dispatchEvent(new Event('input'));
       await settle();
       const comp = fixture.componentInstance as unknown as {
-        onMoved(m: unknown): Promise<void>;
-        save(): Promise<boolean>;
+        items: { move(m: unknown): Promise<void> };
+        pointSaves: { save(): Promise<boolean> };
       };
 
       // The master drags the trap; the move request stays in flight.
-      const moving = comp.onMoved({ kind: 'point', id: 'pit', xBp: 1000, yBp: 2000 });
+      const moving = comp.items.move({ kind: 'point', id: 'pit', xBp: 1000, yBp: 2000 });
       await settle();
       expect(state.points().find((p) => p.id === 'pit')!.xBp).toBe(1000);
       // Still in flight, "Salvar ponto" for the panel change; the server answers it with the old place first.
-      const saving = comp.save();
+      const saving = comp.pointSaves.save();
       await settle();
       expect(updates).toHaveLength(2);
       updates[1].resolve(

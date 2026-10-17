@@ -32,7 +32,8 @@ import {
   subclassRowBase,
   subclassToDraft,
 } from './subclass-draft';
-import { classDefaults, menu } from './content-testing';
+import { classDefaults } from './content-testing';
+import { menu } from './content-testing-menu';
 import { emptyEffect } from './effect-draft';
 import { emptyFeature } from './feature-draft';
 

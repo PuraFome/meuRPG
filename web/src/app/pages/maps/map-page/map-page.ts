@@ -26,7 +26,7 @@ import { MapsClient } from '../../../core/maps/maps-client';
 import { OpenSessionLookup } from '../../../core/play/open-session';
 import { openImagePicker } from '../../../shared/gallery-picker/image-picker-dialog/image-picker-dialog';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
-import type { GenerateOutcome } from '../../../shared/image-generate/image-generate-dialog';
+import type { GenerateOutcome } from '../../../shared/image-generate/image-generate.types';
 import { MapEditor } from '../map-editor/map-editor';
 import { MapHead } from '../map-head/map-head';
 import { MapManage } from '../map-manage/map-manage';

@@ -15,13 +15,14 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
 
-// The planned milestones (MR-016, RN-09, RN-12, question 45): in a MILESTONES
+// The planned milestones (MR-016, RN-09, RN-12): in a MILESTONES
 // campaign the master writes the milestones ahead of time (planned_milestones)
 // and marks one reached when the party gets there.
 //
@@ -240,7 +241,7 @@ func movePlanned(ctx context.Context, q *progressiondb.Queries, campaignID, id s
 // their places. It is out of the list when there is none.
 func nearestPlanned(list []progressiondb.PlannedMilestone, live []progressiondb.XpAward, i, step int) int {
 	reached := func(j int) bool {
-		return slices.ContainsFunc(live, func(a progressiondb.XpAward) bool { return deref(a.MilestoneID) == list[j].ID })
+		return slices.ContainsFunc(live, func(a progressiondb.XpAward) bool { return conv.OrZero(a.MilestoneID) == list[j].ID })
 	}
 	j := i + step
 	for j >= 0 && j < len(list) && reached(j) {
@@ -531,7 +532,7 @@ type markGroups struct {
 func groupMarks(live []progressiondb.XpAward, marks []*progressionv1.XPAward) markGroups {
 	g := markGroups{byMilestone: map[string][]*progressionv1.XPAward{}, reachedAt: map[string]time.Time{}}
 	for i, a := range live {
-		id := deref(a.MilestoneID)
+		id := conv.OrZero(a.MilestoneID)
 		if id == "" {
 			g.offList = append(g.offList, &progressionv1.Milestone{
 				Id: a.ID, Text: a.Reason, Reached: true, ReachedAt: timestamppb.New(a.CreatedAt), Marks: []*progressionv1.XPAward{marks[i]}, OffList: true,

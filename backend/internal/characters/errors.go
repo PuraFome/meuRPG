@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
@@ -79,25 +77,6 @@ func invalidArgument(err error) error {
 		return out
 	}
 	return err
-}
-
-// parseUUID returns an ID in canonical form, or false when it is not a
-// UUID: such an ID names nothing, and is answered as "not found" without a
-// trip to the database.
-func parseUUID(id string) (string, bool) {
-	u, err := uuid.Parse(id)
-	if err != nil {
-		return "", false
-	}
-	return u.String(), true
-}
-
-// isUniqueViolation reports whether err is a unique-index violation (23505)
-// of the named index or constraint. CockroachDB names it in the error's
-// constraint field.
-func isUniqueViolation(err error, name string) bool {
-	pgErr, ok := errors.AsType[*pgconn.PgError](err)
-	return ok && pgErr.Code == "23505" && pgErr.ConstraintName == name
 }
 
 // dbError maps an error from the database to the Connect error the client gets

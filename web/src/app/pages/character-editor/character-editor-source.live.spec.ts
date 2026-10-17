@@ -6,14 +6,14 @@ import {
   FullSheet,
   HitPointsMethod,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { CharacterEditorSourceLive } from './character-editor-source.live';
 import {
-  CharacterEditorSourceLive,
   mergeFullSheetInit,
   toBasicSheetInit,
   toFormBasicSheet,
   toFormFullSheet,
   toFullSheetInit,
-} from './character-editor-source.live';
+} from './character-editor-sheet-map';
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 

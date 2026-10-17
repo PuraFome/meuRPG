@@ -15,7 +15,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 )
 
-// MR-031 (D7, question 62): an NPC's sheet carries a portrait, an image of the
+// MR-031: an NPC's sheet carries a portrait, an image of the
 // campaign's gallery. The gallery is package maps's, so the tests give the
 // service a stand-in that knows a few images by campaign; the real one is
 // exercised with the stage, in package maps.

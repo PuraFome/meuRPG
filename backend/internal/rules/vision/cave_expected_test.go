@@ -1,6 +1,6 @@
 package vision_test
 
-// The expected pictures of the cave, from cave.py (the Etapa 9 artboards,
+// The expected pictures of the cave, from cave.py (the cave design,
 // cave-data.md): B bright, d dim, g seen in grey (darkvision), # a wall seen,
 // @ the viewer's own square, a space unseen. Its lines are sampled; the
 // functions here walk them exactly, and agree with it on every square.

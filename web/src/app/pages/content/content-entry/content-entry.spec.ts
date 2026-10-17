@@ -18,9 +18,9 @@ import {
   classDefaults,
   entry,
   fakeContentWatcher,
-  menuResponse,
   mirathel,
 } from '../../../core/content/content-testing';
+import { menuResponse } from '../../../core/content/content-testing-menu';
 import { ContentEntry } from './content-entry';
 import { settle } from '../../../../test-settle';
 

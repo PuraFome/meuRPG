@@ -7,18 +7,10 @@ import {
   TableSpellSchema,
   TableSpellTargetKind,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import {
-  RANGE_OPTIONS,
-  TARGET_OPTIONS,
-  draftToSpell,
-  emptySpell,
-  moreLabel,
-  previewRows,
-  sizeLabel,
-  spellToDraft,
-  targetText,
-  withTarget,
-} from './spell-draft';
+import { draftToSpell, spellToDraft, withTarget } from './spell-draft';
+import { RANGE_OPTIONS, TARGET_OPTIONS, moreLabel, sizeLabel } from './spell-options';
+import { emptySpell } from './spell-types';
+import { previewRows, targetText } from './spell-preview';
 
 const lamina = () => ({
   ...emptySpell(),

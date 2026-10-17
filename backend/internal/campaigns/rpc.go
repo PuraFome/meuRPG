@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/secret"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // Every handler starts with one explicit check: authz.RequireSignedIn when
@@ -292,7 +293,7 @@ func (s *Service) RemovePendingMember(
 	if err != nil {
 		return nil, err
 	}
-	userID, ok := parseUUID(req.Msg.GetUserId())
+	userID, ok := uid.Canonical(req.Msg.GetUserId())
 	if !ok {
 		return nil, errMemberNotFound() // no membership could have this ID
 	}
@@ -413,7 +414,7 @@ func (s *Service) RevokeInvite(
 	if err != nil {
 		return nil, err
 	}
-	inviteID, ok := parseUUID(req.Msg.GetInviteId())
+	inviteID, ok := uid.Canonical(req.Msg.GetInviteId())
 	if !ok {
 		return nil, errInviteNotFound()
 	}

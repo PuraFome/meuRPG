@@ -16,15 +16,17 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The character's creatures (MR-037, Etapa 9): the familiar, the animals and
+// The character's creatures (MR-037): the familiar, the animals and
 // undead a spell summoned, the creatures the master gave. A creature belongs
 // to a player's character and lasts, from one session to the next, until the
 // player or the master dismisses it. This file has the CharacterService
@@ -131,7 +133,7 @@ func characterCreatureToProto(content *rules.Content, c charactersdb.CharacterCr
 // from the stat block (its Dexterity modifier, its best speed).
 func creatureOf(content *rules.Content, v creatureView) link.Creature {
 	out := link.Creature{
-		ID: v.ID, CharacterID: v.CharacterID, OwnerUserID: deref(v.ownerUserID), MonsterKey: v.MonsterKey, Name: v.Name,
+		ID: v.ID, CharacterID: v.CharacterID, OwnerUserID: conv.OrZero(v.ownerUserID), MonsterKey: v.MonsterKey, Name: v.Name,
 		Source: v.Source, Attack: v.Attack, GroupID: v.SummonGroupID, DependsOnConcentration: v.ConcentrationCastID != nil,
 		HitPointsCurrent: int(v.HpCurrent), HitPointsMax: int(v.HpMax),
 	}
@@ -157,7 +159,7 @@ func viewOfRow(r charactersdb.GetCharacterCreatureRow) creatureView {
 // that is still with its owner; not found otherwise. With lock, it locks the
 // row.
 func (s *Service) findCreature(ctx context.Context, q *charactersdb.Queries, m authz.Membership, rawID string, lock bool) (creatureView, error) {
-	id, ok := parseUUID(rawID)
+	id, ok := uid.Canonical(rawID)
 	if !ok {
 		return creatureView{}, errCreatureNotFound()
 	}
@@ -219,7 +221,7 @@ func (s *Service) ListCharacterCreatures(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -297,7 +299,7 @@ func (s *Service) readCreatureGift(ctx context.Context, msg *charactersv1.GiveCr
 	if err != nil {
 		return creatureGift{}, err
 	}
-	id, ok := parseUUID(msg.GetCharacterId())
+	id, ok := uid.Canonical(msg.GetCharacterId())
 	if !ok {
 		return creatureGift{}, errCharacterNotFound()
 	}
@@ -339,7 +341,7 @@ func cleanCreatureCreateKey(raw string) (string, error) {
 		return "", err
 	}
 	if key != "" {
-		if _, ok := parseUUID(key); !ok {
+		if _, ok := uid.Canonical(key); !ok {
 			return "", invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
 		}
 	}
@@ -363,7 +365,7 @@ func (s *Service) giveCreatureInTx(ctx context.Context, tx pgx.Tx, g creatureGif
 	created, replayed, err = idem.Create(ctx, g.scopedKey, g.requestHash, q.GetCharacterCreatureByCreateKey,
 		func(c charactersdb.CharacterCreature) *string { return c.CreateHash },
 		func() (charactersdb.CharacterCreature, error) { return s.insertCreatureGift(ctx, tx, q, g, owner) })
-	return created, deref(owner.PlayerUserID), replayed, err
+	return created, conv.OrZero(owner.PlayerUserID), replayed, err
 }
 
 // insertCreatureGift makes the gift: one creature of the master, at full hit
@@ -452,7 +454,7 @@ func (s *Service) RenameCreature(
 	if err != nil {
 		return nil, s.dbError(ctx, "rename a creature", err)
 	}
-	s.publishCreatureChange(ctx, m.CampaignID, deref(v.ownerUserID), encounterID)
+	s.publishCreatureChange(ctx, m.CampaignID, conv.OrZero(v.ownerUserID), encounterID)
 	return connect.NewResponse(&charactersv1.RenameCreatureResponse{Creature: characterCreatureToProto(content, v.CharacterCreature)}), nil
 }
 
@@ -509,7 +511,7 @@ func (s *Service) DismissCreature(
 		return nil, s.dbError(ctx, "dismiss a creature", err)
 	}
 	if !gone {
-		s.publishCreatureChange(ctx, m.CampaignID, deref(v.ownerUserID), encounterID)
+		s.publishCreatureChange(ctx, m.CampaignID, conv.OrZero(v.ownerUserID), encounterID)
 	}
 	return connect.NewResponse(&charactersv1.DismissCreatureResponse{}), nil
 }
@@ -546,7 +548,7 @@ func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Me
 // dismissedAlready says whether the creature exists, belongs to someone the
 // caller may see and was dismissed: dismissing it again is not an error.
 func (s *Service) dismissedAlready(ctx context.Context, q *charactersdb.Queries, m authz.Membership, rawID string) bool {
-	id, ok := parseUUID(rawID)
+	id, ok := uid.Canonical(rawID)
 	if !ok {
 		return false
 	}
@@ -618,7 +620,7 @@ func (s *Service) AdjustCreatureHitPoints(
 	if err != nil {
 		return nil, s.dbError(ctx, "adjust a creature's hit points", err)
 	}
-	s.publishCreatureChange(ctx, m.CampaignID, deref(v.ownerUserID), "")
+	s.publishCreatureChange(ctx, m.CampaignID, conv.OrZero(v.ownerUserID), "")
 	out := &charactersv1.AdjustCreatureHitPointsResponse{}
 	if !defeated {
 		out.Creature = characterCreatureToProto(content, v.CharacterCreature)

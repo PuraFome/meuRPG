@@ -25,8 +25,8 @@ import (
 //
 // Who applies each rule: package characters reads them (through its
 // ContentSource: the hit points of a level-up, the ability scores of a new
-// sheet), package maps reads FogOnNewMaps when it creates a map, and the
-// combat slice 10.4b will read the critical and the death saves. The house
+// sheet), package maps reads FogOnNewMaps when it creates a map, and
+// package play reads the critical and the death saves. The house
 // rules are only shown. This file owns the storage, the style the settings make
 // and the three RPCs.
 
@@ -127,7 +127,7 @@ func (s *Service) FogOnNewMaps(ctx context.Context, tx pgx.Tx, campaignID string
 	return r.FogOnNewMaps, err
 }
 
-// The three styles "Estilo da mesa" fills (RN-24, question 76). A style is not
+// The three styles "Estilo da mesa" fills (RN-24). A style is not
 // stored: StyleOf works it out from the settings it fills.
 type stylePreset struct {
 	style      campaignsv1.TableStyle

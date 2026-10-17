@@ -10,7 +10,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// TestTableContentRefusalListsEveryFieldAtItsPath (MR-025, slice 10.11 fix round 1):
+// TestTableContentRefusalListsEveryFieldAtItsPath (MR-025):
 // a spell with several fields wrong comes back with every one of them, each at the
 // exact path of the editor's input, and nothing is written. The paths and reasons
 // of every row are pinned by rules.TestEntryViolationPaths; this proves the API

@@ -94,7 +94,8 @@ export class MapState {
         return await this.newer(generation, mapId);
       }
       if (edits !== this.edits) {
-        return;
+        // Served before an edit already on screen, like a success would be: read again, so a map that is gone shows as gone.
+        return await this.read(mapId);
       }
       if (ConnectError.from(err).code === Code.NotFound) {
         this.clear('gone');

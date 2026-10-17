@@ -3,9 +3,7 @@ import { LiveStream, type LiveStreamHandlers } from '../../core/play/live-stream
 import type { ShownImageVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
 import type { LiveSessionLoader } from './live-session-loader';
-import type { LiveSessionParts } from './live-session-parts';
-import { VISION_DEBOUNCE_MS } from './live-session-pure';
-import type { LiveSessionServices } from './live-session-services';
+import type { LiveSessionParts, LiveSessionServices } from './live-session-deps';
 import type { LiveSessionState } from './live-session-state';
 import type { LiveSessionView } from './live-session-view';
 
@@ -14,6 +12,12 @@ export const CALLING_NOTICE_MS = 10_000;
 
 /** The stream of the session page: opens it, and does what each of its news asks of the page. */
 export class LiveSessionEvents {
+  /** Counts the stream's news of the current map and of the shown image: a snapshot that began before one of them
+   * does not overwrite it. */
+  private mapEvents = 0;
+  private imageEvents = 0;
+  private callingTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor(
     private readonly services: LiveSessionServices,
     private readonly state: LiveSessionState,
@@ -22,6 +26,11 @@ export class LiveSessionEvents {
     private readonly loader: LiveSessionLoader,
   ) {}
 
+  /** Clears the timer of the "chamando você" line. */
+  dispose(): void {
+    clearTimeout(this.callingTimer);
+  }
+
   open(campaignId: string, generation: number): void {
     const stream = new LiveStream({
       open: (signal) => this.services.source.watch(campaignId, signal),
@@ -29,7 +38,7 @@ export class LiveSessionEvents {
       document: this.services.document,
       handlers: {
         ...this.sessionHandlers(campaignId, generation),
-        ...this.mapHandlers(),
+        ...this.mapHandlers(generation),
         ...this.combatHandlers(generation),
         ...this.tableHandlers(),
       },
@@ -48,7 +57,10 @@ export class LiveSessionEvents {
         // A `content_changed` missed while reconnecting leaves the spells the page read before out of date.
         services.spellCatalog.forget(campaignId);
         void parts.trapBoard.refresh();
-        void loader.readSnapshot(campaignId, generation);
+        void loader.readSnapshot(campaignId, generation, () => ({
+          map: this.mapEvents,
+          image: this.imageEvents,
+        }));
       },
       onContentChanged: () => {
         services.spellCatalog.forget(campaignId);
@@ -62,7 +74,7 @@ export class LiveSessionEvents {
           '';
         state.vitals.update((list) => applyVitals(list, v));
         if ((v.familiarSight?.creatureId ?? '') !== before) {
-          this.scheduleVision();
+          this.loader.scheduleVision();
         }
       },
       onCreaturesChanged: () => state.creaturesTick.update((n) => n + 1),
@@ -90,7 +102,7 @@ export class LiveSessionEvents {
   }
 
   /** The map, the fog and the image on show. */
-  private mapHandlers() {
+  private mapHandlers(generation: number) {
     const { state, parts, loader, view } = this;
     return {
       onCurrentMap: (mapId) => this.showMap(mapId),
@@ -99,16 +111,16 @@ export class LiveSessionEvents {
         // The fog map's tokens, points and squares come from reads: read them again.
         if (mapId === state.currentMapId()) {
           void parts.mapState.refresh();
-          this.scheduleVision();
+          this.loader.scheduleVision();
           // In a combat the NPCs come with the combat, not with the map: a player whose sight changed (their own move, an
           // ally's, a light, a door) may now see one the last read left out. Only the combat read carries it (RN-10).
           if (!state.isMaster() && parts.combat.encounter() && !view.inTheatre()) {
-            void loader.loadCombat(state.generation);
+            void loader.loadCombat(generation);
           }
         }
       },
       onTokenMoved: (move) => {
-        this.scheduleVision();
+        this.loader.scheduleVision();
         void parts.trapBoard.tokensMoved();
         // A token the page doesn't know (a missed `map_changed`): read again.
         if (!parts.mapState.moveToken(move.mapId, move.characterId, move.xBp, move.yBp)) {
@@ -130,7 +142,7 @@ export class LiveSessionEvents {
         const noMap = change.mode === EncounterMode.THEATRE || (!change.mode && view.inTheatre());
         // Any change of the combat may change who sees whom (revision 0 is a hint with no number): read the vision too.
         if (!noMap) {
-          this.scheduleVision();
+          this.loader.scheduleVision();
         }
         // Read again only when the news is newer than the copy on screen. A hint with no revision
         // (0) is the server telling a player "read again" without counting: an opportunity offer
@@ -169,7 +181,7 @@ export class LiveSessionEvents {
       },
       onCombatantMoved: (move) => {
         if (!view.inTheatre()) {
-          this.scheduleVision();
+          this.loader.scheduleVision();
           void parts.trapBoard.tokensMoved();
         }
         if (!parts.combat.applyMove(move)) {
@@ -208,19 +220,6 @@ export class LiveSessionEvents {
     } satisfies Partial<LiveStreamHandlers>;
   }
 
-  /** What a player sees may have changed (a hint, a move, a turn): one read of the vision and its layers for a burst of them. The master's "Ver como" reads again too. */
-  scheduleVision(): void {
-    const { state } = this;
-    if (state.visionTimer !== undefined) {
-      return;
-    }
-    state.visionTimer = setTimeout(() => {
-      state.visionTimer = undefined;
-      void this.parts.fog.refresh();
-      state.visionTick.update((n) => n + 1);
-    }, VISION_DEBOUNCE_MS);
-  }
-
   /** The master's nudge: the same alert as a turn that comes, plus the line, which goes away by itself. */
   private callingYou(): void {
     const { state } = this;
@@ -229,14 +228,14 @@ export class LiveSessionEvents {
     }
     this.services.turnAlert.nudge('master');
     state.calling.set(true);
-    clearTimeout(state.callingTimer);
-    state.callingTimer = setTimeout(() => state.calling.set(false), CALLING_NOTICE_MS);
+    clearTimeout(this.callingTimer);
+    this.callingTimer = setTimeout(() => state.calling.set(false), CALLING_NOTICE_MS);
   }
 
   /** `current_map_changed`, or the master's own choice. */
   showMap(mapId: string | null): void {
     const { state } = this;
-    state.mapEvents++;
+    this.mapEvents++;
     state.currentMapId.set(mapId);
     void this.parts.mapState.open(mapId);
     if (state.isMaster()) {
@@ -252,7 +251,7 @@ export class LiveSessionEvents {
       void parts.mapState.refresh();
       // Something about the traps may have changed: a firing, a notice, a damage that waits.
       void parts.trapBoard.refresh();
-      this.scheduleVision();
+      this.loader.scheduleVision();
     }
     if (state.isMaster()) {
       void this.loader.reloadMaps();
@@ -278,7 +277,7 @@ export class LiveSessionEvents {
   /** `shown_image_changed`: the block appears, changes or goes away. */
   private shownImageChanged(image: ShownImageVm | null): void {
     const { state } = this;
-    state.imageEvents++;
+    this.imageEvents++;
     if (!state.isMaster()) {
       const previous = state.shownImage();
       if (image) {
@@ -290,21 +289,5 @@ export class LiveSessionEvents {
     // The switch is per image: a new image, or none, starts with it off.
     state.shownKeep.set(false);
     state.shownImage.set(image);
-  }
-
-  /** The master took an image back: it leaves the list now, and a read that began before this answer is dropped
-   * (it may still carry the image). */
-  takenBack(image: ShownImageVm): void {
-    this.state.leftSeq++;
-    this.state.leftImages.update((list) => list.filter((i) => i.id !== image.id));
-  }
-
-  /** "Voltar aos seus olhos" worked: the band goes at once; the stream's newer vitals confirm it. */
-  familiarStopped(characterId: string): void {
-    this.state.vitals.update((list) =>
-      list.map((v) => (v.characterId === characterId ? { ...v, familiarSight: null } : v)),
-    );
-    void this.parts.mapState.refresh();
-    this.scheduleVision();
   }
 }

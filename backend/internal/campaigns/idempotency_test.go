@@ -11,7 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The audit of 07/10/2026 (F7): a retried CreateCampaign, after a timeout or a second tap, must
+// A retried CreateCampaign, after a timeout or a second tap, must
 // not make a second campaign.
 
 func createWithKey(t *testing.T, u *user, name, key string) (*campaignsv1.Campaign, error) {

@@ -19,7 +19,7 @@ import (
 // AdjustVitals and TakeRest against the database: who answers not_found, what each
 // refusal says, and what lands in character_vitals (and character_wild_shapes) after
 // each accepted change. The pure part (every field's check, every rest's plan) is
-// frozen in vitals_golden_test.go.
+// stated in vitals_cases_test.go.
 
 // vitalsDBTable is a campaign with Pensantus (a level 3 wizard) and a level 3 warlock,
 // each a player's, plus a third player's fresh wizard, an NPC and a dead character.

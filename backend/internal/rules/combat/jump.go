@@ -2,7 +2,7 @@ package combat
 
 import "github.com/PuraFome/meuRPG/backend/internal/rules"
 
-// Jumping (MR-034, Etapa 9, D3), SRD 5.1: a long jump covers as many feet as
+// Jumping (MR-034), SRD 5.1: a long jump covers as many feet as
 // the Força score with a running start (a move of at least 10 ft on foot just
 // before) and half that standing; a high jump reaches 3 feet plus the Força
 // modifier with a running start and half that standing. The grid, the line and

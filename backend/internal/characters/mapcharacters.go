@@ -7,6 +7,8 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // MapCharacters returns those of ids that may stand on one of the
@@ -22,7 +24,7 @@ import (
 func (s *Service) MapCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]*charactersv1.CharacterSummary, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if id, ok := parseUUID(id); ok {
+		if id, ok := uid.Canonical(id); ok {
 			valid = append(valid, id)
 		}
 	}
@@ -39,7 +41,7 @@ func (s *Service) MapCharacters(ctx context.Context, tx pgx.Tx, campaignID strin
 			Id:           row.ID,
 			Kind:         kindFromDB[row.Kind],
 			Name:         row.Name,
-			PlayerUserId: deref(row.PlayerUserID),
+			PlayerUserId: conv.OrZero(row.PlayerUserID),
 		})
 	}
 	return out, nil

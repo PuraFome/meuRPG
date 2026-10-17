@@ -11,6 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -43,7 +44,7 @@ type sheetSave struct {
 // readSheetSave reads and checks an UpdateCharacter request, in the order the client
 // is answered: the character's ID, the revision, the name, then the sheet.
 func (s *Service) readSheetSave(ctx context.Context, m authz.Membership, msg *charactersv1.UpdateCharacterRequest) (*sheetSave, error) {
-	id, ok := parseUUID(msg.GetCharacterId())
+	id, ok := uid.Canonical(msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -122,7 +123,7 @@ func (s *Service) saveSheetIn(ctx context.Context, tx pgx.Tx, u *sheetSave) (cha
 	if err != nil {
 		return charactersdb.Character{}, err
 	}
-	stored, err := s.checkSheetSaveIn(ctx, tx, u, current)
+	stored, err := s.checkSheetSave(ctx, tx, u, current)
 	if err != nil {
 		return charactersdb.Character{}, err
 	}
@@ -176,9 +177,9 @@ func lockSheetToSave(ctx context.Context, q *charactersdb.Queries, u *sheetSave)
 	return current, nil
 }
 
-// checkSheetSaveIn checks the sheet against the content the transaction reads and the
+// checkSheetSave checks the sheet against the content the transaction reads and the
 // stored sheet, which it returns.
-func (s *Service) checkSheetSaveIn(ctx context.Context, tx pgx.Tx, u *sheetSave, current charactersdb.Character) (*charactersv1.CharacterSheet, error) {
+func (s *Service) checkSheetSave(ctx context.Context, tx pgx.Tx, u *sheetSave, current charactersdb.Character) (*charactersv1.CharacterSheet, error) {
 	// The table's content, read in this transaction: if it moved since it was
 	// read above (an archive, an edit), the sheet is checked again with it, so a
 	// write is always ordered against a content write (ADR-0018, section 5).

@@ -22,19 +22,28 @@ The hint `content_changed` goes to everyone watching the campaign, with no conte
 
 ## The character editor
 
-`pages/character-editor` is the composition and the members its template reads.
+`pages/character-editor` is a page that owns the two forms and the page state and builds plain classes for the rest; its template binds their members directly (`views.blocks()`, `picks.toggleSkill($event)`, `server.pendingSteps()`, `submitting.submit()`).
 What a page or a list shows is a pure function of the catalogue and the form, each with its own spec:
 
 | File | What it holds |
 | --- | --- |
 | `editor-state.ts` | The page state, titles, lead, cancel link, the XP a new sheet starts at, and the request that asks the server to derive the draft. |
-| `catalog-views.ts` | The sentences under the selects, the Constitution the preview adds up, the skills the lists give. |
-| `spell-views.ts` | What each caster section lists, its searches and numbers. |
-| `skill-picks.ts` | The toggles of skills and expertise. |
+| `editor-core.ts` | The interface every plain class reads the page through: the state, the two forms and the picks. |
+| `editor-catalog.ts` (`views`) | What the catalogue and the form say together: the select options and their "saiu da lista" entries, the class blocks, the spell sections, the page texts. |
+| `catalog-views.ts`, `spell-views.ts` | The pure functions under it: the sentences under the selects, the Constitution the preview adds up, the skills the lists give; what each caster section lists, its searches and numbers. |
+| `catalog-changes.ts` | Whether a re-read catalogue differs from the one on screen, and which form control holds a key the master switched off. |
+| `editor-picks.ts`, `skill-picks.ts` | What is picked beside the form's controls (skills, expertise, extra classes, feats, rolls, choices) and the toggles of skills and expertise. |
+| `spell-picks.ts` | The cantrips, known and prepared spells of the "Magias" step and their searches. |
+| `editor-draft.ts` | The draft the form and the picks add up to, and what is wrong with it (`invalidSummary`, the problems that have no control of their own). |
 | `full-draft.ts`, `full-form.ts` | The draft the request carries, the problems the blocks and the rolls still have, what the server's answer takes out of the picks; the form and its limits. |
+| `editor-server-draft.ts`, `hit-points-server.ts`, `server-choices.ts` | What the server derives from the draft: hit points and spell numbers (`PreviewCharacter`) and the class and race choices (`PreviewChoices`). |
+| `editor-submit.ts`, `save-flow.ts` | The save button and what it does before the request (the first problem opens its step); the request of a create or an edit, its idempotency key, the navigation and what a refusal does to the page. |
+| `editor-loader.ts` | What the page reads to open (the lists of a new sheet or the lists and the sheet of an edit, the table of ways to make scores), how it fills the forms and the picks with them, the counters that drop the answer of a route the person left, and the re-read on `content_changed`. |
+| `editor-spell-details.ts` | The "?" next to a spell: the dialog on a desktop, the bottom sheet on a phone. |
+| `character-editor-catalog-map.ts`, `character-editor-sheet-map.ts` | The wire to view-model mappers for the catalogue and for the sheet (the form and the init it sends back). |
 | `class-blocks.ts` | The arithmetic only of splitting what the catalogue gives: total level, each level's die after the first (in class order, the order of `HitPoints.rolls`), and the spell sections (one per casting class or casting third-caster subclass, with the list, which class it comes from, and the highest spell level at its level). No prerequisite, hit point or slot is computed there. |
 
-State several parts share is in plain classes the component builds in its field initializers, reading the page through a few getters: `SpellPicks` (cantrips, known and prepared spells and their searches), `EditorLoader` (what the page reads to open, the counters that drop the answer of a route the person left, `content_changed`) and `SaveFlow` (the request of a create or an edit, its idempotency key, the navigation and what a refusal does to the page).
+State several parts share lives in `EditorPicks` and `SpellPicks`, which the component builds first and hands to the other plain classes through `EditorCore`; the page itself keeps only the route, the step and choice-group view children, two effects (the subclass waiting for its level, the starting XP) and the class-block handlers.
 `EditorStepper` builds a step's content the first time it opens and keeps it; the `eager` step ("Habilidades" under table rules) comes from the start.
 
 - **The catalogue** comes from `character-editor-source.live.ts`, which reads from `ListContent` the table flags (the `@mesa` key and `archived`), each class's skills and saves, the list a table class reuses, the third-caster subclass's casting, the race's choice bonuses, the background's equipment, and `NamedKey.kind` (tool, armor, weapon, skill, save, language, other: "Outro" offers tools and languages without guessing from the key).
@@ -55,7 +64,8 @@ State several parts share is in plain classes the component builds in its field 
 ## Level-up screen
 
 The page `/campaigns/:id/characters/:characterId/level-up` (lazy, `pages/level-up`) is a client of the level-up calls.
-`core/levelup` holds the screenless part: `LevelUpClient` (the calls, plus the campaign's content and dice preference), `levelup-flow.ts` (each level's steps and the pickers' lists, from the server and the content), `LevelUpDraft` (the choices in signals, what is missing, and the `LevelUpChoices` to send), `levelup-summary.ts` (the "before → after" lines), `levelup-errors.ts` (refusals by code and reason, never by message) and `LevelUpFeed` (the master's read).
+`core/levelup` holds the screenless part: `LevelUpClient` (the calls, plus the campaign's content and dice preference), `levelup-flow.ts` (each level's steps and the pickers' lists, from the server and the content), `LevelUpDraft` (the picks in signals, with `levelup-lists.ts` for the lists and counts they are read against, `levelup-abilities.ts` for the increase or the feat, `levelup-missing.ts` for what is missing, `levelup-picks.ts` for the toggles and `levelup-request.ts` for the `LevelUpChoices` to send), `levelup-summary.ts` (the "before → after" lines), `levelup-errors.ts` (refusals by code and reason, never by message) and `LevelUpFeed` (the master's read).
+The page side adds `LevelUpSession` (what the steps share), `LevelUpReader` (every reading of the character, the options and the catalogue that makes a session, numbered so only the newest of two overlapping reads lands) and `LevelUpFocus` (where the focus and the scroll go as the page changes).
 `levelup-flow.withSubclass` folds into the server's options what the chosen subclass adds (`LevelUpSubclass`: spells, list, level, whether it prepares and the maximum); before the choice, and for a non-casting subclass, the steps read the server's options untouched.
 
 - **On every choice** `LevelUpPreview` calls `PreviewLevelUp` (debounced 150 ms, `QUIET_MS`; a response overtaken by a newer one is discarded) and the screen shows the "O que muda", the new maximum of prepared spells and the first refusal.

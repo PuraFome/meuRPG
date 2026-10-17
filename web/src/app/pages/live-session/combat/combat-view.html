@@ -28,8 +28,8 @@
               [encounter]="e"
               [info]="info()"
               [busy]="busy()"
-              (submit)="submitFace($event.id, $event.face)"
-              (order)="setOrder($event)"
+              (submit)="initiative.submitFace($event.id, $event.face)"
+              (order)="initiative.setOrder($event)"
             />
             <div class="setup__side">
               <app-surprise-card [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
@@ -51,7 +51,7 @@
                   [hint]="false"
                   [legend]="false"
                   note="Cada token está no quadrado marcado no mapa. Você pode mover qualquer um durante o combate."
-                  (tokenDrop)="drop($event)"
+                  (tokenDrop)="moves.drop($event)"
                 />
               }
               @if (unplaced().length > 0) {
@@ -81,7 +81,7 @@
             [readOnly]="true"
             [isMaster]="true"
             [layers]="layers()"
-            (back)="closeFullPage()"
+            (back)="moves.closeFullPage()"
           />
         } @else {
         <div class="stack">
@@ -120,7 +120,7 @@
               <div class="theatre__order"><ng-container *ngTemplateOutlet="masterOrder" /></div>
               <div class="theatre__rest">
                 <app-cover-panel [targets]="coverTargets()" [everyone]="everyone()" [request]="coverRequest()" [busy]="busy()" (cover)="setCover($event)" />
-                <app-combat-log-panel [log]="log" [encounter]="e" [campaignId]="campaignId()" [state]="state()" [master]="true" (conditions)="openConditions($event)" />
+                <app-combat-log-panel [log]="log" [encounter]="e" [campaignId]="campaignId()" [state]="state()" [master]="true" (conditions)="sheets.actions.conditions($event)" />
               </div>
               @if (!laptop()) {
                 <app-combat-bar class="theatre__end" [encounter]="e" [theatre]="true" [endOnly]="true" (end)="endCombat()" />
@@ -137,17 +137,17 @@
                   [isMaster]="true"
                   [cropOnPhone]="true"
                   [layers]="layers()"
-                  [reach]="masterReach()"
-                  [reachSwitch]="reachSwitch()"
+                  [reach]="moves.masterReach()"
+                  [reachSwitch]="moves.reachSwitch()"
                   [offers]="offerMarks()"
                   [doorTaps]="true"
                   [forcedSwitch]="true"
-                  [forced]="forcedMove()"
-                  [forcedNote]="forcedNote()"
-                  (doorPick)="openDoor($event)"
-                  (reachChange)="reachOn.set($event)"
-                  (forcedChange)="forcedMove.set($event)"
-                  (tokenDrop)="drop($event)"
+                  [forced]="moves.forcedMove()"
+                  [forcedNote]="moves.forcedNote()"
+                  (doorPick)="sheets.actions.door($event)"
+                  (reachChange)="moves.reachOn.set($event)"
+                  (forcedChange)="moves.forcedMove.set($event)"
+                  (tokenDrop)="moves.drop($event)"
                   (openMap)="state().mapOpen.set(true)"
                 />
               } @else {
@@ -178,7 +178,7 @@
               [campaignId]="campaignId()"
               [state]="state()"
               [master]="true"
-              (conditions)="openConditions($event)"
+              (conditions)="sheets.actions.conditions($event)"
             />
             @if (!laptop()) {
               <app-combat-bar class="active__end" [encounter]="e" [endOnly]="true" (end)="endCombat()" />
@@ -211,10 +211,10 @@
           [dicePreference]="dicePreference()"
           [busy]="busy()"
           [error]="error()"
-          (rollInApp)="own() && rollInApp(own()!.id)"
-          (typeFace)="own() && submitFace(own()!.id, $event)"
-          (rollCreatureInApp)="rollInApp($event)"
-          (typeCreatureFace)="submitFace($event.id, $event.face)"
+          (rollInApp)="own() && initiative.rollInApp(own()!.id)"
+          (typeFace)="own() && initiative.submitFace(own()!.id, $event)"
+          (rollCreatureInApp)="initiative.rollInApp($event)"
+          (typeCreatureFace)="initiative.submitFace($event.id, $event.face)"
           (changeDice)="changeDice.emit()"
         />
       }
@@ -226,22 +226,22 @@
             [mapName]="mapName()"
             [sessionNumber]="sessionNumber()"
             [busy]="busy()"
-            [serverError]="moveError()"
-            [lockedDoor]="lockedDoor()"
+            [serverError]="moves.moveError()"
+            [lockedDoor]="moves.lockedDoor()"
             [readOnly]="state().mapOpen()"
             [fog]="fogVision()"
             [layers]="layers()"
-            [options]="moveOptions.data()"
-            [optionsFailed]="moveOptions.failed()"
-            [moverId]="moverId()"
-            [jumps]="moverJumps()"
-            [canDisengage]="canDisengage()"
-            [start]="dropStart()"
-            (confirm)="confirmMove($event)"
-            (jump)="confirmJump($event)"
-            (readJump)="moveJump.set($event)"
-            (disengage)="disengage()"
-            (back)="closeFullPage()"
+            [options]="moves.options.data()"
+            [optionsFailed]="moves.options.failed()"
+            [moverId]="moves.moverId()"
+            [jumps]="moves.jumps()"
+            [canDisengage]="moves.canDisengage()"
+            [start]="moves.dropStart()"
+            (confirm)="moves.confirmMove($event)"
+            (jump)="moves.confirmJump($event)"
+            (readJump)="moves.jump.set($event)"
+            (disengage)="moves.disengage()"
+            (back)="moves.closeFullPage()"
           />
         } @else {
           <div class="stack">
@@ -251,26 +251,26 @@
             }
             <!-- What ended without the player asking (the beast fell, the concentration was lost): stays until it is touched. -->
             <div class="notices" role="status" aria-live="polite">
-              @if (formNotice(); as text) {
+              @if (notices.formNotice(); as text) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="form-ended">
                   <mat-icon aria-hidden="true">pets</mat-icon>
                   <p>{{ text }}</p>
-                  <button mat-button type="button" class="notice__ok" (click)="formEnded.set(null)">Entendi</button>
+                  <button mat-button type="button" class="notice__ok" (click)="notices.formEnded.set(null)">Entendi</button>
                 </div>
               }
-              @if (lostNotice(); as text) {
+              @if (notices.lostNotice(); as text) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="concentration-lost">
                   <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
                   <p>{{ text }}</p>
-                  <button mat-button type="button" class="notice__ok" (click)="lostConcentration.set(null)">Entendi</button>
+                  <button mat-button type="button" class="notice__ok" (click)="notices.lostConcentration.set(null)">Entendi</button>
                 </div>
               }
             </div>
             <app-rage-question
-              [subject]="rageAsked()"
+              [subject]="rage.asked()"
               [busy]="busy()"
-              (back)="answerRage($event, false)"
-              (letEnd)="answerRage($event, true)"
+              (back)="rage.answer($event, false)"
+              (letEnd)="rage.answer($event, true)"
             />
             <app-hit-rider-card
               [offers]="encounter()?.hitRiders ?? []"
@@ -289,7 +289,7 @@
                   [tab]="ct"
                   [busy]="busy()"
                   [waiting]="creatureLocked()"
-                  [note]="moveNote()"
+                  [note]="moves.moveNote()"
                   (asked)="partAsking.set($event)"
                   (endPart)="endTab(ct)"
                 />
@@ -303,7 +303,7 @@
                   [hitPointsMax]="ownMaxHp()"
                   [opportunities]="theatre() ? [] : opportunities()"
                   [waiting]="waiting()"
-                  [moveNote]="moveNote()"
+                  [moveNote]="moves.moveNote()"
                   [trapNote]="trapNote()"
                   [concentration]="ownConcentration()"
                   [theatre]="theatre()"
@@ -311,9 +311,9 @@
                   [contest]="contestFacts()"
                   [effectNotes]="options()?.effectNotes ?? []"
                   (endTurn)="nextTurn()"
-                  (endRage)="endRageOf($event)"
+                  (endRage)="rage.end($event)"
                   (opportunity)="openAttack($event, true)"
-                  (endConcentration)="endOwnConcentration()"
+                  (endConcentration)="notices.endOwnConcentration()"
                 />
               }
               <!-- The per-device switch of the turn alert: sound and vibration only; the shake and the title stay. -->
@@ -330,7 +330,7 @@
                 <div class="mr-notice mr-notice--warning notice" data-testid="effect-save-pending">
                   <mat-icon aria-hidden="true">casino</mat-icon>
                   <p>O teste de resistência do fim do turno espera a sua rolagem.</p>
-                  <button mat-button type="button" class="notice__ok" (click)="openEffectSave(pending)">Rolar o teste</button>
+                  <button mat-button type="button" class="notice__ok" (click)="sheets.reactions.effectSave(pending)">Rolar o teste</button>
                 </div>
               }
               @if (ownLucky()) {
@@ -371,7 +371,7 @@
                     (attack)="openCreatureAttack(m.id, $event)"
                     (reactionAttack)="openCreatureAttack(m.id, $event, true)"
                     (action)="creatureAction(m.id, $event)"
-                    (move)="openCreatureMove(m.id)"
+                    (move)="moves.openCreature(m.id)"
                     (standUp)="standUp(m.id)"
                   />
                 }
@@ -385,8 +385,8 @@
                     [busy]="busy()"
                     [diceMode]="diceMode()"
                     [dicePreference]="dicePreference()"
-                    [result]="deathResult()"
-                    (roll)="rollDeathSave($event)"
+                    [result]="deaths.result()"
+                    (roll)="deaths.roll($event)"
                     (endTurn)="nextTurn()"
                   />
                 </div>
@@ -417,15 +417,15 @@
                       (extraStandard)="takeExtra($event)"
                       (familiarEyes)="askFamiliarEyes()"
                       (attack)="openAttack($event)"
-                      (cast)="openCast($event)"
-                      (describe)="describeSpell($event.key, $event.name)"
+                      (cast)="sheets.cast($event)"
+                      (describe)="sheets.actions.describeSpell($event.key, $event.name)"
                       (feature)="useFeature($event)"
                       (rage)="useFeature($event.key, $event.frenzy)"
                       (action)="standardAction($event)"
-                      (move)="openMove()"
+                      (move)="moves.open()"
                       (standUp)="standUp()"
                       (rollDamage)="rollPendingDamage()"
-                      (transform)="openTransform()"
+                      (transform)="sheets.actions.wildShape()"
                       (leaveForm)="leaveForm()"
                     />
                     @if (beastBlock(); as block) {
@@ -451,7 +451,7 @@
                 [layers]="layers()"
                 [offers]="offerMarks()"
                 [ownMovable]="myTurn() && !!own()?.placed && !phone()"
-                (tokenDrop)="drop($event)"
+                (tokenDrop)="moves.drop($event)"
                 (openMap)="state().mapOpen.set(true)"
               />
             } @else {
@@ -520,16 +520,16 @@
     />
     <app-opportunity-card
       [encounter]="e"
-      [attacksByOffer]="masterAttacks()"
+      [attacksByOffer]="offers.attacks()"
       [info]="info()"
       [busy]="busy()"
       [autoLeft]="offerLeft()"
-      [failed]="reactorFailed()"
+      [failed]="offers.failed()"
       [canUndo]="canUndoMove()"
-      (answer)="answerOpportunity($event)"
-      (skip)="skipOpportunity($event)"
-      (withdraw)="withdrawOpportunity($event)"
-      (retry)="loadReactor($event)"
+      (answer)="offers.answer($event)"
+      (skip)="offers.skip($event)"
+      (withdraw)="offers.withdraw($event)"
+      (retry)="offers.loadReactor($event)"
       (undo)="undoMove()"
     />
     <app-death-save-due
@@ -537,25 +537,25 @@
       [busy]="busy()"
       [diceMode]="diceMode()"
       [dicePreference]="dicePreference()"
-      [result]="masterDeathResult()"
-      [asking]="!!passAsking()"
-      (roll)="rollMasterDeathSave($event)"
-      (rollNow)="passAsking.set(null)"
+      [result]="deaths.masterResult()"
+      [asking]="!!deaths.asking()"
+      (roll)="deaths.rollMaster($event)"
+      (rollNow)="deaths.asking.set(null)"
       (pass)="passUnrolled()"
     />
     <app-death-question
       [dying]="dying()"
-      [dismissed]="deathLater()"
+      [dismissed]="deaths.later()"
       [busy]="busy()"
-      (confirm)="confirmDeath($event)"
-      (later)="deathLaterFor($event)"
+      (confirm)="deaths.confirm($event)"
+      (later)="deaths.postpone($event)"
     />
     <app-rage-question
-      [subject]="rageAsked()"
+      [subject]="rage.asked()"
       [master]="true"
       [busy]="busy()"
-      (back)="answerRage($event, false)"
-      (letEnd)="answerRage($event, true)"
+      (back)="rage.answer($event, false)"
+      (letEnd)="rage.answer($event, true)"
     />
     <app-hit-rider-card
       [offers]="e.hitRiders"
@@ -577,24 +577,24 @@
         [reactionStopped]="reactionStopped()"
         [turnBusy]="busy()"
         [theatre]="theatre()"
-        [offering]="offering()"
-        [offerWhy]="offerWhy()"
+        [offering]="offers.offering()"
+        [offerWhy]="offers.why()"
         [waitWhy]="waitWhy()"
-        (castArea)="openMasterArea($event)"
-        (offer)="toggleOffer()"
+        (castArea)="sheets.masterArea($event)"
+        (offer)="offers.toggle()"
         (next)="nextTurn($event)"
-        (endRage)="endRageOf($event)"
+        (endRage)="rage.end($event)"
         (settledNote)="settled()"
       >
-        @if (offering()) {
+        @if (offers.offering()) {
           <app-offer-panel
             offer-slot
             [moverLabel]="who.label"
-            [rows]="offerRows()"
+            [rows]="offers.rows()"
             [busy]="busy()"
-            [error]="offerError()"
-            (offer)="makeOffer($event)"
-            (cancel)="offering.set(false)"
+            [error]="offers.error()"
+            (offer)="offers.make($event)"
+            (cancel)="offers.offering.set(false)"
           />
         }
       </app-npc-card>
@@ -625,10 +625,10 @@
       [theatre]="theatre()"
       (coverEdit)="coverRequest.set({ id: $event, n: (coverRequest()?.n ?? 0) + 1 })"
       (adjust)="adjustFor($event)"
-      (adjustNpc)="adjustNpc($event)"
-      (conditions)="openConditions($event)"
-      [deathDismissed]="deathLater()"
-      (askDeath)="deathAskAgain($event)"
+      (adjustNpc)="sheets.actions.adjustNpc($event)"
+      (conditions)="sheets.actions.conditions($event)"
+      [deathDismissed]="deaths.later()"
+      (askDeath)="deaths.askAgain($event)"
       (reveal)="reveal($event)"
       (remove)="remove($event)"
       (endConcentration)="loseConcentration($event)"

@@ -40,7 +40,7 @@ stateDiagram-v2
 ## Bringing the dead back
 
 Two ways, one function.
-The master's `ReviveCharacter` (character service) and the Revivify spell both end in `characters.reviveTx`:
+The master's `ReviveCharacter` (character service) and the Revivify spell both end in `characters.revivedRow`:
 
 1.
    RN-03 first: the player's other living character refuses it with `LIVING_CHARACTER_EXISTS` and names it; nothing changes.

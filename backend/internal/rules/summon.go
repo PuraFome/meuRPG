@@ -8,12 +8,11 @@ import (
 	"strings"
 )
 
-// Spells that summon creatures (MR-037, Etapa 9): the "summon" kind of
+// Spells that summon creatures (MR-037): the "summon" kind of
 // effects/spells.json. Four SRD spells take it: Find Familiar, Animate Dead,
 // Conjure Animals and the warlock's Pact of the Chain, which widens Find
 // Familiar: it adds forms, and every form of the familiar then attacks with its
-// reaction. Find Steed is out (question 74: mounted combat comes after the
-// MVP). The loader checks the kind against the creatures; SummonOptions says
+// reaction. Find Steed is out (mounted combat is outside the MVP). The loader checks the kind against the creatures; SummonOptions says
 // what a cast can choose, and CheckSummon refuses a choice the spell does not
 // allow. The play module spends the slot and creates the creatures.
 
@@ -149,9 +148,6 @@ func (s *summonJSON) empty() bool {
 		s.Attack == "" && s.Type == "" && len(s.Options) == 0 && len(s.MultiplierAtLevel) == 0
 }
 
-// maxSummonCircle is the highest circle of a slot.
-const maxSummonCircle = 9
-
 // minSummonMultiplier is the smallest number a multiplier_at_level may give.
 const minSummonMultiplier = 2
 
@@ -242,7 +238,7 @@ func loadSummonBands(def *summonDef, spellLevel int, in *summonJSON, fail summon
 	}
 	for circle, times := range in.MultiplierAtLevel {
 		n, err := strconv.Atoi(circle)
-		if err != nil || n <= spellLevel || n > maxSummonCircle || times < minSummonMultiplier {
+		if err != nil || n <= spellLevel || n > MaxSlotLevel || times < minSummonMultiplier {
 			return fail("multiplier_at_level maps a circle above the spell's own, up to 9, to a number of at least 2")
 		}
 		def.multipliers = append(def.multipliers, summonMultiplier{circle: n, times: times})
@@ -290,7 +286,7 @@ func (c *Content) SummonOptions(spell string, circle int, b Build) (SummonChoice
 	if !ok {
 		return SummonChoices{}, fmt.Errorf("%w: %s", ErrNotSummonSpell, spell)
 	}
-	if circle < def.spellLevel || circle > maxSummonCircle {
+	if circle < def.spellLevel || circle > MaxSlotLevel {
 		return SummonChoices{}, fmt.Errorf("%w: %s at circle %d", ErrSummonCircle, spell, circle)
 	}
 	sp := c.c.spells[spell]

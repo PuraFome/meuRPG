@@ -34,8 +34,6 @@ import {
 import { choicesRequest } from './levelup-request';
 import type { LevelUpChoicesInit } from './levelup-client';
 
-export type { AsiMode, HpCard, Rolled };
-
 /**
  * Everything the player has chosen so far in one guided level-up (MR-040):
  * the ability increase, the hit points, the subclass and the new cantrips,

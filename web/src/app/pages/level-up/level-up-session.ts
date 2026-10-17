@@ -15,13 +15,12 @@ import { newKey } from '../../core/connect/idempotency';
 import { LevelUpClient } from '../../core/levelup/levelup-client';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import { describeLevelUpFailure } from '../../core/levelup/levelup-errors';
-import { changeRows, type ChangeRow } from '../../core/levelup/levelup-summary';
-import { type GiveRow, givesOf, newSpellsTitle } from './level-up-gives';
+import { changeRows } from '../../core/levelup/levelup-summary';
+import { type ChangeRow } from '../../core/levelup/levelup-summary-rows';
+import { type GiveRow, givesOf } from './level-up-gives';
 import { LevelUpPreview } from './level-up-preview';
 
 const LIST = new Intl.ListFormat('pt-BR', { type: 'conjunction' });
-
-export { newSpellsTitle, type GiveRow };
 
 /**
  * Everything the steps of one guided level-up share (MR-040): the character as the

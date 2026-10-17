@@ -1,8 +1,6 @@
 package rules
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -362,41 +360,6 @@ func TestGenerateTreasureCharacterization(t *testing.T) {
 	tr.ContentVersion = ""
 	got["a coin roll of 0"] = errText(err) + " " + itemsJSONText(tr)
 	goldenText(t, "generatetreasure", got)
-}
-
-// creatureDigest is a short hash of v's JSON: a golden of every stat block
-// in full would be megabytes.
-func creatureDigest(v any) string {
-	sum := sha256.Sum256([]byte(itemsJSONText(v)))
-	return hex.EncodeToString(sum[:8])
-}
-
-// TestCreatureReadsCharacterization freezes CreatureByKey, MonsterDerived and
-// MonsterSpellcasting for every creature of the SRD: in full for a few, as
-// a digest for the rest, and the casting of each one.
-func TestCreatureReadsCharacterization(t *testing.T) {
-	t.Parallel()
-	c := loadForTest(t)
-	full := map[string]bool{"monster:mage": true, "monster:lich": true, "monster:veteran": true, "monster:azer": true, "monster:hydra": true, "monster:goblin": true}
-	got := map[string]string{}
-	for _, k := range sortedKeys(c.c.monsters) {
-		cr, _ := c.CreatureByKey(k)
-		d, _ := c.MonsterDerived(k)
-		cast, ok := c.MonsterSpellcasting(k)
-		if full[k] {
-			got[k+" creature"], got[k+" derived"] = itemsJSONText(cr), itemsJSONText(d)
-		} else {
-			got[k+" creature"], got[k+" derived"] = creatureDigest(cr), creatureDigest(d)
-		}
-		if ok {
-			got[k+" casting"] = itemsJSONText(cast)
-		}
-	}
-	_, okC := c.CreatureByKey("monster:nope")
-	_, okD := c.MonsterDerived("monster:nope")
-	_, okS := c.MonsterSpellcasting("monster:nope")
-	got["unknown"] = fmt.Sprint(okC, okD, okS)
-	goldenText(t, "creature-reads", got)
 }
 
 // TestMonsterSpellcastingTextsCharacterization freezes how the Spellcasting

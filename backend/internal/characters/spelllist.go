@@ -16,6 +16,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -179,7 +180,7 @@ func spellsPageOf(content *rules.Content, page spellsPage, master bool, filters 
 // caster's subclass reads the list of the class it casts from). The caller must
 // be able to see the character; a basic sheet (an NPC) casts nothing.
 func (s *Service) learnableLists(ctx context.Context, content *rules.Content, m authz.Membership, characterID string) ([]rules.SpellAccess, error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return nil, errCharacterNotFound()
 	}

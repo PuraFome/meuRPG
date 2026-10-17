@@ -14,11 +14,13 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// Wild Shape and the familiar's eyes (MR-037, MR-036, Etapa 9). The form is part
+// Wild Shape and the familiar's eyes (MR-037, MR-036). The form is part
 // of the character's vitals for the API (CharacterVitals.wild_shape) and lives in the
 // table character_wild_shapes, and this file is the one place that reads it back into the character's numbers:
 // a druid in a beast form fights, moves and sees as the beast (rules.Content.
@@ -78,7 +80,7 @@ func (s *Service) ListWildShapeForms(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -125,7 +127,7 @@ func notFoundOrDB(ctx context.Context, s *Service, err error, what string) error
 // combat (speed, size, jumps: the beast's, in a form) inside the transaction.
 func (s *Service) shapedVitals(ctx context.Context, tx pgx.Tx, content *rules.Content, campaignID, characterID string) (*playv1.CharacterVitals, link.Character, charactersdb.GetVitalsRow, error) {
 	q := s.queries.WithTx(tx)
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return nil, link.Character{}, charactersdb.GetVitalsRow{}, errCharacterNotFound()
 	}
@@ -233,7 +235,7 @@ func (s *Service) writeWildShape(ctx context.Context, tx pgx.Tx, content *rules.
 // spell Convocar Familiar), and false when it has none. It implements
 // play.VitalsKeeper.
 func (s *Service) FamiliarOf(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Creature, bool, error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return link.Creature{}, false, nil
 	}
@@ -271,7 +273,7 @@ func (s *Service) SetFamiliarSight(ctx context.Context, tx pgx.Tx, campaignID, c
 		CharacterID: row.ID, InCombat: inCombat, Conditions: nonNilList(conditions), Now: s.now(),
 	}
 	if creatureID != "" {
-		id, ok := parseUUID(creatureID)
+		id, ok := uid.Canonical(creatureID)
 		if !ok {
 			return nil, errCreatureNotFound()
 		}
@@ -298,7 +300,7 @@ func nonNilList(l []string) []string {
 func (s *Service) MapCreatures(ctx context.Context, campaignID string, ids []string) ([]maplink.MapCreature, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if id, ok := parseUUID(id); ok {
+		if id, ok := uid.Canonical(id); ok {
 			valid = append(valid, id)
 		}
 	}
@@ -312,7 +314,7 @@ func (s *Service) MapCreatures(ctx context.Context, campaignID string, ids []str
 	out := make([]maplink.MapCreature, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, maplink.MapCreature{
-			ID: r.ID, OwnerCharacterID: r.CharacterID, OwnerUserID: deref(r.PlayerUserID), Name: r.Name, MonsterKey: r.MonsterKey,
+			ID: r.ID, OwnerCharacterID: r.CharacterID, OwnerUserID: conv.OrZero(r.PlayerUserID), Name: r.Name, MonsterKey: r.MonsterKey,
 		})
 	}
 	return out, nil

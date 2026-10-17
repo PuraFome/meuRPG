@@ -25,6 +25,7 @@ import {
   rollDiceOf,
 } from '../../../../core/effects/effects';
 import type { RollAnimator, RollShow } from '../../../../shared/roll-overlay/roll-animator';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { AttackDamage } from './attack-damage';
 import type { AttackQuestions } from './attack-questions';
 import {
@@ -79,7 +80,9 @@ export class AttackRolls {
       return;
     }
     const { data } = this.s;
-    await this.s.run(
+    await runBusy(
+      this.s.busy,
+      this.s.error,
       async () => {
         const mode = this.host.modeChoice();
         const res = await this.host.api.rollAttack(
@@ -113,7 +116,9 @@ export class AttackRolls {
       return;
     }
     const { data } = this.s;
-    await this.s.run(
+    await runBusy(
+      this.s.busy,
+      this.s.error,
       async () => {
         // With parts the answer is the whole choice, the extras marked (even none) and the sums typed.
         const choice =
