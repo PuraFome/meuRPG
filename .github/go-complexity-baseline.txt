@@ -1,9 +1,0 @@
-# The Go functions over the complexity limits, one per line:
-# <metric> <package directory> <function> <score>. Written by
-# .github/scripts/go-complexity.sh --update; never edited by hand.
-# cyclomatic (gocyclo): complexity above 15, higher is worse.
-# cognitive (gocognit): complexity above 15, higher is worse.
-# maintainability (maintidx): index below 20, lower is worse.
-# The list may only shrink: CI fails when a function enters it or gets
-# worse, and when one gets better until this file is written again.
-# See CONTRIBUTING.md, "Complexity totals".

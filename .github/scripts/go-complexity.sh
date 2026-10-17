@@ -1,30 +1,22 @@
 #!/usr/bin/env bash
-# The Go backend's complexity totals may only go down. Measures every
-# hand-written, non-test Go file of backend/ and compares the functions over
-# each limit with the committed baseline, .github/go-complexity-baseline.txt.
+# No hand-written Go function of backend/ may pass the complexity limits.
+# Measures every hand-written, non-test Go file and fails on any function
+# over a limit, naming each one with its file and line.
 #
-#   go-complexity.sh           compare with the baseline (CI runs this)
-#   go-complexity.sh --update  rewrite the baseline from the code as it is
+#   go-complexity.sh    check every function (CI runs this)
 #
-# Three lists, with the limits of backend/.golangci.yml:
-#   cyclomatic       gocyclo v0.6.0: complexity above 15 (higher is worse)
-#   cognitive        gocognit v1.2.0: complexity above 15 (higher is worse)
-#   maintainability  golangci-lint v2.14.0's maintidx: index below 20 (lower
-#                    is worse)
+# The limits are those of backend/.golangci.yml:
+#   cyclomatic       gocyclo v0.6.0: complexity above 15 fails
+#   cognitive        gocognit v1.2.0: complexity above 15 fails
+#   maintainability  golangci-lint v2.14.0's maintidx: index below 20 fails
 #
 # Why it exists: golangci-lint's ratchet judges only the lines a change
 # touches, and these linters report on the `func` line, so a change to the
-# body of an old function never trips them. This script judges the bodies.
-#
-# It fails when a function enters a list or its score gets worse, even if the
-# count stays the same, and names each one. It also fails when a function got
-# better or left a list, and asks for --update, so every improvement is locked
-# in. A function is named by its package directory and its name as the tools
-# print it ("internal/play (*Service).takeBack"), never by its line, which
-# moves with every edit: moving a function to another file of the same package
-# changes nothing. Generated files (Go's "// Code generated ... DO NOT EDIT."
-# line: backend/gen and the sqlc packages) are left out, as golangci-lint
-# leaves them out.
+# body of an old function never trips them. This script judges every body.
+# gocyclo and gocognit run outside golangci-lint, so a //nolint does not hide
+# a function from them. Generated files (Go's "// Code generated ... DO NOT
+# EDIT." line: backend/gen and the sqlc packages) are left out, as
+# golangci-lint leaves them out.
 #
 # Bash 3.2 compatible (macOS's /bin/bash): no associative arrays, no mapfile.
 set -euo pipefail
@@ -35,23 +27,19 @@ set -euo pipefail
 cyclo_over=15
 cognit_over=15
 
-# Every tool pinned by its module version. gocognit v1.2.0 is the version the
-# baseline was measured with; golangci-lint v2.14.0 bundles v1.2.1, whose
-# scoring code (gocognit.go) is the same. Keep golangci_version equal to the
+# Every tool pinned by its module version. golangci-lint v2.14.0 bundles
+# gocognit v1.2.1, whose scoring code (gocognit.go) is the same as v1.2.0's. Keep golangci_version equal to the
 # Makefile's and the golangci-lint-action's in .github/workflows/backend.yml.
 gocyclo_pkg=github.com/fzipp/gocyclo/cmd/gocyclo@v0.6.0
 gocognit_pkg=github.com/uudashr/gocognit/cmd/gocognit@v1.2.0
 golangci_version=2.14.0
 
-update=false
-case "${1:-}" in
-  "") ;;
-  --update) update=true ;;
-  *) echo "usage: go-complexity.sh [--update]" >&2; exit 2 ;;
-esac
+if [ $# -gt 0 ]; then
+  echo "usage: go-complexity.sh" >&2
+  exit 2
+fi
 
 repo=$(cd "$(dirname "$0")/../.." && pwd)
-baseline="$repo/.github/go-complexity-baseline.txt"
 cd "$repo/backend"
 
 command -v jq >/dev/null || { echo "::error::go-complexity.sh needs jq" >&2; exit 2; }
@@ -106,123 +94,23 @@ fi
     | @tsv' "$tmp/maintidx.json"
 } > "$tmp/raw"
 
-# The comparison key is "<metric> <package directory> <function>". Two
-# functions with the same key (two init functions in a package) get their
-# file's name added, "init@a.go", so neither hides the other. Writes the list
-# ("<key> <score>") and, for the messages, where each function is.
-: > "$tmp/current"
-: > "$tmp/where"
-awk -F'\t' -v list="$tmp/current" -v where="$tmp/where" '
-  {
-    n++; metric[n] = $1; score[n] = $2; fn[n] = $3; pos[n] = $4
-    file = $4; sub(/:[0-9]+$/, "", file); dir = file
-    if (!sub(/\/[^\/]*$/, "", dir)) dir = "."
-    d[n] = dir; f[n] = file; count[$1 " " dir " " $3]++
-  }
-  END {
-    for (i = 1; i <= n; i++) {
-      name = fn[i]
-      if (count[metric[i] " " d[i] " " name] > 1) { base = f[i]; sub(/.*\//, "", base); name = name "@" base }
-      key = metric[i] " " d[i] " " name
-      print key " " score[i] > list
-      print key "\t" pos[i] > where
-    }
-  }' "$tmp/raw"
-LC_ALL=C sort -o "$tmp/current" "$tmp/current"
-
-summary() {
-  for m in cyclomatic cognitive maintainability; do
-    now=$(grep -c "^$m " "$tmp/current" || true)
-    was=$(grep -c "^$m " "$1" || true)
-    echo "  $m: $now functions (baseline $was)"
-  done
-}
-
-if $update; then
-  {
-    echo "# The Go functions over the complexity limits, one per line:"
-    echo "# <metric> <package directory> <function> <score>. Written by"
-    echo "# .github/scripts/go-complexity.sh --update; never edited by hand."
-    echo "# cyclomatic (gocyclo): complexity above 15, higher is worse."
-    echo "# cognitive (gocognit): complexity above 15, higher is worse."
-    echo "# maintainability (maintidx): index below 20, lower is worse."
-    echo "# The list may only shrink: CI fails when a function enters it or gets"
-    echo "# worse, and when one gets better until this file is written again."
-    echo "# See CONTRIBUTING.md, \"Complexity totals\"."
-    cat "$tmp/current"
-  } > "$tmp/new"
-  if [ -f "$baseline" ]; then
-    grep -v -e '^#' -e '^$' "$baseline" > "$tmp/old" || true
-    echo "Changes to the baseline (- removed, + added):"
-    diff "$tmp/old" "$tmp/current" > "$tmp/diff" || true
-    if grep -q '^[<>]' "$tmp/diff"; then
-      grep '^[<>]' "$tmp/diff" | sed 's/^</  -/; s/^>/  +/'
-    else
-      echo "  none"
-    fi
-  else
-    : > "$tmp/old"
-  fi
-  mv "$tmp/new" "$baseline"
-  echo "Wrote ${baseline#"$repo"/}:"
-  summary "$tmp/old"
+# The functions over a limit, by metric and file, each with a CI annotation
+# on its line.
+LC_ALL=C sort -t "$(printf '\t')" -k1,1 -k4,4 "$tmp/raw" > "$tmp/over"
+echo "Functions over the complexity limits (cyclomatic > $cyclo_over, cognitive > $cognit_over, maintainability < 20):"
+for m in cyclomatic cognitive maintainability; do
+  echo "  $m: $(grep -c "^$m	" "$tmp/over" || true) functions over the limit"
+done
+if [ ! -s "$tmp/over" ]; then
+  echo "OK: every function is within cyclomatic $cyclo_over, cognitive $cognit_over and maintainability 20."
   exit 0
 fi
-
-if [ ! -f "$baseline" ]; then
-  echo "::error::${baseline#"$repo"/} is missing: run .github/scripts/go-complexity.sh --update" >&2
-  exit 1
-fi
-grep -v -e '^#' -e '^$' "$baseline" > "$tmp/base" || true
-
-# Worse: a function that is new to a list, or whose score got worse. Better:
-# a function that left a list (split, simplified, renamed or deleted), or
-# whose score got better. A renamed function is both: it leaves under its old
-# name and enters under the new one, and --update records the rename. Files
-# are told apart by name, not ARGIND, which only GNU awk has.
-: > "$tmp/worse"
-: > "$tmp/better"
-awk -v worse="$tmp/worse" -v better="$tmp/better" -v wherefile="$tmp/where" -v basefile="$tmp/base" '
-  function keyof(line) { sub(/ [^ ]+$/, "", line); return line }
-  function scoreof(line,  parts, n) { n = split(line, parts, " "); return parts[n] + 0 }
-  function isworse(k, now, was) { return (k ~ /^maintainability /) ? now < was : now > was }
-  FILENAME == wherefile { split($0, w, "\t"); at[w[1]] = w[2]; next }
-  FILENAME == basefile { was[keyof($0)] = scoreof($0); next }
-  {
-    k = keyof($0); now = scoreof($0); seen[k] = 1
-    if (!(k in was)) print k "\t" now "\tnew\t" at[k] > worse
-    else if (isworse(k, now, was[k])) print k "\t" now "\twas " was[k] "\t" at[k] > worse
-    else if (now != was[k]) print k "\t" now "\twas " was[k] > better
-  }
-  END { for (k in was) if (!(k in seen)) print k "\t-\tleft the list" > better }
-' "$tmp/where" "$tmp/base" "$tmp/current"
-
-echo "Functions over the complexity limits (cyclomatic > $cyclo_over, cognitive > $cognit_over, maintainability < 20):"
-summary "$tmp/base"
-
-status=0
-if [ -s "$tmp/worse" ]; then
-  status=1
-  echo
-  echo "Worse than the baseline: split or simplify these functions (or, if it really cannot"
-  echo "be helped, run .github/scripts/go-complexity.sh --update and explain it in the PR):"
-  LC_ALL=C sort "$tmp/worse" | while IFS=$'\t' read -r key now why at; do
-    echo "  $key $now ($why; $at)"
-    # An annotation on the function's line, in the pull request's diff.
-    echo "::error file=backend/${at%:*},line=${at##*:}::complexity totals: $key is $now ($why), worse than the baseline"
-  done
-fi
-if [ -s "$tmp/better" ]; then
-  status=1
-  echo
-  echo "Better than the baseline: lock it in with .github/scripts/go-complexity.sh --update"
-  echo "and commit .github/go-complexity-baseline.txt with this change:"
-  LC_ALL=C sort "$tmp/better" | while IFS=$'\t' read -r key now why; do
-    echo "  $key $now ($why)"
-  done
-  echo "::error::the complexity totals went down: run .github/scripts/go-complexity.sh --update and commit the baseline"
-fi
-if [ "$status" -eq 0 ]; then
-  echo "OK: no function entered a list or changed its score."
-fi
-exit "$status"
+echo
+echo "Split or simplify these functions (see docs/ci.md, \"Complexity limits\"):"
+while IFS=$'\t' read -r metric score fn at; do
+  dir=${at%/*}
+  [ "$dir" = "$at" ] && dir=.
+  echo "  $metric $dir $fn $score ($at)"
+  echo "::error file=backend/${at%:*},line=${at##*:}::$metric $score: $fn is over the limit (cyclomatic $cyclo_over, cognitive $cognit_over, maintainability 20)"
+done < "$tmp/over"
+exit 1
