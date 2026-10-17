@@ -109,7 +109,10 @@ func (s *Service) AddMilestone(
 // with the cleaned text the milestone is stored with, so a retry that differs
 // only by the whitespace around the text is the same request.
 func addMilestoneHash(req *progressionv1.AddMilestoneRequest, text string) *string {
-	cleaned := proto.Clone(req).(*progressionv1.AddMilestoneRequest)
+	cleaned, ok := proto.Clone(req).(*progressionv1.AddMilestoneRequest)
+	if !ok {
+		return idem.Hash(req)
+	}
 	cleaned.Text = text
 	return idem.Hash(cleaned)
 }

@@ -18,12 +18,16 @@ func TestStageEntriesRefusesTwoEntriesOfOneKindWithOneName(t *testing.T) {
 	background := func(key, name string) *rulesv1.TableEntry {
 		body := testBackground(name)
 		body.Feature.Key = ""
-		return &rulesv1.TableEntry{Key: key, Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_BACKGROUND, NamePt: name,
-			Body: &rulesv1.TableEntry_TableBackground{TableBackground: body}}
+		return &rulesv1.TableEntry{
+			Key: key, Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_BACKGROUND, NamePt: name,
+			Body: &rulesv1.TableEntry_TableBackground{TableBackground: body},
+		}
 	}
 	race := func(key, name string) *rulesv1.TableEntry {
-		return &rulesv1.TableEntry{Key: key, Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_RACE, NamePt: name,
-			Body: &rulesv1.TableEntry_TableRace{TableRace: testRace(name)}}
+		return &rulesv1.TableEntry{
+			Key: key, Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_RACE, NamePt: name,
+			Body: &rulesv1.TableEntry_TableRace{TableRace: testRace(name)},
+		}
 	}
 	cases := []struct {
 		name    string
