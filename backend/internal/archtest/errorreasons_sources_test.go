@@ -152,9 +152,13 @@ func bodyReasonSites(src srcFile, consts map[string]string) []bodySite {
 // literal with a "reason" key, sets.
 func compositeReasons(lit *ast.CompositeLit, classify func(ast.Expr) bodySite) []bodySite {
 	var out []bodySite
+	// A map[string]string with a "reason" key is a JSON error body; a
+	// map[string]any is an event's payload, which is not an error reason.
 	isMap := false
-	if _, ok := lit.Type.(*ast.MapType); ok {
-		isMap = true
+	if mt, ok := lit.Type.(*ast.MapType); ok {
+		if v, ok := mt.Value.(*ast.Ident); ok && v.Name == "string" {
+			isMap = true
+		}
 	}
 	typeName := ""
 	if id, ok := lit.Type.(*ast.Ident); ok {

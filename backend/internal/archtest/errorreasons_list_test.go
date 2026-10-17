@@ -32,6 +32,7 @@ type reasonList struct {
 	Details    []detailEntry    `json:"details"`
 	Body       []bodyEntry      `json:"body"`
 	Violations []violationEntry `json:"violations"`
+	Redirects  []redirectEntry  `json:"redirects"`
 }
 
 // detailEntry is a typed error detail (or a response message that carries
@@ -62,6 +63,14 @@ type bodyEntry struct {
 // violationEntry is a reason of a table-content violation, a string.
 type violationEntry struct {
 	Module string `json:"module"`
+	Reason string `json:"reason"`
+}
+
+// redirectEntry is a reason in the query of a redirect to an error page of the
+// app (`/invite/error?reason=`).
+type redirectEntry struct {
+	Module string `json:"module"`
+	Route  string `json:"route"`
 	Reason string `json:"reason"`
 }
 
@@ -229,34 +238,57 @@ func registryReasons(t *testing.T) map[string]string {
 	return out
 }
 
-// TestErrorReasonsViolationsMatchConstants fails when the reasons of the
-// table-content violations (the constants rules.Reason* and the characters
-// package's reason*) and the list disagree.
-func TestErrorReasonsViolationsMatchConstants(t *testing.T) {
+// TestErrorReasonsStringReasonsMatchConstants fails when the string reasons
+// that come from named constants (the table-content violations: rules.Reason*
+// and the characters package's reason*; the redirect to /invite/error:
+// campaigns.InviteFailure*) and the list disagree.
+func TestErrorReasonsStringReasonsMatchConstants(t *testing.T) {
 	t.Parallel()
-	var code []string
-	for _, f := range parseSources(t) {
-		dir := filepath.ToSlash(filepath.Dir(f.rel))
-		prefix := map[string]string{"rules": "Reason", "characters": "reason"}[dir]
+	list := loadReasons(t)
+	var violations, redirects []string
+	for _, v := range list.Violations {
+		violations = append(violations, v.Reason)
+	}
+	for _, r := range list.Redirects {
+		redirects = append(redirects, r.Reason)
+	}
+	files := parseSources(t)
+	checks := []struct {
+		name   string
+		listed []string
+		dirs   map[string]string // directory under internal/ -> constant name prefix
+	}{
+		{"violation", violations, map[string]string{"rules": "Reason", "characters": "reason"}},
+		{"redirect", redirects, map[string]string{"campaigns": "InviteFailure"}},
+	}
+	for _, c := range checks {
+		code := constValues(files, c.dirs)
+		slices.Sort(code)
+		slices.Sort(c.listed)
+		if !slices.Equal(code, c.listed) {
+			t.Errorf("the %s reasons in code and in the list differ\n  code only: %v\n  list only: %v",
+				c.name, difference(code, c.listed), difference(c.listed, code))
+		}
+	}
+}
+
+// constValues is the values of the string constants whose name is the prefix
+// of its directory followed by a capital letter.
+func constValues(files []srcFile, dirs map[string]string) []string {
+	var out []string
+	for _, f := range files {
+		prefix := dirs[filepath.ToSlash(filepath.Dir(f.rel))]
 		if prefix == "" {
 			continue
 		}
 		for name, value := range stringConsts(f.file) {
-			if strings.HasPrefix(name, prefix) && len(name) > len(prefix) && name[len(prefix)] >= 'A' && name[len(prefix)] <= 'Z' {
-				code = append(code, value)
+			rest, ok := strings.CutPrefix(name, prefix)
+			if ok && rest != "" && rest[0] >= 'A' && rest[0] <= 'Z' {
+				out = append(out, value)
 			}
 		}
 	}
-	var listed []string
-	for _, v := range loadReasons(t).Violations {
-		listed = append(listed, v.Reason)
-	}
-	slices.Sort(code)
-	slices.Sort(listed)
-	if !slices.Equal(code, listed) {
-		t.Errorf("the violation reasons in code and in the list differ\n  code only: %v\n  list only: %v",
-			difference(code, listed), difference(listed, code))
-	}
+	return out
 }
 
 // stringConsts is the package-level string constants of a file, by name.

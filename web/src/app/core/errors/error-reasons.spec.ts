@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { describeInviteErrorCode } from '../campaigns/invite-errors';
 import { violationText } from '../content/content-violations';
 import { BODY_REASON_TEXT } from './body-reasons';
 
@@ -23,6 +24,7 @@ interface ReasonList {
   details: { message: string; fields: EnumField[] }[];
   body: { reason: string }[];
   violations: { reason: string }[];
+  redirects: { reason: string }[];
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -106,5 +108,16 @@ describe('error reasons: a violation of the table content', () => {
       (reason) => !PROBES.some((field) => textOf(field, reason) !== textOf(field, generic)),
     );
     expect(bare).toEqual([]);
+  });
+});
+
+describe('error reasons: the reason in the query of an error page', () => {
+  it('has a sentence of its own for every listed reason of /invite/error', () => {
+    const generic = describeInviteErrorCode(null);
+    const bare = LIST.redirects
+      .map((r) => r.reason)
+      .filter((reason) => describeInviteErrorCode(reason) === generic);
+    expect(bare).toEqual([]);
+    expect(LIST.redirects.length).toBeGreaterThan(0);
   });
 });

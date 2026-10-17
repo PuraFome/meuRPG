@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 )
 
 // RetryAfterSeconds is wait in the whole seconds the Retry-After header
@@ -85,6 +87,6 @@ func writeTooMany(w http.ResponseWriter, wait time.Duration) {
 	h.Set("Content-Type", "application/json")
 	h.Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusTooManyRequests)
-	body := fmt.Sprintf(`{"code":"resource_exhausted","reason":"RATE_LIMITED","message":"too many requests, please wait %d seconds and try again"}`, secs)
+	body := fmt.Sprintf(`{"code":"resource_exhausted","reason":"%s","message":"too many requests, please wait %d seconds and try again"}`, rpcerr.ReasonRateLimited, secs)
 	_, _ = w.Write([]byte(body))
 }
