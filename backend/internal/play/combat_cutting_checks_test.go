@@ -82,6 +82,14 @@ func TestCuttingWordsTakesTheDieOffAnNPCsContestRoll(t *testing.T) {
 	if !byLabel(t, res.GetEncounter(), "Brisa").GetReactionUsed() {
 		t.Error("the bard's reaction is not spent")
 	}
+	// The master reads the numbers of the cut; the bard's player reads that the check went down, and no
+	// total of the creature (RN-10, RN-20).
+	if !c.logSays(t, c.master, c.e, "do teste de") || !c.logSays(t, c.master, c.e, "13 → 9") {
+		t.Error("the master's log does not say the check went from 13 to 9")
+	}
+	if !c.logSays(t, c.bia, c.e, "Palavras de Interrupção") || c.logSays(t, c.bia, c.e, "13") || c.logSays(t, c.bia, c.e, " 9") {
+		t.Error("the bard's log hides the cut or tells a total of the creature")
+	}
 }
 
 // TestCuttingWordsTakesTheDieOffAnNPCsAnswerToAContest: Toren grapples the Hobgoblin; the
@@ -217,7 +225,7 @@ func cuttingBossFight(t *testing.T) (*armed, *playv1.Encounter) {
 func TestCuttingWordsTakesTheDieOffAnNPCsSpellAttackRoll(t *testing.T) {
 	t.Parallel()
 	a, e := cuttingBossFight(t)
-	held, err := a.cast(t, a.master, e, "Mago Sombrio", "spell:acid-arrow", slotOfLevel(2), a.at(t, "Toren"), d20Face(12))
+	held, err := a.cast(t, a.master, e, "Mago Sombrio", "spell:acid-arrow", slotOfLevel(2), a.at(t, "Toren"), d20Face(10))
 	if err != nil {
 		t.Fatalf("CastSpell() error = %v", err)
 	}
@@ -229,8 +237,9 @@ func TestCuttingWordsTakesTheDieOffAnNPCsSpellAttackRoll(t *testing.T) {
 		t.Fatalf("the bard's window = %v, want a Cutting Words on the attack roll", w)
 	}
 	res := a.mustAnswer(t, a.bia, e, w.GetId(), typedAnswer(5))
-	if cw := res.GetResult().GetCuttingWords(); !cw.GetEffective() || cw.GetDie().GetTotal() != 5 {
-		t.Fatalf("the result = %v, want a die 5 taken off the spell attack", res.GetResult())
+	// 10 + 7 = 17 reaches Toren's armor class; with the die 5 off it (12) it does not.
+	if cw := res.GetResult().GetCuttingWords(); !cw.GetEffective() || cw.GetDie().GetTotal() != 5 || cw.GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_MISS {
+		t.Fatalf("the result = %v, want a die 5 taken off the spell attack and a miss", res.GetResult())
 	}
 	if !a.logSays(t, a.master, e, "Palavras de Interrupção") {
 		t.Error("the master's log has no Cutting Words line")
