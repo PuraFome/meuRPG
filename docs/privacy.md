@@ -93,6 +93,7 @@ Rows that hold only IDs, numbers and content keys say nothing about a person.
 | Campaign document, hooks of an RP scene, clues the master prepares, and the encounter saved on a battle point | The master only | Prepare the game | Contract | While the campaign exists |
 | Clues revealed to a player (with a copy of the text), and the scenes the group discovered | The master and the player who received them | Let the player re-read what was said even if the master edits the clue | Contract | While the campaign exists, or until the player's account is erased. If the master erases the clue, the copy stays with the player |
 | The player's private notes (1 to 2,000 characters, with an optional scene tag) | The author only: not the master, not another player | Let the player note what happens | Contract | Until the author erases the note, the author's account is erased, or the campaign is erased |
+| The scene's conversation (MR-051, RN-36): each line's author (account ID), speaker (narrator, an NPC, a character, or out of character), text (1 to 2,000 characters, free text), an optional gallery image, the time, the readers when it is not for everyone, an idempotency key, and the voice of a narrator or NPC line once someone asked to hear it | The master reads every line. A player reads the lines for everyone, the ones that chose them and their own: a line for other readers is never sent to them (RN-10) | Let the table talk during the session, also with a remote master | Contract | While the campaign exists. When the author's account is erased the line stays and the author becomes "Jogador removido" |
 | Puzzles: the master's text (name, clue, hints, "Ao resolver", "Ao errar", split information) and the solution; per session, each move with the account ID, the character and **what the player typed** (a riddle answer, a deciphered message), and each attempt to earn a hint | The master writes. A player never reads the solution, unreleased hints or another player's text; the master reads what each player typed | Run puzzles live (MR-038, RN-27) | Contract | Puzzles while the campaign exists (they are archived, not erased). Moves and attempts while the session exists. Erasing an account clears its ID from moves and attempts; the typed text stays, anonymous, until the session goes |
 | Reasons and names the master or a player writes in play: a combat name, the reason for a roll mode or an XP award (up to 120 characters), planned milestones, an NPC group's base name, the names a player gives a familiar or other creature, table content (classes, spells, backgrounds and so on) | The master (and the owning player for a creature name); an XP award's reason is read by every member | Play | Contract | While the campaign exists. The XP history records who gave the award; the link is cleared if that account is erased |
 | Gallery images (maps, portraits, illustrations): the pixels re-encoded without metadata, the thumbnail, the name taken from the file (editable) and who uploaded them | The master uploads and lists them; a player downloads an image only while it is visible to them (RN-10) | Play (MR-019) | Contract | Until the master erases the image: the row and the files go at once, and Cloud Storage keeps the file 7 more days in soft delete. When a campaign is erased the rows go; its files do not (see [Delete the account](#delete-the-account)) |
@@ -232,6 +233,7 @@ What erasing an account does, by the database's own rules:
 | Identity, e-mail, display name, sessions, memberships, the person's private notes, clue copies, review reasons and rolled ability scores | Erased |
 | A master's campaigns, with everything they own: members, invites, characters of the campaign, NPCs, maps, sessions, history, puzzles, requests for images | Erased |
 | A player's characters | Stay with the campaign and its master, with no link to the account. A character left with no player and no campaign is swept within a day |
+| Lines of the scene's conversation (MR-051) | Stay, with the author's ID cleared: they read "Jogador removido". A line that was for chosen readers stays for the master and the readers still left, never for everyone |
 | Session history, combatants, XP awards, uploads, puzzle moves | Stay, with the person's ID cleared. The IDs of players who saw an NPC act, kept inside some history payloads, are not cleared |
 | The files of a deleted campaign's images in the bucket | **Not erased by the database.** The operator deletes the `campaigns/<id>/` prefix by hand; this is not automated |
 | Backups and logs | Gone within 30 days |
@@ -258,7 +260,7 @@ A vendor outside Brazil that can reach it still makes an international transfer,
 | Google Cloud | Cloud Run, the load balancer and Cloud Armor in front of it, Cloud Logging, Cloud Storage, Secret Manager | Everything, in São Paulo | Data Processing Addendum with the Brazilian standard clauses |
 | Cockroach Labs (CockroachDB Cloud) | The managed database and its backups, on Google Cloud in São Paulo | The database | **To be defined:** the current contract covers the GDPR |
 | Google (sign-in) | Sign in with Google | Google controls its own account; the app receives only the identifier and the e-mail | Not our processor |
-| Google (Gemini API) | Generates the images the master asks for, through the server | See below. Google may keep data briefly or in cache **in any country**: an international transfer | [Gemini API Paid Services terms](https://ai.google.dev/gemini-api/terms). **To be defined:** the transfer mechanism |
+| Google (Gemini API) | Generates the images the master asks for and the voice of the narrator's and NPCs' lines, through the server | See below. Google may keep data briefly or in cache **in any country**: an international transfer | [Gemini API Paid Services terms](https://ai.google.dev/gemini-api/terms). **To be defined:** the transfer mechanism |
 | ImprovMX | Forwards the e-mail sent to `@meurpg.app` to the people who answer ([Operations](operations/runbook.md#dns-certificates-and-e-mail)) | The message in transit. Its log keeps sender, recipient and subject for 7 days, never the text. It does not say where its servers are: counted as an international transfer | **To be defined:** the contract and the transfer mechanism |
 
 ### The legacy app database
@@ -292,6 +294,17 @@ The call goes to the Gemini API with `store=false`, so nothing is kept on our Go
 - **The image Google returns** is stored like an upload, re-encoded, with the same retention.
   A 1024 px JPEG reference derived from it is stored beside it and deleted with it.
 - **Only the master asks,** and the app is for people aged 18 or older, so a minor's data never goes.
+
+### What the voice sends to Google (MR-051)
+
+Only the narrator's and the NPCs' lines can be heard, and only the line's readers can ask.
+The server calls the Gemini API's text-to-speech (`generateContent`, which keeps no interaction on our account; under the paid-services terms Google may still keep data briefly or in cache, in any country).
+
+- **What goes:** the line's text, as the master wrote it, and the name of one of a short list of voices. The text is free text: the master is warned in the composer not to write names of real people.
+- **What never goes:** a player's line (players' lines are text only), a name, an e-mail, an account or campaign ID, the readers or the image.
+- **Once per line:** the audio is made the first time a reader taps "Ouvir" and kept in the blob store beside the line, so the text is sent once. It is deleted with the campaign.
+- **Only the readers hear it:** the audio route answers `404` to anyone who may not read the line (RN-36).
+- **The key and the text never reach a log.** A daily cap on the whole server limits the Gemini bill.
 
 ### Logs in ELK
 

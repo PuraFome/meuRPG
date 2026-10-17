@@ -576,6 +576,29 @@ type RollModeRequest struct {
 	AnsweredAt    *time.Time
 }
 
+type SessionMessage struct {
+	ID             string
+	CampaignID     string
+	GameSessionID  string
+	AuthorUserID   *string
+	SpeakerKind    string
+	SpeakerRef     *string
+	SpeakerName    *string
+	SpeakerImageID *string
+	Text           string
+	ImageID        *string
+	ForEveryone    bool
+	CreateKey      *string
+	CreateHash     *string
+	AudioMadeAt    *time.Time
+	CreatedAt      time.Time
+}
+
+type SessionMessageReader struct {
+	MessageID string
+	UserID    string
+}
+
 type SpellCast struct {
 	ID                 string
 	CampaignID         string
