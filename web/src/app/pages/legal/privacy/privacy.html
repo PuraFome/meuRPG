@@ -36,6 +36,7 @@
         <li><p><strong>Nome de exibição.</strong> O nome que você digita no Perfil, de 1 a 40 caracteres, para as pessoas das suas campanhas saberem quem é você. Não vem do Google. Base legal: contrato.</p></li>
         <li><p><strong>Sessão de login.</strong> Um código guardado só como hash, as datas e a última vez que a sessão foi usada, para manter você conectado. Sem IP e sem dados do aparelho. Base legal: contrato.</p></li>
         <li><p><strong>Campanhas e fichas.</strong> O que a mesa escreve e joga: campanhas, convites, personagens e suas histórias, notas do mestre, anotações dos jogadores, mapas, cenas, combates, XP e o histórico das sessões. É ficção: o app avisa para não escrever dados reais de pessoas. Base legal: contrato.</p></li>
+        <li><p><strong>Conversa da cena.</strong> Cada linha que a mesa escreve na conversa da sessão: quem a enviou (o código da conta), quem fala (o narrador, um NPC, um personagem ou o jogador, fora do personagem), o texto, de 1 a 2.000 caracteres, uma imagem opcional da galeria, a hora e, quando a linha não é para todos, os leitores escolhidos. A voz de uma linha do narrador ou de um NPC fica guardada depois que alguém pede para ouvir. O texto é livre, então o app avisa para não escrever dados reais de pessoas. O mestre lê todas as linhas. Um jogador lê as linhas para todos, as que o escolheram e as próprias: uma linha para outros leitores nunca chega a ele, nem o texto, nem a imagem, nem a notícia de que ela existe. Base legal: contrato.</p></li>
         <li><p><strong>Imagens.</strong> Mapas, retratos e ilustrações que o mestre envia. Antes de guardar, o app refaz a imagem a partir dos pixels e descarta os metadados: a posição de GPS, o modelo do celular e a data. Base legal: contrato.</p></li>
         <li><p><strong>Pedidos de imagem por IA.</strong> Quando o mestre gera uma imagem, guardamos com a campanha o texto do pedido, o estilo e as imagens de referência que ele escolheu. Base legal: contrato.</p></li>
         <li><p><strong>Registros técnicos.</strong> O servidor anota cada pedido com o identificador da conta (um código, sem nome nem e-mail) e os identificadores do jogo, para achar a causa de um erro. A plataforma (o Cloud Run e o balanceador de carga do Google Cloud) anota o IP, o navegador e o endereço de cada pedido. Base legal: legítimo interesse.</p></li>
@@ -59,11 +60,11 @@
       <ul class="legal-rows">
         <li><p><strong>Google Cloud.</strong> Hospeda o app (Cloud Run, com o balanceador de carga e o Cloud Armor na frente, que barram acessos abusivos), os registros técnicos (Cloud Logging) e as imagens (Cloud Storage, num espaço privado). Dados: todos, em São Paulo.</p></li>
         <li><p><strong>Cockroach Labs (CockroachDB Cloud).</strong> O banco de dados e os backups, no Google Cloud em São Paulo. Dados: o banco de dados.</p></li>
-        <li><p><strong>Google (Gemini API).</strong> Gera as imagens por IA que o mestre pede, só quando ele usa essa função. Recebe o texto que o mestre escreve, o estilo, as imagens de referência que ele escolhe, num ajuste a imagem anterior e, numa imagem feita a partir de um mapa, um desenho do mapa feito pelo servidor. Nenhum dado de conta: nunca vai o nome, o e-mail ou a ficha de alguém. O uso segue os termos do Google para a Gemini API paga.</p></li>
+        <li><p><strong>Google (Gemini API).</strong> Gera as imagens por IA que o mestre pede, só quando ele usa essa função. Recebe o texto que o mestre escreve, o estilo, as imagens de referência que ele escolhe, num ajuste a imagem anterior e, numa imagem feita a partir de um mapa, um desenho do mapa feito pelo servidor. Também transforma em voz as linhas do narrador e dos NPCs, só quando um leitor da linha toca em "Ouvir": recebe o texto da linha, como foi escrito, e o nome de uma voz de uma lista curta. A voz é feita uma vez por linha e guardada com ela. Nunca vai a linha de um jogador, um nome, um e-mail, um código de conta ou de campanha, os leitores nem a imagem. Nenhum dado de conta: nunca vai o nome, o e-mail ou a ficha de alguém. O uso segue os termos do Google para a Gemini API paga.</p></li>
         <li><p><strong>ImprovMX.</strong> Encaminha o e-mail que você manda para privacidade&#64;meurpg.app (ou outro endereço do domínio) para quem responde. Recebe o seu endereço, o seu nome, o assunto e o texto da mensagem. O registro dele guarda o remetente, o destinatário e o assunto por 7 dias, nunca o texto.</p></li>
       </ul>
       <p>O login com o Google não entra nessa lista: a conta Google é do Google, que trata os dados dela sob a própria política de privacidade.</p>
-      <p><strong>Transferência internacional.</strong> Pedimos ao Google para não guardar o que vai para a Gemini API, mas os termos do serviço permitem que ele guarde esses dados por pouco tempo, ou em cache, em qualquer país. Por isso, quando o mestre gera uma imagem, há uma transferência internacional de dados (art. 33 da LGPD). O ImprovMX não diz em que país ficam os servidores dele, então o e-mail que você nos manda também conta como transferência internacional.</p>
+      <p><strong>Transferência internacional.</strong> Pedimos ao Google para não guardar o que vai para a Gemini API, mas os termos do serviço permitem que ele guarde esses dados por pouco tempo, ou em cache, em qualquer país. Por isso, quando o mestre gera uma imagem ou alguém pede a voz de uma linha, há uma transferência internacional de dados (art. 33 da LGPD). O ImprovMX não diz em que país ficam os servidores dele, então o e-mail que você nos manda também conta como transferência internacional.</p>
     </section>
     <section>
       <h2 id="prazos">5. Por quanto tempo guardamos</h2>
@@ -76,6 +77,7 @@
       <tr><th scope="row">Dados de um login em andamento</th><td>10 minutos.</td></tr>
       <tr><th scope="row">Convites</th><td>Valem até 30 dias. O registro some 30 dias depois de vencer.</td></tr>
       <tr><th scope="row">Campanhas, fichas, mapas e histórico</th><td>Enquanto a campanha existir. Os personagens seguem a seção 10.</td></tr>
+      <tr><th scope="row">Linhas da conversa da cena e a voz delas</th><td>Enquanto a campanha existir. Se a conta do autor é excluída, a linha fica e o autor passa a ser "Jogador removido".</td></tr>
       <tr><th scope="row">Imagens</th><td>Até o mestre apagar. O arquivo some de vez 7 dias depois.</td></tr>
       <tr><th scope="row">Registros técnicos</th><td>30 dias.</td></tr>
       <tr><th scope="row">Registro do encaminhamento de um e-mail para nós</th><td>7 dias, no ImprovMX.</td></tr>
@@ -133,6 +135,7 @@
       <ul>
         <li>A conta, o e-mail, as sessões de login e a participação nas campanhas são apagados.</li>
         <li>Seus personagens ficam na campanha, com o mestre, sem ligação com você. Se preferir, peça para apagá-los também.</li>
+        <li>As linhas que você escreveu na conversa da cena ficam, sem ligação com você: aparecem como "Jogador removido". Uma linha que era para leitores escolhidos continua para o mestre e para os leitores que restam, nunca para todos.</li>
         <li>Se você é mestre, as campanhas que criou são apagadas, com tudo o que têm.</li>
         <li>O que sobrar nos backups e nos registros some em até 30 dias.</li>
       </ul>
