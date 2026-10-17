@@ -66,7 +66,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `EndEncounter` | Master | `ended`; the players' tokens go where they stopped. Ending again is not an error |
 | `AddCombatants` | Master | Reinforcements (NPCs), initiative rolled at once |
 | `AddMonsters` | Master | "Pôr no combate" (see [Encounters](encounters.md)) |
-| `RemoveCombatant` | Master | Takes someone out; if it was their turn, the turn passes. Refused (`PENDING_DAMAGE`) while a damage the combatant attacked with or took is still to roll or apply. A creature leaving because its owner or the master dismissed it cannot be refused: the damage waiting on it is written as dropped (`damage_discarded`, before the `combatant_removed`) |
+| `RemoveCombatant` | Master | Takes someone out; if it was their turn, the turn passes. Refused (`PENDING_DAMAGE`) while a damage the combatant attacked with or took is still to roll or apply. A character's effects go back to game time when it leaves in setup (`effectRowsToCharacters`; its inspiration die is not given back). A creature leaving because its owner or the master dismissed it cannot be refused: the damage waiting on it is written as dropped (`damage_discarded`, before the `combatant_removed`) |
 | `SetCombatantSide` | Master | "Aliado" or enemy for an NPC (`side_set`); passes over opportunity offers now between allies |
 | `SetCombatantHidden` | Master | Hides or shows an NPC |
 | `SetCombatantCover` | Master | Cover by hand (none, half, three-quarters, total); cleared when the combatant moves |
