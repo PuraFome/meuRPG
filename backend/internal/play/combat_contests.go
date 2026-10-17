@@ -1058,15 +1058,7 @@ type contestClose struct {
 // parseContestClose is the first phase of CloseContest: only the master closes, and the
 // member is checked before any id is parsed.
 func parseContestClose(ctx context.Context, msg *playv1.CloseContestRequest) (contestClose, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return contestClose{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return contestClose{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestClose{}, err
 	}

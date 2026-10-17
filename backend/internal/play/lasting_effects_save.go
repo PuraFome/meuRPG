@@ -200,13 +200,7 @@ type effectSaveCall struct {
 func readEffectSaveCall(ctx context.Context, msg *playv1.RollEffectSaveRequest) (effectSaveCall, error) {
 	var call effectSaveCall
 	var err error
-	if call.m, err = authz.RequireCampaignMember(ctx, msg.GetCampaignId()); err != nil {
-		return call, err
-	}
-	if call.key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+	if call.m, call.key, call.encID, err = memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.winID, err = parseCombatID(msg.GetWindowId(), "window"); err != nil {

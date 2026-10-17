@@ -369,13 +369,7 @@ func (s *Service) UseReaction(
 // parseReactionCall reads the caller's membership and the ids of a Shield answer. The member comes
 // first, so a stranger gets permission_denied before any id is parsed.
 func parseReactionCall(ctx context.Context, campaignID, keyRaw, encounterRaw, pendingRaw string) (m authz.Membership, key string, encID, pendingID string, err error) {
-	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
-		return m, key, "", "", err
-	}
-	if key, err = parseKey(keyRaw); err != nil {
-		return m, key, "", "", err
-	}
-	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
+	if m, key, encID, err = memberCall(ctx, campaignID, keyRaw, encounterRaw); err != nil {
 		return m, key, "", "", err
 	}
 	if pendingID, err = parseCombatID(pendingRaw, "pending damage"); err != nil {
@@ -445,19 +439,7 @@ func (s *Service) DeclineReaction(
 	ctx context.Context,
 	req *connect.Request[playv1.DeclineReactionRequest],
 ) (*connect.Response[playv1.DeclineReactionResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	pendingID, err := parseCombatID(req.Msg.GetPendingDamageId(), "pending damage")
+	m, key, encID, pendingID, err := parseReactionCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetPendingDamageId())
 	if err != nil {
 		return nil, err
 	}

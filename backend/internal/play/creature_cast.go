@@ -427,15 +427,7 @@ func (s *Service) EndConcentration(
 	ctx context.Context,
 	req *connect.Request[playv1.EndConcentrationRequest],
 ) (*connect.Response[playv1.EndConcentrationResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,6 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 )
 
@@ -24,11 +23,11 @@ func (s *Service) RevealHider(
 	ctx context.Context,
 	req *connect.Request[playv1.RevealHiderRequest],
 ) (*connect.Response[playv1.RevealHiderResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
-	key, encID, combID, err := parseRevealHider(req.Msg)
+	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
 	if err != nil {
 		return nil, err
 	}
@@ -54,21 +53,6 @@ func (s *Service) RevealHider(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.RevealHiderResponse{Encounter: out}), nil
-}
-
-// parseRevealHider reads the idempotency key, the encounter and the combatant of the request,
-// in that order.
-func parseRevealHider(msg *playv1.RevealHiderRequest) (key, encID, combID string, err error) {
-	if key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
-		return "", "", "", err
-	}
-	if encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
-		return "", "", "", err
-	}
-	if combID, err = parseCombatID(msg.GetCombatantId(), "combatant"); err != nil {
-		return "", "", "", err
-	}
-	return key, encID, combID, nil
 }
 
 // revealHiderIn ends the hiding of the combatant inside the transaction and builds the event

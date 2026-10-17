@@ -689,17 +689,12 @@ type effectCall struct {
 // readEffectCall checks who calls and reads the key, the combat and the effect, in this order.
 func readEffectCall(ctx context.Context, campaignID, rawKey, rawEncounter, rawEffect string) (effectCall, error) {
 	var call effectCall
-	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster)
+	m, key, encID, err := masterCall(ctx, campaignID, rawKey, rawEncounter)
+	call.m = m
 	if err != nil {
 		return call, err
 	}
-	call.m = m
-	if call.key, err = parseKey(rawKey); err != nil {
-		return call, err
-	}
-	if call.encID, err = parseCombatID(rawEncounter, "encounter"); err != nil {
-		return call, err
-	}
+	call.key, call.encID = key, encID
 	if call.effID, err = parseCombatID(rawEffect, "effect"); err != nil {
 		return call, errEffectNotFound()
 	}
