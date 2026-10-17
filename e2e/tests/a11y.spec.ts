@@ -6,7 +6,7 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { exportThroughScreen, joinAsPlayer, tableForPackage, zipWithManifest } from './campaign-package-support';
 import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
-import { chooseReaders, feedOf, lineOf, openConversaTable, say } from './conversa-support';
+import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
@@ -8025,7 +8025,8 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
     if (phone) {
       await page.getByRole('button', { name: /^Conversa/ }).click();
     }
-    await expect(feedOf(page)).toBeVisible();
+    // The empty feed is not drawn; the panel is there once its message box is.
+    await expect(messageBoxOf(page)).toBeVisible();
   };
   try {
     await openChat(m);

@@ -54,7 +54,8 @@ export async function openConversaTable(browser: Browser, name: string, options:
     await Promise.all([master, pensantus, toren.page].map((p) => openSessionPage(p, campaignId)));
     if (width >= 768) {
       // On a phone the panel is not drawn until the "Conversa" tab is opened.
-      await Promise.all([master, pensantus, toren.page].map((p) => expect(feedOf(p)).toBeVisible({ timeout: 30_000 })));
+      // The empty feed is not drawn (the empty sentence stands in its place), so the panel is awaited by its message box.
+      await Promise.all([master, pensantus, toren.page].map((p) => expect(messageBoxOf(p)).toBeVisible({ timeout: 30_000 })));
     }
   } catch (error) {
     await close();
@@ -63,7 +64,12 @@ export async function openConversaTable(browser: Browser, name: string, options:
   return { campaignId, master, pensantus, toren: toren.page, close };
 }
 
-/** The list of lines. */
+/** The message box of the panel: there as soon as the panel is, whether or not a line has arrived. */
+export function messageBoxOf(page: Page): Locator {
+  return page.getByRole('textbox', { name: 'Mensagem' });
+}
+
+/** The list of lines. It is in the page once a first line has arrived, not before. */
 export function feedOf(page: Page): Locator {
   return page.getByRole('list', { name: 'Mensagens da cena' });
 }
@@ -75,7 +81,7 @@ export function lineOf(page: Page, text: string): Locator {
 
 /** Writes in the message box and presses "Enviar". */
 export async function say(page: Page, text: string): Promise<void> {
-  await page.getByRole('textbox', { name: 'Mensagem' }).fill(text);
+  await messageBoxOf(page).fill(text);
   await page.getByRole('button', { name: 'Enviar', exact: true }).click();
 }
 
