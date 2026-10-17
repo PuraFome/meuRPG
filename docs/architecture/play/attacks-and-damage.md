@@ -124,6 +124,7 @@ Death saves and initiative are untouched.
   A hit within 5 ft against a Paralyzed or Unconscious target is a critical hit (`critical_on_hit`).
 - **What the player sees.** Only the sources they can see are listed; the mode counts all of them.
 - **Spell attacks.** `GetTurnOptions` writes the same `roll_mode`, `sources` and `critical_on_hit` on each target of a spell that makes an attack roll (`turnModes.annotateShape` with `shapeOfSpell`), so the cast sheet suggests the mode `CastSpell` will roll and asks for the right number of typed d20.
+  A spell attack of the `half_on_miss` kind (Acid Arrow) that misses opens a pending damage with `half` set: the dice are rolled as usual and the amount is half of the total, rounded down, taken through the target's resistance like any damage.
 
 ## States
 

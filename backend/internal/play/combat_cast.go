@@ -710,7 +710,7 @@ func (f *castFlow) affect(ctx context.Context) error {
 		return err
 	}
 	// What a spell that lasts leaves on the targets it took hold of (RN-22).
-	return f.s.applyLastingSpell(ctx, f.c, f.cs, f.sp, f.caster, f.targs, f.abilityKey, &f.out.made)
+	return f.s.applyLastingSpell(ctx, f.c, f.cs, f.sp, f.slotLevel, f.caster, f.targs, f.abilityKey, &f.out.made)
 }
 
 // affectHitPoints is a hit point spell (a pool of dice that sleeps, or hit points that change).
