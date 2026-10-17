@@ -173,3 +173,10 @@ func hitPointsAfter(target playdb.Combatant, call adjustHitPointsCall) (hpState,
 	}
 	return hpState{HP: clamp32(hp, 0, math.MaxInt32), Temp: clamp32(tmp, 0, math.MaxInt32), Defeated: hp == 0}, nil
 }
+
+// The most damage or healing the master types for an NPC, and the most
+// temporary hit points (as for a character's vitals).
+const (
+	maxHitPointChange = 9999
+	maxTempHitPoints  = 999
+)

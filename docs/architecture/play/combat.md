@@ -15,7 +15,11 @@ Attacks and damage are in [Attacks and damage](attacks-and-damage.md), movement 
 | `combat_write.go` | The transaction every change shares (`combatTx`, `write`, `finish`) |
 | `combat_view.go` | Who sees what |
 | `combat_rules.go` | The arithmetic, pure and tested without a database |
-| `combat_actions.go`, `combat_parts.go` | Options, attacks, damage, standard actions, NPC HP |
+| `combat_turn_options.go`, `combat_spell_targets.go` | The options of a turn and who each one can target |
+| `combat_attack.go`, `combat_damage.go`, `combat_parts.go` | The attack roll, the damage and its parts |
+| `combat_apply_damage.go`, `combat_hit_points.go`, `combat_take_action.go` | The master settling a hit, NPC hit points, the standard and feature actions |
+| `combat_gate.go` | Why a combatant cannot act now |
+| `combat_landing.go`, `combat_pending_view.go` | Where a damage or heal lands, and the pending damage as the viewer reads it |
 | `combat_turn.go` | The joint turn |
 | `combat_events.go`, `combat_log.go` | Event payloads and the log |
 | `combat_vitals.go` | Slots, uses and HP through `character_vitals` |

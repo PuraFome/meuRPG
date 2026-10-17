@@ -2,10 +2,12 @@ package play
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -478,4 +480,50 @@ func (f *discardDamageFlow) castSave(ctx context.Context) error {
 	var err error
 	f.made.ConcentrationDC, err = f.s.castConcentrationDC(ctx, f.c, f.p, f.target, 0)
 	return err
+}
+
+// settling finds the pending damage the master settles and the two
+// combatants it is about, all in the change's own transaction.
+func (s *Service) settling(ctx context.Context, c *combatTx, pendingID string) (p playdb.PendingDamage, attacker, target playdb.Combatant, err error) {
+	p, err = c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: pendingID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return p, attacker, target, connect.NewError(connect.CodeNotFound, errors.New("pending damage not found"))
+	}
+	if err != nil {
+		return p, attacker, target, fmt.Errorf("find the pending damage: %w", err)
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return p, attacker, target, fmt.Errorf("list the combatants: %w", err)
+	}
+	master := combatViewer{master: true}
+	if target, err = findCombatant(cs, p.TargetID, master); err != nil {
+		return p, attacker, target, err
+	}
+	if p.AttackerID == nil {
+		return p, target, target, nil // a trap's damage (MR-035) has no attacker: the target stands in
+	}
+	attacker, err = findCombatant(cs, *p.AttackerID, master)
+	return p, attacker, target, err
+}
+
+// discardHit drops a pending damage the master discards, and returns the windows that
+// waited on it (a hit's Shield, or the master's check): they close with it
+// (settleReactions finds their trigger gone), and the discard's event keeps them so that
+// its undo opens them again (reopenWindows).
+func discardHit(ctx context.Context, c *combatTx, p playdb.PendingDamage) ([]string, error) {
+	open, err := openWindowsOf(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	var windows []string
+	for _, w := range open {
+		if conv.OrZero(w.PendingDamageID) == p.ID {
+			windows = append(windows, w.ID)
+		}
+	}
+	if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingDiscarded, ResolvedAt: &c.now}); err != nil {
+		return nil, fmt.Errorf("discard the pending damage: %w", err)
+	}
+	return windows, nil
 }

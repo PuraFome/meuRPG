@@ -46,7 +46,7 @@ const (
 	eventCombatantsAdded     = "combatants_added"
 	eventCombatantRemoved    = "combatant_removed"
 	eventEncounterEnded      = "encounter_ended"
-	// The actions of a turn (combat_actions.go, combat_undo.go).
+	// The actions of a turn (combat_attack.go, combat_damage.go, combat_take_action.go, combat_undo.go).
 	eventAttackRolled      = "attack_rolled"
 	eventDamageRolled      = "damage_rolled"
 	eventDamageApplied     = "damage_applied"

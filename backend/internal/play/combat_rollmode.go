@@ -497,3 +497,54 @@ func rollModeRequestProto(r playdb.RollModeRequest, attackName string) *playv1.R
 	}
 	return out
 }
+
+// diceRoll builds the API's DiceRoll.
+func diceRoll(count, sides int32, faces []int32, modifier, total int32, physical bool) *playv1.DiceRoll {
+	return &playv1.DiceRoll{DiceCount: count, DiceSides: sides, Faces: faces, Modifier: modifier, Total: total, Physical: physical}
+}
+
+// faces32 converts the faces a roll gave.
+func faces32(faces []int) []int32 {
+	out := make([]int32, len(faces))
+	for i, f := range faces {
+		out[i] = clamp32(f, 0, 1000)
+	}
+	return out
+}
+
+// rollInput is how the caller says a roll comes: rolled by the app, or a
+// number typed from physical dice.
+type rollInput struct {
+	inApp bool
+	typed int
+	// typedFaces are the faces of a physical d20 pair (advantage or disadvantage,
+	// d20_faces); typed alone is one face.
+	typedFaces []int
+	// pool says typed is the sum of the physical dice of a spell's pool (not a
+	// d20 face): CastSpell's pool_sum.
+	pool bool
+	// extraFaces are the faces of the physical dice an effect adds to the roll
+	// (extra_die_faces: Bênção, Orientação).
+	extraFaces []int32
+}
+
+// mustRollThisWay checks a player's way of rolling against the campaign's dice
+// setting (RN-18): only a mode the master forced binds them (a typed value is
+// refused when everybody rolls in the app, the app's roll when everybody rolls
+// real dice); with "each player chooses" they pick on every roll, and their
+// preference is only the default the screen offers. The master rolls either
+// way, for anyone. Inside a change it reads the setting in the change's
+// transaction (tx).
+func (s *Service) mustRollThisWay(ctx context.Context, tx pgx.Tx, m authz.Membership, in rollInput) error {
+	if m.Role == authz.RoleMaster {
+		return nil
+	}
+	force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
+	if err != nil {
+		return err
+	}
+	if force.refuses(in.inApp) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
+	}
+	return nil
+}

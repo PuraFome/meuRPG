@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"slices"
 
 	"connectrpc.com/connect"
 
@@ -195,4 +196,56 @@ func (s *Service) listPendingDamage(ctx context.Context, m authz.Membership, res
 		}
 	}
 	return nil
+}
+
+// disableAll disables every option with the reason: nothing can be done off
+// turn, outside a running combat or by a combatant that is out.
+func disableAll(o *rulesv1.TurnOptions, code rulesv1.DisabledReasonCode) {
+	reason := func() *rulesv1.DisabledReason { return &rulesv1.DisabledReason{Code: code} }
+	for _, a := range o.GetAttacks() {
+		a.Enabled, a.Reason = false, reason()
+	}
+	for _, sp := range o.GetSpells() {
+		sp.Enabled, sp.Reason = false, reason()
+	}
+	for _, a := range slices.Concat(o.GetStandardActions(), o.GetFeatureActions()) {
+		a.Enabled, a.Reason = false, reason()
+	}
+}
+
+// targetsFor lists who the combatant's attack of the given reach can target,
+// as the viewer sees them: not itself, not a defeated one, not a hidden one
+// for a player (RN-10), in turn order, each with the distance and whether it
+// is too far. In a combat without a grid (theatre) there is no distance and
+// nothing is too far: every combatant the rules allow is a target, and the master
+// judges the reach (RN-25).
+func targetsFor(terrain grid.Terrain, cs []playdb.Combatant, attacker playdb.Combatant, v combatViewer, reach int32, theatre bool) []*playv1.TargetInReach {
+	pool := coverPool(cs, v)
+	var out []*playv1.TargetInReach
+	for _, t := range cs {
+		if t.ID == attacker.ID || t.Defeated || !v.sees(t) {
+			continue
+		}
+		cover := coverAgainst(terrain, attacker, t, pool)
+		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
+		target.Untargetable = cover.total() && !v.master
+		if theatre {
+			out = append(out, target)
+			continue
+		}
+		if dist, ok := distanceFt(attacker, t); ok {
+			target.DistanceFt = &dist
+			target.TooFar = dist > reach
+		} else {
+			target.TooFar = !v.master // a player cannot attack what has no square (RollAttack)
+		}
+		out = append(out, target)
+	}
+	return out
+}
+
+// withCover puts the cover a target has against the attacker on its list entry.
+func withCover(t *playv1.TargetInReach, cv coverView) *playv1.TargetInReach {
+	t.Cover, t.CoverSource = coverDegreeProto(cv.key()), cv.source
+	return t
 }

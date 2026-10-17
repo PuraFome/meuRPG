@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -515,4 +517,83 @@ func (f *takeActionFlow) healFighter(ctx context.Context, sheet link.Sheet) erro
 		f.out.vitals = vit
 	}
 	return nil
+}
+
+// The standard actions that are not taken through TakeAction.
+const (
+	standardAttack = "standard:attack"
+	standardCast   = "standard:cast-a-spell"
+)
+
+// The feature actions with their own effect on the numbers (the others only
+// spend the economy and a use and go to the log). The keys are the SRD feature
+// keys ("feature:second-wind").
+const (
+	secondWind  = "feature:second-wind"
+	actionSurge = "feature:action-surge-1-use"
+)
+
+// featureError is the failed_precondition for a reason a feature action is
+// disabled with. The master has the last word on the economy only: a spent
+// resource stops him too (he corrects the uses).
+func featureError(r *rulesv1.DisabledReason, master bool) error {
+	switch r.GetCode() {
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN, "already used in this turn")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACK_ACTION_FIRST:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST, "Flurry of Blows comes after the Attack action")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_USES:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left",
+			func(b *playv1.EncounterBlocked) { b.Recharge = r.GetRecharge() })
+	}
+	return nil
+}
+
+// secondWind is Retomar o fôlego: 1d10 plus the fighter's level of hit points,
+// rolled like a damage (RN-18) and healed through the vitals (or the NPC's hit
+// points). It fills the event with the roll and what changed, and returns the
+// vitals of a player's character.
+func (s *Service) secondWind(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, who playdb.Combatant, fighterLevel int, in rollInput, rolled bool, ev *actionEvent) (*playv1.CharacterVitals, error) {
+	if !rolled {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_sum for Retomar o fôlego"))
+	}
+	if !v.master {
+		if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
+			return nil, err
+		}
+	}
+	expr := dice.Expr{Count: 1, Sides: 10, Modifier: fighterLevel}
+	var roll dice.Result
+	var err error
+	if in.inApp {
+		if roll, err = dice.Roll(s.roller, expr); err != nil {
+			return nil, fmt.Errorf("roll the d10: %w", err)
+		}
+	} else if roll, err = dice.Physical(expr, in.typed); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_sum must be 1 to 10"))
+	}
+	hit, vit, err := s.healCombatant(ctx, c, who, clamp32(max(roll.Total, 0), 0, math.MaxInt32))
+	if err != nil {
+		return nil, err
+	}
+	ev.Heal, ev.DiceCount, ev.DiceSides, ev.Faces = true, 1, 10, faces32(roll.Faces)
+	ev.Modifier, ev.Total, ev.Physical = clamp32(fighterLevel, 0, 100), clamp32(roll.Total, 0, math.MaxInt32), roll.Physical
+	ev.Amount, ev.Before, ev.After, ev.DeathBefore = hit.Amount, hit.Before, hit.After, hit.DeathBefore
+	return vit, nil
 }
