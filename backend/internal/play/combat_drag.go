@@ -61,12 +61,26 @@ func dragRoom(cs []playdb.Combatant, grappler, dragged playdb.Combatant, sq grid
 	return true
 }
 
+// dragRoomError is the refusal of a drag onto a taken square, nil when there is
+// room. When every creature on the square is unseen by the viewer it is the walk's
+// generic refusal, so the drag does not tell a player that something unseen
+// stands there (RN-10).
+func dragRoomError(cs []playdb.Combatant, grappler, dragged playdb.Combatant, sq grid.Square, v combatViewer) error {
+	if dragRoom(cs, grappler, dragged, sq, nil) {
+		return nil
+	}
+	if dragRoom(cs, grappler, dragged, sq, &v) {
+		return errMoveBlocked()
+	}
+	return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NO_ROOM_TO_DRAG, "there is no room to leave the creature")
+}
+
 // dragTo moves the creature a grappler drags to the square behind its path, in the move's
 // transaction, and returns it as it stands now. The master's cover mark clears, as for any
 // move; the movement, the action and the reaction of the dragged creature stay as they were.
-func (s *Service) dragTo(ctx context.Context, c *combatTx, cs []playdb.Combatant, grappler, dragged playdb.Combatant, sq grid.Square) (playdb.Combatant, error) {
-	if !dragRoom(cs, grappler, dragged, sq, nil) {
-		return dragged, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NO_ROOM_TO_DRAG, "there is no room to leave the creature")
+func (s *Service) dragTo(ctx context.Context, c *combatTx, v combatViewer, cs []playdb.Combatant, grappler, dragged playdb.Combatant, sq grid.Square) (playdb.Combatant, error) {
+	if err := dragRoomError(cs, grappler, dragged, sq, v); err != nil {
+		return dragged, err
 	}
 	col, row := clamp32(sq.Col, 0, math.MaxInt32), clamp32(sq.Row, 0, math.MaxInt32)
 	if err := c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{ID: dragged.ID, GridCol: &col, GridRow: &row, CoverMark: "none"}); err != nil {
