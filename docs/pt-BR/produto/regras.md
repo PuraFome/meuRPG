@@ -536,12 +536,13 @@ Num mapa com grade, quem conjura não lista quem a magia atinge: coloca a área,
 ### Magias de teletransporte na grade
 
 Passo Nebuloso é uma ação bônus que leva quem conjura até 9 m para um espaço livre que essa pessoa enxergue (SRD 5.1, Misty Step).
-Num mapa com grade o jogador escolhe o espaço na própria conjuração, e o servidor confere antes de gastar o espaço de magia ou a ação bônus.
+Num mapa com grade o jogador precisa escolher o espaço na própria conjuração (o botão de conjurar fica desligado até haver um espaço, com o ponteiro ou pelo teclado), e o servidor confere antes de gastar o espaço de magia ou a ação bônus. Uma conjuração do personagem de um jogador sem espaço é recusada.
 
 - **Alcance.** Até 6 quadrados pela regra de alcance da mesa (quadrados entre os centros, arredondado para baixo). Um espaço mais longe é recusado com "Longe demais".
 - **Livre e visto.** Não dá para escolher uma parede, uma criatura ou um espaço que quem conjura não vê. O jogador só ouve "Esse espaço não está disponível", seja qual for o motivo, então a resposta nunca revela uma criatura escondida (RN-10). O mestre ouve o motivo, não é preso à visão, e pode escolher por um NPC ou por um jogador.
+- **Armadilhas.** Uma armadilha no espaço de chegada dispara para quem conjurou, como uma entrada na sua área. Desfazer anda um passo de cada vez: primeiro o disparo, depois a conjuração, que devolve quem conjurou ao lugar.
 - **Sem andar.** O teletransporte não gasta movimento e não provoca ataque de oportunidade. Ele limpa a marca de cobertura do mestre, mostra o novo espaço a quem o enxerga, e desfazer a conjuração devolve quem conjurou ao lugar.
-- **Sem espaço** (nenhuma escolha enviada, ou combate sem mapa, RN-25) a conjuração só gasta o espaço de magia e a ação bônus, e o mestre move a ficha.
+- **Sem espaço** o mestre pode deixá-lo de fora (e, para um NPC, costuma deixar): a conjuração só gasta o espaço de magia e a ação bônus, e o mestre move a ficha. Um combate sem mapa (RN-25) não tem espaço para escolher, e a conjuração funciona do mesmo jeito.
 
 ### Criaturas escondidas atingidas por uma área
 

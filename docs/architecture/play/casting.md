@@ -33,7 +33,7 @@ What the casting does depends on what the spell is:
 | Reads HP (Sleep, Colour Spray, Power Word, Spare the Dying, Heal, False Life, Aid) | The server reads each target's HP and applies the effect at once, in the same transaction | None |
 | Revivify | See [Death and revival](death-and-revival.md) | None |
 | Teleport (Misty Step, with `destination`) | Spends the slot and the bonus action, then puts the caster on the chosen square; see below | None |
-| The rest (Web, and Misty Step without a square) | Spends and logs; the effect is the table's, and the master marks conditions afterwards | None |
+| The rest (Web, and Misty Step without a square, which only the master may send) | Spends and logs; the effect is the table's, and the master marks conditions afterwards | None |
 
 **A teleport on a map.** `CastSpellRequest.destination` is the square the caster lands on (`teleportReachFt` has the spells and their reach: Misty Step, 30 ft).
 `checkTeleport` runs with the other checks, before anything is spent: a square outside the grid or sent for another spell or in a combat without a map is `invalid_argument`; a square farther than the reach by `grid.RangeFt` is `TELEPORT_TOO_FAR`.
@@ -41,7 +41,8 @@ A wall, a creature (hidden ones too) and, for a player on a map with the fog, a 
 The cast then writes the square with no movement spent, no opportunity offer and the master's cover mark cleared, keeps where the caster stood in the event (`teleport`), and publishes the move and the fog as a move does.
 A cast held by a reaction window checks the square again when it replays, and a countered one moves nobody.
 The turn options tell the screen which spell teleports (`SpellTargets.teleport_range_ft`, 0 without a map).
-Without `destination` the cast changes nothing on the map and the master moves the token with a forced move.
+A player's character must send `destination` on a map with a grid: without it `requireDestination` refuses the cast with `DESTINATION_REQUIRED` before anything is spent. The master may leave it out (and does for an NPC): the cast then changes nothing on the map and the master moves the token with a forced move.
+A trap armed on the landing square fires through the move's own hook (`trapHook.fire`, after the teleport is written): the cast's event is written first and the firing is the change's own event, carrying the cast's fields so a retry under the same key still answers the cast. An undo takes the firing back, then the cast.
 
 **What a casting rolls at once and what stays with the master (RN-22).** A casting opens the saving throw and damage the spell asks for when it is cast.
 Saves that come later, when a creature enters the area or ends its turn in it (Flaming Sphere, Web, Sleet Storm, Earthquake), are not automated: the data records their dice without a saving throw, so a casting spends the slot, logs and rolls nothing, and the master calls for each save as creatures move.

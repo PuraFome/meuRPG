@@ -139,6 +139,9 @@ type castOut struct {
 	// die or for Lucky.
 	asked *outsideAsk
 	v     combatViewer
+	// hook is the trap hook that fired a trap on the square a teleport landed on: it tells the streams after
+	// the commit.
+	hook *trapHook
 }
 
 // castSpell is CastSpell for a member already authorized: the replay of a held action calls it
@@ -155,7 +158,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		return nil, err
 	}
 	out := &castOut{v: viewerOf(m)}
-	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventSpellCast, altKind: eventTrapTriggered, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
 		return newCastFlow(s, c, m, req.Msg, call, out).run(ctx)
 	})
 	if err != nil {
@@ -197,6 +200,8 @@ type castFlow struct {
 	hidden bool
 	// landing is the square a teleport puts the caster on (checkTeleport); nil for any other cast.
 	landing *grid.Square
+	// landed is the caster on the landing square once the teleport is written.
+	landed *playdb.Combatant
 }
 
 func newCastFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, call castCall, out *castOut) *castFlow {
@@ -207,7 +212,7 @@ func newCastFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.CastSp
 // spends and what it does. It answers the event the write stores, or nil when the d20 waits for the player's
 // answer.
 func (f *castFlow) run(ctx context.Context) (any, error) {
-	f.out.vitals, f.out.asked = nil, nil
+	f.out.vitals, f.out.asked, f.out.hook = nil, nil, nil
 	if err := f.prepare(ctx); err != nil {
 		return nil, err
 	}
@@ -230,7 +235,7 @@ func (f *castFlow) run(ctx context.Context) (any, error) {
 	if err := f.writeCast(ctx); err != nil {
 		return nil, err
 	}
-	return f.out.made, nil
+	return f.fireTrapOnLanding(ctx, f.out.made)
 }
 
 // prepare is the part of the cast that checks and reads: who and what, the turn, the spell and its slot, the
@@ -809,7 +814,7 @@ func (s *Service) castResponse(ctx context.Context, m authz.Membership, res comb
 	if err != nil {
 		return nil, s.dbError(ctx, "read the spell", err)
 	}
-	enc, err := s.finish(ctx, m, res, s.castPublisher(m, ev, out.vitals))
+	enc, err := s.finish(ctx, m, res, s.castPublisher(m, ev, out))
 	if err != nil {
 		return nil, err
 	}
@@ -821,13 +826,14 @@ func (s *Service) castResponse(ctx context.Context, m authz.Membership, res comb
 
 // castPublisher tells the streams what the cast changed: the combat and its log, the vitals it moved, the
 // hidden hit question and the turn a revealed creature joined.
-func (s *Service) castPublisher(m authz.Membership, ev actionEvent, vitals []*playv1.CharacterVitals) func(ctx context.Context, d *encounterData) {
+func (s *Service) castPublisher(m authz.Membership, ev actionEvent, out *castOut) func(ctx context.Context, d *encounterData) {
 	return func(ctx context.Context, d *encounterData) {
 		s.publishTeleport(ctx, m.CampaignID, d, ev)
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishPushed(ctx, m.CampaignID, d, pushesOf(ev.Hits))
-		for _, vit := range vitals {
+		out.hook.after(ctx, m.CampaignID, d.enc) // the trap a teleport landed on
+		for _, vit := range out.vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
 		if ev.PendingReveal != "" { // the master alone is told a question waits

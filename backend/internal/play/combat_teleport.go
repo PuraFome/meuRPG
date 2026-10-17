@@ -40,10 +40,10 @@ func errUnavailable() error {
 // checkTeleport checks the square a teleport spell was given, before anything is spent.
 func (f *castFlow) checkTeleport(context.Context) error {
 	dest := f.req.GetDestination()
-	if dest == nil {
-		return nil
-	}
 	reach, teleports := teleportReachFt[f.call.spellKey]
+	if dest == nil {
+		return f.requireDestination(teleports)
+	}
 	switch {
 	case !teleports:
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("destination is for a teleport spell"))
@@ -63,6 +63,15 @@ func (f *castFlow) checkTeleport(context.Context) error {
 	}
 	f.landing = &to
 	return nil
+}
+
+// requireDestination refuses a player's cast of a teleport spell on a map that came without a square: only the
+// master may leave it out (and then moves the token himself).
+func (f *castFlow) requireDestination(teleports bool) error {
+	if !teleports || f.v.master || isTheatre(f.c.enc) {
+		return nil
+	}
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED, "pick the square to teleport to")
 }
 
 // squareFree refuses a square with a wall, a creature or, for a player, out of the caster's sight. The master is
@@ -101,7 +110,36 @@ func (f *castFlow) teleport(ctx context.Context) error {
 		return fmt.Errorf("teleport the caster: %w", err)
 	}
 	f.out.made.Teleport = &teleportEvent{From: moveStateOf(f.caster), Col: col, Row: row}
+	moved := f.caster
+	moved.GridCol, moved.GridRow, moved.CoverMark = &col, &row, "none"
+	f.landed = &moved
 	return nil
+}
+
+// fireTrapOnLanding fires the trap on the square the caster landed on, as a move into it does: the cast's own
+// event is written now and the firing is the change's own (so a retry finds it under the idempotency key and an
+// undo takes the firing back first, then the cast). The answer is still the cast's: the firing carries its fields.
+func (f *castFlow) fireTrapOnLanding(ctx context.Context, made actionEvent) (any, error) {
+	if f.landed == nil {
+		return made, nil
+	}
+	th, err := f.s.newTrapHook(ctx, f.c.tx, f.m.CampaignID, f.c.enc, f.caster)
+	if err != nil {
+		return nil, err
+	}
+	th.landed(*f.landing)
+	ev, err := th.fire(ctx, f.c, f.cs, *f.landed)
+	if err != nil || ev == nil {
+		return made, err
+	}
+	if err := insertEvent(ctx, f.c, eventSpellCast, &f.c.actorUserID, nil, made); err != nil {
+		return nil, err
+	}
+	th.fired = ev
+	f.out.hook = th
+	f.c.kind = eventTrapTriggered
+	f.out.made.Trap = ev
+	return f.out.made, nil
 }
 
 // castTeleportBack puts the caster back where it stood before a teleport.
@@ -134,4 +172,5 @@ func (s *Service) publishTeleport(ctx context.Context, campaignID string, d *enc
 		s.publishCoverCleared(ctx, campaignID, d.enc, moved)
 	}
 	s.positionChanged(ctx, campaignID, d.enc, moved, squareOfState(ev.Teleport.From))
+	s.noticeAfterMove(ctx, campaignID, d.enc, moved) // a trap near where the caster landed may be noticed, as after a move
 }

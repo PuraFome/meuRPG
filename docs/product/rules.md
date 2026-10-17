@@ -536,12 +536,13 @@ On a map with a grid the caster does not list who an area spell touches: they pl
 ### Teleport spells on the grid
 
 Misty Step is a bonus action that takes the caster up to 30 ft to a free space the caster can see (SRD 5.1, Misty Step).
-On a map with a grid the player picks the square in the cast itself, and the server checks it before the slot or the bonus action is spent.
+On a map with a grid the player must pick the square in the cast itself (the cast button stays off until a square is picked, by pointer or by keyboard), and the server checks it before the slot or the bonus action is spent. A cast from a player's character without a square is refused.
 
 - **Reach.** Up to 6 squares by the table's range rule (squares between centres, rounded down). A farther square is refused with "Longe demais".
 - **Free and seen.** A wall, a creature or a square the caster does not see cannot be picked. A player is told only "Esse espaço não está disponível", whatever the reason, so the answer never reveals a hidden creature (RN-10). The master is told which, and is not held to sight, and may pick for an NPC or for a player.
+- **Traps.** A trap on the landing square fires for the caster, as a move into its area does. Undoing goes one step at a time: the firing first, then the cast, which puts the caster back.
 - **No walking.** The teleport spends no movement and provokes no opportunity attack. It clears the master's cover mark, shows the new square to the players who see it, and undoing the cast puts the caster back.
-- **Without a square** (no choice sent, or a combat without a map, RN-25) the cast only spends the slot and the bonus action, and the master moves the token.
+- **Without a square** the master may leave it out (and for an NPC caster usually does): the cast only spends the slot and the bonus action, and the master moves the token. A combat without a map (RN-25) has no square to pick, and the cast works the same way.
 
 ### Hidden creatures an area hits
 
