@@ -100,6 +100,8 @@ export type LiveEventVm =
   | { readonly kind: 'contentChanged' }
   /** `puzzle_changed` (MR-038): a puzzle of the session changed; the hint names only its ID, the apps read it again. */
   | { readonly kind: 'puzzleChanged'; readonly puzzleId: string }
+  /** `held_rolls_changed`: a question of a held roll was asked, answered or dropped; read `ListHeldRolls` again. */
+  | { readonly kind: 'heldRollsChanged' }
   /** `current_map_changed`; `mapId` is `null` when the map was cleared. */
   | { readonly kind: 'currentMap'; readonly mapId: string | null }
   /** `map_changed`: read the map again. */

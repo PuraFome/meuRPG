@@ -6,6 +6,9 @@ import {
   OutsideInspirationOfferSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
+import type { AnswerHeldRollResponse } from '../../../gen/meurpg/play/v1/resources_pb';
+import { type HeldAnswer, asksLucky } from '../held-rolls/held-roll-offer';
+import { heldAnswer } from '../held-rolls/held-roll-testing';
 import {
   PuzzleBlockedReason,
   PuzzleBlockedSchema,
@@ -70,22 +73,21 @@ class Api implements PlayApi {
     this.hints.push(d);
     return d.promise;
   }
-  answerHintDie(): Promise<TryPuzzleHintResponse> {
-    const d = deferred<TryPuzzleHintResponse>();
-    this.dieAnswers.push(d);
-    return d.promise;
-  }
-  answerHintLucky(
+  answerHeldRoll(
     _c: string,
     _h: string,
-    _r: boolean,
-    _d: unknown,
+    answer: HeldAnswer,
     key: string,
-  ): Promise<TryPuzzleHintResponse> {
-    this.luckyKeys.push(key);
+  ): Promise<AnswerHeldRollResponse> {
     const d = deferred<TryPuzzleHintResponse>();
-    this.luckyAnswers.push(d);
-    return d.promise;
+    if (answer.kind === 'lucky') {
+      this.luckyKeys.push(key);
+      this.luckyAnswers.push(d);
+    } else {
+      this.dieAnswers.push(d);
+    }
+    // The path's own response in `result`, the next question copied out of it, as the server answers.
+    return d.promise.then((value) => heldAnswer({ result: { case: 'hintTry', value } }));
   }
 }
 
@@ -363,8 +365,8 @@ describe('PuzzlePlay, a try for a hint', () => {
       }),
     );
     await attempt;
-    expect(play.hintLucky()?.holdId).toBe('l1');
-    expect(play.hintOffer()).toBeNull();
+    expect(play.hintHeld()?.holdId).toBe('l1');
+    expect(asksLucky(play.hintHeld())).toBe(true);
     expect(play.hintTry()).toBeNull();
   });
 });
@@ -391,8 +393,8 @@ describe('PuzzlePlay, the answers to the questions of a try', () => {
 
   it('does nothing without an offer, without a run or when the client has no such question', async () => {
     const { play } = setup();
-    await play.answerHintDie(true, null);
-    await play.answerHintLucky(true, null);
+    await play.answerHint({ kind: 'die', use: true, roll: null });
+    await play.answerHint({ kind: 'lucky', reroll: true, roll: null });
     expect(play.hintBusy()).toBe(false);
 
     const bare: PlayApi = {
@@ -403,47 +405,47 @@ describe('PuzzlePlay, the answers to the questions of a try', () => {
     const made = setup(bare);
     await made.play.open('p1');
     await made.play.tryHint({ inApp: true });
-    expect(made.play.hintOffer()).not.toBeNull();
-    await made.play.answerHintDie(true, null);
-    expect(made.play.hintOffer()).not.toBeNull();
+    expect(made.play.hintHeld()).not.toBeNull();
+    await made.play.answerHint({ kind: 'die', use: true, roll: null });
+    expect(made.play.hintHeld()).not.toBeNull();
     expect(made.play.hintBusy()).toBe(false);
   });
 
   it('says why the Bardic Inspiration answer failed, and lets the player answer again', async () => {
     const { api, play } = await withOffer(offerAnswer);
-    const answering = play.answerHintDie(true, { inApp: true });
+    const answering = play.answerHint({ kind: 'die', use: true, roll: { inApp: true } });
     await nextTurn();
     expect(play.hintBusy()).toBe(true);
     api.dieAnswers[0].reject(new ConnectError('x', Code.PermissionDenied));
     await answering;
     expect(play.message()).toBe('Você não pode fazer isso agora.');
     expect(play.hintBusy()).toBe(false);
-    expect(play.hintOffer()).not.toBeNull();
+    expect(play.hintHeld()).not.toBeNull();
   });
 
   it('says why the Lucky answer failed, and keeps the offer', async () => {
     const { api, play } = await withOffer(luckyAnswer);
-    const answering = play.answerHintLucky(true, { inApp: true });
+    const answering = play.answerHint({ kind: 'lucky', reroll: true, roll: { inApp: true } });
     await nextTurn();
     api.luckyAnswers[0].reject(new ConnectError('x', Code.PermissionDenied));
     await answering;
     expect(play.message()).toBe('Você não pode fazer isso agora.');
-    expect(play.hintLucky()).not.toBeNull();
+    expect(play.hintHeld()).not.toBeNull();
     expect(play.hintBusy()).toBe(false);
   });
 
   it('settles the try with a Lucky answer, and uses the same key for the same answer until it got through', async () => {
     const { api, play } = await withOffer(luckyAnswer);
-    const first = play.answerHintLucky(false, null);
+    const first = play.answerHint({ kind: 'lucky', reroll: false, roll: null });
     await nextTurn();
     api.luckyAnswers[0].reject(new ConnectError('x', Code.PermissionDenied));
     await first;
-    const second = play.answerHintLucky(false, null);
+    const second = play.answerHint({ kind: 'lucky', reroll: false, roll: null });
     await nextTurn();
     expect(api.luckyKeys[1]).toBe(api.luckyKeys[0]);
     api.luckyAnswers[1].resolve(hintAnswer(hintable, true));
     await second;
-    expect(play.hintLucky()).toBeNull();
+    expect(play.hintHeld()).toBeNull();
     expect(play.hintTry()?.passed).toBe(true);
     const third = await withOffer(luckyAnswer);
     expect(third.api.luckyKeys).toEqual([]);
@@ -451,7 +453,7 @@ describe('PuzzlePlay, the answers to the questions of a try', () => {
 
   it('writes nothing of an answer that comes after another puzzle was opened', async () => {
     const { api, play } = await withOffer(offerAnswer);
-    const answering = play.answerHintDie(true, null);
+    const answering = play.answerHint({ kind: 'die', use: true, roll: null });
     await nextTurn();
     const next = play.open('p2');
     api.runs[1].resolve(playerRun(riddlePuzzle('p2', 'Outra'), { revision: 1 }));
@@ -462,7 +464,7 @@ describe('PuzzlePlay, the answers to the questions of a try', () => {
     expect(play.run()?.puzzleId).toBe('p2');
 
     const lucky = await withOffer(luckyAnswer);
-    const askedLucky = lucky.play.answerHintLucky(true, null);
+    const askedLucky = lucky.play.answerHint({ kind: 'lucky', reroll: true, roll: null });
     await nextTurn();
     const other = lucky.play.open('p2');
     lucky.api.runs[1].resolve(playerRun(riddlePuzzle('p2', 'Outra'), { revision: 1 }));

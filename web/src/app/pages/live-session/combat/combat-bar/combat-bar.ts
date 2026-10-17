@@ -22,6 +22,7 @@ import {
   turnBanner,
 } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
+import { pendingCountText } from '../../../../core/held-rolls/held-text';
 import { NextTurn } from './next-turn';
 import { TheatrePill } from '../theatre/theatre-pill';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -49,6 +50,9 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 export class CombatBar {
   readonly encounter = input.required<Encounter>();
   readonly busy = input(false);
+  /** How many questions about the rolls that wait for their roller are open: a chip beside the combat's title. */
+  readonly pending = input(0);
+  protected readonly pendingText = computed(() => pendingCountText(this.pending()));
   /** Only "Encerrar combate" and its question: the phone's page end (E6-12). */
   readonly endOnly = input(false);
   /** What the turn still owes ("Falta aplicar 5 de dano"), or `null`. */

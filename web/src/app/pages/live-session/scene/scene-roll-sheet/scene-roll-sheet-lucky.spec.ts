@@ -4,22 +4,16 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { OutsideInspirationOfferSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
-  AnswerOutsideLuckyResponseSchema,
   ResourceBlockedReason,
   ResourceBlockedSchema,
 } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import { RollSceneCheckResponseSchema } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
+import { heldAnswer, heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { SceneState } from '../../../../core/play/scene-state';
-import {
-  FakeSceneClient,
-  luckyOffer,
-  playerScene,
-  sceneRoll,
-} from '../../../../core/play/scene-testing';
+import { FakeSceneClient, playerScene, sceneRoll } from '../../../../core/play/scene-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { SceneRollSheet, type SceneRollSheetData } from './scene-roll-sheet';
 
@@ -28,7 +22,7 @@ const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, 
 /** The scene check written after the Lucky answer: the new d20 (or the 1 kept), and what Lucky rolled again. */
 function written(to: number | null) {
   const face = to ?? 1;
-  return create(AnswerOutsideLuckyResponseSchema, {
+  return heldAnswer({
     result: {
       case: 'sceneCheck',
       value: create(RollSceneCheckResponseSchema, {
@@ -51,11 +45,12 @@ describe('SceneRollSheet: the halfling’s Lucky question, "Tirou 1: rolar de no
   function setup(over: { diceMode?: DiceMode; faces?: number[] } = {}) {
     Element.prototype.scrollTo = vi.fn() as never;
     const api = new FakeSceneClient();
-    api.lucky = luckyOffer(over.faces ?? [1], 6, over.faces && over.faces.length > 1 ? 1 : 0);
-    const resources = {
-      answerOutsideLucky: vi.fn(),
-      answerOutsideInspiration: vi.fn(),
-    };
+    const faces = over.faces ?? [1];
+    api.held = heldLucky(faces, 6, {});
+    if (faces.length > 1) {
+      api.held.d20!.countedIndex = 1;
+    }
+    const resources = { answerHeldRoll: vi.fn() };
     const data: SceneRollSheetData = {
       campaignId: 'c1',
       action: playerScene().actions[0],
@@ -114,16 +109,15 @@ describe('SceneRollSheet: the halfling’s Lucky question, "Tirou 1: rolar de no
 
   it('"Rolar de novo" answers with the d20 rolled in the app, then shows the total and "Sortudo: 1 → 14"', async () => {
     const { el, button, settle, resources } = setup();
-    resources.answerOutsideLucky.mockResolvedValue(written(14));
+    resources.answerHeldRoll.mockResolvedValue(written(14));
     button('Rolar no app')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
-    expect(resources.answerOutsideLucky).toHaveBeenCalledWith(
+    expect(resources.answerHeldRoll).toHaveBeenCalledWith(
       'c1',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
       expect.any(String),
     );
     const text = flat(el);
@@ -135,16 +129,15 @@ describe('SceneRollSheet: the halfling’s Lucky question, "Tirou 1: rolar de no
 
   it('"Ficar com o 1" keeps it: the roll is written with the 1, and nothing says Lucky rolled', async () => {
     const { el, button, settle, resources } = setup();
-    resources.answerOutsideLucky.mockResolvedValue(written(null));
+    resources.answerHeldRoll.mockResolvedValue(written(null));
     button('Rolar no app')!.click();
     await settle();
     button('Ficar com o 1')!.click();
     await settle();
-    expect(resources.answerOutsideLucky).toHaveBeenCalledWith(
+    expect(resources.answerHeldRoll).toHaveBeenCalledWith(
       'c1',
       'h1',
-      false,
-      null,
+      { kind: 'lucky', reroll: false, roll: null },
       expect.any(String),
     );
     const text = flat(el);
@@ -154,7 +147,7 @@ describe('SceneRollSheet: the halfling’s Lucky question, "Tirou 1: rolar de no
 
   it('with real dice the player types the new d20, 1 to 20', async () => {
     const { el, button, settle, type, resources } = setup({ diceMode: DiceMode.PHYSICAL });
-    resources.answerOutsideLucky.mockResolvedValue(written(15));
+    resources.answerHeldRoll.mockResolvedValue(written(15));
     type('1');
     button('Confirmar 1')!.click();
     await settle();
@@ -163,11 +156,10 @@ describe('SceneRollSheet: the halfling’s Lucky question, "Tirou 1: rolar de no
     type('15');
     button('Confirmar 15')!.click();
     await settle();
-    expect(resources.answerOutsideLucky).toHaveBeenCalledWith(
+    expect(resources.answerHeldRoll).toHaveBeenCalledWith(
       'c1',
       'h1',
-      true,
-      { face: 15 },
+      { kind: 'lucky', reroll: true, roll: { face: 15 } },
       expect.any(String),
     );
     expect(flat(el)).toContain('Sortudo: 1 → 15');
@@ -186,24 +178,12 @@ describe('SceneRollSheet: the halfling’s Lucky question, "Tirou 1: rolar de no
 
   it('after the new d20, a Bardic Inspiration die the character holds is asked about, on the new roll', async () => {
     const { el, button, settle, resources } = setup();
-    resources.answerOutsideLucky.mockResolvedValue(
-      create(AnswerOutsideLuckyResponseSchema, {
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
         result: {
           case: 'sceneCheck',
           value: create(RollSceneCheckResponseSchema, {
-            inspirationOffer: create(OutsideInspirationOfferSchema, {
-              holdId: 'h1',
-              sides: 8,
-              fromName: 'Orla',
-              d20: {
-                diceCount: 1,
-                diceSides: 20,
-                faces: [6],
-                modifier: 6,
-                total: 12,
-                rerolled: [{ index: 0, from: 1, to: 6, sourceKey: LUCKY_TRAIT }],
-              },
-            }),
+            heldRollOffer: heldDie(6, 6, 8, { holdId: 'h1' }, 1),
           }),
         },
       }),
@@ -222,14 +202,14 @@ describe('SceneRollSheet: the halfling’s Lucky question, "Tirou 1: rolar de no
 
   it('keeps the key of an answer that failed, so a retry never rolls the d20 twice', async () => {
     const { el, button, settle, resources } = setup();
-    resources.answerOutsideLucky.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    resources.answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     button('Rolar no app')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
-    const keys = resources.answerOutsideLucky.mock.calls.map((c) => c[4] as string);
+    const keys = resources.answerHeldRoll.mock.calls.map((c) => c[3] as string);
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBe(keys[1]);
     expect(flat(el.querySelector('[role=alert]'))).toContain('o servidor não respondeu');
@@ -238,7 +218,7 @@ describe('SceneRollSheet: the halfling’s Lucky question, "Tirou 1: rolar de no
 
   it('says another roll waits for the Lucky answer when the server refuses with LUCKY_PENDING', async () => {
     const { el, button, settle, api } = setup();
-    api.lucky = null;
+    api.held = null;
     vi.spyOn(api, 'roll').mockRejectedValue(
       new ConnectError('pending', Code.FailedPrecondition, undefined, [
         {

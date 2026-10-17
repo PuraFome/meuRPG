@@ -1,0 +1,132 @@
+@if (lucky()) {
+  <div class="offer">
+    @if (look() === 'sheet') {
+      <p class="held">{{ heldLine() }}</p>
+    } @else if (look() === 'card') {
+      <p class="d20">
+        <span class="d20__face">{{ faces() }}</span>
+        <span class="d20__text">Seu d20{{ bonusText() }}. O resultado só aparece depois da sua escolha.</span>
+      </p>
+    }
+    <section class="ask" [attr.aria-labelledby]="titleId">
+      <h3 class="ask__title" [id]="titleId">{{ luckyTitle }}</h3>
+      <p class="ask__what">{{ luckyWhat() }}</p>
+      <app-roll-picker
+        [canApp]="canApp()"
+        [canType]="canType()"
+        [preferApp]="preferApp()"
+        label="Role 1d20 de novo"
+        hint="Role o d20 de novo e digite o número que saiu (1 a 20)."
+        [min]="1"
+        [max]="20"
+        appLabel="Rolar de novo"
+        [hideTotal]="true"
+        [busy]="busy()"
+        [sticky]="false"
+        [(typing)]="typing"
+        (app)="answer.emit({ kind: 'lucky', reroll: true, roll: { inApp: true } })"
+        (typed)="answer.emit({ kind: 'lucky', reroll: true, roll: { face: $event } })"
+      />
+      <button
+        matButton="outlined"
+        type="button"
+        class="ask__keep"
+        [disabled]="busy()"
+        (click)="answer.emit({ kind: 'lucky', reroll: false, roll: null })"
+      >
+        Ficar com o 1
+      </button>
+    </section>
+  </div>
+} @else if (look() === 'attack') {
+  <section class="ask" [attr.aria-labelledby]="titleId">
+    <h3 class="ask__title" [id]="titleId">{{ dieTitle() }}</h3>
+    <p class="ask__what">
+      Você rola o {{ dieName() }} e <b>soma</b> ao total <b>agora</b>, antes de o mestre dizer o resultado. O dado se
+      perde depois de rolado.
+    </p>
+    <app-roll-picker
+      [canApp]="canApp()"
+      [canType]="canType()"
+      [preferApp]="preferApp()"
+      [label]="'Role 1' + dieName() + ' da Inspiração de Bardo'"
+      [hint]="'Role o seu ' + dieName() + ' e digite o número que saiu (1 a ' + die().sides + ').'"
+      [min]="1"
+      [max]="die().sides"
+      [appLabel]="useButton()"
+      [hideTotal]="true"
+      [busy]="busy()"
+      [sticky]="false"
+      [(typing)]="typing"
+      (app)="answer.emit({ kind: 'die', use: true, roll: { inApp: true } })"
+      (typed)="answer.emit({ kind: 'die', use: true, roll: { face: $event } })"
+    />
+    <button
+      matButton="outlined"
+      type="button"
+      class="ask__keep"
+      [disabled]="busy()"
+      (click)="answer.emit({ kind: 'die', use: false, roll: null })"
+    >
+      Guardar o dado
+    </button>
+  </section>
+} @else {
+  <section class="offer" [attr.aria-labelledby]="titleId">
+    <p class="d20">
+      <span class="d20__face">{{ counted() }}</span>
+      <span class="d20__text">Seu d20{{ bonusText() }}. O resultado só aparece depois da sua escolha.</span>
+    </p>
+    @if (luckyDone()) {
+      <p class="small" data-testid="lucky">{{ luckyDone() }}</p>
+    }
+    <h3 [id]="titleId" class="q">{{ dieTitle() }}</h3>
+    @if (die().fromName) {
+      <p class="small">Dada por {{ die().fromName }}. Some o dado a esta rolagem; depois dele, o dado se perde.</p>
+    }
+    @if (typing()) {
+      <label class="typed">
+        <span>Número que saiu no {{ dieName() }} (1 a {{ die().sides }})</span>
+        <input type="number" inputmode="numeric" [min]="1" [max]="die().sides" [value]="face()" (input)="onFace($event)" />
+      </label>
+    }
+    <div class="btns">
+      @if (canApp()) {
+        <button
+          matButton="filled"
+          type="button"
+          [disabled]="busy()"
+          disabledInteractive
+          (click)="answer.emit({ kind: 'die', use: true, roll: { inApp: true } })"
+        >
+          <mat-icon aria-hidden="true">music_note</mat-icon>Usar e rolar o {{ dieName() }}
+        </button>
+      }
+      @if (canType() && !typing()) {
+        <button matButton="outlined" type="button" [disabled]="busy()" disabledInteractive (click)="typing.set(true)">
+          Digitar o dado
+        </button>
+      }
+      @if (typing()) {
+        <button
+          matButton="filled"
+          type="button"
+          [disabled]="busy() || !faceOk()"
+          disabledInteractive
+          (click)="answer.emit({ kind: 'die', use: true, roll: { face: face() } })"
+        >
+          Usar o dado digitado
+        </button>
+      }
+      <button
+        matButton="outlined"
+        type="button"
+        [disabled]="busy()"
+        disabledInteractive
+        (click)="answer.emit({ kind: 'die', use: false, roll: null })"
+      >
+        Guardar o dado
+      </button>
+    </div>
+  </section>
+}

@@ -1,0 +1,144 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.q {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+  border: 1px solid var(--mr-warning-line);
+  color: var(--mr-ink);
+}
+
+.q__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  color: var(--mr-warning-ink);
+}
+
+.q__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
+.q__title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+}
+
+.q__status {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.q__what,
+.q__busy {
+  margin: 0;
+}
+
+.q__d20 {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.q__face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 var(--mr-space-2);
+  border: 2px solid var(--mr-ink);
+  border-radius: var(--mr-radius-sm);
+  font-family: var(--mr-font-display);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.q__line {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.q__early {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-2) var(--mr-space-3);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-danger-surface);
+  color: var(--mr-danger-ink);
+}
+
+.q__typed {
+  display: grid;
+  gap: var(--mr-space-1);
+}
+
+.q__typed input {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 var(--mr-space-3);
+  font-size: 1rem;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}
+
+.q__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}
+
+.q__btn {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-text-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  min-height: 44px;
+}
+
+@media (max-width: 767.98px) {
+  .q__buttons {
+    flex-direction: column;
+  }
+
+  .q__btn--primary {
+    --mat-button-outlined-container-height: 48px;
+    min-height: 48px;
+  }
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: var(--mr-space-3);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  border: 1px solid var(--mr-control-line);
+  color: var(--mr-ink-muted);
+}
+
+.note--done {
+  border: 0;
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+}

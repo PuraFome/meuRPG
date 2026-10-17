@@ -5,14 +5,13 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { MapPointKind, MapPointSchema } from '../../../../../gen/meurpg/maps/v1/maps_pb';
-import { OutsideInspirationOfferSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ResourceBlockedReason,
   ResourceBlockedSchema,
 } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import { SearchForTrapsResponseSchema } from '../../../../../gen/meurpg/play/v1/traps_pb';
 import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
-import { luckyOffer } from '../../../../core/play/scene-testing';
+import { heldAnswer, heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { TrapsClient } from '../../../../core/traps/traps-client';
 import { TrapSearchSheet, type TrapSearchData } from './trap-search-sheet';
@@ -30,13 +29,11 @@ const rerolled = (to: number) => ({
 });
 
 describe('TrapSearchSheet: the halfling’s Lucky question', () => {
-  const answerOutsideLucky = vi.fn();
-  const answerOutsideInspiration = vi.fn();
+  const answerHeldRoll = vi.fn();
 
   beforeEach(() => {
     Element.prototype.scrollTo = vi.fn() as never;
-    answerOutsideLucky.mockReset();
-    answerOutsideInspiration.mockReset();
+    answerHeldRoll.mockReset();
   });
 
   function setup(responses: unknown[]) {
@@ -65,10 +62,7 @@ describe('TrapSearchSheet: the halfling’s Lucky question', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: TrapsClient, useValue: api },
-        {
-          provide: ResourceClient,
-          useValue: { answerOutsideLucky, answerOutsideInspiration },
-        },
+        { provide: ResourceClient, useValue: { answerHeldRoll } },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close: vi.fn() } },
       ],
@@ -91,7 +85,7 @@ describe('TrapSearchSheet: the halfling’s Lucky question', () => {
 
   it('asks after a d20 of 1 and tells nothing of the search until it is answered', async () => {
     const { el, settle, button } = setup([
-      create(SearchForTrapsResponseSchema, { luckyOffer: luckyOffer([1], 4) }),
+      create(SearchForTrapsResponseSchema, { heldRollOffer: heldLucky([1], 4) }),
     ]);
     button('Rolar no app')!.click();
     await settle();
@@ -104,26 +98,27 @@ describe('TrapSearchSheet: the halfling’s Lucky question', () => {
 
   it('"Rolar de novo" makes the search with the new d20 and says "Sortudo: 1 → 14"', async () => {
     const { el, settle, button } = setup([
-      create(SearchForTrapsResponseSchema, { luckyOffer: luckyOffer([1], 4) }),
+      create(SearchForTrapsResponseSchema, { heldRollOffer: heldLucky([1], 4) }),
     ]);
-    answerOutsideLucky.mockResolvedValue({
-      result: {
-        case: 'trapSearch',
-        value: create(SearchForTrapsResponseSchema, {
-          roll: rerolled(14),
-          foundPointIds: ['x'],
-        }),
-      },
-    });
+    answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'trapSearch',
+          value: create(SearchForTrapsResponseSchema, {
+            roll: rerolled(14),
+            foundPointIds: ['x'],
+          }),
+        },
+      }),
+    );
     button('Rolar no app')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
-    expect(answerOutsideLucky).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenCalledWith(
       'c',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
       expect.any(String),
     );
     const text = flat(el);
@@ -134,21 +129,18 @@ describe('TrapSearchSheet: the halfling’s Lucky question', () => {
 
   it('after the new d20, a Bardic Inspiration die the character holds is asked about, on the new roll', async () => {
     const { el, settle, button } = setup([
-      create(SearchForTrapsResponseSchema, { luckyOffer: luckyOffer([1], 4) }),
+      create(SearchForTrapsResponseSchema, { heldRollOffer: heldLucky([1], 4) }),
     ]);
-    answerOutsideLucky.mockResolvedValue({
-      result: {
-        case: 'trapSearch',
-        value: create(SearchForTrapsResponseSchema, {
-          inspirationOffer: create(OutsideInspirationOfferSchema, {
-            holdId: 'h1',
-            sides: 8,
-            fromName: 'Orla',
-            d20: rerolled(7),
+    answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'trapSearch',
+          value: create(SearchForTrapsResponseSchema, {
+            heldRollOffer: heldDie(7, 4, 8, { holdId: 'h1' }, 1),
           }),
-        }),
-      },
-    });
+        },
+      }),
+    );
     button('Rolar no app')!.click();
     await settle();
     button('Rolar de novo')!.click();
@@ -161,21 +153,28 @@ describe('TrapSearchSheet: the halfling’s Lucky question', () => {
 
   it('keeps the 1 when the player says so', async () => {
     const { settle, button } = setup([
-      create(SearchForTrapsResponseSchema, { luckyOffer: luckyOffer([1], 4) }),
+      create(SearchForTrapsResponseSchema, { heldRollOffer: heldLucky([1], 4) }),
     ]);
-    answerOutsideLucky.mockResolvedValue({
-      result: {
-        case: 'trapSearch',
-        value: create(SearchForTrapsResponseSchema, {
-          roll: { diceCount: 1, diceSides: 20, faces: [1], modifier: 4, total: 5 },
-        }),
-      },
-    });
+    answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'trapSearch',
+          value: create(SearchForTrapsResponseSchema, {
+            roll: { diceCount: 1, diceSides: 20, faces: [1], modifier: 4, total: 5 },
+          }),
+        },
+      }),
+    );
     button('Rolar no app')!.click();
     await settle();
     button('Ficar com o 1')!.click();
     await settle();
-    expect(answerOutsideLucky).toHaveBeenCalledWith('c', 'h1', false, null, expect.any(String));
+    expect(answerHeldRoll).toHaveBeenCalledWith(
+      'c',
+      'h1',
+      { kind: 'lucky', reroll: false, roll: null },
+      expect.any(String),
+    );
   });
 
   it('says another roll waits for the Lucky answer when the server refuses with LUCKY_PENDING', async () => {

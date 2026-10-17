@@ -1,13 +1,5 @@
-import { create } from '@bufbuild/protobuf';
 import { TestBed } from '@angular/core/testing';
 
-import {
-  DiceRollSchema,
-  InspirationOfferSchema,
-  RollAttackResponseSchema,
-  AttackRollSchema,
-  EncounterSchema,
-} from '../../../gen/meurpg/play/v1/combat_pb';
 import { LayOnHandsCure } from '../../../gen/meurpg/play/v1/resources_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import { ResourceClient } from './resources-client';
@@ -26,7 +18,8 @@ function clientWith(sent: unknown[], answer: unknown = {}): ResourceClient {
     createSpellSlot: call,
     convertSpellSlot: call,
     giveBardicInspiration: call,
-    answerBardicInspiration: call,
+    answerHeldRoll: call,
+    listHeldRolls: call,
   };
   return client;
 }
@@ -71,55 +64,60 @@ describe('ResourceClient: the class resource calls', () => {
     ]);
   });
 
-  it('answers a held roll: using the die rolled in the app, with a typed face, or keeping it', async () => {
+  it('answers any held roll in one call: Lucky rolled again in the app or typed, the 1 kept, the die used or kept', async () => {
     const sent: unknown[] = [];
-    const attack = create(RollAttackResponseSchema, {
-      encounter: create(EncounterSchema, { id: 'e' }),
-      roll: create(AttackRollSchema, { attackKey: 'x' }),
-    });
-    const client = clientWith(sent, { attack });
-    const res = await client.answerBardicInspiration('c', 'e', 'h', true, { inApp: true }, 'k1');
-    await client.answerBardicInspiration('c', 'e', 'h', true, { face: 6 }, 'k2');
-    await client.answerBardicInspiration('c', 'e', 'h', false, { inApp: true }, 'k3');
-    expect(res.roll.attackKey).toBe('x');
+    const answer = { next: undefined };
+    const client = clientWith(sent, answer);
+    expect(
+      await client.answerHeldRoll(
+        'c',
+        'h',
+        { kind: 'lucky', reroll: true, roll: { inApp: true } },
+        'k1',
+      ),
+    ).toBe(answer);
+    await client.answerHeldRoll(
+      'c',
+      'h',
+      { kind: 'lucky', reroll: true, roll: { face: 14 } },
+      'k2',
+    );
+    await client.answerHeldRoll('c', 'h', { kind: 'lucky', reroll: false, roll: null }, 'k3');
+    await client.answerHeldRoll('c', 'h', { kind: 'die', use: true, roll: { inApp: true } }, 'k4');
+    await client.answerHeldRoll('c', 'h', { kind: 'die', use: true, roll: { face: 5 } }, 'k5');
+    await client.answerHeldRoll('c', 'h', { kind: 'die', use: false, roll: null }, 'k6');
     expect(sent).toEqual([
-      expect.objectContaining({ holdId: 'h', use: true, roll: { case: 'rollInApp', value: true } }),
-      expect.objectContaining({ use: true, roll: { case: 'typedFace', value: 6 } }),
-      // Keeping the die sends no roll at all.
-      expect.objectContaining({ use: false, roll: { case: undefined } }),
+      {
+        campaignId: 'c',
+        holdId: 'h',
+        idempotencyKey: 'k1',
+        answer: {
+          case: 'lucky',
+          value: { reroll: true, roll: { case: 'rollInApp', value: true } },
+        },
+      },
+      expect.objectContaining({
+        answer: { case: 'lucky', value: { reroll: true, roll: { case: 'typedFace', value: 14 } } },
+      }),
+      // Keeping sends no roll at all.
+      expect.objectContaining({
+        answer: { case: 'lucky', value: { reroll: false, roll: { case: undefined } } },
+      }),
+      expect.objectContaining({
+        answer: { case: 'die', value: { use: true, roll: { case: 'rollInApp', value: true } } },
+      }),
+      expect.objectContaining({
+        answer: { case: 'die', value: { use: true, roll: { case: 'typedFace', value: 5 } } },
+      }),
+      expect.objectContaining({
+        answer: { case: 'die', value: { use: false, roll: { case: undefined } } },
+      }),
     ]);
   });
 
-  it('reads the d20 of a held attack from its offer: there is no outcome yet', async () => {
-    const offer = create(InspirationOfferSchema, {
-      holdId: 'h',
-      d20: create(DiceRollSchema, {
-        diceCount: 1,
-        diceSides: 20,
-        faces: [9],
-        modifier: 5,
-        total: 14,
-      }),
-    });
-    const held = create(RollAttackResponseSchema, {
-      encounter: create(EncounterSchema, { id: 'e' }),
-      inspirationOffer: offer,
-    });
-    const res = await clientWith([], { attack: held }).answerBardicInspiration(
-      'c',
-      'e',
-      'h',
-      false,
-      null,
-      'k',
-    );
-    expect(res.offer?.holdId).toBe('h');
-    expect(res.roll.d20?.total).toBe(14);
-  });
-
-  it('fails when the answer carries no attack', async () => {
-    await expect(
-      clientWith([], {}).answerBardicInspiration('c', 'e', 'h', false, null, 'k'),
-    ).rejects.toThrow('without its attack');
+  it('lists the questions that wait for the campaign', async () => {
+    const sent: unknown[] = [];
+    await clientWith(sent).listHeldRolls('c');
+    expect(sent).toEqual([{ campaignId: 'c' }]);
   });
 });
