@@ -74,7 +74,7 @@ func spellsRestScenarios() []goldenScenario {
 
 // TestSpellsRestIsFrozen runs every scenario on a fight of its own and compares what each reads with the
 // golden.
-func TestSpellsRestIsFrozen(t *testing.T) {
+func TestSpellsRestIsFrozen(t *testing.T) { //nolint:tparallel // runGolden waits for its parallel scenarios, then compares the golden
 	t.Parallel()
 	runGolden(t, spellsRestGolden, spellsRestScenarios())
 }

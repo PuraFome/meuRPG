@@ -120,7 +120,8 @@ func (c actionsRestOption) fight(t *testing.T) (*armed, *playv1.Encounter) {
 	if c.prep != nil {
 		c.prep(t, a, e)
 	}
-	return a, a.get(t, a.master)
+	e = a.get(t, a.master)
+	return a, e
 }
 
 // read calls GetTurnOptions as the scenario says.

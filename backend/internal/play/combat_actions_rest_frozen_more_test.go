@@ -258,7 +258,7 @@ func TestActionsRestIsFrozen(t *testing.T) {
 
 // TestTurnOptionsAreFrozen reads the turn options of every scenario on a fight of its own and compares them
 // with testdata/turn_options.golden.
-func TestTurnOptionsAreFrozen(t *testing.T) {
+func TestTurnOptionsAreFrozen(t *testing.T) { //nolint:tparallel // runGolden waits for its parallel scenarios, then compares the golden
 	t.Parallel()
 	runGolden(t, turnOptionsGolden, actionsRestOptionScenarios())
 }

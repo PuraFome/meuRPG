@@ -222,7 +222,7 @@ func pensantus(spell string, slot *playv1.SpellSlot, edit func(*playv1.CastSpell
 
 // TestCastSpellIsFrozen runs every scenario on a fight of its own and compares what each reads with the
 // golden.
-func TestCastSpellIsFrozen(t *testing.T) {
+func TestCastSpellIsFrozen(t *testing.T) { //nolint:tparallel // runGolden waits for its parallel scenarios, then compares the golden
 	t.Parallel()
 	runGolden(t, castSpellGolden, castSpellScenarios())
 }
