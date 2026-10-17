@@ -95,6 +95,7 @@ func TestResistanceEffectRefusalsNameTheirField(t *testing.T) {
 		{"no condition", func(e *Effect) { e.While = "" }, ".while"},
 		{"an unknown condition", func(e *Effect) { e.While = "always" }, ".while"},
 		{"a formula condition", func(e *Effect) { e.When = "true" }, ".when"},
+		{"tags", func(e *Effect) { e.Tags = []string{"about:fixture"} }, ".tags"},
 		{"a field of another type", func(e *Effect) { e.Target = "ac" }, ".target"},
 	}
 	for _, tc := range cases {
