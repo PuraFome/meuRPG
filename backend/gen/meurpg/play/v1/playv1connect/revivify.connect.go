@@ -19,8 +19,7 @@
 // In a combat the app counts: the creature died in round R at a place in the order, and
 // the spell fits while the current round is at most R + 10 (in round R + 10, only until
 // the place in the order where it died: the app's reading of "in the last minute"). Out of
-// combat the app does not record when a creature died (the game clock only runs down
-// effects), so the master says whether it was less than a minute.
+// combat the app does not count time: the master says whether it was less than a minute.
 //
 // The reasons a creature cannot be revived (too far, too long ago, hidden, marked by the
 // master) are the master's alone: a player's list holds only creatures the spell can
@@ -96,10 +95,9 @@ type RevivifyServiceClient interface {
 	//     match (an encounter without a combatant, a combatant outside a combat).
 	PreviewRevivify(context.Context, *connect.Request[v1.PreviewRevivifyRequest]) (*connect.Response[v1.PreviewRevivifyResponse], error)
 	// RequestRevivify casts Revivify outside a combat. The spell works only on a creature
-	// that died in the last minute and the app does not record when a creature died
-	// outside a combat, so the cast waits for the master (REVIVIFY_TIME_PENDING):
-	// nothing is spent, and the target is not touched, until ConfirmRevivifyTime. It
-	// needs an open game session.
+	// that died in the last minute and the app does not count time outside a combat, so
+	// the cast waits for the master (REVIVIFY_TIME_PENDING): nothing is spent, and the
+	// target is not touched, until ConfirmRevivifyTime. It needs an open game session.
 	//
 	// It carries an idempotency_key scoped to the caller; the same key with the same request
 	// returns the first request, and with another request is `invalid_argument`. The
@@ -247,10 +245,9 @@ type RevivifyServiceHandler interface {
 	//     match (an encounter without a combatant, a combatant outside a combat).
 	PreviewRevivify(context.Context, *connect.Request[v1.PreviewRevivifyRequest]) (*connect.Response[v1.PreviewRevivifyResponse], error)
 	// RequestRevivify casts Revivify outside a combat. The spell works only on a creature
-	// that died in the last minute and the app does not record when a creature died
-	// outside a combat, so the cast waits for the master (REVIVIFY_TIME_PENDING):
-	// nothing is spent, and the target is not touched, until ConfirmRevivifyTime. It
-	// needs an open game session.
+	// that died in the last minute and the app does not count time outside a combat, so
+	// the cast waits for the master (REVIVIFY_TIME_PENDING): nothing is spent, and the
+	// target is not touched, until ConfirmRevivifyTime. It needs an open game session.
 	//
 	// It carries an idempotency_key scoped to the caller; the same key with the same request
 	// returns the first request, and with another request is `invalid_argument`. The

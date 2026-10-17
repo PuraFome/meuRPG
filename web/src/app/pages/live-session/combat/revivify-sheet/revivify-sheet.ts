@@ -84,7 +84,7 @@ export function openRevivifySheet(
  * still reach: nothing else is listed, and no reason for who is missing), **Confirmar** (the slot and the action it
  * costs, and the diamonds, which the caster ticks: the app only reminds, the table checks) and **Resultado**. In a
  * combat the cast is `CombatService.CastSpell` and the result is read at once, with "Encerrar turno". Outside one
- * the app does not record when the creature died: the cast is a request that waits for the master ("Esperando o mestre", nothing
+ * the app does not count the time: the cast is a request that waits for the master ("Esperando o mestre", nothing
  * spent), and the answer comes back by the stream's hint, as "voltou à vida" or only "O mestre disse que não dá.".
  * A refused target is always the same sentence. Focus goes to the title at each step, so a screen reader reads where
  * it is; the results are `role="status"`.

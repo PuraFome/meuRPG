@@ -24,8 +24,7 @@ import (
 )
 
 // Revivify outside a combat (SRD 5.1, Revivify). The spell reaches back one minute and the app
-// does not record when a creature died outside a combat (the game clock only runs down
-// effects), so the cast waits for the master (REVIVIFY_TIME_PENDING):
+// does not count time outside a combat, so the cast waits for the master (REVIVIFY_TIME_PENDING):
 // nothing is spent, and the target is not touched, until he says whether the creature died less
 // than a minute ago. "Já passou" ends it at no cost, and the caster is told only that the master
 // said it does not work (RN-10). A cast inside a combat is CastSpell.

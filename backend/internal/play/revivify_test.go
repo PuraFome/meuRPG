@@ -571,7 +571,7 @@ func (a *armed) requests(t *testing.T, u *user) []*playv1.RevivifyRequest {
 	return res.Msg.GetRequests()
 }
 
-// SRD 5.1, Revivify: outside a combat the app does not record when the creature died; the master says whether
+// SRD 5.1, Revivify: outside a combat the app does not count the minute; the master says whether
 // the creature died less than a minute ago, and nothing is spent until he does.
 func TestRevivify_OutsideACombatTheMasterConfirmsTheMinute(t *testing.T) {
 	t.Parallel()

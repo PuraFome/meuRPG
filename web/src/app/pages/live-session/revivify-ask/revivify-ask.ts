@@ -34,7 +34,7 @@ const ASK_ERRORS = {
 
 /**
  * "Ilaria quer conjurar Revivificar em Toren": the master's question when a player casts Revivify outside a
- * combat. The app does not record when a creature died out of combat, so the cast waits for him: nothing is spent until he answers
+ * combat. The app does not count time out of combat, so the cast waits for him: nothing is spent until he answers
  * "Faz menos de 1 minuto"; "Já passou" ends it at no cost and the player reads only "O mestre disse que não dá".
  * An `alertdialog` in place of the page's top, with the focus on the first button, and no way to dismiss it: the
  * cast waits for an answer. The page bumps `reload` when the stream says the casts changed (and on each

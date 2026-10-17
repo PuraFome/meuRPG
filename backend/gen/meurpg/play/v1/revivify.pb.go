@@ -21,8 +21,7 @@
 // In a combat the app counts: the creature died in round R at a place in the order, and
 // the spell fits while the current round is at most R + 10 (in round R + 10, only until
 // the place in the order where it died: the app's reading of "in the last minute"). Out of
-// combat the app does not record when a creature died (the game clock only runs down
-// effects), so the master says whether it was less than a minute.
+// combat the app does not count time: the master says whether it was less than a minute.
 //
 // The reasons a creature cannot be revived (too far, too long ago, hidden, marked by the
 // master) are the master's alone: a player's list holds only creatures the spell can
@@ -253,7 +252,7 @@ type PreviewRevivifyResponse struct {
 	// of that level are free. Unset when the caster has none.
 	Slot      *SpellSlot `protobuf:"bytes,3,opt,name=slot,proto3" json:"slot,omitempty"`
 	SlotsFree int32      `protobuf:"varint,4,opt,name=slots_free,json=slotsFree,proto3" json:"slots_free,omitempty"`
-	// False outside a combat: the app does not record when the creature died, and the master answers
+	// False outside a combat: the app does not count the time, and the master answers
 	// when the spell is cast (RequestRevivify).
 	CountsTime    bool `protobuf:"varint,5,opt,name=counts_time,json=countsTime,proto3" json:"counts_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
