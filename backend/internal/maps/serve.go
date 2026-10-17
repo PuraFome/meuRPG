@@ -57,6 +57,20 @@ func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID strin
 	return s.live.ImageOnStage(ctx, campaignID, imageID)
 }
 
+// playerSeesImage is playersSeeImage, or an image a line the player may read carries (RN-36).
+func (s *Service) playerSeesImage(ctx context.Context, campaignID, userID, imageID string) (bool, error) {
+	visible, err := s.playersSeeImage(ctx, campaignID, imageID)
+	if err != nil || visible {
+		return visible, err
+	}
+	// The raw image of a fog map is refused whatever a line says (RN-10, MR-036).
+	fog, err := s.queries.ImageIsOnAFogMap(ctx, mapsdb.ImageIsOnAFogMapParams{CampaignID: campaignID, ImageID: imageID})
+	if err != nil || fog {
+		return false, err
+	}
+	return s.live.ImageInConversation(ctx, campaignID, userID, imageID)
+}
+
 // handleImage serves GET /images/{id}, the image.
 func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	if err := s.serve(w, r, false); err != nil {
@@ -148,9 +162,9 @@ func (s *Service) viewableImage(ctx context.Context, rawID string) (mapsdb.Galle
 	}
 	master := m.Role == authz.RoleMaster
 	if !master {
-		visible, err := s.playersSeeImage(ctx, row.CampaignID, row.ID)
+		visible, err := s.playerSeesImage(ctx, row.CampaignID, m.UserID, row.ID)
 		if err != nil {
-			return mapsdb.GalleryImage{}, false, s.dbError(ctx, "check whether the players see an image", err)
+			return mapsdb.GalleryImage{}, false, s.dbError(ctx, "check whether a player sees an image", err)
 		}
 		if !visible {
 			return mapsdb.GalleryImage{}, false, errImageNotFound()

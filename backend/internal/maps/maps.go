@@ -148,6 +148,10 @@ type LiveSession interface {
 	// stage of the open scene of the campaign's open game session (MR-031).
 	// False when no session or no scene is open.
 	ImageOnStage(ctx context.Context, campaignID, imageID string) (bool, error)
+	// ImageInConversation reports whether the user may read a line of the
+	// scene's conversation that carries the image, or that an NPC with it as
+	// its portrait speaks (RN-36): the one thing a line lets its readers open.
+	ImageInConversation(ctx context.Context, campaignID, userID, imageID string) (bool, error)
 	// ImageShown reports whether the image is the one the open session shows the
 	// players. It reads through tx, for a transaction that is about to delete it.
 	ImageShown(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (bool, error)

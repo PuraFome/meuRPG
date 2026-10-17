@@ -180,6 +180,7 @@ func TestLeakMatrix(t *testing.T) {
 		t.Run(r.name(), func(t *testing.T) { w.runRead(t, r, got) })
 	}
 	t.Run("images and tiles", func(t *testing.T) { checkImagesAndTiles(t, w) })
+	t.Run("the audio of the lines", func(t *testing.T) { checkLineAudio(t, w) })
 	t.Run("calls that are not reads", func(t *testing.T) { checkNotReads(t, w, got) })
 	t.Run("stream", func(t *testing.T) { checkStream(t, w, got) })
 	// The stream test ended the combat and the session: what only exists then.

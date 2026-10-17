@@ -103,6 +103,8 @@ type Config struct {
 
 	// Images configures the image generator (MR-039, RN-28, ADR-0019).
 	Images Images
+	// Voice configures the voice of the scene's conversation (MR-051).
+	Voice Voice
 
 	// SessionIdleTimeout is how long a sign-in session may go unused before
 	// it stops working (SESSION_IDLE_TIMEOUT, ASVS 5.0 V7.3.1). Zero means
@@ -154,6 +156,23 @@ type Images struct {
 	// DailyLimit is the images the whole server may generate per day
 	// (IMAGE_DAILY_LIMIT), on top of the campaigns' monthly limit: a ceiling
 	// on the Gemini bill. Zero means maps.DefaultDailyImages.
+	DailyLimit int
+}
+
+// maxVoiceDailyLimit bounds TTS_DAILY_LIMIT: a typo must not lift the cap.
+const maxVoiceDailyLimit = 5000
+
+// Voice holds the settings of the voice of the conversation's lines (MR-051). It uses the Gemini key
+// of Images.
+type Voice struct {
+	// Model is the text-to-speech model (GEMINI_TTS_MODEL). It has no default: without it (and
+	// without the fake) the voice is off.
+	Model string
+	// Fake (TTS_GENERATOR=fake) uses a short silent audio, for local runs and CI, and turns the
+	// voice on without a key. It is refused on Cloud Run.
+	Fake bool
+	// DailyLimit is the voices the whole server may make per day (TTS_DAILY_LIMIT): a ceiling on the
+	// Gemini bill. Zero means play.DefaultVoiceDailyLimit.
 	DailyLimit int
 }
 
@@ -277,7 +296,10 @@ func Load(getenv func(string) string) (Config, error) {
 
 	images, imageErrs := loadImages(getenv, cfg.CloudRun)
 	cfg.Images = images
+	voice, voiceErrs := loadVoice(getenv, cfg.CloudRun)
+	cfg.Voice = voice
 	errs = append(errs, imageErrs...)
+	errs = append(errs, voiceErrs...)
 
 	cfg.LogLevel, err = loadLogLevel(getenv)
 	errs = appendErr(errs, err)
@@ -654,6 +676,35 @@ func loadImages(getenv func(string) string, cloudRun bool) (Images, []error) {
 		}
 	}
 	return img, errs
+}
+
+// loadVoice reads GEMINI_TTS_MODEL, TTS_GENERATOR and TTS_DAILY_LIMIT. None is required: without a
+// model (and without the fake) the voice is off and the rest of the app works.
+func loadVoice(getenv func(string) string, cloudRun bool) (Voice, []error) {
+	v := Voice{Model: strings.TrimSpace(getenv("GEMINI_TTS_MODEL"))}
+	var errs []error
+	switch mode := strings.TrimSpace(getenv("TTS_GENERATOR")); mode {
+	case "", "gemini":
+	case "fake":
+		if cloudRun {
+			errs = append(errs, errors.New("TTS_GENERATOR=fake is not allowed on Cloud Run"))
+		}
+		v.Fake = true
+	default:
+		errs = append(errs, fmt.Errorf("TTS_GENERATOR must be gemini or fake, got %q", mode))
+	}
+	if raw := strings.TrimSpace(getenv("TTS_DAILY_LIMIT")); raw != "" {
+		n, err := strconv.Atoi(raw)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("TTS_DAILY_LIMIT must be a number, got %q", raw))
+		case n < 1 || n > maxVoiceDailyLimit:
+			errs = append(errs, fmt.Errorf("TTS_DAILY_LIMIT must be between 1 and %d, got %d", maxVoiceDailyLimit, n))
+		default:
+			v.DailyLimit = n
+		}
+	}
+	return v, errs
 }
 
 // CampaignCapOff is MAX_CAMPAIGNS_PER_USER=off: no cap on campaigns per master.
