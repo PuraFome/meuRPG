@@ -10,6 +10,7 @@ import { searchRoute } from '../../../core/traps/trap-search';
 import { acts } from '../../../core/combat/joint-turn';
 import { featureNote } from '../../../core/combat/combat-derived';
 import { CombatSheets } from './combat-sheets';
+import { CombatOffers } from './combat-offers';
 import { MoveFlow } from './move-flow';
 import { ContestHost } from './contest-host';
 import { ContestClient } from '../../../core/combat/contest-client';
@@ -77,20 +78,17 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     takeAction: (id, key) => this.takeActionFor(id, key),
     openSpend: (id) => this.sheets.actions.spend(id),
   });
-  protected readonly moverId = this.moves.moverId;
-  protected readonly dropStart = this.moves.dropStart;
-  protected readonly moveError = this.moves.moveError;
-  protected readonly moveNote = this.moves.moveNote;
-  protected readonly lockedDoor = this.moves.lockedDoor;
-  protected readonly forcedMove = this.moves.forcedMove;
-  protected readonly forcedNote = this.moves.forcedNote;
-  protected readonly moveJump = this.moves.jump;
-  protected readonly reachOn = this.moves.reachOn;
-  protected readonly moveOptions = this.moves.options;
-  protected readonly canDisengage = this.moves.canDisengage;
-  protected readonly moverJumps = this.moves.jumps;
-  protected readonly masterReach = this.moves.masterReach;
-  protected readonly reachSwitch = this.moves.reachSwitch;
+  /** The master's side of the opportunity attacks: the offer form, his answers and the reactors' attacks (`CombatOffers`). */
+  protected readonly offers = new CombatOffers({
+    api: this.api,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+    toAnswer: () => this.toAnswer(),
+    info: () => this.info(),
+    attack: (offer, key, options) =>
+      this.sheets.reactions.opportunityAttack(offer, key, options, true),
+  });
   /** The player's side of the contests (W7-X): grapple, shove, escape, Hide, Help, and the questions a contest asks. */
   protected readonly contest = new ContestHost({
     dialog: this.dialog,
@@ -115,7 +113,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
   protected nextTurn(discard = false): Promise<boolean> {
     // A death save still due: the server lets the master pass it, but he is asked first, in place.
     if (this.deathDue().length > 0) {
-      this.passAsking.set({ discard });
+      this.deaths.asking.set({ discard });
       return Promise.resolve(false);
     }
     return this.endTurn(discard);
@@ -123,8 +121,8 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
 
   /** "Passar sem rolar": the turn ends with the death save unrolled. */
   protected passUnrolled(): Promise<boolean> {
-    const asked = this.passAsking();
-    this.passAsking.set(null);
+    const asked = this.deaths.asking();
+    this.deaths.asking.set(null);
     return this.endTurn(asked?.discard ?? false);
   }
 

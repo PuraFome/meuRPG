@@ -3,27 +3,12 @@ import {
   CombatLogKind,
   CombatantSide,
   EncounterStatus,
-  type OpportunityOffer,
-  type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
-import {
-  type FormEnded,
-  ConcentrationWatch,
-  FormNotices,
-  type LostConcentration,
-  formNoticeText,
-  lostNoticeText,
-  wildActionLine,
-} from '../../../core/combat/combat-notices';
-import { coverTargets, everyoneStanding, reactorRows } from '../../../core/combat/theatre';
-import {
-  type ReactorAttack,
-  offersHolding,
-  reactorAttacks,
-  waitingText,
-} from '../../../core/combat/opportunity';
+import { wildActionLine } from '../../../core/combat/combat-notices';
+import { coverTargets, everyoneStanding } from '../../../core/combat/theatre';
+import { offersHolding, waitingText } from '../../../core/combat/opportunity';
 import type { OfferMark } from '../../../shared/combat-map/combat-map';
 import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
 import { isDown, isPlayer } from '../../../core/combat/combat-view';
@@ -42,6 +27,10 @@ import {
 import { reactionWait } from '../../../core/combat/reactions';
 import type { CombatantInfo } from './combat-info';
 import { heldWait, revealWhy } from '../../../core/combat/hidden-reveal';
+import { CombatDeaths } from './combat-deaths';
+import { CombatInitiative } from './combat-initiative';
+import { CombatNotices } from './combat-notices';
+import { CombatRage } from './combat-rage';
 import { CombatViewStateDirective } from './combat-view-state';
 
 /** What the screen derives from the combat for the template: notes, marks, cards and who waits for what. */
@@ -51,44 +40,38 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   /** What the last feature said ("Surto de Ação: você tem outra ação"), and the
    * death save just rolled this turn; both are cleared when the turn changes. */
   protected readonly actionNote = signal('');
-  protected readonly deathResult = signal('');
   /** The turn whose damage was just settled: the master's card stays for its note. */
   protected readonly settledTurn = signal('');
-  /** The characters at three failures the master put away with "Ainda não". */
-  protected readonly deathLater = signal<ReadonlySet<string>>(new Set());
-  protected readonly deathKey = new ActionKey();
-  /** The master tapped "Próximo turno" while a death save was due: the question waits for "Rolar agora" or "Passar sem rolar". */
-  protected readonly passAsking = signal<{ readonly discard: boolean } | null>(null);
-  /** The sentence of the death save the master rolled for an absent player, kept after the save is no longer due. */
-  protected readonly masterDeathResult = signal('');
-  protected readonly confirmDeathKey = new ActionKey();
+  /** The death saves, the rage question and the initiative, each a plain class over the shared calls. */
+  protected readonly deaths = new CombatDeaths({
+    api: this.api,
+    animator: this.animator,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+    ownId: () => this.own()?.id,
+    ownLabel: () => this.own()?.label,
+    note: (text) => this.actionNote.set(text),
+  });
+  protected readonly rage = new CombatRage({
+    api: this.api,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+    isMaster: () => this.isMaster(),
+    state: () => this.state(),
+  });
+  protected readonly initiative = new CombatInitiative({
+    api: this.api,
+    animator: this.animator,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+  });
   protected readonly leaveFormKey = new ActionKey();
   /** "Combate atualizado agora." (PM-02c 9c): said once when the page comes up with the turn on hold, that is, after a reload;
    * it goes when the wait is over. Nothing here is kept in the browser: the combat says what waits. */
   protected readonly refreshed = signal('');
-  /** The master's "Oferecer ataque de oportunidade" form is open. */
-  protected readonly offering = signal(false);
-  protected readonly offerError = signal('');
-  /** Who the mover can have left the reach of (the other side, standing): the form's rows. */
-  protected readonly offerRows = computed(() => {
-    const e = this.encounter();
-    return e
-      ? reactorRows(
-          e,
-          (c) =>
-            this.info().get(c.characterId)?.classSummary ??
-            this.info().get(c.characterId)?.kindLabel ??
-            '',
-        )
-      : [];
-  });
-  /** Why the offer cannot be made now (nobody on the other side can react), or `''`. */
-  protected readonly offerWhy = computed(() => {
-    const rows = this.offerRows();
-    return rows.every((r) => r.spent || r.offered) ? 'Ninguém pode reagir agora.' : '';
-  });
-  /** One idempotency key per form and reactor: a repeated tap never offers twice, a new form is a new offer. */
-  protected offerKeys = new Map<string, string>();
   /** The cover editor asked for from the order's menu (the fallback for a joint or master turn): the panel opens on that combatant. */
   protected readonly coverRequest = signal<{ id: string; n: number } | null>(null);
   protected readonly everyone = computed(() => {
@@ -140,22 +123,13 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
       : undefined;
     return own ? wildActionLine(feature, !!own.wildShapeBeastKey, resource) : null;
   });
-  /** What the form's end said, from the combat log's line (the server's number and reason): until it is touched. */
-  protected readonly formEnded = signal<FormEnded | null>(null);
-  protected readonly formNotice = computed(() => {
-    const ended = this.formEnded();
-    return ended ? formNoticeText(ended) : '';
+  /** The notices of a form or a concentration that ended on its own (`CombatNotices`). */
+  protected readonly notices = new CombatNotices({
+    api: this.api,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    ownId: () => this.own()?.id,
   });
-  protected readonly formNotices = new FormNotices();
-  // ---- losing the concentration that holds the creatures (MR-037, E9-12 state 5) ----
-
-  /** What the player's own concentration ending took with it: the spell and the creatures that left, until it is touched. */
-  protected readonly lostConcentration = signal<LostConcentration | null>(null);
-  protected readonly lostNotice = computed(() => {
-    const lost = this.lostConcentration();
-    return lost ? lostNoticeText(lost) : '';
-  });
-  protected readonly concentration = new ConcentrationWatch();
   /** On a phone, on the player's own turn, the order strip goes under the actions instead of between the title and them. */
   protected readonly orderBelow = computed(
     () => !this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
@@ -182,28 +156,6 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
     const e = this.encounter();
     return e && this.isMaster() ? revealWhy(e) : '';
   });
-  /** The NPC reactors' attacks with their numbers, by offer (read from the reactor's own options). */
-  protected readonly reactorOptions = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(
-    new Map(),
-  );
-  protected readonly masterAttacks = computed<ReadonlyMap<string, readonly ReactorAttack[]>>(
-    () =>
-      new Map(
-        this.toAnswer().map((o) => [
-          o.id,
-          reactorAttacks(
-            o,
-            (this.reactorOptions().get(o.id)?.options?.attacks ?? []).flatMap((a) =>
-              a.attack ? [a.attack] : [],
-            ),
-          ),
-        ]),
-      ),
-  );
-  protected readonly offersHandled = new Set<string>();
-  protected readonly reactorReading = new Set<string>();
-  /** The offers whose reactor's attacks could not be read: the master's card offers "Tentar de novo". */
-  protected readonly reactorFailed = signal<ReadonlySet<string>>(new Set());
   /** The master's last action is a move: the log's undoable entry says so ("Desfazer o movimento"). */
   protected readonly canUndoMove = computed(
     () => this.log.undoable()?.kind === CombatLogKind.MOVED,
@@ -313,38 +265,10 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   protected readonly creatureTrapNotes = computed(() =>
     creatureTrapNotes(this.encounter(), this.isMaster(), this.log.rounds()),
   );
-  /** Reads an NPC reactor's own options (its attacks with their numbers) for the master's prompt. */
-  protected async loadReactor(offer: OpportunityOffer): Promise<void> {
-    const e = this.encounter();
-    if (!e) {
-      return;
-    }
-    this.reactorReading.add(offer.id);
-    this.reactorFailed.update((s) => {
-      const next = new Set(s);
-      next.delete(offer.id);
-      return next;
-    });
-    try {
-      const res = await this.api.turnOptions(this.campaignId(), e.id, offer.reactorId);
-      this.reactorOptions.update((m) => new Map(m).set(offer.id, res));
-    } catch {
-      this.reactorFailed.update((s) => new Set(s).add(offer.id));
-    } finally {
-      this.reactorReading.delete(offer.id);
-    }
-  }
   /** The Bardic Inspiration die the player's character holds (the server sends it to the holder and the master only). */
   protected readonly ownDie = computed(() => this.own()?.inspirationDie ?? null);
   /** The attack roll of the player's character that waits for the answer about the die. */
   protected readonly ownOffer = computed(() => this.own()?.inspirationOffer ?? null);
   /** The attack roll of the player's halfling that waits for the Lucky answer ("Tirou 1: rolar de novo?"), asked first. */
   protected readonly ownLucky = computed(() => this.own()?.luckyOffer ?? null);
-  /** The raging barbarian the turn waits for, when the question is mine to answer: the owner's, or the master's. */
-  protected readonly rageAsked = computed(() => {
-    const e = this.encounter();
-    const id = e?.ragePendingCombatantId;
-    const who = id ? e.combatants.find((c) => c.id === id) : undefined;
-    return who && (this.isMaster() || who.mine) ? who : null;
-  });
 }
