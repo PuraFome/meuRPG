@@ -161,7 +161,7 @@ var menuTypes = []MenuType{
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "superiority_die", NamePT: "Dado de manobra", HintPT: "Um dado que uma opção (uma manobra) soma a uma rolagem e que gasta um uso de um recurso que a entrada define: ao dano de um ataque com arma que acertou, a um ataque, ao teste de Atletismo de uma agarrada, ou como redução do dano de um ataque corpo a corpo (reação). O texto é o efeito que o mestre lê.", Fields: []MenuField{
+	{Type: "superiority_die", NamePT: "Dado de manobra", HintPT: "Um dado que uma opção (uma manobra) soma a uma rolagem e que gasta um uso de um recurso que a entrada define: ao dano de um ataque com arma que acertou, a um ataque, ao teste de Atletismo de uma agarrada, como redução do dano de um ataque corpo a corpo (reação), ou ao dano com uma provocação: o alvo faz um teste de Sabedoria contra a CD da manobra (8 + proficiência + o modificador da habilidade escolhida) e, se falhar, tem desvantagem nos ataques contra quem não seja o personagem até o fim do próximo turno dele. O texto é o efeito que o mestre lê.", Fields: []MenuField{
 		{Name: "applies", Required: true, Kind: "choice", List: ListManeuverApplies},
 		{Name: "resource", Required: true, Kind: "resource_ref"},
 		{Name: "value", Required: true, Kind: "formula"},
@@ -221,6 +221,7 @@ var (
 	maneuverNms = map[string]string{
 		ManeuverDamage: "Dano de um ataque com arma que acertou", ManeuverAttack: "Rolagem de ataque", ManeuverGrapple: "Atletismo de uma agarrada (ação bônus)",
 		ManeuverReduceMelee: "Reduz o dano de um ataque corpo a corpo (reação)",
+		ManeuverGoad:        "Dano de um ataque com arma que acertou e provocação (teste de Sabedoria)",
 	}
 	rangedAttackNms = map[string][2]string{
 		RangedAttackSpell:  {"Magias com jogada de ataque", "Só as magias que pedem jogada de ataque. O alcance multiplicado vale para as que têm alcance em metros; toque e pessoal não mudam."},

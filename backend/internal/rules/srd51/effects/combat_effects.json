@@ -195,6 +195,14 @@
       "player_label_pt": "Sem reações",
       "tags_pt": ["Não pode usar reações até o fim do próximo turno do monge"]
     },
+    "effect:goaded": {
+      "kind": "feature",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "visibility": "public",
+      "modifiers": [{"kind": "attack_disadvantage", "except_source": true}],
+      "player_label_pt": "Provocado",
+      "tags_pt": ["Desvantagem nos ataques contra quem não o provocou, até o fim do próximo turno de quem o provocou"]
+    },
     "effect:lethargy": {
       "kind": "feature",
       "duration": {"kind": "until_end_of_turn_of"},

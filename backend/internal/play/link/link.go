@@ -174,7 +174,7 @@ type Sheet struct {
 // engine's superiority_die effect). Applies, Economy and Ability are the effect's.
 type Maneuver struct {
 	Key, NamePT, Resource, Applies, Economy, Ability, TextPT string
-	Sides                                                    int
+	Sides, SaveDC                                            int
 }
 
 // LuckyTrait is the content key of the halfling's Lucky (SRD 5.1, Halfling): the sheet that

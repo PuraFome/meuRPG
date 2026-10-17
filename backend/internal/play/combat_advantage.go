@@ -141,7 +141,9 @@ func hasState(states map[string][]playdb.CombatantState, id, kind string) bool {
 // benefits hold needs the sheet's armor (heavy armor cancels them): traits are the
 // sheet's, or the zero value when the caller has no sheet at hand.
 func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState, traits link.Traits) combat.Creature {
+	attackDisadvantage, spares := effectAttackDisadvantage(states, c.ID)
 	return combat.Creature{
+		ID:          c.ID,
 		Conditions:  c.Conditions,
 		Dodging:     hasState(states, c.ID, stateDodging),
 		Reckless:    hasState(states, c.ID, stateReckless),
@@ -151,7 +153,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		// The effects that last (RN-22): exhaustion, Faerie Fire's outline, the advantage on saving
 		// throws an effect gives and the disadvantage one gives the creature's attack rolls.
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
-		AttackDisadvantage: effectAttackDisadvantage(states, c.ID),
+		AttackDisadvantage: attackDisadvantage, AttackDisadvantageSpares: spares,
 	}
 }
 

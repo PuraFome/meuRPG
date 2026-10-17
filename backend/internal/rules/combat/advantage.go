@@ -208,6 +208,10 @@ type Creature struct {
 	// AttackDisadvantage is the key of the effect that lasts that gives its own attack rolls
 	// disadvantage (Vicious Mockery: "spell:vicious-mockery"), "" for none.
 	AttackDisadvantage string
+	// ID names the creature (its combatant), so an effect can spare one target; AttackDisadvantageSpares
+	// is the creature that AttackDisadvantage does not cover (a goad's source), "" for none.
+	ID                       string
+	AttackDisadvantageSpares string
 }
 
 // Has says whether it carries a condition.
@@ -428,7 +432,7 @@ func sceneRules(s AttackScene) []sourceRule {
 // attack rolls (SRD 5.1, Vicious Mockery: the next attack roll the creature makes before the end
 // of its next turn). The effect is the source, keyed by its own key.
 func attackerEffectSources(s AttackScene) []Source {
-	if s.Attacker.AttackDisadvantage == "" {
+	if s.Attacker.AttackDisadvantage == "" || (s.Attacker.AttackDisadvantageSpares != "" && s.Attacker.AttackDisadvantageSpares == s.Target.ID) {
 		return nil
 	}
 	return []Source{{Kind: SourceEffectAttack, Effect: ModeDisadvantage, Condition: s.Attacker.AttackDisadvantage}}

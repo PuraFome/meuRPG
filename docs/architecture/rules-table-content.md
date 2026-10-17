@@ -71,14 +71,15 @@ Refused, each at its field: options on a trait or a background feature, nested o
 ### Maneuvers
 
 `superiority_die` (menu name "Dado de manobra"; fields `applies`, `resource`, `value`, `ability`, `economy`, `text_pt`; `rules/maneuvers.go`) is a die from a resource.
-`applies` is one of `damage`, `attack`, `grapple`, `reduce_melee_damage`.
+`applies` is one of `damage`, `attack`, `grapple`, `reduce_melee_damage`, `goad`.
 Checked at its fields:
 
 - the resource is one the entry or its class defines (`.resource`, `bad_reference`);
 - `value` compiles;
-- a reduction names `ability` and costs the `reaction`; a grapple costs a `bonus_action` or nothing; a die added to an attack or damage costs nothing (`.economy`, `.ability`, `bad_value`).
+- a reduction names `ability` and costs the `reaction`; a grapple costs a `bonus_action` or nothing; a goad names `ability` (the modifier of its DC) and costs nothing; a die added to an attack or damage costs nothing (`.economy`, `.ability`, `bad_value`).
 
 `Derive` fills `Derived.Maneuvers` from the effects of what the character has (picked options included), with the die's sides worked out for the level, and only when the resource exists at that level; a `value` that gives fewer than 2 or more than 100 sides is ignored with a notice.
+A goad is a damage die with a rider: the target makes a Wisdom save against `Maneuver.SaveDC` (8 + proficiency bonus + the `ability` modifier) and, on a failure, takes the combat effect `effect:goaded` until the end of the attacker's next turn. That effect is one `attack_disadvantage` modifier with `except_source`, so the target's attacks against anyone but the goader have disadvantage.
 An option with a `superiority_die` does not list its `grant_action`, so the resource is not spent twice.
 How combat spends the die (damage, grapple, reduction) is in the [play module](play/README.md).
 
