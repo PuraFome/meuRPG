@@ -402,6 +402,8 @@ type Spell struct {
 	// IgnoresCover says the spell's saving throw gets no benefit from cover (Chama
 	// Sagrada, SRD 5.1); the total-cover targeting refusal stays.
 	IgnoresCover bool
+	// HalfOnMiss says a spell attack that misses still deals half its damage (Acid Arrow).
+	HalfOnMiss bool
 	// AreaShape is the form of the spell's area ("sphere", "cylinder", "cone", "line"
 	// or "cube"), AreaSizeFt its radius (sphere, cylinder), length (cone, line) or
 	// side (cube) in feet, and AreaWidthFt a line's width: empty and 0 for a spell
