@@ -126,6 +126,7 @@ func (x *deriver) resourcesAndActions() {
 		}
 	}
 	x.maneuvers()
+	x.extraDamages()
 	for _, a := range x.active {
 		if a.effect.Type != "grant_action" || !x.applies(a) {
 			continue

@@ -99,6 +99,8 @@ A hit with more than the weapon opens `PendingDamage.parts[]`:
 A critical doubles the dice of every part (or follows the table's "maximum plus a roll"), never the fixed numbers (SRD 5.1 "Critical Hits").
 In the app the server rolls every part; with physical dice the player types a sum for each part (`typed_parts[]`).
 Divine Smite's extra die against an undead or fiend is rolled as its own part and only counts when the target is one: the player sees "+1d8" and never why, and the damage a player reads on an NPC is the damage as rolled (`damageHit.Shown`), so the total says nothing either.
+The `extra_damage` effect of a table feature ([Rules: table content](../rules-table-content.md#extra-damage)) is one more choosable extra after a weapon hit by a player's character: a flat damage of the weapon's type that a critical hit does not double. It is listed off, with its reason, when the target is not larger (the sizes are public), when it was used this turn or when the resource has no use left; marking it spends a use and the rider is the master's alone. Its once-per-turn mark is kept by feature key in `combatants.table_once_turns`, and the master's undo puts it and the use back. It is not a maneuver: the one-maneuver-per-attack limit does not count it.
+
 Sneak Attack and Colossus Slayer are once per turn (`sneak_attack_turn`, `colossus_slayer_turn`); Hunter's Mark follows the caster's concentration (`combatant_states`).
 Great Weapon Fighting rerolls 1s and 2s once, shown on the part.
 The master sees the damage by part and takes an extra out with a reason (`RemoveDamagePart`); the weapon and automatic lines stay.
