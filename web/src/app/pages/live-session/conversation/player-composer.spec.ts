@@ -30,9 +30,9 @@ describe('PlayerComposer', () => {
       fixture.detectChanges();
     };
     const radio = (name: string) =>
-      Array.from(el.querySelectorAll<HTMLLabelElement>('label')).find((l) =>
-        l.textContent?.includes(name),
-      )?.querySelector('input') as HTMLInputElement;
+      Array.from(el.querySelectorAll<HTMLLabelElement>('label'))
+        .find((l) => l.textContent?.includes(name))
+        ?.querySelector('input') as HTMLInputElement;
     return { api, state, fixture, el, area, type, send, radio };
   }
 

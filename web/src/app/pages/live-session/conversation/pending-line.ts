@@ -11,7 +11,7 @@ const LEAD = 'Não foi enviada.';
  * that did get through is not stored twice.
  */
 @Component({
-  selector: 'li[app-pending-line]',
+  selector: 'app-pending-line',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule],
   host: { class: 'pending', '[attr.aria-busy]': "pending().status === 'sending' ? 'true' : null" },
@@ -35,7 +35,5 @@ export class PendingLine {
   readonly retry = output<void>();
 
   protected readonly lead = LEAD;
-  protected readonly reason = computed(() =>
-    this.pending().error.replace(LEAD, '').trim(),
-  );
+  protected readonly reason = computed(() => this.pending().error.replace(LEAD, '').trim());
 }

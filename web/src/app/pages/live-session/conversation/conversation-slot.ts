@@ -13,6 +13,8 @@ export interface SlotInputs {
   readonly isMaster: Signal<boolean>;
   readonly campaignId: Signal<string>;
   readonly ownCharacterId: Signal<string>;
+  /** The reader's account. */
+  readonly userId: Signal<string>;
   /** The character ids of the NPCs on the stage (the master gets them). */
   readonly stageCharacterIds: Signal<readonly string[]>;
 }
@@ -36,15 +38,17 @@ export class ConversationSlot {
       (this.inputs.phone() ? this.tab() === 'chat' : this.inputs.pageVisible()),
   );
   /** The panel's code is loaded: the lazy block opens on it. */
-  readonly wanted = computed(
-    () => this.inputs.live() && (!this.inputs.phone() || this.opened()),
-  );
+  readonly wanted = computed(() => this.inputs.live() && (!this.inputs.phone() || this.opened()));
   readonly sheetLink = computed<readonly string[]>(() => {
     const { isMaster, campaignId, ownCharacterId } = this.inputs;
     return !isMaster() && ownCharacterId() !== ''
       ? ['/campaigns', campaignId(), 'characters', ownCharacterId()]
       : ['/campaigns', campaignId()];
   });
+  /** The conversation is what the reader looks at (a phone's open tab, or the column on a computer): the voice stops when not. */
+  readonly shown = computed(() => !this.inputs.phone() || this.tab() === 'chat');
+  readonly phone = computed(() => this.inputs.phone());
+  readonly userId = computed(() => this.inputs.userId());
   readonly stageIds = computed<ReadonlySet<string>>(() => new Set(this.inputs.stageCharacterIds()));
 
   constructor(private readonly inputs: SlotInputs) {}

@@ -75,11 +75,15 @@ export interface AudienceData {
 export class AudienceChooser {
   protected readonly sheet = injectSheet<AudienceData, readonly string[] | undefined>();
   protected readonly players = this.sheet.data.players;
-  protected readonly mode = signal<'all' | 'some'>(this.sheet.data.selected.length > 0 ? 'some' : 'all');
+  protected readonly mode = signal<'all' | 'some'>(
+    this.sheet.data.selected.length > 0 ? 'some' : 'all',
+  );
   protected readonly checked = signal<ReadonlySet<string>>(new Set(this.sheet.data.selected));
 
   /** The chosen accounts in the table's order. */
-  private readonly chosen = computed(() => this.players.filter((p) => this.checked().has(p.userId)));
+  private readonly chosen = computed(() =>
+    this.players.filter((p) => this.checked().has(p.userId)),
+  );
   protected readonly empty = computed(() => this.mode() === 'some' && this.chosen().length === 0);
   protected readonly line = computed(() =>
     chooserLine(

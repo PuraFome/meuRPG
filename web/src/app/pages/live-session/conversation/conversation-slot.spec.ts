@@ -15,6 +15,7 @@ describe('ConversationSlot', () => {
       isMaster: signal(over.master ?? false),
       campaignId: signal('c1'),
       ownCharacterId: signal(over.ownId ?? 'pc1'),
+      userId: signal('u-p'),
       stageCharacterIds: stage,
     });
     return { slot, live, phone, pageVisible, stage };

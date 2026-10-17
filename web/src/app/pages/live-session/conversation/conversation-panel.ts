@@ -23,10 +23,7 @@ import {
   SessionMessageSpeakerKind as Kind,
 } from '../../../../gen/meurpg/play/v1/session_messages_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
-import type {
-  ConversationState,
-  PendingSend,
-} from '../../../core/conversation/conversation-state';
+import type { ConversationState, PendingSend } from '../../../core/conversation/conversation-state';
 import { ListenController } from '../../../core/conversation/listen-controller';
 import { type LineView, viewLine } from '../../../core/conversation/message-view';
 import { RosterClient } from '../../../core/maps/roster-client';

@@ -46,7 +46,12 @@ describe('ConversationLine', () => {
   it('shows the image above the text of a narration', () => {
     const { el } = render(
       narration({
-        image: { id: 'i1', name: 'Salão cheio', url: '/images/i1', thumbnailUrl: '/images/i1/thumb' },
+        image: {
+          id: 'i1',
+          name: 'Salão cheio',
+          url: '/images/i1',
+          thumbnailUrl: '/images/i1/thumb',
+        },
       }),
     );
     const img = el.querySelector('img.line__image') as HTMLImageElement;
@@ -56,9 +61,7 @@ describe('ConversationLine', () => {
 
   it('hides "Ouvir" when the voice is off or the line cannot be heard', () => {
     expect(render(narration(), { voice: false }).el.querySelector('app-listen-button')).toBeNull();
-    expect(
-      render(narration({ canHear: false })).el.querySelector('app-listen-button'),
-    ).toBeNull();
+    expect(render(narration({ canHear: false })).el.querySelector('app-listen-button')).toBeNull();
   });
 
   it('draws an NPC with a round portrait, a bold name and the text in a bubble', () => {

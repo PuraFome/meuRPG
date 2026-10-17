@@ -124,7 +124,9 @@ describe('MasterComposer', () => {
       .mockReturnValue({ afterClosed: () => of(['u-p', 'u-b']) } as never);
     buttonWith('Todos').click();
     fixture.detectChanges();
-    const config = open.mock.calls[0][1] as { data: { players: ChooserPlayer[]; selected: string[] } };
+    const config = open.mock.calls[0][1] as {
+      data: { players: ChooserPlayer[]; selected: string[] };
+    };
     expect(config.data.players).toEqual(PLAYERS);
     expect(config.data.selected).toEqual([]);
     expect(buttonWith('Pensantus e Brisa')).toBeDefined();
@@ -143,9 +145,7 @@ describe('MasterComposer', () => {
 
   it('picks an image with the existing gallery picker, shows it as a chip and sends it', () => {
     const { dialog, buttonWith, fixture, type, send, api, el } = setup();
-    const open = vi
-      .spyOn(dialog, 'open')
-      .mockReturnValue({ afterClosed: () => of(true) } as never);
+    const open = vi.spyOn(dialog, 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
     buttonWith('Imagem da galeria').click();
     const data = open.mock.calls[0][1] as { data: ImagePickerData };
     expect(data.data.campaignId).toBe('c1');
@@ -161,9 +161,7 @@ describe('MasterComposer', () => {
 
   it('removes the picked image with the chip button', async () => {
     const { dialog, buttonWith, fixture, el } = setup();
-    const open = vi
-      .spyOn(dialog, 'open')
-      .mockReturnValue({ afterClosed: () => of(true) } as never);
+    const open = vi.spyOn(dialog, 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
     buttonWith('Imagem da galeria').click();
     await (open.mock.calls[0][1] as { data: ImagePickerData }).data.submit({
       id: 'img1',

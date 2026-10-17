@@ -32,17 +32,32 @@ describe('ConversationPanel', () => {
             list: () =>
               Promise.resolve([
                 {
-                  id: 'p', name: 'Pensantus', kind: CharacterKind.PLAYER, playerUserId: 'u-p',
-                  classSummary: 'Mago 3', raceName: 'Gnomo', playerName: null, portraitImageId: '',
+                  id: 'p',
+                  name: 'Pensantus',
+                  kind: CharacterKind.PLAYER,
+                  playerUserId: 'u-p',
+                  classSummary: 'Mago 3',
+                  raceName: 'Gnomo',
+                  playerName: null,
+                  portraitImageId: '',
                 },
                 {
-                  id: 'b', name: 'Bartolo', kind: CharacterKind.ENEMY, playerUserId: '',
-                  classSummary: '', raceName: '', playerName: null, portraitImageId: '',
+                  id: 'b',
+                  name: 'Bartolo',
+                  kind: CharacterKind.ENEMY,
+                  playerUserId: '',
+                  classSummary: '',
+                  raceName: '',
+                  playerName: null,
+                  portraitImageId: '',
                 },
               ]),
           },
         },
-        { provide: CampaignsService, useValue: { listMembers: () => Promise.resolve({ members: MEMBERS }) } },
+        {
+          provide: CampaignsService,
+          useValue: { listMembers: () => Promise.resolve({ members: MEMBERS }) },
+        },
       ],
     });
     const fixture = TestBed.createComponent(ConversationPanel);
@@ -152,7 +167,13 @@ describe('ConversationPanel', () => {
 
   it('shows a line that failed with "Tentar de novo", which sends it again with the same key', async () => {
     const { el, state, api, fixture } = await loaded();
-    state.send({ role: 'player', text: 'oi', as: 'out-of-character', characterId: '', onlyMaster: false });
+    state.send({
+      role: 'player',
+      text: 'oi',
+      as: 'out-of-character',
+      characterId: '',
+      onlyMaster: false,
+    });
     api.failSend(new Error('down'));
     await settle(fixture, 2);
     const retry = Array.from(el.querySelectorAll('button')).find((b) =>
@@ -183,10 +204,16 @@ describe('ConversationPanel', () => {
     expect(region.textContent).not.toContain('Velha.');
   });
 
-  it('does not announce the reader\'s own line', async () => {
+  it("does not announce the reader's own line", async () => {
     const { el, state, fixture } = await loaded([line('n1', {})]);
     state.receive(
-      line('o1', { speakerKind: Kind.CHARACTER, speakerName: 'Pensantus', authorUserId: 'u-p', text: 'Eu falei.', at: 10 }),
+      line('o1', {
+        speakerKind: Kind.CHARACTER,
+        speakerName: 'Pensantus',
+        authorUserId: 'u-p',
+        text: 'Eu falei.',
+        at: 10,
+      }),
     );
     await settle(fixture);
     expect(el.querySelector('[role="log"]')?.textContent).not.toContain('Eu falei.');

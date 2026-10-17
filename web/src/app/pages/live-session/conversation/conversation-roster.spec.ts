@@ -121,7 +121,10 @@ describe('ConversationRoster', () => {
 
   it('survives a read that fails: the lists stay empty', async () => {
     const model = new ConversationRoster(
-      { roster: () => Promise.reject(new Error('x')), members: () => Promise.reject(new Error('x')) },
+      {
+        roster: () => Promise.reject(new Error('x')),
+        members: () => Promise.reject(new Error('x')),
+      },
       () => 'c1',
       () => true,
       () => new Set(),

@@ -10,10 +10,10 @@ import { ListenButton } from './listen-button';
  * with an optional picture; a spoken line (NPC or another player's character) with a round
  * portrait and the text in a bordered bubble; the reader's own line to the right, tinted; an
  * out-of-character remark small and muted; a line for chosen readers with a dashed border and a
- * lock. Everything on it is worded by `viewLine`; this draws it. It is a list item of the feed.
+ * lock. Everything on it is worded by `viewLine`; this draws it. The feed wraps it in its list item.
  */
 @Component({
-  selector: 'li[app-conversation-line]',
+  selector: 'app-conversation-line',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ListenButton, MatIconModule],
   host: {

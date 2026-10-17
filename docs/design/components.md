@@ -51,7 +51,7 @@ Defined in `web/src/styles/_ui.scss`.
 | `<app-check-box>` (`shared/check-box`) | A 24 px box in a 44 px target for a list of choices (who joins the combat, who gets the XP) |
 | `<app-reveal-switch>`, `<app-hidden-switch>` (`shared/reveal-switch`, `shared/hidden-switch`) | A real `role="switch"`: an `ink` track with a check when on, a `control-line` outline when off (burgundy is for the main button only), always with the word |
 | `<app-count-stepper>` (`shared/count-stepper`) | − and + at 44 px, never shrinking; `minusLabel`, `plusLabel`, `valueLabel` change the spoken phrases |
-| `<app-segmented>` (`shared/segmented`) | "Andar \| Saltar": radios drawn as segments, 48 px on a phone and 44 px from a tablet, a check on the chosen one |
+| `<app-segmented>` (`shared/segmented`) | "Andar \| Saltar": radios drawn as segments, 48 px on a phone and 44 px from a tablet, a check on the chosen one; a segment can be `disabled` (dashed, muted) |
 | `<app-dice-choice>` (`shared/dice-choice`) | Radio cards (64 px minimum) for how dice are rolled: the master's "Dados" panel and the player's "Como você rola os dados". The chosen card has a 2 px `accent` border, `accent-soft` and the filled disc; a locked group dashes the card that does not apply ("Indisponível nesta campanha.") |
 | `<app-method-cards>` (`shared/method-cards`) | Radio cards for "Como definir os valores" |
 | `<app-roll-picker>` (`shared/roll-picker`) | The two ways to roll one die (RN-18): "Rolar no app" and "Digitar o resultado". The saved preference is the filled button, the other an underlined text; a forced mode hides the other. Typing shows a 64 px field, a live total in a `role="status"` and "Confirmar 16", dashed until valid |

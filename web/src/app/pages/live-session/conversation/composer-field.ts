@@ -4,8 +4,9 @@ import { MAX_TEXT } from '../../../core/conversation/message-view';
 
 let nextId = 0;
 
-/** The counter shows from this many characters, so it is quiet until the limit is near. */
-const COUNT_FROM = MAX_TEXT - 200;
+/** The counter shows this many characters before the limit, so it is quiet until the limit is near. */
+const COUNT_MARGIN = 200;
+const COUNT_FROM = MAX_TEXT - COUNT_MARGIN;
 
 const OVER = 'A mensagem passa de 2.000 caracteres.';
 

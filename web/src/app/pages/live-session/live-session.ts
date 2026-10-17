@@ -1,10 +1,13 @@
-import { Component, viewChild, TemplateRef } from '@angular/core';
+import { Component, TemplateRef, computed, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { VitalsVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
 import { setPageSubject } from '../../core/title/page-title';
+import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
+import { ConversationSlot } from './conversation/conversation-slot';
+import { pageVisible } from './conversation/page-visible';
 import { wireLiveSessionEffects } from './live-session-effects';
 import { CALLING_NOTICE_MS, LiveSessionEvents } from './live-session-events';
 import { LiveSessionParts, injectLiveSessionServices } from './live-session-deps';
@@ -53,7 +56,27 @@ export class LiveSession {
   protected readonly scene = this.parts.scene;
   protected readonly puzzles = this.parts.puzzles;
   protected readonly notes = this.parts.notes;
+  protected readonly conversation = this.parts.conversation;
   protected readonly view = new LiveSessionView(this.state, this.parts);
+  /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
+  protected readonly slot = new ConversationSlot({
+    live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
+    phone: mediaQuery(PHONE_QUERY),
+    pageVisible: pageVisible(this.services.document, this.services.destroyRef),
+    isMaster: this.state.isMaster,
+    campaignId: this.state.campaignId,
+    ownCharacterId: this.state.ownCharacterId,
+    userId: computed(() => {
+      const me = this.services.auth.state();
+      return me.status === 'signed-in' ? me.user.id : '';
+    }),
+    stageCharacterIds: computed(() =>
+      this.scene
+        .stage()
+        .map((npc) => npc.characterId)
+        .filter((id) => id !== ''),
+    ),
+  });
   protected readonly ownEffects = this.view.ownEffects;
   protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts);
   protected readonly events: LiveSessionEvents = new LiveSessionEvents(
@@ -93,8 +116,14 @@ export class LiveSession {
       this.loader.dispose();
       this.services.sessionNotes.bar.set(null);
     });
-    wireLiveSessionEffects(this.services, this.state, this.parts, this.view, this.notesBar, (id) =>
-      this.load(id),
+    wireLiveSessionEffects(
+      this.services,
+      this.state,
+      this.parts,
+      this.view,
+      this.slot,
+      this.notesBar,
+      (id) => this.load(id),
     );
   }
 

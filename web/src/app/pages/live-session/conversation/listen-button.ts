@@ -36,7 +36,9 @@ export class ListenButton {
   /** What is read, for the name of the button: "a narração", "a fala de Bartolo". */
   readonly subject = input.required<string>();
 
-  protected readonly playing = computed(() => this.controller().stateOf(this.lineId()) === 'playing');
+  protected readonly playing = computed(
+    () => this.controller().stateOf(this.lineId()) === 'playing',
+  );
   protected readonly ariaLabel = computed(() => {
     const state = this.controller().stateOf(this.lineId());
     if (state === 'loading') {

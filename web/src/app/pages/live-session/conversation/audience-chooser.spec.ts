@@ -24,7 +24,8 @@ describe('AudienceChooser', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const radio = (name: string) =>
-      Array.from(el.querySelectorAll('label')).find((l) => l.textContent?.includes(name))
+      Array.from(el.querySelectorAll('label'))
+        .find((l) => l.textContent?.includes(name))
         ?.querySelector('input') as HTMLInputElement;
     const button = (name: string) =>
       Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === name)!;
