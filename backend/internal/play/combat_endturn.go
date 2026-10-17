@@ -255,15 +255,19 @@ func (s *Service) closeTurnPart(ctx context.Context, c *combatTx, current playdb
 	return s.openEndSaves(ctx, c, current)
 }
 
+// partIsMasters says the line of current's part ending is the master's alone: a part of a group of
+// NPCs alone is the master's, like the group (RN-20), and so is a hidden member's.
+func partIsMasters(cs []playdb.Combatant, current playdb.Combatant) bool {
+	holdsPlayer := slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState != turnIdle && inParty(o) })
+	return current.Hidden || !holdsPlayer
+}
+
 // passTheTurn says where the turn goes once current's part ended: to the members of its group who
 // still act, nowhere while the saves of the effects wait, or to the next group.
 func (s *Service) passTheTurn(ctx context.Context, c *combatTx, cs []playdb.Combatant, current playdb.Combatant, out *endTurnOutcome) (any, error) {
 	// Who still acts: the turn passes only when the last member ends.
 	if acting := othersActing(cs, current.ID); len(acting) > 0 {
-		// A part of a group of NPCs alone is the master's, like the group (RN-20),
-		// and so is a hidden member's: no line for the players.
-		holdsPlayer := slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState != turnIdle && inParty(o) })
-		out.secret = current.Hidden || !holdsPlayer
+		out.secret = partIsMasters(cs, current)
 		c.kind = eventTurnPartEnded
 		if err := setCurrent(ctx, c, acting[0], c.enc.Round); err != nil {
 			return nil, err
@@ -274,7 +278,7 @@ func (s *Service) passTheTurn(ctx context.Context, c *combatTx, cs []playdb.Comb
 	if held, err := s.endSaveOpen(ctx, c); err != nil {
 		return nil, err
 	} else if held {
-		out.secret = current.Hidden
+		out.secret = partIsMasters(cs, current)
 		c.kind = eventTurnPartEnded
 		return actionEvent{Round: c.enc.Round, Secret: out.secret, Actor: current.ID}, nil
 	}
