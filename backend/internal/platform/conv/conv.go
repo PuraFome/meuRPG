@@ -24,5 +24,5 @@ func Int32[T ~int | ~int64](n T) int32 {
 	if v < math.MinInt32 {
 		return math.MinInt32
 	}
-	return int32(v) //nolint:gosec // G115: clamped on both sides
+	return int32(v)
 }

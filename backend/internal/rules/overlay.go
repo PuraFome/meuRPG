@@ -794,19 +794,37 @@ type overlayKind struct {
 	learn func(i int)
 }
 
+// The order claimKeys claims the kinds in (overlayKind.claimRank).
+const (
+	claimClasses = iota
+	claimSubclasses
+	claimRaces
+	claimSubraces
+	claimBackgrounds
+	claimSpells
+	claimFeats
+)
+
 // overlayKinds lists the seven kinds in the order addEntries adds them.
 func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
 	return []overlayKind{
-		{list: "spells", prefix: "spell:", claimRank: 5, n: len(o.Spells),
+		{
+			list: "spells", prefix: "spell:", claimRank: claimSpells, n: len(o.Spells),
 			entry: func(i int) TableEntry { return o.Spells[i].TableEntry },
-			add:   func(i int, path string) error { return b.addSpell(&o.Spells[i], path) }},
-		{list: "races", prefix: "race:", claimRank: 2, n: len(o.Races),
+			add:   func(i int, path string) error { return b.addSpell(&o.Spells[i], path) },
+		},
+		{
+			list: "races", prefix: "race:", claimRank: claimRaces, n: len(o.Races),
 			entry: func(i int) TableEntry { return o.Races[i].TableEntry },
-			add:   func(i int, path string) error { return b.addRace(&o.Races[i], path) }},
-		{list: "subraces", prefix: "subrace:", claimRank: 3, n: len(o.Subraces),
+			add:   func(i int, path string) error { return b.addRace(&o.Races[i], path) },
+		},
+		{
+			list: "subraces", prefix: "subrace:", claimRank: claimSubraces, n: len(o.Subraces),
 			entry: func(i int) TableEntry { return o.Subraces[i].TableEntry },
-			add:   func(i int, path string) error { return b.addSubrace(&o.Subraces[i], path) }},
-		{list: "classes", prefix: "class:", claimRank: 0, n: len(o.Classes),
+			add:   func(i int, path string) error { return b.addSubrace(&o.Subraces[i], path) },
+		},
+		{
+			list: "classes", prefix: "class:", claimRank: claimClasses, n: len(o.Classes),
 			entry: func(i int) TableEntry { return o.Classes[i].TableEntry },
 			add:   func(i int, path string) error { return b.addClass(&o.Classes[i], path) },
 			learn: func(i int) {
@@ -814,16 +832,23 @@ func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
 				b.classListFrom[e.Key] = e.Casting.ListFrom
 				b.classCasts[e.Key] = e.Casting.Kind
 				b.classSubLevel[e.Key] = e.SubclassLevel
-			}},
-		{list: "subclasses", prefix: "subclass:", claimRank: 1, n: len(o.Subclasses),
+			},
+		},
+		{
+			list: "subclasses", prefix: "subclass:", claimRank: claimSubclasses, n: len(o.Subclasses),
 			entry: func(i int) TableEntry { return o.Subclasses[i].TableEntry },
-			add:   func(i int, path string) error { return b.addSubclass(&o.Subclasses[i], path) }},
-		{list: "backgrounds", prefix: "background:", claimRank: 4, n: len(o.Backgrounds),
+			add:   func(i int, path string) error { return b.addSubclass(&o.Subclasses[i], path) },
+		},
+		{
+			list: "backgrounds", prefix: "background:", claimRank: claimBackgrounds, n: len(o.Backgrounds),
 			entry: func(i int) TableEntry { return o.Backgrounds[i].TableEntry },
-			add:   func(i int, path string) error { return b.addBackground(&o.Backgrounds[i], path) }},
-		{list: "feats", prefix: "feat:", claimRank: 6, n: len(o.Feats),
+			add:   func(i int, path string) error { return b.addBackground(&o.Backgrounds[i], path) },
+		},
+		{
+			list: "feats", prefix: "feat:", claimRank: claimFeats, n: len(o.Feats),
 			entry: func(i int) TableEntry { return o.Feats[i].TableEntry },
-			add:   func(i int, path string) error { return b.addFeat(&o.Feats[i], path) }},
+			add:   func(i int, path string) error { return b.addFeat(&o.Feats[i], path) },
+		},
 	}
 }
 

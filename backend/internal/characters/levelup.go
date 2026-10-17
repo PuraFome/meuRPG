@@ -1182,7 +1182,7 @@ func multiclassSummaryToProto(sum rules.MulticlassSummary, after rules.Derived) 
 		NewClassKey: sum.NewClass, CasterLevelBefore: i32(sum.CasterLevelBefore), CasterLevelAfter: i32(sum.CasterLevelAfter),
 		SlotsByTable: sum.SlotsByTable,
 	}
-	out.SlotsAfter = int32s(after.SpellSlots[:])
+	out.SlotsAfter = int32s(after.SpellSlots)
 	out.HitDiceAfter = mapToProto(after.HitDice, derivedHitDiceToProto)
 	for _, p := range sum.ProficienciesGained {
 		out.ProficienciesGained = append(out.ProficienciesGained, &charactersv1.LevelUpNamedKey{Key: p.Key, NamePt: p.NamePT})
