@@ -225,7 +225,7 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND player_user_id = sqlc.arg(pl
 SELECT character_id, status FROM character_reviews WHERE campaign_id = sqlc.arg(campaign_id)::UUID;
 
 -- name: ApprovePendingCharacterOfPlayer :execrows
--- An ordinary invite promotes a pending member (RN-15, Q25): that counts as
+-- An ordinary invite promotes a pending member (RN-15): that counts as
 -- the master's approval, so their character waiting for approval, if any,
 -- is approved with exactly the effect of ApproveCharacter above, found by
 -- player instead of by ID. A player has at most one living character

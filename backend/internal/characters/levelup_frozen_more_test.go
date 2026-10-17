@@ -122,13 +122,25 @@ func wantHiddenFromPlayer(t *testing.T, tb *levelUpTable, name string, character
 		t.Fatalf("GetLevelUpOptions(%s, player) error = %v", name, err)
 	}
 	levelUpGolden(t, "options_"+name+"_switched_off_master", master, labels)
-	got := fieldsMoved(protoFlatKeyed(t, master), protoFlatKeyed(t, read))
-	for id, label := range labels {
-		got = strings.ReplaceAll(got, id, label)
-	}
+	got := fieldsMoved(relabeled(protoFlatKeyed(t, master), labels), relabeled(protoFlatKeyed(t, read), labels))
 	if got != want {
 		t.Errorf("%s: what the player's options lack:\n got  %s\n want %s", name, got, want)
 	}
+}
+
+// relabeled replaces each id in m's keys and values with its label, before
+// fieldsMoved sorts them: sorted by the random ids, the order would change from
+// run to run.
+func relabeled(m, labels map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		for id, label := range labels {
+			k = strings.ReplaceAll(k, id, label)
+			v = strings.ReplaceAll(v, id, label)
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // TestPreviewLevelUpFrozenShape: the preview checks the shape of the choices after the
