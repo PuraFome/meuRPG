@@ -269,10 +269,10 @@
     ]
   },
   "25 fails: the read after": {
+    "answer": [],
     "logs": [
-      "DEBUG progression: cannot read the milestones code=canceled error=list the milestones: timeout: context already done: context canceled"
+      "ERROR progression: read the milestones after a committed write action=move a milestone error=list the milestones: timeout: context already done: context canceled"
     ],
-    "refusal": "canceled: the request was canceled",
     "rows": [
       "0 Marco A key=false hash=true",
       "1 Marco E key=false hash=true",

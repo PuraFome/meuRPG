@@ -91,10 +91,15 @@
     "rows": null
   },
   "20 fails: the read after": {
+    "answer": {
+      "milestone": [
+        "<milestone-falha> \"Falha\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": []
+    },
     "logs": [
-      "DEBUG progression: cannot read the milestones code=canceled error=list the milestones: timeout: context already done: context canceled"
+      "ERROR progression: read the milestones after a committed write action=add a milestone error=list the milestones: timeout: context already done: context canceled"
     ],
-    "refusal": "canceled: the request was canceled",
     "rows": [
       "0 Falha key=true hash=true"
     ]
@@ -126,7 +131,14 @@
     ]
   },
   "23 the same key, the text trimmed the same": {
-    "refusal": "invalid_argument: idempotency_key was used for another change",
+    "answer": {
+      "milestone": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ],
+      "milestones": [
+        "<milestone-a> \"Chegar ao Vale Seco\" reached=false off_list=false has_history=false reached_at=false marks=0"
+      ]
+    },
     "rows": [
       "0 Chegar ao Vale Seco key=true hash=true"
     ]
