@@ -103,12 +103,10 @@ export class ImageGenerateDialog {
   protected readonly stage = signal<Stage>('loading');
   protected readonly status = signal<ImageGenerationStatus | null>(null);
   /** The form the master fills, the references he picked and the refusal over them. */
-  private readonly formState = new ImageFormState(this.data.origin);
+  protected readonly formState = new ImageFormState(this.data.origin);
   protected readonly form = this.formState.form;
   protected readonly references = this.formState.references;
   protected readonly issue = this.formState.issue;
-  protected readonly patch = (patch: Partial<ImageForm>) => this.formState.patch(patch);
-  protected readonly removeReference = (id: string) => this.formState.removeReference(id);
   /** A calm line over the form (after a cancel): what became of the slot. */
   protected readonly notice = signal<string | null>(null);
 
@@ -125,7 +123,7 @@ export class ImageGenerateDialog {
   protected readonly hiddenPortraits = this.refs.hiddenPortraits;
 
   /** The request in the air and the question that closing asks. */
-  private readonly flow = new RunFlow({
+  protected readonly flow = new RunFlow({
     api: this.api,
     campaignId: this.data.campaignId,
     injector: this.injector,
@@ -141,33 +139,14 @@ export class ImageGenerateDialog {
   });
   protected readonly run = this.flow.run;
   private readonly runFor = this.flow.runFor;
-  protected readonly closing = this.flow.closing;
-  protected readonly cancelRun = () => this.flow.cancel();
-  protected readonly keepWaiting = () => this.flow.keepWaiting();
-  protected readonly requestClose = () => this.flow.requestClose();
-  protected readonly stopAndClose = () => this.flow.stopAndClose();
 
   /** The picture on screen and what can be done with it. */
-  private readonly result = new GeneratedResult({
+  protected readonly result = new GeneratedResult({
     api: this.api,
     shownApi: inject(ShownImageClient),
     campaignId: this.data.campaignId,
     toTheQuestion: () => scrollToQuestion(this.injector),
   });
-  protected readonly view = this.result.view;
-  protected readonly chain = this.result.chain;
-  protected readonly showBusy = this.result.showBusy;
-  protected readonly showError = this.result.showError;
-  protected readonly showStage = this.result.showStage;
-  protected readonly useStage = this.result.useStage;
-  protected readonly useError = this.result.useError;
-  protected readonly shown = () => this.result.shown();
-  protected readonly show = () => this.result.show();
-  protected readonly askShow = () => this.result.askShow();
-  protected readonly cancelShow = () => this.result.cancelShow();
-  protected readonly askUse = () => this.result.askUse();
-  protected readonly cancelUse = () => this.result.cancelUse();
-  protected readonly confirmUse = () => this.result.confirmUse();
   protected readonly pickChain = (imageId: string) =>
     this.result.pickChain(imageId, this.mapId() !== null);
 
@@ -206,7 +185,7 @@ export class ImageGenerateDialog {
 
   protected readonly title = computed(() =>
     // The image's name, never "Imagem N": the players read the same name when it is shown.
-    this.stage() === 'result' ? this.view()?.image.name || 'Imagem' : 'Gerar imagem',
+    this.stage() === 'result' ? this.result.view()?.image.name || 'Imagem' : 'Gerar imagem',
   );
 
   protected readonly subtitle = computed(() =>
@@ -214,7 +193,7 @@ export class ImageGenerateDialog {
       origin: this.data.origin,
       stage: this.stage(),
       sending: this.run()?.phase() === 'sending',
-      view: this.view(),
+      view: this.result.view(),
       kindText: this.result.kindText(),
     }),
   );
@@ -226,10 +205,15 @@ export class ImageGenerateDialog {
 
   /** The result's main action, in the footer (the artboard's order: the adjustment, then the one that goes on): use the textured map, or show the picture. */
   protected readonly main = computed(() =>
-    mainOf(this.view(), this.mapId() !== null, this.useStage() === 'done', this.shown()),
+    mainOf(
+      this.result.view(),
+      this.mapId() !== null,
+      this.result.useStage() === 'done',
+      this.result.shown(),
+    ),
   );
   protected readonly canUse = computed(
-    () => this.mapId() !== null && (this.view()?.wholeMap ?? false),
+    () => this.mapId() !== null && (this.result.view()?.wholeMap ?? false),
   );
   protected readonly editWhy = computed(() => editWhyOf(this.status(), this.instruction()));
   protected readonly remaining = computed(() => {
@@ -436,7 +420,7 @@ export class ImageGenerateDialog {
   // ---- The result
 
   protected submitEdit(): void {
-    const image = this.view()?.image;
+    const image = this.result.view()?.image;
     const text = this.instruction().trim();
     if (!image || this.editWhy() !== '' || this.stage() !== 'result') {
       return;
