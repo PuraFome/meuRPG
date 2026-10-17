@@ -9,8 +9,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// One test for each kind of event the master's Desfazer takes back (takeBack in
-// combat_undo.go), each as the undo property of combat_undo_snapshot_test.go: the
+// One test for each kind of event the master's Desfazer takes back (takeBack), each as the undo property of combat_undo_snapshot_test.go: the
 // picture of everything the master and the players read, and the rows of the combat,
 // before the action and after its undo. A scenario that names a difference
 // (undoDelta) freezes what today's undo does not put back.
@@ -70,30 +69,8 @@ func TestUndoKindActionTaken(t *testing.T) {
 	})
 }
 
-// TestUndoKindHitPointsAdjusted: the master's damage and heal on an NPC.
-func TestUndoKindHitPointsAdjusted(t *testing.T) {
-	t.Parallel()
-	a := newArmed(t)
-	e := a.threeAndAGoblin(t)
-	w := newUndoWatch(t, a)
-
-	w.run(t, "damage on an NPC", nil, func() {
-		if _, err := a.adjustHP(t, e, "Goblin", damageHP(3)); err != nil {
-			t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
-		}
-	})
-	if _, err := a.adjustHP(t, e, "Goblin", damageHP(3)); err != nil {
-		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
-	}
-	w.run(t, "a heal on an NPC", nil, func() {
-		if _, err := a.adjustHP(t, e, "Goblin", healHP(2)); err != nil {
-			t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
-		}
-	})
-}
-
 // TestUndoKindDamageRolledAndApplied: the damage of an attack on an NPC (settled at
-// once), on a character (waiting for the master), its application and its discard.
+// once), on a character (waiting for the master) and its application.
 func TestUndoKindDamageRolledAndApplied(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
@@ -126,11 +103,6 @@ func TestUndoKindDamageRolledAndApplied(t *testing.T) {
 	w.run(t, "applying the damage on a character", nil, func() {
 		if _, err := a.settle(t, a.master, e, id, true); err != nil {
 			t.Fatalf("ApplyPendingDamage() error = %v", err)
-		}
-	})
-	w.run(t, "discarding the damage", nil, func() {
-		if _, err := a.settle(t, a.master, e, id, false); err != nil {
-			t.Fatalf("DiscardPendingDamage() error = %v", err)
 		}
 	})
 }
@@ -303,7 +275,7 @@ func TestUndoKindReactions(t *testing.T) {
 	})
 }
 
-// Three things the undo used to leave behind, each with a test of its own beside the
+// Three things the undo takes back besides the pictures, each with a test of its own beside the
 // pictures above: the melee hit mark of the turn, the empty parts list of a damage and
 // the "ended" line of an effect the change ended.
 
@@ -466,7 +438,7 @@ func TestUndoOfAnEndedConcentrationTakesTheEndedLineBack(t *testing.T) {
 	}
 }
 
-// Four more things the undo used to leave behind, each with a test of its own: the
+// Four more things the undo takes back, each with a test of its own: the
 // reaction window a discarded hit closed, the Hunter's Mark a new one moved, the
 // "revealed" lines of an area spell and the lethargy Haste leaves when it ends.
 

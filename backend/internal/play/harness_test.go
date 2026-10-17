@@ -3,10 +3,17 @@ package play
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -353,15 +360,8 @@ func (u *user) character(t *testing.T, c *charactersv1.Character) *charactersv1.
 	return res.Msg.GetCharacter()
 }
 
-func wantCode(t *testing.T, call string, err error, want connect.Code) {
-	t.Helper()
-	if got := connect.CodeOf(err); err == nil || got != want {
-		t.Fatalf("%s error = %v, want %v", call, err, want)
-	}
-}
-
-// wantRefusal fails unless err is a Connect error with this code and exactly this message.
-// call names the request in the failure.
+// wantRefusal fails unless err is a connect error with this code and exactly this message. An empty
+// msg checks the code only.
 func wantRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
 	t.Helper()
 	ce, ok := errors.AsType[*connect.Error](err)
@@ -369,8 +369,15 @@ func wantRefusal(t *testing.T, call string, err error, code connect.Code, msg st
 		t.Errorf("%s: error = %v, want a connect error %v %q", call, err, code, msg)
 		return
 	}
-	if ce.Code() != code || ce.Message() != msg {
+	if ce.Code() != code || (msg != "" && ce.Message() != msg) {
 		t.Errorf("%s: error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
+	}
+}
+
+func wantCode(t *testing.T, call string, err error, want connect.Code) {
+	t.Helper()
+	if got := connect.CodeOf(err); err == nil || got != want {
+		t.Fatalf("%s error = %v, want %v", call, err, want)
 	}
 }
 
@@ -423,4 +430,255 @@ type visionCounter struct {
 func (v *visionCounter) VisionChanged(ctx context.Context, campaignID, mapID string) {
 	v.n.Add(1)
 	v.SessionMaps.VisionChanged(ctx, campaignID, mapID)
+}
+
+// goldenBlocks collects what the scenarios of a test read, by name.
+type goldenBlocks struct {
+	mu     sync.Mutex
+	blocks map[string]string
+}
+
+func (g *goldenBlocks) put(name, text string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.blocks == nil {
+		g.blocks = map[string]string{}
+	}
+	g.blocks[name] = text
+}
+
+// settle compares the blocks with the golden file, or writes it when UPDATE_GOLDEN is set.
+func (g *goldenBlocks) settle(t *testing.T, path string) {
+	t.Helper()
+	names := make([]string, 0, len(g.blocks))
+	for n := range g.blocks {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	var sb strings.Builder
+	for _, n := range names {
+		sb.WriteString("== " + n + " ==\n" + g.blocks[n] + "\n")
+	}
+	if os.Getenv("UPDATE_GOLDEN") != "" {
+		if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
+	}
+	if string(want) == sb.String() {
+		return
+	}
+	wantBlocks := map[string]string{}
+	for _, part := range strings.Split(string(want), "== ")[1:] {
+		head, body, _ := strings.Cut(part, " ==\n")
+		wantBlocks[head] = strings.TrimSuffix(body, "\n")
+	}
+	for _, n := range names {
+		if w, ok := wantBlocks[n]; !ok {
+			t.Errorf("scenario %q is not in %s", n, path)
+		} else if w != g.blocks[n] {
+			t.Errorf("scenario %q reads:\n%s\nwant:\n%s", n, g.blocks[n], w)
+		}
+	}
+	for n := range wantBlocks {
+		if _, ok := g.blocks[n]; !ok {
+			t.Errorf("scenario %q of %s did not run", n, path)
+		}
+	}
+}
+
+// labelsOf names the combatants of the combat by id.
+func labelsOf(e *playv1.Encounter) map[string]string {
+	names := map[string]string{}
+	for _, c := range e.GetCombatants() {
+		names[c.GetId()] = c.GetLabel()
+	}
+	return names
+}
+
+// goldenScenario is one scenario of a golden: it plays a fight of its own and returns what it reads.
+type goldenScenario struct {
+	name string
+	run  func(t *testing.T) string
+}
+
+// runGolden runs every scenario on a fight of its own and compares what each reads with the golden file
+// at path, or writes the file when UPDATE_GOLDEN is set.
+func runGolden(t *testing.T, path string, scenarios []goldenScenario) {
+	t.Helper()
+	g := &goldenBlocks{}
+	t.Run("scenarios", func(t *testing.T) {
+		for _, sc := range scenarios {
+			t.Run(sc.name, func(t *testing.T) {
+				t.Parallel()
+				g.put(sc.name, sc.run(t))
+			})
+		}
+	})
+	g.settle(t, path)
+}
+
+// wantGolden compares a whole text with the golden file at path and names the first line that differs,
+// or writes the file when UPDATE_GOLDEN is set.
+func wantGolden(t *testing.T, path, got string) {
+	t.Helper()
+	if os.Getenv("UPDATE_GOLDEN") != "" {
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o600); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
+	}
+	if string(want) == got {
+		return
+	}
+	gl, wl := strings.Split(got, "\n"), strings.Split(string(want), "\n")
+	for i := 0; i < len(gl) && i < len(wl); i++ {
+		if gl[i] != wl[i] {
+			t.Fatalf("%s differs at line %d:\n got: %s\nwant: %s", path, i+1, gl[i], wl[i])
+		}
+	}
+	t.Fatalf("the text has %d lines, %s has %d", len(gl), path, len(wl))
+}
+
+// stateTables are the tables a golden prints, which markCall snapshots to tell a call that changed nothing.
+var stateTables = []string{
+	"combatants", "combatant_states", "character_vitals", "character_wild_shapes", "pending_damages",
+	"reaction_windows", "reaction_holds", "hit_riders", "roll_holds", "inspiration_holds", "hidden_reveals", "spell_casts",
+}
+
+// stateSnapshot is the rows of the stateTables and the number of events as one text.
+func (a *armed) stateSnapshot(t *testing.T) string {
+	t.Helper()
+	var sb strings.Builder
+	for _, tb := range stateTables {
+		var rows string
+		if err := a.h.pool.QueryRow(t.Context(), `SELECT COALESCE(string_agg(x::TEXT, E'\n' ORDER BY x::TEXT), '') FROM `+tb+` x`).Scan(&rows); err != nil {
+			t.Fatalf("snapshot %s: %v", tb, err)
+		}
+		sb.WriteString(tb + "\n" + rows + "\n")
+	}
+	fmt.Fprintf(&sb, "events %d", a.events(t))
+	return sb.String()
+}
+
+// markCall is the number of events a fight has written so far. It also keeps the state of the tables a
+// golden prints, so that the report after the call can tell a call that changed nothing.
+func (a *armed) markCall(t *testing.T) int {
+	t.Helper()
+	a.callState = a.stateSnapshot(t)
+	return a.events(t)
+}
+
+// printedState is the state lines a report prints after a call. When collapse is set and the call left
+// every table as markCall found it, it is one line, which keeps the check that the call wrote nothing.
+func (a *armed) printedState(t *testing.T, collapse bool, lines []string) []string {
+	t.Helper()
+	if collapse && a.callState == a.stateSnapshot(t) {
+		return []string{"state unchanged"}
+	}
+	return lines
+}
+
+// flatJSON is a JSON text as one entry per leaf, keyed by its path. The elements of a list are keyed by the
+// first of their key, attackKey, combatantId or kind fields (looking one object down), so that an element
+// inserted in the list does not move the keys of the others.
+func flatJSON(text string) map[string]string {
+	var v any
+	if err := json.Unmarshal([]byte(text), &v); err != nil {
+		return map[string]string{"": text}
+	}
+	out := map[string]string{}
+	flatten(out, "", v)
+	return out
+}
+
+func flatten(out map[string]string, path string, v any) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, c := range x {
+			flatten(out, path+"."+k, c)
+		}
+	case []any:
+		if len(x) == 0 {
+			out[path] = "[]"
+		}
+		for i, c := range x {
+			key := strconv.Itoa(i)
+			if id := elementID(c); id != "" {
+				key = id
+			}
+			if _, dup := out[path+"["+key+"]"]; dup {
+				key += "#" + strconv.Itoa(i)
+			}
+			flatten(out, path+"["+key+"]", c)
+		}
+	default:
+		raw, _ := json.Marshal(x)
+		out[path] = string(raw)
+	}
+}
+
+// elementID is the identity of a list element, or "" when it has none.
+func elementID(v any) string {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return ""
+	}
+	for _, k := range []string{"key", "attackKey", "combatantId", "kind"} {
+		if s, ok := m[k].(string); ok {
+			return s
+		}
+	}
+	for _, c := range m {
+		if inner, ok := c.(map[string]any); ok {
+			if s, ok := inner["key"].(string); ok {
+				return s
+			}
+		}
+	}
+	return ""
+}
+
+// flatLines are the entries of a flatJSON, sorted, one "path = value" line each.
+func flatLines(flat map[string]string) []string {
+	out := make([]string, 0, len(flat))
+	for k, v := range flat {
+		out = append(out, k+" = "+v)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// diffLines is how cur differs from base, one line each: "+" for a leaf that base lacks, "~" for one that
+// has another value and "-" for one that cur lacks. It is the empty text when they are the same.
+func diffLines(base, cur map[string]string) string {
+	var out []string
+	for k, v := range cur {
+		if bv, ok := base[k]; !ok {
+			out = append(out, "+ "+k+" = "+v)
+		} else if bv != v {
+			out = append(out, "~ "+k+" = "+v)
+		}
+	}
+	for k := range base {
+		if _, ok := cur[k]; !ok {
+			out = append(out, "- "+k)
+		}
+	}
+	sort.Strings(out)
+	if len(out) == 0 {
+		return " (no difference)"
+	}
+	return "\n" + strings.Join(out, "\n")
 }

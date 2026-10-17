@@ -16,10 +16,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The master's hand on an NPC's hit points (AdjustCombatantHitPoints), in phases. The call reads the request,
-// runs the transaction as a sequence of phases of a flow, each one of the checks or the writes the call has
-// always made in that order, and answers with the encounter. The golden of combat_actions_rest_frozen_hp_test.go
-// reads it.
+// The master's hand on an NPC's hit points (AdjustCombatantHitPoints). The call reads the request, runs the
+// transaction (find the combatant, work out the hit points, write them) and answers with the encounter. The
+// order is pinned by the golden of combat_adjust_hp_golden_test.go.
 
 // The ways the master changes the hit points of an NPC; the event keeps the word.
 const (
@@ -93,7 +92,7 @@ func (s *Service) AdjustCombatantHitPoints(
 		return nil, err
 	}
 	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventHitPointsAdjusted, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
-		return newAdjustHitPointsFlow(s, c, m, call).run(ctx)
+		return s.adjustHitPointsWrite(ctx, c, m, call)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "adjust a combatant's hit points", err)
@@ -108,57 +107,71 @@ func (s *Service) AdjustCombatantHitPoints(
 	return connect.NewResponse(&playv1.AdjustCombatantHitPointsResponse{Encounter: out}), nil
 }
 
-// adjustHitPointsFlow is one run of the adjustment's transaction: what each phase reads, and the next one uses.
-type adjustHitPointsFlow struct {
-	s    *Service
-	c    *combatTx
-	m    authz.Membership
-	call adjustHitPointsCall
-
-	target playdb.Combatant
-	// after are the hit points the change leaves.
-	after hpState
-	made  actionEvent
-}
-
-func newAdjustHitPointsFlow(s *Service, c *combatTx, m authz.Membership, call adjustHitPointsCall) *adjustHitPointsFlow {
-	return &adjustHitPointsFlow{s: s, c: c, m: m, call: call}
-}
-
-// run is the transaction: the checks, the change and its event. It answers the event the write stores.
-func (f *adjustHitPointsFlow) run(ctx context.Context) (any, error) {
-	phases := []func(context.Context) error{f.locate, f.change, f.save, f.endConcentration, f.touch}
-	for _, phase := range phases {
-		if err := phase(ctx); err != nil {
-			return nil, err
-		}
-	}
-	return f.made, nil
-}
-
-// locate finds the combatant, which has to keep its hit points in the combat.
-func (f *adjustHitPointsFlow) locate(ctx context.Context) error {
-	if err := notEnded(f.c.enc); err != nil {
-		return err
-	}
-	cs, err := listCombatants(ctx, f.c)
+// adjustHitPointsWrite is the transaction: the checks, the change and its event. It answers the event the
+// write stores.
+func (s *Service) adjustHitPointsWrite(ctx context.Context, c *combatTx, m authz.Membership, call adjustHitPointsCall) (any, error) {
+	target, err := locateHitPointHolder(ctx, c, m, call.combatantID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if f.target, err = findCombatant(cs, f.call.combatantID, viewerOf(f.m)); err != nil {
-		return err
+	after, err := hitPointsAfter(target, call)
+	if err != nil {
+		return nil, err
 	}
-	if !holdsHP(f.target) {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("a player's character keeps its hit points in its vitals: use AdjustCharacterVitals"))
+	if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
+		return nil, fmt.Errorf("save the hit points: %w", err)
 	}
-	return nil
+	if err := s.endConcentrationOfDownNPC(ctx, c, target, after); err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, c); err != nil {
+		return nil, err
+	}
+	before := hpOf(target)
+	c.characterID = &target.CharacterID
+	return actionEvent{
+		Round: c.enc.Round, Secret: true, Actor: target.ID, Mode: call.mode, Amount: max(call.amount, 0),
+		Delta:  after.HP - before.HP,
+		Before: &before, After: &after,
+	}, nil
 }
 
-// change works out the hit points the request leaves.
-func (f *adjustHitPointsFlow) change(context.Context) error {
-	hp, tmp, hpMax := int(conv.OrZero(f.target.HpCurrent)), int(conv.OrZero(f.target.HpTemp)), int(conv.OrZero(f.target.HpMax))
-	amount := int(f.call.amount)
-	switch f.call.mode {
+// endConcentrationOfDownNPC ends the concentration of an NPC the change brought to 0 hit points: it
+// is unconscious and stops concentrating with no save (SRD 5.1, "Duration"), the same end a damage to
+// 0 has (endConcentrationAtZero), with the effects, the creatures and the log line that follow. The
+// event is written before the adjustment's own, grouped by the combatant, and the undo of the
+// adjustment takes it back.
+func (s *Service) endConcentrationOfDownNPC(ctx context.Context, c *combatTx, target playdb.Combatant, after hpState) error {
+	if after.HP > 0 || target.ConcentrationSpell == nil {
+		return nil
+	}
+	return s.endConcentrationAtZero(ctx, c, target, target.ID)
+}
+
+// locateHitPointHolder finds the combatant, which has to keep its hit points in the combat.
+func locateHitPointHolder(ctx context.Context, c *combatTx, m authz.Membership, combatantID string) (playdb.Combatant, error) {
+	if err := notEnded(c.enc); err != nil {
+		return playdb.Combatant{}, err
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return playdb.Combatant{}, err
+	}
+	target, err := findCombatant(cs, combatantID, viewerOf(m))
+	if err != nil {
+		return target, err
+	}
+	if !holdsHP(target) {
+		return target, connect.NewError(connect.CodeInvalidArgument, errors.New("a player's character keeps its hit points in its vitals: use AdjustCharacterVitals"))
+	}
+	return target, nil
+}
+
+// hitPointsAfter works out the hit points the request leaves.
+func hitPointsAfter(target playdb.Combatant, call adjustHitPointsCall) (hpState, error) {
+	hp, tmp, hpMax := int(conv.OrZero(target.HpCurrent)), int(conv.OrZero(target.HpTemp)), int(conv.OrZero(target.HpMax))
+	amount := int(call.amount)
+	switch call.mode {
 	case adjustDamage:
 		dmg := combat.ApplyDamage(hp, tmp, amount)
 		hp, tmp = dmg.HP, dmg.TempHP
@@ -166,48 +179,19 @@ func (f *adjustHitPointsFlow) change(context.Context) error {
 		hp = combat.ApplyHeal(hp, hpMax, amount).HP
 	case adjustSet:
 		if amount > hpMax {
-			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("hit_points must be 0 to %d", hpMax))
+			return hpState{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("hit_points must be 0 to %d", hpMax))
 		}
 		hp = amount
 	}
-	if f.call.temp != nil {
-		tmp = int(*f.call.temp)
+	if call.temp != nil {
+		tmp = int(*call.temp)
 	}
-	f.after = hpState{HP: clamp32(hp, 0, math.MaxInt32), Temp: clamp32(tmp, 0, math.MaxInt32), Defeated: hp == 0}
-	return nil
+	return hpState{HP: clamp32(hp, 0, math.MaxInt32), Temp: clamp32(tmp, 0, math.MaxInt32), Defeated: hp == 0}, nil
 }
 
-// save writes the hit points.
-func (f *adjustHitPointsFlow) save(ctx context.Context) error {
-	if err := f.c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: f.target.ID, HpCurrent: &f.after.HP, HpTemp: &f.after.Temp, Defeated: f.after.Defeated}); err != nil {
-		return fmt.Errorf("save the hit points: %w", err)
-	}
-	return nil
-}
-
-// endConcentration ends the concentration of an NPC the change brought to 0 hit points: it is
-// unconscious and stops concentrating with no save (SRD 5.1, "Duration"), the same end a damage to 0
-// has (endConcentrationAtZero), with the effects, the creatures and the log line that follow. The
-// event is written before the adjustment's own, grouped by the combatant, and the undo of the
-// adjustment takes it back.
-func (f *adjustHitPointsFlow) endConcentration(ctx context.Context) error {
-	if f.after.HP > 0 || f.target.ConcentrationSpell == nil {
-		return nil
-	}
-	return f.s.endConcentrationAtZero(ctx, f.c, f.target, f.target.ID)
-}
-
-// touch moves the encounter's revision, names the character the change was about and builds the event.
-func (f *adjustHitPointsFlow) touch(ctx context.Context) error {
-	if err := touch(ctx, f.c); err != nil {
-		return err
-	}
-	before := hpOf(f.target)
-	f.c.characterID = &f.target.CharacterID
-	f.made = actionEvent{
-		Round: f.c.enc.Round, Secret: true, Actor: f.target.ID, Mode: f.call.mode, Amount: max(f.call.amount, 0),
-		Delta:  f.after.HP - before.HP,
-		Before: &before, After: &f.after,
-	}
-	return nil
-}
+// The most damage or healing the master types for an NPC, and the most
+// temporary hit points (as for a character's vitals).
+const (
+	maxHitPointChange = 9999
+	maxTempHitPoints  = 999
+)

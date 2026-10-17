@@ -103,7 +103,7 @@ func TestRollEffectSaveWhoMayAnswer(t *testing.T) {
 	// Left to the master, the player can no longer roll it, nor skip it; the master can.
 	res, err := a.rollEffectSave(t, a.caio, e, w.GetId(), delegate)
 	// Finding: handing the save over answers with an empty result (savedResultOf of an event nobody
-	// wrote), not with no result; the web reads Saved=false from it. lasting_effects_save.go:239.
+	// wrote), not with no result; the web reads Saved=false from it. See savedResultOf.
 	if err != nil || res.GetResult() == nil || res.GetResult().GetD20() != 0 || res.GetResult().GetSaved() || res.GetInspirationOffer() != nil || res.GetLuckyOffer() != nil {
 		t.Fatalf("the player hands the save over = %v, %v; want an answer with an empty result", res, err)
 	}
@@ -255,7 +255,7 @@ func TestResolveConcentrationSaveWhoMayAnswer(t *testing.T) {
 	// Left to the master: the player's roll is refused, the window stays, the master rolls.
 	res, err := a.resolveConcentration(t, a.ana, e, w.GetId(), hand)
 	// Finding: handing the save over answers with a nil result (the closure returns nothing), where
-	// RollEffectSave answers with an empty one. combat_concentration.go:201.
+	// RollEffectSave answers with an empty one. See readConcentrationCall and the concentration closure.
 	if err != nil || res.GetResult() != nil || res.GetInspirationOffer() != nil || res.GetLuckyOffer() != nil {
 		t.Fatalf("the player hands the save over = %v, %v; want an answer with no result", res, err)
 	}

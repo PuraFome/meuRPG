@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Opportunity attacks (MR-034, RN-21, question 69; Etapa 9, slice 9.6b). A move
+// Opportunity attacks (MR-034, RN-21, question 69). A move
 // on foot that leaves the reach of a hostile combatant lands at once, and that
 // combatant is offered one attack at the mover (an opportunity_offers row): its
 // controller attacks or declines, or the master skips it (the player is

@@ -19,7 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// The character's creatures in a combat (MR-037, Etapa 9). A creature is a
+// The character's creatures in a combat (MR-037). A creature is a
 // combatant of kind 'creature': its character_id is its owner's, its user_id
 // the owner's player (so the same "may this player act for it" check works),
 // and its hit points are on the combatant, like an NPC's. It acts on the
@@ -236,7 +236,7 @@ func creatureRow(c *combatTx, cr link.Creature, n int, taken map[string]bool, gr
 		HpCurrent: new(clamp32(max(cr.HitPointsCurrent, 1), 1, math.MaxInt32)), HpMax: new(clamp32(max(cr.HitPointsMax, 1), 1, math.MaxInt32)),
 		CreatureID: &cr.ID, MonsterKey: &cr.MonsterKey, SummonAttack: &cr.Attack, SummonGroupID: &cr.GroupID,
 		// A creature fights for the party (D7), with its stat block's size, fly speed and
-		// jump limits, as a character's are copied when it joins (slice 9.6).
+		// jump limits, as a character's are copied when it joins.
 		Size: sizeKey(cr.Size), SpeedFlyFt: clamp32(cr.SpeedFlyFt, 0, 600),
 		JumpLongDft: clamp32(cr.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(cr.JumpHighDFt, 0, 6000),
 	}

@@ -17,11 +17,11 @@ import (
 type castTable func(t *testing.T) (*armed, *playv1.Encounter)
 
 // castSteps is a scenario of a table: steps cast and answer, and return the answer of the last cast.
-func castSteps(name string, table castTable, steps func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error)) castScenario {
+func castSteps(name string, table castTable, steps func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error)) goldenScenario {
 	return castOn(name, func(t *testing.T) (*armed, int, *playv1.CastSpellResponse, error) {
 		t.Helper()
 		a, e := table(t)
-		before := a.castEvents(t)
+		before := a.markCall(t)
 		res, err := steps(t, a, e)
 		return a, before, res, err
 	})
@@ -90,8 +90,8 @@ func rangersTable(t *testing.T) (*armed, *playv1.Encounter) {
 }
 
 // castWindowScenarios are the casts held by a reaction window: a Counterspell of the Mage, or of a player.
-func castWindowScenarios() []castScenario {
-	return []castScenario{
+func castWindowScenarios() []goldenScenario {
+	return []goldenScenario{
 		castSteps("a cast held by the mage's counterspell", mageTable, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.castMissile(t, e)
@@ -180,13 +180,13 @@ func castWindowScenarios() []castScenario {
 }
 
 // castSorcererScenarios are the casts with Metamagic.
-func castSorcererScenarios() []castScenario {
+func castSorcererScenarios() []goldenScenario {
 	allMeta := []string{rules.MetamagicTwinned, rules.MetamagicCareful}
 	goblinAndCaptain := func(t *testing.T, a *armed) []*playv1.SpellTarget {
 		t.Helper()
 		return a.at(t, "Goblin", "Capitão Goblin")
 	}
-	return []castScenario{
+	return []goldenScenario{
 		castSteps("a careful fireball", sorcererTable(allMeta...), func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			a.h.roller.queue(1, 1, 1, 1, 1)
@@ -337,12 +337,12 @@ func castBardTable(race string, inspired bool) castTable {
 }
 
 // castHeldScenarios are the spell attacks that wait for the player's answer.
-func castHeldScenarios() []castScenario {
+func castHeldScenarios() []goldenScenario {
 	bolt := func(t *testing.T, a *armed, e *playv1.Encounter, u *user, roll func(*playv1.CastSpellRequest), targets ...string) (*playv1.CastSpellResponse, error) {
 		t.Helper()
 		return a.cast(t, u, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, targets...), roll)
 	}
-	return []castScenario{
+	return []goldenScenario{
 		castSteps("a bardic die holds a typed spell attack", castBardTable("race:human", true), func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return bolt(t, a, e, a.ana, d20Face(5), "Goblin")
@@ -443,14 +443,14 @@ func (a *armed) castMasterHides(t *testing.T, e *playv1.Encounter, label string)
 }
 
 // castSummonScenarios are the summoning spells and the concentration that ends them.
-func castSummonScenarios() []castScenario {
+func castSummonScenarios() []goldenScenario {
 	wolves := func(face int32) func(*playv1.CastSpellRequest) {
 		return func(r *playv1.CastSpellRequest) {
 			r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: face}
 			r.Summon = &playv1.SummonChoice{Option: 1, CreatureKeys: []string{direWolf, direWolf}}
 		}
 	}
-	return []castScenario{
+	return []goldenScenario{
 		castSteps("conjure animals", salviaTable, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.summonWolves(t, a.bia, e, 11)
@@ -512,8 +512,8 @@ func castSummonScenarios() []castScenario {
 
 // castOtherScenarios are the casts of the other tables: a ranger's mark, the dead raised, the table's
 // spells, the hit point spells, a combat without a map and the hidden.
-func castOtherScenarios() []castScenario {
-	return []castScenario{
+func castOtherScenarios() []goldenScenario {
+	return []goldenScenario{
 		castSteps("hunter's mark", rangersTable, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.cast(t, a.bia, e, "Brisa", huntersMark, slotOfLevel(1), a.at(t, "Goblin"), noCastRoll)
@@ -745,8 +745,8 @@ func abilityOf(key string) func(*playv1.CastSpellRequest) {
 }
 
 // castEffectScenarios are the spells that leave an effect on the targets.
-func castEffectScenarios() []castScenario {
-	return []castScenario{
+func castEffectScenarios() []goldenScenario {
+	return []goldenScenario{
 		castSteps("shield of faith", shieldOfFaithTable, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.cast(t, a.bia, e, "Brisa", shieldOfFaithKey, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
@@ -795,5 +795,63 @@ func castEffectScenarios() []castScenario {
 			t.Helper()
 			return a.cast(t, a.bia, e, "Brisa", guidanceKey, nil, a.at(t, "Toren"), abilityOf("ability:strength"))
 		}),
+	}
+}
+
+// spellsRestParalyze paralyzes a creature before the cast, as the master does.
+func spellsRestParalyze(label string) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+	return func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+		t.Helper()
+		e, err := a.conditions(t, a.master, e, label, []string{"condition:paralyzed"}, true, false)
+		if err != nil {
+			t.Fatalf("SetCombatantConditions(%s paralyzed) error = %v", label, err)
+		}
+		return e
+	}
+}
+
+// spellsRestNextTo puts a creature on a square, then the next step of the fight runs on the fight as it is.
+func spellsRestNextTo(label string, col, row int32, then func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+	return func(t *testing.T, a *armed, _ *playv1.Encounter) *playv1.Encounter {
+		t.Helper()
+		a.put(t, label, col, row)
+		e := a.get(t, a.master)
+		if then == nil {
+			return e
+		}
+		return then(t, a, e)
+	}
+}
+
+// spellsRestOffMap takes a creature off the map before the cast.
+func spellsRestOffMap(label string) func(t *testing.T, a *armed, e *playv1.Encounter) *playv1.Encounter {
+	return func(t *testing.T, a *armed, _ *playv1.Encounter) *playv1.Encounter {
+		t.Helper()
+		a.execSQL(t, `UPDATE combatants SET grid_col = NULL, grid_row = NULL WHERE label = $1`, label)
+		return a.get(t, a.master)
+	}
+}
+
+// spellsRestTableCasters is the fight of the casters with the table's spells, Pensantus holding a spell for the caster alone.
+func spellsRestTableCasters(t *testing.T) (*armed, *playv1.Encounter) {
+	t.Helper()
+	a := newTableCasters(t)
+	e := a.castersFight(t, 1)
+	return a, e
+}
+
+// spellsRestScenarios are the casts of caster-only spells aimed at another creature, off the map, at a paralyzed target and against a save a condition fails by itself.
+func spellsRestScenarios() []goldenScenario {
+	return []goldenScenario{
+		castSteps("spells rest, a caster-only spell aimed at another creature", spellsRestTableCasters, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
+			t.Helper()
+			return a.cast(t, a.ana, e, "Pensantus", "spell:detect-magic", slotOfLevel(1), a.at(t, "Goblin"), noCastRoll)
+		}),
+		castRefused("spells rest, a spell attack by a caster off the map", brisa(guidingBolt, slotOfLevel(1), d20Face(16)).first(spellsRestOffMap("Brisa"))),
+		castRefused("spells rest, a spell attack at a target off the map", brisa(guidingBolt, slotOfLevel(1), d20Face(16)).first(spellsRestOffMap("Goblin"))),
+		brisa(guidingBolt, slotOfLevel(1), d20Faces(16, 3)).first(spellsRestNextTo("Brisa", 7, 6, spellsRestParalyze("Goblin"))).scenario("spells rest, a spell attack hits a paralyzed target next to the caster"),
+		brisa(guidingBolt, slotOfLevel(1), d20Faces(2, 3)).first(spellsRestNextTo("Brisa", 7, 6, spellsRestParalyze("Goblin"))).scenario("spells rest, a spell attack misses a paralyzed target next to the caster"),
+		brisa(guidingBolt, slotOfLevel(1), d20Faces(16, 3)).first(spellsRestParalyze("Goblin")).scenario("spells rest, a spell attack hits a paralyzed target far from the caster"),
+		brisa(sacredFlame, nil, noCastRoll).first(spellsRestParalyze("Goblin")).scenario("spells rest, a dexterity save a paralyzed target fails by itself"),
 	}
 }

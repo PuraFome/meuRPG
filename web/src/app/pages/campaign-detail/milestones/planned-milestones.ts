@@ -196,7 +196,13 @@ export class PlannedMilestones {
     this.error.set('');
     this.notice.set('');
     try {
-      this.store.adopt((await call()).milestones);
+      const { milestones } = await call();
+      if (milestones.length > 0) {
+        this.store.adopt(milestones);
+      } else {
+        // The change is saved, but the server could not read the list back (or it is now empty).
+        await this.store.refresh();
+      }
       return true;
     } catch (err) {
       this.error.set(xpErrorMessage(err, what));

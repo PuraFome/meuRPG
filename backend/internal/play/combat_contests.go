@@ -1289,7 +1289,7 @@ func (s *Service) pruneHolds(ctx context.Context, c *combatTx) error {
 }
 
 // endHold lets go of a hold that ended: the condition goes when the creature still carries
-// it, and the row always does.
+// it, and the row goes either way.
 func endHold(ctx context.Context, c *combatTx, by map[string]playdb.Combatant, h playdb.CombatHold) error {
 	if grappled, ok := by[h.GrappledID]; ok && isGrappled(grappled) {
 		return releaseHold(ctx, c, grappled)

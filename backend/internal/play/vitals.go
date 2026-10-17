@@ -80,7 +80,7 @@ func (s *Service) AdjustCharacterVitals(
 	var run adjustRun
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		run = adjustRun{} // a retry starts over
-		return s.adjustVitalsTx(ctx, tx, call, &run)
+		return s.adjustWrite(ctx, tx, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "adjust a character's vitals", err)
@@ -98,9 +98,9 @@ func (s *Service) AdjustCharacterVitals(
 	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: run.after, ConcentrationDc: run.check.dc, ConcentrationCastId: run.check.castID}), nil
 }
 
-// adjustVitalsTx is the transaction of AdjustCharacterVitals: lock, retry, the change, the
+// adjustWrite is the transaction of AdjustCharacterVitals: lock, retry, the change, the
 // event, the beast form that ended, the combat that shows it, the concentration.
-func (s *Service) adjustVitalsTx(ctx context.Context, tx pgx.Tx, call adjustCall, run *adjustRun) error {
+func (s *Service) adjustWrite(ctx context.Context, tx pgx.Tx, call adjustCall, run *adjustRun) error {
 	q := s.queries.WithTx(tx)
 	session, err := lockOpenSessionOrNone(ctx, q, call.m.CampaignID) // RN-02: during the session
 	if err != nil {
@@ -283,7 +283,7 @@ type vitalsNumbers struct {
 	PactSlotsUsed      int32   `json:"pact_slots_used,omitempty"`
 	HitDiceUsed        int32   `json:"hit_dice_used"`
 	// ResourcesUsed are the uses spent of the class and race resources, by
-	// resource key (Etapa 6).
+	// resource key.
 	ResourcesUsed map[string]int32 `json:"resources_used,omitempty"`
 	// The beast of a Wild Shape form and its hit points (MR-037), when there is one.
 	WildShapeBeast string `json:"wild_shape_beast,omitempty"`
