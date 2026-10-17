@@ -7,18 +7,10 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
-  LuckyOfferSchema,
-  OutsideInspirationOfferSchema,
-} from '../../../../gen/meurpg/play/v1/combat_pb';
-import {
   CheckOptionSchema,
   GroupCheckMemberViewSchema,
 } from '../../../../gen/meurpg/play/v1/contest_types_pb';
 import { RollGroupCheckResponseSchema } from '../../../../gen/meurpg/play/v1/contests_pb';
-import {
-  AnswerOutsideInspirationResponseSchema,
-  AnswerOutsideLuckyResponseSchema,
-} from '../../../../gen/meurpg/play/v1/resources_pb';
 import { ContestClient, InspirationAsked } from '../../../core/combat/contest-client';
 import {
   FakeContestClient,
@@ -28,6 +20,7 @@ import {
 } from '../../../core/combat/contest-testing';
 import { GroupCheckState } from '../../../core/combat/group-check-state';
 import { LUCKY_TRAIT } from '../../../core/combat/lucky';
+import { heldAnswer, heldDie, heldLucky } from '../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { GroupCheckSheet, type GroupCheckSheetData } from './group-check-sheet';
 
@@ -42,37 +35,19 @@ const asking = () =>
   });
 
 /** The d20 of 1 a halfling rolled, kept for the Lucky question. */
-const lucky = create(LuckyOfferSchema, {
-  holdId: 'h1',
-  luckyIndex: 0,
-  d20: { diceCount: 1, diceSides: 20, faces: [1], modifier: 7, total: 8 },
-});
+const lucky = heldLucky([1], 7);
 
 /** The die's question on the new d20 Lucky rolled (a d6 from Orla). */
-const dieAfterLucky = create(AnswerOutsideLuckyResponseSchema, {
+const dieAfterLucky = heldAnswer({
   result: {
     case: 'groupCheck',
-    value: create(RollGroupCheckResponseSchema, {
-      inspirationOffer: create(OutsideInspirationOfferSchema, {
-        holdId: 'h1',
-        sides: 6,
-        fromName: 'Orla',
-        d20: {
-          diceCount: 1,
-          diceSides: 20,
-          faces: [9],
-          modifier: 7,
-          total: 16,
-          rerolled: [{ index: 0, from: 1, to: 9, sourceKey: LUCKY_TRAIT }],
-        },
-      }),
-    }),
+    value: { heldRollOffer: heldDie(9, 7, 6, { holdId: 'h1' }, 1) },
   },
 });
 
 /** The check written with the d20 and, when the die was used, its face in the roll. */
 const written = (dieFace = 0) =>
-  create(AnswerOutsideInspirationResponseSchema, {
+  heldAnswer({
     result: {
       case: 'groupCheck',
       value: create(RollGroupCheckResponseSchema, {
@@ -97,14 +72,12 @@ const written = (dieFace = 0) =>
 
 describe('GroupCheckSheet: the Bardic Inspiration die', () => {
   let api: FakeContestClient;
-  const answerOutsideLucky = vi.fn();
-  const answerOutsideInspiration = vi.fn();
+  const answerHeldRoll = vi.fn();
   const close = vi.fn();
 
   beforeEach(() => {
     Element.prototype.scrollTo = vi.fn() as never;
-    answerOutsideLucky.mockReset();
-    answerOutsideInspiration.mockReset();
+    answerHeldRoll.mockReset();
     close.mockReset();
   });
 
@@ -121,7 +94,7 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ContestClient, useValue: api.as() },
-        { provide: ResourceClient, useValue: { answerOutsideLucky, answerOutsideInspiration } },
+        { provide: ResourceClient, useValue: { answerHeldRoll } },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close, disableClose: false } },
       ],
@@ -142,7 +115,7 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
     /** Rolls the d20 in the app and answers Lucky's question, so the die's comes. */
     const toTheDie = async () => {
       api.lucky = lucky;
-      answerOutsideLucky.mockResolvedValue(dieAfterLucky);
+      answerHeldRoll.mockResolvedValueOnce(dieAfterLucky);
       button('Rolar no app')!.click();
       await settle();
       button('Rolar de novo')!.click();
@@ -158,7 +131,7 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
     await settle();
     expect(close).toHaveBeenCalledWith(true);
     expect(text()).not.toContain('Não deu para');
-    expect(answerOutsideInspiration).not.toHaveBeenCalled();
+    expect(answerHeldRoll).not.toHaveBeenCalled();
   });
 
   it('asks after Lucky, on the new d20, with nothing written yet', async () => {
@@ -174,14 +147,13 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
   it('"Usar e rolar o d6" uses the die rolled in the app and writes the check', async () => {
     const { toTheDie, button, settle, text, state } = setup();
     await toTheDie();
-    answerOutsideInspiration.mockResolvedValue(written(4));
+    answerHeldRoll.mockResolvedValue(written(4));
     button('Usar e rolar o d6')!.click();
     await settle();
-    expect(answerOutsideInspiration).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenLastCalledWith(
       'c',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'die', use: true, roll: { inApp: true } },
       expect.any(String),
     );
     expect(state.own()?.answered).toBe(true);
@@ -192,7 +164,7 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
   it('with real dice the player types the d6, 1 to 6', async () => {
     const { toTheDie, button, settle, el, fixture } = setup();
     await toTheDie();
-    answerOutsideInspiration.mockResolvedValue(written(5));
+    answerHeldRoll.mockResolvedValue(written(5));
     button('Digitar o dado')!.click();
     await settle();
     const input = el.querySelector<HTMLInputElement>('input[type="number"]')!;
@@ -203,11 +175,10 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
     fixture.detectChanges();
     button('Usar o dado digitado')!.click();
     await settle();
-    expect(answerOutsideInspiration).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenLastCalledWith(
       'c',
       'h1',
-      true,
-      { face: 5 },
+      { kind: 'die', use: true, roll: { face: 5 } },
       expect.any(String),
     );
   });
@@ -215,14 +186,13 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
   it('"Guardar o dado" keeps it: the check is written without the die', async () => {
     const { toTheDie, button, settle, state } = setup();
     await toTheDie();
-    answerOutsideInspiration.mockResolvedValue(written());
+    answerHeldRoll.mockResolvedValue(written());
     button('Guardar o dado')!.click();
     await settle();
-    expect(answerOutsideInspiration).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenLastCalledWith(
       'c',
       'h1',
-      false,
-      null,
+      { kind: 'die', use: false, roll: null },
       expect.any(String),
     );
     expect(state.own()?.answered).toBe(true);
@@ -231,12 +201,12 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
   it('keeps the key of an answer that failed, so a retry never spends the die twice, and says why', async () => {
     const { toTheDie, button, settle, text } = setup();
     await toTheDie();
-    answerOutsideInspiration.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     button('Guardar o dado')!.click();
     await settle();
     button('Guardar o dado')!.click();
     await settle();
-    const keys = answerOutsideInspiration.mock.calls.map((c) => c[4] as string);
+    const keys = answerHeldRoll.mock.calls.slice(1).map((c) => c[3] as string);
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBe(keys[1]);
     expect(text()).toContain('Usar a Inspiração de Bardo (d6)?');
@@ -247,11 +217,11 @@ describe('GroupCheckSheet: the Bardic Inspiration die', () => {
     const { toTheDie, button, settle } = setup();
     await toTheDie();
     let release!: (v: unknown) => void;
-    answerOutsideInspiration.mockReturnValue(new Promise((r) => (release = r)));
+    answerHeldRoll.mockReturnValue(new Promise((r) => (release = r)));
     button('Guardar o dado')!.click();
     button('Guardar o dado')!.click();
     await settle();
-    expect(answerOutsideInspiration).toHaveBeenCalledTimes(1);
+    expect(answerHeldRoll).toHaveBeenCalledTimes(2);
     release(written());
     await settle();
   });
