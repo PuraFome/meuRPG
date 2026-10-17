@@ -494,7 +494,7 @@ func (u *undoer) trapTriggered(ctx context.Context, ev actionEvent) error {
 }
 
 // actionTaken: the economy and every state the action began come back, then what
-// the resource it used spent, and the hit points of a heal.
+// the resource it used spent, the hit points of a heal and the concentration a rage ended.
 func (u *undoer) actionTaken(ctx context.Context, ev actionEvent) error {
 	who, ok := u.find(ev.Actor)
 	if !ok {
@@ -511,7 +511,10 @@ func (u *undoer) actionTaken(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
-	return u.actionSpentBack(ctx, who, ev)
+	if err := u.actionSpentBack(ctx, who, ev); err != nil {
+		return err
+	}
+	return u.endedConcentrationBack(ctx, who, ev) // a rage ends the concentration it begins on
 }
 
 // actionStatesBack gives back the economy of the action, and the states and flags it
@@ -886,6 +889,12 @@ func (u *undoer) conditionsSet(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
+	return u.endedConcentrationBack(ctx, who, ev)
+}
+
+// endedConcentrationBack puts back the concentration an action ended (stopConcentrating) and the
+// creatures that went with it.
+func (u *undoer) endedConcentrationBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
 	if ev.ConcEnded != "" {
 		if err := u.c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID, ConcentrationSpell: &ev.ConcEnded}); err != nil {
 			return fmt.Errorf("put back the concentration: %w", err)

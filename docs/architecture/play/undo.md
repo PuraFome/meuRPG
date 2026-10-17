@@ -41,6 +41,7 @@ The undone line disappears from the log.
   A line is only hidden from whoever could already read it, so a hidden effect tells a player nothing (RN-10).
 - **What an ended effect left behind.** An effect whose end gives another (Haste's lethargy, `on_end` in the catalogue) makes it in the same change (`leaveFollowUp`), with a `lasting_effect_added` line before the change's own event.
   The event keeps the new rows (`follow_ups`) and their lines (`follow_up_lines`); the undo puts the ended effects back (`effectsBack`), deletes those rows, works the combatants out again and takes the lines back in `undone_also`.
+- **The concentration a rage ended.** A barbarian who rages while concentrating loses the concentration (`beginRage` calls `stopConcentrating`); the action's event keeps the spell (`conc_ended`) and the creatures that went with it, and the undo of the rage puts both back, as the undo of a conditions change does.
 - **The windows of a discarded hit.** A hit that waits for a reaction holds it in a reaction window, and the master's "Não aplicar" closes that window (`settleReactions` finds the trigger gone).
   The discard's `damage_discarded` keeps the ids of the windows that were open (`closed_windows`, `discardHit`), and its undo puts the damage back in `awaiting_reaction` and reopens them as they were (`reopenWindows`: same row, reactor, trigger and place in the order).
   The wait's clock is the master's screen's, which starts again when it sees the window open.
