@@ -360,21 +360,24 @@ var groupsGolden = map[string]string{
 	"mage armor heard":           "master[SpellCastsChanged,VitalsChanged,VitalsChanged] caio[SpellCastsChanged] ana[SpellCastsChanged,VitalsChanged] bia[SpellCastsChanged,VitalsChanged]",
 }
 
-// An effect that has no modifiers (Hold Person, Web, Faerie Fire, the burning web) cannot be
-// given outside a combat. Frozen: looks wrong because the modifiers are written as JSON null
-// (the effect's own list is nil, and the loop keeps that nil), which the table refuses, so the
-// master gets an internal error and nothing is written; the same effects work in a combat.
-func TestAddCharacterEffectOfAnEffectWithNoModifiersFailsInternally(t *testing.T) {
+// An effect that has no numeric modifiers (Hold Person, Web, Faerie Fire, the burning web) is
+// valid outside a combat as it is in one: its conditions alone are the effect.
+// Finding fix/lasting-effects-outside-combat (a): the modifiers were written as JSON null, which
+// the table refuses, so the master got an internal error and nothing was written.
+func TestAddCharacterEffectOfAnEffectWithNoModifiersIsAdded(t *testing.T) {
 	t.Parallel()
 	a := newEffectsParty(t)
-	for _, key := range []string{holdPerson, webSpell, "spell:faerie-fire", "effect:web-fire"} {
-		_, err := a.giveRaw(t, a.master, withKey(key))
-		wantRefusal(t, key, err, connect.CodeInternal, "internal error")
+	keys := []string{holdPerson, webSpell, "spell:faerie-fire", "effect:web-fire"}
+	for _, key := range keys {
+		res, err := a.giveRaw(t, a.master, withKey(key))
+		if err != nil {
+			t.Fatalf("%s: %v", key, err)
+		}
+		if len(res.GetEffectIds()) != 1 {
+			t.Errorf("%s: effect ids = %v, want 1", key, res.GetEffectIds())
+		}
 	}
-	if rows := a.characterEffectRows(t); len(rows) != 0 {
-		t.Errorf("the failures left effects: %v", rows)
-	}
-	if events := a.effectEvents(t, nil); len(events) != 0 {
-		t.Errorf("the failures left events: %v", events)
+	if rows := a.characterEffectRows(t); len(rows) != len(keys) {
+		t.Errorf("rows = %d, want %d: %v", len(rows), len(keys), rows)
 	}
 }
