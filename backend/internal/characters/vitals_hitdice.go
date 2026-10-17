@@ -7,6 +7,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -20,7 +21,7 @@ import (
 // character has now.
 func hitDiceUsedOf(row vitalsRow, m vitalsMax) rules.HitDiceUsed {
 	if row.HitDiceUsedByDie == nil {
-		return rules.SplitHitDiceUsed(m.hitDice, int(derefInt(row.HitDiceUsed)))
+		return rules.SplitHitDiceUsed(m.hitDice, int(conv.OrZero(row.HitDiceUsed)))
 	}
 	var stored map[string]int
 	if json.Unmarshal(row.HitDiceUsedByDie, &stored) != nil {

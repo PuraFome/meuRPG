@@ -21,9 +21,11 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -245,7 +247,7 @@ func (s *Service) levelUpSheet(row charactersdb.Character) (*charactersv1.FullSh
 // level to take now (RN-12).
 func (s *Service) checkLevelUpDue(ctx context.Context, tx pgx.Tx, row charactersdb.Character, full *charactersv1.FullSheet, content *rules.Content) error {
 	d := rules.Derive(buildOf(full), content)
-	reason, err := s.levelUps.LevelUpReason(ctx, tx, deref(row.CampaignID), row.ID, i32(d.TotalLevel), full.GetExperiencePoints(), i32(d.NextLevelXP))
+	reason, err := s.levelUps.LevelUpReason(ctx, tx, conv.OrZero(row.CampaignID), row.ID, i32(d.TotalLevel), full.GetExperiencePoints(), i32(d.NextLevelXP))
 	if err != nil {
 		return wrap("check the level up", err)
 	}
@@ -316,7 +318,7 @@ func newClassRefusal(content *rules.Content, m authz.Membership, classKey string
 // reads through tx, a read transaction of the caller, so the row, the content and
 // the level-up reason are one moment.
 func (s *Service) readLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membership, characterID, classKey string) (levelUpTarget, error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return levelUpTarget{}, errCharacterNotFound()
 	}
@@ -552,11 +554,11 @@ func checkRollRequest(m authz.Membership, req *charactersv1.RollLevelUpHitPoints
 	if isMaster(m) {
 		return "", errOnlyThePlayer()
 	}
-	id, ok := parseUUID(req.GetCharacterId())
+	id, ok := uid.Canonical(req.GetCharacterId())
 	if !ok {
 		return "", errCharacterNotFound()
 	}
-	if _, ok := parseUUID(req.GetIdempotencyKey()); !ok {
+	if _, ok := uid.Canonical(req.GetIdempotencyKey()); !ok {
 		return "", invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
 	}
 	return id, nil
@@ -678,7 +680,7 @@ func checkLevelUpRequest(m authz.Membership, req *charactersv1.LevelUpCharacterR
 	if isMaster(m) {
 		return "", errOnlyThePlayer()
 	}
-	id, ok := parseUUID(req.GetCharacterId())
+	id, ok := uid.Canonical(req.GetCharacterId())
 	if !ok {
 		return "", errCharacterNotFound()
 	}
@@ -844,7 +846,7 @@ func levelUpsParams(m authz.Membership, req *charactersv1.ListLevelUpsRequest) (
 		params.BeforeCreatedAt, params.BeforeID = &at, &id
 	}
 	if raw := req.GetCharacterId(); raw != "" {
-		id, ok := parseUUID(raw)
+		id, ok := uid.Canonical(raw)
 		if !ok {
 			return charactersdb.ListLevelUpsParams{}, errCharacterNotFound()
 		}
@@ -883,7 +885,7 @@ func levelUpToProto(content *rules.Content, displayNames map[string]string, row 
 	}
 	return &charactersv1.LevelUp{
 		Id: row.ID, CharacterId: row.CharacterID, CharacterName: row.CharacterName,
-		PlayerDisplayName: displayNames[deref(row.PlayerUserID)],
+		PlayerDisplayName: displayNames[conv.OrZero(row.PlayerUserID)],
 		ClassKey:          row.ClassKey, ClassNamePt: content.NamePT(row.ClassKey),
 		FromLevel: row.FromLevel, ToLevel: row.ToLevel,
 		Choices: choices, NamesPt: levelUpNames(content, row.ClassKey, choices),

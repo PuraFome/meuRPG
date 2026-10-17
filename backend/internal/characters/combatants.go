@@ -9,6 +9,8 @@ import (
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -91,7 +93,7 @@ func (s *Service) RulesContent(ctx context.Context, tx pgx.Tx, campaignID string
 func (s *Service) SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if id, ok := parseUUID(id); ok {
+		if id, ok := uid.Canonical(id); ok {
 			valid = append(valid, id)
 		}
 	}
@@ -104,7 +106,7 @@ func (s *Service) SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID s
 	}
 	out := make([]link.Character, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, link.Character{ID: r.ID, Name: r.Name, Player: r.Kind == "player", PlayerUserID: deref(r.PlayerUserID), Reserved: r.Reserved})
+		out = append(out, link.Character{ID: r.ID, Name: r.Name, Player: r.Kind == "player", PlayerUserID: conv.OrZero(r.PlayerUserID), Reserved: r.Reserved})
 	}
 	return out, nil
 }
@@ -115,7 +117,7 @@ func (s *Service) SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID s
 func (s *Service) CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if id, ok := parseUUID(id); ok {
+		if id, ok := uid.Canonical(id); ok {
 			valid = append(valid, id)
 		}
 	}
@@ -150,7 +152,7 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 	if err != nil {
 		return link.Character{}, err
 	}
-	c := link.Character{ID: id, Name: name, Player: kind == "player", PlayerUserID: deref(playerUserID)}
+	c := link.Character{ID: id, Name: name, Player: kind == "player", PlayerUserID: conv.OrZero(playerUserID)}
 	switch {
 	case sheet.GetFull() != nil:
 		d := derive(content, sheet.GetFull(), beast)

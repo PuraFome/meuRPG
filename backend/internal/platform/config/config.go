@@ -680,9 +680,7 @@ func loadLimits(getenv func(string) string) (Limits, []error) {
 		var entryErrs []error
 		l.CampaignCreators, entryErrs = parseCampaignCreators(raw)
 		errs = append(errs, entryErrs...)
-		// errs holds the other variables' errors too, so one of them hides
-		// this one (frozen as is by TestLoadCharacterization).
-		if len(l.CampaignCreators) == 0 && len(errs) == 0 {
+		if len(l.CampaignCreators) == 0 && len(entryErrs) == 0 {
 			// Only separators: an empty list would let anyone create campaigns.
 			errs = append(errs, errors.New("CAMPAIGN_CREATORS has no e-mail address; leave it empty to let anyone create"))
 		}

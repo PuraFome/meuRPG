@@ -13,6 +13,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -256,7 +257,7 @@ func callerKeys(ctx context.Context, q *charactersdb.Queries, m authz.Membership
 	}
 	out := map[string]bool{}
 	for _, row := range sheets {
-		if deref(row.PlayerUserID) != m.UserID {
+		if conv.OrZero(row.PlayerUserID) != m.UserID {
 			continue
 		}
 		sheet, err := loadSheet(row.ID, row.Sheet)

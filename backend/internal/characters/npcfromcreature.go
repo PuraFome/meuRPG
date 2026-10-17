@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -78,7 +79,7 @@ func checkNpcFromCreature(msg *charactersv1.CreateNpcFromCreatureRequest, m auth
 	if err != nil {
 		return charactersdb.InsertNpcFromCreatureParams{}, invalidArgument(&fieldError{field: "name", err: err})
 	}
-	createKey, ok := parseUUID(msg.GetIdempotencyKey())
+	createKey, ok := uid.Canonical(msg.GetIdempotencyKey())
 	if !ok {
 		return charactersdb.InsertNpcFromCreatureParams{}, invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
 	}

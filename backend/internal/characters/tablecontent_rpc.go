@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
@@ -713,7 +714,7 @@ func affectedSheets(sheets []charactersdb.ListCampaignSheetsRow, content *rules.
 		// Only the new issues that depend on this entry: the ones this change can
 		// be blamed for.
 		if n := len(issuesTiedTo(content, full, key)); n > 0 {
-			out = append(out, affectedSheet{id: row.ID, name: row.Name, playerID: deref(row.PlayerUserID), issues: n})
+			out = append(out, affectedSheet{id: row.ID, name: row.Name, playerID: conv.OrZero(row.PlayerUserID), issues: n})
 		}
 	}
 	return out, nil

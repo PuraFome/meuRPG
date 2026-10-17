@@ -19,6 +19,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
@@ -261,7 +262,7 @@ func (s *Service) reachedForPlayer(ctx context.Context, m authz.Membership, awar
 	}
 	reached := map[string]bool{}
 	for _, l := range live {
-		reached[deref(l.MilestoneID)] = true
+		reached[conv.OrZero(l.MilestoneID)] = true
 	}
 	return reached, nil
 }
@@ -306,13 +307,13 @@ func (h historyViews) view(a progressiondb.XpAward) *progressionv1.XPAward {
 		Id:                  a.ID,
 		Mode:                modeToProto[a.Mode],
 		Reason:              a.Reason,
-		GivenByUserId:       deref(a.GivenBy),
-		GivenByDisplayName:  h.names.users[deref(a.GivenBy)],
+		GivenByUserId:       conv.OrZero(a.GivenBy),
+		GivenByDisplayName:  h.names.users[conv.OrZero(a.GivenBy)],
 		CreatedAt:           timestamppb.New(a.CreatedAt),
-		EncounterId:         deref(a.EncounterID),
+		EncounterId:         conv.OrZero(a.EncounterID),
 		TotalXp:             a.TotalXp,
 		Undone:              a.UndoneAt != nil,
-		UndoneByDisplayName: h.names.users[deref(a.UndoneBy)],
+		UndoneByDisplayName: h.names.users[conv.OrZero(a.UndoneBy)],
 		CanUndo:             h.master && a.ID == h.lastID && a.UndoneAt == nil,
 		TreasureCount:       int32(len(treasures)), //nolint:gosec // at most maxAwardTreasures
 	}
@@ -418,11 +419,4 @@ func levelUpReason(mode campaignsv1.XpMode, level, xp, nextLevelXP, markLevel in
 		return charactersv1.LevelUpReason_LEVEL_UP_REASON_XP
 	}
 	return charactersv1.LevelUpReason_LEVEL_UP_REASON_UNSPECIFIED
-}
-
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }
