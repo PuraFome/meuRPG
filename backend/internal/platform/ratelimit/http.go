@@ -87,6 +87,6 @@ func writeTooMany(w http.ResponseWriter, wait time.Duration) {
 	h.Set("Content-Type", "application/json")
 	h.Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusTooManyRequests)
-	body := fmt.Sprintf(`{"code":"resource_exhausted","reason":"%s","message":"too many requests, please wait %d seconds and try again"}`, rpcerr.ReasonRateLimited, secs)
+	body := fmt.Sprintf(`{"code":"resource_exhausted","reason":%q,"message":"too many requests, please wait %d seconds and try again"}`, rpcerr.ReasonRateLimited, secs)
 	_, _ = w.Write([]byte(body))
 }

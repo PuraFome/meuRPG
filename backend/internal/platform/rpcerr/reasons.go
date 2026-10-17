@@ -13,32 +13,32 @@ type Reason string
 func (r Reason) String() string { return string(r) }
 
 const (
-	// ReasonRateLimited: the caller asked too often; Retry-After says when to ask again.
+	// ReasonRateLimited means the caller asked too often; Retry-After says when to ask again.
 	ReasonRateLimited Reason = "RATE_LIMITED"
-	// ReasonBusy: the server is busy with other work and a retry may work.
+	// ReasonBusy means the server is busy with other work and a retry may work.
 	ReasonBusy Reason = "BUSY"
-	// ReasonUnsupportedType: the file is not an image of a kind the server takes.
+	// ReasonUnsupportedType means the file is not an image of a kind the server takes.
 	ReasonUnsupportedType Reason = "UNSUPPORTED_TYPE"
-	// ReasonTooLarge: the file is over the size limit.
+	// ReasonTooLarge means the file is over the size limit.
 	ReasonTooLarge Reason = "TOO_LARGE"
-	// ReasonDimensions: the image has more pixels than the server reads.
+	// ReasonDimensions means the image has more pixels than the server reads.
 	ReasonDimensions Reason = "DIMENSIONS"
-	// ReasonCorrupt: the file cannot be read.
+	// ReasonCorrupt means the file cannot be read.
 	ReasonCorrupt Reason = "CORRUPT"
-	// ReasonMalformedRequest: the request is not shaped as the route expects.
+	// ReasonMalformedRequest means the request is not shaped as the route expects.
 	ReasonMalformedRequest Reason = "MALFORMED_REQUEST"
-	// ReasonQuota: the campaign's gallery is full.
+	// ReasonQuota means the campaign's gallery is full.
 	ReasonQuota Reason = "QUOTA"
-	// ReasonImagesOff: the server has no store for files, so it takes no uploads.
+	// ReasonImagesOff means the server has no store for files, so it takes no uploads.
 	ReasonImagesOff Reason = "IMAGES_OFF"
-	// ReasonWrongLength: a part of an upload is not the length the upload said.
+	// ReasonWrongLength means a part of an upload is not the length the upload said.
 	ReasonWrongLength Reason = "WRONG_LENGTH"
-	// ReasonOff: the feature is switched off on this server.
+	// ReasonOff means the feature is switched off on this server.
 	ReasonOff Reason = "OFF"
-	// ReasonDailyLimitReached: the server made all it may make today.
+	// ReasonDailyLimitReached means the server made all it may make today.
 	ReasonDailyLimitReached Reason = "DAILY_LIMIT_REACHED"
-	// ReasonUnavailable: the service behind the route failed; a retry may work.
+	// ReasonUnavailable means the service behind the route failed; a retry may work.
 	ReasonUnavailable Reason = "UNAVAILABLE"
-	// ReasonRefused: the service behind the route refused the content.
+	// ReasonRefused means the service behind the route refused the content.
 	ReasonRefused Reason = "REFUSED"
 )

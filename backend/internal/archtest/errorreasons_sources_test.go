@@ -52,10 +52,20 @@ func parseSources(t *testing.T) []srcFile {
 // source uses any more fails the test, so the migration removes it.
 var unmigratedBodyReasons = []struct{ pkg, reason string }{
 	// TODO(maps): internal/maps/httperror.go constants and tiles.go, ratelimit.go literals.
-	{"maps", "UNSUPPORTED_TYPE"}, {"maps", "TOO_LARGE"}, {"maps", "DIMENSIONS"}, {"maps", "CORRUPT"},
-	{"maps", "MALFORMED_REQUEST"}, {"maps", "QUOTA"}, {"maps", "BUSY"}, {"maps", "RATE_LIMITED"},
+	{"maps", "UNSUPPORTED_TYPE"},
+	{"maps", "TOO_LARGE"},
+	{"maps", "DIMENSIONS"},
+	{"maps", "CORRUPT"},
+	{"maps", "MALFORMED_REQUEST"},
+	{"maps", "QUOTA"},
+	{"maps", "BUSY"},
+	{"maps", "RATE_LIMITED"},
 	// TODO(play): internal/play/messages_voice.go literals.
-	{"play", "OFF"}, {"play", "DAILY_LIMIT_REACHED"}, {"play", "UNAVAILABLE"}, {"play", "REFUSED"}, {"play", "RATE_LIMITED"},
+	{"play", "OFF"},
+	{"play", "DAILY_LIMIT_REACHED"},
+	{"play", "UNAVAILABLE"},
+	{"play", "REFUSED"},
+	{"play", "RATE_LIMITED"},
 }
 
 // errorTypes are the struct types whose `reason` field reaches a client in the
