@@ -2224,7 +2224,7 @@ func TestCombatSpellEventsPerAudience(t *testing.T) {
 
 	// A cast at the visible Capitão, then the master's cast for Pensantus at the hidden goblin.
 	a.mustCast(t, a.ana, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Capitão Goblin"), noCastRoll)
-	a.mustCast(t, a.master, e, "Pensantus", webSpell, slotOfLevel(2), a.at(t, "Goblin"), noCastRoll)
+	a.mustCast(t, a.master, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Goblin"), noCastRoll)
 	a.mustEndTurn(t, a.master, e) // the sentinel: Toren's turn
 
 	count := func(who string) (logHints, vitals, encounters int) {

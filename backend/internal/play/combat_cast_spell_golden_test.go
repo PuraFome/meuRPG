@@ -532,7 +532,7 @@ func castThroughScenarios() []goldenScenario {
 			a.passTo(t, e, "Toren")
 			return a.passTo(t, e, "Pensantus")
 		}).scenario("a second concentration spell"),
-		pensantus(webSpell, slotOfLevel(2), nil).to("Goblin", "Capitão Goblin").first(queued(6, 17)).scenario("web at two creatures"),
+		pensantus(webSpell, slotOfLevel(2), nil).first(queued(6)).scenario("web at a goblin"),
 		brisa(sacredFlame, nil, nil).first(queued(3)).scenario("sacred flame failed"),
 		brisa(sacredFlame, nil, nil).first(queued(18)).scenario("sacred flame saved"),
 		brisa(sacredFlame, nil, nil).to("Capitão Goblin").by(asMasterOf).first(queued(9)).scenario("sacred flame as the master"),

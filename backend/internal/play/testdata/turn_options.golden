@@ -1466,6 +1466,10 @@ options as options of Pensantus to her player
 - .spellTargets[3].targets[Toren].cover
 - .spellTargets[3].targets[Toren].distanceFt
 - .spellTargets[3].targets[Toren].label
+- .spellTargets[4].areaShape
+- .spellTargets[4].areaSizeFt
+- .spellTargets[4].placement
+- .spellTargets[4].rangeFt
 - .spellTargets[4].spellKey
 - .spellTargets[4].targets[Brisa].combatantId
 - .spellTargets[4].targets[Brisa].cover
@@ -1593,6 +1597,10 @@ options as options of Pensantus to her player
 - .spellTargets[3].targets[Goblin].distanceFt
 - .spellTargets[3].targets[Pensantus].distanceFt
 - .spellTargets[3].targets[Toren].distanceFt
+- .spellTargets[4].areaShape
+- .spellTargets[4].areaSizeFt
+- .spellTargets[4].placement
+- .spellTargets[4].rangeFt
 - .spellTargets[4].targets[Brisa].distanceFt
 - .spellTargets[4].targets[Capitão Goblin].distanceFt
 - .spellTargets[4].targets[Goblin].coverSource
@@ -1679,6 +1687,10 @@ options as options of Pensantus to her player
 - .spellTargets[3].targets[Goblin].distanceFt
 - .spellTargets[3].targets[Pensantus].distanceFt
 - .spellTargets[3].targets[Toren].distanceFt
+- .spellTargets[4].areaShape
+- .spellTargets[4].areaSizeFt
+- .spellTargets[4].placement
+- .spellTargets[4].rangeFt
 - .spellTargets[4].targets[Brisa].distanceFt
 - .spellTargets[4].targets[Capitão Goblin].distanceFt
 - .spellTargets[4].targets[Goblin].coverSource
@@ -1761,6 +1773,10 @@ options as options of Pensantus to the master
 - .spellTargets[3].targets[Goblin].distanceFt
 - .spellTargets[3].targets[Pensantus].distanceFt
 - .spellTargets[3].targets[Toren].distanceFt
+- .spellTargets[4].areaShape
+- .spellTargets[4].areaSizeFt
+- .spellTargets[4].placement
+- .spellTargets[4].rangeFt
 - .spellTargets[4].targets[Brisa].distanceFt
 - .spellTargets[4].targets[Capitão Goblin].distanceFt
 - .spellTargets[4].targets[Goblin].coverSource
@@ -2915,6 +2931,10 @@ options
 .spellTargets[3].targets[Toren].cover = "COVER_DEGREE_NONE"
 .spellTargets[3].targets[Toren].distanceFt = 5
 .spellTargets[3].targets[Toren].label = "Toren"
+.spellTargets[4].areaShape = "SPELL_AREA_SHAPE_CUBE"
+.spellTargets[4].areaSizeFt = 20
+.spellTargets[4].placement = "AREA_PLACEMENT_POINT"
+.spellTargets[4].rangeFt = 60
 .spellTargets[4].spellKey = "spell:web"
 .spellTargets[4].targets[Brisa].combatantId = "Brisa"
 .spellTargets[4].targets[Brisa].cover = "COVER_DEGREE_NONE"
@@ -3338,6 +3358,10 @@ options
 .spellTargets[3].targets[Toren].cover = "COVER_DEGREE_NONE"
 .spellTargets[3].targets[Toren].distanceFt = 5
 .spellTargets[3].targets[Toren].label = "Toren"
+.spellTargets[4].areaShape = "SPELL_AREA_SHAPE_CUBE"
+.spellTargets[4].areaSizeFt = 20
+.spellTargets[4].placement = "AREA_PLACEMENT_POINT"
+.spellTargets[4].rangeFt = 60
 .spellTargets[4].spellKey = "spell:web"
 .spellTargets[4].targets[Brisa].combatantId = "Brisa"
 .spellTargets[4].targets[Brisa].cover = "COVER_DEGREE_NONE"
@@ -3536,6 +3560,10 @@ options as options of Pensantus to her player
 - .spellTargets[3].targets[Toren].cover
 - .spellTargets[3].targets[Toren].distanceFt
 - .spellTargets[3].targets[Toren].label
+- .spellTargets[4].areaShape
+- .spellTargets[4].areaSizeFt
+- .spellTargets[4].placement
+- .spellTargets[4].rangeFt
 - .spellTargets[4].spellKey
 - .spellTargets[4].targets[Brisa].combatantId
 - .spellTargets[4].targets[Brisa].cover
