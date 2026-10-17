@@ -6,7 +6,7 @@ import { AuthService } from './core/auth/auth.service';
 import { SESSION_REFRESHER } from './core/auth/session-refresher';
 
 describe('appConfig', () => {
-  it('binds the transport\'s session refresher to the AuthService instance', () => {
+  it("binds the transport's session refresher to the AuthService instance", () => {
     const binding = (appConfig.providers as Provider[]).find(
       (p) => typeof p === 'object' && 'provide' in p && p.provide === SESSION_REFRESHER,
     );
