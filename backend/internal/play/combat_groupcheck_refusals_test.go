@@ -96,7 +96,7 @@ func TestGroupCheckRequestOfAnUnaskablePartyAndAnIdempotencyConflict(t *testing.
 	if _, err := a.master.contests.CloseGroupCheck(t.Context(), connect.NewRequest(reuse)); err != nil {
 		t.Fatalf("CloseGroupCheck() error = %v", err)
 	}
-	// The same key used to ask, not to close: another kind of change.
+	// The same key was used to ask, not to close: another kind of change.
 	_, err := a.master.contests.RequestGroupCheck(t.Context(), connect.NewRequest(&playv1.RequestGroupCheckRequest{
 		CampaignId: a.campaignID, IdempotencyKey: reuse.GetIdempotencyKey(), SkillKey: stealthKey, Dc: 12,
 	}))

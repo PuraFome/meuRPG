@@ -730,7 +730,7 @@ func (s *Service) GetEncounter(
 		return nil, err
 	}
 	// The session, the latest encounter and its combatants are one snapshot
-	// (audit D-03): apart, a write between them gave a view of two states. What
+	// (one snapshot): apart, a write between them gave a view of two states. What
 	// the view adds on top (vitals, sheets, the fog) is read after.
 	var d *encounterData
 	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {

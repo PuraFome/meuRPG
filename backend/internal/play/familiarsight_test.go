@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
-// "Ver pelos olhos do familiar" (MR-036, Etapa 9, slice 9.10): Pensantus's familiar
+// "Ver pelos olhos do familiar" (MR-036): Pensantus's familiar
 // is the owl Nanquim. The fog's side (what the player then sees) is in package maps'
 // tests; these are the rules of starting and stopping it. They need the database
 // (MEURPG_TEST_DATABASE_URL).

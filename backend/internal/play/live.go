@@ -188,7 +188,7 @@ func encounterInSessionWith(ctx context.Context, q *playdb.Queries, sessionID, e
 }
 
 // readEncounter reads the open session, one of its encounters and the
-// encounter's combatants in one read-only transaction (audit D-03), so a combat
+// encounter's combatants in one read-only transaction, so a combat
 // the master changes while the request runs is seen whole or not at all: never
 // new combatants beside the old revision.
 func (s *Service) readEncounter(ctx context.Context, campaignID, encounterID string) (playdb.GameSession, *encounterData, error) {

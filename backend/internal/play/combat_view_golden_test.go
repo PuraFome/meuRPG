@@ -3,7 +3,6 @@ package play
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -214,30 +213,7 @@ func cviewGolden() string {
 
 func TestCombatViewGolden(t *testing.T) {
 	t.Parallel()
-	got := cviewGolden()
-	if os.Getenv("UPDATE_GOLDEN") != "" {
-		if err := os.MkdirAll("testdata", 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(cviewGoldenPath, []byte(got), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(cviewGoldenPath)
-	if err != nil {
-		t.Fatalf("read the golden (UPDATE_GOLDEN=1 writes it): %v", err)
-	}
-	if string(want) == got {
-		return
-	}
-	gl, wl := strings.Split(got, "\n"), strings.Split(string(want), "\n")
-	for i := 0; i < len(gl) && i < len(wl); i++ {
-		if gl[i] != wl[i] {
-			t.Fatalf("the combat view changed at line %d of the golden:\n got: %s\nwant: %s", i+1, gl[i], wl[i])
-		}
-	}
-	t.Fatalf("the combat view has %d lines, the golden %d", len(gl), len(wl))
+	wantGolden(t, cviewGoldenPath, cviewGolden())
 }
 
 // The leaks the rules forbid, said in assertions (RN-10, RN-20), beside the golden.
